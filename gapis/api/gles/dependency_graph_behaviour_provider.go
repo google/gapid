@@ -69,6 +69,8 @@ func (k renderbufferSubDataKey) Parent() dependencygraph.StateKey {
 type textureDataKey struct {
 	texture *Texture
 	id      TextureId // For debugging, as 0 is not unique identifier.
+	level   GLint
+	layer   GLint
 }
 
 func (k textureDataKey) Parent() dependencygraph.StateKey { return nil }
@@ -76,6 +78,8 @@ func (k textureDataKey) Parent() dependencygraph.StateKey { return nil }
 type textureSizeKey struct {
 	texture *Texture
 	id      TextureId // For debugging, as 0 is not unique identifier.
+	layer   GLint
+	level   GLint
 }
 
 func (k textureSizeKey) Parent() dependencygraph.StateKey { return nil }
@@ -182,7 +186,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				if cmd.SrcTarget == GLenum_GL_RENDERBUFFER {
 					b.Read(g, renderbufferDataKey{c.Objects.Shared.Renderbuffers[RenderbufferId(cmd.SrcName)]})
 				} else {
-					data, size := c.Objects.Shared.Textures[TextureId(cmd.SrcName)].dataAndSize()
+					data, size := c.Objects.Shared.Textures[TextureId(cmd.SrcName)].dataAndSize(cmd.SrcLevel, 0)
 					b.Read(g, data)
 					b.Read(g, size)
 				}
@@ -190,26 +194,26 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 					b.Write(g,
 						renderbufferDataKey{c.Objects.Shared.Renderbuffers[RenderbufferId(cmd.DstName)]})
 				} else {
-					data, size := c.Objects.Shared.Textures[TextureId(cmd.DstName)].dataAndSize()
+					data, size := c.Objects.Shared.Textures[TextureId(cmd.DstName)].dataAndSize(cmd.DstLevel, 0)
 					b.Write(g, data)
 					b.Write(g, size)
 				}
 			case *GlFramebufferTexture2D:
-				b.Read(g, textureSizeKey{c.Objects.Shared.Textures[cmd.Texture], cmd.Texture})
+				b.Read(g, textureSizeKey{c.Objects.Shared.Textures[cmd.Texture], cmd.Texture, cmd.Level, 0})
 				b.KeepAlive = true // Changes untracked state
 			case *GlCompressedTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target)
+				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level, 0)
 				b.Modify(g, texData)
 				b.Write(g, texSize)
 			case *GlCompressedTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target)
+				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level, 0)
 				b.Modify(g, texData)
 			case *GlTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target)
+				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level, 0)
 				b.Modify(g, texData)
 				b.Write(g, texSize)
 			case *GlTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target)
+				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level, 0)
 				b.Modify(g, texData)
 			case *GlUniform1fv:
 				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
@@ -270,8 +274,15 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *ap
 					}
 					for _, unit := range units {
 						if tu := c.Objects.TextureUnits[TextureUnitId(unit)]; tu != nil {
-							texData, _ := getTextureDataAndSize(ctx, cmd, id, s, tu, target)
-							stateKeys = append(stateKeys, texData)
+							tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, tu, target)
+							if tex != nil && err == nil {
+								for lvl, level := range tex.Levels {
+									for lyr := range level.Layers {
+										texData, _ := tex.dataAndSize(lvl, lyr)
+										stateKeys = append(stateKeys, texData)
+									}
+								}
+							}
 						}
 					}
 				}
@@ -281,20 +292,28 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *ap
 	return
 }
 
-func getTextureDataAndSize(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, unit *TextureUnit, target GLenum) (dependencygraph.StateKey, dependencygraph.StateKey) {
+func getTextureDataAndSize(
+	ctx context.Context,
+	cmd api.Cmd,
+	id api.CmdID,
+	s *api.State,
+	unit *TextureUnit,
+	target GLenum,
+	level, layer GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {
+
 	tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, unit, target)
 	if tex == nil || err != nil {
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil
 	}
-	return tex.dataAndSize()
+	return tex.dataAndSize(level, layer)
 }
 
-func (tex *Texture) dataAndSize() (dependencygraph.StateKey, dependencygraph.StateKey) {
+func (tex *Texture) dataAndSize(level, layer GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {
 	if tex.EGLImage != nil {
 		return eglImageDataKey{tex.EGLImage}, eglImageSizeKey{tex.EGLImage}
 	} else {
-		return textureDataKey{tex, tex.ID}, textureSizeKey{tex, tex.ID}
+		return textureDataKey{tex, tex.ID, level, layer}, textureSizeKey{tex, tex.ID, layer, level}
 	}
 }
 
@@ -315,7 +334,7 @@ func (att FramebufferAttachment) dataAndSize(g *dependencygraph.DependencyGraph,
 		tex := att.Texture
 		if tex != nil {
 			// TODO: We should handle scissor here as well.
-			dataKey, sizeKey = tex.dataAndSize()
+			dataKey, sizeKey = tex.dataAndSize(att.TextureLevel, att.TextureLayer)
 		}
 	}
 	if dataKey != nil {

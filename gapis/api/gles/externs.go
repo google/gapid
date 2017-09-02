@@ -144,7 +144,6 @@ func (e externs) addTag(msgID uint32, message *stringtable.Msg) {
 func (e externs) ReadGPUTextureData(texture *Texture, level, layer GLint) U8ˢ {
 	poolID, dst := e.s.Memory.New()
 	registry := bind.GetRegistry(e.ctx)
-	device := registry.DefaultDevice() // TODO: Device selection.
 	img := texture.Levels[level].Layers[layer]
 	dataFormat, dataType := img.getUnsizedFormatAndType()
 	format, err := getImageFormat(dataFormat, dataType)
@@ -152,6 +151,11 @@ func (e externs) ReadGPUTextureData(texture *Texture, level, layer GLint) U8ˢ {
 		panic(err)
 	}
 	size := format.Size(int(img.Width), int(img.Height), 1)
+	device := registry.DefaultDevice() // TODO: Device selection.
+	if device == nil {
+		log.W(e.ctx, "No device found for GPU texture read")
+		return U8ˢ{count: uint64(size), pool: poolID}
+	}
 	dataID, err := database.Store(e.ctx, &ReadGPUTextureDataResolveable{
 		Capture:    path.NewCapture(capture.Get(e.ctx).Id.ID()),
 		Device:     path.NewDevice(device.Instance().Id.ID()),
