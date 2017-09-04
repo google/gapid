@@ -115,7 +115,7 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 		// Clone context to ignore cancellation.
 		ctx := keys.Clone(context.Background(), ctx)
 		d.RemoveForward(ctx, port)
-		d.Command("shell", "setprop", "debug.vulkan.layers", "\"\"").Run(ctx)
+		d.Command("shell", "setprop", "debug.vulkan.layers", "").Run(ctx)
 	})
 
 	if a != nil {
