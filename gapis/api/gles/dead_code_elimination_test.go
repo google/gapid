@@ -200,7 +200,6 @@ func TestDeadCommandRemoval(t *testing.T) {
 			cb.GlUseProgram(3),
 			cb.GlUniform1i(0, 3),
 			cb.GlBindFramebuffer(GLenum_GL_FRAMEBUFFER, 0),
-			cb.GlTexStorage2D(GLenum_GL_TEXTURE_2D, 10, GLenum_GL_RGBA8, 512, 512),
 			cb.GlClear(GLbitfield_GL_COLOR_BUFFER_BIT),
 			live(cb.GlDrawArrays(GLenum_GL_POINTS, 0, 1)),
 		},

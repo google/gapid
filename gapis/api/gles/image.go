@@ -31,6 +31,11 @@ func (i *Image) getUnsizedFormatAndType() (unsizedFormat, ty GLenum) {
 	return i.DataFormat, i.DataType
 }
 
+func cubemapFaceToLayer(target GLenum) GLint {
+	layer, _ := subCubemapFaceToLayer(nil, nil, api.CmdNoID, nil, &api.State{}, nil, 0, nil, target)
+	return layer
+}
+
 // getSizedFormatFromTuple returns sized format from unsized format and component type.
 func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
 	sf, _ := subGetSizedFormatFromTuple(nil, nil, api.CmdNoID, nil, &api.State{}, nil, 0, nil, unsizedFormat, ty)

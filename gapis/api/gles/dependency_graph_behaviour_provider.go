@@ -202,18 +202,18 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				b.Read(g, textureSizeKey{c.Objects.Shared.Textures[cmd.Texture], cmd.Texture, cmd.Level, 0})
 				b.KeepAlive = true // Changes untracked state
 			case *GlCompressedTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level, 0)
+				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
 				b.Modify(g, texData)
 				b.Write(g, texSize)
 			case *GlCompressedTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level, 0)
+				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
 				b.Modify(g, texData)
 			case *GlTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level, 0)
+				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
 				b.Modify(g, texData)
 				b.Write(g, texSize)
 			case *GlTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level, 0)
+				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
 				b.Modify(g, texData)
 			case *GlUniform1fv:
 				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
@@ -299,13 +299,14 @@ func getTextureDataAndSize(
 	s *api.State,
 	unit *TextureUnit,
 	target GLenum,
-	level, layer GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {
+	level GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {
 
 	tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, unit, target)
 	if tex == nil || err != nil {
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil
 	}
+	layer := cubemapFaceToLayer(target)
 	return tex.dataAndSize(level, layer)
 }
 

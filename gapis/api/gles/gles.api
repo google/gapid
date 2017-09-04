@@ -931,24 +931,3 @@ sub u32 IndexSize(GLenum indices_type) {
 
 @internal class u32Limits { u32 first u32 count }
 extern u32Limits IndexLimits(u8[] indices, s32 sizeof_index)
-
-/////////////////////////////////////////////////////////////////
-// Desktop GL
-/////////////////////////////////////////////////////////////////
-
-// EXT_disjoint_timer_query
-// TODO: Always use glGetQueryObjectui64vEXT?
-
-cmd void glGetQueryObjecti64v(QueryId query, GLenum parameter, s64* value) {
-  value[0] = ?
-}
-
-cmd void glGetQueryObjectui64v(QueryId query, GLenum parameter, u64* value) {
-  value[0] = ?
-}
-
-cmd void glTexStorage1D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width) {
-}
-
-cmd void glBindFragDataLocation(ProgramId program, GLuint color, string name) {
-}
