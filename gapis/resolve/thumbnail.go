@@ -114,7 +114,7 @@ func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p 
 		return nil, err
 	}
 
-	if img == nil {
+	if img == nil || img.Format == nil || img.Bytes == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData("")}
 	}
 
