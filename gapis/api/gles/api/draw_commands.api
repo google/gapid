@@ -304,8 +304,8 @@ sub void PrimitiveBoundingBox(GLfloat minX, GLfloat minY, GLfloat minZ, GLfloat 
   ctx.Rasterization.PrimitiveBoundingBox.Max = Vec4f(maxX, maxY, maxZ, maxW)
 }
 
-// WriteGPUFramebufferData updates the currently the data of currently bound
-// framebuffer textures.
+// WriteGPUFramebufferData updates the data of currently bound framebuffer
+// textures.
 sub void WriteGPUFramebufferData(ref!Context ctx) {
   for _, _, a in ctx.Bound.DrawFramebuffer.ColorAttachments {
     if a.Texture != null {

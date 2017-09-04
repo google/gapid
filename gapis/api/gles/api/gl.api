@@ -28,3 +28,20 @@ cmd void glGetTexImage(GLenum target, GLint level, GLenum format, GLenum type, G
     image_size := SelectNonZero!GLint(unpack.ImageHeight, as!GLint(height)) * row_size
     write(pixels[0:image_size])
 }
+
+// EXT_disjoint_timer_query
+// TODO: Always use glGetQueryObjectui64vEXT?
+
+cmd void glGetQueryObjecti64v(QueryId query, GLenum parameter, s64* value) {
+  value[0] = ?
+}
+
+cmd void glGetQueryObjectui64v(QueryId query, GLenum parameter, u64* value) {
+  value[0] = ?
+}
+
+cmd void glTexStorage1D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width) {
+}
+
+cmd void glBindFragDataLocation(ProgramId program, GLuint color, string name) {
+}
