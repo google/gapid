@@ -26,6 +26,8 @@ import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 
 import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.glviewer.gl.Renderer;
 import com.google.gapid.glviewer.gl.Scene;
 import com.google.gapid.glviewer.gl.Shader;
@@ -35,7 +37,7 @@ import com.google.gapid.glviewer.vec.VecD;
 import com.google.gapid.image.Image;
 import com.google.gapid.image.Image.PixelInfo;
 import com.google.gapid.image.Image.PixelValue;
-import com.google.gapid.image.MultiLevelImage;
+import com.google.gapid.image.MultiLayerAndLevelImage;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
@@ -45,7 +47,9 @@ import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -90,6 +94,7 @@ public class ImagePanel extends Composite {
   protected static final Logger LOG = Logger.getLogger(ImagePanel.class.getName());
   protected static final int ZOOM_AMOUNT = 5;
   private static final int CHANNEL_RED = 0, CHANNEL_GREEN = 1, CHANNEL_BLUE = 2, CHANNEL_ALPHA = 3;
+  private static final Image[] NO_LAYERS = new Image[] { Image.EMPTY };
 
   private final SingleInFlight imageRequestController = new SingleInFlight();
   protected final LoadablePanel<ImageComponent> loading;
@@ -97,8 +102,8 @@ public class ImagePanel extends Composite {
   protected final ImageComponent imageComponent;
   private final BackgroundSelection backgroundSelection;
   private ToolItem zoomFitItem, backgroundItem, saveItem;
-  private MultiLevelImage image = MultiLevelImage.EMPTY;
-  private Image level = Image.EMPTY;
+  private MultiLayerAndLevelImage image = MultiLayerAndLevelImage.EMPTY;
+  private Image[] layers = NO_LAYERS;
 
   public ImagePanel(Composite parent, Widgets widgets, boolean naturallyFlipped) {
     super(parent, SWT.NONE);
@@ -251,7 +256,7 @@ public class ImagePanel extends Composite {
     String path = dialog.open();
     if (path != null) {
       ImageLoader saver = new ImageLoader();
-      saver.data = new ImageData[] { level.getImageData() };
+      saver.data = new ImageData[] { layers[0].getImageData() }; // TODO: Save each layer
       saver.save(path, SWT.IMAGE_PNG);
     }
   }
@@ -260,28 +265,28 @@ public class ImagePanel extends Composite {
     return loading;
   }
 
-  public void setImage(MultiLevelImage image) {
-    if (image == null || image == MultiLevelImage.EMPTY) {
+  public void setImage(MultiLayerAndLevelImage image) {
+    if (image == null || image == MultiLayerAndLevelImage.EMPTY) {
       clearImage();
     } else {
       this.image = image;
-      this.level = Image.EMPTY;
+      this.layers = NO_LAYERS;
       loadLevel(0);
       status.setLevelCount(image.getLevelCount());
     }
   }
 
   public void clearImage() {
-    this.image = MultiLevelImage.EMPTY;
-    this.level = Image.EMPTY;
+    this.image = MultiLayerAndLevelImage.EMPTY;
+    this.layers = NO_LAYERS;
     if (saveItem != null) {
       saveItem.setEnabled(false);
     }
     status.setLevelCount(0);
-    imageComponent.setImages(new Image[]{ level });
+    imageComponent.setImages(layers);
   }
 
-  private void loadLevel(int index) {
+  private void loadLevel(int level) {
     if (image.getLevelCount() == 0) {
       clearImage();
       loading.showMessage(Info, Messages.NO_IMAGE_DATA);
@@ -291,12 +296,17 @@ public class ImagePanel extends Composite {
       return;
     }
 
-    index = Math.min(image.getLevelCount() - 1, index);
+    level = Math.min(image.getLevelCount() - 1, level);
     loading.startLoading();
-    imageRequestController.start().listen(image.getLevel(index),
-        new UiErrorCallback<Image, Image, Loadable.Message>(this, LOG) {
+
+    ListenableFuture<Image>[] layers = new ListenableFuture[image.getLayerCount()];
+    for (int layer = 0; layer < layers.length; layer++) {
+      layers[layer] = image.getImage(layer, level);
+    }
+    imageRequestController.start().listen(Futures.allAsList(layers),
+        new UiErrorCallback<List<Image>, List<Image>, Loadable.Message>(this, LOG) {
       @Override
-      protected ResultOrError<Image, Loadable.Message> onRpcThread(Rpc.Result<Image> result)
+      protected ResultOrError<List<Image>, Loadable.Message> onRpcThread(Rpc.Result<List<Image>> result)
           throws RpcException, ExecutionException {
         try {
           return success(result.get());
@@ -308,8 +318,8 @@ public class ImagePanel extends Composite {
       }
 
       @Override
-      protected void onUiThreadSuccess(Image newLevel) {
-        updateLevel(newLevel);
+      protected void onUiThreadSuccess(List<Image> levels) {
+        updateLayers(levels);
       }
 
       @Override
@@ -320,18 +330,25 @@ public class ImagePanel extends Composite {
     });
   }
 
-  protected void updateLevel(Image newLevel) {
-    level = (newLevel == null) ? Image.EMPTY : newLevel;
-    status.setLevelSize(level.getWidth(), level.getHeight());
+  protected void updateLayers(List<Image> newLayers) {
+    boolean valid = newLayers != null && newLayers.size() > 0;
+    if (valid) {
+      layers = newLayers.toArray(new Image[newLayers.size()]);
+      status.setLevelSize(layers[0].getWidth(), layers[0].getHeight());
+    } else {
+      layers = NO_LAYERS;
+    }
     loading.stopLoading();
     if (saveItem != null) {
-      saveItem.setEnabled(newLevel != null);
+      saveItem.setEnabled(valid);
     }
-    Image[] images = new Image[level.getDepth()];
-    for (int i = 0; i < images.length; i++) {
-      images[i] = level.getSlice(i);
+    List<Image> images = new ArrayList<>(layers.length);
+    for (Image layer : layers) {
+      for (int i = 0, c = layer.getDepth(); i < c; i++) {
+        images.add(layer.getSlice(i));
+      }
     }
-    imageComponent.setImages(images);
+    imageComponent.setImages(images.toArray(new Image[images.size()]));
   }
 
   private static class SceneData {

@@ -19,9 +19,14 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 /**
- * An image with (optionally) multiple mipmap levels.
+ * An image with (optionally) multiple layers and mipmap levels.
  */
-public interface MultiLevelImage {
+public interface MultiLayerAndLevelImage {
+  /**
+   * @return the number of layers in this image.
+   */
+  public int getLayerCount();
+
   /**
    * @return the number of levels in this image.
    */
@@ -30,16 +35,21 @@ public interface MultiLevelImage {
   /**
    * @return a future {@link Image} representing the given 0-based level.
    */
-  public ListenableFuture<Image> getLevel(int index);
+  public ListenableFuture<Image> getImage(int layer, int level);
 
-  public static final MultiLevelImage EMPTY = new MultiLevelImage() {
+  public static final MultiLayerAndLevelImage EMPTY = new MultiLayerAndLevelImage() {
+    @Override
+    public int getLayerCount() {
+      return 1;
+    }
+
     @Override
     public int getLevelCount() {
       return 1;
     }
 
     @Override
-    public ListenableFuture<Image> getLevel(int index) {
+    public ListenableFuture<Image> getImage(int layer, int level) {
       return Futures.immediateFuture(Image.EMPTY);
     }
   };
