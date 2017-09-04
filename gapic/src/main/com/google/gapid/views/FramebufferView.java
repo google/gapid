@@ -25,7 +25,7 @@ import static com.google.gapid.widgets.Widgets.exclusiveSelection;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
-import com.google.gapid.image.MultiLevelImage;
+import com.google.gapid.image.MultiLayerAndLevelImage;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
@@ -218,9 +218,9 @@ public class FramebufferView extends Composite
       loading.startLoading();
       rpcController.start().listen(
           FetchedImage.load(client, getImageInfoPath(atomPath.getCommand())),
-          new UiErrorCallback<FetchedImage, MultiLevelImage, Loadable.Message>(this, LOG) {
+          new UiErrorCallback<FetchedImage, MultiLayerAndLevelImage, Loadable.Message>(this, LOG) {
         @Override
-        protected ResultOrError<MultiLevelImage, Loadable.Message> onRpcThread(
+        protected ResultOrError<MultiLayerAndLevelImage, Loadable.Message> onRpcThread(
             Rpc.Result<FetchedImage> result) throws RpcException, ExecutionException {
           try {
             return success(result.get());
@@ -232,7 +232,7 @@ public class FramebufferView extends Composite
         }
 
         @Override
-        protected void onUiThreadSuccess(MultiLevelImage result) {
+        protected void onUiThreadSuccess(MultiLayerAndLevelImage result) {
           imagePanel.setImage(result);
         }
 

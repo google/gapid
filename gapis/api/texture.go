@@ -76,11 +76,11 @@ func (t *Texture1D) ConvertTo(ctx context.Context, f *image.Format) (interface{}
 		Levels: make([]*image.Info, len(t.Levels)),
 	}
 	for i, m := range t.Levels {
-		if obj, err := m.Convert(ctx, f); err == nil {
-			out.Levels[i] = obj
-		} else {
+		obj, err := m.Convert(ctx, f)
+		if err != nil {
 			return nil, err
 		}
+		out.Levels[i] = obj
 	}
 	return out, nil
 }
@@ -105,11 +105,11 @@ func (t *Texture2D) ConvertTo(ctx context.Context, f *image.Format) (interface{}
 		Levels: make([]*image.Info, len(t.Levels)),
 	}
 	for i, m := range t.Levels {
-		if obj, err := m.Convert(ctx, f); err == nil {
-			out.Levels[i] = obj
-		} else {
+		obj, err := m.Convert(ctx, f)
+		if err != nil {
 			return nil, err
 		}
+		out.Levels[i] = obj
 	}
 	return out, nil
 }
@@ -125,6 +125,37 @@ func (t *Texture2D) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info,
 }
 
 // Interface compliance check
+var _ = image.Convertable((*Texture2DArray)(nil))
+var _ = image.Thumbnailer((*Texture2DArray)(nil))
+
+// ConvertTo returns this Texture2DArray with each layer and  mip-level
+// converted to the requested format.
+func (t *Texture2DArray) ConvertTo(ctx context.Context, f *image.Format) (interface{}, error) {
+	out := &Texture2DArray{
+		Layers: make([]*Texture2D, len(t.Layers)),
+	}
+	for i, l := range t.Layers {
+		l, err := l.ConvertTo(ctx, f)
+		if err != nil {
+			return nil, err
+		}
+		out.Layers[i] = l.(*Texture2D)
+	}
+	return out, nil
+}
+
+// Thumbnail returns the image that most closely matches the desired size.
+func (t *Texture2DArray) Thumbnail(ctx context.Context, w, h, d uint32) (*image.Info, error) {
+	m := imageMatcher{width: w, height: h, depth: 1}
+	for _, layer := range t.Layers {
+		for _, level := range layer.Levels {
+			m.consider(level)
+		}
+	}
+	return m.best, nil
+}
+
+// Interface compliance check
 var _ = image.Convertable((*Texture3D)(nil))
 var _ = image.Thumbnailer((*Texture3D)(nil))
 
@@ -134,11 +165,11 @@ func (t *Texture3D) ConvertTo(ctx context.Context, f *image.Format) (interface{}
 		Levels: make([]*image.Info, len(t.Levels)),
 	}
 	for i, m := range t.Levels {
-		if obj, err := m.Convert(ctx, f); err == nil {
-			out.Levels[i] = obj
-		} else {
+		obj, err := m.Convert(ctx, f)
+		if err != nil {
 			return nil, err
 		}
+		out.Levels[i] = obj
 	}
 	return out, nil
 }

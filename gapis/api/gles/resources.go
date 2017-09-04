@@ -61,24 +61,18 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D:
 		levels := make([]*image.Info, len(t.Levels))
+		gotData := false
 		for i, level := range t.Levels {
-			img := level.Layers[0]
-			if img.Data.count == 0 {
-				// TODO: Make other results available
-				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
-			}
-			dataFormat, dataType := img.getUnsizedFormatAndType()
-			format, err := getImageFormat(dataFormat, dataType)
+			img, err := level.Layers[0].ImageInfo(ctx, s)
 			if err != nil {
 				return nil, err
 			}
-			levels[i] = &image.Info{
-				Format: format,
-				Width:  uint32(img.Width),
-				Height: uint32(img.Height),
-				Depth:  1,
-				Bytes:  image.NewID(img.Data.ResourceID(ctx, s)),
+			if img != nil {
+				levels[i], gotData = img, true
 			}
+		}
+		if !gotData {
+			return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 		}
 		switch t.Kind {
 		case GLenum_GL_TEXTURE_1D:
@@ -89,20 +83,63 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 			panic(fmt.Errorf("Unhandled texture kind %v", t.Kind))
 		}
 
+	case GLenum_GL_TEXTURE_1D_ARRAY:
+		numLayers := t.LayerCount()
+		layers := make([]*api.Texture1D, numLayers)
+		gotData := false
+		for layer := range layers {
+			levels := make([]*image.Info, len(t.Levels))
+			for level := range levels {
+				img, err := t.Levels[GLint(level)].Layers[GLint(layer)].ImageInfo(ctx, s)
+				if err != nil {
+					return nil, err
+				}
+				if img != nil {
+					levels[level], gotData = img, true
+				}
+			}
+			layers[layer] = &api.Texture1D{Levels: levels}
+		}
+		if !gotData {
+			return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+		}
+		return api.NewResourceData(api.NewTexture(&api.Texture1DArray{Layers: layers})), nil
+
+	case GLenum_GL_TEXTURE_2D_ARRAY:
+		numLayers := t.LayerCount()
+		layers := make([]*api.Texture2D, numLayers)
+		gotData := false
+		for layer := range layers {
+			levels := make([]*image.Info, len(t.Levels))
+			for level := range levels {
+				img, err := t.Levels[GLint(level)].Layers[GLint(layer)].ImageInfo(ctx, s)
+				if err != nil {
+					return nil, err
+				}
+				if img != nil {
+					levels[level], gotData = img, true
+				}
+			}
+			layers[layer] = &api.Texture2D{Levels: levels}
+		}
+		if !gotData {
+			return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+		}
+		return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers})), nil
+
 	case GLenum_GL_TEXTURE_3D:
 		levels := make([]*image.Info, len(t.Levels))
+		gotData := false
 		for i, level := range t.Levels {
 			img := level.Layers[0]
 			if img.Data.count == 0 {
-				// TODO: Make other results available
-				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+				continue
 			}
 			bytes := []byte{}
 			for i, c := 0, len(level.Layers); i < c; i++ {
 				l := level.Layers[GLint(i)]
 				if l == nil {
-					// TODO: Make other results available
-					return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+					continue
 				}
 				pool, err := s.Memory.Get(l.Data.Pool())
 				if err != nil {
@@ -130,29 +167,25 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 				Depth:  uint32(len(level.Layers)),
 				Bytes:  image.NewID(id),
 			}
+			gotData = true
+		}
+		if !gotData {
+			return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture3D{Levels: levels})), nil
 
 	case GLenum_GL_TEXTURE_CUBE_MAP:
 		levels := make([]*api.CubemapLevel, len(t.Levels))
-		anyData := false
+		gotData := false
 		for i, level := range t.Levels {
 			levels[i] = &api.CubemapLevel{}
 			for j, face := range level.Layers {
-				if face.Data.count == 0 {
-					continue
-				}
-				dataFormat, dataType := face.getUnsizedFormatAndType()
-				format, err := getImageFormat(dataFormat, dataType)
+				img, err := face.ImageInfo(ctx, s)
 				if err != nil {
 					return nil, err
 				}
-				img := &image.Info{
-					Format: format,
-					Width:  uint32(face.Width),
-					Height: uint32(face.Height),
-					Depth:  1,
-					Bytes:  image.NewID(face.Data.ResourceID(ctx, s)),
+				if img != nil {
+					gotData = true
 				}
 				switch GLenum(j) + GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X {
 				case GLenum_GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
@@ -168,10 +201,10 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 				case GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
 					levels[i].PositiveZ = img
 				}
-				anyData = true
+				gotData = true
 			}
 		}
-		if !anyData {
+		if !gotData {
 			return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 		}
 		return api.NewResourceData(api.NewTexture(&api.Cubemap{Levels: levels})), nil
@@ -182,6 +215,36 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 func (t *Texture) SetResourceData(ctx context.Context, at *path.Command,
 	data *api.ResourceData, resources api.ResourceMap, edits api.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for Texture")
+}
+
+// ImageInfo returns the Image as a image.Info.
+func (i *Image) ImageInfo(ctx context.Context, s *api.State) (*image.Info, error) {
+	if i.Data.count == 0 {
+		return nil, nil
+	}
+	dataFormat, dataType := i.getUnsizedFormatAndType()
+	format, err := getImageFormat(dataFormat, dataType)
+	if err != nil {
+		return nil, err
+	}
+	return &image.Info{
+		Format: format,
+		Width:  uint32(i.Width),
+		Height: uint32(i.Height),
+		Depth:  1,
+		Bytes:  image.NewID(i.Data.ResourceID(ctx, s)),
+	}, nil
+}
+
+// LayerCount returns the maximum number of layers across all levels.
+func (t *Texture) LayerCount() int {
+	max := 0
+	for _, l := range t.Levels {
+		if len(l.Layers) > max {
+			max = len(l.Layers)
+		}
+	}
+	return max
 }
 
 // IsResource returns true if this instance should be considered as a resource.

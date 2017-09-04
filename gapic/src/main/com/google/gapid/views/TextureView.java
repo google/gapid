@@ -61,6 +61,7 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.VisibilityTrackingTableViewer;
 import com.google.gapid.widgets.Widgets;
 
+import java.util.Comparator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
@@ -155,19 +156,23 @@ public class TextureView extends Composite
 
     sorting(viewer,
         createTableColumn(viewer, "Type", Data::getType,
-            (d1, d2) -> d1.getType().compareTo(d2.getType())),
+            Comparator.comparing(Data::getType)),
         createTableColumn(viewer, "ID", Data::getId, d -> imageProvider.getImage(d),
             (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
         createTableColumn(viewer, "Name", Data::getLabel,
-            (d1, d2) -> d1.getLabel().compareTo(d2.getLabel())),
+            Comparator.comparing(Data::getLabel)),
         createTableColumn(viewer, "Width", Data::getWidth,
-            (d1, d2) -> Integer.compare(d1.getSortWidth(), d2.getSortWidth())),
+            Comparator.comparingInt(Data::getSortWidth)),
         createTableColumn(viewer, "Height", Data::getHeight,
-            (d1, d2) -> Integer.compare(d1.getSortHeight(), d2.getSortHeight())),
+            Comparator.comparingInt(Data::getSortHeight)),
+        createTableColumn(viewer, "Depth", Data::getDepth,
+            Comparator.comparingInt(Data::getSortDepth)),
+        createTableColumn(viewer, "Layers", Data::getLayers,
+            Comparator.comparingInt(Data::getSortLayers)),
         createTableColumn(viewer, "Levels", Data::getLevels,
-            (d1, d2) -> Integer.compare(d1.getSortLevels(), d2.getSortLevels())),
+            Comparator.comparingInt(Data::getSortLevels)),
         createTableColumn(viewer, "Format", Data::getFormat,
-            (d1, d2) -> d1.getFormat().compareTo(d2.getFormat())));
+            Comparator.comparing(Data::getFormat)));
   }
 
   private static ImagePanel createImagePanel(Composite parent, Widgets widgets) {
@@ -354,6 +359,22 @@ public class TextureView extends Composite
       return imageInfo.level0.getHeight();
     }
 
+    public String getDepth() {
+      return imageInfo.getDepth();
+    }
+
+    public int getSortDepth() {
+      return imageInfo.level0.getDepth();
+    }
+
+    public String getLayers() {
+      return imageInfo.getLayers();
+    }
+
+    public int getSortLayers() {
+      return imageInfo.layerCount;
+    }
+
     public String getLevels() {
       return imageInfo.getLevels();
     }
@@ -389,28 +410,30 @@ public class TextureView extends Composite
 
     private static class AdditionalInfo {
       public static final AdditionalInfo NULL =
-          new AdditionalInfo("<unknown>", Image.Info.getDefaultInstance(), 0);
+          new AdditionalInfo("<unknown>", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_1D =
-          new AdditionalInfo("1D", Image.Info.getDefaultInstance(), 0);
+          new AdditionalInfo("1D", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_1D_ARRAY =
-          new AdditionalInfo("1D Array", Image.Info.getDefaultInstance(), 0);
+          new AdditionalInfo("1D Array", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_2D =
-          new AdditionalInfo("2D", Image.Info.getDefaultInstance(), 0);
+          new AdditionalInfo("2D", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_2D_ARRAY =
-          new AdditionalInfo("2D Array", Image.Info.getDefaultInstance(), 0);
+          new AdditionalInfo("2D Array", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_3D =
-          new AdditionalInfo("3D", Image.Info.getDefaultInstance(), 0);
+          new AdditionalInfo("3D", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_CUBEMAP =
-          new AdditionalInfo("Cubemap", Image.Info.getDefaultInstance(), 0);
+          new AdditionalInfo("Cubemap", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_CUBEMAP_ARRAY =
-          new AdditionalInfo("Cubemap Array", Image.Info.getDefaultInstance(), 0);
+          new AdditionalInfo("Cubemap Array", Image.Info.getDefaultInstance(), 0, 0);
 
       public final Image.Info level0;
+      public final int layerCount;
       public final int levelCount;
       public final String typeLabel;
 
-      public AdditionalInfo(String typeLabel, Image.Info level0, int levelCount) {
+      public AdditionalInfo(String typeLabel, Image.Info level0, int layerCount, int levelCount) {
         this.level0 = level0;
+        this.layerCount = layerCount;
         this.levelCount = levelCount;
         this.typeLabel = typeLabel;
       }
@@ -422,28 +445,34 @@ public class TextureView extends Composite
           case TEXTURE_1D: {
             API.Texture1D t = texture.getTexture1D();
             return (t.getLevelsCount() == 0) ? NULL_1D :
-                new AdditionalInfo("1D", t.getLevels(0), t.getLevelsCount());
+                new AdditionalInfo("1D", t.getLevels(0), 1, t.getLevelsCount());
           }
           case TEXTURE_1D_ARRAY: {
-            return NULL_1D_ARRAY; // TODO
+            API.Texture1DArray t = texture.getTexture1DArray();
+            return (t.getLayersCount() == 0 || t.getLayers(0).getLevelsCount() == 0) ? NULL_1D_ARRAY :
+                new AdditionalInfo("1D Array", t.getLayers(0).getLevels(0), t.getLayersCount(),
+                    t.getLayers(0).getLevelsCount());
           }
           case TEXTURE_2D: {
             API.Texture2D t = texture.getTexture2D();
             return (t.getLevelsCount() == 0) ? NULL_2D :
-                new AdditionalInfo("2D", t.getLevels(0), t.getLevelsCount());
+                new AdditionalInfo("2D", t.getLevels(0), 1, t.getLevelsCount());
           }
           case TEXTURE_2D_ARRAY: {
-            return NULL_2D_ARRAY; // TODO
+            API.Texture2DArray t = texture.getTexture2DArray();
+            return (t.getLayersCount() == 0 || t.getLayers(0).getLevelsCount() == 0) ? NULL_2D_ARRAY :
+                new AdditionalInfo("2D Array", t.getLayers(0).getLevels(0), t.getLayersCount(),
+                    t.getLayers(0).getLevelsCount());
           }
           case TEXTURE_3D: {
             API.Texture3D t = texture.getTexture3D();
             return (t.getLevelsCount() == 0) ? NULL_3D :
-                new AdditionalInfo("3D", t.getLevels(0), t.getLevelsCount());
+                new AdditionalInfo("3D", t.getLevels(0), 1, t.getLevelsCount());
           }
           case CUBEMAP: {
             API.Cubemap c = texture.getCubemap();
             return (c.getLevelsCount() == 0) ? NULL_CUBEMAP :
-                new AdditionalInfo("Cubemap", c.getLevels(0).getNegativeX(), c.getLevelsCount());
+                new AdditionalInfo("Cubemap", c.getLevels(0).getNegativeX(), 1, c.getLevelsCount());
           }
           case CUBEMAP_ARRAY: {
             return NULL_CUBEMAP_ARRAY; // TODO
@@ -458,19 +487,27 @@ public class TextureView extends Composite
       }
 
       public String getWidth() {
-        return (levelCount == 0) ? "" : String.valueOf(level0.getWidth());
+        return (layerCount == 0) ? "" : String.valueOf(level0.getWidth());
       }
 
       public String getHeight() {
-        return (levelCount == 0) ? "" : String.valueOf(level0.getHeight());
+        return (layerCount == 0) ? "" : String.valueOf(level0.getHeight());
+      }
+
+      public String getDepth() {
+        return (layerCount == 0) ? "" : String.valueOf(level0.getDepth());
       }
 
       public String getFormat() {
-        return (levelCount == 0) ? "" : level0.getFormat().getName();
+        return (layerCount == 0) ? "" : level0.getFormat().getName();
+      }
+
+      public String getLayers() {
+        return (layerCount == 0) ? "" : String.valueOf(layerCount);
       }
 
       public String getLevels() {
-        return (levelCount == 0) ? "" : String.valueOf(levelCount);
+        return (layerCount == 0) ? "" : String.valueOf(levelCount);
       }
     }
   }

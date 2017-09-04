@@ -41,8 +41,8 @@ import java.util.function.Consumer;
 /**
  * A {@link MultiLevelImage} fetched from the RPC server.
  */
-public class FetchedImage implements MultiLevelImage {
-  private final Level[] levels;
+public class FetchedImage implements MultiLayerAndLevelImage {
+  private final Layer[] layers;
 
   public static ListenableFuture<FetchedImage> load(
       Client client, ListenableFuture<Path.ImageInfo> imageInfo) {
@@ -94,10 +94,12 @@ public class FetchedImage implements MultiLevelImage {
     });
   }
 
-  public static ListenableFuture<ImageData> loadLevel(
-      ListenableFuture<FetchedImage> futureImage, final int level) {
+  public static ListenableFuture<ImageData> loadImage(
+      ListenableFuture<FetchedImage> futureImage, final int layer, final int level) {
     return Futures.transformAsync(futureImage, image -> Futures.transform(
-        image.getLevel(Math.min(level, image.getLevelCount())), (l) -> l.getImageData()));
+        image.getImage(
+            Math.min(layer, image.getLayerCount()),
+            Math.min(level, image.getLevelCount())), (l) -> l.getImageData()));
   }
 
   public static ListenableFuture<ImageData> loadThumbnail(Client client, Path.Thumbnail path) {
@@ -106,10 +108,10 @@ public class FetchedImage implements MultiLevelImage {
 
   public static ListenableFuture<ImageData> loadThumbnail(
       Client client, Path.Thumbnail path, Consumer<Info> onInfo) {
-    return loadLevel(Futures.transform(client.get(thumbnail(path)), value -> {
+    return loadImage(Futures.transform(client.get(thumbnail(path)), value -> {
       onInfo.accept(value.getImageInfo());
       return new FetchedImage(client, Images.Format.Color8, value.getImageInfo());
-    }), 0);
+    }), 0, 0);
   }
 
   private static Images.Format getFormat(Info imageInfo) {
@@ -150,47 +152,69 @@ public class FetchedImage implements MultiLevelImage {
 
 
   public FetchedImage(Client client, Images.Format format, Info imageInfo) {
-    levels = new Level[] { new SingleFacedLevel(client, format, imageInfo) };
+    layers = new Layer[] {
+        new Layer(new SingleFacedLevel(client, format, imageInfo))
+    };
   }
 
   public FetchedImage(Client client, Images.Format format, API.Texture1D texture) {
     List<Info> infos = texture.getLevelsList();
-    levels = new Level[infos.size()];
+    Level[] levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
       levels[i] = new SingleFacedLevel(client, format, infos.get(i));
     }
+    layers = new Layer[] { new Layer(levels) };
   }
 
   public FetchedImage(Client client, Images.Format format, API.Texture1DArray texture) {
-    throw new RuntimeException("FetchedImage() for Texture1DArray not yet implemented");
+    layers = new Layer[texture.getLayersCount()];
+    for (int i = 0; i < layers.length; i++) {
+      List<Info> infos = texture.getLayers(i).getLevelsList();
+      Level[] levels = new Level[infos.size()];
+      for (int j = 0; j < infos.size(); j++) {
+        levels[j] = new SingleFacedLevel(client, format, infos.get(j));
+      }
+      layers[i] = new Layer(levels);
+    }
   }
 
   public FetchedImage(Client client, Images.Format format, API.Texture2D texture) {
     List<Info> infos = texture.getLevelsList();
-    levels = new Level[infos.size()];
+    Level[] levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
       levels[i] = new SingleFacedLevel(client, format, infos.get(i));
     }
+    layers = new Layer[] { new Layer(levels) };
   }
 
   public FetchedImage(Client client, Images.Format format, API.Texture2DArray texture) {
-    throw new RuntimeException("FetchedImage() for Texture2DArray not yet implemented");
+    layers = new Layer[texture.getLayersCount()];
+    for (int i = 0; i < layers.length; i++) {
+      List<Info> infos = texture.getLayers(i).getLevelsList();
+      Level[] levels = new Level[infos.size()];
+      for (int j = 0; j < infos.size(); j++) {
+        levels[j] = new SingleFacedLevel(client, format, infos.get(j));
+      }
+      layers[i] = new Layer(levels);
+    }
   }
 
   public FetchedImage(Client client, Images.Format format, API.Texture3D texture) {
     List<Info> infos = texture.getLevelsList();
-    levels = new Level[infos.size()];
+    Level[] levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
       levels[i] = new SingleFacedLevel(client, format, infos.get(i));
     }
+    layers = new Layer[] { new Layer(levels) };
   }
 
   public FetchedImage(Client client, Images.Format format, API.Cubemap cubemap) {
     List<API.CubemapLevel> infos = cubemap.getLevelsList();
-    levels = new Level[infos.size()];
+    Level[] levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
       levels[i] = new SixFacedLevel(client, format, infos.get(i));
     }
+    layers = new Layer[] { new Layer(levels) };
   }
 
   public FetchedImage(Client client, Images.Format format, API.CubemapArray texture) {
@@ -198,15 +222,41 @@ public class FetchedImage implements MultiLevelImage {
   }
 
   @Override
-  public int getLevelCount() {
-    return levels.length;
+  public int getLayerCount() {
+    return layers.length;
   }
 
   @Override
-  public ListenableFuture<Image> getLevel(int index) {
-    return (index < 0 || index >= levels.length) ?
-        immediateFailedFuture(new IllegalArgumentException("Invalid image level " + index)) :
-        levels[index].get();
+  public int getLevelCount() {
+    int count = 0;
+    for (Layer layer : layers) {
+      count = Math.max(count, layer.levels.length);
+    }
+    return count;
+  }
+
+  @Override
+  public ListenableFuture<Image> getImage(int layerIdx, int levelIdx) {
+    return  (layerIdx < 0 || layerIdx >= layers.length) ?
+        immediateFailedFuture(new IllegalArgumentException("Invalid image layer " + layerIdx)) :
+        layers[layerIdx].getImage(levelIdx);
+  }
+
+  /**
+   * A single {@link Image} layer.
+   */
+  private static class Layer {
+    public final Level[] levels;
+
+    public Layer(Level... levels) {
+      this.levels = levels;
+    }
+
+    public ListenableFuture<Image> getImage(int level) {
+      return level < 0 || level >= levels.length ?
+          immediateFailedFuture(new IllegalArgumentException("Invalid image level " + level)) :
+          levels[level].get();
+    }
   }
 
   /**
