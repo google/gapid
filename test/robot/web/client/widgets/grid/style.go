@@ -53,11 +53,11 @@ type Style struct {
 
 func (s *Style) statsStyle(stats taskStats) (icon rune, backgroundColor, foregroundColor dom.Color) {
 	switch {
-	case stats.numRegressed > 0:
+	case stats.numFailedWasSucceeded > 0:
 		return s.Icons.Failed, s.CurrentFailedBackgroundColor, s.RegressedForegroundColor
 	case stats.numCurrentFailed > 0:
 		return s.Icons.Failed, s.CurrentFailedBackgroundColor, s.CurrentFailedForegroundColor
-	case stats.numFixed > 0:
+	case stats.numSucceededWasFailed > 0:
 		return s.Icons.Succeeded, s.CurrentSucceededBackgroundColor, s.FixedForegroundColor
 	case stats.numInProgressWasFailed+stats.numStaleFailed > 0:
 		return s.Icons.Failed, s.StaleFailedBackgroundColor, s.StaleFailedForegroundColor
