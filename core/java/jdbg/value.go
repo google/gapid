@@ -15,6 +15,7 @@
 package jdbg
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/google/gapid/core/java/jdwp"
@@ -56,6 +57,20 @@ func (v Value) Get() interface{} {
 // Type returns the value's type.
 func (v Value) Type() Type {
 	return v.ty
+}
+
+// AsType returns the value as a type.
+func (v Value) AsType() Type {
+	j := v.ty.jdwp()
+	switch v := v.val.(type) {
+	case jdwp.ClassObjectID:
+		id, err := j.conn.ReflectedType(v)
+		if err != nil {
+			j.fail("%v", err)
+		}
+		return j.typeFromID(id)
+	}
+	panic(fmt.Errorf("Unhandled value type: %T %+v", v.val, v.val))
 }
 
 // SetArrayValues sets the array values to values. This value must be an Array.

@@ -21,6 +21,7 @@ set(files
     class_status.go
     cmdset_arrayreference.go
     cmdset_arraytype.go
+    cmdset_classobjectreference.go
     cmdset_classtype.go
     cmdset_eventrequest.go
     cmdset_method.go
