@@ -299,13 +299,31 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 }
 
 func (e externs) pushDebugMarker(name string) {
-	if GetState(e.s).pushDebugMarkerGroup != nil {
-		GetState(e.s).pushDebugMarkerGroup(name)
+	if GetState(e.s).pushMarkerGroup != nil {
+		GetState(e.s).pushMarkerGroup(name, false, DebugMarker)
 	}
 }
 
 func (e externs) popDebugMarker() {
-	if GetState(e.s).popDebugMarkerGroup != nil {
-		GetState(e.s).popDebugMarkerGroup()
+	if GetState(e.s).popMarkerGroup != nil {
+		GetState(e.s).popMarkerGroup(DebugMarker)
+	}
+}
+
+func (e externs) pushRenderPassMarker(name string) {
+	if GetState(e.s).pushMarkerGroup != nil {
+		GetState(e.s).pushMarkerGroup(name, false, RenderPassMarker)
+	}
+}
+
+func (e externs) popRenderPassMarker() {
+	if GetState(e.s).popMarkerGroup != nil {
+		GetState(e.s).popMarkerGroup(RenderPassMarker)
+	}
+}
+
+func (e externs) pushNextSubpassMarker(name string) {
+	if GetState(e.s).pushMarkerGroup != nil {
+		GetState(e.s).pushMarkerGroup(name, true, RenderPassMarker)
 	}
 }

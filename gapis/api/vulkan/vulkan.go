@@ -30,14 +30,14 @@ import (
 )
 
 type CustomState struct {
-	SubCmdIdx            api.SubCmdIdx
-	CurrentSubmission    *api.Cmd
-	PreSubcommand        func(interface{})
-	PostSubcommand       func(interface{})
-	AddCommand           func(interface{})
-	IsRebuilding         bool
-	pushDebugMarkerGroup func(name string)
-	popDebugMarkerGroup  func()
+	SubCmdIdx         api.SubCmdIdx
+	CurrentSubmission *api.Cmd
+	PreSubcommand     func(interface{})
+	PostSubcommand    func(interface{})
+	AddCommand        func(interface{})
+	IsRebuilding      bool
+	pushMarkerGroup   func(name string, next bool, ty MarkerType)
+	popMarkerGroup    func(ty MarkerType)
 }
 
 func getStateObject(s *api.State) *State {
@@ -92,6 +92,21 @@ func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, er
 	return nil, fmt.Errorf("Cannot get the mesh data from %v", o)
 }
 
+type MarkerType int
+
+const (
+	DebugMarker = iota
+	RenderPassMarker
+)
+
+type markerInfo struct {
+	name   string
+	ty     MarkerType
+	start  uint64
+	end    uint64
+	parent api.SubCmdIdx
+}
+
 func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Capture) error {
 	ctx = capture.Put(ctx, c)
 	st, err := capture.NewState(ctx)
@@ -110,28 +125,60 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	lastSubcommand := api.SubCmdIdx{}
 	lastCmdIndex := api.CmdID(0)
 
-	// Prepare for collect debug marker groups
-	debugMarkerStack := map[VkQueue][]*api.SubCmdMarkerGroup{}
-	s.pushDebugMarkerGroup = func(name string) {
+	// Prepare for collect marker groups
+	// Stacks of open markers for each VkQueue
+	markerStack := map[VkQueue][]*markerInfo{}
+	// Stacks of markers to be opened in the next subcommand for each VkQueue
+	markersToOpen := map[VkQueue][]*markerInfo{}
+	s.pushMarkerGroup = func(name string, next bool, ty MarkerType) {
 		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
-		stack := debugMarkerStack[vkQu]
-		fullCmdIdx := api.SubCmdIdx{uint64(submissionMap[s.CurrentSubmission])}
-		fullCmdIdx = append(fullCmdIdx, s.SubCmdIdx...)
-		group := d.SubCommandMarkerGroups.NewMarkerGroup(fullCmdIdx[0:len(fullCmdIdx)-1], name)
-		group.Start = api.CmdID(fullCmdIdx[len(fullCmdIdx)-1])
-		debugMarkerStack[vkQu] = append(stack, group)
+		if next {
+			// Add to the to-open marker stack, marker will be opened in the next
+			// subcommand
+			stack := markersToOpen[vkQu]
+			markersToOpen[vkQu] = append(stack, &markerInfo{name: name, ty: ty})
+		} else {
+			// Add to the marker stack
+			stack := markerStack[vkQu]
+			fullCmdIdx := api.SubCmdIdx{uint64(submissionMap[s.CurrentSubmission])}
+			fullCmdIdx = append(fullCmdIdx, s.SubCmdIdx...)
+			marker := &markerInfo{name: name,
+				ty:     ty,
+				start:  fullCmdIdx[len(fullCmdIdx)-1],
+				end:    uint64(0),
+				parent: fullCmdIdx[0 : len(fullCmdIdx)-1]}
+			markerStack[vkQu] = append(stack, marker)
+		}
 	}
-	s.popDebugMarkerGroup = func() {
+	s.popMarkerGroup = func(ty MarkerType) {
 		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
-		stack := debugMarkerStack[vkQu]
+		stack := markerStack[vkQu]
 		if len(stack) == 0 {
-			log.E(ctx, "Cannot pop debug marker, no open debug marker: VkQueueSubmit ID: %v, SubCmdIdx: %v",
+			log.E(ctx, "Cannot pop marker, no open marker at: VkQueueSubmit ID: %v, SubCmdIdx: %v",
 				submissionMap[s.CurrentSubmission], s.SubCmdIdx)
 			return
 		}
-		// Update the End value of the debug marker group.
-		stack[len(stack)-1].End = api.CmdID(s.SubCmdIdx[len(s.SubCmdIdx)-1]) + 1
-		debugMarkerStack[vkQu] = stack[0 : len(stack)-1]
+		// If the type of the top marker in the stack does not match with the
+		// request type, pop until a matching marker is found and pop it. The
+		// spilled markers are processed in the following way: if it is a debug
+		// marker, resurrect it in the next subcommand, if it is a renderpass
+		// marker, discard it.
+		top := len(stack) - 1
+		for top >= 0 && stack[top].ty != ty {
+			switch stack[top].ty {
+			case DebugMarker:
+				markersToOpen[vkQu] = append(markersToOpen[vkQu], stack[top])
+			}
+			top--
+		}
+		// Update the End value of the debug marker and create new group.
+		if top >= 0 {
+			end := s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1
+			d.SubCommandMarkerGroups.NewMarkerGroup(stack[top].parent, stack[top].name, stack[top].start, end)
+			markerStack[vkQu] = stack[0:top]
+		} else {
+			markerStack[vkQu] = []*markerInfo{}
+		}
 	}
 
 	s.PreSubcommand = func(interface{}) {
@@ -140,27 +187,32 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		if _, ok := submissionMap[s.CurrentSubmission]; !ok {
 			submissionMap[s.CurrentSubmission] = i
 		}
-		// Examine the debug marker stack. For the current submission VkQueue, if
-		// the comming subcommand is submitted in a different command buffer or
-		// submission batch or VkQueueSubmit call, and there are unclosed debug
-		// marker group, we need to 1) check whether the unclosed debug marker
-		// groups are opened in secondary command buffers, log error and pop them.
-		// 2) Close all the unclosed debug marker group, and begin new groups for
-		// the new command buffer.
+		// Examine the marker stack. If the comming subcommand is submitted in a
+		// different command buffer or submission batch or VkQueueSubmit call, and
+		// there are unclosed marker group, we need to 1) check whether the
+		// unclosed marker groups are opened in secondary command buffers, log
+		// error and pop them.  2) Close all the unclosed "debug marker" group, and
+		// begin new groups for the new command buffer. Note that only "debug
+		// marker" groups are resurrected in this step, all unclosed "renderpass
+		// markers" are assumed closed.
+		// Finally, no matter whether the comming subcommand is in a different
+		// command buffer or submission batch, If there are pending markers in the
+		// to-open stack, begin new groups for those pending markers.
 		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
-		stack := debugMarkerStack[vkQu]
+		stack := markerStack[vkQu]
 		fullCmdIdx := api.SubCmdIdx{uint64(submissionMap[s.CurrentSubmission])}
 		fullCmdIdx = append(fullCmdIdx, s.SubCmdIdx...)
 
 		for lastCmdIndex != api.CmdID(0) && len(stack) > 0 {
 			top := stack[len(stack)-1]
-			if len(top.Parent) > len(fullCmdIdx) {
+			if len(top.parent) > len(fullCmdIdx) {
 				// The top of the stack is an unclosed debug marker group which is
 				// opened in a secondary command buffer. This debug marker group will
 				// be closed here, the End value of the group will be the last updated
 				// value (which should be one plus the last command index in its
 				// secondary command buffer).
 				log.E(ctx, "DebugMarker began in secondary command buffer does not close. Close now")
+				d.SubCommandMarkerGroups.NewMarkerGroup(top.parent, top.name, top.start, top.end)
 				stack = stack[0 : len(stack)-1]
 				continue
 			}
@@ -171,13 +223,21 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		// End value to be the last updated value, and new groups with same name
 		// will be opened in the new command buffer.
 		if lastCmdIndex != api.CmdID(0) && len(stack) > 0 &&
-			!stack[len(stack)-1].Parent.Contains(fullCmdIdx) {
-			originalStack := []*api.SubCmdMarkerGroup(stack)
-			debugMarkerStack[vkQu] = []*api.SubCmdMarkerGroup{}
+			!stack[len(stack)-1].parent.Contains(fullCmdIdx) {
+			originalStack := []*markerInfo(stack)
+			markerStack[vkQu] = []*markerInfo{}
 			for _, o := range originalStack {
-				s.pushDebugMarkerGroup(o.Name)
+				s.pushMarkerGroup(o.name, false, DebugMarker)
 			}
 		}
+		// Open new groups for the pending markers in the to-open stack
+		toOpenStack := markersToOpen[vkQu]
+		i := len(toOpenStack) - 1
+		for i >= 0 {
+			s.pushMarkerGroup(toOpenStack[i].name, false, toOpenStack[i].ty)
+			i--
+		}
+		markersToOpen[vkQu] = []*markerInfo{}
 	}
 
 	s.PostSubcommand = func(a interface{}) {
@@ -236,13 +296,13 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 
 		// Update the End value for all unclosed debug marker groups
 		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
-		for _, ms := range debugMarkerStack[vkQu] {
+		for _, ms := range markerStack[vkQu] {
 			// If the last subcommand is in a secondary command buffer and current
 			// recording debug marker groups are opened in a primary command buffer,
 			// this will assign a wrong End value to the open marker groups.
 			// However, those End values will be overwritten when the secondary
 			// command buffer ends and vkCmdExecuteCommands get executed.
-			ms.End = api.CmdID(s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1)
+			ms.end = s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1
 		}
 	}
 

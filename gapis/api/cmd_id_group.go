@@ -61,14 +61,6 @@ func NewRoot(idx []uint64) *SubCmdRoot {
 		SubGroup: CmdIDGroup{Name: "Subgroup"}}
 }
 
-// SubCmdMarkerGroup contains the range info of a marker group of subcommands.
-type SubCmdMarkerGroup struct {
-	Name   string
-	Parent SubCmdIdx
-	Start  CmdID
-	End    CmdID
-}
-
 // Spans is a list of Span elements. Functions in this package expect the
 // list to be in ascending command index order, and maintain that order on
 // mutation.
@@ -442,7 +434,7 @@ func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
 	}
 }
 
-func (c *SubCmdRoot) AddSubCmdMarkerGroups(base []uint64, groups []*SubCmdMarkerGroup) error {
+func (c *SubCmdRoot) AddSubCmdMarkerGroups(base []uint64, groups []*CmdIDGroup) error {
 	if c.Id.Contains(SubCmdIdx(base)) {
 		if len(c.Id) < len(base) {
 			// c is not the base node of the marker groups, need to create new SubCmdRoot.
@@ -472,13 +464,13 @@ func (c *SubCmdRoot) AddSubCmdMarkerGroups(base []uint64, groups []*SubCmdMarker
 			if !c.Id.Equals(g.Parent) {
 				return fmt.Errorf("Marker group base should have same SubCmdIdx as the adding target SubCmdRoot")
 			}
-			if g.Start < c.SubGroup.Range.Start {
-				c.SubGroup.Range.Start = g.Start
+			if g.Range.Start < c.SubGroup.Range.Start {
+				c.SubGroup.Range.Start = g.Range.Start
 			}
-			if g.End > c.SubGroup.Range.End {
-				c.SubGroup.Range.End = g.End
+			if g.Range.End > c.SubGroup.Range.End {
+				c.SubGroup.Range.End = g.Range.End
 			}
-			ng, err := c.SubGroup.AddGroup(g.Start, g.End, g.Name)
+			ng, err := c.SubGroup.AddGroup(g.Range.Start, g.Range.End, g.Name)
 			if err != nil {
 				return err
 			}

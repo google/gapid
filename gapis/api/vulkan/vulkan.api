@@ -5425,6 +5425,9 @@ extern void addWords(VkShaderModule module, size numBytes, const u32* pData)
 extern void addDebugMarkerTagBytes(ref!VulkanDebugMarkerInfo debugInfo, size numBytes, u8* pTag)
 extern void pushDebugMarker(string name)
 extern void popDebugMarker()
+extern void pushRenderPassMarker(string name)
+extern void popRenderPassMarker()
+extern void pushNextSubpassMarker(string name)
 extern ref!RecreateCmdUpdateBufferData createUpdateBufferData(
     VkBuffer     dstBuffer
     VkDeviceSize dstOffset
@@ -7759,9 +7762,28 @@ sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
       lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
     }
   }
+
+  switch RenderPasses[args.RenderPass].DebugInfo == null {
+    case true:
+      pushRenderPassMarker("<RenderPass>")
+    case false:{
+    switch len(RenderPasses[args.RenderPass].DebugInfo.ObjectName) == 0 {
+      case true:
+        pushRenderPassMarker("<RenderPass>")
+      case false:
+        pushRenderPassMarker(RenderPasses[args.RenderPass].DebugInfo.ObjectName)
+    }
+    }
+  }
+
+  switch len(RenderPasses[args.RenderPass].SubpassDescriptions) > 1 {
+    case true:
+      pushRenderPassMarker("<Subpass>")
+  }
 }
 
 sub void doCmdNextSubpass(u32 Unused) {
+  popRenderPassMarker()
   lastDrawInfo().LastSubpass += 1
   if lastDrawInfo().LastSubpass < len(lastDrawInfo().RenderPass.SubpassDescriptions) {
     subpass := lastDrawInfo().RenderPass.SubpassDescriptions[lastDrawInfo().LastSubpass]
@@ -7779,6 +7801,7 @@ sub void doCmdNextSubpass(u32 Unused) {
       lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
     }
   }
+  pushNextSubpassMarker("<Subpass>")
 }
 
 @internal class
@@ -7813,6 +7836,11 @@ RecreateCmdEndRenderPassData {
 
 sub void doCmdEndRenderPass(u32 unused) {
   lastDrawInfo().InRenderPass = false
+  popRenderPassMarker()
+  switch len(lastDrawInfo().RenderPass.SubpassDescriptions) > 1 {
+    case true:
+    popRenderPassMarker()
+  }
 }
 
 @threadSafety("app")
