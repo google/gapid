@@ -1,5 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "api_library", "apic", "go_proto_sources")
+load("//tools/build:rules.bzl", "api_library", "apic", "go_proto_sources", "filter")
 
 proto_library(
     name = "pb",
@@ -40,6 +40,12 @@ apic(
     visibility = ["//visibility:public"],
 )
 
+filter(
+    name = "generated_go",
+    srcs = [":generated"],
+    suffix = [".go"],
+)
+
 go_library(
     name = "go_default_library",
     srcs = [
@@ -74,8 +80,8 @@ go_library(
         "vertex_attribute_array.go",
         "wireframe.go",
         ":pb_go",  # keep
+        ":generated_go",  # keep
     ],
-    library = ":generated",
     importpath = "github.com/google/gapid/gapis/api/gles",
     visibility = ["//visibility:public"],
     deps = [

@@ -7,6 +7,11 @@ def _lingo_impl(ctx):
         progress_message="Lingo",
         executable=ctx.executable._lingo,
     )
+    return [
+        DefaultInfo(
+            files=depset(outs),
+        ),
+    ]
 
 """Builds a lingo source converter rule"""
 

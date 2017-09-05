@@ -8,14 +8,15 @@ go_library(
         "@spirv-tools//:spirv-tools",
     ],
     cgo = True,
-    clinkopts = [
-        "-lspv -lkhronos -lstdc++ -lpthread -lm",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:windows_amd64": [
-            "-Wl,--allow-multiple-definition",
-        ],
-        "//conditions:default": [],
-    }),
+    #TODO: we should not need these
+    #clinkopts = [
+    #    "-lspv -lkhronos -lstdc++ -lpthread -lm",
+    #] + select({
+    #    "@io_bazel_rules_go//go/platform:windows_amd64": [
+    #        "-Wl,--allow-multiple-definition",
+    #    ],
+    #    "//conditions:default": [],
+    #}),
     importpath = "github.com/google/gapid/gapis/shadertools",
     visibility = ["//visibility:public"],
     deps = [

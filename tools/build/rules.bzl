@@ -1,7 +1,7 @@
 load("//tools/build/rules:android.bzl", "android_native")
 load("//tools/build/rules:apic.bzl", "apic")
 load("//tools/build/rules:cc.bzl", "cc_copts", "cc_defines")
-load("//tools/build/rules:common.bzl", "generate", "copy", "copy_to", "copy_tree", "copy_platform_binaries")
+load("//tools/build/rules:common.bzl", "generate", "copy", "copy_to", "copy_tree", "copy_platform_binaries", "filter")
 load("//tools/build/rules:embed.bzl", "embed")
 load("//tools/build/rules:filehash.bzl", "filehash")
 load("//tools/build/rules:gapil.bzl", "api_library", "api_template")
@@ -14,4 +14,3 @@ load("//tools/build/rules:repository.bzl", "empty_repository", "github_repositor
 load("//tools/build/rules:stringgen.bzl", "stringgen")
 load("//tools/build/rules:windows_sdk.bzl", "windows_sdk")
 load("//tools/build/rules:zip.bzl", "extract")
-
