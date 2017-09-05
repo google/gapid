@@ -17,4 +17,6 @@ def cc_defines():
         "@//tools/build:android-armeabi": ["TARGET_OS_ANDROID"],
         "@//tools/build:android-x86": ["TARGET_OS_ANDROID"],
         "@//tools/build:android-aarch64": ["TARGET_OS_ANDROID"],
-    })
+    }) + [
+        "GAPID_VERSION_AND_BUILD=\\\"dunno\\\"", #TODO
+    ]

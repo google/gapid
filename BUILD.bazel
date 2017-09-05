@@ -111,7 +111,7 @@ copy(
 
 copy(
     name = "install-strings-en-us",
-    src = "//gapis/messages:en-us.stb",
+    src = "//gapis/messages:stb",
     dst = "strings/en-us.stb",
     tags = ["manual"],
     visibility = ["//visibility:private"],

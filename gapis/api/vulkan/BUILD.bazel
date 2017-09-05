@@ -1,5 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "api_library", "apic")
+load("//tools/build:rules.bzl", "api_library", "apic", "filter")
 
 api_library(
     name = "api",
@@ -27,6 +27,12 @@ apic(
     visibility = ["//visibility:public"],
 )
 
+filter(#TODO: use GoEmbed so we also get the deps
+    name = "generated_go",
+    srcs = [":generated"],
+    suffix = [".go"],
+)
+
 go_library(
     name = "go_default_library",
     srcs = [
@@ -45,8 +51,8 @@ go_library(
         "state.go",
         "vulkan.go",
         "vulkan_terminator.go",
+        ":generated_go",  # keep
     ],
-    library = ":generated",
     importpath = "github.com/google/gapid/gapis/api/vulkan",
     visibility = ["//visibility:public"],
     deps = [
@@ -81,5 +87,7 @@ go_library(
         "//gapis/service/path:go_default_library",
         "//gapis/shadertools:go_default_library",
         "//gapis/vertex:go_default_library",
+        #TODO: remove protoconv when it's supplied by deps
+        "//core/data/protoconv:go_default_library",  # keep
     ],
 )
