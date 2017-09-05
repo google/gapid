@@ -12,24 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package vulkan implementes the API interface for the Vulkan graphics library.
-
 package vulkan
 
 import (
-	"context"
+	"testing"
 
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/replay/builder"
 )
 
-type CommandBufferCommand struct {
-	function         func(context.Context, api.Cmd, api.CmdID, *api.State, *builder.Builder)
-	initialCall      *api.Cmd
-	submit           *api.Cmd
-	submissionIndex  []uint64
-	recreateData     interface{}
-	actualSubmission bool
+func TestCallSub(t *testing.T) {
+	ctx := log.Testing(t)
+	e := externs{}
+	s := api.NewStateWithEmptyAllocator(device.Little32)
+	e.callSub(ctx, &VkCreateBuffer{}, 10, s, nil, subDoCmdNop, Unimplemented{})
 }
-
-type CommandBufferCommands []CommandBufferCommand
