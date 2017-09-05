@@ -104,7 +104,7 @@ function(_go_package VAR package)
     if(TARGET ${tag_name})
         return()
     endif()
-    if(NOT IS_DIRECTORY ${path} OR ${path} MATCHES "vendor" OR NOT ${path} MATCHES "github.com/google/gapid")
+    if(NOT IS_DIRECTORY ${path} OR ${path} MATCHES "third_party" OR NOT ${path} MATCHES "github.com/google/gapid")
       add_library(${tag_name} INTERFACE)
       # It is difficult to handle external packages correctly during the build,
       # so compile them explicitly before everything else (single threaded).
