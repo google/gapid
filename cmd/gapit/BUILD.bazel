@@ -60,9 +60,10 @@ go_library(
 
 go_binary(
     name = "gapit",
-    data = [
-        "//:install-runtime",
-    ],
+    #TODO: need to work out why this breaks the analysis phase
+    #data = [
+    #    "//:install-runtime",
+    #],
     importpath = "github.com/google/gapid/cmd/gapit",
     library = ":go_default_library",
     visibility = ["//visibility:public"],

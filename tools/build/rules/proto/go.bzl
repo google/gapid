@@ -29,7 +29,7 @@ def _go_proto_sources_impl(ctx):
         inputs= [ctx.executable._protoc, ctx.executable._protoc_gen_go] + all_sources,
         outputs=go_files,
         arguments= [
-            "--go_out=" + ",".join(options) + ":" + ctx.var["GENDIR"],
+            "--go_out=" + ",".join(options) + ":" + ctx.var["BINDIR"],
             "--plugin=protoc-gen-go=" + ctx.executable._protoc_gen_go.path,
         ] + 
             ["-I" + s.short_path + "=" + s.path for s in all_sources] +

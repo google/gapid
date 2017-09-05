@@ -1,5 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "api_library", "apic")
+load("//tools/build:rules.bzl", "api_library", "apic", "filter")
 
 api_library(
     name = "api",
@@ -22,13 +22,19 @@ apic(
     visibility = ["//visibility:public"],
 )
 
+filter(
+    name = "generated_go",
+    srcs = [":generated"],
+    suffix = [".go"],
+)
+
 go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
         "test.go",
+        ":generated_go",  # keep
     ],
-    library = ":generated",
     importpath = "github.com/google/gapid/gapis/api/test",
     visibility = ["//visibility:public"],
     deps = [

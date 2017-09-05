@@ -1,5 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "stringgen", "api_library")
+load("//tools/build:rules.bzl", "stringgen", "api_library", "filter")
 
 stringgen(
     name = "messages",
@@ -7,9 +7,30 @@ stringgen(
     visibility = ["//visibility:public"],
 )
 
+filter(
+    name = "messages_api",
+    srcs = [":messages"],
+    suffix = [".api"],
+    visibility = ["//visibility:private"],
+)
+
+filter(
+    name = "stb",
+    srcs = [":messages"],
+    suffix = [".stb"],
+    visibility = ["//visibility:private"],
+)
+
+filter(
+    name = "messages_go",
+    srcs = [":messages"],
+    suffix = [".go"],
+    visibility = ["//visibility:private"],
+)
+
 api_library(
     name = "api",
-    api = "messages.api",
+    api = ":messages_api",
     apiname = "messages",
     visibility = ["//visibility:public"],
 )
@@ -18,6 +39,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
+        ":messages_go",  # keep
     ],
     importpath = "github.com/google/gapid/gapis/messages",
     visibility = ["//visibility:public"],
