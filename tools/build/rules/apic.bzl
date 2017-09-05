@@ -12,11 +12,10 @@ def _apic_impl(ctx):
     api = ctx.attr.api
     apiname = api.apiname
     apilist = api.includes.to_list()
-    dir = ctx.genfiles_dir
     generated = depset()
     for template in ctx.attr.templates:
         templatelist = template.uses.to_list()
-        outputs = [ctx.new_file(dir, out.format(api=apiname)) for out in template.outputs]
+        outputs = [ctx.new_file(out.format(api=apiname)) for out in template.outputs]
         generated += outputs
         ctx.action(
             inputs = apilist + templatelist,
