@@ -393,7 +393,10 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 			// However, we can not reliably detect this situation as the user
 			// group might be surrounded by (potentially filtered) commands.
 
-			t.root.AddGroup(frameStart, frameEnd+1, fmt.Sprintf("Frame %v", frameCount))
+			group, _ := t.root.AddGroup(frameStart, frameEnd+1, fmt.Sprintf("Frame %v", frameCount))
+			if group != nil {
+				group.UserData = &CommandTreeNodeUserData{Thumbnail: i}
+			}
 		}
 	}
 	if p.AllowIncompleteFrame && frameCount > 0 && frameStart > frameEnd {
@@ -402,9 +405,16 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 }
 
 func setThumbnails(ctx context.Context, g *api.CmdIDGroup, drawOrClearCmds api.Spans) {
-	if s, c := interval.Intersect(drawOrClearCmds, g.Bounds().Span()); c > 0 {
-		thumbnail := drawOrClearCmds[s+c-1].Bounds().Start
-		g.UserData = &CommandTreeNodeUserData{Thumbnail: thumbnail}
+	data, _ := g.UserData.(*CommandTreeNodeUserData)
+	if data == nil {
+		data = &CommandTreeNodeUserData{Thumbnail: api.CmdNoID}
+		g.UserData = data
+	}
+	if data.Thumbnail == api.CmdNoID {
+		if s, c := interval.Intersect(drawOrClearCmds, g.Bounds().Span()); c > 0 {
+			thumbnail := drawOrClearCmds[s+c-1].Bounds().Start
+			g.UserData = &CommandTreeNodeUserData{Thumbnail: thumbnail}
+		}
 	}
 
 	for _, s := range g.Spans {
