@@ -558,6 +558,17 @@ func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 	if maxChildren > 0 && g.Count() > maxChildren {
 		g.Spans = g.Spans.split(maxChildren)
 	}
+
+	if maxNeighbours > 0 || maxChildren > 0 {
+		for _, s := range g.Spans {
+			switch c := s.(type) {
+			case *CmdIDGroup:
+				c.Cluster(maxChildren, maxNeighbours)
+			case *SubCmdRoot:
+				c.SubGroup.Cluster(maxChildren, maxNeighbours)
+			}
+		}
+	}
 }
 
 // split returns a new list of spans where each new span will represent no more
