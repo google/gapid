@@ -62,23 +62,28 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 	}
 }
 
+func (e externs) callSub(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, b *rb.Builder, sub, data interface{}) {
+	reflect.ValueOf(sub).Call([]reflect.Value{
+		reflect.ValueOf(ctx),
+		reflect.ValueOf(cmd),
+		reflect.ValueOf(id),
+		reflect.ValueOf(&api.CmdObservations{}),
+		reflect.ValueOf(s),
+		reflect.ValueOf(GetState(s)),
+		reflect.ValueOf(cmd.Thread()),
+		reflect.ValueOf(b),
+		reflect.ValueOf(data),
+	})
+}
+
 func (e externs) addCmd(commandBuffer VkCommandBuffer, recreate_data interface{}, data interface{}, functionToCall interface{}) {
 	o := GetState(e.s).CommandBuffers.Get(commandBuffer)
 
-	o.Commands = append(o.Commands, CommandBufferCommand{func(ctx context.Context,
-		cmd api.Cmd, s *api.State, b *rb.Builder) {
-		args := []reflect.Value{
-			reflect.ValueOf(ctx),
-			reflect.ValueOf(cmd),
-			reflect.ValueOf(&api.CmdObservations{}),
-			reflect.ValueOf(s),
-			reflect.ValueOf(GetState(s)),
-			reflect.ValueOf(cmd.Thread()),
-			reflect.ValueOf(b),
-			reflect.ValueOf(data),
-		}
-		reflect.ValueOf(functionToCall).Call(args)
-	}, &e.cmd, nil, []uint64(nil), recreate_data, true})
+	o.Commands = append(o.Commands, CommandBufferCommand{
+		func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, b *rb.Builder) {
+			e.callSub(ctx, cmd, id, s, b, functionToCall, data)
+		}, &e.cmd, nil, []uint64(nil), recreate_data, true,
+	})
 	if GetState(e.s).AddCommand != nil {
 		GetState(e.s).AddCommand(o.Commands[len(o.Commands)-1])
 	}
@@ -110,7 +115,7 @@ func (e externs) execCommands(commandBuffer VkCommandBuffer) {
 			if command.actualSubmission && s.PreSubcommand != nil {
 				s.PreSubcommand(command)
 			}
-			command.function(e.ctx, e.cmd, e.s, e.b)
+			command.function(e.ctx, e.cmd, e.cmdID, e.s, e.b)
 			if command.actualSubmission && s.PostSubcommand != nil {
 				s.PostSubcommand(command)
 			}
@@ -179,7 +184,7 @@ func (e externs) execPendingCommands(queue VkQueue) {
 			if command.actualSubmission && o.PreSubcommand != nil {
 				o.PreSubcommand(command)
 			}
-			command.function(e.ctx, e.cmd, e.s, e.b)
+			command.function(e.ctx, e.cmd, e.cmdID, e.s, e.b)
 			if command.actualSubmission && o.PostSubcommand != nil {
 				o.PostSubcommand(command)
 			}
@@ -205,7 +210,7 @@ func (e externs) execPendingCommands(queue VkQueue) {
 
 func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled bool) {
 	signal_semaphore := CommandBufferCommand{
-		function: func(ctx context.Context, cmd api.Cmd, s *api.State, b *rb.Builder) {
+		function: func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, b *rb.Builder) {
 			if s, ok := GetState(s).Semaphores[semaphore]; ok {
 				s.Signaled = Signaled
 			}
@@ -217,7 +222,7 @@ func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled boo
 		lastBoundQueue.PendingCommands = append(lastBoundQueue.PendingCommands,
 			signal_semaphore)
 	} else {
-		signal_semaphore.function(e.ctx, e.cmd, e.s, e.b)
+		signal_semaphore.function(e.ctx, e.cmd, e.cmdID, e.s, e.b)
 	}
 }
 

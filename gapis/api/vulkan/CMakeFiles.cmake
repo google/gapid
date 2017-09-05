@@ -29,6 +29,7 @@ set(files
     draw_call_mesh.go
     enum.go
     externs.go
+    externs_test.go
     find_issues.go
     footprint_builder.go
     mutate.go
