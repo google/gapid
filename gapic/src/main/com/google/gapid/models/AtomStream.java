@@ -81,7 +81,9 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   public void onCaptureLoaded(Loadable.Message error) {
     if (error == null && selection != null) {
       selection = selection.withCapture(capture.getData());
-      resolve(selection.getCommand(), node -> selectAtoms(selection.withNode(node), true));
+      if (isLoaded()) {
+        resolve(selection.getCommand(), node -> selectAtoms(selection.withNode(node), true));
+      }
     }
   }
 
@@ -147,14 +149,20 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   @Override
   protected void fireLoadedEvent() {
     listeners.fire().onAtomsLoaded();
+    if (selection != null) {
+      selectAtoms(selection, true);
+    }
   }
 
   public AtomIndex getSelectedAtoms() {
-    return selection;
+    return (selection != null && selection.getNode() != null) ? selection : null;
   }
 
   public void selectAtoms(AtomIndex index, boolean force) {
     if (!force && Objects.equal(selection, index)) {
+      return;
+    } else if (!isLoaded()) {
+      this.selection = index;
       return;
     }
 
