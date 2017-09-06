@@ -303,3 +303,15 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 	}
 	return counter
 }
+
+func (e externs) pushDebugMarker(name string) {
+	if GetState(e.s).pushDebugMarkerGroup != nil {
+		GetState(e.s).pushDebugMarkerGroup(name)
+	}
+}
+
+func (e externs) popDebugMarker() {
+	if GetState(e.s).popDebugMarkerGroup != nil {
+		GetState(e.s).popDebugMarkerGroup()
+	}
+}

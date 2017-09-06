@@ -56,30 +56,30 @@ func buildTestGroup(end uint64) CmdIDGroup {
 			&CmdIDRange{0, 100},
 			&CmdIDGroup{"Sub-group 0", CmdIDRange{100, 200}, Spans{
 				&CmdIDRange{100, 200},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{200, 300},
 			&CmdIDGroup{"Sub-group 1", CmdIDRange{300, 400}, Spans{
 				&CmdIDRange{310, 320},
 				&CmdIDGroup{"Sub-group 1.0", CmdIDRange{340, 360}, Spans{
 					&CmdIDRange{350, 351},
-				}, nil},
+				}, nil, SubCmdIdx{}},
 				&CmdIDGroup{"Sub-group 1.1", CmdIDRange{360, 370}, Spans{
 					&CmdIDGroup{"Sub-group 1.1.0", CmdIDRange{360, 362}, Spans{
 						&CmdIDRange{360, 362},
-					}, nil},
+					}, nil, SubCmdIdx{}},
 					&CmdIDGroup{"Sub-group 1.1.1", CmdIDRange{362, 365}, Spans{
 						&CmdIDRange{362, 365},
-					}, nil},
-				}, nil},
+					}, nil, SubCmdIdx{}},
+				}, nil, SubCmdIdx{}},
 				&CmdIDRange{370, 380},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{400, 500},
 			&CmdIDGroup{"Sub-group 2", CmdIDRange{500, 600}, Spans{
 				&CmdIDRange{500, 600},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{600, CmdID(end - 100)},
 		},
-		nil}
+		nil, SubCmdIdx{}}
 }
 
 func TestGroupFormat(t *testing.T) {
@@ -433,31 +433,31 @@ func TestAddAtomsFill(t *testing.T) {
 			&CmdIDRange{0, 100},
 			&CmdIDGroup{"Sub-group 0", CmdIDRange{100, 200}, Spans{
 				&CmdIDRange{100, 200},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{200, 300},
 			&CmdIDGroup{"Sub-group 1", CmdIDRange{300, 400}, Spans{
 				&CmdIDRange{300, 340},
 				&CmdIDGroup{"Sub-group 1.0", CmdIDRange{340, 360}, Spans{
 					&CmdIDRange{340, 360},
-				}, nil},
+				}, nil, SubCmdIdx{}},
 				&CmdIDGroup{"Sub-group 1.1", CmdIDRange{360, 370}, Spans{
 					&CmdIDGroup{"Sub-group 1.1.0", CmdIDRange{360, 362}, Spans{
 						&CmdIDRange{360, 362},
-					}, nil},
+					}, nil, SubCmdIdx{}},
 					&CmdIDGroup{"Sub-group 1.1.1", CmdIDRange{362, 365}, Spans{
 						&CmdIDRange{362, 365},
-					}, nil},
+					}, nil, SubCmdIdx{}},
 					&CmdIDRange{365, 370},
-				}, nil},
+				}, nil, SubCmdIdx{}},
 				&CmdIDRange{370, 400},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{400, 500},
 			&CmdIDGroup{"Sub-group 2", CmdIDRange{500, 600}, Spans{
 				&CmdIDRange{500, 600},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{600, 1100},
 		},
-		nil}
+		nil, SubCmdIdx{}}
 
 	if !assert.With(ctx).That(got).DeepEquals(expected) {
 		fmt.Printf("Got: %+v\n", got)
@@ -470,16 +470,16 @@ func TestAddAtomsSparse(t *testing.T) {
 	ctx := log.Testing(t)
 	got := CmdIDGroup{
 		"root", CmdIDRange{0, 1100}, Spans{
-			&CmdIDGroup{"Sub-group 0", CmdIDRange{100, 200}, Spans{}, nil},
+			&CmdIDGroup{"Sub-group 0", CmdIDRange{100, 200}, Spans{}, nil, SubCmdIdx{}},
 			&CmdIDGroup{"Sub-group 1", CmdIDRange{300, 400}, Spans{
-				&CmdIDGroup{"Sub-group 1.0", CmdIDRange{340, 360}, Spans{}, nil},
+				&CmdIDGroup{"Sub-group 1.0", CmdIDRange{340, 360}, Spans{}, nil, SubCmdIdx{}},
 				&CmdIDGroup{"Sub-group 1.1", CmdIDRange{360, 370}, Spans{
-					&CmdIDGroup{"Sub-group 1.1.0", CmdIDRange{360, 362}, Spans{}, nil},
-					&CmdIDGroup{"Sub-group 1.1.1", CmdIDRange{362, 365}, Spans{}, nil},
-				}, nil},
-			}, nil},
-			&CmdIDGroup{"Sub-group 2", CmdIDRange{500, 600}, Spans{}, nil},
-		}, nil,
+					&CmdIDGroup{"Sub-group 1.1.0", CmdIDRange{360, 362}, Spans{}, nil, SubCmdIdx{}},
+					&CmdIDGroup{"Sub-group 1.1.1", CmdIDRange{362, 365}, Spans{}, nil, SubCmdIdx{}},
+				}, nil, SubCmdIdx{}},
+			}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub-group 2", CmdIDRange{500, 600}, Spans{}, nil, SubCmdIdx{}},
+		}, nil, SubCmdIdx{},
 	}
 
 	addAtomsAndCluster(&got, 0, 0, func(id CmdID) bool { return (id/50)&1 == 0 })
@@ -489,29 +489,29 @@ func TestAddAtomsSparse(t *testing.T) {
 			&CmdIDRange{0, 50},
 			&CmdIDGroup{"Sub-group 0", CmdIDRange{100, 200}, Spans{
 				&CmdIDRange{100, 150},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{200, 250},
 			&CmdIDGroup{"Sub-group 1", CmdIDRange{300, 400}, Spans{
 				&CmdIDRange{300, 340},
 				&CmdIDGroup{"Sub-group 1.0", CmdIDRange{340, 360}, Spans{
 					&CmdIDRange{340, 350},
-				}, nil},
+				}, nil, SubCmdIdx{}},
 				&CmdIDGroup{"Sub-group 1.1", CmdIDRange{360, 370}, Spans{
-					&CmdIDGroup{"Sub-group 1.1.0", CmdIDRange{360, 362}, Spans{}, nil},
-					&CmdIDGroup{"Sub-group 1.1.1", CmdIDRange{362, 365}, Spans{}, nil},
-				}, nil},
-			}, nil},
+					&CmdIDGroup{"Sub-group 1.1.0", CmdIDRange{360, 362}, Spans{}, nil, SubCmdIdx{}},
+					&CmdIDGroup{"Sub-group 1.1.1", CmdIDRange{362, 365}, Spans{}, nil, SubCmdIdx{}},
+				}, nil, SubCmdIdx{}},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{400, 450},
 			&CmdIDGroup{"Sub-group 2", CmdIDRange{500, 600}, Spans{
 				&CmdIDRange{500, 550},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDRange{600, 650},
 			&CmdIDRange{700, 750},
 			&CmdIDRange{800, 850},
 			&CmdIDRange{900, 950},
 			&CmdIDRange{1000, 1050},
 		},
-		nil}
+		nil, SubCmdIdx{}}
 
 	if !assert.With(ctx).That(got).DeepEquals(expected) {
 		fmt.Printf("Got: %+v\n", got)
@@ -528,18 +528,18 @@ func TestAddAtomsWithSplitting(t *testing.T) {
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 700}, Spans{
-			&CmdIDGroup{"Sub Group 1", CmdIDRange{0, 45}, Spans{&CmdIDRange{0, 45}}, nil},
-			&CmdIDGroup{"Sub Group 2", CmdIDRange{45, 90}, Spans{&CmdIDRange{45, 90}}, nil},
+			&CmdIDGroup{"Sub Group 1", CmdIDRange{0, 45}, Spans{&CmdIDRange{0, 45}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 2", CmdIDRange{45, 90}, Spans{&CmdIDRange{45, 90}}, nil, SubCmdIdx{}},
 			&CmdIDGroup{"Sub Group 3", CmdIDRange{90, 234}, Spans{
 				&CmdIDRange{90, 100},
 				&CmdIDGroup{"Sub-group 0", CmdIDRange{100, 200}, Spans{
-					&CmdIDGroup{"Sub Group 1", CmdIDRange{100, 145}, Spans{&CmdIDRange{100, 145}}, nil},
-					&CmdIDGroup{"Sub Group 2", CmdIDRange{145, 190}, Spans{&CmdIDRange{145, 190}}, nil},
-					&CmdIDGroup{"Sub Group 3", CmdIDRange{190, 200}, Spans{&CmdIDRange{190, 200}}, nil},
-				}, nil},
+					&CmdIDGroup{"Sub Group 1", CmdIDRange{100, 145}, Spans{&CmdIDRange{100, 145}}, nil, SubCmdIdx{}},
+					&CmdIDGroup{"Sub Group 2", CmdIDRange{145, 190}, Spans{&CmdIDRange{145, 190}}, nil, SubCmdIdx{}},
+					&CmdIDGroup{"Sub Group 3", CmdIDRange{190, 200}, Spans{&CmdIDRange{190, 200}}, nil, SubCmdIdx{}},
+				}, nil, SubCmdIdx{}},
 				&CmdIDRange{200, 234},
-			}, nil},
-			&CmdIDGroup{"Sub Group 4", CmdIDRange{234, 279}, Spans{&CmdIDRange{234, 279}}, nil},
+			}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 4", CmdIDRange{234, 279}, Spans{&CmdIDRange{234, 279}}, nil, SubCmdIdx{}},
 			&CmdIDGroup{"Sub Group 5", CmdIDRange{279, 423}, Spans{
 				&CmdIDRange{279, 300},
 				&CmdIDGroup{"Sub-group 1", CmdIDRange{300, 400}, Spans{
@@ -547,36 +547,36 @@ func TestAddAtomsWithSplitting(t *testing.T) {
 						&CmdIDRange{300, 340},
 						&CmdIDGroup{"Sub-group 1.0", CmdIDRange{340, 360}, Spans{
 							&CmdIDRange{340, 360},
-						}, nil},
+						}, nil, SubCmdIdx{}},
 						&CmdIDGroup{"Sub-group 1.1", CmdIDRange{360, 370}, Spans{
 							&CmdIDGroup{"Sub-group 1.1.0", CmdIDRange{360, 362}, Spans{
 								&CmdIDRange{360, 362},
-							}, nil},
+							}, nil, SubCmdIdx{}},
 							&CmdIDGroup{"Sub-group 1.1.1", CmdIDRange{362, 365}, Spans{
 								&CmdIDRange{362, 365},
-							}, nil},
+							}, nil, SubCmdIdx{}},
 							&CmdIDRange{365, 370},
-						}, nil},
+						}, nil, SubCmdIdx{}},
 						&CmdIDRange{370, 373},
-					}, nil},
-					&CmdIDGroup{"Sub Group 2", CmdIDRange{373, 400}, Spans{&CmdIDRange{373, 400}}, nil},
-				}, nil},
+					}, nil, SubCmdIdx{}},
+					&CmdIDGroup{"Sub Group 2", CmdIDRange{373, 400}, Spans{&CmdIDRange{373, 400}}, nil, SubCmdIdx{}},
+				}, nil, SubCmdIdx{}},
 				&CmdIDRange{400, 423},
-			}, nil},
-			&CmdIDGroup{"Sub Group 6", CmdIDRange{423, 468}, Spans{&CmdIDRange{423, 468}}, nil},
+			}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 6", CmdIDRange{423, 468}, Spans{&CmdIDRange{423, 468}}, nil, SubCmdIdx{}},
 			&CmdIDGroup{"Sub Group 7", CmdIDRange{468, 612}, Spans{
 				&CmdIDRange{468, 500},
 				&CmdIDGroup{"Sub-group 2", CmdIDRange{500, 600}, Spans{
-					&CmdIDGroup{"Sub Group 1", CmdIDRange{500, 545}, Spans{&CmdIDRange{500, 545}}, nil},
-					&CmdIDGroup{"Sub Group 2", CmdIDRange{545, 590}, Spans{&CmdIDRange{545, 590}}, nil},
-					&CmdIDGroup{"Sub Group 3", CmdIDRange{590, 600}, Spans{&CmdIDRange{590, 600}}, nil},
-				}, nil},
+					&CmdIDGroup{"Sub Group 1", CmdIDRange{500, 545}, Spans{&CmdIDRange{500, 545}}, nil, SubCmdIdx{}},
+					&CmdIDGroup{"Sub Group 2", CmdIDRange{545, 590}, Spans{&CmdIDRange{545, 590}}, nil, SubCmdIdx{}},
+					&CmdIDGroup{"Sub Group 3", CmdIDRange{590, 600}, Spans{&CmdIDRange{590, 600}}, nil, SubCmdIdx{}},
+				}, nil, SubCmdIdx{}},
 				&CmdIDRange{600, 612},
-			}, nil},
-			&CmdIDGroup{"Sub Group 8", CmdIDRange{612, 657}, Spans{&CmdIDRange{612, 657}}, nil},
-			&CmdIDGroup{"Sub Group 9", CmdIDRange{657, 700}, Spans{&CmdIDRange{657, 700}}, nil},
+			}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 8", CmdIDRange{612, 657}, Spans{&CmdIDRange{612, 657}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 9", CmdIDRange{657, 700}, Spans{&CmdIDRange{657, 700}}, nil, SubCmdIdx{}},
 		},
-		nil}
+		nil, SubCmdIdx{}}
 
 	assert.With(ctx).That(got).DeepEquals(expected)
 }
@@ -586,10 +586,10 @@ func TestAddAtomsWithNeighbours(t *testing.T) {
 	{
 		got := CmdIDGroup{
 			"root", CmdIDRange{0, 52}, Spans{
-				&CmdIDGroup{"Child 1", CmdIDRange{10, 20}, Spans{&CmdIDRange{10, 20}}, nil},
-				&CmdIDGroup{"Child 2", CmdIDRange{31, 50}, Spans{&CmdIDRange{31, 50}}, nil},
+				&CmdIDGroup{"Child 1", CmdIDRange{10, 20}, Spans{&CmdIDRange{10, 20}}, nil, SubCmdIdx{}},
+				&CmdIDGroup{"Child 2", CmdIDRange{31, 50}, Spans{&CmdIDRange{31, 50}}, nil, SubCmdIdx{}},
 			},
-			nil,
+			nil, SubCmdIdx{},
 		}
 
 		addAtomsAndCluster(&got, 0, 10, func(CmdID) bool { return true })
@@ -597,12 +597,12 @@ func TestAddAtomsWithNeighbours(t *testing.T) {
 		expected := CmdIDGroup{
 			"root", CmdIDRange{0, 52}, Spans{
 				&CmdIDRange{0, 10},
-				&CmdIDGroup{"Child 1", CmdIDRange{10, 20}, Spans{&CmdIDRange{10, 20}}, nil},
-				&CmdIDGroup{"Sub Group", CmdIDRange{20, 31}, Spans{&CmdIDRange{20, 31}}, nil},
-				&CmdIDGroup{"Child 2", CmdIDRange{31, 50}, Spans{&CmdIDRange{31, 50}}, nil},
+				&CmdIDGroup{"Child 1", CmdIDRange{10, 20}, Spans{&CmdIDRange{10, 20}}, nil, SubCmdIdx{}},
+				&CmdIDGroup{"Sub Group", CmdIDRange{20, 31}, Spans{&CmdIDRange{20, 31}}, nil, SubCmdIdx{}},
+				&CmdIDGroup{"Child 2", CmdIDRange{31, 50}, Spans{&CmdIDRange{31, 50}}, nil, SubCmdIdx{}},
 				&CmdIDRange{50, 52},
 			},
-			nil,
+			nil, SubCmdIdx{},
 		}
 
 		assert.With(ctx).That(got).DeepEquals(expected)
@@ -620,40 +620,40 @@ func TestSpansSplit(t *testing.T) {
 			&CmdIDRange{9, 11},
 			&CmdIDRange{11, 14},
 			&CmdIDRange{14, 15},
-			&CmdIDGroup{"Child 1", CmdIDRange{15, 16}, Spans{&CmdIDRange{15, 16}}, nil},
-			&CmdIDGroup{"Child 2", CmdIDRange{16, 17}, Spans{&CmdIDRange{16, 17}}, nil},
-			&CmdIDGroup{"Child 3", CmdIDRange{17, 18}, Spans{&CmdIDRange{17, 18}}, nil},
-			&CmdIDGroup{"Child 4", CmdIDRange{18, 19}, Spans{&CmdIDRange{18, 19}}, nil},
-			&CmdIDGroup{"Child 5", CmdIDRange{19, 20}, Spans{&CmdIDRange{19, 20}}, nil},
-			&CmdIDGroup{"Child 6", CmdIDRange{20, 21}, Spans{&CmdIDRange{20, 21}}, nil},
-			&CmdIDGroup{"Child 7", CmdIDRange{21, 22}, Spans{&CmdIDRange{21, 22}}, nil},
+			&CmdIDGroup{"Child 1", CmdIDRange{15, 16}, Spans{&CmdIDRange{15, 16}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Child 2", CmdIDRange{16, 17}, Spans{&CmdIDRange{16, 17}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Child 3", CmdIDRange{17, 18}, Spans{&CmdIDRange{17, 18}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Child 4", CmdIDRange{18, 19}, Spans{&CmdIDRange{18, 19}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Child 5", CmdIDRange{19, 20}, Spans{&CmdIDRange{19, 20}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Child 6", CmdIDRange{20, 21}, Spans{&CmdIDRange{20, 21}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Child 7", CmdIDRange{21, 22}, Spans{&CmdIDRange{21, 22}}, nil, SubCmdIdx{}},
 		},
-		nil}
+		nil, SubCmdIdx{}}
 
 	got.Spans = got.Spans.split(3)
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 22}, Spans{
-			&CmdIDGroup{"Sub Group 1", CmdIDRange{0, 3}, Spans{&CmdIDRange{0, 3}}, nil},
-			&CmdIDGroup{"Sub Group 2", CmdIDRange{3, 6}, Spans{&CmdIDRange{3, 4}, &CmdIDRange{4, 6}}, nil},
-			&CmdIDGroup{"Sub Group 3", CmdIDRange{6, 9}, Spans{&CmdIDRange{6, 7}, &CmdIDRange{7, 9}}, nil},
-			&CmdIDGroup{"Sub Group 4", CmdIDRange{9, 12}, Spans{&CmdIDRange{9, 11}, &CmdIDRange{11, 12}}, nil},
-			&CmdIDGroup{"Sub Group 5", CmdIDRange{12, 15}, Spans{&CmdIDRange{12, 14}, &CmdIDRange{14, 15}}, nil},
+			&CmdIDGroup{"Sub Group 1", CmdIDRange{0, 3}, Spans{&CmdIDRange{0, 3}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 2", CmdIDRange{3, 6}, Spans{&CmdIDRange{3, 4}, &CmdIDRange{4, 6}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 3", CmdIDRange{6, 9}, Spans{&CmdIDRange{6, 7}, &CmdIDRange{7, 9}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 4", CmdIDRange{9, 12}, Spans{&CmdIDRange{9, 11}, &CmdIDRange{11, 12}}, nil, SubCmdIdx{}},
+			&CmdIDGroup{"Sub Group 5", CmdIDRange{12, 15}, Spans{&CmdIDRange{12, 14}, &CmdIDRange{14, 15}}, nil, SubCmdIdx{}},
 			&CmdIDGroup{"Sub Group 6", CmdIDRange{15, 18}, Spans{
-				&CmdIDGroup{"Child 1", CmdIDRange{15, 16}, Spans{&CmdIDRange{15, 16}}, nil},
-				&CmdIDGroup{"Child 2", CmdIDRange{16, 17}, Spans{&CmdIDRange{16, 17}}, nil},
-				&CmdIDGroup{"Child 3", CmdIDRange{17, 18}, Spans{&CmdIDRange{17, 18}}, nil},
-			}, nil},
+				&CmdIDGroup{"Child 1", CmdIDRange{15, 16}, Spans{&CmdIDRange{15, 16}}, nil, SubCmdIdx{}},
+				&CmdIDGroup{"Child 2", CmdIDRange{16, 17}, Spans{&CmdIDRange{16, 17}}, nil, SubCmdIdx{}},
+				&CmdIDGroup{"Child 3", CmdIDRange{17, 18}, Spans{&CmdIDRange{17, 18}}, nil, SubCmdIdx{}},
+			}, nil, SubCmdIdx{}},
 			&CmdIDGroup{"Sub Group 7", CmdIDRange{18, 21}, Spans{
-				&CmdIDGroup{"Child 4", CmdIDRange{18, 19}, Spans{&CmdIDRange{18, 19}}, nil},
-				&CmdIDGroup{"Child 5", CmdIDRange{19, 20}, Spans{&CmdIDRange{19, 20}}, nil},
-				&CmdIDGroup{"Child 6", CmdIDRange{20, 21}, Spans{&CmdIDRange{20, 21}}, nil},
-			}, nil},
+				&CmdIDGroup{"Child 4", CmdIDRange{18, 19}, Spans{&CmdIDRange{18, 19}}, nil, SubCmdIdx{}},
+				&CmdIDGroup{"Child 5", CmdIDRange{19, 20}, Spans{&CmdIDRange{19, 20}}, nil, SubCmdIdx{}},
+				&CmdIDGroup{"Child 6", CmdIDRange{20, 21}, Spans{&CmdIDRange{20, 21}}, nil, SubCmdIdx{}},
+			}, nil, SubCmdIdx{}},
 			&CmdIDGroup{"Sub Group 8", CmdIDRange{21, 22}, Spans{
-				&CmdIDGroup{"Child 7", CmdIDRange{21, 22}, Spans{&CmdIDRange{21, 22}}, nil},
-			}, nil},
+				&CmdIDGroup{"Child 7", CmdIDRange{21, 22}, Spans{&CmdIDRange{21, 22}}, nil, SubCmdIdx{}},
+			}, nil, SubCmdIdx{}},
 		},
-		nil}
+		nil, SubCmdIdx{}}
 
 	assert.With(ctx).That(got).DeepEquals(expected)
 }
@@ -867,23 +867,23 @@ func TestTraverseBackwards(t *testing.T) {
 			&CmdIDGroup{"Frame 1", CmdIDRange{0, 5}, Spans{
 				&CmdIDGroup{"Draw 1", CmdIDRange{0, 2}, Spans{
 					&CmdIDRange{0, 2},
-				}, nil},
+				}, nil, SubCmdIdx{}},
 				&CmdIDGroup{"Draw 2", CmdIDRange{2, 4}, Spans{
 					&CmdIDRange{2, 4},
-				}, nil},
+				}, nil, SubCmdIdx{}},
 				&CmdIDRange{4, 5},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 			&CmdIDGroup{"Frame 2", CmdIDRange{5, 10}, Spans{
 				&CmdIDGroup{"Draw 1", CmdIDRange{5, 7}, Spans{
 					&CmdIDRange{5, 7},
-				}, nil},
+				}, nil, SubCmdIdx{}},
 				&CmdIDGroup{"Draw 2", CmdIDRange{7, 9}, Spans{
 					&CmdIDRange{7, 9},
-				}, nil},
+				}, nil, SubCmdIdx{}},
 				&CmdIDRange{9, 10},
-			}, nil},
+			}, nil, SubCmdIdx{}},
 		},
-		nil}
+		nil, SubCmdIdx{}}
 
 	for ti, test := range []struct {
 		root     CmdIDGroup

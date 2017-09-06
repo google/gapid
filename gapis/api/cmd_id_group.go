@@ -37,6 +37,7 @@ type CmdIDGroup struct {
 	Range    CmdIDRange // The range of commands this group (and items) represents.
 	Spans    Spans      // All sub-groups and sub-ranges of this group.
 	UserData interface{}
+	Parent   SubCmdIdx // SubCmdIdx of the SubCmdRoot if this CmdIDGroup belongs to a SubCmdRoot, otherwise just an empty SubCmdIdx
 }
 
 // SubCmdRoot is a new namespace under which subcommands live.
@@ -58,6 +59,14 @@ type CmdGroupOrRoot interface {
 func NewRoot(idx []uint64) *SubCmdRoot {
 	return &SubCmdRoot{Id: append(slice.Clone(idx).([]uint64)),
 		SubGroup: CmdIDGroup{Name: "Subgroup"}}
+}
+
+// SubCmdMarkerGroup contains the range info of a marker group of subcommands.
+type SubCmdMarkerGroup struct {
+	Name   string
+	Parent SubCmdIdx
+	Start  CmdID
+	End    CmdID
 }
 
 // Spans is a list of Span elements. Functions in this package expect the
@@ -221,6 +230,12 @@ func (g CmdIDGroup) Index(index uint64) SpanItem {
 	for _, s := range g.Spans {
 		c := s.itemCount()
 		if index < c {
+			// If the CmdIDGroup is a subcommand group, need to combine the SubCmdIdx
+			// of the immediate parent SubCmdRoot of this CmdIDGroup with the index
+			// target.
+			if x, ok := s.item(index).(SubCmdIdx); ok {
+				return append(g.Parent, x...)
+			}
 			return s.item(index)
 		}
 		index -= c
@@ -307,24 +322,27 @@ func (g CmdIDGroup) IterateBackwards(index uint64, cb func(childIdx uint64, item
 // All groups must be added before commands.
 // Attemping to call this function after commands have been added may result in
 // panics!
-func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) error {
+func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error) {
 	if start > end {
-		return fmt.Errorf("sub-group start (%d) is greater than end (%v)", start, end)
+		return nil, fmt.Errorf("sub-group start (%d) is greater than end (%v)", start, end)
 	}
 	if start < g.Range.Start {
-		return fmt.Errorf("sub-group start (%d) is earlier than group start (%v)", start, g.Range.Start)
+		return nil, fmt.Errorf("sub-group start (%d) is earlier than group start (%v)", start, g.Range.Start)
 	}
 	if end > g.Range.End {
-		return fmt.Errorf("sub-group end (%d) is later than group end (%v)", end, g.Range.End)
+		return nil, fmt.Errorf("sub-group end (%d) is later than group end (%v)", end, g.Range.End)
 	}
 	r := CmdIDRange{Start: start, End: end}
 	s, c := interval.Intersect(&g.Spans, r.Span())
+	var newGroup *CmdIDGroup
+	var err error
 	if c == 0 {
 		// No overlaps, clean insertion
 		i := sort.Search(len(g.Spans), func(i int) bool {
 			return g.Spans[i].Bounds().Start > start
 		})
-		slice.InsertBefore(&g.Spans, i, &CmdIDGroup{Name: name, Range: r})
+		newGroup = &CmdIDGroup{Name: name, Range: r}
+		slice.InsertBefore(&g.Spans, i, newGroup)
 	} else {
 		// At least one overlap
 		first := g.Spans[s].(*CmdIDGroup)
@@ -333,23 +351,24 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) error {
 		switch {
 		case c == 1 && g.Spans[s].Bounds() == r:
 			// New group exactly matches already existing group. Wrap the exiting group.
-			g.Spans[s] = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}}
+			newGroup = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}}
+			g.Spans[s] = newGroup
 		case c == 1 && sIn && eIn:
 			// New group fits entirely within an existing group. Add as subgroup.
-			first.AddGroup(start, end, name)
+			newGroup, err = first.AddGroup(start, end, name)
 		case sIn && start != first.Range.Start:
-			return fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, first)
+			return nil, fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, first)
 		case eIn && end != last.Range.End:
-			return fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, last)
+			return nil, fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, last)
 		default:
 			// New group completely wraps one or more existing groups. Add the
 			// existing group(s) as subgroups to the new group, and add to the list.
-			n := CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c)}
-			copy(n.Spans, g.Spans[s:s+c])
-			slice.Replace(&g.Spans, s, c, &n)
+			newGroup = &CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c)}
+			copy(newGroup.Spans, g.Spans[s:s+c])
+			slice.Replace(&g.Spans, s, c, newGroup)
 		}
 	}
-	return nil
+	return newGroup, err
 }
 
 // AddRoot adds a new Subcommand Root for the given index.
@@ -413,16 +432,61 @@ func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
 		}
 		sg.Insert(append(base, r[0]), r[1:])
 	} else {
-		if len(c.SubGroup.Spans) == 0 {
-			c.SubGroup.Spans = Spans{&CmdIDRange{CmdID(0), id + 1}}
+		// Add subcommand one by one to the sub groups of the SubCmdRoot
+		if id > c.SubGroup.Range.End {
+			c.SubGroup.Range.End = id + 1
 		}
-		r, ok := c.SubGroup.Spans[0].(*CmdIDRange)
-		if ok {
-			r.End = id + 1
-		} else {
-			panic("This should not happen, inner-most subcommands must be added to SubCmdRoot before other nesting Sub-SubCmdRoot")
+		for i := CmdID(0); i <= id; i++ {
+			c.SubGroup.AddCommand(i)
 		}
 	}
+}
+
+func (c *SubCmdRoot) AddSubCmdMarkerGroups(base []uint64, groups []*SubCmdMarkerGroup) error {
+	if c.Id.Contains(SubCmdIdx(base)) {
+		if len(c.Id) < len(base) {
+			// c is not the base node of the marker groups, need to create new SubCmdRoot.
+			// And if we have skipped over sub commands, add empty roots for them.
+			oldEnd := c.SubGroup.Range.End
+			newRootIdInSubGroup := base[len(c.Id)]
+			if newRootIdInSubGroup >= uint64(c.SubGroup.Range.End) {
+				c.SubGroup.Range.End = CmdID(newRootIdInSubGroup + 1)
+			}
+			if c.SubGroup.Range.End > oldEnd {
+				for i := oldEnd; i < c.SubGroup.Range.End; i++ {
+					c.SubGroup.AddRoot(append([]uint64(c.Id), uint64(i)))
+				}
+			}
+			sg := c.SubGroup.FindSubCommandRoot(CmdID(newRootIdInSubGroup))
+			if sg == nil {
+				sg = c.SubGroup.AddRoot(SubCmdIdx(append([]uint64(c.Id), newRootIdInSubGroup)))
+			}
+			return sg.AddSubCmdMarkerGroups(base, groups)
+		}
+		if len(c.Id) > len(base) {
+			// We always add SubCmdRoots with shorter SubCmdIdx first, so this should
+			// never happen
+			return fmt.Errorf("This should not happen, ID of adding target SubCmdIdx should always be shorter then the marker group base")
+		}
+		for _, g := range groups {
+			if !c.Id.Equals(g.Parent) {
+				return fmt.Errorf("Marker group base should have same SubCmdIdx as the adding target SubCmdRoot")
+			}
+			if g.Start < c.SubGroup.Range.Start {
+				c.SubGroup.Range.Start = g.Start
+			}
+			if g.End > c.SubGroup.Range.End {
+				c.SubGroup.Range.End = g.End
+			}
+			ng, err := c.SubGroup.AddGroup(g.Start, g.End, g.Name)
+			if err != nil {
+				return err
+			}
+			// Specifies to which the SubCmdRoot it belongs to.
+			ng.Parent = SubCmdIdx(base)
+		}
+	}
+	return nil
 }
 
 // FindSubCommandRoot returns the SubCmdRoot that represents the given CmdID.
@@ -505,7 +569,7 @@ func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 		flush := func() {
 			if len(accum) > 0 {
 				rng := CmdIDRange{accum[0].Bounds().Start, accum[len(accum)-1].Bounds().End}
-				group := CmdIDGroup{"Sub Group", rng, accum, nil}
+				group := CmdIDGroup{"Sub Group", rng, accum, nil, SubCmdIdx{}}
 				if group.Count() > maxNeighbours {
 					spans = append(spans, &group)
 				} else {
@@ -552,6 +616,7 @@ outer:
 				CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 				current,
 				nil,
+				SubCmdIdx{},
 			})
 			current, idx, count, space, span = nil, idx+1, 0, max, tail
 			if span == nil {
@@ -568,6 +633,7 @@ outer:
 			CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 			current,
 			nil,
+			SubCmdIdx{},
 		})
 	}
 	return out
