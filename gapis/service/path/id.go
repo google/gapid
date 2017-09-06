@@ -16,7 +16,6 @@ package path
 
 import (
 	"encoding/hex"
-
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"

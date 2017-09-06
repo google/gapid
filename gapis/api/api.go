@@ -52,14 +52,15 @@ type API interface {
 // ID is an API identifier
 type ID id.ID
 
+// IsValid returns true if the id is not the default zero value.
+func (i ID) IsValid() bool  { return id.ID(i).IsValid() }
+func (i ID) String() string { return id.ID(i).String() }
+
 // APIObject is the interface implemented by types that belong to an API.
 type APIObject interface {
 	// API returns the API identifier that this type belongs to.
 	API() API
 }
-
-// IsValid returns true if the id is not the default zero value.
-func (i ID) IsValid() bool { return id.ID(i).IsValid() }
 
 var apis = map[ID]API{}
 var indices = map[uint8]bool{}
