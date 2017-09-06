@@ -5810,9 +5810,15 @@ cmd void vkCmdBindDescriptorSets(
         }
         for k in (0 .. len(binding.BufferViewBindings)) {
           buffer_view := binding.BufferViewBindings[as!u32(k)]
-          buffer_view_object := BufferViews[buffer_view]
-          bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
-            buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
+          if (buffer_view != as!VkBufferView(0)) {
+            buffer_view_object := BufferViews[buffer_view]
+            bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
+              buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
+          } else {
+            bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
+              as!ref!BufferObject(null), as!VkDeviceSize(0), as!VkDeviceSize(0))
+          }
+          
         }
       }
     }
