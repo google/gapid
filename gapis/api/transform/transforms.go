@@ -82,12 +82,12 @@ func (t transform) Name() string { return t.N }
 // TransformWriter implements the Writer interface, transforming each command
 // that is written with T, before writing the result to O.
 type TransformWriter struct {
-	S *api.State
+	S *api.GlobalState
 	T Transformer
 	O Writer
 }
 
-func (p TransformWriter) State() *api.State {
+func (p TransformWriter) State() *api.GlobalState {
 	return p.S
 }
 

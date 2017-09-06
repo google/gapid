@@ -40,7 +40,7 @@ type CustomState struct {
 	popMarkerGroup    func(ty MarkerType)
 }
 
-func getStateObject(s *api.State) *State {
+func getStateObject(s *api.GlobalState) *State {
 	return GetState(s)
 }
 
@@ -62,15 +62,15 @@ func (VulkanContext) API() api.API {
 	return API{}
 }
 
-func (API) Context(s *api.State, thread uint64) api.Context {
+func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 	return VulkanContext{}
 }
 
-func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error {
+func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
 
-func (API) GetFramebufferAttachmentInfo(state *api.State, thread uint64, attachment api.FramebufferAttachment) (w, h uint32, a uint32, f *image.Format, err error) {
+func (API) GetFramebufferAttachmentInfo(state *api.GlobalState, thread uint64, attachment api.FramebufferAttachment) (w, h uint32, a uint32, f *image.Format, err error) {
 	w, h, form, i, err := GetState(state).getFramebufferAttachmentInfo(attachment)
 	switch attachment {
 	case api.FramebufferAttachment_Stencil:
@@ -353,8 +353,8 @@ func (API) GetTerminator(ctx context.Context, c *path.Capture) (transform.Termin
 }
 
 func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
-	s *api.State, preSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),
-	postSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd)) error {
+	s *api.GlobalState, preSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
+	postSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error {
 	c := GetState(s)
 	if postSubCmdCb != nil {
 		c.PostSubcommand = func(interface{}) {

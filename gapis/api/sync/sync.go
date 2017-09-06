@@ -44,17 +44,17 @@ type SynchronizedAPI interface {
 	// MutateSubcommands mutates the given Cmd and calls callbacks for subcommands
 	// attached to that Cmd. preSubCmdCallback and postSubCmdCallback will be
 	// called before and after executing each subcommand callback.
-	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State,
-		preSubCmdCallback func(*api.State, api.SubCmdIdx, api.Cmd),
-		postSubCmdCallback func(*api.State, api.SubCmdIdx, api.Cmd)) error
+	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState,
+		preSubCmdCallback func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
+		postSubCmdCallback func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error
 }
 
 type writer struct {
-	state *api.State
+	state *api.GlobalState
 	cmds  []api.Cmd
 }
 
-func (s *writer) State() *api.State { return s.state }
+func (s *writer) State() *api.GlobalState { return s.state }
 
 func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	cmd.Mutate(ctx, id, s.state, nil)
@@ -131,9 +131,9 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 // pre-subcommand callback and the post-subcommand callback will be called
 // before and after calling each subcommand callback function.
 func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
-	postCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),
-	preSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd),
-	postSubCmdCb func(*api.State, api.SubCmdIdx, api.Cmd)) error {
+	postCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
+	preSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
+	postSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.

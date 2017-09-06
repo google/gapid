@@ -43,7 +43,7 @@ func p(addr uint64) memory.Pointer {
 
 type glShaderSourceCompatTest glslCompatTest
 
-func newState(ctx context.Context) *api.State {
+func newState(ctx context.Context) *api.GlobalState {
 	s, err := capture.NewState(ctx)
 	if err != nil {
 		panic(err)

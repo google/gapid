@@ -117,7 +117,7 @@ func newGlesDependencyGraphBehaviourProvider() *GlesDependencyGraphBehaviourProv
 // It is fine to overestimate reads, or to read parent state (i.e. superset).
 //
 func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
-	ctx context.Context, s *api.State, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
+	ctx context.Context, s *api.GlobalState, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
 	b := dependencygraph.AtomBehaviour{}
 	c := GetContext(s, cmd.Thread())
 	if c != nil && c.Info.Initialized {
@@ -256,7 +256,7 @@ func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBeha
 	b.Write(g, data)
 }
 
-func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, c *Context) (stateKeys []dependencygraph.StateKey) {
+func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, c *Context) (stateKeys []dependencygraph.StateKey) {
 	// Look for samplers used by the current program.
 	if prog := c.Bound.Program; prog != nil {
 		for _, activeUniform := range prog.ActiveUniforms {
@@ -296,7 +296,7 @@ func getTextureDataAndSize(
 	ctx context.Context,
 	cmd api.Cmd,
 	id api.CmdID,
-	s *api.State,
+	s *api.GlobalState,
 	unit *TextureUnit,
 	target GLenum,
 	level GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {

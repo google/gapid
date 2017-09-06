@@ -27,23 +27,23 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// GlobalState resolves the global *api.State at a requested point in a
+// GlobalState resolves the global *api.GlobalState at a requested point in a
 // capture.
-func GlobalState(ctx context.Context, p *path.State) (*api.State, error) {
+func GlobalState(ctx context.Context, p *path.State) (*api.GlobalState, error) {
 	obj, err := database.Build(ctx, &GlobalStateResolvable{p})
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*api.State), nil
+	return obj.(*api.GlobalState), nil
 }
 
-// APIState resolves the specific API state at a requested point in a capture.
-func APIState(ctx context.Context, p *path.State) (interface{}, error) {
-	obj, err := database.Build(ctx, &APIStateResolvable{p})
+// State resolves the specific API state at a requested point in a capture.
+func State(ctx context.Context, p *path.State) (api.State, error) {
+	obj, err := database.Build(ctx, &StateResolvable{p})
 	if err != nil {
 		return nil, err
 	}
-	return obj, nil
+	return obj.(api.State), nil
 }
 
 // Resolve implements the database.Resolver interface.
@@ -80,7 +80,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 }
 
 // Resolve implements the database.Resolver interface.
-func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
+func (r *StateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Capture)
 	cmdIdx := r.Path.After.Indices[0]
 	if len(r.Path.After.Indices) > 1 {
@@ -93,7 +93,7 @@ func (r *APIStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	return apiState(ctx, cmds, r.Path)
 }
 
-func apiState(ctx context.Context, cmds []api.Cmd, p *path.State) (interface{}, error) {
+func apiState(ctx context.Context, cmds []api.Cmd, p *path.State) (api.State, error) {
 	cmdIdx := p.After.Indices[0]
 	if len(p.After.Indices) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported for api state") // TODO: Subcommands

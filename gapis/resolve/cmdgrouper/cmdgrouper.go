@@ -32,7 +32,7 @@ type Group struct {
 // Grouper is the interface implemented by types that build groups.
 type Grouper interface {
 	// Process considers the command for inclusion in the group.
-	Process(context.Context, api.CmdID, api.Cmd, *api.State)
+	Process(context.Context, api.CmdID, api.Cmd, *api.GlobalState)
 	// Build returns the groups built and resets the state of the grouper.
 	Build(end api.CmdID) []Group
 }
@@ -40,7 +40,7 @@ type Grouper interface {
 // RunPred is the predicate used by the Run grouper.
 // Consecutive values returned by RunPred will be grouped together under the
 // group with name.
-type RunPred func(cmd api.Cmd, s *api.State) (value interface{}, name string)
+type RunPred func(cmd api.Cmd, s *api.GlobalState) (value interface{}, name string)
 
 // Run returns a grouper that groups commands together that form a run.
 func Run(pred RunPred) Grouper {
@@ -49,14 +49,14 @@ func Run(pred RunPred) Grouper {
 
 // run is a grouper that groups consecutive runs of commands
 type run struct {
-	f       func(cmd api.Cmd, s *api.State) (value interface{}, name string)
+	f       func(cmd api.Cmd, s *api.GlobalState) (value interface{}, name string)
 	start   api.CmdID
 	current interface{}
 	name    string
 	out     []Group
 }
 
-func (g *run) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
+func (g *run) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState) {
 	val, name := g.f(cmd, s)
 	if val != g.current {
 		if g.current != nil {
@@ -87,7 +87,7 @@ type marker struct {
 	out   []Group
 }
 
-func (g *marker) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
+func (g *marker) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState) {
 	flags := cmd.CmdFlags(ctx, id, s)
 	if flags.IsPushUserMarker() {
 		g.push(ctx, id, cmd, s)
@@ -109,7 +109,7 @@ func (g *marker) Build(end api.CmdID) []Group {
 // push enters a group at the specified id.
 // If the cmd implements api.Labeled then the group will use this label as the
 // group name.
-func (g *marker) push(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
+func (g *marker) push(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState) {
 	var name string
 	if l, ok := cmd.(api.Labeled); ok {
 		name = l.Label(ctx, s)

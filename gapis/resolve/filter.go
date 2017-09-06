@@ -23,11 +23,11 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type filter func(api.CmdID, api.Cmd, *api.State) bool
+type filter func(api.CmdID, api.Cmd, *api.GlobalState) bool
 
 func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd *sync.Data) (filter, error) {
 	filters := []filter{
-		func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
+		func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 			return !sd.Hidden.Contains(id)
 		},
 	}
@@ -41,7 +41,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd
 			return nil, err
 		}
 		ctxID := api.ContextID(id)
-		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 			if api := cmd.API(); api != nil {
 				if ctx := api.Context(s, cmd.Thread()); ctx != nil {
 					return ctx.ID() == ctxID
@@ -51,7 +51,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd
 		})
 	}
 	if len(f.GetThreads()) > 0 {
-		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 			thread := cmd.Thread()
 			for _, t := range f.Threads {
 				if t == thread {
@@ -61,7 +61,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd
 			return false
 		})
 	}
-	return func(id api.CmdID, cmd api.Cmd, s *api.State) bool {
+	return func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 		for _, f := range filters {
 			if !f(id, cmd, s) {
 				return false

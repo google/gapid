@@ -77,7 +77,7 @@ func New(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*pat
 
 // NewState returns a new, default-initialized State object built for the
 // capture held by the context.
-func NewState(ctx context.Context) (*api.State, error) {
+func NewState(ctx context.Context) (*api.GlobalState, error) {
 	c, err := Resolve(ctx)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func NewState(ctx context.Context) (*api.State, error) {
 
 // NewState returns a new, default-initialized State object built for the
 // capture.
-func (c *Capture) NewState() *api.State {
+func (c *Capture) NewState() *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
 	return api.NewStateWithAllocator(

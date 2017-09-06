@@ -309,7 +309,7 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 	case *path.Slice:
 		return Slice(ctx, p)
 	case *path.State:
-		return APIState(ctx, p)
+		return State(ctx, p)
 	case *path.StateTree:
 		return StateTree(ctx, p)
 	case *path.StateTreeNode:

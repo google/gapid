@@ -495,7 +495,7 @@ func setCubemapFace(img *image.Info, cubeMap *api.CubemapLevel, layerIndex uint3
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *ImageObject) ResourceData(ctx context.Context, s *api.State) (*api.ResourceData, error) {
+func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
 	vkFmt := t.Info.Format
 	format, err := getImageFormatFromVulkanFormat(vkFmt)
@@ -576,7 +576,7 @@ func (s *ShaderModuleObject) ResourceType(ctx context.Context) api.ResourceType 
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *api.State) (*api.ResourceData, error) {
+func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceData()")
 	words := s.Words.Read(ctx, nil, t, nil)
 	source := shadertools.DisassembleSpirvBinary(words)

@@ -212,7 +212,7 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 
 // decompressTexImage2D writes a glTexImage2D using the decompressed data for
 // the given glCompressedTexImage2D.
-func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexImage2D, s *api.State, out transform.Writer) error {
+func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexImage2D, s *api.GlobalState, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexImage2D")
 	dID := i.Derived()
 	c := GetContext(s, a.thread)
@@ -265,7 +265,7 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 
 // decompressTexSubImage2D writes a glTexSubImage2D using the decompressed data for
 // the given glCompressedTexSubImage2D.
-func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexSubImage2D, s *api.State, out transform.Writer) error {
+func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexSubImage2D, s *api.GlobalState, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexSubImage2D")
 	dID := i.Derived()
 	c := GetContext(s, a.thread)

@@ -127,7 +127,7 @@ func incrementLoopLevel(idx api.SubCmdIdx, loopLevel *int) bool {
 
 // resolveCurrentRenderPass walks all of the current and pending commands
 // to determine what renderpass we are in after the idx'th subcommand
-func resolveCurrentRenderPass(ctx context.Context, s *api.State, submit *VkQueueSubmit,
+func resolveCurrentRenderPass(ctx context.Context, s *api.GlobalState, submit *VkQueueSubmit,
 	idx api.SubCmdIdx, lrp *RenderPassObject, subpass uint32) (*RenderPassObject, uint32) {
 	if len(idx) == 0 {
 		return lrp, subpass
@@ -209,7 +209,7 @@ func resolveCurrentRenderPass(ctx context.Context, s *api.State, submit *VkQueue
 func rebuildCommandBuffer(ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer *CommandBufferObject,
-	s *api.State,
+	s *api.GlobalState,
 	idx api.SubCmdIdx,
 	additionalCommands []interface{}) (VkCommandBuffer, []api.Cmd, []func()) {
 

@@ -31,8 +31,8 @@ import (
 	"github.com/google/gapid/gapis/stringtable"
 )
 
-// State represents the graphics state across all contexts.
-type State struct {
+// GlobalState represents the graphics state across all contexts.
+type GlobalState struct {
 	// MemoryLayout holds information about the device memory layout that was
 	// used to create the capture.
 	MemoryLayout *device.MemoryLayout
@@ -41,7 +41,7 @@ type State struct {
 	Memory memory.Pools
 
 	// APIs holds the per-API context states.
-	APIs map[API]interface{}
+	APIs map[API]State
 
 	// Allocator keeps track of and reserves memory areas not used in the trace.
 	Allocator memory.Allocator
@@ -62,9 +62,13 @@ type State struct {
 	AddTag func(msgID uint32, msg *stringtable.Msg)
 }
 
+// State represents the graphics state for a single context.
+type State interface {
+}
+
 // NewStateWithEmptyAllocator returns a new, default-initialized State object,
 // that uses an allocator with no allocations.
-func NewStateWithEmptyAllocator(memoryLayout *device.MemoryLayout) *State {
+func NewStateWithEmptyAllocator(memoryLayout *device.MemoryLayout) *GlobalState {
 	return NewStateWithAllocator(
 		memory.NewBasicAllocator(value.ValidMemoryRanges),
 		memoryLayout,
@@ -73,53 +77,53 @@ func NewStateWithEmptyAllocator(memoryLayout *device.MemoryLayout) *State {
 
 // NewStateWithAllocator returns a new, default-initialized State object,
 // that uses the given memory.Allocator instance.
-func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.MemoryLayout) *State {
-	return &State{
+func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.MemoryLayout) *GlobalState {
+	return &GlobalState{
 		MemoryLayout: memoryLayout,
 		Memory:       memory.NewPools(),
-		APIs:         map[API]interface{}{},
+		APIs:         map[API]State{},
 		Allocator:    allocator,
 	}
 }
 
-func (s State) String() string {
+func (s GlobalState) String() string {
 	apis := make([]string, 0, len(s.APIs))
 	for a, s := range s.APIs {
 		apis = append(apis, fmt.Sprintf("    %v: %v", a, s))
 	}
-	return fmt.Sprintf("State{\n  %v\n  Memory:\n%v\n  APIs:\n%v\n}",
+	return fmt.Sprintf("GlobalState{\n  %v\n  Memory:\n%v\n  APIs:\n%v\n}",
 		s.MemoryLayout, s.Memory, strings.Join(apis, "\n"))
 }
 
 // MemoryReader returns a binary reader using the state's memory endianness to
 // read data from d.
-func (s State) MemoryReader(ctx context.Context, d memory.Data) binary.Reader {
+func (s GlobalState) MemoryReader(ctx context.Context, d memory.Data) binary.Reader {
 	return endian.Reader(d.NewReader(ctx), s.MemoryLayout.GetEndian())
 }
 
 // MemoryWriter returns a binary writer using the state's memory endianness to
 // write data to the pool p, for the range rng.
-func (s State) MemoryWriter(p memory.PoolID, rng memory.Range) binary.Writer {
+func (s GlobalState) MemoryWriter(p memory.PoolID, rng memory.Range) binary.Writer {
 	bw := memory.Writer(s.Memory.MustGet(p), rng)
 	return endian.Writer(bw, s.MemoryLayout.GetEndian())
 }
 
 // MemoryDecoder returns a memory decoder using the state's memory layout to
 // decode data from d.
-func (s State) MemoryDecoder(ctx context.Context, d memory.Data) *memory.Decoder {
+func (s GlobalState) MemoryDecoder(ctx context.Context, d memory.Data) *memory.Decoder {
 	return memory.NewDecoder(s.MemoryReader(ctx, d), s.MemoryLayout)
 }
 
 // MemoryEncoder returns a memory encoder using the state's memory layout
 // to encode to the pool p, for the range rng.
-func (s State) MemoryEncoder(p memory.PoolID, rng memory.Range) *memory.Encoder {
+func (s GlobalState) MemoryEncoder(p memory.PoolID, rng memory.Range) *memory.Encoder {
 	return memory.NewEncoder(s.MemoryWriter(p, rng), s.MemoryLayout)
 }
 
 // Alloc allocates a memory range using the Allocator associated with
 // the given State, and returns a AllocResult that can be used to access the
 // pointer, and range.
-func (s *State) Alloc(ctx context.Context, size uint64) (AllocResult, error) {
+func (s *GlobalState) Alloc(ctx context.Context, size uint64) (AllocResult, error) {
 	at, err := s.Allocator.Alloc(size, 8)
 	if err != nil {
 		return AllocResult{}, err
@@ -131,7 +135,7 @@ func (s *State) Alloc(ctx context.Context, size uint64) (AllocResult, error) {
 // memory range big enough to store it using the Allocator associated with
 // the given State, and returns a AllocResult that can be used to access the
 // database ID, pointer, and range.
-func (s *State) AllocData(ctx context.Context, v ...interface{}) (AllocResult, error) {
+func (s *GlobalState) AllocData(ctx context.Context, v ...interface{}) (AllocResult, error) {
 	buf := &bytes.Buffer{}
 	e := memory.NewEncoder(endian.Writer(buf, s.MemoryLayout.GetEndian()), s.MemoryLayout)
 	memory.Write(e, v)
@@ -150,7 +154,7 @@ func (s *State) AllocData(ctx context.Context, v ...interface{}) (AllocResult, e
 }
 
 // AllocOrPanic is like Alloc, but panics if there's an error.
-func (s *State) AllocOrPanic(ctx context.Context, size uint64) AllocResult {
+func (s *GlobalState) AllocOrPanic(ctx context.Context, size uint64) AllocResult {
 	res, err := s.Alloc(ctx, size)
 	if err != nil {
 		panic(err)
@@ -159,7 +163,7 @@ func (s *State) AllocOrPanic(ctx context.Context, size uint64) AllocResult {
 }
 
 // AllocDataOrPanic is like AllocData, but panics if there's an error.
-func (s *State) AllocDataOrPanic(ctx context.Context, v ...interface{}) AllocResult {
+func (s *GlobalState) AllocDataOrPanic(ctx context.Context, v ...interface{}) AllocResult {
 	res, err := s.AllocData(ctx, v...)
 	if err != nil {
 		panic(err)

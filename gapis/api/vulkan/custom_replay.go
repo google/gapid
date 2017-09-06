@@ -23,217 +23,217 @@ import (
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
-func (i VkInstance) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkInstance) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkPhysicalDevice) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkPhysicalDevice) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDevice) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkDevice) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkQueue) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkQueue) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkCommandBuffer) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkCommandBuffer) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkSemaphore) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkSemaphore) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkFence) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkFence) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDeviceMemory) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkDeviceMemory) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkBuffer) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkBuffer) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkImage) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkImage) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkEvent) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkEvent) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkQueryPool) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkQueryPool) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkBufferView) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkBufferView) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkImageView) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkImageView) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkShaderModule) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkShaderModule) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkPipelineCache) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkPipelineCache) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkPipelineLayout) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkPipelineLayout) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkRenderPass) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkRenderPass) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkPipeline) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkPipeline) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDescriptorSetLayout) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkDescriptorSetLayout) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkSampler) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkSampler) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDescriptorPool) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkDescriptorPool) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDescriptorSet) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkDescriptorSet) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkFramebuffer) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkFramebuffer) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkCommandPool) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkCommandPool) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkSurfaceKHR) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkSurfaceKHR) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkSwapchainKHR) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkSwapchainKHR) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDisplayKHR) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkDisplayKHR) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDisplayModeKHR) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkDisplayModeKHR) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (i VkDebugReportCallbackEXT) remap(api.Cmd, *api.State) (key interface{}, remap bool) {
+func (i VkDebugReportCallbackEXT) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
 	}
 	return
 }
 
-func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	cb := CommandBuilder{Thread: a.thread}
 	// Hijack VkCreateInstance's Mutate() method entirely with our ReplayCreateVkInstance's Mutate().
 
@@ -256,7 +256,7 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Stat
 	return cb.ReplayRegisterVkInstance(instance).Mutate(ctx, id, s, b)
 }
 
-func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	cb := CommandBuilder{Thread: a.thread}
 	// Call the underlying vkDestroyInstance() and do the observation.
 	err := a.mutate(ctx, id, s, b)
@@ -267,12 +267,12 @@ func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Sta
 	return cb.ReplayUnregisterVkInstance(a.Instance).Mutate(ctx, id, s, b)
 }
 
-func EnterRecreate(ctx context.Context, s *api.State) func() {
+func EnterRecreate(ctx context.Context, s *api.GlobalState) func() {
 	GetState(s).IsRebuilding = true
 	return func() { GetState(s).IsRebuilding = false }
 }
 
-func (a *RecreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -281,11 +281,11 @@ func (a *RecreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Stat
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateState) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateState) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	return nil
 }
 
-func (a *RecreatePhysicalDevices) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreatePhysicalDevices) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkEnumeratePhysicalDevices(a.Instance, a.Count, a.PPhysicalDevices, VkResult(0))
@@ -293,7 +293,7 @@ func (a *RecreatePhysicalDevices) Mutate(ctx context.Context, id api.CmdID, s *a
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -301,14 +301,14 @@ func (a *RecreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.State,
 	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, id, s, b)
 }
-func (a *RecreateQueue) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateQueue) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkGetDeviceQueue(a.Device, a.QueueFamilyIndex, a.QueueIndex, a.PQueue)
 	hijack.Extras().MustClone(a.Extras().All()...)
 	return hijack.Mutate(ctx, id, s, b)
 }
-func (a *RecreateDeviceMemory) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDeviceMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -328,7 +328,7 @@ func (a *RecreateDeviceMemory) Mutate(ctx context.Context, id api.CmdID, s *api.
 	return err
 }
 
-func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkAllocateCommandBuffers(a.Device, a.PAllocateInfo, a.PCommandBuffer, VkResult(0))
@@ -347,7 +347,7 @@ func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, id api.CmdID
 	return err
 }
 
-func (a *RecreateEndCommandBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateEndCommandBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkEndCommandBuffer(a.CommandBuffer, VkResult(0))
@@ -357,7 +357,7 @@ func (a *RecreateEndCommandBuffer) Mutate(ctx context.Context, id api.CmdID, s *
 
 ////////////// Command Buffer Commands
 
-func (a *RecreateCmdUpdateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdUpdateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdUpdateBuffer(a.CommandBuffer, a.DstBuffer, a.DstOffset, a.DataSize, a.PData)
@@ -365,7 +365,7 @@ func (a *RecreateCmdUpdateBuffer) Mutate(ctx context.Context, id api.CmdID, s *a
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdPipelineBarrier) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdPipelineBarrier) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdPipelineBarrier(a.CommandBuffer,
@@ -382,7 +382,7 @@ func (a *RecreateCmdPipelineBarrier) Mutate(ctx context.Context, id api.CmdID, s
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdCopyBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdCopyBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyBuffer(a.CommandBuffer, a.SrcBuffer, a.DstBuffer, a.RegionCount, a.PRegions)
@@ -390,7 +390,7 @@ func (a *RecreateCmdCopyBuffer) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdResolveImage) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdResolveImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdResolveImage(a.CommandBuffer, a.SrcImage, a.SrcImageLayout, a.DstImage, a.DstImageLayout, a.RegionCount, a.PRegions)
@@ -398,7 +398,7 @@ func (a *RecreateCmdResolveImage) Mutate(ctx context.Context, id api.CmdID, s *a
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdBeginRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdBeginRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBeginRenderPass(a.CommandBuffer, a.PRenderPassBegin, a.Contents)
@@ -406,7 +406,7 @@ func (a *RecreateCmdBeginRenderPass) Mutate(ctx context.Context, id api.CmdID, s
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdBindPipeline) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdBindPipeline) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindPipeline(a.CommandBuffer, a.PipelineBindPoint, a.Pipeline)
@@ -414,7 +414,7 @@ func (a *RecreateCmdBindPipeline) Mutate(ctx context.Context, id api.CmdID, s *a
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdBindDescriptorSets) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdBindDescriptorSets) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindDescriptorSets(
@@ -430,7 +430,7 @@ func (a *RecreateCmdBindDescriptorSets) Mutate(ctx context.Context, id api.CmdID
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdBindVertexBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdBindVertexBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindVertexBuffers(
@@ -443,7 +443,7 @@ func (a *RecreateCmdBindVertexBuffers) Mutate(ctx context.Context, id api.CmdID,
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdBindIndexBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdBindIndexBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBindIndexBuffer(
@@ -455,7 +455,7 @@ func (a *RecreateCmdBindIndexBuffer) Mutate(ctx context.Context, id api.CmdID, s
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdEndRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdEndRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdEndRenderPass(
@@ -464,7 +464,7 @@ func (a *RecreateCmdEndRenderPass) Mutate(ctx context.Context, id api.CmdID, s *
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdExecuteCommands) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdExecuteCommands) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdExecuteCommands(
@@ -476,7 +476,7 @@ func (a *RecreateCmdExecuteCommands) Mutate(ctx context.Context, id api.CmdID, s
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdNextSubpass) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdNextSubpass) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdNextSubpass(
@@ -487,7 +487,7 @@ func (a *RecreateCmdNextSubpass) Mutate(ctx context.Context, id api.CmdID, s *ap
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDrawIndexed(
@@ -501,7 +501,7 @@ func (a *RecreateCmdDrawIndexed) Mutate(ctx context.Context, id api.CmdID, s *ap
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDispatch) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDispatch) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDispatch(
@@ -513,7 +513,7 @@ func (a *RecreateCmdDispatch) Mutate(ctx context.Context, id api.CmdID, s *api.S
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDispatchIndirect) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDispatchIndirect) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDispatchIndirect(
@@ -524,7 +524,7 @@ func (a *RecreateCmdDispatchIndirect) Mutate(ctx context.Context, id api.CmdID, 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDrawIndirect) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDrawIndirect) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDrawIndirect(
@@ -537,7 +537,7 @@ func (a *RecreateCmdDrawIndirect) Mutate(ctx context.Context, id api.CmdID, s *a
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDrawIndexedIndirect(
@@ -550,7 +550,7 @@ func (a *RecreateCmdDrawIndexedIndirect) Mutate(ctx context.Context, id api.CmdI
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetDepthBias) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetDepthBias) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetDepthBias(
@@ -562,7 +562,7 @@ func (a *RecreateCmdSetDepthBias) Mutate(ctx context.Context, id api.CmdID, s *a
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetDepthBounds) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetDepthBounds) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetDepthBounds(
@@ -573,7 +573,7 @@ func (a *RecreateCmdSetDepthBounds) Mutate(ctx context.Context, id api.CmdID, s 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetBlendConstants) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetBlendConstants) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetBlendConstants(
@@ -583,7 +583,7 @@ func (a *RecreateCmdSetBlendConstants) Mutate(ctx context.Context, id api.CmdID,
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetStencilCompareMask) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetStencilCompareMask) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetStencilCompareMask(
@@ -595,7 +595,7 @@ func (a *RecreateCmdSetStencilCompareMask) Mutate(ctx context.Context, id api.Cm
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetStencilWriteMask) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetStencilWriteMask) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetStencilWriteMask(
@@ -607,7 +607,7 @@ func (a *RecreateCmdSetStencilWriteMask) Mutate(ctx context.Context, id api.CmdI
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetStencilReference) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetStencilReference) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetStencilReference(
@@ -619,7 +619,7 @@ func (a *RecreateCmdSetStencilReference) Mutate(ctx context.Context, id api.CmdI
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdFillBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdFillBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdFillBuffer(
@@ -632,7 +632,7 @@ func (a *RecreateCmdFillBuffer) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetLineWidth) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetLineWidth) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetLineWidth(
@@ -642,7 +642,7 @@ func (a *RecreateCmdSetLineWidth) Mutate(ctx context.Context, id api.CmdID, s *a
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdCopyBufferToImage) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdCopyBufferToImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyBufferToImage(
@@ -656,7 +656,7 @@ func (a *RecreateCmdCopyBufferToImage) Mutate(ctx context.Context, id api.CmdID,
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdCopyImageToBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdCopyImageToBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyImageToBuffer(
@@ -670,7 +670,7 @@ func (a *RecreateCmdCopyImageToBuffer) Mutate(ctx context.Context, id api.CmdID,
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdBlitImage) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdBlitImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBlitImage(
@@ -687,7 +687,7 @@ func (a *RecreateCmdBlitImage) Mutate(ctx context.Context, id api.CmdID, s *api.
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdCopyImage) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdCopyImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyImage(
@@ -702,7 +702,7 @@ func (a *RecreateCmdCopyImage) Mutate(ctx context.Context, id api.CmdID, s *api.
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdPushConstants) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdPushConstants) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdPushConstants(
@@ -716,7 +716,7 @@ func (a *RecreateCmdPushConstants) Mutate(ctx context.Context, id api.CmdID, s *
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDraw) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDraw) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDraw(
@@ -729,7 +729,7 @@ func (a *RecreateCmdDraw) Mutate(ctx context.Context, id api.CmdID, s *api.State
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetScissor) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetScissor) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetScissor(
@@ -741,7 +741,7 @@ func (a *RecreateCmdSetScissor) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetViewport) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetViewport) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetViewport(
@@ -753,7 +753,7 @@ func (a *RecreateCmdSetViewport) Mutate(ctx context.Context, id api.CmdID, s *ap
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdBeginQuery) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdBeginQuery) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdBeginQuery(
@@ -765,7 +765,7 @@ func (a *RecreateCmdBeginQuery) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdEndQuery) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdEndQuery) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdEndQuery(
@@ -776,7 +776,7 @@ func (a *RecreateCmdEndQuery) Mutate(ctx context.Context, id api.CmdID, s *api.S
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdClearAttachments) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdClearAttachments) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdClearAttachments(
@@ -790,7 +790,7 @@ func (a *RecreateCmdClearAttachments) Mutate(ctx context.Context, id api.CmdID, 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdClearColorImage) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdClearColorImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdClearColorImage(
@@ -805,7 +805,7 @@ func (a *RecreateCmdClearColorImage) Mutate(ctx context.Context, id api.CmdID, s
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdClearDepthStencilImage) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdClearDepthStencilImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdClearDepthStencilImage(
@@ -820,7 +820,7 @@ func (a *RecreateCmdClearDepthStencilImage) Mutate(ctx context.Context, id api.C
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdResetQueryPool) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdResetQueryPool) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdResetQueryPool(
@@ -832,7 +832,7 @@ func (a *RecreateCmdResetQueryPool) Mutate(ctx context.Context, id api.CmdID, s 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdCopyQueryPoolResults(
@@ -849,7 +849,7 @@ func (a *RecreateCmdCopyQueryPoolResults) Mutate(ctx context.Context, id api.Cmd
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdWriteTimestamp) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdWriteTimestamp) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdWriteTimestamp(
@@ -862,7 +862,7 @@ func (a *RecreateCmdWriteTimestamp) Mutate(ctx context.Context, id api.CmdID, s 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdSetEvent) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdSetEvent) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdSetEvent(
@@ -874,7 +874,7 @@ func (a *RecreateCmdSetEvent) Mutate(ctx context.Context, id api.CmdID, s *api.S
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdResetEvent) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdResetEvent) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdResetEvent(
@@ -886,7 +886,7 @@ func (a *RecreateCmdResetEvent) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdWaitEvents) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdWaitEvents) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdWaitEvents(
@@ -906,7 +906,7 @@ func (a *RecreateCmdWaitEvents) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDebugMarkerBeginEXT) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDebugMarkerBeginEXT) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDebugMarkerBeginEXT(a.CommandBuffer, a.PMarkerInfo)
@@ -914,7 +914,7 @@ func (a *RecreateCmdDebugMarkerBeginEXT) Mutate(ctx context.Context, id api.CmdI
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDebugMarkerEndEXT) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDebugMarkerEndEXT) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDebugMarkerEndEXT(a.CommandBuffer)
@@ -922,7 +922,7 @@ func (a *RecreateCmdDebugMarkerEndEXT) Mutate(ctx context.Context, id api.CmdID,
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateCmdDebugMarkerInsertEXT) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCmdDebugMarkerInsertEXT) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCmdDebugMarkerInsertEXT(a.CommandBuffer, a.PMarkerInfo)
@@ -930,7 +930,7 @@ func (a *RecreateCmdDebugMarkerInsertEXT) Mutate(ctx context.Context, id api.Cmd
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkGetPhysicalDeviceQueueFamilyProperties(
@@ -949,7 +949,7 @@ func (a *RecreatePhysicalDeviceProperties) Mutate(ctx context.Context, id api.Cm
 	return memoryProperties.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateSemaphore) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateSemaphore) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -996,7 +996,7 @@ func (a *RecreateSemaphore) Mutate(ctx context.Context, id api.CmdID, s *api.Sta
 
 }
 
-func (a *RecreateFence) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateFence) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1005,7 +1005,7 @@ func (a *RecreateFence) Mutate(ctx context.Context, id api.CmdID, s *api.State, 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateEvent) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateEvent) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1028,7 +1028,7 @@ func (a *RecreateEvent) Mutate(ctx context.Context, id api.CmdID, s *api.State, 
 	return nil
 }
 
-func (a *RecreateCommandPool) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateCommandPool) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1037,7 +1037,7 @@ func (a *RecreateCommandPool) Mutate(ctx context.Context, id api.CmdID, s *api.S
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreatePipelineCache) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreatePipelineCache) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1046,7 +1046,7 @@ func (a *RecreatePipelineCache) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateDescriptorSetLayout) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDescriptorSetLayout) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1055,7 +1055,7 @@ func (a *RecreateDescriptorSetLayout) Mutate(ctx context.Context, id api.CmdID, 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreatePipelineLayout) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreatePipelineLayout) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1064,7 +1064,7 @@ func (a *RecreatePipelineLayout) Mutate(ctx context.Context, id api.CmdID, s *ap
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1073,7 +1073,7 @@ func (a *RecreateRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.St
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateShaderModule) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateShaderModule) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1082,7 +1082,7 @@ func (a *RecreateShaderModule) Mutate(ctx context.Context, id api.CmdID, s *api.
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateDestroyShaderModule) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDestroyShaderModule) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1091,7 +1091,7 @@ func (a *RecreateDestroyShaderModule) Mutate(ctx context.Context, id api.CmdID, 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateDestroyRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDestroyRenderPass) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1100,7 +1100,7 @@ func (a *RecreateDestroyRenderPass) Mutate(ctx context.Context, id api.CmdID, s 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateDescriptorPool) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDescriptorPool) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1109,7 +1109,7 @@ func (a *RecreateDescriptorPool) Mutate(ctx context.Context, id api.CmdID, s *ap
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateXCBSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateXCBSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1118,7 +1118,7 @@ func (a *RecreateXCBSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1127,7 +1127,7 @@ func (a *RecreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *ap
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1136,7 +1136,7 @@ func (a *RecreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1145,7 +1145,7 @@ func (a *RecreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1154,7 +1154,7 @@ func (a *RecreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, s 
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateImageView) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateImageView) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1163,7 +1163,7 @@ func (a *RecreateImageView) Mutate(ctx context.Context, id api.CmdID, s *api.Sta
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateSampler) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateSampler) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateSampler(
@@ -1176,7 +1176,7 @@ func (a *RecreateSampler) Mutate(ctx context.Context, id api.CmdID, s *api.State
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateFramebuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateFramebuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1185,7 +1185,7 @@ func (a *RecreateFramebuffer) Mutate(ctx context.Context, id api.CmdID, s *api.S
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateDescriptorSet) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDescriptorSet) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkAllocateDescriptorSets(a.Device, a.PAllocateInfo, a.PDescriptorSet, VkResult(0))
@@ -1198,7 +1198,7 @@ func (a *RecreateDescriptorSet) Mutate(ctx context.Context, id api.CmdID, s *api
 	return write.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateGraphicsPipeline) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateGraphicsPipeline) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateGraphicsPipelines(a.Device, a.PipelineCache, uint32(1), a.PCreateInfo, memory.Nullptr, a.PPipeline, VkResult(0))
@@ -1206,7 +1206,7 @@ func (a *RecreateGraphicsPipeline) Mutate(ctx context.Context, id api.CmdID, s *
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateComputePipeline) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateComputePipeline) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	hijack := cb.VkCreateComputePipelines(a.Device, a.PipelineCache, uint32(1), a.PCreateInfo, memory.Nullptr, a.PPipeline, VkResult(0))
@@ -1214,7 +1214,7 @@ func (a *RecreateComputePipeline) Mutate(ctx context.Context, id api.CmdID, s *a
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Hijack VkCreateDevice's Mutate() method entirely with our
 	// ReplayCreateVkDevice's Mutate(). Similar to VkCreateInstance's Mutate()
 	// above.
@@ -1271,7 +1271,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.State,
 	return cb.ReplayRegisterVkDevice(a.PhysicalDevice, device, a.PCreateInfo).Mutate(ctx, id, s, b)
 }
 
-func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkDestroyDevice() and do the observation.
 	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, id, s, b)
@@ -1282,7 +1282,7 @@ func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.State
 	return cb.ReplayUnregisterVkDevice(a.Device).Mutate(ctx, id, s, b)
 }
 
-func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkAllocateCommandBuffers() and do the observation.
 	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, id, s, b)
@@ -1294,7 +1294,7 @@ func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *
 	return cb.ReplayRegisterVkCommandBuffers(a.Device, count, a.PCommandBuffers).Mutate(ctx, id, s, b)
 }
 
-func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkFreeCommandBuffers() and do the observation.
 	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, id, s, b)
@@ -1306,7 +1306,7 @@ func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.
 	return cb.ReplayUnregisterVkCommandBuffers(count, a.PCommandBuffers).Mutate(ctx, id, s, b)
 }
 
-func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying VkCreateSwapchainKHR() and do the observation
 	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, id, s, b)
@@ -1316,7 +1316,7 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 	return cb.ToggleVirtualSwapchainReturnAcquiredImage(a.PSwapchain).Mutate(ctx, id, s, b)
 }
 
-func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	l := s.MemoryLayout
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory.ApplicationPool())
@@ -1332,7 +1332,7 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	return nil
 }
 
-func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
@@ -1342,7 +1342,7 @@ func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.Stat
 	return cb.ReplayGetFenceStatus(a.Device, a.Fence, a.Result, a.Result).Mutate(ctx, id, s, b)
 }
 
-func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	cb := CommandBuilder{Thread: a.thread}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
@@ -1361,7 +1361,7 @@ func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.Stat
 	return cb.ReplayGetEventStatus(a.Device, a.Event, a.Result, wait, a.Result).Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateDebugMarkerSetObjectNameEXT) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDebugMarkerSetObjectNameEXT) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory.ApplicationPool())
 	nameInfo := a.PNameInfo.Read(ctx, a, s, nil)
@@ -1372,7 +1372,7 @@ func (a *RecreateDebugMarkerSetObjectNameEXT) Mutate(ctx context.Context, id api
 	return a.mutate(ctx, id, s, b)
 }
 
-func (a *RecreateDebugMarkerSetObjectTagEXT) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateDebugMarkerSetObjectTagEXT) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory.ApplicationPool())
 	tagInfo := a.PTagInfo.Read(ctx, a, s, nil)
@@ -1383,7 +1383,7 @@ func (a *RecreateDebugMarkerSetObjectTagEXT) Mutate(ctx context.Context, id api.
 	return a.mutate(ctx, id, s, b)
 }
 
-func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	if err := a.mutate(ctx, id, s, b); err != nil {
 		return err
 	}
@@ -1410,7 +1410,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	return err
 }
 
-func createEndCommandBufferAndQueueSubmit(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder, queue VkQueue, commandBuffer VkCommandBuffer) error {
+func createEndCommandBufferAndQueueSubmit(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, queue VkQueue, commandBuffer VkCommandBuffer) error {
 	commandBuffers := s.AllocDataOrPanic(ctx, commandBuffer)
 	defer commandBuffers.Free()
 	submitInfo := VkSubmitInfo{
@@ -1447,7 +1447,7 @@ func createEndCommandBufferAndQueueSubmit(ctx context.Context, id api.CmdID, cb 
 	).Mutate(ctx, id, s, b)
 }
 
-func createImageTransition(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder,
+func createImageTransition(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder,
 	srcLayout VkImageLayout, dstLayout VkImageLayout,
 	image VkImage, aspectMask VkImageAspectFlags, commandBuffer VkCommandBuffer) error {
 
@@ -1493,7 +1493,7 @@ func createImageTransition(ctx context.Context, id api.CmdID, cb CommandBuilder,
 	return transfer.Mutate(ctx, id, s, b)
 }
 
-func createAndBeginCommandBuffer(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder, device VkDevice, commandPool VkCommandPool) (VkCommandBuffer, error) {
+func createAndBeginCommandBuffer(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, device VkDevice, commandPool VkCommandPool) (VkCommandBuffer, error) {
 	commandBufferAllocateInfo := VkCommandBufferAllocateInfo{
 		SType:              VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		PNext:              NewVoidᶜᵖ(memory.Nullptr),
@@ -1539,7 +1539,7 @@ func createAndBeginCommandBuffer(ctx context.Context, id api.CmdID, cb CommandBu
 	).Mutate(ctx, id, s, b)
 }
 
-func createAndBindSourceBuffer(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder, device VkDevice, size VkDeviceSize, memoryIndex uint32) (VkBuffer, VkDeviceMemory, error) {
+func createAndBindSourceBuffer(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, device VkDevice, size VkDeviceSize, memoryIndex uint32) (VkBuffer, VkDeviceMemory, error) {
 	bufferCreateInfo := VkBufferCreateInfo{
 		SType:                 VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 		PNext:                 NewVoidᶜᵖ(memory.Nullptr),
@@ -1606,7 +1606,7 @@ func createAndBindSourceBuffer(ctx context.Context, id api.CmdID, cb CommandBuil
 	return bufferId, memoryId, nil
 }
 
-func (a *RecreateBufferView) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateBufferView) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1615,7 +1615,7 @@ func (a *RecreateBufferView) Mutate(ctx context.Context, id api.CmdID, s *api.St
 	return hijack.Mutate(ctx, id, s, b)
 }
 
-func mapBufferMemory(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder, cmd api.Cmd, device VkDevice, size VkDeviceSize, mem VkDeviceMemory) (Voidᵖ, uint64, error) {
+func mapBufferMemory(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, cmd api.Cmd, device VkDevice, size VkDeviceSize, mem VkDeviceMemory) (Voidᵖ, uint64, error) {
 	at, err := s.Allocator.Alloc(uint64(size), 8)
 	if err != nil {
 		return NewVoidᵖ(memory.Nullptr), at, err
@@ -1632,7 +1632,7 @@ func mapBufferMemory(ctx context.Context, id api.CmdID, cb CommandBuilder, s *ap
 	return NewVoidᵖᵖ(mappedPointer.Ptr()).Read(ctx, cmd, s, b), at, err
 }
 
-func flushBufferMemory(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder, device VkDevice, size VkDeviceSize, mem VkDeviceMemory, mapped U8ᵖ) error {
+func flushBufferMemory(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, device VkDevice, size VkDeviceSize, mem VkDeviceMemory, mapped U8ᵖ) error {
 	flushRange := VkMappedMemoryRange{
 		SType:  VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
 		PNext:  NewVoidᶜᵖ(memory.Nullptr),
@@ -1650,7 +1650,7 @@ func flushBufferMemory(ctx context.Context, id api.CmdID, cb CommandBuilder, s *
 		AddRead(slice.Range(s.MemoryLayout), slice.ResourceID(ctx, s)).Mutate(ctx, id, s, b)
 }
 
-func createBufferBarrier(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder, buffer VkBuffer, size VkDeviceSize, commandBuffer VkCommandBuffer) error {
+func createBufferBarrier(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, buffer VkBuffer, size VkDeviceSize, commandBuffer VkCommandBuffer) error {
 	allBits := uint32(VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT<<1) - 1
 
 	bufferBarrier := VkBufferMemoryBarrier{
@@ -1685,7 +1685,7 @@ func createBufferBarrier(ctx context.Context, id api.CmdID, cb CommandBuilder, s
 	return transfer.Mutate(ctx, id, s, b)
 }
 
-func createCommandPool(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder, queue VkQueue, device VkDevice) (VkCommandPool, error) {
+func createCommandPool(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, queue VkQueue, device VkDevice) (VkCommandPool, error) {
 	// Command pool and command buffer
 	commandPoolId := VkCommandPool(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).CommandPools[VkCommandPool(x)]; return ok }))
 	queueObject := GetState(s).Queues[queue]
@@ -1713,11 +1713,11 @@ func createCommandPool(ctx context.Context, id api.CmdID, cb CommandBuilder, s *
 	).Mutate(ctx, id, s, b)
 }
 
-func destroyCommandPool(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.State, b *builder.Builder, device VkDevice, commandPool VkCommandPool) error {
+func destroyCommandPool(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, device VkDevice, commandPool VkCommandPool) error {
 	return cb.VkDestroyCommandPool(device, commandPool, memory.Nullptr).Mutate(ctx, id, s, b)
 }
 
-func (a *RecreateImage) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
@@ -1729,7 +1729,7 @@ func (a *RecreateImage) Mutate(ctx context.Context, id api.CmdID, s *api.State, 
 	return nil
 }
 
-func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	if a.Memory != VkDeviceMemory(0) {
 		cb := CommandBuilder{Thread: a.thread}
@@ -1740,7 +1740,7 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 	return nil
 }
 
-func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	l := s.MemoryLayout
 	t := a.thread
@@ -1877,7 +1877,7 @@ func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.Sta
 	return nil
 }
 
-func (a *RecreateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	// ApplyReads() is necessary only because we need to access the Read
 	// observation data prior to calling the VkCreateBuffer's Mutate().
@@ -1899,7 +1899,7 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.State,
 	return nil
 }
 
-func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	if a.Memory != VkDeviceMemory(0) {
 		cb := CommandBuilder{Thread: a.thread}
@@ -1910,7 +1910,7 @@ func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, id api.CmdID, s *
 	return nil
 }
 
-func (a *RecreateBufferData) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateBufferData) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	l := s.MemoryLayout
 	o := a.Extras().Observations()
@@ -1994,7 +1994,7 @@ func (a *RecreateBufferData) Mutate(ctx context.Context, id api.CmdID, s *api.St
 // Returns a queue capable of graphics and compute operations if it could be
 // found, a compute only queue or copy queue will be returned if it could not
 // be found
-func findGraphicsAndComputeQueueForDevice(device VkDevice, s *api.State) VkQueue {
+func findGraphicsAndComputeQueueForDevice(device VkDevice, s *api.GlobalState) VkQueue {
 	c := GetState(s)
 	backupQueue := VkQueue(0)
 	backupQueueFlags := uint32(0)
@@ -2017,7 +2017,7 @@ func findGraphicsAndComputeQueueForDevice(device VkDevice, s *api.State) VkQueue
 	return backupQueue
 }
 
-func (a *RecreateQueryPool) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateQueryPool) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	l := s.MemoryLayout
 	allocator := memory.Nullptr
@@ -2085,7 +2085,7 @@ func (a *RecreateQueryPool) Mutate(ctx context.Context, id api.CmdID, s *api.Sta
 
 }
 
-func (a *RecreateSwapchain) Mutate(ctx context.Context, id api.CmdID, s *api.State, b *builder.Builder) error {
+func (a *RecreateSwapchain) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	l := s.MemoryLayout
 	allocator := memory.Nullptr

@@ -85,7 +85,7 @@ func wireframeOverlay(ctx context.Context, i api.CmdID) transform.Transformer {
 	})
 }
 
-func drawWireframe(ctx context.Context, i api.CmdID, dc drawCall, s *api.State, out transform.Writer) error {
+func drawWireframe(ctx context.Context, i api.CmdID, dc drawCall, s *api.GlobalState, out transform.Writer) error {
 	c := GetContext(s, dc.Thread())
 	cb := CommandBuilder{Thread: dc.Thread()}
 	dID := i.Derived()

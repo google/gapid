@@ -160,7 +160,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 	return mesh, nil
 }
 
-func getIndicesData(ctx context.Context, s *api.State, boundIndexBuffer *BoundIndexBuffer, indexCount, firstIndex uint32, vertexOffset int32) []uint32 {
+func getIndicesData(ctx context.Context, s *api.GlobalState, boundIndexBuffer *BoundIndexBuffer, indexCount, firstIndex uint32, vertexOffset int32) []uint32 {
 	backingMem := boundIndexBuffer.BoundBuffer.Buffer.Memory
 	if backingMem == nil {
 		return []uint32{}
@@ -206,7 +206,7 @@ func getIndicesData(ctx context.Context, s *api.State, boundIndexBuffer *BoundIn
 	return []uint32{}
 }
 
-func getVertexBuffers(ctx context.Context, s *api.State, thread uint64,
+func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 	vertexCount, firstVertex uint32) (*vertex.Buffer, error) {
 
 	if vertexCount == 0 {
@@ -268,7 +268,7 @@ func getVertexBuffers(ctx context.Context, s *api.State, thread uint64,
 	return vb, nil
 }
 
-func getVerticesData(ctx context.Context, s *api.State, thread uint64,
+func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	boundVertexBuffer BoundBuffer, vertexCount, firstVertex uint32,
 	binding VkVertexInputBindingDescription,
 	attribute VkVertexInputAttributeDescription) ([]byte, error) {

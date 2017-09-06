@@ -36,15 +36,15 @@ type A struct {
 	Flags api.CmdFlags
 }
 
-func (a *A) Caller() api.CmdID                                            { return api.CmdNoID }
-func (a *A) SetCaller(api.CmdID)                                          {}
-func (a *A) Thread() uint64                                               { return 1 }
-func (a *A) SetThread(uint64)                                             {}
-func (a *A) CmdName() string                                              { return "A" }
-func (a *A) API() api.API                                                 { return nil }
-func (a *A) CmdFlags(context.Context, api.CmdID, *api.State) api.CmdFlags { return a.Flags }
-func (a *A) Extras() *api.CmdExtras                                       { return nil }
-func (a *A) Mutate(context.Context, api.CmdID, *api.State, *builder.Builder) error {
+func (a *A) Caller() api.CmdID                                                  { return api.CmdNoID }
+func (a *A) SetCaller(api.CmdID)                                                {}
+func (a *A) Thread() uint64                                                     { return 1 }
+func (a *A) SetThread(uint64)                                                   {}
+func (a *A) CmdName() string                                                    { return "A" }
+func (a *A) API() api.API                                                       { return nil }
+func (a *A) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return a.Flags }
+func (a *A) Extras() *api.CmdExtras                                             { return nil }
+func (a *A) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error {
 	return nil
 }
 
@@ -53,15 +53,15 @@ type B struct {
 	Bool bool
 }
 
-func (*B) Caller() api.CmdID                                            { return api.CmdNoID }
-func (*B) SetCaller(api.CmdID)                                          {}
-func (*B) Thread() uint64                                               { return 1 }
-func (*B) SetThread(uint64)                                             {}
-func (*B) CmdName() string                                              { return "B" }
-func (*B) API() api.API                                                 { return nil }
-func (*B) CmdFlags(context.Context, api.CmdID, *api.State) api.CmdFlags { return 0 }
-func (*B) Extras() *api.CmdExtras                                       { return nil }
-func (*B) Mutate(context.Context, api.CmdID, *api.State, *builder.Builder) error {
+func (*B) Caller() api.CmdID                                                  { return api.CmdNoID }
+func (*B) SetCaller(api.CmdID)                                                {}
+func (*B) Thread() uint64                                                     { return 1 }
+func (*B) SetThread(uint64)                                                   {}
+func (*B) CmdName() string                                                    { return "B" }
+func (*B) API() api.API                                                       { return nil }
+func (*B) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
+func (*B) Extras() *api.CmdExtras                                             { return nil }
+func (*B) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error {
 	return nil
 }
 
@@ -114,15 +114,15 @@ type X struct {
 	PMap IntːStructPtr `param:"PMap"`
 }
 
-func (X) Caller() api.CmdID                                            { return api.CmdNoID }
-func (X) SetCaller(api.CmdID)                                          {}
-func (X) Thread() uint64                                               { return 1 }
-func (X) SetThread(uint64)                                             {}
-func (X) CmdName() string                                              { return "X" }
-func (X) API() api.API                                                 { return api.Find(APIID) }
-func (X) CmdFlags(context.Context, api.CmdID, *api.State) api.CmdFlags { return 0 }
-func (X) Extras() *api.CmdExtras                                       { return nil }
-func (X) Mutate(context.Context, api.CmdID, *api.State, *builder.Builder) error {
+func (X) Caller() api.CmdID                                                  { return api.CmdNoID }
+func (X) SetCaller(api.CmdID)                                                {}
+func (X) Thread() uint64                                                     { return 1 }
+func (X) SetThread(uint64)                                                   {}
+func (X) CmdName() string                                                    { return "X" }
+func (X) API() api.API                                                       { return api.Find(APIID) }
+func (X) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
+func (X) Extras() *api.CmdExtras                                             { return nil }
+func (X) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error {
 	return nil
 }
 
@@ -132,10 +132,10 @@ func (API) Name() string                 { return "foo" }
 func (API) ID() api.ID                   { return APIID }
 func (API) Index() uint8                 { return 15 }
 func (API) ConstantSets() *constset.Pack { return nil }
-func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
+func (API) GetFramebufferAttachmentInfo(*api.GlobalState, uint64, api.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
 	return 0, 0, 0, nil, nil
 }
-func (API) Context(*api.State, uint64) api.Context { return nil }
+func (API) Context(*api.GlobalState, uint64) api.Context { return nil }
 func (API) CreateCmd(name string) api.Cmd {
 	switch name {
 	case "X":

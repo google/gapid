@@ -32,13 +32,13 @@ func (i *Image) getUnsizedFormatAndType() (unsizedFormat, ty GLenum) {
 }
 
 func cubemapFaceToLayer(target GLenum) GLint {
-	layer, _ := subCubemapFaceToLayer(nil, nil, api.CmdNoID, nil, &api.State{}, nil, 0, nil, target)
+	layer, _ := subCubemapFaceToLayer(nil, nil, api.CmdNoID, nil, &api.GlobalState{}, nil, 0, nil, target)
 	return layer
 }
 
 // getSizedFormatFromTuple returns sized format from unsized format and component type.
 func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
-	sf, _ := subGetSizedFormatFromTuple(nil, nil, api.CmdNoID, nil, &api.State{}, nil, 0, nil, unsizedFormat, ty)
+	sf, _ := subGetSizedFormatFromTuple(nil, nil, api.CmdNoID, nil, &api.GlobalState{}, nil, 0, nil, unsizedFormat, ty)
 	if sf == GLenum_GL_NONE {
 		panic(fmt.Errorf("Unknown unsized format: %v, %v", unsizedFormat, ty))
 	}
@@ -47,7 +47,7 @@ func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
 
 // getUnsizedFormatAndType returns unsized format and component type from sized format.
 func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
-	info, _ := subGetSizedFormatInfo(nil, nil, api.CmdNoID, nil, &api.State{}, nil, 0, nil, sizedFormat)
+	info, _ := subGetSizedFormatInfo(nil, nil, api.CmdNoID, nil, &api.GlobalState{}, nil, 0, nil, sizedFormat)
 	if info.SizedFormat == GLenum_GL_NONE {
 		panic(fmt.Errorf("Unknown sized format: %v", sizedFormat))
 	}
@@ -91,7 +91,7 @@ var glChannelToStreamChannel = map[GLenum]stream.Channel{
 
 // getUncompressedStreamFormat returns the decoding format which can be used to read single pixel.
 func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Format, err error) {
-	info, _ := subGetUnsizedFormatInfo(nil, nil, api.CmdNoID, nil, &api.State{}, nil, 0, nil, unsizedFormat)
+	info, _ := subGetUnsizedFormatInfo(nil, nil, api.CmdNoID, nil, &api.GlobalState{}, nil, 0, nil, unsizedFormat)
 	if info.Count == 0 {
 		return nil, fmt.Errorf("Unknown unsized format: %v", unsizedFormat)
 	}

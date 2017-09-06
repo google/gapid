@@ -29,7 +29,7 @@ import (
 
 type CustomState struct{}
 
-func GetContext(s *api.State, thread uint64) *Context {
+func GetContext(s *api.GlobalState, thread uint64) *Context {
 	return GetState(s).GetContext(thread)
 }
 
@@ -37,7 +37,7 @@ func (s *State) GetContext(thread uint64) *Context {
 	return s.Contexts[thread]
 }
 
-func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error {
+func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	c.CurrentContext = c.GetContext(cmd.Thread())
 	// TODO: Find better way to separate GL and EGL commands.
 	if c.CurrentContext == nil && strings.HasPrefix(cmd.CmdName(), "gl") {
@@ -98,7 +98,7 @@ func (b *Texture) GetID() TextureId {
 }
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (API) GetFramebufferAttachmentInfo(state *api.State, thread uint64, attachment api.FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error) {
+func (API) GetFramebufferAttachmentInfo(state *api.GlobalState, thread uint64, attachment api.FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error) {
 	s := GetState(state)
 	c := s.GetContext(thread)
 	if c == nil {
@@ -123,7 +123,7 @@ func (API) GetFramebufferAttachmentInfo(state *api.State, thread uint64, attachm
 }
 
 // Context returns the active context for the given state and thread.
-func (API) Context(s *api.State, thread uint64) api.Context {
+func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 	if c := GetContext(s, thread); c != nil {
 		return c
 	}

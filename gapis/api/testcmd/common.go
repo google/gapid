@@ -22,12 +22,12 @@ import (
 
 // Writer is a transform.Writer that record all commands that pass through it.
 type Writer struct {
-	S          *api.State
+	S          *api.GlobalState
 	Cmds       []api.Cmd
 	CmdsAndIDs []CmdAndID
 }
 
-func (w *Writer) State() *api.State {
+func (w *Writer) State() *api.GlobalState {
 	return w.S
 }
 

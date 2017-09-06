@@ -24,7 +24,7 @@ import (
 )
 
 type CommandBufferCommand struct {
-	function         func(context.Context, api.Cmd, api.CmdID, *api.State, *builder.Builder)
+	function         func(context.Context, api.Cmd, api.CmdID, *api.GlobalState, *builder.Builder)
 	initialCall      *api.Cmd
 	submit           *api.Cmd
 	submissionIndex  []uint64

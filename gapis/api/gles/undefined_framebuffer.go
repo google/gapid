@@ -60,7 +60,7 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 	})
 }
 
-func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, device *device.Instance, s *api.State, c *Context, out transform.Writer) error {
+func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, device *device.Instance, s *api.GlobalState, c *Context, out transform.Writer) error {
 	const (
 		aScreenCoordsLocation AttributeLocation = 0
 

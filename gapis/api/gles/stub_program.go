@@ -30,7 +30,7 @@ var (
 	VisibleForTestingStubShaderSource = stubShaderSource
 )
 
-func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *api.State, programID ProgramId) []api.Cmd {
+func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *api.GlobalState, programID ProgramId) []api.Cmd {
 	programInfo := FindProgramInfo(e)
 	vss, fss, err := stubShaderSource(programInfo)
 	if err != nil {

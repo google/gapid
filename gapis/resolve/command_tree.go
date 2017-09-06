@@ -177,7 +177,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	if p.GroupByApi {
 		groupers = append(groupers, cmdgrouper.Run(
-			func(cmd api.Cmd, s *api.State) (interface{}, string) {
+			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {
 				if api := cmd.API(); api != nil {
 					return api.ID(), api.Name()
 				}
@@ -191,7 +191,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			noContextID = api.ContextID{}
 		}
 		groupers = append(groupers, cmdgrouper.Run(
-			func(cmd api.Cmd, s *api.State) (interface{}, string) {
+			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {
 				if api := cmd.API(); api != nil {
 					if context := api.Context(s, cmd.Thread()); context != nil {
 						return context.ID(), context.Name()
@@ -203,7 +203,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	if p.GroupByThread {
 		groupers = append(groupers, cmdgrouper.Run(
-			func(cmd api.Cmd, s *api.State) (interface{}, string) {
+			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {
 				thread := cmd.Thread()
 				return thread, fmt.Sprintf("Thread: 0x%x", thread)
 			}))

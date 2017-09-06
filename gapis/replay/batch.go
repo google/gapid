@@ -176,11 +176,11 @@ func (m *Manager) execute(
 // adapter conforms to the the transformer.Writer interface, performing replay
 // writes on each command.
 type adapter struct {
-	state   *api.State
+	state   *api.GlobalState
 	builder *builder.Builder
 }
 
-func (w *adapter) State() *api.State {
+func (w *adapter) State() *api.GlobalState {
 	return w.state
 }
 

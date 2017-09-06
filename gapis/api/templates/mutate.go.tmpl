@@ -41,11 +41,11 @@
   )
 
   type callable interface {
-    Call(context.Context, *api.State, *builder.Builder)
+    Call(context.Context, *api.GlobalState, *builder.Builder)
   }
 
   // GetState returns the {{$.Name}} state from the api.State.
-  func GetState(s *api.State) *State {
+  func GetState(s *api.GlobalState) *State {
     api := API{}
     if state, ok := s.APIs[api].(*State); ok {
       return state
@@ -92,7 +92,7 @@
       ϟa api.Cmd, §
       ϟi api.CmdID, §
       ϟo *api.CmdObservations, §
-      ϟs *api.State, §
+      ϟs *api.GlobalState, §
       ϟc *State, §
       ϟt uint64, §
       ϟb *builder.Builder, §
@@ -142,7 +142,7 @@
       {{end}}
       func (ϟa *{{$name}}) Mutate(§
     {{end}}
-        ϟctx context.Context, ϟi api.CmdID, ϟs *api.State, ϟb *builder.Builder) error {
+        ϟctx context.Context, ϟi api.CmdID, ϟs *api.GlobalState, ϟb *builder.Builder) error {
 
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
@@ -168,7 +168,7 @@
       // Call builds the replay instructions to push the arguments to the stack and invoke {{$.Name}}().
       // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟs.{{if not (IsVoid $.Return.Type)}}
       // The {{$.Name}}() return value will be stored on the stack.{{end}}
-      func (ϟa *{{$name}}) Call(ϟctx context.Context, ϟs *api.State, ϟb *builder.Builder) {
+      func (ϟa *{{$name}}) Call(ϟctx context.Context, ϟs *api.GlobalState, ϟb *builder.Builder) {
         ϟl := ϟs.MemoryLayout
         _ = ϟl
 
@@ -244,7 +244,7 @@
   {{$u := $ | TypeOf | Underlying}}
   {{if IsNumericType $u}}
     {{if not (GetAnnotation $ "replay_custom_value")}}
-      func (c {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.State) value.Value {
+      func (c {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.GlobalState) value.Value {
         {{if IsSize $.To}}
           if ϟs.MemoryLayout.GetPointer().GetSize() == 4 {
             return value.U32(uint32(c))
@@ -270,7 +270,7 @@
   {{AssertType $ "Array" "StaticArray"}}
 
   {{if not (or (Macro "IsInternal" $.ValueType) (IsAny $.ValueType))}}
-    func (arr {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.State) value.Pointer {
+    func (arr {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.GlobalState) value.Pointer {
       if len(arr) > 0 {
         for _, e := range arr {
           {{Template "PushInput" "Type" $.ValueType "Name" "e"}}

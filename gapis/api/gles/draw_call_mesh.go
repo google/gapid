@@ -144,7 +144,7 @@ func vertexStreamData(
 	vbb *VertexBufferBinding,
 	vectorCount int,
 	slice U8ˢ,
-	s *api.State) ([]byte, error) {
+	s *api.GlobalState) ([]byte, error) {
 
 	if vbb.Divisor != 0 {
 		return nil, fmt.Errorf("Instanced draw calls not currently supported")
