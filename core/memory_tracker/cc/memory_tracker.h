@@ -466,7 +466,7 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
 }  // namespace track_memory
 }  // namespace gapii
 
-#if IS_POSIX 
+#if IS_POSIX
 #include  "core/memory_tracker/cc/posix/memory_tracker.inl"
 #else
 #include  "core/memory_tracker/cc/windows/memory_tracker.inl"

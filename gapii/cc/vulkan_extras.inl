@@ -315,3 +315,5 @@ void SpyOverride_RecreateMirSurfaceKHR(VkDevice,
                                        VkSurfaceKHR*) {}
 
 void EnumerateVulkanResources(CallObserver* observer);
+
+bool m_coherent_memory_tracking_enabled = false;

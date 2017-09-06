@@ -24,6 +24,8 @@ class WindowsMemoryTracker {
       vectored_exception_handler_(nullptr),
       handle_segfault_(segfault_function) {
     }
+
+    bool IsInstalled() const { return vectored_exception_handler_; }
   protected:
   // A static wrapper of HandleSegfault() as VectoredException() asks for a static
   // function.
@@ -62,7 +64,7 @@ LONG NTAPI WindowsMemoryTracker::VectoredExceptionHandler(struct _EXCEPTION_POIN
       return EXCEPTION_CONTINUE_EXECUTION;
     }
   }
-  return EXCEPTION_CONTINUE_SEARCH;  
+  return EXCEPTION_CONTINUE_SEARCH;
 }
 
 // EnableMemoryTrackerImpl calls sigaction() to register the new segfault

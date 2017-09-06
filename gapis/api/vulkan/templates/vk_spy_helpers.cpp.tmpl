@@ -150,7 +150,7 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceExtensionProperties(const cha
     return VkResult::VK_SUCCESS;
 }
 
-uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice, const char *pLayerName, uint32_t *pCount, VkExtensionProperties *pProperties) {    
+uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice, const char *pLayerName, uint32_t *pCount, VkExtensionProperties *pProperties) {
     //auto next_layer_enumerate_extensions = mImports.mVkInstanceFunctions[PhysicalDevices[physicalDevice]->mInstance].vkEnumerateDeviceExtensionProperties;
     gapii::VulkanImports::PFNVKENUMERATEDEVICEEXTENSIONPROPERTIES next_layer_enumerate_extensions = NULL;
     auto phy_dev_iter = PhysicalDevices.find(physicalDevice);
@@ -159,9 +159,9 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(VkPhysicalD
         if (inst_func_iter != mImports.mVkInstanceFunctions.end()) {
             next_layer_enumerate_extensions = reinterpret_cast<gapii::VulkanImports::PFNVKENUMERATEDEVICEEXTENSIONPROPERTIES>(
                 inst_func_iter->second.vkEnumerateDeviceExtensionProperties);
-        } 
+        }
     }
-    
+
     uint32_t next_layer_count = 0;
     uint32_t next_layer_result;
     if (next_layer_enumerate_extensions) {
@@ -334,11 +334,15 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(VkPhysicalDevice physicalDevice, 
     gapii::VulkanImports::PFNVKDESTROYDEVICE destroy_device = reinterpret_cast<gapii::VulkanImports::PFNVKDESTROYDEVICE>(
         get_device_proc_addr(*pDevice, "vkDestroyDevice"));
 
+    VkDevice device = *pDevice;
+    VulkanImports::VkDeviceFunctions* functions = nullptr;
+
     // Add this device, along with the vkGetDeviceProcAddr to our map.
     // This way when someone calls vkGetDeviceProcAddr, we can forward
     // it to the correct "next" vkGetDeviceProcAddr.
     {
         auto insert_pt = mImports.mVkDeviceFunctions.insert({*pDevice, {}});
+        functions = &insert_pt.first->second;
         if (!insert_pt.second) {
             return VkResult::VK_ERROR_INITIALIZATION_FAILED;
         }
@@ -349,6 +353,56 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(VkPhysicalDevice physicalDevice, 
             {{end}}
         {{end}}
     }
+
+    #if COHERENT_TRACKING_ENABLED
+        if (!mMemoryTracker.IsInstalled()) {
+            mMemoryTracker.EnableMemoryTracker();
+
+            VkInstance instance = PhysicalDevices[physicalDevice]->mInstance;
+            auto& instance_functions = mImports.mVkInstanceFunctions[instance];
+            VkPhysicalDeviceMemoryProperties props;
+            instance_functions.vkGetPhysicalDeviceMemoryProperties(physicalDevice, &props);
+            uint32_t coherent_bit = static_cast<uint32_t>(-1);
+            for (uint32_t i = 0 ; i < props.mmemoryTypeCount; ++i) {
+                if ((props.mmemoryTypes[i].mpropertyFlags & (
+                    VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                    VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) ==
+                            (VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                             VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+                    coherent_bit = i;
+                }
+            }
+            if (coherent_bit == static_cast<uint32_t>(-1)) {
+                return VkResult::VK_ERROR_INITIALIZATION_FAILED;
+            }
+            uint32_t pagesize = track_memory::GetPageSize();
+            VkMemoryAllocateInfo a = {
+                VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                nullptr,
+                pagesize,
+                coherent_bit
+            };
+            VkDeviceMemory allocatedMemory;
+            if (0 != functions->vkAllocateMemory(device, &a, nullptr, &allocatedMemory)) {
+                    return VkResult::VK_ERROR_INITIALIZATION_FAILED;
+            }
+
+            void* pMemory;
+            functions->vkMapMemory(device, allocatedMemory, 0, pagesize, 0, &pMemory);
+
+            mMemoryTracker.AddTrackingRange(pMemory, pagesize);
+            memset(pMemory, 32, pagesize);
+            functions->vkFreeMemory(device, allocatedMemory, nullptr);
+            const auto dirty_pages = mMemoryTracker.GetAndResetDirtyPagesInRange(pMemory, pagesize);
+            mMemoryTracker.RemoveTrackingRange(pMemory, pagesize);
+            m_coherent_memory_tracking_enabled = !dirty_pages.empty();
+            if (!m_coherent_memory_tracking_enabled) {
+                GAPID_WARNING("Memory tracker requested, but does not work on this system");
+                GAPID_WARNING("Falling back to non-tracked memory");
+            }
+        }
+    #endif
+
     return result;
 }
 
@@ -527,9 +581,10 @@ void VulkanSpy::trackMappedCoherentMemory(CallObserver*, uint64_t start, size_va
       return;
   }
 #if COHERENT_TRACKING_ENABLED
-    mMemoryTracker.EnableMemoryTracker();
-    void* start_addr = reinterpret_cast<void*>(start);
-    mMemoryTracker.AddTrackingRange(start_addr, size);
+    if (m_coherent_memory_tracking_enabled) {
+        void* start_addr = reinterpret_cast<void*>(start);
+        mMemoryTracker.AddTrackingRange(start_addr, size);
+    }
 #endif // COHERENT_TRACKING_ENABLED
 }
 
@@ -540,23 +595,27 @@ void VulkanSpy::readMappedCoherentMemory(CallObserver *observer, VkDeviceMemory 
     const auto mapped_location = (uint64_t)(memory_object->mMappedLocation);
     void *offset_addr = (void *)(offset_in_mapped + mapped_location);
 #if COHERENT_TRACKING_ENABLED
-    const size_val page_size = mMemoryTracker.page_size();
-    // Get the valid mapped range
-    const auto dirty_pages = mMemoryTracker.GetAndResetDirtyPagesInRange(offset_addr, readSize);
-    for (const void *p : dirty_pages) {
-        uint64_t page_start = (uint64_t)(p);
-        uint64_t page_end = page_start + page_size;
-        observer->read(slice((uint8_t *)page_start, 0ULL, page_size));
+    if (m_coherent_memory_tracking_enabled) {
+        const size_val page_size = mMemoryTracker.page_size();
+        // Get the valid mapped range
+        const auto dirty_pages = mMemoryTracker.GetAndResetDirtyPagesInRange(offset_addr, readSize);
+        for (const void *p : dirty_pages) {
+            uint64_t page_start = (uint64_t)(p);
+            uint64_t page_end = page_start + page_size;
+            observer->read(slice((uint8_t *)page_start, 0ULL, page_size));
+        }
+        return;
     }
-#else
-    observer->read(slice((uint8_t *)offset_addr, 0ULL, readSize));
 #endif // COHERENT_TRACKING_ENABLED
+    observer->read(slice((uint8_t *)offset_addr, 0ULL, readSize));
 }
 
 void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start, size_val size) {
 #if COHERENT_TRACKING_ENABLED
-    void* start_addr = reinterpret_cast<void*>(start);
-    mMemoryTracker.RemoveTrackingRange(start_addr, size);
+    if (m_coherent_memory_tracking_enabled) {
+        void* start_addr = reinterpret_cast<void*>(start);
+        mMemoryTracker.RemoveTrackingRange(start_addr, size);
+    }
 #endif // COHERENT_TRACKING_ENABLED
 }
 

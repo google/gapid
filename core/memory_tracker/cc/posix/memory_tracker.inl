@@ -26,6 +26,10 @@ class PosixMemoryTracker {
       orig_action_{0},
       handle_segfault_(segfault_function) {
     }
+
+
+  bool IsInstalled() const { return signal_handler_registered_; }
+
   protected:
   // A static wrapper of HandleSegfault() as sigaction() asks for a static
   // function.
