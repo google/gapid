@@ -19,6 +19,7 @@ import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Paths.stateTree;
 import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
+import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.util.concurrent.Futures;
@@ -90,17 +91,16 @@ public class ApiState
       LOG.log(WARNING, "Failed to load the API state", e);
       return error(Loadable.Message.error(e));
     } catch (ExecutionException e) {
-      return super.processResult(result);
+      if (!shell.isDisposed()) {
+        LOG.log(SEVERE, "Failed to load the API state", e);
+      }
+      return error(Loadable.Message.error("Failed to load the state"));
     }
   }
 
   @Override
   protected void updateError(Loadable.Message error) {
-    if (error != null) {
-      listeners.fire().onStateLoaded(error);
-    } else {
-      super.updateError(error);
-    }
+    listeners.fire().onStateLoaded(error);
   }
 
   @Override
