@@ -94,6 +94,10 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
   @Override
   public void onContextSelected(FilteringContext ctx) {
+    if (selection != null && selection.getNode() != null) {
+      // Clear the node, so the selection will be re-resolved once the context has updated.
+      selection = selection.withNode(null);
+    }
     load(commandTree(capture.getData(), ctx), false);
   }
 
