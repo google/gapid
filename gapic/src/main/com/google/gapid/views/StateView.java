@@ -353,7 +353,8 @@ public class StateView extends Composite
             models.state.getResolvedSelectedPath(), nodePath -> getTreePath(root, nodePath)).get(),
         selection -> {
           viewer.refresh();
-          viewer.setSelection(new TreeSelection(selection), show);
+          viewer.setSelection((selection.getSegmentCount() == 0) ?
+              TreeSelection.EMPTY : new TreeSelection(selection), show);
           if (show) {
             viewer.setExpandedState(selection, true);
           }
