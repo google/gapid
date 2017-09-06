@@ -135,7 +135,7 @@ bool MemoryTracker::HandleSegfaultImpl(void* fault_addr) {
     // not be writable. E.g. One page is added to tracking ranges twice with
     // two ranges that shares a common page, but not overlapping. The later
     // added range will mark the shared page as read-only, even though the
-    // page has already been marked as dirty before. 
+    // page has already been marked as dirty before.
     set_protection(page_addr, page_size_, PageProtections::kReadWrite);
     return true;
   }
