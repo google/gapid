@@ -166,6 +166,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		top := len(stack) - 1
 		for top >= 0 && stack[top].ty != ty {
 			log.W(ctx, "Type of the top marker does not match with the pop request")
+			end := s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1
+			d.SubCommandMarkerGroups.NewMarkerGroup(stack[top].parent, stack[top].name, stack[top].start, end)
 			switch stack[top].ty {
 			case DebugMarker:
 				markersToOpen[vkQu] = append(markersToOpen[vkQu], stack[top])
