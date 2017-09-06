@@ -48,7 +48,7 @@ public interface Loadable {
   }
 
   public static enum MessageType {
-    Info, Error;
+    Smile, Info, Error;
   }
 
   /**
@@ -61,6 +61,10 @@ public interface Loadable {
     public Message(MessageType type, String text) {
       this.type = type;
       this.text = text;
+    }
+
+    public static Message smile(String text) {
+      return new Message(MessageType.Smile, text);
     }
 
     public static Message info(String text) {
