@@ -105,6 +105,7 @@ public class LoadablePanel<C extends Control> extends Composite implements Loada
 
   private Image getImage(MessageType type) {
     switch (type) {
+      case Smile: return widgets.theme.smile();
       case Error: return widgets.theme.error();
       default: return null;
     }

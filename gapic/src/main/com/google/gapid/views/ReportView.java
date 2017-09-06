@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.Loadable.Message.smile;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
@@ -158,8 +159,13 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
 
   private void updateReport() {
     loading.stopLoading();
-    viewer.setInput(models.reports.getData());
-    viewer.setSelection(new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
+    if (models.reports.getData().getGroupsCount() == 0) {
+      loading.showMessage(smile("Rock on! No issues found in this trace."));
+    } else {
+      viewer.setInput(models.reports.getData());
+      viewer.setSelection(
+          new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
+    }
   }
 
   /**
