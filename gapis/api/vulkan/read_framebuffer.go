@@ -162,7 +162,7 @@ func newUnusedID(isDispatchable bool, existenceTest func(uint64) bool) uint64 {
 
 func postImageData(ctx context.Context,
 	cb CommandBuilder,
-	s *api.State,
+	s *api.GlobalState,
 	imageObject *ImageObject,
 	vkFormat VkFormat,
 	aspectMask VkImageAspectFlagBits,
@@ -226,7 +226,7 @@ func postImageData(ctx context.Context,
 			d.Free()
 		}
 	}()
-	MustAllocData := func(ctx context.Context, s *api.State, v ...interface{}) api.AllocResult {
+	MustAllocData := func(ctx context.Context, s *api.GlobalState, v ...interface{}) api.AllocResult {
 		allocate_result := s.AllocDataOrPanic(ctx, v...)
 		allocated = append(allocated, &allocate_result)
 		return allocate_result
@@ -988,7 +988,7 @@ func postImageData(ctx context.Context,
 
 	// Add post command
 	writeEach(ctx, out,
-		cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+		cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r binary.Reader, err error) error {
 				var bytes []byte
 				if err == nil {

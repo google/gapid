@@ -45,7 +45,7 @@ func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, erro
 }
 
 type stateTree struct {
-	state      *api.State
+	state      *api.GlobalState
 	root       *stn
 	api        *path.API
 	groupLimit uint64

@@ -26,7 +26,7 @@ import (
 // unpackMap takes a dense map of u32 -> structure, flattens the map into
 // a slice, allocates the appropriate data and returns it as well as the
 // lenth of the map
-func unpackMap(ctx context.Context, s *api.State, m interface{}) (api.AllocResult, uint32) {
+func unpackMap(ctx context.Context, s *api.GlobalState, m interface{}) (api.AllocResult, uint32) {
 	u32Type := reflect.TypeOf(uint32(0))
 	t := reflect.TypeOf(m)
 	if t.Kind() != reflect.Map || t.Key() != u32Type {
@@ -52,7 +52,7 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 	ctx context.Context,
 	cb CommandBuilder,
 	modelCmdBuf VkCommandBuffer,
-	s *api.State) (VkCommandBuffer, []api.Cmd, []func()) {
+	s *api.GlobalState) (VkCommandBuffer, []api.Cmd, []func()) {
 
 	x := make([]api.Cmd, 0)
 	cleanup := make([]func(), 0)
@@ -117,7 +117,7 @@ func rebuildCmdBeginRenderPass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdBeginRenderPassData) (func(), api.Cmd) {
 
 	clearValues := make([]VkClearValue, len(d.ClearValues))
@@ -151,7 +151,7 @@ func rebuildCmdEndRenderPass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdEndRenderPassData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdEndRenderPass(commandBuffer)
 }
@@ -160,7 +160,7 @@ func rebuildCmdNextSubpass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdNextSubpassData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdNextSubpass(commandBuffer, d.Contents)
 }
@@ -169,7 +169,7 @@ func rebuildCmdBindPipeline(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdBindPipelineData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdBindPipeline(commandBuffer,
@@ -180,7 +180,7 @@ func rebuildCmdBindIndexBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdBindIndexBufferData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdBindIndexBuffer(commandBuffer,
@@ -191,7 +191,7 @@ func rebuildCmdSetLineWidth(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetLineWidthData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdSetLineWidth(commandBuffer, d.LineWidth)
 
@@ -201,7 +201,7 @@ func rebuildCmdBindDescriptorSets(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdBindDescriptorSetsData) (func(), api.Cmd) {
 
 	descriptorSetData, descriptorSetCount := unpackMap(ctx, s, d.DescriptorSets)
@@ -227,7 +227,7 @@ func rebuildCmdBindVertexBuffers(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdBindVertexBuffersData) (func(), api.Cmd) {
 
 	bufferData, _ := unpackMap(ctx, s, d.Buffers)
@@ -248,7 +248,7 @@ func rebuildCmdWaitEvents(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdWaitEventsData) (func(), api.Cmd) {
 
 	eventData, eventCount := unpackMap(ctx, s, d.Events)
@@ -279,7 +279,7 @@ func rebuildCmdPipelineBarrier(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdPipelineBarrierData) (func(), api.Cmd) {
 
 	memoryBarrierData, memoryBarrierCount := unpackMap(ctx, s, d.MemoryBarriers)
@@ -307,7 +307,7 @@ func rebuildCmdBeginQuery(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdBeginQueryData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdBeginQuery(commandBuffer, d.QueryPool,
 		d.Query, d.Flags)
@@ -317,7 +317,7 @@ func rebuildCmdBlitImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdBlitImageData) (func(), api.Cmd) {
 
 	blitData, blitCount := unpackMap(ctx, s, d.Regions)
@@ -339,7 +339,7 @@ func rebuildCmdClearAttachments(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdClearAttachmentsData) (func(), api.Cmd) {
 
 	clearAttachmentData, clearCount := unpackMap(ctx, s, d.Attachments)
@@ -360,7 +360,7 @@ func rebuildCmdClearColorImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdClearColorImageData) (func(), api.Cmd) {
 
 	colorData := s.AllocDataOrPanic(ctx, d.Color)
@@ -383,7 +383,7 @@ func rebuildCmdClearDepthStencilImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdClearDepthStencilImageData) (func(), api.Cmd) {
 
 	depthStencilData := s.AllocDataOrPanic(ctx, d.DepthStencil)
@@ -406,7 +406,7 @@ func rebuildCmdCopyBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdCopyBufferData) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.CopyRegions)
@@ -425,7 +425,7 @@ func rebuildCmdCopyBufferToImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCopyBufferToImageData) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
@@ -445,7 +445,7 @@ func rebuildCmdCopyImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdCopyImageData) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
@@ -466,7 +466,7 @@ func rebuildCmdCopyImageToBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCopyImageToBufferData) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
@@ -486,7 +486,7 @@ func rebuildCmdCopyQueryPoolResults(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdCopyQueryPoolResultsData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdCopyQueryPoolResults(commandBuffer,
@@ -504,7 +504,7 @@ func rebuildCmdDispatch(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDispatchData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDispatch(commandBuffer,
@@ -518,7 +518,7 @@ func rebuildCmdDispatchIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDispatchIndirectData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDispatchIndirect(commandBuffer,
@@ -531,7 +531,7 @@ func rebuildCmdDraw(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDrawData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDraw(commandBuffer,
@@ -546,7 +546,7 @@ func rebuildCmdDrawIndexed(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDrawIndexedData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndexed(commandBuffer, d.IndexCount,
@@ -557,7 +557,7 @@ func rebuildCmdDrawIndexedIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDrawIndexedIndirectData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndexedIndirect(commandBuffer,
@@ -572,7 +572,7 @@ func rebuildCmdDrawIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDrawIndirectData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndirect(commandBuffer,
@@ -587,7 +587,7 @@ func rebuildCmdEndQuery(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdEndQueryData) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdEndQuery(commandBuffer,
@@ -600,7 +600,7 @@ func rebuildCmdExecuteCommands(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdExecuteCommandsData) (func(), api.Cmd) {
 
 	commandBufferData, commandBufferCount := unpackMap(ctx, s, d.CommandBuffers)
@@ -617,7 +617,7 @@ func rebuildCmdFillBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdFillBufferData) (func(), api.Cmd) {
 
 	return func() {
@@ -633,7 +633,7 @@ func rebuildCmdPushConstants(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdPushConstantsDataExpanded) (func(), api.Cmd) {
 
 	data := s.AllocDataOrPanic(ctx, d.Data)
@@ -653,7 +653,7 @@ func rebuildCmdResetQueryPool(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdResetQueryPoolData) (func(), api.Cmd) {
 
 	return func() {
@@ -668,7 +668,7 @@ func rebuildCmdResolveImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdResolveImageData) (func(), api.Cmd) {
 
 	resolveData, resolveCount := unpackMap(ctx, s, d.ResolveRegions)
@@ -689,7 +689,7 @@ func rebuildCmdSetBlendConstants(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetBlendConstantsData) (func(), api.Cmd) {
 
 	var constants F32ː4ᵃ
@@ -708,7 +708,7 @@ func rebuildCmdSetDepthBias(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetDepthBiasData) (func(), api.Cmd) {
 
 	return func() {
@@ -723,7 +723,7 @@ func rebuildCmdSetDepthBounds(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetDepthBoundsData) (func(), api.Cmd) {
 
 	return func() {
@@ -737,7 +737,7 @@ func rebuildCmdSetEvent(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetEventData) (func(), api.Cmd) {
 
 	return func() {
@@ -751,7 +751,7 @@ func rebuildCmdResetEvent(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdResetEventData) (func(), api.Cmd) {
 	return func() {
 		}, cb.VkCmdResetEvent(commandBuffer,
@@ -764,7 +764,7 @@ func rebuildCmdSetScissor(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetScissorData) (func(), api.Cmd) {
 
 	scissorData, scissorCount := unpackMap(ctx, s, d.Scissors)
@@ -782,7 +782,7 @@ func rebuildCmdSetStencilCompareMask(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetStencilCompareMaskData) (func(), api.Cmd) {
 
 	return func() {
@@ -796,7 +796,7 @@ func rebuildCmdSetStencilReference(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetStencilReferenceData) (func(), api.Cmd) {
 
 	return func() {
@@ -810,7 +810,7 @@ func rebuildCmdSetStencilWriteMask(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetStencilWriteMaskData) (func(), api.Cmd) {
 
 	return func() {
@@ -824,7 +824,7 @@ func rebuildCmdSetViewport(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdSetViewportData) (func(), api.Cmd) {
 
 	viewportData, viewportCount := unpackMap(ctx, s, d.Viewports)
@@ -842,7 +842,7 @@ func rebuildCmdUpdateBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdUpdateBufferData) (func(), api.Cmd) {
 
 	data := s.AllocDataOrPanic(ctx, d.Data)
@@ -861,7 +861,7 @@ func rebuildCmdWriteTimestamp(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdWriteTimestampData) (func(), api.Cmd) {
 
 	return func() {
@@ -876,7 +876,7 @@ func rebuildCmdDebugMarkerBeginEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDebugMarkerBeginEXTData) (func(), api.Cmd) {
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
 	var color F32ː4ᵃ
@@ -902,7 +902,7 @@ func rebuildCmdDebugMarkerEndEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDebugMarkerEndEXTData) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdDebugMarkerEndEXT(commandBuffer)
 }
@@ -911,7 +911,7 @@ func rebuildCmdDebugMarkerInsertEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	d *RecreateCmdDebugMarkerInsertEXTData) (func(), api.Cmd) {
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
 	var color F32ː4ᵃ
@@ -940,7 +940,7 @@ func rebuildCmdDebugMarkerInsertEXT(
 func AddCommand(ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
-	s *api.State,
+	s *api.GlobalState,
 	rebuildInfo interface{}) (func(), api.Cmd) {
 	switch t := rebuildInfo.(type) {
 	case *RecreateCmdBeginRenderPassData:

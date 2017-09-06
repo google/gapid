@@ -23,16 +23,16 @@ import (
 
 type CustomState struct{}
 
-func (API) GetFramebufferAttachmentInfo(*api.State, uint64, api.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
+func (API) GetFramebufferAttachmentInfo(*api.GlobalState, uint64, api.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
 	return 0, 0, 0, nil, nil
 }
 
-func (API) Context(*api.State, uint64) api.Context { return nil }
+func (API) Context(*api.GlobalState, uint64) api.Context { return nil }
 
-func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error {
+func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
 
-func (i Remapped) remap(cmd api.Cmd, s *api.State) (interface{}, bool) {
+func (i Remapped) remap(cmd api.Cmd, s *api.GlobalState) (interface{}, bool) {
 	return i, true
 }

@@ -823,7 +823,7 @@ func (ds *descriptorSet) useDescriptors(ctx context.Context,
 }
 
 func (ds *descriptorSet) writeDescriptors(ctx context.Context,
-	cmd api.Cmd, s *api.State, vb *FootprintBuilder,
+	cmd api.Cmd, s *api.GlobalState, vb *FootprintBuilder,
 	bh *dependencygraph.Behavior,
 	write VkWriteDescriptorSet) {
 	l := s.MemoryLayout
@@ -893,7 +893,7 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 }
 
 func (ds *descriptorSet) copyDescriptors(ctx context.Context,
-	cmd api.Cmd, s *api.State, bh *dependencygraph.Behavior,
+	cmd api.Cmd, s *api.GlobalState, bh *dependencygraph.Behavior,
 	srcDs *descriptorSet, copy VkCopyDescriptorSet) {
 	dstElm := uint64(copy.DstArrayElement)
 	srcElm := uint64(copy.SrcArrayElement)
@@ -1201,7 +1201,7 @@ func (vb *FootprintBuilder) readBoundIndexBuffer(ctx context.Context,
 }
 
 func (vb *FootprintBuilder) recordBarriers(ctx context.Context,
-	s *api.State, ft *dependencygraph.Footprint, cmd api.Cmd,
+	s *api.GlobalState, ft *dependencygraph.Footprint, cmd api.Cmd,
 	bh *dependencygraph.Behavior, vkCb VkCommandBuffer, memoryBarrierCount uint32,
 	bufferBarrierCount uint32, pBufferBarriers VkBufferMemoryBarrierᶜᵖ,
 	imageBarrierCount uint32, pImageBarriers VkImageMemoryBarrierᶜᵖ,
@@ -1245,7 +1245,7 @@ func (vb *FootprintBuilder) recordBarriers(ctx context.Context,
 // BuildFootprint incrementally builds the given Footprint with the given
 // command specified with api.CmdID and api.Cmd.
 func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
-	s *api.State, ft *dependencygraph.Footprint, id api.CmdID, cmd api.Cmd) {
+	s *api.GlobalState, ft *dependencygraph.Footprint, id api.CmdID, cmd api.Cmd) {
 
 	l := s.MemoryLayout
 

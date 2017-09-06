@@ -31,7 +31,7 @@ func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 		}
 		thread := cmd.Thread()
 
-		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
+		stateObj, err := resolve.State(ctx, cmdPath.StateAfter())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -58,7 +58,7 @@ func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, err
 		}
 		thread := cmd.Thread()
 
-		stateObj, err := resolve.APIState(ctx, cmdPath.StateAfter())
+		stateObj, err := resolve.State(ctx, cmdPath.StateAfter())
 		if err != nil {
 			return nil, nil, err
 		}

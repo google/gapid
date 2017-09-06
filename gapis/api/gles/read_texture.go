@@ -72,7 +72,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		}
 		out.MutateAndWrite(ctx, dID, cb.GlGetTexImage(target, GLint(r.Level), GLenum(r.DataFormat), GLenum(r.DataType), tmp.Ptr()))
 
-		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.Post(value.ObservedPointer(tmp.Address()), size, func(r binary.Reader, err error) error {
 				data := make([]byte, size)
 				if err == nil {

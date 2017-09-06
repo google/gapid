@@ -23,7 +23,7 @@ import (
 )
 
 // Label returns the user maker name.
-func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *api.State) string {
+func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
 	ptr := Charᵖ(ϟa.Marker)
 	if ϟa.Length > 0 {
 		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
@@ -32,7 +32,7 @@ func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *api.State) st
 }
 
 // Label returns the user maker name.
-func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *api.State) string {
+func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
 	ptr := Charᵖ(ϟa.Marker)
 	if ϟa.Length > 0 {
 		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
@@ -41,7 +41,7 @@ func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *api.State) 
 }
 
 // Label returns the user maker name.
-func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *api.State) string {
+func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
 	ptr := Charᵖ(ϟa.Message)
 	// This is incorrect, fudging for a bug in Unity which has been fixed but not
 	// rolled out.
@@ -55,7 +55,7 @@ func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *api.State) string
 }
 
 // Label returns the user maker name.
-func (ϟa *GlPushDebugGroupKHR) Label(ϟctx context.Context, ϟs *api.State) string {
+func (ϟa *GlPushDebugGroupKHR) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
 	ptr := Charᵖ(ϟa.Message)
 	// This is incorrect, fudging for a bug in Unity which has been fixed but not
 	// rolled out.

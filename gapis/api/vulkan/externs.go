@@ -30,7 +30,7 @@ type externs struct {
 	ctx   context.Context // Allowed because the externs struct is only a parameter proxy for a single call
 	cmd   api.Cmd
 	cmdID api.CmdID
-	s     *api.State
+	s     *api.GlobalState
 	b     *rb.Builder
 }
 
@@ -63,7 +63,7 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 	}
 }
 
-func (e externs) callSub(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, b *rb.Builder, sub, data interface{}) {
+func (e externs) callSub(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder, sub, data interface{}) {
 	reflect.ValueOf(sub).Call([]reflect.Value{
 		reflect.ValueOf(ctx),
 		reflect.ValueOf(cmd),
@@ -81,7 +81,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, recreate_data interface{}
 	o := GetState(e.s).CommandBuffers.Get(commandBuffer)
 
 	o.Commands = append(o.Commands, CommandBufferCommand{
-		func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, b *rb.Builder) {
+		func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder) {
 			e.callSub(ctx, cmd, id, s, b, functionToCall, data)
 		}, &e.cmd, nil, []uint64(nil), recreate_data, true,
 	})
@@ -211,7 +211,7 @@ func (e externs) execPendingCommands(queue VkQueue) {
 
 func (e externs) recordUpdateSemaphoreSignal(semaphore VkSemaphore, Signaled bool) {
 	signal_semaphore := CommandBufferCommand{
-		function: func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.State, b *rb.Builder) {
+		function: func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder) {
 			if s, ok := GetState(s).Semaphores[semaphore]; ok {
 				s.Signaled = Signaled
 			}

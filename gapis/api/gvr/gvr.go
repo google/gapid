@@ -29,7 +29,7 @@ import (
 
 var _ = replay.QueryFramebufferAttachment(API{})
 
-func (c *State) preMutate(ctx context.Context, s *api.State, cmd api.Cmd) error {
+func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
 
@@ -67,12 +67,12 @@ func (API) QueryFramebufferAttachment(
 }
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (API) GetFramebufferAttachmentInfo(s *api.State, t uint64, a api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
+func (API) GetFramebufferAttachmentInfo(s *api.GlobalState, t uint64, a api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
 	return gles.API{}.GetFramebufferAttachmentInfo(s, t, a)
 }
 
 // Context returns the active context for the given state and thread.
-func (API) Context(s *api.State, thread uint64) api.Context {
+func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 	return gles.API{}.Context(s, thread)
 }
 
@@ -97,9 +97,9 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 
 // MutateSubcommands mutates the given Cmd and calls callbacks for subcommands
 // called before and after executing each subcommand callback.
-func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State,
-	preSubCmdCallback func(*api.State, api.SubCmdIdx, api.Cmd),
-	postSubCmdCallback func(*api.State, api.SubCmdIdx, api.Cmd)) error {
+func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState,
+	preSubCmdCallback func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
+	postSubCmdCallback func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error {
 
 	return nil
 }

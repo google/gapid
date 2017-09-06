@@ -56,7 +56,7 @@ func (t *Texture) ResourceType(ctx context.Context) api.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *Texture) ResourceData(ctx context.Context, s *api.State) (*api.ResourceData, error) {
+func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Texture.ResourceData()")
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D:
@@ -188,7 +188,7 @@ func (t *Texture) SetResourceData(ctx context.Context, at *path.Command,
 }
 
 // ImageInfo returns the Image as a image.Info.
-func (i *Image) ImageInfo(ctx context.Context, s *api.State) (*image.Info, error) {
+func (i *Image) ImageInfo(ctx context.Context, s *api.GlobalState) (*image.Info, error) {
 	out := &image.Info{
 		Width:  uint32(i.Width),
 		Height: uint32(i.Height),
@@ -244,7 +244,7 @@ func (s *Shader) ResourceType(ctx context.Context) api.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *Shader) ResourceData(ctx context.Context, t *api.State) (*api.ResourceData, error) {
+func (s *Shader) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Shader.ResourceData()")
 	var ty api.ShaderType
 	switch s.ShaderType {
@@ -349,7 +349,7 @@ func (p *Program) ResourceType(ctx context.Context) api.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (p *Program) ResourceData(ctx context.Context, s *api.State) (*api.ResourceData, error) {
+func (p *Program) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Program.ResourceData()")
 
 	shaders := make([]*api.Shader, 0, len(p.Shaders))
@@ -520,7 +520,7 @@ func (p *Program) ResourceData(ctx context.Context, s *api.State) (*api.Resource
 	return api.NewResourceData(&api.Program{Shaders: shaders, Uniforms: uniforms}), nil
 }
 
-func uniformValue(ctx context.Context, s *api.State, kind api.UniformType, data U8ˢ) interface{} {
+func uniformValue(ctx context.Context, s *api.GlobalState, kind api.UniformType, data U8ˢ) interface{} {
 	r := data.Reader(ctx, s)
 
 	switch kind {

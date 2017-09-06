@@ -131,7 +131,7 @@ type DependencyGraphBehaviourProvider interface {
 }
 
 type BehaviourProvider interface {
-	GetBehaviourForAtom(context.Context, *api.State, api.CmdID, api.Cmd, *DependencyGraph) AtomBehaviour
+	GetBehaviourForAtom(context.Context, *api.GlobalState, api.CmdID, api.Cmd, *DependencyGraph) AtomBehaviour
 }
 
 func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {

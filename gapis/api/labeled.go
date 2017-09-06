@@ -19,5 +19,5 @@ import "context"
 // Labeled is the interface implemented commands that have a label.
 type Labeled interface {
 	// Label returns the commands's label.
-	Label(ctx context.Context, s *State) string
+	Label(ctx context.Context, s *GlobalState) string
 }

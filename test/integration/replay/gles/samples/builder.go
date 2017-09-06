@@ -26,7 +26,7 @@ import (
 type builder struct {
 	gles.CommandBuilder
 	cmds   []api.Cmd
-	state  *api.State
+	state  *api.GlobalState
 	lastID uint
 }
 

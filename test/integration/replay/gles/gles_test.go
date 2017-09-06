@@ -154,7 +154,7 @@ type Fixture struct {
 	mgr          *replay.Manager
 	device       bind.Device
 	memoryLayout *device.MemoryLayout
-	s            *api.State
+	s            *api.GlobalState
 	nextID       uint32
 	cb           gles.CommandBuilder
 }

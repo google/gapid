@@ -76,7 +76,7 @@ func compatDrawElements(
 	clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer,
 	id api.CmdID,
 	cmd drawElements,
-	s *api.State,
+	s *api.GlobalState,
 	out transform.Writer) {
 
 	c := GetContext(s, cmd.Thread())
@@ -161,7 +161,7 @@ func moveClientVBsToVAs(
 	first, count uint32, // vertex indices
 	id api.CmdID,
 	cmd api.Cmd,
-	s *api.State,
+	s *api.GlobalState,
 	c *Context,
 	out transform.Writer) {
 
@@ -207,7 +207,7 @@ func moveClientVBsToVAs(
 	// Apply the memory observations that were made by the draw call now.
 	// We need to do this as the glBufferData calls below will require the data.
 	dID := id.Derived()
-	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		return nil
 	}))

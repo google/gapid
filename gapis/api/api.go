@@ -40,10 +40,10 @@ type API interface {
 	// specified framebuffer attachment.
 	// It also returns an API specific index that maps the given attachment into
 	// an API specific representation.
-	GetFramebufferAttachmentInfo(state *State, thread uint64, attachment FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error)
+	GetFramebufferAttachmentInfo(state *GlobalState, thread uint64, attachment FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error)
 
 	// Context returns the active context for the given state.
-	Context(state *State, thread uint64) Context
+	Context(state *GlobalState, thread uint64) Context
 
 	// CreateCmd constructs and returns a new command with the specified name.
 	CreateCmd(name string) Cmd

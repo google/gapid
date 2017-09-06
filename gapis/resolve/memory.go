@@ -84,12 +84,12 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	if syncedApi, ok := lastCmd.API().(sync.SynchronizedAPI); len(fullCmdIdx) > 1 && ok {
 		requestSubCmdIdx := api.SubCmdIdx(fullCmdIdx)
 		syncedApi.MutateSubcommands(ctx, api.CmdID(cmdIdx), lastCmd, s,
-			func(s *api.State, subCommandIndex api.SubCmdIdx, cmd api.Cmd) {
+			func(s *api.GlobalState, subCommandIndex api.SubCmdIdx, cmd api.Cmd) {
 				// Turn on OnRead and OnWrite if the subcommand to be executed is or
 				// contained by the requested subcommand.
 				shouldRecord = requestSubCmdIdx.Contains(subCommandIndex)
 			}, // preSubCmdCallback
-			func(s *api.State, subCommandIndex api.SubCmdIdx, cmd api.Cmd) {
+			func(s *api.GlobalState, subCommandIndex api.SubCmdIdx, cmd api.Cmd) {
 				// Turn off OnRead and OnWrite after each subcommand.
 				shouldRecord = false
 			}, //postSubCmdCallback

@@ -44,7 +44,7 @@ func (g *stateResetGrouper) flush(id api.CmdID) {
 }
 
 // Process considers the command for inclusion in the group.
-func (g *stateResetGrouper) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.State) {
+func (g *stateResetGrouper) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState) {
 	prev := g.prev
 	g.prev = cmd
 

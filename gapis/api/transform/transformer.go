@@ -43,7 +43,7 @@ type Transformer interface {
 // There is a configuration flag to switch between the shared/separate modes.
 type Writer interface {
 	// State returns the state object associated with this writer.
-	State() *api.State
+	State() *api.GlobalState
 	// MutateAndWrite mutates the state object associated with this writer,
 	// and it passes the command to further consumers.
 	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)

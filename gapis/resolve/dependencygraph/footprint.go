@@ -182,7 +182,7 @@ type FootprintBuilderProvider interface {
 
 // FootprintBuilder incrementally builds Footprint one command by one command.
 type FootprintBuilder interface {
-	BuildFootprint(context.Context, *api.State, *Footprint, api.CmdID, api.Cmd)
+	BuildFootprint(context.Context, *api.GlobalState, *Footprint, api.CmdID, api.Cmd)
 }
 
 // GetFootprint returns a pointer to the resolved Footprint.

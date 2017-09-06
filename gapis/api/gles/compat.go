@@ -983,7 +983,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *EglCreateImageKHR:
 			{
-				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					return cmd.Mutate(ctx, id, s, nil) // do not call, just mutate
 				}))
 
@@ -1004,7 +1004,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, id, cmd)
 						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
 
-						out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+						out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 							GetState(s).EGLImages[cmd.Result].TargetContext = c.Identifier
 							GetState(s).EGLImages[cmd.Result].TargetTexture = texId
 							return nil
@@ -1018,7 +1018,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			{
 				cmd := *cmd
 				convertTexTarget(&cmd.Target)
-				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					return cmd.Mutate(ctx, id, s, nil) // do not call, just mutate
 				}))
 
@@ -1051,7 +1051,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would lose the knowledge about view count.
-				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					cb.GlFramebufferTextureLayer(cmd.Target, cmd.Attachment, cmd.Texture, cmd.Level, cmd.BaseViewIndex).Call(ctx, s, b)
 					return nil
 				}))
@@ -1064,7 +1064,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would lose the knowledge about view count.
-				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					cb.GlFramebufferTextureLayer(cmd.Target, cmd.Attachment, cmd.Texture, cmd.Level, cmd.BaseViewIndex).Call(ctx, s, b)
 					return nil
 				}))
@@ -1131,7 +1131,7 @@ func compatMultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out tra
 		for viewID := GLuint(0); viewID < GLuint(numViews); viewID++ {
 			// Set the magic uniform which shaders use to fetch view-dependent attributes.
 			// It is missing from the observed extras, so normal mutation would fail.
-			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 				if c.Bound.Program != nil {
 					viewIDLocation := UniformLocation(0x7FFF0000)
 					cb.GlGetUniformLocation(c.Bound.Program.ID, "gapid_gl_ViewID_OVR", viewIDLocation).Call(ctx, s, b)
@@ -1143,7 +1143,7 @@ func compatMultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out tra
 			// For each attachment, bind the layer corresponding to this ViewID.
 			// Do not modify the state so that we do not revert to single-view for next draw call.
 			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, a FramebufferAttachment) {
-				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.State, b *builder.Builder) error {
+				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					if a.Texture != nil {
 						cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, name, a.Texture.ID, a.TextureLevel, a.TextureLayer+GLint(viewID)).Call(ctx, s, b)
 					}
