@@ -43,6 +43,8 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 	events := []*service.Event{}
 
 	s := c.NewState()
+	lastCmd := api.CmdID(0)
+	var pending []service.EventKind
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, id, s, nil)
 
@@ -50,6 +52,15 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		if !filter(id, cmd, s) {
 			return nil
 		}
+
+		for _, kind := range pending {
+			events = append(events, &service.Event{
+				Kind:    kind,
+				Command: p.Capture.Command(uint64(id)),
+			})
+		}
+		pending = nil
+
 		f := cmd.CmdFlags(ctx, id, s)
 		if p.Clears && f.IsClear() {
 			events = append(events, &service.Event{
@@ -75,10 +86,10 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
-		if p.LastInFrame && f.IsStartOfFrame() && id > 0 {
+		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_LastInFrame,
-				Command: p.Capture.Command(uint64(id) - 1),
+				Command: p.Capture.Command(uint64(lastCmd)),
 			})
 		}
 		if p.LastInFrame && f.IsEndOfFrame() && id > 0 {
@@ -93,11 +104,8 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
-		if p.FirstInFrame && (f.IsEndOfFrame() && len(c.Commands) > int(id)+1) {
-			events = append(events, &service.Event{
-				Kind:    service.EventKind_FirstInFrame,
-				Command: p.Capture.Command(uint64(id) + 1),
-			})
+		if p.FirstInFrame && f.IsEndOfFrame() {
+			pending = append(pending, service.EventKind_FirstInFrame)
 		}
 		if p.PushUserMarkers && f.IsPushUserMarker() {
 			events = append(events, &service.Event{
@@ -129,6 +137,8 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
+
+		lastCmd = id
 		return nil
 	})
 
