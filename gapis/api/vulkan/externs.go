@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/google/gapid/core/log"
@@ -310,9 +311,19 @@ func (e externs) popDebugMarker() {
 	}
 }
 
-func (e externs) pushRenderPassMarker(name string) {
+func (e externs) pushRenderPassMarker(rp VkRenderPass) {
 	if GetState(e.s).pushMarkerGroup != nil {
+		rpObj := GetState(e.s).RenderPasses.Get(rp)
+		var name string
+		if rpObj.DebugInfo != nil && len(rpObj.DebugInfo.ObjectName) > 0 {
+			name = rpObj.DebugInfo.ObjectName
+		} else {
+			name = fmt.Sprintf("RenderPass: %v", rp)
+		}
 		GetState(e.s).pushMarkerGroup(name, false, RenderPassMarker)
+		if len(rpObj.SubpassDescriptions) > 1 {
+			GetState(e.s).pushMarkerGroup("Subpass: 0", false, RenderPassMarker)
+		}
 	}
 }
 
@@ -322,7 +333,11 @@ func (e externs) popRenderPassMarker() {
 	}
 }
 
-func (e externs) pushNextSubpassMarker(name string) {
+func (e externs) popAndPushMarkerForNextSubpass(nextSubpass uint32) {
+	if GetState(e.s).popMarkerGroup != nil {
+		GetState(e.s).popMarkerGroup(RenderPassMarker)
+	}
+	name := fmt.Sprintf("Subpass: %v", nextSubpass)
 	if GetState(e.s).pushMarkerGroup != nil {
 		GetState(e.s).pushMarkerGroup(name, true, RenderPassMarker)
 	}

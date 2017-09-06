@@ -588,8 +588,8 @@ uint32_t VulkanSpy::numberOfPNext(CallObserver* observer, void* pNext) {
 
 void VulkanSpy::pushDebugMarker(CallObserver*, std::string) {}
 void VulkanSpy::popDebugMarker(CallObserver*) {}
-void VulkanSpy::pushRenderPassMarker(CallObserver*, std::string) {}
+void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}
 void VulkanSpy::popRenderPassMarker(CallObserver*) {}
-void VulkanSpy::pushNextSubpassMarker(CallObserver*, std::string) {}
+void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
 }
 {{end}}
