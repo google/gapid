@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/extensions"
@@ -146,10 +147,38 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 		return nil, fmt.Errorf("Subcommands currently not supported for Command Tree") // TODO: Subcommands
 	}
 
+	ctx = capture.Put(ctx, cmdTree.path.Capture)
+	c, err := capture.Resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	snc, err := SyncData(ctx, cmdTree.path.Capture)
+	if err != nil {
+		return nil, err
+	}
+
 	return &path.CommandTreeNode{
 		Tree:    p.Tree,
-		Indices: cmdTree.indices(api.CmdID(cmdIdx)),
+		Indices: cmdTree.findNodeForCommand(snc, c.Commands, api.CmdID(cmdIdx)),
 	}, nil
+}
+
+func (t *commandTree) findNodeForCommand(snc *sync.Data, cmds []api.Cmd, cmd api.CmdID) []uint64 {
+	c := cmds[cmd]
+	if caller := c.Caller(); caller != api.CmdNoID {
+		r := t.findNodeForCommand(snc, cmds, caller)
+		if l, ok := snc.SubcommandReferences[caller]; ok {
+			for _, ref := range l {
+				if ref.GeneratingCmd == cmd {
+					r = append(r, ref.Index...)
+					break
+				}
+			}
+		}
+		return r
+	}
+	return t.indices(cmd)
 }
 
 // Resolve builds and returns a *commandTree for the path.CommandTreeNode.
