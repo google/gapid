@@ -418,6 +418,8 @@ func (c *SubCmdRoot) newChildSubCmdRoots(r []uint64) *SubCmdRoot {
 // immediate parent of the subcommand is created.
 func (c *SubCmdRoot) Insert(r []uint64) {
 	childRoot := c.newChildSubCmdRoots(r[0 : len(r)-1])
+	// Add subcommands one-by-one to the SubCmdRoot and its subgroups/child
+	// SubCmdRoots
 	id := r[len(r)-1]
 	if CmdID(id) > childRoot.SubGroup.Range.End {
 		childRoot.SubGroup.Range.End = CmdID(id + 1)
