@@ -58,12 +58,11 @@ func (t *commandTree) index(indices []uint64) api.SpanItem {
 		case api.CmdIDGroup:
 			group = item
 		case api.SubCmdRoot:
+			// Each SubCmdRoot contains its absolute sub command index.
 			subCmdRootId = item.Id
 			group = item
 		case api.SubCmdIdx:
-			if len(subCmdRootId) > 0 {
-				return append(subCmdRootId, item...)
-			}
+			return append(subCmdRootId, item...)
 		default:
 			return item
 		}

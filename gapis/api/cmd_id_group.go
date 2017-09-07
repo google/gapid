@@ -133,12 +133,7 @@ func (g *CmdIDGroup) item(uint64) SpanItem        { return *g }
 func (g *CmdIDGroup) split(i uint64) (Span, Span) { return g, nil }
 
 func (c SubCmdRoot) Index(index uint64) SpanItem {
-	switch t := c.SubGroup.Index(index).(type) {
-	case SubCmdIdx:
-		return append(c.Id, t...)
-	default:
-		return t
-	}
+	return c.SubGroup.Index(index)
 }
 
 // Format writes a string representing the group's name, range and sub-groups.
@@ -416,9 +411,11 @@ func (c *SubCmdRoot) newChildSubCmdRoots(r []uint64) *SubCmdRoot {
 	return sg.newChildSubCmdRoots(r[1:])
 }
 
-// Insert adds a new leaf into the SubCmdRoot.
-// This creates new SubcommandRoots underneath if necessary.
-// func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
+// Insert adds a new subcommand into the SubCmdRoot. The subcommand is specified
+// with its relative hierarchy to the target SubCmdRoot. If the subcommand is
+// not an immediate child of the target SubCmdRoot (i.e. len(r) > 1) , new
+// child SubCmdRoots will be created under the target SubCmdRoot, until the
+// immediate parent of the subcommand is created.
 func (c *SubCmdRoot) Insert(r []uint64) {
 	childRoot := c.newChildSubCmdRoots(r[0 : len(r)-1])
 	id := r[len(r)-1]
@@ -430,6 +427,11 @@ func (c *SubCmdRoot) Insert(r []uint64) {
 	}
 }
 
+// AddSubCmdMarkerGroups adds the given groups to the target SubCmdRoot
+// with the relative hierarchy specified in r. If the groups are not added as
+// immediate children of the target SubCmdRoot (r is not empty), child
+// SubCmdRoots will be created under the target SubCmdRoot recursively until
+// the immediate parent SubCmdRoot is created.
 func (c *SubCmdRoot) AddSubCmdMarkerGroups(r []uint64, groups []*CmdIDGroup) error {
 	childRoot := c.newChildSubCmdRoots(r)
 	for _, g := range groups {
