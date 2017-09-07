@@ -86,7 +86,9 @@ public interface Image {
     }
 
     @Override
-    public Image getSlice(int z) { return this; }
+    public Image getSlice(int z) {
+      return this;
+    }
 
     @Override
     public void uploadToTexture(Texture texture) {
