@@ -52,12 +52,18 @@ type commandTree struct {
 
 func (t *commandTree) index(indices []uint64) api.SpanItem {
 	group := api.CmdGroupOrRoot(t.root)
+	subCmdRootId := api.SubCmdIdx{}
 	for _, idx := range indices {
 		switch item := group.Index(idx).(type) {
 		case api.CmdIDGroup:
 			group = item
 		case api.SubCmdRoot:
+			subCmdRootId = item.Id
 			group = item
+		case api.SubCmdIdx:
+			if len(subCmdRootId) > 0 {
+				return append(subCmdRootId, item...)
+			}
 		default:
 			return item
 		}
@@ -96,19 +102,6 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 			Commands:    cmdTree.path.Capture.SubCommandRange(item, item),
 		}, nil
 	case api.CmdIDGroup:
-		// If this CmdIDGroup has a parent SubCmdRoot, it should be processed as
-		// differently.
-		if len(item.Parent) != 0 {
-			parent := item.Parent
-			commandStart := append([]uint64(parent), uint64(item.Range.First()))
-			commandEnd := append([]uint64(parent), uint64(item.Range.Last()))
-			return &service.CommandTreeNode{
-				NumChildren: item.Count(),
-				Commands:    cmdTree.path.Capture.SubCommandRange(commandStart, commandEnd),
-				Group:       item.Name,
-				NumCommands: item.Count(),
-			}, nil
-		}
 		return &service.CommandTreeNode{
 			NumChildren: item.Count(),
 			Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
@@ -294,16 +287,15 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			cv := append([]api.SubCmdIdx{}, v...)
 			sort.SliceStable(cv, func(i, j int) bool { return len(cv[i]) < len(cv[j]) })
 			for _, x := range cv {
-				markerGroupParent := []uint64{uint64(id)}
-				markerGroupParent = append(markerGroupParent, x[0:len(x)-1]...)
 				// subcommand marker groups are added before subcommands. And groups with
 				// shorter indices are added before groups with longer indices.
 				// SubCmdRoot will be created when necessary.
-				if snc.SubCommandMarkerGroups.Value(markerGroupParent) != nil {
-					markers := snc.SubCommandMarkerGroups.Value(markerGroupParent).([]*api.CmdIDGroup)
-					r.AddSubCmdMarkerGroups(markerGroupParent, markers)
+				if snc.SubCommandMarkerGroups.Value(append([]uint64{uint64(id)}, x[0:len(x)-1]...)) != nil {
+					markers := snc.SubCommandMarkerGroups.Value(append([]uint64{uint64(id)}, x[0:len(x)-1]...)).([]*api.CmdIDGroup)
+					r.AddSubCmdMarkerGroups(x[0:len(x)-1], markers)
 				}
-				r.Insert([]uint64{uint64(id)}, append([]uint64{}, x...))
+				// r.Insert([]uint64{uint64(id)}, append([]uint64{}, x...))
+				r.Insert(append([]uint64{}, x...))
 			}
 			return nil
 		}

@@ -37,7 +37,6 @@ type CmdIDGroup struct {
 	Range    CmdIDRange // The range of commands this group (and items) represents.
 	Spans    Spans      // All sub-groups and sub-ranges of this group.
 	UserData interface{}
-	Parent   SubCmdIdx // SubCmdIdx of the SubCmdRoot if this CmdIDGroup belongs to a SubCmdRoot, otherwise just an empty SubCmdIdx
 }
 
 // SubCmdRoot is a new namespace under which subcommands live.
@@ -222,12 +221,6 @@ func (g CmdIDGroup) Index(index uint64) SpanItem {
 	for _, s := range g.Spans {
 		c := s.itemCount()
 		if index < c {
-			// If the CmdIDGroup is a subcommand group, need to combine the SubCmdIdx
-			// of the immediate parent SubCmdRoot of this CmdIDGroup with the index
-			// target.
-			if x, ok := s.item(index).(SubCmdIdx); ok {
-				return append(g.Parent, x...)
-			}
 			return s.item(index)
 		}
 		index -= c
@@ -400,82 +393,55 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 	}
 }
 
+// newChildSubCmdRoots adds child SubCmdRoots to the SubCmdRoot's subgroup. If
+// subcomamnds are skipped, create SubCmdRoots for them.
+func (c *SubCmdRoot) newChildSubCmdRoots(r []uint64) *SubCmdRoot {
+	if len(r) == 0 {
+		return c
+	}
+	nextRootRelativeIndex := r[0]
+	oldEnd := c.SubGroup.Range.End
+	if CmdID(nextRootRelativeIndex) >= oldEnd {
+		c.SubGroup.Range.End = CmdID(nextRootRelativeIndex) + 1
+	}
+	if c.SubGroup.Range.End > oldEnd {
+		for i := uint64(oldEnd); i < uint64(c.SubGroup.Range.End); i++ {
+			c.SubGroup.AddRoot(append(c.Id, i))
+		}
+	}
+	sg := c.SubGroup.FindSubCommandRoot(CmdID(nextRootRelativeIndex))
+	if sg == nil {
+		sg = c.SubGroup.AddRoot(append(c.Id, nextRootRelativeIndex))
+	}
+	return sg.newChildSubCmdRoots(r[1:])
+}
+
 // Insert adds a new leaf into the SubCmdRoot.
 // This creates new SubcommandRoots underneath if necessary.
-func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
-	id := CmdID(r[0])
-	oldEnd := c.SubGroup.Range.End
-	if CmdID(r[0]) >= c.SubGroup.Range.End {
-		c.SubGroup.Range.End = id + 1
+// func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
+func (c *SubCmdRoot) Insert(r []uint64) {
+	childRoot := c.newChildSubCmdRoots(r[0 : len(r)-1])
+	id := r[len(r)-1]
+	if CmdID(id) > childRoot.SubGroup.Range.End {
+		childRoot.SubGroup.Range.End = CmdID(id + 1)
 	}
-
-	if len(r) > 1 {
-		if c.SubGroup.Range.End > oldEnd+1 {
-			// If we have skipped over subcommands, then add empty
-			// roots for them.
-			x := uint64(c.SubGroup.Range.End - oldEnd - 1)
-			for i := uint64(0); i < x; i++ {
-				c.SubGroup.AddRoot(append(base, uint64(oldEnd)+i))
-			}
-		}
-		sg := c.SubGroup.FindSubCommandRoot(id)
-		if sg == nil {
-			sg = c.SubGroup.AddRoot(append(base, r[0]))
-		}
-		sg.Insert(append(base, r[0]), r[1:])
-	} else {
-		// Add subcommand one by one to the sub groups of the SubCmdRoot
-		if id > c.SubGroup.Range.End {
-			c.SubGroup.Range.End = id + 1
-		}
-		for i := CmdID(0); i <= id; i++ {
-			c.SubGroup.AddCommand(i)
-		}
+	for i := CmdID(0); i <= CmdID(id); i++ {
+		childRoot.SubGroup.AddCommand(i)
 	}
 }
 
-func (c *SubCmdRoot) AddSubCmdMarkerGroups(base []uint64, groups []*CmdIDGroup) error {
-	if c.Id.Contains(SubCmdIdx(base)) {
-		if len(c.Id) < len(base) {
-			// c is not the base node of the marker groups, need to create new SubCmdRoot.
-			// And if we have skipped over sub commands, add empty roots for them.
-			oldEnd := c.SubGroup.Range.End
-			newRootIdInSubGroup := base[len(c.Id)]
-			if newRootIdInSubGroup >= uint64(c.SubGroup.Range.End) {
-				c.SubGroup.Range.End = CmdID(newRootIdInSubGroup + 1)
-			}
-			if c.SubGroup.Range.End > oldEnd {
-				for i := oldEnd; i < c.SubGroup.Range.End; i++ {
-					c.SubGroup.AddRoot(append([]uint64(c.Id), uint64(i)))
-				}
-			}
-			sg := c.SubGroup.FindSubCommandRoot(CmdID(newRootIdInSubGroup))
-			if sg == nil {
-				sg = c.SubGroup.AddRoot(SubCmdIdx(append([]uint64(c.Id), newRootIdInSubGroup)))
-			}
-			return sg.AddSubCmdMarkerGroups(base, groups)
+func (c *SubCmdRoot) AddSubCmdMarkerGroups(r []uint64, groups []*CmdIDGroup) error {
+	childRoot := c.newChildSubCmdRoots(r)
+	for _, g := range groups {
+		if g.Range.Start < childRoot.SubGroup.Range.Start {
+			childRoot.SubGroup.Range.Start = g.Range.Start
 		}
-		if len(c.Id) > len(base) {
-			// We always add SubCmdRoots with shorter SubCmdIdx first, so this should
-			// never happen
-			return fmt.Errorf("This should not happen, ID of adding target SubCmdIdx should always be shorter then the marker group base")
+		if g.Range.End > childRoot.SubGroup.Range.End {
+			childRoot.SubGroup.Range.End = g.Range.End
 		}
-		for _, g := range groups {
-			if !c.Id.Equals(g.Parent) {
-				return fmt.Errorf("Marker group base should have same SubCmdIdx as the adding target SubCmdRoot")
-			}
-			if g.Range.Start < c.SubGroup.Range.Start {
-				c.SubGroup.Range.Start = g.Range.Start
-			}
-			if g.Range.End > c.SubGroup.Range.End {
-				c.SubGroup.Range.End = g.Range.End
-			}
-			ng, err := c.SubGroup.AddGroup(g.Range.Start, g.Range.End, g.Name)
-			if err != nil {
-				return err
-			}
-			// Specifies to which the SubCmdRoot it belongs to.
-			ng.Parent = SubCmdIdx(base)
+		_, err := childRoot.SubGroup.AddGroup(g.Range.Start, g.Range.End, g.Name)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -561,7 +527,7 @@ func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 		flush := func() {
 			if len(accum) > 0 {
 				rng := CmdIDRange{accum[0].Bounds().Start, accum[len(accum)-1].Bounds().End}
-				group := CmdIDGroup{"Sub Group", rng, accum, nil, SubCmdIdx{}}
+				group := CmdIDGroup{"Sub Group", rng, accum, nil}
 				if group.Count() > maxNeighbours {
 					spans = append(spans, &group)
 				} else {
@@ -608,7 +574,6 @@ outer:
 				CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 				current,
 				nil,
-				SubCmdIdx{},
 			})
 			current, idx, count, space, span = nil, idx+1, 0, max, tail
 			if span == nil {
@@ -625,7 +590,6 @@ outer:
 			CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 			current,
 			nil,
-			SubCmdIdx{},
 		})
 	}
 	return out

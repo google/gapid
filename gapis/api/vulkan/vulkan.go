@@ -154,8 +154,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		vkQu := (*s.CurrentSubmission).(*VkQueueSubmit).Queue
 		stack := markerStack[vkQu]
 		if len(stack) == 0 {
-			log.E(ctx, "Cannot pop marker, no open marker at: VkQueueSubmit ID: %v, SubCmdIdx: %v",
-				submissionMap[s.CurrentSubmission], s.SubCmdIdx)
+			log.W(ctx, "Cannot pop marker with type: %v, no open marker with same type at: VkQueueSubmit ID: %v, SubCmdIdx: %v",
+				ty, submissionMap[s.CurrentSubmission], s.SubCmdIdx)
 			return
 		}
 		// If the type of the top marker in the stack does not match with the

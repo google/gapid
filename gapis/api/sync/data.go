@@ -70,13 +70,11 @@ type subCommandMarkerGroupTrie struct {
 // group trie with the specified name and parent SubCmdIdx, and returns a
 // pointer to the created CmdIDGroup.
 func (t *subCommandMarkerGroupTrie) NewMarkerGroup(parent api.SubCmdIdx, name string, start, end uint64) *api.CmdIDGroup {
-	// Intentionally not using interval.U64SpanList as groups here can be nested
-	// and overlapped in between.
 	l := []*api.CmdIDGroup{}
 	if o, ok := t.Value(parent).([]*api.CmdIDGroup); ok {
 		l = o
 	}
-	group := &api.CmdIDGroup{Name: name, Parent: parent}
+	group := &api.CmdIDGroup{Name: name}
 	group.Range.Start = api.CmdID(start)
 	group.Range.End = api.CmdID(end)
 	l = append(l, group)
