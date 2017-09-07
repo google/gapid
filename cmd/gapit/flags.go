@@ -205,8 +205,8 @@ type (
 		Capture struct {
 			Frames int `help:"only capture the given number of frames. 0 for all"`
 		}
-		API string `help: "only capture the given API valid options are gles and vulkan"`
-		ADB string `help: "Path to the adb executable; leave empty to search the environment"`
+		API string `help:"only capture the given API valid options are gles and vulkan"`
+		ADB string `help:"Path to the adb executable; leave empty to search the environment"`
 	}
 	PackagesFlags struct {
 		DeviceFlags
@@ -215,7 +215,7 @@ type (
 		Format      PackagesOutput `help:"output format"`
 		Out         string         `help:"output file, standard output if none"`
 		DataHeader  string         `help:"marker to write before package data"`
-		ADB         string         `help: "Path to the adb executable; leave empty to search the environment"`
+		ADB         string         `help:"Path to the adb executable; leave empty to search the environment"`
 	}
 	ScreenshotFlags struct {
 		Gapis GapisFlags
