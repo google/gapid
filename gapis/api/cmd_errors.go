@@ -32,6 +32,6 @@ func Abort(msg string) *ErrCmdAborted {
 // IsErrCmdAborted returns true if the cause of the error err was due to an
 // abort() in the command.
 func IsErrCmdAborted(err error) bool {
-	_, ok := errors.Cause(err).(ErrCmdAborted)
+	_, ok := errors.Cause(err).(*ErrCmdAborted)
 	return ok
 }

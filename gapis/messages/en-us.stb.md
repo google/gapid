@@ -115,6 +115,10 @@ Internal error in trace assert: {{reason}}
 
 {{error}}
 
+# ERR_INTERNAL_ERROR
+
+Internal error: {{error}}
+
 # ERR_REPLAY_DRIVER
 
 Error during replay: {{replayError}}
