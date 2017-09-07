@@ -93,13 +93,6 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	cb := CommandBuilder{Thread: cmd.Thread()}
 	t.lastGlError = GLenum_GL_NO_ERROR
 	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */)
-	if mutateErr != nil {
-		if api.IsErrCmdAborted(mutateErr) && t.lastGlError != GLenum_GL_NO_ERROR {
-			// GL errors have already been reported - so do not log it again.
-		} else {
-			t.onIssue(cmd, id, service.Severity_ErrorLevel, mutateErr)
-		}
-	}
 
 	mutatorsGlError := t.lastGlError
 	if e := FindErrorState(cmd.Extras()); e != nil {

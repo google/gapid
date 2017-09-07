@@ -16,7 +16,6 @@ package resolve
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
@@ -70,13 +69,9 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 	builder := service.NewReportBuilder()
 
-	var lastError interface{}
 	var currentAtom uint64
 	items := []*service.ReportItemRaw{}
 	state := c.NewState()
-	state.OnError = func(err interface{}) {
-		lastError = err
-	}
 	state.NewMessage = func(s log.Severity, m *stringtable.Msg) uint32 {
 		items = append(items, r.newReportItem(s, currentAtom, m))
 		return uint32(len(items) - 1)
@@ -122,22 +117,17 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		items, lastError, currentAtom = items[:0], nil, uint64(id)
+		items, currentAtom = items[:0], uint64(id)
 
 		if as := cmd.Extras().Aborted(); as != nil && as.IsAssert {
 			items = append(items, r.newReportItem(log.Fatal, uint64(id),
 				messages.ErrTraceAssert(as.Reason)))
 		}
 
-		err := cmd.Mutate(ctx, id, state, nil /* no builder, just mutate */)
-
-		if len(items) == 0 {
-			if err != nil && !api.IsErrCmdAborted(err) {
+		if err := cmd.Mutate(ctx, id, state, nil /* no builder, just mutate */); err != nil {
+			if !api.IsErrCmdAborted(err) {
 				items = append(items, r.newReportItem(log.Error, uint64(id),
-					messages.ErrMessage(err)))
-			} else if lastError != nil {
-				items = append(items, r.newReportItem(log.Error, uint64(id),
-					messages.ErrMessage(fmt.Sprintf("%v", lastError))))
+					messages.ErrInternalError(err.Error())))
 			}
 		}
 
