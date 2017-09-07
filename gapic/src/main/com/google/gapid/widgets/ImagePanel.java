@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -48,7 +49,6 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -541,7 +541,7 @@ public class ImagePanel extends Composite {
         int x = (int)imageTexel.x;
         int y = (int)imageTexel.y;
         int sampleY = data.flipped ? (image.getHeight() - y - 1) : y;
-        return new Pixel(i, x, y, u, v, image.getPixel(x, sampleY, 1));
+        return new Pixel(i, x, y, u, v, image.getPixel(x, sampleY, 0));
       }
       return Pixel.OUT_OF_BOUNDS;
     }
@@ -710,7 +710,7 @@ public class ImagePanel extends Composite {
     private static final int PREVIEW_SIZE = 7;
 
 
-    private final Map<Image, Texture> imageToTexture = new HashMap<>();
+    private final Map<Image, Texture> imageToTexture = Maps.newHashMap();
     private Shader shader;
     private Texture[] textures;
     private SceneData data;
@@ -735,7 +735,7 @@ public class ImagePanel extends Composite {
     public void update(Renderer renderer, SceneData newData) {
       // Release textures that are no longer in data.
       Set<Image> newSet = Sets.newHashSet(newData.images);
-      for (Entry<Image, Texture> entry : imageToTexture.entrySet()) {
+      for (Map.Entry<Image, Texture> entry : imageToTexture.entrySet()) {
         if (!newSet.contains(entry.getKey())) {
           entry.getValue().delete();
         }

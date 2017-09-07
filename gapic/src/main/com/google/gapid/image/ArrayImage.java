@@ -77,10 +77,10 @@ public abstract class ArrayImage implements Image {
   }
 
   /**
-   * Constructs and returns a new {@link ArrayImage} of the same format with the given
+   * Constructs and returns a new {@link Image} of the same format with the given
    * dimensions and data.
    */
-  protected abstract ArrayImage create(int width, int height, int depth, byte[] data);
+  protected abstract Image create(int width, int height, int depth, byte[] data);
 
   @Override
   public void uploadToTexture(Texture texture) {
@@ -101,7 +101,7 @@ public abstract class ArrayImage implements Image {
 
   @Override
   public PixelValue getPixel(int x, int y, int z) {
-    if (x < 0 || y < 0 || x >= width || y >= height || z > depth) {
+    if (x < 0 || y < 0 || z < 0 || x >= width || y >= height || z > depth) {
       return PixelValue.NULL_PIXEL;
     }
     return getPixel(x, y, data);
@@ -131,12 +131,14 @@ public abstract class ArrayImage implements Image {
 
     public Builder update(byte[] src, int x, int y, int z, int w, int h, int d) {
       if (x == 0 && y == 0 && w == width && h == height) {
-        // Bulk copy.
+        // Simple case. Bulk copy.
         System.arraycopy(src, 0, data, pixelSize * w * h * z, pixelSize * w * h * d);
+        return this;
       }
+
       for (int slice = 0; slice < d; slice++) {
-        int srcOffset = pixelSize * slice * width * height;
-        int dstOffset = pixelSize * slice * w * h;
+        int dstOffset = pixelSize * slice * width * height;
+        int srcOffset = pixelSize * slice * w * h;
         if (x == 0 && w == width) {
           // Copying complete rows of pixels is easy.
           System.arraycopy(src, srcOffset, data, dstOffset + pixelSize * y * w, pixelSize * w * h);
@@ -173,7 +175,7 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected ArrayImage create(int width, int height, int depth, byte[] data) {
+    protected Image create(int width, int height, int depth, byte[] data) {
       return new RGBA8Image(width, height, depth, data);
     }
 
@@ -238,7 +240,7 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected ArrayImage create(int width, int height, int depth, byte[] data) {
+    protected Image create(int width, int height, int depth, byte[] data) {
       return new RGBAFloatImage(width, height, depth, data);
     }
 
@@ -298,7 +300,7 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected ArrayImage create(int width, int height, int depth, byte[] data) {
+    protected Image create(int width, int height, int depth, byte[] data) {
       return new Luminance8Image(width, height, depth, data);
     }
 
@@ -365,7 +367,7 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected ArrayImage create(int width, int height, int depth, byte[] data) {
+    protected Image create(int width, int height, int depth, byte[] data) {
       return new LuminanceFloatImage(width, height, depth, data);
     }
 

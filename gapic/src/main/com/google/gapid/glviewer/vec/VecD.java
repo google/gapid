@@ -158,8 +158,8 @@ public class VecD {
   }
 
   public double magnitudeSquared() {
-  return x * x + y * y + z * z;
-}
+    return x * x + y * y + z * z;
+  }
 
   public double magnitude() {
     return Math.sqrt(magnitudeSquared());

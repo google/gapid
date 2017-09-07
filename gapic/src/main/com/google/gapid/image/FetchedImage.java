@@ -98,8 +98,8 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       ListenableFuture<FetchedImage> futureImage, final int layer, final int level) {
     return Futures.transformAsync(futureImage, image -> Futures.transform(
         image.getImage(
-            Math.min(layer, image.getLayerCount()),
-            Math.min(level, image.getLevelCount())), (l) -> l.getImageData()));
+            Math.min(layer, image.getLayerCount() - 1),
+            Math.min(level, image.getLevelCount() - 1)), (l) -> l.getImageData()));
   }
 
   public static ListenableFuture<ImageData> loadThumbnail(Client client, Path.Thumbnail path) {
