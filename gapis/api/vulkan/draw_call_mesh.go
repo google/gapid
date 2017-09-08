@@ -35,7 +35,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		return nil, nil
 	}
 
-	s, err := resolve.GlobalState(ctx, cmdPath.StateAfter())
+	s, err := resolve.GlobalState(ctx, cmdPath.GlobalStateAfter())
 	if err != nil {
 		return nil, err
 	}
