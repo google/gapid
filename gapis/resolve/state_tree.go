@@ -136,22 +136,10 @@ func stateTreeNode(ctx context.Context, tree *stateTree, p *path.StateTreeNode) 
 	return node.service(ctx, tree), nil
 }
 
-// stateMemberPath returns the child path nodes of the *path.State in n.
-// If n does not contain a *path.State then nil is returned.
-func stateMemberPath(n path.Node) []path.Node {
-	p := path.ToList(n)
-	for i, n := range p {
-		if _, ok := n.(*path.State); ok {
-			return p[i+1:]
-		}
-	}
-	return nil
-}
-
 func stateTreeNodePath(ctx context.Context, tree *stateTree, p path.Node) ([]uint64, error) {
 	n := tree.root
 	indices := []uint64{}
-	for _, p := range stateMemberPath(p) {
+	for {
 		ci := n.findByPath(ctx, p, tree)
 		if ci == nil {
 			break
@@ -191,7 +179,7 @@ func (n *stn) index(ctx context.Context, i uint64, tree *stateTree) (*stn, error
 func (n *stn) findByPath(ctx context.Context, p path.Node, tree *stateTree) []uint64 {
 	n.buildChildren(ctx, tree)
 	for i, c := range n.children {
-		if shallowPathsEqual(p, c.path) {
+		if path.HasRoot(p, c.path) {
 			return []uint64{uint64(i)}
 		}
 	}
@@ -203,28 +191,6 @@ func (n *stn) findByPath(ctx context.Context, p path.Node, tree *stateTree) []ui
 		}
 	}
 	return nil
-}
-
-func shallowPathsEqual(a, b path.Node) bool {
-	switch a := a.(type) {
-	case *path.Field:
-		if b, ok := b.(*path.Field); ok {
-			return a.Name == b.Name
-		}
-	case *path.MapIndex:
-		if b, ok := b.(*path.MapIndex); ok {
-			return a.KeyValue() == b.KeyValue()
-		}
-	case *path.ArrayIndex:
-		if b, ok := b.(*path.ArrayIndex); ok {
-			return a.Index == b.Index
-		}
-	case *path.Slice:
-		if b, ok := b.(*path.Slice); ok {
-			return a.Start == b.Start && a.End == b.End
-		}
-	}
-	return false
 }
 
 func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
