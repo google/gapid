@@ -55,14 +55,14 @@ public class ApiState
   private final ObjectStore<Path.Any> selection = ObjectStore.create();
 
   public ApiState(
-      Shell shell, Client client, Follower follower, AtomStream atoms, ConstantSets constants) {
+      Shell shell, Client client, Follower follower, AtomStream atoms, ApiContext contexts, ConstantSets constants) {
     super(LOG, shell, client, Listener.class);
     this.constants = constants;
 
     atoms.addListener(new AtomStream.Listener() {
       @Override
       public void onAtomsSelected(AtomIndex index) {
-        load(stateTree(index), false);
+        load(stateTree(index, contexts.getSelectedContext()), false);
       }
     });
     follower.addListener(new Follower.Listener() {

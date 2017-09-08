@@ -218,6 +218,20 @@ public class ApiContext
       return context != null ? context.getPriority() : 0;
     }
 
+    public Path.State.Builder state(Path.State.Builder path) {
+      if (id != null) {
+        path.getContextBuilder().setData(id.getData());
+      }
+      return path;
+    }
+
+    public Path.StateTree.Builder stateTree(Path.StateTree.Builder path) {
+      if (id != null) {
+        path.getStateBuilder().getContextBuilder().setData(id.getData());
+      }
+      return path;
+    }
+
     public Path.Events.Builder events(Path.Events.Builder path) {
       path.getFilterBuilder().setContext(id);
       return path;

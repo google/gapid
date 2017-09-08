@@ -78,16 +78,16 @@ public class Paths {
     return Path.State.newBuilder().setAfter(command).build();
   }
 
-  public static Path.Any stateTree(AtomIndex atom) {
+  public static Path.Any stateTree(AtomIndex atom, FilteringContext context) {
     if (atom == null) {
       return null;
     }
     return Path.Any.newBuilder()
         .setStateTree(
-            Path.StateTree.newBuilder()
-                .setState(stateAfter(atom.getCommand()))
-                .setArrayGroupSize(2000))
-        .build();
+            context.stateTree(
+                Path.StateTree.newBuilder()
+                    .setState(stateAfter(atom.getCommand()))
+                    .setArrayGroupSize(2000))).build();
   }
 
   public static Path.Any stateTree(Path.ID tree, Path.Any statePath) {

@@ -16,7 +16,6 @@ package resolve
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
@@ -38,12 +37,8 @@ func GlobalState(ctx context.Context, p *path.GlobalState) (*api.GlobalState, er
 }
 
 // State resolves the specific API state at a requested point in a capture.
-func State(ctx context.Context, p *path.State) (api.State, error) {
-	obj, err := database.Build(ctx, &StateResolvable{p})
-	if err != nil {
-		return nil, err
-	}
-	return obj.(api.State), nil
+func State(ctx context.Context, p *path.State) (interface{}, error) {
+	return database.Build(ctx, &StateResolvable{p})
 }
 
 // Resolve implements the database.Resolver interface.
@@ -82,45 +77,60 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 // Resolve implements the database.Resolver interface.
 func (r *StateResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Path.After.Capture)
-	cmdIdx := r.Path.After.Indices[0]
-	if len(r.Path.After.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported for api state") // TODO: Subcommands
-	}
-	cmds, err := NCmds(ctx, r.Path.After.Capture, cmdIdx+1)
-	if err != nil {
-		return nil, err
-	}
-	return apiState(ctx, cmds, r.Path)
+	obj, _, _, err := state(ctx, r.Path)
+	return obj, err
 }
 
-func apiState(ctx context.Context, cmds []api.Cmd, p *path.State) (api.State, error) {
-	cmdIdx := p.After.Indices[0]
-	if len(p.After.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported for api state") // TODO: Subcommands
+func state(ctx context.Context, p *path.State) (interface{}, path.Node, api.ID, error) {
+	cmd, err := Cmd(ctx, p.After)
+	if err != nil {
+		return nil, nil, api.ID{}, err
 	}
-	if count := uint64(len(cmds)); cmdIdx >= count {
-		return nil, errPathOOB(cmdIdx, "Index", 0, count-1, p)
-	}
-	a := cmds[cmdIdx].API()
+
+	a := cmd.API()
 	if a == nil {
-		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
-	}
-	s, err := capture.NewState(ctx)
-	if err != nil {
-		return nil, err
+		return nil, nil, api.ID{}, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
 
-	err = api.ForeachCmd(ctx, cmds[:cmdIdx+1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil)
-		return nil
+	g, err := GlobalState(ctx, p.After.GlobalStateAfter())
+	if err != nil {
+		return nil, nil, api.ID{}, err
+	}
+
+	state := g.APIs[a.ID()]
+	if state == nil {
+		return nil, nil, api.ID{}, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
+	}
+
+	root, err := state.Root(ctx, p)
+	if err != nil {
+		return nil, nil, api.ID{}, err
+	}
+	if root == nil {
+		return nil, nil, api.ID{}, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
+	}
+
+	// Transform the State path node to a GlobalState node to prevent the
+	// object load recursing back into this function.
+	abs := path.Transform(root, func(n path.Node) path.Node {
+		switch n := n.(type) {
+		case *path.State:
+			return APIStateAfter(p.After, a.ID())
+		default:
+			return n
+		}
 	})
+
+	obj, err := Get(ctx, abs.Path())
 	if err != nil {
-		return nil, err
+		return nil, nil, api.ID{}, err
 	}
 
-	res, found := s.APIs[a.ID()]
-	if !found {
-		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
-	}
-	return res, nil
+	return obj, abs, a.ID(), nil
+}
+
+// APIStateAfter returns an absolute path to the API state after c.
+func APIStateAfter(c *path.Command, a api.ID) path.Node {
+	p := &path.GlobalState{After: c}
+	return p.Field("APIs").MapIndex(a)
 }

@@ -369,6 +369,8 @@ message Slice {
 // State is a path to a subset of the GlobalState at a point in a capture.
 message State {
     Command after = 1;
+    // If non-nil, then the state is filtered to the specified context.
+    ID context = 2;
 }
 
 // GlobalState is an path node to the absolute global state after a specfied

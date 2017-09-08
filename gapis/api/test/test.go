@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type CustomState struct{}
@@ -28,6 +29,13 @@ func (API) GetFramebufferAttachmentInfo(*api.GlobalState, uint64, api.Framebuffe
 }
 
 func (API) Context(*api.GlobalState, uint64) api.Context { return nil }
+
+// Root returns the path to the root of the state to display. It can vary based
+// on filtering mode. Returning nil, nil indicates there is no state to show at
+// this point in the capture.
+func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
+	return nil, nil
+}
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil

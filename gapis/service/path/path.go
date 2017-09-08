@@ -251,7 +251,9 @@ func (n Slice) Format(f fmt.State, c rune) {
 }
 
 // Format implements fmt.Formatter to print the version.
-func (n State) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.state-after", n.Parent()) }
+func (n State) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.state<context: %v>", n.Parent(), n.Context)
+}
 
 // Format implements fmt.Formatter to print the version.
 func (n StateTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.tree", n.State) }

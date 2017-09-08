@@ -59,7 +59,7 @@ public class Models {
     Timeline timeline = new Timeline(shell, client, capture, contexts);
     AtomStream atoms = new AtomStream(shell, client, capture, contexts, constants);
     Resources resources = new Resources(shell, client, capture);
-    ApiState state = new ApiState(shell, client, follower, atoms, constants);
+    ApiState state = new ApiState(shell, client, follower, atoms, contexts, constants);
     Reports reports = new Reports(shell, client, capture, devices, contexts);
     Thumbnails thumbs = new Thumbnails(client, devices, capture);
     return new Models(settings, follower, capture, devices, atoms, contexts, timeline, resources,

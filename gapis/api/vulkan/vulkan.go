@@ -66,6 +66,13 @@ func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 	return VulkanContext{}
 }
 
+// Root returns the path to the root of the state to display. It can vary based
+// on filtering mode. Returning nil, nil indicates there is no state to show at
+// this point in the capture.
+func (*State) Root(ctx context.Context, p *path.State) (path.Node, error) {
+	return p, nil
+}
+
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
