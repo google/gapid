@@ -16,12 +16,27 @@ package path
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/google/gapid/core/data/protoutil"
 )
 
-func checkNotNilAndValidate(n Node, f interface{}, name string) error {
+func isNil(f interface{}) bool {
 	if f == nil {
+		return true
+	}
+	v := reflect.ValueOf(f)
+	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+		if v.IsNil() {
+			return true
+		}
+		v = v.Elem()
+	}
+	return false
+}
+
+func checkNotNilAndValidate(n Node, f interface{}, name string) error {
+	if isNil(f) {
 		return fmt.Errorf("Invalid path '%v': %v must not be nil", n, name)
 	}
 	if fn, ok := f.(Node); ok {
