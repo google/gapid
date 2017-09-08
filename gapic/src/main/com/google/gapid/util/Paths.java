@@ -83,7 +83,9 @@ public class Paths {
     }
     return Path.Any.newBuilder()
         .setStateTree(
-            Path.StateTree.newBuilder().setAfter(atom.getCommand()).setArrayGroupSize(2000))
+            Path.StateTree.newBuilder()
+                .setState(stateAfter(atom.getCommand()))
+                .setArrayGroupSize(2000))
         .build();
   }
 
@@ -791,7 +793,7 @@ public class Paths {
   }
 
   public static String toString(Path.StateTree tree) {
-    StringBuilder sb = new StringBuilder().append(toString(tree.getAfter())).append(".stateTree");
+    StringBuilder sb = new StringBuilder().append(toString(tree.getState())).append(".tree");
     if (tree.getArrayGroupSize() > 0) {
       sb.append("(groupSize=").append(tree.getArrayGroupSize()).append(')');
     }

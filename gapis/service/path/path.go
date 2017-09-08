@@ -119,7 +119,7 @@ func (n Resources) Parent() Node                 { return n.Capture }
 func (n Result) Parent() Node                    { return n.Command }
 func (n Slice) Parent() Node                     { return oneOfNode(n.Array) }
 func (n State) Parent() Node                     { return n.After }
-func (n StateTree) Parent() Node                 { return n.After }
+func (n StateTree) Parent() Node                 { return n.State }
 func (n StateTreeNode) Parent() Node             { return nil }
 func (n StateTreeNodeForPath) Parent() Node      { return nil }
 func (n Thumbnail) Parent() Node                 { return oneOfNode(n.Object) }
@@ -147,7 +147,7 @@ func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command
 func (n *Resources) SetParent(p Node)                 { n.Capture, _ = p.(*Capture) }
 func (n *Result) SetParent(p Node)                    { n.Command, _ = p.(*Command) }
 func (n *State) SetParent(p Node)                     { n.After, _ = p.(*Command) }
-func (n *StateTree) SetParent(p Node)                 { n.After, _ = p.(*Command) }
+func (n *StateTree) SetParent(p Node)                 { n.State, _ = p.(*State) }
 func (n *StateTreeNode) SetParent(p Node)             {}
 func (n *StateTreeNodeForPath) SetParent(p Node)      {}
 
@@ -254,7 +254,7 @@ func (n Slice) Format(f fmt.State, c rune) {
 func (n State) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.state-after", n.Parent()) }
 
 // Format implements fmt.Formatter to print the version.
-func (n StateTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.state-tree") }
+func (n StateTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.tree", n.State) }
 
 // Format implements fmt.Formatter to print the version.
 func (n StateTreeNode) Format(f fmt.State, c rune) {
@@ -609,11 +609,6 @@ func (n *Command) StateAfter() *State {
 	return &State{After: n}
 }
 
-// StateTreeAfter returns the path node to the state tree after this command.
-func (n *Command) StateTreeAfter() *StateTree {
-	return &StateTree{After: n}
-}
-
 // First returns the path to the first command.
 func (n *Commands) First() *Command {
 	return &Command{Capture: n.Capture, Indices: n.From}
@@ -640,6 +635,11 @@ func (n *Command) Parameter(name string) *Parameter {
 // Result returns the path node to the command's result.
 func (n *Command) Result() *Result {
 	return &Result{Command: n}
+}
+
+// Tree returns the path node to the state tree for this state.
+func (n *State) Tree() *StateTree {
+	return &StateTree{State: n}
 }
 
 func (n *GlobalState) Field(name string) *Field       { return NewField(name, n) }
