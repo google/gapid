@@ -258,7 +258,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 					Path:   p.Path(),
 				}
 			}
-			key, ok := convertMapKey(reflect.ValueOf(p.KeyValue()), m.Type().Key())
+			key, ok := convert(reflect.ValueOf(p.KeyValue()), m.Type().Key())
 			if !ok {
 				return nil, &service.ErrInvalidPath{
 					Reason: messages.ErrIncorrectMapKeyType(
