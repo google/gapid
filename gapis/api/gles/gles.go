@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/messages"
+	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -35,6 +36,33 @@ func GetContext(s *api.GlobalState, thread uint64) *Context {
 
 func (s *State) GetContext(thread uint64) *Context {
 	return s.Contexts[thread]
+}
+
+// Root returns the path to the root of the state to display. It can vary based
+// on filtering mode. Returning nil, nil indicates there is no state to show at
+// this point in the capture.
+func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
+	if p.Context == nil || !p.Context.IsValid() {
+		return p, nil
+	}
+	c, err := resolve.Context(ctx, p.After.Capture.Context(p.Context))
+	if err != nil {
+		return nil, err
+	}
+	for thread, context := range s.Contexts {
+		if c.ID() == context.ID() {
+			return s.contextRoot(p.After, thread), nil
+		}
+	}
+	return nil, nil
+}
+
+func (s *State) contextRoot(p *path.Command, thread uint64) *path.MapIndex {
+	return path.NewField("Contexts", resolve.APIStateAfter(p, ID)).MapIndex(thread)
+}
+
+func (s *State) objectsRoot(p *path.Command, thread uint64) *path.Field {
+	return s.contextRoot(p, thread).Field("Objects")
 }
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {

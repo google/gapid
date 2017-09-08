@@ -40,10 +40,7 @@ func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 		if !ok {
 			return nil, nil, nil
 		}
-		return cmdPath.StateAfter().
-			Field("Contexts").
-			MapIndex(thread).
-			Field("Objects"), context, nil
+		return state.objectsRoot(cmdPath, thread), context, nil
 	}
 	return nil, nil, nil
 }
@@ -67,11 +64,7 @@ func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, err
 		if !ok {
 			return nil, nil, nil
 		}
-		return cmdPath.StateAfter().
-			Field("Contexts").
-			MapIndex(thread).
-			Field("Objects").
-			Field("Shared"), context, nil
+		return state.objectsRoot(cmdPath, thread).Field("Shared"), context, nil
 	}
 	return nil, nil, nil
 }

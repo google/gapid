@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service"
@@ -45,10 +44,11 @@ func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, erro
 }
 
 type stateTree struct {
-	state      *api.GlobalState
-	root       *stn
-	api        *path.API
-	groupLimit uint64
+	globalState *api.GlobalState
+	state       interface{}
+	root        *stn
+	api         *path.API
+	groupLimit  uint64
 }
 
 // needsSubgrouping returns true if the child count exceeds the group limit and
@@ -211,7 +211,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 				s, e := subgroupRange(tree.groupLimit, size, i)
 				children = append(children, &stn{
 					name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
-					value:          reflect.ValueOf(slice.ISlice(s, e, tree.state.MemoryLayout)),
+					value:          reflect.ValueOf(slice.ISlice(s, e, tree.globalState.MemoryLayout)),
 					path:           path.NewSlice(s, e-1, n.path),
 					isSubgroup:     true,
 					subgroupOffset: n.subgroupOffset + s,
@@ -219,8 +219,8 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 			}
 		} else {
 			for i, c := uint64(0), slice.Count(); i < c; i++ {
-				ptr := slice.IIndex(i, tree.state.MemoryLayout)
-				el, err := memory.LoadPointer(ctx, ptr, tree.state.Memory, tree.state.MemoryLayout)
+				ptr := slice.IIndex(i, tree.globalState.MemoryLayout)
+				el, err := memory.LoadPointer(ctx, ptr, tree.globalState.Memory, tree.globalState.MemoryLayout)
 				if err != nil {
 					panic(err)
 				}
@@ -347,26 +347,22 @@ func stateValuePreview(v reflect.Value) (*box.Value, bool) {
 // Resolve builds and returns a *StateTree for the path.StateTreeNode.
 // Resolve implements the database.Resolver interface.
 func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	state, err := GlobalState(ctx, r.Path.After.GlobalStateAfter())
+	globalState, err := GlobalState(ctx, r.Path.After.GlobalStateAfter())
 	if err != nil {
 		return nil, err
 	}
-	c, err := capture.ResolveFromPath(ctx, r.Path.After.Capture)
-	if err != nil {
-		return nil, err
-	}
-	cmdIdx := r.Path.After.Indices[0]
 
-	api := c.Commands[cmdIdx].API()
-	if api == nil {
-		return nil, fmt.Errorf("Command has no API")
+	rootObj, rootPath, apiID, err := state(ctx, r.Path)
+	if err != nil {
+		return nil, err
 	}
-	apiState := state.APIs[api.ID()]
-	apiPath := &path.API{Id: path.NewID(id.ID(api.ID()))}
+
+	apiPath := &path.API{Id: path.NewID(id.ID(apiID))}
+
 	root := &stn{
 		name:  "root",
-		value: deref(reflect.ValueOf(apiState)),
-		path:  r.Path,
+		value: deref(reflect.ValueOf(rootObj)),
+		path:  rootPath,
 	}
-	return &stateTree{state, root, apiPath, uint64(r.ArrayGroupSize)}, nil
+	return &stateTree{globalState, rootObj, root, apiPath, uint64(r.ArrayGroupSize)}, nil
 }
