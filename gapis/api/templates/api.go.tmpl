@@ -954,13 +954,13 @@
     {{Template "ClassFields" $}}
     {{/* TODO: Remove this once closure support is in the API language */}}
     {{if (eq $.Name "CommandBufferObject")}}
-      Commands CommandBufferCommands `nobox:"true"`
+      Commands CommandBufferCommands `hidden:"true" nobox:"true"`
     {{end}}
     {{if (eq $.Name "QueueObject")}}
-      PendingCommands CommandBufferCommands `nobox:"true"`
+      PendingCommands CommandBufferCommands `hidden:"true" nobox:"true"`
     {{end}}
     {{if (eq $.Name "RecreateCmdUpdateBufferData")}}
-      Data []uint8 `nobox:"true"`
+      Data []uint8 `hidden:"true" nobox:"true"`
     {{end}}
   }
 
@@ -989,9 +989,23 @@
   {{AssertType $ "Class"}}
   {{range $v := $.Fields}}
     {{$name := $v.Name | GoPublicName}}
-    {{$cs := ConstantSetIndex $v}}
-    {{$name}} {{Template "Go.Type" $v}} {{if ge $cs 0}}`constset:"{{$cs}}"`{{end}}{{if GetAnnotation $v "hidden"}}`nobox:"true"`{{end}}
+    {{$tags := Macro "ClassFieldTags" $v}}
+    {{$name}} {{Template "Go.Type" $v}} {{if $tags}}`{{$tags}}`{{end}}
   {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a list of tags for the given class field.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ClassFieldTags"}}
+  {{AssertType $ "Field"}}
+  {{$cs := ConstantSetIndex $}}
+  {{if ge $cs 0}}constset:"{{$cs}}" §{{end}}
+  {{if GetAnnotation $ "hidden"}}hidden:"true" §{{end}}
+  {{if GetAnnotation $ "nobox"}}nobox:"true" §{{end}}
 {{end}}
 
 
@@ -1103,7 +1117,7 @@
     {{range $g := $.Globals}}
       {{Title $g.Name}} {{Template "Go.Type" $g}}
     {{end}}
-    CustomState `nobox:"true"`
+    CustomState `hidden:"true" nobox:"true"`
   }
 
   func (g *State) Init() {

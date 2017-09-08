@@ -9406,8 +9406,8 @@ enum RecordingState {
   VkDeviceSize                                MappedSize
   void*                                       MappedLocation
   u32                                         MemoryTypeIndex
-  @hidden @internal u8[]                      Data
-  @unused ref!VulkanDebugMarkerInfo                       DebugInfo
+  @hidden @nobox @internal u8[]               Data
+  @unused ref!VulkanDebugMarkerInfo           DebugInfo
   ref!DedicatedAllocationMemoryAllocateInfoNV DedicatedAllocationNV
 }
 
@@ -9475,11 +9475,11 @@ enum RecordingState {
 }
 
 @internal class ImageLevel {
-  u32                    Width
-  u32                    Height
-  @unused u32            Depth
-  @hidden @internal u8[] Data
-  @unused u32            Size
+  u32                           Width
+  u32                           Height
+  @unused u32                   Depth
+  @hidden @nobox @internal u8[] Data
+  @unused u32                   Size
 }
 
 @internal class ImageViewObject {

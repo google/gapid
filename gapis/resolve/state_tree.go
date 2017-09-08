@@ -305,7 +305,7 @@ func (n *stn) service(ctx context.Context, tree *stateTree) *service.StateTreeNo
 }
 
 func isFieldVisible(f reflect.StructField) bool {
-	return f.PkgPath == "" && f.Tag.Get("nobox") != "true"
+	return f.PkgPath == "" && f.Tag.Get("hidden") != "true"
 }
 
 func stateValuePreview(v reflect.Value) (*box.Value, bool) {
