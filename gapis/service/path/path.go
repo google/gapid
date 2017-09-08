@@ -17,8 +17,10 @@ package path
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/data/slice"
@@ -671,4 +673,27 @@ func ToList(n Node) []Node {
 	}
 	slice.Reverse(out)
 	return out
+}
+
+// HasRoot returns true iff p starts with root, using equal as the node
+// comparision function.
+func HasRoot(p, root Node) (res bool) {
+	a, b := ToList(p), ToList(root)
+	if len(b) > len(a) {
+		return false
+	}
+	for i, n := range b {
+		if !ShallowEqual(n, a[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// ShallowEqual returns true if paths a and b are equal (ignoring parents).
+func ShallowEqual(a, b Node) bool {
+	a, b = proto.Clone(a.(proto.Message)).(Node), proto.Clone(b.(proto.Message)).(Node)
+	a.SetParent(nil)
+	b.SetParent(nil)
+	return reflect.DeepEqual(a, b)
 }
