@@ -29,7 +29,7 @@ import (
 
 // GlobalState resolves the global *api.GlobalState at a requested point in a
 // capture.
-func GlobalState(ctx context.Context, p *path.State) (*api.GlobalState, error) {
+func GlobalState(ctx context.Context, p *path.GlobalState) (*api.GlobalState, error) {
 	obj, err := database.Build(ctx, &GlobalStateResolvable{p})
 	if err != nil {
 		return nil, err

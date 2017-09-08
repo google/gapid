@@ -102,7 +102,7 @@ message ResourceMetaResolvable {
 }
 
 message GlobalStateResolvable {
-	path.State path = 1;
+	path.GlobalState path = 1;
 }
 
 message StateResolvable {

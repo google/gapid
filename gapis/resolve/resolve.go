@@ -289,6 +289,8 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 		return FramebufferObservation(ctx, p)
 	case *path.Field:
 		return Field(ctx, p)
+	case *path.GlobalState:
+		return GlobalState(ctx, p)
 	case *path.ImageInfo:
 		return ImageInfo(ctx, p)
 	case *path.MapIndex:

@@ -39,7 +39,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		return nil, nil
 	}
 
-	s, err := resolve.GlobalState(ctx, cmdPath.StateAfter())
+	s, err := resolve.GlobalState(ctx, cmdPath.GlobalStateAfter())
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		DrawPrimitive: drawPrimitive,
 		VertexBuffer:  vb,
 		IndexBuffer:   ib,
-		Stats:         &api.Mesh_Stats{
+		Stats: &api.Mesh_Stats{
 			Vertices:   uint32(len(uniqueIndices)),
 			Indices:    origIndexCount,
 			Primitives: drawPrimitive.Count(origIndexCount),

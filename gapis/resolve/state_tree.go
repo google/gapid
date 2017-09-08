@@ -347,7 +347,7 @@ func stateValuePreview(v reflect.Value) (*box.Value, bool) {
 // Resolve builds and returns a *StateTree for the path.StateTreeNode.
 // Resolve implements the database.Resolver interface.
 func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	state, err := GlobalState(ctx, r.Path)
+	state, err := GlobalState(ctx, r.Path.After.GlobalStateAfter())
 	if err != nil {
 		return nil, err
 	}
