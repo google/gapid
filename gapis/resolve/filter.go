@@ -17,7 +17,6 @@ package resolve
 import (
 	"context"
 
-	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/service/path"
@@ -36,11 +35,7 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd
 		if err != nil {
 			return nil, err
 		}
-		id, err := id.Parse(c.Id)
-		if err != nil {
-			return nil, err
-		}
-		ctxID := api.ContextID(id)
+		ctxID := c.ID()
 		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 			if api := cmd.API(); api != nil {
 				if ctx := api.Context(s, cmd.Thread()); ctx != nil {

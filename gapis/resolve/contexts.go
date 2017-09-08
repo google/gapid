@@ -108,7 +108,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		api := c.API()
 		ctxID := c.ID()
 		id, err := database.Store(ctx, &InternalContext{
-			Id:       string(ctxID[:]),
+			Id:       ctxID[:],
 			Api:      &path.API{Id: path.NewID(id.ID(api.ID()))},
 			Name:     c.Name(),
 			Priority: uint32(i),
@@ -119,4 +119,10 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		out.List[i] = r.Capture.Context(path.NewID(id))
 	}
 	return out, nil
+}
+
+func (i *InternalContext) ID() api.ContextID {
+	var out api.ContextID
+	copy(out[:], i.Id)
+	return out
 }
