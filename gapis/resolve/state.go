@@ -118,7 +118,7 @@ func apiState(ctx context.Context, cmds []api.Cmd, p *path.State) (api.State, er
 		return nil, err
 	}
 
-	res, found := s.APIs[a]
+	res, found := s.APIs[a.ID()]
 	if !found {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}

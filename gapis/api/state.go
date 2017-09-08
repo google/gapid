@@ -41,7 +41,7 @@ type GlobalState struct {
 	Memory memory.Pools
 
 	// APIs holds the per-API context states.
-	APIs map[API]State
+	APIs map[ID]State
 
 	// Allocator keeps track of and reserves memory areas not used in the trace.
 	Allocator memory.Allocator
@@ -81,7 +81,7 @@ func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.Memo
 	return &GlobalState{
 		MemoryLayout: memoryLayout,
 		Memory:       memory.NewPools(),
-		APIs:         map[API]State{},
+		APIs:         map[ID]State{},
 		Allocator:    allocator,
 	}
 }

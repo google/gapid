@@ -46,13 +46,12 @@
 
   // GetState returns the {{$.Name}} state from the api.State.
   func GetState(s *api.GlobalState) *State {
-    api := API{}
-    if state, ok := s.APIs[api].(*State); ok {
+    if state, ok := s.APIs[ID].(*State); ok {
       return state
     } else {
       state = &State{}
       state.Init()
-      s.APIs[api] = state
+      s.APIs[ID] = state
       return state
     }
   }
