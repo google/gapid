@@ -20,6 +20,7 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/capture"
@@ -215,7 +216,7 @@ func MapIndex(ctx context.Context, p *path.MapIndex) (interface{}, error) {
 	m := reflect.ValueOf(obj)
 	switch m.Kind() {
 	case reflect.Map:
-		key, ok := convertMapKey(reflect.ValueOf(p.KeyValue()), m.Type().Key())
+		key, ok := convert(reflect.ValueOf(p.KeyValue()), m.Type().Key())
 		if !ok {
 			return nil, &service.ErrInvalidPath{
 				Reason: messages.ErrIncorrectMapKeyType(
@@ -336,7 +337,10 @@ func typename(t reflect.Type) string {
 	}
 }
 
-func convertMapKey(val reflect.Value, ty reflect.Type) (reflect.Value, bool) {
+func convert(val reflect.Value, ty reflect.Type) (reflect.Value, bool) {
+	if !val.IsValid() {
+		return reflect.Zero(ty), true
+	}
 	valTy := val.Type()
 	if valTy == ty {
 		return val, true
@@ -344,18 +348,20 @@ func convertMapKey(val reflect.Value, ty reflect.Type) (reflect.Value, bool) {
 	if valTy.ConvertibleTo(ty) {
 		return val.Convert(ty), true
 	}
-	return val, false
-}
-
-func convert(val reflect.Value, ty reflect.Type) (reflect.Value, bool) {
-	if !val.IsValid() {
-		return reflect.Zero(ty), true
-	}
-	if valTy := val.Type(); valTy != ty {
-		if !valTy.ConvertibleTo(ty) {
-			return val, false
+	// slice -> array
+	if valTy.Kind() == reflect.Slice && ty.Kind() == reflect.Array {
+		if valTy.Elem().ConvertibleTo(ty.Elem()) {
+			c := sint.Min(val.Len(), ty.Len())
+			out := reflect.New(ty).Elem()
+			for i := 0; i < c; i++ {
+				v, ok := convert(val.Index(i), ty.Elem())
+				if !ok {
+					return val, false
+				}
+				out.Index(i).Set(v)
+			}
+			return out, true
 		}
-		val = val.Convert(ty)
 	}
-	return val, true
+	return val, false
 }
