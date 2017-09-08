@@ -24,6 +24,7 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
 import com.google.gapid.views.Formatter;
+import java.util.function.Predicate;
 
 /**
  * Path utilities.
@@ -197,12 +198,12 @@ public class Paths {
         .setBlob(Path.Blob.newBuilder().setId(Path.ID.newBuilder().setData(id.getData()))).build();
   }
 
-  public static Path.Any device(Path.Device device) {
-    return Path.Any.newBuilder().setDevice(device).build();
+  public static Path.Any any(Path.ArrayIndex node) {
+    return Path.Any.newBuilder().setArrayIndex(node).build();
   }
 
-  public static Path.Any any(Path.Command command) {
-    return Path.Any.newBuilder().setCommand(command).build();
+  public static Path.Any any(Path.Command node) {
+    return Path.Any.newBuilder().setCommand(node).build();
   }
 
   public static Path.Any any(Path.CommandTreeNode node) {
@@ -213,8 +214,36 @@ public class Paths {
     return Path.Any.newBuilder().setCommandTreeNode(node).build();
   }
 
-  public static Path.Any any(Path.ConstantSet constants) {
-    return Path.Any.newBuilder().setConstantSet(constants).build();
+  public static Path.Any any(Path.ConstantSet node) {
+    return Path.Any.newBuilder().setConstantSet(node).build();
+  }
+
+  public static Path.Any any(Path.Device node) {
+    return Path.Any.newBuilder().setDevice(node).build();
+  }
+
+  public static Path.Any any(Path.Field node) {
+    return Path.Any.newBuilder().setField(node).build();
+  }
+
+  public static Path.Any any(Path.GlobalState node) {
+    return Path.Any.newBuilder().setGlobalState(node).build();
+  }
+
+  public static Path.Any any(Path.MapIndex node) {
+    return Path.Any.newBuilder().setMapIndex(node).build();
+  }
+
+  public static Path.Any any(Path.Slice node) {
+    return Path.Any.newBuilder().setSlice(node).build();
+  }
+
+  public static Path.Any any(Path.State node) {
+    return Path.Any.newBuilder().setState(node).build();
+  }
+
+  public static Path.Any any(Path.StateTree node) {
+    return Path.Any.newBuilder().setStateTree(node).build();
   }
 
   public static Path.Any any(Path.StateTreeNode node) {
@@ -248,82 +277,107 @@ public class Paths {
     return (a.getIndicesCount() == b.getIndicesCount()) ? 0 : -1;
   }
 
-  public static Path.State findState(Path.Any path) {
+  public static boolean contains(Path.Any path, Predicate<Path.Any> predicate) {
+    return find(path, predicate) != null;
+  }
+
+    public static Path.Any find(Path.Any path, Predicate<Path.Any> predicate) {
+    for (Path.Any p = path; p != null; p = parentOf(p)) {
+      if (predicate.test(p)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  public static Path.Any parentOf(Path.Any path) {
     switch (path.getPathCase()) {
       case STATE:
-        return path.getState();
+        return parentOf(path.getState());
+      case GLOBAL_STATE:
+        return parentOf(path.getGlobalState());
       case FIELD:
-        return findState(path.getField());
+        return parentOf(path.getField());
       case ARRAY_INDEX:
-        return findState(path.getArrayIndex());
+        return parentOf(path.getArrayIndex());
       case SLICE:
-        return findState(path.getSlice());
+        return parentOf(path.getSlice());
       case MAP_INDEX:
-        return findState(path.getMapIndex());
+        return parentOf(path.getMapIndex());
       default:
         return null;
     }
   }
 
-  public static Path.State findState(Path.Field path) {
+  public static Path.Any parentOf(Path.State path) {
+    return any(path.getAfter());
+  }
+
+  public static Path.Any parentOf(Path.GlobalState path) {
+    return any(path.getAfter());
+  }
+
+  public static Path.Any parentOf(Path.Field path) {
     switch (path.getStructCase()) {
       case STATE:
-        return path.getState();
+        return any(path.getState());
+      case GLOBAL_STATE:
+        return any(path.getGlobalState());
       case FIELD:
-        return findState(path.getField());
+        return any(path.getField());
       case ARRAY_INDEX:
-        return findState(path.getArrayIndex());
+        return any(path.getArrayIndex());
       case SLICE:
-        return findState(path.getSlice());
+        return any(path.getSlice());
       case MAP_INDEX:
-        return findState(path.getMapIndex());
+        return any(path.getMapIndex());
       default:
         return null;
     }
   }
 
-  public static Path.State findState(Path.ArrayIndex path) {
+  public static Path.Any parentOf(Path.ArrayIndex path) {
     switch (path.getArrayCase()) {
       case FIELD:
-        return findState(path.getField());
+        return any(path.getField());
       case ARRAY_INDEX:
-        return findState(path.getArrayIndex());
+        return any(path.getArrayIndex());
       case SLICE:
-        return findState(path.getSlice());
+        return any(path.getSlice());
       case MAP_INDEX:
-        return findState(path.getMapIndex());
+        return any(path.getMapIndex());
       default:
         return null;
     }
   }
 
-  public static Path.State findState(Path.Slice path) {
+  public static Path.Any parentOf(Path.Slice path) {
     switch (path.getArrayCase()) {
       case FIELD:
-        return findState(path.getField());
+        return any(path.getField());
       case ARRAY_INDEX:
-        return findState(path.getArrayIndex());
+        return any(path.getArrayIndex());
       case SLICE:
-        return findState(path.getSlice());
+        return any(path.getSlice());
       case MAP_INDEX:
-        return findState(path.getMapIndex());
+        return any(path.getMapIndex());
       default:
         return null;
     }
   }
 
-  public static Path.State findState(Path.MapIndex path) {
+  public static Path.Any parentOf(Path.MapIndex path) {
     switch (path.getMapCase()) {
       case STATE:
-        return path.getState();
+        return any(path.getState());
       case FIELD:
-        return findState(path.getField());
+        return any(path.getField());
       case ARRAY_INDEX:
-        return findState(path.getArrayIndex());
+        return any(path.getArrayIndex());
       case SLICE:
-        return findState(path.getSlice());
+        return any(path.getSlice());
       case MAP_INDEX:
-        return findState(path.getMapIndex());
+        return any(path.getMapIndex());
       default:
         return null;
     }
