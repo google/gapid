@@ -186,7 +186,7 @@ func (n Commands) Format(f fmt.State, c rune) {
 }
 
 // Format implements fmt.Formatter to print the version.
-func (n CommandTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.command-tree") }
+func (n CommandTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.command-tree", n.Capture) }
 
 // Format implements fmt.Formatter to print the version.
 func (n CommandTreeNode) Format(f fmt.State, c rune) {
@@ -208,7 +208,7 @@ func (n Contexts) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.contexts", n.
 func (n Device) Format(f fmt.State, c rune) { fmt.Fprintf(f, "device<%x>", n.Id) }
 
 // Format implements fmt.Formatter to print the version.
-func (n Events) Format(f fmt.State, c rune) { fmt.Fprintf(f, ".events", n.Parent()) }
+func (n Events) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.events", n.Parent()) }
 
 // Format implements fmt.Formatter to print the version.
 func (n Field) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.%v", n.Parent(), n.Name) }
