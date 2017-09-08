@@ -15,7 +15,6 @@
  */
 package com.google.gapid.models;
 
-import static com.google.gapid.util.Paths.findState;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.WARNING;
 
@@ -26,6 +25,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.proto.service.path.Path.Any.PathCase;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
@@ -209,7 +209,8 @@ public class Follower {
       case FIELD:
       case ARRAY_INDEX:
       case MAP_INDEX:
-        if (findState(path) != null) {
+        if (Paths.contains(path, n ->
+            n.getPathCase() == PathCase.STATE || n.getPathCase() == PathCase.GLOBAL_STATE)) {
           listeners.fire().onStateFollowed(path);
         } else {
           LOG.log(WARNING, "Unknown follow path result: " + path);
