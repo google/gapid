@@ -73,6 +73,7 @@ func (n *Device) Path() *Any                    { return &Any{&Any_Device{n}} }
 func (n *Events) Path() *Any                    { return &Any{&Any_Events{n}} }
 func (n *FramebufferObservation) Path() *Any    { return &Any{&Any_Fbo{n}} }
 func (n *Field) Path() *Any                     { return &Any{&Any_Field{n}} }
+func (n *GlobalState) Path() *Any               { return &Any{&Any_GlobalState{n}} }
 func (n *ImageInfo) Path() *Any                 { return &Any{&Any_ImageInfo{n}} }
 func (n *MapIndex) Path() *Any                  { return &Any{&Any_MapIndex{n}} }
 func (n *Memory) Path() *Any                    { return &Any{&Any_Memory{n}} }
@@ -106,6 +107,7 @@ func (n Device) Parent() Node                    { return nil }
 func (n Events) Parent() Node                    { return n.Capture }
 func (n FramebufferObservation) Parent() Node    { return n.Command }
 func (n Field) Parent() Node                     { return oneOfNode(n.Struct) }
+func (n GlobalState) Parent() Node               { return n.After }
 func (n ImageInfo) Parent() Node                 { return nil }
 func (n MapIndex) Parent() Node                  { return oneOfNode(n.Map) }
 func (n Memory) Parent() Node                    { return n.After }
@@ -136,6 +138,7 @@ func (n *Contexts) SetParent(p Node)                  { n.Capture, _ = p.(*Captu
 func (n *Device) SetParent(p Node)                    {}
 func (n *Events) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *FramebufferObservation) SetParent(p Node)    { n.Command, _ = p.(*Command) }
+func (n *GlobalState) SetParent(p Node)               { n.After, _ = p.(*Command) }
 func (n *ImageInfo) SetParent(p Node)                 {}
 func (n *Memory) SetParent(p Node)                    { n.After, _ = p.(*Command) }
 func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
@@ -209,6 +212,9 @@ func (n Events) Format(f fmt.State, c rune) { fmt.Fprintf(f, ".events", n.Parent
 
 // Format implements fmt.Formatter to print the version.
 func (n Field) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.%v", n.Parent(), n.Name) }
+
+// Format implements fmt.Formatter to print the version.
+func (n GlobalState) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.global-state", n.Parent()) }
 
 // Format implements fmt.Formatter to print the version.
 func (n ImageInfo) Format(f fmt.State, c rune) { fmt.Fprintf(f, "image-info<%x>", n.Id) }
@@ -313,6 +319,8 @@ func (n *Field) SetParent(p Node) {
 		n.Struct = nil
 	case *Field:
 		n.Struct = &Field_Field{p}
+	case *GlobalState:
+		n.Struct = &Field_GlobalState{p}
 	case *Slice:
 		n.Struct = &Field_Slice{p}
 	case *ArrayIndex:
@@ -591,6 +599,11 @@ func (n *Command) Mesh(faceted bool) *Mesh {
 	}
 }
 
+// GlobalStateAfter returns the path node to the state after this command.
+func (n *Command) GlobalStateAfter() *GlobalState {
+	return &GlobalState{After: n}
+}
+
 // StateAfter returns the path node to the state after this command.
 func (n *Command) StateAfter() *State {
 	return &State{After: n}
@@ -629,6 +642,7 @@ func (n *Command) Result() *Result {
 	return &Result{Command: n}
 }
 
+func (n *GlobalState) Field(name string) *Field       { return NewField(name, n) }
 func (n *State) Field(name string) *Field             { return NewField(name, n) }
 func (n *Parameter) ArrayIndex(i uint64) *ArrayIndex  { return NewArrayIndex(i, n) }
 func (n *Parameter) Field(name string) *Field         { return NewField(name, n) }

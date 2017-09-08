@@ -42,21 +42,22 @@ message Any {
     Events events = 15;
     FramebufferObservation fbo = 16;
     Field field = 17;
-    ImageInfo image_info = 18;
-    MapIndex map_index = 19;
-    Memory memory = 20;
-    Mesh mesh = 21;
-    Parameter parameter = 22;
-    Report report = 23;
-    ResourceData resource_data = 24;
-    Resources resources = 25;
-    Result result = 26;
-    Slice slice = 27;
-    State state = 28;
-    StateTree state_tree = 29;
-    StateTreeNode state_tree_node = 30;
-    StateTreeNodeForPath state_tree_node_for_path = 31;
-    Thumbnail thumbnail = 32;
+    GlobalState global_state = 18;
+    ImageInfo image_info = 19;
+    MapIndex map_index = 20;
+    Memory memory = 21;
+    Mesh mesh = 22;
+    Parameter parameter = 23;
+    Report report = 24;
+    ResourceData resource_data = 25;
+    Resources resources = 26;
+    Result result = 27;
+    Slice slice = 28;
+    State state = 29;
+    StateTree state_tree = 30;
+    StateTreeNode state_tree_node = 31;
+    StateTreeNodeForPath state_tree_node_for_path = 32;
+    Thumbnail thumbnail = 33;
   }
 }
 
@@ -210,7 +211,8 @@ message Field {
         ArrayIndex array_index = 4;
         MapIndex map_index = 5;
         State state = 6;
-        Parameter parameter = 7;
+        GlobalState global_state = 7;
+        Parameter parameter = 8;
     }
 }
 
@@ -364,9 +366,16 @@ message Slice {
     }
 }
 
-// State is a path to the state at a point in a capture.
+// State is a path to a subset of the GlobalState at a point in a capture.
 message State {
     Command after = 1;
+}
+
+// GlobalState is an path node to the absolute global state after a specfied
+// command. GlobalStates are used where stable paths are required, such as
+// locating state tree nodes.
+message GlobalState {
+    path.Command after = 1;
 }
 
 // StateTree is a path to a hierarchy of state tree nodes.
