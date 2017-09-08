@@ -35,6 +35,9 @@ type Node interface {
 	// If this path is a root, then Base returns nil.
 	Parent() Node
 
+	// SetParent sets the path that this derives from.
+	SetParent(Node)
+
 	// Path returns this path node as a path.
 	Path() *Any
 
@@ -116,6 +119,32 @@ func (n StateTree) Parent() Node                 { return n.After }
 func (n StateTreeNode) Parent() Node             { return nil }
 func (n StateTreeNodeForPath) Parent() Node      { return nil }
 func (n Thumbnail) Parent() Node                 { return oneOfNode(n.Object) }
+
+func (n *API) SetParent(p Node)                       {}
+func (n *Blob) SetParent(p Node)                      {}
+func (n *Capture) SetParent(p Node)                   {}
+func (n *ConstantSet) SetParent(p Node)               { n.Api, _ = p.(*API) }
+func (n *Command) SetParent(p Node)                   { n.Capture, _ = p.(*Capture) }
+func (n *Commands) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
+func (n *CommandTree) SetParent(p Node)               { n.Capture, _ = p.(*Capture) }
+func (n *CommandTreeNode) SetParent(p Node)           {}
+func (n *CommandTreeNodeForCommand) SetParent(p Node) { n.Command, _ = p.(*Command) }
+func (n *Context) SetParent(p Node)                   { n.Capture, _ = p.(*Capture) }
+func (n *Contexts) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
+func (n *Device) SetParent(p Node)                    {}
+func (n *Events) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
+func (n *FramebufferObservation) SetParent(p Node)    { n.Command, _ = p.(*Command) }
+func (n *ImageInfo) SetParent(p Node)                 {}
+func (n *Memory) SetParent(p Node)                    { n.After, _ = p.(*Command) }
+func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
+func (n *Report) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
+func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command) }
+func (n *Resources) SetParent(p Node)                 { n.Capture, _ = p.(*Capture) }
+func (n *Result) SetParent(p Node)                    { n.Command, _ = p.(*Command) }
+func (n *State) SetParent(p Node)                     { n.After, _ = p.(*Command) }
+func (n *StateTree) SetParent(p Node)                 { n.After, _ = p.(*Command) }
+func (n *StateTreeNode) SetParent(p Node)             {}
+func (n *StateTreeNodeForPath) SetParent(p Node)      {}
 
 // Format implements fmt.Formatter to print the version.
 func (n ArrayIndex) Format(f fmt.State, c rune) {
@@ -232,8 +261,33 @@ func (n StateTreeNodeForPath) Format(f fmt.State, c rune) {
 // Format implements fmt.Formatter to print the version.
 func (n Thumbnail) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.thumbnail", n.Parent()) }
 
+func (n *As) SetParent(p Node) {
+	switch p := p.(type) {
+	case nil:
+		n.From = nil
+	case *Field:
+		n.From = &As_Field{p}
+	case *Slice:
+		n.From = &As_Slice{p}
+	case *ArrayIndex:
+		n.From = &As_ArrayIndex{p}
+	case *MapIndex:
+		n.From = &As_MapIndex{p}
+	case *ImageInfo:
+		n.From = &As_ImageInfo{p}
+	case *ResourceData:
+		n.From = &As_ResourceData{p}
+	case *Mesh:
+		n.From = &As_Mesh{p}
+	default:
+		panic(fmt.Errorf("Cannot set As.From to %T", p))
+	}
+}
+
 func (n *ArrayIndex) SetParent(p Node) {
 	switch p := p.(type) {
+	case nil:
+		n.Array = nil
 	case *Field:
 		n.Array = &ArrayIndex_Field{p}
 	case *Slice:
@@ -253,6 +307,8 @@ func (n *ArrayIndex) SetParent(p Node) {
 
 func (n *Field) SetParent(p Node) {
 	switch p := p.(type) {
+	case nil:
+		n.Struct = nil
 	case *Field:
 		n.Struct = &Field_Field{p}
 	case *Slice:
@@ -272,6 +328,8 @@ func (n *Field) SetParent(p Node) {
 
 func (n *MapIndex) SetParent(p Node) {
 	switch p := p.(type) {
+	case nil:
+		n.Map = nil
 	case *Field:
 		n.Map = &MapIndex_Field{p}
 	case *Slice:
@@ -289,8 +347,23 @@ func (n *MapIndex) SetParent(p Node) {
 	}
 }
 
+func (n *Mesh) SetParent(p Node) {
+	switch p := p.(type) {
+	case nil:
+		n.Object = nil
+	case *Command:
+		n.Object = &Mesh_Command{p}
+	case *CommandTreeNode:
+		n.Object = &Mesh_CommandTreeNode{p}
+	default:
+		panic(fmt.Errorf("Cannot set Mesh.Object to %T", p))
+	}
+}
+
 func (n *Slice) SetParent(p Node) {
 	switch p := p.(type) {
+	case nil:
+		n.Array = nil
 	case *Field:
 		n.Array = &Slice_Field{p}
 	case *Slice:
@@ -303,6 +376,21 @@ func (n *Slice) SetParent(p Node) {
 		n.Array = &Slice_Parameter{p}
 	default:
 		panic(fmt.Errorf("Cannot set Slice.Array to %T", p))
+	}
+}
+
+func (n *Thumbnail) SetParent(p Node) {
+	switch p := p.(type) {
+	case nil:
+		n.Object = nil
+	case *ResourceData:
+		n.Object = &Thumbnail_Resource{p}
+	case *Command:
+		n.Object = &Thumbnail_Command{p}
+	case *CommandTreeNode:
+		n.Object = &Thumbnail_CommandTreeNode{p}
+	default:
+		panic(fmt.Errorf("Cannot set Thumbnail.Object to %T", p))
 	}
 }
 
