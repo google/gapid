@@ -381,7 +381,7 @@ message GlobalState {
 // StateTree is a path to a hierarchy of state tree nodes.
 // Resolves to a service.StateTree.
 message StateTree {
-    Command after = 1;
+    State state = 1;
     // If positive, expanded arrays/slices with more elements than this limit
     // will be restructured to have up to two extra levels of tree nodes, each
     // with at most this many children. If the array has more elements than this

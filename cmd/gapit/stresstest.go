@@ -77,7 +77,7 @@ func (verb *stresstestVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		go func() {
 			defer wg.Done()
 			ctx, _ := task.WithTimeout(ctx, duration)
-			boxedTree, err := client.Get(ctx, c.Command(at).StateTreeAfter().Path())
+			boxedTree, err := client.Get(ctx, c.Command(at).StateAfter().Tree().Path())
 			if err != nil {
 				return
 			}

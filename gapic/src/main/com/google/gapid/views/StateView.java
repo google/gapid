@@ -370,7 +370,7 @@ public class StateView extends Composite
   }
 
   protected void updateExpansionState(List<Path.Any> paths, int retry) {
-    Path.State state = Paths.stateAfter(models.state.getSource().getStateTree().getAfter());
+    Path.State state = models.state.getSource().getStateTree().getState();
     ApiState.Node root = models.state.getData();
     List<ListenableFuture<TreePath>> futures = Lists.newArrayList();
     for (Path.Any path : paths) {

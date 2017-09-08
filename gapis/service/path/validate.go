@@ -266,7 +266,7 @@ func (n *State) Validate() error {
 
 // Validate checks the path is valid.
 func (n *StateTree) Validate() error {
-	return checkNotNilAndValidate(n, n.After, "after")
+	return checkNotNilAndValidate(n, n.State, "state")
 }
 
 // Validate checks the path is valid.
