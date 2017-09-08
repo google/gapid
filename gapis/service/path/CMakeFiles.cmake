@@ -24,6 +24,7 @@ set(files
     path.go
     path.pb.go
     path.proto
+    transform.go
     validate.go
 )
 set(dirs
