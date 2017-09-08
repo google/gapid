@@ -395,7 +395,7 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	if api == nil {
 		return nil, fmt.Errorf("Command has no API")
 	}
-	apiState := state.APIs[api]
+	apiState := state.APIs[api.ID()]
 	apiPath := &path.API{Id: path.NewID(id.ID(api.ID()))}
 	root := &stn{
 		name:  "root",

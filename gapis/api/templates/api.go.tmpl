@@ -1124,7 +1124,7 @@
 {{define "API"}}
 
   {{template "Go.CommentHeader" "API"}}
-  var apiID = api.ID(id.OfString("{{Global "API"}}"))
+  var ID = api.ID(id.OfString("{{Global "API"}}"))
 
   type API struct {}
 
@@ -1135,7 +1135,7 @@
 
   // ID returns the unique identifier of the {{Global "API"}} API.
   func (API) ID() api.ID {
-    return apiID
+    return ID
   }
 
   // Index returns the Index of the {{Global "API"}} API.
