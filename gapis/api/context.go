@@ -21,6 +21,8 @@ type ContextID id.ID
 
 // Context represents a graphics API's unique context of execution.
 type Context interface {
+	APIObject
+
 	// Name returns the display-name of the context.
 	Name() string
 
