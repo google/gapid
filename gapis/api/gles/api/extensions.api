@@ -865,6 +865,15 @@ cmd void glFramebufferTextureMultiviewOVR(GLenum    target,
                                           GLint     level,
                                           GLint     baseViewIndex,
                                           GLsizei   numViews) {
+  FramebufferTextureMultiviewOVR(target, attachment, texture, level, baseViewIndex, numViews)
+}
+
+sub void FramebufferTextureMultiviewOVR(GLenum    target,
+                                        GLenum    attachment,
+                                        TextureId texture,
+                                        GLint     level,
+                                        GLint     baseViewIndex,
+                                        GLsizei   numViews) {
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
@@ -2917,7 +2926,9 @@ cmd void glFramebufferTextureLayerDownsampleIMG(GLenum target, GLenum attachment
 
 @if(Extension.GL_OVR_multiview_multisampled_render_to_texture)
 @doc("https://www.khronos.org/registry/gles/extensions/OVR/OVR_multiview_multisampled_render_to_texture.txt", Extension.GL_OVR_multiview_multisampled_render_to_texture)
-cmd void glFramebufferTextureMultisampleMultiviewOVR(GLenum target, GLenum attachment, GLuint texture, GLint level, GLsizei samples, GLint baseViewIndex, GLsizei numViews) {
+cmd void glFramebufferTextureMultisampleMultiviewOVR(GLenum target, GLenum attachment, TextureId texture, GLint level, GLsizei samples, GLint baseViewIndex, GLsizei numViews) {
+  // TODO: Handle the multi-sampling instead of ignoring it.
+  FramebufferTextureMultiviewOVR(target, attachment, texture, level, baseViewIndex, numViews)
 }
 
 @if(Extension.GL_OES_viewport_array)
