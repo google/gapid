@@ -25,7 +25,7 @@ func internalToService(v interface{}) (interface{}, error) {
 	case api.Cmd:
 		return api.CmdToService(v)
 	case *InternalContext:
-		return &service.Context{Name: v.Name, Api: v.Api}, nil
+		return &service.Context{Name: v.Name, Api: v.Api, Priority: v.Priority}, nil
 	default:
 		return v, nil
 	}

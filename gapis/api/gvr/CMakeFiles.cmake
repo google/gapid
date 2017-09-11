@@ -25,6 +25,7 @@ set(files
     framebindings.go
     gvr.api
     gvr.go
+    importance.go
     mutate.go
     resolvables.proto
     types.api

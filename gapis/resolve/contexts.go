@@ -16,6 +16,7 @@ package resolve
 
 import (
 	"context"
+	"sort"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/gapis/api"
@@ -47,6 +48,12 @@ func Context(ctx context.Context, p *path.Context) (*InternalContext, error) {
 	return boxed.(*InternalContext), nil
 }
 
+// Importance is the interface implemeneted by commands that provide an
+// "importance score". This value is used to prioritize contexts.
+type Importance interface {
+	Importance() int
+}
+
 // Resolve implements the database.Resolver interface.
 func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
@@ -56,8 +63,8 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	seen := map[api.ContextID]int{}
-	contexts := []*path.Context{}
+	priorities := map[api.ContextID]int{}
+	contexts := []api.Context{}
 
 	s := c.NewState()
 	err = api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, i api.CmdID, cmd api.Cmd) error {
@@ -67,22 +74,21 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		if api == nil {
 			return nil
 		}
-		if context := api.Context(s, cmd.Thread()); context != nil {
-			ctxID := context.ID()
-			idx, ok := seen[ctxID]
-			if !ok {
-				idx = len(contexts)
-				seen[ctxID] = idx
-				id, err := database.Store(ctx, &InternalContext{
-					Id:   string(ctxID[:]),
-					Api:  &path.API{Id: path.NewID(id.ID(api.ID()))},
-					Name: context.Name(),
-				})
-				if err != nil {
-					return err
-				}
-				contexts = append(contexts, r.Capture.Context(path.NewID(id)))
-			}
+
+		context := api.Context(s, cmd.Thread())
+		if context == nil {
+			return nil
+		}
+
+		id := context.ID()
+		p, ok := priorities[id]
+		if !ok {
+			priorities[id] = p
+			contexts = append(contexts, context)
+		}
+		if i, ok := cmd.(Importance); ok {
+			p += i.Importance()
+			priorities[id] = p
 		}
 		return nil
 	})
@@ -90,5 +96,27 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	return &service.Contexts{List: contexts}, nil
+	sort.Slice(contexts, func(i, j int) bool {
+		return priorities[contexts[i].ID()] < priorities[contexts[j].ID()]
+	})
+
+	out := &service.Contexts{
+		List: make([]*path.Context, len(contexts)),
+	}
+
+	for i, c := range contexts {
+		api := c.API()
+		ctxID := c.ID()
+		id, err := database.Store(ctx, &InternalContext{
+			Id:       string(ctxID[:]),
+			Api:      &path.API{Id: path.NewID(id.ID(api.ID()))},
+			Name:     c.Name(),
+			Priority: uint32(i),
+		})
+		if err != nil {
+			return nil, err
+		}
+		out.List[i] = r.Capture.Context(path.NewID(id))
+	}
+	return out, nil
 }

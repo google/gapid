@@ -16,6 +16,7 @@
 package com.google.gapid.models;
 
 import static java.util.Arrays.stream;
+import static java.util.Comparator.comparingInt;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -38,7 +39,7 @@ public class ApiContext
     extends CaptureDependentModel<ApiContext.FilteringContext[], ApiContext.Listener> {
   private static final Logger LOG = Logger.getLogger(ApiContext.class.getName());
 
-  private FilteringContext selectedContext = FilteringContext.ALL;
+  private FilteringContext selectedContext = null;
 
   public ApiContext(Shell shell, Client client, Capture capture) {
     super(LOG, shell, client, Listener.class, capture);
@@ -48,7 +49,7 @@ public class ApiContext
   protected void reset(boolean maintainState) {
     super.reset(maintainState);
     if (!maintainState) {
-      selectedContext = FilteringContext.ALL;
+      selectedContext = null;
     }
   }
 
@@ -96,13 +97,21 @@ public class ApiContext
   protected void fireLoadedEvent() {
     if (count() == 1) {
       selectedContext = getData()[0];
-    } else if (selectedContext != FilteringContext.ALL) {
+    } else if (selectedContext != null) {
       selectedContext = stream(getData())
           .filter(c -> c.equals(selectedContext))
           .findFirst()
-          .orElse(FilteringContext.ALL);
+          .orElseGet(this::highestPriorityContext);
+    } else {
+      selectedContext = highestPriorityContext();
     }
     listeners.fire().onContextsLoaded();
+  }
+
+  private FilteringContext highestPriorityContext() {
+    return stream(getData())
+        .max(comparingInt(FilteringContext::getPriority))
+        .orElse(FilteringContext.ALL);
   }
 
   public int count() {
@@ -110,7 +119,7 @@ public class ApiContext
   }
 
   public FilteringContext getSelectedContext() {
-    return selectedContext;
+    return selectedContext != null ? selectedContext : highestPriorityContext();
   }
 
   public void selectContext(FilteringContext context) {
@@ -203,6 +212,10 @@ public class ApiContext
           .setGroupByTransformFeedback(true)
           .setGroupByUserMarkers(true)
           .setAllowIncompleteFrame(true);
+    }
+
+    public int getPriority() {
+      return context != null ? context.getPriority() : 0;
     }
 
     public Path.Events.Builder events(Path.Events.Builder path) {
