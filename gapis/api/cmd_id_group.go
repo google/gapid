@@ -314,15 +314,15 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error
 	}
 	r := CmdIDRange{Start: start, End: end}
 	s, c := interval.Intersect(&g.Spans, r.Span())
-	var newGroup *CmdIDGroup
+	var out *CmdIDGroup
 	var err error
 	if c == 0 {
 		// No overlaps, clean insertion
 		i := sort.Search(len(g.Spans), func(i int) bool {
 			return g.Spans[i].Bounds().Start > start
 		})
-		newGroup = &CmdIDGroup{Name: name, Range: r}
-		slice.InsertBefore(&g.Spans, i, newGroup)
+		out = &CmdIDGroup{Name: name, Range: r}
+		slice.InsertBefore(&g.Spans, i, out)
 	} else {
 		// At least one overlap
 		first := g.Spans[s].(*CmdIDGroup)
@@ -331,11 +331,11 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error
 		switch {
 		case c == 1 && g.Spans[s].Bounds() == r:
 			// New group exactly matches already existing group. Wrap the exiting group.
-			newGroup = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}}
-			g.Spans[s] = newGroup
+			out = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}}
+			g.Spans[s] = out
 		case c == 1 && sIn && eIn:
 			// New group fits entirely within an existing group. Add as subgroup.
-			newGroup, err = first.AddGroup(start, end, name)
+			out, err = first.AddGroup(start, end, name)
 		case sIn && start != first.Range.Start:
 			return nil, fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, first)
 		case eIn && end != last.Range.End:
@@ -343,12 +343,15 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error
 		default:
 			// New group completely wraps one or more existing groups. Add the
 			// existing group(s) as subgroups to the new group, and add to the list.
-			newGroup = &CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c)}
-			copy(newGroup.Spans, g.Spans[s:s+c])
-			slice.Replace(&g.Spans, s, c, newGroup)
+			out = &CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c)}
+			copy(out.Spans, g.Spans[s:s+c])
+			slice.Replace(&g.Spans, s, c, out)
 		}
 	}
-	return newGroup, err
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // AddRoot adds a new Subcommand Root for the given index.
