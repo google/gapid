@@ -52,12 +52,17 @@ type commandTree struct {
 
 func (t *commandTree) index(indices []uint64) api.SpanItem {
 	group := api.CmdGroupOrRoot(t.root)
+	subCmdRootId := api.SubCmdIdx{}
 	for _, idx := range indices {
 		switch item := group.Index(idx).(type) {
 		case api.CmdIDGroup:
 			group = item
 		case api.SubCmdRoot:
+			// Each SubCmdRoot contains its absolute sub command index.
+			subCmdRootId = item.Id
 			group = item
+		case api.SubCmdIdx:
+			return append(subCmdRootId, item...)
 		default:
 			return item
 		}
@@ -114,12 +119,13 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 			count = uint64(item.SubGroup.Count())
 		}
 		return &service.CommandTreeNode{
-			NumChildren: item.SubGroup.Bounds().Length(),
+			NumChildren: item.SubGroup.Count(),
 			Commands:    cmdTree.path.Capture.SubCommandRange(commandStart, commandEnd),
 			Group:       g,
 			NumCommands: count,
 		}, nil
 	default:
+		return nil, nil
 		panic(fmt.Errorf("Unexpected type: %T, cmdTree.index(c.Indices): %v, indices: %v",
 			item, cmdTree.index(c.Indices), c.Indices))
 	}
@@ -280,7 +286,15 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			cv := append([]api.SubCmdIdx{}, v...)
 			sort.SliceStable(cv, func(i, j int) bool { return len(cv[i]) < len(cv[j]) })
 			for _, x := range cv {
-				r.Insert([]uint64{uint64(id)}, append([]uint64{}, x...))
+				// subcommand marker groups are added before subcommands. And groups with
+				// shorter indices are added before groups with longer indices.
+				// SubCmdRoot will be created when necessary.
+				if snc.SubCommandMarkerGroups.Value(append([]uint64{uint64(id)}, x[0:len(x)-1]...)) != nil {
+					markers := snc.SubCommandMarkerGroups.Value(append([]uint64{uint64(id)}, x[0:len(x)-1]...)).([]*api.CmdIDGroup)
+					r.AddSubCmdMarkerGroups(x[0:len(x)-1], markers)
+				}
+				// r.Insert([]uint64{uint64(id)}, append([]uint64{}, x...))
+				r.Insert(append([]uint64{}, x...))
 			}
 			return nil
 		}

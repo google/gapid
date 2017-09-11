@@ -56,15 +56,40 @@ type Data struct {
 	// Hidden contains all the commands that should be hidden from the regular
 	// command tree as they exist as a subcommand of another command.
 	Hidden api.CmdIDSet
+	// SubCommandMarkerGroups contains all the marker groups in the subcommands,
+	// indexed by the immediate parent of the subcommands in the group.
+	// e.g.: group: [73, 1, 4, 5~6] should be indexed by [73, 1, 4]
+	SubCommandMarkerGroups *subCommandMarkerGroupTrie
+}
+
+type subCommandMarkerGroupTrie struct {
+	api.SubCmdIdxTrie
+}
+
+// NewMarkerGroup creates a new CmdIDGroup for the marker group in the marker
+// group trie with the specified name and parent SubCmdIdx, and returns a
+// pointer to the created CmdIDGroup.
+func (t *subCommandMarkerGroupTrie) NewMarkerGroup(parent api.SubCmdIdx, name string, start, end uint64) *api.CmdIDGroup {
+	l := []*api.CmdIDGroup{}
+	if o, ok := t.Value(parent).([]*api.CmdIDGroup); ok {
+		l = o
+	}
+	group := &api.CmdIDGroup{Name: name}
+	group.Range.Start = api.CmdID(start)
+	group.Range.End = api.CmdID(end)
+	l = append(l, group)
+	t.SetValue(parent, l)
+	return group
 }
 
 // NewData creates a new clean Data object
 func NewData() *Data {
 	return &Data{
-		CommandRanges:        map[api.CmdID]ExecutionRanges{},
-		SubcommandReferences: map[api.CmdID][]SubcommandReference{},
-		SubcommandGroups:     map[api.CmdID][]api.SubCmdIdx{},
-		Hidden:               api.CmdIDSet{},
+		CommandRanges:          map[api.CmdID]ExecutionRanges{},
+		SubcommandReferences:   map[api.CmdID][]SubcommandReference{},
+		SubcommandGroups:       map[api.CmdID][]api.SubCmdIdx{},
+		Hidden:                 api.CmdIDSet{},
+		SubCommandMarkerGroups: &subCommandMarkerGroupTrie{},
 	}
 }
 

@@ -133,12 +133,7 @@ func (g *CmdIDGroup) item(uint64) SpanItem        { return *g }
 func (g *CmdIDGroup) split(i uint64) (Span, Span) { return g, nil }
 
 func (c SubCmdRoot) Index(index uint64) SpanItem {
-	switch t := c.SubGroup.Index(index).(type) {
-	case SubCmdIdx:
-		return append(c.Id, t...)
-	default:
-		return t
-	}
+	return c.SubGroup.Index(index)
 }
 
 // Format writes a string representing the group's name, range and sub-groups.
@@ -307,24 +302,27 @@ func (g CmdIDGroup) IterateBackwards(index uint64, cb func(childIdx uint64, item
 // All groups must be added before commands.
 // Attemping to call this function after commands have been added may result in
 // panics!
-func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) error {
+func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error) {
 	if start > end {
-		return fmt.Errorf("sub-group start (%d) is greater than end (%v)", start, end)
+		return nil, fmt.Errorf("sub-group start (%d) is greater than end (%v)", start, end)
 	}
 	if start < g.Range.Start {
-		return fmt.Errorf("sub-group start (%d) is earlier than group start (%v)", start, g.Range.Start)
+		return nil, fmt.Errorf("sub-group start (%d) is earlier than group start (%v)", start, g.Range.Start)
 	}
 	if end > g.Range.End {
-		return fmt.Errorf("sub-group end (%d) is later than group end (%v)", end, g.Range.End)
+		return nil, fmt.Errorf("sub-group end (%d) is later than group end (%v)", end, g.Range.End)
 	}
 	r := CmdIDRange{Start: start, End: end}
 	s, c := interval.Intersect(&g.Spans, r.Span())
+	var newGroup *CmdIDGroup
+	var err error
 	if c == 0 {
 		// No overlaps, clean insertion
 		i := sort.Search(len(g.Spans), func(i int) bool {
 			return g.Spans[i].Bounds().Start > start
 		})
-		slice.InsertBefore(&g.Spans, i, &CmdIDGroup{Name: name, Range: r})
+		newGroup = &CmdIDGroup{Name: name, Range: r}
+		slice.InsertBefore(&g.Spans, i, newGroup)
 	} else {
 		// At least one overlap
 		first := g.Spans[s].(*CmdIDGroup)
@@ -333,23 +331,24 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) error {
 		switch {
 		case c == 1 && g.Spans[s].Bounds() == r:
 			// New group exactly matches already existing group. Wrap the exiting group.
-			g.Spans[s] = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}}
+			newGroup = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}}
+			g.Spans[s] = newGroup
 		case c == 1 && sIn && eIn:
 			// New group fits entirely within an existing group. Add as subgroup.
-			first.AddGroup(start, end, name)
+			newGroup, err = first.AddGroup(start, end, name)
 		case sIn && start != first.Range.Start:
-			return fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, first)
+			return nil, fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, first)
 		case eIn && end != last.Range.End:
-			return fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, last)
+			return nil, fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, last)
 		default:
 			// New group completely wraps one or more existing groups. Add the
 			// existing group(s) as subgroups to the new group, and add to the list.
-			n := CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c)}
-			copy(n.Spans, g.Spans[s:s+c])
-			slice.Replace(&g.Spans, s, c, &n)
+			newGroup = &CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c)}
+			copy(newGroup.Spans, g.Spans[s:s+c])
+			slice.Replace(&g.Spans, s, c, newGroup)
 		}
 	}
-	return nil
+	return newGroup, err
 }
 
 // AddRoot adds a new Subcommand Root for the given index.
@@ -389,40 +388,67 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 	}
 }
 
-// Insert adds a new leaf into the SubCmdRoot.
-// This creates new SubcommandRoots underneath if necessary.
-func (c *SubCmdRoot) Insert(base []uint64, r []uint64) {
-	id := CmdID(r[0])
+// newChildSubCmdRoots adds child SubCmdRoots to the SubCmdRoot's subgroup. If
+// subcomamnds are skipped, create SubCmdRoots for them.
+func (c *SubCmdRoot) newChildSubCmdRoots(r []uint64) *SubCmdRoot {
+	if len(r) == 0 {
+		return c
+	}
+	nextRootRelativeIndex := r[0]
 	oldEnd := c.SubGroup.Range.End
-	if CmdID(r[0]) >= c.SubGroup.Range.End {
-		c.SubGroup.Range.End = id + 1
+	if CmdID(nextRootRelativeIndex) >= oldEnd {
+		c.SubGroup.Range.End = CmdID(nextRootRelativeIndex) + 1
 	}
+	if c.SubGroup.Range.End > oldEnd {
+		for i := uint64(oldEnd); i < uint64(c.SubGroup.Range.End); i++ {
+			c.SubGroup.AddRoot(append(c.Id, i))
+		}
+	}
+	sg := c.SubGroup.FindSubCommandRoot(CmdID(nextRootRelativeIndex))
+	if sg == nil {
+		sg = c.SubGroup.AddRoot(append(c.Id, nextRootRelativeIndex))
+	}
+	return sg.newChildSubCmdRoots(r[1:])
+}
 
-	if len(r) > 1 {
-		if c.SubGroup.Range.End > oldEnd+1 {
-			// If we have skipped over subcommands, then add empty
-			// roots for them.
-			x := uint64(c.SubGroup.Range.End - oldEnd - 1)
-			for i := uint64(0); i < x; i++ {
-				c.SubGroup.AddRoot(append(base, uint64(oldEnd)+i))
-			}
+// Insert adds a new subcommand into the SubCmdRoot. The subcommand is specified
+// with its relative hierarchy to the target SubCmdRoot. If the subcommand is
+// not an immediate child of the target SubCmdRoot (i.e. len(r) > 1) , new
+// child SubCmdRoots will be created under the target SubCmdRoot, until the
+// immediate parent of the subcommand is created.
+func (c *SubCmdRoot) Insert(r []uint64) {
+	childRoot := c.newChildSubCmdRoots(r[0 : len(r)-1])
+	// Add subcommands one-by-one to the SubCmdRoot and its subgroups/child
+	// SubCmdRoots
+	id := r[len(r)-1]
+	if CmdID(id) > childRoot.SubGroup.Range.End {
+		childRoot.SubGroup.Range.End = CmdID(id + 1)
+	}
+	for i := CmdID(0); i <= CmdID(id); i++ {
+		childRoot.SubGroup.AddCommand(i)
+	}
+}
+
+// AddSubCmdMarkerGroups adds the given groups to the target SubCmdRoot
+// with the relative hierarchy specified in r. If the groups are not added as
+// immediate children of the target SubCmdRoot (r is not empty), child
+// SubCmdRoots will be created under the target SubCmdRoot recursively until
+// the immediate parent SubCmdRoot is created.
+func (c *SubCmdRoot) AddSubCmdMarkerGroups(r []uint64, groups []*CmdIDGroup) error {
+	childRoot := c.newChildSubCmdRoots(r)
+	for _, g := range groups {
+		if g.Range.Start < childRoot.SubGroup.Range.Start {
+			childRoot.SubGroup.Range.Start = g.Range.Start
 		}
-		sg := c.SubGroup.FindSubCommandRoot(id)
-		if sg == nil {
-			sg = c.SubGroup.AddRoot(append(base, r[0]))
+		if g.Range.End > childRoot.SubGroup.Range.End {
+			childRoot.SubGroup.Range.End = g.Range.End
 		}
-		sg.Insert(append(base, r[0]), r[1:])
-	} else {
-		if len(c.SubGroup.Spans) == 0 {
-			c.SubGroup.Spans = Spans{&CmdIDRange{CmdID(0), id + 1}}
-		}
-		r, ok := c.SubGroup.Spans[0].(*CmdIDRange)
-		if ok {
-			r.End = id + 1
-		} else {
-			panic("This should not happen, inner-most subcommands must be added to SubCmdRoot before other nesting Sub-SubCmdRoot")
+		_, err := childRoot.SubGroup.AddGroup(g.Range.Start, g.Range.End, g.Name)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 // FindSubCommandRoot returns the SubCmdRoot that represents the given CmdID.
