@@ -42,6 +42,7 @@ set(files
     guess_semantics.go
     helpers.go
     image.go
+    importance.go
     issue_whitelist.go
     links.go
     markers.go

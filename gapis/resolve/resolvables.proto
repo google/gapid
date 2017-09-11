@@ -29,6 +29,7 @@ message InternalContext {
 	string id = 1;
 	path.API api = 2;
 	string name = 3;
+	uint32 priority = 4;
 }
 
 message CommandTreeResolvable {

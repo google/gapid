@@ -619,6 +619,8 @@ message Context {
   string name = 1;
   // The API that this context belongs to.
   path.API api = 2;
+  // The estimated importance for the context. 0 = lowest priority.
+  uint32 priority = 3;
 }
 
 // CommandTree represents a command tree hierarchy.
