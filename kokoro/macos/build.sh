@@ -29,7 +29,8 @@ tar -xzf go1.8.darwin-amd64.tar.gz
 
 # Setup GO paths (remove old, add new).
 export GOROOT=$BUILD_ROOT/go
-export PATH=${PATH/\/usr\/local\/go\/bin:/}
+export PATH=${PATH//:\/usr\/local\/go\/bin/}
+export PATH=${PATH//:\/usr\/local\/go\/packages\/bin/}
 export PATH=$PATH:$GOROOT/bin
 
 # Setup the Android SDK and NDK
