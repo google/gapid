@@ -29,8 +29,8 @@ tar -xzf go1.8.linux-amd64.tar.gz
 
 # Setup GO paths (remove old, add new).
 export GOROOT=$BUILD_ROOT/go
-export PATH=${PATH/\/usr\/local\/go\/bin:/}
-export PATH=${PATH/\/usr\/local\/go\/packages\/bin:/}
+export PATH=${PATH//:\/usr\/local\/go\/bin/}
+export PATH=${PATH//:\/usr\/local\/go\/packages\/bin/}
 export PATH=$PATH:$GOROOT/bin
 
 # Setup the build config file.
