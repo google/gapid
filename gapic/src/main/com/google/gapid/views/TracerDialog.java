@@ -62,9 +62,9 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
@@ -364,6 +364,7 @@ public class TracerDialog {
       private final Runnable refreshDevices;
       private ComboViewer device;
       private LoadingIndicator.Widget deviceLoader;
+      private Label pcsWarning;
       private Link adbWarning;
       private ActionTextbox traceTarget;
       private Button clearCache;
@@ -385,6 +386,13 @@ public class TracerDialog {
             createCheckbox(this, "Disable pre-compiled shaders", settings.traceDisablePcs),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
+        createLabel(this, "");
+        pcsWarning = withLayoutData(
+            createLabel(this, "Warning: Pre-compiled shaders are not supported in the replay."),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        pcsWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
+        pcsWarning.setVisible(!settings.traceDisablePcs);
+
         withLayoutData(createLabel(this, ""), withSpans(new GridData(), 2, 1));
 
         createLabel(this, "");
@@ -393,7 +401,7 @@ public class TracerDialog {
                 "Path to adb missing. Please specify it in the <a>preferences</a> and restart.",
                 e -> SettingsDialog.showSettingsDialog(getShell(), settings)),
             new GridData(SWT.FILL, SWT.FILL, true, false));
-        adbWarning.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_DARK_RED));
+        adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
         adbWarning.setVisible(false);
 
         device.getCombo().addListener(SWT.Selection,
@@ -425,6 +433,9 @@ public class TracerDialog {
         };
         api.getCombo().addListener(SWT.Selection, apiListener);
         apiListener.handleEvent(null);
+
+        disablePcs.addListener(
+            SWT.Selection, e -> pcsWarning.setVisible(!disablePcs.getSelection()));
       }
 
       @Override
