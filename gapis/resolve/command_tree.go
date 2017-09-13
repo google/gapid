@@ -190,11 +190,16 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		if p.IncludeNoContextGroups {
 			noContextID = api.ContextID{}
 		}
+		ctxs, err := ContextsByID(ctx, p.Capture.Contexts())
+		if err != nil {
+			return nil, err
+		}
 		groupers = append(groupers, cmdgrouper.Run(
 			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {
 				if api := cmd.API(); api != nil {
 					if context := api.Context(s, cmd.Thread()); context != nil {
-						return context.ID(), context.Name()
+						id := context.ID()
+						return id, ctxs[id].Name
 					}
 				}
 				return noContextID, "No context"

@@ -30,16 +30,15 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd
 			return !sd.Hidden.Contains(id)
 		},
 	}
-	if c := f.GetContext(); c.IsValid() {
-		c, err := Context(ctx, p.Context(c))
+	if f := f.GetContext(); f.IsValid() {
+		c, err := Context(ctx, p.Context(f.ID()))
 		if err != nil {
 			return nil, err
 		}
-		ctxID := c.ID()
 		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 			if api := cmd.API(); api != nil {
 				if ctx := api.Context(s, cmd.Thread()); ctx != nil {
-					return ctx.ID() == ctxID
+					return ctx.ID() == c.ID
 				}
 			}
 			return false
