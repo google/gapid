@@ -29,9 +29,11 @@ import (
 	"github.com/google/gapid/test/robot/web/client/widgets/grid"
 )
 
-type TrackInfo struct {
+type trackInfo struct {
+	track                 Item
 	packageDisplayToOrder map[string]int
 	packageList           []string
+	headPackage           string
 }
 
 var (
@@ -84,8 +86,50 @@ var (
 			return itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
 		},
 	}
-	tracks = map[string]*TrackInfo{"auto": &TrackInfo{packageDisplayToOrder: map[string]int{}}}
 
+	tracks = map[string]*trackInfo{"auto": &trackInfo{
+		track: item{
+			id:         "",
+			display:    "auto",
+			underlying: map[string]string{"id": "", "name": "auto", "head": ""},
+		},
+		packageList: []string{},
+		headPackage: "",
+	}}
+	packageDisplayToOrder = map[string]int{}
+	packageToTrack        = map[string]Item{}
+
+	trackDimension = &dimension{
+		name: "track",
+		valueOf: func(t *task) Item {
+			it, ok := packageToTrack[t.pkg.Id()]
+			if !ok {
+				return tracks["auto"].track
+			}
+			return it
+		},
+		enumSrc: func() enum {
+			result := itemGetter("{{.id}}", "{{.name}}", template.FuncMap{})(queryArray("/tracks/"))
+			for _, it := range result {
+				track := it.Underlying().(map[string]interface{})
+				trackName, ok := track["name"].(string)
+				if !ok {
+					continue
+				}
+				trackHead, ok := track["head"].(string)
+				if !ok {
+					continue
+				}
+				tracks[trackName] = &trackInfo{
+					track: it,
+					packageDisplayToOrder: map[string]int{},
+					headPackage:           trackHead,
+				}
+			}
+			result = append(result, tracks["auto"].track)
+			return result
+		},
+	}
 	packageDimension = &dimension{
 		name: "package",
 		valueOf: func(t *task) Item {
@@ -114,27 +158,39 @@ var (
 				}
 			}
 			for _, root := range rootPkgs {
-				track := &TrackInfo{packageDisplayToOrder: map[string]int{}}
-				track.packageDisplayToOrder[itemMap[root].Display()] = len(track.packageList)
-				track.packageList = append(track.packageList, root)
+				packageList := []string{}
+				packageDisplayToOrder[itemMap[root].Display()] = len(packageDisplayToOrder)
+				packageList = append(packageList, root)
 				for childId, ok := childMap[root]; ok; childId, ok = childMap[root] {
-					track.packageDisplayToOrder[itemMap[childId].Display()] = len(track.packageList)
+					packageDisplayToOrder[itemMap[childId].Display()] = len(packageDisplayToOrder)
 					// want tracks stored from Root -> Head
-					track.packageList = append(track.packageList, childId)
+					packageList = append(packageList, childId)
 					root = childId
 				}
-				// TODO:(baldwinn) identify the actual track name and ensure each head only maps to one track
-				// for now we just append all tracks to the "auto" track
-				for k, v := range track.packageDisplayToOrder {
-					tracks["auto"].packageDisplayToOrder[k] = v + len(tracks["auto"].packageList)
+				head := root
+				foundTrack := false
+				// force update the trackDimension to populate tracks
+				trackDimension.getEnum()
+				for _, destTrack := range tracks {
+					if destTrack.headPackage == head {
+						destTrack.packageList = packageList
+						for _, p := range destTrack.packageList {
+							packageToTrack[p] = destTrack.track
+						}
+						foundTrack = true
+						break
+					}
 				}
-				tracks["auto"].packageList = append(tracks["auto"].packageList, track.packageList...)
+				if !foundTrack {
+					// We just append all tracks to the "auto" track that didn't match an existing track
+					tracks["auto"].packageList = append(tracks["auto"].packageList, packageList...)
+				}
 			}
 			return result
 		},
 		enumSort: func(a, b string) bool {
-			if ao, ok := tracks["auto"].packageDisplayToOrder[a]; ok {
-				if bo, ok := tracks["auto"].packageDisplayToOrder[b]; ok {
+			if ao, ok := packageDisplayToOrder[a]; ok {
+				if bo, ok := packageDisplayToOrder[b]; ok {
 					return ao < bo
 				}
 			}
@@ -142,7 +198,7 @@ var (
 		},
 	}
 
-	dimensions = []*dimension{kindDimension, subjectDimension, targetDimension, hostDimension, packageDimension}
+	dimensions = []*dimension{kindDimension, subjectDimension, targetDimension, hostDimension, trackDimension, packageDimension}
 )
 
 func isUserType(t reflect.Value) bool {
