@@ -135,14 +135,14 @@ func newReprojectionGroupers(ctx context.Context, p *path.CommandTree) []cmdgrou
 		}
 	}
 	return []cmdgrouper.Grouper{
-		cmdgrouper.Sequence("Left eye",
+		noSubFrameEventGrouper{cmdgrouper.Sequence("Left eye",
 			cmdgrouper.Rule{Pred: eglDestroySyncKHR()},
 			cmdgrouper.Rule{Pred: glClientWaitSync()},
 			cmdgrouper.Rule{Pred: glDeleteSync()},
 			cmdgrouper.Rule{Pred: notGlDrawElements(), Repeats: true},
 			cmdgrouper.Rule{Pred: glDrawElements()},
-		),
-		cmdgrouper.Sequence("Right eye",
+		)},
+		noSubFrameEventGrouper{cmdgrouper.Sequence("Right eye",
 			cmdgrouper.Rule{Pred: glFenceSync(gles.GLenum_GL_SYNC_GPU_COMMANDS_COMPLETE)},
 			cmdgrouper.Rule{Pred: glEndTilingQCOM(1), Optional: true},
 			cmdgrouper.Rule{Pred: glClientWaitSync()},
@@ -150,8 +150,23 @@ func newReprojectionGroupers(ctx context.Context, p *path.CommandTree) []cmdgrou
 			cmdgrouper.Rule{Pred: notGlDrawElements(), Repeats: true},
 			cmdgrouper.Rule{Pred: glDrawElements()},
 			cmdgrouper.Rule{Pred: notGlFlush(), Repeats: true},
-		),
+		)},
 	}
+}
+
+type noSubFrameEventGrouper struct {
+	cmdgrouper.Grouper
+}
+
+func (n noSubFrameEventGrouper) Build(end api.CmdID) []cmdgrouper.Group {
+	out := n.Grouper.Build(end)
+	for i := range out {
+		out[i].UserData = &resolve.CmdGroupData{
+			Thumbnail:          api.CmdNoID,
+			NoFrameEventGroups: true,
+		}
+	}
+	return out
 }
 
 func newReprojectionEvents(ctx context.Context, p *path.Events) extensions.EventProvider {

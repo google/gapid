@@ -30,8 +30,12 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type CommandTreeNodeUserData struct {
+// CmdGroupData is the additional metadata assigned to api.CmdIDGroups UserData
+// field.
+type CmdGroupData struct {
 	Thumbnail api.CmdID
+	// If true, then children frame event groups should not be added to this group.
+	NoFrameEventGroups bool
 }
 
 // CommandTree resolves the specified command tree path.
@@ -245,7 +249,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 	for _, g := range groupers {
 		for _, l := range g.Build(api.CmdID(len(c.Commands))) {
-			out.root.AddGroup(l.Start, l.End, l.Name)
+			if group, err := out.root.AddGroup(l.Start, l.End, l.Name); err == nil {
+				group.UserData = l.UserData
+			}
 		}
 	}
 
@@ -298,7 +304,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 					markers := snc.SubCommandMarkerGroups.Value(append([]uint64{uint64(id)}, x[0:len(x)-1]...)).([]*api.CmdIDGroup)
 					r.AddSubCmdMarkerGroups(x[0:len(x)-1], markers)
 				}
-				// r.Insert([]uint64{uint64(id)}, append([]uint64{}, x...))
 				r.Insert(append([]uint64{}, x...))
 			}
 			return nil
@@ -347,6 +352,10 @@ func addFrameEventGroups(
 					}
 				}
 				break
+			}
+
+			if data, ok := group.UserData.(*CmdGroupData); ok && data.NoFrameEventGroups {
+				continue
 			}
 
 			// Start with group of size 1 and grow it backward as long as nothing gets in the way.
@@ -400,7 +409,7 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 
 			group, _ := t.root.AddGroup(frameStart, frameEnd+1, fmt.Sprintf("Frame %v", frameCount))
 			if group != nil {
-				group.UserData = &CommandTreeNodeUserData{Thumbnail: i}
+				group.UserData = &CmdGroupData{Thumbnail: i}
 			}
 		}
 	}
@@ -410,15 +419,15 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 }
 
 func setThumbnails(ctx context.Context, g *api.CmdIDGroup, drawOrClearCmds api.Spans) {
-	data, _ := g.UserData.(*CommandTreeNodeUserData)
+	data, _ := g.UserData.(*CmdGroupData)
 	if data == nil {
-		data = &CommandTreeNodeUserData{Thumbnail: api.CmdNoID}
+		data = &CmdGroupData{Thumbnail: api.CmdNoID}
 		g.UserData = data
 	}
 	if data.Thumbnail == api.CmdNoID {
 		if s, c := interval.Intersect(drawOrClearCmds, g.Bounds().Span()); c > 0 {
 			thumbnail := drawOrClearCmds[s+c-1].Bounds().Start
-			g.UserData = &CommandTreeNodeUserData{Thumbnail: thumbnail}
+			data.Thumbnail = thumbnail
 		}
 	}
 
