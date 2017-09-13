@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/extensions"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -153,6 +154,12 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 			Name:              name,
 			Priority:          i,
 			UserData:          map[interface{}]interface{}{},
+		}
+	}
+
+	for _, e := range extensions.Get() {
+		if e.AdjustContexts != nil {
+			e.AdjustContexts(ctx, out)
 		}
 	}
 

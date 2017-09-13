@@ -19,9 +19,13 @@
 package extensions
 
 import (
+	"context"
 	"sync"
 
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/resolve/cmdgrouper"
+	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 var (
@@ -29,13 +33,22 @@ var (
 	mutex      sync.Mutex
 )
 
+// EventProvider is a function that produces events for the given command and
+// state.
+type EventProvider func(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState) []*service.Event
+
 // Extension is a GAPIS extension.
 // It should be registered at application initialization with Register.
 type Extension struct {
 	// Name of the extension.
 	Name string
+	// AdjustContexts lets the extension rename or reprioritize the list of
+	// contexts.
+	AdjustContexts func(context.Context, []*api.ContextInfo)
 	// Custom command groupers.
-	CmdGroupers func() []cmdgrouper.Grouper
+	CmdGroupers func(ctx context.Context, p *path.CommandTree) []cmdgrouper.Grouper
+	// Custom events provider.
+	Events func(ctx context.Context, p *path.Events) EventProvider
 }
 
 // Register registers the extension e.

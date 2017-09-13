@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/extensions"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -38,6 +39,16 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 	filter, err := buildFilter(ctx, p.Capture, p.Filter, sd)
 	if err != nil {
 		return nil, err
+	}
+
+	// Add any extension events
+	eps := []extensions.EventProvider{}
+	for _, e := range extensions.Get() {
+		if e.Events != nil {
+			if ep := e.Events(ctx, p); ep != nil {
+				eps = append(eps, ep)
+			}
+		}
 	}
 
 	events := []*service.Event{}
@@ -136,6 +147,10 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Kind:    service.EventKind_AllCommands,
 				Command: p.Capture.Command(uint64(id)),
 			})
+		}
+
+		for _, ep := range eps {
+			events = append(events, ep(ctx, id, cmd, s)...)
 		}
 
 		lastCmd = id

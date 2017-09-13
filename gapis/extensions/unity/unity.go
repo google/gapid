@@ -16,14 +16,17 @@
 package unity
 
 import (
+	"context"
+
 	"github.com/google/gapid/gapis/extensions"
 	"github.com/google/gapid/gapis/resolve/cmdgrouper"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 func init() {
 	extensions.Register(extensions.Extension{
 		Name: "Unity",
-		CmdGroupers: func() []cmdgrouper.Grouper {
+		CmdGroupers: func(ctx context.Context, p *path.CommandTree) []cmdgrouper.Grouper {
 			return []cmdgrouper.Grouper{
 				newStateResetGrouper(),
 			}
