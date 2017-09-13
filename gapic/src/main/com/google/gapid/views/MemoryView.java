@@ -26,6 +26,7 @@ import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static java.util.Collections.emptyList;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
@@ -322,6 +323,7 @@ public class MemoryView extends Composite
       combo.setContentProvider(ArrayContentProvider.getInstance());
       combo.setLabelProvider(new LabelProvider());
       combo.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false));
+      combo.setInput(emptyList());
       return combo;
     }
 
@@ -331,7 +333,7 @@ public class MemoryView extends Composite
 
     public void setObservations(Observation[] observations) {
       if (observations.length == 0) {
-        obsCombo.setInput(Arrays.asList(observations));
+        obsCombo.setInput(emptyList());
       } else {
         obsCombo.setInput(Lists.asList(Observation.NULL_OBSERVATION, observations));
       }
