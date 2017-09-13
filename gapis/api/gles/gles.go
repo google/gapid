@@ -45,12 +45,12 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	if p.Context == nil || !p.Context.IsValid() {
 		return p, nil
 	}
-	c, err := resolve.Context(ctx, p.After.Capture.Context(p.Context))
+	c, err := resolve.Context(ctx, p.After.Capture.Context(p.Context.ID()))
 	if err != nil {
 		return nil, err
 	}
 	for thread, context := range s.Contexts {
-		if c.ID() == context.ID() {
+		if c.ID == context.ID() {
 			return s.contextRoot(p.After, thread), nil
 		}
 	}

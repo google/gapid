@@ -442,6 +442,11 @@ func FindCapture(n Node) *Capture {
 	return nil
 }
 
+// NewAPI returns a new Api path node with the given ID.
+func NewAPI(id id.ID) *API {
+	return &API{Id: NewID(id)}
+}
+
 // NewCapture returns a new Capture path node with the given ID.
 func NewCapture(id id.ID) *Capture {
 	return &Capture{Id: NewID(id)}
@@ -564,8 +569,8 @@ func (n *Capture) Command(i uint64, subidx ...uint64) *Command {
 }
 
 // Context returns the path node to the a context with the given ID.
-func (n *Capture) Context(id *ID) *Context {
-	return &Context{Capture: n, Id: id}
+func (n *Capture) Context(id id.ID) *Context {
+	return &Context{Capture: n, Id: NewID(id)}
 }
 
 // Thread returns the path node to the thread with the given ID.
