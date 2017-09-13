@@ -24,9 +24,10 @@ import (
 
 // Group is the product of a Grouper.
 type Group struct {
-	Start api.CmdID
-	End   api.CmdID
-	Name  string
+	Start    api.CmdID
+	End      api.CmdID
+	Name     string
+	UserData interface{}
 }
 
 // Grouper is the interface implemented by types that build groups.
@@ -60,7 +61,7 @@ func (g *run) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.Glo
 	val, name := g.f(cmd, s)
 	if val != g.current {
 		if g.current != nil {
-			g.out = append(g.out, Group{g.start, id, g.name})
+			g.out = append(g.out, Group{g.start, id, g.name, nil})
 		}
 		g.start = id
 	}
@@ -69,7 +70,7 @@ func (g *run) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.Glo
 
 func (g *run) Build(end api.CmdID) []Group {
 	if g.current != nil && g.start != end {
-		g.out = append(g.out, Group{g.start, end, g.name})
+		g.out = append(g.out, Group{g.start, end, g.name, nil})
 	}
 	out := g.out
 	g.out, g.start, g.current, g.name = nil, 0, nil, ""
