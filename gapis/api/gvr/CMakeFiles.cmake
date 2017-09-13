@@ -22,6 +22,7 @@ set(files
     constant_sets.go
     convert.go
     enum.go
+    extension.go
     framebindings.go
     gvr.api
     gvr.go
