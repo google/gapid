@@ -19,6 +19,7 @@
 
 set(files
     cmdgrouper.go
+    sequence.go
 )
 set(dirs
 )

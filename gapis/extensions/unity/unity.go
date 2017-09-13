@@ -25,7 +25,7 @@ func init() {
 		Name: "Unity",
 		CmdGroupers: func() []cmdgrouper.Grouper {
 			return []cmdgrouper.Grouper{
-				&stateResetGrouper{},
+				newStateResetGrouper(),
 			}
 		},
 	})
