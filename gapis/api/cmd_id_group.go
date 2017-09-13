@@ -337,9 +337,9 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error
 			// New group fits entirely within an existing group. Add as subgroup.
 			out, err = first.AddGroup(start, end, name)
 		case sIn && start != first.Range.Start:
-			return nil, fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, first)
+			return nil, fmt.Errorf("New group '%v' %v overlaps with existing group '%v'", name, r, first)
 		case eIn && end != last.Range.End:
-			return nil, fmt.Errorf("New group '%s' overlaps with existing group '%s'", name, last)
+			return nil, fmt.Errorf("New group '%v' %v overlaps with existing group '%v'", name, r, last)
 		default:
 			// New group completely wraps one or more existing groups. Add the
 			// existing group(s) as subgroups to the new group, and add to the list.
