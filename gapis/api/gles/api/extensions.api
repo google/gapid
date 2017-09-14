@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@post_fence
+extern void GetEGLImageData(EGLImageKHR img, GLsizei width, GLsizei height)
+
 @if(Extension.GL_EXT_separate_shader_objects)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_separate_shader_objects.gles.txt", Extension.GL_EXT_separate_shader_objects)
 cmd void glActiveShaderProgramEXT(PipelineId pipeline, ProgramId program) {
@@ -641,6 +644,7 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
     tmpLevel.Layers[0] = eglImage.Image
     t.Levels[0] = tmpLevel
     t.EGLImage = eglImage
+    GetEGLImageData(eglImage.ID, eglImage.Image.Width, eglImage.Image.Height)
   }
 }
 
