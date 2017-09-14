@@ -92,7 +92,7 @@ public class AtomEditor {
   public void showEditPopup(Shell parent, Path.Command path, API.Command command) {
     EditDialog dialog = new EditDialog(parent, models, command);
     if (dialog.open() == Window.OK) {
-      Rpc.listen(client.set(Paths.any(path), Values.value(dialog.newAtom)),
+      Rpc.listen(client.set(Paths.toAny(path), Values.value(dialog.newAtom)),
           new UiCallback<Path.Any, Path.Any>(parent, LOG) {
         @Override
         protected Path.Any onRpcThread(Rpc.Result<Path.Any> result)

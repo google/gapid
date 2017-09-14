@@ -25,7 +25,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.service.path.Path.Any.PathCase;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
@@ -37,15 +36,13 @@ import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
-
-import org.eclipse.swt.widgets.Shell;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.eclipse.swt.widgets.Shell;
 
 /**
  * Model handling link following throughout the UI.
@@ -209,8 +206,7 @@ public class Follower {
       case FIELD:
       case ARRAY_INDEX:
       case MAP_INDEX:
-        if (Paths.contains(path, n ->
-            n.getPathCase() == PathCase.STATE || n.getPathCase() == PathCase.GLOBAL_STATE)) {
+        if (Paths.contains(path, n -> n instanceof Path.State || n instanceof Path.GlobalState)) {
           listeners.fire().onStateFollowed(path);
         } else {
           LOG.log(WARNING, "Unknown follow path result: " + path);

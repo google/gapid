@@ -34,7 +34,7 @@ public class ConstantSets {
 
   public ConstantSets(Client client) {
     this.cache = FutureCache.hardCache(
-        path -> Futures.transform(client.get(Paths.any(path)), Service.Value::getConstantSet),
+        path -> Futures.transform(client.get(Paths.toAny(path)), Service.Value::getConstantSet),
         result -> result.getConstantsCount() != 0);
   }
 

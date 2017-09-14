@@ -118,7 +118,7 @@ public class Devices {
     rpcController.start().listen(Futures.transformAsync(client.getDevices(), paths -> {
       List<ListenableFuture<Service.Value>> results = Lists.newArrayList();
       for (Path.Device path : paths) {
-        results.add(client.get(Paths.any(path)));
+        results.add(client.get(Paths.toAny(path)));
       }
       return Futures.allAsList(results);
     }), new UiErrorCallback<List<Service.Value>, List<Device.Instance>, Void>(shell, LOG) {
