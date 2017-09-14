@@ -114,7 +114,7 @@ func (o CmdObservation) String() string {
 	return fmt.Sprintf("{Range: %v, ID: %v}", o.Range, o.ID)
 }
 
-var _ ResourceReference = (*CmdObservation)(nil)
+var _ ResourceReference = CmdObservation{}
 
 // RemapResourceIDs remaps the serialized resource identifier with the
 // identifier used to store the resource in the database.

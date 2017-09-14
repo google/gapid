@@ -72,6 +72,23 @@ func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) *AndroidNativeBufferExtra 
 	return FindAndroidNativeBufferExtra(e.cmd.Extras())
 }
 
+func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
+	if d := FindEGLImageData(e.cmd.Extras()); d != nil {
+		if ei, ok := GetState(e.s).EGLImages[id]; ok {
+			if img := ei.Image; img != nil {
+				poolID, pool := e.s.Memory.New()
+				pool.Write(0, memory.Resource(d.ID, d.Size))
+				data := U8ˢ{pool: poolID, count: d.Size}
+				img.Width = GLsizei(d.Width)
+				img.Height = GLsizei(d.Height)
+				img.Data = data
+				img.DataFormat = d.Format
+				img.DataType = d.Type
+			}
+		}
+	}
+}
+
 func (e externs) calcIndexLimits(data U8ˢ, indexSize int) resolve.IndexRange {
 	id := data.ResourceID(e.ctx, e.s)
 	count := int(data.count) / int(indexSize)

@@ -293,7 +293,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				cmd := *cmd
 				if cmd.Texture != 0 && !c.Objects.Shared.GeneratedNames.Textures[cmd.Texture] {
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
-					tmp := s.AllocDataOrPanic(ctx, VertexArrayId(cmd.Texture))
+					tmp := s.AllocDataOrPanic(ctx, cmd.Texture)
 					out.MutateAndWrite(ctx, dID, cb.GlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
 				}
 
@@ -995,18 +995,23 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					}
 				case EGLenum_EGL_NATIVE_BUFFER_ANDROID:
 					{
-						texId := newTexture(id, cb, out)
+						texID := newTexture(id, cb, out)
 						t := newTweaker(out, dID, cb)
 						defer t.revert(ctx)
-						t.glBindTexture_2D(ctx, texId)
+						t.glBindTexture_2D(ctx, texID)
 						img := GetState(s).EGLImages[cmd.Result].Image
 						sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
 						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, id, cmd)
 						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
+						// Set the default filtering modes applicable to external images.
+						// This is important as the default (mipmap) mode would result in incomplete texture.
+						// TODO: Ensure that different contexts can set different modes at the same time.
+						out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MIN_FILTER, GLint(GLenum_GL_LINEAR)))
+						out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MAG_FILTER, GLint(GLenum_GL_LINEAR)))
 
 						out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 							GetState(s).EGLImages[cmd.Result].TargetContext = c.Identifier
-							GetState(s).EGLImages[cmd.Result].TargetTexture = texId
+							GetState(s).EGLImages[cmd.Result].TargetTexture = texID
 							return nil
 						}))
 					}
@@ -1025,6 +1030,17 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Rebind the currently bound 2D texture.  This might seem like a no-op, however,
 				// the remapping layer will use the ID of the EGL image replacement texture now.
 				out.MutateAndWrite(ctx, dID, cb.GlBindTexture(GLenum_GL_TEXTURE_2D, c.Bound.TextureUnit.Binding2d.ID))
+
+				// Update the content if we made a snapshot.
+				if e := FindEGLImageData(cmd.Extras()); e != nil {
+					t := newTweaker(out, dID, cb)
+					defer t.revert(ctx)
+					t.setUnpackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
+					ptr := s.AllocOrPanic(ctx, e.Size)
+					out.MutateAndWrite(ctx, dID, cb.GlTexSubImage2D(GLenum_GL_TEXTURE_2D, 0, 0, 0, e.Width, e.Height, e.Format, e.Type, ptr.Ptr()).AddRead(ptr.Range(), e.ID))
+					ptr.Free()
+				}
+
 				return
 			}
 
