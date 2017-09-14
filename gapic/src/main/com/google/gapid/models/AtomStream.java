@@ -16,7 +16,6 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.proto.service.memory.Memory.PoolNames.Application_VALUE;
-import static com.google.gapid.util.Paths.any;
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.util.Paths.observationsAfter;
@@ -104,14 +103,14 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   @Override
   protected ListenableFuture<Node> doLoad(Path.Any path) {
     return Futures.transformAsync(client.get(path),
-        tree -> Futures.transform(client.get(Paths.any(tree.getCommandTree().getRoot())),
+        tree -> Futures.transform(client.get(Paths.toAny(tree.getCommandTree().getRoot())),
             val -> new RootNode(
                 tree.getCommandTree().getRoot().getTree(), val.getCommandTreeNode())));
   }
 
   public ListenableFuture<Node> load(Node node) {
     return node.load(shell, () -> Futures.transformAsync(
-        client.get(any(node.getPath(Path.CommandTreeNode.newBuilder()))), v1 -> {
+        client.get(Paths.toAny(node.getPath(Path.CommandTreeNode.newBuilder()))), v1 -> {
           Service.CommandTreeNode data = v1.getCommandTreeNode();
           if (data.getGroup().isEmpty() && data.hasCommands()) {
             return Futures.transform(
@@ -122,7 +121,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   }
 
   public ListenableFuture<API.Command> loadCommand(Path.Command path) {
-    return Futures.transformAsync(client.get(any(path)), value ->
+    return Futures.transformAsync(client.get(Paths.toAny(path)), value ->
         Futures.transform(constants.loadConstants(value.getCommand()), ignore ->
             value.getCommand()));
   }

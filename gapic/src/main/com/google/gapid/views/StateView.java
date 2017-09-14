@@ -37,6 +37,7 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.proto.service.path.Path.GlobalState;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
@@ -370,11 +371,11 @@ public class StateView extends Composite
   }
 
   protected void updateExpansionState(List<Path.Any> paths, int retry) {
-    Path.State state = models.state.getSource().getStateTree().getState();
     ApiState.Node root = models.state.getData();
+    GlobalState rootPath = Paths.findGlobalState(root.getData().getValuePath());
     List<ListenableFuture<TreePath>> futures = Lists.newArrayList();
     for (Path.Any path : paths) {
-      Path.Any reparented = Paths.reparent(path, state);
+      Path.Any reparented = Paths.reparent(path, rootPath);
       if (reparented == null) {
         LOG.log(WARNING, "Unable to reparent path {0}", path);
         continue;

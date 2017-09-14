@@ -76,7 +76,7 @@ public class ApiState
   @Override
   protected ListenableFuture<Node> doLoad(Path.Any path) {
     return Futures.transformAsync(client.get(path),
-        tree -> Futures.transform(client.get(Paths.any(tree.getStateTree().getRoot())),
+        tree -> Futures.transform(client.get(Paths.toAny(tree.getStateTree().getRoot())),
             val -> new RootNode(
                 tree.getStateTree().getRoot().getTree(), val.getStateTreeNode())));
   }
@@ -115,7 +115,7 @@ public class ApiState
 
   public ListenableFuture<Node> load(Node node) {
     return node.load(shell, () -> Futures.transformAsync(
-        client.get(Paths.any(node.getPath(Path.StateTreeNode.newBuilder()))),
+        client.get(Paths.toAny(node.getPath(Path.StateTreeNode.newBuilder()))),
         value -> Futures.transform(constants.loadConstants(value.getStateTreeNode()),
             ignore -> new NodeData(value.getStateTreeNode()))));
   }
