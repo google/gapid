@@ -85,7 +85,9 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 	case api.CmdIDGroup:
 		thumbnail := item.Range.Last()
 		if userData, ok := item.UserData.(*CommandTreeNodeUserData); ok {
-			thumbnail = userData.Thumbnail
+			if userData.Thumbnail != api.CmdNoID {
+				thumbnail = userData.Thumbnail
+			}
 		}
 		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(thumbnail)))
 	case api.SubCmdIdx:
