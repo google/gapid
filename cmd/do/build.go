@@ -116,5 +116,7 @@ func doNinja(ctx context.Context, cfg Config, options BuildOptions, targets ...s
 	if options.Verbose {
 		args = append([]string{"-v"}, args...)
 	}
+	// Make sure Ninja calling cmake will find go (i.e. for llvm).
+	env.AddPathStart("PATH", goExePath.Parent().System())
 	run(ctx, cfg.out(), cfg.NinjaPath, env, args...)
 }
