@@ -31,7 +31,7 @@ tar -xzf go1.8.linux-amd64.tar.gz
 export GOROOT=$BUILD_ROOT/go
 export PATH=${PATH//:\/usr\/local\/go\/bin/}
 export PATH=${PATH//:\/usr\/local\/go\/packages\/bin/}
-export PATH=$PATH:$GOROOT/bin
+export PATH=$GOROOT/bin:$PATH
 
 # Setup the build config file.
 cat <<EOF>gapid-config

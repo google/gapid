@@ -31,7 +31,7 @@ tar -xzf go1.8.darwin-amd64.tar.gz
 export GOROOT=$BUILD_ROOT/go
 export PATH=${PATH//:\/usr\/local\/go\/bin/}
 export PATH=${PATH//:\/usr\/local\/go\/packages\/bin/}
-export PATH=$PATH:$GOROOT/bin
+export PATH=$GOROOT/bin:$PATH
 
 # Setup the Android SDK and NDK
 curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
