@@ -50,6 +50,12 @@ func FramebufferAttachment(
 		device = devices[0]
 	}
 
+	// Check the command is valid. If we don't do it here, we'll likely get an
+	// error deep in the bowels of the framebuffer data resolve.
+	if _, err := Cmd(ctx, after); err != nil {
+		return nil, err
+	}
+
 	id, err := database.Store(ctx, &FramebufferAttachmentResolvable{
 		device,
 		after,
@@ -63,17 +69,16 @@ func FramebufferAttachment(
 	return path.NewImageInfo(id), nil
 }
 
-// FramebufferAttachmentInfo returns the framebuffer dimensions and format
+// framebufferAttachmentInfo returns the framebuffer dimensions and format
 // after a given command in the given capture, command and attachment.
 // The first call to getFramebufferInfo for a given capture/context
 // will trigger a computation for all commands of this capture, which will be
 // cached to the database for subsequent calls, regardless of the given command.
-func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api.FramebufferAttachment) (framebufferAttachmentInfo, error) {
-	changes, err := FramebufferChanges(ctx, path.FindCapture(after))
+func getFramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api.FramebufferAttachment) (framebufferAttachmentInfo, error) {
+	changes, err := FramebufferChanges(ctx, after.Capture)
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
 	}
-
 	info, err := changes.attachments[att].after(ctx, api.SubCmdIdx(after.Indices))
 	if err != nil {
 		return framebufferAttachmentInfo{}, err
@@ -87,7 +92,7 @@ func FramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api
 
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	fbInfo, err := FramebufferAttachmentInfo(ctx, r.After, r.Attachment)
+	fbInfo, err := getFramebufferAttachmentInfo(ctx, r.After, r.Attachment)
 	if err != nil {
 		return nil, err
 	}
