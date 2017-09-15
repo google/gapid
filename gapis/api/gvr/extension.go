@@ -46,16 +46,16 @@ const (
 func adjustContexts(ctx context.Context, ctxs []*api.ContextInfo) {
 	// Look for the renderer context.
 	tyGvrFrameSubmit := reflect.TypeOf(&Gvr_frame_submit{})
-	if c := findContextByCommand(ctxs, tyGvrFrameSubmit); c != nil {
-		c.UserData[rendererCtx] = true
-		c.Name = "Main context (" + c.Name + ")"
-	}
-
-	// Look for the reprojection context.
 	tyGlFlush := reflect.TypeOf(&gles.GlFlush{})
-	if c := findContextByCommand(ctxs, tyGlFlush); c != nil {
-		c.UserData[reprojectionCtx] = true
-		c.Name = "Reprojection context"
+
+	renderer := findContextByCommand(ctxs, tyGvrFrameSubmit)
+	reprojection := findContextByCommand(ctxs, tyGlFlush)
+
+	if renderer != nil && reprojection != nil {
+		renderer.UserData[rendererCtx] = true
+		renderer.Name = "Main context (" + renderer.Name + ")"
+		reprojection.UserData[reprojectionCtx] = true
+		reprojection.Name = "Reprojection context (" + reprojection.Name + ")"
 	}
 }
 
