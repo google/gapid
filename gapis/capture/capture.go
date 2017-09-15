@@ -264,9 +264,6 @@ func (b *builder) addAPI(ctx context.Context, api api.API) {
 
 func (b *builder) addObservation(ctx context.Context, o *api.CmdObservation) {
 	interval.Merge(&b.observed, o.Range.Span(), true)
-	if id, found := b.idmap[o.ID]; found {
-		o.ID = id
-	}
 }
 
 func (b *builder) addRes(ctx context.Context, id id.ID, data []byte) error {

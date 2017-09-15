@@ -132,6 +132,10 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 		return nil, err
 	}
 
+	if r, ok := obj.(api.ResourceReference); ok {
+		obj = r.RemapResourceIDs(d.builder.idmap)
+	}
+
 	switch obj := obj.(type) {
 	case *Header:
 		d.header = obj
