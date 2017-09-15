@@ -67,7 +67,7 @@ func (s *local) SearchTracks(ctx context.Context, query *search.Query, handler T
 // Add implements Store.Add
 // It adds the package to the persisten store, and attempts to add it into the track it should be part of.
 func (s *local) Add(ctx context.Context, id string, info *Information) (string, bool, error) {
-	a, err := s.artifacts.get(ctx, id, info.Builder.Configuration.ABIs)
+	a, err := s.artifacts.get(ctx, id, info.Builder.Configuration.ABIs[0])
 	if err != nil {
 		return "", false, err
 	}

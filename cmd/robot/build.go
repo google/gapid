@@ -84,6 +84,7 @@ type buildUploadVerb struct {
 	Tag           string `help:"The optional build tag"`
 	Branch        string `help:"The build branch, will be guessed if not set"`
 	Uploader      string `help:"The uploading entity, will be guessed if not set"`
+	BuilderAbi    string `help:"The abi of the builder device, will assume this device if not set"`
 	ServerAddress string `help:"The master server address"`
 
 	store build.Store
@@ -99,6 +100,11 @@ func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) er
 	typ := build.BuildBot
 	if g, err := git.New("."); err != nil {
 		log.E(ctx, "Git failed. Error: %v", err)
+	} else if v.CL != "" {
+		if v.Branch == "" {
+			log.W(ctx, "Cannot detect branch from CL, defaulting to auto")
+			v.Branch = "auto"
+		}
 	} else {
 		typ = build.User
 		if cl, err := g.HeadCL(ctx); err != nil {
@@ -141,14 +147,23 @@ func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) er
 	}
 	log.I(ctx, "Dectected build type %s", typ)
 	v.store = build.NewRemote(ctx, conn)
-	host := host.Instance(ctx)
+	builder := &device.Instance{Configuration: &device.Configuration{}}
+	if v.BuilderAbi != "" {
+		if typ == build.BuildBot {
+			builder.Name = "BuildBot"
+		}
+		builder.Configuration.ABIs = []*device.ABI{device.ABIByName(v.BuilderAbi)}
+	}
+	if len(builder.Configuration.ABIs) == 0 {
+		builder = host.Instance(ctx)
+	}
 	v.info = &build.Information{
 		Type:        typ,
 		Branch:      v.Branch,
 		Cl:          v.CL,
 		Tag:         v.Tag,
 		Description: v.Description,
-		Builder:     host,
+		Builder:     builder,
 		Uploader:    v.Uploader,
 	}
 	return nil

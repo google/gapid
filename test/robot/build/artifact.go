@@ -144,7 +144,7 @@ func (z *zipEntry) GetID(ctx context.Context, a *artifacts) string {
 	return z.id
 }
 
-func (a *artifacts) get(ctx context.Context, id string, hostABIs []*device.ABI) (*Artifact, error) {
+func (a *artifacts) get(ctx context.Context, id string, builderAbi *device.ABI) (*Artifact, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if entry := a.byID[id]; entry != nil {
@@ -161,10 +161,7 @@ func (a *artifacts) get(ctx context.Context, id string, hostABIs []*device.ABI) 
 	if err != nil {
 		return nil, log.Err(ctx, nil, "File is not a build artifact.")
 	}
-	if len(hostABIs) != 1 {
-		log.W(ctx, "(*artifacts) get() received multiple host ABIs, taking first one. %v", hostABIs[0])
-	}
-	toolSet := ToolSet{Abi: hostABIs[0], Host: new(HostToolSet)}
+	toolSet := ToolSet{Abi: builderAbi, Host: new(HostToolSet)}
 	// TODO(baldwinn): move these paths to layout
 	toolSetIDByZipEntry := map[string]*string{
 		"gapid/gapir":                          &toolSet.Host.Gapir,
