@@ -80,7 +80,7 @@ func Do(conn *jdwp.Connection, thread jdwp.ThreadID, f func(jdbg *JDbg) error) e
 		}
 	}()
 
-	err := catchFailures(func() error {
+	return Try(func() error {
 		// Prime the cache with basic types.
 		j.cache.voidTy = &Simple{j: j, ty: jdwp.TagVoid}
 		j.cache.boolTy = &Simple{j: j, ty: jdwp.TagBoolean}
@@ -106,8 +106,6 @@ func Do(conn *jdwp.Connection, thread jdwp.ThreadID, f func(jdbg *JDbg) error) e
 		// Call f
 		return f(j)
 	})
-
-	return err
 }
 
 // ObjectType returns the Java java.lang.Object type.
