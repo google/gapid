@@ -137,7 +137,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	sort.Slice(contexts, func(i, j int) bool {
-		return contexts[i].pri < contexts[j].pri
+		return contexts[i].pri > contexts[j].pri
 	})
 
 	out := make([]*api.ContextInfo, len(contexts))
@@ -152,7 +152,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 			API:               c.ctx.API().ID(),
 			NumCommandsByType: c.cnts,
 			Name:              name,
-			Priority:          i,
+			Priority:          len(contexts)-i,
 			UserData:          map[interface{}]interface{}{},
 		}
 	}
