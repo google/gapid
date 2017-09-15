@@ -35,9 +35,8 @@ func (j *JDbg) err(err error) {
 	panic(failure{err})
 }
 
-// catchFailures calls f, returning the error. If f panics with a failure then
-// these will be caught and the inner error will be returned immediately.
-func catchFailures(f func() error) (err error) {
+// Try calls f, catching and returning any exceptions thrown.
+func Try(f func() error) (err error) {
 	defer func() {
 		switch r := recover().(type) {
 		case nil:

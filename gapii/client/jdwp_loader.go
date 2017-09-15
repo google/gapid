@@ -184,16 +184,38 @@ func (p *Process) loadAndConnectViaJDWP(
 	log.I(ctx, "Installing interceptor libraries")
 	loadNativeGvrLibrary, vrCoreLibraryLoader := "loadNativeGvrLibrary", "com/google/vr/cardboard/VrCoreLibraryLoader"
 	gvrMajor, gvrMinor, gvrPoint := 1, 8, 1
+
+	getGVRHandle := func(j *jdbg.JDbg, libLoader jdbg.Type) error {
+		// loadNativeGvrLibrary has a couple of different signatures depending
+		// on GVR release.
+		for _, f := range []func() error{
+			// loadNativeGvrLibrary(Context, int major, int minor, int point)
+			func() error {
+				gvrHandle = (uint64)(libLoader.Call(loadNativeGvrLibrary, j.This(), gvrMajor, gvrMinor, gvrPoint).Get().(int64))
+				return nil
+			},
+			// loadNativeGvrLibrary(Context)
+			func() error {
+				gvrHandle = (uint64)(libLoader.Call(loadNativeGvrLibrary, j.This()).Get().(int64))
+				return nil
+			},
+		} {
+			if jdbg.Try(f) == nil {
+				return nil
+			}
+		}
+		return fmt.Errorf("Couldn't call loadNativeGvrLibrary")
+	}
 	for _, f := range []func(j *jdbg.JDbg) error{
 		func(j *jdbg.JDbg) error {
 			libLoader := j.Class(vrCoreLibraryLoader)
-			gvrHandle = (uint64)(libLoader.Call(loadNativeGvrLibrary, j.This(), gvrMajor, gvrMinor, gvrPoint).Get().(int64))
+			getGVRHandle(j, libLoader)
 			return nil
 		},
 		func(j *jdbg.JDbg) error {
 			classLoader := j.This().Call("getClassLoader")
 			libLoader := classLoader.Call("findClass", vrCoreLibraryLoader).AsType()
-			gvrHandle = (uint64)(libLoader.Call(loadNativeGvrLibrary, j.This(), gvrMajor, gvrMinor, gvrPoint).Get().(int64))
+			getGVRHandle(j, libLoader)
 			return nil
 		},
 	} {
@@ -203,6 +225,8 @@ func (p *Process) loadAndConnectViaJDWP(
 	}
 	if gvrHandle == 0 {
 		log.I(ctx, "GVR library not found")
+	} else {
+		log.I(ctx, "GVR library found")
 	}
 
 	// Connect to GAPII.
