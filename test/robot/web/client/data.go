@@ -182,7 +182,7 @@ var (
 					}
 				}
 				if !foundTrack {
-					// We just append all tracks to the "auto" track that didn't match an existing track
+					// We just append all packages to the "auto" track that didn't match an existing track
 					tracks["auto"].packageList = append(tracks["auto"].packageList, packageList...)
 				}
 			}
