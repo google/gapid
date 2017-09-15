@@ -129,6 +129,15 @@ var (
 			result = append(result, tracks["auto"].track)
 			return result
 		},
+		selectAuto: func(c *constraints, d *dimension) {
+			if m, found := tracks["master"]; found {
+				(*c)[d] = m.track
+			} else if len(tracks["auto"].packageList) != 0 {
+				(*c)[d] = tracks["auto"].track
+			} else {
+				delete(*c, d)
+			}
+		},
 	}
 	packageDimension = &dimension{
 		name: "package",
@@ -184,6 +193,7 @@ var (
 				if !foundTrack {
 					// We just append all packages to the "auto" track that didn't match an existing track
 					tracks["auto"].packageList = append(tracks["auto"].packageList, packageList...)
+					tracks["auto"].headPackage = packageList[len(packageList)-1]
 				}
 			}
 			return result
@@ -196,9 +206,16 @@ var (
 			}
 			return a < b
 		},
+		selectAuto: func(c *constraints, d *dimension) {
+			if t, found := (*c)[trackDimension]; found {
+				(*c)[d] = d.GetItem(tracks[t.Display()].headPackage)
+			} else {
+				delete(*c, d)
+			}
+		},
 	}
 
-	dimensions = []*dimension{kindDimension, subjectDimension, targetDimension, hostDimension, trackDimension, packageDimension}
+	dimensions = []*dimension{kindDimension, subjectDimension, packageDimension, trackDimension, targetDimension, hostDimension}
 )
 
 func isUserType(t reflect.Value) bool {

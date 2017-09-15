@@ -64,12 +64,13 @@ func (e enum) indexOf(s Item) int {
 }
 
 type dimension struct {
-	name     string
-	enumData enum
-	valueOf  func(*task) Item
-	itemMap  map[string]Item
-	enumSrc  func() enum
-	enumSort func(a, b string) bool
+	name       string
+	enumData   enum
+	valueOf    func(*task) Item
+	itemMap    map[string]Item
+	enumSrc    func() enum
+	enumSort   func(a, b string) bool
+	selectAuto func(c *constraints, d *dimension)
 }
 
 func (d *dimension) getEnum() enum {
@@ -320,7 +321,8 @@ func robotEntityLink(path string, s interface{}) interface{} {
 
 func setupGrid(tasks []*task) *page {
 	const (
-		optAny   = "!!any"
+		optAuto  = "!!auto"
+		optAll   = "!!all"
 		optXAxis = "!!x-axis"
 		optYAxis = "!!y-axis"
 	)
@@ -361,7 +363,8 @@ func setupGrid(tasks []*task) *page {
 		label := dom.NewSpan()
 		label.Text().Set(d.name + ": ")
 		selecter := dom.NewSelect()
-		selecter.Append(dom.NewOption("<any>", optAny))
+		selecter.Append(dom.NewOption("<auto>", optAuto))
+		selecter.Append(dom.NewOption("<all>", optAll))
 		selecter.Append(dom.NewOption("<x-axis>", optXAxis))
 		selecter.Append(dom.NewOption("<y-axis>", optYAxis))
 		for _, e := range d.getEnum() {
@@ -384,7 +387,13 @@ func setupGrid(tasks []*task) *page {
 				column = d
 			case optYAxis:
 				row = d
-			case optAny:
+			case optAuto:
+				if d.selectAuto != nil {
+					d.selectAuto(&c, d)
+					break
+				}
+				fallthrough
+			case optAll:
 				delete(c, d)
 			default:
 				c[d] = d.GetItem(selecter.Value)
@@ -406,7 +415,7 @@ func setupGrid(tasks []*task) *page {
 			case d == row:
 				filters[d].Value = optYAxis
 			default:
-				filters[d].Value = optAny
+				filters[d].Value = optAll
 			}
 		}
 	}
