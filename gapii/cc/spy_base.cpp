@@ -33,6 +33,7 @@ SpyBase::SpyBase()
 #if COHERENT_TRACKING_ENABLED
     , mMemoryTracker()
 #endif // TARGET_OS
+    , mIsRecordingState(false)
 {
 }
 

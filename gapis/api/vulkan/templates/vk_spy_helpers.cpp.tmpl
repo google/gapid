@@ -476,105 +476,40 @@ bool VulkanSpy::hasDynamicProperty(CallObserver* observer, VkPipelineDynamicStat
 void VulkanSpy::mapMemory(CallObserver*, void**, Slice<uint8_t>) {}
 void VulkanSpy::unmapMemory(CallObserver*, Slice<uint8_t>) {}
 
-void VulkanSpy::execCommands(CallObserver* observer, VkCommandBuffer cmdBuf) {
-    auto& buffer = CommandBuffers[cmdBuf];
-    for (auto& command: buffer->commands) {
-        if (LastBoundQueue->mPendingEvents.size() != 0) {
-          LastBoundQueue->pendingCommands.push_back(command);
-        } else {
-          command(observer);
-          // vkCmdWaitEvents will set pending events to the last bound queue.
-          // If there are pending events waiting to be signaled, following
-          // commands should be recorded to the pending list, including
-          // vkCmdEvents.
-          if (LastBoundQueue->mPendingEvents.size() != 0) {
-            LastBoundQueue->pendingCommands.push_back(command);
-          }
-        }
-    }
-}
-
 void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
   LastBoundQueue = Queues[queue];
-  std::vector<std::function<void(CallObserver * observer)>> newPendingCommands;
-  for (auto& command : LastBoundQueue->pendingCommands) {
+  U32ToCommandReference newPendingCommands;
+
+  for (uint32_t i = 0; i < LastBoundQueue->mPendingCommands.size(); ++i) {
+    auto& cmd = LastBoundQueue->mPendingCommands[i];
     if (LastBoundQueue->mPendingEvents.size() != 0) {
-      newPendingCommands.push_back(command);
+      newPendingCommands[static_cast<uint32_t>(newPendingCommands.size())]
+          = cmd;
     } else {
-      command(observer);
+      if (cmd.mSemaphoreUpdate == SemaphoreUpdate::Signal) {
+        Semaphores[cmd.mSemaphore]->mSignaled = true;
+      } else if (cmd.mSemaphoreUpdate == SemaphoreUpdate::Unsignal) {
+        Semaphores[cmd.mSemaphore]->mSignaled = false;
+      }
+      if (cmd.mBuffer == 0) {
+          continue;
+      }
+      CommandBuffers[cmd.mBuffer]->commands[cmd.mCommandIndex](observer);
       if (LastBoundQueue->mPendingEvents.size() != 0) {
         // Make sure the vkCmdWaitEvents is also added to the pending list
-        newPendingCommands.push_back(command);
+        newPendingCommands[static_cast<uint32_t>(newPendingCommands.size())] = cmd;
       }
     }
   }
-  LastBoundQueue->pendingCommands = std::move(newPendingCommands);
-}
-
-void VulkanSpy::recordUpdateSemaphoreSignal(CallObserver* observer,
-                                            VkSemaphore semaphore,
-                                            bool signaled) {
-  std::function<void(CallObserver*)> signal_semaphore =
-      [this, semaphore, signaled](CallObserver*) {
-        this->Semaphores[semaphore]->mSignaled = signaled;
-      };
-  if (LastBoundQueue->mPendingEvents.size() != 0) {
-    LastBoundQueue->pendingCommands.push_back(signal_semaphore);
-  } else {
-    signal_semaphore(observer);
-  }
+  LastBoundQueue->mPendingCommands = std::move(newPendingCommands);
 }
 
 void VulkanSpy::resetCmd(CallObserver* observer, VkCommandBuffer cmdBuf) {
     auto& buffer = CommandBuffers[cmdBuf];
+    buffer->mCommandReferences = U32ToCommandReference();
     buffer->commands.clear();
-    buffer->recreateCommands.clear();
 }
 
-void VulkanSpy::addWords(CallObserver* observer, VkShaderModule module, size_val count, uint32_t* words) {
-    auto& m = ShaderModules[module];
-    m->shaderWords = std::vector<uint32_t>(words, words+count/4);
-}
-
-void VulkanSpy::addDebugMarkerTagBytes(CallObserver* observer, std::shared_ptr<VulkanDebugMarkerInfo> debug_info, size_val size, uint8_t* ptag) {
-    debug_info->tagBytes = std::vector<uint8_t>(ptag, ptag+size);
-}
-
-void VulkanSpy::setSpecData(CallObserver* observer, std::shared_ptr<SpecializationInfo> info, size_val numBytes, void* pData) {
-    info->specializationData = std::vector<uint8_t>(reinterpret_cast<uint8_t*>(pData), reinterpret_cast<uint8_t*>(pData) + numBytes);
-}
-
-std::shared_ptr<RecreateCmdUpdateBufferData> VulkanSpy::createUpdateBufferData(
-    CallObserver* observer,
-    VkBuffer        dstBuffer,
-    VkDeviceSize    dstOffset,
-    VkDeviceSize    dataSize,
-    void*     pData) {
-    auto ret_val = std::make_shared<RecreateCmdUpdateBufferData>();
-    ret_val->mdstBuffer = dstBuffer;
-    ret_val->mdstOffset = dstOffset;
-    ret_val->mdataSize = dataSize;
-    ret_val->bufferData = std::vector<uint8_t>(static_cast<uint8_t*>(pData), static_cast<uint8_t*>(pData) + dataSize);
-    return ret_val;
-}
-
-void VulkanSpy::doUpdateBuffer(CallObserver* observer, std::shared_ptr<RecreateCmdUpdateBufferData> data) {}
-
-std::shared_ptr<RecreateCmdPushConstantsData> VulkanSpy::createPushConstantsData(
-        CallObserver* observer,
-        VkPipelineLayout layout,
-        VkShaderStageFlags stageFlags,
-        uint32_t offset,
-        uint32_t size,
-        void* pValues) {
-    auto ret_val = std::make_shared<RecreateCmdPushConstantsData>();
-    ret_val->mLayout = layout;
-    ret_val->mStageFlags = stageFlags;
-    ret_val->mOffset = offset;
-    ret_val->mSize = size;
-    ret_val->pushConstantData = std::vector<uint8_t>(static_cast<uint8_t*>(pValues), static_cast<uint8_t*>(pValues) + size);
-    return ret_val;
-}
 void VulkanSpy::trackMappedCoherentMemory(CallObserver*, uint64_t start, size_val size) {
   // If the tracing not started yet, do not track the coherent memory
   if (is_suspended()) {

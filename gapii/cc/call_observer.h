@@ -248,7 +248,11 @@ inline Slice<T> CallObserver::copy(const Slice<T>& dst, const Slice<T>& src) {
 template <typename T>
 inline Slice<T> CallObserver::clone(const Slice<T>& src) {
     Slice<T> dst = make<T>(src.count());
-    copy(dst, src);
+    // Make sure that we actually fill the data the first time.
+    // If we use ::copy(), then the copy will only happen if
+    // the observer is active.
+    read(src);
+    src.copy(dst, 0, src.count(), 0);
     return dst;
 }
 

@@ -480,10 +480,12 @@ void Spy::onPostStartOfFrame() {
         if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
             exit();
             set_suspended(false);
+            set_recording_state(true);
             auto spy_ctx = enter("RecreateState", 2);
             spy_ctx->enter(cmd::RecreateState{});
             EnumerateVulkanResources(spy_ctx);
             spy_ctx->exit();
+            set_recording_state(false);
             // The outer call will handle the spy->exit() for us.
         }
     }
@@ -515,10 +517,12 @@ void Spy::onPostEndOfFrame() {
         if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
             exit();
             set_suspended(false);
+            set_recording_state(true);
             auto spy_ctx = enter("RecreateState", 2);
             spy_ctx->enter(cmd::RecreateState{});
             EnumerateVulkanResources(spy_ctx);
             spy_ctx->exit();
+            set_recording_state(false);
             // The outer call to VkQueuePresent will handle the spy->exit() for us.
         }
     }
