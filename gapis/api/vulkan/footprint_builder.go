@@ -1190,11 +1190,7 @@ func (vb *FootprintBuilder) readBoundIndexBuffer(ctx context.Context,
 	case *VkCmdDrawIndexed:
 		size = uint64(cmd.IndexCount) * indexSize
 		offset = offset + uint64(cmd.FirstIndex)*indexSize
-	case *RecreateCmdDrawIndexed:
-		size = uint64(cmd.IndexCount) * indexSize
-		offset = offset + uint64(cmd.FirstIndex)*indexSize
 	case *VkCmdDrawIndexedIndirect:
-	case *RecreateCmdDrawIndexedIndirect:
 	}
 	dataToRead := getSubBufferData(boundIndexBufferData, offset, size)
 	read(ctx, bh, dataToRead)
@@ -1838,43 +1834,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			vb.recordReadsWritesModifies(
 				ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
 		}
-	case *RecreateCmdCopyImage:
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
-		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
-		overwritten := false
-		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			overwritten = overwritten || subresourceLayersFullyCoverImage(
-				GetState(s).Images.Get(cmd.DstImage),
-				region.DstSubresource, region.DstOffset, region.Extent)
-		}
-		if overwritten {
-			vb.recordReadsWritesModifies(
-				ctx, ft, bh, cmd.CommandBuffer, src, dst, emptyDefUseVars)
-		} else {
-			vb.recordReadsWritesModifies(
-				ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
-		}
 
 	case *VkCmdCopyBuffer:
-		srcBufferData, _ := vb.getBufferData(ctx, bh, cmd.SrcBuffer).(memorySpan)
-		dstBufferData, _ := vb.getBufferData(ctx, bh, cmd.DstBuffer).(memorySpan)
-		src := []dependencygraph.DefUseVariable{}
-		dst := []dependencygraph.DefUseVariable{}
-		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			srcOffset := srcBufferData.span.Start + uint64(region.SrcOffset)
-			dstOffset := dstBufferData.span.Start + uint64(region.DstOffset)
-			src = append(src, memorySpan{
-				span:   interval.U64Span{Start: srcOffset, End: srcOffset + uint64(region.Size)},
-				memory: srcBufferData.memory})
-			dst = append(dst, memorySpan{
-				span:   interval.U64Span{Start: dstOffset, End: dstOffset + uint64(region.Size)},
-				memory: dstBufferData.memory})
-		}
-		vb.recordReadsWritesModifies(
-			ctx, ft, bh, cmd.CommandBuffer, src, dst, emptyDefUseVars)
-	case *RecreateCmdCopyBuffer:
 		srcBufferData, _ := vb.getBufferData(ctx, bh, cmd.SrcBuffer).(memorySpan)
 		dstBufferData, _ := vb.getBufferData(ctx, bh, cmd.DstBuffer).(memorySpan)
 		src := []dependencygraph.DefUseVariable{}
@@ -1899,31 +1860,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
 		vb.recordReadsWritesModifies(
 			ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
-	case *RecreateCmdCopyImageToBuffer:
-		dst := []dependencygraph.DefUseVariable{vb.getBufferData(ctx, bh, cmd.DstBuffer)}
-		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
-		vb.recordReadsWritesModifies(
-			ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
 
 	case *VkCmdCopyBufferToImage:
 		// TODO: calculate the ranges for the source data
-		src := []dependencygraph.DefUseVariable{vb.getBufferData(ctx, bh, cmd.SrcBuffer)}
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
-		overwritten := false
-		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			overwritten = overwritten || subresourceLayersFullyCoverImage(
-				GetState(s).Images.Get(cmd.DstImage),
-				region.ImageSubresource, region.ImageOffset, region.ImageExtent)
-		}
-		if overwritten {
-			vb.recordReadsWritesModifies(
-				ctx, ft, bh, cmd.CommandBuffer, src, dst, emptyDefUseVars)
-		} else {
-			vb.recordReadsWritesModifies(
-				ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
-		}
-	case *RecreateCmdCopyBufferToImage:
 		src := []dependencygraph.DefUseVariable{vb.getBufferData(ctx, bh, cmd.SrcBuffer)}
 		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
 		overwritten := false
@@ -1959,43 +1898,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			vb.recordReadsWritesModifies(
 				ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
 		}
-	case *RecreateCmdBlitImage:
-		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
-		overwritten := false
-		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			overwritten = overwritten || blitFullyCoverImage(
-				GetState(s).Images.Get(cmd.DstImage),
-				region.DstSubresource,
-				region.DstOffsets[0], region.DstOffsets[1])
-		}
-		if overwritten {
-			vb.recordReadsWritesModifies(
-				ctx, ft, bh, cmd.CommandBuffer, src, dst, emptyDefUseVars)
-		} else {
-			vb.recordReadsWritesModifies(
-				ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
-		}
 
 	case *VkCmdResolveImage:
-		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
-		overwritten := false
-		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			overwritten = overwritten || subresourceLayersFullyCoverImage(
-				GetState(s).Images.Get(cmd.DstImage),
-				region.DstSubresource, region.DstOffset, region.Extent)
-		}
-		if overwritten {
-			vb.recordReadsWritesModifies(
-				ctx, ft, bh, cmd.CommandBuffer, src, dst, emptyDefUseVars)
-		} else {
-			vb.recordReadsWritesModifies(
-				ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
-		}
-	case *RecreateCmdResolveImage:
 		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
 		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
 		overwritten := false
@@ -2019,23 +1923,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			getSubBufferData(dstBufferData, uint64(cmd.DstOffset), uint64(cmd.Size))}
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
 			emptyDefUseVars, dst, emptyDefUseVars)
-	case *RecreateCmdFillBuffer:
-		dstBufferData, _ := vb.getBufferData(ctx, bh, cmd.DstBuffer).(memorySpan)
-		dst := []dependencygraph.DefUseVariable{
-			getSubBufferData(dstBufferData, uint64(cmd.DstOffset), uint64(cmd.Size))}
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
-			emptyDefUseVars, dst, emptyDefUseVars)
 
 	case *VkCmdUpdateBuffer:
-		dstBufferData, _ := vb.getBufferData(ctx, bh, cmd.DstBuffer).(memorySpan)
-		dstOffset := dstBufferData.span.Start + uint64(cmd.DstOffset)
-		dstEnd := dstBufferData.span.End + uint64(cmd.DataSize)
-		dst := []dependencygraph.DefUseVariable{memorySpan{
-			span:   interval.U64Span{Start: dstOffset, End: dstEnd},
-			memory: dstBufferData.memory}}
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
-			emptyDefUseVars, dst, emptyDefUseVars)
-	case *RecreateCmdUpdateBuffer:
 		dstBufferData, _ := vb.getBufferData(ctx, bh, cmd.DstBuffer).(memorySpan)
 		dstOffset := dstBufferData.span.Start + uint64(cmd.DstOffset)
 		dstEnd := dstBufferData.span.End + uint64(cmd.DataSize)
@@ -2061,40 +1950,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
 				emptyDefUseVars, emptyDefUseVars, dst)
 		}
-	case *RecreateCmdClearColorImage:
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.Image)}
-		count := uint64(cmd.RangeCount)
-		overwritten := false
-		for _, rng := range cmd.PRanges.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			if subresourceRangeFullyCoverImage(GetState(s).Images.Get(cmd.Image), rng) {
-				overwritten = true
-			}
-		}
-		if overwritten {
-			vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
-				emptyDefUseVars, dst, emptyDefUseVars)
-		} else {
-			vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
-				emptyDefUseVars, emptyDefUseVars, dst)
-		}
 
 	case *VkCmdClearDepthStencilImage:
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.Image)}
-		count := uint64(cmd.RangeCount)
-		overwritten := false
-		for _, rng := range cmd.PRanges.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			if subresourceRangeFullyCoverImage(GetState(s).Images.Get(cmd.Image), rng) {
-				overwritten = true
-			}
-		}
-		if overwritten {
-			vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
-				emptyDefUseVars, dst, emptyDefUseVars)
-		} else {
-			vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
-				emptyDefUseVars, emptyDefUseVars, dst)
-		}
-	case *RecreateCmdClearDepthStencilImage:
 		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.Image)}
 		count := uint64(cmd.RangeCount)
 		overwritten := false
@@ -2134,28 +1991,6 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			execInfo.renderPassBegin = newForwardPairedLabel(ctx, cbh)
 			ft.AddBehavior(ctx, cbh)
 		}
-	case *RecreateCmdBeginRenderPass:
-		vkRp := cmd.PRenderPassBegin.Read(ctx, cmd, s, nil).RenderPass
-		read(ctx, bh, vkHandle(vkRp))
-		vkFb := cmd.PRenderPassBegin.Read(ctx, cmd, s, nil).Framebuffer
-		read(ctx, bh, vkHandle(vkFb))
-		write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
-		rp := GetState(s).RenderPasses.Get(vkRp)
-		fb := GetState(s).Framebuffers.Get(vkFb)
-		read(ctx, bh, vkHandle(fb.RenderPass.VulkanHandle))
-		for _, ia := range fb.ImageAttachments {
-			if read(ctx, bh, vkHandle(ia.VulkanHandle)) {
-				read(ctx, bh, vkHandle(ia.Image.VulkanHandle))
-			}
-		}
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			execInfo.beginRenderPass(ctx, vb, cbh, rp, fb)
-			execInfo.renderPassBegin = newForwardPairedLabel(ctx, cbh)
-			ft.AddBehavior(ctx, cbh)
-		}
 
 	case *VkCmdNextSubpass:
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
@@ -2165,26 +2000,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			execInfo.nextSubpass(ctx, ft, cbh, sc, vb.machine)
 			ft.AddBehavior(ctx, cbh)
 		}
-	case *RecreateCmdNextSubpass:
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			execInfo.nextSubpass(ctx, ft, cbh, sc, vb.machine)
-			ft.AddBehavior(ctx, cbh)
-		}
 
 	case *VkCmdEndRenderPass:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			execInfo.endRenderPass(ctx, ft, cbh, sc, vb.machine)
-			read(ctx, cbh, execInfo.renderPassBegin)
-			ft.AddBehavior(ctx, cbh)
-		}
-	case *RecreateCmdEndRenderPass:
 		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
@@ -2214,36 +2031,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			}
 			ft.AddBehavior(ctx, cbh)
 		}
-	case *RecreateCmdBindVertexBuffers:
-		count := uint64(cmd.BindingCount)
-		res := []dependencygraph.DefUseVariable{}
-		for _, vkBuf := range cmd.PBuffers.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			res = append(res, vb.getBufferData(ctx, bh, vkBuf))
-		}
-		firstBinding := cmd.FirstBinding
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			for i, r := range res {
-				binding := firstBinding + uint32(i)
-				// TODO: handle offsets specified in pOffsets
-				execInfo.currentCmdBufState.vertexBuffers[binding] = newBoundData(ctx, cbh, r)
-			}
-			ft.AddBehavior(ctx, cbh)
-		}
 	case *VkCmdBindIndexBuffer:
-		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
-		res := getSubBufferData(bufData, uint64(cmd.Offset), vkWholeSize)
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			execInfo.currentCmdBufState.indexBuffer = newBoundData(ctx, cbh, res)
-			execInfo.currentCmdBufState.indexType = cmd.IndexType
-			ft.AddBehavior(ctx, cbh)
-		}
-	case *RecreateCmdBindIndexBuffer:
 		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
 		res := getSubBufferData(bufData, uint64(cmd.Offset), vkWholeSize)
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
@@ -2256,17 +2044,6 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 	case *VkCmdBindPipeline:
 		bh.Alive = true
-		vkPi := cmd.Pipeline
-		read(ctx, bh, vkHandle(vkPi))
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			read(ctx, cbh, vkHandle(vkPi))
-			write(ctx, cbh, execInfo.currentCmdBufState.pipeline)
-			ft.AddBehavior(ctx, cbh)
-		}
-	case *RecreateCmdBindPipeline:
 		vkPi := cmd.Pipeline
 		read(ctx, bh, vkHandle(vkPi))
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
@@ -2296,36 +2073,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			}
 			ft.AddBehavior(ctx, cbh)
 		}
-	case *RecreateCmdBindDescriptorSets:
-		read(ctx, bh, vkHandle(cmd.Layout))
-		count := uint64(cmd.DescriptorSetCount)
-		dss := []*descriptorSet{}
-		for _, vkSet := range cmd.PDescriptorSets.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			dss = append(dss, vb.descriptorSets[vkSet])
-		}
-		firstSet := cmd.FirstSet
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			for i, ds := range dss {
-				set := firstSet + uint32(i)
-				execInfo.currentCmdBufState.descriptorSets[set] = newBoundDescriptor(ctx, cbh, ds)
-			}
-			ft.AddBehavior(ctx, cbh)
-		}
 
 	// draw and dispatch
 	case *VkCmdDraw:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			vb.draw(ctx, cbh, execInfo)
-			ft.AddBehavior(ctx, cbh)
-		}
-	case *RecreateCmdDraw:
 		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
@@ -2345,39 +2095,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			vb.draw(ctx, cbh, execInfo)
 			ft.AddBehavior(ctx, cbh)
 		}
-	case *RecreateCmdDrawIndexed:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			vb.readBoundIndexBuffer(ctx, cbh, execInfo, cmd)
-			vb.draw(ctx, cbh, execInfo)
-			ft.AddBehavior(ctx, cbh)
-		}
 
 	case *VkCmdDrawIndirect:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
-		count := uint64(cmd.DrawCount)
-		sizeOfDrawIndirectdCommand := uint64(4 * 4)
-		offset := uint64(cmd.Offset)
-		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
-		src := []dependencygraph.DefUseVariable{}
-		for i := uint64(0); i < count; i++ {
-			src = append(src, memorySpan{span: interval.U64Span{
-				Start: offset, End: offset + sizeOfDrawIndirectdCommand},
-				memory: bufData.memory})
-			offset += uint64(cmd.Stride)
-		}
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			vb.draw(ctx, cbh, execInfo)
-			readMultiple(ctx, cbh, src)
-			ft.AddBehavior(ctx, cbh)
-		}
-	case *RecreateCmdDrawIndirect:
 		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
 		count := uint64(cmd.DrawCount)
 		sizeOfDrawIndirectdCommand := uint64(4 * 4)
@@ -2421,40 +2140,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			readMultiple(ctx, cbh, src)
 			ft.AddBehavior(ctx, cbh)
 		}
-	case *RecreateCmdDrawIndexedIndirect:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
-		count := uint64(cmd.DrawCount)
-		sizeOfDrawIndexedIndirectCommand := uint64(5 * 4)
-		offset := uint64(cmd.Offset)
-		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
-		src := []dependencygraph.DefUseVariable{}
-		for i := uint64(0); i < count; i++ {
-			src = append(src, memorySpan{span: interval.U64Span{
-				Start: offset, End: offset + sizeOfDrawIndexedIndirectCommand},
-				memory: bufData.memory})
-			offset += uint64(cmd.Stride)
-		}
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			vb.readBoundIndexBuffer(ctx, cbh, execInfo, cmd)
-			vb.draw(ctx, cbh, execInfo)
-			readMultiple(ctx, cbh, src)
-			ft.AddBehavior(ctx, cbh)
-		}
 
 	case *VkCmdDispatch:
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			read(ctx, cbh, execInfo.currentCmdBufState.pipeline)
-			modified := vb.useBoundDescriptorSets(ctx, cbh, execInfo.currentCmdBufState)
-			modifyMultiple(ctx, cbh, modified)
-			ft.AddBehavior(ctx, cbh)
-		}
-	case *RecreateCmdDispatch:
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
 			execInfo *queueExecutionInfo) {
@@ -2482,88 +2169,31 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			read(ctx, cbh, src)
 			ft.AddBehavior(ctx, cbh)
 		}
-	case *RecreateCmdDispatchIndirect:
-		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
-		sizeOfDispatchIndirectCommand := uint64(3 * 4)
-		src := memorySpan{span: interval.U64Span{
-			Start: bufData.span.Start + uint64(cmd.Offset),
-			End:   bufData.span.Start + uint64(cmd.Offset) + sizeOfDispatchIndirectCommand,
-		}, memory: bufData.memory}
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			read(ctx, cbh, execInfo.currentCmdBufState.pipeline)
-			modified := vb.useBoundDescriptorSets(ctx, cbh, execInfo.currentCmdBufState)
-			modifyMultiple(ctx, cbh, modified)
-			read(ctx, cbh, src)
-			ft.AddBehavior(ctx, cbh)
-		}
 
 	// pipeline settings
 	case *VkCmdPushConstants:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdPushConstants:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetLineWidth:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetLineWidth:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetScissor:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetScissor:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetViewport:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetViewport:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetDepthBias:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetDepthBias:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetDepthBounds:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetDepthBounds:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetBlendConstants:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetBlendConstants:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetStencilCompareMask:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetStencilCompareMask:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetStencilWriteMask:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetStencilWriteMask:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetStencilReference:
-		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdSetStencilReference:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 
 	// clear attachments
 	case *VkCmdClearAttachments:
-		attCount := uint64(cmd.AttachmentCount)
-		atts := []VkClearAttachment{}
-		rectCount := uint64(cmd.RectCount)
-		rects := []VkClearRect{}
-		for _, att := range cmd.PAttachments.Slice(0, attCount, l).Read(ctx, cmd, s, nil) {
-			atts = append(atts, att)
-		}
-		for _, rect := range cmd.PRects.Slice(0, rectCount, l).Read(ctx, cmd, s, nil) {
-			rects = append(rects, rect)
-		}
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
-			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			for _, a := range atts {
-				clearAttachmentData(ctx, cbh, execInfo, a, rects)
-			}
-			ft.AddBehavior(ctx, cbh)
-		}
-	case *RecreateCmdClearAttachments:
 		attCount := uint64(cmd.AttachmentCount)
 		atts := []VkClearAttachment{}
 		rectCount := uint64(cmd.RectCount)
@@ -2596,26 +2226,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, emptyDefUseVars,
 			resetLabels, emptyDefUseVars)
-	case *RecreateCmdResetQueryPool:
-		read(ctx, bh, vkHandle(cmd.QueryPool))
-		resetLabels := []dependencygraph.DefUseVariable{}
-		count := uint64(cmd.QueryCount)
-		first := uint64(cmd.FirstQuery)
-		for i := uint64(0); i < count; i++ {
-			resetLabels = append(resetLabels,
-				vb.querypools[cmd.QueryPool].queries[first+i].reset)
-		}
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, emptyDefUseVars,
-			resetLabels, emptyDefUseVars)
 	case *VkCmdBeginQuery:
-		read(ctx, bh, vkHandle(cmd.QueryPool))
-		resetLabels := []dependencygraph.DefUseVariable{
-			vb.querypools[cmd.QueryPool].queries[cmd.Query].reset}
-		beginLabels := []dependencygraph.DefUseVariable{
-			vb.querypools[cmd.QueryPool].queries[cmd.Query].begin}
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, resetLabels,
-			beginLabels, emptyDefUseVars)
-	case *RecreateCmdBeginQuery:
 		read(ctx, bh, vkHandle(cmd.QueryPool))
 		resetLabels := []dependencygraph.DefUseVariable{
 			vb.querypools[cmd.QueryPool].queries[cmd.Query].reset}
@@ -2633,25 +2244,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			vb.querypools[cmd.QueryPool].queries[cmd.Query].begin}
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, beginLabels,
 			endAndResultLabels, emptyDefUseVars)
-	case *RecreateCmdEndQuery:
-		read(ctx, bh, vkHandle(cmd.QueryPool))
-		endAndResultLabels := []dependencygraph.DefUseVariable{
-			vb.querypools[cmd.QueryPool].queries[cmd.Query].end,
-			vb.querypools[cmd.QueryPool].queries[cmd.Query].result,
-		}
-		beginLabels := []dependencygraph.DefUseVariable{
-			vb.querypools[cmd.QueryPool].queries[cmd.Query].begin}
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, beginLabels,
-			endAndResultLabels, emptyDefUseVars)
 	case *VkCmdWriteTimestamp:
-		read(ctx, bh, vkHandle(cmd.QueryPool))
-		resetLabels := []dependencygraph.DefUseVariable{
-			vb.querypools[cmd.QueryPool].queries[cmd.Query].reset}
-		resultLabels := []dependencygraph.DefUseVariable{
-			vb.querypools[cmd.QueryPool].queries[cmd.Query].result}
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, resetLabels,
-			resultLabels, emptyDefUseVars)
-	case *RecreateCmdWriteTimestamp:
 		read(ctx, bh, vkHandle(cmd.QueryPool))
 		resetLabels := []dependencygraph.DefUseVariable{
 			vb.querypools[cmd.QueryPool].queries[cmd.Query].reset}
@@ -2670,30 +2263,14 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			src = append(src, vb.querypools[cmd.QueryPool].queries[first+i].result)
 		}
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
-	case *RecreateCmdCopyQueryPoolResults:
-		read(ctx, bh, vkHandle(cmd.QueryPool))
-		src := []dependencygraph.DefUseVariable{}
-		dst := []dependencygraph.DefUseVariable{vb.getBufferData(ctx, bh, cmd.DstBuffer)}
-		count := uint64(cmd.QueryCount)
-		first := uint64(cmd.FirstQuery)
-		for i := uint64(0); i < count; i++ {
-			src = append(src, vb.querypools[cmd.QueryPool].queries[first+i].result)
-		}
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
 
 	// debug marker extension commandbuffer commands. Those commands are kept
 	// alive if they are submitted.
 	case *VkCmdDebugMarkerBeginEXT:
 		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdDebugMarkerBeginEXT:
-		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdDebugMarkerEndEXT:
 		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdDebugMarkerEndEXT:
-		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdDebugMarkerInsertEXT:
-		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
-	case *RecreateCmdDebugMarkerInsertEXT:
 		vb.keepSubmittedCommandAlive(ctx, ft, bh, cmd.CommandBuffer)
 
 	// event commandbuffer commands
@@ -2701,30 +2278,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.Event))
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, emptyDefUseVars,
 			[]dependencygraph.DefUseVariable{vb.events[cmd.Event].signal}, emptyDefUseVars)
-	case *RecreateCmdSetEvent:
-		read(ctx, bh, vkHandle(cmd.Event))
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, emptyDefUseVars,
-			[]dependencygraph.DefUseVariable{vb.events[cmd.Event].signal}, emptyDefUseVars)
 	case *VkCmdResetEvent:
 		read(ctx, bh, vkHandle(cmd.Event))
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, emptyDefUseVars,
 			[]dependencygraph.DefUseVariable{vb.events[cmd.Event].unsignal}, emptyDefUseVars)
-	case *RecreateCmdResetEvent:
-		read(ctx, bh, vkHandle(cmd.Event))
-		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer, emptyDefUseVars,
-			[]dependencygraph.DefUseVariable{vb.events[cmd.Event].unsignal}, emptyDefUseVars)
 	case *VkCmdWaitEvents:
-		eventLabels := []dependencygraph.DefUseVariable{}
-		evCount := uint64(cmd.EventCount)
-		for _, vkEv := range cmd.PEvents.Slice(0, evCount, l).Read(ctx, cmd, s, nil) {
-			read(ctx, bh, vkHandle(vkEv))
-			eventLabels = append(eventLabels, vb.events[vkEv].signal,
-				vb.events[vkEv].unsignal)
-		}
-		vb.recordBarriers(ctx, s, ft, cmd, bh, cmd.CommandBuffer, cmd.MemoryBarrierCount,
-			cmd.BufferMemoryBarrierCount, cmd.PBufferMemoryBarriers,
-			cmd.ImageMemoryBarrierCount, cmd.PImageMemoryBarriers, eventLabels)
-	case *RecreateCmdWaitEvents:
 		eventLabels := []dependencygraph.DefUseVariable{}
 		evCount := uint64(cmd.EventCount)
 		for _, vkEv := range cmd.PEvents.Slice(0, evCount, l).Read(ctx, cmd, s, nil) {
@@ -2741,22 +2299,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		vb.recordBarriers(ctx, s, ft, cmd, bh, cmd.CommandBuffer, cmd.MemoryBarrierCount,
 			cmd.BufferMemoryBarrierCount, cmd.PBufferMemoryBarriers,
 			cmd.ImageMemoryBarrierCount, cmd.PImageMemoryBarriers, emptyDefUseVars)
-	case *RecreateCmdPipelineBarrier:
-		vb.recordBarriers(ctx, s, ft, cmd, bh, cmd.CommandBuffer, cmd.MemoryBarrierCount,
-			cmd.BufferMemoryBarrierCount, cmd.PBufferMemoryBarriers,
-			cmd.ImageMemoryBarrierCount, cmd.PImageMemoryBarriers, emptyDefUseVars)
 
 	// secondary command buffers
 	case *VkCmdExecuteCommands:
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
-		cbc.isCmdExecuteCommands = true
-		count := uint64(cmd.CommandBufferCount)
-		for _, vkScb := range cmd.PCommandBuffers.Slice(0, count, l).Read(ctx, cmd, s, nil) {
-			cbc.recordSecondaryCommandBuffer(vkScb)
-			read(ctx, bh, vkHandle(vkScb))
-		}
-		cbc.behave = func(sc submittedCommand, execInfo *queueExecutionInfo) {}
-	case *RecreateCmdExecuteCommands:
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.isCmdExecuteCommands = true
 		count := uint64(cmd.CommandBufferCount)

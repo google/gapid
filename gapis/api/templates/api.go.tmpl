@@ -956,11 +956,8 @@
     {{if (eq $.Name "CommandBufferObject")}}
       Commands CommandBufferCommands `hidden:"true" nobox:"true"`
     {{end}}
-    {{if (eq $.Name "QueueObject")}}
-      PendingCommands CommandBufferCommands `hidden:"true" nobox:"true"`
-    {{end}}
-    {{if (eq $.Name "RecreateCmdUpdateBufferData")}}
-      Data []uint8 `hidden:"true" nobox:"true"`
+    {{if (eq $.Name "CommandReference")}}
+      QueuedCommandData QueuedCommand `nobox:"true"`
     {{end}}
   }
 

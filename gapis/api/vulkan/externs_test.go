@@ -26,5 +26,5 @@ func TestCallSub(t *testing.T) {
 	ctx := log.Testing(t)
 	e := externs{}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	e.callSub(ctx, &VkCreateBuffer{}, 10, s, nil, subDoCmdNop, Unimplemented{})
+	e.callSub(ctx, &VkCreateBuffer{}, 10, s, nil, subDovkCmdDispatch, &VkCmdDispatchArgs{})
 }

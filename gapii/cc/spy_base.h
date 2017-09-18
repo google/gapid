@@ -86,6 +86,11 @@ public:
 
     void set_observing(bool observing) { mIsObserving = observing; }
     bool is_observing() const { return mIsObserving; }
+
+    // TODO(awoloszyn) We can remove this once we have switched over our
+    // mid-execution over to pass across the serialized state.
+    bool is_recording_state() const { return mIsRecordingState; }
+    void set_recording_state(bool recording) { mIsRecordingState = recording; }
 protected:
     static const size_t kMaxExtras = 16; // Per atom
 
@@ -175,6 +180,11 @@ private:
     // For some API's this will require that we modify some of the
     // image creation parameters
     bool mIsObserving;
+
+    // This is true when all commands are used to record state. This means
+    // the commands should still be recorded, but the underlying functions
+    // should not be called.
+    bool mIsRecordingState;
 };
 
 // finds a key in the map and returns the value. If no value is present

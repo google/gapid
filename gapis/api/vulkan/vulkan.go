@@ -267,7 +267,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			return
 		}
 
-		data := a.(CommandBufferCommand)
+		data := a.(CommandReference)
 		rootIdx := api.CmdID(i)
 		if k, ok := submissionMap[s.CurrentSubmission]; ok {
 			rootIdx = api.CmdID(k)
@@ -278,11 +278,11 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		k := submissionMap[s.CurrentSubmission]
 		if v, ok := d.SubcommandReferences[k]; ok {
 			v = append(v,
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.initialCall], false})
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.QueuedCommandData.initialCall], false})
 			d.SubcommandReferences[k] = v
 		} else {
 			d.SubcommandReferences[k] = []sync.SubcommandReference{
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.initialCall], false}}
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.QueuedCommandData.initialCall], false}}
 		}
 
 		previousIndex := append(api.SubCmdIdx(nil), s.SubCmdIdx...)
@@ -327,8 +327,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	}
 
 	s.AddCommand = func(a interface{}) {
-		data := a.(CommandBufferCommand)
-		commandMap[data.initialCall] = i
+		data := a.(CommandReference)
+		commandMap[data.QueuedCommandData.initialCall] = i
 	}
 
 	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {

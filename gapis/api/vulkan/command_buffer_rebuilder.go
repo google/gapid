@@ -113,12 +113,12 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 	return newCmdBufId, x, cleanup
 }
 
-func rebuildCmdBeginRenderPass(
+func rebuildVkCmdBeginRenderPass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdBeginRenderPassData) (func(), api.Cmd) {
+	d *VkCmdBeginRenderPassArgs) (func(), api.Cmd) {
 
 	clearValues := make([]VkClearValue, len(d.ClearValues))
 	for i := 0; i < len(d.ClearValues); i++ {
@@ -147,62 +147,60 @@ func rebuildCmdBeginRenderPass(
 			d.Contents).AddRead(beginData.Data()).AddRead(clearValuesData.Data())
 }
 
-func rebuildCmdEndRenderPass(
+func rebuildVkCmdEndRenderPass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdEndRenderPassData) (func(), api.Cmd) {
+	d *VkCmdEndRenderPassArgs) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdEndRenderPass(commandBuffer)
 }
 
-func rebuildCmdNextSubpass(
+func rebuildVkCmdNextSubpass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdNextSubpassData) (func(), api.Cmd) {
+	d *VkCmdNextSubpassArgs) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdNextSubpass(commandBuffer, d.Contents)
 }
 
-func rebuildCmdBindPipeline(
+func rebuildVkCmdBindPipeline(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdBindPipelineData) (func(), api.Cmd) {
-
+	d *VkCmdBindPipelineArgs) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdBindPipeline(commandBuffer,
 		d.PipelineBindPoint, d.Pipeline)
 }
 
-func rebuildCmdBindIndexBuffer(
+func rebuildVkCmdBindIndexBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdBindIndexBufferData) (func(), api.Cmd) {
-
+	d *VkCmdBindIndexBufferArgs) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdBindIndexBuffer(commandBuffer,
 		d.Buffer, d.Offset, d.IndexType)
 }
 
-func rebuildCmdSetLineWidth(
+func rebuildVkCmdSetLineWidth(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetLineWidthData) (func(), api.Cmd) {
+	d *VkCmdSetLineWidthArgs) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdSetLineWidth(commandBuffer, d.LineWidth)
 
 }
 
-func rebuildCmdBindDescriptorSets(
+func rebuildVkCmdBindDescriptorSets(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdBindDescriptorSetsData) (func(), api.Cmd) {
+	d *VkCmdBindDescriptorSetsArgs) (func(), api.Cmd) {
 
 	descriptorSetData, descriptorSetCount := unpackMap(ctx, s, d.DescriptorSets)
 	dynamicOffsetData, dynamicOffsetCount := unpackMap(ctx, s, d.DynamicOffsets)
@@ -223,13 +221,12 @@ func rebuildCmdBindDescriptorSets(
 		).AddRead(descriptorSetData.Data())
 }
 
-func rebuildCmdBindVertexBuffers(
+func rebuildVkCmdBindVertexBuffers(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdBindVertexBuffersData) (func(), api.Cmd) {
-
+	d *VkCmdBindVertexBuffersArgs) (func(), api.Cmd) {
 	bufferData, _ := unpackMap(ctx, s, d.Buffers)
 	offsetData, _ := unpackMap(ctx, s, d.Offsets)
 
@@ -244,13 +241,12 @@ func rebuildCmdBindVertexBuffers(
 		).AddRead(offsetData.Data()).AddRead(bufferData.Data())
 }
 
-func rebuildCmdWaitEvents(
+func rebuildVkCmdWaitEvents(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdWaitEventsData) (func(), api.Cmd) {
-
+	d *VkCmdWaitEventsArgs) (func(), api.Cmd) {
 	eventData, eventCount := unpackMap(ctx, s, d.Events)
 	memoryBarrierData, memoryBarrierCount := unpackMap(ctx, s, d.MemoryBarriers)
 	bufferMemoryBarrierData, bufferMemoryBarrierCount := unpackMap(ctx, s, d.BufferMemoryBarriers)
@@ -275,12 +271,12 @@ func rebuildCmdWaitEvents(
 		).AddRead(eventData.Data()).AddRead(memoryBarrierData.Data()).AddRead(bufferMemoryBarrierData.Data()).AddRead(imageMemoryBarrierData.Data())
 }
 
-func rebuildCmdPipelineBarrier(
+func rebuildVkCmdPipelineBarrier(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdPipelineBarrierData) (func(), api.Cmd) {
+	d *VkCmdPipelineBarrierArgs) (func(), api.Cmd) {
 
 	memoryBarrierData, memoryBarrierCount := unpackMap(ctx, s, d.MemoryBarriers)
 	bufferMemoryBarrierData, bufferMemoryBarrierCount := unpackMap(ctx, s, d.BufferMemoryBarriers)
@@ -303,22 +299,22 @@ func rebuildCmdPipelineBarrier(
 		).AddRead(memoryBarrierData.Data()).AddRead(bufferMemoryBarrierData.Data()).AddRead(imageMemoryBarrierData.Data())
 }
 
-func rebuildCmdBeginQuery(
+func rebuildVkCmdBeginQuery(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdBeginQueryData) (func(), api.Cmd) {
+	d *VkCmdBeginQueryArgs) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdBeginQuery(commandBuffer, d.QueryPool,
 		d.Query, d.Flags)
 }
 
-func rebuildCmdBlitImage(
+func rebuildVkCmdBlitImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdBlitImageData) (func(), api.Cmd) {
+	d *VkCmdBlitImageArgs) (func(), api.Cmd) {
 
 	blitData, blitCount := unpackMap(ctx, s, d.Regions)
 
@@ -335,12 +331,12 @@ func rebuildCmdBlitImage(
 		).AddRead(blitData.Data())
 }
 
-func rebuildCmdClearAttachments(
+func rebuildVkCmdClearAttachments(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdClearAttachmentsData) (func(), api.Cmd) {
+	d *VkCmdClearAttachmentsArgs) (func(), api.Cmd) {
 
 	clearAttachmentData, clearCount := unpackMap(ctx, s, d.Attachments)
 	rectData, rectCount := unpackMap(ctx, s, d.Rects)
@@ -356,12 +352,12 @@ func rebuildCmdClearAttachments(
 		).AddRead(clearAttachmentData.Data()).AddRead(rectData.Data())
 }
 
-func rebuildCmdClearColorImage(
+func rebuildVkCmdClearColorImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdClearColorImageData) (func(), api.Cmd) {
+	d *VkCmdClearColorImageArgs) (func(), api.Cmd) {
 
 	colorData := s.AllocDataOrPanic(ctx, d.Color)
 
@@ -379,12 +375,12 @@ func rebuildCmdClearColorImage(
 		).AddRead(colorData.Data()).AddRead(rangeData.Data())
 }
 
-func rebuildCmdClearDepthStencilImage(
+func rebuildVkCmdClearDepthStencilImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdClearDepthStencilImageData) (func(), api.Cmd) {
+	d *VkCmdClearDepthStencilImageArgs) (func(), api.Cmd) {
 
 	depthStencilData := s.AllocDataOrPanic(ctx, d.DepthStencil)
 
@@ -402,12 +398,12 @@ func rebuildCmdClearDepthStencilImage(
 		).AddRead(depthStencilData.Data()).AddRead(rangeData.Data())
 }
 
-func rebuildCmdCopyBuffer(
+func rebuildVkCmdCopyBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdCopyBufferData) (func(), api.Cmd) {
+	d *VkCmdCopyBufferArgs) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.CopyRegions)
 
@@ -421,12 +417,12 @@ func rebuildCmdCopyBuffer(
 		).AddRead(regionData.Data())
 }
 
-func rebuildCmdCopyBufferToImage(
+func rebuildVkCmdCopyBufferToImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCopyBufferToImageData) (func(), api.Cmd) {
+	d *VkCmdCopyBufferToImageArgs) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
 
@@ -441,12 +437,12 @@ func rebuildCmdCopyBufferToImage(
 		).AddRead(regionData.Data())
 }
 
-func rebuildCmdCopyImage(
+func rebuildVkCmdCopyImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdCopyImageData) (func(), api.Cmd) {
+	d *VkCmdCopyImageArgs) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
 
@@ -462,12 +458,12 @@ func rebuildCmdCopyImage(
 		).AddRead(regionData.Data())
 }
 
-func rebuildCmdCopyImageToBuffer(
+func rebuildVkCmdCopyImageToBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCopyImageToBufferData) (func(), api.Cmd) {
+	d *VkCmdCopyImageToBufferArgs) (func(), api.Cmd) {
 
 	regionData, regionCount := unpackMap(ctx, s, d.Regions)
 
@@ -482,12 +478,12 @@ func rebuildCmdCopyImageToBuffer(
 		).AddRead(regionData.Data())
 }
 
-func rebuildCmdCopyQueryPoolResults(
+func rebuildVkCmdCopyQueryPoolResults(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdCopyQueryPoolResultsData) (func(), api.Cmd) {
+	d *VkCmdCopyQueryPoolResultsArgs) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdCopyQueryPoolResults(commandBuffer,
 		d.QueryPool,
@@ -500,12 +496,12 @@ func rebuildCmdCopyQueryPoolResults(
 	)
 }
 
-func rebuildCmdDispatch(
+func rebuildVkCmdDispatch(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDispatchData) (func(), api.Cmd) {
+	d *VkCmdDispatchArgs) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDispatch(commandBuffer,
 		d.GroupCountX,
@@ -514,12 +510,12 @@ func rebuildCmdDispatch(
 	)
 }
 
-func rebuildCmdDispatchIndirect(
+func rebuildVkCmdDispatchIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDispatchIndirectData) (func(), api.Cmd) {
+	d *VkCmdDispatchIndirectArgs) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDispatchIndirect(commandBuffer,
 		d.Buffer,
@@ -527,12 +523,12 @@ func rebuildCmdDispatchIndirect(
 	)
 }
 
-func rebuildCmdDraw(
+func rebuildVkCmdDraw(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDrawData) (func(), api.Cmd) {
+	d *VkCmdDrawArgs) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDraw(commandBuffer,
 		d.VertexCount,
@@ -542,23 +538,23 @@ func rebuildCmdDraw(
 	)
 }
 
-func rebuildCmdDrawIndexed(
+func rebuildVkCmdDrawIndexed(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDrawIndexedData) (func(), api.Cmd) {
+	d *VkCmdDrawIndexedArgs) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndexed(commandBuffer, d.IndexCount,
 		d.InstanceCount, d.FirstIndex, d.VertexOffset, d.FirstInstance)
 }
 
-func rebuildCmdDrawIndexedIndirect(
+func rebuildVkCmdDrawIndexedIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDrawIndexedIndirectData) (func(), api.Cmd) {
+	d *VkCmdDrawIndexedIndirectArgs) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndexedIndirect(commandBuffer,
 		d.Buffer,
@@ -568,12 +564,12 @@ func rebuildCmdDrawIndexedIndirect(
 	)
 }
 
-func rebuildCmdDrawIndirect(
+func rebuildVkCmdDrawIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDrawIndirectData) (func(), api.Cmd) {
+	d *VkCmdDrawIndirectArgs) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdDrawIndirect(commandBuffer,
 		d.Buffer,
@@ -583,12 +579,12 @@ func rebuildCmdDrawIndirect(
 	)
 }
 
-func rebuildCmdEndQuery(
+func rebuildVkCmdEndQuery(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdEndQueryData) (func(), api.Cmd) {
+	d *VkCmdEndQueryArgs) (func(), api.Cmd) {
 
 	return func() {}, cb.VkCmdEndQuery(commandBuffer,
 		d.QueryPool,
@@ -596,12 +592,12 @@ func rebuildCmdEndQuery(
 	)
 }
 
-func rebuildCmdExecuteCommands(
+func rebuildVkCmdExecuteCommands(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdExecuteCommandsData) (func(), api.Cmd) {
+	d *VkCmdExecuteCommandsArgs) (func(), api.Cmd) {
 
 	commandBufferData, commandBufferCount := unpackMap(ctx, s, d.CommandBuffers)
 
@@ -613,12 +609,12 @@ func rebuildCmdExecuteCommands(
 		).AddRead(commandBufferData.Data())
 }
 
-func rebuildCmdFillBuffer(
+func rebuildVkCmdFillBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdFillBufferData) (func(), api.Cmd) {
+	d *VkCmdFillBufferArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdFillBuffer(commandBuffer,
@@ -629,12 +625,12 @@ func rebuildCmdFillBuffer(
 		)
 }
 
-func rebuildCmdPushConstants(
+func rebuildVkCmdPushConstants(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdPushConstantsDataExpanded) (func(), api.Cmd) {
+	d *VkCmdPushConstantsArgs) (func(), api.Cmd) {
 
 	data := s.AllocDataOrPanic(ctx, d.Data)
 
@@ -649,12 +645,12 @@ func rebuildCmdPushConstants(
 		).AddRead(data.Data())
 }
 
-func rebuildCmdResetQueryPool(
+func rebuildVkCmdResetQueryPool(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdResetQueryPoolData) (func(), api.Cmd) {
+	d *VkCmdResetQueryPoolArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdResetQueryPool(commandBuffer,
@@ -664,12 +660,12 @@ func rebuildCmdResetQueryPool(
 		)
 }
 
-func rebuildCmdResolveImage(
+func rebuildVkCmdResolveImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdResolveImageData) (func(), api.Cmd) {
+	d *VkCmdResolveImageArgs) (func(), api.Cmd) {
 
 	resolveData, resolveCount := unpackMap(ctx, s, d.ResolveRegions)
 
@@ -685,12 +681,12 @@ func rebuildCmdResolveImage(
 		).AddRead(resolveData.Data())
 }
 
-func rebuildCmdSetBlendConstants(
+func rebuildVkCmdSetBlendConstants(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetBlendConstantsData) (func(), api.Cmd) {
+	d *VkCmdSetBlendConstantsArgs) (func(), api.Cmd) {
 
 	var constants F32ː4ᵃ
 	constants[0] = d.R
@@ -704,12 +700,12 @@ func rebuildCmdSetBlendConstants(
 		)
 }
 
-func rebuildCmdSetDepthBias(
+func rebuildVkCmdSetDepthBias(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetDepthBiasData) (func(), api.Cmd) {
+	d *VkCmdSetDepthBiasArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetDepthBias(commandBuffer,
@@ -719,12 +715,12 @@ func rebuildCmdSetDepthBias(
 		)
 }
 
-func rebuildCmdSetDepthBounds(
+func rebuildVkCmdSetDepthBounds(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetDepthBoundsData) (func(), api.Cmd) {
+	d *VkCmdSetDepthBoundsArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetDepthBounds(commandBuffer,
@@ -733,12 +729,12 @@ func rebuildCmdSetDepthBounds(
 		)
 }
 
-func rebuildCmdSetEvent(
+func rebuildVkCmdSetEvent(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetEventData) (func(), api.Cmd) {
+	d *VkCmdSetEventArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetEvent(commandBuffer,
@@ -747,12 +743,12 @@ func rebuildCmdSetEvent(
 		)
 }
 
-func rebuildCmdResetEvent(
+func rebuildVkCmdResetEvent(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdResetEventData) (func(), api.Cmd) {
+	d *VkCmdResetEventArgs) (func(), api.Cmd) {
 	return func() {
 		}, cb.VkCmdResetEvent(commandBuffer,
 			d.Event,
@@ -760,12 +756,12 @@ func rebuildCmdResetEvent(
 		)
 }
 
-func rebuildCmdSetScissor(
+func rebuildVkCmdSetScissor(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetScissorData) (func(), api.Cmd) {
+	d *VkCmdSetScissorArgs) (func(), api.Cmd) {
 
 	scissorData, scissorCount := unpackMap(ctx, s, d.Scissors)
 
@@ -778,12 +774,12 @@ func rebuildCmdSetScissor(
 		).AddRead(scissorData.Data())
 }
 
-func rebuildCmdSetStencilCompareMask(
+func rebuildVkCmdSetStencilCompareMask(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetStencilCompareMaskData) (func(), api.Cmd) {
+	d *VkCmdSetStencilCompareMaskArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetStencilCompareMask(commandBuffer,
@@ -792,12 +788,12 @@ func rebuildCmdSetStencilCompareMask(
 		)
 }
 
-func rebuildCmdSetStencilReference(
+func rebuildVkCmdSetStencilReference(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetStencilReferenceData) (func(), api.Cmd) {
+	d *VkCmdSetStencilReferenceArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetStencilReference(commandBuffer,
@@ -806,12 +802,12 @@ func rebuildCmdSetStencilReference(
 		)
 }
 
-func rebuildCmdSetStencilWriteMask(
+func rebuildVkCmdSetStencilWriteMask(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetStencilWriteMaskData) (func(), api.Cmd) {
+	d *VkCmdSetStencilWriteMaskArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdSetStencilWriteMask(commandBuffer,
@@ -820,12 +816,12 @@ func rebuildCmdSetStencilWriteMask(
 		)
 }
 
-func rebuildCmdSetViewport(
+func rebuildVkCmdSetViewport(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdSetViewportData) (func(), api.Cmd) {
+	d *VkCmdSetViewportArgs) (func(), api.Cmd) {
 
 	viewportData, viewportCount := unpackMap(ctx, s, d.Viewports)
 
@@ -838,13 +834,12 @@ func rebuildCmdSetViewport(
 		).AddRead(viewportData.Data())
 }
 
-func rebuildCmdUpdateBuffer(
+func rebuildVkCmdUpdateBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdUpdateBufferData) (func(), api.Cmd) {
-
+	d *VkCmdUpdateBufferArgs) (func(), api.Cmd) {
 	data := s.AllocDataOrPanic(ctx, d.Data)
 
 	return func() {
@@ -857,12 +852,12 @@ func rebuildCmdUpdateBuffer(
 		).AddRead(data.Data())
 }
 
-func rebuildCmdWriteTimestamp(
+func rebuildVkCmdWriteTimestamp(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdWriteTimestampData) (func(), api.Cmd) {
+	d *VkCmdWriteTimestampArgs) (func(), api.Cmd) {
 
 	return func() {
 		}, cb.VkCmdWriteTimestamp(commandBuffer,
@@ -872,12 +867,12 @@ func rebuildCmdWriteTimestamp(
 		)
 }
 
-func rebuildCmdDebugMarkerBeginEXT(
+func rebuildVkCmdDebugMarkerBeginEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDebugMarkerBeginEXTData) (func(), api.Cmd) {
+	d *VkCmdDebugMarkerBeginEXTArgs) (func(), api.Cmd) {
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
 	var color F32ː4ᵃ
 	color[0] = d.Color[0]
@@ -898,21 +893,21 @@ func rebuildCmdDebugMarkerBeginEXT(
 			markerNameData.Data()).AddRead(markerInfoData.Data())
 }
 
-func rebuildCmdDebugMarkerEndEXT(
+func rebuildVkCmdDebugMarkerEndEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDebugMarkerEndEXTData) (func(), api.Cmd) {
+	d *VkCmdDebugMarkerEndEXTArgs) (func(), api.Cmd) {
 	return func() {}, cb.VkCmdDebugMarkerEndEXT(commandBuffer)
 }
 
-func rebuildCmdDebugMarkerInsertEXT(
+func rebuildVkCmdDebugMarkerInsertEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
-	d *RecreateCmdDebugMarkerInsertEXTData) (func(), api.Cmd) {
+	d *VkCmdDebugMarkerInsertEXTArgs) (func(), api.Cmd) {
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
 	var color F32ː4ᵃ
 	color[0] = d.Color[0]
@@ -933,6 +928,111 @@ func rebuildCmdDebugMarkerInsertEXT(
 			markerNameData.Data()).AddRead(markerInfoData.Data())
 }
 
+func GetCommandArgs(ctx context.Context,
+	cr CommandReference,
+	c *api.GlobalState) interface{} {
+	s := GetState(c)
+	switch cr.Type {
+	case CommandType_cmd_vkCmdBeginRenderPass:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBeginRenderPass[cr.MapIndex]
+	case CommandType_cmd_vkCmdEndRenderPass:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdEndRenderPass[cr.MapIndex]
+	case CommandType_cmd_vkCmdNextSubpass:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdNextSubpass[cr.MapIndex]
+	case CommandType_cmd_vkCmdBindPipeline:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBindPipeline[cr.MapIndex]
+	case CommandType_cmd_vkCmdBindDescriptorSets:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBindDescriptorSets[cr.MapIndex]
+	case CommandType_cmd_vkCmdBindVertexBuffers:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBindVertexBuffers[cr.MapIndex]
+	case CommandType_cmd_vkCmdBindIndexBuffer:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBindIndexBuffer[cr.MapIndex]
+	case CommandType_cmd_vkCmdPipelineBarrier:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdPipelineBarrier[cr.MapIndex]
+	case CommandType_cmd_vkCmdWaitEvents:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdWaitEvents[cr.MapIndex]
+	case CommandType_cmd_vkCmdBeginQuery:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBeginQuery[cr.MapIndex]
+	case CommandType_cmd_vkCmdBlitImage:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBlitImage[cr.MapIndex]
+	case CommandType_cmd_vkCmdClearAttachments:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdClearAttachments[cr.MapIndex]
+	case CommandType_cmd_vkCmdClearColorImage:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdClearColorImage[cr.MapIndex]
+	case CommandType_cmd_vkCmdClearDepthStencilImage:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdClearDepthStencilImage[cr.MapIndex]
+	case CommandType_cmd_vkCmdCopyBuffer:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyBuffer[cr.MapIndex]
+	case CommandType_cmd_vkCmdCopyBufferToImage:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyBufferToImage[cr.MapIndex]
+	case CommandType_cmd_vkCmdCopyImage:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyImage[cr.MapIndex]
+	case CommandType_cmd_vkCmdCopyImageToBuffer:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyImageToBuffer[cr.MapIndex]
+	case CommandType_cmd_vkCmdCopyQueryPoolResults:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyQueryPoolResults[cr.MapIndex]
+	case CommandType_cmd_vkCmdDispatch:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDispatch[cr.MapIndex]
+	case CommandType_cmd_vkCmdDispatchIndirect:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDispatchIndirect[cr.MapIndex]
+	case CommandType_cmd_vkCmdDraw:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDraw[cr.MapIndex]
+	case CommandType_cmd_vkCmdDrawIndexed:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDrawIndexed[cr.MapIndex]
+	case CommandType_cmd_vkCmdDrawIndexedIndirect:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDrawIndexedIndirect[cr.MapIndex]
+	case CommandType_cmd_vkCmdDrawIndirect:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDrawIndirect[cr.MapIndex]
+	case CommandType_cmd_vkCmdEndQuery:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdEndQuery[cr.MapIndex]
+	case CommandType_cmd_vkCmdExecuteCommands:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdExecuteCommands[cr.MapIndex]
+	case CommandType_cmd_vkCmdFillBuffer:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdFillBuffer[cr.MapIndex]
+	case CommandType_cmd_vkCmdPushConstants:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdPushConstants[cr.MapIndex]
+	case CommandType_cmd_vkCmdResetQueryPool:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdResetQueryPool[cr.MapIndex]
+	case CommandType_cmd_vkCmdResolveImage:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdResolveImage[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetBlendConstants:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetBlendConstants[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetDepthBias:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetDepthBias[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetDepthBounds:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetDepthBounds[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetEvent:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetEvent[cr.MapIndex]
+	case CommandType_cmd_vkCmdResetEvent:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdResetEvent[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetLineWidth:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetLineWidth[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetScissor:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetScissor[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetStencilCompareMask:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetStencilCompareMask[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetStencilReference:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetStencilReference[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetStencilWriteMask:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetStencilWriteMask[cr.MapIndex]
+	case CommandType_cmd_vkCmdSetViewport:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetViewport[cr.MapIndex]
+	case CommandType_cmd_vkCmdUpdateBuffer:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdUpdateBuffer[cr.MapIndex]
+	case CommandType_cmd_vkCmdWriteTimestamp:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdWriteTimestamp[cr.MapIndex]
+	case CommandType_cmd_vkCmdDebugMarkerBeginEXT:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDebugMarkerBeginEXT[cr.MapIndex]
+	case CommandType_cmd_vkCmdDebugMarkerEndEXT:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDebugMarkerEndEXT[cr.MapIndex]
+	case CommandType_cmd_vkCmdDebugMarkerInsertEXT:
+		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDebugMarkerInsertEXT[cr.MapIndex]
+	default:
+		x := fmt.Sprintf("Should not reach here: %T", cr)
+		panic(x)
+	}
+}
+
 // AddCommand recreates the command defined by recreateInfo and places it
 // into the given command buffer. It returns the atoms that it
 // had to create in order to satisfy the command. It also returns a function
@@ -943,100 +1043,100 @@ func AddCommand(ctx context.Context,
 	s *api.GlobalState,
 	rebuildInfo interface{}) (func(), api.Cmd) {
 	switch t := rebuildInfo.(type) {
-	case *RecreateCmdBeginRenderPassData:
-		return rebuildCmdBeginRenderPass(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdEndRenderPassData:
-		return rebuildCmdEndRenderPass(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdNextSubpassData:
-		return rebuildCmdNextSubpass(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdBindPipelineData:
-		return rebuildCmdBindPipeline(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdBindDescriptorSetsData:
-		return rebuildCmdBindDescriptorSets(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdBindVertexBuffersData:
-		return rebuildCmdBindVertexBuffers(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdBindIndexBufferData:
-		return rebuildCmdBindIndexBuffer(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdPipelineBarrierData:
-		return rebuildCmdPipelineBarrier(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdWaitEventsData:
-		return rebuildCmdWaitEvents(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdBeginQueryData:
-		return rebuildCmdBeginQuery(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdBlitImageData:
-		return rebuildCmdBlitImage(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdClearAttachmentsData:
-		return rebuildCmdClearAttachments(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdClearColorImageData:
-		return rebuildCmdClearColorImage(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdClearDepthStencilImageData:
-		return rebuildCmdClearDepthStencilImage(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdCopyBufferData:
-		return rebuildCmdCopyBuffer(ctx, cb, commandBuffer, s, t)
-	case *RecreateCopyBufferToImageData:
-		return rebuildCmdCopyBufferToImage(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdCopyImageData:
-		return rebuildCmdCopyImage(ctx, cb, commandBuffer, s, t)
-	case *RecreateCopyImageToBufferData:
-		return rebuildCmdCopyImageToBuffer(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdCopyQueryPoolResultsData:
-		return rebuildCmdCopyQueryPoolResults(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDispatchData:
-		return rebuildCmdDispatch(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDispatchIndirectData:
-		return rebuildCmdDispatchIndirect(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDrawData:
-		return rebuildCmdDraw(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDrawIndexedData:
-		return rebuildCmdDrawIndexed(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDrawIndexedIndirectData:
-		return rebuildCmdDrawIndexedIndirect(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDrawIndirectData:
-		return rebuildCmdDrawIndirect(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdEndQueryData:
-		return rebuildCmdEndQuery(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdExecuteCommandsData:
-		return rebuildCmdExecuteCommands(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdFillBufferData:
-		return rebuildCmdFillBuffer(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdPushConstantsDataExpanded:
-		return rebuildCmdPushConstants(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdResetQueryPoolData:
-		return rebuildCmdResetQueryPool(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdResolveImageData:
-		return rebuildCmdResolveImage(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetBlendConstantsData:
-		return rebuildCmdSetBlendConstants(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetDepthBiasData:
-		return rebuildCmdSetDepthBias(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetDepthBoundsData:
-		return rebuildCmdSetDepthBounds(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetEventData:
-		return rebuildCmdSetEvent(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdResetEventData:
-		return rebuildCmdResetEvent(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetLineWidthData:
-		return rebuildCmdSetLineWidth(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetScissorData:
-		return rebuildCmdSetScissor(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetStencilCompareMaskData:
-		return rebuildCmdSetStencilCompareMask(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetStencilReferenceData:
-		return rebuildCmdSetStencilReference(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetStencilWriteMaskData:
-		return rebuildCmdSetStencilWriteMask(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdSetViewportData:
-		return rebuildCmdSetViewport(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdUpdateBufferData:
-		return rebuildCmdUpdateBuffer(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdWriteTimestampData:
-		return rebuildCmdWriteTimestamp(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDebugMarkerBeginEXTData:
-		return rebuildCmdDebugMarkerBeginEXT(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDebugMarkerEndEXTData:
-		return rebuildCmdDebugMarkerEndEXT(ctx, cb, commandBuffer, s, t)
-	case *RecreateCmdDebugMarkerInsertEXTData:
-		return rebuildCmdDebugMarkerInsertEXT(ctx, cb, commandBuffer, s, t)
+	case *VkCmdBeginRenderPassArgs:
+		return rebuildVkCmdBeginRenderPass(ctx, cb, commandBuffer, s, t)
+	case *VkCmdEndRenderPassArgs:
+		return rebuildVkCmdEndRenderPass(ctx, cb, commandBuffer, s, t)
+	case *VkCmdNextSubpassArgs:
+		return rebuildVkCmdNextSubpass(ctx, cb, commandBuffer, s, t)
+	case *VkCmdBindPipelineArgs:
+		return rebuildVkCmdBindPipeline(ctx, cb, commandBuffer, s, t)
+	case *VkCmdBindDescriptorSetsArgs:
+		return rebuildVkCmdBindDescriptorSets(ctx, cb, commandBuffer, s, t)
+	case *VkCmdBindVertexBuffersArgs:
+		return rebuildVkCmdBindVertexBuffers(ctx, cb, commandBuffer, s, t)
+	case *VkCmdBindIndexBufferArgs:
+		return rebuildVkCmdBindIndexBuffer(ctx, cb, commandBuffer, s, t)
+	case *VkCmdPipelineBarrierArgs:
+		return rebuildVkCmdPipelineBarrier(ctx, cb, commandBuffer, s, t)
+	case *VkCmdWaitEventsArgs:
+		return rebuildVkCmdWaitEvents(ctx, cb, commandBuffer, s, t)
+	case *VkCmdBeginQueryArgs:
+		return rebuildVkCmdBeginQuery(ctx, cb, commandBuffer, s, t)
+	case *VkCmdBlitImageArgs:
+		return rebuildVkCmdBlitImage(ctx, cb, commandBuffer, s, t)
+	case *VkCmdClearAttachmentsArgs:
+		return rebuildVkCmdClearAttachments(ctx, cb, commandBuffer, s, t)
+	case *VkCmdClearColorImageArgs:
+		return rebuildVkCmdClearColorImage(ctx, cb, commandBuffer, s, t)
+	case *VkCmdClearDepthStencilImageArgs:
+		return rebuildVkCmdClearDepthStencilImage(ctx, cb, commandBuffer, s, t)
+	case *VkCmdCopyBufferArgs:
+		return rebuildVkCmdCopyBuffer(ctx, cb, commandBuffer, s, t)
+	case *VkCmdCopyBufferToImageArgs:
+		return rebuildVkCmdCopyBufferToImage(ctx, cb, commandBuffer, s, t)
+	case *VkCmdCopyImageArgs:
+		return rebuildVkCmdCopyImage(ctx, cb, commandBuffer, s, t)
+	case *VkCmdCopyImageToBufferArgs:
+		return rebuildVkCmdCopyImageToBuffer(ctx, cb, commandBuffer, s, t)
+	case *VkCmdCopyQueryPoolResultsArgs:
+		return rebuildVkCmdCopyQueryPoolResults(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDispatchArgs:
+		return rebuildVkCmdDispatch(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDispatchIndirectArgs:
+		return rebuildVkCmdDispatchIndirect(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDrawArgs:
+		return rebuildVkCmdDraw(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDrawIndexedArgs:
+		return rebuildVkCmdDrawIndexed(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDrawIndexedIndirectArgs:
+		return rebuildVkCmdDrawIndexedIndirect(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDrawIndirectArgs:
+		return rebuildVkCmdDrawIndirect(ctx, cb, commandBuffer, s, t)
+	case *VkCmdEndQueryArgs:
+		return rebuildVkCmdEndQuery(ctx, cb, commandBuffer, s, t)
+	case *VkCmdExecuteCommandsArgs:
+		return rebuildVkCmdExecuteCommands(ctx, cb, commandBuffer, s, t)
+	case *VkCmdFillBufferArgs:
+		return rebuildVkCmdFillBuffer(ctx, cb, commandBuffer, s, t)
+	case *VkCmdPushConstantsArgs:
+		return rebuildVkCmdPushConstants(ctx, cb, commandBuffer, s, t)
+	case *VkCmdResetQueryPoolArgs:
+		return rebuildVkCmdResetQueryPool(ctx, cb, commandBuffer, s, t)
+	case *VkCmdResolveImageArgs:
+		return rebuildVkCmdResolveImage(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetBlendConstantsArgs:
+		return rebuildVkCmdSetBlendConstants(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetDepthBiasArgs:
+		return rebuildVkCmdSetDepthBias(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetDepthBoundsArgs:
+		return rebuildVkCmdSetDepthBounds(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetEventArgs:
+		return rebuildVkCmdSetEvent(ctx, cb, commandBuffer, s, t)
+	case *VkCmdResetEventArgs:
+		return rebuildVkCmdResetEvent(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetLineWidthArgs:
+		return rebuildVkCmdSetLineWidth(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetScissorArgs:
+		return rebuildVkCmdSetScissor(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetStencilCompareMaskArgs:
+		return rebuildVkCmdSetStencilCompareMask(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetStencilReferenceArgs:
+		return rebuildVkCmdSetStencilReference(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetStencilWriteMaskArgs:
+		return rebuildVkCmdSetStencilWriteMask(ctx, cb, commandBuffer, s, t)
+	case *VkCmdSetViewportArgs:
+		return rebuildVkCmdSetViewport(ctx, cb, commandBuffer, s, t)
+	case *VkCmdUpdateBufferArgs:
+		return rebuildVkCmdUpdateBuffer(ctx, cb, commandBuffer, s, t)
+	case *VkCmdWriteTimestampArgs:
+		return rebuildVkCmdWriteTimestamp(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDebugMarkerBeginEXTArgs:
+		return rebuildVkCmdDebugMarkerBeginEXT(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDebugMarkerEndEXTArgs:
+		return rebuildVkCmdDebugMarkerEndEXT(ctx, cb, commandBuffer, s, t)
+	case *VkCmdDebugMarkerInsertEXTArgs:
+		return rebuildVkCmdDebugMarkerInsertEXT(ctx, cb, commandBuffer, s, t)
 
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)

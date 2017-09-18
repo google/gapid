@@ -24,11 +24,13 @@ import (
 )
 
 type CommandBufferCommand struct {
-	function         func(context.Context, api.Cmd, api.CmdID, *api.GlobalState, *builder.Builder)
+	function func(context.Context, api.Cmd, api.CmdID, *api.GlobalState, *builder.Builder)
+}
+
+type QueuedCommand struct {
 	initialCall      *api.Cmd
 	submit           *api.Cmd
 	submissionIndex  []uint64
-	recreateData     interface{}
 	actualSubmission bool
 }
 

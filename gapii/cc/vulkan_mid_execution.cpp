@@ -16,6 +16,8 @@
 
 #include <deque>
 #include <map>
+#include <vector>
+#include <unordered_set>
 #include "gapii/cc/vulkan_spy.h"
 
 #ifdef _WIN32
@@ -41,8 +43,8 @@ class TemporaryShaderModule {
         VkStructureType::VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,  // sType
         nullptr,                                                       // pNext
         0,                                                             // flags
-        module_obj->shaderWords.size() * 4,  // codeSize
-        module_obj->shaderWords.data(),      // pCode
+        static_cast<size_t>(module_obj->mWords.size()),               // codeSize
+        module_obj->mWords.begin(),               // pCode
     };
     spy_->RecreateShaderModule(observer_, module_obj->mDevice, &create_info,
                                &module_obj->mVulkanHandle);
@@ -234,8 +236,8 @@ void recreateDebugInfo(VulkanSpy* spy, CallObserver* observer,
       objectType,                                              // objectType
       object,                                                  // object
       info->mTagName,                                          // tagName
-      static_cast<size_val>(info->tagBytes.size()),            // tagSize
-      reinterpret_cast<void*>(info->tagBytes.data()),          // pTag
+      static_cast<size_val>(info->mTag.size()),            // tagSize
+      reinterpret_cast<void*>(info->mTag.begin()),          // pTag
   };
   spy->RecreateDebugMarkerSetObjectTagEXT(
       observer, getObjectCreatingDevice(obj), &tag_info);
@@ -1280,8 +1282,8 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         VkStructureType::VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, nullptr,
         0, 0, nullptr};
     for (auto& shaderModule : ShaderModules) {
-      create_info.mcodeSize = shaderModule.second->shaderWords.size() * 4;
-      create_info.mpCode = shaderModule.second->shaderWords.data();
+      create_info.mcodeSize = static_cast<size_t>(shaderModule.second->mWords.size());
+      create_info.mpCode = shaderModule.second->mWords.begin();
       RecreateShaderModule(observer, shaderModule.second->mDevice, &create_info,
                            &shaderModule.second->mVulkanHandle);
       recreateDebugInfo(this, observer,
@@ -1335,9 +1337,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         }
         specialization_info.mpMapEntries = specialization_entries.data();
         specialization_info.mdataSize =
-            pipeline.mStage.mSpecialization->specializationData.size();
+            pipeline.mStage.mSpecialization->mData.size();
         specialization_info.mpData =
-            pipeline.mStage.mSpecialization->specializationData.data();
+            pipeline.mStage.mSpecialization->mData.begin();
         create_info.mstage.mpSpecializationInfo = &specialization_info;
       }
       RecreateComputePipeline(
@@ -1349,6 +1351,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT,
           compute_pipeline.second);
     }
+
+    std::set<std::string> entrypoint_names;
+    auto last_insert = entrypoint_names.begin();
 
     for (auto& graphics_pipeline : GraphicsPipelines) {
       auto& pipeline = *graphics_pipeline.second;
@@ -1441,7 +1446,11 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         } else {
           stages.back().mmodule = stage.mModule->mVulkanHandle;
         }
-        stages.back().mpName = const_cast<char*>(stage.mEntryPoint.c_str());
+        // In reality most entry_point names are probably the same,
+        // so we can always insert to the same place.
+        last_insert =
+            entrypoint_names.insert(last_insert, stage.mEntryPoint);
+        stages.back().mpName = const_cast<char*>(last_insert->c_str());
         if (stage.mSpecialization) {
           specialization_infos.push_back({});
           specialization_entries.push_back({});
@@ -1455,9 +1464,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           specialization_infos.back().mpMapEntries =
               specialization_entries.back().data();
           specialization_infos.back().mdataSize =
-              stage.mSpecialization->specializationData.size();
+              stage.mSpecialization->mData.size();
           specialization_infos.back().mpData =
-              stage.mSpecialization->specializationData.data();
+              stage.mSpecialization->mData.begin();
           stages.back().mpSpecializationInfo = &specialization_infos.back();
         }
       }
@@ -1875,12 +1884,17 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
   // Helper function to fill and end a given command buffer object.
   auto fill_and_end_cmd_buf = [this](
       CallObserver* observer, std::shared_ptr<CommandBufferObject> cmdBuff) {
+    // We have to reset the state of this command buffer after we record,
+    // since we might be modifying it.
     bool failure = false;
-    for (auto& recreate : cmdBuff->recreateCommands) {
-      if (!recreate(observer)) {
-        failure = true;
-        break;
-      }
+    for (uint32_t i = 0;
+        i < static_cast<uint32_t>(cmdBuff->mCommandReferences.size()); ++i) {
+        auto& ref = cmdBuff->mCommandReferences[i];
+        if (!RecreateCommand(observer, cmdBuff->mVulkanHandle,
+                                this, ref)) {
+            failure = true;
+            break;
+        }
     }
     if (cmdBuff->mRecording == RecordingState::COMPLETED && !failure) {
       RecreateEndCommandBuffer(observer, cmdBuff->mVulkanHandle);

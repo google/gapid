@@ -2794,7 +2794,9 @@ cmd VkResult vkQueueSubmit(
     info := submitInfo[i]
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for j in (0 .. info.waitSemaphoreCount) {
-      recordUpdateSemaphoreSignal(wait_semaphores[j], false)
+      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+        = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+            Unsignal, wait_semaphores[j])
     }
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
 
@@ -2802,18 +2804,46 @@ cmd VkResult vkQueueSubmit(
 
     enterSubcontext()
     for j in (0 .. info.commandBufferCount) {
-      execCommands(command_buffers[j])
+      enterSubcontext()
+      cb := CommandBuffers[command_buffers[j]]
+      for k in (0 .. len(cb.CommandReferences)) {
+        LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+          = cb.CommandReferences[as!u32(k)]
+        notifyPendingCommandAdded(queue)
+        ref := cb.CommandReferences[as!u32(k)]
+        if ref.Type == cmd_vkCmdExecuteCommands {
+          enterSubcontext()
+          ec := cb.BufferCommands.vkCmdExecuteCommands[ref.CommandIndex]
+          for l in (0 .. len(ec.CommandBuffers)) {
+            scb := CommandBuffers[ec.CommandBuffers[as!u32(l)]]
+            enterSubcontext()
+            for c in (0 .. len(scb.CommandReferences)) {
+              LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+                = scb.CommandReferences[as!u32(c)]
+              notifyPendingCommandAdded(queue)
+            }
+            leaveSubcontext()
+            nextSubcontext()
+          }
+          leaveSubcontext()
+        }
+      }
+      leaveSubcontext()
       nextSubcontext()
     }
     leaveSubcontext()
 
     signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
     for j in (0 .. info.signalSemaphoreCount) {
-      recordUpdateSemaphoreSignal(signal_semaphores[j], true)
+      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+        = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+            Signal, signal_semaphores[j])
     }
     nextSubcontext()
   }
   leaveSubcontext()
+  execPendingCommands(queue)
+  fence
   return ?
 }
 
@@ -3901,7 +3931,6 @@ cmd VkResult vkCreateShaderModule(
   pShaderModule[0] = handle
   object.VulkanHandle = handle
   ShaderModules[handle] = object
-  addWords(handle, create_info.codeSize, create_info.pCode)
 
   return ?
 }
@@ -4114,8 +4143,7 @@ cmd VkResult vkCreateGraphicsPipelines(
         for k in (0 .. spec_info.mapEntryCount) {
           spec_data.Specializations[k] = spec_map[k]
         }
-        read(as!char*(spec_info.pData)[0:spec_info.dataSize])
-        setSpecData(spec_data, spec_info.dataSize, spec_info.pData)
+        spec_data.Data = clone(as!u8*(spec_info.pData)[0:spec_info.dataSize])
         stage_data.Specialization = spec_data
       }
       obj.Stages[j] = stage_data
@@ -4338,8 +4366,7 @@ cmd VkResult vkCreateComputePipelines(
       for k in (0 .. spec_info.mapEntryCount) {
         spec_data.Specializations[k] = spec_map[k]
       }
-      read(as!char*(spec_info.pData)[0:spec_info.dataSize])
-      setSpecData(spec_data, spec_info.dataSize, spec_info.pData)
+      spec_data.Data = clone(as!u8*(spec_info.pData)[0:spec_info.dataSize])
       stage_data.Specialization = spec_data
     }
     obj.Stage = stage_data
@@ -5232,6 +5259,10 @@ cmd void vkDestroyCommandPool(
   delete(CommandPools, commandPool)
 }
 
+sub void resetCommandBuffer(ref!CommandBufferObject obj) {
+  obj.BufferCommands = BufferCommands()
+}
+
 @indirect("VkDevice")
 cmd VkResult vkResetCommandPool(
     VkDevice                device,
@@ -5241,6 +5272,7 @@ cmd VkResult vkResetCommandPool(
   for _ , k , b in pool.CommandBuffers {
     b.BeginInfo = null
     b.Recording = NOT_STARTED
+    resetCommandBuffer(b)
     resetCmd(k)
   }
   return ?
@@ -5340,6 +5372,7 @@ cmd VkResult vkBeginCommandBuffer(
   buff.BeginInfo = begin
   buff.Recording = RECORDING
   CommandBuffers[commandBuffer] = buff
+  resetCommandBuffer(buff)
   resetCmd(commandBuffer)
   return ?
 }
@@ -5368,81 +5401,16 @@ cmd VkResult vkResetCommandBuffer(
   buff.Recording = NOT_STARTED
   buff.BeginInfo = null
   CommandBuffers[commandBuffer] = buff
+  resetCommandBuffer(buff)
   return ?
 }
 
-class CmdBindPipeline {
+@internal class vkCmdBindPipelineArgs {
   VkPipelineBindPoint PipelineBindPoint
   VkPipeline          Pipeline
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdBindPipeline(
-    VkCommandBuffer     commandBuffer,
-    VkPipelineBindPoint pipelineBindPoint,
-    VkPipeline          pipeline) {
-}
-
-@internal class
-RecreateCmdBindPipelineData {
-  VkPipelineBindPoint PipelineBindPoint,
-  VkPipeline          Pipeline
-}
-
-
-@threadSafety("app")
-@indirect("VkCommandBuffer", "VkDevice")
-cmd void vkCmdBindPipeline(
-    VkCommandBuffer     commandBuffer,
-    VkPipelineBindPoint pipelineBindPoint,
-    VkPipeline          pipeline) {
-  addCmd(commandBuffer, new!RecreateCmdBindPipelineData(
-      PipelineBindPoint: pipelineBindPoint,
-      Pipeline:          pipeline
-    ), CmdBindPipeline(pipelineBindPoint, pipeline), doCmdBindPipeline)
-}
-
-@internal
-class Unimplemented {
-}
-
-// Enqueued when a command buffer command is not going to carry any
-// observations or alter global state when the command is executed.
-sub void doCmdNop(Unimplemented args) { }
-
-extern void addCmd(VkCommandBuffer cmdBuf, any recreatePayload, any payload, any func)
-extern void setSpecData(ref!SpecializationInfo info, size numBytes, const void* pData)
-extern void resetCmd(VkCommandBuffer cmdBuf)
-extern void execCommands(VkCommandBuffer cmdBuf)
-extern void execPendingCommands(VkQueue queue)
-extern void enterSubcontext()
-extern void nextSubcontext()
-extern void leaveSubcontext()
-extern void recordUpdateSemaphoreSignal(VkSemaphore semaphore, bool Signaled)
-extern void addWords(VkShaderModule module, size numBytes, const u32* pData)
-extern void addDebugMarkerTagBytes(ref!VulkanDebugMarkerInfo debugInfo, size numBytes, u8* pTag)
-extern void pushDebugMarker(string name)
-extern void popDebugMarker()
-extern void pushRenderPassMarker(VkRenderPass renderPass)
-extern void popRenderPassMarker()
-extern void popAndPushMarkerForNextSubpass(u32 nextSubpass)
-extern ref!RecreateCmdUpdateBufferData createUpdateBufferData(
-    VkBuffer     dstBuffer
-    VkDeviceSize dstOffset
-    VkDeviceSize dataSize
-    const void*  data)
-extern void doUpdateBuffer(ref!RecreateCmdUpdateBufferData data)
-
-extern ref!RecreateCmdPushConstantsData createPushConstantsData(
-    VkPipelineLayout   layout,
-    VkShaderStageFlags stageFlags,
-    u32                offset,
-    u32                size,
-    const void*        pValues)
-
-sub void doCmdBindPipeline(CmdBindPipeline args) {
+sub void dovkCmdBindPipeline(ref!vkCmdBindPipelineArgs args) {
   switch args.PipelineBindPoint {
     case VK_PIPELINE_BIND_POINT_COMPUTE:
       CurrentComputePipeline = ComputePipelines[args.Pipeline]
@@ -5451,22 +5419,39 @@ sub void doCmdBindPipeline(CmdBindPipeline args) {
   }
 }
 
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdBindPipeline(
+    VkCommandBuffer     commandBuffer,
+    VkPipelineBindPoint pipelineBindPoint,
+    VkPipeline          pipeline) {
+  args := new!vkCmdBindPipelineArgs(
+      PipelineBindPoint: pipelineBindPoint,
+      Pipeline:          pipeline)
 
-@internal
-class RecreateCmdSetViewportData {
+  addCmd(commandBuffer, args, dovkCmdBindPipeline)
+}
+
+extern void addCmd(VkCommandBuffer cmdbuf, any data, any func)
+extern void resetCmd(VkCommandBuffer cmdBuf)
+extern void notifyPendingCommandAdded(VkQueue queue)
+extern void execPendingCommands(VkQueue queue)
+extern void enterSubcontext()
+extern void nextSubcontext()
+extern void leaveSubcontext()
+extern void recordUpdateSemaphoreSignal(VkSemaphore semaphore, bool Signaled)
+extern void pushDebugMarker(string name)
+extern void popDebugMarker()
+extern void pushRenderPassMarker(VkRenderPass renderPass)
+extern void popRenderPassMarker()
+extern void popAndPushMarkerForNextSubpass(u32 nextSubpass)
+
+@internal class vkCmdSetViewportArgs {
   u32                   FirstViewport
   map!(u32, VkViewport) Viewports
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetViewport(
-    VkCommandBuffer   commandBuffer,
-    u32               firstViewport,
-    u32               viewportCount,
-    const VkViewport* pViewports) {
-  read(pViewports[0:viewportCount])
+sub void dovkCmdSetViewport(ref!vkCmdSetViewportArgs args) {
 }
 
 @threadSafety("app")
@@ -5477,30 +5462,22 @@ cmd void vkCmdSetViewport(
     u32               viewportCount,
     const VkViewport* pViewports) {
   viewports := pViewports[0:viewportCount]
-  recreate_info := new!RecreateCmdSetViewportData(
+  args := new!vkCmdSetViewportArgs(
     firstViewport
   )
   for i in (0 .. viewportCount) {
-    recreate_info.Viewports[i] = viewports[i]
+    args.Viewports[i] = viewports[i]
   }
-  addCmd(commandBuffer, recreate_info, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdSetViewport)
 }
 
-@internal
-class RecreateCmdSetScissorData {
+@internal class vkCmdSetScissorArgs {
   u32                 FirstScissor
   map!(u32, VkRect2D) Scissors
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetScissor(
-    VkCommandBuffer commandBuffer,
-    u32             firstScissor,
-    u32             scissorCount,
-    const VkRect2D* pScissors) {
-  read(pScissors[0:scissorCount])
+sub void dovkCmdSetScissor(ref!vkCmdSetScissorArgs args) {
 }
 
 @threadSafety("app")
@@ -5511,27 +5488,21 @@ cmd void vkCmdSetScissor(
     u32             scissorCount,
     const VkRect2D* pScissors) {
   scissors := pScissors[0:scissorCount]
-  recreate_info := new!RecreateCmdSetScissorData(
+  args := new!vkCmdSetScissorArgs(
     firstScissor
   )
   for i in (0 .. scissorCount) {
-    recreate_info.Scissors[i] = scissors[i]
+    args.Scissors[i] = scissors[i]
   }
-  addCmd(commandBuffer, recreate_info, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdSetScissor)
 }
 
-
-@internal
-class RecreateCmdSetLineWidthData {
-  f32 LineWidth
+@internal class vkCmdSetLineWidthArgs {
+  f32             LineWidth
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetLineWidth(
-    VkCommandBuffer commandBuffer,
-    f32             lineWidth) {
+sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
 }
 
 @threadSafety("app")
@@ -5539,24 +5510,19 @@ cmd void RecreateCmdSetLineWidth(
 cmd void vkCmdSetLineWidth(
     VkCommandBuffer commandBuffer,
     f32             lineWidth) {
-  addCmd(commandBuffer, new!RecreateCmdSetLineWidthData(lineWidth), Unimplemented(), doCmdNop)
+
+  args := new!vkCmdSetLineWidthArgs(lineWidth)
+
+  addCmd(commandBuffer, args, dovkCmdSetLineWidth)
 }
 
-@internal
-class RecreateCmdSetDepthBiasData {
+@internal class vkCmdSetDepthBiasArgs {
   f32 DepthBiasConstantFactor
   f32 DepthBiasClamp
   f32 DepthBiasSlopeFactor
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetDepthBias(
-    VkCommandBuffer commandBuffer,
-    f32             depthBiasConstantFactor
-    f32             depthBiasClamp
-    f32             depthBiasSlopeFactor) {
+sub void dovkCmdSetDepthBias(ref!vkCmdSetDepthBiasArgs args) {
 }
 
 @threadSafety("app")
@@ -5566,27 +5532,24 @@ cmd void vkCmdSetDepthBias(
     f32             depthBiasConstantFactor,
     f32             depthBiasClamp,
     f32             depthBiasSlopeFactor) {
-  addCmd(commandBuffer, new!RecreateCmdSetDepthBiasData(
+
+  args := new!vkCmdSetDepthBiasArgs(
       depthBiasConstantFactor,
       depthBiasClamp,
       depthBiasSlopeFactor
-    ), Unimplemented(), doCmdNop)
+    )
+
+  addCmd(commandBuffer, args, dovkCmdSetDepthBias)
 }
 
-@internal
-class RecreateCmdSetBlendConstantsData {
+@internal class vkCmdSetBlendConstantsArgs {
   f32 R
   f32 G
   f32 B
   f32 A
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetBlendConstants(
-              VkCommandBuffer commandBuffer,
-    @readonly f32[4]          blendConstants) {
+sub void dovkCmdSetBlendConstants(ref!vkCmdSetBlendConstantsArgs args) {
 }
 
 @threadSafety("app")
@@ -5594,27 +5557,23 @@ cmd void RecreateCmdSetBlendConstants(
 cmd void vkCmdSetBlendConstants(
               VkCommandBuffer commandBuffer,
     @readonly f32[4]          blendConstants) {
-  addCmd(commandBuffer,
-    new!RecreateCmdSetBlendConstantsData(
+
+  args := new!vkCmdSetBlendConstantsArgs(
       blendConstants[0],
       blendConstants[1],
       blendConstants[2],
-      blendConstants[3]), Unimplemented(), doCmdNop)
+      blendConstants[3])
+
+  addCmd(commandBuffer,
+    args, dovkCmdSetBlendConstants)
 }
 
-@internal
-class RecreateCmdSetDepthBoundsData {
-  f32 MinDepthBounds,
+@internal class vkCmdSetDepthBoundsArgs {
+  f32 MinDepthBounds
   f32 MaxDepthBounds
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetDepthBounds(
-    VkCommandBuffer commandBuffer,
-    f32             minDepthBounds,
-    f32             maxDepthBounds) {
+sub void dovkCmdSetDepthBounds(ref!vkCmdSetDepthBoundsArgs args) {
 }
 
 @threadSafety("app")
@@ -5623,25 +5582,20 @@ cmd void vkCmdSetDepthBounds(
     VkCommandBuffer commandBuffer,
     f32             minDepthBounds,
     f32             maxDepthBounds) {
-  addCmd(commandBuffer,
-    new!RecreateCmdSetDepthBoundsData(
+  args := new!vkCmdSetDepthBoundsArgs(
       minDepthBounds,
-      maxDepthBounds), Unimplemented(), doCmdNop)
+      maxDepthBounds)
+
+  addCmd(commandBuffer,
+    args, dovkCmdSetDepthBounds)
 }
 
-@internal
-class RecreateCmdSetStencilCompareMaskData {
-  VkStencilFaceFlags FaceMask   ,
+@internal class vkCmdSetStencilCompareMaskArgs {
+  VkStencilFaceFlags FaceMask
   u32                CompareMask
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetStencilCompareMask(
-    VkCommandBuffer    commandBuffer,
-    VkStencilFaceFlags faceMask,
-    u32                compareMask) {
+sub void dovkCmdSetStencilCompareMask(ref!vkCmdSetStencilCompareMaskArgs args) {
 }
 
 @threadSafety("app")
@@ -5650,25 +5604,20 @@ cmd void vkCmdSetStencilCompareMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                compareMask) {
-  addCmd(commandBuffer, new!RecreateCmdSetStencilCompareMaskData(
+  args := new!vkCmdSetStencilCompareMaskArgs(
       faceMask,
       compareMask
-    ), Unimplemented(), doCmdNop)
+    )
+
+  addCmd(commandBuffer, args, dovkCmdSetStencilCompareMask)
 }
 
-@internal
-class RecreateCmdSetStencilWriteMaskData {
-  VkStencilFaceFlags FaceMask ,
+@internal class vkCmdSetStencilWriteMaskArgs {
+  VkStencilFaceFlags FaceMask
   u32                WriteMask
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetStencilWriteMask(
-    VkCommandBuffer    commandBuffer,
-    VkStencilFaceFlags faceMask,
-    u32                writeMask) {
+sub void dovkCmdSetStencilWriteMask(ref!vkCmdSetStencilWriteMaskArgs args) {
 }
 
 @threadSafety("app")
@@ -5677,27 +5626,21 @@ cmd void vkCmdSetStencilWriteMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                writeMask) {
-  addCmd(commandBuffer, new!RecreateCmdSetStencilWriteMaskData(
-      faceMask,
-      writeMask
-    ), Unimplemented(), doCmdNop)
+  args := new!vkCmdSetStencilWriteMaskArgs(
+    faceMask,
+    writeMask
+  )
+
+  addCmd(commandBuffer, args, dovkCmdSetStencilWriteMask)
 }
 
-@internal
-class RecreateCmdSetStencilReferenceData {
-  VkStencilFaceFlags FaceMask ,
+@internal class vkCmdSetStencilReferenceArgs {
+  VkStencilFaceFlags FaceMask
   u32                Reference
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetStencilReference(
-    VkCommandBuffer    commandBuffer,
-    VkStencilFaceFlags faceMask,
-    u32                reference) {
+sub void dovkCmdSetStencilReference(ref!vkCmdSetStencilReferenceArgs args) {
 }
-
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
@@ -5705,87 +5648,35 @@ cmd void vkCmdSetStencilReference(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                reference) {
-  addCmd(commandBuffer, new!RecreateCmdSetStencilReferenceData(
-      faceMask,
-      reference
-    ), Unimplemented(), doCmdNop)
-}
+  args :=
+  new!vkCmdSetStencilReferenceArgs(
+    faceMask,
+    reference
+  )
 
-@internal
-class CmdBindDescriptorSets {
-  // map from binding to set
-  map!(u32, ref!DescriptorSetObject) DescriptorSets
-  map!(u32, BoundBuffer)             BoundBuffers
-}
-
-sub void doCmdBindDescriptorSets(CmdBindDescriptorSets bind) {
-  for _ , _ , v in bind.BoundBuffers {
-    if (v.Buffer != null) {
-      v.Buffer.LastBoundQueue = LastBoundQueue
-      readCoherentMemoryInBuffer(v.Buffer, v.Offset, v.Range)
-    }
-  }
-  for _ , binding , set in bind.DescriptorSets {
-    lastDrawInfo().DescriptorSets[binding] = set
-  }
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdBindDescriptorSets(
-    VkCommandBuffer        commandBuffer,
-    VkPipelineBindPoint    pipelineBindPoint,
-    VkPipelineLayout       layout,
-    u32                    firstSet,
-    u32                    descriptorSetCount,
-    const VkDescriptorSet* pDescriptorSets,
-    u32                    dynamicOffsetCount,
-    const u32*             pDynamicOffsets) {
-  read(pDescriptorSets[0:descriptorSetCount])
-  read(pDynamicOffsets[0:dynamicOffsetCount])
+  addCmd(commandBuffer, args, dovkCmdSetStencilReference)
 }
 
 @internal class
-RecreateCmdBindDescriptorSetsData {
-  VkPipelineBindPoint        PipelineBindPoint,
-  VkPipelineLayout           Layout           ,
-  u32                        FirstSet         ,
+vkCmdBindDescriptorSetsArgs {
+  VkPipelineBindPoint        PipelineBindPoint
+  VkPipelineLayout           Layout
+  u32                        FirstSet
   map!(u32, VkDescriptorSet) DescriptorSets
   map!(u32, u32)             DynamicOffsets
 }
 
-@threadSafety("app")
-@indirect("VkCommandBuffer", "VkDevice")
-cmd void vkCmdBindDescriptorSets(
-    VkCommandBuffer        commandBuffer,
-    VkPipelineBindPoint    pipelineBindPoint,
-    VkPipelineLayout       layout,
-    u32                    firstSet,
-    u32                    descriptorSetCount,
-    const VkDescriptorSet* pDescriptorSets,
-    u32                    dynamicOffsetCount,
-    const u32*             pDynamicOffsets) {
-  sets := pDescriptorSets[0:descriptorSetCount]
-  recreate_info := new!RecreateCmdBindDescriptorSetsData(
-    PipelineBindPoint: pipelineBindPoint,
-    Layout:            layout,
-    FirstSet:          firstSet
-  )
+sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
+ dynamic_offset_index := MutableU32(0)
 
-  dynamic_offsets := pDynamicOffsets[0:dynamicOffsetCount]
-  for i in (0 .. dynamicOffsetCount) {
-    recreate_info.DynamicOffsets[i] = dynamic_offsets[i]
+  for i , _ , set in args.DescriptorSets {
+    lastDrawInfo().DescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
   }
 
-  bind_buffer_and_descriptor_sets := CmdBindDescriptorSets()
-  dynamic_offset_index := MutableU32(0)
+  for i in (0 .. len(args.DescriptorSets)) {
+    if args.DescriptorSets[as!u32(i)] in DescriptorSets {
+      set := DescriptorSets[args.DescriptorSets[as!u32(i)]]
 
-  for i in (0 .. descriptorSetCount) {
-    recreate_info.DescriptorSets[i] = sets[i]
-    if sets[i] in DescriptorSets {
-      set := DescriptorSets[sets[i]]
-      bind_buffer_and_descriptor_sets.DescriptorSets[firstSet + i] = set
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
       // of the BoundBuffers in order of the binding number.
@@ -5800,7 +5691,7 @@ cmd void vkCmdBindDescriptorSets(
 
           binding_offset := switch binding.BindingType {
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-              as!VkDeviceSize(dynamic_offsets[dynamic_offset_index.Val]) + bufferBinding.Offset
+              as!VkDeviceSize(args.DynamicOffsets[dynamic_offset_index.Val]) + bufferBinding.Offset
             default:
               bufferBinding.Offset
           }
@@ -5810,25 +5701,50 @@ cmd void vkCmdBindDescriptorSets(
             default:
               dynamic_offset_index.Val
           }
-          bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
-            Buffers[bufferBinding.Buffer], binding_offset, bufferBinding.Range)
+          if (bufferBinding.Buffer in Buffers) {
+            bufferObject := Buffers[bufferBinding.Buffer]
+            readCoherentMemoryInBuffer(bufferObject, binding_offset, bufferBinding.Range)
+          }
         }
         for k in (0 .. len(binding.BufferViewBindings)) {
           buffer_view := binding.BufferViewBindings[as!u32(k)]
           if (buffer_view != as!VkBufferView(0)) {
             buffer_view_object := BufferViews[buffer_view]
-            bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
-              buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
-          } else {
-            bind_buffer_and_descriptor_sets.BoundBuffers[len(bind_buffer_and_descriptor_sets.BoundBuffers)] = BoundBuffer(
-              as!ref!BufferObject(null), as!VkDeviceSize(0), as!VkDeviceSize(0))
+            readCoherentMemoryInBuffer(buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
           }
-          
         }
       }
     }
   }
-  addCmd(commandBuffer, recreate_info, bind_buffer_and_descriptor_sets, doCmdBindDescriptorSets)
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdBindDescriptorSets(
+    VkCommandBuffer        commandBuffer,
+    VkPipelineBindPoint    pipelineBindPoint,
+    VkPipelineLayout       layout,
+    u32                    firstSet,
+    u32                    descriptorSetCount,
+    const VkDescriptorSet* pDescriptorSets,
+    u32                    dynamicOffsetCount,
+    const u32*             pDynamicOffsets) {
+  sets := pDescriptorSets[0:descriptorSetCount]
+  args := new!vkCmdBindDescriptorSetsArgs(
+    PipelineBindPoint: pipelineBindPoint,
+    Layout:            layout,
+    FirstSet:          firstSet
+  )
+
+  dynamic_offsets := pDynamicOffsets[0:dynamicOffsetCount]
+  for i in (0 .. dynamicOffsetCount) {
+    args.DynamicOffsets[i] = dynamic_offsets[i]
+  }
+  for i in (0 .. descriptorSetCount) {
+    args.DescriptorSets[i] = sets[i]
+  }
+
+  addCmd(commandBuffer, args, dovkCmdBindDescriptorSets)
 }
 
 @internal
@@ -5844,35 +5760,20 @@ class BoundIndexBuffer {
   BoundBuffer BoundBuffer
 }
 
-
-class CmdBindIndexBuffer {
-  VkBuffer     Buffer   ,
-  VkDeviceSize Offset   ,
+@internal class
+vkCmdBindIndexBufferArgs {
+  VkBuffer     Buffer
+  VkDeviceSize Offset
   VkIndexType  IndexType
 }
 
-sub void doCmdBindIndexBuffer(CmdBindIndexBuffer buffer) {
+
+sub void dovkCmdBindIndexBuffer(ref!vkCmdBindIndexBufferArgs buffer) {
   lastDrawInfo().BoundIndexBuffer = new!BoundIndexBuffer(buffer.IndexType,
     BoundBuffer(Buffers[buffer.Buffer], buffer.Offset, 0))
   Buffers[buffer.Buffer].LastBoundQueue = LastBoundQueue
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdBindIndexBuffer(
-    VkCommandBuffer commandBuffer,
-    VkBuffer        buffer,
-    VkDeviceSize    offset,
-    VkIndexType     indexType) {
-}
-
-@internal class
-RecreateCmdBindIndexBufferData {
-  VkBuffer     Buffer   ,
-  VkDeviceSize Offset   ,
-  VkIndexType  IndexType
-}
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
@@ -5882,13 +5783,23 @@ cmd void vkCmdBindIndexBuffer(
     VkDeviceSize    offset,
     VkIndexType     indexType) {
 
+  args := new!vkCmdBindIndexBufferArgs(
+    Buffer:     buffer,
+    Offset:     offset,
+    IndexType:  indexType
+  )
+
   addCmd(commandBuffer,
-    new!RecreateCmdBindIndexBufferData(
-      Buffer:     buffer,
-      Offset:     offset,
-      IndexType:  indexType),
-    CmdBindIndexBuffer(Buffer: buffer,Offset:  offset,IndexType:  indexType),
-    doCmdBindIndexBuffer)
+    args,
+    dovkCmdBindIndexBuffer)
+}
+
+@internal class
+vkCmdBindVertexBuffersArgs {
+  u32                     FirstBinding
+  u32                     BindingCount
+  map!(u32, VkBuffer)     Buffers
+  map!(u32, VkDeviceSize) Offsets
 }
 
 @internal
@@ -5896,32 +5807,13 @@ class CmdBindBuffer {
   map!(u32, BoundBuffer) BoundBuffers
 }
 
-sub void doCmdBindVertexBuffers(CmdBindBuffer bind) {
-  for _ , k , v in bind.BoundBuffers {
-    lastDrawInfo().BoundVertexBuffers[k] = v
-    v.Buffer.LastBoundQueue = LastBoundQueue
+sub void dovkCmdBindVertexBuffers(ref!vkCmdBindVertexBuffersArgs bind) {
+  for i , _ , v in bind.Buffers {
+    lastDrawInfo().BoundVertexBuffers[as!u32(i)] = BoundBuffer(
+        Buffers[v], bind.Offsets[as!u32(i)],
+        Buffers[v].Info.Size - bind.Offsets[as!u32(i)])
+    Buffers[v].LastBoundQueue = LastBoundQueue
   }
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdBindVertexBuffers(
-    VkCommandBuffer     commandBuffer,
-    u32                 firstBinding,
-    u32                 bindingCount,
-    const VkBuffer*     pBuffers,
-    const VkDeviceSize* pOffsets) {
-  read(pBuffers[0:bindingCount])
-  read(pOffsets[0:bindingCount])
-}
-
-@internal class
-RecreateCmdBindVertexBuffersData {
-  u32                     FirstBinding,
-  u32                     BindingCount,
-  map!(u32, VkBuffer)     Buffers
-  map!(u32, VkDeviceSize) Offsets
 }
 
 @threadSafety("app")
@@ -5932,20 +5824,18 @@ cmd void vkCmdBindVertexBuffers(
     u32                 bindingCount,
     const VkBuffer*     pBuffers,
     const VkDeviceSize* pOffsets) {
-  recreate_data := new!RecreateCmdBindVertexBuffersData(
+  args := new!vkCmdBindVertexBuffersArgs(
     FirstBinding:  firstBinding,
     BindingCount:  bindingCount
   )
   buffers := pBuffers[0:bindingCount]
   offsets := pOffsets[0:bindingCount]
-  bindBuffer := CmdBindBuffer()
   for i in (0 .. bindingCount) {
-    recreate_data.Buffers[i] = buffers[i]
-    recreate_data.Offsets[i] = offsets[i]
-    bindBuffer.BoundBuffers[firstBinding + i] = BoundBuffer(Buffers[buffers[i]], offsets[i],
-      Buffers[buffers[i]].Info.Size - offsets[i])
+    args.Buffers[i] = buffers[i]
+    args.Offsets[i] = offsets[i]
   }
-  addCmd(commandBuffer, recreate_data, bindBuffer, doCmdBindVertexBuffers)
+
+  addCmd(commandBuffer, args, dovkCmdBindVertexBuffers)
 }
 
 sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffset, VkDeviceSize readSize) {
@@ -6022,36 +5912,18 @@ sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, 
   }
 }
 
-@internal class CmdDraw {
+@internal class vkCmdDrawArgs {
   u32 VertexCount
   u32 InstanceCount
   u32 FirstVertex
   u32 FirstInstance
 }
 
-@internal class RecreateCmdDrawData {
-  u32 VertexCount
-  u32 InstanceCount
-  u32 FirstVertex
-  u32 FirstInstance
-}
 
-sub void doCmdDraw(CmdDraw draw) {
+sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
   readCoherentMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
-  lastDrawInfo().CommandParameters.Draw = new!CmdDraw(
-    draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDraw(
-    VkCommandBuffer commandBuffer,
-    u32             vertexCount,
-    u32             instanceCount,
-    u32             firstVertex,
-    u32             firstInstance) {
+  lastDrawInfo().CommandParameters.Draw = draw
 }
 
 @threadSafety("app")
@@ -6062,12 +5934,14 @@ cmd void vkCmdDraw(
     u32             instanceCount,
     u32             firstVertex,
     u32             firstInstance) {
-  addCmd(                                                                            commandBuffer,
-    new!RecreateCmdDrawData(vertexCount, instanceCount, firstVertex, firstInstance),
-    CmdDraw(vertexCount, instanceCount, firstVertex, firstInstance),                 doCmdDraw)
+
+  args :=  new!vkCmdDrawArgs(vertexCount, instanceCount, firstVertex, firstInstance)
+
+  addCmd(commandBuffer, args, dovkCmdDraw)
 }
 
-@internal class CmdDrawIndexed {
+@internal class
+vkCmdDrawIndexedArgs {
   u32 IndexCount
   u32 InstanceCount
   u32 FirstIndex
@@ -6075,7 +5949,7 @@ cmd void vkCmdDraw(
   u32 FirstInstance
 }
 
-sub void doCmdDrawIndexed(CmdDrawIndexed draw) {
+sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
   // Loop through the index buffer, and find the low and high
   // vertices. Then read all of the applicable vertex buffers.
   lastDraw := lastDrawInfo()
@@ -6095,30 +5969,7 @@ sub void doCmdDrawIndexed(CmdDrawIndexed draw) {
   // Read the whole vertex buffer if a buffer is backed with coherent memory.
   readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
-  lastDrawInfo().CommandParameters.DrawIndexed = new!CmdDrawIndexed(
-    draw.IndexCount, draw.InstanceCount, draw.FirstIndex, draw.VertexOffset,
-    draw.FirstInstance)
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDrawIndexed(
-    VkCommandBuffer commandBuffer,
-    u32             indexCount,
-    u32             instanceCount,
-    u32             firstIndex,
-    s32             vertexOffset,
-    u32             firstInstance) {
-}
-
-@internal class
-RecreateCmdDrawIndexedData {
-  u32 IndexCount   ,
-  u32 InstanceCount,
-  u32 FirstIndex   ,
-  s32 VertexOffset ,
-  u32 FirstInstance
+  lastDrawInfo().CommandParameters.DrawIndexed = draw
 }
 
 @threadSafety("app")
@@ -6130,42 +5981,26 @@ cmd void vkCmdDrawIndexed(
     u32             firstIndex,
     s32             vertexOffset,
     u32             firstInstance) {
-  addCmd(commandBuffer, new!RecreateCmdDrawIndexedData(
+
+  args := new!vkCmdDrawIndexedArgs(
       IndexCount:     indexCount,
       InstanceCount:  instanceCount,
       FirstIndex:     firstIndex,
       VertexOffset:   vertexOffset,
       FirstInstance:  firstInstance
-    ), CmdDrawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance), doCmdDrawIndexed)
+  )
+
+  addCmd(commandBuffer, args, dovkCmdDrawIndexed)
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDrawIndirect(
-    VkCommandBuffer commandBuffer,
-    VkBuffer        buffer,
-    VkDeviceSize    offset,
-    u32             drawCount,
-    u32             stride) {
-}
-
-@internal class
-RecreateCmdDrawIndirectData {
+@internal class vkCmdDrawIndirectArgs {
   VkBuffer     Buffer
   VkDeviceSize Offset
   u32          DrawCount
   u32          Stride
 }
 
-@internal class CmdDrawIndirect {
-  VkBuffer     Buffer
-  VkDeviceSize Offset
-  u32          DrawCount
-  u32          Stride
-}
-
-sub void doCmdDrawIndirect(CmdDrawIndirect draw) {
+sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
   if draw.DrawCount > 0 {
     command_size := as!VkDeviceSize(16)
     indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
@@ -6173,8 +6008,7 @@ sub void doCmdDrawIndirect(CmdDrawIndirect draw) {
     // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
     readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
-    lastDrawInfo().CommandParameters.DrawIndirect = new!CmdDrawIndirect(
-      draw.Buffer,  draw.Offset, draw.DrawCount, draw.Stride)
+    lastDrawInfo().CommandParameters.DrawIndirect = draw
   }
 }
 
@@ -6186,38 +6020,19 @@ cmd void vkCmdDrawIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
-  addCmd(                                                               commandBuffer,
-    new!RecreateCmdDrawIndirectData(buffer, offset, drawCount, stride),
-    CmdDrawIndirect(buffer, offset, drawCount, stride),                 doCmdDrawIndirect)
+  args := new!vkCmdDrawIndirectArgs(buffer, offset, drawCount, stride)
+
+  addCmd(commandBuffer, args,  dovkCmdDrawIndirect)
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDrawIndexedIndirect(
-    VkCommandBuffer commandBuffer,
-    VkBuffer        buffer,
-    VkDeviceSize    offset,
-    u32             drawCount,
-    u32             stride) {
-}
-
-@internal class
-RecreateCmdDrawIndexedIndirectData {
+@internal class vkCmdDrawIndexedIndirectArgs {
   VkBuffer     Buffer
   VkDeviceSize Offset
   u32          DrawCount
   u32          Stride
 }
 
-@internal class CmdDrawIndexedIndirect {
-  VkBuffer     Buffer
-  VkDeviceSize Offset
-  u32          DrawCount
-  u32          Stride
-}
-
-sub void doCmdDrawIndexedIndirect(CmdDrawIndexedIndirect draw) {
+sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
   if draw.DrawCount > 0 {
     command_size := as!VkDeviceSize(16)
     indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
@@ -6228,8 +6043,7 @@ sub void doCmdDrawIndexedIndirect(CmdDrawIndexedIndirect draw) {
     // Read through all the coherent memory vertex buffers, as we cannot assume the buffer given to indirect draw is host
     readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
-    lastDrawInfo().CommandParameters.DrawIndexedIndirect = new!CmdDrawIndexedIndirect(
-      draw.Buffer,         draw.Offset, draw.DrawCount, draw.Stride)
+    lastDrawInfo().CommandParameters.DrawIndexedIndirect = draw
   }
 }
 
@@ -6241,26 +6055,18 @@ cmd void vkCmdDrawIndexedIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
-  addCmd(                                                                      commandBuffer,
-    new!RecreateCmdDrawIndexedIndirectData(buffer, offset, drawCount, stride),
-    CmdDrawIndexedIndirect(buffer, offset, drawCount, stride),                 doCmdDrawIndexedIndirect)
+  args := new!vkCmdDrawIndexedIndirectArgs(buffer, offset, drawCount, stride)
+
+  addCmd(commandBuffer, args, dovkCmdDrawIndexedIndirect)
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDispatch(
-    VkCommandBuffer commandBuffer,
-    u32             groupCountX,
-    u32             groupCountY,
-    u32             groupCountZ) {
-}
-
-@internal class
-RecreateCmdDispatchData {
+@internal class vkCmdDispatchArgs {
   u32 GroupCountX,
   u32 GroupCountY,
   u32 GroupCountZ
+}
+
+sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
 }
 
 @threadSafety("app")
@@ -6270,33 +6076,21 @@ cmd void vkCmdDispatch(
     u32             groupCountX,
     u32             groupCountY,
     u32             groupCountZ) {
-  addCmd(                                                               commandBuffer,
-    new!RecreateCmdDispatchData(groupCountX, groupCountY, groupCountZ), Unimplemented(), doCmdNop)
+  args :=
+    new!vkCmdDispatchArgs(groupCountX, groupCountY, groupCountZ)
+
+  addCmd(commandBuffer, args, dovkCmdDispatch)
 }
 
-@internal class CmdDispatchIndirect {
+@internal
+class vkCmdDispatchIndirectArgs {
   VkBuffer     Buffer
   VkDeviceSize Offset
 }
 
-sub void doCmdDispatchIndirect(CmdDispatchIndirect dispatch) {
+sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
   command_size := as!VkDeviceSize(12)
   readCoherentMemoryInBuffer(Buffers[dispatch.Buffer], dispatch.Offset, command_size)
-}
-
-@internal
-class RecreateCmdDispatchIndirectData {
-  VkBuffer     Buffer,
-  VkDeviceSize Offset
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDispatchIndirect(
-    VkCommandBuffer commandBuffer,
-    VkBuffer        buffer,
-    VkDeviceSize    offset) {
 }
 
 @threadSafety("app")
@@ -6305,20 +6099,18 @@ cmd void vkCmdDispatchIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,
     VkDeviceSize    offset) {
-  addCmd(                                                commandBuffer,
-    new!RecreateCmdDispatchIndirectData(buffer, offset),
-    CmdDispatchIndirect(buffer, offset),
-    doCmdDispatchIndirect)
+  args := new!vkCmdDispatchIndirectArgs(buffer, offset)
+
+  addCmd(commandBuffer, args, dovkCmdDispatchIndirect)
 }
 
-
-@internal class CmdCopyBuffer {
-  VkBuffer                SrcBuffer
-  VkBuffer                DstBuffer
+@internal class vkCmdCopyBufferArgs {
+  VkBuffer                SrcBuffer  ,
+  VkBuffer                DstBuffer  ,
   map!(u32, VkBufferCopy) CopyRegions
 }
 
-sub void doCmdCopyBuffer(CmdCopyBuffer buffer) {
+sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
   sourceBuffer := Buffers[buffer.SrcBuffer]
   destBuffer := Buffers[buffer.DstBuffer]
   for _ , _ , region in buffer.CopyRegions {
@@ -6330,25 +6122,6 @@ sub void doCmdCopyBuffer(CmdCopyBuffer buffer) {
   }
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdCopyBuffer(
-    VkCommandBuffer     commandBuffer,
-    VkBuffer            srcBuffer,
-    VkBuffer            dstBuffer,
-    u32                 regionCount,
-    const VkBufferCopy* pRegions) {
-  read(pRegions[0:regionCount])
-}
-
-@internal class
-RecreateCmdCopyBufferData {
-  VkBuffer                SrcBuffer  ,
-  VkBuffer                DstBuffer  ,
-  map!(u32, VkBufferCopy) CopyRegions
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyBuffer(
@@ -6357,27 +6130,28 @@ cmd void vkCmdCopyBuffer(
     VkBuffer            dstBuffer,
     u32                 regionCount,
     const VkBufferCopy* pRegions) {
-  recreate_data := new!RecreateCmdCopyBufferData(
+  args := new!vkCmdCopyBufferArgs(
     SrcBuffer:  srcBuffer,
     DstBuffer:  dstBuffer
   )
-  copy := CmdCopyBuffer(srcBuffer, dstBuffer)
   regions := pRegions[0:regionCount]
   for i in (0 .. regionCount) {
-    copy.CopyRegions[i] = regions[i]
-    recreate_data.CopyRegions[i] = regions[i]
+    args.CopyRegions[i] = regions[i]
   }
-  addCmd(commandBuffer, recreate_data, copy, doCmdCopyBuffer)
+
+  addCmd(commandBuffer, args, dovkCmdCopyBuffer)
 }
 
 @internal
-class CmdCopyImage {
+class vkCmdCopyImageArgs {
   VkImage                SrcImage
+  VkImageLayout          SrcImageLayout
   VkImage                DstImage
+  VkImageLayout          DstImageLayout
   map!(u64, VkImageCopy) Regions
 }
 
-sub void doCmdCopyImage(CmdCopyImage args) {
+sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   srcImageObject := Images[args.SrcImage]
   dstImageObject := Images[args.DstImage]
 
@@ -6445,29 +6219,6 @@ sub void doCmdCopyImage(CmdCopyImage args) {
   }
 }
 
-@internal
-class RecreateCmdCopyImageData {
-  VkImage                SrcImage
-  VkImageLayout          SrcImageLayout
-  VkImage                DstImage
-  VkImageLayout          DstImageLayout
-  map!(u32, VkImageCopy) Regions
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdCopyImage(
-    VkCommandBuffer    commandBuffer,
-    VkImage            srcImage,
-    VkImageLayout      srcImageLayout,
-    VkImage            dstImage,
-    VkImageLayout      dstImageLayout,
-    u32                regionCount,
-    const VkImageCopy* pRegions) {
-  read(pRegions[0:regionCount])
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyImage(
@@ -6478,23 +6229,22 @@ cmd void vkCmdCopyImage(
     VkImageLayout      dstImageLayout,
     u32                regionCount,
     const VkImageCopy* pRegions) {
-  recreate_data := new!RecreateCmdCopyImageData(
+  args := new!vkCmdCopyImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
     DstImage:        dstImage,
     DstImageLayout:  dstImageLayout
   )
   regions := pRegions[0:regionCount]
-  copyArgs := CmdCopyImage(srcImage, dstImage)
   for i in (0 .. regionCount) {
-    copyArgs.Regions[as!u64(i)] = regions[i]
-    recreate_data.Regions[as!u32(i)] = regions[i]
+    args.Regions[as!u64(i)] = regions[i]
   }
-  addCmd(commandBuffer, recreate_data, copyArgs, doCmdCopyImage)
+
+  addCmd(commandBuffer, args, dovkCmdCopyImage)
 }
 
 @internal
-class RecreateCmdBlitImageData {
+class vkCmdBlitImageArgs {
   VkImage                SrcImage
   VkImageLayout          SrcImageLayout
   VkImage                DstImage
@@ -6503,19 +6253,7 @@ class RecreateCmdBlitImageData {
   VkFilter               Filter
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdBlitImage(
-    VkCommandBuffer    commandBuffer,
-    VkImage            srcImage,
-    VkImageLayout      srcImageLayout,
-    VkImage            dstImage,
-    VkImageLayout      dstImageLayout,
-    u32                regionCount,
-    const VkImageBlit* pRegions,
-    VkFilter           filter) {
-  read(pRegions[0:regionCount])
+sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs dispatch) {
 }
 
 @threadSafety("app")
@@ -6529,7 +6267,7 @@ cmd void vkCmdBlitImage(
     u32                regionCount,
     const VkImageBlit* pRegions,
     VkFilter           filter) {
-  recreate_data := new!RecreateCmdBlitImageData(
+  args := new!vkCmdBlitImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
     DstImage:        dstImage,
@@ -6538,9 +6276,10 @@ cmd void vkCmdBlitImage(
   )
   regions := pRegions[0:regionCount]
   for i in (0 .. regionCount) {
-    recreate_data.Regions[as!u32(i)] = regions[i]
+    args.Regions[as!u32(i)] = regions[i]
   }
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdBlitImage)
 }
 
 @internal
@@ -6837,13 +6576,14 @@ sub VkDeviceSize inferImageLevelSize(ref!ImageObject img, u32 level) {
 }
 
 @internal
-class CmdCopyBufferToImage {
+class vkCmdCopyBufferToImageArgs {
   VkBuffer                     SrcBuffer
   VkImage                      DstImage
+  VkImageLayout                Layout
   map!(u64, VkBufferImageCopy) Regions
 }
 
-sub void doCmdCopyBufferToImage(CmdCopyBufferToImage args) {
+sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   bufferObject := Buffers[args.SrcBuffer]
   srcData := bufferObject.Memory.Data
   imageObject := Images[args.DstImage]
@@ -6893,27 +6633,6 @@ sub void doCmdCopyBufferToImage(CmdCopyBufferToImage args) {
   }
 }
 
-@internal
-class RecreateCopyBufferToImageData {
-  VkBuffer                     SrcBuffer
-  VkImage                      DstImage
-  VkImageLayout                Layout
-  map!(u64, VkBufferImageCopy) Regions
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdCopyBufferToImage(
-    VkCommandBuffer          commandBuffer,
-    VkBuffer                 srcBuffer,
-    VkImage                  dstImage,
-    VkImageLayout            dstImageLayout,
-    u32                      regionCount,
-    const VkBufferImageCopy* pRegions) {
-  read(pRegions[0:regionCount])
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyBufferToImage(
@@ -6925,34 +6644,23 @@ cmd void vkCmdCopyBufferToImage(
     const VkBufferImageCopy* pRegions) {
   regions := pRegions[0:regionCount]
   read(regions)
-  copyArgs := CmdCopyBufferToImage(srcBuffer, dstImage)
-  recreateArgs := new!RecreateCopyBufferToImageData(srcBuffer, dstImage, dstImageLayout)
+  args := new!vkCmdCopyBufferToImageArgs(srcBuffer, dstImage, dstImageLayout)
   for i in (0 .. regionCount) {
-    copyArgs.Regions[as!u64(i)] = regions[i]
-    recreateArgs.Regions[as!u64(i)] = regions[i]
+    args.Regions[as!u64(i)] = regions[i]
   }
-  addCmd(commandBuffer, recreateArgs, copyArgs, doCmdCopyBufferToImage)
+
+  addCmd(commandBuffer, args, dovkCmdCopyBufferToImage)
 }
 
 @internal
-class RecreateCopyImageToBufferData {
+class vkCmdCopyImageToBufferArgs {
   VkImage                      SrcImage
   VkImageLayout                SrcImageLayout
   VkBuffer                     DstBuffer
   map!(u32, VkBufferImageCopy) Regions
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdCopyImageToBuffer(
-    VkCommandBuffer          commandBuffer,
-    VkImage                  srcImage,
-    VkImageLayout            srcImageLayout,
-    VkBuffer                 dstBuffer,
-    u32                      regionCount,
-    const VkBufferImageCopy* pRegions) {
-  read(pRegions[0:regionCount])
+sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs dispatch) {
 }
 
 @threadSafety("app")
@@ -6965,38 +6673,31 @@ cmd void vkCmdCopyImageToBuffer(
     u32                      regionCount,
     const VkBufferImageCopy* pRegions) {
   regions := pRegions[0:regionCount]
-  recreate_data := new!RecreateCopyImageToBufferData(
+  args := new!vkCmdCopyImageToBufferArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
     DstBuffer:       dstBuffer,
   )
   for i in (0 .. regionCount) {
-    recreate_data.Regions[as!u32(i)] = regions[i]
+    args.Regions[as!u32(i)] = regions[i]
   }
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdCopyImageToBuffer)
 }
 
-@internal class RecreateCmdUpdateBufferData {
-  VkBuffer     dstBuffer
-  VkDeviceSize dstOffset
-  VkDeviceSize dataSize
+@internal class vkCmdUpdateBufferArgs {
+  VkBuffer     DstBuffer
+  VkDeviceSize DstOffset
+  VkDeviceSize DataSize
+  u8[]         Data
 }
 
-sub void doCmdUpdateBuffer(ref!RecreateCmdUpdateBufferData args) {
-  Buffers[args.dstBuffer].LastBoundQueue = LastBoundQueue
-  doUpdateBuffer(args)
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdUpdateBuffer(
-    VkCommandBuffer commandBuffer,
-    VkBuffer        dstBuffer,
-    VkDeviceSize    dstOffset,
-    VkDeviceSize    dataSize,
-    const void*     pData) {
-  read(as!u8*(pData)[0:dataSize])
+sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
+  Buffers[args.DstBuffer].LastBoundQueue = LastBoundQueue
+  buff := Buffers[args.DstBuffer]
+  start := buff.MemoryOffset+args.DstOffset
+  copy(buff.Memory.Data[start:start + args.DataSize],
+     args.Data[0:args.DataSize])
 }
 
 @threadSafety("app")
@@ -7007,37 +6708,27 @@ cmd void vkCmdUpdateBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    dataSize,
     const void*     pData) {
-  read(as!u8*(pData)[0:dataSize])
-  addCmd(commandBuffer, createUpdateBufferData(
+  args := new!vkCmdUpdateBufferArgs(
       dstBuffer,
       dstOffset,
       dataSize,
-      pData),
-    createUpdateBufferData(
-      dstBuffer,
-      dstOffset,
-      dataSize,
-      pData),
-    doCmdUpdateBuffer)
+  )
+  args.Data = clone(as!u8*(pData)[0:dataSize])
+
+  addCmd(commandBuffer, args,
+    dovkCmdUpdateBuffer)
 }
 
 @internal
-class RecreateCmdFillBufferData {
+class vkCmdFillBufferArgs {
   VkBuffer     Buffer
   VkDeviceSize DstOffset,
   VkDeviceSize Size
   u32          Data
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdFillBuffer(
-    VkCommandBuffer commandBuffer,
-    VkBuffer        dstBuffer,
-    VkDeviceSize    dstOffset,
-    VkDeviceSize    size,
-    u32             data) {
+sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
+// DO NOT CHECK IN: IMPLEMENT THIS
 }
 
 @threadSafety("app")
@@ -7048,34 +6739,26 @@ cmd void vkCmdFillBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    size,
     u32             data) {
-  addCmd(commandBuffer,
-    new!RecreateCmdFillBufferData(
+
+  args := new!vkCmdFillBufferArgs(
       dstBuffer,
       dstOffset,
       size,
-      data), Unimplemented(), doCmdNop)
+      data
+  )
+
+  addCmd(commandBuffer, args, dovkCmdFillBuffer)
 }
 
 @internal
-class RecreateCmdClearColorImageData {
+class vkCmdClearColorImageArgs {
   VkImage                            Image
   VkImageLayout                      ImageLayout
   VkClearColorValue                  Color
   map!(u32, VkImageSubresourceRange) Ranges
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdClearColorImage(
-    VkCommandBuffer                commandBuffer,
-    VkImage                        image,
-    VkImageLayout                  imageLayout,
-    const VkClearColorValue*       pColor,
-    u32                            rangeCount,
-    const VkImageSubresourceRange* pRanges) {
-  _ = pColor[0]
-  read(pRanges[0:rangeCount])
+sub void dovkCmdClearColorImage(ref!vkCmdClearColorImageArgs args) {
 }
 
 @threadSafety("app")
@@ -7089,37 +6772,27 @@ cmd void vkCmdClearColorImage(
     const VkImageSubresourceRange* pRanges) {
   color := pColor[0]
   ranges := pRanges[0:rangeCount]
-  recreate_data := new!RecreateCmdClearColorImageData(
+  args := new!vkCmdClearColorImageArgs(
     Image:        image,
     ImageLayout:  imageLayout,
     Color:        color,
   )
   for i in (0 .. rangeCount) {
-    recreate_data.Ranges[as!u32(i)] = ranges[i]
+    args.Ranges[as!u32(i)] = ranges[i]
   }
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdClearColorImage)
 }
 
 @internal
-class RecreateCmdClearDepthStencilImageData {
+class vkCmdClearDepthStencilImageArgs {
   VkImage                            Image
   VkImageLayout                      ImageLayout
   VkClearDepthStencilValue           DepthStencil
   map!(u32, VkImageSubresourceRange) Ranges
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdClearDepthStencilImage(
-    VkCommandBuffer                 commandBuffer,
-    VkImage                         image,
-    VkImageLayout                   imageLayout,
-    const VkClearDepthStencilValue* pDepthStencil,
-    u32                             rangeCount,
-    const VkImageSubresourceRange*  pRanges) {
-  _ = pDepthStencil[0]
-  read(pRanges[0:rangeCount])
+sub void dovkCmdClearDepthStencilImage(ref!vkCmdClearDepthStencilImageArgs args) {
 }
 
 @threadSafety("app")
@@ -7133,34 +6806,25 @@ cmd void vkCmdClearDepthStencilImage(
     const VkImageSubresourceRange*  pRanges) {
   depthStencil := pDepthStencil[0]
   ranges := pRanges[0:rangeCount]
-  recreate_data := new!RecreateCmdClearDepthStencilImageData(
+  args := new!vkCmdClearDepthStencilImageArgs(
     Image:         image,
     ImageLayout:   imageLayout,
     DepthStencil:  depthStencil,
   )
   for i in (0 .. rangeCount) {
-    recreate_data.Ranges[as!u32(i)] = ranges[i]
+    args.Ranges[as!u32(i)] = ranges[i]
   }
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdClearDepthStencilImage)
 }
 
 @internal
-class RecreateCmdClearAttachmentsData {
+class vkCmdClearAttachmentsArgs {
   map!(u32, VkClearAttachment) Attachments
   map!(u32, VkClearRect)       Rects
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdClearAttachments(
-    VkCommandBuffer          commandBuffer,
-    u32                      attachmentCount,
-    const VkClearAttachment* pAttachments,
-    u32                      rectCount,
-    const VkClearRect*       pRects) {
-  read(pAttachments[0:attachmentCount])
-  read(pRects[0:rectCount])
+sub void dovkCmdClearAttachments(ref!vkCmdClearAttachmentsArgs args) {
 }
 
 @threadSafety("app")
@@ -7171,39 +6835,28 @@ cmd void vkCmdClearAttachments(
     const VkClearAttachment* pAttachments,
     u32                      rectCount,
     const VkClearRect*       pRects) {
-  recreate_data := new!RecreateCmdClearAttachmentsData()
+  args := new!vkCmdClearAttachmentsArgs()
   attachments := pAttachments[0:attachmentCount]
   rects := pRects[0:rectCount]
   for i in (0 .. attachmentCount) {
-    recreate_data.Attachments[as!u32(i)] = attachments[i]
+    args.Attachments[as!u32(i)] = attachments[i]
   }
   for i in (0 .. rectCount) {
-    recreate_data.Rects[as!u32(i)] = rects[i]
+    args.Rects[as!u32(i)] = rects[i]
   }
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdClearAttachments)
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdResolveImage(
-    VkCommandBuffer       commandBuffer,
-    VkImage               srcImage,
-    VkImageLayout         srcImageLayout,
-    VkImage               dstImage,
-    VkImageLayout         dstImageLayout,
-    u32                   regionCount,
-    const VkImageResolve* pRegions) {
-  read(pRegions[0:regionCount])
-}
-
-@internal class
-RecreateCmdResolveImageData {
+@internal class vkCmdResolveImageArgs {
   VkImage                   SrcImage      ,
   VkImageLayout             SrcImageLayout,
   VkImage                   DstImage      ,
   VkImageLayout             DstImageLayout,
   map!(u32, VkImageResolve) ResolveRegions
+}
+
+sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
 }
 
 @threadSafety("app")
@@ -7216,7 +6869,7 @@ cmd void vkCmdResolveImage(
     VkImageLayout         dstImageLayout,
     u32                   regionCount,
     const VkImageResolve* pRegions) {
-  recreate_data := new!RecreateCmdResolveImageData(
+  args := new!vkCmdResolveImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
     DstImage:        dstImage,
@@ -7224,28 +6877,20 @@ cmd void vkCmdResolveImage(
   )
   regions := pRegions[0:regionCount]
   for i in (0 .. regionCount) {
-    recreate_data.ResolveRegions[i] = regions[i]
+    args.ResolveRegions[as!u32(i)] = regions[i]
   }
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdResolveImage)
 }
 
-sub void doCmdSetEvent(VkEvent event) {
-  Events[event].Signaled = true
-  Events[event].SubmitQueue = LastBoundQueue.VulkanHandle
+@internal class vkCmdSetEventArgs {
+  VkEvent              Event
+  VkPipelineStageFlags StageMask
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdSetEvent(
-    VkCommandBuffer      commandBuffer,
-    VkEvent              event,
-    VkPipelineStageFlags stageMask) {
-}
-
-@internal class RecreateCmdSetEventData {
-  VkEvent              Event    ,
-  VkPipelineStageFlags StageMask,
+sub void dovkCmdSetEvent(ref!vkCmdSetEventArgs event) {
+  Events[event.Event].Signaled = true
+  Events[event.Event].SubmitQueue = LastBoundQueue.VulkanHandle
 }
 
 @threadSafety("app")
@@ -7254,30 +6899,22 @@ cmd void vkCmdSetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
-  recreate_data := new!RecreateCmdSetEventData(
+  args := new!vkCmdSetEventArgs(
     Event:      event,
     StageMask:  stageMask
   )
-  addCmd(commandBuffer, recreate_data, event, doCmdSetEvent)
+
+  addCmd(commandBuffer, args, dovkCmdSetEvent)
 }
 
-sub void doCmdResetEvent(VkEvent event) {
-  Events[event].Signaled = false
-  Events[event].SubmitQueue = LastBoundQueue.VulkanHandle
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdResetEvent(
-    VkCommandBuffer      commandBuffer,
-    VkEvent              event,
-    VkPipelineStageFlags stageMask) {
-}
-
-@internal class RecreateCmdResetEventData {
-  VkEvent              Event    ,
+@internal class vkCmdResetEventArgs {
+  VkEvent              Event
   VkPipelineStageFlags StageMask
+}
+
+sub void dovkCmdResetEvent(ref!vkCmdResetEventArgs event) {
+  Events[event.Event].Signaled = false
+  Events[event.Event].SubmitQueue = LastBoundQueue.VulkanHandle
 }
 
 @threadSafety("app")
@@ -7286,19 +6923,25 @@ cmd void vkCmdResetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
-  recreate_data := new!RecreateCmdResetEventData(
+  args := new!vkCmdResetEventArgs(
     Event:      event,
     StageMask:  stageMask,
   )
-  addCmd(commandBuffer, recreate_data, event, doCmdResetEvent)
+
+  addCmd(commandBuffer, args, dovkCmdResetEvent)
 }
 
-@internal class CmdWaitEvents {
-  map!(u32, VkEvent)              Events             ,
-  map!(u32, VkImageMemoryBarrier) ImageMemoryBarriers
+@internal class vkCmdWaitEventsArgs {
+  map!(u32, VkEvent)               Events
+  VkPipelineStageFlags             SrcStageMask
+  VkPipelineStageFlags             DstStageMask
+  map!(u32, VkMemoryBarrier)       MemoryBarriers
+  map!(u32, VkBufferMemoryBarrier) BufferMemoryBarriers
+  map!(u32, VkImageMemoryBarrier)  ImageMemoryBarriers
 }
 
-sub void doCmdWaitEvents(CmdWaitEvents args) {
+
+sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
   for _ , _ , e in args.Events {
     event := Events[e]
     event.SubmitQueue = LastBoundQueue.VulkanHandle
@@ -7315,44 +6958,6 @@ sub void doCmdWaitEvents(CmdWaitEvents args) {
   }
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdWaitEvents(
-    VkCommandBuffer              commandBuffer,
-    u32                          eventCount,
-    const VkEvent*               pEvents,
-    VkPipelineStageFlags         srcStageMask,
-    VkPipelineStageFlags         dstStageMask,
-    u32                          memoryBarrierCount,
-    const VkMemoryBarrier*       pMemoryBarriers,
-    u32                          bufferMemoryBarrierCount,
-    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
-    u32                          imageMemoryBarrierCount,
-    const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  if pEvents != null {
-    read(pEvents[0:eventCount])
-  }
-  if pMemoryBarriers != null {
-    read(pMemoryBarriers[0:memoryBarrierCount])
-  }
-  if pBufferMemoryBarriers != null {
-    read(pBufferMemoryBarriers[0:bufferMemoryBarrierCount])
-  }
-  if pImageMemoryBarriers != null {
-    read(pImageMemoryBarriers[0:imageMemoryBarrierCount])
-  }
-}
-
-@internal class RecreateCmdWaitEventsData {
-  map!(u32, VkEvent)               Events              ,
-  VkPipelineStageFlags             SrcStageMask        ,
-  VkPipelineStageFlags             DstStageMask        ,
-  map!(u32, VkMemoryBarrier)       MemoryBarriers
-  map!(u32, VkBufferMemoryBarrier) BufferMemoryBarriers,
-  map!(u32, VkImageMemoryBarrier)  ImageMemoryBarriers ,
-}
-
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdWaitEvents(
@@ -7367,60 +6972,45 @@ cmd void vkCmdWaitEvents(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  recreate_data := new!RecreateCmdWaitEventsData(
+  args := new!vkCmdWaitEventsArgs(
     SrcStageMask:  srcStageMask,
     DstStageMask:  dstStageMask,
   )
-  wait := CmdWaitEvents()
   events := pEvents[0:eventCount]
   memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. eventCount) {
-    recreate_data.Events[i] = events[i]
-    wait.Events[i] = events[i]
+    args.Events[i] = events[i]
   }
   for i in (0 .. memoryBarrierCount) {
-    recreate_data.MemoryBarriers[i] = memoryBarriers[i]
+    args.MemoryBarriers[i] = memoryBarriers[i]
   }
   for i in (0 .. bufferMemoryBarrierCount) {
-    recreate_data.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
+    args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
   }
   for i in (0 .. imageMemoryBarrierCount) {
-    recreate_data.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
-    wait.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
+    args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
-  addCmd(commandBuffer, recreate_data, wait, doCmdWaitEvents)
+
+  addCmd(commandBuffer, args, dovkCmdWaitEvents)
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdPipelineBarrier(
-    VkCommandBuffer              commandBuffer,
-    VkPipelineStageFlags         srcStageMask,
-    VkPipelineStageFlags         dstStageMask,
-    VkDependencyFlags            dependencyFlags,
-    u32                          memoryBarrierCount,
-    const VkMemoryBarrier*       pMemoryBarriers,
-    u32                          bufferMemoryBarrierCount,
-    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
-    u32                          imageMemoryBarrierCount,
-    const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  read(pMemoryBarriers[0:memoryBarrierCount])
-  read(pBufferMemoryBarriers[0:bufferMemoryBarrierCount])
-  read(pImageMemoryBarriers[0:imageMemoryBarrierCount])
-}
-
-
-@internal class
-RecreateCmdPipelineBarrierData {
+@internal class vkCmdPipelineBarrierArgs {
   VkPipelineStageFlags             SrcStageMask        ,
   VkPipelineStageFlags             DstStageMask        ,
   VkDependencyFlags                DependencyFlags     ,
   map!(u32, VkMemoryBarrier)       MemoryBarriers      ,
   map!(u32, VkBufferMemoryBarrier) BufferMemoryBarriers,
   map!(u32, VkImageMemoryBarrier)  ImageMemoryBarriers
+}
+
+sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
+  for _ , _ , v in args.ImageMemoryBarriers {
+    image := Images[v.image]
+    image.Info.Layout = v.newLayout
+    image.LastBoundQueue = LastBoundQueue
+  }
 }
 
 @threadSafety("app")
@@ -7436,75 +7026,38 @@ cmd void vkCmdPipelineBarrier(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  create_data := new!RecreateCmdPipelineBarrierData(
+  args := new!vkCmdPipelineBarrierArgs(
     SrcStageMask:     srcStageMask,
     DstStageMask:     dstStageMask,
     DependencyFlags:  dependencyFlags
   )
-  barrier := CmdPipelineBarrier()
-
   memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
   for i in (0 .. memoryBarrierCount) {
-    create_data.MemoryBarriers[i] = memoryBarriers[i]
+    args.MemoryBarriers[i] = memoryBarriers[i]
   }
 
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
   for i in (0 .. bufferMemoryBarrierCount) {
-    create_data.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
+    args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
   }
 
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. imageMemoryBarrierCount) {
-    barrier.ImageBarriers[i] = imageMemoryBarriers[i]
-    create_data.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
+    args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
-  addCmd(commandBuffer, create_data, barrier, doCmdPipelineBarrier)
+
+  addCmd(commandBuffer, args, dovkCmdPipelineBarrier)
 }
 
-@internal
-class CmdPipelineBarrier {
-  map!(u32, VkImageMemoryBarrier) ImageBarriers
-}
-
-sub void doCmdPipelineBarrier(CmdPipelineBarrier args) {
-  for _ , _ , v in args.ImageBarriers {
-    image := Images[v.image]
-    image.Info.Layout = v.newLayout
-    image.LastBoundQueue = LastBoundQueue
-  }
-}
-
-@internal class
-RecreateCmdBeginQueryData {
+@internal class vkCmdBeginQueryArgs {
   VkQueryPool         QueryPool
   u32                 Query
   VkQueryControlFlags Flags
 }
 
-sub void doCmdBeginQuery(RecreateCmdBeginQueryData args) {
+sub void dovkCmdBeginQuery(ref!vkCmdBeginQueryArgs args) {
   pool := QueryPools[args.QueryPool]
   pool.Status[args.Query] = QUERY_STATUS_ACTIVE
-}
-
-@internal class
-RecreateCmdEndQueryData {
-  VkQueryPool QueryPool
-  u32         Query
-}
-
-sub void doCmdEndQuery(RecreateCmdEndQueryData args) {
-  pool := QueryPools[args.QueryPool]
-  pool.Status[args.Query] = QUERY_STATUS_COMPLETE
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdBeginQuery(
-    VkCommandBuffer     commandBuffer,
-    VkQueryPool         queryPool,
-    u32                 query,
-    VkQueryControlFlags flags) {
 }
 
 @threadSafety("app")
@@ -7514,18 +7067,23 @@ cmd void vkCmdBeginQuery(
     VkQueryPool         queryPool,
     u32                 query,
     VkQueryControlFlags flags) {
-  addCmd(commandBuffer, new!RecreateCmdBeginQueryData(
-      queryPool,              query, flags
-    ), RecreateCmdBeginQueryData(queryPool, query, flags), doCmdBeginQuery)
+
+  args := new!vkCmdBeginQueryArgs(
+    queryPool,              query, flags
+  )
+
+  addCmd(commandBuffer, args, dovkCmdBeginQuery)
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdEndQuery(
-    VkCommandBuffer commandBuffer,
-    VkQueryPool     queryPool,
-    u32             query) {
+@internal class
+vkCmdEndQueryArgs {
+  VkQueryPool QueryPool
+  u32         Query
+}
+
+sub void dovkCmdEndQuery(ref!vkCmdEndQueryArgs args) {
+  pool := QueryPools[args.QueryPool]
+  pool.Status[args.Query] = QUERY_STATUS_COMPLETE
 }
 
 @threadSafety("app")
@@ -7534,33 +7092,25 @@ cmd void vkCmdEndQuery(
     VkCommandBuffer commandBuffer,
     VkQueryPool     queryPool,
     u32             query) {
-  addCmd(commandBuffer, new!RecreateCmdEndQueryData(
-      queryPool,            query
-    ), RecreateCmdEndQueryData(queryPool, query), doCmdEndQuery)
+  args := new!vkCmdEndQueryArgs(
+    queryPool,            query
+  )
+
+  addCmd(commandBuffer, args, dovkCmdEndQuery)
 }
 
 @internal class
-RecreateCmdResetQueryPoolData {
+vkCmdResetQueryPoolArgs {
   VkQueryPool QueryPool
   u32         FirstQuery
   u32         QueryCount
 }
 
-sub void doCmdResetQueryPool(RecreateCmdResetQueryPoolData args) {
+sub void dovkCmdResetQueryPool(ref!vkCmdResetQueryPoolArgs args) {
   pool := QueryPools[args.QueryPool]
   for i in (0 .. args.QueryCount) {
     pool.Status[args.FirstQuery + i] = QUERY_STATUS_INACTIVE
   }
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdResetQueryPool(
-    VkCommandBuffer commandBuffer,
-    VkQueryPool     queryPool,
-    u32             firstQuery
-    u32             queryCount) {
 }
 
 @threadSafety("app")
@@ -7570,27 +7120,20 @@ cmd void vkCmdResetQueryPool(
     VkQueryPool     queryPool,
     u32             firstQuery,
     u32             queryCount) {
-  addCmd(commandBuffer, new!RecreateCmdResetQueryPoolData(
-      queryPool,                  firstQuery, queryCount
-    ), RecreateCmdResetQueryPoolData(queryPool, firstQuery, queryCount),
-    doCmdResetQueryPool)
+  args := new!vkCmdResetQueryPoolArgs(
+    queryPool,                  firstQuery, queryCount
+  )
+
+  addCmd(commandBuffer, args, dovkCmdResetQueryPool)
 }
 
-@internal class
-RecreateCmdWriteTimestampData {
+@internal class vkCmdWriteTimestampArgs {
   VkPipelineStageFlagBits PipelineStage,
   VkQueryPool             QueryPool    ,
   u32                     Query
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdWriteTimestamp(
-    VkCommandBuffer         commandBuffer,
-    VkPipelineStageFlagBits pipelineStage,
-    VkQueryPool             queryPool,
-    u32                     query) {
+sub void dovkCmdWriteTimestamp(ref!vkCmdWriteTimestampArgs args) {
 }
 
 @threadSafety("app")
@@ -7600,13 +7143,15 @@ cmd void vkCmdWriteTimestamp(
     VkPipelineStageFlagBits pipelineStage,
     VkQueryPool             queryPool,
     u32                     query) {
-  addCmd(commandBuffer, new!RecreateCmdWriteTimestampData(
-      pipelineStage,              queryPool, query
-    ), Unimplemented(), doCmdNop)
+  args := new!vkCmdWriteTimestampArgs(
+    pipelineStage,              queryPool, query
+  )
+
+  addCmd(commandBuffer, args, dovkCmdWriteTimestamp)
 }
 
 @internal
-class RecreateCmdCopyQueryPoolResultsData {
+class vkCmdCopyQueryPoolResultsArgs {
   VkQueryPool        QueryPool
   u32                FirstQuery
   u32                QueryCount
@@ -7616,18 +7161,7 @@ class RecreateCmdCopyQueryPoolResultsData {
   VkQueryResultFlags Flags
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdCopyQueryPoolResults(
-    VkCommandBuffer    commandBuffer,
-    VkQueryPool        queryPool,
-    u32                firstQuery,
-    u32                queryCount,
-    VkBuffer           dstBuffer,
-    VkDeviceSize       dstOffset,
-    VkDeviceSize       stride,
-    VkQueryResultFlags flags) {
+sub void dovkCmdCopyQueryPoolResults(ref!vkCmdCopyQueryPoolResultsArgs args) {
 }
 
 @threadSafety("app")
@@ -7641,7 +7175,7 @@ cmd void vkCmdCopyQueryPoolResults(
     VkDeviceSize       dstOffset,
     VkDeviceSize       stride,
     VkQueryResultFlags flags) {
-  recreate_data := new!RecreateCmdCopyQueryPoolResultsData(
+  args := new!vkCmdCopyQueryPoolResultsArgs(
     QueryPool:   queryPool,
     FirstQuery:  firstQuery,
     QueryCount:  queryCount,
@@ -7650,30 +7184,20 @@ cmd void vkCmdCopyQueryPoolResults(
     Stride:      stride,
     Flags:       flags
   )
-  addCmd(commandBuffer, recreate_data, Unimplemented(), doCmdNop)
+
+  addCmd(commandBuffer, args, dovkCmdCopyQueryPoolResults)
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdPushConstants(
-    VkCommandBuffer    commandBuffer,
-    VkPipelineLayout   layout,
-    VkShaderStageFlags stageFlags,
-    u32                offset,
-    u32                size,
-    const void*        pValues) {
-  read(as!u8*(pValues)[0:size])
-}
-
-// Note when updating this, watch out that we keep a side data-structure
-// with the actual bytes.
 @internal class
-RecreateCmdPushConstantsData {
-  VkPipelineLayout   Layout    ,
-  VkShaderStageFlags StageFlags,
-  u32                Offset    ,
-  u32                Size      ,
+vkCmdPushConstantsArgs {
+  VkPipelineLayout   Layout
+  VkShaderStageFlags StageFlags
+  u32                Offset
+  u32                Size
+  u8[]               Data
+}
+
+sub void dovkCmdPushConstants(ref!vkCmdPushConstantsArgs args) {
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
@@ -7684,60 +7208,24 @@ cmd void vkCmdPushConstants(
     u32                offset,
     u32                size,
     const void*        pValues) {
-  read(as!u8*(pValues)[0:size])
-  addCmd(commandBuffer, createPushConstantsData(
-      layout,           stageFlags, offset, size, pValues
-    ), Unimplemented(), doCmdNop)
-}
+  data := clone(as!u8*(pValues)[0:size])
+  args := new!vkCmdPushConstantsArgs(
+    layout,           stageFlags, offset, size, data
+  )
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdBeginRenderPass(
-    VkCommandBuffer              commandBuffer,
-    const VkRenderPassBeginInfo* pRenderPassBegin,
-    VkSubpassContents            contents) {
-  begin_info := pRenderPassBegin[0]
-  read(begin_info.pClearValues[0:begin_info.clearValueCount])
+  addCmd(commandBuffer, args, dovkCmdPushConstants)
 }
 
 @internal class
-RecreateCmdBeginRenderPassData {
-  VkSubpassContents       Contents   ,
-  VkRenderPass            RenderPass ,
-  VkFramebuffer           Framebuffer,
-  VkRect2D                RenderArea ,
+vkCmdBeginRenderPassArgs {
+  VkSubpassContents       Contents
+  VkRenderPass            RenderPass
+  VkFramebuffer           Framebuffer
+  VkRect2D                RenderArea
   map!(u32, VkClearValue) ClearValues
 }
 
-@threadSafety("app")
-@indirect("VkCommandBuffer", "VkDevice")
-cmd void vkCmdBeginRenderPass(
-    VkCommandBuffer              commandBuffer,
-    const VkRenderPassBeginInfo* pRenderPassBegin,
-    VkSubpassContents            contents) {
-  begin_info := pRenderPassBegin[0]
-  recreate_data := new!RecreateCmdBeginRenderPassData(
-    Contents:     contents,
-    RenderPass:   begin_info.renderPass,
-    Framebuffer:  begin_info.framebuffer,
-    RenderArea:   begin_info.renderArea
-  )
-  clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
-  for i in (0 .. begin_info.clearValueCount) {
-    recreate_data.ClearValues[i] = clear_values[i]
-  }
-
-  addCmd(                     commandBuffer, recreate_data, CmdBeginRenderPass(begin_info.framebuffer,
-      begin_info.renderPass), doCmdBeginRenderPass)
-}
-
-class CmdBeginRenderPass {
-  VkFramebuffer Framebuffer
-  VkRenderPass  RenderPass
-}
-
-sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
+sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   lastDrawInfo().Framebuffer = Framebuffers[args.Framebuffer]
   lastDrawInfo().LastSubpass = 0
@@ -7790,7 +7278,34 @@ sub void doCmdBeginRenderPass(CmdBeginRenderPass args) {
   // }
 }
 
-sub void doCmdNextSubpass(u32 Unused) {
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdBeginRenderPass(
+    VkCommandBuffer              commandBuffer,
+    const VkRenderPassBeginInfo* pRenderPassBegin,
+    VkSubpassContents            contents) {
+  begin_info := pRenderPassBegin[0]
+  args := new!vkCmdBeginRenderPassArgs(
+    Contents:     contents,
+    RenderPass:   begin_info.renderPass,
+    Framebuffer:  begin_info.framebuffer,
+    RenderArea:   begin_info.renderArea
+  )
+  clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
+  for i in (0 .. begin_info.clearValueCount) {
+    args.ClearValues[i] = clear_values[i]
+  }
+
+  addCmd(commandBuffer, args, dovkCmdBeginRenderPass)
+}
+
+@internal class
+vkCmdNextSubpassArgs {
+  VkSubpassContents Contents
+}
+
+sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
   lastDrawInfo().LastSubpass += 1
   if lastDrawInfo().LastSubpass < len(lastDrawInfo().RenderPass.SubpassDescriptions) {
     subpass := lastDrawInfo().RenderPass.SubpassDescriptions[lastDrawInfo().LastSubpass]
@@ -7811,37 +7326,20 @@ sub void doCmdNextSubpass(u32 Unused) {
   popAndPushMarkerForNextSubpass(lastDrawInfo().LastSubpass)
 }
 
-@internal class
-RecreateCmdNextSubpassData {
-  VkSubpassContents Contents
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdNextSubpass(
-    VkCommandBuffer   commandBuffer,
-    VkSubpassContents contents) { }
-
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdNextSubpass(
     VkCommandBuffer   commandBuffer,
     VkSubpassContents contents) {
-  addCmd(commandBuffer, new!RecreateCmdNextSubpassData(contents), as!u32(0), doCmdNextSubpass)
-}
+  args := new!vkCmdNextSubpassArgs(contents)
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdEndRenderPass(
-    VkCommandBuffer commandBuffer) {
+  addCmd(commandBuffer, args, dovkCmdNextSubpass)
 }
 
 @internal class
-RecreateCmdEndRenderPassData {
+vkCmdEndRenderPassArgs {
 }
 
-sub void doCmdEndRenderPass(u32 unused) {
+sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
   lastDrawInfo().InRenderPass = false
   popRenderPassMarker()
   switch len(lastDrawInfo().RenderPass.SubpassDescriptions) > 1 {
@@ -7854,36 +7352,18 @@ sub void doCmdEndRenderPass(u32 unused) {
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {
-  addCmd(commandBuffer, new!RecreateCmdEndRenderPassData(), as!u32(0), doCmdEndRenderPass)
+
+  args := new!vkCmdEndRenderPassArgs()
+
+  addCmd(commandBuffer, args, dovkCmdEndRenderPass)
 }
 
 @internal
-class CmdExecuteCommands {
+class vkCmdExecuteCommandsArgs {
   map!(u32, VkCommandBuffer) CommandBuffers
 }
 
-sub void doCmdExecuteCommands(CmdExecuteCommands cmds) {
-  enterSubcontext()
-  for i in (0 .. len(cmds.CommandBuffers)) {
-    execCommands(cmds.CommandBuffers[as!u32(i)])
-    nextSubcontext()
-  }
-  leaveSubcontext()
-}
-
-@internal
-class RecreateCmdExecuteCommandsData {
-  map!(u32, VkCommandBuffer) CommandBuffers
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateCmdExecuteCommands(
-    VkCommandBuffer        commandBuffer,
-    u32                    commandBufferCount,
-    const VkCommandBuffer* pCommandBuffers) {
-  read(pCommandBuffers[0:commandBufferCount])
+sub void dovkCmdExecuteCommands(ref!vkCmdExecuteCommandsArgs cmds) {
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
@@ -7892,15 +7372,12 @@ cmd void vkCmdExecuteCommands(
     u32                    commandBufferCount,
     const VkCommandBuffer* pCommandBuffers) {
   cmd_buffers := pCommandBuffers[0:commandBufferCount]
-  recreate_data := new!RecreateCmdExecuteCommandsData()
+  args := new!vkCmdExecuteCommandsArgs()
   for i in (0 .. commandBufferCount) {
-    recreate_data.CommandBuffers[as!u32(i)] = cmd_buffers[i]
+    args.CommandBuffers[as!u32(i)] = cmd_buffers[i]
   }
-  cmdExecuteCommands := CmdExecuteCommands()
-  for i in (0 .. commandBufferCount) {
-    cmdExecuteCommands.CommandBuffers[as!u32(i)] = cmd_buffers[i]
-  }
-  addCmd(commandBuffer, recreate_data, cmdExecuteCommands, doCmdExecuteCommands)
+
+  addCmd(commandBuffer, args, dovkCmdExecuteCommands)
 }
 
 // ----------------------------------------------------------------------------
@@ -8761,9 +8238,7 @@ sub ref!VulkanDebugMarkerInfo updateDebugMarkerObjectTag(
         origInfo
     }
     newInfo.TagName = tagInfo.tagName
-    newInfo.Tag = make!u8(tagInfo.tagSize)
-    copy(newInfo.Tag[0:tagInfo.tagSize], as!u8*(tagInfo.pTag)[0:tagInfo.tagSize])
-    addDebugMarkerTagBytes(newInfo, tagInfo.tagSize, as!u8*(tagInfo.pTag))
+    newInfo.Tag = clone(as!u8*(tagInfo.pTag)[0:tagInfo.tagSize])
     return newInfo
 }
 
@@ -9001,31 +8476,14 @@ cmd VkResult vkDebugMarkerSetObjectNameEXT(
   return ?
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDebugMarkerBeginEXT(
-    VkCommandBuffer             commandBuffer,
-    VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-  markerInfo := pMarkerInfo[0]
-  _ = as!string(markerInfo.pMarkerName)
-  for i in (0 .. 4) {
-    _ = markerInfo.color[i]
-  }
-}
-
-@internal class CmdDebugMarkerBegin {
-  string MarkerName
-}
-
-sub void doCmdDebugMarkerBegin(CmdDebugMarkerBegin args) {
-  pushDebugMarker(args.MarkerName)
-}
-
 @internal class
-RecreateCmdDebugMarkerBeginEXTData {
+vkCmdDebugMarkerBeginEXTArgs {
   @unused string MarkerName,
   @unused f32[4] Color     ,
+}
+
+sub void dovkCmdDebugMarkerBeginEXT(ref!vkCmdDebugMarkerBeginEXTArgs args) {
+  pushDebugMarker(args.MarkerName)
 }
 
 @threadSafety("app")
@@ -9038,30 +8496,23 @@ cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
   markerInfo := pMarkerInfo[0]
-  markerName := as!string(markerInfo.pMarkerName)
-  recreate_data := new!RecreateCmdDebugMarkerBeginEXTData(
-    MarkerName: markerName,
+  args := new!vkCmdDebugMarkerBeginEXTArgs(
+    MarkerName: as!string(markerInfo.pMarkerName),
   )
-  recreate_data.Color[0] = markerInfo.color[0]
-  recreate_data.Color[1] = markerInfo.color[1]
-  recreate_data.Color[2] = markerInfo.color[2]
-  recreate_data.Color[3] = markerInfo.color[3]
-  addCmd(commandBuffer, recreate_data, CmdDebugMarkerBegin(markerName), doCmdDebugMarkerBegin)
-}
+  args.Color[0] = markerInfo.color[0]
+  args.Color[1] = markerInfo.color[1]
+  args.Color[2] = markerInfo.color[2]
+  args.Color[3] = markerInfo.color[3]
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDebugMarkerEndEXT(
-    VkCommandBuffer commandBuffer) {
-}
-
-sub void doCmdDebugMarkerEnd(u32 unused) {
-  popDebugMarker()
+  addCmd(commandBuffer, args, dovkCmdDebugMarkerBeginEXT)
 }
 
 @internal class
-RecreateCmdDebugMarkerEndEXTData {}
+vkCmdDebugMarkerEndEXTArgs {}
+
+sub void dovkCmdDebugMarkerEndEXT(ref!vkCmdDebugMarkerEndEXTArgs draw) {
+  popDebugMarker()
+}
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
@@ -9070,27 +8521,20 @@ RecreateCmdDebugMarkerEndEXTData {}
 @override
 @no_replay
 cmd void vkCmdDebugMarkerEndEXT(
-    VkCommandBuffer commandBuffer) {
-  addCmd(commandBuffer, new!RecreateCmdDebugMarkerEndEXTData(),as!u32(0), doCmdDebugMarkerEnd)
-}
+    VkCommandBuffer                             commandBuffer) {
 
-@override
-@custom
-@no_replay
-cmd void RecreateCmdDebugMarkerInsertEXT(
-    VkCommandBuffer             commandBuffer,
-    VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-  markerInfo := pMarkerInfo[0]
-  _ = as!string(markerInfo.pMarkerName)
-  for i in (0 .. 4) {
-    _ = markerInfo.color[i]
-  }
+  args := new!vkCmdDebugMarkerEndEXTArgs()
+
+  addCmd(commandBuffer, args, dovkCmdDebugMarkerEndEXT)
 }
 
 @internal class
-RecreateCmdDebugMarkerInsertEXTData {
+vkCmdDebugMarkerInsertEXTArgs {
   @unused string MarkerName,
   @unused f32[4] Color     ,
+}
+
+sub void dovkCmdDebugMarkerInsertEXT(ref!vkCmdDebugMarkerInsertEXTArgs draw) {
 }
 
 @threadSafety("app")
@@ -9103,15 +8547,15 @@ cmd void vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
   markerInfo := pMarkerInfo[0]
-  recreate_data := new!RecreateCmdDebugMarkerInsertEXTData(
+  args := new!vkCmdDebugMarkerInsertEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),
   )
-  recreate_data.Color[0] = markerInfo.color[0]
-  recreate_data.Color[1] = markerInfo.color[1]
-  recreate_data.Color[2] = markerInfo.color[2]
-  recreate_data.Color[3] = markerInfo.color[3]
-  addCmd(commandBuffer, recreate_data,
-    Unimplemented(), doCmdNop)
+  args.Color[0] = markerInfo.color[0]
+  args.Color[1] = markerInfo.color[1]
+  args.Color[2] = markerInfo.color[2]
+  args.Color[3] = markerInfo.color[3]
+
+  addCmd(commandBuffer, args, dovkCmdDebugMarkerInsertEXT)
 }
 
 /////////////////////////////
@@ -9237,10 +8681,10 @@ ref!ComputePipelineObject CurrentComputePipeline
 // This contains the draw command parameters. Only one of the draw data should be
 // valid at a time. Others should be null.
 @internal class DrawParameters {
-  ref!CmdDraw                Draw
-  ref!CmdDrawIndexed         DrawIndexed
-  ref!CmdDrawIndirect        DrawIndirect
-  ref!CmdDrawIndexedIndirect DrawIndexedIndirect
+  ref!vkCmdDrawArgs                Draw
+  ref!vkCmdDrawIndexedArgs         DrawIndexed
+  ref!vkCmdDrawIndirectArgs        DrawIndirect
+  ref!vkCmdDrawIndexedIndirectArgs DrawIndexedIndirect
 }
 
 // This contains the information about a draw
@@ -9367,7 +8811,8 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused u32                    Index
   @unused VkQueue                VulkanHandle
   map!(VkEvent, ref!EventObject) PendingEvents
-  @unused ref!VulkanDebugMarkerInfo          DebugInfo
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+  map!(u32, CommandReference) PendingCommands
 }
 
 enum RecordingState {
@@ -9387,12 +8832,130 @@ enum RecordingState {
   VkQueryPipelineStatisticFlags InheritedPipelineStatsFlags
 }
 
+enum CommandType {
+  cmd_vkCmdBindPipeline = 0,
+  cmd_vkCmdSetViewport = 1,
+  cmd_vkCmdSetScissor = 2,
+  cmd_vkCmdSetLineWidth = 3,
+  cmd_vkCmdSetDepthBias = 4,
+  cmd_vkCmdSetBlendConstants = 5,
+  cmd_vkCmdSetDepthBounds = 6,
+  cmd_vkCmdSetStencilCompareMask = 7,
+  cmd_vkCmdSetStencilWriteMask = 8,
+  cmd_vkCmdSetStencilReference = 9,
+  cmd_vkCmdBindDescriptorSets = 10,
+  cmd_vkCmdBindIndexBuffer = 11,
+  cmd_vkCmdBindVertexBuffers = 12,
+  cmd_vkCmdDraw = 13,
+  cmd_vkCmdDrawIndexed = 14,
+  cmd_vkCmdDrawIndirect = 15,
+  cmd_vkCmdDrawIndexedIndirect = 16,
+  cmd_vkCmdDispatch = 17,
+  cmd_vkCmdDispatchIndirect = 18,
+  cmd_vkCmdCopyBuffer = 19,
+  cmd_vkCmdCopyImage = 20,
+  cmd_vkCmdBlitImage = 21,
+  cmd_vkCmdCopyBufferToImage = 22,
+  cmd_vkCmdCopyImageToBuffer = 23,
+  cmd_vkCmdUpdateBuffer = 24,
+  cmd_vkCmdFillBuffer = 25,
+  cmd_vkCmdClearColorImage = 26,
+  cmd_vkCmdClearDepthStencilImage = 27,
+  cmd_vkCmdClearAttachments = 28,
+  cmd_vkCmdResolveImage = 29,
+  cmd_vkCmdSetEvent = 30,
+  cmd_vkCmdResetEvent = 31,
+  cmd_vkCmdWaitEvents = 32,
+  cmd_vkCmdPipelineBarrier = 33,
+  cmd_vkCmdBeginQuery = 34,
+  cmd_vkCmdEndQuery = 35,
+  cmd_vkCmdResetQueryPool = 36,
+  cmd_vkCmdWriteTimestamp = 37,
+  cmd_vkCmdCopyQueryPoolResults = 38,
+  cmd_vkCmdPushConstants = 39,
+  cmd_vkCmdBeginRenderPass = 40,
+  cmd_vkCmdNextSubpass = 41,
+  cmd_vkCmdEndRenderPass = 42,
+  cmd_vkCmdExecuteCommands = 43,
+  cmd_vkCmdDebugMarkerBeginEXT = 44,
+  cmd_vkCmdDebugMarkerEndEXT = 45,
+  cmd_vkCmdDebugMarkerInsertEXT = 46,
+  cmd_vkNoCommand = 0xFFFFFFFF
+}
+
+enum SemaphoreUpdate {
+  None = 0,
+  Unsignal = 1,
+  Signal = 2
+}
+
+@internal class CommandReference {
+  @unused VkCommandBuffer Buffer
+  @unused u32         CommandIndex
+  @unused CommandType Type
+  @unused u32         MapIndex
+  @unused SemaphoreUpdate SemaphoreUpdate
+  @unused VkSemaphore Semaphore
+}
+
+@internal class BufferCommands {
+  map!(u32,ref!vkCmdBindPipelineArgs) vkCmdBindPipeline
+  map!(u32,ref!vkCmdSetViewportArgs) vkCmdSetViewport
+  map!(u32,ref!vkCmdSetScissorArgs) vkCmdSetScissor
+  map!(u32,ref!vkCmdSetLineWidthArgs) vkCmdSetLineWidth
+  map!(u32,ref!vkCmdSetDepthBiasArgs) vkCmdSetDepthBias
+  map!(u32,ref!vkCmdSetBlendConstantsArgs) vkCmdSetBlendConstants
+  map!(u32,ref!vkCmdSetDepthBoundsArgs) vkCmdSetDepthBounds
+  map!(u32,ref!vkCmdSetStencilCompareMaskArgs) vkCmdSetStencilCompareMask
+  map!(u32,ref!vkCmdSetStencilWriteMaskArgs) vkCmdSetStencilWriteMask
+  map!(u32,ref!vkCmdSetStencilReferenceArgs) vkCmdSetStencilReference
+  map!(u32,ref!vkCmdBindDescriptorSetsArgs) vkCmdBindDescriptorSets
+  map!(u32,ref!vkCmdBindIndexBufferArgs) vkCmdBindIndexBuffer
+  map!(u32,ref!vkCmdBindVertexBuffersArgs) vkCmdBindVertexBuffers
+  map!(u32,ref!vkCmdDrawArgs) vkCmdDraw
+  map!(u32,ref!vkCmdDrawIndexedArgs) vkCmdDrawIndexed
+  map!(u32,ref!vkCmdDrawIndirectArgs) vkCmdDrawIndirect
+  map!(u32,ref!vkCmdDrawIndexedIndirectArgs) vkCmdDrawIndexedIndirect
+  map!(u32,ref!vkCmdDispatchArgs) vkCmdDispatch
+  map!(u32,ref!vkCmdDispatchIndirectArgs) vkCmdDispatchIndirect
+  map!(u32,ref!vkCmdCopyBufferArgs) vkCmdCopyBuffer
+  map!(u32,ref!vkCmdCopyImageArgs) vkCmdCopyImage
+  map!(u32,ref!vkCmdBlitImageArgs) vkCmdBlitImage
+  map!(u32,ref!vkCmdCopyBufferToImageArgs) vkCmdCopyBufferToImage
+  map!(u32,ref!vkCmdCopyImageToBufferArgs) vkCmdCopyImageToBuffer
+  map!(u32,ref!vkCmdUpdateBufferArgs) vkCmdUpdateBuffer
+  map!(u32,ref!vkCmdFillBufferArgs) vkCmdFillBuffer
+  map!(u32,ref!vkCmdClearColorImageArgs) vkCmdClearColorImage
+  map!(u32,ref!vkCmdClearDepthStencilImageArgs) vkCmdClearDepthStencilImage
+  map!(u32,ref!vkCmdClearAttachmentsArgs) vkCmdClearAttachments
+  map!(u32,ref!vkCmdResolveImageArgs) vkCmdResolveImage
+  map!(u32,ref!vkCmdSetEventArgs) vkCmdSetEvent
+  map!(u32,ref!vkCmdResetEventArgs) vkCmdResetEvent
+  map!(u32,ref!vkCmdWaitEventsArgs) vkCmdWaitEvents
+  map!(u32,ref!vkCmdPipelineBarrierArgs) vkCmdPipelineBarrier
+  map!(u32,ref!vkCmdBeginQueryArgs) vkCmdBeginQuery
+  map!(u32,ref!vkCmdEndQueryArgs) vkCmdEndQuery
+  map!(u32,ref!vkCmdResetQueryPoolArgs) vkCmdResetQueryPool
+  map!(u32,ref!vkCmdWriteTimestampArgs) vkCmdWriteTimestamp
+  map!(u32,ref!vkCmdCopyQueryPoolResultsArgs) vkCmdCopyQueryPoolResults
+  map!(u32,ref!vkCmdPushConstantsArgs) vkCmdPushConstants
+  map!(u32,ref!vkCmdBeginRenderPassArgs) vkCmdBeginRenderPass
+  map!(u32,ref!vkCmdNextSubpassArgs) vkCmdNextSubpass
+  map!(u32,ref!vkCmdEndRenderPassArgs) vkCmdEndRenderPass
+  map!(u32,ref!vkCmdExecuteCommandsArgs) vkCmdExecuteCommands
+  map!(u32,ref!vkCmdDebugMarkerBeginEXTArgs) vkCmdDebugMarkerBeginEXT
+  map!(u32,ref!vkCmdDebugMarkerEndEXTArgs) vkCmdDebugMarkerEndEXT
+  map!(u32,ref!vkCmdDebugMarkerInsertEXTArgs) vkCmdDebugMarkerInsertEXT
+}
+
 @internal class CommandBufferObject {
   @unused VkDevice               Device
   @unused RecordingState         Recording
   @unused VkCommandBuffer        VulkanHandle
   @unused VkCommandPool          Pool
   @unused VkCommandBufferLevel   Level
+  @unused map!(u32,CommandReference) CommandReferences
+  @unused BufferCommands         BufferCommands
   @unused ref!CommandBufferBegin BeginInfo
   @unused ref!VulkanDebugMarkerInfo          DebugInfo
 }
@@ -9503,6 +9066,7 @@ enum RecordingState {
 
 @internal class SpecializationInfo {
   map!(u32, VkSpecializationMapEntry) Specializations
+  u8[]    Data
 }
 
 @internal class StageData {

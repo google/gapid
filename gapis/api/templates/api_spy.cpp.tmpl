@@ -217,6 +217,7 @@
         {{end}}
         {{/* Perform the call */}}
         {{if not (GetAnnotation $ "synthetic")}}
+          if (!is_recording_state()) {
           {{if not (IsVoid $.Return.Type)}}result = §{{end}}
           {{if (GetAnnotation $ "override")}}
             SpyOverride_{{Template "CmdName" $}}({{Template "C++.CallArguments" $}});
@@ -225,6 +226,7 @@
           {{else}}
             mImports.{{Template "CmdName" $}}({{Template "C++.CallArguments" $}});
           {{end}}
+          }
         {{end}}
         {{if (GetAnnotation $ "blocking")}}
           lock(observer);
