@@ -29,7 +29,7 @@
   ¶
   // ToProto returns the primary storage proto of the {{$name}} command.¶
   func (ϟa *{{$name}}) ToProto() *{{$p}} {»¶
-    to := &{{$p}}{Thread: ϟa.Thread()}¶
+    to := &{{$p}}{Thread: int64(ϟa.Thread())}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.To" "Field" $v "Outer" $proto}}
     {{end}}
@@ -38,7 +38,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(from *{{$p}}) *{{$name}} {»¶
-    ϟa := &{{$name}}{caller: api.CmdNoID, thread: from.GetThread()}¶
+    ϟa := &{{$name}}{caller: api.CmdNoID, thread: uint64(from.GetThread())}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
     {{end}}
@@ -122,6 +122,9 @@
         Value: {{Template "Convert.ToProto" "Type" $type.ValueType "Value" "ϟv"}}
       })¶
     «}¶
+  {{else if IsBool $truetype}}
+    {{$value := printf "ϟa.%s" $name}}
+    if {{$value}} { to.{{$proto}} = 1 }¶
   {{else}}
     {{$value := printf "ϟa.%s" $name}}
     to.{{$proto}} = {{Template "Convert.ToProto" "Type" $type "Value" $value}}¶
@@ -151,6 +154,9 @@
       ϟv := {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟe.Value"}}¶
       ϟa.{{$name}}[ϟk] = ϟv¶
     «}¶
+  {{else if IsBool $truetype}}
+    {{$value := printf "from.%s" $proto}}
+    ϟa.{{$name}} = ({{$value}} != 0)¶
   {{else}}
     {{$value := printf "from.%s" $proto}}
     ϟa.{{$name}} = {{Template "Convert.FromProto" "Type" $type "Value" $value}}¶
@@ -197,24 +203,24 @@
 -------------------------------------------------------------------------------
 */}}
 {{define "Convert.StorageType"}}
-  {{if IsBool               $}}bool
+  {{if IsBool               $}}int32
   {{else if IsInt           $}}int64
-  {{else if IsUint          $}}uint64
-  {{else if IsSize          $}}uint64
+  {{else if IsUint          $}}int64
+  {{else if IsSize          $}}int64
   {{else if IsChar          $}}int32
-  {{else if IsU8            $}}uint32
+  {{else if IsU8            $}}int32
   {{else if IsS8            $}}int32
-  {{else if IsU16           $}}uint32
+  {{else if IsU16           $}}int32
   {{else if IsS16           $}}int32
   {{else if IsF32           $}}float32
-  {{else if IsU32           $}}uint32
+  {{else if IsU32           $}}int32
   {{else if IsS32           $}}int32
   {{else if IsF64           $}}float64
-  {{else if IsU64           $}}uint64
+  {{else if IsU64           $}}int64
   {{else if IsS64           $}}int64
   {{else if IsString        $}}string
-  {{else if IsEnum          $}}uint32
-  {{else if IsPointer       $}}memory_pb.Pointer
+  {{else if IsEnum          $}}int32
+  {{else if IsPointer       $}}int64
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
   {{else if IsClass         $}}*{{Global "Store"}}.{{$.Name | ProtoGoName}}
@@ -233,7 +239,7 @@
     {{$target := Macro "Convert.StorageType" $.Type}}
     {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{$.Value}}.ToProto()
-    {{else if IsPointer $truetype}}&{{$target}}{Address: {{$.Value}}.addr, Pool: uint32({{$.Value}}.pool)}
+    {{else if IsPointer $truetype}}{{$target}}({{$.Value}}.addr)
     {{else if IsSlice $truetype}}&{{$target}}{»¶
       Root: {{$.Value}}.root,¶
       Base: {{$.Value}}.base,¶
@@ -256,7 +262,7 @@
     {{$target := Macro "Convert.LiveType" $.Type}}
     {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}})
-    {{else if IsPointer $truetype}}{{$target}}{addr: {{$.Value}}.Address, pool: memory.PoolID({{$.Value}}.Pool)}
+    {{else if IsPointer $truetype}}{{$target}}{addr: uint64({{$.Value}}), pool: memory.ApplicationPool}
     {{else if IsSlice $truetype}}{{$target}}{»¶
       root:  {{$.Value}}.Root,¶
       base:  {{$.Value}}.Base,¶

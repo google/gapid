@@ -46,7 +46,7 @@ var (
 const (
 	// CurrentCaptureVersion is incremented on breaking changes to the capture format.
 	// NB: Also update equally named field in spy.cpp
-	CurrentCaptureVersion int32 = 0
+	CurrentCaptureVersion int32 = 1
 )
 
 type ErrUnsupportedVersion struct{ Version int32 }

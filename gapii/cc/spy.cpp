@@ -40,7 +40,7 @@
 
 // CurrentCaptureVersion is incremented on breaking changes to the capture format.
 // NB: Also update equally named field in capture.go
-static const int CurrentCaptureVersion = 0;
+static const int CurrentCaptureVersion = 1;
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include "windows/wgl.h"
