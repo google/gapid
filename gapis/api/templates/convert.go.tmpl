@@ -283,7 +283,7 @@
   {{else if IsS64           $}}int64
   {{else if IsString        $}}string
   {{else if IsEnum          $}}int32
-  {{else if IsPointer       $}}memory_pb.Pointer
+  {{else if IsPointer       $}}int64
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
   {{else if IsClass         $}}*{{Global "Store"}}.{{$.Name | ProtoGoName}}
@@ -302,7 +302,7 @@
     {{$target := Macro "Convert.StorageType" $.Type}}
     {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{$.Value}}.ToProto()
-    {{else if IsPointer $truetype}}&{{$target}}{Address: {{$.Value}}.addr, Pool: uint32({{$.Value}}.pool)}
+    {{else if IsPointer $truetype}}{{$target}}({{$.Value}}.addr)
     {{else if IsSlice $truetype}}&{{$target}}{»¶
       Root: {{$.Value}}.root,¶
       Base: {{$.Value}}.base,¶
@@ -325,7 +325,7 @@
     {{$target := Macro "Convert.LiveType" $.Type}}
     {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}})
-    {{else if IsPointer $truetype}}{{$target}}{addr: {{$.Value}}.Address, pool: memory.PoolID({{$.Value}}.Pool)}
+    {{else if IsPointer $truetype}}{{$target}}{addr: uint64({{$.Value}}), pool: memory.ApplicationPool}
     {{else if IsSlice $truetype}}{{$target}}{»¶
       root:  {{$.Value}}.Root,¶
       base:  {{$.Value}}.Base,¶

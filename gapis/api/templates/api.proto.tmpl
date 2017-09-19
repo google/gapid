@@ -103,7 +103,7 @@
   {{else if IsS64           $}}sint64
   {{else if IsString        $}}string
   {{else if IsEnum          $}}sint32
-  {{else if IsPointer       $}}memory_pb.Pointer
+  {{else if IsPointer       $}}sint64
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsClass         $}}{{$.Name}}
   {{else if IsPseudonym     $}}{{Template "Proto.Type" $.To}}
