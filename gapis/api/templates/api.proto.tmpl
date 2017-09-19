@@ -47,7 +47,7 @@
     ¶
     // {{$name}} is the structure for serializing the parameters to the api command {{$.Name}}¶
     message {{$name}} {»¶
-      uint64 thread = {{Inc "ProtoID"}};¶
+      sint64 thread = {{Inc "ProtoID"}};¶
       {{range $p := $.CallParameters}}
         {{Template "Proto.Entry" "Param" $p "Type" (TypeOf $p)}}
       {{end}}
@@ -86,23 +86,23 @@
 -------------------------------------------------------------------------------
 */}}
 {{define "Proto.Type"}}
-  {{if IsBool               $}}bool
+  {{if IsBool               $}}sint32
   {{else if IsInt           $}}sint64
-  {{else if IsUint          $}}uint64
-  {{else if IsSize          $}}uint64
-  {{else if IsChar          $}}int32
-  {{else if IsU8            $}}uint32
+  {{else if IsUint          $}}sint64
+  {{else if IsSize          $}}sint64
+  {{else if IsChar          $}}sint32
+  {{else if IsU8            $}}sint32
   {{else if IsS8            $}}sint32
-  {{else if IsU16           $}}uint32
+  {{else if IsU16           $}}sint32
   {{else if IsS16           $}}sint32
   {{else if IsF32           $}}float
-  {{else if IsU32           $}}uint32
+  {{else if IsU32           $}}sint32
   {{else if IsS32           $}}sint32
   {{else if IsF64           $}}double
-  {{else if IsU64           $}}uint64
-  {{else if IsS64           $}}int64
+  {{else if IsU64           $}}sint64
+  {{else if IsS64           $}}sint64
   {{else if IsString        $}}string
-  {{else if IsEnum          $}}uint32
+  {{else if IsEnum          $}}sint32
   {{else if IsPointer       $}}memory_pb.Pointer
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsClass         $}}{{$.Name}}
