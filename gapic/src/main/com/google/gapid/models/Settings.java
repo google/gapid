@@ -54,7 +54,7 @@ public class Settings {
   public int splitterTopHeight = 200;
   public String[] leftTabs = new String[0], centerTabs = new String[0], rightTabs = new String[0];
   public String[] hiddenTabs = new String[] { "Log" };
-  public int[] tabWeights = new int[] { 20, 60, 20 };
+  public double[] tabWeights = new double[] { 0.2, 0.6, 0.2 };
   public String lastOpenDir = "";
   public int[] reportSplitterWeights = new int[] { 75, 25 };
   public int[] shaderSplitterWeights = new int[] { 70, 30 };
@@ -150,7 +150,7 @@ public class Settings {
     centerTabs = getStringList(properties, "tabs.center", centerTabs);
     rightTabs = getStringList(properties, "tabs.right", rightTabs);
     hiddenTabs = getStringList(properties, "tabs.hidden", hiddenTabs);
-    tabWeights = getIntList(properties, "tabs.weights", tabWeights);
+    tabWeights = getDoubleList(properties, "tabs.weights", tabWeights);
     lastOpenDir = properties.getProperty("lastOpenDir", lastOpenDir);
     reportSplitterWeights =
         getIntList(properties, "report.splitter.weights", reportSplitterWeights);
@@ -188,7 +188,7 @@ public class Settings {
     setStringList(properties, "tabs.center", centerTabs);
     setStringList(properties, "tabs.right", rightTabs);
     setStringList(properties, "tabs.hidden", hiddenTabs);
-    setIntList(properties, "tabs.weights", tabWeights);
+    setDoubleList(properties, "tabs.weights", tabWeights);
     properties.setProperty("lastOpenDir", lastOpenDir);
     setIntList(properties, "report.splitter.weights", reportSplitterWeights);
     setIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
@@ -265,6 +265,21 @@ public class Settings {
     }
   }
 
+  private static double[] getDoubleList(Properties properties, String name, double[] dflt) {
+    String value = properties.getProperty(name);
+    if (value == null) {
+      return dflt;
+    }
+
+    try {
+      return stream(Splitter.on(',').split(value).spliterator(), false)
+          .mapToDouble(Double::parseDouble).toArray();
+    } catch (NumberFormatException e) {
+      return dflt;
+    }
+  }
+
+
   private static String[] getStringList(Properties properties, String name, String[] dflt) {
     String value = properties.getProperty(name);
     if (value == null) {
@@ -283,6 +298,10 @@ public class Settings {
   }
 
   private static void setIntList(Properties properties, String name, int[] value) {
+    properties.setProperty(name, stream(value).mapToObj(String::valueOf).collect(joining(",")));
+  }
+
+  private static void setDoubleList(Properties properties, String name, double[] value) {
     properties.setProperty(name, stream(value).mapToObj(String::valueOf).collect(joining(",")));
   }
 

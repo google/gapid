@@ -15,6 +15,11 @@
  */
 package com.google.gapid.widgets;
 
+import static com.google.gapid.util.GeoUtils.right;
+import static com.google.gapid.util.GeoUtils.withW;
+import static com.google.gapid.util.GeoUtils.withX;
+import static com.google.gapid.util.GeoUtils.withXH;
+import static com.google.gapid.util.GeoUtils.withXW;
 import static com.google.gapid.widgets.TabDnD.withMovableTabs;
 import static com.google.gapid.widgets.Widgets.createTabFolder;
 import static com.google.gapid.widgets.Widgets.createTabItem;
@@ -26,11 +31,14 @@ import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabFolder2Adapter;
 import org.eclipse.swt.custom.CTabFolderEvent;
 import org.eclipse.swt.custom.CTabItem;
-import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.StackLayout;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Layout;
+import org.eclipse.swt.widgets.Sash;
 
 import java.util.function.Function;
 
@@ -39,29 +47,43 @@ import java.util.function.Function;
  * tabs between areas and minimzing/maximzing each area. The three areas are horizontally laid out
  * with movable dividers.
  */
-public class TabArea {
-  private static final int MINIMIZED_SIZE = 40;
+public class TabArea extends Composite {
+  private static final int MIN_SIZE = 40;
+  private static final int LEFT = 0, CENTER = 1, RIGHT = 2;
 
-  private final SashForm sash;
   private final Folder left, center, right;
-  private int[] weights;
+  private final Sash leftSash, rightSash;
+  private final double[] weights;
+  private boolean shouldRestoreLeft = true, shouldRestoreRight = true;
 
   public TabArea(Composite parent, Persistance persistance) {
-    this.sash = new SashForm(parent, SWT.HORIZONTAL);
+    super(parent, SWT.NONE);
+    setLayout(new Layout() {
+      @Override
+      protected Point computeSize(Composite composite, int wHint, int hHint, boolean flushCache) {
+        return layoutComputeSize(wHint, hHint, flushCache);
+      }
+
+      @Override
+      protected void layout(Composite composite, boolean flushCache) {
+        doLayout(flushCache);
+      }
+    });
 
     FolderInfo[] folders = persistance.restore();
-    this.left = new Folder(sash, folders[0], true, this::updateWeights);
-    this.center = new Folder(sash, folders[1], false, this::updateWeights);
-    this.right = new Folder(sash, folders[2], true, this::updateWeights);
-    this.weights = new int[] { folders[0].weight, folders[1].weight, folders[2].weight };
+    left = new Folder(this, folders[0], false);
+    leftSash = new Sash(this, SWT.VERTICAL);
+    center = new Folder(this, folders[1], true);
+    rightSash = new Sash(this, SWT.VERTICAL);
+    right = new Folder(this, folders[2], false);
+    weights = new double[] { folders[0].weight, folders[1].weight, folders[2].weight };
+    normalizeWeights();
 
-    left.folder.setSelection(0);
-    center.folder.setSelection(0);
-    center.folder.setMaximizeVisible(true);
-    right.folder.setSelection(0);
-    sash.setWeights(weights);
-    updateWeights();
-
+    leftSash.addListener(SWT.Selection, this::moveLeftSash);
+    rightSash.addListener(SWT.Selection, this::moveRightSash);
+    left.addHandlers(this::minimizeLeft, () -> { /* noop */ }, this::restoreLeft);
+    center.addHandlers(() -> { /* noop */ }, this::maximizeCenter, this::restoreCenter);
+    right.addHandlers(this::minimizeRight, () -> { /* noop */ }, this::restoreRight);
     TabDnD.addListener(new TabDnD.Listener() {
       @Override
       public void itemCopied(CTabItem source, CTabItem target) {
@@ -72,26 +94,12 @@ public class TabArea {
       public void onTabMoved(
           CTabFolder sourceFolder, CTabItem oldItem, CTabFolder destFolder, CTabItem newItem) {
         if (sourceFolder.getItemCount() == 0 || destFolder.getItemCount() == 1) {
-          updateWeights();
+          updateEmptyFolders();
         }
       }
     });
-    center.folder.addCTabFolder2Listener(new CTabFolder2Adapter() {
-      @Override
-      public void maximize(CTabFolderEvent event) {
-        TabArea.this.maximize();
-        updateWeights();
-      }
-
-      @Override
-      public void restore(CTabFolderEvent event) {
-        TabArea.this.restore();
-        updateWeights();
-      }
-    });
-    sash.addListener(SWT.Resize, e -> updateWeights());
-    sash.addListener(SWT.Dispose, e -> {
-      rememberWeights();
+    addListener(SWT.Dispose, e -> {
+      normalizeWeights();
       persistance.store(new FolderInfo[] {
           left.getInfo(weights[0]),
           center.getInfo(weights[1]),
@@ -100,8 +108,158 @@ public class TabArea {
     });
   }
 
-  public Control getControl() {
-    return sash;
+  private void normalizeWeights() {
+    double sum = weights[0] + weights[1] + weights[2];
+    if (sum != 0) {
+      weights[0] /= sum;
+      weights[1] /= sum;
+      weights[2] /= sum;
+    }
+  }
+
+  protected void updateEmptyFolders() {
+    left.folder.setTabHeight(center.folder.getTabHeight());
+    if (left.isEmpty()) {
+      left.minimize();
+      if (right.isMinimized()) {
+        shouldRestoreRight = true;
+        center.maximzie();
+      }
+    } else {
+      doLayout(false);
+      left.folder.setMinimizeVisible(true);
+      left.folder.requestLayout();
+    }
+
+    right.folder.setTabHeight(center.folder.getTabHeight());
+    if (right.isEmpty()) {
+      right.minimize();
+      if (left.isMinimized()) {
+        shouldRestoreLeft = true;
+        center.maximzie();
+      }
+    } else {
+      doLayout(false);
+      right.folder.setMinimizeVisible(true);
+      right.folder.requestLayout();
+    }
+  }
+
+  private void moveLeftSash(Event e) {
+    if (left.isEmpty()) {
+      e.doit = false;
+      return;
+    } else if (left.isMinimized()) {
+      left.restore();
+      center.restore();
+    }
+    int width = getClientArea().width;
+    Rectangle leftSashSize = leftSash.getBounds();
+    Rectangle rightSashSize = rightSash.getBounds();
+    Rectangle centerSize = center.getBounds();
+    e.x = Math.max(MIN_SIZE, Math.min(rightSashSize.x - leftSashSize.width - MIN_SIZE, e.x));
+    int delta = leftSashSize.x - e.x;
+    if (delta != 0) {
+      left.setBounds(withW(left.getBounds(), e.x));
+      leftSash.setBounds(withX(leftSashSize, e.x));
+      center.setBounds(withXW(centerSize, e.x + leftSashSize.width, centerSize.width + delta));
+    }
+    width -= leftSashSize.width + rightSashSize.width;
+    weights[LEFT] = (double)e.x / width;
+    weights[CENTER] = (double)centerSize.width / width;
+    if (right.isMinimized()) {
+      weights[LEFT] *= (1 - weights[RIGHT]);
+      weights[CENTER] *= (1 - weights[RIGHT]);
+    } else {
+      weights[RIGHT] = 1 - weights[LEFT] - weights[CENTER];
+    }
+  }
+
+  private void moveRightSash(Event e) {
+    if (right.isEmpty()) {
+      e.doit = false;
+      return;
+    } else if (right.isMinimized()) {
+      right.restore();
+      center.restore();
+    }
+    int width = getClientArea().width;
+    Rectangle leftSashSize = leftSash.getBounds();
+    Rectangle rightSashSize = rightSash.getBounds();
+    Rectangle rightSize = right.getBounds();
+    Rectangle centerSize = center.getBounds();
+    e.x = Math.max(leftSashSize.x + leftSashSize.width + MIN_SIZE, Math.min(width - rightSashSize.width - MIN_SIZE, e.x));
+    int delta = rightSashSize.x - e.x;
+    if (delta != 0) {
+      center.setBounds(withXW(centerSize, centerSize.x, centerSize.width - delta));
+      rightSash.setBounds(withX(rightSashSize, e.x));
+      right.setBounds(withXW(rightSize, e.x + rightSashSize.width, rightSize.width + delta));
+    }
+    width -= leftSashSize.width + rightSashSize.width;
+    weights[CENTER] = (double)centerSize.width / width;
+    weights[RIGHT] = (double)rightSize.width / width;
+    if (left.isMinimized()) {
+      weights[CENTER] *= (1 - weights[LEFT]);
+      weights[RIGHT] *= (1 - weights[LEFT]);
+    } else {
+      weights[LEFT] = 1 - weights[CENTER] - weights[RIGHT];
+    }
+  }
+
+  private void minimizeLeft() {
+    if (right.isMinimized()) {
+      center.maximzie();
+      shouldRestoreLeft = true;
+    } else {
+      shouldRestoreLeft = false;
+    }
+    doLayout(false);
+  }
+
+  private void restoreLeft() {
+    center.restore();
+    doLayout(false);
+  }
+
+  private void maximizeCenter() {
+    if (!left.isMinimized()) {
+      left.minimize();
+      shouldRestoreLeft = true;
+    } else {
+      shouldRestoreLeft = false;
+    }
+    if (!right.isMinimized()) {
+      right.minimize();
+      shouldRestoreRight = true;
+    } else {
+      shouldRestoreRight = false;
+    }
+    doLayout(false);
+  }
+
+  private void restoreCenter() {
+    if (shouldRestoreLeft) {
+      left.restore();
+    }
+    if (shouldRestoreRight) {
+      right.restore();
+    }
+    doLayout(false);
+  }
+
+  private void minimizeRight() {
+    if (left.isMinimized()) {
+      center.maximzie();
+      shouldRestoreRight = true;
+    } else {
+      shouldRestoreRight = false;
+    }
+    doLayout(false);
+  }
+
+  private void restoreRight() {
+    center.restore();
+    doLayout(false);
   }
 
   public boolean showTab(Object id) {
@@ -114,7 +272,6 @@ public class TabArea {
 
   public void addNewTabToCenter(TabInfo info) {
     center.addTab(info);
-    center.updateState();
   }
 
   public void setLeftVisible(boolean visible) {
@@ -122,7 +279,8 @@ public class TabArea {
       moveAllTabs(left.folder, center.folder);
     }
     left.setVisible(visible);
-    left.requestLayout();
+    leftSash.setVisible(visible);
+    doLayout(false);
   }
 
   public void setRightVisible(boolean visible) {
@@ -130,7 +288,8 @@ public class TabArea {
       moveAllTabs(right.folder, center.folder);
     }
     right.setVisible(visible);
-    right.requestLayout();
+    rightSash.setVisible(visible);
+    doLayout(false);
   }
 
   private static void moveAllTabs(CTabFolder from, CTabFolder to) {
@@ -146,9 +305,10 @@ public class TabArea {
       return false;
     }
 
-    if (!folder.shown()) {
+    if (folder.isMinimized()) {
       folder.restore();
-      updateWeights();
+      center.restore();
+      doLayout(false);
     }
     folder.folder.setSelection(item);
     return true;
@@ -168,81 +328,98 @@ public class TabArea {
     }
 
     item.dispose();
-    updateWeights();
+    updateEmptyFolders();
     return true;
   }
 
-  protected void maximize() {
-    left.minimize();
-    right.minimize();
-  }
+  protected Point layoutComputeSize(int width, int height, boolean flushCache) {
+    if (width == SWT.DEFAULT || height == SWT.DEFAULT) {
+      Point leftSize = left.computeSize(width, height, flushCache);
+      Point leftSashSize = leftSash.computeSize(SWT.DEFAULT, height, flushCache);
+      Point centerSize = center.computeSize(width, height, flushCache);
+      Point rightSashSize = rightSash.computeSize(SWT.DEFAULT, height, flushCache);
+      Point rightSize = right.computeSize(width, height, flushCache);
 
-  protected void restore() {
-    left.restore();
-    right.restore();
-  }
-
-  protected void updateWeights() {
-    rememberWeights();
-    updateCenter();
-
-    if (left.shown() && right.shown()) {
-      sash.setWeights(weights);
-    } else if (!left.shown() && !right.shown()) {
-      Rectangle bounds = sash.getBounds();
-      sash.setWeights(new int[] {
-          MINIMIZED_SIZE,
-          Math.max(MINIMIZED_SIZE, bounds.width - 2 * MINIMIZED_SIZE),
-          MINIMIZED_SIZE
-      });
-    } else if (!left.shown()) {
-      Rectangle bounds = sash.getBounds();
-      int sum = weights[1] + weights[2], width = bounds.width - MINIMIZED_SIZE;
-      sash.setWeights(new int[] {
-          MINIMIZED_SIZE,
-          Math.max(MINIMIZED_SIZE, width * weights[1] / sum),
-          Math.max(MINIMIZED_SIZE, width * weights[2] / sum)
-      });
-    } else {
-      Rectangle bounds = sash.getBounds();
-      int sum = weights[0] + weights[1], width = bounds.width - MINIMIZED_SIZE;
-      sash.setWeights(new int[] {
-          Math.max(MINIMIZED_SIZE, width * weights[0] / sum),
-          Math.max(MINIMIZED_SIZE, width * weights[1] / sum),
-          MINIMIZED_SIZE
-      });
+      if (width == SWT.DEFAULT) {
+        width = Math.max(MIN_SIZE, centerSize.x);
+        if (left.isVisible()) {
+          width += Math.max(MIN_SIZE, leftSize.x) + leftSashSize.x;
+        }
+        if (right.isVisible()) {
+          width += rightSashSize.x + Math.max(MIN_SIZE, rightSize.x);
+        }
+      }
+      if (height == SWT.DEFAULT) {
+        height = Math.max(leftSize.y, Math.max(centerSize.y, Math.max(rightSize.y,
+            Math.max(leftSashSize.y, rightSashSize.y))));
+      }
     }
+    return new Point(width, height);
   }
 
-  private void rememberWeights() {
-    boolean leftWasShown = left.updateState();
-    boolean rightWasShown = right.updateState();
-    if (leftWasShown && rightWasShown) {
-      weights = sash.getWeights();
-    } else if (leftWasShown && !left.shown()) {
-      int[] curWeights = sash.getWeights();
-      weights[0] = (weights[0] + weights[1]) * curWeights[0] / (curWeights[0] + curWeights[1]);
-      weights[1] = (weights[0] + weights[1]) * curWeights[1] / (curWeights[0] + curWeights[1]);
-    } else if (rightWasShown && !right.shown()) {
-      int[] curWeights = sash.getWeights();
-      weights[1] = (weights[1] + weights[2]) * curWeights[1] / (curWeights[1] + curWeights[2]);
-      weights[2] = (weights[1] + weights[2]) * curWeights[2] / (curWeights[1] + curWeights[2]);
-    } else {
-      weights = sash.getWeights();
-    }
-  }
+  protected void doLayout(boolean flushCache) {
+    Rectangle size = getClientArea();
 
-  private void updateCenter() {
-    if (left.shown() || right.shown()) {
-      center.folder.setMaximized(false);
-      center.folder.setMaximizeVisible(true);
-    } else if (left.empty() && right.empty()) {
-      center.folder.setMaximized(false);
-      center.folder.setMaximizeVisible(false);
-    } else {
-      center.folder.setMaximized(true);
-      center.folder.setMaximizeVisible(true);
+    if (!left.isVisible() && !right.isVisible()) {
+      center.setBounds(size);
+      return;
     }
+
+    Point leftSashSize = leftSash.computeSize(SWT.DEFAULT, size.height, flushCache);
+    Point rightSashSize = rightSash.computeSize(SWT.DEFAULT, size.height, flushCache);
+
+    Rectangle leftSize = left.getBounds();
+    Rectangle centerSize = center.getBounds();
+    Rectangle rightSize = right.getBounds();
+
+    if (!left.isVisible()) {
+      int width = size.width - rightSashSize.x;
+      leftSize.width = leftSashSize.x = 0;
+      if (right.isMinimized()) {
+        rightSize.width = MIN_SIZE;
+        centerSize.width = width - MIN_SIZE;
+      } else {
+        rightSize.width = (int)(weights[RIGHT] * width / (weights[CENTER] + weights[RIGHT]));
+        centerSize.width = width - rightSize.width;
+      }
+    } else if (!right.isVisible()) {
+      int width = size.width - leftSashSize.x;
+      rightSize.width = rightSashSize.x = 0;
+      if (left.isMinimized()) {
+        leftSize.width = MIN_SIZE;
+        centerSize.width = width - MIN_SIZE;
+      } else {
+        leftSize.width = (int)(weights[LEFT] * width / (weights[LEFT] + weights[CENTER]));
+        centerSize.width = width - leftSize.width;
+      }
+    } else {
+      int width = size.width - leftSashSize.x - rightSashSize.x;
+      if (left.isMinimized() && right.isMinimized()) {
+        leftSize.width = rightSize.width = MIN_SIZE;
+        centerSize.width = width - 2 * MIN_SIZE;
+      } else if (left.isMinimized()) {
+        leftSize.width = MIN_SIZE;
+        width -= MIN_SIZE;
+        rightSize.width = (int)(weights[RIGHT] * width / (weights[CENTER] + weights[RIGHT]));
+        centerSize.width = width - rightSize.width;
+      } else if (right.isMinimized()) {
+        rightSize.width = MIN_SIZE;
+        width -= MIN_SIZE;
+        leftSize.width = (int)(weights[LEFT] * width / (weights[LEFT] + weights[CENTER]));
+        centerSize.width = width - leftSize.width;
+      } else {
+        double sum = weights[LEFT] + weights[CENTER] + weights[RIGHT];
+        leftSize.width = (int)(weights[LEFT] * width / sum);
+        rightSize.width = (int)(weights[RIGHT] * width / sum);
+        centerSize.width = width - leftSize.width - rightSize.width;
+      }
+    }
+
+    left.setBounds(withXH(leftSize, 0, size.height));
+    leftSash.setBounds(new Rectangle(right(leftSize), 0, leftSashSize.x, size.height));
+    center.setBounds(withXH(centerSize, right(leftSize) + leftSashSize.x, size.height));
+    rightSash.setBounds(new Rectangle(right(centerSize), 0, leftSashSize.x, size.height));
+    right.setBounds(withXH(rightSize, right(centerSize) + leftSashSize.x, size.height));
   }
 
   /**
@@ -266,9 +443,9 @@ public class TabArea {
   public static class FolderInfo {
     public final boolean minimized;
     public final TabInfo[] tabs;
-    public final int weight;
+    public final double weight;
 
-    public FolderInfo(boolean minimized, TabInfo[] tabs, int weight) {
+    public FolderInfo(boolean minimized, TabInfo[] tabs, double weight) {
       this.minimized = minimized;
       this.tabs = tabs;
       this.weight = weight;
@@ -296,46 +473,29 @@ public class TabArea {
    * A folder widget containing multiple tabs.
    */
   private static class Folder extends Composite {
-    private final boolean minimizable;
     public final CTabFolder folder;
     private final CTabFolder minimized;
-    private TabState state = TabState.VISIBLE;
 
-    public Folder(Composite parent, FolderInfo info, boolean minimizable, Runnable updateWeights) {
+    public Folder(Composite parent, FolderInfo info, boolean maximizable) {
       super(parent, SWT.NONE);
-      this.minimizable = minimizable;
       setLayout(new StackLayout());
 
       folder = withMovableTabs(createTabFolder(this));
       minimized = createTabFolder(this);
       getLayout().topControl = folder;
 
-      folder.setMinimizeVisible(minimizable);
+      folder.setMinimizeVisible(!maximizable);
+      folder.setMaximizeVisible(maximizable);
       minimized.setMinimizeVisible(true);
       minimized.setMinimized(true);
-
-      folder.addCTabFolder2Listener(new CTabFolder2Adapter() {
-        @Override
-        public void minimize(CTabFolderEvent event) {
-          Folder.this.minimize();
-          updateWeights.run();
-        }
-      });
-      minimized.addCTabFolder2Listener(new CTabFolder2Adapter() {
-        @Override
-        public void restore(CTabFolderEvent event) {
-          Folder.this.restore();
-          updateWeights.run();
-        }
-      });
 
       for (TabInfo tab : info.tabs) {
         addTab(tab);
       }
-      if (minimizable && info.minimized) {
+      folder.setSelection(0);
+      if (!maximizable && info.minimized) {
         minimize();
       }
-      updateState();
     }
 
     public void addTab(TabInfo tab) {
@@ -343,18 +503,62 @@ public class TabArea {
       item.setData(TabInfo.KEY, tab);
     }
 
+    public void addHandlers(Runnable onMinimize, Runnable onMaximize, Runnable onRestore) {
+      folder.addCTabFolder2Listener(new CTabFolder2Adapter() {
+        @Override
+        public void minimize(CTabFolderEvent event) {
+          Folder.this.minimize();
+          onMinimize.run();
+        }
+
+        @Override
+        public void maximize(CTabFolderEvent event) {
+          Folder.this.maximzie();
+          onMaximize.run();
+        }
+
+        @Override
+        public void restore(CTabFolderEvent event) {
+          Folder.this.restore();
+          onRestore.run();
+        }
+      });
+      minimized.addCTabFolder2Listener(new CTabFolder2Adapter() {
+        @Override
+        public void restore(CTabFolderEvent event) {
+          Folder.this.restore();
+          onRestore.run();
+        }
+      });
+    }
+
     public void minimize() {
-      if (!empty()) {
-        folder.setMinimized(true);
+      if (isEmpty()) {
+        folder.setMinimizeVisible(false);
+        getLayout().topControl = folder;
+      } else {
         getLayout().topControl = minimized;
       }
+      requestLayout();
+    }
+
+    public void maximzie() {
+      folder.setMaximized(true);
+      folder.requestLayout();
     }
 
     public void restore() {
-      if (!empty()) {
-        folder.setMinimized(false);
-        getLayout().topControl = folder;
-      }
+      folder.setMaximized(false);
+      getLayout().topControl = folder;
+      requestLayout();
+    }
+
+    public boolean isMinimized() {
+      return (getLayout().topControl == minimized) || isEmpty();
+    }
+
+    public boolean isEmpty() {
+      return folder.getItemCount() == 0;
     }
 
     @Override
@@ -362,34 +566,12 @@ public class TabArea {
       return (StackLayout)super.getLayout();
     }
 
-    public boolean updateState() {
-      boolean result = state.shown();
-      if (empty()) {
-        state = TabState.EMPTY;
-        folder.setMinimizeVisible(false);
-      } else if (folder.getMinimized()) {
-        state = TabState.MINIMIZED;
-      } else {
-        state = TabState.VISIBLE;
-        folder.setMinimizeVisible(minimizable);
-      }
-      return result;
-    }
-
-    public boolean shown() {
-      return state.shown();
-    }
-
-    public boolean empty() {
-      return folder.getItemCount() == 0;
-    }
-
-    public FolderInfo getInfo(int weight) {
+    public FolderInfo getInfo(double weight) {
       TabInfo[] tabs = new TabInfo[folder.getItemCount()];
       for (int i = 0; i < tabs.length; i++) {
         tabs[i] = (TabInfo)folder.getItem(i).getData(TabInfo.KEY);
       }
-      return new FolderInfo(state == TabState.MINIMIZED, tabs, weight);
+      return new FolderInfo(isMinimized(), tabs, weight);
     }
 
     public CTabItem findItem(Object id) {
@@ -399,17 +581,6 @@ public class TabArea {
         }
       }
       return null;
-    }
-  }
-
-  /**
-   * The state of a folder's tabs.
-   */
-  private static enum TabState {
-    VISIBLE, MINIMIZED, EMPTY;
-
-    public boolean shown() {
-      return this == VISIBLE;
     }
   }
 }
