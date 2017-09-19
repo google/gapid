@@ -16,11 +16,8 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.models.Follower.nullPrefetcher;
-import static com.google.gapid.util.GeoUtils.center;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.widgets.Widgets.createTreeForViewer;
-import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static java.util.Arrays.stream;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
@@ -29,52 +26,41 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiState;
+import com.google.gapid.models.ApiState.Node;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
-import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.service.path.Path.GlobalState;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
-import com.google.gapid.widgets.CopySources;
+import com.google.gapid.widgets.LinkifiedTree;
 import com.google.gapid.widgets.LoadablePanel;
-import com.google.gapid.widgets.MeasuringViewLabelProvider;
 import com.google.gapid.widgets.TextViewer;
-import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.viewers.ILazyTreeContentProvider;
 import org.eclipse.jface.viewers.TreePath;
-import org.eclipse.jface.viewers.TreeSelection;
-import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MouseEvent;
-import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.Tree;
-import org.eclipse.swt.widgets.TreeItem;
-import org.eclipse.swt.widgets.Widget;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -87,9 +73,9 @@ public class StateView extends Composite
   private static final Logger LOG = Logger.getLogger(StateView.class.getName());
 
   private final Models models;
-  private final LoadablePanel<Tree> loading;
-  protected final TreeViewer viewer;
-  private final SelectionHandler<Tree> selectionHandler;
+  private final LoadablePanel<StateTree> loading;
+  protected final StateTree tree;
+  private final SelectionHandler<Control> selectionHandler;
   protected List<Path.Any> scheduledExpandedPaths;
   protected Point scheduledScrollPos;
 
@@ -99,14 +85,8 @@ public class StateView extends Composite
 
     setLayout(new FillLayout(SWT.VERTICAL));
 
-    loading = LoadablePanel.create(this, widgets,
-        panel -> createTreeForViewer(panel, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL | SWT.MULTI));
-    Tree tree = loading.getContents();
-    viewer = createTreeViewer(tree);
-    viewer.setContentProvider(new StateContentProvider(models.state, viewer));
-    ViewLabelProvider labelProvider =
-        new ViewLabelProvider(viewer, models.constants, widgets.theme);
-    viewer.setLabelProvider(labelProvider);
+    loading = LoadablePanel.create(this, widgets, panel -> new StateTree(panel, models, widgets));
+    tree = loading.getContents();
 
     models.capture.addListener(this);
     models.atoms.addListener(this);
@@ -117,12 +97,12 @@ public class StateView extends Composite
       models.state.removeListener(this);
     });
 
-    selectionHandler = new SelectionHandler<Tree>(LOG, tree) {
+    selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
       @Override
       protected void updateModel(Event e) {
-        Object selection = (tree.getSelectionCount() > 0) ? tree.getSelection()[0].getData() : null;
-        if (selection instanceof ApiState.Node) {
-          Service.StateTreeNode node = ((ApiState.Node)selection).getData();
+        ApiState.Node selection = tree.getSelection();
+        if (selection != null) {
+          Service.StateTreeNode node = selection.getData();
           if (node != null) {
             models.state.selectPath(node.getValuePath(), false);
           }
@@ -130,95 +110,11 @@ public class StateView extends Composite
       }
     };
 
-    Widgets.Refresher treeRefresher = Widgets.withAsyncRefresh(viewer);
-    MouseAdapter mouseHandler = new MouseAdapter() {
-      // TODO - dedupe with code in AtomTree.
-      private TreeItem lastHovered;
-      private Follower.Prefetcher<Void> lastPrefetcher = nullPrefetcher();
-
-      @Override
-      public void mouseMove(MouseEvent e) {
-        updateHover(e.x, e.y);
-      }
-
-      @Override
-      public void mouseScrolled(MouseEvent e) {
-        updateHover(e.x, e.y);
-      }
-
-      @Override
-      public void widgetSelected(SelectionEvent e) {
-        // Scrollbar was moved / mouse wheel caused scrolling. This is required for systems with
-        // a touchpad with scrolling inertia, where the view keeps scrolling long after the mouse
-        // wheel event has been processed.
-        Display disp = getDisplay();
-        Point mouse = disp.map(null, tree, disp.getCursorLocation());
-        updateHover(mouse.x, mouse.y);
-      }
-
-      @Override
-      public void mouseDown(MouseEvent e) {
-        Point location = new Point(e.x, e.y);
-        Path.Any follow = (Path.Any)labelProvider.getFollow(location);
-        if (follow != null) {
-          models.follower.onFollow(follow);
-        }
-      }
-
-      @Override
-      public void mouseExit(MouseEvent e) {
-        hoverItem(null);
-      }
-
-      private void updateHover(int x, int y) {
-        TreeItem item = tree.getItem(new Point(x, y));
-        // When hovering over the far left of deep items, getItem returns null. Let's check a few
-        // more places to the right.
-        if (item == null) {
-          for (int testX = x + 20; item == null && testX < 300; testX += 20) {
-            item = tree.getItem(new Point(testX, y));
-          }
-        }
-
-        if (item != null && (item.getData() instanceof ApiState.Node)) {
-          hoverItem(item);
-          Path.Any follow = (Path.Any)labelProvider.getFollow(new Point(x, y));
-          setCursor((follow == null) ? null : getDisplay().getSystemCursor(SWT.CURSOR_HAND));
-        } else {
-          hoverItem(null);
-        }
-      }
-
-      private void hoverItem(TreeItem item) {
-        if (item != lastHovered) {
-          lastHovered = item;
-          lastPrefetcher.cancel();
-
-          ApiState.Node node = (item == null) ? null : (ApiState.Node)item.getData();
-          // TODO: if still loading, once loaded should update the hover data.
-          if (node == null || node.getData() == null || !node.getData().hasValuePath()) {
-            lastPrefetcher = nullPrefetcher();
-          } else {
-            lastPrefetcher = models.follower.prepare(node.getData().getValuePath(),
-                () -> Widgets.scheduleIfNotDisposed(tree, treeRefresher::refresh));
-          }
-
-          labelProvider.setHoveredItem(lastHovered, lastPrefetcher);
-          treeRefresher.refresh();
-        }
-      }
-    };
-    tree.addMouseListener(mouseHandler);
-    tree.addMouseTrackListener(mouseHandler);
-    tree.addMouseMoveListener(mouseHandler);
-    tree.addMouseWheelListener(mouseHandler);
-    tree.getVerticalBar().addSelectionListener(mouseHandler);
-
-    Menu popup = new Menu(tree);
+    Menu popup = new Menu(tree.getControl());
     Widgets.createMenuItem(popup, "&View Details", SWT.MOD1 + 'D', e -> {
-      TreeItem item = (tree.getSelectionCount() > 0) ? tree.getSelection()[0] : null;
-      if (item != null && (item.getData() instanceof ApiState.Node)) {
-        Service.StateTreeNode data = ((ApiState.Node)item.getData()).getData();
+      ApiState.Node node = tree.getSelection();
+      if (node != null) {
+        Service.StateTreeNode data = node.getData();
 
         if (data == null) {
           // Data not loaded yet, this shouldn't happen (see MenuDetect handler). Ignore.
@@ -236,29 +132,20 @@ public class StateView extends Composite
                     v.getBox(),  models.constants.getConstants(data.getConstants()), false)));
       }
     });
-    tree.setMenu(popup);
-    tree.addListener(SWT.MenuDetect, e -> {
-      if (!canShowPopup(tree.getItem(tree.toControl(e.x, e.y)))) {
-        e.doit = false;
-      }
-    });
+    tree.setPopupMenu(popup, StateView::canShowPopup);
 
-    CopySources.registerTreeAsCopySource(widgets.copypaste, viewer, object -> {
-      if (object instanceof ApiState.Node) {
-        Service.StateTreeNode node = ((ApiState.Node)object).getData();
-        if (node == null) {
-          // Copy before loaded. Not ideal, but this is unlikely.
-          return new String[] { "Loading..." };
-        } else if (!node.hasPreview()) {
-          return new String[] { node.getName() };
-        }
-
-        String text = Formatter.toString(node.getPreview(),
-            models.constants.getConstants(node.getConstants()), node.getPreviewIsValue());
-        return new String[] { node.getName(), text };
+    tree.registerAsCopySource(widgets.copypaste, node -> {
+      Service.StateTreeNode data = node.getData();
+      if (data == null) {
+        // Copy before loaded. Not ideal, but this is unlikely.
+        return new String[] { "Loading..." };
+      } else if (!data.hasPreview()) {
+        return new String[] { data.getName() };
       }
 
-      return new String[] { String.valueOf(object) };
+      String text = Formatter.toString(data.getPreview(),
+          models.constants.getConstants(data.getConstants()), data.getPreviewIsValue());
+      return new String[] { data.getName(), text };
     }, true);
   }
 
@@ -324,19 +211,10 @@ public class StateView extends Composite
     loading.stopLoading();
     if (scheduledExpandedPaths == null) {
       scheduledExpandedPaths = getExpandedPaths();
-      TreeItem topItem = viewer.getTree().getTopItem();
-      scheduledScrollPos = (topItem == null) ? null : center(topItem.getBounds());
+      scheduledScrollPos = tree.getScrollPos();
     }
-    viewer.setInput(models.state.getData());
+    tree.setInput(models.state.getData());
     updateExpansionState(scheduledExpandedPaths, scheduledExpandedPaths.size());
-
-    Path.Any selection = models.state.getSelectedPath();
-    if (selection == null) {
-      viewer.setSelection(
-          new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
-    } else {
-      updateSelectionState(false);
-    }
   }
 
   @Override
@@ -344,35 +222,31 @@ public class StateView extends Composite
     if (!models.state.isLoaded()) {
       return; // Once loaded, we'll call ourselves again.
     }
-    updateSelectionState(true);
+    updateSelectionState();
   }
 
-  private void updateSelectionState(boolean show) {
+  private void updateSelectionState() {
     ApiState.Node root = models.state.getData();
     selectionHandler.updateSelectionFromModel(
-        () -> Futures.transformAsync(
-            models.state.getResolvedSelectedPath(), nodePath -> getTreePath(root, nodePath)).get(),
-        selection -> {
-          viewer.refresh();
-          viewer.setSelection((selection.getSegmentCount() == 0) ?
-              TreeSelection.EMPTY : new TreeSelection(selection), show);
-          if (show) {
-            viewer.setExpandedState(selection, true);
-          }
+        () -> Futures.transformAsync(models.state.getResolvedSelectedPath(),
+            nodePath -> getTreePath(root, nodePath)).get(),
+        path -> {
+          tree.setSelection(path);
+          tree.setExpandedState(path, true);
         });
   }
 
   private List<Path.Any> getExpandedPaths() {
-    return stream(viewer.getExpandedElements())
-        .map(element -> ((ApiState.Node)element).getData())
-        .filter(data -> data != null)
-        .map(data -> data.getValuePath())
+    return stream(tree.getExpandedElements())
+        .map(n -> ((ApiState.Node)n).getData())
+        .filter(Objects::nonNull)
+        .map(Service.StateTreeNode::getValuePath)
         .collect(toList());
   }
 
   protected void updateExpansionState(List<Path.Any> paths, int retry) {
     ApiState.Node root = models.state.getData();
-    GlobalState rootPath = Paths.findGlobalState(root.getData().getValuePath());
+    Path.GlobalState rootPath = Paths.findGlobalState(root.getData().getValuePath());
     List<ListenableFuture<TreePath>> futures = Lists.newArrayList();
     for (Path.Any path : paths) {
       Path.Any reparented = Paths.reparent(path, rootPath);
@@ -384,8 +258,7 @@ public class StateView extends Composite
           nodePath -> getTreePath(root, nodePath)));
     }
 
-    Rpc.listen(Futures.allAsList(futures),
-        new UiCallback<List<TreePath>, TreePath[]>(viewer.getTree(), LOG) {
+    Rpc.listen(Futures.allAsList(futures), new UiCallback<List<TreePath>, TreePath[]>(tree, LOG) {
       @Override
       protected TreePath[] onRpcThread(Rpc.Result<List<TreePath>> result)
           throws RpcException, ExecutionException {
@@ -401,26 +274,26 @@ public class StateView extends Composite
   }
 
   protected void setExpanded(TreePath[] treePaths, List<Path.Any> paths, int retry) {
-    viewer.refresh();
     for (TreePath path : treePaths) {
-      viewer.setExpandedState(path, true);
-      if (!viewer.getExpandedState(path)) {
+      tree.setExpandedState(path, true);
+      if (!tree.getExpandedState(path)) {
         if (retry > 0) {
           updateExpansionState(paths, retry - 1);
           return;
         }
       }
     }
-
-    if (scheduledScrollPos != null) {
-      TreeItem topItem = viewer.getTree().getItem(scheduledScrollPos);
-      if (topItem != null) {
-        viewer.getTree().setTopItem(topItem);
-      }
-    }
+    tree.scrollTo(scheduledScrollPos);
 
     scheduledExpandedPaths = null;
     scheduledScrollPos = null;
+
+    Path.Any selection = models.state.getSelectedPath();
+    if (selection == null) {
+      tree.setSelection(null);
+    } else {
+      updateSelectionState();
+    }
   }
 
   private ListenableFuture<TreePath> getTreePath(ApiState.Node root, Path.StateTreeNode nodePath) {
@@ -447,93 +320,84 @@ public class StateView extends Composite
     return getTreePath(child, path, indices);
   }
 
-  private static boolean canShowPopup(TreeItem item) {
-    if (item == null || !(item.getData() instanceof ApiState.Node)) {
-      return false;
-    }
-    Service.StateTreeNode data = ((ApiState.Node)item.getData()).getData();
+  private static boolean canShowPopup(ApiState.Node node) {
+    Service.StateTreeNode data = node.getData();
     return data != null && data.hasPreview();
   }
 
-  /**
-   * Content provider for the state tree.
-   */
-  private static class StateContentProvider implements ILazyTreeContentProvider {
-    private final ApiState state;
-    private final TreeViewer viewer;
-    private final Widgets.Refresher refresher;
+  private static class StateTree extends LinkifiedTree<ApiState.Node, Void> {
+    protected final Models models;
 
-    public StateContentProvider(ApiState state, TreeViewer viewer) {
-      this.state = state;
-      this.viewer = viewer;
-      this.refresher = Widgets.withAsyncRefresh(viewer);
+    public StateTree(Composite parent, Models models, Widgets widgets) {
+      super(parent, SWT.H_SCROLL | SWT.V_SCROLL, widgets);
+      this.models = models;
     }
 
     @Override
-    public void updateChildCount(Object element, int currentChildCount) {
-      viewer.setChildCount(element, ((ApiState.Node)element).getChildCount());
+    protected ContentProvider<Node> createContentProvider() {
+      return new ContentProvider<ApiState.Node>() {
+        @Override
+        protected boolean hasChildNodes(ApiState.Node element) {
+          return element.getChildCount() > 0;
+        }
+
+        @Override
+        protected ApiState.Node[] getChildNodes(ApiState.Node node) {
+          return node.getChildren();
+        }
+
+        @Override
+        protected ApiState.Node getParentNode(ApiState.Node child) {
+          return child.getParent();
+        }
+
+        @Override
+        protected boolean isLoaded(ApiState.Node element) {
+          return element.getData() != null;
+        }
+
+        @Override
+        protected void load(ApiState.Node node, Runnable callback) {
+          models.state.load(node, callback);
+        }
+      };
     }
 
     @Override
-    public void updateElement(Object parent, int index) {
-      ApiState.Node child = ((ApiState.Node)parent).getChild(index);
-      state.load(child, refresher::refresh);
-      viewer.replace(parent, index, child);
-      viewer.setHasChildren(child, child.getChildCount() > 0);
-    }
-
-    @Override
-    public Object getParent(Object element) {
-      return ((ApiState.Node)element).getParent();
-    }
-  }
-
-  /**
-   * Label provider for the state tree.
-   */
-  private static class ViewLabelProvider extends MeasuringViewLabelProvider {
-    private final ConstantSets constants;
-    private TreeItem hoveredItem;
-    private Follower.Prefetcher<Void> follower;
-
-    public ViewLabelProvider(TreeViewer viewer, ConstantSets constants, Theme theme) {
-      super(viewer, theme);
-      this.constants = constants;
-    }
-
-    public void setHoveredItem(TreeItem hoveredItem, Follower.Prefetcher<Void> follower) {
-      this.hoveredItem = hoveredItem;
-      this.follower = follower;
-    }
-
-    @Override
-    protected <S extends StylingString> S format(Widget item, Object element, S string) {
-      Service.StateTreeNode data = ((ApiState.Node)element).getData();
+    protected <S extends StylingString> S format(
+        ApiState.Node node, S string, Follower.Prefetcher<Void> follower) {
+      Service.StateTreeNode data = node.getData();
       if (data == null) {
         string.append("Loading...", string.structureStyle());
       } else {
         string.append(data.getName(), string.defaultStyle());
         if (data.hasPreview()) {
-         string.append(": ", string.structureStyle());
-         Path.Any follow = getFollower(item).canFollow(null);
-         string.startLink(follow);
-         Formatter.format(data.getPreview(), constants.getConstants(data.getConstants()),
-             data.getPreviewIsValue(), string,
-             (follow == null) ? string.defaultStyle() : string.linkStyle());
-         string.endLink();
+          string.append(": ", string.structureStyle());
+          Path.Any follow = follower.canFollow(null);
+          string.startLink(follow);
+          Formatter.format(data.getPreview(), models.constants.getConstants(data.getConstants()),
+              data.getPreviewIsValue(), string,
+              (follow == null) ? string.defaultStyle() : string.linkStyle());
+          string.endLink();
         }
       }
       return string;
     }
 
-    private Follower.Prefetcher<Void> getFollower(Widget item) {
-      return (item == hoveredItem) ? follower : nullPrefetcher();
+    @Override
+    protected Color getBackgroundColor(ApiState.Node node) {
+      return null;
     }
 
     @Override
-    protected boolean isFollowable(Object element) {
-      ApiState.Node node = (ApiState.Node)element;
-      return node.getData() != null && node.getData().hasValuePath();
+    protected Follower.Prefetcher<Void> prepareFollower(ApiState.Node node, Runnable callback) {
+      return node.getData() == null || !node.getData().hasValuePath() ? nullPrefetcher() :
+        models.follower.prepare(node.getData().getValuePath(), callback);
+    }
+
+    @Override
+    protected void follow(Path.Any path) {
+      models.follower.onFollow(path);
     }
   }
 }

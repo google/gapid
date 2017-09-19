@@ -17,6 +17,8 @@ package com.google.gapid.util;
 
 import static java.util.logging.Level.FINE;
 
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Widget;
 
@@ -45,6 +47,14 @@ public class Events {
     event.text = text;
     event.detail = regex ? REGEX : 0;
     return event;
+  }
+
+  public static Point getLocation(Event e) {
+    return new Point(e.x, e.y);
+  }
+
+  public static Point getLocation(MouseEvent e) {
+    return new Point(e.x, e.y);
   }
 
   /**
