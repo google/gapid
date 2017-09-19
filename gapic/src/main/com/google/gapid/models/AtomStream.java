@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.logging.Level.FINE;
 
 import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
@@ -350,7 +351,6 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     public Node(Service.CommandTreeNode data) {
       this(null, 0);
       this.data = data;
-      this.children = new Node[(int)data.getNumChildren()];
     }
 
     public Node(Node parent, int index) {
@@ -367,11 +367,22 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     }
 
     public Node getChild(int child) {
-      Node node = children[child];
-      if (node == null) {
-        node = children[child] = new Node(this, child);
+      return getOrCreateChildren()[child];
+    }
+
+    public Node[] getChildren() {
+      return getOrCreateChildren().clone();
+    }
+
+    private Node[] getOrCreateChildren() {
+      if (children == null) {
+        Preconditions.checkState(data != null, "Querying children before loaded");
+        children = new Node[(int)data.getNumChildren()];
+        for (int i = 0; i < children.length; i++) {
+          children[i] = new Node(this, i);
+        }
       }
-      return node;
+      return children;
     }
 
     public boolean isLastChild() {
@@ -407,7 +418,6 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
         submitIfNotDisposed(shell, () -> {
           data = newData.data;
           command = newData.command;
-          children = new Node[(int)data.getNumChildren()];
           loadFuture = null; // Don't hang on to listeners.
           return Node.this;
         }));

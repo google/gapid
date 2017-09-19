@@ -577,7 +577,7 @@ public class Widgets {
     AtomicBoolean scheduled = new AtomicBoolean();
     return () -> ifNotDisposed(viewer.getControl(), () -> {
       if (!scheduled.getAndSet(true)) {
-        viewer.getControl().getDisplay().timerExec(25, () -> {
+        viewer.getControl().getDisplay().timerExec(5, () -> {
           scheduled.set(false);
           ifNotDisposed(viewer.getControl(), viewer::refresh);
         });

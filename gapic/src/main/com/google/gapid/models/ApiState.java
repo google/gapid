@@ -22,6 +22,7 @@ import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.AtomStream.AtomIndex;
@@ -173,7 +174,6 @@ public class ApiState
     public Node(Service.StateTreeNode data) {
       this(null, 0);
       this.data = data;
-      this.children = new Node[(int)data.getNumChildren()];
     }
 
     public Node(Node parent, int index) {
@@ -190,11 +190,22 @@ public class ApiState
     }
 
     public Node getChild(int child) {
-      Node node = children[child];
-      if (node == null) {
-        node = children[child] = new Node(this, child);
+      return getOrCreateChildren()[child];
+    }
+
+    public Node[] getChildren() {
+      return getOrCreateChildren().clone();
+    }
+
+    private Node[] getOrCreateChildren() {
+      if (children == null) {
+        Preconditions.checkState(data != null, "Querying children before loaded");
+        children = new Node[(int)data.getNumChildren()];
+        for (int i = 0; i < children.length; i++) {
+          children[i] = new Node(this, i);
+        }
       }
-      return node;
+      return children;
     }
 
     public Service.StateTreeNode getData() {
@@ -209,14 +220,13 @@ public class ApiState
       if (data != null) {
         // Already loaded.
         return null;
-      } else if (loadFuture != null) {
+      } else if (loadFuture != null && !loadFuture.isCancelled()) {
         return loadFuture;
       }
 
       return loadFuture = Futures.transformAsync(loader.get(), newData ->
           submitIfNotDisposed(shell, () -> {
             data = newData.data;
-            children = new Node[(int)data.getNumChildren()];
             loadFuture = null; // Don't hang on to listeners.
             return Node.this;
           }));

@@ -20,14 +20,8 @@ import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
 import static com.google.gapid.util.Colors.getRandomColor;
 import static com.google.gapid.util.Colors.lerp;
-import static com.google.gapid.util.GeoUtils.right;
-import static com.google.gapid.util.GeoUtils.vertCenter;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Paths.lastCommand;
-import static com.google.gapid.widgets.Widgets.createTreeForViewer;
-import static com.google.gapid.widgets.Widgets.createTreeViewer;
-import static com.google.gapid.widgets.Widgets.ifNotDisposed;
-import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -38,8 +32,8 @@ import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
+import com.google.gapid.models.AtomStream.Node;
 import com.google.gapid.models.Capture;
-import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
@@ -54,52 +48,33 @@ import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.MouseAdapter;
-import com.google.gapid.util.Scheduler;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
-import com.google.gapid.widgets.Balloon;
-import com.google.gapid.widgets.CopySources;
+import com.google.gapid.widgets.LinkifiedTreeWithImages;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadableImageWidget;
 import com.google.gapid.widgets.LoadablePanel;
-import com.google.gapid.widgets.LoadingIndicator;
-import com.google.gapid.widgets.MeasuringViewLabelProvider;
 import com.google.gapid.widgets.SearchBox;
-import com.google.gapid.widgets.Theme;
-import com.google.gapid.widgets.VisibilityTrackingTreeViewer;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.viewers.ILazyTreeContentProvider;
 import org.eclipse.jface.viewers.TreePath;
-import org.eclipse.jface.viewers.TreeSelection;
-import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MouseEvent;
-import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGBA;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.Tree;
-import org.eclipse.swt.widgets.TreeItem;
-import org.eclipse.swt.widgets.Widget;
+import org.eclipse.swt.widgets.Shell;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -108,14 +83,12 @@ import java.util.logging.Logger;
 public class AtomTree extends Composite implements Tab, Capture.Listener, AtomStream.Listener,
     ApiContext.Listener, Thumbnails.Listener {
   protected static final Logger LOG = Logger.getLogger(AtomTree.class.getName());
-  private static final int PREVIEW_HOVER_DELAY_MS = 500;
 
   private final Client client;
   private final Models models;
-  private final LoadablePanel<Tree> loading;
-  private final TreeViewer viewer;
-  private final ImageProvider imageProvider;
-  private final SelectionHandler<Tree> selectionHandler;
+  private final LoadablePanel<CommandTree> loading;
+  protected final CommandTree tree;
+  private final SelectionHandler<Control> selectionHandler;
   private final SingleInFlight searchController = new SingleInFlight();
 
   public AtomTree(Composite parent, Client client, Models models, Widgets widgets) {
@@ -126,15 +99,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     setLayout(new GridLayout(1, false));
 
     SearchBox search = new SearchBox(this, false);
-    loading = new LoadablePanel<Tree>(this, widgets,
-        p -> createTreeForViewer(p, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL));
-    Tree tree = loading.getContents();
-    viewer = createTreeViewer(tree);
-    imageProvider = new ImageProvider(models.thumbs, viewer, widgets.loading);
-    viewer.setContentProvider(new AtomContentProvider(models.atoms, viewer));
-    ViewLabelProvider labelProvider = new ViewLabelProvider(
-        viewer, models.constants, widgets.theme, imageProvider);
-    viewer.setLabelProvider(labelProvider);
+    loading = LoadablePanel.create(this, widgets, p -> new CommandTree(p, models, widgets));
+    tree = loading.getContents();
 
     search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -148,18 +114,15 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       models.atoms.removeListener(this);
       models.contexts.removeListener(this);
       models.thumbs.removeListener(this);
-      imageProvider.reset();
-      labelProvider.reset();
     });
 
     search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
 
-    selectionHandler = new SelectionHandler<Tree>(LOG, tree) {
+    selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
       @Override
       protected void updateModel(Event e) {
-        Object selection = (tree.getSelectionCount() > 0) ? tree.getSelection()[0].getData() : null;
-        if (selection instanceof AtomStream.Node) {
-          AtomStream.Node node = (AtomStream.Node)selection;
+        AtomStream.Node node = tree.getSelection();
+        if (node != null) {
           AtomIndex index = node.getIndex();
           if (index == null) {
             models.atoms.load(node, () -> models.atoms.selectAtoms(node.getIndex(), false));
@@ -170,215 +133,54 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       }
     };
 
-    Menu popup = new Menu(tree);
+    Menu popup = new Menu(tree.getControl());
     Widgets.createMenuItem(popup, "&Edit", SWT.MOD1 + 'E', e -> {
-      TreeItem item = (tree.getSelectionCount() > 0) ? tree.getSelection()[0] : null;
-      if (item != null && (item.getData() instanceof AtomStream.Node)) {
-        AtomStream.Node node = (AtomStream.Node)item.getData();
-        if (node.getData() != null && node.getCommand() != null) {
-          widgets.editor.showEditPopup(getShell(), lastCommand(node.getData().getCommands()),
-              node.getCommand());
-        }
+      AtomStream.Node node = tree.getSelection();
+      if (node != null && node.getData() != null && node.getCommand() != null) {
+        widgets.editor.showEditPopup(getShell(), lastCommand(node.getData().getCommands()),
+            node.getCommand());
       }
     });
-    tree.setMenu(popup);
-    tree.addListener(SWT.MenuDetect, e -> {
-      TreeItem item = tree.getItem(tree.toControl(e.x, e.y));
-      if (item == null || !(item.getData() instanceof AtomStream.Node)) {
-        e.doit = false;
-      } else {
-        AtomStream.Node node = (AtomStream.Node)item.getData();
-        if (node.getData() == null || node.getCommand() == null) {
-          e.doit = false;
-        } else {
-          e.doit = AtomEditor.shouldShowEditPopup(node.getCommand());
-        }
-      }
-    });
+    tree.setPopupMenu(popup, node ->
+        node.getData() != null && node.getCommand() != null &&
+        AtomEditor.shouldShowEditPopup(node.getCommand()));
 
-    Widgets.Refresher treeRefresher = Widgets.withAsyncRefresh(viewer);
-    MouseAdapter mouseHandler = new MouseAdapter() {
-      private Future<?> lastScheduledFuture = Futures.immediateFuture(null);
-      private TreeItem lastHovered, lastHoveredImage;
-      private Follower.Prefetcher<String> lastPrefetcher = nullPrefetcher();
-      private Balloon lastShownBalloon;
-
-      @Override
-      public void mouseMove(MouseEvent e) {
-        updateHover(e.x, e.y);
+    tree.registerAsCopySource(widgets.copypaste, node -> {
+      Service.CommandTreeNode data = node.getData();
+      if (data == null) {
+        // Copy before loaded. Not ideal, but this is unlikely.
+        return new String[] { "Loading..." };
       }
 
-      @Override
-      public void mouseScrolled(MouseEvent e) {
-        updateHover(e.x, e.y);
-      }
-
-      @Override
-      public void widgetSelected(SelectionEvent e) {
-        // Scrollbar was moved / mouse wheel caused scrolling. This is required for systems with
-        // a touchpad with scrolling inertia, where the view keeps scrolling long after the mouse
-        // wheel event has been processed.
-        Display disp = getDisplay();
-        Point mouse = disp.map(null, tree, disp.getCursorLocation());
-        updateHover(mouse.x, mouse.y);
-      }
-
-      @Override
-      public void mouseDown(MouseEvent e) {
-        Point location = new Point(e.x, e.y);
-        Path.Any follow = (Path.Any)labelProvider.getFollow(location);
-        if (follow != null) {
-          models.follower.onFollow(follow);
-        }
-      }
-
-      @Override
-      public void mouseExit(MouseEvent e) {
-        hoverItem(null);
-        hoverImage(null);
-      }
-
-      private void updateHover(int x, int y) {
-        TreeItem item = tree.getItem(new Point(x, y));
-        // When hovering over the far left of deep items, getItem returns null. Let's check a few
-        // more places to the right.
-        if (item == null) {
-          for (int testX = x + 20; item == null && testX < 300; testX += 20) {
-            item = tree.getItem(new Point(testX, y));
-          }
-        }
-
-        if (item != null && (item.getData() instanceof AtomStream.Node)) {
-          hoverItem(item);
-          if (item.getImage() != null && item.getImageBounds(0).contains(x, y)) {
-            hoverImage(item);
-          } else {
-            hoverImage(null);
-          }
-
-          Path.Any follow = (Path.Any)labelProvider.getFollow(new Point(x, y));
-          setCursor((follow == null) ? null : getDisplay().getSystemCursor(SWT.CURSOR_HAND));
-        } else {
-          hoverItem(null);
-          hoverImage(null);
-        }
-      }
-
-      private void hoverItem(TreeItem item) {
-        if (item != lastHovered) {
-          lastHovered = item;
-          lastPrefetcher.cancel();
-
-          AtomStream.Node node = (item == null) ? null : (AtomStream.Node)item.getData();
-          // TODO: if still loading, once loaded should update the hover data.
-          if (node == null || node.getData() == null || node.getCommand() == null) {
-            lastPrefetcher = nullPrefetcher();
-          } else {
-            lastPrefetcher = models.follower.prepare(lastCommand(node.getData().getCommands()),
-                node.getCommand(), () -> scheduleIfNotDisposed(tree, treeRefresher::refresh));
-          }
-
-          labelProvider.setHoveredItem(lastHovered, lastPrefetcher);
-          treeRefresher.refresh();
-        }
-      }
-
-      private void hoverImage(TreeItem item) {
-        if (item != lastHoveredImage) {
-          lastScheduledFuture.cancel(true);
-          lastHoveredImage = item;
-          if (item != null) {
-            lastScheduledFuture = Scheduler.EXECUTOR.schedule(() ->
-              Widgets.scheduleIfNotDisposed(
-                  tree, () -> showBalloon(item, (AtomStream.Node)item.getData())),
-              PREVIEW_HOVER_DELAY_MS, TimeUnit.MILLISECONDS);
-          }
-          if (lastShownBalloon != null) {
-            lastShownBalloon.close();
-          }
-        }
-      }
-
-      private void showBalloon(TreeItem item, AtomStream.Node node) {
-        if (lastShownBalloon != null) {
-          lastShownBalloon.close();
-        }
-        Rectangle bounds = item.getImageBounds(0);
-        lastShownBalloon = Balloon.createAndShow(tree, shell -> {
-          LoadableImageWidget.forImage(
-              shell, LoadableImage.newBuilder(widgets.loading)
-                  .forImageData(loadImage(node))
-                  .onErrorShowErrorIcon(widgets.theme))
-          .withImageEventListener(new LoadableImage.Listener() {
-            @Override
-            public void onLoaded(boolean success) {
-              if (success) {
-                Widgets.ifNotDisposed(shell,() -> {
-                  Point oldSize = shell.getSize();
-                  Point newSize = shell.computeSize(SWT.DEFAULT, SWT.DEFAULT);
-                  shell.setSize(newSize);
-                  if (oldSize.y != newSize.y) {
-                    Point location = shell.getLocation();
-                    location.y += (oldSize.y - newSize.y) / 2;
-                    shell.setLocation(location);
-                  }
-                });
-              }
-            }
-          });
-        }, new Point(right(bounds) + 2, vertCenter(bounds) - THUMB_SIZE / 2));
-      }
-
-      private ListenableFuture<ImageData> loadImage(AtomStream.Node node) {
-        return noAlpha(models.thumbs.getThumbnail(
-            node.getPath(Path.CommandTreeNode.newBuilder()).build(), THUMB_SIZE, i -> { /*noop*/}));
-      }
-    };
-    tree.addMouseListener(mouseHandler);
-    tree.addMouseTrackListener(mouseHandler);
-    tree.addMouseMoveListener(mouseHandler);
-    tree.addMouseWheelListener(mouseHandler);
-    tree.getVerticalBar().addSelectionListener(mouseHandler);
-
-    CopySources.registerTreeAsCopySource(widgets.copypaste, viewer, object -> {
-      if (object instanceof AtomStream.Node) {
-        AtomStream.Node node = (AtomStream.Node)object;
-        Service.CommandTreeNode data = node.getData();
-        if (data == null) {
+      StringBuilder result = new StringBuilder();
+      if (data.getGroup().isEmpty() && data.hasCommands()) {
+        result.append(data.getCommands().getTo(0)).append(": ");
+        API.Command cmd = node.getCommand();
+        if (cmd == null) {
           // Copy before loaded. Not ideal, but this is unlikely.
-          return new String[] { "Loading..." };
-        }
-
-        StringBuilder result = new StringBuilder();
-        if (data.getGroup().isEmpty() && data.hasCommands()) {
-          result.append(data.getCommands().getTo(0)).append(": ");
-          API.Command cmd = node.getCommand();
-          if (cmd == null) {
-            // Copy before loaded. Not ideal, but this is unlikely.
-            result.append("Loading...");
-          } else {
-            result.append(Formatter.toString(cmd, models.constants::getConstants));
-          }
+          result.append("Loading...");
         } else {
-          result.append(data.getCommands().getFrom(0)).append(": ").append(data.getGroup());
+          result.append(Formatter.toString(cmd, models.constants::getConstants));
         }
-        return new String[] { result.toString() };
+      } else {
+        result.append(data.getCommands().getFrom(0)).append(": ").append(data.getGroup());
       }
-      return new String[] { String.valueOf(object) };
+      return new String[] { result.toString() };
     }, true);
   }
 
   private void search(String text, boolean regex) {
     AtomStream.Node parent = models.atoms.getData();
     if (parent != null && !text.isEmpty()) {
-      if (viewer.getTree().getSelectionCount() >= 1) {
-        parent = (AtomStream.Node)viewer.getTree().getSelection()[0].getData();
+      AtomStream.Node selection = tree.getSelection();
+      if (selection != null) {
+        parent = selection;
       }
       searchController.start().listen(
           Futures.transformAsync(search(searchRequest(parent, text, regex)),
               r -> getTreePath(models.atoms.getData(), Lists.newArrayList(),
                   r.getCommandTreeNode().getIndicesList().iterator())),
-          new UiCallback<TreePath, TreePath>(viewer.getTree(), LOG) {
+          new UiCallback<TreePath, TreePath>(tree, LOG) {
         @Override
         protected TreePath onRpcThread(Rpc.Result<TreePath> result)
             throws RpcException, ExecutionException {
@@ -443,8 +245,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   @Override
   public void onAtomsSelected(AtomIndex index) {
-    selectionHandler.updateSelectionFromModel(() -> getTreePath(index).get(),
-        selection -> viewer.setSelection(new TreeSelection(selection), true));
+    selectionHandler.updateSelectionFromModel(() -> getTreePath(index).get(), tree::setSelection);
   }
 
   @Override
@@ -459,24 +260,18 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   @Override
   public void onThumbnailsChanged() {
-    imageProvider.reset();
-    viewer.refresh();
+    tree.refreshImages();
   }
 
   private void updateTree(boolean assumeLoading) {
-    imageProvider.reset();
-
     if (assumeLoading || !models.atoms.isLoaded()) {
       loading.startLoading();
-      viewer.setInput(null);
+      tree.setInput(null);
       return;
     }
 
     loading.stopLoading();
-    viewer.setInput(models.atoms.getData());
-    viewer.getTree().setSelection(viewer.getTree().getItem(0));
-    viewer.getTree().showSelection();
-
+    tree.setInput(models.atoms.getData());
     if (models.atoms.getSelectedAtoms() != null) {
       onAtomsSelected(models.atoms.getSelectedAtoms());
     }
@@ -524,142 +319,79 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     return getTreePath(child, path, indices);
   }
 
-  /**
-   * Content provider for the command tree.
-   */
-  private static class AtomContentProvider implements ILazyTreeContentProvider {
-    private final AtomStream atoms;
-    private final TreeViewer viewer;
-    private final Widgets.Refresher refresher;
+  private static class CommandTree extends LinkifiedTreeWithImages<AtomStream.Node, String> {
+    private static final float COLOR_INTENSITY = 0.15f;
 
-    public AtomContentProvider(AtomStream atoms, TreeViewer viewer) {
-      this.atoms = atoms;
-      this.viewer = viewer;
-      this.refresher = Widgets.withAsyncRefresh(viewer);
+    protected final Models models;
+    private final Widgets widgets;
+    private final Map<Long, Color> threadBackgroundColors = Maps.newHashMap();
+
+    public CommandTree(Composite parent, Models models, Widgets widgets) {
+      super(parent, SWT.H_SCROLL | SWT.V_SCROLL, widgets);
+      this.models = models;
+      this.widgets = widgets;
     }
 
     @Override
-    public void updateChildCount(Object element, int currentChildCount) {
-      viewer.setChildCount(element, ((AtomStream.Node)element).getChildCount());
-    }
-
-    @Override
-    public void updateElement(Object parent, int index) {
-      AtomStream.Node child = ((AtomStream.Node)parent).getChild(index);
-      atoms.load(child, refresher::refresh);
-      viewer.replace(parent, index, child);
-      viewer.setHasChildren(child, child.getChildCount() > 0);
-    }
-
-    @Override
-    public Object getParent(Object element) {
-      return ((AtomStream.Node)element).getParent();
-    }
-  }
-
-  /**
-   * Image provider for the command tree. Groups that represent frames or draw calls will have
-   * a thumbnail preview of the framebuffer in the tree.
-   */
-  private static class ImageProvider implements LoadingIndicator.Repaintable {
-    private static final int PREVIEW_SIZE = 18;
-
-    private final Thumbnails thumbs;
-    private final TreeViewer viewer;
-    private final LoadingIndicator loading;
-    private final Map<AtomStream.Node, LoadableImage> images = Maps.newIdentityHashMap();
-
-    public ImageProvider(Thumbnails thumbs, TreeViewer viewer, LoadingIndicator loading) {
-      this.thumbs = thumbs;
-      this.viewer = viewer;
-      this.loading = loading;
-    }
-
-    public void load(AtomStream.Node group) {
-      LoadableImage image = getLoadableImage(group);
-      if (image != null) {
-        image.load();
-      }
-    }
-
-    public void unload(AtomStream.Node group) {
-      LoadableImage image = images.get(group);
-      if (image != null) {
-        image.unload();
-      }
-    }
-
-    public Image getImage(AtomStream.Node group) {
-      LoadableImage image = getLoadableImage(group);
-      return (image == null) ? null : image.getImage();
-    }
-
-    private LoadableImage getLoadableImage(AtomStream.Node group) {
-      LoadableImage image = images.get(group);
-      if (image == null) {
-        if (!shouldShowImage(group) || !thumbs.isReady()) {
-          return null;
+    protected ContentProvider<Node> createContentProvider() {
+      return new ContentProvider<AtomStream.Node>() {
+        @Override
+        protected boolean hasChildNodes(AtomStream.Node element) {
+          return element.getChildCount() > 0;
         }
 
-        image = LoadableImage.newBuilder(loading)
-            .small()
-            .forImageData(() -> loadImage(group))
-            .onErrorReturnNull()
-            .build(viewer.getTree(), this);
-        images.put(group, image);
-      }
-      return image;
+        @Override
+        protected AtomStream.Node[] getChildNodes(AtomStream.Node node) {
+          return node.getChildren();
+        }
+
+        @Override
+        protected AtomStream.Node getParentNode(AtomStream.Node child) {
+          return child.getParent();
+        }
+
+        @Override
+        protected boolean isLoaded(AtomStream.Node element) {
+          return element.getData() != null;
+        }
+
+        @Override
+        protected void load(AtomStream.Node node, Runnable callback) {
+          models.atoms.load(node, callback);
+        }
+      };
     }
 
     @Override
-    public void repaint() {
-      ifNotDisposed(viewer.getControl(), viewer::refresh);
-    }
-
-    private static boolean shouldShowImage(AtomStream.Node node) {
-      return node.getData() != null && !node.getData().getGroup().isEmpty();
-    }
-
-    private ListenableFuture<ImageData> loadImage(AtomStream.Node node) {
-      return noAlpha(thumbs.getThumbnail(
-          node.getPath(Path.CommandTreeNode.newBuilder()).build(), PREVIEW_SIZE, i -> {/*noop*/}));
-    }
-
-    public void reset() {
-      for (LoadableImage image : images.values()) {
-        image.dispose();
+    protected <S extends StylingString> S format(
+        AtomStream.Node element, S string, Follower.Prefetcher<String> follower) {
+      Service.CommandTreeNode data = element.getData();
+      if (data == null) {
+        string.append("Loading...", string.structureStyle());
+      } else {
+        if (data.getGroup().isEmpty() && data.hasCommands()) {
+          string.append(Formatter.lastIndex(data.getCommands()) + ": ", string.defaultStyle());
+          API.Command cmd = element.getCommand();
+          if (cmd == null) {
+            string.append("Loading...", string.structureStyle());
+          } else {
+            Formatter.format(cmd, models.constants::getConstants, follower::canFollow,
+                string, string.identifierStyle());
+          }
+        } else {
+          string.append(Formatter.firstIndex(data.getCommands()) + ": ", string.defaultStyle());
+          string.append(data.getGroup(), string.labelStyle());
+          long count = data.getNumCommands();
+          string.append(
+              " (" + count + " command" + (count != 1 ? "s" : "") + ")", string.structureStyle());
+        }
       }
-      images.clear();
-    }
-  }
-
-  /**
-   * Label provider for the command tree.
-   */
-  private static class ViewLabelProvider extends MeasuringViewLabelProvider
-      implements VisibilityTrackingTreeViewer.Listener {
-    private static final float COLOR_INTENSITY = 0.15f;
-    private final ConstantSets constants;
-    private final ImageProvider imageProvider;
-    private final Map<Long, Color> threadBackgroundColors = Maps.newHashMap();
-    private TreeItem hoveredItem;
-    private Follower.Prefetcher<String> follower;
-
-    public ViewLabelProvider(
-        TreeViewer viewer, ConstantSets constants, Theme theme, ImageProvider imageProvider) {
-      super(viewer, theme);
-      this.constants = constants;
-      this.imageProvider = imageProvider;
-    }
-
-    public void setHoveredItem(TreeItem hoveredItem, Follower.Prefetcher<String> follower) {
-      this.hoveredItem = hoveredItem;
-      this.follower = follower;
+      return string;
     }
 
     @Override
-    protected Color getBackgroundColor(Object element) {
-      API.Command cmd = ((AtomStream.Node)element).getCommand();
+    protected Color getBackgroundColor(AtomStream.Node node) {
+      API.Command cmd = node.getCommand();
       if (cmd == null) {
         return null;
       }
@@ -667,7 +399,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       long threadId = cmd.getThread();
       Color color = threadBackgroundColors.get(threadId);
       if (color == null) {
-        Control control = getViewer().getControl();
+        Control control = getControl();
         RGBA bg = control.getBackground().getRGBA();
         color = new Color(control.getDisplay(),
             lerp(getRandomColor(getColorIndex(threadId)), bg.rgb, COLOR_INTENSITY), bg.alpha);
@@ -686,67 +418,56 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     @Override
-    protected <S extends StylingString> S format(Widget item, Object element, S string) {
-      Service.CommandTreeNode data = ((AtomStream.Node)element).getData();
-      if (data == null) {
-        string.append("Loading...", string.structureStyle());
-      } else {
-        if (data.getGroup().isEmpty() && data.hasCommands()) {
-          string.append(Formatter.lastIndex(data.getCommands()) + ": ", string.defaultStyle());
-          API.Command cmd = ((AtomStream.Node)element).getCommand();
-          if (cmd == null) {
-            string.append("Loading...", string.structureStyle());
-          } else {
-            Formatter.format(cmd, constants::getConstants, getFollower(item)::canFollow,
-                string, string.identifierStyle());
+    protected boolean shouldShowImage(AtomStream.Node node) {
+      return models.thumbs.isReady() &&
+          node.getData() != null && !node.getData().getGroup().isEmpty();
+    }
+
+    @Override
+    protected ListenableFuture<ImageData> loadImage(AtomStream.Node node, int size) {
+      return noAlpha(models.thumbs.getThumbnail(
+          node.getPath(Path.CommandTreeNode.newBuilder()).build(), size, i -> { /*noop*/ }));
+    }
+
+    @Override
+    protected void createImagePopupContents(Shell shell, AtomStream.Node node) {
+      LoadableImageWidget.forImage(
+          shell, LoadableImage.newBuilder(widgets.loading)
+              .forImageData(loadImage(node, THUMB_SIZE))
+              .onErrorShowErrorIcon(widgets.theme))
+      .withImageEventListener(new LoadableImage.Listener() {
+        @Override
+        public void onLoaded(boolean success) {
+          if (success) {
+            Widgets.ifNotDisposed(shell,() -> {
+              Point oldSize = shell.getSize();
+              Point newSize = shell.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+              shell.setSize(newSize);
+              if (oldSize.y != newSize.y) {
+                Point location = shell.getLocation();
+                location.y += (oldSize.y - newSize.y) / 2;
+                shell.setLocation(location);
+              }
+            });
           }
-        } else {
-          string.append(Formatter.firstIndex(data.getCommands()) + ": ", string.defaultStyle());
-          string.append(data.getGroup(), string.labelStyle());
-          long count = data.getNumCommands();
-          string.append(
-              " (" + count + " command" + (count != 1 ? "s" : "") + ")", string.structureStyle());
         }
-      }
-      return string;
-    }
-
-    private Follower.Prefetcher<String> getFollower(Widget item) {
-      return (item == hoveredItem) ? follower : nullPrefetcher();
+      });
     }
 
     @Override
-    protected Image getImage(Object element) {
-      Image result = null;
-      if (element instanceof AtomStream.Node) {
-        result = imageProvider.getImage((AtomStream.Node)element);
-      }
-      return result;
+    protected Follower.Prefetcher<String> prepareFollower(AtomStream.Node node, Runnable cb) {
+      return (node.getData() == null || node.getCommand() == null) ? nullPrefetcher() :
+          models.follower.prepare(lastCommand(node.getData().getCommands()), node.getCommand(), cb);
     }
 
     @Override
-    protected boolean isFollowable(Object element) {
-      AtomStream.Node node = (AtomStream.Node)element;
-      return node.getData() != null && node.getCommand() != null;
+    protected void follow(Path.Any path) {
+      models.follower.onFollow(path);
     }
 
     @Override
-    public void onShow(TreeItem item) {
-      Object element = item.getData();
-      if (element instanceof AtomStream.Node) {
-        imageProvider.load((AtomStream.Node)element);
-      }
-    }
-
-    @Override
-    public void onHide(TreeItem item) {
-      Object element = item.getData();
-      if (element instanceof AtomStream.Node) {
-        imageProvider.unload((AtomStream.Node)element);
-      }
-    }
-
     public void reset() {
+      super.reset();
       for (Color color : threadBackgroundColors.values()) {
         color.dispose();
       }

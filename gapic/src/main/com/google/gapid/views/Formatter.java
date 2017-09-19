@@ -737,6 +737,9 @@ public class Formatter {
 
       @Override
       public StylingString append(String text, Style style) {
+        if (!ignoreEllipsis) {
+          text = text.replaceAll("[\n\r]+", "[\\\\n]");
+        }
         string.append(text, ((StylerStyle)style).styler);
         return this;
       }
@@ -744,7 +747,8 @@ public class Formatter {
       @Override
       public StylingString appendWithEllipsis(String text, Style style) {
         if (ignoreEllipsis) {
-          return append(text, style);
+          string.append(text, ((StylerStyle)style).styler);
+          return this;
         }
         text = text.replaceAll("[\n\r]+", "[\\\\n]");
         if (text.length() < MAX_STR_LEN + 3) {
