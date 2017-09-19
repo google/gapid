@@ -232,7 +232,7 @@ public class Client {
       }
       case ERR_UNSUPPORTED_VERSION: {
         Service.ErrUnsupportedVersion e = err.getErrUnsupportedVersion();
-        throw new UnsupportedVersionException(e.getReason(), e.getSuggestUpdate(), stack);
+        throw new UnsupportedVersionException(e.getReason()/*, e.getSuggestUpdate()*/, stack);
       }
       default:
         throw new RuntimeException("Unknown error: " + err.getErrCase(), stack);
@@ -278,7 +278,7 @@ public class Client {
   }
 
   public static class UnsupportedVersionException extends RpcException {
-    public UnsupportedVersionException(Stringtable.Msg reason, boolean suggestUpdate, Stack stack) {
+    public UnsupportedVersionException(Stringtable.Msg reason, Stack stack) {
       super(Strings.getMessage(reason), stack);
     }
   }
