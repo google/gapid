@@ -53,9 +53,10 @@ import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.MeasuringViewLabelProvider;
 import com.google.gapid.widgets.TextViewer;
 import com.google.gapid.widgets.Theme;
+import com.google.gapid.widgets.VisibilityTrackingTreeViewer;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.viewers.ILazyTreeContentProvider;
+import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeSelection;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -100,7 +101,7 @@ public class StateView extends Composite
     setLayout(new FillLayout(SWT.VERTICAL));
 
     loading = LoadablePanel.create(this, widgets,
-        panel -> createTreeForViewer(panel, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL | SWT.MULTI));
+        panel -> createTreeForViewer(panel, SWT.H_SCROLL | SWT.V_SCROLL | SWT.MULTI));
     Tree tree = loading.getContents();
     viewer = createTreeViewer(tree);
     viewer.setContentProvider(new StateContentProvider(models.state, viewer));
@@ -458,33 +459,42 @@ public class StateView extends Composite
   /**
    * Content provider for the state tree.
    */
-  private static class StateContentProvider implements ILazyTreeContentProvider {
+  private static class StateContentProvider
+      implements ITreeContentProvider, VisibilityTrackingTreeViewer.Listener {
     private final ApiState state;
-    private final TreeViewer viewer;
     private final Widgets.Refresher refresher;
 
     public StateContentProvider(ApiState state, TreeViewer viewer) {
       this.state = state;
-      this.viewer = viewer;
       this.refresher = Widgets.withAsyncRefresh(viewer);
     }
 
     @Override
-    public void updateChildCount(Object element, int currentChildCount) {
-      viewer.setChildCount(element, ((ApiState.Node)element).getChildCount());
+    public Object[] getElements(Object inputElement) {
+      return getChildren(inputElement);
     }
 
     @Override
-    public void updateElement(Object parent, int index) {
-      ApiState.Node child = ((ApiState.Node)parent).getChild(index);
-      state.load(child, refresher::refresh);
-      viewer.replace(parent, index, child);
-      viewer.setHasChildren(child, child.getChildCount() > 0);
+    public Object[] getChildren(Object parentElement) {
+      return ((ApiState.Node)parentElement).getChildren();
+    }
+
+    @Override
+    public boolean hasChildren(Object element) {
+      return ((ApiState.Node)element).getChildCount() > 0;
     }
 
     @Override
     public Object getParent(Object element) {
       return ((ApiState.Node)element).getParent();
+    }
+
+    @Override
+    public void onShow(TreeItem item) {
+      Object element = item.getData();
+      if (element instanceof ApiState.Node) {
+        state.load((ApiState.Node)element, refresher::refresh);
+      }
     }
   }
 
