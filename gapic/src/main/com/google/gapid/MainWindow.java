@@ -246,7 +246,7 @@ public class MainWindow extends ApplicationWindow {
         });
         tabs.setLeftVisible(!models().settings.hideLeft);
         tabs.setRightVisible(!models().settings.hideRight);
-        return tabs.getControl();
+        return tabs;
       }
     };
     splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -489,7 +489,7 @@ public class MainWindow extends ApplicationWindow {
         }
       }
 
-      int[] weights = models.settings.tabWeights;
+      double[] weights = models.settings.tabWeights;
       return new FolderInfo[] {
           new FolderInfo(false, left.toArray(new TabInfo[left.size()]), weights[0]),
           new FolderInfo(false, center.toArray(new TabInfo[center.size()]), weights[1]),
@@ -508,8 +508,8 @@ public class MainWindow extends ApplicationWindow {
       return Arrays.stream(tabs).map(tab -> ((Type)tab.id).name()).toArray(len -> new String[len]);
     }
 
-    private static int[] getWeights(FolderInfo[] folders) {
-      return new int[] { folders[0].weight, folders[1].weight, folders[2].weight };
+    private static double[] getWeights(FolderInfo[] folders) {
+      return new double[] { folders[0].weight, folders[1].weight, folders[2].weight };
     }
 
     private static List<TabInfo> getTabs(

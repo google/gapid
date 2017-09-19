@@ -25,6 +25,8 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Sash;
 
 public abstract class FixedTopSplitter extends Composite {
+  private static final int MIN_SIZE = 30;
+
   private final Control top, bottom;
   private final Sash sash;
 
@@ -43,9 +45,9 @@ public abstract class FixedTopSplitter extends Composite {
     sash.addListener(SWT.Selection, e -> {
       Rectangle size = getClientArea();
       Rectangle sashSize = sash.getBounds();
-      int y = Math.min(e.y, size.height - sashSize.height);
-      if (y != sashSize.y) {
-        ((FormData)sash.getLayoutData()).top = new FormAttachment(0, y);
+      e.y = Math.max(MIN_SIZE, Math.min(size.height - sashSize.height - MIN_SIZE, e.y));
+      if (e.y != sashSize.y) {
+        ((FormData)sash.getLayoutData()).top = new FormAttachment(0, e.y);
         layout();
       }
     });

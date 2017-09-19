@@ -68,4 +68,36 @@ public class GeoUtils {
   public static Point bottomRight(Rectangle r) {
     return new Point(r.x + r.width, r.y + r.height);
   }
+
+  public static Rectangle withX(Rectangle r, int x) {
+    r.x = x;
+    return r;
+  }
+
+  public static Rectangle withXW(Rectangle r, int x, int width) {
+    r.x = x;
+    r.width = width;
+    return r;
+  }
+
+  public static Rectangle withXH(Rectangle r, int x, int height) {
+    r.x = x;
+    r.height = height;
+    return r;
+  }
+
+  public static Rectangle withY(Rectangle r, int y) {
+    r.y = y;
+    return r;
+  }
+
+  public static Rectangle withW(Rectangle r, int width) {
+    r.width = width;
+    return r;
+  }
+
+  public static Rectangle withH(Rectangle r, int height) {
+    r.height = height;
+    return r;
+  }
 }
