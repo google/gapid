@@ -70,7 +70,7 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.VisibilityTrackingTreeViewer;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.viewers.ILazyTreeContentProvider;
+import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeSelection;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -127,13 +127,13 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     SearchBox search = new SearchBox(this, false);
     loading = new LoadablePanel<Tree>(this, widgets,
-        p -> createTreeForViewer(p, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL));
+        p -> createTreeForViewer(p, SWT.H_SCROLL | SWT.V_SCROLL));
     Tree tree = loading.getContents();
     viewer = createTreeViewer(tree);
     imageProvider = new ImageProvider(models.thumbs, viewer, widgets.loading);
-    viewer.setContentProvider(new AtomContentProvider(models.atoms, viewer));
+    viewer.setContentProvider(new AtomContentProvider());
     ViewLabelProvider labelProvider = new ViewLabelProvider(
-        viewer, models.constants, widgets.theme, imageProvider);
+        viewer, models.atoms, models.constants, widgets.theme, imageProvider);
     viewer.setLabelProvider(labelProvider);
 
     search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
@@ -527,17 +527,26 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   /**
    * Content provider for the command tree.
    */
-  private static class AtomContentProvider implements ILazyTreeContentProvider {
-    private final AtomStream atoms;
-    private final TreeViewer viewer;
-    private final Widgets.Refresher refresher;
-
-    public AtomContentProvider(AtomStream atoms, TreeViewer viewer) {
-      this.atoms = atoms;
-      this.viewer = viewer;
-      this.refresher = Widgets.withAsyncRefresh(viewer);
+  private static class AtomContentProvider implements ITreeContentProvider {
+    public AtomContentProvider() {
     }
 
+    @Override
+    public Object[] getElements(Object inputElement) {
+      return getChildren(inputElement);
+    }
+
+    @Override
+    public Object[] getChildren(Object parentElement) {
+      return ((AtomStream.Node)parentElement).getChildren();
+    }
+
+    @Override
+    public boolean hasChildren(Object element) {
+      return ((AtomStream.Node)element).getChildCount() > 0;
+    }
+
+    /*
     @Override
     public void updateChildCount(Object element, int currentChildCount) {
       viewer.setChildCount(element, ((AtomStream.Node)element).getChildCount());
@@ -550,6 +559,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       viewer.replace(parent, index, child);
       viewer.setHasChildren(child, child.getChildCount() > 0);
     }
+    */
 
     @Override
     public Object getParent(Object element) {
@@ -639,17 +649,21 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   private static class ViewLabelProvider extends MeasuringViewLabelProvider
       implements VisibilityTrackingTreeViewer.Listener {
     private static final float COLOR_INTENSITY = 0.15f;
+    private final AtomStream atoms;
     private final ConstantSets constants;
     private final ImageProvider imageProvider;
+    private final Widgets.Refresher refresher;
     private final Map<Long, Color> threadBackgroundColors = Maps.newHashMap();
     private TreeItem hoveredItem;
     private Follower.Prefetcher<String> follower;
 
-    public ViewLabelProvider(
-        TreeViewer viewer, ConstantSets constants, Theme theme, ImageProvider imageProvider) {
+    public ViewLabelProvider(TreeViewer viewer, AtomStream atoms, ConstantSets constants,
+        Theme theme, ImageProvider imageProvider) {
       super(viewer, theme);
+      this.atoms = atoms;
       this.constants = constants;
       this.imageProvider = imageProvider;
+      this.refresher = Widgets.withAsyncRefresh(viewer);
     }
 
     public void setHoveredItem(TreeItem hoveredItem, Follower.Prefetcher<String> follower) {
@@ -735,6 +749,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       Object element = item.getData();
       if (element instanceof AtomStream.Node) {
         imageProvider.load((AtomStream.Node)element);
+        atoms.load((AtomStream.Node)element, refresher::refresh);
       }
     }
 
