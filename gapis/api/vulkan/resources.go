@@ -494,7 +494,7 @@ func setCubemapFace(img *image.Info, cubeMap *api.CubemapLevel, layerIndex uint3
 	return true
 }
 
-func (l *ImageLevel) imageInfo(ctx context.Context, s *api.State, format *image.Format) *image.Info {
+func (l *ImageLevel) imageInfo(ctx context.Context, s *api.GlobalState, format *image.Format) *image.Info {
 	if l.Data.Count() == 0 {
 		return nil
 	}
@@ -530,10 +530,10 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 				for levelIndex, imageLevel := range imageLayer.Levels {
 					img := imageLevel.imageInfo(ctx, s, format)
 					if img == nil {
-						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+						continue
 					}
 					if !setCubemapFace(img, cubeMapLevels[levelIndex], layerIndex) {
-						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+						continue
 					}
 				}
 			}
@@ -550,7 +550,7 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 					imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
 					img := imageLevel.imageInfo(ctx, s, format)
 					if img == nil {
-						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+						continue
 					}
 					levels[levelIndex] = img
 				}
@@ -564,7 +564,7 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		for i, level := range t.Layers[0].Levels {
 			img := level.imageInfo(ctx, s, format)
 			if img == nil {
-				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+				continue
 			}
 			levels[i] = img
 		}
@@ -576,7 +576,7 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		for i, level := range t.Layers[0].Levels {
 			img := level.imageInfo(ctx, s, format)
 			if img == nil {
-				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+				continue
 			}
 			levels[i] = img
 		}
@@ -593,7 +593,7 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 					imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
 					img := imageLevel.imageInfo(ctx, s, format)
 					if img == nil {
-						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+						continue
 					}
 					levels[levelIndex] = img
 				}
@@ -606,7 +606,7 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		for i, level := range t.Layers[0].Levels {
 			img := level.imageInfo(ctx, s, format)
 			if img == nil {
-				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+				continue
 			}
 			levels[i] = img
 		}
