@@ -36,20 +36,20 @@ func init() {
 		Name:       "subject",
 		ShortHelp:  "Upload a traceable application to the server",
 		ShortUsage: "<filenames>",
-		Action:     &subjectUploadVerb{ServerAddress: defaultMasterAddress},
+		Action:     &subjectUploadVerb{RobotOptions: defaultRobotOptions},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "subject",
 		ShortHelp:  "List traceable applications in the server",
 		ShortUsage: "<query>",
-		Action:     &subjectSearchVerb{ServerAddress: defaultMasterAddress},
+		Action:     &subjectSearchVerb{RobotOptions: defaultRobotOptions},
 	})
 }
 
 type subjectUploadVerb struct {
-	TraceTime     time.Duration `help:"trace time override (if non-zero)"`
-	ServerAddress string        `help:"The master server address"`
-	subjects      subject.Subjects
+	RobotOptions
+	TraceTime time.Duration `help:"trace time override (if non-zero)"`
+	subjects  subject.Subjects
 }
 
 func (v *subjectUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -79,7 +79,7 @@ func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
 }
 
 type subjectSearchVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *subjectSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {

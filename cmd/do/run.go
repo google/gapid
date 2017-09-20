@@ -30,7 +30,12 @@ func doRobot(ctx context.Context, cfg Config, options RobotOptions, args ...stri
 	if options.WD.IsEmpty() {
 		options.WD = cfg.OutRoot.Join("robot")
 	}
-	doRunTarget(ctx, cfg, options.BuildAndRunOptions, "robot", args...)
+	robotArgs := []string{}
+	if options.ServerAddress != "" {
+		robotArgs = append(robotArgs, "-serveraddress", options.ServerAddress)
+	}
+	robotArgs = append(robotArgs, args...)
+	doRunTarget(ctx, cfg, options.BuildAndRunOptions, "robot", robotArgs...)
 }
 
 func doRunTarget(ctx context.Context, cfg Config, options BuildAndRunOptions, target string, args ...string) {

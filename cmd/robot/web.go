@@ -40,16 +40,17 @@ func init() {
 		Name:      "web",
 		ShortHelp: "Starts a robot web server",
 		Action: &webVerb{
-			Port:          8080,
-			ServerAddress: defaultMasterAddress,
+			RobotOptions: defaultRobotOptions,
+			Port:         8080,
 		},
 	})
 }
 
 type webVerb struct {
-	Port          int       `help:"The port to serve the website on"`
-	Root          file.Path `help:"The directory to use as the root of static content"`
-	ServerAddress string    `help:"The master server address"`
+	RobotOptions
+
+	Port int       `help:"The port to serve the website on"`
+	Root file.Path `help:"The directory to use as the root of static content"`
 }
 
 func (v *webVerb) Run(ctx context.Context, flags flag.FlagSet) error {

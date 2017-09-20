@@ -39,53 +39,58 @@ import (
 	"google.golang.org/grpc"
 )
 
+type UploadOptions struct {
+	RobotOptions
+	CL           string `help:"The build CL, will be guessed if not set"`
+	Description  string `help:"An optional build description"`
+	Tag          string `help:"The optional build tag"`
+	Track        string `help:"The package's track, will be guessed if not set"`
+	Uploader     string `help:"The uploading entity, will be guessed if not set"`
+	BuilderAbi   string `help:"The abi of the builder device, will assume this device if not set"`
+	ArtifactPath string `help:"The file path where the zipped artifact will be stored"`
+}
+
 func init() {
 	uploadVerb.Add(&app.Verb{
 		Name:       "build",
 		ShortHelp:  "Upload a build to the server",
 		ShortUsage: "<filenames>",
-		Action:     &buildUploadVerb{ServerAddress: defaultMasterAddress},
+		Action:     &buildUploadVerb{UploadOptions: UploadOptions{RobotOptions: defaultRobotOptions}},
 	})
 	uploadVerb.Add(&app.Verb{
 		Name:       "package",
 		ShortHelp:  "Package and upload a build to the server",
 		ShortUsage: "<filename>",
-		Action:     &packageUploadVerb{buildUploadVerb: buildUploadVerb{ServerAddress: defaultMasterAddress}},
+		Action:     &packageUploadVerb{UploadOptions: UploadOptions{RobotOptions: defaultRobotOptions}},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "artifact",
 		ShortHelp:  "List build artifacts in the server",
 		ShortUsage: "<query>",
-		Action:     &artifactSearchVerb{ServerAddress: defaultMasterAddress},
+		Action:     &artifactSearchVerb{RobotOptions: defaultRobotOptions},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "package",
 		ShortHelp:  "List build packages in the server",
 		ShortUsage: "<query>",
-		Action:     &packageSearchVerb{ServerAddress: defaultMasterAddress},
+		Action:     &packageSearchVerb{RobotOptions: defaultRobotOptions},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "track",
 		ShortHelp:  "List build tracks in the server",
 		ShortUsage: "<query>",
-		Action:     &trackSearchVerb{ServerAddress: defaultMasterAddress},
+		Action:     &trackSearchVerb{RobotOptions: defaultRobotOptions},
 	})
 	setVerb.Add(&app.Verb{
 		Name:       "track",
 		ShortHelp:  "Sets values on a track",
 		ShortUsage: "<id or name>",
-		Action:     &trackUpdateVerb{ServerAddress: defaultMasterAddress},
+		Action:     &trackUpdateVerb{RobotOptions: defaultRobotOptions},
 	})
 }
 
 type buildUploadVerb struct {
-	CL            string `help:"The build CL, will be guessed if not set"`
-	Description   string `help:"An optional build description"`
-	Tag           string `help:"The optional build tag"`
-	Branch        string `help:"The build branch, will be guessed if not set"`
-	Uploader      string `help:"The uploading entity, will be guessed if not set"`
-	BuilderAbi    string `help:"The abi of the builder device, will assume this device if not set"`
-	ServerAddress string `help:"The master server address"`
+	UploadOptions
 
 	store build.Store
 	info  *build.Information
@@ -96,81 +101,51 @@ func (v *buildUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
-	// see if we can find a git cl in the cwd
-	typ := build.BuildBot
-	if g, err := git.New("."); err != nil {
-		log.E(ctx, "Git failed. Error: %v", err)
-	} else if v.CL != "" {
-		if v.Branch == "" {
-			log.W(ctx, "Cannot detect branch from CL, defaulting to auto")
-			v.Branch = "auto"
-		}
-	} else {
-		typ = build.User
-		if cl, err := g.HeadCL(ctx); err != nil {
-			log.E(ctx, "CL failed. Error: %v", err)
-		} else {
-			if v.CL == "" {
-				// guess cl from git
-				v.CL = cl.SHA.String()
-				log.I(ctx, "Detected CL %s", v.CL)
-			}
-			if v.Description == "" {
-				// guess description from git
-				v.Description = cl.Subject
-				log.I(ctx, "Detected description %s", v.Description)
-			}
-		}
-		if status, err := g.Status(ctx); err != nil {
-			log.E(ctx, "Status failed. Error: %v", err)
-		} else {
-			if !status.Clean() {
-				typ = build.Local
-			}
-		}
-		if v.Branch == "" {
-			// guess branch from git
-			if branch, err := g.CurrentBranch(ctx); err != nil {
-				log.E(ctx, "Branch failed. Error: %v", err)
-			} else {
-				v.Branch = branch
-				log.I(ctx, "Dectected branch %s", v.Branch)
-			}
-		}
-	}
-	if v.Uploader == "" {
-		// guess uploader from environment
-		if user, err := user.Current(); err == nil {
-			v.Uploader = user.Username
-			log.I(ctx, "Dectected uploader %s", v.Uploader)
-		}
-	}
-	log.I(ctx, "Dectected build type %s", typ)
 	v.store = build.NewRemote(ctx, conn)
-	builder := &device.Instance{Configuration: &device.Configuration{}}
-	if v.BuilderAbi != "" {
-		if typ == build.BuildBot {
-			builder.Name = "BuildBot"
-		}
-		builder.Configuration.ABIs = []*device.ABI{device.ABIByName(v.BuilderAbi)}
-	}
-	if len(builder.Configuration.ABIs) == 0 {
-		builder = host.Instance(ctx)
-	}
-	v.info = &build.Information{
-		Type:        typ,
-		Branch:      v.Branch,
-		Cl:          v.CL,
-		Tag:         v.Tag,
-		Description: v.Description,
-		Builder:     builder,
-		Uploader:    v.Uploader,
-	}
+	v.info = v.UploadOptions.createBuildInfo(ctx)
 	return nil
 }
 
 func (v *buildUploadVerb) process(ctx context.Context, id string) error {
-	id, merged, err := v.store.Add(ctx, id, v.info)
+	return storeBuild(ctx, v.store, v.info, id)
+}
+
+type packageUploadVerb struct {
+	UploadOptions
+
+	store build.Store
+	info  *build.Information
+}
+
+func (v *packageUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	if v.ArtifactPath == "" {
+		if len(flags.Args()) != 1 {
+			err := errors.New("Missing expected argument")
+			return log.Err(ctx, err, "`do robot upload package` expects a single filepath as argument")
+		}
+		log.I(ctx, "Running packageUploadVerb, artifact arg is %s", flags.Args()[0])
+		v.ArtifactPath = flags.Args()[0]
+		log.I(ctx, "artifact path is %s", v.ArtifactPath)
+	}
+
+	return upload(ctx, flags, v.ServerAddress, v)
+}
+
+func (v *packageUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
+	if err := zipArtifacts(ctx, file.Abs(v.ArtifactPath)); err != nil {
+		return err
+	}
+	v.store = build.NewRemote(ctx, conn)
+	v.info = v.UploadOptions.createBuildInfo(ctx)
+	return nil
+}
+
+func (v *packageUploadVerb) process(ctx context.Context, id string) error {
+	return storeBuild(ctx, v.store, v.info, id)
+}
+
+func storeBuild(ctx context.Context, store build.Store, info *build.Information, id string) error {
+	id, merged, err := store.Add(ctx, id, info)
 	if err != nil {
 		return log.Err(ctx, err, "Failed processing build")
 	}
@@ -180,6 +155,78 @@ func (v *buildUploadVerb) process(ctx context.Context, id string) error {
 		log.I(ctx, "New build set %s", id)
 	}
 	return nil
+}
+
+func (o *UploadOptions) createBuildInfo(ctx context.Context) *build.Information {
+	// see if we can find a git cl in the cwd
+	typ := build.BuildBot
+	if g, err := git.New("."); err != nil {
+		log.E(ctx, "Git failed. Error: %v", err)
+	} else if o.CL != "" {
+		if o.Track == "" {
+			log.W(ctx, "Cannot detect track from CL, defaulting to auto")
+			o.Track = "auto"
+		}
+	} else {
+		typ = build.User
+		if cl, err := g.HeadCL(ctx); err != nil {
+			log.E(ctx, "CL failed. Error: %v", err)
+		} else {
+			if o.CL == "" {
+				// guess cl from git
+				o.CL = cl.SHA.String()
+				log.I(ctx, "Detected CL %s", o.CL)
+			}
+			if o.Description == "" {
+				// guess description from git
+				o.Description = cl.Subject
+				log.I(ctx, "Detected description %s", o.Description)
+			}
+		}
+		if status, err := g.Status(ctx); err != nil {
+			log.E(ctx, "Status failed. Error: %v", err)
+		} else {
+			if !status.Clean() {
+				typ = build.Local
+			}
+		}
+		if o.Track == "" {
+			// guess branch from git
+			if branch, err := g.CurrentBranch(ctx); err != nil {
+				log.E(ctx, "Branch failed. Error: %v", err)
+			} else {
+				o.Track = branch
+				log.I(ctx, "Detected track %s", o.Track)
+			}
+		}
+	}
+	if o.Uploader == "" {
+		// guess uploader from environment
+		if user, err := user.Current(); err == nil {
+			o.Uploader = user.Username
+			log.I(ctx, "Detected uploader %s", o.Uploader)
+		}
+	}
+	log.I(ctx, "Detected build type %s", typ)
+	builder := &device.Instance{Configuration: &device.Configuration{}}
+	if o.BuilderAbi != "" {
+		if typ == build.BuildBot {
+			builder.Name = "BuildBot"
+		}
+		builder.Configuration.ABIs = []*device.ABI{device.ABIByName(o.BuilderAbi)}
+	}
+	if len(builder.Configuration.ABIs) == 0 {
+		builder = host.Instance(ctx)
+	}
+	return &build.Information{
+		Type:        typ,
+		Branch:      o.Track,
+		Cl:          o.CL,
+		Tag:         o.Tag,
+		Description: o.Description,
+		Builder:     builder,
+		Uploader:    o.Uploader,
+	}
 }
 
 func zipFile(zipWriter *zip.Writer, zipVirtualPath string, filePath file.Path) error {
@@ -263,38 +310,8 @@ func zipArtifacts(ctx context.Context, artifactFile file.Path) error {
 	return nil
 }
 
-type packageUploadVerb struct {
-	buildUploadVerb
-	ArtifactPath file.Path `help:"The file path where the zipped artifact will be stored"`
-}
-
-func (v *packageUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	if v.ArtifactPath.IsEmpty() {
-		if len(flags.Args()) != 1 {
-			err := errors.New("Missing expected argument")
-			return log.Err(ctx, err, "`do robot upload` package expects a single filepath as argument")
-		}
-		log.I(ctx, "Running packageUploadVerb, artifact arg is %s", flags.Args()[0])
-		v.ArtifactPath = file.Abs(flags.Args()[0])
-		log.I(ctx, "artifact path is %s", v.ArtifactPath.String())
-	}
-
-	return upload(ctx, flags, v.ServerAddress, v)
-}
-
-func (v *packageUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
-	if err := zipArtifacts(ctx, v.ArtifactPath); err != nil {
-		return err
-	}
-	return v.buildUploadVerb.prepare(ctx, conn)
-}
-
-func (v *packageUploadVerb) process(ctx context.Context, id string) error {
-	return v.buildUploadVerb.process(ctx, id)
-}
-
 type artifactSearchVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *artifactSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -314,7 +331,7 @@ func (v *artifactSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 }
 
 type packageSearchVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *packageSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -334,7 +351,7 @@ func (v *packageSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 type trackSearchVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *trackSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -356,10 +373,10 @@ func (v *trackSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 var idOrName = script.MustParse("Id == $ or Name == $").Using("$")
 
 type trackUpdateVerb struct {
-	Name          string `help:"The new name for the track"`
-	Description   string `help:"A description of the track"`
-	Pkg           string `help:"The id of the package at the head of the track"`
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
+	Name        string `help:"The new name for the track"`
+	Description string `help:"A description of the track"`
+	Pkg         string `help:"The id of the package at the head of the track"`
 }
 
 func (v *trackUpdateVerb) Run(ctx context.Context, flags flag.FlagSet) error {

@@ -95,9 +95,17 @@ type (
 	}
 	RobotOptions struct {
 		BuildAndRunOptions
+		ServerAddress string `help:"The master server address"`
 	}
 	UploadOptions struct {
-		BuildAndRunOptions
+		RobotOptions
+		CL           string `help:"The build CL, will be guessed if not set"`
+		Description  string `help:"An optional build description"`
+		Tag          string `help:"The optional build tag"`
+		Track        string `help:"The package's track, will be guessed if not set"`
+		Uploader     string `help:"The uploading entity, will be guessed if not set"`
+		BuilderAbi   string `help:"The abi of the builder device, will assume this device if not set"`
+		ArtifactPath string `help:"The file path where the zipped artifact will be stored"`
 	}
 	initVerb   struct{ InitOptions }
 	configVerb struct{ ConfigOptions }

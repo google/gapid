@@ -30,6 +30,29 @@ func getPlatform() string {
 
 func doUpload(ctx context.Context, cfg Config, options UploadOptions, args ...string) {
 	pkg := cfg.out().Join(fmt.Sprintf("%s-%s.zip", "gapid", getPlatform()))
-	robotArgs := append([]string{"upload", "package", pkg.String()}, args...)
-	doRunTarget(ctx, cfg, options.BuildAndRunOptions, "robot", robotArgs...)
+	robotArgs := []string{"upload", "package"}
+	if options.CL != "" {
+		robotArgs = append(robotArgs, "-cl", options.CL)
+	}
+	if options.Description != "" {
+		robotArgs = append(robotArgs, "-description", options.Description)
+	}
+	if options.Tag != "" {
+		robotArgs = append(robotArgs, "-tag", options.Tag)
+	}
+	if options.Track != "" {
+		robotArgs = append(robotArgs, "-track", options.Track)
+	}
+	if options.Uploader != "" {
+		robotArgs = append(robotArgs, "-uploader", options.Uploader)
+	}
+	if options.BuilderAbi != "" {
+		robotArgs = append(robotArgs, "-builderabi", options.BuilderAbi)
+	}
+	if options.ArtifactPath != "" {
+		robotArgs = append(robotArgs, "-artifactpath", options.ArtifactPath)
+	}
+	robotArgs = append(robotArgs, pkg.String())
+	robotArgs = append(robotArgs, args...)
+	doRobot(ctx, cfg, options.RobotOptions, robotArgs...)
 }

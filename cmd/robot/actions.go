@@ -24,6 +24,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+type RobotOptions struct {
+	ServerAddress string `help:"The master server address"`
+}
+
 var (
 	startVerb = app.AddVerb(&app.Verb{
 		Name:      "start",
@@ -41,24 +45,26 @@ var (
 		Name:      "set",
 		ShortHelp: "Sets a value in a server",
 	})
+	defaultRobotOptions = RobotOptions{ServerAddress: defaultMasterAddress}
 )
 
 func init() {
 	app.AddVerb(&app.Verb{
 		Name:      "stop",
 		ShortHelp: "Stop a server",
-		Action:    &stopVerb{ServerAddress: defaultMasterAddress},
+		Action:    &stopVerb{RobotOptions: defaultRobotOptions},
 	})
 	app.AddVerb(&app.Verb{
 		Name:      "restart",
 		ShortHelp: "Restart a server",
-		Action:    &restartVerb{ServerAddress: defaultMasterAddress},
+		Action:    &restartVerb{RobotOptions: defaultRobotOptions},
 	})
 }
 
 type stopVerb struct {
-	ServerAddress string `help:"The master server address"`
-	Now           bool   `help:"Immediate shutdown"`
+	RobotOptions
+
+	Now bool `help:"Immediate shutdown"`
 }
 
 func (v *stopVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -72,7 +78,7 @@ func (v *stopVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 type restartVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *restartVerb) Run(ctx context.Context, flags flag.FlagSet) error {
