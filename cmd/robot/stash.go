@@ -35,18 +35,18 @@ func init() {
 		Name:       "stash",
 		ShortHelp:  "Upload a file to the stash",
 		ShortUsage: "<filenames>",
-		Action:     &stashUploadVerb{ServerAddress: defaultMasterAddress},
+		Action:     &stashUploadVerb{RobotOptions: defaultRobotOptions},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "stash",
 		ShortHelp:  "List entries in the stash",
 		ShortUsage: "<query>",
-		Action:     &stashSearchVerb{ServerAddress: defaultMasterAddress},
+		Action:     &stashSearchVerb{RobotOptions: defaultRobotOptions},
 	})
 }
 
 type stashUploadVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *stashUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -56,7 +56,7 @@ func (stashUploadVerb) prepare(context.Context, *grpc.ClientConn) error { return
 func (stashUploadVerb) process(context.Context, string) error           { return nil }
 
 type stashSearchVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *stashSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {

@@ -35,19 +35,20 @@ func init() {
 		Name:       "trace",
 		ShortHelp:  "Upload a gfx trace to the server",
 		ShortUsage: "<filenames>",
-		Action:     &traceUploadVerb{ServerAddress: defaultMasterAddress},
+		Action:     &traceUploadVerb{RobotOptions: defaultRobotOptions},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "trace",
 		ShortHelp:  "List build traces in the server",
 		ShortUsage: "<query>",
-		Action:     &traceSearchVerb{ServerAddress: defaultMasterAddress},
+		Action:     &traceSearchVerb{RobotOptions: defaultRobotOptions},
 	})
 }
 
 type traceUploadVerb struct {
-	ServerAddress string `help:"The master server address"`
-	traces        trace.Manager
+	RobotOptions
+
+	traces trace.Manager
 }
 
 func (v *traceUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -62,7 +63,7 @@ func (v *traceUploadVerb) process(ctx context.Context, id string) error {
 }
 
 type traceSearchVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *traceSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {

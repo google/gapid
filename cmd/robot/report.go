@@ -34,12 +34,12 @@ func init() {
 		Name:       "report",
 		ShortHelp:  "List build reports in the server",
 		ShortUsage: "<query>",
-		Action:     &reportSearchFlags{ServerAddress: defaultMasterAddress},
+		Action:     &reportSearchFlags{RobotOptions: defaultRobotOptions},
 	})
 }
 
 type reportSearchFlags struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *reportSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {

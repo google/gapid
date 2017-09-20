@@ -66,7 +66,7 @@ func init() {
 		Name:       "master",
 		ShortHelp:  "List satellites registered with the master",
 		ShortUsage: "<query>",
-		Action:     &masterSearchVerb{ServerAddress: defaultMasterAddress},
+		Action:     &masterSearchVerb{RobotOptions: defaultRobotOptions},
 	})
 }
 
@@ -218,7 +218,7 @@ func serveAll(ctx context.Context, server *grpc.Server, managers monitor.Manager
 }
 
 type masterSearchVerb struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *masterSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {

@@ -42,23 +42,23 @@ func init() {
 		Name:       "device",
 		ShortHelp:  "List the devices",
 		ShortUsage: "<query>",
-		Action:     &deviceSearchFlags{ServerAddress: defaultMasterAddress},
+		Action:     &deviceSearchFlags{RobotOptions: defaultRobotOptions},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "worker",
 		ShortHelp:  "List the workers",
 		ShortUsage: "<query>",
-		Action:     &workerSearchFlags{ServerAddress: defaultMasterAddress},
+		Action:     &workerSearchFlags{RobotOptions: defaultRobotOptions},
 	})
 	startVerb.Add(&app.Verb{
 		Name:      "worker",
 		ShortHelp: "Starts a robot worker",
-		Action:    &workerStartFlags{ServerAddress: defaultMasterAddress},
+		Action:    &workerStartFlags{RobotOptions: defaultRobotOptions},
 	})
 }
 
 type deviceSearchFlags struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *deviceSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -78,7 +78,7 @@ func (v *deviceSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 type workerSearchFlags struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *workerSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -98,7 +98,7 @@ func (v *workerSearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 type workerStartFlags struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *workerStartFlags) Run(ctx context.Context, flags flag.FlagSet) error {

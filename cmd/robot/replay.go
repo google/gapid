@@ -34,12 +34,12 @@ func init() {
 		Name:       "replay",
 		ShortHelp:  "List build replays in the server",
 		ShortUsage: "<query>",
-		Action:     &replaySearchFlags{ServerAddress: defaultMasterAddress},
+		Action:     &replaySearchFlags{RobotOptions: defaultRobotOptions},
 	})
 }
 
 type replaySearchFlags struct {
-	ServerAddress string `help:"The master server address"`
+	RobotOptions
 }
 
 func (v *replaySearchFlags) Run(ctx context.Context, flags flag.FlagSet) error {
