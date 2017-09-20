@@ -48,11 +48,14 @@
     // {{$name}} is the structure for serializing the parameters to the api command {{$.Name}}¶
     message {{$name}} {»¶
       sint64 thread = {{Inc "ProtoID"}};¶
+      {{/* Reserve proto IDs up to 7 for future use */}}
+      {{Global "ProtoID" 7}}
       {{range $p := $.CallParameters}}
         {{Template "Proto.Entry" "Param" $p "Type" (TypeOf $p)}}
       {{end}}
     «}¶
 ¶
+    {{Global "ProtoID" 0}}
     {{if not (IsVoid $.Return.Type)}}
       // {{$name}}Call is the structure for serializing the call of the api command {{$.Name}}¶
       message {{$name}}Call {»¶
