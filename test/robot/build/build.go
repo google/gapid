@@ -45,6 +45,9 @@ type Store interface {
 
 	// UpdateTrack updates track information.
 	UpdateTrack(ctx context.Context, track *Track) (*Track, error)
+
+	// UpdatePackage updates package information.
+	UpdatePackage(ctx context.Context, pkg *Package) (*Package, error)
 }
 
 const (

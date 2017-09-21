@@ -83,7 +83,7 @@ func (s *local) Add(ctx context.Context, id string, info *Information) (string, 
 		return "", false, err
 	}
 	if parent != "" {
-		if err := s.packages.update(ctx, &Package{Id: pkg.Id, Parent: parent}); err != nil {
+		if _, err := s.packages.update(ctx, &Package{Id: pkg.Id, Parent: parent}); err != nil {
 			return "", false, err
 		}
 	}
@@ -96,4 +96,11 @@ func (s *local) Add(ctx context.Context, id string, info *Information) (string, 
 func (s *local) UpdateTrack(ctx context.Context, entry *Track) (*Track, error) {
 	track, _, err := s.tracks.createOrUpdate(ctx, entry)
 	return track, err
+}
+
+// UpdatePackage implements store.UpdatePackage
+// if the package identified by the package id exists, it modifies the package parent pointer,
+// and description.
+func (s *local) UpdatePackage(ctx context.Context, entry *Package) (*Package, error) {
+	return s.packages.update(ctx, entry)
 }

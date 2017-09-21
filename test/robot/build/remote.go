@@ -83,3 +83,14 @@ func (m *remote) UpdateTrack(ctx context.Context, entry *Track) (*Track, error) 
 	}
 	return response.Track, nil
 }
+
+// UpdatePackage implements store.UpdatePackage
+// It forwards the call through grpc to the remote implementation.
+func (m *remote) UpdatePackage(ctx context.Context, entry *Package) (*Package, error) {
+	request := &UpdatePackageRequest{Package: entry}
+	response, err := m.client.UpdatePackage(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	return response.Package, nil
+}

@@ -79,3 +79,14 @@ func (s *server) UpdateTrack(outer xctx.Context, request *UpdateTrackRequest) (*
 	}
 	return &UpdateTrackResponse{Track: track}, nil
 }
+
+// UpdatePackage implements ServiceServer.UpdatePackage
+// It delegates the call to the provided Store implementation.
+func (s *server) UpdatePackage(outer xctx.Context, request *UpdatePackageRequest) (*UpdatePackageResponse, error) {
+	ctx := outer
+	pkg, err := s.store.UpdatePackage(ctx, request.Package)
+	if err != nil {
+		return nil, err
+	}
+	return &UpdatePackageResponse{Package: pkg}, nil
+}

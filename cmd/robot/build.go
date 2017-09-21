@@ -87,6 +87,12 @@ func init() {
 		ShortUsage: "<id or name>",
 		Action:     &trackUpdateVerb{RobotOptions: defaultRobotOptions},
 	})
+	setVerb.Add(&app.Verb{
+		Name:       "package",
+		ShortHelp:  "Sets values on a package",
+		ShortUsage: "<id>",
+		Action:     &packageUpdateVerb{RobotOptions: defaultRobotOptions},
+	})
 }
 
 type buildUploadVerb struct {
@@ -409,6 +415,45 @@ func (v *trackUpdateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			return err
 		}
 		log.I(ctx, track.String())
+		return nil
+	}, grpc.WithInsecure())
+}
+
+type packageUpdateVerb struct {
+	RobotOptions
+	Description string `help:"A description of the track"`
+	Parent      string `help:"The id of the package that will be the new parent"`
+}
+
+func (v *packageUpdateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+		b := build.NewRemote(ctx, conn)
+		args := flags.Args()
+		pkg := &build.Package{
+			Information: &build.Information{Description: v.Description},
+			Parent:      v.Parent,
+		}
+		if len(args) == 0 {
+			return log.Err(ctx, nil, "Missing argument, must specify a package to update")
+		}
+		err := b.SearchPackages(ctx, script.MustParse("Id == $").Using("$")(args[0]).Query(), func(ctx context.Context, entry *build.Package) error {
+			if pkg.Id != "" {
+				return log.Err(ctx, nil, "Multiple packages matched")
+			}
+			pkg.Id = entry.Id
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if pkg.Id == "" {
+			return log.Err(ctx, nil, "No packages matched")
+		}
+		pkg, err = b.UpdatePackage(ctx, pkg)
+		if err != nil {
+			return err
+		}
+		log.I(ctx, pkg.String())
 		return nil
 	}, grpc.WithInsecure())
 }
