@@ -43,13 +43,10 @@ type EGLImageData struct {
 
 var _ api.ResourceReference = (*EGLImageData)(nil)
 
-// RemapResourceIDs remaps the serialized resource identifier with the
-// identifier used to store the resource in the database.
-func (e *EGLImageData) RemapResourceIDs(ids map[id.ID]id.ID) api.ResourceReference {
-	if id, found := ids[e.ID]; found {
-		e.ID = id
-	}
-	return e
+// RemapResourceIDs calls the given callback for each resource ID field.
+func (e *EGLImageData) RemapResourceIDs(cb func(id *id.ID) error) (api.ResourceReference, error) {
+	err := cb(&e.ID)
+	return e, err
 }
 
 func init() {

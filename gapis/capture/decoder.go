@@ -2,6 +2,7 @@ package capture
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
@@ -133,7 +134,18 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 	}
 
 	if r, ok := obj.(api.ResourceReference); ok {
-		obj = r.RemapResourceIDs(d.builder.idmap)
+		var err error
+		obj, err = r.RemapResourceIDs(func(id *id.ID) error {
+			newID, found := d.builder.idmap[*id]
+			if !found {
+				return fmt.Errorf("Can not remap resource. %v not found.", id)
+			}
+			*id = newID
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	switch obj := obj.(type) {

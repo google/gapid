@@ -48,6 +48,16 @@ func (e *encoder) encode(ctx context.Context) error {
 }
 
 func (e *encoder) childObject(ctx context.Context, obj interface{}, parentID uint64) error {
+	if r, ok := obj.(api.ResourceReference); ok {
+		var err error
+		obj, err = r.RemapResourceIDs(func(id *id.ID) error {
+			return e.resource(ctx, *id)
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	msg, err := protoconv.ToProto(ctx, obj)
 	if err != nil {
 		return err
@@ -99,7 +109,7 @@ func (e *encoder) extras(ctx context.Context, cmd api.Cmd, cmdID uint64) error {
 		switch extra := extra.(type) {
 		case *api.CmdObservations:
 			for _, o := range extra.Reads {
-				if err := e.observation(ctx, o, cmdID); err != nil {
+				if err := e.childObject(ctx, o, cmdID); err != nil {
 					return err
 				}
 			}
@@ -108,7 +118,7 @@ func (e *encoder) extras(ctx context.Context, cmd api.Cmd, cmdID uint64) error {
 			}
 			handledCall = true
 			for _, o := range extra.Writes {
-				if err := e.observation(ctx, o, cmdID); err != nil {
+				if err := e.childObject(ctx, o, cmdID); err != nil {
 					return err
 				}
 			}
@@ -127,20 +137,17 @@ func (e *encoder) extras(ctx context.Context, cmd api.Cmd, cmdID uint64) error {
 	return nil
 }
 
-func (e *encoder) observation(ctx context.Context, o api.CmdObservation, cmdID uint64) error {
-	if !e.seen[o.ID] {
-		data, err := database.Resolve(ctx, o.ID)
+func (e *encoder) resource(ctx context.Context, id id.ID) error {
+	if !e.seen[id] {
+		data, err := database.Resolve(ctx, id)
 		if err != nil {
 			return err
 		}
-		res := &Resource{Id: o.ID[:], Data: data.([]uint8)}
+		res := &Resource{Id: id[:], Data: data.([]uint8)}
 		if err := e.w.Object(ctx, res); err != nil {
 			return err
 		}
-		e.seen[o.ID] = true
-	}
-	if err := e.childObject(ctx, o, cmdID); err != nil {
-		return err
+		e.seen[id] = true
 	}
 	return nil
 }
