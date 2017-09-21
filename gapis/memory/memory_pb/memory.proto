@@ -24,7 +24,7 @@ message Observation {
     // Size is the byte count of the observation range.
     uint64 size = 2;
     // Id is the resource id of the bytes observed.
-    string id = 3;
+    bytes id = 3;
 }
 
 // Pointer is the type representing a memory pointer.

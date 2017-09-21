@@ -42,7 +42,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 
 namespace gapii {
 
@@ -58,10 +58,10 @@ public:
     // no-observations are made and writes change the application memory.
     inline void setObserveApplicationPool(bool observeApplicationPool);
 
-    // Returns the set of resources ids.
-    // TODO(qining): To support multithreaded uses, mutex is required to manage
-    // the access to this set.
-    std::unordered_set<core::Id>& getResources() { return mResources; }
+    // Encode and write data blob if we have not already sent it.
+    // Returns the ID which uniquely identifies it.
+    // TODO(qining): To support multithreaded uses, mutex is required.
+    std::string sendResource(uint8_t api, const void* data, size_t size);
 
     // Returns the transimission encoder.
     // TODO(qining): To support multithreaded uses, mutex is required to manage
@@ -93,8 +93,6 @@ public:
     void set_recording_state(bool recording) { mIsRecordingState = recording; }
 protected:
     static const size_t kMaxExtras = 16; // Per atom
-
-    typedef std::unordered_set<core::Id> IdSet;
 
     // lock begins the interception of a single command. It must be called
     // before invoking any command on the spy. Blocks if any other thread
@@ -159,8 +157,8 @@ private:
     // The stream encoder that does nothing.
     PackEncoder::SPtr mNullEncoder;
 
-    // The list of observations that have already been encoded.
-    IdSet mResources;
+    // The list of resources that have already been encoded and sent.
+    std::unordered_map<core::Id, uint64_t> mResources;
 
     // The mutex that should be locked for the duration of each of the intercepted commands.
     std::recursive_mutex mMutex;

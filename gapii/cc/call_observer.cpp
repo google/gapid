@@ -90,20 +90,13 @@ void CallObserver::observePending() {
         return;
     }
     for (auto p : mPendingObservations) {
-        core::Vector<uint8_t> data(reinterpret_cast<uint8_t*>(p.start()),
-                                    p.end() - p.start());
-        core::Id id = core::Id::Hash(data.data(), data.count());
-        if (mSpy->getResources().count(id) == 0) {
-            capture::Resource resource;
-            resource.set_id(reinterpret_cast<const char*>(id.data), sizeof(id.data));
-            resource.set_data(data.data(), data.count());
-            mSpy->getEncoder(mApi)->object(&resource);
-            mSpy->getResources().emplace(id);
-        }
+        uint8_t* data = reinterpret_cast<uint8_t*>(p.start());
+        uint64_t size = p.end() - p.start();
+        std::string id = mSpy->sendResource(mApi, data, size);
         auto observation = new memory_pb::Observation();
         observation->set_base(p.start());
-        observation->set_size(data.count());
-        observation->set_id(reinterpret_cast<const char*>(id.data), sizeof(id.data));
+        observation->set_size(size);
+        observation->set_id(id.data(), id.size());
         encodeAndDelete(observation);
     }
     mPendingObservations.clear();

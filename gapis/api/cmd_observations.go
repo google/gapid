@@ -131,14 +131,14 @@ func init() {
 			return &memory_pb.Observation{
 				Base: a.Range.Base,
 				Size: a.Range.Size,
-				Id:   a.ID.String(),
+				Id:   a.ID[:],
 			}, nil
 		},
 		func(ctx context.Context, a *memory_pb.Observation) (CmdObservation, error) {
 			o := CmdObservation{}
 			o.Range.Base = a.Base
 			o.Range.Size = a.Size
-			o.ID.Parse(a.Id)
+			copy(o.ID[:], a.Id)
 			return o, nil
 		},
 	)

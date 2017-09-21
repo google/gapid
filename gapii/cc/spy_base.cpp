@@ -55,4 +55,24 @@ void SpyBase::abort() {
     throw AbortException();
 }
 
+std::string SpyBase::sendResource(uint8_t api, const void* data, size_t size) {
+    // Add the hash to the map if it is not already there.
+    // Each hash is also mapped to small monotonically increasing integer.
+    auto res = mResources.emplace(core::Id::Hash(data, size), mResources.size());
+
+    // Create ID based on the integer. Printf is used to keep it short-ish.
+    char str[16];
+    int len = snprintf(str, sizeof(str), "%" PRIx64, res.first->second);
+
+    // Send the resource if this is the first time we see it (it was inserted).
+    if (res.second) {
+        capture::Resource resource;
+        resource.set_id(str, len);
+        resource.set_data(data, size);
+        getEncoder(api)->object(&resource);
+    }
+
+    return std::string(str, len);
+}
+
 }  // namespace gapii
