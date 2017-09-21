@@ -157,10 +157,8 @@ private:
     // pool and we are supposed to observe application pool.
     template <class T>
     bool shouldObserve(const Slice<T>& slice) const {
-        return isActive() && mObserveApplicationPool && slice.isApplicationPool();
+        return mObserveApplicationPool && slice.isApplicationPool();
     }
-
-    bool isActive() const;
 
     // Make a slice on a new Pool.
     template <typename T>
@@ -237,7 +235,7 @@ inline void CallObserver::write(const Slice<T>& dst, uint64_t index,
 template <typename T>
 inline Slice<T> CallObserver::copy(const Slice<T>& dst, const Slice<T>& src) {
     read(src);
-    if (isActive() && !shouldObserve(
+    if (!shouldObserve(
             dst)) {  // The spy must not mutate data in the application pool.
         uint64_t c = (src.count() < dst.count()) ? src.count() : dst.count();
         src.copy(dst, 0, c, 0);
