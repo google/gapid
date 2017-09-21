@@ -251,20 +251,20 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 }
 
 type builder struct {
-	idmap    map[id.ID]id.ID
 	apis     []api.API
 	seenAPIs map[api.ID]struct{}
 	observed interval.U64RangeList
 	cmds     []api.Cmd
+	resIDs   []id.ID
 }
 
 func newBuilder() *builder {
 	return &builder{
-		idmap:    map[id.ID]id.ID{},
 		apis:     []api.API{},
 		seenAPIs: map[api.ID]struct{}{},
 		observed: interval.U64RangeList{},
 		cmds:     []api.Cmd{},
+		resIDs:   []id.ID{id.ID{}},
 	}
 }
 
@@ -297,16 +297,14 @@ func (b *builder) addObservation(ctx context.Context, o *api.CmdObservation) {
 	interval.Merge(&b.observed, o.Range.Span(), true)
 }
 
-func (b *builder) addRes(ctx context.Context, id id.ID, data []byte) error {
+func (b *builder) addRes(ctx context.Context, data []byte) (index int64, err error) {
 	dID, err := database.Store(ctx, data)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	if _, dup := b.idmap[id]; dup {
-		return log.Errf(ctx, nil, "Duplicate resource with ID: %v", id)
-	}
-	b.idmap[id] = dID
-	return nil
+	index = int64(len(b.resIDs))
+	b.resIDs = append(b.resIDs, dID)
+	return
 }
 
 func (b *builder) build(name string, header *Header) *Capture {

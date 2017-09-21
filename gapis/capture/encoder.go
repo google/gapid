@@ -2,6 +2,7 @@ package capture
 
 import (
 	"context"
+	"sync"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
@@ -11,11 +12,13 @@ import (
 	"github.com/google/gapid/gapis/database"
 )
 
+var mutex sync.Mutex
+
 type encoder struct {
 	c      *Capture
 	w      *pack.Writer
 	cmdIDs map[api.Cmd]uint64
-	seen   map[id.ID]bool
+	resIDs map[id.ID]int64
 }
 
 func newEncoder(c *Capture, w *pack.Writer) *encoder {
@@ -23,11 +26,17 @@ func newEncoder(c *Capture, w *pack.Writer) *encoder {
 		c:      c,
 		w:      w,
 		cmdIDs: map[api.Cmd]uint64{},
-		seen:   map[id.ID]bool{},
+		resIDs: map[id.ID]int64{id.ID{}: 0},
 	}
 }
 
 func (e *encoder) encode(ctx context.Context) error {
+	// The encoding process modifies resource index of objects that
+	// reference resources. This means we can not encode several
+	// captures at the same time.
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	// Write the capture header.
 	if err := e.w.Object(ctx, e.c.Header); err != nil {
 		return err
@@ -51,8 +60,8 @@ func (e *encoder) encode(ctx context.Context) error {
 func (e *encoder) childObject(ctx context.Context, obj interface{}, parentID uint64) error {
 	var err error
 	if r, ok := obj.(api.ResourceReference); ok {
-		obj, err = r.RemapResourceIDs(func(id *id.ID) error {
-			return e.resource(ctx, *id)
+		obj, err = r.RemapResourceIDs(func(id *id.ID, idx *int64) error {
+			return e.resource(ctx, *id, idx)
 		})
 		if err != nil {
 			return err
@@ -140,17 +149,20 @@ func (e *encoder) extras(ctx context.Context, cmd api.Cmd, cmdID uint64) error {
 	return nil
 }
 
-func (e *encoder) resource(ctx context.Context, id id.ID) error {
-	if !e.seen[id] {
+func (e *encoder) resource(ctx context.Context, id id.ID, idx *int64) error {
+	index, found := e.resIDs[id]
+	if !found {
+		index = int64(len(e.resIDs))
+		e.resIDs[id] = index
 		data, err := database.Resolve(ctx, id)
 		if err != nil {
 			return err
 		}
-		res := &Resource{Id: id[:], Data: data.([]uint8)}
+		res := &Resource{Index: index, Data: data.([]uint8)}
 		if err := e.w.Object(ctx, res); err != nil {
 			return err
 		}
-		e.seen[id] = true
 	}
+	*idx = index
 	return nil
 }
