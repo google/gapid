@@ -35,6 +35,8 @@ message Subject {
 message Hints {
   // traceTime is the preferred duration for tracing this subject.
   google.protobuf.Duration traceTime = 1;
+  // API is the name of the api to capture on this subject, values can be gles and vulkan
+  string API = 4;
 }
 
 // Service is the api to the robot app storage.
