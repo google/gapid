@@ -142,6 +142,8 @@ service Service {
   rpc Add(AddRequest) returns(AddResponse) {};
   // UpdateTrack creates or updates a track entry.
   rpc UpdateTrack(UpdateTrackRequest) returns(UpdateTrackResponse) {};
+  // UpdatePackage modifies a package entry.
+  rpc UpdatePackage(UpdatePackageRequest) returns(UpdatePackageResponse) {};
 }
 
 message AddRequest {
@@ -169,4 +171,16 @@ message UpdateTrackRequest {
 message UpdateTrackResponse {
   // Track is the updated track information.
   Track track = 1;
+}
+
+message UpdatePackageRequest {
+  // Package contains the information to merge into the package.
+  // If the id is present, it must match an existing package.
+  // Only updates the Parent and Information.Description fields, only if present
+  Package package = 1;
+}
+
+message UpdatePackageResponse {
+  // Package is the updated package information.
+  Package package = 1;
 }
