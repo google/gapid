@@ -186,6 +186,7 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		"-observe-frames", "5",
 		"-record-errors",
 		"-gapii-device", d.Instance().Serial,
+		"-api", in.GetHints().GetAPI(),
 	}
 	cmd := shell.Command(gapit.System(), params...)
 	output, callErr := cmd.Call(ctx)

@@ -36,7 +36,7 @@ func init() {
 		Name:       "subject",
 		ShortHelp:  "Upload a traceable application to the server",
 		ShortUsage: "<filenames>",
-		Action:     &subjectUploadVerb{RobotOptions: defaultRobotOptions},
+		Action:     &subjectUploadVerb{RobotOptions: defaultRobotOptions, API: GLESAPI},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "subject",
@@ -46,8 +46,28 @@ func init() {
 	})
 }
 
+const (
+	GLESAPI APIType = iota
+	VulkanAPI
+)
+
+type APIType uint8
+
+var apiTypeToName = map[APIType]string{
+	GLESAPI:   "gles",
+	VulkanAPI: "vulkan",
+}
+
+func (a *APIType) Choose(c interface{}) {
+	*a = c.(APIType)
+}
+func (a APIType) String() string {
+	return apiTypeToName[a]
+}
+
 type subjectUploadVerb struct {
 	RobotOptions
+	API       APIType       `help:"the api to capture, can be either gles or vulkan (default:gles)"`
 	TraceTime time.Duration `help:"trace time override (if non-zero)"`
 	subjects  subject.Subjects
 }
@@ -64,6 +84,7 @@ func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
 	if v.TraceTime != 0 {
 		hints = &subject.Hints{TraceTime: ptypes.DurationProto(v.TraceTime)}
 	}
+	hints.API = v.API.String()
 	subject, created, err := v.subjects.Add(ctx, id, hints)
 	if err != nil {
 		return log.Err(ctx, err, "Failed processing subject")
