@@ -54,12 +54,12 @@ func (e *EGLImageData) RemapResourceIDs(ids map[id.ID]id.ID) api.ResourceReferen
 
 func init() {
 	protoconv.Register(
-		func(ctx context.Context, o *ErrorState) (*gles_pb.ErrorState, error) {
+		func(ctx context.Context, _ func(interface{}) uint64, o *ErrorState) (*gles_pb.ErrorState, error) {
 			return &gles_pb.ErrorState{
 				TraceDriversGlError: uint32(o.TraceDriversGlError),
 				InterceptorsGlError: uint32(o.InterceptorsGlError),
 			}, nil
-		}, func(ctx context.Context, p *gles_pb.ErrorState) (*ErrorState, error) {
+		}, func(ctx context.Context, _ func(uint64, interface{}), p *gles_pb.ErrorState) (*ErrorState, error) {
 			return &ErrorState{
 				TraceDriversGlError: GLenum(p.TraceDriversGlError),
 				InterceptorsGlError: GLenum(p.InterceptorsGlError),

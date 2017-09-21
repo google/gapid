@@ -66,6 +66,10 @@ public:
     // (in bytes) than this slice.
     template<typename U> inline Slice<U> as() const;
 
+    // Pool returns the base pointer of the pool that this slice is in.
+    // nullptr is returned if this is the application pool.
+    const Pool* getPool() const;
+
     // Support for range-based for looping
     inline T* begin() const;
     inline T* end() const;
@@ -103,6 +107,11 @@ inline uint64_t Slice<T>::size() const {
 template<typename T>
 inline bool Slice<T>::isApplicationPool() const {
     return mPool.get() == nullptr;
+}
+
+template<typename T>
+inline const Pool* Slice<T>::getPool() const {
+    return mPool.get();
 }
 
 template<typename T>

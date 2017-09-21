@@ -33,7 +33,7 @@ func toProto(ctx context.Context, v interface{}) (proto.Message, error) {
 		return b, nil
 	}
 	// Check the registered proto converters.
-	msg, err := protoconv.ToProto(ctx, v)
+	msg, err := protoconv.ToProto(ctx, func(interface{}) uint64 { panic("Database does not support references") }, v)
 	switch err.(type) {
 	case nil:
 		return msg, nil

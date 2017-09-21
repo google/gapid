@@ -26,6 +26,7 @@
   import (»¶
     "context"¶
     "fmt"¶
+    "unsafe"¶
 ¶
     "github.com/golang/protobuf/proto"¶
 ¶
@@ -39,6 +40,7 @@
   // Just in case it is not used¶
   var _ memory.PoolID¶
   var _ memory_pb.Pointer¶
+  var _ unsafe.Pointer ¶
   ¶
   func init() {»¶
     {{range $c := AllCommands $}}
@@ -47,8 +49,8 @@
         {{$p := print (Global "Store") "." $proto}}
         {{$o := $c.Name | GoCommandName}}
         protoconv.Register(»¶
-          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
-          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { return {{$o}}From(in), nil },¶
+          func(ctx context.Context, ref_cb func(interface{}) uint64, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(ref_cb), nil },¶
+          func(ctx context.Context, ref_cb func(uint64, interface{}), in *{{$p}}) (*{{$o}}, error) { return {{$o}}From(in, ref_cb), nil },¶
         «)¶
       {{end}}
     {{end}}
@@ -58,8 +60,8 @@
         {{$p := print (Global "Store") "." $proto}}
         {{$o := Macro "Go.Type" $c}}
         protoconv.Register(¶
-          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
-          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { v := {{$o}}From(in); return &v, nil },¶
+          func(ctx context.Context, ref_cb func(interface{}) uint64, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(ref_cb), nil },¶
+          func(ctx context.Context, ref_cb func(uint64, interface{}), in *{{$p}}) (*{{$o}}, error) { v := {{$o}}From(in, ref_cb); return &v, nil },¶
         «)¶
       {{end}}
     {{end}}
@@ -91,7 +93,7 @@
   {{$p := print (Global "Store") "." $proto}}
   ¶
   // ToProto returns the primary storage proto of the {{$name}} command.¶
-  func (ϟa *{{$name}}) ToProto() *{{$p}} {»¶
+  func (ϟa *{{$name}}) ToProto(ref_cb func(interface{}) uint64) *{{$p}} {»¶
     to := &{{$p}}{Thread: ϟa.Thread()}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.To" "Field" $v "Outer" $proto}}
@@ -100,7 +102,7 @@
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(from *{{$p}}) *{{$name}} {»¶
+  func {{$name}}From(from *{{$p}}, ref_cb func(uint64, interface{})) *{{$name}} {»¶
     ϟa := &{{$name}}{caller: api.CmdNoID, thread: from.GetThread()}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
@@ -113,6 +115,8 @@
 ¶
     // GetResult returns the result value for this command.¶
     func (ϟa *{{$name}}) GetResult() proto.Message {»¶
+      ref_cb := func(interface{}) uint64 {panic("References not supported in result types")}¶
+      _ = ref_cb¶
       to := &{{Global "OutputDir"}}_pb.{{$proto}}Call{}¶
       {{Template "Convert.To" "Field" $.Return "Outer" $proto}}
       return to¶
@@ -120,6 +124,8 @@
 ¶
     // SetResult changes the result value.¶
     func (ϟa *{{$name}}) SetResult(v proto.Message) error {»¶
+      ref_cb := func(uint64, interface{}) {panic("References not supported in result types")}¶
+      _ = ref_cb¶
       from, ok := v.(*{{Global "OutputDir"}}_pb.{{$proto}}Call)¶
       if !ok {»¶
         return fmt.Errorf("Expected result type *{{$proto}}Call, got %T", v)¶
@@ -141,7 +147,7 @@
   {{$proto := $.Name | ProtoGoName}}
   ¶
   // ToProto returns the storage form of the {{$name}}.¶
-  func (ϟa *{{$name}}) ToProto() *{{Global "OutputDir"}}_pb.{{$proto}} {»¶
+  func (ϟa *{{$name}}) ToProto(ref_cb func(interface{}) uint64) *{{Global "OutputDir"}}_pb.{{$proto}} {»¶
     to := &{{Global "OutputDir"}}_pb.{{$proto}}{}¶
     {{range $v := $.Fields}}
       {{Template "Convert.To" "Field" $v "Outer" $proto}}
@@ -150,7 +156,8 @@
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}) {{$name}} {»¶
+  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}},
+                      ref_cb func(uint64, interface{})) {{$name}} {»¶
     ϟa := {{$name}}{}¶
     {{range $v := $.Fields}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
@@ -211,9 +218,16 @@
     ϟa.{{$name}} = make({{$.Field.Type.Name}}, len(from.{{$proto}}))¶
     for _, ϟe := range from.{{$proto}} {»¶
       ϟk := {{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟe.Key"}}¶
+      {{if IsReference $truetype.ValueType}}
+      var ϟv = {{Template "Go.Type" $truetype.ValueType}}(nil)¶
+      ref_cb(ϟe.Value.Identifier, memory.MapReferenceValue{ϟa.{{$name}}, ϟk})¶
+      {{else}}
       ϟv := {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟe.Value"}}¶
+      {{end}}
       ϟa.{{$name}}[ϟk] = ϟv¶
     «}¶
+  {{else if IsReference $truetype}}
+    ref_cb(from.{{$proto}}.Identifier, &ϟa.{{$name}})¶
   {{else}}
     {{$value := printf "from.%s" $proto}}
     ϟa.{{$name}} = {{Template "Convert.FromProto" "Type" $type "Value" $value}}¶
@@ -243,6 +257,7 @@
   {{else if IsU64           $}}uint64
   {{else if IsS64           $}}int64
   {{else if IsString        $}}string
+  {{else if IsReference     $}}{{Template "Go.Type" $}}
   {{else if IsPointer       $}}{{Template "Go.Type" $}}
   {{else if IsSlice         $}}{{Template "Go.Type" $}}
   {{else if IsEnum          $}}{{Template "Go.Type" $}}
@@ -277,6 +292,7 @@
   {{else if IsS64           $}}int64
   {{else if IsString        $}}string
   {{else if IsEnum          $}}uint32
+  {{else if IsReference     $}}memory_pb.Reference
   {{else if IsPointer       $}}memory_pb.Pointer
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
@@ -295,13 +311,14 @@
     {{$source := Macro "Convert.LiveType" $.Type}}
     {{$target := Macro "Convert.StorageType" $.Type}}
     {{$truetype := Underlying $.Type}}
-    {{if IsClass $truetype}}{{$.Value}}.ToProto()
+    {{if IsClass $truetype}}{{$.Value}}.ToProto(ref_cb)
     {{else if IsPointer $truetype}}&{{$target}}{Address: {{$.Value}}.addr, Pool: uint32({{$.Value}}.pool)}
+    {{else if IsReference $truetype}}&{{$target}}{ref_cb({{$.Value}})}
     {{else if IsSlice $truetype}}&{{$target}}{»¶
       Root: {{$.Value}}.root,¶
       Base: {{$.Value}}.base,¶
       Count: {{$.Value}}.count,¶
-      Pool: uint32({{$.Value}}.pool),¶
+      Pool: uint64({{$.Value}}.pool),¶
     «}
     {{else if eq $source $target}}{{$.Value}}
     {{else}}({{$target}})({{$.Value}})
@@ -318,7 +335,7 @@
     {{$source := Macro "Convert.StorageType" $.Type}}
     {{$target := Macro "Convert.LiveType" $.Type}}
     {{$truetype := Underlying $.Type}}
-    {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}})
+    {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}}, ref_cb)
     {{else if IsPointer $truetype}}{{$target}}{addr: {{$.Value}}.Address, pool: memory.PoolID({{$.Value}}.Pool)}
     {{else if IsSlice $truetype}}{{$target}}{»¶
       root:  {{$.Value}}.Root,¶

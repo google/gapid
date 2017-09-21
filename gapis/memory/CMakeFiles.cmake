@@ -37,6 +37,7 @@ set(files
     range.go
     range_list.go
     read.go
+    reference.go
     resource.go
     slice.go
     store.go

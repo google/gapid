@@ -37,6 +37,7 @@ set(files
     gles_spy_2.cpp
     gles_spy_3.cpp
     gles_spy_externs.cpp
+    gles_spy_serialize.cpp
     gles_spy_subroutines_0.cpp
     gles_spy_subroutines_1.cpp
     gles_types.cpp
@@ -52,6 +53,7 @@ set(files
     gvr_spy_1.cpp
     gvr_spy_2.cpp
     gvr_spy_3.cpp
+    gvr_spy_serialize.cpp
     gvr_spy_subroutines_0.cpp
     gvr_spy_subroutines_1.cpp
     gvr_types.cpp
@@ -86,6 +88,7 @@ set(files
     vulkan_spy_2.cpp
     vulkan_spy_3.cpp
     vulkan_spy_helpers.cpp
+    vulkan_spy_serialize.cpp
     vulkan_spy_subroutines_0.cpp
     vulkan_spy_subroutines_1.cpp
     vulkan_types.cpp

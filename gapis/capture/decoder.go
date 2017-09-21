@@ -116,7 +116,9 @@ func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
 }
 
 func (d *decoder) unmarshal(ctx context.Context, in proto.Message) (interface{}, error) {
-	obj, err := protoconv.ToObject(ctx, in)
+	obj, err := protoconv.ToObject(ctx, func(uint64, interface{}) {
+		panic("Cannot store references in captures yet")
+	}, in)
 	if err != nil {
 		if e, ok := err.(protoconv.ErrNoConverterRegistered); ok && e.Object == in {
 			return in, nil // No registered converter. Treat proto as the object.

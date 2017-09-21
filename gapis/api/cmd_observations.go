@@ -127,14 +127,14 @@ func (o CmdObservation) RemapResourceIDs(ids map[id.ID]id.ID) ResourceReference 
 
 func init() {
 	protoconv.Register(
-		func(ctx context.Context, a CmdObservation) (*memory_pb.Observation, error) {
+		func(ctx context.Context, _ func(interface{}) uint64, a CmdObservation) (*memory_pb.Observation, error) {
 			return &memory_pb.Observation{
 				Base: a.Range.Base,
 				Size: a.Range.Size,
 				Id:   a.ID.String(),
 			}, nil
 		},
-		func(ctx context.Context, a *memory_pb.Observation) (CmdObservation, error) {
+		func(ctx context.Context, _ func(uint64, interface{}), a *memory_pb.Observation) (CmdObservation, error) {
 			o := CmdObservation{}
 			o.Range.Base = a.Base
 			o.Range.Size = a.Size

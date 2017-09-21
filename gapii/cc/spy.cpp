@@ -366,7 +366,7 @@ std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserv
 
     std::shared_ptr<StaticContextState> out(new StaticContextState(constants, threadName));
 
-    observer->encodeAndDelete(out->toProto());
+    observer->encodeAndDelete(out->toProto(&unused_reference_function));
 
     return out;
 }
@@ -433,7 +433,7 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
     ));
 
     // Store the DynamicContextState as an extra.
-    observer->encodeAndDelete(out->toProto());
+    observer->encodeAndDelete(out->toProto(&unused_reference_function));
 
     return out;
 }
@@ -482,8 +482,9 @@ void Spy::onPostStartOfFrame() {
             set_suspended(false);
             set_recording_state(true);
             auto spy_ctx = enter("RecreateState", 2);
-            spy_ctx->enter(cmd::RecreateState{});
-            EnumerateVulkanResources(spy_ctx);
+            VulkanSpy::serializeState(spy_ctx);
+            /*spy_ctx->enter(cmd::RecreateState{});
+            EnumerateVulkanResources(spy_ctx);*/
             spy_ctx->exit();
             set_recording_state(false);
             // The outer call will handle the spy->exit() for us.
@@ -519,8 +520,9 @@ void Spy::onPostEndOfFrame() {
             set_suspended(false);
             set_recording_state(true);
             auto spy_ctx = enter("RecreateState", 2);
-            spy_ctx->enter(cmd::RecreateState{});
-            EnumerateVulkanResources(spy_ctx);
+            VulkanSpy::serializeState(spy_ctx);
+            /*spy_ctx->enter(cmd::RecreateState{});
+            EnumerateVulkanResources(spy_ctx);*/
             spy_ctx->exit();
             set_recording_state(false);
             // The outer call to VkQueuePresent will handle the spy->exit() for us.

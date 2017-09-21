@@ -48,7 +48,9 @@ func (e *encoder) encode(ctx context.Context) error {
 }
 
 func (e *encoder) childObject(ctx context.Context, obj interface{}, parentID uint64) error {
-	msg, err := protoconv.ToProto(ctx, obj)
+	msg, err := protoconv.ToProto(ctx, func(interface{}) uint64 {
+		panic("Cannot store references in captures yet")
+	}, obj)
 	if err != nil {
 		return err
 	}
@@ -69,7 +71,9 @@ func (e *encoder) startCmd(ctx context.Context, cmd api.Cmd) (uint64, error) {
 			return 0, err
 		}
 	}
-	cmdProto, err := protoconv.ToProto(ctx, cmd)
+	cmdProto, err := protoconv.ToProto(ctx, func(interface{}) uint64 {
+		panic("Cannot store references in captures yet")
+	}, cmd)
 	if err != nil {
 		return 0, err
 	}

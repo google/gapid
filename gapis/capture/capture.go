@@ -179,7 +179,7 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 	return newEncoder(c, writer).encode(ctx)
 }
 
-func toProto(ctx context.Context, c *Capture) (*Record, error) {
+func toProto(ctx context.Context, _ func(interface{}) uint64, c *Capture) (*Record, error) {
 	buf := bytes.Buffer{}
 	if err := c.Export(ctx, &buf); err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 	}, nil
 }
 
-func fromProto(ctx context.Context, r *Record) (*Capture, error) {
+func fromProto(ctx context.Context, _ func(uint64, interface{}), r *Record) (*Capture, error) {
 	d := newDecoder()
 	if err := pack.Read(ctx, bytes.NewReader(r.Data), d); err != nil {
 		switch err := errors.Cause(err).(type) {

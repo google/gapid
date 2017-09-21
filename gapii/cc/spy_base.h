@@ -32,6 +32,7 @@
 #include "core/cc/id.h"
 
 #include "gapis/capture/capture.pb.h"
+#include "gapis/memory/memory_pb/memory.pb.h"
 
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #include "core/memory_tracker/cc/memory_tracker.h"
@@ -236,6 +237,40 @@ template<typename T>
 inline Slice<T> SpyBase::slice(const Slice<T>& src, uint64_t s, uint64_t e) const {
     return src(s, e);
 }
+
+struct StateSerializer {
+    StateSerializer(CallObserver* observer): mObserver(observer) {}
+    ~StateSerializer() {
+        GAPID_ASSERT(mSerilizationFunctions.size() == 0);
+    }
+    void Finalize() {
+        while(!mSerilizationFunctions.empty()) {
+            auto ref = new memory_pb::Reference();
+            ref->set_identifier(reinterpret_cast<uint64_t>(mSerilizationFunctions[0].first));
+            mObserver->enterAndDelete(ref);
+            mObserver->encodeAndDelete(mSerilizationFunctions[0].second());
+            mObserver->exit();
+            mSerilizationFunctions.pop_front();
+        }
+    }
+
+    uint64_t call(void* addr, const std::function<::google::protobuf::Message*()>& f) {
+        if (addr == nullptr) {
+            return 0;
+        }
+        bool inserted = false;
+        if (mSeenAddresses.count(addr) != 0) {
+            return reinterpret_cast<uint64_t>(addr);
+        }
+        mSeenAddresses.insert(addr);
+        mSerilizationFunctions.push_back(std::make_pair(addr, f));
+        return reinterpret_cast<uint64_t>(addr);
+    }
+
+    CallObserver* mObserver;
+    std::set<void*> mSeenAddresses;
+    std::deque<std::pair<void*, std::function<::google::protobuf::Message*()>>> mSerilizationFunctions;
+};
 
 }  // namespace gapii
 

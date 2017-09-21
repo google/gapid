@@ -21,6 +21,7 @@
 #include "gapii/cc/gles_types.h"
 #include "gapii/cc/pack_encoder.h"
 #include "gapii/cc/slice.h"
+#include "gapii/cc/to_proto.h"
 
 #include "gapis/memory/memory_pb/memory.pb.h"
 
@@ -281,12 +282,12 @@ inline PackEncoder::SPtr CallObserver::encoder() {
 
 template <typename T>
 inline void CallObserver::enter(const T& obj) {
-    enterAndDelete(obj.toProto());
+    enterAndDelete(obj.toProto(&unused_reference_function));
 }
 
 template <typename T>
 inline void CallObserver::encode(const T& obj) {
-    encodeAndDelete(obj.toProto());
+    encodeAndDelete(obj.toProto(&unused_reference_function));
 }
 
 }  // namespace gapii

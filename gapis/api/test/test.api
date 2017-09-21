@@ -276,3 +276,14 @@ cmd void cmdVoidReadAndConditionalWrite(u32* pCount, remapped* pHandles) {
     pCount[0] = count
   }
 }
+
+
+@serialize
+class TestReferenced {
+  u32   value
+}
+
+@serialize
+class TestReference {
+  ref!TestReferenced Ref
+}

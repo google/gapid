@@ -2813,7 +2813,7 @@ cmd VkResult vkQueueSubmit(
         ref := cb.CommandReferences[as!u32(k)]
         if ref.Type == cmd_vkCmdExecuteCommands {
           enterSubcontext()
-          ec := cb.BufferCommands.vkCmdExecuteCommands[ref.CommandIndex]
+          ec := cb.BufferCommands.VkCmdExecuteCommands[ref.CommandIndex]
           for l in (0 .. len(ec.CommandBuffers)) {
             scb := CommandBuffers[ec.CommandBuffers[as!u32(l)]]
             enterSubcontext()
@@ -5405,6 +5405,7 @@ cmd VkResult vkResetCommandBuffer(
   return ?
 }
 
+@serialize
 @internal class vkCmdBindPipelineArgs {
   VkPipelineBindPoint PipelineBindPoint
   VkPipeline          Pipeline
@@ -5446,6 +5447,7 @@ extern void pushRenderPassMarker(VkRenderPass renderPass)
 extern void popRenderPassMarker()
 extern void popAndPushMarkerForNextSubpass(u32 nextSubpass)
 
+@serialize
 @internal class vkCmdSetViewportArgs {
   u32                   FirstViewport
   map!(u32, VkViewport) Viewports
@@ -5472,6 +5474,7 @@ cmd void vkCmdSetViewport(
   addCmd(commandBuffer, args, dovkCmdSetViewport)
 }
 
+@serialize
 @internal class vkCmdSetScissorArgs {
   u32                 FirstScissor
   map!(u32, VkRect2D) Scissors
@@ -5498,6 +5501,7 @@ cmd void vkCmdSetScissor(
   addCmd(commandBuffer, args, dovkCmdSetScissor)
 }
 
+@serialize
 @internal class vkCmdSetLineWidthArgs {
   f32             LineWidth
 }
@@ -5516,6 +5520,7 @@ cmd void vkCmdSetLineWidth(
   addCmd(commandBuffer, args, dovkCmdSetLineWidth)
 }
 
+@serialize
 @internal class vkCmdSetDepthBiasArgs {
   f32 DepthBiasConstantFactor
   f32 DepthBiasClamp
@@ -5542,6 +5547,7 @@ cmd void vkCmdSetDepthBias(
   addCmd(commandBuffer, args, dovkCmdSetDepthBias)
 }
 
+@serialize
 @internal class vkCmdSetBlendConstantsArgs {
   f32 R
   f32 G
@@ -5568,6 +5574,7 @@ cmd void vkCmdSetBlendConstants(
     args, dovkCmdSetBlendConstants)
 }
 
+@serialize
 @internal class vkCmdSetDepthBoundsArgs {
   f32 MinDepthBounds
   f32 MaxDepthBounds
@@ -5590,6 +5597,7 @@ cmd void vkCmdSetDepthBounds(
     args, dovkCmdSetDepthBounds)
 }
 
+@serialize
 @internal class vkCmdSetStencilCompareMaskArgs {
   VkStencilFaceFlags FaceMask
   u32                CompareMask
@@ -5612,6 +5620,7 @@ cmd void vkCmdSetStencilCompareMask(
   addCmd(commandBuffer, args, dovkCmdSetStencilCompareMask)
 }
 
+@serialize
 @internal class vkCmdSetStencilWriteMaskArgs {
   VkStencilFaceFlags FaceMask
   u32                WriteMask
@@ -5634,6 +5643,7 @@ cmd void vkCmdSetStencilWriteMask(
   addCmd(commandBuffer, args, dovkCmdSetStencilWriteMask)
 }
 
+@serialize
 @internal class vkCmdSetStencilReferenceArgs {
   VkStencilFaceFlags FaceMask
   u32                Reference
@@ -5657,6 +5667,7 @@ cmd void vkCmdSetStencilReference(
   addCmd(commandBuffer, args, dovkCmdSetStencilReference)
 }
 
+@serialize
 @internal class
 vkCmdBindDescriptorSetsArgs {
   VkPipelineBindPoint        PipelineBindPoint
@@ -5748,6 +5759,7 @@ cmd void vkCmdBindDescriptorSets(
 }
 
 @internal
+@serialize
 class BoundBuffer {
   ref!BufferObject Buffer
   VkDeviceSize     Offset
@@ -5755,11 +5767,13 @@ class BoundBuffer {
 }
 
 @internal
+@serialize
 class BoundIndexBuffer {
   VkIndexType Type
   BoundBuffer BoundBuffer
 }
 
+@serialize
 @internal class
 vkCmdBindIndexBufferArgs {
   VkBuffer     Buffer
@@ -5794,6 +5808,7 @@ cmd void vkCmdBindIndexBuffer(
     dovkCmdBindIndexBuffer)
 }
 
+@serialize
 @internal class
 vkCmdBindVertexBuffersArgs {
   u32                     FirstBinding
@@ -5912,6 +5927,7 @@ sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, 
   }
 }
 
+@serialize
 @internal class vkCmdDrawArgs {
   u32 VertexCount
   u32 InstanceCount
@@ -5940,6 +5956,7 @@ cmd void vkCmdDraw(
   addCmd(commandBuffer, args, dovkCmdDraw)
 }
 
+@serialize
 @internal class
 vkCmdDrawIndexedArgs {
   u32 IndexCount
@@ -5993,6 +6010,7 @@ cmd void vkCmdDrawIndexed(
   addCmd(commandBuffer, args, dovkCmdDrawIndexed)
 }
 
+@serialize
 @internal class vkCmdDrawIndirectArgs {
   VkBuffer     Buffer
   VkDeviceSize Offset
@@ -6025,6 +6043,7 @@ cmd void vkCmdDrawIndirect(
   addCmd(commandBuffer, args,  dovkCmdDrawIndirect)
 }
 
+@serialize
 @internal class vkCmdDrawIndexedIndirectArgs {
   VkBuffer     Buffer
   VkDeviceSize Offset
@@ -6060,6 +6079,7 @@ cmd void vkCmdDrawIndexedIndirect(
   addCmd(commandBuffer, args, dovkCmdDrawIndexedIndirect)
 }
 
+@serialize
 @internal class vkCmdDispatchArgs {
   u32 GroupCountX,
   u32 GroupCountY,
@@ -6082,6 +6102,7 @@ cmd void vkCmdDispatch(
   addCmd(commandBuffer, args, dovkCmdDispatch)
 }
 
+@serialize
 @internal
 class vkCmdDispatchIndirectArgs {
   VkBuffer     Buffer
@@ -6104,6 +6125,7 @@ cmd void vkCmdDispatchIndirect(
   addCmd(commandBuffer, args, dovkCmdDispatchIndirect)
 }
 
+@serialize
 @internal class vkCmdCopyBufferArgs {
   VkBuffer                SrcBuffer  ,
   VkBuffer                DstBuffer  ,
@@ -6142,6 +6164,7 @@ cmd void vkCmdCopyBuffer(
   addCmd(commandBuffer, args, dovkCmdCopyBuffer)
 }
 
+@serialize
 @internal
 class vkCmdCopyImageArgs {
   VkImage                SrcImage
@@ -6240,6 +6263,7 @@ cmd void vkCmdCopyImage(
   addCmd(commandBuffer, args, dovkCmdCopyImage)
 }
 
+@serialize
 @internal
 class vkCmdBlitImageArgs {
   VkImage                SrcImage
@@ -6572,6 +6596,7 @@ sub VkDeviceSize inferImageLevelSize(ref!ImageObject img, u32 level) {
   return level_size.Val
 }
 
+@serialize
 @internal
 class vkCmdCopyBufferToImageArgs {
   VkBuffer                     SrcBuffer
@@ -6647,6 +6672,7 @@ cmd void vkCmdCopyBufferToImage(
   addCmd(commandBuffer, args, dovkCmdCopyBufferToImage)
 }
 
+@serialize
 @internal
 class vkCmdCopyImageToBufferArgs {
   VkImage                      SrcImage
@@ -6680,6 +6706,7 @@ cmd void vkCmdCopyImageToBuffer(
   addCmd(commandBuffer, args, dovkCmdCopyImageToBuffer)
 }
 
+@serialize
 @internal class vkCmdUpdateBufferArgs {
   VkBuffer     DstBuffer
   VkDeviceSize DstOffset
@@ -6714,6 +6741,7 @@ cmd void vkCmdUpdateBuffer(
     dovkCmdUpdateBuffer)
 }
 
+@serialize
 @internal
 class vkCmdFillBufferArgs {
   VkBuffer     Buffer
@@ -6745,6 +6773,7 @@ cmd void vkCmdFillBuffer(
   addCmd(commandBuffer, args, dovkCmdFillBuffer)
 }
 
+@serialize
 @internal
 class vkCmdClearColorImageArgs {
   VkImage                            Image
@@ -6779,6 +6808,7 @@ cmd void vkCmdClearColorImage(
   addCmd(commandBuffer, args, dovkCmdClearColorImage)
 }
 
+@serialize
 @internal
 class vkCmdClearDepthStencilImageArgs {
   VkImage                            Image
@@ -6813,6 +6843,7 @@ cmd void vkCmdClearDepthStencilImage(
   addCmd(commandBuffer, args, dovkCmdClearDepthStencilImage)
 }
 
+@serialize
 @internal
 class vkCmdClearAttachmentsArgs {
   map!(u32, VkClearAttachment) Attachments
@@ -6843,6 +6874,7 @@ cmd void vkCmdClearAttachments(
   addCmd(commandBuffer, args, dovkCmdClearAttachments)
 }
 
+@serialize
 @internal class vkCmdResolveImageArgs {
   VkImage                   SrcImage      ,
   VkImageLayout             SrcImageLayout,
@@ -6878,6 +6910,7 @@ cmd void vkCmdResolveImage(
   addCmd(commandBuffer, args, dovkCmdResolveImage)
 }
 
+@serialize
 @internal class vkCmdSetEventArgs {
   VkEvent              Event
   VkPipelineStageFlags StageMask
@@ -6902,6 +6935,7 @@ cmd void vkCmdSetEvent(
   addCmd(commandBuffer, args, dovkCmdSetEvent)
 }
 
+@serialize
 @internal class vkCmdResetEventArgs {
   VkEvent              Event
   VkPipelineStageFlags StageMask
@@ -6926,6 +6960,7 @@ cmd void vkCmdResetEvent(
   addCmd(commandBuffer, args, dovkCmdResetEvent)
 }
 
+@serialize
 @internal class vkCmdWaitEventsArgs {
   map!(u32, VkEvent)               Events
   VkPipelineStageFlags             SrcStageMask
@@ -6991,6 +7026,7 @@ cmd void vkCmdWaitEvents(
   addCmd(commandBuffer, args, dovkCmdWaitEvents)
 }
 
+@serialize
 @internal class vkCmdPipelineBarrierArgs {
   VkPipelineStageFlags             SrcStageMask        ,
   VkPipelineStageFlags             DstStageMask        ,
@@ -7044,6 +7080,7 @@ cmd void vkCmdPipelineBarrier(
   addCmd(commandBuffer, args, dovkCmdPipelineBarrier)
 }
 
+@serialize
 @internal class vkCmdBeginQueryArgs {
   VkQueryPool         QueryPool
   u32                 Query
@@ -7070,6 +7107,7 @@ cmd void vkCmdBeginQuery(
   addCmd(commandBuffer, args, dovkCmdBeginQuery)
 }
 
+@serialize
 @internal class
 vkCmdEndQueryArgs {
   VkQueryPool QueryPool
@@ -7094,6 +7132,7 @@ cmd void vkCmdEndQuery(
   addCmd(commandBuffer, args, dovkCmdEndQuery)
 }
 
+@serialize
 @internal class
 vkCmdResetQueryPoolArgs {
   VkQueryPool QueryPool
@@ -7122,6 +7161,7 @@ cmd void vkCmdResetQueryPool(
   addCmd(commandBuffer, args, dovkCmdResetQueryPool)
 }
 
+@serialize
 @internal class vkCmdWriteTimestampArgs {
   VkPipelineStageFlagBits PipelineStage,
   VkQueryPool             QueryPool    ,
@@ -7145,6 +7185,7 @@ cmd void vkCmdWriteTimestamp(
   addCmd(commandBuffer, args, dovkCmdWriteTimestamp)
 }
 
+@serialize
 @internal
 class vkCmdCopyQueryPoolResultsArgs {
   VkQueryPool        QueryPool
@@ -7183,6 +7224,7 @@ cmd void vkCmdCopyQueryPoolResults(
   addCmd(commandBuffer, args, dovkCmdCopyQueryPoolResults)
 }
 
+@serialize
 @internal class
 vkCmdPushConstantsArgs {
   VkPipelineLayout   Layout
@@ -7211,6 +7253,7 @@ cmd void vkCmdPushConstants(
   addCmd(commandBuffer, args, dovkCmdPushConstants)
 }
 
+@serialize
 @internal class
 vkCmdBeginRenderPassArgs {
   VkSubpassContents       Contents
@@ -7295,6 +7338,7 @@ cmd void vkCmdBeginRenderPass(
   addCmd(commandBuffer, args, dovkCmdBeginRenderPass)
 }
 
+@serialize
 @internal class
 vkCmdNextSubpassArgs {
   VkSubpassContents Contents
@@ -7330,6 +7374,7 @@ cmd void vkCmdNextSubpass(
   addCmd(commandBuffer, args, dovkCmdNextSubpass)
 }
 
+@serialize
 @internal class
 vkCmdEndRenderPassArgs {
 }
@@ -7353,6 +7398,7 @@ cmd void vkCmdEndRenderPass(
   addCmd(commandBuffer, args, dovkCmdEndRenderPass)
 }
 
+@serialize
 @internal
 class vkCmdExecuteCommandsArgs {
   map!(u32, VkCommandBuffer) CommandBuffers
@@ -8471,6 +8517,7 @@ cmd VkResult vkDebugMarkerSetObjectNameEXT(
   return ?
 }
 
+@serialize
 @internal class
 vkCmdDebugMarkerBeginEXTArgs {
   @unused string MarkerName,
@@ -8502,6 +8549,7 @@ cmd void vkCmdDebugMarkerBeginEXT(
   addCmd(commandBuffer, args, dovkCmdDebugMarkerBeginEXT)
 }
 
+@serialize
 @internal class
 vkCmdDebugMarkerEndEXTArgs {}
 
@@ -8523,6 +8571,7 @@ cmd void vkCmdDebugMarkerEndEXT(
   addCmd(commandBuffer, args, dovkCmdDebugMarkerEndEXT)
 }
 
+@serialize
 @internal class
 vkCmdDebugMarkerInsertEXTArgs {
   @unused string MarkerName,
@@ -8639,42 +8688,81 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
 /////////////////////////////
 
 // Dispatchable objects.
+@serialize
 map!(VkInstance, ref!InstanceObject)             Instances
+@serialize
 map!(VkPhysicalDevice, ref!PhysicalDeviceObject) PhysicalDevices
+@serialize
 map!(VkDevice, ref!DeviceObject)                 Devices
+@serialize
 map!(VkQueue, ref!QueueObject)                   Queues
+@serialize
 map!(VkCommandBuffer, ref!CommandBufferObject)   CommandBuffers
 // Non-dispatchable objects.
+@serialize
 map!(VkDeviceMemory, ref!DeviceMemoryObject)               DeviceMemories
+@serialize
 map!(VkBuffer, ref!BufferObject)                           Buffers
+@serialize
 map!(VkBufferView, ref!BufferViewObject)                   BufferViews
+@serialize
 map!(VkImage, ref!ImageObject)                             Images
+@serialize
 map!(VkImageView, ref!ImageViewObject)                     ImageViews
+@serialize
 map!(VkShaderModule, ref!ShaderModuleObject)               ShaderModules
+@serialize
 map!(VkPipeline, ref!GraphicsPipelineObject)               GraphicsPipelines
+@serialize
 map!(VkPipeline, ref!ComputePipelineObject)                ComputePipelines
+@serialize
 map!(VkPipelineLayout, ref!PipelineLayoutObject)           PipelineLayouts
+@serialize
 map!(VkSampler, ref!SamplerObject)                         Samplers
+@serialize
 map!(VkDescriptorSet, ref!DescriptorSetObject)             DescriptorSets
+@serialize
 map!(VkDescriptorSetLayout, ref!DescriptorSetLayoutObject) DescriptorSetLayouts
+@serialize
 map!(VkDescriptorPool, ref!DescriptorPoolObject)           DescriptorPools
+@serialize
 map!(VkFence, ref!FenceObject)                             Fences
+@serialize
 map!(VkSemaphore, ref!SemaphoreObject)                     Semaphores
+@serialize
 map!(VkEvent, ref!EventObject)                             Events
+@serialize
 map!(VkQueryPool, ref!QueryPoolObject)                     QueryPools
+@serialize
 map!(VkFramebuffer, ref!FramebufferObject)                 Framebuffers
+@serialize
 map!(VkRenderPass, ref!RenderPassObject)                   RenderPasses
+@serialize
 map!(VkPipelineCache, ref!PipelineCacheObject)             PipelineCaches
+@serialize
 map!(VkCommandPool, ref!CommandPoolObject)                 CommandPools
+
+@serialize
 map!(VkSurfaceKHR, ref!SurfaceObject)                      Surfaces
+@serialize
 map!(VkSwapchainKHR, ref!SwapchainObject)                  Swapchains
+@serialize
 map!(VkDisplayModeKHR, ref!DisplayModeObject)              DisplayModes
 // Other state Tracking
+@serialize
 ref!QueueObject           LastBoundQueue
+@serialize
 ref!ComputePipelineObject CurrentComputePipeline
+@serialize
+map!(VkQueue, ref!DrawInfo) LastDrawInfos
+@serialize
+PresentInfo LastPresentInfo
+@serialize
+LastSubmissionType LastSubmission
 
 // This contains the draw command parameters. Only one of the draw data should be
 // valid at a time. Others should be null.
+@serialize
 @internal class DrawParameters {
   ref!vkCmdDrawArgs                Draw
   ref!vkCmdDrawIndexedArgs         DrawIndexed
@@ -8683,6 +8771,7 @@ ref!ComputePipelineObject CurrentComputePipeline
 }
 
 // This contains the information about a draw
+@serialize
 @internal class DrawInfo {
   ref!FramebufferObject Framebuffer
   // A mapping from the descriptor set bound numbers to descriptor set objects
@@ -8704,8 +8793,7 @@ ref!ComputePipelineObject CurrentComputePipeline
   bool InRenderPass
 }
 
-map!(VkQueue, ref!DrawInfo) LastDrawInfos
-
+@serialize
 @internal class PresentInfo {
   // The number of images presented last present
   u32 PresentImageCount
@@ -8713,14 +8801,11 @@ map!(VkQueue, ref!DrawInfo) LastDrawInfos
   map!(u32, ref!ImageObject) PresentImages
 }
 
-PresentInfo LastPresentInfo
-
 enum LastSubmissionType {
   SUBMIT  = 0
   PRESENT = 1
 }
 
-LastSubmissionType LastSubmission
 
 sub ref!DrawInfo lastDrawInfo() {
   if LastBoundQueue != null {
@@ -8753,13 +8838,14 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   lastDrawInfo().CommandParameters.DrawIndexedIndirect = null
 }
 
+@serialize
 @internal class VulkanDebugMarkerInfo {
   @unused string ObjectName
   @unused u64    TagName
   @internal u8[] Tag
 }
 
-// Internal struct for holding useful instance level information from VkInstanceCreateInfo.
+@serialize
 @internal class InstanceObject {
   @unused u32               ApiVersion        // The api version the app requested when setting up the instance
   @unused map!(u32, string) EnabledExtensions // Map from enabled extension index to extension name
@@ -8774,6 +8860,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
 @extension("VK_KHR_xcb_surface") define VK_KHR_XCB_SURFACE_SPEC_VERSION   6
 @extension("VK_KHR_xcb_surface") define VK_KHR_XCB_SURFACE_EXTENSION_NAME "VK_KHR_xcb_surface"
 
+@serialize
 @internal class PhysicalDeviceObject {
   @unused VkInstance               Instance
   @unused u32                      Index
@@ -8784,12 +8871,14 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused ref!VulkanDebugMarkerInfo             DebugInfo
 }
 
+@serialize
 @intenral class QueueInfo {
   u32 QueueFamilyIndex
   u32 QueueIndex
   f32 Priority
 }
 
+@serialize
 @internal class DeviceObject {
   VkPhysicalDevice                 PhysicalDevice
   @unused map!(u32, string)        EnabledExtensions
@@ -8800,6 +8889,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused ref!VulkanDebugMarkerInfo             DebugInfo
 }
 
+@serialize
 @internal class QueueObject {
   @unused VkDevice               Device
   @unused u32                    Family
@@ -8816,6 +8906,7 @@ enum RecordingState {
   COMPLETED   = 2
 }
 
+@serialize
 @internal class CommandBufferBegin {
   VkCommandBufferUsageFlags     Flags
   bool                          Inherited
@@ -8884,6 +8975,7 @@ enum SemaphoreUpdate {
   Signal = 2
 }
 
+@serialize
 @internal class CommandReference {
   @unused VkCommandBuffer Buffer
   @unused u32         CommandIndex
@@ -8893,56 +8985,58 @@ enum SemaphoreUpdate {
   @unused VkSemaphore Semaphore
 }
 
+@serialize
 @internal class BufferCommands {
-  map!(u32,ref!vkCmdBindPipelineArgs) vkCmdBindPipeline
-  map!(u32,ref!vkCmdSetViewportArgs) vkCmdSetViewport
-  map!(u32,ref!vkCmdSetScissorArgs) vkCmdSetScissor
-  map!(u32,ref!vkCmdSetLineWidthArgs) vkCmdSetLineWidth
-  map!(u32,ref!vkCmdSetDepthBiasArgs) vkCmdSetDepthBias
-  map!(u32,ref!vkCmdSetBlendConstantsArgs) vkCmdSetBlendConstants
-  map!(u32,ref!vkCmdSetDepthBoundsArgs) vkCmdSetDepthBounds
-  map!(u32,ref!vkCmdSetStencilCompareMaskArgs) vkCmdSetStencilCompareMask
-  map!(u32,ref!vkCmdSetStencilWriteMaskArgs) vkCmdSetStencilWriteMask
-  map!(u32,ref!vkCmdSetStencilReferenceArgs) vkCmdSetStencilReference
-  map!(u32,ref!vkCmdBindDescriptorSetsArgs) vkCmdBindDescriptorSets
-  map!(u32,ref!vkCmdBindIndexBufferArgs) vkCmdBindIndexBuffer
-  map!(u32,ref!vkCmdBindVertexBuffersArgs) vkCmdBindVertexBuffers
-  map!(u32,ref!vkCmdDrawArgs) vkCmdDraw
-  map!(u32,ref!vkCmdDrawIndexedArgs) vkCmdDrawIndexed
-  map!(u32,ref!vkCmdDrawIndirectArgs) vkCmdDrawIndirect
-  map!(u32,ref!vkCmdDrawIndexedIndirectArgs) vkCmdDrawIndexedIndirect
-  map!(u32,ref!vkCmdDispatchArgs) vkCmdDispatch
-  map!(u32,ref!vkCmdDispatchIndirectArgs) vkCmdDispatchIndirect
-  map!(u32,ref!vkCmdCopyBufferArgs) vkCmdCopyBuffer
-  map!(u32,ref!vkCmdCopyImageArgs) vkCmdCopyImage
-  map!(u32,ref!vkCmdBlitImageArgs) vkCmdBlitImage
-  map!(u32,ref!vkCmdCopyBufferToImageArgs) vkCmdCopyBufferToImage
-  map!(u32,ref!vkCmdCopyImageToBufferArgs) vkCmdCopyImageToBuffer
-  map!(u32,ref!vkCmdUpdateBufferArgs) vkCmdUpdateBuffer
-  map!(u32,ref!vkCmdFillBufferArgs) vkCmdFillBuffer
-  map!(u32,ref!vkCmdClearColorImageArgs) vkCmdClearColorImage
-  map!(u32,ref!vkCmdClearDepthStencilImageArgs) vkCmdClearDepthStencilImage
-  map!(u32,ref!vkCmdClearAttachmentsArgs) vkCmdClearAttachments
-  map!(u32,ref!vkCmdResolveImageArgs) vkCmdResolveImage
-  map!(u32,ref!vkCmdSetEventArgs) vkCmdSetEvent
-  map!(u32,ref!vkCmdResetEventArgs) vkCmdResetEvent
-  map!(u32,ref!vkCmdWaitEventsArgs) vkCmdWaitEvents
-  map!(u32,ref!vkCmdPipelineBarrierArgs) vkCmdPipelineBarrier
-  map!(u32,ref!vkCmdBeginQueryArgs) vkCmdBeginQuery
-  map!(u32,ref!vkCmdEndQueryArgs) vkCmdEndQuery
-  map!(u32,ref!vkCmdResetQueryPoolArgs) vkCmdResetQueryPool
-  map!(u32,ref!vkCmdWriteTimestampArgs) vkCmdWriteTimestamp
-  map!(u32,ref!vkCmdCopyQueryPoolResultsArgs) vkCmdCopyQueryPoolResults
-  map!(u32,ref!vkCmdPushConstantsArgs) vkCmdPushConstants
-  map!(u32,ref!vkCmdBeginRenderPassArgs) vkCmdBeginRenderPass
-  map!(u32,ref!vkCmdNextSubpassArgs) vkCmdNextSubpass
-  map!(u32,ref!vkCmdEndRenderPassArgs) vkCmdEndRenderPass
-  map!(u32,ref!vkCmdExecuteCommandsArgs) vkCmdExecuteCommands
-  map!(u32,ref!vkCmdDebugMarkerBeginEXTArgs) vkCmdDebugMarkerBeginEXT
-  map!(u32,ref!vkCmdDebugMarkerEndEXTArgs) vkCmdDebugMarkerEndEXT
-  map!(u32,ref!vkCmdDebugMarkerInsertEXTArgs) vkCmdDebugMarkerInsertEXT
+  map!(u32,ref!vkCmdBindPipelineArgs) VkCmdBindPipeline
+  map!(u32,ref!vkCmdSetViewportArgs) VkCmdSetViewport
+  map!(u32,ref!vkCmdSetScissorArgs) VkCmdSetScissor
+  map!(u32,ref!vkCmdSetLineWidthArgs) VkCmdSetLineWidth
+  map!(u32,ref!vkCmdSetDepthBiasArgs) VkCmdSetDepthBias
+  map!(u32,ref!vkCmdSetBlendConstantsArgs) VkCmdSetBlendConstants
+  map!(u32,ref!vkCmdSetDepthBoundsArgs) VkCmdSetDepthBounds
+  map!(u32,ref!vkCmdSetStencilCompareMaskArgs) VkCmdSetStencilCompareMask
+  map!(u32,ref!vkCmdSetStencilWriteMaskArgs) VkCmdSetStencilWriteMask
+  map!(u32,ref!vkCmdSetStencilReferenceArgs) VkCmdSetStencilReference
+  map!(u32,ref!vkCmdBindDescriptorSetsArgs) VkCmdBindDescriptorSets
+  map!(u32,ref!vkCmdBindIndexBufferArgs) VkCmdBindIndexBuffer
+  map!(u32,ref!vkCmdBindVertexBuffersArgs) VkCmdBindVertexBuffers
+  map!(u32,ref!vkCmdDrawArgs) VkCmdDraw
+  map!(u32,ref!vkCmdDrawIndexedArgs) VkCmdDrawIndexed
+  map!(u32,ref!vkCmdDrawIndirectArgs) VkCmdDrawIndirect
+  map!(u32,ref!vkCmdDrawIndexedIndirectArgs) VkCmdDrawIndexedIndirect
+  map!(u32,ref!vkCmdDispatchArgs) VkCmdDispatch
+  map!(u32,ref!vkCmdDispatchIndirectArgs) VkCmdDispatchIndirect
+  map!(u32,ref!vkCmdCopyBufferArgs) VkCmdCopyBuffer
+  map!(u32,ref!vkCmdCopyImageArgs) VkCmdCopyImage
+  map!(u32,ref!vkCmdBlitImageArgs) VkCmdBlitImage
+  map!(u32,ref!vkCmdCopyBufferToImageArgs) VkCmdCopyBufferToImage
+  map!(u32,ref!vkCmdCopyImageToBufferArgs) VkCmdCopyImageToBuffer
+  map!(u32,ref!vkCmdUpdateBufferArgs) VkCmdUpdateBuffer
+  map!(u32,ref!vkCmdFillBufferArgs) VkCmdFillBuffer
+  map!(u32,ref!vkCmdClearColorImageArgs) VkCmdClearColorImage
+  map!(u32,ref!vkCmdClearDepthStencilImageArgs) VkCmdClearDepthStencilImage
+  map!(u32,ref!vkCmdClearAttachmentsArgs) VkCmdClearAttachments
+  map!(u32,ref!vkCmdResolveImageArgs) VkCmdResolveImage
+  map!(u32,ref!vkCmdSetEventArgs) VkCmdSetEvent
+  map!(u32,ref!vkCmdResetEventArgs) VkCmdResetEvent
+  map!(u32,ref!vkCmdWaitEventsArgs) VkCmdWaitEvents
+  map!(u32,ref!vkCmdPipelineBarrierArgs) VkCmdPipelineBarrier
+  map!(u32,ref!vkCmdBeginQueryArgs) VkCmdBeginQuery
+  map!(u32,ref!vkCmdEndQueryArgs) VkCmdEndQuery
+  map!(u32,ref!vkCmdResetQueryPoolArgs) VkCmdResetQueryPool
+  map!(u32,ref!vkCmdWriteTimestampArgs) VkCmdWriteTimestamp
+  map!(u32,ref!vkCmdCopyQueryPoolResultsArgs) VkCmdCopyQueryPoolResults
+  map!(u32,ref!vkCmdPushConstantsArgs) VkCmdPushConstants
+  map!(u32,ref!vkCmdBeginRenderPassArgs) VkCmdBeginRenderPass
+  map!(u32,ref!vkCmdNextSubpassArgs) VkCmdNextSubpass
+  map!(u32,ref!vkCmdEndRenderPassArgs) VkCmdEndRenderPass
+  map!(u32,ref!vkCmdExecuteCommandsArgs) VkCmdExecuteCommands
+  map!(u32,ref!vkCmdDebugMarkerBeginEXTArgs) VkCmdDebugMarkerBeginEXT
+  map!(u32,ref!vkCmdDebugMarkerEndEXTArgs) VkCmdDebugMarkerEndEXT
+  map!(u32,ref!vkCmdDebugMarkerInsertEXTArgs) VkCmdDebugMarkerInsertEXT
 }
 
+@serialize
 @internal class CommandBufferObject {
   @unused VkDevice               Device
   @unused RecordingState         Recording
@@ -8955,6 +9049,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo          DebugInfo
 }
 
+@serialize
 @internal class DeviceMemoryObject {
   VkDevice                                    Device
   @unused VkDeviceMemory                      VulkanHandle
@@ -8970,6 +9065,7 @@ enum SemaphoreUpdate {
   ref!DedicatedAllocationMemoryAllocateInfoNV DedicatedAllocationNV
 }
 
+@serialize
 @internal class BufferInfo {
   @unused VkBufferCreateFlags                    CreateFlags
   @unused VkDeviceSize                           Size
@@ -8979,6 +9075,7 @@ enum SemaphoreUpdate {
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
 }
 
+@serialize
 @internal class BufferObject {
   @unused VkDevice        Device
   @unused VkBuffer        VulkanHandle
@@ -8989,6 +9086,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo   DebugInfo
 }
 
+@serialize
 @internal class BufferViewObject {
   @unused VkDevice         Device
   @unused VkBufferView     VulkanHandle
@@ -8999,6 +9097,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo    DebugInfo
 }
 
+@serialize
 @internal class ImageInfo {
   VkImageCreateFlags                             Flags
   VkImageType                                    ImageType
@@ -9015,6 +9114,7 @@ enum SemaphoreUpdate {
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
 }
 
+@serialize
 @resource
 @internal class ImageObject {
   @unused VkDevice          Device
@@ -9029,10 +9129,12 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
 }
 
+@serialize
 @internal class ImageLayer {
   map!(u32, ref!ImageLevel) Levels
 }
 
+@serialize
 @internal class ImageLevel {
   u32                           Width
   u32                           Height
@@ -9042,6 +9144,7 @@ enum SemaphoreUpdate {
   @unused u32                   Size
 }
 
+@serialize
 @internal class ImageViewObject {
   @unused VkDevice                Device
   @unused VkImageView             VulkanHandle
@@ -9053,6 +9156,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo           DebugInfo
 }
 
+@serialize
 @resource
 @internal class ShaderModuleObject {
   @unused VkDevice       Device
@@ -9061,11 +9165,13 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo  DebugInfo
 }
 
+@serialize
 @internal class SpecializationInfo {
   map!(u32, VkSpecializationMapEntry) Specializations
   u8[]    Data
 }
 
+@serialize
 @internal class StageData {
   @unused VkShaderStageFlagBits  Stage
   @unused ref!ShaderModuleObject Module
@@ -9073,25 +9179,30 @@ enum SemaphoreUpdate {
   @unused ref!SpecializationInfo Specialization
 }
 
+@serialize
 @internal class VertexData {
   @unused map!(u32, VkVertexInputBindingDescription)   BindingDescriptions
   @unused map!(u32, VkVertexInputAttributeDescription) AttributeDescriptions
 }
 
+@serialize
 @internal class InputAssemblyData {
   @unused VkPrimitiveTopology Topology
   @unused VkBool32            PrimitiveRestartEnable
 }
 
+@serialize
 @internal class TessellationStateData {
   @unused u32 PatchControlPoints
 }
 
+@serialize
 @internal class ViewportData {
   @unused map!(u32, VkViewport) Viewports
   @unused map!(u32, VkRect2D)   Scissors
 }
 
+@serialize
 @internal class RasterizationData {
   @unused VkBool32        DepthClampEnable
   @unused VkBool32        RasterizerDiscardEnable
@@ -9105,6 +9216,7 @@ enum SemaphoreUpdate {
   @unused f32             LineWidth
 }
 
+@serialize
 @internal class MultisampleData {
   @unused VkSampleCountFlagBits   RasterizationSamples
   @unused VkBool32                SampleShadingEnable
@@ -9114,6 +9226,7 @@ enum SemaphoreUpdate {
   @unused VkBool32                AlphaToOneEnable
 }
 
+@serialize
 @internal class DepthData {
   @unused VkBool32         DepthTestEnable
   @unused VkBool32         DepthWriteEnable
@@ -9126,6 +9239,7 @@ enum SemaphoreUpdate {
   @unused f32              MaxDepthBounds
 }
 
+@serialize
 @internal class ColorBlendData {
   @unused VkBool32                                       LogicOpEnable
   @unused VkLogicOp                                      LogicOp
@@ -9133,10 +9247,12 @@ enum SemaphoreUpdate {
   @unused f32[4]                                         BlendConstants
 }
 
+@serialize
 @internal class DynamicData {
   @unused map!(u32, VkDynamicState) DynamicStates
 }
 
+@serialize
 @internal class GraphicsPipelineObject {
   @unused VkDevice                  Device
   @unused ref!PipelineCacheObject   PipelineCache
@@ -9162,6 +9278,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo             DebugInfo
 }
 
+@serialize
 @internal class ComputePipelineObject {
   @unused VkDevice                 Device
   @unused VkPipeline               VulkanHandle
@@ -9176,6 +9293,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo           DebugInfo
 }
 
+@serialize
 @internal class PipelineLayoutObject {
   @unused VkDevice                                 Device
   @unused VkPipelineLayout                         VulkanHandle
@@ -9184,6 +9302,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo                            DebugInfo
 }
 
+@serialize
 @internal class SamplerObject {
   @unused VkDevice             Device
   @unused VkSampler            VulkanHandle
@@ -9205,6 +9324,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo        DebugInfo
 }
 
+@serialize
 @internal class DescriptorBinding {
   VkDescriptorType                      BindingType
   map!(u32, ref!VkDescriptorBufferInfo) BufferBinding
@@ -9212,6 +9332,7 @@ enum SemaphoreUpdate {
   map!(u32, VkBufferView)               BufferViewBindings
 }
 
+@serialize
 @internal class DescriptorSetObject {
   @unused VkDevice                 Device
   @unused VkDescriptorSet          VulkanHandle
@@ -9222,6 +9343,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo         DebugInfo
 }
 
+@serialize
 @internal class DescriptorSetLayoutBinding {
   VkDescriptorType                     Type
   @unused u32                          Count
@@ -9229,6 +9351,7 @@ enum SemaphoreUpdate {
   @unused map!(u32, ref!SamplerObject) ImmutableSamplers
 }
 
+@serialize
 @internal class DescriptorSetLayoutObject {
   @unused VkDevice              Device
   @unused VkDescriptorSetLayout VulkanHandle
@@ -9238,6 +9361,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo         DebugInfo
 }
 
+@serialize
 @internal class DescriptorPoolObject {
   @unused VkDevice                        Device
   @unused VkDescriptorPool                VulkanHandle
@@ -9248,6 +9372,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo                   DebugInfo
 }
 
+@serialize
 @internal class FenceObject {
   @unused VkDevice Device
   @unused VkFence  VulkanHandle
@@ -9255,7 +9380,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
-
+@serialize
 @internal class SemaphoreObject {
   @unused VkDevice    Device
   @unused VkSemaphore VulkanHandle
@@ -9264,6 +9389,7 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
+@serialize
 @internal class EventObject {
   @unused VkDevice Device
   @unused VkEvent  VulkanHandle
@@ -9272,12 +9398,14 @@ enum SemaphoreUpdate {
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
+@serialize
 enum QueryStatus {
   QUERY_STATUS_INACTIVE = 0
   QUERY_STATUS_ACTIVE   = 1
   QUERY_STATUS_COMPLETE = 2
 }
 
+@serialize
 @internal class QueryPoolObject {
   @unused VkDevice                      Device
   @unused VkQueryPool                   VulkanHandle
@@ -9288,6 +9416,7 @@ enum QueryStatus {
   @unused ref!VulkanDebugMarkerInfo                 DebugInfo
 }
 
+@serialize
 @internal class FramebufferObject {
   @unused VkDevice               Device
   @unused VkFramebuffer          VulkanHandle
@@ -9299,6 +9428,7 @@ enum QueryStatus {
   @unused ref!VulkanDebugMarkerInfo          DebugInfo
 }
 
+@serialize
 @internal class SubpassDescription {
   @unused VkSubpassDescriptionFlags        Flags
   @unused VkPipelineBindPoint              PipelineBindPoint
@@ -9309,6 +9439,7 @@ enum QueryStatus {
   @unused map!(u32, u32)                   PreserveAttachments
 }
 
+@serialize
 @internal class RenderPassObject {
   @unused VkDevice                           Device
   @unused VkRenderPass                       VulkanHandle
@@ -9318,12 +9449,14 @@ enum QueryStatus {
   @unused ref!VulkanDebugMarkerInfo                      DebugInfo
 }
 
+@serialize
 @internal class PipelineCacheObject {
   @unused VkDevice        Device
   @unused VkPipelineCache VulkanHandle
   @unused ref!VulkanDebugMarkerInfo   DebugInfo
 }
 
+@serialize
 @internal class CommandPoolObject {
   @unused VkDevice                                       Device
   @unused VkCommandPool                                  VulkanHandle
@@ -9343,6 +9476,7 @@ enum SurfaceType {
   SURFACE_TYPE_MIR     = 6
 }
 
+@serialize
 @internal class SurfaceObject {
   @unused VkInstance   Instance
   @unused VkSurfaceKHR VulkanHandle
@@ -9350,6 +9484,7 @@ enum SurfaceType {
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
+@serialize
 @internal class SwapchainObject {
   @unused VkDevice                      Device
   @unused VkSwapchainKHR                VulkanHandle
@@ -9364,6 +9499,7 @@ enum SurfaceType {
   @unused ref!VulkanDebugMarkerInfo                 DebugInfo
 }
 
+@serialize
 @internal class DisplayModeObject {
   @unused VkPhysicalDevice PhysicalDevice
   @unused VkDisplayKHR     Display
@@ -9381,11 +9517,11 @@ class VulkanStructHeader {
   void*           PNext
 }
 
-@internal class DedicatedAllocationBufferImageCreateInfoNV {
+@serialize class DedicatedAllocationBufferImageCreateInfoNV {
   VkBool32 DedicatedAllocation
 }
 
-@internal class DedicatedAllocationMemoryAllocateInfoNV {
+@serialize class DedicatedAllocationMemoryAllocateInfoNV {
   VkImage  Image
   VkBuffer Buffer
 }

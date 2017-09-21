@@ -44,5 +44,21 @@ message Slice {
     // Number of elements in the slice.
     uint64 Count= 3;
     // The pool identifier.
-    uint32 Pool = 4;
+    uint64 Pool = 4;
+}
+
+message Reference {
+    // The unique identifier for this reference
+    // Anything else that represents this same reference will have
+    // the same identifier.
+    uint64 Identifier = 1;
+}
+
+message PoolData {
+    // The unique identifier for this pool
+    // Anything else that represents this same pool will have
+    // the same identifier.
+    uint64 Identifier = 1;
+    uint64 Size = 2;
+    bytes Data = 3;
 }

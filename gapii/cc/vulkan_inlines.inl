@@ -711,7 +711,7 @@ inline void AppendCommand(VkCommandBuffer, VulkanSpy*, std::shared_ptr<T>&) {
 
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBindPipelineArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBindPipeline;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdBindPipeline;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -720,7 +720,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetViewportArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetViewport;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetViewport;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -729,7 +729,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetScissorArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetScissor;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetScissor;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -738,7 +738,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetLineWidthArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetLineWidth;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetLineWidth;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -747,7 +747,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetDepthBiasArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetDepthBias;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetDepthBias;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -756,7 +756,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetBlendConstantsArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetBlendConstants;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetBlendConstants;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -765,7 +765,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetDepthBoundsArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetDepthBounds;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetDepthBounds;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -774,7 +774,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetStencilCompareMaskArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetStencilCompareMask;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetStencilCompareMask;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -783,7 +783,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetStencilWriteMaskArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetStencilWriteMask;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetStencilWriteMask;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -792,7 +792,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetStencilReferenceArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetStencilReference;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetStencilReference;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -801,7 +801,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBindDescriptorSetsArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBindDescriptorSets;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdBindDescriptorSets;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -810,7 +810,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBindIndexBufferArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBindIndexBuffer;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdBindIndexBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -819,7 +819,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBindVertexBuffersArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBindVertexBuffers;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdBindVertexBuffers;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -828,7 +828,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDrawArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDraw;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDraw;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -837,7 +837,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDrawIndexedArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDrawIndexed;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDrawIndexed;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -846,7 +846,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDrawIndirectArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDrawIndirect;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDrawIndirect;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -855,7 +855,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDrawIndexedIndirectArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDrawIndexedIndirect;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDrawIndexedIndirect;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -864,7 +864,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDispatchArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDispatch;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDispatch;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -873,7 +873,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDispatchIndirectArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDispatchIndirect;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDispatchIndirect;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -882,7 +882,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyBufferArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyBuffer;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdCopyBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -891,7 +891,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyImageArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyImage;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdCopyImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -900,7 +900,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBlitImageArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBlitImage;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdBlitImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -909,7 +909,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyBufferToImageArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyBufferToImage;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdCopyBufferToImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -918,7 +918,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyImageToBufferArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyImageToBuffer;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdCopyImageToBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -927,7 +927,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdUpdateBufferArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdUpdateBuffer;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdUpdateBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -936,7 +936,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdFillBufferArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdFillBuffer;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdFillBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -945,7 +945,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdClearColorImageArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdClearColorImage;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdClearColorImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -954,7 +954,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdClearDepthStencilImageArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdClearDepthStencilImage;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdClearDepthStencilImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -963,7 +963,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdClearAttachmentsArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdClearAttachments;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdClearAttachments;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -972,7 +972,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdResolveImageArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdResolveImage;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdResolveImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -981,7 +981,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetEventArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetEvent;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdSetEvent;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -990,7 +990,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdResetEventArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdResetEvent;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdResetEvent;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -999,7 +999,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdWaitEventsArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdWaitEvents;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdWaitEvents;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1008,7 +1008,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdPipelineBarrierArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdPipelineBarrier;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdPipelineBarrier;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1017,7 +1017,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBeginQueryArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBeginQuery;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdBeginQuery;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1026,7 +1026,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdEndQueryArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdEndQuery;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdEndQuery;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1035,7 +1035,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdResetQueryPoolArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdResetQueryPool;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdResetQueryPool;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1044,7 +1044,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdWriteTimestampArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdWriteTimestamp;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdWriteTimestamp;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1053,7 +1053,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyQueryPoolResultsArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyQueryPoolResults;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdCopyQueryPoolResults;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1062,7 +1062,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdPushConstantsArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdPushConstants;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdPushConstants;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1071,7 +1071,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBeginRenderPassArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBeginRenderPass;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdBeginRenderPass;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1080,7 +1080,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdNextSubpassArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdNextSubpass;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdNextSubpass;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1089,7 +1089,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdEndRenderPassArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdEndRenderPass;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdEndRenderPass;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1098,7 +1098,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdExecuteCommandsArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdExecuteCommands;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdExecuteCommands;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1107,7 +1107,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDebugMarkerBeginEXTArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDebugMarkerBeginEXT;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDebugMarkerBeginEXT;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1116,7 +1116,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDebugMarkerEndEXTArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDebugMarkerEndEXT;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDebugMarkerEndEXT;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1125,7 +1125,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 }
 template<>
 inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDebugMarkerInsertEXTArgs>& args) {
-    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDebugMarkerInsertEXT;
+    auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mVkCmdDebugMarkerInsertEXT;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     references[references.size()] = CommandReference(
@@ -1150,237 +1150,237 @@ inline bool RecreateCommand(CallObserver* observer,
     switch(reference.mType) {
         case CommandType::cmd_vkCmdBindPipeline: {
             return CommandListRecreator<std::shared_ptr<vkCmdBindPipelineArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdBindPipeline[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdBindPipeline[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetViewport: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetViewportArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetViewport[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetViewport[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetScissor: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetScissorArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetScissor[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetScissor[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetLineWidth: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetLineWidthArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetLineWidth[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetLineWidth[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetDepthBias: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetDepthBiasArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetDepthBias[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetDepthBias[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetBlendConstants: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetBlendConstantsArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetBlendConstants[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetBlendConstants[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetDepthBounds: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetDepthBoundsArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetDepthBounds[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetDepthBounds[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetStencilCompareMask: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetStencilCompareMaskArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetStencilCompareMask[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetStencilCompareMask[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetStencilWriteMask: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetStencilWriteMaskArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetStencilWriteMask[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetStencilWriteMask[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetStencilReference: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetStencilReferenceArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetStencilReference[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetStencilReference[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdBindDescriptorSets: {
             return CommandListRecreator<std::shared_ptr<vkCmdBindDescriptorSetsArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdBindDescriptorSets[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdBindDescriptorSets[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdBindIndexBuffer: {
             return CommandListRecreator<std::shared_ptr<vkCmdBindIndexBufferArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdBindIndexBuffer[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdBindIndexBuffer[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdBindVertexBuffers: {
             return CommandListRecreator<std::shared_ptr<vkCmdBindVertexBuffersArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdBindVertexBuffers[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdBindVertexBuffers[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDraw: {
             return CommandListRecreator<std::shared_ptr<vkCmdDrawArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDraw[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDraw[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDrawIndexed: {
             return CommandListRecreator<std::shared_ptr<vkCmdDrawIndexedArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDrawIndexed[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDrawIndexed[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDrawIndirect: {
             return CommandListRecreator<std::shared_ptr<vkCmdDrawIndirectArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDrawIndirect[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDrawIndirect[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDrawIndexedIndirect: {
             return CommandListRecreator<std::shared_ptr<vkCmdDrawIndexedIndirectArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDrawIndexedIndirect[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDrawIndexedIndirect[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDispatch: {
             return CommandListRecreator<std::shared_ptr<vkCmdDispatchArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDispatch[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDispatch[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDispatchIndirect: {
             return CommandListRecreator<std::shared_ptr<vkCmdDispatchIndirectArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDispatchIndirect[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDispatchIndirect[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdCopyBuffer: {
             return CommandListRecreator<std::shared_ptr<vkCmdCopyBufferArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdCopyBuffer[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdCopyBuffer[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdCopyImage: {
             return CommandListRecreator<std::shared_ptr<vkCmdCopyImageArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdCopyImage[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdCopyImage[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdBlitImage: {
             return CommandListRecreator<std::shared_ptr<vkCmdBlitImageArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdBlitImage[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdBlitImage[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdCopyBufferToImage: {
             return CommandListRecreator<std::shared_ptr<vkCmdCopyBufferToImageArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdCopyBufferToImage[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdCopyBufferToImage[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdCopyImageToBuffer: {
             return CommandListRecreator<std::shared_ptr<vkCmdCopyImageToBufferArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdCopyImageToBuffer[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdCopyImageToBuffer[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdUpdateBuffer: {
             return CommandListRecreator<std::shared_ptr<vkCmdUpdateBufferArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdUpdateBuffer[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdUpdateBuffer[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdFillBuffer: {
             return CommandListRecreator<std::shared_ptr<vkCmdFillBufferArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdFillBuffer[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdFillBuffer[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdClearColorImage: {
             return CommandListRecreator<std::shared_ptr<vkCmdClearColorImageArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdClearColorImage[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdClearColorImage[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdClearDepthStencilImage: {
             return CommandListRecreator<std::shared_ptr<vkCmdClearDepthStencilImageArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdClearDepthStencilImage[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdClearDepthStencilImage[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdClearAttachments: {
             return CommandListRecreator<std::shared_ptr<vkCmdClearAttachmentsArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdClearAttachments[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdClearAttachments[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdResolveImage: {
             return CommandListRecreator<std::shared_ptr<vkCmdResolveImageArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdResolveImage[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdResolveImage[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdSetEvent: {
             return CommandListRecreator<std::shared_ptr<vkCmdSetEventArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdSetEvent[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdSetEvent[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdResetEvent: {
             return CommandListRecreator<std::shared_ptr<vkCmdResetEventArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdResetEvent[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdResetEvent[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdWaitEvents: {
             return CommandListRecreator<std::shared_ptr<vkCmdWaitEventsArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdWaitEvents[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdWaitEvents[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdPipelineBarrier: {
             return CommandListRecreator<std::shared_ptr<vkCmdPipelineBarrierArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdPipelineBarrier[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdPipelineBarrier[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdBeginQuery: {
             return CommandListRecreator<std::shared_ptr<vkCmdBeginQueryArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdBeginQuery[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdBeginQuery[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdEndQuery: {
             return CommandListRecreator<std::shared_ptr<vkCmdEndQueryArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdEndQuery[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdEndQuery[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdResetQueryPool: {
             return CommandListRecreator<std::shared_ptr<vkCmdResetQueryPoolArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdResetQueryPool[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdResetQueryPool[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdWriteTimestamp: {
             return CommandListRecreator<std::shared_ptr<vkCmdWriteTimestampArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdWriteTimestamp[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdWriteTimestamp[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdCopyQueryPoolResults: {
             return CommandListRecreator<std::shared_ptr<vkCmdCopyQueryPoolResultsArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdCopyQueryPoolResults[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdCopyQueryPoolResults[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdPushConstants: {
             return CommandListRecreator<std::shared_ptr<vkCmdPushConstantsArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdPushConstants[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdPushConstants[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdBeginRenderPass: {
             return CommandListRecreator<std::shared_ptr<vkCmdBeginRenderPassArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdBeginRenderPass[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdBeginRenderPass[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdNextSubpass: {
             return CommandListRecreator<std::shared_ptr<vkCmdNextSubpassArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdNextSubpass[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdNextSubpass[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdEndRenderPass: {
             return CommandListRecreator<std::shared_ptr<vkCmdEndRenderPassArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdEndRenderPass[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdEndRenderPass[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdExecuteCommands: {
             return CommandListRecreator<std::shared_ptr<vkCmdExecuteCommandsArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdExecuteCommands[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdExecuteCommands[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDebugMarkerBeginEXT: {
             return CommandListRecreator<std::shared_ptr<vkCmdDebugMarkerBeginEXTArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDebugMarkerBeginEXT[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDebugMarkerBeginEXT[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDebugMarkerEndEXT: {
             return CommandListRecreator<std::shared_ptr<vkCmdDebugMarkerEndEXTArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDebugMarkerEndEXT[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDebugMarkerEndEXT[reference.mMapIndex]
             );
         }
         case CommandType::cmd_vkCmdDebugMarkerInsertEXT: {
             return CommandListRecreator<std::shared_ptr<vkCmdDebugMarkerInsertEXTArgs>>()(buffer, observer, spy,
-                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mvkCmdDebugMarkerInsertEXT[reference.mMapIndex]
+                spy->CommandBuffers[reference.mBuffer]->mBufferCommands.mVkCmdDebugMarkerInsertEXT[reference.mMapIndex]
             );
         }
         default:

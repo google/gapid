@@ -54,7 +54,7 @@ type resolveState struct {
 func (r *record) resolve(ctx context.Context) error {
 	// Deserialize the object from the proto if we don't have the object already.
 	if r.object == nil {
-		obj, err := protoconv.ToObject(ctx, r.proto)
+		obj, err := protoconv.ToObject(ctx, func(uint64, interface{}) { panic("The database does not support reference objects yet") }, r.proto)
 		switch err := err.(type) {
 		case protoconv.ErrNoConverterRegistered:
 			if err.Object != r.proto {

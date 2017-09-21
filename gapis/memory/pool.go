@@ -42,7 +42,7 @@ type Pool struct {
 }
 
 // PoolID is an identifier of a Pool.
-type PoolID uint32
+type PoolID uint64
 
 // Pools contains a collection of Pools identified by PoolIDs.
 type Pools struct {
@@ -65,7 +65,7 @@ const (
 // NewPools creates and returns a new Pools instance.
 func NewPools() Pools {
 	return Pools{
-		pools: map[PoolID]*Pool{ApplicationPool: {}},
+		pools:      map[PoolID]*Pool{ApplicationPool: {}},
 		nextPoolID: ApplicationPool + 1,
 	}
 }
