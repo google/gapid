@@ -123,8 +123,4 @@ void CallObserver::encodeAndDelete(::google::protobuf::Message* cmd) {
     delete cmd;
 }
 
-bool CallObserver::isActive() const {
-    return mSpy->should_trace(mApi);
-}
-
 }  // namespace gapii

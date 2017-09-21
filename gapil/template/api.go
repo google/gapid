@@ -160,3 +160,20 @@ func (f *Functions) TokenOf(v semantic.Node) string {
 	}
 	return f.mappings.CST(ast[0]).Token().String()
 }
+
+// TargetField returns the *semantic.Field if e is an expression that refers to
+// a class field, otherwise nil.
+func (f *Functions) TargetField(e semantic.Expression) interface{} {
+	for {
+		switch v := e.(type) {
+		case *semantic.Field:
+			return v
+		case *semantic.Member:
+			return v.Field
+		case *semantic.SliceRange:
+			e = v.Slice
+		default:
+			return nil
+		}
+	}
+}

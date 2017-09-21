@@ -311,6 +311,8 @@
 {{define "Statement"}}
   {{     if IsReturn $}}{{Template "Return" $}}
   {{else if IsFence  $}}{{Template "Fence" $}}
+  {{else if IsCopy   $}}{{Template "Copy" $}}
+  {{else if IsAssign $}}{{Template "Assign" $}}
   {{else              }}{{Template "C++.Statement.Default" $}}
   {{end}}
 {{end}}
@@ -356,5 +358,42 @@
     {{Template "C++.Return" $}}
   {{else}}
     break;
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  An override for the "C++.Copy" macro.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Copy"}}
+  {{AssertType $ "Copy"}}
+  {{if (and (GetAnnotation ($.Src | TargetField) "spy_disabled") ((GetAnnotation ($.Dst | TargetField) "spy_disabled")))}}
+    // @spy_disabled
+  {{else if GetAnnotation ($.Src | TargetField) "spy_disabled"}}
+    {{Error "Attempting to copy from a @spy_disabled slice"}}
+  {{else if GetAnnotation ($.Dst | TargetField) "spy_disabled"}}
+    observer->read({{Template "C++.Read" $.Src}}); // @spy_disabled
+  {{else}}
+    {{Template "C++.Statement.Default" $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  An override for the "C++.Assign" macro.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Assign"}}
+  {{AssertType $ "Assign"}}
+  {{if (and (GetAnnotation ($.RHS | TargetField) "spy_disabled") ((GetAnnotation ($.LHS | TargetField) "spy_disabled")))}}
+    // @spy_disabled
+  {{else if GetAnnotation ($.RHS | TargetField) "spy_disabled"}}
+    {{Error "Attempting to assign from a @spy_disabled slice"}}
+  {{else if GetAnnotation ($.LHS | TargetField) "spy_disabled"}}
+    // @spy_disabled
+  {{else}}
+    {{Template "C++.Statement.Default" $}}
   {{end}}
 {{end}}

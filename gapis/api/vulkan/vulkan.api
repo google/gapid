@@ -2929,9 +2929,9 @@ cmd VkResult vkAllocateMemory(
     MappedOffset:     0,
     MappedSize:       0,
     MappedLocation:   null,
-    MemoryTypeIndex:  allocateInfo.memoryTypeIndex,
-    Data:             make!u8(allocateInfo.allocationSize),
+    MemoryTypeIndex:  allocateInfo.memoryTypeIndex
   )
+  memoryObject.Data = make!u8(allocateInfo.allocationSize)
 
   // Handle pNext
   if allocateInfo.pNext != null {
@@ -6200,9 +6200,6 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
       dstImageLevelWidthInBlocks := as!u64(roundUpTo(dstImageLevel.Width, as!u32(dstBlockWidth)))
       dstImageLevelHeightInBlocks := as!u64(roundUpTo(dstImageLevel.Height, as!u32(dstBlockHeight)))
 
-      srcData := srcImageLevel.Data
-      dstData := dstImageLevel.Data
-
       for z in (0 .. extentZ) {
         for y in (0 .. extentYInBlocks) {
           copySize := as!u64(extentXInBlocks) * srcElementSize
@@ -6212,7 +6209,7 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
           srcZ := srcZStart + as!u64(z)
           dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * dstElementSize
           srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * srcElementSize
-          copy(dstData[dstStart:dstStart + copySize], srcData[srcStart:srcStart + copySize])
+          copy(dstImageLevel.Data[dstStart:dstStart + copySize], srcImageLevel.Data[srcStart:srcStart + copySize])
         }
       }
     }
@@ -6585,7 +6582,6 @@ class vkCmdCopyBufferToImageArgs {
 
 sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   bufferObject := Buffers[args.SrcBuffer]
-  srcData := bufferObject.Memory.Data
   imageObject := Images[args.DstImage]
   format := imageObject.Info.Format
   elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
@@ -6613,7 +6609,6 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
       imageLevel := imageObject.Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
       imageLevelWidthInBlocks := as!u64(imageLevel.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
       imageLevelHeightInBlocks := as!u64(imageLevel.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
-      dstData := imageLevel.Data
       // Iterate through depths and rows to copy
       for z in (zStart .. zEnd) {
         for y in (yStart .. yEnd) {
@@ -6626,7 +6621,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
           srcStart := as!u64(bufferObject.MemoryOffset) + as!u64(region.bufferOffset) + bufferLayerOffset + rowStartInExtent
           srcEnd := srcStart + copySize
           readCoherentMemoryInBuffer(bufferObject, region.bufferOffset + as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
-          copy(dstData[dstStart:dstEnd], srcData[srcStart:srcEnd])
+          copy(imageLevel.Data[dstStart:dstEnd], bufferObject.Memory.Data[srcStart:srcEnd])
         }
       }
     }
@@ -8969,6 +8964,7 @@ enum SemaphoreUpdate {
   VkDeviceSize                                MappedSize
   void*                                       MappedLocation
   u32                                         MemoryTypeIndex
+  @spy_disabled
   @hidden @nobox @internal u8[]               Data
   @unused ref!VulkanDebugMarkerInfo           DebugInfo
   ref!DedicatedAllocationMemoryAllocateInfoNV DedicatedAllocationNV
@@ -9041,6 +9037,7 @@ enum SemaphoreUpdate {
   u32                           Width
   u32                           Height
   @unused u32                   Depth
+  @spy_disabled
   @hidden @nobox @internal u8[] Data
   @unused u32                   Size
 }
