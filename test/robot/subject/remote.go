@@ -54,3 +54,12 @@ func (m *remote) Add(ctx context.Context, id string, hints *Hints) (*Subject, bo
 	}
 	return response.Subject, response.Created, nil
 }
+
+func (m *remote) Update(ctx context.Context, subj *Subject) (*Subject, error) {
+	request := &UpdateRequest{Subject: subj}
+	response, err := m.client.Update(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	return response.Subject, nil
+}

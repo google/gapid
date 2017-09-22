@@ -50,3 +50,13 @@ func (s *server) Search(query *search.Query, stream Service_SearchServer) error 
 	ctx := stream.Context()
 	return s.subjects.Search(ctx, query, func(ctx context.Context, e *Subject) error { return stream.Send(e) })
 }
+
+// Update implements ServiceServer.Update
+// It delegates the call to the provided Subjects implementation.
+func (s *server) Update(ctx xctx.Context, request *UpdateRequest) (*UpdateResponse, error) {
+	subj, err := s.subjects.Update(ctx, request.Subject)
+	if err != nil {
+		return nil, err
+	}
+	return &UpdateResponse{Subject: subj}, nil
+}
