@@ -50,5 +50,5 @@ Click `OK` to begin the trace.
 ## Known issues
 
 <div class="issue" markdown="span">
-  Please close any running instances of Android Studio before attempting to take a trace.
+  Please close any running instances of Android Studio before attempting to take a trace. [#911](https://github.com/google/gapid/issues/911)
 </div>
