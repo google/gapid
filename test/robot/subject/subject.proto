@@ -46,6 +46,8 @@ service Service {
   // Add pulls the subject from the stash, analyzes it and adds it to the service.
   // If the subject already exists, it will be returned without modification.
   rpc Add(AddRequest) returns(AddResponse) {};
+  // Update modifies a subject entry
+  rpc Update(UpdateRequest) returns(UpdateResponse) {};
 }
 
 message AddRequest {
@@ -61,4 +63,16 @@ message AddResponse {
   // Created is set to true if the subject was added by this call,
   // and false if it was already present
   bool created = 2;
+}
+
+message UpdateRequest {
+  // Subject contains the information to merge into the subject.
+  // If the id is present, it must match an existing subject.
+  // Only updates the Hints field.
+  Subject subject = 1;
+}
+
+message UpdateResponse {
+  // Subject is the updated subject information.
+  Subject subject = 1;
 }

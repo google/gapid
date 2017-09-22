@@ -44,6 +44,12 @@ func init() {
 		ShortUsage: "<query>",
 		Action:     &subjectSearchVerb{RobotOptions: defaultRobotOptions},
 	})
+	setVerb.Add(&app.Verb{
+		Name:       "subject",
+		ShortHelp:  "Sets values on a subject",
+		ShortUsage: "<id or name>",
+		Action:     &subjectUpdateVerb{RobotOptions: defaultRobotOptions},
+	})
 }
 
 const (
@@ -116,5 +122,48 @@ func (v *subjectSearchVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			proto.MarshalText(out, entry)
 			return nil
 		})
+	}, grpc.WithInsecure())
+}
+
+var idOrApkName = script.MustParse("Id == $ or Information.APK.Name == $").Using("$")
+
+type subjectUpdateVerb struct {
+	RobotOptions
+	API       APIType       `help:"the new api to capture, can be either gles or vulkan"`
+	TraceTime time.Duration `help:"the new trace time override"`
+}
+
+func (v *subjectUpdateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	return grpcutil.Client(ctx, v.ServerAddress, func(ctx context.Context, conn *grpc.ClientConn) error {
+		s := subject.NewRemote(ctx, conn)
+		args := flags.Args()
+		subj := &subject.Subject{
+			Hints: &subject.Hints{
+				TraceTime: ptypes.DurationProto(v.TraceTime),
+				API:       v.API.String(),
+			},
+		}
+		if len(args) == 0 {
+			return log.Err(ctx, nil, "Missing argument, must specify a subject to update")
+		}
+		err := s.Search(ctx, idOrApkName(args[0]).Query(), func(ctx context.Context, entry *subject.Subject) error {
+			if subj.Id != "" {
+				return log.Err(ctx, nil, "Multiple subjects matched")
+			}
+			subj.Id = entry.Id
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		if subj.Id == "" {
+			return log.Err(ctx, nil, "No packages matched")
+		}
+		subj, err = s.Update(ctx, subj)
+		if err != nil {
+			return err
+		}
+		log.I(ctx, subj.String())
+		return nil
 	}, grpc.WithInsecure())
 }

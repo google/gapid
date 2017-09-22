@@ -29,4 +29,6 @@ type Subjects interface {
 	Search(context.Context, *search.Query, Handler) error
 	// Add adds a new subject to the set.
 	Add(ctx context.Context, id string, hints *Hints) (*Subject, bool, error)
+	// Update changes the values of a subject.
+	Update(ctx context.Context, subj *Subject) (*Subject, error)
 }

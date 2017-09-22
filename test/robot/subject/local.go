@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/event"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/apk"
 	"github.com/google/gapid/test/robot/record"
 	"github.com/google/gapid/test/robot/search"
@@ -33,7 +34,7 @@ type local struct {
 	ledger   record.Ledger
 	subjects []*Subject
 	byID     map[string]*Subject
-	onAdd    event.Broadcast
+	onChange event.Broadcast
 }
 
 // NewLocal returns a new persistent store of Subjects.
@@ -59,9 +60,22 @@ func NewLocal(ctx context.Context, library record.Library, store *stash.Client) 
 // apply is called with items coming out of the ledger
 // it should be called with the mutation lock already held.
 func (s *local) apply(ctx context.Context, subject *Subject) error {
-	s.subjects = append(s.subjects, subject)
-	s.byID[subject.Id] = subject
-	s.onAdd.Send(ctx, subject)
+	old := s.byID[subject.Id]
+	if old == nil {
+		s.subjects = append(s.subjects, subject)
+		s.byID[subject.Id] = subject
+		s.onChange.Send(ctx, subject)
+		return nil
+	}
+	if subject.Hints != nil {
+		if old.Hints.TraceTime != subject.Hints.TraceTime {
+			old.Hints.TraceTime = subject.Hints.TraceTime
+		}
+		if old.Hints.API != subject.Hints.API {
+			old.Hints.API = subject.Hints.API
+		}
+	}
+	s.onChange.Send(ctx, old)
 	return nil
 }
 
@@ -71,7 +85,7 @@ func (s *local) Search(ctx context.Context, query *search.Query, handler Handler
 	filter := eval.Filter(ctx, query, reflect.TypeOf(&Subject{}), event.AsHandler(ctx, handler))
 	initial := event.AsProducer(ctx, s.subjects)
 	if query.Monitor {
-		return event.Monitor(ctx, &s.mu, s.onAdd.Listen, initial, filter)
+		return event.Monitor(ctx, &s.mu, s.onChange.Listen, initial, filter)
 	}
 	return event.Feed(ctx, filter, initial)
 }
@@ -106,4 +120,16 @@ func (s *local) Add(ctx context.Context, id string, hints *Hints) (*Subject, boo
 		return nil, false, err
 	}
 	return subject, true, nil
+}
+
+func (s *local) Update(ctx context.Context, subj *Subject) (*Subject, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, found := s.byID[subj.Id]; !found {
+		return nil, log.Err(ctx, nil, "Subject not found")
+	}
+	if err := s.ledger.Add(ctx, subj); err != nil {
+		return nil, err
+	}
+	return s.byID[subj.Id], nil
 }
