@@ -75,13 +75,3 @@ To the left of the texture view is a toolbar with the following buttons:
     </tr>
   </tbody>
 </table>
-
-## Known issues
-
-<div class="issue" markdown="span">
-  Textures that are updated via render-targets will not display correct data. [#736](https://github.com/google/gapid/issues/736)
-</div>
-
-<div class="issue" markdown="span">
-  3D textures and texture arrays are not currently supported [#392](https://github.com/google/gapid/issues/392)
-</div>
