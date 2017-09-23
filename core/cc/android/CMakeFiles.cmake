@@ -23,6 +23,8 @@ set(files
     get_gles_proc_address.cpp
     get_vulkan_proc_address.cpp
     thread.cpp
+    trace.h
+    trace.cpp
 )
 set(dirs
 
