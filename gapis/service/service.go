@@ -114,8 +114,8 @@ type Service interface {
 	EndCPUProfile(ctx context.Context) ([]byte, error)
 
 	// GetPerformanceCounters returns the values of all global counters as
-	// a JSON blob.
-	GetPerformanceCounters(ctx context.Context) ([]byte, error)
+	// a string.
+	GetPerformanceCounters(ctx context.Context) (string, error)
 
 	// GetProfile returns the pprof profile with the given name.
 	GetProfile(ctx context.Context, name string, debug int32) ([]byte, error)

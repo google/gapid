@@ -26,11 +26,11 @@ import (
 )
 
 var (
-	deadCodeEliminationCounter         = benchmark.GlobalCounters.Duration("deadCodeElimination")
-	deadCodeEliminationCmdDeadCounter  = benchmark.GlobalCounters.Integer("deadCodeElimination.cmd.dead")
-	deadCodeEliminationCmdLiveCounter  = benchmark.GlobalCounters.Integer("deadCodeElimination.cmd.live")
-	deadCodeEliminationDataDeadCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.data.dead")
-	deadCodeEliminationDataLiveCounter = benchmark.GlobalCounters.Integer("deadCodeElimination.data.live")
+	deadCodeEliminationCounter         = benchmark.Duration("deadCodeElimination")
+	deadCodeEliminationCmdDeadCounter  = benchmark.Integer("deadCodeElimination.cmd.dead")
+	deadCodeEliminationCmdLiveCounter  = benchmark.Integer("deadCodeElimination.cmd.live")
+	deadCodeEliminationDataDeadCounter = benchmark.Integer("deadCodeElimination.data.dead")
+	deadCodeEliminationDataLiveCounter = benchmark.Integer("deadCodeElimination.data.live")
 )
 
 // DeadCodeElimination is an implementation of Transformer that outputs live
@@ -152,10 +152,10 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 				liveMem += mem
 			}
 		}
-		deadCodeEliminationCmdDeadCounter.AddInt64(int64(numDead))
-		deadCodeEliminationCmdLiveCounter.AddInt64(int64(numLive))
-		deadCodeEliminationDataDeadCounter.AddInt64(int64(deadMem))
-		deadCodeEliminationDataLiveCounter.AddInt64(int64(liveMem))
+		deadCodeEliminationCmdDeadCounter.Add(int64(numDead))
+		deadCodeEliminationCmdLiveCounter.Add(int64(numLive))
+		deadCodeEliminationDataDeadCounter.Add(int64(deadMem))
+		deadCodeEliminationDataLiveCounter.Add(int64(liveMem))
 		log.D(ctx, "DCE: dead: %v%% %v cmds %v MB, live: %v%% %v cmds %v MB",
 			100*numDead/num, numDead, deadMem/1024/1024,
 			100*numLive/num, numLive, liveMem/1024/1024)

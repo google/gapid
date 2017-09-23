@@ -25,13 +25,13 @@ import (
 )
 
 var (
-	dCECounter         = benchmark.GlobalCounters.Duration("DCE")
-	dCECmdDeadCounter  = benchmark.GlobalCounters.Integer("DCE.cmd.dead")
-	dCECmdLiveCounter  = benchmark.GlobalCounters.Integer("DCE.cmd.live")
-	dCEDrawDeadCounter = benchmark.GlobalCounters.Integer("DCE.draw.dead")
-	dCEDrawLiveCounter = benchmark.GlobalCounters.Integer("DCE.draw.live")
-	dCEDataDeadCounter = benchmark.GlobalCounters.Integer("DCE.data.dead")
-	dCEDataLiveCounter = benchmark.GlobalCounters.Integer("DCE.data.live")
+	dCECounter         = benchmark.Duration("DCE")
+	dCECmdDeadCounter  = benchmark.Integer("DCE.cmd.dead")
+	dCECmdLiveCounter  = benchmark.Integer("DCE.cmd.live")
+	dCEDrawDeadCounter = benchmark.Integer("DCE.draw.dead")
+	dCEDrawLiveCounter = benchmark.Integer("DCE.draw.live")
+	dCEDataDeadCounter = benchmark.Integer("DCE.data.dead")
+	dCEDataLiveCounter = benchmark.Integer("DCE.data.live")
 )
 
 type commandIndicesSet struct {
@@ -158,12 +158,12 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 			}
 		}
 	}
-	dCECmdDeadCounter.AddInt64(int64(numDead))
-	dCECmdLiveCounter.AddInt64(int64(numLive))
-	dCEDrawDeadCounter.AddInt64(int64(numDeadDraws))
-	dCEDrawLiveCounter.AddInt64(int64(numLiveDraws))
-	dCEDataDeadCounter.AddInt64(int64(deadMem))
-	dCEDataLiveCounter.AddInt64(int64(liveMem))
+	dCECmdDeadCounter.Add(int64(numDead))
+	dCECmdLiveCounter.Add(int64(numLive))
+	dCEDrawDeadCounter.Add(int64(numDeadDraws))
+	dCEDrawLiveCounter.Add(int64(numLiveDraws))
+	dCEDataDeadCounter.Add(int64(deadMem))
+	dCEDataLiveCounter.Add(int64(liveMem))
 	log.D(ctx, "DCE: dead: %v%% %v cmds %v MB %v draws, live: %v%% %v cmds %v MB %v draws",
 		100*numDead/numCmd, numDead, deadMem/1024/1024, numDeadDraws,
 		100*numLive/numCmd, numLive, liveMem/1024/1024, numLiveDraws)

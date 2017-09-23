@@ -19,7 +19,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -303,9 +302,9 @@ func (s *server) EndCPUProfile(ctx context.Context) ([]byte, error) {
 	return s.profile.Bytes(), nil
 }
 
-func (s *server) GetPerformanceCounters(ctx context.Context) ([]byte, error) {
+func (s *server) GetPerformanceCounters(ctx context.Context) (string, error) {
 	ctx = log.Enter(ctx, "GetPerformanceCounters")
-	return json.Marshal(benchmark.GlobalCounters)
+	return fmt.Sprintf("%+v", benchmark.GlobalCounters.All()), nil
 }
 
 func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]byte, error) {
