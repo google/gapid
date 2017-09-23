@@ -58,6 +58,8 @@ set(files
     gvr_types.h
     pack_encoder.h
     pack_encoder.cpp
+    pack_string_writer.h
+    pack_string_writer.cpp
     pool.cpp
     pool.h
     slice.h
