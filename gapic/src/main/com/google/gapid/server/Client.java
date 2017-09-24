@@ -26,6 +26,7 @@ import com.google.gapid.models.Strings;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.CheckForUpdatesRequest;
+import com.google.gapid.proto.service.Service.EnableAnalyticsRequest;
 import com.google.gapid.proto.service.Service.ExportCaptureRequest;
 import com.google.gapid.proto.service.Service.FollowRequest;
 import com.google.gapid.proto.service.Service.GetAvailableStringTablesRequest;
@@ -189,6 +190,21 @@ public class Client {
                 .setHints(hints)
                 .build()),
             in -> immediateFuture(throwIfError(in.getImage(), in.getError(), stack))));
+  }
+
+  public void enableAnalytics(String clientId) {
+    call(() -> String.format("RPC->enableAnalytics(%s)", clientId),
+        stack -> client.enableAnalytics(EnableAnalyticsRequest.newBuilder()
+                .setEnable(true)
+                .setClientId(clientId)
+                .build()));
+  }
+
+  public void disableAnalytics() {
+    call(() -> String.format("RPC->disableAnalytics()"),
+        stack -> client.enableAnalytics(EnableAnalyticsRequest.newBuilder()
+            .setEnable(false)
+            .build()));
   }
 
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {

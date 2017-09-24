@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/event/task"
@@ -167,6 +168,7 @@ func (p *Process) loadAndConnectViaJDWP(
 	})
 	if err != nil {
 		if err == io.EOF {
+			analytics.SendBug(911, analytics.TargetDevice(d.Instance().GetConfiguration()))
 			return fmt.Errorf("Unable to connect to the application.\n\n" +
 				"This can happen when another debugger or IDE is running " +
 				"in the background, such as Android Studio.\n" +

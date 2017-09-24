@@ -23,6 +23,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -127,7 +128,17 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 // It copies the capture into the supplied writer.
 // If the process was started with the DeferStart flag, then tracing will wait
 // until s is fired.
-func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer) (int64, error) {
+func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer) (size int64, err error) {
+	stopTiming := analytics.SendTiming("trace", "duration")
+	defer func() {
+		stopTiming(analytics.Size(size))
+		if err != nil {
+			analytics.SendEvent("trace", "failed", "", analytics.Size(size))
+		} else {
+			analytics.SendEvent("trace", "succeeded", "", analytics.Size(size))
+		}
+	}()
+
 	if p.conn == nil {
 		if err := p.connect(ctx, 0, ""); err != nil {
 			return 0, err

@@ -81,8 +81,16 @@ void buildDeviceInstance(void* platform_data, device::Instance** out) {
 
     // Instance.Configuration.Hardware.GPU
     auto gpu = new GPU();
-    gpu->set_name(query::gpuName());
-    gpu->set_vendor(query::gpuVendor());
+    const char* gpuName = query::gpuName();
+    const char* gpuVendor = query::gpuVendor();
+    if (strlen(gpuName) == 0) {
+        gpuName = opengl_driver->renderer().c_str();
+    }
+    if (strlen(gpuVendor) == 0) {
+        gpuVendor = opengl_driver->vendor().c_str();
+    }
+    gpu->set_name(gpuName);
+    gpu->set_vendor(gpuVendor);
 
     // Instance.Configuration.Hardware
     auto hardware = new Hardware();

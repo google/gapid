@@ -89,6 +89,11 @@ public class GapisProcess extends ChildProcess<Integer> {
 
     String gapirFlags = "";
 
+    if (settings.analyticsEnabled()) {
+      args.add("-analytics");
+      args.add(settings.analyticsClientId);
+    }
+
     File logDir = Logging.getLogDir();
     if (logDir != null) {
       args.add("-log-file");

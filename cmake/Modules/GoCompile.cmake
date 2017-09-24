@@ -26,7 +26,11 @@ if(GO_BUILD)
       list(APPEND args "-c")
   endif()
 endif()
+
+# TODO: <ANALYTICS> Add analytics to the tags to enable analytics functionality.
+# list(APPEND args "-tags" "integration analytics")
 list(APPEND args "-tags" "integration")
+
 if (WIN32 AND GO_WIN_UI)
   # Marks the binary as a Windows GUI app so it won't show a console by default.
   # See https://golang.org/cmd/link/ and https://msdn.microsoft.com/en-us/library/fcc1zstk.aspx

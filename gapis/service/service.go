@@ -126,6 +126,13 @@ type Service interface {
 
 	// Find performs a search using req, streaming the results to h.
 	Find(ctx context.Context, req *FindRequest, h FindHandler) error
+
+	// EnableAnalytics enables or disables analytics reporting for this session.
+	EnableAnalytics(ctx context.Context, enable bool, clientID string) error
+
+	// ClientEvent records a client event action, used for analytics.
+	// If the user has not opted-in for analytics then this call does nothing.
+	ClientEvent(ctx context.Context, req *ClientEventRequest) error
 }
 
 // FindHandler is the handler of found items using Service.Find.

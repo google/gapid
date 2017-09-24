@@ -294,3 +294,16 @@ func (c *client) Find(ctx context.Context, req *service.FindRequest, handler ser
 	h := func(ctx context.Context, m *service.FindResponse) error { return handler(m) }
 	return event.Feed(ctx, event.AsHandler(ctx, h), grpcutil.ToProducer(stream))
 }
+
+func (c *client) EnableAnalytics(ctx context.Context, enable bool, clientID string) error {
+	_, err := c.client.EnableAnalytics(ctx, &service.EnableAnalyticsRequest{
+		Enable:   enable,
+		ClientId: clientID,
+	})
+	return err
+}
+
+func (c *client) ClientEvent(ctx context.Context, req *service.ClientEventRequest) error {
+	_, err := c.client.ClientEvent(ctx, req)
+	return err
+}

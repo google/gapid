@@ -22,6 +22,7 @@ import static java.util.stream.StreamSupport.stream;
 
 import com.google.common.base.Splitter;
 import com.google.gapid.server.GapiPaths;
+import com.google.gapid.util.Events;
 import com.google.gapid.util.OS;
 
 import org.eclipse.swt.graphics.Point;
@@ -45,6 +46,11 @@ public class Settings {
   private static final Logger LOG = Logger.getLogger(Settings.class.getName());
   private static final String SETTINGS_FILE = ".gapic";
   private static final int MAX_RECENT_FILES = 16;
+  private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
+
+  public interface Listener extends Events.Listener {
+    void onSettingsChanged(Settings settings);
+  }
 
   public Point windowLocation = null;
   public Point windowSize = null;
@@ -76,6 +82,28 @@ public class Settings {
   public boolean autoCheckForUpdates = true;
   public boolean updateAvailable = false;
   public long lastCheckForUpdates = 0; // milliseconds since midnight, January 1, 1970 UTC.
+  public String analyticsClientId = ""; // Empty means do not track.
+
+  /**
+   * Registers the listener for changes.
+   */
+  public void addListener(Listener listener) {
+    listeners.addListener(listener);
+  }
+
+  /**
+   * Removes the listener for changes.
+   */
+  public void removeListener(Listener listener) {
+    listeners.removeListener(listener);
+  }
+
+  /**
+   * Call when settings are changed.
+   */
+  public void onChange() {
+    listeners.fire().onSettingsChanged(this);
+  }
 
   public static Settings load() {
     Settings result = new Settings();
@@ -142,7 +170,11 @@ public class Settings {
   public boolean crashReportingEnabled() {
     return false;
   }
-  
+
+  public boolean analyticsEnabled() {
+    return !analyticsClientId.isEmpty();
+  }
+
   private void updateFrom(Properties properties) {
     windowLocation = getPoint(properties, "window.pos");
     windowSize = getPoint(properties, "window.size");
@@ -179,6 +211,7 @@ public class Settings {
     autoCheckForUpdates = getBoolean(properties, "updates.autoCheck", autoCheckForUpdates);
     lastCheckForUpdates = getLong(properties, "updates.lastCheck", 0);
     updateAvailable = getBoolean(properties, "updates.available", updateAvailable);
+    analyticsClientId = properties.getProperty("analytics.clientId", "");
   }
 
   private void updateTo(Properties properties) {
@@ -214,6 +247,7 @@ public class Settings {
     properties.setProperty("updates.autoCheck", Boolean.toString(autoCheckForUpdates));
     properties.setProperty("updates.lastCheck", Long.toString(lastCheckForUpdates));
     properties.setProperty("updates.available", Boolean.toString(updateAvailable));
+    properties.setProperty("analytics.clientId", analyticsClientId);
   }
 
   private static Point getPoint(Properties properties, String name) {
@@ -282,7 +316,6 @@ public class Settings {
       return dflt;
     }
   }
-
 
   private static String[] getStringList(Properties properties, String name, String[] dflt) {
     String value = properties.getProperty(name);

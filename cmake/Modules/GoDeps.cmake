@@ -15,7 +15,10 @@
 include(${GO_ENV})
 
 execute_process(
-    COMMAND "${CMAKE_Go_COMPILER}" list -tags integration -pkgdir ${GO_PKG} -f "
+
+# TODO: <ANALYTICS> Add analytics to the tags to enable analytics functionality.
+# COMMAND "${CMAKE_Go_COMPILER}" list -tags "integration analytics" -pkgdir ${GO_PKG} -f "
+    COMMAND "${CMAKE_Go_COMPILER}" list -tags "integration" -pkgdir ${GO_PKG} -f "
 set(Imports {{join .Imports \"\\n    \"}})
 set(TestImports {{join .TestImports \"\\n    \"}})
 set(XTestImports {{join .XTestImports \"\\n    \"}})

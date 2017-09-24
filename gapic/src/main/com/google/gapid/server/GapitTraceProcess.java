@@ -58,6 +58,11 @@ public class GapitTraceProcess extends ChildProcess<Boolean> {
     List<String> args = Lists.newArrayList();
     args.add(gapit.getAbsolutePath());
 
+    if (settings.analyticsEnabled()) {
+      args.add("-analytics");
+      args.add(settings.analyticsClientId);
+    }
+
     args.add("-log-level");
     args.add(logLevel.get().gapisLevel);
 
