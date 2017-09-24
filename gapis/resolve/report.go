@@ -17,6 +17,7 @@ package resolve
 import (
 	"context"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
@@ -56,6 +57,8 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defer analytics.SendTiming("resolve", "report")(analytics.Size(len(c.Commands)))
 
 	sd, err := SyncData(ctx, r.Path.Capture)
 	if err != nil {

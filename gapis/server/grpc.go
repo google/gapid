@@ -329,3 +329,21 @@ func (s *grpcServer) Find(req *service.FindRequest, server service.Gapid_FindSer
 	ctx := server.Context()
 	return s.handler.Find(s.bindCtx(ctx), req, server.Send)
 }
+
+func (s *grpcServer) EnableAnalytics(ctx xctx.Context, req *service.EnableAnalyticsRequest) (*service.EnableAnalyticsResponse, error) {
+	defer s.inRPC()()
+	err := s.handler.EnableAnalytics(s.bindCtx(ctx), req.Enable, req.ClientId)
+	if err != nil {
+		return nil, err
+	}
+	return &service.EnableAnalyticsResponse{}, nil
+}
+
+func (s *grpcServer) ClientEvent(ctx xctx.Context, req *service.ClientEventRequest) (*service.ClientEventResponse, error) {
+	defer s.inRPC()()
+	err := s.handler.ClientEvent(s.bindCtx(ctx), req)
+	if err != nil {
+		return nil, err
+	}
+	return &service.ClientEventResponse{}, nil
+}

@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package host
+package analytics
 
-import (
-	"context"
-	"sync"
+import "fmt"
 
-	"github.com/google/gapid/core/os/device"
-)
+// OnError is called whenever there was a problem sending analytics.
+// By default errors are simply ignored.
+var OnError = func(err error) {}
 
-var (
-	host     device.Instance
-	hostOnce sync.Once
-)
+// ErrPayloadTooLarge is the error returned when attempting to send a
+// payload that is too large to send.
+type ErrPayloadTooLarge struct {
+	Payload Payload
+	Size    int
+}
 
-// Instance returns the device information for the host computer running the
-// code.
-func Instance(ctx context.Context) *device.Instance {
-	hostOnce.Do(func() { host = getHostDevice() })
-	return &host
+func (e ErrPayloadTooLarge) Error() string {
+	return fmt.Sprintf("Payload too large. Got: %v, max: %v", int(e.Size), maxHitSize)
 }

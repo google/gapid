@@ -103,12 +103,26 @@ public class Main {
     private final ApplicationWindow window;
     private Models models;
     private Widgets widgets;
+    private boolean analyticsEnabled;
 
     public UI(Settings settings, Client client, String[] args) {
       this.settings = settings;
       this.client = client;
       this.args = args;
       this.window = new MainWindow(client, this);
+      this.analyticsEnabled = settings.analyticsEnabled();
+
+      settings.addListener(ignored -> {
+        boolean enabled = settings.analyticsEnabled();
+        if (analyticsEnabled != enabled) {
+          analyticsEnabled = enabled;
+          if (enabled) {
+            client.enableAnalytics(settings.analyticsClientId);
+          } else {
+            client.disableAnalytics();
+          }
+        }
+      });
     }
 
     public void show() {

@@ -55,7 +55,8 @@ public interface GapidClient {
       Service.GetDevicesForReplayRequest request);
   public ListenableFuture<Service.GetFramebufferAttachmentResponse> getFramebufferAttachment(
       Service.GetFramebufferAttachmentRequest request);
-
+  public ListenableFuture<Service.EnableAnalyticsResponse> enableAnalytics(
+      Service.EnableAnalyticsRequest request);
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage);
   public ListenableFuture<Void> streamSearch(
       Service.FindRequest request, Consumer<Service.FindResponse> onResult);

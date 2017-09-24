@@ -25,6 +25,7 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/benchmark"
@@ -318,4 +319,23 @@ func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]by
 		return []byte{}, err
 	}
 	return b.Bytes(), nil
+}
+
+func (s *server) EnableAnalytics(ctx context.Context, enable bool, clientID string) error {
+	if enable {
+		analytics.Enable(ctx, clientID, analytics.AppVersion{
+			Name: app.Name, Build: app.Version.Build,
+			Major: app.Version.Major, Minor: app.Version.Minor, Point: app.Version.Point,
+		})
+	} else {
+		analytics.Disable()
+	}
+	return nil
+}
+
+func (s *server) ClientEvent(ctx context.Context, req *service.ClientEventRequest) error {
+	if i := req.GetInteraction(); i != nil {
+		analytics.SendEvent("client", i.View, i.Action.String())
+	}
+	return nil
 }

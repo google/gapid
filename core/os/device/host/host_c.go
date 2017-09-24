@@ -19,16 +19,24 @@ package host
 import "C"
 
 import (
+	"fmt"
 	"unsafe"
 
-	"github.com/google/gapid/core/fault"
+	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/os/device"
 )
 
-func getHostDevice() ([]byte, error) {
+func getHostDevice() device.Instance {
 	s := C.get_device_instance(nil)
 	defer C.free_device_instance(s)
 	if s.data == nil {
-		return nil, fault.Const(C.GoString(C.get_device_instance_error()))
+		panic(fmt.Errorf("Failed to get host machine information: %v",
+			C.GoString(C.get_device_instance_error())))
 	}
-	return C.GoBytes(unsafe.Pointer(s.data), C.int(s.size)), nil
+	buf := C.GoBytes(unsafe.Pointer(s.data), C.int(s.size))
+	var device device.Instance
+	if err := proto.NewBuffer(buf).Unmarshal(&device); err != nil {
+		panic(err)
+	}
+	return device
 }

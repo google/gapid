@@ -17,6 +17,7 @@ package replay
 import (
 	"context"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
@@ -51,11 +52,9 @@ func findABI(ml *device.MemoryLayout, abis []*device.ABI) *device.ABI {
 }
 
 func (m *Manager) batch(ctx context.Context, e []scheduler.Executable, b scheduler.Batch) {
-	ctx = log.V{
-		"priority": b.Priority,
-		"delay":    b.Precondition,
-	}.Bind(ctx)
-	log.I(ctx, "Replay for %d requests", len(e))
+	batch := b.Key.(batchKey)
+
+	d := bind.GetRegistry(ctx).Device(batch.device)
 
 	requests := make([]RequestAndResult, len(e))
 	for i, e := range e {
@@ -64,29 +63,48 @@ func (m *Manager) batch(ctx context.Context, e []scheduler.Executable, b schedul
 			Result:  Result(e.Result),
 		}
 	}
-	batch := b.Key.(batchKey)
-	err := m.execute(ctx, batch.device, batch.capture, batch.config, batch.generator, requests)
+
+	err := func() error {
+		if d == nil {
+			return log.Errf(ctx, nil, "Unknown device %v", batch.device)
+		}
+
+		defer analytics.SendTiming("replay", "batch")(
+			analytics.TargetDevice(d.Instance().GetConfiguration()),
+		)
+
+		ctx = log.V{
+			"priority": b.Priority,
+			"delay":    b.Precondition,
+		}.Bind(ctx)
+		log.I(ctx, "Replay for %d requests", len(e))
+
+		return m.execute(ctx, d, batch.device, batch.capture, batch.config, batch.generator, requests)
+	}()
+
 	if err != nil {
+		analytics.SendEvent("replay", "batch", "failure",
+			analytics.TargetDevice(d.Instance().GetConfiguration()),
+		)
 		for _, e := range requests {
 			e.Result(nil, err)
 		}
+	} else {
+		analytics.SendEvent("replay", "batch", "success",
+			analytics.TargetDevice(d.Instance().GetConfiguration()),
+		)
 	}
 }
 
 func (m *Manager) execute(
 	ctx context.Context,
+	d bind.Device,
 	deviceID, captureID id.ID,
 	cfg Config,
 	generator Generator,
 	requests []RequestAndResult) error {
 
 	executeCounter.Increment()
-
-	devicePath := path.NewDevice(deviceID)
-	d := bind.GetRegistry(ctx).Device(deviceID)
-	if d == nil {
-		return log.Errf(ctx, nil, "Unknown device %v", deviceID)
-	}
 
 	capturePath := path.NewCapture(captureID)
 	c, err := capture.ResolveFromPath(ctx, capturePath)
@@ -100,7 +118,7 @@ func (m *Manager) execute(
 		"device":  d.Instance().GetName(),
 	}.Bind(ctx)
 
-	intent := Intent{devicePath, capturePath}
+	intent := Intent{path.NewDevice(deviceID), capturePath}
 
 	cml := c.Header.Abi.MemoryLayout
 	ctx = log.V{"capture memory layout": cml}.Bind(ctx)

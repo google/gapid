@@ -76,7 +76,7 @@ bool createContext(void* platform_data) {
 
     if (uname(&gContext.mUbuf) != 0) {
 		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "gethostname returned error: %d", errno);
+				 "uname returned error: %d", errno);
         destroyContext();
         return false;
     }

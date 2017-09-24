@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
@@ -34,6 +35,7 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/android/apk"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/os/shell"
@@ -175,6 +177,10 @@ type traceOptions struct {
 }
 
 func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, start task.Signal, options traceOptions) error {
+	defer analytics.SendTiming("trace", "local")(
+		analytics.TargetDevice(host.Instance(ctx).GetConfiguration()),
+	)
+
 	output := verb.Out
 	if output == "" {
 		output = "capture.gfxtrace"
@@ -188,6 +194,10 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start
 	if err != nil {
 		return err
 	}
+
+	defer analytics.SendTiming("trace", "adb")(
+		analytics.TargetDevice(d.Instance().GetConfiguration()),
+	)
 
 	if options.monitorLogcat {
 		c := make(chan android.LogcatMessage, 32)

@@ -17,6 +17,7 @@ package resolve
 import (
 	"context"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -58,6 +59,8 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+
+	defer analytics.SendTiming("resolve", "global-state")(analytics.Count(len(cmds)))
 
 	s, err := capture.NewState(ctx)
 	if err != nil {

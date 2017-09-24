@@ -21,6 +21,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
@@ -32,6 +33,8 @@ import (
 var (
 	// Name is the full name of the application
 	Name string
+	// Flags is the main application flags.
+	Flags AppFlags
 	// ExitFuncForTesting can be set to change the behaviour when there is a command line parsing failure.
 	// It defaults to os.Exit
 	ExitFuncForTesting = os.Exit
@@ -100,6 +103,7 @@ func (v VersionSpec) Format(f fmt.State, c rune) {
 
 func init() {
 	Name = file.Abs(os.Args[0]).Basename()
+	Flags.Log = logDefaults()
 }
 
 // Run performs all the work needed to start up an application.
@@ -107,8 +111,6 @@ func init() {
 // runs the provided task, cancels the primary context and then waits for either the maximum shutdown delay
 // or all registered signals whichever comes first.
 func Run(main task.Task) {
-	crash.Register(onCrash)
-
 	// Defer the panic handling
 	defer func() {
 		switch cause := recover().(type) {
@@ -119,14 +121,13 @@ func Run(main task.Task) {
 			crash.Crash(cause)
 		}
 	}()
-	flags := &AppFlags{Log: logDefaults()}
 
 	// install all the common application flags
-	rootCtx := prepareContext(&flags.Log)
+	rootCtx := prepareContext(&Flags.Log)
 
 	// parse the command line
 	flag.CommandLine.Usage = func() { Usage(rootCtx, "") }
-	verbMainPrepare(flags)
+	verbMainPrepare(&Flags)
 	globalVerbs.flags.Parse(os.Args[1:]...)
 
 	// Force the global verb's flags back into the default location for
@@ -134,27 +135,36 @@ func Run(main task.Task) {
 	// TODO: We need to stop doing this
 	globalVerbs.flags.ForceCommandLine()
 
-	if flags.DecodeStack != "" {
-		stack := decodeCrashCode(flags.DecodeStack)
+	if Flags.DecodeStack != "" {
+		stack := decodeCrashCode(Flags.DecodeStack)
 		fmt.Fprintf(os.Stdout, "Stack dump:\n%v\n", stack)
 		return
 	}
 
-	if flags.Version {
+	if Flags.Version {
 		fmt.Fprint(os.Stdout, Name, " version ", Version, "\n")
 		return
 	}
 
-	endProfile := applyProfiler(rootCtx, &flags.Profile)
+	endProfile := applyProfiler(rootCtx, &Flags.Profile)
 
 	ctx, cancel := task.WithCancel(rootCtx)
 
-	ctx = updateContext(ctx, &flags.Log)
+	ctx = updateContext(ctx, &Flags.Log)
+
+	if Flags.Analytics != "" {
+		analytics.Enable(ctx, Flags.Analytics, analytics.AppVersion{
+			Name: Name, Build: Version.Build,
+			Major: Version.Major, Minor: Version.Minor, Point: Version.Point,
+		})
+		analytics.SendEvent("app", "start", Name)
+	}
 
 	// Defer the shutdown code
 	shutdownOnce := sync.Once{}
 	shutdown := func() {
 		shutdownOnce.Do(func() {
+			analytics.Flush()
 			LogHandler.Close()
 			cancel()
 			if !WaitForCleanup(rootCtx) {

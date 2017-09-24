@@ -313,6 +313,48 @@ message FindResponse {
   }
 }
 
+
+enum ClientAction {
+  Undefined = 0;
+  Show = 1;
+  Hide = 2;
+  MouseClickLeft = 3;
+  MouseClickMiddle = 4;
+  MouseClickRight = 5;
+  MouseDoubleClick = 6;
+  MouseDrag = 7;
+  MouseScroll = 8;
+  MouseEnter = 9;
+  MouseExit = 10;
+  KeyPressUpOrDown = 11;
+  KeyPressLeftOrRight = 12;
+}
+
+message ClientInteraction {
+  string view = 1;
+  string control = 2;
+  ClientAction action = 3;
+};
+
+message EnableAnalyticsRequest {
+  // Enables or disable anonymous analytics reporting.
+  // This will override the -analytics command line flag.
+  bool enable = 1;
+  // The client identifier to use for analytics reporting.
+  // This will override the -analytics command line flag.
+  string client_id = 2;
+}
+
+message EnableAnalyticsResponse {}
+
+message ClientEventRequest {
+  oneof kind {
+    ClientInteraction interaction = 1;
+  }
+}
+
+message ClientEventResponse {}
+
 // Gapid is the RPC service to the GAPIS server.
 service Gapid {
   // Ping is a no-op function that returns immediately.
@@ -385,6 +427,13 @@ service Gapid {
 
   // Find searches for data, streaming the results.
   rpc Find(FindRequest) returns (stream FindResponse) {}
+
+  // EnableAnalytics enables or disables analytics reporting for this session.
+  rpc EnableAnalytics(EnableAnalyticsRequest) returns (EnableAnalyticsResponse) {}
+
+  // ClientEvent records a client event action, used for analytics.
+  // If the user has not opted-in for analytics then this call does nothing.
+  rpc ClientEvent(ClientEventRequest) returns (ClientEventResponse) {}
 
   ///////////////////////////////////////////////////////////////
   // Below are debugging APIs which may be removed in the future.

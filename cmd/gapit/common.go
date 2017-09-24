@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
@@ -48,6 +49,9 @@ func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Se
 
 func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags) (client.Client, error) {
 	args := strings.Fields(gapisFlags.Args)
+	if app.Flags.Analytics != "" {
+		args = append(args, "--analytics", app.Flags.Analytics)
+	}
 	if gapirFlags.Args != "" {
 		// Pass the arguments for gapir further to gapis. Add flag to tag the
 		// gapir argument string for gapis.

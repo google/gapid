@@ -58,6 +58,12 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
 
     List<String> args = Lists.newArrayList();
     args.add(gapit.getAbsolutePath());
+
+    if (settings.analyticsEnabled()) {
+      args.add("-analytics");
+      args.add(settings.analyticsClientId);
+    }
+
     args.add("packages");
 
     args.add("--format");

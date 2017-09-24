@@ -21,6 +21,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -213,13 +214,23 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 	}, nil
 }
 
-func fromProto(ctx context.Context, r *Record) (*Capture, error) {
+func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	var dataID id.ID
 	copy(dataID[:], r.Data)
 	data, err := database.Resolve(ctx, dataID)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to load capture data: %v", err)
 	}
+
+	stopTiming := analytics.SendTiming("capture", "deserialize")
+	defer func() {
+		size := len(r.Data)
+		count := 0
+		if out != nil {
+			count = len(out.Commands)
+		}
+		stopTiming(analytics.Size(size), analytics.Count(count))
+	}()
 
 	d := newDecoder()
 	if err := pack.Read(ctx, bytes.NewReader(data.([]byte)), d, false); err != nil {
@@ -325,6 +336,9 @@ func (b *builder) addRes(ctx context.Context, id id.ID, data []byte) error {
 }
 
 func (b *builder) build(name string, header *Header) *Capture {
+	for _, api := range b.apis {
+		analytics.SendEvent("capture", "uses-api", api.Name())
+	}
 	return &Capture{
 		Name:     name,
 		Header:   header,

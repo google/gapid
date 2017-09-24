@@ -33,7 +33,9 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 
 /**
@@ -42,7 +44,9 @@ import org.eclipse.swt.widgets.Shell;
 public class SettingsDialog extends DialogBase {
   private final Settings settings;
   private Button autoCheckForUpdates;
+  private Button sendAnalytics;
   private FileTextbox adbPath;
+  private Label restartLabel;
 
   public SettingsDialog(Shell parent, Settings settings, Theme theme) {
     super(parent, theme);
@@ -54,8 +58,16 @@ public class SettingsDialog extends DialogBase {
   }
 
   private void update() {
+    /* TODO: <ANALYTICS> Uncomment to add the option to enable analytics.
+    if (!settings.analyticsEnabled() && sendAnalytics.getSelection()) {
+      settings.analyticsClientId = UUID.randomUUID().toString();
+    } else if (settings.analyticsEnabled() && !sendAnalytics.getSelection()) {
+      settings.analyticsClientId = "";
+    }
+    */
     settings.autoCheckForUpdates = autoCheckForUpdates.getSelection();
     settings.adb = adbPath.getText().trim();
+    settings.onChange();
   }
 
   @Override
@@ -73,18 +85,30 @@ public class SettingsDialog extends DialogBase {
     createLabel(container, "Automatically check for updates:");
     autoCheckForUpdates = Widgets.createCheckbox(container, "", settings.autoCheckForUpdates);
 
-    createLabel(container, "Path to adb:*");
+    // TODO: <ANALYTICS> Uncomment to add the option to enable analytics.
+    // createLabel(container, "Send anonymous usage statistics to Google:");
+    // sendAnalytics = Widgets.createCheckbox(container, "", settings.analyticsEnabled());
+
+    createLabel(container, "Path to adb:");
     adbPath = withLayoutData(new FileTextbox.File(container, settings.adb) {
       @Override
       protected void configureDialog(FileDialog dialog) {
         dialog.setText("Path to adb:");
       }
     }, new GridData(SWT.FILL, SWT.FILL, true, false));
+    adbPath.addBoxListener(SWT.Modify, this::onSettingChanged);
 
     createLabel(container, "");
-    createLabel(container, "* Requires Restart");
+    restartLabel = createLabel(container, "Changes require restart to take effect");
+    restartLabel.setVisible(false);
+    restartLabel.setForeground(restartLabel.getDisplay().getSystemColor(SWT.COLOR_RED));
 
     return area;
+  }
+
+  protected void onSettingChanged(Event event) {
+    boolean restartNeeded = !settings.adb.equals(adbPath.getText());
+    restartLabel.setVisible(restartNeeded);
   }
 
   @Override
