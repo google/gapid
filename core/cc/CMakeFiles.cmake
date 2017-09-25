@@ -63,6 +63,7 @@ set(files
     thread_local.h
     timer.cpp
     timer.h
+    trace.h
     vector.h
     vulkan_ptr_types.h
 )
