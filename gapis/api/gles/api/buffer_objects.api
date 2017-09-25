@@ -282,7 +282,8 @@ cmd void glBufferData(GLenum target, GLsizeiptr size, BufferDataPointer data, GL
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBufferSubData.xhtml", Version.GLES32)
 cmd void glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, BufferDataPointer data) {
   b := GetBoundBufferOrError(target)
-  if (offset < 0) || (size < 0) { glErrorInvalidValue() }
+  if offset < 0 { glErrorInvalidValue() }
+  if size < 0 { glErrorInvalidValue() }
   if (as!GLsizeiptr(offset) + size) > b.Size { glErrorInvalidValue() }
   copy(b.Data[offset:as!GLsizeiptr(offset) + size], as!u8*(data)[0:size])
 }
@@ -468,7 +469,9 @@ cmd void* glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GL
 
 sub void MapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access, u8* ptr) {
   b := GetBoundBufferOrError(target)
-  if (offset < 0) || (length < 0) || ((as!GLsizeiptr(offset) + length) > b.Size) { glErrorInvalidValue() }
+  if offset < 0 { glErrorInvalidValue() }
+  if length < 0 { glErrorInvalidValue() }
+  if (as!GLsizeiptr(offset) + length) > b.Size { glErrorInvalidValue() }
   supportsBits(access, GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_READ_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_WRITE_BIT)
   if b.Mapped == GL_TRUE { glErrorInvalidOperation() }
 
@@ -520,7 +523,9 @@ sub void FlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr lengt
   b := GetBoundBufferOrError(target)
   if b.Mapped == GL_FALSE { glErrorInvalidOperation() }
   if !(GL_MAP_FLUSH_EXPLICIT_BIT in b.AccessFlags) { glErrorInvalidOperation() }
-  if (offset < 0) || (length < 0) || ((as!GLsizeiptr(offset) + length) > b.MapLength) { glErrorInvalidValue() }
+  if offset < 0 { glErrorInvalidValue() }
+  if length < 0 { glErrorInvalidValue() }
+  if (as!GLsizeiptr(offset) + length) > b.MapLength { glErrorInvalidValue() }
   dstOffset := b.MapOffset + offset
   copy(b.Data[dstOffset:dstOffset + as!GLintptr(length)], b.MapPointer[offset:offset + as!GLintptr(length)])
 }
