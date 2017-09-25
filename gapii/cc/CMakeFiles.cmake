@@ -21,6 +21,8 @@ set(files
     abort_exception.h
     call_observer.cpp
     call_observer.h
+    chunk_writer.h
+    chunk_writer.cpp
     connection_header.cpp
     connection_header.h
     connection_stream.cpp
