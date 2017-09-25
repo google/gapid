@@ -292,7 +292,8 @@ cmd void glSampleMaski(GLuint maskNumber, GLbitfield mask) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glScissor.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glScissor.xhtml", Version.GLES32)
 cmd void glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
-  if (width < 0) || (height < 0) { glErrorInvalidValue() }
+  if width < 0 { glErrorInvalidValue() }
+  if height < 0 { glErrorInvalidValue() }
   ctx := GetContext()
   ctx.Pixel.Scissor.Box = Rect(x, y, width, height)
 }

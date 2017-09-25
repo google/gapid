@@ -984,7 +984,8 @@ sub void checkReadPixels(GLsizei width,
       glErrorInvalidEnum(type)
     }
   }
-  if (width < 0) || (height < 0) { glErrorInvalidValue() }
+  if width < 0 { glErrorInvalidValue() }
+  if height < 0 { glErrorInvalidValue() }
 }
 
 @if(Version.GLES10)
@@ -1071,13 +1072,12 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
   if sizedFormatInfo.Compression != Uncompressed {
     glErrorInvalidEnum(internalformat)
   }
-  if (width < 0) || (height < 0) { glErrorInvalidValue() }
+  if width < 0 { glErrorInvalidValue() }
+  if height < 0 { glErrorInvalidValue() }
 
   ctx := GetContext()
-  if (width > as!GLsizei(ctx.Constants.MaxRenderbufferSize)) ||
-      (height > as!GLsizei(ctx.Constants.MaxRenderbufferSize)) {
-    glErrorInvalidValue()
-  }
+  if width > as!GLsizei(ctx.Constants.MaxRenderbufferSize) { glErrorInvalidValue() }
+  if height > as!GLsizei(ctx.Constants.MaxRenderbufferSize) { glErrorInvalidValue() }
 
   rb := ctx.Bound.Renderbuffer
   if rb == null { glErrorInvalidOperation() }
