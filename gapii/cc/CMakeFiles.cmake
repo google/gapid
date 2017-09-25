@@ -21,6 +21,8 @@ set(files
     abort_exception.h
     call_observer.cpp
     call_observer.h
+    chunk_writer.h
+    chunk_writer.cpp
     connection_header.cpp
     connection_header.h
     connection_stream.cpp
@@ -58,8 +60,6 @@ set(files
     gvr_types.h
     pack_encoder.h
     pack_encoder.cpp
-    pack_string_writer.h
-    pack_string_writer.cpp
     pool.cpp
     pool.h
     slice.h

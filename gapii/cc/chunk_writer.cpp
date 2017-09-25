@@ -15,7 +15,7 @@
  */
 
 
-#include "pack_string_writer.h"
+#include "chunk_writer.h"
 
 #include <core/cc/stream_writer.h>
 
@@ -27,15 +27,13 @@ namespace {
 
 constexpr size_t kBufferSize = 32*1024;
 
-class PackStringWriterImpl : public gapii::PackStringWriter {
+class ChunkWriterImpl : public gapii::ChunkWriter {
 public:
-    PackStringWriterImpl(const std::shared_ptr<core::StreamWriter>& writer);
+    ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer);
 
-    ~PackStringWriterImpl();
+    ~ChunkWriterImpl();
 
     virtual bool write(std::string& s) override;
-
-    virtual std::shared_ptr<core::StreamWriter> getStream() override;
 
 private:
     void flush();
@@ -47,18 +45,18 @@ private:
     bool mStreamGood;
 };
 
-PackStringWriterImpl::PackStringWriterImpl(const std::shared_ptr<core::StreamWriter>& writer)
+ChunkWriterImpl::ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer)
         : mWriter(writer)
         , mStreamGood(true) {
 }
 
-PackStringWriterImpl::~PackStringWriterImpl() {
+ChunkWriterImpl::~ChunkWriterImpl() {
     if (mBuffer.size() && mStreamGood) {
         flush();
     }
 }
 
-bool PackStringWriterImpl::write(std::string& s) {
+bool ChunkWriterImpl::write(std::string& s) {
     if (mStreamGood) {
         uint8_t size_buf[16];
 
@@ -76,11 +74,7 @@ bool PackStringWriterImpl::write(std::string& s) {
     return mStreamGood;
 }
 
-std::shared_ptr<core::StreamWriter> PackStringWriterImpl::getStream() {
-    return mWriter;
-}
-
-void PackStringWriterImpl::flush() {
+void ChunkWriterImpl::flush() {
     mStreamGood = mWriter->write(mBuffer.data(), mBuffer.size());
     mBuffer.clear();
 }
@@ -89,9 +83,9 @@ void PackStringWriterImpl::flush() {
 
 namespace gapii {
 
-// create returns a PackStringWriter::SPtr that writes to stream_writer.
-PackStringWriter::SPtr PackStringWriter::create(const std::shared_ptr<core::StreamWriter>& stream_writer) {
-    return PackStringWriter::SPtr(new PackStringWriterImpl(stream_writer));
+// create returns a shared pointer to a ChunkWriter that writes to stream_writer.
+ChunkWriter::SPtr ChunkWriter::create(const std::shared_ptr<core::StreamWriter>& stream_writer) {
+    return ChunkWriter::SPtr(new ChunkWriterImpl(stream_writer));
 }
 
 } // namespace gapii

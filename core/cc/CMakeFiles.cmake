@@ -57,6 +57,7 @@ set(files
     static_array.h
     stream_reader.h
     stream_writer.h
+    string_writer.h
     supported_abis.h
     target.h
     thread.h

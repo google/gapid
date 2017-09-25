@@ -21,19 +21,18 @@
 #include <string>
 
 namespace core {
-    class StreamWriter;
+class StreamWriter;
 
 // StringWriter is a pure virtual class used to write strings to a StreamWriter.
 class StringWriter {
 public:
+    typedef std::shared_ptr<StringWriter> SPtr;
+
     // write attempts to write the string 'data' to the underlying stream,
     // returning false upon failure.  'data' may be in an unknown state past
     // this call, as implementations of this interface may use move semantics
     // as a memory optimization.
     virtual bool write(std::string& data) = 0;
-
-    // getStream returns the underlying StreamWriter for the StringWriter.
-    virtual std::shared_ptr<StreamWriter> getStream() = 0;
 
 protected:
     virtual ~StringWriter() {}

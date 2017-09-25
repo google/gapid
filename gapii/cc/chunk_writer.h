@@ -14,24 +14,22 @@
  * limitations under the License.
  */
 
-#ifndef GAPII_PACK_STRING_WRITER_H
-#define GAPII_PACK_STRING_WRITER_H
+#ifndef GAPII_CHUNK_STRING_WRITER_H
+#define GAPII_CHUNK_STRING_WRITER_H
 
 #include "core/cc/string_writer.h"
 
 namespace gapii {
 
-// PackStringWriter is used to write 'Pack' strings to a core::StreamWriter.
-class PackStringWriter : public core::StringWriter {
+// ChunkWriter is used to write chunk strings to a core::StreamWriter.
+class ChunkWriter : public core::StringWriter {
 public:
-    typedef std::shared_ptr<PackStringWriter> SPtr;
-
     static SPtr create(const std::shared_ptr<core::StreamWriter>& stream_writer);
 
 protected:
-    ~PackStringWriter() = default;
+    ~ChunkWriter() = default;
 };
 
 }  // namespace gapii
 
-#endif  // GAPII_PACK_STRING_WRITER_H
+#endif  // GAPII_CHUNK_STRING_WRITER_H

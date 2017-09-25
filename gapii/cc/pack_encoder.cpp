@@ -16,10 +16,10 @@
 
 
 #include "pack_encoder.h"
+#include "chunk_writer.h"
 #include "core/data/pack/pack.pb.h"
 
 #include <core/cc/stream_writer.h>
-#include "pack_string_writer.h"
 
 #include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/io/coded_stream.h>
@@ -34,13 +34,13 @@ using ::google::protobuf::io::CodedOutputStream;
 
 namespace {
 
-const int      VERSION_MAJOR          = 1;
-const int      VERSION_MINOR          = 1;
-const int64_t  TAG_FIRST_GROUP        = -1;
-const int64_t  TAG_GROUP_FINALIZER    = 0;
-const int64_t  TAG_DECLARE_TYPE       = 1;
-const int64_t  TAG_FIRST_OBJECT       = 2;
-const uint64_t NO_ID                  = 0xffffffffffffffff;
+const int      VERSION_MAJOR       = 1;
+const int      VERSION_MINOR       = 1;
+const int64_t  TAG_FIRST_GROUP     = -1;
+const int64_t  TAG_GROUP_FINALIZER = 0;
+const int64_t  TAG_DECLARE_TYPE    = 1;
+const int64_t  TAG_FIRST_OBJECT    = 2;
+const uint64_t NO_ID               = 0xffffffffffffffff;
 
 constexpr int TYPE_ID_CACHE_COUNT  = 4;
 
@@ -93,8 +93,6 @@ PackEncoderImpl::Shared::Shared(const std::shared_ptr<core::StringWriter>& write
 PackEncoderImpl::PackEncoderImpl(const std::shared_ptr<core::StringWriter>& writer)
         : mShared(new Shared(writer))
         , mGroupId(NO_ID) {
-    auto stream = writer->getStream();
-    stream->write(magic, sizeof(magic) - 1);
     pack::Header header;
     header.mutable_version()->set_major(VERSION_MAJOR);
     header.mutable_version()->set_minor(VERSION_MINOR);
@@ -254,7 +252,8 @@ namespace gapii {
 
 // create returns a PackEncoder::SPtr that writes to output.
 PackEncoder::SPtr PackEncoder::create(std::shared_ptr<core::StreamWriter> stream) {
-    auto writer = PackStringWriter::create(stream);
+    stream->write(magic, sizeof(magic) - 1);
+    auto writer = ChunkWriter::create(stream);
     return PackEncoder::SPtr(new PackEncoderImpl(writer));
 }
 
