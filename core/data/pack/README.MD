@@ -1,63 +1,48 @@
-# Proto-Pack format Version 1.1
+# Proto-Pack format Version 2.0
 
-## File
+## Header
 
- name   | type               | description
-------- | ------------------ | ------------
- magic  | `byte[9]`          | `'p'`, `'r'`, `'o'`, `'t'`, `'o'`, `'p'`, `'a'`, `'c'`, `'k'`
- header | `Chunk<Header>`    | Header chunk
- data   | `Chunk<Section>[]` | File content
+ name   | type       | description
+------- | ---------- | ------------
+ magic  | `byte[16]` | `"ProtoPack\r\n2.0\n\0"`
 
-## Chunk\<T\>
+The header contains both types of new-lines, which is common in file
+headers to detect corruption caused by automatic new-line conversions.
+The header is followed by arbitrary number of variable-sized chunks.
+Chunks can be either object instance or type definition depending on the
+sign of the `size` field (encoded as protobuf's variable-length zigzag).
 
- name  | type             | description
------- | ---------------- | ------------
- size  | `varint`         | Size of the chunk data
- data  | `byte[size]`     | `T` data
+## Object instance (size>0)
 
-## Section
+ name     | type      | description
+--------- | --------- | ------------
+ `size`   | `sint32`  | Total size of the chunk excluding this size field.
+ `parent` | `sint32`  | If == 0: New root object instance. <br /> If < 0: Relative index of chunk which is the parent. <br /> If > 0: Reserved (potentially stream index for muxing).
+ `type`   | `sint32`  | If > 0: Type index. The object has no children. <br /> If < 0: Negated type index if it may have children. <br /> If == 0: Terminates children list of the `parent`.
+ `data`   | `byte[]`  | Proto message.
 
-A section is either a type or a object:
+Objects may form a tree. Parent object is specified as back-reference to previous
+chunk (-1 is the previous chunk). The referenced chunk must also be an object and
+it must allow addition of children. Values of `parent>=0` define a root object.
 
-### Group object (`tag < 0`)
+Negated `type` index denotes object which may have children.
+The children list must be terminated by chunk with `type==0`.
+Object with positive `type` can not have children and does not need terminator.
 
-Encoding of an object instance.
-May be a child object of a previously encoded object.
+As an optimization, if `size` is small enough to cover only the `parent`
+field, `type` field is implicitly set to 0 (i.e. it is list terminator).
 
- name   | type             | description
-------- | ---------------- | ------------
- tag    | `zig-zag varint` | Type index `-tag - 1`
- parent | `varint`         | Relative parent group index `+ 1`. 0 indicates no parent
- data   | `byte[]`         | Proto data
+## Type definition (size<0)
 
-### Group object finalizer (`tag = 0`)
+ name    | type     | description
+-------- | -------- | ------------
+ `size`  | `sint32` | Negated total size of the chunk excluding this size field.
+ `name`  | `string` | Fully qualified type name as proto string.
+ `desc`  | `byte[]` | Proto descriptor of one message type of the given `name`.
 
-Indicates that the specified object has no more children.
-Once a group has been encoded, the global group counter is incremented. This counter is used to reference parent groups.
+The format is self-describing. All objects are stored as typed proto messages,
+where the type must be first described by type definition chunk.
 
- name   | type             | description
-------- | ---------------- | ------------
- tag    | `zig-zag varint` | `0`
- object | `varint`         | Relative group index that's being finalized
+Types are assigned indices based on the order in the file (starting with 1).
 
-### Type (`tag = 1`)
-
-Declaration of a new type. The type is described using a `DescriptorProto`.
-Types are referenced by index of their declaration order in the stream.
-
- name   | type              | description
-------- | ----------------- | ------------
- tag    | `zig-zag varint`  | `1`
- name   | `varstr`          | Proto type name
- desc   | `DescriptorProto` | Proto type descriptor
-
-### Object (`tag >= 2`)
-
-Encoding of an object instance.
-May be a child object of a previously encoded object.
-
- name   | type             | description
-------- | ---------------- | ------------
- tag    | `zig-zag varint` | Type index `tag - 2`
- parent | `varint`         | Relative parent group index `+ 1`. 0 indicates no parent
- data   | `byte[]`         | Proto data
+If the descriptor references other types, then they must be defined first.

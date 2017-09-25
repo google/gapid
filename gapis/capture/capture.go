@@ -196,12 +196,12 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 		switch err := errors.Cause(err).(type) {
 		case pack.ErrUnsupportedVersion:
 			switch {
-			case err.Version.GreaterThan(pack.MaxVersion):
+			case err.Version > pack.MaxVersion:
 				return nil, &service.ErrUnsupportedVersion{
 					Reason:        messages.ErrFileTooNew(),
 					SuggestUpdate: true,
 				}
-			case err.Version.LessThan(pack.MinVersion):
+			case err.Version < pack.MinVersion:
 				return nil, &service.ErrUnsupportedVersion{
 					Reason: messages.ErrFileTooOld(),
 				}

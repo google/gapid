@@ -47,7 +47,7 @@ type types struct {
 // newTypes constructs a new empty type registry.
 func newTypes() *types {
 	return &types{
-		entries: []*ty{},
+		entries: []*ty{nil},
 		byName:  map[string]*ty{},
 	}
 }
@@ -55,37 +55,22 @@ func newTypes() *types {
 // addMessage adds a registry entry for a given message if needed.
 // It returns the registry entry, and a bool that is true if the entry
 // was newly added.
-func (t *types) addMessage(msg proto.Message) (ty, bool) {
-	return t.addType(reflect.TypeOf(msg).Elem())
-}
-
-// addNameAndDesc adds a dynamic type by name and descriptor.
-// It uses the proto type registry to look up the name.
-func (t *types) addNameAndDesc(name string, desc *descriptor.DescriptorProto) (ty, bool) {
-	typ := proto.MessageType(name)
-	if typ == nil {
-		if desc == nil {
-			return ty{}, false
-		}
-		create := func() proto.Message { return newDynamic(desc, t) }
-		return t.add(name, desc, create)
-	}
-	return t.addType(typ)
-}
-
-// addType adds a type by it's reflection type.
-func (t *types) addType(typ reflect.Type) (ty, bool) {
+func (t *types) addMessage(msg proto.Message) (*ty, bool) {
+	typ := reflect.TypeOf(msg)
 	for typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
-	create := func() proto.Message { return reflect.New(typ).Interface().(proto.Message) }
-	msg := create()
+	msg = reflect.New(typ).Interface().(proto.Message)
 	name := proto.MessageName(msg)
+	if ty, ok := t.byName[name]; ok {
+		return ty, false
+	}
+	// TODO: We are missing all referenced types. Use FileDescriptorProto instead?
 	var desc *descriptor.DescriptorProto
 	if d, ok := msg.(protoutil.Described); ok {
 		desc, _ = protoutil.DescriptorOf(d)
 	}
-	return t.add(name, desc, create)
+	return t.add(name, desc), true
 }
 
 // count returns the number of types in the registry.
@@ -93,12 +78,13 @@ func (t *types) count() uint64 {
 	return uint64(len(t.entries))
 }
 
-func (t *types) add(name string, desc *descriptor.DescriptorProto, create func() proto.Message) (ty, bool) {
-	entry, found := t.byName[name]
-	if found {
-		return *entry, false
+// add adds a type by name and descriptor.
+func (t *types) add(name string, desc *descriptor.DescriptorProto) *ty {
+	create := func() proto.Message { return newDynamic(desc, t) }
+	if ty := proto.MessageType(name); ty != nil {
+		create = func() proto.Message { return reflect.New(ty).Interface().(proto.Message) }
 	}
-	entry = &ty{
+	entry := &ty{
 		name:   name,
 		index:  t.count(),
 		create: create,
@@ -106,5 +92,5 @@ func (t *types) add(name string, desc *descriptor.DescriptorProto, create func()
 	}
 	t.entries = append(t.entries, entry)
 	t.byName[name] = entry
-	return *entry, true
+	return entry
 }

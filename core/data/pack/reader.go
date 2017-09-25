@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/third_party/src/github.com/pkg/errors"
 )
 
@@ -42,13 +43,12 @@ func Read(ctx context.Context, from io.Reader, events Events) error {
 		events: events,
 	}
 	r.pb = proto.NewBuffer(r.buf)
-	if err := r.readMagic(); err != nil {
+	if major, _, err := r.readHeader(); err != nil {
 		return err
+	} else if !(MinVersion <= major && major <= MaxVersion) {
+		return ErrUnsupportedVersion{Version: major}
 	}
-	if _, err := r.readHeader(); err != nil {
-		return err
-	}
-	for !task.Stopped(ctx) {
+	for ; !task.Stopped(ctx); r.id++ {
 		if err := r.unmarshal(ctx); err != nil {
 			cause := errors.Cause(err)
 			if cause == io.EOF || cause == io.ErrUnexpectedEOF {
@@ -72,27 +72,14 @@ type reader struct {
 	from      io.Reader
 }
 
-func (r *reader) unmarshal(ctx context.Context) error {
-	if err := r.readChunk(); err != nil {
-		return err
-	}
-	tag, err := r.pb.DecodeZigzag64()
-	if err != nil {
+func (r *reader) unmarshal(ctx context.Context) (err error) {
+	// Protobuf library returns zig-zag encoded integers as uint64.
+	var rawSize, rawParent, rawType uint64
+	if rawSize, err = r.readChunk(); err != nil {
 		return err
 	}
 
-	switch tag {
-	case tagGroupFinalizer:
-		idx, err := r.pb.DecodeVarint()
-		if err != nil {
-			return err
-		}
-		id := r.id - idx
-		if err := r.events.EndGroup(ctx, id); err != nil {
-			return err
-		}
-
-	case tagDeclareType:
+	if int32(rawSize) < 0 {
 		name, err := r.pb.DecodeStringBytes()
 		if err != nil {
 			return err
@@ -101,34 +88,44 @@ func (r *reader) unmarshal(ctx context.Context) error {
 		if err = r.pb.Unmarshal(desc); err != nil {
 			return err
 		}
-		if _, ok := r.types.addNameAndDesc(name, desc); !ok {
-			return ErrUnknownType{name}
-		}
+		r.types.add(name, desc)
 		return nil
+	}
 
-	default:
-		tyIdx, isGroup := tyIdxAndGroupFromTag(tag)
+	// Read first two fields of object instance. If missing, they are implicitly set to 0.
+	if rawParent, err = r.pb.DecodeZigzag64(); err != nil && err != io.ErrUnexpectedEOF {
+		return err
+	}
+	if rawType, err = r.pb.DecodeZigzag64(); err != nil && err != io.ErrUnexpectedEOF {
+		return err
+	}
+	hasParent, parent := int(rawParent) < 0, uint64(sint.Abs(int(rawParent)))
+	hasChildren, tyIdx := int(rawType) < 0, uint64(sint.Abs(int(rawType)))
+
+	if tyIdx == 0 { // Null-terminator
+		if hasParent {
+			if err := r.events.EndGroup(ctx, r.id-parent); err != nil {
+				return err
+			}
+		}
+	} else { // New object instance
 		if tyIdx >= r.types.count() {
-			return fmt.Errorf("Unknown type index: %v. Type count: %v. Tag: %v", tyIdx, r.types.count(), tag)
+			return fmt.Errorf("Unknown type index: %v. Type count: %v.", tyIdx, r.types.count())
 		}
 		ty := *r.types.entries[tyIdx]
-		parentIdx, err := r.pb.DecodeVarint()
-		if err != nil {
-			return err
-		}
 		msg := ty.create()
 		if err := r.pb.Unmarshal(msg); err != nil {
 			return err
 		}
-		if parentIdx == 0 {
-			if isGroup {
+		if !hasParent {
+			if hasChildren {
 				err = r.events.BeginGroup(ctx, msg, r.id)
 			} else {
 				err = r.events.Object(ctx, msg)
 			}
 		} else {
-			parentID := r.id - parentIdx
-			if isGroup {
+			parentID := r.id - parent
+			if hasChildren {
 				err = r.events.BeginChildGroup(ctx, msg, r.id, parentID)
 			} else {
 				err = r.events.ChildObject(ctx, msg, parentID)
@@ -137,52 +134,45 @@ func (r *reader) unmarshal(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if isGroup {
-			r.id++
-		}
 	}
 	return nil
 }
 
-func (r *reader) readMagic() error {
-	if err := r.readN(len(magicBytes)); err != nil {
-		return err
+func (r *reader) readHeader() (major int, minor int, err error) {
+	if err := r.readN(16); err != nil {
+		return 0, 0, err
 	}
-	if string(r.pb.Bytes()) != Magic {
-		return ErrIncorrectMagic
+	str := string(r.pb.Bytes())
+	if str[0:9] == "protopack" {
+		return 1, 0, nil
 	}
-	return nil
+	if str[0:11] == "ProtoPack\r\n" &&
+		str[11] >= '0' &&
+		str[12] == '.' &&
+		str[13] >= '0' &&
+		str[14] == '\n' &&
+		str[15] == 0 {
+		return int(str[11] - '0'), int(str[13] - '0'), nil
+	}
+	return 0, 0, ErrIncorrectMagic
 }
 
-func (r *reader) readHeader() (*Header, error) {
-	if err := r.readChunk(); err != nil {
-		return nil, err
-	}
-	header := &Header{}
-	if err := r.pb.Unmarshal(header); err != nil {
-		return nil, err
-	}
-	if got := header.GetVersion(); got.LessThan(MinVersion) || got.GreaterThan(MaxVersion) {
-		return header, ErrUnsupportedVersion{*got}
-	}
-	return header, nil
-}
-
-func (r *reader) readChunk() error {
+func (r *reader) readChunk() (size uint64, err error) {
 	// Make sure we have enough bytes for the maxiumum a varint could be, but don't
 	// fail if the eof is within that range
 	if err := r.readN(maxVarintSize); err != nil {
 		if err != io.ErrUnexpectedEOF && err != io.EOF {
-			return err
+			return 0, err
 		}
 	}
 	data := r.pb.Bytes()
 	size, n := proto.DecodeVarint(data)
 	r.bufOffset -= len(data) - n
-	if n == 0 {
-		return io.EOF
+	if n == 0 || size == 0 {
+		return 0, io.EOF
 	}
-	return r.readN(int(size))
+	size = (size >> 1) ^ uint64((int64(size&1)<<63)>>63) // Decode zig-zag encoding
+	return size, r.readN(sint.Abs(int(size)))
 }
 
 // readN makes sure there is size bytes available in the buffer if possible

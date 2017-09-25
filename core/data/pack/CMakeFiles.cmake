@@ -21,8 +21,6 @@ set(files
     doc.go
     dynamic.go
     pack.go
-    pack.pb.go
-    pack.proto
     reader.go
     types.go
     writer.go
