@@ -110,13 +110,13 @@ public class VisibilityTrackingTreeViewer extends TreeViewer {
    */
   public static interface Listener {
     /**
-     * Called when the {@link TreeItem} is made visible.
+     * @param item the item that has been made visible.
      */
-    public void onShow(TreeItem item);
+    public default void onShow(TreeItem item) { /* empty */ }
 
     /**
-     * Called when the {@link TreeItem} is made invisible.
+     * @param item the item that has been made invisible.
      */
-    public void onHide(TreeItem item);
+    public default void onHide(TreeItem item) { /* empty */ }
   }
 }
