@@ -60,6 +60,8 @@ import java.util.concurrent.Future;
 public class PackageInfoService extends IntentService {
     private static final String TAG = "gapid-pkginfo";
 
+    private static final int MAX_ICON_SIZE = 256;
+
     private static final int BASE_ICON_DENSITY = DisplayMetrics.DENSITY_MEDIUM;
 
     private static final boolean PROFILE = false;
@@ -339,47 +341,58 @@ public class PackageInfoService extends IntentService {
          * @return The index of the image stored in the {@link JSONArray} returned by {@link #json}.
          */
         public int add(Resources resources, int iconId) {
-            try {
-                if (resources == null || iconId <= 0) {
-                    return -1;
-                }
+            if (resources == null || iconId <= 0) {
+                return -1;
+            }
 
-                Drawable drawable;
-                try (Counter.Scope t = Counter.time("getDrawableForDensity")){
-                    drawable = resources.getDrawableForDensity(iconId, iconDensity);
-                } catch (Resources.NotFoundException ex) {
-                    return -1;
-                }
-                if (drawable == null || !(drawable instanceof BitmapDrawable)) {
-                    return -1;
-                }
+            Drawable drawable;
+            try (Counter.Scope t = Counter.time("getDrawableForDensity")){
+                drawable = resources.getDrawableForDensity(iconId, iconDensity);
+            } catch (Resources.NotFoundException ex) {
+                return -1;
+            }
+            if (drawable == null || !(drawable instanceof BitmapDrawable)) {
+                return -1;
+            }
 
-                Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-                if (mBitmapMap.containsKey(bitmap)) {
-                    return mBitmapMap.get(bitmap);
-                }
+            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+            if (mBitmapMap.containsKey(bitmap)) {
+                return mBitmapMap.get(bitmap);
+            }
 
-                ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                try (Counter.Scope t1 = Counter.time("bitmap.compress")) {
-                    try (Counter.Scope t2 = Counter.time(bitmap.getWidth() + "x" + bitmap.getHeight())) {
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-                    }
+            int maxDimension = Math.max(bitmap.getWidth(), bitmap.getHeight());
+            if (maxDimension == 0) {
+                return -1;
+            }
+
+            if (maxDimension > MAX_ICON_SIZE) {
+                float scale = MAX_ICON_SIZE / (float)(maxDimension);
+                int width = Math.max((int)(scale * bitmap.getWidth()), 1);
+                int height = Math.max((int)(scale * bitmap.getWidth()), 1);
+                try (Counter.Scope t = Counter.time("createScaledBitmap")) {
+                    bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
                 }
-                byte[] pngBytes = stream.toByteArray();
-                String pngBase64;
-                try (Counter.Scope t = Counter.time("Base64.encodeToString")) {
-                    pngBase64 = Base64.encodeToString(pngBytes, Base64.NO_WRAP);
+            }
+
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            try (Counter.Scope t1 = Counter.time("bitmap.compress")) {
+                try (Counter.Scope t2 = Counter.time(bitmap.getWidth() + "x" + bitmap.getHeight())) {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
                 }
-                if (!mMap.containsKey(pngBase64)) {
-                    int index = mJson.length();
-                    mMap.put(pngBase64, index);
-                    mBitmapMap.put(bitmap, index);
-                    mJson.put(pngBase64);
-                    return index;
-                } else {
-                    return mMap.get(pngBase64);
-                }
-            } finally {
+            }
+            byte[] pngBytes = stream.toByteArray();
+            String pngBase64;
+            try (Counter.Scope t = Counter.time("Base64.encodeToString")) {
+                pngBase64 = Base64.encodeToString(pngBytes, Base64.NO_WRAP);
+            }
+            if (!mMap.containsKey(pngBase64)) {
+                int index = mJson.length();
+                mMap.put(pngBase64, index);
+                mBitmapMap.put(bitmap, index);
+                mJson.put(pngBase64);
+                return index;
+            } else {
+                return mMap.get(pngBase64);
             }
         }
 
