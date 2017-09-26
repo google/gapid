@@ -25,7 +25,11 @@ The slice {{from_value}}:{{to_value}} for {{from_variable}}:{{to_variable}} is o
 
 # ERR_INVALID_VALUE
 
-Invalid value.
+Invalid value {{value:s64}}.
+
+# ERR_INVALID_OBJECT_NAME
+
+Invalid value {{value:s64}}. Object with this name does not exist.
 
 # ERR_INVALID_VALUE_CHECK_EQ
 

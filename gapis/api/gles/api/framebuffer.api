@@ -460,7 +460,7 @@ cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) 
       // TODO: This is not really an error according to the spec.
       //       However, we need to ensure the command is removed,
       //       or else the invalid ID breaks remapping in replay.
-      if !(id in ctx.Objects.Framebuffers) { glErrorInvalidValue() }
+      if !(id in ctx.Objects.Framebuffers) { glErrorInvalidValue!FramebufferId(id) }
       delete(ctx.Objects.Framebuffers, id)
       delete(ctx.Objects.GeneratedNames.Framebuffers, id)
       if id == ctx.Bound.ReadFramebuffer.ID {
@@ -584,7 +584,7 @@ sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue() }
+    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue!TextureId(texture) }
     attachment_info.Type = GL_TEXTURE
     attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
     attachment_info.TextureLevel = level
@@ -665,7 +665,7 @@ cmd void glFramebufferTextureLayer(GLenum    target,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue() }
+    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue!TextureId(texture) }
     attachment_info.Type = GL_TEXTURE
     attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
     attachment_info.TextureLevel = level

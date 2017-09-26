@@ -191,18 +191,11 @@ sub void BindVertexArray(VertexArrayId array) {
 }
 
 sub void BindVertexBuffer(ref!Context ctx, VertexBufferBindingIndex binding_index, BufferId buffer, GLintptr offset, GLsizei stride) {
-  if offset < 0 { glErrorInvalidValueMsg(new!ERR_VALUE_NEG("offset", as!s64(offset))) }
-  if stride < 0 { glErrorInvalidValueMsg(new!ERR_VALUE_NEG("stride", as!s64(stride))) }
+  CheckGE!GLintptr(offset, 0)
+  CheckGE!GLsizei(stride, 0)
   if VersionGreaterOrEqual(ctx, 3, 1) {
-    if as!s64(binding_index) >= as!s64(ctx.Constants.MaxVertexAttribBindings) {
-      glErrorInvalidValueMsg(new!ERR_VALUE_GE_LIMIT(
-                                 "binding index", "GL_MAX_VERTEX_ATTRIB_BINDINGS",
-          as!s64(binding_index), as!s64(ctx.Constants.MaxVertexAttribBindings)))
-    }
-    if as!s64(stride) >= as!s64(ctx.Constants.MaxVertexAttribStride) {
-      glErrorInvalidValueMsg(new!ERR_VALUE_GE_LIMIT(   "stride", "GL_MAX_VERTEX_ATTRIB_STRIDE",
-          as!s64(stride), as!s64(ctx.Constants.MaxVertexAttribStride)))
-    }
+    CheckLT!VertexBufferBindingIndex(binding_index, as!VertexBufferBindingIndex(ctx.Constants.MaxVertexAttribBindings))
+    CheckLT!GLsizei(stride, as!GLsizei(ctx.Constants.MaxVertexAttribStride))
   }
   _ = GetOrCreateBuffer(buffer)
   vao := ctx.Bound.VertexArray
@@ -481,16 +474,8 @@ cmd void glVertexAttrib4fv(AttributeLocation location, const GLfloat* value) {
 
 sub void VertexAttribBinding(ref!Context ctx, AttributeLocation index, VertexBufferBindingIndex binding_index) {
   if VersionGreaterOrEqual(ctx, 3, 1) {
-    if as!s64(index) > as!s64(ctx.Constants.MaxVertexAttribs) {
-      glErrorInvalidValueMsg(new!ERR_VALUE_GE_LIMIT(
-                         "index", "GL_MAX_VERTEX_ATTRIBS",
-          as!s64(index), as!s64(ctx.Constants.MaxVertexAttribs)))
-    }
-    if as!s64(binding_index) > as!s64(ctx.Constants.MaxVertexAttribBindings) {
-      glErrorInvalidValueMsg(new!ERR_VALUE_GE_LIMIT(
-                                 "binding_index", "GL_MAX_VERTEX_ATTRIB_BINDINGS",
-          as!s64(binding_index), as!s64(ctx.Constants.MaxVertexAttribBindings)))
-    }
+    CheckAttributeLocation(index)
+    CheckLT!VertexBufferBindingIndex(binding_index, as!VertexBufferBindingIndex(ctx.Constants.MaxVertexAttribBindings))
   }
   // NB: Some callers may use the default VertexArray and some may not.
   //     Therefore the caller should do the check if it is needed.
@@ -530,12 +515,8 @@ sub void VertexAttribFormat(ref!Context       ctx,
                             GLboolean         normalized,
                             GLuint            relativeOffset,
                             bool              integer) {
-  if as!s64(index) >= as!s64(ctx.Constants.MaxVertexAttribs) {
-    glErrorInvalidValueMsg(new!ERR_VALUE_GE_LIMIT(
-                       "index", "GL_MAX_VERTEX_ATTRIBS",
-        as!s64(index), as!s64(ctx.Constants.MaxVertexAttribs)))
-  }
-  if !((1 <= size) && (size <= 4)) { glErrorInvalidValue() }
+  CheckAttributeLocation(index)
+  if !((1 <= size) && (size <= 4)) { glErrorInvalidValue!GLint(size) }
   if (integer) {
     switch (type) {
       @if(Version.GLES30)
