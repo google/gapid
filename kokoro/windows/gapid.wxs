@@ -14,10 +14,10 @@
 
 <!-- MSI Definition for GAPID consumed by the WiX Toolset -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Name="GAPID" Manufacturer="Google, Inc"
+  <Product Name="GAPID $(var.GAPIDVersion)" Manufacturer="Google, Inc"
       Id="E88564FC-D455-4523-B35A-1E100176A91D"
       UpgradeCode="7187CA6A-4A6D-4187-B6B1-1E100176A91D"
-      Language="1033" Codepage="1252" Version="1.0.0">
+      Language="1033" Codepage="1252" Version="$(var.GAPIDVersion)">
     <Package Id="*" Keywords="Installer" Description="GAPID Installer"
         Comments="Installs the Graphics API Debugger" Manufacturer="Google, Inc"
         InstallerVersion="100" Languages="1033" Compressed="yes" SummaryCodepage="1252" />
