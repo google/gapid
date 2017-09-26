@@ -15,7 +15,7 @@
  */
 package com.google.gapid.models;
 
-import static java.util.logging.Level.SEVERE;
+import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
@@ -84,7 +84,7 @@ public class Devices {
           List<Path.Device> devs = result.get();
           return (devs == null || devs.isEmpty()) ? error(null) : success(devs.get(0));
         } catch (RpcException | ExecutionException e) {
-          LOG.log(SEVERE, "LoadData error", e);
+          throttleLogRpcError(LOG, "LoadData error", e);
           return error(null);
         }
       }
@@ -128,7 +128,7 @@ public class Devices {
         try {
           return success(result.get().stream().map(Service.Value::getDevice).collect(toList()));
         } catch (RpcException | ExecutionException e) {
-          LOG.log(SEVERE, "LoadData error", e);
+          throttleLogRpcError(LOG, "LoadData error", e);
           return error(null);
         }
       }

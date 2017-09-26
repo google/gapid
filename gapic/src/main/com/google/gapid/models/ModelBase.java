@@ -17,7 +17,7 @@ package com.google.gapid.models;
 
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
-import static java.util.logging.Level.SEVERE;
+import static com.google.gapid.util.Logging.throttleLogRpcError;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.path.Path;
@@ -87,7 +87,7 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
       return success(result.get());
     } catch (RpcException | ExecutionException e) {
       if (!shell.isDisposed()) {
-        log.log(SEVERE, "LoadData error", e);
+        throttleLogRpcError(log, "LoadData error", e);
       }
       return error(null);
     }

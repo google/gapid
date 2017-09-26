@@ -15,6 +15,8 @@
  */
 package com.google.gapid.widgets;
 
+import static com.google.gapid.util.Logging.throttleLogRpcError;
+
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.Images;
@@ -32,7 +34,6 @@ import org.eclipse.swt.widgets.Widget;
 
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -262,7 +263,7 @@ public class LoadableImage {
 
     private static void logImageError(Exception e) {
       if (!(e instanceof DataUnavailableException)) {
-        LOG.log(Level.WARNING, "Failed to load image", e);
+        throttleLogRpcError(LOG, "Failed to load image", e);
       }
     }
 
