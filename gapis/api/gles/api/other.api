@@ -119,20 +119,20 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
         GL_SAMPLE_COVERAGE,
         GL_SCISSOR_TEST,
         GL_STENCIL_TEST: {
-      if index > 0 { glErrorInvalidValue() }
+      CheckEQ!GLuint(index, 0)
     }
     @if(Version.GLES30)
     case GL_PRIMITIVE_RESTART_FIXED_INDEX,
         GL_RASTERIZER_DISCARD: {
-      if index > 0 { glErrorInvalidValue() }
+      CheckEQ!GLuint(index, 0)
     }
     @if(Version.GLES31)
     case GL_SAMPLE_MASK: {
-      if index > 0 { glErrorInvalidValue() }
+      CheckEQ!GLuint(index, 0)
     }
     @if(Version.GLES32)
     case GL_DEBUG_OUTPUT, GL_DEBUG_OUTPUT_SYNCHRONOUS: {
-      if index > 0 { glErrorInvalidValue() }
+      CheckEQ!GLuint(index, 0)
     }
     default: {
       // glErrorInvalidEnum(capability)

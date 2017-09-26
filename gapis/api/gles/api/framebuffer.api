@@ -318,7 +318,7 @@ cmd void glClear(GLbitfield mask) {
 cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil) {
   switch (buffer) {
     case GL_DEPTH_STENCIL: {
-      if drawbuffer != 0 { glErrorInvalidValue() }
+      CheckEQ!GLint(drawbuffer, 0)
     }
     default: {
       glErrorInvalidEnum(buffer)
@@ -335,11 +335,11 @@ cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) 
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
-      if drawbuffer >= ctx.Constants.MaxDrawBuffers { glErrorInvalidValue() }
+      CheckLT!GLint(drawbuffer, ctx.Constants.MaxDrawBuffers)
       read(value[0:4])
     }
     case GL_DEPTH: {
-      if drawbuffer != 0 { glErrorInvalidValue() }
+      CheckEQ!GLint(drawbuffer, 0)
       read(value[0:1])
     }
     default: {
@@ -357,11 +357,11 @@ cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
-      if drawbuffer >= ctx.Constants.MaxDrawBuffers { glErrorInvalidValue() }
+      CheckLT!GLint(drawbuffer, ctx.Constants.MaxDrawBuffers)
       read(value[0:4])
     }
     case GL_STENCIL: {
-      if drawbuffer != 0 { glErrorInvalidValue() }
+      CheckEQ!GLint(drawbuffer, 0)
       read(value[0:1])
     }
     default: {
@@ -379,7 +379,7 @@ cmd void glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint* value) 
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
-      if drawbuffer >= ctx.Constants.MaxDrawBuffers { glErrorInvalidValue() }
+      CheckLT!GLint(drawbuffer, ctx.Constants.MaxDrawBuffers)
       read(value[0:4])
     }
     default: {
@@ -984,8 +984,8 @@ sub void checkReadPixels(GLsizei width,
       glErrorInvalidEnum(type)
     }
   }
-  if width < 0 { glErrorInvalidValue() }
-  if height < 0 { glErrorInvalidValue() }
+  CheckGE!GLsizei(width, 0)
+  CheckGE!GLsizei(height, 0)
 }
 
 @if(Version.GLES10)
@@ -1072,12 +1072,12 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
   if sizedFormatInfo.Compression != Uncompressed {
     glErrorInvalidEnum(internalformat)
   }
-  if width < 0 { glErrorInvalidValue() }
-  if height < 0 { glErrorInvalidValue() }
+  CheckGE!GLsizei(width, 0)
+  CheckGE!GLsizei(height, 0)
 
   ctx := GetContext()
-  if width > as!GLsizei(ctx.Constants.MaxRenderbufferSize) { glErrorInvalidValue() }
-  if height > as!GLsizei(ctx.Constants.MaxRenderbufferSize) { glErrorInvalidValue() }
+  CheckLE!GLsizei(width, as!GLsizei(ctx.Constants.MaxRenderbufferSize))
+  CheckLE!GLsizei(height, as!GLsizei(ctx.Constants.MaxRenderbufferSize))
 
   rb := ctx.Bound.Renderbuffer
   if rb == null { glErrorInvalidOperation() }
