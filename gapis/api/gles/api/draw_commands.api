@@ -80,7 +80,7 @@ cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
   if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
   if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
-  // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
+  // TODO: CheckEQ(as!u64(indirect) % 4, 0)
   WriteGPUFramebufferData(ctx)
 }
 
@@ -193,7 +193,7 @@ cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const voi
   // TODO: Error if enabled array is not bound or is mapped.
   if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
-  // TODO: if as!u64(indirect) % 4 != 0 { glErrorInvalidValue() }
+  // TODO: CheckEQ(as!u64(indirect) % 4, 0)
   WriteGPUFramebufferData(ctx)
 }
 
@@ -246,7 +246,7 @@ cmd void glDrawRangeElements(GLenum         draw_mode,
                              GLsizei        indices_count,
                              GLenum         indices_type,
                              IndicesPointer indices) {
-  if end < start { glErrorInvalidValue() }
+  CheckGE!GLuint(end, start)
   ctx := GetContext()
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, 0)
 }
@@ -266,7 +266,7 @@ cmd void glDrawRangeElementsBaseVertex(GLenum         draw_mode,
 }
 
 sub void DrawRangeElementsBaseVertex(GLenum draw_mode, GLuint start, GLuint end, GLsizei indices_count, GLenum indices_type, IndicesPointer indices, GLint base_vertex) {
-  if end < start { glErrorInvalidValue() }
+  CheckGE!GLuint(end, start)
   ctx := GetContext()
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, base_vertex)
 }

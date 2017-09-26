@@ -27,6 +27,34 @@ The slice {{from_value}}:{{to_value}} for {{from_variable}}:{{to_variable}} is o
 
 Invalid value.
 
+# ERR_INVALID_VALUE_CHECK_EQ
+
+Invalid value {{value:s64}}. It must be {{constraint:s64}}.
+
+# ERR_INVALID_VALUE_CHECK_NE
+
+Invalid value {{value:s64}}. It must not be {{constraint:s64}}.
+
+# ERR_INVALID_VALUE_CHECK_GE
+
+Invalid value {{value:s64}}. It must be greater than or equal to {{constraint:s64}}.
+
+# ERR_INVALID_VALUE_CHECK_GT
+
+Invalid value {{value:s64}}. It must be greater than {{constraint:s64}}.
+
+# ERR_INVALID_VALUE_CHECK_LE
+
+Invalid value {{value:s64}}. It must be less than or equal to {{constraint:s64}}.
+
+# ERR_INVALID_VALUE_CHECK_LT
+
+Invalid value {{value:s64}}. It must be less than {{constraint:s64}}.
+
+# ERR_INVALID_VALUE_CHECK_ATTRIB_LOC
+
+Invalid value {{value:s64}}. Attribute location must be less than {{constraint:s64}}.
+
 # ERR_INVALID_VALUE_NEGATIVE
 
 Invalid value {{value:s64}}: The value must be positive or zero.

@@ -340,15 +340,15 @@ sub void TexImage(TexImageFlags  flags,
   CheckNonNegative!GLint(xoffset)
   CheckNonNegative!GLint(yoffset)
   CheckNonNegative!GLint(zoffset)
-  if levels < 1 { glErrorInvalidValue() }
+  CheckGE!GLsizei(levels, 1)
   CheckNonNegative!GLsizei(width)
   CheckNonNegative!GLsizei(height)
   CheckNonNegative!GLsizei(depth)
-  if border != 0 { glErrorInvalidValue() }
+  CheckEQ!GLint(border, 0)
   CheckNonNegative!GLsizei(data_size)
   switch target {
     case GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: {
-      if width != height { glErrorInvalidValue() }
+      CheckEQ!GLsizei(width, height)
     }
     default: { }
   }
@@ -384,8 +384,8 @@ sub void TexImage(TexImageFlags  flags,
       if hasSubModifier {
         i := t.Levels[loffset + l].Layers[zoffset + z + cubemap_layer]
         if (i == null) { glErrorInvalidOperation() }
-        if (as!GLsizei(xoffset) + width) > i.Width { glErrorInvalidValue() }
-        if (as!GLsizei(yoffset) + height) > i.Height { glErrorInvalidValue() }
+        CheckLE!GLsizei((as!GLsizei(xoffset) + width), i.Width)
+        CheckLE!GLsizei((as!GLsizei(yoffset) + height), i.Height)
       }
     }
   }

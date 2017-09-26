@@ -371,7 +371,7 @@ cmd void glBindAttribLocation(ProgramId program, AttributeLocation location, str
   if (len(n) > 2) && (as!string(n[0:3]) == "gl_") { glErrorInvalidOperation() }
   ctx := GetContext()
   _ = GetProgramOrError(program)
-  if location >= as!AttributeLocation(ctx.Constants.MaxVertexAttribs) { glErrorInvalidValue() }
+  CheckAttributeLocation(location)
   p := ctx.Objects.Shared.Programs[program]
   p.AttributeBindings[name] = location
 }

@@ -51,7 +51,7 @@ extern void unmapMemory(u8[] slice)
 extern void onGlError(GLenum v)
 
 sub void supportsBits(GLbitfield seenBits, GLbitfield validBits) {
-  if (seenBits & validBits) != seenBits { glErrorInvalidValue() }
+  CheckEQ!GLbitfield((seenBits & validBits), seenBits)
 }
 
 sub void glErrorInvalidEnum(GLenum value) {
@@ -82,6 +82,42 @@ sub void glErrorInvalidOperationMsg(message m) {
   onGlError(GL_INVALID_OPERATION)
   _ = newMsg(SEVERITY_ERROR, m)
   abort
+}
+
+sub void CheckEQ!T(T value, T constraint) {
+  if !(as!s64(value) == as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_EQ(value: as!s64(value), constraint: as!s64(constraint)))
+  }
+}
+
+sub void CheckNE!T(T value, T constraint) {
+  if !(as!s64(value) != as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_NE(value: as!s64(value), constraint: as!s64(constraint)))
+  }
+}
+
+sub void CheckGE!T(T value, T constraint) {
+  if !(as!s64(value) >= as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_GE(value: as!s64(value), constraint: as!s64(constraint)))
+  }
+}
+
+sub void CheckGT!T(T value, T constraint) {
+  if !(as!s64(value) > as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_GT(value: as!s64(value), constraint: as!s64(constraint)))
+  }
+}
+
+sub void CheckLE!T(T value, T constraint) {
+  if !(as!s64(value) <= as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_LE(value: as!s64(value), constraint: as!s64(constraint)))
+  }
+}
+
+sub void CheckLT!T(T value, T constraint) {
+  if !(as!s64(value) < as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_LT(value: as!s64(value), constraint: as!s64(constraint)))
+  }
 }
 
 sub void CheckNonNegative!T(T param) {
