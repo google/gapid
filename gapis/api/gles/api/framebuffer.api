@@ -450,7 +450,7 @@ sub void ColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteFramebuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteFramebuffers.xhtml", Version.GLES32)
 cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
 
   f := framebuffers[0:count]
   ctx := GetContext()
@@ -479,7 +479,7 @@ cmd void glDeleteFramebuffers(GLsizei count, const FramebufferId* framebuffers) 
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteRenderbuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteRenderbuffers.xhtml", Version.GLES32)
 cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffers) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
 
   r := renderbuffers[0:count]
   ctx := GetContext()
@@ -680,7 +680,7 @@ cmd void glFramebufferTextureLayer(GLenum    target,
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenFramebuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenFramebuffers.xhtml", Version.GLES32)
 cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   f := framebuffers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -697,7 +697,7 @@ cmd void glGenFramebuffers(GLsizei count, FramebufferId* framebuffers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenRenderbuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenRenderbuffers.xhtml", Version.GLES32)
 cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   r := renderbuffers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -984,8 +984,8 @@ sub void checkReadPixels(GLsizei width,
       glErrorInvalidEnum(type)
     }
   }
-  CheckGE!GLsizei(width, 0)
-  CheckGE!GLsizei(height, 0)
+  CheckSizeGE!GLsizei(width, 0)
+  CheckSizeGE!GLsizei(height, 0)
 }
 
 @if(Version.GLES10)
@@ -1072,8 +1072,8 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
   if sizedFormatInfo.Compression != Uncompressed {
     glErrorInvalidEnum(internalformat)
   }
-  CheckGE!GLsizei(width, 0)
-  CheckGE!GLsizei(height, 0)
+  CheckSizeGE!GLsizei(width, 0)
+  CheckSizeGE!GLsizei(height, 0)
 
   ctx := GetContext()
   CheckLE!GLsizei(width, as!GLsizei(ctx.Constants.MaxRenderbufferSize))

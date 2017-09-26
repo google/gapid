@@ -60,12 +60,9 @@ class VertexAttributeValue {
   @unused u8[] Value // Used if VertexAttributeArray is disabled.
 }
 
-sub void CheckAttributeLocation(AttributeLocation value) {
+sub void CheckAttributeLocation(AttributeLocation location) {
   ctx := GetContext()
-  constraint := ctx.Constants.MaxVertexAttribs
-  if !(as!s64(value) < as!s64(constraint)) {
-    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_ATTRIB_LOC(value: as!s64(value), constraint: as!s64(constraint)))
-  }
+  CheckLocationLT!AttributeLocation(location, as!AttributeLocation(ctx.Constants.MaxVertexAttribs))
 }
 
 sub bool IsDefaultVertexArrayBound() {
@@ -233,7 +230,7 @@ cmd void glDeleteVertexArrays(GLsizei count, const VertexArrayId* arrays) {
 }
 
 sub void DeleteVertexArrays(GLsizei count, const VertexArrayId* arrays) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   ctx := GetContext()
   a := arrays[0:count]
   for i in (0 .. count) {
@@ -284,7 +281,7 @@ cmd void glGenVertexArrays(GLsizei count, VertexArrayId* arrays) {
 }
 
 sub void GenVertexArrays(GLsizei count, VertexArrayId* arrays) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   ctx := GetContext()
   a := arrays[0:count]
   for i in (0 .. count) {

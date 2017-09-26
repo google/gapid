@@ -151,8 +151,8 @@ cmd void glPolygonOffset(GLfloat scale_factor, GLfloat units) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glViewport.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glViewport.xhtml", Version.GLES32)
 cmd void glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
-  CheckGE!GLsizei(width, 0)
-  CheckGE!GLsizei(height, 0)
+  CheckSizeGE!GLsizei(width, 0)
+  CheckSizeGE!GLsizei(height, 0)
   ctx := GetContext()
   ctx.Rasterization.Viewport = Rect(x, y, width, height)
 }

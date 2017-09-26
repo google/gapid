@@ -71,7 +71,7 @@ sub ref!TransformFeedback GetOrCreateTransformFeedback(TransformFeedbackId id) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTransformFeedbacks.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTransformFeedbacks.xhtml", Version.GLES32)
 cmd void glDeleteTransformFeedbacks(GLsizei count, const TransformFeedbackId* ids) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   tfs := ids[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -98,7 +98,7 @@ cmd void glEndTransformFeedback() {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenTransformFeedbacks.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTransformFeedbacks.xhtml", Version.GLES32)
 cmd void glGenTransformFeedbacks(GLsizei count, TransformFeedbackId* ids) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   tfs := ids[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
