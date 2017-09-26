@@ -145,11 +145,11 @@ public class VecD {
   }
 
   /** Like {@link #divide(VecD)}, but divide by zeros result in zero. */
-  public VecD safeDivide(double x, double y, double z) {
+  public VecD safeDivide(double vx, double vy, double vz) {
     return new VecD(
-        (x == 0) ? 0 : (this.x / x),
-        (y == 0) ? 0 : (this.y / y),
-        (z == 0) ? 0 : (this.z / z));
+        (vx == 0) ? 0 : (this.x / vx),
+        (vy == 0) ? 0 : (this.y / vy),
+        (vz == 0) ? 0 : (this.z / vz));
   }
 
   /** Like {@link #divide(VecD)}, but divide by zeros result in zero. */

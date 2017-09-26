@@ -20,11 +20,8 @@ import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.clamp;
 
 import com.google.gapid.glviewer.gl.Texture;
-import com.google.gapid.image.Image.PixelInfo;
-import com.google.gapid.image.Image.PixelValue;
 import com.google.gapid.util.Colors;
 
-import java.util.Arrays;
 import org.eclipse.swt.graphics.ImageData;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -33,6 +30,7 @@ import org.lwjgl.opengl.GL30;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 
 /**
  * An {@link Image} backed by a byte array.
@@ -80,7 +78,7 @@ public abstract class ArrayImage implements Image {
    * Constructs and returns a new {@link Image} of the same format with the given
    * dimensions and data.
    */
-  protected abstract Image create(int width, int height, int depth, byte[] data);
+  protected abstract Image create(int w, int h, int d, byte[] pixels);
 
   @Override
   public void uploadToTexture(Texture texture) {
@@ -175,8 +173,8 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected Image create(int width, int height, int depth, byte[] data) {
-      return new RGBA8Image(width, height, depth, data);
+    protected Image create(int w, int h, int d, byte[] pixels) {
+      return new RGBA8Image(w, h, d, pixels);
     }
 
     @Override
@@ -240,8 +238,8 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected Image create(int width, int height, int depth, byte[] data) {
-      return new RGBAFloatImage(width, height, depth, data);
+    protected Image create(int w, int h, int d, byte[] pixels) {
+      return new RGBAFloatImage(w, h, d, pixels);
     }
 
     @Override
@@ -300,8 +298,8 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected Image create(int width, int height, int depth, byte[] data) {
-      return new Luminance8Image(width, height, depth, data);
+    protected Image create(int w, int h, int d, byte[] pixels) {
+      return new Luminance8Image(w, h, d, pixels);
     }
 
     @Override
@@ -367,8 +365,8 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected Image create(int width, int height, int depth, byte[] data) {
-      return new LuminanceFloatImage(width, height, depth, data);
+    protected Image create(int w, int h, int d, byte[] pixels) {
+      return new LuminanceFloatImage(w, h, d, pixels);
     }
 
     @Override

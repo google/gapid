@@ -15,6 +15,7 @@
  */
 package com.google.gapid.util;
 
+import com.google.common.collect.Lists;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.image.Images;
 import com.google.gapid.models.ApiContext.FilteringContext;
@@ -25,6 +26,7 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
 import com.google.gapid.views.Formatter;
 import com.google.protobuf.GeneratedMessage;
+
 import java.util.LinkedList;
 import java.util.function.Predicate;
 
@@ -241,14 +243,14 @@ public class Paths {
   }
 
   /**
-   * @return the unboxed path node from the {@link Path.Any}.
+   * @return the unboxed path node from the {@link com.google.gapid.proto.service.path.Path.Any}.
    */
   public static Object toNode(Path.Any node) {
     return dispatch(node, TO_NODE_VISITOR, null);
   }
 
   /**
-   * @return the path node boxed into a {@link Path.Any}.
+   * @return the path node boxed into a {@link com.google.gapid.proto.service.path.Path.Any}.
    */
   public static Path.Any toAny(Object node) {
     return dispatch(node, TO_ANY_VISITOR, null);
@@ -276,11 +278,12 @@ public class Paths {
   }
 
   /**
-   * @return the path with the {@link Path.GlobalState} ancestor replaced with state. If there is no
-   * {@link Path.GlobalState} ancestor, then null is returned.
+   * @return the path with the {@link com.google.gapid.proto.service.path.Path.GlobalState} ancestor
+   * replaced with state. If there is no
+   * {@link com.google.gapid.proto.service.path.Path.GlobalState} ancestor, then null is returned.
    */
   public static Path.Any reparent(Path.Any path, Path.GlobalState state) {
-    LinkedList nodes = new LinkedList();
+    LinkedList<Object> nodes = Lists.newLinkedList();
     boolean found = false;
     for (Object p = toNode(path); p != null; p = parentOf(p)) {
       if (p instanceof Path.GlobalState) {
@@ -343,8 +346,8 @@ public class Paths {
   }
 
   /**
-   * Unboxes the path node from the {@link Path.Any} and dispatches the node to the visitor.
-   * Throws an exception if the path is not an expected type.
+   * Unboxes the path node from the {@link com.google.gapid.proto.service.path.Path.Any} and
+   * dispatches the node to the visitor. Throws an exception if the path is not an expected type.
    */
   private static <T, A> T dispatchAny(Path.Any path, Visitor<T, A> visitor, A arg) {
     switch (path.getPathCase()) {
@@ -423,7 +426,7 @@ public class Paths {
    * Dispatches the path node to the visitor.
    * Throws an exception if the path is not an expected type.
    */
-  private static <T, A> T dispatch(Object path, Visitor<T, A> visitor, A arg) {
+  protected static <T, A> T dispatch(Object path, Visitor<T, A> visitor, A arg) {
     if (path instanceof Path.Any) {
       return dispatchAny((Path.Any)path, visitor, arg);
     } else if (path instanceof Image.ID) {
@@ -497,7 +500,7 @@ public class Paths {
     } else if (path instanceof Path.Thumbnail) {
       return visitor.visit((Path.Thumbnail)path, arg);
     } else if (path instanceof GeneratedMessage.Builder) {
-      return dispatch(((GeneratedMessage.Builder)path).build(), visitor, arg);
+      return dispatch(((GeneratedMessage.Builder<?>)path).build(), visitor, arg);
     } else {
       throw new RuntimeException("Unexpected path type: " + path.getClass().getName());
     }
@@ -545,8 +548,8 @@ public class Paths {
   };
 
   /**
-   * {@link Visitor} that returns the passed node type boxed in a {@link Path.Any}.
-   * Used by {@link #toAny(Object)}.
+   * {@link Visitor} that returns the passed node type boxed in a
+   * {@link com.google.gapid.proto.service.path.Path.Any}. Used by {@link #toAny(Object)}.
    */
   private static final Visitor<Path.Any, Void> TO_ANY_VISITOR = new Visitor<Path.Any, Void>() {
     @Override
@@ -1354,8 +1357,10 @@ public class Paths {
           sb.append(".as(");
           sb.append(path.getImageFormat().getName()); // TODO
           sb.append(")");
+          break;
         case VERTEX_BUFFER_FORMAT:
           sb.append(".as(VBF)"); // TODO
+          break;
         default:
           sb.append(".as(??)");
       }
