@@ -83,3 +83,21 @@ sub void CheckLT!T(T value, T constraint) {
     glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_LT(value: as!s64(value), constraint: as!s64(constraint)))
   }
 }
+
+sub void CheckLocationLT!T(T value, T constraint) {
+  if !(as!s64(value) < as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_LOCATION_LT(value: as!s64(value), constraint: as!s64(constraint)))
+  }
+}
+
+sub void CheckCountGE!T(T value, T constraint) {
+  if !(as!s64(value) >= as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_COUNT_GE(value: as!s64(value), constraint: as!s64(constraint)))
+  }
+}
+
+sub void CheckSizeGE!T(T value, T constraint) {
+  if !(as!s64(value) >= as!s64(constraint)) {
+    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_SIZE_GE(value: as!s64(value), constraint: as!s64(constraint)))
+  }
+}

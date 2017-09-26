@@ -51,9 +51,17 @@ Invalid value {{value:s64}}. It must be less than or equal to {{constraint:s64}}
 
 Invalid value {{value:s64}}. It must be less than {{constraint:s64}}.
 
-# ERR_INVALID_VALUE_CHECK_ATTRIB_LOC
+# ERR_INVALID_VALUE_CHECK_LOCATION_LT
 
-Invalid value {{value:s64}}. Attribute location must be less than {{constraint:s64}}.
+Invalid value {{value:s64}}. Location must be less than {{constraint:s64}}.
+
+# ERR_INVALID_VALUE_CHECK_COUNT_GE
+
+Invalid value {{value:s64}}. Count must be greater than or equal to {{constraint:s64}}.
+
+# ERR_INVALID_VALUE_CHECK_SIZE_GE
+
+Invalid value {{value:s64}}. Size must be greater than or equal to {{constraint:s64}}.
 
 # ERR_INVALID_ENUM
 

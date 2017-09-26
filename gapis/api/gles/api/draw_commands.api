@@ -63,7 +63,7 @@ sub bool isTransformFeedback() {
 cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count) {
   checkPrimitiveType(draw_mode)
   CheckGE!GLint(first_index, 0) // "Recommended behaviour"
-  CheckGE!GLsizei(indices_count, 0)
+  CheckCountGE!GLsizei(indices_count, 0)
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), 1)
   WriteGPUFramebufferData(ctx)
@@ -97,8 +97,8 @@ cmd void glDrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indi
 sub void DrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indices_count, GLsizei instance_count) {
   checkPrimitiveType(draw_mode)
   CheckGE!GLint(first_index, 0) // "Recommended behaviour"
-  CheckGE!GLsizei(indices_count, 0)
-  CheckGE!GLsizei(instance_count, 0)
+  CheckCountGE!GLsizei(indices_count, 0)
+  CheckCountGE!GLsizei(instance_count, 0)
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), as!u32(instance_count))
   WriteGPUFramebufferData(ctx)
@@ -112,9 +112,9 @@ sub void DrawElements(ref!Context    ctx,
                       GLsizei        instance_count,
                       GLint          base_vertex) {
   checkPrimitiveType(draw_mode)
-  CheckGE!GLsizei(indices_count, 0) // SPEC: missing in pdf
+  CheckCountGE!GLsizei(indices_count, 0) // SPEC: missing in pdf
   checkIndicesType(indices_type)
-  CheckGE!GLsizei(instance_count, 0) // SPEC: missing in pdf
+  CheckCountGE!GLsizei(instance_count, 0) // SPEC: missing in pdf
   if indices_count > 0 {
     count := as!u32(indices_count)
     index_buffer := ctx.Bound.VertexArray.ElementArrayBuffer

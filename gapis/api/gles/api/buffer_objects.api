@@ -265,7 +265,7 @@ cmd void glBufferData(GLenum target, GLsizeiptr size, BufferDataPointer data, GL
       glErrorInvalidEnum(usage)
     }
   }
-  CheckGE!GLsizeiptr(size, 0)
+  CheckSizeGE!GLsizeiptr(size, 0)
 
   b.Data = switch (data != null) {
     case true:  clone(as!u8*(data)[0:size])
@@ -283,7 +283,7 @@ cmd void glBufferData(GLenum target, GLsizeiptr size, BufferDataPointer data, GL
 cmd void glBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, BufferDataPointer data) {
   b := GetBoundBufferOrError(target)
   CheckGE!GLintptr(offset, 0)
-  CheckGE!GLsizeiptr(size, 0)
+  CheckSizeGE!GLsizeiptr(size, 0)
   CheckLE!GLsizeiptr((as!GLsizeiptr(offset) + size), b.Size)
   copy(b.Data[offset:as!GLsizeiptr(offset) + size], as!u8*(data)[0:size])
 }
@@ -314,7 +314,7 @@ sub void CopyBufferSubData(GLenum readTarget, GLenum writeTarget, GLintptr readO
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteBuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteBuffers.xhtml", Version.GLES32)
 cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   b := buffers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -332,7 +332,7 @@ cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenBuffers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenBuffers.xhtml", Version.GLES32)
 cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   b := buffers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -470,7 +470,7 @@ cmd void* glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GL
 sub void MapBufferRange(GLenum target, GLintptr offset, GLsizeiptr size, GLbitfield access, u8* ptr) {
   b := GetBoundBufferOrError(target)
   CheckGE!GLintptr(offset, 0)
-  CheckGE!GLsizeiptr(size, 0)
+  CheckSizeGE!GLsizeiptr(size, 0)
   CheckLE!GLsizeiptr((as!GLsizeiptr(offset) + size), b.Size)
   supportsBits(access, GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_READ_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_WRITE_BIT)
   if b.Mapped == GL_TRUE { glErrorInvalidOperation() }
@@ -524,7 +524,7 @@ sub void FlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr size)
   if b.Mapped == GL_FALSE { glErrorInvalidOperation() }
   if !(GL_MAP_FLUSH_EXPLICIT_BIT in b.AccessFlags) { glErrorInvalidOperation() }
   CheckGE!GLintptr(offset, 0)
-  CheckGE!GLsizeiptr(size, 0)
+  CheckSizeGE!GLsizeiptr(size, 0)
   CheckLE!GLsizeiptr((as!GLsizeiptr(offset) + size), b.MapLength)
   dstOffset := b.MapOffset + offset
   copy(b.Data[dstOffset:dstOffset + as!GLintptr(size)], b.MapPointer[offset:offset + as!GLintptr(size)])

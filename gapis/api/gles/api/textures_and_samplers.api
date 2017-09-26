@@ -341,9 +341,9 @@ sub void TexImage(TexImageFlags  flags,
   CheckGE!GLint(yoffset, 0)
   CheckGE!GLint(zoffset, 0)
   CheckGE!GLsizei(levels, 1)
-  CheckGE!GLsizei(width, 0)
-  CheckGE!GLsizei(height, 0)
-  CheckGE!GLsizei(depth, 0)
+  CheckSizeGE!GLsizei(width, 0)
+  CheckSizeGE!GLsizei(height, 0)
+  CheckSizeGE!GLsizei(depth, 0)
   CheckEQ!GLint(border, 0)
   CheckGE!GLsizei(data_size, 0)
   switch target {
@@ -854,7 +854,7 @@ sub void CopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoff
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteSamplers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteSamplers.xhtml", Version.GLES32)
 cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   s := samplers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -872,7 +872,7 @@ cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDeleteTextures.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTextures.xhtml", Version.GLES32)
 cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   t := textures[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -890,7 +890,7 @@ cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenSamplers.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenSamplers.xhtml", Version.GLES32)
 cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   s := samplers[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -907,7 +907,7 @@ cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGenTextures.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGenTextures.xhtml", Version.GLES32)
 cmd void glGenTextures(GLsizei count, TextureId* textures) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   t := textures[0:count]
   ctx := GetContext()
   for i in (0 .. count) {

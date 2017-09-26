@@ -478,7 +478,7 @@ cmd void glDeleteProgramPipelines(GLsizei n, const PipelineId* pipelines) {
 }
 
 sub void DeleteProgramPipelines(GLsizei count, const PipelineId* pipelines) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   ids := pipelines[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -540,7 +540,7 @@ cmd void glGenProgramPipelines(GLsizei count, PipelineId* pipelines) {
 }
 
 sub void GenProgramPipelines(GLsizei count, PipelineId* pipelines) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
   t := pipelines[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -564,7 +564,7 @@ cmd void glGetActiveAttrib(ProgramId      program,
                            GLenum*        type,
                            GLchar*        name) {
 
-  CheckGE!GLsizei(buffer_size, 0)
+  CheckSizeGE!GLsizei(buffer_size, 0)
 
   ctx := GetContext()
   _ = GetProgramOrError(program)
@@ -592,7 +592,7 @@ cmd void glGetActiveUniform(ProgramId    program,
 
   ctx := GetContext()
   _ = GetProgramOrError(program)
-  CheckGE!GLsizei(buffer_size, 0)
+  CheckSizeGE!GLsizei(buffer_size, 0)
   p := ctx.Objects.Shared.Programs[program]
   if !(index in p.ActiveUniforms) { glErrorInvalidValue() }
 
@@ -1867,7 +1867,7 @@ cmd void glShaderSource(ShaderId             shader,
                         GLsizei              count,
                         const GLchar* const* source,
                         const GLint*         length) {
-  CheckGE!GLsizei(count, 0)
+  CheckCountGE!GLsizei(count, 0)
 
   sources := source[0:count]
   ctx := GetContext()
