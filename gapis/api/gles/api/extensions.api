@@ -1540,47 +1540,69 @@ cmd void glLabelObjectEXT(GLenum type, GLuint object, GLsizei length, const GLch
   ctx := GetContext()
   switch (type) {
     case GL_TEXTURE: {
-      if !(as!TextureId(object) in ctx.Objects.Shared.Textures) { glErrorInvalidOperation() }
+      if !(as!TextureId(object) in ctx.Objects.Shared.Textures) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Shared.Textures[as!TextureId(object)].Label = str
     }
     case GL_FRAMEBUFFER: {
-      if !(as!FramebufferId(object) in ctx.Objects.Framebuffers) { glErrorInvalidOperation() }
+      if !(as!FramebufferId(object) in ctx.Objects.Framebuffers) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Framebuffers[as!FramebufferId(object)].Label = str
     }
     case GL_RENDERBUFFER: {
-      if !(as!RenderbufferId(object) in ctx.Objects.Shared.Renderbuffers) { glErrorInvalidOperation() }
+      if !(as!RenderbufferId(object) in ctx.Objects.Shared.Renderbuffers) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Shared.Renderbuffers[as!RenderbufferId(object)].Label = str
     }
     case GL_BUFFER_OBJECT_EXT: {
-      if !(as!BufferId(object) in ctx.Objects.Shared.Buffers) { glErrorInvalidOperation() }
+      if !(as!BufferId(object) in ctx.Objects.Shared.Buffers) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Shared.Buffers[as!BufferId(object)].Label = str
     }
     case GL_SHADER_OBJECT_EXT: {
-      if !(as!ShaderId(object) in ctx.Objects.Shared.Shaders) { glErrorInvalidOperation() }
+      if !(as!ShaderId(object) in ctx.Objects.Shared.Shaders) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Shared.Shaders[as!ShaderId(object)].Label = str
     }
     case GL_PROGRAM_OBJECT_EXT: {
-      if !(as!ProgramId(object) in ctx.Objects.Shared.Programs) { glErrorInvalidOperation() }
+      if !(as!ProgramId(object) in ctx.Objects.Shared.Programs) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Shared.Programs[as!ProgramId(object)].Label = str
     }
     case GL_VERTEX_ARRAY_OBJECT_EXT: {
-      if !(as!VertexArrayId(object) in ctx.Objects.VertexArrays) { glErrorInvalidOperation() }
+      if !(as!VertexArrayId(object) in ctx.Objects.VertexArrays) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.VertexArrays[as!VertexArrayId(object)].Label = str
     }
     case GL_QUERY_OBJECT_EXT: {
-      if !(as!QueryId(object) in ctx.Objects.Queries) { glErrorInvalidOperation() }
+      if !(as!QueryId(object) in ctx.Objects.Queries) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Queries[as!QueryId(object)].Label = str
     }
     case GL_SAMPLER: {
-      if !(as!SamplerId(object) in ctx.Objects.Shared.Samplers) { glErrorInvalidOperation() }
+      if !(as!SamplerId(object) in ctx.Objects.Shared.Samplers) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Shared.Samplers[as!SamplerId(object)].Label = str
     }
     case GL_TRANSFORM_FEEDBACK: {
-      if !(as!TransformFeedbackId(object) in ctx.Objects.TransformFeedbacks) { glErrorInvalidOperation() }
+      if !(as!TransformFeedbackId(object) in ctx.Objects.TransformFeedbacks) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.TransformFeedbacks[as!TransformFeedbackId(object)].Label = str
     }
     case GL_PROGRAM_PIPELINE_OBJECT_EXT: {
-      if !(as!PipelineId(object) in ctx.Objects.Pipelines) { glErrorInvalidOperation() }
+      if !(as!PipelineId(object) in ctx.Objects.Pipelines) {
+        glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
+      }
       ctx.Objects.Pipelines[as!PipelineId(object)].Label = str
     }
     default: {

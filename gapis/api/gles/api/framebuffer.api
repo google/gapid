@@ -122,6 +122,13 @@ sub ref!Framebuffer GetBoundFramebufferOrErrorInvalidEnum(GLenum framebuffer_tar
   }
 }
 
+sub void CheckNonDefaultFramebuffer(ref!Framebuffer framebuffer) {
+  ctx := GetContext()
+  if framebuffer == ctx.Objects.Framebuffers[0] {
+    glErrorInvalidOperationMsg(new!ERR_INVALID_OPERATION_DEFAULT_FRAMEBUFFER_BOUND())
+  }
+}
+
 sub bool IsDefaultFramebuffer(ref!Framebuffer framebuffer) {
   ctx := GetContext()
   return framebuffer == ctx.Objects.Framebuffers[0]
@@ -132,7 +139,7 @@ sub void SetFramebufferAttachment(GLenum                framebuffer_target,
                                   FramebufferAttachment attachment) {
   ctx := GetContext()
   framebuffer := GetBoundFramebufferOrErrorInvalidEnum(framebuffer_target)
-  if IsDefaultFramebuffer(framebuffer) { glErrorInvalidOperation() }
+  CheckNonDefaultFramebuffer(framebuffer)
   switch (framebuffer_attachment) {
     case GL_COLOR_ATTACHMENT0:
       framebuffer.ColorAttachments[0] = attachment
@@ -528,7 +535,7 @@ sub void DrawBuffers(GLsizei n, const GLenum* buffers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glFramebufferParameteri.xhtml", Version.GLES32)
 cmd void glFramebufferParameteri(GLenum target, GLenum pname, GLint param) {
   framebuffer := GetBoundFramebufferOrErrorInvalidEnum(target)
-  if IsDefaultFramebuffer(framebuffer) { glErrorInvalidOperation() }
+  CheckNonDefaultFramebuffer(framebuffer)
   switch (pname) {
     case GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS: {
       framebuffer.DefaultFixedSampleLocations = as!GLboolean(param)
@@ -564,7 +571,9 @@ cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
   ctx := GetContext()
   if renderbuffer_target != GL_RENDERBUFFER { glErrorInvalidEnum(renderbuffer_target) }
   // SPEC: Only PDF spec mentions this:
-  if (renderbuffer != 0) && !(renderbuffer in ctx.Objects.Shared.Renderbuffers) { glErrorInvalidOperation() }
+  if (renderbuffer != 0) && !(renderbuffer in ctx.Objects.Shared.Renderbuffers) {
+    glErrorInvalidOperation_ObjectDoesNotExist!RenderbufferId(renderbuffer)
+  }
 
   attachment := FramebufferAttachment()
   if (renderbuffer != 0) {
@@ -630,7 +639,9 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
   ctx := GetContext()
   attachment := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidOperation() }
+    if !(texture in ctx.Objects.Shared.Textures) {
+      glErrorInvalidOperation_ObjectDoesNotExist!TextureId(texture)
+    }
     kind := switch (texture_target) {
       case GL_TEXTURE_2D:
         GL_TEXTURE_2D
@@ -790,7 +801,7 @@ cmd void glGetFramebufferParameteriv(GLenum target, GLenum pname, GLint* params)
   }
 
   framebuffer := GetBoundFramebufferOrErrorInvalidEnum(target)
-  if IsDefaultFramebuffer(framebuffer) { glErrorInvalidOperation() }
+  CheckNonDefaultFramebuffer(framebuffer)
   params[0] = switch (pname) {
     case GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS: as!GLint(framebuffer.DefaultFixedSampleLocations)
     case GL_FRAMEBUFFER_DEFAULT_HEIGHT:                 framebuffer.DefaultHeight

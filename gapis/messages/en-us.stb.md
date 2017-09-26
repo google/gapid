@@ -75,6 +75,18 @@ Invalid enum {{value:u32}}.
 
 Invalid operation.
 
+# ERR_INVALID_OPERATION_DEFAULT_FRAMEBUFFER_BOUND
+
+Invalid operation. Default framebuffer object is bound.
+
+# ERR_INVALID_OPERATION_DEFAULT_VERTEX_ARRAY_BOUND
+
+Invalid operation. Default vertex array object is bound.
+
+# ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST
+
+Invalid operation. Object {{id:u64}} does not exist.
+
 # ERR_CONTEXT_DOES_NOT_EXIST
 
 No context with id {{id:u64}} exists.

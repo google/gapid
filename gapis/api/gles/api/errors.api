@@ -105,3 +105,7 @@ sub void CheckSizeGE!T(T value, T constraint) {
     glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_SIZE_GE(value: as!s64(value), constraint: as!s64(constraint)))
   }
 }
+
+sub void glErrorInvalidOperation_ObjectDoesNotExist!T(T id) {
+  glErrorInvalidOperationMsg(new!ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST(id: as!u64(id)))
+}

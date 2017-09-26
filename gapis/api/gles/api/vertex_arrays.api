@@ -65,6 +65,13 @@ sub void CheckAttributeLocation(AttributeLocation location) {
   CheckLocationLT!AttributeLocation(location, as!AttributeLocation(ctx.Constants.MaxVertexAttribs))
 }
 
+sub void CheckNonDefaultVertexArrayBound() {
+  ctx := GetContext()
+  if ctx.Bound.VertexArray.ID == 0 {
+    glErrorInvalidOperationMsg(new!ERR_INVALID_OPERATION_DEFAULT_VERTEX_ARRAY_BOUND())
+  }
+}
+
 sub bool IsDefaultVertexArrayBound() {
   ctx := GetContext()
   return ctx.Bound.VertexArray.ID == 0
@@ -210,7 +217,7 @@ sub void BindVertexBuffer(ref!Context ctx, VertexBufferBindingIndex binding_inde
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindVertexBuffer.xhtml", Version.GLES32)
 cmd void glBindVertexBuffer(VertexBufferBindingIndex binding_index, BufferId buffer, GLintptr offset, GLsizei stride) {
   ctx := GetContext()
-  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
+  CheckNonDefaultVertexArrayBound()
   BindVertexBuffer(ctx, binding_index, buffer, offset, stride)
 }
 
@@ -488,7 +495,7 @@ sub void VertexAttribBinding(ref!Context ctx, AttributeLocation index, VertexBuf
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glVertexAttribBinding.xhtml", Version.GLES32)
 cmd void glVertexAttribBinding(AttributeLocation index, VertexBufferBindingIndex binding_index) {
   ctx := GetContext()
-  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
+  CheckNonDefaultVertexArrayBound()
   VertexAttribBinding(ctx, index, binding_index)
 }
 
@@ -571,7 +578,7 @@ cmd void glVertexAttribFormat(AttributeLocation index,
                               GLboolean         normalized,
                               GLuint            relativeoffset) {
   ctx := GetContext()
-  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
+  CheckNonDefaultVertexArrayBound()
   VertexAttribFormat(ctx, index, size, type, normalized, relativeoffset, false)
 }
 
@@ -624,7 +631,7 @@ cmd void glVertexAttribI4uiv(AttributeLocation index, const GLuint* values) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glVertexAttribFormat.xhtml", Version.GLES32)
 cmd void glVertexAttribIFormat(AttributeLocation index, GLint size, GLenum type, GLuint relativeoffset) {
   ctx := GetContext()
-  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
+  CheckNonDefaultVertexArrayBound()
   VertexAttribFormat(ctx, index, size, type, as!GLboolean(0), relativeoffset, true)
 }
 
@@ -697,7 +704,7 @@ cmd void glVertexAttribPointer(AttributeLocation location,
 cmd void glVertexBindingDivisor(VertexBufferBindingIndex binding_index, GLuint divisor) {
   ctx := GetContext()
   CheckLT!VertexBufferBindingIndex(binding_index, as!VertexBufferBindingIndex(ctx.Constants.MaxVertexAttribBindings))
-  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
+  CheckNonDefaultVertexArrayBound()
   vao := ctx.Bound.VertexArray
   vao.VertexBufferBindings[binding_index].Divisor = divisor
 }
