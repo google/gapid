@@ -20,6 +20,7 @@ import static com.google.gapid.util.Loadable.Message.error;
 import static com.google.gapid.util.Loadable.Message.info;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
+import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.Ranges.memory;
 import static com.google.gapid.widgets.Widgets.createDropDown;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
@@ -27,7 +28,6 @@ import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.Collections.emptyList;
-import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -909,7 +909,7 @@ public class MemoryView extends Composite
         } catch (TimeoutException e) {
           throw new AssertionError(); // Should not happen.
         } catch (ExecutionException e) {
-          LOG.log(WARNING, "Unexpected error fetching memory", e);
+          throttleLogRpcError(LOG, "Unexpected error fetching memory", e);
           loadable.showMessage(error("Unexpected error: " + e.getCause()));
         }
       } else {

@@ -17,9 +17,9 @@ package com.google.gapid.models;
 
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
+import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.Paths.stateTree;
 import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
-import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.base.Preconditions;
@@ -93,7 +93,7 @@ public class ApiState
       return error(Loadable.Message.error(e));
     } catch (ExecutionException e) {
       if (!shell.isDisposed()) {
-        LOG.log(SEVERE, "Failed to load the API state", e);
+        throttleLogRpcError(LOG, "Failed to load the API state", e);
       }
       return error(Loadable.Message.error("Failed to load the state"));
     }
