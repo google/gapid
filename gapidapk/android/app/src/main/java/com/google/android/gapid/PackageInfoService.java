@@ -17,6 +17,7 @@
 package com.google.android.gapid;
 
 import android.app.IntentService;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
@@ -26,27 +27,30 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.Pair;
+import android.util.TypedValue;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 /**
  * An {@link IntentService} subclass for providing installed package information to GAPIS / GAPIC.
@@ -64,7 +68,7 @@ public class PackageInfoService extends IntentService {
 
     private static final int BASE_ICON_DENSITY = DisplayMetrics.DENSITY_MEDIUM;
 
-    private static final boolean PROFILE = false;
+    private static final boolean PROFILE = true;
 
     /**
      * Action used to start waiting for an incoming connection on the local-abstract port
@@ -101,12 +105,94 @@ public class PackageInfoService extends IntentService {
      */
     private static final String DEFAULT_SOCKET_NAME = "gapid-pkginfo";
 
+    private static final class Caches {
+        private final PackageManager packageManager;
+        private final Cache<ApplicationInfo, Resources> resources;
+        private final Cache<PackageInfo, Intent> launchIntentForPackage;
+        private final Cache<PackageInfo, ActivityInfo> launchActivityForPackage;
+
+        Caches(Context context) {
+            this.packageManager = context.getPackageManager();
+            this.resources = Cache.create(
+                    new Cache.Builder<ApplicationInfo, Resources>() {
+                        @Override
+                        public Resources build(ApplicationInfo ai) {
+                            try (Counter.Scope t = Counter.time("getResourcesForApplication")){
+                                return packageManager.getResourcesForApplication(ai);
+                            } catch (PackageManager.NameNotFoundException ex) {
+                                return null;
+                            }
+                        }
+                    }
+            );
+            this.launchIntentForPackage = FileCache.create(context, "launchIntentForPackage",
+                    new FileCache.Builder<PackageInfo, Intent>() {
+                        @Override
+                        public String filename(PackageInfo key) {
+                            return "launch-intent." +
+                                    key.packageName + "." +
+                                    key.versionName + "." +
+                                    key.versionCode + "." +
+                                    key.lastUpdateTime;
+                        }
+
+                        @Override
+                        public byte[] encode(Intent value) {
+                            return IOUtils.encode(value);
+                        }
+
+                        @Override
+                        public Intent decode(byte[] data) {
+                            return IOUtils.decode(Intent.CREATOR, data);
+                        }
+
+                        @Override
+                        public Intent build(PackageInfo pi) {
+                            return packageManager.getLaunchIntentForPackage(pi.packageName);
+                        }
+                    }
+            );
+            this.launchActivityForPackage = FileCache.create(context, "launchActivityForPackage",
+                    new FileCache.Builder<PackageInfo, ActivityInfo>() {
+                        @Override
+                        public String filename(PackageInfo key) {
+                            return "launch-activity." +
+                                    key.packageName + "." +
+                                    key.versionName + "." +
+                                    key.versionCode + "." +
+                                    key.lastUpdateTime;
+                        }
+
+                        @Override
+                        public byte[] encode(ActivityInfo value) {
+                            return IOUtils.encode(value);
+                        }
+
+                        @Override
+                        public ActivityInfo decode(byte[] data) {
+                            return IOUtils.decode(ActivityInfo.CREATOR, data);
+                        }
+
+                        @Override
+                        public ActivityInfo build(PackageInfo pi) {
+                            Intent launchIntent = launchIntentForPackage.get(pi);
+                            if (launchIntent == null) {
+                                return null;
+                            }
+                            return launchIntent.resolveActivityInfo(packageManager, 0);
+                        }
+                    }
+            );
+        }
+    }
+
     public PackageInfoService() {
         super("PackageInfoService");
     }
 
     @Override
     protected void onHandleIntent(Intent intent) {
+        Caches caches = new Caches(this);
         if (intent != null) {
             final String action = intent.getAction();
             if (ACTION_SEND_PKG_INFO.equals(action)) {
@@ -119,11 +205,11 @@ public class PackageInfoService extends IntentService {
                 float iconDensityScale = intent.getFloatExtra(EXTRA_ICON_DENSITY_SCALE, 1.0f);
 
                 try (Counter.Scope t = Counter.time("handleSendPackageInfo")) {
-                    handleSendPackageInfo(socketName, onlyDebug, includeIcons, iconDensityScale);
+                    handleSendPackageInfo(caches, socketName, onlyDebug, includeIcons, iconDensityScale);
                 }
 
                 if (PROFILE) {
-                    Log.i(TAG, Counter.collect());
+                    Log.i(TAG, Counter.collect(true));
                 }
             }
         }
@@ -133,26 +219,21 @@ public class PackageInfoService extends IntentService {
      * Handler for the {@link #ACTION_SEND_PKG_INFO} intent.
      */
     private void handleSendPackageInfo(
+            final Caches caches,
             final String socketName,
             final boolean onlyDebug,
             final boolean includeIcons,
             final float iconDensityScale) {
 
         final ExecutorService executor = Executors.newCachedThreadPool();
-        final IconStore icons = new IconStore((int)(BASE_ICON_DENSITY * iconDensityScale));
-        final PackageManager pm = getPackageManager();
+        final IconStore icons = new IconStore(this, (int)(BASE_ICON_DENSITY * iconDensityScale));
 
         Callable<byte[]> packageInfoFuture = new Callable<byte[]>() {
             @Override
             public byte[] call() throws Exception {
-                List<PackageInfo> packages;
-                try (Counter.Scope t = Counter.time("getInstalledPackages")) {
-                    packages = pm.getInstalledPackages(
-                            PackageManager.GET_ACTIVITIES | PackageManager.GET_SIGNATURES);
-                }
                 String json;
                 try (Counter.Scope t = Counter.time("getPackageInfo")) {
-                    json = getPackageInfo(includeIcons ? icons : null, onlyDebug, pm, packages);
+                    json = getPackageInfo(caches, includeIcons ? icons : null, onlyDebug);
                 }
                 return json.getBytes("UTF-8");
             }
@@ -168,10 +249,15 @@ public class PackageInfoService extends IntentService {
     }
 
     private String getPackageInfo(
+            Caches caches,
             IconStore icons,
-            boolean onlyDebug,
-            PackageManager pm,
-            List<PackageInfo> packages) throws JSONException {
+            boolean onlyDebug) throws JSONException {
+
+        List<PackageInfo> packages;
+        try (Counter.Scope t = Counter.time("getInstalledPackages")) {
+            packages = caches.packageManager.getInstalledPackages(
+                    PackageManager.GET_ACTIVITIES | PackageManager.GET_SIGNATURES);
+        }
 
         // The ApplicationInfo.primaryCpuAbi field is hidden. Use reflection to get at it.
         Field primaryCpuAbiField = null;
@@ -194,7 +280,7 @@ public class PackageInfoService extends IntentService {
 
             JSONObject packageJson;
             try (Counter.Scope t = Counter.time("getPackageJson")) {
-                packageJson = getPackageJson(pm, packageInfo, icons, primaryCpuAbiField, isDebuggable);
+                packageJson = getPackageJson(caches, packageInfo, icons, primaryCpuAbiField, isDebuggable);
             }
             packagesJson.put(packageJson);
         }
@@ -207,38 +293,21 @@ public class PackageInfoService extends IntentService {
     }
 
     private JSONObject getPackageJson(
-            PackageManager pm,
+            Caches caches,
             PackageInfo packageInfo,
             IconStore icons,
             Field primaryCpuAbiField,
             boolean isDebuggable) throws JSONException {
 
         ApplicationInfo applicationInfo = packageInfo.applicationInfo;
-        Intent launchIntent;
-        try (Counter.Scope t = Counter.time("getLaunchIntentForPackage")) {
-            launchIntent = pm.getLaunchIntentForPackage(packageInfo.packageName);
-        }
-        ActivityInfo launchActivityInfo = null;
-        if (launchIntent != null) {
-            try (Counter.Scope t = Counter.time("resolveActivityInfo")) {
-                launchActivityInfo = launchIntent.resolveActivityInfo(pm, 0);
-            }
-        }
-
-        Resources resources = null;
-        try (Counter.Scope t = Counter.time("getResourcesForApplication")){
-            resources = pm.getResourcesForApplication(applicationInfo);
-        } catch (PackageManager.NameNotFoundException ex) {}
 
         Map<String, List<IntentFilter>> activityIntents = new HashMap<String, List<IntentFilter>>();
 
         Intent queryIntent = new Intent();
         queryIntent.setPackage(packageInfo.packageName);
 
-        List<ResolveInfo> resolveInfos;
-        try (Counter.Scope t = Counter.time("queryIntentActivities")) {
-            resolveInfos = pm.queryIntentActivities(queryIntent, PackageManager.GET_RESOLVED_FILTER);
-        }
+        List<ResolveInfo> resolveInfos = caches.packageManager.queryIntentActivities(
+                queryIntent, PackageManager.GET_RESOLVED_FILTER);
 
         for (ResolveInfo resolveInfo : resolveInfos) {
             IntentFilter intent = resolveInfo.filter;
@@ -258,18 +327,17 @@ public class PackageInfoService extends IntentService {
             for (ActivityInfo activityInfo : packageInfo.activities) {
                 int iconIndex = -1;
                 if (icons != null) {
+                    Resources resources = caches.resources.get(applicationInfo);
                     try (Counter.Scope t = Counter.time("icons.add")) {
                         iconIndex = icons.add(resources, activityInfo.icon);
                     }
                 }
 
+                ActivityInfo launchActivityInfo = caches.launchActivityForPackage.get(packageInfo);
                 boolean isLaunchActivity = (launchActivityInfo != null) ?
                         launchActivityInfo.name.equals(activityInfo.name) : false;
                 JSONArray actionsJson = new JSONArray();
-                List<IntentFilter> intents = null;
-                try (Counter.Scope t = Counter.time("activityIntents.get")) {
-                    activityIntents.get(activityInfo.name);
-                }
+                List<IntentFilter> intents = activityIntents.get(activityInfo.name);
                 if (intents != null) {
                     for (IntentFilter intent : intents) {
                         for (int i = 0; i < intent.countActions(); i++) {
@@ -277,6 +345,7 @@ public class PackageInfoService extends IntentService {
                             JSONObject actionJson = new JSONObject();
                             actionJson.put("name", action);
                             if (isLaunchActivity) {
+                                Intent launchIntent = caches.launchIntentForPackage.get(packageInfo);
                                 actionJson.put("isLaunch", action.equals(launchIntent.getAction()));
                             }
                             actionsJson.put(actionJson);
@@ -297,6 +366,7 @@ public class PackageInfoService extends IntentService {
 
         if (applicationInfo != null) {
             if (icons != null) {
+                Resources resources = caches.resources.get(applicationInfo);
                 try (Counter.Scope t = Counter.time("icons.add")) {
                     iconIndex = icons.add(resources, applicationInfo.icon);
                 }
@@ -326,17 +396,45 @@ public class PackageInfoService extends IntentService {
      * Duplicates are only stored once.
      */
     private class IconStore {
-        private final Map<String, Integer> mMap = new HashMap();
-        private final IdentityHashMap<Bitmap, Integer> mBitmapMap = new IdentityHashMap<Bitmap, Integer>();
-        private final JSONArray mJson = new JSONArray();
+        private final Map<String, Integer> dataMap = new HashMap();
+        private final JSONArray json = new JSONArray();
         private final int iconDensity;
+        private final Cache<Pair<Resources, Integer>, byte[]> cache;
 
-        IconStore(int iconDensity) {
+        IconStore(Context context, final int iconDensity) {
             this.iconDensity = iconDensity;
+            this.cache = FileCache.create(context, "icons",
+                    new FileCache.Builder<Pair<Resources, Integer>, byte[]>() {
+                        @Override
+                        public String filename(Pair<Resources, Integer> key) {
+                            Resources resources = key.first;
+                            int id = key.second;
+                            return resources.getResourcePackageName(id)
+                                    + "." + resources.getResourceTypeName(id)
+                                    + "." + resources.getResourceName(id)
+                                    + "." + iconDensity;
+                        }
+
+                        @Override
+                        public byte[] encode(byte[] value) {
+                            return value;
+                        }
+
+                        @Override
+                        public byte[] decode(byte[] data) {
+                            return data;
+                        }
+
+                        @Override
+                        public byte[] build(Pair<Resources, Integer> key) {
+                            return data(key.first, key.second);
+                        }
+                    }
+            );
         }
 
         /**
-         * add adds the specified drawable to the store.
+         * add the specified drawable to the store.
          *
          * @return The index of the image stored in the {@link JSONArray} returned by {@link #json}.
          */
@@ -344,31 +442,52 @@ public class PackageInfoService extends IntentService {
             if (resources == null || iconId <= 0) {
                 return -1;
             }
+            byte[] bytes = cache.get(Pair.create(resources, iconId));
+            if (bytes == null) {
+                return -1;
+            }
+            return store(bytes);
+        }
 
+        private byte[] data(Resources resources, int iconId) {
             Drawable drawable;
-            try (Counter.Scope t = Counter.time("getDrawableForDensity")){
+            try (Counter.Scope t = Counter.time("resources.getDrawableForDensity")) {
                 drawable = resources.getDrawableForDensity(iconId, iconDensity);
-            } catch (Resources.NotFoundException ex) {
-                return -1;
-            }
-            if (drawable == null || !(drawable instanceof BitmapDrawable)) {
-                return -1;
             }
 
-            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-            if (mBitmapMap.containsKey(bitmap)) {
-                return mBitmapMap.get(bitmap);
+            if (drawable == null) {
+                return null;
+            }
+
+            Bitmap bitmap;
+            if (drawable instanceof BitmapDrawable) {
+                bitmap = ((BitmapDrawable)drawable).getBitmap();
+            } else {
+                try (Counter.Scope t = Counter.time("drawable.draw")) {
+                    if(drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
+                        // Solid color
+                        bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+                    } else {
+                        bitmap = Bitmap.createBitmap(
+                                drawable.getIntrinsicWidth(),
+                                drawable.getIntrinsicHeight(),
+                                Bitmap.Config.ARGB_8888);
+                    }
+                    Canvas canvas = new Canvas(bitmap);
+                    drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+                    drawable.draw(canvas);
+                }
             }
 
             int maxDimension = Math.max(bitmap.getWidth(), bitmap.getHeight());
             if (maxDimension == 0) {
-                return -1;
+                return null;
             }
 
             if (maxDimension > MAX_ICON_SIZE) {
-                float scale = MAX_ICON_SIZE / (float)(maxDimension);
-                int width = Math.max((int)(scale * bitmap.getWidth()), 1);
-                int height = Math.max((int)(scale * bitmap.getWidth()), 1);
+                float scale = MAX_ICON_SIZE / (float) (maxDimension);
+                int width = Math.max((int) (scale * bitmap.getWidth()), 1);
+                int height = Math.max((int) (scale * bitmap.getHeight()), 1);
                 try (Counter.Scope t = Counter.time("createScaledBitmap")) {
                     bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
                 }
@@ -376,23 +495,24 @@ public class PackageInfoService extends IntentService {
 
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
             try (Counter.Scope t1 = Counter.time("bitmap.compress")) {
-                try (Counter.Scope t2 = Counter.time(bitmap.getWidth() + "x" + bitmap.getHeight())) {
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-                }
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
             }
-            byte[] pngBytes = stream.toByteArray();
+
+            return stream.toByteArray();
+        }
+
+        private int store(byte[] data) {
             String pngBase64;
             try (Counter.Scope t = Counter.time("Base64.encodeToString")) {
-                pngBase64 = Base64.encodeToString(pngBytes, Base64.NO_WRAP);
+                pngBase64 = Base64.encodeToString(data, Base64.NO_WRAP);
             }
-            if (!mMap.containsKey(pngBase64)) {
-                int index = mJson.length();
-                mMap.put(pngBase64, index);
-                mBitmapMap.put(bitmap, index);
-                mJson.put(pngBase64);
+            if (!dataMap.containsKey(pngBase64)) {
+                int index = json.length();
+                dataMap.put(pngBase64, index);
+                json.put(pngBase64);
                 return index;
             } else {
-                return mMap.get(pngBase64);
+                return dataMap.get(pngBase64);
             }
         }
 
@@ -400,7 +520,7 @@ public class PackageInfoService extends IntentService {
          * @return The {@link JSONArray} object holding all the base-64, PNG encoded images.
          */
         public JSONArray json() {
-            return mJson;
+            return json;
         }
     }
 }

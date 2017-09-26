@@ -19,7 +19,6 @@ package com.google.android.gapid;
 import android.net.LocalServerSocket;
 import android.net.LocalSocket;
 import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.concurrent.Future;
 
 class SocketWriter {
