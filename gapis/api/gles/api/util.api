@@ -37,3 +37,10 @@ sub T min!T(T a, T b) {
     case false: b
   }
 }
+
+sub T max!T(T a, T b) {
+  return switch a > b {
+    case true:  a
+    case false: b
+  }
+}
