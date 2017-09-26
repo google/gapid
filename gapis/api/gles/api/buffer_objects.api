@@ -467,11 +467,11 @@ cmd void* glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GL
   return ptr
 }
 
-sub void MapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access, u8* ptr) {
+sub void MapBufferRange(GLenum target, GLintptr offset, GLsizeiptr size, GLbitfield access, u8* ptr) {
   b := GetBoundBufferOrError(target)
   CheckGE!GLintptr(offset, 0)
-  CheckGE!GLsizeiptr(length, 0)
-  CheckLE!GLsizeiptr((as!GLsizeiptr(offset) + length), b.Size)
+  CheckGE!GLsizeiptr(size, 0)
+  CheckLE!GLsizeiptr((as!GLsizeiptr(offset) + size), b.Size)
   supportsBits(access, GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_READ_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_WRITE_BIT)
   if b.Mapped == GL_TRUE { glErrorInvalidOperation() }
 
@@ -479,11 +479,11 @@ sub void MapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbit
   b.AccessFlags = access
   b.MapPointer = ptr
   b.MapOffset = offset
-  b.MapLength = length
-  mapMemory(ptr[0:length])
+  b.MapLength = size
+  mapMemory(ptr[0:size])
 
   if GL_MAP_READ_BIT in access {
-    copy(ptr[0:length], b.Data[offset:offset + as!GLintptr(length)])
+    copy(ptr[0:size], b.Data[offset:offset + as!GLintptr(size)])
   }
 }
 
@@ -519,13 +519,13 @@ cmd void glFlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr len
   FlushMappedBufferRange(target, offset, length)
 }
 
-sub void FlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr length) {
+sub void FlushMappedBufferRange(GLenum target, GLintptr offset, GLsizeiptr size) {
   b := GetBoundBufferOrError(target)
   if b.Mapped == GL_FALSE { glErrorInvalidOperation() }
   if !(GL_MAP_FLUSH_EXPLICIT_BIT in b.AccessFlags) { glErrorInvalidOperation() }
   CheckGE!GLintptr(offset, 0)
-  CheckGE!GLsizeiptr(length, 0)
-  CheckLE!GLsizeiptr((as!GLsizeiptr(offset) + length), b.MapLength)
+  CheckGE!GLsizeiptr(size, 0)
+  CheckLE!GLsizeiptr((as!GLsizeiptr(offset) + size), b.MapLength)
   dstOffset := b.MapOffset + offset
-  copy(b.Data[dstOffset:dstOffset + as!GLintptr(length)], b.MapPointer[offset:offset + as!GLintptr(length)])
+  copy(b.Data[dstOffset:dstOffset + as!GLintptr(size)], b.MapPointer[offset:offset + as!GLintptr(size)])
 }
