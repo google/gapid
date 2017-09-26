@@ -74,7 +74,18 @@ var (
 			return t.trace.target
 		},
 		enumSrc: func() enum {
-			return itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
+			result := enum{}
+			devices := itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
+			targets := itemGetter("{.target}", "{.target}", template.FuncMap{})(queryArray("/workers/"))
+			for _, d := range devices {
+				for _, t := range targets {
+					if d.Id() == t.Id() {
+						result = append(result, d)
+						break
+					}
+				}
+			}
+			return result
 		},
 	}
 	hostDimension = &dimension{
@@ -83,7 +94,18 @@ var (
 			return t.host
 		},
 		enumSrc: func() enum {
-			return itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
+			result := enum{}
+			devices := itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
+			hosts := itemGetter("{.host}", "{.host}", template.FuncMap{})(queryArray("/workers/"))
+			for _, d := range devices {
+				for _, h := range hosts {
+					if d.Id() == h.Id() {
+						result = append(result, d)
+						break
+					}
+				}
+			}
+			return result
 		},
 	}
 
