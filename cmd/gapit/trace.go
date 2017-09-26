@@ -32,6 +32,7 @@ import (
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/android/apk"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/os/shell"
@@ -59,6 +60,8 @@ const vulkanAPI = uint32(1 << 2)
 const gvrAPI = uint32(1 << 3)
 
 func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	ctx = bind.PutRegistry(ctx, bind.NewRegistry())
+
 	options := client.Options{
 		ObserveFrameFrequency: uint32(verb.Observe.Frames),
 		ObserveDrawFrequency:  uint32(verb.Observe.Draws),
