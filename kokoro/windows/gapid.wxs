@@ -15,12 +15,24 @@
 <!-- MSI Definition for GAPID consumed by the WiX Toolset -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Name="GAPID $(var.GAPIDVersion)" Manufacturer="Google, Inc"
-      Id="E88564FC-D455-4523-B35A-1E100176A91D"
+      Id="*"
       UpgradeCode="7187CA6A-4A6D-4187-B6B1-1E100176A91D"
       Language="1033" Codepage="1252" Version="$(var.GAPIDVersion)">
+
     <Package Id="*" Keywords="Installer" Description="GAPID Installer"
         Comments="Installs the Graphics API Debugger" Manufacturer="Google, Inc"
         InstallerVersion="100" Languages="1033" Compressed="yes" SummaryCodepage="1252" />
+
+    <!-- Upgrade logic. Automatically uninstalls any existing older / newer version. -->
+    <Upgrade Id='7187CA6A-4A6D-4187-B6B1-1E100176A91D'>
+      <UpgradeVersion OnlyDetect='no' Property='PREVIOUSFOUND'
+          Minimum='0.0.0' IncludeMinimum='no' />
+    </Upgrade>
+    <InstallExecuteSequence>
+      <LaunchConditions After='AppSearch' />
+      <RemoveExistingProducts After='InstallValidate' />
+    </InstallExecuteSequence>
+
     <MediaTemplate EmbedCab="yes" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
