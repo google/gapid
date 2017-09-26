@@ -62,8 +62,8 @@ sub bool isTransformFeedback() {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArrays.xhtml", Version.GLES32)
 cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count) {
   checkPrimitiveType(draw_mode)
-  CheckNonNegative!GLint(first_index) // "Recommended behaviour"
-  CheckNonNegative!GLsizei(indices_count)
+  CheckGE!GLint(first_index, 0) // "Recommended behaviour"
+  CheckGE!GLsizei(indices_count, 0)
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), 1)
   WriteGPUFramebufferData(ctx)
@@ -96,9 +96,9 @@ cmd void glDrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indi
 
 sub void DrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indices_count, GLsizei instance_count) {
   checkPrimitiveType(draw_mode)
-  CheckNonNegative!GLint(first_index) // "Recommended behaviour"
-  CheckNonNegative!GLsizei(indices_count)
-  CheckNonNegative!GLsizei(instance_count)
+  CheckGE!GLint(first_index, 0) // "Recommended behaviour"
+  CheckGE!GLsizei(indices_count, 0)
+  CheckGE!GLsizei(instance_count, 0)
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), as!u32(instance_count))
   WriteGPUFramebufferData(ctx)
@@ -112,9 +112,9 @@ sub void DrawElements(ref!Context    ctx,
                       GLsizei        instance_count,
                       GLint          base_vertex) {
   checkPrimitiveType(draw_mode)
-  CheckNonNegative!GLsizei(indices_count) // SPEC: missing in pdf
+  CheckGE!GLsizei(indices_count, 0) // SPEC: missing in pdf
   checkIndicesType(indices_type)
-  CheckNonNegative!GLsizei(instance_count) // SPEC: missing in pdf
+  CheckGE!GLsizei(instance_count, 0) // SPEC: missing in pdf
   if indices_count > 0 {
     count := as!u32(indices_count)
     index_buffer := ctx.Bound.VertexArray.ElementArrayBuffer

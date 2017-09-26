@@ -478,7 +478,7 @@ cmd void glDeleteProgramPipelines(GLsizei n, const PipelineId* pipelines) {
 }
 
 sub void DeleteProgramPipelines(GLsizei count, const PipelineId* pipelines) {
-  CheckNonNegative!GLsizei(count)
+  CheckGE!GLsizei(count, 0)
   ids := pipelines[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -540,7 +540,7 @@ cmd void glGenProgramPipelines(GLsizei count, PipelineId* pipelines) {
 }
 
 sub void GenProgramPipelines(GLsizei count, PipelineId* pipelines) {
-  CheckNonNegative!GLsizei(count)
+  CheckGE!GLsizei(count, 0)
   t := pipelines[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
@@ -564,7 +564,7 @@ cmd void glGetActiveAttrib(ProgramId      program,
                            GLenum*        type,
                            GLchar*        name) {
 
-  CheckNonNegative!GLsizei(buffer_size)
+  CheckGE!GLsizei(buffer_size, 0)
 
   ctx := GetContext()
   _ = GetProgramOrError(program)
@@ -592,7 +592,7 @@ cmd void glGetActiveUniform(ProgramId    program,
 
   ctx := GetContext()
   _ = GetProgramOrError(program)
-  CheckNonNegative!GLsizei(buffer_size)
+  CheckGE!GLsizei(buffer_size, 0)
   p := ctx.Objects.Shared.Programs[program]
   if !(index in p.ActiveUniforms) { glErrorInvalidValue() }
 
@@ -674,7 +674,7 @@ cmd void glGetAttachedShaders(ProgramId program,
 
   ctx := GetContext()
   _ = GetProgramOrError(program)
-  CheckNonNegative!GLsizei(buffer_length)
+  CheckGE!GLsizei(buffer_length, 0)
   p := ctx.Objects.Shared.Programs[program]
   l := min!s32(as!s32(buffer_length), len(p.Shaders))
   if shaders_length_written != null {
@@ -743,7 +743,7 @@ cmd void glGetProgramInfoLog(ProgramId program,
                              GLsizei*  string_length_written,
                              GLchar*   info) {
   _ = GetProgramOrError(program)
-  CheckNonNegative!GLsizei(buffer_length)
+  CheckGE!GLsizei(buffer_length, 0)
   writeString(buffer_length, string_length_written, info)
 }
 
@@ -945,7 +945,7 @@ cmd void glGetShaderInfoLog(ShaderId shader,
                             GLsizei* string_length_written,
                             GLchar*  info) {
   _ = GetShaderOrError(shader)
-  CheckNonNegative!GLsizei(buffer_length)
+  CheckGE!GLsizei(buffer_length, 0)
   writeString(buffer_length, string_length_written, info)
 }
 
@@ -989,7 +989,7 @@ cmd void glGetShaderSource(ShaderId shader,
                            GLsizei* string_length_written,
                            GLchar*  source) {
   _ = GetShaderOrError(shader)
-  CheckNonNegative!GLsizei(buffer_length)
+  CheckGE!GLsizei(buffer_length, 0)
   // TODO: Handle properly. Mind the null-terminator.
   writeString(buffer_length, string_length_written, source)
 }
@@ -1867,7 +1867,7 @@ cmd void glShaderSource(ShaderId             shader,
                         GLsizei              count,
                         const GLchar* const* source,
                         const GLint*         length) {
-  CheckNonNegative!GLsizei(count)
+  CheckGE!GLsizei(count, 0)
 
   sources := source[0:count]
   ctx := GetContext()
