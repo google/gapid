@@ -116,13 +116,17 @@ public class MainWindow extends ApplicationWindow {
     Shell shell = getShell();
     Display display = shell.getDisplay();
     while (!shell.isDisposed()) {
-      if (!display.readAndDispatch()) {
-        System.err.println("false");
+      long start = System.nanoTime();
+      boolean sleep = !display.readAndDispatch();
+      long end = System.nanoTime();
+      System.err.println(TimeUnit.NANOSECONDS.toMillis(end - start) + " " + sleep);
+      if (sleep) {
         display.sleep();
       }
-      System.err.println("true");
     }
-    if (!display.isDisposed()) display.update();
+    if (!display.isDisposed()) {
+      display.update();
+    }
     return 0;
   }
   */
