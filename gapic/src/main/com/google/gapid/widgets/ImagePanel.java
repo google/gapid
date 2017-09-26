@@ -48,11 +48,6 @@ import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.graphics.Color;
@@ -83,6 +78,10 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.IntConsumer;
 import java.util.logging.Logger;
@@ -753,6 +752,7 @@ public class ImagePanel extends Composite {
               .setMinMagFilter(GL11.GL_LINEAR, GL11.GL_NEAREST)
               .setBorderColor(newData.borderColor);
           image.uploadToTexture(texture);
+          imageToTexture.put(image, texture);
         }
 
         // Get range limits, update uniforms.
