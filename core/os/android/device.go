@@ -59,6 +59,8 @@ type Device interface {
 	GetScreenDimensions(ctx context.Context) (orientation, width, height int, ok bool)
 	// InstalledPackages returns the sorted list of installed packages on the device.
 	InstalledPackages(ctx context.Context) (InstalledPackages, error)
+	// InstalledPackage returns information about a single installed package on the device.
+	InstalledPackage(ctx context.Context, name string) (*InstalledPackage, error)
 	// IsScreenOn returns true if the device's screen is currently on.
 	IsScreenOn(ctx context.Context) (bool, error)
 	// TurnScreenOn turns the device's screen on.

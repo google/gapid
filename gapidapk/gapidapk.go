@@ -89,37 +89,34 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 	}.Bind(ctx)
 
 	for attempts := installAttempts; attempts > 0; attempts-- {
-		log.I(ctx, "Looking at installed packages...")
-		packages, err := d.InstalledPackages(ctx)
+		log.I(ctx, "Looking for gapid.apk...")
+		gapid, err := d.InstalledPackage(ctx, name)
 		if err != nil {
-			return nil, log.Err(ctx, err, "Listing installed packages")
-		}
-
-		if gapid := packages.FindByName(name); gapid == nil {
 			log.I(ctx, "Installing gapid.apk...")
 			if err := d.InstallAPK(ctx, apkPath.System(), false, true); err != nil {
 				return nil, log.Err(ctx, err, "Installing gapid.apk")
 			}
-		} else {
-			ctx = log.V{
-				"installed-version-name": gapid.VersionName,
-				"installed-version-code": gapid.VersionCode,
-			}.Bind(ctx)
-
-			if gapid.VersionCode != apkManifest.VersionCode ||
-				gapid.VersionName != apkManifest.VersionName {
-				log.I(ctx, "Uninstalling existing gapid.apk as version has changed.")
-				gapid.Uninstall(ctx)
-				continue
-			}
-
-			apkPath, err := gapid.Path(ctx)
-			if err != nil {
-				return nil, log.Err(ctx, err, "Obtaining GAPID package path")
-			}
-			log.I(ctx, "Found gapid package...")
-			return &APK{gapid, path.Dir(apkPath)}, nil
+			continue
 		}
+
+		ctx = log.V{
+			"installed-version-name": gapid.VersionName,
+			"installed-version-code": gapid.VersionCode,
+		}.Bind(ctx)
+
+		if gapid.VersionCode != apkManifest.VersionCode ||
+			gapid.VersionName != apkManifest.VersionName {
+			log.I(ctx, "Uninstalling existing gapid.apk as version has changed.")
+			gapid.Uninstall(ctx)
+			continue
+		}
+
+		apkPath, err := gapid.Path(ctx)
+		if err != nil {
+			return nil, log.Err(ctx, err, "Obtaining GAPID package path")
+		}
+		log.I(ctx, "Found gapid package...")
+		return &APK{gapid, path.Dir(apkPath)}, nil
 	}
 
 	return nil, log.Err(ctx, nil, "Unable to install GAPID")
