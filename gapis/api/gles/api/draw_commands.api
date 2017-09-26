@@ -77,7 +77,7 @@ cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count
 cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
   checkPrimitiveType(draw_mode)
   ctx := GetContext()
-  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
+  CheckNonDefaultVertexArrayBound()
   if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
   // TODO: CheckEQ(as!u64(indirect) % 4, 0)
@@ -189,7 +189,7 @@ cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const voi
   checkIndicesType(indices_type)
 
   ctx := GetContext()
-  if IsDefaultVertexArrayBound() { glErrorInvalidOperation() }
+  CheckNonDefaultVertexArrayBound()
   // TODO: Error if enabled array is not bound or is mapped.
   if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.

@@ -124,7 +124,9 @@ cmd void glWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
 
 sub void WaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
   ctx := GetContext()
-  if !(sync in ctx.Objects.Shared.SyncObjects) { glErrorInvalidOperation() }
+  if !(sync in ctx.Objects.Shared.SyncObjects) {
+    glErrorInvalidOperation_ObjectDoesNotExist!GLsync(sync)
+  }
   CheckEQ!GLuint64(timeout, 0xFFFFFFFFFFFFFFFF) // GL_TIMEOUT_IGNORED
   CheckEQ!GLbitfield(syncFlags, as!GLbitfield(0))
 }
