@@ -37,3 +37,19 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(result)
 	}
 }
+
+func (s *Server) handleWorkers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	result := []*job.Worker{}
+
+	if query, err := query(w, r); err == nil {
+		if err = s.Job.SearchWorkers(ctx, query, func(ctx context.Context, entry *job.Worker) error {
+			result = append(result, entry)
+			return nil
+		}); err != nil {
+			writeError(w, 500, err)
+			return
+		}
+		json.NewEncoder(w).Encode(result)
+	}
+}

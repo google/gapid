@@ -74,6 +74,7 @@ func Create(ctx context.Context, config Config) (*Server, error) {
 	http.HandleFunc("/replays/", server.handleReplays)
 	http.HandleFunc("/reports/", server.handleReports)
 	http.HandleFunc("/devices/", server.handleDevices)
+	http.HandleFunc("/workers/", server.handleWorkers)
 	http.HandleFunc("/entities/", server.handleEntities)
 	http.HandleFunc("/status/", server.handleStatus)
 	server.listener = listener{l.(*net.TCPListener)}
