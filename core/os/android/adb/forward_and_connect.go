@@ -29,9 +29,9 @@ import (
 )
 
 const (
-	connectionAttempts = 30
-	reconnectDelay     = time.Second
-	ErrServiceTimeout  = fault.Const("Timeout connecting to service")
+	reconnectDelay    = time.Millisecond * 100
+	connectionTimeout = time.Second * 30
+	ErrServiceTimeout = fault.Const("Timeout connecting to service")
 )
 
 // ForwardAndConnect forwards the local-abstract-socket las and connects to it.
@@ -54,7 +54,8 @@ func ForwardAndConnect(ctx context.Context, d Device, las string) (io.ReadCloser
 
 	app.AddCleanup(ctx, unforward)
 
-	for i := 0; i < connectionAttempts; i++ {
+	start := time.Now()
+	for time.Since(start) < connectionTimeout {
 		if sock, err := net.Dial("tcp", fmt.Sprintf("localhost:%v", port)); err == nil {
 			reader := bufio.NewReader(sock)
 			if _, err := reader.Peek(1); err == nil {
@@ -65,7 +66,6 @@ func ForwardAndConnect(ctx context.Context, d Device, las string) (io.ReadCloser
 
 				return readerCustomCloser{reader, close}, nil
 			}
-
 			sock.Close()
 		}
 		time.Sleep(reconnectDelay)
