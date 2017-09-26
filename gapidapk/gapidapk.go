@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/log"
@@ -27,9 +28,13 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/android/apk"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
 )
 
-const installAttempts = 5
+const (
+	installAttempts = 5
+	checkFrequency  = time.Second * 5
+)
 
 var ensureInstalledMutex sync.Mutex
 
@@ -37,6 +42,12 @@ var ensureInstalledMutex sync.Mutex
 type APK struct {
 	*android.InstalledPackage
 	path string
+}
+
+type lastInstallCheckKey struct{ *device.ABI }
+type lastInstallCheckRes struct {
+	time time.Time
+	apk  *APK
 }
 
 // EnsureInstalled ensures that gapid.apk with the specified ABI is installed on
@@ -53,6 +64,14 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 	}
 
 	ctx = log.V{"abi": abi.Name}.Bind(ctx)
+
+	// Was this recently checked?
+	reg, checkKey := bind.GetRegistry(ctx), lastInstallCheckKey{abi}
+	if res, ok := reg.DeviceProperty(ctx, d, checkKey).(lastInstallCheckRes); ok {
+		if time.Since(res.time) < checkFrequency {
+			return res.apk, nil
+		}
+	}
 
 	// Check the device actually supports the requested ABI.
 	if !d.Instance().Configuration.SupportsABI(abi) {
@@ -116,7 +135,10 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 			return nil, log.Err(ctx, err, "Obtaining GAPID package path")
 		}
 		log.I(ctx, "Found gapid package...")
-		return &APK{gapid, path.Dir(apkPath)}, nil
+
+		out := &APK{gapid, path.Dir(apkPath)}
+		reg.SetDeviceProperty(ctx, d, checkKey, lastInstallCheckRes{time.Now(), out})
+		return out, nil
 	}
 
 	return nil, log.Err(ctx, nil, "Unable to install GAPID")

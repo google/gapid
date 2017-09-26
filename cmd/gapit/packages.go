@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapidapk"
 )
@@ -45,6 +46,8 @@ func init() {
 }
 
 func (verb *packagesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	ctx = bind.PutRegistry(ctx, bind.NewRegistry())
+
 	if verb.ADB != "" {
 		adb.ADB = file.Abs(verb.ADB)
 	}
