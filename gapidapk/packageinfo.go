@@ -40,6 +40,7 @@ func PackageList(ctx context.Context, d adb.Device, includeIcons bool, iconDensi
 		return nil, err
 	}
 
+	log.D(ctx, "Looking for service action...")
 	action := apk.ServiceActions.FindByName(sendPkgInfoAction, sendPkgInfoService)
 	if action == nil {
 		return nil, log.Err(ctx, nil, "Service intent was not found")
@@ -47,6 +48,7 @@ func PackageList(ctx context.Context, d adb.Device, includeIcons bool, iconDensi
 
 	onlyDebug := d.Root(ctx) == adb.ErrDeviceNotRooted
 
+	log.D(ctx, "Starting service...")
 	if err := d.StartService(ctx, *action,
 		android.BoolExtra{Key: sendPkgInfoOnlyDebugExtra, Value: onlyDebug},
 		android.BoolExtra{Key: sendPkgInfoIncludeIconsExtra, Value: includeIcons},
@@ -55,6 +57,7 @@ func PackageList(ctx context.Context, d adb.Device, includeIcons bool, iconDensi
 		return nil, log.Err(ctx, err, "Starting service")
 	}
 
+	log.D(ctx, "Connecting to port...")
 	sock, err := adb.ForwardAndConnect(ctx, d, sendPkgInfoPort)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Connecting to service port")
@@ -62,11 +65,13 @@ func PackageList(ctx context.Context, d adb.Device, includeIcons bool, iconDensi
 
 	defer sock.Close()
 
+	log.D(ctx, "Unmarshalling data...")
 	out := &pkginfo.PackageList{}
 	if err := jsonpb.Unmarshal(sock, out); err != nil {
 		return nil, log.Err(ctx, err, "unmarshal json data")
 	}
 
+	log.D(ctx, "Sorting data...")
 	out.Sort()
 
 	return out, nil
