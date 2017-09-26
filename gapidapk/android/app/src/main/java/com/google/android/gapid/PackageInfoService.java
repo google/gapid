@@ -34,15 +34,12 @@ import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
-import android.util.TypedValue;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -68,7 +65,7 @@ public class PackageInfoService extends IntentService {
 
     private static final int BASE_ICON_DENSITY = DisplayMetrics.DENSITY_MEDIUM;
 
-    private static final boolean PROFILE = true;
+    private static final boolean PROFILE = false;
 
     /**
      * Action used to start waiting for an incoming connection on the local-abstract port
