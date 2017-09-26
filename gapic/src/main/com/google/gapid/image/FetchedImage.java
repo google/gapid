@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * A {@link MultiLevelImage} fetched from the RPC server.
+ * A {@link MultiLayerAndLevelImage} fetched from the RPC server.
  */
 public class FetchedImage implements MultiLayerAndLevelImage {
   private final Layer[] layers;
@@ -87,7 +87,8 @@ public class FetchedImage implements MultiLayerAndLevelImage {
         case TEXTURE_2D_ARRAY: return new FetchedImage(client, format, texture.getTexture2DArray());
         case TEXTURE_3D: return new FetchedImage(client, format, texture.getTexture3D());
         case CUBEMAP: return new FetchedImage(client, format, texture.getCubemap());
-        case CUBEMAP_ARRAY: return new FetchedImage(client, format, texture.getCubemapArray());
+        case CUBEMAP_ARRAY:
+          throw new UnsupportedOperationException("Cubemap Array images not yet implemented");
         default:
           throw new UnsupportedOperationException("Unexpected resource type: " + value);
       }
@@ -215,10 +216,6 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       levels[i] = new SixFacedLevel(client, format, infos.get(i));
     }
     layers = new Layer[] { new Layer(levels) };
-  }
-
-  public FetchedImage(Client client, Images.Format format, API.CubemapArray texture) {
-    throw new RuntimeException("FetchedImage() for CubemapArray not yet implemented");
   }
 
   @Override

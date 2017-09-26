@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
@@ -298,11 +299,11 @@ public class ImagePanel extends Composite {
     level = Math.min(image.getLevelCount() - 1, level);
     loading.startLoading();
 
-    ListenableFuture<Image>[] layers = new ListenableFuture[image.getLayerCount()];
-    for (int layer = 0; layer < layers.length; layer++) {
-      layers[layer] = image.getImage(layer, level);
+    List<ListenableFuture<Image>> layerFutures = Lists.newArrayList();
+    for (int layer = 0; layer < image.getLayerCount(); layer++) {
+      layerFutures.add(image.getImage(layer, level));
     }
-    imageRequestController.start().listen(Futures.allAsList(layers),
+    imageRequestController.start().listen(Futures.allAsList(layerFutures),
         new UiErrorCallback<List<Image>, List<Image>, Loadable.Message>(this, LOG) {
       @Override
       protected ResultOrError<List<Image>, Loadable.Message> onRpcThread(Rpc.Result<List<Image>> result)
