@@ -269,11 +269,8 @@ sub ref!Shader GetShaderOrError(ShaderId shader) {
   ctx := GetContext()
   s := ctx.Objects.Shared.Shaders[shader]
   if s == null {
-    if (!as!ProgramId(shader) in ctx.Objects.Shared.Programs) {
-      glErrorInvalidValue()
-    } else {
-      glErrorInvalidOperation()
-    }
+    if !(as!ProgramId(shader) in ctx.Objects.Shared.Programs) { glErrorInvalidObjectName!ShaderId(shader) }
+    glErrorInvalidOperation()
   }
   return s
 }
@@ -282,11 +279,8 @@ sub ref!Program GetProgramOrError(ProgramId program) {
   ctx := GetContext()
   p := ctx.Objects.Shared.Programs[program]
   if p == null {
-    if (!as!ShaderId(program) in ctx.Objects.Shared.Shaders) {
-      glErrorInvalidValue()
-    } else {
-      glErrorInvalidOperation()
-    }
+    if !(as!ShaderId(program) in ctx.Objects.Shared.Shaders) { glErrorInvalidValue!ProgramId(program) }
+    glErrorInvalidOperation()
   }
   return p
 }
@@ -569,7 +563,7 @@ cmd void glGetActiveAttrib(ProgramId      program,
   ctx := GetContext()
   _ = GetProgramOrError(program)
   p := ctx.Objects.Shared.Programs[program]
-  if !(index in p.ActiveAttributes) { glErrorInvalidValue() }
+  if !(index in p.ActiveAttributes) { glErrorInvalidValue!AttributeIndex(index) }
 
   writeString(buffer_size, buffer_bytes_written, name)
 
@@ -594,7 +588,7 @@ cmd void glGetActiveUniform(ProgramId    program,
   _ = GetProgramOrError(program)
   CheckSizeGE!GLsizei(buffer_size, 0)
   p := ctx.Objects.Shared.Programs[program]
-  if !(index in p.ActiveUniforms) { glErrorInvalidValue() }
+  if !(index in p.ActiveUniforms) { glErrorInvalidValue!UniformIndex(index) }
 
   writeString(buffer_size, buffer_bytes_written, name)
 

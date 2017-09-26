@@ -881,7 +881,7 @@ sub void FramebufferTextureMultiviewOVR(GLenum    target,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue() }
+    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidObjectName!TextureId(texture) }
     attachment_info.Type = GL_TEXTURE
     attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
     attachment_info.TextureLevel = level

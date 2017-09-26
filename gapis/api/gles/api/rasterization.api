@@ -117,7 +117,7 @@ cmd void glGetMultisamplefv(GLenum pname, GLuint index, GLfloat* val) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glLineWidth.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glLineWidth.xhtml", Version.GLES32)
 cmd void glLineWidth(GLfloat width) {
-  if width <= 0.0 { glErrorInvalidValue() }
+  if width <= 0.0 { glErrorInvalidValue!GLfloat(width) }
   ctx := GetContext()
   ctx.Rasterization.LineWidth = width
 }

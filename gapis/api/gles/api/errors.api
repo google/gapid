@@ -28,8 +28,12 @@ sub void glErrorInvalidEnumMsg(message m) {
   abort
 }
 
-sub void glErrorInvalidValue() {
-  glErrorInvalidValueMsg(new!ERR_INVALID_VALUE())
+sub void glErrorInvalidValue!T(T value) {
+  glErrorInvalidValueMsg(new!ERR_INVALID_VALUE(value: as!s64(value)))
+}
+
+sub void glErrorInvalidObjectName!T(T value) {
+  glErrorInvalidValueMsg(new!ERR_INVALID_OBJECT_NAME(value: as!s64(value)))
 }
 
 sub void glErrorInvalidValueMsg(message m) {

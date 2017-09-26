@@ -34,7 +34,7 @@ cmd GLenum glClientWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout)
 sub void ClientWaitSync(GLsync sync, GLbitfield syncFlags, GLuint64 timeout) {
   supportsBits(syncFlags, GL_SYNC_FLUSH_COMMANDS_BIT)
   ctx := GetContext()
-  if !(sync in ctx.Objects.Shared.SyncObjects) { glErrorInvalidValue() }
+  if !(sync in ctx.Objects.Shared.SyncObjects) { glErrorInvalidObjectName!GLsync(sync) }
   if (GL_SYNC_FLUSH_COMMANDS_BIT in syncFlags) {
   }
   _ = timeout // TODO
@@ -51,7 +51,7 @@ cmd void glDeleteSync(GLsync sync) {
 sub void DeleteSync(GLsync sync) {
   if sync != null {
     ctx := GetContext()
-    if !(sync in ctx.Objects.Shared.SyncObjects) { glErrorInvalidValue() }
+    if !(sync in ctx.Objects.Shared.SyncObjects) { glErrorInvalidValue!GLsync(sync) }
     delete(ctx.Objects.Shared.SyncObjects, sync)
   }
 }

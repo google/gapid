@@ -252,7 +252,7 @@ sub SizedFormatInfo GetSizedFormatInfoOrEnumError(GLenum internalformat) {
 sub SizedFormatInfo GetSizedFormatInfoOrValueError(GLint internalformat) {
   info := GetSizedFormatInfo(as!GLenum(internalformat))
   if info.UnsizedFormat == GL_NONE {
-    glErrorInvalidValue()
+    glErrorInvalidValue!GLint(internalformat)
   }
   return info
 }
@@ -550,7 +550,7 @@ cmd void glBindImageTexture(GLuint    unit,
 cmd void glBindSampler(GLuint index, SamplerId sampler) {
   ctx := GetContext()
   tu := ctx.Objects.TextureUnits[as!TextureUnitId(index)]
-  if tu == null { glErrorInvalidValue() }
+  if tu == null { glErrorInvalidObjectName!SamplerId(sampler) }
   tu.SamplerBinding = GetOrCreateSampler(sampler)
 }
 
@@ -1270,7 +1270,7 @@ cmd void glPixelStorei(GLenum parameter, GLint value) {
   switch (parameter) {
     @if(Version.GLES20)
     case GL_PACK_ALIGNMENT: {
-      if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue() }
+      if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue!GLint(value) }
       ctx.Other.Pack.Alignment = value
     }
     @if(Version.GLES30)
@@ -1295,7 +1295,7 @@ cmd void glPixelStorei(GLenum parameter, GLint value) {
     }
     @if(Version.GLES20)
     case GL_UNPACK_ALIGNMENT: {
-      if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue() }
+      if (value != 1) && (value != 2) && (value != 4) && (value != 8) { glErrorInvalidValue!GLint(value) }
       ctx.Other.Unpack.Alignment = value
     }
     @if(Version.GLES30)
