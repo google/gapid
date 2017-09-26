@@ -27,13 +27,35 @@ import (
 	"github.com/google/gapid/core/os/device"
 )
 
-// InstalledPackages returns the sorted list of installed packages on the device.
+// InstalledPackages returns the sorted list of installed packages on the
+// device.
 func (b *binding) InstalledPackages(ctx context.Context) (android.InstalledPackages, error) {
 	str, err := b.Shell("dumpsys", "package").Call(ctx)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Failed to get installed packages")
 	}
 	return b.parsePackages(str)
+}
+
+// InstalledPackage returns information about a single installed package on the
+// device.
+func (b *binding) InstalledPackage(ctx context.Context, name string) (*android.InstalledPackage, error) {
+	str, err := b.Shell("dumpsys", "package", name).Call(ctx)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Failed to get installed packages")
+	}
+	packages, err := b.parsePackages(str)
+	if err != nil {
+		return nil, err
+	}
+	switch len(packages) {
+	case 0:
+		return nil, fmt.Errorf("Package '%v' not found", name)
+	case 1:
+		return packages[0], nil
+	default:
+		return nil, fmt.Errorf("%v packages found with name '%v'", len(packages), name)
+	}
 }
 
 // The minSdk field was added more recently [see https://goo.gl/UN7oFv]
