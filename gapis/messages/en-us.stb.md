@@ -55,10 +55,6 @@ Invalid value {{value:s64}}. It must be less than {{constraint:s64}}.
 
 Invalid value {{value:s64}}. Attribute location must be less than {{constraint:s64}}.
 
-# ERR_INVALID_VALUE_NEGATIVE
-
-Invalid value {{value:s64}}: The value must be positive or zero.
-
 # ERR_INVALID_ENUM
 
 Invalid enum {{value:u32}}.

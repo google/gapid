@@ -83,10 +83,3 @@ sub void CheckLT!T(T value, T constraint) {
     glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_CHECK_LT(value: as!s64(value), constraint: as!s64(constraint)))
   }
 }
-
-sub void CheckNonNegative!T(T param) {
-  if param < 0 {
-    glErrorInvalidValueMsg(new!ERR_INVALID_VALUE_NEGATIVE(value: as!s64(param)))
-  }
-}
-
