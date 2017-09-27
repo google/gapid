@@ -34,7 +34,6 @@ public final class IOUtils {
                 for (int n; (n = is.read(buf)) != -1; ) {
                     os.write(buf, 0, n);
                 }
-                os.flush();
                 return os.toByteArray();
             }
         }

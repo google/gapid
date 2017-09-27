@@ -136,9 +136,7 @@ public class Counter {
             Collections.sort(sorted, new Comparator<Counter>() {
                 @Override
                 public int compare(Counter a, Counter b) {
-                    if (a.time < b.time) { return 1; }
-                    if (a.time > b.time) { return -1; }
-                    return 0;
+                    return Float.compare(a.time, b.time);
                 }
             });
             for (Counter child : sorted) {
@@ -161,15 +159,15 @@ public class Counter {
         private final Counter counter;
 
         private Scope(Counter counter) {
-            this.start = System.currentTimeMillis();
+            this.start = System.nanoTime();
             this.counter = counter;
             counter.enter();
         }
 
         @Override
         public void close() {
-            long end = System.currentTimeMillis();
-            counter.exit((end - start) / 1000.0f);
+            long end = System.nanoTime();
+            counter.exit((end - start) / 1000000000.0f);
         }
     }
 }

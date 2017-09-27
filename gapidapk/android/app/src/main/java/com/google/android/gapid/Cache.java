@@ -47,11 +47,15 @@ public class Cache<K, V> {
      * then the {@link Builder} will be used to create the value.
      */
     public V get(K key) {
-        if (map.containsKey(key)) {
-            return map.get(key);
+        synchronized (map) {
+            if (map.containsKey(key)) {
+                return map.get(key);
+            }
         }
         V value = builder.build(key);
-        map.put(key, value);
+        synchronized (map) {
+            map.put(key, value);
+        }
         return value;
     }
 
