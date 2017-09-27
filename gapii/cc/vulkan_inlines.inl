@@ -452,7 +452,6 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
 
 template<typename Payload, typename Func>
 void VulkanSpy::addCmd(CallObserver* observer, VkCommandBuffer cmdBuf, Payload payload, Func func) {
-    if (is_recording_state()) return;
     AppendCommand(cmdBuf, this, payload);
     auto buffer = CommandBuffers[cmdBuf];
     buffer->commands.push_back([this, payload, func](CallObserver* observer) {

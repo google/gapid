@@ -88,10 +88,6 @@ public:
     void set_observing(bool observing) { mIsObserving = observing; }
     bool is_observing() const { return mIsObserving; }
 
-    // TODO(awoloszyn) We can remove this once we have switched over our
-    // mid-execution over to pass across the serialized state.
-    bool is_recording_state() const { return mIsRecordingState; }
-    void set_recording_state(bool recording) { mIsRecordingState = recording; }
 protected:
     static const size_t kMaxExtras = 16; // Per atom
 
