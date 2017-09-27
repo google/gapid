@@ -280,14 +280,16 @@ inline PackEncoder::SPtr CallObserver::encoder() {
     return mEncoderStack.top();
 }
 
+extern InvalidReferences kInvalidReferences;
+
 template <typename T>
 inline void CallObserver::enter(const T& obj) {
-    enterAndDelete(obj.toProto(&unused_reference_function));
+    enterAndDelete(obj.toProto(&kInvalidReferences));
 }
 
 template <typename T>
 inline void CallObserver::encode(const T& obj) {
-    encodeAndDelete(obj.toProto(&unused_reference_function));
+    encodeAndDelete(obj.toProto(&kInvalidReferences));
 }
 
 }  // namespace gapii

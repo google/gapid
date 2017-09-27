@@ -54,11 +54,12 @@ message Reference {
     uint64 Identifier = 1;
 }
 
-message PoolData {
+message MemoryWrite {
     // The unique identifier for this pool
     // Anything else that represents this same pool will have
     // the same identifier.
-    uint64 Identifier = 1;
-    uint64 Size = 2;
-    bytes Data = 3;
+    uint64 PoolID = 1;
+    uint64 Offset = 2;
+    uint64 Size = 3;
+    bytes Data = 4;
 }

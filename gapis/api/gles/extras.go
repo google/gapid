@@ -67,7 +67,7 @@ func init() {
 		},
 	)
 	protoconv.Register(
-		func(ctx context.Context, o *EGLImageData) (*gles_pb.EGLImageData, error) {
+		func(ctx context.Context, _ func(interface{}) uint64, o *EGLImageData) (*gles_pb.EGLImageData, error) {
 			return &gles_pb.EGLImageData{
 				ID:     o.ID[:],
 				Size:   int32(o.Size),
@@ -76,7 +76,7 @@ func init() {
 				Format: int32(o.Format),
 				Type:   int32(o.Type),
 			}, nil
-		}, func(ctx context.Context, p *gles_pb.EGLImageData) (*EGLImageData, error) {
+		}, func(ctx context.Context, _ func(uint64, interface{}), p *gles_pb.EGLImageData) (*EGLImageData, error) {
 			var id id.ID
 			copy(id[:], p.ID)
 			return &EGLImageData{

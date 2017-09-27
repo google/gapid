@@ -37,17 +37,14 @@
   #include "gapis/api/{{Global "API"}}/{{Global "API"}}_pb/api.pb.h"
   ¶
   namespace gapii «{
-    void {{$spyname}}::serializeState(CallObserver* observer) {
+    {{Global "API"}}_pb::State* {{$spyname}}::serializeState(CallObserver* observer, ReferenceSerializer* _s) {
       // Globals
-      auto serializer = StateSerializer(observer);
-      passed_proto_func _func = [&](void* p, const std::function<::google::protobuf::Message*()>& f){ return serializer.call(p, f); };
 
       auto out = new {{Global "API"}}_pb::State();
       {{range $g := $.Globals}}
         {{Template "SerializeGlobal" $g}}
       {{end}}
-      observer->encodeAndDelete(out);
-      serializer.Finalize();
+      return out;
     }
   }
 {{end}}

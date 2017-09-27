@@ -57,8 +57,7 @@
   »}
 ¶
   namespace gapii {«
-  using to_proto_func = const std::function<::google::protobuf::Message*()>&;¶
-  using passed_proto_func = const std::function<uint64_t(void*, to_proto_func)>&;¶
+  class ReferenceSerializer;
 ¶
   class CallObserver;
 ¶
@@ -161,8 +160,8 @@
     {{end}}
 
     {{if $serializable}}
-      ::google::protobuf::Message* toProto(passed_proto_func) const;
-      void toProto(ProtoType* out, passed_proto_func) const;
+      ::google::protobuf::Message* toProto(ReferenceSerializer* _s) const;
+      void toProto(ProtoType* out, ReferenceSerializer* _s) const;
     {{end}}
 ¶
     {{range $f := $.Fields}}
@@ -276,7 +275,7 @@
   {{if not (GetAnnotation $ "pfn")}}
     ¶
     struct {{$name}} {
-      ::google::protobuf::Message* toProto(passed_proto_func) const;
+      ::google::protobuf::Message* toProto(ReferenceSerializer* _s) const;
       ¶
       uint64_t thread;¶
       {{range $p := $.CallParameters}}
@@ -288,7 +287,7 @@
     };
     {{if not (IsVoid $.Return.Type)}}¶
       struct {{$name}}Call {
-        ::google::protobuf::Message* toProto(passed_proto_func) const;
+        ::google::protobuf::Message* toProto(ReferenceSerializer*) const;
         {{Template "C++.Type" $.Return.Type}} result;
       };
     {{end}}

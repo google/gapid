@@ -31,6 +31,7 @@
     {{if (GetAnnotation $c "serialize")}}{{Template "ClassEntry" $c}}{{end}}
   {{end}}
 
+  {{Global "ProtoID" 0}}
   message State {»¶
     uint64 id = {{Inc "ProtoID"}};¶
     {{range $g := $.Globals}}

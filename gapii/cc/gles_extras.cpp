@@ -143,7 +143,7 @@ std::shared_ptr<ProgramInfo> GlesSpy::GetProgramInfoExtra(CallObserver* observer
 
     // We can pass nullptr down because we know that there are no references
     // in the datastructure
-    observer->encodeAndDelete(pi->toProto(&unused_reference_function));
+    observer->encodeAndDelete(pi->toProto(&kInvalidReferences));
     return pi;
 }
 
@@ -184,7 +184,7 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
         buffer->usage
     ));
     GAPID_DEBUG("Created AndroidNativeBufferExtra: width=%i, height=%i", buffer->width, buffer->height);
-    observer->encodeAndDelete(extra->toProto(&unused_reference_function));
+    observer->encodeAndDelete(extra->toProto(&kInvalidReferences));
     return extra;
 #else
     return nullptr;
