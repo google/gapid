@@ -94,8 +94,6 @@ struct VulkanStateSerializer: public ReferenceSerializer {
     uint64_t mLastSeenPool = 1;
 };
 
-
-
 void VulkanSpy::CaptureState(CallObserver* observer) {
     // TODO: set up our virtual pools.
     VulkanStateSerializer serializer(observer);

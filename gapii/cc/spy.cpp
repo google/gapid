@@ -480,7 +480,8 @@ void Spy::onPostStartOfFrame() {
         if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
             exit();
             set_suspended(false);
-            auto spy_ctx = enter("RecreateState", 2);
+            auto spy_ctx = enter("CaptureState", 0);
+            spy_ctx->enterAndDelete(new capture::State());
             VulkanSpy::CaptureState(spy_ctx);
             spy_ctx->exit();
             // The outer call will handle the spy->exit() for us.
@@ -514,7 +515,8 @@ void Spy::onPostEndOfFrame() {
         if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
             exit();
             set_suspended(false);
-            auto spy_ctx = enter("RecreateState", 2);
+            auto spy_ctx = enter("CaptureState", 0);
+            spy_ctx->enterAndDelete(new capture::State());
             VulkanSpy::CaptureState(spy_ctx);
             spy_ctx->exit();
             // The outer call to VkQueuePresent will handle the spy->exit() for us.
