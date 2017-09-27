@@ -108,6 +108,7 @@ func Run(ctx context.Context, store *stash.Client, manager Manager, tempDir file
 	c.registry.Listen(c)
 
 	go func() {
+		ctx = bind.PutRegistry(ctx, c.registry)
 		if err := adb.Monitor(ctx, c.registry, 15*time.Second); err != nil {
 			log.E(ctx, "adb.Monitor failed: %v", err)
 		}
