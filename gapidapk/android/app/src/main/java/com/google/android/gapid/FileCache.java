@@ -32,7 +32,7 @@ public abstract class FileCache {
     private FileCache() {
     }
 
-    static <K, V> Cache<K, V> create(
+    public static <K, V> Cache<K, V> create(
             Context context,
             final String name,
             final Builder<K, V> builder) {
@@ -47,7 +47,7 @@ public abstract class FileCache {
                 }
             }
 
-            public V scopedBuild(K key) {
+            private V scopedBuild(K key) {
                 String name;
                 try (Counter.Scope t = Counter.time("filename")) {
                     try (Counter.Scope t2 = Counter.time("generate")) {
