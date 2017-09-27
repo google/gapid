@@ -29,223 +29,6 @@
 
 namespace gapii {
 
-namespace {
-class TemporaryShaderModule {
- public:
-  TemporaryShaderModule(CallObserver* observer, VulkanSpy* spy)
-      : observer_(observer), spy_(spy), temporary_shader_modules_() {}
-
-  VkShaderModule CreateShaderModule(
-      std::shared_ptr<ShaderModuleObject> module_obj) {
-    if (!module_obj) {
-      return VkShaderModule(0);
-    }
-    VkShaderModuleCreateInfo create_info{
-        VkStructureType::VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,  // sType
-        nullptr,                                                       // pNext
-        0,                                                             // flags
-        static_cast<size_t>(module_obj->mWords.size()),               // codeSize
-        module_obj->mWords.begin(),               // pCode
-    };
-    spy_->RecreateShaderModule(observer_, module_obj->mDevice, &create_info,
-                               &module_obj->mVulkanHandle);
-    temporary_shader_modules_.push_back(module_obj);
-    return module_obj->mVulkanHandle;
-  }
-
-  ~TemporaryShaderModule() {
-    for (auto m : temporary_shader_modules_) {
-      spy_->RecreateDestroyShaderModule(observer_, m->mDevice,
-                                        m->mVulkanHandle);
-    }
-  }
-
- private:
-  CallObserver* observer_;
-  VulkanSpy* spy_;
-  std::vector<std::shared_ptr<ShaderModuleObject>> temporary_shader_modules_;
-};
-
-VkRenderPass RebuildRenderPass(
-    CallObserver* observer, VulkanSpy* spy,
-    std::shared_ptr<RenderPassObject>& render_pass_object) {
-  if (!render_pass_object) {
-    return VkRenderPass(0);
-  }
-  VkRenderPassCreateInfo create_info = {
-      VkStructureType::VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      nullptr,
-      0,
-      0,
-      nullptr,
-      0,
-      nullptr,
-      0,
-      nullptr};
-  RenderPassObject& render_pass = *render_pass_object;
-  std::vector<VkAttachmentDescription> attachment_descriptions;
-  for (size_t i = 0; i < render_pass.mAttachmentDescriptions.size(); ++i) {
-    attachment_descriptions.push_back(render_pass.mAttachmentDescriptions[i]);
-  }
-  struct SubpassDescriptionData {
-    std::vector<VkAttachmentReference> inputAttachments;
-    std::vector<VkAttachmentReference> colorAttachments;
-    std::vector<VkAttachmentReference> resolveAttachments;
-    std::vector<uint32_t> preserveAttachments;
-  };
-  std::vector<std::unique_ptr<SubpassDescriptionData>> descriptionData;
-  std::vector<VkSubpassDescription> subpassDescriptions;
-  for (size_t i = 0; i < render_pass.mSubpassDescriptions.size(); ++i) {
-    auto& s = render_pass.mSubpassDescriptions[i];
-    auto dat =
-        std::unique_ptr<SubpassDescriptionData>(new SubpassDescriptionData());
-    for (size_t j = 0; j < s.mInputAttachments.size(); ++j) {
-      dat->inputAttachments.push_back(s.mInputAttachments[j]);
-    }
-    for (size_t j = 0; j < s.mColorAttachments.size(); ++j) {
-      dat->colorAttachments.push_back(s.mColorAttachments[j]);
-    }
-    for (size_t j = 0; j < s.mResolveAttachments.size(); ++j) {
-      dat->resolveAttachments.push_back(s.mResolveAttachments[j]);
-    }
-    for (size_t j = 0; j < s.mPreserveAttachments.size(); ++j) {
-      dat->preserveAttachments.push_back(s.mPreserveAttachments[j]);
-    }
-    subpassDescriptions.push_back({});
-    auto& d = subpassDescriptions.back();
-    d.mflags = s.mFlags;
-    d.mpipelineBindPoint = s.mPipelineBindPoint;
-    d.minputAttachmentCount = dat->inputAttachments.size();
-    d.mpInputAttachments = dat->inputAttachments.data();
-    d.mcolorAttachmentCount = dat->colorAttachments.size();
-    d.mpColorAttachments = dat->colorAttachments.data();
-    d.mpResolveAttachments = dat->resolveAttachments.size() > 0
-                                 ? dat->resolveAttachments.data()
-                                 : nullptr;
-    d.mpreserveAttachmentCount = dat->preserveAttachments.size();
-    d.mpPreserveAttachments = dat->preserveAttachments.data();
-
-    if (s.mDepthStencilAttachment) {
-      d.mpDepthStencilAttachment = s.mDepthStencilAttachment.get();
-    }
-    descriptionData.push_back(std::move(dat));
-  }
-  std::vector<VkSubpassDependency> subpassDependencies;
-  for (size_t i = 0; i < render_pass.mSubpassDependencies.size(); ++i) {
-    subpassDependencies.push_back(render_pass.mSubpassDependencies[i]);
-  }
-  create_info.mattachmentCount = attachment_descriptions.size();
-  create_info.mpAttachments = attachment_descriptions.data();
-  create_info.msubpassCount = subpassDescriptions.size();
-  create_info.mpSubpasses = subpassDescriptions.data();
-  create_info.mdependencyCount = subpassDependencies.size();
-  create_info.mpDependencies = subpassDependencies.data();
-  spy->RecreateRenderPass(observer, render_pass.mDevice, &create_info,
-                          &render_pass.mVulkanHandle);
-  return render_pass.mVulkanHandle;
-}
-
-class TemporaryRenderPass {
- public:
-  TemporaryRenderPass(CallObserver* observer, VulkanSpy* spy)
-      : observer_(observer), spy_(spy), temporary_render_passes_() {}
-
-  VkRenderPass CreateRenderPass(
-      std::shared_ptr<RenderPassObject>& render_pass_object) {
-    RebuildRenderPass(observer_, spy_, render_pass_object);
-    temporary_render_passes_.push_back(render_pass_object);
-    return render_pass_object->mVulkanHandle;
-  }
-
-  ~TemporaryRenderPass() {
-    for (auto m : temporary_render_passes_) {
-      spy_->RecreateDestroyRenderPass(observer_, m->mDevice, m->mVulkanHandle);
-    }
-  }
-
-  bool has(VkRenderPass renderpass) {
-    return std::find_if(temporary_render_passes_.begin(),
-                        temporary_render_passes_.end(),
-                        [renderpass](std::shared_ptr<RenderPassObject>& p) {
-                          return p->mVulkanHandle == renderpass;
-                        }) != temporary_render_passes_.end();
-  }
-
- private:
-  CallObserver* observer_;
-  VulkanSpy* spy_;
-  std::vector<std::shared_ptr<RenderPassObject>> temporary_render_passes_;
-};
-
-template <typename ObjectClass>
-VkDevice getObjectCreatingDevice(const std::shared_ptr<ObjectClass>& obj) {
-  return obj->mDevice;
-}
-
-template <>
-VkDevice getObjectCreatingDevice<InstanceObject>(
-    const std::shared_ptr<InstanceObject>& obj) {
-  return VkDevice(0);
-}
-
-
-template <>
-VkDevice getObjectCreatingDevice<PhysicalDeviceObject>(
-    const std::shared_ptr<PhysicalDeviceObject>& obj) {
-  return VkDevice(0);
-}
-
-template <>
-VkDevice getObjectCreatingDevice<DeviceObject>(
-    const std::shared_ptr<DeviceObject>& obj) {
-  return obj->mVulkanHandle;
-}
-
-template <>
-VkDevice getObjectCreatingDevice<SurfaceObject>(
-    const std::shared_ptr<SurfaceObject>& obj) {
-  return VkDevice(0);
-}
-
-template <typename ObjectClass>
-void recreateDebugInfo(VulkanSpy* spy, CallObserver* observer,
-                       uint32_t objectType,
-                       const std::shared_ptr<ObjectClass>& obj) {
-  const std::shared_ptr<VulkanDebugMarkerInfo>& info = obj->mDebugInfo;
-  if (!info) {
-    return;
-  }
-  uint64_t object = static_cast<uint64_t>(obj->mVulkanHandle);
-  if (info->mObjectName.length() > 0) {
-    VkDebugMarkerObjectNameInfoEXT name_info{
-        VkStructureType::
-            VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT,  // sType
-        nullptr,                                                  // pNext
-        objectType,                                               // objectType
-        object,                                                   // object
-        const_cast<char*>(info->mObjectName.c_str()),             // pObjectName
-        // type of pObjectName is const char* in the Spec, but in GAPID header
-        // its type is char*
-    };
-    spy->RecreateDebugMarkerSetObjectNameEXT(
-        observer, getObjectCreatingDevice(obj), &name_info);
-  }
-  VkDebugMarkerObjectTagInfoEXT tag_info{
-      VkStructureType::
-          VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT,  // sType
-      nullptr,                                                 // pNext
-      objectType,                                              // objectType
-      object,                                                  // object
-      info->mTagName,                                          // tagName
-      static_cast<size_val>(info->mTag.size()),            // tagSize
-      reinterpret_cast<void*>(info->mTag.begin()),          // pTag
-  };
-  spy->RecreateDebugMarkerSetObjectTagEXT(
-      observer, getObjectCreatingDevice(obj), &tag_info);
-}
-}  // anonymous namespace
-
-
 struct VulkanStateSerializer: public ReferenceSerializer {
     VulkanStateSerializer(CallObserver* observer): mObserver(observer) {}
     ~VulkanStateSerializer() {
@@ -347,7 +130,10 @@ void VulkanSpy::CaptureState(CallObserver* observer) {
         }
     }
 
-    observer->encodeAndDelete(VulkanSpy::serializeState(observer, &serializer));
+    auto state = VulkanSpy::serializeState(observer, &serializer);
+    observer->enterAndDelete(state);
+    serializer.finalize();
+    // Flush all of the references before we handle the pool writes.
 
     for (auto& pool: serializer.mRealPoolObservations) {
         const char* observation_base =
@@ -805,11 +591,10 @@ void VulkanSpy::CaptureState(CallObserver* observer) {
         }
       }
 
-
         device_functions.vkDestroyBuffer(device, copy_buffer, nullptr);
         device_functions.vkFreeMemory(device, copy_memory, nullptr);
       }
     }
-    serializer.finalize();
+    observer->exit();
 }
 }
