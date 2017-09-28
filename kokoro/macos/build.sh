@@ -119,7 +119,7 @@ done
 iconutil -c icns -o GAPID.app/Contents/Resources/GAPID.icns GAPID.iconset
 
 # Make a dmg file.
-pip install --user dmgbuild
+pip install --user dmgbuild pyobjc-framework-Quartz
 cp $SRC/kokoro/macos/background\@2x.png .
 # Yes, height, then width.... sigh.
 sips -z 480 640 background\@2x.png --out background.png
