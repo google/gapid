@@ -121,46 +121,6 @@ var (
 	packageDisplayToOrder = map[string]int{}
 	packageToTrack        = map[string]*trackInfo{}
 
-	trackDimension = &dimension{
-		name: "track",
-		valueOf: func(t *task) Item {
-			tInfo, ok := packageToTrack[t.pkg.Id()]
-			if !ok {
-				return tracks["auto"].track
-			}
-			return tInfo.track
-		},
-		enumSrc: func() enum {
-			result := itemGetter("{{.id}}", "{{.name}}", template.FuncMap{})(queryArray("/tracks/"))
-			for _, it := range result {
-				track := it.Underlying().(map[string]interface{})
-				trackName, ok := track["name"].(string)
-				if !ok {
-					continue
-				}
-				trackHead, ok := track["head"].(string)
-				if !ok {
-					continue
-				}
-				tracks[trackName] = &trackInfo{
-					track: it,
-					packageDisplayToOrder: map[string]int{},
-					headPackage:           trackHead,
-				}
-			}
-			result = append(result, tracks["auto"].track)
-			return result
-		},
-		selectAuto: func(c *constraints, d *dimension) {
-			if m, found := tracks["master"]; found {
-				(*c)[d] = m.track
-			} else if len(tracks["auto"].packageList) != 0 {
-				(*c)[d] = tracks["auto"].track
-			} else {
-				delete(*c, d)
-			}
-		},
-	}
 	packageDimension = &dimension{
 		name: "package",
 		valueOf: func(t *task) Item {
@@ -168,6 +128,7 @@ var (
 		},
 		enumSrc: func() enum {
 			result := itemGetter("{{.id}}", packageDisplayTemplate, template.FuncMap{"isUserType": isUserType})(queryArray("/packages/"))
+			track_items := itemGetter("{{.id}}", "{{.name}}", template.FuncMap{})(queryArray("/tracks/"))
 			itemMap := map[string]Item{}
 			childMap := map[string]string{}
 			rootPkgs := []string{}
@@ -198,22 +159,33 @@ var (
 					packageList = append(packageList, childId)
 					root = childId
 				}
+
 				head := root
 				foundTrack := false
-				// force update the trackDimension to populate tracks
-				trackDimension.getEnum()
-				for _, destTrack := range tracks {
-					if destTrack.headPackage == head {
-						destTrack.packageList = packageList
-						for _, p := range destTrack.packageList {
-							packageToTrack[p] = destTrack
+				for _, destTrackItem := range track_items {
+					destTrack := destTrackItem.Underlying().(map[string]interface{})
+					trackHead, ok := destTrack["head"].(string)
+					if !ok {
+						continue
+					}
+					if trackHead == head {
+						if trackName, ok := destTrack["name"].(string); ok {
+							tInfo := &trackInfo{
+								track:       destTrackItem,
+								packageList: packageList,
+								headPackage: head,
+							}
+							tracks[trackName] = tInfo
+							for _, p := range packageList {
+								packageToTrack[p] = tInfo
+							}
+							foundTrack = true
+							break
 						}
-						foundTrack = true
-						break
 					}
 				}
 				if !foundTrack {
-					// We just append all packages to the "auto" track that didn't match an existing track
+					// We append all packages to the "auto" track that didn't match an existing track
 					tracks["auto"].packageList = append(tracks["auto"].packageList, packageList...)
 					tracks["auto"].headPackage = packageList[len(packageList)-1]
 				}
@@ -228,9 +200,32 @@ var (
 			}
 			return a < b
 		},
+	}
+
+	trackDimension = &dimension{
+		name: "track",
+		valueOf: func(t *task) Item {
+			tInfo, ok := packageToTrack[t.pkg.Id()]
+			if !ok {
+				return tracks["auto"].track
+			}
+			return tInfo.track
+		},
+		enumSrc: func() enum {
+			// Ensure the tracks are properly initialized.
+			packageDimension.getEnum()
+			var result enum
+			for _, it := range tracks {
+				track_item := it.track
+				result = append(result, track_item)
+			}
+			return result
+		},
 		selectAuto: func(c *constraints, d *dimension) {
-			if t, found := (*c)[trackDimension]; found {
-				(*c)[d] = d.GetItem(tracks[t.Display()].headPackage)
+			if m, found := tracks["master"]; found {
+				(*c)[d] = m.track
+			} else if len(tracks["auto"].packageList) != 0 {
+				(*c)[d] = tracks["auto"].track
 			} else {
 				delete(*c, d)
 			}
@@ -239,6 +234,16 @@ var (
 
 	dimensions = []*dimension{kindDimension, subjectDimension, packageDimension, trackDimension, targetDimension, hostDimension}
 )
+
+func init() {
+	packageDimension.selectAuto = func(c *constraints, d *dimension) {
+		if t, found := (*c)[trackDimension]; found {
+			(*c)[d] = d.GetItem(tracks[t.Display()].headPackage)
+		} else {
+			delete(*c, d)
+		}
+	}
+}
 
 func isUserType(t reflect.Value) bool {
 	// cannot currently use build.Type_UserType to check the type need to fix that.
