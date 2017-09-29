@@ -494,6 +494,20 @@ func setCubemapFace(img *image.Info, cubeMap *api.CubemapLevel, layerIndex uint3
 	return true
 }
 
+func (l *ImageLevel) imageInfo(ctx context.Context, s *api.GlobalState, format *image.Format) *image.Info {
+	if l.Data.Count() == 0 {
+		return nil
+	}
+	out := &image.Info{
+		Format: format,
+		Width:  l.Width,
+		Height: l.Height,
+		Depth:  l.Depth,
+		Bytes:  image.NewID(l.Data.ResourceID(ctx, s)),
+	}
+	return out
+}
+
 // ResourceData returns the resource data given the current state.
 func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
@@ -505,7 +519,7 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 	switch t.Info.ImageType {
 	case VkImageType_VK_IMAGE_TYPE_2D:
 		// If this image has VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT set, it should have six layers to
-		// represent a cubemap
+		// represent a cubemap, and the image type must not be VK_IMAGE_TYPE_3D
 		if uint32(t.Info.Flags)&uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0 {
 			// Cubemap
 			cubeMapLevels := make([]*api.CubemapLevel, len(t.Layers[0].Levels))
@@ -514,32 +528,90 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 			}
 			for layerIndex, imageLayer := range t.Layers {
 				for levelIndex, imageLevel := range imageLayer.Levels {
-					img := &image.Info{
-						Format: format,
-						Width:  imageLevel.Width,
-						Height: imageLevel.Height,
-						Depth:  imageLevel.Depth,
-						Bytes:  image.NewID(imageLevel.Data.ResourceID(ctx, s)),
+					img := imageLevel.imageInfo(ctx, s, format)
+					if img == nil {
+						continue
 					}
 					if !setCubemapFace(img, cubeMapLevels[levelIndex], layerIndex) {
-						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+						continue
 					}
 				}
 			}
 			return api.NewResourceData(api.NewTexture(&api.Cubemap{Levels: cubeMapLevels})), nil
 		}
 
+		if t.Info.ArrayLayers > uint32(1) {
+			// 2D texture array
+			layers := make([]*api.Texture2D, int(t.Info.ArrayLayers))
+			for layerIndex := range layers {
+				imageLayer := t.Layers.Get(uint32(layerIndex))
+				levels := make([]*image.Info, len(imageLayer.Levels))
+				for levelIndex := range levels {
+					imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
+					img := imageLevel.imageInfo(ctx, s, format)
+					if img == nil {
+						continue
+					}
+					levels[levelIndex] = img
+				}
+				layers[layerIndex] = &api.Texture2D{Levels: levels}
+			}
+			return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers})), nil
+		}
+
+		// Single layer 2D texture
 		levels := make([]*image.Info, len(t.Layers[0].Levels))
 		for i, level := range t.Layers[0].Levels {
-			levels[i] = &image.Info{
-				Format: format,
-				Width:  level.Width,
-				Height: level.Height,
-				Depth:  level.Depth,
-				Bytes:  image.NewID(level.Data.ResourceID(ctx, s)),
+			img := level.imageInfo(ctx, s, format)
+			if img == nil {
+				continue
 			}
+			levels[i] = img
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture2D{Levels: levels})), nil
+
+	case VkImageType_VK_IMAGE_TYPE_3D:
+		// 3D images can have only one layer
+		levels := make([]*image.Info, len(t.Layers[0].Levels))
+		for i, level := range t.Layers[0].Levels {
+			img := level.imageInfo(ctx, s, format)
+			if img == nil {
+				continue
+			}
+			levels[i] = img
+		}
+		return api.NewResourceData(api.NewTexture(&api.Texture3D{Levels: levels})), nil
+
+	case VkImageType_VK_IMAGE_TYPE_1D:
+		if t.Info.ArrayLayers > uint32(1) {
+			// 1D texture array
+			layers := make([]*api.Texture1D, int(t.Info.ArrayLayers))
+			for layerIndex := range layers {
+				imageLayer := t.Layers.Get(uint32(layerIndex))
+				levels := make([]*image.Info, len(imageLayer.Levels))
+				for levelIndex := range levels {
+					imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
+					img := imageLevel.imageInfo(ctx, s, format)
+					if img == nil {
+						continue
+					}
+					levels[levelIndex] = img
+				}
+				layers[layerIndex] = &api.Texture1D{Levels: levels}
+			}
+			return api.NewResourceData(api.NewTexture(&api.Texture1DArray{Layers: layers})), nil
+		}
+		// Single layer 1D texture
+		levels := make([]*image.Info, len(t.Layers[0].Levels))
+		for i, level := range t.Layers[0].Levels {
+			img := level.imageInfo(ctx, s, format)
+			if img == nil {
+				continue
+			}
+			levels[i] = img
+		}
+		return api.NewResourceData(api.NewTexture(&api.Texture1D{Levels: levels})), nil
+
 	default:
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 	}
