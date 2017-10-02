@@ -25,9 +25,10 @@ echo y | %ANDROID_SDK_HOME%\tools\android.bat update sdk -u -a --filter build-to
 wget -q https://dl.google.com/android/repository/android-ndk-r15b-windows-x86_64.zip
 unzip -q android-ndk-r15b-windows-x86_64.zip
 
-REM Get GO 1.8 - Works around the build not allowing 1.8.1.
-wget -q https://storage.googleapis.com/golang/go1.8.windows-amd64.zip
-unzip -q go1.8.windows-amd64.zip
+REM Get GO 1.8.3
+set GO_ARCHIVE=go1.8.3.windows-amd64.zip
+wget -q https://storage.googleapis.com/golang/%GO_ARCHIVE%
+unzip -q %GO_ARCHIVE%
 set GOROOT=%BUILD_ROOT%\go
 set PATH=%GOROOT%\bin;%PATH%
 
