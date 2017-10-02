@@ -23,9 +23,10 @@ SRC=$PWD/github/src/github.com/google/gapid/
 wget -q https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-linux.zip
 unzip -q ninja-linux.zip
 
-# Get GO 1.8 - Works around the cgo race condition issues.
-wget -q https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz
-tar -xzf go1.8.linux-amd64.tar.gz
+# Get GO 1.8.3
+GO_ARCHIVE=go1.8.3.linux-amd64.tar.gz
+wget -q https://storage.googleapis.com/golang/$GO_ARCHIVE
+tar -xzf $GO_ARCHIVE
 
 # Setup GO paths (remove old, add new).
 export GOROOT=$BUILD_ROOT/go

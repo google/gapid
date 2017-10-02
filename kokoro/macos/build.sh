@@ -23,9 +23,10 @@ SRC=$PWD/github/src/github.com/google/gapid/
 curl -L -k -O -s https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-mac.zip
 unzip -q ninja-mac.zip
 
-# Get GO 1.8 - Works around the cgo race condition issues.
-curl -L -k -O -s https://storage.googleapis.com/golang/go1.8.darwin-amd64.tar.gz
-tar -xzf go1.8.darwin-amd64.tar.gz
+# Get GO 1.8.3
+GO_ARCHIVE=go1.8.3.darwin-amd64.tar.gz
+curl -L -k -O -s https://storage.googleapis.com/golang/$GO_ARCHIVE
+tar -xzf $GO_ARCHIVE
 
 # Setup GO paths (remove old, add new).
 export GOROOT=$BUILD_ROOT/go
