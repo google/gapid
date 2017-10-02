@@ -6,5 +6,7 @@
   <string>gapid</string>
   <key>CFBundleIconFile</key>
   <string>GAPID.icns</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
  </dict>
 </plist>
