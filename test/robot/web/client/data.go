@@ -97,16 +97,16 @@ var (
 		headPackage: "",
 	}}
 	packageDisplayToOrder = map[string]int{}
-	packageToTrack        = map[string]Item{}
+	packageToTrack        = map[string]*trackInfo{}
 
 	trackDimension = &dimension{
 		name: "track",
 		valueOf: func(t *task) Item {
-			it, ok := packageToTrack[t.pkg.Id()]
+			tInfo, ok := packageToTrack[t.pkg.Id()]
 			if !ok {
 				return tracks["auto"].track
 			}
-			return it
+			return tInfo.track
 		},
 		enumSrc: func() enum {
 			result := itemGetter("{{.id}}", "{{.name}}", template.FuncMap{})(queryArray("/tracks/"))
@@ -184,7 +184,7 @@ var (
 					if destTrack.headPackage == head {
 						destTrack.packageList = packageList
 						for _, p := range destTrack.packageList {
-							packageToTrack[p] = destTrack.track
+							packageToTrack[p] = destTrack
 						}
 						foundTrack = true
 						break
@@ -343,7 +343,7 @@ func connectTaskParentChild(childListMap map[string][]*task, parentListMap map[s
 	pkgId := t.pkg.Id()
 	parentListMap[pkgId] = append(parentListMap[pkgId], t)
 
-	if parPkgId := findParentPkgIdInList(tracks["auto"].packageList, pkgId); parPkgId != "" {
+	if parPkgId := findParentPkgIdInList(packageToTrack[pkgId].packageList, pkgId); parPkgId != "" {
 		childListMap[parPkgId] = append(childListMap[parPkgId], t)
 
 		if parentList, ok := parentListMap[parPkgId]; ok {
