@@ -172,15 +172,43 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
       break;
     }
     case llvm::ARM::CMPrr:
+    case llvm::ARM::LDR_PRE_IMM:
+    case llvm::ARM::LDR_PRE_REG:
+    case llvm::ARM::LDR_POST_IMM:
+    case llvm::ARM::LDR_POST_REG:
     case llvm::ARM::LDRi12:
+    case llvm::ARM::LDRH_PRE:
+    case llvm::ARM::LDRH_POST:
+    case llvm::ARM::LDRH:
+    case llvm::ARM::LDRB_PRE_IMM:
+    case llvm::ARM::LDRB_PRE_REG:
+    case llvm::ARM::LDRB_POST_IMM:
+    case llvm::ARM::LDRB_POST_REG:
+    case llvm::ARM::LDRBi12:
+    case llvm::ARM::LDRSH_PRE:
+    case llvm::ARM::LDRSH_POST:
+    case llvm::ARM::LDRSH:
+    case llvm::ARM::LDRSB_PRE:
+    case llvm::ARM::LDRSB_POST:
+    case llvm::ARM::LDRSB:
+    case llvm::ARM::STR_PRE_IMM:
+    case llvm::ARM::STR_PRE_REG:
+    case llvm::ARM::STR_POST_IMM:
+    case llvm::ARM::STR_POST_REG:
+    case llvm::ARM::STRi12:
+    case llvm::ARM::STRH_PRE:
+    case llvm::ARM::STRH_POST:
+    case llvm::ARM::STRH:
+    case llvm::ARM::STRB_PRE_IMM:
+    case llvm::ARM::STRB_PRE_REG:
+    case llvm::ARM::STRB_POST_IMM:
+    case llvm::ARM::STRB_POST_REG:
+    case llvm::ARM::STRBi12:
     case llvm::ARM::MOVr:
     case llvm::ARM::STMDA_UPD:
     case llvm::ARM::STMDB_UPD:
-    case llvm::ARM::STRB_POST_REG:
     case llvm::ARM::STRD:
     case llvm::ARM::STRD_PRE:
-    case llvm::ARM::STR_POST_REG:
-    case llvm::ARM::STR_PRE_IMM:
     case llvm::ARM::SUBri:
     case llvm::ARM::tADDi3:
     case llvm::ARM::tADDi8:
