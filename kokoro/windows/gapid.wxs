@@ -33,7 +33,7 @@
       <RemoveExistingProducts After='InstallValidate' />
     </InstallExecuteSequence>
 
-    <MediaTemplate EmbedCab="yes" />
+    <MediaTemplate EmbedCab="yes" MaximumUncompressedMediaSize="1024" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFilesFolder" Name="PFiles">
