@@ -1992,6 +1992,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			ft.AddBehavior(ctx, cbh)
 		}
 
+		bh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
+		// Without this, we drop some needed commands.
+
 	case *VkCmdNextSubpass:
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
@@ -2000,6 +2003,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			execInfo.nextSubpass(ctx, ft, cbh, sc, vb.machine)
 			ft.AddBehavior(ctx, cbh)
 		}
+		bh.Alive = true // TODO(awoloszyn): Investigate why this is needed.
+		// Without this, we drop some needed commands.
 
 	case *VkCmdEndRenderPass:
 		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
@@ -2011,6 +2016,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			read(ctx, cbh, execInfo.renderPassBegin)
 			ft.AddBehavior(ctx, cbh)
 		}
+		bh.Alive = true // TODO(awoloszyn): Investigate why this is needed.
+		// Without this, we drop some needed commands.
 
 	// bind vertex buffers, index buffer, pipeline and descriptors
 	case *VkCmdBindVertexBuffers:
