@@ -127,6 +127,14 @@ func (p *Process) loadAndConnectViaJDWP(
 		return true, nil
 	})
 	if err != nil {
+		if err == io.EOF {
+			return fmt.Errorf("Unable to connect to the application.\n\n" +
+				"This can happen when another debugger or IDE is running " +
+				"in the background, such as Android Studio.\n" +
+				"Please close any running Android debuggers and try again.\n\n" +
+				"See https://github.com/google/gapid/issues/911 for more " +
+				"information")
+		}
 		return log.Err(ctx, err, "Connecting to JDWP")
 	}
 	defer sock.Close()
