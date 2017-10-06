@@ -54,6 +54,7 @@ public:
 
     virtual void object(const Message* msg) override;
     virtual SPtr group(const Message* msg) override;
+    virtual void flush() override;
 
 private:
     struct TypeIDCache {
@@ -116,6 +117,10 @@ PackEncoderImpl::~PackEncoderImpl() {
         writeGroupID(buffer);
         flushBuffer(buffer);
     }
+}
+
+void PackEncoderImpl::flush() {
+    mShared->writer->flush();
 }
 
 void PackEncoderImpl::object(const Message* msg) {
@@ -242,6 +247,7 @@ public:
     virtual SPtr group(const ::google::protobuf::Message* msg) override {
         return instance;
     }
+    virtual void flush() override{}
 };
 
 gapii::PackEncoder::SPtr PackEncoderNoop::instance = gapii::PackEncoder::SPtr(new PackEncoderNoop);

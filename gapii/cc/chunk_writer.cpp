@@ -34,9 +34,9 @@ public:
     ~ChunkWriterImpl();
 
     virtual bool write(std::string& s) override;
+    virtual void flush() override;
 
 private:
-    void flush();
 
     std::string mBuffer;
 

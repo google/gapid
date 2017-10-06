@@ -466,6 +466,7 @@ void Spy::onPostStartOfFrame() {
     if (!is_suspended() && mCaptureFrames >= 1) {
         mCaptureFrames -= 1;
         if (mCaptureFrames == 0) {
+            mEncoder->flush();
             mConnection->close();
             set_suspended(true);
         }
@@ -503,6 +504,7 @@ void Spy::onPostEndOfFrame() {
     if (!is_suspended() && mCaptureFrames >= 1) {
         mCaptureFrames -= 1;
         if (mCaptureFrames == 0) {
+            mEncoder->flush();
             mConnection->close();
             set_suspended(true);
         }
