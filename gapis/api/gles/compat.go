@@ -454,7 +454,9 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				if err != nil {
 					log.W(ctx, "%v compat: %v", cmd, err)
 				}
-				opts := shadertools.Option{ShaderType: st}
+				opts := shadertools.Options{
+					ShaderType: st,
+				}
 
 				// Trim any prefix whitespace / newlines.
 				// This isn't legal if it comes before the #version, but this
