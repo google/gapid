@@ -216,11 +216,16 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         return; // No change
     }
 
+    // Some exotic extensions let you create contexts without a backbuffer.
+    // In these cases the backbuffer is zero size - just create a small one.
+    int safe_width = (backbuffer.width > 0) ? backbuffer.width : 8;
+    int safe_height = (backbuffer.height > 0) ? backbuffer.height : 8;
+
     if (mBackbuffer.format == backbuffer.format) {
         // Only a resize is necessary
         GAPID_INFO("Resizing renderer: %dx%d -> %dx%d",
                 mBackbuffer.width, mBackbuffer.height, backbuffer.width, backbuffer.height);
-        createPbuffer(backbuffer.width, backbuffer.height);
+        createPbuffer(safe_width, safe_height);
         glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext);
         mBackbuffer = backbuffer;
         return;
@@ -286,7 +291,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     }
     XSync(mDisplay, False);
 
-    createPbuffer(backbuffer.width, backbuffer.height);
+    createPbuffer(safe_width, safe_height);
 
     mBackbuffer = backbuffer;
     mNeedsResolve = true;
