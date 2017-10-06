@@ -140,6 +140,11 @@ void WGL::PBuffer::create_buffer(const GlesRenderer::Backbuffer& backbuffer) {
     core::gl::getDepthBits(backbuffer.format.depth, d);
     core::gl::getStencilBits(backbuffer.format.stencil, s);
 
+    // Some exotic extensions let you create contexts without a backbuffer.
+    // In these cases the backbuffer is zero size - just create a small one.
+    int safe_width = (backbuffer.width > 0) ? backbuffer.width : 8;
+    int safe_height = (backbuffer.height > 0) ? backbuffer.height : 8;
+
     const unsigned int MAX_FORMATS = 32;
 
     int formats[MAX_FORMATS];
@@ -166,14 +171,15 @@ void WGL::PBuffer::create_buffer(const GlesRenderer::Backbuffer& backbuffer) {
     }
     auto format = formats[0]; // TODO: Examine returned formats?
     const int create_attribs[] = { 0 };
-    mPBuf = wgl.CreatePbufferARB(wgl.mHDC, format, backbuffer.width, backbuffer.height, create_attribs);
+    mPBuf = wgl.CreatePbufferARB(wgl.mHDC, format, safe_width, safe_height, create_attribs);
     if (mPBuf == nullptr) {
-        GAPID_FATAL("wglCreatePbufferARB failed. Error: 0x%x", GetLastError());
+        GAPID_FATAL("wglCreatePbufferARB(%p, %d, %d, %d, %p) failed. Error: 0x%x",
+            wgl.mHDC, format, safe_width, safe_height, create_attribs, GetLastError());
     }
 
     mHDC = wgl.GetPbufferDCARB(mPBuf);
     if (mHDC == nullptr) {
-        GAPID_FATAL("wglGetPbufferDCARB failed. Error: 0x%x", GetLastError());
+        GAPID_FATAL("wglGetPbufferDCARB(%p) failed. Error: 0x%x", mPBuf, GetLastError());
     }
 }
 
