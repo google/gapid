@@ -49,6 +49,9 @@ public:
     // objects and groups.
     virtual SPtr group(const ::google::protobuf::Message* msg) = 0;
 
+    // flush flushes out all of the pending in the encoder
+    virtual void flush() = 0;
+
     // create returns a PackEncoder::SPtr that writes to output.
     static SPtr create(std::shared_ptr<core::StreamWriter> output);
 

@@ -34,6 +34,9 @@ public:
     // as a memory optimization.
     virtual bool write(std::string& data) = 0;
 
+    // flush flushes out all of the pending in the steam
+    virtual void flush() = 0;
+
 protected:
     virtual ~StringWriter() {}
 };
