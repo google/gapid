@@ -135,12 +135,17 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 
 	if r, ok := obj.(api.ResourceReference); ok {
 		var err error
-		obj, err = r.RemapResourceIDs(func(id *id.ID) error {
-			newID, found := d.builder.idmap[*id]
-			if !found {
-				return fmt.Errorf("Can not remap resource. %v not found.", id)
+		obj, err = r.RemapResourceIDs(func(id *id.ID, idx *int64) error {
+			index := int(*idx)
+			if index < 0 {
+				// Negative values encode index from the end of the array.
+				// This is unused as it is difficult to encode. Maybe one day.
+				index = len(d.builder.resIDs) + index
 			}
-			*id = newID
+			if !(0 <= index && index < len(d.builder.resIDs)) {
+				return fmt.Errorf("Can not remap resource. %v not found.", *idx)
+			}
+			*id = d.builder.resIDs[index]
 			return nil
 		})
 		if err != nil {
@@ -154,9 +159,7 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 		return in, nil
 
 	case *Resource:
-		var rID id.ID
-		copy(rID[:], obj.Id)
-		if err := d.builder.addRes(ctx, rID, obj.Data); err != nil {
+		if err := d.builder.addRes(ctx, obj.Data); err != nil {
 			return nil, err
 		}
 		return in, nil

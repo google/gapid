@@ -23,8 +23,10 @@ message Observation {
     uint64 base = 1;
     // Size is the byte count of the observation range.
     uint64 size = 2;
-    // Id is the resource id of the bytes observed.
+    // Id is the resource id of the bytes observed (used in memory).
     bytes id = 3;
+    // ResIndex is the index of the resource (used on disk).
+    sint64 resIndex = 4;
 }
 
 // Pointer is the type representing a memory pointer.

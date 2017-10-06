@@ -36,10 +36,8 @@ message Header {
 
 // Resource is the storage type for some data keyed by an identifer.
 message Resource {
-	// Id is the resource id of the data blob.
-	bytes id = 1;
 	// Data is the actual data payload.
-	bytes data = 2;
+	bytes data = 1;
 }
 
 // FramebufferObservation is a message that holds a snapshot of the color-buffer

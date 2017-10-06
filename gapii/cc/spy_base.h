@@ -59,9 +59,8 @@ public:
     inline void setObserveApplicationPool(bool observeApplicationPool);
 
     // Encode and write data blob if we have not already sent it.
-    // Returns the ID which uniquely identifies it.
-    // TODO(qining): To support multithreaded uses, mutex is required.
-    std::string sendResource(uint8_t api, const void* data, size_t size);
+    // Returns the index of the resource which can be used to reference it.
+    int64_t sendResource(uint8_t api, const void* data, size_t size);
 
     // Returns the transimission encoder.
     // TODO(qining): To support multithreaded uses, mutex is required to manage
@@ -158,7 +157,8 @@ private:
     PackEncoder::SPtr mNullEncoder;
 
     // The list of resources that have already been encoded and sent.
-    std::unordered_map<core::Id, uint64_t> mResources;
+    std::unordered_map<core::Id, int64_t> mResources;
+    std::mutex mResourcesMutex;
 
     // The mutex that should be locked for the duration of each of the intercepted commands.
     std::recursive_mutex mMutex;

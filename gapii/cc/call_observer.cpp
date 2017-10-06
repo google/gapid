@@ -92,11 +92,11 @@ void CallObserver::observePending() {
     for (auto p : mPendingObservations) {
         uint8_t* data = reinterpret_cast<uint8_t*>(p.start());
         uint64_t size = p.end() - p.start();
-        std::string id = mSpy->sendResource(mApi, data, size);
+        auto resIndex = mSpy->sendResource(mApi, data, size);
         auto observation = new memory_pb::Observation();
         observation->set_base(p.start());
         observation->set_size(size);
-        observation->set_id(id.data(), id.size());
+        observation->set_resindex(resIndex);
         encodeAndDelete(observation);
     }
     mPendingObservations.clear();

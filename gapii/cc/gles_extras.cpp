@@ -396,9 +396,9 @@ void GlesSpy::GetEGLImageData(CallObserver* observer, EGLImageKHR img, GLsizei w
 
     std::vector<uint8_t> data;
     if (ReadExternalPixels(mImports, img, width, height, &data)) {
-        std::string id = sendResource(kApiIndex, data.data(), data.size());
+        auto resIndex = sendResource(kApiIndex, data.data(), data.size());
         auto extra = new gles_pb::EGLImageData();
-        extra->set_id(id.data(), id.size());
+        extra->set_resindex(resIndex);
         extra->set_size(data.size());
         extra->set_width(width);
         extra->set_height(height);

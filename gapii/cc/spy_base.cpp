@@ -29,6 +29,7 @@ namespace gapii {
 SpyBase::SpyBase()
     : mObserveApplicationPool(true)
     , mNullEncoder(PackEncoder::noop())
+    , mResources{{core::Id{{0}}, 0}}
     , mWatchedApis(0xFFFFFFFF)
 #if COHERENT_TRACKING_ENABLED
     , mMemoryTracker()
@@ -55,24 +56,30 @@ void SpyBase::abort() {
     throw AbortException();
 }
 
-std::string SpyBase::sendResource(uint8_t api, const void* data, size_t size) {
-    // Add the hash to the map if it is not already there.
-    // Each hash is also mapped to small monotonically increasing integer.
-    auto res = mResources.emplace(core::Id::Hash(data, size), mResources.size());
+int64_t SpyBase::sendResource(uint8_t api, const void* data, size_t size) {
+    auto hash = core::Id::Hash(data, size);
 
-    // Create ID based on the integer. Printf is used to keep it short-ish.
-    char str[16];
-    int len = snprintf(str, sizeof(str), "%" PRIx64, res.first->second);
+    // Fast-path if resource with the same hash was already send.
+    {
+        std::lock_guard<std::mutex> lock(mResourcesMutex);
+        auto it = mResources.find(hash);
+        if (it != mResources.end()) {
+            return it->second;
+        }
+    }
 
-    // Send the resource if this is the first time we see it (it was inserted).
+    // Slow-path if we need to encode and send the resource.
+    capture::Resource resource;
+    resource.set_data(data, size);
+    std::lock_guard<std::mutex> lock(mResourcesMutex);
+    auto res = mResources.emplace(hash, mResources.size());
     if (res.second) {
-        capture::Resource resource;
-        resource.set_id(str, len);
-        resource.set_data(data, size);
+        // Keep the resource mutex during send to ensure other thread
+        // can not read the index and reference it before we send it.
         getEncoder(api)->object(&resource);
     }
 
-    return std::string(str, len);
+    return res.first->second;
 }
 
 }  // namespace gapii

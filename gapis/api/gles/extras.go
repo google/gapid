@@ -33,19 +33,20 @@ type ErrorState struct {
 
 // EGLImageData is an extra used to store snapshot of external image source.
 type EGLImageData struct {
-	ID     id.ID
-	Size   uint64
-	Width  GLsizei
-	Height GLsizei
-	Format GLenum
-	Type   GLenum
+	ID       id.ID
+	ResIndex int64
+	Size     uint64
+	Width    GLsizei
+	Height   GLsizei
+	Format   GLenum
+	Type     GLenum
 }
 
 var _ api.ResourceReference = (*EGLImageData)(nil)
 
 // RemapResourceIDs calls the given callback for each resource ID field.
-func (e *EGLImageData) RemapResourceIDs(cb func(id *id.ID) error) (api.ResourceReference, error) {
-	err := cb(&e.ID)
+func (e *EGLImageData) RemapResourceIDs(cb func(id *id.ID, idx *int64) error) (api.ResourceReference, error) {
+	err := cb(&e.ID, &e.ResIndex)
 	return e, err
 }
 
@@ -66,23 +67,25 @@ func init() {
 	protoconv.Register(
 		func(ctx context.Context, o *EGLImageData) (*gles_pb.EGLImageData, error) {
 			return &gles_pb.EGLImageData{
-				ID:     o.ID[:],
-				Size:   int32(o.Size),
-				Width:  int32(o.Width),
-				Height: int32(o.Height),
-				Format: int32(o.Format),
-				Type:   int32(o.Type),
+				ID:       o.ID[:],
+				ResIndex: o.ResIndex,
+				Size:     int32(o.Size),
+				Width:    int32(o.Width),
+				Height:   int32(o.Height),
+				Format:   int32(o.Format),
+				Type:     int32(o.Type),
 			}, nil
 		}, func(ctx context.Context, p *gles_pb.EGLImageData) (*EGLImageData, error) {
 			var id id.ID
 			copy(id[:], p.ID)
 			return &EGLImageData{
-				ID:     id,
-				Size:   uint64(p.Size),
-				Width:  GLsizei(p.Width),
-				Height: GLsizei(p.Height),
-				Format: GLenum(p.Format),
-				Type:   GLenum(p.Type),
+				ID:       id,
+				ResIndex: p.ResIndex,
+				Size:     uint64(p.Size),
+				Width:    GLsizei(p.Width),
+				Height:   GLsizei(p.Height),
+				Format:   GLenum(p.Format),
+				Type:     GLenum(p.Type),
 			}, nil
 		},
 	)
