@@ -340,16 +340,7 @@ EGLBoolean Spy::eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSu
     return res;
 }
 
-#define EGL_QUERY_SURFACE(name, var) \
-    if (GlesSpy::mImports.eglQuerySurface(display, draw, name, var) != EGL_TRUE) { \
-        GAPID_WARNING("eglQuerySurface(0x%p, 0x%p, " #name ", " #var ") failed", display, draw); \
-    }
-#define EGL_GET_CONFIG_ATTRIB(name, var) \
-    if (GlesSpy::mImports.eglGetConfigAttrib(display, config, name, var) != EGL_TRUE) { \
-        GAPID_WARNING("eglGetConfigAttrib(0x%p, 0x%p, " #name ", " #var ") failed", display, config); \
-    }
-
-std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLContext context) {
+std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserver* observer, EGLDisplay display, EGLContext context) {
     Constants constants;
     getContextConstants(constants);
 
@@ -367,13 +358,24 @@ std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserv
     return out;
 }
 
+#define EGL_QUERY_SURFACE(name, draw, var) \
+if (GlesSpy::mImports.eglQuerySurface(display, draw, name, var) != EGL_TRUE) { \
+    GAPID_WARNING("eglQuerySurface(0x%p, 0x%p, " #name ", " #var ") failed", display, draw); \
+}
+#define EGL_GET_CONFIG_ATTRIB(name, var) \
+if (GlesSpy::mImports.eglGetConfigAttrib(display, config, name, var) != EGL_TRUE) { \
+    GAPID_WARNING("eglGetConfigAttrib(0x%p, 0x%p, " #name ", " #var ") failed", display, config); \
+}
+
 std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLContext context) {
     EGLint width = 0;
     EGLint height = 0;
     EGLint swapBehavior = 0;
-    EGL_QUERY_SURFACE(EGL_WIDTH, &width);
-    EGL_QUERY_SURFACE(EGL_HEIGHT, &height);
-    EGL_QUERY_SURFACE(EGL_SWAP_BEHAVIOR, &swapBehavior);
+    if (draw != nullptr) {
+        EGL_QUERY_SURFACE(EGL_WIDTH, draw, &width);
+        EGL_QUERY_SURFACE(EGL_HEIGHT, draw, &height);
+        EGL_QUERY_SURFACE(EGL_SWAP_BEHAVIOR, draw, &swapBehavior);
+    }
 
     // Get the backbuffer formats.
     uint32_t backbufferColorFmt = GL_RGBA8;

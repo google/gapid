@@ -60,7 +60,7 @@ func (e externs) unmapMemory(slice memory.Slice) {
 	}
 }
 
-func (e externs) GetEGLStaticContextState(EGLDisplay, EGLSurface, EGLContext) *StaticContextState {
+func (e externs) GetEGLStaticContextState(EGLDisplay, EGLContext) *StaticContextState {
 	return FindStaticContextState(e.cmd.Extras())
 }
 
