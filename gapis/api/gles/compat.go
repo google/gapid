@@ -601,12 +601,19 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return
 			}
 		case *GlTexStorage2DMultisample:
-			{
+			if version.IsES || version.AtLeastGL(4, 3) {
+				// glTexStorage2DMultisample is supported by replay device.
 				cmd := *cmd
 				textureCompat.convertFormat(ctx, cmd.Target, &cmd.Internalformat, nil, nil, out, id, &cmd)
 				out.MutateAndWrite(ctx, id, &cmd)
-				return
+			} else {
+				// glTexStorage2DMultisample is not supported by replay device.
+				// Use glTexImage2DMultisample instead.
+				cmd := cb.GlTexImage2DMultisample(cmd.Target, cmd.Samples, cmd.Internalformat, cmd.Width, cmd.Height, cmd.Fixedsamplelocations)
+				textureCompat.convertFormat(ctx, cmd.Target, &cmd.Internalformat, nil, nil, out, id, cmd)
+				out.MutateAndWrite(ctx, id, cmd)
 			}
+			return
 		case *GlTexStorage3D:
 			{
 				cmd := *cmd
