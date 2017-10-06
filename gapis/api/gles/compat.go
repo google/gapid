@@ -456,6 +456,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				}
 				opts := shadertools.Options{
 					ShaderType: st,
+					Relaxed:    true, // find_issues will still report bad GLSL.
 				}
 
 				// Trim any prefix whitespace / newlines.
