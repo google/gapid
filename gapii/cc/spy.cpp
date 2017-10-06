@@ -350,10 +350,6 @@ EGLBoolean Spy::eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSu
     }
 
 std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLContext context) {
-    if (draw == nullptr) {
-        return nullptr;
-    }
-
     Constants constants;
     getContextConstants(constants);
 
@@ -372,10 +368,6 @@ std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserv
 }
 
 std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLContext context) {
-    if (draw == nullptr) {
-        return nullptr;
-    }
-
     EGLint width = 0;
     EGLint height = 0;
     EGLint swapBehavior = 0;
