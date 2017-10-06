@@ -255,10 +255,10 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
                               EGLSurface draw,
                               EGLSurface read,
                               EGLContext context) {
-  SetContext(null)
+
   if context in EGLContexts {
     ctx := EGLContexts[context]
-    if ctx.Other.IsBound {
+    if ctx.Other.IsBound && (ctx != Contexts[$Thread]) {
       _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_BOUND(id: as!u64(context)))
       abort
     }
