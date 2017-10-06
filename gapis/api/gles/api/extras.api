@@ -20,7 +20,7 @@ class StaticContextState {
 }
 
 @post_fence
-extern ref!StaticContextState GetEGLStaticContextState(EGLDisplay display, EGLSurface surface, EGLContext context)
+extern ref!StaticContextState GetEGLStaticContextState(EGLDisplay display, EGLContext context)
 
 // DynamicContextState is an atom extra used to describe a context's potentially changing state.
 @internal @serialize

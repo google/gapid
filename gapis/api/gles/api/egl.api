@@ -271,12 +271,12 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
     }
     SetContext(ctx)
     if !ctx.Info.Initialized {
-      ApplyStaticContextState(ctx, GetEGLStaticContextState(display, draw, context))
+      ApplyStaticContextState(ctx, GetEGLStaticContextState(display, context))
     }
     ApplyDynamicContextState(ctx, GetEGLDynamicContextState(display, draw, context))
   } else {
-    staticState := GetEGLStaticContextState(display, draw, context)
     dynamicState := GetEGLDynamicContextState(display, draw, context)
+    staticState := GetEGLStaticContextState(display, context)
     if (dynamicState != null) && (staticState != null) {
       // We don't know anything about this context, but it existed at trace
       // time. In this situation it is likely that the context was created
