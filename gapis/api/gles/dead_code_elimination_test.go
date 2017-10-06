@@ -71,11 +71,13 @@ func TestDeadCommandRemoval(t *testing.T) {
 
 	ctxHandle1 := memory.BytePtr(1, memory.ApplicationPool)
 	ctxHandle2 := memory.BytePtr(2, memory.ApplicationPool)
+	displayHandle := memory.BytePtr(3, memory.ApplicationPool)
+	surfaceHandle := memory.BytePtr(4, memory.ApplicationPool)
 	cb := CommandBuilder{Thread: 0}
 	prologue := []api.Cmd{
-		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle1),
+		cb.EglCreateContext(displayHandle, surfaceHandle, surfaceHandle, memory.Nullptr, ctxHandle1),
 		api.WithExtras(
-			cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle1, 0),
+			cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle1, 0),
 			NewStaticContextState(), NewDynamicContextState(64, 64, false)),
 		cb.GlCreateProgram(1),
 		cb.GlCreateProgram(2),
@@ -98,7 +100,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 			dead(cb.GlClear(allBuffers)),
 			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
 			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 1, 0)),
-			dead(cb.EglSwapBuffers(memory.Nullptr, memory.Nullptr, EGLBoolean(1))),
+			dead(cb.EglSwapBuffers(displayHandle, surfaceHandle, EGLBoolean(1))),
 			cb.GlClear(allBuffers),
 			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
 		},
@@ -158,9 +160,9 @@ func TestDeadCommandRemoval(t *testing.T) {
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
 			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
 			// Draw in context 2
-			cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2),
+			cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2),
 			api.WithExtras(
-				cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2, 0),
+				cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle2, 0),
 				NewStaticContextState(), NewDynamicContextState(64, 64, false)),
 			cb.GlCreateProgram(1),
 			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
@@ -171,9 +173,9 @@ func TestDeadCommandRemoval(t *testing.T) {
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
 			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
 			// Request from both contexts
-			cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle1, 0),
+			cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle1, 0),
 			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
-			cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2, 0),
+			cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle2, 0),
 			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Clear layers and read texture": {
