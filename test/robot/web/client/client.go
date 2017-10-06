@@ -319,6 +319,31 @@ func robotEntityLink(path string, s interface{}) interface{} {
 	return a
 }
 
+func robotTextPreview(path string, s interface{}) interface{} {
+	id := s.(string)
+
+	div := dom.NewDiv()
+	div.Element.Style.MaxWidth = 600
+	div.Element.Style.MaxHeight = 420
+	div.Element.Style.Overflow = "auto"
+	go func() {
+		full_text, err := queryRestEndpoint(fmt.Sprintf("/entities/%s", id))
+		if err != nil {
+			panic(err)
+		}
+
+		div.Append(string(full_text))
+	}()
+	return div
+}
+
+func robotVideoView(path string, s interface{}) interface{} {
+	id := s.(string)
+	v := dom.NewVideo(600, 420, fmt.Sprintf("/entities/%s", id), "mp4")
+	v.Append("Your browser does not support embedded video tags")
+	return v
+}
+
 func setupGrid(tasks []*task) *page {
 	const (
 		optAuto  = "!!auto"
@@ -353,7 +378,8 @@ func setupGrid(tasks []*task) *page {
 		},
 	).Add("/1/input/((gapi[irst])|gapid_apk|trace|subject|interceptor|vulkanLayer)", robotEntityLink).
 		Add("/1/input/layout", objView.Expandable).
-		Add("/1/output/", robotEntityLink).
+		Add("/1/output/(log|report)", robotTextPreview).
+		Add("/1/output/video", robotVideoView).
 		Add("/0/", objView.Expandable)
 
 	filters := map[*dimension]*dom.Select{}
@@ -423,6 +449,9 @@ func setupGrid(tasks []*task) *page {
 
 	body := dom.Doc().Body()
 	body.Style.BackgroundColor = dom.RGB(0.98, 0.98, 0.98)
+	objView.Div.Element.Style.Position = "sticky"
+	objView.Div.Element.Style.Top = "0"
+	objView.Div.Element.Style.Float = "right"
 	body.Append(objView)
 	body.Append(div)
 
