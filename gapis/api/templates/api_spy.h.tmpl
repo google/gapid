@@ -48,7 +48,7 @@
   #include <inttypes.h>
 ¶
 namespace {{(Global "API")}}_pb {
-  class State;
+  class InitialState;
 }
 ¶
   namespace gapii {«
@@ -75,7 +75,7 @@ namespace {{(Global "API")}}_pb {
 ¶
   «protected:»
 ¶
-  {{Global "API"}}_pb::State* serializeState(CallObserver* observer, ReferenceSerializer* _s);
+  {{Global "API"}}_pb::InitialState* serializeState(CallObserver* observer, ReferenceSerializer* _s);
 ¶
   bool observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data);
 ¶

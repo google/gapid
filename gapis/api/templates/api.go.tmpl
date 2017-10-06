@@ -402,6 +402,14 @@
     pool  ϟmem.PoolID // The pool identifier.
   }
 
+  func (p *{{$slice_ty}}) Assign(o interface{}) bool {
+    if o, ok := o.({{$slice_ty}}); ok {
+      *p = {{$slice_ty}}{o.root, o.base, o.count, o.pool}
+      return true
+    }
+    return false
+  }
+
   {{if $el_is_char}}
     // Make{{$slice_ty}}FromString returns a {{$slice_ty}} backed by a new
     // memory pool containing a copy of str.

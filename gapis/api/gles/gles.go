@@ -57,6 +57,12 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	return nil, nil
 }
 
+func (*State) GetID() api.ID {
+	return ID
+}
+
+func (*State) SetupInitialState() {}
+
 func (s *State) contextRoot(p *path.Command, thread uint64) *path.MapIndex {
 	return path.NewField("Contexts", resolve.APIStateAfter(p, ID)).MapIndex(thread)
 }

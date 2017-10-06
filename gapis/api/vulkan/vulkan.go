@@ -73,6 +73,10 @@ func (*State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	return p, nil
 }
 
+func (*State) GetID() api.ID {
+	return ID
+}
+
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
@@ -123,10 +127,17 @@ type markerInfo struct {
 
 func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Capture) error {
 	ctx = capture.Put(ctx, c)
-	st, err := capture.NewState(ctx)
+	st, err := capture.NewUninitializedState(ctx)
+
 	if err != nil {
 		return err
 	}
+
+	cap, err := capture.Resolve(ctx)
+	if err != nil {
+		return err
+	}
+
 	cmds, err := resolve.Cmds(ctx, c)
 	if err != nil {
 		return err
@@ -139,7 +150,13 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	lastSubcommand := api.SubCmdIdx{}
 	lastCmdIndex := api.CmdID(0)
 
-	// Prepare for collect marker groups
+	s.AddCommand = func(a interface{}) {
+		data := a.(CommandReference)
+		commandMap[data.QueuedCommandData.initialCall] = i
+	}
+
+	cap.InitializeState(st)
+
 	// Stacks of open markers for each VkQueue
 	markerStack := map[VkQueue][]*markerInfo{}
 	// Stacks of markers to be opened in the next subcommand for each VkQueue
@@ -324,11 +341,6 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			// command buffer ends and vkCmdExecuteCommands get executed.
 			ms.end = s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1
 		}
-	}
-
-	s.AddCommand = func(a interface{}) {
-		data := a.(CommandReference)
-		commandMap[data.QueuedCommandData.initialCall] = i
 	}
 
 	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {

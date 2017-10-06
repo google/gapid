@@ -32,8 +32,8 @@
   {{end}}
 
   {{Global "ProtoID" 0}}
-  message State {»¶
-    uint64 id = {{Inc "ProtoID"}};¶
+  message InitialState {»¶
+    uint32 id = {{Inc "ProtoID"}};¶
     {{range $g := $.Globals}}
       {{if (GetAnnotation $g "serialize")}}
         {{Template "Proto.Entry" "Param" $g "Type" (TypeOf $g)}}

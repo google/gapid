@@ -69,6 +69,13 @@ type State interface {
 	// based on filtering mode. Returning nil, nil indicates there is no state
 	// to show at this point in the capture.
 	Root(ctx context.Context, p *path.State) (path.Node, error)
+
+	// Returns the api.ID of the api that this state belongs to
+	GetID() ID
+
+	// SetupInitialState takes a newly deserialized state from a capture
+	// and post-processes it to make it valid.
+	SetupInitialState()
 }
 
 // NewStateWithEmptyAllocator returns a new, default-initialized State object,

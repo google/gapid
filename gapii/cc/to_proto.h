@@ -68,8 +68,9 @@ struct ProtoConverter<memory_pb::Slice*, gapii::Slice<T>> {
         } else {
             const Pool* pool = in.getPool();
             uint64_t identifier = s->process_slice(pool, in.begin(), in.count());
-            out->set_root(address);
-            out->set_base(reinterpret_cast<uint64_t>(pool->base()));
+            uint64_t root = address - reinterpret_cast<uint64_t>(pool->base());
+            out->set_root(root);
+            out->set_base(root);
             out->set_count(in.count());
             out->set_pool(identifier);
         }

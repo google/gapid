@@ -56,33 +56,33 @@ func (verb *unpackVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	defer r.Close()
 
-	return pack.Read(ctx, r, unpacker{})
+	return pack.Read(ctx, r, unpacker{verb.Verbose})
 }
 
-type unpacker struct{}
+type unpacker struct{ Verbose bool }
 
-func (unpacker) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
-	log.I(ctx, "BeginGroup(msg: %v, id: %v)", msgString(msg), id)
+func (u unpacker) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
+	log.I(ctx, "BeginGroup(msg: %v, id: %v)", u.msgString(msg), id)
 	return nil
 }
-func (unpacker) BeginChildGroup(ctx context.Context, msg proto.Message, id, parentID uint64) error {
-	log.I(ctx, "BeginChildGroup(msg: %v, id: %v, parentID: %v)", msgString(msg), id, parentID)
+func (u unpacker) BeginChildGroup(ctx context.Context, msg proto.Message, id, parentID uint64) error {
+	log.I(ctx, "BeginChildGroup(msg: %v, id: %v, parentID: %v)", u.msgString(msg), id, parentID)
 	return nil
 }
 func (unpacker) EndGroup(ctx context.Context, id uint64) error {
 	log.I(ctx, "EndGroup(id: %v)", id)
 	return nil
 }
-func (unpacker) Object(ctx context.Context, msg proto.Message) error {
-	log.I(ctx, "Object(msg: %v)", msgString(msg))
+func (u unpacker) Object(ctx context.Context, msg proto.Message) error {
+	log.I(ctx, "Object(msg: %v)", u.msgString(msg))
 	return nil
 }
-func (unpacker) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
-	log.I(ctx, "ChildObject(msg: %v, parentID: %v)", msgString(msg), parentID)
+func (u unpacker) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
+	log.I(ctx, "ChildObject(msg: %v, parentID: %v)", u.msgString(msg), parentID)
 	return nil
 }
 
-func msgString(msg proto.Message) string {
+func (u *unpacker) msgString(msg proto.Message) string {
 	var str string
 	switch msg := msg.(type) {
 	case *pack.Dynamic:
@@ -90,7 +90,7 @@ func msgString(msg proto.Message) string {
 	default:
 		str = fmt.Sprintf("%T{%+v}", msg, msg)
 	}
-	if len(str) > 100 {
+	if len(str) > 100 && !u.Verbose {
 		str = str[:97] + "..." // TODO: Consider unicode.
 	}
 	return str

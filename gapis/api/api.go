@@ -86,3 +86,14 @@ func Register(api API) {
 func Find(id ID) API {
 	return apis[id]
 }
+
+// FindByIndex looks up a graphics API by index.
+// If the index has not been registered, it returns nil.
+func FindByIndex(index uint8) API {
+	for _, api := range apis {
+		if api.Index() == index {
+			return api
+		}
+	}
+	return nil
+}

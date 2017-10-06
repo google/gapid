@@ -37,10 +37,11 @@
   #include "gapis/api/{{Global "API"}}/{{Global "API"}}_pb/api.pb.h"
   ¶
   namespace gapii «{
-    {{Global "API"}}_pb::State* {{$spyname}}::serializeState(CallObserver* observer, ReferenceSerializer* _s) {
+    {{Global "API"}}_pb::InitialState* {{$spyname}}::serializeState(CallObserver* observer, ReferenceSerializer* _s) {
       // Globals
 
-      auto out = new {{Global "API"}}_pb::State();
+      auto out = new {{Global "API"}}_pb::InitialState();
+      out->set_id({{Global "ApiIndex"}});
       {{range $g := $.Globals}}
         {{Template "SerializeGlobal" $g}}
       {{end}}

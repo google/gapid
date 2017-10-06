@@ -62,19 +62,17 @@ struct VulkanStateSerializer: public ReferenceSerializer {
         if (virtual_pool != mVirtualPools.end()) {
             return virtual_pool->second;
         }
-        uint32_t nextPool = mLastSeenPool++;
-        uint32_t setPool = mLastSeenPool;
-        if (pool == nullptr ) { // Application pool
-            nextPool = mLastSeenPool;
-            setPool = 0;
+
+
+        auto it = mRealPoolObservations.find(pool);
+        if (it == mRealPoolObservations.end()) {
+            std::tie(it, std::ignore) = mRealPoolObservations.insert(std::pair<const Pool*, RealPoolData>(pool, RealPoolData{
+                pool? mLastSeenPool++ : static_cast<size_t>(0)
+            }));
         }
 
-        auto static_pool = mRealPoolObservations.insert(std::pair<const Pool*,RealPoolData>(pool, RealPoolData{setPool}));
-        if (static_pool.second) {
-            mLastSeenPool = nextPool;
-        }
-        static_pool.first->second.regions.push_back(RealPoolData::MemoryRegion{root, bytes});
-        return 0;
+        it->second.regions.push_back(RealPoolData::MemoryRegion{root, bytes});
+        return it->second.poolIndex;
     }
 
     CallObserver* mObserver;
@@ -83,7 +81,7 @@ struct VulkanStateSerializer: public ReferenceSerializer {
 
     std::unordered_map<const Pool*, uint64_t> mVirtualPools;
     struct RealPoolData {
-        size_t poolIndex;
+        uint64_t poolIndex;
         struct MemoryRegion {
             void* observationBase;
             size_t size;

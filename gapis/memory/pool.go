@@ -124,6 +124,23 @@ func (m *Pools) New() (id PoolID, p *Pool) {
 	return
 }
 
+// NewAt creates and returns a new Pool with a specific ID, fails if it cannot
+func (m *Pools) NewAt(id PoolID) *Pool {
+	if _, ok := m.pools[id]; ok {
+		panic("Could not create given pool")
+	}
+	p := &Pool{}
+	m.pools[id] = p
+	if id >= m.nextPoolID {
+		m.nextPoolID = id + 1
+	}
+
+	if m.OnCreate != nil {
+		m.OnCreate(id, p)
+	}
+	return p
+}
+
 // Get returns the Pool with the given id.
 func (m *Pools) Get(id PoolID) (*Pool, error) {
 	if p, ok := m.pools[id]; ok {

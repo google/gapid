@@ -40,6 +40,7 @@ set(files
     resources.go
     state.go
     vulkan.go
+    vulkan_initial_state.go
     vulkan_terminator.go
     wireframe.go
 )

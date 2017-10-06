@@ -34,22 +34,28 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	cmdIdx := p.After.Indices[0]
 	fullCmdIdx := p.After.Indices
 
-	allCmds, err := Cmds(ctx, path.FindCapture(p))
+	capturePath := path.FindCapture(p)
+	cap, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	sd, err := SyncData(ctx, path.FindCapture(p))
+	allCmds, err := Cmds(ctx, capturePath)
 	if err != nil {
 		return nil, err
 	}
 
-	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), sd, allCmds, api.CmdID(cmdIdx), fullCmdIdx[1:])
+	sd, err := SyncData(ctx, capturePath)
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := capture.NewState(ctx)
+	cmds, err := sync.MutationCmdsFor(ctx, capturePath, sd, allCmds, api.CmdID(cmdIdx), fullCmdIdx[1:])
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := capture.NewUninitializedState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +77,8 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 			}
 		}
 	})
+
+	cap.InitializeState(s)
 
 	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, id, s, nil)

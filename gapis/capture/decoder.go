@@ -2,11 +2,13 @@ package capture
 
 import (
 	"context"
+	fmt "fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/memory/memory_pb"
 )
 
 type cmdGroup struct {
@@ -15,16 +17,33 @@ type cmdGroup struct {
 	children []api.Cmd
 }
 
+type Reference struct {
+	ID uint64
+}
+
+type InitialAPIState struct {
+	State        api.State
+	MemoryWrites []*memory_pb.MemoryWrite
+}
+
+type initialStateGroup struct {
+	apis map[api.ID]*InitialAPIState
+}
+
 type decoder struct {
-	header  *Header
-	builder *builder
-	groups  map[uint64]interface{}
+	header               *Header
+	builder              *builder
+	groups               map[uint64]interface{}
+	unresolvedReferences map[uint64][]interface{}
+	resolveReferences    map[uint64]interface{}
 }
 
 func newDecoder() *decoder {
 	return &decoder{
-		builder: newBuilder(),
-		groups:  map[uint64]interface{}{},
+		builder:              newBuilder(),
+		groups:               map[uint64]interface{}{},
+		unresolvedReferences: map[uint64][]interface{}{},
+		resolveReferences:    map[uint64]interface{}{},
 	}
 }
 
@@ -111,13 +130,40 @@ func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
 			parent.cmd.Extras().Add(obj)
 		}
 	}
+	if parent, ok := parent.(*initialStateGroup); ok {
+		res, ok := child.(api.State)
+		if !ok {
+			return fmt.Errorf("We only expect an initial state inside of a State group, got %T", child)
+		}
+		if _, ok := parent.apis[res.GetID()]; ok {
+			return fmt.Errorf("We have more than one set of initial state for API %d", res.GetID())
+		}
+		parent.apis[res.GetID()] = &InitialAPIState{State: res}
+		d.builder.addInitialState(ctx, res.GetID(), parent.apis[res.GetID()])
+	}
+	if parent, ok := parent.(api.State); ok {
+		switch obj := child.(type) {
+		case *memory_pb.MemoryWrite:
+			d.builder.addInitialMemory(parent, obj)
+		case *Reference:
+			// Intentionally empty
+		default:
+			return fmt.Errorf("We do not expect a %T, %T, as a child of an API state", obj, child)
+		}
+	}
+	if parent, ok := parent.(*Reference); ok {
+		d.resolveReferences[parent.ID] = child
+	}
 
 	return nil
 }
 
 func (d *decoder) unmarshal(ctx context.Context, in proto.Message) (interface{}, error) {
-	obj, err := protoconv.ToObject(ctx, func(uint64, interface{}) {
-		panic("Cannot store references in captures yet")
+	obj, err := protoconv.ToObject(ctx, func(idx uint64, i interface{}) {
+		if _, ok := d.unresolvedReferences[idx]; !ok {
+			d.unresolvedReferences[idx] = []interface{}{}
+		}
+		d.unresolvedReferences[idx] = append(d.unresolvedReferences[idx], i)
 	}, in)
 	if err != nil {
 		if e, ok := err.(protoconv.ErrNoConverterRegistered); ok && e.Object == in {
@@ -153,6 +199,11 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 
 	case api.Cmd:
 		return &cmdGroup{cmd: obj}, nil
+
+	case *State:
+		return &initialStateGroup{map[api.ID]*InitialAPIState{}}, nil
+	case *memory_pb.Reference:
+		return &Reference{ID: obj.GetIdentifier()}, nil
 	}
 
 	return obj, nil
