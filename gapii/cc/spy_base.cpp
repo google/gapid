@@ -51,6 +51,7 @@ void SpyBase::unlock() {
 }
 
 void SpyBase::abort() {
+    GAPID_DEBUG("Command aborted");
     throw AbortException();
 }
 
