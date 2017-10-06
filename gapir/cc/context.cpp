@@ -399,6 +399,20 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                 return false;
             }
         });
+    interpreter->registerBuiltin(
+        Vulkan::INDEX,
+        Builtins::ReplayEnumeratePhysicalDevices,
+        [this, interpreter](uint32_t label, Stack* stack, bool push_return) {
+            GAPID_DEBUG("[%u]replayEnumeratePhysicalDevices()", label);
+            if (mVulkanRenderer != nullptr) {
+                auto* api = mVulkanRenderer->getApi<Vulkan>();
+                return api->replayEnumeratePhysicalDevices(stack, push_return);
+            } else {
+                GAPID_WARNING("[%u]replayEnumeratePhysicalDevices called without a "
+                              "bound Vulkan renderer", label);
+                return false;
+            }
+        });
 
     interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayGetFenceStatus,
                                  [this, interpreter](uint32_t label, Stack* stack, bool push_return) {

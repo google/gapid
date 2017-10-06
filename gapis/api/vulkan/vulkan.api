@@ -2511,6 +2511,7 @@ cmd void RecreatePhysicalDeviceProperties(
 
 @threadSafety("system")
 @indirect("VkInstance")
+@override
 cmd VkResult vkEnumeratePhysicalDevices(
     VkInstance        instance,
     u32*              pPhysicalDeviceCount,

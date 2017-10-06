@@ -116,3 +116,23 @@ cmd VkResult replayAllocateImageMemory(VkDevice device, VkPhysicalDeviceMemoryPr
   pMemory[0] = handle
   return ?
 }
+
+@synthetic
+cmd VkResult replayEnumeratePhysicalDevices(
+    VkInstance instance,
+    u32*              pPhysicalDeviceCount,
+    VkPhysicalDevice* pPhysicalDevices,
+    // This is an array of expected vendorID/deviceID (32-bits/32-bits)
+    u64*              pPhysicalDeviceIDs) {
+  count := pPhysicalDeviceCount[0]
+  read(pPhysicalDeviceIDs[0:count])
+  devices := pPhysicalDevices[0:count]
+  for i in (0 .. count) {
+    device := ?
+    PhysicalDevices[device] = new!PhysicalDeviceObject(Instance: instance,Index:  i,
+      VulkanHandle:              device)
+    devices[i] = device
+  }
+
+  return ?
+}

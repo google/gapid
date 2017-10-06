@@ -56,6 +56,9 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, l *devic
 // makeAttachementReadable is a transformation marking all color/depth/stencil attachment
 // images created via vkCreateImage atoms as readable (by patching the transfer src bit).
 type makeAttachementReadable struct {
+	Instance                  VkInstance
+	EnumeratedPhysicalDevices []VkPhysicalDevice
+	Properties                map[VkPhysicalDevice]VkPhysicalDeviceProperties
 }
 
 // drawConfig is a replay.Config used by colorBufferRequest and
@@ -323,6 +326,61 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		out.MutateAndWrite(ctx, id, newCmd)
 		return
+	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok {
+		if e.PPhysicalDevices == NewVkPhysicalDeviceᵖ(nil) {
+			out.MutateAndWrite(ctx, id, cmd)
+			return
+		}
+		l := s.MemoryLayout
+		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
+		count := uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, cmd, s, nil))
+		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).Read(ctx, cmd, s, nil)
+		t.EnumeratedPhysicalDevices = append(t.EnumeratedPhysicalDevices, devices...)
+		t.Instance = e.Instance
+		return
+	} else if e, ok := cmd.(*RecreatePhysicalDevices); ok {
+		l := s.MemoryLayout
+		count := uint32(e.Count.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, cmd, s, nil))
+		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
+		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).Read(ctx, cmd, s, nil)
+		t.EnumeratedPhysicalDevices = append(t.EnumeratedPhysicalDevices, devices...)
+		t.Instance = e.Instance
+		return
+	} else if e, ok := cmd.(*VkGetPhysicalDeviceProperties); ok {
+		if len(t.EnumeratedPhysicalDevices) == 0 {
+			out.MutateAndWrite(ctx, id, cmd)
+			return
+		}
+		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
+		properties := e.PProperties.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, cmd, s, nil)
+		t.Properties[e.PhysicalDevice] = properties
+		if len(t.Properties) == len(t.EnumeratedPhysicalDevices) {
+			// We have enumerated all properties for all devices:
+			// create and run the synthetic command now.
+			nd := uint32(len(t.EnumeratedPhysicalDevices))
+			numDevices := s.AllocDataOrPanic(ctx, nd)
+			physicalDevices := s.AllocDataOrPanic(ctx, t.EnumeratedPhysicalDevices)
+			dids := make([]uint64, 0)
+			for _, dev := range t.EnumeratedPhysicalDevices {
+				dids = append(dids,
+					uint64(t.Properties[dev].VendorID)<<32|
+						uint64(t.Properties[dev].DeviceID))
+			}
+			deviceIDs := s.AllocDataOrPanic(ctx, dids)
+
+			newEnumerate := cb.ReplayEnumeratePhysicalDevices(t.Instance,
+				numDevices.Ptr(),
+				physicalDevices.Ptr(),
+				deviceIDs.Ptr(),
+				VkResult_VK_SUCCESS,
+			).AddRead(numDevices.Data()).
+				AddRead(deviceIDs.Data()).
+				AddWrite(physicalDevices.Data())
+			out.MutateAndWrite(ctx, id, newEnumerate)
+			t.EnumeratedPhysicalDevices = make([]VkPhysicalDevice, 0)
+			t.Properties = make(map[VkPhysicalDevice]VkPhysicalDeviceProperties)
+			return
+		}
 	}
 	out.MutateAndWrite(ctx, id, cmd)
 }
@@ -479,7 +537,11 @@ func (a API) Replay(
 	cmds := capture.Commands
 
 	transforms := transform.Transforms{}
-	transforms.Add(&makeAttachementReadable{})
+	transforms.Add(&makeAttachementReadable{
+		VkInstance(0),
+		make([]VkPhysicalDevice, 0),
+		make(map[VkPhysicalDevice]VkPhysicalDeviceProperties),
+	})
 
 	readFramebuffer := newReadFramebuffer(ctx)
 	injector := &transform.Injector{}
