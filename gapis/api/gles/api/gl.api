@@ -45,3 +45,6 @@ cmd void glTexStorage1D(GLenum target, GLsizei levels, GLenum internalformat, GL
 
 cmd void glBindFragDataLocation(ProgramId program, GLuint color, string name) {
 }
+
+cmd void glTexImage2DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations) {
+}
