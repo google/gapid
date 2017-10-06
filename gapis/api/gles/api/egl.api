@@ -258,6 +258,13 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
 
   if context in EGLContexts {
     ctx := EGLContexts[context]
+    if (draw == null) || (read == null) {
+      // TODO: Check whether this extension is supported:
+      // https://www.khronos.org/registry/EGL/extensions/KHR/EGL_KHR_surfaceless_context.txt
+      // If not:
+      // onEGLError(EGL_BAD_SURFACE)
+      // abort
+    }
     if ctx.Other.IsBound && (ctx != Contexts[$Thread]) {
       _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_BOUND(id: as!u64(context)))
       abort

@@ -84,12 +84,13 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 
 	mw := &testcmd.Writer{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
-
+	displayHandle := memory.BytePtr(2, memory.ApplicationPool)
+	surfaceHandle := memory.BytePtr(3, memory.ApplicationPool)
 	cb := gles.CommandBuilder{Thread: 0}
-	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
+	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
 	for _, a := range []api.Cmd{
-		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
+		cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
 		cb.GlCreateShader(shaderType, 0x10),
 		cb.GlShaderSource(0x10, 1, p(0x100000), p(0x100010)).
@@ -168,11 +169,13 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	indices := []uint16{0, 1, 2, 1, 2, 3}
 	mw := &testcmd.Writer{S: newState(ctx)}
 	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
+	displayHandle := memory.BytePtr(2, memory.ApplicationPool)
+	surfaceHandle := memory.BytePtr(3, memory.ApplicationPool)
 	cb := gles.CommandBuilder{Thread: 0}
-	eglMakeCurrent := cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle, 0)
+	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
 	api.ForeachCmd(ctx, []api.Cmd{
-		cb.EglCreateContext(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
+		cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
 		cb.GlEnableVertexAttribArray(0),
 		cb.GlVertexAttribPointer(0, 2, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 8, p(0x100000)).
