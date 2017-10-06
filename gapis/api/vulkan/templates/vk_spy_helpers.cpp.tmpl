@@ -571,6 +571,21 @@ uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(VkDevice device, VkMemoryAlloca
     return r;
 }
 
+uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDevices(
+VkInstance instance, uint32_t* pPhysicalDeviceCount,
+VkPhysicalDevice* pPhysicalDevices) {
+    uint32_t fill_count = pPhysicalDevices? *pPhysicalDeviceCount : 0;
+    uint32_t r = mImports.mVkInstanceFunctions[instance].vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
+    if (fill_count > *pPhysicalDeviceCount) {
+        fill_count = *pPhysicalDeviceCount;
+    }
+    for (size_t i = 0; i < fill_count; ++i) {
+        VkPhysicalDeviceProperties properties;
+        gapii::vkGetPhysicalDeviceProperties(pPhysicalDevices[i], &properties);
+    }
+    return r;
+}
+
 uint32_t VulkanSpy::numberOfPNext(CallObserver* observer, void* pNext) {
   uint32_t counter = 0;
   while (pNext) {

@@ -99,3 +99,8 @@ bool replayGetEventStatus(Stack* stack, bool pushReturn);
 // Builtin function for getting image memory requirement and allocating
 // corresponding memory for a image on the replay side.
 bool replayAllocateImageMemory(Stack* stack, bool pushReturn);
+
+// Builtin function for recreating physical devices. The reason we have
+// to customize this is that the device can choose to return the
+// physical devices in any order.
+bool replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn);

@@ -404,6 +404,71 @@ bool Vulkan::replayGetEventStatus(Stack* stack, bool pushReturn) {
     }
 }
 ¶
+bool Vulkan::replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn) {
+    auto physicalDeviceIDs = stack->pop<uint64_t*>();
+    auto physicalDevices = stack->pop<VkPhysicalDevice*>();
+    auto physicalDeviceCount = stack->pop<uint32_t*>();
+    auto instance = static_cast<size_val>(stack->pop<size_val>());
+    if (stack->isValid()) {
+        GAPID_DEBUG("replayEnumeratePhysicalDevices");
+        if (mVkInstanceFunctionStubs.find(instance) != mVkInstanceFunctionStubs.end() &&
+        mVkInstanceFunctionStubs[instance].vkEnumeratePhysicalDevices) {
+            auto enumerate = mVkInstanceFunctionStubs[instance].vkEnumeratePhysicalDevices;
+            auto props = mVkInstanceFunctionStubs[instance].vkGetPhysicalDeviceProperties;
+            std::vector<VkPhysicalDevice> devices;
+            std::vector<VkPhysicalDeviceProperties> properties;
+            uint32_t count = 0;
+            enumerate(instance, &count, nullptr);
+            devices.resize(count);
+            properties.resize(count);
+            auto return_value = enumerate(instance, &count, devices.data());
+            for (size_t i = 0; i < count; ++i) {
+              props(devices[i], &properties[i]);
+            }
+            GAPID_DEBUG("Returned: %u", return_value);
+            if (count < *physicalDeviceCount) {
+              GAPID_WARNING("Fewer physical devices than in trace, replay may not work correctly");
+            } else if (count > *physicalDeviceCount) {
+              GAPID_WARNING("More physical devices than in trace");
+            }
+            if (count == 0) {
+              GAPID_ERROR("No physical devices on replay device");
+            }
+
+            for (size_t i = 0; i < *physicalDeviceCount; ++i) {
+              auto device_id = physicalDeviceIDs[i];
+              size_t j = 0;
+              for (; j < count; ++j) {
+                uint64_t new_device_id = static_cast<uint64_t>(properties[j].vendorID) << 32 |
+                    static_cast<uint64_t>(properties[j].deviceID);
+                if (device_id == new_device_id) {
+                  break;
+                }
+              }
+              if (j == count) {
+                GAPID_WARNING("Could not find device with deviceID %d, and vendorID %d", (device_id >> 32) & 0xFFFFFFFF, 
+                    device_id & 0xFFFFFFFF);
+                j = count - 1;
+              }
+              if (j != i) {
+                GAPID_WARNING("Remapping physical device on replay: %d -> %d", j, i);
+              }
+              physicalDevices[i] = devices[j];
+            }
+            
+            if (pushReturn) {
+                stack->push<VkResult>(return_value);
+            }
+        } else {
+            GAPID_WARNING("Attempted to call unsupported function replayEnumeratePhysicalDevices");
+        }
+        return true;
+    } else {
+        GAPID_WARNING("Error during calling function replayEnumeratePhysicalDevices");
+        return false;
+    }
+}
+¶
   »}  // namespace gapir
 ¶
 {{end}}

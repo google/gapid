@@ -18,6 +18,7 @@
 #include <map>
 #include <vector>
 #include <unordered_set>
+#include "gapii/cc/vulkan_exports.h"
 #include "gapii/cc/vulkan_spy.h"
 
 #ifdef _WIN32
@@ -364,7 +365,14 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
       uint32_t count = instance_devices.second.size();
       RecreatePhysicalDevices(observer, instance_devices.first, &count,
                               instance_devices.second.data());
+      for (size_t i = 0; i < count; ++i) {
+        VkPhysicalDeviceProperties props;
+        mImports.mVkInstanceFunctions[instance_devices.first]
+          .vkGetPhysicalDeviceProperties(instance_devices.second[i], &props);
+        vkGetPhysicalDeviceProperties(observer, instance_devices.second[i], &props);
+      }
     }
+
     for (auto& physical_device : PhysicalDevices) {
       uint32_t queueFamilyPropertyCount = 0;
       std::vector<VkQueueFamilyProperties> queueFamilyProperties;
