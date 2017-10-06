@@ -915,12 +915,16 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			// It has no effect on rendering so just drop it.
 			return
 
-		case *GlInvalidateFramebuffer,
-			*GlDiscardFramebufferEXT: // GL_EXT_discard_framebuffer
+		case *GlDiscardFramebufferEXT: // GL_EXT_discard_framebuffer
 			// It may not be implemented by the replay driver.
 			// It is only a hint so we can just drop it.
 			// TODO: It has performance impact so we should not ignore it when profiling.
 			return
+
+		case *GlInvalidateFramebuffer, *GlInvalidateSubFramebuffer:
+			if !version.AtLeastES(3, 0) || !version.AtLeastGL(4, 3) {
+				return // Not supported. Only a hint. Drop it.
+			}
 
 		case *GlMapBufferOES:
 			if !version.IsES { // Remove extension suffix on desktop.
