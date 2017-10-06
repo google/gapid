@@ -103,10 +103,12 @@ func (t ShaderType) String() string {
 	}
 }
 
-// Option controls how ConvertGlsl converts its passed-in GLSL source code.
-type Option struct {
+// Options controls how ConvertGlsl converts its passed-in GLSL source code.
+type Options struct {
 	// The type of shader.
 	ShaderType ShaderType
+	// Shader source preamble.
+	Preamble string
 	// Whether to add prefix to all non-builtin symbols.
 	PrefixNames bool
 	// The name prefix to be added to all non-builtin symbols.
@@ -121,33 +123,44 @@ type Option struct {
 	CheckAfterChanges bool
 	// Whether to disassemble the generated GLSL code.
 	Disassemble bool
+	// If true, let some minor invalid statements compile.
+	Relaxed bool
 }
 
 // ConvertGlsl modifies the given GLSL according to the options specified via
-// option and returns the modification status and result. Possible
-// modifications includes creating output variables for input variables,
-// prefixing all non-builtin symbols with a given prefix, etc.
-func ConvertGlsl(source string, option *Option) (CodeWithDebugInfo, error) {
+// o and returns the modification status and result. Possible modifications
+// includes creating output variables for input variables, prefixing all
+// non-builtin symbols with a given prefix, etc.
+func ConvertGlsl(source string, o *Options) (CodeWithDebugInfo, error) {
+	toFree := []unsafe.Pointer{}
+	defer func() {
+		for _, ptr := range toFree {
+			C.free(ptr)
+		}
+	}()
+
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	np := C.CString(option.NamesPrefix)
-	op := C.CString(option.OutputPrefix)
-	opts := C.struct_options_t{
-		shader_type:            C.shader_type(option.ShaderType),
-		prefix_names:           C.bool(option.PrefixNames),
-		names_prefix:           np,
-		add_outputs_for_inputs: C.bool(option.AddOutputsForInputs),
-		output_prefix:          op,
-		make_debuggable:        C.bool(option.MakeDebuggable),
-		check_after_changes:    C.bool(option.CheckAfterChanges),
-		disassemble:            C.bool(option.Disassemble),
+	cstr := func(s string) *C.char {
+		out := C.CString(s)
+		toFree = append(toFree, unsafe.Pointer(out))
+		return out
 	}
-	csource := C.CString(source)
-	result := C.convertGlsl(csource, C.size_t(len(source)), &opts)
-	C.free(unsafe.Pointer(np))
-	C.free(unsafe.Pointer(op))
-	C.free(unsafe.Pointer(csource))
+
+	opts := C.struct_options_t{
+		shader_type:            C.shader_type(o.ShaderType),
+		preamble:               cstr(o.Preamble),
+		prefix_names:           C.bool(o.PrefixNames),
+		names_prefix:           cstr(o.NamesPrefix),
+		add_outputs_for_inputs: C.bool(o.AddOutputsForInputs),
+		output_prefix:          cstr(o.OutputPrefix),
+		make_debuggable:        C.bool(o.MakeDebuggable),
+		check_after_changes:    C.bool(o.CheckAfterChanges),
+		disassemble:            C.bool(o.Disassemble),
+		relaxed:                C.bool(o.Relaxed),
+	}
+	result := C.convertGlsl(cstr(source), C.size_t(len(source)), &opts)
 	defer C.deleteGlslCodeWithDebug(result)
 
 	ret := CodeWithDebugInfo{
@@ -175,7 +188,7 @@ func ConvertGlsl(source string, option *Option) (CodeWithDebugInfo, error) {
 
 	if !result.ok {
 		msg := []string{
-			fmt.Sprintf("Failed to convert %v shader.", option.ShaderType),
+			fmt.Sprintf("Failed to convert %v shader.", o.ShaderType),
 		}
 		if m := C.GoString(result.message); len(m) > 0 {
 			msg = append(msg, m)

@@ -60,6 +60,7 @@ typedef enum shader_type_t {
  **/
 typedef struct options_t {
   shader_type shader_type;
+  const char* preamble; /* optional */
   bool prefix_names;
   const char* names_prefix; /* optional */
   bool add_outputs_for_inputs;
@@ -67,6 +68,7 @@ typedef struct options_t {
   bool make_debuggable;
   bool check_after_changes;
   bool disassemble;
+  bool relaxed;
 } options_t;
 
 typedef struct spirv_binary_t {

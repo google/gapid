@@ -168,7 +168,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 				t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
 				return
 			}
-			opts := shadertools.Option{
+			opts := shadertools.Options{
 				ShaderType:        st,
 				CheckAfterChanges: true,
 				Disassemble:       true,

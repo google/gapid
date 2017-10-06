@@ -130,11 +130,11 @@ void set_error_msg(code_with_debug_info_t* x, std::string msg) {
   strcpy(x->message, msg.c_str());
 }
 
-std::vector<unsigned int> parseGlslang(const char* code, std::string* err_msg,
-    shader_type type, bool es_profile) {
+std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
+    std::string* err_msg, shader_type type, bool es_profile, bool relaxed_errs) {
   std::vector<unsigned int> spirv;
 
-  EShMessages messages = EShMsgDefault;
+  EShMessages messages = relaxed_errs ? EShMsgRelaxedErrors : EShMsgDefault;
   EShLanguage lang = EShLangVertex;
   switch (type) {
     case VERTEX: { lang = EShLangVertex; break; }
@@ -147,6 +147,7 @@ std::vector<unsigned int> parseGlslang(const char* code, std::string* err_msg,
 
   glslang::InitializeProcess();
   glslang::TShader shader(lang);
+  shader.setPreamble(preamble);
   shader.setStrings(&code, 1);
   // use 100 for ES environment, 330 for desktop
   int default_version = es_profile ? 100 : 330;
@@ -186,7 +187,8 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
   code_with_debug_info_t* result = new code_with_debug_info_t{};
   std::string err_msg;
 
-  std::vector<unsigned int> spirv = parseGlslang(input, &err_msg, options->shader_type, true);
+  std::vector<unsigned int> spirv = parseGlslang(
+      input, options->preamble, &err_msg, options->shader_type, true, options->relaxed);
 
   if (!err_msg.empty()) {
     set_error_msg(result, "Failed to parse original source code:\n" + err_msg);
@@ -239,7 +241,7 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
 
   // check if changed source code compiles again
   if (options->check_after_changes) {
-    parseGlslang(result->source_code, &err_msg, options->shader_type, false);
+    parseGlslang(result->source_code, nullptr, &err_msg, options->shader_type, false, false);
   }
 
   if (!err_msg.empty()) {
