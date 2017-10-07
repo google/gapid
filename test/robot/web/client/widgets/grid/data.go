@@ -123,6 +123,7 @@ func (l TaskList) stats() taskStats {
 		numStaleFailed:            l.Count(taskStaleFailed),
 		numCurrentFailed:          l.Count(taskCurrentFailed),
 		numFailedWasSucceeded:     l.Count(taskFailedWasSucceeded),
+		numStaleUnknown:           l.Count(taskStaleUnknown),
 		numTasks:                  len(l),
 	}
 }
@@ -136,6 +137,7 @@ func taskStaleFailed(t Task) bool            { return t.Result == Failed && t.St
 func taskInProgressWasFailed(t Task) bool    { return t.Result == Failed && t.Status == InProgress }
 func taskFailedWasSucceeded(t Task) bool     { return t.Result == Failed && t.Status == Changed }
 func taskInProgressWasUnknown(t Task) bool   { return t.Result == Unknown && t.Status == InProgress }
+func taskStaleUnknown(t Task) bool           { return t.Result == Unknown && t.Status == Stale }
 
 type cell struct {
 	index           CellIndex
@@ -167,6 +169,7 @@ type taskStats struct {
 	numStaleFailed            int
 	numCurrentFailed          int
 	numFailedWasSucceeded     int
+	numStaleUnknown           int
 	numTasks                  int
 }
 

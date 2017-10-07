@@ -298,6 +298,7 @@ func (g *Grid) drawCluster(ctx *dom.Context2D, c *cluster, r *dom.Rect) {
 		ctx.Restore()
 	}
 
+	drawSegment(g.Style.StaleUnknownForegroundColor, false, c.stats.numStaleUnknown)
 	drawSegment(g.Style.CurrentSucceededForegroundColor, false, c.stats.numCurrentSucceeded)
 	drawSegment(g.Style.StaleSucceededForegroundColor, true, c.stats.numInProgressWasSucceeded+c.stats.numInProgressWasUnknown)
 	drawSegment(g.Style.StaleSucceededForegroundColor, false, c.stats.numStaleSucceeded)
