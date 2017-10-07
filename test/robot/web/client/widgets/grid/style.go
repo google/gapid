@@ -46,6 +46,7 @@ type Style struct {
 	FixedForegroundColor            dom.Color // The foreground color used for tasks that last failed and now are succeeding.
 	UnknownBackgroundColor          dom.Color // The background color used for tasks that are in an unknown state.
 	UnknownForegroundColor          dom.Color // The foreground color used for tasks that are in an unknown state.
+	StaleUnknownForegroundColor     dom.Color // The foreground color used for tasks that are in an unknown state and are stale.
 	SelectedBackgroundColor         dom.Color // The background color used for cells and headers when selected.
 	IconsFont                       dom.Font  // The font to use for icon drawing.
 	Icons                           Icons     // The character table used for icon drawing.
@@ -65,8 +66,10 @@ func (s *Style) statsStyle(stats taskStats) (icon rune, backgroundColor, foregro
 		return s.Icons.Succeeded, s.StaleSucceededBackgroundColor, s.StaleSucceededForegroundColor
 	case stats.numCurrentSucceeded > 0:
 		return s.Icons.Succeeded, s.CurrentSucceededBackgroundColor, s.CurrentSucceededForegroundColor
-	case stats.numInProgressWasUnknown > 0:
+	case stats.numInProgressWasUnknown+stats.numStaleUnknown > 0:
 		return s.Icons.Unknown, s.UnknownBackgroundColor, s.UnknownForegroundColor
+	case stats.numStaleUnknown > 0:
+		return s.Icons.Unknown, s.UnknownBackgroundColor, s.StaleUnknownForegroundColor
 	default:
 		return s.Icons.Unknown, s.BackgroundColor, s.UnknownForegroundColor
 	}

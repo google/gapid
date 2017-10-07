@@ -69,6 +69,7 @@ func New() *Grid {
 		FixedForegroundColor:            dom.RGBA(0.18, 0.85, 0.20, 0.9),
 		UnknownBackgroundColor:          dom.RGBA(1.00, 1.00, 1.00, 1.0),
 		UnknownForegroundColor:          dom.RGBA(0.60, 0.60, 0.60, 0.9),
+		StaleUnknownForegroundColor:     dom.RGBA(0.60, 0.60, 0.60, 0.3),
 		SelectedBackgroundColor:         dom.RGB(0.89, 0.95, 0.97),
 		IconsFont:                       dom.NewFont(25, "Material Icons"),
 		Icons: Icons{

@@ -76,7 +76,7 @@ var (
 		enumSrc: func() enum {
 			result := enum{}
 			devices := itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
-			targets := itemGetter("{.target}", "{.target}", template.FuncMap{})(queryArray("/workers/"))
+			targets := itemGetter("{{.target}}", "{{.target}}", template.FuncMap{})(queryArray("/workers/"))
 			for _, d := range devices {
 				for _, t := range targets {
 					if d.Id() == t.Id() {
@@ -96,7 +96,7 @@ var (
 		enumSrc: func() enum {
 			result := enum{}
 			devices := itemGetter("{{.id}}", machineDisplayTemplate, template.FuncMap{})(queryArray("/devices/"))
-			hosts := itemGetter("{.host}", "{.host}", template.FuncMap{})(queryArray("/workers/"))
+			hosts := itemGetter("{{.host}}", "{{.host}}", template.FuncMap{})(queryArray("/workers/"))
 			for _, d := range devices {
 				for _, h := range hosts {
 					if d.Id() == h.Id() {
@@ -344,7 +344,7 @@ func newTask(entry map[string]interface{}, kind Item) *task {
 		}
 	} else {
 		t.status = grid.Stale
-		t.result = grid.Failed
+		t.result = grid.Unknown
 	}
 	return t
 }
