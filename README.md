@@ -85,4 +85,4 @@ A new domain specific language to describe a graphics API in its entirety. Combi
 
 ![components](https://google.github.io/gapid/images/docs/components.svg)
 
-The GAPII, GAPIS, GAPIR and GAPIC components can all run on different (or the same) device, allowing for distrubuted workflows.
+The GAPII, GAPIS, GAPIR and GAPIC components can all run on different (or the same) device, allowing for distributed workflows.
