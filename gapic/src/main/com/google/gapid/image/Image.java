@@ -153,6 +153,16 @@ public interface Image {
       public float getMax() {
         return 1;
       }
+
+      @Override
+      public float getAlphaMin() {
+        return 1;
+      }
+
+      @Override
+      public float getAlphaMax() {
+        return 1;
+      }
     };
 
     /**
@@ -164,5 +174,15 @@ public interface Image {
      * @return the maximum value across all channels of the image data. Used for tone mapping.
      */
     public float getMax();
+
+    /**
+     * @return the minimum alpha value of the image data.
+     */
+    public float getAlphaMin();
+
+    /**
+     * @return the maximum alpha value of the image data.
+     */
+    public float getAlphaMax();
   }
 }
