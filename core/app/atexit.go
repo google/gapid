@@ -20,6 +20,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/google/gapid/core/fault/stacktrace"
+
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 )
@@ -77,6 +79,12 @@ func handleAbortSignals(cancel task.CancelFunc) {
 	// Run a goroutine that calls the cancel func if the signal is received
 	crash.Go(func() {
 		<-sigchan
+		cancel()
+	})
+}
+
+func handleCrashSignals(cancel task.CancelFunc) {
+	crash.Register(func(interface{}, stacktrace.Callstack) {
 		cancel()
 	})
 }

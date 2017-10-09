@@ -24,6 +24,7 @@ set(files
     flags.go
     help.go
     log.go
+    oncrash.go
     profile.go
     run.go
     verbs.go
