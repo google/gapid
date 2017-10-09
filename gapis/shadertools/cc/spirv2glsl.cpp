@@ -21,7 +21,7 @@
 // so it is important we never include both at the same time.
 #include "third_party/SPIRV-Cross/spirv_glsl.hpp"
 
-std::string spirv2glsl(std::vector<uint32_t> spirv) {
+std::string spirv2glsl(std::vector<uint32_t> spirv, bool strip_optimizations) {
   spirv_cross::CompilerGLSL glsl(std::move(spirv));
   spirv_cross::CompilerGLSL::Options cross_options;
   cross_options.version = 330;
@@ -29,5 +29,8 @@ std::string spirv2glsl(std::vector<uint32_t> spirv) {
   cross_options.force_temporary = false;
   cross_options.vertex.fixup_clipspace = false;
   glsl.set_options(cross_options);
+  if (strip_optimizations) {
+    glsl.unset_execution_mode(spv::ExecutionModeEarlyFragmentTests);
+  }
   return glsl.compile();
 }

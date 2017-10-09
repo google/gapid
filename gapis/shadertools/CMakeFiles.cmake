@@ -19,6 +19,7 @@
 
 set(files
     shadertools.go
+    shadertools_test.go
 )
 set(dirs
     cc

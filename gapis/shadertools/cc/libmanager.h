@@ -69,6 +69,7 @@ typedef struct options_t {
   bool check_after_changes;
   bool disassemble;
   bool relaxed;
+  bool strip_optimizations;
 } options_t;
 
 typedef struct spirv_binary_t {
