@@ -18,12 +18,13 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    auto.go
     doc.go
     filter.go
+    pack.go
+    pack_test.go
     stacktrace.go
     stacktrace_test.go
 )
 set(dirs
-    
+
 )
