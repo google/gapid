@@ -14,52 +14,81 @@
 
 package stacktrace
 
-type (
-	// Source is the signature for something that returns a stacktrace.
-	Source func() Callstack
-
-	// Matcher is a predicate for stack entries.
-	Matcher func(Entry) bool
+import (
+	"regexp"
 )
 
-// MatchPackage returns a predicate that matches the specified package.
+// Matcher is a predicate for stack entries.
+type Matcher func(Entry) bool
+
+// Filter returns a filtered set of stack entries.
+type Filter func([]Entry) []Entry
+
+// MatchPackage returns a predicate that matches the specified package by
+// regular expression.
 func MatchPackage(pkg string) Matcher {
+	re := regexp.MustCompile(pkg)
 	return func(entry Entry) bool {
-		return entry.Function.Package == pkg
+		return re.MatchString(entry.Function.Package)
 	}
 }
 
-// MatchFunction returns a predicate that matches the specified function.
+// MatchFunction returns a predicate that matches the specified function by
+// regular expression.
 func MatchFunction(fun string) Matcher {
+	re := regexp.MustCompile(fun)
 	return func(entry Entry) bool {
-		return entry.Function.Name == fun
+		return re.MatchString(entry.Function.Name)
 	}
 }
 
-// TrimBottom trims stack entries from the bottom of the trace.
-// It trims from the first matching entry down to the end of the trace.
-func TrimBottom(match Matcher, source Source) Source {
-	return func() Callstack {
-		stack := source()
-		for i := len(stack) - 2; i >= 0; i-- {
-			if match(stack.Get(i)) {
-				return stack[i+1:]
-			}
+// Filter returns a new capture filtered by f.
+func (c Callstack) Filter(f ...Filter) Callstack {
+	entries := And(f...)(c.Entries())
+	out := make(Callstack, len(entries))
+	for i, e := range entries {
+		out[i] = e.PC
+	}
+	return out
+}
+
+// And returns a filter where all of the filters need to pass.
+func And(filters ...Filter) Filter {
+	return func(entries []Entry) []Entry {
+		for _, f := range filters {
+			entries = f(entries)
 		}
-		return stack
+		return entries
 	}
 }
 
-// TrimTop trims stack entries from the top of the trace.
-// It trims from the last matching entry up to the start of the trace.
-func TrimTop(match Matcher, source Source) Source {
-	return func() Callstack {
-		stack := source()
-		for i := range stack[:len(stack)-1] {
-			if match(stack.Get(i)) {
-				return stack[:i]
+// Trim returns a filter combining the TrimTop and TrimBottom filters with m.
+func Trim(m Matcher) Filter {
+	return And(TrimTop(m), TrimBottom(m))
+}
+
+// TrimTop returns a filter that removes all the deepest entries that doesn't
+// satisfy m.
+func TrimTop(m Matcher) Filter {
+	return func(entries []Entry) []Entry {
+		for i, e := range entries {
+			if m(e) {
+				return entries[i:]
 			}
 		}
-		return stack
+		return []Entry{}
+	}
+}
+
+// TrimBottom returns a filter that removes all the shallowest entries that
+// doesn't satisfy m.
+func TrimBottom(m Matcher) Filter {
+	return func(entries []Entry) []Entry {
+		for i := len(entries) - 1; i >= 0; i-- {
+			if m(entries[i]) {
+				return entries[:i]
+			}
+		}
+		return []Entry{}
 	}
 }

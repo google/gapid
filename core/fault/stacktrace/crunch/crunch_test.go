@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package stacktrace
+package crunch
 
 import (
 	"bytes"
@@ -26,11 +26,12 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
+	"github.com/google/gapid/core/fault/stacktrace"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
 
-var callstack = Callstack{
+var callstack = stacktrace.Callstack{
 	0x400b281,
 	0x4737568,
 	0x4a62224,
@@ -74,32 +75,32 @@ func init() {
 	raw = buf.Bytes()
 }
 
-func TestPackUnpack(t *testing.T) {
+func TestCrunchUncrunch(t *testing.T) {
 	ctx := log.Testing(t)
-	data := callstack.Pack()
-	got := Unpack(data)
+	data := Crunch(callstack)
+	got := Uncrunch(data)
 	assert.For(ctx, "callstack").ThatSlice(got).Equals(callstack)
-	fmt.Printf("Packed from %v to %d bytes\n", len(raw), len(data))
+	fmt.Printf("Crunched from %v to %d bytes\n", len(raw), len(data))
 }
 
 func TestCompressDecompress(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, c := range compressors {
-		values := callstack.toU64s()
+		values := toU64s(callstack)
 		compressed := c.compress(values)
 		decompressed := c.decompress(compressed)
 		assert.For(ctx, "%T%v", c, c).ThatSlice(decompressed).Equals(values)
 	}
 }
 
-func TestCompressorPackUnpack(t *testing.T) {
+func TestCompressorCrunchUncrunch(t *testing.T) {
 	ctx := log.Testing(t)
 	printCompressionRatio("raw", raw)
 	for i, c := range compressors {
 		bs := binary.BitStream{}
-		callstack.packWith(c, &bs)
-		unpacked := unpackWith(c, &bs)
-		assert.For(ctx, "%T%v", c, c).ThatSlice(unpacked).Equals(callstack)
+		crunchWith(callstack, c, &bs)
+		uncrunched := uncrunchWith(c, &bs)
+		assert.For(ctx, "%T%v", c, c).ThatSlice(uncrunched).Equals(callstack)
 		printCompressionRatio(fmt.Sprint("  ", i), bs.Data)
 	}
 }

@@ -45,6 +45,8 @@ type Entry struct {
 	Location Location
 	// Location holds the logical location for this entry.
 	Function Function
+	// PC is the program counter for this entry.
+	PC uintptr
 }
 
 // Callstack is a full stacktrace
@@ -55,42 +57,52 @@ const stackLimit = 50
 // Capture returns a full stacktrace.
 func Capture() Callstack {
 	callers := make([]uintptr, stackLimit)
-	count := runtime.Callers(0, callers)
-	return Callstack(callers[:count])
+	count := runtime.Callers(2, callers)
+	stack := callers[:count]
+	return Callstack(stack)
 }
 
-// All returns all the entries for the stack trace.
-func (c Callstack) All() []Entry {
-	calls := make([]Entry, len(c))
-	for i := range c {
-		calls[i] = c.Get(i)
+// Entries returns all the entries for the stack trace.
+func (c Callstack) Entries() []Entry {
+	frames := runtime.CallersFrames([]uintptr(c))
+	out := []Entry{}
+	for {
+		frame, more := frames.Next()
+		dir, file := path.Split(frame.File)
+		fullname := frame.Function
+		var pkg, name string
+		if i := strings.LastIndex(fullname, "/"); i > 0 {
+			i += strings.IndexRune(fullname[i+1:], '.')
+			// name is of the form github.com/google/gapid/framework/log.StacktraceOnError
+			// we find the last /, then find the next . to split the function name from the package name
+			pkg, name = fullname[:i+1], fullname[i+2:]
+		}
+		out = append(out, Entry{
+			Location: Location{
+				Directory: dir,
+				File:      file,
+				Line:      frame.Line,
+			},
+			Function: Function{
+				Package: pkg,
+				Name:    name,
+			},
+			PC: frame.PC,
+		})
+		if !more {
+			break
+		}
 	}
-	return calls
+
+	return out
 }
 
-// Get returns the callstack entry at idx.
-func (c Callstack) Get(idx int) Entry {
-	pc := c[idx]
-	// See documentation for runtime.Callers for why we use pc-1 in here
-	f := runtime.FuncForPC(pc - 1)
-	filename, line := f.FileLine(pc - 1)
-	dir, basename := path.Split(filename)
-	// name is of the form github.com/google/gapid/framework/log.StacktraceOnError
-	// we find the last /, then find the next . to split the function name from the package name
-	name := f.Name()
-	i := strings.LastIndex(name, "/")
-	i += strings.IndexRune(name[i+1:], '.')
-	return Entry{
-		Location: Location{
-			Directory: dir,
-			File:      basename,
-			Line:      line,
-		},
-		Function: Function{
-			Package: name[:i+1],
-			Name:    name[i+2:],
-		},
+func (c Callstack) String() string {
+	lines := make([]string, len(c))
+	for i, e := range c.Entries() {
+		lines[i] = e.String()
 	}
+	return strings.Join(lines, "\n")
 }
 
 func (e Entry) String() string {
@@ -98,7 +110,12 @@ func (e Entry) String() string {
 }
 
 func (l Location) String() string {
-	return fmt.Sprint(l.File, "@", l.Line)
+	const strip = "github.com/google/gapid/"
+	dir := l.Directory
+	if i := strings.LastIndex(dir, strip); i > 0 {
+		dir = dir[i+len(strip):]
+	}
+	return fmt.Sprint(dir, l.File, "@", l.Line)
 }
 
 func (f Function) String() string {
