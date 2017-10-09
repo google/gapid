@@ -17,4 +17,4 @@
 #include <string>
 #include <vector>
 
-std::string spirv2glsl(std::vector<uint32_t> spirv);
+std::string spirv2glsl(std::vector<uint32_t> spirv, bool strip_optimizations);

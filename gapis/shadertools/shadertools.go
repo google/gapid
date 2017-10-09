@@ -37,7 +37,7 @@ var mutex sync.Mutex
 
 // Instruction represents a SPIR-V instruction.
 type Instruction struct {
-	Id     uint32   // Result id.
+	ID     uint32   // Result identifer.
 	Opcode uint32   // Opcode.
 	Words  []uint32 // Operands.
 	Name   string   // Optional symbol name.
@@ -50,12 +50,13 @@ type CodeWithDebugInfo struct {
 	Info              []Instruction // A set of SPIR-V debug instructions.
 }
 
+// FormatDebugInfo returns the instructions as a string.
 func FormatDebugInfo(insts []Instruction, linePrefix string) string {
 	var buffer bytes.Buffer
 	for _, inst := range insts {
 		buffer.WriteString(linePrefix)
-		if inst.Id != 0 {
-			buffer.WriteString(fmt.Sprintf("%%%-5v = ", inst.Id))
+		if inst.ID != 0 {
+			buffer.WriteString(fmt.Sprintf("%%%-5v = ", inst.ID))
 		} else {
 			buffer.WriteString(fmt.Sprintf("       = "))
 		}
@@ -125,6 +126,11 @@ type Options struct {
 	Disassemble bool
 	// If true, let some minor invalid statements compile.
 	Relaxed bool
+	// If true, optimizations that require high-end GL versions, or extensions
+	// will be stripped. These optimizations should have no impact on the end
+	// result of the shader, but may impact performance.
+	// Example: Early Fragment Test.
+	StripOptimizations bool
 }
 
 // ConvertGlsl modifies the given GLSL according to the options specified via
@@ -159,6 +165,7 @@ func ConvertGlsl(source string, o *Options) (CodeWithDebugInfo, error) {
 		check_after_changes:    C.bool(o.CheckAfterChanges),
 		disassemble:            C.bool(o.Disassemble),
 		relaxed:                C.bool(o.Relaxed),
+		strip_optimizations:    C.bool(o.StripOptimizations),
 	}
 	result := C.convertGlsl(cstr(source), C.size_t(len(source)), &opts)
 	defer C.deleteGlslCodeWithDebug(result)
@@ -169,18 +176,18 @@ func ConvertGlsl(source string, o *Options) (CodeWithDebugInfo, error) {
 	}
 
 	if result.info != nil {
-		c_insts := (*[1 << 30]C.struct_instruction_t)(unsafe.Pointer(result.info.insts))
+		cInsts := (*[1 << 30]C.struct_instruction_t)(unsafe.Pointer(result.info.insts))
 		for i := 0; i < int(result.info.insts_num); i++ {
-			c_inst := c_insts[i]
+			cInst := cInsts[i]
 			inst := Instruction{
-				Id:     uint32(c_inst.id),
-				Opcode: uint32(c_inst.opcode),
-				Words:  make([]uint32, 0, c_inst.words_num),
-				Name:   C.GoString(c_inst.name),
+				ID:     uint32(cInst.id),
+				Opcode: uint32(cInst.opcode),
+				Words:  make([]uint32, 0, cInst.words_num),
+				Name:   C.GoString(cInst.name),
 			}
-			c_words := (*[1 << 30]C.uint32_t)(unsafe.Pointer(c_inst.words))
-			for j := 0; j < int(c_inst.words_num); j++ {
-				inst.Words = append(inst.Words, uint32(c_words[j]))
+			cWords := (*[1 << 30]C.uint32_t)(unsafe.Pointer(cInst.words))
+			for j := 0; j < int(cInst.words_num); j++ {
+				inst.Words = append(inst.Words, uint32(cWords[j]))
 			}
 			ret.Info = append(ret.Info, inst)
 		}

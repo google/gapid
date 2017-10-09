@@ -455,8 +455,9 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					log.W(ctx, "%v compat: %v", cmd, err)
 				}
 				opts := shadertools.Options{
-					ShaderType: st,
-					Relaxed:    true, // find_issues will still report bad GLSL.
+					ShaderType:         st,
+					Relaxed:            true, // find_issues will still report bad GLSL.
+					StripOptimizations: true,
 				}
 
 				// Trim any prefix whitespace / newlines.
