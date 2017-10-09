@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
@@ -121,7 +122,7 @@ func (verb *traceVerb) inputHandler(ctx context.Context, deferStart bool) (conte
 	startSignal, start := task.NewSignal()
 	var cancel task.CancelFunc
 	ctx, cancel = task.WithCancel(ctx)
-	go func() {
+	crash.Go(func() {
 		reader := bufio.NewReader(os.Stdin)
 		if deferStart {
 			println("Press enter to start capturing...")
@@ -131,7 +132,7 @@ func (verb *traceVerb) inputHandler(ctx context.Context, deferStart bool) (conte
 		println("Press enter to stop capturing...")
 		_, _ = reader.ReadString('\n')
 		cancel()
-	}()
+	})
 	return ctx, startSignal
 }
 

@@ -30,6 +30,7 @@ import (
 	"sync/atomic"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/image/font"
 	"github.com/google/gapid/core/log"
@@ -261,7 +262,7 @@ func (verb *videoVerb) writeFrames(ctx context.Context, filepath string, vidFun 
 
 	ch := make(chan image.Image, 64)
 
-	go vidFun(ch)
+	crash.Go(func() { vidFun(ch) })
 
 	index := verb.Frames.Start
 	var err error
@@ -292,9 +293,7 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 	}
 
 	vidDone := make(chan error, 1) // buffered so the goroutine always finishes
-	go func() {
-		vidDone <- vidFun(frames)
-	}()
+	crash.Go(func() { vidDone <- vidFun(frames) })
 
 	out := verb.Out
 	if out == "" {

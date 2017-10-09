@@ -19,6 +19,7 @@ import (
 	"flag"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
@@ -75,14 +76,14 @@ func (v *webVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		m := master.NewClient(ctx, config.Master)
 		restart := false
-		go func() {
+		crash.Go(func() {
 			shutdown, err := m.Orbit(ctx, master.ServiceList{Worker: true})
 			if err != nil {
 				return
 			}
 			restart = shutdown.Restart
 			w.Close()
-		}()
+		})
 		log.I(ctx, "Starting web server")
 		err = w.Serve(ctx)
 		if restart {

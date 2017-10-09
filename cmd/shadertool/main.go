@@ -25,6 +25,7 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/gapis/shadertools"
 )
 
@@ -59,7 +60,7 @@ func run(ctx context.Context) error {
 		}
 
 		wg.Add(1)
-		go func() {
+		crash.Go(func() {
 			defer wg.Done()
 
 			// Process the shader
@@ -80,7 +81,7 @@ func run(ctx context.Context) error {
 					return
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 

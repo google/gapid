@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
@@ -140,11 +141,11 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				return err
 			}
 		}
-		go func() {
+		crash.Go(func() {
 			if err := monitor.Run(ctx, managers, monitor.NewDataOwner(), scheduler.Tick); err != nil {
 				log.E(ctx, "Scheduler died. Error: %v", err)
 			}
-		}()
+		})
 
 		if v.StartWeb {
 			config := web.Config{
@@ -156,7 +157,7 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			if err != nil {
 				return err
 			}
-			go w.Serve(ctx)
+			crash.Go(func() { w.Serve(ctx) })
 		}
 
 		c := master.NewClient(ctx, managers.Master)
@@ -165,7 +166,7 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			Worker: v.StartWorkers,
 			Web:    v.StartWeb,
 		}
-		go func() {
+		crash.Go(func() {
 			shutdown, err := c.Orbit(ctx, services)
 			if err != nil {
 				log.I(ctx, "Orbit failed")
@@ -180,7 +181,7 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				log.I(ctx, "Graceful stop")
 				server.GracefulStop()
 			}
-		}()
+		})
 		return nil
 	})
 	if restart {

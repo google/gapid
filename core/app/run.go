@@ -21,6 +21,7 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
@@ -113,7 +114,7 @@ func Run(main task.Task) {
 		case ExitCode:
 			ExitFuncForTesting(int(cause))
 		default:
-			panic(cause)
+			crash.Crash(cause)
 		}
 	}()
 	flags := &AppFlags{Log: logDefaults()}

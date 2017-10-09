@@ -18,6 +18,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/google/gapid/core/app/crash"
 )
 
 // Event is the interface to things that can be used to wait for conditions to occur.
@@ -80,12 +82,12 @@ func (e *Events) Join(ctx context.Context) Signal {
 	joined := append([]Event(nil), e.pending...)
 	// build the signal we are going to return
 	done, fire := NewSignal()
-	go func() {
+	crash.Go(func() {
 		defer fire(ctx)
 		for _, signal := range joined {
 			signal.Wait(ctx)
 		}
-	}()
+	})
 	return done
 }
 

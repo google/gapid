@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/os/device"
@@ -79,7 +80,7 @@ func Open(ctx context.Context, conn io.ReadWriteCloser) (*Connection, error) {
 		replies: replies,
 	}
 
-	go c.recv(ctx)
+	crash.Go(func() { c.recv(ctx) })
 	var err error
 	c.idSizes, err = c.GetIDSizes()
 	if err != nil {

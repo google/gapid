@@ -21,6 +21,7 @@ import (
 	"io"
 	"os/exec"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/shell"
 )
@@ -58,7 +59,7 @@ func Encode(ctx context.Context, settings Settings) (chan<- image.Image, io.Read
 		settings.FPS = 30
 	}
 
-	go func() {
+	crash.Go(func() {
 		// Get the first frame so we know what we're dealing with.
 		frame, ok := <-in
 		if !ok {
@@ -84,7 +85,7 @@ func Encode(ctx context.Context, settings Settings) (chan<- image.Image, io.Read
 		stdin, pixels := io.Pipe()
 		defer pixels.Close() // Stops the encoder
 
-		go func() {
+		crash.Go(func() {
 			err := shell.Command(encoder,
 				"-v", "verbose",
 				"-r", fmt.Sprint(settings.FPS),
@@ -102,7 +103,7 @@ func Encode(ctx context.Context, settings Settings) (chan<- image.Image, io.Read
 				log.E(ctx, "%v returned error: %v", encoder, err)
 			}
 			mpg.CloseWithError(err)
-		}()
+		})
 
 		i := 0
 		log.D(ctx, "Encoding frame 0")
@@ -115,6 +116,6 @@ func Encode(ctx context.Context, settings Settings) (chan<- image.Image, io.Read
 		}
 
 		log.I(ctx, "Done")
-	}()
+	})
 	return in, out, nil
 }

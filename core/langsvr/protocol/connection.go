@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
@@ -285,9 +286,9 @@ func (c *Connection) Serve(ctx context.Context, server Server) error {
 	sendErr, recvErr := make(chan error), make(chan error)
 
 	// Kick a go-routine to send all messages
-	go func() { sendErr <- c.sendRoutine(ctx) }()
+	crash.Go(func() { sendErr <- c.sendRoutine(ctx) })
 	// Kick a go-routine to receive all the messages.
-	go func() { recvErr <- c.recvRoutine(ctx) }()
+	crash.Go(func() { recvErr <- c.recvRoutine(ctx) })
 	// Dispatch all messages
 	for {
 		select {

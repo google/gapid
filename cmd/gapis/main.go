@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -101,7 +102,7 @@ func run(ctx context.Context) error {
 
 	deviceScanDone, onDeviceScanDone := task.NewSignal()
 	if *scanAndroidDevs {
-		go monitorAndroidDevices(ctx, r, onDeviceScanDone)
+		crash.Go(func() { monitorAndroidDevices(ctx, r, onDeviceScanDone) })
 	} else {
 		onDeviceScanDone(ctx)
 	}

@@ -23,6 +23,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
@@ -131,8 +132,8 @@ func (v *workerStartFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 
 func startAllWorkers(ctx context.Context, managers monitor.Managers, tempDir file.Path) error {
 	// TODO: not just ignore all the errors...
-	go trace.Run(ctx, managers.Stash, managers.Trace, tempDir)
-	go report.Run(ctx, managers.Stash, managers.Report, tempDir)
-	go replay.Run(ctx, managers.Stash, managers.Replay, tempDir)
+	crash.Go(func() { trace.Run(ctx, managers.Stash, managers.Trace, tempDir) })
+	crash.Go(func() { report.Run(ctx, managers.Stash, managers.Report, tempDir) })
+	crash.Go(func() { replay.Run(ctx, managers.Stash, managers.Replay, tempDir) })
 	return nil
 }

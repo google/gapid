@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	ls "github.com/google/gapid/core/langsvr"
 	"github.com/google/gapid/core/log"
@@ -190,7 +191,7 @@ func (a *analyzer) begin(ctx context.Context, s *server) error {
 	}
 
 	// Start the go-routine to perform the analysis.
-	go a.doAnalysis(ctx, docs, va, done)
+	crash.Go(func() { a.doAnalysis(ctx, docs, va, done) })
 
 	return nil
 }

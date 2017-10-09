@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	img "github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/font"
 	"github.com/google/gapid/core/log"
@@ -93,8 +94,9 @@ func getVideoFrames(
 	w, h = uniformScale(w, h, maxWidth/2, maxHeight/2)
 	var wg sync.WaitGroup
 	for _, v := range videoFrames {
+		v := v
 		wg.Add(1)
-		go func(v *videoFrame) {
+		crash.Go(func() {
 			v.observed = &image.NRGBA{
 				Pix:    v.fbo.Bytes,
 				Stride: int(v.fbo.Width) * 4,
@@ -111,7 +113,7 @@ func getVideoFrames(
 				v.difference, v.squareError = getDifference(v.observed, v.rendered, &v.histogramData)
 			}
 			wg.Done()
-		}(v)
+		})
 	}
 	wg.Wait()
 	log.D(ctx, "Frames rendered in %v", time.Since(start))

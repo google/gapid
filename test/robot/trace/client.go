@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -78,11 +79,11 @@ func (c *client) OnDeviceAdded(ctx context.Context, d bind.Device) {
 	r, existing := c.getRunner(d)
 	if !existing {
 		log.I(ctx, "Device added: %s", inst.GetName())
-		go func() {
+		crash.Go(func() {
 			if err := c.manager.Register(ctx, host, inst, r.trace); err != nil {
 				log.E(ctx, "Error running trace client: %v", err)
 			}
-		}()
+		})
 	} else {
 		log.I(ctx, "Device restored: %s", inst.GetName())
 		r.device = d
@@ -107,12 +108,12 @@ func Run(ctx context.Context, store *stash.Client, manager Manager, tempDir file
 	}
 	c.registry.Listen(c)
 
-	go func() {
+	crash.Go(func() {
 		ctx = bind.PutRegistry(ctx, c.registry)
 		if err := adb.Monitor(ctx, c.registry, 15*time.Second); err != nil {
 			log.E(ctx, "adb.Monitor failed: %v", err)
 		}
-	}()
+	})
 
 	return nil
 }

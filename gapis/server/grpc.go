@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -62,7 +63,7 @@ func NewWithListener(ctx context.Context, l net.Listener, cfg Config, srvChan ch
 			srvChan <- server
 		}
 		if cfg.IdleTimeout != 0 {
-			go s.stopIfIdle(ctx, server, cfg.IdleTimeout)
+			crash.Go(func() { s.stopIfIdle(ctx, server, cfg.IdleTimeout) })
 		}
 		return nil
 	}, grpc.UnaryInterceptor(auth.ServerInterceptor(cfg.AuthToken)))
