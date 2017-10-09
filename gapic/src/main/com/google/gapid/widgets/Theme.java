@@ -103,31 +103,37 @@ public interface Theme {
   @Icon("android/zoom_out.png") public Image zoomOut();
   @Icon("android/android.png") public Image androidLogo();
 
+  // Shader source highlight colors.
   @RGB(argb = 0xff808080) public Color commentColor();
   @RGB(argb = 0xff7f0055) public Color keywordColor();
   @RGB(argb = 0xff000080) public Color identifierColor();
   @RGB(argb = 0xff0000ff) public Color numericConstantColor();
   @RGB(argb = 0xff808000) public Color preprocessorColor();
+
+  // Memory highlighting (background) colors.
   @RGB(argb = 0xffdcfadc) public Color memoryReadHighlight();
   @RGB(argb = 0xfffadcdc) public Color memoryWriteHighlight();
   @RGB(argb = 0xffdcdcfa) public Color memorySelectionHighlight();
+
+  // About dialog text colors
   @RGB(argb = 0xff282828) public Color aboutBackground();
   @RGB(argb = 0xffc8c8c8) public Color aboutForeground();
 
-  @RGB(argb = 0xffcecece) public Color verboseBackground();
-  @RGB(argb = 0xffe5e5e5) public Color debugBackground();
-  @RGB(argb = 0xfff2f2f2) public Color infoBackground();
-  @RGB(argb = 0xfffffa82) public Color warningBackground();
-  @RGB(argb = 0xffff8484) public Color errorBackground();
-  @RGB(argb = 0xffcd83ff) public Color fatalBackground();
+  // Logging view colors by log level.
+  @RGB(argb = 0xbb000000) public Color logVerboseForeground();
+  @RGB(argb = 0xffcecece) public Color logVerboseBackground();
+  @RGB(argb = 0xdd000000) public Color logDebugForeground();
+  @RGB(argb = 0xffe5e5e5) public Color logDebugBackground();
+  @RGB(argb = 0xff000000) public Color logInfoForeground();
+  @RGB(argb = 0xfff2f2f2) public Color logInfoBackground();
+  @RGB(argb = 0xff4c4a00) public Color logWarningForeground();
+  @RGB(argb = 0xfffffa82) public Color logWarningBackground();
+  @RGB(argb = 0xff4c0100) public Color logErrorForeground();
+  @RGB(argb = 0xffff8484) public Color logErrorBackground();
+  @RGB(argb = 0xff1b004c) public Color logFatalForeground();
+  @RGB(argb = 0xffcd83ff) public Color logFatalBackground();
 
-  @RGB(argb = 0xbb000000) public Color verboseForeground();
-  @RGB(argb = 0xdd000000) public Color debugForeground();
-  @RGB(argb = 0xff000000) public Color infoForeground();
-  @RGB(argb = 0xff4c4a00) public Color warningForeground();
-  @RGB(argb = 0xff4c0100) public Color errorForeground();
-  @RGB(argb = 0xff1b004c) public Color fatalForeground();
-
+  // Image panel colors.
   @RGB(argb = 0xffc0c0c0) public Color imageCheckerDark();
   @RGB(argb = 0xffffffff) public Color imageCheckerLight();
   @RGB(argb = 0xff000000) public Color imageCursorDark();
