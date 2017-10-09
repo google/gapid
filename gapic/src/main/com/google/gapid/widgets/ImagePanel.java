@@ -24,6 +24,7 @@ import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
+import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -84,6 +85,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.logging.Logger;
 
@@ -94,6 +96,7 @@ public class ImagePanel extends Composite {
   protected static final Logger LOG = Logger.getLogger(ImagePanel.class.getName());
   protected static final int ZOOM_AMOUNT = 5;
   private static final int CHANNEL_RED = 0, CHANNEL_GREEN = 1, CHANNEL_BLUE = 2, CHANNEL_ALPHA = 3;
+  private static final float ALPHA_WARNING_THRESHOLD = 2 / 255f;
   private static final Image[] NO_LAYERS = new Image[] { Image.EMPTY };
 
   private final SingleInFlight imageRequestController = new SingleInFlight();
@@ -112,8 +115,8 @@ public class ImagePanel extends Composite {
     setLayout(Widgets.withMargin(new GridLayout(1, false), 5, 2));
 
     loading = LoadablePanel.create(this, widgets, panel ->
-        new ImageComponent(panel, widgets.theme, naturallyFlipped));
-    status = new StatusBar(this, this::loadLevel);
+        new ImageComponent(panel, widgets.theme, this::showAlphaWarning, naturallyFlipped));
+    status = new StatusBar(this, widgets.theme, this::loadLevel, this::setAlphaEnabled);
     imageComponent = loading.getContents();
 
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -183,6 +186,14 @@ public class ImagePanel extends Composite {
   protected void setPreviewPixel(Pixel pixel) {
     imageComponent.setPreviewPixel(pixel);
     status.setPixel(pixel);
+  }
+
+  private void showAlphaWarning(AlphaWarning message) {
+    status.showAlphaWarning(message);
+  }
+
+  private void setAlphaEnabled(boolean enabled) {
+    imageComponent.autoToggleAlphaChannel(enabled);
   }
 
   public void createToolbar(ToolBar bar, Theme theme) {
@@ -400,6 +411,7 @@ public class ImagePanel extends Composite {
     private static final double MAX_ZOOM_FACTOR = 8;
     private static final VecD MIN_ZOOM_SIZE = new VecD(100, 100, 0);
 
+    private final Consumer<AlphaWarning> showAlphaWarning;
     private final boolean naturallyFlipped;
 
     private final ScrollBar scrollbars[];
@@ -422,10 +434,14 @@ public class ImagePanel extends Composite {
     private double scaleGridToView = 1.0;
     private boolean zoomToFit;
 
-    public ImageComponent(Composite parent, Theme theme, boolean naturallyFlipped) {
+    private boolean alphaWasAutoDisabled = false;
+
+    public ImageComponent(Composite parent, Theme theme, Consumer<AlphaWarning> showAlphaWarning,
+        boolean naturallyFlipped) {
       super(parent, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.NO_BACKGROUND);
       setLayout(new FillLayout(SWT.VERTICAL));
 
+      this.showAlphaWarning = showAlphaWarning;
       this.naturallyFlipped = naturallyFlipped;
 
       scrollbars = new ScrollBar[] { getHorizontalBar(), getVerticalBar() };
@@ -492,6 +508,33 @@ public class ImagePanel extends Composite {
       data.images = images;
       data.transforms = calcTransforms();
       canvas.setSceneData(data.copy());
+
+      if (images.length == 0) {
+        showAlphaWarning.accept(AlphaWarning.NONE);
+      } else if (isChannelEnabled(CHANNEL_ALPHA)) {
+        boolean noAlpha = true;
+        for (Image image : images) {
+          if (image.getInfo().getAlphaMax() > ALPHA_WARNING_THRESHOLD) {
+            noAlpha = false;
+            break;
+          }
+        }
+        showAlphaWarning.accept(noAlpha ? AlphaWarning.NO_ALPHA : AlphaWarning.NONE);
+      } else if (alphaWasAutoDisabled) {
+        boolean noAlpha = true;
+        for (Image image : images) {
+          PixelInfo info = image.getInfo();
+          if (info.getAlphaMax() > ALPHA_WARNING_THRESHOLD &&
+              info.getAlphaMin() < 1 - ALPHA_WARNING_THRESHOLD) {
+            // Consider an image with all alpha values mostly 1.0 as an image without alpha.
+            noAlpha = false;
+            break;
+          }
+        }
+        showAlphaWarning.accept(noAlpha ? AlphaWarning.NONE : AlphaWarning.ALPHA_DISABLED);
+      } else {
+        showAlphaWarning.accept(AlphaWarning.NONE);
+      }
     }
 
     public void setPreviewPixel(Pixel previewPixel) {
@@ -524,6 +567,15 @@ public class ImagePanel extends Composite {
 
     protected void setChannelEnabled(int channel, boolean enabled) {
       data.channels[channel] = enabled;
+      if (channel == CHANNEL_ALPHA) {
+        alphaWasAutoDisabled = false;
+      }
+      refresh();
+    }
+
+    protected void autoToggleAlphaChannel(boolean enabled) {
+      alphaWasAutoDisabled = true;
+      data.channels[CHANNEL_ALPHA] = enabled;
       refresh();
     }
 
@@ -708,7 +760,6 @@ public class ImagePanel extends Composite {
     private static final int PREVIEW_WIDTH = 19; // Should be odd, so center pixel looks nice.
     private static final int PREVIEW_HEIGHT = 11; // Should be odd, so center pixel looks nice.
     private static final int PREVIEW_SIZE = 7;
-
 
     private final Map<Image, Texture> imageToTexture = Maps.newHashMap();
     private Shader shader;
@@ -964,9 +1015,12 @@ public class ImagePanel extends Composite {
     private final Label levelValue;
     private final Label levelSize;
     private final Label pixelLabel;
+    private final Label warning;
     private int lastSelection = 0;
+    private AlphaWarning lastWarning = AlphaWarning.NONE;
 
-    public StatusBar(Composite parent, IntConsumer levelListener) {
+    public StatusBar(
+        Composite parent, Theme theme, IntConsumer levelListener, Consumer<Boolean> enableAlpha) {
       super(parent, SWT.NONE);
       setLayout(new GridLayout(3, false));
 
@@ -976,10 +1030,15 @@ public class ImagePanel extends Composite {
       levelScale = createScale(levelComposite);
       levelSize = createLabel(this, "");
       pixelLabel = createLabel(this, "");
+      warning = createLabel(this, "");
+      warning.setForeground(theme.imageWarning());
+      warning.setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
 
       levelComposite.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, true));
       levelSize.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, true));
       pixelLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
+      warning.setLayoutData(withSpans(new GridData(SWT.CENTER, SWT.CENTER, true, false), 3, 1));
+      showAlphaWarning(AlphaWarning.NONE);
 
       levelScale.addListener(SWT.Selection, e -> {
         int selection = levelScale.getSelection();
@@ -990,6 +1049,9 @@ public class ImagePanel extends Composite {
           levelListener.accept(selection);
         }
       });
+      warning.addListener(SWT.MouseUp,
+          e -> enableAlpha.accept(lastWarning == AlphaWarning.ALPHA_DISABLED));
+
       setLevelCount(0);
     }
 
@@ -1019,6 +1081,18 @@ public class ImagePanel extends Composite {
       requestLayout();
     }
 
+    public void showAlphaWarning(AlphaWarning message) {
+      if (lastWarning == message) {
+        return;
+      }
+
+      lastWarning = message;
+      ((GridData)warning.getLayoutData()).exclude = message == AlphaWarning.NONE;
+      warning.setVisible(message != AlphaWarning.NONE);
+      warning.setText(message.warning);
+      requestLayout();
+    }
+
     private static Scale createScale(Composite parent) {
       Scale scale = new Scale(parent, SWT.HORIZONTAL);
       scale.setMinimum(0);
@@ -1027,6 +1101,18 @@ public class ImagePanel extends Composite {
       scale.setPageIncrement(1);
       scale.setLayoutData(new RowData(150, SWT.DEFAULT));
       return scale;
+    }
+  }
+
+  private static enum AlphaWarning {
+    NONE(""),
+    NO_ALPHA("The alpha channels appears to be empty. Click to disable the alpha channel."),
+    ALPHA_DISABLED("Image contains an alpha channel. Click to re-enable alpha channel.");
+
+    public final String warning;
+
+    private AlphaWarning(String warning) {
+      this.warning = warning;
     }
   }
 }

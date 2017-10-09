@@ -138,6 +138,7 @@ public interface Theme {
   @RGB(argb = 0xffffffff) public Color imageCheckerLight();
   @RGB(argb = 0xff000000) public Color imageCursorDark();
   @RGB(argb = 0xffffffff) public Color imageCursorLight();
+  @RGB(argb = 0xffff9900) public Color imageWarning();
 
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();

@@ -19,6 +19,7 @@ import static com.google.gapid.util.Colors.DARK_LUMINANCE8_THRESHOLD;
 import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.clamp;
 
+import com.google.common.primitives.UnsignedBytes;
 import com.google.gapid.glviewer.gl.Texture;
 import com.google.gapid.util.Colors;
 
@@ -168,8 +169,11 @@ public abstract class ArrayImage implements Image {
    * An {@link ArrayImage} that represents an RGBA image with 8bit color channels.
    */
   public static class RGBA8Image extends ArrayImage {
+    private final PixelInfo info;
+
     public RGBA8Image(int width, int height, int depth, byte[] data) {
       super(width, height, depth, 4, data, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
+      this.info = IntPixelInfo.compute(data);
     }
 
     @Override
@@ -202,7 +206,7 @@ public abstract class ArrayImage implements Image {
 
     @Override
     public PixelInfo getInfo() {
-      return PixelInfo.NULL_INFO;
+      return info;
     }
 
     private static class Pixel implements PixelValue {
@@ -420,10 +424,13 @@ public abstract class ArrayImage implements Image {
 
   private static class FloatPixelInfo implements PixelInfo {
     private final float min, max;
+    private final float alphaMin, alphaMax;
 
-    private FloatPixelInfo(float min, float max) {
+    private FloatPixelInfo(float min, float max, float alphaMin, float alphaMax) {
       this.min = min;
       this.max = max;
+      this.alphaMin = alphaMin;
+      this.alphaMax = alphaMax;
     }
 
     public static PixelInfo compute(FloatBuffer buffer, boolean isRGBA) {
@@ -432,7 +439,10 @@ public abstract class ArrayImage implements Image {
       }
 
       float min = Float.POSITIVE_INFINITY, max = Float.NEGATIVE_INFINITY;
+      float alphaMin, alphaMax;
       if (isRGBA) {
+        alphaMin = Float.POSITIVE_INFINITY;
+        alphaMax = Float.NEGATIVE_INFINITY;
         for (int i = 0, end = buffer.remaining() - 3; i <= end; ) {
           float value = buffer.get(i++);
           if (!Float.isNaN(value) && !Float.isInfinite(value)) {
@@ -449,9 +459,14 @@ public abstract class ArrayImage implements Image {
             min = Math.min(min, value);
             max = Math.max(max, value);
           }
-          i++; // skip alpha
+          value = buffer.get(i++);
+          if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+            alphaMin = Math.min(alphaMin, value);
+            alphaMax = Math.max(alphaMax, value);
+          }
         }
       } else {
+        alphaMin = alphaMax = 1;
         for (int i = 0; i < buffer.remaining(); i++) {
           float value = buffer.get(i);
           if (!Float.isNaN(value) && !Float.isInfinite(value)) {
@@ -460,7 +475,7 @@ public abstract class ArrayImage implements Image {
           }
         }
       }
-      return new FloatPixelInfo(min, max);
+      return new FloatPixelInfo(min, max, alphaMin, alphaMax);
     }
 
     @Override
@@ -471,6 +486,59 @@ public abstract class ArrayImage implements Image {
     @Override
     public float getMax() {
       return max;
+    }
+
+    @Override
+    public float getAlphaMin() {
+      return alphaMin;
+    }
+
+    @Override
+    public float getAlphaMax() {
+      return alphaMax;
+    }
+  }
+
+  private static class IntPixelInfo implements PixelInfo {
+    private final float alphaMin, alphaMax;
+
+    private IntPixelInfo(float alphaMin, float alphaMax) {
+      this.alphaMin = alphaMin;
+      this.alphaMax = alphaMax;
+    }
+
+    public static PixelInfo compute(byte[] rgba) {
+      if (rgba.length == 0) {
+        return PixelInfo.NULL_INFO;
+      }
+
+      int alphaMin = Integer.MAX_VALUE, alphaMax = Integer.MIN_VALUE;
+      for (int i = 3; i < rgba.length; i += 4) {
+        int value = UnsignedBytes.toInt(rgba[i]);
+        alphaMin = Math.min(alphaMin, value);
+        alphaMax = Math.max(alphaMax, value);
+      }
+      return new IntPixelInfo(alphaMin / 255f, alphaMax / 255f);
+    }
+
+    @Override
+    public float getMin() {
+      return 0; // Disable automatic tone-mapping.
+    }
+
+    @Override
+    public float getMax() {
+      return 1; // Disable automatic tone-mapping.
+    }
+
+    @Override
+    public float getAlphaMin() {
+      return alphaMin;
+    }
+
+    @Override
+    public float getAlphaMax() {
+      return alphaMax;
     }
   }
 }
