@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package binary
+package binary_test
 
 import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/data/binary"
 )
 
 var testByteSequence = []byte{
@@ -83,7 +84,7 @@ func TestBitStreamReadBit(t *testing.T) {
 		0, 0, 0, 0, 1, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 1,
 	}
-	bs := BitStream{Data: data}
+	bs := binary.BitStream{Data: data}
 	for i, expected := range bits {
 		assert.For("bit %d", i).That(bs.ReadBit()).Equals(expected)
 	}
@@ -91,7 +92,7 @@ func TestBitStreamReadBit(t *testing.T) {
 
 func TestBitStreamRead(t *testing.T) {
 	assert := assert.To(t)
-	bs := BitStream{Data: testByteSequence}
+	bs := binary.BitStream{Data: testByteSequence}
 	for i, c := range testBitSequence {
 		assert.For("bits %d", i).That(bs.Read(c.count)).Equals(c.bits)
 		assert.For("pos %d", i).That(bs.ReadPos).Equals(c.pos)
@@ -107,7 +108,7 @@ func TestBitStreamZeroRemainder(t *testing.T) {
 		0x02, // (2) 01000000
 		0x10, // (3) 00001000
 	}
-	bs := BitStream{Data: data}
+	bs := binary.BitStream{Data: data}
 	got, expected := bs.Read(32), uint64(0x10020100)
 	assert.For("data").That(got).Equals(expected)
 }
@@ -136,7 +137,7 @@ func TestBitStreamWriteBit(t *testing.T) {
 		{"empty", nil},
 		{"primed", []byte{0x55, 0x55, 0x55, 0x55, 0x55}},
 	} {
-		bs := BitStream{Data: test.initialData}
+		bs := binary.BitStream{Data: test.initialData}
 		for _, b := range bits {
 			bs.WriteBit(b)
 		}
@@ -153,7 +154,7 @@ func TestBitStreamWrite(t *testing.T) {
 		{"empty", nil},
 		{"primed", []byte{0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55}},
 	} {
-		bs := BitStream{Data: test.initialData}
+		bs := binary.BitStream{Data: test.initialData}
 		for i, c := range testBitSequence {
 			bs.Write(uint64(c.bits), c.count)
 			assert.For("%s WritePos %d", test.name, i).That(bs.WritePos).Equals(c.pos)
@@ -164,7 +165,7 @@ func TestBitStreamWrite(t *testing.T) {
 
 func BenchmarkBitstreamRead(b *testing.B) {
 	data := make([]byte, b.N*32)
-	bs := BitStream{Data: data}
+	bs := binary.BitStream{Data: data}
 	for i := 0; i < b.N; i++ {
 		bs.Read(uint32(i & 31))
 	}
@@ -172,7 +173,7 @@ func BenchmarkBitstreamRead(b *testing.B) {
 
 func BenchmarkBitstreamWrite(b *testing.B) {
 	data := make([]byte, b.N*32)
-	bs := BitStream{Data: data}
+	bs := binary.BitStream{Data: data}
 	for i := 0; i < b.N; i++ {
 		bs.Write(uint64(i), uint32(i&31))
 	}
