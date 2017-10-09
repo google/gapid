@@ -18,11 +18,9 @@
 # build and the file will be recreated, check in the new version.
 
 set(files
-    doc.go
-    filter.go
-    stacktrace.go
-    stacktrace_test.go
+    crunch.go
+    crunch_test.go
 )
 set(dirs
-
+    
 )

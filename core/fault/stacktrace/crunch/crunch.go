@@ -12,13 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package stacktrace
+// Package crunch provides functions to compress and decompress stacktraces.
+//
+// crunch is intented to be used to compress a stacktrace down to something that
+// can fit inside a Google Analytics exception payload (150 bytes). crunch
+// uses a number of different compression algorithms to compact the list of
+// program counters down to the smallest number of bytes possible. Given the
+// exhaustive search, this is optimized for output size over compression
+// performance.
+//
+// Note that the output of a crunch only makes sense to the particular build
+// used to create it.
+package crunch
 
 import (
 	"fmt"
 	"sort"
 
 	"github.com/google/gapid/core/data/binary"
+	"github.com/google/gapid/core/fault/stacktrace"
 )
 
 // Tweakables
@@ -309,13 +321,13 @@ var compressors = [1 << compressorIdxBits]compressor{
 	/* 3 */ compressorList{baseCompressor{}, backRefCompressor{packDiff, unpackDiff}},
 }
 
-// Pack compresses the callstack down to a minimal compressed form.
-func (c Callstack) Pack() []byte {
+// Crunch compresses the callstack down to a minimal compressed form.
+func Crunch(c stacktrace.Callstack) []byte {
 	var smallest []byte
 	for i, p := range compressors {
 		bs := binary.BitStream{}
 		bs.Write(uint64(i), compressorIdxBits)
-		c.packWith(p, &bs)
+		crunchWith(c, p, &bs)
 		if smallest == nil || len(bs.Data) < len(smallest) {
 			smallest = bs.Data
 		}
@@ -323,22 +335,22 @@ func (c Callstack) Pack() []byte {
 	return smallest
 }
 
-func (c Callstack) packWith(p compressor, bs *binary.BitStream) {
-	compressed := p.compress(c.toU64s())
+func crunchWith(c stacktrace.Callstack, p compressor, bs *binary.BitStream) {
+	compressed := p.compress(toU64s(c))
 	for _, pc := range compressed {
 		writeVLE(pc, bs)
 	}
 }
 
-// Unpack decompresses the callstack from the minimal compressed form.
-func Unpack(data []byte) Callstack {
+// Uncrunch decompresses the callstack from the minimal compressed form.
+func Uncrunch(data []byte) stacktrace.Callstack {
 	bs := binary.BitStream{Data: data}
 	idx := bs.Read(compressorIdxBits)
 	p := compressors[idx]
-	return unpackWith(p, &bs)
+	return uncrunchWith(p, &bs)
 }
 
-func unpackWith(p compressor, bs *binary.BitStream) Callstack {
+func uncrunchWith(p compressor, bs *binary.BitStream) stacktrace.Callstack {
 	vals := []uint64{}
 	for {
 		v, ok := readVLE(bs)
@@ -349,7 +361,7 @@ func unpackWith(p compressor, bs *binary.BitStream) Callstack {
 	}
 }
 
-func (c Callstack) toU64s() []uint64 {
+func toU64s(c stacktrace.Callstack) []uint64 {
 	out := make([]uint64, len(c))
 	for i := range c {
 		out[i] = uint64(c[i])
@@ -357,8 +369,8 @@ func (c Callstack) toU64s() []uint64 {
 	return out
 }
 
-func toCallstack(v []uint64) Callstack {
-	out := make(Callstack, len(v))
+func toCallstack(v []uint64) stacktrace.Callstack {
+	out := make(stacktrace.Callstack, len(v))
 	for i := range v {
 		out[i] = uintptr(v[i])
 	}
