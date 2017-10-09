@@ -15,10 +15,10 @@
 package app
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
+	"sync"
 	"syscall"
 
 	"github.com/google/gapid/core/app/crash"
@@ -107,6 +107,8 @@ func init() {
 // runs the provided task, cancels the primary context and then waits for either the maximum shutdown delay
 // or all registered signals whichever comes first.
 func Run(main task.Task) {
+	crash.Register(onCrash)
+
 	// Defer the panic handling
 	defer func() {
 		switch cause := recover().(type) {
@@ -130,10 +132,15 @@ func Run(main task.Task) {
 
 	// Force the global verb's flags back into the default location for
 	// main programs that still look in flag.Args()
-	//TODO: We need to stop doing this
+	// TODO: We need to stop doing this
 	globalVerbs.flags.ForceCommandLine()
 
-	// apply the flags
+	if flags.DecodeStack != "" {
+		stack := decodeCrashCode(flags.DecodeStack)
+		fmt.Fprintf(os.Stdout, "Stack dump:\n%v\n", stack)
+		return
+	}
+
 	if flags.Version {
 		fmt.Fprint(os.Stdout, Name, " version ", Version, "\n")
 		return
@@ -141,20 +148,26 @@ func Run(main task.Task) {
 
 	endProfile := applyProfiler(rootCtx, &flags.Profile)
 
-	ctx, cancel := context.WithCancel(rootCtx)
-
-	// Defer the shutdown code
-	defer func() {
-		cancel()
-		WaitForCleanup(rootCtx)
-		endProfile()
-	}()
+	ctx, cancel := task.WithCancel(rootCtx)
 
 	ctx, closeLogs = updateContext(ctx, &flags.Log, closeLogs)
-	defer closeLogs()
 
-	// Add the abort signal handler
-	handleAbortSignals(task.CancelFunc(cancel))
+	// Defer the shutdown code
+	shutdownOnce := sync.Once{}
+	shutdown := func() {
+		shutdownOnce.Do(func() {
+			closeLogs()
+			cancel()
+			WaitForCleanup(rootCtx)
+			endProfile()
+		})
+	}
+
+	defer shutdown()
+
+	// Add the abort and crash signal handlers
+	handleAbortSignals(shutdown)
+	handleCrashSignals(shutdown)
 
 	// Now we are ready to run the main task
 	err := main(ctx)

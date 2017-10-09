@@ -18,7 +18,11 @@
 // crash does not offer any sort of global crash recovery mechanism.
 package crash
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/google/gapid/core/fault/stacktrace"
+)
 
 var (
 	mutex     sync.RWMutex
@@ -27,7 +31,7 @@ var (
 
 // Reporter is a function that reports an uncaught panic that will crash the
 // application.
-type Reporter func(e interface{})
+type Reporter func(e interface{}, s stacktrace.Callstack)
 
 // Register adds r to the list of functions that gets called when an uncaught
 // panic is thrown.
@@ -59,9 +63,13 @@ var crashOnce = sync.Once{}
 // Crash invokes each of the registered crash reporters with e, then panics with
 // e.
 func Crash(e interface{}) {
+	stack := stacktrace.Capture()
 	crashOnce.Do(func() {
 		mutex.RLock()
 		defer mutex.RUnlock()
+		for _, r := range reporters {
+			r(e, stack)
+		}
 		panic(e)
 	})
 }
