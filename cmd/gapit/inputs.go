@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -243,11 +244,11 @@ func startRecordingInputs(ctx context.Context, d adb.Device, filename string) (c
 	frameInfosCopy := make(chan frameInfo, 256)
 	stats := &currentFrameInfo{}
 
-	go monitorTouchScreen(ctx, d, touchInfos)
-	go monitorFrameStatistics(ctx, d, frameInfos)
-	go stats.update(frameInfos, frameInfosCopy)
-	go recordTouchInfo(out, stats, touchInfos)
-	go recordFrameStatistics(out, frameInfosCopy)
+	crash.Go(func() { monitorTouchScreen(ctx, d, touchInfos) })
+	crash.Go(func() { monitorFrameStatistics(ctx, d, frameInfos) })
+	crash.Go(func() { stats.update(frameInfos, frameInfosCopy) })
+	crash.Go(func() { recordTouchInfo(out, stats, touchInfos) })
+	crash.Go(func() { recordFrameStatistics(out, frameInfosCopy) })
 
 	startTime := time.Now()
 	return func() {
@@ -286,9 +287,9 @@ func startReplayingInputs(ctx context.Context, d adb.Device, replayInputsIn stri
 	}
 	stats := currentFrameInfo{}
 	frameInfos := make(chan frameInfo, 256)
-	go monitorFrameStatistics(ctx, d, frameInfos)
-	go stats.update(frameInfos, nil)
-	go func() {
+	crash.Go(func() { monitorFrameStatistics(ctx, d, frameInfos) })
+	crash.Go(func() { stats.update(frameInfos, nil) })
+	crash.Go(func() {
 		ctx := log.Enter(ctx, "Inputs")
 		startTime := time.Now()
 		time_drift := time.Duration(0)
@@ -340,6 +341,6 @@ func startReplayingInputs(ctx context.Context, d adb.Device, replayInputsIn stri
 				return
 			}
 		}
-	}()
+	})
 	return nil
 }

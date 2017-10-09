@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/shell"
 )
@@ -140,8 +141,8 @@ func Start(ctx context.Context, name string, opts StartOptions) (int, error) {
 
 	c, cancel := task.WithCancel(ctx)
 	defer cancel()
-	go stdout.waitForFile(c)
-	go func() {
+	crash.Go(func() { stdout.waitForFile(c) })
+	crash.Go(func() {
 		cmd := shell.
 			Command(name, opts.Args...).
 			In(opts.WorkingDir).
@@ -151,7 +152,7 @@ func Start(ctx context.Context, name string, opts StartOptions) (int, error) {
 			cmd = cmd.Verbose()
 		}
 		errChan <- cmd.Run(ctx)
-	}()
+	})
 
 	select {
 	case port := <-portChan:

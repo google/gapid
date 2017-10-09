@@ -19,6 +19,7 @@ import (
 	"io"
 	"reflect"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 )
 
@@ -32,7 +33,7 @@ func Buffer(ctx context.Context, handler Handler) Handler {
 	out := make(chan interface{}) // buffer to passed in handler
 	closer := make(chan struct{}) // close signal
 	events := []interface{}{}
-	go func() {
+	crash.Go(func() {
 		// This is responsible for managing the buffer itself
 		for {
 			output := out
@@ -51,8 +52,8 @@ func Buffer(ctx context.Context, handler Handler) Handler {
 				// TODO: teardown
 			}
 		}
-	}()
-	go func() {
+	})
+	crash.Go(func() {
 		// This is responsible for feeding the buffer to the passed in handler
 		for {
 			select {
@@ -67,7 +68,7 @@ func Buffer(ctx context.Context, handler Handler) Handler {
 				return
 			}
 		}
-	}()
+	})
 	// Now return a handler that feeds the buffer input channel
 	return chanHandler(in, closer)
 }

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
@@ -68,7 +69,7 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, laun
 		return err
 	}
 
-	go s.heartbeat(ctx, sessionTimeout/2)
+	crash.Go(func() { s.heartbeat(ctx, sessionTimeout/2) })
 	return nil
 }
 

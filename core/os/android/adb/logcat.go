@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/os/android"
 )
 
@@ -81,7 +82,7 @@ func (b *binding) Logcat(ctx context.Context, msgs chan<- android.LogcatMessage)
 	buf := bufio.NewReader(reader)
 	err := make(chan error, 1)
 	// Start a go-routine for parsing logcat lines
-	go func() {
+	crash.Go(func() {
 		msg, lines := (*android.LogcatMessage)(nil), []string{}
 
 		// flush writes the current pending message to msgs, and clears the lines.
@@ -120,7 +121,7 @@ func (b *binding) Logcat(ctx context.Context, msgs chan<- android.LogcatMessage)
 				}
 			}
 		}
-	}()
+	})
 
 	if err := b.Command("logcat", "-v", "long", "-T", "0").Capture(stdout, nil).Run(ctx); err != nil {
 		stdout.Close()

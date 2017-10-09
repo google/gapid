@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/gapis/api"
@@ -75,7 +76,7 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	// We start this goroutine to send a heartbeat to gapis.
 	// It has an idle-timeout of 1m, so for long requests,
 	// pinging every 1s should prevent it from closing down unexpectedly.
-	go func() {
+	crash.Go(func() {
 		hb := time.NewTicker(time.Millisecond * 1000)
 		for {
 			select {
@@ -87,10 +88,10 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 				}
 			}
 		}
-	}()
+	})
 
 	if h := log.GetHandler(ctx); h != nil {
-		go client.GetLogStream(ctx, h)
+		crash.Go(func() { client.GetLogStream(ctx, h) })
 	}
 
 	return client, nil

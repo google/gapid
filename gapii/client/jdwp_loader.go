@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/java/jdbg"
@@ -250,7 +251,7 @@ func (p *Process) loadAndConnectViaJDWP(
 		}
 
 		interceptorPath := gapidAPK.LibInterceptorPath(abi)
-		go func() { connErr <- p.connect(ctx, gvrHandle, interceptorPath) }()
+		crash.Go(func() { connErr <- p.connect(ctx, gvrHandle, interceptorPath) })
 
 		gapiiPath := gapidAPK.LibGAPIIPath(abi)
 		ctx = log.V{"gapii.so": gapiiPath, "process abi": abi.Name}.Bind(ctx)

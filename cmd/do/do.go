@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
@@ -239,7 +240,7 @@ func (t *TestMode) Choose(c interface{}) { *t = c.(TestMode) }
 func (t TestMode) String() string        { return testModeNames[t] }
 
 func closeOnInterrupt(ctx context.Context) {
-	go func() {
+	crash.Go(func() {
 		// Ensure that ctrl-c interrupts actually stop the application.
 		// This is caught by the application framework and simply cancels the
 		// context so it can shutdown cleanly. For do, we just want to stop
@@ -247,7 +248,7 @@ func closeOnInterrupt(ctx context.Context) {
 		<-task.ShouldStop(ctx)
 		time.Sleep(time.Second) // Wait a little to let messages get printed.
 		os.Exit(0)
-	}()
+	})
 }
 
 func (verb *initVerb) Run(ctx context.Context, flags flag.FlagSet) error {

@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/event/task"
@@ -149,7 +150,8 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 		r.resolveState = rs
 
 		// Build the resolvable on a separate go-routine.
-		go func(ctx context.Context) {
+		ctx := rs.ctx
+		crash.Go(func() {
 			defer d.resolvePanicHandler(ctx)
 			err := r.resolve(ctx)
 
@@ -158,7 +160,7 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 			close(rs.finished)
 			rs.err, rs.finished = err, nil
 			d.mutex.Unlock()
-		}(rs.ctx)
+		})
 	}
 
 	if finished := rs.finished; finished != nil {

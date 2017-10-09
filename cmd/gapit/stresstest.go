@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/service"
@@ -74,7 +75,7 @@ func (verb *stresstestVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		duration := time.Second + time.Duration(rand.Intn(int(time.Second*10)))
 		wg.Add(1)
 
-		go func() {
+		crash.Go(func() {
 			defer wg.Done()
 			ctx, _ := task.WithTimeout(ctx, duration)
 			boxedTree, err := client.Get(ctx, c.Command(at).StateAfter().Tree().Path())
@@ -87,7 +88,7 @@ func (verb *stresstestVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			if _, err := client.Get(ctx, tree.Root.Path()); err != nil {
 				return
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

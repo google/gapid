@@ -14,7 +14,11 @@
 
 package task
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/gapid/core/app/crash"
+)
 
 // Executor is the signature for a function that executes a Task.
 // When the task is invoked depends on the specific Executor.
@@ -33,7 +37,7 @@ func Direct(ctx context.Context, task Task) Handle {
 // Go is an asynchronous implementation of an Executor that starts a new go routine to run the task.
 func Go(ctx context.Context, task Task) Handle {
 	h, r := Prepare(ctx, task)
-	go r()
+	crash.Go(r)
 	return h
 }
 
@@ -46,11 +50,11 @@ func Go(ctx context.Context, task Task) Handle {
 func Pool(queue int, parallel int) (Executor, Task) {
 	q := make(chan Runner, queue)
 	for i := 0; i < parallel; i++ {
-		go func() {
+		crash.Go(func() {
 			for r := range q {
 				r()
 			}
-		}()
+		})
 	}
 	executor := func(ctx context.Context, task Task) Handle {
 		h, r := Prepare(ctx, task)

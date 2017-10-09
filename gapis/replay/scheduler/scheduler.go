@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 )
 
@@ -69,7 +70,7 @@ type Scheduler struct {
 // New returns a new Scheduler that will execute Tasks with exec.
 func New(ctx context.Context, exec Executor) *Scheduler {
 	s := &Scheduler{exec: exec, pending: make(chan *job, 32)}
-	go s.run(ctx)
+	crash.Go(func() { s.run(ctx) })
 	return s
 }
 

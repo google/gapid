@@ -18,6 +18,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
@@ -123,24 +124,24 @@ func monitor(ctx context.Context, managers *Managers, owner DataOwner) error {
 	// TODO: care about monitors erroring
 	all := &search.Query{Monitor: true}
 	if managers.Job != nil {
-		go managers.Job.SearchDevices(ctx, all, owner.updateDevice)
-		go managers.Job.SearchWorkers(ctx, all, owner.updateWorker)
+		crash.Go(func() { managers.Job.SearchDevices(ctx, all, owner.updateDevice) })
+		crash.Go(func() { managers.Job.SearchWorkers(ctx, all, owner.updateWorker) })
 	}
 	if managers.Build != nil {
-		go managers.Build.SearchTracks(ctx, all, owner.updateTrack)
-		go managers.Build.SearchPackages(ctx, all, owner.updatePackage)
+		crash.Go(func() { managers.Build.SearchTracks(ctx, all, owner.updateTrack) })
+		crash.Go(func() { managers.Build.SearchPackages(ctx, all, owner.updatePackage) })
 	}
 	if managers.Subject != nil {
-		go managers.Subject.Search(ctx, all, owner.updateSubject)
+		crash.Go(func() { managers.Subject.Search(ctx, all, owner.updateSubject) })
 	}
 	if managers.Trace != nil {
-		go managers.Trace.Search(ctx, all, owner.updateTrace)
+		crash.Go(func() { managers.Trace.Search(ctx, all, owner.updateTrace) })
 	}
 	if managers.Report != nil {
-		go managers.Report.Search(ctx, all, owner.updateReport)
+		crash.Go(func() { managers.Report.Search(ctx, all, owner.updateReport) })
 	}
 	if managers.Replay != nil {
-		go managers.Replay.Search(ctx, all, owner.updateReplay)
+		crash.Go(func() { managers.Replay.Search(ctx, all, owner.updateReplay) })
 	}
 
 	return nil

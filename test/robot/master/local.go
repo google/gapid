@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/test/robot/search"
 	"github.com/google/gapid/test/robot/search/eval"
@@ -44,7 +45,7 @@ func NewLocal(ctx context.Context) Master {
 	l := &local{
 		keepalive: time.NewTicker(keepaliveFrequency),
 	}
-	go l.run(ctx)
+	crash.Go(func() { l.run(ctx) })
 	return l
 }
 
@@ -68,7 +69,9 @@ func (m *local) Search(ctx context.Context, query *search.Query, handler Satelli
 func (m *local) Orbit(ctx context.Context, services ServiceList, commands CommandHandler) error {
 	sat := m.addSatellite(ctx, services)
 	defer m.removeSatellite(ctx, sat)
-	go sat.sendCommand(ctx, &Command{Do: &Command_Identify{Identify: &Identify{Name: sat.info.Name}}})
+	crash.Go(func() {
+		sat.sendCommand(ctx, &Command{Do: &Command_Identify{Identify: &Identify{Name: sat.info.Name}}})
+	})
 	sat.processCommands(ctx, commands)
 	return nil
 }
