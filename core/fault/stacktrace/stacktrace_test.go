@@ -31,8 +31,8 @@ import (
 // be very careful re-ordering the top of this file, the stack trace captures line numbers
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-func invokeNestedCapture() []stacktrace.Entry { return nestedCapture() }
-func nestedCapture() []stacktrace.Entry       { return stacktrace.Capture() }
+func invokeNestedCapture() stacktrace.Callstack { return nestedCapture() }
+func nestedCapture() stacktrace.Callstack       { return stacktrace.Capture() }
 func init() {
 	for i := range traces {
 		traces[i].cap = traces[i].fun()
@@ -45,15 +45,15 @@ func init() {
 
 type traceEntry struct {
 	fun      stacktrace.Source
-	cap      []stacktrace.Entry
+	cap      stacktrace.Callstack
 	expect   []string
 	brief    string
 	normal   string
 	detailed string
 }
 
-func (e traceEntry) RawCapture() []stacktrace.Entry { return e.cap }
-func (e traceEntry) FilteredCapture() []stacktrace.Entry {
+func (e traceEntry) RawCapture() stacktrace.Callstack { return e.cap }
+func (e traceEntry) FilteredCapture() stacktrace.Callstack {
 	return stacktrace.TrimTop(top, stacktrace.TrimBottom(bottom, e.RawCapture))()
 }
 
@@ -106,7 +106,8 @@ func TestCapture(t *testing.T) {
 		cap := test.FilteredCapture()
 		assert.For("stack length").ThatSlice(cap).IsLength(len(test.expect))
 		for i, expect := range test.expect {
-			assert.For("stack entry %d", i).That(cap[i].String()).Equals(expect)
+			got := cap.Get(i).String()
+			assert.For("stack entry %d", i).That(got).Equals(expect)
 		}
 	}
 }

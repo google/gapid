@@ -16,7 +16,7 @@ package stacktrace
 
 type (
 	// Source is the signature for something that returns a stacktrace.
-	Source func() []Entry
+	Source func() Callstack
 
 	// Matcher is a predicate for stack entries.
 	Matcher func(Entry) bool
@@ -39,10 +39,10 @@ func MatchFunction(fun string) Matcher {
 // TrimBottom trims stack entries from the bottom of the trace.
 // It trims from the first matching entry down to the end of the trace.
 func TrimBottom(match Matcher, source Source) Source {
-	return func() []Entry {
+	return func() Callstack {
 		stack := source()
 		for i := len(stack) - 2; i >= 0; i-- {
-			if match(stack[i]) {
+			if match(stack.Get(i)) {
 				return stack[i+1:]
 			}
 		}
@@ -53,10 +53,10 @@ func TrimBottom(match Matcher, source Source) Source {
 // TrimTop trims stack entries from the top of the trace.
 // It trims from the last matching entry up to the start of the trace.
 func TrimTop(match Matcher, source Source) Source {
-	return func() []Entry {
+	return func() Callstack {
 		stack := source()
-		for i, s := range stack[:len(stack)-1] {
-			if match(s) {
+		for i := range stack[:len(stack)-1] {
+			if match(stack.Get(i)) {
 				return stack[:i]
 			}
 		}

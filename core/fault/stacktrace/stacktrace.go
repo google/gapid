@@ -47,37 +47,50 @@ type Entry struct {
 	Function Function
 }
 
+// Callstack is a full stacktrace
+type Callstack []uintptr
+
 const stackLimit = 50
 
 // Capture returns a full stacktrace.
-func Capture() []Entry {
+func Capture() Callstack {
 	callers := make([]uintptr, stackLimit)
 	count := runtime.Callers(0, callers)
-	callers = callers[:count]
-	calls := []Entry{}
-	for _, pc := range callers {
-		// See documentation for runtime.Callers for why we use pc-1 in here
-		f := runtime.FuncForPC(pc - 1)
-		filename, line := f.FileLine(pc - 1)
-		dir, basename := path.Split(filename)
-		// name is of the form github.com/google/gapid/framework/log.StacktraceOnError
-		// we find the last /, then find the next . to split the function name from the package name
-		name := f.Name()
-		i := strings.LastIndex(name, "/")
-		i += strings.IndexRune(name[i+1:], '.')
-		calls = append(calls, Entry{
-			Location: Location{
-				Directory: dir,
-				File:      basename,
-				Line:      line,
-			},
-			Function: Function{
-				Package: name[:i+1],
-				Name:    name[i+2:],
-			},
-		})
+	return Callstack(callers[:count])
+}
+
+// All returns all the entries for the stack trace.
+func (c Callstack) All() []Entry {
+	calls := make([]Entry, len(c))
+	for i := range c {
+		calls[i] = c.Get(i)
 	}
 	return calls
+}
+
+// Get returns the callstack entry at idx.
+func (c Callstack) Get(idx int) Entry {
+	pc := c[idx]
+	// See documentation for runtime.Callers for why we use pc-1 in here
+	f := runtime.FuncForPC(pc - 1)
+	filename, line := f.FileLine(pc - 1)
+	dir, basename := path.Split(filename)
+	// name is of the form github.com/google/gapid/framework/log.StacktraceOnError
+	// we find the last /, then find the next . to split the function name from the package name
+	name := f.Name()
+	i := strings.LastIndex(name, "/")
+	i += strings.IndexRune(name[i+1:], '.')
+	return Entry{
+		Location: Location{
+			Directory: dir,
+			File:      basename,
+			Line:      line,
+		},
+		Function: Function{
+			Package: name[:i+1],
+			Name:    name[i+2:],
+		},
+	}
 }
 
 func (e Entry) String() string {

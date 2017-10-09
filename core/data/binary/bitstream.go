@@ -45,10 +45,19 @@ func (s *BitStream) WriteBit(bit uint64) {
 	s.WritePos++
 }
 
+// CanRead returns true if there's enough data to call Read(count).
+func (s *BitStream) CanRead(count uint32) bool {
+	return int(s.ReadPos+count) <= len(s.Data)*8
+}
+
 // Read reads the specified number of bits from the BitStream, increamenting the ReadPos by the
 // specified number of bits and returning the bits packed into a uint64. The bits are packed into
 // the uint64 from LSB to MSB.
 func (s *BitStream) Read(count uint32) uint64 {
+	if count == 0 {
+		return 0
+	}
+
 	byteIdx := s.ReadPos / 8
 	bitIdx := s.ReadPos & 7
 
