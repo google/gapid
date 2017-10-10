@@ -30,6 +30,7 @@ set(files
     log.proto
     log_test.go
     message.go
+    onclosed.go
     process.go
     severity.go
     stacktracer.go
