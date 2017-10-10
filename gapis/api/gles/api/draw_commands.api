@@ -304,24 +304,32 @@ sub void PrimitiveBoundingBox(GLfloat minX, GLfloat minY, GLfloat minZ, GLfloat 
   ctx.Rasterization.PrimitiveBoundingBox.Max = Vec4f(maxX, maxY, maxZ, maxW)
 }
 
-// WriteGPUFramebufferData updates the data of currently bound framebuffer
-// textures.
-sub void WriteGPUFramebufferData(ref!Context ctx) {
-  for _, _, a in ctx.Bound.DrawFramebuffer.ColorAttachments {
-    if a.Texture != null {
-      if a.TextureLevel in a.Texture.Levels {
-        level := a.Texture.Levels[a.TextureLevel]
-        if a.TextureLayer in level.Layers {
-          layer := level.Layers[a.TextureLayer]
-          if layer.Data == null {
-            layer.Data = ReadGPUTextureData(a.Texture, a.TextureLevel, a.TextureLayer)
-          } else {
-            copy(layer.Data, ReadGPUTextureData(a.Texture, a.TextureLevel, a.TextureLayer))
-          }
+// WriteGPUFramebufferData updates the data of the given FramebufferAttachment.
+sub void WriteGPUFramebufferAttachment(FramebufferAttachment a) {
+  if a.Texture != null {
+    if a.TextureLevel in a.Texture.Levels {
+      level := a.Texture.Levels[a.TextureLevel]
+      if a.TextureLayer in level.Layers {
+        layer := level.Layers[a.TextureLayer]
+        if layer.Data == null {
+          layer.Data = ReadGPUTextureData(a.Texture, a.TextureLevel, a.TextureLayer)
+        } else {
+          copy(layer.Data, ReadGPUTextureData(a.Texture, a.TextureLevel, a.TextureLayer))
         }
       }
     }
   }
+}
+
+// WriteGPUFramebufferData updates the data of currently bound framebuffer
+// textures.
+sub void WriteGPUFramebufferData(ref!Context ctx) {
+  fb := ctx.Bound.DrawFramebuffer
+  for _, _, a in fb.ColorAttachments {
+    WriteGPUFramebufferAttachment(a)
+  }
+  WriteGPUFramebufferAttachment(fb.DepthAttachment)
+  WriteGPUFramebufferAttachment(fb.StencilAttachment)
 }
 
 // ReadGPUTextureData is used to read the texture updated by the GPU.
