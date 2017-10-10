@@ -79,8 +79,8 @@ func addFallbackLogHandler(b *log.Broadcaster, fallback log.Handler) {
 
 func run(ctx context.Context) error {
 	logBroadcaster := log.Broadcast()
-	addFallbackLogHandler(logBroadcaster, log.GetHandler(ctx))
-	ctx = log.PutHandler(ctx, logBroadcaster)
+	oldHandler := app.LogHandler.SetTarget(logBroadcaster)
+	addFallbackLogHandler(logBroadcaster, oldHandler)
 
 	if *adbPath != "" {
 		adb.ADB = file.Abs(*adbPath)

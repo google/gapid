@@ -30,6 +30,10 @@ const (
 	logChanBufferSize = 100
 )
 
+// LogHandler is the primary application logger target.
+// It is assigned to the main context on startup and is closed on shutdown.
+var LogHandler log.Indirect
+
 func logDefaults() LogFlags {
 	return LogFlags{
 		Level:  log.Info,
@@ -49,28 +53,21 @@ func wrapHandler(to log.Handler) log.Handler {
 	}, to.Close)
 }
 
-func prepareContext(flags *LogFlags) (context.Context, func()) {
+func prepareContext(flags *LogFlags) context.Context {
 	// now build the initial root context
 	process := file.Abs(os.Args[0]).NoExt().Basename()
-	handler := wrapHandler(flags.Style.Handler(log.Std()))
+	LogHandler.SetTarget(wrapHandler(flags.Style.Handler(log.Std())))
 	ctx := context.Background()
 	ctx = log.PutProcess(ctx, process)
 	ctx = log.PutFilter(ctx, log.SeverityFilter(flags.Level))
-	ctx = log.PutHandler(ctx, handler)
-	return ctx, handler.Close
+	ctx = log.PutHandler(ctx, &LogHandler)
+	return ctx
 }
 
-func updateContext(ctx context.Context, flags *LogFlags, closeLogs func()) (context.Context, func()) {
+func updateContext(ctx context.Context, flags *LogFlags) context.Context {
 	ctx = log.PutFilter(ctx, log.SeverityFilter(flags.Level))
 	if flags.Stacks {
 		ctx = log.PutStacktracer(ctx, log.SeverityStacktracer(log.Error))
-		// TODO
-		// ctx = stacktrace.CaptureOn(ctx, stacktrace.Controls{
-		// 	Condition: stacktrace.OnError,
-		// 	Source: stacktrace.TrimTop(stacktrace.MatchPackage("runtime"),
-		// 		stacktrace.TrimBottom(stacktrace.MatchPackage("github.com/google/gapid/core/context/jot"),
-		// 			stacktrace.Capture)),
-		// })
 	}
 	if flags.File != "" {
 		// Create the server logfile.
@@ -81,21 +78,15 @@ func updateContext(ctx context.Context, flags *LogFlags, closeLogs func()) (cont
 		}
 		log.I(ctx, "Logging to: %v", flags.File)
 		// Build the logging context
-		handler := wrapHandler(flags.Style.Handler(func(s string, _ log.Severity) {
+		handler := flags.Style.Handler(func(s string, _ log.Severity) {
 			file.WriteString(s)
 			file.WriteString("\n")
-		}))
-		ctx = log.PutHandler(ctx, handler)
-		closeLogs()
-		closeLogs = func() {
-			handler.Close()
-			file.Close()
+		})
+		handler = log.OnClosed(handler, func() { file.Close() })
+		handler = wrapHandler(handler)
+		if old := LogHandler.SetTarget(handler); old != nil {
+			old.Close()
 		}
-	} else {
-		handler := wrapHandler(flags.Style.Handler(log.Std()))
-		ctx = log.PutHandler(ctx, handler)
-		closeLogs()
-		closeLogs = handler.Close
 	}
-	return ctx, closeLogs
+	return ctx
 }
