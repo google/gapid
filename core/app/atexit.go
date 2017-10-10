@@ -40,7 +40,7 @@ const (
 
 var (
 	// CleanupTimeout is the time to wait for all cleanup signals to fire when shutting down.
-	CleanupTimeout = time.Second
+	CleanupTimeout = time.Second * 10
 
 	events = task.Events{}
 )
