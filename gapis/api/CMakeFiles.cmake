@@ -40,6 +40,7 @@ set(files
     mesh.go
     resource.go
     state.go
+    service.go
     service.proto
     service.pb.go
     subcmd_idx.go
