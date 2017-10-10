@@ -25,7 +25,8 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-func getBoundFramebuffer(ctx context.Context, id api.CmdID, c *path.Capture) (gles.FramebufferId, error) {
+func getFramebuffer(ctx context.Context, id api.CmdID) (gles.FramebufferId, error) {
+	c := capture.Get(ctx)
 	cmds, err := resolve.Cmds(ctx, c)
 	if err != nil {
 		return 0, err

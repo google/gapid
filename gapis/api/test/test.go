@@ -24,7 +24,12 @@ import (
 
 type CustomState struct{}
 
-func (API) GetFramebufferAttachmentInfo(*api.GlobalState, uint64, api.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
+func (API) GetFramebufferAttachmentInfo(
+	ctx context.Context,
+	after []uint64,
+	state *api.GlobalState,
+	thread uint64,
+	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
 	return 0, 0, 0, nil, nil
 }
 

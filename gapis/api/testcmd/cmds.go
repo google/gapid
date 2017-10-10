@@ -132,7 +132,12 @@ func (API) Name() string                 { return "foo" }
 func (API) ID() api.ID                   { return APIID }
 func (API) Index() uint8                 { return 15 }
 func (API) ConstantSets() *constset.Pack { return nil }
-func (API) GetFramebufferAttachmentInfo(*api.GlobalState, uint64, api.FramebufferAttachment) (uint32, uint32, uint32, *image.Format, error) {
+func (API) GetFramebufferAttachmentInfo(
+	ctx context.Context,
+	after []uint64,
+	state *api.GlobalState,
+	thread uint64,
+	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
 	return 0, 0, 0, nil, nil
 }
 func (API) Context(*api.GlobalState, uint64) api.Context { return nil }

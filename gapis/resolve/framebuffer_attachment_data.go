@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service"
@@ -26,9 +27,12 @@ import (
 
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (interface{}, error) {
+	c := path.FindCapture(r.After)
+	ctx = capture.Put(ctx, c)
+
 	intent := replay.Intent{
 		Device:  r.Device,
-		Capture: path.FindCapture(r.After),
+		Capture: c,
 	}
 
 	after, err := Cmd(ctx, r.After)

@@ -15,6 +15,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
@@ -40,7 +41,12 @@ type API interface {
 	// specified framebuffer attachment.
 	// It also returns an API specific index that maps the given attachment into
 	// an API specific representation.
-	GetFramebufferAttachmentInfo(state *GlobalState, thread uint64, attachment FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error)
+	GetFramebufferAttachmentInfo(
+		ctx context.Context,
+		after []uint64,
+		state *GlobalState,
+		thread uint64,
+		attachment FramebufferAttachment) (width, height, index uint32, format *image.Format, err error)
 
 	// Context returns the active context for the given state.
 	Context(state *GlobalState, thread uint64) Context
