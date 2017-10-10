@@ -36,7 +36,7 @@ func ToProducer(stream interface{}) event.Producer {
 			if errors.Cause(err) == io.EOF {
 				return nil
 			}
-			log.F(ctx, "%v", err)
+			log.E(ctx, "%v", err)
 			return nil
 		}
 		return m.Interface()
