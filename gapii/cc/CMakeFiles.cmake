@@ -45,6 +45,7 @@ set(files
     gles_types.h
     gvr_abi_types.h
     gvr_exports.cpp
+    gvr_extras.cpp
     gvr_extras.inl
     gvr_imports.cpp
     gvr_imports.h

@@ -435,6 +435,10 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
 #undef EGL_QUERY_SURFACE
 #undef EGL_GET_CONFIG_ATTRIB
 
+void Spy::gvr_frame_submit(CallObserver* observer, gvr_frame** frame, gvr_buffer_viewport_list* list, gvr_mat4_abi head_space_from_start_space) {
+    GvrSpy::mLastSubmittedFrame = (frame != nullptr) ? (*frame) : nullptr;
+    GvrSpy::gvr_frame_submit(observer, frame, list, head_space_from_start_space);
+}
 
 void Spy::onPostDrawCall(CallObserver* observer, uint8_t api) {
     if (is_suspended()) {
@@ -586,6 +590,11 @@ void Spy::observeFramebuffer(CallObserver* observer, uint8_t api) {
             break;
         case VulkanSpy::kApiIndex:
             if (!VulkanSpy::observeFramebuffer(observer, &w, &h, &data)) {
+                return;
+            }
+            break;
+        case GvrSpy::kApiIndex:
+            if (!GvrSpy::observeFramebuffer(observer, &w, &h, &data)) {
                 return;
             }
             break;

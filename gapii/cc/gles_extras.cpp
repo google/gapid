@@ -202,6 +202,10 @@ bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer, uint32_t* wid
         return false;
     }
 
+    return getFramebufferAttachmentSize(observer, framebuffer.get(), width, height);
+}
+
+bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer, Framebuffer* framebuffer, uint32_t* width, uint32_t* height) {
     auto attachment = framebuffer->mColorAttachments.find(0);
     if (attachment == framebuffer->mColorAttachments.end()) {
         return false;

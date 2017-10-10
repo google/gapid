@@ -19,7 +19,7 @@
 // namespace gapii {
 //
 // class VulkanSpy {
-// protected:
+// public:
 
 PFN_vkVoidFunction SpyOverride_vkGetInstanceProcAddr(VkInstance instance,
                                                      const char* pName);
