@@ -650,7 +650,7 @@ func (s *ShaderModuleObject) ResourceType(ctx context.Context) api.ResourceType 
 // ResourceData returns the resource data given the current state.
 func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceData()")
-	words := s.Words.Read(ctx, nil, t, nil)
+	words := s.Words.MustRead(ctx, nil, t, nil)
 	source := shadertools.DisassembleSpirvBinary(words)
 	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source}), nil
 }
@@ -717,7 +717,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	pAlloc := memory.Pointer(cmd.PAllocator)
 	pShaderModule := memory.Pointer(cmd.PShaderModule)
 	result := cmd.Result
-	createInfo := cmd.PCreateInfo.Read(ctx, cmd, state, nil)
+	createInfo := cmd.PCreateInfo.MustRead(ctx, cmd, state, nil)
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
@@ -765,7 +765,7 @@ func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	code := state.AllocDataOrPanic(ctx, codeSlice)
 	device := cmd.Device
 	pShaderModule := memory.Pointer(cmd.PShaderModule)
-	createInfo := cmd.PCreateInfo.Read(ctx, cmd, state, nil)
+	createInfo := cmd.PCreateInfo.MustRead(ctx, cmd, state, nil)
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)

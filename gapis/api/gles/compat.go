@@ -413,10 +413,10 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 		case *GlVertexAttrib4fv:
 			if oldAttrib, ok := c.Vertex.Attributes[cmd.Location]; ok {
-				oldValue := oldAttrib.Value.Read(ctx, cmd, s, nil /* builder */)
+				oldValue := oldAttrib.Value.MustRead(ctx, cmd, s, nil /* builder */)
 				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
 				newAttrib := c.Vertex.Attributes[cmd.Location]
-				newValue := newAttrib.Value.Read(ctx, cmd, s, nil /* builder */)
+				newValue := newAttrib.Value.MustRead(ctx, cmd, s, nil /* builder */)
 				if reflect.DeepEqual(oldValue, newValue) {
 					// Ignore the call if it is redundant.
 					// Some applications iterate over all arrays and explicitly initialize them.

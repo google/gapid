@@ -213,7 +213,7 @@
   // New{{$ptr_ty}} returns a {{$ptr_ty}} that points to addr in the application pool.
   func New{{$ptr_ty}}(p ϟmem.Pointer) {{$ptr_ty}} {
     if p == nil {
-      return {{$ptr_ty}}{  0, ϟmem.ApplicationPool }
+      return {{$ptr_ty}}{ 0, ϟmem.ApplicationPool }
     }
     return {{$ptr_ty}}{ p.Address(), p.Pool() }
   }
@@ -251,13 +251,30 @@
 
   {{if not $el_is_void}}
     // Read reads and returns the {{$el_ty}} element at the pointer.
-    func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) {{$el_ty}} {
-      return p.Slice(0, 1, ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, ϟb)[0]
+    func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) ({{$el_ty}}, error) {
+      vals, err := p.Slice(0, 1, ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, ϟb)
+      if err != nil {
+        return {{Template "Go.Null" (TypeOf $p.To)}}, err
+      }
+      return vals[0], nil
+    }
+
+    // MustRead calls and returns Read, panicing if there was an error.
+    func (p {{$ptr_ty}}) MustRead(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) {{$el_ty}} {
+      val, err := p.Read(ϟctx, ϟa, ϟs, ϟb)
+      panicOnError(err)
+      return val
     }
 
     // Write writes value to the {{$el_ty}} element at the pointer.
-    func (p {{$ptr_ty}}) Write(ϟctx context.Context, value {{$el_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) {
-      p.Slice(0, 1, ϟs.MemoryLayout).Write(ϟctx, []{{$el_ty}}{value}, ϟa, ϟs, ϟb)
+    func (p {{$ptr_ty}}) Write(ϟctx context.Context, value {{$el_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) error {
+      _, err := p.Slice(0, 1, ϟs.MemoryLayout).Write(ϟctx, []{{$el_ty}}{value}, ϟa, ϟs, ϟb)
+      return err
+    }
+
+    // MustWrite calls Write, panicing if there was an error.
+    func (p {{$ptr_ty}}) MustWrite(ϟctx context.Context, value {{$el_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) {
+      panicOnError(p.Write(ϟctx, value, ϟa, ϟs, ϟb))
     }
   {{end}}
 
@@ -499,23 +516,41 @@
     }
 
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
-    func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) []{{$el_ty}} {
+    func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) ([]{{$el_ty}}, error) {
       s.OnRead(ϟctx, ϟa, ϟs, ϟb)
       res := make([]{{$el_ty}}, s.count)
       d := s.Decoder(ϟctx, ϟs)
       ϟmem.Read(d, &res)
-      panicOnError(d.Error())
-      return res
+      if err := d.Error(); err != nil {
+        return nil, err
+      }
+      return res, nil
+    }
+
+    // MustRead calls and returns Read, panicing if there was an error.
+    func (s {{$slice_ty}}) MustRead(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) []{{$el_ty}} {
+      vals, err := s.Read(ϟctx, ϟa, ϟs, ϟb)
+      panicOnError(err)
+      return vals
     }
 
     // Write copies elements from src to this slice. The number of elements copied is returned
     // which is the minimum of s.count and len(src).
-    func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) uint64 {
+    func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) (uint64, error) {
       count := u64.Min(s.count, uint64(len(src)))
       e := s.Slice(0, count, ϟs.MemoryLayout).Encoder(ϟs)
       ϟmem.Write(e, src[:count])
       s.OnWrite(ϟctx, ϟa, ϟs, ϟb)
-      panicOnError(e.Error())
+      if err := e.Error(); err != nil {
+        return 0, err
+      }
+      return count, nil
+    }
+
+    // MustWrite calls and returns Write, panicing if there was an error.
+    func (s {{$slice_ty}}) MustWrite(ϟctx context.Context, src []{{$el_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) uint64 {
+      count, err := s.Write(ϟctx, src, ϟa, ϟs, ϟb)
+      panicOnError(err)
       return count
     }
 
@@ -527,7 +562,7 @@
       dst, src = dst.Slice(0, count, ϟs.MemoryLayout), src.Slice(0, count, ϟs.MemoryLayout)
     {{if $el_is_ptr}}
       if (dst.pool == ϟmem.ApplicationPool) != (src.pool == ϟmem.ApplicationPool) {
-        dst.Write(ϟctx, src.Read(ϟctx, ϟa, ϟs, ϟb), ϟa, ϟs, ϟb) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
+        dst.MustWrite(ϟctx, src.MustRead(ϟctx, ϟa, ϟs, ϟb), ϟa, ϟs, ϟb) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
       } else {
     {{end}}
       src.OnRead(ϟctx, ϟa, ϟs, ϟb)
@@ -539,7 +574,7 @@
 
     // Contains returns true if the slice contains the specified value.
     func (s {{$slice_ty}}) Contains(ϟctx context.Context, val {{$el_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) bool {
-      for _, e := range s.Read(ϟctx, ϟa, ϟs, ϟb) {
+      for _, e := range s.MustRead(ϟctx, ϟa, ϟs, ϟb) {
         if e == val {
           return true
         }

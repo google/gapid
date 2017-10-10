@@ -115,7 +115,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 	if image, ok := cmd.(*VkCreateImage); ok {
 		pinfo := image.PCreateInfo
-		info := pinfo.Read(ctx, image, s, nil)
+		info := pinfo.MustRead(ctx, image, s, nil)
 
 		if newUsage, changed := patchImageUsage(info.Usage); changed {
 			device := image.Device
@@ -151,7 +151,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 	} else if recreateImage, ok := cmd.(*RecreateImage); ok {
 		pinfo := recreateImage.PCreateInfo
-		info := pinfo.Read(ctx, image, s, nil)
+		info := pinfo.MustRead(ctx, image, s, nil)
 
 		if newUsage, changed := patchImageUsage(info.Usage); changed {
 			device := recreateImage.Device
@@ -185,7 +185,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 	} else if swapchain, ok := cmd.(*VkCreateSwapchainKHR); ok {
 		pinfo := swapchain.PCreateInfo
-		info := pinfo.Read(ctx, swapchain, s, nil)
+		info := pinfo.MustRead(ctx, swapchain, s, nil)
 
 		if newUsage, changed := patchImageUsage(info.ImageUsage); changed {
 			device := swapchain.Device
@@ -216,7 +216,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 	} else if recreateSwapchain, ok := cmd.(*RecreateSwapchain); ok {
 		pinfo := recreateSwapchain.PCreateInfo
-		info := pinfo.Read(ctx, recreateSwapchain, s, nil)
+		info := pinfo.MustRead(ctx, recreateSwapchain, s, nil)
 
 		if newUsage, changed := patchImageUsage(info.ImageUsage); changed {
 			device := recreateSwapchain.Device
@@ -248,9 +248,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok {
 		pInfo := createRenderPass.PCreateInfo
-		info := pInfo.Read(ctx, createRenderPass, s, nil)
+		info := pInfo.MustRead(ctx, createRenderPass, s, nil)
 		pAttachments := info.PAttachments
-		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), l).Read(ctx, createRenderPass, s, nil)
+		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), l).MustRead(ctx, createRenderPass, s, nil)
 		changed := false
 		for i := range attachments {
 			if attachments[i].StoreOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
@@ -289,9 +289,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		return
 	} else if recreateRenderPass, ok := cmd.(*RecreateRenderPass); ok {
 		pInfo := recreateRenderPass.PCreateInfo
-		info := pInfo.Read(ctx, recreateRenderPass, s, nil)
+		info := pInfo.MustRead(ctx, recreateRenderPass, s, nil)
 		pAttachments := info.PAttachments
-		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), l).Read(ctx, recreateRenderPass, s, nil)
+		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), l).MustRead(ctx, recreateRenderPass, s, nil)
 		changed := false
 		for i := range attachments {
 			if attachments[i].StoreOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
@@ -333,16 +333,16 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		count := uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, cmd, s, nil))
-		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).Read(ctx, cmd, s, nil)
+		count := uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
+		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
 		t.EnumeratedPhysicalDevices = append(t.EnumeratedPhysicalDevices, devices...)
 		t.Instance = e.Instance
 		return
 	} else if e, ok := cmd.(*RecreatePhysicalDevices); ok {
 		l := s.MemoryLayout
-		count := uint32(e.Count.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, cmd, s, nil))
+		count := uint32(e.Count.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).Read(ctx, cmd, s, nil)
+		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
 		t.EnumeratedPhysicalDevices = append(t.EnumeratedPhysicalDevices, devices...)
 		t.Instance = e.Instance
 		return
@@ -352,7 +352,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			return
 		}
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		properties := e.PProperties.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, cmd, s, nil)
+		properties := e.PProperties.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil)
 		t.Properties[e.PhysicalDevice] = properties
 		if len(t.Properties) == len(t.EnumeratedPhysicalDevices) {
 			// We have enumerated all properties for all devices:

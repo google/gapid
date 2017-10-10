@@ -352,7 +352,7 @@ func (ω *CGLCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	if b == nil || err != nil {
 		return err
 	}
-	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx.Read(ctx, ω, s, b)].Identifier)
+	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx.MustRead(ctx, ω, s, b)].Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }

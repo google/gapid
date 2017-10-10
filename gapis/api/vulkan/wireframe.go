@@ -39,8 +39,8 @@ func wireframe(ctx context.Context) transform.Transformer {
 			newInfos := make([]VkGraphicsPipelineCreateInfo, count)
 			newRasterStateDatas := make([]api.AllocResult, count)
 			for i := uint64(0); i < count; i++ {
-				info := infos.Index(i, l).Read(ctx, cmd, s, nil)
-				rasterState := info.PRasterizationState.Read(ctx, cmd, s, nil)
+				info := infos.Index(i, l).MustRead(ctx, cmd, s, nil)
+				rasterState := info.PRasterizationState.MustRead(ctx, cmd, s, nil)
 				rasterState.PolygonMode = VkPolygonMode_VK_POLYGON_MODE_LINE
 				newRasterStateDatas[i] = s.AllocDataOrPanic(ctx, rasterState)
 				info.PRasterizationState = NewVkPipelineRasterizationStateCreateInfoᶜᵖ(newRasterStateDatas[i].Ptr())
@@ -58,8 +58,8 @@ func wireframe(ctx context.Context) transform.Transformer {
 			}
 			out.MutateAndWrite(ctx, id, newCmd)
 		case *RecreateGraphicsPipeline:
-			info := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
-			rasterState := info.PRasterizationState.Read(ctx, cmd, s, nil)
+			info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
+			rasterState := info.PRasterizationState.MustRead(ctx, cmd, s, nil)
 			rasterState.PolygonMode = VkPolygonMode_VK_POLYGON_MODE_LINE
 			newRasterStateData := s.AllocDataOrPanic(ctx, rasterState)
 			info.PRasterizationState = NewVkPipelineRasterizationStateCreateInfoᶜᵖ(newRasterStateData.Ptr())
