@@ -193,11 +193,13 @@ message Texture1DArray {
 message Texture2D {
 	// The mip-map levels.
 	repeated image.Info levels = 1;
+	bool multisampled = 2;
 }
 
 // Texture2DArray represents a two-dimensional texture array resource.
 message Texture2DArray {
 	repeated Texture2D layers = 1;
+	bool multisampled = 2;
 }
 
 // Texture3D represents a three-dimensional texture resource.

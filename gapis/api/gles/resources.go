@@ -59,7 +59,7 @@ func (t *Texture) ResourceType(ctx context.Context) api.ResourceType {
 func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Texture.ResourceData()")
 	switch t.Kind {
-	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D:
+	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_2D_MULTISAMPLE:
 		levels := make([]*image.Info, len(t.Levels))
 		for i, level := range t.Levels {
 			img, err := level.Layers[0].ImageInfo(ctx, s)
@@ -73,6 +73,8 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 			return api.NewResourceData(api.NewTexture(&api.Texture1D{Levels: levels})), nil
 		case GLenum_GL_TEXTURE_2D:
 			return api.NewResourceData(api.NewTexture(&api.Texture2D{Levels: levels})), nil
+		case GLenum_GL_TEXTURE_2D_MULTISAMPLE:
+			return api.NewResourceData(api.NewTexture(&api.Texture2D{Levels: levels, Multisampled: true})), nil
 		default:
 			panic(fmt.Errorf("Unhandled texture kind %v", t.Kind))
 		}
@@ -104,7 +106,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture1DArray{Layers: layers})), nil
 
-	case GLenum_GL_TEXTURE_2D_ARRAY:
+	case GLenum_GL_TEXTURE_2D_ARRAY, GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
 		numLayers := t.LayerCount()
 		layers := make([]*api.Texture2D, numLayers)
 		for layer := range layers {
@@ -118,7 +120,14 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 			}
 			layers[layer] = &api.Texture2D{Levels: levels}
 		}
-		return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers})), nil
+		switch t.Kind {
+		case GLenum_GL_TEXTURE_2D_ARRAY:
+			return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers})), nil
+		case GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+			return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers, Multisampled: true})), nil
+		default:
+			panic(fmt.Errorf("Unhandled texture kind %v", t.Kind))
+		}
 
 	case GLenum_GL_TEXTURE_3D:
 		levels := make([]*image.Info, len(t.Levels))
