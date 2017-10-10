@@ -96,10 +96,12 @@
   {{else if IsReference     $}}{{Template "Go.Type" $}}(nil)
   {{else if IsMap           $}}{{Template "Go.Type" $}}{}
   {{else if IsClass         $}}{{Template "Go.Type" $}}{}
+  {{else if IsStaticArray   $}}{{Template "Go.Type" $}}{}
   {{else if IsBool          $}}false
-  {{else if IsInt           $}}int(0)
-  {{else if IsUint          $}}uint(0)
-  {{else if IsSize          $}}uint64(0)
+  {{else if IsChar          $}}ϟmem.Char(0)
+  {{else if IsInt           $}}ϟmem.Int(0)
+  {{else if IsUint          $}}ϟmem.Uint(0)
+  {{else if IsSize          $}}ϟmem.Size(0)
   {{else if IsS8            $}}int8(0)
   {{else if IsU8            $}}uint8(0)
   {{else if IsS16           $}}int16(0)
