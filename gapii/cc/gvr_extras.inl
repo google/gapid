@@ -19,4 +19,8 @@
 // namespace gapii {
 //
 // class GvrSpy {
-// protected:
+// public:
+
+typedef int FramebufferId;
+
+gvr_frame* mLastSubmittedFrame;

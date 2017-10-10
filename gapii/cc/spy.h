@@ -66,6 +66,8 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   GLubyte* glGetString(CallObserver* observer, uint32_t name);
   GLubyte* glGetStringi(CallObserver* observer, uint32_t name, GLuint index);
 
+  void gvr_frame_submit(CallObserver* observer, gvr_frame** frame, gvr_buffer_viewport_list* list, gvr_mat4_abi head_space_from_start_space);
+
   void onPostDrawCall(CallObserver* observer, uint8_t api) override;
   void onPreStartOfFrame(CallObserver* observer, uint8_t api) override;
   void onPostStartOfFrame() override;

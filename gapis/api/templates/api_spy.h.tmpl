@@ -69,13 +69,13 @@
       {{Template "C++.Type" $g}} {{$g.Name}};
     {{end}}
 ¶
+    #include "gapii/cc/{{Global "API"}}_extras.inl"
+¶
   «protected:»
 ¶
-  bool observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data);
+    bool observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data);
 ¶
     {{$imports}} mImports;
-¶
-    #include "gapii/cc/{{Global "API"}}_extras.inl"
   };
 ¶
   // Inline methods
