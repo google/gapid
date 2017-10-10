@@ -272,13 +272,17 @@ func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 
 func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
 	ctx = log.Enter(ctx, "GetLogStream")
+	closed := make(chan struct{})
+	handler = log.OnClosed(handler, func() { close(closed) })
 	handler = log.Channel(handler, 64)
 	unregister := s.logBroadcaster.Listen(handler)
-	defer func() {
-		unregister()
-		handler.Close()
-	}()
-	<-task.ShouldStop(ctx)
+	defer unregister()
+	select {
+	case <-closed:
+		// Logs were closed - likely server is shutting down.
+	case <-task.ShouldStop(ctx):
+		// Context was stopped - likely client has disconnected.
+	}
 	return task.StopReason(ctx)
 }
 
