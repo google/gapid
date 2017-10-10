@@ -125,18 +125,39 @@ func (b *Texture) GetID() TextureId {
 	}
 }
 
-// GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (API) GetFramebufferAttachmentInfo(state *api.GlobalState, thread uint64, attachment api.FramebufferAttachment) (width, height uint32, index uint32, format *image.Format, err error) {
-	s := GetState(state)
-	c := s.GetContext(thread)
-	if c == nil {
-		return 0, 0, 0, nil, fmt.Errorf("No context bound")
-	}
-	if !c.Info.Initialized {
-		return 0, 0, 0, nil, fmt.Errorf("Context not initialized")
-	}
+// GetFramebufferAttachmentInfo returns the width, height and format of the
+// specified attachment of the currently bound framebuffer.
+func (API) GetFramebufferAttachmentInfo(
+	ctx context.Context,
+	after []uint64,
+	state *api.GlobalState,
+	thread uint64,
+	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
 
-	fb := c.Bound.DrawFramebuffer.GetID()
+	return GetFramebufferAttachmentInfoByID(state, thread, attachment, 0)
+}
+
+// GetFramebufferAttachmentInfoByID returns the width, height and format of the
+// specified attachment of the framebuffer with the given id.
+// If fb is 0 then the currently bound framebuffer is used.
+func GetFramebufferAttachmentInfoByID(
+	state *api.GlobalState,
+	thread uint64,
+	attachment api.FramebufferAttachment,
+	fb FramebufferId) (width, height, index uint32, format *image.Format, err error) {
+
+	s := GetState(state)
+
+	if fb == 0 {
+		c := s.GetContext(thread)
+		if c == nil {
+			return 0, 0, 0, nil, fmt.Errorf("No context bound")
+		}
+		if !c.Info.Initialized {
+			return 0, 0, 0, nil, fmt.Errorf("Context not initialized")
+		}
+		fb = c.Bound.DrawFramebuffer.GetID()
+	}
 
 	w, h, sizedFormat, err := s.getFramebufferAttachmentInfo(thread, fb, attachment)
 	if sizedFormat == 0 {

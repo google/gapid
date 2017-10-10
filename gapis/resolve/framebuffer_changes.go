@@ -63,7 +63,7 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		for _, att := range allFramebufferAttachments {
 			info := framebufferAttachmentInfo{after: idx}
 			if api != nil {
-				if w, h, i, f, err := api.GetFramebufferAttachmentInfo(s, cmd.Thread(), att); err == nil && f != nil {
+				if w, h, i, f, err := api.GetFramebufferAttachmentInfo(ctx, idx, s, cmd.Thread(), att); err == nil && f != nil {
 					info.width, info.height, info.index, info.format = w, h, i, f
 				} else {
 					info.err = err

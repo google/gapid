@@ -54,7 +54,7 @@ func (API) QueryFramebufferAttachment(
 	hints *service.UsageHints) (*image.Data, error) {
 
 	if framebufferIndex == 0 {
-		fb, err := getBoundFramebuffer(ctx, api.CmdID(after[0]), intent.Capture)
+		fb, err := getFramebuffer(ctx, api.CmdID(after[0]))
 		if err != nil {
 			return nil, err
 		}
@@ -73,9 +73,20 @@ func (API) QueryFramebufferAttachment(
 	)
 }
 
-// GetFramebufferAttachmentInfo returns the width, height and format of the specified framebuffer attachment.
-func (API) GetFramebufferAttachmentInfo(s *api.GlobalState, t uint64, a api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
-	return gles.API{}.GetFramebufferAttachmentInfo(s, t, a)
+// GetFramebufferAttachmentInfo returns the width, height and format of the
+// specified framebuffer attachment.
+func (API) GetFramebufferAttachmentInfo(
+	ctx context.Context,
+	after []uint64,
+	state *api.GlobalState,
+	thread uint64,
+	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
+
+	fb, err := getFramebuffer(ctx, api.CmdID(after[0]))
+	if err != nil {
+		return 0, 0, 0, nil, err
+	}
+	return gles.GetFramebufferAttachmentInfoByID(state, thread, attachment, fb)
 }
 
 // Context returns the active context for the given state and thread.

@@ -75,9 +75,15 @@ func (verb *videoVerb) regularVideoSource(
 	client service.Service,
 	device *path.Device) (videoFrameWriter, error) {
 
+	filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capture)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get filter")
+	}
+
 	requestEvents := path.Events{
 		Capture:     capture,
 		LastInFrame: true,
+		Filter:      filter,
 	}
 
 	if verb.Commands {

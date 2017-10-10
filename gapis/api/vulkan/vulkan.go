@@ -77,7 +77,13 @@ func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) 
 	return nil
 }
 
-func (API) GetFramebufferAttachmentInfo(state *api.GlobalState, thread uint64, attachment api.FramebufferAttachment) (w, h uint32, a uint32, f *image.Format, err error) {
+func (API) GetFramebufferAttachmentInfo(
+	ctx context.Context,
+	after []uint64,
+	state *api.GlobalState,
+	thread uint64,
+	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
+
 	w, h, form, i, err := GetState(state).getFramebufferAttachmentInfo(attachment)
 	switch attachment {
 	case api.FramebufferAttachment_Stencil:
