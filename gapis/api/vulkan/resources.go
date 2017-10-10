@@ -51,6 +51,12 @@ func (t *ImageObject) ResourceHandle() string {
 
 // ResourceLabel returns an optional debug label for the resource.
 func (t *ImageObject) ResourceLabel() string {
+	if t.DebugInfo != nil {
+		if t.DebugInfo.ObjectName != "" {
+			return t.DebugInfo.ObjectName
+		}
+		return fmt.Sprintf("<%d:%v>", t.DebugInfo.TagName, t.DebugInfo.Tag)
+	}
 	return ""
 }
 
@@ -634,6 +640,12 @@ func (s *ShaderModuleObject) ResourceHandle() string {
 
 // ResourceLabel returns an optional debug label for the resource.
 func (s *ShaderModuleObject) ResourceLabel() string {
+	if s.DebugInfo != nil {
+		if s.DebugInfo.ObjectName != "" {
+			return s.DebugInfo.ObjectName
+		}
+		return fmt.Sprintf("<%d:%v>", s.DebugInfo.TagName, s.DebugInfo.Tag)
+	}
 	return ""
 }
 
