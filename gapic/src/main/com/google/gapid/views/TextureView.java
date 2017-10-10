@@ -417,8 +417,12 @@ public class TextureView extends Composite
           new AdditionalInfo("1D Array", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_2D =
           new AdditionalInfo("2D", Image.Info.getDefaultInstance(), 0, 0);
+      public static final AdditionalInfo NULL_2D_MS =
+          new AdditionalInfo("2D Multisampled", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_2D_ARRAY =
           new AdditionalInfo("2D Array", Image.Info.getDefaultInstance(), 0, 0);
+      public static final AdditionalInfo NULL_2D_MS_ARRAY =
+          new AdditionalInfo("2D Multisampled Array", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_3D =
           new AdditionalInfo("3D", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_CUBEMAP =
@@ -455,13 +459,15 @@ public class TextureView extends Composite
           }
           case TEXTURE_2D: {
             API.Texture2D t = texture.getTexture2D();
-            return (t.getLevelsCount() == 0) ? NULL_2D :
-                new AdditionalInfo("2D", t.getLevels(0), 1, t.getLevelsCount());
+            AdditionalInfo nullInfo = t.getMultisampled() ? NULL_2D_MS : NULL_2D;
+            return (t.getLevelsCount() == 0) ? nullInfo :
+                new AdditionalInfo(nullInfo.typeLabel, t.getLevels(0), 1, t.getLevelsCount());
           }
           case TEXTURE_2D_ARRAY: {
             API.Texture2DArray t = texture.getTexture2DArray();
-            return (t.getLayersCount() == 0 || t.getLayers(0).getLevelsCount() == 0) ? NULL_2D_ARRAY :
-                new AdditionalInfo("2D Array", t.getLayers(0).getLevels(0), t.getLayersCount(),
+            AdditionalInfo nullInfo = t.getMultisampled() ? NULL_2D_MS_ARRAY : NULL_2D_ARRAY;
+            return (t.getLayersCount() == 0 || t.getLayers(0).getLevelsCount() == 0) ? nullInfo :
+                new AdditionalInfo(nullInfo.typeLabel, t.getLayers(0).getLevels(0), t.getLayersCount(),
                     t.getLayers(0).getLevelsCount());
           }
           case TEXTURE_3D: {
