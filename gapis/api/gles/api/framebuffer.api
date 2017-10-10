@@ -80,6 +80,7 @@ class Renderbuffer {
   GLsizei Width          = 0
   GLsizei Height         = 0
   GLenum  InternalFormat = GL_RGBA4
+  GLsizei Samples = 0
   /* TODO
   GLuint RedSize = 0
   GLuint GreenSize = 0
@@ -87,7 +88,6 @@ class Renderbuffer {
   GLuint AlphaSize = 0
   GLuint DepthSize = 0
   GLuint StencilSize = 0
-  GLuint Samples = 0
   */
 
   @unused string Label
@@ -1095,8 +1095,7 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
   rb.InternalFormat = internalformat
   rb.Width = width
   rb.Height = height
-
-  _ = samples // TODO
+  rb.Samples = samples
 }
 
 @if(Version.GLES10)
