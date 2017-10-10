@@ -40,8 +40,8 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 		return false
 	}
 	l := e.s.MemoryLayout
-	dynamic_state_info := info.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(e.ctx, e.cmd, e.s, e.b)
-	states := dynamic_state_info.PDynamicStates.Slice(uint64(uint32(0)), uint64(dynamic_state_info.DynamicStateCount), l).Read(e.ctx, e.cmd, e.s, e.b)
+	dynamic_state_info := info.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(e.ctx, e.cmd, e.s, e.b)
+	states := dynamic_state_info.PDynamicStates.Slice(uint64(uint32(0)), uint64(dynamic_state_info.DynamicStateCount), l).MustRead(e.ctx, e.cmd, e.s, e.b)
 	for _, s := range states {
 		if s == state {
 			return true
@@ -975,7 +975,7 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 	counter := uint32(0)
 	for (pNext) != (Voidᶜᵖ{}) {
 		counter++
-		pNext = Voidᶜᵖᵖ(pNext).Slice(uint64(0), uint64(2), l).Index(uint64(1), l).Read(e.ctx, e.cmd, e.s, e.b)
+		pNext = Voidᶜᵖᵖ(pNext).Slice(uint64(0), uint64(2), l).Index(uint64(1), l).MustRead(e.ctx, e.cmd, e.s, e.b)
 	}
 	return counter
 }

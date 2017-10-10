@@ -842,7 +842,7 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-		for _, imageInfo := range write.PImageInfo.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, imageInfo := range write.PImageInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			backingData := dependencygraph.DefUseVariable(vkNullHandle)
 			sampler := vkNullHandle
@@ -865,7 +865,7 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-		for _, bufferInfo := range write.PBufferInfo.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, bufferInfo := range write.PBufferInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			vkBuf := bufferInfo.Buffer
 			bufData, _ := vb.getBufferData(ctx, bh, vkBuf).(memorySpan)
@@ -877,7 +877,7 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		}
 	case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-		for _, vkBufView := range write.PTexelBufferView.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, vkBufView := range write.PTexelBufferView.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			read(ctx, bh, vkHandle(vkBufView))
 			bufView := GetState(s).BufferViews.Get(vkBufView)
@@ -1216,13 +1216,13 @@ func (vb *FootprintBuilder) recordBarriers(ctx context.Context,
 		}
 	} else {
 		for _, barrier := range pBufferBarriers.Slice(0,
-			uint64(bufferBarrierCount), l).Read(ctx, cmd, s, nil) {
+			uint64(bufferBarrierCount), l).MustRead(ctx, cmd, s, nil) {
 			bufData, _ := vb.getBufferData(ctx, bh, barrier.Buffer).(memorySpan)
 			touchedData = append(touchedData, getSubBufferData(
 				bufData, uint64(barrier.Offset), uint64(barrier.Size)))
 		}
 		for _, barrier := range pImageBarriers.Slice(0,
-			uint64(imageBarrierCount), l).Read(ctx, cmd, s, nil) {
+			uint64(imageBarrierCount), l).MustRead(ctx, cmd, s, nil) {
 			touchedData = append(touchedData, vb.getImageLayoutAndData(ctx, bh, barrier.Image)...)
 		}
 	}
@@ -1276,10 +1276,10 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	switch cmd := cmd.(type) {
 	// device memory
 	case *VkAllocateMemory:
-		vkMem := cmd.PMemory.Read(ctx, cmd, s, nil)
+		vkMem := cmd.PMemory.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkMem))
 	case *RecreateDeviceMemory:
-		vkMem := cmd.PMemory.Read(ctx, cmd, s, nil)
+		vkMem := cmd.PMemory.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkMem))
 	case *VkFreeMemory:
 		vkMem := cmd.Memory
@@ -1302,7 +1302,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 	case *VkFlushMappedMemoryRanges:
 		count := uint64(cmd.MemoryRangeCount)
-		for _, rng := range cmd.PMemoryRanges.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, rng := range cmd.PMemoryRanges.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(rng.Memory))
 			offset := uint64(rng.Offset)
 			size := uint64(rng.Size)
@@ -1314,7 +1314,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 	case *VkInvalidateMappedMemoryRanges:
 		count := uint64(cmd.MemoryRangeCount)
-		for _, rng := range cmd.PMemoryRanges.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, rng := range cmd.PMemoryRanges.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(rng.Memory))
 			offset := uint64(rng.Offset)
 			size := uint64(rng.Size)
@@ -1327,11 +1327,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// image
 	case *VkCreateImage:
-		vkImg := cmd.PImage.Read(ctx, cmd, s, nil)
+		vkImg := cmd.PImage.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkImg))
 		vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
 	case *RecreateImage:
-		vkImg := cmd.PImage.Read(ctx, cmd, s, nil)
+		vkImg := cmd.PImage.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkImg))
 		vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
 	case *VkDestroyImage:
@@ -1377,19 +1377,19 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		write(ctx, bh, vb.getImageData(ctx, bh, cmd.Image))
 
 	case *VkCreateImageView:
-		write(ctx, bh, vkHandle(cmd.PView.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PView.MustRead(ctx, cmd, s, nil)))
 	case *RecreateImageView:
-		write(ctx, bh, vkHandle(cmd.PImageView.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PImageView.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroyImageView:
 		read(ctx, bh, vkHandle(cmd.ImageView))
 		bh.Alive = true
 
 	// buffer
 	case *VkCreateBuffer:
-		vkBuf := cmd.PBuffer.Read(ctx, cmd, s, nil)
+		vkBuf := cmd.PBuffer.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkBuf))
 	case *RecreateBuffer:
-		vkBuf := cmd.PBuffer.Read(ctx, cmd, s, nil)
+		vkBuf := cmd.PBuffer.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkBuf))
 	case *VkDestroyBuffer:
 		vkBuf := cmd.Buffer
@@ -1421,22 +1421,22 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		write(ctx, bh, vb.getBufferData(ctx, bh, cmd.Buffer))
 
 	case *VkCreateBufferView:
-		write(ctx, bh, vkHandle(cmd.PView.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PView.MustRead(ctx, cmd, s, nil)))
 	case *RecreateBufferView:
-		write(ctx, bh, vkHandle(cmd.PBufferView.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PBufferView.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroyBufferView:
 		read(ctx, bh, vkHandle(cmd.BufferView))
 		bh.Alive = true
 
 	// swapchain
 	case *VkCreateSwapchainKHR:
-		vkSw := cmd.PSwapchain.Read(ctx, cmd, s, nil)
+		vkSw := cmd.PSwapchain.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkSw))
 	case *RecreateSwapchain:
-		vkSw := cmd.PSwapchain.Read(ctx, cmd, s, nil)
+		vkSw := cmd.PSwapchain.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkSw))
-		imageCount := uint64(cmd.PCreateInfo.Read(ctx, cmd, s, nil).MinImageCount)
-		for _, vkImg := range cmd.PSwapchainImages.Slice(0, imageCount, l).Read(ctx, cmd, s, nil) {
+		imageCount := uint64(cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).MinImageCount)
+		for _, vkImg := range cmd.PSwapchainImages.Slice(0, imageCount, l).MustRead(ctx, cmd, s, nil) {
 			write(ctx, bh, vkHandle(vkImg))
 			vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
 			vb.images[vkImg].data = newBoundData(ctx, bh, newLabel())
@@ -1450,8 +1450,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		if (cmd.PSwapchainImages == VkImageᵖ{}) {
 			modify(ctx, bh, vkHandle(cmd.Swapchain))
 		} else {
-			count := uint64(cmd.PSwapchainImageCount.Read(ctx, cmd, s, nil))
-			for _, vkImg := range cmd.PSwapchainImages.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+			count := uint64(cmd.PSwapchainImageCount.MustRead(ctx, cmd, s, nil))
+			for _, vkImg := range cmd.PSwapchainImages.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 				write(ctx, bh, vkHandle(vkImg))
 				vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
 				vb.images[vkImg].data = newBoundData(ctx, bh, newLabel())
@@ -1472,7 +1472,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 		read(ctx, bh, vkHandle(cmd.Swapchain))
 		// The value of this imgId should have been written by the driver.
-		imgID := cmd.PImageIndex.Read(ctx, cmd, s, nil)
+		imgID := cmd.PImageIndex.MustRead(ctx, cmd, s, nil)
 		vkImg := GetState(s).Swapchains.Get(cmd.Swapchain).SwapchainImages.Get(imgID).VulkanHandle
 		if read(ctx, bh, vkHandle(vkImg)) {
 			writeMultiple(ctx, bh, vb.getImageLayoutAndData(ctx, bh, vkImg))
@@ -1482,18 +1482,18 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	case *VkQueuePresentKHR:
 		read(ctx, bh, vkHandle(cmd.Queue))
-		info := cmd.PPresentInfo.Read(ctx, cmd, s, nil)
+		info := cmd.PPresentInfo.MustRead(ctx, cmd, s, nil)
 		spCount := uint64(info.WaitSemaphoreCount)
-		for _, vkSp := range info.PWaitSemaphores.Slice(0, spCount, l).Read(ctx, cmd, s, nil) {
+		for _, vkSp := range info.PWaitSemaphores.Slice(0, spCount, l).MustRead(ctx, cmd, s, nil) {
 			if read(ctx, bh, vkHandle(vkSp)) {
 				read(ctx, bh, vb.semaphoreSignals[vkSp])
 			}
 		}
 		swCount := uint64(info.SwapchainCount)
 		imgIds := info.PImageIndices.Slice(0, swCount, l)
-		for swi, vkSw := range info.PSwapchains.Slice(0, swCount, l).Read(ctx, cmd, s, nil) {
+		for swi, vkSw := range info.PSwapchains.Slice(0, swCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(vkSw))
-			imgID := imgIds.Index(uint64(swi), l).Read(ctx, cmd, s, nil)
+			imgID := imgIds.Index(uint64(swi), l).MustRead(ctx, cmd, s, nil)
 			vkImg := GetState(s).Swapchains.Get(vkSw).SwapchainImages.Get(imgID).VulkanHandle
 			readMultiple(ctx, bh, vb.getImageLayoutAndData(ctx, bh, vkImg))
 
@@ -1502,7 +1502,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			// engine. And this extra behavior must be kept alive to prevent the
 			// presentation engine from hang.
 			extraBh := dependencygraph.NewBehavior(api.SubCmdIdx{uint64(id)}, vb.machine)
-			for _, vkSp := range info.PWaitSemaphores.Slice(0, spCount, l).Read(ctx, cmd, s, nil) {
+			for _, vkSp := range info.PWaitSemaphores.Slice(0, spCount, l).MustRead(ctx, cmd, s, nil) {
 				read(ctx, extraBh, vkHandle(cmd.Queue))
 				if read(ctx, extraBh, vkHandle(vkSp)) {
 					read(ctx, extraBh, vb.semaphoreSignals[vkSp])
@@ -1516,27 +1516,27 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// sampler
 	case *VkCreateSampler:
-		write(ctx, bh, vkHandle(cmd.PSampler.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PSampler.MustRead(ctx, cmd, s, nil)))
 	case *RecreateSampler:
-		write(ctx, bh, vkHandle(cmd.PSampler.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PSampler.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroySampler:
 		read(ctx, bh, vkHandle(cmd.Sampler))
 		bh.Alive = true
 
 	// query pool
 	case *VkCreateQueryPool:
-		vkQp := cmd.PQueryPool.Read(ctx, cmd, s, nil)
+		vkQp := cmd.PQueryPool.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkQp))
 		vb.querypools[vkQp] = &queryPool{}
-		count := uint64(cmd.PCreateInfo.Read(ctx, cmd, s, nil).QueryCount)
+		count := uint64(cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).QueryCount)
 		for i := uint64(0); i < count; i++ {
 			vb.querypools[vkQp].queries = append(vb.querypools[vkQp].queries, newQuery())
 		}
 	case *RecreateQueryPool:
-		vkQp := cmd.PPool.Read(ctx, cmd, s, nil)
+		vkQp := cmd.PPool.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkQp))
 		vb.querypools[vkQp] = &queryPool{}
-		count := uint64(cmd.PCreateInfo.Read(ctx, cmd, s, nil).QueryCount)
+		count := uint64(cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).QueryCount)
 		for i := uint64(0); i < count; i++ {
 			vb.querypools[vkQp].queries = append(vb.querypools[vkQp].queries, newQuery())
 		}
@@ -1554,18 +1554,18 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// descriptor set
 	case *VkCreateDescriptorSetLayout:
-		write(ctx, bh, vkHandle(cmd.PSetLayout.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PSetLayout.MustRead(ctx, cmd, s, nil)))
 	case *RecreateDescriptorSetLayout:
-		write(ctx, bh, vkHandle(cmd.PSetLayout.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PSetLayout.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroyDescriptorSetLayout:
 		read(ctx, bh, vkHandle(cmd.DescriptorSetLayout))
 		bh.Alive = true
 	case *VkAllocateDescriptorSets:
-		info := cmd.PAllocateInfo.Read(ctx, cmd, s, nil)
+		info := cmd.PAllocateInfo.MustRead(ctx, cmd, s, nil)
 		setCount := uint64(info.DescriptorSetCount)
 		vkLayouts := info.PSetLayouts.Slice(0, setCount, l)
-		for i, vkSet := range cmd.PDescriptorSets.Slice(0, setCount, l).Read(ctx, cmd, s, nil) {
-			vkLayout := vkLayouts.Index(uint64(i), l).Read(ctx, cmd, s, nil)
+		for i, vkSet := range cmd.PDescriptorSets.Slice(0, setCount, l).MustRead(ctx, cmd, s, nil) {
+			vkLayout := vkLayouts.Index(uint64(i), l).MustRead(ctx, cmd, s, nil)
 			read(ctx, bh, vkHandle(vkLayout))
 			layoutObj := GetState(s).DescriptorSetLayouts.Get(vkLayout)
 			write(ctx, bh, vkHandle(vkSet))
@@ -1580,7 +1580,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		writeCount := cmd.DescriptorWriteCount
 		if writeCount > 0 {
 			for _, write := range cmd.PDescriptorWrites.Slice(0, uint64(writeCount),
-				l).Read(ctx, cmd, s, nil) {
+				l).MustRead(ctx, cmd, s, nil) {
 				read(ctx, bh, vkHandle(write.DstSet))
 				ds := vb.descriptorSets[write.DstSet]
 				ds.writeDescriptors(ctx, cmd, s, vb, bh, write)
@@ -1589,7 +1589,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		copyCount := cmd.DescriptorCopyCount
 		if copyCount > 0 {
 			for _, copy := range cmd.PDescriptorCopies.Slice(0, uint64(copyCount),
-				l).Read(ctx, cmd, s, nil) {
+				l).MustRead(ctx, cmd, s, nil) {
 				read(ctx, bh, vkHandle(copy.SrcSet))
 				read(ctx, bh, vkHandle(copy.DstSet))
 				vb.descriptorSets[copy.DstSet].copyDescriptors(ctx, cmd, s, bh,
@@ -1597,9 +1597,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			}
 		}
 	case *RecreateDescriptorSet:
-		info := cmd.PAllocateInfo.Read(ctx, cmd, s, nil)
-		vkLayout := info.PSetLayouts.Slice(0, 1, l).Index(0, l).Read(ctx, cmd, s, nil)
-		vkSet := cmd.PDescriptorSet.Read(ctx, cmd, s, nil)
+		info := cmd.PAllocateInfo.MustRead(ctx, cmd, s, nil)
+		vkLayout := info.PSetLayouts.Slice(0, 1, l).Index(0, l).MustRead(ctx, cmd, s, nil)
+		vkSet := cmd.PDescriptorSet.MustRead(ctx, cmd, s, nil)
 		read(ctx, bh, vkHandle(vkLayout))
 		write(ctx, bh, vkHandle(vkSet))
 		layoutObj := GetState(s).DescriptorSetLayouts.Get(vkLayout)
@@ -1612,14 +1612,14 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		writeCount := cmd.DescriptorWriteCount
 		if writeCount > 0 {
 			for _, write := range cmd.PDescriptorWrites.Slice(0, uint64(writeCount),
-				l).Read(ctx, cmd, s, nil) {
+				l).MustRead(ctx, cmd, s, nil) {
 				vb.descriptorSets[vkSet].writeDescriptors(ctx, cmd, s, vb, bh, write)
 			}
 		}
 
 	case *VkFreeDescriptorSets:
 		count := uint64(cmd.DescriptorSetCount)
-		for _, vkSet := range cmd.PDescriptorSets.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, vkSet := range cmd.PDescriptorSets.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(vkSet))
 			delete(vb.descriptorSets, vkSet)
 		}
@@ -1627,17 +1627,17 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// pipelines
 	case *VkCreatePipelineLayout:
-		info := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
-		write(ctx, bh, vkHandle(cmd.PPipelineLayout.Read(ctx, cmd, s, nil)))
+		info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
+		write(ctx, bh, vkHandle(cmd.PPipelineLayout.MustRead(ctx, cmd, s, nil)))
 		setCount := uint64(info.SetLayoutCount)
-		for _, setLayout := range info.PSetLayouts.Slice(0, setCount, l).Read(ctx, cmd, s, nil) {
+		for _, setLayout := range info.PSetLayouts.Slice(0, setCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(setLayout))
 		}
 	case *RecreatePipelineLayout:
-		info := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
-		write(ctx, bh, vkHandle(cmd.PPipelineLayout.Read(ctx, cmd, s, nil)))
+		info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
+		write(ctx, bh, vkHandle(cmd.PPipelineLayout.MustRead(ctx, cmd, s, nil)))
 		setCount := uint64(info.SetLayoutCount)
-		for _, setLayout := range info.PSetLayouts.Slice(0, setCount, l).Read(ctx, cmd, s, nil) {
+		for _, setLayout := range info.PSetLayouts.Slice(0, setCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(setLayout))
 		}
 	case *VkDestroyPipelineLayout:
@@ -1646,57 +1646,57 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkCreateGraphicsPipelines:
 		read(ctx, bh, vkHandle(cmd.PipelineCache))
 		infoCount := uint64(cmd.CreateInfoCount)
-		for _, info := range cmd.PCreateInfos.Slice(0, infoCount, l).Read(ctx, cmd, s, nil) {
+		for _, info := range cmd.PCreateInfos.Slice(0, infoCount, l).MustRead(ctx, cmd, s, nil) {
 			stageCount := uint64(info.StageCount)
-			for _, stage := range info.PStages.Slice(0, stageCount, l).Read(ctx, cmd, s, nil) {
+			for _, stage := range info.PStages.Slice(0, stageCount, l).MustRead(ctx, cmd, s, nil) {
 				module := stage.Module
 				read(ctx, bh, vkHandle(module))
 			}
 			read(ctx, bh, vkHandle(info.Layout))
 			read(ctx, bh, vkHandle(info.RenderPass))
 		}
-		for _, vkPl := range cmd.PPipelines.Slice(0, infoCount, l).Read(ctx, cmd, s, nil) {
+		for _, vkPl := range cmd.PPipelines.Slice(0, infoCount, l).MustRead(ctx, cmd, s, nil) {
 			write(ctx, bh, vkHandle(vkPl))
 		}
 	case *RecreateGraphicsPipeline:
 		read(ctx, bh, vkHandle(cmd.PipelineCache))
-		info := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
+		info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
 		stageCount := uint64(info.StageCount)
-		for _, stage := range info.PStages.Slice(0, stageCount, l).Read(ctx, cmd, s, nil) {
+		for _, stage := range info.PStages.Slice(0, stageCount, l).MustRead(ctx, cmd, s, nil) {
 			module := stage.Module
 			read(ctx, bh, vkHandle(module))
 		}
 		read(ctx, bh, vkHandle(info.Layout))
 		read(ctx, bh, vkHandle(info.RenderPass))
-		write(ctx, bh, vkHandle(cmd.PPipeline.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PPipeline.MustRead(ctx, cmd, s, nil)))
 	case *VkCreateComputePipelines:
 		read(ctx, bh, vkHandle(cmd.PipelineCache))
 		infoCount := uint64(cmd.CreateInfoCount)
-		for _, info := range cmd.PCreateInfos.Slice(0, infoCount, l).Read(ctx, cmd, s, nil) {
+		for _, info := range cmd.PCreateInfos.Slice(0, infoCount, l).MustRead(ctx, cmd, s, nil) {
 			stage := info.Stage
 			module := stage.Module
 			read(ctx, bh, vkHandle(module))
 			read(ctx, bh, vkHandle(info.Layout))
 		}
-		for _, vkPl := range cmd.PPipelines.Slice(0, infoCount, l).Read(ctx, cmd, s, nil) {
+		for _, vkPl := range cmd.PPipelines.Slice(0, infoCount, l).MustRead(ctx, cmd, s, nil) {
 			write(ctx, bh, vkHandle(vkPl))
 		}
 	case *RecreateComputePipeline:
 		read(ctx, bh, vkHandle(cmd.PipelineCache))
-		info := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
+		info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
 		stage := info.Stage
 		module := stage.Module
 		read(ctx, bh, vkHandle(module))
 		read(ctx, bh, vkHandle(info.Layout))
-		write(ctx, bh, vkHandle(cmd.PPipeline.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PPipeline.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroyPipeline:
 		read(ctx, bh, vkHandle(cmd.Pipeline))
 		bh.Alive = true
 
 	case *VkCreatePipelineCache:
-		write(ctx, bh, vkHandle(cmd.PPipelineCache.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PPipelineCache.MustRead(ctx, cmd, s, nil)))
 	case *RecreatePipelineCache:
-		write(ctx, bh, vkHandle(cmd.PPipelineCache.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PPipelineCache.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroyPipelineCache:
 		read(ctx, bh, vkHandle(cmd.PipelineCache))
 		bh.Alive = true
@@ -1705,15 +1705,15 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkMergePipelineCaches:
 		modify(ctx, bh, vkHandle(cmd.DstCache))
 		srcCount := uint64(cmd.SrcCacheCount)
-		for _, src := range cmd.PSrcCaches.Slice(0, srcCount, l).Read(ctx, cmd, s, nil) {
+		for _, src := range cmd.PSrcCaches.Slice(0, srcCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(src))
 		}
 
 	// Shader module
 	case *VkCreateShaderModule:
-		write(ctx, bh, vkHandle(cmd.PShaderModule.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PShaderModule.MustRead(ctx, cmd, s, nil)))
 	case *RecreateShaderModule:
-		write(ctx, bh, vkHandle(cmd.PShaderModule.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PShaderModule.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroyShaderModule:
 		read(ctx, bh, vkHandle(cmd.ShaderModule))
 		bh.Alive = true
@@ -1723,9 +1723,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// create/destroy renderpass
 	case *VkCreateRenderPass:
-		write(ctx, bh, vkHandle(cmd.PRenderPass.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PRenderPass.MustRead(ctx, cmd, s, nil)))
 	case *RecreateRenderPass:
-		write(ctx, bh, vkHandle(cmd.PRenderPass.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PRenderPass.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroyRenderPass:
 		read(ctx, bh, vkHandle(cmd.RenderPass))
 		bh.Alive = true
@@ -1735,43 +1735,43 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// create/destroy framebuffer
 	case *VkCreateFramebuffer:
-		info := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
+		info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
 		read(ctx, bh, vkHandle(info.RenderPass))
 		attCount := uint64(info.AttachmentCount)
-		for _, att := range info.PAttachments.Slice(0, attCount, l).Read(ctx, cmd, s, nil) {
+		for _, att := range info.PAttachments.Slice(0, attCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(att))
 		}
-		write(ctx, bh, vkHandle(cmd.PFramebuffer.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PFramebuffer.MustRead(ctx, cmd, s, nil)))
 	case *RecreateFramebuffer:
-		info := cmd.PCreateInfo.Read(ctx, cmd, s, nil)
+		info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
 		read(ctx, bh, vkHandle(info.RenderPass))
 		attCount := uint64(info.AttachmentCount)
-		for _, att := range info.PAttachments.Slice(0, attCount, l).Read(ctx, cmd, s, nil) {
+		for _, att := range info.PAttachments.Slice(0, attCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(att))
 		}
-		write(ctx, bh, vkHandle(cmd.PFramebuffer.Read(ctx, cmd, s, nil)))
+		write(ctx, bh, vkHandle(cmd.PFramebuffer.MustRead(ctx, cmd, s, nil)))
 	case *VkDestroyFramebuffer:
 		read(ctx, bh, vkHandle(cmd.Framebuffer))
 		bh.Alive = true
 
 	// debug marker name and tag setting commands. Always kept alive.
 	case *VkDebugMarkerSetObjectTagEXT:
-		read(ctx, bh, vkHandle(cmd.PTagInfo.Read(ctx, cmd, s, nil).Object))
+		read(ctx, bh, vkHandle(cmd.PTagInfo.MustRead(ctx, cmd, s, nil).Object))
 		bh.Alive = true
 	case *RecreateDebugMarkerSetObjectTagEXT:
-		read(ctx, bh, vkHandle(cmd.PTagInfo.Read(ctx, cmd, s, nil).Object))
+		read(ctx, bh, vkHandle(cmd.PTagInfo.MustRead(ctx, cmd, s, nil).Object))
 		bh.Alive = true
 	case *VkDebugMarkerSetObjectNameEXT:
-		read(ctx, bh, vkHandle(cmd.PNameInfo.Read(ctx, cmd, s, nil).Object))
+		read(ctx, bh, vkHandle(cmd.PNameInfo.MustRead(ctx, cmd, s, nil).Object))
 		bh.Alive = true
 	case *RecreateDebugMarkerSetObjectNameEXT:
-		read(ctx, bh, vkHandle(cmd.PNameInfo.Read(ctx, cmd, s, nil).Object))
+		read(ctx, bh, vkHandle(cmd.PNameInfo.MustRead(ctx, cmd, s, nil).Object))
 		bh.Alive = true
 
 	// commandbuffer
 	case *VkAllocateCommandBuffers:
-		count := uint64(cmd.PAllocateInfo.Read(ctx, cmd, s, nil).CommandBufferCount)
-		for _, vkCb := range cmd.PCommandBuffers.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		count := uint64(cmd.PAllocateInfo.MustRead(ctx, cmd, s, nil).CommandBufferCount)
+		for _, vkCb := range cmd.PCommandBuffers.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			write(ctx, bh, vkHandle(vkCb))
 			vb.commandBuffers[vkCb] = &commandBuffer{begin: newLabel(),
 				end: newLabel(), renderPassBegin: newLabel()}
@@ -1785,7 +1785,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	case *VkFreeCommandBuffers:
 		count := uint64(cmd.CommandBufferCount)
-		for _, vkCb := range cmd.PCommandBuffers.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, vkCb := range cmd.PCommandBuffers.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			if read(ctx, bh, vkHandle(vkCb)) {
 				write(ctx, bh, vb.commandBuffers[vkCb].begin)
 				write(ctx, bh, vb.commandBuffers[vkCb].end)
@@ -1800,7 +1800,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].begin)
 		vb.commands[cmd.CommandBuffer] = []*commandBufferCommand{}
 	case *RecreateAndBeginCommandBuffer:
-		vkCb := cmd.PCommandBuffer.Read(ctx, cmd, s, nil)
+		vkCb := cmd.PCommandBuffer.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkCb))
 		vb.commandBuffers[vkCb] = &commandBuffer{begin: newLabel(), end: newLabel()}
 		write(ctx, bh, vb.commandBuffers[vkCb].begin)
@@ -1822,7 +1822,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		overwritten := false
 		count := uint64(cmd.RegionCount)
 		// TODO: check dst image coverage correctly
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			overwritten = overwritten || subresourceLayersFullyCoverImage(
 				GetState(s).Images.Get(cmd.DstImage),
 				region.DstSubresource, region.DstOffset, region.Extent)
@@ -1841,7 +1841,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		src := []dependencygraph.DefUseVariable{}
 		dst := []dependencygraph.DefUseVariable{}
 		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			srcOffset := srcBufferData.span.Start + uint64(region.SrcOffset)
 			dstOffset := dstBufferData.span.Start + uint64(region.DstOffset)
 			src = append(src, memorySpan{
@@ -1867,7 +1867,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
 		overwritten := false
 		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			overwritten = overwritten || subresourceLayersFullyCoverImage(
 				GetState(s).Images.Get(cmd.DstImage),
 				region.ImageSubresource, region.ImageOffset, region.ImageExtent)
@@ -1885,7 +1885,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
 		overwritten := false
 		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			overwritten = overwritten || blitFullyCoverImage(
 				GetState(s).Images.Get(cmd.DstImage),
 				region.DstSubresource,
@@ -1904,7 +1904,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
 		overwritten := false
 		count := uint64(cmd.RegionCount)
-		for _, region := range cmd.PRegions.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			overwritten = overwritten || subresourceLayersFullyCoverImage(
 				GetState(s).Images.Get(cmd.DstImage),
 				region.DstSubresource, region.DstOffset, region.Extent)
@@ -1938,7 +1938,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.Image)}
 		count := uint64(cmd.RangeCount)
 		overwritten := false
-		for _, rng := range cmd.PRanges.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, rng := range cmd.PRanges.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			if subresourceRangeFullyCoverImage(GetState(s).Images.Get(cmd.Image), rng) {
 				overwritten = true
 			}
@@ -1955,7 +1955,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.Image)}
 		count := uint64(cmd.RangeCount)
 		overwritten := false
-		for _, rng := range cmd.PRanges.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, rng := range cmd.PRanges.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			if subresourceRangeFullyCoverImage(GetState(s).Images.Get(cmd.Image), rng) {
 				overwritten = true
 			}
@@ -1970,9 +1970,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// renderpass and subpass
 	case *VkCmdBeginRenderPass:
-		vkRp := cmd.PRenderPassBegin.Read(ctx, cmd, s, nil).RenderPass
+		vkRp := cmd.PRenderPassBegin.MustRead(ctx, cmd, s, nil).RenderPass
 		read(ctx, bh, vkHandle(vkRp))
-		vkFb := cmd.PRenderPassBegin.Read(ctx, cmd, s, nil).Framebuffer
+		vkFb := cmd.PRenderPassBegin.MustRead(ctx, cmd, s, nil).Framebuffer
 		read(ctx, bh, vkHandle(vkFb))
 		write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
 		rp := GetState(s).RenderPasses.Get(vkRp)
@@ -2023,7 +2023,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkCmdBindVertexBuffers:
 		count := uint64(cmd.BindingCount)
 		res := []dependencygraph.DefUseVariable{}
-		for _, vkBuf := range cmd.PBuffers.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, vkBuf := range cmd.PBuffers.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			res = append(res, vb.getBufferData(ctx, bh, vkBuf))
 		}
 		firstBinding := cmd.FirstBinding
@@ -2065,7 +2065,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.Layout))
 		count := uint64(cmd.DescriptorSetCount)
 		dss := []*descriptorSet{}
-		for _, vkSet := range cmd.PDescriptorSets.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, vkSet := range cmd.PDescriptorSets.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(vkSet))
 			dss = append(dss, vb.descriptorSets[vkSet])
 		}
@@ -2205,10 +2205,10 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		atts := []VkClearAttachment{}
 		rectCount := uint64(cmd.RectCount)
 		rects := []VkClearRect{}
-		for _, att := range cmd.PAttachments.Slice(0, attCount, l).Read(ctx, cmd, s, nil) {
+		for _, att := range cmd.PAttachments.Slice(0, attCount, l).MustRead(ctx, cmd, s, nil) {
 			atts = append(atts, att)
 		}
-		for _, rect := range cmd.PRects.Slice(0, rectCount, l).Read(ctx, cmd, s, nil) {
+		for _, rect := range cmd.PRects.Slice(0, rectCount, l).MustRead(ctx, cmd, s, nil) {
 			rects = append(rects, rect)
 		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
@@ -2292,7 +2292,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkCmdWaitEvents:
 		eventLabels := []dependencygraph.DefUseVariable{}
 		evCount := uint64(cmd.EventCount)
-		for _, vkEv := range cmd.PEvents.Slice(0, evCount, l).Read(ctx, cmd, s, nil) {
+		for _, vkEv := range cmd.PEvents.Slice(0, evCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(vkEv))
 			eventLabels = append(eventLabels, vb.events[vkEv].signal,
 				vb.events[vkEv].unsignal)
@@ -2312,7 +2312,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.isCmdExecuteCommands = true
 		count := uint64(cmd.CommandBufferCount)
-		for _, vkScb := range cmd.PCommandBuffers.Slice(0, count, l).Read(ctx, cmd, s, nil) {
+		for _, vkScb := range cmd.PCommandBuffers.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			cbc.recordSecondaryCommandBuffer(vkScb)
 			read(ctx, bh, vkHandle(vkScb))
 		}
@@ -2332,9 +2332,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			queue:          cmd.Queue,
 		}
 		submitCount := uint64(cmd.SubmitCount)
-		for i, submit := range cmd.PSubmits.Slice(0, submitCount, l).Read(ctx, cmd, s, nil) {
+		for i, submit := range cmd.PSubmits.Slice(0, submitCount, l).MustRead(ctx, cmd, s, nil) {
 			commandBufferCount := uint64(submit.CommandBufferCount)
-			for j, vkCb := range submit.PCommandBuffers.Slice(0, commandBufferCount, l).Read(ctx, cmd, s, nil) {
+			for j, vkCb := range submit.PCommandBuffers.Slice(0, commandBufferCount, l).MustRead(ctx, cmd, s, nil) {
 				read(ctx, bh, vkHandle(vkCb))
 				read(ctx, bh, vb.commandBuffers[vkCb].end)
 				for k, cbc := range vb.commands[vkCb] {
@@ -2354,12 +2354,12 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				}
 			}
 			waitSemaphoreCount := uint64(submit.WaitSemaphoreCount)
-			for _, vkSp := range submit.PWaitSemaphores.Slice(0, waitSemaphoreCount, l).Read(ctx, cmd, s, nil) {
+			for _, vkSp := range submit.PWaitSemaphores.Slice(0, waitSemaphoreCount, l).MustRead(ctx, cmd, s, nil) {
 				vb.submitInfos[id].waitSemaphores = append(
 					vb.submitInfos[id].waitSemaphores, vkSp)
 			}
 			signalSemaphoreCount := uint64(submit.SignalSemaphoreCount)
-			for _, vkSp := range submit.PSignalSemaphores.Slice(0, signalSemaphoreCount, l).Read(ctx, cmd, s, nil) {
+			for _, vkSp := range submit.PSignalSemaphores.Slice(0, signalSemaphoreCount, l).MustRead(ctx, cmd, s, nil) {
 				vb.submitInfos[id].signalSemaphores = append(
 					vb.submitInfos[id].signalSemaphores, vkSp)
 			}
@@ -2397,11 +2397,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCreateSemaphore:
-		vkSp := cmd.PSemaphore.Read(ctx, cmd, s, nil)
+		vkSp := cmd.PSemaphore.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkSp))
 		vb.semaphoreSignals[vkSp] = newLabel()
 	case *RecreateSemaphore:
-		vkSp := cmd.PSemaphore.Read(ctx, cmd, s, nil)
+		vkSp := cmd.PSemaphore.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkSp))
 		vb.semaphoreSignals[vkSp] = newLabel()
 		write(ctx, bh, vb.semaphoreSignals[vkSp])
@@ -2413,11 +2413,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCreateEvent:
-		vkEv := cmd.PEvent.Read(ctx, cmd, s, nil)
+		vkEv := cmd.PEvent.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkEv))
 		vb.events[vkEv] = &event{signal: newLabel(), unsignal: newLabel()}
 	case *RecreateEvent:
-		vkEv := cmd.PEvent.Read(ctx, cmd, s, nil)
+		vkEv := cmd.PEvent.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkEv))
 		vb.events[vkEv] = &event{signal: newLabel(), unsignal: newLabel()}
 		if cmd.Signaled != VkBool32(0) {
@@ -2438,11 +2438,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCreateFence:
-		vkFe := cmd.PFence.Read(ctx, cmd, s, nil)
+		vkFe := cmd.PFence.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkFe))
 		vb.fences[vkFe] = &fence{signal: newLabel(), unsignal: newLabel()}
 	case *RecreateFence:
-		vkFe := cmd.PFence.Read(ctx, cmd, s, nil)
+		vkFe := cmd.PFence.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkFe))
 		vb.fences[vkFe] = &fence{signal: newLabel(), unsignal: newLabel()}
 	case *VkGetFenceStatus:
@@ -2454,7 +2454,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 	case *VkWaitForFences:
 		fenceCount := uint64(cmd.FenceCount)
-		for _, vkFe := range cmd.PFences.Slice(0, fenceCount, l).Read(ctx, cmd, s, nil) {
+		for _, vkFe := range cmd.PFences.Slice(0, fenceCount, l).MustRead(ctx, cmd, s, nil) {
 			if read(ctx, bh, vkHandle(vkFe)) {
 				read(ctx, bh, vb.fences[vkFe].signal)
 				read(ctx, bh, vb.fences[vkFe].unsignal)
@@ -2463,7 +2463,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 	case *VkResetFences:
 		fenceCount := uint64(cmd.FenceCount)
-		for _, vkFe := range cmd.PFences.Slice(0, fenceCount, l).Read(ctx, cmd, s, nil) {
+		for _, vkFe := range cmd.PFences.Slice(0, fenceCount, l).MustRead(ctx, cmd, s, nil) {
 			if read(ctx, bh, vkHandle(vkFe)) {
 				write(ctx, bh, vb.fences[vkFe].unsignal)
 				bh.Alive = true

@@ -22,48 +22,52 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
+func readString(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, at memory.Pointer, length GLsizei) string {
+	ptr := NewCharᵖ(at)
+	if length > 0 {
+		chars, err := ptr.Slice(0, uint64(length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)
+		if err != nil {
+			return ""
+		}
+		return string(memory.CharToBytes(chars))
+	}
+	chars, err := ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimRight(string(memory.CharToBytes(chars)), "\x00")
+}
+
 // Label returns the user maker name.
 func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
-	ptr := Charᵖ(ϟa.Marker)
-	if ϟa.Length > 0 {
-		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
-	}
-	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
+	return readString(ϟctx, ϟa, ϟs, ϟa.Marker, ϟa.Length)
 }
 
 // Label returns the user maker name.
 func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
-	ptr := Charᵖ(ϟa.Marker)
-	if ϟa.Length > 0 {
-		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
-	}
-	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
+	return readString(ϟctx, ϟa, ϟs, ϟa.Marker, ϟa.Length)
 }
 
 // Label returns the user maker name.
 func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
-	ptr := Charᵖ(ϟa.Message)
 	// This is incorrect, fudging for a bug in Unity which has been fixed but not
 	// rolled out.
 	// See https://github.com/google/gapid/issues/459 for reference.
+	//
+	// ϟa.Length should only be treated as null-terminated if ϟa.Length is < 0.
+	//
 	// TODO: Consider removing once the fixed version is mainstream.
-	// if ϟa.Length >= 0 {
-	if ϟa.Length > 0 {
-		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
-	}
-	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
+	return readString(ϟctx, ϟa, ϟs, ϟa.Message, ϟa.Length)
 }
 
 // Label returns the user maker name.
 func (ϟa *GlPushDebugGroupKHR) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
-	ptr := Charᵖ(ϟa.Message)
 	// This is incorrect, fudging for a bug in Unity which has been fixed but not
 	// rolled out.
 	// See https://github.com/google/gapid/issues/459 for reference.
+	//
+	// ϟa.Length should only be treated as null-terminated if ϟa.Length is < 0.
+	//
 	// TODO: Consider removing once the fixed version is mainstream.
-	// if ϟa.Length >= 0 {
-	if ϟa.Length > 0 {
-		return string(memory.CharToBytes(ptr.Slice(0, uint64(ϟa.Length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)))
-	}
-	return strings.TrimRight(string(memory.CharToBytes(ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil))), "\x00")
+	return readString(ϟctx, ϟa, ϟs, ϟa.Message, ϟa.Length)
 }

@@ -534,9 +534,9 @@
       observed memory which is undesirable, so instead just perform regular
       (non-replay-builder) read logic.
     */}}
-    Read(ϟctx, ϟa, ϟs, nil)
+    MustRead(ϟctx, ϟa, ϟs, nil)
   {{else}}
-    Read(ϟctx, ϟa, ϟs, ϟb)
+    MustRead(ϟctx, ϟa, ϟs, ϟb)
   {{end}}
 {{end}}
 

@@ -268,7 +268,7 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *ap
 				}
 				for i := 0; i < int(activeUniform.ArraySize); i++ {
 					uniform := prog.Uniforms[activeUniform.Location+UniformLocation(i)]
-					units := AsU32ˢ(uniform.Value, s.MemoryLayout).Read(ctx, cmd, s, nil)
+					units := AsU32ˢ(uniform.Value, s.MemoryLayout).MustRead(ctx, cmd, s, nil)
 					if len(units) == 0 {
 						units = []uint32{0} // The uniform was not set, so use default value.
 					}

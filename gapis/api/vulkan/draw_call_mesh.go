@@ -106,7 +106,10 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		if lastDrawInfo.BoundIndexBuffer.BoundBuffer.Buffer == nil {
 			return nil, fmt.Errorf("Cannot found last used index buffer")
 		}
-		indices := getIndicesData(ctx, s, lastDrawInfo.BoundIndexBuffer, p.IndexCount, p.FirstIndex, p.VertexOffset)
+		indices, err := getIndicesData(ctx, s, lastDrawInfo.BoundIndexBuffer, p.IndexCount, p.FirstIndex, p.VertexOffset)
+		if err != nil {
+			return nil, err
+		}
 
 		// Calculate the vertex count and the first vertex
 		maxIndex := uint32(0)
@@ -160,31 +163,34 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 	return mesh, nil
 }
 
-func getIndicesData(ctx context.Context, s *api.GlobalState, boundIndexBuffer *BoundIndexBuffer, indexCount, firstIndex uint32, vertexOffset int32) []uint32 {
+func getIndicesData(ctx context.Context, s *api.GlobalState, boundIndexBuffer *BoundIndexBuffer, indexCount, firstIndex uint32, vertexOffset int32) ([]uint32, error) {
 	backingMem := boundIndexBuffer.BoundBuffer.Buffer.Memory
 	if backingMem == nil {
-		return []uint32{}
+		return []uint32{}, nil
 	}
 	bufferMemoryOffset := uint64(boundIndexBuffer.BoundBuffer.Buffer.MemoryOffset)
 	indexBindingOffset := uint64(boundIndexBuffer.BoundBuffer.Offset)
 	// TODO(qining): Get the maximum size of the bound buffer here from BoundBuffer.Range.
 	offset := bufferMemoryOffset + indexBindingOffset
 
-	extractIndices := func(sizeOfIndex uint64) []uint32 {
+	extractIndices := func(sizeOfIndex uint64) ([]uint32, error) {
 		indices := []uint32{}
 		start := offset + uint64(firstIndex)*sizeOfIndex
 		size := uint64(indexCount) * sizeOfIndex
 		end := start + size
 		if start >= backingMem.Data.count || end > backingMem.Data.count {
 			log.E(ctx, "Shadow memory of index buffer is not big enough")
-			return []uint32{}
+			return []uint32{}, nil
 		}
 		indicesSlice := backingMem.Data.Slice(start, end, s.MemoryLayout)
 		for i := uint64(0); (i < size) && (i+sizeOfIndex-1 < size); i += sizeOfIndex {
 			index := int32(0)
 			for j := uint64(0); j < sizeOfIndex; j++ {
-				oneByte := int32(indicesSlice.Index(i+j, s.MemoryLayout).Read(ctx, nil, s, nil))
-				index += oneByte << (8 * j)
+				oneByte, err := indicesSlice.Index(i+j, s.MemoryLayout).Read(ctx, nil, s, nil)
+				if err != nil {
+					return nil, err
+				}
+				index += int32(oneByte) << (8 * j)
 			}
 			index += vertexOffset
 			if index < 0 {
@@ -194,7 +200,7 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, boundIndexBuffer *B
 			}
 			indices = append(indices, uint32(index))
 		}
-		return indices
+		return indices, nil
 	}
 
 	switch boundIndexBuffer.Type {
@@ -203,7 +209,7 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, boundIndexBuffer *B
 	case VkIndexType_VK_INDEX_TYPE_UINT32:
 		return extractIndices(4)
 	}
-	return []uint32{}
+	return []uint32{}, nil
 }
 
 func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
@@ -307,7 +313,10 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 		// our zero-initialized buffer.
 		return out, fmt.Errorf("Vertex data is out of range")
 	}
-	data := vertexSlice.Slice(offset, offset+fullSize, s.MemoryLayout).Read(ctx, nil, s, nil)
+	data, err := vertexSlice.Slice(offset, offset+fullSize, s.MemoryLayout).Read(ctx, nil, s, nil)
+	if err != nil {
+		return nil, err
+	}
 	if stride > perVertexSize {
 		// There are gaps between vertices.
 		for i := uint64(0); i < uint64(vertexCount); i++ {

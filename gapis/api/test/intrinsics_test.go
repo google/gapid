@@ -39,8 +39,10 @@ func TestClone(t *testing.T) {
 		cb.CmdClone(p(0x1234), 10).
 			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
-	got := GetState(s).U8s.Read(ctx, nil, s, nil)
-	assert.With(ctx).ThatSlice(got).Equals(expected)
+	got, err := GetState(s).U8s.Read(ctx, nil, s, nil)
+	if assert.For(ctx, "err").ThatError(err).Succeeded() {
+		assert.For(ctx, "got").ThatSlice(got).Equals(expected)
+	}
 }
 
 func TestMake(t *testing.T) {
@@ -70,8 +72,10 @@ func TestCopy(t *testing.T) {
 		cb.CmdCopy(p(0x1234), 10).
 			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
-	got := GetState(s).U8s.Read(ctx, nil, s, nil)
-	assert.With(ctx).ThatSlice(got).Equals(expected)
+	got, err := GetState(s).U8s.Read(ctx, nil, s, nil)
+	if assert.For(ctx, "err").ThatError(err).Succeeded() {
+		assert.For(ctx, "got").ThatSlice(got).Equals(expected)
+	}
 }
 
 func TestCharsliceToString(t *testing.T) {

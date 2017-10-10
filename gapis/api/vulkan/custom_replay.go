@@ -252,7 +252,7 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 	}
 
 	// Call the replayRegisterVkInstance() synthetic API function.
-	instance := a.PInstance.Read(ctx, a, s, b)
+	instance := a.PInstance.MustRead(ctx, a, s, b)
 	return cb.ReplayRegisterVkInstance(instance).Mutate(ctx, id, s, b)
 }
 
@@ -319,7 +319,7 @@ func (a *RecreateDeviceMemory) Mutate(ctx context.Context, id api.CmdID, s *api.
 		return err
 	}
 	if a.MappedSize > 0 {
-		memory := a.PMemory.Read(ctx, a, s, b)
+		memory := a.PMemory.MustRead(ctx, a, s, b)
 		bind := cb.VkMapMemory(a.Device, memory, a.MappedOffset, a.MappedSize, VkMemoryMapFlags(0),
 			a.PpData, VkResult(0))
 		bind.Extras().MustClone(a.Extras().All()...)
@@ -339,7 +339,7 @@ func (a *RecreateAndBeginCommandBuffer) Mutate(ctx context.Context, id api.CmdID
 	}
 
 	if !a.PBeginInfo.IsNullptr() {
-		commandBuffer := a.PCommandBuffer.Read(ctx, a, s, b)
+		commandBuffer := a.PCommandBuffer.MustRead(ctx, a, s, b)
 		begin := cb.VkBeginCommandBuffer(commandBuffer, a.PBeginInfo, VkResult(0))
 		begin.Extras().MustClone(a.Extras().All()...)
 		err = begin.Mutate(ctx, id, s, b)
@@ -385,7 +385,7 @@ func (a *RecreateSemaphore) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	}
 	if a.Signaled != VkBool32(0) {
 		queue := findGraphicsAndComputeQueueForDevice(a.Device, s)
-		semaphore := a.PSemaphore.Read(ctx, a, s, b)
+		semaphore := a.PSemaphore.MustRead(ctx, a, s, b)
 
 		semaphores := s.AllocDataOrPanic(ctx, semaphore)
 		defer semaphores.Free()
@@ -441,7 +441,7 @@ func (a *RecreateEvent) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalS
 		return err
 	}
 	if a.Signaled != VkBool32(0) {
-		event := a.PEvent.Read(ctx, a, s, b)
+		event := a.PEvent.MustRead(ctx, a, s, b)
 		err := cb.VkSetEvent(
 			a.Device,
 			event,
@@ -649,7 +649,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	allocated := []*api.AllocResult{}
 	if b != nil {
 		a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-		createInfo := a.PCreateInfo.Read(ctx, a, s, nil)
+		createInfo := a.PCreateInfo.MustRead(ctx, a, s, nil)
 		defer func() {
 			for _, d := range allocated {
 				d.Free()
@@ -657,8 +657,8 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 		}()
 		extensionCount := uint64(createInfo.EnabledExtensionCount)
 		newExtensionNames := []memory.Pointer{}
-		for _, e := range createInfo.PpEnabledExtensionNames.Slice(0, extensionCount, s.MemoryLayout).Read(ctx, a, s, nil) {
-			extensionName := string(memory.CharToBytes(e.StringSlice(ctx, s).Read(ctx, a, s, nil)))
+		for _, e := range createInfo.PpEnabledExtensionNames.Slice(0, extensionCount, s.MemoryLayout).MustRead(ctx, a, s, nil) {
+			extensionName := string(memory.CharToBytes(e.StringSlice(ctx, s).MustRead(ctx, a, s, nil)))
 			if !strings.Contains(extensionName, "VK_EXT_debug_marker") {
 				nameSliceData := s.AllocDataOrPanic(ctx, extensionName)
 				allocated = append(allocated, &nameSliceData)
@@ -692,7 +692,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	}
 
 	// Call the replayRegisterVkDevice() synthetic API function.
-	device := a.PDevice.Read(ctx, a, s, b)
+	device := a.PDevice.MustRead(ctx, a, s, b)
 	return cb.ReplayRegisterVkDevice(a.PhysicalDevice, device, a.PCreateInfo).Mutate(ctx, id, s, b)
 }
 
@@ -715,7 +715,7 @@ func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *
 		return err
 	}
 	// Call the replayRegisterVkCommandBuffers() synthetic API function to link these command buffers to the device.
-	count := a.PAllocateInfo.Read(ctx, a, s, b).CommandBufferCount
+	count := a.PAllocateInfo.MustRead(ctx, a, s, b).CommandBufferCount
 	return cb.ReplayRegisterVkCommandBuffers(a.Device, count, a.PCommandBuffers).Mutate(ctx, id, s, b)
 }
 
@@ -748,11 +748,11 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	// Apply the write observation before having the replay device calling the vkAcquireNextImageKHR() command.
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	o.ApplyWrites(s.Memory.ApplicationPool())
-	_ = a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, a, s, b)
+	_ = a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, a, s, b)
 	if b != nil {
 		a.Call(ctx, s, b)
 	}
-	a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Write(ctx, a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, a, s, nil), a, s, b)
+	a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Write(ctx, a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, a, s, nil), a, s, b)
 	_ = a.Result
 	return nil
 }
@@ -789,7 +789,7 @@ func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 func (a *RecreateDebugMarkerSetObjectNameEXT) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory.ApplicationPool())
-	nameInfo := a.PNameInfo.Read(ctx, a, s, nil)
+	nameInfo := a.PNameInfo.MustRead(ctx, a, s, nil)
 	err := subSetDebugMarkerObjectName(ctx, a, id, o, s, GetState(s), a.thread, nil, nameInfo)
 	if err != nil {
 		return err
@@ -800,7 +800,7 @@ func (a *RecreateDebugMarkerSetObjectNameEXT) Mutate(ctx context.Context, id api
 func (a *RecreateDebugMarkerSetObjectTagEXT) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory.ApplicationPool())
-	tagInfo := a.PTagInfo.Read(ctx, a, s, nil)
+	tagInfo := a.PTagInfo.MustRead(ctx, a, s, nil)
 	err := subSetDebugMarkerObjectTag(ctx, a, id, o, s, GetState(s), a.thread, nil, tagInfo)
 	if err != nil {
 		return err
@@ -814,7 +814,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	}
 	l := s.MemoryLayout
 	c := GetState(s)
-	memory := a.PMemory.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Read(ctx, a, s, nil)
+	memory := a.PMemory.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, a, s, nil)
 	imageObject := c.Images.Get(a.Image)
 	imageWidth := imageObject.Layers.Get(0).Levels.Get(0).Width
 	imageHeight := imageObject.Layers.Get(0).Levels.Get(0).Height
@@ -1054,7 +1054,7 @@ func mapBufferMemory(ctx context.Context, id api.CmdID, cb CommandBuilder, s *ap
 		return NewVoidᵖ(memory.Nullptr), at, err
 	}
 
-	return NewVoidᵖᵖ(mappedPointer.Ptr()).Read(ctx, cmd, s, b), at, err
+	return NewVoidᵖᵖ(mappedPointer.Ptr()).MustRead(ctx, cmd, s, b), at, err
 }
 
 func flushBufferMemory(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, device VkDevice, size VkDeviceSize, mem VkDeviceMemory, mapped U8ᵖ) error {
@@ -1309,7 +1309,7 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory.ApplicationPool())
 
-	createInfo := a.PCreateInfo.Read(ctx, a, s, b)
+	createInfo := a.PCreateInfo.MustRead(ctx, a, s, b)
 	createInfo.Usage = createInfo.Usage | VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
 	createInfoData := s.AllocDataOrPanic(ctx, createInfo)
 	defer createInfoData.Free()
@@ -1454,9 +1454,9 @@ func (a *RecreateQueryPool) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 		return err
 	}
 
-	createInfoObject := a.PCreateInfo.Read(ctx, a, s, b)
-	queryStates := a.PQueryStatuses.Slice(0, uint64(createInfoObject.QueryCount), l).Read(ctx, a, s, b)
-	pool := a.PPool.Read(ctx, a, s, b)
+	createInfoObject := a.PCreateInfo.MustRead(ctx, a, s, b)
+	queryStates := a.PQueryStatuses.Slice(0, uint64(createInfoObject.QueryCount), l).MustRead(ctx, a, s, b)
+	pool := a.PPool.MustRead(ctx, a, s, b)
 
 	anyActive := false
 	for i := uint32(0); i < createInfoObject.QueryCount; i++ {
@@ -1520,8 +1520,8 @@ func (a *RecreateSwapchain) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	if err := hijack.Mutate(ctx, id, s, b); err != nil {
 		return err
 	}
-	swapchain := a.PSwapchain.Read(ctx, a, s, b)
-	createInfoData := a.PCreateInfo.Read(ctx, a, s, b)
+	swapchain := a.PSwapchain.MustRead(ctx, a, s, b)
+	createInfoData := a.PCreateInfo.MustRead(ctx, a, s, b)
 	swapchainCountData := s.AllocDataOrPanic(ctx, createInfoData.MinImageCount)
 	defer swapchainCountData.Free()
 
@@ -1532,9 +1532,9 @@ func (a *RecreateSwapchain) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 		return err
 	}
 
-	images := a.PSwapchainImages.Slice(0, uint64(createInfoData.MinImageCount), l).Read(ctx, a, s, b)
-	imageLayouts := a.PSwapchainLayouts.Slice(0, uint64(createInfoData.MinImageCount), l).Read(ctx, a, s, b)
-	boundQueues := a.PInitialQueues.Slice(0, uint64(createInfoData.MinImageCount), l).Read(ctx, a, s, b)
+	images := a.PSwapchainImages.Slice(0, uint64(createInfoData.MinImageCount), l).MustRead(ctx, a, s, b)
+	imageLayouts := a.PSwapchainLayouts.Slice(0, uint64(createInfoData.MinImageCount), l).MustRead(ctx, a, s, b)
+	boundQueues := a.PInitialQueues.Slice(0, uint64(createInfoData.MinImageCount), l).MustRead(ctx, a, s, b)
 	for i := 0; i < int(createInfoData.MinImageCount); i++ {
 		imageObject := GetState(s).Images[images[i]]
 		if boundQueues[i] != VkQueue(0) && imageLayouts[i] != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {

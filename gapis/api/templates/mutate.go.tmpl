@@ -584,7 +584,7 @@
   {{AssertType $ "SliceAssign"}}
 
   {{if ne $.Operator "="}}{{Error "Compound assignments to pointers are not supported (%s)" $.Operator}}{{end}}
-  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}, ϟl).Write(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
+  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}, ϟl).MustWrite(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
 {{end}}
 
 
@@ -617,7 +617,7 @@
         ϟdst, ϟsrc := {{Template "Go.Read" $.Statement.Dst}}, {{Template "Go.Read" $.Statement.Src}}
         ϟcount := u64.Min(ϟdst.Count(), ϟsrc.Count())
         ϟdst, ϟsrc = ϟdst.Slice(0, ϟcount, ϟl), ϟsrc.Slice(0, ϟcount, ϟl)
-        ϟsrcElems := ϟsrc.Read(ϟctx, ϟa, ϟs, ϟb)
+        ϟsrcElems := ϟsrc.MustRead(ϟctx, ϟa, ϟs, ϟb)
       {{end}}
 
       {{/* Perform the call */}}
@@ -625,7 +625,7 @@
 
       {{if IsCopy $.Statement}}
         {{/* Apply the fenced-copy write */}}
-        ϟdst.Write(ϟctx, ϟsrcElems, ϟa, ϟs, ϟb)
+        ϟdst.MustWrite(ϟctx, ϟsrcElems, ϟa, ϟs, ϟb)
       {{end}}
     }
     {{if IsCopy $.Statement}}

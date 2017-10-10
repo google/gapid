@@ -126,8 +126,11 @@ func (c glShaderSourceCompatTest) run(t *testing.T) {
 	s := newState(ctx)
 	api.MutateCmds(ctx, s, nil, mw.Cmds...)
 
-	srcPtr := cmd.Source.Read(ctx, cmd, s, nil) // 0'th glShaderSource string pointer
-	got := strings.TrimRight(string(memory.CharToBytes(srcPtr.StringSlice(ctx, s).Read(ctx, cmd, s, nil))), "\x00")
+	srcPtr, err := cmd.Source.Read(ctx, cmd, s, nil) // 0'th glShaderSource string pointer
+	if err != nil {
+		t.Errorf("cmd.Source.Read returned: %v", err)
+	}
+	got := strings.TrimRight(string(memory.CharToBytes(srcPtr.StringSlice(ctx, s).MustRead(ctx, cmd, s, nil))), "\x00")
 
 	expected, err := glslCompat(ctx, c.source, c.lang, nil, dev)
 	if err != nil {
