@@ -159,16 +159,16 @@ func GetFramebufferAttachmentInfoByID(
 		fb = c.Bound.DrawFramebuffer.GetID()
 	}
 
-	w, h, sizedFormat, err := s.getFramebufferAttachmentInfo(thread, fb, attachment)
-	if sizedFormat == 0 {
+	fbai, err := s.getFramebufferAttachmentInfo(thread, fb, attachment)
+	if fbai.format == 0 {
 		return 0, 0, 0, nil, fmt.Errorf("No format set")
 	}
 	if err != nil {
 		return 0, 0, 0, nil, err
 	}
-	fmt, ty := getUnsizedFormatAndType(sizedFormat)
+	fmt, ty := getUnsizedFormatAndType(fbai.format)
 	f, err := getImageFormat(fmt, ty)
-	return w, h, 0, f, err
+	return fbai.width, fbai.height, 0, f, err
 }
 
 // Context returns the active context for the given state and thread.

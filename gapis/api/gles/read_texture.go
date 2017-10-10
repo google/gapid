@@ -18,12 +18,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/data/binary"
+	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/replay"
-	"github.com/google/gapid/gapis/replay/builder"
-	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -49,11 +48,23 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 
 		tex, ok := c.Objects.Shared.Textures[TextureId(r.Texture)]
 		if !ok {
-			panic(fmt.Errorf("Attempting to read from a texture that does not exist.\nResolvable: %+v\nTexture: %+v", r, tex))
+			err := fmt.Errorf("Attempting to read from a texture that does not exist.\n"+
+				"Resolvable: %+v"+
+				"Texture: %+v", r, tex)
+			log.W(ctx, "%v", err)
+			res(nil, err)
+			return
 		}
-		layer := tex.Levels[GLint(r.Level)].Layers[GLint(r.Layer)]
+		lvl := tex.Levels[GLint(r.Level)]
+		layer := lvl.Layers[GLint(r.Layer)]
 		if layer == nil {
-			panic(fmt.Errorf("Attempting to read from a texture layer that does not exist.\nResolvable: %+v\nTexture: %+v", r, tex))
+			err := fmt.Errorf("Attempting to read from a texture (Level: %v/%v, Layer: %v/%v) that does not exist.\n"+
+				"Resolvable: %+v\n"+
+				"Texture: %+v",
+				r.Level, len(tex.Levels), r.Layer, len(lvl.Layers), r, tex)
+			log.W(ctx, "%v", err)
+			res(nil, err)
+			return
 		}
 
 		size := uint64(f.Size(int(layer.Width), int(layer.Height), 1))
@@ -63,31 +74,33 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		t := newTweaker(out, dID, cb)
 		defer t.revert(ctx)
 
-		t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
-		t.glBindTexture(ctx, tex)
+		framebufferID := t.glGenFramebuffer(ctx)
+		t.glBindFramebuffer_Draw(ctx, framebufferID)
 
-		target := tex.Kind
-		if tex.Kind == GLenum_GL_TEXTURE_CUBE_MAP {
-			target = GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X + GLenum(r.Layer)
+		streamFmt, err := getUncompressedStreamFormat(getUnsizedFormatAndType(layer.SizedFormat))
+		if err != nil {
+			res(nil, err)
+			return
 		}
-		out.MutateAndWrite(ctx, dID, cb.GlGetTexImage(target, GLint(r.Level), GLenum(r.DataFormat), GLenum(r.DataType), tmp.Ptr()))
 
-		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-			b.Post(value.ObservedPointer(tmp.Address()), size, func(r binary.Reader, err error) error {
-				data := make([]byte, size)
-				if err == nil {
-					r.Data(data)
-					err = r.Error()
-				}
-				if err == nil {
-					res(data, nil)
-				} else {
-					res(nil, err)
-				}
-				return err
-			})
-			return nil
-		}))
+		var glAtt GLenum
+		var apiAtt api.FramebufferAttachment
+		switch {
+		case streamFmt.HasColorComponent():
+			glAtt, apiAtt = GLenum_GL_COLOR_ATTACHMENT0, api.FramebufferAttachment_Color0
+		case streamFmt.HasDepthComponent():
+			glAtt, apiAtt = GLenum_GL_DEPTH_ATTACHMENT, api.FramebufferAttachment_Depth
+		default:
+			res(nil, fmt.Errorf("Unsupported texture format %v", streamFmt))
+			return
+		}
+
+		if r.Layer == 0 {
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture(GLenum_GL_DRAW_FRAMEBUFFER, glAtt, tex.ID, GLint(r.Level)))
+		} else {
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, glAtt, tex.ID, GLint(r.Level), GLint(r.Layer)))
+		}
+		postFBData(ctx, dID, r.Thread, uint32(layer.Width), uint32(layer.Height), framebufferID, apiAtt, out, res)
 	})
 }
 
@@ -104,5 +117,5 @@ func (r *ReadGPUTextureDataResolveable) Resolve(ctx context.Context) (interface{
 	if err != nil {
 		return nil, err
 	}
-	return res.([]byte), nil
+	return res.(*image.Data).Bytes, nil
 }
