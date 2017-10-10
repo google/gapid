@@ -93,6 +93,8 @@ class Level {
 class Image {
   GLsizei        Width
   GLsizei        Height
+  GLsizei        Samples
+  GLboolean      FixedSampleLocations
   // GPU format of the texture including bit-sizes of the channels.
   // This is unrelated to the format of the data passed to the API.
   @unused GLenum SizedFormat
@@ -290,6 +292,8 @@ sub void TexImage(TexImageFlags  flags,
                   GLsizei        height,
                   GLsizei        depth,
                   GLint          border,
+                  GLsizei        samples,
+                  GLboolean      fixedsamplelocations,
                   // Format&data
                   GLenum         sized_format,
                   GLenum         data_format,
@@ -406,6 +410,8 @@ sub void TexImage(TexImageFlags  flags,
         tmpLevel.Layers[zoffset + z + cubemap_layer] = new!Image(
           Width: max!GLsizei(1, width >> as!u32(l)),
           Height: max!GLsizei(1, height >> as!u32(l)),
+          Samples: samples,
+          FixedSampleLocations: fixedsamplelocations,
           SizedFormat: sfBox.SizedFormat,
           DataFormat: data_format,
           DataType: data_type)
@@ -657,7 +663,7 @@ cmd void glCompressedTexImage2D(GLenum         target,
                                 TexturePointer data) {
   TexImage(IsCompressedTexImageCmd, target,
            level, 0, 0, 0, // Offsets
-           1, width, height, 1, border, // Dimensions
+           1, width, height, 1, border, 0, GL_TRUE, // Dimensions
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
@@ -680,7 +686,7 @@ cmd void glCompressedTexImage3D(GLenum         target,
 sub void CompressedTexImage3D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei image_size, TexturePointer data) {
   TexImage(IsCompressedTexImageCmd | Has3DModifier, target,
            level, 0, 0, 0, // Offsets
-           1, width, height, depth, border, // Dimensions
+           1, width, height, depth, border, 0, GL_TRUE, // Dimensions
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
@@ -700,7 +706,7 @@ cmd void glCompressedTexSubImage2D(GLenum         target,
                                    TexturePointer data) {
   TexImage(IsCompressedTexImageCmd | HasSubModifier, target,
            level, xoffset, yoffset, 0, // Offsets
-           1, width, height, 1, 0, // Dimensions
+           1, width, height, 1, 0, 0, GL_TRUE, // Dimensions
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
@@ -725,7 +731,7 @@ cmd void glCompressedTexSubImage3D(GLenum         target,
 sub void CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum internalformat, GLsizei image_size, TexturePointer data) {
   TexImage(IsCompressedTexImageCmd | HasSubModifier | Has3DModifier, target,
            level, xoffset, yoffset, zoffset, // Offsets
-           1, width, height, depth, 0, // Dimensions
+           1, width, height, depth, 0, 0, GL_TRUE, // Dimensions
            internalformat, internalformat, GL_NONE, image_size, data) // Format&data
 }
 
@@ -801,7 +807,7 @@ cmd void glCopyTexImage2D(GLenum  target,
                           GLint   border) {
   TexImage(IsCopyTexImageCmd, target,
            level, 0, 0, 0, // Offsets
-           1, width, height, 1, border, // Dimensions
+           1, width, height, 1, border, 0, GL_TRUE, // Dimensions
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
@@ -820,7 +826,7 @@ cmd void glCopyTexSubImage2D(GLenum  target,
                              GLsizei height) {
   TexImage(IsCopyTexImageCmd | HasSubModifier, target,
            level, xoffset, yoffset, 0, // Offsets
-           1, width, height, 1, 0, // Dimensions
+           1, width, height, 1, 0, 0, GL_TRUE, // Dimensions
            GL_NONE, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
@@ -843,7 +849,7 @@ cmd void glCopyTexSubImage3D(GLenum  target,
 sub void CopyTexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLint x, GLint y, GLsizei width, GLsizei height) {
   TexImage(IsCopyTexImageCmd | HasSubModifier | Has3DModifier, target,
            level, xoffset, yoffset, zoffset, // Offsets
-           1, width, height, 1, 0, // Dimensions
+           1, width, height, 1, 0, 0, GL_TRUE, // Dimensions
            GL_NONE, GL_NONE, GL_NONE, 0, null) // Format&data
   _ = x // TODO
   _ = y // TODO
@@ -1487,7 +1493,7 @@ cmd void glTexImage2D(GLenum         target,
                       TexturePointer data) {
   TexImage(IsTexImageCmd, target,
            level, 0, 0, 0, // Offsets
-           1, width, height, 1, border, // Dimensions
+           1, width, height, 1, border, 0, GL_TRUE, // Dimensions
            as!GLenum(internalformat), format, type, 0, data) // Format&data
 }
 
@@ -1511,7 +1517,7 @@ cmd void glTexImage3D(GLenum         target,
 sub void TexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, TexturePointer data) {
   TexImage(IsTexImageCmd | Has3DModifier, target,
            level, 0, 0, 0, // Offsets
-           1, width, height, depth, border, // Dimensions
+           1, width, height, depth, border, 0, GL_TRUE, // Dimensions
            as!GLenum(internalformat), format, type, 0, data) // Format&data
 }
 
@@ -1732,7 +1738,7 @@ sub void TexStorage2D(GLenum target, GLsizei levels, GLenum internalformat, GLsi
   }
   TexImage(IsTexStorageCmd, target,
            0, 0, 0, 0, // Offsets
-           levels, width, height, depth, 0, // Dimensions
+           levels, width, height, depth, 0, 0, GL_TRUE, // Dimensions
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
@@ -1747,10 +1753,8 @@ cmd void glTexStorage2DMultisample(GLenum    target,
                                    GLboolean fixedsamplelocations) {
   TexImage(IsTexStorageCmd | HasMultisampleModifier, target,
            0, 0, 0, 0, // Offsets
-           1, width, height, 1, 0, // Dimensions
+           1, width, height, 1, 0, samples, fixedsamplelocations, // Dimensions
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
-  _ = samples // TODO
-  _ = fixedsamplelocations // TODO
 }
 
 @if(Version.GLES30)
@@ -1769,7 +1773,7 @@ cmd void glTexStorage3D(GLenum  target,
 sub void TexStorage3D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth) {
   TexImage(IsTexStorageCmd | Has3DModifier, target,
            0, 0, 0, 0, // Offsets
-           levels, width, height, depth, 0, // Dimensions
+           levels, width, height, depth, 0, 0, GL_TRUE, // Dimensions
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
 }
 
@@ -1788,10 +1792,8 @@ cmd void glTexStorage3DMultisample(GLenum    target,
 sub void TexStorage3DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLboolean fixedsamplelocations) {
   TexImage(IsTexStorageCmd | Has3DModifier | HasMultisampleModifier, target,
            0, 0, 0, 0, // Offsets
-           1, width, height, depth, 0, // Dimensions
+           1, width, height, depth, 0, samples, fixedsamplelocations, // Dimensions
            internalformat, GL_NONE, GL_NONE, 0, null) // Format&data
-  _ = samples // TODO
-  _ = fixedsamplelocations // TODO
 }
 
 @if(Version.GLES10)
@@ -1810,7 +1812,7 @@ cmd void glTexSubImage2D(GLenum         target,
                          TexturePointer data) {
   TexImage(IsTexImageCmd | HasSubModifier, target,
            level, xoffset, yoffset, 0, // Offsets
-           1, width, height, 1, 0, // Dimensions
+           1, width, height, 1, 0, 0, GL_TRUE, // Dimensions
            GL_NONE, format, type, 0, data) // Format&data
 }
 
@@ -1835,6 +1837,6 @@ cmd void glTexSubImage3D(GLenum         target,
 sub void TexSubImage3D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, TexturePointer data) {
   TexImage(IsTexImageCmd | HasSubModifier | Has3DModifier, target,
            level, xoffset, yoffset, zoffset, // Offsets
-           1, width, height, depth, 0, // Dimensions
+           1, width, height, depth, 0, 0, GL_TRUE, // Dimensions
            GL_NONE, format, type, 0, data) // Format&data
 }
