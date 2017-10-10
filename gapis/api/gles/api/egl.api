@@ -255,15 +255,14 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
                               EGLSurface draw,
                               EGLSurface read,
                               EGLContext context) {
-
-  if context in EGLContexts {
+  if (context == null) {
+    SetContext(null)
+  } else if context in EGLContexts {
     ctx := EGLContexts[context]
     if (draw == null) || (read == null) {
       // TODO: Check whether this extension is supported:
       // https://www.khronos.org/registry/EGL/extensions/KHR/EGL_KHR_surfaceless_context.txt
-      // If not:
-      // onEGLError(EGL_BAD_SURFACE)
-      // abort
+      // If not, error and abort.
     }
     if ctx.Other.IsBound && (ctx != Contexts[$Thread]) {
       _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_BOUND(id: as!u64(context)))
@@ -291,7 +290,7 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
       // calls.
       ApplyStaticContextState(ctx, staticState)
       ApplyDynamicContextState(ctx, dynamicState)
-    } else if context != null {
+    } else {
       // TODO: onEGLError(EGL_BAD_CONTEXT)
       _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_DOES_NOT_EXIST(id: as!u64(context)))
       abort
