@@ -435,21 +435,29 @@ public abstract class ArrayImage implements Image {
       if (isRGBA) {
         for (int i = 0, end = buffer.remaining() - 3; i <= end; ) {
           float value = buffer.get(i++);
-          min = Math.min(min, value);
-          max = Math.max(max, value);
+          if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+          }
           value = buffer.get(i++);
-          min = Math.min(min, value);
-          max = Math.max(max, value);
+          if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+          }
           value = buffer.get(i++);
-          min = Math.min(min, value);
-          max = Math.max(max, value);
+          if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+          }
           i++; // skip alpha
         }
       } else {
         for (int i = 0; i < buffer.remaining(); i++) {
           float value = buffer.get(i);
-          min = Math.min(min, value);
-          max = Math.max(max, value);
+          if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+          }
         }
       }
       return new FloatPixelInfo(min, max);
