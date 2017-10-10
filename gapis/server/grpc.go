@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/context/keys"
@@ -104,7 +105,15 @@ func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTi
 	waitTime := idleTimeout / 12
 	var idleTime time.Duration
 
-	defer server.GracefulStop()
+	stoppedSignal, stopped := task.NewSignal()
+	defer func() {
+		server.GracefulStop()
+		stopped(ctx)
+	}()
+
+	// Wait for the server to stop before terminating the app.
+	app.AddCleanupSignal(stoppedSignal)
+
 	for {
 		select {
 		case <-task.ShouldStop(ctx):
