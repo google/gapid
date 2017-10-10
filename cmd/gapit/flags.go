@@ -119,6 +119,7 @@ type (
 			Start int `help:"frame to start capture from"`
 			Count int `help:"number of frames after Start to capture: -1 for all frames"`
 		}
+		CommandFilterFlags
 	}
 	DumpShadersFlags struct {
 		Gapis GapisFlags

@@ -39,7 +39,7 @@ import (
 type videoFrame struct {
 	fbo           *img.Data
 	command       *path.Command
-	fboIndex      int
+	fboIndex      string
 	frameIndex    int
 	numDrawCalls  int
 	renderError   error
@@ -61,7 +61,7 @@ func getVideoFrames(
 	videoFrames := []*videoFrame{}
 	w, h := 0, 0
 	frameIndex, numDrawCalls := 0, 0
-	for i, e := range events {
+	for _, e := range events {
 		switch e.Kind {
 		case service.EventKind_FramebufferObservation:
 			fbo, err := getFBO(ctx, client, e.Command)
@@ -76,10 +76,10 @@ func getVideoFrames(
 			}
 			videoFrames = append(videoFrames, &videoFrame{
 				fbo:          fbo,
-				fboIndex:     i,
+				fboIndex:     fmt.Sprint(e.Command.Indices),
 				frameIndex:   frameIndex,
 				numDrawCalls: numDrawCalls,
-				command:      e.Command.Capture.Command(e.Command.Indices[0] - 1), // -1 to skip the observation itself.
+				command:      e.Command.Capture.Command(e.Command.Indices[0]),
 			})
 		case service.EventKind_DrawCall:
 			numDrawCalls++
@@ -153,12 +153,18 @@ func (verb *videoVerb) sxsVideoSource(
 	client service.Service,
 	device *path.Device) (videoFrameWriter, error) {
 
+	filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capture)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get filter")
+	}
+
 	// Get the draw call and end-of-frame events.
 	events, err := getEvents(ctx, client, &path.Events{
 		Capture:                 capture,
 		DrawCalls:               true,
 		LastInFrame:             true,
 		FramebufferObservations: true,
+		Filter:                  filter,
 	})
 	if err != nil {
 		return nil, log.Err(ctx, err, "Couldn't get events")
@@ -244,7 +250,7 @@ func (verb *videoVerb) sxsVideoSource(
 			refw := reflow.New(sb)
 			fmt.Fprint(refw, verb.Text)
 			fmt.Fprintf(refw, "Dimensions:║%dx%d¶", v.fbo.Width, v.fbo.Height)
-			fmt.Fprintf(refw, "Cmd:║%d¶", v.fboIndex)
+			fmt.Fprintf(refw, "Cmd:║%v¶", v.fboIndex)
 			fmt.Fprintf(refw, "Frame:║%d¶", v.frameIndex)
 			fmt.Fprintf(refw, "Draw calls:║%d¶", v.numDrawCalls)
 			fmt.Fprintf(refw, "Difference:║%.4f¶", v.squareError)
@@ -421,8 +427,10 @@ func flipImg(i *image.NRGBA) *image.NRGBA {
 	}
 	data, stride := i.Pix, i.Stride
 	out := make([]byte, len(data))
-	for i, c := 0, len(data)/stride; i < c; i++ {
-		copy(out[(c-i-1)*stride:(c-i)*stride], data[i*stride:])
+	if len(out) > 0 {
+		for i, c := 0, len(data)/stride; i < c; i++ {
+			copy(out[(c-i-1)*stride:(c-i)*stride], data[i*stride:])
+		}
 	}
 	return &image.NRGBA{Pix: out, Stride: stride, Rect: i.Rect}
 }
