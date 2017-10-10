@@ -55,29 +55,7 @@ func (t *readFramebuffer) depth(
 	res replay.Result) {
 
 	t.Add(id, func(ctx context.Context, out transform.Writer) {
-		s := out.State()
-
-		if fb == 0 {
-			var err error
-			if fb, err = getBoundFramebufferID(thread, s); err != nil {
-				log.W(ctx, "Could not read framebuffer after cmd %v: err", err)
-				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
-				return
-			}
-		}
-
-		width, height, format, err := GetState(s).getFramebufferAttachmentInfo(thread, fb, api.FramebufferAttachment_Depth)
-		if err != nil {
-			log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
-			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
-			return
-		}
-
-		t := newTweaker(out, id.Derived(), CommandBuilder{Thread: thread})
-		defer t.revert(ctx)
-		t.glBindFramebuffer_Read(ctx, fb)
-
-		postColorData(ctx, s, int32(width), int32(height), format, out, id, thread, res)
+		postFBData(ctx, id, thread, 0, 0, fb, api.FramebufferAttachment_Depth, out, res)
 	})
 }
 
@@ -90,44 +68,81 @@ func (t *readFramebuffer) color(
 	res replay.Result) {
 
 	t.Add(id, func(ctx context.Context, out transform.Writer) {
-		s := out.State()
-		c := GetContext(s, thread)
-
-		if fb == 0 {
-			var err error
-			if fb, err = getBoundFramebufferID(thread, s); err != nil {
-				log.W(ctx, "Could not read framebuffer after cmd %v: err", err)
-				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
-				return
-			}
-		}
-
 		attachment := api.FramebufferAttachment_Color0 + api.FramebufferAttachment(bufferIdx)
-		w, h, fmt, err := GetState(s).getFramebufferAttachmentInfo(thread, fb, attachment)
-		if err != nil {
-			log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
+		postFBData(ctx, id, thread, width, height, fb, attachment, out, res)
+	})
+}
+
+func postFBData(ctx context.Context,
+	id api.CmdID,
+	thread uint64,
+	width, height uint32,
+	fb FramebufferId,
+	attachment api.FramebufferAttachment,
+	out transform.Writer,
+	res replay.Result) {
+
+	s := out.State()
+	c := GetContext(s, thread)
+
+	if fb == 0 {
+		var err error
+		if fb, err = getBoundFramebufferID(thread, s); err != nil {
+			log.W(ctx, "Could not read framebuffer after cmd %v: err", err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
-		if fmt == 0 {
-			log.W(ctx, "Failed to read framebuffer after cmd %v: no image format", id)
-			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
-			return
-		}
+	}
 
-		var (
-			inW  = int32(w)
-			inH  = int32(h)
-			outW = int32(width)
-			outH = int32(height)
-		)
+	fbai, err := GetState(s).getFramebufferAttachmentInfo(thread, fb, attachment)
+	if err != nil {
+		log.W(ctx, "Failed to read framebuffer after cmd %v: %v", id, err)
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
+		return
+	}
+	if fbai.format == 0 {
+		log.W(ctx, "Failed to read framebuffer after cmd %v: no image format", id)
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
+		return
+	}
+	glAtt, err := attachmentToEnum(attachment)
+	if err != nil {
+		log.W(ctx, "Failed to get attachment as GLenum: %v", err)
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
+		return
+	}
 
-		dID := id.Derived()
-		cb := CommandBuilder{Thread: thread}
-		t := newTweaker(out, dID, cb)
-		defer t.revert(ctx)
-		t.glBindFramebuffer_Read(ctx, fb)
+	var (
+		inW  = int32(fbai.width)
+		inH  = int32(fbai.height)
+		outW = int32(width)
+		outH = int32(height)
+	)
 
+	if outW == 0 {
+		outW = inW
+	}
+	if outH == 0 {
+		outH = inH
+	}
+
+	dID := id.Derived()
+	cb := CommandBuilder{Thread: thread}
+	t := newTweaker(out, dID, cb)
+	defer t.revert(ctx)
+	t.glBindFramebuffer_Read(ctx, fb)
+
+	var bufferBits GLbitfield
+	switch {
+	case attachment.IsColor():
+		bufferBits = GLbitfield_GL_COLOR_BUFFER_BIT
+	case attachment.IsDepth():
+		bufferBits = GLbitfield_GL_DEPTH_BUFFER_BIT
+	case attachment.IsStencil():
+		bufferBits = GLbitfield_GL_STENCIL_BUFFER_BIT
+	}
+
+	if attachment.IsColor() {
 		// TODO: These glReadBuffer calls need to be changed for on-device
 		//       replay. Note that glReadBuffer was only introduced in
 		//       OpenGL ES 3.0, and that GL_FRONT is not a legal enum value.
@@ -140,32 +155,48 @@ func (t *readFramebuffer) color(
 				return nil
 			}))
 		} else {
-			t.glReadBuffer(ctx, GLenum_GL_COLOR_ATTACHMENT0+GLenum(bufferIdx))
+			t.glReadBuffer(ctx, glAtt)
 		}
+	}
 
-		if inW == outW && inH == outH {
-			postColorData(ctx, s, outW, outH, fmt, out, id, thread, res)
-		} else {
-			t.glScissor(ctx, 0, 0, GLsizei(inW), GLsizei(inH))
-			framebufferID := t.glGenFramebuffer(ctx)
-			t.glBindFramebuffer_Draw(ctx, framebufferID)
-			renderbufferID := t.glGenRenderbuffer(ctx)
-			t.glBindRenderbuffer(ctx, renderbufferID)
+	if fbai.multisampled {
+		// Resolve
+		t.glScissor(ctx, 0, 0, GLsizei(inW), GLsizei(inH))
+		framebufferID := t.glGenFramebuffer(ctx)
+		t.glBindFramebuffer_Draw(ctx, framebufferID)
+		renderbufferID := t.glGenRenderbuffer(ctx)
+		t.glBindRenderbuffer(ctx, renderbufferID)
 
-			mutateAndWriteEach(ctx, out, dID,
-				cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fmt, GLsizei(outW), GLsizei(outH)),
-				cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_RENDERBUFFER, renderbufferID),
-				cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), GLbitfield_GL_COLOR_BUFFER_BIT, GLenum_GL_LINEAR),
-			)
-			t.glBindFramebuffer_Read(ctx, framebufferID)
+		mutateAndWriteEach(ctx, out, dID,
+			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.format, GLsizei(inW), GLsizei(inH)),
+			cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, glAtt, GLenum_GL_RENDERBUFFER, renderbufferID),
+			cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(inW), GLint(inH), bufferBits, GLenum_GL_NEAREST),
+		)
 
-			postColorData(ctx, s, outW, outH, fmt, out, id, thread, res)
-		}
+		t.glBindFramebuffer_Read(ctx, framebufferID)
+	}
 
-	})
+	if attachment.IsColor() && (inW != outW || inH != outH) {
+		// Resize
+		t.glScissor(ctx, 0, 0, GLsizei(inW), GLsizei(inH))
+		framebufferID := t.glGenFramebuffer(ctx)
+		t.glBindFramebuffer_Draw(ctx, framebufferID)
+		renderbufferID := t.glGenRenderbuffer(ctx)
+		t.glBindRenderbuffer(ctx, renderbufferID)
+
+		mutateAndWriteEach(ctx, out, dID,
+			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.format, GLsizei(outW), GLsizei(outH)),
+			cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, glAtt, GLenum_GL_RENDERBUFFER, renderbufferID),
+			cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), bufferBits, GLenum_GL_LINEAR),
+		)
+		t.glBindFramebuffer_Read(ctx, framebufferID)
+	}
+
+	postColorData(ctx, s, outW, outH, fbai.format, out, id, thread, res)
 }
 
-func postColorData(ctx context.Context,
+func postColorData(
+	ctx context.Context,
 	s *api.GlobalState,
 	width, height int32,
 	sizedFormat GLenum,

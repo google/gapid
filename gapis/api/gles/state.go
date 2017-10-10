@@ -20,55 +20,90 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
+// fbai is the result getFramebufferAttachmentInfo.
+type fbai struct {
+	width        uint32
+	height       uint32
+	format       GLenum // sized
+	multisampled bool
+}
+
+func attachmentToEnum(a api.FramebufferAttachment) (GLenum, error) {
+	switch a {
+	case api.FramebufferAttachment_Color0:
+		return GLenum_GL_COLOR_ATTACHMENT0, nil
+	case api.FramebufferAttachment_Color1:
+		return GLenum_GL_COLOR_ATTACHMENT1, nil
+	case api.FramebufferAttachment_Color2:
+		return GLenum_GL_COLOR_ATTACHMENT2, nil
+	case api.FramebufferAttachment_Color3:
+		return GLenum_GL_COLOR_ATTACHMENT3, nil
+	case api.FramebufferAttachment_Depth:
+		return GLenum_GL_DEPTH_ATTACHMENT, nil
+	case api.FramebufferAttachment_Stencil:
+		return GLenum_GL_STENCIL_ATTACHMENT, nil
+	default:
+		return 0, fmt.Errorf("Framebuffer attachment %v unsupported by gles", a)
+	}
+}
+
+func (f *Framebuffer) getAttachment(a api.FramebufferAttachment) (FramebufferAttachment, error) {
+	switch a {
+	case api.FramebufferAttachment_Color0:
+		return f.ColorAttachments[0], nil
+	case api.FramebufferAttachment_Color1:
+		return f.ColorAttachments[1], nil
+	case api.FramebufferAttachment_Color2:
+		return f.ColorAttachments[2], nil
+	case api.FramebufferAttachment_Color3:
+		return f.ColorAttachments[3], nil
+	case api.FramebufferAttachment_Depth:
+		return f.DepthAttachment, nil
+	case api.FramebufferAttachment_Stencil:
+		return f.StencilAttachment, nil
+	default:
+		return FramebufferAttachment{}, fmt.Errorf("Framebuffer attachment %v unsupported by gles", a)
+	}
+}
+
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
-func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, att api.FramebufferAttachment) (width, height uint32, sizedFormat GLenum, err error) {
+func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, att api.FramebufferAttachment) (fbai, error) {
 	c := s.GetContext(thread)
 	if c == nil {
-		return 0, 0, 0, fmt.Errorf("No context bound")
+		return fbai{}, fmt.Errorf("No context bound")
 	}
 	if !c.Info.Initialized {
-		return 0, 0, 0, fmt.Errorf("Context not initialized")
+		return fbai{}, fmt.Errorf("Context not initialized")
 	}
 
 	framebuffer, ok := c.Objects.Framebuffers[fb]
 	if !ok {
-		return 0, 0, 0, fmt.Errorf("Invalid framebuffer %v", fb)
+		return fbai{}, fmt.Errorf("Invalid framebuffer %v", fb)
 	}
 
-	var a FramebufferAttachment
-	switch att {
-	case api.FramebufferAttachment_Color0:
-		a = framebuffer.ColorAttachments[0]
-	case api.FramebufferAttachment_Color1:
-		a = framebuffer.ColorAttachments[1]
-	case api.FramebufferAttachment_Color2:
-		a = framebuffer.ColorAttachments[2]
-	case api.FramebufferAttachment_Color3:
-		a = framebuffer.ColorAttachments[3]
-	case api.FramebufferAttachment_Depth:
-		a = framebuffer.DepthAttachment
-	case api.FramebufferAttachment_Stencil:
-		a = framebuffer.StencilAttachment
-	default:
-		return 0, 0, 0, fmt.Errorf("Framebuffer attachment %v unsupported by gles", att)
+	a, err := framebuffer.getAttachment(att)
+	if err != nil {
+		return fbai{}, err
 	}
 
 	switch a.Type {
 	case GLenum_GL_NONE:
-		return 0, 0, 0, fmt.Errorf("%s is not bound", att)
+		return fbai{}, fmt.Errorf("%s is not bound", att)
 	case GLenum_GL_TEXTURE:
 		t := a.Texture
 		l := t.Levels[a.TextureLevel].Layers[a.TextureLayer]
 		if l == nil {
-			return 0, 0, 0, fmt.Errorf("Texture %v does not have Level[%v].Layer[%v]",
+			return fbai{}, fmt.Errorf("Texture %v does not have Level[%v].Layer[%v]",
 				t.ID, a.TextureLevel, a.TextureLayer)
 		}
-		return uint32(l.Width), uint32(l.Height), l.SizedFormat, nil
+		multisampled := l.Samples > 0
+		return fbai{uint32(l.Width), uint32(l.Height), l.SizedFormat, multisampled}, nil
 	case GLenum_GL_RENDERBUFFER:
 		r := a.Renderbuffer
-		return uint32(r.Width), uint32(r.Height), r.InternalFormat, nil
+		multisampled := r.Samples > 0
+		return fbai{uint32(r.Width), uint32(r.Height), r.InternalFormat, multisampled}, nil
 	default:
-		return 0, 0, 0, fmt.Errorf("Unknown framebuffer attachment type %T", a.Type)
+		return fbai{}, fmt.Errorf("Unknown framebuffer attachment type %T", a.Type)
 	}
 }
