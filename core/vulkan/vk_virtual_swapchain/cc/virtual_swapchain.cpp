@@ -285,8 +285,6 @@ void VirtualSwapchain::Destroy(const VkAllocationCallbacks *pAllocator) {
                              pAllocator);
     functions_->vkDestroyBuffer(device_, image_data_[i].buffer_, pAllocator);
     functions_->vkDestroyFence(device_, image_data_[i].fence_, pAllocator);
-    functions_->vkFreeCommandBuffers(device_, command_pool_, 1,
-                                     &image_data_[i].command_buffer_);
   }
 
   functions_->vkDestroyCommandPool(device_, command_pool_, pAllocator);
