@@ -23,7 +23,10 @@ func Channel(to Handler, size int) Handler {
 	c := make(chan *Message, size)
 	done := make(chan struct{})
 	crash.Go(func() {
-		defer close(done)
+		defer func() {
+			to.Close()
+			close(done)
+		}()
 		for m := range c {
 			if m == nil {
 				return
@@ -40,12 +43,12 @@ func Channel(to Handler, size int) Handler {
 		case <-done: // Handler closed. Message dropped on floor.
 		}
 	}
-	closer := func() {
+	close := func() {
 		select {
 		case <-done: // Already stopped.
 		case c <- nil: // Stop requested.
 			<-done // Wait for flush of existing messages.
 		}
 	}
-	return &handler{handle, closer}
+	return &handler{handle, close}
 }
