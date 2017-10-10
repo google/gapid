@@ -46,12 +46,12 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 	c := GetContext(s, dc.Thread())
 
-	indices, origIndexCount, glPrimitive, err := dc.getIndices(ctx, c, s)
+	dci, err := dc.getIndices(ctx, c, s)
 	if err != nil {
 		return nil, err
 	}
 
-	drawPrimitive, err := translateDrawPrimitive(glPrimitive)
+	drawPrimitive, err := translateDrawPrimitive(dci.drawMode)
 	if err != nil {
 		// There are extensions like GL_QUADS_OES that do not translate directly
 		// to a api.DrawPrimitive. For now, log the error, and return
@@ -62,7 +62,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 	// Look at the indices to find the number of vertices we're dealing with.
 	count, uniqueIndices := 0, make(map[uint32]bool)
-	for _, i := range indices {
+	for _, i := range dci.indices {
 		if count <= int(i) {
 			count = int(i) + 1
 		}
@@ -116,9 +116,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 	guessSemantics(vb)
 
-	ib := &api.IndexBuffer{
-		Indices: []uint32(indices),
-	}
+	ib := &api.IndexBuffer{Indices: dci.indices}
 
 	mesh := &api.Mesh{
 		DrawPrimitive: drawPrimitive,
@@ -126,9 +124,11 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		IndexBuffer:   ib,
 		Stats: &api.Mesh_Stats{
 			Vertices:   uint32(len(uniqueIndices)),
-			Indices:    origIndexCount,
-			Primitives: drawPrimitive.Count(origIndexCount),
+			Primitives: drawPrimitive.Count(uint32(len(dci.indices))),
 		},
+	}
+	if dci.indexed {
+		mesh.Stats.Indices = uint32(len(dci.indices))
 	}
 
 	if p.Options != nil && p.Options.Faceted {
