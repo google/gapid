@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -70,28 +71,42 @@ func (verb *stresstestVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	wg := sync.WaitGroup{}
 
-	for i := 0; i < 1000; i++ {
-		at := uint64(rand.Intn(count - 1))
-		duration := time.Second + time.Duration(rand.Intn(int(time.Second*10)))
-		wg.Add(1)
+	for l := 0; l < 10; l++ {
+		for i := 0; i < 10000; i++ {
+			at := uint64(rand.Intn(count - 1))
+			duration := time.Second + time.Duration(rand.Intn(int(time.Second*10)))
+			wg.Add(1)
 
-		crash.Go(func() {
-			defer wg.Done()
-			ctx, _ := task.WithTimeout(ctx, duration)
-			boxedTree, err := client.Get(ctx, c.Command(at).StateAfter().Tree().Path())
-			if err != nil {
-				return
-			}
+			const (
+				getStateAfter = iota
+				getMesh
+				getCount
+			)
+			method := rand.Intn(getCount)
 
-			tree := boxedTree.(*service.StateTree)
+			crash.Go(func() {
+				defer wg.Done()
+				ctx, _ := task.WithTimeout(ctx, duration)
 
-			if _, err := client.Get(ctx, tree.Root.Path()); err != nil {
-				return
-			}
-		})
+				switch method {
+				case getStateAfter:
+					boxedTree, err := client.Get(ctx, c.Command(at).StateAfter().Tree().Path())
+					if err == nil {
+						tree := boxedTree.(*service.StateTree)
+						client.Get(ctx, tree.Root.Path())
+					}
+
+				case getMesh:
+					boxedMesh, err := client.Get(ctx, c.Command(at).Mesh(true).Path())
+					if err == nil {
+						mesh := boxedMesh.(*api.Mesh)
+						_ = mesh
+					}
+				}
+			})
+		}
+		wg.Wait()
 	}
-
-	wg.Wait()
 
 	return nil
 }
