@@ -122,8 +122,7 @@ func Run(main task.Task) {
 	flags := &AppFlags{Log: logDefaults()}
 
 	// install all the common application flags
-	rootCtx, closeLogs := prepareContext(&flags.Log)
-	defer closeLogs()
+	rootCtx := prepareContext(&flags.Log)
 
 	// parse the command line
 	flag.CommandLine.Usage = func() { Usage(rootCtx, "") }
@@ -150,15 +149,17 @@ func Run(main task.Task) {
 
 	ctx, cancel := task.WithCancel(rootCtx)
 
-	ctx, closeLogs = updateContext(ctx, &flags.Log, closeLogs)
+	ctx = updateContext(ctx, &flags.Log)
 
 	// Defer the shutdown code
 	shutdownOnce := sync.Once{}
 	shutdown := func() {
 		shutdownOnce.Do(func() {
-			closeLogs()
+			LogHandler.Close()
 			cancel()
-			WaitForCleanup(rootCtx)
+			if !WaitForCleanup(rootCtx) {
+				fmt.Fprint(os.Stderr, "Timeout waiting for cleanup")
+			}
 			endProfile()
 		})
 	}
