@@ -47,4 +47,9 @@ cmd void glBindFragDataLocation(ProgramId program, GLuint color, string name) {
 }
 
 cmd void glTexImage2DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations) {
+  info := GetSizedFormatInfo(internalformat)
+  TexImage(IsTexImageCmd | HasMultisampleModifier, target,
+           0, 0, 0, 0, // Offsets
+           1, width, height, 1, 0, samples, fixedsamplelocations, // Dimensions
+           internalformat, info.UnsizedFormat, info.DataType, 0, null) // Format&data
 }
