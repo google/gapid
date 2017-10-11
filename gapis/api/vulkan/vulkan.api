@@ -2814,7 +2814,7 @@ cmd VkResult vkQueueSubmit(
         ref := cb.CommandReferences[as!u32(k)]
         if ref.Type == cmd_vkCmdExecuteCommands {
           enterSubcontext()
-          ec := cb.BufferCommands.vkCmdExecuteCommands[ref.CommandIndex]
+          ec := cb.BufferCommands.vkCmdExecuteCommands[ref.MapIndex]
           for l in (0 .. len(ec.CommandBuffers)) {
             scb := CommandBuffers[ec.CommandBuffers[as!u32(l)]]
             enterSubcontext()
