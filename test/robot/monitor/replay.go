@@ -38,7 +38,8 @@ func (r *Replays) All() []*Replay {
 
 func (o *DataOwner) updateReplay(ctx context.Context, action *replay.Action) error {
 	o.Write(func(data *Data) {
-		data.Replays.entries = append(data.Replays.entries, &Replay{Action: *action})
+		entry, _ := data.Replays.FindOrCreate(ctx, action)
+		entry.Action = *action
 	})
 	return nil
 }

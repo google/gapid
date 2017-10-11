@@ -57,6 +57,12 @@ func (data *Data) FindDevice(id string) *Device {
 
 func (o *DataOwner) updateDevice(ctx context.Context, device *job.Device) error {
 	o.Write(func(data *Data) {
+		for i, e := range data.Devices.entries {
+			if device.Id == e.Id {
+				data.Devices.entries[i].Device = *device
+				return
+			}
+		}
 		data.Devices.entries = append(data.Devices.entries, &Device{Device: *device})
 	})
 	return nil
