@@ -38,7 +38,8 @@ func (r *Reports) All() []*Report {
 
 func (o *DataOwner) updateReport(ctx context.Context, action *report.Action) error {
 	o.Write(func(data *Data) {
-		data.Reports.entries = append(data.Reports.entries, &Report{Action: *action})
+		entry, _ := data.Reports.FindOrCreate(ctx, action)
+		entry.Action = *action
 	})
 	return nil
 }

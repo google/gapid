@@ -37,6 +37,11 @@ func (s *Subjects) All() []*Subject {
 
 func (o *DataOwner) updateSubject(ctx context.Context, subj *subject.Subject) error {
 	o.Write(func(data *Data) {
+		for i, e := range data.Subjects.entries {
+			if subj.Id == e.Id {
+				data.Subjects.entries[i].Subject = *subj
+			}
+		}
 		data.Subjects.entries = append(data.Subjects.entries, &Subject{Subject: *subj})
 	})
 	return nil
