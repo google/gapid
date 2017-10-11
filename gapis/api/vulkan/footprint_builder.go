@@ -2341,6 +2341,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				read(ctx, bh, vkHandle(vkCb))
 				read(ctx, bh, vb.commandBuffers[vkCb].end)
 				for k, cbc := range vb.commands[vkCb] {
+					fci := api.SubCmdIdx{uint64(id), uint64(i), uint64(j), uint64(k)}
+					submittedCmd := newSubmittedCommand(fci, cbc, nil)
+					vb.submitInfos[id].pendingCommands = append(vb.submitInfos[id].pendingCommands, submittedCmd)
 					if cbc.isCmdExecuteCommands {
 						for scbi, scb := range cbc.secondaryCommandBuffers {
 							read(ctx, bh, vb.commandBuffers[scb].end)
@@ -2351,9 +2354,6 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 							}
 						}
 					}
-					fci := api.SubCmdIdx{uint64(id), uint64(i), uint64(j), uint64(k)}
-					submittedCmd := newSubmittedCommand(fci, cbc, nil)
-					vb.submitInfos[id].pendingCommands = append(vb.submitInfos[id].pendingCommands, submittedCmd)
 				}
 			}
 			waitSemaphoreCount := uint64(submit.WaitSemaphoreCount)
