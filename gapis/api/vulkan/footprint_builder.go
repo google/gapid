@@ -1378,8 +1378,12 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	case *VkCreateImageView:
 		write(ctx, bh, vkHandle(cmd.PView.MustRead(ctx, cmd, s, nil)))
+        img := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).Image
+		read(ctx, bh, vb.getImageData(ctx, bh, img))
 	case *RecreateImageView:
 		write(ctx, bh, vkHandle(cmd.PImageView.MustRead(ctx, cmd, s, nil)))
+        img := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).Image
+		read(ctx, bh, vb.getImageData(ctx, bh, img))
 	case *VkDestroyImageView:
 		read(ctx, bh, vkHandle(cmd.ImageView))
 		bh.Alive = true
@@ -1990,10 +1994,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			execInfo.beginRenderPass(ctx, vb, cbh, rp, fb)
 			execInfo.renderPassBegin = newForwardPairedLabel(ctx, cbh)
 			ft.AddBehavior(ctx, cbh)
+			cbh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
+			// Without this, we drop some needed commands.
 		}
-
-		bh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
-		// Without this, we drop some needed commands.
 
 	case *VkCmdNextSubpass:
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
@@ -2002,9 +2005,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			execInfo.nextSubpass(ctx, ft, cbh, sc, vb.machine)
 			ft.AddBehavior(ctx, cbh)
+			cbh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
+			// Without this, we drop some needed commands.
 		}
-		bh.Alive = true // TODO(awoloszyn): Investigate why this is needed.
-		// Without this, we drop some needed commands.
 
 	case *VkCmdEndRenderPass:
 		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
@@ -2015,9 +2018,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			execInfo.endRenderPass(ctx, ft, cbh, sc, vb.machine)
 			read(ctx, cbh, execInfo.renderPassBegin)
 			ft.AddBehavior(ctx, cbh)
+			cbh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
+			// Without this, we drop some needed commands.
 		}
-		bh.Alive = true // TODO(awoloszyn): Investigate why this is needed.
-		// Without this, we drop some needed commands.
 
 	// bind vertex buffers, index buffer, pipeline and descriptors
 	case *VkCmdBindVertexBuffers:
