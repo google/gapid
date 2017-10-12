@@ -28,8 +28,8 @@ type CommandBufferCommand struct {
 }
 
 type QueuedCommand struct {
-	initialCall      *api.Cmd
-	submit           *api.Cmd
+	initialCall      api.Cmd
+	submit           api.Cmd
 	submissionIndex  []uint64
 	actualSubmission bool
 }

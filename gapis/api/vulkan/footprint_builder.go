@@ -1254,7 +1254,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	// commandbuffer commands.
 	executedCommands := []api.SubCmdIdx{}
 	GetState(s).PostSubcommand = func(a interface{}) {
-		queueSubmit, isQs := (*GetState(s).CurrentSubmission).(*VkQueueSubmit)
+		queueSubmit, isQs := (GetState(s).CurrentSubmission).(*VkQueueSubmit)
 		if !isQs {
 			log.E(ctx, "CurrentSubmission command in State is not a VkQueueSubmit")
 		}
@@ -1378,11 +1378,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	case *VkCreateImageView:
 		write(ctx, bh, vkHandle(cmd.PView.MustRead(ctx, cmd, s, nil)))
-        img := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).Image
+		img := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).Image
 		read(ctx, bh, vb.getImageData(ctx, bh, img))
 	case *RecreateImageView:
 		write(ctx, bh, vkHandle(cmd.PImageView.MustRead(ctx, cmd, s, nil)))
-        img := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).Image
+		img := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).Image
 		read(ctx, bh, vb.getImageData(ctx, bh, img))
 	case *VkDestroyImageView:
 		read(ctx, bh, vkHandle(cmd.ImageView))
