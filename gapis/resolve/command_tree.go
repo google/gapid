@@ -300,8 +300,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 				// subcommand marker groups are added before subcommands. And groups with
 				// shorter indices are added before groups with longer indices.
 				// SubCmdRoot will be created when necessary.
-				if snc.SubCommandMarkerGroups.Value(append([]uint64{uint64(id)}, x[0:len(x)-1]...)) != nil {
-					markers := snc.SubCommandMarkerGroups.Value(append([]uint64{uint64(id)}, x[0:len(x)-1]...)).([]*api.CmdIDGroup)
+				parentIdx := append([]uint64{uint64(id)}, x[0:len(x)-1]...)
+				if snc.SubCommandMarkerGroups.Value(parentIdx) != nil {
+					markers := snc.SubCommandMarkerGroups.Value(parentIdx).([]*api.CmdIDGroup)
 					r.AddSubCmdMarkerGroups(x[0:len(x)-1], markers)
 				}
 				r.Insert(append([]uint64{}, x...))

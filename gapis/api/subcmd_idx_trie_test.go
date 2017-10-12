@@ -15,6 +15,7 @@
 package api
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -79,4 +80,49 @@ func TestSubCmdIdxTrie(t *testing.T) {
 	expectNonValue(SubCmdIdx{100, 99, 98})
 	expectNonValue(SubCmdIdx{100, 99})
 	expectNonValue(SubCmdIdx{100})
+}
+
+func TestSubCmdIdxTriePostOrderSortedKeys(t *testing.T) {
+	expectKeys := func(trie *SubCmdIdxTrie, expectedKeys []SubCmdIdx) {
+		keys := trie.PostOrderSortedKeys()
+		assert.To(t).For("Expected returned keys: %v", expectedKeys).That(
+			reflect.DeepEqual(keys, expectedKeys)).Equals(true)
+	}
+
+	trie := &SubCmdIdxTrie{}
+	expectKeys(trie, []SubCmdIdx{})
+
+	trie.SetValue(SubCmdIdx{}, 100)
+	expectKeys(trie, []SubCmdIdx{
+		SubCmdIdx{},
+	})
+
+	trie.SetValue(SubCmdIdx{1}, 101)
+	trie.SetValue(SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
+	trie.SetValue(SubCmdIdx{100, 99, 98, 97}, 103)
+	expectKeys(trie, []SubCmdIdx{
+		SubCmdIdx{1, 2, 3, 4, 5, 6},
+		SubCmdIdx{1},
+		SubCmdIdx{100, 99, 98, 97},
+		SubCmdIdx{},
+	})
+
+	trie.RemoveValue(SubCmdIdx{})
+	trie.RemoveValue(SubCmdIdx{1})
+	trie.RemoveValue(SubCmdIdx{1, 2, 3, 4, 5, 6})
+	trie.RemoveValue(SubCmdIdx{100, 99, 98, 97})
+	expectKeys(trie, []SubCmdIdx{})
+
+	trie.SetValue(SubCmdIdx{0, 1, 2}, true)
+	trie.SetValue(SubCmdIdx{0, 2}, true)
+	trie.SetValue(SubCmdIdx{1}, true)
+	trie.SetValue(SubCmdIdx{1, 2, 3}, true)
+	trie.SetValue(SubCmdIdx{0, 1}, true)
+	expectKeys(trie, []SubCmdIdx{
+		SubCmdIdx{0, 1, 2},
+		SubCmdIdx{0, 1},
+		SubCmdIdx{0, 2},
+		SubCmdIdx{1, 2, 3},
+		SubCmdIdx{1},
+	})
 }
