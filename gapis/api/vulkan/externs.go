@@ -91,7 +91,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -107,7 +107,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -123,7 +123,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -139,7 +139,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -155,7 +155,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -171,7 +171,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -187,7 +187,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -203,7 +203,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -219,7 +219,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -235,7 +235,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -251,7 +251,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -267,7 +267,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -283,7 +283,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -299,7 +299,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -315,7 +315,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -331,7 +331,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -347,7 +347,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -363,7 +363,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -379,7 +379,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -395,7 +395,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -411,7 +411,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -427,7 +427,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -443,7 +443,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -459,7 +459,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -475,7 +475,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -491,7 +491,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -507,7 +507,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -523,7 +523,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -539,7 +539,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -555,7 +555,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -571,7 +571,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -587,7 +587,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -603,7 +603,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -619,7 +619,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -635,7 +635,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -651,7 +651,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -667,7 +667,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -683,7 +683,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -699,7 +699,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -715,7 +715,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -731,7 +731,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -747,7 +747,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -763,7 +763,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -779,7 +779,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -795,7 +795,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -811,7 +811,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -827,7 +827,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      &e.cmd,
+				initialCall:      e.cmd,
 				submit:           nil,
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
@@ -858,7 +858,7 @@ func (e externs) notifyPendingCommandAdded(queue VkQueue) {
 	queueObject := s.Queues[queue]
 	command := queueObject.PendingCommands[uint32(len(queueObject.PendingCommands)-1)]
 	s.SubCmdIdx[len(s.SubCmdIdx)-1] = uint64(command.CommandIndex)
-	command.QueuedCommandData.submit = &e.cmd
+	command.QueuedCommandData.submit = e.cmd
 	command.QueuedCommandData.submissionIndex = append([]uint64(nil), s.SubCmdIdx...)
 	command.QueuedCommandData.actualSubmission = true
 	queueObject.PendingCommands[uint32(len(queueObject.PendingCommands)-1)] = command
