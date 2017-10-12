@@ -8,8 +8,7 @@ parent: tutorials
 
 Capturing a trace is the starting point for most users in GAPID. After capturing a trace, you are able to inspect all API calls made by the application.
 
-GAPID supports capturing from both Android devices and Windows/Linux desktop machines. 
+GAPID supports capturing from both Android devices and Windows/Linux desktop machines:
 
-<Link to capturing from Android devices>
-
-<Link to capturing from desktop machines>
+[Capturing a trace on Android](../trace-android.md)
+[Capturing a trace on Desktop](../trace-desktop.md)
