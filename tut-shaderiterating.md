@@ -10,10 +10,10 @@ Changing a shader within GAPID will change the result for all draw calls, allowi
 
 1. First, find the [appropriate shader](../tut-shaderbound.md) in the Shader pane.
 2. Edit the text of your shader.
-3. Click "Push Changes" and wait for the replay to show up.
+3. Click "Push Changes" and wait for the replay to finish processing the results.
 
 ![alt text](../images/shader.png "Editing a shader within GAPID")
 
 ## Tips
 
-If your shader fails to compile, your replay may not operate correctly and you may get a blank framebuffer. To see if you have introduced any compile errors, refer to the [Report pane](../report.md) pane and fix any issues that show up.
+If your shader fails to compile, your replay may not operate correctly and you may get an empty framebuffer. To see if you have introduced any compile errors, refer to the [Report pane](../report.md) and fix any issues that show up.
