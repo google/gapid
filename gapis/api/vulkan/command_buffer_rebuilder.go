@@ -632,7 +632,8 @@ func rebuildVkCmdPushConstants(
 	s *api.GlobalState,
 	d *VkCmdPushConstantsArgs) (func(), api.Cmd) {
 
-	data := s.AllocDataOrPanic(ctx, d.Data)
+	dat := d.Data.MustRead(ctx, nil, s, nil)
+	data := s.AllocDataOrPanic(ctx, dat)
 
 	return func() {
 			data.Free()
@@ -840,7 +841,9 @@ func rebuildVkCmdUpdateBuffer(
 	commandBuffer VkCommandBuffer,
 	s *api.GlobalState,
 	d *VkCmdUpdateBufferArgs) (func(), api.Cmd) {
-	data := s.AllocDataOrPanic(ctx, d.Data)
+
+	dat := d.Data.MustRead(ctx, nil, s, nil)
+	data := s.AllocDataOrPanic(ctx, dat)
 
 	return func() {
 			data.Free()

@@ -7209,9 +7209,8 @@ cmd void vkCmdPushConstants(
     u32                offset,
     u32                size,
     const void*        pValues) {
-  data := clone(as!u8*(pValues)[0:size])
   args := new!vkCmdPushConstantsArgs(
-    layout,           stageFlags, offset, size, data
+    layout,           stageFlags, offset, size, clone(as!u8*(pValues)[0:size])
   )
 
   addCmd(commandBuffer, args, dovkCmdPushConstants)
