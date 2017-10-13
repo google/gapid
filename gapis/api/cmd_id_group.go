@@ -457,9 +457,15 @@ func (c *SubCmdRoot) AddSubCmdMarkerGroups(r []uint64, groups []*CmdIDGroup) err
 // FindSubCommandRoot returns the SubCmdRoot that represents the given CmdID.
 func (g CmdIDGroup) FindSubCommandRoot(id CmdID) *SubCmdRoot {
 	for _, x := range g.Spans {
-		if k, ok := x.(*SubCmdRoot); ok {
+		switch k := x.(type) {
+		case *SubCmdRoot:
 			if CmdID(k.Id[len(k.Id)-1]) == id {
 				return k
+			}
+		case *CmdIDGroup:
+			y := k.FindSubCommandRoot(id)
+			if y != nil {
+				return y
 			}
 		}
 	}
