@@ -66,6 +66,8 @@ func (m *dummyMachine) Clear() {
 	m.undefined = map[dummyDefUseVar]struct{}{}
 }
 
+func (m *dummyMachine) FramebufferRequest(uint64, *dependencygraph.Footprint) {}
+
 func TestDCE(t *testing.T) {
 	ctx := log.Testing(t)
 	ft := dependencygraph.NewEmptyFootprint(ctx)
