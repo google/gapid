@@ -313,10 +313,10 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		for _, ms := range markerStack[vkQu] {
 			// If the last subcommand is in a secondary command buffer and current
 			// recording debug marker groups are opened in a primary command buffer,
-			// this will assign a wrong End value to the open marker groups.
-			// However, those End values will be overwritten when the secondary
-			// command buffer ends and vkCmdExecuteCommands get executed.
-			ms.end = s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1
+			// this prevents assigning a wrong End value to the open marker groups.
+			if len(s.SubCmdIdx) == len(ms.parent) {
+				ms.end = s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1
+			}
 		}
 	}
 
