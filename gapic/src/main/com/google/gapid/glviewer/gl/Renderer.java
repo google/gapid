@@ -27,6 +27,7 @@ import org.eclipse.swt.internal.DPIUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -110,6 +111,15 @@ public final class Renderer {
     return new VertexBuffer(this, data, elementsPerVertex);
   }
 
+
+  public VertexBuffer newVertexBuffer(List<Float> data, int elementsPerVertex) {
+    float[] floats = new float[data.size()];
+    for (int i = 0; i < floats.length; i++) {
+      floats[i] = data.get(i);
+    }
+    return new VertexBuffer(this, floats, elementsPerVertex);
+  }
+
   /**
    * Constructs and returns a new {@link IndexBuffer} filled with the given data.
    * The returned {@link IndexBuffer} must only be used with this {@link Renderer}.
@@ -171,7 +181,6 @@ public final class Renderer {
   public void drawQuad(MatD transform, Shader shader) {
     shader.setUniform("uTransform", transform.toFloatArray());
     shader.setAttribute(Constants.POSITION_ATTRIBUTE, quadVB);
-    shader.bind();
     draw(shader, GL11.GL_TRIANGLE_FAN, 4);
   }
 
@@ -188,8 +197,14 @@ public final class Renderer {
     solidShader.setUniform("uTransform", transform.toFloatArray());
     solidShader.setUniform("uColor", color);
     solidShader.setAttribute(Constants.POSITION_ATTRIBUTE, quadVB);
-    solidShader.bind();
     drawQuad(transform, solidShader);
+  }
+
+  public void drawSolid(MatD transform, Color color, VertexBuffer vertexBuffer, int primitiveMode) {
+    solidShader.setUniform("uTransform", transform.toFloatArray());
+    solidShader.setUniform("uColor", color);
+    solidShader.setAttribute(Constants.POSITION_ATTRIBUTE, vertexBuffer);
+    draw(solidShader, primitiveMode, vertexBuffer.vertexCount);
   }
 
   /** draws a 2D solid color quad using the device-independent coordinates. */
@@ -204,7 +219,6 @@ public final class Renderer {
     checkerShader.setUniform("uColorB", colorB);
     checkerShader.setUniform("uCheckerSize", new float[]{blockSize, blockSize});
     checkerShader.setAttribute(Constants.POSITION_ATTRIBUTE, quadVB);
-    checkerShader.bind();
     drawQuad(transform, checkerShader);
   }
 
@@ -222,13 +236,24 @@ public final class Renderer {
         2 * width / (float) dipHeight
     });
     borderShader.setAttribute(Constants.POSITION_ATTRIBUTE, borderVB);
-    borderShader.bind();
     draw(borderShader, GL11.GL_TRIANGLES, borderIB);
   }
 
   /** draws a 2D solid color border quad using the device-independent coordinates. */
   public void drawBorder(int x, int y, int w, int h, Color color, int width) {
     drawBorder(rectTransform(x, y, w, h), color, width);
+  }
+
+  /**
+   * returns a matrix that will transform an identity quad ([-1, -1] [1, 1]) to the specified
+   * DIP coordinates.
+   */
+  public MatD rectTransform(int x, int y, int w, int h) {
+    double dx = (x + 0.5 * w) * (2. / dipWidth) - 1;
+    double dy = (y + 0.5 * h) * (2. / dipHeight) - 1;
+    return MatD
+        .translation(dx, dy, 0)
+        .scale(w / (double)dipWidth, h / (double)dipHeight, 1);
   }
 
   /**
@@ -273,13 +298,5 @@ public final class Renderer {
       object.delete();
     }
     assert(objects.isEmpty());
-  }
-
-  private MatD rectTransform(int x, int y, int w, int h) {
-    double dx = (x + 0.5 * w) * (2. / dipWidth) - 1;
-    double dy = (y + 0.5 * h) * (2. / dipHeight) - 1;
-    return MatD
-        .translation(dx, dy, 0)
-        .scale(w / (double)dipWidth, h / (double)dipHeight, 1);
   }
 }

@@ -96,6 +96,7 @@ public interface Theme {
   @Icon("gapid/loading_5_large.png") public Image loading5large();
   @Icon("gapid/loading_6_large.png") public Image loading6large();
   @Icon("gapid/loading_7_large.png") public Image loading7large();
+  @Icon("gapid/histogram.png") public Image toggleHistogram();
 
   @Icon("android/zoom_actual.png") public Image zoomActual();
   @Icon("android/zoom_fit.png") public Image zoomFit();
@@ -139,6 +140,11 @@ public interface Theme {
   @RGB(argb = 0xff000000) public Color imageCursorDark();
   @RGB(argb = 0xffffffff) public Color imageCursorLight();
   @RGB(argb = 0xffff9900) public Color imageWarning();
+
+  @RGB(argb = 0xc0404040) public Color histogramBackgroundDark();
+  @RGB(argb = 0xc0555555) public Color histogramBackgroundLight();
+  @RGB(argb = 0x80000000) public Color histogramCurtain();
+  @RGB(argb = 0xc0202020) public Color histogramArrow();
 
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();

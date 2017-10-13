@@ -20,9 +20,13 @@ import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.clamp;
 
 import com.google.common.primitives.UnsignedBytes;
+import com.google.common.collect.Sets;
 import com.google.gapid.glviewer.gl.Texture;
+import com.google.gapid.proto.stream.Stream.Channel;
 import com.google.gapid.util.Colors;
 
+import java.nio.DoubleBuffer;
+import java.util.Set;
 import org.eclipse.swt.graphics.ImageData;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -38,7 +42,7 @@ import java.util.Arrays;
  */
 public abstract class ArrayImage implements Image {
   public final int width, height, depth, bytesPerPixel;
-  private final byte[] data;
+  protected final byte[] data;
   private final int internalFormat, format, type;
 
   public ArrayImage(int width, int height, int depth, int bytesPerPixel, byte[] data,
@@ -205,6 +209,44 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
+    public Set<Channel> getChannels() {
+      return Sets.immutableEnumSet(Channel.Red, Channel.Green, Channel.Blue, Channel.Alpha);
+    }
+
+    @Override
+    public DoubleBuffer getChannel(Channel channel) {
+      int count = width * height * depth;
+      DoubleBuffer out = DoubleBuffer.allocate(count);
+      int offset = 0;
+      switch (channel) {
+        case Red:
+          offset = 0;
+          break;
+        case Green:
+          offset = 1;
+          break;
+        case Blue:
+          offset = 2;
+          break;
+        case Alpha:
+          offset = 3;
+          break;
+        default:
+          return out;
+      }
+      for (int i = 0; i < count; i++) {
+        out.put((data[i * 4 + offset] & 0xFF) / 255.0);
+      }
+      out.rewind();
+      return out;
+    }
+
+    @Override
+    public boolean isHDR() {
+      return false;
+    }
+
+    @Override
     public PixelInfo getInfo() {
       return info;
     }
@@ -266,6 +308,44 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
+    public Set<Channel> getChannels() {
+      return Sets.immutableEnumSet(Channel.Red, Channel.Green, Channel.Blue, Channel.Alpha);
+    }
+
+    @Override
+    public DoubleBuffer getChannel(Channel channel) {
+      int count = width * height * depth;
+      DoubleBuffer out = DoubleBuffer.allocate(count);
+      int offset = 0;
+      switch (channel) {
+        case Red:
+          offset = 0;
+          break;
+        case Green:
+          offset = 1;
+          break;
+        case Blue:
+          offset = 2;
+          break;
+        case Alpha:
+          offset = 3;
+          break;
+        default:
+          return out;
+      }
+      for (int i = 0; i < count; i++) {
+        out.put(buffer.get(i * 4 + offset));
+      }
+      out.rewind();
+      return out;
+    }
+
+    @Override
+    public boolean isHDR() {
+      return true;
+    }
+
+    @Override
     public PixelInfo getInfo() {
       return info;
     }
@@ -310,6 +390,28 @@ public abstract class ArrayImage implements Image {
     public void uploadToTexture(Texture texture) {
       super.uploadToTexture(texture);
       texture.setSwizzle(GL11.GL_RED, GL11.GL_RED, GL11.GL_RED, GL11.GL_ONE);
+    }
+
+    @Override
+    public Set<Channel> getChannels() {
+      return Sets.immutableEnumSet(Channel.Luminance);
+    }
+
+    @Override
+    public DoubleBuffer getChannel(Channel channel) {
+      DoubleBuffer out = DoubleBuffer.allocate(data.length);
+      if (channel == Channel.Luminance) {
+        for (byte value : data) {
+          out.put((value & 0xFF) / 255.0);
+        }
+        out.rewind();
+      }
+      return out;
+    }
+
+    @Override
+    public boolean isHDR() {
+      return false;
     }
 
     @Override
@@ -377,6 +479,29 @@ public abstract class ArrayImage implements Image {
     public void uploadToTexture(Texture texture) {
       super.uploadToTexture(texture);
       texture.setSwizzle(GL11.GL_RED, GL11.GL_RED, GL11.GL_RED, GL11.GL_ONE);
+    }
+
+    @Override
+    public Set<Channel> getChannels() {
+      return Sets.immutableEnumSet(Channel.Luminance);
+    }
+
+    @Override
+    public DoubleBuffer getChannel(Channel channel) {
+      int count = width * height * depth;
+      DoubleBuffer out = DoubleBuffer.allocate(count);
+      if (channel == Channel.Luminance) {
+        for (int i = 0; i < count; i++) {
+          out.put(buffer.get(i));
+        }
+        out.rewind();
+      }
+      return out;
+    }
+
+    @Override
+    public boolean isHDR() {
+      return true;
     }
 
     @Override
