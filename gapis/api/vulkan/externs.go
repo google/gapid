@@ -918,14 +918,18 @@ func (e externs) execPendingCommands(queue VkQueue) {
 			buffer := o.CommandBuffers[command.Buffer]
 			buffer.Commands[command.CommandIndex].function(e.ctx, e.cmd, e.cmdID, e.s, e.b)
 			if command.QueuedCommandData.actualSubmission && o.PostSubcommand != nil {
-				o.PostSubcommand(command)
+				// If the just executed subcommand blocks as there are pending events,
+				// e.g.: vkCmdWaitEvents, this subcommand should not be considered
+				// as finshed and the PostSubcommand callback should not be called.
+				if len(lastBoundQueue.PendingEvents) == 0 {
+					o.PostSubcommand(command)
+				}
 			}
 			// If a vkCmdWaitEvent is hit in the pending commands, it will set a new
 			// list of pending events to the LastBoundQueue. Once that happens, we
 			// should start a new pending command list.
 			if len(lastBoundQueue.PendingEvents) != 0 {
 				c := command
-				c.QueuedCommandData.actualSubmission = false
 				c.QueuedCommandData.submit = o.CurrentSubmission
 				newPendingCommands[uint32(len(newPendingCommands))] = c
 			}
