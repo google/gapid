@@ -142,8 +142,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	i := api.CmdID(0)
 	submissionMap := make(map[api.Cmd]api.CmdID)
 	commandMap := make(map[api.Cmd]api.CmdID)
-	lastSubcommand := api.SubCmdIdx{}
 	lastCmdIndex := api.CmdID(0)
+	lastSubCmdsInSubmittedCmdBufs := &api.SubCmdIdxTrie{}
 
 	// Prepare for collect marker groups
 	// Stacks of open markers for each VkQueue
@@ -291,21 +291,9 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.QueuedCommandData.initialCall], false}}
 		}
 
-		previousIndex := append(api.SubCmdIdx(nil), s.SubCmdIdx...)
-		previousIndex.Decrement()
-		if !previousIndex.Equals(lastSubcommand) && lastCmdIndex != api.CmdID(0) {
-			if v, ok := d.SubcommandGroups[lastCmdIndex]; ok {
-				v = append(v, append(api.SubCmdIdx(nil), lastSubcommand...))
-				d.SubcommandGroups[lastCmdIndex] = v
-			} else {
-				d.SubcommandGroups[lastCmdIndex] = []api.SubCmdIdx{append(api.SubCmdIdx(nil), lastSubcommand...)}
-			}
-			lastSubcommand = append(api.SubCmdIdx(nil), s.SubCmdIdx...)
-			lastCmdIndex = k
-		} else {
-			lastSubcommand = append(api.SubCmdIdx(nil), s.SubCmdIdx...)
-			lastCmdIndex = k
-		}
+		fullSubCmdIdx := api.SubCmdIdx(append([]uint64{uint64(k)}, s.SubCmdIdx...))
+		lastSubCmdsInSubmittedCmdBufs.SetValue(fullSubCmdIdx[0:len(fullSubCmdIdx)-1], fullSubCmdIdx[len(fullSubCmdIdx)-1])
+		lastCmdIndex = k
 
 		if rng, ok := d.CommandRanges[rootIdx]; ok {
 			rng.LastIndex = append(api.SubCmdIdx(nil), s.SubCmdIdx...)
@@ -346,13 +334,17 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		return err
 	}
 
-	if lastCmdIndex != api.CmdID(0) {
-		if v, ok := d.SubcommandGroups[lastCmdIndex]; ok {
-			v = append(v, append(api.SubCmdIdx(nil), lastSubcommand...))
-			d.SubcommandGroups[lastCmdIndex] = v
+	submittedCmdBufs := lastSubCmdsInSubmittedCmdBufs.PostOrderSortedKeys()
+	for _, submittedCmdBufIdx := range submittedCmdBufs {
+		submissionId := api.CmdID(submittedCmdBufIdx[0])
+		lastSubCmdIdInCmdBuf := lastSubCmdsInSubmittedCmdBufs.Value(submittedCmdBufIdx).(uint64)
+		if v, ok := d.SubcommandGroups[submissionId]; ok {
+			v = append(v, append(submittedCmdBufIdx[1:], lastSubCmdIdInCmdBuf))
+			d.SubcommandGroups[submissionId] = v
 		} else {
-			d.SubcommandGroups[lastCmdIndex] = []api.SubCmdIdx{
-				append(api.SubCmdIdx(nil), lastSubcommand...)}
+			d.SubcommandGroups[submissionId] = []api.SubCmdIdx{
+				append(submittedCmdBufIdx[1:], lastSubCmdIdInCmdBuf),
+			}
 		}
 	}
 	return nil

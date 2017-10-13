@@ -14,6 +14,8 @@
 
 package api
 
+import "sort"
+
 // SubCmdIdxTrie is a map-based trie using SubCmdIdx for indexing the data
 // stored inside.
 type SubCmdIdxTrie struct {
@@ -79,4 +81,31 @@ func (t *SubCmdIdxTrie) RemoveValue(indices SubCmdIdx) bool {
 		t = stack[i]
 	}
 	return true
+}
+
+// PostOrderSortedKeys returns the keys of the value stored in the trie, the
+// keys will be sorted in the post traversal order and lesser to greater. e.g.:
+// [0, 1, 2], [0, 2], [1], [1, 2, 3], [0, 1] will be sorted as:
+// [0, 1, 2], [0, 1], [0, 2], [1, 2, 3], [1]
+func (t *SubCmdIdxTrie) PostOrderSortedKeys() []SubCmdIdx {
+	ks := make([]uint64, len(t.children))
+	i := 0
+	for k, _ := range t.children {
+		ks[i] = k
+		i++
+	}
+	sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+
+	keys := []SubCmdIdx{}
+	for _, k := range ks {
+		c := t.children[k]
+		cks := c.PostOrderSortedKeys()
+		for _, ck := range cks {
+			keys = append(keys, SubCmdIdx(append([]uint64{k}, ck...)))
+		}
+	}
+	if t.value != nil {
+		keys = append(keys, SubCmdIdx{})
+	}
+	return keys
 }
