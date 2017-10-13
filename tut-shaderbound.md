@@ -1,6 +1,6 @@
 ---
 layout: default
-title: How do I see currently bound shader?
+title: How do I see the currently bound shader?
 sidebar: See bound shaders?
 permalink: /tutorials/seeboundshaders
 parent: tutorials
