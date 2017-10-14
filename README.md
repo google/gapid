@@ -6,6 +6,15 @@
 <img alt="MacOS" src="kokoro/img/macos.png" width="20px" height="20px" hspace="2px"/>![MacOS Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_macos.svg)
 <img alt="Windows" src="kokoro/img/windows.png" width="20px" height="20px" hspace="2px"/>![Windows Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_windows.svg)
 
+
+<p>
+  <a href="https://github.com/google/gapid/releases">
+    <b>Download the latest version of GAPID here.</b>
+  </a>
+</p>
+
+## About
+
 GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.
 
 GAPID can trace any Android [debuggable application](https://developer.android.com/guide/topics/manifest/application-element.html#debug), or if you have root access to the device any application can be traced.
