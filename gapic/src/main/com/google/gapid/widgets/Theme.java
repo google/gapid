@@ -45,12 +45,12 @@ import java.util.Map;
  * {@link Color colors}, etc.).
  */
 public interface Theme {
+  @Icon("gapid/android.png") public Image androidLogo();
   @Icon("gapid/arrow.png") public Image arrow();
   @Icon("gapid/color_buffer0.png") public Image colorBuffer0();
   @Icon("gapid/color_buffer1.png") public Image colorBuffer1();
   @Icon("gapid/color_buffer2.png") public Image colorBuffer2();
   @Icon("gapid/color_buffer3.png") public Image colorBuffer3();
-  @Icon("gapid/color_channels.png") public Image colorChannels();
   @Icon("gapid/culling_disabled.png") public Image cullingDisabled();
   @Icon("gapid/culling_enabled.png") public Image cullingEnabled();
   @Icon("gapid/depth_buffer.png") public Image depthBuffer();
@@ -77,13 +77,12 @@ public interface Theme {
   @Icon("gapid/wireframe_overlay.png") public Image wireframeOverlay();
   @Icon("gapid/yup.png") public Image yUp();
   @Icon("gapid/zup.png") public Image zUp();
+  @Icon("gapid/zoom_actual.png") public Image zoomActual();
+  @Icon("gapid/zoom_fit.png") public Image zoomFit();
+  @Icon("gapid/zoom_in.png") public Image zoomIn();
+  @Icon("gapid/zoom_out.png") public Image zoomOut();
 
-  @Icon("android/zoom_actual.png") public Image zoomActual();
-  @Icon("android/zoom_fit.png") public Image zoomFit();
-  @Icon("android/zoom_in.png") public Image zoomIn();
-  @Icon("android/zoom_out.png") public Image zoomOut();
-  @Icon("android/android.png") public Image androidLogo();
-
+  @IconSequence(pattern = "gapid/color_channels_%02d.png", count = 16) public Image[] colorChannels();
   @IconSequence(pattern = "gapid/loading_%d_small.png", count = 8) public Image[] loadingSmall();
   @IconSequence(pattern = "gapid/loading_%d_large.png", count = 8) public Image[] loadingLarge();
 
