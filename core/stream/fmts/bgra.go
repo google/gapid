@@ -156,4 +156,84 @@ var (
 			Channel:  stream.Channel_Alpha,
 		}},
 	}
+
+	BGRA_U10U10U10U2_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Blue,
+		}, {
+			DataType: &stream.U10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.U10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U2,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Alpha,
+		}},
+	}
+
+	BGRA_S10S10S10S2_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Blue,
+		}, {
+			DataType: &stream.S10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.S10,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S2,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Alpha,
+		}},
+	}
+
+	BGRA_U10U10U10U2 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Blue,
+		}, {
+			DataType: &stream.U10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.U10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U2,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Alpha,
+		}},
+	}
+
+	BGRA_S10S10S10S2 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.S10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Blue,
+		}, {
+			DataType: &stream.S10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.S10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.S2,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Alpha,
+		}},
+	}
 )

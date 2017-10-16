@@ -368,4 +368,20 @@ var (
 			Channel:  stream.Channel_Blue,
 		}},
 	}
+
+	RGB_F11F11F10 = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.F11,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.F11,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.F10,
+			Sampling: stream.Linear,
+			Channel:  stream.Channel_Blue,
+		}},
+	}
 )
