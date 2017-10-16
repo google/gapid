@@ -195,43 +195,43 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_B8G8R8A8_SRGB:
 		return image.NewUncompressed("VK_FORMAT_B8G8R8A8_SRGB", fmts.BGRA_N_sRGBU8N_sRGBU8N_sRGBU8NU8), nil
 	case VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_UNORM_PACK32", fmts.ABGR_U8_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_UNORM_PACK32", fmts.RGBA_U8_NORM), nil
 	case VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SNORM_PACK32", fmts.ABGR_S8_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SNORM_PACK32", fmts.RGBA_S8_NORM), nil
 	case VkFormat_VK_FORMAT_A8B8G8R8_USCALED_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_USCALED_PACK32", fmts.ABGR_U8), nil
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_USCALED_PACK32", fmts.RGBA_U8), nil
 	case VkFormat_VK_FORMAT_A8B8G8R8_SSCALED_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SSCALED_PACK32", fmts.ABGR_S8), nil
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SSCALED_PACK32", fmts.RGBA_S8), nil
 	case VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_UINT_PACK32", fmts.ABGR_U8), nil
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_UINT_PACK32", fmts.RGBA_U8), nil
 	case VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SINT_PACK32", fmts.ABGR_S8), nil
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SINT_PACK32", fmts.RGBA_S8), nil
 	case VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SRGB_PACK32", fmts.ABGR_NU8N_sRGBU8N_sRGBU8N_sRGBU8), nil
+		return image.NewUncompressed("VK_FORMAT_A8B8G8R8_SRGB_PACK32", fmts.RGBA_sRGBU8N_sRGBU8N_sRGBU8_NU8N), nil
 	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_UNORM_PACK32", fmts.ARGB_U2U10U10U10_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_UNORM_PACK32", fmts.BGRA_U10U10U10U2_NORM), nil
 	case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SNORM_PACK32", fmts.ARGB_S2S10S10S10_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SNORM_PACK32", fmts.BGRA_S10S10S10S2_NORM), nil
 	case VkFormat_VK_FORMAT_A2R10G10B10_USCALED_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_USCALED_PACK32", fmts.ARGB_U2U10U10U10), nil
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_USCALED_PACK32", fmts.RGBA_U10U10U10U2), nil
 	case VkFormat_VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SSCALED_PACK32", fmts.ARGB_S2S10S10S10), nil
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SSCALED_PACK32", fmts.RGBA_S10S10S10S2), nil
 	case VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_UINT_PACK32", fmts.ARGB_U2U10U10U10), nil
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_UINT_PACK32", fmts.BGRA_U10U10U10U2), nil
 	case VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SINT_PACK32", fmts.ARGB_S2S10S10S10), nil
+		return image.NewUncompressed("VK_FORMAT_A2R10G10B10_SINT_PACK32", fmts.BGRA_S10S10S10S2), nil
 	case VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_UNORM_PACK32", fmts.ABGR_U2U10U10U10_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_UNORM_PACK32", fmts.RGBA_U10U10U10U2_NORM), nil
 	case VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SNORM_PACK32", fmts.ABGR_S2S10S10S10_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SNORM_PACK32", fmts.RGBA_S10S10S10S2_NORM), nil
 	case VkFormat_VK_FORMAT_A2B10G10R10_USCALED_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_USCALED_PACK32", fmts.ABGR_U2U10U10U10), nil
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_USCALED_PACK32", fmts.RGBA_U10U10U10U2), nil
 	case VkFormat_VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SSCALED_PACK32", fmts.ABGR_S2S10S10S10), nil
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SSCALED_PACK32", fmts.RGBA_S10S10S10S2), nil
 	case VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_UINT_PACK32", fmts.ABGR_U2U10U10U10), nil
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_UINT_PACK32", fmts.RGBA_U10U10U10U2), nil
 	case VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
-		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SINT_PACK32", fmts.ABGR_S2S10S10S10), nil
+		return image.NewUncompressed("VK_FORMAT_A2B10G10R10_SINT_PACK32", fmts.RGBA_S10S10S10S2), nil
 	case VkFormat_VK_FORMAT_R16G16_UNORM:
 		return image.NewUncompressed("VK_FORMAT_R16G16_UNORM", fmts.RG_U16_NORM), nil
 	case VkFormat_VK_FORMAT_R16G16_SNORM:
@@ -253,9 +253,9 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_R32_SFLOAT:
 		return image.NewUncompressed("VK_FORMAT_R32_SINT", fmts.R_F32), nil
 	case VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
-		return image.NewUncompressed("VK_FORMAT_B10G11R11_UFLOAT_PACK32", fmts.BGR_F10F11F11), nil
+		return image.NewUncompressed("VK_FORMAT_B10G11R11_UFLOAT_PACK32", fmts.RGB_F11F11F10), nil
 	case VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
-		return image.NewUncompressed("VK_FORMAT_E5B9G9R9_UFLOAT_PACK32", fmts.RGBE_U9U9U9U5), nil
+		return image.NewUncompressed("VK_FORMAT_E5B9G9R9_UFLOAT_PACK32", fmts.EBGR_U5U9U9U9), nil
 	case VkFormat_VK_FORMAT_R16G16B16_UNORM:
 		return image.NewUncompressed("VK_FORMAT_R16G16B16_UNORM", fmts.RGB_U16_NORM), nil
 	case VkFormat_VK_FORMAT_R16G16B16_SNORM:
