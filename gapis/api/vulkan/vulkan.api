@@ -6149,7 +6149,7 @@ class vkCmdCopyImageArgs {
   VkImageLayout          SrcImageLayout
   VkImage                DstImage
   VkImageLayout          DstImageLayout
-  map!(u64, VkImageCopy) Regions
+  map!(u32, VkImageCopy) Regions
 }
 
 sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
@@ -6168,7 +6168,7 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
   for r in (0 .. len(args.Regions)) {
     // TODO: (qining) Handle the apsect mask
-    region := args.Regions[as!u64(r)]
+    region := args.Regions[as!u32(r)]
     srcBaseLayer := region.srcSubresource.baseArrayLayer
     dstBaseLayer := region.srcSubresource.baseArrayLayer
     srcMipLevel := region.srcSubresource.mipLevel
@@ -6238,7 +6238,7 @@ cmd void vkCmdCopyImage(
   )
   regions := pRegions[0:regionCount]
   for i in (0 .. regionCount) {
-    args.Regions[as!u64(i)] = regions[i]
+    args.Regions[as!u32(i)] = regions[i]
   }
 
   addCmd(commandBuffer, args, dovkCmdCopyImage)
