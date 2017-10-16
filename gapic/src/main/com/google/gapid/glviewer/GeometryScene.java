@@ -230,7 +230,7 @@ public class GeometryScene implements Scene<GeometryScene.Data> {
           0f, 0.05f, 0.05f, 0f
         });
         state.shader.setUniform("uDiffuseColor",
-            new float[] { 0.37868f, 0.56050f, 0.03703f }); // #A4C639 in linear.
+            new float[] { 0, 0.48777f, 0.66612f, }); // #00B8D4 in linear.
         state.shader.setUniform("uSpecularColor", new float[] { 0.3f, 0.3f, 0.3f });
         state.shader.setUniform("uRoughness", 0.25f);
         return state;
@@ -241,7 +241,7 @@ public class GeometryScene implements Scene<GeometryScene.Data> {
       public Renderable.State getState(Shaders shaders, boolean invertNormals) {
         Renderable.State state = new Renderable.State(shaders.flatShader, false);
         state.shader.setUniform("uDiffuseColor",
-            new float[] { 0.640625f, 0.7734375f, 0.22265625f }); // #A4C639 in sRGB.
+            new float[] { 0, 0.721568627f, 0.831372549f }); // #00B8D4 in sRGB.
         return state;
       }
     },
