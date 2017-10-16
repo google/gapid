@@ -10,7 +10,7 @@ Finding the largest textures loaded by the driver is useful to reduce the memory
 
 To find the largest textures, navigate to the [Textures Pane](/inspect/textures). 
 
-![alt text](../images/textures.png =335x "GAPID's Texture Pane")
+![alt text](../images/textures.png "GAPID's Texture Pane")
 
 Click on the headers to sort by each property. In general, you are looking for the textures with the largest dimensions and format - sorting by *Width* and *Height* is usually a good first step. Any textures with a format of `GL_RGBA` will be larger than textures using `GL_RGB`, and specifically look for RGB or RGBA textures using `GL_FLOAT` as a type. 
 
