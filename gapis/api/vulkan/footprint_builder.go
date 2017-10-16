@@ -1499,6 +1499,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 					vb.swapchainImagePresented[cmd.Swapchain], newLabel())
 			}
 		}
+	case *VkDestroySwapchainKHR:
+		read(ctx, bh, vkHandle(cmd.Swapchain))
+		delete(vb.swapchainImageAcquired, cmd.Swapchain)
+		delete(vb.swapchainImagePresented, cmd.Swapchain)
+		bh.Alive = true
 
 	// presentation engine
 	case *VkAcquireNextImageKHR:
@@ -2564,7 +2569,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		*RecreateQueue:
 		bh.Alive = true
 	case *VkCreateDescriptorPool,
-		*RecreateDescriptorPool:
+		*RecreateDescriptorPool,
+		*VkDestroyDescriptorPool,
+		*VkResetDescriptorPool:
 		bh.Alive = true
 	case *VkCreateAndroidSurfaceKHR,
 		*RecreateAndroidSurfaceKHR,
@@ -2575,7 +2582,10 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		*VkCreateWaylandSurfaceKHR,
 		*RecreateWaylandSurfaceKHR,
 		*VkCreateMirSurfaceKHR,
-		*RecreateMirSurfaceKHR:
+		*RecreateMirSurfaceKHR,
+		*VkCreateWin32SurfaceKHR,
+		*RecreateWin32SurfaceKHR,
+		*VkDestroySurfaceKHR:
 		bh.Alive = true
 	case *VkCreateCommandPool,
 		*RecreateCommandPool:
