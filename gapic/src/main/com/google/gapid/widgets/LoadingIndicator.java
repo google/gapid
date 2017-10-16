@@ -50,14 +50,8 @@ public class LoadingIndicator {
 
   public LoadingIndicator(Display display, Theme theme) {
     this.display = display;
-    this.icons = new Image[] {
-        theme.loading0large(), theme.loading1large(), theme.loading2large(), theme.loading3large(),
-        theme.loading4large(), theme.loading5large(), theme.loading6large(), theme.loading7large()
-    };
-    this.smallIcons = new Image[] {
-        theme.loading0small(), theme.loading1small(), theme.loading2small(), theme.loading3small(),
-        theme.loading4small(), theme.loading5small(), theme.loading6small(), theme.loading7small()
-    };
+    this.icons = theme.loadingLarge();
+    this.smallIcons = theme.loadingSmall();
     this.refresh = theme.refresh();
   }
 

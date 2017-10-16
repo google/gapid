@@ -59,6 +59,7 @@ public interface Theme {
   @Icon("gapid/flat.png") public Image flat();
   @Icon("gapid/flip_vertically.png") public Image flipVertically();
   @Icon("gapid/jump.png") public Image jump();
+  @Icon("gapid/histogram.png") public Image toggleHistogram();
   @Icon("gapid/lit.png") public Image lit();
   @Icon("gapid/logo.png") public Image logo();
   @Icon("gapid/logo_big.png") public Image logoBig();
@@ -76,29 +77,15 @@ public interface Theme {
   @Icon("gapid/wireframe_overlay.png") public Image wireframeOverlay();
   @Icon("gapid/yup.png") public Image yUp();
   @Icon("gapid/zup.png") public Image zUp();
-  @Icon("gapid/loading_0_small.png") public Image loading0small();
-  @Icon("gapid/loading_1_small.png") public Image loading1small();
-  @Icon("gapid/loading_2_small.png") public Image loading2small();
-  @Icon("gapid/loading_3_small.png") public Image loading3small();
-  @Icon("gapid/loading_4_small.png") public Image loading4small();
-  @Icon("gapid/loading_5_small.png") public Image loading5small();
-  @Icon("gapid/loading_6_small.png") public Image loading6small();
-  @Icon("gapid/loading_7_small.png") public Image loading7small();
-  @Icon("gapid/loading_0_large.png") public Image loading0large();
-  @Icon("gapid/loading_1_large.png") public Image loading1large();
-  @Icon("gapid/loading_2_large.png") public Image loading2large();
-  @Icon("gapid/loading_3_large.png") public Image loading3large();
-  @Icon("gapid/loading_4_large.png") public Image loading4large();
-  @Icon("gapid/loading_5_large.png") public Image loading5large();
-  @Icon("gapid/loading_6_large.png") public Image loading6large();
-  @Icon("gapid/loading_7_large.png") public Image loading7large();
-  @Icon("gapid/histogram.png") public Image toggleHistogram();
 
   @Icon("android/zoom_actual.png") public Image zoomActual();
   @Icon("android/zoom_fit.png") public Image zoomFit();
   @Icon("android/zoom_in.png") public Image zoomIn();
   @Icon("android/zoom_out.png") public Image zoomOut();
   @Icon("android/android.png") public Image androidLogo();
+
+  @IconSequence(pattern = "gapid/loading_%d_small.png", count = 8) public Image[] loadingSmall();
+  @IconSequence(pattern = "gapid/loading_%d_large.png", count = 8) public Image[] loadingLarge();
 
   // Shader source highlight colors.
   @RGB(argb = 0xff808080) public Color commentColor();
@@ -166,6 +153,10 @@ public interface Theme {
               ((Resource)resource).dispose();
             } else if (resource instanceof DisposableStyler) {
               ((DisposableStyler)resource).dispose();
+            } else if (resource instanceof Image[]) {
+              for (Image image : (Image[])resource) {
+                image.dispose();
+              }
             }
           }
           resources.clear();
@@ -187,6 +178,24 @@ public interface Theme {
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Icon {
     public String value();
+  }
+
+  /**
+   * Annotation for an icon sheet image resource.
+   */
+  @Target(ElementType.METHOD)
+  @Retention(RetentionPolicy.RUNTIME)
+  public static @interface IconSequence {
+    /**
+     * @return a {@link String#format(String, Object...)} pattern given a sequence number, i, to
+     *     format the file name of the ith image in the sequence.
+     */
+    public String pattern();
+
+    /**
+     * @return the number of images in the sequence.
+     */
+    public int count();
   }
 
   /**
@@ -280,17 +289,35 @@ public interface Theme {
     }
 
     private boolean loadResource(Method method) {
-      return loadIcon(method) || loadColor(method) || loadTextStyle(method) || loadFont(method);
+      return loadIcon(method) || loadIconSequence(method) || loadColor(method) ||
+          loadTextStyle(method) || loadFont(method);
     }
 
     private boolean loadIcon(Method method) {
       Icon icon = method.getDeclaredAnnotation(Icon.class);
       if (icon != null) {
-        resources.put(method.getName(), ImageDescriptor.createFromURL(
-            Resources.getResource("icons/" + icon.value())).createImage(display));
+        resources.put(method.getName(), loadImage(icon.value()));
         return true;
       }
       return false;
+    }
+
+    private boolean loadIconSequence(Method method) {
+      IconSequence seq = method.getDeclaredAnnotation(IconSequence.class);
+      if (seq != null) {
+        Image[] icons = new Image[seq.count()];
+        for (int i = 0; i < icons.length; i++) {
+          icons[i] = loadImage(String.format(seq.pattern(), i));
+        }
+        resources.put(method.getName(), icons);
+        return true;
+      }
+      return false;
+    }
+
+    private Image loadImage(String img) {
+      return
+          ImageDescriptor.createFromURL(Resources.getResource("icons/" + img)).createImage(display);
     }
 
     private boolean loadColor(Method method) {
