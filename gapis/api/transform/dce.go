@@ -182,9 +182,13 @@ func (t *DCE) backPropagate(ctx context.Context) (
 		if bh.Aborted {
 			continue
 		}
-		if t.requests.contains(fci) ||
-			t.requests.contains(api.SubCmdIdx{fci[0]}) ||
-			bh.Alive || machine.IsAlive(uint64(bi), t.footprint) {
+
+		if t.requests.contains(fci) || t.requests.contains(api.SubCmdIdx{fci[0]}) {
+			bh.Alive = true
+			machine.FramebufferRequest(uint64(bi), t.footprint)
+		}
+
+		if bh.Alive || machine.IsAlive(uint64(bi), t.footprint) {
 			alivedBehaviorIndices := machine.RecordBehaviorEffects(uint64(bi), t.footprint)
 			// TODO: Theoretically, we should re-back-propagation from the alive
 			// behaviors other than |bi|.

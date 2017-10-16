@@ -95,28 +95,30 @@ func (cbc *commandBufferCommand) recordSecondaryCommandBuffer(vkCb VkCommandBuff
 
 // vulkanMachine is the back-propagation machine for Vulkan API commands.
 type vulkanMachine struct {
-	handles               map[vkHandle]struct{}
-	labels                map[label]struct{}
-	memories              map[VkDeviceMemory]*interval.U64SpanList
-	commandBufferCommands map[*commandBufferCommand]struct{}
-	subpassIndices        map[*subpassIndex]struct{}
-	boundDataPieces       map[*boundData]struct{}
-	descriptors           map[*descriptor]struct{}
-	boundDescriptorSets   map[*boundDescriptorSet]struct{}
-	forwardPairedLabels   map[*forwardPairedLabel]struct{}
+	handles                       map[vkHandle]struct{}
+	labels                        map[label]struct{}
+	memories                      map[VkDeviceMemory]*interval.U64SpanList
+	commandBufferCommands         map[*commandBufferCommand]struct{}
+	subpassIndices                map[*subpassIndex]struct{}
+	boundDataPieces               map[*boundData]struct{}
+	descriptors                   map[*descriptor]struct{}
+	boundDescriptorSets           map[*boundDescriptorSet]struct{}
+	forwardPairedLabels           map[*forwardPairedLabel]struct{}
+	lastBoundFramebufferImageData map[*dependencygraph.Behavior][]*boundData
 }
 
 func newVulkanMachine() *vulkanMachine {
 	return &vulkanMachine{
-		handles:               map[vkHandle]struct{}{},
-		labels:                map[label]struct{}{},
-		memories:              map[VkDeviceMemory]*interval.U64SpanList{},
-		commandBufferCommands: map[*commandBufferCommand]struct{}{},
-		subpassIndices:        map[*subpassIndex]struct{}{},
-		boundDataPieces:       map[*boundData]struct{}{},
-		descriptors:           map[*descriptor]struct{}{},
-		boundDescriptorSets:   map[*boundDescriptorSet]struct{}{},
-		forwardPairedLabels:   map[*forwardPairedLabel]struct{}{},
+		handles:                       map[vkHandle]struct{}{},
+		labels:                        map[label]struct{}{},
+		memories:                      map[VkDeviceMemory]*interval.U64SpanList{},
+		commandBufferCommands:         map[*commandBufferCommand]struct{}{},
+		subpassIndices:                map[*subpassIndex]struct{}{},
+		boundDataPieces:               map[*boundData]struct{}{},
+		descriptors:                   map[*descriptor]struct{}{},
+		boundDescriptorSets:           map[*boundDescriptorSet]struct{}{},
+		forwardPairedLabels:           map[*forwardPairedLabel]struct{}{},
+		lastBoundFramebufferImageData: map[*dependencygraph.Behavior][]*boundData{},
 	}
 }
 
@@ -130,6 +132,7 @@ func (m *vulkanMachine) Clear() {
 	m.descriptors = map[*descriptor]struct{}{}
 	m.boundDescriptorSets = map[*boundDescriptorSet]struct{}{}
 	m.forwardPairedLabels = map[*forwardPairedLabel]struct{}{}
+	m.lastBoundFramebufferImageData = map[*dependencygraph.Behavior][]*boundData{}
 }
 
 func (m *vulkanMachine) IsAlive(behaviorIndex uint64,
@@ -141,6 +144,17 @@ func (m *vulkanMachine) IsAlive(behaviorIndex uint64,
 		}
 	}
 	return false
+}
+
+func (m *vulkanMachine) FramebufferRequest(behaviorIndex uint64,
+	ft *dependencygraph.Footprint) {
+	bh := ft.Behaviors[behaviorIndex]
+	fbImgs, ok := m.lastBoundFramebufferImageData[bh]
+	if ok {
+		for _, img := range fbImgs {
+			m.use(img)
+		}
+	}
 }
 
 func (m *vulkanMachine) RecordBehaviorEffects(behaviorIndex uint64,
@@ -1271,6 +1285,26 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	bh := dependencygraph.NewBehavior(
 		api.SubCmdIdx{uint64(id)}, vb.machine)
+
+	// Records the current last draw framebuffer image data, so that later when
+	// the user request a command, we can always guarantee that the last draw
+	// framebuffer is alive.
+	if GetState(s).LastSubmission == LastSubmissionType_SUBMIT {
+		lastBoundQueue := GetState(s).LastBoundQueue
+		if lastBoundQueue != nil {
+			if GetState(s).LastDrawInfos.Contains(lastBoundQueue.VulkanHandle) {
+				lastDrawInfo := GetState(s).LastDrawInfos.Get(lastBoundQueue.VulkanHandle)
+				if lastDrawInfo.Framebuffer != nil {
+					for _, view := range lastDrawInfo.Framebuffer.ImageAttachments {
+						img := view.Image
+						data := vb.images[img.VulkanHandle].data
+						vb.machine.lastBoundFramebufferImageData[bh] = append(
+							vb.machine.lastBoundFramebufferImageData[bh], data)
+					}
+				}
+			}
+		}
+	}
 
 	// The main switch
 	switch cmd := cmd.(type) {

@@ -132,6 +132,10 @@ type BackPropagationMachine interface {
 	RecordBehaviorEffects(behaviorIndex uint64, ft *Footprint) []uint64
 	// Clear clears the internal state of the BackPropagationMachine.
 	Clear()
+	// FramebufferRequest marks the behavior indexed by the given index as where
+	// framebuffer will be requested, so a 'use' will be added for each image
+	// attachment.
+	FramebufferRequest(behaviorIndex uint64, ft *Footprint)
 }
 
 // dummyMachine does nothing but marks all the incoming Behaviors as alive.
@@ -143,7 +147,8 @@ func (m *dummyMachine) RecordBehaviorEffects(behaviorIndex uint64,
 	return []uint64{behaviorIndex}
 }
 
-func (m *dummyMachine) Clear() {}
+func (m *dummyMachine) Clear()                                {}
+func (m *dummyMachine) FramebufferRequest(uint64, *Footprint) {}
 
 // BehaviorIndex returns the index of the last Behavior in the Footprint
 // which belongs to the command or subcomand indexed by the given SubCmdIdx. In
