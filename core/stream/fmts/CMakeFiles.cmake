@@ -26,7 +26,6 @@ set(files
     d.go
     doc.go
     ds.go
-    ebgr.go
     fmts_test.go
     gray.go
     l.go
