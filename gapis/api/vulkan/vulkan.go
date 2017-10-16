@@ -350,6 +350,28 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	return nil
 }
 
+// FlattenSubcommandIdx, when the |initialCall| is set to true, returns the
+// initial command buffer recording command of the specified subcommand,
+// according to the given synchronization data. If the |initialCall| is set
+// to false, returns zero and indicating the flattening failed.
+func (API) FlattenSubcommandIdx(idx api.SubCmdIdx, data *sync.Data, initialCall bool) (api.CmdID, bool) {
+	if initialCall {
+		sg, ok := data.SubcommandReferences[api.CmdID(idx[0])]
+		if !ok {
+			return api.CmdID(0), false
+		}
+		for _, v := range sg {
+			if v.Index.Equals(idx[1:]) {
+				if !v.IsCallerGroup {
+					return v.GeneratingCmd, true
+				}
+				break
+			}
+		}
+	}
+	return api.CmdID(0), false
+}
+
 // Interface check
 var _ sync.SynchronizedAPI = &API{}
 

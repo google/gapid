@@ -113,6 +113,23 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	return nil
 }
 
+// FlattenSubcommandIdx flattens grouped ids to their flattened linear ids if possible.
+func (API) FlattenSubcommandIdx(idx api.SubCmdIdx, data *sync.Data, unused bool) (api.CmdID, bool) {
+	sg, ok := data.SubcommandReferences[api.CmdID(idx[0])]
+	if !ok {
+		return api.CmdID(0), false
+	}
+	for _, v := range sg {
+		if v.Index.Equals(idx[1:]) {
+			if v.IsCallerGroup {
+				return v.GeneratingCmd, true
+			}
+			break
+		}
+	}
+	return api.CmdID(0), false
+}
+
 // MutateSubcommands mutates the given Cmd and calls callbacks for subcommands
 // called before and after executing each subcommand callback.
 func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState,

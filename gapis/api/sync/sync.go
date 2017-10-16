@@ -47,6 +47,12 @@ type SynchronizedAPI interface {
 	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState,
 		preSubCmdCallback func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
 		postSubCmdCallback func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error
+
+	// FlattenSubcommandIdx returns the flatten command id for the subcommand
+	// specified by the given SubCmdIdx. If flattening succeeded, the flatten
+	// command id and true will be returned, otherwise, zero and false will be
+	// returned.
+	FlattenSubcommandIdx(idx api.SubCmdIdx, d *Data, initialCall bool) (api.CmdID, bool)
 }
 
 type writer struct {
@@ -61,27 +67,10 @@ func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) 
 	s.cmds = append(s.cmds, cmd)
 }
 
-// calleeCmdID flattens grouped ids to their flattened linear ids if possible.
-func calleeCmdID(idx api.SubCmdIdx, data *Data) api.CmdID {
-	sg, ok := data.SubcommandReferences[api.CmdID(idx[0])]
-	if !ok {
-		return 0
-	}
-	for _, v := range sg {
-		if v.Index.Equals(idx[1:]) {
-			if v.IsCallerGroup {
-				return v.GeneratingCmd
-			}
-			break
-		}
-	}
-	return api.CmdID(0)
-}
-
 // MutationCmdsFor returns a list of command that represent the correct
 // mutations to have the state for all commands before and including the given
 // index.
-func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []api.Cmd, id api.CmdID, subindex []uint64) ([]api.Cmd, error) {
+func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []api.Cmd, id api.CmdID, subindex api.SubCmdIdx, initialCall bool) ([]api.Cmd, error) {
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
@@ -93,9 +82,18 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 	fullCommand := api.SubCmdIdx{uint64(id)}
 	fullCommand = append(fullCommand, subindex...)
 
-	if newIdx := calleeCmdID(fullCommand, data); newIdx != 0 {
-		id = newIdx
-		subindex = []uint64{}
+	lastCmd := cmds[len(cmds)-1]
+	if api.CmdID(len(cmds)) > id {
+		lastCmd = cmds[id]
+	}
+
+	if sync, ok := lastCmd.API().(SynchronizedAPI); ok {
+		// For Vulkan, when preparing the mutation for memory view, we need to get
+		// the initial call ID for the requesting subcommand.
+		if flattenIdx, ok := sync.FlattenSubcommandIdx(fullCommand, data, initialCall); ok {
+			id = flattenIdx
+			subindex = api.SubCmdIdx{}
+		}
 	}
 
 	terminators := make([]transform.Terminator, 0)
