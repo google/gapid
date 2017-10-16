@@ -222,8 +222,8 @@ func (validator) ValidateAndroidNDKRoot(path file.Path) error {
 				continue
 			}
 			major, minor := groups[1], groups[2]
-			if major != "15" {
-				return fmt.Errorf("Found NDK %v.%v. Must be r15", major, minor)
+			if major != "15" && major != "16" {
+				return fmt.Errorf("Found NDK %v.%v. Must be r15 or r16", major, minor)
 			}
 			return nil
 		}
