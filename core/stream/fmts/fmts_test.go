@@ -62,7 +62,6 @@ func TestFormatNames(t *testing.T) {
 		"BGRA_S10S10S10S2_NORM":            fmts.BGRA_S10S10S10S2_NORM,
 		"BGRA_U10U10U10U2":                 fmts.BGRA_U10U10U10U2,
 		"BGRA_S10S10S10S2":                 fmts.BGRA_S10S10S10S2,
-		"EBGR_U5U9U9U9":                    fmts.EBGR_U5U9U9U9,
 		"RGB_F11F11F10":                    fmts.RGB_F11F11F10,
 		"RGBA_U10U10U10U2":                 fmts.RGBA_U10U10U10U2,
 		"RGBA_U10U10U10U2_NORM":            fmts.RGBA_U10U10U10U2_NORM,
