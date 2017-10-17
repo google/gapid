@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 import static com.google.gapid.widgets.Widgets.withSpans;
+import static org.eclipse.swt.widgets.SwtUtil.disableAutoHideScrollbars;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -440,6 +441,7 @@ public class ImagePanel extends Composite {
         boolean naturallyFlipped) {
       super(parent, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.NO_BACKGROUND);
       setLayout(new FillLayout(SWT.VERTICAL));
+      disableAutoHideScrollbars(this);
 
       this.showAlphaWarning = showAlphaWarning;
       this.naturallyFlipped = naturallyFlipped;
