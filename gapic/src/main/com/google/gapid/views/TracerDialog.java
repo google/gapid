@@ -27,6 +27,7 @@ import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTextarea;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
+import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
@@ -446,7 +447,8 @@ public class TracerDialog {
         device = createDeviceDropDown(deviceComposite);
         deviceLoader = widgets.loading.createWidgetWithRefresh(deviceComposite);
         device.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-        deviceLoader.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+        deviceLoader.setLayoutData(
+            withIndents(new GridData(SWT.RIGHT, SWT.CENTER, false, false), 5, 0));
         // TODO: Make this a true button to allow keyboard use.
         deviceLoader.addListener(SWT.MouseDown, e -> {
           deviceLoader.startLoading();

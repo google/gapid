@@ -616,6 +616,12 @@ public class Widgets {
     return data;
   }
 
+  public static GridData withIndents(GridData data, int horizontalIndent, int verticalIndent) {
+    data.horizontalIndent = horizontalIndent;
+    data.verticalIndent = verticalIndent;
+    return data;
+  }
+
   public static FillLayout withMargin(FillLayout layout, int marginWidth, int marginHeight) {
     layout.marginWidth = marginWidth;
     layout.marginHeight = marginHeight;
