@@ -146,7 +146,7 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
   public void setInput(T root) {
     viewer.setInput(root);
-    if (root != null) {
+    if (root != null && viewer.getTree().getItemCount() > 0) {
       viewer.getTree().setSelection(viewer.getTree().getItem(0));
       viewer.getTree().showSelection();
     }
