@@ -2,6 +2,7 @@
 layout: default
 title: How do I capture a trace?
 sidebar: Capture a Trace?
+order: 10
 permalink: /tutorials/capturetrace
 parent: tutorials
 ---
