@@ -11,4 +11,12 @@ Here you will find guides to help you perform common tasks in GAPID.
 
 <div class="callouts" markdown="block">
 
-TODO: Link to all child pages.
+How do I...:
+
+  * [...capture a trace?](../tutorials/capturetrace)
+  * [...see bound shaders?](../tutorials/seeboundshaders)
+  * [...iterate on shaders?](../tutorials/iterateonshaders)
+  * [...find largest textures?](../tutorials/findlargesttextures)
+  * [...optimize my application?](../tutorials/optimize)
+  * [...export resources?](../tutorials/export)
+  
