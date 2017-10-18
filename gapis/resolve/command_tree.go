@@ -118,8 +118,6 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 		commandEnd := append([]uint64{}, item.Id...)
 		if len(item.Id) > 1 {
 			g = fmt.Sprintf("%v", item.Id)
-			commandStart = append(commandStart, uint64(0))
-			commandEnd = append(commandEnd, uint64(item.SubGroup.Count()-1))
 			count = uint64(item.SubGroup.Count())
 		}
 		return &service.CommandTreeNode{
