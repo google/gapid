@@ -23,6 +23,7 @@
 #include "gapir/cc/server_listener.h"
 
 #include "core/cc/connection.h"
+#include "core/cc/crash_handler.h"
 #include "core/cc/debugger.h"
 #include "core/cc/log.h"
 #include "core/cc/socket_connection.h"
@@ -103,6 +104,7 @@ void listenConnections(std::unique_ptr<Connection> conn,
 
 }  // anonymous namespace
 
+
 #if TARGET_OS == GAPID_OS_ANDROID
 
 const char* pipeName() {
@@ -142,12 +144,14 @@ void android_main(struct android_app* app) {
 }
 
 #else  // TARGET_OS == GAPID_OS_ANDROID
+
 // Main function for PC
 int main(int argc, const char* argv[]) {
     int logLevel = LOG_LEVEL;
     const char* logPath = "logs/gapir.log";
 
     bool wait_for_debugger = false;
+    bool enable_crash_reporting = false;
     const char* cachePath = nullptr;
     const char* portStr = "0";
     const char* authToken = nullptr;
@@ -195,12 +199,21 @@ int main(int argc, const char* argv[]) {
             idleTimeoutMs = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
             wait_for_debugger = true;
+        } else if (strcmp(argv[i], "--enable-crash-reporting") == 0) {
+           enable_crash_reporting = true;
         } else if (strcmp(argv[i], "--version") == 0) {
             printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
             return 0;
         } else {
             GAPID_FATAL("Unknown argument: %s", argv[i]);
         }
+    }
+
+    std::unique_ptr<core::CrashHandler> crash_handler;
+    if (enable_crash_reporting) {
+        crash_handler.reset(new core::CrashHandler([] (const std::string& minidumpPath, bool succeeded) {
+            return succeeded;
+        }));
     }
 
     GAPID_LOGGER_INIT(logLevel, "gapir", logPath);

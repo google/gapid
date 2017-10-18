@@ -25,6 +25,8 @@ set(files
     connection.h
     connection_test.cpp
     core_ptr_types.h
+    crash_handler.h
+    crash_handler_test.cpp
     debugger.h
     dl_loader.cpp
     dl_loader.h
