@@ -9,7 +9,7 @@ parent: tutorials
 
 Changing a shader within GAPID will change the result for all draw calls, allowing you to iterate on the look and feel of your application within GAPID. In the future, this will also allow you to see how editing shaders affects performance.
 
-1. First, find the [appropriate shader](../tut-shaderbound.md) in the Shader pane.
+1. First, find the [appropriate shader](../tutorials/seeboundshaders) in the Shader pane.
 2. Edit the text of your shader.
 3. Click "Push Changes" and wait for the replay to finish processing the results.
 
@@ -17,4 +17,4 @@ Changing a shader within GAPID will change the result for all draw calls, allowi
 
 ## Tips
 
-If your shader fails to compile, your replay may not operate correctly and you may get an empty framebuffer. To see if you have introduced any compile errors, refer to the [Report pane](../report.md) and fix any issues that show up.
+If your shader fails to compile, your replay may not operate correctly and you may get an empty framebuffer. To see if you have introduced any compile errors, refer to the [Report pane](..inspect/report) and fix any issues that show up.
