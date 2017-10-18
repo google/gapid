@@ -110,6 +110,24 @@ public class MatD {
       (b * f - c * e) * det, (c * d - a * f) * det, (a * e - b * d) * det };
   }
 
+  /**
+   * @return A rotation matrix, with the same rotation as the given
+   * matrix, where all values have been normalized.
+   */
+  public MatD normalizedRotationMatrix() {
+    VecD right = new VecD(m[0], m[4], m[8]).normalize();
+    VecD up = new VecD(m[1], m[5], m[9]).normalize();
+    VecD forward = new VecD(m[2], m[6], m[10]).normalize();
+    right = up.cross(forward);
+    up = forward.cross(right);
+    return new MatD(new double[] {
+      right.x, up.x, forward.x, 0,
+      right.y, up.y, forward.y, 0,
+      right.z, up.z, forward.z, 0,
+      0, 0, 0, 1,
+    });
+  }
+
   public MatD multiply(MatD mat) {
     return multiply(mat.m);
   }

@@ -35,11 +35,12 @@ public class CylindricalCameraModel implements CameraModel {
   private MatD viewTransform;
   private MatD projection;
   private double distance = MAX_DISTANCE;
-  private double angleX, angleY;
+  private MatD rotationMatrix;
   private double width = STANDARD_WIDTH, height = STANDARD_HEIGHT;
   private double focallength = FAR_FOCAL_LENGTH;
 
   public CylindricalCameraModel() {
+    rotationMatrix = new MatD();
     updateModelView();
     updateProjection();
   }
@@ -60,10 +61,8 @@ public class CylindricalCameraModel implements CameraModel {
 
   @Override
   public void onDrag(double dx, double dy) {
-    angleX += dy / 3;
-    angleY += dx / 3;
-
-    angleX = Math.min(Math.max(angleX, -90), 90);
+    rotationMatrix = MatD.makeTranslationRotXY(0, 0, 0, dy/3, dx/3).multiply(rotationMatrix);
+    rotationMatrix = rotationMatrix.normalizedRotationMatrix();
     updateModelView();
   }
 
@@ -77,7 +76,7 @@ public class CylindricalCameraModel implements CameraModel {
   }
 
   private void updateModelView() {
-    viewTransform = MatD.makeTranslationRotXY(0, 0, -distance, angleX, angleY);
+    viewTransform = MatD.makeTranslationRotXY(0, 0, -distance, 0, 0).multiply(rotationMatrix);
   }
 
   private void updateProjection() {
