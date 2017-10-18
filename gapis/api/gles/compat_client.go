@@ -227,12 +227,13 @@ func moveClientVBsToVAs(
 	for _, l := range va.VertexAttributeArrays.KeysSorted() {
 		arr := va.VertexAttributeArrays[l]
 		if arr.Enabled == GLboolean_GL_TRUE {
-			if cmd, ok := clientVAs[arr]; ok {
-				cmd := *cmd // Copy
-				i := interval.IndexOf(&rngs, cmd.Data.addr)
+			if glVAP, ok := clientVAs[arr]; ok {
+				glVAP := *glVAP // Copy
+				i := interval.IndexOf(&rngs, glVAP.Data.addr)
 				t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
-				cmd.Data = VertexPointer{cmd.Data.addr - rngs[i].First, memory.ApplicationPool} // Offset
-				out.MutateAndWrite(ctx, dID, &cmd)
+				glVAP.SetThread(cmd.Thread())
+				glVAP.Data = VertexPointer{glVAP.Data.addr - rngs[i].First, memory.ApplicationPool} // Offset
+				out.MutateAndWrite(ctx, dID, &glVAP)
 			}
 		}
 	}
