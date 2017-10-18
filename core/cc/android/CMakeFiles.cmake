@@ -19,6 +19,7 @@
 
 set(files
     compatibility.cpp
+    crash_handler.cpp
     debugger.cpp
     get_gles_proc_address.cpp
     get_vulkan_proc_address.cpp

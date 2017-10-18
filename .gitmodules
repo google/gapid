@@ -82,3 +82,9 @@
 [submodule "third_party/src/github.com/google/go-querystring"]
 	path = third_party/src/github.com/google/go-querystring
 	url = https://github.com/google/go-querystring.git
+[submodule "third_party/breakpad"]
+	path = third_party/breakpad
+	url = https://chromium.googlesource.com/breakpad/breakpad/
+[submodule "third_party/lss"]
+	path = third_party/lss
+	url = https://chromium.googlesource.com/linux-syscall-support

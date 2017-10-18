@@ -46,6 +46,7 @@ endif()
 if(NOT DISABLED_CXX)
     add_library(cc-core ${sources})
     target_link_libraries(cc-core cityhash)
+    target_link_libraries(cc-core breakpad)
 
     if(ANDROID)
         target_link_libraries(cc-core log android)
