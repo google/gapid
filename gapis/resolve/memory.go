@@ -44,7 +44,7 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 		return nil, err
 	}
 
-	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), sd, allCmds, api.CmdID(cmdIdx), fullCmdIdx[1:])
+	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), sd, allCmds, api.CmdID(cmdIdx), fullCmdIdx[1:], true)
 	if err != nil {
 		return nil, err
 	}
@@ -53,25 +53,6 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	shouldRecord := false
-	r := memory.Range{Base: p.Address, Size: p.Size}
-	var reads, writes, observed memory.RangeList
-	s.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
-		if id == memory.PoolID(p.Pool) {
-			pool.OnRead = func(rng memory.Range) {
-				if shouldRecord && rng.Overlaps(r) {
-					interval.Merge(&reads, rng.Window(r).Span(), false)
-				}
-			}
-			pool.OnWrite = func(rng memory.Range) {
-				if shouldRecord && rng.Overlaps(r) {
-					interval.Merge(&writes, rng.Window(r).Span(), false)
-				}
-			}
-		}
-	})
-
 	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, id, s, nil)
 		return nil
@@ -80,24 +61,25 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 		return nil, err
 	}
 
+	r := memory.Range{Base: p.Address, Size: p.Size}
+	var reads, writes, observed memory.RangeList
+	s.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
+		if id == memory.PoolID(p.Pool) {
+			pool.OnRead = func(rng memory.Range) {
+				if rng.Overlaps(r) {
+					interval.Merge(&reads, rng.Window(r).Span(), false)
+				}
+			}
+			pool.OnWrite = func(rng memory.Range) {
+				if rng.Overlaps(r) {
+					interval.Merge(&writes, rng.Window(r).Span(), false)
+				}
+			}
+		}
+	})
+
 	lastCmd := cmds[len(cmds)-1]
-	if syncedApi, ok := lastCmd.API().(sync.SynchronizedAPI); len(fullCmdIdx) > 1 && ok {
-		requestSubCmdIdx := api.SubCmdIdx(fullCmdIdx)
-		syncedApi.MutateSubcommands(ctx, api.CmdID(cmdIdx), lastCmd, s,
-			func(s *api.GlobalState, subCommandIndex api.SubCmdIdx, cmd api.Cmd) {
-				// Turn on OnRead and OnWrite if the subcommand to be executed is or
-				// contained by the requested subcommand.
-				shouldRecord = requestSubCmdIdx.Contains(subCommandIndex)
-			}, // preSubCmdCallback
-			func(s *api.GlobalState, subCommandIndex api.SubCmdIdx, cmd api.Cmd) {
-				// Turn off OnRead and OnWrite after each subcommand.
-				shouldRecord = false
-			}, //postSubCmdCallback
-		)
-	} else {
-		shouldRecord = true
-		api.MutateCmds(ctx, s, nil, lastCmd)
-	}
+	api.MutateCmds(ctx, s, nil, lastCmd)
 
 	// Check whether the requested pool was ever created.
 	pool, err := s.Memory.Get(memory.PoolID(p.Pool))
