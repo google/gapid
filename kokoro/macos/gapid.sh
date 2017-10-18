@@ -16,8 +16,8 @@
 # GAPID launch script. https://github.com/google/gapid
 
 function absname {
-  echo "$(cd $1 && pwd)"
+  echo $(cd "$1" && pwd)
 }
 
 GAPID=$(absname "$(dirname "${BASH_SOURCE[0]}")")
-GAPID=$GAPID $GAPID/jre/bin/java -XstartOnFirstThread -jar $GAPID/lib/gapic.jar $@
+GAPID="$GAPID" "$GAPID/jre/bin/java" -XstartOnFirstThread -jar "$GAPID/lib/gapic.jar" $@

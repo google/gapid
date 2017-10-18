@@ -18,18 +18,18 @@
 DEFAULT_JAVA=/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
 
 function checkJavaVersion {
-  IFS=. read major minor extra <<< $($1 -version 2>&1 | awk -F '"' '/version/ {print $2}')
+  IFS=. read major minor extra <<< $("$1" -version 2>&1 | awk -F '"' '/version/ {print $2}')
   [[ $major -ge 1 && $minor -ge 8 ]] && return 0 || return 1
 }
 
 function absname {
-  echo "$(cd $1 && pwd)"
+  echo $(cd "$1" && pwd)
 }
 
 if type -p java > /dev/null && checkJavaVersion java; then
   JAVA=java
 elif [[ -n "$JAVA_HOME" && -x "$JAVA_HOME/bin/java" ]] && checkJavaVersion "$JAVA_HOME/bin/java"; then
-  JAVA=$JAVA_HOME/bin/java
+  JAVA="$JAVA_HOME/bin/java"
 elif [ -x $DEFAULT_JAVA ] && checkJavaVersoin $DEFAULT_JAVA; then
   JAVA=DEFAULT_JAVA
 else
@@ -38,4 +38,4 @@ else
 fi
 
 GAPID=$(absname "$(dirname "${BASH_SOURCE[0]}")")
-GAPID=$GAPID SWT_GTK3=0 LIBOVERLAY_SCROLLBAR=0 $JAVA -jar $GAPID/lib/gapic.jar $@
+GAPID="$GAPID" SWT_GTK3=0 LIBOVERLAY_SCROLLBAR=0 "$JAVA" -jar "$GAPID/lib/gapic.jar" $@
