@@ -3705,9 +3705,12 @@ sub u32 roundUpTo(u32 dividend, u32 divisor) {
 @custom
 @no_replay
 cmd void RecreateImage(
-    VkDevice                 device,
-    const VkImageCreateInfo* pCreateInfo,
-    VkImage*                 pImage) {
+    VkDevice                         device,
+    const VkImageCreateInfo*         pCreateInfo,
+    VkImage*                         pImage,
+    VkMemoryRequirements*            pMemoryRequirements,
+    u32                              sparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {
   info := pCreateInfo[0]
 
   // Handle pNext
@@ -3726,6 +3729,63 @@ cmd void RecreateImage(
   }
 
   write(pImage[0:1])
+  if pMemoryRequirements != null {
+    write(pMemoryRequirements[0:1])
+  }
+  if (sparseMemoryRequirementCount > 0) && (pSparseMemoryRequirements != null) {
+    write(pSparseMemoryRequirements[0:sparseMemoryRequirementCount])
+  }
+}
+
+@threadSafety("system")
+@override
+@no_replay
+cmd VkResult createImageAndCacheMemoryRequirements(
+    VkDevice device,
+    const VkImageCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkImage* pImage,
+    VkMemoryRequirements* pMemoryRequirements) {
+
+  // TODO: pAllocator
+  info := pCreateInfo[0]
+  read(info.pQueueFamilyIndices[0:info.queueFamilyIndexCount])
+  // Handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: {
+          read(as!VkDedicatedAllocationImageCreateInfoNV*(next.Ptr)[0:1])
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+  handle := ?
+  pImage[0] = handle
+  object := new!ImageObject()
+  object.MemoryRequirements = pMemoryRequirements[0]
+  Images[handle] = object
+  return ?
+}
+
+@threadSafety("system")
+@override
+@no_replay
+cmd void cacheImageSparseMemoryRequirements(
+    VkDevice device,
+    VkImage image,
+    u32 count,
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {
+  if (count > 0) && (pSparseMemoryRequirements != null) {
+  reqs := pSparseMemoryRequirements[0:count]
+  for i in (0 .. count) {
+    Images[image].SparseMemoryRequirements[i] = reqs[i]
+  }
+  }
 }
 
 @threadSafety("system")
@@ -3739,7 +3799,6 @@ cmd VkResult vkCreateImage(
   // TODO: pAllocator
 
   info := pCreateInfo[0]
-
   queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
 
   imageInfo := ImageInfo(
@@ -3797,15 +3856,18 @@ cmd VkResult vkCreateImage(
 
   handle := ?
   pImage[0] = handle
+  object := switch (Images[handle] == null) {
+    case true:
+      new!ImageObject()
+    case false:
+      Images[handle]
+  }
 
-  object := new!ImageObject(
-    Device:            device,
-    BoundMemory:       null,
-    IsSwapchainImage:  false,
-    VulkanHandle:      handle,
-    Info:              imageInfo,
-    ImageAspect:       imageAspect,
-  )
+  object.Device = device
+  object.IsSwapchainImage = false
+  object.VulkanHandle = handle
+  object.Info = imageInfo
+  object.ImageAspect = imageAspect
 
   for j in (0 .. info.arrayLayers) {
     layer := new!ImageLayer()
@@ -3824,8 +3886,8 @@ cmd VkResult vkCreateImage(
       object.Layers[j].Levels[i] = level
     }
   }
-
   Images[handle] = object
+
   return ?
 }
 
@@ -9027,6 +9089,8 @@ enum SemaphoreUpdate {
   VkImageAspectFlags        ImageAspect
   map!(u32, ref!ImageLayer) Layers
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
+  VkMemoryRequirements      MemoryRequirements
+  map!(u32, VkSparseImageMemoryRequirements) SparseMemoryRequirements
 }
 
 @internal class ImageLayer {

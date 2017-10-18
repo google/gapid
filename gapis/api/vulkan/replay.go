@@ -159,7 +159,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 
 			info.Usage = newUsage
 			newInfo := s.AllocDataOrPanic(ctx, info)
-			newCmd := cb.RecreateImage(device, newInfo.Ptr(), pimage)
+			newCmd := cb.RecreateImage(device, newInfo.Ptr(), pimage, recreateImage.PMemoryRequirements, recreateImage.SparseMemoryRequirementCount, recreateImage.PSparseMemoryRequirements)
 			// Carry all non-observation extras through.
 			for _, e := range recreateImage.Extras().All() {
 				if _, ok := e.(*api.CmdObservations); !ok {

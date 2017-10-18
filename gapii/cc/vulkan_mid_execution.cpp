@@ -624,8 +624,14 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
             info.mDedicatedAllocationNV->mDedicatedAllocation;
         image_create_info.mpNext = &dedicated_allocation_create_info;
       }
+      std::vector<VkSparseImageMemoryRequirements> sparse_img_mem_reqs;
+      for (auto& req : image.second->mSparseMemoryRequirements) {
+        sparse_img_mem_reqs.emplace_back(req.second);
+      }
       RecreateImage(observer, image.second->mDevice, &image_create_info,
-                    &image.second->mVulkanHandle);
+                    &image.second->mVulkanHandle,
+                    &image.second->mMemoryRequirements,
+                    sparse_img_mem_reqs.size(), sparse_img_mem_reqs.data());
       recreateDebugInfo(
           this, observer,
           VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
