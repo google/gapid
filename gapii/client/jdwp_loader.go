@@ -52,12 +52,13 @@ func waitForOnCreate(ctx context.Context, conn *jdwp.Connection, wakeup jdwp.Thr
 		return nil, err
 	}
 
-	onCreate, err := conn.GetClassMethod(app.ClassID(), "onCreate", "()V")
+	constructor, err := conn.GetClassMethod(app.ClassID(), "<init>", "()V")
 	if err != nil {
 		return nil, err
 	}
 
-	return conn.WaitForMethodEntry(ctx, app.ClassID(), onCreate.ID, wakeup)
+	log.I(ctx, "   Waiting for Application.<init>()")
+	return conn.WaitForMethodEntry(ctx, app.ClassID(), constructor.ID, wakeup)
 }
 
 // waitForVulkanLoad for android.app.ApplicationLoaders.getClassLoader to be called,
@@ -181,10 +182,10 @@ func (p *Process) loadAndConnectViaJDWP(
 	}
 
 	// Wait for Application.onCreate to be called.
-	log.I(ctx, "Waiting for Application.onCreate()")
+	log.I(ctx, "Waiting for Application Creation")
 	onCreate, err := waitForOnCreate(ctx, conn, classLoaderThread)
 	if err != nil {
-		return log.Err(ctx, err, "Waiting for Application.OnCreate")
+		return log.Err(ctx, err, "Waiting for Application Creation")
 	}
 
 	// Attempt to get the GVR library handle.
