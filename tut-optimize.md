@@ -36,9 +36,13 @@ Graphics processing hardware can easily be bottlenecked by the sheer number of v
 
 In the Framebuffer pane you can click the Wireframe icon to show the wireframe view. Generally this will give you a good idea of density. Whilst each platform has its own limits, in general, if you cannot see through your mesh, then you have too many vertices.
 
+![alt text](../images/wireframe.png "Wireframe Framebuffer view")
+
 In the Commands pane you can see the number of vertices/indices in your draw call by inspecting the relevant parameter passed to your draw call. 
 
 And in the Geometry pane, when a draw call is selected you can see the Vertex/Index/Triangle count of that draw call below the 3D view.
+
+![alt text](../images/geometry.png "Geometry view")
 
 #### Shaders
 
