@@ -2,6 +2,7 @@
 layout: default
 title: How do I use GAPID to optimize my application?
 sidebar: Optimize my app?
+order: 50
 permalink: /tutorials/optimize
 parent: tutorials
 ---
