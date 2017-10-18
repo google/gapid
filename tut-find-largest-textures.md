@@ -2,6 +2,7 @@
 layout: default
 title: How do I find the largest textures?
 sidebar: Find largest textures?
+order: 40
 permalink: /tutorials/findlargesttextures
 parent: tutorials
 ---
