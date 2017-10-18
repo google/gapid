@@ -231,6 +231,9 @@ func moveClientVBsToVAs(
 				glVAP := *glVAP // Copy
 				i := interval.IndexOf(&rngs, glVAP.Data.addr)
 				t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
+				// The glVertexAttribPointer call may have come from a different thread
+				// and there's no guarantees that the thread still has the context bound.
+				// Use the draw call's thread instead.
 				glVAP.SetThread(cmd.Thread())
 				glVAP.Data = VertexPointer{glVAP.Data.addr - rngs[i].First, memory.ApplicationPool} // Offset
 				out.MutateAndWrite(ctx, dID, &glVAP)
