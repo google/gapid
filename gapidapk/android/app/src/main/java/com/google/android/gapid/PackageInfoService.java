@@ -450,6 +450,8 @@ public class PackageInfoService extends IntentService {
             Drawable drawable;
             try (Counter.Scope t = Counter.time("resources.getDrawableForDensity")) {
                 drawable = resources.getDrawableForDensity(iconId, iconDensity);
+            } catch (Resources.NotFoundException ex) {
+                return null;
             }
 
             if (drawable == null) {
