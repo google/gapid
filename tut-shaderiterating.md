@@ -2,6 +2,7 @@
 layout: default
 title: How do I iterate on my shaders in GAPID?
 sidebar: Iterate on shaders?
+order: 30
 permalink: /tutorials/iterateonshaders
 parent: tutorials
 ---
