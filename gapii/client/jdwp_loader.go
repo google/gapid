@@ -74,7 +74,11 @@ func waitForVulkanLoad(ctx context.Context, conn *jdwp.Connection) (*jdwp.EventM
 	getClassLoader, err := conn.GetClassMethod(loaders.ClassID(), "getClassLoader",
 		"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/ClassLoader;")
 	if err != nil {
-		return nil, err
+		getClassLoader, err = conn.GetClassMethod(loaders.ClassID(), "getClassLoader",
+			"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;)Ljava/lang/ClassLoader;")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return conn.WaitForMethodEntry(ctx, loaders.ClassID(), getClassLoader.ID, 0)
