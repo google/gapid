@@ -2,6 +2,7 @@
 layout: default
 title: How do I use GAPID to export my resources?
 sidebar: Export resources?
+order: 60
 permalink: /tutorials/export
 parent: tutorials
 ---
