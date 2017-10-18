@@ -27,6 +27,6 @@ As above, you can then navigate to the Shaders pane and the Programs tab to find
 
 ## Viewing vertex and fragment shaders from the bound Program
 
-If you would like to [iterate on your shaders](../tut-shaderiterating.md), then you want to see the specific shader itself, outside of the context of the bound program. In the State pane, find the currently bound program and then expand the Shaders node to find the IDs of the individual shaders.
+If you would like to [iterate on your shaders](../tutorials/iterateonshaders), then you want to see the specific shader itself, outside of the context of the bound program. In the State pane, find the currently bound program and then expand the Shaders node to find the IDs of the individual shaders.
 
 Navigate to the Shaders pane and the Shaders tab and find the shader from here.
