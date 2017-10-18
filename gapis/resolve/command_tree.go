@@ -114,15 +114,13 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 	case api.SubCmdRoot:
 		count := uint64(1)
 		g := ""
-		commandStart := append([]uint64{}, item.Id...)
-		commandEnd := append([]uint64{}, item.Id...)
 		if len(item.Id) > 1 {
 			g = fmt.Sprintf("%v", item.Id)
 			count = uint64(item.SubGroup.Count())
 		}
 		return &service.CommandTreeNode{
 			NumChildren: item.SubGroup.Count(),
-			Commands:    cmdTree.path.Capture.SubCommandRange(commandStart, commandEnd),
+			Commands:    cmdTree.path.Capture.SubCommandRange(item.Id, item.Id),
 			Group:       g,
 			NumCommands: count,
 		}, nil
