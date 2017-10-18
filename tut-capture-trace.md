@@ -11,6 +11,6 @@ Capturing a trace is the starting point for most users in GAPID. After capturing
 
 GAPID supports capturing from both Android devices and Windows/Linux desktop machines:
 
-[Capturing a trace on Android](/trace/android)
+[Capturing a trace on Android](../trace/android)
 
-[Capturing a trace on Desktop](/trace/desktop)
+[Capturing a trace on Desktop](../trace/desktop)
