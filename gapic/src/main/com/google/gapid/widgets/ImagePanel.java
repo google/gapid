@@ -1351,8 +1351,8 @@ public class ImagePanel extends Composite {
     public Color color;
 
     public BackgroundSelection(Display display) {
-      image = new org.eclipse.swt.graphics.Image(display, 16, 16);
-      updateImage(new RGB(0, 0, 0));
+      image = new org.eclipse.swt.graphics.Image(display, 24, 24);
+      updateImage(new RGB(0, 0, 0), display);
     }
 
     public void createBaloonContents(Shell shell, Theme theme, Listener listener) {
@@ -1367,7 +1367,7 @@ public class ImagePanel extends Composite {
               e -> listener.onBackgroundSelectionChanged(BackgroundMode.SolidColor),
               "Show solid color background"));
       new QuickColorPiker(container, 128, newColor -> {
-        updateImage(newColor);
+        updateImage(newColor, shell.getDisplay());
         transparency.setSelection(false);
         backgroundColor.setSelection(true);
         backgroundColor.setImage(image);
@@ -1375,15 +1375,17 @@ public class ImagePanel extends Composite {
       });
     }
 
-    protected void updateImage(RGB newColor) {
+    protected void updateImage(RGB newColor, Display display) {
       if (color != null) {
         color.dispose();
       }
 
       GC gc = new GC(image);
+      gc.setBackground(display.getSystemColor(SWT.COLOR_WIDGET_BACKGROUND));
+      gc.fillRectangle(image.getBounds());
       color = new Color(image.getDevice(), newColor);
       gc.setBackground(color);
-      gc.fillRectangle(image.getBounds());
+      gc.fillRoundRectangle(2, 2, 20, 20, 4, 4);
       gc.dispose();
     }
 
