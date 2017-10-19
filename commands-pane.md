@@ -34,7 +34,14 @@ Extension / Version                  | Push                     | Pop
 [EXT_debug_marker][EXT_debug_marker] | `glPushGroupMarkerEXT()` | `glPopGroupMarkerEXT()`
 [OpenGL ES 3.2][glPopDebugGroup]     | `glPushDebugGroup()`     | `glPopDebugGroup()`
 
+Vulkan has the following APIs to group commands:
+
+Extension / Version                        | Push                          | Pop
+------------------------------------------ | ----------------------------- | -----------------------
+[VK_EXT_debug_marker][VK_EXT_debug_marker] | `vkCmdDebugMarkerBeginEXT()`  | `vkCmdDebugMarkerEndEXT()``
+
 
 [KHR_debug]:        https://www.khronos.org/registry/gles/extensions/KHR/KHR_debug.txt
 [EXT_debug_marker]: https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_marker.txt
 [glPopDebugGroup]:  https://www.khronos.org/opengles/sdk/docs/man32/html/glPopDebugGroup.xhtml
+[VK_EXT_debug_marker]: https://github.com/KhronosGroup/Vulkan-Docs/blob/1.0/doc/specs/vulkan/chapters/VK_EXT_debug_marker.txt
