@@ -11,7 +11,10 @@ Whilst GAPID does not yet support profiling, you can still use GAPID to optimize
 
 ## Commands
 
-Use the Commands pane to keep track of how many API calls you are making per frame. Keeping on top of your draw calls, your state changes and ensuring that the actual calls your engine is making are what you expect are critical to optimal performance.
+Use the Commands pane to keep track of how many API calls you are making per frame. 
+
+### Gles
+Keeping on top of your draw calls, your state changes and ensuring that the actual calls your engine is making are what you expect are critical to optimal performance.
 
 #### Draw Calls
 
@@ -24,6 +27,10 @@ With respect to draw calls, most GPUs like to render their opaque geometry front
 A common performance issue in titles is a large number of state changes between draw calls. Most meshes will share some state between other draw calls and you should only call the API if you know the state has changed. For example, if multiple objects use the same shader program, the program should be bound once for all draw calls that use that shader. This may go against the advice above with draw call order, and some experimentation is required to find the best solution.
 
 Similarly, the application should not needlessly call APIs. Some applications will reset all OpenGL ES state at the start of each frame, even though a lot of the state does not change frame-to-frame. Use the GAPID command pane to identify these issues.
+
+### Vulkan
+
+In Vulkan, the number of individual draw calls and state changes does not necessarily correlate as closely to performance as in GLES. Things that are more likely to help your performance are the use of Render Passes and Subpasses. Reducing the number of resource transitions and pipeline barriers can also help improve performance. The topic of Vulkan optimization is both new, and complex, so a full discussion is out of the scope for this section.
 
 ## Resources
 
