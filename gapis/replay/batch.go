@@ -27,15 +27,16 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/executor"
+	"github.com/google/gapid/gapis/replay/protocol"
 	"github.com/google/gapid/gapis/replay/scheduler"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 var (
-	generatorReplayTimer = benchmark.GlobalCounters.Duration("replay.executor.generatorReplayTotalDuration")
-	builderBuildTimer    = benchmark.GlobalCounters.Duration("replay.executor.builderBuildTotalDuration")
-	executeTimer         = benchmark.GlobalCounters.Duration("replay.executor.executeTotalDuration")
-	executeCounter       = benchmark.GlobalCounters.Integer("replay.executor.invocations")
+	generatorReplayTimer = benchmark.Duration("replay.executor.generatorReplayTotalDuration")
+	builderBuildTimer    = benchmark.Duration("replay.executor.builderBuildTotalDuration")
+	executeTimer         = benchmark.Duration("replay.executor.executeTotalDuration")
+	executeCounter       = benchmark.Integer("replay.executor.invocations")
 )
 
 // findABI looks for the ABI with the matching memory layout, retuning it if an
@@ -116,36 +117,37 @@ func (m *Manager) execute(
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
-	builder := builder.New(replayABI.MemoryLayout)
+	b := builder.New(replayABI.MemoryLayout)
 
 	out := &adapter{
 		state:   c.NewState(),
-		builder: builder,
+		builder: b,
 	}
 
-	t0 := generatorReplayTimer.Start()
-	if err := generator.Replay(
-		ctx,
-		intent,
-		cfg,
-		requests,
-		d.Instance(),
-		c,
-		out); err != nil {
+	generatorReplayTimer.Time(func() {
+		err = generator.Replay(
+			ctx,
+			intent,
+			cfg,
+			requests,
+			d.Instance(),
+			c,
+			out)
+	})
+	if err != nil {
 		return log.Err(ctx, err, "Replay returned error")
 	}
-	generatorReplayTimer.Stop(t0)
 
 	if config.DebugReplay {
 		log.I(ctx, "Building payload...")
 	}
 
-	t0 = builderBuildTimer.Start()
-	payload, decoder, err := builder.Build(ctx)
+	var payload protocol.Payload
+	var decoder builder.ResponseDecoder
+	builderBuildTimer.Time(func() { payload, decoder, err = b.Build(ctx) })
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build replay payload")
 	}
-	builderBuildTimer.Stop(t0)
 
 	connection, err := m.gapir.Connect(ctx, d, replayABI)
 	if err != nil {
@@ -161,15 +163,15 @@ func (m *Manager) execute(
 		Events.OnReplay(d, intent, cfg)
 	}
 
-	t0 = executeTimer.Start()
-	err = executor.Execute(
-		ctx,
-		payload,
-		decoder,
-		connection,
-		replayABI.MemoryLayout,
-	)
-	executeTimer.Stop(t0)
+	executeTimer.Time(func() {
+		err = executor.Execute(
+			ctx,
+			payload,
+			decoder,
+			connection,
+			replayABI.MemoryLayout,
+		)
+	})
 	return err
 }
 

@@ -25,7 +25,7 @@ import (
 	"github.com/google/gapid/gapis/database"
 )
 
-var footprintBuildCounter = benchmark.GlobalCounters.Duration("footprint.build")
+var footprintBuildCounter = benchmark.Duration("footprint.build")
 
 // Footprint contains a list of command and a list of Behaviors which
 // describes the side effect of executing the commands in that list.

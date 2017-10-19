@@ -186,7 +186,7 @@ message EndCPUProfileResponse {
 message GetPerformanceCountersRequest {}
 message GetPerformanceCountersResponse {
   oneof res {
-    bytes data = 1;
+    string data = 1;
     Error error = 2;
   }
 }

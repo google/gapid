@@ -15,7 +15,6 @@
 package benchmark_test
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -32,18 +31,17 @@ func TestCounterCollectionAndIntegerCounter(t *testing.T) {
 	i2 := m.Integer("int.two")
 
 	i1.Increment()
-	i2.AddInt64(10)
-	i1.AddInt64(2)
-	i2.AddInt64(20)
-	i1.AddInt64(3)
-	i2.AddInt64(30)
-	assert.With(ctx).That(i1.GetInt64()).Equals(int64(6))
+	i2.Add(10)
+	i1.Add(2)
+	i2.Add(20)
+	i1.Add(3)
+	i2.Add(30)
 	assert.With(ctx).That(i1.Get()).Equals(int64(6))
-	assert.With(ctx).That(i2.GetInt64()).Equals(int64(60))
-	assert.With(ctx).That(m.Integer("int.two").GetInt64()).Equals(int64(60))
-	assert.With(ctx).That(m.Integer("int.one").GetInt64()).Equals(int64(6))
+	assert.With(ctx).That(i2.Get()).Equals(int64(60))
+	assert.With(ctx).That(m.Integer("int.two").Get()).Equals(int64(60))
+	assert.With(ctx).That(m.Integer("int.one").Get()).Equals(int64(6))
 	i1.Reset()
-	assert.With(ctx).That(i1.GetInt64()).Equals(int64(0))
+	assert.With(ctx).That(i1.Get()).Equals(int64(0))
 }
 
 func TestDurationCounter(t *testing.T) {
@@ -52,53 +50,12 @@ func TestDurationCounter(t *testing.T) {
 	m := benchmark.NewCounters()
 
 	d := m.Duration("c")
-	d.AddDuration(60 * time.Second)
-	d.AddDuration(2 * time.Minute)
+	d.Add(60 * time.Second)
+	d.Add(2 * time.Minute)
 
-	assert.With(ctx).That(d.GetDuration()).Equals(3 * time.Minute)
 	assert.With(ctx).That(d.Get()).Equals(3 * time.Minute)
 	d.Reset()
-	assert.With(ctx).That(d.GetDuration()).Equals(time.Duration(0))
-}
-
-func TestStringHolder(t *testing.T) {
-	ctx := assert.Context(t)
-
-	m := benchmark.NewCounters()
-
-	text := "hello"
-	c := m.String("f")
-	c.SetString(text)
-	assert.With(ctx).ThatString(c.GetString()).Equals(text)
-	assert.With(ctx).That(c.Get()).Equals(text)
-}
-
-func TestLazyCounter(t *testing.T) {
-	ctx := assert.Context(t)
-
-	m := benchmark.NewCounters()
-
-	called := 0
-	m.LazyWithFunction("l", func() benchmark.Counter {
-		called = called + 1
-		return benchmark.StringHolderOf("hello")
-	})
-	assert.With(ctx).ThatInteger(called).Equals(0)
-	assert.With(ctx).That(m.Lazy("l").Get()).Equals("hello")
-	assert.With(ctx).ThatInteger(called).Equals(1)
-	assert.With(ctx).That(m.Lazy("l").Get()).Equals("hello")
-	assert.With(ctx).ThatInteger(called).Equals(2)
-
-	called = 0
-	m.LazyWithCaching("m", func() benchmark.Counter {
-		called = called + 1
-		return benchmark.StringHolderOf("hello")
-	})
-	assert.With(ctx).ThatInteger(called).Equals(0)
-	assert.With(ctx).That(m.Lazy("m").Get()).Equals("hello")
-	assert.With(ctx).ThatInteger(called).Equals(1)
-	assert.With(ctx).That(m.Lazy("m").Get()).Equals("hello")
-	assert.With(ctx).ThatInteger(called).Equals(1)
+	assert.With(ctx).That(d.Get()).Equals(time.Duration(0))
 }
 
 func TestCounterMismatchPanics(t *testing.T) {
@@ -112,34 +69,6 @@ func TestCounterMismatchPanics(t *testing.T) {
 
 	m.Duration("d")
 	m.Integer("d")
-}
-
-func TestJson(t *testing.T) {
-	ctx := assert.Context(t)
-
-	initial := benchmark.NewCounters()
-	initial.Integer("myIntCounter").SetInt64(12345)
-	initial.Duration("myDurationCounter").SetDuration(38 * time.Minute)
-	initial.Integer("someOtherCounter").SetInt64(-42)
-	initial.Lazy("theLazy").SetFunction(func() benchmark.Counter {
-		return benchmark.IntegerCounterOf(128)
-	})
-
-	marshaled, err := json.Marshal(initial)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatString(string(marshaled)).Equals(
-		`{"myDurationCounter":{"Type":"duration","Value":"38m0s"},` +
-			`"myIntCounter":{"Type":"int","Value":12345},` +
-			`"someOtherCounter":{"Type":"int","Value":-42},` +
-			`"theLazy":{"Type":"int","Value":128}}`)
-
-	unmarshaled := benchmark.NewCounters()
-	assert.With(ctx).ThatError(json.Unmarshal(marshaled, unmarshaled)).Succeeded()
-
-	marshaledAgain, err := json.Marshal(unmarshaled)
-	assert.With(ctx).ThatError(err).Succeeded()
-
-	assert.With(ctx).ThatString(string(marshaledAgain)).Equals(string(marshaled))
 }
 
 func TestIntegerCounterAtomicIncrement(t *testing.T) {
@@ -156,5 +85,5 @@ func TestIntegerCounterAtomicIncrement(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		<-done
 	}
-	assert.With(assert.Context(t)).That(cnt.GetInt64()).Equals(int64(16384))
+	assert.With(assert.Context(t)).That(cnt.Get()).Equals(int64(16384))
 }

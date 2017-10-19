@@ -31,7 +31,7 @@ import (
 	_ "github.com/google/gapid/gapis/service/path"
 )
 
-var dependencyGraphBuildCounter = benchmark.GlobalCounters.Duration("dependencyGraph.build")
+var dependencyGraphBuildCounter = benchmark.Duration("dependencyGraph.build")
 
 type DependencyGraph struct {
 	Commands   []api.Cmd             // Command list which this graph was build for.
@@ -163,30 +163,30 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 	}
 
 	s := c.NewState()
-	t0 := dependencyGraphBuildCounter.Start()
-	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		a := cmd.API()
-		if _, ok := behaviourProviders[a]; !ok {
-			if bp, ok := a.(DependencyGraphBehaviourProvider); ok {
-				behaviourProviders[a] = bp.GetDependencyGraphBehaviourProvider(ctx)
-			} else {
-				// API does not provide dependency information, always keep
-				// commands for such APIs.
-				g.Behaviours[id].KeepAlive = true
-				// Even if the command does not belong to an API that provides
-				// dependency info, we still need to mutate it in the new state,
-				// because following commands in other APIs may depends on the
-				// side effect of the current command.
-				if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
-					log.W(ctx, "Command %v %v: %v", id, cmd, err)
-					g.Behaviours[id].Aborted = true
+	dependencyGraphBuildCounter.Time(func() {
+		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+			a := cmd.API()
+			if _, ok := behaviourProviders[a]; !ok {
+				if bp, ok := a.(DependencyGraphBehaviourProvider); ok {
+					behaviourProviders[a] = bp.GetDependencyGraphBehaviourProvider(ctx)
+				} else {
+					// API does not provide dependency information, always keep
+					// commands for such APIs.
+					g.Behaviours[id].KeepAlive = true
+					// Even if the command does not belong to an API that provides
+					// dependency info, we still need to mutate it in the new state,
+					// because following commands in other APIs may depends on the
+					// side effect of the current command.
+					if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
+						log.W(ctx, "Command %v %v: %v", id, cmd, err)
+						g.Behaviours[id].Aborted = true
+					}
+					return nil
 				}
-				return nil
 			}
-		}
-		g.Behaviours[id] = behaviourProviders[a].GetBehaviourForAtom(ctx, s, id, cmd, g)
-		return nil
+			g.Behaviours[id] = behaviourProviders[a].GetBehaviourForAtom(ctx, s, id, cmd, g)
+			return nil
+		})
 	})
-	dependencyGraphBuildCounter.Stop(t0)
 	return g, nil
 }
