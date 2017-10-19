@@ -15,6 +15,11 @@ Changing a shader within GAPID will change the result for all draw calls, allowi
 
 ![alt text](../images/shader.png "Editing a shader within GAPID")
 
+## Notes for Vulkan
+The shaders will be presented as the disassembled SPIR-V module that was loaded. This can be edited in place, or a new disassembled SPIR-V module can be inserted in it's place. To generate the disassembly [SPIRV-Tools](SPIRV-Tools) can be used to disassemble any SPIR-V module.
+
 ## Tips
 
 If your shader fails to compile, your replay may not operate correctly and you may get an empty framebuffer. To see if you have introduced any compile errors, refer to the [Report pane](..inspect/report) and fix any issues that show up.
+
+[SPIRV-Tools]: https://github.com/khronosgroup/spirv-tools
