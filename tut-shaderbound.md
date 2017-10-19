@@ -1,9 +1,9 @@
 ---
 layout: default
-title: How do I see the currently bound shader?
-sidebar: See bound shaders?
+title: How do I see the currently bound shader in GLES?
+sidebar: See bound shaders in GLES?
 order: 20
-permalink: /tutorials/seeboundshaders
+permalink: /tutorials/seeboundshaders_gles
 parent: tutorials
 ---
 
