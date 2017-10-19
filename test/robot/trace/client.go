@@ -207,12 +207,12 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 	log.I(ctx, output)
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"trace.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {
-		return nil, err
+		return outputObj, err
 	}
 	outputObj.Log = logID
 	traceID, err := store.UploadFile(ctx, tracefile)
 	if err != nil {
-		return nil, err
+		return outputObj, err
 	}
 	outputObj.Trace = traceID
 	return outputObj, nil
