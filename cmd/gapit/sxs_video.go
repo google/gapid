@@ -267,10 +267,7 @@ func (verb *videoVerb) sxsVideoSource(
 
 		const threshold = 0.01
 		for _, v := range videoFrames {
-			// TODO: We need more sophisticated way to detect undefined framebuffers.
-			//       However, that is tricky without running the GLES mutator here.
-			undefined := v.frameIndex == 0 || v.numDrawCalls == 0
-			if v.squareError > threshold && !undefined {
+			if v.squareError > threshold {
 				return fmt.Errorf("FramebufferObservation did not match replayed framebuffer. Difference: %v%%", v.squareError*100)
 			}
 		}
