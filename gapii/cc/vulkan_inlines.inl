@@ -716,7 +716,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdBindPipeline, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdBindPipeline, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -726,7 +726,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetViewport, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetViewport, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -736,7 +736,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetScissor, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetScissor, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -746,7 +746,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetLineWidth, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetLineWidth, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -756,7 +756,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetDepthBias, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetDepthBias, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -766,7 +766,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetBlendConstants, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetBlendConstants, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -776,7 +776,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetDepthBounds, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetDepthBounds, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -786,7 +786,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetStencilCompareMask, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetStencilCompareMask, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -796,7 +796,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetStencilWriteMask, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetStencilWriteMask, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -806,7 +806,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetStencilReference, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetStencilReference, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -816,7 +816,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdBindDescriptorSets, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdBindDescriptorSets, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -826,7 +826,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdBindIndexBuffer, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdBindIndexBuffer, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -836,7 +836,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdBindVertexBuffers, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdBindVertexBuffers, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -846,7 +846,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDraw, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDraw, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -856,7 +856,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDrawIndexed, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDrawIndexed, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -866,7 +866,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDrawIndirect, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDrawIndirect, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -876,7 +876,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDrawIndexedIndirect, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDrawIndexedIndirect, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -886,7 +886,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDispatch, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDispatch, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -896,7 +896,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDispatchIndirect, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDispatchIndirect, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -906,7 +906,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdCopyBuffer, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdCopyBuffer, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -916,7 +916,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdCopyImage, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdCopyImage, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -926,7 +926,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdBlitImage, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdBlitImage, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -936,7 +936,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdCopyBufferToImage, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdCopyBufferToImage, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -946,7 +946,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdCopyImageToBuffer, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdCopyImageToBuffer, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -956,7 +956,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdUpdateBuffer, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdUpdateBuffer, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -966,7 +966,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdFillBuffer, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdFillBuffer, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -976,7 +976,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdClearColorImage, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdClearColorImage, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -986,7 +986,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdClearDepthStencilImage, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdClearDepthStencilImage, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -996,7 +996,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdClearAttachments, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdClearAttachments, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1006,7 +1006,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdResolveImage, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdResolveImage, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1016,7 +1016,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdSetEvent, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdSetEvent, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1026,7 +1026,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdResetEvent, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdResetEvent, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1036,7 +1036,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdWaitEvents, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdWaitEvents, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1046,7 +1046,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdPipelineBarrier, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdPipelineBarrier, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1056,7 +1056,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdBeginQuery, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdBeginQuery, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1066,7 +1066,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdEndQuery, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdEndQuery, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1076,7 +1076,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdResetQueryPool, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdResetQueryPool, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1086,7 +1086,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdWriteTimestamp, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdWriteTimestamp, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1096,7 +1096,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdCopyQueryPoolResults, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdCopyQueryPoolResults, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1106,7 +1106,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdPushConstants, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdPushConstants, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1116,7 +1116,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdBeginRenderPass, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdBeginRenderPass, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1126,7 +1126,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdNextSubpass, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdNextSubpass, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1136,7 +1136,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdEndRenderPass, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdEndRenderPass, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1146,7 +1146,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdExecuteCommands, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdExecuteCommands, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1156,7 +1156,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDebugMarkerBeginEXT, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDebugMarkerBeginEXT, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1166,7 +1166,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDebugMarkerEndEXT, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDebugMarkerEndEXT, map.size() - 1, 0, 0, nullptr
     );
 }
 template<>
@@ -1176,7 +1176,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
     const uint32_t reference_idx = references.size();
     references[reference_idx] = CommandReference(
-        buffer, reference_idx, CommandType::cmd_vkCmdDebugMarkerInsertEXT, map.size() - 1, 0, 0
+        buffer, reference_idx, CommandType::cmd_vkCmdDebugMarkerInsertEXT, map.size() - 1, 0, 0, nullptr
     );
 }
 //////////////// Command Buffer Insertion

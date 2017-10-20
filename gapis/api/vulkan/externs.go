@@ -907,6 +907,9 @@ func (e externs) execPendingCommands(queue VkQueue) {
 			if command.SemaphoreUpdate == SemaphoreUpdate_Unsignal {
 				o.Semaphores[command.Semaphore].Signaled = false
 			}
+			if command.SparseBinds != nil {
+				bindSparse(e.ctx, e.s, command.SparseBinds)
+			}
 			if command.Buffer == VkCommandBuffer(0) {
 				continue
 			}
@@ -1025,5 +1028,49 @@ func (e externs) popAndPushMarkerForNextSubpass(nextSubpass uint32) {
 	name := fmt.Sprintf("Subpass: %v", nextSubpass)
 	if GetState(e.s).pushMarkerGroup != nil {
 		GetState(e.s).pushMarkerGroup(name, true, RenderPassMarker)
+	}
+}
+
+func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBinds) {
+	st := GetState(s)
+	for buffer, binds := range binds.BufferBinds {
+		for _, bind := range binds.SparseMemoryBinds {
+			if _, ok := st.bufferSparseBindings[buffer]; !ok {
+				st.bufferSparseBindings[buffer] = sparseBindingList{}
+			}
+			st.bufferSparseBindings[buffer] = addBinding(
+				st.bufferSparseBindings[buffer], bind)
+		}
+		// update the data for UI
+		bufObj := st.Buffers.Get(buffer)
+		for i := 0; i < len(st.bufferSparseBindings[buffer]) || i < len(bufObj.SparseMemoryBindings); i++ {
+			if i >= len(st.bufferSparseBindings[buffer]) {
+				delete(bufObj.SparseMemoryBindings, uint32(i))
+			}
+			bufObj.SparseMemoryBindings[uint32(i)] = st.bufferSparseBindings[buffer][i]
+		}
+	}
+	for image, binds := range binds.OpaqueImageBinds {
+		for _, bind := range binds.SparseMemoryBinds {
+			if _, ok := st.opaqueImageSparseBindings[image]; !ok {
+				st.opaqueImageSparseBindings[image] = sparseBindingList{}
+			}
+			st.opaqueImageSparseBindings[image] = addBinding(
+				st.opaqueImageSparseBindings[image], bind)
+		}
+		// update the data for UI
+		imgObj := st.Images.Get(image)
+		for i := 0; i < len(st.opaqueImageSparseBindings[image]) || i < len(imgObj.OpaqueSparseMemoryBindings); i++ {
+			if i >= len(st.opaqueImageSparseBindings[image]) {
+				delete(imgObj.OpaqueSparseMemoryBindings, uint32(i))
+			}
+			imgObj.OpaqueSparseMemoryBindings[uint32(i)] = st.opaqueImageSparseBindings[image][i]
+		}
+	}
+	for image, binds := range binds.ImageBinds {
+		for _, bind := range binds.SparseImageMemoryBinds {
+			log.W(ctx, "sparse binding: image: %v, bindinfo: %v", image, bind)
+			log.W(ctx, "Image sparse residency binding is currently not supported")
+		}
 	}
 }

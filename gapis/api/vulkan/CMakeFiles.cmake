@@ -38,6 +38,8 @@ set(files
     resolvables.pb.go
     resolvables.proto
     resources.go
+    sparse_binding_test.go
+    sparse_bindings.go
     state.go
     vulkan.go
     vulkan_terminator.go
