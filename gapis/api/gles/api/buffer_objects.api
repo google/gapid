@@ -113,11 +113,11 @@ sub ref!Buffer GetBoundBufferAtIndex(GLenum target, GLuint index) {
 
 sub ref!Buffer GetOrCreateBuffer(BufferId id) {
   ctx := GetContext()
-  if (id != 0) && (ctx.Objects.Shared.Buffers[id] == null) {
-    ctx.Objects.Shared.Buffers[id] = new!Buffer(ID: id)
-    ctx.Objects.Shared.GeneratedNames.Buffers[id] = true
+  if (id != 0) && (ctx.Objects.Buffers[id] == null) {
+    ctx.Objects.Buffers[id] = new!Buffer(ID: id)
+    ctx.Objects.GeneratedNames.Buffers[id] = true
   }
-  return ctx.Objects.Shared.Buffers[id]
+  return ctx.Objects.Buffers[id]
 }
 
 @if(Version.GLES10)
@@ -190,8 +190,8 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindBufferBase.xhtml", Version.GLES32)
 cmd void glBindBufferBase(GLenum target, GLuint index, BufferId buffer) {
   ctx := GetContext()
-  size := switch (buffer in ctx.Objects.Shared.Buffers) {
-    case true:  ctx.Objects.Shared.Buffers[buffer].Size
+  size := switch (buffer in ctx.Objects.Buffers) {
+    case true:  ctx.Objects.Buffers[buffer].Size
     case false: as!GLsizeiptr(0)
   }
   BindBufferRange(target, index, buffer, 0, size)
@@ -320,8 +320,8 @@ cmd void glDeleteBuffers(GLsizei count, const BufferId* buffers) {
   for i in (0 .. count) {
     id := b[i]
     if id != 0 {
-      delete(ctx.Objects.Shared.Buffers, id)
-      delete(ctx.Objects.Shared.GeneratedNames.Buffers, id)
+      delete(ctx.Objects.Buffers, id)
+      delete(ctx.Objects.GeneratedNames.Buffers, id)
     }
   }
 }
@@ -338,7 +338,7 @@ cmd void glGenBuffers(GLsizei count, BufferId* buffers) {
   for i in (0 .. count) {
     id := as!BufferId(?)
     assert(id != 0)
-    ctx.Objects.Shared.GeneratedNames.Buffers[id] = true
+    ctx.Objects.GeneratedNames.Buffers[id] = true
     b[i] = id
   }
 }
@@ -437,7 +437,7 @@ sub void GetBufferPointerv(GLenum target, GLenum pname, void** params) {
 cmd GLboolean glIsBuffer(BufferId buffer) {
 
   ctx := GetContext()
-  return as!GLboolean(buffer in ctx.Objects.Shared.Buffers)
+  return as!GLboolean(buffer in ctx.Objects.Buffers)
 }
 
 // This command only exits in desktop GL - but we need the signature in compat.

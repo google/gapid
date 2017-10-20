@@ -881,9 +881,9 @@ sub void FramebufferTextureMultiviewOVR(GLenum    target,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidObjectName!TextureId(texture) }
+    if !(texture in ctx.Objects.Textures) { glErrorInvalidObjectName!TextureId(texture) }
     attachment_info.Type = GL_TEXTURE
-    attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
+    attachment_info.Texture = ctx.Objects.Textures[texture]
     attachment_info.TextureLevel = level
     attachment_info.TextureLayer = baseViewIndex
     attachment_info.NumViews = numViews
@@ -1540,10 +1540,10 @@ cmd void glLabelObjectEXT(GLenum type, GLuint object, GLsizei length, const GLch
   ctx := GetContext()
   switch (type) {
     case GL_TEXTURE: {
-      if !(as!TextureId(object) in ctx.Objects.Shared.Textures) {
+      if !(as!TextureId(object) in ctx.Objects.Textures) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
       }
-      ctx.Objects.Shared.Textures[as!TextureId(object)].Label = str
+      ctx.Objects.Textures[as!TextureId(object)].Label = str
     }
     case GL_FRAMEBUFFER: {
       if !(as!FramebufferId(object) in ctx.Objects.Framebuffers) {
@@ -1552,28 +1552,28 @@ cmd void glLabelObjectEXT(GLenum type, GLuint object, GLsizei length, const GLch
       ctx.Objects.Framebuffers[as!FramebufferId(object)].Label = str
     }
     case GL_RENDERBUFFER: {
-      if !(as!RenderbufferId(object) in ctx.Objects.Shared.Renderbuffers) {
+      if !(as!RenderbufferId(object) in ctx.Objects.Renderbuffers) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
       }
-      ctx.Objects.Shared.Renderbuffers[as!RenderbufferId(object)].Label = str
+      ctx.Objects.Renderbuffers[as!RenderbufferId(object)].Label = str
     }
     case GL_BUFFER_OBJECT_EXT: {
-      if !(as!BufferId(object) in ctx.Objects.Shared.Buffers) {
+      if !(as!BufferId(object) in ctx.Objects.Buffers) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
       }
-      ctx.Objects.Shared.Buffers[as!BufferId(object)].Label = str
+      ctx.Objects.Buffers[as!BufferId(object)].Label = str
     }
     case GL_SHADER_OBJECT_EXT: {
-      if !(as!ShaderId(object) in ctx.Objects.Shared.Shaders) {
+      if !(as!ShaderId(object) in ctx.Objects.Shaders) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
       }
-      ctx.Objects.Shared.Shaders[as!ShaderId(object)].Label = str
+      ctx.Objects.Shaders[as!ShaderId(object)].Label = str
     }
     case GL_PROGRAM_OBJECT_EXT: {
-      if !(as!ProgramId(object) in ctx.Objects.Shared.Programs) {
+      if !(as!ProgramId(object) in ctx.Objects.Programs) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
       }
-      ctx.Objects.Shared.Programs[as!ProgramId(object)].Label = str
+      ctx.Objects.Programs[as!ProgramId(object)].Label = str
     }
     case GL_VERTEX_ARRAY_OBJECT_EXT: {
       if !(as!VertexArrayId(object) in ctx.Objects.VertexArrays) {
@@ -1588,10 +1588,10 @@ cmd void glLabelObjectEXT(GLenum type, GLuint object, GLsizei length, const GLch
       ctx.Objects.Queries[as!QueryId(object)].Label = str
     }
     case GL_SAMPLER: {
-      if !(as!SamplerId(object) in ctx.Objects.Shared.Samplers) {
+      if !(as!SamplerId(object) in ctx.Objects.Samplers) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(object)
       }
-      ctx.Objects.Shared.Samplers[as!SamplerId(object)].Label = str
+      ctx.Objects.Samplers[as!SamplerId(object)].Label = str
     }
     case GL_TRANSFORM_FEEDBACK: {
       if !(as!TransformFeedbackId(object) in ctx.Objects.TransformFeedbacks) {

@@ -405,7 +405,7 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      dpy,
     case EGL_GL_TEXTURE_2D: {
       c := EGLContexts[ctx]
       assert(c != null) // EGL_BAD_CONTEXT
-      t := c.Objects.Shared.Textures[as!TextureId(as!u64(buffer))]
+      t := c.Objects.Textures[as!TextureId(as!u64(buffer))]
       assert(t != null) // EGL_BAD_PARAMETER
       i := t.Levels[0].Layers[0]
       assert(i != null) // EGL_BAD_PARAMETER
