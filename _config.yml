@@ -18,3 +18,5 @@ baseurl: "/gapid"
 url: "https://google.github.io/gapid" # the base hostname & protocol for your site, e.g. http://example.com
 project-url: "https://github.com/google/gapid"
 markdown: kramdown
+sass:
+  sass_dir: assets
