@@ -15,8 +15,11 @@
  */
 package com.google.gapid.image;
 
+import com.google.common.collect.Sets;
 import com.google.gapid.glviewer.gl.Texture;
-
+import com.google.gapid.proto.stream.Stream.Channel;
+import java.nio.DoubleBuffer;
+import java.util.Set;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.PaletteData;
 import org.eclipse.swt.graphics.RGB;
@@ -62,6 +65,21 @@ public interface Image {
   public PixelValue getPixel(int x, int y, int z);
 
   /**
+   * @return all the channels of this image.
+   */
+  public Set<Channel> getChannels();
+
+  /**
+   * @return all the pixel values of the given channel.
+   */
+  public DoubleBuffer getChannel(Channel channel);
+
+  /**
+   * @return true if this image contains high-dynamic-range data.
+   */
+  public boolean isHDR();
+
+  /**
    * @return the {@link PixelInfo} for this buffer.
    */
   public PixelInfo getInfo();
@@ -103,6 +121,21 @@ public interface Image {
     @Override
     public PixelValue getPixel(int x, int y, int z) {
       return PixelValue.NULL_PIXEL;
+    }
+
+    @Override
+    public Set<Channel> getChannels() {
+      return Sets.newIdentityHashSet();
+    }
+
+    @Override
+    public DoubleBuffer getChannel(Channel channel) {
+      return DoubleBuffer.allocate(0);
+    }
+
+    @Override
+    public boolean isHDR() {
+      return false;
     }
 
     @Override
