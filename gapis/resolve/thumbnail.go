@@ -81,7 +81,8 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 
 	cmdTree := boxedCmdTree.(*commandTree)
 
-	switch item := cmdTree.index(p.Indices).(type) {
+	item, _ := cmdTree.index(p.Indices)
+	switch item := item.(type) {
 	case api.CmdIDGroup:
 		thumbnail := item.Range.Last()
 		if userData, ok := item.UserData.(*CmdGroupData); ok {
