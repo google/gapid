@@ -137,7 +137,10 @@ void SpyOverride_RecreateDescriptorPool(VkDevice,
 void SpyOverride_RecreateSwapchain(VkDevice, const VkSwapchainCreateInfoKHR*,
                                    VkImage*, const uint32_t*, const VkQueue*,
                                    VkSwapchainKHR*) {}
-void SpyOverride_RecreateImage(VkDevice, const VkImageCreateInfo*, VkImage*) {}
+void SpyOverride_RecreateImage(
+    VkDevice, const VkImageCreateInfo*, VkImage*,
+    VkMemoryRequirements* pMemoryRequirements, uint32_t sparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {}
 void SpyOverride_RecreateBindImageMemory(VkDevice, VkImage, VkDeviceMemory,
                                          VkDeviceSize offset) {}
 void SpyOverride_RecreateImageData(VkDevice, VkImage,
@@ -196,3 +199,12 @@ void SpyOverride_RecreateMirSurfaceKHR(VkDevice,
 void EnumerateVulkanResources(CallObserver* observer);
 
 bool m_coherent_memory_tracking_enabled = false;
+
+uint32_t SpyOverride_createImageAndCacheMemoryRequirements(
+    VkDevice device, VkImageCreateInfo* pCreateInfo,
+    VkAllocationCallbacks* pAllocator, VkImage* pImage,
+    VkMemoryRequirements* pMemoryRequirements);
+
+void SpyOverride_cacheImageSparseMemoryRequirements(
+    VkDevice device, VkImage image, uint32_t count,
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements);

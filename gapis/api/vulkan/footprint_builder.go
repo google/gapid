@@ -1360,9 +1360,15 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	// image
-	case *VkCreateImage:
+	case *CreateImageAndCacheMemoryRequirements:
 		vkImg := cmd.PImage.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkImg))
+		vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
+	case *CacheImageSparseMemoryRequirements:
+		modify(ctx, bh, vkHandle(cmd.Image))
+	case *VkCreateImage:
+		vkImg := cmd.PImage.MustRead(ctx, cmd, s, nil)
+		modify(ctx, bh, vkHandle(vkImg))
 		vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
 	case *RecreateImage:
 		vkImg := cmd.PImage.MustRead(ctx, cmd, s, nil)

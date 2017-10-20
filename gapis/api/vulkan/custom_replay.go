@@ -1144,12 +1144,23 @@ func destroyCommandPool(ctx context.Context, id api.CmdID, cb CommandBuilder, s 
 
 func (a *RecreateImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
+	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: a.thread}
 	allocator := memory.Nullptr
 	hijack := cb.VkCreateImage(a.Device, a.PCreateInfo, allocator, a.PImage, VkResult(0))
 	hijack.Extras().MustClone(a.Extras().All()...)
 	if err := hijack.Mutate(ctx, id, s, b); err != nil {
 		return err
+	}
+	img := a.PImage.MustRead(ctx, a, s, nil)
+	if a.PMemoryRequirements != (VkMemoryRequirementsᵖ{}) {
+		memReqs := a.PMemoryRequirements.MustRead(ctx, a, s, nil)
+		GetState(s).Images[img].MemoryRequirements = memReqs
+	}
+	if (a.SparseMemoryRequirementCount > uint32(0)) && (a.PSparseMemoryRequirements != VkSparseImageMemoryRequirementsᵖ{}) {
+		for i, req := range a.PSparseMemoryRequirements.Slice(0, uint64(a.SparseMemoryRequirementCount), l).MustRead(ctx, a, s, nil) {
+			GetState(s).Images[img].SparseMemoryRequirements[uint32(i)] = req
+		}
 	}
 	return nil
 }

@@ -420,18 +420,60 @@ uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
     }
 }
 
-uint32_t VulkanSpy::SpyOverride_vkCreateImage(
-        VkDevice                     device,
-        VkImageCreateInfo*           pCreateInfo,
-        VkAllocationCallbacks*       pAllocator,
-        VkImage*                     pImage) {
-    if (is_suspended() || is_observing()) {
-        VkImageCreateInfo override_create_info = *pCreateInfo;
-        override_create_info.musage |= VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        return  mImports.mVkDeviceFunctions[device].vkCreateImage(device, &override_create_info, pAllocator, pImage);
-    } else {
-        return  mImports.mVkDeviceFunctions[device].vkCreateImage(device, pCreateInfo, pAllocator, pImage);
+uint32_t VulkanSpy::SpyOverride_createImageAndCacheMemoryRequirements(
+    VkDevice device, VkImageCreateInfo* pCreateInfo,
+    VkAllocationCallbacks* pAllocator, VkImage* pImage,
+    VkMemoryRequirements* pMemoryRequirements) {
+  uint32_t result = VkResult::VK_SUCCESS;
+  VkImageCreateInfo override_create_info = *pCreateInfo;
+  override_create_info.musage |=
+      VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  result = mImports.mVkDeviceFunctions[device].vkCreateImage(
+      device, &override_create_info, pAllocator, pImage);
+  if (result != VkResult::VK_SUCCESS) {
+    return result;
+  }
+
+  if (pMemoryRequirements != nullptr) {
+    mImports.mVkDeviceFunctions[device].vkGetImageMemoryRequirements(
+        device, *pImage, pMemoryRequirements);
+  }
+  return result;
+}
+
+void VulkanSpy::SpyOverride_cacheImageSparseMemoryRequirements(
+    VkDevice device, VkImage image, uint32_t count,
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {}
+
+uint32_t VulkanSpy::SpyOverride_vkCreateImage(VkDevice device,
+                                              VkImageCreateInfo* pCreateInfo,
+                                              VkAllocationCallbacks* pAllocator,
+                                              VkImage* pImage) {
+  if (is_suspended() || is_observing()) {
+    VkMemoryRequirements memReq;
+    uint32_t result = gapii::createImageAndCacheMemoryRequirements(
+        device, pCreateInfo, pAllocator, pImage, &memReq);
+    if (result != VkResult::VK_SUCCESS) {
+      return result;
     }
+    // sparse memory requirement is only necessary if the image is created with
+    // VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT.
+    if ((pCreateInfo->mflags &
+         VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) != 0) {
+      uint32_t sparseMemReqCount = 0;
+      mImports.mVkDeviceFunctions[device].vkGetImageSparseMemoryRequirements(
+          device, *pImage, &sparseMemReqCount, nullptr);
+      std::vector<VkSparseImageMemoryRequirements> sparseMemReqs(
+          sparseMemReqCount, VkSparseImageMemoryRequirements{});
+      mImports.mVkDeviceFunctions[device].vkGetImageSparseMemoryRequirements(
+          device, *pImage, &sparseMemReqCount, sparseMemReqs.data());
+      gapii::cacheImageSparseMemoryRequirements(
+          device, *pImage, sparseMemReqCount, sparseMemReqs.data());
+    }
+    return result;
+  }
+  return mImports.mVkDeviceFunctions[device].vkCreateImage(device, pCreateInfo,
+                                                           pAllocator, pImage);
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateSwapchainKHR(
