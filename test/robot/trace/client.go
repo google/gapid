@@ -144,6 +144,8 @@ func (r *runner) trace(ctx context.Context, t *Task) error {
 	return r.manager.Update(ctx, t.Action, status, output)
 }
 
+// doTrace extracts input files and runs `gapit trace` on them, capturing the output. The output object will
+// be partially filled in the event of an upload error from store in order to allow examination of the logs.
 func doTrace(ctx context.Context, action string, in *Input, store *stash.Client, d bind.Device, tempDir file.Path) (*Output, error) {
 	subject := tempDir.Join(action + ".apk")
 	tracefile := tempDir.Join(action + ".gfxtrace")
