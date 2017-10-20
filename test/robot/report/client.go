@@ -63,6 +63,8 @@ func (c *client) report(ctx context.Context, t *Task) error {
 	return c.manager.Update(ctx, t.Action, status, output)
 }
 
+// doReport extracts input files and runs `gapit report` on them, capturing the output. The output object will
+// be partially filled in the event of an upload error from store in order to allow examination of the logs.
 func doReport(ctx context.Context, action string, in *Input, store *stash.Client, tempDir file.Path) (*Output, error) {
 	tracefile := tempDir.Join(action + ".gfxtrace")
 	reportfile := tempDir.Join(action + "_report.txt")

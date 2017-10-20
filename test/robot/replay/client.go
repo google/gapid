@@ -63,6 +63,8 @@ func (c *client) replay(ctx context.Context, t *Task) error {
 	return c.manager.Update(ctx, t.Action, status, output)
 }
 
+// doReplay extracts input files and runs `gapit video` on them, capturing the output. The output object will
+// be partially filled in the event of an upload error from store in order to allow examination of the logs.
 func doReplay(ctx context.Context, action string, in *Input, store *stash.Client, tempDir file.Path) (*Output, error) {
 	tracefile := tempDir.Join(action + ".gfxtrace")
 	videofile := tempDir.Join(action + "_replay.mp4")
