@@ -54,7 +54,7 @@ type commandTree struct {
 	root api.CmdIDGroup
 }
 
-func (t *commandTree) index(indices []uint64) api.SpanItem {
+func (t *commandTree) index(indices []uint64) (api.SpanItem, api.SubCmdIdx) {
 	group := api.CmdGroupOrRoot(t.root)
 	subCmdRootId := api.SubCmdIdx{}
 	for _, idx := range indices {
@@ -66,12 +66,13 @@ func (t *commandTree) index(indices []uint64) api.SpanItem {
 			subCmdRootId = item.Id
 			group = item
 		case api.SubCmdIdx:
-			return append(subCmdRootId, item...)
+			id := append(subCmdRootId, item...)
+			return id, id
 		default:
-			return item
+			return item, subCmdRootId
 		}
 	}
-	return group
+	return group, subCmdRootId
 }
 
 func (t *commandTree) indices(id api.CmdID) []uint64 {
@@ -98,19 +99,33 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 
 	cmdTree := boxed.(*commandTree)
 
-	switch item := cmdTree.index(c.Indices).(type) {
+	rawItem, absId := cmdTree.index(c.Indices)
+	switch item := rawItem.(type) {
 	case api.SubCmdIdx:
 		return &service.CommandTreeNode{
 			NumChildren: 0, // TODO: Subcommands
 			Commands:    cmdTree.path.Capture.SubCommandRange(item, item),
 		}, nil
 	case api.CmdIDGroup:
+		if len(absId) == 0 {
+			// Not a CmdIDGroup under SubCmdRoot, does not contain Subcommands
+			return &service.CommandTreeNode{
+				NumChildren: item.Count(),
+				Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
+				Group:       item.Name,
+				NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
+			}, nil
+		}
+		// Is a CmdIDGroup under SubCmdRoot, contains only Subcommands
+		startId := append(absId, uint64(item.Range.First()))
+		endId := append(absId, uint64(item.Range.Last()))
 		return &service.CommandTreeNode{
 			NumChildren: item.Count(),
-			Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
+			Commands:    cmdTree.path.Capture.SubCommandRange(startId, endId),
 			Group:       item.Name,
 			NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
 		}, nil
+
 	case api.SubCmdRoot:
 		count := uint64(1)
 		g := ""
@@ -126,8 +141,8 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 		}, nil
 	default:
 		return nil, nil
-		panic(fmt.Errorf("Unexpected type: %T, cmdTree.index(c.Indices): %v, indices: %v",
-			item, cmdTree.index(c.Indices), c.Indices))
+		panic(fmt.Errorf("Unexpected type: %T, cmdTree.index(c.Indices): (%v, %v), indices: %v",
+			item, rawItem, absId, c.Indices))
 	}
 }
 
