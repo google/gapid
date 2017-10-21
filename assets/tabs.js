@@ -39,6 +39,7 @@ window.onload = function() {
         if (first) {
             // Insert the tab-bar before the first tab.
             tab.parentElement.insertBefore(tabbar, tab);
+            link.className = "tablink active";
             tab.className = "tabcontent active";
             first = false;
         } else {
