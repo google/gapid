@@ -108,24 +108,24 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 		}, nil
 	case api.CmdIDGroup:
 		if len(absId) == 0 {
-			// Not a CmdIDGroup under SubCmdRoot, dose not contain Subcommands
+			// Not a CmdIDGroup under SubCmdRoot, does not contain Subcommands
 			return &service.CommandTreeNode{
 				NumChildren: item.Count(),
 				Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
 				Group:       item.Name,
 				NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
 			}, nil
-		} else {
-			// Is a CmdIDGroup under SubCmdRoot, contains only Subcommands
-			startId := append(absId, uint64(item.Range.First()))
-			endId := append(absId, uint64(item.Range.Last()))
-			return &service.CommandTreeNode{
-				NumChildren: item.Count(),
-				Commands:    cmdTree.path.Capture.SubCommandRange(startId, endId),
-				Group:       item.Name,
-				NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
-			}, nil
 		}
+		// Is a CmdIDGroup under SubCmdRoot, contains only Subcommands
+		startId := append(absId, uint64(item.Range.First()))
+		endId := append(absId, uint64(item.Range.Last()))
+		return &service.CommandTreeNode{
+			NumChildren: item.Count(),
+			Commands:    cmdTree.path.Capture.SubCommandRange(startId, endId),
+			Group:       item.Name,
+			NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
+		}, nil
+
 	case api.SubCmdRoot:
 		count := uint64(1)
 		g := ""
