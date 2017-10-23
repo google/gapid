@@ -76,7 +76,7 @@ mkdir -p gapid/DEBIAN gapid/opt/gapid gapid/usr/share/applications gapid/usr/sha
 cp -r ../pkg/* gapid/opt/gapid
 cp -r ../current/java/gapic-linux.jar gapid/opt/gapid/lib/gapic.jar
 cp $SRC/kokoro/linux/gapid.sh gapid/opt/gapid/gapid
-cp $SRC/gapic/res/icons/gapid/logo\@2x.png gapid/opt/gapid/icon.png
+cp $SRC/gapic/res/icons/logo\@2x.png gapid/opt/gapid/icon.png
 cp $SRC/kokoro/linux/gapid.desktop gapid/usr/share/applications/google-gapid.desktop
 cp $SRC/kokoro/linux/gapid.menu gapid/usr/share/menu/google-gapid.menu
 
