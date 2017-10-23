@@ -17,13 +17,10 @@ package gles
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
@@ -79,25 +76,6 @@ func (s *State) contextRoot(p *path.Command, thread uint64) *path.MapIndex {
 
 func (s *State) objectsRoot(p *path.Command, thread uint64) *path.Field {
 	return s.contextRoot(p, thread).Field("Objects")
-}
-
-func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
-	c.CurrentContext = c.GetContext(cmd.Thread())
-	// TODO: Find better way to separate GL and EGL commands.
-	if c.CurrentContext == nil && strings.HasPrefix(cmd.CmdName(), "gl") {
-		if f := s.NewMessage; f != nil {
-			f(log.Error, messages.ErrNoContextBound(cmd.Thread()))
-		}
-		return &api.ErrCmdAborted{Reason: "No context bound"}
-	}
-	if c.CurrentContext != nil {
-		c.Version = c.CurrentContext.Other.SupportedVersions
-		c.Extension = c.CurrentContext.Other.SupportedExtensions
-	} else {
-		c.Version = nil
-		c.Extension = nil
-	}
-	return nil
 }
 
 func (b *Buffer) GetID() BufferId {

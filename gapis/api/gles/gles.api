@@ -578,11 +578,32 @@ ContextID              NextContextID
 map!(u64, ref!Context) Contexts
 
 // Internal "thread-local" globals for quick access the current context.
-// They are set in the preMutate() function before any command is mutated.
+// They are set in the PreMutate() function before any command is mutated.
 // TODO: We also need to set them in gapii (i.e. native mutate)
 ref!Context             CurrentContext // = Contexts[$Thread]
 ref!SupportedVersions   Version        // = Contexts[$Thread].Other.SupportedVersions
 ref!SupportedExtensions Extension      // = Contexts[$Thread].Other.SupportedExtensions
+
+// Internal sub-routine which is called before any command is mutated.
+// TODO: The IsGLESCommand() is a hack. We should move all EGL commands to own api.
+// TODO: Many commands have @if annotation. We should evaluate it and check it here.
+sub void PreMutate() {
+  CurrentContext = Contexts[$Thread]
+  if (CurrentContext == null) && IsGLESCommand() {
+    _ = newMsg(SEVERITY_ERROR, new!ERR_NO_CONTEXT_BOUND(thread: $Thread))
+    abort
+  }
+  if (CurrentContext == null) {
+    Version = null
+    Extension = null
+  } else {
+    Version = CurrentContext.Other.SupportedVersions
+    Extension = CurrentContext.Other.SupportedExtensions
+  }
+}
+
+// Returns true if the calling command is a GLES api command (as opposed to EGL).
+extern bool IsGLESCommand()
 
 sub ref!Context GetContext() {
   context := Contexts[$Thread]

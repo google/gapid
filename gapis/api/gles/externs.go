@@ -17,6 +17,7 @@ package gles
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -203,4 +204,8 @@ func (e externs) ReadGPUTextureData(texture *Texture, level, layer GLint) U8ˢ {
 	data := memory.Resource(dataID, uint64(size))
 	dst.Write(0, data)
 	return U8ˢ{count: uint64(size), pool: poolID}
+}
+
+func (e externs) IsGLESCommand() bool {
+	return strings.HasPrefix(e.cmd.CmdName(), "gl")
 }
