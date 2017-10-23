@@ -533,6 +533,26 @@ void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
       } else if (cmd.mSemaphoreUpdate == SemaphoreUpdate::Unsignal) {
         Semaphores[cmd.mSemaphore]->mSignaled = false;
       }
+      if (cmd.mSparseBinds != nullptr) {
+        for (const auto& bb : cmd.mSparseBinds->mBufferBinds) {
+          VkBuffer buf = bb.first;
+          if (mBufferSparseBindings.find(buf) == mBufferSparseBindings.end()) {
+            mBufferSparseBindings[buf] = SparseBindingList();
+          }
+          for (const auto& b : bb.second->mSparseMemoryBinds) {
+            mBufferSparseBindings[buf].replace(VulkanSpy::SparseBindingInterval(b.second));
+          }
+        }
+        for (const auto& ob : cmd.mSparseBinds->mOpaqueImageBinds) {
+          VkImage img = ob.first;
+          if (mOpaqueImageSparseBindings.find(img) == mOpaqueImageSparseBindings.end()) {
+            mOpaqueImageSparseBindings[img] = SparseBindingList();
+          }
+          for (const auto& b : ob.second->mSparseMemoryBinds) {
+            mOpaqueImageSparseBindings[img].replace(VulkanSpy::SparseBindingInterval(b.second));
+          }
+        }
+      }
       if (cmd.mBuffer == 0) {
           continue;
       }
