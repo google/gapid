@@ -51,7 +51,7 @@ To the left of the texture view is a toolbar with the following buttons:
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/color_channels%402x.png" alt="Color Channels"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/color_channels_00%402x.png" alt="Color Channels"/>
       </td>
       <td>Click the button and then select the color channels to render or deselect color channels so they aren't rendered. The options are <b>Red</b>, <b>Green</b>, <b>Blue</b>, and <b>Alpha</b> (transparency).</td>
     </tr>
