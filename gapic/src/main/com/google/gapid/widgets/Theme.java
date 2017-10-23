@@ -45,64 +45,46 @@ import java.util.Map;
  * {@link Color colors}, etc.).
  */
 public interface Theme {
-  @Icon("gapid/arrow.png") public Image arrow();
-  @Icon("gapid/color_buffer0.png") public Image colorBuffer0();
-  @Icon("gapid/color_buffer1.png") public Image colorBuffer1();
-  @Icon("gapid/color_buffer2.png") public Image colorBuffer2();
-  @Icon("gapid/color_buffer3.png") public Image colorBuffer3();
-  @Icon("gapid/color_channels.png") public Image colorChannels();
-  @Icon("gapid/culling_disabled.png") public Image cullingDisabled();
-  @Icon("gapid/culling_enabled.png") public Image cullingEnabled();
-  @Icon("gapid/depth_buffer.png") public Image depthBuffer();
-  @Icon("gapid/error.png") public Image error();
-  @Icon("gapid/faceted.png") public Image faceted();
-  @Icon("gapid/flat.png") public Image flat();
-  @Icon("gapid/flip_vertically.png") public Image flipVertically();
-  @Icon("gapid/inject_spy.png") public Image injectSpy();
-  @Icon("gapid/jump.png") public Image jump();
-  @Icon("gapid/listen_for_trace.png") public Image listenForTrace();
-  @Icon("gapid/lit.png") public Image lit();
-  @Icon("gapid/logo.png") public Image logo();
-  @Icon("gapid/logo_big.png") public Image logoBig();
-  @Icon("gapid/normals.png") public Image normals();
-  @Icon("gapid/opacity.png") public Image opacity();
-  @Icon("gapid/point_cloud.png") public Image pointCloud();
-  @Icon("gapid/refresh.png") public Image refresh();
-  @Icon("gapid/save.png") public Image save();
-  @Icon("gapid/smile.png") public Image smile();
-  @Icon("gapid/smooth.png") public Image smooth();
-  @Icon("gapid/trace_file.png") public Image traceFile();
-  @Icon("gapid/transparency.png") public Image transparency();
-  @Icon("gapid/winding_ccw.png") public Image windingCCW();
-  @Icon("gapid/winding_cw.png") public Image windingCW();
-  @Icon("gapid/wireframe_all.png") public Image wireframeAll();
-  @Icon("gapid/wireframe_none.png") public Image wireframeNone();
-  @Icon("gapid/wireframe_overlay.png") public Image wireframeOverlay();
-  @Icon("gapid/yup.png") public Image yUp();
-  @Icon("gapid/zup.png") public Image zUp();
-  @Icon("gapid/loading_0_small.png") public Image loading0small();
-  @Icon("gapid/loading_1_small.png") public Image loading1small();
-  @Icon("gapid/loading_2_small.png") public Image loading2small();
-  @Icon("gapid/loading_3_small.png") public Image loading3small();
-  @Icon("gapid/loading_4_small.png") public Image loading4small();
-  @Icon("gapid/loading_5_small.png") public Image loading5small();
-  @Icon("gapid/loading_6_small.png") public Image loading6small();
-  @Icon("gapid/loading_7_small.png") public Image loading7small();
-  @Icon("gapid/loading_0_large.png") public Image loading0large();
-  @Icon("gapid/loading_1_large.png") public Image loading1large();
-  @Icon("gapid/loading_2_large.png") public Image loading2large();
-  @Icon("gapid/loading_3_large.png") public Image loading3large();
-  @Icon("gapid/loading_4_large.png") public Image loading4large();
-  @Icon("gapid/loading_5_large.png") public Image loading5large();
-  @Icon("gapid/loading_6_large.png") public Image loading6large();
-  @Icon("gapid/loading_7_large.png") public Image loading7large();
-  @Icon("gapid/histogram.png") public Image toggleHistogram();
+  @Icon("android.png") public Image androidLogo();
+  @Icon("arrow.png") public Image arrow();
+  @Icon("color_buffer0.png") public Image colorBuffer0();
+  @Icon("color_buffer1.png") public Image colorBuffer1();
+  @Icon("color_buffer2.png") public Image colorBuffer2();
+  @Icon("color_buffer3.png") public Image colorBuffer3();
+  @Icon("culling_disabled.png") public Image cullingDisabled();
+  @Icon("culling_enabled.png") public Image cullingEnabled();
+  @Icon("depth_buffer.png") public Image depthBuffer();
+  @Icon("error.png") public Image error();
+  @Icon("faceted.png") public Image faceted();
+  @Icon("flat.png") public Image flat();
+  @Icon("flip_vertically.png") public Image flipVertically();
+  @Icon("jump.png") public Image jump();
+  @Icon("histogram.png") public Image toggleHistogram();
+  @Icon("lit.png") public Image lit();
+  @Icon("logo.png") public Image logo();
+  @Icon("logo_big.png") public Image logoBig();
+  @Icon("normals.png") public Image normals();
+  @Icon("point_cloud.png") public Image pointCloud();
+  @Icon("refresh.png") public Image refresh();
+  @Icon("save.png") public Image save();
+  @Icon("smile.png") public Image smile();
+  @Icon("smooth.png") public Image smooth();
+  @Icon("transparency.png") public Image transparency();
+  @Icon("winding_ccw.png") public Image windingCCW();
+  @Icon("winding_cw.png") public Image windingCW();
+  @Icon("wireframe_all.png") public Image wireframeAll();
+  @Icon("wireframe_none.png") public Image wireframeNone();
+  @Icon("wireframe_overlay.png") public Image wireframeOverlay();
+  @Icon("yup.png") public Image yUp();
+  @Icon("zup.png") public Image zUp();
+  @Icon("zoom_actual.png") public Image zoomActual();
+  @Icon("zoom_fit.png") public Image zoomFit();
+  @Icon("zoom_in.png") public Image zoomIn();
+  @Icon("zoom_out.png") public Image zoomOut();
 
-  @Icon("android/zoom_actual.png") public Image zoomActual();
-  @Icon("android/zoom_fit.png") public Image zoomFit();
-  @Icon("android/zoom_in.png") public Image zoomIn();
-  @Icon("android/zoom_out.png") public Image zoomOut();
-  @Icon("android/android.png") public Image androidLogo();
+  @IconSequence(pattern = "color_channels_%02d.png", count = 16) public Image[] colorChannels();
+  @IconSequence(pattern = "loading_%d_small.png", count = 8) public Image[] loadingSmall();
+  @IconSequence(pattern = "loading_%d_large.png", count = 8) public Image[] loadingLarge();
 
   // Shader source highlight colors.
   @RGB(argb = 0xff808080) public Color commentColor();
@@ -170,6 +152,10 @@ public interface Theme {
               ((Resource)resource).dispose();
             } else if (resource instanceof DisposableStyler) {
               ((DisposableStyler)resource).dispose();
+            } else if (resource instanceof Image[]) {
+              for (Image image : (Image[])resource) {
+                image.dispose();
+              }
             }
           }
           resources.clear();
@@ -191,6 +177,24 @@ public interface Theme {
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Icon {
     public String value();
+  }
+
+  /**
+   * Annotation for an icon sheet image resource.
+   */
+  @Target(ElementType.METHOD)
+  @Retention(RetentionPolicy.RUNTIME)
+  public static @interface IconSequence {
+    /**
+     * @return a {@link String#format(String, Object...)} pattern given a sequence number, i, to
+     *     format the file name of the ith image in the sequence.
+     */
+    public String pattern();
+
+    /**
+     * @return the number of images in the sequence.
+     */
+    public int count();
   }
 
   /**
@@ -284,17 +288,35 @@ public interface Theme {
     }
 
     private boolean loadResource(Method method) {
-      return loadIcon(method) || loadColor(method) || loadTextStyle(method) || loadFont(method);
+      return loadIcon(method) || loadIconSequence(method) || loadColor(method) ||
+          loadTextStyle(method) || loadFont(method);
     }
 
     private boolean loadIcon(Method method) {
       Icon icon = method.getDeclaredAnnotation(Icon.class);
       if (icon != null) {
-        resources.put(method.getName(), ImageDescriptor.createFromURL(
-            Resources.getResource("icons/" + icon.value())).createImage(display));
+        resources.put(method.getName(), loadImage(icon.value()));
         return true;
       }
       return false;
+    }
+
+    private boolean loadIconSequence(Method method) {
+      IconSequence seq = method.getDeclaredAnnotation(IconSequence.class);
+      if (seq != null) {
+        Image[] icons = new Image[seq.count()];
+        for (int i = 0; i < icons.length; i++) {
+          icons[i] = loadImage(String.format(seq.pattern(), i));
+        }
+        resources.put(method.getName(), icons);
+        return true;
+      }
+      return false;
+    }
+
+    private Image loadImage(String img) {
+      return
+          ImageDescriptor.createFromURL(Resources.getResource("icons/" + img)).createImage(display);
     }
 
     private boolean loadColor(Method method) {

@@ -111,18 +111,20 @@ public class ImagePanel extends Composite {
   private static final float ALPHA_WARNING_THRESHOLD = 2 / 255f;
   private static final Image[] NO_LAYERS = new Image[] { Image.EMPTY };
 
+  private final Widgets widgets;
   private final SingleInFlight imageRequestController = new SingleInFlight();
   protected final LoadablePanel<ImageComponent> loading;
   private final StatusBar status;
   protected final ImageComponent imageComponent;
   private final BackgroundSelection backgroundSelection;
-  private ToolItem zoomFitItem, backgroundItem, saveItem;
+  private ToolItem zoomFitItem, backgroundItem, saveItem, colorChanelsItem;
   private MultiLayerAndLevelImage image = MultiLayerAndLevelImage.EMPTY;
   private Image[] layers = NO_LAYERS;
 
   public ImagePanel(Composite parent, Widgets widgets, boolean naturallyFlipped) {
     super(parent, SWT.NONE);
-    backgroundSelection = new BackgroundSelection(getDisplay());
+    this.widgets = widgets;
+    this.backgroundSelection = new BackgroundSelection(getDisplay());
 
     setLayout(Widgets.withMargin(new GridLayout(1, false), 5, 2));
 
@@ -310,6 +312,7 @@ public class ImagePanel extends Composite {
 
   private void setAlphaEnabled(boolean enabled) {
     imageComponent.autoToggleAlphaChannel(enabled);
+    updateColorChannelsIcon();
   }
 
   public void createToolbar(ToolBar bar, Theme theme) {
@@ -322,17 +325,27 @@ public class ImagePanel extends Composite {
     createSeparator(bar);
     createToggleToolItem(bar, theme.toggleHistogram(),
         e -> setShowHistogram(((ToolItem)e.widget).getSelection()), "Toggle histogram");
-    createBaloonToolItem(bar, theme.colorChannels(), shell -> {
+    saveItem = createToolItem(bar, theme.save(), e -> save(), "Save image to file");
+    saveItem.setEnabled(false);
+    colorChanelsItem = createBaloonToolItem(bar, theme.colorChannels()[15], shell -> {
       Composite c = createComposite(shell, new RowLayout(SWT.HORIZONTAL), SWT.BORDER);
       final ImageComponent i = imageComponent;
-      createCheckbox(c, "Red", i.isChannelEnabled(CHANNEL_RED),
-          e -> i.setChannelEnabled(CHANNEL_RED, ((Button)e.widget).getSelection()));
-      createCheckbox(c, "Green", i.isChannelEnabled(CHANNEL_GREEN),
-          e -> i.setChannelEnabled(CHANNEL_GREEN, ((Button)e.widget).getSelection()));
-      createCheckbox(c, "Blue", i.isChannelEnabled(CHANNEL_BLUE),
-          e -> i.setChannelEnabled(CHANNEL_BLUE, ((Button)e.widget).getSelection()));
-      createCheckbox(c, "Alpha", i.isChannelEnabled(CHANNEL_ALPHA),
-          e -> i.setChannelEnabled(CHANNEL_ALPHA, ((Button)e.widget).getSelection()));
+      createCheckbox(c, "Red", i.isChannelEnabled(CHANNEL_RED), e -> {
+        i.setChannelEnabled(CHANNEL_RED, ((Button)e.widget).getSelection());
+        updateColorChannelsIcon();
+      });
+      createCheckbox(c, "Green", i.isChannelEnabled(CHANNEL_GREEN), e -> {
+        i.setChannelEnabled(CHANNEL_GREEN, ((Button)e.widget).getSelection());
+        updateColorChannelsIcon();
+      });
+      createCheckbox(c, "Blue", i.isChannelEnabled(CHANNEL_BLUE), e -> {
+        i.setChannelEnabled(CHANNEL_BLUE, ((Button)e.widget).getSelection());
+        updateColorChannelsIcon();
+      });
+      createCheckbox(c, "Alpha", i.isChannelEnabled(CHANNEL_ALPHA), e -> {
+        i.setChannelEnabled(CHANNEL_ALPHA, ((Button)e.widget).getSelection());
+        updateColorChannelsIcon();
+      });
     }, "Color channel selection");
     backgroundItem = createBaloonToolItem(bar, theme.transparency(),
         shell -> backgroundSelection.createBaloonContents(shell, theme,
@@ -342,6 +355,14 @@ public class ImagePanel extends Composite {
     createSeparator(bar);
     saveItem = createToolItem(bar, theme.save(), e -> save(), "Save image to file");
     saveItem.setEnabled(false);
+  }
+
+  private void updateColorChannelsIcon() {
+    colorChanelsItem.setImage(widgets.theme.colorChannels()[
+        (imageComponent.isChannelEnabled(CHANNEL_RED) ? 1 : 0) |
+        (imageComponent.isChannelEnabled(CHANNEL_GREEN) ? 2 : 0) |
+        (imageComponent.isChannelEnabled(CHANNEL_BLUE) ? 4 : 0) |
+        (imageComponent.isChannelEnabled(CHANNEL_ALPHA) ? 8 : 0)]);
   }
 
   protected void setZoomToFit(boolean enabled) {
@@ -1330,8 +1351,8 @@ public class ImagePanel extends Composite {
     public Color color;
 
     public BackgroundSelection(Display display) {
-      image = new org.eclipse.swt.graphics.Image(display, 16, 16);
-      updateImage(new RGB(0, 0, 0));
+      image = new org.eclipse.swt.graphics.Image(display, 24, 24);
+      updateImage(new RGB(0, 0, 0), display);
     }
 
     public void createBaloonContents(Shell shell, Theme theme, Listener listener) {
@@ -1346,7 +1367,7 @@ public class ImagePanel extends Composite {
               e -> listener.onBackgroundSelectionChanged(BackgroundMode.SolidColor),
               "Show solid color background"));
       new QuickColorPiker(container, 128, newColor -> {
-        updateImage(newColor);
+        updateImage(newColor, shell.getDisplay());
         transparency.setSelection(false);
         backgroundColor.setSelection(true);
         backgroundColor.setImage(image);
@@ -1354,15 +1375,17 @@ public class ImagePanel extends Composite {
       });
     }
 
-    protected void updateImage(RGB newColor) {
+    protected void updateImage(RGB newColor, Display display) {
       if (color != null) {
         color.dispose();
       }
 
       GC gc = new GC(image);
+      gc.setBackground(display.getSystemColor(SWT.COLOR_WIDGET_BACKGROUND));
+      gc.fillRectangle(image.getBounds());
       color = new Color(image.getDevice(), newColor);
       gc.setBackground(color);
-      gc.fillRectangle(image.getBounds());
+      gc.fillRoundRectangle(2, 2, 20, 20, 4, 4);
       gc.dispose();
     }
 
