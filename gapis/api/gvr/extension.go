@@ -162,7 +162,7 @@ func (n noSubFrameEventGrouper) Build(end api.CmdID) []cmdgrouper.Group {
 	out := n.Grouper.Build(end)
 	for i := range out {
 		out[i].UserData = &resolve.CmdGroupData{
-			Thumbnail:          api.CmdNoID,
+			Representation:     api.CmdNoID,
 			NoFrameEventGroups: true,
 		}
 	}

@@ -33,7 +33,7 @@ import (
 // CmdGroupData is the additional metadata assigned to api.CmdIDGroups UserData
 // field.
 type CmdGroupData struct {
-	Thumbnail api.CmdID
+	Representation api.CmdID
 	// If true, then children frame event groups should not be added to this group.
 	NoFrameEventGroups bool
 }
@@ -56,23 +56,23 @@ type commandTree struct {
 
 func (t *commandTree) index(indices []uint64) (api.SpanItem, api.SubCmdIdx) {
 	group := api.CmdGroupOrRoot(t.root)
-	subCmdRootId := api.SubCmdIdx{}
+	subCmdRootID := api.SubCmdIdx{}
 	for _, idx := range indices {
 		switch item := group.Index(idx).(type) {
 		case api.CmdIDGroup:
 			group = item
 		case api.SubCmdRoot:
 			// Each SubCmdRoot contains its absolute sub command index.
-			subCmdRootId = item.Id
+			subCmdRootID = item.Id
 			group = item
 		case api.SubCmdIdx:
-			id := append(subCmdRootId, item...)
+			id := append(subCmdRootID, item...)
 			return id, id
 		default:
-			return item, subCmdRootId
+			return item, subCmdRootID
 		}
 	}
-	return group, subCmdRootId
+	return group, subCmdRootID
 }
 
 func (t *commandTree) indices(id api.CmdID) []uint64 {
@@ -99,31 +99,39 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 
 	cmdTree := boxed.(*commandTree)
 
-	rawItem, absId := cmdTree.index(c.Indices)
+	rawItem, absID := cmdTree.index(c.Indices)
 	switch item := rawItem.(type) {
 	case api.SubCmdIdx:
 		return &service.CommandTreeNode{
-			NumChildren: 0, // TODO: Subcommands
-			Commands:    cmdTree.path.Capture.SubCommandRange(item, item),
+			Representation: cmdTree.path.Capture.Command(item[0], item[1:]...),
+			NumChildren:    0, // TODO: Subcommands
+			Commands:       cmdTree.path.Capture.SubCommandRange(item, item),
 		}, nil
 	case api.CmdIDGroup:
-		if len(absId) == 0 {
+		representation := cmdTree.path.Capture.Command(uint64(item.Range.Last()))
+		if data, ok := item.UserData.(*CmdGroupData); ok {
+			representation = cmdTree.path.Capture.Command(uint64(data.Representation))
+		}
+
+		if len(absID) == 0 {
 			// Not a CmdIDGroup under SubCmdRoot, does not contain Subcommands
 			return &service.CommandTreeNode{
-				NumChildren: item.Count(),
-				Commands:    cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
-				Group:       item.Name,
-				NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
+				Representation: representation,
+				NumChildren:    item.Count(),
+				Commands:       cmdTree.path.Capture.CommandRange(uint64(item.Range.First()), uint64(item.Range.Last())),
+				Group:          item.Name,
+				NumCommands:    item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
 			}, nil
 		}
 		// Is a CmdIDGroup under SubCmdRoot, contains only Subcommands
-		startId := append(absId, uint64(item.Range.First()))
-		endId := append(absId, uint64(item.Range.Last()))
+		startID := append(absID, uint64(item.Range.First()))
+		endID := append(absID, uint64(item.Range.Last()))
 		return &service.CommandTreeNode{
-			NumChildren: item.Count(),
-			Commands:    cmdTree.path.Capture.SubCommandRange(startId, endId),
-			Group:       item.Name,
-			NumCommands: item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
+			Representation: representation,
+			NumChildren:    item.Count(),
+			Commands:       cmdTree.path.Capture.SubCommandRange(startID, endID),
+			Group:          item.Name,
+			NumCommands:    item.DeepCount(func(g api.CmdIDGroup) bool { return true /* TODO: Subcommands */ }),
 		}, nil
 
 	case api.SubCmdRoot:
@@ -134,15 +142,15 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 			count = uint64(item.SubGroup.Count())
 		}
 		return &service.CommandTreeNode{
-			NumChildren: item.SubGroup.Count(),
-			Commands:    cmdTree.path.Capture.SubCommandRange(item.Id, item.Id),
-			Group:       g,
-			NumCommands: count,
+			Representation: cmdTree.path.Capture.Command(item.Id[0], item.Id[1:]...),
+			NumChildren:    item.SubGroup.Count(),
+			Commands:       cmdTree.path.Capture.SubCommandRange(item.Id, item.Id),
+			Group:          g,
+			NumCommands:    count,
 		}, nil
 	default:
-		return nil, nil
 		panic(fmt.Errorf("Unexpected type: %T, cmdTree.index(c.Indices): (%v, %v), indices: %v",
-			item, rawItem, absId, c.Indices))
+			item, rawItem, absID, c.Indices))
 	}
 }
 
@@ -332,10 +340,11 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil
 	})
 
-	// Finally cluster the commands
+	// Cluster the commands
 	out.root.Cluster(uint64(p.MaxChildren), uint64(p.MaxNeighbours))
 
-	setThumbnails(ctx, &out.root, drawOrClearCmds)
+	// Set group representations.
+	setRepresentations(ctx, &out.root, drawOrClearCmds)
 
 	return out, nil
 }
@@ -421,7 +430,7 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 
 			group, _ := t.root.AddGroup(frameStart, frameEnd+1, fmt.Sprintf("Frame %v", frameCount))
 			if group != nil {
-				group.UserData = &CmdGroupData{Thumbnail: i}
+				group.UserData = &CmdGroupData{Representation: i}
 			}
 		}
 	}
@@ -430,22 +439,23 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 	}
 }
 
-func setThumbnails(ctx context.Context, g *api.CmdIDGroup, drawOrClearCmds api.Spans) {
+func setRepresentations(ctx context.Context, g *api.CmdIDGroup, drawOrClearCmds api.Spans) {
 	data, _ := g.UserData.(*CmdGroupData)
 	if data == nil {
-		data = &CmdGroupData{Thumbnail: api.CmdNoID}
+		data = &CmdGroupData{Representation: api.CmdNoID}
 		g.UserData = data
 	}
-	if data.Thumbnail == api.CmdNoID {
+	if data.Representation == api.CmdNoID {
 		if s, c := interval.Intersect(drawOrClearCmds, g.Bounds().Span()); c > 0 {
-			thumbnail := drawOrClearCmds[s+c-1].Bounds().Start
-			data.Thumbnail = thumbnail
+			data.Representation = drawOrClearCmds[s+c-1].Bounds().Start
+		} else {
+			data.Representation = g.Range.Last()
 		}
 	}
 
 	for _, s := range g.Spans {
 		if subgroup, ok := s.(*api.CmdIDGroup); ok {
-			setThumbnails(ctx, subgroup, drawOrClearCmds)
+			setRepresentations(ctx, subgroup, drawOrClearCmds)
 		}
 	}
 }

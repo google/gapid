@@ -402,7 +402,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     }
 
     public AtomIndex getIndex() {
-      return (data == null) ? null : AtomIndex.forNode(lastCommand(data.getCommands()),
+      return (data == null) ? null : AtomIndex.forNode(data.getRepresentation(),
           getPath(Path.CommandTreeNode.newBuilder()).build());
     }
 
