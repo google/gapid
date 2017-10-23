@@ -28,7 +28,7 @@ The following table describes the operations you can perform with the toolbar bu
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_fit%402x.png" alt="Zoom to Fit"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/zoom_fit%402x.png" alt="Zoom to Fit"/>
       </td>
       <td>
         Click the button to adjust the graphic to fit completely within the <b>Framebuffer</b> pane.
@@ -37,37 +37,37 @@ The following table describes the operations you can perform with the toolbar bu
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_actual%402x.png" alt="Zoom to Actual Size"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/zoom_actual%402x.png" alt="Zoom to Actual Size"/>
       </td>
       <td>Click the button to show the image at no scale, where one device pixel is equivalent to one screen pixel.</td>
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_in%402x.png" alt="Zoom In"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/zoom_in%402x.png" alt="Zoom In"/>
       </td>
       <td>Click the button to zoom in. You can also use your mouse wheel, or two-finger swipes on a touchpad, to scroll in and out. You can drag the image with your cursor.</td>
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/android/zoom_out%402x.png" alt="Zoom Out"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/zoom_out%402x.png" alt="Zoom Out"/>
       </td>
       <td>Click the button to zoom out. You can also use your mouse wheel, or two-finger swipes on a touchpad, to scroll in and out.</td>
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/color_channels%402x.png" alt="Color Channels"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/color_channels_00@2x.png" alt="Color Channels"/>
       </td>
       <td>Click the button and then select the color channels to render or deselect color channels so they aren't rendered. The options are <b>Red</b>, <b>Green</b>, <b>Blue</b>, and <b>Alpha</b> (transparency).</td>
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/transparency%402x.png" alt="Background"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/transparency%402x.png" alt="Background"/>
       </td>
       <td>Select the button to display a checkerboard background or solid color.</td>
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/gapid/flip_vertically%402x.png" alt="Flip Vertically"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/flip_vertically%402x.png" alt="Flip Vertically"/>
       </td>
       <td>Flips the image vertically.</td>
     </tr>
