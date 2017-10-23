@@ -79,7 +79,7 @@ func getVideoFrames(
 				fboIndex:     fmt.Sprint(e.Command.Indices),
 				frameIndex:   frameIndex,
 				numDrawCalls: numDrawCalls,
-				command:      e.Command.Capture.Command(e.Command.Indices[0]),
+				command:      e.Command.Capture.Command(e.Command.Indices[0] - 1), // -1 to skip the observation itself.
 			})
 		case service.EventKind_DrawCall:
 			numDrawCalls++
