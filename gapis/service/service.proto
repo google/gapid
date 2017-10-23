@@ -630,14 +630,17 @@ message CommandTree {
 
 // CommandTreeNode is a node in a command tree hierarchy.
 message CommandTreeNode {
+  // The path to the command that best represents this group. For example the
+  // the last draw call in a frame.
+  path.Command representation = 1;
   // Number of child nodes.
-  uint64 num_children = 1;
+  uint64 num_children = 2;
   // Group name if this node represents a group of commands.
-  string group = 2;
+  string group = 3;
   // Path to the command range represented by this node.
-  path.Commands commands = 3;
+  path.Commands commands = 4;
   // Number of commands encapsulated by this group.
-  uint64 num_commands = 4;
+  uint64 num_commands = 5;
 }
 
 // ConstantSet is a collection on name-value pairs to be used as an enumeration
