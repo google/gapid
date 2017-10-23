@@ -142,7 +142,9 @@ void SpyOverride_RecreateImage(
     VkMemoryRequirements* pMemoryRequirements, uint32_t sparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {}
 void SpyOverride_RecreateBindImageMemory(VkDevice, VkImage, VkDeviceMemory,
-                                         VkDeviceSize offset) {}
+                                         VkDeviceSize offset,
+                                         uint32_t bindCount,
+                                         VkSparseMemoryBind* binds) {}
 void SpyOverride_RecreateImageData(VkDevice, VkImage,
                                    uint32_t /*VkImageLayout*/,
                                    uint32_t hostMemoryIndex, VkQueue,
@@ -165,7 +167,9 @@ void SpyOverride_RecreateComputePipeline(VkDevice, VkPipelineCache,
                                          VkPipeline*) {}
 void SpyOverride_RecreateBuffer(VkDevice, VkBufferCreateInfo*, VkBuffer*) {}
 void SpyOverride_RecreateBindBufferMemory(VkDevice, VkBuffer, VkDeviceMemory,
-                                          VkDeviceSize offset) {}
+                                          VkDeviceSize offset,
+                                          uint32_t bindCount,
+                                          VkSparseMemoryBind* binds) {}
 void SpyOverride_RecreateBufferData(VkDevice, VkBuffer,
                                     uint32_t hostBufferMemoryIndex, VkQueue,
                                     void* data) {}
@@ -216,11 +220,17 @@ class SparseBindingInterval {
       : resourceOffset_(bind.mresourceOffset),
         size_(bind.msize),
         memory_(bind.mmemory),
-        memoryOffset_(bind.mmemoryOffset) {}
+        memoryOffset_(bind.mmemoryOffset),
+        flags_(bind.mflags) {}
   SparseBindingInterval(const SparseBindingInterval&) = default;
   SparseBindingInterval(SparseBindingInterval&&) = default;
   SparseBindingInterval& operator=(const SparseBindingInterval&) = default;
   SparseBindingInterval& operator=(SparseBindingInterval&&) = default;
+
+  VkSparseMemoryBind sparseMemoryBind() const {
+    return VkSparseMemoryBind(resourceOffset_, size_, memory_, memoryOffset_,
+                              flags_);
+  }
 
   using interval_unit_type = VkDeviceSize;
   inline VkDeviceSize start() const { return resourceOffset_; }
@@ -244,6 +254,7 @@ class SparseBindingInterval {
   VkDeviceSize size_;
   VkDeviceMemory memory_;
   VkDeviceSize memoryOffset_;
+  VkSparseMemoryBindFlags flags_;
 };
 
 using SparseBindingList = core::CustomIntervalList<SparseBindingInterval>;

@@ -3128,7 +3128,12 @@ cmd void RecreateBindBufferMemory(
     VkDevice       device,
     VkBuffer       buffer,
     VkDeviceMemory memory,
-    VkDeviceSize   offset) {
+    VkDeviceSize   offset,
+    u32            sparseBindCount,
+    const VkSparseMemoryBind* pSparseBinds) {
+    if sparseBindCount > 0 {
+      read(pSparseBinds[0:sparseBindCount])
+    }
 }
 
 @indirect("VkDevice")
@@ -3164,7 +3169,12 @@ cmd void RecreateBindImageMemory(
     VkDevice       device,
     VkImage        image,
     VkDeviceMemory memory,
-    VkDeviceSize   offset) {
+    VkDeviceSize   offset,
+    u32            opaqueSparseBindCount,
+    const VkSparseMemoryBind* pOpaqueSparseBinds) {
+    if opaqueSparseBindCount > 0 {
+      read(pOpaqueSparseBinds[0:opaqueSparseBindCount])
+    }
 }
 
 @indirect("VkDevice")

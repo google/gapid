@@ -1173,6 +1173,47 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 			return err
 		}
 	}
+	if a.OpaqueSparseBindCount > 0 {
+		cb := CommandBuilder{Thread: a.thread}
+		opaqueMemBindInfo := VkSparseImageOpaqueMemoryBindInfo{
+			Image:     a.Image,
+			BindCount: a.OpaqueSparseBindCount,
+			PBinds:    a.POpaqueSparseBinds,
+		}
+		opaqueMemBindInfoData := s.AllocDataOrPanic(ctx, opaqueMemBindInfo)
+		defer opaqueMemBindInfoData.Free()
+		queueBindInfo := VkBindSparseInfo{
+			SType:                VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+			PNext:                NewVoidᶜᵖ(memory.Nullptr),
+			WaitSemaphoreCount:   0,
+			PWaitSemaphores:      NewVkSemaphoreᶜᵖ(memory.Nullptr),
+			BufferBindCount:      0,
+			PBufferBinds:         NewVkSparseBufferMemoryBindInfoᶜᵖ(memory.Nullptr),
+			ImageOpaqueBindCount: 1,
+			PImageOpaqueBinds:    NewVkSparseImageOpaqueMemoryBindInfoᶜᵖ(opaqueMemBindInfoData.Ptr()),
+			ImageBindCount:       0,
+			PImageBinds:          NewVkSparseImageMemoryBindInfoᶜᵖ(memory.Nullptr),
+			SignalSemaphoreCount: 0,
+			PSignalSemaphores:    NewVkSemaphoreᶜᵖ(memory.Nullptr),
+		}
+		queueBindInfoData := s.AllocDataOrPanic(ctx, queueBindInfo)
+		defer queueBindInfoData.Free()
+
+		queue := findSupportedQueueForDevice(a.Device, s, VkQueueFlags(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT))
+		err := cb.VkQueueBindSparse(
+			queue,
+			1,
+			queueBindInfoData.Ptr(),
+			VkFence(0),
+			VkResult_VK_SUCCESS,
+		).AddRead(
+			queueBindInfoData.Data(),
+		).AddRead(
+			opaqueMemBindInfoData.Data(),
+		).Mutate(ctx, id, s, b)
+
+		return err
+	}
 	return nil
 }
 
@@ -1343,6 +1384,47 @@ func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, id api.CmdID, s *
 			return err
 		}
 	}
+	if a.SparseBindCount > 0 {
+		cb := CommandBuilder{Thread: a.thread}
+		bufMemBindInfo := VkSparseBufferMemoryBindInfo{
+			Buffer:    a.Buffer,
+			BindCount: a.SparseBindCount,
+			PBinds:    a.PSparseBinds,
+		}
+		bufMemBindInfoData := s.AllocDataOrPanic(ctx, bufMemBindInfo)
+		defer bufMemBindInfoData.Free()
+		queueBindInfo := VkBindSparseInfo{
+			SType:                VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+			PNext:                NewVoidᶜᵖ(memory.Nullptr),
+			WaitSemaphoreCount:   0,
+			PWaitSemaphores:      NewVkSemaphoreᶜᵖ(memory.Nullptr),
+			BufferBindCount:      1,
+			PBufferBinds:         NewVkSparseBufferMemoryBindInfoᶜᵖ(bufMemBindInfoData.Ptr()),
+			ImageOpaqueBindCount: 0,
+			PImageOpaqueBinds:    NewVkSparseImageOpaqueMemoryBindInfoᶜᵖ(memory.Nullptr),
+			ImageBindCount:       0,
+			PImageBinds:          NewVkSparseImageMemoryBindInfoᶜᵖ(memory.Nullptr),
+			SignalSemaphoreCount: 0,
+			PSignalSemaphores:    NewVkSemaphoreᶜᵖ(memory.Nullptr),
+		}
+		queueBindInfoData := s.AllocDataOrPanic(ctx, queueBindInfo)
+		defer queueBindInfoData.Free()
+
+		queue := findSupportedQueueForDevice(a.Device, s, VkQueueFlags(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT))
+		err := cb.VkQueueBindSparse(
+			queue,
+			1,
+			queueBindInfoData.Ptr(),
+			VkFence(0),
+			VkResult_VK_SUCCESS,
+		).AddRead(
+			queueBindInfoData.Data(),
+		).AddRead(
+			bufMemBindInfoData.Data(),
+		).Mutate(ctx, id, s, b)
+
+		return err
+	}
 	return nil
 }
 
@@ -1451,6 +1533,21 @@ func findGraphicsAndComputeQueueForDevice(device VkDevice, s *api.GlobalState) V
 		}
 	}
 	return backupQueue
+}
+
+// Returns a queue capable of the sorts of operations specified in the flags.
+// If such a queue cannot be found, returns a VkQueue(0).
+func findSupportedQueueForDevice(device VkDevice, s *api.GlobalState, flags VkQueueFlags) VkQueue {
+	c := GetState(s)
+	for _, v := range c.Queues {
+		if v.Device == device {
+			family := c.PhysicalDevices[c.Devices[device].PhysicalDevice].QueueFamilyProperties[v.Family]
+			if uint32(family.QueueFlags)&uint32(flags) == uint32(flags) {
+				return v.VulkanHandle
+			}
+		}
+	}
+	return VkQueue(0)
 }
 
 func (a *RecreateQueryPool) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
