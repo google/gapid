@@ -24,6 +24,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.OS;
 import com.google.gapid.views.AtomEditor;
 
 import org.eclipse.jface.resource.JFaceResources;
@@ -342,6 +343,18 @@ public class Widgets {
     result.setMinimum(min);
     result.setMaximum(max);
     result.setSelection(value);
+
+    if (OS.isMac) {
+      result.addListener(SWT.KeyUp, e -> {
+        if ((e.stateMask & (SWT.CONTROL | SWT.COMMAND)) != 0) {
+          switch (e.keyCode) {
+            case 'c': result.copy(); break;
+            case 'v': result.paste(); break;
+            case 'x': result.cut(); break;
+          }
+        }
+      });
+    }
     return result;
   }
 
