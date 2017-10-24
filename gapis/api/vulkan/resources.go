@@ -733,22 +733,22 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
 	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
-	newAtom := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
+	newCmd := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
 	// Carry all non-observation extras through.
 	for _, e := range cmd.Extras().All() {
 		if _, ok := e.(*api.CmdObservations); !ok {
-			newAtom.Extras().Add(e)
+			newCmd.Extras().Add(e)
 		}
 	}
 
 	// Add observations
-	newAtom.AddRead(newCreateInfo.Data()).AddRead(code.Data())
+	newCmd.AddRead(newCreateInfo.Data()).AddRead(code.Data())
 
 	for _, w := range cmd.Extras().Observations().Writes {
-		newAtom.AddWrite(w.Range, w.ID)
+		newCmd.AddWrite(w.Range, w.ID)
 	}
-	return newAtom
+	return newCmd
 }
 
 func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
@@ -771,20 +771,20 @@ func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
 	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
-	newAtom := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
+	newCmd := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
 	// Carry all non-observation extras through.
 	for _, e := range cmd.Extras().All() {
 		if _, ok := e.(*api.CmdObservations); !ok {
-			newAtom.Extras().Add(e)
+			newCmd.Extras().Add(e)
 		}
 	}
 
 	// Add observations
-	newAtom.AddRead(newCreateInfo.Data()).AddRead(code.Data())
+	newCmd.AddRead(newCreateInfo.Data()).AddRead(code.Data())
 
 	for _, w := range cmd.Extras().Observations().Writes {
-		newAtom.AddWrite(w.Range, w.ID)
+		newCmd.AddWrite(w.Range, w.ID)
 	}
-	return newAtom
+	return newCmd
 }
