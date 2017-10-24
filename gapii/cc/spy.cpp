@@ -38,6 +38,10 @@
 #include <vector>
 #include <memory>
 
+// CurrentCaptureVersion is incremented on breaking changes to the capture format.
+// NB: Also update equally named field in capture.go
+static const int CurrentCaptureVersion = 0;
+
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include "windows/wgl.h"
 #endif //  TARGET_OS == GAPID_OS_WINDOWS
@@ -245,6 +249,7 @@ void Spy::writeHeader() {
         GAPID_ERROR("query::createContext() errored: %s", query::contextError());
     }
     capture::Header file_header;
+    file_header.set_version(CurrentCaptureVersion);
     file_header.set_allocated_device(query::getDeviceInstance(queryPlatformData()));
     file_header.set_allocated_abi(query::currentABI());
     mEncoder->object(&file_header);
