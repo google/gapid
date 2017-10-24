@@ -15,11 +15,9 @@
 package vulkan
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/log"
@@ -721,7 +719,8 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	shader := data.GetShader()
 	codeSlice := shadertools.AssembleSpirvText(shader.Source)
 	if codeSlice == nil {
-		return nil
+		log.E(ctx, "Failed at assembling new SPIR-V shader code. Shader module unchanged.")
+		return cmd
 	}
 
 	code := state.AllocDataOrPanic(ctx, codeSlice)
@@ -733,17 +732,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
-	// TODO(qining): The following is a hack to work around memory.Write().
-	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but
-	// 'uint64' is used for now, and memory.Write() will always treat is as
-	// a 8-byte type and causing padding issues so that won't encode the struct
-	// correctly.
-	// Possible solution: define another type 'size' and handle it correctly in
-	// memory.Write().
-	buf := &bytes.Buffer{}
-	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
-	newCreateInfo := state.AllocDataOrPanic(ctx, buf.Bytes())
+	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
 	newAtom := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
 	// Carry all non-observation extras through.
@@ -781,17 +770,7 @@ func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
-	// TODO(qining): The following is a hack to work around memory.Write().
-	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but
-	// 'uint64' is used for now, and memory.Write() will always treat is as
-	// a 8-byte type and causing padding issues so that won't encode the struct
-	// correctly.
-	// Possible solution: define another type 'size' and handle it correctly in
-	// memory.Write().
-	buf := &bytes.Buffer{}
-	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
-	newCreateInfo := state.AllocDataOrPanic(ctx, buf.Bytes())
+	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
 	newAtom := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
 	// Carry all non-observation extras through.
