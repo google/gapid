@@ -130,8 +130,15 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
-
+		if p.AllCommands {
+			events = append(events, &service.Event{
+				Kind:    service.EventKind_AllCommands,
+				Command: p.Capture.Command(uint64(id)),
+			})
+		}
 		if p.FramebufferObservations {
+			// NOTE: gapit SxS video depends on FBO events coming after
+			// all other event types.
 			for _, e := range cmd.Extras().All() {
 				if _, ok := e.(*capture.FramebufferObservation); ok {
 					events = append(events, &service.Event{
@@ -140,13 +147,6 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 					})
 				}
 			}
-		}
-
-		if p.AllCommands {
-			events = append(events, &service.Event{
-				Kind:    service.EventKind_AllCommands,
-				Command: p.Capture.Command(uint64(id)),
-			})
 		}
 
 		for _, ep := range eps {
