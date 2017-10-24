@@ -19,7 +19,7 @@ function(go_install)
     if(DISABLED_GO)
         return()
     endif()
-    cmake_parse_arguments(GO "" "DESTINATION;LINK_PACKAGE" "" ${ARGN})
+    cmake_parse_arguments(GO "" "DESTINATION;LINK_PACKAGE;WIN_UI" "" ${ARGN})
     default(GO_UNPARSED_ARGUMENTS ${CMAKE_CURRENT_SOURCE_DIR})
     foreach(entry ${GO_UNPARSED_ARGUMENTS})
         get_filename_component(CMAKE_CURRENT_SOURCE_DIR "${entry}" ABSOLUTE)
@@ -34,7 +34,7 @@ function(go_install)
         _go_deps()
         target_link_libraries(${name} ${Imports})
         set_target_properties(${name} PROPERTIES
-            LINK_FLAGS "-DGO_PACKAGE=${GO_LINK_PACKAGE}"
+            LINK_FLAGS "-DGO_PACKAGE=${GO_LINK_PACKAGE} -DGO_WIN_UI=${GO_WIN_UI}"
             # JOB_POOL_LINK go
         )
         _go_update_deps(${name})

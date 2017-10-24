@@ -27,6 +27,11 @@ if(GO_BUILD)
   endif()
 endif()
 list(APPEND args "-tags" "integration")
+if (WIN32 AND GO_WIN_UI)
+  # Marks the binary as a Windows GUI app so it won't show a console by default.
+  # See https://golang.org/cmd/link/ and https://msdn.microsoft.com/en-us/library/fcc1zstk.aspx
+  list(APPEND args "-ldflags" "-H windowsgui")
+endif()
 execute_process(
     COMMAND "${CMAKE_Go_COMPILER}" ${command} ${args} ${GO_EXTRA_ARGS} ${GO_PACKAGE}
     RESULT_VARIABLE result
