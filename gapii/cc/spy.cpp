@@ -582,7 +582,7 @@ static bool downsamplePixels(const std::vector<uint8_t>& srcData, uint32_t srcW,
 }
 
 // observeFramebuffer captures the currently bound framebuffer, and writes
-// it to a FramebufferObservation atom.
+// it to a FramebufferObservation extra.
 void Spy::observeFramebuffer(CallObserver* observer, uint8_t api) {
     uint32_t w = 0;
     uint32_t h = 0;

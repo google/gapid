@@ -61,9 +61,15 @@ func getVideoFrames(
 	videoFrames := []*videoFrame{}
 	w, h := 0, 0
 	frameIndex, numDrawCalls := 0, 0
+	var lastFrameEvent *path.Command
 	for _, e := range events {
 		switch e.Kind {
 		case service.EventKind_FramebufferObservation:
+			// We assume FBO events come after other events on a command.
+			if lastFrameEvent == nil {
+				log.W(ctx, "Got framebuffer observation but nothing wrote to the frame")
+				continue
+			}
 			fbo, err := getFBO(ctx, client, e.Command)
 			if err != nil {
 				return nil, 0, 0, err
@@ -79,11 +85,15 @@ func getVideoFrames(
 				fboIndex:     fmt.Sprint(e.Command.Indices),
 				frameIndex:   frameIndex,
 				numDrawCalls: numDrawCalls,
-				command:      e.Command.Capture.Command(e.Command.Indices[0]),
+				command:      lastFrameEvent,
 			})
+		case service.EventKind_Clear:
+			lastFrameEvent = e.Command
 		case service.EventKind_DrawCall:
+			lastFrameEvent = e.Command
 			numDrawCalls++
 		case service.EventKind_LastInFrame:
+			lastFrameEvent = e.Command
 			frameIndex++
 			numDrawCalls = 0
 		}
@@ -162,6 +172,7 @@ func (verb *videoVerb) sxsVideoSource(
 	events, err := getEvents(ctx, client, &path.Events{
 		Capture:                 capture,
 		DrawCalls:               true,
+		Clears:                  true,
 		LastInFrame:             true,
 		FramebufferObservations: true,
 		Filter:                  filter,
