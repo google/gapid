@@ -68,6 +68,7 @@ func (s *commandIndicesSet) contains(fci api.SubCmdIdx) bool {
 type DCE struct {
 	footprint        *dependencygraph.Footprint
 	endBehaviorIndex uint64
+	endCmdIndex      api.CmdID
 	requests         *commandIndicesSet
 	requestCount     uint64
 }
@@ -90,6 +91,9 @@ func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
 	if bi > t.endBehaviorIndex {
 		t.endBehaviorIndex = bi
 	}
+	if api.CmdID(fci[0]) > t.endCmdIndex {
+		t.endCmdIndex = api.CmdID(fci[0])
+	}
 }
 
 // Transform is to comform the interface of Transformer, but does not accept
@@ -106,6 +110,15 @@ func (t *DCE) Transform(ctx context.Context, id api.CmdID, c api.Cmd,
 // the alive commands to the following transforms to mutate them and write them
 // to build instructions for replay.
 func (t *DCE) Flush(ctx context.Context, out Writer) {
+	if t.endBehaviorIndex >= uint64(len(t.footprint.Behaviors)) {
+		log.E(ctx, "DCE: Cannot backpropagate through def-use chain from behavior index: %v, "+
+			"with length of behavior list: %v.", t.endBehaviorIndex, len(t.footprint.Behaviors))
+		log.W(ctx, "DCE: Fallback to disable DCE.")
+		for i := api.CmdID(0); i <= t.endCmdIndex; i++ {
+			out.MutateAndWrite(ctx, i, t.footprint.Commands[int(i)])
+		}
+		return
+	}
 	t0 := dCECounter.Start()
 	livenessBoard, aliveCmds := t.backPropagate(ctx)
 	dCECounter.Stop(t0)

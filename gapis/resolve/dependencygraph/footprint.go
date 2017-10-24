@@ -161,7 +161,7 @@ func (f *Footprint) BehaviorIndex(ctx context.Context,
 		if u, ok := v.(uint64); ok {
 			return u
 		}
-		log.E(ctx, "Invalid behavior index: %v is not a uint64", v)
+		log.E(ctx, "Invalid behavior index: %v is not a uint64. Request command index: %v", v, fci)
 		return uint64(0)
 	}
 	log.E(ctx, "Cannot get behavior index for command indexed with: %v", fci)
@@ -233,7 +233,6 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 					// following mutate calls, which are to build the replay
 					// instructions, that are responsible to catch the error.
 					// TODO: This error should be moved to report view.
-					log.E(ctx, "Command %v %v: %v", id, cmd, err)
 				}
 				ft.AddBehavior(ctx, bh)
 				return nil
