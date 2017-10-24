@@ -15,11 +15,9 @@
 package vulkan
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/log"
@@ -721,7 +719,8 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	shader := data.GetShader()
 	codeSlice := shadertools.AssembleSpirvText(shader.Source)
 	if codeSlice == nil {
-		return nil
+		log.E(ctx, "Failed at assembling new SPIR-V shader code. Shader module unchanged.")
+		return cmd
 	}
 
 	code := state.AllocDataOrPanic(ctx, codeSlice)
@@ -733,33 +732,23 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
-	// TODO(qining): The following is a hack to work around memory.Write().
-	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but
-	// 'uint64' is used for now, and memory.Write() will always treat is as
-	// a 8-byte type and causing padding issues so that won't encode the struct
-	// correctly.
-	// Possible solution: define another type 'size' and handle it correctly in
-	// memory.Write().
-	buf := &bytes.Buffer{}
-	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
-	newCreateInfo := state.AllocDataOrPanic(ctx, buf.Bytes())
-	newAtom := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
+	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
+	newCmd := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
 	// Carry all non-observation extras through.
 	for _, e := range cmd.Extras().All() {
 		if _, ok := e.(*api.CmdObservations); !ok {
-			newAtom.Extras().Add(e)
+			newCmd.Extras().Add(e)
 		}
 	}
 
 	// Add observations
-	newAtom.AddRead(newCreateInfo.Data()).AddRead(code.Data())
+	newCmd.AddRead(newCreateInfo.Data()).AddRead(code.Data())
 
 	for _, w := range cmd.Extras().Observations().Writes {
-		newAtom.AddWrite(w.Range, w.ID)
+		newCmd.AddWrite(w.Range, w.ID)
 	}
-	return newAtom
+	return newCmd
 }
 
 func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
@@ -781,31 +770,21 @@ func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
-	// TODO(qining): The following is a hack to work around memory.Write().
-	// In VkShaderModuleCreateInfo, CodeSize should be of type 'size', but
-	// 'uint64' is used for now, and memory.Write() will always treat is as
-	// a 8-byte type and causing padding issues so that won't encode the struct
-	// correctly.
-	// Possible solution: define another type 'size' and handle it correctly in
-	// memory.Write().
-	buf := &bytes.Buffer{}
-	writer := endian.Writer(buf, state.MemoryLayout.GetEndian())
-	memory.Write(memory.NewEncoder(writer, state.MemoryLayout), createInfo)
-	newCreateInfo := state.AllocDataOrPanic(ctx, buf.Bytes())
-	newAtom := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
+	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
+	newCmd := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
 	// Carry all non-observation extras through.
 	for _, e := range cmd.Extras().All() {
 		if _, ok := e.(*api.CmdObservations); !ok {
-			newAtom.Extras().Add(e)
+			newCmd.Extras().Add(e)
 		}
 	}
 
 	// Add observations
-	newAtom.AddRead(newCreateInfo.Data()).AddRead(code.Data())
+	newCmd.AddRead(newCreateInfo.Data()).AddRead(code.Data())
 
 	for _, w := range cmd.Extras().Observations().Writes {
-		newAtom.AddWrite(w.Range, w.ID)
+		newCmd.AddWrite(w.Range, w.ID)
 	}
-	return newAtom
+	return newCmd
 }
