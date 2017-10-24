@@ -540,16 +540,38 @@ void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
             mBufferSparseBindings[buf] = SparseBindingList();
           }
           for (const auto& b : bb.second->mSparseMemoryBinds) {
-            mBufferSparseBindings[buf].replace(VulkanSpy::SparseBindingInterval(b.second));
+            mBufferSparseBindings[buf].replace(
+                VulkanSpy::SparseBindingInterval(b.second));
+          }
+          for (uint32_t i = 0; i < Buffers[buf]->mSparseMemoryBindings.size() ||
+                               i < mBufferSparseBindings[buf].count();
+               i++) {
+            if (i >= mBufferSparseBindings[buf].count()) {
+              Buffers[buf]->mSparseMemoryBindings.erase(i);
+            }
+            Buffers[buf]->mSparseMemoryBindings[i] =
+                mBufferSparseBindings[buf][i].sparseMemoryBind();
           }
         }
         for (const auto& ob : cmd.mSparseBinds->mOpaqueImageBinds) {
           VkImage img = ob.first;
-          if (mOpaqueImageSparseBindings.find(img) == mOpaqueImageSparseBindings.end()) {
+          if (mOpaqueImageSparseBindings.find(img) ==
+              mOpaqueImageSparseBindings.end()) {
             mOpaqueImageSparseBindings[img] = SparseBindingList();
           }
           for (const auto& b : ob.second->mSparseMemoryBinds) {
-            mOpaqueImageSparseBindings[img].replace(VulkanSpy::SparseBindingInterval(b.second));
+            mOpaqueImageSparseBindings[img].replace(
+                VulkanSpy::SparseBindingInterval(b.second));
+          }
+          for (uint32_t i = 0;
+               i < Images[img]->mOpaqueSparseMemoryBindings.size() ||
+               i < mOpaqueImageSparseBindings[img].count();
+               i++) {
+            if (i >= mOpaqueImageSparseBindings[img].count()) {
+              Images[img]->mOpaqueSparseMemoryBindings.erase(i);
+            }
+            Images[img]->mOpaqueSparseMemoryBindings[i] =
+                mOpaqueImageSparseBindings[img][i].sparseMemoryBind();
           }
         }
       }

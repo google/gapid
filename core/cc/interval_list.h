@@ -118,6 +118,10 @@ public:
     // end() returns the pointer to one-past the last interval in the list.
     inline const T* end() const;
 
+    // operator[] returns the const reference to the element at the specified
+    // location pos.
+    inline const T& operator[](size_t pos) const;
+
 protected:
     // rangeFirst returns the index of the first interval + bias that touches or
     // exceeds start.
@@ -238,6 +242,11 @@ inline const T* CustomIntervalList<T>::end() const {
     } else {
         return nullptr;
     }
+}
+
+template<typename T>
+inline const T& CustomIntervalList<T>::operator[](size_t pos) const {
+  return mIntervals[pos];
 }
 
 template<typename T>
