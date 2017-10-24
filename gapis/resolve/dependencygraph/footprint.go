@@ -229,8 +229,11 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 				// side effect of the this command.
 				if err := cmd.Mutate(ctx, id, s, nil); err != nil {
 					bh.Aborted = true
+					// Continue the footprint building even if errors are found. It is
+					// following mutate calls, which are to build the replay
+					// instructions, that are responsible to catch the error.
 					// TODO: This error should be moved to report view.
-					return fmt.Errorf("Command %v %v: %v", id, cmd, err)
+					log.E(ctx, "Command %v %v: %v", id, cmd, err)
 				}
 				ft.AddBehavior(ctx, bh)
 				return nil
