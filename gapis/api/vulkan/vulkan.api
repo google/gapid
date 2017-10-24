@@ -8763,7 +8763,7 @@ ref!ComputePipelineObject CurrentComputePipeline
   // The render pass in which this draw takes place
   ref!RenderPassObject RenderPass
   // Whether or not we are in an unclosed render pass
-  bool InRenderPass
+  @hidden bool InRenderPass
 }
 
 map!(VkQueue, ref!DrawInfo) LastDrawInfos
