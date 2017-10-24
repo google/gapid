@@ -82,50 +82,7 @@ echo $(date): Starting build...
 echo $(date): Build completed.
 
 # Build the release packages.
-mkdir $BUILD_ROOT/out/dist
-cd $BUILD_ROOT/out/dist
-VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
-                  /Major/ {major=$2}
-                  /Minor/ {minor=$2}
-                  /Micro/ {micro=$2}
-                  END {print major"."minor"."micro}' ../pkg/build.properties)
-
-# Combine package contents.
-mkdir -p gapid/jre
-cp -r ../pkg/* gapid/
-cp -r ../current/java/gapic-osx.jar gapid/lib/gapic.jar
-$SRC/kokoro/macos/copy_jre.sh gapid/jre
-cp $SRC/kokoro/macos/gapid.sh gapid/gapid
-
-# Create a zip file.
-zip -r gapid-$VERSION-macos.zip gapid/
-
-# Create a .app package
-mkdir -p GAPID.app/Contents/MacOS/
-cp -r gapid/* GAPID.app/Contents/MacOS/
-cp $SRC/kokoro/macos/Info.plist GAPID.app/Contents/
-
-# Create the icon. TODO: need resolution up to 1024 (512@2x)
-mkdir -p GAPID.iconset GAPID.app/Contents/Resources
-# Ensure the icon has an alpha channel to make iconutil work, sigh.
-pip install --user pypng
-python -c '
-import sys;import png;i=png.Reader(sys.stdin).asRGBA();
-png.Writer(width=i[0],height=i[1],alpha=True).write(sys.stdout,i[2])'\
-  < $SRC/gapic/res/icons/logo\@2x.png > logo.png
-for i in 128 64 32 16; do
-  sips -z $i $i logo.png --out GAPID.iconset/icon_${i}x$i.png
-  sips -z $((i*2)) $((i*2)) logo.png --out GAPID.iconset/icon_${i}x$i\@2x.png
-done
-iconutil -c icns -o GAPID.app/Contents/Resources/GAPID.icns GAPID.iconset
-
-# Make a dmg file.
-pip install --user dmgbuild pyobjc-framework-Quartz
-cp $SRC/kokoro/macos/background\@2x.png .
-# Yes, height, then width.... sigh.
-sips -z 480 640 background\@2x.png --out background.png
-cp $SRC/kokoro/macos/dmg-settings.py .
-~/Library/Python/2.7/bin/dmgbuild -s dmg-settings.py GAPID gapid-$VERSION-macos.dmg
+$SRC/kokoro/macos/package.sh $BUILD_ROOT/out
 
 # Clean up - this prevents kokoro from rsyncing many unneeded files
 shopt -s extglob
