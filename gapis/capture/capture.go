@@ -17,6 +17,7 @@ package capture
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"sync"
 
@@ -42,6 +43,18 @@ var (
 	captures     = []id.ID{}
 )
 
+const (
+	// CurrentCaptureVersion is incremented on breaking changes to the capture format.
+	// NB: Also update equally named field in spy.cpp
+	CurrentCaptureVersion int32 = 0
+)
+
+type ErrUnsupportedVersion struct{ Version int32 }
+
+func (e ErrUnsupportedVersion) Error() string {
+	return fmt.Sprintf("Unsupported capture format version: %+v", e.Version)
+}
+
 type Capture struct {
 	Name     string
 	Header   *Header
@@ -61,7 +74,9 @@ func New(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*pat
 	for _, cmd := range cmds {
 		b.addCmd(ctx, cmd)
 	}
-	c := b.build(name, header)
+	hdr := *header
+	hdr.Version = CurrentCaptureVersion
+	c := b.build(name, &hdr)
 
 	id, err := database.Store(ctx, c)
 	if err != nil {
@@ -202,6 +217,22 @@ func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 					SuggestUpdate: true,
 				}
 			case err.Version.LessThan(pack.MinVersion):
+				return nil, &service.ErrUnsupportedVersion{
+					Reason: messages.ErrFileTooOld(),
+				}
+			default:
+				return nil, &service.ErrUnsupportedVersion{
+					Reason: messages.ErrFileCannotBeRead(),
+				}
+			}
+		case ErrUnsupportedVersion:
+			switch {
+			case err.Version > CurrentCaptureVersion:
+				return nil, &service.ErrUnsupportedVersion{
+					Reason:        messages.ErrFileTooNew(),
+					SuggestUpdate: true,
+				}
+			case err.Version < CurrentCaptureVersion:
 				return nil, &service.ErrUnsupportedVersion{
 					Reason: messages.ErrFileTooOld(),
 				}

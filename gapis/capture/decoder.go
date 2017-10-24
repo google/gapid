@@ -151,6 +151,9 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 	switch obj := obj.(type) {
 	case *Header:
 		d.header = obj
+		if d.header.Version != CurrentCaptureVersion {
+			return nil, ErrUnsupportedVersion{Version: d.header.Version}
+		}
 		return in, nil
 
 	case *Resource:
