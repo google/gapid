@@ -30,12 +30,10 @@ type Type interface {
 	CastableTo(ty Type) bool
 	// Call invokes the static method with the specified arguments.
 	Call(method string, args ...interface{}) Value
-	// Super returns the super type.
-	Super() Type
 
 	call(object Value, method string, args []interface{}) Value
 	field(object Value, name string) Value
-	jdwp() *JDbg
+	jdbg() *JDbg
 }
 
 // Simple is a primitive type.
@@ -105,11 +103,6 @@ func (t *Simple) Call(method string, args ...interface{}) Value {
 	return t.call(Value{}, method, args)
 }
 
-// Super returns the super type.
-func (t *Simple) Super() Type {
-	return nil
-}
-
 func (t *Simple) call(object Value, method string, args []interface{}) Value {
 	t.j.fail("Type '%v' does not support methods", t.ty)
 	return Value{}
@@ -120,7 +113,7 @@ func (t *Simple) field(object Value, name string) Value {
 	return Value{}
 }
 
-func (t *Simple) jdwp() *JDbg { return t.j }
+func (t *Simple) jdbg() *JDbg { return t.j }
 
 // Array is the type of an array.
 type Array struct {
@@ -172,6 +165,9 @@ type Class struct {
 
 func (t *Class) String() string { return t.name }
 
+// ID returns the JDWP class identifier.
+func (t *Class) ID() jdwp.ClassID { return t.class.ClassID() }
+
 // Signature returns the Java signature for the type.
 func (t *Class) Signature() string { return t.signature }
 
@@ -219,8 +215,8 @@ func (t *Class) Field(name string) Value {
 	return t.j.value(values[0])
 }
 
-// Super returns the super type.
-func (t *Class) Super() Type {
+// Super returns the super class type.
+func (t *Class) Super() *Class {
 	return t.super
 }
 
@@ -301,7 +297,7 @@ func (t *Class) field(object Value, name string) Value {
 	return t.j.value(vals[0])
 }
 
-func (t *Class) jdwp() *JDbg { return t.j }
+func (t *Class) jdbg() *JDbg { return t.j }
 
 func (t *Class) resolve() *classResolvedInfo {
 	if t.resolved != nil {

@@ -58,7 +58,31 @@ func waitForOnCreate(ctx context.Context, conn *jdwp.Connection, wakeup jdwp.Thr
 	}
 
 	log.I(ctx, "   Waiting for Application.<init>()")
-	return conn.WaitForMethodEntry(ctx, app.ClassID(), constructor.ID, wakeup)
+	initEntry, err := conn.WaitForMethodEntry(ctx, app.ClassID(), constructor.ID, wakeup)
+	if err != nil {
+		return nil, err
+	}
+
+	var entry *jdwp.EventMethodEntry
+	err = jdbg.Do(conn, initEntry.Thread, func(j *jdbg.JDbg) error {
+		class := j.This().Call("getClass").AsType().(*jdbg.Class)
+		onCreate, err := conn.GetClassMethod(class.ID(), "onCreate", "()V")
+		if err != nil {
+			return err
+		}
+		log.I(ctx, "   Waiting for %v.onCreate()", class.String())
+		out, err := conn.WaitForMethodEntry(ctx, class.ID(), onCreate.ID, wakeup)
+		if err != nil {
+			return err
+		}
+		entry = out
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return entry, nil
 }
 
 // waitForVulkanLoad for android.app.ApplicationLoaders.getClassLoader to be called,

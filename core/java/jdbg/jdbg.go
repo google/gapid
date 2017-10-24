@@ -108,6 +108,9 @@ func Do(conn *jdwp.Connection, thread jdwp.ThreadID, f func(jdbg *JDbg) error) e
 	})
 }
 
+// Connection returns the JDWP connection.
+func (j *JDbg) Connection() *jdwp.Connection { return j.conn }
+
 // ObjectType returns the Java java.lang.Object type.
 func (j *JDbg) ObjectType() *Class { return j.cache.objTy }
 
@@ -187,6 +190,23 @@ func (j *JDbg) Class(name string) *Class {
 	return nil
 }
 
+// AllClasses returns all the loaded classes.
+func (j *JDbg) AllClasses() []*Class {
+	classes, err := j.conn.GetAllClasses()
+	if err != nil {
+		j.fail("Couldn't get all classes: %v", err)
+	}
+	out := []*Class{}
+	for _, class := range classes {
+		c, err := j.class(class)
+		if err != nil {
+			j.fail("Couldn't get class '%v': %v", class.Signature, err)
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
 // ArrayOf returns the type of the array with specified element type.
 func (j *JDbg) ArrayOf(elTy Type) *Array {
 	ty := j.Type("[" + elTy.Signature())
@@ -206,35 +226,45 @@ func (j *JDbg) classFromSig(sig string) (*Class, error) {
 	if err != nil {
 		return nil, err
 	}
+	return j.class(class)
+}
+
+func (j *JDbg) class(class jdwp.ClassInfo) (*Class, error) {
+	sig := class.Signature
+	if cached, ok := j.cache.classes[class.Signature]; ok {
+		return cached, nil
+	}
+
+	name := strings.Replace(strings.TrimRight(strings.TrimLeft(sig, "[L"), ";"), "/", ".", -1)
+
+	ty := &Class{j: j, signature: sig, name: name, class: class}
+	j.cache.classes[sig] = ty
+	j.cache.idToSig[class.TypeID] = sig
 
 	superid, err := j.conn.GetSuperClass(class.ClassID())
 	if err != nil {
 		return nil, err
 	}
-	var super *Class
+
 	if superid != 0 {
-		super = j.typeFromID(jdwp.ReferenceTypeID(superid)).(*Class)
+		ty.super = j.typeFromID(jdwp.ReferenceTypeID(superid)).(*Class)
 	}
 
 	implementsids, err := j.conn.GetImplemented(class.TypeID)
 	if err != nil {
 		return nil, err
 	}
-	implements := make([]*Class, len(implementsids))
+
+	ty.implements = make([]*Class, len(implementsids))
 	for i, id := range implementsids {
-		implements[i] = j.typeFromID(jdwp.ReferenceTypeID(id)).(*Class)
+		ty.implements[i] = j.typeFromID(jdwp.ReferenceTypeID(id)).(*Class)
 	}
 
-	fields, err := j.conn.GetFields(class.TypeID)
+	ty.fields, err = j.conn.GetFields(class.TypeID)
 	if err != nil {
 		return nil, err
 	}
 
-	name := strings.Replace(strings.TrimRight(strings.TrimLeft(sig, "[L"), ";"), "/", ".", -1)
-
-	ty := &Class{j: j, signature: sig, name: name, class: class, super: super, implements: implements, fields: fields}
-	j.cache.classes[sig] = ty
-	j.cache.idToSig[class.TypeID] = sig
 	return ty, nil
 }
 
