@@ -32,7 +32,7 @@ type Value struct {
 func newValue(ty Type, val interface{}) Value {
 	if obj, ok := val.(jdwp.Object); ok {
 		// Prevent GC of this object for the duration of the jdbg.Do call.
-		j, id := ty.jdwp(), obj.ID()
+		j, id := ty.jdbg(), obj.ID()
 		j.conn.DisableGC(id)
 		j.objects = append(j.objects, id)
 	}
@@ -51,7 +51,7 @@ func (v Value) Field(name string) Value {
 
 // Get returns the value, unmarshalled.
 func (v Value) Get() interface{} {
-	return v.ty.jdwp().unmarshal(v.val)
+	return v.ty.jdbg().unmarshal(v.val)
 }
 
 // Type returns the value's type.
@@ -61,7 +61,7 @@ func (v Value) Type() Type {
 
 // AsType returns the value as a type.
 func (v Value) AsType() Type {
-	j := v.ty.jdwp()
+	j := v.ty.jdbg()
 	switch v := v.val.(type) {
 	case jdwp.ClassObjectID:
 		id, err := j.conn.ReflectedType(v)
@@ -75,7 +75,7 @@ func (v Value) AsType() Type {
 
 // SetArrayValues sets the array values to values. This value must be an Array.
 func (v Value) SetArrayValues(values interface{}) {
-	j := v.ty.jdwp()
+	j := v.ty.jdbg()
 	arrayTy, ok := v.ty.(*Array)
 	if !ok {
 		j.fail("SetArrayValues can only be used with Arrays, type is %v", v.ty)

@@ -111,3 +111,33 @@ func (c *Connection) WaitForMethodEntry(ctx context.Context, class ClassID, meth
 
 	return out, nil
 }
+
+// WaitForMethodExit blocks until the method on class is exited, and then
+// returns the method exit event. The thread is suspended when the method
+// returns. If wakeup is not 0, then the given thread is resumed before
+// we wait for the method.
+func (c *Connection) WaitForMethodExit(ctx context.Context, class ClassID, method MethodID, wakeup ThreadID) (*EventMethodExit, error) {
+	id, err := c.SetEvent(MethodExit, SuspendEventThread, ClassOnlyEventModifier(class))
+	if err != nil {
+		return nil, err
+	}
+	if wakeup != 0 {
+		c.Resume(wakeup)
+	}
+
+	defer c.ClearEvent(MethodExit, id)
+
+	var out *EventMethodExit
+	c.WatchEvents(ctx, func(event Event, _ SuspendPolicy) bool {
+		if event, ok := event.(*EventMethodExit); ok {
+			if event.Location.Method == method {
+				out = event
+				return false
+			}
+			c.Resume(event.Thread)
+		}
+		return true
+	})
+
+	return out, nil
+}
