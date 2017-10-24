@@ -76,30 +76,7 @@ echo %DATE% %TIME%
 cd %BUILD_ROOT%
 
 REM Build the release packages.
-mkdir out\dist\gapid
-cd out\dist
-awk -F= 'BEGIN {major=0; minor=0; micro=0}^
-         /Major/ {major=$2}^
-         /Minor/ {minor=$2}^
-         /Micro/ {micro=$2}^
-         END {print major"."minor"."micro}' ..\pkg\build.properties > version.txt
-set /p VERSION=<version.txt
-
-REM Combine package contents.
-xcopy /e ..\pkg\* gapid\
-copy ..\current\java\gapic-windows.jar gapid\lib\gapic.jar
-copy %SRC%\kokoro\windows\gapid.bat gapid\
-call %SRC%\kokoro\windows\copy_jre.bat %cd%\gapid\jre
-
-REM Package up the zip file.
-zip -r gapid-%VERSION%-windows.zip gapid
-
-REM Create an MSI installer.
-copy %SRC%\kokoro\windows\gapid.wxs .
-copy %SRC%\kokoro\windows\gapid.ico .
-%WIX%\heat.exe dir gapid -ag -cg gapid -dr GAPID -template fragment -sreg -sfrag -srd -suid -o component.wxs
-%WIX%\candle.exe -dGAPIDVersion="%VERSION%" gapid.wxs component.wxs
-%WIX%\light.exe gapid.wixobj component.wixobj -b gapid -ext WixUIExtension -cultures:en-us -o gapid-%VERSION%-windows.msi
+call %SRC%\kokoro\windows\package.bat %cd%\out
 
 REM Clean up - this prevents kokoro from rsyncing many unneeded files
 cd %BUILD_ROOT%

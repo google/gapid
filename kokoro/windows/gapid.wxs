@@ -47,7 +47,7 @@
     <DirectoryRef Id="ApplicationProgramsFolder">
       <Component Id="ApplicationShortcut" Guid="*">
         <Shortcut Id="ApplicationStartMenuShortcut" Name="GAPID" Description="Graphics API Debugger"
-            Target="[!gapid.bat]" WorkingDirectory="APPLICATIONROOTDIRECTORY" Icon="gapid.ico" />
+            Target="[!gapid.exe]" WorkingDirectory="APPLICATIONROOTDIRECTORY" Icon="gapid.ico" />
         <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\Google\GAPID" Name="installed" Type="integer" Value="1" KeyPath="yes" />
       </Component>
