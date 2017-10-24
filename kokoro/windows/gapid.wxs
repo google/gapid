@@ -55,9 +55,33 @@
 
     <Icon Id="gapid.ico" SourceFile="gapid.ico" />
 
+    <DirectoryRef Id="GAPID">
+      <Component Id="FileAssociation" Guid="*">
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace" Value="Graphics API Trace" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace" Name="AppUserModelId" Value="GAPID" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="AppUserModelId" Value="GAPID" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="ApplicationIcon" Value="[!gapid.ico]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="ApplicationName" Value="Graphics API Debugger" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="ApplicationDescription" Value="Inspect Graphics Traces" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="ApplicationCompany" Value="Google, Inc" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\DefaultIcon" Value="[!gapid.ico]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\gapid.exe" Value="[!gapid.exe]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\gapid.exe" Name="Path" Value="[GAPID]" Type="string" />
+
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\gapid.exe\SupportedTypes" Name=".gfxtrace" Value="" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\gapid.exe\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+
+        <RegistryValue Root="HKLM" Key="Software\Classes\.gfxtrace" Value="GAPID.Trace" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gfxtrace\shell\edit\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+      </Component>
+    </DirectoryRef>
+
     <Feature Id="GAPID"  Title="Graphics API Debugger" Level="1">
       <ComponentGroupRef Id="gapid" />
       <ComponentRef Id="ApplicationShortcut" />
+      <ComponentRef Id="FileAssociation" />
     </Feature>
 
     <Property Id="WIXUI_INSTALLDIR" Value="GAPID" />
