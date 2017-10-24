@@ -2,11 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
  <dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>English</string>
   <key>CFBundleExecutable</key>
   <string>gapid</string>
   <key>CFBundleIconFile</key>
   <string>GAPID.icns</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleName</key>
+  <string>GAPID</string>
+  <key>CFBundleDisplayName</key>
+  <string>Graphics API Debugger</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.google.GAPID</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6</string>
+  <key>NSHumanReadableCopyright</key>
+  <string>Copyright © 2017 Google Inc.</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.developer-tools</string>
  </dict>
 </plist>
