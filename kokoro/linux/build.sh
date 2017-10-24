@@ -63,58 +63,7 @@ echo $(date): Starting build...
 echo $(date): Build completed.
 
 # Build the release packages.
-mkdir $BUILD_ROOT/out/dist
-cd $BUILD_ROOT/out/dist
-VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
-                  /Major/ {major=$2}
-                  /Minor/ {minor=$2}
-                  /Micro/ {micro=$2}
-                  END {print major"."minor"."micro}' ../pkg/build.properties)
-
-# Combine package contents.
-mkdir -p gapid/DEBIAN gapid/opt/gapid gapid/usr/share/applications gapid/usr/share/menu
-cp -r ../pkg/* gapid/opt/gapid
-cp -r ../current/java/gapic-linux.jar gapid/opt/gapid/lib/gapic.jar
-cp $SRC/kokoro/linux/gapid.sh gapid/opt/gapid/gapid
-cp $SRC/gapic/res/icons/logo\@2x.png gapid/opt/gapid/icon.png
-cp $SRC/kokoro/linux/gapid.desktop gapid/usr/share/applications/google-gapid.desktop
-cp $SRC/kokoro/linux/gapid.menu gapid/usr/share/menu/google-gapid.menu
-
-# Create the dpkg config file.
-cat > gapid/DEBIAN/control <<EOF
-Package: gapid
-Version: $VERSION
-Section: development
-Priority: optional
-Architecture: amd64
-Depends: openjdk-8-jre
-Maintainer: Google, Inc <gapid-team@google.com>
-Description: GAPID is a collection of tools that allows you to inspect, tweak
- and replay calls from an application to a graphics driver.
- .
- GAPID can trace any Android debuggable application, or if you have root access
- to the device any application can be traced.
-Homepage: https://github.com/google/gapid
-Installed-Size: $(du -s gapid/opt | cut -f1)
-EOF
-
-# Fix up permissions and ownership.
-chmod 755 gapid/opt/gapid/gapi[drst]
-chmod 644 gapid/opt/gapid/lib/gapic.jar
-find gapid/ -type d -exec chmod 755 {} +
-find gapid/ -type d -exec chmod g-s {} +
-sudo chown -R root.root gapid/*
-
-# Package up zip file.
-cd gapid/opt/
-zip -r ../../gapid-$VERSION-linux.zip gapid/
-cd ../../
-
-# Build the .deb package.
-echo "$(date): Building package."
-dpkg-deb -v --build  gapid
-mv gapid.deb gapid-$VERSION-linux.deb
-echo "$(date): Done."
+$SRC/kokoro/linux/package.sh $BUILD_ROOT/out
 
 # Clean up - this prevents kokoro from rsyncing many unneeded files
 shopt -s extglob
