@@ -1279,7 +1279,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// Mutate
 	if err := cmd.Mutate(ctx, id, s, nil); err != nil {
-		log.E(ctx, "Command %v %v: %v", id, cmd, err)
+		// Continue the footprint building without emitting errors here. It is the
+		// following mutate() calls' responsibility to catch the error.
 		return
 	}
 
