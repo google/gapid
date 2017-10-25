@@ -55,7 +55,7 @@ func (c *Connection) GetClassMethod(class ClassID, name, signature string) (Meth
 	}
 	method := methods.FindBySignature(name, signature)
 	if method == nil {
-		return Method{}, fmt.Errorf("Method '%s' not found", signature)
+		return Method{}, fmt.Errorf("Method '%s%s' not found", name, signature)
 	}
 	return *method, nil
 }
