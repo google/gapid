@@ -26,9 +26,15 @@ type OnEvent func(Event, SuspendPolicy) bool
 
 // WatchEvents calls cb each time a new event arrives.
 // WatchEvents will block until cb returns false, or the ctx is cancelled.
-func (c *Connection) WatchEvents(ctx context.Context, cb OnEvent) {
+// If wakeup is not 0, then the given thread is resumed before we wait for the
+// method.
+func (c *Connection) WatchEvents(ctx context.Context, wakeup ThreadID, cb OnEvent) {
 	id, events := c.newEventsHandler()
 	defer c.deleteEventsHandler(id)
+
+	if wakeup != 0 {
+		c.Resume(wakeup)
+	}
 
 	for {
 		select {
