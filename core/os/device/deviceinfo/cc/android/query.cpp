@@ -272,7 +272,29 @@ bool createContext(void* platform_data) {
         return false; \
     }
 
-    JNIEnv* env = reinterpret_cast<JNIEnv*>(platform_data);
+    JavaVM* vm = reinterpret_cast<JavaVM*>(platform_data);
+    JNIEnv* env = nullptr;
+    auto res = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    bool shouldDetach = false;
+    switch (res) {
+    case JNI_OK:
+        break;
+    case JNI_EDETACHED:
+        res = vm->AttachCurrentThread(&env, nullptr);
+        if (res != 0) {
+            snprintf(gContext.mError, sizeof(gContext.mError),
+                    "Failed to attach thread to JavaVM. (%d)", res);
+            destroyContext();
+            return false;
+        }
+        shouldDetach = true;
+        break;
+    default:
+        snprintf(gContext.mError, sizeof(gContext.mError),
+                "Failed to get Java env. (%d)", res);
+        destroyContext();
+        return false;
+    }
 
     Class build(env, "android/os/Build");
     CHECK(build.get_field("SUPPORTED_ABIS", gContext.mSupportedABIs));
@@ -284,6 +306,10 @@ bool createContext(void* platform_data) {
     Class version(env, "android/os/Build$VERSION");
     CHECK(version.get_field("RELEASE", gContext.mOSName));
     CHECK(version.get_field("SDK_INT", gContext.mOSVersion));
+
+    if (shouldDetach) {
+        vm->DetachCurrentThread();
+    }
 
 #undef CHECK
 

@@ -18,6 +18,8 @@
 
 #include <city.h>
 
+#include <thread>
+
 namespace {
 
 inline bool isLittleEndian() {
@@ -41,16 +43,12 @@ device::DataTypeLayout* new_dt_layout() {
     return out;
 }
 
-}  // anonymous namespace
-
-namespace query {
-
-device::Instance* getDeviceInstance(void* platform_data) {
+void buildDeviceInstance(void* platform_data, device::Instance** out) {
     using namespace device;
     using namespace google::protobuf::io;
 
     if (!query::createContext(platform_data)) {
-        return nullptr;
+        return;
     }
 
     // OS
@@ -125,6 +123,21 @@ device::Instance* getDeviceInstance(void* platform_data) {
     delete [] proto_data;
 
     query::destroyContext();
+
+    *out = instance;
+}
+
+}  // anonymous namespace
+
+namespace query {
+
+device::Instance* getDeviceInstance(void* platform_data) {
+    device::Instance* instance = nullptr;
+
+    // buildDeviceInstance on a seperate thread to avoid EGL screwing with the
+    // currently bound context.
+    std::thread thread(buildDeviceInstance, platform_data, &instance);
+    thread.join();
 
     return instance;
 }

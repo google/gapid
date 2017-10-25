@@ -63,25 +63,8 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     gapii::Spy::get(); // Construct the spy.
     return JNI_VERSION_1_6;
 }
-void* queryPlatformData() {
-    JNIEnv* env = nullptr;
 
-    auto res = gJavaVM->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-    switch (res) {
-    case JNI_OK:
-        break;
-    case JNI_EDETACHED:
-        res = gJavaVM->AttachCurrentThread(&env, nullptr);
-        if (res != 0) {
-            GAPID_FATAL("Failed to attach thread to JavaVM. (%d)", res);
-        }
-        break;
-    default:
-        GAPID_FATAL("Failed to get Java env. (%d)", res);
-    }
-    GAPID_INFO("queryPlatformData() env = %p", env);
-    return env;
-}
+void* queryPlatformData() { return gJavaVM; }
 #else  // TARGET_OS == GAPID_OS_ANDROID
 void* queryPlatformData() { return nullptr; }
 #endif  // TARGET_OS == GAPID_OS_ANDROID
@@ -137,24 +120,14 @@ thread_local gapii::CallObserver* gContext = nullptr;
 namespace gapii {
 
 Spy* Spy::get() {
-    bool init;
-    {
-        std::lock_guard<std::recursive_mutex> lock(gMutex);
-        init = !gSpy;
-        if (init) {
-            GAPID_INFO("Constructing spy...");
-            gSpy.reset(new Spy());
-            GAPID_INFO("Registering spy symbols...");
-            for (int i = 0; kGLESExports[i].mName != NULL; ++i) {
-                gSpy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
-            }
+    std::lock_guard<std::recursive_mutex> lock(gMutex);
+    if (!gSpy) {
+        GAPID_INFO("Constructing spy...");
+        gSpy.reset(new Spy());
+        GAPID_INFO("Registering spy symbols...");
+        for (int i = 0; kGLESExports[i].mName != NULL; ++i) {
+            gSpy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
         }
-    }
-    if (init) {
-        auto s = gSpy.get();
-        s->enter("writeHeader", 0);
-        s->writeHeader();
-        s->exit();
     }
     return gSpy.get();
 }
@@ -204,6 +177,20 @@ Spy::Spy()
     mSuspendCaptureFrames.store((header.mFlags & ConnectionHeader::FLAG_DEFER_START)?
         kSuspendIndefinitely: mSuspendCaptureFrames.load());
 
+    set_valid_apis(header.mAPIs);
+    GAPID_ERROR("APIS %08x", header.mAPIs);
+    GAPID_INFO("GAPII connection established. Settings:");
+    GAPID_INFO("Observe framebuffer every %d frames", mObserveFrameFrequency);
+    GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
+    GAPID_INFO("Disable precompiled shaders: %s", mDisablePrecompiledShaders ? "true" : "false");
+
+    mEncoder = gapii::PackEncoder::create(mConnection);
+
+    // writeHeader needs to come before the installer is created as the
+    // deviceinfo queries want to call into EGL / GL commands which will be
+    // patched.
+    writeHeader();
+
 #if TARGET_OS == GAPID_OS_ANDROID
     if (strlen(header.mLibInterceptorPath) > 0) {
         gInstaller = std::unique_ptr<Installer>(new Installer(header.mLibInterceptorPath));
@@ -213,15 +200,6 @@ Spy::Spy()
         install_gvr(gInstaller.get(), gvr_lib, &this->GvrSpy::mImports);
     }
 #endif // TARGET_OS == GAPID_OS_ANDROID
-
-    set_valid_apis(header.mAPIs);
-    GAPID_ERROR("APIS %08x", header.mAPIs);
-    GAPID_INFO("GAPII connection established. Settings:");
-    GAPID_INFO("Observe framebuffer every %d frames", mObserveFrameFrequency);
-    GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
-    GAPID_INFO("Disable precompiled shaders: %s", mDisablePrecompiledShaders ? "true" : "false");
-
-    mEncoder = gapii::PackEncoder::create(mConnection);
 
     auto context = enter("init", 0);
     GlesSpy::init();
@@ -245,15 +223,11 @@ Spy::Spy()
 }
 
 void Spy::writeHeader() {
-    if (!query::createContext(queryPlatformData())) {
-        GAPID_ERROR("query::createContext() errored: %s", query::contextError());
-    }
     capture::Header file_header;
     file_header.set_version(CurrentCaptureVersion);
     file_header.set_allocated_device(query::getDeviceInstance(queryPlatformData()));
     file_header.set_allocated_abi(query::currentABI());
     mEncoder->object(&file_header);
-    query::destroyContext();
 }
 
 void Spy::resolveImports() {
@@ -310,9 +284,10 @@ EGLContext Spy::eglCreateContext(CallObserver* observer, EGLDisplay display, EGL
     auto res = GlesSpy::eglCreateContext(observer, display, config, share_context, attrib_vector.data());
 
     // NB: The getters modify the std::map, so this log must be last.
-    GAPID_INFO("eglCreateContext requested: GL %i.%i, profile 0x%x, flags 0x%x",
+    GAPID_INFO("eglCreateContext requested: GL %i.%i, profile 0x%x, flags 0x%x -> %p",
                attribs[EGL_CONTEXT_MAJOR_VERSION_KHR], attribs[EGL_CONTEXT_MINOR_VERSION_KHR],
-               attribs[EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR], attribs[EGL_CONTEXT_FLAGS_KHR]);
+               attribs[EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR], attribs[EGL_CONTEXT_FLAGS_KHR],
+               res);
     return res;
 }
 
