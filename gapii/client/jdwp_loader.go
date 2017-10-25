@@ -79,7 +79,7 @@ func waitForOnCreate(ctx context.Context, conn *jdwp.Connection, wakeup jdwp.Thr
 			return fmt.Errorf("Couldn't find Application.onCreate")
 		}
 		log.I(ctx, "   Waiting for %v.onCreate()", class.String())
-		out, err := conn.WaitForMethodEntry(ctx, class.ID(), onCreate.ID, wakeup)
+		out, err := conn.WaitForMethodEntry(ctx, class.ID(), onCreate.ID, initEntry.Thread)
 		if err != nil {
 			return err
 		}
