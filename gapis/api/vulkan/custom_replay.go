@@ -18,6 +18,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -1175,6 +1176,12 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 	}
 	if a.OpaqueSparseBindCount > 0 {
 		cb := CommandBuilder{Thread: a.thread}
+		for _, bind := range a.POpaqueSparseBinds.Slice(0, uint64(a.OpaqueSparseBindCount), s.MemoryLayout).MustRead(ctx, a, s, nil) {
+			if !GetState(s).DeviceMemories.Contains(bind.Memory) {
+				// TODO: Move this message to report view
+				log.E(ctx, "Sparse memory binding for opaque image: %v, Memory: %v does not exist.", a.Image, bind.Memory)
+			}
+		}
 		opaqueMemBindInfo := VkSparseImageOpaqueMemoryBindInfo{
 			Image:     a.Image,
 			BindCount: a.OpaqueSparseBindCount,
@@ -1386,6 +1393,12 @@ func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, id api.CmdID, s *
 	}
 	if a.SparseBindCount > 0 {
 		cb := CommandBuilder{Thread: a.thread}
+		for _, bind := range a.PSparseBinds.Slice(0, uint64(a.SparseBindCount), s.MemoryLayout).MustRead(ctx, a, s, nil) {
+			if !GetState(s).DeviceMemories.Contains(bind.Memory) {
+				// TODO: Move this message to report view
+				log.E(ctx, "Sparse memory binding for buffer: %v, Memory: %v does not exist.", a.Buffer, bind.Memory)
+			}
+		}
 		bufMemBindInfo := VkSparseBufferMemoryBindInfo{
 			Buffer:    a.Buffer,
 			BindCount: a.SparseBindCount,
