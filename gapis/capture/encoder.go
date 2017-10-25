@@ -3,6 +3,7 @@ package capture
 import (
 	"context"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -48,8 +49,8 @@ func (e *encoder) encode(ctx context.Context) error {
 }
 
 func (e *encoder) childObject(ctx context.Context, obj interface{}, parentID uint64) error {
+	var err error
 	if r, ok := obj.(api.ResourceReference); ok {
-		var err error
 		obj, err = r.RemapResourceIDs(func(id *id.ID) error {
 			return e.resource(ctx, *id)
 		})
@@ -58,9 +59,11 @@ func (e *encoder) childObject(ctx context.Context, obj interface{}, parentID uin
 		}
 	}
 
-	msg, err := protoconv.ToProto(ctx, obj)
-	if err != nil {
-		return err
+	msg, ok := obj.(proto.Message)
+	if !ok {
+		if msg, err = protoconv.ToProto(ctx, obj); err != nil {
+			return err
+		}
 	}
 	if err := e.w.ChildObject(ctx, msg, parentID); err != nil {
 		return err
