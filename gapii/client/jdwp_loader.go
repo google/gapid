@@ -66,9 +66,17 @@ func waitForOnCreate(ctx context.Context, conn *jdwp.Connection, wakeup jdwp.Thr
 	var entry *jdwp.EventMethodEntry
 	err = jdbg.Do(conn, initEntry.Thread, func(j *jdbg.JDbg) error {
 		class := j.This().Call("getClass").AsType().(*jdbg.Class)
-		onCreate, err := conn.GetClassMethod(class.ID(), "onCreate", "()V")
-		if err != nil {
-			return err
+		var onCreate jdwp.Method
+		for class != nil {
+			var err error
+			onCreate, err = conn.GetClassMethod(class.ID(), "onCreate", "()V")
+			if err == nil {
+				break
+			}
+			class = class.Super()
+		}
+		if class == nil {
+			return fmt.Errorf("Couldn't find Application.onCreate")
 		}
 		log.I(ctx, "   Waiting for %v.onCreate()", class.String())
 		out, err := conn.WaitForMethodEntry(ctx, class.ID(), onCreate.ID, wakeup)
