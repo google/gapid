@@ -959,6 +959,27 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return
 			}
 
+		case *GlDeleteFramebuffers:
+			// If you delete a framebuffer that is currently bound then the
+			// binding automatically reverts back to the default framebuffer
+			// (0). As we do compat for glBindBuffer(), scan the list of
+			// framebuffers that are being deleted, and forward them to a fake
+			// call to glBindFramebuffer(XXX, 0) if we find any.
+			cmd.extras.Observations().ApplyReads(s.Memory.ApplicationPool())
+			fbs, err := cmd.Framebuffers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				for _, fb := range fbs {
+					if fb == c.Bound.DrawFramebuffer.ID {
+						t.Transform(ctx, dID, cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, 0), out)
+					}
+					if fb == c.Bound.ReadFramebuffer.ID {
+						t.Transform(ctx, dID, cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, 0), out)
+					}
+				}
+				out.MutateAndWrite(ctx, dID, cmd)
+				return
+			}
+
 		case *GlBindFramebuffer:
 			if cmd.Framebuffer != 0 && !c.Objects.GeneratedNames.Framebuffers[cmd.Framebuffer] {
 				// glGenFramebuffers() was not used to generate the buffer. Legal in GLES.
@@ -975,7 +996,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// SRGB capable. Thus, when SRGB is enabled in the state, and we're
 				// binding the default framebuffer, SRGB needs to be disabled, and
 				// specifically enabled when binding the non-default framebuffer.
-				// (If it was explicetly disabled in the capture, no change is needed.)
+				// (If it was explicitly disabled in the capture, no change is needed.)
 				// TODO: Handle the use of the EGL KHR_gl_colorspace extension.
 				if cmd.Target == GLenum_GL_FRAMEBUFFER || cmd.Target == GLenum_GL_DRAW_FRAMEBUFFER {
 					origSrgb := c.Pixel.FramebufferSrgb
