@@ -142,7 +142,9 @@ void SpyOverride_RecreateImage(
     VkMemoryRequirements* pMemoryRequirements, uint32_t sparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {}
 void SpyOverride_RecreateBindImageMemory(VkDevice, VkImage, VkDeviceMemory,
-                                         VkDeviceSize offset) {}
+                                         VkDeviceSize offset,
+                                         uint32_t bindCount,
+                                         VkSparseMemoryBind* binds) {}
 void SpyOverride_RecreateImageData(VkDevice, VkImage,
                                    uint32_t /*VkImageLayout*/,
                                    uint32_t hostMemoryIndex, VkQueue,
@@ -165,7 +167,9 @@ void SpyOverride_RecreateComputePipeline(VkDevice, VkPipelineCache,
                                          VkPipeline*) {}
 void SpyOverride_RecreateBuffer(VkDevice, VkBufferCreateInfo*, VkBuffer*) {}
 void SpyOverride_RecreateBindBufferMemory(VkDevice, VkBuffer, VkDeviceMemory,
-                                          VkDeviceSize offset) {}
+                                          VkDeviceSize offset,
+                                          uint32_t bindCount,
+                                          VkSparseMemoryBind* binds) {}
 void SpyOverride_RecreateBufferData(VkDevice, VkBuffer,
                                     uint32_t hostBufferMemoryIndex, VkQueue,
                                     void* data) {}
@@ -208,3 +212,52 @@ uint32_t SpyOverride_createImageAndCacheMemoryRequirements(
 void SpyOverride_cacheImageSparseMemoryRequirements(
     VkDevice device, VkImage image, uint32_t count,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements);
+
+
+class SparseBindingInterval {
+ public:
+  SparseBindingInterval(const VkSparseMemoryBind& bind)
+      : resourceOffset_(bind.mresourceOffset),
+        size_(bind.msize),
+        memory_(bind.mmemory),
+        memoryOffset_(bind.mmemoryOffset),
+        flags_(bind.mflags) {}
+  SparseBindingInterval(const SparseBindingInterval&) = default;
+  SparseBindingInterval(SparseBindingInterval&&) = default;
+  SparseBindingInterval& operator=(const SparseBindingInterval&) = default;
+  SparseBindingInterval& operator=(SparseBindingInterval&&) = default;
+
+  VkSparseMemoryBind sparseMemoryBind() const {
+    return VkSparseMemoryBind(resourceOffset_, size_, memory_, memoryOffset_,
+                              flags_);
+  }
+
+  using interval_unit_type = VkDeviceSize;
+  inline VkDeviceSize start() const { return resourceOffset_; }
+  inline VkDeviceSize end() const { return resourceOffset_ + size_; }
+  inline void adjust(VkDeviceSize start, VkDeviceSize end) {
+    VkDeviceSize new_size = end - start;
+    if (start > resourceOffset_) {
+      VkDeviceSize x = start - resourceOffset_;
+      resourceOffset_ += x;
+      memoryOffset_ += x;
+    } else {
+      VkDeviceSize x = resourceOffset_ - start;
+      resourceOffset_ -= x;
+      memoryOffset_ -= x;
+    }
+    size_ = new_size;
+  }
+
+ private:
+  VkDeviceSize resourceOffset_;
+  VkDeviceSize size_;
+  VkDeviceMemory memory_;
+  VkDeviceSize memoryOffset_;
+  VkSparseMemoryBindFlags flags_;
+};
+
+using SparseBindingList = core::CustomIntervalList<SparseBindingInterval>;
+
+std::unordered_map<VkBuffer, SparseBindingList> mBufferSparseBindings;
+std::unordered_map<VkImage, SparseBindingList> mOpaqueImageSparseBindings;

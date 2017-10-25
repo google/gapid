@@ -708,7 +708,12 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
       VkBuffer copy_buffer;
       VkDeviceMemory copy_memory;
 
-      if (buffer.second->mMemory) {
+      bool denseBound = buffer.second->mMemory != nullptr;
+      bool sparseBound = (mBufferSparseBindings.find(buffer.first) !=
+                          mBufferSparseBindings.end()) &&
+                         (mBufferSparseBindings[buffer.first].count() > 0);
+
+      if (denseBound || sparseBound) {
         need_to_clean_up_temps = true;
         VkPhysicalDeviceMemoryProperties properties;
         mImports.mVkInstanceFunctions[instance]
@@ -836,11 +841,19 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         device_functions.vkDestroyCommandPool(device, pool, nullptr);
       }
 
+      uint32_t sparseBindCount = sparseBound ? mBufferSparseBindings[buffer.first].count() : 0;
+      std::vector<VkSparseMemoryBind> sparseBinds;
+      for (const auto& b : mBufferSparseBindings[buffer.first]) {
+        sparseBinds.emplace_back(b.sparseMemoryBind());
+      }
+
       RecreateBindBufferMemory(
           observer, buffer.second->mDevice, buffer.second->mVulkanHandle,
-          buffer.second->mMemory ? buffer.second->mMemory->mVulkanHandle
-                                 : VkDeviceMemory(0),
-          buffer.second->mMemoryOffset);
+          denseBound ? buffer.second->mMemory->mVulkanHandle
+                     : VkDeviceMemory(0),
+          buffer.second->mMemoryOffset,
+          sparseBound ? mBufferSparseBindings[buffer.first].count() : 0,
+          sparseBound ? sparseBinds.data() : nullptr);
 
       RecreateBufferData(observer, buffer.second->mDevice,
                          buffer.second->mVulkanHandle, host_buffer_memory_index,
@@ -920,7 +933,13 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
       uint32_t imageLayout = info.mLayout;
 
-      if (image.second->mBoundMemory &&
+      bool denseBound = image.second->mBoundMemory != nullptr;
+      bool opaqueSparseBound =
+          (mOpaqueImageSparseBindings.find(image.first) !=
+           mOpaqueImageSparseBindings.end()) &&
+          (mOpaqueImageSparseBindings[image.first].count() > 0);
+
+      if ((denseBound || opaqueSparseBound) &&
           info.mSamples == VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT &&
           // Don't capture images with undefined layout. The resulting data
           // itself will be undefined.
@@ -1113,11 +1132,19 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         device_functions.vkDestroyCommandPool(device, pool, nullptr);
       }
 
+      uint32_t opaqueSparseBindCount = opaqueSparseBound ? mOpaqueImageSparseBindings[image.first].count() : 0;
+      std::vector<VkSparseMemoryBind> opaqueSparseBinds;
+      for (const auto& b : mOpaqueImageSparseBindings[image.first]) {
+        opaqueSparseBinds.emplace_back(b.sparseMemoryBind());
+      }
+
       RecreateBindImageMemory(
           observer, image.second->mDevice, image.second->mVulkanHandle,
-          image.second->mBoundMemory ? image.second->mBoundMemory->mVulkanHandle
-                                     : VkDeviceMemory(0),
-          image.second->mBoundMemoryOffset);
+          denseBound ? image.second->mBoundMemory->mVulkanHandle
+                     : VkDeviceMemory(0),
+          image.second->mBoundMemoryOffset,
+          opaqueSparseBound ? opaqueSparseBindCount : 0,
+          opaqueSparseBound ? opaqueSparseBinds.data() : nullptr);
 
       RecreateImageData(observer, image.second->mDevice,
                         image.second->mVulkanHandle, imageLayout,

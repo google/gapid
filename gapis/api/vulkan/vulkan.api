@@ -1597,7 +1597,7 @@ class VkSparseImageMemoryBind {
 class VkSparseImageMemoryBindInfo {
   VkImage                   image
   u32                       bindCount
-  const VkSparseMemoryBind* pBinds
+  const VkSparseImageMemoryBind* pBinds
 }
 
 @serialize
@@ -2797,7 +2797,7 @@ cmd VkResult vkQueueSubmit(
     for j in (0 .. info.waitSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
         = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-            Unsignal, wait_semaphores[j])
+            Unsignal, wait_semaphores[j], null)
     }
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
 
@@ -2838,7 +2838,7 @@ cmd VkResult vkQueueSubmit(
     for j in (0 .. info.signalSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
         = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-            Signal, signal_semaphores[j])
+            Signal, signal_semaphores[j], null)
     }
     nextSubcontext()
   }
@@ -3128,7 +3128,12 @@ cmd void RecreateBindBufferMemory(
     VkDevice       device,
     VkBuffer       buffer,
     VkDeviceMemory memory,
-    VkDeviceSize   offset) {
+    VkDeviceSize   offset,
+    u32            sparseBindCount,
+    const VkSparseMemoryBind* pSparseBinds) {
+    if sparseBindCount > 0 {
+      read(pSparseBinds[0:sparseBindCount])
+    }
 }
 
 @indirect("VkDevice")
@@ -3164,7 +3169,12 @@ cmd void RecreateBindImageMemory(
     VkDevice       device,
     VkImage        image,
     VkDeviceMemory memory,
-    VkDeviceSize   offset) {
+    VkDeviceSize   offset,
+    u32            opaqueSparseBindCount,
+    const VkSparseMemoryBind* pOpaqueSparseBinds) {
+    if opaqueSparseBindCount > 0 {
+      read(pOpaqueSparseBinds[0:opaqueSparseBindCount])
+    }
 }
 
 @indirect("VkDevice")
@@ -3247,30 +3257,67 @@ cmd VkResult vkQueueBindSparse(
     u32                     bindInfoCount,
     const VkBindSparseInfo* pBindInfo,
     VkFence                 fence) {
+  LastBoundQueue = Queues[queue]
   infos := pBindInfo[0:bindInfoCount]
+  enterSubcontext()
   for i in (0 .. bindInfoCount) {
-    read(infos[i].pWaitSemaphores[0:infos[i].waitSemaphoreCount])
+    info := infos[i]
+    wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
+    for j in (0 .. info.waitSemaphoreCount) {
+      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+        = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+            Unsignal, wait_semaphores[j], null)
+    }
 
-    bufferBinds := infos[i].pBufferBinds[0:infos[i].bufferBindCount]
-    for j in (0 .. infos[i].bufferBindCount) {
+    queuedBinds := new!QueuedSparseBinds()
+
+    bufferBinds := info.pBufferBinds[0:info.bufferBindCount]
+    for j in (0 .. info.bufferBindCount) {
       bufferBindInfo := bufferBinds[j]
-      read(bufferBindInfo.pBinds[0:bufferBindInfo.bindCount])
+      bindsToQueue := new!SparseMemoryBinds()
+      memoryBinds := bufferBindInfo.pBinds[0:bufferBindInfo.bindCount]
+      for k in (0 .. bufferBindInfo.bindCount) {
+        bindsToQueue.SparseMemoryBinds[k] = memoryBinds[k]
+      }
+      queuedBinds.BufferBinds[bufferBindInfo.buffer] = bindsToQueue
     }
 
-    opaqueBinds := infos[i].pImageOpaqueBinds[0:infos[i].imageOpaqueBindCount]
-    for j in (0 .. infos[i].imageOpaqueBindCount) {
+    opaqueBinds := info.pImageOpaqueBinds[0:info.imageOpaqueBindCount]
+    for j in (0 .. info.imageOpaqueBindCount) {
       opaqueBindInfo := opaqueBinds[j]
-      read(opaqueBindInfo.pBinds[0:opaqueBindInfo.bindCount])
+      bindsToQueue := new!SparseMemoryBinds()
+      memoryBinds := opaqueBindInfo.pBinds[0:opaqueBindInfo.bindCount]
+      for k in (0 .. opaqueBindInfo.bindCount) {
+        bindsToQueue.SparseMemoryBinds[k] = memoryBinds[k]
+      }
+      queuedBinds.OpaqueImageBinds[opaqueBindInfo.image] = bindsToQueue
     }
 
-    imageBinds := infos[i].pImageBinds[0:infos[i].imageBindCount]
-    for j in (0 .. infos[i].imageBindCount) {
+    imageBinds := info.pImageBinds[0:info.imageBindCount]
+    for j in (0 .. info.imageBindCount) {
       imageBindInfo := imageBinds[j]
-      read(imageBindInfo.pBinds[0:imageBindInfo.bindCount])
+      bindsToQueue := new!SparseImageMemoryBinds()
+      imageMemoryBinds := imageBindInfo.pBinds[0:imageBindInfo.bindCount]
+      for k in (0 .. imageBindInfo.bindCount) {
+        bindsToQueue.SparseImageMemoryBinds[k] = imageMemoryBinds[k]
+      }
+      queuedBinds.ImageBinds[imageBindInfo.image] = bindsToQueue
     }
 
-    read(infos[i].pSignalSemaphores[0:infos[i].signalSemaphoreCount])
+    LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+      = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+          None, as!VkSemaphore(0), queuedBinds)
+
+    signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
+    for j in (0 .. info.signalSemaphoreCount) {
+      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+        = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+            Signal, signal_semaphores[j], null)
+    }
   }
+  leaveSubcontext()
+  execPendingCommands(queue)
+  fence
   return ?
 }
 
@@ -8946,6 +8993,20 @@ enum SemaphoreUpdate {
   Signal = 2
 }
 
+@internal class SparseMemoryBinds {
+  @unused map!(u32, VkSparseMemoryBind) SparseMemoryBinds
+}
+
+@internal class SparseImageMemoryBinds {
+  @unused map!(u32, VkSparseImageMemoryBind) SparseImageMemoryBinds
+}
+
+@internal class QueuedSparseBinds {
+  @unused map!(VkBuffer, ref!SparseMemoryBinds) BufferBinds
+  @unused map!(VkImage, ref!SparseMemoryBinds) OpaqueImageBinds
+  @unused map!(VkImage, ref!SparseImageMemoryBinds) ImageBinds
+}
+
 @internal class CommandReference {
   @unused VkCommandBuffer Buffer
   @unused u32         CommandIndex
@@ -8953,6 +9014,7 @@ enum SemaphoreUpdate {
   @unused u32         MapIndex
   @unused SemaphoreUpdate SemaphoreUpdate
   @unused VkSemaphore Semaphore
+  @unused ref!QueuedSparseBinds SparseBinds
 }
 
 @internal class BufferCommands {
@@ -9047,6 +9109,7 @@ enum SemaphoreUpdate {
   @unused BufferInfo      Info
   ref!DeviceMemoryObject  Memory
   VkDeviceSize            MemoryOffset
+  map!(u32, VkSparseMemoryBind) SparseMemoryBindings
   @unused ref!QueueObject LastBoundQueue
   @unused ref!VulkanDebugMarkerInfo   DebugInfo
 }
@@ -9083,6 +9146,7 @@ enum SemaphoreUpdate {
   @unused ref!QueueObject   LastBoundQueue
   ref!DeviceMemoryObject    BoundMemory
   VkDeviceSize              BoundMemoryOffset
+  map!(u32, VkSparseMemoryBind) OpaqueSparseMemoryBindings
   @unused bool              IsSwapchainImage
   VkImage                   VulkanHandle
   ImageInfo                 Info
