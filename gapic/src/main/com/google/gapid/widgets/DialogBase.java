@@ -17,6 +17,7 @@ package com.google.gapid.widgets;
 
 import org.eclipse.jface.dialogs.TrayDialog;
 import org.eclipse.jface.window.IShellProvider;
+import org.eclipse.jface.window.Window;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Shell;
 
@@ -29,10 +30,12 @@ public abstract class DialogBase extends TrayDialog {
 
   public DialogBase(IShellProvider parentShell) {
     super(parentShell);
+    setReturnCode(Window.CANCEL); // Switch the default return code to cancel.
   }
 
   public DialogBase(Shell shell) {
     super(shell);
+    setReturnCode(Window.CANCEL); // Switch the default return code to cancel.
   }
 
   @Override
