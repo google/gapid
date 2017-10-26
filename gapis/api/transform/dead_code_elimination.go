@@ -25,6 +25,12 @@ import (
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
+const (
+	// Logs all the commands that were dropped.
+	// Recommended to be used with a carefully considered `gapit screenshot`.
+	debugDCE = false
+)
+
 var (
 	deadCodeEliminationCounter         = benchmark.Duration("deadCodeElimination")
 	deadCodeEliminationCmdDeadCounter  = benchmark.Integer("deadCodeElimination.cmd.dead")
@@ -76,6 +82,8 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 	api.ForeachCmd(ctx, t.depGraph.Commands[:len(isLive)], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if isLive[id] {
 			out.MutateAndWrite(ctx, id, cmd)
+		} else if debugDCE {
+			log.I(ctx, "Dropped %v %v", id, cmd)
 		}
 		return nil
 	})
