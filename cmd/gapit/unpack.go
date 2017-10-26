@@ -57,7 +57,7 @@ func (verb *unpackVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	defer r.Close()
 
-	return pack.Read(ctx, r, unpacker{verb.Verbose, map[uint64]int{}})
+	return pack.Read(ctx, r, unpacker{verb.Verbose, map[uint64]int{}}, true)
 }
 
 type unpacker struct {

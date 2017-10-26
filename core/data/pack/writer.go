@@ -38,7 +38,7 @@ type Writer struct {
 // stream.
 func NewWriter(to io.Writer) (*Writer, error) {
 	w := &Writer{
-		types:   newTypes(),
+		types:   newTypes(false),
 		buf:     proto.NewBuffer(make([]byte, 0, initalBufferSize)),
 		sizebuf: proto.NewBuffer(make([]byte, 0, maxVarintSize)),
 		to:      to,

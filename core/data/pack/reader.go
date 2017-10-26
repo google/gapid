@@ -34,9 +34,9 @@ func (e ErrUnknownType) Error() string { return fmt.Sprintf("Unknown proto type 
 // Read reads the pack file from the supplied stream.
 // This function will read the header from the stream, adjusting it's position.
 // It may read extra bytes from the stream into an internal buffer.
-func Read(ctx context.Context, from io.Reader, events Events) error {
+func Read(ctx context.Context, from io.Reader, events Events, forceDynamic bool) error {
 	r := &reader{
-		types:  newTypes(),
+		types:  newTypes(forceDynamic),
 		from:   from,
 		buf:    make([]byte, 0, initalBufferSize),
 		events: events,
