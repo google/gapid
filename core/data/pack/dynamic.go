@@ -116,6 +116,12 @@ func (d *Dynamic) Unmarshal(data []byte) error {
 				arr = append(arr, el)
 			}
 			val = arr
+		} else if f.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+			arr, _ := d.Fields[f.GetName()].([]interface{})
+			if val, err = d.unpack(val, f); err != nil {
+				return err
+			}
+			val = append(arr, val)
 		} else {
 			if val, err = d.unpack(val, f); err != nil {
 				return err
