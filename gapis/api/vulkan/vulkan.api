@@ -8797,7 +8797,7 @@ ref!ComputePipelineObject CurrentComputePipeline
   // A mapping from the descriptor set bound numbers to descriptor set objects
   map!(u32, ref!DescriptorSetObject) DescriptorSets
   // The Last subpass number used in the draw
-  u32 LastSubpass
+  @hidden u32 LastSubpass
   // The graphics pipeline used for the draw
   ref!GraphicsPipelineObject GraphicsPipeline
   // The vertex buffers used for the draw. This is a map of binding number to
