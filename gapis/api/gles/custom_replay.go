@@ -38,7 +38,7 @@ type objectKey struct {
 func (i BufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Buffers, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Buffers, i}, true
 	}
 	return
 }
@@ -54,7 +54,7 @@ func (i FramebufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, 
 func (i RenderbufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Renderbuffers, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Renderbuffers, i}, true
 	}
 	return
 }
@@ -62,7 +62,7 @@ func (i RenderbufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{},
 func (i ProgramId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Programs, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Programs, i}, true
 	}
 	return
 }
@@ -70,7 +70,7 @@ func (i ProgramId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, rema
 func (i ShaderId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Shaders, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Shaders, i}, true
 	}
 	return
 }
@@ -78,7 +78,7 @@ func (i ShaderId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap
 func (i TextureId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		if tex := ctx.Objects.Textures[i]; tex != nil {
+		if tex := ctx.Objects.Shared.Textures[i]; tex != nil {
 			_, isDeleteCmd := cmd.(*GlDeleteTextures)
 			if eglImage := tex.EGLImage; eglImage != nil && !isDeleteCmd {
 				// Ignore this texture and use the data that EGLImage points to.
@@ -86,16 +86,16 @@ func (i TextureId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, rema
 				ctxId, i := eglImage.TargetContext, eglImage.TargetTexture
 				for _, ctx := range GetState(s).EGLContexts {
 					if ctx != nil && ctx.Info.Initialized && ctx.Identifier == ctxId {
-						if !ctx.Objects.Textures.Contains(i) {
+						if !ctx.Objects.Shared.Textures.Contains(i) {
 							panic(fmt.Errorf("Can not find EGL replacement texture %v", i))
 						}
-						return objectKey{&ctx.Objects.Textures, i}, true
+						return objectKey{&ctx.Objects.Shared.Textures, i}, true
 					}
 				}
 				panic(fmt.Errorf("Can not find EGL replacement context %v", ctxId))
 			}
 		}
-		key, remap = objectKey{&ctx.Objects.Textures, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Textures, i}, true
 	}
 	return
 }
@@ -116,7 +116,7 @@ func (i UniformBlockIndex) remap(cmd api.Cmd, s *api.GlobalState) (key interface
 	return struct {
 		p *Program
 		i UniformBlockIndex
-	}{ctx.Objects.Programs[program], i}, true
+	}{ctx.Objects.Shared.Programs[program], i}, true
 }
 
 func (i VertexArrayId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
@@ -138,7 +138,7 @@ func (i QueryId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap 
 func (i GLsync) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && !i.IsNullptr() {
-		key, remap = objectKey{&ctx.Objects.SyncObjects, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.SyncObjects, i}, true
 	}
 	return
 }
@@ -150,7 +150,7 @@ func (i GLsync) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value
 func (i SamplerId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Samplers, i}, true
+		key, remap = objectKey{&ctx.Objects.Shared.Samplers, i}, true
 	}
 	return
 }
@@ -183,7 +183,7 @@ func (i UniformLocation) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}
 	return struct {
 		p *Program
 		l UniformLocation
-	}{ctx.Objects.Programs[program], i}, true
+	}{ctx.Objects.Shared.Programs[program], i}, true
 }
 
 func (i SrcImageId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
