@@ -40,15 +40,17 @@ type ty struct {
 // It is exposed so that you can pre-build a cannocial type registry
 // rather than constructing on demand.
 type types struct {
-	entries []*ty
-	byName  map[string]*ty
+	entries      []*ty
+	byName       map[string]*ty
+	forceDynamic bool
 }
 
 // newTypes constructs a new empty type registry.
-func newTypes() *types {
+func newTypes(forceDynamic bool) *types {
 	return &types{
-		entries: []*ty{},
-		byName:  map[string]*ty{},
+		entries:      []*ty{},
+		byName:       map[string]*ty{},
+		forceDynamic: forceDynamic,
 	}
 }
 
@@ -63,7 +65,7 @@ func (t *types) addMessage(msg proto.Message) (ty, bool) {
 // It uses the proto type registry to look up the name.
 func (t *types) addNameAndDesc(name string, desc *descriptor.DescriptorProto) (ty, bool) {
 	typ := proto.MessageType(name)
-	if typ == nil {
+	if typ == nil || t.forceDynamic {
 		if desc == nil {
 			return ty{}, false
 		}

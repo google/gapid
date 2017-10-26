@@ -207,7 +207,7 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 
 func fromProto(ctx context.Context, r *Record) (*Capture, error) {
 	d := newDecoder()
-	if err := pack.Read(ctx, bytes.NewReader(r.Data), d); err != nil {
+	if err := pack.Read(ctx, bytes.NewReader(r.Data), d, false); err != nil {
 		switch err := errors.Cause(err).(type) {
 		case pack.ErrUnsupportedVersion:
 			switch {
