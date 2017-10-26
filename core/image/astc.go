@@ -39,6 +39,6 @@ func (f *FmtASTC) check(data []byte, w, h, d int) error {
 	}
 	return nil
 }
-func (*FmtASTC) channels() []stream.Channel {
-	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
+func (*FmtASTC) channels() stream.Channels {
+	return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
 }

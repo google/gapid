@@ -96,7 +96,7 @@ func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Forma
 		return nil, fmt.Errorf("Unknown unsized format: %v", unsizedFormat)
 	}
 	glChannels := []GLenum{info.Channel0, info.Channel1, info.Channel2, info.Channel3}
-	channels := make([]stream.Channel, info.Count)
+	channels := make(stream.Channels, info.Count)
 	for i := range channels {
 		channel, ok := glChannelToStreamChannel[glChannels[i]]
 		if !ok {
@@ -195,7 +195,7 @@ func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Forma
 		addComponent(1, &stream.U8)
 		addComponent(-1, &stream.U24)
 	default:
-		return nil, fmt.Errorf("Unsupported data type: ", ty)
+		return nil, fmt.Errorf("Unsupported data type: %v", ty)
 	}
 	return format, nil
 }

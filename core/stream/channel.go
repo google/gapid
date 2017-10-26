@@ -63,7 +63,7 @@ func (c Channel) Format(w fmt.State, r rune) {
 }
 
 // ColorChannels is the list of channels considered colors.
-var ColorChannels = []Channel{
+var ColorChannels = Channels{
 	Channel_Red,
 	Channel_Green,
 	Channel_Blue,
@@ -75,12 +75,17 @@ var ColorChannels = []Channel{
 }
 
 // DepthChannels is the list of channels considered depth.
-var DepthChannels = []Channel{
+var DepthChannels = Channels{
 	Channel_Depth,
 }
 
+// StencilChannels is the list of channels considered stencil.
+var StencilChannels = Channels{
+	Channel_Stencil,
+}
+
 // VectorChannels is the list of channels considered vectors.
-var VectorChannels = []Channel{
+var VectorChannels = Channels{
 	Channel_X,
 	Channel_Y,
 	Channel_Z,
@@ -109,11 +114,79 @@ func (c Channel) IsDepth() bool {
 	return false
 }
 
+// IsStencil returns true if the channel is considered a stencil channel.
+// See StencilChannels for the list of channels considered stencil.
+func (c Channel) IsStencil() bool {
+	for _, t := range StencilChannels {
+		if t == c {
+			return true
+		}
+	}
+	return false
+}
+
 // IsVector returns true if the channel is considered a vector channel.
 // See VectorChannels for the list of channels considered vector.
 func (c Channel) IsVector() bool {
 	for _, t := range VectorChannels {
 		if t == c {
+			return true
+		}
+	}
+	return false
+}
+
+// Channels is a list of channels.
+type Channels []Channel
+
+// Contains returns true if l contains c.
+func (l Channels) Contains(c Channel) bool {
+	for _, t := range l {
+		if t == c {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsColor returns true if l contains a color channel.
+// See ColorChannels for channels considered colors.
+func (l Channels) ContainsColor() bool {
+	for _, t := range l {
+		if t.IsColor() {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsDepth returns true if l contains a depth channel.
+// See DepthChannels for channels considered depth.
+func (l Channels) ContainsDepth() bool {
+	for _, t := range l {
+		if t.IsDepth() {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsStencil returns true if l contains a stencil channel.
+// See StencilChannels for channels considered stencil.
+func (l Channels) ContainsStencil() bool {
+	for _, t := range l {
+		if t.IsStencil() {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsVector returns true if l contains a vector channel.
+// See VectorChannels for channels considered vectors.
+func (l Channels) ContainsVector() bool {
+	for _, t := range l {
+		if t.IsVector() {
 			return true
 		}
 	}

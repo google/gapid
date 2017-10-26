@@ -46,7 +46,7 @@ type format interface {
 
 	// Channels returns the list of channels described by this format.
 	// If the channels vary based on the image data, then channels returns nil.
-	channels() []stream.Channel
+	channels() stream.Channels
 }
 
 // Interface compliance check.
@@ -96,7 +96,7 @@ func (f *Format) Key() interface{} {
 
 // Channels returns the list of channels described by this format.
 // If the channels vary based on the image data, then Channels returns nil.
-func (f *Format) Channels() []stream.Channel {
+func (f *Format) Channels() stream.Channels {
 	return f.format().channels()
 }
 

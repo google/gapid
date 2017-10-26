@@ -131,34 +131,24 @@ func (f *Format) Component(c ...Channel) (*Component, error) {
 	}
 }
 
-// HasComponent returns true if the Format contains a component with the channel
-// c.
-func (f *Format) HasComponent(c Channel) bool {
+// Channels returns all the unique channels used by the format.
+func (f *Format) Channels() Channels {
+	seen := map[Channel]struct{}{}
+	out := make(Channels, 0, len(f.Components))
 	for _, t := range f.Components {
-		if t.Channel == c {
-			return true
+		if _, ok := seen[t.Channel]; !ok {
+			out = append(out, t.Channel)
+			seen[t.Channel] = struct{}{}
 		}
 	}
-	return false
+	return out
 }
 
-// HasColorComponent returns true if the format contains a color component.
-// See ColorChannels for channels considered colors.
-func (f *Format) HasColorComponent() bool {
-	for _, t := range f.Components {
-		if t.Channel.IsColor() {
-			return true
-		}
-	}
-	return false
-}
-
-// GetSingleColorComponent returns a component if the format contains a single
-// color component, otherwise nil. See ColorChannels for channels considered colors.
-func (f *Format) GetSingleColorComponent() *Component {
+// GetSingleComponent returns the single component that matches the predicate p.
+func (f *Format) GetSingleComponent(p func(*Component) bool) *Component {
 	var c *Component
 	for _, t := range f.Components {
-		if t.Channel.IsColor() {
+		if p(t) {
 			if c != nil {
 				return nil
 			}
@@ -166,28 +156,6 @@ func (f *Format) GetSingleColorComponent() *Component {
 		}
 	}
 	return c
-}
-
-// HasDepthComponent returns true if the format contains a depth component.
-// See DepthChannels for channels considered depth.
-func (f *Format) HasDepthComponent() bool {
-	for _, t := range f.Components {
-		if t.Channel.IsDepth() {
-			return true
-		}
-	}
-	return false
-}
-
-// HasVectorComponent returns true if the format contains a vector component.
-// See VectorChannels for channels considered vectors.
-func (f *Format) HasVectorComponent() bool {
-	for _, t := range f.Components {
-		if t.Channel.IsVector() {
-			return true
-		}
-	}
-	return false
 }
 
 // BitOffsets returns the bit-offsets for the components of the format.

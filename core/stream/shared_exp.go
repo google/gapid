@@ -39,7 +39,7 @@ func convertSharedExponent(dst, src *Format, data []byte) ([]byte, error) {
 		},
 	}
 	for _, c := range dst.Components {
-		if c.Channel != Channel_SharedExponent && src.HasComponent(c.Channel) {
+		if c.Channel != Channel_SharedExponent && src.Channels().Contains(c.Channel) {
 			format.Components = append(format.Components, &Component{
 				Channel:  c.Channel,
 				DataType: &F32,

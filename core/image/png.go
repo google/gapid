@@ -53,7 +53,7 @@ func (*FmtPNG) check(data []byte, w, h, d int) error { return nil }
 func (*FmtPNG) resize(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error) {
 	return nil, ErrResizeUnsupported
 }
-func (*FmtPNG) channels() []stream.Channel {
+func (*FmtPNG) channels() stream.Channels {
 	return nil
 }
 func init() {

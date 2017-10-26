@@ -38,6 +38,6 @@ func (*FmtS3_DXT1_RGBA) size(w, h, d int) int {
 func (f *FmtS3_DXT1_RGBA) check(data []byte, w, h, d int) error {
 	return checkSize(data, f, w, h, d)
 }
-func (*FmtS3_DXT1_RGBA) channels() []stream.Channel {
-	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
+func (*FmtS3_DXT1_RGBA) channels() stream.Channels {
+	return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
 }
