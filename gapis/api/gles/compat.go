@@ -962,7 +962,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlDeleteFramebuffers:
 			// If you delete a framebuffer that is currently bound then the
 			// binding automatically reverts back to the default framebuffer
-			// (0). As we do compat for glBindBuffer(), scan the list of
+			// (0). As we do compat for glBindFramebuffer(), scan the list of
 			// framebuffers that are being deleted, and forward them to a fake
 			// call to glBindFramebuffer(XXX, 0) if we find any.
 			cmd.extras.Observations().ApplyReads(s.Memory.ApplicationPool())
