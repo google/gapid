@@ -17,7 +17,9 @@ package gles
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
+	"unsafe"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
@@ -25,20 +27,26 @@ import (
 	"github.com/google/gapid/gapis/replay/value"
 )
 
-// objectKey is a map and object identifier pair used for a remapping key.
+// mapEntryRef is a map and object identifier pair used for a remapping key.
 // Ideally we'd just use the object or object pointer as the key, but we have
 // atoms that want to remap the identifier before the state object is created.
 // TODO: It maybe possible to rework the state-mutator and/or APIs to achieve
 // this.
-type objectKey struct {
-	mapPtr interface{}
+type mapEntryRef struct {
+	mapPtr unsafe.Pointer
 	mapKey interface{}
+}
+
+func objectKey(owningMap interface{}, id interface{}) mapEntryRef {
+	// Map is not comparable type in go and thus it can not be used as a key
+	// in different map. We can, however, get the unsafe.Pointer for the map.
+	return mapEntryRef{unsafe.Pointer(reflect.ValueOf(owningMap).Pointer()), id}
 }
 
 func (i BufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Buffers, i}, true
+		key, remap = objectKey(ctx.Objects.Buffers, i), true
 	}
 	return
 }
@@ -46,7 +54,7 @@ func (i BufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap
 func (i FramebufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Framebuffers, i}, true
+		key, remap = objectKey(ctx.Objects.Framebuffers, i), true
 	}
 	return
 }
@@ -54,7 +62,7 @@ func (i FramebufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, 
 func (i RenderbufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Renderbuffers, i}, true
+		key, remap = objectKey(ctx.Objects.Renderbuffers, i), true
 	}
 	return
 }
@@ -62,7 +70,7 @@ func (i RenderbufferId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{},
 func (i ProgramId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Programs, i}, true
+		key, remap = objectKey(ctx.Objects.Programs, i), true
 	}
 	return
 }
@@ -70,7 +78,7 @@ func (i ProgramId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, rema
 func (i ShaderId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Shaders, i}, true
+		key, remap = objectKey(ctx.Objects.Shaders, i), true
 	}
 	return
 }
@@ -89,13 +97,13 @@ func (i TextureId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, rema
 						if !ctx.Objects.Textures.Contains(i) {
 							panic(fmt.Errorf("Can not find EGL replacement texture %v", i))
 						}
-						return objectKey{&ctx.Objects.Textures, i}, true
+						return objectKey(ctx.Objects.Textures, i), true
 					}
 				}
 				panic(fmt.Errorf("Can not find EGL replacement context %v", ctxId))
 			}
 		}
-		key, remap = objectKey{&ctx.Objects.Textures, i}, true
+		key, remap = objectKey(ctx.Objects.Textures, i), true
 	}
 	return
 }
@@ -122,7 +130,7 @@ func (i UniformBlockIndex) remap(cmd api.Cmd, s *api.GlobalState) (key interface
 func (i VertexArrayId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.VertexArrays, i}, true
+		key, remap = objectKey(ctx.Objects.VertexArrays, i), true
 	}
 	return
 }
@@ -130,7 +138,7 @@ func (i VertexArrayId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, 
 func (i QueryId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Queries, i}, true
+		key, remap = objectKey(ctx.Objects.Queries, i), true
 	}
 	return
 }
@@ -138,7 +146,7 @@ func (i QueryId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap 
 func (i GLsync) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && !i.IsNullptr() {
-		key, remap = objectKey{&ctx.Objects.SyncObjects, i}, true
+		key, remap = objectKey(ctx.Objects.SyncObjects, i), true
 	}
 	return
 }
@@ -150,7 +158,7 @@ func (i GLsync) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value
 func (i SamplerId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Samplers, i}, true
+		key, remap = objectKey(ctx.Objects.Samplers, i), true
 	}
 	return
 }
@@ -158,7 +166,7 @@ func (i SamplerId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, rema
 func (i PipelineId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.Pipelines, i}, true
+		key, remap = objectKey(ctx.Objects.Pipelines, i), true
 	}
 	return
 }
@@ -166,7 +174,7 @@ func (i PipelineId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, rem
 func (i TransformFeedbackId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		key, remap = objectKey{&ctx.Objects.TransformFeedbacks, i}, true
+		key, remap = objectKey(ctx.Objects.TransformFeedbacks, i), true
 	}
 	return
 }
