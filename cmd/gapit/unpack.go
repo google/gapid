@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
@@ -56,30 +57,45 @@ func (verb *unpackVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	defer r.Close()
 
-	return pack.Read(ctx, r, unpacker{verb.Verbose})
+	return pack.Read(ctx, r, unpacker{verb.Verbose, map[uint64]int{}})
 }
 
-type unpacker struct{ Verbose bool }
+type unpacker struct {
+	Verbose bool
+	DepthOf map[uint64]int
+}
 
 func (u unpacker) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
-	log.I(ctx, "BeginGroup(msg: %v, id: %v)", u.msgString(msg), id)
+	depth := 0
+	u.DepthOf[id] = depth
+	log.I(ctx, "%sBeginGroup(msg: %v, id: %v)", indent(depth), u.msgString(msg), id)
 	return nil
 }
 func (u unpacker) BeginChildGroup(ctx context.Context, msg proto.Message, id, parentID uint64) error {
-	log.I(ctx, "BeginChildGroup(msg: %v, id: %v, parentID: %v)", u.msgString(msg), id, parentID)
+	depth := u.DepthOf[parentID] + 1
+	u.DepthOf[id] = depth
+	log.I(ctx, "%sBeginChildGroup(msg: %v, id: %v, parentID: %v)", indent(depth), u.msgString(msg), id, parentID)
 	return nil
 }
-func (unpacker) EndGroup(ctx context.Context, id uint64) error {
-	log.I(ctx, "EndGroup(id: %v)", id)
+func (u unpacker) EndGroup(ctx context.Context, id uint64) error {
+	depth := u.DepthOf[id]
+	delete(u.DepthOf, id)
+	log.I(ctx, "%sEndGroup(id: %v)", indent(depth), id)
 	return nil
 }
 func (u unpacker) Object(ctx context.Context, msg proto.Message) error {
-	log.I(ctx, "Object(msg: %v)", u.msgString(msg))
+	depth := 0
+	log.I(ctx, "%sObject(msg: %v)", indent(depth), u.msgString(msg))
 	return nil
 }
 func (u unpacker) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
-	log.I(ctx, "ChildObject(msg: %v, parentID: %v)", u.msgString(msg), parentID)
+	depth := u.DepthOf[parentID] + 1
+	log.I(ctx, "%sChildObject(msg: %v, parentID: %v)", indent(depth), u.msgString(msg), parentID)
 	return nil
+}
+
+func indent(depth int) string {
+	return strings.Repeat("  ", depth)
 }
 
 func (u *unpacker) msgString(msg proto.Message) string {
