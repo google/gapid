@@ -78,7 +78,7 @@ func Convert(dst, src *Format, data []byte) ([]byte, error) {
 		}
 	}
 
-	if src.HasComponent(Channel_SharedExponent) && !dst.HasComponent(Channel_SharedExponent) {
+	if src.Channels().Contains(Channel_SharedExponent) && !dst.Channels().Contains(Channel_SharedExponent) {
 		return convertSharedExponent(dst, src, data)
 	}
 
@@ -105,17 +105,18 @@ func resolveImplicitMappings(count int, mappings []mapping, srcFmt *Format, srcD
 		if m.src.component != nil {
 			continue
 		}
+		srcChannels := srcFmt.Channels()
 		switch m.dst.component.Channel {
 		case Channel_Alpha:
-			if srcFmt.HasColorComponent() || srcFmt.HasDepthComponent() {
+			if srcChannels.ContainsColor() || srcChannels.ContainsDepth() {
 				m.src = buf1Norm
 			}
 		case Channel_W:
-			if srcFmt.HasVectorComponent() {
+			if srcChannels.ContainsVector() {
 				m.src = buf1Norm
 			}
 		case Channel_Y, Channel_Z:
-			if srcFmt.HasVectorComponent() {
+			if srcChannels.ContainsVector() {
 				m.src = buf0
 			}
 		case Channel_Red, Channel_Green, Channel_Blue:
@@ -125,11 +126,11 @@ func resolveImplicitMappings(count int, mappings []mapping, srcFmt *Format, srcD
 			} else if c, _ := srcFmt.Component(Channel_Depth); c != nil {
 				// Convert depth to RGB.
 				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
-			} else if srcFmt.HasColorComponent() {
+			} else if srcChannels.ContainsColor() {
 				m.src = buf0
 			}
 		case Channel_Luminance:
-			if c := srcFmt.GetSingleColorComponent(); c != nil {
+			if c := srcFmt.GetSingleComponent(func(c *Component) bool { return c.Channel.IsColor() }); c != nil {
 				// A format with a single color channel is equivalent to a luninance format.
 				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
 			} else if c, _ := srcFmt.Component(Channel_Depth); c != nil {

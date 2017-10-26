@@ -53,8 +53,8 @@ func (*FmtATC_RGB_AMD) size(w, h, d int) int {
 func (f *FmtATC_RGB_AMD) check(data []byte, w, h, d int) error {
 	return checkSize(data, f, w, h, d)
 }
-func (*FmtATC_RGB_AMD) channels() []stream.Channel {
-	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
+func (*FmtATC_RGB_AMD) channels() stream.Channels {
+	return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
 }
 
 func (f *FmtATC_RGBA_EXPLICIT_ALPHA_AMD) key() interface{} {
@@ -66,8 +66,8 @@ func (*FmtATC_RGBA_EXPLICIT_ALPHA_AMD) size(w, h, d int) int {
 func (f *FmtATC_RGBA_EXPLICIT_ALPHA_AMD) check(data []byte, w, h, d int) error {
 	return checkSize(data, f, w, h, d)
 }
-func (*FmtATC_RGBA_EXPLICIT_ALPHA_AMD) channels() []stream.Channel {
-	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
+func (*FmtATC_RGBA_EXPLICIT_ALPHA_AMD) channels() stream.Channels {
+	return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
 }
 
 func (f *FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) key() interface{} {
@@ -79,8 +79,8 @@ func (*FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) size(w, h, d int) int {
 func (f *FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) check(data []byte, w, h, d int) error {
 	return checkSize(data, f, w, h, d)
 }
-func (*FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) channels() []stream.Channel {
-	return []stream.Channel{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
+func (*FmtATC_RGBA_INTERPOLATED_ALPHA_AMD) channels() stream.Channels {
+	return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
 }
 
 func init() {

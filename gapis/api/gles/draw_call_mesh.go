@@ -254,7 +254,7 @@ func translateVertexFormat(vaa *VertexAttributeArray) (*stream.Format, error) {
 		Components: make([]*stream.Component, vaa.Size),
 	}
 
-	xyzw := []stream.Channel{
+	xyzw := stream.Channels{
 		stream.Channel_X,
 		stream.Channel_Y,
 		stream.Channel_Z,

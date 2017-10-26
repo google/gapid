@@ -56,8 +56,8 @@ func (f *FmtUncompressed) size(w, h, d int) int {
 func (f *FmtUncompressed) check(data []byte, w, h, d int) error {
 	return checkSize(data, f, w, h, d)
 }
-func (f *FmtUncompressed) channels() []stream.Channel {
-	out := make([]stream.Channel, len(f.Format.Components))
+func (f *FmtUncompressed) channels() stream.Channels {
+	out := make(stream.Channels, len(f.Format.Components))
 	for i, c := range f.Format.Components {
 		out[i] = c.Channel
 	}
