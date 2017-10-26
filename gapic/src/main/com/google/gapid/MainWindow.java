@@ -184,7 +184,8 @@ public class MainWindow extends ApplicationWindow {
     if (OS.isMac) {
       MacApplication.init(shell.getDisplay(),
           () -> showAbout(shell, widgets().theme),
-          () -> showSettingsDialog(shell, models().settings));
+          () -> showSettingsDialog(shell, models().settings),
+          file -> models().capture.loadCapture(new File(file)));
     }
   }
 

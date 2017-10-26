@@ -20,6 +20,8 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
+import java.util.function.Consumer;
+
 /**
  * Special handling for OSX application menus.
  */
@@ -30,7 +32,8 @@ public class MacApplication {
   /**
    * Initializes the OSX application menus.
    */
-  public static void init(Display display, Runnable onAbout, Runnable onSettings) {
+  public static void init(
+      Display display, Runnable onAbout, Runnable onSettings, Consumer<String> onOpen) {
     Menu menu = display.getSystemMenu();
     if (menu == null) {
       return;
@@ -46,5 +49,7 @@ public class MacApplication {
           break;
       }
     }
+
+    display.addListener(SWT.OpenDocument, e -> onOpen.accept(e.text));
   }
 }
