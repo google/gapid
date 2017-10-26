@@ -64,6 +64,17 @@ type Request interface{}
 // One of val and err must be nil.
 type Result func(val interface{}, err error)
 
+// Do calls f and passes the return value-error pair to Result.
+func (r Result) Do(f func() (val interface{}, err error)) error {
+	val, err := f()
+	if err != nil {
+		r(nil, err)
+		return err
+	}
+	r(val, nil)
+	return nil
+}
+
 // RequestAndResult is a pair of Request and Result.
 type RequestAndResult struct {
 	Request Request
