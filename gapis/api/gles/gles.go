@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve"
@@ -159,7 +160,12 @@ func GetFramebufferAttachmentInfoByID(
 		fb = c.Bound.DrawFramebuffer.GetID()
 	}
 
-	fbai, err := s.getFramebufferAttachmentInfo(thread, fb, attachment)
+	glAtt, err := attachmentToEnum(attachment)
+	if err != nil {
+		return 0, 0, 0, nil, err
+	}
+
+	fbai, err := s.getFramebufferAttachmentInfo(thread, fb, glAtt)
 	if fbai.format == 0 {
 		return 0, 0, 0, nil, fmt.Errorf("No format set")
 	}
@@ -168,7 +174,16 @@ func GetFramebufferAttachmentInfoByID(
 	}
 	fmt, ty := getUnsizedFormatAndType(fbai.format)
 	f, err := getImageFormat(fmt, ty)
-	return fbai.width, fbai.height, 0, f, err
+	if err != nil {
+		return 0, 0, 0, nil, err
+	}
+	switch {
+	case attachment.IsDepth():
+		f = filterUncompressedImageFormat(f, stream.Channel.IsDepth)
+	case attachment.IsStencil():
+		f = filterUncompressedImageFormat(f, stream.Channel.IsStencil)
+	}
+	return fbai.width, fbai.height, 0, f, nil
 }
 
 // Context returns the active context for the given state and thread.

@@ -49,8 +49,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		tex, ok := c.Objects.Shared.Textures.Lookup(TextureId(r.Texture))
 		if !ok {
 			err := fmt.Errorf("Attempting to read from a texture that does not exist.\n"+
-				"Resolvable: %+v"+
-				"Texture: %+v", r, tex)
+				"Resolvable: %+v\nTexture: %+v", r, tex)
 			log.W(ctx, "%v", err)
 			res(nil, err)
 			return
@@ -83,24 +82,28 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			return
 		}
 
-		var glAtt GLenum
-		var apiAtt api.FramebufferAttachment
+		var attachment GLenum
+		channels := streamFmt.Channels()
 		switch {
-		case streamFmt.HasColorComponent():
-			glAtt, apiAtt = GLenum_GL_COLOR_ATTACHMENT0, api.FramebufferAttachment_Color0
-		case streamFmt.HasDepthComponent():
-			glAtt, apiAtt = GLenum_GL_DEPTH_ATTACHMENT, api.FramebufferAttachment_Depth
+		case channels.ContainsColor():
+			attachment = GLenum_GL_COLOR_ATTACHMENT0
+		case channels.ContainsDepth() && channels.ContainsStencil():
+			attachment = GLenum_GL_DEPTH_STENCIL_ATTACHMENT
+		case channels.ContainsDepth():
+			attachment = GLenum_GL_DEPTH_ATTACHMENT
+		case channels.ContainsStencil():
+			attachment = GLenum_GL_STENCIL_ATTACHMENT
 		default:
 			res(nil, fmt.Errorf("Unsupported texture format %v", streamFmt))
 			return
 		}
 
 		if r.Layer == 0 {
-			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture(GLenum_GL_DRAW_FRAMEBUFFER, glAtt, tex.ID, GLint(r.Level)))
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID, GLint(r.Level)))
 		} else {
-			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, glAtt, tex.ID, GLint(r.Level), GLint(r.Layer)))
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID, GLint(r.Level), GLint(r.Layer)))
 		}
-		postFBData(ctx, dID, r.Thread, uint32(layer.Width), uint32(layer.Height), framebufferID, apiAtt, out, res)
+		postFBData(ctx, dID, r.Thread, uint32(layer.Width), uint32(layer.Height), framebufferID, attachment, out, res)
 	})
 }
 

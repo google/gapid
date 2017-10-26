@@ -47,28 +47,23 @@ func attachmentToEnum(a api.FramebufferAttachment) (GLenum, error) {
 	}
 }
 
-func (f *Framebuffer) getAttachment(a api.FramebufferAttachment) (FramebufferAttachment, error) {
+func (f *Framebuffer) getAttachment(a GLenum) (FramebufferAttachment, error) {
 	switch a {
-	case api.FramebufferAttachment_Color0:
-		return f.ColorAttachments.Get(0), nil
-	case api.FramebufferAttachment_Color1:
-		return f.ColorAttachments.Get(1), nil
-	case api.FramebufferAttachment_Color2:
-		return f.ColorAttachments.Get(2), nil
-	case api.FramebufferAttachment_Color3:
-		return f.ColorAttachments.Get(3), nil
-	case api.FramebufferAttachment_Depth:
+	case GLenum_GL_DEPTH_ATTACHMENT, GLenum_GL_DEPTH_STENCIL_ATTACHMENT:
 		return f.DepthAttachment, nil
-	case api.FramebufferAttachment_Stencil:
+	case GLenum_GL_STENCIL_ATTACHMENT:
 		return f.StencilAttachment, nil
 	default:
-		return FramebufferAttachment{}, fmt.Errorf("Framebuffer attachment %v unsupported by gles", a)
+		if a >= GLenum_GL_COLOR_ATTACHMENT0 && a < GLenum_GL_COLOR_ATTACHMENT0+64 {
+			return f.ColorAttachments.Get(GLint(a - GLenum_GL_COLOR_ATTACHMENT0)), nil
+		}
+		return FramebufferAttachment{}, fmt.Errorf("Unhandled attachment: %v", a)
 	}
 }
 
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
-func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, att api.FramebufferAttachment) (fbai, error) {
+func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, att GLenum) (fbai, error) {
 	c := s.GetContext(thread)
 	if c == nil {
 		return fbai{}, fmt.Errorf("No context bound")
