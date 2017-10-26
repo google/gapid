@@ -251,6 +251,11 @@ func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBeha
 		data, size = c.Bound.DrawFramebuffer.DepthAttachment.dataAndSize(g, c)
 	case GLenum_GL_STENCIL:
 		data, size = c.Bound.DrawFramebuffer.StencilAttachment.dataAndSize(g, c)
+	case GLenum_GL_DEPTH_STENCIL:
+		data, size = c.Bound.DrawFramebuffer.DepthAttachment.dataAndSize(g, c)
+		b.Read(g, size)
+		b.Write(g, data)
+		data, size = c.Bound.DrawFramebuffer.StencilAttachment.dataAndSize(g, c)
 	}
 	b.Read(g, size)
 	b.Write(g, data)
