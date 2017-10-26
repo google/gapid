@@ -187,18 +187,6 @@ private:
     bool mIsRecordingState;
 };
 
-// finds a key in the map and returns the value. If no value is present
-// returns the zero for that type.
-template<typename Map>
-const typename Map::mapped_type& findOrZero(const Map& m, const typename Map::key_type& key) {
-  auto it = m.find(key);
-  if (it == m.end()) {
-    static auto zero = typename Map::mapped_type();
-    return zero;
-  }
-  return it->second;
-}
-
 template <class T>
 bool SpyBase::shouldObserve(const Slice<T>& slice) const {
     return mObserveApplicationPool && slice.isApplicationPool();

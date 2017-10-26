@@ -586,7 +586,7 @@
   {{else if IsMember           $}}{{Template "C++.Dereference" $.Object}}{{Template "C++.Read" $.Field}}
   {{else if IsGlobal           $}}{{Template "C++.Global" $}}
   {{else if IsArrayIndex       $}}{{Template "C++.Read" $.Array}}[{{Template "C++.Read" $.Index}}]
-  {{else if IsMapIndex         $}}findOrZero({{Template "C++.Read" $.Map}}, {{Template "C++.Read" $.Index}})
+  {{else if IsMapIndex         $}}{{Template "C++.Read" $.Map}}[{{Template "C++.Read" $.Index}}]
   {{else if IsMapContains      $}}{{Template "C++.Read" $.Map}}.count({{Template "C++.Read" $.Key}}) > 0
   {{else if IsLength           $}}{{Template "C++.Type" $.Type}}(({{Template "C++.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}}))
   {{else if IsNull             $}}{{Template "C++.Null" $.Type}}
