@@ -145,6 +145,10 @@ public abstract class LinkifiedTree<T, F> extends Composite {
   }
 
   public void setInput(T root) {
+    // Clear the selection, since we handle maintaining the selection ourselves and so
+    // don't want JFace's selection preserving, as it appears to be broken on input
+    // change (see https://github.com/google/gapid/issues/1264)
+    setSelection(null);
     viewer.setInput(root);
     if (root != null && viewer.getTree().getItemCount() > 0) {
       viewer.getTree().setSelection(viewer.getTree().getItem(0));
