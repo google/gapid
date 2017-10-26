@@ -16,7 +16,9 @@ package gles
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/stream"
@@ -77,6 +79,29 @@ func getImageFormat(format, ty GLenum) (*image.Format, error) {
 		return image.NewUncompressed("<uninitialized>", &stream.Format{}), nil
 	}
 	return nil, fmt.Errorf("Unsupported input format-type pair: (%s, %s)", format, ty)
+}
+
+// filterUncompressedImageFormat returns a copy of f with only the components
+// that have channels that pass the predicate p.
+func filterUncompressedImageFormat(f *image.Format, p func(stream.Channel) bool) *image.Format {
+	u := f.GetUncompressed()
+	if u == nil {
+		panic(fmt.Errorf("Format %v is not uncompressed", f))
+	}
+
+	out := proto.Clone(f).(*image.Format)
+	filtered := out.GetUncompressed().Format
+	filtered.Components = filtered.Components[:0]
+
+	names := []string{}
+	for _, c := range u.Format.Components {
+		if p(c.Channel) {
+			filtered.Components = append(filtered.Components, c)
+			names = append(names, c.Channel.String())
+		}
+	}
+	out.Name = fmt.Sprintf("%v from %v", strings.Join(names, ", "), f.Name)
+	return out
 }
 
 var glChannelToStreamChannel = map[GLenum]stream.Channel{
