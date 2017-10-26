@@ -562,39 +562,39 @@ cmd void glBindSampler(GLuint index, SamplerId sampler) {
 
 sub ref!Sampler GetOrCreateSampler(SamplerId id) {
   ctx := GetContext()
-  if (id != 0) && (ctx.Objects.Samplers[id] == null) {
-    ctx.Objects.Samplers[id] = new!Sampler(ID: id)
-    ctx.Objects.GeneratedNames.Samplers[id] = true
+  if (id != 0) && (ctx.Objects.Shared.Samplers[id] == null) {
+    ctx.Objects.Shared.Samplers[id] = new!Sampler(ID: id)
+    ctx.Objects.Shared.GeneratedNames.Samplers[id] = true
   }
-  return ctx.Objects.Samplers[id]
+  return ctx.Objects.Shared.Samplers[id]
 }
 
 sub ref!Texture GetOrCreateTexture(GLenum target, TextureId texture, ref!Texture defaultTexture) {
   ctx := GetContext()
   if (texture != 0) {
     // Create the texture if it does not exist already
-    if (ctx.Objects.Textures[texture] == null) {
+    if (ctx.Objects.Shared.Textures[texture] == null) {
       if target == GL_TEXTURE_EXTERNAL_OES {
-        ctx.Objects.Textures[texture] = new!Texture(
+        ctx.Objects.Shared.Textures[texture] = new!Texture(
           ID:         texture,
           WrapS:      GL_CLAMP_TO_EDGE,
           WrapT:      GL_CLAMP_TO_EDGE,
           MinFilter:  GL_LINEAR)
       } else {
-        ctx.Objects.Textures[texture] = new!Texture(ID: texture)
+        ctx.Objects.Shared.Textures[texture] = new!Texture(ID: texture)
       }
     }
-    ctx.Objects.GeneratedNames.Textures[texture] = true
+    ctx.Objects.Shared.GeneratedNames.Textures[texture] = true
 
     // Set or check the kind of the texture
-    t := ctx.Objects.Textures[texture]
+    t := ctx.Objects.Shared.Textures[texture]
     if t.Kind == as!GLenum(0) {
       t.Kind = target
     } else {
       if t.Kind != target { glErrorInvalidOperation() }
     }
   }
-  return Select!ref!Texture(texture != 0, ctx.Objects.Textures[texture], defaultTexture)
+  return Select!ref!Texture(texture != 0, ctx.Objects.Shared.Textures[texture], defaultTexture)
 }
 
 @if(Version.GLES10)
@@ -866,8 +866,8 @@ cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
   for i in (0 .. count) {
     id := s[i]
     if id != 0 {
-      delete(ctx.Objects.Samplers, id)
-      delete(ctx.Objects.GeneratedNames.Samplers, id)
+      delete(ctx.Objects.Shared.Samplers, id)
+      delete(ctx.Objects.Shared.GeneratedNames.Samplers, id)
     }
   }
 }
@@ -884,8 +884,8 @@ cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
   for i in (0 .. count) {
     id := t[i]
     if id != 0 {
-      delete(ctx.Objects.Textures, id)
-      delete(ctx.Objects.GeneratedNames.Textures, id)
+      delete(ctx.Objects.Shared.Textures, id)
+      delete(ctx.Objects.Shared.GeneratedNames.Textures, id)
     }
     // TODO: Unbind from all texture units.
   }
@@ -902,7 +902,7 @@ cmd void glGenSamplers(GLsizei count, SamplerId* samplers) {
   for i in (0 .. count) {
     id := as!SamplerId(?)
     assert(id != 0)
-    ctx.Objects.GeneratedNames.Samplers[id] = true
+    ctx.Objects.Shared.GeneratedNames.Samplers[id] = true
     s[i] = id
   }
 }
@@ -919,7 +919,7 @@ cmd void glGenTextures(GLsizei count, TextureId* textures) {
   for i in (0 .. count) {
     id := as!TextureId(?)
     assert(id != 0)
-    ctx.Objects.GeneratedNames.Textures[id] = true
+    ctx.Objects.Shared.GeneratedNames.Textures[id] = true
     t[i] = id
   }
 }
@@ -1251,7 +1251,7 @@ cmd GLboolean glIsSampler(SamplerId sampler) {
   ctx := GetContext()
   // This seems to be different to all other glIs* commands.
   // Just have generated name seems sufficient to return true.
-  return as!GLboolean(ctx.Objects.GeneratedNames.Samplers[sampler])
+  return as!GLboolean(ctx.Objects.Shared.GeneratedNames.Samplers[sampler])
 }
 
 @if(Version.GLES10)
@@ -1262,7 +1262,7 @@ cmd GLboolean glIsSampler(SamplerId sampler) {
 cmd GLboolean glIsTexture(TextureId texture) {
 
   ctx := GetContext()
-  return as!GLboolean(texture in ctx.Objects.Textures)
+  return as!GLboolean(texture in ctx.Objects.Shared.Textures)
 }
 
 @if(Version.GLES10)

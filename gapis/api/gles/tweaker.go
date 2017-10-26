@@ -189,7 +189,7 @@ func (t *tweaker) makeVertexArray(ctx context.Context, enabledLocations ...Attri
 }
 
 func (t *tweaker) glGenBuffer(ctx context.Context) BufferId {
-	id := BufferId(newUnusedID(ctx, 'B', func(x uint32) bool { return t.c.Objects.Buffers[BufferId(x)] != nil }))
+	id := BufferId(newUnusedID(ctx, 'B', func(x uint32) bool { return t.c.Objects.Shared.Buffers[BufferId(x)] != nil }))
 	tmp := t.AllocData(ctx, id)
 	t.doAndUndo(ctx,
 		t.cb.GlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -198,7 +198,7 @@ func (t *tweaker) glGenBuffer(ctx context.Context) BufferId {
 }
 
 func (t *tweaker) glGenRenderbuffer(ctx context.Context) RenderbufferId {
-	id := RenderbufferId(newUnusedID(ctx, 'R', func(x uint32) bool { return t.c.Objects.Renderbuffers[RenderbufferId(x)] != nil }))
+	id := RenderbufferId(newUnusedID(ctx, 'R', func(x uint32) bool { return t.c.Objects.Shared.Renderbuffers[RenderbufferId(x)] != nil }))
 	tmp := t.AllocData(ctx, id)
 	t.doAndUndo(ctx,
 		t.cb.GlGenRenderbuffers(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -216,7 +216,7 @@ func (t *tweaker) glGenFramebuffer(ctx context.Context) FramebufferId {
 }
 
 func (t *tweaker) glGenTexture(ctx context.Context) TextureId {
-	id := TextureId(newUnusedID(ctx, 'T', func(x uint32) bool { return t.c.Objects.Textures[TextureId(x)] != nil }))
+	id := TextureId(newUnusedID(ctx, 'T', func(x uint32) bool { return t.c.Objects.Shared.Textures[TextureId(x)] != nil }))
 	tmp := t.AllocData(ctx, id)
 	t.doAndUndo(ctx,
 		t.cb.GlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -235,7 +235,7 @@ func (t *tweaker) glGenVertexArray(ctx context.Context) VertexArrayId {
 
 func (t *tweaker) glCreateProgram(ctx context.Context) ProgramId {
 	id := ProgramId(newUnusedID(ctx, 'P', func(x uint32) bool {
-		return t.c.Objects.Programs[ProgramId(x)] != nil || t.c.Objects.Shaders[ShaderId(x)] != nil
+		return t.c.Objects.Shared.Programs[ProgramId(x)] != nil || t.c.Objects.Shared.Shaders[ShaderId(x)] != nil
 	}))
 	t.doAndUndo(ctx,
 		t.cb.GlCreateProgram(id),
@@ -258,7 +258,7 @@ func (t *tweaker) makeProgram(ctx context.Context, vertexShaderSource, fragmentS
 
 func (t *tweaker) glCreateShader(ctx context.Context, shaderType GLenum) ShaderId {
 	id := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		return t.c.Objects.Programs[ProgramId(x)] != nil || t.c.Objects.Shaders[ShaderId(x)] != nil
+		return t.c.Objects.Shared.Programs[ProgramId(x)] != nil || t.c.Objects.Shared.Shaders[ShaderId(x)] != nil
 	}))
 	// We need to mutate the state, as otherwise two consecutive calls can return the same ShaderId.
 	t.doAndUndo(ctx,

@@ -46,7 +46,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			return
 		}
 
-		tex, ok := c.Objects.Textures[TextureId(r.Texture)]
+		tex, ok := c.Objects.Shared.Textures[TextureId(r.Texture)]
 		if !ok {
 			err := fmt.Errorf("Attempting to read from a texture that does not exist.\n"+
 				"Resolvable: %+v"+
