@@ -22,5 +22,22 @@
   <string>Copyright © 2017 Google Inc.</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.developer-tools</string>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+   <dict>
+    <key>CFBundleTypeExtensions</key>
+    <array>
+     <string>gfxtrace</string>
+    </array>
+    <key>CFBundleTypeIconFile</key>
+    <string>GAPID.icns</string>
+    <key>CFBundleTypeName</key>
+    <string>Graphics API Trace</string>
+    <key>CFBundleTypeRole</key>
+    <string>Editor</string>
+    <key>LSHandlerRank</key>
+    <string>Owner</string>
+   </dict>
+  </array>
  </dict>
 </plist>
