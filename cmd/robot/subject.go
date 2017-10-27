@@ -86,9 +86,9 @@ func (v *subjectUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) 
 	return nil
 }
 func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
-	var hints *subject.Hints
+	hints := &subject.Hints{}
 	if v.TraceTime != 0 {
-		hints = &subject.Hints{TraceTime: ptypes.DurationProto(v.TraceTime)}
+		hints.TraceTime = ptypes.DurationProto(v.TraceTime)
 	}
 	hints.API = v.API.String()
 	subject, created, err := v.subjects.Add(ctx, id, hints)
