@@ -37,6 +37,11 @@ var (
 // state.
 type EventProvider func(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState) []*service.Event
 
+// EventFilter is a predicate used for filtering event commands.
+// If the function returns true then the command is considered for event
+// generation, otherwise it is ignored.
+type EventFilter func(api.CmdID, api.Cmd, *api.GlobalState) bool
+
 // Extension is a GAPIS extension.
 // It should be registered at application initialization with Register.
 type Extension struct {
@@ -49,6 +54,8 @@ type Extension struct {
 	CmdGroupers func(ctx context.Context, p *path.CommandTree) []cmdgrouper.Grouper
 	// Custom events provider.
 	Events func(ctx context.Context, p *path.Events) EventProvider
+	// Custom events filters.
+	EventFilter func(ctx context.Context, p *path.Events) EventFilter
 }
 
 // Register registers the extension e.
