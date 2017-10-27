@@ -91,7 +91,9 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 			if callerID := cmd.Caller(); callerID != api.CmdNoID {
 				switch caller := cmds[callerID].(type) {
 				case *Gvr_frame_bind_buffer:
-					frameToBuffer[caller.Frame] = cmd.Framebuffer
+					if caller.Index == 0 { // Only consider the 0'th frame index.
+						frameToBuffer[caller.Frame] = cmd.Framebuffer
+					}
 				}
 			}
 		}
