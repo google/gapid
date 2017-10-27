@@ -51,105 +51,6 @@ type videoFrame struct {
 	squareError   float64
 }
 
-func getVideoFrames(
-	ctx context.Context,
-	client service.Service,
-	device *path.Device,
-	events []*service.Event,
-	maxWidth, maxHeight int) ([]*videoFrame, int, int, error) {
-	// Find maximum frame width / height of all frames, and get all observation
-	// command indices.
-	videoFrames := []*videoFrame{}
-	w, h := 0, 0
-	frameIndex, numDrawCalls := 0, 0
-
-	// Some traces call eglSwapBuffers without actually drawing to or clearing
-	// the framebuffer. This is most common during loading screens.
-	// These would result in a failed comparison as the observed frame could
-	// be anything and the replayed frame will show the undefined framebuffer
-	// pattern.
-	// Permit the first run of frames to have no content.
-	permitNoMatch := true
-
-	var lastFrameEvent *path.Command
-	for _, e := range events {
-		switch e.Kind {
-		case service.EventKind_FramebufferObservation:
-			// We assume FBO events come after other events on a command.
-			if lastFrameEvent == nil {
-				log.W(ctx, "Got framebuffer observation but nothing wrote to the frame")
-				continue
-			}
-			fbo, err := getFBO(ctx, client, e.Command)
-			if err != nil {
-				return nil, 0, 0, err
-			}
-			if int(fbo.Width) > w {
-				w = int(fbo.Width)
-			}
-			if int(fbo.Height) > h {
-				h = int(fbo.Height)
-			}
-
-			videoFrames = append(videoFrames, &videoFrame{
-				fbo:           fbo,
-				fboIndex:      fmt.Sprint(e.Command.Indices),
-				frameIndex:    frameIndex,
-				numDrawCalls:  numDrawCalls,
-				command:       lastFrameEvent,
-				permitNoMatch: permitNoMatch,
-			})
-		case service.EventKind_Clear:
-			permitNoMatch = false
-			lastFrameEvent = e.Command
-		case service.EventKind_DrawCall:
-			permitNoMatch = false
-			lastFrameEvent = e.Command
-			numDrawCalls++
-		case service.EventKind_LastInFrame:
-			lastFrameEvent = e.Command
-			frameIndex++
-			numDrawCalls = 0
-		}
-	}
-
-	// Get all the observed and rendered frames, and compare them.
-	start := time.Now()
-	w, h = uniformScale(w, h, maxWidth/2, maxHeight/2)
-	var wg sync.WaitGroup
-	for _, v := range videoFrames {
-		v := v
-		wg.Add(1)
-		crash.Go(func() {
-			v.observed = &image.NRGBA{
-				Pix:    v.fbo.Bytes,
-				Stride: int(v.fbo.Width) * 4,
-				Rect:   image.Rect(0, 0, int(v.fbo.Width), int(v.fbo.Height)),
-			}
-			if frame, err := getFrame(ctx, maxWidth, maxHeight, v.command, device, client); err == nil {
-				v.rendered = frame
-			} else {
-				v.renderError = err
-			}
-			v.observed = flipImg(downsample(v.observed, w, h))
-			v.rendered = flipImg(downsample(v.rendered, w, h))
-			if v.observed != nil && v.rendered != nil {
-				v.difference, v.squareError = getDifference(v.observed, v.rendered, &v.histogramData)
-			}
-			wg.Done()
-		})
-	}
-	wg.Wait()
-	log.D(ctx, "Frames rendered in %v", time.Since(start))
-	for _, v := range videoFrames {
-		if v.renderError != nil {
-			return nil, 0, 0, v.renderError
-		}
-	}
-
-	return videoFrames, w, h, nil
-}
-
 // getFBO fetches the framebuffer observation of the command.
 func getFBO(ctx context.Context, client service.Service, a *path.Command) (*img.Data, error) {
 	obj, err := client.Get(ctx, a.FramebufferObservation().Path())
@@ -195,9 +96,94 @@ func (verb *videoVerb) sxsVideoSource(
 		return nil, log.Err(ctx, err, "Couldn't get events")
 	}
 
-	videoFrames, w, h, err := getVideoFrames(ctx, client, device, events, verb.Max.Width, verb.Max.Height)
-	if err != nil {
-		return nil, err
+	// Find maximum frame width / height of all frames, and get all observation
+	// command indices.
+	videoFrames := []*videoFrame{}
+	w, h := 0, 0
+	frameIndex, numDrawCalls := 0, 0
+
+	// Some traces call eglSwapBuffers without actually drawing to or clearing
+	// the framebuffer. This is most common during loading screens.
+	// These would result in a failed comparison as the observed frame could
+	// be anything and the replayed frame will show the undefined framebuffer
+	// pattern.
+	// Permit the first run of frames to have no content.
+	permitNoMatch := true
+
+	var lastFrameEvent *path.Command
+	for _, e := range events {
+		switch e.Kind {
+		case service.EventKind_FramebufferObservation:
+			// We assume FBO events come after other events on a command.
+			if lastFrameEvent == nil {
+				log.W(ctx, "Got framebuffer observation but nothing wrote to the frame")
+				continue
+			}
+			fbo, err := getFBO(ctx, client, e.Command)
+			if err != nil {
+				return nil, err
+			}
+			if int(fbo.Width) > w {
+				w = int(fbo.Width)
+			}
+			if int(fbo.Height) > h {
+				h = int(fbo.Height)
+			}
+
+			videoFrames = append(videoFrames, &videoFrame{
+				fbo:           fbo,
+				fboIndex:      fmt.Sprint(e.Command.Indices),
+				frameIndex:    frameIndex,
+				numDrawCalls:  numDrawCalls,
+				command:       lastFrameEvent,
+				permitNoMatch: permitNoMatch,
+			})
+		case service.EventKind_Clear:
+			permitNoMatch = false
+			lastFrameEvent = e.Command
+		case service.EventKind_DrawCall:
+			permitNoMatch = false
+			lastFrameEvent = e.Command
+			numDrawCalls++
+		case service.EventKind_LastInFrame:
+			lastFrameEvent = e.Command
+			frameIndex++
+			numDrawCalls = 0
+		}
+	}
+
+	// Get all the observed and rendered frames, and compare them.
+	start := time.Now()
+	w, h = uniformScale(w, h, verb.Max.Width/2, verb.Max.Height/2)
+	var wg sync.WaitGroup
+	for _, v := range videoFrames {
+		v := v
+		wg.Add(1)
+		crash.Go(func() {
+			v.observed = &image.NRGBA{
+				Pix:    v.fbo.Bytes,
+				Stride: int(v.fbo.Width) * 4,
+				Rect:   image.Rect(0, 0, int(v.fbo.Width), int(v.fbo.Height)),
+			}
+			if frame, err := getFrame(ctx, verb.Max.Width, verb.Max.Height, v.command, device, client); err == nil {
+				v.rendered = frame
+			} else {
+				v.renderError = err
+			}
+			v.observed = flipImg(downsample(v.observed, w, h))
+			v.rendered = flipImg(downsample(v.rendered, w, h))
+			if v.observed != nil && v.rendered != nil {
+				v.difference, v.squareError = getDifference(v.observed, v.rendered, &v.histogramData)
+			}
+			wg.Done()
+		})
+	}
+	wg.Wait()
+	log.D(ctx, "Frames rendered in %v", time.Since(start))
+	for _, v := range videoFrames {
+		if v.renderError != nil {
+			return nil, v.renderError
+		}
 	}
 
 	// Produce the histogram image
