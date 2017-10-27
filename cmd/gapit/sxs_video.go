@@ -43,6 +43,7 @@ type videoFrame struct {
 	frameIndex    int
 	numDrawCalls  int
 	renderError   error
+	permitNoMatch bool
 	rendered      *image.NRGBA
 	observed      *image.NRGBA
 	difference    *image.NRGBA
@@ -60,7 +61,7 @@ func getVideoFrames(
 	// command indices.
 	videoFrames := []*videoFrame{}
 	w, h := 0, 0
-	frameIndex, numDrawCalls := 0, 0
+	frameIndex, numDrawCalls, numClears := 0, 0, 0
 	var lastFrameEvent *path.Command
 	for _, e := range events {
 		switch e.Kind {
@@ -80,22 +81,32 @@ func getVideoFrames(
 			if int(fbo.Height) > h {
 				h = int(fbo.Height)
 			}
+
+			// Some traces call eglSwapBuffers without actually drawing to or
+			// clearing the framebuffer. This is most common during loading
+			// screens. These would result in a failed comparison as the
+			// observed frame could be anything and the replayed frame will show
+			// the undefined framebuffer pattern.
+			permitNoMatch := numClears == 0 && numDrawCalls == 0
+
 			videoFrames = append(videoFrames, &videoFrame{
-				fbo:          fbo,
-				fboIndex:     fmt.Sprint(e.Command.Indices),
-				frameIndex:   frameIndex,
-				numDrawCalls: numDrawCalls,
-				command:      lastFrameEvent,
+				fbo:           fbo,
+				fboIndex:      fmt.Sprint(e.Command.Indices),
+				frameIndex:    frameIndex,
+				numDrawCalls:  numDrawCalls,
+				command:       lastFrameEvent,
+				permitNoMatch: permitNoMatch,
 			})
 		case service.EventKind_Clear:
 			lastFrameEvent = e.Command
+			numClears++
 		case service.EventKind_DrawCall:
 			lastFrameEvent = e.Command
 			numDrawCalls++
 		case service.EventKind_LastInFrame:
 			lastFrameEvent = e.Command
 			frameIndex++
-			numDrawCalls = 0
+			numDrawCalls, numClears = 0, 0
 		}
 	}
 
@@ -278,8 +289,9 @@ func (verb *videoVerb) sxsVideoSource(
 
 		const threshold = 0.01
 		for _, v := range videoFrames {
-			if v.squareError > threshold {
-				return fmt.Errorf("FramebufferObservation did not match replayed framebuffer. Difference: %v%%", v.squareError*100)
+			if !v.permitNoMatch && v.squareError > threshold {
+				return fmt.Errorf("FramebufferObservation did not match replayed framebuffer at %v. Difference: %v%%",
+					v.command.Indices, v.squareError*100)
 			}
 		}
 		return nil
