@@ -22,10 +22,26 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type filter func(api.CmdID, api.Cmd, *api.GlobalState) bool
+// CommandFilter is a predicate used for filtering commands.
+// If the function returns true then the command is considered, otherwise it is
+// ignored.
+type CommandFilter func(api.CmdID, api.Cmd, *api.GlobalState) bool
 
-func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd *sync.Data) (filter, error) {
-	filters := []filter{
+// CommandFilters is a list of CommandFilters.
+type CommandFilters []CommandFilter
+
+// All is a CommandFilter that needs all the contained filters to pass.
+func (l CommandFilters) All(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
+	for _, f := range l {
+		if !f(id, cmd, s) {
+			return false
+		}
+	}
+	return true
+}
+
+func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd *sync.Data) (CommandFilter, error) {
+	filters := CommandFilters{
 		func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 			return !sd.Hidden.Contains(id)
 		},
@@ -55,12 +71,5 @@ func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd
 			return false
 		})
 	}
-	return func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
-		for _, f := range filters {
-			if !f(id, cmd, s) {
-				return false
-			}
-		}
-		return true
-	}, nil
+	return filters.All, nil
 }

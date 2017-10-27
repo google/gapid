@@ -33,6 +33,7 @@ func init() {
 		AdjustContexts: adjustContexts,
 		CmdGroupers:    newReprojectionGroupers,
 		Events:         newReprojectionEvents,
+		EventFilter:    eventFilter,
 	})
 }
 
@@ -70,7 +71,6 @@ func findContextByCommand(ctxs []*api.ContextInfo, ty reflect.Type) *api.Context
 }
 
 func isReprojectionContext(ctx context.Context, p *path.Context) bool {
-	// Only group if we're looking at the reprojection thread.
 	if p == nil {
 		return false
 	}
@@ -80,6 +80,22 @@ func isReprojectionContext(ctx context.Context, p *path.Context) bool {
 	}
 	_, ok := c.UserData[reprojectionCtx]
 	return ok
+}
+
+func getRenderContextID(ctx context.Context, p *path.Contexts) *api.ContextID {
+	if p == nil {
+		return nil
+	}
+	ctxs, err := resolve.Contexts(ctx, p)
+	if err != nil {
+		return nil
+	}
+	for _, c := range ctxs {
+		if _, ok := c.UserData[rendererCtx]; ok {
+			return &c.ID
+		}
+	}
+	return nil
 }
 
 func newReprojectionGroupers(ctx context.Context, p *path.CommandTree) []cmdgrouper.Grouper {
@@ -196,5 +212,26 @@ func newReprojectionEvents(ctx context.Context, p *path.Events) extensions.Event
 			}
 		}
 		return events
+	}
+}
+
+func eventFilter(ctx context.Context, p *path.Events) extensions.EventFilter {
+	renderCtxID := getRenderContextID(ctx, p.Capture.Contexts())
+	if renderCtxID == nil {
+		return nil
+	}
+	return func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
+		_, isSwapBuffers := cmd.(*gles.EglSwapBuffers)
+		if isSwapBuffers {
+			if context := gles.GetContext(s, cmd.Thread()); context != nil {
+				ctxID := context.ID()
+				if ctxID == *renderCtxID {
+					// Strip out eglSwapBuffers from the render context.
+					// We don't want them appearing as frames.
+					return false
+				}
+			}
+		}
+		return true
 	}
 }
