@@ -886,6 +886,7 @@ func (e externs) execPendingCommands(queue VkQueue) {
 	GetState(e.s).LastBoundQueue = GetState(e.s).Queues.Get(queue)
 	lastBoundQueue := GetState(e.s).LastBoundQueue
 	newPendingCommands := NewU32ːCommandReferenceᵐ()
+	signaledQueues := []VkQueue{}
 
 	// Store off state.IdxList (Should be empty)
 	for _, i := range lastBoundQueue.PendingCommands.KeysSorted() {
@@ -897,15 +898,30 @@ func (e externs) execPendingCommands(queue VkQueue) {
 		// through. (ExecPending could not have been called otherwise).
 		// Therefore o.CurrentSubmission will be set by the else
 		// branch at least once.
-		if lastBoundQueue.PendingEvents.Len() != 0 {
+		if lastBoundQueue.PendingEvents.Len() != 0 || lastBoundQueue.PendingSemaphores.Len() != 0 {
 			newPendingCommands.Set(uint32(newPendingCommands.Len()), command)
 		} else {
 			o.SubCmdIdx = append([]uint64{}, command.QueuedCommandData.submissionIndex...)
 			if command.SemaphoreUpdate == SemaphoreUpdate_Signal {
 				o.Semaphores.Get(command.Semaphore).Signaled = true
+				if o.Semaphores.Get(command.Semaphore).WaitingQueue != VkQueue(0) {
+					signaledQueue := o.Semaphores.Get(command.Semaphore).WaitingQueue
+					o.Queues.Get(signaledQueue).PendingSemaphores.Delete(command.Semaphore)
+					o.Semaphores.Get(command.Semaphore).WaitingQueue = VkQueue(0)
+					signaledQueues = append(signaledQueues, o.Semaphores.Get(command.Semaphore).WaitingQueue)
+				}
 			}
 			if command.SemaphoreUpdate == SemaphoreUpdate_Unsignal {
-				o.Semaphores.Get(command.Semaphore).Signaled = false
+				if !o.Semaphores.Get(command.Semaphore).Signaled {
+					o.Semaphores.Get(command.Semaphore).WaitingQueue = queue
+					lastBoundQueue.PendingSemaphores.Set(command.Semaphore, o.Semaphores.Get(command.Semaphore))
+					c := command
+					c.QueuedCommandData.submit = o.CurrentSubmission
+					newPendingCommands.Set(uint32(newPendingCommands.Len()), c)
+					continue
+				} else {
+					o.Semaphores.Get(command.Semaphore).Signaled = false
+				}
 			}
 			if command.SparseBinds != nil {
 				bindSparse(e.ctx, e.s, command.SparseBinds)
@@ -942,6 +958,9 @@ func (e externs) execPendingCommands(queue VkQueue) {
 	// Reset state.IdxList
 	// Refresh or clear the pending commands in LastBoundQueue
 	lastBoundQueue.PendingCommands = newPendingCommands
+	for _, sq := range signaledQueues {
+		e.execPendingCommands(sq)
+	}
 }
 
 func (e externs) addWords(module VkShaderModule, numBytes interface{}, data interface{}) {

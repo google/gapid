@@ -755,6 +755,12 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	}
 	a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Write(ctx, a.PImageIndex.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, a, s, nil), a, s, b)
 	_ = a.Result
+	if a.Semaphore != VkSemaphore(0) {
+		GetState(s).Semaphores.Get(a.Semaphore).Signaled = true
+	}
+	if a.Fence != VkFence(0) {
+		GetState(s).Fences.Get(a.Fence).Signaled = true
+	}
 	return nil
 }
 
