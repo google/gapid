@@ -40,6 +40,7 @@ type CustomState struct {
 	popMarkerGroup            func(ty MarkerType)
 	bufferSparseBindings      map[VkBuffer]sparseBindingList
 	opaqueImageSparseBindings map[VkImage]sparseBindingList
+	postBindSparse            func(binds *QueuedSparseBinds)
 }
 
 func getStateObject(s *api.GlobalState) *State {

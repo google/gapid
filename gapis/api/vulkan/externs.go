@@ -925,6 +925,9 @@ func (e externs) execPendingCommands(queue VkQueue) {
 			}
 			if command.SparseBinds != nil {
 				bindSparse(e.ctx, e.s, command.SparseBinds)
+				if o.postBindSparse != nil {
+					o.postBindSparse(command.SparseBinds)
+				}
 			}
 			if command.Buffer == VkCommandBuffer(0) {
 				continue
@@ -1051,14 +1054,25 @@ func (e externs) popAndPushMarkerForNextSubpass(nextSubpass uint32) {
 }
 
 func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBinds) {
+	var err error
 	st := GetState(s)
+	if st.bufferSparseBindings == nil {
+		st.bufferSparseBindings = map[VkBuffer]sparseBindingList{}
+	}
+	if st.opaqueImageSparseBindings == nil {
+		st.opaqueImageSparseBindings = map[VkImage]sparseBindingList{}
+	}
 	for buffer, binds := range binds.BufferBinds.Range() {
 		for _, bind := range binds.SparseMemoryBinds.Range() {
 			if _, ok := st.bufferSparseBindings[buffer]; !ok {
 				st.bufferSparseBindings[buffer] = sparseBindingList{}
 			}
-			st.bufferSparseBindings[buffer] = addBinding(
-				st.bufferSparseBindings[buffer], bind)
+			dbind, _ := bind.duplicate().(*VkSparseMemoryBind)
+			st.bufferSparseBindings[buffer], err = addSparseBinding(
+				st.bufferSparseBindings[buffer], dbind)
+			if err != nil {
+				log.E(ctx, err.Error())
+			}
 		}
 		// update the data for UI
 		bufObj := st.Buffers.Get(buffer)
@@ -1066,7 +1080,9 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 			if i >= len(st.bufferSparseBindings[buffer]) {
 				bufObj.SparseMemoryBindings.Delete(uint32(i))
 			}
-			bufObj.SparseMemoryBindings.Set(uint32(i), st.bufferSparseBindings[buffer][i])
+			if ptr, ok := st.bufferSparseBindings[buffer][i].(*VkSparseMemoryBind); ok {
+				bufObj.SparseMemoryBindings.Set(uint32(i), *ptr)
+			}
 		}
 	}
 	for image, binds := range binds.OpaqueImageBinds.Range() {
@@ -1074,8 +1090,12 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 			if _, ok := st.opaqueImageSparseBindings[image]; !ok {
 				st.opaqueImageSparseBindings[image] = sparseBindingList{}
 			}
-			st.opaqueImageSparseBindings[image] = addBinding(
-				st.opaqueImageSparseBindings[image], bind)
+			dbind, _ := bind.duplicate().(*VkSparseMemoryBind)
+			st.opaqueImageSparseBindings[image], err = addSparseBinding(
+				st.opaqueImageSparseBindings[image], dbind)
+			if err != nil {
+				log.E(ctx, err.Error())
+			}
 		}
 		// update the data for UI
 		imgObj := st.Images.Get(image)
@@ -1083,7 +1103,9 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 			if i >= len(st.opaqueImageSparseBindings[image]) {
 				imgObj.OpaqueSparseMemoryBindings.Delete(uint32(i))
 			}
-			imgObj.OpaqueSparseMemoryBindings.Set(uint32(i), st.opaqueImageSparseBindings[image][i])
+			if ptr, ok := st.opaqueImageSparseBindings[image][i].(*VkSparseMemoryBind); ok {
+				imgObj.OpaqueSparseMemoryBindings.Set(uint32(i), *ptr)
+			}
 		}
 	}
 	for image, binds := range binds.ImageBinds.Range() {

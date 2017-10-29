@@ -543,8 +543,8 @@ void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
             mBufferSparseBindings[buf].replace(
                 VulkanSpy::SparseBindingInterval(b.second));
           }
-          for (uint32_t i = 0; i < Buffers[buf]->mSparseMemoryBindings.size() ||
-                               i < mBufferSparseBindings[buf].count();
+          for (uint32_t i = 0; (i < Buffers[buf]->mSparseMemoryBindings.size()) ||
+                               (i < mBufferSparseBindings[buf].count());
                i++) {
             if (i >= mBufferSparseBindings[buf].count()) {
               Buffers[buf]->mSparseMemoryBindings.erase(i);
@@ -564,8 +564,8 @@ void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
                 VulkanSpy::SparseBindingInterval(b.second));
           }
           for (uint32_t i = 0;
-               i < Images[img]->mOpaqueSparseMemoryBindings.size() ||
-               i < mOpaqueImageSparseBindings[img].count();
+               (i < Images[img]->mOpaqueSparseMemoryBindings.size()) ||
+               (i < mOpaqueImageSparseBindings[img].count());
                i++) {
             if (i >= mOpaqueImageSparseBindings[img].count()) {
               Images[img]->mOpaqueSparseMemoryBindings.erase(i);

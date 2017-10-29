@@ -14,31 +14,52 @@
 
 package vulkan
 
-import "github.com/google/gapid/core/math/interval"
+import (
+	"fmt"
 
-type sparseBindingList []VkSparseMemoryBind
+	"github.com/google/gapid/core/math/interval"
+)
+
+type shrinkOutOfMemBindingBound struct {
+	binding memBinding
+	offset  uint64
+	size    uint64
+}
+
+func (e shrinkOutOfMemBindingBound) Error() string {
+	return fmt.Sprintf("Out of the bound of memBinding's span: %v, with shrink(offset: %v, size: %v)",
+		e.binding.span(), e.offset, e.size)
+}
+
+type memBinding interface {
+	span() interval.U64Span
+	size() uint64
+	shrink(offset, size uint64) error
+	duplicate() memBinding
+}
+
+type memBindingList []memBinding
 
 // Implements the interval.List interface.
-func (l sparseBindingList) Length() int {
+func (l memBindingList) Length() int {
 	return len(l)
 }
 
-func (l sparseBindingList) GetSpan(index int) interval.U64Span {
+func (l memBindingList) GetSpan(index int) interval.U64Span {
 	return l[index].span()
 }
 
-func (b VkSparseMemoryBind) span() interval.U64Span {
-	return interval.U64Span{Start: uint64(b.ResourceOffset), End: uint64(b.ResourceOffset) + uint64(b.Size)}
-}
-
-func addBinding(l sparseBindingList, b VkSparseMemoryBind) sparseBindingList {
+// Add new memBinding to the memBindingList
+func addBinding(l memBindingList, b memBinding) (memBindingList, error) {
+	var err error
 	first, count := interval.Intersect(l, b.span())
 	if count == 0 {
 		// no conflict
 		i := interval.Search(l, func(span interval.U64Span) bool {
 			return span.Start >= b.span().End
 		})
-		l = append(l[:i], append(sparseBindingList{b}, l[i:]...)...)
+		l = append(l[:i], append(memBindingList{b}, l[i:]...)...)
+		return l, nil
 	} else {
 		// has conflits, truncate the existing spans to remove conflict, then add
 		// the incoming bind again as if there is no conflict. Note that it is
@@ -50,30 +71,36 @@ func addBinding(l sparseBindingList, b VkSparseMemoryBind) sparseBindingList {
 				sp.End <= b.span().End &&
 				sp.End > b.span().Start {
 				// truncate the tail of sp
-				overlap := VkDeviceSize(sp.End - b.span().Start)
-				l[i].Size = l[i].Size - VkDeviceSize(overlap)
+				overlap := sp.End - b.span().Start
+				if err = l[i].shrink(0, l[i].size()-overlap); err != nil {
+					return nil, err
+				}
 				i++
 
 			} else if sp.Start >= b.span().Start &&
 				sp.End > b.span().End &&
 				sp.Start < b.span().End {
 				// truncate the head of sp
-				overlap := VkDeviceSize(b.span().End - sp.Start)
-				l[i].Size = l[i].Size - VkDeviceSize(overlap)
-				l[i].MemoryOffset += overlap
-				l[i].ResourceOffset += overlap
+				overlap := b.span().End - sp.Start
+				if err = l[i].shrink(overlap, l[i].size()-overlap); err != nil {
+					return nil, err
+				}
 				i++
 
 			} else if sp.Start < b.span().Start &&
 				sp.End > b.span().End {
 				// split sp
-				newB := l[i]
-				newB.MemoryOffset += VkDeviceSize(b.span().End - sp.Start)
-				newB.ResourceOffset += VkDeviceSize(b.span().End - sp.Start)
-				newB.Size -= VkDeviceSize(b.span().End - sp.Start)
-
-				l[i].Size -= VkDeviceSize(sp.End - b.span().Start)
-				l = addBinding(l, newB)
+				newB := l[i].duplicate()
+				if err = newB.shrink(b.span().End-sp.Start, newB.size()-b.span().End+sp.Start); err != nil {
+					return nil, err
+				}
+				if err = l[i].shrink(0, sp.End-b.span().Start); err != nil {
+					return nil, err
+				}
+				l, err = addBinding(l, newB)
+				if err != nil {
+					return nil, err
+				}
 				// Should not have any other intersects
 				break
 
@@ -84,7 +111,10 @@ func addBinding(l sparseBindingList, b VkSparseMemoryBind) sparseBindingList {
 				count--
 			}
 		}
-		l = addBinding(l, b)
+		l, err = addBinding(l, b)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return l
+	return l, nil
 }

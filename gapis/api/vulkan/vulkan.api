@@ -3243,7 +3243,11 @@ cmd void RecreateBindImageMemory(
     u32            opaqueSparseBindCount,
     const VkSparseMemoryBind* pOpaqueSparseBinds) {
     if opaqueSparseBindCount > 0 {
-      read(pOpaqueSparseBinds[0:opaqueSparseBindCount])
+      binds := pOpaqueSparseBinds[0:opaqueSparseBindCount]
+      for i in (0 .. opaqueSparseBindCount) {
+        bind := binds[i]
+        _ = bind
+      }
     }
 }
 

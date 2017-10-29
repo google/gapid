@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -72,12 +73,12 @@ func (memorySpan) DefUseVariable() {}
 type commandBufferCommand struct {
 	isCmdExecuteCommands    bool
 	secondaryCommandBuffers []VkCommandBuffer
-	behave                  func(submittedCommand, *queueExecutionInfo)
+	behave                  func(submittedCommand, *queueExecutionState)
 }
 
 func (cbc *commandBufferCommand) newBehavior(ctx context.Context,
 	sc submittedCommand, m *vulkanMachine,
-	qei *queueExecutionInfo) *dependencygraph.Behavior {
+	qei *queueExecutionState) *dependencygraph.Behavior {
 	bh := dependencygraph.NewBehavior(sc.id, m)
 	read(ctx, bh, cbc)
 	read(ctx, bh, qei.currentSubmitInfo.executionBegin)
@@ -100,11 +101,11 @@ type vulkanMachine struct {
 	memories                      map[VkDeviceMemory]*interval.U64SpanList
 	commandBufferCommands         map[*commandBufferCommand]struct{}
 	subpassIndices                map[*subpassIndex]struct{}
-	boundDataPieces               map[*boundData]struct{}
+	boundDataPieces               map[*resBinding]struct{}
 	descriptors                   map[*descriptor]struct{}
 	boundDescriptorSets           map[*boundDescriptorSet]struct{}
 	forwardPairedLabels           map[*forwardPairedLabel]struct{}
-	lastBoundFramebufferImageData map[*dependencygraph.Behavior][]*boundData
+	lastBoundFramebufferImageData map[*dependencygraph.Behavior][]*resBinding
 }
 
 func newVulkanMachine() *vulkanMachine {
@@ -114,11 +115,11 @@ func newVulkanMachine() *vulkanMachine {
 		memories:                      map[VkDeviceMemory]*interval.U64SpanList{},
 		commandBufferCommands:         map[*commandBufferCommand]struct{}{},
 		subpassIndices:                map[*subpassIndex]struct{}{},
-		boundDataPieces:               map[*boundData]struct{}{},
+		boundDataPieces:               map[*resBinding]struct{}{},
 		descriptors:                   map[*descriptor]struct{}{},
 		boundDescriptorSets:           map[*boundDescriptorSet]struct{}{},
 		forwardPairedLabels:           map[*forwardPairedLabel]struct{}{},
-		lastBoundFramebufferImageData: map[*dependencygraph.Behavior][]*boundData{},
+		lastBoundFramebufferImageData: map[*dependencygraph.Behavior][]*resBinding{},
 	}
 }
 
@@ -128,11 +129,11 @@ func (m *vulkanMachine) Clear() {
 	m.memories = map[VkDeviceMemory]*interval.U64SpanList{}
 	m.commandBufferCommands = map[*commandBufferCommand]struct{}{}
 	m.subpassIndices = map[*subpassIndex]struct{}{}
-	m.boundDataPieces = map[*boundData]struct{}{}
+	m.boundDataPieces = map[*resBinding]struct{}{}
 	m.descriptors = map[*descriptor]struct{}{}
 	m.boundDescriptorSets = map[*boundDescriptorSet]struct{}{}
 	m.forwardPairedLabels = map[*forwardPairedLabel]struct{}{}
-	m.lastBoundFramebufferImageData = map[*dependencygraph.Behavior][]*boundData{}
+	m.lastBoundFramebufferImageData = map[*dependencygraph.Behavior][]*resBinding{}
 }
 
 func (m *vulkanMachine) IsAlive(behaviorIndex uint64,
@@ -197,7 +198,7 @@ func (m *vulkanMachine) checkDef(c dependencygraph.DefUseVariable) bool {
 		if _, ok := m.subpassIndices[c]; ok {
 			return true
 		}
-	case *boundData:
+	case *resBinding:
 		if _, ok := m.boundDataPieces[c]; ok {
 			return true
 		}
@@ -235,7 +236,7 @@ func (m *vulkanMachine) use(c dependencygraph.DefUseVariable) {
 		m.commandBufferCommands[c] = struct{}{}
 	case *subpassIndex:
 		m.subpassIndices[c] = struct{}{}
-	case *boundData:
+	case *resBinding:
 		m.boundDataPieces[c] = struct{}{}
 	case *descriptor:
 		m.descriptors[c] = struct{}{}
@@ -261,7 +262,7 @@ func (m *vulkanMachine) def(c dependencygraph.DefUseVariable) []*dependencygraph
 		delete(m.commandBufferCommands, c)
 	case *subpassIndex:
 		delete(m.subpassIndices, c)
-	case *boundData:
+	case *resBinding:
 		delete(m.boundDataPieces, c)
 	case *descriptor:
 		delete(m.descriptors, c)
@@ -300,7 +301,7 @@ func newSubmittedCommand(fullCmdIndex api.SubCmdIdx,
 
 func (sc *submittedCommand) runCommand(ctx context.Context,
 	ft *dependencygraph.Footprint, m *vulkanMachine,
-	execInfo *queueExecutionInfo) {
+	execInfo *queueExecutionState) {
 	sc.cmd.behave(*sc, execInfo)
 }
 
@@ -346,7 +347,7 @@ type queryPool struct {
 
 type subpassAttachmentInfo struct {
 	fullImageData bool
-	data          dependencygraph.DefUseVariable
+	data          []dependencygraph.DefUseVariable
 	layout        label
 	desc          VkAttachmentDescription
 }
@@ -368,24 +369,24 @@ type subpassIndex struct {
 func (*subpassIndex) DefUseVariable() {}
 
 type commandBufferExecutionState struct {
-	vertexBuffers  map[uint32]*boundData
-	indexBuffer    *boundData
-	indexType      VkIndexType
-	descriptorSets map[uint32]*boundDescriptorSet
-	pipeline       label
-	dynamicState   label
+	vertexBufferResBindings map[uint32]resBindingList
+	indexBufferResBindings  resBindingList
+	indexType               VkIndexType
+	descriptorSets          map[uint32]*boundDescriptorSet
+	pipeline                label
+	dynamicState            label
 }
 
 func newCommandBufferExecutionState() *commandBufferExecutionState {
 	return &commandBufferExecutionState{
-		vertexBuffers:  map[uint32]*boundData{},
-		descriptorSets: map[uint32]*boundDescriptorSet{},
-		pipeline:       newLabel(),
-		dynamicState:   newLabel(),
+		vertexBufferResBindings: map[uint32]resBindingList{},
+		descriptorSets:          map[uint32]*boundDescriptorSet{},
+		pipeline:                newLabel(),
+		dynamicState:            newLabel(),
 	}
 }
 
-type queueExecutionInfo struct {
+type queueExecutionState struct {
 	currentCmdBufState   *commandBufferExecutionState
 	primaryCmdBufState   *commandBufferExecutionState
 	secondaryCmdBufState *commandBufferExecutionState
@@ -402,15 +403,15 @@ type queueExecutionInfo struct {
 	currentSubmitInfo *queueSubmitInfo
 }
 
-func newQueueExecutionInfo(id api.CmdID) *queueExecutionInfo {
-	return &queueExecutionInfo{
+func newQueueExecutionState(id api.CmdID) *queueExecutionState {
+	return &queueExecutionState{
 		subpasses:      []subpassInfo{},
 		lastSubmitID:   id,
 		currentCommand: api.SubCmdIdx([]uint64{0, 0, 0, 0}),
 	}
 }
 
-func (qei *queueExecutionInfo) updateCurrentCommand(ctx context.Context,
+func (qei *queueExecutionState) updateCurrentCommand(ctx context.Context,
 	fci api.SubCmdIdx) {
 	switch len(fci) {
 	case 4:
@@ -448,7 +449,7 @@ func (o VkAttachmentStoreOp) isStore() bool {
 	return o == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE
 }
 
-func (qei *queueExecutionInfo) startSubpass(ctx context.Context,
+func (qei *queueExecutionState) startSubpass(ctx context.Context,
 	bh *dependencygraph.Behavior) {
 	write(ctx, bh, qei.subpass)
 	subpassI := qei.subpass.val
@@ -457,12 +458,12 @@ func (qei *queueExecutionInfo) startSubpass(ctx context.Context,
 		// TODO: Not all subpasses change layouts
 		modify(ctx, bh, attachment.layout)
 		if attachment.desc.LoadOp.isLoad() {
-			read(ctx, bh, attachment.data)
+			read(ctx, bh, attachment.data...)
 		} else {
 			if attachment.fullImageData {
-				write(ctx, bh, attachment.data)
+				write(ctx, bh, attachment.data...)
 			} else {
-				modify(ctx, bh, attachment.data)
+				modify(ctx, bh, attachment.data...)
 			}
 		}
 	}
@@ -472,14 +473,14 @@ func (qei *queueExecutionInfo) startSubpass(ctx context.Context,
 		modify(ctx, bh, attachment.layout)
 		if !attachment.desc.LoadOp.isLoad() && !attachment.desc.StencilLoadOp.isLoad() {
 			if attachment.fullImageData {
-				write(ctx, bh, attachment.data)
+				write(ctx, bh, attachment.data...)
 			} else {
-				modify(ctx, bh, attachment.data)
+				modify(ctx, bh, attachment.data...)
 			}
 		} else if attachment.desc.LoadOp.isLoad() && attachment.desc.StencilLoadOp.isLoad() {
-			read(ctx, bh, attachment.data)
+			read(ctx, bh, attachment.data...)
 		} else {
-			modify(ctx, bh, attachment.data)
+			modify(ctx, bh, attachment.data...)
 		}
 	}
 	for _, l := range qei.subpasses[subpassI].loadAttachments {
@@ -491,7 +492,7 @@ func (qei *queueExecutionInfo) startSubpass(ctx context.Context,
 	}
 }
 
-func (qei *queueExecutionInfo) emitSubpassOutput(ctx context.Context,
+func (qei *queueExecutionState) emitSubpassOutput(ctx context.Context,
 	ft *dependencygraph.Footprint, sc submittedCommand, m *vulkanMachine) {
 	subpassI := qei.subpass.val
 	noDsAttStoreOp := func(ctx context.Context, ft *dependencygraph.Footprint,
@@ -506,17 +507,17 @@ func (qei *queueExecutionInfo) emitSubpassOutput(ctx context.Context,
 
 		behaviorForData := sc.cmd.newBehavior(ctx, sc, m, qei)
 		if readAtt != nil {
-			read(ctx, behaviorForData, readAtt.data)
+			read(ctx, behaviorForData, readAtt.data...)
 		}
 		if att.desc.StoreOp.isStore() {
-			modify(ctx, behaviorForData, att.data)
+			modify(ctx, behaviorForData, att.data...)
 		} else {
 			// If the attachment fully covers the unlying image, this will clear
 			// the image data, which is a write operation.
 			if att.fullImageData {
-				write(ctx, behaviorForData, att.data)
+				write(ctx, behaviorForData, att.data...)
 			} else {
-				modify(ctx, behaviorForData, att.data)
+				modify(ctx, behaviorForData, att.data...)
 			}
 		}
 		read(ctx, behaviorForData, qei.subpass)
@@ -527,12 +528,12 @@ func (qei *queueExecutionInfo) emitSubpassOutput(ctx context.Context,
 		sc submittedCommand, m *vulkanMachine, dsAtt *subpassAttachmentInfo) {
 		bh := sc.cmd.newBehavior(ctx, sc, m, qei)
 		if dsAtt.desc.StoreOp.isStore() || dsAtt.desc.StencilStoreOp.isStore() {
-			modify(ctx, bh, dsAtt.data)
+			modify(ctx, bh, dsAtt.data...)
 		} else {
 			if dsAtt.fullImageData {
-				write(ctx, bh, dsAtt.data)
+				write(ctx, bh, dsAtt.data...)
 			} else {
-				modify(ctx, bh, dsAtt.data)
+				modify(ctx, bh, dsAtt.data...)
 			}
 		}
 		read(ctx, bh, qei.subpass)
@@ -575,14 +576,14 @@ func (qei *queueExecutionInfo) emitSubpassOutput(ctx context.Context,
 	}
 }
 
-func (qei *queueExecutionInfo) endSubpass(ctx context.Context,
+func (qei *queueExecutionState) endSubpass(ctx context.Context,
 	ft *dependencygraph.Footprint, bh *dependencygraph.Behavior,
 	sc submittedCommand, m *vulkanMachine) {
 	qei.emitSubpassOutput(ctx, ft, sc, m)
 	read(ctx, bh, qei.subpass)
 }
 
-func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
+func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 	vb *FootprintBuilder, bh *dependencygraph.Behavior,
 	rp *RenderPassObject, fb *FramebufferObject) {
 	read(ctx, bh, vkHandle(rp.VulkanHandle))
@@ -599,8 +600,7 @@ func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
 	recordAttachment := func(ai, si uint32) *subpassAttachmentInfo {
 		viewObj := fb.ImageAttachments.Get(ai)
 		imgObj := viewObj.Image
-		layoutNData := vb.getImageLayoutAndData(ctx, bh, imgObj.VulkanHandle)
-		imgLayout, imgData := layoutNData[0].(label), layoutNData[1]
+		imgLayout, imgData := vb.getImageLayoutAndData(ctx, bh, imgObj.VulkanHandle)
 		attDesc := rp.AttachmentDescriptions.Get(ai)
 		fullImageData := false
 		switch viewObj.Type {
@@ -688,8 +688,7 @@ func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
 			if dsAi != vkAttachmentUnused {
 				viewObj := fb.ImageAttachments.Get(dsAi)
 				imgObj := viewObj.Image
-				layoutNData := vb.getImageLayoutAndData(ctx, bh, imgObj.VulkanHandle)
-				imgLayout, imgData := layoutNData[0].(label), layoutNData[1]
+				imgLayout, imgData := vb.getImageLayoutAndData(ctx, bh, imgObj.VulkanHandle)
 				attDesc := rp.AttachmentDescriptions.Get(dsAi)
 				fullImageData := false
 				switch viewObj.Type {
@@ -713,7 +712,7 @@ func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
 	qei.startSubpass(ctx, bh)
 }
 
-func (qei *queueExecutionInfo) nextSubpass(ctx context.Context,
+func (qei *queueExecutionState) nextSubpass(ctx context.Context,
 	ft *dependencygraph.Footprint, bh *dependencygraph.Behavior,
 	sc submittedCommand, m *vulkanMachine) {
 	qei.endSubpass(ctx, ft, bh, sc, m)
@@ -721,7 +720,7 @@ func (qei *queueExecutionInfo) nextSubpass(ctx context.Context,
 	qei.startSubpass(ctx, bh)
 }
 
-func (qei *queueExecutionInfo) endRenderPass(ctx context.Context,
+func (qei *queueExecutionState) endRenderPass(ctx context.Context,
 	ft *dependencygraph.Footprint, bh *dependencygraph.Behavior,
 	sc submittedCommand, m *vulkanMachine) {
 	qei.endSubpass(ctx, ft, bh, sc, m)
@@ -738,22 +737,158 @@ type commandBuffer struct {
 	renderPassBegin label
 }
 
-type boundData struct {
-	backingData dependencygraph.DefUseVariable
+type resBinding struct {
+	resourceOffset uint64
+	bindSize       uint64
+	backingData    dependencygraph.DefUseVariable
 }
 
-func newBoundData(ctx context.Context, bh *dependencygraph.Behavior,
-	res dependencygraph.DefUseVariable) *boundData {
-	d := &boundData{backingData: res}
-	write(ctx, bh, d)
+// resBinding implements interface memBinding
+func (bd *resBinding) size() uint64 {
+	return bd.bindSize
+}
+
+func (bd *resBinding) span() interval.U64Span {
+	return interval.U64Span{Start: bd.resourceOffset, End: bd.resourceOffset + bd.size()}
+}
+
+func (bd *resBinding) shrink(offset, size uint64) error {
+	if size == vkWholeSize {
+		size = bd.size() - offset
+	}
+	if offset+size < offset || offset+size > bd.size() {
+		return shrinkOutOfMemBindingBound{bd, offset, size}
+	}
+	if sp, isSpan := bd.backingData.(memorySpan); isSpan {
+		bd.bindSize = size
+		bd.resourceOffset += offset
+		sp.span.Start += offset
+		sp.span.End = sp.span.Start + size
+		bd.backingData = sp
+		return nil
+	}
+	if offset != 0 || size != bd.size() {
+		return fmt.Errorf("Cannot shrink a resBinding whose backing data is not a memorySpan into different size and offset than the original one")
+	}
+	return nil
+}
+
+func (bd *resBinding) duplicate() memBinding {
+	newB := *bd
+	return &newB
+}
+
+func newResBinding(ctx context.Context, bh *dependencygraph.Behavior,
+	resOffset, size uint64, res dependencygraph.DefUseVariable) *resBinding {
+	d := &resBinding{resourceOffset: resOffset, bindSize: size, backingData: res}
+	if bh != nil {
+		write(ctx, bh, d)
+	}
 	return d
 }
 
-func (*boundData) DefUseVariable() {}
+func newSpanResBinding(ctx context.Context, bh *dependencygraph.Behavior,
+	memory VkDeviceMemory, resOffset, size, memoryOffset uint64) *resBinding {
+	return newResBinding(ctx, bh, resOffset, size, memorySpan{
+		span:   interval.U64Span{Start: memoryOffset, End: memoryOffset + size},
+		memory: memory,
+	})
+}
+
+func newOpaqueResBinding(ctx context.Context, bh *dependencygraph.Behavior,
+	size uint64) *resBinding {
+	return newResBinding(ctx, bh, 0, size, newLabel())
+}
+
+func (bd *resBinding) newSubBinding(ctx context.Context,
+	bh *dependencygraph.Behavior, offset, size uint64) *resBinding {
+	subBinding, _ := bd.duplicate().(*resBinding)
+	if err := subBinding.shrink(offset, size); err != nil {
+		return nil
+	}
+	if bh != nil {
+		write(ctx, bh, subBinding)
+	}
+	return subBinding
+}
+
+func (*resBinding) DefUseVariable() {}
+
+// Implements the interval.List interface for resBinding slices
+type resBindingList memBindingList
+
+func (rl resBindingList) resBindings() []*resBinding {
+	ret := []*resBinding{}
+	for _, b := range rl {
+		if rb, ok := b.(*resBinding); ok {
+			ret = append(ret, rb)
+		}
+	}
+	return ret
+}
+
+func addResBinding(ctx context.Context, l resBindingList, b *resBinding) resBindingList {
+	var err error
+	ml := memBindingList(l)
+	ml, err = addBinding(ml, b)
+	if err != nil {
+		log.E(ctx, err.Error())
+		return nil
+	}
+	return resBindingList(ml)
+}
+
+func (l resBindingList) getSubBindingList(ctx context.Context,
+	bh *dependencygraph.Behavior, offset, size uint64) resBindingList {
+	subBindings := resBindingList{}
+	if offset+size < offset {
+		// overflow
+		size = vkWholeSize - offset
+	}
+	first, count := interval.Intersect(memBindingList(l),
+		interval.U64Span{Start: offset, End: offset + size})
+	if count == 0 {
+		return subBindings
+	} else {
+		bl := l.resBindings()
+		for i := first; i < first+count; i++ {
+			start := bl[i].span().Start
+			end := bl[i].span().End
+			if offset > start {
+				start = offset
+			}
+			if offset+size < end {
+				end = offset + size
+			}
+			if bh != nil {
+				read(ctx, bh, bl[i])
+			}
+			newB := bl[i].newSubBinding(ctx, bh, start, end-start)
+			if newB != nil {
+				subBindings = append(subBindings, newB)
+			}
+		}
+	}
+	return subBindings
+}
+
+func (l resBindingList) getBoundData(ctx context.Context,
+	bh *dependencygraph.Behavior, offset, size uint64) []dependencygraph.DefUseVariable {
+	data := []dependencygraph.DefUseVariable{}
+	bindingList := l.getSubBindingList(ctx, bh, offset, size)
+	for _, b := range bindingList.resBindings() {
+		if b == nil {
+			// skip invalid bindings
+			continue
+		}
+		data = append(data, b.backingData)
+	}
+	return data
+}
 
 type descriptor struct {
 	ty          VkDescriptorType
-	backingData dependencygraph.DefUseVariable
+	backingData []dependencygraph.DefUseVariable
 	sampler     vkHandle
 }
 
@@ -797,7 +932,7 @@ func (ds *descriptorSet) getDescriptor(ctx context.Context,
 
 func (ds *descriptorSet) setDescriptor(ctx context.Context,
 	bh *dependencygraph.Behavior, bi, di uint64, ty VkDescriptorType,
-	data dependencygraph.DefUseVariable, sampler vkHandle) {
+	data []dependencygraph.DefUseVariable, sampler vkHandle) {
 	if v := ds.descriptors.Value([]uint64{bi, di}); v != nil {
 		if d, ok := v.(*descriptor); ok {
 			write(ctx, bh, d)
@@ -826,10 +961,10 @@ func (ds *descriptorSet) useDescriptors(ctx context.Context,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-				modify(ctx, bh, d.backingData)
-				modified = append(modified, d.backingData)
+				modify(ctx, bh, d.backingData...)
+				modified = append(modified, d.backingData...)
 			default:
-				read(ctx, bh, d.backingData)
+				read(ctx, bh, d.backingData...)
 			}
 		}
 	}
@@ -858,7 +993,7 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 		for _, imageInfo := range write.PImageInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
-			backingData := dependencygraph.DefUseVariable(vkNullHandle)
+			backingData := []dependencygraph.DefUseVariable{}
 			sampler := vkNullHandle
 			if write.DescriptorType != VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER &&
 				read(ctx, bh, vkHandle(imageInfo.ImageView)) {
@@ -882,9 +1017,7 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		for _, bufferInfo := range write.PBufferInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			vkBuf := bufferInfo.Buffer
-			bufData, _ := vb.getBufferData(ctx, bh, vkBuf).(memorySpan)
-			dData := getSubBufferData(bufData, uint64(bufferInfo.Offset),
-				uint64(bufferInfo.Range))
+			dData := vb.getBufferData(ctx, bh, vkBuf, uint64(bufferInfo.Offset), uint64(bufferInfo.Range))
 			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dData,
 				vkNullHandle)
 			dstElm++
@@ -896,9 +1029,7 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 			read(ctx, bh, vkHandle(vkBufView))
 			bufView := GetState(s).BufferViews.Get(vkBufView)
 			vkBuf := GetState(s).BufferViews.Get(vkBufView).Buffer.VulkanHandle
-			bufData, _ := vb.getBufferData(ctx, bh, vkBuf).(memorySpan)
-			dData := getSubBufferData(bufData, uint64(bufView.Offset),
-				uint64(bufView.Range))
+			dData := vb.getBufferData(ctx, bh, vkBuf, uint64(bufView.Offset), uint64(bufView.Range))
 			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dData,
 				vkNullHandle)
 			dstElm++
@@ -948,7 +1079,7 @@ func (*boundDescriptorSet) DefUseVariable() {}
 
 type imageLayoutAndData struct {
 	layout label
-	data   *boundData
+	data   resBindingList
 }
 
 func newImageLayoutAndData(ctx context.Context,
@@ -976,51 +1107,45 @@ type FootprintBuilder struct {
 	querypools       map[VkQueryPool]*queryPool
 	commandBuffers   map[VkCommandBuffer]*commandBuffer
 	images           map[VkImage]*imageLayoutAndData
-	buffers          map[VkBuffer]*boundData
+	buffers          map[VkBuffer]resBindingList
 	descriptorSets   map[VkDescriptorSet]*descriptorSet
 
 	// execution info
-	executionInfos map[VkQueue]*queueExecutionInfo
-	submitInfos    map[api.CmdID] /*ID of VkQueueSubmit*/ *queueSubmitInfo
-	submitIDs      map[*VkQueueSubmit]api.CmdID
+	executionStates map[VkQueue]*queueExecutionState
+	submitInfos     map[api.CmdID] /*ID of VkQueueSubmit*/ *queueSubmitInfo
+	submitIDs       map[*VkQueueSubmit]api.CmdID
 
 	// presentation info
 	swapchainImageAcquired  map[VkSwapchainKHR][]label
 	swapchainImagePresented map[VkSwapchainKHR][]label
 }
 
-func (vb *FootprintBuilder) getBoundData(ctx context.Context,
-	bh *dependencygraph.Behavior, bound *boundData) dependencygraph.DefUseVariable {
-	read(ctx, bh, bound)
-	return bound.backingData
-}
-
 // getImageData records a read operation of the Vulkan handle, a read operation
 // of the image layout, a read operation of the image binding, then returns
 // the underlying data.
 func (vb *FootprintBuilder) getImageData(ctx context.Context,
-	bh *dependencygraph.Behavior, vkImg VkImage) dependencygraph.DefUseVariable {
+	bh *dependencygraph.Behavior, vkImg VkImage) []dependencygraph.DefUseVariable {
 	read(ctx, bh, vkHandle(vkImg))
-	read(ctx, bh, vb.images[vkImg].data)
-	return vb.getBoundData(ctx, bh, vb.images[vkImg].data)
+	return vb.images[vkImg].data.getBoundData(ctx, bh, 0, vkWholeSize)
 }
 
 // getImageLayoutAndData records a read operation of the Vulkan handle, a read
 // operation of the image binding, but not the image layout. Then returns the
 // image layout label and underlying data.
 func (vb *FootprintBuilder) getImageLayoutAndData(ctx context.Context,
-	bh *dependencygraph.Behavior, vkImg VkImage) []dependencygraph.DefUseVariable {
+	bh *dependencygraph.Behavior, vkImg VkImage) (label, []dependencygraph.DefUseVariable) {
 	read(ctx, bh, vkHandle(vkImg))
-	return []dependencygraph.DefUseVariable{
-		vb.images[vkImg].layout,
-		vb.getBoundData(ctx, bh, vb.images[vkImg].data),
-	}
+	return vb.images[vkImg].layout, vb.getImageData(ctx, bh, vkImg)
 }
 
 func (vb *FootprintBuilder) getBufferData(ctx context.Context,
-	bh *dependencygraph.Behavior, vkBuf VkBuffer) dependencygraph.DefUseVariable {
+	bh *dependencygraph.Behavior, vkBuf VkBuffer,
+	offset, size uint64) []dependencygraph.DefUseVariable {
 	read(ctx, bh, vkHandle(vkBuf))
-	return vb.getBoundData(ctx, bh, vb.buffers[vkBuf])
+	for _, bb := range vb.buffers[vkBuf].resBindings() {
+		read(ctx, bh, bb)
+	}
+	return vb.buffers[vkBuf].getBoundData(ctx, bh, offset, size)
 }
 
 func (vb *FootprintBuilder) newCommand(ctx context.Context,
@@ -1044,9 +1169,9 @@ func newFootprintBuilder() *FootprintBuilder {
 		querypools:              map[VkQueryPool]*queryPool{},
 		commandBuffers:          map[VkCommandBuffer]*commandBuffer{},
 		images:                  map[VkImage]*imageLayoutAndData{},
-		buffers:                 map[VkBuffer]*boundData{},
+		buffers:                 map[VkBuffer]resBindingList{},
 		descriptorSets:          map[VkDescriptorSet]*descriptorSet{},
-		executionInfos:          map[VkQueue]*queueExecutionInfo{},
+		executionStates:         map[VkQueue]*queueExecutionState{},
 		submitInfos:             map[api.CmdID]*queueSubmitInfo{},
 		submitIDs:               map[*VkQueueSubmit]api.CmdID{},
 		swapchainImageAcquired:  map[VkSwapchainKHR][]label{},
@@ -1061,7 +1186,7 @@ func (vb *FootprintBuilder) rollOutExecuted(ctx context.Context,
 		submitID := executedFCI[0]
 		submittedCmd := vb.submitInfos[api.CmdID(submitID)].pendingCommands[0]
 		if executedFCI.Equals(submittedCmd.id) {
-			execInfo := vb.executionInfos[vb.submitInfos[api.CmdID(submitID)].queue]
+			execInfo := vb.executionStates[vb.submitInfos[api.CmdID(submitID)].queue]
 			execInfo.currentSubmitInfo = vb.submitInfos[api.CmdID(submitID)]
 			execInfo.updateCurrentCommand(ctx, executedFCI)
 			submittedCmd.runCommand(ctx, ft, vb.machine, execInfo)
@@ -1101,7 +1226,7 @@ func (vb *FootprintBuilder) recordReadsWritesModifies(
 	vkCb VkCommandBuffer, reads []dependencygraph.DefUseVariable,
 	writes []dependencygraph.DefUseVariable, modifies []dependencygraph.DefUseVariable) {
 	cbc := vb.newCommand(ctx, bh, vkCb)
-	cbc.behave = func(sc submittedCommand, execInfo *queueExecutionInfo) {
+	cbc.behave = func(sc submittedCommand, execInfo *queueExecutionState) {
 		cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 		for _, d := range reads {
 			read(ctx, cbh, d)
@@ -1120,7 +1245,7 @@ func (vb *FootprintBuilder) recordModifingDynamicStates(
 	ctx context.Context, ft *dependencygraph.Footprint, bh *dependencygraph.Behavior,
 	vkCb VkCommandBuffer) {
 	cbc := vb.newCommand(ctx, bh, vkCb)
-	cbc.behave = func(sc submittedCommand, execInfo *queueExecutionInfo) {
+	cbc.behave = func(sc submittedCommand, execInfo *queueExecutionState) {
 		cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 		modify(ctx, cbh, execInfo.currentCmdBufState.dynamicState)
 		ft.AddBehavior(ctx, cbh)
@@ -1140,30 +1265,31 @@ func (vb *FootprintBuilder) useBoundDescriptorSets(ctx context.Context,
 }
 
 func (vb *FootprintBuilder) draw(ctx context.Context,
-	bh *dependencygraph.Behavior, execInfo *queueExecutionInfo) {
+	bh *dependencygraph.Behavior, execInfo *queueExecutionState) {
 	read(ctx, bh, execInfo.subpass)
 	read(ctx, bh, execInfo.currentCmdBufState.pipeline)
 	read(ctx, bh, execInfo.currentCmdBufState.dynamicState)
 	subpassI := execInfo.subpass.val
-	for _, b := range execInfo.currentCmdBufState.vertexBuffers {
-		read(ctx, bh, vb.getBoundData(ctx, bh, b))
+	for _, b := range execInfo.currentCmdBufState.vertexBufferResBindings {
+		read(ctx, bh, b.getBoundData(ctx, bh, 0, vkWholeSize)...)
 	}
 	modifiedDs := vb.useBoundDescriptorSets(ctx, bh, execInfo.currentCmdBufState)
 	execInfo.subpasses[execInfo.subpass.val].modifiedDescriptorData = append(
 		execInfo.subpasses[execInfo.subpass.val].modifiedDescriptorData,
 		modifiedDs...)
-	if execInfo.currentCmdBufState.indexBuffer != nil {
-		read(ctx, bh, vb.getBoundData(ctx, bh, execInfo.currentCmdBufState.indexBuffer))
+	if execInfo.currentCmdBufState.indexBufferResBindings != nil {
+		read(ctx, bh, execInfo.currentCmdBufState.indexBufferResBindings.getBoundData(
+			ctx, bh, 0, vkWholeSize)...)
 	}
 	for _, input := range execInfo.subpasses[subpassI].inputAttachments {
-		read(ctx, bh, input.data)
+		read(ctx, bh, input.data...)
 	}
 	for _, color := range execInfo.subpasses[subpassI].colorAttachments {
-		modify(ctx, bh, color.data)
+		modify(ctx, bh, color.data...)
 	}
 	if execInfo.subpasses[subpassI].depthStencilAttachment != nil {
 		dsAtt := execInfo.subpasses[subpassI].depthStencilAttachment
-		modify(ctx, bh, dsAtt.data)
+		modify(ctx, bh, dsAtt.data...)
 	}
 }
 
@@ -1171,7 +1297,7 @@ func (vb *FootprintBuilder) keepSubmittedCommandAlive(ctx context.Context,
 	ft *dependencygraph.Footprint, bh *dependencygraph.Behavior,
 	vkCb VkCommandBuffer) {
 	cbc := vb.newCommand(ctx, bh, vkCb)
-	cbc.behave = func(sc submittedCommand, execInfo *queueExecutionInfo) {
+	cbc.behave = func(sc submittedCommand, execInfo *queueExecutionState) {
 		cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 		cbh.Alive = true
 		ft.AddBehavior(ctx, cbh)
@@ -1191,23 +1317,23 @@ func (t VkIndexType) size() int {
 }
 
 func (vb *FootprintBuilder) readBoundIndexBuffer(ctx context.Context,
-	bh *dependencygraph.Behavior, execInfo *queueExecutionInfo, cmd api.Cmd) {
-	boundIndexBufferData, _ := execInfo.currentCmdBufState.indexBuffer.backingData.(memorySpan)
+	bh *dependencygraph.Behavior, execInfo *queueExecutionState, cmd api.Cmd) {
 	indexSize := uint64(execInfo.currentCmdBufState.indexType.size())
 	if indexSize == uint64(0) {
 		log.E(ctx, "Invalid size of the indices of bound index buffer. IndexType: %v",
 			execInfo.currentCmdBufState.indexType)
 	}
-	offset := boundIndexBufferData.span.Start
-	size := boundIndexBufferData.span.End - offset
+	offset := uint64(0)
+	size := vkWholeSize
 	switch cmd := cmd.(type) {
 	case *VkCmdDrawIndexed:
 		size = uint64(cmd.IndexCount) * indexSize
-		offset = offset + uint64(cmd.FirstIndex)*indexSize
+		offset += uint64(cmd.FirstIndex) * indexSize
 	case *VkCmdDrawIndexedIndirect:
 	}
-	dataToRead := getSubBufferData(boundIndexBufferData, offset, size)
-	read(ctx, bh, dataToRead)
+	dataToRead := execInfo.currentCmdBufState.indexBufferResBindings.getBoundData(
+		ctx, bh, offset, size)
+	read(ctx, bh, dataToRead...)
 }
 
 func (vb *FootprintBuilder) recordBarriers(ctx context.Context,
@@ -1221,31 +1347,30 @@ func (vb *FootprintBuilder) recordBarriers(ctx context.Context,
 	if memoryBarrierCount > 0 {
 		// touch all buffer and image backing data
 		for i := range vb.images {
-			d := vb.getImageData(ctx, bh, i)
-			touchedData = append(touchedData, d)
+			touchedData = append(touchedData, vb.getImageData(ctx, bh, i)...)
 		}
-		for b, d := range vb.buffers {
-			read(ctx, bh, vkHandle(b))
-			touchedData = append(touchedData, d)
+		for b := range vb.buffers {
+			touchedData = append(touchedData, vb.getBufferData(ctx, bh, b, 0, vkWholeSize)...)
 		}
 	} else {
 		for _, barrier := range pBufferBarriers.Slice(0,
 			uint64(bufferBarrierCount), l).MustRead(ctx, cmd, s, nil) {
-			bufData, _ := vb.getBufferData(ctx, bh, barrier.Buffer).(memorySpan)
-			touchedData = append(touchedData, getSubBufferData(
-				bufData, uint64(barrier.Offset), uint64(barrier.Size)))
+			touchedData = append(touchedData, vb.getBufferData(ctx, bh, barrier.Buffer,
+				uint64(barrier.Offset), uint64(barrier.Size))...)
 		}
 		for _, barrier := range pImageBarriers.Slice(0,
 			uint64(imageBarrierCount), l).MustRead(ctx, cmd, s, nil) {
-			touchedData = append(touchedData, vb.getImageLayoutAndData(ctx, bh, barrier.Image)...)
+			imgLayout, imgData := vb.getImageLayoutAndData(ctx, bh, barrier.Image)
+			touchedData = append(touchedData, imgLayout)
+			touchedData = append(touchedData, imgData...)
 		}
 	}
 	cbc := vb.newCommand(ctx, bh, vkCb)
 	cbc.behave = func(sc submittedCommand,
-		execInfo *queueExecutionInfo) {
+		execInfo *queueExecutionState) {
 		for _, d := range touchedData {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			readMultiple(ctx, cbh, attachedReads)
+			read(ctx, cbh, attachedReads...)
 			modify(ctx, cbh, d)
 			ft.AddBehavior(ctx, cbh)
 		}
@@ -1277,6 +1402,12 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		executedCommands = append(executedCommands, fci)
 	}
 
+	// Register callback function to track sparse bindings
+	sparseBindingInfo := []QueuedSparseBinds{}
+	GetState(s).postBindSparse = func(binds *QueuedSparseBinds) {
+		sparseBindingInfo = append(sparseBindingInfo, *binds)
+	}
+
 	// Mutate
 	if err := cmd.Mutate(ctx, id, s, nil); err != nil {
 		// Continue the footprint building without emitting errors here. It is the
@@ -1300,7 +1431,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 						img := view.Image
 						data := vb.images[img.VulkanHandle].data
 						vb.machine.lastBoundFramebufferImageData[bh] = append(
-							vb.machine.lastBoundFramebufferImageData[bh], data)
+							vb.machine.lastBoundFramebufferImageData[bh], data.resBindings()...)
 					}
 				}
 			}
@@ -1377,8 +1508,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
 	case *VkDestroyImage:
 		vkImg := cmd.Image
-		read(ctx, bh, vkHandle(vkImg))
-		delete(vb.images, vkImg)
+		if read(ctx, bh, vkHandle(vkImg)) {
+			delete(vb.images, vkImg)
+		}
 		bh.Alive = true
 
 	case *VkBindImageMemory:
@@ -1393,38 +1525,46 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			bh.Aborted = true
 		}
 		size := uint64(inferredSize)
-		vb.images[cmd.Image].data = newBoundData(ctx, bh, memorySpan{
-			span:   interval.U64Span{Start: offset, End: offset + size},
-			memory: cmd.Memory,
-		})
+		vb.images[cmd.Image].data = addResBinding(ctx, vb.images[cmd.Image].data,
+			newSpanResBinding(ctx, bh, cmd.Memory, 0, size, offset))
 	case *RecreateBindImageMemory:
 		read(ctx, bh, vkHandle(cmd.Image))
-		read(ctx, bh, vkHandle(cmd.Memory))
-		offset := uint64(cmd.Offset)
-		inferredSize, err := subInferImageSize(ctx, cmd, id, nil, s, nil, cmd.thread,
-			nil, GetState(s).Images.Get(cmd.Image))
-		if err != nil {
-			log.E(ctx, "Cannot get inferred size of image: %v", cmd.Image)
-			log.E(ctx, "Command %v %v: %v", id, cmd, err)
-			bh.Aborted = true
+		if read(ctx, bh, vkHandle(cmd.Memory)) {
+			offset := uint64(cmd.Offset)
+			inferredSize, err := subInferImageSize(ctx, cmd, id, nil, s, nil, cmd.thread,
+				nil, GetState(s).Images.Get(cmd.Image))
+			if err != nil {
+				log.E(ctx, "Cannot get inferred size of image: %v", cmd.Image)
+				log.E(ctx, "Command %v %v: %v", id, cmd, err)
+				bh.Aborted = true
+			}
+			size := uint64(inferredSize)
+			vb.images[cmd.Image].data = addResBinding(ctx, vb.images[cmd.Image].data,
+				newSpanResBinding(ctx, bh, cmd.Memory, 0, size, offset))
 		}
-		size := uint64(inferredSize)
-		vb.images[cmd.Image].data = newBoundData(ctx, bh, memorySpan{
-			span:   interval.U64Span{Start: offset, End: offset + size},
-			memory: cmd.Memory,
-		})
+		if cmd.OpaqueSparseBindCount > uint32(0) &&
+			cmd.POpaqueSparseBinds != NewVkSparseMemoryBindᶜᵖ(memory.Nullptr) {
+			count := uint64(cmd.OpaqueSparseBindCount)
+			for _, bind := range cmd.POpaqueSparseBinds.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
+				if read(ctx, bh, vkHandle(bind.Memory)) {
+					vb.images[cmd.Image].data = addResBinding(ctx, vb.images[cmd.Image].data,
+						newSpanResBinding(ctx, bh, bind.Memory, uint64(bind.ResourceOffset),
+							uint64(bind.Size), uint64(bind.MemoryOffset)))
+				}
+			}
+		}
 
 	case *RecreateImageData:
-		write(ctx, bh, vb.getImageData(ctx, bh, cmd.Image))
+		write(ctx, bh, vb.getImageData(ctx, bh, cmd.Image)...)
 
 	case *VkCreateImageView:
 		write(ctx, bh, vkHandle(cmd.PView.MustRead(ctx, cmd, s, nil)))
 		img := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).Image
-		read(ctx, bh, vb.getImageData(ctx, bh, img))
+		read(ctx, bh, vb.getImageData(ctx, bh, img)...)
 	case *RecreateImageView:
 		write(ctx, bh, vkHandle(cmd.PImageView.MustRead(ctx, cmd, s, nil)))
 		img := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil).Image
-		read(ctx, bh, vb.getImageData(ctx, bh, img))
+		read(ctx, bh, vb.getImageData(ctx, bh, img)...)
 	case *VkDestroyImageView:
 		read(ctx, bh, vkHandle(cmd.ImageView))
 		bh.Alive = true
@@ -1438,7 +1578,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		write(ctx, bh, vkHandle(vkBuf))
 	case *VkDestroyBuffer:
 		vkBuf := cmd.Buffer
-		read(ctx, bh, vkHandle(vkBuf))
+		if read(ctx, bh, vkHandle(vkBuf)) {
+			delete(vb.buffers, vkBuf)
+		}
 		bh.Alive = true
 
 	case *VkBindBufferMemory:
@@ -1446,24 +1588,30 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.Memory))
 		offset := uint64(cmd.MemoryOffset)
 		size := uint64(GetState(s).Buffers.Get(cmd.Buffer).Info.Size)
-		vb.buffers[cmd.Buffer] = newBoundData(ctx, bh,
-			memorySpan{
-				span:   interval.U64Span{Start: offset, End: offset + size},
-				memory: cmd.Memory,
-			})
+		vb.buffers[cmd.Buffer] = addResBinding(ctx, vb.buffers[cmd.Buffer],
+			newSpanResBinding(ctx, bh, cmd.Memory, 0, size, offset))
 	case *RecreateBindBufferMemory:
 		read(ctx, bh, vkHandle(cmd.Buffer))
-		read(ctx, bh, vkHandle(cmd.Memory))
-		offset := uint64(cmd.Offset)
-		size := uint64(GetState(s).Buffers.Get(cmd.Buffer).Info.Size)
-		vb.buffers[cmd.Buffer] = newBoundData(ctx, bh,
-			memorySpan{
-				span:   interval.U64Span{Start: offset, End: offset + size},
-				memory: cmd.Memory,
-			})
+		if read(ctx, bh, vkHandle(cmd.Memory)) {
+			offset := uint64(cmd.Offset)
+			size := uint64(GetState(s).Buffers.Get(cmd.Buffer).Info.Size)
+			vb.buffers[cmd.Buffer] = addResBinding(ctx, vb.buffers[cmd.Buffer],
+				newSpanResBinding(ctx, bh, cmd.Memory, 0, size, offset))
+		}
+		if cmd.SparseBindCount > uint32(0) &&
+			cmd.PSparseBinds != NewVkSparseMemoryBindᶜᵖ(memory.Nullptr) {
+			count := uint64(cmd.SparseBindCount)
+			for _, bind := range cmd.PSparseBinds.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
+				if read(ctx, bh, vkHandle(bind.Memory)) {
+					vb.buffers[cmd.Buffer] = addResBinding(ctx, vb.buffers[cmd.Buffer],
+						newSpanResBinding(ctx, bh, bind.Memory, uint64(bind.ResourceOffset),
+							uint64(bind.Size), uint64(bind.MemoryOffset)))
+				}
+			}
+		}
 
 	case *RecreateBufferData:
-		write(ctx, bh, vb.getBufferData(ctx, bh, cmd.Buffer))
+		write(ctx, bh, vb.getBufferData(ctx, bh, cmd.Buffer, 0, vkWholeSize)...)
 
 	case *VkCreateBufferView:
 		write(ctx, bh, vkHandle(cmd.PView.MustRead(ctx, cmd, s, nil)))
@@ -1484,7 +1632,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		for _, vkImg := range cmd.PSwapchainImages.Slice(0, imageCount, l).MustRead(ctx, cmd, s, nil) {
 			write(ctx, bh, vkHandle(vkImg))
 			vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
-			vb.images[vkImg].data = newBoundData(ctx, bh, newLabel())
+			vb.images[vkImg].data = addResBinding(ctx, vb.images[vkImg].data,
+				newResBinding(ctx, bh, 0, vkWholeSize, newLabel()))
 			vb.swapchainImageAcquired[vkSw] = append(
 				vb.swapchainImageAcquired[vkSw], newLabel())
 			vb.swapchainImagePresented[vkSw] = append(
@@ -1499,7 +1648,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			for _, vkImg := range cmd.PSwapchainImages.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 				write(ctx, bh, vkHandle(vkImg))
 				vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
-				vb.images[vkImg].data = newBoundData(ctx, bh, newLabel())
+				vb.images[vkImg].data = addResBinding(ctx, vb.images[vkImg].data,
+					newOpaqueResBinding(ctx, bh, vkWholeSize))
 				vb.swapchainImageAcquired[cmd.Swapchain] = append(
 					vb.swapchainImageAcquired[cmd.Swapchain], newLabel())
 				vb.swapchainImagePresented[cmd.Swapchain] = append(
@@ -1525,7 +1675,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		imgID := cmd.PImageIndex.MustRead(ctx, cmd, s, nil)
 		vkImg := GetState(s).Swapchains.Get(cmd.Swapchain).SwapchainImages.Get(imgID).VulkanHandle
 		if read(ctx, bh, vkHandle(vkImg)) {
-			writeMultiple(ctx, bh, vb.getImageLayoutAndData(ctx, bh, vkImg))
+			imgLayout, imgData := vb.getImageLayoutAndData(ctx, bh, vkImg)
+			write(ctx, bh, imgLayout)
+			write(ctx, bh, imgData...)
 		}
 		write(ctx, bh, vb.swapchainImageAcquired[cmd.Swapchain][imgID])
 		read(ctx, bh, vb.swapchainImagePresented[cmd.Swapchain][imgID])
@@ -1545,7 +1697,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			read(ctx, bh, vkHandle(vkSw))
 			imgID := imgIds.Index(uint64(swi), l).MustRead(ctx, cmd, s, nil)
 			vkImg := GetState(s).Swapchains.Get(vkSw).SwapchainImages.Get(imgID).VulkanHandle
-			readMultiple(ctx, bh, vb.getImageLayoutAndData(ctx, bh, vkImg))
+			imgLayout, imgData := vb.getImageLayoutAndData(ctx, bh, vkImg)
+			read(ctx, bh, imgLayout)
+			read(ctx, bh, imgData...)
 
 			// For each image to be presented, one extra behavior is requied to
 			// track the acquire-present pair of the image state in the presentation
@@ -1591,8 +1745,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			vb.querypools[vkQp].queries = append(vb.querypools[vkQp].queries, newQuery())
 		}
 	case *VkDestroyQueryPool:
-		read(ctx, bh, vkHandle(cmd.QueryPool))
-		delete(vb.querypools, cmd.QueryPool)
+		if read(ctx, bh, vkHandle(cmd.QueryPool)) {
+			delete(vb.querypools, cmd.QueryPool)
+		}
 		bh.Alive = true
 	case *VkGetQueryPoolResults:
 		read(ctx, bh, vkHandle(cmd.QueryPool))
@@ -1867,8 +2022,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// copy, blit, resolve, clear, fill, update image and buffer
 	case *VkCmdCopyImage:
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
-		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
+		dst := vb.getImageData(ctx, bh, cmd.DstImage)
+		src := vb.getImageData(ctx, bh, cmd.SrcImage)
 		overwritten := false
 		count := uint64(cmd.RegionCount)
 		// TODO: check dst image coverage correctly
@@ -1886,35 +2041,29 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCmdCopyBuffer:
-		srcBufferData, _ := vb.getBufferData(ctx, bh, cmd.SrcBuffer).(memorySpan)
-		dstBufferData, _ := vb.getBufferData(ctx, bh, cmd.DstBuffer).(memorySpan)
 		src := []dependencygraph.DefUseVariable{}
 		dst := []dependencygraph.DefUseVariable{}
 		count := uint64(cmd.RegionCount)
 		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
-			srcOffset := srcBufferData.span.Start + uint64(region.SrcOffset)
-			dstOffset := dstBufferData.span.Start + uint64(region.DstOffset)
-			src = append(src, memorySpan{
-				span:   interval.U64Span{Start: srcOffset, End: srcOffset + uint64(region.Size)},
-				memory: srcBufferData.memory})
-			dst = append(dst, memorySpan{
-				span:   interval.U64Span{Start: dstOffset, End: dstOffset + uint64(region.Size)},
-				memory: dstBufferData.memory})
+			src = append(src, vb.getBufferData(ctx, bh, cmd.SrcBuffer,
+				uint64(region.SrcOffset), uint64(region.Size))...)
+			dst = append(dst, vb.getBufferData(ctx, bh, cmd.DstBuffer,
+				uint64(region.DstOffset), uint64(region.Size))...)
 		}
 		vb.recordReadsWritesModifies(
 			ctx, ft, bh, cmd.CommandBuffer, src, dst, emptyDefUseVars)
 
 	case *VkCmdCopyImageToBuffer:
 		// TODO: calculate the ranges for the overwritten data
-		dst := []dependencygraph.DefUseVariable{vb.getBufferData(ctx, bh, cmd.DstBuffer)}
-		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
+		dst := vb.getBufferData(ctx, bh, cmd.DstBuffer, 0, vkWholeSize)
+		src := vb.getImageData(ctx, bh, cmd.SrcImage)
 		vb.recordReadsWritesModifies(
 			ctx, ft, bh, cmd.CommandBuffer, src, emptyDefUseVars, dst)
 
 	case *VkCmdCopyBufferToImage:
 		// TODO: calculate the ranges for the source data
-		src := []dependencygraph.DefUseVariable{vb.getBufferData(ctx, bh, cmd.SrcBuffer)}
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
+		src := vb.getBufferData(ctx, bh, cmd.SrcBuffer, 0, vkWholeSize)
+		dst := vb.getImageData(ctx, bh, cmd.DstImage)
 		overwritten := false
 		count := uint64(cmd.RegionCount)
 		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
@@ -1931,8 +2080,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCmdBlitImage:
-		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
+		src := vb.getImageData(ctx, bh, cmd.SrcImage)
+		dst := vb.getImageData(ctx, bh, cmd.DstImage)
 		overwritten := false
 		count := uint64(cmd.RegionCount)
 		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
@@ -1950,8 +2099,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCmdResolveImage:
-		src := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.SrcImage)}
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.DstImage)}
+		src := vb.getImageData(ctx, bh, cmd.SrcImage)
+		dst := vb.getImageData(ctx, bh, cmd.DstImage)
 		overwritten := false
 		count := uint64(cmd.RegionCount)
 		for _, region := range cmd.PRegions.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
@@ -1968,24 +2117,17 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCmdFillBuffer:
-		dstBufferData, _ := vb.getBufferData(ctx, bh, cmd.DstBuffer).(memorySpan)
-		dst := []dependencygraph.DefUseVariable{
-			getSubBufferData(dstBufferData, uint64(cmd.DstOffset), uint64(cmd.Size))}
+		dst := vb.getBufferData(ctx, bh, cmd.DstBuffer, uint64(cmd.DstOffset), uint64(cmd.Size))
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
 			emptyDefUseVars, dst, emptyDefUseVars)
 
 	case *VkCmdUpdateBuffer:
-		dstBufferData, _ := vb.getBufferData(ctx, bh, cmd.DstBuffer).(memorySpan)
-		dstOffset := dstBufferData.span.Start + uint64(cmd.DstOffset)
-		dstEnd := dstBufferData.span.End + uint64(cmd.DataSize)
-		dst := []dependencygraph.DefUseVariable{memorySpan{
-			span:   interval.U64Span{Start: dstOffset, End: dstEnd},
-			memory: dstBufferData.memory}}
+		dst := vb.getBufferData(ctx, bh, cmd.DstBuffer, uint64(cmd.DstOffset), uint64(cmd.DataSize))
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer,
 			emptyDefUseVars, dst, emptyDefUseVars)
 
 	case *VkCmdClearColorImage:
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.Image)}
+		dst := vb.getImageData(ctx, bh, cmd.Image)
 		count := uint64(cmd.RangeCount)
 		overwritten := false
 		for _, rng := range cmd.PRanges.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
@@ -2002,7 +2144,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCmdClearDepthStencilImage:
-		dst := []dependencygraph.DefUseVariable{vb.getImageData(ctx, bh, cmd.Image)}
+		dst := vb.getImageData(ctx, bh, cmd.Image)
 		count := uint64(cmd.RangeCount)
 		overwritten := false
 		for _, rng := range cmd.PRanges.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
@@ -2035,7 +2177,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			execInfo.beginRenderPass(ctx, vb, cbh, rp, fb)
 			execInfo.renderPassBegin = newForwardPairedLabel(ctx, cbh)
@@ -2047,7 +2189,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkCmdNextSubpass:
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			execInfo.nextSubpass(ctx, ft, cbh, sc, vb.machine)
 			ft.AddBehavior(ctx, cbh)
@@ -2059,7 +2201,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			execInfo.endRenderPass(ctx, ft, cbh, sc, vb.machine)
 			read(ctx, cbh, execInfo.renderPassBegin)
@@ -2071,30 +2213,31 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	// bind vertex buffers, index buffer, pipeline and descriptors
 	case *VkCmdBindVertexBuffers:
 		count := uint64(cmd.BindingCount)
-		res := []dependencygraph.DefUseVariable{}
-		for _, vkBuf := range cmd.PBuffers.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
-			res = append(res, vb.getBufferData(ctx, bh, vkBuf))
+		offsets := cmd.POffsets.Slice(0, count, l).MustRead(ctx, cmd, s, nil)
+		subBindings := []resBindingList{}
+		for i, vkBuf := range cmd.PBuffers.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
+			subBindings = append(subBindings, vb.buffers[vkBuf].getSubBindingList(ctx, bh,
+				uint64(offsets[i]), vkWholeSize))
 		}
 		firstBinding := cmd.FirstBinding
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			for i, r := range res {
+			for i, sb := range subBindings {
 				binding := firstBinding + uint32(i)
-				// TODO: handle offsets specified in pOffsets
-				execInfo.currentCmdBufState.vertexBuffers[binding] = newBoundData(ctx, cbh, r)
+				execInfo.currentCmdBufState.vertexBufferResBindings[binding] = sb
 			}
 			ft.AddBehavior(ctx, cbh)
 		}
 	case *VkCmdBindIndexBuffer:
-		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
-		res := getSubBufferData(bufData, uint64(cmd.Offset), vkWholeSize)
+		subBindings := vb.buffers[cmd.Buffer].getSubBindingList(ctx, bh,
+			uint64(cmd.Offset), vkWholeSize)
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-			execInfo.currentCmdBufState.indexBuffer = newBoundData(ctx, cbh, res)
+			execInfo.currentCmdBufState.indexBufferResBindings = subBindings
 			execInfo.currentCmdBufState.indexType = cmd.IndexType
 			ft.AddBehavior(ctx, cbh)
 		}
@@ -2104,7 +2247,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(vkPi))
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			read(ctx, cbh, vkHandle(vkPi))
 			write(ctx, cbh, execInfo.currentCmdBufState.pipeline)
@@ -2121,7 +2264,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		firstSet := cmd.FirstSet
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			for i, ds := range dss {
 				set := firstSet + uint32(i)
@@ -2135,7 +2278,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			vb.draw(ctx, cbh, execInfo)
 			ft.AddBehavior(ctx, cbh)
@@ -2145,7 +2288,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer].renderPassBegin)
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			vb.readBoundIndexBuffer(ctx, cbh, execInfo, cmd)
 			vb.draw(ctx, cbh, execInfo)
@@ -2157,20 +2300,18 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		count := uint64(cmd.DrawCount)
 		sizeOfDrawIndirectdCommand := uint64(4 * 4)
 		offset := uint64(cmd.Offset)
-		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
 		src := []dependencygraph.DefUseVariable{}
 		for i := uint64(0); i < count; i++ {
-			src = append(src, memorySpan{span: interval.U64Span{
-				Start: offset, End: offset + sizeOfDrawIndirectdCommand},
-				memory: bufData.memory})
+			src = append(src, vb.getBufferData(ctx, bh, cmd.Buffer, offset,
+				sizeOfDrawIndirectdCommand)...)
 			offset += uint64(cmd.Stride)
 		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			vb.draw(ctx, cbh, execInfo)
-			readMultiple(ctx, cbh, src)
+			read(ctx, cbh, src...)
 			ft.AddBehavior(ctx, cbh)
 		}
 
@@ -2179,50 +2320,44 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		count := uint64(cmd.DrawCount)
 		sizeOfDrawIndexedIndirectCommand := uint64(5 * 4)
 		offset := uint64(cmd.Offset)
-		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
 		src := []dependencygraph.DefUseVariable{}
 		for i := uint64(0); i < count; i++ {
-			src = append(src, memorySpan{span: interval.U64Span{
-				Start: offset, End: offset + sizeOfDrawIndexedIndirectCommand},
-				memory: bufData.memory})
+			src = append(src, vb.getBufferData(ctx, bh, cmd.Buffer, offset,
+				sizeOfDrawIndexedIndirectCommand)...)
 			offset += uint64(cmd.Stride)
 		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			vb.readBoundIndexBuffer(ctx, cbh, execInfo, cmd)
 			vb.draw(ctx, cbh, execInfo)
-			readMultiple(ctx, cbh, src)
+			read(ctx, cbh, src...)
 			ft.AddBehavior(ctx, cbh)
 		}
 
 	case *VkCmdDispatch:
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			read(ctx, cbh, execInfo.currentCmdBufState.pipeline)
 			modified := vb.useBoundDescriptorSets(ctx, cbh, execInfo.currentCmdBufState)
-			modifyMultiple(ctx, cbh, modified)
+			modify(ctx, cbh, modified...)
 			ft.AddBehavior(ctx, cbh)
 		}
 
 	case *VkCmdDispatchIndirect:
-		bufData, _ := vb.getBufferData(ctx, bh, cmd.Buffer).(memorySpan)
 		sizeOfDispatchIndirectCommand := uint64(3 * 4)
-		src := memorySpan{span: interval.U64Span{
-			Start: bufData.span.Start + uint64(cmd.Offset),
-			End:   bufData.span.Start + uint64(cmd.Offset) + sizeOfDispatchIndirectCommand,
-		}, memory: bufData.memory}
+		src := vb.getBufferData(ctx, bh, cmd.Buffer, uint64(cmd.Offset), sizeOfDispatchIndirectCommand)
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			read(ctx, cbh, execInfo.currentCmdBufState.pipeline)
 			modified := vb.useBoundDescriptorSets(ctx, cbh, execInfo.currentCmdBufState)
-			modifyMultiple(ctx, cbh, modified)
-			read(ctx, cbh, src)
+			modify(ctx, cbh, modified...)
+			read(ctx, cbh, src...)
 			ft.AddBehavior(ctx, cbh)
 		}
 
@@ -2262,7 +2397,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionInfo) {
+			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			for _, a := range atts {
 				clearAttachmentData(ctx, cbh, execInfo, a, rects)
@@ -2312,7 +2447,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.QueryPool))
 		// TODO: calculate the range
 		src := []dependencygraph.DefUseVariable{}
-		dst := []dependencygraph.DefUseVariable{vb.getBufferData(ctx, bh, cmd.DstBuffer)}
+		dst := vb.getBufferData(ctx, bh, cmd.DstBuffer, 0, vkWholeSize)
 		count := uint64(cmd.QueryCount)
 		first := uint64(cmd.FirstQuery)
 		for i := uint64(0); i < count; i++ {
@@ -2365,15 +2500,15 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			cbc.recordSecondaryCommandBuffer(vkScb)
 			read(ctx, bh, vkHandle(vkScb))
 		}
-		cbc.behave = func(sc submittedCommand, execInfo *queueExecutionInfo) {}
+		cbc.behave = func(sc submittedCommand, execInfo *queueExecutionState) {}
 
 	// execution triggering
 	case *VkQueueSubmit:
 		read(ctx, bh, vkHandle(cmd.Queue))
-		if _, ok := vb.executionInfos[cmd.Queue]; !ok {
-			vb.executionInfos[cmd.Queue] = newQueueExecutionInfo(id)
+		if _, ok := vb.executionStates[cmd.Queue]; !ok {
+			vb.executionStates[cmd.Queue] = newQueueExecutionState(id)
 		}
-		vb.executionInfos[cmd.Queue].lastSubmitID = id
+		vb.executionStates[cmd.Queue].lastSubmitID = id
 		// collect submission info and submitted commands
 		vb.submitInfos[id] = &queueSubmitInfo{
 			executionBegin: newLabel(),
@@ -2436,6 +2571,57 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			write(ctx, bh, vb.events[cmd.Event].signal)
 			vb.writeCoherentMemoryData(ctx, cmd, bh)
 			bh.Alive = true
+		}
+
+	case *VkQueueBindSparse:
+		read(ctx, bh, vkHandle(cmd.Queue))
+		for _, bindInfo := range cmd.PBindInfo.Slice(0, uint64(cmd.BindInfoCount), l).MustRead(
+			ctx, cmd, s, nil) {
+			for _, bufferBinds := range bindInfo.PBufferBinds.Slice(0,
+				uint64(bindInfo.BufferBindCount), l).MustRead(ctx, cmd, s, nil) {
+				if read(ctx, bh, vkHandle(bufferBinds.Buffer)) {
+					buf := bufferBinds.Buffer
+					binds := bufferBinds.PBinds.Slice(0, uint64(bufferBinds.BindCount), l).MustRead(
+						ctx, cmd, s, nil)
+					for _, bind := range binds {
+						if read(ctx, bh, vkHandle(bind.Memory)) {
+							vb.buffers[buf] = addResBinding(ctx, vb.buffers[buf],
+								newSpanResBinding(ctx, bh, bind.Memory, uint64(bind.ResourceOffset),
+									uint64(bind.Size), uint64(bind.MemoryOffset)))
+						}
+					}
+				}
+			}
+			for _, opaqueBinds := range bindInfo.PImageOpaqueBinds.Slice(0,
+				uint64(bindInfo.ImageOpaqueBindCount), l).MustRead(ctx, cmd, s, nil) {
+				if read(ctx, bh, vkHandle(opaqueBinds.Image)) {
+					img := opaqueBinds.Image
+					binds := opaqueBinds.PBinds.Slice(0, uint64(opaqueBinds.BindCount), l).MustRead(
+						ctx, cmd, s, nil)
+					for _, bind := range binds {
+						if read(ctx, bh, vkHandle(bind.Memory)) {
+							vb.images[img].data = addResBinding(ctx, vb.images[img].data,
+								newSpanResBinding(ctx, bh, bind.Memory, uint64(bind.ResourceOffset),
+									uint64(bind.Size), uint64(bind.MemoryOffset)))
+						}
+					}
+				}
+			}
+			for _, imageBinds := range bindInfo.PImageBinds.Slice(0,
+				uint64(bindInfo.ImageBindCount), l).MustRead(ctx, cmd, s, nil) {
+				if read(ctx, bh, vkHandle(imageBinds.Image)) {
+					img := imageBinds.Image
+					binds := imageBinds.PBinds.Slice(0, uint64(imageBinds.BindCount), l).MustRead(
+						ctx, cmd, s, nil)
+					for _, bind := range binds {
+						if read(ctx, bh, vkHandle(bind.Memory)) {
+							// TODO: Handle sparse residency bindings
+							modify(ctx, bh, vkHandle(img))
+							modify(ctx, bh, vkHandle(bind.Memory))
+						}
+					}
+				}
+			}
 		}
 
 	// synchronization primitives
@@ -2528,13 +2714,13 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkQueueWaitIdle:
 		vkQu := cmd.Queue
 		if read(ctx, bh, vkHandle(vkQu)) {
-			if _, ok := vb.executionInfos[vkQu]; ok {
+			if _, ok := vb.executionStates[vkQu]; ok {
 				bh.Alive = true
 			}
 		}
 
 	case *VkDeviceWaitIdle:
-		for _, qei := range vb.executionInfos {
+		for _, qei := range vb.executionStates {
 			lastSubmitInfo := vb.submitInfos[qei.lastSubmitID]
 			read(ctx, bh, lastSubmitInfo.executionEnd)
 			bh.Alive = true
@@ -2692,68 +2878,59 @@ func debug(ctx context.Context, fmt string, args ...interface{}) {
 }
 
 func read(ctx context.Context, bh *dependencygraph.Behavior,
-	c dependencygraph.DefUseVariable) bool {
-	switch c := c.(type) {
-	case vkHandle:
-		if c == vkNullHandle {
-			debug(ctx, "Read to VK_NULL_HANDLE is ignored")
-			return false
+	cs ...dependencygraph.DefUseVariable) bool {
+	allSucceeded := true
+	for _, c := range cs {
+		switch c := c.(type) {
+		case vkHandle:
+			if c == vkNullHandle {
+				debug(ctx, "Read to VK_NULL_HANDLE is ignored")
+				allSucceeded = false
+				continue
+			}
+		case *forwardPairedLabel:
+			c.labelReadBehaviors = append(c.labelReadBehaviors, bh)
 		}
-	case *forwardPairedLabel:
-		c.labelReadBehaviors = append(c.labelReadBehaviors, bh)
+		bh.Read(c)
+		debug(ctx, "<Behavior: %v, Read: %v>", bh, c)
 	}
-	bh.Read(c)
-	debug(ctx, "<Behavior: %v, Read: %v>", bh, c)
-	return true
+	return allSucceeded
 }
 
 func write(ctx context.Context, bh *dependencygraph.Behavior,
-	c dependencygraph.DefUseVariable) bool {
-	switch c := c.(type) {
-	case vkHandle:
-		if c == vkNullHandle {
-			debug(ctx, "Write to VK_NULL_HANDLE is ignored")
-			return false
+	cs ...dependencygraph.DefUseVariable) bool {
+	allSucceeded := true
+	for _, c := range cs {
+		switch c := c.(type) {
+		case vkHandle:
+			if c == vkNullHandle {
+				debug(ctx, "Write to VK_NULL_HANDLE is ignored")
+				allSucceeded = false
+				continue
+			}
 		}
+		bh.Write(c)
+		debug(ctx, "<Behavior: %v, Write: %v>", bh, c)
 	}
-	bh.Write(c)
-	debug(ctx, "<Behavior: %v, Write: %v>", bh, c)
-	return true
+	return allSucceeded
 }
 
 func modify(ctx context.Context, bh *dependencygraph.Behavior,
-	c dependencygraph.DefUseVariable) bool {
-	switch c := c.(type) {
-	case vkHandle:
-		if c == vkNullHandle {
-			debug(ctx, "Write to VK_NULL_HANDLE is ignored")
-			return false
+	cs ...dependencygraph.DefUseVariable) bool {
+	allSucceeded := true
+	for _, c := range cs {
+		switch c := c.(type) {
+		case vkHandle:
+			if c == vkNullHandle {
+				debug(ctx, "Write to VK_NULL_HANDLE is ignored")
+				allSucceeded = false
+				continue
+			}
 		}
+		bh.Modify(c)
+		debug(ctx, "<Behavior: %v, Modify: %v>", bh, c)
 	}
-	bh.Modify(c)
-	debug(ctx, "<Behavior: %v, Modify: %v>", bh, c)
-	return true
-}
-
-func readMultiple(ctx context.Context, bh *dependencygraph.Behavior,
-	cs []dependencygraph.DefUseVariable) {
-	for _, c := range cs {
-		read(ctx, bh, c)
-	}
-}
-
-func writeMultiple(ctx context.Context, bh *dependencygraph.Behavior,
-	cs []dependencygraph.DefUseVariable) {
-	for _, c := range cs {
-		write(ctx, bh, c)
-	}
-}
-
-func modifyMultiple(ctx context.Context, bh *dependencygraph.Behavior,
-	cs []dependencygraph.DefUseVariable) {
-	for _, c := range cs {
-		modify(ctx, bh, c)
-	}
+	return allSucceeded
 }
 
 func framebufferPortCoveredByClearRect(fb *FramebufferObject, r VkClearRect) bool {
@@ -2768,12 +2945,12 @@ func framebufferPortCoveredByClearRect(fb *FramebufferObject, r VkClearRect) boo
 }
 
 func clearAttachmentData(ctx context.Context, bh *dependencygraph.Behavior,
-	execInfo *queueExecutionInfo, a VkClearAttachment, rects []VkClearRect) {
+	execInfo *queueExecutionState, a VkClearAttachment, rects []VkClearRect) {
 	subpass := &execInfo.subpasses[execInfo.subpass.val]
 	if a.AspectMask == VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT) ||
 		a.AspectMask == VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT) {
 		if subpass.depthStencilAttachment != nil {
-			modify(ctx, bh, subpass.depthStencilAttachment.data)
+			modify(ctx, bh, subpass.depthStencilAttachment.data...)
 			return
 		}
 	} else if a.AspectMask == VkImageAspectFlags(
@@ -2787,10 +2964,10 @@ func clearAttachmentData(ctx context.Context, bh *dependencygraph.Behavior,
 				}
 			}
 			if overwritten && subpass.depthStencilAttachment.fullImageData {
-				write(ctx, bh, subpass.depthStencilAttachment.data)
+				write(ctx, bh, subpass.depthStencilAttachment.data...)
 				return
 			}
-			modify(ctx, bh, subpass.depthStencilAttachment.data)
+			modify(ctx, bh, subpass.depthStencilAttachment.data...)
 			return
 		}
 	} else {
@@ -2803,10 +2980,10 @@ func clearAttachmentData(ctx context.Context, bh *dependencygraph.Behavior,
 			}
 			att := subpass.colorAttachments[a.ColorAttachment]
 			if overwritten && att.fullImageData {
-				write(ctx, bh, att.data)
+				write(ctx, bh, att.data...)
 				return
 			}
-			modify(ctx, bh, att.data)
+			modify(ctx, bh, att.data...)
 			return
 		}
 	}
