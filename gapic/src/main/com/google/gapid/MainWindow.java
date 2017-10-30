@@ -148,7 +148,7 @@ public class MainWindow extends ApplicationWindow {
     }
 
     shell.setText(Messages.WINDOW_TITLE);
-    shell.setImage(widgets().theme.logo());
+    shell.setImages(widgets().theme.windowLogo());
 
     super.configureShell(shell);
 

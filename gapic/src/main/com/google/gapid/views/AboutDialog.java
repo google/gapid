@@ -81,7 +81,7 @@ public class AboutDialog {
         container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true));
 
         container.setBackground(theme.aboutBackground());
-        createLabel(container, "", theme.logoBig());
+        createLabel(container, "", theme.dialogLogo());
         Text title = createForegroundLabel(container, Messages.WINDOW_TITLE);
         title.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
         createForegroundLabel(container, "Version " + GAPID_VERSION);

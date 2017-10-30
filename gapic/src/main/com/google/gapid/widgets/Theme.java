@@ -62,8 +62,7 @@ public interface Theme {
   @Icon("jump.png") public Image jump();
   @Icon("histogram.png") public Image toggleHistogram();
   @Icon("lit.png") public Image lit();
-  @Icon("logo.png") public Image logo();
-  @Icon("logo_big.png") public Image logoBig();
+  @Icon("logo_128.png") public Image dialogLogo();
   @Icon("normals.png") public Image normals();
   @Icon("point_cloud.png") public Image pointCloud();
   @Icon("refresh.png") public Image refresh();
@@ -83,6 +82,9 @@ public interface Theme {
   @Icon("zoom_in.png") public Image zoomIn();
   @Icon("zoom_out.png") public Image zoomOut();
 
+  @IconSequence(names = {
+      "logo_128.png", "logo_64.png", "logo_48.png", "logo_32.png", "logo_16.png",
+  }) public Image[] windowLogo();
   @IconSequence(pattern = "color_channels_%02d.png", count = 16) public Image[] colorChannels();
   @IconSequence(pattern = "loading_%d_small.png", count = 8) public Image[] loadingSmall();
   @IconSequence(pattern = "loading_%d_large.png", count = 8) public Image[] loadingLarge();
@@ -99,9 +101,10 @@ public interface Theme {
   @RGB(argb = 0xfffadcdc) public Color memoryWriteHighlight();
   @RGB(argb = 0xffdcdcfa) public Color memorySelectionHighlight();
 
-  // About dialog text colors
+  // About & Welcome dialog text colors
   @RGB(argb = 0xff282828) public Color aboutBackground();
   @RGB(argb = 0xffc8c8c8) public Color aboutForeground();
+  @RGB(argb = 0xffa9a9a9) public Color welcomeVersionColor();
 
   // Logging view colors by log level.
   @RGB(argb = 0xbb000000) public Color logVerboseForeground();
@@ -188,15 +191,21 @@ public interface Theme {
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface IconSequence {
     /**
+     * @return the list of image file names in the sequence. If this is provided, the pattern and
+     * count are ignored.
+     */
+    public String[] names() default { };
+
+    /**
      * @return a {@link String#format(String, Object...)} pattern given a sequence number, i, to
      *     format the file name of the ith image in the sequence.
      */
-    public String pattern();
+    public String pattern() default "";
 
     /**
      * @return the number of images in the sequence.
      */
-    public int count();
+    public int count() default 0;
   }
 
   /**
@@ -306,9 +315,10 @@ public interface Theme {
     private boolean loadIconSequence(Method method) {
       IconSequence seq = method.getDeclaredAnnotation(IconSequence.class);
       if (seq != null) {
-        Image[] icons = new Image[seq.count()];
+        String[] names = seq.names();
+        Image[] icons = new Image[names.length == 0 ? seq.count() : names.length];
         for (int i = 0; i < icons.length; i++) {
-          icons[i] = loadImage(String.format(seq.pattern(), i));
+          icons[i] = loadImage(names.length == 0 ? String.format(seq.pattern(), i) : names[i]);
         }
         resources.put(method.getName(), icons);
         return true;

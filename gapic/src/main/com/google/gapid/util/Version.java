@@ -58,9 +58,10 @@ public class Version {
 
   @Override
   public String toString() {
-    if (!build.isEmpty()) {
-      return major + "." + minor + "." + point + ":" + build;
-    }
+    return major + "." + minor + "." + point + (build.isEmpty() ? "" : ":" + build);
+  }
+
+  public String toFriendlyString() {
     return major + "." + minor + "." + point;
   }
 
