@@ -326,6 +326,7 @@ func robotTextPreview(path string, s interface{}) interface{} {
 	div.Element.Style.MaxWidth = 600
 	div.Element.Style.MaxHeight = 420
 	div.Element.Style.Overflow = "auto"
+	div.Element.Style.WhiteSpace = "pre"
 	go func() {
 		full_text, err := queryRestEndpoint(fmt.Sprintf("/entities/%s", id))
 		if err != nil {
