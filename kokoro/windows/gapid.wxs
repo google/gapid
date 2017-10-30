@@ -86,6 +86,8 @@
 
     <Property Id="WIXUI_INSTALLDIR" Value="GAPID" />
     <Property Id="ARPPRODUCTICON" Value="gapid.ico" />
+    <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="ui_dialog.bmp" />
 
     <!-- From WixUI_InstallDir.wxs - without a license dialog -->
     <UI Id="gapid">
