@@ -45,7 +45,9 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 	filters := CommandFilters{filter}
 	for _, e := range extensions.Get() {
 		if f := e.EventFilter; f != nil {
-			filters = append(filters, CommandFilter(f(ctx, p)))
+			if filter := CommandFilter(f(ctx, p)); filter != nil {
+				filters = append(filters, filter)
+			}
 		}
 	}
 	filter = filters.All
