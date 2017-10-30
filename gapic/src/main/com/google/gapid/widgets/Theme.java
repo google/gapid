@@ -25,6 +25,7 @@ import org.eclipse.jface.resource.FontDescriptor;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.StyledString.Styler;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
@@ -135,7 +136,8 @@ public interface Theme {
   @TextStyle(foreground = 0xee0000) public Styler errorStyler();
   @TextStyle(foreground = 0xffc800) public Styler warningStyler();
 
-  @Text(Text.Mono) public Font getMonoSpaceFont();
+  @Text(Text.Mono) public Font monoSpaceFont();
+  @Text(Text.Big) public Font bigBoldFont();
 
   public void dispose();
 
@@ -224,7 +226,7 @@ public interface Theme {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Text {
-    public static final int Mono = 1;
+    public static final int Mono = 1, Big = 2;
 
     public int value();
   }
@@ -341,12 +343,22 @@ public interface Theme {
       Text text = method.getDeclaredAnnotation(Text.class);
       if (text != null) {
         switch (text.value()) {
-          case Text.Mono:
+          case Text.Mono: {
             Font font = FontDescriptor.createFrom(JFaceResources.getFont(JFaceResources.TEXT_FONT))
                 .setHeight(JFaceResources.getDefaultFont().getFontData()[0].getHeight())
                 .createFont(display);
             resources.put(method.getName(), font);
             return true;
+          }
+          case Text.Big: {
+            Font dflt = JFaceResources.getDefaultFont();
+            Font font = FontDescriptor.createFrom(dflt)
+                .setHeight(dflt.getFontData()[0].getHeight() * 3 / 2)
+                .setStyle(SWT.BOLD)
+                .createFont(display);
+            resources.put(method.getName(), font);
+            return true;
+          }
         }
       }
       return false;

@@ -359,7 +359,7 @@ public class ShaderView extends Composite
           new SourceViewer(group, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
       StyledText textWidget = viewer.getTextWidget();
       viewer.setEditable(type.isEditable());
-      textWidget.setFont(theme.getMonoSpaceFont());
+      textWidget.setFont(theme.monoSpaceFont());
       textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
       viewer.configure(new GlslSourceConfiguration(theme));
       viewer.setDocument(GlslSourceConfiguration.createDocument(source.source));

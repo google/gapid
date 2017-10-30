@@ -492,7 +492,7 @@ public class MemoryView extends Composite
       this.loadable = loadable;
       this.theme = widgets.theme;
       this.copyPaste = widgets.copypaste;
-      font = theme.getMonoSpaceFont();
+      font = theme.monoSpaceFont();
       GC gc = new GC(parent);
       gc.setFont(font);
       lineHeight = gc.getFontMetrics().getHeight();
