@@ -30,7 +30,6 @@ import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.RowLayout;
@@ -75,15 +74,13 @@ public class AboutDialog {
       @Override
       protected Control createDialogArea(Composite parent) {
         Composite area = (Composite)super.createDialogArea(parent);
-        area.setBackground(theme.aboutBackground());
 
         Composite container = createComposite(area, centered(new RowLayout(SWT.VERTICAL)));
         container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true));
 
-        container.setBackground(theme.aboutBackground());
         createLabel(container, "", theme.dialogLogo());
         Text title = createForegroundLabel(container, Messages.WINDOW_TITLE);
-        title.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
+        title.setFont(theme.bigBoldFont());
         createForegroundLabel(container, "Version " + GAPID_VERSION);
         createForegroundLabel(
             container, "Server: " + Info.getServerName() + ", Version: " + Info.getServerVersion());
@@ -98,16 +95,13 @@ public class AboutDialog {
       }
 
       public Text createForegroundLabel(Composite parent, String text) {
-        Text label = createTextbox(parent, SWT.NONE, text);
-        label.setEditable(false);
-        label.setForeground(theme.aboutForeground());
-        label.setBackground(theme.aboutBackground());
+        Text label = createTextbox(parent, SWT.READ_ONLY, text);
+        label.setBackground(parent.getBackground());
 
         // SWT will weirdly select the entire content of the first textbox. No thanks.
         label.setSelection(0, 0);
         return label;
       }
-
     }.open();
   }
 }
