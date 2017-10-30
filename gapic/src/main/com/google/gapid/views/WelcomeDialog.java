@@ -53,7 +53,7 @@ public class WelcomeDialog {
   }
 
   public static void showWelcomeDialog(Shell shell, Models models, Widgets widgets) {
-    new DialogBase(shell) {
+    new DialogBase(shell, widgets.theme) {
       private Button showWelcome;
 
       @Override

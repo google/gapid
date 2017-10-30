@@ -184,7 +184,7 @@ public class MainWindow extends ApplicationWindow {
     if (OS.isMac) {
       MacApplication.init(shell.getDisplay(),
           () -> showAbout(shell, widgets().theme),
-          () -> showSettingsDialog(shell, models().settings),
+          () -> showSettingsDialog(shell, models().settings, widgets().theme),
           file -> models().capture.loadCapture(new File(file)));
     }
   }
@@ -340,7 +340,7 @@ public class MainWindow extends ApplicationWindow {
 
     manager.add(editCopy);
     manager.add(MenuItems.EditSettings.create(
-        () -> showSettingsDialog(getShell(), models().settings)));
+        () -> showSettingsDialog(getShell(), models().settings, widgets().theme)));
 
     editCopy.setEnabled(false);
 
@@ -420,7 +420,7 @@ public class MainWindow extends ApplicationWindow {
     manager.add(MenuItems.HelpOnlineHelp.create(AboutDialog::showHelp));
     manager.add(MenuItems.HelpAbout.create(() -> showAbout(getShell(), widgets().theme)));
     manager.add(MenuItems.HelpShowLogs.create(AboutDialog::showLogDir));
-    manager.add(MenuItems.HelpLicenses.create(() -> showLicensesDialog(getShell())));
+    manager.add(MenuItems.HelpLicenses.create(() -> showLicensesDialog(getShell(), widgets().theme)));
     manager.add(MenuItems.HelpWelcome.create(
         () -> showWelcomeDialog(getShell(), models(), widgets())));
     return manager;

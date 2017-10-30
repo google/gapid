@@ -105,7 +105,7 @@ public class Widgets {
     Theme theme = Theme.load(display);
     CopyPaste copypaste = new CopyPaste(display);
     LoadingIndicator loading = new LoadingIndicator(display, theme);
-    AtomEditor editor = new AtomEditor(client, models);
+    AtomEditor editor = new AtomEditor(client, models, theme);
     return new Widgets(theme, copypaste, loading, editor);
   }
 

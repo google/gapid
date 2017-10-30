@@ -66,7 +66,7 @@ public class AboutDialog {
   }
 
   public static void showAbout(Shell shell, Theme theme) {
-    new DialogBase(shell) {
+    new DialogBase(shell, theme) {
       @Override
       public String getTitle() {
         return Messages.ABOUT_TITLE;

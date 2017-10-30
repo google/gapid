@@ -28,13 +28,17 @@ public abstract class DialogBase extends TrayDialog {
   private static final int MIN_DIALOG_WIDTH = 350;  // In DLUs
   private static final int MIN_DIALOG_HEIGHT = 150; // In DLUs
 
-  public DialogBase(IShellProvider parentShell) {
+  private final Theme theme;
+
+  public DialogBase(IShellProvider parentShell, Theme theme) {
     super(parentShell);
+    this.theme = theme;
     setReturnCode(Window.CANCEL); // Switch the default return code to cancel.
   }
 
-  public DialogBase(Shell shell) {
+  public DialogBase(Shell shell, Theme theme) {
     super(shell);
+    this.theme = theme;
     setReturnCode(Window.CANCEL); // Switch the default return code to cancel.
   }
 
@@ -47,6 +51,7 @@ public abstract class DialogBase extends TrayDialog {
   protected void configureShell(Shell newShell) {
     super.configureShell(newShell);
     newShell.setText(getTitle());
+    newShell.setImages(theme.windowLogo());
   }
 
   public abstract String getTitle();
