@@ -325,8 +325,6 @@ public class ImagePanel extends Composite {
     createSeparator(bar);
     createToggleToolItem(bar, theme.toggleHistogram(),
         e -> setShowHistogram(((ToolItem)e.widget).getSelection()), "Toggle histogram");
-    saveItem = createToolItem(bar, theme.save(), e -> save(), "Save image to file");
-    saveItem.setEnabled(false);
     colorChanelsItem = createBaloonToolItem(bar, theme.colorChannels()[15], shell -> {
       Composite c = createComposite(shell, new RowLayout(SWT.HORIZONTAL), SWT.BORDER);
       final ImageComponent i = imageComponent;
