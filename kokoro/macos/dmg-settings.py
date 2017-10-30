@@ -19,11 +19,11 @@ files = [ 'GAPID.app' ]
 symlinks = { 'Applications': '/Applications' }
 badge_icon = 'GAPID.app/Contents/Resources/GAPID.icns'
 icon_locations = {
-	'GAPID.app': (192, 344),
-	'Applications': (448, 344),
+	'GAPID.app': (120, 172),
+	'Applications': (360, 172),
 	'.background.tiff': (1000, 1000), # hide
 	'.VolumeIcon.icns': (1000, 1000), # hide
 }
 background = 'background.png'
-window_rect = ((100, 600), (640, 480))
+window_rect = ((100, 600), (480, 360))
 icon_size = 64
