@@ -76,7 +76,7 @@ public class LogView extends Composite implements Tab {
 
     tree = createTree(this, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
     tree.setHeaderVisible(true);
-    tree.setFont(theme.getMonoSpaceFont());
+    tree.setFont(theme.monoSpaceFont());
 
     for (Column column : Column.values()) {
       TreeColumn treeColumn = new TreeColumn(tree, SWT.LEFT);
