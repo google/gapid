@@ -15,7 +15,7 @@
  */
 package com.google.gapid.util;
 
-import static com.google.gapid.Version.GAPID_VERSION;
+import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
