@@ -50,6 +50,7 @@ public interface Messages {
   public static final String BROWSE = "Browse";
   public static final String SELECT_ACTIVITY = "Select Activity";
   public static final String WELCOME_TITLE = WINDOW_TITLE + " - Welcome";
+  public static final String WELCOME_TEXT = "Get started with " + WINDOW_TITLE;
   public static final String NO_REPLAY_DEVICE = "No replay device available for this capture.";
   public static final String SETTINGS_TITLE = "Modify Settings";
   public static final String ERROR_MESSAGE =

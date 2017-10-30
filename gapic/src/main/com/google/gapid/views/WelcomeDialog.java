@@ -15,11 +15,11 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
-import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
@@ -66,13 +66,18 @@ public class WelcomeDialog {
         Composite area = (Composite)super.createDialogArea(parent);
 
         Composite container = createComposite(area, new GridLayout(1, false));
-        container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true));
+        container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        createLabel(container, "", widgets.theme.logoBig())
+        createLabel(container, "", widgets.theme.dialogLogo())
             .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-        Label title = createBoldLabel(container, Messages.WINDOW_TITLE);
+        Label title = createLabel(container, Messages.WELCOME_TEXT);
+        title.setFont(widgets.theme.bigBoldFont());
         title.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+
+        Label version = createLabel(container, "Version " + GAPID_VERSION.toFriendlyString());
+        version.setForeground(widgets.theme.welcomeVersionColor());
+        version.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
         createLink(container, "<a>Open Trace...</a>", e -> {
           close(true);

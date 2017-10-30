@@ -51,17 +51,10 @@ mkdir -p GAPID.app/Contents/MacOS/
 cp -r gapid/* GAPID.app/Contents/MacOS/
 cp "$SRC/Info.plist" GAPID.app/Contents/
 
-# Create the icon. TODO: need resolution up to 1024 (512@2x)
 mkdir -p GAPID.iconset GAPID.app/Contents/Resources
-# Ensure the icon has an alpha channel to make iconutil work, sigh.
-pip install --user pypng
-python -c '
-import sys;import png;i=png.Reader(sys.stdin).asRGBA();
-png.Writer(width=i[0],height=i[1],alpha=True).write(sys.stdout,i[2])'\
-  < "$SRC/../../gapic/res/icons/logo@2x.png" > logo.png
-for i in 128 64 32 16; do
-  sips -z $i $i logo.png --out GAPID.iconset/icon_${i}x$i.png
-  sips -z $((i*2)) $((i*2)) logo.png --out GAPID.iconset/icon_${i}x$i\@2x.png
+for i in 512 256 128 64 32 16; do
+  cp "$SRC/../../gapic/res/icons/logo_${i}.png" GAPID.iconset/icon_${i}x${i}.png
+  cp "$SRC/../../gapic/res/icons/logo_$((i*2)).png" GAPID.iconset/icon_${i}x${i}\@2x.png
 done
 iconutil -c icns -o GAPID.app/Contents/Resources/GAPID.icns GAPID.iconset
 

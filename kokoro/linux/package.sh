@@ -41,7 +41,7 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
 mkdir -p gapid/DEBIAN gapid/opt/gapid gapid/usr/share/applications gapid/usr/share/menu gapid/usr/share/mime/packages
 cp -r ../pkg/* gapid/opt/gapid
 cp -r ../current/java/gapic-linux.jar gapid/opt/gapid/lib/gapic.jar
-cp "$SRC/../../gapic/res/icons/logo@2x.png" gapid/opt/gapid/icon.png
+cp "$SRC/../../gapic/res/icons/logo_256.png" gapid/opt/gapid/icon.png
 cp "$SRC/gapid.desktop" gapid/usr/share/applications/google-gapid.desktop
 cp "$SRC/gapid.menu" gapid/usr/share/menu/google-gapid.menu
 cp "$SRC/gapid-mime.xml" gapid/usr/share/mime/packages/gapid.xml
