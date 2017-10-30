@@ -102,8 +102,6 @@ public interface Theme {
   @RGB(argb = 0xffdcdcfa) public Color memorySelectionHighlight();
 
   // About & Welcome dialog text colors
-  @RGB(argb = 0xff282828) public Color aboutBackground();
-  @RGB(argb = 0xffc8c8c8) public Color aboutForeground();
   @RGB(argb = 0xffa9a9a9) public Color welcomeVersionColor();
 
   // Logging view colors by log level.
