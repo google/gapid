@@ -152,7 +152,7 @@ public class ActivityPickerDialog extends DialogBase {
 
   public ActivityPickerDialog(
       Shell parent, Settings settings, Widgets widgets, Device.Instance device) {
-    super(parent);
+    super(parent, widgets.theme);
     this.settings = settings;
     this.widgets = widgets;
     this.device = device;

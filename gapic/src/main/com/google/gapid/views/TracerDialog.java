@@ -48,6 +48,7 @@ import com.google.gapid.widgets.ActionTextbox;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.LoadingIndicator;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -115,7 +116,7 @@ public class TracerDialog {
     TraceInputDialog input =
         new TraceInputDialog(shell, models.settings, widgets, models.devices::loadDevices);
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {
-      TraceProgressDialog progress = new TraceProgressDialog(shell, input.getValue());
+      TraceProgressDialog progress = new TraceProgressDialog(shell, input.getValue(), widgets.theme);
       AtomicBoolean failed = new AtomicBoolean(false);
       Tracer.Trace trace = Tracer.trace(
           shell.getDisplay(), models.settings, input.getValue(), new Tracer.Listener() {
@@ -173,7 +174,7 @@ public class TracerDialog {
 
     public TraceInputDialog(
         Shell shell, Settings settings, Widgets widgets, Runnable refreshDevices) {
-      super(shell);
+      super(shell, widgets.theme);
       this.settings = settings;
       this.widgets = widgets;
       this.refreshDevices = refreshDevices;
@@ -400,7 +401,7 @@ public class TracerDialog {
         adbWarning = withLayoutData(
             createLink(this,
                 "Path to adb missing. Please specify it in the <a>preferences</a> and restart.",
-                e -> SettingsDialog.showSettingsDialog(getShell(), settings)),
+                e -> SettingsDialog.showSettingsDialog(getShell(), settings, widgets.theme)),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
         adbWarning.setVisible(false);
@@ -684,8 +685,8 @@ public class TracerDialog {
     private Text text;
     private Runnable onStart;
 
-    public TraceProgressDialog(Shell shell, Tracer.TraceRequest request) {
-      super(shell);
+    public TraceProgressDialog(Shell shell, Tracer.TraceRequest request, Theme theme) {
+      super(shell, theme);
       this.request = request;
     }
 

@@ -39,6 +39,7 @@ import com.google.gapid.util.Pods;
 import com.google.gapid.util.PrefixTree;
 import com.google.gapid.util.Values;
 import com.google.gapid.widgets.DialogBase;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.fieldassist.ComboContentAdapter;
@@ -79,10 +80,12 @@ public class AtomEditor {
 
   private final Client client;
   protected final Models models;
+  private final Theme theme;
 
-  public AtomEditor(Client client, Models models) {
+  public AtomEditor(Client client, Models models, Theme theme) {
     this.client = client;
     this.models = models;
+    this.theme = theme;
   }
 
   public static boolean shouldShowEditPopup(API.Command command) {
@@ -90,7 +93,7 @@ public class AtomEditor {
   }
 
   public void showEditPopup(Shell parent, Path.Command path, API.Command command) {
-    EditDialog dialog = new EditDialog(parent, models, command);
+    EditDialog dialog = new EditDialog(parent, models, theme, command);
     if (dialog.open() == Window.OK) {
       Rpc.listen(client.set(Paths.toAny(path), Values.value(dialog.newAtom)),
           new UiCallback<Path.Any, Path.Any>(parent, LOG) {
@@ -117,8 +120,8 @@ public class AtomEditor {
     private final List<Editor<?>> editors = Lists.newArrayList();
     public API.Command newAtom;
 
-    public EditDialog(Shell parentShell, Models models, API.Command atom) {
-      super(parentShell);
+    public EditDialog(Shell parentShell, Models models, Theme theme, API.Command atom) {
+      super(parentShell, theme);
       this.models = models;
       this.atom = atom;
     }

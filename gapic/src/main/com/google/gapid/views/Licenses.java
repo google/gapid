@@ -21,6 +21,7 @@ import static java.util.logging.Level.SEVERE;
 import com.google.common.io.Resources;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
+import com.google.gapid.widgets.Theme;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
@@ -46,8 +47,8 @@ public class Licenses {
   private Licenses() {
   }
 
-  public static void showLicensesDialog(Shell shell) {
-    new DialogBase(shell) {
+  public static void showLicensesDialog(Shell shell, Theme theme) {
+    new DialogBase(shell, theme) {
       @Override
       public String getTitle() {
         return Messages.LICENSES;

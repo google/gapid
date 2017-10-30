@@ -23,6 +23,7 @@ import com.google.gapid.models.Settings;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -43,13 +44,13 @@ public class SettingsDialog extends DialogBase {
   private Button autoCheckForUpdates;
   private FileTextbox adbPath;
 
-  public SettingsDialog(Shell parent, Settings settings) {
-    super(parent);
+  public SettingsDialog(Shell parent, Settings settings, Theme theme) {
+    super(parent, theme);
     this.settings = settings;
   }
 
-  public static void showSettingsDialog(Shell shell, Settings settings) {
-    new SettingsDialog(shell, settings).open();
+  public static void showSettingsDialog(Shell shell, Settings settings, Theme theme) {
+    new SettingsDialog(shell, settings, theme).open();
   }
 
   private void update() {
