@@ -15,7 +15,7 @@
  */
 package com.google.gapid.util;
 
-import com.google.gapid.Version;
+import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 
 public interface Messages {
   public static final String WINDOW_TITLE = "Graphics API Debugger";
@@ -55,7 +55,7 @@ public interface Messages {
   public static final String ERROR_MESSAGE =
       "The application encountered an error:\n%s\n\nPlease check the logs for details.";
   public static final String BUG_BODY =
-      "GAPID Version: " + Version.GAPID_VERSION.toString() + "\n" +
+      "GAPID Version: " + GAPID_VERSION.toString() + "\n" +
       "OS: " + OS.name + " " + OS.arch + "\n\n" +
       "Please provide detailed steps that led to the error and copy-paste the stack trace.\n" +
       "Extra details from the logs and the trace file would be extra helpful.\n\n";

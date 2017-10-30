@@ -15,7 +15,7 @@
  */
 package com.google.gapid;
 
-import static com.google.gapid.Version.GAPID_VERSION;
+import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
@@ -33,6 +33,7 @@ import com.google.gapid.server.GapisProcess;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
+import com.google.gapid.util.Version;
 
 import java.io.IOException;
 import java.util.List;

@@ -15,6 +15,7 @@
  */
 package com.google.gapid;
 
+import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
@@ -51,7 +52,7 @@ public class Main {
     Logging.init();
 
     Display.setAppName(Messages.WINDOW_TITLE);
-    Display.setAppVersion(Version.GAPID_VERSION.toString());
+    Display.setAppVersion(GAPID_VERSION.toString());
     Settings settings = Settings.load();
 
     Server server = new Server(settings);

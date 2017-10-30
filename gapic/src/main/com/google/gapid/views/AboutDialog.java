@@ -15,13 +15,13 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static java.util.logging.Level.SEVERE;
 
-import com.google.gapid.Version;
 import com.google.gapid.models.Info;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
@@ -84,7 +84,7 @@ public class AboutDialog {
         createLabel(container, "", theme.logoBig());
         Text title = createForegroundLabel(container, Messages.WINDOW_TITLE);
         title.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
-        createForegroundLabel(container, "Version " + Version.GAPID_VERSION);
+        createForegroundLabel(container, "Version " + GAPID_VERSION);
         createForegroundLabel(
             container, "Server: " + Info.getServerName() + ", Version: " + Info.getServerVersion());
         createForegroundLabel(container, Messages.ABOUT_COPY);

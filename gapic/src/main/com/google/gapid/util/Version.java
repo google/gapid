@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package com.google.gapid;
+package com.google.gapid.util;
 
 import com.google.gapid.proto.service.Service;
 
 /**
  * Version specifier.
  */
-@javax.annotation.Generated("by GAPID cmake")
 public class Version {
-  public static final Version GAPID_VERSION = new Version(@GAPID_VERSION_MAJOR@, @GAPID_VERSION_MINOR@, @GAPID_VERSION_POINT@, "@GAPID_BUILD_NUMBER@:@GAPID_BUILD_SHA@");
-
   public final int major;
   public final int minor;
   public final int point;

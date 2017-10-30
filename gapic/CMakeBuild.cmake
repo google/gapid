@@ -17,7 +17,7 @@ if(ANDROID)
 endif()
 
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/Version.java.in"
-    "${JAVA_GENERATED}/com/google/gapid/Version.java"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/main/com/google/gapid/util/GapidVersion.java.in"
+    "${JAVA_GENERATED}/com/google/gapid/util/GapidVersion.java"
     @ONLY
 )

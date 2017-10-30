@@ -15,8 +15,8 @@
  */
 package com.google.gapid.models;
 
-import com.google.gapid.Version;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.util.Version;
 
 /**
  * Basic information retrieved from and about the server.
