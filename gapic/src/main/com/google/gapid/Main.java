@@ -26,6 +26,7 @@ import com.google.gapid.models.Settings;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
 import com.google.gapid.server.GapisProcess;
+import com.google.gapid.util.Crash2ExceptionHandler;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
@@ -54,6 +55,10 @@ public class Main {
     Display.setAppName(Messages.WINDOW_TITLE);
     Display.setAppVersion(GAPID_VERSION.toString());
     Settings settings = Settings.load();
+
+    if (settings.crashReportingEnabled()) {
+      Crash2ExceptionHandler.registerAsDefault();
+    }
 
     Server server = new Server(settings);
     AtomicReference<UI> uiRef = new AtomicReference<UI>(null);

@@ -139,6 +139,10 @@ public class Settings {
         .toArray(l -> new String[l]);
   }
 
+  public boolean crashReportingEnabled() {
+    return false;
+  }
+  
   private void updateFrom(Properties properties) {
     windowLocation = getPoint(properties, "window.pos");
     windowSize = getPoint(properties, "window.size");
