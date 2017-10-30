@@ -137,6 +137,11 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		if len(cmd.Extras().All()) == 0 {
 			cmd.Extras().Add(oldCmd.Extras().All()...)
 		}
+
+		// Propagate caller (not exposed to client)
+		cmd.SetCaller(oldCmd.Caller())
+
+		// Replace the command
 		cmds[cmdIdx] = cmd
 
 		// Store the new command list
