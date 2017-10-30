@@ -67,8 +67,6 @@ iconutil -c icns -o GAPID.app/Contents/Resources/GAPID.icns GAPID.iconset
 
 # Make a dmg file.
 pip install --user dmgbuild pyobjc-framework-Quartz
-cp "$SRC/background@2x.png" .
-# Yes, height, then width.... sigh.
-sips -z 480 640 background\@2x.png --out background.png
+cp "$SRC"/background*.png .
 cp "$SRC/dmg-settings.py" .
 ~/Library/Python/2.7/bin/dmgbuild -s dmg-settings.py GAPID gapid-$VERSION-macos.dmg
