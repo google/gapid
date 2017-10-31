@@ -21,7 +21,9 @@ import "core/os/device/device.proto";
 
 // Record holds all the data for an entire capture.
 message Record {
+	// Name of the capture.
 	string name = 1;
+	// Database identifier of the data.
 	bytes data = 2;
 }
 
