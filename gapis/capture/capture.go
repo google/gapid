@@ -247,13 +247,14 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	if err := pack.Read(ctx, bytes.NewReader(data.([]byte)), d, false); err != nil {
 		switch err := errors.Cause(err).(type) {
 		case pack.ErrUnsupportedVersion:
+			log.E(ctx, "%v", err)
 			switch {
-			case err.Version.GreaterThan(pack.MaxVersion):
+			case err.Version.Major > pack.MaxMajorVersion:
 				return nil, &service.ErrUnsupportedVersion{
 					Reason:        messages.ErrFileTooNew(),
 					SuggestUpdate: true,
 				}
-			case err.Version.LessThan(pack.MinVersion):
+			case err.Version.Major < pack.MinMajorVersion:
 				return nil, &service.ErrUnsupportedVersion{
 					Reason: messages.ErrFileTooOld(),
 				}
