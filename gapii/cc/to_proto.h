@@ -45,25 +45,6 @@ struct ProtoConverter<memory_pb::Slice*, gapii::Slice<T>> {
     }
 };
 
-// void* -> memory_pb::Pointer*
-template<>
-struct ProtoConverter<memory_pb::Pointer*, void*> {
-    static inline void convert(memory_pb::Pointer* out, const void* in) {
-        uint32_t pool = 0; // TODO: Support non-application pools?
-        uint64_t address = reinterpret_cast<uintptr_t>(in);
-        out->set_pool(pool);
-        out->set_address(address);
-    }
-};
-
-// T* -> memory_pb::Pointer*
-template<typename T>
-struct ProtoConverter<memory_pb::Pointer*, T*> {
-    static inline void convert(memory_pb::Pointer* out, const T* in) {
-        ProtoConverter<memory_pb::Pointer*, void*>::convert(out, in);
-    }
-};
-
 // const T& -> T::ProtoType*
 template<typename T>
 struct ProtoConverter<typename T::ProtoType*, T> {
@@ -152,11 +133,6 @@ inline void toProto(Out out, const In& in) {
 
 template <typename T>
 inline void toProtoSlice(memory_pb::Slice* out, const gapii::Slice<T>& in) {
-    toProto(out, in);
-}
-
-template <typename T>
-inline void toProtoPointer(memory_pb::Pointer* out, const T* in) {
     toProto(out, in);
 }
 

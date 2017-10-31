@@ -23,16 +23,10 @@ message Observation {
     uint64 base = 1;
     // Size is the byte count of the observation range.
     uint64 size = 2;
-    // Id is the resource id of the bytes observed.
-    string id = 3;
-}
-
-// Pointer is the type representing a memory pointer.
-message Pointer {
-    // The memory address.
-    uint64 Address = 1;
-    // The memory pool.
-    uint32 Pool = 2;
+    // ResIndex is the index of the resource (used on disk).
+    sint64 resIndex = 3;
+    // The pool identifier.
+    uint32 pool = 4;
 }
 
 // Slice is the common data between all slice types.

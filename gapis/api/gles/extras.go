@@ -41,14 +41,6 @@ type EGLImageData struct {
 	Type   GLenum
 }
 
-var _ api.ResourceReference = (*EGLImageData)(nil)
-
-// RemapResourceIDs calls the given callback for each resource ID field.
-func (e *EGLImageData) RemapResourceIDs(cb func(id *id.ID) error) (api.ResourceReference, error) {
-	err := cb(&e.ID)
-	return e, err
-}
-
 func init() {
 	protoconv.Register(
 		func(ctx context.Context, o *ErrorState) (*gles_pb.ErrorState, error) {
@@ -65,17 +57,23 @@ func init() {
 	)
 	protoconv.Register(
 		func(ctx context.Context, o *EGLImageData) (*gles_pb.EGLImageData, error) {
+			resIndex, err := id.GetRemapper(ctx).RemapID(ctx, o.ID)
+			if err != nil {
+				return nil, err
+			}
 			return &gles_pb.EGLImageData{
-				ID:     o.ID[:],
-				Size:   int32(o.Size),
-				Width:  int32(o.Width),
-				Height: int32(o.Height),
-				Format: int32(o.Format),
-				Type:   int32(o.Type),
+				ResIndex: resIndex,
+				Size:     int32(o.Size),
+				Width:    int32(o.Width),
+				Height:   int32(o.Height),
+				Format:   int32(o.Format),
+				Type:     int32(o.Type),
 			}, nil
 		}, func(ctx context.Context, p *gles_pb.EGLImageData) (*EGLImageData, error) {
-			var id id.ID
-			copy(id[:], p.ID)
+			id, err := id.GetRemapper(ctx).RemapIndex(ctx, p.ResIndex)
+			if err != nil {
+				return nil, err
+			}
 			return &EGLImageData{
 				ID:     id,
 				Size:   uint64(p.Size),

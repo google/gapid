@@ -399,17 +399,9 @@ void GlesSpy::GetEGLImageData(CallObserver* observer, EGLImageKHR img, GLsizei w
 
     std::vector<uint8_t> data;
     if (ReadExternalPixels(mImports, img, width, height, &data)) {
-        core::Id id = core::Id::Hash(data.data(), data.size());
-        if (getResources().count(id) == 0) {
-            capture::Resource resource;
-            resource.set_id(reinterpret_cast<const char*>(id.data), sizeof(id.data));
-            resource.set_data(data.data(), data.size());
-            getEncoder(kApiIndex)->object(&resource);
-            getResources().emplace(id);
-        }
-
+        auto resIndex = sendResource(kApiIndex, data.data(), data.size());
         auto extra = new gles_pb::EGLImageData();
-        extra->set_id(reinterpret_cast<const char*>(id.data), sizeof(id.data));
+        extra->set_resindex(resIndex);
         extra->set_size(data.size());
         extra->set_width(width);
         extra->set_height(height);

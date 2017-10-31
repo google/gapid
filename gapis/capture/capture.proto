@@ -40,8 +40,9 @@ message Header {
 
 // Resource is the storage type for some data keyed by an identifer.
 message Resource {
-	// Id is the resource id of the data blob.
-	bytes id = 1;
+	// Index is the index of this resource within the capture (starting with 1).
+	// This field is optional! It is used only to verify that we track the order correctly.
+	sint64 index = 1;
 	// Data is the actual data payload.
 	bytes data = 2;
 }
