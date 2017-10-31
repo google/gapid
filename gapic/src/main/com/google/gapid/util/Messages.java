@@ -35,7 +35,6 @@ public interface Messages {
   public static final String VIEW_DETAILS = "View Details";
   public static final String LICENSES = "Licenses";
   public static final String ABOUT_TITLE = "About " + WINDOW_TITLE;
-  public static final String ABOUT_DESCRIPTION = "A GPU debugger for Android";
   public static final String ABOUT_COPY = "Copyright © 2017 Google Inc.";
   public static final String GOTO = "Goto...";
   public static final String GOTO_ATOM = "Goto API Call";
