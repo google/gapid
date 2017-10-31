@@ -28,7 +28,7 @@
   {{$p := print (Global "Store") "." $proto}}
   ¶
   // ToProto returns the primary storage proto of the {{$name}} command.¶
-  func (ϟa *{{$name}}) ToProto() *{{$p}} {»¶
+  func (ϟa *{{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$p}} {»¶
     to := &{{$p}}{Thread: int64(ϟa.Thread())}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.To" "Field" $v "Outer" $proto}}
@@ -37,7 +37,7 @@
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(from *{{$p}}) *{{$name}} {»¶
+  func {{$name}}From(from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *{{$name}} {»¶
     ϟa := &{{$name}}{caller: api.CmdNoID, thread: uint64(from.GetThread())}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
@@ -50,6 +50,8 @@
 ¶
     // GetResult returns the result value for this command.¶
     func (ϟa *{{$name}}) GetResult() proto.Message {»¶
+      ϟrefs := &protoconv.ToProtoContext{}¶
+      _ = ϟrefs¶
       to := &{{Global "OutputDir"}}_pb.{{$proto}}Call{}¶
       {{Template "Convert.To" "Field" $.Return "Outer" $proto}}
       return to¶
@@ -57,6 +59,8 @@
 ¶
     // SetResult changes the result value.¶
     func (ϟa *{{$name}}) SetResult(v proto.Message) error {»¶
+      ϟrefs := &protoconv.FromProtoContext{}¶
+      _ = ϟrefs¶
       from, ok := v.(*{{Global "OutputDir"}}_pb.{{$proto}}Call)¶
       if !ok {»¶
         return fmt.Errorf("Expected result type *{{$proto}}Call, got %T", v)¶
@@ -78,7 +82,7 @@
   {{$proto := $.Name | ProtoGoName}}
   ¶
   // ToProto returns the storage form of the {{$name}}.¶
-  func (ϟa *{{$name}}) ToProto() *{{Global "OutputDir"}}_pb.{{$proto}} {»¶
+  func (ϟa *{{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{Global "OutputDir"}}_pb.{{$proto}} {»¶
     to := &{{Global "OutputDir"}}_pb.{{$proto}}{}¶
     {{range $v := $.Fields}}
       {{Template "Convert.To" "Field" $v "Outer" $proto}}
@@ -87,7 +91,7 @@
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}) {{$name}} {»¶
+  func {{$name}}From(from *{{Global "OutputDir"}}_pb.{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
     ϟa := {{$name}}{}¶
     {{range $v := $.Fields}}
       {{Template "Convert.From" "Field" $v "Outer" $proto}}
@@ -109,22 +113,25 @@
   {{$truetype := $type | Underlying}}
   {{if IsStaticArray $truetype}}
     to.{{$proto}} = make([]{{Macro "Convert.StorageType" $truetype.ValueType}}, {{$truetype.Size}})¶
-    for ϟi := 0; ϟi < {{$type.Size}}; ϟi++ {»¶
+    for ϟi := 0; ϟi < {{$truetype.Size}}; ϟi++ {»¶
       ϟv := ϟa.{{$name}}[ϟi]¶
       to.{{$proto}}[ϟi] = {{Template "Convert.ToProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
     «}¶
   {{else if IsMap $truetype}}
-    {{$entry := printf "%s_pb.%s_%sEntry" (Global "OutputDir") $.Outer $proto}}
-    to.{{$proto}} = make([]*{{$entry}}, 0, ϟa.{{$name}}.Len())¶
-    for ϟk, ϟv := range ϟa.{{$name}}.Range() {»¶
-      to.{{$proto}} = append(to.{{$proto}}, &{{$entry}}{
-        Key:  {{Template "Convert.ToProto" "Type" $type.KeyType "Value" "ϟk"}},
-        Value: {{Template "Convert.ToProto" "Type" $type.ValueType "Value" "ϟv"}}
-      })¶
+    {{$maptype := printf "%s_%s_Map" $.Outer $.Field.Name}}
+    {{$maptype := printf "%s_pb.%s" (Global "OutputDir") (ProtoGoName $maptype)}}
+    if referenceID, isNew := ϟrefs.GetReferenceID(ϟa.{{$name}}, {{$type.Name}}{}); isNew {»¶
+      ϟobj := &{{$maptype}}{ReferenceID: referenceID}¶
+      ϟkeys := ϟa.{{$name}}.KeysSorted()¶
+      for _, ϟk := range ϟkeys {»¶
+        ϟv := ϟa.{{$name}}.Get(ϟk)¶
+        ϟobj.Keys = append(ϟobj.Keys, {{Template "Convert.ToProto" "Type" $type.KeyType "Value" "ϟk"}})¶
+        ϟobj.Values = append(ϟobj.Values, {{Template "Convert.ToProto" "Type" $type.ValueType "Value" "ϟv"}})¶
+      «}¶
+      to.{{$proto}} = ϟobj¶
+    «} else {»¶
+      to.{{$proto}} = &{{$maptype}}{ReferenceID: referenceID}¶
     «}¶
-  {{else if IsBool $truetype}}
-    {{$value := printf "ϟa.%s" $name}}
-    if {{$value}} { to.{{$proto}} = 1 }¶
   {{else}}
     {{$value := printf "ϟa.%s" $name}}
     to.{{$proto}} = {{Template "Convert.ToProto" "Type" $type "Value" $value}}¶
@@ -148,15 +155,19 @@
       ϟa.{{$name}}[ϟi] = {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
     «}¶
   {{else if IsMap $truetype}}
-    ϟa.{{$name}} = New{{$.Field.Type.Name}}()¶
-    for _, ϟe := range from.{{$proto}} {»¶
-      ϟk := {{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟe.Key"}}¶
-      ϟv := {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟe.Value"}}¶
-      ϟa.{{$name}}.Set(ϟk, ϟv)¶
-    «}¶
-  {{else if IsBool $truetype}}
-    {{$value := printf "from.%s" $proto}}
-    ϟa.{{$name}} = ({{$value}} != 0)¶
+    ϟa.{{$name}} = ϟrefs.GetReferencedObject(from.{{$proto}}.GetReferenceID(), {{$.Field.Type.Name}}{}, func () interface{} {»¶
+      ϟobj := New{{$.Field.Type.Name}}()¶
+      var ϟk {{Template "Convert.StorageType" $truetype.KeyType}}¶
+      for ϟi, ϟv:= range from.{{$proto}}.Values {»¶
+        if ϟi < len(from.{{$proto}}.Keys) {»¶
+          ϟk = from.{{$proto}}.Keys[ϟi]¶
+        «}¶
+        ϟobj.Set({{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟk"}},
+                 {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}})¶
+        {{if not (IsString $truetype.KeyType)}} ϟk++ // Increment if keys are trimmed ¶{{end}}
+      «}¶
+      return ϟobj¶
+    «}).({{$.Field.Type.Name}})¶
   {{else}}
     {{$value := printf "from.%s" $proto}}
     ϟa.{{$name}} = {{Template "Convert.FromProto" "Type" $type "Value" $value}}¶
@@ -190,8 +201,9 @@
   {{else if IsSlice         $}}{{Template "Go.Type" $}}
   {{else if IsEnum          $}}{{Template "Go.Type" $}}
   {{else if IsPseudonym     $}}{{Template "Go.Type" $}}
-  {{else if IsClass         $}}*{{Template "Go.Type" $}}
-  {{else if IsMap           $}}map[{{Macro "Convert.LiveType" $.KeyType}}]{{Macro "Convert.LiveType" $.ValueType}}
+  {{else if IsClass         $}}{{Template "Go.Type" $}}
+  {{else if IsReference     $}}{{Template "Go.Type" $}}
+  {{else if IsMap           $}}{{Template "Go.Type" $}}
   {{else}}{{Error "macro Convert.LiveType called with unsupported type: %T" $}}
   {{end}}
 {{end}}
@@ -216,6 +228,7 @@
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
   {{else if IsClass         $}}*{{Global "Store"}}.{{$.Name | ProtoGoName}}
+  {{else if IsReference     $}}*{{Global "Store"}}.{{$.Name | ProtoGoName}}_Reference
   {{else}}{{Error "macro Convert.StorageType called with unsupported type: %T" $}}
   {{end}}
 {{end}}
@@ -230,7 +243,18 @@
     {{$source := Macro "Convert.LiveType" $.Type}}
     {{$target := Macro "Convert.StorageType" $.Type}}
     {{$truetype := Underlying $.Type}}
-    {{if IsClass $truetype}}{{$.Value}}.ToProto()
+    {{if IsClass $truetype}}{{$.Value}}.ToProto(ϟrefs)
+    {{else if IsReference $truetype}}
+      {{$reftype := printf "%s_pb.%s_Reference" (Global "OutputDir") ($truetype.To.Name | ProtoGoName)}}
+      func() *{{$reftype}} {¶»
+        ϟobj := &{{$reftype}}{}¶
+        referenceID, isNew := ϟrefs.GetReferenceID({{$.Value}}, {{$source}}(nil))¶
+        ϟobj.ReferenceID = referenceID¶
+        if isNew {¶»
+          ϟobj.Value = {{Template "Convert.ToProto" "Type" $truetype.To "Value" $.Value}}¶
+        «}¶
+        return ϟobj¶
+      «} ()
     {{else if IsPointer $truetype}}{{$target}}({{$.Value}}.addr)
     {{else if IsSlice $truetype}}&{{$target}}{»¶
       Root: {{$.Value}}.root,¶
@@ -238,6 +262,7 @@
       Count: {{$.Value}}.count,¶
       Pool: uint32({{$.Value}}.pool),¶
     «}
+    {{else if IsBool $truetype}}func(v bool) {{$target}}  { if v { return 1 } else { return 0 } } ({{$.Value}})
     {{else if eq $source $target}}{{$.Value}}
     {{else}}({{$target}})({{$.Value}})
     {{end}}
@@ -253,7 +278,13 @@
     {{$source := Macro "Convert.StorageType" $.Type}}
     {{$target := Macro "Convert.LiveType" $.Type}}
     {{$truetype := Underlying $.Type}}
-    {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}})
+    {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}}, ϟrefs)
+    {{else if IsReference $truetype}}
+      ϟrefs.GetReferencedObject({{$.Value}}.GetReferenceID(), ({{$target}})(nil), func() interface {} {»¶
+        {{$value := printf "%s.Value" $.Value}}
+        ϟobj := {{Template "Convert.FromProto" "Type" $.Type.To "Value" $value}}¶
+        return &ϟobj¶
+      «}).({{$target}})
     {{else if IsPointer $truetype}}{{$target}}{addr: uint64({{$.Value}}), pool: memory.ApplicationPool}
     {{else if IsSlice $truetype}}{{$target}}{»¶
       root:  {{$.Value}}.Root,¶
@@ -261,6 +292,7 @@
       count: {{$.Value}}.Count,¶
       pool:  memory.PoolID({{$.Value}}.Pool),¶
     «}
+    {{else if IsBool $truetype}}({{$.Value}} != 0)
     {{else if eq $source $target}}{{$.Value}}
     {{else}}({{$target}})({{$.Value}})
     {{end}}

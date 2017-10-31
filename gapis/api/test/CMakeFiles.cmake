@@ -20,6 +20,7 @@
 set(files
     api.go
     convert.go
+    convert_test.go
     doc.go
     enum.go
     intrinsics_test.go

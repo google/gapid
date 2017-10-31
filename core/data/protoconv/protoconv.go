@@ -37,6 +37,53 @@ var (
 	tyMessage     = reflect.TypeOf((*proto.Message)(nil)).Elem()
 )
 
+// ToProtoContext stores internal state for conversion to proto
+type ToProtoContext struct {
+	// Map needed to identify multiple references to that same object/map.
+	refs map[interface{}]int64
+}
+
+// GetReferenceID returns unique identifier for the given object.
+// nilValue is the default-initialized instance which will be mapped to ID 0.
+func (ctx *ToProtoContext) GetReferenceID(value interface{}, nilValue interface{}) (id int64, isNew bool) {
+	if value == nilValue {
+		return 0, false
+	}
+	if ctx.refs == nil {
+		ctx.refs = map[interface{}]int64{}
+	}
+	if id, ok := ctx.refs[value]; ok {
+		return id, false
+	}
+	id = int64(len(ctx.refs) + 1)
+	ctx.refs[value] = id
+	return id, true
+}
+
+// FromProtoContext stores internal state for conversion from proto
+type FromProtoContext struct {
+	// Map needed to resolve objects which are referenced multiple times.
+	refs map[int64]interface{}
+}
+
+// GetReferencedObject returns referenceable object with the given ID.
+// nilValue is the default-initialized instance to return for ID 0.
+// getValue is callback function which be called if we see the ID for first time.
+func (ctx *FromProtoContext) GetReferencedObject(id int64, nilValue interface{}, getValue func() interface{}) interface{} {
+	if id == 0 {
+		return nilValue
+	}
+	if ctx.refs == nil {
+		ctx.refs = map[int64]interface{}{}
+	}
+	if value, ok := ctx.refs[id]; ok {
+		return value
+	}
+	value := getValue()
+	ctx.refs[id] = value
+	return value
+}
+
 // ErrNoConverterRegistered is the error returned from ToProto or ToObject when
 // the object's type is not registered for conversion.
 type ErrNoConverterRegistered struct {
