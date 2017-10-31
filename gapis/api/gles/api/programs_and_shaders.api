@@ -16,227 +16,305 @@
 @resource
 class Shader {
   @unused ShaderId ID
-  @unused GLenum   ShaderType // TODO: Duplicate field?
-  @unused u8[]     Binary
-  @unused bool     Compiled     = false
-  bool             DeleteStatus
-  @unused GLchar[] InfoLog
-  string           Source
-  GLenum           Type
-  @unused string   Label
-  s32              AttachCount
+
+  // Table 21.19: Shader Object State
+  GLenum         Type
+  @unused bool   CompileStatus = false
+  @unused string InfoLog
+  string         Source
+  bool           DeleteStatus
+  @unused string Label
+  s32            AttachCount
+
+  @hidden ref!CompileShaderExtra CompileExtra // Describes last compile command
+}
+
+// Extra describing shader compilation including both the inputs and outputs.
+// We need to store copy of compile-time inputs for mid-execution capture,
+// because changing the source code does not change the compiled shader code.
+@internal
+@serialize
+class CompileShaderExtra {
+  ShaderId ID
+
+  // Outputs
+  bool   CompileStatus
+  string InfoLog
+
+  // Inputs
+  string          Source
+  ref!BinaryExtra Binary // Takes precedence over Source if set
+}
+
+@post_fence
+extern ref!CompileShaderExtra GetCompileShaderExtra(ref!Context ctx, ref!Shader p, ref!BinaryExtra binary)
+
+sub void ApplyCompileShaderExtra(ref!Shader s, ref!CompileShaderExtra i) {
+  if i != null {
+    assert(s != null)
+    s.CompileExtra = i
+    s.CompileStatus = i.CompileStatus
+    s.InfoLog = i.InfoLog
+  }
+}
+
+@internal
+@serialize
+class BinaryExtra {
+  u8[]    Data   // Binary blob
+  GLenum  Format // Vendor-specific format
+  GLsizei Count  // Number of binaries stored in the blob
+  GLsizei Index  // Index of the binary that we are referencing
 }
 
 @internal
 @resource
 class Program {
-  @unused ProgramId                           ID
-  map!(GLenum, ref!Shader)                    Shaders
-  @unused GLboolean                           LinkStatus
-  @unused string                              InfoLog
-  @unused bool                                Precompiled
-  bool                                        DeleteStatus
-  @unused u8[]                                Binary
-  @unused map!(string, AttributeLocation)     AttributeBindings
-  map!(AttributeIndex, ActiveAttribute)       ActiveAttributes    // Program introspection.
-  map!(UniformIndex, ActiveUniform)           ActiveUniforms      // Program introspection.
-  ActiveUniformBlock                          DefaultUniformBlock // Program introspection.
-  map!(UniformBlockIndex, ActiveUniformBlock) ActiveUniformBlocks // Program introspection.
-  map!(UniformLocation, Uniform)              Uniforms            // Values are stored separately.
-  @unused string                              Label
-  s32                                         UseCount
+  @unused ProgramId                       ID
+  map!(GLenum, ref!Shader)                Shaders
+  ref!ActiveProgramResources              ActiveResources
+  map!(UniformLocation, Uniform)          UniformLocations
+  GLboolean                               LinkStatus
+  bool                                    ValidateStatus
+  @unused string                          InfoLog
+  ref!ShaderLayoutQualifiers              ShaderLayout
+  @unused map!(string, AttributeLocation) AttributeBindings
+  map!(u32, string)                       TransformFeedbackVaryings
+  GLenum                                  TransformFeedbackBufferMode = GL_INTERLEAVED_ATTRIBS
+  bool                                    Separable                   = false
+  bool                                    BinaryRetrievableHint       = false
+  bool                                    DeleteStatus
+  @unused string                          Label
+  s32                                     UseCount
+
+  @hidden ref!LinkProgramExtra     LinkExtra           // Describes last link command
+  @hidden ref!LinkProgramExtra     SuccessfulLinkExtra // Describes last successful link command
+  @hidden ref!ValidateProgramExtra ValidateExtra       // Describes last validate command
 }
 
+// Extra describing program link including both the inputs and outputs.
+// We need to store copy of compile-time inputs for mid-execution capture,
+// because changing the inputs does not change the compiled program code.
 @internal
 @serialize
-class ActiveAttribute {
-  @unused string            Name
-  @unused GLenum            Type
-  @unused GLint             ArraySize
-  @unused AttributeLocation Location  // This is different to the index. -1 if not used.
+class LinkProgramExtra {
+  ProgramId ID
+
+  // Outputs
+  GLboolean                  LinkStatus
+  string                     InfoLog
+  ref!ActiveProgramResources ActiveResources
+  ref!ShaderLayoutQualifiers ShaderLayout
+
+  // Inputs
+  map!(GLenum, ref!CompileShaderExtra) Shaders
+  ref!BinaryExtra                      Binary // Takes precedence over Shaders if set
+  map!(string, AttributeLocation)      AttributeBindings
+  map!(u32, string)                    TransformFeedbackVaryings
+  GLenum                               TransformFeedbackBufferMode
+  bool                                 Separable
+  bool                                 BinaryRetrievableHint
 }
 
-@internal
-@serialize
-class ActiveUniformBlock {
-  @unused string                    Name
-  GLint                             Binding
-  GLint                             DataSize
-  bool                              ReferencedByVertexShader
-  bool                              ReferencedByFragmentShader
-  map!(UniformIndex, ActiveUniform) ActiveUniforms
-}
+@post_fence
+extern ref!LinkProgramExtra GetLinkProgramExtra(ref!Context ctx, ref!Program p, ref!BinaryExtra binary)
 
-@internal
-@serialize
-class ActiveUniform {
-  @unused string                    Name
-  @unused GLenum                    Type
-  @unused GLint                     ArraySize
-  @unused UniformLocation           Location = -1 // This is different to the index. -1 if not used.
-  @unused map!(u32,UniformLocation) Locations // Location of each array element (can be non-consecutive).
-  @unused UniformBlockIndex         BlockIndex = 0xFFFFFFFF
-  @unused GLint                     Offset = -1
-  @unused GLint                     ArrayStride = -1
-  @unused GLint                     MatrixStride = -1
-  @unused GLint                     IsRowMajor = 0
+sub void ApplyLinkProgramExtra(ref!Program p, ref!LinkProgramExtra i) {
+  if i != null {
+    assert(p != null)
+    if i.LinkStatus == GL_TRUE {
+      // We need to keep track of the last successful link,
+      // since it remains in effect at any binding points.
+      p.SuccessfulLinkExtra = i
+    }
+    p.LinkExtra = i
+    p.LinkStatus = i.LinkStatus
+    p.InfoLog = i.InfoLog
+    p.ActiveResources = i.ActiveResources
+    p.ShaderLayout = i.ShaderLayout
+
+    // Set uniform values to default (zeroed)
+    p.UniformLocations = null
+    for _, uniformIndex, uniform in i.ActiveResources.DefaultUniformBlock {
+      elementInfo := GetUniformTypeInfo(uniform.Type)
+      elementSize := elementInfo.primitiveSize * elementInfo.vectorSize * elementInfo.vectorCount
+      values := make!u8(elementSize * as!u32(uniform.ArraySize))
+      // Each element of the array is assigned a location by compiler.
+      // The location acts as a handle. Locations do not have to be consecutive.
+      for _, elementIndex, loc in uniform.Locations {
+        if (loc != -1) {
+          assert(elementIndex < as!u32(uniform.ArraySize))
+          offset := elementIndex * elementSize
+          p.UniformLocations[as!UniformLocation(loc)] = Uniform(
+            Type:          uniform.Type,
+            Value:         values[offset:offset + elementSize],
+            Values:        values[offset:len(values)],
+            UniformIndex:  uniformIndex
+          )
+        }
+      }
+      uniform.Value = values
+      if len(i.ActiveResources.Uniforms) > 0 {
+        // TODO: This should be the same ref as the 'uniform' above,
+        //       but the deep clone which got this extra made a copy.
+        uniformAlias := i.ActiveResources.Uniforms[as!u32(uniformIndex)]
+        uniformAlias.Value = values
+      }
+    }
+  }
 }
 
 @internal
 class Uniform {
-  @internal u8[] Value
-  @unused GLenum Type
+  @unused GLenum         Type
+  @internal u8[]         Value
+  @hidden @internal u8[] Values // Includes this uniform and any following array-elements
+  UniformIndex           UniformIndex // Reference back to ProgramResource (not location)
+}
+
+@internal @serialize
+class ValidateProgramExtra {
+  ProgramId ID
+  bool      ValidateStatus
+  string    InfoLog
+}
+
+@post_fence
+extern ref!ValidateProgramExtra GetValidateProgramExtra(ref!Context ctx, ref!Program p)
+
+sub void ApplyValidateProgramExtra(ref!Program p, ref!ValidateProgramExtra i) {
+  if i != null {
+    p.ValidateStatus = i.ValidateStatus
+    p.InfoLog = i.InfoLog
+  }
 }
 
 @internal
 class Pipeline {
   PipelineId ID
-  @unused string Label
-}
 
-/*
-@internal
-class Shader {
-  // Table 21.19: Shader Object State
-  GLenum Type
-  GLboolean DeleteStatus = GL_FALSE
-  GLboolean CompileStatus = GL_FALSE
-  string InfoLog
-  GLuint InfoLogLength = 0
-  string Source
-  GLuint SourceLength = 0
-  string ObjectLabel
-}
-
-@internal
-class Pipeline {
   // Table 21.20: Program Pipeline Object State
-  GLuint ActiveProgram = 0
-  GLuint VertexShader = 0
-  GLuint GeometryShader = 0
-  GLuint TessControlShader = 0
-  GLuint TessEvaluationShader = 0
-  GLuint FragmentShader = 0
-  GLuint ComputeShader = 0
-  GLboolean ValidateStatus = GL_FALSE
-  string ProgramPipelineInfoLog
-  GLuint InfoLogLength = 0
-  string ObjectLabel
+  ref!Program ActiveProgram
+  ref!Program VertexShader
+  ref!Program TessControlShader
+  ref!Program TessEvaluationShader
+  ref!Program GeometryShader
+  ref!Program FragmentShader
+  ref!Program ComputeShader
+  bool        ValidateStatus
+  string      InfoLog
+  string      Label
+
+  @hidden ref!ValidateProgramPipelineExtra ValidateExtra // Describes last validate command
+}
+
+@internal @serialize
+class ValidateProgramPipelineExtra {
+  PipelineId ID
+  bool       ValidateStatus
+  string     InfoLog
+}
+
+@post_fence
+extern ref!ValidateProgramPipelineExtra GetValidateProgramPipelineExtra(ref!Context ctx, ref!Pipeline p)
+
+sub void ApplyValidateProgramPipelineExtra(ref!Pipeline p, ref!ValidateProgramPipelineExtra i) {
+  if i != null {
+    p.ValidateStatus = i.ValidateStatus
+    p.InfoLog = i.InfoLog
+  }
 }
 
 @internal
-class Program {
-  // Table 21.21: Program Object State
-  GLuint CurrentProgram = 0 // TODO: global state?
-  GLuint ProgramPipelineBinding = 0 // TODO: global state?
-  GLboolean ProgramSeparable = GL_FALSE
-  GLboolean DeleteStatus = GL_FALSE
-  GLboolean LinkStatus = GL_FALSE
-  GLboolean ValidateStatus = GL_FALSE
-  GLuint AttachedShaders = 0
-  GLuint[] AttachedShaders
-  string ProgramInfoLog
-  GLuint InfoLogLength = 0
-  GLuint ProgramBinaryLength = 0
-  GLboolean ProgramBinaryRetrievableHint = GL_FALSE
-  u8[] ProgramBinary
-  GLuint[3] ComputeWorkGroupSize // TODO: init
-  string ObjectLabel
-
-  // Table 21.22: Program Object State (cont.)
-  GLuint ActiveUniforms = 0
-  GLint[] Location
-  GLuint[] Size // TODO: Redundant?
-  GLuint[] Type // TODO: Redundant?
-  string[] Name // TODO: Redundant? // SPEC: missing ×
-  GLuint ActiveUniformMaxLength = 0
-  u8[] Value
-  GLuint ActiveAttributes = 0
-
-  // Table 21.23: Program Object State (cont.)
-  GLint[] Location
-  GLuint[] Size
-  GLuint[] Type
-  string[] Name
-  GLuint ActiveAttributeMaxLength = 0
-  GLuint GeometryVerticesOut = 0
-  GLenum GeometryInputType = GL_TRIANGLES
-  GLenum GeometryOutputType = GL_TRIANGLE_STRIP
-  GLuint GeometryShaderInvocations = 1
-  GLenum TransformFeedbackBufferMode = GL_INTERLEAVED_ATTRIBS
-  GLuint TransformFeedbackVaryings = 0
-  GLuint TransformFeedbackVaryingMaxLength = 0
-  GLuint[] Size // SPEC: Missing ×
-  GLuint[] Type // SPEC: Missing ×
-  string[] Name // SPEC: Missing ×
-
-  // Table 21.24: Program Object State (cont.)
-  GLuint ActiveUniformBlocks = 0
-  GLuint ActiveUniformBlockMaxNameLength = 0
-  GLenum[] UniformType
-  GLuint[] UniformSize
-  GLuint[] UniformNameLength
-  GLint[] UniformBlockIndex
-  GLint[] UniformOffset
-
-  // Table 21.25: Program Object State (cont.)
-  GLint[] UniformArrayStride
-  GLint[] UniformMatrixStride
-  GLboolean[] UniformIsRowMajor
-  GLuint[] UniformBlockBinding // SPEC: Missing ×
-  GLuint[] UniformBlockDataSize // SPEC: Missing ×
-  GLuint[] UniformBlockNameLength // SPEC: Missing ×
-  GLuint[] UniformBlockActiveUniforms // SPEC: Missing ×
-  GLuint[][] UniformBlockActiveUniformIndices // SPEC: Missing ×
-  GLboolean[] UniformBlockReferencedByVertexShader // SPEC: Missing ×
-  GLboolean[] UniformBlockReferencedByFragmentShader // SPEC: Missing ×
-
-  // Table 21.26: Program Object State (cont.)
-  GLuint TessControlOutputVertices = 0
-  GLenum TessGenMode = GL_QUADS
-  GLenum TessGenSpacing = GL_EQUAL
-  GLenum TessGenVertexOrder = GL_CCW
-  GLboolean TessGenPointMode = GL_FALSE
-  GLuint ActiveAtomicCounterBuffers = 0
+@serialize
+class ActiveProgramResources {
+  @unused map!(u32, ref!ProgramResource)          ProgramInputs
+  @unused map!(u32, ref!ProgramResource)          ProgramOutputs
+  @unused map!(u32, ref!ProgramResource)          Uniforms
+  @unused map!(UniformIndex, ref!ProgramResource) DefaultUniformBlock
+  @unused map!(u32, ref!ProgramResourceBlock)     UniformBlocks
+  @unused map!(u32, ref!ProgramResourceBlock)     AtomicCounterBuffers
+  @unused map!(u32, ref!ProgramResource)          BufferVariables
+  @unused map!(u32, ref!ProgramResourceBlock)     ShaderStorageBlocks
+  @unused map!(u32, ref!ProgramResource)          TransformFeedbackVaryings
 }
 
 @internal
-class ProgramInterface {
-  // Table 21.27: Program Interface State
-  GLuint[] ActiveResources
-  GLuint[] MaxNameLength
-  GLuint[] MaxNumActiveVariables
+@serialize
+class ProgramResourceBlock {
+  @unused string                         Name
+  @unused GLint                          Binding
+  @unused GLint                          DataSize
+  @unused ref!ProgramResourceUses        ReferencedBy // May be null if unknown (older GL versions)
+  @unused map!(u32, ref!ProgramResource) Resources
 }
 
 @internal
+@serialize
 class ProgramResource {
-  // Table 21.28: Program Object Resource State
-  GLuint[] ActiveVariables // SPEC: Missing ×
-  GLuint ArraySize
-  GLuint ArrayStride
-  GLuint AtomicCounterBufferIndex
-  GLuint BlockIndex
-  GLuint BufferBinding
-  GLuint BufferDataSize
-  GLuint IsRowMajor
-  GLuint Location
-  GLuint MatrixStride
+  @unused string          Name
+  @unused GLenum          Type
+  @unused u8[]            Value
+  @unused GLint           ArraySize = 1  // Number of active array elements (can be less than declared)
+  @unused map!(u32,GLint) Locations      // Location of array elements (can be non-consecutive)
+  @unused @hidden GLint   BlockIndex = -1                // Hidden as it is implied by the owning container
+  @unused @hidden GLint   AtomicCounterBufferIndex = -1  // Hidden as it is implied by the owning container
+  @unused @hidden bool    IsPerPatch                     // Hidden to reduce noise
 
-  // Table 21.29: Program Object Resource State (cont.)
-  GLuint NameLength
-  GLuint NumActiveVariables
-  GLuint Offset
-  GLuint ReferencedByVertexShader
-  GLuint ReferencedByTessControlShader
-  GLuint ReferencedByTessEvaluationShader
-  GLuint ReferencedByGeometryShader
-  GLuint ReferencedByFragmentShader
-  GLuint ReferencedByComputeShader
-  GLuint TopLevelArraySize
-  GLuint TopLevelArrayStride
-  GLuint Type
+  @unused ref!ProgramResourceUses   ReferencedBy // May be null if unknown or not applicable
+  @unused ref!ProgramResourceLayout Layout       // May be null if unknown or not applicable
 }
-*/
+
+@internal
+@serialize
+class ProgramResourceUses {
+  @unused bool VertexShader
+  @unused bool TessControlShader
+  @unused bool TessEvaluationShader
+  @unused bool GeometryShader
+  @unused bool FragmentShader
+  @unused bool ComputeShader
+}
+
+@internal
+@serialize
+class ProgramResourceLayout {
+  @unused GLint Offset              = -1
+  @unused GLint ArrayStride         = -1
+  @unused GLint MatrixStride        = -1
+  @unused bool  IsRowMajor
+  @unused GLint TopLevelArraySize   = 0
+  @unused GLint TopLevelArrayStride = 0
+}
+
+@internal
+@serialize
+class ShaderLayoutQualifiers {
+  @unused GLuint GeometryVerticesOut       = 0
+  @unused GLenum GeometryInputType         = GL_TRIANGLES
+  @unused GLenum GeometryOutputType        = GL_TRIANGLE_STRIP
+  @unused GLuint GeometryShaderInvocations = 1
+
+  @unused GLuint TessControlOutputVertices = 0
+  @unused GLenum TessGenMode               = GL_QUADS
+  @unused GLenum TessGenSpacing            = GL_EQUAL
+  @unused GLenum TessGenVertexOrder        = GL_CCW
+  @unused bool   TessGenPointMode          = false
+
+  @unused GLuint[3] ComputeWorkGroupSize
+}
+
+sub ref!Pipeline GetOrCreatePipelineOrError(PipelineId id) {
+  ctx := GetContext()
+  if ctx.Objects.Pipelines[id] == null {
+    if ctx.Objects.GeneratedNames.Pipelines[id] {
+      ctx.Objects.Pipelines[id] = new!Pipeline(ID: id)
+    } else {
+      glErrorInvalidOperation_ObjectDoesNotExist!PipelineId(id)
+    }
+  }
+  return ctx.Objects.Pipelines[id]
+}
 
 sub string readString(GLsizei length, const GLchar* buffer, bool consider_zero_length_nt) {
   chars := as!(const char*)(buffer)
@@ -316,18 +394,9 @@ sub void AdjustProgramUseCount(ref!Program p, s32 delta) {
 sub void SetProgramUniform(ref!Program p, UniformLocation location, u8[] value, GLenum type) {
   if p == null { glErrorInvalidOperation() }
   if location != -1 { // -1 is silently ignored.
-    if !(location in p.Uniforms) { glErrorInvalidOperation() }
-    // TODO: Remove the temporary.
-    u := p.Uniforms[location]
-    if len(u.Value) == len(value) {
-      copy(u.Value, value)
-    } else {
-      u.Value = clone(value)
-    }
+    if !(location in p.UniformLocations) { glErrorInvalidOperation() }
     // TODO: Check that the type matches the type declared in the shader.
-    u.Type = type
-    // TODO: We need to split arrays to multiple (possibly non-consecutive) locations.
-    p.Uniforms[location] = u
+    copy(p.UniformLocations[location].Values, value)
   }
 }
 
@@ -335,7 +404,12 @@ sub void SetProgramUniform(ref!Program p, UniformLocation location, u8[] value, 
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glActiveShaderProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glActiveShaderProgram.xhtml", Version.GLES32)
 cmd void glActiveShaderProgram(PipelineId pipeline, ProgramId program) {
-  // TODO
+  pipe := GetOrCreatePipelineOrError(pipeline)
+  if program == 0 {
+    pipe.ActiveProgram = null
+  } else {
+    pipe.ActiveProgram = GetProgramOrError(program)
+  }
 }
 
 @if(Version.GLES20)
@@ -345,12 +419,8 @@ cmd void glActiveShaderProgram(PipelineId pipeline, ProgramId program) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glAttachShader.xhtml", Version.GLES32)
 cmd void glAttachShader(ProgramId program, ShaderId shader) {
 
-  ctx := GetContext()
-  _ = GetShaderOrError(shader)
-  _ = GetProgramOrError(program)
-
-  p := ctx.Objects.Programs[program]
-  s := ctx.Objects.Shaders[shader]
+  s := GetShaderOrError(shader)
+  p := GetProgramOrError(program)
   if s.Type in p.Shaders { glErrorInvalidOperation() } // shader already attached
   p.Shaders[s.Type] = s
   AdjustShaderAttachCount(s, +1)
@@ -364,10 +434,8 @@ cmd void glAttachShader(ProgramId program, ShaderId shader) {
 cmd void glBindAttribLocation(ProgramId program, AttributeLocation location, string name) {
   n := as!char[](name)
   if (len(n) > 2) && (as!string(n[0:3]) == "gl_") { glErrorInvalidOperation() }
-  ctx := GetContext()
-  _ = GetProgramOrError(program)
+  p := GetProgramOrError(program)
   CheckAttributeLocation(location)
-  p := ctx.Objects.Programs[program]
   p.AttributeBindings[name] = location
 }
 
@@ -375,7 +443,12 @@ cmd void glBindAttribLocation(ProgramId program, AttributeLocation location, str
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindProgramPipeline.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindProgramPipeline.xhtml", Version.GLES32)
 cmd void glBindProgramPipeline(PipelineId pipeline) {
-  // TODO
+  ctx := GetContext()
+  if pipeline == 0 {
+    ctx.Bound.Pipeline = null
+  } else {
+    ctx.Bound.Pipeline = GetOrCreatePipelineOrError(pipeline)
+  }
 }
 
 @if(Version.GLES20)
@@ -384,10 +457,9 @@ cmd void glBindProgramPipeline(PipelineId pipeline) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glCompileShader.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glCompileShader.xhtml", Version.GLES32)
 cmd void glCompileShader(ShaderId shader) {
-
-  _ = GetShaderOrError(shader)
-
-  // TODO: shader.Binary < ?
+  ctx := GetContext()
+  s := GetShaderOrError(shader)
+  ApplyCompileShaderExtra(s, GetCompileShaderExtra(ctx, s, null))
 }
 
 @if(Version.GLES20)
@@ -425,7 +497,7 @@ cmd ShaderId glCreateShader(GLenum type) {
 
   ctx := GetContext()
   id := ?
-  ctx.Objects.Shaders[id] = new!Shader(ID: id, ShaderType: type, Type: type)
+  ctx.Objects.Shaders[id] = new!Shader(ID: id, Type: type)
   return id
 }
 
@@ -448,8 +520,11 @@ cmd ProgramId glCreateShaderProgramv(GLenum type, GLsizei count, const GLchar* c
   for i in (0 .. count) {
     _ = as!string(as!char*(sources[i]))
   }
-  // TODO
-  return ?
+  ctx := GetContext()
+  id := ?
+  ctx.Objects.Programs[id] = new!Program(ID: id, Separable: true)
+  // TODO: Program link info
+  return id
 }
 
 @if(Version.GLES20)
@@ -561,10 +636,8 @@ cmd void glGetActiveAttrib(ProgramId      program,
 
   CheckSizeGE!GLsizei(buffer_size, 0)
 
-  ctx := GetContext()
-  _ = GetProgramOrError(program)
-  p := ctx.Objects.Programs[program]
-  if !(index in p.ActiveAttributes) { glErrorInvalidValue!AttributeIndex(index) }
+  p := GetProgramOrError(program)
+  if !(as!u32(index) in p.ActiveResources.ProgramInputs) { glErrorInvalidValue!AttributeIndex(index) }
 
   writeString(buffer_size, buffer_bytes_written, name)
 
@@ -585,11 +658,9 @@ cmd void glGetActiveUniform(ProgramId    program,
                             GLenum*      type,
                             GLchar*      name) {
 
-  ctx := GetContext()
-  _ = GetProgramOrError(program)
+  p := GetProgramOrError(program)
   CheckSizeGE!GLsizei(buffer_size, 0)
-  p := ctx.Objects.Programs[program]
-  if !(index in p.ActiveUniforms) { glErrorInvalidValue!UniformIndex(index) }
+  if !(as!u32(index) in p.ActiveResources.Uniforms) { glErrorInvalidValue!UniformIndex(index) }
 
   writeString(buffer_size, buffer_bytes_written, name)
 
@@ -667,10 +738,8 @@ cmd void glGetAttachedShaders(ProgramId program,
                               GLsizei*  shaders_length_written,
                               ShaderId* shaders) {
 
-  ctx := GetContext()
-  _ = GetProgramOrError(program)
+  p := GetProgramOrError(program)
   CheckGE!GLsizei(buffer_length, 0)
-  p := ctx.Objects.Programs[program]
   l := min!s32(as!s32(buffer_length), len(p.Shaders))
   if shaders_length_written != null {
     shaders_length_written[0] = as!GLsizei(l)
@@ -1005,13 +1074,11 @@ cmd void glGetShaderiv(ShaderId shader, GLenum parameter, GLint* value) {
     }
   }
 
-  ctx := GetContext()
-  _ = GetShaderOrError(shader)
-  s := ctx.Objects.Shaders[shader]
+  s := GetShaderOrError(shader)
   value[0] = switch (parameter) {
     case GL_SHADER_TYPE:          as!GLint(s.Type)
     case GL_DELETE_STATUS:        switch (s.DeleteStatus) { case true: 1 case false: 0 }
-    case GL_COMPILE_STATUS:       switch (s.Compiled) { case true: 1 case false: 0 }
+    case GL_COMPILE_STATUS:       switch (s.CompileStatus) { case true: 1 case false: 0 }
     case GL_INFO_LOG_LENGTH:      as!GLint(len(s.InfoLog))
     case GL_SHADER_SOURCE_LENGTH: as!GLint(len(s.Source))
   }
@@ -1136,7 +1203,6 @@ sub void GetnUniformuiv(ProgramId program, UniformLocation location, GLsizei buf
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsProgram.xhtml", Version.GLES32)
 cmd GLboolean glIsProgram(ProgramId program) {
-
   ctx := GetContext()
   return as!GLboolean(program in ctx.Objects.Programs)
 }
@@ -1145,8 +1211,8 @@ cmd GLboolean glIsProgram(ProgramId program) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsProgramPipeline.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsProgramPipeline.xhtml", Version.GLES32)
 cmd GLboolean glIsProgramPipeline(PipelineId pipeline) {
-  // TODO
-  return ?
+  ctx := GetContext()
+  return as!GLboolean(pipeline in ctx.Objects.Pipelines)
 }
 
 @if(Version.GLES20)
@@ -1155,7 +1221,6 @@ cmd GLboolean glIsProgramPipeline(PipelineId pipeline) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glIsShader.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsShader.xhtml", Version.GLES32)
 cmd GLboolean glIsShader(ShaderId shader) {
-
   ctx := GetContext()
   return as!GLboolean(shader in ctx.Objects.Shaders)
 }
@@ -1167,10 +1232,10 @@ cmd GLboolean glIsShader(ShaderId shader) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glLinkProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glLinkProgram.xhtml", Version.GLES32)
 cmd void glLinkProgram(ProgramId program) {
-  _ = GetProgramOrError(program)
+  p := GetProgramOrError(program)
 
   ctx := GetContext()
-  ApplyProgramInfoExtra(program, GetProgramInfoExtra(ctx, program))
+  ApplyLinkProgramExtra(p, GetLinkProgramExtra(ctx, p, null))
 }
 
 @if(Version.GLES31)
@@ -1257,20 +1322,18 @@ cmd void glProgramBinary(ProgramId   program,
   ProgramBinary(program, binaryFormat, binary, length)
 }
 
-sub void ProgramBinary(ProgramId program, GLenum binaryFormat, const void* binary, GLsizei length) {
+sub void ProgramBinary(ProgramId program, GLenum format, const void* binary, GLsizei length) {
   ctx := GetContext()
-  _ = GetProgramOrError(program)
-  p := ctx.Objects.Programs[program]
-  switch (binaryFormat) {
-    case GL_Z400_BINARY_AMD: {
-      p.Binary = clone(as!u8[](binary[0:length]))
-      p.Precompiled = true
-      ApplyProgramInfoExtra(program, GetProgramInfoExtra(ctx, program))
-    }
+  p := GetProgramOrError(program)
+  data := clone(as!u8[](binary[0:length]))
+  switch (format) {
+    case GL_Z400_BINARY_AMD: { }
     default: {
-      glErrorInvalidEnum(binaryFormat)
+      glErrorInvalidEnum(format)
     }
   }
+  b := new!BinaryExtra(Data: data, Format: format, Count: 1)
+  ApplyLinkProgramExtra(p, GetLinkProgramExtra(ctx, p, b))
 }
 
 @if(Version.GLES30)
@@ -1282,20 +1345,20 @@ cmd void glProgramParameteri(ProgramId program, GLenum pname, GLint value) {
 }
 
 sub void ProgramParameteri(ProgramId program, GLenum pname, GLint value) {
+  p := GetProgramOrError(program)
   switch (pname) {
+    @if(Version.GLES30)
     case GL_PROGRAM_BINARY_RETRIEVABLE_HINT: {
-      // version 3.0
+      p.BinaryRetrievableHint = as!bool(value)
     }
     @if(Version.GLES31)
     case GL_PROGRAM_SEPARABLE: {
+      p.Separable = as!bool(value)
     }
     default: {
       glErrorInvalidEnum(pname)
     }
   }
-
-  _ = program // TODO
-  _ = value // TODO
 }
 
 sub void ProgramUniformv!T(ProgramId       program,
@@ -1840,16 +1903,27 @@ cmd void glShaderBinary(GLsizei         count,
                         GLenum          binary_format,
                         const void*     binary,
                         GLsizei         binary_size) {
+  ctx := GetContext()
+  t := shaders[0:count]
+  for i in (0 .. count) {
+    _ := GetShaderOrError(t[i]) // Error check only.
+  }
+  data := clone(as!u8[](binary[0:binary_size]))
   switch (binary_format) {
     default: {
       glErrorInvalidEnum(binary_format)
     }
   }
-
-  read(shaders[0:count])
-  read(binary[0:binary_size])
+  fence // TODO: Automatic placement failed.
   for i in (0 .. count) {
-    // TODO: shaders[i].Binary = ?
+    s := GetShaderOrError(t[i])
+    b := new!BinaryExtra(
+      Data:    data,
+      Format:  binary_format,
+      Count:   count,
+      Index:   i,
+    )
+    ApplyCompileShaderExtra(s, GetCompileShaderExtra(ctx, s, b))
   }
 }
 
@@ -1865,14 +1939,12 @@ cmd void glShaderSource(ShaderId             shader,
   CheckCountGE!GLsizei(count, 0)
 
   sources := source[0:count]
-  ctx := GetContext()
-  _ = GetShaderOrError(shader)
-
-  s := ctx.Objects.Shaders[shader]
+  s := GetShaderOrError(shader)
   s.Source = as!string(null)
   if length == null {
     for i in (0 .. count) {
-      s.Source += as!string(as!char*(sources[i]))
+      str := as!string(as!char*(sources[i]))
+      s.Source += str
     }
   } else {
     lengths := length[0:count]
@@ -2150,8 +2222,12 @@ cmd void glUniform4uiv(UniformLocation location, GLsizei count, const GLuint* va
 cmd void glUniformBlockBinding(ProgramId         program,
                                UniformBlockIndex uniform_block_index,
                                GLuint            uniform_block_binding) {
-
-  // TODO
+  ctx := GetContext()
+  p := GetProgramOrError(program)
+  ub := p.ActiveResources.UniformBlocks[as!u32(uniform_block_index)]
+  if ub == null { glErrorInvalidValue!UniformBlockIndex(uniform_block_index) }
+  CheckLT!GLuint(uniform_block_binding, as!GLuint(ctx.Constants.MaxUniformBufferBindings))
+  ub.Binding = as!GLint(uniform_block_binding)
 }
 
 sub void UniformMatrixv!T(UniformLocation location,
@@ -2322,16 +2398,49 @@ cmd void glUseProgram(ProgramId program) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUseProgramStages.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUseProgramStages.xhtml", Version.GLES32)
 cmd void glUseProgramStages(PipelineId pipeline, GLbitfield stages, ProgramId program) {
+  pipe := GetOrCreatePipelineOrError(pipeline)
   supportsBits(stages, GL_ALL_SHADER_BITS | GL_COMPUTE_SHADER_BIT | GL_FRAGMENT_SHADER_BIT | GL_VERTEX_SHADER_BIT)
-  if (GL_ALL_SHADER_BITS in stages) {
+  if program == 0 {
+    SetProgramStates(pipe, stages, null)
+  } else {
+    p := GetProgramOrError(program)
+    if p.LinkStatus == GL_FALSE { glErrorInvalidOperation() }
+    if !p.LinkExtra.Separable { glErrorInvalidOperation() }
+    SetProgramStates(pipe, stages, p)
   }
+}
+
+sub void SetProgramStates(ref!Pipeline pipe, GLbitfield stages, ref!Program p) {
   if (GL_COMPUTE_SHADER_BIT in stages) {
+    AdjustProgramUseCount(p, +1)
+    AdjustProgramUseCount(pipe.ComputeShader, -1)
+    pipe.ComputeShader = p
   }
   if (GL_FRAGMENT_SHADER_BIT in stages) {
+    AdjustProgramUseCount(p, +1)
+    AdjustProgramUseCount(pipe.FragmentShader, -1)
+    pipe.FragmentShader = p
   }
   if (GL_VERTEX_SHADER_BIT in stages) {
+    AdjustProgramUseCount(p, +1)
+    AdjustProgramUseCount(pipe.VertexShader, -1)
+    pipe.VertexShader = p
   }
-  // TODO
+  if (GL_TESS_CONTROL_SHADER_BIT in stages) {
+    AdjustProgramUseCount(p, +1)
+    AdjustProgramUseCount(pipe.TessControlShader, -1)
+    pipe.TessControlShader = p
+  }
+  if (GL_TESS_EVALUATION_SHADER_BIT in stages) {
+    AdjustProgramUseCount(p, +1)
+    AdjustProgramUseCount(pipe.TessEvaluationShader, -1)
+    pipe.TessEvaluationShader = p
+  }
+  if (GL_GEOMETRY_SHADER_BIT in stages) {
+    AdjustProgramUseCount(p, +1)
+    AdjustProgramUseCount(pipe.GeometryShader, -1)
+    pipe.GeometryShader = p
+  }
 }
 
 @if(Version.GLES20)
@@ -2340,13 +2449,17 @@ cmd void glUseProgramStages(PipelineId pipeline, GLbitfield stages, ProgramId pr
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glValidateProgram.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glValidateProgram.xhtml", Version.GLES32)
 cmd void glValidateProgram(ProgramId program) {
-  _ = GetProgramOrError(program)
+  ctx := GetContext()
+  p := GetProgramOrError(program)
+  ApplyValidateProgramExtra(p, GetValidateProgramExtra(ctx, p))
 }
 
 @if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glValidateProgramPipeline.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glValidateProgramPipeline.xhtml", Version.GLES32)
 cmd void glValidateProgramPipeline(PipelineId pipeline) {
-  // TODO
+  ctx := GetContext()
+  pipe := GetOrCreatePipelineOrError(pipeline)
+  ApplyValidateProgramPipelineExtra(pipe, GetValidateProgramPipelineExtra(ctx, pipe))
 }
 

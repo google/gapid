@@ -23,19 +23,22 @@ import (
 func TestStubShaderSource(t *testing.T) {
 	for _, test := range []struct {
 		name   string
-		pi     *gles.ProgramInfo
+		pi     *gles.LinkProgramExtra
 		vs, fs string
 	}{
 		{
 			name: "Simple",
-			pi: &gles.ProgramInfo{
-				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
-					Type: gles.GLenum_GL_FLOAT_VEC4,
-					Name: "foo",
-				}).Add(1, gles.ActiveUniform{
-					Type: gles.GLenum_GL_SAMPLER_2D,
-					Name: "bar",
-				}),
+			pi: &gles.LinkProgramExtra{
+				LinkStatus: gles.GLboolean_GL_TRUE,
+				ActiveResources: &gles.ActiveProgramResources{
+					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type: gles.GLenum_GL_FLOAT_VEC4,
+						Name: "foo",
+					}).Add(1, &gles.ProgramResource{
+						Type: gles.GLenum_GL_SAMPLER_2D,
+						Name: "bar",
+					}),
+				},
 			},
 			vs: `#version 150
 
@@ -65,16 +68,19 @@ void main() {
 }`,
 		}, {
 			name: "Array",
-			pi: &gles.ProgramInfo{
-				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
-					Type:      gles.GLenum_GL_FLOAT_VEC4,
-					Name:      "foo",
-					ArraySize: 3,
-				}).Add(1, gles.ActiveUniform{
-					Type:      gles.GLenum_GL_FLOAT_VEC4,
-					Name:      "bar[0]",
-					ArraySize: 3,
-				}),
+			pi: &gles.LinkProgramExtra{
+				LinkStatus: gles.GLboolean_GL_TRUE,
+				ActiveResources: &gles.ActiveProgramResources{
+					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_FLOAT_VEC4,
+						Name:      "foo",
+						ArraySize: 3,
+					}).Add(1, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_FLOAT_VEC4,
+						Name:      "bar[0]",
+						ArraySize: 3,
+					}),
+				},
 			},
 			vs: `#version 150
 

@@ -78,10 +78,14 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoProgramBound()}
 	}
 
+	if program.ActiveResources == nil {
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrProgramNotLinked()}
+	}
+
 	vb := &vertex.Buffer{}
 	va := c.Bound.VertexArray
-	for _, attr := range program.ActiveAttributes.Range() {
-		vaa := va.VertexAttributeArrays.Get(attr.Location)
+	for _, attr := range program.ActiveResources.ProgramInputs.Range() {
+		vaa := va.VertexAttributeArrays.Get(AttributeLocation(attr.Locations.Get(0)))
 		if vaa == nil || vaa.Enabled == GLboolean_GL_FALSE {
 			continue
 		}

@@ -402,12 +402,12 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, id api.CmdID, s *ap
 
 // Force all attributes to use the capture-observed locations during replay.
 func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder, pid ProgramId) error {
-	pi := FindProgramInfo(cmd.Extras())
-	if pi != nil && b != nil {
+	pi := FindLinkProgramExtra(cmd.Extras())
+	if pi != nil && b != nil && pi.ActiveResources != nil {
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		for _, attr := range pi.ActiveAttributes.Range() {
-			if int32(attr.Location) != -1 {
-				cmd := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
+		for _, attr := range pi.ActiveResources.ProgramInputs.Range() {
+			if int32(attr.Locations.Get(0)) != -1 {
+				cmd := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Locations.Get(0)), attr.Name)
 				if strings.HasPrefix(attr.Name, "gl_") {
 					// Active built-in mush have location of -1
 					log.E(ctx, "Can not set location for built-in attribute: %v", cmd)
@@ -424,12 +424,12 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.
 
 // Remap uniform block indices
 func bindUniformBlocks(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder, pid ProgramId) error {
-	pi := FindProgramInfo(cmd.Extras())
-	if pi != nil && b != nil {
+	pi := FindLinkProgramExtra(cmd.Extras())
+	if pi != nil && b != nil && pi.ActiveResources != nil {
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		for i, ub := range pi.ActiveUniformBlocks.Range() {
+		for i, ub := range pi.ActiveResources.UniformBlocks.Range() {
 			// Query replay-time uniform block index so that the remapping is established
-			cmd := cb.GlGetUniformBlockIndex(pid, ub.Name, i)
+			cmd := cb.GlGetUniformBlockIndex(pid, ub.Name, UniformBlockIndex(i))
 			if err := cmd.Mutate(ctx, id, s, b); err != nil {
 				return err
 			}

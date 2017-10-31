@@ -503,6 +503,7 @@ class Bindings {
   ref!Buffer                  DrawIndirectBuffer
   ref!Buffer                  PixelPackBuffer
   ref!Buffer                  PixelUnpackBuffer
+  ref!Pipeline                Pipeline
   ref!Program                 Program
   ref!Framebuffer             ReadFramebuffer
   ref!Renderbuffer            Renderbuffer

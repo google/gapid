@@ -103,8 +103,9 @@ func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, de
 	programID := t.makeProgram(ctx, vertexShaderSource, fragmentShaderSource)
 
 	out.MutateAndWrite(ctx, dID, cb.GlBindAttribLocation(programID, aScreenCoordsLocation, "aScreenCoords"))
-	out.MutateAndWrite(ctx, dID, api.WithExtras(cb.GlLinkProgram(programID), &ProgramInfo{
-		LinkStatus: 1,
+	out.MutateAndWrite(ctx, dID, api.WithExtras(cb.GlLinkProgram(programID), &LinkProgramExtra{
+		LinkStatus:      GLboolean_GL_TRUE,
+		ActiveResources: &ActiveProgramResources{},
 	}))
 	t.glUseProgram(ctx, programID)
 

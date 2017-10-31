@@ -79,14 +79,16 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 	b.cmds = append(b.cmds,
 		api.WithExtras(
 			cb.GlLinkProgram(prog),
-			&gles.ProgramInfo{
+			&gles.LinkProgramExtra{
 				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
-					Type:      gles.GLenum_GL_SAMPLER_2D,
-					Name:      "tex",
-					ArraySize: 1,
-					Location:  texLoc,
-				}),
+				ActiveResources: &gles.ActiveProgramResources{
+					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_SAMPLER_2D,
+						Name:      "tex",
+						ArraySize: 1,
+						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(texLoc)),
+					}),
+				},
 			}),
 		cb.GlGetUniformLocation(prog, "tex", texLoc),
 	)
