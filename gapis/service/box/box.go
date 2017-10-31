@@ -20,6 +20,7 @@ import (
 	"sort"
 
 	"github.com/google/gapid/core/data/deep"
+	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/gapis/memory"
@@ -136,6 +137,20 @@ func (b *boxer) val(v reflect.Value) *Value {
 	id = uint32(len(b.values) + 1)
 	b.values[v] = id
 
+	if d := dictionary.From(v.Interface()); d != nil {
+		entries := []*MapEntry{}
+		mapTy := b.ty(reflect.MapOf(d.KeyTy(), d.ValTy()))
+		for _, e := range d.Entries() {
+			entries = append(entries, &MapEntry{
+				Key:   b.val(reflect.ValueOf(e.K)),
+				Value: b.val(reflect.ValueOf(e.V)),
+			})
+		}
+		m := &Map{Type: mapTy, Entries: entries}
+		m.Sort()
+		return &Value{id, &Value_Map{m}}
+	}
+
 	switch t.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {
@@ -159,19 +174,6 @@ func (b *boxer) val(v reflect.Value) *Value {
 			fields = append(fields, b.val(v.FieldByName(f.Name)))
 		}
 		return &Value{id, &Value_Struct{&Struct{structTy, fields}}}
-
-	case reflect.Map:
-		mapTy := b.ty(v.Type())
-		entries := []*MapEntry{}
-		for _, k := range v.MapKeys() {
-			entries = append(entries, &MapEntry{
-				Key:   b.val(k),
-				Value: b.val(v.MapIndex(k)),
-			})
-		}
-		m := &Map{Type: mapTy, Entries: entries}
-		m.Sort()
-		return &Value{id, &Value_Map{m}}
 
 	case reflect.Slice, reflect.Array:
 		arrTy := b.ty(v.Type())
@@ -202,6 +204,7 @@ func (b *boxer) ty(t reflect.Type) *Type {
 		return &Type{0, &Type_Any{true}}
 	}
 
+	// Types below this point can be back-referenced.
 	id, ok := b.types[t]
 	if ok {
 		return &Type{id, &Type_BackReference{true}}
@@ -298,6 +301,9 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 		}
 	case *Value_Map:
 		mapTy := b.ty(v.Map.Type)
+		if mapTy.Kind() != reflect.Map {
+			panic(fmt.Errorf("Expected map, got %v (%v)", mapTy, mapTy.Kind()))
+		}
 		mapVal := reflect.MakeMap(mapTy)
 		for _, e := range v.Map.Entries {
 			k, v := b.val(e.Key), b.val(e.Value)

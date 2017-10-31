@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/os/device"
@@ -192,6 +193,41 @@ func Slice(ctx context.Context, p *path.Slice) (interface{}, error) {
 	}
 }
 
+// MapIndex resolves and returns the map value from the path p.
+func MapIndex(ctx context.Context, p *path.MapIndex) (interface{}, error) {
+	obj, err := ResolveInternal(ctx, p.Parent())
+	if err != nil {
+		return nil, err
+	}
+
+	d := dictionary.From(obj)
+	if d == nil {
+		return nil, &service.ErrInvalidPath{
+			Reason: messages.ErrTypeNotMapIndexable(typename(reflect.TypeOf(obj))),
+			Path:   p.Path(),
+		}
+	}
+
+	key, ok := convert(reflect.ValueOf(p.KeyValue()), d.KeyTy())
+	if !ok {
+		return nil, &service.ErrInvalidPath{
+			Reason: messages.ErrIncorrectMapKeyType(
+				typename(reflect.TypeOf(p.KeyValue())), // got
+				typename(d.KeyTy())),                   // expected
+			Path: p.Path(),
+		}
+	}
+
+	val, ok := d.Lookup(key.Interface())
+	if !ok {
+		return nil, &service.ErrInvalidPath{
+			Reason: messages.ErrMapKeyDoesNotExist(key.Interface()),
+			Path:   p.Path(),
+		}
+	}
+	return val, nil
+}
+
 // memoryLayout resolves the memory layout for the capture of the given path.
 func memoryLayout(ctx context.Context, p path.Node) (*device.MemoryLayout, error) {
 	cp := path.FindCapture(p)
@@ -205,41 +241,6 @@ func memoryLayout(ctx context.Context, p path.Node) (*device.MemoryLayout, error
 	}
 
 	return c.Header.Abi.MemoryLayout, nil
-}
-
-// MapIndex resolves and returns the map value from the path p.
-func MapIndex(ctx context.Context, p *path.MapIndex) (interface{}, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
-	if err != nil {
-		return nil, err
-	}
-	m := reflect.ValueOf(obj)
-	switch m.Kind() {
-	case reflect.Map:
-		key, ok := convert(reflect.ValueOf(p.KeyValue()), m.Type().Key())
-		if !ok {
-			return nil, &service.ErrInvalidPath{
-				Reason: messages.ErrIncorrectMapKeyType(
-					typename(reflect.TypeOf(p.KeyValue())), // got
-					typename(m.Type().Key())),              // expected
-				Path: p.Path(),
-			}
-		}
-		val := m.MapIndex(key)
-		if !val.IsValid() {
-			return nil, &service.ErrInvalidPath{
-				Reason: messages.ErrMapKeyDoesNotExist(key.Interface()),
-				Path:   p.Path(),
-			}
-		}
-		return val.Interface(), nil
-
-	default:
-		return nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotMapIndexable(typename(m.Type())),
-			Path:   p.Path(),
-		}
-	}
 }
 
 // ResolveService resolves and returns the object, value or memory at the path p,

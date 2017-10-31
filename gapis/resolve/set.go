@@ -20,6 +20,7 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/data/deep"
+	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -256,29 +257,35 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return p, nil
 
 		case *path.MapIndex:
-			m := obj
-			if m.Kind() != reflect.Map {
+			d := dictionary.From(obj.Interface())
+			if d == nil {
 				return nil, &service.ErrInvalidPath{
-					Reason: messages.ErrTypeNotMapIndexable(typename(m.Type())),
+					Reason: messages.ErrTypeNotMapIndexable(typename(obj.Type())),
 					Path:   p.Path(),
 				}
 			}
-			key, ok := convert(reflect.ValueOf(p.KeyValue()), m.Type().Key())
+
+			keyTy, valTy := d.KeyTy(), d.ValTy()
+
+			key, ok := convert(reflect.ValueOf(p.KeyValue()), keyTy)
 			if !ok {
 				return nil, &service.ErrInvalidPath{
 					Reason: messages.ErrIncorrectMapKeyType(
 						typename(reflect.TypeOf(p.KeyValue())), // got
-						typename(m.Type().Key())),              // expected
+						typename(keyTy)),                       // expected
 					Path: p.Path(),
 				}
 			}
-			val, ok := convert(reflect.ValueOf(val), m.Type().Elem())
+
+			val, ok := convert(reflect.ValueOf(val), d.ValTy())
 			if !ok {
 				return nil, fmt.Errorf("Map at %s has value of type %v, got type %v",
-					p.Parent(), m.Type().Elem(), val.Type())
+					p.Parent(), valTy, val.Type())
 			}
-			m.SetMapIndex(key, val)
-			parent, err := change(ctx, p.Parent(), m.Interface())
+
+			d.Set(key.Interface(), val.Interface())
+
+			parent, err := change(ctx, p.Parent(), obj.Interface())
 			if err != nil {
 				return nil, err
 			}

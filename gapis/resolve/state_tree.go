@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
@@ -203,7 +203,18 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 
 	v, t, children := n.value, n.value.Type(), []*stn{}
 
+	dict := dictionary.From(v.Interface())
+
 	switch {
+	case dict != nil:
+		for _, key := range dict.KeysSorted() {
+			children = append(children, &stn{
+				name:  fmt.Sprint(key),
+				value: deref(reflect.ValueOf(dict.Get(key))),
+				path:  path.NewMapIndex(key, n.path),
+			})
+		}
+
 	case box.IsMemorySlice(t):
 		slice := box.AsMemorySlice(v)
 		if size := slice.Count(); needsSubgrouping(tree.groupLimit, size) {
@@ -232,6 +243,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 				})
 			}
 		}
+
 	default:
 		switch v.Kind() {
 		case reflect.Struct:
@@ -274,16 +286,6 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 						path:  path.NewArrayIndex(i, n.path),
 					})
 				}
-			}
-		case reflect.Map:
-			keys := v.MapKeys()
-			slice.SortValues(keys, v.Type().Key())
-			for _, key := range keys {
-				children = append(children, &stn{
-					name:  fmt.Sprint(key.Interface()),
-					value: deref(v.MapIndex(key)),
-					path:  path.NewMapIndex(key.Interface(), n.path),
-				})
 			}
 		}
 	}
