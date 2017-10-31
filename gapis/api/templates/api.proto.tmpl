@@ -74,11 +74,16 @@
 {{define "ClassEntry"}}
   {{$name := $.Name}}
   {{Global "ProtoID" 0}}
+  ¶
   // {{$name}} is the structure for serializing the class {{$.Name}}¶
   message {{$name}} {»¶
     {{range $v := $.Fields}}
       {{Template "Proto.Entry" "Param" $v "Type" (TypeOf $v)}}
     {{end}}
+  «}¶
+  message {{$name}}_Reference {»¶
+    sint64 ReferenceID = 1;¶
+    {{$name}} Value = 2;¶
   «}¶
 {{end}}
 
@@ -99,6 +104,7 @@
   {{else if IsString        $}}string
   {{else if IsEnum          $}}sint32
   {{else if IsPointer       $}}sint64
+  {{else if IsReference     $}}{{$.To.Name}}_Reference
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsClass         $}}{{$.Name}}
   {{else if IsPseudonym     $}}{{Template "Proto.Type" $.To}}
@@ -116,12 +122,13 @@
   {{if IsPseudonym     $.Type}}{{Template "Proto.Entry" "Param" $.Param "Type" $.Type.To}}
   {{else if IsStaticArray   $.Type}}repeated {{Template "Proto.Entry" "Param" $.Param "Type" $.Type.ValueType}}
   {{else if IsMap           $.Type}}
-    {{$entry := printf "%sEntry" $name}}
+    {{$entry := printf "%s_Map" $name}}
     message {{$entry}} {»¶
-      {{Template "Proto.Type" $.Type.KeyType}} Key = 1;¶
-      {{Template "Proto.Type" $.Type.ValueType}} Value = 2;¶
+      sint64 ReferenceID = 1;¶
+      repeated {{Template "Proto.Type" $.Type.ValueType}} Values = 2;¶
+      repeated {{Template "Proto.Type" $.Type.KeyType}} Keys = 3;¶
     «}¶
-                                    repeated {{$entry}} {{$name}} = {{Inc "ProtoID"}};¶
+    {{$entry}} {{$name}} = {{Inc "ProtoID"}};¶
   {{else}}{{Template "Proto.Type" $.Type}} {{$name}} = {{Inc "ProtoID"}};¶
   {{end}}
 {{end}}

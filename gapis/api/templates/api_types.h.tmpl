@@ -58,6 +58,8 @@
   »}
 ¶
   namespace gapii {«
+  class ToProtoContext;
+¶
   class CallObserver;
 ¶
   {{range $c := $.Classes}}
@@ -160,7 +162,7 @@
         {{range $i, $f := $.Fields}}
           {{if $i}}, §{{end}}
           {{if (IsStaticArray (TypeOf $f))}}const §{{end}}
-          {{Template "C++.Type" $f}} {{$f.Name}}§
+          {{Template "C++.Type" $f}}§
         {{end}}
         «);
     {{end}}
@@ -174,7 +176,7 @@
 
     {{if $serializable}}
       ::google::protobuf::Message* toProto() const;
-      void toProto(ProtoType* out) const;
+      void toProto(ProtoType* out, ToProtoContext& pbCtx) const;
     {{end}}
 ¶
     {{range $f := $.Fields}}

@@ -48,8 +48,14 @@
         {{$p := print (Global "Store") "." $proto}}
         {{$o := $c.Name | GoCommandName}}
         protoconv.Register(»¶
-          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
-          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { return {{$o}}From(in), nil },¶
+          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) {»¶
+            ϟrefs := &protoconv.ToProtoContext{}¶
+            return in.ToProto(ϟrefs), nil¶
+          «},¶
+          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) {»¶
+            ϟrefs := &protoconv.FromProtoContext{}¶
+            return {{$o}}From(in, ϟrefs), nil¶
+          «},¶
         «)¶
       {{end}}
     {{end}}
@@ -58,9 +64,15 @@
         {{$proto := $c.Name | ProtoGoName}}
         {{$p := print (Global "Store") "." $proto}}
         {{$o := Macro "Go.Type" $c}}
-        protoconv.Register(¶
-          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) { return in.ToProto(), nil },¶
-          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) { v := {{$o}}From(in); return &v, nil },¶
+        protoconv.Register(»¶
+          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) {»¶
+            ϟrefs := &protoconv.ToProtoContext{}¶
+            return in.ToProto(ϟrefs), nil¶
+          «},¶
+          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) {»¶
+            ϟrefs := &protoconv.FromProtoContext{}¶
+            v := {{$o}}From(in, ϟrefs); return &v, nil
+          «},¶
         «)¶
       {{end}}
     {{end}}

@@ -23,117 +23,131 @@
 #include "core/cc/static_array.h"
 
 #include <type_traits>
+#include <unordered_map>
 
 namespace gapii {
 
+class ToProtoContext {
+  public:
+    ToProtoContext() : mSeenReferences { { nullptr, 0 } } { }
+
+    // Returns unique ReferenceID for the given address,
+    // and true when the address is seen for the first time.
+    // Nullptr address is always mapped to ReferenceID 0.
+    virtual std::pair<uint64_t, bool> GetReferenceID(const void* address) {
+      auto it = mSeenReferences.emplace(address, mSeenReferences.size());
+      return std::pair<uint64_t, bool>(it.first->second, it.second);
+    }
+
+  private:
+    std::unordered_map<const void*, uint64_t> mSeenReferences;
+};
+
+// Default converter for any type which is not specialized below.
 template<typename Out, typename In>
 struct ProtoConverter {
-    static inline void convert(Out* out, const In& in) {
+    static inline void convert(Out* out, const In& in, ToProtoContext&) {
         *out = static_cast<Out>(in);
     }
 };
 
-// gapii::Slice<T> -> memory_pb::Slice*
+// Converts pointers types to proto
+template<typename Out>
+struct ProtoConverter<Out, const void*> {
+    static inline void convert(Out* out, const void* in, ToProtoContext&) {
+        *out = reinterpret_cast<Out>(in);
+    }
+};
+
+// Converts pointers types to proto
+template<typename Out>
+struct ProtoConverter<Out, void*> {
+    static inline void convert(Out* out, void* in, ToProtoContext&) {
+        *out = reinterpret_cast<Out>(in);
+    }
+};
+
+// Converts Slice to proto
 template<typename T>
-struct ProtoConverter<memory_pb::Slice*, gapii::Slice<T>> {
-    static inline void convert(memory_pb::Slice* out, const gapii::Slice<T>& in) {
-        uint64_t address = reinterpret_cast<uintptr_t>(in);
-        out->set_root(address);
-        out->set_base(address);
+struct ProtoConverter<memory_pb::Slice, gapii::Slice<T>> {
+    static inline void convert(memory_pb::Slice* out, const gapii::Slice<T>& in, ToProtoContext& ctx) {
+        out->set_pool(0); // TODO: Set pool id
+        out->set_root(reinterpret_cast<uintptr_t>(in.begin()));
+        out->set_base(reinterpret_cast<uintptr_t>(in.begin()));
         out->set_count(in.count());
-        out->set_pool(0); // TODO: Support non-application pools?
     }
 };
 
-// const T& -> T::ProtoType*
+// Converts objects which implement their own toProto method
+// (detected by presence of ProtoType inside the class)
 template<typename T>
-struct ProtoConverter<typename T::ProtoType*, T> {
-    static inline void convert(typename T::ProtoType* out, const T& in) {
-        in.toProto(out);
+struct ProtoConverter<typename T::ProtoType, T> {
+    static inline void convert(typename T::ProtoType* out, const T& in, ToProtoContext& ctx) {
+        in.toProto(out, ctx);
     }
 };
 
-// core::StaticArray<In, N> -> ::google::protobuf::RepeatedPtrField<Out>*
+// Converts StaticArray to proto
 template <typename Out, typename In, int N>
-struct ProtoConverter<::google::protobuf::RepeatedPtrField<Out>*, core::StaticArray<In, N>> {
-    static inline void convert(::google::protobuf::RepeatedPtrField<Out>* out, const core::StaticArray<In, N>& in) {
+struct ProtoConverter<Out, core::StaticArray<In, N>> {
+    static inline void convert(Out* out, const core::StaticArray<In, N>& in, ToProtoContext& ctx) {
         out->Reserve(N);
         for (int i = 0; i < N; i++) {
-            ProtoConverter<Out*, In>::convert(out->Add(), in[i]);
+            toProto(out->Add(), in[i], ctx);
         }
     }
 };
 
-// core::StaticArray<In, N> -> ::google::protobuf::RepeatedField<Out>*
-template <typename Out, typename In, int N>
-struct ProtoConverter<::google::protobuf::RepeatedField<Out>*, core::StaticArray<In, N>> {
-    static inline void convert(::google::protobuf::RepeatedField<Out>* out, const core::StaticArray<In, N>& in) {
-        out->Reserve(N);
-        for (int i = 0; i < N; i++) {
-            ProtoConverter<Out, In>::convert(out->Add(), in[i]);
+// Converts SharedMap to proto
+template <typename Out, typename K, typename V>
+struct ProtoConverter<Out, SharedMap<K, V>> {
+    static inline void convert(Out* out, const SharedMap<K, V>& in, ToProtoContext& ctx) {
+        auto ref = ctx.GetReferenceID(in.get());
+        out->set_referenceid(ref.first);
+        if (ref.second) {
+            std::map<K, V> sorted(in.begin(), in.end());
+            auto keys = out->mutable_keys();
+            auto values = out->mutable_values();
+            keys->Reserve(sorted.size());
+            values->Reserve(sorted.size());
+            for (auto it : sorted) {
+                toProto(keys->Add(), it.first, ctx);
+                toProto(values->Add(), it.second, ctx);
+            }
+            trimKeys<std::is_integral<K>::value>(keys);
         }
     }
-};
 
-template <typename EntryOut, typename KeyOut, typename KeyIn>
-struct ProtoMapKeyConverter {
-    static inline void convert(EntryOut* out, const KeyIn& in) {
-        KeyOut key;
-        ProtoConverter<KeyOut, KeyIn>::convert(&key, in);
-        out->set_key(key);
+    // Remove tailing consecutive keys to save space (only applicable for integral keys).
+    template<bool IsInt, typename T>
+    static typename std::enable_if<IsInt>::type trimKeys(T keys) {
+        while(keys->size() >= 2 && keys->Get(keys->size() - 2) + 1 == keys->Get(keys->size() - 1)) {
+            keys->RemoveLast();
+        }
+        if (keys->size() == 1 && keys->Get(0) == 0) {
+            keys->RemoveLast();
+        }
+    }
+    template<bool IsInt, typename T>
+    static typename std::enable_if<!IsInt>::type trimKeys(T keys) {
     }
 };
 
-template <typename EntryOut, typename KeyIn>
-struct ProtoMapKeyConverter<EntryOut, typename KeyIn::ProtoType, KeyIn> {
-    static inline void convert(EntryOut* out, const KeyIn& in) {
-        in.toProto(out->mutable_key());
-    }
-};
-
-template <typename EntryOut, typename ValOut, typename ValIn>
-struct ProtoMapValConverter {
-    static inline void convert(EntryOut* out, const ValIn& in) {
-        ValOut val;
-        ProtoConverter<ValOut, ValIn>::convert(&val, in);
-        out->set_value(val);
-    }
-};
-
-template <typename EntryOut, typename ValIn>
-struct ProtoMapValConverter<EntryOut, typename ValIn::ProtoType, ValIn> {
-    static inline void convert(EntryOut* out, const ValIn& in) {
-        in.toProto(out->mutable_value());
-    }
-};
-
-// SharedMap<KeyIn, ValIn> -> ::google::protobuf::RepeatedPtrField<EntryOut>*
-template <typename EntryOut, typename KeyIn, typename ValIn>
-struct ProtoConverter<::google::protobuf::RepeatedPtrField<EntryOut>*, SharedMap<KeyIn, ValIn>> {
-    typedef decltype(((EntryOut*)(0))->key()) KeyOutRaw;
-    typedef decltype(((EntryOut*)(0))->value()) ValOutRaw;
-
-    typedef typename std::remove_cv<typename std::remove_reference<KeyOutRaw>::type>::type KeyOut;
-    typedef typename std::remove_cv<typename std::remove_reference<ValOutRaw>::type>::type ValOut;
-
-    static inline void convert(::google::protobuf::RepeatedPtrField<EntryOut>* out, const SharedMap<KeyIn, ValIn>& in) {
-        out->Reserve(in.size());
-        for (auto it : in) {
-            auto entry = out->Add();
-            ProtoMapKeyConverter<EntryOut, KeyOut, KeyIn>::convert(entry, it.first);
-            ProtoMapValConverter<EntryOut, ValOut, ValIn>::convert(entry, it.second);
+// Converts reference to proto
+template <typename Out, typename T>
+struct ProtoConverter<Out, std::shared_ptr<T>> {
+    static inline void convert(Out* out, const std::shared_ptr<T>& in, ToProtoContext& ctx) {
+        auto ref = ctx.GetReferenceID(in.get());
+        out->set_referenceid(ref.first);
+        if (ref.second) {
+            toProto(out->mutable_value(), *in, ctx);
         }
     }
 };
 
 template <typename Out, typename In>
-inline void toProto(Out out, const In& in) {
-    ProtoConverter<Out, In>::convert(out, in);
-}
-
-template <typename T>
-inline void toProtoSlice(memory_pb::Slice* out, const gapii::Slice<T>& in) {
-    toProto(out, in);
+inline void toProto(Out* out, const In& in, ToProtoContext& ctx) {
+    ProtoConverter<Out, In>::convert(out, in, ctx);
 }
 
 inline const std::string& toProtoString(const std::string& str) {
