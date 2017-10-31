@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-
-	"github.com/google/gapid/gapis/api/gles/glsl"
 )
 
 // Version represents the GL version major and minor numbers,
@@ -67,30 +65,30 @@ func ParseVersion(str string) (*Version, error) {
 }
 
 // GLSLVersion returns the highest supported GLSL version for the given GL version.
-func GLSLVersion(glVersion string) (glsl.Version, error) {
+func GLSLVersion(glVersion string) (Version, error) {
 	v, err := ParseVersion(glVersion)
 	if err != nil {
-		return glsl.Version{}, err
+		return Version{}, err
 	}
 	major, minor, isES := v.Major, v.Minor, v.IsES
 	switch {
 	case major == 2 && isES:
-		return glsl.Version{Major: 1, Minor: 0}, nil
+		return Version{Major: 1, Minor: 0}, nil
 	case major == 3 && isES:
-		return glsl.Version{Major: 3, Minor: 0}, nil
+		return Version{Major: 3, Minor: 0}, nil
 
 	case major == 2 && minor == 0 && !isES:
-		return glsl.Version{Major: 1, Minor: 1}, nil
+		return Version{Major: 1, Minor: 1}, nil
 	case major == 2 && minor == 1 && !isES:
-		return glsl.Version{Major: 1, Minor: 2}, nil
+		return Version{Major: 1, Minor: 2}, nil
 	case major == 3 && minor == 0 && !isES:
-		return glsl.Version{Major: 1, Minor: 3}, nil
+		return Version{Major: 1, Minor: 3}, nil
 	case major == 3 && minor == 1 && !isES:
-		return glsl.Version{Major: 1, Minor: 4}, nil
+		return Version{Major: 1, Minor: 4}, nil
 	case major == 3 && minor == 2 && !isES:
-		return glsl.Version{Major: 1, Minor: 5}, nil
+		return Version{Major: 1, Minor: 5}, nil
 
 	default:
-		return glsl.Version{Major: major, Minor: minor}, nil
+		return Version{Major: major, Minor: minor}, nil
 	}
 }

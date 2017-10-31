@@ -23,6 +23,5 @@ const (
 	LogExtrasInTransforms      = false // Logs all atoms' extras together with transforms
 	LogMemoryInExtras          = false // Logs all atoms' read/write memory observation together with extras
 	LogTransformsToFile        = false
-	UseGlslang                 = true
 	SeparateMutateStates       = false
 )

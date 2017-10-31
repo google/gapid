@@ -25,10 +25,7 @@ import (
 	"github.com/google/gapid/core/math/u32"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/gles/glsl/ast"
-	"github.com/google/gapid/gapis/api/gles/glsl/preprocessor"
 	"github.com/google/gapid/gapis/api/transform"
-	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/shadertools"
@@ -44,9 +41,8 @@ const (
 
 var (
 	// We don't include tests directly in the gles package as it adds
-	// signaficantly to the test build time.
-	VisibleForTestingCompat     = compat
-	VisibleForTestingGlSlCompat = glslCompat
+	// significantly to the test build time.
+	VisibleForTestingCompat = compat
 )
 
 // If the default vertex array object (id 0) is not allowed on
@@ -450,52 +446,28 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			shader := c.Objects.Shared.Shaders.Get(cmd.Shader)
 			src := ""
 
-			if config.UseGlslang {
-				st, err := shader.Type.ShaderType()
-				if err != nil {
-					log.W(ctx, "%v compat: %v", cmd, err)
-				}
-				opts := shadertools.Options{
-					ShaderType:         st,
-					Relaxed:            true, // find_issues will still report bad GLSL.
-					StripOptimizations: true,
-				}
-
-				// Trim any prefix whitespace / newlines.
-				// This isn't legal if it comes before the #version, but this
-				// will be picked up by find_issues.go anyway.
-				src = strings.TrimLeft(shader.Source, "\n\r\t ")
-
-				res, err := shadertools.ConvertGlsl(src, &opts)
-				if err != nil {
-					log.E(ctx, "%v compat: %v", cmd, err)
-					return
-				}
-
-				src = res.SourceCode
-			} else {
-				lang := ast.LangVertexShader
-				switch shader.Type {
-				case GLenum_GL_VERTEX_SHADER:
-				case GLenum_GL_FRAGMENT_SHADER:
-					lang = ast.LangFragmentShader
-				default:
-					log.W(ctx, "Unknown shader type: %v", shader.Type)
-				}
-
-				exts := []preprocessor.Extension{}
-				if target.textureMultisample == supported {
-					// TODO: Check that this extension is actually used by the shader.
-					exts = append(exts, preprocessor.Extension{
-						Name: "GL_ARB_texture_multisample", Behaviour: "enable",
-					})
-				}
-
-				src, err = glslCompat(ctx, shader.Source, lang, exts, device)
-				if err != nil {
-					log.E(ctx, "Error reformatting GLSL source for command %d: %v", id, err)
-				}
+			st, err := shader.Type.ShaderType()
+			if err != nil {
+				log.W(ctx, "%v compat: %v", cmd, err)
 			}
+			opts := shadertools.Options{
+				ShaderType:         st,
+				Relaxed:            true, // find_issues will still report bad GLSL.
+				StripOptimizations: true,
+			}
+
+			// Trim any prefix whitespace / newlines.
+			// This isn't legal if it comes before the #version, but this
+			// will be picked up by find_issues.go anyway.
+			src = strings.TrimLeft(shader.Source, "\n\r\t ")
+
+			res, err := shadertools.ConvertGlsl(src, &opts)
+			if err != nil {
+				log.E(ctx, "%v compat: %v", cmd, err)
+				return
+			}
+
+			src = res.SourceCode
 
 			tmpSrc := s.AllocDataOrPanic(ctx, src)
 			tmpPtrToSrc := s.AllocDataOrPanic(ctx, tmpSrc.Ptr())

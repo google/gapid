@@ -36,8 +36,6 @@ set(files
     extras.go
     find_issues.go
     gles.go
-    glsl_compat.go
-    glsl_compat_test.go
     glsl.go
     guess_semantics.go
     helpers.go
@@ -69,6 +67,5 @@ set(files
 set(dirs
     api
     gles_pb
-    glsl
     templates
 )

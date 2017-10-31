@@ -16,7 +16,6 @@ package gles_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -24,24 +23,19 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/api/gles/glsl/ast"
 	"github.com/google/gapid/gapis/api/testcmd"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
 
-var (
-	compat     = gles.VisibleForTestingCompat
-	glslCompat = gles.VisibleForTestingGlSlCompat
-)
+var compat = gles.VisibleForTestingCompat
+
+const OpenGL_3_0 = "3.0"
 
 func p(addr uint64) memory.Pointer {
 	return memory.BytePtr(addr, memory.ApplicationPool)
 }
-
-type glShaderSourceCompatTest glslCompatTest
 
 func newState(ctx context.Context) *api.GlobalState {
 	s, err := capture.NewState(ctx)
@@ -49,97 +43,6 @@ func newState(ctx context.Context) *api.GlobalState {
 		panic(err)
 	}
 	return s
-}
-
-func (c glShaderSourceCompatTest) run(t *testing.T) {
-	ctx := log.Testing(t)
-	ctx = database.Put(ctx, database.NewInMemory(ctx))
-
-	h := &capture.Header{Abi: device.AndroidARMv7a}
-	a := h.Abi.MemoryLayout
-	capturePath, err := capture.New(ctx, "test", h, []api.Cmd{})
-	if err != nil {
-		panic(err)
-	}
-
-	ctx = capture.Put(ctx, capturePath)
-	ctx = gles.PutUnusedIDMap(ctx)
-
-	dev := &device.Instance{Configuration: &device.Configuration{
-		Drivers: &device.Drivers{
-			OpenGL: &device.OpenGLDriver{Version: c.target},
-		},
-	}}
-
-	transform, err := compat(ctx, dev)
-	if err != nil {
-		log.E(ctx, "Error creating compatability transform: %v", err)
-		return
-	}
-
-	shaderType := gles.GLenum_GL_VERTEX_SHADER
-	if c.lang == ast.LangFragmentShader {
-		shaderType = gles.GLenum_GL_FRAGMENT_SHADER
-	}
-
-	mw := &testcmd.Writer{S: newState(ctx)}
-	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
-	displayHandle := memory.BytePtr(2, memory.ApplicationPool)
-	surfaceHandle := memory.BytePtr(3, memory.ApplicationPool)
-	cb := gles.CommandBuilder{Thread: 0}
-	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
-	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
-	for _, a := range []api.Cmd{
-		cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
-		eglMakeCurrent,
-		cb.GlCreateShader(shaderType, 0x10),
-		cb.GlShaderSource(0x10, 1, p(0x100000), p(0x100010)).
-			AddRead(memory.Store(ctx, a, p(0x100000), p(0x100020))).
-			AddRead(memory.Store(ctx, a, p(0x100010), int32(len(c.source)))).
-			AddRead(memory.Store(ctx, a, p(0x100020), c.source)),
-	} {
-		transform.Transform(ctx, api.CmdNoID, a, mw)
-	}
-
-	// Find the output glShaderSource command.
-	var cmd *gles.GlShaderSource
-	for _, c := range mw.Cmds {
-		if c, ok := c.(*gles.GlShaderSource); ok {
-			cmd = c
-			break
-		}
-	}
-
-	if cmd == nil {
-		t.Error("Transform did not produce a glShaderSource command. Commands produced:")
-		for i, c := range mw.Cmds {
-			t.Errorf("%d %T", i, c)
-		}
-		return
-	}
-
-	if cmd.Count != 1 {
-		t.Errorf("Unexpected number of sources: got %d, expected 1.", cmd.Count)
-		return
-	}
-
-	s := newState(ctx)
-	api.MutateCmds(ctx, s, nil, mw.Cmds...)
-
-	srcPtr, err := cmd.Source.Read(ctx, cmd, s, nil) // 0'th glShaderSource string pointer
-	if err != nil {
-		t.Errorf("cmd.Source.Read returned: %v", err)
-	}
-	got := strings.TrimRight(string(memory.CharToBytes(srcPtr.StringSlice(ctx, s).MustRead(ctx, cmd, s, nil))), "\x00")
-
-	expected, err := glslCompat(ctx, c.source, c.lang, nil, dev)
-	if err != nil {
-		t.Errorf("Unexpected error returned by glslCompat: %v", err)
-	}
-	if got != expected {
-		t.Errorf("Converting to target '%s' produced unexpected output.\nGot:\n%s\nExpected:\n%v",
-			c.target, got, expected)
-	}
 }
 
 func TestGlVertexAttribPointerCompatTest(t *testing.T) {
@@ -217,13 +120,5 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	if !found {
 		t.Error("glDrawElements command not found.")
-	}
-}
-
-func TestShaderCompat(t *testing.T) {
-	if !config.UseGlslang {
-		for _, test := range glslCompatTests {
-			glShaderSourceCompatTest(test).run(t)
-		}
 	}
 }
