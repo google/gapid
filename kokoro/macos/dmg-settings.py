@@ -20,7 +20,9 @@ symlinks = { 'Applications': '/Applications' }
 badge_icon = 'GAPID.app/Contents/Resources/GAPID.icns'
 icon_locations = {
 	'GAPID.app': (192, 344),
-	'Applications': (448, 344)
+	'Applications': (448, 344),
+	'.background.tiff': (1000, 1000), # hide
+	'.VolumeIcon.icns': (1000, 1000), # hide
 }
 background = 'background.png'
 window_rect = ((100, 600), (640, 480))
