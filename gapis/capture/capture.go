@@ -158,9 +158,13 @@ func ResolveFromPath(ctx context.Context, p *path.Capture) (*Capture, error) {
 
 // Import imports the capture by name and data, and stores it in the database.
 func Import(ctx context.Context, name string, data []byte) (*path.Capture, error) {
+	dataID, err := database.Store(ctx, data)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to store capture data: %v", err)
+	}
 	id, err := database.Store(ctx, &Record{
 		Name: name,
-		Data: data,
+		Data: dataID[:],
 	})
 	if err != nil {
 		return nil, err
@@ -199,15 +203,26 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 	if err := c.Export(ctx, &buf); err != nil {
 		return nil, err
 	}
+	id, err := database.Store(ctx, buf.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("Unable to store capture data: %v", err)
+	}
 	return &Record{
 		Name: c.Name,
-		Data: buf.Bytes(),
+		Data: id[:],
 	}, nil
 }
 
 func fromProto(ctx context.Context, r *Record) (*Capture, error) {
+	var dataID id.ID
+	copy(dataID[:], r.Data)
+	data, err := database.Resolve(ctx, dataID)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to load capture data: %v", err)
+	}
+
 	d := newDecoder()
-	if err := pack.Read(ctx, bytes.NewReader(r.Data), d, false); err != nil {
+	if err := pack.Read(ctx, bytes.NewReader(data.([]byte)), d, false); err != nil {
 		switch err := errors.Cause(err).(type) {
 		case pack.ErrUnsupportedVersion:
 			switch {
