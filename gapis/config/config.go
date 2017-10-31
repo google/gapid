@@ -16,7 +16,6 @@
 package config
 
 const (
-	DebugDatabaseVerify        = false
 	DebugReplay                = false
 	DebugReplayBuilder         = false
 	DisableDeadCodeElimination = false
