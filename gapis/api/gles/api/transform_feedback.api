@@ -166,17 +166,20 @@ cmd void glTransformFeedbackVaryings(ProgramId            program,
                                      GLsizei              count,
                                      const GLchar* const* varyings,
                                      GLenum               bufferMode) {
+  p := GetProgramOrError(program)
   switch (bufferMode) {
     case GL_INTERLEAVED_ATTRIBS, GL_SEPARATE_ATTRIBS: {
-      // version 3.0
+      p.TransformFeedbackBufferMode = bufferMode
     }
     default: {
       glErrorInvalidEnum(bufferMode)
     }
   }
-  // TODO
   names := varyings[0:count]
+  // TODO: Better syntax for clearing map.
+  p.TransformFeedbackVaryings = Program().TransformFeedbackVaryings
   for i in (0 .. count) {
-    _ = as!string(as!char*(names[i])) // Read null-terminated string. TODO: Better syntax.
+    name := as!string(as!char*(names[i])) // Read null-terminated string. TODO: Better syntax.
+    p.TransformFeedbackVaryings[as!u32(i)] = name
   }
 }

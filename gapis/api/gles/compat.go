@@ -1109,12 +1109,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// just assume locations (in particular, apps tend to assume arrays are consecutive)
 				// TODO: We should warn the developers that the consecutive layout is not guaranteed.
 				prog := c.Objects.Programs.Get(cmd.Program)
-				for _, uniformIndex := range prog.ActiveUniforms.KeysSorted() {
-					uniform := prog.ActiveUniforms.Get(uniformIndex)
-					for i := 0; i < int(uniform.ArraySize); i++ {
-						name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
-						loc := uniform.Location + UniformLocation(i) // TODO: Does not have to be consecutive
-						out.MutateAndWrite(ctx, dID, cb.GlGetUniformLocation(cmd.Program, name, loc))
+				if res := prog.ActiveResources; res != nil {
+					for _, uniformIndex := range res.DefaultUniformBlock.KeysSorted() {
+						uniform := res.DefaultUniformBlock.Get(uniformIndex)
+						for i := uint32(0); i < uint32(uniform.ArraySize); i++ {
+							name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
+							loc := UniformLocation(uniform.Locations.Get(i))
+							out.MutateAndWrite(ctx, dID, cb.GlGetUniformLocation(cmd.Program, name, loc))
+						}
 					}
 				}
 				return

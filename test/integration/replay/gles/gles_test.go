@@ -454,14 +454,16 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 
 		api.WithExtras(
 			f.cb.GlLinkProgram(prog),
-			&gles.ProgramInfo{
+			&gles.LinkProgramExtra{
 				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
-					Type:      gles.GLenum_GL_SAMPLER_2D,
-					Name:      "tex",
-					ArraySize: 1,
-					Location:  texLoc,
-				}),
+				ActiveResources: &gles.ActiveProgramResources{
+					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_SAMPLER_2D,
+						Name:      "tex",
+						ArraySize: 1,
+						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(texLoc)),
+					}),
+				},
 			}),
 		f.cb.GlUseProgram(missingProg),
 		f.cb.GlLabelObjectEXT(gles.GLenum_GL_TEXTURE, 123, gles.GLsizei(someString.Range().Size), someString.Ptr()).AddRead(someString.Data()),
@@ -529,14 +531,16 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 	cmds = append(cmds,
 		api.WithExtras(
 			f.cb.GlLinkProgram(prog),
-			&gles.ProgramInfo{
+			&gles.LinkProgramExtra{
 				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
-					Type:      gles.GLenum_GL_FLOAT,
-					Name:      "angle",
-					ArraySize: 1,
-					Location:  angleLoc,
-				}),
+				ActiveResources: &gles.ActiveProgramResources{
+					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_FLOAT,
+						Name:      "angle",
+						ArraySize: 1,
+						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(angleLoc)),
+					}),
+				},
 			}),
 		f.cb.GlUseProgram(prog),
 		f.cb.GlGetUniformLocation(prog, "angle", angleLoc),

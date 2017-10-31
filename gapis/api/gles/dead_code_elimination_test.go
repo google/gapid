@@ -45,24 +45,30 @@ func TestDeadCommandRemoval(t *testing.T) {
 	isDead := map[api.Cmd]bool{}
 	dead := func(cmd api.Cmd) api.Cmd { isDead[cmd] = true; return cmd }
 
-	programInfoA := &ProgramInfo{
+	programInfoA := &LinkProgramExtra{
 		LinkStatus: GLboolean_GL_TRUE,
-		ActiveUniforms: NewUniformIndexːActiveUniformᵐ().Add(0, ActiveUniform{
-			Name:      "uniforms",
-			Type:      GLenum_GL_FLOAT_VEC4,
-			Location:  0,
-			ArraySize: 10,
-		}),
+		ActiveResources: &ActiveProgramResources{
+			DefaultUniformBlock: NewUniformIndexːProgramResourceʳᵐ().Add(0, &ProgramResource{
+				Name: "uniforms",
+				Type: GLenum_GL_FLOAT_VEC4,
+				Locations: NewU32ːGLintᵐ().
+					Add(0, 0).Add(1, 1).Add(2, 2).Add(3, 3).Add(4, 4).
+					Add(5, 5).Add(6, 6).Add(7, 7).Add(8, 8).Add(9, 9),
+				ArraySize: 10,
+			}),
+		},
 	}
 
-	programInfoB := &ProgramInfo{
+	programInfoB := &LinkProgramExtra{
 		LinkStatus: GLboolean_GL_TRUE,
-		ActiveUniforms: NewUniformIndexːActiveUniformᵐ().Add(0, ActiveUniform{
-			Name:      "sampler",
-			Type:      GLenum_GL_SAMPLER_CUBE,
-			Location:  0,
-			ArraySize: 1,
-		}),
+		ActiveResources: &ActiveProgramResources{
+			DefaultUniformBlock: NewUniformIndexːProgramResourceʳᵐ().Add(0, &ProgramResource{
+				Name:      "sampler",
+				Type:      GLenum_GL_SAMPLER_CUBE,
+				Locations: NewU32ːGLintᵐ().Add(0, 0),
+				ArraySize: 1,
+			}),
+		},
 	}
 
 	ctxHandle1 := memory.BytePtr(1, memory.ApplicationPool)

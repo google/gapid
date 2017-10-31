@@ -31,7 +31,7 @@ var (
 )
 
 func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *api.GlobalState, programID ProgramId) []api.Cmd {
-	programInfo := FindProgramInfo(e)
+	programInfo := FindLinkProgramExtra(e)
 	vss, fss, err := stubShaderSource(programInfo)
 	if err != nil {
 		log.E(ctx, "Unable to build stub shader: %v", err)
@@ -54,11 +54,11 @@ func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *a
 	)
 }
 
-func stubShaderSource(pi *ProgramInfo) (vertexShaderSource, fragmentShaderSource string, err error) {
+func stubShaderSource(pi *LinkProgramExtra) (vertexShaderSource, fragmentShaderSource string, err error) {
 	vsDecls, fsDecls := []string{}, []string{}
 	vsTickles, fsTickles := []string{}, []string{}
-	if pi != nil {
-		for _, u := range pi.ActiveUniforms.Range() {
+	if pi != nil && pi.ActiveResources != nil {
+		for _, u := range pi.ActiveResources.DefaultUniformBlock.Range() {
 			var decls, tickles *[]string
 			if isSampler(u.Type) {
 				decls, tickles = &fsDecls, &fsTickles

@@ -134,6 +134,42 @@ func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the uniform in the state block.
 // If nil, nil is returned then the path cannot be followed.
+func (o UniformIndex) Link(ctx context.Context, p path.Node) (path.Node, error) {
+	i, c, err := objects(ctx, p)
+	if i == nil {
+		return nil, err
+	}
+
+	cmd, err := resolve.Cmd(ctx, path.FindCommand(p))
+	if err != nil {
+		return nil, err
+	}
+
+	var program ProgramId
+	switch cmd := cmd.(type) {
+	case *GlGetActiveUniform:
+		program = cmd.Program
+	case *GlGetActiveUniformsiv:
+		program = cmd.Program
+	default:
+		program = c.Bound.Program.GetID()
+	}
+
+	prog, ok := c.Objects.Programs.Lookup(program)
+	if !ok || prog.ActiveResources == nil || !prog.ActiveResources.Uniforms.Contains(uint32(o)) {
+		return nil, nil
+	}
+
+	return i.
+		Field("Programs").
+		MapIndex(program).
+		Field("ActiveResources").
+		Field("Uniforms").
+		MapIndex(o), nil
+}
+
+// Link returns the link to the uniform in the state block.
+// If nil, nil is returned then the path cannot be followed.
 func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
 	if i == nil {
@@ -156,14 +192,14 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 	}
 
 	prog, ok := c.Objects.Programs.Lookup(program)
-	if !ok || !prog.Uniforms.Contains(o) {
+	if !ok || !prog.UniformLocations.Contains(o) {
 		return nil, nil
 	}
 
 	return i.
 		Field("Programs").
 		MapIndex(program).
-		Field("Uniforms").
+		Field("UniformLocations").
 		MapIndex(o), nil
 }
 

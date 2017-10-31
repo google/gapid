@@ -127,6 +127,10 @@ Mesh has no vertices.
 
 No program bound.
 
+# ERR_PROGRAM_NOT_LINKED
+
+The program was not linked.
+
 # ERR_INCORRECT_MAP_KEY_TYPE
 
 Incorrect map key type. Got type {{got}}, expected type {{expected}}.

@@ -267,7 +267,7 @@ func (s *Shader) ResourceType(ctx context.Context) api.ResourceType {
 func (s *Shader) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Shader.ResourceData()")
 	var ty api.ShaderType
-	switch s.ShaderType {
+	switch s.Type {
 	case GLenum_GL_VERTEX_SHADER:
 		ty = api.ShaderType_Vertex
 	case GLenum_GL_GEOMETRY_SHADER:
@@ -395,146 +395,146 @@ func (p *Program) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		})
 	}
 
-	uniforms := make([]*api.Uniform, 0, p.ActiveUniforms.Len())
-	for _, activeUniform := range p.ActiveUniforms.Range() {
-		uniform := p.Uniforms.Get(activeUniform.Location)
+	uniforms := []*api.Uniform{}
+	if res := p.ActiveResources; res != nil {
+		for _, activeUniform := range res.DefaultUniformBlock.Range() {
+			var uniformFormat api.UniformFormat
+			var uniformType api.UniformType
 
-		var uniformFormat api.UniformFormat
-		var uniformType api.UniformType
+			switch activeUniform.Type {
+			case GLenum_GL_FLOAT:
+				uniformFormat = api.UniformFormat_Scalar
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_VEC2:
+				uniformFormat = api.UniformFormat_Vec2
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_VEC3:
+				uniformFormat = api.UniformFormat_Vec3
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_VEC4:
+				uniformFormat = api.UniformFormat_Vec4
+				uniformType = api.UniformType_Float
+			case GLenum_GL_INT:
+				uniformFormat = api.UniformFormat_Scalar
+				uniformType = api.UniformType_Int32
+			case GLenum_GL_INT_VEC2:
+				uniformFormat = api.UniformFormat_Vec2
+				uniformType = api.UniformType_Int32
+			case GLenum_GL_INT_VEC3:
+				uniformFormat = api.UniformFormat_Vec3
+				uniformType = api.UniformType_Int32
+			case GLenum_GL_INT_VEC4:
+				uniformFormat = api.UniformFormat_Vec4
+				uniformType = api.UniformType_Int32
+			case GLenum_GL_UNSIGNED_INT:
+				uniformFormat = api.UniformFormat_Scalar
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_UNSIGNED_INT_VEC2:
+				uniformFormat = api.UniformFormat_Vec2
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_UNSIGNED_INT_VEC3:
+				uniformFormat = api.UniformFormat_Vec3
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_UNSIGNED_INT_VEC4:
+				uniformFormat = api.UniformFormat_Vec4
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_BOOL:
+				uniformFormat = api.UniformFormat_Scalar
+				uniformType = api.UniformType_Bool
+			case GLenum_GL_BOOL_VEC2:
+				uniformFormat = api.UniformFormat_Vec2
+				uniformType = api.UniformType_Bool
+			case GLenum_GL_BOOL_VEC3:
+				uniformFormat = api.UniformFormat_Vec3
+				uniformType = api.UniformType_Bool
+			case GLenum_GL_BOOL_VEC4:
+				uniformFormat = api.UniformFormat_Vec4
+				uniformType = api.UniformType_Bool
+			case GLenum_GL_FLOAT_MAT2:
+				uniformFormat = api.UniformFormat_Mat2
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_MAT3:
+				uniformFormat = api.UniformFormat_Mat3
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_MAT4:
+				uniformFormat = api.UniformFormat_Mat4
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_MAT2x3:
+				uniformFormat = api.UniformFormat_Mat2x3
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_MAT2x4:
+				uniformFormat = api.UniformFormat_Mat2x4
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_MAT3x2:
+				uniformFormat = api.UniformFormat_Mat3x2
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_MAT3x4:
+				uniformFormat = api.UniformFormat_Mat3x4
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_MAT4x2:
+				uniformFormat = api.UniformFormat_Mat4x2
+				uniformType = api.UniformType_Float
+			case GLenum_GL_FLOAT_MAT4x3:
+				uniformFormat = api.UniformFormat_Mat4x3
+				uniformType = api.UniformType_Float
+			case GLenum_GL_SAMPLER_2D:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_SAMPLER_3D:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_SAMPLER_CUBE:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_SAMPLER_2D_SHADOW:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_SAMPLER_2D_ARRAY:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_SAMPLER_2D_ARRAY_SHADOW:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_SAMPLER_CUBE_SHADOW:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_INT_SAMPLER_2D:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_INT_SAMPLER_3D:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_INT_SAMPLER_CUBE:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_INT_SAMPLER_2D_ARRAY:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_UNSIGNED_INT_SAMPLER_2D:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_UNSIGNED_INT_SAMPLER_3D:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_UNSIGNED_INT_SAMPLER_CUBE:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			case GLenum_GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
+				uniformFormat = api.UniformFormat_Sampler
+				uniformType = api.UniformType_Uint32
+			default:
+				uniformFormat = api.UniformFormat_Scalar
+				uniformType = api.UniformType_Float
+			}
 
-		switch activeUniform.Type {
-		case GLenum_GL_FLOAT:
-			uniformFormat = api.UniformFormat_Scalar
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_VEC2:
-			uniformFormat = api.UniformFormat_Vec2
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_VEC3:
-			uniformFormat = api.UniformFormat_Vec3
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_VEC4:
-			uniformFormat = api.UniformFormat_Vec4
-			uniformType = api.UniformType_Float
-		case GLenum_GL_INT:
-			uniformFormat = api.UniformFormat_Scalar
-			uniformType = api.UniformType_Int32
-		case GLenum_GL_INT_VEC2:
-			uniformFormat = api.UniformFormat_Vec2
-			uniformType = api.UniformType_Int32
-		case GLenum_GL_INT_VEC3:
-			uniformFormat = api.UniformFormat_Vec3
-			uniformType = api.UniformType_Int32
-		case GLenum_GL_INT_VEC4:
-			uniformFormat = api.UniformFormat_Vec4
-			uniformType = api.UniformType_Int32
-		case GLenum_GL_UNSIGNED_INT:
-			uniformFormat = api.UniformFormat_Scalar
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_UNSIGNED_INT_VEC2:
-			uniformFormat = api.UniformFormat_Vec2
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_UNSIGNED_INT_VEC3:
-			uniformFormat = api.UniformFormat_Vec3
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_UNSIGNED_INT_VEC4:
-			uniformFormat = api.UniformFormat_Vec4
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_BOOL:
-			uniformFormat = api.UniformFormat_Scalar
-			uniformType = api.UniformType_Bool
-		case GLenum_GL_BOOL_VEC2:
-			uniformFormat = api.UniformFormat_Vec2
-			uniformType = api.UniformType_Bool
-		case GLenum_GL_BOOL_VEC3:
-			uniformFormat = api.UniformFormat_Vec3
-			uniformType = api.UniformType_Bool
-		case GLenum_GL_BOOL_VEC4:
-			uniformFormat = api.UniformFormat_Vec4
-			uniformType = api.UniformType_Bool
-		case GLenum_GL_FLOAT_MAT2:
-			uniformFormat = api.UniformFormat_Mat2
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_MAT3:
-			uniformFormat = api.UniformFormat_Mat3
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_MAT4:
-			uniformFormat = api.UniformFormat_Mat4
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_MAT2x3:
-			uniformFormat = api.UniformFormat_Mat2x3
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_MAT2x4:
-			uniformFormat = api.UniformFormat_Mat2x4
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_MAT3x2:
-			uniformFormat = api.UniformFormat_Mat3x2
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_MAT3x4:
-			uniformFormat = api.UniformFormat_Mat3x4
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_MAT4x2:
-			uniformFormat = api.UniformFormat_Mat4x2
-			uniformType = api.UniformType_Float
-		case GLenum_GL_FLOAT_MAT4x3:
-			uniformFormat = api.UniformFormat_Mat4x3
-			uniformType = api.UniformType_Float
-		case GLenum_GL_SAMPLER_2D:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_SAMPLER_3D:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_SAMPLER_CUBE:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_SAMPLER_2D_SHADOW:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_SAMPLER_2D_ARRAY:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_SAMPLER_2D_ARRAY_SHADOW:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_SAMPLER_CUBE_SHADOW:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_INT_SAMPLER_2D:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_INT_SAMPLER_3D:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_INT_SAMPLER_CUBE:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_INT_SAMPLER_2D_ARRAY:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_UNSIGNED_INT_SAMPLER_2D:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_UNSIGNED_INT_SAMPLER_3D:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_UNSIGNED_INT_SAMPLER_CUBE:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		case GLenum_GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
-			uniformFormat = api.UniformFormat_Sampler
-			uniformType = api.UniformType_Uint32
-		default:
-			uniformFormat = api.UniformFormat_Scalar
-			uniformType = api.UniformType_Float
+			uniforms = append(uniforms, &api.Uniform{
+				UniformLocation: uint32(activeUniform.Locations.Get(0)),
+				Name:            activeUniform.Name,
+				Format:          uniformFormat,
+				Type:            uniformType,
+				Value:           box.NewValue(uniformValue(ctx, s, uniformType, activeUniform.Value)),
+			})
 		}
-
-		uniforms = append(uniforms, &api.Uniform{
-			UniformLocation: uint32(activeUniform.Location),
-			Name:            activeUniform.Name,
-			Format:          uniformFormat,
-			Type:            uniformType,
-			Value:           box.NewValue(uniformValue(ctx, s, uniformType, uniform.Value)),
-		})
 	}
 
 	return api.NewResourceData(&api.Program{Shaders: shaders, Uniforms: uniforms}), nil

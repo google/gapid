@@ -115,8 +115,20 @@ func (e externs) substr(str string, start, end int32) string {
 	return str[start:end]
 }
 
-func (e externs) GetProgramInfoExtra(ctx *Context, pid ProgramId) *ProgramInfo {
-	return FindProgramInfo(e.cmd.Extras())
+func (e externs) GetCompileShaderExtra(ctx *Context, obj *Shader, bin *BinaryExtra) *CompileShaderExtra {
+	return FindCompileShaderExtra(e.cmd.Extras(), obj)
+}
+
+func (e externs) GetLinkProgramExtra(ctx *Context, obj *Program, bin *BinaryExtra) *LinkProgramExtra {
+	return FindLinkProgramExtra(e.cmd.Extras())
+}
+
+func (e externs) GetValidateProgramExtra(ctx *Context, obj *Program) *ValidateProgramExtra {
+	return FindValidateProgramExtra(e.cmd.Extras())
+}
+
+func (e externs) GetValidateProgramPipelineExtra(ctx *Context, obj *Pipeline) *ValidateProgramPipelineExtra {
+	return FindValidateProgramPipelineExtra(e.cmd.Extras())
 }
 
 func (e externs) onGlError(err GLenum) {

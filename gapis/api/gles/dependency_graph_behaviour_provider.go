@@ -293,16 +293,16 @@ func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBeha
 
 func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, c *Context) (stateKeys []dependencygraph.StateKey) {
 	// Look for samplers used by the current program.
-	if prog := c.Bound.Program; prog != nil {
-		for _, activeUniform := range prog.ActiveUniforms.Range() {
+	if prog := c.Bound.Program; prog != nil && prog.ActiveResources != nil {
+		for _, activeUniform := range prog.ActiveResources.DefaultUniformBlock.Range() {
 			// Optimization - skip the two most common types which we know are not samplers.
 			if activeUniform.Type != GLenum_GL_FLOAT_VEC4 && activeUniform.Type != GLenum_GL_FLOAT_MAT4 {
 				target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, activeUniform.Type)
 				if target == GLenum_GL_NONE {
 					continue // Not a sampler type
 				}
-				for i := 0; i < int(activeUniform.ArraySize); i++ {
-					uniform := prog.Uniforms.Get(activeUniform.Location + UniformLocation(i))
+				for _, loc := range activeUniform.Locations.Range() {
+					uniform := prog.UniformLocations.Get(UniformLocation(loc))
 					units := AsU32ˢ(uniform.Value, s.MemoryLayout).MustRead(ctx, cmd, s, nil)
 					if len(units) == 0 {
 						units = []uint32{0} // The uniform was not set, so use default value.

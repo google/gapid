@@ -86,16 +86,64 @@ func init() {
 	)
 }
 
-// FindProgramInfo searches for the ProgramInfo in the extras, returning the
-// ProgramInfo if found, otherwise nil.
-func FindProgramInfo(extras *api.CmdExtras) *ProgramInfo {
+// FindCompileShaderExtra searches for the CompileShaderExtra in the extras,
+// returning the CompileShaderExtra if found, otherwise nil.
+func FindCompileShaderExtra(extras *api.CmdExtras, forShader *Shader) *CompileShaderExtra {
 	for _, e := range extras.All() {
-		if pi, ok := e.(*ProgramInfo); ok {
+		if pi, ok := e.(*CompileShaderExtra); ok {
+			// There can be several of those extras - pick the right one.
+			if pi.ID == forShader.ID {
+				clone, err := deep.Clone(pi)
+				if err != nil {
+					panic(err)
+				}
+				return clone.(*CompileShaderExtra)
+			}
+		}
+	}
+	return nil
+}
+
+// FindLinkProgramExtra searches for the LinkProgramExtra in the extras,
+// returning the LinkProgramExtra if found, otherwise nil.
+func FindLinkProgramExtra(extras *api.CmdExtras) *LinkProgramExtra {
+	for _, e := range extras.All() {
+		if pi, ok := e.(*LinkProgramExtra); ok {
 			clone, err := deep.Clone(pi)
 			if err != nil {
 				panic(err)
 			}
-			return clone.(*ProgramInfo)
+			return clone.(*LinkProgramExtra)
+		}
+	}
+	return nil
+}
+
+// FindValidateProgramExtra searches for the ValidateProgramExtra in the extras,
+// returning the ValidateProgramExtra if found, otherwise nil.
+func FindValidateProgramExtra(extras *api.CmdExtras) *ValidateProgramExtra {
+	for _, e := range extras.All() {
+		if pi, ok := e.(*ValidateProgramExtra); ok {
+			clone, err := deep.Clone(pi)
+			if err != nil {
+				panic(err)
+			}
+			return clone.(*ValidateProgramExtra)
+		}
+	}
+	return nil
+}
+
+// FindValidateProgramPipelineExtra searches for the ValidateProgramPipelineExtra in the extras,
+// returning the ValidateProgramPipelineExtra if found, otherwise nil.
+func FindValidateProgramPipelineExtra(extras *api.CmdExtras) *ValidateProgramPipelineExtra {
+	for _, e := range extras.All() {
+		if pi, ok := e.(*ValidateProgramPipelineExtra); ok {
+			clone, err := deep.Clone(pi)
+			if err != nil {
+				panic(err)
+			}
+			return clone.(*ValidateProgramPipelineExtra)
 		}
 	}
 	return nil

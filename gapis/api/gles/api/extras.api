@@ -44,99 +44,58 @@ class DynamicContextState {
 @post_fence
 extern ref!DynamicContextState GetEGLDynamicContextState(EGLDisplay display, EGLSurface surface, EGLContext context)
 
-// ProgramInfo is an atom extra used to describe linked shader program.
-@internal @serialize
-class ProgramInfo {
-  GLboolean                                   LinkStatus
-  string                                      InfoLog
-  map!(AttributeIndex, ActiveAttribute)       ActiveAttributes
-  map!(UniformIndex, ActiveUniform)           ActiveUniforms
-  map!(UniformBlockIndex, ActiveUniformBlock) ActiveUniformBlocks
+
+@internal
+class UniformTypeInfo {
+  // The total size is: primitiveSize * vectorSize * vectorCount
+  u32 primitiveSize // Size of primitive type in bytes.
+  u32 vectorSize    // Number of primitives in a vector. Numbers of columns for matrix.
+  u32 vectorCount   // Always 1 for all non-matrix types. Numbers of rows for matrix.
 }
 
-@post_fence
-extern ref!ProgramInfo GetProgramInfoExtra(ref!Context ctx, ProgramId programId)
-
-sub void ApplyProgramInfoExtra(ProgramId programId, ref!ProgramInfo info) {
-  if (info != null) {
-    ctx := GetContext()
-    program := ctx.Objects.Programs[programId]
-    program.LinkStatus = info.LinkStatus
-    program.InfoLog = info.InfoLog
-    program.ActiveAttributes = null
-    program.ActiveUniforms = null
-    program.Uniforms = null
-    for _, attributeIndex, aa in info.ActiveAttributes {
-      aa.Type = hintAtAttributeType(aa.Type)
-      program.ActiveAttributes[attributeIndex] = aa
-    }
-    for _, uniformIndex, au in info.ActiveUniforms {
-      au.Type = hintAtUniformType(au.Type)
-      program.ActiveUniforms[uniformIndex] = au
-      for arrayIndex in (0 .. as!UniformLocation(au.ArraySize)) {
-        // TODO: Locations do not have to be consecutive.
-        program.Uniforms[au.Location + arrayIndex] = Uniform(Value: make!u8(0), Type: au.Type)
-      }
-      if au.BlockIndex == 0xFFFFFFFF {
-        program.DefaultUniformBlock.ActiveUniforms[uniformIndex] = au // Copy for convenience
-      }
-    }
-    for _, blockIndex, aub in info.ActiveUniformBlocks {
-      tmp := aub
-      for _, uniformIndex, au in info.ActiveUniforms {
-        au.Type = hintAtUniformType(au.Type)
-        if au.BlockIndex == blockIndex {
-          tmp.ActiveUniforms[uniformIndex] = au // Copy for convenience
-        }
-      }
-      program.ActiveUniformBlocks[blockIndex] = tmp
-    }
-  }
-}
-
-// hintAtUniformType simply return the single argument unaltered.
-// It is used to add enum name hint information for static analysis.
-sub GLenum hintAtUniformType(GLenum ty) {
+// GetUniformTypeInfo returns information about given unifrom type.
+sub UniformTypeInfo GetUniformTypeInfo(GLenum ty) {
   return switch ty {
-    case GL_FLOAT,
-        GL_FLOAT_VEC2,
-        GL_FLOAT_VEC3,
-        GL_FLOAT_VEC4,
-        GL_DOUBLE,
-        GL_DOUBLE_VEC2,
-        GL_DOUBLE_VEC3,
-        GL_DOUBLE_VEC4,
-        GL_INT,
-        GL_INT_VEC2,
-        GL_INT_VEC3,
-        GL_INT_VEC4,
-        GL_UNSIGNED_INT,
-        GL_UNSIGNED_INT_VEC2,
-        GL_UNSIGNED_INT_VEC3,
-        GL_UNSIGNED_INT_VEC4,
-        GL_BOOL,
-        GL_BOOL_VEC2,
-        GL_BOOL_VEC3,
-        GL_BOOL_VEC4,
-        GL_FLOAT_MAT2,
-        GL_FLOAT_MAT3,
-        GL_FLOAT_MAT4,
-        GL_FLOAT_MAT2x3,
-        GL_FLOAT_MAT2x4,
-        GL_FLOAT_MAT3x2,
-        GL_FLOAT_MAT3x4,
-        GL_FLOAT_MAT4x2,
-        GL_FLOAT_MAT4x3,
-        GL_DOUBLE_MAT2,
-        GL_DOUBLE_MAT3,
-        GL_DOUBLE_MAT4,
-        GL_DOUBLE_MAT2x3,
-        GL_DOUBLE_MAT2x4,
-        GL_DOUBLE_MAT3x2,
-        GL_DOUBLE_MAT3x4,
-        GL_DOUBLE_MAT4x2,
-        GL_DOUBLE_MAT4x3,
-        GL_SAMPLER_1D,
+    case GL_FLOAT:                 UniformTypeInfo(4, 1, 1)
+    case GL_FLOAT_VEC2:            UniformTypeInfo(4, 2, 1)
+    case GL_FLOAT_VEC3:            UniformTypeInfo(4, 3, 1)
+    case GL_FLOAT_VEC4:            UniformTypeInfo(4, 4, 1)
+    case GL_DOUBLE:                UniformTypeInfo(8, 1, 1)
+    case GL_DOUBLE_VEC2:           UniformTypeInfo(8, 2, 1)
+    case GL_DOUBLE_VEC3:           UniformTypeInfo(8, 3, 1)
+    case GL_DOUBLE_VEC4:           UniformTypeInfo(8, 4, 1)
+    case GL_INT:                   UniformTypeInfo(4, 1, 1)
+    case GL_INT_VEC2:              UniformTypeInfo(4, 2, 1)
+    case GL_INT_VEC3:              UniformTypeInfo(4, 3, 1)
+    case GL_INT_VEC4:              UniformTypeInfo(4, 4, 1)
+    case GL_UNSIGNED_INT:          UniformTypeInfo(4, 1, 1)
+    case GL_UNSIGNED_INT_VEC2:     UniformTypeInfo(4, 2, 1)
+    case GL_UNSIGNED_INT_VEC3:     UniformTypeInfo(4, 3, 1)
+    case GL_UNSIGNED_INT_VEC4:     UniformTypeInfo(4, 4, 1)
+    case GL_BOOL:                  UniformTypeInfo(4, 1, 1)
+    case GL_BOOL_VEC2:             UniformTypeInfo(4, 2, 1)
+    case GL_BOOL_VEC3:             UniformTypeInfo(4, 3, 1)
+    case GL_BOOL_VEC4:             UniformTypeInfo(4, 4, 1)
+    case GL_FLOAT_MAT2:            UniformTypeInfo(4, 2, 2)
+    case GL_FLOAT_MAT3:            UniformTypeInfo(4, 3, 3)
+    case GL_FLOAT_MAT4:            UniformTypeInfo(4, 4, 4)
+    case GL_FLOAT_MAT2x3:          UniformTypeInfo(4, 2, 3)
+    case GL_FLOAT_MAT2x4:          UniformTypeInfo(4, 2, 4)
+    case GL_FLOAT_MAT3x2:          UniformTypeInfo(4, 3, 2)
+    case GL_FLOAT_MAT3x4:          UniformTypeInfo(4, 3, 4)
+    case GL_FLOAT_MAT4x2:          UniformTypeInfo(4, 4, 2)
+    case GL_FLOAT_MAT4x3:          UniformTypeInfo(4, 4, 3)
+    case GL_DOUBLE_MAT2:           UniformTypeInfo(8, 2, 2)
+    case GL_DOUBLE_MAT3:           UniformTypeInfo(8, 3, 3)
+    case GL_DOUBLE_MAT4:           UniformTypeInfo(8, 4, 4)
+    case GL_DOUBLE_MAT2x3:         UniformTypeInfo(8, 2, 3)
+    case GL_DOUBLE_MAT2x4:         UniformTypeInfo(8, 2, 4)
+    case GL_DOUBLE_MAT3x2:         UniformTypeInfo(8, 3, 2)
+    case GL_DOUBLE_MAT3x4:         UniformTypeInfo(8, 3, 4)
+    case GL_DOUBLE_MAT4x2:         UniformTypeInfo(8, 4, 2)
+    case GL_DOUBLE_MAT4x3:         UniformTypeInfo(8, 4, 3)
+
+    case GL_SAMPLER_1D,
         GL_SAMPLER_2D,
         GL_SAMPLER_3D,
         GL_SAMPLER_CUBE,
@@ -203,9 +162,9 @@ sub GLenum hintAtUniformType(GLenum ty) {
         GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE,
         GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY,
         GL_UNSIGNED_INT_ATOMIC_COUNTER:
-      ty
+      UniformTypeInfo(4, 1, 1)
     default:
-      ty
+      UniformTypeInfo()
   }
 }
 
