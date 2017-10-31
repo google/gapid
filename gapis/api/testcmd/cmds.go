@@ -20,6 +20,8 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/data"
+	"github.com/google/gapid/core/data/deep"
+	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
@@ -71,15 +73,35 @@ type (
 		pool memory.PoolID
 	}
 
-	StringːString map[string]string
+	StringːString struct{ M map[string]string }
 
-	IntːStructPtr map[int]*Struct
+	IntːStructPtr struct{ M map[int]*Struct }
+
+	RawIntːStructPtr map[string]string
 
 	Struct struct {
 		Str string
 		Ref *Struct
 	}
 )
+
+var _ data.Assignable = &StringːString{}
+
+func (m StringːString) Dictionary() dictionary.I { return dictionary.From(m.M) }
+
+func (m *StringːString) Assign(v interface{}) bool {
+	m.M = map[string]string{}
+	return deep.Copy(&m.M, v) == nil
+}
+
+var _ data.Assignable = &IntːStructPtr{}
+
+func (m IntːStructPtr) Dictionary() dictionary.I { return dictionary.From(m.M) }
+
+func (m *IntːStructPtr) Assign(v interface{}) bool {
+	m.M = map[int]*Struct{}
+	return deep.Copy(&m.M, v) == nil
+}
 
 // Interface compliance checks
 var _ memory.Pointer = &Pointer{}
@@ -106,12 +128,13 @@ func (p *Pointer) Assign(o interface{}) bool {
 }
 
 type X struct {
-	Str  string        `param:"Str"`
-	Sli  []bool        `param:"Sli"`
-	Ref  *Struct       `param:"Ref"`
-	Ptr  Pointer       `param:"Ptr"`
-	Map  StringːString `param:"Map"`
-	PMap IntːStructPtr `param:"PMap"`
+	Str  string           `param:"Str"`
+	Sli  []bool           `param:"Sli"`
+	Ref  *Struct          `param:"Ref"`
+	Ptr  Pointer          `param:"Ptr"`
+	Map  StringːString    `param:"Map"`
+	PMap IntːStructPtr    `param:"PMap"`
+	RMap RawIntːStructPtr `param:"RMap"`
 }
 
 func (X) Caller() api.CmdID                                                  { return api.CmdNoID }
@@ -158,18 +181,20 @@ var (
 		Sli:  []bool{true, false, true},
 		Ref:  &Struct{Str: "ccc", Ref: &Struct{Str: "ddd"}},
 		Ptr:  Pointer{0x123, 0x456},
-		Map:  StringːString{"cat": "meow", "dog": "woof"},
-		PMap: IntːStructPtr{},
+		Map:  StringːString{map[string]string{"cat": "meow", "dog": "woof"}},
+		PMap: IntːStructPtr{map[int]*Struct{}},
+		RMap: map[string]string{"eyes": "see", "nose": "smells"},
 	}
 
 	Q = &X{
 		Str: "xyz",
 		Sli: []bool{false, true, false},
 		Ptr: Pointer{0x321, 0x654},
-		Map: StringːString{"bird": "tweet", "fox": "?"},
-		PMap: IntːStructPtr{
+		Map: StringːString{map[string]string{"bird": "tweet", "fox": "?"}},
+		PMap: IntːStructPtr{map[int]*Struct{
 			100: &Struct{Str: "baldrick"},
-		},
+		}},
+		RMap: map[string]string{"ears": "hear", "tongue": "taste"},
 	}
 )
 

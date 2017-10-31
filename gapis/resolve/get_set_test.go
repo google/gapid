@@ -49,6 +49,7 @@ var (
 			{Name: "Ptr", Value: box.NewValue(testcmd.P.Ptr)},
 			{Name: "Map", Value: box.NewValue(testcmd.P.Map)},
 			{Name: "PMap", Value: box.NewValue(testcmd.P.PMap)},
+			{Name: "RMap", Value: box.NewValue(testcmd.P.RMap)},
 		},
 		Thread: testcmd.P.Thread(),
 	}
@@ -63,6 +64,7 @@ var (
 			{Name: "Ptr", Value: box.NewValue(testcmd.Q.Ptr)},
 			{Name: "Map", Value: box.NewValue(testcmd.Q.Map)},
 			{Name: "PMap", Value: box.NewValue(testcmd.Q.PMap)},
+			{Name: "RMap", Value: box.NewValue(testcmd.Q.RMap)},
 		},
 		Thread: testcmd.Q.Thread(),
 	}
@@ -103,6 +105,8 @@ func TestGet(t *testing.T) {
 		{p.Command(1).Parameter("Map").MapIndex("bird"), "tweet", nil},
 		{p.Command(1).Parameter("Map").MapIndex([]rune("bird")), "tweet", nil},
 		{p.Command(1).Parameter("PMap").MapIndex(100), &testcmd.Struct{Str: "baldrick"}, nil},
+		{p.Command(0).Parameter("RMap").MapIndex("eyes"), "see", nil},
+		{p.Command(1).Parameter("RMap").MapIndex("ears"), "hear", nil},
 
 		// Test invalid paths
 		{p.Command(5), nil, &service.ErrInvalidPath{
@@ -156,10 +160,9 @@ func TestGet(t *testing.T) {
 			Path:   p.Command(1).Parameter("Ref").MapIndex("foo").Path(),
 		}},
 	} {
-		ctx := log.V{"path": test.path}.Bind(ctx)
 		got, err := Get(ctx, test.path.Path())
-		assert.With(ctx).That(got).DeepEquals(test.val)
-		assert.With(ctx).ThatError(err).DeepEquals(test.err)
+		assert.For(ctx, "Get(%v)", test.path).That(got).DeepEquals(test.val)
+		assert.For(ctx, "Get(%v)", test.path).ThatError(err).DeepEquals(test.err)
 	}
 }
 
@@ -185,6 +188,8 @@ func TestSet(t *testing.T) {
 		{path: p.Command(1).Parameter("Sli").ArrayIndex(1), val: false},
 		{path: p.Command(1).Parameter("Map").MapIndex("bird"), val: "churp"},
 		{path: p.Command(1).Parameter("Map").MapIndex([]rune("bird")), val: "churp"},
+		{path: p.Command(0).Parameter("RMap").MapIndex("eyes"), val: "blind"},
+		{path: p.Command(1).Parameter("RMap").MapIndex("ears"), val: "deaf"},
 
 		// Test invalid paths
 		{p.Command(5), nil, &service.ErrInvalidPath{
