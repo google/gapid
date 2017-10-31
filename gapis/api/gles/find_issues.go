@@ -24,11 +24,8 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/gles/glsl"
-	"github.com/google/gapid/gapis/api/gles/glsl/ast"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -162,42 +159,19 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	switch cmd := cmd.(type) {
 	case *GlCompileShader:
 		shader := c.Objects.Shared.Shaders.Get(cmd.Shader)
-		if config.UseGlslang {
-			st, err := shader.Type.ShaderType()
-			if err != nil {
-				t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
-				return
-			}
-			opts := shadertools.Options{
-				ShaderType:        st,
-				CheckAfterChanges: true,
-				Disassemble:       true,
-			}
+		st, err := shader.Type.ShaderType()
+		if err != nil {
+			t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
+			return
+		}
+		opts := shadertools.Options{
+			ShaderType:        st,
+			CheckAfterChanges: true,
+			Disassemble:       true,
+		}
 
-			if _, err := shadertools.ConvertGlsl(shader.Source, &opts); err != nil {
-				t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
-			}
-		} else {
-			var errs []error
-			var kind string
-			switch shader.Type {
-			case GLenum_GL_VERTEX_SHADER:
-				_, _, _, errs = glsl.Parse(shader.Source, ast.LangVertexShader)
-				kind = "vertex"
-			case GLenum_GL_FRAGMENT_SHADER:
-				_, _, _, errs = glsl.Parse(shader.Source, ast.LangFragmentShader)
-				kind = "fragment"
-			default:
-				t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Unknown shader type %v", shader.Type))
-			}
-			if len(errs) > 0 {
-				msgs := make([]string, len(errs))
-				for i, err := range errs {
-					msgs[i] = err.Error()
-				}
-				t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Failed to parse %s shader source. Errors:\n%s\nSource:\n%s",
-					kind, strings.Join(msgs, "\n"), text.LineNumber(shader.Source)))
-			}
+		if _, err := shadertools.ConvertGlsl(shader.Source, &opts); err != nil {
+			t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
 		}
 
 		const buflen = 8192
