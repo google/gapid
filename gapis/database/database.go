@@ -18,7 +18,6 @@ package database
 import (
 	"context"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/id"
 )
@@ -27,7 +26,7 @@ import (
 type Database interface {
 	// Store adds a key-value pair to the database.
 	// It is an error if the id is already mapped to an object.
-	Store(context.Context, id.ID, interface{}, proto.Message) error
+	Store(context.Context, interface{}) (id.ID, error)
 	// Resolve attempts to resolve the final value associated with an id.
 	// It will traverse all Resolvable objects, blocking until they are ready.
 	Resolve(context.Context, id.ID) (interface{}, error)
@@ -37,21 +36,7 @@ type Database interface {
 
 // Store stores v to the database held by the context.
 func Store(ctx context.Context, v interface{}) (id.ID, error) {
-	m, err := toProto(ctx, v)
-	if err != nil {
-		return id.ID{}, err
-	}
-	i, err := hashProto(v, m)
-	if err != nil {
-		return id.ID{}, err
-	}
-	if v == m {
-		v = nil // v is the proto.
-	}
-	if err := Get(ctx).Store(ctx, i, v, m); err != nil {
-		return id.ID{}, err
-	}
-	return i, nil
+	return Get(ctx).Store(ctx, v)
 }
 
 // Resolve resolves id with the database held by the context.

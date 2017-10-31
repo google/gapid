@@ -16,7 +16,9 @@ package database
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
+	"hash"
 	"reflect"
 	"sync"
 
@@ -25,7 +27,6 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/gapis/config"
 )
 
 // NewInMemory builds a new in memory database.
@@ -36,9 +37,31 @@ func NewInMemory(ctx context.Context) Database {
 	return m
 }
 
+var sha1Pool = sync.Pool{New: func() interface{} { return sha1.New() }}
+
+func generateID(ty recordType, encoded []byte) id.ID {
+	h := sha1Pool.Get().(hash.Hash)
+	h.Reset()
+	h.Write([]byte(ty))
+	h.Write([]byte("•"))
+	h.Write(encoded)
+
+	out := id.ID{}
+	copy(out[:], h.Sum(nil))
+
+	sha1Pool.Put(h)
+	return out
+}
+
+type recordType string
+
+// blob is the record type for a raw byte slice
+const blob = recordType("<blob>")
+
 type record struct {
-	proto        proto.Message
-	object       interface{}
+	data         []byte      // data is the encoded object
+	ty           recordType  // ty is the type of the encoded object
+	object       interface{} // object is the deserialized object
 	resolveState *resolveState
 	created      callstack
 }
@@ -52,23 +75,46 @@ type resolveState struct {
 	callstacks []callstack
 }
 
+func (r *record) decode(ctx context.Context) (interface{}, error) {
+	switch r.ty {
+	case blob:
+		return r.data, nil
+	default:
+		ty := proto.MessageType(string(r.ty))
+		msg := reflect.New(ty).Interface().(proto.Message)
+		if err := proto.Unmarshal(r.data, msg); err != nil {
+			return nil, err
+		}
+		return msg, nil
+	}
+}
+
 func (r *record) resolve(ctx context.Context) error {
-	// Deserialize the object from the proto if we don't have the object already.
+	// Decode the object if we don't have the object already.
 	if r.object == nil {
-		obj, err := protoconv.ToObject(ctx, r.proto)
-		switch err := err.(type) {
-		case protoconv.ErrNoConverterRegistered:
-			if err.Object != r.proto {
-				// We got a ErrNoConverterRegistered error, but it wasn't for the outermost object!
-				return err
-			}
-			r.object = r.proto
-		case nil:
-			r.object = obj
-		default:
+		obj, err := r.decode(ctx)
+		if err != nil {
 			return err
 		}
+		r.object = obj
 	}
+
+	// Convert protos to Go objects if we can.
+	if msg, ok := r.object.(proto.Message); ok {
+		obj, err := protoconv.ToObject(ctx, msg)
+		switch err := err.(type) {
+		case nil:
+			r.object = obj
+		case protoconv.ErrNoConverterRegistered:
+			if err.Object != msg {
+				// We got a ErrNoConverterRegistered error, but it wasn't for
+				// the outermost object!
+				return err
+			}
+		}
+	}
+
+	// Keep on resolving until the type no longer implements Resolvable.
 	for {
 		// If the object implements resolvable, then we need to resolve it.
 		// Is the database value resolvable?
@@ -91,26 +137,36 @@ type memory struct {
 }
 
 // Implements Database
-func (d *memory) Store(ctx context.Context, id id.ID, v interface{}, m proto.Message) error {
+func (d *memory) Store(ctx context.Context, val interface{}) (id.ID, error) {
+	var data []byte
+	var ty recordType
+
+	switch val := val.(type) {
+	case nil:
+		panic(fmt.Errorf("Attemping to store nil in database"))
+	case []byte:
+		data, ty = val, blob
+	default:
+		m, err := toProto(ctx, val)
+		if err != nil {
+			return id.ID{}, err
+		}
+		data, err = proto.Marshal(m)
+		if err != nil {
+			return id.ID{}, err
+		}
+		ty = recordType(proto.MessageName(m))
+	}
+
+	id := generateID(ty, data)
+
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	return d.storeLocked(ctx, id, v, m)
-}
+	if _, got := d.records[id]; !got {
+		d.records[id] = &record{data: data, ty: ty, object: val, created: getCallstack(4)}
+	}
 
-// store function must be called with a locked mutex
-func (d *memory) storeLocked(ctx context.Context, id id.ID, v interface{}, m proto.Message) error {
-	if v == nil && m == nil {
-		panic(fmt.Errorf("Store nil in database (that is bad), id '%v'", id))
-	}
-	r, got := d.records[id]
-	if !got {
-		d.records[id] = &record{object: v, proto: m, created: getCallstack(4)}
-	} else if config.DebugDatabaseVerify {
-		if !reflect.DeepEqual(m, r.proto) {
-			return fmt.Errorf("Duplicate object id %v", id)
-		}
-	}
-	return nil
+	return id, nil
 }
 
 // Implements Database
