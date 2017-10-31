@@ -38,11 +38,11 @@ func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *a
 	}
 	c := GetContext(s, thread)
 	vertexShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		ok := c.Objects.Shared.Buffers.Contains(BufferId(x))
+		ok := c.Objects.Buffers.Contains(BufferId(x))
 		return ok
 	}))
 	fragmentShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		ok := c.Objects.Shared.Buffers.Contains(BufferId(x))
+		ok := c.Objects.Buffers.Contains(BufferId(x))
 		return ok || x == uint32(vertexShaderID)
 	}))
 	cb := CommandBuilder{Thread: thread}

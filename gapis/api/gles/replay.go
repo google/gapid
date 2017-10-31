@@ -301,8 +301,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, i, 1))
 
 		// Delete all Renderbuffers.
-		renderbuffers := make([]RenderbufferId, 0, c.Objects.Shared.Renderbuffers.Len())
-		for renderbufferId := range c.Objects.Shared.Renderbuffers.Range() {
+		renderbuffers := make([]RenderbufferId, 0, c.Objects.Renderbuffers.Len())
+		for renderbufferId := range c.Objects.Renderbuffers.Range() {
 			// Skip virtual renderbuffers: backbuffer_color(-1), backbuffer_depth(-2), backbuffer_stencil(-3).
 			if renderbufferId < 0xf0000000 {
 				renderbuffers = append(renderbuffers, renderbufferId)
@@ -314,8 +314,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all Textures.
-		textures := make([]TextureId, 0, c.Objects.Shared.Textures.Len())
-		for textureId := range c.Objects.Shared.Textures.Range() {
+		textures := make([]TextureId, 0, c.Objects.Textures.Len())
+		for textureId := range c.Objects.Textures.Range() {
 			textures = append(textures, textureId)
 		}
 		if len(textures) > 0 {
@@ -334,8 +334,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all Buffers.
-		buffers := make([]BufferId, 0, c.Objects.Shared.Buffers.Len())
-		for bufferId := range c.Objects.Shared.Buffers.Range() {
+		buffers := make([]BufferId, 0, c.Objects.Buffers.Len())
+		for bufferId := range c.Objects.Buffers.Range() {
 			buffers = append(buffers, bufferId)
 		}
 		if len(buffers) > 0 {
@@ -354,12 +354,12 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all Shaders.
-		for _, shaderId := range c.Objects.Shared.Shaders.KeysSorted() {
+		for _, shaderId := range c.Objects.Shaders.KeysSorted() {
 			cmds = append(cmds, cb.GlDeleteShader(shaderId))
 		}
 
 		// Delete all Programs.
-		for _, programId := range c.Objects.Shared.Programs.KeysSorted() {
+		for _, programId := range c.Objects.Programs.KeysSorted() {
 			cmds = append(cmds, cb.GlDeleteProgram(programId))
 		}
 

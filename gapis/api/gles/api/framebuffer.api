@@ -223,11 +223,11 @@ cmd void glBindRenderbuffer(GLenum target, RenderbufferId renderbuffer) {
 
 sub ref!Renderbuffer GetOrCreateRenderbuffer(RenderbufferId id) {
   ctx := GetContext()
-  if (id != 0) && (ctx.Objects.Shared.Renderbuffers[id] == null) {
-    ctx.Objects.Shared.Renderbuffers[id] = new!Renderbuffer(ID: id)
-    ctx.Objects.Shared.GeneratedNames.Renderbuffers[id] = true
+  if (id != 0) && (ctx.Objects.Renderbuffers[id] == null) {
+    ctx.Objects.Renderbuffers[id] = new!Renderbuffer(ID: id)
+    ctx.Objects.GeneratedNames.Renderbuffers[id] = true
   }
-  return ctx.Objects.Shared.Renderbuffers[id]
+  return ctx.Objects.Renderbuffers[id]
 }
 
 @if(Version.GLES30)
@@ -493,8 +493,8 @@ cmd void glDeleteRenderbuffers(GLsizei count, const RenderbufferId* renderbuffer
   for i in (0 .. count) {
     id := r[i]
     if id != 0 {
-      delete(ctx.Objects.Shared.Renderbuffers, id)
-      delete(ctx.Objects.Shared.GeneratedNames.Renderbuffers, id)
+      delete(ctx.Objects.Renderbuffers, id)
+      delete(ctx.Objects.GeneratedNames.Renderbuffers, id)
     }
   }
 }
@@ -571,14 +571,14 @@ cmd void glFramebufferRenderbuffer(GLenum         framebuffer_target,
   ctx := GetContext()
   if renderbuffer_target != GL_RENDERBUFFER { glErrorInvalidEnum(renderbuffer_target) }
   // SPEC: Only PDF spec mentions this:
-  if (renderbuffer != 0) && !(renderbuffer in ctx.Objects.Shared.Renderbuffers) {
+  if (renderbuffer != 0) && !(renderbuffer in ctx.Objects.Renderbuffers) {
     glErrorInvalidOperation_ObjectDoesNotExist!RenderbufferId(renderbuffer)
   }
 
   attachment := FramebufferAttachment()
   if (renderbuffer != 0) {
     attachment.Type = GL_RENDERBUFFER
-    attachment.Renderbuffer = ctx.Objects.Shared.Renderbuffers[renderbuffer]
+    attachment.Renderbuffer = ctx.Objects.Renderbuffers[renderbuffer]
   }
   SetFramebufferAttachment(framebuffer_target, framebuffer_attachment, attachment)
 }
@@ -593,9 +593,9 @@ sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue!TextureId(texture) }
+    if !(texture in ctx.Objects.Textures) { glErrorInvalidValue!TextureId(texture) }
     attachment_info.Type = GL_TEXTURE
-    attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
+    attachment_info.Texture = ctx.Objects.Textures[texture]
     attachment_info.TextureLevel = level
     attachment_info.Layered = 0 // TODO
   }
@@ -639,7 +639,7 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
   ctx := GetContext()
   attachment := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) {
+    if !(texture in ctx.Objects.Textures) {
       glErrorInvalidOperation_ObjectDoesNotExist!TextureId(texture)
     }
     kind := switch (texture_target) {
@@ -655,9 +655,9 @@ sub void FramebufferTexture2D(GLenum    framebuffer_target,
         as!GLenum(0)
     }
     // TODO: Handle texture 0
-    if ctx.Objects.Shared.Textures[texture].Kind != kind { glErrorInvalidOperation() }
+    if ctx.Objects.Textures[texture].Kind != kind { glErrorInvalidOperation() }
     attachment.Type = GL_TEXTURE
-    attachment.Texture = ctx.Objects.Shared.Textures[texture]
+    attachment.Texture = ctx.Objects.Textures[texture]
     attachment.TextureLevel = level
     attachment.TextureLayer = CubemapFaceToLayer(texture_target)
   }
@@ -676,9 +676,9 @@ cmd void glFramebufferTextureLayer(GLenum    target,
   ctx := GetContext()
   attachment_info := FramebufferAttachment()
   if (texture != 0) {
-    if !(texture in ctx.Objects.Shared.Textures) { glErrorInvalidValue!TextureId(texture) }
+    if !(texture in ctx.Objects.Textures) { glErrorInvalidValue!TextureId(texture) }
     attachment_info.Type = GL_TEXTURE
-    attachment_info.Texture = ctx.Objects.Shared.Textures[texture]
+    attachment_info.Texture = ctx.Objects.Textures[texture]
     attachment_info.TextureLevel = level
     attachment_info.TextureLayer = layer
   }
@@ -714,7 +714,7 @@ cmd void glGenRenderbuffers(GLsizei count, RenderbufferId* renderbuffers) {
   for i in (0 .. count) {
     id := as!RenderbufferId(?)
     assert(id != 0)
-    ctx.Objects.Shared.GeneratedNames.Renderbuffers[id] = true
+    ctx.Objects.GeneratedNames.Renderbuffers[id] = true
     r[i] = id
   }
 }
@@ -935,7 +935,7 @@ cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
 cmd GLboolean glIsRenderbuffer(RenderbufferId renderbuffer) {
 
   ctx := GetContext()
-  return as!GLboolean(renderbuffer in ctx.Objects.Shared.Renderbuffers)
+  return as!GLboolean(renderbuffer in ctx.Objects.Renderbuffers)
 }
 
 @if(Version.GLES30)

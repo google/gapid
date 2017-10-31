@@ -158,7 +158,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 	switch cmd := cmd.(type) {
 	case *GlCompileShader:
-		shader := c.Objects.Shared.Shaders.Get(cmd.Shader)
+		shader := c.Objects.Shaders.Get(cmd.Shader)
 		st, err := shader.Type.ShaderType()
 		if err != nil {
 			t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
@@ -214,7 +214,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 				}
 				if r.Uint32() != uint32(GLboolean_GL_TRUE) {
 					originalSource := "<unknown>"
-					if shader := c.Objects.Shared.Shaders.Get(cmd.Shader); shader != nil {
+					if shader := c.Objects.Shaders.Get(cmd.Shader); shader != nil {
 						originalSource = shader.Source
 					}
 					t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Shader %d failed to compile. Error:\n%v\nOriginal source:\n%s\nTranslated source:\n%s\n",
@@ -242,7 +242,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 				r.Data(msg)
 				if res != uint32(GLboolean_GL_TRUE) {
 					vss, fss := "<unknown>", "<unknown>"
-					if program := c.Objects.Shared.Programs.Get(cmd.Program); program != nil {
+					if program := c.Objects.Programs.Get(cmd.Program); program != nil {
 						if shader := program.Shaders.Get(GLenum_GL_VERTEX_SHADER); shader != nil {
 							vss = shader.Source
 						}

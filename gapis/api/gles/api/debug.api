@@ -242,10 +242,10 @@ sub void ObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLcha
   ctx := GetContext()
   switch (identifier) {
     case GL_TEXTURE: {
-      if !(as!TextureId(name) in ctx.Objects.Shared.Textures) {
+      if !(as!TextureId(name) in ctx.Objects.Textures) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(name)
       }
-      ctx.Objects.Shared.Textures[as!TextureId(name)].Label = str
+      ctx.Objects.Textures[as!TextureId(name)].Label = str
     }
     case GL_FRAMEBUFFER: {
       if !(as!FramebufferId(name) in ctx.Objects.Framebuffers) {
@@ -254,28 +254,28 @@ sub void ObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLcha
       ctx.Objects.Framebuffers[as!FramebufferId(name)].Label = str
     }
     case GL_RENDERBUFFER: {
-      if !(as!RenderbufferId(name) in ctx.Objects.Shared.Renderbuffers) {
+      if !(as!RenderbufferId(name) in ctx.Objects.Renderbuffers) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(name)
       }
-      ctx.Objects.Shared.Renderbuffers[as!RenderbufferId(name)].Label = str
+      ctx.Objects.Renderbuffers[as!RenderbufferId(name)].Label = str
     }
     case GL_BUFFER: {
-      if !(as!BufferId(name) in ctx.Objects.Shared.Buffers) {
+      if !(as!BufferId(name) in ctx.Objects.Buffers) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(name)
       }
-      ctx.Objects.Shared.Buffers[as!BufferId(name)].Label = str
+      ctx.Objects.Buffers[as!BufferId(name)].Label = str
     }
     case GL_SHADER: {
-      if !(as!ShaderId(name) in ctx.Objects.Shared.Shaders) {
+      if !(as!ShaderId(name) in ctx.Objects.Shaders) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(name)
       }
-      ctx.Objects.Shared.Shaders[as!ShaderId(name)].Label = str
+      ctx.Objects.Shaders[as!ShaderId(name)].Label = str
     }
     case GL_PROGRAM: {
-      if !(as!ProgramId(name) in ctx.Objects.Shared.Programs) {
+      if !(as!ProgramId(name) in ctx.Objects.Programs) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(name)
       }
-      ctx.Objects.Shared.Programs[as!ProgramId(name)].Label = str
+      ctx.Objects.Programs[as!ProgramId(name)].Label = str
     }
     case GL_VERTEX_ARRAY: {
       if !(as!VertexArrayId(name) in ctx.Objects.VertexArrays) {
@@ -290,10 +290,10 @@ sub void ObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLcha
       ctx.Objects.Queries[as!QueryId(name)].Label = str
     }
     case GL_SAMPLER: {
-      if !(as!SamplerId(name) in ctx.Objects.Shared.Samplers) {
+      if !(as!SamplerId(name) in ctx.Objects.Samplers) {
         glErrorInvalidOperation_ObjectDoesNotExist!GLuint(name)
       }
-      ctx.Objects.Shared.Samplers[as!SamplerId(name)].Label = str
+      ctx.Objects.Samplers[as!SamplerId(name)].Label = str
     }
     case GL_TRANSFORM_FEEDBACK: {
       if !(as!TransformFeedbackId(name) in ctx.Objects.TransformFeedbacks) {
