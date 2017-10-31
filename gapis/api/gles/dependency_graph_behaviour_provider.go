@@ -184,22 +184,22 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			case *GlCopyImageSubData:
 				// TODO: This assumes whole-image copy.  Handle sub-range copies.
 				if cmd.SrcTarget == GLenum_GL_RENDERBUFFER {
-					b.Read(g, renderbufferDataKey{c.Objects.Shared.Renderbuffers.Get(RenderbufferId(cmd.SrcName))})
+					b.Read(g, renderbufferDataKey{c.Objects.Renderbuffers.Get(RenderbufferId(cmd.SrcName))})
 				} else {
-					data, size := c.Objects.Shared.Textures.Get(TextureId(cmd.SrcName)).dataAndSize(cmd.SrcLevel, 0)
+					data, size := c.Objects.Textures.Get(TextureId(cmd.SrcName)).dataAndSize(cmd.SrcLevel, 0)
 					b.Read(g, data)
 					b.Read(g, size)
 				}
 				if cmd.DstTarget == GLenum_GL_RENDERBUFFER {
 					b.Write(g,
-						renderbufferDataKey{c.Objects.Shared.Renderbuffers.Get(RenderbufferId(cmd.DstName))})
+						renderbufferDataKey{c.Objects.Renderbuffers.Get(RenderbufferId(cmd.DstName))})
 				} else {
-					data, size := c.Objects.Shared.Textures.Get(TextureId(cmd.DstName)).dataAndSize(cmd.DstLevel, 0)
+					data, size := c.Objects.Textures.Get(TextureId(cmd.DstName)).dataAndSize(cmd.DstLevel, 0)
 					b.Write(g, data)
 					b.Write(g, size)
 				}
 			case *GlFramebufferTexture2D:
-				b.Read(g, textureSizeKey{c.Objects.Shared.Textures.Get(cmd.Texture), cmd.Texture, cmd.Level, 0})
+				b.Read(g, textureSizeKey{c.Objects.Textures.Get(cmd.Texture), cmd.Texture, cmd.Level, 0})
 				b.KeepAlive = true // Changes untracked state
 			case *GlCompressedTexImage2D:
 				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)

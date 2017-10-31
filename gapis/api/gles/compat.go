@@ -278,7 +278,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// It is helpful to remove those no-ops in case the replay driver does not support the target.
 					return
 				}
-			} else if !c.Objects.Shared.GeneratedNames.Buffers.Get(cmd.Buffer) {
+			} else if !c.Objects.GeneratedNames.Buffers.Get(cmd.Buffer) {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
 				tmp := s.AllocDataOrPanic(ctx, cmd.Buffer)
 				out.MutateAndWrite(ctx, dID, cb.GlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
@@ -287,7 +287,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlBindTexture:
 			{
 				cmd := *cmd
-				if cmd.Texture != 0 && !c.Objects.Shared.GeneratedNames.Textures.Get(cmd.Texture) {
+				if cmd.Texture != 0 && !c.Objects.GeneratedNames.Textures.Get(cmd.Texture) {
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
 					tmp := s.AllocDataOrPanic(ctx, cmd.Texture)
 					out.MutateAndWrite(ctx, dID, cb.GlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
@@ -355,7 +355,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// TODO: We don't handle the case where the buffer is kept bound
 				// while the buffer is updated. It's an unlikely issue, but
 				// something that may break us.
-				if !c.Objects.Shared.Buffers.Contains(cmd.Buffer) {
+				if !c.Objects.Buffers.Contains(cmd.Buffer) {
 					return // Don't know what buffer this is referring to.
 				}
 
@@ -443,7 +443,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			return
 
 		case *GlCompileShader:
-			shader := c.Objects.Shared.Shaders.Get(cmd.Shader)
+			shader := c.Objects.Shaders.Get(cmd.Shader)
 			src := ""
 
 			st, err := shader.Type.ShaderType()
@@ -1102,7 +1102,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Forcefully get all uniform locations, so that we can remap for applications that
 				// just assume locations (in particular, apps tend to assume arrays are consecutive)
 				// TODO: We should warn the developers that the consecutive layout is not guaranteed.
-				prog := c.Objects.Shared.Programs.Get(cmd.Program)
+				prog := c.Objects.Programs.Get(cmd.Program)
 				for _, uniformIndex := range prog.ActiveUniforms.KeysSorted() {
 					uniform := prog.ActiveUniforms.Get(uniformIndex)
 					for i := 0; i < int(uniform.ArraySize); i++ {
