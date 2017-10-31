@@ -17,12 +17,12 @@
 #ifndef GAPII_TO_PROTO_H
 #define GAPII_TO_PROTO_H
 
+#include "gapii/cc/shared_map.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
 
 #include "core/cc/static_array.h"
 
 #include <type_traits>
-#include <unordered_map>
 
 namespace gapii {
 
@@ -126,16 +126,16 @@ struct ProtoMapValConverter<EntryOut, typename ValIn::ProtoType, ValIn> {
     }
 };
 
-// std::unordered_map<KeyIn, ValIn> -> ::google::protobuf::RepeatedPtrField<EntryOut>*
+// SharedMap<KeyIn, ValIn> -> ::google::protobuf::RepeatedPtrField<EntryOut>*
 template <typename EntryOut, typename KeyIn, typename ValIn>
-struct ProtoConverter<::google::protobuf::RepeatedPtrField<EntryOut>*, std::unordered_map<KeyIn, ValIn>> {
+struct ProtoConverter<::google::protobuf::RepeatedPtrField<EntryOut>*, SharedMap<KeyIn, ValIn>> {
     typedef decltype(((EntryOut*)(0))->key()) KeyOutRaw;
     typedef decltype(((EntryOut*)(0))->value()) ValOutRaw;
 
     typedef typename std::remove_cv<typename std::remove_reference<KeyOutRaw>::type>::type KeyOut;
     typedef typename std::remove_cv<typename std::remove_reference<ValOutRaw>::type>::type ValOut;
 
-    static inline void convert(::google::protobuf::RepeatedPtrField<EntryOut>* out, const std::unordered_map<KeyIn, ValIn>& in) {
+    static inline void convert(::google::protobuf::RepeatedPtrField<EntryOut>* out, const SharedMap<KeyIn, ValIn>& in) {
         out->Reserve(in.size());
         for (auto it : in) {
             auto entry = out->Add();
