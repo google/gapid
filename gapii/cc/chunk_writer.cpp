@@ -58,12 +58,6 @@ ChunkWriterImpl::~ChunkWriterImpl() {
 
 bool ChunkWriterImpl::write(std::string& s) {
     if (mStreamGood) {
-        uint8_t size_buf[16];
-
-        auto size = s.size();
-        auto size_count = CodedOutputStream::WriteVarint64ToArray(size, &size_buf[0]) - &size_buf[0];
-
-        mBuffer.append(reinterpret_cast<char*>(&size_buf[0]), size_count);
         mBuffer.append(s);
 
         if(mBuffer.size() >= kBufferSize) {

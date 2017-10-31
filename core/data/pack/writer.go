@@ -43,11 +43,7 @@ func NewWriter(to io.Writer) (*Writer, error) {
 		sizebuf: proto.NewBuffer(make([]byte, 0, maxVarintSize)),
 		to:      to,
 	}
-	if err := w.writeMagic(); err != nil {
-		return nil, err
-	}
-	header := &Header{Version: version}
-	if err := w.writeHeader(header); err != nil {
+	if _, err := w.to.Write(header); err != nil {
 		return nil, err
 	}
 	return w, nil
@@ -55,13 +51,13 @@ func NewWriter(to io.Writer) (*Writer, error) {
 
 // BeginGroup is called to start a new root group.
 func (w *Writer) BeginGroup(ctx context.Context, msg proto.Message) (id uint64, err error) {
-	return w.writeMessage(msg, true, nil)
+	return w.writeMessage(ctx, msg, true, nil)
 }
 
 // BeginChildGroup is called to start a new group as a child of the group with
 // the parent identifier.
 func (w *Writer) BeginChildGroup(ctx context.Context, msg proto.Message, parentID uint64) (id uint64, err error) {
-	return w.writeMessage(msg, true, &parentID)
+	return w.writeMessage(ctx, msg, true, &parentID)
 }
 
 // EndGroup finalizes the group with the given identifier. It is illegal to
@@ -69,99 +65,82 @@ func (w *Writer) BeginChildGroup(ctx context.Context, msg proto.Message, parentI
 // EndGroup should be closed immediately after the last child has been added
 // to the group.
 func (w *Writer) EndGroup(ctx context.Context, id uint64) error {
-	if err := w.buf.EncodeZigzag64(tagGroupFinalizer); err != nil {
+	if err := w.writeParentID(id); err != nil {
 		return err
 	}
-	if err := w.writeID(id); err != nil {
-		return err
-	}
-	return w.flushChunk()
+	return w.flushChunk(false)
 }
 
 // Object is called to declare an object outside of any group.
 func (w *Writer) Object(ctx context.Context, msg proto.Message) error {
-	_, err := w.writeMessage(msg, false, nil)
+	_, err := w.writeMessage(ctx, msg, false, nil)
 	return err
 }
 
 // ChildObject is called to declare an object in the group with the given
 // identifier.
 func (w *Writer) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
-	_, err := w.writeMessage(msg, false, &parentID)
+	_, err := w.writeMessage(ctx, msg, false, &parentID)
 	return err
 }
 
-func (w *Writer) writeMessage(msg proto.Message, isGroup bool, parentID *uint64) (id uint64, err error) {
-	id = w.id
+func (w *Writer) writeMessage(ctx context.Context, msg proto.Message, isGroup bool, parentID *uint64) (id uint64, err error) {
 
-	ty, added := w.types.addMessage(msg)
-	if added {
-		if err := w.writeType(ty); err != nil {
-			return 0, err
-		}
-	}
-
-	tag := uint64(tagFromTyIdxAndGroup(ty.index, isGroup))
-	if err := w.buf.EncodeZigzag64(tag); err != nil {
+	ty, err := w.types.addForMessage(ctx, msg, func(t *ty) error { return w.writeType(t) })
+	if err != nil {
 		return 0, err
 	}
 
 	if parentID == nil {
-		if err := w.buf.EncodeVarint(0); err != nil {
+		if err := w.buf.EncodeZigzag64(0); err != nil {
 			return 0, err
 		}
 	} else {
-		if err := w.writeID(*parentID); err != nil {
+		if err := w.writeParentID(*parentID); err != nil {
 			return 0, err
 		}
+	}
+
+	typeIndex := ty.index
+	if isGroup {
+		// Negate type index if it may have children
+		typeIndex = uint64(-int64(typeIndex))
+	}
+	if err := w.buf.EncodeZigzag64(typeIndex); err != nil {
+		return 0, err
 	}
 
 	if err := w.buf.Marshal(msg); err != nil {
 		return 0, err
 	}
 
-	if isGroup {
-		w.id++
-	}
-
-	return id, w.flushChunk()
+	id = w.id // I don't think it is safe to inline it below.
+	return id, w.flushChunk(false)
 }
 
-func (w *Writer) writeID(id uint64) error {
+func (w *Writer) writeParentID(id uint64) error {
 	if id >= w.id {
 		return fmt.Errorf("Invalid parentID: %v", id)
 	}
-	return w.buf.EncodeVarint(w.id - id)
+	return w.buf.EncodeZigzag64(id - w.id)
 }
 
-func (w *Writer) writeType(t ty) error {
-	if err := w.buf.EncodeZigzag64(tagDeclareType); err != nil {
-		return err
-	}
+func (w *Writer) writeType(t *ty) error {
 	if err := w.buf.EncodeStringBytes(t.name); err != nil {
 		return err
 	}
 	if err := w.buf.Marshal(t.desc); err != nil {
 		return err
 	}
-	return w.flushChunk()
+	return w.flushChunk(true)
 }
 
-func (w *Writer) writeMagic() error {
-	_, err := w.to.Write(magicBytes)
-	return err
-}
-
-func (w *Writer) writeHeader(h *Header) error {
-	if err := w.buf.Marshal(h); err != nil {
-		return err
-	}
-	return w.flushChunk()
-}
-
-func (w *Writer) flushChunk() error {
+func (w *Writer) flushChunk(isTypeDef bool) error {
 	size := len(w.buf.Bytes())
-	if err := w.sizebuf.EncodeVarint(uint64(size)); err != nil {
+	if isTypeDef {
+		size = -size
+	}
+	if err := w.sizebuf.EncodeZigzag64(uint64(size)); err != nil {
 		return err
 	}
 	_, err := w.to.Write(w.sizebuf.Bytes())
@@ -171,5 +150,6 @@ func (w *Writer) flushChunk() error {
 	}
 	_, err = w.to.Write(w.buf.Bytes())
 	w.buf.Reset()
+	w.id++
 	return err
 }

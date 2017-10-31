@@ -29,3 +29,10 @@ message MsgB {
     int64  s64 = 3;
     bool   bool = 4;
 }
+
+message MsgC {
+    message Entry {
+        int32 value = 1;
+    }
+    repeated Entry entries = 1;
+}

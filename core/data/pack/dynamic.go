@@ -60,7 +60,7 @@ func (d Dynamic) Format(f fmt.State, r rune) {
 			}
 		}
 		sort.Strings(fields)
-		fmt.Fprintf(f, "dynamic<%v>{%s}", d.Desc.GetName(), strings.Join(fields, ", "))
+		fmt.Fprintf(f, "%vᵈ{%s}", d.Desc.GetName(), strings.Join(fields, ", "))
 	}
 }
 

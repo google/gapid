@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/third_party/src/github.com/pkg/errors"
 )
 
@@ -42,13 +43,12 @@ func Read(ctx context.Context, from io.Reader, events Events, forceDynamic bool)
 		events: events,
 	}
 	r.pb = proto.NewBuffer(r.buf)
-	if err := r.readMagic(); err != nil {
+	if version, err := r.readHeader(); err != nil {
 		return err
+	} else if !(MinMajorVersion <= version.Major && version.Major <= MaxMajorVersion) {
+		return ErrUnsupportedVersion{Version: version}
 	}
-	if _, err := r.readHeader(); err != nil {
-		return err
-	}
-	for !task.Stopped(ctx) {
+	for ; !task.Stopped(ctx); r.id++ {
 		if err := r.unmarshal(ctx); err != nil {
 			cause := errors.Cause(err)
 			if cause == io.EOF || cause == io.ErrUnexpectedEOF {
@@ -72,27 +72,14 @@ type reader struct {
 	from      io.Reader
 }
 
-func (r *reader) unmarshal(ctx context.Context) error {
-	if err := r.readChunk(); err != nil {
-		return err
-	}
-	tag, err := r.pb.DecodeZigzag64()
+func (r *reader) unmarshal(ctx context.Context) (err error) {
+	size, err := r.readChunk()
 	if err != nil {
 		return err
 	}
 
-	switch tag {
-	case tagGroupFinalizer:
-		idx, err := r.pb.DecodeVarint()
-		if err != nil {
-			return err
-		}
-		id := r.id - idx
-		if err := r.events.EndGroup(ctx, id); err != nil {
-			return err
-		}
-
-	case tagDeclareType:
+	// Negated size means this is type definition chunk.
+	if size < 0 {
 		name, err := r.pb.DecodeStringBytes()
 		if err != nil {
 			return err
@@ -101,34 +88,50 @@ func (r *reader) unmarshal(ctx context.Context) error {
 		if err = r.pb.Unmarshal(desc); err != nil {
 			return err
 		}
-		if _, ok := r.types.addNameAndDesc(name, desc); !ok {
-			return ErrUnknownType{name}
-		}
+		r.types.add(name, desc)
 		return nil
+	}
 
-	default:
-		tyIdx, isGroup := tyIdxAndGroupFromTag(tag)
+	// Read first two fields of object instance. If missing, they are implicitly set to 0.
+	// NB: Protobuf library returns the signed zig-zag-encoded integers as uint64!
+	parent, err := r.pb.DecodeZigzag64()
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return err
+	}
+	tyIdx, err := r.pb.DecodeZigzag64()
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return err
+	}
+	hasParent := int64(parent) < 0
+	hasChildren := int64(tyIdx) < 0
+
+	if tyIdx == 0 { // Null-terminator
+		if hasParent {
+			if err := r.events.EndGroup(ctx, r.id+parent); err != nil {
+				return err
+			}
+		}
+	} else { // New object instance
+		if int64(tyIdx) < 0 {
+			tyIdx = -tyIdx // Absolute value.
+		}
 		if tyIdx >= r.types.count() {
-			return fmt.Errorf("Unknown type index: %v. Type count: %v. Tag: %v", tyIdx, r.types.count(), tag)
+			return fmt.Errorf("Unknown type index: %v. Type count: %v.", tyIdx, r.types.count())
 		}
 		ty := *r.types.entries[tyIdx]
-		parentIdx, err := r.pb.DecodeVarint()
-		if err != nil {
-			return err
-		}
 		msg := ty.create()
 		if err := r.pb.Unmarshal(msg); err != nil {
 			return err
 		}
-		if parentIdx == 0 {
-			if isGroup {
+		if !hasParent {
+			if hasChildren {
 				err = r.events.BeginGroup(ctx, msg, r.id)
 			} else {
 				err = r.events.Object(ctx, msg)
 			}
 		} else {
-			parentID := r.id - parentIdx
-			if isGroup {
+			parentID := r.id + parent
+			if hasChildren {
 				err = r.events.BeginChildGroup(ctx, msg, r.id, parentID)
 			} else {
 				err = r.events.ChildObject(ctx, msg, parentID)
@@ -137,52 +140,45 @@ func (r *reader) unmarshal(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if isGroup {
-			r.id++
-		}
 	}
 	return nil
 }
 
-func (r *reader) readMagic() error {
-	if err := r.readN(len(magicBytes)); err != nil {
-		return err
+func (r *reader) readHeader() (Version, error) {
+	if err := r.readN(16); err != nil {
+		return Version{}, err
 	}
-	if string(r.pb.Bytes()) != Magic {
-		return ErrIncorrectMagic
+	str := string(r.pb.Bytes())
+	if str[0:9] == "protopack" {
+		return Version{1, 0}, nil
 	}
-	return nil
+	if str[0:11] == "ProtoPack\r\n" &&
+		str[11] >= '0' &&
+		str[12] == '.' &&
+		str[13] >= '0' &&
+		str[14] == '\n' &&
+		str[15] == 0 {
+		return Version{int(str[11] - '0'), int(str[13] - '0')}, nil
+	}
+	return Version{}, ErrIncorrectMagic
 }
 
-func (r *reader) readHeader() (*Header, error) {
-	if err := r.readChunk(); err != nil {
-		return nil, err
-	}
-	header := &Header{}
-	if err := r.pb.Unmarshal(header); err != nil {
-		return nil, err
-	}
-	if got := header.GetVersion(); got.LessThan(MinVersion) || got.GreaterThan(MaxVersion) {
-		return header, ErrUnsupportedVersion{*got}
-	}
-	return header, nil
-}
-
-func (r *reader) readChunk() error {
+func (r *reader) readChunk() (chunkSize int64, err error) {
 	// Make sure we have enough bytes for the maxiumum a varint could be, but don't
 	// fail if the eof is within that range
 	if err := r.readN(maxVarintSize); err != nil {
 		if err != io.ErrUnexpectedEOF && err != io.EOF {
-			return err
+			return 0, err
 		}
 	}
 	data := r.pb.Bytes()
 	size, n := proto.DecodeVarint(data)
 	r.bufOffset -= len(data) - n
-	if n == 0 {
-		return io.EOF
+	if n == 0 || size == 0 {
+		return 0, io.EOF
 	}
-	return r.readN(int(size))
+	size = (size >> 1) ^ uint64((int64(size&1)<<63)>>63) // Decode zig-zag encoding
+	return int64(size), r.readN(sint.Abs(int(size)))
 }
 
 // readN makes sure there is size bytes available in the buffer if possible
