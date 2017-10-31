@@ -196,7 +196,13 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return newEncoder(c, writer).encode(ctx)
+	e := newEncoder(c, writer)
+
+	// The encoder implements the ID Remapper interface,
+	// which protoconv functions need to handle resources.
+	ctx = id.PutRemapper(ctx, e)
+
+	return e.encode(ctx)
 }
 
 func toProto(ctx context.Context, c *Capture) (*Record, error) {
@@ -233,6 +239,11 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	}()
 
 	d := newDecoder()
+
+	// The decoder implements the ID Remapper interface,
+	// which protoconv functions need to handle resources.
+	ctx = id.PutRemapper(ctx, d)
+
 	if err := pack.Read(ctx, bytes.NewReader(data.([]byte)), d, false); err != nil {
 		switch err := errors.Cause(err).(type) {
 		case pack.ErrUnsupportedVersion:
@@ -277,20 +288,20 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 }
 
 type builder struct {
-	idmap    map[id.ID]id.ID
 	apis     []api.API
 	seenAPIs map[api.ID]struct{}
 	observed interval.U64RangeList
 	cmds     []api.Cmd
+	resIDs   []id.ID
 }
 
 func newBuilder() *builder {
 	return &builder{
-		idmap:    map[id.ID]id.ID{},
 		apis:     []api.API{},
 		seenAPIs: map[api.ID]struct{}{},
 		observed: interval.U64RangeList{},
 		cmds:     []api.Cmd{},
+		resIDs:   []id.ID{id.ID{}},
 	}
 }
 
@@ -323,15 +334,17 @@ func (b *builder) addObservation(ctx context.Context, o *api.CmdObservation) {
 	interval.Merge(&b.observed, o.Range.Span(), true)
 }
 
-func (b *builder) addRes(ctx context.Context, id id.ID, data []byte) error {
+func (b *builder) addRes(ctx context.Context, expectedIndex int64, data []byte) error {
 	dID, err := database.Store(ctx, data)
 	if err != nil {
 		return err
 	}
-	if _, dup := b.idmap[id]; dup {
-		return log.Errf(ctx, nil, "Duplicate resource with ID: %v", id)
+	arrayIndex := int64(len(b.resIDs))
+	b.resIDs = append(b.resIDs, dID)
+	// If the Resource had the optional Index field, use it for verification.
+	if expectedIndex != 0 && arrayIndex != expectedIndex {
+		panic(fmt.Errorf("Resource has array index %v but we expected %v", arrayIndex, expectedIndex))
 	}
-	b.idmap[id] = dID
 	return nil
 }
 

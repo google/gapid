@@ -29,6 +29,25 @@ func newDecoder() *decoder {
 	}
 }
 
+// RemapIndex remaps resource index to ID.
+// protoconv callbacks use this to handle resources.
+func (d *decoder) RemapIndex(ctx context.Context, index int64) (id.ID, error) {
+	if index < 0 {
+		// Negative values encode index from the end of the array.
+		// This is currently unused as it is difficult to encode.
+		index = int64(len(d.builder.resIDs)) + index
+	}
+	if !(0 <= index && index < int64(len(d.builder.resIDs))) {
+		return id.ID{}, fmt.Errorf("Can not remap resource %v", index)
+	}
+	return d.builder.resIDs[index], nil
+}
+
+// RemapID remaps resource ID to index.
+func (d *decoder) RemapID(ctx context.Context, id id.ID) (int64, error) {
+	panic("Not allowed in decoder")
+}
+
 func (d *decoder) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
 	obj, err := d.decode(ctx, msg)
 	if err != nil {
@@ -133,21 +152,6 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 		return nil, err
 	}
 
-	if r, ok := obj.(api.ResourceReference); ok {
-		var err error
-		obj, err = r.RemapResourceIDs(func(id *id.ID) error {
-			newID, found := d.builder.idmap[*id]
-			if !found {
-				return fmt.Errorf("Can not remap resource. %v not found.", id)
-			}
-			*id = newID
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	switch obj := obj.(type) {
 	case *Header:
 		d.header = obj
@@ -157,9 +161,7 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 		return in, nil
 
 	case *Resource:
-		var rID id.ID
-		copy(rID[:], obj.Id)
-		if err := d.builder.addRes(ctx, rID, obj.Data); err != nil {
+		if err := d.builder.addRes(ctx, obj.Index, obj.Data); err != nil {
 			return nil, err
 		}
 		return in, nil

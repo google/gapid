@@ -15,7 +15,7 @@ type encoder struct {
 	c      *Capture
 	w      *pack.Writer
 	cmdIDs map[api.Cmd]uint64
-	seen   map[id.ID]bool
+	resIDs map[id.ID]int64
 }
 
 func newEncoder(c *Capture, w *pack.Writer) *encoder {
@@ -23,11 +23,12 @@ func newEncoder(c *Capture, w *pack.Writer) *encoder {
 		c:      c,
 		w:      w,
 		cmdIDs: map[api.Cmd]uint64{},
-		seen:   map[id.ID]bool{},
+		resIDs: map[id.ID]int64{id.ID{}: 0},
 	}
 }
 
 func (e *encoder) encode(ctx context.Context) error {
+
 	// Write the capture header.
 	if err := e.w.Object(ctx, e.c.Header); err != nil {
 		return err
@@ -50,15 +51,6 @@ func (e *encoder) encode(ctx context.Context) error {
 
 func (e *encoder) childObject(ctx context.Context, obj interface{}, parentID uint64) error {
 	var err error
-	if r, ok := obj.(api.ResourceReference); ok {
-		obj, err = r.RemapResourceIDs(func(id *id.ID) error {
-			return e.resource(ctx, *id)
-		})
-		if err != nil {
-			return err
-		}
-	}
-
 	msg, ok := obj.(proto.Message)
 	if !ok {
 		if msg, err = protoconv.ToProto(ctx, obj); err != nil {
@@ -146,17 +138,26 @@ func (e *encoder) extras(ctx context.Context, cmd api.Cmd, cmdID uint64) error {
 	return nil
 }
 
-func (e *encoder) resource(ctx context.Context, id id.ID) error {
-	if !e.seen[id] {
+// RemapIndex remaps resource index to ID.
+func (e *encoder) RemapIndex(ctx context.Context, index int64) (id.ID, error) {
+	panic("Not allowed in encoder")
+}
+
+// RemapID remaps resource ID to index.
+// protoconv callbacks use this to handle resources.
+func (e *encoder) RemapID(ctx context.Context, id id.ID) (int64, error) {
+	index, found := e.resIDs[id]
+	if !found {
+		index = int64(len(e.resIDs))
+		e.resIDs[id] = index
 		data, err := database.Resolve(ctx, id)
 		if err != nil {
-			return err
+			return 0, err
 		}
-		res := &Resource{Id: id[:], Data: data.([]uint8)}
+		res := &Resource{Index: index, Data: data.([]uint8)}
 		if err := e.w.Object(ctx, res); err != nil {
-			return err
+			return 0, err
 		}
-		e.seen[id] = true
 	}
-	return nil
+	return index, nil
 }
