@@ -18,6 +18,7 @@ package com.google.gapid.views;
 import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createTextbox;
 import static java.util.logging.Level.SEVERE;
 
 import com.google.gapid.Version;
@@ -36,8 +37,8 @@ import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -46,8 +47,7 @@ import java.util.logging.Logger;
  * Dialog showing some basic info about our application.
  */
 public class AboutDialog {
-  private static final String HELP_URL =
-      "https://developer.android.com/r/studio-ui/am-gpu-debugger.html";
+  private static final String HELP_URL = "https://google.github.io/gapid";
   private static final Logger LOG = Logger.getLogger(AboutDialog.class.getName());
 
   private AboutDialog() {
@@ -82,12 +82,11 @@ public class AboutDialog {
 
         container.setBackground(theme.aboutBackground());
         createLabel(container, "", theme.logoBig());
-        Label title = createForegroundLabel(container, Messages.WINDOW_TITLE);
+        Text title = createForegroundLabel(container, Messages.WINDOW_TITLE);
         title.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
         createForegroundLabel(container, "Version " + Version.GAPID_VERSION);
         createForegroundLabel(
             container, "Server: " + Info.getServerName() + ", Version: " + Info.getServerVersion());
-        createForegroundLabel(container, Messages.ABOUT_DESCRIPTION);
         createForegroundLabel(container, Messages.ABOUT_COPY);
 
         return area;
@@ -98,10 +97,14 @@ public class AboutDialog {
         createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
       }
 
-      public Label createForegroundLabel(Composite parent, String text) {
-        Label label = createLabel(parent, text);
+      public Text createForegroundLabel(Composite parent, String text) {
+        Text label = createTextbox(parent, SWT.NONE, text);
+        label.setEditable(false);
         label.setForeground(theme.aboutForeground());
         label.setBackground(theme.aboutBackground());
+
+        // SWT will weirdly select the entire content of the first textbox. No thanks.
+        label.setSelection(0, 0);
         return label;
       }
 
