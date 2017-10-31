@@ -31,6 +31,7 @@
   #ifndef {{$guard}}
   #define {{$guard}}
 ¶
+  #include "gapii/cc/shared_map.h"
   #include "gapii/cc/slice.h"
 ¶
   #include "core/cc/static_array.h"
@@ -250,7 +251,7 @@
 {{/*
 -------------------------------------------------------------------------------
   Emits the declaration of the map's key and value types (if it is not already
-  declared) followed by the map's declaration as a std::unordered_map.
+  declared) followed by the map's declaration as a SharedMap.
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclareMap"}}
@@ -259,7 +260,7 @@
   {{Template "DeclareType" $.KeyType}}
   {{Template "DeclareType" $.ValueType}}
 
-  typedef std::unordered_map<{{Template "C++.Type" $.KeyType}}, {{Template "C++.Type" $.ValueType}}> {{Template "C++.Type" $}};
+  typedef SharedMap<{{Template "C++.Type" $.KeyType}}, {{Template "C++.Type" $.ValueType}}> {{Template "C++.Type" $}};
 {{end}}
 
 {{/*
