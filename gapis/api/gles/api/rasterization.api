@@ -34,10 +34,10 @@ class RasterizationState {
   GLboolean                        SampleCoverage        = GL_FALSE
   GLfloat                          SampleCoverageValue   = 1
   GLboolean                        SampleCoverageInvert  = GL_FALSE
-  @unused GLboolean                SampleShading         = GL_FALSE
+  GLboolean                        SampleShading         = GL_FALSE
   GLfloat                          MinSampleShadingValue = 0
   GLboolean                        SampleMask            = GL_FALSE
-  @unused map!(GLuint, GLbitfield) SampleMaskValue                  // TODO: init - all bits set; MAX_SAMPLE_MASK_WORDS
+  @unused map!(GLuint, GLbitfield) SampleMaskValue
 }
 
 @internal

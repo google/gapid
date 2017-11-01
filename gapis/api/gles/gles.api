@@ -417,6 +417,7 @@ type GLuint               UniformIndex
 type GLuint               AttributeLocation
 type GLuint               AttributeIndex
 type GLuint               TextureUnitId
+type GLuint               ImageUnitId
 @replay_remap type GLuint SamplerId
 @replay_remap type GLuint PipelineId
 @replay_remap type GLuint UniformBlockIndex
@@ -452,7 +453,7 @@ class Objects {
   DefaultObjects                                   Default
   map!(BufferId, ref!Buffer)                       Buffers
   map!(FramebufferId, ref!Framebuffer)             Framebuffers
-  map!(GLuint, ImageUnit)                          ImageUnits
+  map!(ImageUnitId, ref!ImageUnit)                 ImageUnits
   map!(PipelineId, ref!Pipeline)                   Pipelines
   map!(ProgramId, ref!Program)                     Programs
   map!(QueryId, ref!Query)                         Queries
@@ -486,7 +487,14 @@ class ContextCreationInfo {
   bool              Initialized
   string            ThreadName
   @unused bool      PreserveBuffersOnSwap
-  @unused ContextID SharedContext
+  ref!ShareList     ShareList
+}
+
+// ShareList represents a set of contexts which share some of the objects.
+// NB: Sharing does not form a tree. Any of the contexts can be destroyed.
+@internal
+class ShareList {
+  map!(ContextID, ref!Context) Contexts
 }
 
 @internal
@@ -551,6 +559,9 @@ class OtherState {
 // GLint ResetNotificationStrategy /// TODO: See sec. 2.3.2
 
   bool IsBound
+
+  @hidden ref!StaticContextState  StaticStateExtra // Internal.
+  @hidden ref!DynamicContextState DynamicStateExtra // Internal.
 }
 
 @internal
@@ -600,10 +611,11 @@ sub ref!Context CreateContext(ref!Context sharedContext) {
   ctx := new!Context(Identifier: identifier)
 
   if sharedContext != null {
-    ctx.Info.SharedContext = sharedContext.Identifier
+    ctx.Info.ShareList = sharedContext.Info.ShareList
   } else {
-    ctx.Info.SharedContext = -1
+    ctx.Info.ShareList = new!ShareList()
   }
+  ctx.Info.ShareList.Contexts[identifier] = ctx
 
   // Objects which can be shared between contexts.
   // See: Chapter 5 - "Shared Objects and Multiple Contexts"
@@ -671,6 +683,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
       Type:          GL_RENDERBUFFER,
       Renderbuffer:  ctx.Objects.Renderbuffers[color_id],
     )
+    backbuffer.DrawBuffer[0] = GL_BACK // TODO: Or NONE if there is no draw surface
 
     backbuffer.DepthAttachment = FramebufferAttachment(
       Type:          GL_RENDERBUFFER,
@@ -693,16 +706,21 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     }
     ctx.Bound.TextureUnit = ctx.Objects.TextureUnits[0]
 
-    for i in 0 .. as!GLuint(staticState.Constants.MaxImageUnits) {
-      ctx.Objects.ImageUnits[i] = ImageUnit()
+    for i in 0 .. as!ImageUnitId(staticState.Constants.MaxImageUnits) {
+      ctx.Objects.ImageUnits[i] = new!ImageUnit(ID: i)
+    }
+
+    for i in 0 .. as!GLuint(ctx.Constants.MaxSampleMaskWords) {
+      ctx.Rasterization.SampleMaskValue[i] = as!GLbitfield(as!GLuint(0xFFFFFFFF))
     }
 
     for i in (0 .. as!DrawBufferIndex(ctx.Constants.MaxDrawBuffers)) {
-      ctx.Pixel.Blend[i] = BlendState()
+      ctx.Pixel.Blend[i] = new!BlendState()
       ctx.Pixel.ColorWritemask[i] = Vec4b(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     }
 
     ctx.Info.Initialized = true
+    ctx.Other.StaticStateExtra = staticState
   }
 }
 
@@ -714,21 +732,27 @@ sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynam
     stencil_id := backbuffer.StencilAttachment.Renderbuffer.ID
 
     color_buffer := ctx.Objects.Renderbuffers[color_id]
-    color_buffer.Width = dynamicState.BackbufferWidth
-    color_buffer.Height = dynamicState.BackbufferHeight
-    color_buffer.InternalFormat = dynamicState.BackbufferColorFmt
+    color_buffer.Image = new!Image(
+      Width: dynamicState.BackbufferWidth,
+      Height: dynamicState.BackbufferHeight,
+      SizedFormat: dynamicState.BackbufferColorFmt,
+    )
     ctx.Objects.Renderbuffers[color_id] = color_buffer
 
     depth_buffer := ctx.Objects.Renderbuffers[depth_id]
-    depth_buffer.Width = dynamicState.BackbufferWidth
-    depth_buffer.Height = dynamicState.BackbufferHeight
-    depth_buffer.InternalFormat = dynamicState.BackbufferDepthFmt
+    depth_buffer.Image = new!Image(
+      Width: dynamicState.BackbufferWidth,
+      Height: dynamicState.BackbufferHeight,
+      SizedFormat: dynamicState.BackbufferDepthFmt,
+    )
     ctx.Objects.Renderbuffers[depth_id] = depth_buffer
 
     stencil_buffer := ctx.Objects.Renderbuffers[stencil_id]
-    stencil_buffer.Width = dynamicState.BackbufferWidth
-    stencil_buffer.Height = dynamicState.BackbufferHeight
-    stencil_buffer.InternalFormat = dynamicState.BackbufferStencilFmt
+    stencil_buffer.Image = new!Image(
+      Width: dynamicState.BackbufferWidth,
+      Height: dynamicState.BackbufferHeight,
+      SizedFormat: dynamicState.BackbufferStencilFmt,
+    )
     ctx.Objects.Renderbuffers[stencil_id] = stencil_buffer
 
     if dynamicState.ResetViewportScissor {
@@ -739,6 +763,7 @@ sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynam
     }
 
     ctx.Info.PreserveBuffersOnSwap = dynamicState.PreserveBuffersOnSwap
+    ctx.Other.DynamicStateExtra = dynamicState
   }
 }
 

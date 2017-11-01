@@ -231,9 +231,12 @@ bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer, Framebuffer* 
             return true;
         }
         case GLenum::GL_RENDERBUFFER: {
-            auto r = attachment->second.mRenderbuffer;
-            *width = uint32_t(r->mWidth);
-            *height = uint32_t(r->mHeight);
+            auto image = attachment->second.mRenderbuffer->mImage;
+            if (image == nullptr) {
+                return false;
+            }
+            *width = uint32_t(image->mWidth);
+            *height = uint32_t(image->mHeight);
             return true;
         }
     }

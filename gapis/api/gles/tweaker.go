@@ -180,7 +180,7 @@ func (t *tweaker) makeVertexArray(ctx context.Context, enabledLocations ...Attri
 			origVertexAttrib := *(vao.VertexAttributeArrays.Get(location))
 			origVertexBinding := *(vao.VertexBufferBindings.Get(VertexBufferBindingIndex(location)))
 			t.undo = append(t.undo, func(ctx context.Context) {
-				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, origVertexBinding.Buffer))
+				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, origVertexBinding.Buffer.GetID()))
 				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlVertexAttribPointer(location, origVertexAttrib.Size, origVertexAttrib.Type, origVertexAttrib.Normalized, origVertexAttrib.Stride, memory.Pointer(origVertexAttrib.Pointer)))
 				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, origArrayBufferID))
 			})

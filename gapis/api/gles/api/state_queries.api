@@ -436,7 +436,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_IMAGE_BINDING_NAME: {
       if isIndexed {
-        v[0] = as!T(ctx.Objects.ImageUnits[index].Name)
+        v[0] = as!T(ctx.Objects.ImageUnits[as!ImageUnitId(index)].Name)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -444,7 +444,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_IMAGE_BINDING_LEVEL: {
       if isIndexed {
-        v[0] = as!T(ctx.Objects.ImageUnits[index].Level)
+        v[0] = as!T(ctx.Objects.ImageUnits[as!ImageUnitId(index)].Level)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -452,7 +452,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_IMAGE_BINDING_LAYERED: {
       if isIndexed {
-        v[0] = as!T(ctx.Objects.ImageUnits[index].Layered)
+        v[0] = as!T(ctx.Objects.ImageUnits[as!ImageUnitId(index)].Layered)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -460,7 +460,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_IMAGE_BINDING_LAYER: {
       if isIndexed {
-        v[0] = as!T(ctx.Objects.ImageUnits[index].Layer)
+        v[0] = as!T(ctx.Objects.ImageUnits[as!ImageUnitId(index)].Layer)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -468,7 +468,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_IMAGE_BINDING_ACCESS: {
       if isIndexed {
-        v[0] = as!T(ctx.Objects.ImageUnits[index].Access)
+        v[0] = as!T(ctx.Objects.ImageUnits[as!ImageUnitId(index)].Access)
       } else {
         glErrorInvalidEnum(name)
       }
@@ -476,7 +476,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_IMAGE_BINDING_FORMAT: {
       if isIndexed {
-        v[0] = as!T(ctx.Objects.ImageUnits[index].Format)
+        v[0] = as!T(ctx.Objects.ImageUnits[as!ImageUnitId(index)].Format)
       } else {
         glErrorInvalidEnum(name)
       }

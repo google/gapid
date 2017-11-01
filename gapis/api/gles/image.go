@@ -49,11 +49,17 @@ func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
 
 // getUnsizedFormatAndType returns unsized format and component type from sized format.
 func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
+	info := GetSizedFormatInfoOrPanic(sizedFormat)
+	return info.UnsizedFormat, info.DataType
+}
+
+// GetSizedFormatInfoOrPanic is wrapper for the 'GetSizedFormatInfo' api subroutine.
+func GetSizedFormatInfoOrPanic(sizedFormat GLenum) SizedFormatInfo {
 	info, _ := subGetSizedFormatInfo(nil, nil, api.CmdNoID, nil, &api.GlobalState{}, nil, 0, nil, sizedFormat)
 	if info.SizedFormat == GLenum_GL_NONE {
 		panic(fmt.Errorf("Unknown sized format: %v", sizedFormat))
 	}
-	return info.UnsizedFormat, info.DataType
+	return info
 }
 
 // getImageFormat returns the *image.Format for the given format-type tuple.
