@@ -396,7 +396,7 @@ func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) 
 }
 
 func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.Capture, traceVerifier) {
-	atoms, _, square := samples.DrawTexturedSquare(ctx, f.cb, false, f.memoryLayout)
+	atoms, draw, _ := samples.DrawTexturedSquare(ctx, f.cb, false, f.memoryLayout)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -405,14 +405,14 @@ func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.C
 		}
 		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
 
-		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", square, nil)
+		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", draw, nil)
 	}
 
 	return f.storeCapture(ctx, atoms), verifyTrace
 }
 
 func (f Fixture) generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context) (*path.Capture, traceVerifier) {
-	atoms, _, square := samples.DrawTexturedSquare(ctx, f.cb, true, f.memoryLayout)
+	atoms, draw, _ := samples.DrawTexturedSquare(ctx, f.cb, true, f.memoryLayout)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -421,7 +421,7 @@ func (f Fixture) generateDrawTexturedSquareCaptureWithSharedContext(ctx context.
 		}
 		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
 
-		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", square, nil)
+		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", draw, nil)
 	}
 
 	return f.storeCapture(ctx, atoms), verifyTrace
@@ -491,9 +491,9 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
 
 		checkReport(ctx, intent, mgr, cmds, []string{
-			"ErrorLevel@[15]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE [value: value, variable: variable]>",
-			"ErrorLevel@[17]: glUseProgram(program: 4): <ERR_INVALID_VALUE [value: value, variable: variable]>",
-			"ErrorLevel@[18]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: {4208 0}): <ERR_INVALID_OPERATION [operation: operation]>",
+			"ErrorLevel@[15]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE_CHECK_EQ [constraint: 16385, value: 16384]>",
+			"ErrorLevel@[17]: glUseProgram(program: 4): <ERR_INVALID_VALUE [value: 4]>",
+			"ErrorLevel@[18]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: {4208 0}): <ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST [id: 123]>",
 		}, nil)
 	}
 
