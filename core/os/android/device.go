@@ -94,6 +94,7 @@ func (m LogcatMessage) Log(ctx context.Context) {
 	// Override the timestamping function to replicate the logcat timestamp
 	ctx = log.PutClock(ctx, log.FixedClock(m.Timestamp))
 	ctx = log.PutTag(ctx, m.Tag)
+	ctx = log.PutProcess(ctx, "logcat")
 	ctx = log.V{
 		"pid": m.ProcessID,
 		"tid": m.ThreadID,

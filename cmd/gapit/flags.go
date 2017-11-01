@@ -97,9 +97,9 @@ type (
 	InfoFlags struct {
 	}
 	ReportFlags struct {
-		Gapis     GapisFlags
-		Gapir     GapirFlags
-		Out       string `help:"output report path"`
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Out   string `help:"output report path"`
 		CommandFilterFlags
 	}
 	VideoFlags struct {
@@ -174,6 +174,7 @@ type (
 			Activity string `help:"the full activity name"`
 			Action   string `help:"the full action name"`
 			Attach   bool   `help:"attach to running instance of the specified package"`
+			Logcat   bool   `help:"print the output of logcat while tracing"`
 		}
 		APK     file.Path `help:"the path to an apk to install"`
 		Observe struct {
