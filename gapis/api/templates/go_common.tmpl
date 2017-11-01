@@ -94,7 +94,7 @@
   {{     if IsPointer       $}}{{Template "Go.Type" $}}{}
   {{else if IsSlice         $}}{{Template "Go.Type" $}}{}
   {{else if IsReference     $}}{{Template "Go.Type" $}}(nil)
-  {{else if IsMap           $}}{{Template "Go.Type" $}}{}
+  {{else if IsMap           $}}New{{Template "Go.Type" $}}()
   {{else if IsClass         $}}{{Template "Go.Type" $}}{}
   {{else if IsStaticArray   $}}{{Template "Go.Type" $}}{}
   {{else if IsBool          $}}false
@@ -452,7 +452,7 @@
   {{AssertType $ "Type"}}
 
   {{if IsMap $}}
-    {{Template "Go.Type" $}}{}
+    New{{Template "Go.Type" $}}()
   {{else if IsClass $}}
     {{if $fields := Macro "Go.DefaultClassFields" $}}
       {{Template "Go.Type" $}}{ {{$fields}} }
@@ -699,7 +699,7 @@
   {{     if IsPseudonym   $ty}}{{Template "Go.ReadLength" "Type" $ty.To "Value" $.Value}}
   {{else if IsSlice       $ty}}{{Template "Go.Read" $.Value}}.Count()
   {{else if IsString      $ty}}len({{Template "Go.Read" $.Value}})
-  {{else if IsMap         $ty}}len({{Template "Go.Read" $.Value}})
+  {{else if IsMap         $ty}}{{Template "Go.Read" $.Value}}.Len()
   {{else                     }}{{Error "macro Go.ReadLength called with unsupported type: %v" $.Type}}
   {{end}}
 {{end}}

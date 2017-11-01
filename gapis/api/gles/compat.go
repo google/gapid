@@ -64,8 +64,8 @@ func listToExtensions(list []string) extensions {
 }
 
 func translateExtensions(in U32ːstringᵐ) extensions {
-	out := make(extensions, len(in))
-	for _, s := range in {
+	out := make(extensions, in.Len())
+	for _, s := range in.Range() {
 		out[s] = struct{}{}
 	}
 	return out
@@ -282,7 +282,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					// It is helpful to remove those no-ops in case the replay driver does not support the target.
 					return
 				}
-			} else if !c.Objects.Shared.GeneratedNames.Buffers[cmd.Buffer] {
+			} else if !c.Objects.Shared.GeneratedNames.Buffers.Get(cmd.Buffer) {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
 				tmp := s.AllocDataOrPanic(ctx, cmd.Buffer)
 				out.MutateAndWrite(ctx, dID, cb.GlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
@@ -291,7 +291,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlBindTexture:
 			{
 				cmd := *cmd
-				if cmd.Texture != 0 && !c.Objects.Shared.GeneratedNames.Textures[cmd.Texture] {
+				if cmd.Texture != 0 && !c.Objects.Shared.GeneratedNames.Textures.Get(cmd.Texture) {
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
 					tmp := s.AllocDataOrPanic(ctx, cmd.Texture)
 					out.MutateAndWrite(ctx, dID, cb.GlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
@@ -359,7 +359,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// TODO: We don't handle the case where the buffer is kept bound
 				// while the buffer is updated. It's an unlikely issue, but
 				// something that may break us.
-				if _, ok := c.Objects.Shared.Buffers[cmd.Buffer]; !ok {
+				if !c.Objects.Shared.Buffers.Contains(cmd.Buffer) {
 					return // Don't know what buffer this is referring to.
 				}
 
@@ -404,7 +404,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDisableVertexAttribArray:
-			if c.Bound.VertexArray.VertexAttributeArrays[cmd.Location].Enabled == GLboolean_GL_FALSE {
+			if c.Bound.VertexArray.VertexAttributeArrays.Get(cmd.Location).Enabled == GLboolean_GL_FALSE {
 				// Ignore the call if it is redundant (i.e. it is already disabled).
 				// Some applications iterate over all arrays and explicitly disable them.
 				// This is a problem if the target supports fewer arrays than the capture.
@@ -412,10 +412,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlVertexAttrib4fv:
-			if oldAttrib, ok := c.Vertex.Attributes[cmd.Location]; ok {
+			if c.Vertex.Attributes.Contains(cmd.Location) {
+				oldAttrib := c.Vertex.Attributes.Get(cmd.Location)
 				oldValue := oldAttrib.Value.MustRead(ctx, cmd, s, nil /* builder */)
 				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
-				newAttrib := c.Vertex.Attributes[cmd.Location]
+				newAttrib := c.Vertex.Attributes.Get(cmd.Location)
 				newValue := newAttrib.Value.MustRead(ctx, cmd, s, nil /* builder */)
 				if reflect.DeepEqual(oldValue, newValue) {
 					// Ignore the call if it is redundant.
@@ -511,7 +512,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Convert GL_HALF_FLOAT_OES to GL_HALF_FLOAT_ARB.
 				cmd = cb.GlVertexAttribPointer(cmd.Location, cmd.Size, GLenum_GL_HALF_FLOAT_ARB, cmd.Normalized, cmd.Stride, memory.Pointer(cmd.Data))
 			}
-			vaa := c.Bound.VertexArray.VertexAttributeArrays[cmd.Location]
+			vaa := c.Bound.VertexArray.VertexAttributeArrays.Get(cmd.Location)
 			if target.vertexArrayObjects == required && c.Bound.ArrayBuffer == nil {
 				// Client-pointers are not supported, we need to copy this data to a buffer.
 				// However, we can't do this now as the observation only happens at the draw call.
@@ -981,7 +982,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlBindFramebuffer:
-			if cmd.Framebuffer != 0 && !c.Objects.GeneratedNames.Framebuffers[cmd.Framebuffer] {
+			if cmd.Framebuffer != 0 && !c.Objects.GeneratedNames.Framebuffers.Get(cmd.Framebuffer) {
 				// glGenFramebuffers() was not used to generate the buffer. Legal in GLES.
 				tmp := s.AllocDataOrPanic(ctx, cmd.Framebuffer)
 				out.MutateAndWrite(ctx, dID, cb.GlGenFramebuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
@@ -1035,7 +1036,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						t := newTweaker(out, dID, cb)
 						defer t.revert(ctx)
 						t.glBindTexture_2D(ctx, texID)
-						img := GetState(s).EGLImages[cmd.Result].Image
+						img := GetState(s).EGLImages.Get(cmd.Result).Image
 						sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
 						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, id, cmd)
 						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
@@ -1046,8 +1047,8 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MAG_FILTER, GLint(GLenum_GL_LINEAR)))
 
 						out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-							GetState(s).EGLImages[cmd.Result].TargetContext = c.Identifier
-							GetState(s).EGLImages[cmd.Result].TargetTexture = texID
+							GetState(s).EGLImages.Get(cmd.Result).TargetContext = c.Identifier
+							GetState(s).EGLImages.Get(cmd.Result).TargetTexture = texID
 							return nil
 						}))
 					}
@@ -1129,9 +1130,9 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				// Forcefully get all uniform locations, so that we can remap for applications that
 				// just assume locations (in particular, apps tend to assume arrays are consecutive)
 				// TODO: We should warn the developers that the consecutive layout is not guaranteed.
-				prog := c.Objects.Shared.Programs[cmd.Program]
+				prog := c.Objects.Shared.Programs.Get(cmd.Program)
 				for _, uniformIndex := range prog.ActiveUniforms.KeysSorted() {
-					uniform := prog.ActiveUniforms[uniformIndex]
+					uniform := prog.ActiveUniforms.Get(uniformIndex)
 					for i := 0; i < int(uniform.ArraySize); i++ {
 						name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
 						loc := uniform.Location + UniformLocation(i) // TODO: Does not have to be consecutive
@@ -1210,7 +1211,7 @@ func compatMultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out tra
 }
 
 func (fb *Framebuffer) ForEachAttachment(action func(GLenum, FramebufferAttachment)) {
-	for i, a := range fb.ColorAttachments {
+	for i, a := range fb.ColorAttachments.Range() {
 		action(GLenum_GL_COLOR_ATTACHMENT0+GLenum(i), a)
 	}
 	action(GLenum_GL_DEPTH_ATTACHMENT, fb.DepthAttachment)

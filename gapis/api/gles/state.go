@@ -50,13 +50,13 @@ func attachmentToEnum(a api.FramebufferAttachment) (GLenum, error) {
 func (f *Framebuffer) getAttachment(a api.FramebufferAttachment) (FramebufferAttachment, error) {
 	switch a {
 	case api.FramebufferAttachment_Color0:
-		return f.ColorAttachments[0], nil
+		return f.ColorAttachments.Get(0), nil
 	case api.FramebufferAttachment_Color1:
-		return f.ColorAttachments[1], nil
+		return f.ColorAttachments.Get(1), nil
 	case api.FramebufferAttachment_Color2:
-		return f.ColorAttachments[2], nil
+		return f.ColorAttachments.Get(2), nil
 	case api.FramebufferAttachment_Color3:
-		return f.ColorAttachments[3], nil
+		return f.ColorAttachments.Get(3), nil
 	case api.FramebufferAttachment_Depth:
 		return f.DepthAttachment, nil
 	case api.FramebufferAttachment_Stencil:
@@ -77,7 +77,7 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, at
 		return fbai{}, fmt.Errorf("Context not initialized")
 	}
 
-	framebuffer, ok := c.Objects.Framebuffers[fb]
+	framebuffer, ok := c.Objects.Framebuffers.Lookup(fb)
 	if !ok {
 		return fbai{}, fmt.Errorf("Invalid framebuffer %v", fb)
 	}
@@ -92,7 +92,7 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, at
 		return fbai{}, fmt.Errorf("%s is not bound", att)
 	case GLenum_GL_TEXTURE:
 		t := a.Texture
-		l := t.Levels[a.TextureLevel].Layers[a.TextureLayer]
+		l := t.Levels.Get(a.TextureLevel).Layers.Get(a.TextureLayer)
 		if l == nil {
 			return fbai{}, fmt.Errorf("Texture %v does not have Level[%v].Layer[%v]",
 				t.ID, a.TextureLevel, a.TextureLayer)

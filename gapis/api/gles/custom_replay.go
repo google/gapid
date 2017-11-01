@@ -78,13 +78,13 @@ func (i ShaderId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap
 func (i TextureId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && i != 0 {
-		if tex := ctx.Objects.Shared.Textures[i]; tex != nil {
+		if tex := ctx.Objects.Shared.Textures.Get(i); tex != nil {
 			_, isDeleteCmd := cmd.(*GlDeleteTextures)
 			if eglImage := tex.EGLImage; eglImage != nil && !isDeleteCmd {
 				// Ignore this texture and use the data that EGLImage points to.
 				// (unless it is a delete command - we do not want kill the shared data)
 				ctxId, i := eglImage.TargetContext, eglImage.TargetTexture
-				for _, ctx := range GetState(s).EGLContexts {
+				for _, ctx := range GetState(s).EGLContexts.Range() {
 					if ctx != nil && ctx.Info.Initialized && ctx.Identifier == ctxId {
 						if !ctx.Objects.Shared.Textures.Contains(i) {
 							panic(fmt.Errorf("Can not find EGL replacement texture %v", i))
@@ -116,7 +116,7 @@ func (i UniformBlockIndex) remap(cmd api.Cmd, s *api.GlobalState) (key interface
 	return struct {
 		p *Program
 		i UniformBlockIndex
-	}{ctx.Objects.Shared.Programs[program], i}, true
+	}{ctx.Objects.Shared.Programs.Get(program), i}, true
 }
 
 func (i VertexArrayId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
@@ -183,7 +183,7 @@ func (i UniformLocation) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}
 	return struct {
 		p *Program
 		l UniformLocation
-	}{ctx.Objects.Shared.Programs[program], i}, true
+	}{ctx.Objects.Shared.Programs.Get(program), i}, true
 }
 
 func (i SrcImageId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
@@ -267,14 +267,14 @@ func (ω *EglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	if b == nil || err != nil {
 		return err
 	}
-	ctxID := uint32(GetState(s).EGLContexts[ω.Result].Identifier)
+	ctxID := uint32(GetState(s).EGLContexts.Get(ω.Result).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
 func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	prevContext := GetState(s).Contexts[ω.Thread()]
-	_, existed := GetState(s).EGLContexts[ω.Context]
+	prevContext := GetState(s).Contexts.Get(ω.Thread())
+	existed := GetState(s).EGLContexts.Contains(ω.Context)
 	err := ω.mutate(ctx, id, s, nil)
 	if b == nil || err != nil {
 		return err
@@ -287,7 +287,7 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 		ctxID := uint32(prevContext.Identifier)
 		return cb.ReplayUnbindRenderer(ctxID).Mutate(ctx, id, s, b)
 	}
-	ctxID := uint32(GetState(s).EGLContexts[ω.Context].Identifier)
+	ctxID := uint32(GetState(s).EGLContexts.Get(ω.Context).Identifier)
 	if !existed {
 		// The eglCreateContext call was missing, so fake it (can happen on Samsung).
 		if err := cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b); err != nil {
@@ -319,7 +319,7 @@ func (ω *WglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	if b == nil || err != nil {
 		return err
 	}
-	ctxID := uint32(GetState(s).WGLContexts[ω.Result].Identifier)
+	ctxID := uint32(GetState(s).WGLContexts.Get(ω.Result).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
@@ -329,7 +329,7 @@ func (ω *WglCreateContextAttribsARB) Mutate(ctx context.Context, id api.CmdID, 
 	if b == nil || err != nil {
 		return err
 	}
-	ctxID := uint32(GetState(s).WGLContexts[ω.Result].Identifier)
+	ctxID := uint32(GetState(s).WGLContexts.Get(ω.Result).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
@@ -342,7 +342,7 @@ func (ω *WglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 	if ω.Hglrc.addr == 0 {
 		return nil
 	}
-	ctxID := uint32(GetState(s).WGLContexts[ω.Hglrc].Identifier)
+	ctxID := uint32(GetState(s).WGLContexts.Get(ω.Hglrc).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
@@ -352,7 +352,7 @@ func (ω *CGLCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	if b == nil || err != nil {
 		return err
 	}
-	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx.MustRead(ctx, ω, s, b)].Identifier)
+	ctxID := uint32(GetState(s).CGLContexts.Get(ω.Ctx.MustRead(ctx, ω, s, b)).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
@@ -365,7 +365,7 @@ func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, id api.CmdID, s *api
 	if ω.Ctx.addr == 0 {
 		return nil
 	}
-	ctxID := uint32(GetState(s).CGLContexts[ω.Ctx].Identifier)
+	ctxID := uint32(GetState(s).CGLContexts.Get(ω.Ctx).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
@@ -375,7 +375,7 @@ func (ω *GlXCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	if b == nil || err != nil {
 		return err
 	}
-	ctxID := uint32(GetState(s).GLXContexts[ω.Result].Identifier)
+	ctxID := uint32(GetState(s).GLXContexts.Get(ω.Result).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
@@ -385,7 +385,7 @@ func (ω *GlXCreateNewContext) Mutate(ctx context.Context, id api.CmdID, s *api.
 	if b == nil || err != nil {
 		return err
 	}
-	ctxID := uint32(GetState(s).GLXContexts[ω.Result].Identifier)
+	ctxID := uint32(GetState(s).GLXContexts.Get(ω.Result).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
@@ -398,7 +398,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, id api.CmdID, s *ap
 	if ω.Ctx.addr == 0 {
 		return nil
 	}
-	ctxID := uint32(GetState(s).GLXContexts[ω.Ctx].Identifier)
+	ctxID := uint32(GetState(s).GLXContexts.Get(ω.Ctx).Identifier)
 	cb := CommandBuilder{Thread: ω.Thread()}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
@@ -408,7 +408,7 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.
 	pi := FindProgramInfo(cmd.Extras())
 	if pi != nil && b != nil {
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		for _, attr := range pi.ActiveAttributes {
+		for _, attr := range pi.ActiveAttributes.Range() {
 			if int32(attr.Location) != -1 {
 				cmd := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Location), attr.Name)
 				if strings.HasPrefix(attr.Name, "gl_") {
@@ -430,7 +430,7 @@ func bindUniformBlocks(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.Gl
 	pi := FindProgramInfo(cmd.Extras())
 	if pi != nil && b != nil {
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		for i, ub := range pi.ActiveUniformBlocks {
+		for i, ub := range pi.ActiveUniformBlocks.Range() {
 			// Query replay-time uniform block index so that the remapping is established
 			cmd := cb.GlGetUniformBlockIndex(pid, ub.Name, i)
 			if err := cmd.Mutate(ctx, id, s, b); err != nil {

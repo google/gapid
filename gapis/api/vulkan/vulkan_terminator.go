@@ -100,11 +100,11 @@ func walkCommands(s *State,
 	commands *U32ːCommandReferenceᵐ,
 	callback func(CommandReference)) {
 	for _, c := range commands.KeysSorted() {
-		callback((*commands)[c])
-		if (*commands)[c].Type == CommandType_cmd_vkCmdExecuteCommands {
-			execSub := s.CommandBuffers[(*commands)[c].Buffer].BufferCommands.VkCmdExecuteCommands[(*commands)[c].MapIndex]
+		callback((*commands).Get(c))
+		if (*commands).Get(c).Type == CommandType_cmd_vkCmdExecuteCommands {
+			execSub := s.CommandBuffers.Get((*commands).Get(c).Buffer).BufferCommands.VkCmdExecuteCommands.Get((*commands).Get(c).MapIndex)
 			for _, k := range execSub.CommandBuffers.KeysSorted() {
-				cbc := s.CommandBuffers[execSub.CommandBuffers[k]]
+				cbc := s.CommandBuffers.Get(execSub.CommandBuffers.Get(k))
 				walkCommands(s, &cbc.CommandReferences, callback)
 			}
 		}
@@ -135,14 +135,14 @@ func resolveCurrentRenderPass(ctx context.Context, s *api.GlobalState, submit *V
 	}
 	a := submit
 	c := GetState(s)
-	queue := c.Queues[submit.Queue]
+	queue := c.Queues.Get(submit.Queue)
 	l := s.MemoryLayout
 
 	f := func(o CommandReference) {
 		switch o.Type {
 		case CommandType_cmd_vkCmdBeginRenderPass:
-			t := c.CommandBuffers[o.Buffer].BufferCommands.VkCmdBeginRenderPass[o.MapIndex]
-			lrp = c.RenderPasses[t.RenderPass]
+			t := c.CommandBuffers.Get(o.Buffer).BufferCommands.VkCmdBeginRenderPass.Get(o.MapIndex)
+			lrp = c.RenderPasses.Get(t.RenderPass)
 			subpass = 0
 		case CommandType_cmd_vkCmdNextSubpass:
 			subpass += 1
@@ -160,7 +160,7 @@ func resolveCurrentRenderPass(ctx context.Context, s *api.GlobalState, submit *V
 		buffers := info.PCommandBuffers.Slice(uint64(0), uint64(info.CommandBufferCount), l)
 		for cmd := 0; cmd < int(info.CommandBufferCount); cmd++ {
 			buffer := buffers.Index(uint64(cmd), l).MustRead(ctx, a, s, nil)
-			bufferObject := c.CommandBuffers[buffer]
+			bufferObject := c.CommandBuffers.Get(buffer)
 			walkCommands(c, &bufferObject.CommandReferences, f)
 		}
 	}
@@ -171,36 +171,36 @@ func resolveCurrentRenderPass(ctx context.Context, s *api.GlobalState, submit *V
 	lastBuffers := lastInfo.PCommandBuffers.Slice(uint64(0), uint64(lastInfo.CommandBufferCount), l)
 	for cmdbuffer := 0; cmdbuffer < int(idx[1])+getExtra(idx, loopLevel); cmdbuffer++ {
 		buffer := lastBuffers.Index(uint64(cmdbuffer), l).MustRead(ctx, a, s, nil)
-		bufferObject := c.CommandBuffers[buffer]
+		bufferObject := c.CommandBuffers.Get(buffer)
 		walkCommands(c, &bufferObject.CommandReferences, f)
 	}
 	if !incrementLoopLevel(idx, &loopLevel) {
 		return lrp, subpass
 	}
 	lastBuffer := lastBuffers.Index(uint64(idx[1]), l).MustRead(ctx, a, s, nil)
-	lastBufferObject := c.CommandBuffers[lastBuffer]
+	lastBufferObject := c.CommandBuffers.Get(lastBuffer)
 	for cmd := 0; cmd < int(idx[2])+getExtra(idx, loopLevel); cmd++ {
-		f(lastBufferObject.CommandReferences[uint32(cmd)])
+		f(lastBufferObject.CommandReferences.Get(uint32(cmd)))
 	}
 	if !incrementLoopLevel(idx, &loopLevel) {
 		return lrp, subpass
 	}
-	lastCommand := lastBufferObject.CommandReferences[uint32(idx[2])]
+	lastCommand := lastBufferObject.CommandReferences.Get(uint32(idx[2]))
 
 	if lastCommand.Type == CommandType_cmd_vkCmdExecuteCommands {
-		executeSubcommand := c.CommandBuffers[lastCommand.Buffer].BufferCommands.VkCmdExecuteCommands[lastCommand.MapIndex]
+		executeSubcommand := c.CommandBuffers.Get(lastCommand.Buffer).BufferCommands.VkCmdExecuteCommands.Get(lastCommand.MapIndex)
 		for subcmdidx := 0; subcmdidx < int(idx[3])+getExtra(idx, loopLevel); subcmdidx++ {
-			buffer := executeSubcommand.CommandBuffers[uint32(subcmdidx)]
-			bufferObject := c.CommandBuffers[buffer]
+			buffer := executeSubcommand.CommandBuffers.Get(uint32(subcmdidx))
+			bufferObject := c.CommandBuffers.Get(buffer)
 			walkCommands(c, &bufferObject.CommandReferences, f)
 		}
 		if !incrementLoopLevel(idx, &loopLevel) {
 			return lrp, subpass
 		}
-		lastsubBuffer := executeSubcommand.CommandBuffers[uint32(idx[3])]
-		lastSubBufferObject := c.CommandBuffers[lastsubBuffer]
+		lastsubBuffer := executeSubcommand.CommandBuffers.Get(uint32(idx[3]))
+		lastSubBufferObject := c.CommandBuffers.Get(lastsubBuffer)
 		for subcmd := 0; subcmd < int(idx[4]); subcmd++ {
-			f(lastSubBufferObject.CommandReferences[uint32(subcmd)])
+			f(lastSubBufferObject.CommandReferences.Get(uint32(subcmd)))
 		}
 	}
 
@@ -245,7 +245,7 @@ func rebuildCommandBuffer(ctx context.Context,
 	}
 
 	for i := uint32(0); i < uint32(numCommandsToCopy); i++ {
-		cmd := commandBuffer.CommandReferences[i]
+		cmd := commandBuffer.CommandReferences.Get(i)
 		c, a := AddCommand(ctx, cb, commandBufferId, s, GetCommandArgs(ctx, cmd, s))
 		x = append(x, a)
 		cleanup = append(cleanup, c)
@@ -255,16 +255,16 @@ func rebuildCommandBuffer(ctx context.Context,
 		numSecondaryCmdBuffersToCopy != uint64(0) {
 
 		newCmdExecuteCommandsData := &VkCmdExecuteCommandsArgs{
-			CommandBuffers: U32ːVkCommandBufferᵐ{},
+			CommandBuffers: NewU32ːVkCommandBufferᵐ(),
 		}
-		pcmd := commandBuffer.CommandReferences[uint32(idx[0])]
+		pcmd := commandBuffer.CommandReferences.Get(uint32(idx[0]))
 		execCmdData, ok := GetCommandArgs(ctx, pcmd, s).(*VkCmdExecuteCommandsArgs)
 		if !ok {
 			panic("Rebuild command buffer including secondary commands at a primary " +
 				"command other than VkCmdExecuteCommands or RecreateCmdExecuteCommands")
 		}
 		for scbi := uint32(0); scbi < uint32(numSecondaryCmdBuffersToCopy); scbi++ {
-			newCmdExecuteCommandsData.CommandBuffers[scbi] = execCmdData.CommandBuffers.Get(scbi)
+			newCmdExecuteCommandsData.CommandBuffers.Set(scbi, execCmdData.CommandBuffers.Get(scbi))
 		}
 		if numSecondaryCommandsToCopy != uint64(0) {
 			lastSecCmdBuf := execCmdData.CommandBuffers.Get(uint32(idx[1]))
@@ -272,13 +272,13 @@ func rebuildCommandBuffer(ctx context.Context,
 			x = append(x, extraCmds...)
 			cleanup = append(cleanup, extraCleanup...)
 			for sci := uint32(0); sci < uint32(numSecondaryCommandsToCopy); sci++ {
-				secCmd := GetState(s).CommandBuffers.Get(lastSecCmdBuf).CommandReferences[sci]
+				secCmd := GetState(s).CommandBuffers.Get(lastSecCmdBuf).CommandReferences.Get(sci)
 				newCleanups, newSecCmds := AddCommand(ctx, cb, newSecCmdBuf, s, GetCommandArgs(ctx, secCmd, s))
 				x = append(x, newSecCmds)
 				cleanup = append(cleanup, newCleanups)
 			}
 			x = append(x, cb.VkEndCommandBuffer(newSecCmdBuf, VkResult_VK_SUCCESS))
-			newCmdExecuteCommandsData.CommandBuffers[uint32(idx[1])] = newSecCmdBuf
+			newCmdExecuteCommandsData.CommandBuffers.Set(uint32(idx[1]), newSecCmdBuf)
 		}
 		cleanupNewExecSecCmds, newExecSecCmds := AddCommand(
 			ctx, cb, commandBufferId, s, newCmdExecuteCommandsData)
@@ -347,7 +347,7 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 
 	var lrp *RenderPassObject
 	lsp := uint32(0)
-	if lastDrawInfo, ok := c.LastDrawInfos[a.Queue]; ok {
+	if lastDrawInfo, ok := c.LastDrawInfos.Lookup(a.Queue); ok {
 		if lastDrawInfo.InRenderPass {
 			lrp = lastDrawInfo.RenderPass
 			lsp = lastDrawInfo.LastSubpass
@@ -360,14 +360,14 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 
 	extraCommands := make([]interface{}, 0)
 	if lrp != nil {
-		numSubpasses := uint32(len(lrp.SubpassDescriptions))
+		numSubpasses := uint32(lrp.SubpassDescriptions.Len())
 		for i := 0; uint32(i) < numSubpasses-lsp-1; i++ {
 			extraCommands = append(extraCommands, &VkCmdNextSubpassArgs{})
 		}
 		extraCommands = append(extraCommands, &VkCmdEndRenderPassArgs{})
 	}
 
-	cmdBuffer := c.CommandBuffers[newCommandBuffers[lastCommandBuffer]]
+	cmdBuffer := c.CommandBuffers.Get(newCommandBuffers[lastCommandBuffer])
 	subIdx := make(api.SubCmdIdx, 0)
 	if !skipAll {
 		subIdx = idx[2:]

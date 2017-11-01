@@ -80,12 +80,12 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 	vb := &vertex.Buffer{}
 	va := c.Bound.VertexArray
-	for _, attr := range program.ActiveAttributes {
-		vaa := va.VertexAttributeArrays[attr.Location]
+	for _, attr := range program.ActiveAttributes.Range() {
+		vaa := va.VertexAttributeArrays.Get(attr.Location)
 		if vaa == nil || vaa.Enabled == GLboolean_GL_FALSE {
 			continue
 		}
-		vbb := va.VertexBufferBindings[vaa.Binding]
+		vbb := va.VertexBufferBindings.Get(vaa.Binding)
 
 		format, err := translateVertexFormat(vaa)
 		if err != nil {
@@ -97,7 +97,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 			// upper bound doesn't really matter here, so long as it's big.
 			slice = U8ˢ(vaa.Pointer.Slice(0, 1<<30, s.MemoryLayout))
 		} else {
-			slice = c.Objects.Shared.Buffers[vbb.Buffer].Data
+			slice = c.Objects.Shared.Buffers.Get(vbb.Buffer).Data
 		}
 		data, err := vertexStreamData(ctx, vaa, vbb, count, slice, s)
 		if err != nil {

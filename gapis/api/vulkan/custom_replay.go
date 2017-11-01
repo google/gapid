@@ -825,13 +825,13 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 		Device:          a.Device,
 		VulkanHandle:    memory,
 		AllocationSize:  imageSize,
-		BoundObjects:    U64ːVkDeviceSizeᵐ{},
+		BoundObjects:    NewU64ːVkDeviceSizeᵐ(),
 		MappedOffset:    VkDeviceSize(uint64(0)),
 		MappedSize:      VkDeviceSize(uint64(0)),
 		MappedLocation:  Voidᵖ{},
 		MemoryTypeIndex: 0,
 		Data:            MakeU8ˢ(uint64(imageSize), s)}
-	c.DeviceMemories[memory] = memoryObject
+	c.DeviceMemories.Set(memory, memoryObject)
 	a.PMemory.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).Write(ctx, memory, a, s, b)
 	return err
 }
@@ -878,7 +878,7 @@ func createImageTransition(ctx context.Context, id api.CmdID, cb CommandBuilder,
 	image VkImage, aspectMask VkImageAspectFlags, commandBuffer VkCommandBuffer) error {
 
 	allBits := uint32(VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT<<1) - 1
-	imageObject := GetState(s).Images[image]
+	imageObject := GetState(s).Images.Get(image)
 
 	imageBarrier := VkImageMemoryBarrier{
 		SType:               VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -929,7 +929,7 @@ func createAndBeginCommandBuffer(ctx context.Context, id api.CmdID, cb CommandBu
 	}
 	commandBufferAllocateInfoData := s.AllocDataOrPanic(ctx, commandBufferAllocateInfo)
 	defer commandBufferAllocateInfoData.Free()
-	commandBufferId := VkCommandBuffer(newUnusedID(true, func(x uint64) bool { _, ok := GetState(s).CommandBuffers[VkCommandBuffer(x)]; return ok }))
+	commandBufferId := VkCommandBuffer(newUnusedID(true, func(x uint64) bool { return GetState(s).CommandBuffers.Contains(VkCommandBuffer(x)) }))
 	commandBufferData := s.AllocDataOrPanic(ctx, commandBufferId)
 	defer commandBufferData.Free()
 
@@ -977,7 +977,7 @@ func createAndBindSourceBuffer(ctx context.Context, id api.CmdID, cb CommandBuil
 		PQueueFamilyIndices:   NewU32ᶜᵖ(memory.Nullptr),
 	}
 
-	bufferId := VkBuffer(newUnusedID(true, func(x uint64) bool { _, ok := GetState(s).Buffers[VkBuffer(x)]; return ok }))
+	bufferId := VkBuffer(newUnusedID(true, func(x uint64) bool { return GetState(s).Buffers.Contains(VkBuffer(x)) }))
 	bufferAllocateInfoData := s.AllocDataOrPanic(ctx, bufferCreateInfo)
 	defer bufferAllocateInfoData.Free()
 	bufferData := s.AllocDataOrPanic(ctx, bufferId)
@@ -1003,7 +1003,7 @@ func createAndBindSourceBuffer(ctx context.Context, id api.CmdID, cb CommandBuil
 		AllocationSize:  size,
 		MemoryTypeIndex: memoryIndex,
 	}
-	memoryId := VkDeviceMemory(newUnusedID(true, func(x uint64) bool { _, ok := GetState(s).DeviceMemories[VkDeviceMemory(x)]; return ok }))
+	memoryId := VkDeviceMemory(newUnusedID(true, func(x uint64) bool { return GetState(s).DeviceMemories.Contains(VkDeviceMemory(x)) }))
 	memoryAllocateInfoData := s.AllocDataOrPanic(ctx, memoryAllocateInfo)
 	defer memoryAllocateInfoData.Free()
 	memoryData := s.AllocDataOrPanic(ctx, memoryId)
@@ -1113,8 +1113,8 @@ func createBufferBarrier(ctx context.Context, id api.CmdID, cb CommandBuilder, s
 
 func createCommandPool(ctx context.Context, id api.CmdID, cb CommandBuilder, s *api.GlobalState, b *builder.Builder, queue VkQueue, device VkDevice) (VkCommandPool, error) {
 	// Command pool and command buffer
-	commandPoolId := VkCommandPool(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).CommandPools[VkCommandPool(x)]; return ok }))
-	queueObject := GetState(s).Queues[queue]
+	commandPoolId := VkCommandPool(newUnusedID(false, func(x uint64) bool { return GetState(s).CommandPools.Contains(VkCommandPool(x)) }))
+	queueObject := GetState(s).Queues.Get(queue)
 
 	commandPoolCreateInfo := VkCommandPoolCreateInfo{
 		SType:            VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -1156,11 +1156,11 @@ func (a *RecreateImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalS
 	img := a.PImage.MustRead(ctx, a, s, nil)
 	if a.PMemoryRequirements != (VkMemoryRequirementsᵖ{}) {
 		memReqs := a.PMemoryRequirements.MustRead(ctx, a, s, nil)
-		GetState(s).Images[img].MemoryRequirements = memReqs
+		GetState(s).Images.Get(img).MemoryRequirements = memReqs
 	}
 	if (a.SparseMemoryRequirementCount > uint32(0)) && (a.PSparseMemoryRequirements != VkSparseImageMemoryRequirementsᵖ{}) {
 		for i, req := range a.PSparseMemoryRequirements.Slice(0, uint64(a.SparseMemoryRequirementCount), l).MustRead(ctx, a, s, nil) {
-			GetState(s).Images[img].SparseMemoryRequirements[uint32(i)] = req
+			GetState(s).Images.Get(img).SparseMemoryRequirements.Set(uint32(i), req)
 		}
 	}
 	return nil
@@ -1230,10 +1230,10 @@ func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	t := a.thread
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory.ApplicationPool())
-	imageObject := GetState(s).Images[a.Image]
+	imageObject := GetState(s).Images.Get(a.Image)
 	cb := CommandBuilder{Thread: a.thread}
 	if a.LastBoundQueue != VkQueue(0) && a.LastLayout != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
-		queueObject := GetState(s).Queues[a.LastBoundQueue]
+		queueObject := GetState(s).Queues.Get(a.LastBoundQueue)
 		device := queueObject.Device
 		commandPool, err := createCommandPool(ctx, id, cb, s, b, a.LastBoundQueue, device)
 		if err != nil {
@@ -1450,9 +1450,9 @@ func (a *RecreateBufferData) Mutate(ctx context.Context, id api.CmdID, s *api.Gl
 	// If we have data to fill this buffer with:
 	if !a.Data.IsNullptr() {
 		queue := a.LastBoundQueue
-		queueObject := GetState(s).Queues[queue]
+		queueObject := GetState(s).Queues.Get(queue)
 		device := queueObject.Device
-		bufferObject := GetState(s).Buffers[a.Buffer]
+		bufferObject := GetState(s).Buffers.Get(a.Buffer)
 		bufferInfo := bufferObject.Info
 		cb := CommandBuilder{Thread: a.thread}
 
@@ -1529,9 +1529,9 @@ func findGraphicsAndComputeQueueForDevice(device VkDevice, s *api.GlobalState) V
 	c := GetState(s)
 	backupQueue := VkQueue(0)
 	backupQueueFlags := uint32(0)
-	for _, v := range c.Queues {
+	for _, v := range c.Queues.Range() {
 		if v.Device == device {
-			family := c.PhysicalDevices[c.Devices[device].PhysicalDevice].QueueFamilyProperties[v.Family]
+			family := c.PhysicalDevices.Get(c.Devices.Get(device).PhysicalDevice).QueueFamilyProperties.Get(v.Family)
 			expected := uint32(VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT) | uint32(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
 			if (uint32(family.QueueFlags) & expected) == expected {
 				return v.VulkanHandle
@@ -1552,9 +1552,9 @@ func findGraphicsAndComputeQueueForDevice(device VkDevice, s *api.GlobalState) V
 // If such a queue cannot be found, returns a VkQueue(0).
 func findSupportedQueueForDevice(device VkDevice, s *api.GlobalState, flags VkQueueFlags) VkQueue {
 	c := GetState(s)
-	for _, v := range c.Queues {
+	for _, v := range c.Queues.Range() {
 		if v.Device == device {
-			family := c.PhysicalDevices[c.Devices[device].PhysicalDevice].QueueFamilyProperties[v.Family]
+			family := c.PhysicalDevices.Get(c.Devices.Get(device).PhysicalDevice).QueueFamilyProperties.Get(v.Family)
 			if uint32(family.QueueFlags)&uint32(flags) == uint32(flags) {
 				return v.VulkanHandle
 			}
@@ -1657,10 +1657,10 @@ func (a *RecreateSwapchain) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	imageLayouts := a.PSwapchainLayouts.Slice(0, uint64(createInfoData.MinImageCount), l).MustRead(ctx, a, s, b)
 	boundQueues := a.PInitialQueues.Slice(0, uint64(createInfoData.MinImageCount), l).MustRead(ctx, a, s, b)
 	for i := 0; i < int(createInfoData.MinImageCount); i++ {
-		imageObject := GetState(s).Images[images[i]]
+		imageObject := GetState(s).Images.Get(images[i])
 		if boundQueues[i] != VkQueue(0) && imageLayouts[i] != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
 			queue := boundQueues[i]
-			queueObject := GetState(s).Queues[queue]
+			queueObject := GetState(s).Queues.Get(queue)
 			device := queueObject.Device
 			commandPool, err := createCommandPool(ctx, id, cb, s, b, queue, device)
 			if err != nil {

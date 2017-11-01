@@ -643,24 +643,24 @@ func (qei *queueExecutionInfo) beginRenderPass(ctx context.Context,
 		resolveAs := map[uint32]struct{}{}
 		inputAs := map[uint32]struct{}{}
 
-		for _, ref := range desc.ColorAttachments {
+		for _, ref := range desc.ColorAttachments.Range() {
 			if ref.Attachment != vkAttachmentUnused {
 				colorAs[ref.Attachment] = struct{}{}
 			}
 		}
-		for _, ref := range desc.ResolveAttachments {
+		for _, ref := range desc.ResolveAttachments.Range() {
 			if ref.Attachment != vkAttachmentUnused {
 				resolveAs[ref.Attachment] = struct{}{}
 			}
 		}
-		for _, ref := range desc.InputAttachments {
+		for _, ref := range desc.InputAttachments.Range() {
 			if ref.Attachment != vkAttachmentUnused {
 				inputAs[ref.Attachment] = struct{}{}
 			}
 		}
 		// TODO: handle preserveAttachments
 
-		for _, viewObj := range fb.ImageAttachments {
+		for _, viewObj := range fb.ImageAttachments.Range() {
 			if read(ctx, bh, vkHandle(viewObj.VulkanHandle)) {
 				read(ctx, bh, vkHandle(viewObj.Image.VulkanHandle))
 			}
@@ -1296,7 +1296,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			if GetState(s).LastDrawInfos.Contains(lastBoundQueue.VulkanHandle) {
 				lastDrawInfo := GetState(s).LastDrawInfos.Get(lastBoundQueue.VulkanHandle)
 				if lastDrawInfo.Framebuffer != nil {
-					for _, view := range lastDrawInfo.Framebuffer.ImageAttachments {
+					for _, view := range lastDrawInfo.Framebuffer.ImageAttachments.Range() {
 						img := view.Image
 						data := vb.images[img.VulkanHandle].data
 						vb.machine.lastBoundFramebufferImageData[bh] = append(
@@ -1620,7 +1620,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			layoutObj := GetState(s).DescriptorSetLayouts.Get(vkLayout)
 			write(ctx, bh, vkHandle(vkSet))
 			vb.descriptorSets[vkSet] = newDescriptorSet()
-			for bi, bindingInfo := range layoutObj.Bindings {
+			for bi, bindingInfo := range layoutObj.Bindings.Range() {
 				for di := uint32(0); di < bindingInfo.Count; di++ {
 					vb.descriptorSets[vkSet].reserveDescriptor(uint64(bi), uint64(di))
 				}
@@ -1654,7 +1654,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		write(ctx, bh, vkHandle(vkSet))
 		layoutObj := GetState(s).DescriptorSetLayouts.Get(vkLayout)
 		vb.descriptorSets[vkSet] = newDescriptorSet()
-		for bi, bindingInfo := range layoutObj.Bindings {
+		for bi, bindingInfo := range layoutObj.Bindings.Range() {
 			for di := uint32(0); di < bindingInfo.Count; di++ {
 				vb.descriptorSets[vkSet].reserveDescriptor(uint64(bi), uint64(di))
 			}
@@ -2028,7 +2028,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		rp := GetState(s).RenderPasses.Get(vkRp)
 		fb := GetState(s).Framebuffers.Get(vkFb)
 		read(ctx, bh, vkHandle(fb.RenderPass.VulkanHandle))
-		for _, ia := range fb.ImageAttachments {
+		for _, ia := range fb.ImageAttachments.Range() {
 			if read(ctx, bh, vkHandle(ia.VulkanHandle)) {
 				read(ctx, bh, vkHandle(ia.Image.VulkanHandle))
 			}

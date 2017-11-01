@@ -60,9 +60,9 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 	ctx = log.Enter(ctx, "Texture.ResourceData()")
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_2D_MULTISAMPLE:
-		levels := make([]*image.Info, len(t.Levels))
-		for i, level := range t.Levels {
-			img, err := level.Layers[0].ImageInfo(ctx, s)
+		levels := make([]*image.Info, t.Levels.Len())
+		for i, level := range t.Levels.Range() {
+			img, err := level.Layers.Get(0).ImageInfo(ctx, s)
 			if err != nil {
 				return nil, err
 			}
@@ -94,9 +94,9 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		numLayers := t.LayerCount()
 		layers := make([]*api.Texture1D, numLayers)
 		for layer := range layers {
-			levels := make([]*image.Info, len(t.Levels))
+			levels := make([]*image.Info, t.Levels.Len())
 			for level := range levels {
-				img, err := t.Levels[GLint(level)].Layers[GLint(layer)].ImageInfo(ctx, s)
+				img, err := t.Levels.Get(GLint(level)).Layers.Get(GLint(layer)).ImageInfo(ctx, s)
 				if err != nil {
 					return nil, err
 				}
@@ -110,9 +110,9 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		numLayers := t.LayerCount()
 		layers := make([]*api.Texture2D, numLayers)
 		for layer := range layers {
-			levels := make([]*image.Info, len(t.Levels))
+			levels := make([]*image.Info, t.Levels.Len())
 			for level := range levels {
-				img, err := t.Levels[GLint(level)].Layers[GLint(layer)].ImageInfo(ctx, s)
+				img, err := t.Levels.Get(GLint(level)).Layers.Get(GLint(layer)).ImageInfo(ctx, s)
 				if err != nil {
 					return nil, err
 				}
@@ -130,21 +130,21 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		}
 
 	case GLenum_GL_TEXTURE_3D:
-		levels := make([]*image.Info, len(t.Levels))
-		for i, level := range t.Levels {
-			img := level.Layers[0]
+		levels := make([]*image.Info, t.Levels.Len())
+		for i, level := range t.Levels.Range() {
+			img := level.Layers.Get(0)
 			l := &image.Info{
 				Width:  uint32(img.Width),
 				Height: uint32(img.Height),
-				Depth:  uint32(len(level.Layers)),
+				Depth:  uint32(level.Layers.Len()),
 			}
 			levels[i] = l
 			if img.Data.count == 0 {
 				continue
 			}
 			bytes := []byte{}
-			for i, c := 0, len(level.Layers); i < c; i++ {
-				l := level.Layers[GLint(i)]
+			for i, c := 0, level.Layers.Len(); i < c; i++ {
+				l := level.Layers.Get(GLint(i))
 				if l == nil {
 					continue
 				}
@@ -173,10 +173,10 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		return api.NewResourceData(api.NewTexture(&api.Texture3D{Levels: levels})), nil
 
 	case GLenum_GL_TEXTURE_CUBE_MAP:
-		levels := make([]*api.CubemapLevel, len(t.Levels))
-		for i, level := range t.Levels {
+		levels := make([]*api.CubemapLevel, t.Levels.Len())
+		for i, level := range t.Levels.Range() {
 			levels[i] = &api.CubemapLevel{}
-			for j, face := range level.Layers {
+			for j, face := range level.Layers.Range() {
 				img, err := face.ImageInfo(ctx, s)
 				if err != nil {
 					return nil, err
@@ -230,9 +230,9 @@ func (i *Image) ImageInfo(ctx context.Context, s *api.GlobalState) (*image.Info,
 // LayerCount returns the maximum number of layers across all levels.
 func (t *Texture) LayerCount() int {
 	max := 0
-	for _, l := range t.Levels {
-		if len(l.Layers) > max {
-			max = len(l.Layers)
+	for _, l := range t.Levels.Range() {
+		if l.Layers.Len() > max {
+			max = l.Layers.Len()
 		}
 	}
 	return max
@@ -372,8 +372,8 @@ func (p *Program) ResourceType(ctx context.Context) api.ResourceType {
 func (p *Program) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Program.ResourceData()")
 
-	shaders := make([]*api.Shader, 0, len(p.Shaders))
-	for shaderType, shader := range p.Shaders {
+	shaders := make([]*api.Shader, 0, p.Shaders.Len())
+	for shaderType, shader := range p.Shaders.Range() {
 		var ty api.ShaderType
 		switch shaderType {
 		case GLenum_GL_VERTEX_SHADER:
@@ -395,9 +395,9 @@ func (p *Program) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		})
 	}
 
-	uniforms := make([]*api.Uniform, 0, len(p.ActiveUniforms))
-	for _, activeUniform := range p.ActiveUniforms {
-		uniform := p.Uniforms[activeUniform.Location]
+	uniforms := make([]*api.Uniform, 0, p.ActiveUniforms.Len())
+	for _, activeUniform := range p.ActiveUniforms.Range() {
+		uniform := p.Uniforms.Get(activeUniform.Location)
 
 		var uniformFormat api.UniformFormat
 		var uniformType api.UniformType

@@ -456,14 +456,12 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 			f.cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveUniforms: gles.UniformIndexːActiveUniformᵐ{
-					0: {
-						Type:      gles.GLenum_GL_SAMPLER_2D,
-						Name:      "tex",
-						ArraySize: 1,
-						Location:  texLoc,
-					},
-				},
+				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
+					Type:      gles.GLenum_GL_SAMPLER_2D,
+					Name:      "tex",
+					ArraySize: 1,
+					Location:  texLoc,
+				}),
 			}),
 		f.cb.GlUseProgram(missingProg),
 		f.cb.GlLabelObjectEXT(gles.GLenum_GL_TEXTURE, 123, gles.GLsizei(someString.Range().Size), someString.Ptr()).AddRead(someString.Data()),
@@ -533,14 +531,12 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 			f.cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveUniforms: gles.UniformIndexːActiveUniformᵐ{
-					0: {
-						Type:      gles.GLenum_GL_FLOAT,
-						Name:      "angle",
-						ArraySize: 1,
-						Location:  angleLoc,
-					},
-				},
+				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
+					Type:      gles.GLenum_GL_FLOAT,
+					Name:      "angle",
+					ArraySize: 1,
+					Location:  angleLoc,
+				}),
 			}),
 		f.cb.GlUseProgram(prog),
 		f.cb.GlGetUniformLocation(prog, "angle", angleLoc),

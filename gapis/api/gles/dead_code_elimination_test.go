@@ -47,26 +47,22 @@ func TestDeadCommandRemoval(t *testing.T) {
 
 	programInfoA := &ProgramInfo{
 		LinkStatus: GLboolean_GL_TRUE,
-		ActiveUniforms: UniformIndexːActiveUniformᵐ{
-			0: {
-				Name:      "uniforms",
-				Type:      GLenum_GL_FLOAT_VEC4,
-				Location:  0,
-				ArraySize: 10,
-			},
-		},
+		ActiveUniforms: NewUniformIndexːActiveUniformᵐ().Add(0, ActiveUniform{
+			Name:      "uniforms",
+			Type:      GLenum_GL_FLOAT_VEC4,
+			Location:  0,
+			ArraySize: 10,
+		}),
 	}
 
 	programInfoB := &ProgramInfo{
 		LinkStatus: GLboolean_GL_TRUE,
-		ActiveUniforms: UniformIndexːActiveUniformᵐ{
-			0: {
-				Name:      "sampler",
-				Type:      GLenum_GL_SAMPLER_CUBE,
-				Location:  0,
-				ArraySize: 1,
-			},
-		},
+		ActiveUniforms: NewUniformIndexːActiveUniformᵐ().Add(0, ActiveUniform{
+			Name:      "sampler",
+			Type:      GLenum_GL_SAMPLER_CUBE,
+			Location:  0,
+			ArraySize: 1,
+		}),
 	}
 
 	ctxHandle1 := memory.BytePtr(1, memory.ApplicationPool)

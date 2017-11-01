@@ -28,7 +28,6 @@
     "io/ioutil"
     "strings"
 
-    "github.com/google/gapid/gapis/atom"
     "github.com/google/gapid/gapis/database"
     "github.com/google/gapid/gapis/api"
     "github.com/google/gapid/gapis/messages"
@@ -430,7 +429,7 @@
 
   {
     {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}} := int32(0){{end}}
-    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}} {
+    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.Range() {
       {{Template "Block" $.Block}}
       {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}}++{{end}}
     }
@@ -556,7 +555,7 @@
   {{AssertType $ "MapAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Map}}[{{Template "Go.Read" $.To.Index}}] = {{Template "Go.Read" $.Value}}
+    {{Template "Go.Read" $.To.Map}}.Set({{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported MapAssign operator %s" $.Operator}}
   {{end}}
@@ -571,7 +570,7 @@
 {{define "MapRemove"}}
   {{AssertType $ "MapRemove"}}
 
-  delete({{Template "Go.Read" $.Map}}, {{Template "Go.Read" $.Key}})
+  {{Template "Go.Read" $.Map}}.Delete({{Template "Go.Read" $.Key}})
 {{end}}
 
 

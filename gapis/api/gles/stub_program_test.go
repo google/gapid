@@ -29,16 +29,13 @@ func TestStubShaderSource(t *testing.T) {
 		{
 			name: "Simple",
 			pi: &gles.ProgramInfo{
-				ActiveUniforms: gles.UniformIndexːActiveUniformᵐ{
-					0: {
-						Type: gles.GLenum_GL_FLOAT_VEC4,
-						Name: "foo",
-					},
-					1: {
-						Type: gles.GLenum_GL_SAMPLER_2D,
-						Name: "bar",
-					},
-				},
+				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
+					Type: gles.GLenum_GL_FLOAT_VEC4,
+					Name: "foo",
+				}).Add(1, gles.ActiveUniform{
+					Type: gles.GLenum_GL_SAMPLER_2D,
+					Name: "bar",
+				}),
 			},
 			vs: `#version 150
 
@@ -69,18 +66,15 @@ void main() {
 		}, {
 			name: "Array",
 			pi: &gles.ProgramInfo{
-				ActiveUniforms: gles.UniformIndexːActiveUniformᵐ{
-					0: {
-						Type:      gles.GLenum_GL_FLOAT_VEC4,
-						Name:      "foo",
-						ArraySize: 3,
-					},
-					1: {
-						Type:      gles.GLenum_GL_FLOAT_VEC4,
-						Name:      "bar[0]",
-						ArraySize: 3,
-					},
-				},
+				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
+					Type:      gles.GLenum_GL_FLOAT_VEC4,
+					Name:      "foo",
+					ArraySize: 3,
+				}).Add(1, gles.ActiveUniform{
+					Type:      gles.GLenum_GL_FLOAT_VEC4,
+					Name:      "bar[0]",
+					ArraySize: 3,
+				}),
 			},
 			vs: `#version 150
 

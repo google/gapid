@@ -46,7 +46,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			return
 		}
 
-		tex, ok := c.Objects.Shared.Textures[TextureId(r.Texture)]
+		tex, ok := c.Objects.Shared.Textures.Lookup(TextureId(r.Texture))
 		if !ok {
 			err := fmt.Errorf("Attempting to read from a texture that does not exist.\n"+
 				"Resolvable: %+v"+
@@ -55,13 +55,13 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			res(nil, err)
 			return
 		}
-		lvl := tex.Levels[GLint(r.Level)]
-		layer := lvl.Layers[GLint(r.Layer)]
+		lvl := tex.Levels.Get(GLint(r.Level))
+		layer := lvl.Layers.Get(GLint(r.Layer))
 		if layer == nil {
 			err := fmt.Errorf("Attempting to read from a texture (Level: %v/%v, Layer: %v/%v) that does not exist.\n"+
 				"Resolvable: %+v\n"+
 				"Texture: %+v",
-				r.Level, len(tex.Levels), r.Layer, len(lvl.Layers), r, tex)
+				r.Level, tex.Levels.Len(), r.Layer, lvl.Layers.Len(), r, tex)
 			log.W(ctx, "%v", err)
 			res(nil, err)
 			return

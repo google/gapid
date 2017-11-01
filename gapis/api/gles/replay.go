@@ -287,7 +287,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	cmds := []api.Cmd{}
 
 	// Start by unbinding all the contexts from all the threads.
-	for t, c := range GetState(s).Contexts {
+	for t, c := range GetState(s).Contexts.Range() {
 		if c == nil {
 			continue
 		}
@@ -297,12 +297,12 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 
 	// Now using a single thread, bind each context and delete all objects.
 	cb := CommandBuilder{Thread: 0}
-	for i, c := range GetState(s).EGLContexts {
+	for i, c := range GetState(s).EGLContexts.Range() {
 		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, i, 1))
 
 		// Delete all Renderbuffers.
-		renderbuffers := make([]RenderbufferId, 0, len(c.Objects.Shared.Renderbuffers))
-		for renderbufferId := range c.Objects.Shared.Renderbuffers {
+		renderbuffers := make([]RenderbufferId, 0, c.Objects.Shared.Renderbuffers.Len())
+		for renderbufferId := range c.Objects.Shared.Renderbuffers.Range() {
 			// Skip virtual renderbuffers: backbuffer_color(-1), backbuffer_depth(-2), backbuffer_stencil(-3).
 			if renderbufferId < 0xf0000000 {
 				renderbuffers = append(renderbuffers, renderbufferId)
@@ -314,8 +314,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all Textures.
-		textures := make([]TextureId, 0, len(c.Objects.Shared.Textures))
-		for textureId := range c.Objects.Shared.Textures {
+		textures := make([]TextureId, 0, c.Objects.Shared.Textures.Len())
+		for textureId := range c.Objects.Shared.Textures.Range() {
 			textures = append(textures, textureId)
 		}
 		if len(textures) > 0 {
@@ -324,8 +324,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all Framebuffers.
-		framebuffers := make([]FramebufferId, 0, len(c.Objects.Framebuffers))
-		for framebufferId := range c.Objects.Framebuffers {
+		framebuffers := make([]FramebufferId, 0, c.Objects.Framebuffers.Len())
+		for framebufferId := range c.Objects.Framebuffers.Range() {
 			framebuffers = append(framebuffers, framebufferId)
 		}
 		if len(framebuffers) > 0 {
@@ -334,8 +334,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all Buffers.
-		buffers := make([]BufferId, 0, len(c.Objects.Shared.Buffers))
-		for bufferId := range c.Objects.Shared.Buffers {
+		buffers := make([]BufferId, 0, c.Objects.Shared.Buffers.Len())
+		for bufferId := range c.Objects.Shared.Buffers.Range() {
 			buffers = append(buffers, bufferId)
 		}
 		if len(buffers) > 0 {
@@ -344,8 +344,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all VertexArrays.
-		vertexArrays := make([]VertexArrayId, 0, len(c.Objects.VertexArrays))
-		for vertexArrayId := range c.Objects.VertexArrays {
+		vertexArrays := make([]VertexArrayId, 0, c.Objects.VertexArrays.Len())
+		for vertexArrayId := range c.Objects.VertexArrays.Range() {
 			vertexArrays = append(vertexArrays, vertexArrayId)
 		}
 		if len(vertexArrays) > 0 {
@@ -364,8 +364,8 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all Queries.
-		queries := make([]QueryId, 0, len(c.Objects.Queries))
-		for queryId := range c.Objects.Queries {
+		queries := make([]QueryId, 0, c.Objects.Queries.Len())
+		for queryId := range c.Objects.Queries.Range() {
 			queries = append(queries, queryId)
 		}
 		if len(queries) > 0 {

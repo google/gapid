@@ -141,7 +141,7 @@ func compatDrawElements(
 // clientVAsBound returns true if there are any vertex attribute arrays enabled
 // with pointers to client-side memory.
 func clientVAsBound(c *Context, clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer) bool {
-	for _, arr := range c.Bound.VertexArray.VertexAttributeArrays {
+	for _, arr := range c.Bound.VertexArray.VertexAttributeArrays.Range() {
 		if arr.Enabled == GLboolean_GL_TRUE {
 			if _, ok := clientVAs[arr]; ok {
 				return true
@@ -174,9 +174,9 @@ func moveClientVBsToVAs(
 	// Gather together all the client-buffers in use by the vertex-attribs.
 	// Merge together all the memory intervals that these use.
 	va := c.Bound.VertexArray
-	for _, arr := range va.VertexAttributeArrays {
+	for _, arr := range va.VertexAttributeArrays.Range() {
 		if arr.Enabled == GLboolean_GL_TRUE {
-			vb := va.VertexBufferBindings[arr.Binding]
+			vb := va.VertexBufferBindings.Get(arr.Binding)
 			if cmd, ok := clientVAs[arr]; ok {
 				// TODO: We're currently ignoring the Offset and Stride fields of the VBB.
 				// TODO: We're currently ignoring the RelativeOffset field of the VA.
@@ -225,7 +225,7 @@ func moveClientVBsToVAs(
 
 	// Redirect all the vertex attrib arrays to point to the array-buffer data.
 	for _, l := range va.VertexAttributeArrays.KeysSorted() {
-		arr := va.VertexAttributeArrays[l]
+		arr := va.VertexAttributeArrays.Get(l)
 		if arr.Enabled == GLboolean_GL_TRUE {
 			if glVAP, ok := clientVAs[arr]; ok {
 				glVAP := *glVAP // Copy

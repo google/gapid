@@ -82,12 +82,12 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 
 	switch d := data.(type) {
 	case (*VkCmdBindPipelineArgs):
-		o.BufferCommands.VkCmdBindPipeline[uint32(len(o.BufferCommands.VkCmdBindPipeline))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdBindPipeline.Set(uint32(o.BufferCommands.VkCmdBindPipeline.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdBindPipeline,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdBindPipeline) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdBindPipeline.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -96,14 +96,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetViewportArgs):
-		o.BufferCommands.VkCmdSetViewport[uint32(len(o.BufferCommands.VkCmdSetViewport))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetViewport.Set(uint32(o.BufferCommands.VkCmdSetViewport.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetViewport,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetViewport) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetViewport.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -112,14 +112,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetScissorArgs):
-		o.BufferCommands.VkCmdSetScissor[uint32(len(o.BufferCommands.VkCmdSetScissor))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetScissor.Set(uint32(o.BufferCommands.VkCmdSetScissor.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetScissor,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetScissor) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetScissor.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -128,14 +128,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetLineWidthArgs):
-		o.BufferCommands.VkCmdSetLineWidth[uint32(len(o.BufferCommands.VkCmdSetLineWidth))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetLineWidth.Set(uint32(o.BufferCommands.VkCmdSetLineWidth.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetLineWidth,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetLineWidth) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetLineWidth.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -144,14 +144,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetDepthBiasArgs):
-		o.BufferCommands.VkCmdSetDepthBias[uint32(len(o.BufferCommands.VkCmdSetDepthBias))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetDepthBias.Set(uint32(o.BufferCommands.VkCmdSetDepthBias.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetDepthBias,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetDepthBias) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetDepthBias.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -160,14 +160,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetBlendConstantsArgs):
-		o.BufferCommands.VkCmdSetBlendConstants[uint32(len(o.BufferCommands.VkCmdSetBlendConstants))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetBlendConstants.Set(uint32(o.BufferCommands.VkCmdSetBlendConstants.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetBlendConstants,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetBlendConstants) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetBlendConstants.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -176,14 +176,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetDepthBoundsArgs):
-		o.BufferCommands.VkCmdSetDepthBounds[uint32(len(o.BufferCommands.VkCmdSetDepthBounds))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetDepthBounds.Set(uint32(o.BufferCommands.VkCmdSetDepthBounds.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetDepthBounds,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetDepthBounds) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetDepthBounds.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -192,14 +192,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetStencilCompareMaskArgs):
-		o.BufferCommands.VkCmdSetStencilCompareMask[uint32(len(o.BufferCommands.VkCmdSetStencilCompareMask))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetStencilCompareMask.Set(uint32(o.BufferCommands.VkCmdSetStencilCompareMask.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetStencilCompareMask,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetStencilCompareMask) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetStencilCompareMask.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -208,14 +208,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetStencilWriteMaskArgs):
-		o.BufferCommands.VkCmdSetStencilWriteMask[uint32(len(o.BufferCommands.VkCmdSetStencilWriteMask))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetStencilWriteMask.Set(uint32(o.BufferCommands.VkCmdSetStencilWriteMask.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetStencilWriteMask,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetStencilWriteMask) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetStencilWriteMask.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -224,14 +224,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetStencilReferenceArgs):
-		o.BufferCommands.VkCmdSetStencilReference[uint32(len(o.BufferCommands.VkCmdSetStencilReference))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetStencilReference.Set(uint32(o.BufferCommands.VkCmdSetStencilReference.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetStencilReference,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetStencilReference) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetStencilReference.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -240,14 +240,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdBindDescriptorSetsArgs):
-		o.BufferCommands.VkCmdBindDescriptorSets[uint32(len(o.BufferCommands.VkCmdBindDescriptorSets))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdBindDescriptorSets.Set(uint32(o.BufferCommands.VkCmdBindDescriptorSets.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdBindDescriptorSets,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdBindDescriptorSets) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdBindDescriptorSets.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -256,14 +256,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdBindIndexBufferArgs):
-		o.BufferCommands.VkCmdBindIndexBuffer[uint32(len(o.BufferCommands.VkCmdBindIndexBuffer))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdBindIndexBuffer.Set(uint32(o.BufferCommands.VkCmdBindIndexBuffer.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdBindIndexBuffer,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdBindIndexBuffer) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdBindIndexBuffer.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -272,14 +272,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdBindVertexBuffersArgs):
-		o.BufferCommands.VkCmdBindVertexBuffers[uint32(len(o.BufferCommands.VkCmdBindVertexBuffers))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdBindVertexBuffers.Set(uint32(o.BufferCommands.VkCmdBindVertexBuffers.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdBindVertexBuffers,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdBindVertexBuffers) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdBindVertexBuffers.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -288,14 +288,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDrawArgs):
-		o.BufferCommands.VkCmdDraw[uint32(len(o.BufferCommands.VkCmdDraw))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDraw.Set(uint32(o.BufferCommands.VkCmdDraw.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDraw,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDraw) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDraw.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -304,14 +304,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDrawIndexedArgs):
-		o.BufferCommands.VkCmdDrawIndexed[uint32(len(o.BufferCommands.VkCmdDrawIndexed))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDrawIndexed.Set(uint32(o.BufferCommands.VkCmdDrawIndexed.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDrawIndexed,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDrawIndexed) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDrawIndexed.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -320,14 +320,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDrawIndirectArgs):
-		o.BufferCommands.VkCmdDrawIndirect[uint32(len(o.BufferCommands.VkCmdDrawIndirect))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDrawIndirect.Set(uint32(o.BufferCommands.VkCmdDrawIndirect.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDrawIndirect,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDrawIndirect) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDrawIndirect.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -336,14 +336,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDrawIndexedIndirectArgs):
-		o.BufferCommands.VkCmdDrawIndexedIndirect[uint32(len(o.BufferCommands.VkCmdDrawIndexedIndirect))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDrawIndexedIndirect.Set(uint32(o.BufferCommands.VkCmdDrawIndexedIndirect.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDrawIndexedIndirect,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDrawIndexedIndirect) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDrawIndexedIndirect.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -352,14 +352,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDispatchArgs):
-		o.BufferCommands.VkCmdDispatch[uint32(len(o.BufferCommands.VkCmdDispatch))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDispatch.Set(uint32(o.BufferCommands.VkCmdDispatch.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDispatch,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDispatch) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDispatch.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -368,14 +368,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDispatchIndirectArgs):
-		o.BufferCommands.VkCmdDispatchIndirect[uint32(len(o.BufferCommands.VkCmdDispatchIndirect))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDispatchIndirect.Set(uint32(o.BufferCommands.VkCmdDispatchIndirect.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDispatchIndirect,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDispatchIndirect) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDispatchIndirect.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -384,14 +384,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdCopyBufferArgs):
-		o.BufferCommands.VkCmdCopyBuffer[uint32(len(o.BufferCommands.VkCmdCopyBuffer))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdCopyBuffer.Set(uint32(o.BufferCommands.VkCmdCopyBuffer.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdCopyBuffer,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdCopyBuffer) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdCopyBuffer.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -400,14 +400,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdCopyImageArgs):
-		o.BufferCommands.VkCmdCopyImage[uint32(len(o.BufferCommands.VkCmdCopyImage))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdCopyImage.Set(uint32(o.BufferCommands.VkCmdCopyImage.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdCopyImage,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdCopyImage) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdCopyImage.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -416,14 +416,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdBlitImageArgs):
-		o.BufferCommands.VkCmdBlitImage[uint32(len(o.BufferCommands.VkCmdBlitImage))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdBlitImage.Set(uint32(o.BufferCommands.VkCmdBlitImage.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdBlitImage,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdBlitImage) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdBlitImage.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -432,14 +432,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdCopyBufferToImageArgs):
-		o.BufferCommands.VkCmdCopyBufferToImage[uint32(len(o.BufferCommands.VkCmdCopyBufferToImage))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdCopyBufferToImage.Set(uint32(o.BufferCommands.VkCmdCopyBufferToImage.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdCopyBufferToImage,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdCopyBufferToImage) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdCopyBufferToImage.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -448,14 +448,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdCopyImageToBufferArgs):
-		o.BufferCommands.VkCmdCopyImageToBuffer[uint32(len(o.BufferCommands.VkCmdCopyImageToBuffer))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdCopyImageToBuffer.Set(uint32(o.BufferCommands.VkCmdCopyImageToBuffer.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdCopyImageToBuffer,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdCopyImageToBuffer) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdCopyImageToBuffer.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -464,14 +464,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdUpdateBufferArgs):
-		o.BufferCommands.VkCmdUpdateBuffer[uint32(len(o.BufferCommands.VkCmdUpdateBuffer))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdUpdateBuffer.Set(uint32(o.BufferCommands.VkCmdUpdateBuffer.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdUpdateBuffer,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdUpdateBuffer) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdUpdateBuffer.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -480,14 +480,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdFillBufferArgs):
-		o.BufferCommands.VkCmdFillBuffer[uint32(len(o.BufferCommands.VkCmdFillBuffer))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdFillBuffer.Set(uint32(o.BufferCommands.VkCmdFillBuffer.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdFillBuffer,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdFillBuffer) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdFillBuffer.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -496,14 +496,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdClearColorImageArgs):
-		o.BufferCommands.VkCmdClearColorImage[uint32(len(o.BufferCommands.VkCmdClearColorImage))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdClearColorImage.Set(uint32(o.BufferCommands.VkCmdClearColorImage.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdClearColorImage,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdClearColorImage) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdClearColorImage.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -512,14 +512,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdClearDepthStencilImageArgs):
-		o.BufferCommands.VkCmdClearDepthStencilImage[uint32(len(o.BufferCommands.VkCmdClearDepthStencilImage))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdClearDepthStencilImage.Set(uint32(o.BufferCommands.VkCmdClearDepthStencilImage.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdClearDepthStencilImage,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdClearDepthStencilImage) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdClearDepthStencilImage.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -528,14 +528,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdClearAttachmentsArgs):
-		o.BufferCommands.VkCmdClearAttachments[uint32(len(o.BufferCommands.VkCmdClearAttachments))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdClearAttachments.Set(uint32(o.BufferCommands.VkCmdClearAttachments.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdClearAttachments,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdClearAttachments) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdClearAttachments.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -544,14 +544,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdResolveImageArgs):
-		o.BufferCommands.VkCmdResolveImage[uint32(len(o.BufferCommands.VkCmdResolveImage))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdResolveImage.Set(uint32(o.BufferCommands.VkCmdResolveImage.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdResolveImage,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdResolveImage) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdResolveImage.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -560,14 +560,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdSetEventArgs):
-		o.BufferCommands.VkCmdSetEvent[uint32(len(o.BufferCommands.VkCmdSetEvent))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdSetEvent.Set(uint32(o.BufferCommands.VkCmdSetEvent.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdSetEvent,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdSetEvent) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdSetEvent.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -576,14 +576,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdResetEventArgs):
-		o.BufferCommands.VkCmdResetEvent[uint32(len(o.BufferCommands.VkCmdResetEvent))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdResetEvent.Set(uint32(o.BufferCommands.VkCmdResetEvent.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdResetEvent,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdResetEvent) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdResetEvent.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -592,14 +592,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdWaitEventsArgs):
-		o.BufferCommands.VkCmdWaitEvents[uint32(len(o.BufferCommands.VkCmdWaitEvents))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdWaitEvents.Set(uint32(o.BufferCommands.VkCmdWaitEvents.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdWaitEvents,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdWaitEvents) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdWaitEvents.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -608,14 +608,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdPipelineBarrierArgs):
-		o.BufferCommands.VkCmdPipelineBarrier[uint32(len(o.BufferCommands.VkCmdPipelineBarrier))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdPipelineBarrier.Set(uint32(o.BufferCommands.VkCmdPipelineBarrier.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdPipelineBarrier,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdPipelineBarrier) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdPipelineBarrier.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -624,14 +624,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdBeginQueryArgs):
-		o.BufferCommands.VkCmdBeginQuery[uint32(len(o.BufferCommands.VkCmdBeginQuery))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdBeginQuery.Set(uint32(o.BufferCommands.VkCmdBeginQuery.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdBeginQuery,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdBeginQuery) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdBeginQuery.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -640,14 +640,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdEndQueryArgs):
-		o.BufferCommands.VkCmdEndQuery[uint32(len(o.BufferCommands.VkCmdEndQuery))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdEndQuery.Set(uint32(o.BufferCommands.VkCmdEndQuery.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdEndQuery,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdEndQuery) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdEndQuery.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -656,14 +656,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdResetQueryPoolArgs):
-		o.BufferCommands.VkCmdResetQueryPool[uint32(len(o.BufferCommands.VkCmdResetQueryPool))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdResetQueryPool.Set(uint32(o.BufferCommands.VkCmdResetQueryPool.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdResetQueryPool,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdResetQueryPool) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdResetQueryPool.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -672,14 +672,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdWriteTimestampArgs):
-		o.BufferCommands.VkCmdWriteTimestamp[uint32(len(o.BufferCommands.VkCmdWriteTimestamp))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdWriteTimestamp.Set(uint32(o.BufferCommands.VkCmdWriteTimestamp.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdWriteTimestamp,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdWriteTimestamp) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdWriteTimestamp.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -688,14 +688,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdCopyQueryPoolResultsArgs):
-		o.BufferCommands.VkCmdCopyQueryPoolResults[uint32(len(o.BufferCommands.VkCmdCopyQueryPoolResults))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdCopyQueryPoolResults.Set(uint32(o.BufferCommands.VkCmdCopyQueryPoolResults.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdCopyQueryPoolResults,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdCopyQueryPoolResults) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdCopyQueryPoolResults.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -704,14 +704,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdPushConstantsArgs):
-		o.BufferCommands.VkCmdPushConstants[uint32(len(o.BufferCommands.VkCmdPushConstants))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdPushConstants.Set(uint32(o.BufferCommands.VkCmdPushConstants.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdPushConstants,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdPushConstants) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdPushConstants.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -720,14 +720,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdBeginRenderPassArgs):
-		o.BufferCommands.VkCmdBeginRenderPass[uint32(len(o.BufferCommands.VkCmdBeginRenderPass))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdBeginRenderPass.Set(uint32(o.BufferCommands.VkCmdBeginRenderPass.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdBeginRenderPass,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdBeginRenderPass) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdBeginRenderPass.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -736,14 +736,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdNextSubpassArgs):
-		o.BufferCommands.VkCmdNextSubpass[uint32(len(o.BufferCommands.VkCmdNextSubpass))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdNextSubpass.Set(uint32(o.BufferCommands.VkCmdNextSubpass.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdNextSubpass,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdNextSubpass) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdNextSubpass.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -752,14 +752,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdEndRenderPassArgs):
-		o.BufferCommands.VkCmdEndRenderPass[uint32(len(o.BufferCommands.VkCmdEndRenderPass))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdEndRenderPass.Set(uint32(o.BufferCommands.VkCmdEndRenderPass.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdEndRenderPass,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdEndRenderPass) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdEndRenderPass.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -768,14 +768,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdExecuteCommandsArgs):
-		o.BufferCommands.VkCmdExecuteCommands[uint32(len(o.BufferCommands.VkCmdExecuteCommands))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdExecuteCommands.Set(uint32(o.BufferCommands.VkCmdExecuteCommands.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdExecuteCommands,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdExecuteCommands) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdExecuteCommands.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -784,14 +784,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDebugMarkerBeginEXTArgs):
-		o.BufferCommands.VkCmdDebugMarkerBeginEXT[uint32(len(o.BufferCommands.VkCmdDebugMarkerBeginEXT))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDebugMarkerBeginEXT.Set(uint32(o.BufferCommands.VkCmdDebugMarkerBeginEXT.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDebugMarkerBeginEXT,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDebugMarkerBeginEXT) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDebugMarkerBeginEXT.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -800,14 +800,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDebugMarkerEndEXTArgs):
-		o.BufferCommands.VkCmdDebugMarkerEndEXT[uint32(len(o.BufferCommands.VkCmdDebugMarkerEndEXT))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDebugMarkerEndEXT.Set(uint32(o.BufferCommands.VkCmdDebugMarkerEndEXT.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDebugMarkerEndEXT,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDebugMarkerEndEXT) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDebugMarkerEndEXT.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -816,14 +816,14 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	case (*VkCmdDebugMarkerInsertEXTArgs):
-		o.BufferCommands.VkCmdDebugMarkerInsertEXT[uint32(len(o.BufferCommands.VkCmdDebugMarkerInsertEXT))] = d
-		o.CommandReferences[uint32(len(o.CommandReferences))] = CommandReference{
+		o.BufferCommands.VkCmdDebugMarkerInsertEXT.Set(uint32(o.BufferCommands.VkCmdDebugMarkerInsertEXT.Len()), d)
+		o.CommandReferences.Set(uint32(o.CommandReferences.Len()), CommandReference{
 			Buffer:          commandBuffer,
 			CommandIndex:    uint32(len(o.Commands)),
 			Type:            CommandType_cmd_vkCmdDebugMarkerInsertEXT,
-			MapIndex:        uint32(len(o.BufferCommands.VkCmdDebugMarkerInsertEXT) - 1),
+			MapIndex:        uint32(o.BufferCommands.VkCmdDebugMarkerInsertEXT.Len() - 1),
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
@@ -832,7 +832,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 				submissionIndex:  []uint64(nil),
 				actualSubmission: true,
 			},
-		}
+		})
 	default:
 	}
 
@@ -842,7 +842,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 		}})
 
 	if GetState(e.s).AddCommand != nil {
-		GetState(e.s).AddCommand(o.CommandReferences[uint32(len(o.Commands)-1)])
+		GetState(e.s).AddCommand(o.CommandReferences.Get(uint32(len(o.Commands) - 1)))
 	}
 
 }
@@ -850,18 +850,18 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
 	o := GetState(e.s).CommandBuffers.Get(commandBuffer)
 	o.Commands = []CommandBufferCommand{}
-	o.CommandReferences = U32ːCommandReferenceᵐ{}
+	o.CommandReferences = NewU32ːCommandReferenceᵐ()
 }
 
 func (e externs) notifyPendingCommandAdded(queue VkQueue) {
 	s := GetState(e.s)
-	queueObject := s.Queues[queue]
-	command := queueObject.PendingCommands[uint32(len(queueObject.PendingCommands)-1)]
+	queueObject := s.Queues.Get(queue)
+	command := queueObject.PendingCommands.Get(uint32(queueObject.PendingCommands.Len() - 1))
 	s.SubCmdIdx[len(s.SubCmdIdx)-1] = uint64(command.CommandIndex)
 	command.QueuedCommandData.submit = e.cmd
 	command.QueuedCommandData.submissionIndex = append([]uint64(nil), s.SubCmdIdx...)
 	command.QueuedCommandData.actualSubmission = true
-	queueObject.PendingCommands[uint32(len(queueObject.PendingCommands)-1)] = command
+	queueObject.PendingCommands.Set(uint32(queueObject.PendingCommands.Len()-1), command)
 }
 
 func (e externs) enterSubcontext() {
@@ -885,11 +885,11 @@ func (e externs) execPendingCommands(queue VkQueue) {
 	// commands knows in which queue it will be waiting.
 	GetState(e.s).LastBoundQueue = GetState(e.s).Queues.Get(queue)
 	lastBoundQueue := GetState(e.s).LastBoundQueue
-	newPendingCommands := U32ːCommandReferenceᵐ{}
+	newPendingCommands := NewU32ːCommandReferenceᵐ()
 
 	// Store off state.IdxList (Should be empty)
 	for _, i := range lastBoundQueue.PendingCommands.KeysSorted() {
-		command := lastBoundQueue.PendingCommands[i]
+		command := lastBoundQueue.PendingCommands.Get(i)
 		// Set the state.IdxList to command.Indices
 		// Set the state.Queue to command.Queue
 
@@ -897,15 +897,15 @@ func (e externs) execPendingCommands(queue VkQueue) {
 		// through. (ExecPending could not have been called otherwise).
 		// Therefore o.CurrentSubmission will be set by the else
 		// branch at least once.
-		if len(lastBoundQueue.PendingEvents) != 0 {
-			newPendingCommands[uint32(len(newPendingCommands))] = command
+		if lastBoundQueue.PendingEvents.Len() != 0 {
+			newPendingCommands.Set(uint32(newPendingCommands.Len()), command)
 		} else {
 			o.SubCmdIdx = append([]uint64{}, command.QueuedCommandData.submissionIndex...)
 			if command.SemaphoreUpdate == SemaphoreUpdate_Signal {
-				o.Semaphores[command.Semaphore].Signaled = true
+				o.Semaphores.Get(command.Semaphore).Signaled = true
 			}
 			if command.SemaphoreUpdate == SemaphoreUpdate_Unsignal {
-				o.Semaphores[command.Semaphore].Signaled = false
+				o.Semaphores.Get(command.Semaphore).Signaled = false
 			}
 			if command.SparseBinds != nil {
 				bindSparse(e.ctx, e.s, command.SparseBinds)
@@ -918,23 +918,23 @@ func (e externs) execPendingCommands(queue VkQueue) {
 			if command.QueuedCommandData.actualSubmission && o.PreSubcommand != nil {
 				o.PreSubcommand(command)
 			}
-			buffer := o.CommandBuffers[command.Buffer]
+			buffer := o.CommandBuffers.Get(command.Buffer)
 			buffer.Commands[command.CommandIndex].function(e.ctx, e.cmd, e.cmdID, e.s, e.b)
 			if command.QueuedCommandData.actualSubmission && o.PostSubcommand != nil {
 				// If the just executed subcommand blocks as there are pending events,
 				// e.g.: vkCmdWaitEvents, this subcommand should not be considered
 				// as finshed and the PostSubcommand callback should not be called.
-				if len(lastBoundQueue.PendingEvents) == 0 {
+				if lastBoundQueue.PendingEvents.Len() == 0 {
 					o.PostSubcommand(command)
 				}
 			}
 			// If a vkCmdWaitEvent is hit in the pending commands, it will set a new
 			// list of pending events to the LastBoundQueue. Once that happens, we
 			// should start a new pending command list.
-			if len(lastBoundQueue.PendingEvents) != 0 {
+			if lastBoundQueue.PendingEvents.Len() != 0 {
 				c := command
 				c.QueuedCommandData.submit = o.CurrentSubmission
-				newPendingCommands[uint32(len(newPendingCommands))] = c
+				newPendingCommands.Set(uint32(newPendingCommands.Len()), c)
 			}
 		}
 	}
@@ -1009,7 +1009,7 @@ func (e externs) pushRenderPassMarker(rp VkRenderPass) {
 			name = fmt.Sprintf("RenderPass: %v", rp)
 		}
 		GetState(e.s).pushMarkerGroup(name, false, RenderPassMarker)
-		if len(rpObj.SubpassDescriptions) > 1 {
+		if rpObj.SubpassDescriptions.Len() > 1 {
 			GetState(e.s).pushMarkerGroup("Subpass: 0", false, RenderPassMarker)
 		}
 	}
@@ -1033,8 +1033,8 @@ func (e externs) popAndPushMarkerForNextSubpass(nextSubpass uint32) {
 
 func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBinds) {
 	st := GetState(s)
-	for buffer, binds := range binds.BufferBinds {
-		for _, bind := range binds.SparseMemoryBinds {
+	for buffer, binds := range binds.BufferBinds.Range() {
+		for _, bind := range binds.SparseMemoryBinds.Range() {
 			if _, ok := st.bufferSparseBindings[buffer]; !ok {
 				st.bufferSparseBindings[buffer] = sparseBindingList{}
 			}
@@ -1043,15 +1043,15 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 		}
 		// update the data for UI
 		bufObj := st.Buffers.Get(buffer)
-		for i := 0; i < len(st.bufferSparseBindings[buffer]) || i < len(bufObj.SparseMemoryBindings); i++ {
+		for i := 0; i < len(st.bufferSparseBindings[buffer]) || i < bufObj.SparseMemoryBindings.Len(); i++ {
 			if i >= len(st.bufferSparseBindings[buffer]) {
-				delete(bufObj.SparseMemoryBindings, uint32(i))
+				bufObj.SparseMemoryBindings.Delete(uint32(i))
 			}
-			bufObj.SparseMemoryBindings[uint32(i)] = st.bufferSparseBindings[buffer][i]
+			bufObj.SparseMemoryBindings.Set(uint32(i), st.bufferSparseBindings[buffer][i])
 		}
 	}
-	for image, binds := range binds.OpaqueImageBinds {
-		for _, bind := range binds.SparseMemoryBinds {
+	for image, binds := range binds.OpaqueImageBinds.Range() {
+		for _, bind := range binds.SparseMemoryBinds.Range() {
 			if _, ok := st.opaqueImageSparseBindings[image]; !ok {
 				st.opaqueImageSparseBindings[image] = sparseBindingList{}
 			}
@@ -1060,15 +1060,15 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 		}
 		// update the data for UI
 		imgObj := st.Images.Get(image)
-		for i := 0; i < len(st.opaqueImageSparseBindings[image]) || i < len(imgObj.OpaqueSparseMemoryBindings); i++ {
+		for i := 0; i < len(st.opaqueImageSparseBindings[image]) || i < imgObj.OpaqueSparseMemoryBindings.Len(); i++ {
 			if i >= len(st.opaqueImageSparseBindings[image]) {
-				delete(imgObj.OpaqueSparseMemoryBindings, uint32(i))
+				imgObj.OpaqueSparseMemoryBindings.Delete(uint32(i))
 			}
-			imgObj.OpaqueSparseMemoryBindings[uint32(i)] = st.opaqueImageSparseBindings[image][i]
+			imgObj.OpaqueSparseMemoryBindings.Set(uint32(i), st.opaqueImageSparseBindings[image][i])
 		}
 	}
-	for image, binds := range binds.ImageBinds {
-		for _, bind := range binds.SparseImageMemoryBinds {
+	for image, binds := range binds.ImageBinds.Range() {
+		for _, bind := range binds.SparseImageMemoryBinds.Range() {
 			log.W(ctx, "sparse binding: image: %v, bindinfo: %v", image, bind)
 			log.W(ctx, "Image sparse residency binding is currently not supported")
 		}

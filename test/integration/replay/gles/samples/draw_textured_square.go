@@ -81,14 +81,12 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 			cb.GlLinkProgram(prog),
 			&gles.ProgramInfo{
 				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveUniforms: gles.UniformIndexːActiveUniformᵐ{
-					0: {
-						Type:      gles.GLenum_GL_SAMPLER_2D,
-						Name:      "tex",
-						ArraySize: 1,
-						Location:  texLoc,
-					},
-				},
+				ActiveUniforms: gles.NewUniformIndexːActiveUniformᵐ().Add(0, gles.ActiveUniform{
+					Type:      gles.GLenum_GL_SAMPLER_2D,
+					Name:      "tex",
+					ArraySize: 1,
+					Location:  texLoc,
+				}),
 			}),
 		cb.GlGetUniformLocation(prog, "tex", texLoc),
 	)
