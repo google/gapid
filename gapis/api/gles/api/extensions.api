@@ -640,6 +640,7 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
   eglImage := EGLImages[as!EGLImageKHR(image)]
   if eglImage != null {
     t := GetBoundTextureOrErrorInvalidEnum(target)
+    t.Image = eglImage.Image
     tmpLevel := t.Levels[0]
     tmpLevel.Layers[0] = eglImage.Image
     t.Levels[0] = tmpLevel

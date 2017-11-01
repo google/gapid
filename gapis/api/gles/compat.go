@@ -1004,6 +1004,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					}
 				case EGLenum_EGL_NATIVE_BUFFER_ANDROID:
 					{
+						// We do not have any kind of native buffers available during replay.
+						// Instead, create a new texture in this context, and point the EGLImage to it.
+						// TODO: What if there is no context bound? This is EGL command, it should still work.
+						//       The fact that we are polluting the EGL api with GL ref!Image also bothers me.
+						//       We should split the apis and move more work to GlEGLImageTargetTexture2DOES.
 						texID := newTexture(id, cb, out)
 						t := newTweaker(out, dID, cb)
 						defer t.revert(ctx)
@@ -1019,8 +1024,9 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MAG_FILTER, GLint(GLenum_GL_LINEAR)))
 
 						out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-							GetState(s).EGLImages.Get(cmd.Result).TargetContext = c.Identifier
-							GetState(s).EGLImages.Get(cmd.Result).TargetTexture = texID
+							GetState(s).EGLImages.Get(cmd.Result).Context = GetState(s).Context2EGLContext.Get(c)
+							GetState(s).EGLImages.Get(cmd.Result).Target = EGLenum_EGL_GL_TEXTURE_2D
+							GetState(s).EGLImages.Get(cmd.Result).Buffer = EGLClientBuffer{uint64(texID), memory.ApplicationPool}
 							return nil
 						}))
 					}
