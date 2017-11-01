@@ -27,6 +27,7 @@
     "fmt"
 
     "github.com/google/gapid/core/data/binary"
+    "github.com/google/gapid/core/data/dictionary"
     "github.com/google/gapid/core/data/id"
     "github.com/google/gapid/core/math/u64"
     "github.com/google/gapid/gapis/api"
@@ -765,26 +766,37 @@
   {{$key   := Macro "Go.Type" $.KeyType}}
   {{$value := Macro "Go.Type" $.ValueType}}
 
-  type {{$name}} map[{{$key}}]{{$value}}
+  type {{$name}} struct { Ptr *map[{{$key}}]{{$value}} }
 
   func New{{$name}}() {{$name}} {
-    return {{$name}}(map[{{$key}}]{{$value}}{})
+    return {{$name}} { &map[{{$key}}]{{$value}}{} }
+  }
+
+  var _ dictionary.Provider = {{$name}}{}
+
+  func (m {{$name}}) Dictionary() dictionary.I {
+    if m.Ptr == nil {
+      return dictionary.From((map[{{$key}}]{{$value}})(nil))
+    }
+    return dictionary.From(*m.Ptr)
   }
 
   func (m {{$name}}) Get(key {{$key}}) {{$value}} {
     {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
-      v, ok := m[key]
+      v, ok := (*m.Ptr)[key]
       if !ok {
         v = {{$init}}
       }
       return v
     {{else}}
-      return m[key]
+      return (*m.Ptr)[key]
     {{end}}
   }
 
   func (m {{$name}}) Lookup(key {{$key}}) (v {{$value}}, ok bool) {
-    v, ok = m[key]
+    if m.Ptr != nil {
+      v, ok = (*m.Ptr)[key]
+    }
     {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
       if !ok {
         v = {{$init}}
@@ -794,30 +806,40 @@
   }
 
   func (m {{$name}}) Set(key {{$key}}, val {{$value}}) {
-    m[key] = val
+    (*m.Ptr)[key] = val
   }
 
   func (m {{$name}}) Add(key {{$key}}, val {{$value}}) {{$name}} {
-    m[key] = val
+    (*m.Ptr)[key] = val
     return m
   }
 
   func (m {{$name}}) Contains(key {{$key}}) (ok bool) {
-    _, ok = m[key]
+    if m.Ptr != nil {
+      _, ok = (*m.Ptr)[key]
+    }
     return
   }
 
   func (m {{$name}}) Delete(key {{$key}}) {
-    delete(m, key)
+    if m.Ptr != nil {
+      delete(*m.Ptr, key)
+    }
   }
 
   func (m {{$name}}) Len() int {
-    return len(m)
+    if m.Ptr != nil {
+      return len(*m.Ptr)
+    }
+    return 0
   }
 
   // Returns an object which can be used for interation in a range-based loop.
   func (m {{$name}}) Range() map[{{$key}}]{{$value}} {
-    return m
+    if m.Ptr != nil {
+      return *m.Ptr
+    }
+    return nil
   }
 
   {{$sorted := (print $name "_SortKeys")}}
@@ -834,9 +856,12 @@
   {{end}}
 
   func (m {{$name}}) KeysSorted() []{{$key}} {
-    s := make({{$sorted}}, len(m))
+    if m.Ptr == nil {
+      return nil
+    }
+    s := make({{$sorted}}, len(*m.Ptr))
     i := 0
-    for k, _ := range m {
+    for k, _ := range *m.Ptr {
       s[i] = k
       i++
     }
