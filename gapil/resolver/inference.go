@@ -72,13 +72,10 @@ func inferNumber(rv *resolver, in *ast.Number, infer semantic.Type) semantic.Exp
 }
 
 func inferUnknown(rv *resolver, lhs semantic.Node, rhs semantic.Node) {
-	// We cannot infer unknown if assigning to _.
-	// This is ok if the unknown is still inferred later.
-	if _, isIgnore := lhs.(*semantic.Ignore); isIgnore {
-		return
-	}
 	u := findUnknown(rv, rhs)
 	if u != nil && u.Inferred == nil {
+		// This might fail to infer the expression (i.e. keeps it at nil).
+		// That is fine as long as some future expression still infers it.
 		u.Inferred = lhsToObserved(rv, lhs)
 	}
 }
@@ -100,6 +97,7 @@ func findUnknown(rv *resolver, rhs semantic.Node) *semantic.Unknown {
 // creates a new expression that would read the observed output.
 // This is used when attempting to infer the value an Unknown had from the
 // observed outputs.
+// Returns nil if the value can not be inferred from this expression.
 func lhsToObserved(rv *resolver, lhs semantic.Node) semantic.Expression {
 	switch lhs := lhs.(type) {
 	case *semantic.SliceIndex:
@@ -131,7 +129,6 @@ func lhsToObserved(rv *resolver, lhs semantic.Node) semantic.Expression {
 		obj := lhsToObserved(rv, lhs.Object)
 		return &semantic.Member{Object: obj, Field: lhs.Field}
 	default:
-		rv.errorf(lhs, "Cannot infer unknown from %T", lhs)
 		return nil
 	}
 }
