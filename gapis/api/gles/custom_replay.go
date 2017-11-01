@@ -83,16 +83,13 @@ func (i TextureId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, rema
 			if eglImage := tex.EGLImage; eglImage != nil && !isDeleteCmd {
 				// Ignore this texture and use the data that EGLImage points to.
 				// (unless it is a delete command - we do not want kill the shared data)
-				ctxId, i := eglImage.TargetContext, eglImage.TargetTexture
-				for _, ctx := range GetState(s).EGLContexts.Range() {
-					if ctx != nil && ctx.Info.Initialized && ctx.Identifier == ctxId {
-						if !ctx.Objects.Textures.Contains(i) {
-							panic(fmt.Errorf("Can not find EGL replacement texture %v", i))
-						}
-						return objectKey{ctx.Objects.Textures, i}, true
-					}
+				ctx := GetState(s).EGLContexts.Get(eglImage.Context)
+				isTex2D := eglImage.Target == EGLenum_EGL_GL_TEXTURE_2D
+				i := TextureId(eglImage.Buffer.Address())
+				if ctx != nil && isTex2D && ctx.Objects.Textures.Contains(i) {
+					return objectKey{ctx.Objects.Textures, i}, true
 				}
-				panic(fmt.Errorf("Can not find EGL replacement context %v", ctxId))
+				panic(fmt.Errorf("Can not find EGL image target: %v", eglImage))
 			}
 		}
 		key, remap = objectKey{ctx.Objects.Textures, i}, true
