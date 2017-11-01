@@ -13,21 +13,6 @@
 // limitations under the License.
 
 @internal
-class FramebufferState {
-  // Table 21.14: Framebuffer Control
-  map!(DrawBufferIndex, Vec4b) ColorWritemask
-  GLboolean                    DepthWritemask       = GL_TRUE
-  GLuint                       StencilWritemask     = 0xFFFFFFFF
-  GLuint                       StencilBackWritemask = 0xFFFFFFFF
-  Vec4f                        ColorClearValue      = Vec4f(0.0, 0.0, 0.0, 0.0)
-  GLfloat                      DepthClearValue      = 1
-  GLint                        StencilClearValue    = 0
-// GLuint DrawFramebufferBinding = 0
-// GLuint ReadFramebufferBinding = 0
-// GLint RenderbufferBinding = 0
-}
-
-@internal
 class Framebuffer {
   FramebufferId ID
 
@@ -36,7 +21,7 @@ class Framebuffer {
   FramebufferAttachment StencilAttachment
 
   // Table 21.15: Framebuffer (state per framebuffer object)
-  map!(GLint, GLenum) DrawBuffer                                         // TODO: init - see 15.2.1
+  map!(GLint, GLenum) DrawBuffer
   @unused GLenum      ReadBuffer                  = GL_COLOR_ATTACHMENT0
   GLint               DefaultWidth                = 0
   GLint               DefaultHeight               = 0
@@ -74,13 +59,9 @@ class FramebufferAttachment {
 @internal
 class Renderbuffer {
   RenderbufferId ID
-  @unused u8[] Data
+  ref!Image      Image
 
   // Table 21.17: Renderbuffer (state per renderbuffer object)
-  GLsizei Width          = 0
-  GLsizei Height         = 0
-  GLenum  InternalFormat = GL_RGBA4
-  GLsizei Samples = 0
   /* TODO
   GLuint RedSize = 0
   GLuint GreenSize = 0
@@ -198,7 +179,9 @@ cmd void glBindFramebuffer(GLenum target, FramebufferId framebuffer) {
 sub ref!Framebuffer GetOrCreateFramebuffer(FramebufferId id) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.Framebuffers[id] == null) {
-    ctx.Objects.Framebuffers[id] = new!Framebuffer(ID: id)
+    fb := new!Framebuffer(ID: id)
+    fb.DrawBuffer[0] = GL_COLOR_ATTACHMENT0
+    ctx.Objects.Framebuffers[id] = fb
     ctx.Objects.GeneratedNames.Framebuffers[id] = true
   }
   return ctx.Objects.Framebuffers[id]
@@ -597,7 +580,7 @@ sub void FramebufferTexture(GLenum target, GLenum attachment, TextureId texture,
     attachment_info.Type = GL_TEXTURE
     attachment_info.Texture = ctx.Objects.Textures[texture]
     attachment_info.TextureLevel = level
-    attachment_info.Layered = 0 // TODO
+    attachment_info.Layered = GL_TRUE // TODO: Set correct. It is 'maybe layered' now.
   }
   SetFramebufferAttachment(target, attachment, attachment_info)
 }
@@ -842,17 +825,22 @@ cmd void glGetRenderbufferParameteriv(GLenum target, GLenum parameter, GLint* va
   ctx := GetContext()
   rb := ctx.Bound.Renderbuffer
   if rb == null { glErrorInvalidOperation() }
-  values[0] = switch (parameter) {
-    case GL_RENDERBUFFER_WIDTH:           as!GLint(rb.Width)
-    case GL_RENDERBUFFER_HEIGHT:          as!GLint(rb.Height)
-    case GL_RENDERBUFFER_INTERNAL_FORMAT: as!GLint(rb.InternalFormat)
-  // TODO:
-  // case GL_RENDERBUFFER_RED_SIZE:        ?
-  // case GL_RENDERBUFFER_GREEN_SIZE:      ?
-  // case GL_RENDERBUFFER_BLUE_SIZE:       ?
-  // case GL_RENDERBUFFER_ALPHA_SIZE:      ?
-  // case GL_RENDERBUFFER_DEPTH_SIZE:      ?
-  // case GL_RENDERBUFFER_STENCIL_SIZE:    ?
+  if rb.Image == null {
+    values[0] = 0
+  } else {
+    switch (parameter) {
+      case GL_RENDERBUFFER_WIDTH:           values[0] = as!GLint(rb.Image.Width)
+      case GL_RENDERBUFFER_HEIGHT:          values[0] = as!GLint(rb.Image.Height)
+      case GL_RENDERBUFFER_INTERNAL_FORMAT: values[0] = as!GLint(rb.Image.SizedFormat)
+      // TODO:
+      case GL_RENDERBUFFER_RED_SIZE:        values[0] = ?
+      case GL_RENDERBUFFER_GREEN_SIZE:      values[0] = ?
+      case GL_RENDERBUFFER_BLUE_SIZE:       values[0] = ?
+      case GL_RENDERBUFFER_ALPHA_SIZE:      values[0] = ?
+      case GL_RENDERBUFFER_DEPTH_SIZE:      values[0] = ?
+      case GL_RENDERBUFFER_STENCIL_SIZE:    values[0] = ?
+      default: { glErrorInvalidEnum(parameter) }
+    }
   }
 }
 
@@ -1070,14 +1058,7 @@ cmd void glRenderbufferStorageMultisample(GLenum  target,
 }
 
 sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height) {
-  switch (target) {
-    case GL_RENDERBUFFER: {
-      // version 2.0
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
+  if target != GL_RENDERBUFFER { glErrorInvalidEnum(target) }
   // TODO: Not all formats are required to be supported as renderbuffer.
   sizedFormatInfo := GetSizedFormatInfoOrEnumError(internalformat)
   if sizedFormatInfo.Compression != Uncompressed {
@@ -1092,10 +1073,14 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
 
   rb := ctx.Bound.Renderbuffer
   if rb == null { glErrorInvalidOperation() }
-  rb.InternalFormat = internalformat
-  rb.Width = width
-  rb.Height = height
-  rb.Samples = samples
+  rb.Image = new!Image(
+    Width: width,
+    Height: height,
+    Samples: samples,
+    SizedFormat: internalformat,
+    DataFormat: sizedFormatInfo.UnsizedFormat,
+    DataType: sizedFormatInfo.DataType,
+  )
 }
 
 @if(Version.GLES10)

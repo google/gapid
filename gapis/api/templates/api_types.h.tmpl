@@ -60,6 +60,10 @@
   namespace gapii {«
   class CallObserver;
 ¶
+  {{range $c := $.Classes}}
+    {{Template "ForwardDeclareType" $c}}
+  {{end}}
+¶
   {{range $e := $.Enums}}
     {{Template "DeclareType" $e}}
   {{end}}
@@ -88,6 +92,16 @@
 ¶
 {{end}}
 
+{{/*
+-------------------------------------------------------------------------------
+  Emits C++ type forward declaration for specified AST type
+-------------------------------------------------------------------------------
+*/}}
+{{define "ForwardDeclareType"}}
+  {{if not (IsBuiltin $)}}
+    {{if IsClass $}}class {{Template "C++.Type" $}};¶{{end}}
+  {{end}}
+{{end}}
 
 {{/*
 -------------------------------------------------------------------------------

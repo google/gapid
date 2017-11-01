@@ -90,6 +90,7 @@ class Uniform {
 
 @internal
 class Pipeline {
+  PipelineId ID
   @unused string Label
 }
 
@@ -2304,14 +2305,17 @@ sub void UniformMatrix4x3fv(UniformLocation location, GLsizei count, GLboolean t
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUseProgram.xhtml", Version.GLES32)
 cmd void glUseProgram(ProgramId program) {
   ctx := GetContext()
-  oldProgram := ctx.Bound.Program
+  // TODO: Invalid op if transform feedback is active.
   if program == 0 {
+    AdjustProgramUseCount(ctx.Bound.Program, -1)
     ctx.Bound.Program = null
   } else {
-    ctx.Bound.Program = GetProgramOrError(program)
-    AdjustProgramUseCount(ctx.Bound.Program, 1)
+    p := GetProgramOrError(program)
+    if p.LinkStatus == GL_FALSE { glErrorInvalidOperation() }
+    AdjustProgramUseCount(p, +1)
+    AdjustProgramUseCount(ctx.Bound.Program, -1)
+    ctx.Bound.Program = p
   }
-  AdjustProgramUseCount(oldProgram, -1)
 }
 
 @if(Version.GLES31)

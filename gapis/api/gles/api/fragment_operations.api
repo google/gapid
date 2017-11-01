@@ -26,14 +26,14 @@ class StencilState {
   // Table 21.13: Pixel Operations
   GLboolean Test              = GL_FALSE
   GLenum    Func              = GL_ALWAYS
-  GLuint    ValueMask         = 0xFFFFFFFF
   GLint     Ref               = 0
+  GLuint    ValueMask         = 0xFFFFFFFF
   GLenum    Fail              = GL_KEEP
   GLenum    PassDepthFail     = GL_KEEP
   GLenum    PassDepthPass     = GL_KEEP
   GLenum    BackFunc          = GL_ALWAYS
-  GLuint    BackValueMask     = 0xFFFFFFFF
   GLint     BackRef           = 0
+  GLuint    BackValueMask     = 0xFFFFFFFF
   GLenum    BackFail          = GL_KEEP
   GLenum    BackPassDepthFail = GL_KEEP
   GLenum    BackPassDepthPass = GL_KEEP
@@ -60,15 +60,16 @@ class BlendState {
 
 @internal
 class PixelState {
-  ScissorState                      Scissor
-  StencilState                      Stencil
-  DepthState                        Depth
-  map!(DrawBufferIndex, BlendState) Blend   // One per draw buffer.
+  ScissorState                          Scissor
+  StencilState                          Stencil
+  DepthState                            Depth
+  map!(DrawBufferIndex, ref!BlendState) Blend   // One per draw buffer.
 
   // Table 21.13: Pixel Operations
   Color     BlendColor           // TODO: = Color(0.0,0.0,0.0,0.0)
   GLboolean Dither     = GL_TRUE
 
+  // GL_EXT_sRGB_write_control
   GLboolean FramebufferSrgb = GL_TRUE
 
   // Table 21.14: Framebuffer Control
@@ -163,7 +164,6 @@ sub void SetBlendEquation(DrawBufferIndex first_buffer, s32 buffer_count, GLenum
     blend := ctx.Pixel.Blend[i]
     blend.EquationRgb = rgb
     blend.EquationAlpha = alpha
-    ctx.Pixel.Blend[i] = blend
   }
 }
 
@@ -241,7 +241,6 @@ sub void SetBlendFunc(DrawBufferIndex first_buffer, s32    buffer_count,
     blend.DstRgb = dstRgb
     blend.SrcAlpha = srcAlpha
     blend.DstAlpha = dstAlpha
-    ctx.Pixel.Blend[i] = blend
   }
 }
 
@@ -283,6 +282,7 @@ cmd void glSampleCoverage(GLfloat value, GLboolean invert) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSampleMaski.xhtml", Version.GLES32)
 cmd void glSampleMaski(GLuint maskNumber, GLbitfield mask) {
   ctx := GetContext()
+  CheckLT!GLuint(maskNumber, as!GLuint(ctx.Constants.MaxSampleMaskWords))
   ctx.Rasterization.SampleMaskValue[maskNumber] = mask
 }
 

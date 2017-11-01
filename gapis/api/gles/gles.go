@@ -81,49 +81,85 @@ func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) 
 func (b *Buffer) GetID() BufferId {
 	if b != nil {
 		return b.ID
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func (b *Framebuffer) GetID() FramebufferId {
 	if b != nil {
 		return b.ID
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func (b *Renderbuffer) GetID() RenderbufferId {
 	if b != nil {
 		return b.ID
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func (b *Program) GetID() ProgramId {
 	if b != nil {
 		return b.ID
-	} else {
-		return 0
 	}
+	return 0
+}
+
+func (o *Shader) GetID() ShaderId {
+	if o != nil {
+		return o.ID
+	}
+	return 0
 }
 
 func (b *VertexArray) GetID() VertexArrayId {
 	if b != nil {
 		return b.ID
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func (b *Texture) GetID() TextureId {
 	if b != nil {
 		return b.ID
-	} else {
-		return 0
 	}
+	return 0
+}
+
+func (b *ImageUnit) GetID() ImageUnitId {
+	if b != nil {
+		return b.ID
+	}
+	return 0
+}
+
+func (o *Sampler) GetID() SamplerId {
+	if o != nil {
+		return o.ID
+	}
+	return 0
+}
+
+func (o *Query) GetID() QueryId {
+	if o != nil {
+		return o.ID
+	}
+	return 0
+}
+
+func (o *Pipeline) GetID() PipelineId {
+	if o != nil {
+		return o.ID
+	}
+	return 0
+}
+
+func (o *TransformFeedback) GetID() TransformFeedbackId {
+	if o != nil {
+		return o.ID
+	}
+	return 0
 }
 
 // GetFramebufferAttachmentInfo returns the width, height and format of the

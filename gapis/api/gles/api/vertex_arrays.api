@@ -30,32 +30,31 @@ class VertexArray {
 @internal
 class VertexAttributeArray {
   // Table 21.3: Vertex Array Object State
-  // TODO: Some of the values here are just tracking state, but are effectively replaced by
-  //       values in VertexBufferBinding. Do we want to represent it in the UI in some way?
   GLboolean                Enabled        = GL_FALSE
   GLint                    Size           = 4        // Number of components. 1, 2, 3 or 4.
   GLsizei                  Stride         = 0        // Obsolete/incorrect. See VertexBufferBinding stride instead.
   GLenum                   Type           = GL_FLOAT // Type of each component.
   GLboolean                Normalized     = GL_FALSE
   GLboolean                Integer        = GL_FALSE // Do not convert to float - the shader uses integer type.
-  @unused GLuint           Divisor        = 0        // TODO: Set
   VertexPointer            Pointer                   // Client's data if BoundVertexArray == 0 && Buffer == 0
-  @unused GLuint           BufferBinding  = 0        // TODO: Set
-  VertexBufferBindingIndex Binding                   // Index of VertexBufferBinding.
+  ref!VertexBufferBinding  Binding
   GLuint                   RelativeOffset = 0
 }
 
 @internal
 class VertexBufferBinding {
+  VertexBufferBindingIndex Id
+
   // Table 21.3: Vertex Array Object State
-  GLintptr Offset  = 0
-  GLsizei  Stride  = 16
-  GLuint   Divisor = 0  // Non-zero values enable instancing.
-  BufferId Buffer  = 0
+  ref!Buffer Buffer
+  GLintptr   Offset  = 0
+  GLsizei    Stride  = 16
+  GLuint     Divisor = 0  // Non-zero values enable instancing.
 }
 
 @internal
 class VertexAttributeValue {
+  GLenum Type
   // Table 21.30: Vertex Shader State (not part of program objects)
   @unused u8[] Value // Used if VertexAttributeArray is disabled.
 }
@@ -91,15 +90,16 @@ sub ref!VertexArray NewVertexArray(VertexArrayId id) {
   array := new!VertexArray(ID: id)
   if VersionGreaterOrEqual(ctx, 3, 1) {
     for i in 0 .. as!VertexBufferBindingIndex(ctx.Constants.MaxVertexAttribBindings) {
-      array.VertexBufferBindings[i] = new!VertexBufferBinding()
+      array.VertexBufferBindings[i] = new!VertexBufferBinding(Id: i)
     }
   } else {
     for i in 0 .. as!VertexBufferBindingIndex(ctx.Constants.MaxVertexAttribs) {
-      array.VertexBufferBindings[i] = new!VertexBufferBinding()
+      array.VertexBufferBindings[i] = new!VertexBufferBinding(Id: i)
     }
   }
   for i in (0 .. as!AttributeLocation(ctx.Constants.MaxVertexAttribs)) {
-    array.VertexAttributeArrays[i] = new!VertexAttributeArray(Binding: as!VertexBufferBindingIndex(i))
+    binding := array.VertexBufferBindings[as!VertexBufferBindingIndex(i)]
+    array.VertexAttributeArrays[i] = new!VertexAttributeArray(Binding: binding)
   }
   return array
 }
@@ -108,28 +108,21 @@ sub ref!VertexArray NewVertexArray(VertexArrayId id) {
 sub u64 GetVertexAttrib(ref!Context ctx, AttributeLocation index, GLenum pname) {
   vao := ctx.Bound.VertexArray
   array := vao.VertexAttributeArrays[index]
-  // TODO: Uncomment all the version checks
+  // TODO: Inline this in the switch once subroutines are allowed in switch.
+  bindingBuffer := GetID!(u64,Buffer)(array.Binding.Buffer)
   return switch (pname) {
     case GL_VERTEX_ATTRIB_ARRAY_ENABLED:        { as!u64(array.Enabled) }
     case GL_VERTEX_ATTRIB_ARRAY_SIZE:           { as!u64(array.Size) }
     case GL_VERTEX_ATTRIB_ARRAY_TYPE:           { as!u64(array.Type) }
     case GL_VERTEX_ATTRIB_ARRAY_NORMALIZED:     { as!u64(array.Normalized) }
     case GL_VERTEX_ATTRIB_ARRAY_STRIDE:         { as!u64(array.Stride) }
-    case GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING: {
-      as!u64(vao.VertexBufferBindings[array.Binding].Buffer)
-    }
+    case GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING: { bindingBuffer }
     @if(Version.GLES30)
-    case GL_VERTEX_ATTRIB_ARRAY_DIVISOR: {
-      as!u64(vao.VertexBufferBindings[array.Binding].Divisor)
-    }
+    case GL_VERTEX_ATTRIB_ARRAY_DIVISOR:        { as!u64(array.Binding.Divisor) }
     @if(Version.GLES30)
-    case GL_VERTEX_ATTRIB_ARRAY_INTEGER: {
-      as!u64(array.Integer)
-    }
+    case GL_VERTEX_ATTRIB_ARRAY_INTEGER:        { as!u64(array.Integer) }
     @if(Version.GLES31)
-    case GL_VERTEX_ATTRIB_BINDING: {
-      as!u64(array.Binding)
-    }
+    case GL_VERTEX_ATTRIB_BINDING:              { as!u64(array.Binding.Id) }
     @if(Version.GLES31)
     case GL_VERTEX_ATTRIB_RELATIVE_OFFSET: { // SPEC: missing in html
       as!u64(array.RelativeOffset)
@@ -158,7 +151,7 @@ sub void ReadVertexArrays(ref!Context ctx, u32 first_index, u32 index_count, u32
       for i in (0 .. as!AttributeLocation(ctx.Constants.MaxVertexAttribs)) {
         arr := vao.VertexAttributeArrays[i]
         if arr.Enabled == GL_TRUE {
-          binding := vao.VertexBufferBindings[arr.Binding]
+          binding := arr.Binding
           if (binding.Buffer == null) && (arr.Pointer != null) {
             stride := binding.Stride
             size := VertexAttribTypeSize(arr.Type) * arr.Size
@@ -204,10 +197,10 @@ sub void BindVertexBuffer(ref!Context ctx, VertexBufferBindingIndex binding_inde
     CheckLT!VertexBufferBindingIndex(binding_index, as!VertexBufferBindingIndex(ctx.Constants.MaxVertexAttribBindings))
     CheckLT!GLsizei(stride, as!GLsizei(ctx.Constants.MaxVertexAttribStride))
   }
-  _ = GetOrCreateBuffer(buffer)
+  b := GetOrCreateBuffer(buffer)
   vao := ctx.Bound.VertexArray
   binding := vao.VertexBufferBindings[binding_index]
-  binding.Buffer = buffer
+  binding.Buffer = b
   binding.Offset = offset
   binding.Stride = stride
 }
@@ -384,12 +377,24 @@ sub GLboolean IsVertexArray(VertexArrayId array) {
   return as!GLboolean((array != 0) && (array in ctx.Objects.VertexArrays))
 }
 
-sub void VertexAttribF(AttributeLocation location, Vec4f value) {
+sub void VertexAttrib!T(AttributeLocation location, GLenum ty, T value) {
   ctx := GetContext()
   CheckAttributeLocation(location)
-  vals := make!Vec4f(1)
+  vals := make!T(1)
   vals[0] = value
-  ctx.Vertex.Attributes[location] = VertexAttributeValue(Value: as!u8[](vals))
+  ctx.Vertex.Attributes[location] = VertexAttributeValue(Type: ty, Value: as!u8[](vals))
+}
+
+sub void VertexAttribF(AttributeLocation location, Vec4f value) {
+  VertexAttrib!Vec4f(location, GL_FLOAT_VEC4, value)
+}
+
+sub void VertexAttribI(AttributeLocation location, Vec4i value) {
+  VertexAttrib!Vec4i(location, GL_INT_VEC4, value)
+}
+
+sub void VertexAttribU(AttributeLocation location, Vec4u value) {
+  VertexAttrib!Vec4u(location, GL_UNSIGNED_INT_VEC4, value)
 }
 
 @if(Version.GLES20)
@@ -487,7 +492,7 @@ sub void VertexAttribBinding(ref!Context ctx, AttributeLocation index, VertexBuf
   // NB: Some callers may use the default VertexArray and some may not.
   //     Therefore the caller should do the check if it is needed.
   vao := ctx.Bound.VertexArray
-  vao.VertexAttributeArrays[index].Binding = binding_index
+  vao.VertexAttributeArrays[index].Binding = vao.VertexBufferBindings[binding_index]
 }
 
 @if(Version.GLES31)
@@ -582,14 +587,6 @@ cmd void glVertexAttribFormat(AttributeLocation index,
   VertexAttribFormat(ctx, index, size, type, normalized, relativeoffset, false)
 }
 
-sub void VertexAttribI(AttributeLocation location, Vec4i value) {
-  ctx := GetContext()
-  CheckAttributeLocation(location)
-  vals := make!Vec4i(1)
-  vals[0] = value
-  ctx.Vertex.Attributes[location] = VertexAttributeValue(Value: as!u8[](vals))
-}
-
 @if(Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glVertexAttrib.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glVertexAttrib.xhtml", Version.GLES31)
@@ -613,7 +610,7 @@ cmd void glVertexAttribI4iv(AttributeLocation index, const GLint* values) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glVertexAttrib.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glVertexAttrib.xhtml", Version.GLES32)
 cmd void glVertexAttribI4ui(AttributeLocation index, GLuint x, GLuint y, GLuint z, GLuint w) {
-  VertexAttribI(index, Vec4i(as!GLint(x), as!GLint(y), as!GLint(z), as!GLint(w)))
+  VertexAttribU(index, Vec4u(x, y, z, w))
 }
 
 @if(Version.GLES30)
@@ -622,8 +619,8 @@ cmd void glVertexAttribI4ui(AttributeLocation index, GLuint x, GLuint y, GLuint 
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glVertexAttrib.xhtml", Version.GLES32)
 cmd void glVertexAttribI4uiv(AttributeLocation index, const GLuint* values) {
   v := values[0:4]
-  vec := Vec4i(as!GLint(v[0]), as!GLint(v[1]), as!GLint(v[2]), as!GLint(v[3]))
-  VertexAttribI(index, vec)
+  vec := Vec4u(v[0], v[1], v[2], v[3])
+  VertexAttribU(index, vec)
 }
 
 @if(Version.GLES31)

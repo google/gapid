@@ -51,7 +51,9 @@ class Texture {
   TextureId                 ID
 
   GLenum                    Kind
+  ref!Image                 Image // Alias for Levels[0].Layers[0]
   map!(GLint, Level)        Levels
+  TextureBufferBinding      Buffer
 
   // Table 21.10: Textures (state per texture object)
   GLenum         SwizzleR                = GL_RED
@@ -59,6 +61,7 @@ class Texture {
   GLenum         SwizzleB                = GL_BLUE
   GLenum         SwizzleA                = GL_ALPHA
   @unused Vec4f  BorderColor             = Vec4f(0.0, 0.0, 0.0, 0.0)
+  @unused Vec4i  BorderColorI            = Vec4i(0, 0, 0, 0) // TODO: Set
   GLenum         MinFilter               = GL_NEAREST_MIPMAP_LINEAR
   GLenum         MagFilter               = GL_LINEAR
   GLenum         WrapS                   = GL_REPEAT
@@ -85,7 +88,18 @@ class Texture {
 }
 
 @internal
+class TextureBufferBinding {
+  ref!Buffer Binding
+  GLenum     InternalFormat
+  GLintptr   Offset
+  GLsizeiptr Size
+}
+
+@internal
 class Level {
+  // Note on layers: Why not remove this and add Depth to image?
+  // GL allows binding differently sized images to cubemap faces.
+  // (although drawing with such strange cubemap is not allowed)
   map!(GLint, ref!Image) Layers
 }
 
@@ -117,16 +131,17 @@ class Sampler {
   SamplerId ID
 
   // Table 21.12: Textures (state per sampler object)
-  @unused Vec4f  BorderColor = Vec4f(0.0, 0.0, 0.0, 0.0)
-  GLenum         MinFilter   = GL_NEAREST_MIPMAP_LINEAR
-  GLenum         MagFilter   = GL_LINEAR
-  GLenum         WrapS       = GL_REPEAT
-  GLenum         WrapT       = GL_REPEAT
-  GLenum         WrapR       = GL_REPEAT
-  GLfloat        MinLod      = -1000
-  GLfloat        MaxLod      = 1000
-  GLenum         CompareMode = GL_NONE
-  GLenum         CompareFunc = GL_LEQUAL
+  @unused Vec4f  BorderColor  = Vec4f(0.0, 0.0, 0.0, 0.0)
+  @unused Vec4i  BorderColorI = Vec4i(0, 0, 0, 0)
+  GLenum         MinFilter    = GL_NEAREST_MIPMAP_LINEAR
+  GLenum         MagFilter    = GL_LINEAR
+  GLenum         WrapS        = GL_REPEAT
+  GLenum         WrapT        = GL_REPEAT
+  GLenum         WrapR        = GL_REPEAT
+  GLfloat        MinLod       = -1000
+  GLfloat        MaxLod       = 1000
+  GLenum         CompareMode  = GL_NONE
+  GLenum         CompareFunc  = GL_LEQUAL
   @unused string Label
 
   // EXT/texture_filter_anisotropic
@@ -146,6 +161,8 @@ class PixelStorageState {
 
 @internal
 class ImageUnit {
+  ImageUnitId ID
+
   // Table 21.33: Image State (state per image unit)
   TextureId Name    = 0
   GLint     Level   = 0
@@ -428,11 +445,16 @@ sub void TexImage(TexImageFlags  flags,
           // TODO: Implement sub-range updates
           img.Data = clone(as!u8*(data)[0:data_size])
           img.DataFormat = data_format
+        } else {
+          // TODO: Implement copy from unpack buffer
+          img.Data = make!u8(data_size)
+          img.DataFormat = data_format
         }
       }
     }
     t.Levels[loffset + l] = tmpLevel
   }
+  t.Image = t.Levels[0].Layers[0]
 }
 
 sub void UpdateImageData(ref!Image      dst_image,
@@ -514,13 +536,13 @@ cmd void glActiveTexture(GLenum unit) {
 @if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindImageTexture.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindImageTexture.xhtml", Version.GLES32)
-cmd void glBindImageTexture(GLuint    unit,
-                            TextureId texture,
-                            GLint     level,
-                            GLboolean layered,
-                            GLint     layer,
-                            GLenum    access,
-                            GLenum    format) {
+cmd void glBindImageTexture(ImageUnitId unit,
+                            TextureId   texture,
+                            GLint       level,
+                            GLboolean   layered,
+                            GLint       layer,
+                            GLenum      access,
+                            GLenum      format) {
   switch (access) {
     case GL_READ_ONLY, GL_READ_WRITE, GL_WRITE_ONLY: {
       // version 3.1
@@ -539,7 +561,8 @@ cmd void glBindImageTexture(GLuint    unit,
     }
   }
   ctx := GetContext()
-  ctx.Objects.ImageUnits[unit] = ImageUnit(
+  ctx.Objects.ImageUnits[unit] = new!ImageUnit(
+    ID:       unit,
     Name:     texture,
     Level:    level,
     Layered:  layered,
@@ -556,15 +579,17 @@ cmd void glBindImageTexture(GLuint    unit,
 cmd void glBindSampler(GLuint index, SamplerId sampler) {
   ctx := GetContext()
   tu := ctx.Objects.TextureUnits[as!TextureUnitId(index)]
-  if tu == null { glErrorInvalidObjectName!SamplerId(sampler) }
+  if tu == null { glErrorInvalidValue!GLuint(index) }
   tu.SamplerBinding = GetOrCreateSampler(sampler)
 }
 
 sub ref!Sampler GetOrCreateSampler(SamplerId id) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.Samplers[id] == null) {
+    if !ctx.Objects.GeneratedNames.Samplers[id] {
+      glErrorInvalidOperation_ObjectDoesNotExist!SamplerId(id)
+    }
     ctx.Objects.Samplers[id] = new!Sampler(ID: id)
-    ctx.Objects.GeneratedNames.Samplers[id] = true
   }
   return ctx.Objects.Samplers[id]
 }
@@ -1374,10 +1399,6 @@ sub void SamplerParameterv!T(SamplerId sampler, GLenum pname, T params) {
     case GL_TEXTURE_WRAP_R:       s.WrapR = as!GLenum(params[0])
     case GL_TEXTURE_WRAP_S:       s.WrapS = as!GLenum(params[0])
     case GL_TEXTURE_WRAP_T:       s.WrapT = as!GLenum(params[0])
-    @if(Version.GLES32)
-    case GL_TEXTURE_BORDER_COLOR: {
-      // TODO: Handle - has different behaviour based on the I suffix.
-    }
     @if(Extension.GL_EXT_texture_filter_anisotropic)
     case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
       // This use case is not explicitly mentioned in the extension (presumably
@@ -1398,7 +1419,14 @@ cmd void glSamplerParameterIiv(SamplerId sampler, GLenum pname, const GLint* par
 }
 
 sub void SamplerParameterIiv(SamplerId sampler, GLenum pname, const GLint* param) {
-  SamplerParameterv!(const GLint*)(sampler, pname, param)
+  if(Version.GLES32 && pname == GL_TEXTURE_BORDER_COLOR) {
+    p := param[0:4]
+    s := GetOrCreateSampler(sampler)
+    s.BorderColor  = Vec4f(0.0, 0.0, 0.0, 0.0)
+    s.BorderColorI = Vec4i(p[0], p[1], p[2], p[3])
+  } else {
+    SamplerParameterv!(const GLint*)(sampler, pname, param)
+  }
 }
 
 @if(Version.GLES32)
@@ -1408,7 +1436,14 @@ cmd void glSamplerParameterIuiv(SamplerId sampler, GLenum pname, const GLuint* p
 }
 
 sub void SamplerParameterIuiv(SamplerId sampler, GLenum pname, const GLuint* param) {
-  SamplerParameterv!(const GLuint*)(sampler, pname, param)
+  if(Version.GLES32 && pname == GL_TEXTURE_BORDER_COLOR) {
+    p := (as!(const GLint*)(param))[0:4]
+    s := GetOrCreateSampler(sampler)
+    s.BorderColor  = Vec4f(0.0, 0.0, 0.0, 0.0)
+    s.BorderColorI = Vec4i(p[0], p[1], p[2], p[3])
+  } else {
+    SamplerParameterv!(const GLuint*)(sampler, pname, param)
+  }
 }
 
 @if(Version.GLES30)
@@ -1425,7 +1460,14 @@ cmd void glSamplerParameterf(SamplerId sampler, GLenum pname, GLfloat param) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", Version.GLES32)
 cmd void glSamplerParameterfv(SamplerId sampler, GLenum pname, const GLfloat* param) {
-  SamplerParameterv!(const GLfloat*)(sampler, pname, param)
+  if(Version.GLES32 && pname == GL_TEXTURE_BORDER_COLOR) {
+    p := param[0:4]
+    s := GetOrCreateSampler(sampler)
+    s.BorderColor  = Vec4f(p[0], p[1], p[2], p[3])
+    s.BorderColorI = Vec4i(0, 0, 0, 0)
+  } else {
+    SamplerParameterv!(const GLfloat*)(sampler, pname, param)
+  }
 }
 
 @if(Version.GLES30)
@@ -1442,7 +1484,15 @@ cmd void glSamplerParameteri(SamplerId sampler, GLenum pname, GLint param) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glSamplerParameter.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glSamplerParameter.xhtml", Version.GLES32)
 cmd void glSamplerParameteriv(SamplerId sampler, GLenum pname, const GLint* param) {
-  SamplerParameterv!(const GLint*)(sampler, pname, param)
+  if(Version.GLES32 && pname == GL_TEXTURE_BORDER_COLOR) {
+    p := param[0:4]
+    s := GetOrCreateSampler(sampler)
+    // TODO: Convert to float using the custom equation in spec.
+    s.BorderColor  = Vec4f(0.0, 0.0, 0.0, 0.0)
+    s.BorderColorI = Vec4i(p[0], p[1], p[2], p[3])
+  } else {
+    SamplerParameterv!(const GLint*)(sampler, pname, param)
+  }
 }
 
 @if(Version.GLES32)
@@ -1452,26 +1502,12 @@ cmd void glTexBuffer(GLenum target, GLenum internalformat, BufferId buffer) {
 }
 
 sub void TexBuffer(GLenum target, GLenum internalformat, BufferId buffer) {
-  switch (target) {
-    case GL_TEXTURE_BUFFER: {
-      // version 3.2
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
+  ctx := GetContext()
+  size := switch (buffer in ctx.Objects.Buffers) {
+    case true:  ctx.Objects.Buffers[buffer].Size
+    case false: as!GLsizeiptr(0)
   }
-  switch (internalformat) {
-    case GL_R16, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI,
-        GL_RG16, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F, GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I,
-        GL_RG8UI, GL_RGB32F, GL_RGB32I, GL_RGB32UI, GL_RGBA16, GL_RGBA16F, GL_RGBA16I, GL_RGBA16UI,
-        GL_RGBA32F, GL_RGBA32I, GL_RGBA32UI, GL_RGBA8, GL_RGBA8I, GL_RGBA8UI: {
-      // version 3.2
-    }
-    default: {
-      glErrorInvalidEnum(internalformat)
-    }
-  }
-  _ = buffer // TODO
+  TexBufferRange(target, internalformat, buffer, 0, size)
 }
 
 @if(Version.GLES32)
@@ -1485,14 +1521,8 @@ cmd void glTexBufferRange(GLenum     target,
 }
 
 sub void TexBufferRange(GLenum target, GLenum internalformat, BufferId buffer, GLintptr offset, GLsizeiptr size) {
-  switch (target) {
-    case GL_TEXTURE_BUFFER: {
-      // version 3.2
-    }
-    default: {
-      glErrorInvalidEnum(target)
-    }
-  }
+  if (target != GL_TEXTURE_BUFFER) { glErrorInvalidEnum(target) }
+  t := GetBoundTextureOrErrorInvalidEnum(target)
   switch (internalformat) {
     case GL_R16, GL_R16F, GL_R16I, GL_R16UI, GL_R32F, GL_R32I, GL_R32UI, GL_R8, GL_R8I, GL_R8UI,
         GL_RG16, GL_RG16F, GL_RG16I, GL_RG16UI, GL_RG32F, GL_RG32I, GL_RG32UI, GL_RG8, GL_RG8I,
@@ -1504,9 +1534,22 @@ sub void TexBufferRange(GLenum target, GLenum internalformat, BufferId buffer, G
       glErrorInvalidEnum(internalformat)
     }
   }
-  _ = buffer // TODO
-  _ = offset // TODO
-  _ = size // TODO
+  if buffer == 0 {
+    t.Buffer = TextureBufferBinding()
+  } else {
+    b := GetOrCreateBuffer(buffer)
+    CheckGE!GLintptr(offset, 0)
+    CheckLE!GLintptr(offset, as!GLintptr(b.Size))
+    CheckSizeGE!GLsizeiptr(size, 1)
+    CheckLE!GLsizeiptr(size, b.Size - as!GLsizeiptr(offset))
+
+    t.Buffer = TextureBufferBinding(
+      Binding: b,
+      InternalFormat: internalformat,
+      Offset: offset,
+      Size: size,
+    )
+  }
 }
 
 @if(Version.GLES10)

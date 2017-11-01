@@ -15,6 +15,8 @@
 @internal
 class Query {
   QueryId ID
+  GLenum  Type
+  bool    Active
 
   // Table 21.31: Query Object State
   // GLuint QueryResult = 0 // TODO: or GL_FALSE?
@@ -40,13 +42,15 @@ cmd void glBeginQuery(GLenum target, QueryId query) {
     }
   }
   ctx := GetContext()
-  ctx.Other.ActiveQueries[target] = GetOrCreateQuery(query)
+  q := GetOrCreateQuery(query, target)
+  q.Active = true
+  ctx.Other.ActiveQueries[target] = q
 }
 
-sub ref!Query GetOrCreateQuery(QueryId id) {
+sub ref!Query GetOrCreateQuery(QueryId id, GLenum type) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.Queries[id] == null) {
-    ctx.Objects.Queries[id] = new!Query(ID: id)
+    ctx.Objects.Queries[id] = new!Query(ID: id, Type: type)
     ctx.Objects.GeneratedNames.Queries[id] = true
   }
   return ctx.Objects.Queries[id]
@@ -91,6 +95,8 @@ cmd void glEndQuery(GLenum target) {
     }
   }
   ctx := GetContext()
+  if !(target in ctx.Other.ActiveQueries) { glErrorInvalidOperation() }
+  ctx.Other.ActiveQueries[target].Active = false
   delete(ctx.Other.ActiveQueries, target)
 }
 

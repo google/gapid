@@ -176,7 +176,7 @@ func moveClientVBsToVAs(
 	va := c.Bound.VertexArray
 	for _, arr := range va.VertexAttributeArrays.Range() {
 		if arr.Enabled == GLboolean_GL_TRUE {
-			vb := va.VertexBufferBindings.Get(arr.Binding)
+			vb := arr.Binding
 			if cmd, ok := clientVAs[arr]; ok {
 				// TODO: We're currently ignoring the Offset and Stride fields of the VBB.
 				// TODO: We're currently ignoring the RelativeOffset field of the VA.

@@ -320,8 +320,10 @@ cmd void glObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) 
 }
 
 sub void ObjectPtrLabel(const void* ptr, GLsizei length, const GLchar* label) {
-  _ = ptr // TODO
-  _ = readString(length, label, false)
+  ctx := GetContext()
+  sync := ctx.Objects.SyncObjects[as!GLsync(ptr)]
+  if sync == null { glErrorInvalidValue!GLsync(as!GLsync(ptr)) }
+  sync.Label = readString(length, label, false)
 }
 
 @if(Version.GLES32)

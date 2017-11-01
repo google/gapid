@@ -355,9 +355,9 @@ func (tex *Texture) dataAndSize(level, layer GLint) (dependencygraph.StateKey, d
 func (att FramebufferAttachment) dataAndSize(g *dependencygraph.DependencyGraph, c *Context) (dataKey dependencygraph.StateKey, sizeKey dependencygraph.StateKey) {
 	if att.Type == GLenum_GL_RENDERBUFFER {
 		rb := att.Renderbuffer
-		if rb != nil && rb.InternalFormat != GLenum_GL_NONE {
+		if rb != nil && rb.Image != nil && rb.Image.SizedFormat != GLenum_GL_NONE {
 			scissor := c.Pixel.Scissor
-			fullBox := Rect{Width: rb.Width, Height: rb.Height}
+			fullBox := Rect{Width: rb.Image.Width, Height: rb.Image.Height}
 			if scissor.Test == GLboolean_GL_TRUE && scissor.Box != fullBox {
 				dataKey, sizeKey = renderbufferSubDataKey{rb, scissor.Box}, nil
 			} else {

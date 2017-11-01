@@ -96,8 +96,12 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, at
 		return fbai{uint32(l.Width), uint32(l.Height), l.SizedFormat, multisampled}, nil
 	case GLenum_GL_RENDERBUFFER:
 		r := a.Renderbuffer
-		multisampled := r.Samples > 0
-		return fbai{uint32(r.Width), uint32(r.Height), r.InternalFormat, multisampled}, nil
+		l := r.Image
+		if l == nil {
+			return fbai{}, fmt.Errorf("Renderbuffer %v does not have any image date", r.ID)
+		}
+		multisampled := l.Samples > 0
+		return fbai{uint32(l.Width), uint32(l.Height), l.SizedFormat, multisampled}, nil
 	default:
 		return fbai{}, fmt.Errorf("Unknown framebuffer attachment type %T", a.Type)
 	}

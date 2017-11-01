@@ -17,9 +17,11 @@ class TransformFeedback {
   TransformFeedbackId ID
 
   // Table 21.35: Transform Feedback State
+  ref!Buffer                  Buffer
   map!(GLuint, BufferBinding) Buffers
   GLboolean                   Paused  = GL_FALSE
   GLboolean                   Active  = GL_FALSE
+  GLenum                      PrimitiveMode = GL_NONE
   @unused string              Label
 }
 
@@ -37,7 +39,9 @@ cmd void glBeginTransformFeedback(GLenum primitiveMode) {
     }
   }
   ctx := GetContext()
+  ctx.Bound.TransformFeedback.Paused = 0
   ctx.Bound.TransformFeedback.Active = 1
+  ctx.Bound.TransformFeedback.PrimitiveMode = primitiveMode
 }
 
 @if(Version.GLES30)
@@ -91,6 +95,7 @@ cmd void glEndTransformFeedback() {
   ctx := GetContext()
   ctx.Bound.TransformFeedback.Paused = 0
   ctx.Bound.TransformFeedback.Active = 0
+  ctx.Bound.TransformFeedback.PrimitiveMode = GL_NONE
 }
 
 @if(Version.GLES30)

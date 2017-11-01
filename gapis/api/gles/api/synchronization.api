@@ -14,12 +14,15 @@
 
 @internal
 class SyncObject {
+  GLsync ID
+
 // Table 21.37: Sync (state per sync object)
-// GLenum ObjectType = GL_SYNC_FENCE
+  GLenum     Type = GL_SYNC_FENCE
 // GLenum SyncStatus = GL_UNSIGNALED
-// GLenum SyncCondition = GL_SYNC_GPU_COMMANDS_COMPLETE
-// GLint SyncFlags = 0
-// string ObjectPtrLabel
+  GLenum     Condition = GL_SYNC_GPU_COMMANDS_COMPLETE
+  GLbitfield Flags
+
+  string Label
 }
 
 @if(Version.GLES30)
@@ -71,7 +74,11 @@ sub void FenceSync(GLenum condition, GLbitfield syncFlags, GLsync sync) {
   CheckEQ!GLbitfield(syncFlags, as!GLbitfield(0))
   ctx := GetContext()
   if (sync != null) {
-    ctx.Objects.SyncObjects[sync] = new!SyncObject()
+    ctx.Objects.SyncObjects[sync] = new!SyncObject(
+      ID: sync,
+      Type: GL_SYNC_FENCE,
+      Condition: condition,
+      Flags: syncFlags)
   }
 }
 

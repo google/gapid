@@ -21,8 +21,8 @@ class Buffer {
   // Table 21.5: Buffer Object State
   GLsizeiptr     Size        = 0
   GLenum         Usage       = GL_STATIC_DRAW
-  GLbitfield     AccessFlags
   GLboolean      Mapped      = GL_FALSE
+  GLbitfield     AccessFlags
   u8*            MapPointer  = null
   GLintptr       MapOffset   = 0
   GLsizeiptr     MapLength   = 0
@@ -152,7 +152,7 @@ cmd void glBindBuffer(GLenum target, BufferId buffer) {
     }
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER: {
-      ctx.Bound.TransformFeedbackBuffer = GetOrCreateBuffer(buffer)
+      ctx.Bound.TransformFeedback.Buffer = GetOrCreateBuffer(buffer)
     }
     @if(Version.GLES30)
     case GL_UNIFORM_BUFFER: {
@@ -219,7 +219,7 @@ sub void BindBufferRange(GLenum     target,
     @if(Version.GLES30)
     case GL_TRANSFORM_FEEDBACK_BUFFER: {
       b := GetOrCreateBuffer(buffer)
-      ctx.Bound.TransformFeedbackBuffer = b
+      ctx.Bound.TransformFeedback.Buffer = b
       ctx.Bound.TransformFeedback.Buffers[index] = BufferBinding(b, offset, size)
     }
     @if(Version.GLES30)

@@ -295,6 +295,7 @@ void GlesSpy::getContextConstants(Constants& out) {
       GET(glGetFloatv, GL_MULTISAMPLE_LINE_WIDTH_RANGE, out.mMultisampleLineWidthRange);
       GET(glGetBooleanv, GL_PRIMITIVE_RESTART_FOR_PATCHES_SUPPORTED, &out.mPrimitiveRestartForPatchesSupported);
       GET(glGetIntegerv, GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT, &out.mTextureBufferOffsetAlignment);
+      GET(glGetIntegerv, GL_RESET_NOTIFICATION_STRATEGY, &out.mResetNotificationStrategy);
     }
 
     // Constants defined in extensions

@@ -75,6 +75,10 @@ sub void SetCapability(GLenum capability, bool isIndexed, GLuint index, GLboolea
       ctx.Rasterization.SampleMask = enabled
     }
     @if(Version.GLES32)
+    case GL_SAMPLE_SHADING: {
+      ctx.Rasterization.SampleShading = enabled
+    }
+    @if(Version.GLES32)
     case GL_DEBUG_OUTPUT: {
       ctx.Other.Debug.Output = enabled
     }
@@ -128,6 +132,10 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
     }
     @if(Version.GLES31)
     case GL_SAMPLE_MASK: {
+      CheckEQ!GLuint(index, 0)
+    }
+    @if(Version.GLES32)
+    case GL_SAMPLE_SHADING: {
       CheckEQ!GLuint(index, 0)
     }
     @if(Version.GLES32)
@@ -187,6 +195,10 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
     @if(Version.GLES31)
     case GL_SAMPLE_MASK: {
       ctx.Rasterization.SampleMask
+    }
+    @if(Version.GLES32)
+    case GL_SAMPLE_SHADING: {
+      ctx.Rasterization.SampleShading
     }
     @if(Version.GLES32)
     case GL_DEBUG_OUTPUT: {
