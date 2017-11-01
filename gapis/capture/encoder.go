@@ -75,20 +75,26 @@ func (e *encoder) startCmd(ctx context.Context, cmd api.Cmd) (uint64, error) {
 	if cmdID, ok := e.cmdIDs[cmd]; ok {
 		return cmdID, nil
 	}
-	if id := cmd.Caller(); id != api.CmdNoID {
-		// TODO: Instead of just starting a caller as soon as the first child
-		// is seen, perhaps we should store the start points in the Capture?
-		if _, err := e.startCmd(ctx, e.c.Commands[id]); err != nil {
-			return 0, err
-		}
-	}
 	cmdProto, err := protoconv.ToProto(ctx, cmd)
 	if err != nil {
 		return 0, err
 	}
-	cmdID, err := e.w.BeginGroup(ctx, cmdProto)
-	if err != nil {
-		return 0, err
+
+	var cmdID uint64
+	if id := cmd.Caller(); id != api.CmdNoID {
+		parentID, err := e.startCmd(ctx, e.c.Commands[id])
+		if err != nil {
+			return 0, err
+		}
+		cmdID, err = e.w.BeginChildGroup(ctx, cmdProto, parentID)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		cmdID, err = e.w.BeginGroup(ctx, cmdProto)
+		if err != nil {
+			return 0, err
+		}
 	}
 	e.cmdIDs[cmd] = cmdID
 	return cmdID, nil
