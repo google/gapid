@@ -59,13 +59,12 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 	// DestroyResourcesAtEndOfFrame will handle this actually removing the
 	// command buffer. We have no way to handle WHEN this will be done
 
-	modelCmdBufObj := GetState(s).CommandBuffers[modelCmdBuf]
+	modelCmdBufObj := GetState(s).CommandBuffers.Get(modelCmdBuf)
 
 	newCmdBufId := VkCommandBuffer(
 		newUnusedID(true,
 			func(x uint64) bool {
-				_, ok := GetState(s).CommandBuffers[VkCommandBuffer(x)]
-				return ok
+				return GetState(s).CommandBuffers.Contains(VkCommandBuffer(x))
 			}))
 	allocate := VkCommandBufferAllocateInfo{
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -120,9 +119,9 @@ func rebuildVkCmdBeginRenderPass(
 	s *api.GlobalState,
 	d *VkCmdBeginRenderPassArgs) (func(), api.Cmd) {
 
-	clearValues := make([]VkClearValue, len(d.ClearValues))
-	for i := 0; i < len(d.ClearValues); i++ {
-		clearValues[i] = d.ClearValues[uint32(i)]
+	clearValues := make([]VkClearValue, d.ClearValues.Len())
+	for i := 0; i < d.ClearValues.Len(); i++ {
+		clearValues[i] = d.ClearValues.Get(uint32(i))
 	}
 
 	clearValuesData := s.AllocDataOrPanic(ctx, clearValues)
@@ -937,99 +936,99 @@ func GetCommandArgs(ctx context.Context,
 	s := GetState(c)
 	switch cr.Type {
 	case CommandType_cmd_vkCmdBeginRenderPass:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBeginRenderPass[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdBeginRenderPass.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdEndRenderPass:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdEndRenderPass[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdEndRenderPass.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdNextSubpass:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdNextSubpass[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdNextSubpass.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdBindPipeline:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBindPipeline[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdBindPipeline.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdBindDescriptorSets:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBindDescriptorSets[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdBindDescriptorSets.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdBindVertexBuffers:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBindVertexBuffers[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdBindVertexBuffers.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdBindIndexBuffer:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBindIndexBuffer[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdBindIndexBuffer.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdPipelineBarrier:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdPipelineBarrier[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdPipelineBarrier.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdWaitEvents:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdWaitEvents[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdWaitEvents.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdBeginQuery:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBeginQuery[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdBeginQuery.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdBlitImage:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdBlitImage[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdBlitImage.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdClearAttachments:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdClearAttachments[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdClearAttachments.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdClearColorImage:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdClearColorImage[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdClearColorImage.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdClearDepthStencilImage:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdClearDepthStencilImage[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdClearDepthStencilImage.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdCopyBuffer:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyBuffer[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdCopyBuffer.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdCopyBufferToImage:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyBufferToImage[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdCopyBufferToImage.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdCopyImage:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyImage[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdCopyImage.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdCopyImageToBuffer:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyImageToBuffer[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdCopyImageToBuffer.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdCopyQueryPoolResults:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdCopyQueryPoolResults[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdCopyQueryPoolResults.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDispatch:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDispatch[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDispatch.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDispatchIndirect:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDispatchIndirect[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDispatchIndirect.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDraw:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDraw[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDraw.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDrawIndexed:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDrawIndexed[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDrawIndexed.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDrawIndexedIndirect:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDrawIndexedIndirect[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDrawIndexedIndirect.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDrawIndirect:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDrawIndirect[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDrawIndirect.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdEndQuery:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdEndQuery[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdEndQuery.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdExecuteCommands:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdExecuteCommands[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdExecuteCommands.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdFillBuffer:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdFillBuffer[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdFillBuffer.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdPushConstants:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdPushConstants[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdPushConstants.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdResetQueryPool:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdResetQueryPool[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdResetQueryPool.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdResolveImage:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdResolveImage[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdResolveImage.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetBlendConstants:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetBlendConstants[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetBlendConstants.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetDepthBias:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetDepthBias[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetDepthBias.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetDepthBounds:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetDepthBounds[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetDepthBounds.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetEvent:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetEvent[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetEvent.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdResetEvent:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdResetEvent[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdResetEvent.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetLineWidth:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetLineWidth[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetLineWidth.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetScissor:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetScissor[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetScissor.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetStencilCompareMask:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetStencilCompareMask[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetStencilCompareMask.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetStencilReference:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetStencilReference[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetStencilReference.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetStencilWriteMask:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetStencilWriteMask[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetStencilWriteMask.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdSetViewport:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdSetViewport[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdSetViewport.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdUpdateBuffer:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdUpdateBuffer[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdUpdateBuffer.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdWriteTimestamp:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdWriteTimestamp[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdWriteTimestamp.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDebugMarkerBeginEXT:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDebugMarkerBeginEXT[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDebugMarkerBeginEXT.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDebugMarkerEndEXT:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDebugMarkerEndEXT[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDebugMarkerEndEXT.Get(cr.MapIndex)
 	case CommandType_cmd_vkCmdDebugMarkerInsertEXT:
-		return s.CommandBuffers[cr.Buffer].BufferCommands.VkCmdDebugMarkerInsertEXT[cr.MapIndex]
+		return s.CommandBuffers.Get(cr.Buffer).BufferCommands.VkCmdDebugMarkerInsertEXT.Get(cr.MapIndex)
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", cr)
 		panic(x)

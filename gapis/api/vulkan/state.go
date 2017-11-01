@@ -30,7 +30,7 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 		return returnError("No previous queue submission")
 	}
 
-	lastDrawInfo, ok := st.LastDrawInfos[lastQueue.VulkanHandle]
+	lastDrawInfo, ok := st.LastDrawInfos.Lookup(lastQueue.VulkanHandle)
 	if !ok {
 		return returnError("There have been no previous draws")
 	}
@@ -45,15 +45,15 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 
 	lastSubpass := lastDrawInfo.LastSubpass
 
-	subpass_desc := lastDrawInfo.Framebuffer.RenderPass.SubpassDescriptions[lastSubpass]
+	subpass_desc := lastDrawInfo.Framebuffer.RenderPass.SubpassDescriptions.Get(lastSubpass)
 	switch attachment {
 	case api.FramebufferAttachment_Color0,
 		api.FramebufferAttachment_Color1,
 		api.FramebufferAttachment_Color2,
 		api.FramebufferAttachment_Color3:
 		attachment_index := uint32(attachment - api.FramebufferAttachment_Color0)
-		if att_ref, ok := subpass_desc.ColorAttachments[attachment_index]; ok {
-			if ca, ok := lastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment]; ok {
+		if att_ref, ok := subpass_desc.ColorAttachments.Lookup(attachment_index); ok {
+			if ca, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(att_ref.Attachment); ok {
 				return ca.Image.Info.Extent.Width, ca.Image.Info.Extent.Height, ca.Image.Info.Format, att_ref.Attachment, nil
 			}
 
@@ -61,7 +61,7 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 	case api.FramebufferAttachment_Depth:
 		if subpass_desc.DepthStencilAttachment != nil && lastDrawInfo.Framebuffer != nil {
 			att_ref := subpass_desc.DepthStencilAttachment
-			if attachment, ok := lastDrawInfo.Framebuffer.ImageAttachments[att_ref.Attachment]; ok {
+			if attachment, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(att_ref.Attachment); ok {
 				depth_img := attachment.Image
 				return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Format, att_ref.Attachment, nil
 			}
@@ -89,7 +89,7 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 		if st.LastPresentInfo.PresentImageCount <= image_idx {
 			return returnError("Swapchain does not contain image %v", attachment)
 		}
-		color_img := st.LastPresentInfo.PresentImages[image_idx]
+		color_img := st.LastPresentInfo.PresentImages.Get(image_idx)
 		return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Format, image_idx, nil
 	case api.FramebufferAttachment_Depth:
 		fallthrough

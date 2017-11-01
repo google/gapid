@@ -83,14 +83,14 @@ func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 			return
 		}
 
-		lastDrawInfo, ok := c.LastDrawInfos[lastQueue.VulkanHandle]
+		lastDrawInfo, ok := c.LastDrawInfos.Lookup(lastQueue.VulkanHandle)
 		if !ok {
 			res(nil, fmt.Errorf("There have been no previous draws"))
 			return
 		}
 		w, h := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height
 
-		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments[idx]
+		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments.Get(idx)
 		depthImageObject := imageViewDepth.Image
 		cb := CommandBuilder{Thread: cmd.Thread()}
 		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Format, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
@@ -112,7 +112,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				return
 			}
 
-			lastDrawInfo, ok := c.LastDrawInfos[lastQueue.VulkanHandle]
+			lastDrawInfo, ok := c.LastDrawInfos.Lookup(lastQueue.VulkanHandle)
 			if !ok {
 				res(nil, fmt.Errorf("There have been no previous draws"))
 				return
@@ -122,7 +122,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				return
 			}
 
-			imageView, ok := lastDrawInfo.Framebuffer.ImageAttachments[bufferIdx]
+			imageView, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(bufferIdx)
 			if !ok {
 				res(nil, fmt.Errorf("There has been no attchment %v in the framebuffer", bufferIdx))
 				return
@@ -131,7 +131,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 			w, h, form := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height, imageView.Format
 			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		} else {
-			imageObject := GetState(s).LastPresentInfo.PresentImages[bufferIdx]
+			imageObject := GetState(s).LastPresentInfo.PresentImages.Get(bufferIdx)
 			if imageObject == nil {
 				res(nil, fmt.Errorf("Could not find imageObject %v, %v", id, bufferIdx))
 				return
@@ -199,9 +199,9 @@ func postImageData(ctx context.Context,
 	queue := imageObject.LastBoundQueue
 	vkQueue := queue.VulkanHandle
 	vkDevice := queue.Device
-	device := GetState(s).Devices[vkDevice]
+	device := GetState(s).Devices.Get(vkDevice)
 	vkPhysicalDevice := device.PhysicalDevice
-	physicalDevice := GetState(s).PhysicalDevices[vkPhysicalDevice]
+	physicalDevice := GetState(s).PhysicalDevices.Get(vkPhysicalDevice)
 	// Rendered image should always has a graphics-capable queue bound, if none
 	// of such a queue found for this image or the bound queue does not have
 	// graphics capability, throw error messages and return.
@@ -209,7 +209,7 @@ func postImageData(ctx context.Context,
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
 		return
 	}
-	if properties, ok := physicalDevice.QueueFamilyProperties[queue.Family]; ok {
+	if properties, ok := physicalDevice.QueueFamilyProperties.Lookup(queue.Family); ok {
 		if properties.QueueFlags&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) == 0 {
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The bound vkQueue does not have VK_QUEUE_GRAPHICS_BIT capability")})
 			return
@@ -232,7 +232,7 @@ func postImageData(ctx context.Context,
 		return allocate_result
 	}
 
-	fenceId := VkFence(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).Fences[VkFence(x)]; return ok }))
+	fenceId := VkFence(newUnusedID(false, func(x uint64) bool { return GetState(s).Fences.Contains(VkFence(x)) }))
 	fenceCreateInfo := VkFenceCreateInfo{
 		SType: VkStructureType_VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 		PNext: NewVoidᶜᵖ(memory.Nullptr),
@@ -258,8 +258,8 @@ func postImageData(ctx context.Context,
 	bufferSize := uint64(formatOfImgRes.Size(int(reqWidth), int(reqHeight), 1))
 
 	// Data and info for destination buffer creation
-	bufferId := VkBuffer(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).Buffers[VkBuffer(x)]; return ok }))
-	bufferMemoryId := VkDeviceMemory(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).DeviceMemories[VkDeviceMemory(x)]; return ok }))
+	bufferId := VkBuffer(newUnusedID(false, func(x uint64) bool { ok := GetState(s).Buffers.Contains(VkBuffer(x)); return ok }))
+	bufferMemoryId := VkDeviceMemory(newUnusedID(false, func(x uint64) bool { ok := GetState(s).DeviceMemories.Contains(VkDeviceMemory(x)); return ok }))
 	bufferMemoryAllocInfo := VkMemoryAllocateInfo{
 		SType:           VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 		PNext:           NewVoidᶜᵖ(memory.Nullptr),
@@ -282,7 +282,7 @@ func postImageData(ctx context.Context,
 	bufferData := MustAllocData(ctx, s, bufferId)
 
 	// Data and info for staging image creation
-	stagingImageId := VkImage(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).Images[VkImage(x)]; return ok }))
+	stagingImageId := VkImage(newUnusedID(false, func(x uint64) bool { ok := GetState(s).Images.Contains(VkImage(x)); return ok }))
 	stagingImageCreateInfo := VkImageCreateInfo{
 		SType:     VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		PNext:     NewVoidᶜᵖ(memory.Nullptr),
@@ -308,14 +308,14 @@ func postImageData(ctx context.Context,
 	stagingImageCreateInfoData := MustAllocData(ctx, s, stagingImageCreateInfo)
 	stagingImageData := MustAllocData(ctx, s, stagingImageId)
 	stagingImageMemoryId := VkDeviceMemory(newUnusedID(false, func(x uint64) bool {
-		_, ok := GetState(s).DeviceMemories[VkDeviceMemory(x)]
+		ok := GetState(s).DeviceMemories.Contains(VkDeviceMemory(x))
 		ok = ok || VkDeviceMemory(x) == bufferMemoryId
 		return ok
 	}))
 	stagingImageMemoryData := MustAllocData(ctx, s, stagingImageMemoryId)
 
 	// Data and info for resolve image creation. Resolve image is used when the attachment image is multi-sampled
-	resolveImageId := VkImage(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).Images[VkImage(x)]; return ok }))
+	resolveImageId := VkImage(newUnusedID(false, func(x uint64) bool { ok := GetState(s).Images.Contains(VkImage(x)); return ok }))
 	resolveImageCreateInfo := VkImageCreateInfo{
 		SType:     VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		PNext:     NewVoidᶜᵖ(memory.Nullptr),
@@ -341,14 +341,14 @@ func postImageData(ctx context.Context,
 	resolveImageCreateInfoData := MustAllocData(ctx, s, resolveImageCreateInfo)
 	resolveImageData := MustAllocData(ctx, s, resolveImageId)
 	resolveImageMemoryId := VkDeviceMemory(newUnusedID(false, func(x uint64) bool {
-		_, ok := GetState(s).DeviceMemories[VkDeviceMemory(x)]
+		ok := GetState(s).DeviceMemories.Contains(VkDeviceMemory(x))
 		ok = ok || VkDeviceMemory(x) == bufferMemoryId || VkDeviceMemory(x) == stagingImageMemoryId
 		return ok
 	}))
 	resolveImageMemoryData := MustAllocData(ctx, s, resolveImageMemoryId)
 
 	// Command pool and command buffer
-	commandPoolId := VkCommandPool(newUnusedID(false, func(x uint64) bool { _, ok := GetState(s).CommandPools[VkCommandPool(x)]; return ok }))
+	commandPoolId := VkCommandPool(newUnusedID(false, func(x uint64) bool { ok := GetState(s).CommandPools.Contains(VkCommandPool(x)); return ok }))
 	commandPoolCreateInfo := VkCommandPoolCreateInfo{
 		SType:            VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		PNext:            NewVoidᶜᵖ(memory.Nullptr),
@@ -365,7 +365,7 @@ func postImageData(ctx context.Context,
 		CommandBufferCount: 1,
 	}
 	commandBufferAllocateInfoData := MustAllocData(ctx, s, commandBufferAllocateInfo)
-	commandBufferId := VkCommandBuffer(newUnusedID(true, func(x uint64) bool { _, ok := GetState(s).CommandBuffers[VkCommandBuffer(x)]; return ok }))
+	commandBufferId := VkCommandBuffer(newUnusedID(true, func(x uint64) bool { ok := GetState(s).CommandBuffers.Contains(VkCommandBuffer(x)); return ok }))
 	commandBufferData := MustAllocData(ctx, s, commandBufferId)
 
 	// Data and info for Vulkan commands in command buffers

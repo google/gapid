@@ -35,7 +35,7 @@ func GetContext(s *api.GlobalState, thread uint64) *Context {
 }
 
 func (s *State) GetContext(thread uint64) *Context {
-	return s.Contexts[thread]
+	return s.Contexts.Get(thread)
 }
 
 // Root returns the path to the root of the state to display. It can vary based
@@ -49,7 +49,7 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	for thread, context := range s.Contexts {
+	for thread, context := range s.Contexts.Range() {
 		if c.ID == context.ID() {
 			return s.contextRoot(p.After, thread), nil
 		}

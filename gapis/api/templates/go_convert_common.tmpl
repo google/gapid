@@ -115,8 +115,8 @@
     «}¶
   {{else if IsMap $truetype}}
     {{$entry := printf "%s_pb.%s_%sEntry" (Global "OutputDir") $.Outer $proto}}
-    to.{{$proto}} = make([]*{{$entry}}, 0, len(ϟa.{{$name}}))¶
-    for ϟk, ϟv := range ϟa.{{$name}} {»¶
+    to.{{$proto}} = make([]*{{$entry}}, 0, ϟa.{{$name}}.Len())¶
+    for ϟk, ϟv := range ϟa.{{$name}}.Range() {»¶
       to.{{$proto}} = append(to.{{$proto}}, &{{$entry}}{
         Key:  {{Template "Convert.ToProto" "Type" $type.KeyType "Value" "ϟk"}},
         Value: {{Template "Convert.ToProto" "Type" $type.ValueType "Value" "ϟv"}}
@@ -145,11 +145,11 @@
       ϟa.{{$name}}[ϟi] = {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
     «}¶
   {{else if IsMap $truetype}}
-    ϟa.{{$name}} = make({{$.Field.Type.Name}}, len(from.{{$proto}}))¶
+    ϟa.{{$name}} = New{{$.Field.Type.Name}}()¶
     for _, ϟe := range from.{{$proto}} {»¶
       ϟk := {{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟe.Key"}}¶
       ϟv := {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟe.Value"}}¶
-      ϟa.{{$name}}[ϟk] = ϟv¶
+      ϟa.{{$name}}.Set(ϟk, ϟv)¶
     «}¶
   {{else}}
     {{$value := printf "from.%s" $proto}}

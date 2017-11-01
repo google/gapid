@@ -47,7 +47,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		return nil, fmt.Errorf("No previous queue submission")
 	}
 
-	lastDrawInfo, ok := c.LastDrawInfos[lastQueue.VulkanHandle]
+	lastDrawInfo, ok := c.LastDrawInfos.Lookup(lastQueue.VulkanHandle)
 	if !ok {
 		return nil, fmt.Errorf("There have been no previous draws")
 	}
@@ -226,7 +226,7 @@ func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 		return nil, fmt.Errorf("No previous queue submission")
 	}
 
-	lastDrawInfo, ok := c.LastDrawInfos[lastQueue.VulkanHandle]
+	lastDrawInfo, ok := c.LastDrawInfos.Lookup(lastQueue.VulkanHandle)
 	if !ok {
 		return nil, fmt.Errorf("There have been no previous draws")
 	}

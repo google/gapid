@@ -36,7 +36,7 @@ func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
 			return nil, nil, err
 		}
 		state := stateObj.(*State)
-		context, ok := state.Contexts[thread]
+		context, ok := state.Contexts.Lookup(thread)
 		if !ok {
 			return nil, nil, nil
 		}
@@ -60,7 +60,7 @@ func sharedObjects(ctx context.Context, p path.Node) (*path.Field, *Context, err
 			return nil, nil, err
 		}
 		state := stateObj.(*State)
-		context, ok := state.Contexts[thread]
+		context, ok := state.Contexts.Lookup(thread)
 		if !ok {
 			return nil, nil, nil
 		}
@@ -179,7 +179,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 		program = c.Bound.Program.GetID()
 	}
 
-	prog, ok := c.Objects.Shared.Programs[program]
+	prog, ok := c.Objects.Shared.Programs.Lookup(program)
 	if !ok || !prog.Uniforms.Contains(o) {
 		return nil, nil
 	}

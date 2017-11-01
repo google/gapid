@@ -767,6 +767,10 @@
 
   type {{$name}} map[{{$key}}]{{$value}}
 
+  func New{{$name}}() {{$name}} {
+    return {{$name}}(map[{{$key}}]{{$value}}{})
+  }
+
   func (m {{$name}}) Get(key {{$key}}) {{$value}} {
     {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
       v, ok := m[key]
@@ -779,21 +783,41 @@
     {{end}}
   }
 
-  func (m {{$name}}) Contains(key {{$key}}) bool {
-    _, ok := m[key]
-    return ok
+  func (m {{$name}}) Lookup(key {{$key}}) (v {{$value}}, ok bool) {
+    v, ok = m[key]
+    {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
+      if !ok {
+        v = {{$init}}
+      }
+    {{end}}
+    return
+  }
+
+  func (m {{$name}}) Set(key {{$key}}, val {{$value}}) {
+    m[key] = val
+  }
+
+  func (m {{$name}}) Add(key {{$key}}, val {{$value}}) {{$name}} {
+    m[key] = val
+    return m
+  }
+
+  func (m {{$name}}) Contains(key {{$key}}) (ok bool) {
+    _, ok = m[key]
+    return
   }
 
   func (m {{$name}}) Delete(key {{$key}}) {
     delete(m, key)
   }
 
-  func (m {{$name}}) Range() []{{$value}} {
-    values := make([]{{$value}}, 0, len(m))
-    for _, value := range m {
-      values = append(values, value)
-    }
-    return values
+  func (m {{$name}}) Len() int {
+    return len(m)
+  }
+
+  // Returns an object which can be used for interation in a range-based loop.
+  func (m {{$name}}) Range() map[{{$key}}]{{$value}} {
+    return m
   }
 
   {{$sorted := (print $name "_SortKeys")}}

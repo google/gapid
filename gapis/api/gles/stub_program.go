@@ -38,11 +38,11 @@ func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *a
 	}
 	c := GetContext(s, thread)
 	vertexShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		_, ok := c.Objects.Shared.Buffers[BufferId(x)]
+		ok := c.Objects.Shared.Buffers.Contains(BufferId(x))
 		return ok
 	}))
 	fragmentShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		_, ok := c.Objects.Shared.Buffers[BufferId(x)]
+		ok := c.Objects.Shared.Buffers.Contains(BufferId(x))
 		return ok || x == uint32(vertexShaderID)
 	}))
 	cb := CommandBuilder{Thread: thread}
@@ -58,7 +58,7 @@ func stubShaderSource(pi *ProgramInfo) (vertexShaderSource, fragmentShaderSource
 	vsDecls, fsDecls := []string{}, []string{}
 	vsTickles, fsTickles := []string{}, []string{}
 	if pi != nil {
-		for _, u := range pi.ActiveUniforms {
+		for _, u := range pi.ActiveUniforms.Range() {
 			var decls, tickles *[]string
 			if isSampler(u.Type) {
 				decls, tickles = &fsDecls, &fsTickles

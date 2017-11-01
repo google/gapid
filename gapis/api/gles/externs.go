@@ -74,7 +74,8 @@ func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) *AndroidNativeBufferExtra 
 
 func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
 	if d := FindEGLImageData(e.cmd.Extras()); d != nil {
-		if ei, ok := GetState(e.s).EGLImages[id]; ok {
+		if GetState(e.s).EGLImages.Contains(id) {
+			ei := GetState(e.s).EGLImages.Get(id)
 			if img := ei.Image; img != nil {
 				poolID, pool := e.s.Memory.New()
 				pool.Write(0, memory.Resource(d.ID, d.Size))
@@ -161,7 +162,7 @@ func (e externs) addTag(msgID uint32, message *stringtable.Msg) {
 func (e externs) ReadGPUTextureData(texture *Texture, level, layer GLint) U8ˢ {
 	poolID, dst := e.s.Memory.New()
 	registry := bind.GetRegistry(e.ctx)
-	img := texture.Levels[level].Layers[layer]
+	img := texture.Levels.Get(level).Layers.Get(layer)
 	dataFormat, dataType := img.getUnsizedFormatAndType()
 	format, err := getImageFormat(dataFormat, dataType)
 	if err != nil {
