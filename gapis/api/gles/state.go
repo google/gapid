@@ -68,7 +68,7 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, at
 	if c == nil {
 		return fbai{}, fmt.Errorf("No context bound")
 	}
-	if !c.Info.Initialized {
+	if !c.Other.Initialized {
 		return fbai{}, fmt.Errorf("Context not initialized")
 	}
 

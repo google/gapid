@@ -130,7 +130,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	ctx context.Context, s *api.GlobalState, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
 	b := dependencygraph.AtomBehaviour{}
 	c := GetContext(s, cmd.Thread())
-	if c != nil && c.Info.Initialized {
+	if c != nil && c.Other.Initialized {
 		_, isEglSwapBuffers := cmd.(*EglSwapBuffers)
 		// TODO: We should also be considering eglSwapBuffersWithDamageKHR here
 		// too, but this is nearly exculsively used by the Android framework,
@@ -147,7 +147,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			color := fb.ColorAttachments.Get(0).Renderbuffer
 			depth := fb.DepthAttachment.Renderbuffer
 			stencil := fb.StencilAttachment.Renderbuffer
-			if !c.Info.PreserveBuffersOnSwap {
+			if !c.Other.PreserveBuffersOnSwap {
 				b.Write(g, renderbufferDataKey{color})
 			}
 			b.Write(g, renderbufferDataKey{depth})

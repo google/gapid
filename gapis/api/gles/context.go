@@ -24,8 +24,8 @@ import (
 // Name returns the display-name of the context.
 func (c *Context) Name() string {
 	name := fmt.Sprintf("OpenGL ES context %d", int(c.Identifier))
-	if c.Info.ThreadName != "" {
-		name += fmt.Sprintf(" - \"%s\"", c.Info.ThreadName)
+	if c.Other.ThreadName != "" {
+		name += fmt.Sprintf(" - \"%s\"", c.Other.ThreadName)
 	}
 	return name
 }
