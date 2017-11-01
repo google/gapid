@@ -63,13 +63,16 @@ const gvrAPI = uint32(1 << 3)
 func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	ctx = bind.PutRegistry(ctx, bind.NewRegistry())
 
-	options := client.Options{
-		ObserveFrameFrequency: uint32(verb.Observe.Frames),
-		ObserveDrawFrequency:  uint32(verb.Observe.Draws),
-		StartFrame:            uint32(verb.Start.At.Frame),
-		FramesToCapture:       uint32(verb.Capture.Frames),
-		APIs:                  uint32(0xFFFFFFFF),
-		APK:                   verb.APK,
+	options := traceOptions{
+		Options: client.Options{
+			ObserveFrameFrequency: uint32(verb.Observe.Frames),
+			ObserveDrawFrequency:  uint32(verb.Observe.Draws),
+			StartFrame:            uint32(verb.Start.At.Frame),
+			FramesToCapture:       uint32(verb.Capture.Frames),
+			APIs:                  uint32(0xFFFFFFFF),
+			APK:                   verb.APK,
+		},
+		monitorLogcat: verb.TraceFlags.Android.Logcat,
 	}
 
 	if verb.Disable.PCS {
@@ -166,20 +169,36 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	return func() { cancel(); cleanup() }, nil
 }
 
-func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, start task.Signal, options client.Options) error {
+type traceOptions struct {
+	client.Options
+	monitorLogcat bool
+}
+
+func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, start task.Signal, options traceOptions) error {
 	output := verb.Out
 	if output == "" {
 		output = "capture.gfxtrace"
 	}
-	process := &client.Process{Port: port, Options: options}
+	process := &client.Process{Port: port, Options: options.Options}
 	return doCapture(ctx, process, output, start, verb.For)
 }
 
-func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start task.Signal, options client.Options) error {
+func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start task.Signal, options traceOptions) error {
 	d, err := getADBDevice(ctx, verb.Gapii.Device)
 	if err != nil {
 		return err
 	}
+
+	if options.monitorLogcat {
+		c := make(chan android.LogcatMessage, 32)
+		go func() {
+			for m := range c {
+				m.Log(ctx)
+			}
+		}()
+		go d.Logcat(ctx, c)
+	}
+
 	var pkg *android.InstalledPackage
 	var a *android.ActivityAction
 	switch {
@@ -294,7 +313,7 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start
 		defer d.TurnScreenOff(ctx) // Think green!
 	}
 
-	process, err := client.StartOrAttach(ctx, pkg, a, options)
+	process, err := client.StartOrAttach(ctx, pkg, a, options.Options)
 	if err != nil {
 		return err
 	}

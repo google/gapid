@@ -160,6 +160,7 @@ func (p *Process) loadAndConnectViaJDWP(
 		}
 		if conn, err = jdwp.Open(ctx, sock); err != nil {
 			sock.Close()
+			log.I(ctx, "Failed to connect to the application: %v. Retrying...", err)
 			return false, err
 		}
 		return true, nil
