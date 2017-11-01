@@ -306,7 +306,7 @@ static void STDCALL DebugCallback(uint32_t source, uint32_t type, uint32_t id, u
 
 EGLBoolean Spy::eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLSurface read, EGLContext context) {
     EGLBoolean res = GlesSpy::eglMakeCurrent(observer, display, draw, read, context);
-    if (mRecordGLErrorState && Extension.mGL_KHR_debug) {
+    if (mRecordGLErrorState && Extension != nullptr && Extension->mGL_KHR_debug) {
         void* old_callback = nullptr;
         void* new_callback = reinterpret_cast<void*>(&DebugCallback);
         GlesSpy::mImports.glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &old_callback);
