@@ -51,18 +51,16 @@ extern void unmapMemory(u8[] slice)
 
 // Flags which are set if the context supports given GLES version
 @internal
-class Versions {
+class SupportedVersions {
   bool GLES10 = true
   bool GLES20 = true
   bool GLES30 = true
   bool GLES31 = true
   bool GLES32 = true
 }
-// TODO: This should be thread local variable
-Versions Version
 
-sub void InitVersions(ref!Context ctx) {
-  Version = Versions(
+sub ref!SupportedVersions InitSupportedVersions(ref!Context ctx) {
+  return new!SupportedVersions(
     GLES10:  VersionGreaterOrEqual(ctx, 1, 0),
     GLES20:  VersionGreaterOrEqual(ctx, 2, 0),
     GLES30:  VersionGreaterOrEqual(ctx, 3, 0),
@@ -71,9 +69,15 @@ sub void InitVersions(ref!Context ctx) {
   )
 }
 
+// VersionGreaterOrEqual returns true if the context's version is greater or
+// equal to the specified major-minor version.
+sub bool VersionGreaterOrEqual(ref!Context ctx, GLint major, GLint minor) {
+  return (ctx.Constants.MajorVersion > major) || ((ctx.Constants.MajorVersion == major) && (ctx.Constants.MinorVersion >= minor))
+}
+
 // Flags which are set if the context supports given GLES extension
 @internal
-class Extensions {
+class SupportedExtensions {
   bool EGL_ANDROID_create_native_client_buffer         = true
   bool EGL_ANDROID_image_native_buffer                 = true
   bool EGL_ANDROID_native_fence_sync                   = true
@@ -211,15 +215,13 @@ class Extensions {
   bool GL_QCOM_extended_get2                           = true
   bool GL_QCOM_tiled_rendering                         = true
 }
-// TODO: This should be thread local variable
-Extensions Extension
 
-sub void InitExtensions(ref!Context ctx) {
+sub ref!SupportedExtensions InitSupportedExtensions(ref!Context ctx) {
   set := StringSet()
   for _ , _ , ext in ctx.Constants.Extensions {
     set.Strings[ext] = true
   }
-  Extension = Extensions(
+  return new!SupportedExtensions(
     EGL_ANDROID_create_native_client_buffer:          set.Strings["EGL_ANDROID_create_native_client_buffer"],
     EGL_ANDROID_image_native_buffer:                  set.Strings["EGL_ANDROID_image_native_buffer"],
     EGL_KHR_image_base:                               set.Strings["EGL_KHR_image_base"],
@@ -543,6 +545,9 @@ class VertexState {
 
 @internal
 class OtherState {
+  ref!SupportedVersions   SupportedVersions
+  ref!SupportedExtensions SupportedExtensions
+
   DebugState              Debug
   map!(GLenum, ref!Query) ActiveQueries
   PixelStorageState       Pack
@@ -581,7 +586,13 @@ class Context {
 // Globals
 ContextID              NextContextID
 map!(u64, ref!Context) Contexts
-ref!Context            CurrentContext
+
+// Internal "thread-local" globals for quick access the current context.
+// They are set in the preMutate() function before any command is mutated.
+// TODO: We also need to set them in gapii (i.e. native mutate)
+ref!Context             CurrentContext // = Contexts[$Thread]
+ref!SupportedVersions   Version        // = Contexts[$Thread].Other.SupportedVersions
+ref!SupportedExtensions Extension      // = Contexts[$Thread].Other.SupportedExtensions
 
 sub ref!Context GetContext() {
   context := Contexts[$Thread]
@@ -648,8 +659,10 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     // First initialization for the context.
     ctx.Constants = staticState.Constants
     ctx.Info.ThreadName = staticState.ThreadName
-    InitVersions(ctx)
-    InitExtensions(ctx)
+    ctx.Other.SupportedVersions = InitSupportedVersions(ctx)
+    ctx.Other.SupportedExtensions = InitSupportedExtensions(ctx)
+    Version = ctx.Other.SupportedVersions
+    Extension = ctx.Other.SupportedExtensions
 
     ctx.Objects.Default.Framebuffer = new!Framebuffer(ID: 0,ReadBuffer:  GL_BACK)
     ctx.Objects.Framebuffers[0] = ctx.Objects.Default.Framebuffer

@@ -75,6 +75,10 @@ func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) 
 		}
 		return &api.ErrCmdAborted{Reason: "No context bound"}
 	}
+	if c.CurrentContext != nil {
+		c.Version = c.CurrentContext.Other.SupportedVersions
+		c.Extension = c.CurrentContext.Other.SupportedExtensions
+	}
 	return nil
 }
 

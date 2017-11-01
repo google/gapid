@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// VersionGreaterOrEqual returns true if the context's version is greater or
-// equal to the specified major-minor version.
-sub bool VersionGreaterOrEqual(ref!Context ctx, GLint major, GLint minor) {
-  return (ctx.Constants.MajorVersion > major) || ((ctx.Constants.MajorVersion == major) && (ctx.Constants.MinorVersion >= minor))
-}
-
 sub ID GetID!(ID,OBJ)(ref!OBJ o) {
   return switch o != null {
     case true: as!ID(o.ID)
