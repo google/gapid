@@ -484,14 +484,6 @@ class GeneratedObjectNames {
 
 @internal type s32 ContextID
 
-@internal
-class ContextCreationInfo {
-  bool              Initialized
-  string            ThreadName
-  @unused bool      PreserveBuffersOnSwap
-  ref!ShareList     ShareList
-}
-
 // ShareList represents a set of contexts which share some of the objects.
 // NB: Sharing does not form a tree. Any of the contexts can be destroyed.
 @internal
@@ -548,6 +540,12 @@ class OtherState {
   ref!SupportedVersions   SupportedVersions
   ref!SupportedExtensions SupportedExtensions
 
+  bool          Initialized
+  string        ThreadName
+  @unused bool  PreserveBuffersOnSwap
+  ref!ShareList ShareList
+  bool          IsBound
+
   DebugState              Debug
   map!(GLenum, ref!Query) ActiveQueries
   PixelStorageState       Pack
@@ -557,14 +555,6 @@ class OtherState {
   GLenum         GenerateMipmapHint           = GL_DONT_CARE
   @unused GLenum FragmentShaderDerivativeHint = GL_DONT_CARE
 
-// Table 21.57: Miscellaneous
-// GLenum CurrentError = as!GLenum(0)
-// GLboolean HasError = GL_FALSE
-// Vec3u CurrentQuery = Vec3u(0,0,0)
-// GLint ResetNotificationStrategy /// TODO: See sec. 2.3.2
-
-  bool IsBound
-
   @hidden ref!StaticContextState  StaticStateExtra // Internal.
   @hidden ref!DynamicContextState DynamicStateExtra // Internal.
 }
@@ -573,7 +563,6 @@ class OtherState {
 class Context {
   ContextID           Identifier
   Constants           Constants
-  ContextCreationInfo Info
   Bindings            Bound
   Objects             Objects
   VertexState         Vertex
@@ -622,11 +611,11 @@ sub ref!Context CreateContext(ref!Context sharedContext) {
   ctx := new!Context(Identifier: identifier)
 
   if sharedContext != null {
-    ctx.Info.ShareList = sharedContext.Info.ShareList
+    ctx.Other.ShareList = sharedContext.Other.ShareList
   } else {
-    ctx.Info.ShareList = new!ShareList()
+    ctx.Other.ShareList = new!ShareList()
   }
-  ctx.Info.ShareList.Contexts[identifier] = ctx
+  ctx.Other.ShareList.Contexts[identifier] = ctx
 
   // Objects which can be shared between contexts.
   // See: Chapter 5 - "Shared Objects and Multiple Contexts"
@@ -658,7 +647,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
     // First initialization for the context.
     ctx.Constants = staticState.Constants
-    ctx.Info.ThreadName = staticState.ThreadName
+    ctx.Other.ThreadName = staticState.ThreadName
     ctx.Other.SupportedVersions = InitSupportedVersions(ctx)
     ctx.Other.SupportedExtensions = InitSupportedExtensions(ctx)
     Version = ctx.Other.SupportedVersions
@@ -732,7 +721,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
       ctx.Pixel.ColorWritemask[i] = Vec4b(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     }
 
-    ctx.Info.Initialized = true
+    ctx.Other.Initialized = true
     ctx.Other.StaticStateExtra = staticState
   }
 }
@@ -775,7 +764,7 @@ sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynam
       ctx.Rasterization.Viewport.Height = dynamicState.BackbufferHeight
     }
 
-    ctx.Info.PreserveBuffersOnSwap = dynamicState.PreserveBuffersOnSwap
+    ctx.Other.PreserveBuffersOnSwap = dynamicState.PreserveBuffersOnSwap
     ctx.Other.DynamicStateExtra = dynamicState
   }
 }

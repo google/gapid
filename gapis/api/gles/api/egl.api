@@ -278,7 +278,7 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
       abort
     }
     SetContext(ctx)
-    if !ctx.Info.Initialized {
+    if !ctx.Other.Initialized {
       ApplyStaticContextState(ctx, GetEGLStaticContextState(display, context))
     }
     ApplyDynamicContextState(ctx, GetEGLDynamicContextState(display, draw, context))

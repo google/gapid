@@ -31,7 +31,7 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 		out.MutateAndWrite(ctx, id, cmd)
 		s := out.State()
 		c := GetContext(s, cmd.Thread())
-		if c == nil || !c.Info.Initialized {
+		if c == nil || !c.Other.Initialized {
 			return // We can't do anything without a context.
 		}
 		if eglMakeCurrent, ok := cmd.(*EglMakeCurrent); ok && !seenSurfaces[eglMakeCurrent.Draw] {
@@ -53,7 +53,7 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 				// BUG: https://github.com/google/gapid/issues/846.
 				return
 			}
-			if c != nil && !c.Info.PreserveBuffersOnSwap {
+			if c != nil && !c.Other.PreserveBuffersOnSwap {
 				drawUndefinedFramebuffer(ctx, id, cmd, device, s, c, out)
 			}
 		}

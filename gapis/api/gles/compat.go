@@ -229,7 +229,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			out.MutateAndWrite(ctx, id, cmd)
 
 			c := GetContext(s, cmd.Thread())
-			if c == nil || !c.Info.Initialized {
+			if c == nil || !c.Other.Initialized {
 				return
 			}
 			if _, found := contexts[c]; found {
@@ -260,7 +260,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		}
 
 		c := GetContext(s, cmd.Thread())
-		if c == nil || !c.Info.Initialized {
+		if c == nil || !c.Other.Initialized {
 			// The compatibility translations below assume that we have a valid context.
 			out.MutateAndWrite(ctx, id, cmd)
 			return

@@ -194,7 +194,7 @@ func GetFramebufferAttachmentInfoByID(
 		if c == nil {
 			return 0, 0, 0, nil, fmt.Errorf("No context bound")
 		}
-		if !c.Info.Initialized {
+		if !c.Other.Initialized {
 			return 0, 0, 0, nil, fmt.Errorf("Context not initialized")
 		}
 		fb = c.Bound.DrawFramebuffer.GetID()
