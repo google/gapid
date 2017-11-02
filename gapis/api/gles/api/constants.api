@@ -16,12 +16,16 @@
 @internal
 @serialize
 class Constants {
+  @unused string        Vendor
+  @unused string        Version
+  @unused string        Renderer
+  map!(u32, string)     Extensions
+
   // Constants defined in version 2.0.25 (November 2, 2010)
   // SampleBuffers and Samples are omitted since they are not constants in later versions.
   GLfloat[2]            AliasedLineWidthRange
   GLfloat[2]            AliasedPointSizeRange
   map!(u32, GLenum)     CompressedTextureFormats
-  map!(u32, string)     Extensions
   GLint                 MaxCombinedTextureImageUnits
   GLint                 MaxCubeMapTextureSize
   GLint                 MaxFragmentUniformVectors
@@ -33,13 +37,10 @@ class Constants {
   GLint                 MaxVertexTextureImageUnits
   GLint                 MaxVertexUniformVectors
   GLint[2]              MaxViewportDims
-  @unused string        Renderer
   map!(u32, GLenum)     ShaderBinaryFormats
   GLboolean             ShaderCompiler
   @unused string        ShadingLanguageVersion
   GLint                 SubpixelBits
-  @unused string        Vendor
-  @unused string        Version
   ShaderPrecisionFormat VertexShaderPrecisionFormat
   ShaderPrecisionFormat FragmentShaderPrecisionFormat
 
