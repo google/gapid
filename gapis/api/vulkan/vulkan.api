@@ -8987,6 +8987,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused u32                    Index
   @unused VkQueue                VulkanHandle
   map!(VkEvent, ref!EventObject) PendingEvents
+  map!(VkSemaphore, ref!SemaphoreObject) PendingSemaphores
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   map!(u32, CommandReference) PendingCommands
 }
@@ -9462,6 +9463,7 @@ enum SemaphoreUpdate {
   @unused VkQueue     LastQueue
   @unused bool        Signaled
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  @unused VkQueue WaitingQueue
 }
 
 @internal class EventObject {
