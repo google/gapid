@@ -75,6 +75,22 @@ func (r Result) Do(f func() (val interface{}, err error)) error {
 	return nil
 }
 
+// Transform returns a new Result that passes the non-error value through f
+// before calling the original r.
+func (r Result) Transform(f func(in interface{}) (out interface{}, err error)) Result {
+	return func(val interface{}, err error) {
+		if err != nil {
+			r(nil, err)
+			return
+		}
+		if val, err := f(val); err != nil {
+			r(nil, err)
+		} else {
+			r(val, nil)
+		}
+	}
+}
+
 // RequestAndResult is a pair of Request and Result.
 type RequestAndResult struct {
 	Request Request
