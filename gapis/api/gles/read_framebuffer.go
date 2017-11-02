@@ -157,7 +157,6 @@ func postFBData(ctx context.Context,
 		bufferBits |= GLbitfield_GL_STENCIL_BUFFER_BIT
 	}
 
-	outputFormat := imgFmt
 	if (attachment == GLenum_GL_DEPTH_ATTACHMENT || attachment == GLenum_GL_STENCIL_ATTACHMENT) &&
 		hasDepth && hasStencil {
 		// The caller of this function has specified that they want either the
@@ -167,11 +166,16 @@ func postFBData(ctx context.Context,
 		// To keep the replay logic sane, preserve both depth and stencil data
 		// and post both back to GAPIS. We then can strip out the unwanted
 		// component.
+		var outputFormat *image.Format
 		if attachment == GLenum_GL_DEPTH_ATTACHMENT {
-			outputFormat = filterUncompressedImageFormat(outputFormat, stream.Channel.IsDepth)
+			outputFormat = filterUncompressedImageFormat(imgFmt, stream.Channel.IsDepth)
 		} else {
-			outputFormat = filterUncompressedImageFormat(outputFormat, stream.Channel.IsStencil)
+			outputFormat = filterUncompressedImageFormat(imgFmt, stream.Channel.IsStencil)
 		}
+		res = res.Transform(func(in interface{}) (interface{}, error) {
+			return in.(*image.Data).Convert(outputFormat)
+		})
+
 		attachment = GLenum_GL_DEPTH_STENCIL_ATTACHMENT
 	}
 
@@ -253,19 +257,13 @@ func postFBData(ctx context.Context,
 					return nil, fmt.Errorf("Could not read framebuffer data (expected length %d bytes): %v", imageSize, err)
 				}
 
-				img := &image.Data{
+				return &image.Data{
 					Bytes:  data,
 					Width:  uint32(outW),
 					Height: uint32(outH),
 					Depth:  1,
 					Format: imgFmt,
-				}
-
-				img, err := img.Convert(outputFormat)
-				if err != nil {
-					return nil, fmt.Errorf("Could not convert framebuffer to output format: %v", err)
-				}
-				return img, nil
+				}, nil
 			})
 		})
 		return nil
