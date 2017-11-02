@@ -215,6 +215,23 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			case *GlTexSubImage2D:
 				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
 				b.Modify(g, texData)
+			case *GlGenerateMipmap:
+				tex, err := subGetBoundTextureOrErrorInvalidEnum(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
+				if err != nil {
+					log.E(ctx, "Can not find bound texture %v", cmd.Target)
+				}
+				for levelIndex, level := range tex.Levels.Range() {
+					for layerIndex := range level.Layers.Range() {
+						data, size := tex.dataAndSize(levelIndex, layerIndex)
+						if levelIndex == 0 {
+							b.Read(g, data)
+							b.Read(g, size)
+						} else {
+							b.Read(g, size)
+							b.Write(g, data)
+						}
+					}
+				}
 			case *GlUniform1fv:
 				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
 			case *GlUniform2fv:
