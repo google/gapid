@@ -201,6 +201,17 @@ func TestDeadCommandRemoval(t *testing.T) {
 			cb.GlClear(GLbitfield_GL_COLOR_BUFFER_BIT),
 			live(cb.GlDrawArrays(GLenum_GL_POINTS, 0, 1)),
 		},
+		"Generate mipmaps": {
+			cb.GlActiveTexture(GLenum_GL_TEXTURE0),
+			cb.GlBindTexture(GLenum_GL_TEXTURE_2D, 10),
+			cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(GLenum_GL_RGB), 64, 64, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
+			cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 1, GLint(GLenum_GL_RGB), 32, 32, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
+			cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 2, GLint(GLenum_GL_RGB), 16, 16, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
+			cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 3, GLint(GLenum_GL_RGB), 8, 8, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
+			cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 4, GLint(GLenum_GL_RGB), 4, 4, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
+			cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 5, GLint(GLenum_GL_RGB), 2, 2, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
+			live(cb.GlGenerateMipmap(GLenum_GL_TEXTURE_2D)),
+		},
 	}
 
 	for name, testCmds := range tests {
