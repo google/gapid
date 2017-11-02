@@ -19,28 +19,28 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 )
 
 // unpackMap takes a dense map of u32 -> structure, flattens the map into
 // a slice, allocates the appropriate data and returns it as well as the
-// lenth of the map
+// length of the map.
 func unpackMap(ctx context.Context, s *api.GlobalState, m interface{}) (api.AllocResult, uint32) {
 	u32Type := reflect.TypeOf(uint32(0))
-	t := reflect.TypeOf(m)
-	if t.Kind() != reflect.Map || t.Key() != u32Type {
+	d := dictionary.From(m)
+	if d == nil || d.KeyTy() != u32Type {
 		panic("Expecting a map of u32 -> structures")
 	}
 
-	mv := reflect.ValueOf(m)
-
-	sl := reflect.MakeSlice(reflect.SliceOf(t.Elem()), mv.Len(), mv.Len())
-	for i := 0; i < mv.Len(); i++ {
-		v := mv.MapIndex(reflect.ValueOf(uint32(i)))
-		sl.Index(i).Set(v)
+	sl := reflect.MakeSlice(reflect.SliceOf(d.ValTy()), d.Len(), d.Len())
+	for _, e := range d.Entries() {
+		i := e.K.(uint32)
+		v := reflect.ValueOf(e.V)
+		sl.Index(int(i)).Set(v)
 	}
-	return s.AllocDataOrPanic(ctx, sl.Interface()), uint32(mv.Len())
+	return s.AllocDataOrPanic(ctx, sl.Interface()), uint32(d.Len())
 }
 
 // allocateNewCmdBufFromExistingOneAndBegin takes an existing VkCommandBuffer
