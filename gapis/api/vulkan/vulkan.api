@@ -2488,11 +2488,13 @@ cmd void vkDestroyInstance(
 cmd void RecreatePhysicalDevices(
     VkInstance        instance,
     u32*              count,
-    VkPhysicalDevice* pPhysicalDevices) {
+    VkPhysicalDevice* pPhysicalDevices
+    VkPhysicalDeviceProperties* pProperties) {
   read(count[0:1])
   physicalDeviceCount := count[0]
   fence
   write(pPhysicalDevices[0:physicalDeviceCount])
+  write(pProperties[0:physicalDeviceCount])
 }
 
 @override

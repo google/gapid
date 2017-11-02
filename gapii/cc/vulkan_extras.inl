@@ -104,7 +104,8 @@ void SpyOverride_vkCmdDebugMarkerInsertEXT(
 void SpyOverride_RecreateInstance(const VkInstanceCreateInfo*, VkInstance*) {}
 void SpyOverride_RecreateState() {}
 void SpyOverride_RecreatePhysicalDevices(VkInstance, uint32_t*,
-                                         VkPhysicalDevice*) {}
+                                         VkPhysicalDevice*,
+                                         VkPhysicalDeviceProperties*) {}
 void SpyOverride_RecreateDevice(VkPhysicalDevice, const VkDeviceCreateInfo*,
                                 VkDevice*) {}
 void SpyOverride_RecreateDeviceMemory(VkDevice, VkMemoryAllocateInfo*,

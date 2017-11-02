@@ -363,14 +363,13 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
     }
     for (auto& instance_devices : devices) {
       uint32_t count = instance_devices.second.size();
-      RecreatePhysicalDevices(observer, instance_devices.first, &count,
-                              instance_devices.second.data());
+      std::vector<VkPhysicalDeviceProperties> props;
+      props.reserve(count);
       for (size_t i = 0; i < count; ++i) {
-        VkPhysicalDeviceProperties props;
-        mImports.mVkInstanceFunctions[instance_devices.first]
-          .vkGetPhysicalDeviceProperties(instance_devices.second[i], &props);
-        vkGetPhysicalDeviceProperties(observer, instance_devices.second[i], &props);
+        props.push_back(PhysicalDevices[instance_devices.second[i]]->mPhysicalDeviceProperties);
       }
+      RecreatePhysicalDevices(observer, instance_devices.first, &count,
+                              instance_devices.second.data(), props.data());
     }
 
     for (auto& physical_device : PhysicalDevices) {
