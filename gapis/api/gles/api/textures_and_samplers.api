@@ -944,7 +944,19 @@ cmd void glGenerateMipmap(GLenum target) {
       glErrorInvalidEnum(target)
     }
   }
-  // TODO
+
+  texture := GetBoundTextureOrErrorInvalidEnum(target)
+  if texture != null {
+    for _, levelIndex, level in texture.Levels {
+      for _, layerIndex, layer in level.Layers {
+        if layer.Data == null {
+          layer.Data = ReadGPUTextureData(texture, levelIndex, layerIndex)
+        } else {
+          copy(layer.Data, ReadGPUTextureData(texture, levelIndex, layerIndex))
+        }
+      }
+    }
+  }
 }
 
 sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
