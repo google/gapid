@@ -2519,6 +2519,12 @@ cmd void prefetchPhysicalDeviceProperties(
     VkPhysicalDevice physicalDevice,
     VkPhysicalDeviceProperties* pProperties) {
   pProperties[0] = ?
+  numEnumerated := len(Instances[instance].EnumeratedPhysicalDevices)
+  switch (PhysicalDevices[physicalDevice] == null) {
+    case true:
+      // First time see the physical device, save the order.
+      Instances[instance].EnumeratedPhysicalDevices[as!u32(numEnumerated)] = physicalDevice
+  }
   object := switch (PhysicalDevices[physicalDevice] == null) {
     case true:
       new!PhysicalDeviceObject()
@@ -8939,6 +8945,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused map!(u32, string) EnabledLayers
   @unused VkInstance        VulkanHandle
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
+  @hidden @unused map!(u32, VkPhysicalDevice) EnumeratedPhysicalDevices
 }
 
 @extension("VK_KHR_xlib_surface") define VK_KHR_XLIB_SURFACE_SPEC_VERSION   6

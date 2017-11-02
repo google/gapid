@@ -331,14 +331,17 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
+		// vkEnumeratePhysicalDevices called with no-null VkPhysicalDevices pointer,
+		// Need to make sure the enumerated order on the replay side is the same
+		// as the trace.
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 		count := uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
 		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
 		propOrder := []VkPhysicalDeviceProperties{}
-		for _, dev := range devices {
-			propOrder = append(propOrder,
-				GetState(s).PhysicalDevices.Get(dev).PhysicalDeviceProperties)
+		for _, i := range GetState(s).Instances.Get(e.Instance).EnumeratedPhysicalDevices.KeysSorted() {
+			dev := GetState(s).Instances.Get(e.Instance).EnumeratedPhysicalDevices.Get(i)
+			propOrder = append(propOrder, GetState(s).PhysicalDevices.Get(dev).PhysicalDeviceProperties)
 		}
 		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance, count, devices, propOrder)
 		out.MutateAndWrite(ctx, id, newEnumerate)
