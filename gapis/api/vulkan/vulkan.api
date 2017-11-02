@@ -2488,11 +2488,13 @@ cmd void vkDestroyInstance(
 cmd void RecreatePhysicalDevices(
     VkInstance        instance,
     u32*              count,
-    VkPhysicalDevice* pPhysicalDevices) {
+    VkPhysicalDevice* pPhysicalDevices
+    VkPhysicalDeviceProperties* pProperties) {
   read(count[0:1])
   physicalDeviceCount := count[0]
   fence
   write(pPhysicalDevices[0:physicalDeviceCount])
+  write(pProperties[0:physicalDeviceCount])
 }
 
 @override
@@ -2510,6 +2512,62 @@ cmd void RecreatePhysicalDeviceProperties(
 }
 
 @threadSafety("system")
+@override
+@no_replay
+cmd void prefetchPhysicalDeviceProperties(
+    VkInstance instance,
+    VkPhysicalDevice physicalDevice,
+    VkPhysicalDeviceProperties* pProperties) {
+  pProperties[0] = ?
+  numEnumerated := len(Instances[instance].EnumeratedPhysicalDevices)
+  switch (PhysicalDevices[physicalDevice] == null) {
+    case true:
+      // First time see the physical device, save the order.
+      Instances[instance].EnumeratedPhysicalDevices[as!u32(numEnumerated)] = physicalDevice
+  }
+  object := switch (PhysicalDevices[physicalDevice] == null) {
+    case true:
+      new!PhysicalDeviceObject()
+    case false:
+      PhysicalDevices[physicalDevice]
+  }
+  object.PhysicalDeviceProperties = pProperties[0]
+  PhysicalDevices[physicalDevice] = object
+}
+
+@threadSafety("system")
+@override
+@no_replay
+cmd void prefetchPhysicalDeviceQueueFamilyProperties(
+    VkInstance instance,
+    VkPhysicalDevice physicalDevice,
+    u32* pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties* pQueueFamilyProperties) {
+  _ = pQueueFamilyPropertyCount[0]
+  fence
+  if pQueueFamilyProperties == null {
+    pQueueFamilyPropertyCount[0] = ?
+  } else {
+    count := as!u32(?)
+    properties := pQueueFamilyProperties[0:count]
+    for i in (0 .. count) {
+      properties[i] = ?
+    }
+    pQueueFamilyPropertyCount[0] = count
+    object := switch (PhysicalDevices[physicalDevice] == null) {
+      case true:
+        new!PhysicalDeviceObject()
+      case false:
+        PhysicalDevices[physicalDevice]
+    }
+    for i in (0 .. count) {
+      object.QueueFamilyProperties[i] = properties[i]
+    }
+    PhysicalDevices[physicalDevice] = object
+  }
+}
+
+@threadSafety("system")
 @indirect("VkInstance")
 @override
 cmd VkResult vkEnumeratePhysicalDevices(
@@ -2518,6 +2576,7 @@ cmd VkResult vkEnumeratePhysicalDevices(
     VkPhysicalDevice* pPhysicalDevices) {
   _ = pPhysicalDeviceCount[0]
 
+  fence
   if pPhysicalDevices == null {
     pPhysicalDeviceCount[0] = ?
   } else {
@@ -2525,11 +2584,22 @@ cmd VkResult vkEnumeratePhysicalDevices(
     devices := pPhysicalDevices[0:count]
     for i in (0 .. count) {
       device := ?
-      PhysicalDevices[device] = new!PhysicalDeviceObject(Instance: instance,Index:  i,
-        VulkanHandle:              device)
       devices[i] = device
     }
     pPhysicalDeviceCount[0] = count
+
+    for i in (0 .. count) {
+      object := switch (PhysicalDevices[devices[i]] == null) {
+        case true:
+          new!PhysicalDeviceObject()
+        case false:
+          PhysicalDevices[devices[i]]
+      }
+      object.Instance = instance
+      object.Index = i
+      object.VulkanHandle = devices[i]
+      PhysicalDevices[devices[i]] = object
+    }
   }
 
   return ?
@@ -8875,6 +8945,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused map!(u32, string) EnabledLayers
   @unused VkInstance        VulkanHandle
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
+  @hidden @unused map!(u32, VkPhysicalDevice) EnumeratedPhysicalDevices
 }
 
 @extension("VK_KHR_xlib_surface") define VK_KHR_XLIB_SURFACE_SPEC_VERSION   6
@@ -8891,6 +8962,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   // A map of queue family indices to queue properties.
   @unused map!(u32, VkQueueFamilyProperties) QueueFamilyProperties
   @unused ref!VulkanDebugMarkerInfo             DebugInfo
+  @unused VkPhysicalDeviceProperties PhysicalDeviceProperties
 }
 
 @intenral class QueueInfo {

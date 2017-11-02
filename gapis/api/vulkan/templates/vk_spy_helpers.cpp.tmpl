@@ -655,6 +655,22 @@ uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(VkDevice device, VkMemoryAlloca
     return r;
 }
 
+void VulkanSpy::SpyOverride_prefetchPhysicalDeviceProperties(
+    VkInstance instance, VkPhysicalDevice physicalDevice,
+    VkPhysicalDeviceProperties* pProperties) {
+  return mImports.mVkInstanceFunctions[instance].vkGetPhysicalDeviceProperties(
+      physicalDevice, pProperties);
+}
+
+void VulkanSpy::SpyOverride_prefetchPhysicalDeviceQueueFamilyProperties(
+    VkInstance instance, VkPhysicalDevice physicalDevice,
+    uint32_t* pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties* pQueueFamilyProperties) {
+  return mImports.mVkInstanceFunctions[instance]
+      .vkGetPhysicalDeviceQueueFamilyProperties(
+          physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
+}
+
 uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDevices(
 VkInstance instance, uint32_t* pPhysicalDeviceCount,
 VkPhysicalDevice* pPhysicalDevices) {
@@ -665,7 +681,16 @@ VkPhysicalDevice* pPhysicalDevices) {
     }
     for (size_t i = 0; i < fill_count; ++i) {
         VkPhysicalDeviceProperties properties;
-        gapii::vkGetPhysicalDeviceProperties(pPhysicalDevices[i], &properties);
+        gapii::prefetchPhysicalDeviceProperties(instance, pPhysicalDevices[i],
+                                                &properties);
+        uint32_t queue_family_prop_count = 0;
+        gapii::prefetchPhysicalDeviceQueueFamilyProperties(
+            instance, pPhysicalDevices[i], &queue_family_prop_count, nullptr);
+        std::vector<VkQueueFamilyProperties> queue_family_properties(
+            queue_family_prop_count, VkQueueFamilyProperties{});
+        gapii::prefetchPhysicalDeviceQueueFamilyProperties(
+            instance, pPhysicalDevices[i], &queue_family_prop_count,
+            queue_family_properties.data());
     }
     return r;
 }

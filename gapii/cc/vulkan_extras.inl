@@ -25,6 +25,13 @@ PFN_vkVoidFunction SpyOverride_vkGetInstanceProcAddr(VkInstance instance,
                                                      const char* pName);
 PFN_vkVoidFunction SpyOverride_vkGetDeviceProcAddr(VkDevice device,
                                                    const char* pName);
+void SpyOverride_prefetchPhysicalDeviceQueueFamilyProperties(
+    VkInstance instance, VkPhysicalDevice physicalDevice,
+    uint32_t* pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties* pQueueFamilyProperties);
+void SpyOverride_prefetchPhysicalDeviceProperties(
+    VkInstance instance, VkPhysicalDevice physicalDevice,
+    VkPhysicalDeviceProperties* pProperties);
 uint32_t SpyOverride_vkEnumeratePhysicalDevices(
     VkInstance instance, uint32_t* pPhysicalDeviceCount,
     VkPhysicalDevice* pPhysicalDevices);
@@ -97,7 +104,8 @@ void SpyOverride_vkCmdDebugMarkerInsertEXT(
 void SpyOverride_RecreateInstance(const VkInstanceCreateInfo*, VkInstance*) {}
 void SpyOverride_RecreateState() {}
 void SpyOverride_RecreatePhysicalDevices(VkInstance, uint32_t*,
-                                         VkPhysicalDevice*) {}
+                                         VkPhysicalDevice*,
+                                         VkPhysicalDeviceProperties*) {}
 void SpyOverride_RecreateDevice(VkPhysicalDevice, const VkDeviceCreateInfo*,
                                 VkDevice*) {}
 void SpyOverride_RecreateDeviceMemory(VkDevice, VkMemoryAllocateInfo*,

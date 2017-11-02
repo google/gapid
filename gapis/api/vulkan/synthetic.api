@@ -126,13 +126,23 @@ cmd VkResult replayEnumeratePhysicalDevices(
     u64*              pPhysicalDeviceIDs) {
   count := pPhysicalDeviceCount[0]
   read(pPhysicalDeviceIDs[0:count])
+  fence
   devices := pPhysicalDevices[0:count]
   for i in (0 .. count) {
     device := ?
-    PhysicalDevices[device] = new!PhysicalDeviceObject(Instance: instance,Index:  i,
-      VulkanHandle:              device)
     devices[i] = device
   }
-
+  for i in (0 .. count) {
+    object := switch (PhysicalDevices[devices[i]] == null) {
+      case true:
+        new!PhysicalDeviceObject()
+      case false:
+        PhysicalDevices[devices[i]]
+    }
+    object.Instance = instance
+    object.Index = i
+    object.VulkanHandle = devices[i]
+    PhysicalDevices[devices[i]] = object
+  }
   return ?
 }

@@ -331,61 +331,54 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
+		// vkEnumeratePhysicalDevices called with no-null VkPhysicalDevices pointer,
+		// Need to make sure the enumerated order on the replay side is the same
+		// as the trace.
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 		count := uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
 		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
-		t.EnumeratedPhysicalDevices = append(t.EnumeratedPhysicalDevices, devices...)
-		t.Instance = e.Instance
+		propOrder := []VkPhysicalDeviceProperties{}
+		for _, i := range GetState(s).Instances.Get(e.Instance).EnumeratedPhysicalDevices.KeysSorted() {
+			dev := GetState(s).Instances.Get(e.Instance).EnumeratedPhysicalDevices.Get(i)
+			propOrder = append(propOrder, GetState(s).PhysicalDevices.Get(dev).PhysicalDeviceProperties)
+		}
+		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance, count, devices, propOrder)
+		out.MutateAndWrite(ctx, id, newEnumerate)
 		return
 	} else if e, ok := cmd.(*RecreatePhysicalDevices); ok {
 		l := s.MemoryLayout
 		count := uint32(e.Count.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
-		t.EnumeratedPhysicalDevices = append(t.EnumeratedPhysicalDevices, devices...)
-		t.Instance = e.Instance
+		properties := e.PProperties.Slice(uint64(0), uint64(count), l).MustRead(ctx, cmd, s, nil)
+		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance, count, devices, properties)
+		out.MutateAndWrite(ctx, id, newEnumerate)
 		return
-	} else if e, ok := cmd.(*VkGetPhysicalDeviceProperties); ok {
-		if len(t.EnumeratedPhysicalDevices) == 0 {
-			out.MutateAndWrite(ctx, id, cmd)
-			return
-		}
-		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		properties := e.PProperties.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil)
-		t.Properties[e.PhysicalDevice] = properties
-		if len(t.Properties) == len(t.EnumeratedPhysicalDevices) {
-			// We have enumerated all properties for all devices:
-			// create and run the synthetic command now.
-			nd := uint32(len(t.EnumeratedPhysicalDevices))
-			numDevices := s.AllocDataOrPanic(ctx, nd)
-			physicalDevices := s.AllocDataOrPanic(ctx, t.EnumeratedPhysicalDevices)
-			dids := make([]uint64, 0)
-			for _, dev := range t.EnumeratedPhysicalDevices {
-				dids = append(dids,
-					uint64(t.Properties[dev].VendorID)<<32|
-						uint64(t.Properties[dev].DeviceID))
-			}
-			deviceIDs := s.AllocDataOrPanic(ctx, dids)
-
-			newEnumerate := cb.ReplayEnumeratePhysicalDevices(t.Instance,
-				numDevices.Ptr(),
-				physicalDevices.Ptr(),
-				deviceIDs.Ptr(),
-				VkResult_VK_SUCCESS,
-			).AddRead(numDevices.Data()).
-				AddRead(deviceIDs.Data()).
-				AddWrite(physicalDevices.Data())
-			out.MutateAndWrite(ctx, id, newEnumerate)
-			t.EnumeratedPhysicalDevices = make([]VkPhysicalDevice, 0)
-			t.Properties = make(map[VkPhysicalDevice]VkPhysicalDeviceProperties)
-			return
-		}
 	}
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer) {}
+
+func buildReplayEnumeratePhysicalDevices(
+	ctx context.Context, s *api.GlobalState, cb CommandBuilder, instance VkInstance,
+	count uint32, devices []VkPhysicalDevice,
+	propertiesInOrder []VkPhysicalDeviceProperties) *ReplayEnumeratePhysicalDevices {
+	numDevData := s.AllocDataOrPanic(ctx, count)
+	phyDevData := s.AllocDataOrPanic(ctx, devices)
+	dids := make([]uint64, 0)
+	for i, _ := range devices {
+		dids = append(dids, uint64(
+			propertiesInOrder[i].VendorID)<<32|
+			uint64(propertiesInOrder[i].DeviceID))
+	}
+	devIdData := s.AllocDataOrPanic(ctx, dids)
+	return cb.ReplayEnumeratePhysicalDevices(
+		instance, numDevData.Ptr(), phyDevData.Ptr(), devIdData.Ptr(),
+		VkResult_VK_SUCCESS).AddRead(
+		numDevData.Data()).AddRead(phyDevData.Data()).AddRead(devIdData.Data())
+}
 
 // destroyResourceAtEOS is a transformation that destroys all active
 // resources at the end of stream.
