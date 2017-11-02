@@ -2565,7 +2565,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkCreateInstance,
 		*RecreateInstance:
 		bh.Alive = true
-	case *VkEnumeratePhysicalDevices:
+	case *VkEnumeratePhysicalDevices,
+		*PrefetchPhysicalDeviceProperties,
+		*PrefetchPhysicalDeviceQueueFamilyProperties:
 		bh.Alive = true
 	case *VkCreateDevice,
 		*RecreateDevice,
