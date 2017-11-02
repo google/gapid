@@ -40,16 +40,10 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		dID := id.Derived()
 		cb := CommandBuilder{Thread: r.Thread}
 
-		f, err := getImageFormat(GLenum(r.DataFormat), GLenum(r.DataType))
-		if err != nil {
-			res(nil, err)
-			return
-		}
-
 		tex, ok := c.Objects.Textures.Lookup(TextureId(r.Texture))
 		if !ok {
-			err := fmt.Errorf("Attempting to read from a texture that does not exist.\n"+
-				"Resolvable: %+v\nTexture: %+v", r, tex)
+			err := fmt.Errorf("Attempting to read from texture %v that does not exist.\n"+
+				"Resolvable: %+v\nTexture: %+v", r.Texture, r, tex)
 			log.W(ctx, "%v", err)
 			res(nil, err)
 			return
@@ -57,18 +51,14 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		lvl := tex.Levels.Get(GLint(r.Level))
 		layer := lvl.Layers.Get(GLint(r.Layer))
 		if layer == nil {
-			err := fmt.Errorf("Attempting to read from a texture (Level: %v/%v, Layer: %v/%v) that does not exist.\n"+
+			err := fmt.Errorf("Attempting to read from texture %v (Level: %v/%v, Layer: %v/%v) that does not exist.\n"+
 				"Resolvable: %+v\n"+
 				"Texture: %+v",
-				r.Level, tex.Levels.Len(), r.Layer, lvl.Layers.Len(), r, tex)
+				r.Texture, r.Level, tex.Levels.Len(), r.Layer, lvl.Layers.Len(), r, tex)
 			log.W(ctx, "%v", err)
 			res(nil, err)
 			return
 		}
-
-		size := uint64(f.Size(int(layer.Width), int(layer.Height), 1))
-		tmp := s.AllocOrPanic(ctx, size)
-		defer tmp.Free()
 
 		t := newTweaker(out, dID, cb)
 		defer t.revert(ctx)
@@ -103,6 +93,19 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		} else {
 			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID, GLint(r.Level), GLint(r.Layer)))
 		}
+
+		// Compat may have altered the texture format.
+		// The caller expects the data in the texture's authored format.
+		// Convert.
+		f, err := getImageFormat(GLenum(r.DataFormat), GLenum(r.DataType))
+		if err != nil {
+			res(nil, err)
+			return
+		}
+		res = res.Transform(func(in interface{}) (interface{}, error) {
+			return in.(*image.Data).Convert(f)
+		})
+
 		postFBData(ctx, dID, r.Thread, uint32(layer.Width), uint32(layer.Height), framebufferID, attachment, out, res)
 	})
 }
