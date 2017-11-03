@@ -286,8 +286,10 @@ public abstract class LinkifiedTree<T, F> extends Composite {
     public void onShow(TreeItem item) {
       T element = getElement(item);
       contentProvider.load(element, () -> {
-        update(item);
-        refresher.refresh();
+        if (!item.isDisposed()) {
+          update(item);
+          refresher.refresh();
+        }
       });
     }
 
