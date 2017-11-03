@@ -134,22 +134,24 @@ type FindHandler func(*FindResponse) error
 // NewError attempts to box and return err into an Error.
 // If err cannot be boxed into an Error then nil is returned.
 func NewError(err error) *Error {
-	switch err := errors.Cause(err).(type) {
-	case nil:
+	if err == nil {
 		return nil
-	case *ErrDataUnavailable:
-		return &Error{&Error_ErrDataUnavailable{err}}
-	case *ErrInvalidPath:
-		return &Error{&Error_ErrInvalidPath{err}}
-	case *ErrInvalidArgument:
-		return &Error{&Error_ErrInvalidArgument{err}}
-	case *ErrPathNotFollowable:
-		return &Error{&Error_ErrPathNotFollowable{err}}
-	case *ErrUnsupportedVersion:
-		return &Error{&Error_ErrUnsupportedVersion{err}}
-	default:
-		return &Error{&Error_ErrInternal{&ErrInternal{err.Error()}}}
 	}
+	for cause := err; cause != nil; cause = errors.Cause(cause) {
+		switch err := cause.(type) {
+		case *ErrDataUnavailable:
+			return &Error{&Error_ErrDataUnavailable{err}}
+		case *ErrInvalidPath:
+			return &Error{&Error_ErrInvalidPath{err}}
+		case *ErrInvalidArgument:
+			return &Error{&Error_ErrInvalidArgument{err}}
+		case *ErrPathNotFollowable:
+			return &Error{&Error_ErrPathNotFollowable{err}}
+		case *ErrUnsupportedVersion:
+			return &Error{&Error_ErrUnsupportedVersion{err}}
+		}
+	}
+	return &Error{&Error_ErrInternal{&ErrInternal{err.Error()}}}
 }
 
 // Get returns the boxed error.
