@@ -399,6 +399,7 @@ public class ShaderView extends Composite
 
     @Override
     public void onResourcesLoaded() {
+      lastUpdateContainedAllShaders = false;
       updateShaders();
     }
 
@@ -426,12 +427,16 @@ public class ShaderView extends Composite
                 }
                 newShaders.add(new Data(info));
               } else {
+                // This shader has not been created yet at this point in the trace, so we don't
+                // show it. Remember that we've skipped a shader and the UI list is incomplete.
                 skippedAnyShaders = true;
               }
             }
           }
         }
 
+        // If we previously had created the dropdown with all the shaders and didn't skip any
+        // this time, the dropdown does not need to change.
         if (!lastUpdateContainedAllShaders || skippedAnyShaders) {
           shaders = newShaders;
           lastUpdateContainedAllShaders = !skippedAnyShaders;
