@@ -31,7 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class Timeline extends ModelBase.ForPath<List<Service.Event>, Void, Timeline.Listener>
+public class Timeline extends CaptureDependentModel<List<Service.Event>, Timeline.Listener>
     implements ApiContext.Listener {
   private static final Logger LOG = Logger.getLogger(Timeline.class.getName());
 
@@ -39,7 +39,7 @@ public class Timeline extends ModelBase.ForPath<List<Service.Event>, Void, Timel
   private final ApiContext context;
 
   public Timeline(Shell shell, Client client, Capture capture, ApiContext context) {
-    super(LOG, shell, client, Listener.class);
+    super(LOG, shell, client, Listener.class, capture);
     this.capture = capture;
     this.context = context;
 
@@ -53,7 +53,13 @@ public class Timeline extends ModelBase.ForPath<List<Service.Event>, Void, Timel
 
   @Override
   public void onContextSelected(FilteringContext ctx) {
-    load(events(capture.getData(), ctx), false);
+    load(getPath(capture.getData()), false);
+  }
+
+  @Override
+  protected Path.Any getPath(Path.Capture capturePath) {
+    FilteringContext ctx = context.isLoaded() ? context.getSelectedContext() : null;
+    return (ctx == null) ? null : events(capturePath, ctx);
   }
 
   @Override
