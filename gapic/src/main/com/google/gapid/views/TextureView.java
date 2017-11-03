@@ -22,6 +22,7 @@ import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
 import static com.google.gapid.util.Paths.thumbnail;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
@@ -61,7 +62,6 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.VisibilityTrackingTableViewer;
 import com.google.gapid.widgets.Widgets;
 
-import java.util.Comparator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
@@ -83,6 +83,7 @@ import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.swt.widgets.Widget;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -523,6 +524,8 @@ public class TextureView extends Composite
    * displayed texture.
    */
   private static class GotoAction {
+    private static final int MAX_ITEMS = 100;
+
     protected final Models models;
     private final Theme theme;
     private final Consumer<Path.Command> listener;
@@ -567,16 +570,28 @@ public class TextureView extends Composite
         child.dispose();
       }
 
-      for (int i = 0; i < atomIds.size(); i++) {
+      // If we just have one additional item, simply go above the max, rather than adding the
+      // "one more item not shown" message.
+      int count = (atomIds.size() <= MAX_ITEMS + 1) ? atomIds.size() : MAX_ITEMS;
+      for (int i = 0; i < count; i++) {
         Path.Command id = atomIds.get(i);
-        MenuItem child = Widgets.createMenuItem(popupMenu, Formatter.atomIndex(id) + ": Loading...",
-            0, e -> listener.accept(id));
+        MenuItem child = createMenuItem(
+            popupMenu, Formatter.atomIndex(id) + ": Loading...", 0, e -> listener.accept(id));
         child.setData(id);
         if ((Paths.compare(id, selection) <= 0) &&
             (i == atomIds.size() - 1 || (Paths.compare(atomIds.get(i + 1), selection) > 0))) {
           child.setImage(theme.arrow());
         }
       }
+
+      if (count != atomIds.size()) {
+        // TODO: Instead of using a popup menu, create a custom widget that can handle showing
+        // all the references.
+        MenuItem child = createMenuItem(
+            popupMenu, (atomIds.size() - count) + " more references", 0, e -> { /* do nothing */});
+        child.setEnabled(false);
+     }
+
       item.setEnabled(!atomIds.isEmpty());
     }
 
