@@ -75,6 +75,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     if (!maintainState) {
       selection = null;
     }
+    reset();
   }
 
   @Override
