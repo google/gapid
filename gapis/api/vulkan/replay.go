@@ -339,9 +339,8 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		count := uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
 		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
 		propOrder := []VkPhysicalDeviceProperties{}
-		for _, i := range GetState(s).Instances.Get(e.Instance).EnumeratedPhysicalDevices.KeysSorted() {
-			dev := GetState(s).Instances.Get(e.Instance).EnumeratedPhysicalDevices.Get(i)
-			propOrder = append(propOrder, GetState(s).PhysicalDevices.Get(dev).PhysicalDeviceProperties)
+		for _, d := range devices {
+			propOrder = append(propOrder, GetState(s).PhysicalDevices.Get(d).PhysicalDeviceProperties)
 		}
 		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance, count, devices, propOrder)
 		out.MutateAndWrite(ctx, id, newEnumerate)
@@ -351,6 +350,8 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		count := uint32(e.Count.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
+		// The order of the properties must match with the order of the physical devices.
+		// This should be guaranteed in the caller of RecreatePhysicalDevices.
 		properties := e.PProperties.Slice(uint64(0), uint64(count), l).MustRead(ctx, cmd, s, nil)
 		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance, count, devices, properties)
 		out.MutateAndWrite(ctx, id, newEnumerate)
@@ -368,7 +369,7 @@ func buildReplayEnumeratePhysicalDevices(
 	numDevData := s.AllocDataOrPanic(ctx, count)
 	phyDevData := s.AllocDataOrPanic(ctx, devices)
 	dids := make([]uint64, 0)
-	for i, _ := range devices {
+	for i := uint32(0); i < count; i++ {
 		dids = append(dids, uint64(
 			propertiesInOrder[i].VendorID)<<32|
 			uint64(propertiesInOrder[i].DeviceID))
