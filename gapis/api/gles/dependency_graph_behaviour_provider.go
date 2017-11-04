@@ -73,7 +73,17 @@ type textureDataKey struct {
 	layer   GLint
 }
 
-func (k textureDataKey) Parent() dependencygraph.StateKey { return nil }
+func (k textureDataKey) Parent() dependencygraph.StateKey {
+	return textureDataGroupKey{k.texture, k.id}
+}
+
+// represents data for all levels and layers in texture
+type textureDataGroupKey struct {
+	texture *Texture
+	id      TextureId // For debugging, as 0 is not unique identifier.
+}
+
+func (k textureDataGroupKey) Parent() dependencygraph.StateKey { return nil }
 
 type textureSizeKey struct {
 	texture *Texture
@@ -301,11 +311,10 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *ap
 						if tu := c.Objects.TextureUnits.Get(TextureUnitId(unit)); tu != nil {
 							tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, tu, target)
 							if tex != nil && err == nil {
-								for lvl, level := range tex.Levels.Range() {
-									for lyr := range level.Layers.Range() {
-										texData, _ := tex.dataAndSize(lvl, lyr)
-										stateKeys = append(stateKeys, texData)
-									}
+								if tex.EGLImage != nil {
+									stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage})
+								} else {
+									stateKeys = append(stateKeys, textureDataGroupKey{tex, tex.ID})
 								}
 							}
 						}
