@@ -183,6 +183,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			switch cmd := cmd.(type) {
 			case *GlCopyImageSubData:
 				// TODO: This assumes whole-image copy.  Handle sub-range copies.
+				// TODO: This does not handle multiple layers well.
 				if cmd.SrcTarget == GLenum_GL_RENDERBUFFER {
 					b.Read(g, renderbufferDataKey{c.Objects.Renderbuffers.Get(RenderbufferId(cmd.SrcName))})
 				} else {
@@ -220,14 +221,16 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				if err != nil {
 					log.E(ctx, "Can not find bound texture %v", cmd.Target)
 				}
-				for levelIndex, level := range tex.Levels.Range() {
-					for layerIndex := range level.Layers.Range() {
-						data, size := tex.dataAndSize(levelIndex, layerIndex)
-						if levelIndex == 0 {
-							b.Read(g, data)
-							b.Read(g, size)
-						} else {
-							b.Read(g, size)
+				if baseLevel, ok := tex.Levels.Lookup(0); ok {
+					// NB: State was not mutated yet, so only the base level is initialized.
+					for layerIndex := range baseLevel.Layers.Range() {
+						data, size := tex.dataAndSize(0, layerIndex)
+						b.Read(g, data)
+						b.Read(g, size)
+						// Overestimate the number of levels to 31
+						for levelIndex := GLint(1); levelIndex < 32; levelIndex++ {
+							data, size := tex.dataAndSize(levelIndex, layerIndex)
+							b.Write(g, size)
 							b.Write(g, data)
 						}
 					}
