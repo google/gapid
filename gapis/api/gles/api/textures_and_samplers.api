@@ -946,13 +946,33 @@ cmd void glGenerateMipmap(GLenum target) {
   }
 
   texture := GetBoundTextureOrErrorInvalidEnum(target)
-  if texture != null {
-    for _, levelIndex, level in texture.Levels {
-      for _, layerIndex, layer in level.Layers {
-        if layer.Data == null {
-          layer.Data = ReadGPUTextureData(texture, levelIndex, layerIndex)
-        } else {
-          copy(layer.Data, ReadGPUTextureData(texture, levelIndex, layerIndex))
+  if (texture != null) && (0 in texture.Levels) && (texture.Levels[0].Layers[0] != null) {
+    // If we have mip-level 0, define all other mip-levels based on it
+    base := texture.Levels[0].Layers[0]
+    for levelIndex in as!GLint(1) .. as!GLint(31) {
+      width := base.Width >> as!u32(levelIndex)
+      height := base.Height >> as!u32(levelIndex)
+      // Depth decreases with each level for 3D textures, but not for 2D arrays.
+      is3D := (target == GL_TEXTURE_3D)
+      depth2D := as!GLint(len(texture.Levels[0].Layers))
+      depth3D := depth2D >> as!u32(levelIndex)
+      depth := Select!GLint(is3D, depth3D, depth2D)
+      // If any dimension is >0, we need to keep adding levels (but clamp actual size to 1).
+      //   Example 2D: (6,2,4) -> (3,1,4) -> (1,1,4) // depth is fixed to 4
+      //   Example 3D: (6,2,4) -> (3,1,2) -> (1,1,1) // width is camped to 1
+      if ((width > 0) || (height > 0) || (is3D && (depth > 0))) {
+        for layerIndex in 0 .. max!GLint(1, depth) {
+          image := new!Image(
+            Width: max!GLsizei(1, width),
+            Height: max!GLsizei(1, height),
+            SizedFormat: base.SizedFormat,
+            DataFormat: base.DataFormat,
+            DataType: base.DataType)
+          // Set state first so that the command below knowns image size.
+          tmpLevel := texture.Levels[levelIndex]
+          tmpLevel.Layers[layerIndex] = image
+          texture.Levels[levelIndex] = tmpLevel
+          image.Data = ReadGPUTextureData(texture, levelIndex, layerIndex)
         }
       }
     }
