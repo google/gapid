@@ -189,7 +189,7 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
   public Point getScrollPos() {
     TreeItem topItem = viewer.getTree().getTopItem();
-    return (topItem == null) ? null : GeoUtils.center(topItem.getBounds());
+    return (topItem == null || topItem.isDisposed()) ? null : GeoUtils.center(topItem.getBounds());
   }
 
   public void scrollTo(Point pos) {
@@ -286,8 +286,10 @@ public abstract class LinkifiedTree<T, F> extends Composite {
     public void onShow(TreeItem item) {
       T element = getElement(item);
       contentProvider.load(element, () -> {
-        update(item);
-        refresher.refresh();
+        if (!item.isDisposed()) {
+          update(item);
+          refresher.refresh();
+        }
       });
     }
 

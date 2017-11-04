@@ -58,6 +58,9 @@ public class Trees {
    * @return whether the bottom has been reached.
    */
   private static boolean getVisibleItems(TreeItem item, int treeBottom, Set<TreeItem> visible) {
+    if (item.isDisposed()) {
+      return false;
+    }
     visible.add(item);
     if (bottom(item.getBounds()) > treeBottom) {
       return true;
@@ -78,6 +81,9 @@ public class Trees {
    * @return the next parent or {@code null} if the bottom has been reached.
    */
   private static TreeItem getVisibleSiblings(TreeItem item, int treeBottom, Set<TreeItem> visible) {
+    if (item.isDisposed()) {
+      return null;
+    }
     TreeItem parent = item.getParentItem();
     TreeItem[] siblings = (parent == null) ? item.getParent().getItems() : parent.getItems();
     int idx = 0;

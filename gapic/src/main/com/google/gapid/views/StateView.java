@@ -227,6 +227,9 @@ public class StateView extends Composite
 
   private void updateSelectionState() {
     ApiState.Node root = models.state.getData();
+    if (root == null) {
+      return;
+    }
     selectionHandler.updateSelectionFromModel(
         () -> Futures.transformAsync(models.state.getResolvedSelectedPath(),
             nodePath -> getTreePath(root, nodePath)).get(),
