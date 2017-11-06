@@ -27,13 +27,21 @@ window.onload = function() {
 
     tabs = document.getElementsByClassName("tab");
     while (tabs.length > 0) { // The collection is live, and we're changing class names.
-        var tab, link;
+        var tab, link, display;
 
         tab = tabs[0];
 
+        display = tab.getElementsByClassName("display");
+
         link = document.createElement("button");
         link.className = "tablink";
-        link.innerText = tab.id;
+        if (display.length > 0) {
+            while (display.length > 0) {
+                link.appendChild(display[0]);
+            }
+        } else {
+            link.innerText = tab.id;
+        }
         tabbar.appendChild(link);
 
         if (first) {
