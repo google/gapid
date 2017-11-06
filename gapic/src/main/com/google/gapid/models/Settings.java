@@ -84,6 +84,7 @@ public class Settings {
   public long lastCheckForUpdates = 0; // milliseconds since midnight, January 1, 1970 UTC.
   public String analyticsClientId = ""; // Empty means do not track.
   public boolean disableReplayOptimization = false;
+  public boolean reportExceptions = false;
 
   /**
    * Registers the listener for changes.
@@ -168,10 +169,6 @@ public class Settings {
         .toArray(l -> new String[l]);
   }
 
-  public boolean crashReportingEnabled() {
-    return false;
-  }
-
   public boolean analyticsEnabled() {
     return !analyticsClientId.isEmpty();
   }
@@ -213,7 +210,9 @@ public class Settings {
     lastCheckForUpdates = getLong(properties, "updates.lastCheck", 0);
     updateAvailable = getBoolean(properties, "updates.available", updateAvailable);
     analyticsClientId = properties.getProperty("analytics.clientId", "");
-    disableReplayOptimization = getBoolean(properties, "replay.disableOptimization", disableReplayOptimization);
+    disableReplayOptimization =
+        getBoolean(properties, "replay.disableOptimization", disableReplayOptimization);
+    reportExceptions = getBoolean(properties, "crash.reporting", reportExceptions);
   }
 
   private void updateTo(Properties properties) {
@@ -250,7 +249,9 @@ public class Settings {
     properties.setProperty("updates.lastCheck", Long.toString(lastCheckForUpdates));
     properties.setProperty("updates.available", Boolean.toString(updateAvailable));
     properties.setProperty("analytics.clientId", analyticsClientId);
-    properties.setProperty("replay.disableOptimization",  Boolean.toString(disableReplayOptimization));
+    properties.setProperty(
+        "replay.disableOptimization",  Boolean.toString(disableReplayOptimization));
+    properties.setProperty("crash.reporting", Boolean.toString(reportExceptions));
   }
 
   private static Point getPoint(Properties properties, String name) {
