@@ -28,6 +28,7 @@ import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.ObjectStore;
 
 import org.eclipse.swt.widgets.Shell;
@@ -46,15 +47,18 @@ import java.util.logging.Logger;
 abstract class ModelBase<T, S, E, L extends Events.Listener> {
   private final Logger log;
   protected final Shell shell;
+  protected final ExceptionHandler handler;
   protected final Client client;
   private final ObjectStore<S> sourceStore = ObjectStore.create();
   protected final SingleInFlight rpcController = new SingleInFlight();
   protected final Events.ListenerCollection<L> listeners;
   private T data;
 
-  public ModelBase(Logger log, Shell shell, Client client, Class<L> listenerClass) {
+  public ModelBase(
+      Logger log, Shell shell, ExceptionHandler handler, Client client, Class<L> listenerClass) {
     this.log = log;
     this.shell = shell;
+    this.handler = handler;
     this.client = client;
     this.listeners = Events.listeners(listenerClass);
   }
@@ -87,6 +91,7 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
       return success(result.get());
     } catch (RpcException | ExecutionException e) {
       if (!shell.isDisposed()) {
+        handler.reportException(e);
         throttleLogRpcError(log, "LoadData error", e);
       }
       return error(null);
@@ -142,8 +147,9 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
   public abstract static class ForPath<T, E, L extends Events.Listener>
     extends ModelBase<T, Path.Any, E, L> {
 
-    public ForPath(Logger log, Shell shell, Client client, Class<L> listenerClass) {
-      super(log, shell, client, listenerClass);
+    public ForPath(
+        Logger log, Shell shell, ExceptionHandler handler, Client client, Class<L> listenerClass) {
+      super(log, shell, handler, client, listenerClass);
     }
   }
 }

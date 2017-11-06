@@ -19,6 +19,7 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.ExceptionHandler;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -32,8 +33,8 @@ public class Resources
     extends CaptureDependentModel.ForValue<Service.Resources, Resources.Listener> {
   private static final Logger LOG = Logger.getLogger(Resources.class.getName());
 
-  public Resources(Shell shell, Client client, Capture capture) {
-    super(LOG, shell, client, Listener.class, capture);
+  public Resources(Shell shell, ExceptionHandler handler, Client client, Capture capture) {
+    super(LOG, shell, handler, client, Listener.class, capture);
   }
 
   @Override

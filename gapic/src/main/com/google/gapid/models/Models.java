@@ -16,11 +16,13 @@
 package com.google.gapid.models;
 
 import com.google.gapid.server.Client;
+import com.google.gapid.util.ExceptionHandler;
 
 import org.eclipse.swt.widgets.Shell;
 
 public class Models {
   public final Settings settings;
+  public final ExceptionHandler handler;
   public final Follower follower;
   public final Capture capture;
   public final Devices devices;
@@ -33,10 +35,12 @@ public class Models {
   public final Thumbnails thumbs;
   public final ConstantSets constants;
 
-  public Models(Settings settings, Follower follower, Capture capture, Devices devices,
-      AtomStream atoms, ApiContext contexts, Timeline timeline, Resources resources, ApiState state,
-      Reports reports, Thumbnails thumbs, ConstantSets constants) {
+  public Models(Settings settings, ExceptionHandler handler, Follower follower, Capture capture,
+      Devices devices, AtomStream atoms, ApiContext contexts, Timeline timeline,
+      Resources resources, ApiState state, Reports reports, Thumbnails thumbs,
+      ConstantSets constants) {
     this.settings = settings;
+    this.handler = handler;
     this.follower = follower;
     this.capture = capture;
     this.devices = devices;
@@ -50,20 +54,21 @@ public class Models {
     this.constants = constants;
   }
 
-  public static Models create(Shell shell, Settings settings, Client client) {
+  public static Models create(
+      Shell shell, Settings settings, ExceptionHandler handler, Client client) {
     ConstantSets constants = new ConstantSets(client);
     Follower follower = new Follower(shell, client);
-    Capture capture = new Capture(shell, client, settings);
-    Devices devices = new Devices(shell, client, capture);
-    ApiContext contexts = new ApiContext(shell, client, capture);
-    Timeline timeline = new Timeline(shell, client, capture, contexts);
-    AtomStream atoms = new AtomStream(shell, client, capture, contexts, constants);
-    Resources resources = new Resources(shell, client, capture);
-    ApiState state = new ApiState(shell, client, follower, atoms, contexts, constants);
-    Reports reports = new Reports(shell, client, capture, devices, contexts);
+    Capture capture = new Capture(shell, handler, client, settings);
+    Devices devices = new Devices(shell, handler, client, capture);
+    ApiContext contexts = new ApiContext(shell, handler, client, capture);
+    Timeline timeline = new Timeline(shell, handler, client, capture, contexts);
+    AtomStream atoms = new AtomStream(shell, handler, client, capture, contexts, constants);
+    Resources resources = new Resources(shell, handler, client, capture);
+    ApiState state = new ApiState(shell, handler, client, follower, atoms, contexts, constants);
+    Reports reports = new Reports(shell, handler, client, capture, devices, contexts);
     Thumbnails thumbs = new Thumbnails(client, devices, capture, settings);
-    return new Models(settings, follower, capture, devices, atoms, contexts, timeline, resources,
-        state, reports, thumbs, constants);
+    return new Models(settings, handler, follower, capture, devices, atoms, contexts, timeline,
+        resources, state, reports, thumbs, constants);
   }
 
   public void dispose() {
