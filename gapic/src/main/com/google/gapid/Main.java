@@ -17,6 +17,7 @@ package com.google.gapid;
 
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
+import static com.google.gapid.views.WelcomeDialog.showFirstTimeDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
@@ -150,10 +151,19 @@ public class Main {
       models = Models.create(shell, settings, handler, client);
       widgets = Widgets.create(shell.getDisplay(), client, models);
 
+      if (models.settings.skipFirstRunDialog) {
+        shell.getDisplay().asyncExec(this::startUp);
+      } else {
+        shell.getDisplay().asyncExec(
+            () -> showFirstTimeDialog(shell, models, widgets, this::startUp));
+      }
+    }
+
+    private void startUp() {
       if (args.length == 1) {
         models.capture.loadCapture(new File(args[0]));
       } else if (!models.settings.skipWelcomeScreen) {
-        shell.getDisplay().asyncExec(() -> showWelcomeDialog(shell, models, widgets));
+        showWelcomeDialog(window.getShell(), models, widgets);
       }
     }
 

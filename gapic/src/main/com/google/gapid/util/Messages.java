@@ -50,7 +50,15 @@ public interface Messages {
   public static final String BROWSE = "Browse";
   public static final String SELECT_ACTIVITY = "Select Activity";
   public static final String WELCOME_TITLE = WINDOW_TITLE + " - Welcome";
-  public static final String WELCOME_TEXT = "Get started with " + WINDOW_TITLE;
+  public static final String WELCOME_SUBTITLE = "Get started with " + WINDOW_TITLE;
+  public static final String WELCOME_TEXT = "GAPID allows you to inspect, tweak, and replay calls" +
+      " from an application to a\ngraphics API. To begin, let us know where adb is located on" +
+      " your computer.";
+  public static final String WELCOME_BUTTON = "Get Started";
+  public static final String ANALYTICS_OPTION =
+      "Allow GAPID to send usage analytics to Google to improve the tool";
+  public static final String CRASH_REPORTING_OPTION = "Allow GAPID to send crash reports";
+  public static final String UPDATE_CHECK_OPTION = "Automatically check for GAPID updates";
   public static final String NO_REPLAY_DEVICE = "No replay device available for this capture.";
   public static final String SETTINGS_TITLE = "Modify Settings";
   public static final String ERROR_MESSAGE =
