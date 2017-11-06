@@ -65,6 +65,9 @@ type GlobalState struct {
 
 // State represents the graphics state for a single context.
 type State interface {
+	// All states belong to an API
+	APIObject
+
 	// Root returns the path to the root of the state to display. It can vary
 	// based on filtering mode. Returning nil, nil indicates there is no state
 	// to show at this point in the capture.

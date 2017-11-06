@@ -1201,6 +1201,8 @@
     CustomState `hidden:"true" nobox:"true"`
   }
 
+  func (g *State) API() api.API { return API{} }
+
   func (g *State) Init() {
     {{range $g := $.Globals}}
       {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}

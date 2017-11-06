@@ -65,7 +65,7 @@ const (
 // NewPools creates and returns a new Pools instance.
 func NewPools() Pools {
 	return Pools{
-		pools: map[PoolID]*Pool{ApplicationPool: {}},
+		pools:      map[PoolID]*Pool{ApplicationPool: {}},
 		nextPoolID: ApplicationPool + 1,
 	}
 }
@@ -122,6 +122,23 @@ func (m *Pools) New() (id PoolID, p *Pool) {
 		m.OnCreate(id, p)
 	}
 	return
+}
+
+// NewAt creates and returns a new Pool with a specific ID, fails if it cannot
+func (m *Pools) NewAt(id PoolID) *Pool {
+	if _, ok := m.pools[id]; ok {
+		panic("Could not create given pool")
+	}
+	p := &Pool{}
+	m.pools[id] = p
+	if id >= m.nextPoolID {
+		m.nextPoolID = id + 1
+	}
+
+	if m.OnCreate != nil {
+		m.OnCreate(id, p)
+	}
+	return p
 }
 
 // Get returns the Pool with the given id.

@@ -131,7 +131,16 @@ func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
 			parent.cmd.Extras().Add(obj)
 		}
 	}
-
+	if _, ok := parent.(*InitialState); ok {
+		switch obj := child.(type) {
+		case *api.CmdObservation:
+			return d.builder.addInitialMemory(ctx, obj)
+		case api.State:
+			return d.builder.addInitialState(ctx, obj)
+		default:
+			return fmt.Errorf("We do not expect a %T as a child of an initial state", obj)
+		}
+	}
 	return nil
 }
 
@@ -168,6 +177,9 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 
 	case api.Cmd:
 		return &cmdGroup{cmd: obj}, nil
+
+	case *InitialState:
+		d.builder.initialState = obj
 	}
 
 	return obj, nil

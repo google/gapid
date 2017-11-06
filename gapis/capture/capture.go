@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/analytics"
+	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -57,15 +58,25 @@ func (e ErrUnsupportedVersion) Error() string {
 }
 
 type Capture struct {
-	Name     string
-	Header   *Header
-	Commands []api.Cmd
-	APIs     []api.API
-	Observed interval.U64RangeList
+	Name         string
+	Header       *Header
+	Commands     []api.Cmd
+	APIs         []api.API
+	Observed     interval.U64RangeList
+	InitialState *InitialState
+}
+
+type InitialState struct {
+	Memory []*api.CmdObservation
+	APIs   map[api.API]api.State
 }
 
 func init() {
 	protoconv.Register(toProto, fromProto)
+	protoconv.Register(
+		func(ctx context.Context, in *InitialState) (*State, error) { return &State{}, nil },
+		func(ctx context.Context, in *State) (*InitialState, error) { return &InitialState{}, nil },
+	)
 }
 
 // New returns a path to a new capture with the given name, header and commands.
@@ -106,10 +117,28 @@ func NewState(ctx context.Context) (*api.GlobalState, error) {
 func (c *Capture) NewState() *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
-	return api.NewStateWithAllocator(
+	s := api.NewStateWithAllocator(
 		memory.NewBasicAllocator(freeList),
 		c.Header.Abi.MemoryLayout,
 	)
+	c.InitializeState(s)
+	return s
+}
+
+// Applies the Initial state of this capture to the given GlobalState
+func (c *Capture) InitializeState(s *api.GlobalState) {
+	if c.InitialState != nil {
+		for _, m := range c.InitialState.Memory {
+			pool, err := s.Memory.Get(memory.PoolID(m.Pool))
+			if err == nil {
+				pool = s.Memory.NewAt(memory.PoolID(m.Pool))
+			}
+			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
+		}
+		for k, v := range c.InitialState.APIs {
+			s.APIs[k.ID()] = deep.MustClone(v).(api.State)
+		}
+	}
 }
 
 // Service returns the service.Capture description for this capture.
@@ -289,11 +318,12 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 }
 
 type builder struct {
-	apis     []api.API
-	seenAPIs map[api.ID]struct{}
-	observed interval.U64RangeList
-	cmds     []api.Cmd
-	resIDs   []id.ID
+	apis         []api.API
+	seenAPIs     map[api.ID]struct{}
+	observed     interval.U64RangeList
+	cmds         []api.Cmd
+	resIDs       []id.ID
+	initialState *InitialState
 }
 
 func newBuilder() *builder {
@@ -349,15 +379,31 @@ func (b *builder) addRes(ctx context.Context, expectedIndex int64, data []byte) 
 	return nil
 }
 
+func (b *builder) addInitialState(ctx context.Context, state api.State) error {
+	if _, ok := b.initialState.APIs[state.API()]; ok {
+		return fmt.Errorf("We have more than one set of initial state for API %v", state.API())
+	}
+	b.initialState.APIs[state.API()] = state
+	b.addAPI(ctx, state.API())
+	return nil
+}
+
+func (b *builder) addInitialMemory(ctx context.Context, mem *api.CmdObservation) error {
+	b.initialState.Memory = append(b.initialState.Memory, mem)
+	b.addObservation(ctx, mem)
+	return nil
+}
+
 func (b *builder) build(name string, header *Header) *Capture {
 	for _, api := range b.apis {
 		analytics.SendEvent("capture", "uses-api", api.Name())
 	}
 	return &Capture{
-		Name:     name,
-		Header:   header,
-		Commands: b.cmds,
-		Observed: b.observed,
-		APIs:     b.apis,
+		Name:         name,
+		Header:       header,
+		Commands:     b.cmds,
+		Observed:     b.observed,
+		APIs:         b.apis,
+		InitialState: b.initialState,
 	}
 }

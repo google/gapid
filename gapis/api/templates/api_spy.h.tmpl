@@ -47,6 +47,10 @@
   #define __STDC_FORMAT_MACROS
   #include <inttypes.h>
 ¶
+namespace {{(Global "API")}}_pb {
+  class InitialState;
+}
+¶
   namespace gapii {«
 ¶
   class {{$spyname}} : public virtual SpyBase {
@@ -72,6 +76,8 @@
     #include "gapii/cc/{{Global "API"}}_extras.inl"
 ¶
   «protected:»
+¶
+    {{Global "API"}}_pb::InitialState* serializeState(CallObserver* observer, ToProtoContext& ctx);
 ¶
     bool observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data);
 ¶

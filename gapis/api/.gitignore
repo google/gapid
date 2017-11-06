@@ -6,3 +6,4 @@ service.pb.go
 /*/convert.go
 /*/enum.go
 /*/mutate.go
+/*/state_serialize.go
