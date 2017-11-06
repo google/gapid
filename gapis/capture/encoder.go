@@ -34,6 +34,12 @@ func (e *encoder) encode(ctx context.Context) error {
 		return err
 	}
 
+	if e.c.InitialState != nil {
+		if err := e.initialState(ctx); err != nil {
+			return err
+		}
+	}
+
 	for _, cmd := range e.c.Commands {
 		cmdID, err := e.startCmd(ctx, cmd)
 		if err != nil {
@@ -45,6 +51,37 @@ func (e *encoder) encode(ctx context.Context) error {
 		if err := e.endCmd(ctx, cmd); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (e *encoder) initialState(ctx context.Context) (err error) {
+	var msg proto.Message
+	var initialStateID uint64
+	if msg, err = protoconv.ToProto(ctx, e.c.InitializeState); err != nil {
+		return err
+	}
+	if initialStateID, err = e.w.BeginGroup(ctx, msg); err != nil {
+		return err
+	}
+	for _, initialMemory := range e.c.InitialState.Memory {
+		if msg, err = protoconv.ToProto(ctx, initialMemory); err != nil {
+			return err
+		}
+		if err = e.w.ChildObject(ctx, msg, initialStateID); err != nil {
+			return err
+		}
+	}
+	for _, initialAPI := range e.c.InitialState.APIs {
+		if msg, err = protoconv.ToProto(ctx, initialAPI); err != nil {
+			return err
+		}
+		if err = e.w.ChildObject(ctx, msg, initialStateID); err != nil {
+			return err
+		}
+	}
+	if err = e.w.EndGroup(ctx, initialStateID); err != nil {
+		return err
 	}
 	return nil
 }

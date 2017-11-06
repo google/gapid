@@ -1,6 +1,7 @@
 /gles_exports.cpp
 /gles_imports.cpp
 /gles_imports.h
+/gles_spy_serialize.cpp
 /gles_types.cpp
 /gles_types.h
 
@@ -8,6 +9,7 @@
 /gvr_exports.h
 /gvr_imports.cpp
 /gvr_imports.h
+/gvr_spy_serialize.cpp
 /gvr_types.cpp
 /gvr_types.h
 
@@ -17,6 +19,7 @@
 /vulkan_imports.h
 /vulkan_types.cpp
 /vulkan_types.h
+/vulkan_spy_serialize.cpp
 /vulkan_spy_helpers.cpp
 /vulkan_VkCommandBuffer_exports.cpp
 /vulkan_VkDevice_exports.cpp

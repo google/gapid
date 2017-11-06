@@ -92,8 +92,9 @@ func (o *CmdObservations) DataString(ctx context.Context) string {
 // CmdObservation represents a single read or write observation made by an
 // command.
 type CmdObservation struct {
-	Range memory.Range // Memory range that was observed.
-	ID    id.ID        // The resource identifier of the observed data.
+	Pool  memory.PoolID // The pool in which the memory was observed.
+	Range memory.Range  // Memory range that was observed.
+	ID    id.ID         // The resource identifier of the observed data.
 }
 
 func (o CmdObservation) String() string {
@@ -108,6 +109,7 @@ func init() {
 				return nil, err
 			}
 			return &memory_pb.Observation{
+				Pool:     uint32(a.Pool),
 				Base:     a.Range.Base,
 				Size:     a.Range.Size,
 				ResIndex: resIndex,
@@ -119,6 +121,7 @@ func init() {
 				return CmdObservation{}, err
 			}
 			o := CmdObservation{}
+			o.Pool = memory.PoolID(a.Pool)
 			o.Range.Base = a.Base
 			o.Range.Size = a.Size
 			o.ID = id

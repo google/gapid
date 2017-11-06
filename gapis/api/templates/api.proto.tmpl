@@ -31,6 +31,14 @@
     {{if (GetAnnotation $c "serialize")}}{{Template "ClassEntry" $c}}{{end}}
   {{end}}
 
+  {{Global "ProtoID" 0}}
+  message InitialState {»¶
+    {{range $g := $.Globals}}
+      {{if (GetAnnotation $g "serialize")}}
+        {{Template "Proto.Entry" "Param" $g "Type" (TypeOf $g)}}
+      {{end}}
+    {{end}}
+  «}¶
 {{end}}
 
 
