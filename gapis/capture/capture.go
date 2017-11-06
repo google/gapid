@@ -17,12 +17,9 @@ package capture
 import (
 	"bytes"
 	"context"
-	fmt "fmt"
 	"io"
-	"reflect"
 	"sync"
 
-	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -31,7 +28,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
-	"github.com/google/gapid/gapis/memory/memory_pb"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
@@ -47,12 +43,11 @@ var (
 )
 
 type Capture struct {
-	Name          string
-	Header        *Header
-	Commands      []api.Cmd
-	APIs          []api.API
-	Observed      interval.U64RangeList
-	InitialStates map[api.ID]*InitialAPIState
+	Name     string
+	Header   *Header
+	Commands []api.Cmd
+	APIs     []api.API
+	Observed interval.U64RangeList
 }
 
 func init() {
@@ -114,31 +109,10 @@ func NewUninitializedState(ctx context.Context) (*api.GlobalState, error) {
 func (c *Capture) NewState() *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
-	s := api.NewStateWithAllocator(
+	return api.NewStateWithAllocator(
 		memory.NewBasicAllocator(freeList),
 		c.Header.Abi.MemoryLayout,
 	)
-	c.InitializeState(s)
-	return s
-}
-
-// Applies the Initial state of this capture to the given GlobalState
-func (c *Capture) InitializeState(s *api.GlobalState) {
-	for a, t := range c.InitialStates {
-		s.APIs[a] = deep.MustClone(t.State).(api.State)
-		for _, m := range t.MemoryWrites {
-			mem := memory.NewData(c.Header.Abi.MemoryLayout, m.GetData())
-			if pool, err := s.Memory.Get(memory.PoolID(m.GetPoolID())); err == nil {
-				pool.Write(m.GetOffset(), mem)
-			} else {
-				pool := s.Memory.NewAt(memory.PoolID(m.GetPoolID()))
-				pool.Write(m.GetOffset(), mem)
-			}
-		}
-	}
-	for _, s := range s.APIs {
-		s.SetupInitialState()
-	}
 }
 
 // Service returns the service.Capture description for this capture.
@@ -297,22 +271,20 @@ func fromProto(ctx context.Context, _ func(uint64, interface{}), r *Record) (*Ca
 }
 
 type builder struct {
-	idmap        map[id.ID]id.ID
-	apis         []api.API
-	seenAPIs     map[api.ID]struct{}
-	observed     interval.U64RangeList
-	cmds         []api.Cmd
-	initialState map[api.ID]*InitialAPIState
+	idmap    map[id.ID]id.ID
+	apis     []api.API
+	seenAPIs map[api.ID]struct{}
+	observed interval.U64RangeList
+	cmds     []api.Cmd
 }
 
 func newBuilder() *builder {
 	return &builder{
-		idmap:        map[id.ID]id.ID{},
-		apis:         []api.API{},
-		seenAPIs:     map[api.ID]struct{}{},
-		observed:     interval.U64RangeList{},
-		cmds:         []api.Cmd{},
-		initialState: map[api.ID]*InitialAPIState{},
+		idmap:    map[id.ID]id.ID{},
+		apis:     []api.API{},
+		seenAPIs: map[api.ID]struct{}{},
+		observed: interval.U64RangeList{},
+		cmds:     []api.Cmd{},
 	}
 }
 
@@ -357,27 +329,12 @@ func (b *builder) addRes(ctx context.Context, id id.ID, data []byte) error {
 	return nil
 }
 
-func (b *builder) addInitialState(ctx context.Context, id api.ID, state *InitialAPIState) {
-	api := api.Find(id)
-	b.addAPI(ctx, api)
-	b.initialState[id] = state
-}
-
-func (b *builder) addInitialMemory(state api.State, mem *memory_pb.MemoryWrite) {
-	for _, states := range b.initialState {
-		if states.State == state {
-			states.MemoryWrites = append(states.MemoryWrites, mem)
-		}
-	}
-}
-
 func (b *builder) build(name string, header *Header) *Capture {
 	return &Capture{
-		Name:          name,
-		Header:        header,
-		Commands:      b.cmds,
-		Observed:      b.observed,
-		APIs:          b.apis,
-		InitialStates: b.initialState,
+		Name:     name,
+		Header:   header,
+		Commands: b.cmds,
+		Observed: b.observed,
+		APIs:     b.apis,
 	}
 }

@@ -170,9 +170,9 @@ var (
 
 func init() {
 	api.Register(API{})
-	protoconv.Register(func(ctx context.Context, _ func(interface{}) uint64, a *X) (*test_pb.X, error) {
+	protoconv.Register(func(ctx context.Context, a *X) (*test_pb.X, error) {
 		return &test_pb.X{Data: box.NewValue(*a)}, nil
-	}, func(ctx context.Context, _ func(uint64, interface{}), b *test_pb.X) (*X, error) {
+	}, func(ctx context.Context, b *test_pb.X) (*X, error) {
 		var a X
 		if err := b.Data.AssignTo(&a); err != nil {
 			return nil, err

@@ -31,15 +31,6 @@
     {{if (GetAnnotation $c "serialize")}}{{Template "ClassEntry" $c}}{{end}}
   {{end}}
 
-  {{Global "ProtoID" 0}}
-  message InitialState {»¶
-    uint32 id = {{Inc "ProtoID"}};¶
-    {{range $g := $.Globals}}
-      {{if (GetAnnotation $g "serialize")}}
-        {{Template "Proto.Entry" "Param" $g "Type" (TypeOf $g)}}
-      {{end}}
-    {{end}}
-  «}¶
 {{end}}
 
 
@@ -112,7 +103,6 @@
   {{else if IsS64           $}}int64
   {{else if IsString        $}}string
   {{else if IsEnum          $}}uint32
-  {{else if IsReference     $}}memory_pb.Reference
   {{else if IsPointer       $}}memory_pb.Pointer
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsClass         $}}{{$.Name}}

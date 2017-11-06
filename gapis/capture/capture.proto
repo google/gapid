@@ -57,8 +57,3 @@ message FramebufferObservation {
 	// The RGBA color-buffer data.
 	bytes data = 5;
 }
-
-// State is the object that denotes all of the API-specific initial states
-// in pack files. If present it will be right after the header.
-message State {
-}

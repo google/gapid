@@ -46,9 +46,6 @@ void releaseBuffer(uint8_t* buffer) { delete[] buffer; }
 }  // anonymous namespace
 
 namespace gapii {
-
-InvalidReferences kInvalidReferences;
-
 // Creates a CallObserver with a given spy and applies the memory space for
 // observation data from the spy instance.
 CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)

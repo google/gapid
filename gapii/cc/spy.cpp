@@ -366,7 +366,7 @@ std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserv
 
     std::shared_ptr<StaticContextState> out(new StaticContextState(constants, threadName));
 
-    observer->encodeAndDelete(out->toProto(&kInvalidReferences));
+    observer->encodeAndDelete(out->toProto());
 
     return out;
 }
@@ -433,7 +433,7 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
     ));
 
     // Store the DynamicContextState as an extra.
-    observer->encodeAndDelete(out->toProto(&kInvalidReferences));
+    observer->encodeAndDelete(out->toProto());
 
     return out;
 }

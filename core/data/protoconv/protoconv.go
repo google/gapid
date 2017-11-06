@@ -29,14 +29,12 @@ import (
 )
 
 var (
-	mutex           sync.Mutex
-	protoToObject   = map[reflect.Type]reflect.Value{}
-	objectToProto   = map[reflect.Type]reflect.Value{}
-	tyContext       = reflect.TypeOf((*context.Context)(nil)).Elem()
-	tyError         = reflect.TypeOf((*error)(nil)).Elem()
-	tyMessage       = reflect.TypeOf((*proto.Message)(nil)).Elem()
-	tyToProtoFunc   = reflect.TypeOf(func(interface{}) uint64 { return 0 })
-	tyFromProtoFunc = reflect.TypeOf(func(uint64, interface{}) {})
+	mutex         sync.Mutex
+	protoToObject = map[reflect.Type]reflect.Value{}
+	objectToProto = map[reflect.Type]reflect.Value{}
+	tyContext     = reflect.TypeOf((*context.Context)(nil)).Elem()
+	tyError       = reflect.TypeOf((*error)(nil)).Elem()
+	tyMessage     = reflect.TypeOf((*proto.Message)(nil)).Elem()
 )
 
 // ErrNoConverterRegistered is the error returned from ToProto or ToObject when
@@ -51,9 +49,9 @@ func (e ErrNoConverterRegistered) Error() string {
 
 // Register registers the converters toProto and toObject.
 // toProto must be a function with the signature:
-//   func(context.Context, func(interface{}) uin64, O) (P, error)
+//   func(context.Context, O) (P, error)
 // toObject must be a function with the signature:
-//   func(context.Context, func(uint64, interface{}), P) (O, error)
+//   func(context.Context, P) (O, error)
 // Where P is the proto message type and O is the object type.
 func Register(toProto, toObject interface{}) {
 	toP, toO := reflect.TypeOf(toProto), reflect.TypeOf(toObject)
@@ -63,29 +61,29 @@ func Register(toProto, toObject interface{}) {
 	if toO.Kind() != reflect.Func {
 		panic("toObject must be a function")
 	}
-	if err := checkToProto(toP); err != nil {
+	if err := checkToFunc(toP); err != nil {
 		panic(fmt.Errorf(`toProto does not match signature:
   func(context.Context, O) (P, error)
 Got:   %v
 Error: %v`, printFunc(toP), err))
 	}
-	if err := checkFromProto(toO); err != nil {
+	if err := checkToFunc(toO); err != nil {
 		panic(fmt.Errorf(`toObject does not match signature:
   func(context.Context, P) (O, error)
 Got:   %v
 Error: %v`, printFunc(toO), err))
 	}
-	if toP.In(2) != toO.Out(0) {
+	if toP.In(1) != toO.Out(0) {
 		panic(fmt.Errorf(`Object type is different between toProto and toObject
 toProto:  %v
 toObject: %v`, printFunc(toP), printFunc(toO)))
 	}
-	if toO.In(2) != toP.Out(0) {
+	if toO.In(1) != toP.Out(0) {
 		panic(fmt.Errorf(`Proto type is different between toProto and toObject
 toProto:  %v
 toObject: %v`, printFunc(toP), printFunc(toO)))
 	}
-	objTy, protoTy := toP.In(2), toO.In(2)
+	objTy, protoTy := toP.In(1), toO.In(1)
 	if !protoTy.Implements(tyMessage) {
 		panic(fmt.Errorf("Proto type %v does not implement proto.Message", protoTy))
 	}
@@ -97,14 +95,14 @@ toObject: %v`, printFunc(toP), printFunc(toO)))
 
 // ToProto converts obj to a proto message using the converter registered with
 // Register.
-func ToProto(ctx context.Context, refFun func(interface{}) uint64, obj interface{}) (proto.Message, error) {
+func ToProto(ctx context.Context, obj interface{}) (proto.Message, error) {
 	mutex.Lock()
 	f, ok := objectToProto[reflect.TypeOf(obj)]
 	mutex.Unlock()
 	if !ok {
 		return nil, ErrNoConverterRegistered{obj}
 	}
-	out := f.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(refFun), reflect.ValueOf(obj)})
+	out := f.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(obj)})
 	if err := out[1].Interface(); err != nil {
 		return nil, log.Errf(ctx, err.(error), "Failed to convert from %T to proto %v",
 			obj, f.Type().Out(0))
@@ -114,14 +112,14 @@ func ToProto(ctx context.Context, refFun func(interface{}) uint64, obj interface
 
 // ToObject converts obj to a proto message using the converter registered with
 // Register.
-func ToObject(ctx context.Context, refFun func(uint64, interface{}), msg proto.Message) (interface{}, error) {
+func ToObject(ctx context.Context, msg proto.Message) (interface{}, error) {
 	mutex.Lock()
 	f, ok := protoToObject[reflect.TypeOf(msg)]
 	mutex.Unlock()
 	if !ok {
 		return nil, ErrNoConverterRegistered{msg}
 	}
-	out := f.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(refFun), reflect.ValueOf(msg)})
+	out := f.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(msg)})
 	if err := out[1].Interface(); err != nil {
 		return nil, log.Errf(ctx, err.(error), "Failed to convert proto from %T to %v",
 			msg, f.Type().Out(0))
@@ -160,11 +158,11 @@ func printFunc(f reflect.Type) string {
 	return b.String()
 }
 
-func checkToProto(got reflect.Type) error {
+func checkToFunc(got reflect.Type) error {
 	if got.Kind() != reflect.Func {
 		return fault.Const("Not a function")
 	}
-	if got.NumIn() != 3 {
+	if got.NumIn() != 2 {
 		return fault.Const("Incorrect number of parameters")
 	}
 	if got.NumOut() != 2 {
@@ -172,31 +170,6 @@ func checkToProto(got reflect.Type) error {
 	}
 	if got.In(0) != tyContext {
 		return fault.Const("Parameter 0 is not context.Context")
-	}
-	if got.In(1) != tyToProtoFunc {
-		return fault.Const("Parameter 1 is not func(interface{}) uint64")
-	}
-	if got.Out(1) != tyError {
-		return fault.Const("Output 1 is not error")
-	}
-	return nil
-}
-
-func checkFromProto(got reflect.Type) error {
-	if got.Kind() != reflect.Func {
-		return fault.Const("Not a function")
-	}
-	if got.NumIn() != 3 {
-		return fault.Const("Incorrect number of parameters")
-	}
-	if got.NumOut() != 2 {
-		return fault.Const("Incorrect number of results")
-	}
-	if got.In(0) != tyContext {
-		return fault.Const("Parameter 0 is not context.Context")
-	}
-	if got.In(1) != tyFromProtoFunc {
-		return fault.Const("Parameter 1 is not func(uint64, interface{})")
 	}
 	if got.Out(1) != tyError {
 		return fault.Const("Output 1 is not error")

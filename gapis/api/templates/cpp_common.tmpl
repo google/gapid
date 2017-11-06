@@ -1127,13 +1127,12 @@
 
   {{$setter := $.Name | Strings | Lower}}
   {{$ty := $.Type | TypeOf | Underlying}}
-  {{if      IsClass       $ty}}{{$.Prefix}}{{$.Name}}.toProto({{$.Proto}}mutable_{{$setter}}(), _s);
-  {{else if IsPointer     $ty}}::gapii::toProtoPointer({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}}, _s);
-  {{else if IsSlice       $ty}}::gapii::toProtoSlice({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}}, _s);
-  {{else if IsStaticArray $ty}}::gapii::toProto({{$.Proto}}mutable_{{$setter}}(), core::StaticArray<{{Macro "C++.Type" $ty.ValueType}}, {{$ty.Size}}>({{$.Prefix}}{{$.Name}}), _s);
-  {{else if IsMap         $ty}}::gapii::toProto({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}}, _s);
+  {{if      IsClass       $ty}}{{$.Prefix}}{{$.Name}}.toProto({{$.Proto}}mutable_{{$setter}}());
+  {{else if IsPointer     $ty}}::gapii::toProtoPointer({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}});
+  {{else if IsSlice       $ty}}::gapii::toProtoSlice({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}});
+  {{else if IsStaticArray $ty}}::gapii::toProto({{$.Proto}}mutable_{{$setter}}(), core::StaticArray<{{Macro "C++.Type" $ty.ValueType}}, {{$ty.Size}}>({{$.Prefix}}{{$.Name}}));
+  {{else if IsMap         $ty}}::gapii::toProto({{$.Proto}}mutable_{{$setter}}(), {{$.Prefix}}{{$.Name}});
   {{else if IsString      $ty}}{{$.Proto}}set_{{$setter}}(::gapii::toProtoString({{$.Prefix}}{{$.Name}}));
-  {{else if IsReference   $ty}}{{$.Proto}}mutable_{{$setter}}()->set_identifier(_s->process_reference({{$.Prefix}}{{$.Name}}.get(), [_s, this](){ return {{$.Prefix}}{{$.Name}}->toProto(_s); }));
   {{else                     }}{{$.Proto}}set_{{$setter}}({{$.Prefix}}{{$.Name}});
   {{end}}
 {{end}}
