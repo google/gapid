@@ -1139,7 +1139,9 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
       uint32_t opaqueSparseBindCount = opaqueSparseBound ? mOpaqueImageSparseBindings[image.first].count() : 0;
       std::vector<VkSparseMemoryBind> opaqueSparseBinds;
       for (const auto& b : mOpaqueImageSparseBindings[image.first]) {
-        opaqueSparseBinds.emplace_back(b.sparseMemoryBind());
+        if (DeviceMemories.find(b.memory()) != DeviceMemories.end()) {
+          opaqueSparseBinds.emplace_back(b.sparseMemoryBind());
+        }
       }
 
       RecreateBindImageMemory(

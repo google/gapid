@@ -15,24 +15,41 @@
 package vulkan
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
 )
 
 func TestAddBinding(t *testing.T) {
-	checkRecordedBindings := func(incoming []VkSparseMemoryBind, expected sparseBindingList) {
+	checkRecordedBindings := func(incoming []*VkSparseMemoryBind, expected sparseBindingList) {
 		l := sparseBindingList{}
 		for _, i := range incoming {
-			l = addBinding(l, i)
+			l, _ = addSparseBinding(l, i)
+		}
+		equal := func(a, b sparseBindingList) bool {
+			if len(a) != len(b) {
+				return false
+			}
+			for i, _ := range a {
+				if ai, ok := a[i].(*VkSparseMemoryBind); ok {
+					if bi, ok := b[i].(*VkSparseMemoryBind); ok {
+						if *ai == *bi {
+							continue
+						}
+						return false
+					}
+					return false
+				}
+				return false
+			}
+			return true
 		}
 		assert.To(t).For("Expected recorded bindings: %v\nActual recorded bindings: %v", expected, l).That(
-			reflect.DeepEqual(expected, l)).Equals(true)
+			equal(expected, l)).Equals(true)
 	}
 
-	newBinding := func(offset, size, mem, memoffset uint64) VkSparseMemoryBind {
-		return VkSparseMemoryBind{
+	newBinding := func(offset, size, mem, memoffset uint64) *VkSparseMemoryBind {
+		return &VkSparseMemoryBind{
 			ResourceOffset: VkDeviceSize(offset),
 			Size:           VkDeviceSize(size),
 			Memory:         VkDeviceMemory(mem),
@@ -41,30 +58,46 @@ func TestAddBinding(t *testing.T) {
 	}
 
 	// empty
-	checkRecordedBindings([]VkSparseMemoryBind{}, sparseBindingList{})
+	checkRecordedBindings([]*VkSparseMemoryBind{}, sparseBindingList{})
 
 	// empty bindings
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(0, 0, 0, 0),
 	}, sparseBindingList{
 		newBinding(0, 0, 0, 0),
 	})
 
 	// no-empty bindings
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(0, 512, 0, 10),
 	}, sparseBindingList{
 		newBinding(0, 512, 0, 10),
 	})
 
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(768, 1024*1024, 0xffffffff11223344, 1024*10),
 	}, sparseBindingList{
 		newBinding(768, 1024*1024, 0xffffffff11223344, 1024*10),
 	})
 
 	// order
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
+		newBinding(0, 1024, 0xa, 100),
+		newBinding(1024, 1024, 0xb, 100),
+		newBinding(1024*2, 1024, 0xc, 100),
+		newBinding(1024*3, 1024, 0xd, 100),
+		newBinding(1024*4, 1024, 0xe, 100),
+		newBinding(1024*5, 1024, 0xf, 100),
+	}, sparseBindingList{
+		newBinding(0, 1024, 0xa, 100),
+		newBinding(1024, 1024, 0xb, 100),
+		newBinding(1024*2, 1024, 0xc, 100),
+		newBinding(1024*3, 1024, 0xd, 100),
+		newBinding(1024*4, 1024, 0xe, 100),
+		newBinding(1024*5, 1024, 0xf, 100),
+	})
+
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(1024*5, 1024, 0xf, 100),
 		newBinding(1024*4, 1024, 0xe, 100),
 		newBinding(1024*3, 1024, 0xd, 100),
@@ -81,7 +114,7 @@ func TestAddBinding(t *testing.T) {
 	})
 
 	// conflict with existing bindings
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(1024, 1024, 0xa, 100),
 		newBinding(512, 1024, 0xb, 100),
 	}, sparseBindingList{
@@ -89,7 +122,7 @@ func TestAddBinding(t *testing.T) {
 		newBinding(1024+512, 512, 0xa, 100+512),
 	})
 
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(0, 1024, 0xa, 100),
 		newBinding(512, 1024, 0xb, 100),
 	}, sparseBindingList{
@@ -97,7 +130,7 @@ func TestAddBinding(t *testing.T) {
 		newBinding(512, 1024, 0xb, 100),
 	})
 
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(0, 2048, 0xa, 100),
 		newBinding(512, 1024, 0xb, 100),
 	}, sparseBindingList{
@@ -106,14 +139,14 @@ func TestAddBinding(t *testing.T) {
 		newBinding(1024+512, 512, 0xa, 100+1024+512),
 	})
 
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(512, 1024, 0xa, 100),
 		newBinding(0, 2048, 0xb, 100),
 	}, sparseBindingList{
 		newBinding(0, 2048, 0xb, 100),
 	})
 
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(0, 1000, 0xa, 100),
 		newBinding(100, 1000, 0xb, 100),
 		newBinding(200, 1000, 0xc, 100),
@@ -128,7 +161,7 @@ func TestAddBinding(t *testing.T) {
 		newBinding(1000, 200, 0xc, 900),
 	})
 
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(0, 1000, 0xa, 100),
 		newBinding(100, 1000, 0xb, 100),
 		newBinding(200, 1000, 0xc, 100),
@@ -146,7 +179,7 @@ func TestAddBinding(t *testing.T) {
 		newBinding(1000, 200, 0xc, 900),
 	})
 
-	checkRecordedBindings([]VkSparseMemoryBind{
+	checkRecordedBindings([]*VkSparseMemoryBind{
 		newBinding(0, 1000, 0xa, 100),
 		newBinding(100, 1000, 0xb, 100),
 		newBinding(200, 1000, 0xc, 100),

@@ -32,14 +32,16 @@ set(files
     externs_test.go
     find_issues.go
     footprint_builder.go
+    footprint_builder_test.go
+    mem_binding_list.go
     mutate.go
     read_framebuffer.go
     replay.go
     resolvables.pb.go
     resolvables.proto
     resources.go
+    sparse_binding.go
     sparse_binding_test.go
-    sparse_bindings.go
     state.go
     vulkan.go
     vulkan_terminator.go

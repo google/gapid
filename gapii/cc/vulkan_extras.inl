@@ -243,6 +243,7 @@ class SparseBindingInterval {
   using interval_unit_type = VkDeviceSize;
   inline VkDeviceSize start() const { return resourceOffset_; }
   inline VkDeviceSize end() const { return resourceOffset_ + size_; }
+  inline VkDeviceMemory memory() const { return memory_; }
   inline void adjust(VkDeviceSize start, VkDeviceSize end) {
     VkDeviceSize new_size = end - start;
     if (start > resourceOffset_) {

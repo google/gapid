@@ -1181,6 +1181,8 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 		}
 	}
 	if a.OpaqueSparseBindCount > 0 {
+		o := a.Extras().Observations()
+		o.ApplyReads(s.Memory.ApplicationPool())
 		cb := CommandBuilder{Thread: a.thread}
 		for _, bind := range a.POpaqueSparseBinds.Slice(0, uint64(a.OpaqueSparseBindCount), s.MemoryLayout).MustRead(ctx, a, s, nil) {
 			if !GetState(s).DeviceMemories.Contains(bind.Memory) {
