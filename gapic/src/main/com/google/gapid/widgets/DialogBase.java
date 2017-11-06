@@ -28,7 +28,7 @@ public abstract class DialogBase extends TrayDialog {
   private static final int MIN_DIALOG_WIDTH = 350;  // In DLUs
   private static final int MIN_DIALOG_HEIGHT = 150; // In DLUs
 
-  private final Theme theme;
+  protected final Theme theme;
 
   public DialogBase(IShellProvider parentShell, Theme theme) {
     super(parentShell);

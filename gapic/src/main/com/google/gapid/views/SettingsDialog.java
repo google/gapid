@@ -15,16 +15,17 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.gapid.models.Settings;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.Theme;
-import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
@@ -37,8 +38,6 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
-
-import java.util.UUID;
 
 /**
  * Dialog that allows the user to modify application settings.
@@ -62,15 +61,11 @@ public class SettingsDialog extends DialogBase {
   }
 
   private void update() {
-    if (!settings.analyticsEnabled() && sendAnalytics.getSelection()) {
-      settings.analyticsClientId = UUID.randomUUID().toString();
-    } else if (settings.analyticsEnabled() && !sendAnalytics.getSelection()) {
-      settings.analyticsClientId = "";
-    }
-    settings.autoCheckForUpdates = autoCheckForUpdates.getSelection();
-    settings.reportExceptions = sendCrashReports.getSelection();
     settings.adb = adbPath.getText().trim();
     settings.disableReplayOptimization = disableReplayOptimization.getSelection();
+    settings.setAnalyticsEnabled(sendAnalytics.getSelection());
+    settings.reportExceptions = sendCrashReports.getSelection();
+    settings.autoCheckForUpdates = autoCheckForUpdates.getSelection();
     settings.onChange();
   }
 
@@ -86,18 +81,6 @@ public class SettingsDialog extends DialogBase {
     Composite container = createComposite(area, new GridLayout(2, false));
     container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    createLabel(container, "Automatically check for updates:");
-    autoCheckForUpdates = Widgets.createCheckbox(container, "", settings.autoCheckForUpdates);
-
-    createLabel(container, "Disable replay optimization:");
-    disableReplayOptimization = Widgets.createCheckbox(container, "", settings.disableReplayOptimization);
-
-    createLabel(container, "Send anonymous usage statistics to Google:");
-    sendAnalytics = Widgets.createCheckbox(container, "", settings.analyticsEnabled());
-
-    createLabel(container, "Automatically upload crash reports:");
-    sendCrashReports = Widgets.createCheckbox(container, "", settings.reportExceptions);
-
     createLabel(container, "Path to adb:");
     adbPath = withLayoutData(new FileTextbox.File(container, settings.adb) {
       @Override
@@ -106,6 +89,22 @@ public class SettingsDialog extends DialogBase {
       }
     }, new GridData(SWT.FILL, SWT.FILL, true, false));
     adbPath.addBoxListener(SWT.Modify, this::onSettingChanged);
+
+    disableReplayOptimization = withLayoutData(
+        createCheckbox(container, "Disable replay optimization", settings.disableReplayOptimization),
+        withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+
+    sendAnalytics = withLayoutData(
+        createCheckbox(container, Messages.ANALYTICS_OPTION, settings.analyticsEnabled()),
+        withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+
+    sendCrashReports = withLayoutData(
+        createCheckbox(container, Messages.CRASH_REPORTING_OPTION, settings.reportExceptions),
+        withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+
+    autoCheckForUpdates = withLayoutData(
+        createCheckbox(container, Messages.UPDATE_CHECK_OPTION, settings.autoCheckForUpdates),
+        withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
 
     createLabel(container, "");
     restartLabel = createLabel(container, "Changes require restart to take effect");

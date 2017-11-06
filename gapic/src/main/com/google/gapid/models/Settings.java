@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 /**
@@ -77,6 +78,7 @@ public class Settings {
   public boolean traceMidExecution = false;
   public int traceFrameCount = 0;
   public boolean skipWelcomeScreen = false;
+  public boolean skipFirstRunDialog = false;
   public String[] recentFiles = new String[0];
   public String adb = "";
   public boolean autoCheckForUpdates = true;
@@ -173,6 +175,14 @@ public class Settings {
     return !analyticsClientId.isEmpty();
   }
 
+  public void setAnalyticsEnabled(boolean enabled) {
+    if (enabled && !analyticsEnabled()) {
+      analyticsClientId = UUID.randomUUID().toString();
+    } else if (!enabled && analyticsEnabled()) {
+      analyticsClientId = "";
+    }
+  }
+
   private void updateFrom(Properties properties) {
     windowLocation = getPoint(properties, "window.pos");
     windowSize = getPoint(properties, "window.size");
@@ -204,6 +214,7 @@ public class Settings {
     traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
     traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
     skipWelcomeScreen = getBoolean(properties, "skip.welcome", skipWelcomeScreen);
+    skipFirstRunDialog = getBoolean(properties, "skip.firstTime", skipFirstRunDialog);
     recentFiles = getStringList(properties, "open.recent", recentFiles);
     adb = tryFindAdb(properties.getProperty("adb.path", ""));
     autoCheckForUpdates = getBoolean(properties, "updates.autoCheck", autoCheckForUpdates);
@@ -243,6 +254,7 @@ public class Settings {
     properties.setProperty("trace.midExecution", Boolean.toString(traceMidExecution));
     properties.setProperty("trace.frameCount", Integer.toString(traceFrameCount));
     properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
+    properties.setProperty("skip.firstTime", Boolean.toString(skipFirstRunDialog));
     setStringList(properties, "open.recent", recentFiles);
     properties.setProperty("adb.path", adb);
     properties.setProperty("updates.autoCheck", Boolean.toString(autoCheckForUpdates));

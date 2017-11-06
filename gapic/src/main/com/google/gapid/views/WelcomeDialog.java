@@ -20,15 +20,21 @@ import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
+import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
+import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.gapid.models.Models;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
+import com.google.gapid.widgets.FileTextbox;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -38,12 +44,14 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
+import java.util.function.Consumer;
 
 /**
  * Welcome dialog shown when the application is run without a capture as an argument.
@@ -52,62 +60,103 @@ public class WelcomeDialog {
   private WelcomeDialog() {
   }
 
-  public static void showWelcomeDialog(Shell shell, Models models, Widgets widgets) {
-    new DialogBase(shell, widgets.theme) {
-      private Button showWelcome;
-
-      @Override
-      public String getTitle() {
-        return Messages.WELCOME_TITLE;
-      }
+  public static void showFirstTimeDialog(
+      Shell shell, Models models, Widgets widgets, Runnable next) {
+    new WelcomeDialogBase(shell, widgets.theme) {
+      private FileTextbox adbPath;
+      private Button allowAnalytics;
+      private Button allowCrashReports;
+      private Button allowUpdateChecks;
 
       @Override
       protected Control createDialogArea(Composite parent) {
-        Composite area = (Composite)super.createDialogArea(parent);
+        return createDialogArea(Messages.WELCOME_SUBTITLE, super.createDialogArea(parent), c -> {
+          createLabel(c, Messages.WELCOME_TEXT)
+              .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-        Composite container = createComposite(area, new GridLayout(1, false));
-        container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        createLabel(container, "", widgets.theme.dialogLogo())
-            .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
-
-        Label title = createLabel(container, Messages.WELCOME_TEXT);
-        title.setFont(widgets.theme.bigBoldFont());
-        title.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
-
-        Label version = createLabel(container, "Version " + GAPID_VERSION.toFriendlyString());
-        version.setForeground(widgets.theme.welcomeVersionColor());
-        version.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
-
-        createLink(container, "<a>Open Trace...</a>", e -> {
-          close(true);
-          showOpenTraceDialog(shell, models);
-        });
-        String[] files = models.settings.getRecent();
-        if (files.length > 0) {
-          createLink(container, "<a>Open Recent...</a>", e -> {
-            Menu popup = new Menu(container);
-            for (String file : models.settings.recentFiles) {
-              createMenuItem(popup, file, 0, ev -> {
-                close(true);
-                models.capture.loadCapture(new File(file));
-              });
+          Composite form = withLayoutData(
+              createComposite(c, withMargin(new GridLayout(2, false), 0, 10)),
+              new GridData(SWT.FILL, SWT.FILL, true, true));
+          createLabel(form, "Path to adb:");
+          adbPath = withLayoutData(new FileTextbox.File(form, models.settings.adb) {
+            @Override
+            protected void configureDialog(FileDialog dialog) {
+              dialog.setText("Path to adb:");
             }
-            popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
+          }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
-            popup.setLocation(container.toDisplay(bottomLeft(((Link)e.widget).getBounds())));
-            popup.setVisible(true);
-          });
-        }
-        createLink(container, "<a>Capture Trace...</a>", e -> {
-          close(true);
-          showTracingDialog(shell, models, widgets);
+          allowAnalytics = withLayoutData(
+              createCheckbox(form, Messages.ANALYTICS_OPTION, true),
+              withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+          allowCrashReports = withLayoutData(
+              createCheckbox(form, Messages.CRASH_REPORTING_OPTION, true),
+              withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+          allowUpdateChecks = withLayoutData(
+              createCheckbox(form, Messages.UPDATE_CHECK_OPTION, true),
+              withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
         });
-        createLink(container, "<a>Help...</a>", e -> showHelp());
+      }
 
-        showWelcome = Widgets.createCheckbox(
-            container, "Show on startup", !models.settings.skipWelcomeScreen);
-        return area;
+      @Override
+      protected void createButtonsForButtonBar(Composite parent) {
+        createButton(parent, IDialogConstants.OK_ID, Messages.WELCOME_BUTTON, true);
+      }
+
+      @Override
+      protected void okPressed() {
+        models.settings.skipFirstRunDialog = true;
+        models.settings.adb = adbPath.getText();
+        models.settings.setAnalyticsEnabled(allowAnalytics.getSelection());
+        models.settings.reportExceptions = allowCrashReports.getSelection();
+        models.settings.autoCheckForUpdates = allowUpdateChecks.getSelection();
+        models.settings.save();
+        models.settings.onChange();
+
+        super.okPressed();
+        next.run();
+      }
+    }.open();
+  }
+
+  public static void showWelcomeDialog(Shell shell, Models models, Widgets widgets) {
+    new WelcomeDialogBase(shell, widgets.theme) {
+      private Button showWelcome;
+
+      @Override
+      protected Control createDialogArea(Composite parent) {
+        return createDialogArea(Messages.WINDOW_TITLE, super.createDialogArea(parent), c -> {
+          Label version = createLabel(c, "Version " + GAPID_VERSION.toFriendlyString());
+          version.setForeground(widgets.theme.welcomeVersionColor());
+          version.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+
+          createLink(c, "<a>Open Trace...</a>", e -> {
+            close(true);
+            showOpenTraceDialog(shell, models);
+          });
+          String[] files = models.settings.getRecent();
+          if (files.length > 0) {
+            createLink(c, "<a>Open Recent...</a>", e -> {
+              Menu popup = new Menu(c);
+              for (String file : models.settings.recentFiles) {
+                createMenuItem(popup, file, 0, ev -> {
+                  close(true);
+                  models.capture.loadCapture(new File(file));
+                });
+              }
+              popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
+
+              popup.setLocation(c.toDisplay(bottomLeft(((Link)e.widget).getBounds())));
+              popup.setVisible(true);
+            });
+          }
+          createLink(c, "<a>Capture Trace...</a>", e -> {
+            close(true);
+            showTracingDialog(shell, models, widgets);
+          });
+          createLink(c, "<a>Help...</a>", e -> showHelp());
+
+          showWelcome = createCheckbox(c, "Show on startup", !models.settings.skipWelcomeScreen);
+        });
       }
 
       @Override
@@ -127,5 +176,32 @@ public class WelcomeDialog {
         close();
       }
     }.open();
+  }
+
+  private static class WelcomeDialogBase extends DialogBase {
+    public WelcomeDialogBase(Shell shell, Theme theme) {
+      super(shell, theme);
+    }
+
+    @Override
+    public String getTitle() {
+      return Messages.WELCOME_TITLE;
+    }
+
+    protected Control createDialogArea(String title, Control area, Consumer<Composite> create) {
+      Composite container = createComposite((Composite)area, new GridLayout(1, false));
+      container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      createLabel(container, "", theme.dialogLogo())
+          .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+
+      Label titleLabel = createLabel(container, title);
+      titleLabel.setFont(theme.bigBoldFont());
+      titleLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+
+      create.accept(container);
+
+      return area;
+    }
   }
 }
