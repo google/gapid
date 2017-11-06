@@ -22,6 +22,7 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.ExceptionHandler;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -35,8 +36,9 @@ public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Lis
 
   private final Devices devices;
 
-  public Reports(Shell shell, Client client, Capture capture, Devices devices, ApiContext context) {
-    super(LOG, shell, client, Listener.class);
+  public Reports(Shell shell, ExceptionHandler handler, Client client, Capture capture,
+      Devices devices, ApiContext context) {
+    super(LOG, shell, handler, client, Listener.class);
     this.devices = devices;
 
     devices.addListener(new Devices.Listener() {

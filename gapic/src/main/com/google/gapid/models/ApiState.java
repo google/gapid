@@ -35,6 +35,7 @@ import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
@@ -55,9 +56,9 @@ public class ApiState
   private final ConstantSets constants;
   private final ObjectStore<Path.Any> selection = ObjectStore.create();
 
-  public ApiState(
-      Shell shell, Client client, Follower follower, AtomStream atoms, ApiContext contexts, ConstantSets constants) {
-    super(LOG, shell, client, Listener.class);
+  public ApiState(Shell shell, ExceptionHandler handler, Client client, Follower follower,
+      AtomStream atoms, ApiContext contexts, ConstantSets constants) {
+    super(LOG, shell, handler, client, Listener.class);
     this.constants = constants;
 
     atoms.addListener(new AtomStream.Listener() {

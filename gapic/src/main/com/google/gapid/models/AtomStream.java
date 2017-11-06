@@ -35,6 +35,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
@@ -59,9 +60,9 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   private final ConstantSets constants;
   private AtomIndex selection;
 
-  public AtomStream(
-      Shell shell, Client client, Capture capture, ApiContext context, ConstantSets constants) {
-    super(LOG, shell, client, Listener.class);
+  public AtomStream(Shell shell, ExceptionHandler handler, Client client, Capture capture,
+      ApiContext context, ConstantSets constants) {
+    super(LOG, shell, handler, client, Listener.class);
     this.capture = capture;
     this.context = context;
     this.constants = constants;

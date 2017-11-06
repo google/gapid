@@ -27,6 +27,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
 import com.google.gapid.server.GapisProcess;
 import com.google.gapid.util.Crash2ExceptionHandler;
+import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
@@ -55,10 +56,7 @@ public class Main {
     Display.setAppName(Messages.WINDOW_TITLE);
     Display.setAppVersion(GAPID_VERSION.toString());
     Settings settings = Settings.load();
-
-    if (settings.crashReportingEnabled()) {
-      Crash2ExceptionHandler.registerAsDefault();
-    }
+    ExceptionHandler handler = Crash2ExceptionHandler.register(settings);
 
     Server server = new Server(settings);
     AtomicReference<UI> uiRef = new AtomicReference<UI>(null);
@@ -69,7 +67,7 @@ public class Main {
           ui.showServerDiedMessage(code, panic);
         }
       });
-      uiRef.set(new UI(settings, server.getClient(), args));
+      uiRef.set(new UI(settings, handler, server.getClient(), args));
       uiRef.get().show();
     } finally {
       uiRef.set(null);
@@ -84,20 +82,8 @@ public class Main {
   private static class UI implements MainWindow.ModelsAndWidgets {
     protected static final Logger LOG = Logger.getLogger(UI.class.getName());
 
-    static {
-      Window.setExceptionHandler(new Window.IExceptionHandler() {
-        @Override
-        public void handleException(Throwable t) {
-          if (t instanceof ThreadDeath) {
-            throw (ThreadDeath) t;
-          }
-          LOG.log(Level.WARNING, "Unhandled exception in the UI thread.", t);
-          showErrorDialog(null, "Unhandled exception in the UI thread.", t);
-        }
-      });
-    }
-
     private final Settings settings;
+    private final ExceptionHandler handler;
     private final Client client;
     private final String[] args;
     private final ApplicationWindow window;
@@ -105,8 +91,9 @@ public class Main {
     private Widgets widgets;
     private boolean analyticsEnabled;
 
-    public UI(Settings settings, Client client, String[] args) {
+    public UI(Settings settings, ExceptionHandler handler, Client client, String[] args) {
       this.settings = settings;
+      this.handler = handler;
       this.client = client;
       this.args = args;
       this.window = new MainWindow(client, this);
@@ -121,6 +108,23 @@ public class Main {
           } else {
             client.disableAnalytics();
           }
+        }
+      });
+
+      registerWindowExceptionHandler(handler);
+    }
+
+    private static void registerWindowExceptionHandler(ExceptionHandler handler) {
+      Window.setExceptionHandler(new Window.IExceptionHandler() {
+        @Override
+        public void handleException(Throwable t) {
+          if (t instanceof ThreadDeath) {
+            throw (ThreadDeath) t;
+          }
+
+          LOG.log(Level.WARNING, "Unhandled exception in the UI thread.", t);
+          handler.reportException(t);
+          showErrorDialog(null, "Unhandled exception in the UI thread.", t);
         }
       });
     }
@@ -143,7 +147,7 @@ public class Main {
 
     @Override
     public void init(Shell shell) {
-      models = Models.create(shell, settings, client);
+      models = Models.create(shell, settings, handler, client);
       widgets = Widgets.create(shell.getDisplay(), client, models);
 
       if (args.length == 1) {

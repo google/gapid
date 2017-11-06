@@ -30,6 +30,7 @@ import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Paths;
 
@@ -48,12 +49,14 @@ public class Devices {
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
   private final SingleInFlight rpcController = new SingleInFlight();
   private final Shell shell;
+  protected final ExceptionHandler handler;
   private final Client client;
   private Path.Device replayDevice;
   private List<Device.Instance> devices;
 
-  public Devices(Shell shell, Client client, Capture capture) {
+  public Devices(Shell shell, ExceptionHandler handler, Client client, Capture capture) {
     this.shell = shell;
+    this.handler = handler;
     this.client = client;
 
     capture.addListener(new Capture.Listener() {
@@ -84,6 +87,7 @@ public class Devices {
           List<Path.Device> devs = result.get();
           return (devs == null || devs.isEmpty()) ? error(null) : success(devs.get(0));
         } catch (RpcException | ExecutionException e) {
+          handler.reportException(e);
           throttleLogRpcError(LOG, "LoadData error", e);
           return error(null);
         }
