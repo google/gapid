@@ -2363,6 +2363,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// pipeline settings
 	case *VkCmdPushConstants:
+		read(ctx, bh, vkHandle(cmd.Layout))
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
 	case *VkCmdSetLineWidth:
 		vb.recordModifingDynamicStates(ctx, ft, bh, cmd.CommandBuffer)
@@ -2555,6 +2556,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		vb.writeCoherentMemoryData(ctx, cmd, bh)
 		if read(ctx, bh, vkHandle(cmd.Fence)) {
 			read(ctx, bh, vb.fences[cmd.Fence].unsignal)
+			write(ctx, bh, vb.fences[cmd.Fence].signal)
 		}
 		for _, sp := range vb.submitInfos[id].waitSemaphores {
 			if read(ctx, bh, vkHandle(sp)) {
