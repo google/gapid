@@ -27,9 +27,7 @@ if(GO_BUILD)
   endif()
 endif()
 
-# TODO: <ANALYTICS> Add analytics to the tags to enable analytics functionality.
-# list(APPEND args "-tags" "integration analytics crashreporting")
-list(APPEND args "-tags" "integration crashreporting")
+list(APPEND args "-tags" "analytics crashreporting integration")
 
 if (WIN32 AND GO_WIN_UI)
   # Marks the binary as a Windows GUI app so it won't show a console by default.
