@@ -11,9 +11,9 @@ Whilst GAPID does not yet support profiling, you can still use GAPID to optimize
 
 ## Commands
 
-Use the Commands pane to keep track of how many API calls you are making per frame. 
+Use the Commands pane to keep track of how many API calls you are making per frame.
 
-### Gles
+### OpenGL ES
 Keeping on top of your draw calls, your state changes and ensuring that the actual calls your engine is making are what you expect are critical to optimal performance.
 
 #### Draw Calls
@@ -30,7 +30,7 @@ Similarly, the application should not needlessly call APIs. Some applications wi
 
 ### Vulkan
 
-In Vulkan, the number of individual draw calls and state changes does not necessarily correlate as closely to performance as in GLES. Things that are more likely to help your performance are the use of Render Passes and Subpasses. Reducing the number of resource transitions and pipeline barriers can also help improve performance. The topic of Vulkan optimization is both new, and complex, so a full discussion is out of the scope for this section.
+In Vulkan, the number of individual draw calls and state changes does not necessarily correlate as closely to performance as in OpenGL ES. Things that are more likely to help your performance are the use of Render Passes and Subpasses. Reducing the number of resource transitions and pipeline barriers can also help improve performance. The topic of Vulkan optimization is both new, and complex, so a full discussion is out of the scope for this section.
 
 ## Resources
 
@@ -44,17 +44,17 @@ Graphics processing hardware can easily be bottlenecked by the sheer number of v
 
 In the Framebuffer pane you can click the Wireframe icon to show the wireframe view. Generally this will give you a good idea of density. Whilst each platform has its own limits, in general, if you cannot see through your mesh, then you have too many vertices.
 
-![alt text](../images/wireframe.png "Wireframe Framebuffer view")
+<img src="../images/wireframe.png" alt="Wireframe Framebuffer" width="670" height="480">
 
-In the Commands pane you can see the number of vertices/indices in your draw call by inspecting the relevant parameter passed to your draw call. 
+In the Commands pane you can see the number of vertices/indices in your draw call by inspecting the relevant parameter passed to your draw call.
 
 And in the Geometry pane, when a draw call is selected you can see the Vertex/Index/Triangle count of that draw call below the 3D view.
 
-![alt text](../images/geometry.png "Geometry view")
+<img src="../images/geometry.png" alt="Geometry View" width="669" height="480">
 
 #### Shaders
 
-Whilst a full guide on optimizing shaders is out of scope for this document, it's always worth taking a look at your shaders to make sure that they are as simple as you expect. For draw calls that affect large portions of your screen, this is especially important. 
+Whilst a full guide on optimizing shaders is out of scope for this document, it's always worth taking a look at your shaders to make sure that they are as simple as you expect. For draw calls that affect large portions of your screen, this is especially important.
 
 ## State
 

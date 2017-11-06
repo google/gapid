@@ -13,7 +13,7 @@ Changing a shader within GAPID will change the result for all draw calls, allowi
 2. Edit the text of your shader.
 3. Click "Push Changes" and wait for the replay to finish processing the results.
 
-![alt text](../images/shader.png "Editing a shader within GAPID")
+<img src="../images/gles/shaders.png" alt="Editing a shader within GAPID" width="426" height="397">
 
 ## Notes for Vulkan
 The shaders will be presented as the disassembled SPIR-V module that was loaded. This can be edited in place, or a new disassembled SPIR-V module can be inserted in it's place. To generate the disassembly [SPIRV-Tools](SPIRV-Tools) can be used to disassemble any SPIR-V module.
