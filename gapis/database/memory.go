@@ -111,6 +111,8 @@ func (r *record) resolve(ctx context.Context) error {
 				// the outermost object!
 				return err
 			}
+		default:
+			return err
 		}
 	}
 
