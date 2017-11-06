@@ -28,7 +28,6 @@ import (
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
-	"github.com/pkg/errors"
 )
 
 type Service interface {
@@ -144,7 +143,11 @@ func NewError(err error) *Error {
 	if err == nil {
 		return nil
 	}
-	for cause := err; cause != nil; cause = errors.Cause(cause) {
+	type causer interface {
+		Cause() error
+	}
+	cause := err
+	for i := 0; i < 64 && cause != nil; i++ {
 		switch err := cause.(type) {
 		case *ErrDataUnavailable:
 			return &Error{&Error_ErrDataUnavailable{err}}
@@ -157,6 +160,12 @@ func NewError(err error) *Error {
 		case *ErrUnsupportedVersion:
 			return &Error{&Error_ErrUnsupportedVersion{err}}
 		}
+
+		causer, ok := cause.(causer)
+		if !ok {
+			break
+		}
+		cause = causer.Cause()
 	}
 	return &Error{&Error_ErrInternal{&ErrInternal{err.Error()}}}
 }
