@@ -38,6 +38,8 @@ import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 
+import java.util.UUID;
+
 /**
  * Dialog that allows the user to modify application settings.
  */
@@ -59,13 +61,11 @@ public class SettingsDialog extends DialogBase {
   }
 
   private void update() {
-    /* TODO: <ANALYTICS> Uncomment to add the option to enable analytics.
     if (!settings.analyticsEnabled() && sendAnalytics.getSelection()) {
       settings.analyticsClientId = UUID.randomUUID().toString();
     } else if (settings.analyticsEnabled() && !sendAnalytics.getSelection()) {
       settings.analyticsClientId = "";
     }
-    */
     settings.autoCheckForUpdates = autoCheckForUpdates.getSelection();
     settings.adb = adbPath.getText().trim();
     settings.disableReplayOptimization = disableReplayOptimization.getSelection();
@@ -90,9 +90,8 @@ public class SettingsDialog extends DialogBase {
     createLabel(container, "Disable replay optimization:");
     disableReplayOptimization = Widgets.createCheckbox(container, "", settings.disableReplayOptimization);
 
-    // TODO: <ANALYTICS> Uncomment to add the option to enable analytics.
-    // createLabel(container, "Send anonymous usage statistics to Google:");
-    // sendAnalytics = Widgets.createCheckbox(container, "", settings.analyticsEnabled());
+    createLabel(container, "Send anonymous usage statistics to Google:");
+    sendAnalytics = Widgets.createCheckbox(container, "", settings.analyticsEnabled());
 
     createLabel(container, "Path to adb:");
     adbPath = withLayoutData(new FileTextbox.File(container, settings.adb) {
