@@ -7,7 +7,10 @@ permalink: /tutorials/seeboundshaders
 parent: tutorials
 ---
 
+Select the graphics API used:
+
 <div class="tab" id="OpenGL ES" markdown="1">
+<img class="display" src="../images/opengles.svg" alt="OpenGL ES" height="50px"/>
 
 To see the currently bound shaders for a particular draw call, you can use either the Command pane or the State pane. Using the Command pane is generally faster, unless the application batches multiple draw calls with the same shader program together, which may require some searching.
 
@@ -36,6 +39,7 @@ Navigate to the Shaders pane and the Shaders tab and find the shader from here.
 </div>
 
 <div class="tab" id="Vulkan" markdown="1">
+<img class="display" src="../images/vulkan.svg" alt="Vulkan" height="50px"/>
 
 To see the currently bound shaders for a particular draw call you can use the State pane.
 
@@ -43,7 +47,7 @@ To see the currently bound shaders for a particular draw call you can use the St
 
 First select a Vulkan draw call. These are the commands that are nested under a VkQueueSubmit call. The non-nested ones are only the location that the commands were recorded.
 
-![alt text](../images/vulkan_commands.png "Selecting a vulkan draw")
+![alt text](../images/vulkan_commands.png "Selecting a Vulkan draw")
 
 Once you have a draw-call selected, in the state view, you can navigate to `LastDrawInfos-><ID of the Queue in VkQueueSubmit>->(Graphics|Compute)Pipeline->Stages-><Stage>->Module`. This will give you the VulkanHandle of the shader that is bound for a particular stage.
 
