@@ -7,7 +7,7 @@ permalink: /tutorials/
 group: tutorials
 ---
 
-Here you will find guides to help you perform common tasks in GAPID. 
+Here you will find guides to help you perform common tasks in GAPID.
 
 <div class="callouts" markdown="block">
 
@@ -19,4 +19,5 @@ How do I...:
   * [...find largest textures?](../tutorials/findlargesttextures)
   * [...optimize my application?](../tutorials/optimize)
   * [...export resources?](../tutorials/export)
-  
+  * [...create a video of my trace?](../tutorials/createvideo)
+
