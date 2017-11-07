@@ -22,13 +22,13 @@ import (
 // Err creates a new error that wraps cause with the current logging
 // information.
 func (l *Logger) Err(cause error, msg string) error {
-	return &err{cause, l.Message(Error, msg)}
+	return &err{cause, l.Message(Error, false, msg)}
 }
 
 // Errf creates a new error that wraps cause with the current logging
 // information.
 func (l *Logger) Errf(cause error, fmt string, args ...interface{}) error {
-	return &err{cause, l.Messagef(Error, fmt, args...)}
+	return &err{cause, l.Messagef(Error, false, fmt, args...)}
 }
 
 type err struct {
