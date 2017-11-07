@@ -117,6 +117,8 @@ public class ImagePanel extends Composite {
   private final StatusBar status;
   protected final ImageComponent imageComponent;
   private final BackgroundSelection backgroundSelection;
+  private final Histogram.Cache histogramCache = new Histogram.Cache(8, NUM_HISTOGRAM_BINS);
+
   private ToolItem zoomFitItem, backgroundItem, saveItem, colorChanelsItem;
   private MultiLayerAndLevelImage image = MultiLayerAndLevelImage.EMPTY;
   private Image[] layers = NO_LAYERS;
@@ -458,15 +460,7 @@ public class ImagePanel extends Composite {
     }
     ListenableFuture<LevelData> future = Futures.transform(Futures.allAsList(layerFutures), imageList -> {
       Image[] images = imageList.toArray(new Image[imageList.size()]);
-
-      boolean isHDR = false;
-      for (Image image : images) {
-        if (image.isHDR()) {
-          isHDR = true;
-        }
-      }
-
-      Histogram histogram = new Histogram(images, NUM_HISTOGRAM_BINS, isHDR);
+      Histogram histogram = histogramCache.get(images);
       return new LevelData(images, histogram);
     });
 

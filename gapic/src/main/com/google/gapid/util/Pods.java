@@ -15,13 +15,21 @@
  */
 package com.google.gapid.util;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.primitives.UnsignedLong;
 import com.google.gapid.proto.core.pod.Pod;
+import com.google.protobuf.ByteString;
+
+import java.util.concurrent.ExecutionException;
 
 /**
  * Plain-Old-Data utilities.
  */
 public class Pods {
+  private static final Cache<ByteString, byte[]> UINT8_TO_BYTE_CACHE =
+      CacheBuilder.newBuilder().weakKeys().build();
+
   private Pods() {
   }
 
@@ -244,7 +252,14 @@ public class Pods {
 
   public static byte[] getBytes(Pod.Value pod) {
     switch (pod.getValCase()) {
-      case UINT8_ARRAY: return pod.getUint8Array().toByteArray();
+      case UINT8_ARRAY:
+        try {
+          return UINT8_TO_BYTE_CACHE.get(pod.getUint8Array(),
+              () -> pod.getUint8Array().toByteArray());
+        } catch (ExecutionException e) {
+          e.printStackTrace(); // Should not happen.
+          return null;
+        }
       default:
         throw new RuntimeException("Don't know how to get bytes out of " + pod.getValCase());
     }
