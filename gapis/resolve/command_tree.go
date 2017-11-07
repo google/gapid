@@ -126,6 +126,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 		// Is a CmdIDGroup under SubCmdRoot, contains only Subcommands
 		startID := append(absID, uint64(item.Range.First()))
 		endID := append(absID, uint64(item.Range.Last()))
+		representation = cmdTree.path.Capture.Command(endID[0], endID[1:]...)
 		return &service.CommandTreeNode{
 			Representation: representation,
 			NumChildren:    item.Count(),
