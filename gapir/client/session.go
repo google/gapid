@@ -105,7 +105,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 				h.Handle(m)
 				return nil
 			}
-			log.From(ctx).Log(severity, line)
+			log.From(ctx).Log(severity, false, line)
 			return nil
 		})
 	}

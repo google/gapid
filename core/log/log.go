@@ -68,26 +68,28 @@ func W(ctx context.Context, fmt string, args ...interface{}) { From(ctx).W(fmt, 
 // E logs a error message to the logging target.
 func E(ctx context.Context, fmt string, args ...interface{}) { From(ctx).E(fmt, args...) }
 
-// F logs a fatal message to the logging target.
+// F logs a fatal message to the logging target, also indicating the process
+// should stop.
 func F(ctx context.Context, fmt string, args ...interface{}) { From(ctx).F(fmt, args...) }
 
 // D logs a debug message to the logging target.
-func (l *Logger) D(fmt string, args ...interface{}) { l.Logf(Debug, fmt, args...) }
+func (l *Logger) D(fmt string, args ...interface{}) { l.Logf(Debug, false, fmt, args...) }
 
 // I logs a info message to the logging target.
-func (l *Logger) I(fmt string, args ...interface{}) { l.Logf(Info, fmt, args...) }
+func (l *Logger) I(fmt string, args ...interface{}) { l.Logf(Info, false, fmt, args...) }
 
 // W logs a warning message to the logging target.
-func (l *Logger) W(fmt string, args ...interface{}) { l.Logf(Warning, fmt, args...) }
+func (l *Logger) W(fmt string, args ...interface{}) { l.Logf(Warning, false, fmt, args...) }
 
 // E logs a error message to the logging target.
-func (l *Logger) E(fmt string, args ...interface{}) { l.Logf(Error, fmt, args...) }
+func (l *Logger) E(fmt string, args ...interface{}) { l.Logf(Error, false, fmt, args...) }
 
-// F logs a fatal message to the logging target.
-func (l *Logger) F(fmt string, args ...interface{}) { l.Logf(Fatal, fmt, args...) }
+// F logs a fatal message to the logging target, also indicating the process
+// should stop.
+func (l *Logger) F(fmt string, args ...interface{}) { l.Logf(Fatal, true, fmt, args...) }
 
 // Logf logs a printf-style message at severity s to the logging target.
-func (l *Logger) Logf(s Severity, f string, args ...interface{}) {
+func (l *Logger) Logf(s Severity, stopProcess bool, fmt string, args ...interface{}) {
 	h := l.handler
 	if h == nil {
 		return
@@ -99,11 +101,11 @@ func (l *Logger) Logf(s Severity, f string, args ...interface{}) {
 		}
 	}
 
-	h.Handle(l.Messagef(s, f, args...))
+	h.Handle(l.Messagef(s, stopProcess, fmt, args...))
 }
 
 // Log logs a message at severity s to the logging target.
-func (l *Logger) Log(s Severity, f string) {
+func (l *Logger) Log(s Severity, stopProcess bool, f string) {
 	h := l.handler
 	if h == nil {
 		return
@@ -115,16 +117,16 @@ func (l *Logger) Log(s Severity, f string) {
 		}
 	}
 
-	h.Handle(l.Message(s, f))
+	h.Handle(l.Message(s, stopProcess, f))
 }
 
 // Messagef returns a new Message with the given severity and text.
-func (l *Logger) Messagef(s Severity, text string, args ...interface{}) *Message {
-	return l.Message(s, fmt.Sprintf(text, args...))
+func (l *Logger) Messagef(s Severity, stopProcess bool, text string, args ...interface{}) *Message {
+	return l.Message(s, stopProcess, fmt.Sprintf(text, args...))
 }
 
 // Message returns a new Message with the given severity and text.
-func (l *Logger) Message(s Severity, text string) *Message {
+func (l *Logger) Message(s Severity, stopProcess bool, text string) *Message {
 	var t time.Time
 	if c := l.clock; c != nil {
 		t = c.Time()
@@ -137,11 +139,12 @@ func (l *Logger) Message(s Severity, text string) *Message {
 	}
 
 	m := &Message{
-		Text:     text,
-		Time:     t.In(time.UTC),
-		Severity: s,
-		Tag:      l.tag,
-		Process:  l.process,
+		Text:        text,
+		Time:        t.In(time.UTC),
+		Severity:    s,
+		StopProcess: stopProcess,
+		Tag:         l.tag,
+		Process:     l.process,
 		// Callstack: callstack(), // TODO: Callstack
 		Trace: l.trace,
 	}
@@ -161,7 +164,7 @@ func (l *Logger) Message(s Severity, text string) *Message {
 // specified severity.
 func (l *Logger) Writer(s Severity) io.WriteCloser {
 	return text.Writer(func(line string) error {
-		l.Log(s, line)
+		l.Log(s, false, line)
 		return nil
 	})
 }

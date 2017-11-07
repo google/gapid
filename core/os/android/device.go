@@ -99,7 +99,7 @@ func (m LogcatMessage) Log(ctx context.Context) {
 		"pid": m.ProcessID,
 		"tid": m.ThreadID,
 	}.Bind(ctx)
-	log.From(ctx).Log(m.Priority.Severity(), m.Message)
+	log.From(ctx).Log(m.Priority.Severity(), false, m.Message)
 }
 
 // LogcatPriority represents the priority of a logcat message.

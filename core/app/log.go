@@ -23,12 +23,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 )
 
-const (
-	// FatalSeverity Is the level at which logging causes panics.
-	FatalSeverity = log.Fatal
-
-	logChanBufferSize = 100
-)
+const logChanBufferSize = 100
 
 // LogHandler is the primary application logger target.
 // It is assigned to the main context on startup and is closed on shutdown.
@@ -46,7 +41,7 @@ func wrapHandler(to log.Handler) log.Handler {
 	to = log.Channel(to, logChanBufferSize)
 	return log.NewHandler(func(m *log.Message) {
 		to.Handle(m)
-		if m.Severity >= FatalSeverity {
+		if m.StopProcess {
 			to.Close()
 			panic(FatalExit)
 		}

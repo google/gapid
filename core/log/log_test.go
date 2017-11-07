@@ -51,7 +51,7 @@ func (m testMessage) send(h log.Handler) {
 	ctx = log.PutTag(ctx, m.tag)
 	ctx = log.PutClock(ctx, testClock)
 	ctx = m.values.Bind(ctx)
-	log.From(ctx).Logf(m.severity, m.msg, m.args...)
+	log.From(ctx).Logf(m.severity, false, m.msg, m.args...)
 }
 
 var testMessages = []testMessage{

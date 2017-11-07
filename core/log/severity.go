@@ -31,7 +31,7 @@ const (
 	Warning Severity = 3
 	// Error indicates non terminal failure conditions that may have an effect on results.
 	Error Severity = 4
-	// Fatal indicates a fatal error and the process should be terminated.
+	// Fatal indicates a fatal error.
 	Fatal Severity = 5
 )
 

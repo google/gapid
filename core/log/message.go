@@ -29,6 +29,9 @@ type Message struct {
 	// The severity of the message.
 	Severity Severity
 
+	// StopProcess is true if the message indicates the process should stop.
+	StopProcess bool
+
 	// The tag associated with the log record.
 	Tag string
 
