@@ -38,6 +38,7 @@ var (
 	_ = replay.QueryIssues(API{})
 	_ = replay.QueryFramebufferAttachment(API{})
 	_ = replay.Support(API{})
+	_ = dependencygraph.FootprintBuilderProvider(API{})
 )
 
 // GetReplayPriority returns a uint32 representing the preference for

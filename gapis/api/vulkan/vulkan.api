@@ -143,6 +143,7 @@ extern void unmapMemory(u8[] slice)
 extern void trackMappedCoherentMemory(u64 start, size size)
 extern void readMappedCoherentMemory(VkDeviceMemory memory, u64 offset_in_mapped, size readSize)
 extern void untrackMappedCoherentMemory(u64 start, size size)
+extern bool notNullOrZero(any handleOrPointer)
 
 @unused
 enum VkPipelineCacheHeaderVersion {
@@ -2448,8 +2449,8 @@ cmd void RecreateInstance(
     _ = as!string(extensionNames[i])
   }
 
-  fence
-  write(pInstance[0:1])
+  handle := ?
+  pInstance[0] = handle
 }
 
 @custom
@@ -2518,6 +2519,8 @@ cmd void prefetchPhysicalDeviceProperties(
     VkInstance instance,
     VkPhysicalDevice physicalDevice,
     VkPhysicalDeviceProperties* pProperties) {
+  assert(notNullOrZero(instance))
+  assert(notNullOrZero(physicalDevice))
   pProperties[0] = ?
   object := switch (PhysicalDevices[physicalDevice] == null) {
     case true:
@@ -2537,6 +2540,8 @@ cmd void prefetchPhysicalDeviceQueueFamilyProperties(
     VkPhysicalDevice physicalDevice,
     u32* pQueueFamilyPropertyCount,
     VkQueueFamilyProperties* pQueueFamilyProperties) {
+  assert(notNullOrZero(instance))
+  assert(notNullOrZero(physicalDevice))
   _ = pQueueFamilyPropertyCount[0]
   fence
   if pQueueFamilyProperties == null {
@@ -2568,6 +2573,8 @@ cmd VkResult vkEnumeratePhysicalDevices(
     VkInstance        instance,
     u32*              pPhysicalDeviceCount,
     VkPhysicalDevice* pPhysicalDevices) {
+  assert(notNullOrZero(instance))
+  assert(notNullOrZero(pPhysicalDeviceCount))
   _ = pPhysicalDeviceCount[0]
 
   fence
@@ -2603,6 +2610,8 @@ cmd VkResult vkEnumeratePhysicalDevices(
 cmd void vkGetPhysicalDeviceFeatures(
     VkPhysicalDevice          physicalDevice,
     VkPhysicalDeviceFeatures* pFeatures) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pFeatures))
   pFeatures[0] = ?
 }
 
@@ -2611,6 +2620,8 @@ cmd void vkGetPhysicalDeviceFormatProperties(
     VkPhysicalDevice    physicalDevice,
     VkFormat            format,
     VkFormatProperties* pFormatProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pFormatProperties))
   pFormatProperties[0] = ?
 }
 
@@ -2623,6 +2634,8 @@ cmd VkResult vkGetPhysicalDeviceImageFormatProperties(
     VkImageUsageFlags        usage,
     VkImageCreateFlags       flags,
     VkImageFormatProperties* pImageFormatProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pImageFormatProperties))
   pImageFormatProperties[0] = ?
   return ?
 }
@@ -2631,6 +2644,8 @@ cmd VkResult vkGetPhysicalDeviceImageFormatProperties(
 cmd void vkGetPhysicalDeviceProperties(
     VkPhysicalDevice            physicalDevice,
     VkPhysicalDeviceProperties* pProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pProperties))
   pProperties[0] = ?
 }
 
@@ -2639,6 +2654,8 @@ cmd void vkGetPhysicalDeviceQueueFamilyProperties(
     VkPhysicalDevice         physicalDevice,
     u32*                     pQueueFamilyPropertyCount,
     VkQueueFamilyProperties* pQueueFamilyProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pQueueFamilyPropertyCount))
   _ = pQueueFamilyPropertyCount[0]
 
   fence
@@ -2662,6 +2679,8 @@ cmd void vkGetPhysicalDeviceQueueFamilyProperties(
 cmd void vkGetPhysicalDeviceMemoryProperties(
     VkPhysicalDevice                  physicalDevice,
     VkPhysicalDeviceMemoryProperties* pMemoryProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pMemoryProperties))
   memoryProperties := ?
   pMemoryProperties[0] = memoryProperties
 
@@ -2716,6 +2735,9 @@ cmd VkResult vkCreateDevice(
     VkDevice*                    pDevice) {
   // NOTE: The logic for this function should be identical to the one of
   // replayCreateVkDevice() in synthetic.api. Change both together.
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pDevice))
 
   device := createDeviceObject(pCreateInfo)
   device.PhysicalDevice = physicalDevice
@@ -2760,6 +2782,7 @@ cmd VkResult vkEnumerateInstanceExtensionProperties(
     string                 pLayerName,
     u32*                   pPropertyCount,
     VkExtensionProperties* pProperties) {
+  assert(notNullOrZero(pPropertyCount))
   queryExtensionProperties(pPropertyCount, pProperties)
 
   return ?
@@ -2772,6 +2795,7 @@ cmd VkResult vkEnumerateDeviceExtensionProperties(
     string                 pLayerName,
     u32*                   pPropertyCount,
     VkExtensionProperties* pProperties) {
+  assert(notNullOrZero(pPropertyCount))
   queryExtensionProperties(pPropertyCount, pProperties)
 
   return ?
@@ -2796,6 +2820,7 @@ sub void queryLayerProperties(u32* pPropertyCount, VkLayerProperties* pPropertie
 cmd VkResult vkEnumerateInstanceLayerProperties(
     u32*               pPropertyCount,
     VkLayerProperties* pProperties) {
+  assert(notNullOrZero(pPropertyCount))
   queryLayerProperties(pPropertyCount, pProperties)
 
   return ?
@@ -2807,6 +2832,7 @@ cmd VkResult vkEnumerateDeviceLayerProperties(
     VkPhysicalDevice   physicalDevice,
     u32*               pPropertyCount,
     VkLayerProperties* pProperties) {
+  assert(notNullOrZero(pPropertyCount))
   queryLayerProperties(pPropertyCount, pProperties)
 
   return ?
@@ -2834,6 +2860,8 @@ cmd void vkGetDeviceQueue(
     u32      queueFamilyIndex,
     u32      queueIndex,
     VkQueue* pQueue) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pQueue))
   id := ?
   Queues[id] = new!QueueObject(Device: device,Family:  queueFamilyIndex,Index:  queueIndex,VulkanHandle:  id)
   pQueue[0] = id
@@ -2850,6 +2878,11 @@ cmd VkResult vkQueueSubmit(
     u32                 submitCount,
     const VkSubmitInfo* pSubmits,
     VkFence             fence) {
+  assert(notNullOrZero(queue))
+  if submitCount != 0 {
+    assert(notNullOrZero(pSubmits))
+  }
+
   LastSubmission = SUBMIT
   submitInfo := pSubmits[0:submitCount]
   LastBoundQueue = Queues[queue]
@@ -2917,6 +2950,7 @@ cmd VkResult vkQueueSubmit(
 @blocking
 cmd VkResult vkQueueWaitIdle(
     VkQueue queue) {
+  assert(notNullOrZero(queue))
   return ?
 }
 
@@ -2925,6 +2959,7 @@ cmd VkResult vkQueueWaitIdle(
 @blocking
 cmd VkResult vkDeviceWaitIdle(
     VkDevice device) {
+  assert(notNullOrZero(device))
   return ?
 }
 
@@ -2985,6 +3020,9 @@ cmd VkResult vkAllocateMemory(
     const VkMemoryAllocateInfo*  pAllocateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkDeviceMemory*              pMemory) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pAllocateInfo))
+  assert(notNullOrZero(pMemory))
   allocateInfo := pAllocateInfo[0]
 
   memoryObject := new!DeviceMemoryObject(
@@ -3031,6 +3069,7 @@ cmd void vkFreeMemory(
     VkDevice                     device,
     VkDeviceMemory               memory,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   if (memory != as!VkDeviceMemory(0)) {
     memoryObject := DeviceMemories[memory]
 
@@ -3051,6 +3090,8 @@ cmd VkResult vkMapMemory(
     VkDeviceSize     size,
     VkMemoryMapFlags flags,
     void**           ppData) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(memory))
   // TODO(awoloszyn): Figure out why we need the read/write here
   // in order for the replay to allocate the memory we need.
   // see: b/32300796
@@ -3079,6 +3120,8 @@ cmd VkResult vkMapMemory(
 cmd void vkUnmapMemory(
     VkDevice       device,
     VkDeviceMemory memory) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(memory))
   memoryObject := DeviceMemories[memory]
   mappedLocation := as!u8*(memoryObject.MappedLocation)
   if (IsMemoryCoherent(memoryObject)) {
@@ -3095,9 +3138,11 @@ cmd VkResult vkFlushMappedMemoryRanges(
     VkDevice                   device,
     u32                        memoryRangeCount
     const VkMappedMemoryRange* pMemoryRanges) {
+  assert(notNullOrZero(device))
   memoryRanges := pMemoryRanges[0:memoryRangeCount]
   for i in (0 .. memoryRangeCount) {
     flushRange := memoryRanges[i]
+    assert(notNullOrZero(flushRange.memory))
     memoryObject := DeviceMemories[flushRange.memory]
     mappedLocation := as!u8*(memoryObject.MappedLocation)
     flushStart := flushRange.offset - memoryObject.MappedOffset
@@ -3131,11 +3176,13 @@ cmd VkResult vkInvalidateMappedMemoryRanges(
     VkDevice                   device,
     u32                        memoryRangeCount,
     const VkMappedMemoryRange* pMemoryRanges) {
+  assert(notNullOrZero(device))
   ranges := new!MemoryRangeArray()
   memoryRanges := pMemoryRanges[0:memoryRangeCount]
   for i in (0 .. memoryRangeCount) {
     invalidateRange := memoryRanges[i]
     invalidateOffset := invalidateRange.offset
+    assert(notNullOrZero(invalidateRange.memory))
     mappedLocation := DeviceMemories[invalidateRange.memory].MappedLocation
     mappedOffset := DeviceMemories[invalidateRange.memory].MappedOffset
     mappedSize := DeviceMemories[invalidateRange.memory].MappedSize
@@ -3163,6 +3210,9 @@ cmd void vkGetDeviceMemoryCommitment(
     VkDevice       device,
     VkDeviceMemory memory,
     VkDeviceSize*  pCommittedMemoryInBytes) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(memory))
+  assert(notNullOrZero(pCommittedMemoryInBytes))
   _ = pCommittedMemoryInBytes[0]
 }
 
@@ -3206,6 +3256,9 @@ cmd VkResult vkBindBufferMemory(
     VkBuffer       buffer,
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(buffer))
+  assert(notNullOrZero(memory))
   Buffers[buffer].Memory = DeviceMemories[memory]
   Buffers[buffer].MemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(buffer)] = memoryOffset
@@ -3236,13 +3289,13 @@ cmd void RecreateBindImageMemory(
     VkDeviceSize   offset,
     u32            opaqueSparseBindCount,
     const VkSparseMemoryBind* pOpaqueSparseBinds) {
-    if opaqueSparseBindCount > 0 {
-      binds := pOpaqueSparseBinds[0:opaqueSparseBindCount]
-      for i in (0 .. opaqueSparseBindCount) {
-        bind := binds[i]
-        _ = bind
-      }
+  if opaqueSparseBindCount > 0 {
+    binds := pOpaqueSparseBinds[0:opaqueSparseBindCount]
+    for i in (0 .. opaqueSparseBindCount) {
+      bind := binds[i]
+      _ = bind
     }
+  }
 }
 
 @indirect("VkDevice")
@@ -3251,6 +3304,9 @@ cmd VkResult vkBindImageMemory(
     VkImage        image,
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(image))
+  assert(notNullOrZero(memory))
   Images[image].BoundMemory = DeviceMemories[memory]
   Images[image].BoundMemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
@@ -3262,6 +3318,8 @@ cmd void vkGetBufferMemoryRequirements(
     VkDevice              device,
     VkBuffer              buffer,
     VkMemoryRequirements* pMemoryRequirements) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(buffer))
   requirements := ?
   pMemoryRequirements[0] = requirements
 }
@@ -3271,6 +3329,9 @@ cmd void vkGetImageMemoryRequirements(
     VkDevice              device,
     VkImage               image,
     VkMemoryRequirements* pMemoryRequirements) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(image))
+  assert(notNullOrZero(pMemoryRequirements))
   requirements := ?
   pMemoryRequirements[0] = requirements
 }
@@ -3281,6 +3342,9 @@ cmd void vkGetImageSparseMemoryRequirements(
     VkImage                          image,
     u32*                             pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(image))
+  assert(notNullOrZero(pSparseMemoryRequirementCount))
   read(pSparseMemoryRequirementCount[0:1])
 
   if pSparseMemoryRequirements == null {
@@ -3305,6 +3369,8 @@ cmd void vkGetPhysicalDeviceSparseImageFormatProperties(
     VkImageTiling                  tiling,
     u32*                           pPropertyCount,
     VkSparseImageFormatProperties* pProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pProperties))
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -3325,6 +3391,10 @@ cmd VkResult vkQueueBindSparse(
     u32                     bindInfoCount,
     const VkBindSparseInfo* pBindInfo,
     VkFence                 fence) {
+  assert(notNullOrZero(queue))
+  if bindInfoCount != 0 {
+    assert(notNullOrZero(pBindInfo))
+  }
   LastBoundQueue = Queues[queue]
   infos := pBindInfo[0:bindInfoCount]
   enterSubcontext()
@@ -3407,6 +3477,9 @@ cmd VkResult vkCreateFence(
     const VkFenceCreateInfo*     pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkFence*                     pFence) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pFence))
 
   f := new!FenceObject()
   create_info := pCreateInfo[0]
@@ -3430,6 +3503,7 @@ cmd void vkDestroyFence(
     VkDevice                     device,
     VkFence                      fence,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   delete(Fences, fence)
 }
 
@@ -3439,7 +3513,11 @@ cmd VkResult vkResetFences(
     VkDevice       device,
     u32            fenceCount,
     const VkFence* pFences) {
-  read(pFences[0:fenceCount])
+  assert(notNullOrZero(device))
+  fences := pFences[0:fenceCount]
+  for i in 0 .. fenceCount {
+    assert(notNullOrZero(fences[i]))
+  }
   return ?
 }
 
@@ -3449,6 +3527,8 @@ cmd VkResult vkResetFences(
 cmd VkResult vkGetFenceStatus(
     VkDevice device,
     VkFence  fence) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(fence))
   return ?
 }
 
@@ -3461,7 +3541,11 @@ cmd VkResult vkWaitForFences(
     const VkFence* pFences,
     VkBool32       waitAll,
     u64            timeout) { /// timeout in nanoseconds
-  read(pFences[0:fenceCount])
+  assert(notNullOrZero(device))
+  fences := pFences[0:fenceCount]
+  for i in 0 .. fenceCount {
+    assert(notNullOrZero(fences[i]))
+  }
   return ?
 }
 
@@ -3484,6 +3568,10 @@ cmd VkResult vkCreateSemaphore(
     const VkSemaphoreCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkSemaphore*                 pSemaphore) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pSemaphore))
+
   _ = pCreateInfo[0]
   // TODO: pAllocator
 
@@ -3502,6 +3590,7 @@ cmd void vkDestroySemaphore(
     VkDevice                     device,
     VkSemaphore                  semaphore,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   // TODO: pAllocator
   delete(Semaphores, semaphore)
 }
@@ -3525,6 +3614,10 @@ cmd VkResult vkCreateEvent(
     const VkEventCreateInfo*     pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkEvent*                     pEvent) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pEvent))
+
   read(pCreateInfo[0:1])
   event := new!EventObject()
   event.Device = device
@@ -3543,6 +3636,7 @@ cmd void vkDestroyEvent(
     VkDevice                     device,
     VkEvent                      event,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   delete(Events, event)
 }
 
@@ -3552,6 +3646,8 @@ cmd void vkDestroyEvent(
 cmd VkResult vkGetEventStatus(
     VkDevice device,
     VkEvent  event) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(event))
   return ?
 }
 
@@ -3560,6 +3656,8 @@ cmd VkResult vkGetEventStatus(
 cmd VkResult vkSetEvent(
     VkDevice device,
     VkEvent  event) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(event))
   e := Events[event]
   e.Signaled = true
   queue := e.SubmitQueue
@@ -3583,6 +3681,8 @@ cmd VkResult vkSetEvent(
 cmd VkResult vkResetEvent(
     VkDevice device,
     VkEvent  event) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(event))
   Events[event].Signaled = false
   return ?
 }
@@ -3607,6 +3707,10 @@ cmd VkResult vkCreateQueryPool(
     const VkQueryPoolCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkQueryPool*                 pQueryPool) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pQueryPool))
+
   info := pCreateInfo[0]
 
   handle := ?
@@ -3632,6 +3736,7 @@ cmd void vkDestroyQueryPool(
     VkDevice                     device,
     VkQueryPool                  queryPool,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   delete(QueryPools, queryPool)
 }
 
@@ -3653,6 +3758,8 @@ cmd VkResult vkGetQueryPoolResults(
     void*              pData,
     VkDeviceSize       stride,
     VkQueryResultFlags flags) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(queryPool))
   write(as!u8*(pData)[0:dataSize])
   return ?
 }
@@ -3693,6 +3800,9 @@ cmd VkResult vkCreateBuffer(
     const VkBufferCreateInfo*    pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkBuffer*                    pBuffer) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pBuffer))
   buffer_create_info := pCreateInfo[0]
 
   queueFamilyIndices := buffer_create_info.pQueueFamilyIndices[
@@ -3745,6 +3855,7 @@ cmd void vkDestroyBuffer(
     VkDevice                     device,
     VkBuffer                     buffer,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   if (buffer != as!VkBuffer(0)) {
     bufferObject := Buffers[buffer]
     if (bufferObject.Memory != null) {
@@ -3777,6 +3888,9 @@ cmd VkResult vkCreateBufferView(
     const VkBufferViewCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*  pAllocator,
     VkBufferView*                 pView) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pView))
   buffer_view_create_info := pCreateInfo[0]
   // TODO: pAllocator
 
@@ -3800,6 +3914,7 @@ cmd void vkDestroyBufferView(
     VkDevice                     device,
     VkBufferView                 bufferView,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   // TODO: pAllocator
   delete(BufferViews, bufferView)
 }
@@ -3861,6 +3976,10 @@ cmd VkResult createImageAndCacheMemoryRequirements(
     const VkAllocationCallbacks* pAllocator,
     VkImage* pImage,
     VkMemoryRequirements* pMemoryRequirements) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pImage))
+  assert(notNullOrZero(pMemoryRequirements))
 
   // TODO: pAllocator
   info := pCreateInfo[0]
@@ -3895,6 +4014,9 @@ cmd void cacheImageSparseMemoryRequirements(
     VkImage image,
     u32 count,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(image))
+  assert(notNullOrZero(pSparseMemoryRequirements))
   if (count > 0) && (pSparseMemoryRequirements != null) {
   reqs := pSparseMemoryRequirements[0:count]
   for i in (0 .. count) {
@@ -3911,6 +4033,9 @@ cmd VkResult vkCreateImage(
     const VkImageCreateInfo*     pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkImage*                     pImage) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pImage))
   // TODO: pAllocator
 
   info := pCreateInfo[0]
@@ -4012,6 +4137,7 @@ cmd void vkDestroyImage(
     VkDevice                     device,
     VkImage                      image,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   // TODO: pAllocator
   if (image != as!VkImage(0)) {
     imageObject := Images[image]
@@ -4030,6 +4156,8 @@ cmd void vkGetImageSubresourceLayout(
     VkImage                   image,
     const VkImageSubresource* pSubresource,
     VkSubresourceLayout*      pLayout) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(device))
   _ = pSubresource[0]
 
   pLayout[0] = ?
@@ -4053,6 +4181,9 @@ cmd VkResult vkCreateImageView(
     const VkImageViewCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkImageView*                 pView) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pView))
   image_view_create_info := pCreateInfo[0]
   // TODO: pAllocator
 
@@ -4077,6 +4208,7 @@ cmd void vkDestroyImageView(
     VkDevice                     device,
     VkImageView                  imageView,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   // TODO: pAllocator
   delete(ImageViews, imageView)
 }
@@ -4100,6 +4232,9 @@ cmd VkResult vkCreateShaderModule(
     const VkShaderModuleCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*    pAllocator,
     VkShaderModule*                 pShaderModule) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pShaderModule))
   create_info := pCreateInfo[0]
 
   num_words := as!u64(create_info.codeSize) / 4
@@ -4133,6 +4268,7 @@ cmd void vkDestroyShaderModule(
     VkDevice                     device,
     VkShaderModule               shaderModule,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   delete(ShaderModules, shaderModule)
 }
 
@@ -4155,6 +4291,9 @@ cmd VkResult vkCreatePipelineCache(
     const VkPipelineCacheCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*     pAllocator,
     VkPipelineCache*                 pPipelineCache) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pPipelineCache))
   //TODO(awoloszyn): Add Allocator support
   create_info := pCreateInfo[0]
   read(as!u8*(create_info.pInitialData)[0:create_info.initialDataSize])
@@ -4169,6 +4308,7 @@ cmd void vkDestroyPipelineCache(
     VkDevice                     device,
     VkPipelineCache              pipelineCache,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   delete(PipelineCaches, pipelineCache)
 }
 
@@ -4178,6 +4318,9 @@ cmd VkResult vkGetPipelineCacheData(
     VkPipelineCache pipelineCache,
     size*           pDataSize,
     void*           pData) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pipelineCache))
+  assert(notNullOrZero(pDataSize))
   _ = pDataSize[0]
 
   writeDataSize := ?
@@ -4194,7 +4337,12 @@ cmd VkResult vkMergePipelineCaches(
     VkPipelineCache        dstCache,
     u32                    srcCacheCount,
     const VkPipelineCache* pSrcCaches) {
-  read(pSrcCaches[0:srcCacheCount])
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(dstCache))
+  srcCaches := pSrcCaches[0:srcCacheCount]
+  for i in 0 .. srcCacheCount {
+    assert(notNullOrZero(srcCaches[i]))
+  }
   return ?
 }
 
@@ -4289,6 +4437,10 @@ cmd VkResult vkCreateGraphicsPipelines(
     const VkGraphicsPipelineCreateInfo* pCreateInfos,
     const VkAllocationCallbacks*        pAllocator,
     VkPipeline*                         pPipelines) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(createInfoCount))
+  assert(notNullOrZero(pCreateInfos))
+  assert(notNullOrZero(pPipelines))
   // TODO(awoloszyn): Figure out what fields we want to store off
   //    in the state block.
   infos := pCreateInfos[0:createInfoCount]
@@ -4521,6 +4673,10 @@ cmd VkResult vkCreateComputePipelines(
     const VkComputePipelineCreateInfo* pCreateInfos,
     const VkAllocationCallbacks*       pAllocator,
     VkPipeline*                        pPipelines) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(createInfoCount))
+  assert(notNullOrZero(pCreateInfos))
+  assert(notNullOrZero(pPipelines))
   created_pipelines := CreatedComputePipelines()
   infos := pCreateInfos[0:createInfoCount]
   for i in (0 .. createInfoCount) {
@@ -4582,6 +4738,7 @@ cmd void vkDestroyPipeline(
     VkDevice                     device,
     VkPipeline                   pipeline,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   if pipeline in GraphicsPipelines {
     delete(GraphicsPipelines, pipeline)
   }
@@ -4609,6 +4766,9 @@ cmd VkResult vkCreatePipelineLayout(
     const VkPipelineLayoutCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*      pAllocator,
     VkPipelineLayout*                 pPipelineLayout) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pPipelineLayout))
 
   info := pCreateInfo[0]
   pipelineLayout := new!PipelineLayoutObject(Device: device)
@@ -4639,6 +4799,7 @@ cmd void vkDestroyPipelineLayout(
     VkDevice                     device,
     VkPipelineLayout             pipelineLayout,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   // TODO: pAllocator
   delete(PipelineLayouts, pipelineLayout)
 }
@@ -4660,6 +4821,9 @@ cmd VkResult vkCreateSampler(
     const VkSamplerCreateInfo*   pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkSampler*                   pSampler) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pSampler))
   create_info := pCreateInfo[0]
   sampler := new!SamplerObject(
     Device:                   device,
@@ -4692,6 +4856,7 @@ cmd void vkDestroySampler(
     VkDevice                     device,
     VkSampler                    sampler,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   // TODO: pAllocator
   delete(Samplers, sampler)
 }
@@ -4725,6 +4890,9 @@ cmd VkResult vkCreateDescriptorSetLayout(
     const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*           pAllocator,
     VkDescriptorSetLayout*                 pSetLayout) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pSetLayout))
   info := pCreateInfo[0]
   // TODO: info.pNext
   count := info.bindingCount
@@ -4770,6 +4938,7 @@ cmd void vkDestroyDescriptorSetLayout(
     VkDevice                     device,
     VkDescriptorSetLayout        descriptorSetLayout,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   // TODO: pAllocator
   delete(DescriptorSetLayouts, descriptorSetLayout)
 }
@@ -4793,6 +4962,9 @@ cmd VkResult vkCreateDescriptorPool(
     const VkDescriptorPoolCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*      pAllocator,
     VkDescriptorPool*                 pDescriptorPool) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pDescriptorPool))
   info := pCreateInfo[0]
   pool := new!DescriptorPoolObject(
     Device:   device,
@@ -4821,6 +4993,7 @@ cmd void vkDestroyDescriptorPool(
     VkDevice                     device,
     VkDescriptorPool             descriptorPool,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   delete(DescriptorPools, descriptorPool)
 }
 
@@ -4830,6 +5003,8 @@ cmd VkResult vkResetDescriptorPool(
     VkDevice                   device,
     VkDescriptorPool           descriptorPool,
     VkDescriptorPoolResetFlags flags) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(descriptorPool))
   // We need to iterate through all the descriptor sets in the descriptor pool
   // and remove them from the pool. The following line will makes a copy of
   // the map in the generated C++ code, to prevent us from deleting an item
@@ -4887,6 +5062,8 @@ cmd VkResult vkAllocateDescriptorSets(
     VkDevice                           device,
     const VkDescriptorSetAllocateInfo* pAllocateInfo,
     VkDescriptorSet*                   pDescriptorSets) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pDescriptorSets))
   info := pAllocateInfo[0]
   // TODO: info.pNext
   count := info.descriptorSetCount
@@ -4947,8 +5124,11 @@ cmd VkResult vkFreeDescriptorSets(
     VkDescriptorPool       descriptorPool,
     u32                    descriptorSetCount,
     const VkDescriptorSet* pDescriptorSets) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(descriptorPool))
   sets := pDescriptorSets[0:descriptorSetCount]
   for i in (0 .. descriptorSetCount) {
+    assert(notNullOrZero(sets[i]))
     pool := DescriptorPools[DescriptorSets[sets[i]].DescriptorPool]
     delete(pool.DescriptorSets, sets[i])
     delete(DescriptorSets, sets[i])
@@ -5167,6 +5347,7 @@ cmd void vkUpdateDescriptorSets(
     const VkWriteDescriptorSet* pDescriptorWrites,
     u32                         descriptorCopyCount,
     const VkCopyDescriptorSet*  pDescriptorCopies) {
+  assert(notNullOrZero(device))
 
   writes := RewriteWriteDescriptorSets(
     descriptorWriteCount,
@@ -5263,6 +5444,9 @@ cmd VkResult vkCreateFramebuffer(
     const VkFramebufferCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*   pAllocator,
     VkFramebuffer*                 pFramebuffer) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pFramebuffer))
   create_info := pCreateInfo[0]
   attachments := create_info.pAttachments[0:create_info.attachmentCount]
 
@@ -5289,6 +5473,7 @@ cmd void vkDestroyFramebuffer(
     VkDevice                     device,
     VkFramebuffer                framebuffer,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   delete(Framebuffers, framebuffer)
 }
 
@@ -5326,6 +5511,10 @@ cmd VkResult vkCreateRenderPass(
     const VkRenderPassCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*  pAllocator,
     VkRenderPass*                 pRenderPass) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pRenderPass))
+
   renderPass := new!RenderPassObject()
   renderPass.Device = device
   info := pCreateInfo[0]
@@ -5384,6 +5573,7 @@ cmd void vkDestroyRenderPass(
     VkDevice                     device,
     VkRenderPass                 renderPass,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   delete(RenderPasses, renderPass)
 }
 
@@ -5392,6 +5582,9 @@ cmd void vkGetRenderAreaGranularity(
     VkDevice     device,
     VkRenderPass renderPass,
     VkExtent2D*  pGranularity) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(renderPass))
+  assert(notNullOrZero(pGranularity))
   write(pGranularity[0:1])
 }
 
@@ -5411,6 +5604,10 @@ cmd VkResult vkCreateCommandPool(
     const VkCommandPoolCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*   pAllocator,
     VkCommandPool*                 pCommandPool) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pCommandPool))
+
   create_info := pCreateInfo[0]
   // TODO: pAllocator
 
@@ -5430,6 +5627,7 @@ cmd void vkDestroyCommandPool(
     VkDevice                     device,
     VkCommandPool                commandPool,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   fence
   for _ , k , _ in CommandPools[commandPool].CommandBuffers {
     delete(CommandBuffers, k)
@@ -5446,6 +5644,8 @@ cmd VkResult vkResetCommandPool(
     VkDevice                device,
     VkCommandPool           commandPool,
     VkCommandPoolResetFlags flags) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(commandPool))
   pool := CommandPools[commandPool]
   for _ , k , b in pool.CommandBuffers {
     b.BeginInfo = null
@@ -5484,6 +5684,8 @@ cmd VkResult vkAllocateCommandBuffers(
     VkDevice                           device,
     const VkCommandBufferAllocateInfo* pAllocateInfo,
     VkCommandBuffer*                   pCommandBuffers) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCommandBuffers))
   allocateInfo := pAllocateInfo[0]
   count := allocateInfo.commandBufferCount
 
@@ -5514,9 +5716,12 @@ cmd void vkFreeCommandBuffers(
     VkCommandPool          commandPool,
     u32                    commandBufferCount,
     const VkCommandBuffer* pCommandBuffers) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(commandPool))
   cb := pCommandBuffers[0:commandBufferCount]
   for i in (0 .. commandBufferCount) {
     buffer := cb[i]
+    assert(notNullOrZero(buffer))
     buffer_object := CommandBuffers[buffer]
     pool := buffer_object.Pool
     pool_object := CommandPools[pool]
@@ -5531,6 +5736,8 @@ cmd void vkFreeCommandBuffers(
 cmd VkResult vkBeginCommandBuffer(
     VkCommandBuffer                 commandBuffer,
     const VkCommandBufferBeginInfo* pBeginInfo) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(pBeginInfo))
   info := pBeginInfo[0]
   begin := new!CommandBufferBegin(Flags: info.flags,Inherited:  false)
 
@@ -5564,6 +5771,7 @@ cmd void RecreateEndCommandBuffer(VkCommandBuffer commandBuffer) { }
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkEndCommandBuffer(
     VkCommandBuffer commandBuffer) {
+  assert(notNullOrZero(commandBuffer))
   buff := CommandBuffers[commandBuffer]
   buff.Recording = COMPLETED
   CommandBuffers[commandBuffer] = buff
@@ -5575,6 +5783,7 @@ cmd VkResult vkEndCommandBuffer(
 cmd VkResult vkResetCommandBuffer(
     VkCommandBuffer           commandBuffer,
     VkCommandBufferResetFlags flags) {
+  assert(notNullOrZero(commandBuffer))
   buff := CommandBuffers[commandBuffer]
   buff.Recording = NOT_STARTED
   buff.BeginInfo = null
@@ -5603,6 +5812,8 @@ cmd void vkCmdBindPipeline(
     VkCommandBuffer     commandBuffer,
     VkPipelineBindPoint pipelineBindPoint,
     VkPipeline          pipeline) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(pipeline))
   args := new!vkCmdBindPipelineArgs(
       PipelineBindPoint: pipelineBindPoint,
       Pipeline:          pipeline)
@@ -5639,6 +5850,7 @@ cmd void vkCmdSetViewport(
     u32               firstViewport,
     u32               viewportCount,
     const VkViewport* pViewports) {
+  assert(notNullOrZero(commandBuffer))
   viewports := pViewports[0:viewportCount]
   args := new!vkCmdSetViewportArgs(
     firstViewport
@@ -5665,6 +5877,7 @@ cmd void vkCmdSetScissor(
     u32             firstScissor,
     u32             scissorCount,
     const VkRect2D* pScissors) {
+  assert(notNullOrZero(commandBuffer))
   scissors := pScissors[0:scissorCount]
   args := new!vkCmdSetScissorArgs(
     firstScissor
@@ -5688,9 +5901,8 @@ sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
 cmd void vkCmdSetLineWidth(
     VkCommandBuffer commandBuffer,
     f32             lineWidth) {
-
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdSetLineWidthArgs(lineWidth)
-
   addCmd(commandBuffer, args, dovkCmdSetLineWidth)
 }
 
@@ -5710,6 +5922,7 @@ cmd void vkCmdSetDepthBias(
     f32             depthBiasConstantFactor,
     f32             depthBiasClamp,
     f32             depthBiasSlopeFactor) {
+  assert(notNullOrZero(commandBuffer))
 
   args := new!vkCmdSetDepthBiasArgs(
       depthBiasConstantFactor,
@@ -5735,6 +5948,7 @@ sub void dovkCmdSetBlendConstants(ref!vkCmdSetBlendConstantsArgs args) {
 cmd void vkCmdSetBlendConstants(
               VkCommandBuffer commandBuffer,
     @readonly f32[4]          blendConstants) {
+  assert(notNullOrZero(commandBuffer))
 
   args := new!vkCmdSetBlendConstantsArgs(
       blendConstants[0],
@@ -5760,6 +5974,7 @@ cmd void vkCmdSetDepthBounds(
     VkCommandBuffer commandBuffer,
     f32             minDepthBounds,
     f32             maxDepthBounds) {
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdSetDepthBoundsArgs(
       minDepthBounds,
       maxDepthBounds)
@@ -5804,6 +6019,7 @@ cmd void vkCmdSetStencilWriteMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                writeMask) {
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdSetStencilWriteMaskArgs(
     faceMask,
     writeMask
@@ -5826,6 +6042,7 @@ cmd void vkCmdSetStencilReference(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                reference) {
+  assert(notNullOrZero(commandBuffer))
   args :=
   new!vkCmdSetStencilReferenceArgs(
     faceMask,
@@ -5907,6 +6124,8 @@ cmd void vkCmdBindDescriptorSets(
     const VkDescriptorSet* pDescriptorSets,
     u32                    dynamicOffsetCount,
     const u32*             pDynamicOffsets) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(layout))
   sets := pDescriptorSets[0:descriptorSetCount]
   args := new!vkCmdBindDescriptorSetsArgs(
     PipelineBindPoint: pipelineBindPoint,
@@ -5919,6 +6138,7 @@ cmd void vkCmdBindDescriptorSets(
     args.DynamicOffsets[i] = dynamic_offsets[i]
   }
   for i in (0 .. descriptorSetCount) {
+    assert(notNullOrZero(sets[i]))
     args.DescriptorSets[i] = sets[i]
   }
 
@@ -5960,6 +6180,8 @@ cmd void vkCmdBindIndexBuffer(
     VkBuffer        buffer,
     VkDeviceSize    offset,
     VkIndexType     indexType) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(buffer))
 
   args := new!vkCmdBindIndexBufferArgs(
     Buffer:     buffer,
@@ -6002,6 +6224,7 @@ cmd void vkCmdBindVertexBuffers(
     u32                 bindingCount,
     const VkBuffer*     pBuffers,
     const VkDeviceSize* pOffsets) {
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdBindVertexBuffersArgs(
     FirstBinding:  firstBinding,
     BindingCount:  bindingCount
@@ -6009,6 +6232,7 @@ cmd void vkCmdBindVertexBuffers(
   buffers := pBuffers[0:bindingCount]
   offsets := pOffsets[0:bindingCount]
   for i in (0 .. bindingCount) {
+    assert(notNullOrZero(buffers[i]))
     args.Buffers[i] = buffers[i]
     args.Offsets[i] = offsets[i]
   }
@@ -6112,9 +6336,8 @@ cmd void vkCmdDraw(
     u32             instanceCount,
     u32             firstVertex,
     u32             firstInstance) {
-
+  assert(notNullOrZero(commandBuffer))
   args :=  new!vkCmdDrawArgs(vertexCount, instanceCount, firstVertex, firstInstance)
-
   addCmd(commandBuffer, args, dovkCmdDraw)
 }
 
@@ -6159,6 +6382,7 @@ cmd void vkCmdDrawIndexed(
     u32             firstIndex,
     s32             vertexOffset,
     u32             firstInstance) {
+  assert(notNullOrZero(commandBuffer))
 
   args := new!vkCmdDrawIndexedArgs(
       IndexCount:     indexCount,
@@ -6198,6 +6422,8 @@ cmd void vkCmdDrawIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(buffer))
   args := new!vkCmdDrawIndirectArgs(buffer, offset, drawCount, stride)
 
   addCmd(commandBuffer, args,  dovkCmdDrawIndirect)
@@ -6233,8 +6459,9 @@ cmd void vkCmdDrawIndexedIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(buffer))
   args := new!vkCmdDrawIndexedIndirectArgs(buffer, offset, drawCount, stride)
-
   addCmd(commandBuffer, args, dovkCmdDrawIndexedIndirect)
 }
 
@@ -6254,6 +6481,7 @@ cmd void vkCmdDispatch(
     u32             groupCountX,
     u32             groupCountY,
     u32             groupCountZ) {
+  assert(notNullOrZero(commandBuffer))
   args :=
     new!vkCmdDispatchArgs(groupCountX, groupCountY, groupCountZ)
 
@@ -6277,6 +6505,8 @@ cmd void vkCmdDispatchIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,
     VkDeviceSize    offset) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(buffer))
   args := new!vkCmdDispatchIndirectArgs(buffer, offset)
 
   addCmd(commandBuffer, args, dovkCmdDispatchIndirect)
@@ -6308,6 +6538,9 @@ cmd void vkCmdCopyBuffer(
     VkBuffer            dstBuffer,
     u32                 regionCount,
     const VkBufferCopy* pRegions) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(srcBuffer))
+  assert(notNullOrZero(dstBuffer))
   args := new!vkCmdCopyBufferArgs(
     SrcBuffer:  srcBuffer,
     DstBuffer:  dstBuffer
@@ -6404,6 +6637,9 @@ cmd void vkCmdCopyImage(
     VkImageLayout      dstImageLayout,
     u32                regionCount,
     const VkImageCopy* pRegions) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(srcImage))
+  assert(notNullOrZero(dstImage))
   args := new!vkCmdCopyImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
@@ -6442,6 +6678,9 @@ cmd void vkCmdBlitImage(
     u32                regionCount,
     const VkImageBlit* pRegions,
     VkFilter           filter) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(srcImage))
+  assert(notNullOrZero(dstImage))
   args := new!vkCmdBlitImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
@@ -6815,6 +7054,9 @@ cmd void vkCmdCopyBufferToImage(
     VkImageLayout            dstImageLayout,
     u32                      regionCount,
     const VkBufferImageCopy* pRegions) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(srcBuffer))
+  assert(notNullOrZero(dstImage))
   regions := pRegions[0:regionCount]
   read(regions)
   args := new!vkCmdCopyBufferToImageArgs(srcBuffer, dstImage, dstImageLayout)
@@ -6845,6 +7087,9 @@ cmd void vkCmdCopyImageToBuffer(
     VkBuffer                 dstBuffer,
     u32                      regionCount,
     const VkBufferImageCopy* pRegions) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(srcImage))
+  assert(notNullOrZero(dstBuffer))
   regions := pRegions[0:regionCount]
   args := new!vkCmdCopyImageToBufferArgs(
     SrcImage:        srcImage,
@@ -6881,6 +7126,8 @@ cmd void vkCmdUpdateBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    dataSize,
     const void*     pData) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(dstBuffer))
   args := new!vkCmdUpdateBufferArgs(
       dstBuffer,
       dstOffset,
@@ -6912,7 +7159,8 @@ cmd void vkCmdFillBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    size,
     u32             data) {
-
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(dstBuffer))
   args := new!vkCmdFillBufferArgs(
       dstBuffer,
       dstOffset,
@@ -6943,6 +7191,8 @@ cmd void vkCmdClearColorImage(
     const VkClearColorValue*       pColor,
     u32                            rangeCount,
     const VkImageSubresourceRange* pRanges) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(image))
   color := pColor[0]
   ranges := pRanges[0:rangeCount]
   args := new!vkCmdClearColorImageArgs(
@@ -6977,6 +7227,8 @@ cmd void vkCmdClearDepthStencilImage(
     const VkClearDepthStencilValue* pDepthStencil,
     u32                             rangeCount,
     const VkImageSubresourceRange*  pRanges) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(image))
   depthStencil := pDepthStencil[0]
   ranges := pRanges[0:rangeCount]
   args := new!vkCmdClearDepthStencilImageArgs(
@@ -7008,6 +7260,7 @@ cmd void vkCmdClearAttachments(
     const VkClearAttachment* pAttachments,
     u32                      rectCount,
     const VkClearRect*       pRects) {
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdClearAttachmentsArgs()
   attachments := pAttachments[0:attachmentCount]
   rects := pRects[0:rectCount]
@@ -7042,6 +7295,9 @@ cmd void vkCmdResolveImage(
     VkImageLayout         dstImageLayout,
     u32                   regionCount,
     const VkImageResolve* pRegions) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(srcImage))
+  assert(notNullOrZero(dstImage))
   args := new!vkCmdResolveImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
@@ -7072,6 +7328,8 @@ cmd void vkCmdSetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(event))
   args := new!vkCmdSetEventArgs(
     Event:      event,
     StageMask:  stageMask
@@ -7096,6 +7354,8 @@ cmd void vkCmdResetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(event))
   args := new!vkCmdResetEventArgs(
     Event:      event,
     StageMask:  stageMask,
@@ -7145,6 +7405,7 @@ cmd void vkCmdWaitEvents(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdWaitEventsArgs(
     SrcStageMask:  srcStageMask,
     DstStageMask:  dstStageMask,
@@ -7154,15 +7415,18 @@ cmd void vkCmdWaitEvents(
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. eventCount) {
+    assert(notNullOrZero(events[i]))
     args.Events[i] = events[i]
   }
   for i in (0 .. memoryBarrierCount) {
     args.MemoryBarriers[i] = memoryBarriers[i]
   }
   for i in (0 .. bufferMemoryBarrierCount) {
+    assert(notNullOrZero(bufferMemoryBarriers[i].buffer))
     args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
   }
   for i in (0 .. imageMemoryBarrierCount) {
+    assert(notNullOrZero(imageMemoryBarriers[i].image))
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
 
@@ -7199,6 +7463,7 @@ cmd void vkCmdPipelineBarrier(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdPipelineBarrierArgs(
     SrcStageMask:     srcStageMask,
     DstStageMask:     dstStageMask,
@@ -7211,11 +7476,13 @@ cmd void vkCmdPipelineBarrier(
 
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
   for i in (0 .. bufferMemoryBarrierCount) {
+    assert(notNullOrZero(bufferMemoryBarriers[i].buffer))
     args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
   }
 
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. imageMemoryBarrierCount) {
+    assert(notNullOrZero(imageMemoryBarriers[i].image))
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
 
@@ -7240,6 +7507,8 @@ cmd void vkCmdBeginQuery(
     VkQueryPool         queryPool,
     u32                 query,
     VkQueryControlFlags flags) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(queryPool))
 
   args := new!vkCmdBeginQueryArgs(
     queryPool,              query, flags
@@ -7265,6 +7534,8 @@ cmd void vkCmdEndQuery(
     VkCommandBuffer commandBuffer,
     VkQueryPool     queryPool,
     u32             query) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(queryPool))
   args := new!vkCmdEndQueryArgs(
     queryPool,            query
   )
@@ -7293,6 +7564,8 @@ cmd void vkCmdResetQueryPool(
     VkQueryPool     queryPool,
     u32             firstQuery,
     u32             queryCount) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(queryPool))
   args := new!vkCmdResetQueryPoolArgs(
     queryPool,                  firstQuery, queryCount
   )
@@ -7316,6 +7589,8 @@ cmd void vkCmdWriteTimestamp(
     VkPipelineStageFlagBits pipelineStage,
     VkQueryPool             queryPool,
     u32                     query) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(queryPool))
   args := new!vkCmdWriteTimestampArgs(
     pipelineStage,              queryPool, query
   )
@@ -7348,6 +7623,10 @@ cmd void vkCmdCopyQueryPoolResults(
     VkDeviceSize       dstOffset,
     VkDeviceSize       stride,
     VkQueryResultFlags flags) {
+  assert(notNullOrZero(commandBuffer))
+  assert(notNullOrZero(queryPool))
+  assert(notNullOrZero(dstBuffer))
+
   args := new!vkCmdCopyQueryPoolResultsArgs(
     QueryPool:   queryPool,
     FirstQuery:  firstQuery,
@@ -7381,6 +7660,7 @@ cmd void vkCmdPushConstants(
     u32                offset,
     u32                size,
     const void*        pValues) {
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdPushConstantsArgs(
     layout,           stageFlags, offset, size, clone(as!u8*(pValues)[0:size])
   )
@@ -7430,24 +7710,6 @@ sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
   }
 
   pushRenderPassMarker(args.RenderPass)
-
-  // switch RenderPasses[args.RenderPass].DebugInfo == null {
-  //   case true:
-  //     pushRenderPassMarker("<RenderPass>")
-  //   case false:{
-  //   switch len(RenderPasses[args.RenderPass].DebugInfo.ObjectName) == 0 {
-  //     case true:
-  //       pushRenderPassMarker("<RenderPass>")
-  //     case false:
-  //       pushRenderPassMarker(RenderPasses[args.RenderPass].DebugInfo.ObjectName)
-  //   }
-  //   }
-  // }
-
-  // switch len(RenderPasses[args.RenderPass].SubpassDescriptions) > 1 {
-  //   case true:
-  //     pushRenderPassMarker("<Subpass>")
-  // }
 }
 
 
@@ -7457,7 +7719,10 @@ cmd void vkCmdBeginRenderPass(
     VkCommandBuffer              commandBuffer,
     const VkRenderPassBeginInfo* pRenderPassBegin,
     VkSubpassContents            contents) {
+  assert(notNullOrZero(commandBuffer))
   begin_info := pRenderPassBegin[0]
+  assert(notNullOrZero(begin_info.renderPass))
+  assert(notNullOrZero(begin_info.framebuffer))
   args := new!vkCmdBeginRenderPassArgs(
     Contents:     contents,
     RenderPass:   begin_info.renderPass,
@@ -7502,6 +7767,7 @@ sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
 cmd void vkCmdNextSubpass(
     VkCommandBuffer   commandBuffer,
     VkSubpassContents contents) {
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdNextSubpassArgs(contents)
 
   addCmd(commandBuffer, args, dovkCmdNextSubpass)
@@ -7524,9 +7790,8 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {
-
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdEndRenderPassArgs()
-
   addCmd(commandBuffer, args, dovkCmdEndRenderPass)
 }
 
@@ -7543,9 +7808,11 @@ cmd void vkCmdExecuteCommands(
     VkCommandBuffer        commandBuffer,
     u32                    commandBufferCount,
     const VkCommandBuffer* pCommandBuffers) {
+  assert(notNullOrZero(commandBuffer))
   cmd_buffers := pCommandBuffers[0:commandBufferCount]
   args := new!vkCmdExecuteCommandsArgs()
   for i in (0 .. commandBufferCount) {
+  assert(notNullOrZero(cmd_buffers[i]))
     args.CommandBuffers[as!u32(i)] = cmd_buffers[i]
   }
 
@@ -7623,6 +7890,7 @@ cmd void vkDestroySurfaceKHR(
     VkInstance                   instance,
     VkSurfaceKHR                 surface,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(instance))
   // TODO: pAllocator
   delete(Surfaces, surface)
 }
@@ -7634,6 +7902,7 @@ cmd VkResult vkGetPhysicalDeviceSurfaceSupportKHR(
     u32              queueFamilyIndex,
     VkSurfaceKHR     surface,
     VkBool32*        pSupported) {
+  assert(notNullOrZero(physicalDevice))
   pSupported[0] = ?
   return ?
 }
@@ -7644,6 +7913,9 @@ cmd VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
     VkPhysicalDevice          physicalDevice,
     VkSurfaceKHR              surface,
     VkSurfaceCapabilitiesKHR* pSurfaceCapabilities) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(surface))
+  assert(notNullOrZero(pSurfaceCapabilities))
   pSurfaceCapabilities[0] = ?
   return ?
 }
@@ -7655,6 +7927,8 @@ cmd VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkSurfaceKHR        surface,
     u32*                pSurfaceFormatCount,
     VkSurfaceFormatKHR* pSurfaceFormats) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(surface))
   _ = pSurfaceFormatCount[0]
 
   if pSurfaceFormats == null {
@@ -7678,6 +7952,8 @@ cmd VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkSurfaceKHR      surface,
     u32*              pPresentModeCount,
     VkPresentModeKHR* pPresentModes) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(surface))
   _ = pPresentModeCount[0]
 
   if pPresentModes == null {
@@ -7765,6 +8041,10 @@ cmd VkResult vkCreateSwapchainKHR(
     const VkSwapchainCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*    pAllocator,
     VkSwapchainKHR*                 pSwapchain) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pSwapchain))
+
   create_info := pCreateInfo[0]
   queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
   // TODO: pAllocator
@@ -7809,6 +8089,7 @@ cmd void vkDestroySwapchainKHR(
     VkDevice                     device,
     VkSwapchainKHR               swapchain,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(device))
   // TODO: pAllocator
   swapObject := Swapchains[swapchain]
   if swapObject != null {
@@ -7826,6 +8107,8 @@ cmd VkResult vkGetSwapchainImagesKHR(
     VkSwapchainKHR swapchain,
     u32*           pSwapchainImageCount,
     VkImage*       pSwapchainImages) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(swapchain))
   swapchainObject := Swapchains[swapchain]
   // Need to do a read observation of the image count as the number of images
   // requested from users might be different from the number offered by the
@@ -7885,6 +8168,8 @@ cmd VkResult vkAcquireNextImageKHR(
     VkSemaphore    semaphore,
     VkFence        fence,
     u32*           pImageIndex) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(swapchain))
   _ = pImageIndex[0]
   pImageIndex[0] = ?
   if (semaphore != as!VkSemaphore(0)) {
@@ -7899,6 +8184,8 @@ cmd VkResult vkAcquireNextImageKHR(
 cmd VkResult vkQueuePresentKHR(
     VkQueue                 queue,
     const VkPresentInfoKHR* pPresentInfo) {
+  assert(notNullOrZero(queue))
+  assert(notNullOrZero(pPresentInfo))
   LastSubmission = PRESENT
   LastBoundQueue = Queues[queue]
   for i in (0 .. LastPresentInfo.PresentImageCount) {
@@ -8039,6 +8326,8 @@ cmd VkResult vkGetPhysicalDeviceDisplayPropertiesKHR(
     VkPhysicalDevice        physicalDevice,
     u32*                    pPropertyCount,
     VkDisplayPropertiesKHR* pProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pPropertyCount))
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -8062,6 +8351,8 @@ cmd VkResult vkGetPhysicalDeviceDisplayPlanePropertiesKHR(
     VkPhysicalDevice             physicalDevice,
     u32*                         pPropertyCount,
     VkDisplayPlanePropertiesKHR* pProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pPropertyCount))
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -8085,6 +8376,8 @@ cmd VkResult vkGetDisplayPlaneSupportedDisplaysKHR(
     u32              planeIndex,
     u32*             pDisplayCount,
     VkDisplayKHR*    pDisplays) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pDisplayCount))
   _ = pDisplayCount[0]
 
   if pDisplays == null {
@@ -8108,6 +8401,9 @@ cmd VkResult vkGetDisplayModePropertiesKHR(
     VkDisplayKHR                display,
     u32*                        pPropertyCount,
     VkDisplayModePropertiesKHR* pProperties) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(display))
+  assert(notNullOrZero(pPropertyCount))
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -8132,6 +8428,10 @@ cmd VkResult vkCreateDisplayModeKHR(
     const VkDisplayModeCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*      pAllocator,
     VkDisplayModeKHR*                 pMode) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(display))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pMode))
   _ = pCreateInfo[0]
   // TODO: pAllocator
 
@@ -8152,6 +8452,8 @@ cmd VkResult vkGetDisplayPlaneCapabilitiesKHR(
     VkDisplayModeKHR               mode,
     u32                            planeIndex,
     VkDisplayPlaneCapabilitiesKHR* pCapabilities) {
+  assert(notNullOrZero(physicalDevice))
+  assert(notNullOrZero(pCapabilities))
   pCapabilities[0] = ?
   return ?
 }
@@ -8163,6 +8465,9 @@ cmd VkResult vkCreateDisplayPlaneSurfaceKHR(
     const VkDisplaySurfaceCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*         pAllocator,
     VkSurfaceKHR*                        pSurface) {
+  assert(notNullOrZero(instance))
+  assert(notNullOrZero(pCreateInfo))
+  assert(notNullOrZero(pSurface))
   _ = pCreateInfo[0]
   // TODO: pAllocator
 
@@ -8197,6 +8502,11 @@ cmd VkResult vkCreateSharedSwapchainsKHR(
     const VkSwapchainCreateInfoKHR* pCreateInfos,
     const VkAllocationCallbacks*    pAllocator,
     VkSwapchainKHR*                 pSwapchains) {
+  assert(notNullOrZero(device))
+  assert(notNullOrZero(swapchainCount))
+  assert(notNullOrZero(pCreateInfos))
+  assert(notNullOrZero(pSwapchains))
+
   create_infos := pCreateInfos[0:swapchainCount]
   fence
   swapchains := pSwapchains[0:swapchainCount]
@@ -8328,6 +8638,8 @@ cmd VkResult vkCreateDebugReportCallbackEXT(
     const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
     const VkAllocationCallbacks*              pAllocator,
     VkDebugReportCallbackEXT*                 pCallback) {
+  assert(notNullOrZero(instance))
+  assert(notNullOrZero(pCreateInfo))
   return ?
 }
 
@@ -8337,6 +8649,7 @@ cmd void vkDestroyDebugReportCallbackEXT(
     VkInstance                   instance,
     VkDebugReportCallbackEXT     callback,
     const VkAllocationCallbacks* pAllocator) {
+  assert(notNullOrZero(instance))
 }
 
 @extension("VK_EXT_debug_report")
@@ -8350,6 +8663,7 @@ cmd void vkDebugReportMessageEXT(
     s32                        messageCode,
     string                     pLayerPrefix,
     string                     pMessage) {
+  assert(notNullOrZero(instance))
 }
 extern void validate(string layerName, bool condition, string message)
 
@@ -8619,7 +8933,9 @@ cmd void RecreateDebugMarkerSetObjectTagEXT(
 cmd VkResult vkDebugMarkerSetObjectTagEXT(
     VkDevice                                    device,
     VkDebugMarkerObjectTagInfoEXT*              pTagInfo) {
+  assert(notNullOrZero(device))
   tagInfo := pTagInfo[0]
+  assert(notNullOrZero(tagInfo.object))
   setDebugMarkerObjectTag(tagInfo)
   return ?
 }
@@ -8643,7 +8959,9 @@ cmd void RecreateDebugMarkerSetObjectNameEXT(
 cmd VkResult vkDebugMarkerSetObjectNameEXT(
     VkDevice                                    device,
     VkDebugMarkerObjectNameInfoEXT*             pNameInfo) {
+  assert(notNullOrZero(device))
   nameInfo := pNameInfo[0]
+  assert(notNullOrZero(nameInfo.object))
   setDebugMarkerObjectName(nameInfo)
   return ?
 }
@@ -8667,6 +8985,7 @@ sub void dovkCmdDebugMarkerBeginEXT(ref!vkCmdDebugMarkerBeginEXTArgs args) {
 cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
+  assert(notNullOrZero(commandBuffer))
   markerInfo := pMarkerInfo[0]
   args := new!vkCmdDebugMarkerBeginEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),
@@ -8694,9 +9013,8 @@ sub void dovkCmdDebugMarkerEndEXT(ref!vkCmdDebugMarkerEndEXTArgs draw) {
 @no_replay
 cmd void vkCmdDebugMarkerEndEXT(
     VkCommandBuffer                             commandBuffer) {
-
+  assert(notNullOrZero(commandBuffer))
   args := new!vkCmdDebugMarkerEndEXTArgs()
-
   addCmd(commandBuffer, args, dovkCmdDebugMarkerEndEXT)
 }
 
@@ -8718,6 +9036,7 @@ sub void dovkCmdDebugMarkerInsertEXT(ref!vkCmdDebugMarkerInsertEXTArgs draw) {
 cmd void vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
+  assert(notNullOrZero(commandBuffer))
   markerInfo := pMarkerInfo[0]
   args := new!vkCmdDebugMarkerInsertEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),

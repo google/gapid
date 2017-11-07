@@ -1115,3 +1115,11 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 		}
 	}
 }
+
+func (e externs) notNullOrZero(v interface{}) bool {
+	if ptr, ok := v.(memory.Pointer); ok {
+		return !ptr.IsNullptr()
+	} else {
+		return reflect.Zero(reflect.TypeOf(v)) != reflect.ValueOf(v)
+	}
+}
