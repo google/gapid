@@ -20,13 +20,11 @@ import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.clamp;
 
 import com.google.common.primitives.UnsignedBytes;
-import com.google.common.collect.Sets;
 import com.google.gapid.glviewer.gl.Texture;
-import com.google.gapid.proto.stream.Stream.Channel;
+import com.google.gapid.image.Histogram.Binner;
+import com.google.gapid.proto.stream.Stream;
 import com.google.gapid.util.Colors;
 
-import java.nio.DoubleBuffer;
-import java.util.Set;
 import org.eclipse.swt.graphics.ImageData;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -36,6 +34,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
+import java.util.Set;
 
 /**
  * An {@link Image} backed by a byte array.
@@ -107,10 +106,10 @@ public abstract class ArrayImage implements Image {
     if (x < 0 || y < 0 || z < 0 || x >= width || y >= height || z > depth) {
       return PixelValue.NULL_PIXEL;
     }
-    return getPixel(x, y, data);
+    return getPixel(x, y);
   }
 
-  protected abstract PixelValue getPixel(int x, int y, byte[] src);
+  protected abstract PixelValue getPixel(int x, int y);
 
   protected static ByteBuffer buffer(byte[] data) {
     return ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
@@ -176,13 +175,17 @@ public abstract class ArrayImage implements Image {
     private final PixelInfo info;
 
     public RGBA8Image(int width, int height, int depth, byte[] data) {
+      this(width, height, depth, data, IntPixelInfo.compute(data, true));
+    }
+
+    private RGBA8Image(int width, int height, int depth, byte[] data, PixelInfo info) {
       super(width, height, depth, 4, data, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
-      this.info = IntPixelInfo.compute(data);
+      this.info = info;
     }
 
     @Override
     protected Image create(int w, int h, int d, byte[] pixels) {
-      return new RGBA8Image(w, h, d, pixels);
+      return new RGBA8Image(w, h, d, pixels, info);
     }
 
     @Override
@@ -199,7 +202,7 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected PixelValue getPixel(int x, int y, byte[] data) {
+    protected PixelValue getPixel(int x, int y) {
       int i = 4 * (y * width + x);
       return new Pixel(
           ((data[i + 3] & 0xFF) << 24) |
@@ -209,41 +212,23 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    public Set<Channel> getChannels() {
-      return Sets.immutableEnumSet(Channel.Red, Channel.Green, Channel.Blue, Channel.Alpha);
-    }
-
-    @Override
-    public DoubleBuffer getChannel(Channel channel) {
-      int count = width * height * depth;
-      DoubleBuffer out = DoubleBuffer.allocate(count);
-      int offset = 0;
-      switch (channel) {
-        case Red:
-          offset = 0;
-          break;
-        case Green:
-          offset = 1;
-          break;
-        case Blue:
-          offset = 2;
-          break;
-        case Alpha:
-          offset = 3;
-          break;
-        default:
-          return out;
-      }
-      for (int i = 0; i < count; i++) {
-        out.put((data[i * 4 + offset] & 0xFF) / 255.0);
-      }
-      out.rewind();
-      return out;
+    public Set<Stream.Channel> getChannels() {
+      return Images.RGB_CHANNELS;
     }
 
     @Override
     public boolean isHDR() {
       return false;
+    }
+
+    @Override
+    public void bin(Binner binner) {
+      for (int i = 0, end = data.length - 3; i < end; ) {
+        binner.bin(UnsignedBytes.toInt(data[i++]) / 255f, Stream.Channel.Red);
+        binner.bin(UnsignedBytes.toInt(data[i++]) / 255f, Stream.Channel.Green);
+        binner.bin(UnsignedBytes.toInt(data[i++]) / 255f, Stream.Channel.Blue);
+        i++; // skip alpha
+      }
     }
 
     @Override
@@ -283,9 +268,15 @@ public abstract class ArrayImage implements Image {
       this.info = FloatPixelInfo.compute(buffer, true);
     }
 
+    private RGBAFloatImage(int width, int height, int depth, byte[] data, PixelInfo info) {
+      super(width, height, depth, 16, data, GL30.GL_RGBA32F, GL11.GL_RGBA, GL11.GL_FLOAT);
+      this.buffer = buffer(data).asFloatBuffer();
+      this.info = info;
+    }
+
     @Override
     protected Image create(int w, int h, int d, byte[] pixels) {
-      return new RGBAFloatImage(w, h, d, pixels);
+      return new RGBAFloatImage(w, h, d, pixels, info);
     }
 
     @Override
@@ -302,47 +293,38 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected PixelValue getPixel(int x, int y, byte[] data) {
+    protected PixelValue getPixel(int x, int y) {
       int i = 4 * (y * width + x);
       return new Pixel(buffer.get(i + 0), buffer.get(i + 1), buffer.get(i + 2), buffer.get(i + 3));
     }
 
     @Override
-    public Set<Channel> getChannels() {
-      return Sets.immutableEnumSet(Channel.Red, Channel.Green, Channel.Blue, Channel.Alpha);
-    }
-
-    @Override
-    public DoubleBuffer getChannel(Channel channel) {
-      int count = width * height * depth;
-      DoubleBuffer out = DoubleBuffer.allocate(count);
-      int offset = 0;
-      switch (channel) {
-        case Red:
-          offset = 0;
-          break;
-        case Green:
-          offset = 1;
-          break;
-        case Blue:
-          offset = 2;
-          break;
-        case Alpha:
-          offset = 3;
-          break;
-        default:
-          return out;
-      }
-      for (int i = 0; i < count; i++) {
-        out.put(buffer.get(i * 4 + offset));
-      }
-      out.rewind();
-      return out;
+    public Set<Stream.Channel> getChannels() {
+      return Images.RGB_CHANNELS;
     }
 
     @Override
     public boolean isHDR() {
       return true;
+    }
+
+    @Override
+    public void bin(Histogram.Binner binner) {
+      for (int i = 0, end = buffer.remaining() - 3; i <= end; ) {
+        float value = buffer.get(i++);
+        if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+          binner.bin(value, Stream.Channel.Red);
+        }
+        value = buffer.get(i++);
+        if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+          binner.bin(value, Stream.Channel.Green);
+        }
+        value = buffer.get(i++);
+        if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+          binner.bin(value, Stream.Channel.Blue);
+        }
+        i++; // Skip alpha.
+      }
     }
 
     @Override
@@ -377,13 +359,20 @@ public abstract class ArrayImage implements Image {
    */
   // TODO: The client may not actually need to distinguish between luminance and RGBA
   public static class Luminance8Image extends ArrayImage {
+    private final PixelInfo info;
+
     public Luminance8Image(int width, int height, int depth, byte[] data) {
+      this(width, height, depth, data, IntPixelInfo.compute(data, false));
+    }
+
+    private Luminance8Image(int width, int height, int depth, byte[] data, PixelInfo info) {
       super(width, height, depth, 1, data, GL11.GL_RGB8, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE);
+      this.info = info;
     }
 
     @Override
     protected Image create(int w, int h, int d, byte[] pixels) {
-      return new Luminance8Image(w, h, d, pixels);
+      return new Luminance8Image(w, h, d, pixels, info);
     }
 
     @Override
@@ -393,25 +382,20 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    public Set<Channel> getChannels() {
-      return Sets.immutableEnumSet(Channel.Luminance);
-    }
-
-    @Override
-    public DoubleBuffer getChannel(Channel channel) {
-      DoubleBuffer out = DoubleBuffer.allocate(data.length);
-      if (channel == Channel.Luminance) {
-        for (byte value : data) {
-          out.put((value & 0xFF) / 255.0);
-        }
-        out.rewind();
-      }
-      return out;
+    public Set<Stream.Channel> getChannels() {
+      return Images.LUMINANCE_CHANNELS;
     }
 
     @Override
     public boolean isHDR() {
       return false;
+    }
+
+    @Override
+    public void bin(Binner binner) {
+      for (int i = 0; i < data.length; i++) {
+        binner.bin(UnsignedBytes.toInt(data[i]) / 255.0f, Stream.Channel.Luminance);
+      }
     }
 
     @Override
@@ -428,13 +412,13 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected PixelValue getPixel(int x, int y, byte[] src) {
-      return new Pixel(src[y * width + x]);
+    protected PixelValue getPixel(int x, int y) {
+      return new Pixel(data[y * width + x]);
     }
 
     @Override
     public PixelInfo getInfo() {
-      return PixelInfo.NULL_INFO;
+      return info;
     }
 
     private static class Pixel implements PixelValue {
@@ -470,9 +454,15 @@ public abstract class ArrayImage implements Image {
       this.info = FloatPixelInfo.compute(buffer, false);
     }
 
+    private LuminanceFloatImage(int width, int height, int depth, byte[] data, PixelInfo info) {
+      super(width, height, depth, 4, data, GL30.GL_RGB32F, GL11.GL_RED, GL11.GL_FLOAT);
+      this.buffer = buffer(data).asFloatBuffer();
+      this.info = info;
+    }
+
     @Override
     protected Image create(int w, int h, int d, byte[] pixels) {
-      return new LuminanceFloatImage(w, h, d, pixels);
+      return new LuminanceFloatImage(w, h, d, pixels, info);
     }
 
     @Override
@@ -482,26 +472,23 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    public Set<Channel> getChannels() {
-      return Sets.immutableEnumSet(Channel.Luminance);
-    }
-
-    @Override
-    public DoubleBuffer getChannel(Channel channel) {
-      int count = width * height * depth;
-      DoubleBuffer out = DoubleBuffer.allocate(count);
-      if (channel == Channel.Luminance) {
-        for (int i = 0; i < count; i++) {
-          out.put(buffer.get(i));
-        }
-        out.rewind();
-      }
-      return out;
+    public Set<Stream.Channel> getChannels() {
+      return Images.LUMINANCE_CHANNELS;
     }
 
     @Override
     public boolean isHDR() {
       return true;
+    }
+
+    @Override
+    public void bin(Binner binner) {
+      for (int i = 0; i < buffer.remaining(); i++) {
+        float value = buffer.get(i);
+        if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+          binner.bin(value, Stream.Channel.Luminance);
+        }
+      }
     }
 
     @Override
@@ -519,7 +506,7 @@ public abstract class ArrayImage implements Image {
     }
 
     @Override
-    protected PixelValue getPixel(int x, int y, byte[] data) {
+    protected PixelValue getPixel(int x, int y) {
       return new Pixel(buffer.get(y * width + x));
     }
 
@@ -548,12 +535,14 @@ public abstract class ArrayImage implements Image {
   }
 
   private static class FloatPixelInfo implements PixelInfo {
-    private final float min, max;
-    private final float alphaMin, alphaMax;
+    private final double min, max, average;
+    private final double alphaMin, alphaMax;
 
-    private FloatPixelInfo(float min, float max, float alphaMin, float alphaMax) {
+    private FloatPixelInfo(
+        double min, double max, double average, double alphaMin, double alphaMax) {
       this.min = min;
       this.max = max;
+      this.average = average;
       this.alphaMin = alphaMin;
       this.alphaMax = alphaMax;
     }
@@ -563,8 +552,9 @@ public abstract class ArrayImage implements Image {
         return PixelInfo.NULL_INFO;
       }
 
-      float min = Float.POSITIVE_INFINITY, max = Float.NEGATIVE_INFINITY;
-      float alphaMin, alphaMax;
+      double min = Double.POSITIVE_INFINITY, max = Double.NEGATIVE_INFINITY, alphaMin, alphaMax;
+      double average = 0;
+      long count = 0;
       if (isRGBA) {
         alphaMin = Float.POSITIVE_INFINITY;
         alphaMax = Float.NEGATIVE_INFINITY;
@@ -573,21 +563,29 @@ public abstract class ArrayImage implements Image {
           if (!Float.isNaN(value) && !Float.isInfinite(value)) {
             min = Math.min(min, value);
             max = Math.max(max, value);
+            average += value;
+            count++;
           }
           value = buffer.get(i++);
           if (!Float.isNaN(value) && !Float.isInfinite(value)) {
             min = Math.min(min, value);
             max = Math.max(max, value);
+            average += value;
+            count++;
           }
           value = buffer.get(i++);
           if (!Float.isNaN(value) && !Float.isInfinite(value)) {
             min = Math.min(min, value);
             max = Math.max(max, value);
+            average += value;
+            count++;
           }
           value = buffer.get(i++);
           if (!Float.isNaN(value) && !Float.isInfinite(value)) {
             alphaMin = Math.min(alphaMin, value);
             alphaMax = Math.max(alphaMax, value);
+            average += value;
+            count++;
           }
         }
       } else {
@@ -597,72 +595,119 @@ public abstract class ArrayImage implements Image {
           if (!Float.isNaN(value) && !Float.isInfinite(value)) {
             min = Math.min(min, value);
             max = Math.max(max, value);
+            average += value;
+            count++;
           }
         }
       }
-      return new FloatPixelInfo(min, max, alphaMin, alphaMax);
+      return new FloatPixelInfo(
+          min, max, (count == 0) ? 0.5 : (average / count), alphaMin, alphaMax);
     }
 
     @Override
-    public float getMin() {
+    public double getMin() {
       return min;
     }
 
     @Override
-    public float getMax() {
+    public double getMax() {
       return max;
     }
 
     @Override
-    public float getAlphaMin() {
+    public double getAverage() {
+      return average;
+    }
+
+    @Override
+    public double getAlphaMin() {
       return alphaMin;
     }
 
     @Override
-    public float getAlphaMax() {
+    public double getAlphaMax() {
       return alphaMax;
     }
   }
 
   private static class IntPixelInfo implements PixelInfo {
-    private final float alphaMin, alphaMax;
+    private final double min, max, average;
+    private final double alphaMin, alphaMax;
 
-    private IntPixelInfo(float alphaMin, float alphaMax) {
+    private IntPixelInfo(double min, double max, double average, double alphaMin, double alphaMax) {
+      this.min = min;
+      this.max = max;
+      this.average = average;
       this.alphaMin = alphaMin;
       this.alphaMax = alphaMax;
     }
 
-    public static PixelInfo compute(byte[] rgba) {
-      if (rgba.length == 0) {
+    public static PixelInfo compute(byte[] data, boolean isRGBA) {
+      if (data.length == 0) {
         return PixelInfo.NULL_INFO;
       }
 
-      int alphaMin = Integer.MAX_VALUE, alphaMax = Integer.MIN_VALUE;
-      for (int i = 3; i < rgba.length; i += 4) {
-        int value = UnsignedBytes.toInt(rgba[i]);
-        alphaMin = Math.min(alphaMin, value);
-        alphaMax = Math.max(alphaMax, value);
+      int min = 255, max = 0, alphaMin, alphaMax;
+      double average = 0;
+      if (isRGBA) {
+        alphaMin = 255; alphaMax = 0;
+        for (int i = 0, end = data.length - 3; i < end; ) {
+          int value = UnsignedBytes.toInt(data[i++]);
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+          average += value;
+
+          value = UnsignedBytes.toInt(data[i++]);
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+          average += value;
+
+          value = UnsignedBytes.toInt(data[i++]);
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+          average += value;
+
+          value = UnsignedBytes.toInt(data[i++]);
+          alphaMin = Math.min(alphaMin, value);
+          alphaMax = Math.max(alphaMax, value);
+        }
+        average /= ((data.length / 4) * 3); // Truncate-divide first on purpose.
+      } else {
+        alphaMin = alphaMax = 255;
+        for (int i = 0; i < data.length; i++) {
+          int value = UnsignedBytes.toInt(data[i]);
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+          average += value;
+        }
+        average /= data.length;
       }
-      return new IntPixelInfo(alphaMin / 255f, alphaMax / 255f);
+      return new IntPixelInfo(
+          min / 255.0, max / 255.0, average, alphaMin / 255.0, alphaMax / 255.0);
     }
 
     @Override
-    public float getMin() {
-      return 0; // Disable automatic tone-mapping.
+    public double getMin() {
+      return min;
     }
 
     @Override
-    public float getMax() {
-      return 1; // Disable automatic tone-mapping.
+    public double getMax() {
+      return max;
     }
 
     @Override
-    public float getAlphaMin() {
+    public double getAverage() {
+      return average;
+    }
+
+    @Override
+    public double getAlphaMin() {
       return alphaMin;
     }
 
     @Override
-    public float getAlphaMax() {
+    public double getAlphaMax() {
       return alphaMax;
     }
   }

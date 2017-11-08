@@ -15,15 +15,17 @@
  */
 package com.google.gapid.image;
 
-import com.google.common.collect.Sets;
 import com.google.gapid.glviewer.gl.Texture;
-import com.google.gapid.proto.stream.Stream.Channel;
-import java.nio.DoubleBuffer;
-import java.util.Set;
+import com.google.gapid.image.Histogram.Binner;
+import com.google.gapid.proto.stream.Stream;
+
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.PaletteData;
 import org.eclipse.swt.graphics.RGB;
 import org.lwjgl.opengl.GL11;
+
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * Image pixel data of a texture, framebuffer, etc.
@@ -67,17 +69,17 @@ public interface Image {
   /**
    * @return all the channels of this image.
    */
-  public Set<Channel> getChannels();
-
-  /**
-   * @return all the pixel values of the given channel.
-   */
-  public DoubleBuffer getChannel(Channel channel);
+  public Set<Stream.Channel> getChannels();
 
   /**
    * @return true if this image contains high-dynamic-range data.
    */
   public boolean isHDR();
+
+  /**
+   * Bins this image's channel data with the given {@link Histogram.Binner}.
+   */
+  public void bin(Histogram.Binner binner);
 
   /**
    * @return the {@link PixelInfo} for this buffer.
@@ -124,18 +126,18 @@ public interface Image {
     }
 
     @Override
-    public Set<Channel> getChannels() {
-      return Sets.newIdentityHashSet();
-    }
-
-    @Override
-    public DoubleBuffer getChannel(Channel channel) {
-      return DoubleBuffer.allocate(0);
+    public Set<Stream.Channel> getChannels() {
+      return Collections.emptySet();
     }
 
     @Override
     public boolean isHDR() {
       return false;
+    }
+
+    @Override
+    public void bin(Binner binner) {
+      // Do nothing.
     }
 
     @Override
@@ -178,44 +180,54 @@ public interface Image {
   public static interface PixelInfo {
     public static final PixelInfo NULL_INFO = new PixelInfo() {
       @Override
-      public float getMin() {
+      public double getMin() {
         return 0;
       }
 
       @Override
-      public float getMax() {
+      public double getMax() {
         return 1;
       }
 
       @Override
-      public float getAlphaMin() {
+      public double getAverage() {
+        return 0.5f;
+      }
+
+      @Override
+      public double getAlphaMin() {
         return 1;
       }
 
       @Override
-      public float getAlphaMax() {
+      public double getAlphaMax() {
         return 1;
       }
     };
 
     /**
-     * @return the minimum value across all channels of the image data. Used for tone mapping.
+     * Returns the minimum value across all channels of the image data. Used for tone mapping.
      */
-    public float getMin();
+    public double getMin();
 
     /**
-     * @return the maximum value across all channels of the image data. Used for tone mapping.
+     * Returns the maximum value across all channels of the image data. Used for tone mapping.
      */
-    public float getMax();
+    public double getMax();
+
+    /**
+     * Returns the average value accross all channels of the image date. Used for tone mapping.
+     */
+    public double getAverage();
 
     /**
      * @return the minimum alpha value of the image data.
      */
-    public float getAlphaMin();
+    public double getAlphaMin();
 
     /**
      * @return the maximum alpha value of the image data.
      */
-    public float getAlphaMax();
+    public double getAlphaMax();
   }
 }

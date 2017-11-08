@@ -15,7 +15,7 @@
  */
 package com.google.gapid.image;
 
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image;
@@ -53,11 +53,18 @@ public class Images {
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_DEPTH_FLOAT))
       .build();
 
-  public static final Set<Stream.Channel> COLOR_CHANNELS = ImmutableSet.of(
+  public static final Set<Stream.Channel> COLOR_CHANNELS = Sets.immutableEnumSet(
       Stream.Channel.Red, Stream.Channel.Green, Stream.Channel.Blue, Stream.Channel.Alpha,
       Stream.Channel.Luminance, Stream.Channel.ChromaU, Stream.Channel.ChromaV);
 
-  public static final Set<Stream.Channel> DEPTH_CHANNELS = ImmutableSet.of(Stream.Channel.Depth);
+  public static final Set<Stream.Channel> DEPTH_CHANNELS = Sets.immutableEnumSet(
+      Stream.Channel.Depth);
+
+  public static final Set<Stream.Channel> RGB_CHANNELS = Sets.immutableEnumSet(
+      Stream.Channel.Red, Stream.Channel.Green, Stream.Channel.Blue);
+
+  public static final Set<Stream.Channel> LUMINANCE_CHANNELS = Sets.immutableEnumSet(
+      Stream.Channel.Luminance);
 
   private Images() {
   }
