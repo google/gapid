@@ -1125,7 +1125,7 @@
   {{AssertType $.Prefix "string"}}
   {{AssertType $.Name   "string"}}
 
-  {{$setter := $.Name | Strings | Lower}}
+  {{$setter := $.Name | Strings | Lower | ProtoCppName }}
   {{$ty := $.Type | TypeOf | Underlying}}
   {{if      IsClass       $ty}}{{$.Prefix}}{{$.Name}}.toProto({{$.Proto}}mutable_{{$setter}}(), pbCtx);
   {{else if IsPointer     $ty}}{{$.Proto}}set_{{$setter}}(reinterpret_cast<uint64_t>({{$.Prefix}}{{$.Name}}));
