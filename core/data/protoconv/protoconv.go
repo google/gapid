@@ -68,8 +68,9 @@ type FromProtoContext struct {
 
 // GetReferencedObject returns referenceable object with the given ID.
 // nilValue is the default-initialized instance to return for ID 0.
-// getValue is callback function which be called if we see the ID for first time.
-func (ctx *FromProtoContext) GetReferencedObject(id int64, nilValue interface{}, getValue func() interface{}) interface{} {
+// getValue is callback function which be called if we see the ID for first time
+// (returned as value+constructor, since that is needed to support cycles).
+func (ctx *FromProtoContext) GetReferencedObject(id int64, nilValue interface{}, getValue func() (newValue interface{}, initValue func())) interface{} {
 	if id == 0 {
 		return nilValue
 	}
@@ -79,8 +80,9 @@ func (ctx *FromProtoContext) GetReferencedObject(id int64, nilValue interface{},
 	if value, ok := ctx.refs[id]; ok {
 		return value
 	}
-	value := getValue()
+	value, initValue := getValue()
 	ctx.refs[id] = value
+	initValue()
 	return value
 }
 

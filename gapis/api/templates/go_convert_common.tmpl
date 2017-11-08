@@ -155,18 +155,19 @@
       ϟa.{{$name}}[ϟi] = {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
     «}¶
   {{else if IsMap $truetype}}
-    ϟa.{{$name}} = ϟrefs.GetReferencedObject(from.{{$proto}}.GetReferenceID(), {{$.Field.Type.Name}}{}, func () interface{} {»¶
+    ϟa.{{$name}} = ϟrefs.GetReferencedObject(from.{{$proto}}.GetReferenceID(), {{$.Field.Type.Name}}{}, func () (interface{}, func()) {»¶
       ϟobj := New{{$.Field.Type.Name}}()¶
-      var ϟk {{Template "Convert.StorageType" $truetype.KeyType}}¶
-      for ϟi, ϟv:= range from.{{$proto}}.Values {»¶
-        if ϟi < len(from.{{$proto}}.Keys) {»¶
-          ϟk = from.{{$proto}}.Keys[ϟi]¶
+      return ϟobj, func() {»¶
+        var ϟk {{Template "Convert.StorageType" $truetype.KeyType}}¶
+        for ϟi, ϟv:= range from.{{$proto}}.Values {»¶
+          if ϟi < len(from.{{$proto}}.Keys) {»¶
+            ϟk = from.{{$proto}}.Keys[ϟi]¶
+          «}¶
+          ϟobj.Set({{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟk"}},
+                   {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}})¶
+          {{if not (IsString $truetype.KeyType)}} ϟk++ // Increment if keys are trimmed ¶{{end}}
         «}¶
-        ϟobj.Set({{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟk"}},
-                 {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}})¶
-        {{if not (IsString $truetype.KeyType)}} ϟk++ // Increment if keys are trimmed ¶{{end}}
       «}¶
-      return ϟobj¶
     «}).({{$.Field.Type.Name}})¶
   {{else}}
     {{$value := printf "from.%s" $proto}}
@@ -280,10 +281,10 @@
     {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}}, ϟrefs)
     {{else if IsReference $truetype}}
-      ϟrefs.GetReferencedObject({{$.Value}}.GetReferenceID(), ({{$target}})(nil), func() interface {} {»¶
+      ϟrefs.GetReferencedObject({{$.Value}}.GetReferenceID(), ({{$target}})(nil), func() (interface{}, func()) {»¶
         {{$value := printf "%s.Value" $.Value}}
-        ϟobj := {{Template "Convert.FromProto" "Type" $.Type.To "Value" $value}}¶
-        return &ϟobj¶
+        ϟobj := &{{Template "Convert.LiveType" $.Type.To}}{}¶
+        return ϟobj, func() { *ϟobj ={{Template "Convert.FromProto" "Type" $.Type.To "Value" $value}} }¶
       «}).({{$target}})
     {{else if IsPointer $truetype}}{{$target}}{addr: uint64({{$.Value}}), pool: memory.ApplicationPool}
     {{else if IsSlice $truetype}}{{$target}}{»¶
