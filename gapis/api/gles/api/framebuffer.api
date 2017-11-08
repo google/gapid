@@ -419,7 +419,7 @@ cmd void glClearStencil(GLint stencil) {
 cmd void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha) {
   ctx := GetContext()
   for i in (0 .. as!DrawBufferIndex(len(ctx.Pixel.ColorWritemask))) {
-    ctx.Pixel.ColorWritemask[i] = Vec4b(red, green, blue, alpha)
+    ctx.Pixel.ColorWritemask[i] = Mask(red, green, blue, alpha)
   }
 }
 
@@ -431,7 +431,7 @@ cmd void glColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean
 
 sub void ColorMaski(DrawBufferIndex index, GLboolean r, GLboolean g, GLboolean b, GLboolean a) {
   ctx := GetContext()
-  ctx.Pixel.ColorWritemask[index] = Vec4b(r, g, b, a)
+  ctx.Pixel.ColorWritemask[index] = Mask(r, g, b, a)
 }
 
 @if(Version.GLES20)

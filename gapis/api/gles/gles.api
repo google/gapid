@@ -719,7 +719,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
     for i in (0 .. as!DrawBufferIndex(ctx.Constants.MaxDrawBuffers)) {
       ctx.Pixel.Blend[i] = new!BlendState()
-      ctx.Pixel.ColorWritemask[i] = Vec4b(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+      ctx.Pixel.ColorWritemask[i] = Mask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     }
 
     ctx.Other.Initialized = true

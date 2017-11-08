@@ -301,10 +301,10 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     case GL_COLOR_WRITEMASK: {
       s := v[0:4]
       i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      s[0] = as!T(ctx.Pixel.ColorWritemask[i][0])
-      s[1] = as!T(ctx.Pixel.ColorWritemask[i][1])
-      s[2] = as!T(ctx.Pixel.ColorWritemask[i][2])
-      s[3] = as!T(ctx.Pixel.ColorWritemask[i][3])
+      s[0] = as!T(ctx.Pixel.ColorWritemask[i].R)
+      s[1] = as!T(ctx.Pixel.ColorWritemask[i].G)
+      s[2] = as!T(ctx.Pixel.ColorWritemask[i].B)
+      s[3] = as!T(ctx.Pixel.ColorWritemask[i].A)
     }
     @if(Version.GLES20)
     case GL_COMPRESSED_TEXTURE_FORMATS: {
