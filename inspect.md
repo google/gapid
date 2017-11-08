@@ -11,7 +11,14 @@ Once you've finished taking a trace, the capture will automatically open. You ca
 
 Upon opening a capture, you will be presented with the following window:
 
-<img src="../images/main-view.png" width="933px"/>
+<div class="callout-img">
+  <div style="margin: 60px 330px">1</div>
+  <div style="margin: 140px 500px">2</div>
+  <div style="margin: 400px 80px">3</div>
+  <div style="margin: 320px 570px">4</div>
+  <div style="margin: 220px 700px">5</div>
+  <img src="../images/main-view.png" width="978" height="774" alt="Main view"/>
+</div>
 
 <div class="callouts" markdown="block">
 
