@@ -47,6 +47,9 @@ var (
 	goKeywords = map[string]string{
 		"type": "ty",
 	}
+	cppKeywords = map[string]string{
+		"default": "default_",
+	}
 )
 
 // NameOf returns the name of the supplied object if it has one.
@@ -99,6 +102,13 @@ func (Functions) ProtoGoName(obj interface{}) string {
 		TitleAfterNumber:  true,
 		UnderscoreToTitle: true,
 		Remap:             goKeywords,
+	}.convert(nameOf(obj))
+}
+
+// ProtoGoName converts an api name to the cpp name produced by the proto compiler.
+func (Functions) ProtoCppName(obj interface{}) string {
+	return nameOptions{
+		Remap: cppKeywords,
 	}.convert(nameOf(obj))
 }
 
