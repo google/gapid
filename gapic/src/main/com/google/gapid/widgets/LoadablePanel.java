@@ -36,7 +36,7 @@ import java.util.function.Function;
  * underlying data is being loaded and then swap over to the main contents once it is done.
  */
 public class LoadablePanel<C extends Control> extends Composite implements Loadable {
-  private static final int LOADING_INDICATOR_DELAY_MS = 250;
+  private static final int LOADING_INDICATOR_DELAY_MS = 500;
 
   private final Widgets widgets;
   private final Control loading;
