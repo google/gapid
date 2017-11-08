@@ -22,7 +22,7 @@
 #include <string>
 
 namespace google_breakpad {
-    class ExceptionHandler;
+class ExceptionHandler;
 }
 
 namespace core {

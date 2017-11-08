@@ -24,8 +24,7 @@
 
 namespace {
 
-static
-bool handleCrash(const wchar_t* minidumpDir, const wchar_t* minidumpId, void* crashHandlerPtr,
+static bool handleCrash(const wchar_t* minidumpDir, const wchar_t* minidumpId, void* crashHandlerPtr,
         EXCEPTION_POINTERS* exinfo, MDRawAssertionInfo* assertion, bool succeeded) {
     core::CrashHandler* crashHandler = reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
     // convert wchar_t to UTF-8
@@ -52,6 +51,7 @@ CrashHandler::CrashHandler(HandlerFunction handlerFunction) :
 }
 
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.
+// The incomplete type is the previously forward declared google_breakpad::ExceptionHandler.
 CrashHandler::~CrashHandler() = default;
 
 }
