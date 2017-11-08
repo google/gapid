@@ -60,7 +60,7 @@
       {{end}}
     {{end}}
     {{range $c := $.Classes}}
-      {{if (GetAnnotation $c "serialize")}}
+      {{if not (GetAnnotation $c "noserialize")}}
         {{$proto := $c.Name | ProtoGoName}}
         {{$p := print (Global "Store") "." $proto}}
         {{$o := Macro "Go.Type" $c}}
@@ -85,7 +85,7 @@
   {{end}}
 
   {{range $c := $.Classes}}
-    {{if (GetAnnotation $c "serialize")}}
+    {{if not (GetAnnotation $c "noserialize")}}
       {{Template "ClassEntry" $c}}
     {{end}}
   {{end}}

@@ -53,7 +53,7 @@
   »}
   namespace {{Global "API"}}_pb {«
   {{range $c := $.Classes}}
-    {{if GetAnnotation $c "serialize"}} class {{$c.Name}}; {{end}}
+    {{if not (GetAnnotation $c "noserialize")}} class {{$c.Name}}; {{end}}
   {{end}}
   »}
 ¶
@@ -148,7 +148,7 @@
     {{Template "DeclareType" (TypeOf $f)}}
   {{end}}
 
-  {{$serializable := GetAnnotation $ "serialize"}}
+  {{$serializable := not (GetAnnotation $ "noserialize")}}
   {{$name := Macro "C++.Type" $}}
   class {{$name}} {
     «public:»
