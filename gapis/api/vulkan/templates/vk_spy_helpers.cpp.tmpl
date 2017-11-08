@@ -142,7 +142,19 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(VkDevice device, c
     {{end}}
     // This is not strictly correct, but some applications incorrectly
     // call vkGetDeviceProcAddr, when they actually mean vkGetInstanceProcAddr.
-    return SpyOverride_vkGetInstanceProcAddr(PhysicalDevices[Devices[device]->mPhysicalDevice]->mInstance, pName);
+    PFN_vkVoidFunction f = SpyOverride_vkGetInstanceProcAddr(PhysicalDevices[Devices[device]->mPhysicalDevice]->mInstance, pName);
+
+    // If we do not support the function as an instance function OR a device function, then defer to the actual device.
+    // It is likely that this will cause a failure in the future, as we will miss any state
+    // that is modified by this function, but we avoid modifying the application.
+    if (!f && device) {
+        f = mImports.mVkDeviceFunctions[device].vkGetDeviceProcAddr(device, pName);
+        if (f) {
+            GAPID_ERROR("Unknown function %s resolved, it may be called but will not be tracked", pName);
+        }
+    }
+
+    return f;
 }
 
 uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *pCount, VkExtensionProperties *pProperties) {
