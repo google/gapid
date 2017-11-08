@@ -22,7 +22,7 @@ This feature is only available via the command line tool `gapit`.
 
 3. Run the following command
 ```
-$ <gapid_install_path>gapit video -type regular -out <output_path>.mp4 <path_to_tracefile>
+$ <gapid_install_path>gapit video -out <output_path>.mp4 <path_to_tracefile>
 ```
   a. If you wish to instead output all frames as individual images you may instead run
 ```
