@@ -66,6 +66,14 @@ public:
     // (in bytes) than this slice.
     template<typename U> inline Slice<U> as() const;
 
+    // Pool returns shared pointer of the pool that this slice is in.
+    // nullptr is returned if this is the application pool.
+    inline const std::shared_ptr<Pool>& pool() const;
+
+    // Pool returns pool ID of the pool that this slice is in.
+    // 0 is returned if this is the application pool.
+    inline uint32_t poolID() const;
+
     // Support for range-based for looping
     inline T* begin() const;
     inline T* end() const;
@@ -103,6 +111,16 @@ inline uint64_t Slice<T>::size() const {
 template<typename T>
 inline bool Slice<T>::isApplicationPool() const {
     return mPool.get() == nullptr;
+}
+
+template<typename T>
+inline const std::shared_ptr<Pool>& Slice<T>::pool() const {
+    return mPool;
+}
+
+template<typename T>
+inline uint32_t Slice<T>::poolID() const {
+    return isApplicationPool() ? 0 : mPool->id();
 }
 
 template<typename T>

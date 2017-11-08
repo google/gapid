@@ -30,6 +30,7 @@ SpyBase::SpyBase()
     : mObserveApplicationPool(true)
     , mNullEncoder(PackEncoder::noop())
     , mResources{{core::Id{{0}}, 0}}
+    , mNextPoolID(1)
     , mWatchedApis(0xFFFFFFFF)
 #if COHERENT_TRACKING_ENABLED
     , mMemoryTracker()

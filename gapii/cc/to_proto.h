@@ -18,6 +18,7 @@
 #define GAPII_TO_PROTO_H
 
 #include "gapii/cc/shared_map.h"
+#include "gapii/cc/slice.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
 
 #include "core/cc/static_array.h"
@@ -34,13 +35,25 @@ class ToProtoContext {
     // Returns unique ReferenceID for the given address,
     // and true when the address is seen for the first time.
     // Nullptr address is always mapped to ReferenceID 0.
-    virtual std::pair<uint64_t, bool> GetReferenceID(const void* address) {
+    std::pair<uint64_t, bool> GetReferenceID(const void* address) {
       auto it = mSeenReferences.emplace(address, mSeenReferences.size());
       return std::pair<uint64_t, bool>(it.first->second, it.second);
     }
 
+    // This method is called for all serialized slices.
+    template<typename T>
+    void SeenSlice(const Slice<T>& s) {
+      uint8_t* base = reinterpret_cast<uint8_t*>(s.begin());
+      mSeenSlices.push_back(Slice<uint8_t>(base, s.size(), s.pool()));
+    }
+
+    // Return a vector of all serialized slices within this context.
+    // Note that slices are recorded as byte-slices (the original type is discarded).
+    const std::vector<Slice<uint8_t>>& SeenSlices() { return mSeenSlices; }
+
   private:
     std::unordered_map<const void*, uint64_t> mSeenReferences;
+    std::vector<Slice<uint8_t>> mSeenSlices;
 };
 
 // Default converter for any type which is not specialized below.
@@ -69,11 +82,16 @@ struct ProtoConverter<Out, void*> {
 
 // Converts Slice to proto
 template<typename T>
-struct ProtoConverter<memory_pb::Slice, gapii::Slice<T>> {
-    static inline void convert(memory_pb::Slice* out, const gapii::Slice<T>& in, ToProtoContext& ctx) {
-        out->set_pool(0); // TODO: Set pool id
-        out->set_root(reinterpret_cast<uintptr_t>(in.begin()));
-        out->set_base(reinterpret_cast<uintptr_t>(in.begin()));
+struct ProtoConverter<memory_pb::Slice, Slice<T>> {
+    static inline void convert(memory_pb::Slice* out, const Slice<T>& in, ToProtoContext& ctx) {
+        ctx.SeenSlice(in);
+        auto base = reinterpret_cast<uintptr_t>(in.begin());
+        if (!in.isApplicationPool()) {
+          base -= reinterpret_cast<uintptr_t>(in.pool()->base());
+        }
+        out->set_pool(in.poolID());
+        out->set_root(base);
+        out->set_base(base);
         out->set_count(in.count());
     }
 };

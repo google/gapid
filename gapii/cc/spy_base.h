@@ -39,6 +39,7 @@
 
 #include <stdint.h>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -61,6 +62,9 @@ public:
     // Encode and write data blob if we have not already sent it.
     // Returns the index of the resource which can be used to reference it.
     int64_t sendResource(uint8_t api, const void* data, size_t size);
+
+    // returns new unique pool ID.
+    inline uint32_t getPoolID() { return mNextPoolID.fetch_add(1); }
 
     // Returns the transimission encoder.
     // TODO(qining): To support multithreaded uses, mutex is required to manage
@@ -104,7 +108,7 @@ protected:
 
     // make constructs and returns a Slice backed by a new pool.
     template<typename T>
-    inline Slice<T> make(uint64_t count) const;
+    inline Slice<T> make(uint64_t count);
 
     // slice returns a slice wrapping the application-pool pointer src, starting at elements s
     // ending at one element before e.
@@ -117,7 +121,7 @@ protected:
 
     // slice returns a Slice<char>, backed by a new pool, holding a copy of the string src.
     // src is observed as a read operation.
-    inline Slice<char> slice(const std::string& src) const;
+    inline Slice<char> slice(const std::string& src);
 
     // slice returns a sub-slice of src, starting at elements s and ending at one element before e.
     template<typename T>
@@ -166,6 +170,9 @@ private:
     // True if we should observe the application pool.
     bool mObserveApplicationPool;
 
+    // Holds the next free pool ID.
+    std::atomic<int> mNextPoolID;
+
     // True if we should not be currently tracing, false if we should be tracing.
     bool mIsSuspended;
 
@@ -206,8 +213,8 @@ inline void SpyBase::setObserveApplicationPool(bool observeApplicationPool) {
 }
 
 template<typename T>
-inline Slice<T> SpyBase::make(uint64_t count) const {
-    auto pool = Pool::create(count * sizeof(T));
+inline Slice<T> SpyBase::make(uint64_t count) {
+    auto pool = Pool::create(getPoolID(), count * sizeof(T));
     return Slice<T>(reinterpret_cast<T*>(pool->base()), count, pool);
 }
 
@@ -221,7 +228,7 @@ inline Slice<uint8_t> SpyBase::slice(void* src, uint64_t s, uint64_t e) const {
     return slice(reinterpret_cast<uint8_t*>(src), s, e);
 }
 
-inline Slice<char> SpyBase::slice(const std::string& src) const {
+inline Slice<char> SpyBase::slice(const std::string& src) {
     Slice<char> dst = make<char>(src.length());
     for (uint64_t i = 0; i < src.length(); i++) {
         dst[i] = src[i];

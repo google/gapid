@@ -24,33 +24,28 @@ namespace gapii {
 
 class Pool {
 public:
-    static std::shared_ptr<Pool> create(uint64_t size);
+    static std::shared_ptr<Pool> create(uint32_t id, uint64_t size);
 
     ~Pool();
 
+    // id returns the ID this pool.
+    inline uint32_t id() const { return mId; }
+
     // size returns the size of this pool in bytes.
-    inline uint64_t size() const;
+    inline uint64_t size() const { return mSize; }
 
     // Pointer to first byte in the pool.
-    inline void* base() const;
+    inline void* base() const { return mData; }
 
 private:
-    Pool(uint64_t size);
+    Pool(uint32_t id, uint64_t size);
     Pool(const Pool&) = delete;
     Pool& operator=(const Pool&) = delete;
 
+    uint32_t mId;
     void*    mData;
     uint64_t mSize;
 };
-
-inline uint64_t Pool::size() const {
-    return mSize;
-}
-
-inline void* Pool::base() const {
-    return mData;
-}
-
 }  // namespace gapii
 
 #endif // GAPII_POOL_H

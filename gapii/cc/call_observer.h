@@ -153,6 +153,9 @@ public:
     void observePending();
 
 private:
+    // returns new unique pool ID.
+    uint32_t getPoolID();
+
     // shouldObserve returns true if the given slice is located in application
     // pool and we are supposed to observe application pool.
     template <class T>
@@ -162,7 +165,7 @@ private:
 
     // Make a slice on a new Pool.
     template <typename T>
-    inline Slice<T> make(uint64_t count) const;
+    inline Slice<T> make(uint64_t count);
 
     // A pointer to the spy instance.
     SpyBase* mSpy;
@@ -255,8 +258,8 @@ inline Slice<T> CallObserver::clone(const Slice<T>& src) {
 }
 
 template <typename T>
-inline Slice<T> CallObserver::make(uint64_t count) const {
-    auto pool = Pool::create(count * sizeof(T));
+inline Slice<T> CallObserver::make(uint64_t count) {
+    auto pool = Pool::create(getPoolID(), count * sizeof(T));
     return Slice<T>(reinterpret_cast<T*>(pool->base()), count, pool);
 }
 
