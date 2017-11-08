@@ -6,7 +6,9 @@ permalink: /inspect/shaders
 parent: inspect
 ---
 
+
 <div class="tab" id="OpenGL ES" markdown="1">
+<img class="display" src="../images/opengles.svg" alt="OpenGL ES" height="50"/>
 
 The shaders pane displays all the shader resources created up to and including the selected command. You can see both individual shaders created as well as programs that are bound to multiple shaders.
 
@@ -20,11 +22,12 @@ In this tab you can see the shader resources created using `glCreateShader`, as 
 
 <img src="../images/shaders-pane-programs-tab.png" width="558px"/>
 
-You can see the list of Programs created using `glCreateProgram` as well as shaders attached using calls to `glAttachShader`. 
+You can see the list of Programs created using `glCreateProgram` as well as shaders attached using calls to `glAttachShader`.
 
 </div>
 
 <div class="tab" id="Vulkan" markdown="1">
+<img class="display" src="../images/vulkan.svg" alt="Vulkan" height="50">
 
 TODO
 
