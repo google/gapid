@@ -281,6 +281,11 @@ class TestObject {
   u32 value
 }
 
+class TestList {
+  u32          value
+  ref!TestList next
+}
+
 class TestExtra {
   u8[]                     Data
 
@@ -297,4 +302,7 @@ class TestExtra {
   map!(u32,ref!TestObject) RefEntries
   map!(string,u32)         Strings
   map!(u32,bool)           BoolMap
+
+  ref!TestList             LinkedList
+  ref!TestList             Cycle
 }

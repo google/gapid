@@ -31,6 +31,13 @@ func TestReferences(t *testing.T) {
 	m := NewU32ːTestObjectᵐ().
 		Add(4, TestObject{Value: 40}).
 		Add(5, TestObject{Value: 50})
+	cycle := &TestList{
+		Value: 1,
+		Next: &TestList{
+			Value: 2,
+		},
+	}
+	cycle.Next.Next = cycle
 	oldExtra := &TestExtra{
 		Data: U8ˢ{
 			root:  0x1000,
@@ -61,6 +68,14 @@ func TestReferences(t *testing.T) {
 		BoolMap: NewU32ːboolᵐ().
 			Add(0, false).
 			Add(1, true),
+		LinkedList: &TestList{
+			Value: 1,
+			Next: &TestList{
+				Value: 2,
+				Next:  nil,
+			},
+		},
+		Cycle: cycle,
 	}
 
 	msg, err := protoconv.ToProto(ctx, oldExtra)
