@@ -63,7 +63,7 @@ message FramebufferObservation {
 	bytes data = 5;
 }
 
-// State is the object that denotes all of the API-specific initial states
+// GlobalState is the object that denotes all of the API-specific initial states
 // in pack files. If present it will be right after the header.
-message State {
+message GlobalState {
 }

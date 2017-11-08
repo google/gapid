@@ -74,8 +74,8 @@ type InitialState struct {
 func init() {
 	protoconv.Register(toProto, fromProto)
 	protoconv.Register(
-		func(ctx context.Context, in *InitialState) (*State, error) { return &State{}, nil },
-		func(ctx context.Context, in *State) (*InitialState, error) { return &InitialState{}, nil },
+		func(ctx context.Context, in *InitialState) (*GlobalState, error) { return &GlobalState{}, nil },
+		func(ctx context.Context, in *GlobalState) (*InitialState, error) { return &InitialState{}, nil },
 	)
 }
 

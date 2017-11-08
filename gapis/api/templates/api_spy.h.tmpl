@@ -46,9 +46,10 @@
 ¶
   #define __STDC_FORMAT_MACROS
   #include <inttypes.h>
+  #include <memory>
 ¶
 namespace {{(Global "API")}}_pb {
-  class InitialState;
+  class State;
 }
 ¶
   namespace gapii {«
@@ -77,7 +78,7 @@ namespace {{(Global "API")}}_pb {
 ¶
   «protected:»
 ¶
-    {{Global "API"}}_pb::InitialState* serializeState(CallObserver* observer, ToProtoContext& ctx);
+    std::unique_ptr<{{Global "API"}}_pb::State> serializeState(ToProtoContext& pbCtx);
 ¶
     bool observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data);
 ¶
