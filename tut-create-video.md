@@ -15,8 +15,6 @@ This feature is only available via the command line tool `gapit`.
 * A previously captured trace file ending in *.gfxtrace
 * Either avconv or ffmpeg encoding libraries on your path (for regular video encoding)
 
-<div class="callouts" markdown="block">
-
 1. Launch the command line interface.
 
 2. Note the path in which gapid was installed.
@@ -30,6 +28,3 @@ $ <gapid_install_path>gapit video -type regular -out <output_path>.mp4 <path_to_
 ```
 $ <gapid_install_path>gapit video -type frames -out <output_path>.png <path_to_tracefile>
 ```
-
-</div>
-
