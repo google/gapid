@@ -1,7 +1,7 @@
 ---
 layout: default
 title: How do I create a video of my trace?
-sidebar: Create a Video
+sidebar: Create a Video?
 order: 70
 permalink: /tutorials/createvideo
 parent: tutorials
