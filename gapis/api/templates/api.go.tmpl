@@ -718,7 +718,7 @@
       if err != nil {
         return nil, err
       }
-      ϟs := c.NewState()
+      ϟs := c.NewState(ϟctx)
       return cmd.MemoryAfter(uint32(s.pool), s.base, s.count * s.ElementSize(ϟs.MemoryLayout)), nil
     }
     return nil, nil

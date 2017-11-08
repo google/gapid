@@ -50,7 +50,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
 
-	state := c.NewState()
+	state := c.NewState(ctx)
 	state.OnResourceCreated = func(r api.Resource) {
 		currentCmdResourceCount++
 		seen[r] = len(seen)

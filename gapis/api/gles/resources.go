@@ -330,7 +330,7 @@ func (shader *Shader) SetResourceData(
 }
 
 func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
-	state := c.NewState()
+	state := c.NewState(ctx)
 	shader := data.GetShader()
 	source := shader.Source
 	src := state.AllocDataOrPanic(ctx, source)

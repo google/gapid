@@ -162,7 +162,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 		},
 	}
 
-	s := c.NewState()
+	s := c.NewState(ctx)
 	dependencyGraphBuildCounter.Time(func() {
 		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 			a := cmd.API()

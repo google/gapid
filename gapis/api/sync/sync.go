@@ -119,7 +119,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		transforms.Add(t)
 	}
 
-	w := &writer{rc.NewState(), nil}
+	w := &writer{rc.NewState(ctx), nil}
 	transforms.Transform(ctx, cmds, w)
 	return w.cmds, nil
 }
@@ -139,7 +139,7 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	if err != nil {
 		return err
 	}
-	s := rc.NewState()
+	s := rc.NewState(ctx)
 
 	return api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
