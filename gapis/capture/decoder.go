@@ -133,7 +133,7 @@ func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
 	}
 	if _, ok := parent.(*InitialState); ok {
 		switch obj := child.(type) {
-		case *api.CmdObservation:
+		case api.CmdObservation:
 			return d.builder.addInitialMemory(ctx, obj)
 		case api.State:
 			return d.builder.addInitialState(ctx, obj)
