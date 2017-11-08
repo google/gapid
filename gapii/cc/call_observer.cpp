@@ -67,6 +67,10 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
 // Releases the observation data memory at the end.
 CallObserver::~CallObserver() {}
 
+uint32_t CallObserver::getPoolID() {
+    return mSpy->getPoolID();
+}
+
 void CallObserver::read(const void* base, uint64_t size) {
     if (!mSpy->should_trace(mApi)) return;
     if (size > 0) {
