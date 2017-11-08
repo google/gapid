@@ -5,6 +5,9 @@ layout: default
 permalink: /about/
 ---
 
+<img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/logo_512.png"
+     width="256" height="256" alt="GAPID logo" style="display: block; margin: auto;"/>
+
 GAPID is a developer tool for recording and inspecting calls made by an application to the graphics driver.
 
 Once a capture of the target application has been made, GAPID lets you disconnect from the target and inspect all the graphics commands made by the application.
