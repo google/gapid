@@ -4,6 +4,7 @@
 
 @charset "utf-8";
 
+@import "callouts.scss";
 @import "tabs.scss";
 
 $base-font-family: "Roboto", Helvetica, Arial, sans-serif !default;
@@ -140,23 +141,6 @@ table tr {
 
 table tr:nth-child(2n) {
     background-color: #f6f8fa
-}
-
-// Callouts (1), (2) etc.
-.callouts li {
-  list-style-type: none;
-  counter-increment: item;
-}
-
-.callouts li:before {
-  background: url(../images/callout.png) 1px 2px no-repeat;
-  background-size: 20px;
-  color: #fff;
-  content: counter(item);
-  margin-left: -30px;
-  padding-left: 6.5px;
-  position: absolute;
-  width: 16px;
 }
 
 // Code blocks

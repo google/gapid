@@ -1,0 +1,36 @@
+@charset "utf-8";
+
+// Callouts (1), (2) etc.
+
+.callout-img {
+  position: relative;
+}
+
+.callout-img div {
+  position: absolute;
+  background-color: #f33e75;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  line-height: 25px;
+  text-align: center;
+  color: #fff;
+  font-size: 1.0rem;
+}
+
+.callouts li {
+  list-style-type: none;
+  counter-increment: item;
+}
+
+.callouts li:before {
+  background-color: #f33e75;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  color: #fff;
+  content: counter(item);
+  margin-left: -30px;
+  text-align: center;
+  position: absolute;
+}

@@ -18,7 +18,15 @@ are grouped in the [command pane](../inspect/commands) according to submission
 batches and command buffers. An expanded `vkQueueSubmit` with drawing commands
 in it will looks like the image below.
 
-<img src="../images/command-pane-vulkan-renderpass-grouping.png"/>
+<div class="callout-img">
+    <!-- TODO - new image
+    <div style="margin: 230px 430px">1</div>
+    <div style="margin: 290px 60px">2</div>
+    <div style="margin: 500px 60px">3</div>
+    <div style="margin: 605px 60px">4</div>
+    -->
+    <img src="../images/command-pane-vulkan-renderpass-grouping.png" alt="Vulkan commands">
+</div>
 
 <div class="callouts" markdown="block">
 1. Renderpass groups: Submitted commands between `vkCmdBeginRenderPass` and

@@ -20,7 +20,18 @@ GAPID supports tracing all OpenGL ES and Vulkan calls made by an Android applica
 
 Click the `Capture Trace...` text in the welcome screen, or click the `File` &rarr; `Capture Trace` toolbar item to open the trace dialog.
 
-<img src="../images/capture-gles.png" width="730px"/>
+<div class="callout-img">
+  <div style="margin: 42px 260px">1</div>
+  <div style="margin: 72px 600px">2</div>
+  <div style="margin: 105px 605px">3</div>
+  <div style="margin: 144px 565px">4</div>
+  <div style="margin: 176px 400px">5</div>
+  <div style="margin: 205px 98px">6</div>
+  <div style="margin: 230px 98px">7</div>
+  <div style="margin: 255px 98px">8</div>
+  <div style="margin: 280px 98px">9</div>
+  <img src="../images/gles/capture.png" width="690" height="368"/>
+</div>
 
 <div class="callouts" markdown="block">
 
