@@ -32,7 +32,7 @@
   {{end}}
 
   {{Global "ProtoID" 0}}
-  message InitialState {»¶
+  message State {»¶
     {{range $g := $.Globals}}
       {{if (GetAnnotation $g "serialize")}}
         {{Template "Proto.Entry" "Param" $g "Type" (TypeOf $g)}}

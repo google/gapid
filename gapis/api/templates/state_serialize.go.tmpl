@@ -39,7 +39,7 @@
   var _ memory.PoolID¶
   var _ memory_pb.Slice¶
   ¶
-  {{$p := print (Global "Store") ".InitialState"}}
+  {{$p := print (Global "Store") ".State"}}
   func init() {»¶
     protoconv.Register(»¶
       func(ctx context.Context, in State) (*{{$p}}, error) {»¶
@@ -59,7 +59,7 @@
     to := &{{$p}}{}¶
     {{range $g := $.Globals}}
       {{if (GetAnnotation $g "serialize")}}
-        {{Template "Convert.To" "Field" $g "Outer" "InitialState"}}
+        {{Template "Convert.To" "Field" $g "Outer" "State"}}
       {{end}}
     {{end}}
     return to¶
@@ -70,7 +70,7 @@
     ϟa := State{}¶
     {{range $g := $.Globals}}
       {{if (GetAnnotation $g "serialize")}}
-        {{Template "Convert.From" "Field" $g "Outer" "InitialState"}}
+        {{Template "Convert.From" "Field" $g "Outer" "State"}}
       {{end}}
     {{end}}
     return ϟa¶

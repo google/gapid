@@ -38,14 +38,14 @@
   #include "gapis/api/{{Global "API"}}/{{Global "API"}}_pb/api.pb.h"
   ¶
   namespace gapii «{
-    {{Global "API"}}_pb::InitialState* {{$spyname}}::serializeState(CallObserver* observer, ToProtoContext& pbCtx) {
+    std::unique_ptr<{{Global "API"}}_pb::State> {{$spyname}}::serializeState(ToProtoContext& pbCtx) {
       // Globals
 
-      auto out = new {{Global "API"}}_pb::InitialState();
+      auto out = new {{Global "API"}}_pb::State();
       {{range $g := $.Globals}}
         {{Template "SerializeGlobal" $g}}
       {{end}}
-      return out;
+      return std::unique_ptr<{{Global "API"}}_pb::State>(out);
     }
   }
 {{end}}
