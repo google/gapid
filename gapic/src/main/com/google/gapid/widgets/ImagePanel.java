@@ -40,7 +40,6 @@ import com.google.gapid.glviewer.gl.VertexBuffer;
 import com.google.gapid.glviewer.vec.MatD;
 import com.google.gapid.glviewer.vec.VecD;
 import com.google.gapid.image.Histogram;
-import com.google.gapid.image.Histogram.Range;
 import com.google.gapid.image.Image;
 import com.google.gapid.image.Image.PixelInfo;
 import com.google.gapid.image.Image.PixelValue;
@@ -54,6 +53,7 @@ import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
+import com.google.gapid.util.Range;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
@@ -91,6 +91,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.function.DoubleConsumer;
 import java.util.function.IntConsumer;
 import java.util.logging.Logger;
 
@@ -109,7 +110,7 @@ public class ImagePanel extends Composite {
 
   private static final int CHANNEL_RED = 0, CHANNEL_GREEN = 1, CHANNEL_BLUE = 2, CHANNEL_ALPHA = 3;
   private static final float ALPHA_WARNING_THRESHOLD = 2 / 255f;
-  private static final Image[] NO_LAYERS = new Image[] { Image.EMPTY };
+  protected static final Image[] NO_LAYERS = new Image[] { Image.EMPTY };
 
   private final Widgets widgets;
   private final SingleInFlight imageRequestController = new SingleInFlight();
@@ -157,10 +158,9 @@ public class ImagePanel extends Composite {
         mouseDownPoint = last;
 
         if (inHistogram(e)) {
-          int handle = getHistogramRangeHandle(e);
-          if (handle != NO_HANDLE) {
-            int mode = (handle == LOW_HANDLE) ? MODE_DRAGGING_LOW_HANDLE : MODE_DRAGGING_HIGH_HANDLE;
-            setMode(mode, e);
+          int h = getHistogramRangeHandle(e);
+          if (h != NO_HANDLE) {
+            setMode((h == LOW_HANDLE) ? MODE_DRAGGING_LOW_HANDLE : MODE_DRAGGING_HIGH_HANDLE, e);
           } else {
             setMode(MODE_MAYBE_DRAGGING_RANGE, e);
           }
@@ -215,8 +215,8 @@ public class ImagePanel extends Composite {
             break;
           default:
             if (inHistogram(e)) {
-              int handle = getHistogramRangeHandle(e);
-              setCursor(handle != NO_HANDLE ? getDisplay().getSystemCursor(SWT.CURSOR_SIZEWE) : null);
+              int h = getHistogramRangeHandle(e);
+              setCursor(h != NO_HANDLE ? getDisplay().getSystemCursor(SWT.CURSOR_SIZEWE) : null);
             } else {
               setPreviewPixel(imageComponent.getPixel(getPoint(e)));
               setCursor(null);
@@ -460,8 +460,8 @@ public class ImagePanel extends Composite {
       Image[] images = imageList.toArray(new Image[imageList.size()]);
 
       boolean isHDR = false;
-      for (Image image : images) {
-        if (image.isHDR()) {
+      for (Image i : images) {
+        if (i.isHDR()) {
           isHDR = true;
         }
       }
@@ -498,33 +498,44 @@ public class ImagePanel extends Composite {
   }
 
   protected void updateLayers(LevelData data) {
-    boolean valid = data != null && data.layers.length > 0;
-    if (valid) {
-      layers = data.layers;
+    layers = data.layers;
+    if (data.valid) {
       status.setLevelSize(layers[0].getWidth(), layers[0].getHeight());
-    } else {
-      layers = NO_LAYERS;
     }
     loading.stopLoading();
+
     if (saveItem != null) {
-      saveItem.setEnabled(valid);
+      saveItem.setEnabled(data.valid);
     }
-    List<Image> images = new ArrayList<>(layers.length);
-    for (Image layer : layers) {
-      for (int i = 0, c = layer.getDepth(); i < c; i++) {
-        images.add(layer.getSlice(i));
-      }
-    }
-    imageComponent.setImages(images.toArray(new Image[images.size()]));
+    imageComponent.setImages(data.images);
     imageComponent.setHistogram(data.histogram);
   }
 
   private static final class LevelData {
+    public final boolean valid;
     public final Image[] layers;
+    public final Image[] images;
     public final Histogram histogram;
+
     public LevelData(Image[] layers, Histogram histogram) {
-      this.layers = layers;
+      this.valid = layers != null && layers.length > 0;
+      this.layers = valid ? layers : NO_LAYERS;
       this.histogram = histogram;
+      this.images = valid ? getImages(layers) : NO_LAYERS;
+    }
+
+    private static Image[] getImages(Image[] layers) {
+      List<Image> images = new ArrayList<>(layers.length);
+      for (Image layer : layers) {
+        if (layer.getDepth() == 1) {
+          images.add(layer);
+        } else {
+          for (int i = 0, c = layer.getDepth(); i < c; i++) {
+            images.add(layer.getSlice(i));
+          }
+        }
+      }
+      return images.toArray(new Image[images.size()]);
     }
   }
 
@@ -533,7 +544,7 @@ public class ImagePanel extends Composite {
     public MatD[] transforms = {};
     public final boolean channels[] = { true, true, true, true };
     public Histogram histogram;
-    public Histogram.Range displayRange = Range.IDENTITY;
+    public Range displayRange = Range.IDENTITY;
     public boolean histogramVisible;
     public int histogramX, histogramY;
     public int histogramW, histogramH;
@@ -598,7 +609,7 @@ public class ImagePanel extends Composite {
     }
 
     public void setHistogramLowX(int x) {
-      displayRange = new Histogram.Range(
+      displayRange = new Range(
           histogram.getValueFromNormalizedX((x - histogramX) / (double)histogramW),
           displayRange.max);
     }
@@ -608,7 +619,7 @@ public class ImagePanel extends Composite {
     }
 
     public void setHistogramHighX(int x) {
-      displayRange = new Histogram.Range(
+      displayRange = new Range(
           displayRange.min,
           histogram.getValueFromNormalizedX((x - histogramX) / (double)histogramW));
     }
@@ -621,13 +632,14 @@ public class ImagePanel extends Composite {
     private static final VecD BORDER_SIZE = new VecD(2, 2, 0);
     private static final double MAX_ZOOM_FACTOR = 8;
     private static final VecD MIN_ZOOM_SIZE = new VecD(100, 100, 0);
+    private static final double HISTOGRAM_SNAP_THRESHOLD = 0.1;
 
     private final Consumer<AlphaWarning> showAlphaWarning;
     private final boolean naturallyFlipped;
 
     private final ScrollBar scrollbars[];
     private final ScenePanel<SceneData> canvas;
-    private final SceneData data;
+    protected final SceneData data;
     private Image[] images = {};
 
     private double scaleGridToViewMin = 0;
@@ -737,12 +749,11 @@ public class ImagePanel extends Composite {
 
     public void setHistogram(Histogram histogram) {
       data.histogram = histogram;
-      data.displayRange = histogram.power != 1.0 ?
-          calcHistogramRange(data.histogram) : Range.IDENTITY;
+      data.displayRange = histogram.getInitialRange(HISTOGRAM_SNAP_THRESHOLD);
       refresh();
     }
 
-    private void refresh() {
+    protected void refresh() {
       data.images = images;
       data.transforms = calcTransforms();
       canvas.setSceneData(data.copy());
@@ -773,22 +784,6 @@ public class ImagePanel extends Composite {
       } else {
         showAlphaWarning.accept(AlphaWarning.NONE);
       }
-    }
-
-    private Histogram.Range calcHistogramRange(Histogram histogram) {
-      double rangeMin = histogram.getPercentile(1, false, Channel.Alpha);
-      double rangeMax = histogram.getPercentile(99, true, Channel.Alpha);
-
-      // Snap the range to the limits if they're close enough.
-      final double SNAP_THRESHOLD = 0.1;
-      if (histogram.limits.frac(rangeMin) < SNAP_THRESHOLD) {
-        rangeMin = histogram.limits.min;
-      }
-      if (histogram.limits.frac(rangeMax) > 1.0 - SNAP_THRESHOLD) {
-        rangeMax = histogram.limits.max;
-      }
-
-      return new Histogram.Range(rangeMin, rangeMax);
     }
 
     public void setPreviewPixel(Pixel previewPixel) {
@@ -995,13 +990,13 @@ public class ImagePanel extends Composite {
           scrollbar.setEnabled(false);
           scrollbar.setValues(0, 0, 1, 1, 1, 1);
         } else {
-          int view = (int)this.viewSize.get(i);
+          int size = (int)this.viewSize.get(i);
           scrollbar.setEnabled(true);
           scrollbar.setValues(
               val - min,        // selection
               0,                // min
-              view + rng,       // max
-              view,             // thumb
+              size + rng,       // max
+              size,             // thumb
               (rng + 99) / 100, // increment
               (rng + 9) / 10    // page increment
           );
@@ -1031,7 +1026,7 @@ public class ImagePanel extends Composite {
 
     private Shader shader;
     private Texture[] textures;
-    private SceneData data;
+    protected SceneData data;
 
     private final float[] uChannels = new float[] { 1, 1, 1, 1 };
 
@@ -1187,20 +1182,23 @@ public class ImagePanel extends Composite {
 
       // Draw the background.
       GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-      if (data.histogram.power != 1.0) {
-        // Non-linear image. Draw log-scale.
-        int gridLines = w / 10;
-        int lastX = x;
-        for (int i = 0; i < gridLines; i++) {
-          int lineX = x + (int)(w * Math.pow(i / (gridLines - 1.0), data.histogram.power));
-          if (i > 0) {
-            renderer.drawSolid(lastX, y, lineX - lastX, h, ((i & 1) == 0) ? data.histogramBackgroundLight : data.histogramBackgroundDark);
-          }
-          lastX = lineX;
-        }
-      } else {
+      if (data.histogram.isLinear()) {
         // Linear (typically non-HDR image) is a solid color.
         renderer.drawSolid(x, y, w, h, data.histogramBackgroundDark);
+      } else {
+        // Non-linear image. Draw log-scale.
+        data.histogram.range(w / 10).forEachOrdered(new DoubleConsumer() {
+          private int lastX = x;
+          private int i = 1;
+
+          @Override
+          public void accept(double value) {
+            int lineX = x + (int)(w * value);
+            renderer.drawSolid(lastX, y, lineX - lastX, h,
+                ((i++ & 1) == 0) ? data.histogramBackgroundLight : data.histogramBackgroundDark);
+            lastX = lineX;
+          }
+        });
       }
 
       // Draw the histogram content.
@@ -1263,8 +1261,8 @@ public class ImagePanel extends Composite {
       // Draw the handle arrows.
       float arrowW = data.histogramArrowW / (float)w;
       float arrowH = data.histogramArrowH / (float)h;
-      float handleLowX = 2.0f * windowLeftW / (float)w - 1.0f;
-      float handleHighX = -2.0f * windowRightW / (float)w + 1.0f;
+      float handleLowX = 2.0f * windowLeftW / w - 1.0f;
+      float handleHighX = -2.0f * windowRightW / w + 1.0f;
 
       float[] arrowTriangles = {
           handleLowX, 1.0f,

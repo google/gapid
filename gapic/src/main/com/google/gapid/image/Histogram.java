@@ -15,15 +15,18 @@
  */
 package com.google.gapid.image;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toSet;
+
 import com.google.common.collect.Sets;
+import com.google.gapid.image.Image.PixelInfo;
+import com.google.gapid.proto.stream.Stream;
 import com.google.gapid.proto.stream.Stream.Channel;
-import java.nio.DoubleBuffer;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import com.google.gapid.util.Range;
+
 import java.util.Set;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
 
 /**
  * Histogram calculates the number of pixel components across a list of images that land into a
@@ -34,227 +37,57 @@ import java.util.Set;
  * magnitude higher than the average value, the histogram supports non-linear bin ranges.
  */
 public class Histogram {
-  /**
-   * The minimum and maximum values across all images and their components.
-   */
-  public final Range limits;
-
-  /**
-   * The exponential power used to transform a normalized linear [0, 1] range where 0 represents
-   * {@code limits.min}, and 1 represents {@code limits.max} to a normalized bin range [0, 1] where
-   * 0 is the first and 1 is the last bin.
-   */
-  public final double power;
-
-  private final Bin[] bins;
   private final Set<Channel> channels;
-  private final Map<Channel, Integer> highestCounts; // Across all bins and channels.
-
-  /**
-   * Bin holds the number of pixel values that fall within a fixed range.
-   */
-  public static class Bin {
-    private final Map<Channel, Integer> channels = Maps.newHashMap();
-
-    /**
-     * @return the bin count for the given channel.
-     */
-    public int get(Channel channel) {
-      return channels.getOrDefault(channel, 0);
-    }
-
-    /**
-     * Increments the bin count by one for the given channel.
-     * @return the new bin count.
-     */
-    protected int inc(Channel channel) {
-      int count = channels.getOrDefault(channel, 0);
-      count++;
-      channels.put(channel, count);
-      return count;
-    }
-  }
-
-  /**
-   * Range defines an immutable min-max interval of doubles.
-   */
-  public static class Range {
-    public static final Range IDENTITY = new Range(0.0, 1.0);
-
-    public final double min;
-    public final double max;
-
-    public Range(double min, double max) {
-      this.min = min;
-      this.max = max;
-    }
-
-    /**
-     * @return the value limited to the min and max values of this range.
-     */
-    public double clamp(double value) {
-      return Math.max(Math.min(value, max), min);
-    }
-
-    /**
-     * @return the linear interpolated value between min and max by frac.
-     */
-    public double lerp(double frac) {
-      return min + (max - min) * frac;
-    }
-
-    /**
-     * @return the inverse of {@link #lerp}, where X = frac(lerp(X)).
-     */
-    public double frac(double value) {
-      return (value - min) / (max - min);
-    }
-
-    /**
-     * @return the size of the range interval.
-     */
-    public double range() {
-      return max - min;
-    }
-  }
+  private final Mapper mapper;
+  private final Bins bins;
 
   public Histogram(Image[] images, int numBins, boolean logFit) {
-    bins = new Bin[numBins];
+    this.channels = getChannels(images);
+    this.mapper = Mapper.get(images, logFit);
+    this.bins = Bins.get(images, mapper, numBins);
+  }
 
-    for (int i = 0; i < numBins; i++) {
-      bins[i] = new Bin();
+  private static Set<Stream.Channel> getChannels(Image[] images) {
+    return Sets.immutableEnumSet(stream(images)
+        .flatMap(i -> i.getChannels().stream())
+        .collect(toSet()));
+  }
+
+  public Range getInitialRange(double snapThreshold) {
+    if (isLinear()) {
+      return Range.IDENTITY;
     }
 
-    Map<Channel, Integer> highestCounts = Maps.newHashMap();
-    for (Image image : images) {
-      for (Channel channel : image.getChannels()) {
-        if (!highestCounts.containsKey(channel)) {
-          highestCounts.put(channel, 0);
-        }
-      }
+    double rangeMin = getPercentile(1, false);
+    double rangeMax = getPercentile(99, true);
+
+    // Snap the range to the limits if they're close enough.
+    if (mapper.normalize(rangeMin) < snapThreshold) {
+      rangeMin = mapper.limits.min;
+    }
+    if (mapper.normalize(rangeMax) > 1.0 - snapThreshold) {
+      rangeMax = mapper.limits.max;
     }
 
-    // Gather all the pixel values.
-    Map<Channel, DoubleBuffer> allValues = Maps.newHashMap();
-    for (Channel channel : highestCounts.keySet()) {
-      List<DoubleBuffer> buffers = Lists.newArrayList();
-      int size = 0;
-      for (Image image : images) {
-        DoubleBuffer buffer = image.getChannel(channel);
-        buffers.add(buffer);
-        size += buffer.limit();
-      }
-      DoubleBuffer buffer = DoubleBuffer.allocate(size);
-      for (DoubleBuffer image : buffers) {
-        buffer.put(image);
-      }
-      allValues.put(channel, buffer);
-    }
-
-    // Get the limits and average value.
-    double min = Double.POSITIVE_INFINITY;
-    double max = Double.NEGATIVE_INFINITY;
-    double average = 0.0;
-    long numValues = 0;
-    for (DoubleBuffer values : allValues.values()) {
-      for (double value : values.array()) {
-        if (!Double.isNaN(value) && !Double.isInfinite(value)) {
-          min = Math.min(min, value);
-          max = Math.max(max, value);
-          average += value;
-          numValues++;
-        }
-      }
-    }
-
-    limits = new Range(min, max);
-
-    if (numValues > 0) {
-      average /= numValues;
-    }
-
-    double P = 1.0;
-    if (logFit) {
-      // We want the average in the middle of the histogram.
-      // Calculate the non-linear power from this.
-      // limits.frac(average) ^ P == 0.5
-      // P * log(limits.frac(average)) == log(0.5)
-      // P = log(0.5) / log(limits.frac(average))
-      P = Math.log(0.5) / Math.log(limits.frac(average));
-
-      // Don't go non-linear if it isn't necessary.
-      if (P > 0.95 && P < 1.05) {
-        P = 1.0;
-      }
-    }
-
-
-    // Bucket each of the values into the bins.
-    for (Map.Entry<Channel, DoubleBuffer> entry : allValues.entrySet()) {
-      Channel channel = entry.getKey();
-      for (double value : entry.getValue().array()) {
-        if (!Double.isNaN(value) && !Double.isInfinite(value)) {
-          int binIdx = (int) (Math.pow(limits.frac(value), P) * (numBins - 1));
-          binIdx = Math.max(0, binIdx);
-          binIdx = Math.min(binIdx, numBins - 1);
-          int count = bins[binIdx].inc(channel);
-          highestCounts.put(channel, Math.max(count, highestCounts.get(channel)));
-        }
-      }
-    }
-
-    this.highestCounts = highestCounts;
-    this.channels = Sets.immutableEnumSet(allValues.keySet());
-    this.power = P;
+    return new Range(rangeMin, rangeMax);
   }
 
   /**
    * @param percentile the percentile value ranging from 0 to 100.
    * @param high if true, return the upper limit on the percentile's bin, otherwise the lower limit.
-   * @param ignore a list of channels to ignore in the calculation.
    * @return the absolute pixel value at the specified percentile in the histogram.
    */
-  public double getPercentile(int percentile, boolean high, Channel ... ignore) {
-    Set<Channel> toIgnore = Sets.newHashSet(ignore);
-
-    int highestCount = 0;
-    Map<Channel, Integer> cumulative = Maps.newHashMap();
-    for (int i = 0; i < bins.length; i++) {
-      Bin bin = bins[i];
-      for (Entry<Channel, Integer> entry : bin.channels.entrySet()) {
-        Channel channel = entry.getKey();
-        if (!toIgnore.contains(channel)) {
-          int total = cumulative.getOrDefault(channel, 0) + entry.getValue();
-          cumulative.put(channel, total);
-          highestCount = Math.max(total, highestCount);
-        }
-      }
-    }
-
-    cumulative.clear();
-
-    int threshold = percentile * highestCount / 100;
-    for (int i = 0; i < bins.length; i++) {
-      Bin bin = bins[i];
-      for (Entry<Channel, Integer> entry : bin.channels.entrySet()) {
-        Channel channel = entry.getKey();
-        if (!toIgnore.contains(channel)) {
-          int sum = cumulative.getOrDefault(channel, 0) + entry.getValue();
-          if (sum >= threshold) {
-            return getValueFromNormalizedX((i + (high ? 1 : 0)) / (float)bins.length);
-          }
-          cumulative.put(channel, sum);
-        }
-      }
-    }
-    return limits.max;
+  private double getPercentile(int percentile, boolean high) {
+    int bin = bins.getPercentileBin(percentile, channels);
+    return (bin < 0) ? mapper.limits.max :
+        getValueFromNormalizedX((bin + (high ? 1 : 0)) / bins.count());
   }
 
   /**
    * @return the absolute value as a normalized [0, 1] point on the (possibly) non-linear histogram.
    */
   public double getNormalizedXFromValue(double value) {
-    return Range.IDENTITY.clamp(Math.pow(limits.frac(value), power));
+    return Range.IDENTITY.clamp(mapper.map(value));
   }
 
   /**
@@ -262,14 +95,14 @@ public class Histogram {
    * histogram.
    */
   public double getValueFromNormalizedX(double normalizedX) {
-    return limits.lerp(Math.pow(Range.IDENTITY.clamp(normalizedX), 1.0 / power));
+    return mapper.unmap(Range.IDENTITY.clamp(normalizedX));
   }
 
   /**
    * @return the normalized channel value for the given channel and bin.
    */
   public float get(Channel channel, int bin) {
-    return bins[bin].get(channel) / (float)highestCounts.getOrDefault(channel, 0);
+    return bins.getNormalized(channel, bin);
   }
 
   /**
@@ -280,9 +113,195 @@ public class Histogram {
   }
 
   /**
-   * @return the number of bins.
+   * Returns the number of bins.
    */
   public int getNumBins() {
-    return bins.length;
+    return bins.count();
+  }
+
+  public boolean isLinear() {
+    return !(mapper instanceof ExpMapper);
+  }
+
+  public DoubleStream range(int count) {
+    return mapper.range(count);
+  }
+
+  public static class Binner {
+    private Mapper mapper;
+    private final int numBins;
+    private final int[][] bins;
+
+    public Binner(Mapper mapper, int numBins) {
+      this.mapper = mapper;
+      this.numBins = numBins;
+      this.bins = new int[numBins][Stream.Channel.values().length];
+    }
+
+    public void bin(float value, Stream.Channel channel) {
+      int binIdx = (int)(mapper.map(value) * (numBins - 1));
+      binIdx = Math.max(0, Math.min(numBins - 1, binIdx));
+      bins[binIdx][channel.ordinal()]++;
+    }
+
+    public Bins getBins() {
+      return new Bins(bins);
+    }
+  }
+
+  private static class Mapper {
+    protected final Range limits;
+
+    public Mapper(Range limits) {
+      this.limits = limits;
+    }
+
+    public static Mapper get(Image[] images, boolean logFit) {
+      // Get the limits and average value.
+      double min = Double.POSITIVE_INFINITY;
+      double max = Double.NEGATIVE_INFINITY;
+      double average = 0.0;
+      for (Image image : images) {
+        PixelInfo info = image.getInfo();
+        min = Math.min(info.getMin(), min);
+        max = Math.max(info.getMax(), max);
+        average += info.getAverage();
+      }
+      Range limits = new Range(min, max);
+
+      // This is an average-of-averages, which is OK, because we only ever compute a histogram across
+      // multiple images that have the same size. The only reasons the weights of the averages would
+      // be different is because we skip the infinite and NaN values when computing the average.
+      // These are, though, the exception and would technically make the average be undefined anyways.
+      average /= images.length;
+
+      double exponent = 1.0;
+      if (logFit) {
+        // We want the average in the middle of the histogram.
+        // Calculate the non-linear power from this.
+        // limits.frac(average) ^ P == 0.5
+        // P * log(limits.frac(average)) == log(0.5)
+        // P = log(0.5) / log(limits.frac(average))
+        exponent = Math.log(0.5) / Math.log(limits.frac(average));
+
+        // Don't go non-linear if it isn't necessary.
+        if (exponent > 0.95 && exponent < 1.05) {
+          exponent = 1.0;
+        }
+      }
+      return (exponent == 1) ? new Mapper(limits) : new ExpMapper(limits, exponent);
+    }
+
+    public double normalize(double value) {
+      return limits.frac(value);
+    }
+
+    public double map(double value) {
+      return limits.frac(value);
+    }
+
+    public double unmap(double value) {
+      return limits.lerp(value);
+    }
+
+    public DoubleStream range(int count) {
+      return IntStream.range(1, count).mapToDouble(i -> (double)i / (count - 1));
+    }
+  }
+
+  private static class ExpMapper extends Mapper {
+    /**
+     * The exponential power used to transform a normalized linear [0, 1] range where 0 represents
+     * {@code limits.min}, and 1 represents {@code limits.max} to a normalized bin range [0, 1]
+     * where 0 is the first and 1 is the last bin.
+     */
+    private final double power;
+
+    public ExpMapper(Range limits, double power) {
+      super(limits);
+      this.power = power;
+    }
+
+    @Override
+    public double map(double value) {
+      return Math.pow(limits.frac(value), power);
+    }
+
+    @Override
+    public double unmap(double value) {
+      return limits.lerp(Math.pow(value, 1 / power));
+    }
+
+    @Override
+    public DoubleStream range(int count) {
+      return IntStream.range(1, count).mapToDouble(i -> Math.pow((double)i / (count - 1), power));
+    }
+  }
+
+  private static class Bins {
+    private final int[][] bins;
+    private final int[] max, total;
+
+    public Bins(int[][] bins) {
+      this.bins = bins;
+      this.max = new int[Stream.Channel.values().length];
+      this.total = new int[Stream.Channel.values().length];
+      computeMaxAndTotals();
+    }
+
+    private void computeMaxAndTotals() {
+      for (int channel = 0; channel < max.length; channel++) {
+        int curMax = 0;
+        for (int bin = 0; bin < bins.length; bin++) {
+          int value = bins[bin][channel];
+          total[channel] += value;
+          curMax = Math.max(curMax, value);
+        }
+        max[channel] = curMax;
+      }
+    }
+
+    public static Bins get(Image[] images, Mapper mapper, int numBins) {
+      Binner binner = new Binner(mapper, numBins);
+      for (Image image : images) {
+        image.bin(binner);
+      }
+      return binner.getBins();
+    }
+
+    /**
+     * Returns the count for the given channel in the given bin, normalized to a [0, 1] range.
+     */
+    public float getNormalized(Stream.Channel channel, int bin) {
+      int cIdx = channel.ordinal();
+      return (float)bins[bin][cIdx] / max[cIdx];
+    }
+
+    public int count() {
+      return bins.length;
+    }
+
+    /**
+     * Returns the index of the bin which matches the given percentile, or -1.
+     */
+    public int getPercentileBin(int percentile, Set<Stream.Channel> channels) {
+      int highestCount = 0;
+      for (Stream.Channel c : channels) {
+        highestCount = Math.max(highestCount, total[c.ordinal()]);
+      }
+
+      int threshold = percentile * highestCount / 100;
+      int[] sum = new int[Stream.Channel.values().length];
+      for (int b = 0; b < bins.length; b++) {
+        for (Stream.Channel c : channels) {
+          int cIdx = c.ordinal();
+          int s = sum[cIdx] += bins[b][cIdx];
+          if (s >= threshold) {
+            return b;
+          }
+        }
+      }
+      return -1;
+    }
   }
 }
