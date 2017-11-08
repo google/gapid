@@ -2,7 +2,7 @@
 layout: default
 title: Check Vulkan render state
 sidebar: Check Vulkan render state?
-order: 70
+order: 80
 permalink: /tutorials/renderstate
 parent: tutorials
 ---
