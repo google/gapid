@@ -58,7 +58,7 @@ private:
     struct Shared {
         Shared(const std::shared_ptr<core::StringWriter>& writer);
 
-        std::mutex mutex;
+        std::recursive_mutex mutex;
         std::shared_ptr<core::StringWriter> writer;
         std::unordered_map<const Descriptor*, uint32_t> type_ids;
         TypeIDCache type_id_caches[TYPE_ID_CACHE_COUNT];
@@ -96,7 +96,7 @@ PackEncoderImpl::PackEncoderImpl(const std::shared_ptr<Shared>& shared, uint64_t
 PackEncoderImpl::~PackEncoderImpl() {
     if (mParentChunkId != NO_ID) {
         std::string buffer;
-        std::lock_guard<std::mutex> lock(mShared->mutex);
+        std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
         writeParentID(buffer);
         flushChunk(buffer, false);
     }
@@ -110,7 +110,7 @@ void PackEncoderImpl::object(const Message* msg) {
     std::string buffer;
     auto type_id = writeTypeIfNew(msg->GetDescriptor());
 
-    std::lock_guard<std::mutex> lock(mShared->mutex);
+    std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
     writeParentID(buffer);
     writeZigzag(buffer, type_id);
     msg->AppendToString(&buffer);
@@ -121,7 +121,7 @@ gapii::PackEncoder::SPtr PackEncoderImpl::group(const Message* msg) {
     std::string buffer;
     auto type_id = writeTypeIfNew(msg->GetDescriptor());
 
-    std::lock_guard<std::mutex> lock(mShared->mutex);
+    std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
     writeParentID(buffer);
     writeZigzag(buffer, -(int64_t)type_id);
     msg->AppendToString(&buffer);
@@ -139,15 +139,6 @@ void PackEncoderImpl::writeParentID(std::string& buffer) {
 }
 
 uint64_t PackEncoderImpl::writeTypeIfNew(const Descriptor* desc) {
-    for (int i = 0; i < desc->field_count(); i++) {
-        if (auto fieldDesc = desc->field(i)->message_type()) {
-            writeTypeIfNew(fieldDesc);
-        }
-    }
-    for (int i = 0; i < desc->nested_type_count(); i++) {
-        writeTypeIfNew(desc->nested_type(i));
-    }
-
     TypeIDCache* type_id_cache = nullptr;
     std::unique_lock<std::mutex> cache_lock;
 
@@ -176,8 +167,7 @@ uint64_t PackEncoderImpl::writeTypeIfNew(const Descriptor* desc) {
 }
 
 uint64_t PackEncoderImpl::writeTypeIfNewBlocking(const Descriptor* desc) {
-    std::lock_guard<std::mutex> lock(mShared->mutex);
-
+    std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
     auto insert = mShared->type_ids.insert(std::make_pair(desc, mShared->type_ids.size()));
     uint64_t type_id = insert.first->second;
     if (insert.second) {
@@ -187,6 +177,15 @@ uint64_t PackEncoderImpl::writeTypeIfNewBlocking(const Descriptor* desc) {
         writeString(buffer, desc->full_name());
         descMsg.AppendToString(&buffer);
         flushChunk(buffer, true);
+
+        for (int i = 0; i < desc->field_count(); i++) {
+            if (auto fieldDesc = desc->field(i)->message_type()) {
+                writeTypeIfNewBlocking(fieldDesc);
+            }
+        }
+        for (int i = 0; i < desc->nested_type_count(); i++) {
+            writeTypeIfNewBlocking(desc->nested_type(i));
+        }
     }
     return type_id;
 }
