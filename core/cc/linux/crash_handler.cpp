@@ -20,8 +20,7 @@
 
 namespace {
 
-static
-bool handleCrash(const google_breakpad::MinidumpDescriptor& descriptor, void* crashHandlerPtr, bool succeeded) {
+static bool handleCrash(const google_breakpad::MinidumpDescriptor& descriptor, void* crashHandlerPtr, bool succeeded) {
     core::CrashHandler* crashHandler = reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
     std::string minidumpPath(descriptor.path());
     return crashHandler->handleMinidump(minidumpPath, succeeded);
@@ -39,6 +38,7 @@ CrashHandler::CrashHandler(HandlerFunction handlerFunction) :
 }
 
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.
+// The incomplete type is the previously forward declared google_breakpad::ExceptionHandler.
 CrashHandler::~CrashHandler() = default;
 
 }
