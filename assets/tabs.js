@@ -18,7 +18,7 @@ function bindTabLinkClick(link, content) {
     })
 }
 
-window.onload = function() {
+function initTabs() {
     var tabs, tabbar, first;
     first = true;
 
@@ -57,3 +57,9 @@ window.onload = function() {
         bindTabLinkClick(link, tab);
     }
 }
+
+document.onreadystatechange = function(e) {
+    document.addEventListener("DOMContentLoaded", function(event) {
+        initTabs();
+    });
+};
