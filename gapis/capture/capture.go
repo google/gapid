@@ -67,15 +67,19 @@ type Capture struct {
 }
 
 type InitialState struct {
-	Memory []*api.CmdObservation
+	Memory []api.CmdObservation
 	APIs   map[api.API]api.State
 }
 
 func init() {
 	protoconv.Register(toProto, fromProto)
 	protoconv.Register(
-		func(ctx context.Context, in *InitialState) (*GlobalState, error) { return &GlobalState{}, nil },
-		func(ctx context.Context, in *GlobalState) (*InitialState, error) { return &InitialState{}, nil },
+		func(ctx context.Context, in *InitialState) (*GlobalState, error) {
+			return &GlobalState{}, nil
+		},
+		func(ctx context.Context, in *GlobalState) (*InitialState, error) {
+			return &InitialState{APIs: map[api.API]api.State{}}, nil
+		},
 	)
 }
 
@@ -129,8 +133,8 @@ func (c *Capture) NewState() *api.GlobalState {
 func (c *Capture) InitializeState(s *api.GlobalState) {
 	if c.InitialState != nil {
 		for _, m := range c.InitialState.Memory {
-			pool, err := s.Memory.Get(memory.PoolID(m.Pool))
-			if err == nil {
+			pool, _ := s.Memory.Get(memory.PoolID(m.Pool))
+			if pool == nil {
 				pool = s.Memory.NewAt(memory.PoolID(m.Pool))
 			}
 			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
@@ -388,9 +392,9 @@ func (b *builder) addInitialState(ctx context.Context, state api.State) error {
 	return nil
 }
 
-func (b *builder) addInitialMemory(ctx context.Context, mem *api.CmdObservation) error {
+func (b *builder) addInitialMemory(ctx context.Context, mem api.CmdObservation) error {
 	b.initialState.Memory = append(b.initialState.Memory, mem)
-	b.addObservation(ctx, mem)
+	b.addObservation(ctx, &mem)
 	return nil
 }
 

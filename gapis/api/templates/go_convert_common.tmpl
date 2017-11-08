@@ -158,14 +158,14 @@
     ϟa.{{$name}} = ϟrefs.GetReferencedObject(from.{{$proto}}.GetReferenceID(), {{$.Field.Type.Name}}{}, func () (interface{}, func()) {»¶
       ϟobj := New{{$.Field.Type.Name}}()¶
       return ϟobj, func() {»¶
-        var ϟk {{Template "Convert.StorageType" $truetype.KeyType}}¶
+        {{$keytype := Macro "Convert.StorageType" $truetype.KeyType}}
+        {{$numeric := or (eq $keytype "int32") (eq $keytype "int64")}}
+        var ϟk {{$keytype}}¶
         for ϟi, ϟv:= range from.{{$proto}}.Values {»¶
-          if ϟi < len(from.{{$proto}}.Keys) {»¶
-            ϟk = from.{{$proto}}.Keys[ϟi]¶
-          «}¶
+          {{if $numeric}}if ϟi < len(from.{{$proto}}.Keys){{end}} { ϟk = from.{{$proto}}.Keys[ϟi] }¶
           ϟobj.Set({{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟk"}},
                    {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}})¶
-          {{if not (IsString $truetype.KeyType)}} ϟk++ // Increment if keys are trimmed ¶{{end}}
+          {{if $numeric}}ϟk++ // Increment if keys are trimmed ¶{{end}}
         «}¶
       «}¶
     «}).({{$.Field.Type.Name}})¶
@@ -229,7 +229,7 @@
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
   {{else if IsClass         $}}*{{Global "Store"}}.{{$.Name | ProtoGoName}}
-  {{else if IsReference     $}}*{{Global "Store"}}.{{$.Name | ProtoGoName}}_Reference
+  {{else if IsReference     $}}*{{Global "Store"}}.{{$.To.Name | ProtoGoName}}_Reference
   {{else}}{{Error "macro Convert.StorageType called with unsupported type: %T" $}}
   {{end}}
 {{end}}

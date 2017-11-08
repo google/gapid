@@ -42,11 +42,11 @@
   {{$p := print (Global "Store") ".State"}}
   func init() {»¶
     protoconv.Register(»¶
-      func(ctx context.Context, in State) (*{{$p}}, error) {»¶
+      func(ctx context.Context, in *State) (*{{$p}}, error) {»¶
         ϟrefs := &protoconv.ToProtoContext{}¶
         return in.ToProto(ϟrefs), nil¶
       «},¶
-      func(ctx context.Context, in *{{$p}}) (State, error) {»¶
+      func(ctx context.Context, in *{{$p}}) (*State, error) {»¶
         ϟrefs := &protoconv.FromProtoContext{}¶
         return StateFrom(in, ϟrefs), nil¶
       «},¶
@@ -66,8 +66,8 @@
   «}¶
   ¶
   // StateFrom builds a State from the storage form.¶
-  func StateFrom(from *{{$p}}, ϟrefs *protoconv.FromProtoContext) State {»¶
-    ϟa := State{}¶
+  func StateFrom(from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *State {»¶
+    ϟa := &State{}¶
     {{range $g := $.Globals}}
       {{if (GetAnnotation $g "serialize")}}
         {{Template "Convert.From" "Field" $g "Outer" "State"}}
