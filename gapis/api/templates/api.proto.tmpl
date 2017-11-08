@@ -28,7 +28,7 @@
   {{end}}
 
   {{range $c := $.Classes}}
-    {{if (GetAnnotation $c "serialize")}}{{Template "ClassEntry" $c}}{{end}}
+    {{if not (GetAnnotation $c "noserialize")}}{{Template "ClassEntry" $c}}{{end}}
   {{end}}
 
   {{Global "ProtoID" 0}}

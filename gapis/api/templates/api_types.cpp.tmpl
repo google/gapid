@@ -60,7 +60,7 @@
 {{define "DefineClassMethods"}}
   {{AssertType $ "Class"}}
 
-  {{$serializable := GetAnnotation $ "serialize"}}
+  {{$serializable := not (GetAnnotation $ "noserialize")}}
   {{$name := Macro "C++.Type" $}}
   {{if len $.Fields}}
 ¶
