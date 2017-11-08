@@ -74,7 +74,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 	var currentAtom uint64
 	items := []*service.ReportItemRaw{}
-	state := c.NewState()
+	state := c.NewState(ctx)
 	state.NewMessage = func(s log.Severity, m *stringtable.Msg) uint32 {
 		items = append(items, r.newReportItem(s, currentAtom, m))
 		return uint32(len(items) - 1)

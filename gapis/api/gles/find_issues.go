@@ -48,7 +48,7 @@ type findIssues struct {
 
 func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Instance) *findIssues {
 	transform := &findIssues{
-		state:  c.NewState(),
+		state:  c.NewState(ctx),
 		device: device,
 	}
 	transform.state.OnError = func(err interface{}) {

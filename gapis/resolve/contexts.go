@@ -99,7 +99,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 	seen := map[api.ContextID]int{}
 	contexts := []*ctxInfo{}
 
-	s := c.NewState()
+	s := c.NewState(ctx)
 	err = api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, i api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, i, s, nil)
 
@@ -152,7 +152,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 			API:               c.ctx.API().ID(),
 			NumCommandsByType: c.cnts,
 			Name:              name,
-			Priority:          len(contexts)-i,
+			Priority:          len(contexts) - i,
 			UserData:          map[interface{}]interface{}{},
 		}
 	}

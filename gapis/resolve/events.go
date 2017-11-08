@@ -64,7 +64,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 
 	events := []*service.Event{}
 
-	s := c.NewState()
+	s := c.NewState(ctx)
 	lastCmd := api.CmdID(0)
 	var pending []service.EventKind
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {

@@ -713,7 +713,7 @@ func (shader *ShaderModuleObject) SetResourceData(
 func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
 	cb := CommandBuilder{Thread: cmd.thread}
-	state := c.NewState()
+	state := c.NewState(ctx)
 	cmd.Mutate(ctx, api.CmdNoID, state, nil)
 
 	shader := data.GetShader()
@@ -754,7 +754,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "RecreateShaderModule.Replace()")
 	cb := CommandBuilder{Thread: cmd.thread}
-	state := c.NewState()
+	state := c.NewState(ctx)
 	cmd.Mutate(ctx, api.CmdNoID, state, nil)
 
 	shader := data.GetShader()

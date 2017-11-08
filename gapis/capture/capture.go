@@ -113,24 +113,24 @@ func NewState(ctx context.Context) (*api.GlobalState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.NewState(), nil
+	return c.NewState(ctx), nil
 }
 
 // NewState returns a new, default-initialized State object built for the
 // capture.
-func (c *Capture) NewState() *api.GlobalState {
+func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
 	s := api.NewStateWithAllocator(
 		memory.NewBasicAllocator(freeList),
 		c.Header.Abi.MemoryLayout,
 	)
-	c.InitializeState(s)
+	c.InitializeState(ctx, s)
 	return s
 }
 
 // Applies the Initial state of this capture to the given GlobalState
-func (c *Capture) InitializeState(s *api.GlobalState) {
+func (c *Capture) InitializeState(ctx context.Context, s *api.GlobalState) {
 	if c.InitialState != nil {
 		for _, m := range c.InitialState.Memory {
 			pool, _ := s.Memory.Get(memory.PoolID(m.Pool))
