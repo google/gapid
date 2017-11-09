@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/app/crash/reporting"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
@@ -85,6 +86,10 @@ func (v VersionSpec) GreaterThan(o VersionSpec) bool {
 	default:
 		return false
 	}
+}
+
+func (v VersionSpec) String() string {
+	return fmt.Sprintf("%v", v)
 }
 
 // Format implements fmt.Formatter to print the version.
@@ -158,6 +163,10 @@ func Run(main task.Task) {
 			Major: Version.Major, Minor: Version.Minor, Point: Version.Point,
 		})
 		analytics.SendEvent("app", "start", Name)
+	}
+
+	if Flags.CrashReport {
+		reporting.Enable(ctx, Name, Version.String())
 	}
 
 	// Defer the shutdown code
