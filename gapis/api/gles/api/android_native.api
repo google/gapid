@@ -13,7 +13,6 @@
 // limitations under the License.
 
 @internal
-@serialize
 class AndroidNativeBufferExtra {
   u32                                 Width
   u32                                 Height

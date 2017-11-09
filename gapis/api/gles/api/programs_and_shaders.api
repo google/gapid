@@ -33,7 +33,6 @@ class Shader {
 // We need to store copy of compile-time inputs for mid-execution capture,
 // because changing the source code does not change the compiled shader code.
 @internal
-@serialize
 class CompileShaderExtra {
   ShaderId ID
 
@@ -59,7 +58,6 @@ sub void ApplyCompileShaderExtra(ref!Shader s, ref!CompileShaderExtra i) {
 }
 
 @internal
-@serialize
 class BinaryExtra {
   u8[]    Data   // Binary blob
   GLenum  Format // Vendor-specific format
@@ -96,7 +94,6 @@ class Program {
 // We need to store copy of compile-time inputs for mid-execution capture,
 // because changing the inputs does not change the compiled program code.
 @internal
-@serialize
 class LinkProgramExtra {
   ProgramId ID
 
@@ -172,7 +169,7 @@ class Uniform {
   UniformIndex           UniformIndex // Reference back to ProgramResource (not location)
 }
 
-@internal @serialize
+@internal
 class ValidateProgramExtra {
   ProgramId ID
   bool      ValidateStatus
@@ -208,7 +205,7 @@ class Pipeline {
   @hidden ref!ValidateProgramPipelineExtra ValidateExtra // Describes last validate command
 }
 
-@internal @serialize
+@internal
 class ValidateProgramPipelineExtra {
   PipelineId ID
   bool       ValidateStatus
@@ -226,7 +223,6 @@ sub void ApplyValidateProgramPipelineExtra(ref!Pipeline p, ref!ValidateProgramPi
 }
 
 @internal
-@serialize
 class ActiveProgramResources {
   @unused map!(u32, ref!ProgramResource)          ProgramInputs
   @unused map!(u32, ref!ProgramResource)          ProgramOutputs
@@ -240,7 +236,6 @@ class ActiveProgramResources {
 }
 
 @internal
-@serialize
 class ProgramResourceBlock {
   @unused string                         Name
   @unused GLint                          Binding
@@ -250,7 +245,6 @@ class ProgramResourceBlock {
 }
 
 @internal
-@serialize
 class ProgramResource {
   @unused string          Name
   @unused GLenum          Type
@@ -266,7 +260,6 @@ class ProgramResource {
 }
 
 @internal
-@serialize
 class ProgramResourceUses {
   @unused bool VertexShader
   @unused bool TessControlShader
@@ -277,7 +270,6 @@ class ProgramResourceUses {
 }
 
 @internal
-@serialize
 class ProgramResourceLayout {
   @unused GLint Offset              = -1
   @unused GLint ArrayStride         = -1
@@ -288,7 +280,6 @@ class ProgramResourceLayout {
 }
 
 @internal
-@serialize
 class ShaderLayoutQualifiers {
   @unused GLuint GeometryVerticesOut       = 0
   @unused GLenum GeometryInputType         = GL_TRIANGLES

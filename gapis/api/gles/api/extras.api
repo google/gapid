@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // StaticContextState is an atom extra used to describe a context's non-changing state.
-@internal @serialize
+@internal
 class StaticContextState {
   Constants Constants
   string    ThreadName
@@ -23,7 +23,7 @@ class StaticContextState {
 extern ref!StaticContextState GetEGLStaticContextState(EGLDisplay display, EGLContext context)
 
 // DynamicContextState is an atom extra used to describe a context's potentially changing state.
-@internal @serialize
+@internal
 class DynamicContextState {
   GLsizei BackbufferWidth
   GLsizei BackbufferHeight

@@ -14,7 +14,6 @@
 
 // Implementation dependent constants.
 @internal
-@serialize
 class Constants {
   @unused string        Vendor
   @unused string        Version
@@ -182,7 +181,6 @@ class Constants {
 }
 
 @internal
-@serialize
 class ShaderPrecisionFormat {
   @unused PrecisionFormat LowFloat
   @unused PrecisionFormat MediumFloat
@@ -193,7 +191,6 @@ class ShaderPrecisionFormat {
 }
 
 @internal
-@serialize
 class PrecisionFormat {
   @unused GLint MinRange
   @unused GLint MaxRange

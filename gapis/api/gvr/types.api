@@ -31,20 +31,17 @@ enum gvr_feature {
   GVR_FEATURE_EXTERNAL_SURFACE = 2
 }
 
-@serialize
 class gvr_version {
   s32 major
   s32 minor
   s32 patch
 }
 
-@serialize
 class gvr_sizei {
   s32 width
   s32 height
 }
 
-@serialize
 class gvr_recti {
   s32 left
   s32 right
@@ -52,7 +49,6 @@ class gvr_recti {
   s32 top
 }
 
-@serialize
 class gvr_rectf {
   f32 left
   f32 right
@@ -60,7 +56,6 @@ class gvr_rectf {
   f32 top
 }
 
-@serialize
 class gvr_vec2f {
   f32 x
   f32 y
@@ -77,7 +72,6 @@ class gvr_vec3f {
 // this type when there's a copy-constructor on the StaticArray.
 // Work around this by using a different type for the interface.
 @abi_type("gvr_mat4_abi")
-@serialize
 class gvr_mat4f {
   f32[16] m
 }
@@ -89,7 +83,6 @@ class gvr_quatf {
   f32 qw
 }
 
-@serialize
 class gvr_clock_time_point {
   s64 monotonic_system_time_nanos
 }
