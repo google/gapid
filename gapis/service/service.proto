@@ -269,8 +269,13 @@ message GetDevicesForReplayResponse {
   }
 }
 
-message GetFramebufferAttachmentRequest {
+message ReplaySettings {
   path.Device device = 1;
+  bool disableReplayOptimization = 2;
+}
+
+message GetFramebufferAttachmentRequest {
+  ReplaySettings replay_settings = 1;
   path.Command after = 2;
   api.FramebufferAttachment attachment = 3;
   RenderSettings settings = 4;

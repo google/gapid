@@ -59,6 +59,7 @@ type QueryFramebufferAttachment interface {
 		attachment api.FramebufferAttachment,
 		framebufferIndex uint32,
 		wireframeMode WireframeMode,
+		disableReplayOptimization bool,
 		hints *service.UsageHints) (*image.Data, error)
 }
 

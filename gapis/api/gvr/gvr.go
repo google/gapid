@@ -51,6 +51,7 @@ func (API) QueryFramebufferAttachment(
 	attachment api.FramebufferAttachment,
 	framebufferIndex uint32,
 	wireframeMode replay.WireframeMode,
+	disableReplayOptimization bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
 	if framebufferIndex == 0 {
@@ -69,6 +70,7 @@ func (API) QueryFramebufferAttachment(
 		attachment,
 		framebufferIndex,
 		wireframeMode,
+		disableReplayOptimization,
 		hints,
 	)
 }

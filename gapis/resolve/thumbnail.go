@@ -30,9 +30,9 @@ import (
 func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info, error) {
 	switch parent := p.Parent().(type) {
 	case *path.Command:
-		return CommandThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
+		return CommandThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent)
 	case *path.CommandTreeNode:
-		return CommandTreeNodeThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
+		return CommandTreeNodeThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent)
 	case *path.ResourceData:
 		return ResourceDataThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
 	default:
@@ -41,9 +41,12 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info, error) {
 }
 
 // CommandThumbnail resolves and returns the thumbnail for the framebuffer at p.
-func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.Command) (*image.Info, error) {
+func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt bool, p *path.Command) (*image.Info, error) {
 	imageInfoPath, err := FramebufferAttachment(ctx,
-		nil, // device
+		&service.ReplaySettings{
+			nil,
+			noOpt,
+		},
 		p,
 		api.FramebufferAttachment_Color0,
 		&service.RenderSettings{
@@ -73,7 +76,7 @@ func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path
 }
 
 // CommandTreeNodeThumbnail resolves and returns the thumbnail for the framebuffer at p.
-func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.CommandTreeNode) (*image.Info, error) {
+func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt bool, p *path.CommandTreeNode) (*image.Info, error) {
 	boxedCmdTree, err := database.Resolve(ctx, p.Tree.ID())
 	if err != nil {
 		return nil, err
@@ -88,11 +91,11 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 		if userData, ok := item.UserData.(*CmdGroupData); ok {
 			thumbnail = userData.Representation
 		}
-		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(thumbnail)))
+		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(thumbnail)))
 	case api.SubCmdIdx:
-		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item[0]), item[1:]...))
+		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(item[0]), item[1:]...))
 	case api.SubCmdRoot:
-		return CommandThumbnail(ctx, w, h, f, cmdTree.path.Capture.Command(uint64(item.Id[0]), item.Id[1:]...))
+		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(item.Id[0]), item.Id[1:]...))
 	default:
 		panic(fmt.Errorf("Unexpected type: %T", item))
 	}

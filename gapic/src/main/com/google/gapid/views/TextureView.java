@@ -303,7 +303,7 @@ public class TextureView extends Composite
     Widgets.Refresher refresher = withAsyncRefresh(textureTable);
     for (Service.Resource info : resources.getResourcesList()) {
       if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
-        Data data = new Data(resourceAfter(range, info.getId()), info);
+        Data data = new Data(resourceAfter(range, info.getId()), info, models.settings.disableReplayOptimization);
         textures.add(data);
         data.load(client, textureTable.getTable(), refresher);
       }
@@ -320,11 +320,13 @@ public class TextureView extends Composite
   private static class Data {
     public final Path.Any path;
     public final Service.Resource info;
+    public final boolean disableReplayOptimization;
     protected AdditionalInfo imageInfo;
 
-    public Data(Path.Any path, Service.Resource info) {
+    public Data(Path.Any path, Service.Resource info, boolean disableReplayOptimization) {
       this.path = path;
       this.info = info;
+      this.disableReplayOptimization = disableReplayOptimization;
       this.imageInfo = AdditionalInfo.NULL;
     }
 
@@ -673,7 +675,7 @@ public class TextureView extends Composite
     }
 
     private ListenableFuture<ImageData> loadImage(Data data) {
-      return FetchedImage.loadThumbnail(client, thumbnail(data.path.getResourceData(), SIZE));
+      return FetchedImage.loadThumbnail(client, thumbnail(data.path.getResourceData(), SIZE, data.disableReplayOptimization));
     }
 
     public void reset() {

@@ -305,7 +305,7 @@ func (s *grpcServer) GetFramebufferAttachment(ctx xctx.Context, req *service.Get
 	defer s.inRPC()()
 	image, err := s.handler.GetFramebufferAttachment(
 		s.bindCtx(ctx),
-		req.Device,
+		req.ReplaySettings,
 		req.After,
 		req.Attachment,
 		req.Settings,

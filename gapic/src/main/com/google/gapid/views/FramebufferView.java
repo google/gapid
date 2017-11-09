@@ -246,6 +246,7 @@ public class FramebufferView extends Composite
 
   private ListenableFuture<Path.ImageInfo> getImageInfoPath(Path.Command atomPath) {
     return client.getFramebufferAttachment(
-        models.devices.getReplayDevice(), atomPath, target, renderSettings, HINTS);
+        models.devices.getReplayDevice(), atomPath, target, renderSettings, HINTS,
+          models.settings.disableReplayOptimization);
   }
 }

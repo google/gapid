@@ -38,7 +38,7 @@ message FollowResolvable {
 }
 
 message FramebufferAttachmentResolvable {
-	path.Device device = 1;
+	service.ReplaySettings replaySettings = 1;
 	path.Command after = 2;
 	api.FramebufferAttachment attachment = 3;
 	service.RenderSettings settings = 4;
@@ -50,7 +50,7 @@ message FramebufferChangesResolvable {
 }
 
 message FramebufferAttachmentBytesResolvable {
-	path.Device device = 1;
+	service.ReplaySettings replaySettings = 1;
 	path.Command after = 2;
 	uint32 width = 3;
 	uint32 height = 4;

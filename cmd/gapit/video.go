@@ -324,7 +324,10 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 func getFrame(ctx context.Context, maxWidth, maxHeight int, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(maxWidth), MaxHeight: uint32(maxHeight)}
-	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, api.FramebufferAttachment_Color0, settings, nil)
+	iip, err := client.GetFramebufferAttachment(ctx, &service.ReplaySettings{
+		Device: device,
+		DisableReplayOptimization: false,
+	}, cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed at %v", cmd)
 	}

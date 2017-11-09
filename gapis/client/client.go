@@ -252,18 +252,19 @@ func (c *client) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 
 func (c *client) GetFramebufferAttachment(
 	ctx context.Context,
-	dev *path.Device,
+	repS *service.ReplaySettings,
 	cmd *path.Command,
 	att api.FramebufferAttachment,
 	rs *service.RenderSettings,
-	hints *service.UsageHints) (*path.ImageInfo, error) {
+	hints *service.UsageHints,
+) (*path.ImageInfo, error) {
 
 	res, err := c.client.GetFramebufferAttachment(ctx, &service.GetFramebufferAttachmentRequest{
-		Device:     dev,
-		After:      cmd,
-		Attachment: att,
-		Settings:   rs,
-		Hints:      hints,
+		ReplaySettings: repS,
+		After:          cmd,
+		Attachment:     att,
+		Settings:       rs,
+		Hints:          hints,
 	})
 	if err != nil {
 		return nil, err

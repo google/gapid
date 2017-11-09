@@ -428,4 +428,6 @@ message Thumbnail {
         Command command = 5;
         CommandTreeNode command_tree_node = 6;
     }
+
+    bool disableOptimization = 7;
 }

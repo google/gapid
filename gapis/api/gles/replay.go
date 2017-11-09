@@ -45,8 +45,9 @@ type issuesConfig struct{}
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
 type drawConfig struct {
-	wireframeMode      replay.WireframeMode
-	wireframeOverlayID api.CmdID // used when wireframeMode == WireframeMode_Overlay
+	wireframeMode             replay.WireframeMode
+	wireframeOverlayID        api.CmdID // used when wireframeMode == WireframeMode_Overlay
+	disableReplayOptimization bool
 }
 
 // uniqueConfig returns a replay.Config that is guaranteed to be unique.
@@ -155,6 +156,9 @@ func (a API) Replay(
 			}
 
 			cfg := cfg.(drawConfig)
+			if cfg.disableReplayOptimization {
+				optimize = false
+			}
 			switch cfg.wireframeMode {
 			case replay.WireframeMode_All:
 				wire = true
@@ -248,13 +252,14 @@ func (a API) QueryFramebufferAttachment(
 	attachment api.FramebufferAttachment,
 	framebufferIndex uint32,
 	wireframeMode replay.WireframeMode,
+	disableReplayOptimization bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
 	if len(after) > 1 {
 		return nil, log.Errf(ctx, nil, "GLES does not support subcommands")
 	}
 
-	c := drawConfig{wireframeMode: wireframeMode}
+	c := drawConfig{wireframeMode: wireframeMode, disableReplayOptimization: disableReplayOptimization}
 	if wireframeMode == replay.WireframeMode_Overlay {
 		c.wireframeOverlayID = api.CmdID(after[0])
 	}
