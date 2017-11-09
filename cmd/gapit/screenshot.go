@@ -100,7 +100,6 @@ func getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device,
 	iip, err := client.GetFramebufferAttachment(ctx,
 		&service.ReplaySettings{
 			Device: device,
-			DisableReplayOptimization: false,
 		},
 		cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
