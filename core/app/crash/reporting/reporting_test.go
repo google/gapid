@@ -35,7 +35,7 @@ func TestReport(t *testing.T) {
 			appVersion: "0",
 			osName:     "unknown",
 			osVersion:  "unknown",
-		}.report(stacktrace.Capture())
+		}.report(stacktrace.Capture(), crashStagingURL)
 
 		assert.For(ctx, "err").ThatError(err).Succeeded()
 	}
