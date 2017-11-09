@@ -21,11 +21,13 @@ import (
 	"github.com/google/gapid/core/data"
 )
 
+type seenMap map[interface{}]reflect.Value
+
 // Clone makes a deep copy of v.
 func Clone(v interface{}) (interface{}, error) {
 	s := reflect.ValueOf(v)
 	d := reflect.New(s.Type())
-	if err := reflectCopy(d.Elem(), s, "val", map[reflect.Value]reflect.Value{}); err != nil {
+	if err := reflectCopy(d.Elem(), s, "val", seenMap{}); err != nil {
 		return nil, err
 	}
 	return d.Elem().Interface(), nil
@@ -35,7 +37,7 @@ func Clone(v interface{}) (interface{}, error) {
 func MustClone(v interface{}) interface{} {
 	s := reflect.ValueOf(v)
 	d := reflect.New(s.Type())
-	if err := reflectCopy(d.Elem(), s, "val", map[reflect.Value]reflect.Value{}); err != nil {
+	if err := reflectCopy(d.Elem(), s, "val", seenMap{}); err != nil {
 		panic(err)
 	}
 	return d.Elem().Interface()
@@ -48,10 +50,10 @@ func Copy(dst, src interface{}) error {
 	if d.Kind() != reflect.Ptr {
 		return fmt.Errorf("dst should be a pointer, got %T", dst)
 	}
-	return reflectCopy(d.Elem(), s, "val", map[reflect.Value]reflect.Value{})
+	return reflectCopy(d.Elem(), s, "val", seenMap{})
 }
 
-func reflectCopy(d, s reflect.Value, path string, seen map[reflect.Value]reflect.Value) error {
+func reflectCopy(d, s reflect.Value, path string, seen seenMap) error {
 	//	fmt.Printf("%v: d:%v (%v), s:%v (%v) %+v\n", path, d.Type(), d.Kind(), s.Type(), s.Kind(), s.Interface())
 	if !d.CanSet() {
 		return fmt.Errorf("Cannot assign to %v", path)
@@ -121,13 +123,14 @@ func reflectCopy(d, s reflect.Value, path string, seen map[reflect.Value]reflect
 			d.Set(reflect.New(d.Type()).Elem()) // Assign nil
 			return nil
 		}
-		d.Set(reflect.New(d.Type().Elem())) // Assign new(T)
-		if s, cyclic := seen[s]; cyclic {
-			d.Elem().Set(s.Elem())
+		if s, cyclic := seen[s.Interface()]; cyclic {
+			d.Set(s)
 			return nil
 		}
-		seen[s] = d
-		return reflectCopy(d.Elem(), s.Elem(), path, seen)
+		newPtr := reflect.New(d.Type().Elem())
+		d.Set(newPtr)
+		seen[s.Interface()] = newPtr
+		return reflectCopy(newPtr.Elem(), s.Elem(), path, seen)
 	default:
 		v := s.Convert(d.Type())
 		d.Set(v)

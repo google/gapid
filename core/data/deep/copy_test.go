@@ -49,6 +49,7 @@ func TestCopy(t *testing.T) {
 		B bool
 		T string
 		P *StructB
+		R *StructB
 		M map[int]StructB
 		S []bool
 		G interface{}
@@ -59,7 +60,7 @@ func TestCopy(t *testing.T) {
 	cyclic := &StructB{F: 10}
 	cyclic.P = cyclic
 
-	for _, test := range []struct {
+	for i, test := range []struct {
 		dst, src, expect interface{}
 	}{
 		{&StructA{}, StructA{}, StructA{}},
@@ -86,6 +87,14 @@ func TestCopy(t *testing.T) {
 			},
 		}, {
 			&StructA{},
+			StructA{
+				I: 10, B: true, T: "meow", P: cyclic, R: cyclic,
+			},
+			StructA{
+				I: 10, B: true, T: "meow", P: cyclic, R: cyclic,
+			},
+		}, {
+			&StructA{},
 			struct{ G string }{"purr"},
 			StructA{G: "purr"},
 		}, {
@@ -98,7 +107,7 @@ func TestCopy(t *testing.T) {
 		err := deep.Copy(test.dst, test.src)
 		if assert.For(ctx, "err").ThatError(err).Succeeded() {
 			got := reflect.ValueOf(test.dst).Elem().Interface()
-			assert.For(ctx, "res").That(got).DeepEquals(test.expect)
+			assert.For(ctx, "Test %v", i).That(got).DeepEquals(test.expect)
 		}
 	}
 }
