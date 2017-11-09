@@ -65,7 +65,7 @@ func compare(reference, value interface{}, handler Handler, custom *Custom) {
 			}
 		}
 	}()
-	t := Comparator{Path: Path{}, Handler: handler, seen: seen{}, custom: custom}
+	t := Comparator{Path: Path{}, Handler: handler, seenRef: seen{}, seenVal: seen{}, custom: custom}
 	t.Compare(reference, value)
 }
 
