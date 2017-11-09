@@ -89,6 +89,7 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1056,9 +1057,11 @@ public class ImagePanel extends Composite {
     public void update(Renderer renderer, SceneData newData) {
       // Release textures that are no longer in data.
       Set<Image> newSet = Sets.newHashSet(newData.images);
-      for (Map.Entry<Image, Texture> entry : imageToTexture.entrySet()) {
+      for (Iterator<Map.Entry<Image, Texture>> it = imageToTexture.entrySet().iterator(); it.hasNext(); ) {
+        Map.Entry<Image, Texture> entry = it.next();
         if (!newSet.contains(entry.getKey())) {
           entry.getValue().delete();
+          it.remove();
         }
       }
 
