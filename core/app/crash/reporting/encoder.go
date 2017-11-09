@@ -28,7 +28,10 @@ type encoder struct {
 	stacktrace string
 }
 
-const multipartBoundary = "::multipart-boundary::"
+const (
+	crashProduct      = "GAPID"
+	multipartBoundary = "::multipart-boundary::"
+)
 
 func (e encoder) encode() (io.Reader, string, error) {
 	buf := bytes.Buffer{}
@@ -37,10 +40,10 @@ func (e encoder) encode() (io.Reader, string, error) {
 		return nil, "", err
 	}
 	defer w.Close()
-	if err := w.WriteField("product", e.appName); err != nil {
+	if err := w.WriteField("product", crashProduct); err != nil {
 		return nil, "", err
 	}
-	if err := w.WriteField("version", e.appVersion); err != nil {
+	if err := w.WriteField("version", e.appName+":"+e.appVersion); err != nil {
 		return nil, "", err
 	}
 	if e.osName != "" {

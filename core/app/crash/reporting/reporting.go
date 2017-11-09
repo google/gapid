@@ -30,6 +30,12 @@ import (
 	"github.com/google/gapid/core/os/device/host"
 )
 
+// TODO(baldwinn860): Send to production url when we get approval.
+const (
+	crashStagingURL = "https://clients2.google.com/cr/staging_report"
+	crashURL        = crashStagingURL
+)
+
 // Enable turns on crash reporting if the running processes panics inside a
 // crash.Go block.
 func Enable(ctx context.Context, appName, appVersion string) {
@@ -41,18 +47,12 @@ func Enable(ctx context.Context, appName, appVersion string) {
 				osVersion = fmt.Sprintf("%v %v.%v.%v", os.GetBuild(), os.GetMajor(), os.GetMinor(), os.GetPoint())
 			}
 		}
-		err := reporter{appName, appVersion, osName, osVersion}.report(s)
+		err := reporter{appName, appVersion, osName, osVersion}.report(s, crashURL)
 		if err != nil {
 			log.E(ctx, "%v", err)
 		}
 	})
 }
-
-const (
-	// TODO(baldwinn860): Send to production url when we get approval.
-	crashURL     = "https://clients2.google.com/cr/staging_report"
-	crashProduct = "GAPID"
-)
 
 type reporter struct {
 	appName    string
@@ -61,7 +61,7 @@ type reporter struct {
 	osVersion  string
 }
 
-func (r reporter) report(s stacktrace.Callstack) error {
+func (r reporter) report(s stacktrace.Callstack, endpoint string) error {
 	stacktrace := s.String()
 
 	url := fmt.Sprintf("%v?product=%v&version=%v", crashURL, url.QueryEscape(r.appName), url.QueryEscape(r.appVersion))

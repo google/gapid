@@ -39,11 +39,11 @@ func TestEncoder(t *testing.T) {
 			expect := "--" + multipartBoundary + "\r\n" +
 				"Content-Disposition: form-data; name=\"product\"\r\n" +
 				"\r\n" +
-				"TestApp\r\n" +
+				"GAPID\r\n" +
 				"--" + multipartBoundary + "\r\n" +
 				"Content-Disposition: form-data; name=\"version\"\r\n" +
 				"\r\n" +
-				"V1.2.3\r\n" +
+				"TestApp:V1.2.3\r\n" +
 				"--" + multipartBoundary + "\r\n" +
 				"Content-Disposition: form-data; name=\"osName\"\r\n" +
 				"\r\n" +
