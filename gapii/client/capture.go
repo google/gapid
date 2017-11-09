@@ -23,7 +23,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/google/gapid/core/analytics"
+	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"

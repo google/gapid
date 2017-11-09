@@ -17,7 +17,7 @@ package replay
 import (
 	"context"
 
-	"github.com/google/gapid/core/analytics"
+	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"

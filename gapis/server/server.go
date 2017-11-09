@@ -25,8 +25,8 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/google/gapid/core/analytics"
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/event/task"

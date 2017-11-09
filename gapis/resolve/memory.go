@@ -17,7 +17,7 @@ package resolve
 import (
 	"context"
 
-	"github.com/google/gapid/core/analytics"
+	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"

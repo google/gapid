@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/google/gapid/core/analytics"
+	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/event/task"
