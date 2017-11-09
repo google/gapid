@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build analytics
-
-package analytics
+package net
 
 import (
 	"testing"
@@ -53,7 +51,7 @@ var (
 
 func TestUseragent(t *testing.T) {
 	ctx := log.Testing(t)
-	version := AppVersion{"GAPID", "<ignored>", 1, 2, 3}
+	version := ApplicationInfo{"GAPID", 1, 2, 3}
 	for _, test := range []struct {
 		name     string
 		cfg      *device.Configuration
@@ -64,6 +62,6 @@ func TestUseragent(t *testing.T) {
 		{"macOS", macOS, "GAPID/1.2.3 (Macintosh; Intel Mac OS X 10_12_6)"},
 		{"linux", linux, "GAPID/1.2.3 (Linux)"},
 	} {
-		assert.For(ctx, test.name).ThatString(useragent(test.cfg, version)).Equals(test.expected)
+		assert.For(ctx, test.name).ThatString(UserAgent(test.cfg, version)).Equals(test.expected)
 	}
 }

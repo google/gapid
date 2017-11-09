@@ -29,8 +29,6 @@ set(files
     limits.go
     payloads.go
     stubs.go
-    useragent.go
-    useragent_test.go
 )
 set(dirs
     param
