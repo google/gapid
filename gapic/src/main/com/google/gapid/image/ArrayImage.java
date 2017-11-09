@@ -15,10 +15,13 @@
  */
 package com.google.gapid.image;
 
+import static com.google.gapid.util.Caches.getUnchecked;
+import static com.google.gapid.util.Caches.softCache;
 import static com.google.gapid.util.Colors.DARK_LUMINANCE8_THRESHOLD;
 import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.clamp;
 
+import com.google.common.cache.Cache;
 import com.google.common.primitives.UnsignedBytes;
 import com.google.gapid.glviewer.gl.Texture;
 import com.google.gapid.image.Histogram.Binner;
@@ -39,7 +42,9 @@ import java.util.Set;
 /**
  * An {@link Image} backed by a byte array.
  */
-public abstract class ArrayImage implements Image {
+public abstract class ArrayImage implements com.google.gapid.image.Image {
+  protected static final Cache<com.google.gapid.proto.image.Image.ID, PixelInfo> PIXEL_INFO_CACHE = softCache();
+
   public final int width, height, depth, bytesPerPixel;
   protected final byte[] data;
   private final int internalFormat, format, type;
@@ -174,8 +179,10 @@ public abstract class ArrayImage implements Image {
   public static class RGBA8Image extends ArrayImage {
     private final PixelInfo info;
 
-    public RGBA8Image(int width, int height, int depth, byte[] data) {
-      this(width, height, depth, data, IntPixelInfo.compute(data, true));
+    public RGBA8Image(
+        com.google.gapid.proto.image.Image.ID id, int width, int height, int depth, byte[] data) {
+      this(width, height, depth, data,
+          getUnchecked(PIXEL_INFO_CACHE, id, () -> IntPixelInfo.compute(data, true)));
     }
 
     private RGBA8Image(int width, int height, int depth, byte[] data, PixelInfo info) {
@@ -262,10 +269,11 @@ public abstract class ArrayImage implements Image {
     private final FloatBuffer buffer;
     private final PixelInfo info;
 
-    public RGBAFloatImage(int width, int height, int depth, byte[] data) {
+    public RGBAFloatImage(
+        com.google.gapid.proto.image.Image.ID id, int width, int height, int depth, byte[] data) {
       super(width, height, depth, 16, data, GL30.GL_RGBA32F, GL11.GL_RGBA, GL11.GL_FLOAT);
       this.buffer = buffer(data).asFloatBuffer();
-      this.info = FloatPixelInfo.compute(buffer, true);
+      this.info = getUnchecked(PIXEL_INFO_CACHE, id, () -> FloatPixelInfo.compute(buffer, true));
     }
 
     private RGBAFloatImage(int width, int height, int depth, byte[] data, PixelInfo info) {
@@ -361,8 +369,10 @@ public abstract class ArrayImage implements Image {
   public static class Luminance8Image extends ArrayImage {
     private final PixelInfo info;
 
-    public Luminance8Image(int width, int height, int depth, byte[] data) {
-      this(width, height, depth, data, IntPixelInfo.compute(data, false));
+    public Luminance8Image(
+        com.google.gapid.proto.image.Image.ID id, int width, int height, int depth, byte[] data) {
+      this(width, height, depth, data,
+          getUnchecked(PIXEL_INFO_CACHE, id, () -> IntPixelInfo.compute(data, false)));
     }
 
     private Luminance8Image(int width, int height, int depth, byte[] data, PixelInfo info) {
@@ -448,10 +458,11 @@ public abstract class ArrayImage implements Image {
     private final FloatBuffer buffer;
     private final PixelInfo info;
 
-    public LuminanceFloatImage(int width, int height, int depth, byte[] data) {
+    public LuminanceFloatImage(
+        com.google.gapid.proto.image.Image.ID id, int width, int height, int depth, byte[] data) {
       super(width, height, depth, 4, data, GL30.GL_RGB32F, GL11.GL_RED, GL11.GL_FLOAT);
       this.buffer = buffer(data).asFloatBuffer();
-      this.info = FloatPixelInfo.compute(buffer, false);
+      this.info = getUnchecked(PIXEL_INFO_CACHE, id, () -> FloatPixelInfo.compute(buffer, false));
     }
 
     private LuminanceFloatImage(int width, int height, int depth, byte[] data, PixelInfo info) {

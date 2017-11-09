@@ -17,11 +17,13 @@ package com.google.gapid.image;
 
 import static com.google.common.util.concurrent.Futures.immediateFailedFuture;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static com.google.gapid.image.Images.getCombinedId;
 import static com.google.gapid.util.Paths.blob;
 import static com.google.gapid.util.Paths.imageData;
 import static com.google.gapid.util.Paths.imageInfo;
 import static com.google.gapid.util.Paths.resourceInfo;
 import static com.google.gapid.util.Paths.thumbnail;
+import static java.util.Arrays.stream;
 
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.Futures;
@@ -234,9 +236,19 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
   @Override
   public ListenableFuture<Image> getImage(int layerIdx, int levelIdx) {
-    return  (layerIdx < 0 || layerIdx >= layers.length) ?
+    return (layerIdx < 0 || layerIdx >= layers.length) ?
         immediateFailedFuture(new IllegalArgumentException("Invalid image layer " + layerIdx)) :
         layers[layerIdx].getImage(levelIdx);
+  }
+
+  @Override
+  public com.google.gapid.proto.image.Image.ID getLevelId(int level) {
+    if (layers.length == 1) {
+      return layers[0].getLevelId(level);
+    } else {
+      getCombinedId(stream(layers).map(l -> l.getLevelId(level)));
+    }
+    return null;
   }
 
   /**
@@ -254,6 +266,10 @@ public class FetchedImage implements MultiLayerAndLevelImage {
           immediateFailedFuture(new IllegalArgumentException("Invalid image level " + level)) :
           levels[level].get();
     }
+
+    public com.google.gapid.proto.image.Image.ID getLevelId(int level) {
+      return levels[level].getId();
+    }
   }
 
   /**
@@ -269,6 +285,11 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       @Override
       protected ListenableFuture<Image> doLoad() {
         return null;
+      }
+
+      @Override
+      public com.google.gapid.proto.image.Image.ID getId() {
+        return com.google.gapid.proto.image.Image.ID.getDefaultInstance();
       }
     };
 
@@ -297,8 +318,10 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
     protected abstract ListenableFuture<Image> doLoad();
 
+    public abstract com.google.gapid.proto.image.Image.ID getId();
+
     protected static Image convertImage(Info info, Images.Format format, byte[] data) {
-      return format.builder(info.getWidth(), info.getHeight(), info.getDepth())
+      return format.builder(info.getBytes(), info.getWidth(), info.getHeight(), info.getDepth())
           .update(data, 0, 0, 0, info.getWidth(), info.getHeight(), info.getDepth())
           .build();
     }
@@ -323,7 +346,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       // +----+----+----+----+
       // |    | +Y |    |    |
       // +----+----+----+----+
-      return format.builder(4 * width, 3 * height, 1)
+      return format.builder(getCombinedId(infos), 4 * width, 3 * height, 1)
           .update(data[0], 0 * width, 1 * height, 0, infos[0].getWidth(), infos[0].getHeight(), 1) // -X
           .update(data[1], 2 * width, 1 * height, 0, infos[1].getWidth(), infos[1].getHeight(), 1) // +X
           .update(data[2], 1 * width, 2 * height, 0, infos[2].getWidth(), infos[2].getHeight(), 1) // -Y
@@ -352,6 +375,11 @@ public class FetchedImage implements MultiLayerAndLevelImage {
     protected ListenableFuture<Image> doLoad() {
       return Futures.transform(client.get(blob(imageInfo.getBytes())), data ->
         convertImage(imageInfo, format, Values.getBytes(data)));
+    }
+
+    @Override
+    public com.google.gapid.proto.image.Image.ID getId() {
+      return imageInfo.getBytes();
     }
   }
 
@@ -386,6 +414,11 @@ public class FetchedImage implements MultiLayerAndLevelImage {
         }
         return convertImage(imageInfos, format, data);
       });
+    }
+
+    @Override
+    public com.google.gapid.proto.image.Image.ID getId() {
+      return getCombinedId(imageInfos);
     }
   }
 }

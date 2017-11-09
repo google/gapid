@@ -15,6 +15,8 @@
  */
 package com.google.gapid.widgets;
 
+import static com.google.gapid.util.Caches.getUnchecked;
+import static com.google.gapid.util.Caches.softCache;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
@@ -27,6 +29,7 @@ import static com.google.gapid.widgets.Widgets.createToolItem;
 import static com.google.gapid.widgets.Widgets.withSpans;
 import static org.eclipse.swt.widgets.SwtUtil.disableAutoHideScrollbars;
 
+import com.google.common.cache.Cache;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -111,6 +114,8 @@ public class ImagePanel extends Composite {
   private static final int CHANNEL_RED = 0, CHANNEL_GREEN = 1, CHANNEL_BLUE = 2, CHANNEL_ALPHA = 3;
   private static final float ALPHA_WARNING_THRESHOLD = 2 / 255f;
   protected static final Image[] NO_LAYERS = new Image[] { Image.EMPTY };
+
+  private static final Cache<com.google.gapid.proto.image.Image.ID, Histogram> HISTOGRAM_CACHE = softCache();
 
   private final Widgets widgets;
   private final SingleInFlight imageRequestController = new SingleInFlight();
@@ -439,7 +444,7 @@ public class ImagePanel extends Composite {
     imageComponent.setImages(layers);
   }
 
-  private void loadLevel(int level) {
+  private void loadLevel(int requestedLecel) {
     if (image.getLevelCount() == 0) {
       clearImage();
       loading.showMessage(Info, Messages.NO_IMAGE_DATA);
@@ -449,7 +454,7 @@ public class ImagePanel extends Composite {
       return;
     }
 
-    level = Math.min(image.getLevelCount() - 1, level);
+    int level = Math.min(image.getLevelCount() - 1, requestedLecel);
     loading.startLoading();
 
     List<ListenableFuture<Image>> layerFutures = Lists.newArrayList();
@@ -459,14 +464,8 @@ public class ImagePanel extends Composite {
     ListenableFuture<LevelData> future = Futures.transform(Futures.allAsList(layerFutures), imageList -> {
       Image[] images = imageList.toArray(new Image[imageList.size()]);
 
-      boolean isHDR = false;
-      for (Image i : images) {
-        if (i.isHDR()) {
-          isHDR = true;
-        }
-      }
-
-      Histogram histogram = new Histogram(images, NUM_HISTOGRAM_BINS, isHDR);
+      Histogram histogram = getUnchecked(HISTOGRAM_CACHE, image.getLevelId(level),
+          () -> new Histogram(images, NUM_HISTOGRAM_BINS, isHDR(images)));
       return new LevelData(images, histogram);
     });
 
@@ -495,6 +494,15 @@ public class ImagePanel extends Composite {
         loading.showMessage(message);
       }
     });
+  }
+
+  private static boolean isHDR(Image[] images) {
+    for (Image i : images) {
+      if (i.isHDR()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   protected void updateLayers(LevelData data) {
