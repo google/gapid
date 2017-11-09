@@ -21,7 +21,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/google/gapid/core/analytics"
+	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"

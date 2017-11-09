@@ -22,7 +22,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/google/gapid/core/analytics/param"
+	"github.com/google/gapid/core/app/analytics/param"
 )
 
 // Smaller than the real timeout, but there's no harm in being conservative.

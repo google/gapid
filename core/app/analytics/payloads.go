@@ -19,7 +19,7 @@ package analytics
 import (
 	"time"
 
-	"github.com/google/gapid/core/analytics/param"
+	"github.com/google/gapid/core/app/analytics/param"
 	"github.com/google/gapid/core/os/device"
 )
 
