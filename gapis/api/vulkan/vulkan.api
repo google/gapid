@@ -1159,7 +1159,6 @@ type VkFlags VkStencilFaceFlags
 @pfn cmd void vkVoidFunction() {
 }
 
-@serialize
 class VkApplicationInfo {
   VkStructureType sType              /// Type of structure. Should be VK_STRUCTURE_TYPE_APPLICATION_INFO
   const void*     pNext              /// Next structure in chain
@@ -1170,7 +1169,6 @@ class VkApplicationInfo {
   u32             apiVersion
 }
 
-@serialize
 class VkInstanceCreateInfo {
   VkStructureType          sType                   /// Should be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
   const void*              pNext                   /// Pointer to next structure
@@ -1182,7 +1180,6 @@ class VkInstanceCreateInfo {
   const char* const*       ppEnabledExtensionNames /// Extension names to be enabled
 }
 
-@serialize
 class VkAllocationCallbacks {
   void*                                pUserData
   PFN_vkAllocationFunction             pfnAllocation
@@ -1192,7 +1189,6 @@ class VkAllocationCallbacks {
   PFN_vkInternalFreeNotification       pfnInternalFree
 }
 
-@serialize
 class VkPhysicalDeviceFeatures {
   VkBool32 robustBufferAccess                      /// out of bounds buffer accesses are well defined
   VkBool32 fullDrawIndexUint32                     /// full 32-bit range of indices for indexed draw calls
@@ -1251,21 +1247,18 @@ class VkPhysicalDeviceFeatures {
   VkBool32 inheritedQueries
 }
 
-@serialize
 class VkFormatProperties {
   VkFormatFeatureFlags linearTilingFeatures  /// Format features in case of linear tiling
   VkFormatFeatureFlags optimalTilingFeatures /// Format features in case of optimal tiling
   VkFormatFeatureFlags bufferFeatures        /// Format features supported by buffers
 }
 
-@serialize
 class VkExtent3D {
   u32 Width
   u32 Height
   u32 Depth
 }
 
-@serialize
 class VkImageFormatProperties {
   VkExtent3D         maxExtent       /// max image dimensions for this resource type
   u32                maxMipLevels    /// max number of mipmap levels for this resource type
@@ -1274,7 +1267,6 @@ class VkImageFormatProperties {
   VkDeviceSize       maxResourceSize /// max size (in bytes) of this resource type
 }
 
-@serialize
 class VkPhysicalDeviceLimits {
   /// resource maximum sizes
   u32 maxImageDimension1D    /// max 1D image dimension
@@ -1405,7 +1397,6 @@ class VkPhysicalDeviceLimits {
   VkDeviceSize nonCoherentAtomSize
 }
 
-@serialize
 class VkPhysicalDeviceSparseProperties {
   VkBool32 residencyStandard2DBlockShape            /// Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard block shapes (based on pixel format)
   VkBool32 residencyStandard2DMultisampleBlockShape /// Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard block shapes (based on pixel format)
@@ -1414,7 +1405,6 @@ class VkPhysicalDeviceSparseProperties {
   VkBool32 residencyNonResidentStrict               /// Sparse resources support: GPU can safely access non-resident regions of a resource, all reads return as if data is 0, writes are discarded
 }
 
-@serialize
 class VkPhysicalDeviceProperties {
   u32                                    apiVersion
   u32                                    driverVersion
@@ -1427,7 +1417,6 @@ class VkPhysicalDeviceProperties {
   VkPhysicalDeviceSparseProperties       sparseProperties
 }
 
-@serialize
 class VkQueueFamilyProperties {
   VkQueueFlags queueFlags                  /// Queue flags
   u32          queueCount
@@ -1435,19 +1424,16 @@ class VkQueueFamilyProperties {
   VkExtent3D   minImageTransferGranularity
 }
 
-@serialize
 class VkMemoryType {
   VkMemoryPropertyFlags propertyFlags /// Memory properties of this memory type
   u32                   heapIndex     /// Index of the memory heap allocations of this memory type are taken from
 }
 
-@serialize
 class VkMemoryHeap {
   VkDeviceSize      size  /// Available memory in the heap
   VkMemoryHeapFlags flags /// Flags for the heap
 }
 
-@serialize
 class VkPhysicalDeviceMemoryProperties {
   u32                               memoryTypeCount
   VkMemoryType[VK_MAX_MEMORY_TYPES] memoryTypes
@@ -1455,7 +1441,6 @@ class VkPhysicalDeviceMemoryProperties {
   VkMemoryHeap[VK_MAX_MEMORY_HEAPS] memoryHeaps
 }
 
-@serialize
 class VkDeviceQueueCreateInfo {
   VkStructureType          sType            /// Should be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
   const void*              pNext            /// Pointer to next structure
@@ -1465,7 +1450,6 @@ class VkDeviceQueueCreateInfo {
   const f32*               pQueuePriorities
 }
 
-@serialize
 class VkDeviceCreateInfo {
   VkStructureType                 sType                   /// Should be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
   const void*                     pNext                   /// Pointer to next structure
@@ -1479,13 +1463,11 @@ class VkDeviceCreateInfo {
   const VkPhysicalDeviceFeatures* pEnabledFeatures
 }
 
-@serialize
 class VkExtensionProperties {
   char[VK_MAX_EXTENSION_NAME_SIZE] extensionName /// extension name
   u32                              specVersion   /// version of the extension specification implemented
 }
 
-@serialize
 class VkLayerProperties {
   char[VK_MAX_EXTENSION_NAME_SIZE] layerName             /// layer name
   u32                              specVersion           /// version of the layer specification implemented
@@ -1493,7 +1475,6 @@ class VkLayerProperties {
   char[VK_MAX_DESCRIPTION_SIZE]    description           /// Free-form description of the layer
 }
 
-@serialize
 class VkSubmitInfo {
   VkStructureType             sType                /// Type of structure. Should be VK_STRUCTURE_TYPE_SUBMIT_INFO
   const void*                 pNext                /// Next structure in chain
@@ -1506,7 +1487,6 @@ class VkSubmitInfo {
   const VkSemaphore*          pSignalSemaphores
 }
 
-@serialize
 class VkMemoryAllocateInfo {
   VkStructureType sType           /// Must be VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
   const void*     pNext           /// Pointer to next structure
@@ -1514,7 +1494,6 @@ class VkMemoryAllocateInfo {
   u32             memoryTypeIndex /// Index of the of the memory type to allocate from
 }
 
-@serialize
 class VkMappedMemoryRange {
   VkStructureType sType  /// Must be VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE
   const void*     pNext  /// Pointer to next structure
@@ -1523,21 +1502,18 @@ class VkMappedMemoryRange {
   VkDeviceSize    size   /// Size of the range within the mapped memory
 }
 
-@serialize
 class VkMemoryRequirements {
   VkDeviceSize size           /// Specified in bytes
   VkDeviceSize alignment      /// Specified in bytes
   u32          memoryTypeBits /// Bitfield of the allowed memory type indices into memoryTypes[] for this object
 }
 
-@serialize
 class VkSparseImageFormatProperties {
   VkImageAspectFlagBits    aspectMask
   VkExtent3D               imageGranularity
   VkSparseImageFormatFlags flags
 }
 
-@serialize
 class VkSparseImageMemoryRequirements {
   VkSparseImageFormatProperties formatProperties
   u32                           imageMipTailFirstLod
@@ -1546,7 +1522,6 @@ class VkSparseImageMemoryRequirements {
   VkDeviceSize                  imageMipTailStride   /// Specified in bytes, must be a multiple of image block size / alignment
 }
 
-@serialize
 class VkSparseMemoryBind {
   VkDeviceSize            resourceOffset /// Specified in bytes
   VkDeviceSize            size           /// Specified in bytes
@@ -1555,35 +1530,30 @@ class VkSparseMemoryBind {
   VkSparseMemoryBindFlags flags
 }
 
-@serialize
 class VkSparseBufferMemoryBindInfo {
   VkBuffer                  buffer
   u32                       bindCount
   const VkSparseMemoryBind* pBinds
 }
 
-@serialize
 class VkSparseImageOpaqueMemoryBindInfo {
   VkImage                   image
   u32                       bindCount
   const VkSparseMemoryBind* pBinds
 }
 
-@serialize
 class VkImageSubresource {
   VkImageAspectFlagBits aspectMask
   u32                   mipLevel
   u32                   arrayLayer
 }
 
-@serialize
 class VkOffset3D {
   s32 x
   s32 y
   s32 z
 }
 
-@serialize @unused
 class VkSparseImageMemoryBind {
   VkImageSubresource      subresource
   VkOffset3D              offset
@@ -1593,14 +1563,12 @@ class VkSparseImageMemoryBind {
   VkSparseMemoryBindFlags flags
 }
 
-@serialize
 class VkSparseImageMemoryBindInfo {
   VkImage                   image
   u32                       bindCount
   const VkSparseImageMemoryBind* pBinds
 }
 
-@serialize
 class VkBindSparseInfo {
   VkStructureType                          sType                /// Must be VK_STRUCTURE_TYPE_BIND_SPARSE_INFO
   const void*                              pNext
@@ -1616,28 +1584,24 @@ class VkBindSparseInfo {
   const VkSemaphore*                       pSignalSemaphores
 }
 
-@serialize
 class VkFenceCreateInfo {
   VkStructureType    sType /// Must be VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
   const void*        pNext /// Pointer to next structure
   VkFenceCreateFlags flags /// Fence creation flags
 }
 
-@serialize
 class VkSemaphoreCreateInfo {
   VkStructureType        sType /// Must be VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
   const void*            pNext /// Pointer to next structure
   VkSemaphoreCreateFlags flags /// Semaphore creation flags
 }
 
-@serialize
 class VkEventCreateInfo {
   VkStructureType    sType /// Must be VK_STRUCTURE_TYPE_EVENT_CREATE_INFO
   const void*        pNext /// Pointer to next structure
   VkEventCreateFlags flags /// Event creation flags
 }
 
-@serialize
 class VkQueryPoolCreateInfo {
   VkStructureType               sType              /// Must be VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO
   const void*                   pNext              /// Pointer to next structure
@@ -1647,7 +1611,6 @@ class VkQueryPoolCreateInfo {
   VkQueryPipelineStatisticFlags pipelineStatistics /// Optional
 }
 
-@serialize
 class VkBufferCreateInfo {
   VkStructureType     sType                 /// Must be VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
   const void*         pNext                 /// Pointer to next structure.
@@ -1659,7 +1622,6 @@ class VkBufferCreateInfo {
   const u32*          pQueueFamilyIndices
 }
 
-@serialize
 class VkBufferViewCreateInfo {
   VkStructureType         sType  /// Must be VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO
   const void*             pNext  /// Pointer to next structure.
@@ -1670,7 +1632,6 @@ class VkBufferViewCreateInfo {
   VkDeviceSize            range  /// View size specified in bytes
 }
 
-@serialize
 class VkImageCreateInfo {
   VkStructureType       sType                 /// Must be VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
   const void*           pNext                 /// Pointer to next structure.
@@ -1689,7 +1650,6 @@ class VkImageCreateInfo {
   VkImageLayout         initialLayout         /// Initial image layout for all subresources
 }
 
-@serialize
 class VkSubresourceLayout {
   VkDeviceSize offset     /// Specified in bytes
   VkDeviceSize size       /// Specified in bytes
@@ -1698,7 +1658,6 @@ class VkSubresourceLayout {
   VkDeviceSize depthPitch /// Specified in bytes
 }
 
-@serialize
 class VkComponentMapping {
   VkComponentSwizzle r
   VkComponentSwizzle g
@@ -1706,7 +1665,6 @@ class VkComponentMapping {
   VkComponentSwizzle a
 }
 
-@serialize
 class VkImageSubresourceRange {
   VkImageAspectFlags aspectMask
   u32                baseMipLevel
@@ -1715,7 +1673,6 @@ class VkImageSubresourceRange {
   u32                layerCount
 }
 
-@serialize
 class VkImageViewCreateInfo {
   VkStructureType         sType            /// Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
   const void*             pNext            /// Pointer to next structure
@@ -1727,7 +1684,6 @@ class VkImageViewCreateInfo {
   VkImageSubresourceRange subresourceRange
 }
 
-@serialize
 class VkShaderModuleCreateInfo {
   VkStructureType           sType    /// Must be VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
   const void*               pNext    /// Pointer to next structure
@@ -1736,7 +1692,6 @@ class VkShaderModuleCreateInfo {
   const u32*                pCode    /// Binary code of size codeSize
 }
 
-@serialize
 class VkPipelineCacheCreateInfo {
   VkStructureType            sType           /// Must be VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
   const void*                pNext           /// Pointer to next structure
@@ -1745,14 +1700,12 @@ class VkPipelineCacheCreateInfo {
   const void*                pInitialData    /// Initial data to populate cache
 }
 
-@serialize
 class VkSpecializationMapEntry {
   u32  constantID /// The SpecConstant ID specified in the BIL
   u32  offset     /// Offset of the value in the data block
   size size       /// Size in bytes of the SpecConstant
 }
 
-@serialize
 class VkSpecializationInfo {
   u32                             mapEntryCount /// Number of entries in the map
   const VkSpecializationMapEntry* pMapEntries   /// Array of map entries
@@ -1760,7 +1713,6 @@ class VkSpecializationInfo {
   const void*                     pData         /// Pointer to SpecConstant data
 }
 
-@serialize
 class VkPipelineShaderStageCreateInfo {
   VkStructureType                  sType               /// Must be VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
   const void*                      pNext               /// Pointer to next structure
@@ -1771,14 +1723,12 @@ class VkPipelineShaderStageCreateInfo {
   const VkSpecializationInfo*      pSpecializationInfo
 }
 
-@serialize
 class VkVertexInputBindingDescription {
   u32               binding   /// Vertex buffer binding id
   u32               stride    /// Distance between vertices in bytes (0 = no advancement)
   VkVertexInputRate inputRate /// Rate at which binding is incremented
 }
 
-@serialize
 class VkVertexInputAttributeDescription {
   u32      location /// location of the shader vertex attrib
   u32      binding  /// Vertex buffer binding id
@@ -1786,7 +1736,6 @@ class VkVertexInputAttributeDescription {
   u32      offset   /// Offset of first element in bytes from base of vertex
 }
 
-@serialize
 class VkPipelineVertexInputStateCreateInfo {
   VkStructureType                          sType                           /// Should be VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
   const void*                              pNext                           /// Pointer to next structure
@@ -1797,7 +1746,6 @@ class VkPipelineVertexInputStateCreateInfo {
   const VkVertexInputAttributeDescription* pVertexAttributeDescriptions
 }
 
-@serialize
 class VkPipelineInputAssemblyStateCreateInfo {
   VkStructureType                         sType                  /// Must be VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
   const void*                             pNext                  /// Pointer to next structure
@@ -1806,7 +1754,6 @@ class VkPipelineInputAssemblyStateCreateInfo {
   VkBool32                                primitiveRestartEnable
 }
 
-@serialize
 class VkPipelineTessellationStateCreateInfo {
   VkStructureType                        sType              /// Must be VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
   const void*                            pNext              /// Pointer to next structure
@@ -1814,7 +1761,6 @@ class VkPipelineTessellationStateCreateInfo {
   u32                                    patchControlPoints
 }
 
-@serialize
 class VkViewport {
   f32 x
   f32 y
@@ -1824,25 +1770,21 @@ class VkViewport {
   f32 maxDepth
 }
 
-@serialize
 class VkOffset2D {
   s32 x
   s32 y
 }
 
-@serialize
 class VkExtent2D {
   u32 Width
   u32 Height
 }
 
-@serialize
 class VkRect2D {
   VkOffset2D offset
   VkExtent2D extent
 }
 
-@serialize
 class VkPipelineViewportStateCreateInfo {
   VkStructureType                    sType         /// Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
   const void*                        pNext         /// Pointer to next structure
@@ -1853,7 +1795,6 @@ class VkPipelineViewportStateCreateInfo {
   const VkRect2D*                    pScissors
 }
 
-@serialize
 class VkPipelineRasterizationStateCreateInfo {
   VkStructureType                         sType                   /// Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
   const void*                             pNext                   /// Pointer to next structure
@@ -1870,7 +1811,6 @@ class VkPipelineRasterizationStateCreateInfo {
   f32                                     lineWidth
 }
 
-@serialize
 class VkPipelineMultisampleStateCreateInfo {
   VkStructureType                       sType                 /// Must be VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
   const void*                           pNext                 /// Pointer to next structure
@@ -1883,7 +1823,6 @@ class VkPipelineMultisampleStateCreateInfo {
   VkBool32                              alphaToOneEnable
 }
 
-@serialize
 class VkStencilOpState {
   VkStencilOp failOp
   VkStencilOp passOp
@@ -1894,7 +1833,6 @@ class VkStencilOpState {
   u32         reference
 }
 
-@serialize
 class VkPipelineDepthStencilStateCreateInfo {
   VkStructureType                        sType                 /// Must be VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
   const void*                            pNext                 /// Pointer to next structure
@@ -1910,7 +1848,6 @@ class VkPipelineDepthStencilStateCreateInfo {
   f32                                    maxDepthBounds
 }
 
-@serialize
 class VkPipelineColorBlendAttachmentState {
   VkBool32              blendEnable
   VkBlendFactor         srcColorBlendFactor
@@ -1922,7 +1859,6 @@ class VkPipelineColorBlendAttachmentState {
   VkColorComponentFlags colorWriteMask
 }
 
-@serialize
 class VkPipelineColorBlendStateCreateInfo {
   VkStructureType                            sType           /// Must be VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
   const void*                                pNext           /// Pointer to next structure
@@ -1934,7 +1870,6 @@ class VkPipelineColorBlendStateCreateInfo {
   f32[4]                                     blendConstants
 }
 
-@serialize
 class VkPipelineDynamicStateCreateInfo {
   VkStructureType                   sType             /// Must be VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
   const void*                       pNext             /// Pointer to next structure
@@ -1943,7 +1878,6 @@ class VkPipelineDynamicStateCreateInfo {
   const VkDynamicState*             pDynamicStates
 }
 
-@serialize
 class VkGraphicsPipelineCreateInfo {
   VkStructureType                               sType               /// Must be VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
   const void*                                   pNext               /// Pointer to next structure
@@ -1966,7 +1900,6 @@ class VkGraphicsPipelineCreateInfo {
   s32                                           basePipelineIndex   /// If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is not -1, it specifies an index into pCreateInfos of the base pipeline this is a derivative of
 }
 
-@serialize
 class VkComputePipelineCreateInfo {
   VkStructureType                 sType              /// Must be VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO
   const void*                     pNext              /// Pointer to next structure
@@ -1977,14 +1910,12 @@ class VkComputePipelineCreateInfo {
   s32                             basePipelineIndex  /// If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is not -1, it specifies an index into pCreateInfos of the base pipeline this is a derivative of
 }
 
-@serialize
 class VkPushConstantRange {
   VkShaderStageFlags stageFlags /// Which stages use the range
   u32                offset     /// Start of the range, in bytes
   u32                size       /// Length of the range, in bytes
 }
 
-@serialize
 class VkPipelineLayoutCreateInfo {
   VkStructureType              sType                  /// Must be VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
   const void*                  pNext                  /// Pointer to next structure
@@ -1995,7 +1926,6 @@ class VkPipelineLayoutCreateInfo {
   const VkPushConstantRange*   pPushConstantRanges    /// Array of pushConstantRangeCount number of ranges used by various shader stages
 }
 
-@serialize
 class VkSamplerCreateInfo {
   VkStructureType      sType                   /// Must be VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
   const void*          pNext                   /// Pointer to next structure
@@ -2017,7 +1947,6 @@ class VkSamplerCreateInfo {
   VkBool32             unnormalizedCoordinates
 }
 
-@serialize
 class VkDescriptorSetLayoutBinding {
   u32                binding
   VkDescriptorType   descriptorType     /// Type of the descriptors in this binding
@@ -2026,7 +1955,6 @@ class VkDescriptorSetLayoutBinding {
   const VkSampler*   pImmutableSamplers /// Immutable samplers (used if descriptor type is SAMPLER or COMBINED_IMAGE_SAMPLER, is either NULL or contains <count> number of elements)
 }
 
-@serialize
 class VkDescriptorSetLayoutCreateInfo {
   VkStructureType                     sType        /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
   const void*                         pNext        /// Pointer to next structure
@@ -2035,13 +1963,11 @@ class VkDescriptorSetLayoutCreateInfo {
   const VkDescriptorSetLayoutBinding* pBindings    /// Array of descriptor set layout bindings
 }
 
-@serialize
 class VkDescriptorPoolSize {
   VkDescriptorType type
   u32              descriptorCount
 }
 
-@serialize
 class VkDescriptorPoolCreateInfo {
   VkStructureType             sType         /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
   const void*                 pNext         /// Pointer to next structure
@@ -2051,7 +1977,6 @@ class VkDescriptorPoolCreateInfo {
   const VkDescriptorPoolSize* pPoolSizes
 }
 
-@serialize
 class VkDescriptorSetAllocateInfo {
   VkStructureType              sType              /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
   const void*                  pNext              /// Pointer to next structure
@@ -2060,21 +1985,18 @@ class VkDescriptorSetAllocateInfo {
   const VkDescriptorSetLayout* pSetLayouts
 }
 
-@serialize
 class VkDescriptorImageInfo {
   VkSampler     Sampler
   VkImageView   ImageView
   VkImageLayout ImageLayout
 }
 
-@serialize
 class VkDescriptorBufferInfo {
   VkBuffer     Buffer /// Buffer used for this descriptor when the descriptor is UNIFORM_BUFFER[_DYNAMIC]
   VkDeviceSize Offset /// Base offset from buffer start in bytes to update in the descriptor set.
   VkDeviceSize Range  /// Size in bytes of the buffer resource for this descriptor update.
 }
 
-@serialize
 class VkWriteDescriptorSet {
   VkStructureType               sType            /// Must be VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
   const void*                   pNext            /// Pointer to next structure
@@ -2088,7 +2010,6 @@ class VkWriteDescriptorSet {
   const VkBufferView*           pTexelBufferView
 }
 
-@serialize
 class VkCopyDescriptorSet {
   VkStructureType sType           /// Must be VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET
   const void*     pNext           /// Pointer to next structure
@@ -2101,7 +2022,6 @@ class VkCopyDescriptorSet {
   u32             descriptorCount /// Number of descriptors to copy
 }
 
-@serialize
 class VkFramebufferCreateInfo {
   VkStructureType          sType           /// Must be VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO
   const void*              pNext           /// Pointer to next structure
@@ -2114,7 +2034,6 @@ class VkFramebufferCreateInfo {
   u32                      layers
 }
 
-@serialize
 class VkAttachmentDescription {
   VkAttachmentDescriptionFlags flags
   VkFormat                     format
@@ -2127,13 +2046,11 @@ class VkAttachmentDescription {
   VkImageLayout                finalLayout
 }
 
-@serialize
 class VkAttachmentReference {
   u32           Attachment // We have capitalized these so we can manipulate
   VkImageLayout Layout     // them in Go
 }
 
-@serialize
 class VkSubpassDescription {
   VkSubpassDescriptionFlags    flags
   VkPipelineBindPoint          pipelineBindPoint       /// Must be VK_PIPELINE_BIND_POINT_GRAPHICS for now
@@ -2147,7 +2064,6 @@ class VkSubpassDescription {
   const u32*                   pPreserveAttachments
 }
 
-@serialize
 class VkSubpassDependency {
   u32                  srcSubpass
   u32                  dstSubpass
@@ -2158,7 +2074,6 @@ class VkSubpassDependency {
   VkDependencyFlags    dependencyFlags
 }
 
-@serialize
 class VkRenderPassCreateInfo {
   VkStructureType                sType           /// Must be VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO
   const void*                    pNext           /// Pointer to next structure
@@ -2171,7 +2086,6 @@ class VkRenderPassCreateInfo {
   const VkSubpassDependency*     pDependencies
 }
 
-@serialize
 class VkCommandPoolCreateInfo {
   VkStructureType          sType            /// Must be VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
   const void*              pNext            /// Pointer to next structure
@@ -2179,7 +2093,6 @@ class VkCommandPoolCreateInfo {
   u32                      queueFamilyIndex
 }
 
-@serialize
 class VkCommandBufferAllocateInfo {
   VkStructureType      sType              /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
   const void*          pNext              /// Pointer to next structure
@@ -2188,7 +2101,6 @@ class VkCommandBufferAllocateInfo {
   u32                  commandBufferCount
 }
 
-@serialize
 class VkCommandBufferInheritanceInfo {
   VkStructureType               sType                /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
   const void*                   pNext                /// Pointer to next structure
@@ -2200,7 +2112,6 @@ class VkCommandBufferInheritanceInfo {
   VkQueryPipelineStatisticFlags pipelineStatistics
 }
 
-@serialize
 class VkCommandBufferBeginInfo {
   VkStructureType                       sType            /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
   const void*                           pNext            /// Pointer to next structure
@@ -2208,14 +2119,12 @@ class VkCommandBufferBeginInfo {
   const VkCommandBufferInheritanceInfo* pInheritanceInfo
 }
 
-@serialize
 class VkBufferCopy {
   VkDeviceSize srcOffset /// Specified in bytes
   VkDeviceSize dstOffset /// Specified in bytes
   VkDeviceSize size      /// Specified in bytes
 }
 
-@serialize
 class VkImageSubresourceLayers {
   VkImageAspectFlags aspectMask
   u32                mipLevel
@@ -2223,7 +2132,6 @@ class VkImageSubresourceLayers {
   u32                layerCount
 }
 
-@serialize
 class VkImageCopy {
   VkImageSubresourceLayers srcSubresource
   VkOffset3D               srcOffset      /// Specified in pixels for both compressed and uncompressed images
@@ -2232,7 +2140,6 @@ class VkImageCopy {
   VkExtent3D               extent         /// Specified in pixels for both compressed and uncompressed images
 }
 
-@serialize
 class VkImageBlit {
   VkImageSubresourceLayers srcSubresource
   VkOffset3D[2]            srcOffsets
@@ -2240,7 +2147,6 @@ class VkImageBlit {
   VkOffset3D[2]            dstOffsets
 }
 
-@serialize
 class VkBufferImageCopy {
   VkDeviceSize             bufferOffset      /// Specified in bytes
   u32                      bufferRowLength   /// Specified in texels
@@ -2255,14 +2161,12 @@ class VkBufferImageCopy {
 //           the wanted type in the cmd.
 // @union
 /// Union allowing specification of floating point, integer, or unsigned integer color data. Actual value selected is based on image/attachment being cleared.
-@serialize
 class VkClearColorValue {
   //f32[4]                                      float32
   //s32[4]                                      int32
   u32[4] uint32
 }
 
-@serialize
 class VkClearDepthStencilValue {
   f32 depth
   u32 stencil
@@ -2273,27 +2177,23 @@ class VkClearDepthStencilValue {
 //           the wanted type in the cmd.
 // @union
 /// Union allowing specification of color, depth, and stencil color values. Actual value selected is based on attachment being cleared.
-@serialize
 class VkClearValue {
   VkClearColorValue color
 //    VkClearDepthStencilValue                    depthStencil
 }
 
-@serialize
 class VkClearAttachment {
   VkImageAspectFlags aspectMask
   u32                colorAttachment
   VkClearValue       clearValue
 }
 
-@serialize
 class VkClearRect {
   VkRect2D rect
   u32      baseArrayLayer
   u32      layerCount
 }
 
-@serialize
 class VkImageResolve {
   VkImageSubresourceLayers srcSubresource
   VkOffset3D               srcOffset
@@ -2302,7 +2202,6 @@ class VkImageResolve {
   VkExtent3D               extent
 }
 
-@serialize
 class VkMemoryBarrier {
   VkStructureType sType         /// Must be VK_STRUCTURE_TYPE_MEMORY_BARRIER
   const void*     pNext         /// Pointer to next structure.
@@ -2310,7 +2209,6 @@ class VkMemoryBarrier {
   VkAccessFlags   dstAccessMask
 }
 
-@serialize
 class VkBufferMemoryBarrier {
   VkStructureType sType               /// Must be VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER
   const void*     pNext               /// Pointer to next structure.
@@ -2323,7 +2221,6 @@ class VkBufferMemoryBarrier {
   VkDeviceSize    size                /// Amount of bytes to sync
 }
 
-@serialize
 class VkImageMemoryBarrier {
   VkStructureType         sType               /// Must be VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER
   const void*             pNext               /// Pointer to next structure.
@@ -2337,7 +2234,6 @@ class VkImageMemoryBarrier {
   VkImageSubresourceRange subresourceRange    /// Subresource range to sync
 }
 
-@serialize
 class VkRenderPassBeginInfo {
   VkStructureType     sType           /// Must be VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO
   const void*         pNext           /// Pointer to next structure
@@ -2348,14 +2244,12 @@ class VkRenderPassBeginInfo {
   const VkClearValue* pClearValues
 }
 
-@serialize @unused
 class VkDispatchIndirectCommand {
   u32 x
   u32 y
   u32 z
 }
 
-@serialize @unused
 class VkDrawIndexedIndirectCommand {
   u32 indexCount
   u32 instanceCount
@@ -2364,7 +2258,6 @@ class VkDrawIndexedIndirectCommand {
   u32 firstInstance
 }
 
-@serialize @unused
 class VkDrawIndirectCommand {
   u32 vertexCount
   u32 instanceCount
@@ -2389,21 +2282,18 @@ bitfield VkExternalMemoryHandleTypeFlagBitsNV {
 @unused
 type VkFlags VkExternalMemoryHandleTypeFlagsNV
 
-@serialize
 class VkDedicatedAllocationImageCreateInfoNV {
   @unused VkStructureType sType
   @unused const void*     pNext
   @unused VkBool32        dedicatedAllocation
 }
 
-@serialize
 class VkDedicatedAllocationBufferCreateInfoNV {
   @unused VkStructureType sType
   @unused const void*     pNext
   @unused VkBool32        dedicatedAllocation
 }
 
-@serialize
 class VkDedicatedAllocationMemoryAllocateInfoNV {
   @unused VkStructureType sType
   @unused const void*     pNext
@@ -7596,7 +7486,6 @@ bitfield VkCompositeAlphaFlagBitsKHR {
 type VkFlags VkCompositeAlphaFlagsKHR
 
 @extension("VK_KHR_surface")
-@serialize
 class VkSurfaceCapabilitiesKHR {
   u32                           minImageCount
   u32                           maxImageCount
@@ -7611,7 +7500,6 @@ class VkSurfaceCapabilitiesKHR {
 }
 
 @extension("VK_KHR_surface")
-@serialize
 class VkSurfaceFormatKHR {
   VkFormat        format
   VkColorSpaceKHR colorSpace
@@ -7704,7 +7592,6 @@ cmd VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
 type VkFlags VkSwapchainCreateFlagsKHR
 
 @extension("VK_KHR_swapchain")
-@serialize
 class VkSwapchainCreateInfoKHR {
   VkStructureType               sType
   const void*                   pNext
@@ -7727,7 +7614,6 @@ class VkSwapchainCreateInfoKHR {
 }
 
 @extension("VK_KHR_swapchain")
-@serialize
 class VkPresentInfoKHR {
   VkStructureType       sType
   const void*           pNext
@@ -7963,7 +7849,6 @@ type VkFlags VkDisplayModeCreateFlagsKHR
 type VkFlags VkDisplaySurfaceCreateFlagsKHR
 
 @extension("VK_KHR_display")
-@serialize
 class VkDisplayPropertiesKHR {
   VkDisplayKHR               display
   string                     displayName
@@ -7975,21 +7860,18 @@ class VkDisplayPropertiesKHR {
 }
 
 @extension("VK_KHR_display")
-@serialize
 class VkDisplayModeParametersKHR {
   VkExtent2D visibleRegion
   u32        refreshRate
 }
 
 @extension("VK_KHR_display")
-@serialize
 class VkDisplayModePropertiesKHR {
   VkDisplayModeKHR           displayMode
   VkDisplayModeParametersKHR parameters
 }
 
 @extension("VK_KHR_display")
-@serialize
 class VkDisplayModeCreateInfoKHR {
   VkStructureType             sType
   const void*                 pNext
@@ -7998,7 +7880,6 @@ class VkDisplayModeCreateInfoKHR {
 }
 
 @extension("VK_KHR_display")
-@serialize
 class VkDisplayPlaneCapabilitiesKHR {
   VkDisplayPlaneAlphaFlagsKHR supportedAlpha
   VkOffset2D                  minSrcPosition
@@ -8012,14 +7893,12 @@ class VkDisplayPlaneCapabilitiesKHR {
 }
 
 @extension("VK_KHR_display")
-@serialize
 class VkDisplayPlanePropertiesKHR {
   VkDisplayKHR currentDisplay
   u32          currentStackIndex
 }
 
 @extension("VK_KHR_display")
-@serialize
 class VkDisplaySurfaceCreateInfoKHR {
   VkStructureType                sType
   const void*                    pNext
@@ -8180,7 +8059,6 @@ cmd VkResult vkCreateDisplayPlaneSurfaceKHR(
 // ----------------------------------------------------------------------------
 
 @extension("VK_KHR_display_swapchain")
-@serialize @unused
 class VkDisplayPresentInfoKHR {
   VkStructureType sType
   const void*     pNext
@@ -8312,7 +8190,6 @@ type VkFlags VkDebugReportFlagsEXT
 }
 
 @extension("VK_EXT_debug_report")
-@serialize
 class VkDebugReportCallbackCreateInfoEXT {
   VkStructureType              sType
   const void*                  pNext
@@ -8357,7 +8234,6 @@ extern void validate(string layerName, bool condition, string message)
 // VK_EXT_debug_marker
 // ----------------------------------------------------------------------------
 @extension("VK_EXT_debug_marker")
-@serialize
 class VkDebugMarkerObjectNameInfoEXT {
   VkStructureType             sType
   const void*                 pNext
@@ -8367,7 +8243,6 @@ class VkDebugMarkerObjectNameInfoEXT {
 }
 
 @extension("VK_EXT_debug_marker")
-@serialize
 class VkDebugMarkerObjectTagInfoEXT {
     VkStructureType               sType
     const void*                   pNext
@@ -8379,7 +8254,6 @@ class VkDebugMarkerObjectTagInfoEXT {
 }
 
 @extension("VK_EXT_debug_marker")
-@serialize
 class VkDebugMarkerMarkerInfoEXT {
     VkStructureType    sType
     const void*        pNext
@@ -9574,7 +9448,6 @@ sub VkQueueFlags AddQueueFlag(VkQueueFlags flags, VkQueueFlagBits bit) {
   return as!VkQueueFlags(as!u32(flags) | as!u32(bit))
 }
 
-@serialize
 class VulkanStructHeader {
   VkStructureType SType
   void*           PNext

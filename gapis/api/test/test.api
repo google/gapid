@@ -277,12 +277,10 @@ cmd void cmdVoidReadAndConditionalWrite(u32* pCount, remapped* pHandles) {
   }
 }
 
-@serialize
 class TestObject {
   u32 value
 }
 
-@serialize
 class TestExtra {
   u8[]                     Data
 
