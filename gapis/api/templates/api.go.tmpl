@@ -430,6 +430,15 @@
     }
   {{end}}
 
+  // Assign sets all fields of this slice from different slice. Needed for cloning.
+  func (s *{{$slice_ty}}) Assign(v interface{}) bool {
+    if v, ok := v.({{$slice_ty}}); ok {
+      *s = v
+      return true
+    }
+    return false
+  }
+
   // Make{{$slice_ty}} returns a {{$slice_ty}} backed by a new memory pool.
   func Make{{$slice_ty}}(count uint64, ϟs *api.GlobalState) {{$slice_ty}} {
     id, _ := ϟs.Memory.New()
