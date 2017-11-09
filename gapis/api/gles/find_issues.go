@@ -52,7 +52,9 @@ func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Insta
 		device: device,
 	}
 	transform.state.OnError = func(err interface{}) {
-		transform.lastGlError = err.(GLenum)
+		if glenum, ok := err.(GLenum); ok {
+			transform.lastGlError = glenum
+		}
 	}
 	return transform
 }

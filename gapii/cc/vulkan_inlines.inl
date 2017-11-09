@@ -1436,3 +1436,23 @@ inline bool RecreateCommand(CallObserver* observer,
 }
 
 inline void VulkanSpy::notifyPendingCommandAdded(CallObserver*, VkQueue) {}
+
+template<typename VkErrorType>
+inline void VulkanSpy::onVkError(CallObserver* observer, VkErrorType err) {
+  GAPID_WARNING("Unhandled Vulkan error");
+}
+
+template<>
+inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_INVALID_HANDLE> err) {
+  GAPID_WARNING("Error: Invalid %s: %llu", err->mhandleType.c_str(), err->mhandle)
+}
+
+template<>
+inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_NULL_POINTER> err) {
+  GAPID_WARNING("Error: Null pointer of %s", err->mpointerType.c_str())
+}
+
+template<>
+inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_UNSUPPORTED_EXTENSION> err) {
+  GAPID_WARNING("Error: Unsupported extension: %s", err->mname.c_str())
+}

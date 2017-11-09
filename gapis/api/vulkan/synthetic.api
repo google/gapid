@@ -23,6 +23,7 @@ cmd VkResult replayCreateVkInstance(
   instance := createInstanceObject(pCreateInfo)
   // TODO: pAllocator
   handle := ?
+  if pInstance == null {vkErrorNullPointer("VkInstance")}
   pInstance[0] = handle
   instance.VulkanHandle = handle
   Instances[handle] = instance
@@ -43,6 +44,7 @@ cmd VkResult ReplayCreateVkDevice(
   // TODO: pAllocator
 
   handle := ?
+  if pDevice == null {vkErrorNullPointer("VkDevice")}
   pDevice[0] = handle
   device.VulkanHandle = handle
   Devices[handle] = device

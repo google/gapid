@@ -19,8 +19,10 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/binary"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
+	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
@@ -32,13 +34,33 @@ import (
 // closed.
 // NOTE: right now this transform is just used to close chans passed in requests.
 type findIssues struct {
-	res []replay.Result
+	state  *api.GlobalState
+	issues []replay.Issue
+	res    []replay.Result
+}
+
+func newFindIssues(ctx context.Context, c *capture.Capture) *findIssues {
+	t := &findIssues{
+		state: c.NewState(ctx),
+	}
+	t.state.OnError = func(err interface{}) {
+		if issue, ok := err.(replay.Issue); ok {
+			t.issues = append(t.issues, issue)
+		}
+	}
+	return t
 }
 
 // reportTo adds r to the list of issue listeners.
 func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
 func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	ctx = log.Enter(ctx, "findIssues")
+	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */)
+	if mutateErr != nil {
+		// Ignore since downstream transform layers can only consume valid commands
+		return
+	}
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
@@ -60,9 +82,8 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 				return fmt.Errorf("Flush did not get expected EOS code")
 			}
 			for _, res := range t.res {
-				res([]replay.Issue{}, nil)
+				res(t.issues, nil)
 			}
-			t.res = nil
 			return err
 		})
 		return nil
