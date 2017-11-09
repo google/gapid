@@ -19,8 +19,9 @@
 
 set(files
     copy.go
+    copy_test.go
     doc.go
 )
 set(dirs
-    
+
 )
