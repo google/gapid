@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build analytics
-
-package analytics
+package net
 
 import (
 	"fmt"
@@ -23,8 +21,18 @@ import (
 	"github.com/google/gapid/core/os/device"
 )
 
-func useragent(d *device.Configuration, v AppVersion) string {
-	product := fmt.Sprintf("%v/%v.%v.%v", v.Name, v.Major, v.Minor, v.Point)
+// ApplicationInfo describes an application.
+type ApplicationInfo struct {
+	Name         string
+	VersionMajor int
+	VersionMinor int
+	VersionPoint int
+}
+
+// UserAgent returns a useragent string for the given device and application
+// info.
+func UserAgent(d *device.Configuration, ai ApplicationInfo) string {
+	product := fmt.Sprintf("%v/%v.%v.%v", ai.Name, ai.VersionMajor, ai.VersionMinor, ai.VersionPoint)
 	info := []string{}
 	os := d.GetOS()
 	switch os.GetKind() {

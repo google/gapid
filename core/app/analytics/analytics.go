@@ -98,6 +98,11 @@ func getOSAndGPU(cfg *device.Configuration) (os string, gpu string) {
 
 func getUserAgentOSAndGPU(cfg *device.Configuration, version AppVersion) (string, string, string) {
 	os, gpu := getOSAndGPU(cfg)
-	ua := useragent(cfg, version)
+	ua := net.UserAgent(cfg, net.ApplicationInfo{
+		Name: version.Name,
+		VersionMajor: version.Major,
+		VersionMinor: version.Minor,
+		VersionPoint: version.Point,
+	)
 	return ua, os, gpu
 }
