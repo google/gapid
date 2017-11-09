@@ -45,6 +45,7 @@ public class SettingsDialog extends DialogBase {
   private final Settings settings;
   private Button autoCheckForUpdates;
   private Button sendAnalytics;
+  private Button disableReplayOptimization;
   private FileTextbox adbPath;
   private Label restartLabel;
 
@@ -67,6 +68,7 @@ public class SettingsDialog extends DialogBase {
     */
     settings.autoCheckForUpdates = autoCheckForUpdates.getSelection();
     settings.adb = adbPath.getText().trim();
+    settings.disableReplayOptimization = disableReplayOptimization.getSelection();
     settings.onChange();
   }
 
@@ -84,6 +86,9 @@ public class SettingsDialog extends DialogBase {
 
     createLabel(container, "Automatically check for updates:");
     autoCheckForUpdates = Widgets.createCheckbox(container, "", settings.autoCheckForUpdates);
+
+    createLabel(container, "Disable replay optimization:");
+    disableReplayOptimization = Widgets.createCheckbox(container, "", settings.disableReplayOptimization);
 
     // TODO: <ANALYTICS> Uncomment to add the option to enable analytics.
     // createLabel(container, "Send anonymous usage statistics to Google:");

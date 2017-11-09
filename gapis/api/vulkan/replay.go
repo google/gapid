@@ -64,10 +64,11 @@ type makeAttachementReadable struct {
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
 type drawConfig struct {
-	startScope    api.CmdID
-	endScope      api.CmdID
-	subindices    string // drawConfig needs to be comparable, so we cannot use a slice
-	wireframeMode replay.WireframeMode
+	startScope                api.CmdID
+	endScope                  api.CmdID
+	subindices                string // drawConfig needs to be comparable, so we cannot use a slice
+	wireframeMode             replay.WireframeMode
+	disableReplayOptimization bool
 }
 
 type imgRes struct {
@@ -528,6 +529,8 @@ func (a API) Replay(
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
 
+	optimize := true
+
 	cmds := capture.Commands
 
 	transforms := transform.Transforms{}
@@ -567,6 +570,7 @@ func (a API) Replay(
 				issues = &findIssues{}
 			}
 			issues.reportTo(rr.Result)
+			optimize = false
 
 		case framebufferRequest:
 			// TODO(subcommands): Add subcommand support here
@@ -588,6 +592,9 @@ func (a API) Replay(
 			}
 
 			cfg := cfg.(drawConfig)
+			if cfg.disableReplayOptimization {
+				optimize = false
+			}
 			switch cfg.wireframeMode {
 			case replay.WireframeMode_All:
 				wire = true
@@ -607,7 +614,7 @@ func (a API) Replay(
 	}
 
 	// Use the dead code elimination pass
-	if !config.DisableDeadCodeElimination {
+	if optimize && !config.DisableDeadCodeElimination {
 		cmds = []api.Cmd{}
 		transforms.Prepend(dceInfo.dce)
 	}
@@ -663,6 +670,7 @@ func (a API) QueryFramebufferAttachment(
 	attachment api.FramebufferAttachment,
 	framebufferIndex uint32,
 	wireframeMode replay.WireframeMode,
+	disableReplayOptimization bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
 	s, err := resolve.SyncData(ctx, intent.Capture)
@@ -697,7 +705,7 @@ func (a API) QueryFramebufferAttachment(
 		}
 	}
 
-	c := drawConfig{beginIndex, endIndex, subcommand, wireframeMode}
+	c := drawConfig{beginIndex, endIndex, subcommand, wireframeMode, disableReplayOptimization}
 	out := make(chan imgRes, 1)
 	r := framebufferRequest{after: after, width: width, height: height, framebufferIndex: framebufferIndex, attachment: attachment, out: out}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)

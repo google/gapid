@@ -45,12 +45,14 @@ public class Thumbnails {
   private final Client client;
   private final Devices devices;
   private final Capture capture;
+  private final Settings settings;
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
-  public Thumbnails(Client client, Devices devices, Capture capture) {
+  public Thumbnails(Client client, Devices devices, Capture capture, Settings settings) {
     this.client = client;
     this.devices = devices;
     this.capture = capture;
+    this.settings = settings;
 
     devices.addListener(new Devices.Listener() {
       @Override
@@ -72,13 +74,13 @@ public class Thumbnails {
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.Command command, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, thumbnail(command, THUMB_PIXELS), onInfo),
+    return Futures.transform(loadThumbnail(client, thumbnail(command, THUMB_PIXELS, settings.disableReplayOptimization), onInfo),
         image -> processImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.CommandTreeNode node, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, thumbnail(node, THUMB_PIXELS), onInfo),
+    return Futures.transform(loadThumbnail(client, thumbnail(node, THUMB_PIXELS, settings.disableReplayOptimization), onInfo),
         image -> processImage(image, size));
   }
 

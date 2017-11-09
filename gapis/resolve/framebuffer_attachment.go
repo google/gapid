@@ -33,13 +33,13 @@ import (
 // specified point in a capture.
 func FramebufferAttachment(
 	ctx context.Context,
-	device *path.Device,
+	replaySettings *service.ReplaySettings,
 	after *path.Command,
 	attachment api.FramebufferAttachment,
 	settings *service.RenderSettings,
 	hints *service.UsageHints,
 ) (*path.ImageInfo, error) {
-	if device == nil {
+	if replaySettings.Device == nil {
 		devices, err := devices.ForReplay(ctx, after.Capture)
 		if err != nil {
 			return nil, err
@@ -47,7 +47,7 @@ func FramebufferAttachment(
 		if len(devices) == 0 {
 			return nil, fmt.Errorf("No compatible replay devices found")
 		}
-		device = devices[0]
+		replaySettings.Device = devices[0]
 	}
 
 	// Check the command is valid. If we don't do it here, we'll likely get an
@@ -57,12 +57,13 @@ func FramebufferAttachment(
 	}
 
 	id, err := database.Store(ctx, &FramebufferAttachmentResolvable{
-		device,
+		replaySettings,
 		after,
 		attachment,
 		settings,
 		hints,
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 	width, height := uniformScale(fbInfo.width, fbInfo.height, r.Settings.MaxWidth, r.Settings.MaxHeight)
 
 	id, err := database.Store(ctx, &FramebufferAttachmentBytesResolvable{
-		Device:           r.Device,
+		ReplaySettings:   r.ReplaySettings,
 		After:            r.After,
 		Width:            width,
 		Height:           height,

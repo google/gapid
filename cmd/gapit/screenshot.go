@@ -97,7 +97,12 @@ func (verb *screenshotVerb) writeSingleFrame(frame image.Image, fn string) error
 func getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(0xFFFFFFFF), MaxHeight: uint32(0xFFFFFFFF)}
-	iip, err := client.GetFramebufferAttachment(ctx, device, cmd, api.FramebufferAttachment_Color0, settings, nil)
+	iip, err := client.GetFramebufferAttachment(ctx,
+		&service.ReplaySettings{
+			Device: device,
+			DisableReplayOptimization: false,
+		},
+		cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed")
 	}

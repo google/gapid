@@ -226,20 +226,21 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 
 func (s *server) GetFramebufferAttachment(
 	ctx context.Context,
-	device *path.Device,
+	replaySettings *service.ReplaySettings,
 	after *path.Command,
 	attachment api.FramebufferAttachment,
 	settings *service.RenderSettings,
-	hints *service.UsageHints) (*path.ImageInfo, error) {
+	hints *service.UsageHints,
+) (*path.ImageInfo, error) {
 
 	ctx = log.Enter(ctx, "GetFramebufferAttachment")
-	if err := device.Validate(); err != nil {
-		return nil, log.Errf(ctx, err, "Invalid path: %v", device)
+	if err := replaySettings.Device.Validate(); err != nil {
+		return nil, log.Errf(ctx, err, "Invalid path: %v", replaySettings.Device)
 	}
 	if err := after.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", after)
 	}
-	return resolve.FramebufferAttachment(ctx, device, after, attachment, settings, hints)
+	return resolve.FramebufferAttachment(ctx, replaySettings, after, attachment, settings, hints)
 }
 
 func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {

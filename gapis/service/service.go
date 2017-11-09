@@ -84,7 +84,7 @@ type Service interface {
 	// dimensions of the image, as well as applying debug visualizations.
 	GetFramebufferAttachment(
 		ctx context.Context,
-		device *path.Device,
+		replaySettings *ReplaySettings,
 		after *path.Command,
 		attachment api.FramebufferAttachment,
 		settings *RenderSettings,
