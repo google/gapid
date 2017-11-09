@@ -18,7 +18,6 @@ package com.google.gapid.util;
 import static com.google.gapid.util.Scheduler.EXECUTOR;
 
 import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -39,13 +38,12 @@ public class FutureCache<K, V> {
 
   public static <K, V> FutureCache<K, V> softCache(
       Function<K, ListenableFuture<V>> fetcher, Predicate<V> shouldCache) {
-    return new FutureCache<K, V>(
-        CacheBuilder.newBuilder().softValues().build(), fetcher, shouldCache);
+    return new FutureCache<K, V>(Caches.softCache(), fetcher, shouldCache);
   }
 
   public static <K, V> FutureCache<K, V> hardCache(
       Function<K, ListenableFuture<V>> fetcher, Predicate<V> shouldCache) {
-    return new FutureCache<K, V>(CacheBuilder.newBuilder().build(), fetcher, shouldCache);
+    return new FutureCache<K, V>(Caches.hardCache(), fetcher, shouldCache);
   }
 
   public ListenableFuture<V> get(K key) {

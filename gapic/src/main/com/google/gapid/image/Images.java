@@ -15,12 +15,15 @@
  */
 package com.google.gapid.image;
 
+import static java.util.Arrays.stream;
+
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.stream.Stream;
 import com.google.gapid.util.Streams;
+import com.google.protobuf.ByteString;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.ResourceManager;
@@ -31,6 +34,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.internal.DPIUtil;
 
+import java.io.IOException;
 import java.util.Set;
 
 /**
@@ -225,37 +229,61 @@ public class Images {
   }
 
   /**
+   * Returns a combined ID for the given images. The ID is meant to be used for caching only as it
+   * is otherwise an invalid identifier.
+   */
+  public static Image.ID getCombinedId(Image.Info[] infos) {
+    return getCombinedId(stream(infos).map(Image.Info::getBytes));
+  }
+
+  /**
+   * Returns a combined ID for the given stream of IDs. The ID is meant to be used for caching only
+   * as it is otherwhise an invalid identifier.
+   */
+  public static Image.ID getCombinedId(java.util.stream.Stream<Image.ID> ids) {
+    ByteString.Output result = ByteString.newOutput();
+    ids.forEachOrdered(id -> {
+      try {
+        id.getData().writeTo(result);
+      } catch (IOException e) {
+        throw new AssertionError(e);
+      }
+    });
+    return Image.ID.newBuilder().setData(result.toByteString()).build();
+  }
+
+  /**
    * Image formats handled by the UI.
    */
   public static enum Format {
     Color8(FMT_RGBA_U8_NORM, 4 * 1) {
       @Override
-      protected ArrayImage build(int width, int height, int depth, byte[] data) {
-        return new ArrayImage.RGBA8Image(width, height, depth, data);
+      protected ArrayImage build(Image.ID id, int width, int height, int depth, byte[] data) {
+        return new ArrayImage.RGBA8Image(id, width, height, depth, data);
       }
     },
     Depth8(FMT_DEPTH_U8_NORM, 1 *1) {
       @Override
-      protected ArrayImage build(int width, int height, int depth, byte[] data) {
-        return new ArrayImage.Luminance8Image(width, height, depth, data);
+      protected ArrayImage build(Image.ID id, int width, int height, int depth, byte[] data) {
+        return new ArrayImage.Luminance8Image(id, width, height, depth, data);
       }
     },
     ColorFloat(FMT_RGBA_FLOAT, 4 * 4) {
       @Override
-      protected ArrayImage build(int width, int height, int depth, byte[] data) {
-        return new ArrayImage.RGBAFloatImage(width, height, depth, data);
+      protected ArrayImage build(Image.ID id, int width, int height, int depth, byte[] data) {
+        return new ArrayImage.RGBAFloatImage(id, width, height, depth, data);
       }
     },
     DepthFloat(FMT_DEPTH_FLOAT, 1 * 4) {
       @Override
-      protected ArrayImage build(int width, int height, int depth, byte[] data) {
-        return new ArrayImage.LuminanceFloatImage(width, height, depth, data);
+      protected ArrayImage build(Image.ID id, int width, int height, int depth, byte[] data) {
+        return new ArrayImage.LuminanceFloatImage(id, width, height, depth, data);
       }
     },
     LuminanceFloat(FMT_LUMINANCE_FLOAT, 1 * 4) {
       @Override
-      protected ArrayImage build(int width, int height, int depth, byte[] data) {
-        return new ArrayImage.LuminanceFloatImage(width, height, depth, data);
+      protected ArrayImage build(Image.ID id, int width, int height, int depth, byte[] data) {
+        return new ArrayImage.LuminanceFloatImage(id, width, height, depth, data);
       }
     };
 
@@ -280,15 +308,16 @@ public class Images {
       }
     }
 
-    public ArrayImage.Builder builder(int width, int height, int depth) {
+    public ArrayImage.Builder builder(Image.ID id, int width, int height, int depth) {
       return new ArrayImage.Builder(width, height, depth, pixelSize) {
         @Override
         protected ArrayImage build() {
-          return Format.this.build(width, height, depth, data);
+          return Format.this.build(id, width, height, depth, data);
         }
       };
     }
 
-    protected abstract ArrayImage build(int width, int height, int depth, byte[] data);
+    protected abstract ArrayImage build(
+        Image.ID id, int width, int height, int depth, byte[] data);
   }
 }

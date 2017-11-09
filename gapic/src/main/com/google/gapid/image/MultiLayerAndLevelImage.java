@@ -33,6 +33,12 @@ public interface MultiLayerAndLevelImage {
   public int getLevelCount();
 
   /**
+   * Returns an {@link com.google.gapid.proto.image.Image.ID} representative of the given level
+   * across all layers. The ID is only meant to be used for caching as it is otherwise invalid.
+   */
+  public com.google.gapid.proto.image.Image.ID getLevelId(int level);
+
+  /**
    * @return a future {@link Image} representing the given 0-based level.
    */
   public ListenableFuture<Image> getImage(int layer, int level);
@@ -46,6 +52,11 @@ public interface MultiLayerAndLevelImage {
     @Override
     public int getLevelCount() {
       return 1;
+    }
+
+    @Override
+    public com.google.gapid.proto.image.Image.ID getLevelId(int level) {
+      return com.google.gapid.proto.image.Image.ID.getDefaultInstance();
     }
 
     @Override
