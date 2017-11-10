@@ -297,13 +297,12 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
     protected abstract ListenableFuture<Image> doLoad();
 
-    protected static Image convertImage(Info info, Images.Format format, byte[] data) {
-      return format.builder(info.getWidth(), info.getHeight(), info.getDepth())
-          .update(data, 0, 0, 0, info.getWidth(), info.getHeight(), info.getDepth())
-          .build();
+
+    protected static Image createImage(Info info, Images.Format format, byte[] data) {
+      return format.build(info.getWidth(), info.getHeight(), info.getDepth(), data);
     }
 
-    protected static Image convertImage(Info[] infos, Images.Format format, byte[][] data) {
+    protected static Image createImage(Info[] infos, Images.Format format, byte[][] data) {
       assert (infos.length == data.length && infos.length == 6);
       // Typically these are all the same, but let's be safe.
       int width = Math.max(
@@ -323,13 +322,17 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       // +----+----+----+----+
       // |    | +Y |    |    |
       // +----+----+----+----+
+      int x0 = width * 0, y0 = height;
+      int x1 = width * 1, y1 = height * 1;
+      int x2 = width * 2, y2 = height * 1;
+      int x3 = width * 3;
       return format.builder(4 * width, 3 * height, 1)
-          .update(data[0], 0 * width, 1 * height, 0, infos[0].getWidth(), infos[0].getHeight(), 1) // -X
-          .update(data[1], 2 * width, 1 * height, 0, infos[1].getWidth(), infos[1].getHeight(), 1) // +X
-          .update(data[2], 1 * width, 2 * height, 0, infos[2].getWidth(), infos[2].getHeight(), 1) // -Y
-          .update(data[3], 1 * width, 0 * height, 0, infos[3].getWidth(), infos[3].getHeight(), 1) // +Y
-          .update(data[4], 3 * width, 1 * height, 0, infos[4].getWidth(), infos[4].getHeight(), 1) // -Z
-          .update(data[5], 1 * width, 1 * height, 0, infos[5].getWidth(), infos[5].getHeight(), 1) // +Z
+          .update(data[0], x0, y1, 0, infos[0].getWidth(), infos[0].getHeight(), 1) // -X
+          .update(data[1], x2, y1, 0, infos[1].getWidth(), infos[1].getHeight(), 1) // +X
+          .update(data[2], x1, y2, 0, infos[2].getWidth(), infos[2].getHeight(), 1) // -Y
+          .update(data[3], x1, y0, 0, infos[3].getWidth(), infos[3].getHeight(), 1) // +Y
+          .update(data[4], x3, y1, 0, infos[4].getWidth(), infos[4].getHeight(), 1) // -Z
+          .update(data[5], x1, y1, 0, infos[5].getWidth(), infos[5].getHeight(), 1) // +Z
           .flip()
           .build();
     }
@@ -351,7 +354,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
     @Override
     protected ListenableFuture<Image> doLoad() {
       return Futures.transform(client.get(blob(imageInfo.getBytes())), data ->
-        convertImage(imageInfo, format, Values.getBytes(data)));
+          createImage(imageInfo, format, Values.getBytes(data)));
     }
   }
 
@@ -384,7 +387,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
         for (int i = 0; i < data.length; i++) {
           data[i] = Values.getBytes(values.get(i));
         }
-        return convertImage(imageInfos, format, data);
+        return createImage(imageInfos, format, data);
       });
     }
   }

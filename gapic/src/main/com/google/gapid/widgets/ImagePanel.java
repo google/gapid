@@ -117,6 +117,8 @@ public class ImagePanel extends Composite {
   private final StatusBar status;
   protected final ImageComponent imageComponent;
   private final BackgroundSelection backgroundSelection;
+  private final Histogram.Cache histogramCache = new Histogram.Cache(8, NUM_HISTOGRAM_BINS);
+
   private ToolItem zoomFitItem, backgroundItem, saveItem, colorChanelsItem;
   private MultiLayerAndLevelImage image = MultiLayerAndLevelImage.EMPTY;
   private Image[] layers = NO_LAYERS;
@@ -458,15 +460,7 @@ public class ImagePanel extends Composite {
     }
     ListenableFuture<LevelData> future = Futures.transform(Futures.allAsList(layerFutures), imageList -> {
       Image[] images = imageList.toArray(new Image[imageList.size()]);
-
-      boolean isHDR = false;
-      for (Image image : images) {
-        if (image.isHDR()) {
-          isHDR = true;
-        }
-      }
-
-      Histogram histogram = new Histogram(images, NUM_HISTOGRAM_BINS, isHDR);
+      Histogram histogram = histogramCache.get(images);
       return new LevelData(images, histogram);
     });
 
@@ -1028,9 +1022,9 @@ public class ImagePanel extends Composite {
     private static final int PREVIEW_SIZE = 7;
 
     private final Map<Image, Texture> imageToTexture = Maps.newHashMap();
+    private final ArrayList<Texture> textures = new ArrayList<>();
 
     private Shader shader;
-    private Texture[] textures;
     private SceneData data;
 
     private final float[] uChannels = new float[] { 1, 1, 1, 1 };
@@ -1052,14 +1046,24 @@ public class ImagePanel extends Composite {
     @Override
     public void update(Renderer renderer, SceneData newData) {
       // Release textures that are no longer in data.
+      Set<Image> oldSet = imageToTexture.keySet();
       Set<Image> newSet = Sets.newHashSet(newData.images);
-      for (Map.Entry<Image, Texture> entry : imageToTexture.entrySet()) {
-        if (!newSet.contains(entry.getKey())) {
-          entry.getValue().delete();
-        }
+
+      for (Image removed : Sets.difference(oldSet, newSet)) {
+        imageToTexture.remove(removed).delete();
       }
 
-      this.textures = new Texture[newData.images.length];
+      for (Image added : Sets.difference(newSet, oldSet)) {
+        Texture texture = renderer
+            .newTexture(GL11.GL_TEXTURE_2D)
+            .setMinMagFilter(GL11.GL_LINEAR, GL11.GL_NEAREST)
+            .setBorderColor(newData.borderColor);
+        added.uploadToTexture(texture);
+        imageToTexture.put(added, texture);
+      }
+
+      textures.clear();
+
       for (int i = 0; i < newData.images.length; i++) {
         Image image = newData.images[i];
         Texture texture = imageToTexture.get(image);
@@ -1071,8 +1075,7 @@ public class ImagePanel extends Composite {
           image.uploadToTexture(texture);
           imageToTexture.put(image, texture);
         }
-
-        this.textures[i] = texture;
+        textures.add(texture);
       }
 
       float rangeMin = (float)newData.displayRange.min;
@@ -1127,9 +1130,10 @@ public class ImagePanel extends Composite {
       shader.setUniform("uTextureOffset", new float[] { 0, 0 });
       shader.setUniform("uChannels", uChannels);
       shader.setUniform("uFlipped", data.flipped ? 1 : 0);
-      for (int i = 0; i < textures.length; i++) {
-        textures[i].setWrapMode(GL12.GL_CLAMP_TO_EDGE, GL12.GL_CLAMP_TO_EDGE);
-        shader.setUniform("uTexture", textures[i]);
+      for (int i = 0; i < textures.size(); i++) {
+        Texture texture = textures.get(i);
+        texture.setWrapMode(GL12.GL_CLAMP_TO_EDGE, GL12.GL_CLAMP_TO_EDGE);
+        shader.setUniform("uTexture", texture);
         renderer.drawQuad(data.transforms[i], shader);
       }
     }
@@ -1157,7 +1161,7 @@ public class ImagePanel extends Composite {
           (float)(data.previewPixel.y - PREVIEW_HEIGHT / 2) / image.getHeight()
       };
 
-      Texture texture = textures[imageIndex];
+      Texture texture = textures.get(imageIndex);
       texture.setWrapMode(GL13.GL_CLAMP_TO_BORDER, GL13.GL_CLAMP_TO_BORDER);
       shader.setUniform("uTexture", texture);
       shader.setUniform("uTextureSize", texScale);

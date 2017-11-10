@@ -19,14 +19,12 @@ import static com.google.gapid.util.Colors.DARK_LUMINANCE8_THRESHOLD;
 import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.clamp;
 
-import com.google.common.primitives.UnsignedBytes;
 import com.google.common.collect.Sets;
+import com.google.common.primitives.UnsignedBytes;
 import com.google.gapid.glviewer.gl.Texture;
 import com.google.gapid.proto.stream.Stream.Channel;
 import com.google.gapid.util.Colors;
 
-import java.nio.DoubleBuffer;
-import java.util.Set;
 import org.eclipse.swt.graphics.ImageData;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -34,8 +32,10 @@ import org.lwjgl.opengl.GL30;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
+import java.util.Set;
 
 /**
  * An {@link Image} backed by a byte array.
@@ -44,6 +44,7 @@ public abstract class ArrayImage implements Image {
   public final int width, height, depth, bytesPerPixel;
   protected final byte[] data;
   private final int internalFormat, format, type;
+  private final int hash;
 
   public ArrayImage(int width, int height, int depth, int bytesPerPixel, byte[] data,
       int internalFormat, int format, int type) {
@@ -55,6 +56,41 @@ public abstract class ArrayImage implements Image {
     this.internalFormat = internalFormat;
     this.format = format;
     this.type = type;
+    this.hash = calculateHash();
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other.getClass() != getClass()) {
+      return false;
+    }
+    ArrayImage o = (ArrayImage)other;
+    return o.width == width &&
+        o.height == height &&
+        o.depth == depth &&
+        o.bytesPerPixel == bytesPerPixel &&
+        o.internalFormat == internalFormat &&
+        o.format == format &&
+        o.type == type &&
+        Arrays.equals(o.data, data); // Keep last as it is the most expensive.
+  }
+
+  private int calculateHash() {
+    int h = 0;
+    h = h * 31 + width;
+    h = h * 31 + height;
+    h = h * 31 + depth;
+    h = h * 31 + bytesPerPixel;
+    h = h * 31 + internalFormat;
+    h = h * 31 + format;
+    h = h * 31 + type;
+    h = h * 31 + Arrays.hashCode(data);
+    return h;
+  }
+
+  @Override
+  public int hashCode() {
+    return hash;
   }
 
   @Override

@@ -15,15 +15,19 @@
  */
 package com.google.gapid.image;
 
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gapid.proto.stream.Stream.Channel;
+
 import java.nio.DoubleBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Histogram calculates the number of pixel components across a list of images that land into a
@@ -115,6 +119,55 @@ public class Histogram {
      */
     public double range() {
       return max - min;
+    }
+  }
+
+  public static class Cache {
+    private final com.google.common.cache.Cache<Key, Histogram> cache;
+    private final int numHistogramBins;
+
+    private static class Key {
+      private final Image[] images;
+
+      private Key(Image[] images) {
+        this.images = images;
+      }
+
+      @Override
+      public boolean equals(Object other) {
+        if (!(other instanceof Key)) {
+          return false;
+        }
+        Key o = (Key)other;
+        return Arrays.equals(images, o.images);
+      }
+
+      @Override
+      public int hashCode() {
+        return Arrays.hashCode(images);
+      }
+    }
+
+    public Cache(int maxSize, int numHistogramBins) {
+      this.cache = CacheBuilder.newBuilder().maximumSize(maxSize).build();
+      this.numHistogramBins = numHistogramBins;
+    }
+
+    public Histogram get(Image[] images) {
+      try {
+        return cache.get(new Key(images), () -> {
+          boolean isHDR = false;
+          for (Image image : images) {
+            if (image.isHDR()) {
+              isHDR = true;
+            }
+          }
+          return new Histogram(images, numHistogramBins, isHDR);
+        });
+      } catch (ExecutionException e) {
+        e.printStackTrace(); // Should never happen.
+        return null;
+      }
     }
   }
 
