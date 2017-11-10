@@ -436,7 +436,7 @@ func (qei *queueExecutionState) updateCurrentCommand(ctx context.Context,
 		}
 		qei.currentCmdBufState = qei.secondaryCmdBufState
 	default:
-		log.E(ctx, "Invalid length of full command index")
+		log.E(ctx, "FootprintBuilder: Invalid length of full command index")
 	}
 	qei.currentCommand = fci
 }
@@ -636,7 +636,7 @@ func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 		desc := rp.SubpassDescriptions.Get(subpass)
 		qei.subpasses = append(qei.subpasses, subpassInfo{})
 		if subpass != uint32(len(qei.subpasses)-1) {
-			log.E(ctx, "Cannot get subpass info, subpass: %v, length of info: %v",
+			log.E(ctx, "FootprintBuilder: Cannot get subpass info, subpass: %v, length of info: %v",
 				subpass, uint32(len(qei.subpasses)))
 		}
 		colorAs := map[uint32]struct{}{}
@@ -832,7 +832,7 @@ func addResBinding(ctx context.Context, l resBindingList, b *resBinding) resBind
 	ml := memBindingList(l)
 	ml, err = addBinding(ml, b)
 	if err != nil {
-		log.E(ctx, err.Error())
+		log.E(ctx, "FootprintBuilder: %s", err.Error())
 		return nil
 	}
 	return resBindingList(ml)
@@ -865,7 +865,7 @@ func (l resBindingList) getSubBindingList(ctx context.Context,
 			}
 			newB, err := bl[i].newSubBinding(ctx, bh, start-bl[i].span().Start, end-start)
 			if err != nil {
-				log.E(ctx, "%s", err.Error())
+				log.E(ctx, "FootprintBuilder: %s", err.Error())
 			}
 			if newB != nil {
 				subBindings = append(subBindings, newB)
@@ -890,22 +890,27 @@ func (l resBindingList) getBoundData(ctx context.Context,
 }
 
 type descriptor struct {
-	ty          VkDescriptorType
-	backingData []dependencygraph.DefUseVariable
-	sampler     vkHandle
+	ty               VkDescriptorType
+	backDataBindings resBindingList
+	// only used for sampler and sampler combined descriptors
+	sampler vkHandle
+	// only used for storage/uniform buffer with dynamic offsets
+	rng VkDeviceSize
 }
 
 func (*descriptor) DefUseVariable() {}
 
 type descriptorSet struct {
-	descriptors      api.SubCmdIdxTrie
-	descriptorCounts map[uint64]uint64 // binding -> descriptor count of that binding
+	descriptors            api.SubCmdIdxTrie
+	descriptorCounts       map[uint64]uint64 // binding -> descriptor count of that binding
+	dynamicDescriptorCount uint64
 }
 
 func newDescriptorSet() *descriptorSet {
 	return &descriptorSet{
-		descriptors:      api.SubCmdIdxTrie{},
-		descriptorCounts: map[uint64]uint64{},
+		descriptors:            api.SubCmdIdxTrie{},
+		descriptorCounts:       map[uint64]uint64{},
+		dynamicDescriptorCount: uint64(0),
 	}
 }
 
@@ -924,50 +929,78 @@ func (ds *descriptorSet) getDescriptor(ctx context.Context,
 			read(ctx, bh, d)
 			return d
 		}
-		log.E(ctx, "Not *descriptor type in descriptorSet: %v, with "+
+		log.E(ctx, "FootprintBuilder: Not *descriptor type in descriptorSet: %v, with "+
 			"binding: %v, array index: %v", *ds, bi, di)
 		return nil
 	}
-	log.E(ctx, "Read target descriptor does not exists in "+
+	log.E(ctx, "FootprintBuilder: Read target descriptor does not exists in "+
 		"descriptorSet: %v, with binding: %v, array index: %v", *ds, bi, di)
 	return nil
 }
 
 func (ds *descriptorSet) setDescriptor(ctx context.Context,
 	bh *dependencygraph.Behavior, bi, di uint64, ty VkDescriptorType,
-	data []dependencygraph.DefUseVariable, sampler vkHandle) {
+	dataBindingList resBindingList, sampler vkHandle, rng VkDeviceSize) {
 	if v := ds.descriptors.Value([]uint64{bi, di}); v != nil {
 		if d, ok := v.(*descriptor); ok {
 			write(ctx, bh, d)
-			d.backingData = data
+			d.backDataBindings = dataBindingList
 			d.sampler = sampler
 			d.ty = ty
+			d.rng = rng
+			if ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
+				ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
+				ds.dynamicDescriptorCount++
+			}
 		} else {
-			log.E(ctx, "Not *descriptor type in descriptorSet: %v, with "+
+			log.E(ctx, "FootprintBuilder: Not *descriptor type in descriptorSet: %v, with "+
 				"binding: %v, array index: %v", *ds, bi, di)
 		}
 	} else {
-		log.E(ctx, "Write target descriptor does not exist in "+
+		log.E(ctx, "FootprintBuilder: Write target descriptor does not exist in "+
 			"descriptorSet: %v, with binding: %v, array index: %v", *ds, bi, di)
 	}
 }
 
 func (ds *descriptorSet) useDescriptors(ctx context.Context,
-	bh *dependencygraph.Behavior) []dependencygraph.DefUseVariable {
+	bh *dependencygraph.Behavior, dynamicOffsets []uint32) []dependencygraph.DefUseVariable {
 	modified := []dependencygraph.DefUseVariable{}
+	doi := 0
 	for binding, count := range ds.descriptorCounts {
 		for di := uint64(0); di < count; di++ {
 			d := ds.getDescriptor(ctx, bh, binding, di)
-			read(ctx, bh, d.sampler)
-			switch d.ty {
-			case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-				modify(ctx, bh, d.backingData...)
-				modified = append(modified, d.backingData...)
-			default:
-				read(ctx, bh, d.backingData...)
+			if d != nil {
+				read(ctx, bh, d.sampler)
+				switch d.ty {
+				case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+					VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+					VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+					data := d.backDataBindings.getBoundData(ctx, bh, 0, vkWholeSize)
+					modify(ctx, bh, data...)
+					modified = append(modified, data...)
+				case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+					if doi < len(dynamicOffsets) {
+						data := d.backDataBindings.getBoundData(ctx, bh, uint64(dynamicOffsets[doi]),
+							uint64(d.rng))
+						doi++
+						modify(ctx, bh, data...)
+						modified = append(modified, data...)
+					} else {
+						log.E(ctx, "FootprintBuilder: DescriptorSet: %v has more dynamic descriptors than reserved dynamic offsets", *ds)
+					}
+				case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+					if doi < len(dynamicOffsets) {
+						data := d.backDataBindings.getBoundData(ctx, bh, uint64(dynamicOffsets[doi]),
+							uint64(d.rng))
+						doi++
+						read(ctx, bh, data...)
+					} else {
+						log.E(ctx, "FootprintBuilder: DescriptorSet: %v has more dynamic descriptors than reserved dynamic offsets", *ds)
+					}
+				default:
+					data := d.backDataBindings.getBoundData(ctx, bh, 0, vkWholeSize)
+					read(ctx, bh, data...)
+				}
 			}
 		}
 	}
@@ -996,13 +1029,13 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 		for _, imageInfo := range write.PImageInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
-			backingData := []dependencygraph.DefUseVariable{}
+			var dataBindings resBindingList
 			sampler := vkNullHandle
 			if write.DescriptorType != VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER &&
 				read(ctx, bh, vkHandle(imageInfo.ImageView)) {
 				vkView := imageInfo.ImageView
 				vkImg := GetState(s).ImageViews.Get(vkView).Image.VulkanHandle
-				backingData = vb.getImageData(ctx, bh, vkImg)
+				dataBindings = vb.images[vkImg].data.getSubBindingList(ctx, bh, 0, vkWholeSize)
 			}
 			if (write.DescriptorType == VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER ||
 				write.DescriptorType == VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
@@ -1010,19 +1043,29 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 				sampler = vkHandle(imageInfo.Sampler)
 			}
 			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType,
-				backingData, sampler)
+				dataBindings, sampler, 0)
 			dstElm++
 		}
 	case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-		VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+		VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		for _, bufferInfo := range write.PBufferInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			vkBuf := bufferInfo.Buffer
-			dData := vb.getBufferData(ctx, bh, vkBuf, uint64(bufferInfo.Offset), uint64(bufferInfo.Range))
-			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dData,
-				vkNullHandle)
+			dataBindings := vb.buffers[vkBuf].getSubBindingList(ctx, bh,
+				uint64(bufferInfo.Offset), uint64(bufferInfo.Range))
+			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dataBindings,
+				vkNullHandle, 0)
+			dstElm++
+		}
+	case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+		VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		for _, bufferInfo := range write.PBufferInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
+			updateDstForOverflow()
+			vkBuf := bufferInfo.Buffer
+			dataBindings := vb.buffers[vkBuf].getSubBindingList(ctx, bh,
+				uint64(bufferInfo.Offset), vkWholeSize)
+			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dataBindings,
+				vkNullHandle, bufferInfo.Range)
 			dstElm++
 		}
 	case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
@@ -1032,9 +1075,10 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 			read(ctx, bh, vkHandle(vkBufView))
 			bufView := GetState(s).BufferViews.Get(vkBufView)
 			vkBuf := GetState(s).BufferViews.Get(vkBufView).Buffer.VulkanHandle
-			dData := vb.getBufferData(ctx, bh, vkBuf, uint64(bufView.Offset), uint64(bufView.Range))
-			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dData,
-				vkNullHandle)
+			dataBindings := vb.buffers[vkBuf].getSubBindingList(ctx, bh,
+				uint64(bufView.Offset), uint64(bufView.Range))
+			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dataBindings,
+				vkNullHandle, 0)
 			dstElm++
 		}
 	}
@@ -1061,19 +1105,24 @@ func (ds *descriptorSet) copyDescriptors(ctx context.Context,
 		updateDstAndSrcForOverflow()
 		srcD := srcDs.getDescriptor(ctx, bh, srcBinding, srcElm)
 		ds.setDescriptor(ctx, bh, dstBinding, dstElm, srcD.ty,
-			srcD.backingData, srcD.sampler)
+			srcD.backDataBindings, srcD.sampler, srcD.rng)
 		srcElm++
 		dstElm++
 	}
 }
 
 type boundDescriptorSet struct {
-	descriptorSet *descriptorSet
+	descriptorSet  *descriptorSet
+	dynamicOffsets []uint32
 }
 
-func newBoundDescriptor(ctx context.Context, bh *dependencygraph.Behavior,
-	ds *descriptorSet) *boundDescriptorSet {
+func newBoundDescriptorSet(ctx context.Context, bh *dependencygraph.Behavior,
+	ds *descriptorSet, getDynamicOffset func() uint32) *boundDescriptorSet {
 	bds := &boundDescriptorSet{descriptorSet: ds}
+	bds.dynamicOffsets = make([]uint32, ds.dynamicDescriptorCount)
+	for i := range bds.dynamicOffsets {
+		bds.dynamicOffsets[i] = getDynamicOffset()
+	}
 	write(ctx, bh, bds)
 	return bds
 }
@@ -1194,7 +1243,7 @@ func (vb *FootprintBuilder) rollOutExecuted(ctx context.Context,
 			execInfo.updateCurrentCommand(ctx, executedFCI)
 			submittedCmd.runCommand(ctx, ft, vb.machine, execInfo)
 		} else {
-			log.E(ctx, "Execution order differs from submission order. "+
+			log.E(ctx, "FootprintBuilder: Execution order differs from submission order. "+
 				"Index of executed command: %v, Index of submitted command: %v",
 				executedFCI, submittedCmd.id)
 			return
@@ -1262,7 +1311,7 @@ func (vb *FootprintBuilder) useBoundDescriptorSets(ctx context.Context,
 	for _, bds := range cmdBufState.descriptorSets {
 		read(ctx, bh, bds)
 		ds := bds.descriptorSet
-		modified = append(modified, ds.useDescriptors(ctx, bh)...)
+		modified = append(modified, ds.useDescriptors(ctx, bh, bds.dynamicOffsets)...)
 	}
 	return modified
 }
@@ -1323,7 +1372,7 @@ func (vb *FootprintBuilder) readBoundIndexBuffer(ctx context.Context,
 	bh *dependencygraph.Behavior, execInfo *queueExecutionState, cmd api.Cmd) {
 	indexSize := uint64(execInfo.currentCmdBufState.indexType.size())
 	if indexSize == uint64(0) {
-		log.E(ctx, "Invalid size of the indices of bound index buffer. IndexType: %v",
+		log.E(ctx, "FootprintBuilder: Invalid size of the indices of bound index buffer. IndexType: %v",
 			execInfo.currentCmdBufState.indexType)
 	}
 	offset := uint64(0)
@@ -1398,7 +1447,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	GetState(s).PostSubcommand = func(a interface{}) {
 		queueSubmit, isQs := (GetState(s).CurrentSubmission).(*VkQueueSubmit)
 		if !isQs {
-			log.E(ctx, "CurrentSubmission command in State is not a VkQueueSubmit")
+			log.E(ctx, "FootprintBuilder: CurrentSubmission command in State is not a VkQueueSubmit")
 		}
 		fci := api.SubCmdIdx{uint64(vb.submitIDs[queueSubmit])}
 		fci = append(fci, GetState(s).SubCmdIdx...)
@@ -1523,8 +1572,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		inferredSize, err := subInferImageSize(ctx, cmd, id, nil, s, nil, cmd.thread,
 			nil, GetState(s).Images.Get(cmd.Image))
 		if err != nil {
-			log.E(ctx, "Cannot get inferred size of image: %v", cmd.Image)
-			log.E(ctx, "Command %v %v: %v", id, cmd, err)
+			log.E(ctx, "FootprintBuilder: Cannot get inferred size of image: %v", cmd.Image)
+			log.E(ctx, "FootprintBuilder: Command %v %v: %v", id, cmd, err)
 			bh.Aborted = true
 		}
 		size := uint64(inferredSize)
@@ -1537,8 +1586,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			inferredSize, err := subInferImageSize(ctx, cmd, id, nil, s, nil, cmd.thread,
 				nil, GetState(s).Images.Get(cmd.Image))
 			if err != nil {
-				log.E(ctx, "Cannot get inferred size of image: %v", cmd.Image)
-				log.E(ctx, "Command %v %v: %v", id, cmd, err)
+				log.E(ctx, "FootprintBuilder: Cannot get inferred size of image: %v", cmd.Image)
+				log.E(ctx, "FootprintBuilder: Command %v %v: %v", id, cmd, err)
 				bh.Aborted = true
 			}
 			size := uint64(inferredSize)
@@ -2265,13 +2314,29 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			dss = append(dss, vb.descriptorSets[vkSet])
 		}
 		firstSet := cmd.FirstSet
+		dOffsets := []uint32{}
+		dOffsetsLeft := 0
+		if cmd.DynamicOffsetCount > uint32(0) {
+			dOffsets = cmd.PDynamicOffsets.Slice(0, uint64(cmd.DynamicOffsetCount),
+				l).MustRead(ctx, cmd, s, nil)
+			dOffsetsLeft = len(dOffsets)
+		}
+		getDynamicOffset := func() uint32 {
+			if dOffsetsLeft > 0 {
+				d := dOffsets[len(dOffsets)-dOffsetsLeft]
+				dOffsetsLeft--
+				return d
+			}
+			log.E(ctx, "FootprintBuilder: The number of dynamic offsets does not match with the number of dynamic descriptors")
+			return 0
+		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
 		cbc.behave = func(sc submittedCommand,
 			execInfo *queueExecutionState) {
 			cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
 			for i, ds := range dss {
 				set := firstSet + uint32(i)
-				execInfo.currentCmdBufState.descriptorSets[set] = newBoundDescriptor(ctx, cbh, ds)
+				execInfo.currentCmdBufState.descriptorSets[set] = newBoundDescriptorSet(ctx, cbh, ds, getDynamicOffset)
 			}
 			ft.AddBehavior(ctx, cbh)
 		}
