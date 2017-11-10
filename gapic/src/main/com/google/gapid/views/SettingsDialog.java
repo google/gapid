@@ -48,6 +48,7 @@ public class SettingsDialog extends DialogBase {
   private Button autoCheckForUpdates;
   private Button sendAnalytics;
   private Button disableReplayOptimization;
+  private Button sendCrashReports;
   private FileTextbox adbPath;
   private Label restartLabel;
 
@@ -67,6 +68,7 @@ public class SettingsDialog extends DialogBase {
       settings.analyticsClientId = "";
     }
     settings.autoCheckForUpdates = autoCheckForUpdates.getSelection();
+    settings.reportExceptions = sendCrashReports.getSelection();
     settings.adb = adbPath.getText().trim();
     settings.disableReplayOptimization = disableReplayOptimization.getSelection();
     settings.onChange();
@@ -93,6 +95,9 @@ public class SettingsDialog extends DialogBase {
     createLabel(container, "Send anonymous usage statistics to Google:");
     sendAnalytics = Widgets.createCheckbox(container, "", settings.analyticsEnabled());
 
+    createLabel(container, "Automatically upload crash reports:");
+    sendCrashReports = Widgets.createCheckbox(container, "", settings.reportExceptions);
+
     createLabel(container, "Path to adb:");
     adbPath = withLayoutData(new FileTextbox.File(container, settings.adb) {
       @Override
@@ -110,7 +115,7 @@ public class SettingsDialog extends DialogBase {
     return area;
   }
 
-  protected void onSettingChanged(Event event) {
+  protected void onSettingChanged(@SuppressWarnings("unused") Event event) {
     boolean restartNeeded = !settings.adb.equals(adbPath.getText());
     restartLabel.setVisible(restartNeeded);
   }
