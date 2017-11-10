@@ -51,7 +51,7 @@ First select a Vulkan draw call. These are the commands that are nested under a 
 
 Once you have a draw-call selected, in the state view, you can navigate to `LastDrawInfos-><ID of the Queue in VkQueueSubmit>->(Graphics|Compute)Pipeline->Stages-><Stage>->Module`. This will give you the VulkanHandle of the shader that is bound for a particular stage.
 
-![alt text](../images/shaders_vulkan.png "Finding the bound program through the State Pane" width="340" height="549")
+<img src="../images/shaders_vulkan.png" alt= "Finding the bound program through the State Pane" width="340" height="549">
 
 ## Viewing vertex and fragment shaders from the bound Program
 
