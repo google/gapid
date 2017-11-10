@@ -59,7 +59,7 @@ func (v *formatVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		ctx := log.V{"file": path}.Bind(ctx)
 		f, err := ioutil.ReadFile(path)
 		if err != nil {
-			log.F(ctx, "Failed to read api file. Error: %v", err)
+			log.F(ctx, true, "Failed to read api file. Error: %v", err)
 			continue
 		}
 		m := parse.NewCSTMap()

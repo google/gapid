@@ -104,11 +104,11 @@ func chanHandler(to chan<- interface{}, closer <-chan struct{}) Handler {
 }
 
 func chanToHandler(ctx context.Context, f reflect.Value) Handler {
-	log.F(ctx, "Typed channels not yet supported")
+	log.F(ctx, true, "Typed channels not yet supported")
 	return nil
 }
 
 func chanToProducer(ctx context.Context, f reflect.Value) Producer {
-	log.F(ctx, "Typed channels not yet supported")
+	log.F(ctx, true, "Typed channels not yet supported")
 	return nil
 }

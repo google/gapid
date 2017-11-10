@@ -37,7 +37,7 @@ func ExampleSilent() {
 	ctx := newCtx()
 	err := shell.Command("echo", "Hello from the shell").Run(ctx)
 	if err != nil {
-		log.F(ctx, "Unable to say hello: %v", err)
+		log.F(ctx, true, "Unable to say hello: %v", err)
 	}
 	log.I(ctx, "Done")
 	// Output:
@@ -49,7 +49,7 @@ func ExampleVerbose() {
 	ctx := newCtx()
 	err := shell.Command("echo", "Hello", "from the shell").Verbose().Run(ctx)
 	if err != nil {
-		log.F(ctx, "Unable to say hello: %v", err)
+		log.F(ctx, true, "Unable to say hello: %v", err)
 	}
 	// Output:
 	//I: [Example] Exec: echo Hello "from the shell"

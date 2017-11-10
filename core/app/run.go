@@ -195,7 +195,7 @@ func Run(main task.Task) {
 		err = doRestart()
 	}
 	if err != nil {
-		log.F(ctx, "Main failed\nError: %v", err)
+		log.E(ctx, "Main failed\nError: %v", err)
 	}
 }
 

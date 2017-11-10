@@ -41,7 +41,7 @@ import (
 func Listen(ctx context.Context, addr string, cfg Config) error {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.F(ctx, "Could not start grpc server at %v: %s", addr, err.Error())
+		log.F(ctx, true, "Could not start grpc server at %v: %s", addr, err.Error())
 	}
 	return NewWithListener(ctx, listener, cfg, nil)
 }

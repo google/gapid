@@ -64,7 +64,7 @@ func (ctx Manager) For(msg string, args ...interface{}) *Assertion {
 }
 
 func (o logOutput) Fatal(args ...interface{}) {
-	log.F(o.ctx, fmt.Sprint(args...))
+	log.F(o.ctx, true, fmt.Sprint(args...))
 }
 
 func (o logOutput) Error(args ...interface{}) {

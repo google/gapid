@@ -46,7 +46,7 @@ func AsHandler(ctx context.Context, f interface{}) Handler {
 	case reflect.Chan:
 		return chanToHandler(ctx, v)
 	}
-	log.F(ctx, "Expected an event handler. Type: %v", v.Type())
+	log.F(ctx, true, "Expected an event handler. Type: %v", v.Type())
 	return nil
 }
 
@@ -88,7 +88,7 @@ func AsProducer(ctx context.Context, f interface{}) Producer {
 	case reflect.Chan:
 		return chanToProducer(ctx, v)
 	}
-	log.F(ctx, "Expected an event source. Type: %v", v.Type())
+	log.F(ctx, true, "Expected an event source. Type: %v", v.Type())
 	return nil
 }
 
@@ -107,6 +107,6 @@ func AsPredicate(ctx context.Context, f interface{}) Predicate {
 	case reflect.Func:
 		return funcToPredicate(ctx, v)
 	}
-	log.F(ctx, "Expected an event source. Type: %v", v.Type())
+	log.F(ctx, true, "Expected an event source. Type: %v", v.Type())
 	return nil
 }

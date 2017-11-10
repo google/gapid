@@ -149,7 +149,7 @@ func TestErrorLimit(t *testing.T) {
 		for i := 0; true; i++ {
 			p.ErrorAt(cst, "failure")
 			if i >= parse.ParseErrorLimit {
-				log.F(ctx, "Parsing not terminated. %d errors", i)
+				log.F(ctx, true, "Parsing not terminated. %d errors", i)
 			}
 		}
 	}, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)

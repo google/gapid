@@ -43,7 +43,7 @@ func ExampleAlways() {
 	ctx := newCtx()
 	s, err := shell.Command("echo", "Hello from the shell").On(stub.Respond("Hello")).Call(ctx)
 	if err != nil {
-		log.F(ctx, "Unable to say hello. Error: ", err)
+		log.F(ctx, true, "Unable to say hello. Error: ", err)
 	}
 	log.I(ctx, s)
 	log.I(ctx, "Done")
@@ -61,12 +61,12 @@ func ExampleHello() {
 	)
 	s, err := shell.Command("echo", "Hello from the shell").On(target).Call(ctx)
 	if err != nil {
-		log.F(ctx, "Unable to say hello. Error: ", err)
+		log.F(ctx, true, "Unable to say hello. Error: ", err)
 	}
 	log.I(ctx, s)
 	s, err = shell.Command("echo", "Goodbye now").On(target).Call(ctx)
 	if err != nil {
-		log.F(ctx, "Unable to say goodbye. Error: ", err)
+		log.F(ctx, true, "Unable to say goodbye. Error: ", err)
 	}
 	log.I(ctx, s)
 	log.I(ctx, "Done")

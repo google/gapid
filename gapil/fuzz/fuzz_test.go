@@ -34,7 +34,7 @@ func TestCrashers(t *testing.T) {
 	ctx := log.Testing(t)
 	files, err := filepath.Glob("./fuzz-wd/crashers/*")
 	if err != nil {
-		log.F(ctx, "failed to find crashers. Error: %v", err)
+		log.F(ctx, true, "failed to find crashers. Error: %v", err)
 		return
 	}
 	for _, file := range files {
@@ -44,11 +44,11 @@ func TestCrashers(t *testing.T) {
 		}
 		data, err := ioutil.ReadFile(file)
 		if err != nil {
-			log.F(ctx, "failed to open file. Error: %v", err)
+			log.F(ctx, true, "failed to open file. Error: %v", err)
 			return
 		}
 		if err := compile(data); err != nil {
-			log.F(ctx, "crashed. Error: %v", err)
+			log.F(ctx, true, "crashed. Error: %v", err)
 		}
 	}
 }

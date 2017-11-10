@@ -188,7 +188,7 @@ func collectTypeName(ctx context.Context, e *entry, expr ast.Expr, top bool) boo
 		return true
 	case *ast.StarExpr:
 		if !top {
-			log.F(ctx, "Can't cope with non simple pointers (%v)", expr)
+			log.F(ctx, true, "Can't cope with non simple pointers (%v)", expr)
 			return false
 		}
 		if !collectTypeName(ctx, e, t.X, false) {
@@ -197,7 +197,7 @@ func collectTypeName(ctx context.Context, e *entry, expr ast.Expr, top bool) boo
 		e.ParsedType = "*" + e.ParsedType
 		return true
 	default:
-		log.F(ctx, "Unknown type %T", t)
+		log.F(ctx, true, "Unknown type %T", t)
 		return false
 	}
 }

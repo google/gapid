@@ -68,9 +68,11 @@ func W(ctx context.Context, fmt string, args ...interface{}) { From(ctx).W(fmt, 
 // E logs a error message to the logging target.
 func E(ctx context.Context, fmt string, args ...interface{}) { From(ctx).E(fmt, args...) }
 
-// F logs a fatal message to the logging target, also indicating the process
-// should stop.
-func F(ctx context.Context, fmt string, args ...interface{}) { From(ctx).F(fmt, args...) }
+// F logs a fatal message to the logging target.
+// If stopProcess is true then the message indicates the process should stop.
+func F(ctx context.Context, stopProcess bool, fmt string, args ...interface{}) {
+	From(ctx).F(fmt, stopProcess, args...)
+}
 
 // D logs a debug message to the logging target.
 func (l *Logger) D(fmt string, args ...interface{}) { l.Logf(Debug, false, fmt, args...) }
@@ -84,9 +86,11 @@ func (l *Logger) W(fmt string, args ...interface{}) { l.Logf(Warning, false, fmt
 // E logs a error message to the logging target.
 func (l *Logger) E(fmt string, args ...interface{}) { l.Logf(Error, false, fmt, args...) }
 
-// F logs a fatal message to the logging target, also indicating the process
-// should stop.
-func (l *Logger) F(fmt string, args ...interface{}) { l.Logf(Fatal, true, fmt, args...) }
+// F logs a fatal message to the logging target.
+// If stopProcess is true then the message indicates the process should stop.
+func (l *Logger) F(fmt string, stopProcess bool, args ...interface{}) {
+	l.Logf(Fatal, stopProcess, fmt, args...)
+}
 
 // Logf logs a printf-style message at severity s to the logging target.
 func (l *Logger) Logf(s Severity, stopProcess bool, fmt string, args ...interface{}) {
@@ -170,10 +174,10 @@ func (l *Logger) Writer(s Severity) io.WriteCloser {
 }
 
 // Fatal implements the standard go logger interface.
-func (l *Logger) Fatal(args ...interface{}) { l.F("%s", fmt.Sprint(args...)) }
+func (l *Logger) Fatal(args ...interface{}) { l.F("%s", true, fmt.Sprint(args...)) }
 
 // Fatalf implements the standard go logger interface.
-func (l *Logger) Fatalf(format string, args ...interface{}) { l.F(format, args...) }
+func (l *Logger) Fatalf(format string, args ...interface{}) { l.F(format, true, args...) }
 
 // Fatalln implements the standard go logger interface.
 func (l *Logger) Fatalln(args ...interface{}) { l.Fatal(args...) }

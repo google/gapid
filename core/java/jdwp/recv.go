@@ -61,7 +61,7 @@ func (c *Connection) recv(ctx context.Context) {
 				d := endian.Reader(bytes.NewReader(packet.data), device.BigEndian)
 				events := Events{}
 				if err := c.decode(d, reflect.ValueOf(&events)); err != nil {
-					log.F(ctx, "Couldn't decode composite event data. Error: %v", err)
+					log.F(ctx, true, "Couldn't decode composite event data. Error: %v", err)
 					continue
 				}
 				c.Lock()

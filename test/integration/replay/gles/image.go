@@ -39,17 +39,17 @@ func storeReferenceImage(ctx context.Context, outputDir string, name string, img
 	data := &bytes.Buffer{}
 	i, err := toGoImage(img)
 	if err != nil {
-		log.F(ctx, "Failed to convert GPU image to Go image: %v", err)
+		log.F(ctx, true, "Failed to convert GPU image to Go image: %v", err)
 	}
 	if err := png.Encode(data, i); err != nil {
-		log.F(ctx, "Failed to encode reference image: %v", err)
+		log.F(ctx, true, "Failed to encode reference image: %v", err)
 	}
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		log.F(ctx, "Failed to create reference image directory: %v", err)
+		log.F(ctx, true, "Failed to create reference image directory: %v", err)
 	}
 	path := filepath.Join(outputDir, name+".png")
 	if err := ioutil.WriteFile(path, data.Bytes(), 0666); err != nil {
-		log.F(ctx, "Failed to store reference image: %v", err)
+		log.F(ctx, true, "Failed to store reference image: %v", err)
 	}
 }
 
@@ -58,19 +58,19 @@ func loadReferenceImage(ctx context.Context, name string) *gpuimg.Data {
 	ctx = log.V{"name": name}.Bind(ctx)
 	b64, found := embedded[filepath.Join("reference", name+".png")]
 	if !found {
-		log.F(ctx, "Embedded reference image '%s' not found", name)
+		log.F(ctx, true, "Embedded reference image '%s' not found", name)
 	}
 	data, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
-		log.F(ctx, "Failed to load reference image: %v", err)
+		log.F(ctx, true, "Failed to load reference image: %v", err)
 	}
 	img, err := png.Decode(bytes.NewBuffer(data))
 	if err != nil {
-		log.F(ctx, "Failed to decode reference image: %v", err)
+		log.F(ctx, true, "Failed to decode reference image: %v", err)
 	}
 	out, err := toGPUImage(img)
 	if err != nil {
-		log.F(ctx, "Failed to convert Go image to GPU image: %v", err)
+		log.F(ctx, true, "Failed to convert Go image to GPU image: %v", err)
 	}
 	return out
 }

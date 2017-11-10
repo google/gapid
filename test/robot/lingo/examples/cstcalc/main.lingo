@@ -112,7 +112,7 @@ func eval(ctx context.Context, node *lingo.Node) Eval {
 				case opDivide:
 					result.value /= got.value
 				default:
-					log.F(ctx, "Cannot combine values without operator")
+					log.F(ctx, true, "Cannot combine values without operator")
 				}
 			}
 			result.hasValue = true
