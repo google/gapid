@@ -359,7 +359,8 @@ bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
               // to vkWaitForFences() once the issue is fixed.
               do {
                 return_value = mVkDeviceFunctionStubs[device].vkGetFenceStatus(device, fence);
-              } while (return_value != gapir::Vulkan::VkResult::VK_SUCCESS);
+              } while (return_value != gapir::Vulkan::VkResult::VK_SUCCESS &&
+                         return_value != gapir::Vulkan::VkResult::VK_ERROR_DEVICE_LOST);
             } else {
               return_value = mVkDeviceFunctionStubs[device].vkGetFenceStatus(device, fence);
             }
