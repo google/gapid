@@ -756,7 +756,7 @@ func (bd *resBinding) shrink(offset, size uint64) error {
 	if size == vkWholeSize {
 		size = bd.size() - offset
 	}
-	if offset+size < offset || offset+size > bd.size() {
+	if (offset+size < offset) || (offset+size > bd.size()) {
 		return shrinkOutOfMemBindingBound{bd, offset, size}
 	}
 	if sp, isSpan := bd.backingData.(memorySpan); isSpan {
@@ -801,15 +801,15 @@ func newOpaqueResBinding(ctx context.Context, bh *dependencygraph.Behavior,
 }
 
 func (bd *resBinding) newSubBinding(ctx context.Context,
-	bh *dependencygraph.Behavior, offset, size uint64) *resBinding {
+	bh *dependencygraph.Behavior, offset, size uint64) (*resBinding, error) {
 	subBinding, _ := bd.duplicate().(*resBinding)
 	if err := subBinding.shrink(offset, size); err != nil {
-		return nil
+		return nil, err
 	}
 	if bh != nil {
 		write(ctx, bh, subBinding)
 	}
-	return subBinding
+	return subBinding, nil
 }
 
 func (*resBinding) DefUseVariable() {}
@@ -863,7 +863,10 @@ func (l resBindingList) getSubBindingList(ctx context.Context,
 			if bh != nil {
 				read(ctx, bh, bl[i])
 			}
-			newB := bl[i].newSubBinding(ctx, bh, start, end-start)
+			newB, err := bl[i].newSubBinding(ctx, bh, start-bl[i].span().Start, end-start)
+			if err != nil {
+				log.E(ctx, "%s", err.Error())
+			}
 			if newB != nil {
 				subBindings = append(subBindings, newB)
 			}
