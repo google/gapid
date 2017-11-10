@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/gapid/core/net"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/host"
 )
@@ -99,10 +100,10 @@ func getOSAndGPU(cfg *device.Configuration) (os string, gpu string) {
 func getUserAgentOSAndGPU(cfg *device.Configuration, version AppVersion) (string, string, string) {
 	os, gpu := getOSAndGPU(cfg)
 	ua := net.UserAgent(cfg, net.ApplicationInfo{
-		Name: version.Name,
+		Name:         version.Name,
 		VersionMajor: version.Major,
 		VersionMinor: version.Minor,
 		VersionPoint: version.Point,
-	)
+	})
 	return ua, os, gpu
 }
