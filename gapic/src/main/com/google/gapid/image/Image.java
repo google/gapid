@@ -15,8 +15,10 @@
  */
 package com.google.gapid.image;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.glviewer.gl.Texture;
 import com.google.gapid.image.Histogram.Binner;
+import com.google.gapid.proto.image.Image.ID;
 import com.google.gapid.proto.stream.Stream;
 
 import org.eclipse.swt.graphics.ImageData;
@@ -24,7 +26,9 @@ import org.eclipse.swt.graphics.PaletteData;
 import org.eclipse.swt.graphics.RGB;
 import org.lwjgl.opengl.GL11;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -229,5 +233,101 @@ public interface Image {
      * @return the maximum alpha value of the image data.
      */
     public double getAlphaMax();
+  }
+
+  /**
+   * Key that can be used for caching images and image related data.
+   */
+  public interface Key {
+    public static final Key EMPTY_KEY =
+        new SingleIdKey(com.google.gapid.proto.image.Image.ID.getDefaultInstance());
+
+    public static Key of(com.google.gapid.proto.image.Image.Info info) {
+      return new SingleIdKey(info.getBytes());
+    }
+
+    public static Key of(com.google.gapid.proto.image.Image.Info[] infos) {
+      com.google.gapid.proto.image.Image.ID[] ids =
+          new com.google.gapid.proto.image.Image.ID[infos.length];
+      for (int i = 0; i < ids.length; i++) {
+        ids[i] = infos[i].getBytes();
+      }
+      return of(ids);
+    }
+
+    public static Key of(com.google.gapid.proto.image.Image.ID[] ids) {
+      if (ids.length == 0) {
+        return EMPTY_KEY;
+      } else if (ids.length == 1) {
+        return new SingleIdKey(ids[0]);
+      }
+      return new MultiIdKey(ids);
+    }
+
+    public static class Builder {
+      private final List<com.google.gapid.proto.image.Image.ID> ids = Lists.newArrayList();
+
+      public void add(com.google.gapid.proto.image.Image.Info info) {
+        ids.add(info.getBytes());
+      }
+
+      public void add(com.google.gapid.proto.image.Image.Info[] infos) {
+        for (com.google.gapid.proto.image.Image.Info info : infos) {
+          ids.add(info.getBytes());
+        }
+      }
+
+      public Key build() {
+        return Key.of(ids.toArray(new com.google.gapid.proto.image.Image.ID[ids.size()]));
+      }
+    }
+  }
+
+  public static class SingleIdKey implements Key {
+    private final com.google.gapid.proto.image.Image.ID id;
+
+    protected SingleIdKey(com.google.gapid.proto.image.Image.ID id) {
+      this.id = id;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      } else if (!(obj instanceof SingleIdKey)) {
+        return false;
+      }
+      return id.equals(((SingleIdKey)obj).id);
+    }
+
+    @Override
+    public int hashCode() {
+      return id.hashCode();
+    }
+  }
+
+  public static class MultiIdKey implements Key {
+    private final com.google.gapid.proto.image.Image.ID[] ids;
+    private final int h;
+
+    public MultiIdKey(ID[] ids) {
+      this.ids = ids;
+      this.h = Arrays.hashCode(ids);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      } else if (!(obj instanceof MultiIdKey)) {
+        return false;
+      }
+      return Arrays.equals(ids, ((MultiIdKey)obj).ids);
+    }
+
+    @Override
+    public int hashCode() {
+      return h;
+    }
   }
 }

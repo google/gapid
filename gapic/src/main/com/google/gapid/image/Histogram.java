@@ -53,6 +53,9 @@ public class Histogram {
         .collect(toSet()));
   }
 
+  /**
+   * Returns the a good default starting range to use for tone mapping.
+   */
   public Range getInitialRange(double snapThreshold) {
     if (isLinear()) {
       return Range.IDENTITY;
@@ -123,10 +126,18 @@ public class Histogram {
     return !(mapper instanceof ExpMapper);
   }
 
+  /**
+   * Returns a {@link DoubleStream} of <code>count</code> values evenly spaced over the [0, 1]
+   * interval. If this is a linear histogram, the returned values will be spread linearly,
+   * otherwise they will be spread exponentially with the same exponent.
+   */
   public DoubleStream range(int count) {
     return mapper.range(count);
   }
 
+  /**
+   * Helper to build {@link Bins} instances with a given {@link Mapper}.
+   */
   public static class Binner {
     private Mapper mapper;
     private final int numBins;
@@ -138,17 +149,26 @@ public class Histogram {
       this.bins = new int[numBins][Stream.Channel.values().length];
     }
 
+    /**
+     * Adds the given value as a data point for the given channel, incrementing it's bin count.
+     */
     public void bin(float value, Stream.Channel channel) {
       int binIdx = (int)(mapper.map(value) * (numBins - 1));
       binIdx = Math.max(0, Math.min(numBins - 1, binIdx));
       bins[binIdx][channel.ordinal()]++;
     }
 
+    /**
+     * Returns a new {@link Bins} instance with the binned counts computed so far.
+     */
     public Bins getBins() {
       return new Bins(bins);
     }
   }
 
+  /**
+   * Maps values in the given range to a normalized [0, 1] range.
+   */
   private static class Mapper {
     protected final Range limits;
 
@@ -156,6 +176,9 @@ public class Histogram {
       this.limits = limits;
     }
 
+    /**
+     * Returns a mapper whose range will encompass all values from the given images.
+     */
     public static Mapper get(Image[] images, boolean logFit) {
       // Get the limits and average value.
       double min = Double.POSITIVE_INFINITY;
@@ -192,23 +215,40 @@ public class Histogram {
       return (exponent == 1) ? new Mapper(limits) : new ExpMapper(limits, exponent);
     }
 
+    /**
+     * Normalizes the given value to the [0, 1] range. For linear mappings, this is equivalent to
+     * the {@link #map(double)} function.
+     */
     public double normalize(double value) {
       return limits.frac(value);
     }
 
+    /**
+     * Maps the given value to the [0, 1] range. For exponential mappings, the returned values are
+     * adjusted to fit the exponential curve.
+     */
     public double map(double value) {
       return limits.frac(value);
     }
 
+    /**
+     * Returns the inverse of the {@link #map(double)} function.
+     */
     public double unmap(double value) {
       return limits.lerp(value);
     }
 
+    /**
+     * See {@link Histogram#range(int)}.
+     */
     public DoubleStream range(int count) {
       return IntStream.range(1, count).mapToDouble(i -> (double)i / (count - 1));
     }
   }
 
+  /**
+   * A {@link Mapper} that fits the range onto an exponential curve.
+   */
   private static class ExpMapper extends Mapper {
     /**
      * The exponential power used to transform a normalized linear [0, 1] range where 0 represents
@@ -238,6 +278,9 @@ public class Histogram {
     }
   }
 
+  /**
+   * Holds the histogram's binned data, created with the {@link Binner} class.
+   */
   private static class Bins {
     private final int[][] bins;
     private final int[] max, total;
@@ -261,6 +304,9 @@ public class Histogram {
       }
     }
 
+    /**
+     * Returns the binned data for the given images using the given mapper.
+     */
     public static Bins get(Image[] images, Mapper mapper, int numBins) {
       Binner binner = new Binner(mapper, numBins);
       for (Image image : images) {
