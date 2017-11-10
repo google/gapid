@@ -17,17 +17,16 @@ package com.google.gapid.image;
 
 import static com.google.common.util.concurrent.Futures.immediateFailedFuture;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
-import static com.google.gapid.image.Images.getCombinedId;
 import static com.google.gapid.util.Paths.blob;
 import static com.google.gapid.util.Paths.imageData;
 import static com.google.gapid.util.Paths.imageInfo;
 import static com.google.gapid.util.Paths.resourceInfo;
 import static com.google.gapid.util.Paths.thumbnail;
-import static java.util.Arrays.stream;
 
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.image.Image.Key;
 import com.google.gapid.proto.image.Image.Info;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
@@ -242,13 +241,12 @@ public class FetchedImage implements MultiLayerAndLevelImage {
   }
 
   @Override
-  public com.google.gapid.proto.image.Image.ID getLevelId(int level) {
-    if (layers.length == 1) {
-      return layers[0].getLevelId(level);
-    } else {
-      getCombinedId(stream(layers).map(l -> l.getLevelId(level)));
+  public Image.Key getLevelKey(int level) {
+    Key.Builder builder = new Key.Builder();
+    for (int i = 0; i < layers.length; i++) {
+      layers[i].appendLevelTo(level, builder);
     }
-    return null;
+    return builder.build();
   }
 
   /**
@@ -267,8 +265,8 @@ public class FetchedImage implements MultiLayerAndLevelImage {
           levels[level].get();
     }
 
-    public com.google.gapid.proto.image.Image.ID getLevelId(int level) {
-      return levels[level].getId();
+    public void appendLevelTo(int level, Image.Key.Builder keyBuilder) {
+      levels[level].appendTo(keyBuilder);
     }
   }
 
@@ -288,8 +286,8 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       }
 
       @Override
-      public com.google.gapid.proto.image.Image.ID getId() {
-        return com.google.gapid.proto.image.Image.ID.getDefaultInstance();
+      public void appendTo(Image.Key.Builder keyBuilder) {
+        // Do nothing.
       }
     };
 
@@ -318,10 +316,10 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
     protected abstract ListenableFuture<Image> doLoad();
 
-    public abstract com.google.gapid.proto.image.Image.ID getId();
+    public abstract void appendTo(Image.Key.Builder keyBuilder);
 
     protected static Image convertImage(Info info, Images.Format format, byte[] data) {
-      return format.builder(info.getBytes(), info.getWidth(), info.getHeight(), info.getDepth())
+      return format.builder(Image.Key.of(info), info.getWidth(), info.getHeight(), info.getDepth())
           .update(data, 0, 0, 0, info.getWidth(), info.getHeight(), info.getDepth())
           .build();
     }
@@ -346,7 +344,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       // +----+----+----+----+
       // |    | +Y |    |    |
       // +----+----+----+----+
-      return format.builder(getCombinedId(infos), 4 * width, 3 * height, 1)
+      return format.builder(Image.Key.of(infos), 4 * width, 3 * height, 1)
           .update(data[0], 0 * width, 1 * height, 0, infos[0].getWidth(), infos[0].getHeight(), 1) // -X
           .update(data[1], 2 * width, 1 * height, 0, infos[1].getWidth(), infos[1].getHeight(), 1) // +X
           .update(data[2], 1 * width, 2 * height, 0, infos[2].getWidth(), infos[2].getHeight(), 1) // -Y
@@ -378,8 +376,8 @@ public class FetchedImage implements MultiLayerAndLevelImage {
     }
 
     @Override
-    public com.google.gapid.proto.image.Image.ID getId() {
-      return imageInfo.getBytes();
+    public void appendTo(Image.Key.Builder keyBuilder) {
+      keyBuilder.add(imageInfo);
     }
   }
 
@@ -417,8 +415,8 @@ public class FetchedImage implements MultiLayerAndLevelImage {
     }
 
     @Override
-    public com.google.gapid.proto.image.Image.ID getId() {
-      return getCombinedId(imageInfos);
+    public void appendTo(Image.Key.Builder keyBuilder) {
+      keyBuilder.add(imageInfos);
     }
   }
 }

@@ -89,7 +89,6 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -116,7 +115,7 @@ public class ImagePanel extends Composite {
   private static final float ALPHA_WARNING_THRESHOLD = 2 / 255f;
   protected static final Image[] NO_LAYERS = new Image[] { Image.EMPTY };
 
-  private static final Cache<com.google.gapid.proto.image.Image.ID, Histogram> HISTOGRAM_CACHE = softCache();
+  private static final Cache<Image.Key, Histogram> HISTOGRAM_CACHE = softCache();
 
   private final Widgets widgets;
   private final SingleInFlight imageRequestController = new SingleInFlight();
@@ -465,7 +464,7 @@ public class ImagePanel extends Composite {
     ListenableFuture<LevelData> future = Futures.transform(Futures.allAsList(layerFutures), imageList -> {
       Image[] images = imageList.toArray(new Image[imageList.size()]);
 
-      Histogram histogram = getUnchecked(HISTOGRAM_CACHE, image.getLevelId(level),
+      Histogram histogram = getUnchecked(HISTOGRAM_CACHE, image.getLevelKey(level),
           () -> new Histogram(images, NUM_HISTOGRAM_BINS, isHDR(images)));
       return new LevelData(images, histogram);
     });
@@ -1057,12 +1056,8 @@ public class ImagePanel extends Composite {
     public void update(Renderer renderer, SceneData newData) {
       // Release textures that are no longer in data.
       Set<Image> newSet = Sets.newHashSet(newData.images);
-      for (Iterator<Map.Entry<Image, Texture>> it = imageToTexture.entrySet().iterator(); it.hasNext(); ) {
-        Map.Entry<Image, Texture> entry = it.next();
-        if (!newSet.contains(entry.getKey())) {
-          entry.getValue().delete();
-          it.remove();
-        }
+      for (Image removed : Sets.difference(imageToTexture.keySet(), newSet)) {
+        imageToTexture.remove(removed).delete();
       }
 
       this.textures = new Texture[newData.images.length];
