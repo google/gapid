@@ -187,7 +187,7 @@ func Run(main task.Task) {
 
 	// Add the abort and crash signal handlers
 	handleAbortSignals(shutdown)
-	handleCrashSignals(shutdown)
+	handleCrashSignals(ctx, shutdown)
 
 	// Now we are ready to run the main task
 	err := main(ctx)

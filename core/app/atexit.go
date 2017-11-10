@@ -20,10 +20,10 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/google/gapid/core/fault/stacktrace"
-
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/fault/stacktrace"
+	"github.com/google/gapid/core/log"
 )
 
 // ExitCode is the type for named return values from the application main entry point.
@@ -83,8 +83,9 @@ func handleAbortSignals(cancel task.CancelFunc) {
 	})
 }
 
-func handleCrashSignals(cancel task.CancelFunc) {
-	crash.Register(func(interface{}, stacktrace.Callstack) {
-		cancel()
+func handleCrashSignals(ctx context.Context, cancel task.CancelFunc) {
+	crash.Register(func(err interface{}, callstack stacktrace.Callstack) {
+		defer cancel()
+		log.F(ctx, false, "Crash: %v (%T)\n%v", err, err, callstack)
 	})
 }
