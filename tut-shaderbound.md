@@ -47,11 +47,11 @@ To see the currently bound shaders for a particular draw call you can use the St
 
 First select a Vulkan draw call. These are the commands that are nested under a VkQueueSubmit call. The non-nested ones are only the location that the commands were recorded.
 
-<img src="../images/vulkan_commands.png" alt="Selecting a Vulkan draw">
+<img src="../images/vulkan_commands.png" alt="Selecting a Vulkan draw" width="350" height="549">
 
 Once you have a draw-call selected, in the state view, you can navigate to `LastDrawInfos-><ID of the Queue in VkQueueSubmit>->(Graphics|Compute)Pipeline->Stages-><Stage>->Module`. This will give you the VulkanHandle of the shader that is bound for a particular stage.
 
-![alt text](../images/shaders_vulkan.png "Finding the bound program through the State Pane")
+![alt text](../images/shaders_vulkan.png "Finding the bound program through the State Pane" width="340" height="549")
 
 ## Viewing vertex and fragment shaders from the bound Program
 
