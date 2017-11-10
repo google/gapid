@@ -84,7 +84,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 
 	gapir, err := layout.Gapir(ctx)
 	if err != nil {
-		log.F(ctx, "Couldn't locate gapir executable: %v", err)
+		log.F(ctx, true, "Couldn't locate gapir executable: %v", err)
 		return nil
 	}
 

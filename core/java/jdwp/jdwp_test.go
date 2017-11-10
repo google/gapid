@@ -55,14 +55,14 @@ func TestMain(m *testing.M) {
 	ctx = log.PutHandler(ctx, log.Normal.Handler(log.Std()))
 	os.Exit(test.BuildRunAndConnect(ctx, source, func(ctx context.Context, c *jdwp.Connection) int {
 		if err := c.ResumeAll(); err != nil {
-			log.F(ctx, "Failed resume VM. Error: %v", err)
+			log.F(ctx, true, "Failed resume VM. Error: %v", err)
 			return -1
 		}
 
 		// Wait for java to load the prepare class
 		t, err := c.WaitForClassPrepare(ctx, "Calculator")
 		if err != nil {
-			log.F(ctx, "Failed to wait for Calculator prepare. Error: %v", err)
+			log.F(ctx, true, "Failed to wait for Calculator prepare. Error: %v", err)
 			return -1
 		}
 
@@ -79,7 +79,7 @@ func TestGetClassBySignature(t *testing.T) {
 
 	calculator, err := connection.GetClassBySignature("LCalculator;")
 	if err != nil {
-		log.F(ctx, "GetClassesBySignature returned error: %v", err)
+		log.F(ctx, true, "GetClassesBySignature returned error: %v", err)
 	}
 
 	assert.For(ctx, "Calculator kind").That(calculator.Kind).Equals(jdwp.Class)
@@ -91,25 +91,25 @@ func TestInvokeStaticMethod(t *testing.T) {
 
 	class, err := connection.GetClassBySignature("LCalculator;")
 	if err != nil {
-		log.F(ctx, "GetClassesBySignature returned error: %v", err)
+		log.F(ctx, true, "GetClassesBySignature returned error: %v", err)
 		return
 	}
 
 	methods, err := connection.GetMethods(class.TypeID)
 	if err != nil {
-		log.F(ctx, "GetMethods returned error: %v", err)
+		log.F(ctx, true, "GetMethods returned error: %v", err)
 		return
 	}
 
 	add := methods.FindBySignature("Add", "(II)I")
 	if add == nil {
-		log.F(ctx, "Couldn't find method Add: %v", err)
+		log.F(ctx, true, "Couldn't find method Add: %v", err)
 		return
 	}
 
 	result, err := connection.InvokeStaticMethod(class.ClassID(), add.ID, thread, jdwp.InvokeSingleThreaded, 3, 7)
 	if err != nil {
-		log.F(ctx, "InvokeStaticMethod returned error: %v", err)
+		log.F(ctx, true, "InvokeStaticMethod returned error: %v", err)
 		return
 	}
 	assert.For(ctx, "Add(3, 7)").That(result.Result).Equals(10)
@@ -120,32 +120,32 @@ func TestInvokeMethod(t *testing.T) {
 
 	class, err := connection.GetClassBySignature("LCalculator;")
 	if err != nil {
-		log.F(ctx, "GetClassesBySignature returned error: %v", err)
+		log.F(ctx, true, "GetClassesBySignature returned error: %v", err)
 		return
 	}
 
 	methods, err := connection.GetMethods(class.TypeID)
 	if err != nil {
-		log.F(ctx, "GetMethods returned error: %v", err)
+		log.F(ctx, true, "GetMethods returned error: %v", err)
 		return
 	}
 
 	constructor := methods.FindBySignature("<init>", "()V")
 	if constructor == nil {
-		log.F(ctx, "Couldn't find constructor: %v", err)
+		log.F(ctx, true, "Couldn't find constructor: %v", err)
 		log.I(ctx, "Available methods:\n%v", methods)
 		return
 	}
 
 	instance, err := connection.NewInstance(class.ClassID(), constructor.ID, thread, jdwp.InvokeSingleThreaded)
 	if err != nil {
-		log.F(ctx, "NewInstance returned error: %v", err)
+		log.F(ctx, true, "NewInstance returned error: %v", err)
 		return
 	}
 
 	add := methods.FindBySignature("Add", "(I)V")
 	if add == nil {
-		log.F(ctx, "Couldn't find method Add: %v", err)
+		log.F(ctx, true, "Couldn't find method Add: %v", err)
 		log.I(ctx, "Available methods:\n%v", methods)
 		return
 	}
@@ -159,14 +159,14 @@ func TestInvokeMethod(t *testing.T) {
 			jdwp.InvokeSingleThreaded,
 			i)
 		if err != nil {
-			log.F(ctx, "InvokeMethod returned error: %v", err)
+			log.F(ctx, true, "InvokeMethod returned error: %v", err)
 			return
 		}
 	}
 
 	resultf := methods.FindBySignature("Result", "()I")
 	if resultf == nil {
-		log.F(ctx, "Couldn't find method Result: %v", err)
+		log.F(ctx, true, "Couldn't find method Result: %v", err)
 		log.I(ctx, "Available methods:\n%v", methods)
 		return
 	}
@@ -178,7 +178,7 @@ func TestInvokeMethod(t *testing.T) {
 		thread,
 		jdwp.InvokeSingleThreaded)
 	if err != nil {
-		log.F(ctx, "InvokeMethod returned error: %v", err)
+		log.F(ctx, true, "InvokeMethod returned error: %v", err)
 		return
 	}
 	assert.For(ctx, "Result").That(result.Result).Equals(3 + 6 + 8)

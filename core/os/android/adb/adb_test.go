@@ -26,14 +26,15 @@ import (
 func mustConnect(ctx context.Context, serial string) adb.Device {
 	devices, err := adb.Devices(ctx)
 	if err != nil {
-		log.F(ctx, "Couldn't get devices. Error: %v", err)
+		log.F(ctx, true, "Couldn't get devices. Error: %v", err)
+		return nil
 	}
 	for _, d := range devices {
 		if d.Instance().Serial == serial {
 			return d
 		}
 	}
-	log.F(ctx, "Couldn't find device '%v'", serial)
+	log.F(ctx, true, "Couldn't find device '%v'", serial)
 	return nil
 }
 

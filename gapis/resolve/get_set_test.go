@@ -74,7 +74,7 @@ func newPathTest(ctx context.Context, cmds ...api.Cmd) *path.Capture {
 	h := &capture.Header{Abi: device.WindowsX86_64}
 	p, err := capture.New(ctx, "test", h, cmds)
 	if err != nil {
-		log.F(ctx, "Couldn't create capture: %v", err)
+		log.F(ctx, true, "Couldn't create capture: %v", err)
 	}
 	return p
 }

@@ -28,7 +28,7 @@ func applyProfiler(ctx context.Context, flags *ProfileFlags) func() {
 		log.I(ctx, "CPU profiling enabled")
 		f, err := os.Create(flags.CPU)
 		if err != nil {
-			log.F(ctx, "CPU profiling failed to start.\nError: %v", err)
+			log.F(ctx, true, "CPU profiling failed to start.\nError: %v", err)
 		}
 		pprof.StartCPUProfile(f)
 		closers = append(closers, func() {

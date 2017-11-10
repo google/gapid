@@ -30,7 +30,7 @@ type PrepareTask func(context.Context, net.Listener, *grpc.Server) error
 func Serve(ctx context.Context, address string, prepare PrepareTask, options ...grpc.ServerOption) error {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		log.F(ctx, "Could not start grpc server. Error: %v", err)
+		log.F(ctx, true, "Could not start grpc server. Error: %v", err)
 	}
 	return ServeWithListener(ctx, listener, prepare, options...)
 }

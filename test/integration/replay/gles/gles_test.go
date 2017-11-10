@@ -113,7 +113,7 @@ var (
 func storeCommands(ctx context.Context, cmds []api.Cmd) id.ID {
 	id, err := database.Store(ctx, cmds)
 	if err != nil {
-		log.F(ctx, "Failed to store command stream: %v", err)
+		log.F(ctx, true, "Failed to store command stream: %v", err)
 	}
 	return id
 }

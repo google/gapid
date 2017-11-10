@@ -83,7 +83,7 @@ func funcToHandler(ctx context.Context, f reflect.Value) Handler {
 		[]reflect.Type{errorType},
 	)
 	if err != nil {
-		log.F(ctx, "Checking handler signature. Error: %v", err)
+		log.F(ctx, true, "Checking handler signature. Error: %v", err)
 	}
 	return func(ctx context.Context, event interface{}) error {
 		args := []reflect.Value{
@@ -107,7 +107,7 @@ func funcToProducer(ctx context.Context, f reflect.Value) Producer {
 		[]reflect.Type{nil},
 	)
 	if err != nil {
-		log.F(ctx, "Checking producer signature. Error: %v", err)
+		log.F(ctx, true, "Checking producer signature. Error: %v", err)
 	}
 	return func(ctx context.Context) interface{} {
 		args := []reflect.Value{reflect.ValueOf(ctx)}
@@ -121,7 +121,7 @@ func funcToPredicate(ctx context.Context, f reflect.Value) Predicate {
 		[]reflect.Type{boolType},
 	)
 	if err != nil {
-		log.F(ctx, "Checking handler signature. Error: %v", err)
+		log.F(ctx, true, "Checking handler signature. Error: %v", err)
 	}
 	return func(ctx context.Context, event interface{}) bool {
 		args := []reflect.Value{reflect.ValueOf(ctx), safeValue(event, t)}
