@@ -1115,3 +1115,7 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 		}
 	}
 }
+
+func (e externs) vkErrorUnrecognizedExtension(extName string) {
+	log.E(e.ctx, "Unrecognized extension: %s, GAPID may not work properly.", extName)
+}
