@@ -26,7 +26,8 @@ import (
 
 var (
 	mutex     sync.RWMutex
-	reporters []Reporter
+	nextID    int
+	reporters map[int]Reporter
 )
 
 // Reporter is a function that reports an uncaught panic that will crash the
@@ -34,11 +35,18 @@ var (
 type Reporter func(e interface{}, s stacktrace.Callstack)
 
 // Register adds r to the list of functions that gets called when an uncaught
-// panic is thrown.
-func Register(r Reporter) {
+// panic is thrown. Register returns a function that can be used to unregister
+// the listener.
+func Register(r Reporter) func() {
 	mutex.Lock()
 	defer mutex.Unlock()
-	reporters = append(reporters, r)
+	if reporters == nil {
+		reporters = map[int]Reporter{}
+	}
+	id := nextID
+	reporters[id] = r
+	nextID++
+	return func() { delete(reporters, id) }
 }
 
 // handler catches any uncaught panics, reporting these to the registered
@@ -67,9 +75,16 @@ func Crash(e interface{}) {
 	crashOnce.Do(func() {
 		mutex.RLock()
 		defer mutex.RUnlock()
+		wg := sync.WaitGroup{}
+		wg.Add(len(reporters))
 		for _, r := range reporters {
-			r(e, stack)
+			r := r
+			go func() {
+				defer wg.Done()
+				r(e, stack)
+			}()
 		}
-		panic(e)
+		wg.Wait()
 	})
+	panic(e)
 }
