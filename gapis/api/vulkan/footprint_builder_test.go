@@ -15,6 +15,7 @@
 package vulkan
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -36,17 +37,21 @@ func TestSubBinding(t *testing.T) {
 		span:   interval.U64Span{Start: memOffset, End: memOffset + resSize},
 		memory: VkDeviceMemory(0xabcd),
 	}
+	newSubBindingForTest := func(ctx context.Context, base *resBinding, offset, size uint64) *resBinding {
+		r, _ := base.newSubBinding(ctx, nil, offset, size)
+		return r
+	}
 	spanBase := newResBinding(ctx, nil, 0, resSize, span)
 	labelBase := newResBinding(ctx, nil, 0, resSize, newLabel())
 
 	invalidSubBoundData := func(offset, size uint64, base *resBinding) {
 		assert.To(t).For("Invalid range Offset: %v, size: %v on base: %v, expect return nil",
-			offset, size, base).That(base.newSubBinding(ctx, nil, offset, size) == nil).Equals(true)
+			offset, size, base).That(newSubBindingForTest(ctx, base, offset, size) == nil).Equals(true)
 	}
 	validSubBoundData := func(offset, size uint64, base, expected *resBinding) {
 		assert.To(t).For("Offset: %v, size: %v, on base: %v, expect valid subBoundData",
-			offset, size, base).That(reflect.DeepEqual(*expected, *(base.newSubBinding(ctx,
-			nil, offset, size)))).Equals(true)
+			offset, size, base).That(reflect.DeepEqual(*expected, *(newSubBindingForTest(ctx,
+			base, offset, size)))).Equals(true)
 	}
 
 	invalidSubBoundData(0, 2047, labelBase)
