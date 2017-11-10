@@ -140,9 +140,6 @@ func (a API) Replay(
 				rf = &readFramebuffer{}
 			}
 			deadCodeElimination.Request(req.after)
-			// HACK: Also ensure we have framebuffer before the command.
-			// TODO: Remove this and handle swap-buffers better.
-			deadCodeElimination.Request(req.after - 1)
 
 			thread := cmds[req.after].Thread()
 			switch req.attachment {

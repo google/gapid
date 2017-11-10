@@ -130,6 +130,10 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	ctx context.Context, s *api.GlobalState, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
 	b := dependencygraph.AtomBehaviour{}
 	c := GetContext(s, cmd.Thread())
+	if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
+		log.W(ctx, "Command %v %v: %v", id, cmd, err)
+		return dependencygraph.AtomBehaviour{Aborted: true}
+	}
 	if c != nil && c.Other.Initialized {
 		_, isEglSwapBuffers := cmd.(*EglSwapBuffers)
 		// TODO: We should also be considering eglSwapBuffersWithDamageKHR here
@@ -232,7 +236,6 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 					log.E(ctx, "Can not find bound texture %v", cmd.Target)
 				}
 				if baseLevel, ok := tex.Levels.Lookup(0); ok {
-					// NB: State was not mutated yet, so only the base level is initialized.
 					for layerIndex := range baseLevel.Layers.Range() {
 						data, size := tex.dataAndSize(0, layerIndex)
 						b.Read(g, data)
@@ -265,10 +268,6 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	} else /* c == nil */ {
 		b.KeepAlive = true
 	}
-	if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
-		log.W(ctx, "Command %v %v: %v", id, cmd, err)
-		return dependencygraph.AtomBehaviour{Aborted: true}
-	}
 	return b
 }
 
@@ -293,31 +292,26 @@ func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBeha
 
 func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, c *Context) (stateKeys []dependencygraph.StateKey) {
 	// Look for samplers used by the current program.
-	if prog := c.Bound.Program; prog != nil && prog.ActiveResources != nil {
-		for _, activeUniform := range prog.ActiveResources.DefaultUniformBlock.Range() {
-			// Optimization - skip the two most common types which we know are not samplers.
-			if activeUniform.Type != GLenum_GL_FLOAT_VEC4 && activeUniform.Type != GLenum_GL_FLOAT_MAT4 {
-				target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, activeUniform.Type)
-				if target == GLenum_GL_NONE {
-					continue // Not a sampler type
-				}
-				for _, loc := range activeUniform.Locations.Range() {
-					uniform := prog.UniformLocations.Get(UniformLocation(loc))
-					units := AsU32ˢ(uniform.Value, s.MemoryLayout).MustRead(ctx, cmd, s, nil)
-					if len(units) == 0 {
-						units = []uint32{0} // The uniform was not set, so use default value.
-					}
-					for _, unit := range units {
-						if tu := c.Objects.TextureUnits.Get(TextureUnitId(unit)); tu != nil {
-							tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, tu, target)
-							if tex != nil && err == nil {
-								if tex.EGLImage != nil {
-									stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage})
-								} else {
-									stateKeys = append(stateKeys, textureDataGroupKey{tex, tex.ID})
-								}
-							}
-						}
+	if c.Bound.Program == nil {
+		return
+	}
+	for _, uniform := range c.Bound.Program.UniformLocations.Range() {
+		if uniform.Type == GLenum_GL_FLOAT_VEC4 || uniform.Type == GLenum_GL_FLOAT_MAT4 {
+			continue // Optimization - skip the two most common types which we know are not samplers.
+		}
+		target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, uniform.Type)
+		if target == GLenum_GL_NONE {
+			continue // Not a sampler type
+		}
+		units := AsU32ˢ(uniform.Values, s.MemoryLayout).MustRead(ctx, cmd, s, nil)
+		for _, unit := range units {
+			if tu := c.Objects.TextureUnits.Get(TextureUnitId(unit)); tu != nil {
+				tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, tu, target)
+				if tex != nil && err == nil {
+					if tex.EGLImage != nil {
+						stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage})
+					} else {
+						stateKeys = append(stateKeys, textureDataGroupKey{tex, tex.ID})
 					}
 				}
 			}
