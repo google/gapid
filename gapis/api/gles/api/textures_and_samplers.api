@@ -172,6 +172,23 @@ class ImageUnit {
   GLenum      Format  = GL_R32UI
 }
 
+sub ref!Image GetTextureImage(ref!Texture tex, GLint level, GLint layer) {
+  return switch tex == null {
+    case true: null
+    case false: tex.Levels[level].Layers[layer]
+  }
+}
+
+sub void SetTextureImage(ref!Texture tex, GLint level, GLint layer, ref!Image img) {
+  assert(tex != null)
+  tmp := tex.Levels[level]
+  tmp.Layers[layer] = img
+  tex.Levels[level] = tmp
+  if (level == 0) && (layer == 0) {
+    tex.Image = img
+  }
+}
+
 // The spec maps cubemap faces to layers 0..5 in the exact order of GLenum values.
 sub GLint CubemapFaceToLayer(GLenum target) {
   return switch (target) {
@@ -403,7 +420,7 @@ sub void TexImage(TexImageFlags  flags,
   for l in (0 .. as!GLint(levels)) {
     for z in (0 .. as!GLint(depth)) {
       if hasSubModifier {
-        i := t.Levels[loffset + l].Layers[zoffset + z + cubemap_layer]
+        i := GetTextureImage(t, loffset + l, zoffset + z + cubemap_layer)
         if (i == null) { glErrorInvalidOperation() }
         CheckLE!GLsizei((as!GLsizei(xoffset) + width), i.Width)
         CheckLE!GLsizei((as!GLsizei(yoffset) + height), i.Height)
@@ -418,24 +435,23 @@ sub void TexImage(TexImageFlags  flags,
 
   ctx := GetContext()
   for l in (0 .. as!GLint(levels)) {
-    tmpLevel := t.Levels[loffset + l]
     // Depth decreases with each level for 3D textures, but not for arrays.
     mipDepth := max!GLsizei(1, depth >> as!u32(l))
     for z in (0 .. as!GLint(Select!GLsizei(target == GL_TEXTURE_3D, mipDepth, depth))) {
       if !hasSubModifier {
         // Initialize the image with the provided parameters
-        tmpLevel.Layers[zoffset + z + cubemap_layer] = new!Image(
+        SetTextureImage(t, loffset + l, zoffset + z + cubemap_layer, new!Image(
           Width: max!GLsizei(1, width >> as!u32(l)),
           Height: max!GLsizei(1, height >> as!u32(l)),
           Samples: samples,
           FixedSampleLocations: fixedsamplelocations,
           SizedFormat: sfBox.SizedFormat,
           DataFormat: data_format,
-          DataType: data_type)
+          DataType: data_type))
       }
 
       // Update the content of the image
-      img := tmpLevel.Layers[zoffset + z + cubemap_layer]
+      img := GetTextureImage(t, loffset + l, zoffset + z + cubemap_layer)
       if isTexImageCmd {
         src_skip_images := Select!GLint(has3DModifier, ctx.Other.Unpack.SkipImages, 0) + z
         UpdateImageData(img, xoffset, yoffset, width, height,
@@ -452,9 +468,7 @@ sub void TexImage(TexImageFlags  flags,
         }
       }
     }
-    t.Levels[loffset + l] = tmpLevel
   }
-  t.Image = t.Levels[0].Layers[0]
 }
 
 sub void UpdateImageData(ref!Image      dst_image,
@@ -992,9 +1006,9 @@ cmd void glGenerateMipmap(GLenum target) {
   }
 
   texture := GetBoundTextureOrErrorInvalidEnum(target)
-  if (texture != null) && (0 in texture.Levels) && (texture.Levels[0].Layers[0] != null) {
-    // If we have mip-level 0, define all other mip-levels based on it
-    base := texture.Levels[0].Layers[0]
+  // If we have mip-level 0, define all other mip-levels based on it
+  base := GetTextureImage(texture, 0, 0)
+  if base != null {
     for levelIndex in as!GLint(1) .. as!GLint(31) {
       width := base.Width >> as!u32(levelIndex)
       height := base.Height >> as!u32(levelIndex)
@@ -1015,9 +1029,7 @@ cmd void glGenerateMipmap(GLenum target) {
             DataFormat: base.DataFormat,
             DataType: base.DataType)
           // Set state first so that the command below knowns image size.
-          tmpLevel := texture.Levels[levelIndex]
-          tmpLevel.Layers[layerIndex] = image
-          texture.Levels[levelIndex] = tmpLevel
+          SetTextureImage(texture, levelIndex, layerIndex, image)
           image.Data = ReadGPUTextureData(texture, levelIndex, layerIndex)
         }
       }
