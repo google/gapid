@@ -181,6 +181,9 @@ sub ref!Framebuffer GetOrCreateFramebuffer(FramebufferId id) {
   if (id != 0) && (ctx.Objects.Framebuffers[id] == null) {
     fb := new!Framebuffer(ID: id)
     fb.DrawBuffer[0] = GL_COLOR_ATTACHMENT0
+    for i in (as!GLint(1) .. ctx.Constants.MaxDrawBuffers) {
+      fb.DrawBuffer[i] = GL_NONE
+    }
     ctx.Objects.Framebuffers[id] = fb
     ctx.Objects.GeneratedNames.Framebuffers[id] = true
   }
