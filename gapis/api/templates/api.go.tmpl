@@ -775,7 +775,7 @@
   {{$key   := Macro "Go.Type" $.KeyType}}
   {{$value := Macro "Go.Type" $.ValueType}}
 
-  type {{$name}} struct { Ptr *map[{{$key}}]{{$value}} }
+  type {{$name}} struct { Map *map[{{$key}}]{{$value}} }
 
   func New{{$name}}() {{$name}} {
     return {{$name}} { &map[{{$key}}]{{$value}}{} }
@@ -784,27 +784,27 @@
   var _ dictionary.Provider = {{$name}}{}
 
   func (m {{$name}}) Dictionary() dictionary.I {
-    if m.Ptr == nil {
+    if m.Map == nil {
       return dictionary.From((map[{{$key}}]{{$value}})(nil))
     }
-    return dictionary.From(*m.Ptr)
+    return dictionary.From(*m.Map)
   }
 
   func (m {{$name}}) Get(key {{$key}}) {{$value}} {
     {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
-      v, ok := (*m.Ptr)[key]
+      v, ok := (*m.Map)[key]
       if !ok {
         v = {{$init}}
       }
       return v
     {{else}}
-      return (*m.Ptr)[key]
+      return (*m.Map)[key]
     {{end}}
   }
 
   func (m {{$name}}) Lookup(key {{$key}}) (v {{$value}}, ok bool) {
-    if m.Ptr != nil {
-      v, ok = (*m.Ptr)[key]
+    if m.Map != nil {
+      v, ok = (*m.Map)[key]
     }
     {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
       if !ok {
@@ -815,38 +815,38 @@
   }
 
   func (m {{$name}}) Set(key {{$key}}, val {{$value}}) {
-    (*m.Ptr)[key] = val
+    (*m.Map)[key] = val
   }
 
   func (m {{$name}}) Add(key {{$key}}, val {{$value}}) {{$name}} {
-    (*m.Ptr)[key] = val
+    (*m.Map)[key] = val
     return m
   }
 
   func (m {{$name}}) Contains(key {{$key}}) (ok bool) {
-    if m.Ptr != nil {
-      _, ok = (*m.Ptr)[key]
+    if m.Map != nil {
+      _, ok = (*m.Map)[key]
     }
     return
   }
 
   func (m {{$name}}) Delete(key {{$key}}) {
-    if m.Ptr != nil {
-      delete(*m.Ptr, key)
+    if m.Map != nil {
+      delete(*m.Map, key)
     }
   }
 
   func (m {{$name}}) Len() int {
-    if m.Ptr != nil {
-      return len(*m.Ptr)
+    if m.Map != nil {
+      return len(*m.Map)
     }
     return 0
   }
 
   // Returns an object which can be used for interation in a range-based loop.
   func (m {{$name}}) Range() map[{{$key}}]{{$value}} {
-    if m.Ptr != nil {
-      return *m.Ptr
+    if m.Map != nil {
+      return *m.Map
     }
     return nil
   }
@@ -865,12 +865,12 @@
   {{end}}
 
   func (m {{$name}}) KeysSorted() []{{$key}} {
-    if m.Ptr == nil {
+    if m.Map == nil {
       return nil
     }
-    s := make({{$sorted}}, len(*m.Ptr))
+    s := make({{$sorted}}, len(*m.Map))
     i := 0
-    for k, _ := range *m.Ptr {
+    for k, _ := range *m.Map {
       s[i] = k
       i++
     }
