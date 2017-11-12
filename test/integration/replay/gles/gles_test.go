@@ -322,8 +322,8 @@ func (f *Fixture) makeCurrent(eglSurface, eglContext memory.Pointer, width, heig
 	eglTrue := gles.EGLBoolean(1)
 	return api.WithExtras(
 		f.cb.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
-		gles.NewStaticContextState(),
-		gles.NewDynamicContextState(width, height, preserveBuffersOnSwap),
+		gles.NewStaticContextStateForTest(),
+		gles.NewDynamicContextStateForTest(width, height, preserveBuffersOnSwap),
 	)
 }
 

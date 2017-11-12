@@ -80,7 +80,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 		cb.EglCreateContext(displayHandle, surfaceHandle, surfaceHandle, memory.Nullptr, ctxHandle1),
 		api.WithExtras(
 			cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle1, 0),
-			NewStaticContextState(), NewDynamicContextState(64, 64, false)),
+			NewStaticContextStateForTest(), NewDynamicContextStateForTest(64, 64, false)),
 		cb.GlCreateProgram(1),
 		cb.GlCreateProgram(2),
 		cb.GlCreateProgram(3),
@@ -165,7 +165,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 			cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2),
 			api.WithExtras(
 				cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle2, 0),
-				NewStaticContextState(), NewDynamicContextState(64, 64, false)),
+				NewStaticContextStateForTest(), NewDynamicContextStateForTest(64, 64, false)),
 			cb.GlCreateProgram(1),
 			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
 			cb.GlUseProgram(1),

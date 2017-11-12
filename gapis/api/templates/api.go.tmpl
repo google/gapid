@@ -1056,6 +1056,10 @@
     {{end}}
   }
 
+  func New{{$name}}() {{$name}} {
+    return {{$name}} { {{Template "Go.DefaultClassFields" $}} }
+  }
+
   {{if GetAnnotation $ "resource"}}
     // OnCreate should be called immediately after the {{$name}} resource is created.
     func (c *{{$name}}) OnCreate(ϟs *api.GlobalState) *{{$name}} {
