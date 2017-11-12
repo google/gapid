@@ -430,7 +430,7 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     @if(Version.GLES31)
     case GL_IMAGE_BINDING_NAME: {
       if isIndexed {
-        v[0] = as!T(ctx.Objects.ImageUnits[as!ImageUnitId(index)].Name)
+        v[0] = GetID!(T,Texture)(ctx.Objects.ImageUnits[as!ImageUnitId(index)].Texture)
       } else {
         glErrorInvalidEnum(name)
       }
