@@ -542,10 +542,10 @@ class OtherState {
   ref!SupportedExtensions SupportedExtensions
 
   bool          Initialized
+  u64           BoundOnThread
   string        ThreadName
   @unused bool  PreserveBuffersOnSwap
   ref!ShareList ShareList
-  bool          IsBound
 
   DebugState              Debug
   map!(GLenum, ref!Query) ActiveQueries
@@ -596,12 +596,12 @@ sub ref!Context GetContext() {
 sub void SetContext(ref!Context newContext) {
   oldContext := Contexts[$Thread]
   if oldContext != null {
-    oldContext.Other.IsBound = false
+    oldContext.Other.BoundOnThread = 0
   }
   Contexts[$Thread] = newContext
   CurrentContext = newContext
   if newContext != null {
-    newContext.Other.IsBound = true
+    newContext.Other.BoundOnThread = $Thread
   }
 }
 
