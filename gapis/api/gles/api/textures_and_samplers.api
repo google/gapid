@@ -90,7 +90,7 @@ class Texture {
 @internal
 class TextureBufferBinding {
   ref!Buffer Binding
-  GLenum     InternalFormat
+  GLenum     InternalFormat = GL_R8
   GLintptr   Offset
   GLsizeiptr Size
 }
@@ -1542,7 +1542,7 @@ sub void TexBufferRange(GLenum target, GLenum internalformat, BufferId buffer, G
     }
   }
   if buffer == 0 {
-    t.Buffer = TextureBufferBinding()
+    t.Buffer = TextureBufferBinding(InternalFormat: internalformat)
   } else {
     b := GetOrCreateBuffer(buffer)
     CheckGE!GLintptr(offset, 0)

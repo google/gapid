@@ -687,6 +687,10 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
       Renderbuffer:  ctx.Objects.Renderbuffers[color_id],
     )
     backbuffer.DrawBuffer[0] = GL_BACK // TODO: Or NONE if there is no draw surface
+    for i in (as!GLint(1) .. ctx.Constants.MaxDrawBuffers) {
+      backbuffer.DrawBuffer[i] = GL_NONE
+    }
+    backbuffer.ReadBuffer = GL_BACK    // TODO: Or NONE if there is no draw surface
 
     backbuffer.DepthAttachment = FramebufferAttachment(
       Type:          GL_RENDERBUFFER,
@@ -720,6 +724,16 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     for i in (0 .. as!DrawBufferIndex(ctx.Constants.MaxDrawBuffers)) {
       ctx.Pixel.Blend[i] = new!BlendState()
       ctx.Pixel.ColorWritemask[i] = Mask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+    }
+
+    for i in (0 .. as!GLuint(ctx.Constants.MaxAtomicCounterBufferBindings)) {
+      ctx.Bound.AtomicCounterBuffers[i] = BufferBinding()
+    }
+    for i in (0 .. as!GLuint(ctx.Constants.MaxShaderStorageBufferBindings)) {
+      ctx.Bound.ShaderStorageBuffers[i] = BufferBinding()
+    }
+    for i in (0 .. as!GLuint(ctx.Constants.MaxUniformBufferBindings)) {
+      ctx.Bound.UniformBuffers[i] = BufferBinding()
     }
 
     ctx.Other.Initialized = true
