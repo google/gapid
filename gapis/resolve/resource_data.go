@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -49,6 +50,11 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, error) {
 	atomIdx := p.Indices[0]
 
+	capture, err := capture.Resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	allCmds, err := Cmds(ctx, p.Capture)
 
 	if err != nil {
@@ -64,10 +70,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 		return nil, err
 	}
 
-	state, err := capture.NewState(ctx)
-	if err != nil {
-		return nil, err
-	}
+	state := capture.NewUninitializedState(ctx)
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
 	idMap := api.ResourceMap{}
@@ -81,6 +84,13 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 		resources[i] = r
 	}
 
+	initialCmds := capture.GetInitialCommands(ctx)
+	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if err := cmd.Mutate(ctx, id, state, nil); err != nil {
+			log.W(ctx, "Get resources at %v: Initial cmd [%v]%v - %v", p.Indices, id, cmd, err)
+		}
+		return nil
+	})
 	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)

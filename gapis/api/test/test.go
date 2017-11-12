@@ -42,6 +42,10 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	return nil, nil
 }
 
+func (*State) SetupInitialState(ctx context.Context) {}
+
+func (*State) RebuildState(ctx context.Context, s *api.GlobalState) []api.Cmd { return nil }
+
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }

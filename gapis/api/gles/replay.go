@@ -193,8 +193,9 @@ func (a API) Replay(
 	}
 
 	// Device-dependent transforms.
-	if c, err := compat(ctx, device); err == nil {
-		transforms.Add(c)
+	compatTransform, err := compat(ctx, device)
+	if err == nil {
+		transforms.Add(compatTransform)
 	} else {
 		log.E(ctx, "Error creating compatability transform: %v", err)
 	}
@@ -224,6 +225,11 @@ func (a API) Replay(
 		}
 		transforms = newTransforms
 	}
+
+	// If the capture contains initial state, build the necessary commands to recreate it.
+	// TODO: Dead code elimination can be run on the initial commands as well.
+	initialCmds := capture.GetInitialCommands(ctx)
+	transform.Transforms{compatTransform}.Transform(ctx, initialCmds, out)
 
 	transforms.Transform(ctx, cmds, out)
 	return nil

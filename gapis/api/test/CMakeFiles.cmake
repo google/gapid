@@ -26,6 +26,7 @@ set(files
     intrinsics_test.go
     mutate.go
     mutate_test.go
+    state_serialize.go
     subroutines_test.go
     test.go
 )

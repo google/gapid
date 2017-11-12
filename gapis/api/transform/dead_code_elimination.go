@@ -65,9 +65,11 @@ func NewDeadCodeElimination(ctx context.Context, depGraph *dependencygraph.Depen
 // Request ensures that we keep alive all commands needed to render framebuffer
 // at the given point.
 func (t *DeadCodeElimination) Request(id api.CmdID) {
-	t.requests.Add(id)
-	if id > t.lastRequest {
-		t.lastRequest = id
+	if id.IsReal() {
+		t.requests.Add(id)
+		if id > t.lastRequest {
+			t.lastRequest = id
+		}
 	}
 }
 

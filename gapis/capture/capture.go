@@ -116,21 +116,21 @@ func NewState(ctx context.Context) (*api.GlobalState, error) {
 	return c.NewState(ctx), nil
 }
 
-// NewState returns a new, default-initialized State object built for the
-// capture.
-func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
+// NewUninitializedState returns a new, uninitialized State object built for the capture.
+func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
 	s := api.NewStateWithAllocator(
 		memory.NewBasicAllocator(freeList),
 		c.Header.Abi.MemoryLayout,
 	)
-	c.InitializeState(ctx, s)
 	return s
 }
 
-// Applies the Initial state of this capture to the given GlobalState
-func (c *Capture) InitializeState(ctx context.Context, s *api.GlobalState) {
+// NewState returns a new, default-initialized State object built for the
+// capture.
+func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
+	s := c.NewUninitializedState(ctx)
 	if c.InitialState != nil {
 		for _, m := range c.InitialState.Memory {
 			pool, _ := s.Memory.Get(memory.PoolID(m.Pool))
@@ -142,7 +142,23 @@ func (c *Capture) InitializeState(ctx context.Context, s *api.GlobalState) {
 		for k, v := range c.InitialState.APIs {
 			s.APIs[k.ID()] = deep.MustClone(v).(api.State)
 		}
+		for _, v := range s.APIs {
+			v.SetupInitialState(ctx)
+		}
 	}
+	return s
+}
+
+// GetInitialCommands returns a set of commands which will setup the initial state.
+func (c *Capture) GetInitialCommands(ctx context.Context) (cmds []api.Cmd) {
+	// TODO: This can be easily cached for the given capture.
+	if c.InitialState != nil {
+		s := c.NewState(ctx)
+		for _, v := range s.APIs {
+			cmds = append(cmds, v.RebuildState(ctx, s)...)
+		}
+	}
+	return
 }
 
 // Service returns the service.Capture description for this capture.

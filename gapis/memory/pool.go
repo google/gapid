@@ -112,6 +112,12 @@ func (m *Pool) String() string {
 	return strings.Join(l, "\n")
 }
 
+// NextPoolID returns the next free pool ID (but does not assign it).
+// All existing pools in the set have pool ID which is less then this value.
+func (m *Pools) NextPoolID() PoolID {
+	return m.nextPoolID
+}
+
 // New creates and returns a new Pool and its id.
 func (m *Pools) New() (id PoolID, p *Pool) {
 	id, p = m.nextPoolID, &Pool{}

@@ -58,6 +58,7 @@ void SpyBase::abort() {
 }
 
 int64_t SpyBase::sendResource(uint8_t api, const void* data, size_t size) {
+    GAPID_ASSERT(should_trace(api));
     auto hash = core::Id::Hash(data, size);
 
     // Fast-path if resource with the same hash was already send.
