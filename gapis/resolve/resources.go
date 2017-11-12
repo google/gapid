@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -50,7 +51,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
 
-	state := c.NewState(ctx)
+	state := c.NewUninitializedState(ctx)
 	state.OnResourceCreated = func(r api.Resource) {
 		currentCmdResourceCount++
 		seen[r] = len(seen)
@@ -68,6 +69,15 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 			}
 		}
 	}
+
+	// If the capture contains initial state, build the necessary commands to recreate it.
+	initialCmds := c.GetInitialCommands(ctx)
+	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if err := cmd.Mutate(ctx, id, state, nil); err != nil {
+			log.W(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)
+		}
+		return nil
+	})
 
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0

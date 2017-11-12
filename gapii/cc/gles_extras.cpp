@@ -719,6 +719,10 @@ static bool ReadExternalPixels(GlesImports& imports, EGLImageKHR img, GLsizei wi
 void GlesSpy::GetEGLImageData(CallObserver* observer, EGLImageKHR img, GLsizei width, GLsizei height) {
     using namespace EGLenum;
 
+    if (!should_trace(kApiIndex)) {
+        return;
+    }
+
     GAPID_DEBUG("Get EGLImage data: 0x%p x%xx%x", img, width, height);
 
     // Save old state.

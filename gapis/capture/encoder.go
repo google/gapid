@@ -58,7 +58,7 @@ func (e *encoder) encode(ctx context.Context) error {
 func (e *encoder) initialState(ctx context.Context) (err error) {
 	var msg proto.Message
 	var initialStateID uint64
-	if msg, err = protoconv.ToProto(ctx, e.c.InitializeState); err != nil {
+	if msg, err = protoconv.ToProto(ctx, e.c.InitialState); err != nil {
 		return err
 	}
 	if initialStateID, err = e.w.BeginGroup(ctx, msg); err != nil {

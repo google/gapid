@@ -43,6 +43,7 @@ set(files
     sparse_binding.go
     sparse_binding_test.go
     state.go
+    state_serialize.go
     vulkan.go
     vulkan_terminator.go
     wireframe.go

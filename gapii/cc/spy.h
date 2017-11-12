@@ -99,6 +99,12 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   // false if the dimensions could not be retrieved.
   bool getFramebufferAttachmentSize(CallObserver* observer, uint32_t& width, uint32_t& height);
 
+  // saveInitialSate serializes the current global state.
+  void saveInitialSate();
+
+  // onPostFrameBoundary is called from onPost{Start,End}OfFrame().
+  void onPostFrameBoundary(bool isStartOfFrame);
+
   std::unordered_map<std::string, void*> mSymbols;
 
   int mNumFrames;

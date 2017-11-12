@@ -30,6 +30,7 @@ set(files
     mutate.go
     resolvables.proto
     types.api
+    state_serialize.go
 )
 set(dirs
     gvr_pb

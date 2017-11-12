@@ -54,6 +54,8 @@ set(files
     resources.go
     resources_test.go
     state.go
+    state_builder.go
+    state_serialize.go
     string.go
     stub_program.go
     stub_program_test.go

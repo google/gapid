@@ -58,6 +58,20 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	return nil, nil
 }
 
+func (s *State) SetupInitialState(ctx context.Context) {
+	s.Context2EGLContext = NewContextʳːEGLContextᵐ()
+	s.Contexts = NewU64ːContextʳᵐ()
+	for handle, c := range s.EGLContexts.Range() {
+		s.Context2EGLContext.Set(c, handle) // Reverse map.
+		if t := c.Other.BoundOnThread; t != 0 {
+			s.Contexts.Set(t, c) // Current thread bindings.
+		}
+		if id := c.Identifier; id >= s.NextContextID {
+			s.NextContextID = id + 1
+		}
+	}
+}
+
 func (s *State) contextRoot(p *path.Command, thread uint64) *path.MapIndex {
 	return path.NewField("Contexts", resolve.APIStateAfter(p, ID)).MapIndex(thread)
 }

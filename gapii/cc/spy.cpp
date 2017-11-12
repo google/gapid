@@ -446,7 +446,36 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
     mNumDrawsPerFrame = 0;
 }
 
-void Spy::onPostStartOfFrame() {
+void Spy::saveInitialSate() {
+    GAPID_INFO("Saving initial GLES state");
+    auto encoder = this->getEncoder(GlesSpy::kApiIndex);
+    {
+      ToProtoContext pbCtx;
+      capture::GlobalState global;
+      auto group = encoder->group(&global);
+      auto glesState = GlesSpy::serializeState(pbCtx);
+      std::map<uint32_t, Pool*> seenPools;
+      for (const auto& s : pbCtx.SeenSlices()) {
+        if (!s.isApplicationPool()) {
+          seenPools.emplace(s.poolID(), s.pool().get());
+        }
+      }
+      for (const auto& kvp : seenPools) {
+        Pool* p = kvp.second;
+        auto resIndex = sendResource(GlesSpy::kApiIndex, p->base(), p->size());
+        memory_pb::Observation observation;
+        observation.set_base(0);
+        observation.set_size(p->size());
+        observation.set_resindex(resIndex);
+        observation.set_pool(p->id());
+        group->object(&observation);
+      }
+      group->object(glesState.get());
+    }
+    encoder->flush();
+}
+
+void Spy::onPostFrameBoundary(bool isStartOfFrame) {
     if (!is_suspended() && mCaptureFrames >= 1) {
         mCaptureFrames -= 1;
         if (mCaptureFrames == 0) {
@@ -459,15 +488,22 @@ void Spy::onPostStartOfFrame() {
         if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
             exit();
             set_suspended(false);
+            saveInitialSate();
             set_recording_state(true);
             auto spy_ctx = enter("RecreateState", 2);
-            spy_ctx->enter(cmd::RecreateState{});
-            EnumerateVulkanResources(spy_ctx);
-            spy_ctx->exit();
+            if (!VulkanSpy::Devices.empty()) {
+                spy_ctx->enter(cmd::RecreateState{});
+                EnumerateVulkanResources(spy_ctx);
+                spy_ctx->exit();
+            }
             set_recording_state(false);
             // The outer call will handle the spy->exit() for us.
         }
     }
+}
+
+void Spy::onPostStartOfFrame() {
+    onPostFrameBoundary(true);
 }
 
 void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
@@ -485,27 +521,7 @@ void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
 }
 
 void Spy::onPostEndOfFrame() {
-    if (!is_suspended() && mCaptureFrames >= 1) {
-        mCaptureFrames -= 1;
-        if (mCaptureFrames == 0) {
-            mEncoder->flush();
-            mConnection->close();
-            set_suspended(true);
-        }
-    }
-    if (mSuspendCaptureFrames.load() > 0) {
-        if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
-            exit();
-            set_suspended(false);
-            set_recording_state(true);
-            auto spy_ctx = enter("RecreateState", 2);
-            spy_ctx->enter(cmd::RecreateState{});
-            EnumerateVulkanResources(spy_ctx);
-            spy_ctx->exit();
-            set_recording_state(false);
-            // The outer call to VkQueuePresent will handle the spy->exit() for us.
-        }
-    }
+    onPostFrameBoundary(false);
 }
 
 static bool downsamplePixels(const std::vector<uint8_t>& srcData, uint32_t srcW, uint32_t srcH,

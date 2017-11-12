@@ -72,6 +72,15 @@ type State interface {
 	// based on filtering mode. Returning nil, nil indicates there is no state
 	// to show at this point in the capture.
 	Root(ctx context.Context, p *path.State) (path.Node, error)
+
+	// SetupInitialState sanitizes deserialized state to make it valid.
+	// It can fill in any derived data which we choose not to serialize,
+	// or it can apply backward-compatibility fixes for older traces.
+	SetupInitialState(ctx context.Context)
+
+	// RebuildState returns a set of commands which, if executed
+	// on a clean new state, will reproduce the current state.
+	RebuildState(ctx context.Context, s *GlobalState) []Cmd
 }
 
 // NewStateWithEmptyAllocator returns a new, default-initialized State object,

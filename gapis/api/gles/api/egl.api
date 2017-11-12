@@ -76,9 +76,9 @@ class EGLImage {
   @hiddne ref!Image                    Image
 }
 
-map!(EGLContext, ref!Context)   EGLContexts
-map!(ref!Context, EGLContext)   Context2EGLContext // Reverse mapping.
-map!(EGLImageKHR, ref!EGLImage) EGLImages
+@serialize map!(EGLContext, ref!Context)   EGLContexts
+map!(ref!Context, EGLContext)              Context2EGLContext // Reverse mapping.
+@serialize map!(EGLImageKHR, ref!EGLImage) EGLImages
 
 @no_replay
 cmd EGLBoolean eglGetConfigAttrib(EGLDisplay display,
