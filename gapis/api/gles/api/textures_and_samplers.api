@@ -637,6 +637,11 @@ sub ref!Texture GetOrCreateTexture(GLenum target, TextureId texture, ref!Texture
 cmd void glBindTexture(GLenum target, TextureId texture) {
   ctx := GetContext()
   tu := ctx.Bound.TextureUnit
+  BindTextureForUnit(tu, target, texture)
+}
+
+sub void BindTextureForUnit(ref!TextureUnit tu, GLenum target, TextureId texture) {
+  ctx := GetContext()
   switch (target) {
     @if(Version.GLES20)
     case GL_TEXTURE_2D: {
@@ -911,15 +916,24 @@ cmd void glDeleteSamplers(GLsizei count, const SamplerId* samplers) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDeleteTextures.xhtml", Version.GLES32)
 cmd void glDeleteTextures(GLsizei count, const TextureId* textures) {
   CheckCountGE!GLsizei(count, 0)
-  t := textures[0:count]
+  ids := textures[0:count]
   ctx := GetContext()
   for i in (0 .. count) {
-    id := t[i]
+    id := ids[i]
     if id != 0 {
+      t := ctx.Objects.Textures[id]
+      if t != null {
+        for _, _, tu in ctx.Objects.TextureUnits {
+          bound := GetBoundTextureForUnit(tu, t.Kind)
+          if bound == t {
+            BindTextureForUnit(tu, t.Kind, 0)
+          }
+        }
+      }
+      // TODO: Unbind from bound framebuffer.
       delete(ctx.Objects.Textures, id)
       delete(ctx.Objects.GeneratedNames.Textures, id)
     }
-    // TODO: Unbind from all texture units.
   }
 }
 
