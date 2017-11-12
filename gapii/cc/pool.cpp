@@ -29,7 +29,7 @@ std::shared_ptr<Pool> Pool::create(uint32_t id, uint64_t size) {
     return std::shared_ptr<Pool>(new Pool(id, size));
 }
 
-Pool::Pool(uint32_t id, uint64_t size) : mId(id), mData(malloc(size)), mSize(size) {
+Pool::Pool(uint32_t id, uint64_t size) : mId(id), mData(calloc(size,1)), mSize(size) {
   if (mData == nullptr) {
     GAPID_FATAL("Out of memory allocating 0x%" PRIx64 " bytes", size);
   }
