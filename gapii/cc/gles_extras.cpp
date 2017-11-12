@@ -147,10 +147,10 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
   const GLuint program = extra->mID;
   const auto& imports = spy->imports();
 
-  const bool hasGeometryShader       = p->mShaders[GL_GEOMETRY_SHADER] != nullptr;
-  const bool hasTessControlShader    = p->mShaders[GL_TESS_CONTROL_SHADER] != nullptr;
-  const bool hasTessEvaluationShader = p->mShaders[GL_TESS_EVALUATION_SHADER] != nullptr;
-  const bool hasComputeShader        = p->mShaders[GL_COMPUTE_SHADER] != nullptr;
+  const bool hasGeometryShader       = p->mShaders.count(GL_GEOMETRY_SHADER) > 0;
+  const bool hasTessControlShader    = p->mShaders.count(GL_TESS_CONTROL_SHADER) > 0;
+  const bool hasTessEvaluationShader = p->mShaders.count(GL_TESS_EVALUATION_SHADER) > 0;
+  const bool hasComputeShader        = p->mShaders.count(GL_COMPUTE_SHADER) > 0;
 
   std::vector<char> buffer;  // Temporary buffer for getting string.
   const int bufferSuffixSize = 16;  // Allocate a bit more extra space so we can append integer to name.
