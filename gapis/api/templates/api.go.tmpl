@@ -227,6 +227,8 @@
     return false
   }
 
+  func (p {{$ptr_ty}}) String() string { return ϟmem.PointerToString(p) }
+
   // IsNullptr returns true if the address is 0 and the pool is ϟmem.ApplicationPool.
   func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == ϟmem.ApplicationPool }
 
