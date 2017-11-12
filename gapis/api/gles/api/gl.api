@@ -18,7 +18,7 @@ cmd void glGetTexImage(GLenum target, GLint level, GLenum format, GLenum type, G
     ctx := GetContext()
     t := GetBoundTextureForUnit(ctx.Bound.TextureUnit, target)
     layer := CubemapFaceToLayer(target)
-    l := t.Levels[level].Layers[layer]
+    l := GetTextureImage(t, level, layer)
     width := l.Width
     height := l.Height
     unpack := ctx.Other.Unpack

@@ -421,9 +421,7 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      display,
     case EGL_GL_TEXTURE_2D: {
       c := EGLContexts[context]
       assert(c != null) // EGL_BAD_CONTEXT
-      t := c.Objects.Textures[as!TextureId(as!u64(buffer))]
-      assert(t != null) // EGL_BAD_PARAMETER
-      image := t.Levels[0].Layers[0]
+      image := GetTextureImage(c.Objects.Textures[as!TextureId(as!u64(buffer))], 0, 0)
       assert(image != null) // EGL_BAD_PARAMETER
       eglImage.Image = image
     }
