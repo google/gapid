@@ -455,7 +455,7 @@
     New{{Template "Go.Type" $}}()
   {{else if IsClass $}}
     {{if $fields := Macro "Go.DefaultClassFields" $}}
-      {{Template "Go.Type" $}}{ {{$fields}} }
+      New{{Template "Go.Type" $}}()
     {{end}}
   {{end}}
 {{end}}

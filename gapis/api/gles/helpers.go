@@ -182,7 +182,7 @@ func DefaultConstants30() Constants {
 	}
 }
 
-func NewStaticContextState() *StaticContextState {
+func NewStaticContextStateForTest() *StaticContextState {
 	constants := DefaultConstants30()
 	constants.Version = "OpenGL ES 2.0"
 	return &StaticContextState{
@@ -190,7 +190,7 @@ func NewStaticContextState() *StaticContextState {
 	}
 }
 
-func NewDynamicContextState(width, height int, preserveBuffersOnSwap bool) *DynamicContextState {
+func NewDynamicContextStateForTest(width, height int, preserveBuffersOnSwap bool) *DynamicContextState {
 	return &DynamicContextState{
 		BackbufferWidth:       GLsizei(width),
 		BackbufferHeight:      GLsizei(height),

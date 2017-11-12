@@ -79,7 +79,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	surfaceHandle := memory.BytePtr(3, memory.ApplicationPool)
 	cb := gles.CommandBuilder{Thread: 0}
 	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
-	eglMakeCurrent.Extras().Add(gles.NewStaticContextState(), gles.NewDynamicContextState(64, 64, true))
+	eglMakeCurrent.Extras().Add(gles.NewStaticContextStateForTest(), gles.NewDynamicContextStateForTest(64, 64, true))
 	api.ForeachCmd(ctx, []api.Cmd{
 		cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
