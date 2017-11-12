@@ -130,6 +130,14 @@ sub void ApplyLinkProgramExtra(ref!Program p, ref!LinkProgramExtra i) {
     p.ActiveResources = i.ActiveResources
     p.ShaderLayout = i.ShaderLayout
 
+    // Memorize the exact state of shaders at link time.
+    // Use the reference object from our state rather than the cloned copy.
+    // This saves a little spaces and avoids MEC complaining about the clone.
+    p.LinkExtra.Shaders = null
+    for _, k, v in p.Shaders {
+      p.LinkExtra.Shaders[k] = v.CompileExtra
+    }
+
     // Set uniform values to default (zeroed)
     p.UniformLocations = null
     for _, uniformIndex, uniform in i.ActiveResources.DefaultUniformBlock {
