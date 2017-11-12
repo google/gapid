@@ -164,12 +164,12 @@ class ImageUnit {
   ImageUnitId ID
 
   // Table 21.33: Image State (state per image unit)
-  TextureId Name    = 0
-  GLint     Level   = 0
-  GLboolean Layered = GL_FALSE
-  GLint     Layer   = 0
-  GLenum    Access  = GL_READ_ONLY
-  GLenum    Format  = GL_R32UI
+  ref!Texture Texture
+  GLint       Level   = 0
+  GLboolean   Layered = GL_FALSE
+  GLint       Layer   = 0
+  GLenum      Access  = GL_READ_ONLY
+  GLenum      Format  = GL_R32UI
 }
 
 // The spec maps cubemap faces to layers 0..5 in the exact order of GLenum values.
@@ -561,15 +561,22 @@ cmd void glBindImageTexture(ImageUnitId unit,
     }
   }
   ctx := GetContext()
-  ctx.Objects.ImageUnits[unit] = new!ImageUnit(
-    ID:       unit,
-    Name:     texture,
-    Level:    level,
-    Layered:  layered,
-    Layer:    layer,
-    Access:   access,
-    Format:   format
-  )
+  if texture == 0 {
+    ctx.Objects.ImageUnits[unit] = new!ImageUnit(ID:unit)
+  } else {
+    t := ctx.Objects.Textures[texture]
+    if t == null { glErrorInvalidOperation_ObjectDoesNotExist!TextureId(texture) }
+    // TODO: Check that it is immutable
+    ctx.Objects.ImageUnits[unit] = new!ImageUnit(
+      ID:       unit,
+      Texture:  t,
+      Level:    level,
+      Layered:  layered,
+      Layer:    layer,
+      Access:   access,
+      Format:   format
+    )
+  }
 }
 
 @if(Version.GLES30)
