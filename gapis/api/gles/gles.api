@@ -641,11 +641,6 @@ sub ref!Context CreateContext(ref!Context sharedContext) {
 
 sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticState) {
   if (staticState != null) {
-    // Renderbuffers are shared so make sure we create unique IDs.
-    color_id := as!RenderbufferId(as!u32(0xff000001) + as!u32(16 * ctx.Identifier))
-    depth_id := as!RenderbufferId(as!u32(0xff000002) + as!u32(16 * ctx.Identifier))
-    stencil_id := as!RenderbufferId(as!u32(0xff000003) + as!u32(16 * ctx.Identifier))
-
     // First initialization for the context.
     ctx.Constants = staticState.Constants
     ctx.Other.ThreadName = staticState.ThreadName
@@ -677,14 +672,10 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     ctx.Objects.Default.TextureCubeMapArray = new!Texture(ID: 0,Kind:  GL_TEXTURE_CUBE_MAP_ARRAY)
     ctx.Objects.Default.TextureExternalOes = new!Texture(ID: 0,Kind:  GL_TEXTURE_EXTERNAL_OES)
 
-    ctx.Objects.Renderbuffers[color_id] = new!Renderbuffer(ID: color_id)
-    ctx.Objects.Renderbuffers[depth_id] = new!Renderbuffer(ID: depth_id)
-    ctx.Objects.Renderbuffers[stencil_id] = new!Renderbuffer(ID: stencil_id)
-
     backbuffer := ctx.Objects.Framebuffers[0]
     backbuffer.ColorAttachments[0] = FramebufferAttachment(
       Type:          GL_RENDERBUFFER,
-      Renderbuffer:  ctx.Objects.Renderbuffers[color_id],
+      Renderbuffer:  new!Renderbuffer(ID: 0),
     )
     backbuffer.DrawBuffer[0] = GL_BACK // TODO: Or NONE if there is no draw surface
     for i in (as!GLint(1) .. ctx.Constants.MaxDrawBuffers) {
@@ -694,12 +685,12 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 
     backbuffer.DepthAttachment = FramebufferAttachment(
       Type:          GL_RENDERBUFFER,
-      Renderbuffer:  ctx.Objects.Renderbuffers[depth_id],
+      Renderbuffer:  new!Renderbuffer(ID: 0),
     )
 
     backbuffer.StencilAttachment = FramebufferAttachment(
       Type:          GL_RENDERBUFFER,
-      Renderbuffer:  ctx.Objects.Renderbuffers[stencil_id],
+      Renderbuffer:  new!Renderbuffer(ID: 0),
     )
 
     for i in 0 .. as!AttributeLocation(staticState.Constants.MaxVertexAttribs) {
@@ -744,33 +735,24 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
 sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynamicState) {
   if (dynamicState != null) {
     backbuffer := ctx.Objects.Framebuffers[0]
-    color_id := backbuffer.ColorAttachments[0].Renderbuffer.ID
-    depth_id := backbuffer.DepthAttachment.Renderbuffer.ID
-    stencil_id := backbuffer.StencilAttachment.Renderbuffer.ID
 
-    color_buffer := ctx.Objects.Renderbuffers[color_id]
-    color_buffer.Image = new!Image(
+    backbuffer.ColorAttachments[0].Renderbuffer.Image = new!Image(
       Width: dynamicState.BackbufferWidth,
       Height: dynamicState.BackbufferHeight,
       SizedFormat: dynamicState.BackbufferColorFmt,
     )
-    ctx.Objects.Renderbuffers[color_id] = color_buffer
 
-    depth_buffer := ctx.Objects.Renderbuffers[depth_id]
-    depth_buffer.Image = new!Image(
+    backbuffer.DepthAttachment.Renderbuffer.Image = new!Image(
       Width: dynamicState.BackbufferWidth,
       Height: dynamicState.BackbufferHeight,
       SizedFormat: dynamicState.BackbufferDepthFmt,
     )
-    ctx.Objects.Renderbuffers[depth_id] = depth_buffer
 
-    stencil_buffer := ctx.Objects.Renderbuffers[stencil_id]
-    stencil_buffer.Image = new!Image(
+    backbuffer.StencilAttachment.Renderbuffer.Image = new!Image(
       Width: dynamicState.BackbufferWidth,
       Height: dynamicState.BackbufferHeight,
       SizedFormat: dynamicState.BackbufferStencilFmt,
     )
-    ctx.Objects.Renderbuffers[stencil_id] = stencil_buffer
 
     if dynamicState.ResetViewportScissor {
       ctx.Pixel.Scissor.Box.Width = dynamicState.BackbufferWidth
