@@ -28,14 +28,5 @@ set(sources
 
 if(NOT DISABLED_CXX)
     add_library(astc-encoder ${sources})
-
-    if(WIN32)
-        target_compile_options(astc-encoder PRIVATE "-Wno-narrowing"
-            "-D__NO_INLINE__"                     # Avoids a lvalue compile error
-            "-D_GLIBCXX_INCLUDE_NEXT_C_HEADERS"   # Avoids redefinition compile error
-        )
-    else()
-        target_compile_options(astc-encoder PRIVATE "-Wno-c++11-narrowing")
-    endif()
     target_include_directories(astc-encoder PUBLIC "${astc-encoder_gen}")
 endif()
