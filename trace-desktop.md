@@ -16,7 +16,18 @@ GAPID supports tracing Vulkan calls made by applications on Windows and Linux.
 
 Click the `Capture Trace...` text in the welcome screen, or click the `File` &rarr; `Capture Trace` toolbar item to open the trace dialog. The second tab will allow a Desktop trace.
 
-<img src="../images/capture-desktop.png" width="730px"/>
+
+<div class="callout-img">
+  <div style="margin: 72px 171px">1</div>
+  <div style="margin: 107px 240px">2</div>
+  <div style="margin: 136px 283px">3</div>
+  <div style="margin: 163px 190px">4</div>
+  <div style="margin: 194px 190px">5</div>
+  <div style="margin: 221px 295px">6</div>
+  <div style="margin: 245px 324px">7</div>
+  <div style="margin: 270px 281px">8</div>
+  <img src="../images/capture-desktop.png"/>
+</div>
 
 <div class="callouts" markdown="block">
 
