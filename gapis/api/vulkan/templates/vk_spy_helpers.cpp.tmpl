@@ -722,5 +722,11 @@ void VulkanSpy::popDebugMarker(CallObserver*) {}
 void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}
 void VulkanSpy::popRenderPassMarker(CallObserver*) {}
 void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
+
+void VulkanSpy::vkErrorUnrecognizedExtension(CallObserver*,
+                                             std::string ext_name) {
+  GAPID_ERROR("Unrecognized extension: %s, GAPID may not work properly",
+              ext_name.c_str())
+}
 }
 {{end}}
