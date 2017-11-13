@@ -108,7 +108,7 @@ class Image {
   GLsizei        Width
   GLsizei        Height
   GLsizei        Samples
-  GLboolean      FixedSampleLocations
+  GLboolean      FixedSampleLocations = GL_TRUE
   // GPU format of the texture including bit-sizes of the channels.
   // This is unrelated to the format of the data passed to the API.
   @unused GLenum SizedFormat
@@ -1030,7 +1030,14 @@ cmd void glGenerateMipmap(GLenum target) {
             DataType: base.DataType)
           // Set state first so that the command below knowns image size.
           SetTextureImage(texture, levelIndex, layerIndex, image)
-          image.Data = ReadGPUTextureData(texture, levelIndex, layerIndex)
+          newData := ReadGPUTextureData(texture, levelIndex, layerIndex)
+          if newData == null {
+            // ReadGPUTextureData is not implemented in gapii - just default initialize the content.
+            size := uncompressedImageSize(image.Width, image.Height, image.DataFormat, image.DataType)
+            image.Data = make!u8(size)
+          } else {
+            image.Data = newData
+          }
         }
       }
     }

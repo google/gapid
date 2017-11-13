@@ -59,10 +59,11 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 }
 
 func (s *State) SetupInitialState(ctx context.Context) {
-	s.Context2EGLContext = NewContextʳːEGLContextᵐ()
-	s.Contexts = NewU64ːContextʳᵐ()
-	for handle, c := range s.EGLContexts.Range() {
-		s.Context2EGLContext.Set(c, handle) // Reverse map.
+	s.Contexts = NewU64ːContextʳᵐ().Add(0, nil)
+	s.GLXContexts = NewGLXContextːContextʳᵐ()
+	s.WGLContexts = NewHGLRCːContextʳᵐ()
+	s.CGLContexts = NewCGLContextObjːContextʳᵐ()
+	for _, c := range s.EGLContexts.Range() {
 		if t := c.Other.BoundOnThread; t != 0 {
 			s.Contexts.Set(t, c) // Current thread bindings.
 		}
@@ -92,6 +93,9 @@ func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) 
 	if c.CurrentContext != nil {
 		c.Version = c.CurrentContext.Other.SupportedVersions
 		c.Extension = c.CurrentContext.Other.SupportedExtensions
+	} else {
+		c.Version = nil
+		c.Extension = nil
 	}
 	return nil
 }

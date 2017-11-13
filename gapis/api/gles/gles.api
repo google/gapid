@@ -655,6 +655,9 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
     ctx.Bound.ReadFramebuffer = ctx.Objects.Default.Framebuffer
 
     ctx.Objects.Default.TransformFeedback = new!TransformFeedback(ID: 0)
+    for i in as!GLuint(0) .. as!GLuint(ctx.Constants.MaxTransformFeedbackSeparateAttribs) {
+      ctx.Objects.Default.TransformFeedback.Buffers[i] = BufferBinding()
+    }
     ctx.Objects.TransformFeedbacks[0] = ctx.Objects.Default.TransformFeedback
     ctx.Bound.TransformFeedback = ctx.Objects.Default.TransformFeedback
 

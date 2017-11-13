@@ -638,12 +638,13 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
       glErrorInvalidEnum(target)
   }
   eglImage := EGLImages[as!EGLImageKHR(image)]
-  if eglImage != null {
-    t := GetBoundTextureOrErrorInvalidEnum(target)
-    SetTextureImage(t, 0, 0, eglImage.Image)
-    t.EGLImage = eglImage
-    GetEGLImageData(eglImage.ID, eglImage.Image.Width, eglImage.Image.Height)
+  if eglImage == null {
+    glErrorInvalidOperation_ObjectDoesNotExist!GLeglImageOES(image)
   }
+  t := GetBoundTextureOrErrorInvalidEnum(target)
+  SetTextureImage(t, 0, 0, eglImage.Image)
+  t.EGLImage = eglImage
+  GetEGLImageData(eglImage.ID, eglImage.Image.Width, eglImage.Image.Height)
 }
 
 @if(Extension.GL_QCOM_driver_control)

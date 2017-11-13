@@ -18,7 +18,7 @@ type void* EGLConfig
 type void* EGLContext
 type void* EGLDisplay
 type void* EGLImageKHR
-type int   EGLint
+type s32   EGLint
 type int   EGLNativeDisplayType
 type void* EGLNativePixmapType
 type void* EGLNativeWindowType
@@ -77,7 +77,6 @@ class EGLImage {
 }
 
 @serialize map!(EGLContext, ref!Context)   EGLContexts
-map!(ref!Context, EGLContext)              Context2EGLContext // Reverse mapping.
 @serialize map!(EGLImageKHR, ref!EGLImage) EGLImages
 
 @no_replay
@@ -139,7 +138,6 @@ cmd EGLContext eglCreateContext(EGLDisplay display,
   handle := ?
   ctx := CreateContext(EGLContexts[share_context])
   EGLContexts[handle] = ctx
-  Context2EGLContext[ctx] = handle
   return handle
 }
 
@@ -429,13 +427,16 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      display,
       info := GetAndroidNativeBufferExtra(as!void*(buffer))
       sf := EGLSizedFormat2GLSizedFormat(info.Format)
       sfInfo := GetSizedFormatInfo(sf)
-      eglImage.Image = new!Image(
+      image := new!Image(
         Width:        as!GLsizei(info.Width),
         Height:       as!GLsizei(info.Height),
         SizedFormat:  sf,
         DataFormat:   sfInfo.UnsizedFormat,
         DataType:     sfInfo.DataType,
       )
+      size := uncompressedImageSize(image.Width, image.Height, image.DataFormat, image.DataType)
+      image.Data = make!u8(size)
+      eglImage.Image = image
       eglImage.Extra = info
     }
   }

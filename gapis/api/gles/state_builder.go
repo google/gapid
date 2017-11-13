@@ -17,6 +17,7 @@ package gles
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/google/gapid/core/data/compare"
 	"github.com/google/gapid/core/log"
@@ -61,35 +62,44 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) []a
 		}
 	}
 
-	// Create EGL images (possibly referencing EGL context)
+	// Create EGL images (may depend on texture from any context)
 	for _, img := range s.EGLImages.Range() {
 		sb.eglImage(ctx, img)
 	}
 
-	if s.EGLImages.Len() > 0 {
-		sb.bindEGLimages(ctx, s)
-	}
+	// Bind texture to the newly created EGL images
+	sb.bindEGLimages(ctx, s)
+
+	// Create all framebuffer objects fairly late in the process,
+	// as they may indirectly depend on the EGL images (if used as attachment).
+	sb.framebufferObjects(ctx, s)
+
+	// Set the active context for each thread
 	sb.bindContexts(ctx, s)
 
 	// Verify that the recreated state matches the original desired state.
-	diff := compare.Diff(s, GetState(sb.newState), 100)
-	for _, d := range diff {
+	compare.Compare(s, GetState(sb.newState), func(d compare.Path) {
 		last := d[len(d)-1]
 		if ref, ok := last.Reference.(compare.Hidden); ok {
 			if val, ok := last.Value.(compare.Hidden); ok {
 				if oldSlice, ok := ref.Value.(memory.Slice); ok {
 					if newSlice, ok := val.Value.(memory.Slice); ok {
-						old := AsU8ˢ(oldSlice, sb.oldState.MemoryLayout).ResourceID(ctx, sb.oldState)
-						new := AsU8ˢ(newSlice, sb.newState.MemoryLayout).ResourceID(ctx, sb.newState)
-						if old == new {
-							continue // The pool ID are different, but the data matches exactly.
+						old := AsU8ˢ(oldSlice, sb.oldState.MemoryLayout)
+						new := AsU8ˢ(newSlice, sb.newState.MemoryLayout)
+						if old.ResourceID(ctx, sb.oldState) == new.ResourceID(ctx, sb.newState) {
+							return // The pool IDs are different, but the resource IDs match exactly.
+						}
+						oldData := old.MustRead(ctx, nil, sb.oldState, nil)
+						newData := new.MustRead(ctx, nil, sb.newState, nil)
+						if reflect.DeepEqual(oldData, newData) {
+							return // The pool IDs are different, but the actual data matches exactly.
 						}
 					}
 				}
 			}
 		}
 		log.W(ctx, "Initial state: %v", d)
-	}
+	})
 
 	return sb.cmds
 }
@@ -180,6 +190,8 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 		return
 	}
 
+	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
+
 	if names := c.Objects.GeneratedNames.Buffers; sb.once(names) {
 		for _, id := range names.KeysSorted() {
 			if id != 0 && names.Get(id) {
@@ -219,17 +231,6 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 				write(cb.GlGenTextures(1, sb.writesData(ctx, id)))
 				if o := c.Objects.Textures.Get(id); o != nil {
 					sb.textureObject(ctx, o)
-				}
-			}
-		}
-	}
-	sb.framebufferObject(ctx, c, c.Objects.Default.Framebuffer)
-	if names := c.Objects.GeneratedNames.Framebuffers; sb.once(names) {
-		for _, id := range names.KeysSorted() {
-			if id != 0 && names.Get(id) {
-				write(cb.GlGenFramebuffers(1, sb.writesData(ctx, id)))
-				if o := c.Objects.Framebuffers.Get(id); o != nil {
-					sb.framebufferObject(ctx, c, o)
 				}
 			}
 		}
@@ -332,8 +333,8 @@ func (sb *stateBuilder) eglImage(ctx context.Context, img *EGLImage) {
 	write, cb := sb.write, sb.cb
 
 	// TODO: This might not work if the target texture object has been deleted.
-	attribs := sb.readsSlice(ctx, AsU8ˢ(img.AttribList, sb.oldState.MemoryLayout))
-	cmd := cb.EglCreateImageKHR(img.Display, img.Context, img.Target, img.Buffer, attribs, img.ID)
+	attribs := img.AttribList.MustRead(ctx, nil, sb.oldState, nil)
+	cmd := cb.EglCreateImageKHR(img.Display, img.Context, img.Target, img.Buffer, sb.readsData(ctx, attribs), img.ID)
 	if img.Extra != nil {
 		cmd.Extras().Add(img.Extra)
 	}
@@ -343,7 +344,14 @@ func (sb *stateBuilder) eglImage(ctx context.Context, img *EGLImage) {
 func (sb *stateBuilder) bindEGLimages(ctx context.Context, s *State) {
 	write, cb := sb.write, sb.cb
 
+	if s.EGLImages.Len() == 0 {
+		return
+	}
+
 	for handle, c := range s.EGLContexts.Range() {
+		if !c.Other.Initialized {
+			continue
+		}
 		write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
 			c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
 		for _, t := range c.Objects.Textures.Range() {
@@ -371,15 +379,50 @@ func (sb *stateBuilder) bindEGLimages(ctx context.Context, s *State) {
 	write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
 }
 
+// May indirectly depend on EGLimages
+func (sb *stateBuilder) framebufferObjects(ctx context.Context, s *State) {
+	write, cb := sb.write, sb.cb
+
+	for handle, c := range s.EGLContexts.Range() {
+		if !c.Other.Initialized {
+			continue
+		}
+		write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
+			c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
+
+		sb.framebufferObject(ctx, c, c.Objects.Default.Framebuffer)
+		if names := c.Objects.GeneratedNames.Framebuffers; sb.once(names) {
+			for _, id := range names.KeysSorted() {
+				if id != 0 && names.Get(id) {
+					write(cb.GlGenFramebuffers(1, sb.writesData(ctx, id)))
+					if o := c.Objects.Framebuffers.Get(id); o != nil {
+						sb.framebufferObject(ctx, c, o)
+					}
+				}
+			}
+		}
+
+		// Bindings
+		write(cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, c.Bound.ReadFramebuffer.GetID()))
+		write(cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, c.Bound.DrawFramebuffer.GetID()))
+		write(cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, c.Bound.Renderbuffer.GetID()))
+	}
+	write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
+}
+
 // We have generally setup the whole state on single-thread.
 // As a last step, call eglMakeCurrent for on all user-threads.
 func (sb *stateBuilder) bindContexts(ctx context.Context, s *State) {
-	for thread, c := range s.Contexts.Range() {
-		cb := CommandBuilder{Thread: thread}
-		handle := s.Context2EGLContext.Get(c)
-		sb.write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
-			c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
+	write, cb := sb.write, sb.cb
+
+	for handle, c := range s.EGLContexts.Range() {
+		if thread := c.Other.BoundOnThread; thread != 0 {
+			cb := CommandBuilder{Thread: thread}
+			write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
+				c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
+		}
 	}
+	write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
 }
 
 func (sb *stateBuilder) bufferObject(ctx context.Context, b *Buffer) {
@@ -690,6 +733,8 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t *Texture) {
 	if target == GLenum_GL_TEXTURE_BUFFER {
 		b := t.Buffer
 		write(cb.GlTexBufferRange(target, b.InternalFormat, b.Binding.GetID(), b.Offset, b.Size))
+	} else if target == GLenum_GL_TEXTURE_EXTERNAL_OES {
+		// The dimensions are fully specified by the EGLimage
 	} else if t.ImmutableFormat == GLboolean_GL_TRUE {
 		img := t.Levels.Get(0).Layers.Get(0) // Must exist
 		lvl, fmt := GLsizei(t.Levels.Len()), img.SizedFormat
@@ -751,6 +796,8 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t *Texture) {
 				continue // The texture layer was not initialized.
 			} else if target == GLenum_GL_TEXTURE_BUFFER {
 				continue // There should be no images or layers.
+			} else if target == GLenum_GL_TEXTURE_EXTERNAL_OES {
+				continue // The content is fully specified by the EGLimage
 			} else if isArray || is3D {
 				if isCompressed(img) {
 					write(cb.GlCompressedTexSubImage3D(target, lvl, 0, 0, layer, w, h, d, fmt, dataSize, data))
@@ -1139,11 +1186,6 @@ func (sb *stateBuilder) bindings(ctx context.Context, c *Context) {
 			bind(GLenum_GL_TRANSFORM_FEEDBACK_BUFFER, tf.Buffer) //GLES30
 		}
 	}
-
-	// Framebuffers
-	write(cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, c.Bound.ReadFramebuffer.GetID()))
-	write(cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, c.Bound.DrawFramebuffer.GetID()))
-	write(cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, c.Bound.Renderbuffer.GetID()))
 
 	// Textures
 	for unit, tu := range c.Objects.TextureUnits.Range() {

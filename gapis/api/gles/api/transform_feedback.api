@@ -64,7 +64,11 @@ cmd void glBindTransformFeedback(GLenum target, TransformFeedbackId id) {
 sub ref!TransformFeedback GetOrCreateTransformFeedback(TransformFeedbackId id) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.TransformFeedbacks[id] == null) {
-    ctx.Objects.TransformFeedbacks[id] = new!TransformFeedback(ID: id)
+    tf := new!TransformFeedback(ID: id)
+    for i in as!GLuint(0) .. as!GLuint(ctx.Constants.MaxTransformFeedbackSeparateAttribs) {
+      tf.Buffers[i] = BufferBinding()
+    }
+    ctx.Objects.TransformFeedbacks[id] = tf
     ctx.Objects.GeneratedNames.TransformFeedbacks[id] = true
   }
   return ctx.Objects.TransformFeedbacks[id]
