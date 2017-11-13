@@ -1112,8 +1112,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				if res := prog.ActiveResources; res != nil {
 					for _, uniformIndex := range res.DefaultUniformBlock.KeysSorted() {
 						uniform := res.DefaultUniformBlock.Get(uniformIndex)
+						baseName := strings.TrimSuffix(uniform.Name, "[0]")
 						for i := uint32(0); i < uint32(uniform.ArraySize); i++ {
-							name := fmt.Sprintf("%v[%v]", strings.TrimSuffix(uniform.Name, "[0]"), i)
+							name := baseName
+							if i != 0 {
+								name = fmt.Sprintf("%v[%v]", name, i)
+							}
 							loc := UniformLocation(uniform.Locations.Get(i))
 							out.MutateAndWrite(ctx, dID, cb.GlGetUniformLocation(cmd.Program, name, loc))
 						}
