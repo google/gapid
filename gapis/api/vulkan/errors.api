@@ -66,8 +66,8 @@ sub void vkErrorNullPointer(string pointerType) {
   abort
 }
 
-sub void vkErrorUnsupportedExtension(const char* name) {
-  onVkError(new!ERR_UNSUPPORTED_EXTENSION(name: as!string(name)))
+sub void vkErrorUnrecognizedExtension(const char* name) {
+  onVkError(new!ERR_UNRECOGNIZED_EXTENSION(name: as!string(name)))
   // Continue the mutation as this may not cause problem.
 }
 
@@ -83,6 +83,6 @@ class ERR_NULL_POINTER {
   string pointerType
 }
 
-class ERR_UNSUPPORTED_EXTENSION {
+class ERR_UNRECOGNIZED_EXTENSION {
   string name
 }

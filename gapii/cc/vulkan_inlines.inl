@@ -1453,6 +1453,6 @@ inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_NULL_POINTER
 }
 
 template<>
-inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_UNSUPPORTED_EXTENSION> err) {
-  GAPID_WARNING("Error: Unsupported extension: %s", err->mname.c_str())
+inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_UNRECOGNIZED_EXTENSION> err) {
+  GAPID_WARNING("Error: Unrecognized extension: %s", err->mname.c_str())
 }

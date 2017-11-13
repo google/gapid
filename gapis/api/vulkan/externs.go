@@ -1129,7 +1129,8 @@ func (e externs) onVkError(err interface{}) {
 		issue.Error = fmt.Errorf("Invalid %s: %v", err.HandleType, err.Handle)
 	case *ERR_NULL_POINTER:
 		issue.Error = fmt.Errorf("Null pointer of %s", err.PointerType)
-	case *ERR_UNSUPPORTED_EXTENSION:
+	case *ERR_UNRECOGNIZED_EXTENSION:
+		issue.Severity = service.Severity_WarningLevel
 		issue.Error = fmt.Errorf("Unsupported extension: %s", err.Name)
 	default:
 		log.W(e.ctx, "Unhandled Vulkan error (%T): %v", err, err)

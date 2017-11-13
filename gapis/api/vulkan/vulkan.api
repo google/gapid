@@ -8673,7 +8673,7 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
   extensionNames := info.ppEnabledExtensionNames[0:info.enabledExtensionCount]
   for i in (0 .. info.enabledExtensionCount) {
     ext := as!string(extensionNames[i])
-    if !(ext in supportedExtensions.ExtensionNames) {vkErrorUnsupportedExtension(extensionNames[i])}
+    if !(ext in supportedExtensions.ExtensionNames) {vkErrorUnrecognizedExtension(extensionNames[i])}
     object.EnabledExtensions[i] = ext
   }
 
@@ -8714,7 +8714,7 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   extensionNames := info.ppEnabledExtensionNames[0:info.enabledExtensionCount]
   for i in (0 .. info.enabledExtensionCount) {
     ext := as!string(extensionNames[i])
-    if !(ext in supportedExtensions.ExtensionNames) {vkErrorUnsupportedExtension(extensionNames[i])}
+    if !(ext in supportedExtensions.ExtensionNames) {vkErrorUnrecognizedExtension(extensionNames[i])}
     object.EnabledExtensions[i] = ext
   }
 
