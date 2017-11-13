@@ -161,7 +161,8 @@ sub UniformTypeInfo GetUniformTypeInfo(GLenum ty) {
         GL_UNSIGNED_INT_IMAGE_2D_ARRAY,
         GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE,
         GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY,
-        GL_UNSIGNED_INT_ATOMIC_COUNTER:
+        GL_UNSIGNED_INT_ATOMIC_COUNTER,
+        GL_SAMPLER_EXTERNAL_OES:
       UniformTypeInfo(4, 1, 1)
     default:
       UniformTypeInfo()
