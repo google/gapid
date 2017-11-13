@@ -29,6 +29,10 @@ You can see the list of Programs created using `glCreateProgram` as well as shad
 <div class="tab" id="Vulkan" markdown="1">
 <img class="display" src="../images/vulkan.svg" alt="Vulkan" height="50">
 
-TODO
+The shaders pane displays all the shader resources created up to and including the selected command.
 
+<img src="../images/vulkan_shaders_pane.png"  width="793px"/>
+
+All of the shaders created with a call to `vkCreateShaderModule` show up here. What is displayed is the `SPIR-V` disassembly of the shader itself. You can freely modify the shader assembly, or paste new assembly into the shader. Once you have made the modifications, you can click `Push Changes` to see the effects of the change. The report view will notify
+you of any errors that occur.
 </div>
