@@ -36,6 +36,8 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
+// TODO: Change to take message type once the error messages below are moved to
+// en-us.stb.md.
 extern void onVkError(any err)
 
 sub void vkErrorInvalidInstance(VkInstance inst) {
@@ -69,6 +71,9 @@ sub void vkErrorUnsupportedExtension(const char* name) {
   // Continue the mutation as this may not cause problem.
 }
 
+
+// TODO: Add the following classes to messages in messages/en-us.stb.md once
+// the compilation conflict of importing messages.api is resolved.
 class ERR_INVALID_HANDLE {
   string handleType
   u64    handle

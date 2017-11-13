@@ -1118,6 +1118,8 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 	}
 }
 
+// TODO: Change to take error message type once all the errors are merged to
+// en-us.stb.md
 func (e externs) onVkError(err interface{}) {
 	var issue replay.Issue
 	issue.Command = e.cmdID
