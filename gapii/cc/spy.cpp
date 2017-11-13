@@ -449,7 +449,7 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
 void Spy::saveInitialSate() {
     GAPID_INFO("Saving initial GLES state");
     auto encoder = this->getEncoder(GlesSpy::kApiIndex);
-    {
+    if (should_trace(GlesSpy::kApiIndex)) {
       ToProtoContext pbCtx;
       capture::GlobalState global;
       auto group = encoder->group(&global);
