@@ -42,6 +42,7 @@ import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
 import "windows/vulkan_windows.api"
 import "synthetic.api"
+import "errors.api"
 
 ///////////////
 // Constants //
@@ -2339,6 +2340,7 @@ cmd void RecreateInstance(
   }
 
   fence
+  if pInstance == null {vkErrorNullPointer("VkInstance")}
   write(pInstance[0:1])
 }
 
@@ -2355,6 +2357,7 @@ cmd VkResult vkCreateInstance(
   instance := createInstanceObject(pCreateInfo)
   // TODO: pAllocator
   handle := ?
+  if pInstance == null {vkErrorNullPointer("VkInstance")}
   pInstance[0] = handle
   instance.VulkanHandle = handle
   Instances[handle] = instance
@@ -2458,6 +2461,8 @@ cmd VkResult vkEnumeratePhysicalDevices(
     VkInstance        instance,
     u32*              pPhysicalDeviceCount,
     VkPhysicalDevice* pPhysicalDevices) {
+  if !(instance in Instances) {vkErrorInvalidInstance(instance)}
+  if pPhysicalDeviceCount == null {vkErrorNullPointer("uint32_t")}
   _ = pPhysicalDeviceCount[0]
 
   fence
@@ -2587,6 +2592,7 @@ cmd void RecreateDevice(
   device := createDeviceObject(pCreateInfo)
   handle := ?
 
+  if pDevice == null {vkErrorNullPointer("VkDevice*")}
   pDevice[0] = handle
   device.PhysicalDevice = physicalDevice
   device.VulkanHandle = handle
@@ -2612,6 +2618,7 @@ cmd VkResult vkCreateDevice(
   // TODO: pAllocator
 
   handle := ?
+  if pDevice == null {vkErrorNullPointer("VkDevice*")}
   pDevice[0] = handle
   device.VulkanHandle = handle
   Devices[handle] = device
@@ -2740,6 +2747,7 @@ cmd VkResult vkQueueSubmit(
     u32                 submitCount,
     const VkSubmitInfo* pSubmits,
     VkFence             fence) {
+  if !(queue in Queues) {vkErrorInvalidQueue(queue)}
   LastSubmission = SUBMIT
   submitInfo := pSubmits[0:submitCount]
   LastBoundQueue = Queues[queue]
@@ -3161,7 +3169,10 @@ cmd void vkGetImageMemoryRequirements(
     VkDevice              device,
     VkImage               image,
     VkMemoryRequirements* pMemoryRequirements) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(image in Images) {vkErrorInvalidImage(image)}
   requirements := ?
+  if pMemoryRequirements == null {vkErrorNullPointer("VkMemoryRequirements")}
   pMemoryRequirements[0] = requirements
 }
 
@@ -8622,9 +8633,15 @@ sub u32 readVkApplicationInfo(const VkApplicationInfo* applicationInfo) {
   return info.apiVersion
 }
 
+@internal
+class ExtensionSet {
+  map!(string, bool) ExtensionNames
+}
+
 // Marks the fields that need to be observed in a VkInstanceCreateInfo struct and populates and returns an InstanceObject.
 sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createInfo) {
   object := new!InstanceObject()
+  if createInfo == null {vkErrorNullPointer("VkInstanceCreateInfo")}
   info := createInfo[0]
 
   // TODO: handle pNext
@@ -8642,9 +8659,22 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
     object.EnabledLayers[i] = as!string(layerNames[i])
   }
 
+  supportedExtensions := new!ExtensionSet()
+  supportedExtensions.ExtensionNames["VK_KHR_surface"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_display"] = true
+  supportedExtensions.ExtensionNames["VK_EXT_debug_report"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_xlib_surface"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_xcb_surface"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_wayland_surface"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_mir_surface"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_android_surface"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_win32_surface"] = true
+
   extensionNames := info.ppEnabledExtensionNames[0:info.enabledExtensionCount]
   for i in (0 .. info.enabledExtensionCount) {
-    object.EnabledExtensions[i] = as!string(extensionNames[i])
+    ext := as!string(extensionNames[i])
+    if !(ext in supportedExtensions.ExtensionNames) {vkErrorUnrecognizedExtension(extensionNames[i])}
+    object.EnabledExtensions[i] = ext
   }
 
   return object
@@ -8653,6 +8683,7 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
 // Marks the fields that need to be observed in a VkDeviceCreateInfo struct and populates and returns a DeviceObject.
 sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   object := new!DeviceObject()
+  if data == null {vkErrorNullPointer("VkDeviceCreateInfo")}
   info := data[0]
 
   // TODO: pNext
@@ -8673,9 +8704,18 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
     object.EnabledLayers[i] = as!string(layerNames[i])
   }
 
+  supportedExtensions := new!ExtensionSet()
+  supportedExtensions.ExtensionNames["VK_KHR_swapchain"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_display_swapchain"] = true
+  supportedExtensions.ExtensionNames["VK_EXT_debug_marker"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_ANDROID_native_buffer"] = true
+  supportedExtensions.ExtensionNames["VK_NV_dedicated_allocation"] = true
+
   extensionNames := info.ppEnabledExtensionNames[0:info.enabledExtensionCount]
   for i in (0 .. info.enabledExtensionCount) {
-    object.EnabledExtensions[i] = as!string(extensionNames[i])
+    ext := as!string(extensionNames[i])
+    if !(ext in supportedExtensions.ExtensionNames) {vkErrorUnrecognizedExtension(extensionNames[i])}
+    object.EnabledExtensions[i] = ext
   }
 
   if info.pEnabledFeatures != null {

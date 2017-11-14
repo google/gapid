@@ -567,7 +567,7 @@ func (a API) Replay(
 		switch req := rr.Request.(type) {
 		case issuesRequest:
 			if issues == nil {
-				issues = &findIssues{}
+				issues = newFindIssues(ctx, capture)
 			}
 			issues.reportTo(rr.Result)
 			optimize = false

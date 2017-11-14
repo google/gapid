@@ -22,8 +22,10 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/replay"
 	rb "github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/protocol"
+	"github.com/google/gapid/gapis/service"
 )
 
 type externs struct {
@@ -1113,5 +1115,29 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 			log.W(ctx, "sparse binding: image: %v, bindinfo: %v", image, bind)
 			log.W(ctx, "Image sparse residency binding is currently not supported")
 		}
+	}
+}
+
+// TODO: Change to take error message type once all the errors are merged to
+// en-us.stb.md
+func (e externs) onVkError(err interface{}) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	switch err := err.(type) {
+	case *ERR_INVALID_HANDLE:
+		issue.Error = fmt.Errorf("Invalid %s: %v", err.HandleType, err.Handle)
+	case *ERR_NULL_POINTER:
+		issue.Error = fmt.Errorf("Null pointer of %s", err.PointerType)
+	case *ERR_UNRECOGNIZED_EXTENSION:
+		issue.Severity = service.Severity_WarningLevel
+		issue.Error = fmt.Errorf("Unsupported extension: %s", err.Name)
+	default:
+		log.W(e.ctx, "Unhandled Vulkan error (%T): %v", err, err)
+		return
+	}
+	// Call the state's callback function for API error.
+	if f := e.s.OnError; f != nil {
+		f(issue)
 	}
 }
