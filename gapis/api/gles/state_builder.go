@@ -67,12 +67,10 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) []a
 		sb.eglImage(ctx, img)
 	}
 
-	// Bind texture to the newly created EGL images
-	sb.bindEGLimages(ctx, s)
-
-	// Create all framebuffer objects fairly late in the process,
-	// as they may indirectly depend on the EGL images (if used as attachment).
-	sb.framebufferObjects(ctx, s)
+	// Second pass over context which sets everything that may depend on EGLimage.
+	for handle, c := range s.EGLContexts.Range() {
+		sb.contextObjectPostEGLImage(ctx, handle, c)
+	}
 
 	// Set the active context for each thread
 	sb.bindContexts(ctx, s)
@@ -341,19 +339,13 @@ func (sb *stateBuilder) eglImage(ctx context.Context, img *EGLImage) {
 	write(cmd)
 }
 
-func (sb *stateBuilder) bindEGLimages(ctx context.Context, s *State) {
+func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EGLContext, c *Context) {
 	write, cb := sb.write, sb.cb
 
-	if s.EGLImages.Len() == 0 {
-		return
-	}
-
-	for handle, c := range s.EGLContexts.Range() {
-		if !c.Other.Initialized {
-			continue
-		}
+	if c.Other.Initialized {
 		write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
 			c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
+
 		for _, t := range c.Objects.Textures.Range() {
 			target := t.Kind
 			if i := t.EGLImage; i != nil {
@@ -373,23 +365,8 @@ func (sb *stateBuilder) bindEGLimages(ctx context.Context, s *State) {
 				write(api.WithExtras(cb.GlEGLImageTargetTexture2DOES(target, i.ID), extra))
 			}
 		}
-		write(cb.GlBindTexture(GLenum_GL_TEXTURE_2D, c.Bound.TextureUnit.Binding2d.GetID()))
-		write(cb.GlBindTexture(GLenum_GL_TEXTURE_EXTERNAL_OES, c.Bound.TextureUnit.BindingExternalOes.GetID()))
-	}
-	write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
-}
 
-// May indirectly depend on EGLimages
-func (sb *stateBuilder) framebufferObjects(ctx context.Context, s *State) {
-	write, cb := sb.write, sb.cb
-
-	for handle, c := range s.EGLContexts.Range() {
-		if !c.Other.Initialized {
-			continue
-		}
-		write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
-			c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
-
+		// Create framebuffers
 		sb.framebufferObject(ctx, c, c.Objects.Default.Framebuffer)
 		if names := c.Objects.GeneratedNames.Framebuffers; sb.once(names) {
 			for _, id := range names.KeysSorted() {
@@ -402,12 +379,33 @@ func (sb *stateBuilder) framebufferObjects(ctx context.Context, s *State) {
 			}
 		}
 
-		// Bindings
+		// Framebuffer bindings
 		write(cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, c.Bound.ReadFramebuffer.GetID()))
 		write(cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, c.Bound.DrawFramebuffer.GetID()))
 		write(cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, c.Bound.Renderbuffer.GetID()))
+
+		// Texture unit bindings
+		for unit, tu := range c.Objects.TextureUnits.Range() {
+			bind := func(target GLenum, tex *Texture) {
+				if t := tex.GetID(); t != 0 || unit == 0 {
+					write(cb.GlActiveTexture(GLenum_GL_TEXTURE0 + GLenum(unit)))
+					write(cb.GlBindTexture(target, t))
+				}
+			}
+			bind(GLenum_GL_TEXTURE_2D, tu.Binding2d)
+			bind(GLenum_GL_TEXTURE_2D_ARRAY, tu.Binding2dArray)
+			bind(GLenum_GL_TEXTURE_2D_MULTISAMPLE, tu.Binding2dMultisample)
+			bind(GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY, tu.Binding2dMultisampleArray)
+			bind(GLenum_GL_TEXTURE_3D, tu.Binding3d)
+			bind(GLenum_GL_TEXTURE_BUFFER, tu.BindingBuffer)
+			bind(GLenum_GL_TEXTURE_CUBE_MAP, tu.BindingCubeMap)
+			bind(GLenum_GL_TEXTURE_CUBE_MAP_ARRAY, tu.BindingCubeMapArray)
+			bind(GLenum_GL_TEXTURE_EXTERNAL_OES, tu.BindingExternalOes)
+		}
+		write(cb.GlActiveTexture(GLenum_GL_TEXTURE0 + GLenum(c.Bound.TextureUnit.ID)))
+
+		write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
 	}
-	write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
 }
 
 // We have generally setup the whole state on single-thread.
@@ -1186,26 +1184,6 @@ func (sb *stateBuilder) bindings(ctx context.Context, c *Context) {
 			bind(GLenum_GL_TRANSFORM_FEEDBACK_BUFFER, tf.Buffer) //GLES30
 		}
 	}
-
-	// Textures
-	for unit, tu := range c.Objects.TextureUnits.Range() {
-		bind := func(target GLenum, tex *Texture) {
-			if t := tex.GetID(); t != 0 || unit == 0 {
-				write(cb.GlActiveTexture(GLenum_GL_TEXTURE0 + GLenum(unit)))
-				write(cb.GlBindTexture(target, t))
-			}
-		}
-		bind(GLenum_GL_TEXTURE_2D, tu.Binding2d)
-		bind(GLenum_GL_TEXTURE_2D_ARRAY, tu.Binding2dArray)
-		bind(GLenum_GL_TEXTURE_2D_MULTISAMPLE, tu.Binding2dMultisample)
-		bind(GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY, tu.Binding2dMultisampleArray)
-		bind(GLenum_GL_TEXTURE_3D, tu.Binding3d)
-		bind(GLenum_GL_TEXTURE_BUFFER, tu.BindingBuffer)
-		bind(GLenum_GL_TEXTURE_CUBE_MAP, tu.BindingCubeMap)
-		bind(GLenum_GL_TEXTURE_CUBE_MAP_ARRAY, tu.BindingCubeMapArray)
-		bind(GLenum_GL_TEXTURE_EXTERNAL_OES, tu.BindingExternalOes)
-	}
-	write(cb.GlActiveTexture(GLenum_GL_TEXTURE0 + GLenum(c.Bound.TextureUnit.ID)))
 
 	// Samplers
 	for unit, tu := range c.Objects.TextureUnits.Range() {
