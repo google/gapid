@@ -159,12 +159,6 @@ sub void ApplyLinkProgramExtra(ref!Program p, ref!LinkProgramExtra i) {
         }
       }
       uniform.Value = values
-      if len(i.ActiveResources.Uniforms) > 0 {
-        // TODO: This should be the same ref as the 'uniform' above,
-        //       but the deep clone which got this extra made a copy.
-        uniformAlias := i.ActiveResources.Uniforms[as!u32(uniformIndex)]
-        uniformAlias.Value = values
-      }
     }
   }
 }
@@ -390,12 +384,54 @@ sub void AdjustProgramUseCount(ref!Program p, s32 delta) {
   }
 }
 
-sub void SetProgramUniform(ref!Program p, UniformLocation location, u8[] value, GLenum type) {
+// Returns the slice to the uniform's value. It can be used to read/write the value.
+// If the uniform is an array, it includes the "overflow" until the end of array.
+// It handles locations witch are in mid-array and non-consecutive array locations.
+// Matrices in this slice should be always stored in default (column major) order.
+@internal sub T[] ProgramUniformValue!T(ref!Program p, UniformLocation loc, GLenum type) {
   if p == null { glErrorInvalidOperation() }
-  if location != -1 { // -1 is silently ignored.
-    if !(location in p.UniformLocations) { glErrorInvalidOperation() }
-    // TODO: Check that the type matches the type declared in the shader.
-    copy(p.UniformLocations[location].Values, value)
+  if !(loc in p.UniformLocations) { glErrorInvalidOperation() }
+  // TODO: Check that the type is compatible with the type declared in the shader.
+  values := as!T[](p.UniformLocations[loc].Values)
+  if len(values) == 0 { glErrorInvalidOperation() }
+  return values
+}
+
+sub void SetProgramUniform!T(ProgramId p, UniformLocation loc, T value, GLenum type) {
+  if loc != -1 {
+    ProgramUniformValue!T(GetProgramOrError(p), loc, type)[0] = value
+  }
+}
+
+sub void SetProgramUniformv!T(ProgramId p, UniformLocation loc, T[] values, GLenum type) {
+  if loc != -1 {
+    copy(ProgramUniformValue!T(GetProgramOrError(p), loc, type), values)
+  }
+}
+
+sub void SetProgramUniformMatrixv!T(ProgramId p, UniformLocation loc, GLboolean t, T[] values, GLenum type) {
+  // TODO: transpose values if the flag is set
+  if loc != -1 {
+    copy(ProgramUniformValue!T(GetProgramOrError(p), loc, type), values)
+  }
+}
+
+sub void SetUniform!T(UniformLocation loc, T value, GLenum type) {
+  if loc != -1 {
+    ProgramUniformValue!T(GetContext().Bound.Program, loc, type)[0] = value
+  }
+}
+
+sub void SetUniformv!T(UniformLocation loc, T[] values, GLenum type) {
+  if loc != -1 {
+    copy(ProgramUniformValue!T(GetContext().Bound.Program, loc, type), values)
+  }
+}
+
+sub void SetUniformMatrixv!T(UniformLocation loc, GLboolean t, T[] values, GLenum type) {
+  // TODO: transpose values if the flag is set
+  if loc != -1 {
+    copy(ProgramUniformValue!T(GetContext().Bound.Program, loc, type), values)
   }
 }
 
@@ -1360,13 +1396,6 @@ sub void ProgramParameteri(ProgramId program, GLenum pname, GLint value) {
   }
 }
 
-sub void ProgramUniformv!T(ProgramId       program,
-                           UniformLocation location,
-                           T               values,
-                           GLenum          type) {
-  SetProgramUniform(GetProgramOrError(program), location, as!u8[](values), type)
-}
-
 @if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glProgramUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glProgramUniform.xhtml", Version.GLES32)
@@ -1375,9 +1404,8 @@ cmd void glProgramUniform1f(ProgramId program, UniformLocation location, GLfloat
 }
 
 sub void ProgramUniform1f(ProgramId program, UniformLocation location, GLfloat value0) {
-  v := make!GLfloat(1)
-  v[0] = value0
-  ProgramUniformv!GLfloat[](program, location, v, GL_FLOAT)
+  v := value0
+  SetProgramUniform!GLfloat(program, location, v, GL_FLOAT)
 }
 
 @if(Version.GLES31)
@@ -1392,7 +1420,7 @@ cmd void glProgramUniform1fv(ProgramId       program,
 
 sub void ProgramUniform1fv(ProgramId program, UniformLocation location, GLsizei count, const GLfloat* values) {
   v := values[0:count]
-  ProgramUniformv!GLfloat[](program, location, v, GL_FLOAT)
+  SetProgramUniformv!GLfloat(program, location, v, GL_FLOAT)
 }
 
 @if(Version.GLES31)
@@ -1403,9 +1431,8 @@ cmd void glProgramUniform1i(ProgramId program, UniformLocation location, GLint v
 }
 
 sub void ProgramUniform1i(ProgramId program, UniformLocation location, GLint value0) {
-  v := make!GLint(1)
-  v[0] = value0
-  ProgramUniformv!GLint[](program, location, v, GL_INT)
+  v := value0
+  SetProgramUniform!GLint(program, location, v, GL_INT)
 }
 
 @if(Version.GLES31)
@@ -1420,7 +1447,7 @@ cmd void glProgramUniform1iv(ProgramId       program,
 
 sub void ProgramUniform1iv(ProgramId program, UniformLocation location, GLsizei count, const GLint* values) {
   v := values[0:count]
-  ProgramUniformv!GLint[](program, location, v, GL_INT)
+  SetProgramUniformv!GLint(program, location, v, GL_INT)
 }
 
 @if(Version.GLES31)
@@ -1431,9 +1458,8 @@ cmd void glProgramUniform1ui(ProgramId program, UniformLocation location, GLuint
 }
 
 sub void ProgramUniform1ui(ProgramId program, UniformLocation location, GLuint value0) {
-  v := make!GLuint(1)
-  v[0] = value0
-  ProgramUniformv!GLuint[](program, location, v, GL_UNSIGNED_INT)
+  v := value0
+  SetProgramUniform!GLuint(program, location, v, GL_UNSIGNED_INT)
 }
 
 @if(Version.GLES31)
@@ -1448,7 +1474,7 @@ cmd void glProgramUniform1uiv(ProgramId       program,
 
 sub void ProgramUniform1uiv(ProgramId program, UniformLocation location, GLsizei count, const GLuint* values) {
   v := values[0:count]
-  ProgramUniformv!GLuint[](program, location, v, GL_UNSIGNED_INT)
+  SetProgramUniformv!GLuint(program, location, v, GL_UNSIGNED_INT)
 }
 
 @if(Version.GLES31)
@@ -1459,9 +1485,8 @@ cmd void glProgramUniform2f(ProgramId program, UniformLocation location, GLfloat
 }
 
 sub void ProgramUniform2f(ProgramId program, UniformLocation location, GLfloat value0, GLfloat value1) {
-  v := make!Vec2f(1)
-  v[0] = Vec2f(value0, value1)
-  ProgramUniformv!Vec2f[](program, location, v, GL_FLOAT_VEC2)
+  v := Vec2f(value0, value1)
+  SetProgramUniform!Vec2f(program, location, v, GL_FLOAT_VEC2)
 }
 
 @if(Version.GLES31)
@@ -1476,7 +1501,7 @@ cmd void glProgramUniform2fv(ProgramId       program,
 
 sub void ProgramUniform2fv(ProgramId program, UniformLocation location, GLsizei count, const GLfloat* values) {
   v := as!Vec2f*(values)[0:count]
-  ProgramUniformv!Vec2f[](program, location, v, GL_FLOAT_VEC2)
+  SetProgramUniformv!Vec2f(program, location, v, GL_FLOAT_VEC2)
 }
 
 @if(Version.GLES31)
@@ -1487,9 +1512,8 @@ cmd void glProgramUniform2i(ProgramId program, UniformLocation location, GLint v
 }
 
 sub void ProgramUniform2i(ProgramId program, UniformLocation location, GLint value0, GLint value1) {
-  v := make!Vec2i(1)
-  v[0] = Vec2i(value0, value1)
-  ProgramUniformv!Vec2i[](program, location, v, GL_INT_VEC2)
+  v := Vec2i(value0, value1)
+  SetProgramUniform!Vec2i(program, location, v, GL_INT_VEC2)
 }
 
 @if(Version.GLES31)
@@ -1504,7 +1528,7 @@ cmd void glProgramUniform2iv(ProgramId       program,
 
 sub void ProgramUniform2iv(ProgramId program, UniformLocation location, GLsizei count, const GLint* values) {
   v := as!Vec2i*(values)[0:count]
-  ProgramUniformv!Vec2i[](program, location, v, GL_INT_VEC2)
+  SetProgramUniformv!Vec2i(program, location, v, GL_INT_VEC2)
 }
 
 @if(Version.GLES31)
@@ -1515,9 +1539,8 @@ cmd void glProgramUniform2ui(ProgramId program, UniformLocation location, GLuint
 }
 
 sub void ProgramUniform2ui(ProgramId program, UniformLocation location, GLuint value0, GLuint value1) {
-  v := make!Vec2u(1)
-  v[0] = Vec2u(value0, value1)
-  ProgramUniformv!Vec2u[](program, location, v, GL_UNSIGNED_INT_VEC2)
+  v := Vec2u(value0, value1)
+  SetProgramUniform!Vec2u(program, location, v, GL_UNSIGNED_INT_VEC2)
 }
 
 @if(Version.GLES31)
@@ -1532,7 +1555,7 @@ cmd void glProgramUniform2uiv(ProgramId       program,
 
 sub void ProgramUniform2uiv(ProgramId program, UniformLocation location, GLsizei count, const GLuint* values) {
   v := as!Vec2u*(values)[0:count]
-  ProgramUniformv!Vec2u[](program, location, v, GL_UNSIGNED_INT_VEC2)
+  SetProgramUniformv!Vec2u(program, location, v, GL_UNSIGNED_INT_VEC2)
 }
 
 @if(Version.GLES31)
@@ -1547,9 +1570,8 @@ cmd void glProgramUniform3f(ProgramId       program,
 }
 
 sub void ProgramUniform3f(ProgramId program, UniformLocation location, GLfloat value0, GLfloat value1, GLfloat value2) {
-  v := make!Vec3f(1)
-  v[0] = Vec3f(value0, value1, value2)
-  ProgramUniformv!Vec3f[](program, location, v, GL_FLOAT_VEC3)
+  v := Vec3f(value0, value1, value2)
+  SetProgramUniform!Vec3f(program, location, v, GL_FLOAT_VEC3)
 }
 
 @if(Version.GLES31)
@@ -1564,7 +1586,7 @@ cmd void glProgramUniform3fv(ProgramId       program,
 
 sub void ProgramUniform3fv(ProgramId program, UniformLocation location, GLsizei count, const GLfloat* values) {
   v := as!Vec3f*(values)[0:count]
-  ProgramUniformv!Vec3f[](program, location, v, GL_FLOAT_VEC3)
+  SetProgramUniformv!Vec3f(program, location, v, GL_FLOAT_VEC3)
 }
 
 @if(Version.GLES31)
@@ -1579,9 +1601,8 @@ cmd void glProgramUniform3i(ProgramId       program,
 }
 
 sub void ProgramUniform3i(ProgramId program, UniformLocation location, GLint value0, GLint value1, GLint value2) {
-  v := make!Vec3i(1)
-  v[0] = Vec3i(value0, value1, value2)
-  ProgramUniformv!Vec3i[](program, location, v, GL_INT_VEC3)
+  v := Vec3i(value0, value1, value2)
+  SetProgramUniform!Vec3i(program, location, v, GL_INT_VEC3)
 }
 
 @if(Version.GLES31)
@@ -1596,7 +1617,7 @@ cmd void glProgramUniform3iv(ProgramId       program,
 
 sub void ProgramUniform3iv(ProgramId program, UniformLocation location, GLsizei count, const GLint* values) {
   v := as!Vec3i*(values)[0:count]
-  ProgramUniformv!Vec3i[](program, location, v, GL_INT_VEC3)
+  SetProgramUniformv!Vec3i(program, location, v, GL_INT_VEC3)
 }
 
 @if(Version.GLES31)
@@ -1611,9 +1632,8 @@ cmd void glProgramUniform3ui(ProgramId       program,
 }
 
 sub void ProgramUniform3ui(ProgramId program, UniformLocation location, GLuint value0, GLuint value1, GLuint value2) {
-  v := make!Vec3u(1)
-  v[0] = Vec3u(value0, value1, value2)
-  ProgramUniformv!Vec3u[](program, location, v, GL_UNSIGNED_INT_VEC3)
+  v := Vec3u(value0, value1, value2)
+  SetProgramUniform!Vec3u(program, location, v, GL_UNSIGNED_INT_VEC3)
 }
 
 @if(Version.GLES31)
@@ -1628,7 +1648,7 @@ cmd void glProgramUniform3uiv(ProgramId       program,
 
 sub void ProgramUniform3uiv(ProgramId program, UniformLocation location, GLsizei count, const GLuint* values) {
   v := as!Vec3u*(values)[0:count]
-  ProgramUniformv!Vec3u[](program, location, v, GL_UNSIGNED_INT_VEC3)
+  SetProgramUniformv!Vec3u(program, location, v, GL_UNSIGNED_INT_VEC3)
 }
 
 @if(Version.GLES31)
@@ -1644,9 +1664,8 @@ cmd void glProgramUniform4f(ProgramId       program,
 }
 
 sub void ProgramUniform4f(ProgramId program, UniformLocation location, GLfloat value0, GLfloat value1, GLfloat value2, GLfloat value3) {
-  v := make!Vec4f(1)
-  v[0] = Vec4f(value0, value1, value2, value3)
-  ProgramUniformv!Vec4f[](program, location, v, GL_FLOAT_VEC4)
+  v := Vec4f(value0, value1, value2, value3)
+  SetProgramUniform!Vec4f(program, location, v, GL_FLOAT_VEC4)
 }
 
 @if(Version.GLES31)
@@ -1661,7 +1680,7 @@ cmd void glProgramUniform4fv(ProgramId       program,
 
 sub void ProgramUniform4fv(ProgramId program, UniformLocation location, GLsizei count, const GLfloat* values) {
   v := as!Vec4f*(values)[0:count]
-  ProgramUniformv!Vec4f[](program, location, v, GL_FLOAT_VEC4)
+  SetProgramUniformv!Vec4f(program, location, v, GL_FLOAT_VEC4)
 }
 
 @if(Version.GLES31)
@@ -1677,9 +1696,8 @@ cmd void glProgramUniform4i(ProgramId       program,
 }
 
 sub void ProgramUniform4i(ProgramId program, UniformLocation location, GLint value0, GLint value1, GLint value2, GLint value3) {
-  v := make!Vec4i(1)
-  v[0] = Vec4i(value0, value1, value2, value3)
-  ProgramUniformv!Vec4i[](program, location, v, GL_INT_VEC4)
+  v := Vec4i(value0, value1, value2, value3)
+  SetProgramUniform!Vec4i(program, location, v, GL_INT_VEC4)
 }
 
 @if(Version.GLES31)
@@ -1694,7 +1712,7 @@ cmd void glProgramUniform4iv(ProgramId       program,
 
 sub void ProgramUniform4iv(ProgramId program, UniformLocation location, GLsizei count, const GLint* values) {
   v := as!Vec4i*(values)[0:count]
-  ProgramUniformv!Vec4i[](program, location, v, GL_INT_VEC4)
+  SetProgramUniformv!Vec4i(program, location, v, GL_INT_VEC4)
 }
 
 @if(Version.GLES31)
@@ -1710,9 +1728,8 @@ cmd void glProgramUniform4ui(ProgramId       program,
 }
 
 sub void ProgramUniform4ui(ProgramId program, UniformLocation location, GLuint value0, GLuint value1, GLuint value2, GLuint value3) {
-  v := make!Vec4u(1)
-  v[0] = Vec4u(value0, value1, value2, value3)
-  ProgramUniformv!Vec4u[](program, location, v, GL_UNSIGNED_INT_VEC4)
+  v := Vec4u(value0, value1, value2, value3)
+  SetProgramUniform!Vec4u(program, location, v, GL_UNSIGNED_INT_VEC4)
 }
 
 @if(Version.GLES31)
@@ -1727,16 +1744,7 @@ cmd void glProgramUniform4uiv(ProgramId       program,
 
 sub void ProgramUniform4uiv(ProgramId program, UniformLocation location, GLsizei count, const GLuint* values) {
   v := as!Vec4u*(values)[0:count]
-  ProgramUniformv!Vec4u[](program, location, v, GL_UNSIGNED_INT_VEC4)
-}
-
-sub void ProgramUniformMatrixv!T(ProgramId       program,
-                                 UniformLocation location,
-                                 GLboolean       transpose,
-                                 T               values,
-                                 GLenum          type) {
-  _ = transpose // TODO: transpose values if the flag is set
-  SetProgramUniform(GetProgramOrError(program), location, as!u8[](values), type)
+  SetProgramUniformv!Vec4u(program, location, v, GL_UNSIGNED_INT_VEC4)
 }
 
 @if(Version.GLES31)
@@ -1752,7 +1760,7 @@ cmd void glProgramUniformMatrix2fv(ProgramId       program,
 
 sub void ProgramUniformMatrix2fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat2f*(values)[0:count]
-  ProgramUniformMatrixv!Mat2f[](program, location, transpose, v, GL_FLOAT_MAT2)
+  SetProgramUniformMatrixv!Mat2f(program, location, transpose, v, GL_FLOAT_MAT2)
 }
 
 @if(Version.GLES31)
@@ -1768,7 +1776,7 @@ cmd void glProgramUniformMatrix2x3fv(ProgramId       program,
 
 sub void ProgramUniformMatrix2x3fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat2x3f*(values)[0:count]
-  ProgramUniformMatrixv!Mat2x3f[](program, location, transpose, v, GL_FLOAT_MAT2x3)
+  SetProgramUniformMatrixv!Mat2x3f(program, location, transpose, v, GL_FLOAT_MAT2x3)
 }
 
 @if(Version.GLES31)
@@ -1784,7 +1792,7 @@ cmd void glProgramUniformMatrix2x4fv(ProgramId       program,
 
 sub void ProgramUniformMatrix2x4fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat2x4f*(values)[0:count]
-  ProgramUniformMatrixv!Mat2x4f[](program, location, transpose, v, GL_FLOAT_MAT2x4)
+  SetProgramUniformMatrixv!Mat2x4f(program, location, transpose, v, GL_FLOAT_MAT2x4)
 }
 
 @if(Version.GLES31)
@@ -1800,7 +1808,7 @@ cmd void glProgramUniformMatrix3fv(ProgramId       program,
 
 sub void ProgramUniformMatrix3fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat3f*(values)[0:count]
-  ProgramUniformMatrixv!Mat3f[](program, location, transpose, v, GL_FLOAT_MAT3)
+  SetProgramUniformMatrixv!Mat3f(program, location, transpose, v, GL_FLOAT_MAT3)
 }
 
 @if(Version.GLES31)
@@ -1816,7 +1824,7 @@ cmd void glProgramUniformMatrix3x2fv(ProgramId       program,
 
 sub void ProgramUniformMatrix3x2fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat3x2f*(values)[0:count]
-  ProgramUniformMatrixv!Mat3x2f[](program, location, transpose, v, GL_FLOAT_MAT3x2)
+  SetProgramUniformMatrixv!Mat3x2f(program, location, transpose, v, GL_FLOAT_MAT3x2)
 }
 
 @if(Version.GLES31)
@@ -1832,7 +1840,7 @@ cmd void glProgramUniformMatrix3x4fv(ProgramId       program,
 
 sub void ProgramUniformMatrix3x4fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat3x4f*(values)[0:count]
-  ProgramUniformMatrixv!Mat3x4f[](program, location, transpose, v, GL_FLOAT_MAT3x4)
+  SetProgramUniformMatrixv!Mat3x4f(program, location, transpose, v, GL_FLOAT_MAT3x4)
 }
 
 @if(Version.GLES31)
@@ -1848,7 +1856,7 @@ cmd void glProgramUniformMatrix4fv(ProgramId       program,
 
 sub void ProgramUniformMatrix4fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat4f*(values)[0:count]
-  ProgramUniformMatrixv!Mat4f[](program, location, transpose, v, GL_FLOAT_MAT4)
+  SetProgramUniformMatrixv!Mat4f(program, location, transpose, v, GL_FLOAT_MAT4)
 }
 
 @if(Version.GLES31)
@@ -1864,7 +1872,7 @@ cmd void glProgramUniformMatrix4x2fv(ProgramId       program,
 
 sub void ProgramUniformMatrix4x2fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat4x2f*(values)[0:count]
-  ProgramUniformMatrixv!Mat4x2f[](program, location, transpose, v, GL_FLOAT_MAT4x2)
+  SetProgramUniformMatrixv!Mat4x2f(program, location, transpose, v, GL_FLOAT_MAT4x2)
 }
 
 @if(Version.GLES31)
@@ -1880,7 +1888,7 @@ cmd void glProgramUniformMatrix4x3fv(ProgramId       program,
 
 sub void ProgramUniformMatrix4x3fv(ProgramId program, UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat4x3f*(values)[0:count]
-  ProgramUniformMatrixv!Mat4x3f[](program, location, transpose, v, GL_FLOAT_MAT4x3)
+  SetProgramUniformMatrixv!Mat4x3f(program, location, transpose, v, GL_FLOAT_MAT4x3)
 }
 
 @if(Version.GLES20)
@@ -1957,20 +1965,14 @@ cmd void glShaderSource(ShaderId             shader,
   }
 }
 
-sub void Uniformv!T(UniformLocation location, T values, GLenum type) {
-  ctx := GetContext()
-  SetProgramUniform(ctx.Bound.Program, location, as!u8[](values), type)
-}
-
 @if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glUniform.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glUniform.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform1f(UniformLocation location, GLfloat value) {
-  v := make!GLfloat(1)
-  v[0] = value
-  Uniformv!GLfloat[](location, v, GL_FLOAT)
+  v := value
+  SetUniform!GLfloat(location, v, GL_FLOAT)
 }
 
 @if(Version.GLES20)
@@ -1980,7 +1982,7 @@ cmd void glUniform1f(UniformLocation location, GLfloat value) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform1fv(UniformLocation location, GLsizei count, const GLfloat* values) {
   v := values[0:count]
-  Uniformv!GLfloat[](location, v, GL_FLOAT)
+  SetUniformv!GLfloat(location, v, GL_FLOAT)
 }
 
 @if(Version.GLES20)
@@ -1989,9 +1991,8 @@ cmd void glUniform1fv(UniformLocation location, GLsizei count, const GLfloat* va
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform1i(UniformLocation location, GLint value) {
-  v := make!GLint(1)
-  v[0] = value
-  Uniformv!GLint[](location, v, GL_INT)
+  v := value
+  SetUniform!GLint(location, v, GL_INT)
 }
 
 @if(Version.GLES20)
@@ -2001,7 +2002,7 @@ cmd void glUniform1i(UniformLocation location, GLint value) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform1iv(UniformLocation location, GLsizei count, const GLint* values) {
   v := values[0:count]
-  Uniformv!GLint[](location, v, GL_INT)
+  SetUniformv!GLint(location, v, GL_INT)
 }
 
 @if(Version.GLES30)
@@ -2009,9 +2010,8 @@ cmd void glUniform1iv(UniformLocation location, GLsizei count, const GLint* valu
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform1ui(UniformLocation location, GLuint value0) {
-  v := make!GLuint(1)
-  v[0] = value0
-  Uniformv!GLuint[](location, v, GL_UNSIGNED_INT)
+  v := value0
+  SetUniform!GLuint(location, v, GL_UNSIGNED_INT)
 }
 
 @if(Version.GLES30)
@@ -2020,7 +2020,7 @@ cmd void glUniform1ui(UniformLocation location, GLuint value0) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform1uiv(UniformLocation location, GLsizei count, const GLuint* values) {
   v := values[0:count]
-  Uniformv!GLuint[](location, v, GL_UNSIGNED_INT)
+  SetUniformv!GLuint(location, v, GL_UNSIGNED_INT)
 }
 
 @if(Version.GLES20)
@@ -2029,9 +2029,8 @@ cmd void glUniform1uiv(UniformLocation location, GLsizei count, const GLuint* va
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform2f(UniformLocation location, GLfloat value0, GLfloat value1) {
-  v := make!Vec2f(1)
-  v[0] = Vec2f(value0, value1)
-  Uniformv!Vec2f[](location, v, GL_FLOAT_VEC2)
+  v := Vec2f(value0, value1)
+  SetUniform!Vec2f(location, v, GL_FLOAT_VEC2)
 }
 
 @if(Version.GLES20)
@@ -2041,7 +2040,7 @@ cmd void glUniform2f(UniformLocation location, GLfloat value0, GLfloat value1) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform2fv(UniformLocation location, GLsizei count, const GLfloat* values) {
   v := as!Vec2f*(values)[0:count]
-  Uniformv!Vec2f[](location, v, GL_FLOAT_VEC2)
+  SetUniformv!Vec2f(location, v, GL_FLOAT_VEC2)
 }
 
 @if(Version.GLES20)
@@ -2050,9 +2049,8 @@ cmd void glUniform2fv(UniformLocation location, GLsizei count, const GLfloat* va
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform2i(UniformLocation location, GLint value0, GLint value1) {
-  v := make!Vec2i(1)
-  v[0] = Vec2i(value0, value1)
-  Uniformv!Vec2i[](location, v, GL_INT_VEC2)
+  v := Vec2i(value0, value1)
+  SetUniform!Vec2i(location, v, GL_INT_VEC2)
 }
 
 @if(Version.GLES20)
@@ -2062,7 +2060,7 @@ cmd void glUniform2i(UniformLocation location, GLint value0, GLint value1) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform2iv(UniformLocation location, GLsizei count, const GLint* values) {
   v := as!Vec2i*(values)[0:count]
-  Uniformv!Vec2i[](location, v, GL_INT_VEC2)
+  SetUniformv!Vec2i(location, v, GL_INT_VEC2)
 }
 
 @if(Version.GLES30)
@@ -2070,9 +2068,8 @@ cmd void glUniform2iv(UniformLocation location, GLsizei count, const GLint* valu
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform2ui(UniformLocation location, GLuint value0, GLuint value1) {
-  v := make!Vec2u(1)
-  v[0] = Vec2u(value0, value1)
-  Uniformv!Vec2u[](location, v, GL_UNSIGNED_INT_VEC2)
+  v := Vec2u(value0, value1)
+  SetUniform!Vec2u(location, v, GL_UNSIGNED_INT_VEC2)
 }
 
 @if(Version.GLES30)
@@ -2081,7 +2078,7 @@ cmd void glUniform2ui(UniformLocation location, GLuint value0, GLuint value1) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform2uiv(UniformLocation location, GLsizei count, const GLuint* values) {
   v := as!Vec2u*(values)[0:count]
-  Uniformv!Vec2u[](location, v, GL_UNSIGNED_INT_VEC2)
+  SetUniformv!Vec2u(location, v, GL_UNSIGNED_INT_VEC2)
 }
 
 @if(Version.GLES20)
@@ -2090,9 +2087,8 @@ cmd void glUniform2uiv(UniformLocation location, GLsizei count, const GLuint* va
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform3f(UniformLocation location, GLfloat value0, GLfloat value1, GLfloat value2) {
-  v := make!Vec3f(1)
-  v[0] = Vec3f(value0, value1, value2)
-  Uniformv!Vec3f[](location, v, GL_FLOAT_VEC3)
+  v := Vec3f(value0, value1, value2)
+  SetUniform!Vec3f(location, v, GL_FLOAT_VEC3)
 }
 
 @if(Version.GLES20)
@@ -2102,7 +2098,7 @@ cmd void glUniform3f(UniformLocation location, GLfloat value0, GLfloat value1, G
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform3fv(UniformLocation location, GLsizei count, const GLfloat* values) {
   v := as!Vec3f*(values)[0:count]
-  Uniformv!Vec3f[](location, v, GL_FLOAT_VEC3)
+  SetUniformv!Vec3f(location, v, GL_FLOAT_VEC3)
 }
 
 @if(Version.GLES20)
@@ -2111,9 +2107,8 @@ cmd void glUniform3fv(UniformLocation location, GLsizei count, const GLfloat* va
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform3i(UniformLocation location, GLint value0, GLint value1, GLint value2) {
-  v := make!Vec3i(1)
-  v[0] = Vec3i(value0, value1, value2)
-  Uniformv!Vec3i[](location, v, GL_INT_VEC3)
+  v := Vec3i(value0, value1, value2)
+  SetUniform!Vec3i(location, v, GL_INT_VEC3)
 }
 
 @if(Version.GLES20)
@@ -2123,7 +2118,7 @@ cmd void glUniform3i(UniformLocation location, GLint value0, GLint value1, GLint
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform3iv(UniformLocation location, GLsizei count, const GLint* values) {
   v := as!Vec3i*(values)[0:count]
-  Uniformv!Vec3i[](location, v, GL_INT_VEC3)
+  SetUniformv!Vec3i(location, v, GL_INT_VEC3)
 }
 
 @if(Version.GLES30)
@@ -2131,9 +2126,8 @@ cmd void glUniform3iv(UniformLocation location, GLsizei count, const GLint* valu
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform3ui(UniformLocation location, GLuint value0, GLuint value1, GLuint value2) {
-  v := make!Vec3u(1)
-  v[0] = Vec3u(value0, value1, value2)
-  Uniformv!Vec3u[](location, v, GL_UNSIGNED_INT_VEC3)
+  v := Vec3u(value0, value1, value2)
+  SetUniform!Vec3u(location, v, GL_UNSIGNED_INT_VEC3)
 }
 
 @if(Version.GLES30)
@@ -2142,7 +2136,7 @@ cmd void glUniform3ui(UniformLocation location, GLuint value0, GLuint value1, GL
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform3uiv(UniformLocation location, GLsizei count, const GLuint* values) {
   v := as!Vec3u*(values)[0:count]
-  Uniformv!Vec3u[](location, v, GL_UNSIGNED_INT_VEC3)
+  SetUniformv!Vec3u(location, v, GL_UNSIGNED_INT_VEC3)
 }
 
 @if(Version.GLES20)
@@ -2155,9 +2149,8 @@ cmd void glUniform4f(UniformLocation location,
                      GLfloat         value1,
                      GLfloat         value2,
                      GLfloat         value3) {
-  v := make!Vec4f(1)
-  v[0] = Vec4f(value0, value1, value2, value3)
-  Uniformv!Vec4f[](location, v, GL_FLOAT_VEC4)
+  v := Vec4f(value0, value1, value2, value3)
+  SetUniform!Vec4f(location, v, GL_FLOAT_VEC4)
 }
 
 @if(Version.GLES20)
@@ -2167,7 +2160,7 @@ cmd void glUniform4f(UniformLocation location,
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform4fv(UniformLocation location, GLsizei count, const GLfloat* values) {
   v := as!Vec4f*(values)[0:count]
-  Uniformv!Vec4f[](location, v, GL_FLOAT_VEC4)
+  SetUniformv!Vec4f(location, v, GL_FLOAT_VEC4)
 }
 
 @if(Version.GLES20)
@@ -2180,9 +2173,8 @@ cmd void glUniform4i(UniformLocation location,
                      GLint           value1,
                      GLint           value2,
                      GLint           value3) {
-  v := make!Vec4i(1)
-  v[0] = Vec4i(value0, value1, value2, value3)
-  Uniformv!Vec4i[](location, v, GL_INT_VEC4)
+  v := Vec4i(value0, value1, value2, value3)
+  SetUniform!Vec4i(location, v, GL_INT_VEC4)
 }
 
 @if(Version.GLES20)
@@ -2192,7 +2184,7 @@ cmd void glUniform4i(UniformLocation location,
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform4iv(UniformLocation location, GLsizei count, const GLint* values) {
   v := as!Vec4i*(values)[0:count]
-  Uniformv!Vec4i[](location, v, GL_INT_VEC4)
+  SetUniformv!Vec4i(location, v, GL_INT_VEC4)
 }
 
 @if(Version.GLES30)
@@ -2200,9 +2192,8 @@ cmd void glUniform4iv(UniformLocation location, GLsizei count, const GLint* valu
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glUniform.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform4ui(UniformLocation location, GLuint value0, GLuint value1, GLuint value2, GLuint value3) {
-  v := make!Vec4u(1)
-  v[0] = Vec4u(value0, value1, value2, value3)
-  Uniformv!Vec4u[](location, v, GL_UNSIGNED_INT_VEC4)
+  v := Vec4u(value0, value1, value2, value3)
+  SetUniform!Vec4u(location, v, GL_UNSIGNED_INT_VEC4)
 }
 
 @if(Version.GLES30)
@@ -2211,7 +2202,7 @@ cmd void glUniform4ui(UniformLocation location, GLuint value0, GLuint value1, GL
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glUniform.xhtml", Version.GLES32)
 cmd void glUniform4uiv(UniformLocation location, GLsizei count, const GLuint* values) {
   v := as!Vec4u*(values)[0:count]
-  Uniformv!Vec4u[](location, v, GL_UNSIGNED_INT_VEC4)
+  SetUniformv!Vec4u(location, v, GL_UNSIGNED_INT_VEC4)
 }
 
 @if(Version.GLES30)
@@ -2229,15 +2220,6 @@ cmd void glUniformBlockBinding(ProgramId         program,
   ub.Binding = as!GLint(uniform_block_binding)
 }
 
-sub void UniformMatrixv!T(UniformLocation location,
-                          GLboolean       transpose,
-                          T               values,
-                          GLenum          type) {
-  _ = transpose // TODO: Transpose if the flag is set.
-  ctx := GetContext()
-  SetProgramUniform(ctx.Bound.Program, location, as!u8[](values), type)
-}
-
 @if(Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glUniform.xml", Version.GLES20)
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glUniform.xhtml", Version.GLES30)
@@ -2248,7 +2230,7 @@ cmd void glUniformMatrix2fv(UniformLocation location,
                             GLboolean       transpose,
                             const GLfloat*  values) {
   v := as!Mat2f*(values)[0:count]
-  UniformMatrixv!Mat2f[](location, transpose, v, GL_FLOAT_MAT2)
+  SetUniformMatrixv!Mat2f(location, transpose, v, GL_FLOAT_MAT2)
 }
 
 @if(Version.GLES30)
@@ -2264,7 +2246,7 @@ cmd void glUniformMatrix2x3fv(UniformLocation location,
 
 sub void UniformMatrix2x3fv(UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat2x3f*(values)[0:count]
-  UniformMatrixv!Mat2x3f[](location, transpose, v, GL_FLOAT_MAT2x3)
+  SetUniformMatrixv!Mat2x3f(location, transpose, v, GL_FLOAT_MAT2x3)
 }
 
 @if(Version.GLES30)
@@ -2280,7 +2262,7 @@ cmd void glUniformMatrix2x4fv(UniformLocation location,
 
 sub void UniformMatrix2x4fv(UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat2x4f*(values)[0:count]
-  UniformMatrixv!Mat2x4f[](location, transpose, v, GL_FLOAT_MAT2x4)
+  SetUniformMatrixv!Mat2x4f(location, transpose, v, GL_FLOAT_MAT2x4)
 }
 
 @if(Version.GLES20)
@@ -2293,7 +2275,7 @@ cmd void glUniformMatrix3fv(UniformLocation location,
                             GLboolean       transpose,
                             const GLfloat*  values) {
   v := as!Mat3f*(values)[0:count]
-  UniformMatrixv!Mat3f[](location, transpose, v, GL_FLOAT_MAT3)
+  SetUniformMatrixv!Mat3f(location, transpose, v, GL_FLOAT_MAT3)
 }
 
 @if(Version.GLES30)
@@ -2309,7 +2291,7 @@ cmd void glUniformMatrix3x2fv(UniformLocation location,
 
 sub void UniformMatrix3x2fv(UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat3x2f*(values)[0:count]
-  UniformMatrixv!Mat3x2f[](location, transpose, v, GL_FLOAT_MAT3x2)
+  SetUniformMatrixv!Mat3x2f(location, transpose, v, GL_FLOAT_MAT3x2)
 }
 
 @if(Version.GLES30)
@@ -2325,7 +2307,7 @@ cmd void glUniformMatrix3x4fv(UniformLocation location,
 
 sub void UniformMatrix3x4fv(UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat3x4f*(values)[0:count]
-  UniformMatrixv!Mat3x4f[](location, transpose, v, GL_FLOAT_MAT3x4)
+  SetUniformMatrixv!Mat3x4f(location, transpose, v, GL_FLOAT_MAT3x4)
 }
 
 @if(Version.GLES20)
@@ -2338,7 +2320,7 @@ cmd void glUniformMatrix4fv(UniformLocation location,
                             GLboolean       transpose,
                             const GLfloat*  values) {
   v := as!Mat4f*(values)[0:count]
-  UniformMatrixv!Mat4f[](location, transpose, v, GL_FLOAT_MAT4)
+  SetUniformMatrixv!Mat4f(location, transpose, v, GL_FLOAT_MAT4)
 }
 
 @if(Version.GLES30)
@@ -2354,7 +2336,7 @@ cmd void glUniformMatrix4x2fv(UniformLocation location,
 
 sub void UniformMatrix4x2fv(UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat4x2f*(values)[0:count]
-  UniformMatrixv!Mat4x2f[](location, transpose, v, GL_FLOAT_MAT4x2)
+  SetUniformMatrixv!Mat4x2f(location, transpose, v, GL_FLOAT_MAT4x2)
 }
 
 @if(Version.GLES30)
@@ -2370,7 +2352,7 @@ cmd void glUniformMatrix4x3fv(UniformLocation location,
 
 sub void UniformMatrix4x3fv(UniformLocation location, GLsizei count, GLboolean transpose, const GLfloat* values) {
   v := as!Mat4x3f*(values)[0:count]
-  UniformMatrixv!Mat4x3f[](location, transpose, v, GL_FLOAT_MAT4x3)
+  SetUniformMatrixv!Mat4x3f(location, transpose, v, GL_FLOAT_MAT4x3)
 }
 
 @if(Version.GLES20)
