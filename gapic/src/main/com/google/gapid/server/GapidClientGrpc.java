@@ -23,6 +23,8 @@ import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.EnableAnalyticsRequest;
 import com.google.gapid.proto.service.Service.EnableAnalyticsResponse;
+import com.google.gapid.proto.service.Service.EnableCrashReportingRequest;
+import com.google.gapid.proto.service.Service.EnableCrashReportingResponse;
 import com.google.gapid.proto.service.Service.PingRequest;
 
 import java.util.function.Consumer;
@@ -143,6 +145,12 @@ public class GapidClientGrpc implements GapidClient {
   public ListenableFuture<Service.GetFramebufferAttachmentResponse> getFramebufferAttachment(
       Service.GetFramebufferAttachmentRequest request) {
     return client.getFramebufferAttachment(request);
+  }
+
+  @Override
+  public ListenableFuture<EnableCrashReportingResponse> enableCrashReporting(
+      EnableCrashReportingRequest request) {
+    return client.enableCrashReporting(request);
   }
 
   @Override

@@ -64,7 +64,7 @@ public class SettingsDialog extends DialogBase {
     settings.adb = adbPath.getText().trim();
     settings.disableReplayOptimization = disableReplayOptimization.getSelection();
     settings.setAnalyticsEnabled(sendAnalytics.getSelection());
-    settings.reportExceptions = sendCrashReports.getSelection();
+    settings.reportCrashes = sendCrashReports.getSelection();
     settings.autoCheckForUpdates = autoCheckForUpdates.getSelection();
     settings.onChange();
   }
@@ -99,7 +99,7 @@ public class SettingsDialog extends DialogBase {
         withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
 
     sendCrashReports = withLayoutData(
-        createCheckbox(container, Messages.CRASH_REPORTING_OPTION, settings.reportExceptions),
+        createCheckbox(container, Messages.CRASH_REPORTING_OPTION, settings.reportCrashes),
         withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
 
     autoCheckForUpdates = withLayoutData(

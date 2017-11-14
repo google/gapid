@@ -341,6 +341,14 @@ message ClientInteraction {
   ClientAction action = 3;
 };
 
+message EnableCrashReportingRequest {
+  // Enables or disable anonymous crash reporting.
+  // This will override the -crashreport command line flag.
+  bool enable = 1;
+}
+
+message EnableCrashReportingResponse {}
+
 message EnableAnalyticsRequest {
   // Enables or disable anonymous analytics reporting.
   // This will override the -analytics command line flag.
@@ -432,6 +440,9 @@ service Gapid {
 
   // Find searches for data, streaming the results.
   rpc Find(FindRequest) returns (stream FindResponse) {}
+
+  // EnableCrashReporting enables or disables crash reporting for this session.
+  rpc EnableCrashReporting(EnableCrashReportingRequest) returns (EnableCrashReportingResponse) {}
 
   // EnableAnalytics enables or disables analytics reporting for this session.
   rpc EnableAnalytics(EnableAnalyticsRequest) returns (EnableAnalyticsResponse) {}

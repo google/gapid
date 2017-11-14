@@ -126,6 +126,9 @@ type Service interface {
 	// Find performs a search using req, streaming the results to h.
 	Find(ctx context.Context, req *FindRequest, h FindHandler) error
 
+	// EnableCrashReporting enables or disables crash reporting for this session.
+	EnableCrashReporting(ctx context.Context, enable bool) error
+
 	// EnableAnalytics enables or disables analytics reporting for this session.
 	EnableAnalytics(ctx context.Context, enable bool, clientID string) error
 

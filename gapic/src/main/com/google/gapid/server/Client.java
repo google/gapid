@@ -27,6 +27,7 @@ import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.CheckForUpdatesRequest;
 import com.google.gapid.proto.service.Service.EnableAnalyticsRequest;
+import com.google.gapid.proto.service.Service.EnableCrashReportingRequest;
 import com.google.gapid.proto.service.Service.ExportCaptureRequest;
 import com.google.gapid.proto.service.Service.FollowRequest;
 import com.google.gapid.proto.service.Service.GetAvailableStringTablesRequest;
@@ -194,6 +195,20 @@ public class Client {
                 .setHints(hints)
                 .build()),
             in -> immediateFuture(throwIfError(in.getImage(), in.getError(), stack))));
+  }
+
+  public void enableCrashReports() {
+    call(() -> String.format("RPC->enableCrashReports()"),
+        stack -> client.enableCrashReporting(EnableCrashReportingRequest.newBuilder()
+            .setEnable(true)
+            .build()));
+  }
+
+  public void disableCrashReports() {
+    call(() -> String.format("RPC->disableCrashReports()"),
+        stack -> client.enableCrashReporting(EnableCrashReportingRequest.newBuilder()
+            .setEnable(false)
+            .build()));
   }
 
   public void enableAnalytics(String clientId) {
