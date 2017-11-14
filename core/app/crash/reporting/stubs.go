@@ -27,3 +27,6 @@ import "context"
 // Enable turns on crash reporting if the running processes panics inside a
 // crash.Go block.
 func Enable(ctx context.Context, appName, appVersion string) {}
+
+// Disable turns off crash reporting previously enabled by Enable()
+func Disable() {}

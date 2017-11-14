@@ -89,6 +89,10 @@ public class GapisProcess extends ChildProcess<Integer> {
 
     String gapirFlags = "";
 
+    if (settings.reportCrashes) {
+      args.add("-crashreport");
+    }
+
     if (settings.analyticsEnabled()) {
       args.add("-analytics");
       args.add(settings.analyticsClientId);

@@ -107,7 +107,7 @@ public class WelcomeDialog {
         models.settings.skipFirstRunDialog = true;
         models.settings.adb = adbPath.getText();
         models.settings.setAnalyticsEnabled(allowAnalytics.getSelection());
-        models.settings.reportExceptions = allowCrashReports.getSelection();
+        models.settings.reportCrashes = allowCrashReports.getSelection();
         models.settings.autoCheckForUpdates = allowUpdateChecks.getSelection();
         models.settings.save();
         models.settings.onChange();

@@ -25,6 +25,8 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/google/gapid/core/app/crash/reporting"
+
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/auth"
@@ -320,6 +322,15 @@ func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]by
 		return []byte{}, err
 	}
 	return b.Bytes(), nil
+}
+
+func (s *server) EnableCrashReporting(ctx context.Context, enable bool) error {
+	if enable {
+		reporting.Enable(ctx, app.Name, app.Version.String())
+	} else {
+		reporting.Disable()
+	}
+	return nil
 }
 
 func (s *server) EnableAnalytics(ctx context.Context, enable bool, clientID string) error {

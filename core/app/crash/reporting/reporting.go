@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/fault/stacktrace"
@@ -36,22 +37,41 @@ const (
 	crashURL        = crashStagingURL
 )
 
+var (
+	mutex   sync.Mutex
+	disable func()
+)
+
 // Enable turns on crash reporting if the running processes panics inside a
 // crash.Go block.
 func Enable(ctx context.Context, appName, appVersion string) {
-	crash.Register(func(e interface{}, s stacktrace.Callstack) {
-		var osName, osVersion string
-		if h := host.Instance(ctx); h != nil {
-			if os := h.GetConfiguration().GetOS(); os != nil {
-				osName = os.GetName()
-				osVersion = fmt.Sprintf("%v %v.%v.%v", os.GetBuild(), os.GetMajor(), os.GetMinor(), os.GetPoint())
+	mutex.Lock()
+	defer mutex.Unlock()
+	if disable == nil {
+		disable = crash.Register(func(e interface{}, s stacktrace.Callstack) {
+			var osName, osVersion string
+			if h := host.Instance(ctx); h != nil {
+				if os := h.GetConfiguration().GetOS(); os != nil {
+					osName = os.GetName()
+					osVersion = fmt.Sprintf("%v %v.%v.%v", os.GetBuild(), os.GetMajor(), os.GetMinor(), os.GetPoint())
+				}
 			}
-		}
-		err := reporter{appName, appVersion, osName, osVersion}.report(s, crashURL)
-		if err != nil {
-			log.E(ctx, "%v", err)
-		}
-	})
+			err := reporter{appName, appVersion, osName, osVersion}.report(s, crashURL)
+			if err != nil {
+				log.E(ctx, "%v", err)
+			}
+		})
+	}
+}
+
+// Disable turns off crash reporting previously enabled by Enable()
+func Disable() {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if disable != nil {
+		disable()
+		disable = nil
+	}
 }
 
 type reporter struct {

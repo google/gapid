@@ -86,7 +86,7 @@ public class Settings {
   public long lastCheckForUpdates = 0; // milliseconds since midnight, January 1, 1970 UTC.
   public String analyticsClientId = ""; // Empty means do not track.
   public boolean disableReplayOptimization = false;
-  public boolean reportExceptions = false;
+  public boolean reportCrashes = false;
 
   /**
    * Registers the listener for changes.
@@ -223,7 +223,7 @@ public class Settings {
     analyticsClientId = properties.getProperty("analytics.clientId", "");
     disableReplayOptimization =
         getBoolean(properties, "replay.disableOptimization", disableReplayOptimization);
-    reportExceptions = getBoolean(properties, "crash.reporting", reportExceptions);
+    reportCrashes = getBoolean(properties, "crash.reporting", reportCrashes);
   }
 
   private void updateTo(Properties properties) {
@@ -263,7 +263,7 @@ public class Settings {
     properties.setProperty("analytics.clientId", analyticsClientId);
     properties.setProperty(
         "replay.disableOptimization",  Boolean.toString(disableReplayOptimization));
-    properties.setProperty("crash.reporting", Boolean.toString(reportExceptions));
+    properties.setProperty("crash.reporting", Boolean.toString(reportCrashes));
   }
 
   private static Point getPoint(Properties properties, String name) {

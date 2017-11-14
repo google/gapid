@@ -330,6 +330,15 @@ func (s *grpcServer) Find(req *service.FindRequest, server service.Gapid_FindSer
 	return s.handler.Find(s.bindCtx(ctx), req, server.Send)
 }
 
+func (s *grpcServer) EnableCrashReporting(ctx xctx.Context, req *service.EnableCrashReportingRequest) (*service.EnableCrashReportingResponse, error) {
+	defer s.inRPC()()
+	err := s.handler.EnableCrashReporting(s.bindCtx(ctx), req.Enable)
+	if err != nil {
+		return nil, err
+	}
+	return &service.EnableCrashReportingResponse{}, nil
+}
+
 func (s *grpcServer) EnableAnalytics(ctx xctx.Context, req *service.EnableAnalyticsRequest) (*service.EnableAnalyticsResponse, error) {
 	defer s.inRPC()()
 	err := s.handler.EnableAnalytics(s.bindCtx(ctx), req.Enable, req.ClientId)
