@@ -49,3 +49,39 @@ func addSparseBinding(l sparseBindingList, b *VkSparseMemoryBind) (sparseBinding
 	}
 	return sparseBindingList(nl), nil
 }
+
+func addSparseImageBinding(bs U32ːVkSparseImageMemoryBindᵐ, b VkSparseImageMemoryBind) {
+	last := uint32(0)
+	for i, eb := range bs.Range() {
+		if fullyCover(eb, b) {
+			bs.Delete(i)
+		}
+		if i > last {
+			last = i
+		}
+	}
+	bs.Set(last+1, b)
+}
+
+func fullyCover(orig, new VkSparseImageMemoryBind) bool {
+	origAspect := orig.Subresource.AspectMask
+	newAspect := new.Subresource.AspectMask
+	if newAspect&origAspect != origAspect {
+		return false
+	}
+	if orig.Subresource.MipLevel != new.Subresource.MipLevel {
+		return false
+	}
+	if orig.Subresource.ArrayLayer != new.Subresource.ArrayLayer {
+		return false
+	}
+	if new.Offset.X > orig.Offset.X || new.Offset.Y > orig.Offset.Y || new.Offset.Z > orig.Offset.Z {
+		return false
+	}
+	if new.Offset.X+int32(new.Extent.Width) < orig.Offset.X+int32(orig.Extent.Width) ||
+		new.Offset.Y+int32(new.Extent.Height) < orig.Offset.Y+int32(orig.Extent.Height) ||
+		new.Offset.Z+int32(new.Extent.Depth) < orig.Offset.Z+int32(orig.Extent.Depth) {
+		return false
+	}
+	return true
+}

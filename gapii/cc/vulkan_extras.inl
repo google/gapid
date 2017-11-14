@@ -153,6 +153,8 @@ void SpyOverride_RecreateBindImageMemory(VkDevice, VkImage, VkDeviceMemory,
                                          VkDeviceSize offset,
                                          uint32_t bindCount,
                                          VkSparseMemoryBind* binds) {}
+void SpyOverride_RecreateBindImageSparseMemoryBindings(
+    VkDevice, VkImage, uint32_t, VkSparseImageMemoryBind*) {}
 void SpyOverride_RecreateImageData(VkDevice, VkImage,
                                    uint32_t /*VkImageLayout*/,
                                    uint32_t hostMemoryIndex, VkQueue,

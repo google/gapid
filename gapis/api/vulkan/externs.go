@@ -1112,8 +1112,10 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 	}
 	for image, binds := range binds.ImageBinds.Range() {
 		for _, bind := range binds.SparseImageMemoryBinds.Range() {
-			log.W(ctx, "sparse binding: image: %v, bindinfo: %v", image, bind)
-			log.W(ctx, "Image sparse residency binding is currently not supported")
+			imgObj := st.Images.Get(image)
+			if imgObj != nil {
+				addSparseImageBinding(imgObj.SparseImageMemoryBindings, bind)
+			}
 		}
 	}
 }

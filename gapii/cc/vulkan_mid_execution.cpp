@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <deque>
 #include <map>
 #include <vector>
@@ -1151,6 +1152,26 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           image.second->mBoundMemoryOffset,
           opaqueSparseBound ? opaqueSparseBindCount : 0,
           opaqueSparseBound ? opaqueSparseBinds.data() : nullptr);
+
+      // If there are sparse residency bindings for this image, recreate them.
+      if (image.second->mSparseImageMemoryBindings.size() > 0) {
+        uint32_t count = image.second->mSparseImageMemoryBindings.size();
+        std::vector<VkSparseImageMemoryBind> imageSparseBinds;
+        // Put the bindings in chronological order.
+        std::vector<uint32_t> order_keys;
+        imageSparseBinds.reserve(count);
+        order_keys.reserve(count);
+        for (const auto& b : image.second->mSparseImageMemoryBindings) {
+          order_keys.push_back(b.first);
+        }
+        std::sort(order_keys.begin(), order_keys.end());
+        for (auto k : order_keys) {
+          imageSparseBinds.push_back(image.second->mSparseImageMemoryBindings[k]);
+        }
+        RecreateBindImageSparseMemoryBindings(observer, image.second->mDevice,
+                                              image.second->mVulkanHandle,
+                                              count, imageSparseBinds.data());
+      }
 
       RecreateImageData(observer, image.second->mDevice,
                         image.second->mVulkanHandle, imageLayout,

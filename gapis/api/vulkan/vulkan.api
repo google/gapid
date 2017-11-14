@@ -3143,6 +3143,22 @@ cmd void RecreateBindImageMemory(
     }
 }
 
+@override
+@custom
+@no_replay
+cmd void RecreateBindImageSparseMemoryBindings(
+    VkDevice device,
+    VkImage image,
+    u32 count,
+    const VkSparseImageMemoryBind* pBinds) {
+  if count > 0 {
+    binds := pBinds[0:count]
+    for i in (0 .. count) {
+      _ = binds[i]
+    }
+  }
+}
+
 @indirect("VkDevice")
 cmd VkResult vkBindImageMemory(
     VkDevice       device,
@@ -9131,6 +9147,7 @@ enum SemaphoreUpdate {
   ref!DeviceMemoryObject    BoundMemory
   VkDeviceSize              BoundMemoryOffset
   map!(u32, VkSparseMemoryBind) OpaqueSparseMemoryBindings
+  map!(u32, VkSparseImageMemoryBind) SparseImageMemoryBindings
   @unused bool              IsSwapchainImage
   VkImage                   VulkanHandle
   ImageInfo                 Info

@@ -1215,7 +1215,7 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 		defer queueBindInfoData.Free()
 
 		queue := findSupportedQueueForDevice(a.Device, s, VkQueueFlags(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT))
-		err := cb.VkQueueBindSparse(
+		if err := cb.VkQueueBindSparse(
 			queue,
 			1,
 			queueBindInfoData.Ptr(),
@@ -1225,9 +1225,63 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 			queueBindInfoData.Data(),
 		).AddRead(
 			opaqueMemBindInfoData.Data(),
-		).Mutate(ctx, id, s, b)
-
+		).Mutate(ctx, id, s, b); err != nil {
+			return err
+		}
+		err := cb.VkQueueWaitIdle(queue, VkResult_VK_SUCCESS).Mutate(ctx, id, s, b)
 		return err
+	}
+	return nil
+}
+
+func (a *RecreateBindImageSparseMemoryBindings) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+	defer EnterRecreate(ctx, s)()
+	l := s.MemoryLayout
+	c := GetState(s)
+	o := a.Extras().Observations()
+	o.ApplyReads(s.Memory.ApplicationPool())
+	cb := CommandBuilder{Thread: a.thread}
+	// binds MUST be in chronological order.
+	for _, bind := range a.PBinds.Slice(0, uint64(a.Count), l).MustRead(ctx, a, s, nil) {
+		if !c.DeviceMemories.Contains(bind.Memory) {
+			continue
+		}
+		bindData := s.AllocDataOrPanic(ctx, bind)
+		defer bindData.Free()
+		imgMemBindInfo := VkSparseImageMemoryBindInfo{
+			Image:     a.Image,
+			BindCount: 1,
+			PBinds:    NewVkSparseImageMemoryBindᶜᵖ(bindData.Ptr()),
+		}
+		imgMemBindInfoData := s.AllocDataOrPanic(ctx, imgMemBindInfo)
+		defer imgMemBindInfoData.Free()
+		queueBindInfo := VkBindSparseInfo{
+			SType:                VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+			PNext:                NewVoidᶜᵖ(memory.Nullptr),
+			WaitSemaphoreCount:   0,
+			PWaitSemaphores:      NewVkSemaphoreᶜᵖ(memory.Nullptr),
+			BufferBindCount:      0,
+			PBufferBinds:         NewVkSparseBufferMemoryBindInfoᶜᵖ(memory.Nullptr),
+			ImageOpaqueBindCount: 0,
+			PImageOpaqueBinds:    NewVkSparseImageOpaqueMemoryBindInfoᶜᵖ(memory.Nullptr),
+			ImageBindCount:       1,
+			PImageBinds:          NewVkSparseImageMemoryBindInfoᶜᵖ(imgMemBindInfoData.Ptr()),
+			SignalSemaphoreCount: 0,
+			PSignalSemaphores:    NewVkSemaphoreᶜᵖ(memory.Nullptr),
+		}
+		queueBindInfoData := s.AllocDataOrPanic(ctx, queueBindInfo)
+		defer queueBindInfoData.Free()
+		queue := findSupportedQueueForDevice(a.Device, s, VkQueueFlags(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT))
+		if err := cb.VkQueueBindSparse(
+			queue, 1, queueBindInfoData.Ptr(), VkFence(0), VkResult_VK_SUCCESS).AddRead(
+			queueBindInfoData.Data()).AddRead(imgMemBindInfoData.Data()).AddRead(
+			bindData.Data()).Mutate(ctx, id, s, b); err != nil {
+			return err
+		}
+		// Guarantee the binding order.
+		if err := cb.VkQueueWaitIdle(queue, VkResult_VK_SUCCESS).Mutate(ctx, id, s, b); err != nil {
+			return err
+		}
 	}
 	return nil
 }
