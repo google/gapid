@@ -98,8 +98,6 @@ func (a API) Replay(
 
 	cmds := capture.Commands
 
-	transforms := transform.Transforms{}
-
 	// Gathers and reports any issues found.
 	var issues *findIssues
 
@@ -111,17 +109,19 @@ func (a API) Replay(
 
 	// Skip unnecessary commands.
 	deadCodeElimination := transform.NewDeadCodeElimination(ctx, dependencyGraph)
+	deadCodeElimination.KeepAllAlive = config.DisableDeadCodeElimination
 
 	var rf *readFramebuffer // Transform for all framebuffer reads.
 	var rt *readTexture     // Transform for all texture reads.
 
-	optimize := true
 	wire := false
+
+	transforms := transform.Transforms{deadCodeElimination}
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case issuesRequest:
-			optimize = false
+			deadCodeElimination.KeepAllAlive = true
 			if issues == nil {
 				issues = newFindIssues(ctx, capture, device)
 			}
@@ -154,7 +154,7 @@ func (a API) Replay(
 
 			cfg := cfg.(drawConfig)
 			if cfg.disableReplayOptimization {
-				optimize = false
+				deadCodeElimination.KeepAllAlive = true
 			}
 			switch cfg.wireframeMode {
 			case replay.WireframeMode_All:
@@ -163,11 +163,6 @@ func (a API) Replay(
 				transforms.Add(wireframeOverlay(ctx, req.after))
 			}
 		}
-	}
-
-	if optimize && !config.DisableDeadCodeElimination {
-		cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
-		transforms.Prepend(deadCodeElimination)
 	}
 
 	if wire {
@@ -223,11 +218,7 @@ func (a API) Replay(
 		transforms = newTransforms
 	}
 
-	// If the capture contains initial state, build the necessary commands to recreate it.
-	// TODO: Dead code elimination can be run on the initial commands as well.
-	initialCmds := capture.GetInitialCommands(ctx)
-	transform.Transforms{compatTransform}.Transform(ctx, initialCmds, out)
-
+	cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
 	transforms.Transform(ctx, cmds, out)
 	return nil
 }

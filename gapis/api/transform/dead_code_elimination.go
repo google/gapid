@@ -45,9 +45,10 @@ var (
 // (state is like memory and commands are instructions which read/write it).
 // Construct with NewDeadCodeElimination, do not build directly.
 type DeadCodeElimination struct {
-	depGraph    *dependencygraph.DependencyGraph
-	requests    api.CmdIDSet
-	lastRequest api.CmdID
+	KeepAllAlive bool
+	depGraph     *dependencygraph.DependencyGraph
+	requests     api.CmdIDSet
+	lastRequest  api.CmdID
 }
 
 // NewDeadCodeElimination constructs and returns a new DeadCodeElimination
@@ -78,11 +79,19 @@ func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api
 }
 
 func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
+	if t.KeepAllAlive {
+		api.ForeachCmd(ctx, t.depGraph.Commands, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
+			out.MutateAndWrite(ctx, t.depGraph.GetCmdID(int(index)), cmd)
+			return nil
+		})
+		return
+	}
 	t0 := deadCodeEliminationCounter.Start()
 	isLive := t.propagateLiveness(ctx)
 	deadCodeEliminationCounter.Stop(t0)
-	api.ForeachCmd(ctx, t.depGraph.Commands[:len(isLive)], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		if isLive[id] {
+	api.ForeachCmd(ctx, t.depGraph.Commands[:len(isLive)], func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
+		id := t.depGraph.GetCmdID(int(index))
+		if isLive[index] {
 			out.MutateAndWrite(ctx, id, cmd)
 		} else if debugDCE {
 			log.I(ctx, "Dropped %v %v", id, cmd)
@@ -93,9 +102,9 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 
 // See https://en.wikipedia.org/wiki/Live_variable_analysis
 func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
-	isLive := make([]bool, t.lastRequest+1)
+	isLive := make([]bool, t.depGraph.NumInitialCommands+int(t.lastRequest)+1)
 	state := newLivenessTree(t.depGraph.GetHierarchyStateMap())
-	for i := int(t.lastRequest); i >= 0; i-- {
+	for i := len(isLive) - 1; i >= 0; i-- {
 		b := t.depGraph.Behaviours[i]
 		isLive[i] = b.KeepAlive
 		// Always ignore commands that abort.
@@ -103,7 +112,8 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 			continue
 		}
 		// If this is requested ID, mark all root state as live.
-		if t.requests.Contains(api.CmdID(i)) {
+		id := t.depGraph.GetCmdID(i)
+		if t.requests.Contains(id) {
 			isLive[i] = true
 			for root := range t.depGraph.Roots {
 				state.MarkLive(root)
@@ -136,8 +146,8 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 			}
 		}
 		// Debug output
-		if config.DebugDeadCodeElimination && t.requests.Contains(api.CmdID(i)) {
-			log.I(ctx, "DCE: Requested cmd %v: %v", i, t.depGraph.Commands[i])
+		if config.DebugDeadCodeElimination && t.requests.Contains(id) {
+			log.I(ctx, "DCE: Requested cmd %v: %v", id, t.depGraph.Commands[i])
 			t.depGraph.Print(ctx, &b)
 		}
 	}

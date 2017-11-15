@@ -34,10 +34,21 @@ import (
 var dependencyGraphBuildCounter = benchmark.Duration("dependencyGraph.build")
 
 type DependencyGraph struct {
+	// Number of generated commands in 'Commands' which build the initial state.
+	NumInitialCommands int
+
 	Commands   []api.Cmd             // Command list which this graph was build for.
 	Behaviours []AtomBehaviour       // State reads/writes for each command (graph edges).
 	Roots      map[StateAddress]bool // State to mark live at requested commands.
 	addressMap addressMapping        // Remap state keys to integers for performance.
+}
+
+// GetCmdID returns the CmdID for given element in the Commands slice.
+func (g *DependencyGraph) GetCmdID(cmdIndex int) api.CmdID {
+	if cmdIndex < g.NumInitialCommands {
+		return api.CmdID(0).Derived()
+	}
+	return api.CmdID(cmdIndex - g.NumInitialCommands)
 }
 
 func (g *DependencyGraph) GetStateAddressOf(key StateKey) StateAddress {
@@ -151,10 +162,17 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 	cmds := c.Commands
 	behaviourProviders := map[api.API]BehaviourProvider{}
 
+	// If the capture contains initial state, prepend the commands to build the state.
+	initialCmds := c.GetInitialCommands(ctx)
+	if len(initialCmds) > 0 {
+		cmds = append(initialCmds, cmds...)
+	}
+
 	g := &DependencyGraph{
-		Commands:   cmds,
-		Behaviours: make([]AtomBehaviour, len(cmds)),
-		Roots:      map[StateAddress]bool{},
+		NumInitialCommands: len(initialCmds),
+		Commands:           cmds,
+		Behaviours:         make([]AtomBehaviour, len(cmds)),
+		Roots:              map[StateAddress]bool{},
 		addressMap: addressMapping{
 			address: map[StateKey]StateAddress{nil: NullStateAddress},
 			key:     map[StateAddress]StateKey{NullStateAddress: nil},
@@ -162,29 +180,30 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 		},
 	}
 
-	s := c.NewState(ctx)
+	s := c.NewUninitializedState(ctx)
 	dependencyGraphBuildCounter.Time(func() {
-		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		api.ForeachCmd(ctx, cmds, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
 			a := cmd.API()
+			id := g.GetCmdID(int(index))
 			if _, ok := behaviourProviders[a]; !ok {
 				if bp, ok := a.(DependencyGraphBehaviourProvider); ok {
 					behaviourProviders[a] = bp.GetDependencyGraphBehaviourProvider(ctx)
 				} else {
 					// API does not provide dependency information, always keep
 					// commands for such APIs.
-					g.Behaviours[id].KeepAlive = true
+					g.Behaviours[index].KeepAlive = true
 					// Even if the command does not belong to an API that provides
 					// dependency info, we still need to mutate it in the new state,
 					// because following commands in other APIs may depends on the
 					// side effect of the current command.
 					if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
 						log.W(ctx, "Command %v %v: %v", id, cmd, err)
-						g.Behaviours[id].Aborted = true
+						g.Behaviours[index].Aborted = true
 					}
 					return nil
 				}
 			}
-			g.Behaviours[id] = behaviourProviders[a].GetBehaviourForAtom(ctx, s, id, cmd, g)
+			g.Behaviours[index] = behaviourProviders[a].GetBehaviourForAtom(ctx, s, id, cmd, g)
 			return nil
 		})
 	})
