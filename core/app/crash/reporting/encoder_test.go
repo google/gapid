@@ -30,8 +30,7 @@ func TestEncoder(t *testing.T) {
 		appVersion: "V1.2.3",
 		osName:     "BobOS",
 		osVersion:  "10",
-		stacktrace: "foo1.bar 10:20\nfoo2.bar 20:30",
-	}.encode()
+	}.encodeStacktrace("foo1.bar 10:20\nfoo2.bar 20:30")
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
 		assert.For(ctx, "ty").ThatString(ty).Equals("multipart/form-data; boundary=" + multipartBoundary)
 		bytes, err := ioutil.ReadAll(r)

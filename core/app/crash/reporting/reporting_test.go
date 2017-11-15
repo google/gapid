@@ -30,12 +30,12 @@ func TestReport(t *testing.T) {
 	if testCrashReport {
 		ctx := log.Testing(t)
 
-		err := reporter{
-			appName:    "crash-reporting-test",
-			appVersion: "0",
-			osName:     "unknown",
-			osVersion:  "unknown",
-		}.report(stacktrace.Capture(), crashStagingURL)
+		err := Reporter{
+			AppName:    "crash-reporting-test",
+			AppVersion: "0",
+			OSName:     "unknown",
+			OSVersion:  "unknown",
+		}.reportStacktrace(stacktrace.Capture(), crashStagingURL)
 
 		assert.For(ctx, "err").ThatError(err).Succeeded()
 	}

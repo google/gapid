@@ -85,7 +85,6 @@ func handleAbortSignals(cancel task.CancelFunc) {
 
 func handleCrashSignals(ctx context.Context, cancel task.CancelFunc) {
 	crash.Register(func(err interface{}, callstack stacktrace.Callstack) {
-		defer cancel()
 		log.F(ctx, false, "Crash: %v (%T)\n%v", err, err, callstack)
 	})
 }

@@ -49,6 +49,7 @@ func doReplay(t *testing.T, f func(*builder.Builder)) {
 	device := bind.Host(ctx)
 	client := gapir.New(ctx)
 	abi := device.Instance().GetConfiguration().PreferredABI(nil)
+	os := device.Instance().GetConfiguration().GetOS()
 	connection, err := client.Connect(ctx, device, abi)
 	if err != nil {
 		t.Errorf("Failed to connect to '%v': %v", device, err)
@@ -64,7 +65,7 @@ func doReplay(t *testing.T, f func(*builder.Builder)) {
 		t.Errorf("Build failed with error: %v", err)
 	}
 
-	err = executor.Execute(ctx, payload, decoder, connection, abi.MemoryLayout)
+	err = executor.Execute(ctx, payload, decoder, connection, abi.MemoryLayout, os)
 	if err != nil {
 		t.Errorf("Executor failed with error: %v", err)
 	}

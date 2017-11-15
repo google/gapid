@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash/reporting"
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
@@ -36,6 +38,7 @@ type executor struct {
 	payload      protocol.Payload
 	decoder      builder.ResponseDecoder
 	memoryLayout *device.MemoryLayout
+	OS           *device.OS
 }
 
 // Execute sends the replay payload for execution on the target replay device
@@ -48,12 +51,16 @@ func Execute(
 	payload protocol.Payload,
 	decoder builder.ResponseDecoder,
 	connection io.ReadWriteCloser,
-	memoryLayout *device.MemoryLayout) error {
+	memoryLayout *device.MemoryLayout,
+	os *device.OS) error {
 
+	// The memoryLayout is specific to the ABI of the requested capture,
+	// while the OS is not. Thus a device.Configuration is not applicable here.
 	return executor{
 		payload:      payload,
 		decoder:      decoder,
 		memoryLayout: memoryLayout,
+		OS:           os,
 	}.execute(ctx, connection)
 }
 
@@ -148,6 +155,12 @@ func (e executor) handleReplayCommunication(ctx context.Context, connection io.R
 			if err := e.handleDataResponse(ctx, r, postbacks); err != nil {
 				return fmt.Errorf("Failed to send replay resource data: %v", err)
 			}
+		case protocol.MessageType_Crash:
+			log.I(ctx, "Crash from GAPIR incoming")
+			if err := e.handleCrash(ctx, r); err != nil {
+				return fmt.Errorf("Failed to handle crash sent by gapir: %v", err)
+			}
+			// replay crashed, will we get an EOF next, or should we return here
 		default:
 			return fmt.Errorf("Unknown message type: %v", msg)
 		}
@@ -156,6 +169,35 @@ func (e executor) handleReplayCommunication(ctx context.Context, connection io.R
 			return err
 		}
 	}
+}
+
+func (e executor) handleCrash(ctx context.Context, r binary.Reader) error {
+	filename := r.String()
+	if r.Error() != nil {
+		return r.Error()
+	}
+
+	n := r.Uint32()
+	if r.Error() != nil {
+		return r.Error()
+	}
+
+	crashData := make([]byte, n)
+	r.Data(crashData)
+	if r.Error() != nil {
+		return r.Error()
+	}
+
+	// TODO(baldwinn860): get the actual version from GAPIR in case it ever goes out of sync
+	if err := reporting.ReportMinidump(reporting.Reporter{
+		AppName:    "GAPIR",
+		AppVersion: app.Version.String(),
+		OSName:     e.OS.GetName(),
+		OSVersion:  fmt.Sprintf("%v %v.%v.%v", e.OS.GetBuild(), e.OS.GetMajor(), e.OS.GetMinor(), e.OS.GetPoint()),
+	}, filename, crashData); err != nil {
+		return log.Err(ctx, err, "Failed to report crash in GAPIR")
+	}
+	return nil
 }
 
 func (e executor) handleDataResponse(ctx context.Context, r binary.Reader, postbacks io.Writer) error {
