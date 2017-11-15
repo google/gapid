@@ -25,7 +25,6 @@ type encoder struct {
 	appVersion string
 	osName     string
 	osVersion  string
-	stacktrace string
 }
 
 const (
@@ -33,7 +32,7 @@ const (
 	multipartBoundary = "::multipart-boundary::"
 )
 
-func (e encoder) encode() (io.Reader, string, error) {
+func (e encoder) encodeStacktrace(stacktrace string) (io.Reader, string, error) {
 	buf := bytes.Buffer{}
 	w := multipart.NewWriter(&buf)
 	if err := w.SetBoundary(multipartBoundary); err != nil {
@@ -56,8 +55,43 @@ func (e encoder) encode() (io.Reader, string, error) {
 			return nil, "", err
 		}
 	}
-	if e.stacktrace != "" {
-		if err := w.WriteField("exception_info", e.stacktrace); err != nil {
+	if stacktrace != "" {
+		if err := w.WriteField("exception_info", stacktrace); err != nil {
+			return nil, "", err
+		}
+	}
+	return &buf, w.FormDataContentType(), nil
+}
+
+func (e encoder) encodeMinidump(minidumpName string, minidumpData []byte) (io.Reader, string, error) {
+	buf := bytes.Buffer{}
+	w := multipart.NewWriter(&buf)
+	if err := w.SetBoundary(multipartBoundary); err != nil {
+		return nil, "", err
+	}
+	defer w.Close()
+	if err := w.WriteField("product", crashProduct); err != nil {
+		return nil, "", err
+	}
+	if err := w.WriteField("version", e.appName+":"+e.appVersion); err != nil {
+		return nil, "", err
+	}
+	if e.osName != "" {
+		if err := w.WriteField("osName", e.osName); err != nil {
+			return nil, "", err
+		}
+	}
+	if e.osVersion != "" {
+		if err := w.WriteField("osVersion", e.osVersion); err != nil {
+			return nil, "", err
+		}
+	}
+	if minidumpName != "" && minidumpData != nil {
+		filefield, err := w.CreateFormFile("uploadFileMinidump", minidumpName)
+		if err != nil {
+			return nil, "", err
+		}
+		if _, err = io.Copy(filefield, bytes.NewReader(minidumpData)); err != nil {
 			return nil, "", err
 		}
 	}

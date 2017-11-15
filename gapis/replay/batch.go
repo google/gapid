@@ -188,6 +188,7 @@ func (m *Manager) execute(
 			decoder,
 			connection,
 			replayABI.MemoryLayout,
+			d.Instance().GetConfiguration().GetOS(),
 		)
 	})
 	return err

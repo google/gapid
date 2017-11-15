@@ -33,6 +33,8 @@ enum MessageType {
     Get = 0;
     // Post is sent for a packet containing postback data.
     Post = 1;
+    // Crash is sent for a packet containing a breakpad minidump.
+    Crash = 2;
 }
 
 // Type is one of the primitive types supported by the replay virtual machine.
