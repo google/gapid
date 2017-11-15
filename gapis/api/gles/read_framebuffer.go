@@ -89,7 +89,7 @@ func postFBData(ctx context.Context,
 	if fb == 0 {
 		var err error
 		if fb, err = getBoundFramebufferID(thread, s); err != nil {
-			log.W(ctx, "Could not read framebuffer after cmd %v: err", err)
+			log.W(ctx, "Could not read framebuffer after cmd %v: %v", id, err)
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 			return
 		}
