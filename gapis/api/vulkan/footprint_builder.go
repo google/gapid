@@ -795,7 +795,7 @@ func newSpanResBinding(ctx context.Context, bh *dependencygraph.Behavior,
 	})
 }
 
-func newOpaqueResBinding(ctx context.Context, bh *dependencygraph.Behavior,
+func newNonSpanResBinding(ctx context.Context, bh *dependencygraph.Behavior,
 	size uint64) *resBinding {
 	return newResBinding(ctx, bh, 0, size, newLabel())
 }
@@ -833,7 +833,7 @@ func addResBinding(ctx context.Context, l resBindingList, b *resBinding) resBind
 	ml, err = addBinding(ml, b)
 	if err != nil {
 		log.E(ctx, "FootprintBuilder: %s", err.Error())
-		return nil
+		return l
 	}
 	return resBindingList(ml)
 }
@@ -890,12 +890,15 @@ func (l resBindingList) getBoundData(ctx context.Context,
 }
 
 type descriptor struct {
-	ty               VkDescriptorType
-	backDataBindings resBindingList
+	ty VkDescriptorType
+	// for image descriptor
+	img VkImage
 	// only used for sampler and sampler combined descriptors
 	sampler vkHandle
-	// only used for storage/uniform buffer with dynamic offsets
-	rng VkDeviceSize
+	// for buffer descriptor
+	buf       VkBuffer
+	bufOffset VkDeviceSize
+	bufRng    VkDeviceSize
 }
 
 func (*descriptor) DefUseVariable() {}
@@ -940,14 +943,16 @@ func (ds *descriptorSet) getDescriptor(ctx context.Context,
 
 func (ds *descriptorSet) setDescriptor(ctx context.Context,
 	bh *dependencygraph.Behavior, bi, di uint64, ty VkDescriptorType,
-	dataBindingList resBindingList, sampler vkHandle, rng VkDeviceSize) {
+	vkImg VkImage, sampler vkHandle, vkBuf VkBuffer, boundOffset, rng VkDeviceSize) {
+	// dataBindingList resBindingList, sampler vkHandle, rng VkDeviceSize) {
 	if v := ds.descriptors.Value([]uint64{bi, di}); v != nil {
 		if d, ok := v.(*descriptor); ok {
 			write(ctx, bh, d)
-			d.backDataBindings = dataBindingList
+			d.img = vkImg
+			d.buf = vkBuf
 			d.sampler = sampler
 			d.ty = ty
-			d.rng = rng
+			d.bufRng = rng
 			if ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
 				ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
 				ds.dynamicDescriptorCount++
@@ -962,7 +967,7 @@ func (ds *descriptorSet) setDescriptor(ctx context.Context,
 	}
 }
 
-func (ds *descriptorSet) useDescriptors(ctx context.Context,
+func (ds *descriptorSet) useDescriptors(ctx context.Context, vb *FootprintBuilder,
 	bh *dependencygraph.Behavior, dynamicOffsets []uint32) []dependencygraph.DefUseVariable {
 	modified := []dependencygraph.DefUseVariable{}
 	doi := 0
@@ -972,34 +977,45 @@ func (ds *descriptorSet) useDescriptors(ctx context.Context,
 			if d != nil {
 				read(ctx, bh, d.sampler)
 				switch d.ty {
-				case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-					VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+					data := vb.getImageData(ctx, bh, d.img)
+					modify(ctx, bh, data...)
+					modified = append(modified, data...)
+				case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER:
+					// pass, as the sampler has been 'read' before the switch
+				case VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+					VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+					VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+					data := vb.getImageData(ctx, bh, d.img)
+					read(ctx, bh, data...)
+				case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 					VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-					data := d.backDataBindings.getBoundData(ctx, bh, 0, vkWholeSize)
+					data := vb.getBufferData(ctx, bh, d.buf, uint64(d.bufOffset), uint64(d.bufRng))
 					modify(ctx, bh, data...)
 					modified = append(modified, data...)
 				case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 					if doi < len(dynamicOffsets) {
-						data := d.backDataBindings.getBoundData(ctx, bh, uint64(dynamicOffsets[doi]),
-							uint64(d.rng))
+						data := vb.getBufferData(ctx, bh, d.buf,
+							uint64(dynamicOffsets[doi])+uint64(d.bufOffset), uint64(d.bufRng))
 						doi++
 						modify(ctx, bh, data...)
 						modified = append(modified, data...)
 					} else {
 						log.E(ctx, "FootprintBuilder: DescriptorSet: %v has more dynamic descriptors than reserved dynamic offsets", *ds)
 					}
+				case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+					VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+					data := vb.getBufferData(ctx, bh, d.buf, uint64(d.bufOffset), uint64(d.bufRng))
+					read(ctx, bh, data...)
 				case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 					if doi < len(dynamicOffsets) {
-						data := d.backDataBindings.getBoundData(ctx, bh, uint64(dynamicOffsets[doi]),
-							uint64(d.rng))
+						data := vb.getBufferData(ctx, bh, d.buf,
+							uint64(dynamicOffsets[doi])+uint64(d.bufOffset), uint64(d.bufRng))
 						doi++
 						read(ctx, bh, data...)
 					} else {
 						log.E(ctx, "FootprintBuilder: DescriptorSet: %v has more dynamic descriptors than reserved dynamic offsets", *ds)
 					}
-				default:
-					data := d.backDataBindings.getBoundData(ctx, bh, 0, vkWholeSize)
-					read(ctx, bh, data...)
 				}
 			}
 		}
@@ -1029,13 +1045,12 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 		for _, imageInfo := range write.PImageInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
-			var dataBindings resBindingList
 			sampler := vkNullHandle
+			vkImg := VkImage(0)
 			if write.DescriptorType != VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER &&
 				read(ctx, bh, vkHandle(imageInfo.ImageView)) {
 				vkView := imageInfo.ImageView
-				vkImg := GetState(s).ImageViews.Get(vkView).Image.VulkanHandle
-				dataBindings = vb.images[vkImg].data.getSubBindingList(ctx, bh, 0, vkWholeSize)
+				vkImg = GetState(s).ImageViews.Get(vkView).Image.VulkanHandle
 			}
 			if (write.DescriptorType == VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER ||
 				write.DescriptorType == VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
@@ -1043,7 +1058,7 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 				sampler = vkHandle(imageInfo.Sampler)
 			}
 			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType,
-				dataBindings, sampler, 0)
+				vkImg, sampler, VkBuffer(0), 0, 0)
 			dstElm++
 		}
 	case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -1051,10 +1066,8 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		for _, bufferInfo := range write.PBufferInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			vkBuf := bufferInfo.Buffer
-			dataBindings := vb.buffers[vkBuf].getSubBindingList(ctx, bh,
-				uint64(bufferInfo.Offset), uint64(bufferInfo.Range))
-			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dataBindings,
-				vkNullHandle, 0)
+			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, VkImage(0),
+				vkNullHandle, vkBuf, bufferInfo.Offset, bufferInfo.Range)
 			dstElm++
 		}
 	case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
@@ -1062,10 +1075,8 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		for _, bufferInfo := range write.PBufferInfo.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			vkBuf := bufferInfo.Buffer
-			dataBindings := vb.buffers[vkBuf].getSubBindingList(ctx, bh,
-				uint64(bufferInfo.Offset), vkWholeSize)
-			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dataBindings,
-				vkNullHandle, bufferInfo.Range)
+			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, VkImage(0),
+				vkNullHandle, vkBuf, bufferInfo.Offset, bufferInfo.Range)
 			dstElm++
 		}
 	case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
@@ -1075,10 +1086,8 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 			read(ctx, bh, vkHandle(vkBufView))
 			bufView := GetState(s).BufferViews.Get(vkBufView)
 			vkBuf := GetState(s).BufferViews.Get(vkBufView).Buffer.VulkanHandle
-			dataBindings := vb.buffers[vkBuf].getSubBindingList(ctx, bh,
-				uint64(bufView.Offset), uint64(bufView.Range))
-			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType, dataBindings,
-				vkNullHandle, 0)
+			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType,
+				VkImage(0), vkNullHandle, vkBuf, bufView.Offset, bufView.Range)
 			dstElm++
 		}
 	}
@@ -1105,7 +1114,7 @@ func (ds *descriptorSet) copyDescriptors(ctx context.Context,
 		updateDstAndSrcForOverflow()
 		srcD := srcDs.getDescriptor(ctx, bh, srcBinding, srcElm)
 		ds.setDescriptor(ctx, bh, dstBinding, dstElm, srcD.ty,
-			srcD.backDataBindings, srcD.sampler, srcD.rng)
+			srcD.img, srcD.sampler, srcD.buf, srcD.bufOffset, srcD.bufRng)
 		srcElm++
 		dstElm++
 	}
@@ -1129,14 +1138,42 @@ func newBoundDescriptorSet(ctx context.Context, bh *dependencygraph.Behavior,
 
 func (*boundDescriptorSet) DefUseVariable() {}
 
+type sparseImageMemoryBinding struct {
+	bind        VkSparseImageMemoryBind
+	backingData dependencygraph.DefUseVariable
+}
+
+func newSparseImageMemoryBinding(ctx context.Context, bh *dependencygraph.Behavior,
+	bind VkSparseImageMemoryBind, size uint64) *sparseImageMemoryBinding {
+	b := &sparseImageMemoryBinding{
+		bind: bind,
+		backingData: memorySpan{
+			span: interval.U64Span{
+				Start: uint64(bind.MemoryOffset),
+				End:   uint64(bind.MemoryOffset) + size,
+			},
+			memory: bind.Memory,
+		}}
+	write(ctx, bh, b)
+	return b
+}
+
+func (s *sparseImageMemoryBinding) getBind() VkSparseImageMemoryBind {
+	return s.bind
+}
+
+func (*sparseImageMemoryBinding) DefUseVariable() {}
+
 type imageLayoutAndData struct {
-	layout label
-	data   resBindingList
+	layout     label
+	opaqueData resBindingList
+	sparseData []*sparseImageMemoryBinding
 }
 
 func newImageLayoutAndData(ctx context.Context,
 	bh *dependencygraph.Behavior) *imageLayoutAndData {
 	d := &imageLayoutAndData{layout: newLabel()}
+	d.sparseData = []*sparseImageMemoryBinding{}
 	write(ctx, bh, d.layout)
 	return d
 }
@@ -1178,7 +1215,12 @@ type FootprintBuilder struct {
 func (vb *FootprintBuilder) getImageData(ctx context.Context,
 	bh *dependencygraph.Behavior, vkImg VkImage) []dependencygraph.DefUseVariable {
 	read(ctx, bh, vkHandle(vkImg))
-	return vb.images[vkImg].data.getBoundData(ctx, bh, 0, vkWholeSize)
+	data := vb.images[vkImg].opaqueData.getBoundData(ctx, bh, 0, vkWholeSize)
+	for _, sb := range vb.images[vkImg].sparseData {
+		read(ctx, bh, sb)
+		data = append(data, sb.backingData)
+	}
+	return data
 }
 
 // getImageLayoutAndData records a read operation of the Vulkan handle, a read
@@ -1190,6 +1232,36 @@ func (vb *FootprintBuilder) getImageLayoutAndData(ctx context.Context,
 	return vb.images[vkImg].layout, vb.getImageData(ctx, bh, vkImg)
 }
 
+func (vb *FootprintBuilder) addOpaqueImageMemBinding(ctx context.Context,
+	bh *dependencygraph.Behavior, vkImg VkImage, vkMem VkDeviceMemory, resOffset,
+	size, memOffset uint64) {
+	vb.images[vkImg].opaqueData = addResBinding(ctx, vb.images[vkImg].opaqueData,
+		newSpanResBinding(ctx, bh, vkMem, resOffset, size, memOffset))
+}
+
+func (vb *FootprintBuilder) addSwapchainImageMemBinding(ctx context.Context,
+	bh *dependencygraph.Behavior, vkImg VkImage) {
+	vb.images[vkImg].opaqueData = addResBinding(ctx, vb.images[vkImg].opaqueData,
+		newNonSpanResBinding(ctx, bh, vkWholeSize))
+}
+
+func (vb *FootprintBuilder) addSparseImageMemBinding(ctx context.Context,
+	s *api.GlobalState, bh *dependencygraph.Behavior, vkImg VkImage,
+	bind VkSparseImageMemoryBind) {
+	imgObj := GetState(s).Images.Get(vkImg)
+	for i := 0; i < len(vb.images[vkImg].sparseData); {
+		// If the new one fully cover an existing bind, drop the existing one.
+		if fullyCover(vb.images[vkImg].sparseData[i].getBind(), bind) {
+			vb.images[vkImg].sparseData = append(vb.images[vkImg].sparseData[:i], vb.images[vkImg].sparseData[i+1:]...)
+		}
+		i++
+	}
+	// calculate the sparse binding size
+	size := sparseImageMemoryBindSize(ctx, imgObj, bind)
+	vb.images[vkImg].sparseData = append(vb.images[vkImg].sparseData,
+		newSparseImageMemoryBinding(ctx, bh, bind, size))
+}
+
 func (vb *FootprintBuilder) getBufferData(ctx context.Context,
 	bh *dependencygraph.Behavior, vkBuf VkBuffer,
 	offset, size uint64) []dependencygraph.DefUseVariable {
@@ -1198,6 +1270,13 @@ func (vb *FootprintBuilder) getBufferData(ctx context.Context,
 		read(ctx, bh, bb)
 	}
 	return vb.buffers[vkBuf].getBoundData(ctx, bh, offset, size)
+}
+
+func (vb *FootprintBuilder) addBufferMemBinding(ctx context.Context,
+	bh *dependencygraph.Behavior, vkBuf VkBuffer,
+	vkMem VkDeviceMemory, resOffset, size, memOffset uint64) {
+	vb.buffers[vkBuf] = addResBinding(ctx, vb.buffers[vkBuf],
+		newSpanResBinding(ctx, bh, vkMem, resOffset, size, memOffset))
 }
 
 func (vb *FootprintBuilder) newCommand(ctx context.Context,
@@ -1311,7 +1390,7 @@ func (vb *FootprintBuilder) useBoundDescriptorSets(ctx context.Context,
 	for _, bds := range cmdBufState.descriptorSets {
 		read(ctx, bh, bds)
 		ds := bds.descriptorSet
-		modified = append(modified, ds.useDescriptors(ctx, bh, bds.dynamicOffsets)...)
+		modified = append(modified, ds.useDescriptors(ctx, vb, bh, bds.dynamicOffsets)...)
 	}
 	return modified
 }
@@ -1481,7 +1560,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				if lastDrawInfo.Framebuffer != nil {
 					for _, view := range lastDrawInfo.Framebuffer.ImageAttachments.Range() {
 						img := view.Image
-						data := vb.images[img.VulkanHandle].data
+						data := vb.images[img.VulkanHandle].opaqueData
 						vb.machine.lastBoundFramebufferImageData[bh] = append(
 							vb.machine.lastBoundFramebufferImageData[bh], data.resBindings()...)
 					}
@@ -1577,8 +1656,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			bh.Aborted = true
 		}
 		size := uint64(inferredSize)
-		vb.images[cmd.Image].data = addResBinding(ctx, vb.images[cmd.Image].data,
-			newSpanResBinding(ctx, bh, cmd.Memory, 0, size, offset))
+		vb.addOpaqueImageMemBinding(ctx, bh, cmd.Image, cmd.Memory, 0, size, offset)
 	case *RecreateBindImageMemory:
 		read(ctx, bh, vkHandle(cmd.Image))
 		if read(ctx, bh, vkHandle(cmd.Memory)) {
@@ -1591,20 +1669,20 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				bh.Aborted = true
 			}
 			size := uint64(inferredSize)
-			vb.images[cmd.Image].data = addResBinding(ctx, vb.images[cmd.Image].data,
-				newSpanResBinding(ctx, bh, cmd.Memory, 0, size, offset))
+			vb.addOpaqueImageMemBinding(ctx, bh, cmd.Image, cmd.Memory, 0, size, offset)
 		}
 		if cmd.OpaqueSparseBindCount > uint32(0) &&
 			cmd.POpaqueSparseBinds != NewVkSparseMemoryBindᶜᵖ(memory.Nullptr) {
 			count := uint64(cmd.OpaqueSparseBindCount)
 			for _, bind := range cmd.POpaqueSparseBinds.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 				if read(ctx, bh, vkHandle(bind.Memory)) {
-					vb.images[cmd.Image].data = addResBinding(ctx, vb.images[cmd.Image].data,
-						newSpanResBinding(ctx, bh, bind.Memory, uint64(bind.ResourceOffset),
-							uint64(bind.Size), uint64(bind.MemoryOffset)))
+					vb.addOpaqueImageMemBinding(ctx, bh, cmd.Image, bind.Memory,
+						uint64(bind.ResourceOffset), uint64(bind.Size), uint64(bind.MemoryOffset))
 				}
 			}
 		}
+	case *RecreateBindImageSparseMemoryBindings:
+		// qining
 
 	case *RecreateImageData:
 		write(ctx, bh, vb.getImageData(ctx, bh, cmd.Image)...)
@@ -1640,24 +1718,21 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vkHandle(cmd.Memory))
 		offset := uint64(cmd.MemoryOffset)
 		size := uint64(GetState(s).Buffers.Get(cmd.Buffer).Info.Size)
-		vb.buffers[cmd.Buffer] = addResBinding(ctx, vb.buffers[cmd.Buffer],
-			newSpanResBinding(ctx, bh, cmd.Memory, 0, size, offset))
+		vb.addBufferMemBinding(ctx, bh, cmd.Buffer, cmd.Memory, 0, size, offset)
 	case *RecreateBindBufferMemory:
 		read(ctx, bh, vkHandle(cmd.Buffer))
 		if read(ctx, bh, vkHandle(cmd.Memory)) {
 			offset := uint64(cmd.Offset)
 			size := uint64(GetState(s).Buffers.Get(cmd.Buffer).Info.Size)
-			vb.buffers[cmd.Buffer] = addResBinding(ctx, vb.buffers[cmd.Buffer],
-				newSpanResBinding(ctx, bh, cmd.Memory, 0, size, offset))
+			vb.addBufferMemBinding(ctx, bh, cmd.Buffer, cmd.Memory, 0, size, offset)
 		}
 		if cmd.SparseBindCount > uint32(0) &&
 			cmd.PSparseBinds != NewVkSparseMemoryBindᶜᵖ(memory.Nullptr) {
 			count := uint64(cmd.SparseBindCount)
 			for _, bind := range cmd.PSparseBinds.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 				if read(ctx, bh, vkHandle(bind.Memory)) {
-					vb.buffers[cmd.Buffer] = addResBinding(ctx, vb.buffers[cmd.Buffer],
-						newSpanResBinding(ctx, bh, bind.Memory, uint64(bind.ResourceOffset),
-							uint64(bind.Size), uint64(bind.MemoryOffset)))
+					vb.addBufferMemBinding(ctx, bh, cmd.Buffer, bind.Memory,
+						uint64(bind.ResourceOffset), uint64(bind.Size), uint64(bind.MemoryOffset))
 				}
 			}
 		}
@@ -1684,8 +1759,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		for _, vkImg := range cmd.PSwapchainImages.Slice(0, imageCount, l).MustRead(ctx, cmd, s, nil) {
 			write(ctx, bh, vkHandle(vkImg))
 			vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
-			vb.images[vkImg].data = addResBinding(ctx, vb.images[vkImg].data,
-				newResBinding(ctx, bh, 0, vkWholeSize, newLabel()))
+			vb.addSwapchainImageMemBinding(ctx, bh, vkImg)
 			vb.swapchainImageAcquired[vkSw] = append(
 				vb.swapchainImageAcquired[vkSw], newLabel())
 			vb.swapchainImagePresented[vkSw] = append(
@@ -1700,8 +1774,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			for _, vkImg := range cmd.PSwapchainImages.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 				write(ctx, bh, vkHandle(vkImg))
 				vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
-				vb.images[vkImg].data = addResBinding(ctx, vb.images[vkImg].data,
-					newOpaqueResBinding(ctx, bh, vkWholeSize))
+				vb.addSwapchainImageMemBinding(ctx, bh, vkImg)
 				vb.swapchainImageAcquired[cmd.Swapchain] = append(
 					vb.swapchainImageAcquired[cmd.Swapchain], newLabel())
 				vb.swapchainImagePresented[cmd.Swapchain] = append(
@@ -2655,9 +2728,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 						ctx, cmd, s, nil)
 					for _, bind := range binds {
 						if read(ctx, bh, vkHandle(bind.Memory)) {
-							vb.buffers[buf] = addResBinding(ctx, vb.buffers[buf],
-								newSpanResBinding(ctx, bh, bind.Memory, uint64(bind.ResourceOffset),
-									uint64(bind.Size), uint64(bind.MemoryOffset)))
+							vb.addBufferMemBinding(ctx, bh, buf, bind.Memory,
+								uint64(bind.ResourceOffset), uint64(bind.Size), uint64(bind.MemoryOffset))
 						}
 					}
 				}
@@ -2670,9 +2742,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 						ctx, cmd, s, nil)
 					for _, bind := range binds {
 						if read(ctx, bh, vkHandle(bind.Memory)) {
-							vb.images[img].data = addResBinding(ctx, vb.images[img].data,
-								newSpanResBinding(ctx, bh, bind.Memory, uint64(bind.ResourceOffset),
-									uint64(bind.Size), uint64(bind.MemoryOffset)))
+							vb.addOpaqueImageMemBinding(ctx, bh, img, bind.Memory,
+								uint64(bind.ResourceOffset), uint64(bind.Size), uint64(bind.MemoryOffset))
 						}
 					}
 				}
@@ -2685,9 +2756,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 						ctx, cmd, s, nil)
 					for _, bind := range binds {
 						if read(ctx, bh, vkHandle(bind.Memory)) {
-							// TODO: Handle sparse residency bindings
-							modify(ctx, bh, vkHandle(img))
-							modify(ctx, bh, vkHandle(bind.Memory))
+							vb.addSparseImageMemBinding(ctx, s, bh, img, bind)
 						}
 					}
 				}
@@ -3142,4 +3211,31 @@ func getSubBufferData(bufData memorySpan, offset, size uint64) memorySpan {
 		span:   interval.U64Span{Start: start, End: end},
 		memory: bufData.memory,
 	}
+}
+
+func sparseImageMemoryBindSize(ctx context.Context, imgObj *ImageObject,
+	bind VkSparseImageMemoryBind) uint64 {
+	var gran VkExtent3D
+	found := false
+	for _, r := range imgObj.SparseMemoryRequirements.Range() {
+		if r.FormatProperties.AspectMask == bind.Subresource.AspectMask {
+			gran = r.FormatProperties.ImageGranularity
+			found = true
+		}
+	}
+	if !found {
+		log.E(ctx, "Sparse image granularity not found for VkImage: %v, "+
+			"with AspectMask: %v", imgObj.VulkanHandle, bind.Subresource.AspectMask)
+		return uint64(0)
+	}
+	blockSize := uint64(imgObj.MemoryRequirements.Alignment)
+	numBlock := numberOfSparseBlocks(bind.Offset, bind.Extent, gran)
+	return numBlock * blockSize
+}
+
+func numberOfSparseBlocks(offset VkOffset3D, extent VkExtent3D, gran VkExtent3D) uint64 {
+	dx := (extent.Width - uint32(offset.X) + gran.Width - 1) / gran.Width
+	dy := (extent.Height - uint32(offset.Y) + gran.Height - 1) / gran.Height
+	dz := (extent.Depth - uint32(offset.Z) + gran.Depth - 1) / gran.Depth
+	return uint64(dx * dy * dz)
 }
