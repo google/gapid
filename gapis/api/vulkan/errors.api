@@ -44,16 +44,113 @@ sub void vkErrorInvalidInstance(VkInstance inst) {
   vkErrorInvalidHandle("VkInstance", as!u64(inst))
 }
 
+sub void vkErrorInvalidPhysicalDevice(VkPhysicalDevice dev) {
+  vkErrorInvalidHandle("VkPhysicalDevice", as!u64(dev))
+}
+
 sub void vkErrorInvalidDevice(VkDevice dev) {
   vkErrorInvalidHandle("VkDevice", as!u64(dev))
+}
+
+sub void vkErrorInvalidQueue(VkQueue queue) {
+  vkErrorInvalidHandle("VkQueue", as!u64(queue))
+}
+
+sub void vkErrorInvalidCommandBuffer(VkCommandBuffer cmdbuf) {
+  vkErrorInvalidHandle("VkCommandBuffer", as!u64(cmdbuf))
+}
+
+sub void vkErrorInvalidDeviceMemory(VkDeviceMemory mem) {
+  vkErrorInvalidHandle("VkDeviceMemory", as!u64(mem))
+}
+
+sub void vkErrorInvalidBuffer(VkBuffer buf) {
+  vkErrorInvalidHandle("VkBuffer", as!u64(buf))
+}
+
+sub void vkErrorInvalidBufferView(VkBufferView view) {
+  vkErrorInvalidHandle("VkBufferView", as!u64(view))
 }
 
 sub void vkErrorInvalidImage(VkImage img) {
   vkErrorInvalidHandle("VkImage", as!u64(img))
 }
 
-sub void vkErrorInvalidQueue(VkQueue queue) {
-  vkErrorInvalidHandle("VkQueue", as!u64(queue))
+sub void vkErrorInvalidImageView(VkImageView view) {
+  vkErrorInvalidHandle("VkImageView", as!u64(view))
+}
+
+
+sub void vkErrorInvalidShaderModule(VkShaderModule shader) {
+  vkErrorInvalidHandle("VkShaderModule", as!u64(shader))
+}
+
+sub void vkErrorInvalidPipeline(VkPipeline pipeline) {
+  vkErrorInvalidHandle("VkPipeline", as!u64(pipeline))
+}
+
+sub void vkErrorInvalidPipelineLayout(VkPipelineLayout layout) {
+  vkErrorInvalidHandle("VkPipelineLayout", as!u64(layout))
+}
+
+sub void vkErrorInvalidSampler(VkSampler sampler) {
+  vkErrorInvalidHandle("VkSampler", as!u64(sampler))
+}
+
+sub void vkErrorInvalidDescriptorSet(VkDescriptorSet set) {
+  vkErrorInvalidHandle("VkDescriptorSet", as!u64(set))
+}
+
+sub void vkErrorInvalidDescriptorSetLayout(VkDescriptorSetLayout layout) {
+  vkErrorInvalidHandle("VkDescriptorSetLayout", as!u64(layout))
+}
+
+sub void vkErrorInvalidDescriptorPool(VkDescriptorPool pool) {
+  vkErrorInvalidHandle("VkDescriptorPool", as!u64(pool))
+}
+
+sub void vkErrorInvalidFence(VkFence fence) {
+  vkErrorInvalidHandle("VkFence", as!u64(fence))
+}
+
+sub void vkErrorInvalidSemaphore(VkSemaphore semaphore) {
+  vkErrorInvalidHandle("VkSemaphore", as!u64(semaphore))
+}
+
+sub void vkErrorInvalidEvent(VkEvent event) {
+  vkErrorInvalidHandle("VkEvent", as!u64(event))
+}
+
+sub void vkErrorInvalidQueryPool(VkQueryPool pool) {
+  vkErrorInvalidHandle("VkQueryPool", as!u64(pool))
+}
+
+sub void vkErrorInvalidFramebuffer(VkFramebuffer framebuffer) {
+  vkErrorInvalidHandle("VkFramebuffer", as!u64(framebuffer))
+}
+
+sub void vkErrorInvalidRenderPass(VkRenderPass renderpass) {
+  vkErrorInvalidHandle("VkRenderPass", as!u64(renderpass))
+}
+
+sub void vkErrorInvalidPipelineCache(VkPipelineCache cache) {
+  vkErrorInvalidHandle("VkPipelineCache", as!u64(cache))
+}
+
+sub void vkErrorInvalidCommandPool(VkCommandPool pool) {
+  vkErrorInvalidHandle("VkCommandPool", as!u64(pool))
+}
+
+sub void vkErrorInvalidSurface(VkSurfaceKHR surface) {
+  vkErrorInvalidHandle("VkSurfaceKHR", as!u64(surface))
+}
+
+sub void vkErrorInvalidSwapchain(VkSwapchainKHR swapchain) {
+  vkErrorInvalidHandle("VkSwapchainKHR", as!u64(swapchain))
+}
+
+sub void vkErrorInvalidDisplayMode(VkDisplayModeKHR mode) {
+  vkErrorInvalidHandle("VkDisplayModeKHR", as!u64(mode))
 }
 
 sub void vkErrorInvalidHandle(string handleType, u64 handle) {

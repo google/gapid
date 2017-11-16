@@ -2340,7 +2340,6 @@ cmd void RecreateInstance(
   }
 
   fence
-  if pInstance == null {vkErrorNullPointer("VkInstance")}
   write(pInstance[0:1])
 }
 
@@ -2430,6 +2429,7 @@ cmd void prefetchPhysicalDeviceQueueFamilyProperties(
     VkPhysicalDevice physicalDevice,
     u32* pQueueFamilyPropertyCount,
     VkQueueFamilyProperties* pQueueFamilyProperties) {
+  if pQueueFamilyPropertyCount == null {vkErrorNullPointer("uint32_t")}
   _ = pQueueFamilyPropertyCount[0]
   fence
   if pQueueFamilyProperties == null {
@@ -2441,6 +2441,7 @@ cmd void prefetchPhysicalDeviceQueueFamilyProperties(
       properties[i] = ?
     }
     pQueueFamilyPropertyCount[0] = count
+    if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
     object := switch (PhysicalDevices[physicalDevice] == null) {
       case true:
         new!PhysicalDeviceObject()
@@ -2498,6 +2499,8 @@ cmd VkResult vkEnumeratePhysicalDevices(
 cmd void vkGetPhysicalDeviceFeatures(
     VkPhysicalDevice          physicalDevice,
     VkPhysicalDeviceFeatures* pFeatures) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pFeatures == null {vkErrorNullPointer("VkPhysicalDeviceFeatures")}
   pFeatures[0] = ?
 }
 
@@ -2506,6 +2509,8 @@ cmd void vkGetPhysicalDeviceFormatProperties(
     VkPhysicalDevice    physicalDevice,
     VkFormat            format,
     VkFormatProperties* pFormatProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pFormatProperties == null {vkErrorNullPointer("VkFormatProperties")}
   pFormatProperties[0] = ?
 }
 
@@ -2518,6 +2523,8 @@ cmd VkResult vkGetPhysicalDeviceImageFormatProperties(
     VkImageUsageFlags        usage,
     VkImageCreateFlags       flags,
     VkImageFormatProperties* pImageFormatProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pImageFormatProperties == null {vkErrorNullPointer("VkImageFormatProperties")}
   pImageFormatProperties[0] = ?
   return ?
 }
@@ -2526,6 +2533,7 @@ cmd VkResult vkGetPhysicalDeviceImageFormatProperties(
 cmd void vkGetPhysicalDeviceProperties(
     VkPhysicalDevice            physicalDevice,
     VkPhysicalDeviceProperties* pProperties) {
+  if pProperties == null {vkErrorNullPointer("VkPhysicalDeviceProperties")}
   pProperties[0] = ?
 }
 
@@ -2534,6 +2542,7 @@ cmd void vkGetPhysicalDeviceQueueFamilyProperties(
     VkPhysicalDevice         physicalDevice,
     u32*                     pQueueFamilyPropertyCount,
     VkQueueFamilyProperties* pQueueFamilyProperties) {
+  if pQueueFamilyPropertyCount == null {vkErrorNullPointer("uint32_t")}
   _ = pQueueFamilyPropertyCount[0]
 
   fence
@@ -2547,6 +2556,7 @@ cmd void vkGetPhysicalDeviceQueueFamilyProperties(
       properties[i] = ?
     }
     pQueueFamilyPropertyCount[0] = count
+    if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
     for i in (0 .. count) {
       PhysicalDevices[physicalDevice].QueueFamilyProperties[i] = properties[i]
     }
@@ -2558,8 +2568,10 @@ cmd void vkGetPhysicalDeviceMemoryProperties(
     VkPhysicalDevice                  physicalDevice,
     VkPhysicalDeviceMemoryProperties* pMemoryProperties) {
   memoryProperties := ?
+  if pMemoryProperties == null {vkErrorNullPointer("VkPhysicalDeviceMemoryProperties")}
   pMemoryProperties[0] = memoryProperties
 
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
   dev := PhysicalDevices[physicalDevice]
   dev.MemoryProperties = memoryProperties
   PhysicalDevices[physicalDevice] = dev
@@ -2594,6 +2606,7 @@ cmd void RecreateDevice(
 
   if pDevice == null {vkErrorNullPointer("VkDevice*")}
   pDevice[0] = handle
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
   device.PhysicalDevice = physicalDevice
   device.VulkanHandle = handle
   if (!(handle in Devices)) {
@@ -2612,8 +2625,8 @@ cmd VkResult vkCreateDevice(
     VkDevice*                    pDevice) {
   // NOTE: The logic for this function should be identical to the one of
   // replayCreateVkDevice() in synthetic.api. Change both together.
-
   device := createDeviceObject(pCreateInfo)
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
   device.PhysicalDevice = physicalDevice
   // TODO: pAllocator
 
@@ -2638,6 +2651,7 @@ cmd void vkDestroyDevice(
 }
 
 sub void queryExtensionProperties(u32* pPropertyCount, VkExtensionProperties* pProperties) {
+  if pPropertyCount == null {vkErrorNullPointer("uint32_t")}
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -2669,12 +2683,14 @@ cmd VkResult vkEnumerateDeviceExtensionProperties(
     string                 pLayerName,
     u32*                   pPropertyCount,
     VkExtensionProperties* pProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
   queryExtensionProperties(pPropertyCount, pProperties)
 
   return ?
 }
 
 sub void queryLayerProperties(u32* pPropertyCount, VkLayerProperties* pProperties) {
+  if pPropertyCount == null {vkErrorNullPointer("uint32_t")}
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -2694,7 +2710,6 @@ cmd VkResult vkEnumerateInstanceLayerProperties(
     u32*               pPropertyCount,
     VkLayerProperties* pProperties) {
   queryLayerProperties(pPropertyCount, pProperties)
-
   return ?
 }
 
@@ -2704,8 +2719,8 @@ cmd VkResult vkEnumerateDeviceLayerProperties(
     VkPhysicalDevice   physicalDevice,
     u32*               pPropertyCount,
     VkLayerProperties* pProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
   queryLayerProperties(pPropertyCount, pProperties)
-
   return ?
 }
 
@@ -2716,7 +2731,6 @@ cmd void RecreateQueue(VkDevice device,
                        u32      queueFamilyIndex,
                        u32      queueIndex,
                        VkQueue* pQueue) {
-
   handle := ?
   pQueue[0] = handle
   if (!(handle in Queues)) {
@@ -2731,8 +2745,10 @@ cmd void vkGetDeviceQueue(
     u32      queueFamilyIndex,
     u32      queueIndex,
     VkQueue* pQueue) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   id := ?
   Queues[id] = new!QueueObject(Device: device,Family:  queueFamilyIndex,Index:  queueIndex,VulkanHandle:  id)
+  if pQueue == null {vkErrorNullPointer("VkQueue")}
   pQueue[0] = id
 }
 
@@ -2815,6 +2831,7 @@ cmd VkResult vkQueueSubmit(
 @blocking
 cmd VkResult vkQueueWaitIdle(
     VkQueue queue) {
+  if !(queue in Queues) {vkErrorInvalidQueue(queue)}
   return ?
 }
 
@@ -2823,6 +2840,7 @@ cmd VkResult vkQueueWaitIdle(
 @blocking
 cmd VkResult vkDeviceWaitIdle(
     VkDevice device) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   return ?
 }
 
@@ -2883,6 +2901,8 @@ cmd VkResult vkAllocateMemory(
     const VkMemoryAllocateInfo*  pAllocateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkDeviceMemory*              pMemory) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pAllocateInfo == null {vkErrorNullPointer("VkMemoryAllocateInfo")}
   allocateInfo := pAllocateInfo[0]
 
   memoryObject := new!DeviceMemoryObject(
@@ -2916,6 +2936,7 @@ cmd VkResult vkAllocateMemory(
   }
 
   memory := ?
+  if pMemory == null {vkErrorNullPointer("VkDeviceMemory")}
   pMemory[0] = memory
 
   memoryObject.VulkanHandle = memory
@@ -2929,6 +2950,7 @@ cmd void vkFreeMemory(
     VkDevice                     device,
     VkDeviceMemory               memory,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   if (memory != as!VkDeviceMemory(0)) {
     memoryObject := DeviceMemories[memory]
 
@@ -2949,6 +2971,8 @@ cmd VkResult vkMapMemory(
     VkDeviceSize     size,
     VkMemoryMapFlags flags,
     void**           ppData) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(memory in DeviceMemories) {vkErrorInvalidDeviceMemory(memory)}
   // TODO(awoloszyn): Figure out why we need the read/write here
   // in order for the replay to allocate the memory we need.
   // see: b/32300796
@@ -2959,6 +2983,7 @@ cmd VkResult vkMapMemory(
   } else {
     memoryObject.MappedSize = size
   }
+  if ppData == null {vkErrorNullPointer("void*")}
   read(ppData[0:1])
   memoryLocation := ?
   ppData[0] = memoryLocation
@@ -2977,6 +3002,8 @@ cmd VkResult vkMapMemory(
 cmd void vkUnmapMemory(
     VkDevice       device,
     VkDeviceMemory memory) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(memory in DeviceMemories) {vkErrorInvalidDeviceMemory(memory)}
   memoryObject := DeviceMemories[memory]
   mappedLocation := as!u8*(memoryObject.MappedLocation)
   if (IsMemoryCoherent(memoryObject)) {
@@ -2993,9 +3020,11 @@ cmd VkResult vkFlushMappedMemoryRanges(
     VkDevice                   device,
     u32                        memoryRangeCount
     const VkMappedMemoryRange* pMemoryRanges) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   memoryRanges := pMemoryRanges[0:memoryRangeCount]
   for i in (0 .. memoryRangeCount) {
     flushRange := memoryRanges[i]
+    if !(flushRange.memory in DeviceMemories) {vkErrorInvalidDeviceMemory(flushRange.memory)}
     memoryObject := DeviceMemories[flushRange.memory]
     mappedLocation := as!u8*(memoryObject.MappedLocation)
     flushStart := flushRange.offset - memoryObject.MappedOffset
@@ -3029,11 +3058,13 @@ cmd VkResult vkInvalidateMappedMemoryRanges(
     VkDevice                   device,
     u32                        memoryRangeCount,
     const VkMappedMemoryRange* pMemoryRanges) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   ranges := new!MemoryRangeArray()
   memoryRanges := pMemoryRanges[0:memoryRangeCount]
   for i in (0 .. memoryRangeCount) {
     invalidateRange := memoryRanges[i]
     invalidateOffset := invalidateRange.offset
+    if !(invalidateRange.memory in DeviceMemories) {vkErrorInvalidDeviceMemory(invalidateRange.memory)}
     mappedLocation := DeviceMemories[invalidateRange.memory].MappedLocation
     mappedOffset := DeviceMemories[invalidateRange.memory].MappedOffset
     mappedSize := DeviceMemories[invalidateRange.memory].MappedSize
@@ -3061,6 +3092,8 @@ cmd void vkGetDeviceMemoryCommitment(
     VkDevice       device,
     VkDeviceMemory memory,
     VkDeviceSize*  pCommittedMemoryInBytes) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(memory in DeviceMemories) {vkErrorInvalidDeviceMemory(memory)}
   _ = pCommittedMemoryInBytes[0]
 }
 
@@ -3104,6 +3137,9 @@ cmd VkResult vkBindBufferMemory(
     VkBuffer       buffer,
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(memory in DeviceMemories) {vkErrorInvalidDeviceMemory(memory)}
+  if !(buffer in Buffers) {vkErrorInvalidBuffer(buffer)}
   Buffers[buffer].Memory = DeviceMemories[memory]
   Buffers[buffer].MemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(buffer)] = memoryOffset
@@ -3149,6 +3185,9 @@ cmd VkResult vkBindImageMemory(
     VkImage        image,
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(memory in DeviceMemories) {vkErrorInvalidDeviceMemory(memory)}
+  if !(image in Images) {vkErrorInvalidImage(image)}
   Images[image].BoundMemory = DeviceMemories[memory]
   Images[image].BoundMemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
@@ -3160,7 +3199,10 @@ cmd void vkGetBufferMemoryRequirements(
     VkDevice              device,
     VkBuffer              buffer,
     VkMemoryRequirements* pMemoryRequirements) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(buffer in Buffers) {vkErrorInvalidBuffer(buffer)}
   requirements := ?
+  if pMemoryRequirements == null {vkErrorNullPointer("VkMemoryRequirements")}
   pMemoryRequirements[0] = requirements
 }
 
@@ -3182,6 +3224,9 @@ cmd void vkGetImageSparseMemoryRequirements(
     VkImage                          image,
     u32*                             pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(image in Images) {vkErrorInvalidImage(image)}
+  if pSparseMemoryRequirementCount == null {vkErrorNullPointer("uint32_t")}
   read(pSparseMemoryRequirementCount[0:1])
 
   if pSparseMemoryRequirements == null {
@@ -3206,6 +3251,8 @@ cmd void vkGetPhysicalDeviceSparseImageFormatProperties(
     VkImageTiling                  tiling,
     u32*                           pPropertyCount,
     VkSparseImageFormatProperties* pProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pPropertyCount == null {vkErrorNullPointer("uint32_t")}
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -3226,6 +3273,7 @@ cmd VkResult vkQueueBindSparse(
     u32                     bindInfoCount,
     const VkBindSparseInfo* pBindInfo,
     VkFence                 fence) {
+  if !(queue in Queues) {vkErrorInvalidQueue(queue)}
   LastBoundQueue = Queues[queue]
   infos := pBindInfo[0:bindInfoCount]
   enterSubcontext()
@@ -3243,9 +3291,11 @@ cmd VkResult vkQueueBindSparse(
     bufferBinds := info.pBufferBinds[0:info.bufferBindCount]
     for j in (0 .. info.bufferBindCount) {
       bufferBindInfo := bufferBinds[j]
+      if !(bufferBindInfo.buffer in Buffers) {vkErrorInvalidBuffer(bufferBindInfo.buffer)}
       bindsToQueue := new!SparseMemoryBinds()
       memoryBinds := bufferBindInfo.pBinds[0:bufferBindInfo.bindCount]
       for k in (0 .. bufferBindInfo.bindCount) {
+        if !(memoryBinds[k].memory in DeviceMemories) {vkErrorInvalidDeviceMemory(memoryBinds[k].memory)}
         bindsToQueue.SparseMemoryBinds[k] = memoryBinds[k]
       }
       queuedBinds.BufferBinds[bufferBindInfo.buffer] = bindsToQueue
@@ -3254,9 +3304,11 @@ cmd VkResult vkQueueBindSparse(
     opaqueBinds := info.pImageOpaqueBinds[0:info.imageOpaqueBindCount]
     for j in (0 .. info.imageOpaqueBindCount) {
       opaqueBindInfo := opaqueBinds[j]
+      if !(opaqueBindInfo.image in Images) {vkErrorInvalidImage(opaqueBindInfo.image)}
       bindsToQueue := new!SparseMemoryBinds()
       memoryBinds := opaqueBindInfo.pBinds[0:opaqueBindInfo.bindCount]
       for k in (0 .. opaqueBindInfo.bindCount) {
+        if !(memoryBinds[k].memory in DeviceMemories) {vkErrorInvalidDeviceMemory(memoryBinds[k].memory)}
         bindsToQueue.SparseMemoryBinds[k] = memoryBinds[k]
       }
       queuedBinds.OpaqueImageBinds[opaqueBindInfo.image] = bindsToQueue
@@ -3265,9 +3317,11 @@ cmd VkResult vkQueueBindSparse(
     imageBinds := info.pImageBinds[0:info.imageBindCount]
     for j in (0 .. info.imageBindCount) {
       imageBindInfo := imageBinds[j]
+      if !(imageBindInfo.image in Images) {vkErrorInvalidImage(imageBindInfo.image)}
       bindsToQueue := new!SparseImageMemoryBinds()
       imageMemoryBinds := imageBindInfo.pBinds[0:imageBindInfo.bindCount]
       for k in (0 .. imageBindInfo.bindCount) {
+        if !(imageMemoryBinds[k].memory in DeviceMemories) {vkErrorInvalidDeviceMemory(imageMemoryBinds[k].memory)}
         bindsToQueue.SparseImageMemoryBinds[k] = imageMemoryBinds[k]
       }
       queuedBinds.ImageBinds[imageBindInfo.image] = bindsToQueue
@@ -3308,7 +3362,8 @@ cmd VkResult vkCreateFence(
     const VkFenceCreateInfo*     pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkFence*                     pFence) {
-
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkFenceCreateInfo")}
   f := new!FenceObject()
   create_info := pCreateInfo[0]
   f.Device = device
@@ -3319,6 +3374,7 @@ cmd VkResult vkCreateFence(
     f.Signaled = false
   }
   handle := ?
+  if pFence == null {vkErrorNullPointer("VkFence")}
   pFence[0] = handle
   f.VulkanHandle = handle
   Fences[handle] = f
@@ -3331,6 +3387,7 @@ cmd void vkDestroyFence(
     VkDevice                     device,
     VkFence                      fence,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(Fences, fence)
 }
 
@@ -3340,6 +3397,7 @@ cmd VkResult vkResetFences(
     VkDevice       device,
     u32            fenceCount,
     const VkFence* pFences) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   read(pFences[0:fenceCount])
   return ?
 }
@@ -3350,6 +3408,8 @@ cmd VkResult vkResetFences(
 cmd VkResult vkGetFenceStatus(
     VkDevice device,
     VkFence  fence) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(fence in Fences) {vkErrorInvalidFence(fence)}
   return ?
 }
 
@@ -3362,7 +3422,12 @@ cmd VkResult vkWaitForFences(
     const VkFence* pFences,
     VkBool32       waitAll,
     u64            timeout) { /// timeout in nanoseconds
-  read(pFences[0:fenceCount])
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  fences := pFences[0:fenceCount]
+  for i in (0 .. fenceCount) {
+    if !(fences[i] in Fences) {vkErrorInvalidFence(fences[i])}
+    _ = fences[i]
+  }
   return ?
 }
 
@@ -3385,12 +3450,15 @@ cmd VkResult vkCreateSemaphore(
     const VkSemaphoreCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkSemaphore*                 pSemaphore) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkSemaphoreCreateInfo")}
   _ = pCreateInfo[0]
   // TODO: pAllocator
 
   handle := ?
   semaphoreObject := new!SemaphoreObject(Device: device,
     VulkanHandle:           handle)
+  if pSemaphore == null {vkErrorNullPointer("VkSemaphore")}
   pSemaphore[0] = handle
   Semaphores[handle] = semaphoreObject
 
@@ -3404,6 +3472,7 @@ cmd void vkDestroySemaphore(
     VkSemaphore                  semaphore,
     const VkAllocationCallbacks* pAllocator) {
   // TODO: pAllocator
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(Semaphores, semaphore)
 }
 
@@ -3426,12 +3495,15 @@ cmd VkResult vkCreateEvent(
     const VkEventCreateInfo*     pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkEvent*                     pEvent) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkEventCreateInfo")}
   read(pCreateInfo[0:1])
   event := new!EventObject()
   event.Device = device
   event.Signaled = false
   event.SubmitQueue = as!VkQueue(0)
   handle := ?
+  if pEvent == null {vkErrorNullPointer("VkEvent")}
   pEvent[0] = handle
   event.VulkanHandle = handle
   Events[handle] = event
@@ -3453,6 +3525,8 @@ cmd void vkDestroyEvent(
 cmd VkResult vkGetEventStatus(
     VkDevice device,
     VkEvent  event) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(event in Events) {vkErrorInvalidEvent(event)}
   return ?
 }
 
@@ -3461,6 +3535,8 @@ cmd VkResult vkGetEventStatus(
 cmd VkResult vkSetEvent(
     VkDevice device,
     VkEvent  event) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(event in Events) {vkErrorInvalidEvent(event)}
   e := Events[event]
   e.Signaled = true
   queue := e.SubmitQueue
@@ -3484,6 +3560,8 @@ cmd VkResult vkSetEvent(
 cmd VkResult vkResetEvent(
     VkDevice device,
     VkEvent  event) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(event in Events) {vkErrorInvalidEvent(event)}
   Events[event].Signaled = false
   return ?
 }
@@ -3508,6 +3586,8 @@ cmd VkResult vkCreateQueryPool(
     const VkQueryPoolCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkQueryPool*                 pQueryPool) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkQueuePoolCreateInfo")}
   info := pCreateInfo[0]
 
   handle := ?
@@ -3522,6 +3602,7 @@ cmd VkResult vkCreateQueryPool(
   }
 
   QueryPools[handle] = pool
+  if pQueryPool == null {vkErrorNullPointer("VkQueuePool")}
   pQueryPool[0] = handle
 
   return ?
@@ -3533,6 +3614,7 @@ cmd void vkDestroyQueryPool(
     VkDevice                     device,
     VkQueryPool                  queryPool,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(QueryPools, queryPool)
 }
 
@@ -3554,6 +3636,8 @@ cmd VkResult vkGetQueryPoolResults(
     void*              pData,
     VkDeviceSize       stride,
     VkQueryResultFlags flags) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(queryPool in QueryPools) {vkErrorInvalidQueryPool(queryPool)}
   write(as!u8*(pData)[0:dataSize])
   return ?
 }
@@ -3594,6 +3678,8 @@ cmd VkResult vkCreateBuffer(
     const VkBufferCreateInfo*    pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkBuffer*                    pBuffer) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkBufferCreateInfo")}
   buffer_create_info := pCreateInfo[0]
 
   queueFamilyIndices := buffer_create_info.pQueueFamilyIndices[
@@ -3634,6 +3720,7 @@ cmd VkResult vkCreateBuffer(
   )
 
   buffer := ?
+  if pBuffer == null {vkErrorNullPointer("VkBuffer")}
   pBuffer[0] = buffer
   bufferObject.VulkanHandle = buffer
   Buffers[buffer] = bufferObject
@@ -3646,6 +3733,7 @@ cmd void vkDestroyBuffer(
     VkDevice                     device,
     VkBuffer                     buffer,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   if (buffer != as!VkBuffer(0)) {
     bufferObject := Buffers[buffer]
     if (bufferObject.Memory != null) {
@@ -3678,6 +3766,8 @@ cmd VkResult vkCreateBufferView(
     const VkBufferViewCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*  pAllocator,
     VkBufferView*                 pView) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkBufferViewCreateInfo")}
   buffer_view_create_info := pCreateInfo[0]
   // TODO: pAllocator
 
@@ -3689,6 +3779,7 @@ cmd VkResult vkCreateBufferView(
     Format:        buffer_view_create_info.format,
     Offset:        buffer_view_create_info.offset,
     Range:         buffer_view_create_info.range)
+  if pView == null {vkErrorNullPointer("VkBufferView")}
   pView[0] = handle
   BufferViews[handle] = bufferViewObject
 
@@ -3702,6 +3793,7 @@ cmd void vkDestroyBufferView(
     VkBufferView                 bufferView,
     const VkAllocationCallbacks* pAllocator) {
   // TODO: pAllocator
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(BufferViews, bufferView)
 }
 
@@ -3814,6 +3906,8 @@ cmd VkResult vkCreateImage(
     VkImage*                     pImage) {
   // TODO: pAllocator
 
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkImageCreateInfo")}
   info := pCreateInfo[0]
   queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
 
@@ -3871,6 +3965,7 @@ cmd VkResult vkCreateImage(
     })
 
   handle := ?
+  if pImage == null {vkErrorNullPointer("VkImage")}
   pImage[0] = handle
   object := switch (Images[handle] == null) {
     case true:
@@ -3914,6 +4009,7 @@ cmd void vkDestroyImage(
     VkImage                      image,
     const VkAllocationCallbacks* pAllocator) {
   // TODO: pAllocator
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   if (image != as!VkImage(0)) {
     imageObject := Images[image]
     if (imageObject.BoundMemory != null) {
@@ -3931,6 +4027,8 @@ cmd void vkGetImageSubresourceLayout(
     VkImage                   image,
     const VkImageSubresource* pSubresource,
     VkSubresourceLayout*      pLayout) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(image in Images) {vkErrorInvalidImage(image)}
   _ = pSubresource[0]
 
   pLayout[0] = ?
@@ -3954,10 +4052,13 @@ cmd VkResult vkCreateImageView(
     const VkImageViewCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkImageView*                 pView) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkImageViewCreateInfo")}
   image_view_create_info := pCreateInfo[0]
   // TODO: pAllocator
 
   handle := ?
+  if !(image_view_create_info.image in Images) {vkErrorInvalidImage(image_view_create_info.image)}
   imageViewObject := new!ImageViewObject(Device: device,
     VulkanHandle:           handle,
     Image:                  Images[image_view_create_info.image],
@@ -3966,6 +4067,7 @@ cmd VkResult vkCreateImageView(
     Components:             image_view_create_info.components,
     SubresourceRange:       image_view_create_info.subresourceRange
   )
+  if pView == null {vkErrorNullPointer("VkImageView")}
   pView[0] = handle
   ImageViews[handle] = imageViewObject
 
@@ -3979,6 +4081,7 @@ cmd void vkDestroyImageView(
     VkImageView                  imageView,
     const VkAllocationCallbacks* pAllocator) {
   // TODO: pAllocator
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(ImageViews, imageView)
 }
 
@@ -4001,12 +4104,15 @@ cmd VkResult vkCreateShaderModule(
     const VkShaderModuleCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*    pAllocator,
     VkShaderModule*                 pShaderModule) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkShaderModuleCreateInfo")}
   create_info := pCreateInfo[0]
 
   num_words := as!u64(create_info.codeSize) / 4
   object := new!ShaderModuleObject(device, clone(create_info.pCode[0:num_words]))
 
   handle := ?
+  if pShaderModule == null {vkErrorNullPointer("VkShaderModule")}
   pShaderModule[0] = handle
   object.VulkanHandle = handle
   ShaderModules[handle] = object
@@ -4034,6 +4140,7 @@ cmd void vkDestroyShaderModule(
     VkDevice                     device,
     VkShaderModule               shaderModule,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(ShaderModules, shaderModule)
 }
 
@@ -4057,9 +4164,12 @@ cmd VkResult vkCreatePipelineCache(
     const VkAllocationCallbacks*     pAllocator,
     VkPipelineCache*                 pPipelineCache) {
   //TODO(awoloszyn): Add Allocator support
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkPipelineCacheCreateInfo")}
   create_info := pCreateInfo[0]
   read(as!u8*(create_info.pInitialData)[0:create_info.initialDataSize])
   handle := ?
+  if pPipelineCache == null {vkErrorNullPointer("VkPipelineCache")}
   pPipelineCache[0] = handle
   PipelineCaches[handle] = new!PipelineCacheObject(device, handle)
   return ?
@@ -4070,6 +4180,7 @@ cmd void vkDestroyPipelineCache(
     VkDevice                     device,
     VkPipelineCache              pipelineCache,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(PipelineCaches, pipelineCache)
 }
 
@@ -4079,6 +4190,9 @@ cmd VkResult vkGetPipelineCacheData(
     VkPipelineCache pipelineCache,
     size*           pDataSize,
     void*           pData) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(pipelineCache in PipelineCaches) {vkErrorInvalidPipelineCache(pipelineCache)}
+  if pDataSize == null {vkErrorNullPointer("size_t")}
   _ = pDataSize[0]
 
   writeDataSize := ?
@@ -4095,7 +4209,13 @@ cmd VkResult vkMergePipelineCaches(
     VkPipelineCache        dstCache,
     u32                    srcCacheCount,
     const VkPipelineCache* pSrcCaches) {
-  read(pSrcCaches[0:srcCacheCount])
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(dstCache in PipelineCaches) {vkErrorInvalidPipelineCache(dstCache)}
+  srcCaches := pSrcCaches[0:srcCacheCount]
+  for i in (0 .. srcCacheCount) {
+    if !(srcCaches[i] in PipelineCaches) {vkErrorInvalidPipelineCache(srcCaches[i])}
+    _ = srcCaches[i]
+  }
   return ?
 }
 
@@ -4190,6 +4310,8 @@ cmd VkResult vkCreateGraphicsPipelines(
     const VkGraphicsPipelineCreateInfo* pCreateInfos,
     const VkAllocationCallbacks*        pAllocator,
     VkPipeline*                         pPipelines) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(pipelineCache in PipelineCaches) {vkErrorInvalidPipelineCache(pipelineCache)}
   // TODO(awoloszyn): Figure out what fields we want to store off
   //    in the state block.
   infos := pCreateInfos[0:createInfoCount]
@@ -4210,6 +4332,7 @@ cmd VkResult vkCreateGraphicsPipelines(
     create_info.pStages[0:create_info.stageCount]
     for j in (0 .. create_info.stageCount) {
       stage_create_info := pipeline_shader_stage_create_infos[j]
+      if !(stage_create_info.module in ShaderModules) {vkErrorInvalidShaderModule(stage_create_info.module)}
       stage_data := StageData(
         Stage:       stage_create_info.stage,
         Module:      ShaderModules[stage_create_info.module],
@@ -4422,6 +4545,8 @@ cmd VkResult vkCreateComputePipelines(
     const VkComputePipelineCreateInfo* pCreateInfos,
     const VkAllocationCallbacks*       pAllocator,
     VkPipeline*                        pPipelines) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(pipelineCache in PipelineCaches) {vkErrorInvalidPipelineCache(pipelineCache)}
   created_pipelines := CreatedComputePipelines()
   infos := pCreateInfos[0:createInfoCount]
   for i in (0 .. createInfoCount) {
@@ -4483,6 +4608,7 @@ cmd void vkDestroyPipeline(
     VkDevice                     device,
     VkPipeline                   pipeline,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   if pipeline in GraphicsPipelines {
     delete(GraphicsPipelines, pipeline)
   }
@@ -4510,7 +4636,8 @@ cmd VkResult vkCreatePipelineLayout(
     const VkPipelineLayoutCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*      pAllocator,
     VkPipelineLayout*                 pPipelineLayout) {
-
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkPipelineLayoutCreateInfo")}
   info := pCreateInfo[0]
   pipelineLayout := new!PipelineLayoutObject(Device: device)
   // TODO: info.pNext
@@ -4528,6 +4655,7 @@ cmd VkResult vkCreatePipelineLayout(
   }
 
   handle := ?
+  if pPipelineLayout == null {vkErrorNullPointer("VkPipelineLayout")}
   pPipelineLayout[0] = handle
   pipelineLayout.VulkanHandle = handle
   PipelineLayouts[handle] = pipelineLayout
@@ -4540,6 +4668,8 @@ cmd void vkDestroyPipelineLayout(
     VkDevice                     device,
     VkPipelineLayout             pipelineLayout,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(pipelineLayout in PipelineLayouts) {vkErrorInvalidPipelineLayout(pipelineLayout)}
   // TODO: pAllocator
   delete(PipelineLayouts, pipelineLayout)
 }
@@ -4561,6 +4691,8 @@ cmd VkResult vkCreateSampler(
     const VkSamplerCreateInfo*   pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
     VkSampler*                   pSampler) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkSamplerCreateInfo")}
   create_info := pCreateInfo[0]
   sampler := new!SamplerObject(
     Device:                   device,
@@ -4581,6 +4713,7 @@ cmd VkResult vkCreateSampler(
     UnnormalizedCoordinates:  create_info.unnormalizedCoordinates
   )
   handle := ?
+  if pSampler == null {vkErrorNullPointer("VkSampler")}
   pSampler[0] = handle
   sampler.VulkanHandle = handle
   Samplers[handle] = sampler
@@ -4593,6 +4726,7 @@ cmd void vkDestroySampler(
     VkDevice                     device,
     VkSampler                    sampler,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   // TODO: pAllocator
   delete(Samplers, sampler)
 }
@@ -4626,6 +4760,8 @@ cmd VkResult vkCreateDescriptorSetLayout(
     const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*           pAllocator,
     VkDescriptorSetLayout*                 pSetLayout) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkDescriptorSetLayoutCreateInfo")}
   info := pCreateInfo[0]
   // TODO: info.pNext
   count := info.bindingCount
@@ -4658,6 +4794,7 @@ cmd VkResult vkCreateDescriptorSetLayout(
   // TODO: pAllocator
 
   handle := ?
+  if pSetLayout == null {vkErrorNullPointer("VkDescriptorSetLayout")}
   pSetLayout[0] = handle
   descriptorSetLayout.VulkanHandle = handle
   DescriptorSetLayouts[handle] = descriptorSetLayout
@@ -4672,6 +4809,7 @@ cmd void vkDestroyDescriptorSetLayout(
     VkDescriptorSetLayout        descriptorSetLayout,
     const VkAllocationCallbacks* pAllocator) {
   // TODO: pAllocator
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(DescriptorSetLayouts, descriptorSetLayout)
 }
 
@@ -4694,6 +4832,8 @@ cmd VkResult vkCreateDescriptorPool(
     const VkDescriptorPoolCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*      pAllocator,
     VkDescriptorPool*                 pDescriptorPool) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkDescriptorPoolCreateInfo")}
   info := pCreateInfo[0]
   pool := new!DescriptorPoolObject(
     Device:   device,
@@ -4709,6 +4849,7 @@ cmd VkResult vkCreateDescriptorPool(
   // TODO: pAllocator
 
   handle := ?
+  if pDescriptorPool == null {vkErrorNullPointer("VkDescriptorPool")}
   pDescriptorPool[0] = handle
   pool.VulkanHandle = handle
   DescriptorPools[handle] = pool
@@ -4722,6 +4863,7 @@ cmd void vkDestroyDescriptorPool(
     VkDevice                     device,
     VkDescriptorPool             descriptorPool,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(DescriptorPools, descriptorPool)
 }
 
@@ -4739,6 +4881,8 @@ cmd VkResult vkResetDescriptorPool(
   // Effective Go (https://golang.org/doc/effective_go.html#for), deleting
   // while iterating is safe for Go. So the code here should behave as we
   // expect.
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(descriptorPool in DescriptorPools) {vkErrorInvalidDescriptorPool(descriptorPool)}
   sets := DescriptorPools[descriptorPool].DescriptorSets
   for _ , s , _ in sets {
     delete(DescriptorSets, s)
@@ -4788,12 +4932,15 @@ cmd VkResult vkAllocateDescriptorSets(
     VkDevice                           device,
     const VkDescriptorSetAllocateInfo* pAllocateInfo,
     VkDescriptorSet*                   pDescriptorSets) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pAllocateInfo == null {vkErrorNullPointer("VkDescriptorSetAllocateInfo")}
   info := pAllocateInfo[0]
   // TODO: info.pNext
   count := info.descriptorSetCount
 
   layouts := info.pSetLayouts[0:count]
   read(info.pSetLayouts[0:count])
+  if pDescriptorSets == null {vkErrorNullPointer("VkDescriptorSet")}
   sets := pDescriptorSets[0:count]
 
   for i in (0 .. count) {
@@ -4848,6 +4995,9 @@ cmd VkResult vkFreeDescriptorSets(
     VkDescriptorPool       descriptorPool,
     u32                    descriptorSetCount,
     const VkDescriptorSet* pDescriptorSets) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(descriptorPool in DescriptorPools) {vkErrorInvalidDescriptorPool(descriptorPool)}
+  if pDescriptorSets == null {vkErrorNullPointer("VkDescriptorSet")}
   sets := pDescriptorSets[0:descriptorSetCount]
   for i in (0 .. descriptorSetCount) {
     pool := DescriptorPools[DescriptorSets[sets[i]].DescriptorPool]
@@ -5068,6 +5218,7 @@ cmd void vkUpdateDescriptorSets(
     const VkWriteDescriptorSet* pDescriptorWrites,
     u32                         descriptorCopyCount,
     const VkCopyDescriptorSet*  pDescriptorCopies) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
 
   writes := RewriteWriteDescriptorSets(
     descriptorWriteCount,
@@ -5164,6 +5315,8 @@ cmd VkResult vkCreateFramebuffer(
     const VkFramebufferCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*   pAllocator,
     VkFramebuffer*                 pFramebuffer) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkFramebufferCreateInfo")}
   create_info := pCreateInfo[0]
   attachments := create_info.pAttachments[0:create_info.attachmentCount]
 
@@ -5177,6 +5330,7 @@ cmd VkResult vkCreateFramebuffer(
   }
 
   handle := ?
+  if pFramebuffer == null {vkErrorNullPointer("VkFramebuffer")}
   pFramebuffer[0] = handle
   framebufferObject.VulkanHandle = handle
   Framebuffers[handle] = framebufferObject
@@ -5190,6 +5344,7 @@ cmd void vkDestroyFramebuffer(
     VkDevice                     device,
     VkFramebuffer                framebuffer,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(Framebuffers, framebuffer)
 }
 
@@ -5227,8 +5382,10 @@ cmd VkResult vkCreateRenderPass(
     const VkRenderPassCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*  pAllocator,
     VkRenderPass*                 pRenderPass) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   renderPass := new!RenderPassObject()
   renderPass.Device = device
+  if pCreateInfo == null {vkErrorNullPointer("VkRenderPassCreateInfo")}
   info := pCreateInfo[0]
 
   attachments := info.pAttachments[0:info.attachmentCount]
@@ -5273,6 +5430,7 @@ cmd VkResult vkCreateRenderPass(
     renderPass.SubpassDependencies[i] = dependencies[i]
   }
   handle := ?
+  if pRenderPass == null {vkErrorNullPointer("VkRenderPass")}
   pRenderPass[0] = handle
   renderPass.VulkanHandle = pRenderPass[0]
   RenderPasses[handle] = renderPass
@@ -5285,6 +5443,7 @@ cmd void vkDestroyRenderPass(
     VkDevice                     device,
     VkRenderPass                 renderPass,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   delete(RenderPasses, renderPass)
 }
 
@@ -5293,6 +5452,8 @@ cmd void vkGetRenderAreaGranularity(
     VkDevice     device,
     VkRenderPass renderPass,
     VkExtent2D*  pGranularity) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(renderPass in RenderPasses) {vkErrorInvalidRenderPass(renderPass)}
   write(pGranularity[0:1])
 }
 
@@ -5312,10 +5473,13 @@ cmd VkResult vkCreateCommandPool(
     const VkCommandPoolCreateInfo* pCreateInfo,
     const VkAllocationCallbacks*   pAllocator,
     VkCommandPool*                 pCommandPool) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkCommandPoolCreateInfo")}
   create_info := pCreateInfo[0]
   // TODO: pAllocator
 
   handle := ?
+  if pCommandPool == null {vkErrorNullPointer("VkCommandPool")}
   pCommandPool[0] = handle
   commandPoolObject := new!CommandPoolObject(Device: device,
     VulkanHandle:             handle,
@@ -5331,6 +5495,7 @@ cmd void vkDestroyCommandPool(
     VkDevice                     device,
     VkCommandPool                commandPool,
     const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   fence
   for _ , k , _ in CommandPools[commandPool].CommandBuffers {
     delete(CommandBuffers, k)
@@ -5347,6 +5512,8 @@ cmd VkResult vkResetCommandPool(
     VkDevice                device,
     VkCommandPool           commandPool,
     VkCommandPoolResetFlags flags) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(commandPool in CommandPools) {vkErrorInvalidCommandPool(commandPool)}
   pool := CommandPools[commandPool]
   for _ , k , b in pool.CommandBuffers {
     b.BeginInfo = null
@@ -5385,10 +5552,13 @@ cmd VkResult vkAllocateCommandBuffers(
     VkDevice                           device,
     const VkCommandBufferAllocateInfo* pAllocateInfo,
     VkCommandBuffer*                   pCommandBuffers) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pAllocateInfo == null {vkErrorNullPointer("VkCommandBufferAllocateInfo")}
   allocateInfo := pAllocateInfo[0]
   count := allocateInfo.commandBufferCount
 
   fence
+  if pCommandBuffers == null {vkErrorNullPointer("VkCommandBuffer")}
   cb := pCommandBuffers[0:count]
 
   for i in (0 .. count) {
@@ -5415,9 +5585,12 @@ cmd void vkFreeCommandBuffers(
     VkCommandPool          commandPool,
     u32                    commandBufferCount,
     const VkCommandBuffer* pCommandBuffers) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(commandPool in CommandPools) {vkErrorInvalidCommandPool(commandPool)}
   cb := pCommandBuffers[0:commandBufferCount]
   for i in (0 .. commandBufferCount) {
     buffer := cb[i]
+    if !(buffer in CommandBuffers) {vkErrorInvalidCommandBuffer(buffer)}
     buffer_object := CommandBuffers[buffer]
     pool := buffer_object.Pool
     pool_object := CommandPools[pool]
@@ -5432,6 +5605,8 @@ cmd void vkFreeCommandBuffers(
 cmd VkResult vkBeginCommandBuffer(
     VkCommandBuffer                 commandBuffer,
     const VkCommandBufferBeginInfo* pBeginInfo) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if pBeginInfo == null {vkErrorNullPointer("VkCommandBufferBeginInfo")}
   info := pBeginInfo[0]
   begin := new!CommandBufferBegin(Flags: info.flags,Inherited:  false)
 
@@ -5465,6 +5640,7 @@ cmd void RecreateEndCommandBuffer(VkCommandBuffer commandBuffer) { }
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkEndCommandBuffer(
     VkCommandBuffer commandBuffer) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   buff := CommandBuffers[commandBuffer]
   buff.Recording = COMPLETED
   CommandBuffers[commandBuffer] = buff
@@ -5476,6 +5652,7 @@ cmd VkResult vkEndCommandBuffer(
 cmd VkResult vkResetCommandBuffer(
     VkCommandBuffer           commandBuffer,
     VkCommandBufferResetFlags flags) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   buff := CommandBuffers[commandBuffer]
   buff.Recording = NOT_STARTED
   buff.BeginInfo = null
@@ -5504,6 +5681,7 @@ cmd void vkCmdBindPipeline(
     VkCommandBuffer     commandBuffer,
     VkPipelineBindPoint pipelineBindPoint,
     VkPipeline          pipeline) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdBindPipelineArgs(
       PipelineBindPoint: pipelineBindPoint,
       Pipeline:          pipeline)
@@ -5540,6 +5718,8 @@ cmd void vkCmdSetViewport(
     u32               firstViewport,
     u32               viewportCount,
     const VkViewport* pViewports) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if pViewports == null {vkErrorNullPointer("VkViewport")}
   viewports := pViewports[0:viewportCount]
   args := new!vkCmdSetViewportArgs(
     firstViewport
@@ -5566,6 +5746,8 @@ cmd void vkCmdSetScissor(
     u32             firstScissor,
     u32             scissorCount,
     const VkRect2D* pScissors) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if pScissors == null {vkErrorNullPointer("VkRect2D")}
   scissors := pScissors[0:scissorCount]
   args := new!vkCmdSetScissorArgs(
     firstScissor
@@ -5589,9 +5771,8 @@ sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
 cmd void vkCmdSetLineWidth(
     VkCommandBuffer commandBuffer,
     f32             lineWidth) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdSetLineWidthArgs(lineWidth)
-
   addCmd(commandBuffer, args, dovkCmdSetLineWidth)
 }
 
@@ -5611,7 +5792,7 @@ cmd void vkCmdSetDepthBias(
     f32             depthBiasConstantFactor,
     f32             depthBiasClamp,
     f32             depthBiasSlopeFactor) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdSetDepthBiasArgs(
       depthBiasConstantFactor,
       depthBiasClamp,
@@ -5636,7 +5817,7 @@ sub void dovkCmdSetBlendConstants(ref!vkCmdSetBlendConstantsArgs args) {
 cmd void vkCmdSetBlendConstants(
               VkCommandBuffer commandBuffer,
     @readonly f32[4]          blendConstants) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdSetBlendConstantsArgs(
       blendConstants[0],
       blendConstants[1],
@@ -5661,6 +5842,7 @@ cmd void vkCmdSetDepthBounds(
     VkCommandBuffer commandBuffer,
     f32             minDepthBounds,
     f32             maxDepthBounds) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdSetDepthBoundsArgs(
       minDepthBounds,
       maxDepthBounds)
@@ -5683,6 +5865,7 @@ cmd void vkCmdSetStencilCompareMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                compareMask) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdSetStencilCompareMaskArgs(
       faceMask,
       compareMask
@@ -5705,6 +5888,7 @@ cmd void vkCmdSetStencilWriteMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                writeMask) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdSetStencilWriteMaskArgs(
     faceMask,
     writeMask
@@ -5727,8 +5911,8 @@ cmd void vkCmdSetStencilReference(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
     u32                reference) {
-  args :=
-  new!vkCmdSetStencilReferenceArgs(
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  args := new!vkCmdSetStencilReferenceArgs(
     faceMask,
     reference
   )
@@ -5808,6 +5992,8 @@ cmd void vkCmdBindDescriptorSets(
     const VkDescriptorSet* pDescriptorSets,
     u32                    dynamicOffsetCount,
     const u32*             pDynamicOffsets) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if pDescriptorSets == null {vkErrorNullPointer("VkDescriptorSet")}
   sets := pDescriptorSets[0:descriptorSetCount]
   args := new!vkCmdBindDescriptorSetsArgs(
     PipelineBindPoint: pipelineBindPoint,
@@ -5861,7 +6047,8 @@ cmd void vkCmdBindIndexBuffer(
     VkBuffer        buffer,
     VkDeviceSize    offset,
     VkIndexType     indexType) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(buffer in Buffers) {vkErrorInvalidBuffer(buffer)}
   args := new!vkCmdBindIndexBufferArgs(
     Buffer:     buffer,
     Offset:     offset,
@@ -5903,6 +6090,7 @@ cmd void vkCmdBindVertexBuffers(
     u32                 bindingCount,
     const VkBuffer*     pBuffers,
     const VkDeviceSize* pOffsets) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdBindVertexBuffersArgs(
     FirstBinding:  firstBinding,
     BindingCount:  bindingCount
@@ -5910,6 +6098,7 @@ cmd void vkCmdBindVertexBuffers(
   buffers := pBuffers[0:bindingCount]
   offsets := pOffsets[0:bindingCount]
   for i in (0 .. bindingCount) {
+    if !(buffers[i] in Buffers) {vkErrorInvalidBuffer(buffers[i])}
     args.Buffers[i] = buffers[i]
     args.Offsets[i] = offsets[i]
   }
@@ -6013,9 +6202,8 @@ cmd void vkCmdDraw(
     u32             instanceCount,
     u32             firstVertex,
     u32             firstInstance) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args :=  new!vkCmdDrawArgs(vertexCount, instanceCount, firstVertex, firstInstance)
-
   addCmd(commandBuffer, args, dovkCmdDraw)
 }
 
@@ -6060,7 +6248,7 @@ cmd void vkCmdDrawIndexed(
     u32             firstIndex,
     s32             vertexOffset,
     u32             firstInstance) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdDrawIndexedArgs(
       IndexCount:     indexCount,
       InstanceCount:  instanceCount,
@@ -6099,6 +6287,8 @@ cmd void vkCmdDrawIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(buffer in Buffers) {vkErrorInvalidBuffer(buffer)}
   args := new!vkCmdDrawIndirectArgs(buffer, offset, drawCount, stride)
 
   addCmd(commandBuffer, args,  dovkCmdDrawIndirect)
@@ -6134,8 +6324,9 @@ cmd void vkCmdDrawIndexedIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(buffer in Buffers) {vkErrorInvalidBuffer(buffer)}
   args := new!vkCmdDrawIndexedIndirectArgs(buffer, offset, drawCount, stride)
-
   addCmd(commandBuffer, args, dovkCmdDrawIndexedIndirect)
 }
 
@@ -6155,6 +6346,7 @@ cmd void vkCmdDispatch(
     u32             groupCountX,
     u32             groupCountY,
     u32             groupCountZ) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args :=
     new!vkCmdDispatchArgs(groupCountX, groupCountY, groupCountZ)
 
@@ -6178,6 +6370,8 @@ cmd void vkCmdDispatchIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,
     VkDeviceSize    offset) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(buffer in Buffers) {vkErrorInvalidBuffer(buffer)}
   args := new!vkCmdDispatchIndirectArgs(buffer, offset)
 
   addCmd(commandBuffer, args, dovkCmdDispatchIndirect)
@@ -6209,6 +6403,9 @@ cmd void vkCmdCopyBuffer(
     VkBuffer            dstBuffer,
     u32                 regionCount,
     const VkBufferCopy* pRegions) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(srcBuffer in Buffers) {vkErrorInvalidBuffer(srcBuffer)}
+  if !(srcBuffer in Buffers) {vkErrorInvalidBuffer(dstBuffer)}
   args := new!vkCmdCopyBufferArgs(
     SrcBuffer:  srcBuffer,
     DstBuffer:  dstBuffer
@@ -6305,6 +6502,9 @@ cmd void vkCmdCopyImage(
     VkImageLayout      dstImageLayout,
     u32                regionCount,
     const VkImageCopy* pRegions) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(srcImage in Images) {vkErrorInvalidImage(srcImage)}
+  if !(dstImage in Images) {vkErrorInvalidImage(dstImage)}
   args := new!vkCmdCopyImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
@@ -6343,6 +6543,9 @@ cmd void vkCmdBlitImage(
     u32                regionCount,
     const VkImageBlit* pRegions,
     VkFilter           filter) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(srcImage in Images) {vkErrorInvalidImage(srcImage)}
+  if !(dstImage in Images) {vkErrorInvalidImage(dstImage)}
   args := new!vkCmdBlitImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
@@ -6716,6 +6919,9 @@ cmd void vkCmdCopyBufferToImage(
     VkImageLayout            dstImageLayout,
     u32                      regionCount,
     const VkBufferImageCopy* pRegions) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(srcBuffer in Buffers) {vkErrorInvalidBuffer(srcBuffer)}
+  if !(dstImage in Images) {vkErrorInvalidImage(dstImage)}
   regions := pRegions[0:regionCount]
   read(regions)
   args := new!vkCmdCopyBufferToImageArgs(srcBuffer, dstImage, dstImageLayout)
@@ -6746,6 +6952,9 @@ cmd void vkCmdCopyImageToBuffer(
     VkBuffer                 dstBuffer,
     u32                      regionCount,
     const VkBufferImageCopy* pRegions) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(dstBuffer in Buffers) {vkErrorInvalidBuffer(dstBuffer)}
+  if !(srcImage in Images) {vkErrorInvalidImage(srcImage)}
   regions := pRegions[0:regionCount]
   args := new!vkCmdCopyImageToBufferArgs(
     SrcImage:        srcImage,
@@ -6782,6 +6991,8 @@ cmd void vkCmdUpdateBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    dataSize,
     const void*     pData) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(dstBuffer in Buffers) {vkErrorInvalidBuffer(dstBuffer)}
   args := new!vkCmdUpdateBufferArgs(
       dstBuffer,
       dstOffset,
@@ -6813,7 +7024,8 @@ cmd void vkCmdFillBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    size,
     u32             data) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(dstBuffer in Buffers) {vkErrorInvalidBuffer(dstBuffer)}
   args := new!vkCmdFillBufferArgs(
       dstBuffer,
       dstOffset,
@@ -6844,6 +7056,9 @@ cmd void vkCmdClearColorImage(
     const VkClearColorValue*       pColor,
     u32                            rangeCount,
     const VkImageSubresourceRange* pRanges) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(image in Images) {vkErrorInvalidImage(image)}
+  if pColor == null {vkErrorNullPointer("VkClearColorValue")}
   color := pColor[0]
   ranges := pRanges[0:rangeCount]
   args := new!vkCmdClearColorImageArgs(
@@ -6878,6 +7093,9 @@ cmd void vkCmdClearDepthStencilImage(
     const VkClearDepthStencilValue* pDepthStencil,
     u32                             rangeCount,
     const VkImageSubresourceRange*  pRanges) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(image in Images) {vkErrorInvalidImage(image)}
+  if pDepthStencil == null {vkErrorNullPointer("VkClearDepthStencilValue")}
   depthStencil := pDepthStencil[0]
   ranges := pRanges[0:rangeCount]
   args := new!vkCmdClearDepthStencilImageArgs(
@@ -6909,6 +7127,7 @@ cmd void vkCmdClearAttachments(
     const VkClearAttachment* pAttachments,
     u32                      rectCount,
     const VkClearRect*       pRects) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdClearAttachmentsArgs()
   attachments := pAttachments[0:attachmentCount]
   rects := pRects[0:rectCount]
@@ -6943,6 +7162,9 @@ cmd void vkCmdResolveImage(
     VkImageLayout         dstImageLayout,
     u32                   regionCount,
     const VkImageResolve* pRegions) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(srcImage in Images) {vkErrorInvalidImage(srcImage)}
+  if !(dstImage in Images) {vkErrorInvalidImage(dstImage)}
   args := new!vkCmdResolveImageArgs(
     SrcImage:        srcImage,
     SrcImageLayout:  srcImageLayout,
@@ -6973,6 +7195,8 @@ cmd void vkCmdSetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(event in Events) {vkErrorInvalidEvent(event)}
   args := new!vkCmdSetEventArgs(
     Event:      event,
     StageMask:  stageMask
@@ -6997,6 +7221,8 @@ cmd void vkCmdResetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(event in Events) {vkErrorInvalidEvent(event)}
   args := new!vkCmdResetEventArgs(
     Event:      event,
     StageMask:  stageMask,
@@ -7017,6 +7243,7 @@ cmd void vkCmdResetEvent(
 
 sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
   for _ , _ , e in args.Events {
+    if !(e in Events) {vkErrorInvalidEvent(e)}
     event := Events[e]
     event.SubmitQueue = LastBoundQueue.VulkanHandle
     if event.Signaled != true {
@@ -7025,6 +7252,7 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
   }
   if len(LastBoundQueue.PendingEvents) == 0 {
     for _ , _ , b in args.ImageMemoryBarriers {
+      if !(b.image in Images) {vkErrorInvalidImage(b.image)}
       image := Images[b.image]
       image.Info.Layout = b.newLayout
       image.LastBoundQueue = LastBoundQueue
@@ -7046,6 +7274,7 @@ cmd void vkCmdWaitEvents(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdWaitEventsArgs(
     SrcStageMask:  srcStageMask,
     DstStageMask:  dstStageMask,
@@ -7055,6 +7284,7 @@ cmd void vkCmdWaitEvents(
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. eventCount) {
+    if !(events[i] in Events) {vkErrorInvalidEvent(events[i])}
     args.Events[i] = events[i]
   }
   for i in (0 .. memoryBarrierCount) {
@@ -7081,6 +7311,7 @@ cmd void vkCmdWaitEvents(
 
 sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
   for _ , _ , v in args.ImageMemoryBarriers {
+    if !(v.image in Images) {vkErrorInvalidImage(v.image)}
     image := Images[v.image]
     image.Info.Layout = v.newLayout
     image.LastBoundQueue = LastBoundQueue
@@ -7100,6 +7331,7 @@ cmd void vkCmdPipelineBarrier(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdPipelineBarrierArgs(
     SrcStageMask:     srcStageMask,
     DstStageMask:     dstStageMask,
@@ -7141,7 +7373,8 @@ cmd void vkCmdBeginQuery(
     VkQueryPool         queryPool,
     u32                 query,
     VkQueryControlFlags flags) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(queryPool in QueryPools) {vkErrorInvalidQueryPool(queryPool)}
   args := new!vkCmdBeginQueryArgs(
     queryPool,              query, flags
   )
@@ -7166,6 +7399,8 @@ cmd void vkCmdEndQuery(
     VkCommandBuffer commandBuffer,
     VkQueryPool     queryPool,
     u32             query) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(queryPool in QueryPools) {vkErrorInvalidQueryPool(queryPool)}
   args := new!vkCmdEndQueryArgs(
     queryPool,            query
   )
@@ -7194,6 +7429,8 @@ cmd void vkCmdResetQueryPool(
     VkQueryPool     queryPool,
     u32             firstQuery,
     u32             queryCount) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(queryPool in QueryPools) {vkErrorInvalidQueryPool(queryPool)}
   args := new!vkCmdResetQueryPoolArgs(
     queryPool,                  firstQuery, queryCount
   )
@@ -7217,6 +7454,8 @@ cmd void vkCmdWriteTimestamp(
     VkPipelineStageFlagBits pipelineStage,
     VkQueryPool             queryPool,
     u32                     query) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(queryPool in QueryPools) {vkErrorInvalidQueryPool(queryPool)}
   args := new!vkCmdWriteTimestampArgs(
     pipelineStage,              queryPool, query
   )
@@ -7249,6 +7488,9 @@ cmd void vkCmdCopyQueryPoolResults(
     VkDeviceSize       dstOffset,
     VkDeviceSize       stride,
     VkQueryResultFlags flags) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if !(queryPool in QueryPools) {vkErrorInvalidQueryPool(queryPool)}
+  if !(dstBuffer in Buffers) {vkErrorInvalidBuffer(dstBuffer)}
   args := new!vkCmdCopyQueryPoolResultsArgs(
     QueryPool:   queryPool,
     FirstQuery:  firstQuery,
@@ -7282,6 +7524,7 @@ cmd void vkCmdPushConstants(
     u32                offset,
     u32                size,
     const void*        pValues) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdPushConstantsArgs(
     layout,           stageFlags, offset, size, clone(as!u8*(pValues)[0:size])
   )
@@ -7331,24 +7574,6 @@ sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
   }
 
   pushRenderPassMarker(args.RenderPass)
-
-  // switch RenderPasses[args.RenderPass].DebugInfo == null {
-  //   case true:
-  //     pushRenderPassMarker("<RenderPass>")
-  //   case false:{
-  //   switch len(RenderPasses[args.RenderPass].DebugInfo.ObjectName) == 0 {
-  //     case true:
-  //       pushRenderPassMarker("<RenderPass>")
-  //     case false:
-  //       pushRenderPassMarker(RenderPasses[args.RenderPass].DebugInfo.ObjectName)
-  //   }
-  //   }
-  // }
-
-  // switch len(RenderPasses[args.RenderPass].SubpassDescriptions) > 1 {
-  //   case true:
-  //     pushRenderPassMarker("<Subpass>")
-  // }
 }
 
 
@@ -7358,7 +7583,11 @@ cmd void vkCmdBeginRenderPass(
     VkCommandBuffer              commandBuffer,
     const VkRenderPassBeginInfo* pRenderPassBegin,
     VkSubpassContents            contents) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
+  if pRenderPassBegin == null {vkErrorNullPointer("VkRenderPassBeginInfo")}
   begin_info := pRenderPassBegin[0]
+  if !(begin_info.renderPass in RenderPasses) {vkErrorInvalidRenderPass(begin_info.renderPass)}
+  if !(begin_info.framebuffer in Framebuffers) {vkErrorInvalidFramebuffer(begin_info.framebuffer)}
   args := new!vkCmdBeginRenderPassArgs(
     Contents:     contents,
     RenderPass:   begin_info.renderPass,
@@ -7403,6 +7632,7 @@ sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
 cmd void vkCmdNextSubpass(
     VkCommandBuffer   commandBuffer,
     VkSubpassContents contents) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdNextSubpassArgs(contents)
 
   addCmd(commandBuffer, args, dovkCmdNextSubpass)
@@ -7425,9 +7655,8 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdEndRenderPassArgs()
-
   addCmd(commandBuffer, args, dovkCmdEndRenderPass)
 }
 
@@ -7444,9 +7673,11 @@ cmd void vkCmdExecuteCommands(
     VkCommandBuffer        commandBuffer,
     u32                    commandBufferCount,
     const VkCommandBuffer* pCommandBuffers) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   cmd_buffers := pCommandBuffers[0:commandBufferCount]
   args := new!vkCmdExecuteCommandsArgs()
   for i in (0 .. commandBufferCount) {
+    if !(cmd_buffers[i] in CommandBuffers) {vkErrorInvalidCommandBuffer(cmd_buffers[i])}
     args.CommandBuffers[as!u32(i)] = cmd_buffers[i]
   }
 
@@ -7523,6 +7754,7 @@ cmd void vkDestroySurfaceKHR(
     VkSurfaceKHR                 surface,
     const VkAllocationCallbacks* pAllocator) {
   // TODO: pAllocator
+  if !(instance in Instances) {vkErrorInvalidInstance(instance)}
   delete(Surfaces, surface)
 }
 
@@ -7533,6 +7765,8 @@ cmd VkResult vkGetPhysicalDeviceSurfaceSupportKHR(
     u32              queueFamilyIndex,
     VkSurfaceKHR     surface,
     VkBool32*        pSupported) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pSupported == null {vkErrorNullPointer("VkBool32")}
   pSupported[0] = ?
   return ?
 }
@@ -7543,6 +7777,8 @@ cmd VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
     VkPhysicalDevice          physicalDevice,
     VkSurfaceKHR              surface,
     VkSurfaceCapabilitiesKHR* pSurfaceCapabilities) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pSurfaceCapabilities == null {vkErrorNullPointer("VkSurfaceCapabilitiesKHR")}
   pSurfaceCapabilities[0] = ?
   return ?
 }
@@ -7554,6 +7790,9 @@ cmd VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkSurfaceKHR        surface,
     u32*                pSurfaceFormatCount,
     VkSurfaceFormatKHR* pSurfaceFormats) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if !(surface in Surfaces) {vkErrorInvalidSurface(surface)}
+  if pSurfaceFormatCount == null {vkErrorNullPointer("uint32_t")}
   _ = pSurfaceFormatCount[0]
 
   if pSurfaceFormats == null {
@@ -7577,6 +7816,9 @@ cmd VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkSurfaceKHR      surface,
     u32*              pPresentModeCount,
     VkPresentModeKHR* pPresentModes) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if !(surface in Surfaces) {vkErrorInvalidSurface(surface)}
+  if pPresentModeCount == null {vkErrorNullPointer("uint32_t")}
   _ = pPresentModeCount[0]
 
   if pPresentModes == null {
@@ -7662,6 +7904,8 @@ cmd VkResult vkCreateSwapchainKHR(
     const VkSwapchainCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*    pAllocator,
     VkSwapchainKHR*                 pSwapchain) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if pCreateInfo == null {vkErrorNullPointer("VkSwapchainCreateInfoKHR")}
   create_info := pCreateInfo[0]
   queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
   // TODO: pAllocator
@@ -7693,6 +7937,7 @@ cmd VkResult vkCreateSwapchainKHR(
   }
 
   handle := ?
+  if pSwapchain== null {vkErrorNullPointer("VkSwapchain")}
   pSwapchain[0] = handle
   swapchainObject.VulkanHandle = handle
   Swapchains[handle] = swapchainObject
@@ -7707,6 +7952,7 @@ cmd void vkDestroySwapchainKHR(
     VkSwapchainKHR               swapchain,
     const VkAllocationCallbacks* pAllocator) {
   // TODO: pAllocator
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   swapObject := Swapchains[swapchain]
   if swapObject != null {
     for _ , _ , v in swapObject.SwapchainImages {
@@ -7723,6 +7969,9 @@ cmd VkResult vkGetSwapchainImagesKHR(
     VkSwapchainKHR swapchain,
     u32*           pSwapchainImageCount,
     VkImage*       pSwapchainImages) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(swapchain in Swapchains) {vkErrorInvalidSwapchain(swapchain)}
+
   swapchainObject := Swapchains[swapchain]
   // Need to do a read observation of the image count as the number of images
   // requested from users might be different from the number offered by the
@@ -7782,6 +8031,9 @@ cmd VkResult vkAcquireNextImageKHR(
     VkSemaphore    semaphore,
     VkFence        fence,
     u32*           pImageIndex) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
+  if !(swapchain in Swapchains) {vkErrorInvalidSwapchain(swapchain)}
+  if pImageIndex == null {vkErrorNullPointer("uint32_t")}
   _ = pImageIndex[0]
   pImageIndex[0] = ?
   if (semaphore != as!VkSemaphore(0)) {
@@ -7796,6 +8048,7 @@ cmd VkResult vkAcquireNextImageKHR(
 cmd VkResult vkQueuePresentKHR(
     VkQueue                 queue,
     const VkPresentInfoKHR* pPresentInfo) {
+  if !(queue in Queues) {vkErrorInvalidQueue(queue)}
   LastSubmission = PRESENT
   LastBoundQueue = Queues[queue]
   for i in (0 .. LastPresentInfo.PresentImageCount) {
@@ -7816,6 +8069,7 @@ cmd VkResult vkQueuePresentKHR(
   swapchains := info.pSwapchains[0:info.swapchainCount]
   imageIndices := info.pImageIndices[0:info.swapchainCount]
   for i in (0 .. info.swapchainCount) {
+    if !(swapchains[i] in Swapchains) {vkErrorInvalidSwapchain(swapchains[i])}
     swapchain := Swapchains[swapchains[i]]
     image := swapchain.SwapchainImages[imageIndices[i]]
     LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
@@ -7929,6 +8183,8 @@ cmd VkResult vkGetPhysicalDeviceDisplayPropertiesKHR(
     VkPhysicalDevice        physicalDevice,
     u32*                    pPropertyCount,
     VkDisplayPropertiesKHR* pProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pPropertyCount == null {vkErrorNullPointer("uint32_t")}
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -7952,6 +8208,8 @@ cmd VkResult vkGetPhysicalDeviceDisplayPlanePropertiesKHR(
     VkPhysicalDevice             physicalDevice,
     u32*                         pPropertyCount,
     VkDisplayPlanePropertiesKHR* pProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pPropertyCount == null {vkErrorNullPointer("uint32_t")}
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -7975,6 +8233,8 @@ cmd VkResult vkGetDisplayPlaneSupportedDisplaysKHR(
     u32              planeIndex,
     u32*             pDisplayCount,
     VkDisplayKHR*    pDisplays) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pDisplayCount == null {vkErrorNullPointer("uint32_t")}
   _ = pDisplayCount[0]
 
   if pDisplays == null {
@@ -7998,6 +8258,8 @@ cmd VkResult vkGetDisplayModePropertiesKHR(
     VkDisplayKHR                display,
     u32*                        pPropertyCount,
     VkDisplayModePropertiesKHR* pProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pPropertyCount == null {vkErrorNullPointer("uint32_t")}
   _ = pPropertyCount[0]
 
   if pProperties == null {
@@ -8022,10 +8284,13 @@ cmd VkResult vkCreateDisplayModeKHR(
     const VkDisplayModeCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*      pAllocator,
     VkDisplayModeKHR*                 pMode) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pCreateInfo == null {vkErrorNullPointer("VkDisplayModeCreateInfo")}
   _ = pCreateInfo[0]
   // TODO: pAllocator
 
   handle := ?
+  if pMode == null {vkErrorNullPointer("VkDisplayModeKHR")}
   pMode[0] = handle
   modeObject := new!DisplayModeObject(PhysicalDevice: physicalDevice,
     Display:                          display,
@@ -8042,6 +8307,9 @@ cmd VkResult vkGetDisplayPlaneCapabilitiesKHR(
     VkDisplayModeKHR               mode,
     u32                            planeIndex,
     VkDisplayPlaneCapabilitiesKHR* pCapabilities) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if !(mode in DisplayModes) {vkErrorInvalidDisplayMode(mode)}
+  if pCapabilities == null {vkErrorNullPointer("VkDisplayPlaneCapabilitiesKHR")}
   pCapabilities[0] = ?
   return ?
 }
@@ -8053,10 +8321,13 @@ cmd VkResult vkCreateDisplayPlaneSurfaceKHR(
     const VkDisplaySurfaceCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks*         pAllocator,
     VkSurfaceKHR*                        pSurface) {
+  if !(instance in Instances) {vkErrorInvalidInstance(instance)}
+  if pCreateInfo == null {vkErrorNullPointer("VkDisplaySurfaceCreateInfoKHR")}
   _ = pCreateInfo[0]
   // TODO: pAllocator
 
   handle := ?
+  if pSurface == null {vkErrorNullPointer("VkSurfaceKHR")}
   pSurface[0] = handle
   surfaceObject := new!SurfaceObject(Instance: instance,
     VulkanHandle:           handle)
@@ -8086,8 +8357,10 @@ cmd VkResult vkCreateSharedSwapchainsKHR(
     const VkSwapchainCreateInfoKHR* pCreateInfos,
     const VkAllocationCallbacks*    pAllocator,
     VkSwapchainKHR*                 pSwapchains) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   create_infos := pCreateInfos[0:swapchainCount]
   fence
+  if pSwapchains == null {vkErrorNullPointer("VkSwapchainKHR")}
   swapchains := pSwapchains[0:swapchainCount]
   for i in (0 .. swapchainCount) {
     create_info := create_infos[i]
@@ -8216,6 +8489,7 @@ cmd VkResult vkCreateDebugReportCallbackEXT(
     const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
     const VkAllocationCallbacks*              pAllocator,
     VkDebugReportCallbackEXT*                 pCallback) {
+  if !(instance in Instances) {vkErrorInvalidInstance(instance)}
   return ?
 }
 
@@ -8225,6 +8499,7 @@ cmd void vkDestroyDebugReportCallbackEXT(
     VkInstance                   instance,
     VkDebugReportCallbackEXT     callback,
     const VkAllocationCallbacks* pAllocator) {
+  if !(instance in Instances) {vkErrorInvalidInstance(instance)}
 }
 
 @extension("VK_EXT_debug_report")
@@ -8238,6 +8513,7 @@ cmd void vkDebugReportMessageEXT(
     s32                        messageCode,
     string                     pLayerPrefix,
     string                     pMessage) {
+  if !(instance in Instances) {vkErrorInvalidInstance(instance)}
 }
 extern void validate(string layerName, bool condition, string message)
 
@@ -8504,6 +8780,7 @@ cmd void RecreateDebugMarkerSetObjectTagEXT(
 cmd VkResult vkDebugMarkerSetObjectTagEXT(
     VkDevice                                    device,
     VkDebugMarkerObjectTagInfoEXT*              pTagInfo) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   tagInfo := pTagInfo[0]
   setDebugMarkerObjectTag(tagInfo)
   return ?
@@ -8528,6 +8805,7 @@ cmd void RecreateDebugMarkerSetObjectNameEXT(
 cmd VkResult vkDebugMarkerSetObjectNameEXT(
     VkDevice                                    device,
     VkDebugMarkerObjectNameInfoEXT*             pNameInfo) {
+  if !(device in Devices) {vkErrorInvalidDevice(device)}
   nameInfo := pNameInfo[0]
   setDebugMarkerObjectName(nameInfo)
   return ?
@@ -8552,6 +8830,7 @@ sub void dovkCmdDebugMarkerBeginEXT(ref!vkCmdDebugMarkerBeginEXTArgs args) {
 cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   markerInfo := pMarkerInfo[0]
   args := new!vkCmdDebugMarkerBeginEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),
@@ -8579,7 +8858,7 @@ sub void dovkCmdDebugMarkerEndEXT(ref!vkCmdDebugMarkerEndEXTArgs draw) {
 @no_replay
 cmd void vkCmdDebugMarkerEndEXT(
     VkCommandBuffer                             commandBuffer) {
-
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   args := new!vkCmdDebugMarkerEndEXTArgs()
 
   addCmd(commandBuffer, args, dovkCmdDebugMarkerEndEXT)
@@ -8603,6 +8882,7 @@ sub void dovkCmdDebugMarkerInsertEXT(ref!vkCmdDebugMarkerInsertEXTArgs draw) {
 cmd void vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer                             commandBuffer,
     VkDebugMarkerMarkerInfoEXT*                 pMarkerInfo) {
+  if !(commandBuffer in CommandBuffers) {vkErrorInvalidCommandBuffer(commandBuffer)}
   markerInfo := pMarkerInfo[0]
   args := new!vkCmdDebugMarkerInsertEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),
