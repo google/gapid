@@ -21,6 +21,7 @@
 #include "core/cc/get_gles_proc_address.h"
 #include "core/cc/log.h"
 
+#include <cstring>
 #include <dlfcn.h>
 
 #include <unordered_map>
