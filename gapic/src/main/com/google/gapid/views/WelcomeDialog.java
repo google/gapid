@@ -26,6 +26,7 @@ import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
@@ -41,6 +42,7 @@ import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -57,7 +59,13 @@ import java.util.function.Consumer;
  * Welcome dialog shown when the application is run without a capture as an argument.
  */
 public class WelcomeDialog {
+  private static final String PRIVACY_POLICY_URL = "https://www.google.com/policies/privacy/";
+
   private WelcomeDialog() {
+  }
+
+  public static void showPrivacyPolicy() {
+    Program.launch(PRIVACY_POLICY_URL);
   }
 
   public static void showFirstTimeDialog(
@@ -94,6 +102,10 @@ public class WelcomeDialog {
           allowUpdateChecks = withLayoutData(
               createCheckbox(form, Messages.UPDATE_CHECK_OPTION, true),
               withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+          withLayoutData(
+              createLink(form, Messages.PRIVACY_POLICY, e -> showPrivacyPolicy()),
+              withIndents(
+                  withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1), 0, 20));
         });
       }
 

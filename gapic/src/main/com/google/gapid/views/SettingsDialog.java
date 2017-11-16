@@ -15,9 +15,12 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.views.WelcomeDialog.showPrivacyPolicy;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createLink;
+import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
@@ -106,8 +109,15 @@ public class SettingsDialog extends DialogBase {
         createCheckbox(container, Messages.UPDATE_CHECK_OPTION, settings.autoCheckForUpdates),
         withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
 
-    createLabel(container, "");
-    restartLabel = createLabel(container, "Changes require restart to take effect");
+    withLayoutData(
+        createLink(container, Messages.PRIVACY_POLICY, e -> showPrivacyPolicy()),
+        withIndents(
+            withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1), 0, 20));
+
+    restartLabel = withLayoutData(
+        createLabel(container, "Changes require restart to take effect"),
+        withIndents(
+            withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1), 0, 20));
     restartLabel.setVisible(false);
     restartLabel.setForeground(restartLabel.getDisplay().getSystemColor(SWT.COLOR_RED));
 
