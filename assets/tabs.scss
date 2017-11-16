@@ -21,7 +21,8 @@ div.tabbar button:hover {
 }
 
 div.tabbar button.active {
-    background-color: #ccc;
+    background-color: #ffffff;
+    border-bottom: solid 4px #00a6ff;
 }
 
 .tabcontent {
