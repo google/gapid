@@ -6,9 +6,12 @@ permalink: /inspect/report
 parent: inspect
 ---
 
-<img src="../images/report-pane.png" width="558px"/>
+<img src="../images/report-pane.png" width="386" height="297"/>
 
-One of GAPID's core goals is to support replays on targets different to those used to create the capture. For example, we may want to capture an OpenGL ES 2.0 application, and replay the capture using a desktop OpenGL 4.0 context. The Report pane will show any compatibility errors that occur in this conversion. If your resulting replay has errors, take a look at the Report to see if there is anything has been highlighted there.
+The report pane shows any issues found with the capture and its replay.
+This includes issues caused by incorrect parameter usage, invalid command sequences or errors reported by the driver used for replay.
+
+If you are using GAPID to diagnose incorrect rendering, check the report pane for any issues.
 
 ## Note for Vulkan
 
