@@ -18,6 +18,8 @@
 
 #include "client/windows/handler/exception_handler.h"
 
+#include "../log.h"
+
 #include <windows.h>
 
 #include <memory>
@@ -36,6 +38,7 @@ static bool handleCrash(const wchar_t* minidumpDir, const wchar_t* minidumpId, v
     WideCharToMultiByte(CP_UTF8, 0, minidumpId, -1, idBuffer.get(), IdLen, NULL, NULL);
     std::string minidumpPath(dirBuffer.get());
     minidumpPath.append(idBuffer.get());
+    minidumpPath.append(".dmp");
     return crashHandler->handleMinidump(minidumpPath, succeeded);
 }
 
@@ -43,11 +46,13 @@ static bool handleCrash(const wchar_t* minidumpDir, const wchar_t* minidumpId, v
 
 namespace core {
 
-CrashHandler::CrashHandler(HandlerFunction handlerFunction) :
-    mHandlerFunction(handlerFunction),
-    mHandler(new google_breakpad::ExceptionHandler(
-            L"", NULL, ::handleCrash, reinterpret_cast<void*>(this),
-            google_breakpad::ExceptionHandler::HandlerType::HANDLER_ALL)) {
+CrashHandler::CrashHandler() : mHandlerFunction(defaultHandlerFunction) {
+    wchar_t tempPathBuf[MAX_PATH+1];
+    GetTempPathW(MAX_PATH+1, tempPathBuf);
+    std::wstring tempPath(tempPathBuf);
+    mHandler = std::unique_ptr<google_breakpad::ExceptionHandler>(new google_breakpad::ExceptionHandler(
+            tempPath, NULL, ::handleCrash, reinterpret_cast<void*>(this),
+            google_breakpad::ExceptionHandler::HandlerType::HANDLER_ALL));
 }
 
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.

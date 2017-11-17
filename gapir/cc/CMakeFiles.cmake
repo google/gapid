@@ -23,6 +23,8 @@ set(files
     context.cpp
     context.h
     context_test.cpp
+    crash_uploader.cpp
+    crash_uploader.h
     function_table.h
     gfx_api.h
     gles_gfx_api.cpp

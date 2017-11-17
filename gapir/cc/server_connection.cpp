@@ -126,4 +126,31 @@ bool ServerConnection::post(const void* postData, uint32_t postSize) const {
     return true;
 }
 
+bool ServerConnection::crash(const std::string& filename, const void* crashData, uint32_t crashSize) const {
+    GAPID_DEBUG("CRASH: [%s] %p (%d)", filename.c_str(), crashData, crashSize);
+
+    MessageType type = MESSAGE_TYPE_CRASH;
+    if (mConn->send(&type, sizeof(type)) != sizeof(type)) {
+        GAPID_WARNING("Failed to send CRASH messageType to the server. Error: %s", mConn->error());
+        return false;
+    }
+
+    if (!mConn->sendString(filename)) {
+        GAPID_WARNING("Failed to send CRASH filename to the server. Error: %s", mConn->error());
+        return false;
+    }
+
+    if (mConn->send(&crashSize, sizeof(crashSize)) != sizeof(crashSize)) {
+        GAPID_WARNING("Failed to send CRASH length to the server. Error: %s", mConn->error());
+        return false;
+    }
+
+    if (mConn->send(crashData, crashSize) != crashSize) {
+        GAPID_WARNING("Failed to send CRASH content to the server. Error: %s", mConn->error());
+        return false;
+    }
+
+    return true;
+}
+
 }  // namespace gapir

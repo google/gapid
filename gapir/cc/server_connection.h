@@ -56,11 +56,16 @@ public:
     // the posting was successful false otherwise.
     bool post(const void* postData, uint32_t postSize) const;
 
+    // Post a crash minidump from the given address with the given filename to the server. Returns
+    // true if the posting was successful false otherwise.
+    bool crash(const std::string& filename, const void* crashData, uint32_t crashSize) const;
+
     // Type of the message sent to the server. It have to be consistent with the values expected by
     // the server
     enum MessageType : uint8_t {
-        MESSAGE_TYPE_GET  = 0,
-        MESSAGE_TYPE_POST = 1,
+        MESSAGE_TYPE_GET   = 0,
+        MESSAGE_TYPE_POST  = 1,
+        MESSAGE_TYPE_CRASH = 2,
     };
 
 private:

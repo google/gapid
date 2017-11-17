@@ -32,16 +32,19 @@ class CrashHandler {
 public:
     typedef std::function<bool(const std::string& minidumpPath, bool succeeded)> HandlerFunction;
 
-    CrashHandler(HandlerFunction handlerFunction);
+    CrashHandler();
     ~CrashHandler();
 
-    bool handleMinidump(const std::string& minidumpPath, bool succeeded) {
-        return mHandlerFunction(minidumpPath, succeeded);
-    }
+    void setHandlerFunction(HandlerFunction newHandlerFunction);
+    void unsetHandlerFunction();
+
+    bool handleMinidump(const std::string& minidumpPath, bool succeeded);
 
 private:
     HandlerFunction mHandlerFunction;
     std::unique_ptr<google_breakpad::ExceptionHandler> mHandler;
+
+    static HandlerFunction defaultHandlerFunction;
 };
 
 }

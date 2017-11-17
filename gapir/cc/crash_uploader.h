@@ -14,28 +14,29 @@
  * limitations under the License.
  */
 
-#include "crash_handler.h"
+#ifndef GAPIR_CRASH_REPORTER_H
+#define GAPIR_CRASH_REPORTER_H
 
-#include <gtest/gtest.h>
+#include "core/cc/crash_handler.h"
+#include "gapir/cc/server_connection.h"
 
-#include <stdlib.h>
-#include <iostream>
+#include <memory>
+#include <string>
 
-namespace core {
-namespace test {
+namespace gapir {
 
-TEST(CrashHandlerTest, HandleCrash) {
-    CrashHandler crashHandler;
-    crashHandler.setHandlerFunction([] (const std::string& minidumpPath, bool succeeded) {
-        if (succeeded)
-            std::cerr << "crash handled.";
-        else
-            std::cerr << "crash not handled.";
-        return succeeded;
-    });
+// CrashUploader uploads crash minidumps from a CrashHandler to GAPIS via a ServerConnection.
+class CrashUploader {
+public:
+  CrashUploader(core::CrashHandler& crash_handler, const ServerConnection& conn);
+  ~CrashUploader();
 
-    EXPECT_DEATH({ int i = *((volatile int*)(0)); }, "crash handled.");
+private:
+
+  core::CrashHandler& mCrashHandler;
+  const ServerConnection& mConnection;
+};
+
 }
 
-} // namespace test
-} // namespace core
+#endif // GAPIR_CRASH_REPORTER_H

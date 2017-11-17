@@ -18,6 +18,8 @@
 
 #include "client/mac/handler/exception_handler.h"
 
+#include <stdlib.h>
+
 namespace {
 
 static bool handleCrash(const char* minidumpDir, const char* minidumpId, void* crashHandlerPtr, bool succeeded) {
@@ -31,10 +33,10 @@ static bool handleCrash(const char* minidumpDir, const char* minidumpId, void* c
 
 namespace core {
 
-CrashHandler::CrashHandler(HandlerFunction handlerFunction) :
-    mHandlerFunction(handlerFunction),
+CrashHandler::CrashHandler() :
+    mHandlerFunction(defaultHandlerFunction),
     mHandler(new google_breakpad::ExceptionHandler(
-            "./", NULL, ::handleCrash, reinterpret_cast<void*>(this), true, NULL)) {
+            getenv("TMPDIR"), NULL, ::handleCrash, reinterpret_cast<void*>(this), true, NULL)) {
 }
 
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.
