@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
 import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
@@ -154,6 +155,7 @@ public class WelcomeDialog {
               Menu popup = new Menu(c);
               for (String file : models.settings.recentFiles) {
                 createMenuItem(popup, file, 0, ev -> {
+                  models.analytics.postInteraction(View.Main, "openRecent", Invoke);
                   close(true);
                   models.capture.loadCapture(new File(file));
                 });

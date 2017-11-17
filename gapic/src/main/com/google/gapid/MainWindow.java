@@ -15,6 +15,9 @@
  */
 package com.google.gapid;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Hide;
+import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.views.AboutDialog.showAbout;
 import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.AboutDialog.showLogDir;
@@ -328,6 +331,7 @@ public class MainWindow extends ApplicationWindow {
         m.add(new Action(file) {
           @Override
           public void run() {
+            models().analytics.postInteraction(View.Main, "openRecent", Invoke);
             models().capture.loadCapture(new File(file));
           }
         });
@@ -338,7 +342,10 @@ public class MainWindow extends ApplicationWindow {
 
   private MenuManager createEditMenu() {
     MenuManager manager = new MenuManager("&Edit");
-    editCopy = MenuItems.EditCopy.create(() -> widgets().copypaste.doCopy());
+    editCopy = MenuItems.EditCopy.create(() -> {
+      models().analytics.postInteraction(View.Main, "copy", Invoke);
+      widgets().copypaste.doCopy();
+    });
 
     manager.add(editCopy);
     manager.add(MenuItems.EditSettings.create(
@@ -367,18 +374,21 @@ public class MainWindow extends ApplicationWindow {
     MenuManager manager = new MenuManager("&View");
     viewScrubber = MenuItems.ViewThumbnails.createCheckbox(show -> {
       if (splitter != null) {
+        models().analytics.postInteraction(View.Main, "filmStrip", show ? Show : Hide);
         splitter.setTopVisible(show);
         models().settings.hideScrubber = !show;
       }
     });
     viewLeft = MenuItems.ViewLeft.createCheckbox(show -> {
       if (tabs != null) {
+        models().analytics.postInteraction(View.Main, "leftTabs", show ? Show : Hide);
         tabs.setLeftVisible(show);
         models().settings.hideLeft = !show;
       }
     });
     viewRight = MenuItems.ViewRight.createCheckbox(show -> {
       if (tabs != null) {
+        models().analytics.postInteraction(View.Main, "rightTabs", show ? Show : Hide);
         tabs.setRightVisible(show);
         models().settings.hideRight = !show;
       }
@@ -395,6 +405,7 @@ public class MainWindow extends ApplicationWindow {
     MenuManager manager = new MenuManager("&Tabs");
     for (MainTab.Type type : MainTab.Type.values()) {
       Action action = type.createAction(shown -> {
+        models().analytics.postInteraction(type.view, "menu", shown ? Show : Hide);
         if (shown) {
           tabs.addNewTabToCenter(new MainTab(type, parent -> {
             Tab tab = type.factory.create(parent, client, models(), widgets());

@@ -324,6 +324,7 @@ enum ClientAction {
   Show = 1;
   Hide = 2;
   Move = 13;
+  Invoke = 14;
   MouseClickLeft = 3;
   MouseClickMiddle = 4;
   MouseClickRight = 5;
