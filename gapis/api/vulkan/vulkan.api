@@ -9501,3 +9501,7 @@ class VulkanStructHeader {
   VkImage  Image
   VkBuffer Buffer
 }
+
+// Internal sub-routine which is called before any command is mutated.
+sub void PreMutate() {
+}

@@ -243,6 +243,7 @@
 ¶
       try {
         do {
+          subPreMutate(observer, call);
           {{Template "C++.Block" $.Block}}
         } while(false);
       } catch (gapii::AbortException& e) {

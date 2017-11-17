@@ -80,10 +80,6 @@ func (*State) SetupInitialState(ctx context.Context) {}
 
 func (*State) RebuildState(ctx context.Context, s *api.GlobalState) []api.Cmd { return nil }
 
-func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
-	return nil
-}
-
 func (API) GetFramebufferAttachmentInfo(
 	ctx context.Context,
 	after []uint64,

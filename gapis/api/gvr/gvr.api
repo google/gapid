@@ -16,6 +16,10 @@ api_index 3
 
 import "types.api"
 
+// Internal sub-routine which is called before any command is mutated.
+sub void PreMutate() {
+}
+
 @no_replay
 cmd gvr_version gvr_get_version() {
   return ?

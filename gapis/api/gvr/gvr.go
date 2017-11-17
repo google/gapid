@@ -40,10 +40,6 @@ func (*State) SetupInitialState(ctx context.Context) {}
 
 func (*State) RebuildState(ctx context.Context, s *api.GlobalState) []api.Cmd { return nil }
 
-func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
-	return nil
-}
-
 type CustomState struct{}
 
 func (API) QueryFramebufferAttachment(

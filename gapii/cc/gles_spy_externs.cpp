@@ -28,6 +28,11 @@ void GlesSpy::unmapMemory(CallObserver*, Slice<uint8_t>) {}
 MsgID GlesSpy::newMsg(CallObserver*, uint32_t, const char*) { return 0; }
 void GlesSpy::addTag(CallObserver*, uint32_t, const char*) {}
 
+bool GlesSpy::IsGLESCommand(CallObserver* observer) {
+  const char* name = observer->getCurrentCommandName();
+  return name != nullptr && name[0] == 'g' && name[1] == 'l';
+}
+
 u32Limits GlesSpy::IndexLimits(CallObserver*, Slice<uint8_t> indices, int32_t sizeof_index) {
     uint32_t low = ~(uint32_t)0;
     uint32_t high = 0;
