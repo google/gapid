@@ -59,6 +59,8 @@ public interface GapidClient {
       Service.EnableCrashReportingRequest request);
   public ListenableFuture<Service.EnableAnalyticsResponse> enableAnalytics(
       Service.EnableAnalyticsRequest request);
+  public ListenableFuture<Service.ClientEventResponse> postClientEvent(
+      Service.ClientEventRequest request);
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage);
   public ListenableFuture<Void> streamSearch(
       Service.FindRequest request, Consumer<Service.FindResponse> onResult);
