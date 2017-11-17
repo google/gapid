@@ -25,6 +25,7 @@ set(files
     connection.h
     connection_test.cpp
     core_ptr_types.h
+    crash_handler.cpp
     crash_handler.h
     crash_handler_test.cpp
     debugger.h
@@ -33,6 +34,8 @@ set(files
     encoder.cpp
     encoder.h
     encoder_test.cpp
+    file_reader.cpp
+    file_writer.h
     file_writer.cpp
     file_writer.h
     get_gles_proc_address.h

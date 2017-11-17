@@ -1,0 +1,67 @@
+/*
+ * Copyright (C) 2017 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "gapir/cc/crash_uploader.h"
+#include "core/cc/crash_handler.h"
+#include "core/cc/file_reader.h"
+#include "core/cc/log.h"
+
+#include <stdio.h>
+
+namespace gapir {
+
+CrashUploader::CrashUploader(
+        core::CrashHandler& crash_handler,
+        const ServerConnection& conn) :
+    mCrashHandler(crash_handler),
+    mConnection(conn) {
+    mCrashHandler.setHandlerFunction([this] (const std::string& minidumpPath, bool succeeded) -> bool {
+        if (!succeeded) {
+            GAPID_ERROR("Failed to write minidump out to %s", minidumpPath.c_str());
+        }
+
+        core::FileReader minidumpFile(minidumpPath.c_str());
+        if (const char* err = minidumpFile.error()) {
+            GAPID_ERROR("Failed to open minidump file %s: %s", minidumpPath.c_str(), err);
+            return false;
+        }
+
+        uint64_t minidumpSize = minidumpFile.size();
+        if (minidumpSize == 0u) {
+            GAPID_ERROR("Failed to get minidump file size %s", minidumpPath.c_str());
+            return false;
+        }
+        std::unique_ptr<char[]> minidumpData = std::unique_ptr<char[]>(new char[minidumpSize]);
+        uint64_t read = minidumpFile.read(minidumpData.get(), minidumpSize);
+        if (read != minidumpSize) {
+            GAPID_ERROR("Failed to read in the minidump file");
+            return false;
+        }
+
+        if (!mConnection.crash(minidumpPath, minidumpData.get(), minidumpSize)) {
+            GAPID_ERROR("Failed to send minidump to server");
+            return false;
+        }
+        return succeeded;
+    });
+}
+
+CrashUploader::~CrashUploader() {
+    GAPID_INFO("destroying uploader");
+    mCrashHandler.unsetHandlerFunction();
+}
+
+}

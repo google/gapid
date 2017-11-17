@@ -15,6 +15,7 @@
  */
 
 #include "gapir/cc/context.h"
+#include "gapir/cc/crash_uploader.h"
 #include "gapir/cc/memory_manager.h"
 #include "gapir/cc/resource_disk_cache.h"
 #include "gapir/cc/resource_in_memory_cache.h"
@@ -73,7 +74,8 @@ void listenConnections(std::unique_ptr<Connection> conn,
                        const char* authToken,
                        const char* cachePath,
                        int idleTimeoutMs,
-                       MemoryManager* memoryManager) {
+                       MemoryManager* memoryManager,
+                       core::CrashHandler& crashHandler) {
     ServerListener listener(std::move(conn), memoryManager->getSize());
 
     std::unique_ptr<ResourceInMemoryCache> resourceProvider(
@@ -86,6 +88,7 @@ void listenConnections(std::unique_ptr<Connection> conn,
             GAPID_INFO("Shutting down");
             break;
         }
+        std::unique_ptr<CrashUploader> crash_uploader = std::unique_ptr<CrashUploader>(new CrashUploader(crashHandler, *acceptedConn));
 
         std::unique_ptr<Context> context =
                 Context::create(*acceptedConn, resourceProvider.get(), memoryManager);
@@ -125,6 +128,7 @@ const char* pipeName() {
 void android_main(struct android_app* app) {
     app_dummy();
     MemoryManager memoryManager(memorySizes);
+    CrashHandler crashHandler;
 
     const char* pipe = pipeName();
     auto conn = SocketConnection::createPipe(pipe, "");
@@ -140,7 +144,7 @@ void android_main(struct android_app* app) {
 
     // Note if you want to create a disk cache create it under:
     // app->activity->internalDataPath
-    listenConnections(std::move(conn), nullptr, nullptr, Connection::NO_TIMEOUT, &memoryManager);
+    listenConnections(std::move(conn), nullptr, nullptr, Connection::NO_TIMEOUT, &memoryManager, crashHandler);
 }
 
 #else  // TARGET_OS == GAPID_OS_ANDROID
@@ -199,8 +203,6 @@ int main(int argc, const char* argv[]) {
             idleTimeoutMs = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
             wait_for_debugger = true;
-        } else if (strcmp(argv[i], "--enable-crash-reporting") == 0) {
-           enable_crash_reporting = true;
         } else if (strcmp(argv[i], "--version") == 0) {
             printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
             return 0;
@@ -209,12 +211,7 @@ int main(int argc, const char* argv[]) {
         }
     }
 
-    std::unique_ptr<core::CrashHandler> crash_handler;
-    if (enable_crash_reporting) {
-        crash_handler.reset(new core::CrashHandler([] (const std::string& minidumpPath, bool succeeded) {
-            return succeeded;
-        }));
-    }
+    core::CrashHandler crashHandler;
 
     GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
 
@@ -228,7 +225,7 @@ int main(int argc, const char* argv[]) {
     if (conn == nullptr) {
         GAPID_FATAL("Failed to create listening socket on port: %s", portStr);
     }
-    listenConnections(std::move(conn), authToken, cachePath, idleTimeoutMs, &memoryManager);
+    listenConnections(std::move(conn), authToken, cachePath, idleTimeoutMs, &memoryManager, crashHandler);
     return EXIT_SUCCESS;
 }
 

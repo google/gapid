@@ -18,6 +18,8 @@
 
 #include "client/linux/handler/exception_handler.h"
 
+#include <stdlib.h>
+
 namespace {
 
 static bool handleCrash(const google_breakpad::MinidumpDescriptor& descriptor, void* crashHandlerPtr, bool succeeded) {
@@ -30,10 +32,10 @@ static bool handleCrash(const google_breakpad::MinidumpDescriptor& descriptor, v
 
 namespace core {
 
-CrashHandler::CrashHandler(HandlerFunction handlerFunction) :
-    mHandlerFunction(handlerFunction),
+CrashHandler::CrashHandler() :
+    mHandlerFunction(defaultHandlerFunction),
     mHandler(new google_breakpad::ExceptionHandler(
-            google_breakpad::MinidumpDescriptor("./crashes"),
+            google_breakpad::MinidumpDescriptor(getenv("TMPDIR")),
             NULL, ::handleCrash, reinterpret_cast<void*>(this), true, -1)) {
 }
 
