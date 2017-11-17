@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.views.WelcomeDialog.showPrivacyPolicy;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -24,6 +25,8 @@ import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
+import com.google.gapid.models.Analytics.View;
+import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
@@ -59,8 +62,9 @@ public class SettingsDialog extends DialogBase {
     this.settings = settings;
   }
 
-  public static void showSettingsDialog(Shell shell, Settings settings, Theme theme) {
-    new SettingsDialog(shell, settings, theme).open();
+  public static void showSettingsDialog(Shell shell, Models models, Theme theme) {
+    models.analytics.postInteraction(View.Main, "settings", Show);
+    new SettingsDialog(shell, models.settings, theme).open();
   }
 
   private void update() {

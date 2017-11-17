@@ -36,6 +36,7 @@ import com.google.common.collect.Maps;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
@@ -121,7 +122,7 @@ public class TextureView extends Composite
 
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
     ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
-    imagePanel = createImagePanel(imageAndToolbar, widgets);
+    imagePanel = new ImagePanel(imageAndToolbar, View.Textures, models.analytics, widgets, false);
     loading = imagePanel.getLoading();
 
     splitter.setWeights(models.settings.texturesSplitterWeights);
@@ -174,11 +175,6 @@ public class TextureView extends Composite
             Comparator.comparingInt(Data::getSortLevels)),
         createTableColumn(viewer, "Format", Data::getFormat,
             Comparator.comparing(Data::getFormat)));
-  }
-
-  private static ImagePanel createImagePanel(Composite parent, Widgets widgets) {
-    ImagePanel panel = new ImagePanel(parent, widgets, false);
-    return panel;
   }
 
   @Override

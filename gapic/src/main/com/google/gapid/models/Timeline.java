@@ -24,7 +24,6 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.ExceptionHandler;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -40,8 +39,8 @@ public class Timeline extends CaptureDependentModel<List<Service.Event>, Timelin
   private final ApiContext context;
 
   public Timeline(
-      Shell shell, ExceptionHandler handler, Client client, Capture capture, ApiContext context) {
-    super(LOG, shell, handler, client, Listener.class, capture);
+      Shell shell, Analytics analytics, Client client, Capture capture, ApiContext context) {
+    super(LOG, shell, analytics, client, Listener.class, capture);
     this.capture = capture;
     this.context = context;
 

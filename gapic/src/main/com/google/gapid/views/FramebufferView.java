@@ -26,6 +26,7 @@ import static com.google.gapid.widgets.Widgets.exclusiveSelection;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.image.MultiLayerAndLevelImage;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
@@ -99,7 +100,7 @@ public class FramebufferView extends Composite
     setLayout(new GridLayout(2, false));
 
     ToolBar toolBar = createToolBar(widgets.theme);
-    imagePanel = new ImagePanel(this, widgets, true);
+    imagePanel = new ImagePanel(this, View.Framebuffer, models.analytics, widgets, true);
     loading = imagePanel.getLoading();
 
     toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));

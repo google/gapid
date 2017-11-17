@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static org.eclipse.jface.dialogs.IDialogConstants.OK_ID;
@@ -22,7 +23,8 @@ import static org.eclipse.jface.dialogs.IDialogConstants.OK_ID;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.gapid.image.Images;
-import com.google.gapid.models.Settings;
+import com.google.gapid.models.Analytics.View;
+import com.google.gapid.models.Models;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.pkginfo.PkgInfo;
 import com.google.gapid.server.GapitPkgInfoProcess;
@@ -74,7 +76,7 @@ public class ActivityPickerDialog extends DialogBase {
   private static final int ICON_SIZE_DIP = 24;
   private static final int INITIAL_MIN_HEIGHT = 600;
 
-  private final Settings settings;
+  private final Models models;
   private final Widgets widgets;
   private final Device.Instance device;
   private LoadablePanel<Tree> loading;
@@ -151,15 +153,21 @@ public class ActivityPickerDialog extends DialogBase {
   }
 
   public ActivityPickerDialog(
-      Shell parent, Settings settings, Widgets widgets, Device.Instance device) {
+      Shell parent, Models models, Widgets widgets, Device.Instance device) {
     super(parent, widgets.theme);
-    this.settings = settings;
+    this.models = models;
     this.widgets = widgets;
     this.device = device;
   }
 
   public Action getSelected() {
     return selected;
+  }
+
+  @Override
+  public int open() {
+    models.analytics.postInteraction(View.Trace, "activityPicker", Show);
+    return super.open();
   }
 
   @Override
@@ -242,7 +250,7 @@ public class ActivityPickerDialog extends DialogBase {
   private void load(Shell shell) {
     float iconDensityScale = DPIUtil.getDeviceZoom() / 100.0f;
     GapitPkgInfoProcess process =
-        new GapitPkgInfoProcess(settings, device.getSerial(), iconDensityScale);
+        new GapitPkgInfoProcess(models.settings, device.getSerial(), iconDensityScale);
     Futures.addCallback(process.start(), new FutureCallback<PkgInfo.PackageList>() {
       @Override
       public void onFailure(Throwable t) {

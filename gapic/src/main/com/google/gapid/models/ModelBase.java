@@ -28,7 +28,6 @@ import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.ObjectStore;
 
 import org.eclipse.swt.widgets.Shell;
@@ -47,7 +46,7 @@ import java.util.logging.Logger;
 abstract class ModelBase<T, S, E, L extends Events.Listener> {
   private final Logger log;
   protected final Shell shell;
-  protected final ExceptionHandler handler;
+  protected final Analytics analytics;
   protected final Client client;
   private final ObjectStore<S> sourceStore = ObjectStore.create();
   protected final SingleInFlight rpcController = new SingleInFlight();
@@ -55,10 +54,10 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
   private T data;
 
   public ModelBase(
-      Logger log, Shell shell, ExceptionHandler handler, Client client, Class<L> listenerClass) {
+      Logger log, Shell shell, Analytics analytics, Client client, Class<L> listenerClass) {
     this.log = log;
     this.shell = shell;
-    this.handler = handler;
+    this.analytics = analytics;
     this.client = client;
     this.listeners = Events.listeners(listenerClass);
   }
@@ -91,7 +90,7 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
       return success(result.get());
     } catch (RpcException | ExecutionException e) {
       if (!shell.isDisposed()) {
-        handler.reportException(e);
+        analytics.reportException(e);
         throttleLogRpcError(log, "LoadData error", e);
       }
       return error(null);
@@ -148,8 +147,8 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
     extends ModelBase<T, Path.Any, E, L> {
 
     public ForPath(
-        Logger log, Shell shell, ExceptionHandler handler, Client client, Class<L> listenerClass) {
-      super(log, shell, handler, client, listenerClass);
+        Logger log, Shell shell, Analytics analytics, Client client, Class<L> listenerClass) {
+      super(log, shell, analytics, client, listenerClass);
     }
   }
 }

@@ -21,7 +21,6 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.Loadable;
 
 import org.eclipse.swt.widgets.Shell;
@@ -34,9 +33,9 @@ import java.util.logging.Logger;
  */
 abstract class CaptureDependentModel<T, L extends Events.Listener>
     extends ModelBase.ForPath<T, Void, L> {
-  public CaptureDependentModel(Logger log, Shell shell, ExceptionHandler handler, Client client,
+  public CaptureDependentModel(Logger log, Shell shell, Analytics analytics, Client client,
       Class<L> listenerClass, Capture capture) {
-    super(log, shell, handler, client, listenerClass);
+    super(log, shell, analytics, client, listenerClass);
 
     capture.addListener(new Capture.Listener() {
       @Override
@@ -66,9 +65,9 @@ abstract class CaptureDependentModel<T, L extends Events.Listener>
 
   public abstract static class ForValue<T, L extends Events.Listener>
       extends CaptureDependentModel<T, L> {
-    public ForValue(Logger log, Shell shell, ExceptionHandler handler, Client client,
+    public ForValue(Logger log, Shell shell, Analytics analytics, Client client,
         Class<L> listenerClass, Capture capture) {
-      super(log, shell, handler, client, listenerClass, capture);
+      super(log, shell, analytics, client, listenerClass, capture);
     }
 
     @Override

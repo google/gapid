@@ -16,6 +16,7 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.glviewer.Geometry.isPolygon;
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.meshAfter;
@@ -39,6 +40,7 @@ import com.google.gapid.glviewer.camera.CylindricalCameraModel;
 import com.google.gapid.glviewer.camera.IsoSurfaceCameraModel;
 import com.google.gapid.glviewer.geo.Model;
 import com.google.gapid.glviewer.geo.ObjWriter;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
@@ -208,6 +210,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
         }, "Render normals"));
     createSeparator(bar);
     saveItem = createToolItem(bar, theme.save(), e -> {
+      models.analytics.postInteraction(View.Geometry, "save", Show);
       FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
       dialog.setText("Save model to...");
       dialog.setFilterNames(new String[] { "OBJ Files (*.obj)" });
@@ -219,7 +222,8 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
           ObjWriter.write(out, originalModelItem.getSelection() ? originalModel : facetedModel);
         } catch (IOException ex) {
           LOG.log(WARNING, "Failed to save model as OBJ", e);
-          showErrorDialog(getShell(), "Failed to save model as OBJ:\n  " + ex.getMessage(), ex);
+          showErrorDialog(getShell(), models.analytics,
+              "Failed to save model as OBJ:\n  " + ex.getMessage(), ex);
         }
       }
     }, "Save model as OBJ");
