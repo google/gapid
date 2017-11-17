@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.views.AboutDialog.showHelp;
@@ -31,6 +32,7 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
@@ -131,6 +133,7 @@ public class WelcomeDialog {
   }
 
   public static void showWelcomeDialog(Shell shell, Models models, Widgets widgets) {
+    models.analytics.postInteraction(View.Main, "welcome", Show);
     new WelcomeDialogBase(shell, widgets.theme) {
       private Button showWelcome;
 
@@ -165,7 +168,7 @@ public class WelcomeDialog {
             close(true);
             showTracingDialog(shell, models, widgets);
           });
-          createLink(c, "<a>Help...</a>", e -> showHelp());
+          createLink(c, "<a>Help...</a>", e -> showHelp(models.analytics));
 
           showWelcome = createCheckbox(c, "Show on startup", !models.settings.skipWelcomeScreen);
         });

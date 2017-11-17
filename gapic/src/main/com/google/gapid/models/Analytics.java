@@ -30,6 +30,9 @@ public class Analytics implements ExceptionHandler {
   private static final Logger LOG = Logger.getLogger(Analytics.class.getName());
 
   public static enum View {
+    Main, Trace,
+    // See MainWindow.MainTab.Type
+    Commands, Framebuffer, Textures, Geometry, Shaders, Report, Log, State, Memory;
   }
 
   private final Client client;

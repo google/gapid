@@ -15,6 +15,7 @@
  */
 package com.google.gapid.widgets;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.Caches.getUnchecked;
 import static com.google.gapid.util.Caches.softCache;
 import static com.google.gapid.util.Loadable.MessageType.Info;
@@ -47,6 +48,8 @@ import com.google.gapid.image.Image;
 import com.google.gapid.image.Image.PixelInfo;
 import com.google.gapid.image.Image.PixelValue;
 import com.google.gapid.image.MultiLayerAndLevelImage;
+import com.google.gapid.models.Analytics;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.proto.stream.Stream.Channel;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -117,6 +120,8 @@ public class ImagePanel extends Composite {
 
   private static final Cache<Image.Key, Histogram> HISTOGRAM_CACHE = softCache();
 
+  private final View view;
+  private final Analytics analytics;
   private final Widgets widgets;
   private final SingleInFlight imageRequestController = new SingleInFlight();
   protected final LoadablePanel<ImageComponent> loading;
@@ -127,8 +132,11 @@ public class ImagePanel extends Composite {
   private MultiLayerAndLevelImage image = MultiLayerAndLevelImage.EMPTY;
   private Image[] layers = NO_LAYERS;
 
-  public ImagePanel(Composite parent, Widgets widgets, boolean naturallyFlipped) {
+  public ImagePanel(
+      Composite parent, View view, Analytics analytics, Widgets widgets, boolean naturallyFlipped) {
     super(parent, SWT.NONE);
+    this.view = view;
+    this.analytics = analytics;
     this.widgets = widgets;
     this.backgroundSelection = new BackgroundSelection(getDisplay());
 
@@ -406,6 +414,7 @@ public class ImagePanel extends Composite {
   }
 
   protected void save() {
+    analytics.postInteraction(view, "save", Show);
     FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
     dialog.setText("Save image to...");
     dialog.setFilterNames(new String[] { "PNG Images" });

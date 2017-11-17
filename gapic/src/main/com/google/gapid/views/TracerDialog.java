@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -33,6 +34,7 @@ import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.common.base.Throwables;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
@@ -91,6 +93,7 @@ public class TracerDialog {
   }
 
   public static void showOpenTraceDialog(Shell shell, Models models) {
+    models.analytics.postInteraction(View.Main, "openTrace", Show);
     FileDialog dialog = new FileDialog(shell, SWT.OPEN);
     dialog.setFilterNames(new String[] { "Trace Files (*.gfxtrace)", "All Files" });
     dialog.setFilterExtensions(new String[] { "*.gfxtrace", "*" });
@@ -102,6 +105,7 @@ public class TracerDialog {
   }
 
   public static void showSaveTraceDialog(Shell shell, Models models) {
+    models.analytics.postInteraction(View.Main, "saveTrace", Show);
     FileDialog dialog = new FileDialog(shell, SWT.SAVE);
     dialog.setFilterNames(new String[] { "Trace Files (*.gfxtrace)", "All Files" });
     dialog.setFilterExtensions(new String[] { "*.gfxtrace", "*" });
@@ -113,8 +117,9 @@ public class TracerDialog {
   }
 
   public static void showTracingDialog(Shell shell, Models models, Widgets widgets) {
+    models.analytics.postInteraction(View.Trace, "input", Show);
     TraceInputDialog input =
-        new TraceInputDialog(shell, models.settings, widgets, models.devices::loadDevices);
+        new TraceInputDialog(shell, models, widgets, models.devices::loadDevices);
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {
       TraceProgressDialog progress = new TraceProgressDialog(shell, input.getValue(), widgets.theme);
       AtomicBoolean failed = new AtomicBoolean(false);
@@ -161,7 +166,7 @@ public class TracerDialog {
    * Dialog to request the information from the user to start a trace (which app, filename, etc.).
    */
   private static class TraceInputDialog extends DialogBase {
-    private final Settings settings;
+    private final Models models;
     private final Widgets widgets;
     private final Runnable refreshDevices;
 
@@ -172,10 +177,9 @@ public class TracerDialog {
 
     private Tracer.TraceRequest value;
 
-    public TraceInputDialog(
-        Shell shell, Settings settings, Widgets widgets, Runnable refreshDevices) {
+    public TraceInputDialog(Shell shell, Models models, Widgets widgets, Runnable refreshDevices) {
       super(shell, widgets.theme);
-      this.settings = settings;
+      this.models = models;
       this.widgets = widgets;
       this.refreshDevices = refreshDevices;
     }
@@ -183,7 +187,7 @@ public class TracerDialog {
     public void setDevices(List<Device.Instance> devices) {
       this.devices = devices;
       if (androidInput != null) {
-        androidInput.setDevices(settings, devices);
+        androidInput.setDevices(models.settings, devices);
       }
     }
 
@@ -203,18 +207,18 @@ public class TracerDialog {
       // Mac has no Vulkan support, so cannot trace desktop apps.
       if (!OS.isMac) {
         folder = createStandardTabFolder(area);
-        androidInput = new AndroidInput(folder, settings, widgets, refreshDevices);
-        desktopInput = new DesktopInput(folder, settings, widgets);
+        androidInput = new AndroidInput(folder, models, widgets, refreshDevices);
+        desktopInput = new DesktopInput(folder, models, widgets);
         createStandardTabItem(folder, "Android", androidInput);
         createStandardTabItem(folder, "Desktop", desktopInput);
         folder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
       } else {
-        androidInput = new AndroidInput(area, settings, widgets, refreshDevices);
+        androidInput = new AndroidInput(area, models, widgets, refreshDevices);
         androidInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
       }
 
       if (devices != null) {
-        androidInput.setDevices(settings, devices);
+        androidInput.setDevices(models.settings, devices);
       }
       return area;
     }
@@ -244,7 +248,7 @@ public class TracerDialog {
     @Override
     protected void buttonPressed(int buttonId) {
       if (buttonId == IDialogConstants.OK_ID) {
-        value = getInput().getTraceRequest(settings);
+        value = getInput().getTraceRequest(models.settings);
       }
       super.buttonPressed(buttonId);
     }
@@ -262,17 +266,17 @@ public class TracerDialog {
       protected final Button fromBeginning;
       protected boolean userHasChangedOutputFile = false;
 
-      public SharedTraceInput(Composite parent, Settings settings, Widgets widgets) {
+      public SharedTraceInput(Composite parent, Models models, Widgets widgets) {
         super(parent, SWT.NONE);
         setLayout(new GridLayout(2, false));
 
         createLabel(this, "API:");
-        api = createApiDropDown(this, getDefaultApi(settings));
+        api = createApiDropDown(this, getDefaultApi(models.settings));
 
-        buildTargetSelection(settings, widgets);
+        buildTargetSelection(models, widgets);
 
         createLabel(this, "Output Directory:");
-        directory = withLayoutData(new FileTextbox.Directory(this, settings.traceOutDir) {
+        directory = withLayoutData(new FileTextbox.Directory(this, models.settings.traceOutDir) {
           @Override
           protected void configureDialog(DirectoryDialog dialog) {
             dialog.setText(Messages.CAPTURE_DIRECTORY);
@@ -291,13 +295,13 @@ public class TracerDialog {
         Composite frameCountComposite =
             createComposite(this, withMargin(new GridLayout(2, false), 0, 0));
         frameCount = withLayoutData(
-            createSpinner(frameCountComposite, settings.traceFrameCount, 0, 999999),
+            createSpinner(frameCountComposite, models.settings.traceFrameCount, 0, 999999),
             new GridData(SWT.LEFT, SWT.FILL, false, false));
         createLabel(frameCountComposite, "Frames (0 for unlimited)");
 
         createLabel(this, "");
         fromBeginning = withLayoutData(
-            createCheckbox(this, "Trace From Beginning", !settings.traceMidExecution),
+            createCheckbox(this, "Trace From Beginning", !models.settings.traceMidExecution),
             new GridData(SWT.FILL, SWT.FILL, true, false));
       }
 
@@ -305,7 +309,7 @@ public class TracerDialog {
         return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + date + TRACE_EXTENSION;
       }
 
-      protected abstract void buildTargetSelection(Settings settings, Widgets widgets);
+      protected abstract void buildTargetSelection(Models models, Widgets widgets);
       protected abstract Tracer.Api getDefaultApi(Settings settings);
 
       private static ComboViewer createApiDropDown(Composite parent, Tracer.Api selection) {
@@ -374,18 +378,18 @@ public class TracerDialog {
       private List<Device.Instance> devices;
 
       public AndroidInput(
-          Composite parent, Settings settings, Widgets widgets, Runnable refreshDevices) {
-        super(parent, settings, widgets);
+          Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
+        super(parent, models, widgets);
         this.refreshDevices = refreshDevices;
 
         createLabel(this, "");
         clearCache = withLayoutData(
-            createCheckbox(this, "Clear package cache", settings.traceClearCache),
+            createCheckbox(this, "Clear package cache", models.settings.traceClearCache),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "");
         disablePcs = withLayoutData(
-            createCheckbox(this, "Disable pre-compiled shaders", settings.traceDisablePcs),
+            createCheckbox(this, "Disable pre-compiled shaders", models.settings.traceDisablePcs),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "");
@@ -393,7 +397,7 @@ public class TracerDialog {
             createLabel(this, "Warning: Pre-compiled shaders are not supported in the replay."),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         pcsWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
-        pcsWarning.setVisible(!settings.traceDisablePcs);
+        pcsWarning.setVisible(!models.settings.traceDisablePcs);
 
         withLayoutData(createLabel(this, ""), withSpans(new GridData(), 2, 1));
 
@@ -401,14 +405,14 @@ public class TracerDialog {
         adbWarning = withLayoutData(
             createLink(this,
                 "Path to adb missing. Please specify it in the <a>preferences</a> and restart.",
-                e -> SettingsDialog.showSettingsDialog(getShell(), settings, widgets.theme)),
+                e -> SettingsDialog.showSettingsDialog(getShell(), models, widgets.theme)),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
         adbWarning.setVisible(false);
 
         device.getCombo().addListener(SWT.Selection,
             e -> traceTarget.setActionEnabled(device.getCombo().getSelectionIndex() >= 0));
-        updateDevicesDropDown(settings);
+        updateDevicesDropDown(models.settings);
 
         Listener targetListener = e -> {
           if (!userHasChangedOutputFile) {
@@ -441,7 +445,7 @@ public class TracerDialog {
       }
 
       @Override
-      protected void buildTargetSelection(Settings settings, Widgets widgets) {
+      protected void buildTargetSelection(Models models, Widgets widgets) {
         createLabel(this, "Device:");
         Composite deviceComposite =
             createComposite(this, withMargin(new GridLayout(2, false), 0, 0));
@@ -460,11 +464,11 @@ public class TracerDialog {
         deviceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "Package / Action:");
-        traceTarget = withLayoutData(new ActionTextbox(this, settings.tracePackage) {
+        traceTarget = withLayoutData(new ActionTextbox(this, models.settings.tracePackage) {
           @Override
           protected String createAndShowDialog(String current) {
             ActivityPickerDialog dialog = new ActivityPickerDialog(
-                getShell(), settings, widgets, getSelectedDevice());
+                getShell(), models, widgets, getSelectedDevice());
             dialog.open();
             ActivityPickerDialog.Action action = dialog.getSelected();
             return (action == null) ? null : action.toString();
@@ -580,8 +584,8 @@ public class TracerDialog {
       private FileTextbox.Directory cwd;
       private boolean userHasChangedCwd = false;
 
-      public DesktopInput(Composite parent, Settings settings, Widgets widgets) {
-        super(parent, settings, widgets);
+      public DesktopInput(Composite parent, Models models, Widgets widgets) {
+        super(parent, models, widgets);
         api.getCombo().setEnabled(false);
 
         Listener exeListener = e -> {
@@ -622,9 +626,9 @@ public class TracerDialog {
       }
 
       @Override
-      protected void buildTargetSelection(Settings settings, Widgets widgets) {
+      protected void buildTargetSelection(Models models, Widgets widgets) {
         createLabel(this, "Executable:");
-        executable = withLayoutData(new FileTextbox.File(this, settings.traceExecutable) {
+        executable = withLayoutData(new FileTextbox.File(this, models.settings.traceExecutable) {
           @Override
           protected void configureDialog(FileDialog dialog) {
             dialog.setText(Messages.CAPTURE_EXECUTABLE);
@@ -632,11 +636,11 @@ public class TracerDialog {
         }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "Arguments:");
-        arguments = withLayoutData(createTextbox(this, settings.traceArgs),
+        arguments = withLayoutData(createTextbox(this, models.settings.traceArgs),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "Working Directory:");
-        cwd = withLayoutData(new FileTextbox.Directory(this, settings.traceCwd) {
+        cwd = withLayoutData(new FileTextbox.Directory(this, models.settings.traceCwd) {
           @Override
           protected void configureDialog(DirectoryDialog dialog) {
             dialog.setText(Messages.CAPTURE_CWD);

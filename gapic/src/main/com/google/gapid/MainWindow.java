@@ -16,6 +16,8 @@
 package com.google.gapid;
 
 import static com.google.gapid.views.AboutDialog.showAbout;
+import static com.google.gapid.views.AboutDialog.showHelp;
+import static com.google.gapid.views.AboutDialog.showLogDir;
 import static com.google.gapid.views.GotoAtom.showGotoAtomDialog;
 import static com.google.gapid.views.GotoMemory.showGotoMemoryDialog;
 import static com.google.gapid.views.Licenses.showLicensesDialog;
@@ -40,7 +42,6 @@ import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.UpdateWatcher;
-import com.google.gapid.views.AboutDialog;
 import com.google.gapid.views.AtomTree;
 import com.google.gapid.views.ContextSelector;
 import com.google.gapid.views.FramebufferView;
@@ -183,8 +184,8 @@ public class MainWindow extends ApplicationWindow {
 
     if (OS.isMac) {
       MacApplication.init(shell.getDisplay(),
-          () -> showAbout(shell, widgets().theme),
-          () -> showSettingsDialog(shell, models().settings, widgets().theme),
+          () -> showAbout(shell, models().analytics, widgets().theme),
+          () -> showSettingsDialog(shell, models(), widgets().theme),
           file -> models().capture.loadCapture(new File(file)));
     }
   }
@@ -340,7 +341,7 @@ public class MainWindow extends ApplicationWindow {
 
     manager.add(editCopy);
     manager.add(MenuItems.EditSettings.create(
-        () -> showSettingsDialog(getShell(), models().settings, widgets().theme)));
+        () -> showSettingsDialog(getShell(), models(), widgets().theme)));
 
     editCopy.setEnabled(false);
 
@@ -349,8 +350,7 @@ public class MainWindow extends ApplicationWindow {
 
   private MenuManager createGotoMenu() {
     MenuManager manager = new MenuManager("&Goto");
-    gotoAtom = MenuItems.GotoAtom.create(() ->
-        showGotoAtomDialog(getShell(), models().capture.getData(), models().atoms));
+    gotoAtom = MenuItems.GotoAtom.create(() -> showGotoAtomDialog(getShell(), models()));
     gotoMemory = MenuItems.GotoMemory.create(() -> showGotoMemoryDialog(getShell(), models()));
 
     manager.add(gotoAtom);
@@ -417,10 +417,12 @@ public class MainWindow extends ApplicationWindow {
 
   private MenuManager createHelpMenu() {
     MenuManager manager = new MenuManager("&Help");
-    manager.add(MenuItems.HelpOnlineHelp.create(AboutDialog::showHelp));
-    manager.add(MenuItems.HelpAbout.create(() -> showAbout(getShell(), widgets().theme)));
-    manager.add(MenuItems.HelpShowLogs.create(AboutDialog::showLogDir));
-    manager.add(MenuItems.HelpLicenses.create(() -> showLicensesDialog(getShell(), widgets().theme)));
+    manager.add(MenuItems.HelpOnlineHelp.create(() -> showHelp(models().analytics)));
+    manager.add(MenuItems.HelpAbout.create(
+        () -> showAbout(getShell(), models().analytics, widgets().theme)));
+    manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models().analytics)));
+    manager.add(MenuItems.HelpLicenses.create(
+        () -> showLicensesDialog(getShell(), models().analytics, widgets().theme)));
     manager.add(MenuItems.HelpWelcome.create(
         () -> showWelcomeDialog(getShell(), models(), widgets())));
     return manager;

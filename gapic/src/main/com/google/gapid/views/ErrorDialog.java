@@ -16,6 +16,7 @@
 package com.google.gapid.views;
 
 import static com.google.common.base.Throwables.getStackTraceAsString;
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createLink;
@@ -26,6 +27,8 @@ import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.common.escape.Escaper;
 import com.google.common.net.UrlEscapers;
+import com.google.gapid.models.Analytics;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.util.Messages;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -54,11 +57,16 @@ public class ErrorDialog {
   private static final String FILE_BUG_URL =
       "https://github.com/google/gapid/issues/new?title=%s&body=%s&labels=user";
 
-  public static void showErrorDialog(Shell shell, String text, Throwable exception) {
-    showErrorDialog(shell, text, getStackTraceAsString(exception));
+  public static void showErrorDialog(
+      Shell shell, Analytics analytics, String text, Throwable exception) {
+    showErrorDialog(shell, analytics, text, getStackTraceAsString(exception));
   }
 
-  public static void showErrorDialog(Shell shell, String text, String detailString) {
+  public static void showErrorDialog(
+      Shell shell, Analytics analytics, String text, String detailString) {
+    if (analytics != null) {
+      analytics.postInteraction(View.Main, "error", Show);
+    }
     new IconAndMessageDialog(shell) {
       private Group details;
 
@@ -132,7 +140,7 @@ public class ErrorDialog {
           Program.launch(getFileBugUrl());
         }), new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
         withLayoutData(createLink(inner, "<a>Show logs</a> directory", e -> {
-          AboutDialog.showLogDir();
+          AboutDialog.showLogDir(analytics);
         }), new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
       }
 

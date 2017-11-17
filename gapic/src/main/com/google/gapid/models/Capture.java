@@ -31,7 +31,6 @@ import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.UnsupportedVersionException;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.Loadable;
 
 import org.eclipse.swt.widgets.Shell;
@@ -52,8 +51,8 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
   private final Settings settings;
   private String name = "";
 
-  public Capture(Shell shell, ExceptionHandler handler, Client client, Settings settings) {
-    super(LOG, shell, handler, client, Listener.class);
+  public Capture(Shell shell, Analytics analytics, Client client, Settings settings) {
+    super(LOG, shell, analytics, client, Listener.class);
     this.settings = settings;
   }
 
@@ -108,10 +107,10 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
     } catch (UnsupportedVersionException e) {
       return error(Loadable.Message.error(e.getMessage()));
     } catch (RpcException e) {
-      handler.reportException(e);
+      analytics.reportException(e);
       return error(Loadable.Message.error(e));
     } catch (ExecutionException e) {
-      handler.reportException(e);
+      analytics.reportException(e);
       throttleLogRpcError(LOG, "Failed to load trace", e);
       return error(Loadable.Message.error(e.getCause().getMessage()));
     }
@@ -145,7 +144,7 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
       }
 
       LOG.log(Level.WARNING, "Failed to save trace", e);
-      showErrorDialog(shell, "Failed to save trace:\n  " + e.getMessage(), e);
+      showErrorDialog(shell, analytics, "Failed to save trace:\n  " + e.getMessage(), e);
       return;
     }
 
@@ -174,9 +173,9 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
 
       @Override
       protected void onUiThreadError(Exception error) {
-        handler.reportException(error);
+        analytics.reportException(error);
         throttleLogRpcError(LOG, "Couldn't save trace", error);
-        showErrorDialog(shell, "Failed to save trace:\n  " + error.getMessage(), error);
+        showErrorDialog(shell, analytics, "Failed to save trace:\n  " + error.getMessage(), error);
       }
     });
   }

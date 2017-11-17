@@ -21,6 +21,7 @@ import static com.google.gapid.views.WelcomeDialog.showFirstTimeDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
+import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
@@ -98,21 +99,18 @@ public class Main {
       this.args = args;
       this.window = new MainWindow(client, this);
 
-      registerWindowExceptionHandler(handler);
+      registerWindowExceptionHandler();
     }
 
-    private static void registerWindowExceptionHandler(ExceptionHandler handler) {
-      Window.setExceptionHandler(new Window.IExceptionHandler() {
-        @Override
-        public void handleException(Throwable t) {
-          if (t instanceof ThreadDeath) {
-            throw (ThreadDeath) t;
-          }
-
-          LOG.log(Level.WARNING, "Unhandled exception in the UI thread.", t);
-          handler.reportException(t);
-          showErrorDialog(null, "Unhandled exception in the UI thread.", t);
+    private void registerWindowExceptionHandler() {
+      Window.setExceptionHandler(thrown -> {
+        if (thrown instanceof ThreadDeath) {
+          throw (ThreadDeath) thrown;
         }
+
+        LOG.log(Level.WARNING, "Unhandled exception in the UI thread.", thrown);
+        handler.reportException(thrown);
+        showErrorDialog(null, getAnalytics(), "Unhandled exception in the UI thread.", thrown);
       });
     }
 
@@ -128,7 +126,8 @@ public class Main {
 
       scheduleIfNotDisposed(shell, () -> {
         // TODO: try to restart the server?
-        showErrorDialog(shell, "The gapis server has exited with an error code of: " + code, panic);
+        showErrorDialog(shell, getAnalytics(),
+            "The gapis server has exited with an error code of: " + code, panic);
       });
     }
 
@@ -172,6 +171,10 @@ public class Main {
 
       models = null;
       widgets = null;
+    }
+
+    private Analytics getAnalytics() {
+      return (models == null) ? null : models.analytics;
     }
   }
 

@@ -15,10 +15,13 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.logging.Level.SEVERE;
 
 import com.google.common.io.Resources;
+import com.google.gapid.models.Analytics;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
@@ -47,7 +50,8 @@ public class Licenses {
   private Licenses() {
   }
 
-  public static void showLicensesDialog(Shell shell, Theme theme) {
+  public static void showLicensesDialog(Shell shell, Analytics analytics, Theme theme) {
+    analytics.postInteraction(View.Main, "licenses", Show);
     new DialogBase(shell, theme) {
       @Override
       public String getTitle() {
