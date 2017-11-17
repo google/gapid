@@ -15,6 +15,7 @@
  */
 package com.google.gapid.models;
 
+import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.WARNING;
 
 import com.google.gapid.proto.service.Service;
@@ -57,6 +58,7 @@ public class Analytics implements ExceptionHandler {
   }
 
   public void postInteraction(View view, String control, Service.ClientAction action) {
+    LOG.log(FINE, "Interaction {2} on {0}.{1}", new Object[] { view, control, action });
     if (enabled) {
       Rpc.listen(client.postEvent(interaction(view, control, action)), Analytics::logIfFailure);
     }

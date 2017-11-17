@@ -15,6 +15,8 @@
  */
 package com.google.gapid.widgets;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Move;
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.GeoUtils.withW;
 import static com.google.gapid.util.GeoUtils.withX;
@@ -25,6 +27,8 @@ import static com.google.gapid.widgets.Widgets.createTabFolder;
 import static com.google.gapid.widgets.Widgets.createTabItem;
 
 import com.google.common.base.Objects;
+import com.google.gapid.models.Analytics;
+import com.google.gapid.models.Analytics.View;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
@@ -39,6 +43,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Sash;
+import org.eclipse.swt.widgets.Widget;
 
 import java.util.function.Function;
 
@@ -56,7 +61,7 @@ public class TabArea extends Composite {
   private final double[] weights;
   private boolean shouldRestoreLeft = true, shouldRestoreRight = true;
 
-  public TabArea(Composite parent, Persistance persistance) {
+  public TabArea(Composite parent, Persistance persistance, Analytics analytics) {
     super(parent, SWT.NONE);
     setLayout(new Layout() {
       @Override
@@ -71,11 +76,11 @@ public class TabArea extends Composite {
     });
 
     FolderInfo[] folders = persistance.restore();
-    left = new Folder(this, folders[0], false);
+    left = new Folder(this, analytics, folders[0], false);
     leftSash = new Sash(this, SWT.VERTICAL);
-    center = new Folder(this, folders[1], true);
+    center = new Folder(this, analytics, folders[1], true);
     rightSash = new Sash(this, SWT.VERTICAL);
-    right = new Folder(this, folders[2], false);
+    right = new Folder(this, analytics, folders[2], false);
     weights = new double[] { folders[0].weight, folders[1].weight, folders[2].weight };
     normalizeWeights();
 
@@ -87,12 +92,13 @@ public class TabArea extends Composite {
     TabDnD.addListener(new TabDnD.Listener() {
       @Override
       public void itemCopied(CTabItem source, CTabItem target) {
-        target.setData(TabInfo.KEY, source.getData(TabInfo.KEY));
+        TabInfo.getFrom(source).setTo(target);
       }
 
       @Override
       public void onTabMoved(
           CTabFolder sourceFolder, CTabItem oldItem, CTabFolder destFolder, CTabItem newItem) {
+        analytics.postInteraction(TabInfo.getFrom(newItem).view, "tab", Move);
         if (sourceFolder.getItemCount() == 0 || destFolder.getItemCount() == 1) {
           updateEmptyFolders();
         }
@@ -456,16 +462,27 @@ public class TabArea extends Composite {
    * Information about a single tab in a folder.
    */
   public static class TabInfo {
-    public static final String KEY = TabInfo.class.getName();
+    private static final String KEY = TabInfo.class.getName();
 
     public final Object id;
+    public final View view;
     public final String label;
     public final Function<Composite, Control> contentFactory;
 
-    public TabInfo(Object id, String label, Function<Composite, Control> contentFactory) {
+    public TabInfo(
+        Object id, View view, String label, Function<Composite, Control> contentFactory) {
       this.id = id;
+      this.view = view;
       this.label = label;
       this.contentFactory = contentFactory;
+    }
+
+    public static TabInfo getFrom(Widget widget) {
+      return (TabInfo)widget.getData(KEY);
+    }
+
+    public void setTo(Widget widget) {
+      widget.setData(KEY, this);
     }
   }
 
@@ -476,7 +493,7 @@ public class TabArea extends Composite {
     public final CTabFolder folder;
     private final CTabFolder minimized;
 
-    public Folder(Composite parent, FolderInfo info, boolean maximizable) {
+    public Folder(Composite parent, Analytics analytics, FolderInfo info, boolean maximizable) {
       super(parent, SWT.NONE);
       setLayout(new StackLayout());
 
@@ -496,11 +513,18 @@ public class TabArea extends Composite {
       if (!maximizable && info.minimized) {
         minimize();
       }
+
+      folder.addListener(SWT.Selection, e -> {
+        analytics.postInteraction(TabInfo.getFrom(e.item).view, "tab", Show);
+      });
+      if (info.tabs.length != 0) {
+        analytics.postInteraction(info.tabs[0].view, "tab", Show);
+      }
     }
 
     public void addTab(TabInfo tab) {
       CTabItem item = createTabItem(folder, tab.label, tab.contentFactory.apply(folder));
-      item.setData(TabInfo.KEY, tab);
+      tab.setTo(item);
     }
 
     public void addHandlers(Runnable onMinimize, Runnable onMaximize, Runnable onRestore) {
@@ -569,14 +593,14 @@ public class TabArea extends Composite {
     public FolderInfo getInfo(double weight) {
       TabInfo[] tabs = new TabInfo[folder.getItemCount()];
       for (int i = 0; i < tabs.length; i++) {
-        tabs[i] = (TabInfo)folder.getItem(i).getData(TabInfo.KEY);
+        tabs[i] = TabInfo.getFrom(folder.getItem(i));
       }
       return new FolderInfo(isMinimized(), tabs, weight);
     }
 
     public CTabItem findItem(Object id) {
       for (CTabItem item : folder.getItems()) {
-        if (Objects.equal(id, ((TabInfo)item.getData(TabInfo.KEY)).id)) {
+        if (Objects.equal(id, TabInfo.getFrom(item).id)) {
           return item;
         }
       }

@@ -31,6 +31,7 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
@@ -249,7 +250,7 @@ public class MainWindow extends ApplicationWindow {
           public FolderInfo[] restore() {
             return MainTab.getFolders(client, models(), widgets(), hiddenTabs);
           }
-        });
+        }, models().analytics);
         tabs.setLeftVisible(!models().settings.hideLeft);
         tabs.setRightVisible(!models().settings.hideRight);
         return tabs;
@@ -466,7 +467,7 @@ public class MainWindow extends ApplicationWindow {
    */
   private static class MainTab extends TabInfo {
     public MainTab(Type type, Function<Composite, Control> contentFactory) {
-      super(type, type.label, contentFactory);
+      super(type, type.view, type.label, contentFactory);
     }
 
     public static FolderInfo[] getFolders(
@@ -548,24 +549,26 @@ public class MainWindow extends ApplicationWindow {
      * Information about the available tabs.
      */
     public static enum Type {
-      ApiCalls(Location.Left, "Commands", AtomTree::new),
+      ApiCalls(Location.Left, View.Commands, "Commands", AtomTree::new),
 
-      Framebuffer(Location.Center, "Framebuffer", FramebufferView::new),
-      Textures(Location.Center, "Textures", TextureView::new),
-      Geometry(Location.Center, "Geometry", GeometryView::new),
-      Shaders(Location.Center, "Shaders", ShaderView::new),
-      Report(Location.Center, "Report", (p, c, m, w) -> new ReportView(p, m, w)),
-      Log(Location.Center, "Log", (p, c, m, w) -> new LogView(p, w)),
+      Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", FramebufferView::new),
+      Textures(Location.Center, View.Textures, "Textures", TextureView::new),
+      Geometry(Location.Center, View.Geometry, "Geometry", GeometryView::new),
+      Shaders(Location.Center, View.Shaders, "Shaders", ShaderView::new),
+      Report(Location.Center, View.Report, "Report", (p, c, m, w) -> new ReportView(p, m, w)),
+      Log(Location.Center, View.Log, "Log", (p, c, m, w) -> new LogView(p, w)),
 
-      ApiState(Location.Right, "State", StateView::new),
-      Memory(Location.Right, "Memory", MemoryView::new);
+      ApiState(Location.Right, View.State, "State", StateView::new),
+      Memory(Location.Right, View.Memory, "Memory", MemoryView::new);
 
       public final Location defaultLocation;
+      public final View view;
       public final String label;
       public final TabFactory factory;
 
-      private Type(Location defaultLocation, String label, TabFactory factory) {
+      private Type(Location defaultLocation, View view, String label, TabFactory factory) {
         this.defaultLocation = defaultLocation;
+        this.view = view;
         this.label = label;
         this.factory = factory;
       }
