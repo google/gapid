@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <deque>
 #include <map>
+#include <tuple>
 #include <vector>
 #include <unordered_set>
 #include "gapii/cc/vulkan_exports.h"
@@ -244,6 +245,378 @@ void recreateDebugInfo(VulkanSpy* spy, CallObserver* observer,
   spy->RecreateDebugMarkerSetObjectTagEXT(
       observer, getObjectCreatingDevice(obj), &tag_info);
 }
+
+// Get a proper queue to handle operations on |obj|. For image and buffer
+// objects, if there is a last bound queue, returns the object of that last
+// bound queue, Otherwise, and for other objects, returns a queue object whose
+// handle is created with the same device of the object. If such a queue object
+// is not found, returns nullptr.
+template <typename ObjectClass>
+std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
+                                      const std::shared_ptr<ObjectClass>& obj) {
+  for (const auto& qi : queues) {
+    if (qi.second->mDevice == getObjectCreatingDevice(obj)) {
+      return qi.second;
+    }
+  }
+  return nullptr;
+}
+
+template <>
+std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
+                                      const std::shared_ptr<ImageObject>& obj) {
+  if (obj->mLastBoundQueue) {
+    return obj->mLastBoundQueue;
+  }
+  for (const auto& qi : queues) {
+    if (qi.second->mDevice == obj->mDevice) {
+      return qi.second;
+    }
+  }
+  return nullptr;
+}
+
+template <>
+std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
+                                      const std::shared_ptr<BufferObject>& obj) {
+  if (obj->mLastBoundQueue) {
+    return obj->mLastBoundQueue;
+  }
+  for (const auto& qi : queues) {
+    if (qi.second->mDevice == obj->mDevice) {
+      return qi.second;
+    }
+  }
+  return nullptr;
+}
+
+// An invalid value of memory type index
+const uint32_t kInvalidMemoryTypeIndex = 0xFFFFFFFF;
+
+// Try to find memory type within the types specified in
+// |requirement_type_bits| which is host-visible and non-host-coherent. If a
+// non-host-coherent type is not found in the given |requirement_type_bits|,
+// then fall back to just host-visible type. Returns the index of the memory
+// type. If no proper memory type is found, returns kInvalidMemoryTypeIndex.
+uint32_t GetMemoryTypeIndexForStagingResources(
+    const VkPhysicalDeviceMemoryProperties& phy_dev_prop,
+    uint32_t requirement_type_bits) {
+  uint32_t index = 0;
+  uint32_t backup_index = kInvalidMemoryTypeIndex;
+  while (requirement_type_bits) {
+    if (requirement_type_bits & 0x1) {
+      VkMemoryPropertyFlags prop_flags =
+          phy_dev_prop.mmemoryTypes[index].mpropertyFlags;
+      if (prop_flags &
+          VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+        if (backup_index == kInvalidMemoryTypeIndex) {
+          backup_index = index;
+        }
+        if ((prop_flags &
+             VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) ==
+            0) {
+          break;
+        }
+      }
+    }
+    requirement_type_bits >>= 1;
+    index++;
+  }
+  if (requirement_type_bits != 0) {
+    return index;
+  }
+  return backup_index;
+}
+
+// Returns true if the resource range from |offset| with |size| is fully
+// covered in the |bindings|.
+bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
+                  const VulkanSpy::SparseBindingList& bindings) {
+  auto overlapped = bindings.intersect(offset, offset + size);
+  VkDeviceSize pos = offset;
+  for (const auto& o : overlapped) {
+    if (o.start() <= pos) {
+      pos = o.end();
+    } else {
+      return false;
+    }
+  }
+  if (pos < offset + size) {
+    return false;
+  }
+  return true;
+}
+
+// Handy toolbox
+class CopyDataHelper {
+  public:
+   CopyDataHelper(VulkanSpy* spy,
+       VulkanImports::VkDeviceFunctions& device_functions,
+                  VkDevice dev, std::shared_ptr<QueueObject> queue,
+                  const VkPhysicalDeviceMemoryProperties& mem_props)
+       : spy_(spy),
+         dev_funcs_(device_functions),
+         dev_(dev),
+         queue_obj_(queue),
+         cmd_pool_(0),
+         cmd_buf_(0),
+         mem_(0),
+         phy_dev_mem_props_(mem_props),
+         staging_buf_(0) {
+   }
+
+   // not movable, not copyable
+   CopyDataHelper(const CopyDataHelper&) = delete;
+   CopyDataHelper(CopyDataHelper&&) = delete;
+   CopyDataHelper& operator=(const CopyDataHelper&) = delete;
+   CopyDataHelper& operator=(CopyDataHelper&&) = delete;
+
+  ~CopyDataHelper() {
+    Clean();
+  }
+
+  std::tuple<uint32_t, std::vector<uint8_t>> GetBufferData(VkBuffer src_buf, VkDeviceSize offset, VkDeviceSize data_size) {
+    uint32_t mem_type_index = Prepare(data_size);
+    VkBufferCopy region {offset, 0, data_size};
+    dev_funcs_.vkCmdCopyBuffer(cmd_buf_, src_buf, staging_buf_, 1, &region);
+    VkBufferMemoryBarrier barrier {
+      VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        nullptr,
+        VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
+        VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
+        0xFFFFFFFF, 0xFFFFFFFF, staging_buf_, 0, data_size
+    };
+    dev_funcs_.vkCmdPipelineBarrier(cmd_buf_,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
+        0, 0, nullptr, 1, &barrier, 0, nullptr);
+    std::vector<uint8_t> data = SubmitAndGetData(data_size);
+    auto return_tuple = std::make_tuple(mem_type_index, data);
+    Clean();
+    return return_tuple;
+  }
+
+
+  std::tuple<uint32_t, std::vector<uint8_t>> GetImageSparseSubresourceData(
+      std::shared_ptr<ImageObject> img, const VkImageSubresource& subres, const VkOffset3D& offset,
+      const VkExtent3D& extent) {
+    VkExtent3D gran{};
+    bool found = false;
+    for (auto& ri : img->mSparseMemoryRequirements) {
+      if (ri.second.mformatProperties.maspectMask == subres.maspectMask) {
+        gran = ri.second.mformatProperties.mimageGranularity;
+        found = true;
+      }
+    }
+    if (!found) {
+      GAPID_ERROR("Cannot find sparse memory requirement for apsect: %u", subres.maspectMask);
+      return std::make_tuple(0, std::vector<uint8_t>());
+    }
+    VkDeviceSize dx = (extent.mWidth + gran.mWidth - 1) / gran.mWidth;
+    VkDeviceSize dy = (extent.mHeight + gran.mHeight - 1) / gran.mHeight;
+    VkDeviceSize dz = (extent.mDepth + gran.mDepth - 1) / gran.mDepth;
+    VkDeviceSize data_size = dx * dy * dz * img->mMemoryRequirements.malignment;
+    uint32_t mem_type_index = Prepare(data_size);
+    VkBufferImageCopy copy{
+      0, 0, 0, {subres.maspectMask, subres.mmipLevel, subres.marrayLayer, 1},
+      offset, extent,
+    };
+    VkImageMemoryBarrier img_barrier{
+        VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        nullptr,
+        (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
+        VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
+        img->mInfo.mLayout,
+        VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        0xFFFFFFFF,
+        0xFFFFFFFF,
+        img->mVulkanHandle,
+        {subres.maspectMask, subres.mmipLevel, 1,
+         subres.marrayLayer, 1},
+    };
+    dev_funcs_.vkCmdPipelineBarrier(cmd_buf_,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &img_barrier);
+    dev_funcs_.vkCmdCopyImageToBuffer(cmd_buf_, img->mVulkanHandle,
+        VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        staging_buf_, 1, &copy);
+    img_barrier.msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
+    img_barrier.mdstAccessMask = (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) -1;
+    img_barrier.moldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    img_barrier.mnewLayout = img->mInfo.mLayout;
+
+    VkBufferMemoryBarrier buf_barrier{
+      VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        nullptr,
+        VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
+        VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
+        0xFFFFFFFF, 0xFFFFFFFF, staging_buf_, 0, data_size
+    };
+    dev_funcs_.vkCmdPipelineBarrier(cmd_buf_,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
+        0, 0, nullptr, 1, &buf_barrier, 1, &img_barrier);
+    std::vector<uint8_t> data = SubmitAndGetData(data_size);
+    auto return_tuple = std::make_tuple(mem_type_index, data);
+    Clean();
+    return return_tuple;
+  }
+
+  std::tuple<uint32_t, std::vector<uint8_t>> GetImageSubrangeData(
+      std::shared_ptr<ImageObject> img, const VkImageSubresourceRange& range, VkDeviceSize data_size) {
+    uint32_t mem_type_index = Prepare(data_size);
+    std::vector<VkBufferImageCopy> copies(range.mlevelCount);
+    uint64_t buffer_offset = 0;
+    for (uint32_t mip = range.mbaseMipLevel; mip < range.mbaseMipLevel + range.mlevelCount; mip++) {
+      const uint32_t width = static_cast<uint32_t>(spy_->subGetMipSize(
+          nullptr, nullptr, img->mInfo.mExtent.mWidth, mip));
+      const uint32_t height = static_cast<uint32_t>(spy_->subGetMipSize(
+          nullptr, nullptr, img->mInfo.mExtent.mHeight, mip));
+      const uint32_t depth = static_cast<uint32_t>(spy_->subGetMipSize(
+          nullptr, nullptr, img->mInfo.mExtent.mDepth, mip));
+      copies[mip - range.mbaseMipLevel] = {
+          buffer_offset,
+          0, // tight pack
+          0, // tight pack
+          {range.maspectMask, mip, range.mbaseArrayLayer,
+           range.mlayerCount},
+          {0, 0, 0},
+          {width, height, depth},
+      };
+      buffer_offset += spy_->subInferImageLevelSize(nullptr, nullptr, img, mip);
+    }
+
+    VkImageMemoryBarrier img_barrier{
+        VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        nullptr,
+        (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
+        VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
+        img->mInfo.mLayout,
+        VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        0xFFFFFFFF,
+        0xFFFFFFFF,
+        img->mVulkanHandle,
+        {range.maspectMask, range.mbaseMipLevel, range.mlevelCount,
+         range.mbaseArrayLayer, range.mlayerCount},
+    };
+
+    dev_funcs_.vkCmdPipelineBarrier(cmd_buf_,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &img_barrier);
+    dev_funcs_.vkCmdCopyImageToBuffer(cmd_buf_, img->mVulkanHandle,
+        VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        staging_buf_, copies.size(), copies.data());
+    img_barrier.msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
+    img_barrier.mdstAccessMask = (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) -1;
+    img_barrier.moldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    img_barrier.mnewLayout = img->mInfo.mLayout;
+
+    VkBufferMemoryBarrier buf_barrier{
+      VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        nullptr,
+        VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
+        VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
+        0xFFFFFFFF, 0xFFFFFFFF, staging_buf_, 0, data_size
+    };
+    dev_funcs_.vkCmdPipelineBarrier(cmd_buf_,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
+        0, 0, nullptr, 1, &buf_barrier, 1, &img_barrier);
+    std::vector<uint8_t> data = SubmitAndGetData(data_size);
+    auto return_tuple = std::make_tuple(mem_type_index, data);
+    Clean();
+    return return_tuple;
+  }
+
+  private:
+  uint32_t Prepare(VkDeviceSize buf_size) {
+     VkBufferCreateInfo staging_buf_create_info{};
+     staging_buf_create_info.msType =
+         VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+     staging_buf_create_info.msize = buf_size;
+     staging_buf_create_info.musage =
+         VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+     staging_buf_create_info.msharingMode =
+         VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
+     dev_funcs_.vkCreateBuffer(dev_, &staging_buf_create_info, nullptr,
+                               &staging_buf_);
+     VkMemoryRequirements staging_buf_mem_req{};
+     dev_funcs_.vkGetBufferMemoryRequirements(dev_, staging_buf_,
+                                              &staging_buf_mem_req);
+     uint32_t mem_type_index = GetMemoryTypeIndexForStagingResources(
+         phy_dev_mem_props_, staging_buf_mem_req.mmemoryTypeBits);
+     VkMemoryAllocateInfo mem_alloc_info{
+         VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, nullptr,
+         buf_size, mem_type_index,
+     };
+     dev_funcs_.vkAllocateMemory(dev_, &mem_alloc_info, nullptr, &mem_);
+     dev_funcs_.vkBindBufferMemory(dev_, staging_buf_, mem_, 0);
+     VkCommandPoolCreateInfo cmd_pool_create_info{
+         VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, nullptr,
+         VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+         queue_obj_->mFamily};
+     dev_funcs_.vkCreateCommandPool(dev_, &cmd_pool_create_info, nullptr,
+                                    &cmd_pool_);
+     VkCommandBufferAllocateInfo cmd_buf_alloc_info{
+         VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+         nullptr,
+         cmd_pool_,
+         VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+         1,
+     };
+     dev_funcs_.vkAllocateCommandBuffers(dev_, &cmd_buf_alloc_info, &cmd_buf_);
+    VkCommandBufferBeginInfo begin_info{
+      VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        nullptr, VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr};
+    dev_funcs_.vkBeginCommandBuffer(cmd_buf_, &begin_info);
+     return mem_type_index;
+  }
+
+  std::vector<uint8_t> SubmitAndGetData(VkDeviceSize data_size) {
+    dev_funcs_.vkEndCommandBuffer(cmd_buf_);
+    VkSubmitInfo submit_info {
+      VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO, nullptr, 0, nullptr, nullptr,
+        1, &cmd_buf_, 0, nullptr,
+    };
+    dev_funcs_.vkQueueSubmit(queue_obj_->mVulkanHandle, 1, &submit_info, VkFence(0));
+    dev_funcs_.vkQueueWaitIdle(queue_obj_->mVulkanHandle);
+    uint8_t* data = nullptr;
+    dev_funcs_.vkMapMemory(dev_, mem_, 0, data_size, 0, (void**)(&data));
+    VkMappedMemoryRange rng {
+      VkStructureType::VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, nullptr,
+        mem_, 0, data_size};
+    dev_funcs_.vkInvalidateMappedMemoryRanges(dev_, 1, &rng);
+    return std::vector<uint8_t>(data, data+size_t(data_size));
+  }
+
+  void Clean() {
+    if (cmd_pool_ != VkCommandPool(0)) {
+      dev_funcs_.vkDestroyCommandPool(dev_, cmd_pool_, nullptr);
+      cmd_pool_ = VkCommandPool(0);
+      cmd_buf_ = VkCommandBuffer(0);
+    }
+    if (staging_buf_ != VkBuffer(0)) {
+      dev_funcs_.vkDestroyBuffer(dev_, staging_buf_, nullptr);
+      staging_buf_ = VkBuffer(0);
+    }
+    if (mem_ != VkDeviceMemory(0)) {
+      dev_funcs_.vkFreeMemory(dev_, mem_, nullptr);
+      mem_ = VkDeviceMemory(0);
+    }
+  }
+
+   VulkanSpy* spy_;
+   VulkanImports::VkDeviceFunctions& dev_funcs_;
+   VkDevice dev_;
+   std::shared_ptr<QueueObject> queue_obj_;
+   VkCommandPool cmd_pool_;
+   VkCommandBuffer cmd_buf_;
+   VkDeviceMemory mem_;
+   VkPhysicalDeviceMemoryProperties phy_dev_mem_props_;
+   VkBuffer staging_buf_;
+};
 }  // anonymous namespace
 
 void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
@@ -680,193 +1053,74 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
   // Bind and Fill the "recreated" buffer memory
   {
-    VkBufferCreateInfo copy_info = {};
-    copy_info.msType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    for (auto& buffer : Buffers) {
-      BufferInfo& info = buffer.second->mInfo;
+    for (auto& bi: Buffers) {
+      VkBuffer buf_handle = bi.first;
+      auto buf = bi.second;
+      const BufferInfo& buf_info = buf->mInfo;
+      bool denseBound = buf->mMemory != nullptr;
+      bool sparseBound = (mBufferSparseBindings.find(buf_handle) !=
+                          mBufferSparseBindings.end()) &&
+                         (mBufferSparseBindings[buf_handle].count() > 0);
+      bool sparseBinding =
+          (buf_info.mCreateFlags &
+           VkBufferCreateFlagBits::VK_BUFFER_CREATE_SPARSE_BINDING_BIT) != 0;
+      bool sparseResidency =
+          sparseBinding &&
+          (buf_info.mCreateFlags &
+           VkBufferCreateFlagBits::VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT) != 0;
 
-      std::shared_ptr<QueueObject> submit_queue;
-      if (buffer.second->mLastBoundQueue) {
-        submit_queue = buffer.second->mLastBoundQueue;
-      } else {
-        for (auto& queue : Queues) {
-          if (queue.second->mDevice == buffer.second->mDevice) {
-            submit_queue = queue.second;
-            break;
+      if (sparseBound || denseBound) {
+        // recover buffer memory bindings
+        std::vector<VkSparseMemoryBind> sparseBinds;
+        if (sparseBound) {
+          for(const auto& b : mBufferSparseBindings[buf_handle]) {
+            sparseBinds.emplace_back(b.sparseMemoryBind());
           }
         }
-      }
+        RecreateBufferMemoryBindings(
+            observer, buf->mDevice, buf_handle,
+            denseBound ? buf->mMemory->mVulkanHandle : VkDeviceMemory(0),
+            denseBound ? buf->mMemoryOffset : VkDeviceSize(0),
+            sparseBound ? this->mBufferSparseBindings[buf_handle].count()
+                        : 0,
+            sparseBound ? sparseBinds.data() : nullptr);
 
-      void* data = nullptr;
-      size_t data_size = 0;
-      uint32_t host_buffer_memory_index = 0;
-      bool need_to_clean_up_temps = false;
+        // recover the buffer data
+        VkDevice dev_handle = getObjectCreatingDevice(buf);
+        if (Devices.count(dev_handle) == 0) {
+          subVkErrorInvalidDevice(observer, [](){}, dev_handle);
+        }
+        auto& device_functions = mImports.mVkDeviceFunctions[dev_handle];
+        VkPhysicalDeviceMemoryProperties mem_props =
+            PhysicalDevices[Devices[dev_handle]->mPhysicalDevice]
+                ->mMemoryProperties;
+        std::shared_ptr<QueueObject> queue = GetQueue(Queues, buf);
 
-      VkDevice device = buffer.second->mDevice;
-      std::shared_ptr<DeviceObject> device_object =
-          Devices[buffer.second->mDevice];
-      VkPhysicalDevice& physical_device = device_object->mPhysicalDevice;
-      auto& device_functions =
-          mImports.mVkDeviceFunctions[buffer.second->mDevice];
-      VkInstance& instance = PhysicalDevices[physical_device]->mInstance;
-
-      VkBuffer copy_buffer;
-      VkDeviceMemory copy_memory;
-
-      bool denseBound = buffer.second->mMemory != nullptr;
-      bool sparseBound = (mBufferSparseBindings.find(buffer.first) !=
-                          mBufferSparseBindings.end()) &&
-                         (mBufferSparseBindings[buffer.first].count() > 0);
-
-      if (denseBound || sparseBound) {
-        need_to_clean_up_temps = true;
-        VkPhysicalDeviceMemoryProperties properties;
-        mImports.mVkInstanceFunctions[instance]
-            .vkGetPhysicalDeviceMemoryProperties(physical_device, &properties);
-        copy_info.msize = info.mSize;
-        copy_info.musage =
-            VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        copy_info.msharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
-        device_functions.vkCreateBuffer(device, &copy_info, nullptr,
-                                        &copy_buffer);
-        VkMemoryRequirements buffer_memory_requirements;
-        device_functions.vkGetBufferMemoryRequirements(
-            device, copy_buffer, &buffer_memory_requirements);
-        uint32_t index = 0;
-        uint32_t backup_index = 0xFFFFFFFF;
-
-        while (buffer_memory_requirements.mmemoryTypeBits) {
-          if (buffer_memory_requirements.mmemoryTypeBits & 0x1) {
-            if (properties.mmemoryTypes[index].mpropertyFlags &
-                VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-              if (backup_index == 0xFFFFFFFF) {
-                backup_index = index;
-              }
-              if (0 == (properties.mmemoryTypes[index].mpropertyFlags &
-                        VkMemoryPropertyFlagBits::
-                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-                break;
-              }
+        auto recreate_data = [&](VkDeviceSize res_offset, VkDeviceSize size) {
+          CopyDataHelper helper(this, device_functions, dev_handle, queue,
+                                mem_props);
+          uint32_t host_visible_mem_index = 0;
+          std::vector<uint8_t> data;
+          std::tie(host_visible_mem_index, data) =
+              helper.GetBufferData(buf_handle, res_offset, size);
+          RecreateBufferData(observer, dev_handle, buf_handle,
+                            res_offset, size, host_visible_mem_index,
+                            queue->mVulkanHandle, data.data());
+        };
+        if (sparseResidency) {
+          for (const auto& b : sparseBinds) {
+            recreate_data(b.mresourceOffset, b.msize);
+          }
+        } else {
+          if (sparseBinding) {
+            // If the buffer is not fully bound, do not try to access its data.
+            if (!IsFullyBound(0, buf_info.mSize,
+                              mBufferSparseBindings[buf_handle])) {
+              continue;
             }
           }
-          buffer_memory_requirements.mmemoryTypeBits >>= 1;
-          index++;
+          recreate_data(0, buf_info.mSize);
         }
-
-        // If we could not find a non-coherent memory, then use
-        // the only one we found.
-        if (buffer_memory_requirements.mmemoryTypeBits != 0) {
-          host_buffer_memory_index = index;
-        } else {
-          host_buffer_memory_index = backup_index;
-        }
-
-        VkMemoryAllocateInfo create_copy_memory{
-            VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, nullptr,
-            info.mSize, host_buffer_memory_index};
-
-        device_functions.vkAllocateMemory(device, &create_copy_memory, nullptr,
-                                          &copy_memory);
-
-        device_functions.vkBindBufferMemory(device, copy_buffer, copy_memory,
-                                            0);
-
-        VkCommandPool pool;
-        VkCommandPoolCreateInfo command_pool_create{
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            nullptr,
-            VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            submit_queue->mFamily};
-        device_functions.vkCreateCommandPool(device, &command_pool_create,
-                                             nullptr, &pool);
-
-        VkCommandBuffer copy_commands;
-        VkCommandBufferAllocateInfo copy_command_create_info{
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            nullptr, pool,
-            VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
-        device_functions.vkAllocateCommandBuffers(
-            device, &copy_command_create_info, &copy_commands);
-
-        VkCommandBufferBeginInfo begin_info = {
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            nullptr, VkCommandBufferUsageFlagBits::
-                         VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-            nullptr};
-
-        device_functions.vkBeginCommandBuffer(copy_commands, &begin_info);
-
-        VkBufferCopy region{0, 0, info.mSize};
-
-        device_functions.vkCmdCopyBuffer(copy_commands,
-                                         buffer.second->mVulkanHandle,
-                                         copy_buffer, 1, &region);
-
-        VkBufferMemoryBarrier buffer_barrier = {
-            VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-            nullptr,
-            VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
-            VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
-            0xFFFFFFFF,
-            0xFFFFFFFF,
-            copy_buffer,
-            0,
-            info.mSize};
-
-        device_functions.vkCmdPipelineBarrier(
-            copy_commands,
-            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr,
-            1, &buffer_barrier, 0, nullptr);
-
-        device_functions.vkEndCommandBuffer(copy_commands);
-
-        VkSubmitInfo submit_info = {
-            VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            nullptr,
-            0,
-            nullptr,
-            nullptr,
-            1,
-            &copy_commands,
-            0,
-            nullptr};
-        device_functions.vkQueueSubmit(submit_queue->mVulkanHandle, 1,
-                                       &submit_info, 0);
-
-        device_functions.vkQueueWaitIdle(submit_queue->mVulkanHandle);
-        device_functions.vkMapMemory(device, copy_memory, 0, info.mSize, 0,
-                                     &data);
-        VkMappedMemoryRange range{
-            VkStructureType::VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, nullptr,
-            copy_memory, 0, info.mSize};
-
-        device_functions.vkInvalidateMappedMemoryRanges(device, 1, &range);
-
-        device_functions.vkDestroyCommandPool(device, pool, nullptr);
-      }
-
-      uint32_t sparseBindCount = sparseBound ? mBufferSparseBindings[buffer.first].count() : 0;
-      std::vector<VkSparseMemoryBind> sparseBinds;
-      for (const auto& b : mBufferSparseBindings[buffer.first]) {
-        sparseBinds.emplace_back(b.sparseMemoryBind());
-      }
-
-      RecreateBindBufferMemory(
-          observer, buffer.second->mDevice, buffer.second->mVulkanHandle,
-          denseBound ? buffer.second->mMemory->mVulkanHandle
-                     : VkDeviceMemory(0),
-          buffer.second->mMemoryOffset,
-          sparseBound ? mBufferSparseBindings[buffer.first].count() : 0,
-          sparseBound ? sparseBinds.data() : nullptr);
-
-      RecreateBufferData(observer, buffer.second->mDevice,
-                         buffer.second->mVulkanHandle, host_buffer_memory_index,
-                         submit_queue->mVulkanHandle, data);
-
-      if (need_to_clean_up_temps) {
-        device_functions.vkDestroyBuffer(device, copy_buffer, nullptr);
-        device_functions.vkFreeMemory(device, copy_memory, nullptr);
       }
     }
   }
@@ -900,288 +1154,196 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
   // Bind and Fill the "recreated" image memory
   {
-    VkBufferCreateInfo buffer_create_info = {};
-    VkBufferCreateInfo copy_info = {};
-    buffer_create_info.msType =
-        VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    copy_info.msType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-
-    for (auto& image : Images) {
-      if (image.second->mIsSwapchainImage) {
+    for (auto& ii : Images) {
+      VkImage img_handle = ii.first;
+      auto img = ii.second;
+      if (img->mIsSwapchainImage) {
         // Don't bind and fill swapchain images memory here
         continue;
       }
+      const ImageInfo& img_info = ii.second->mInfo;
+      bool denseBound = img->mBoundMemory != nullptr;
+      bool sparseBound = ((mOpaqueImageSparseBindings.find(img_handle) !=
+                           mOpaqueImageSparseBindings.end()) &&
+                          mOpaqueImageSparseBindings[img_handle].count() > 0) ||
+                         (img->mSparseImageMemoryBindings.size() > 0);
+      bool sparseBinding =
+          (img_info.mFlags &
+           VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_BINDING_BIT) != 0;
+      bool sparseResidency =
+          sparseBinding &&
+          (img_info.mFlags &
+           VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) != 0;
 
-      ImageInfo& info = image.second->mInfo;
-      VkQueue lastQueue = 0;
-      uint32_t lastQueueFamily = 0;
-      if (image.second->mLastBoundQueue) {
-        lastQueue = image.second->mLastBoundQueue->mVulkanHandle;
-        lastQueueFamily = image.second->mLastBoundQueue->mFamily;
-      }
+      if (denseBound || sparseBound) {
+        std::vector<VkSparseMemoryBind> opaqueBinds;
+        std::vector<VkSparseImageMemoryBind> imageBinds;
+        if (sparseBound) {
+          for (const auto& b : mOpaqueImageSparseBindings[img_handle]) {
+            opaqueBinds.emplace_back(b.sparseMemoryBind());
+          }
+          for (const auto& b : img->mSparseImageMemoryBindings) {
+            imageBinds.emplace_back(b.second);
+          }
+        }
+        // recover image memory bindings
+        RecreateImageMemoryBindings(
+            observer, img->mDevice, img_handle,
+            denseBound ? img->mBoundMemory->mVulkanHandle : VkDeviceMemory(0),
+            denseBound ? img->mBoundMemoryOffset : VkDeviceSize(0),
+            sparseBound ? opaqueBinds.size() : 0,
+            sparseBound ? opaqueBinds.data() : nullptr,
+            sparseBound && sparseResidency ? imageBinds.size() : 0,
+            sparseBound && sparseResidency ? imageBinds.data() : nullptr);
 
-      void* data = nullptr;
-      uint64_t data_size = 0;
-      uint32_t host_buffer_memory_index = 0;
-      bool need_to_clean_up_temps = false;
-
-      VkDevice device = image.second->mDevice;
-      std::shared_ptr<DeviceObject> device_object =
-          Devices[image.second->mDevice];
-      VkPhysicalDevice& physical_device = device_object->mPhysicalDevice;
-      auto& device_functions =
-          mImports.mVkDeviceFunctions[image.second->mDevice];
-      VkInstance& instance = PhysicalDevices[physical_device]->mInstance;
-
-      VkBuffer copy_buffer;
-      VkDeviceMemory copy_memory = 0;
-
-      uint32_t imageLayout = info.mLayout;
-
-      bool denseBound = image.second->mBoundMemory != nullptr;
-      bool opaqueSparseBound =
-          (mOpaqueImageSparseBindings.find(image.first) !=
-           mOpaqueImageSparseBindings.end()) &&
-          (mOpaqueImageSparseBindings[image.first].count() > 0);
-
-      if ((denseBound || opaqueSparseBound) &&
-          info.mSamples == VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT &&
+        // recover image data
+        if (img_info.mSamples != VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT) {
+          // TODO(awoloszyn): Handle multisampled images here.
+          //                  Figure out how we are supposed to get the data
+          //                  BACK
+          //                  into a MS image (shader?)
+          continue;
+        }
+        if (img->mImageAspect !=
+            VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT) {
+          // TODO(awoloszyn): Handle depth stencil images
+          continue;
+        }
+        if (img_info.mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
           // Don't capture images with undefined layout. The resulting data
           // itself will be undefined.
-          imageLayout != VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED &&
-          !image.second->mIsSwapchainImage &&
-          image.second->mImageAspect ==
-              VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT) {
-        // TODO(awoloszyn): Handle multisampled images here.
-        //                  Figure out how we are supposed to get the data BACK
-        //                  into a MS image (shader?)
-        // TODO(awoloszyn): Handle depth stencil images
-        data_size = subInferImageSize(nullptr, nullptr, image.second);
+          continue;
+        }
+        if (img->mIsSwapchainImage) {
+          // Don't capture swapchain images
+          continue;
+        }
 
-        need_to_clean_up_temps = true;
+        VkDevice dev_handle = getObjectCreatingDevice(img);
+        if (Devices.count(dev_handle) == 0) {
+          subVkErrorInvalidDevice(observer, []() {}, dev_handle);
+        }
+        auto& device_functions = mImports.mVkDeviceFunctions[dev_handle];
+        VkPhysicalDeviceMemoryProperties mem_props =
+            PhysicalDevices[Devices[dev_handle]->mPhysicalDevice]
+                ->mMemoryProperties;
+        std::shared_ptr<QueueObject> queue = GetQueue(Queues, img);
 
-        VkPhysicalDeviceMemoryProperties properties;
-        mImports.mVkInstanceFunctions[instance]
-            .vkGetPhysicalDeviceMemoryProperties(physical_device, &properties);
-        copy_info.msize = data_size;
-        copy_info.musage =
-            VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        copy_info.msharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
-        device_functions.vkCreateBuffer(device, &copy_info, nullptr,
-                                        &copy_buffer);
-        VkMemoryRequirements buffer_memory_requirements;
+        auto recreate_sparse_bind_data = [&](VkSparseImageMemoryBind& bind) {
+          CopyDataHelper helper(this, device_functions, dev_handle, queue,
+                                mem_props);
+          uint32_t host_visible_mem_index = 0;
+          std::vector<uint8_t> data;
+          std::tie(host_visible_mem_index, data) =
+              helper.GetImageSparseSubresourceData(img, bind.msubresource,
+                                                   bind.moffset, bind.mextent);
+          RecreateSparseImageBindData(
+              observer, dev_handle, img_handle, img_info.mLayout, &bind,
+              host_visible_mem_index, queue->mVulkanHandle, data.size(),
+              data.data());
+        };
 
-        device_functions.vkGetBufferMemoryRequirements(
-            device, copy_buffer, &buffer_memory_requirements);
-        uint32_t index = 0;
-        uint32_t backup_index = 0xFFFFFFFF;
+        auto recreate_subrng_data = [&](VkImageSubresourceRange& range,
+                                        VkDeviceSize res_offset,
+                                        VkDeviceSize data_size) {
+          CopyDataHelper helper(this, device_functions, dev_handle, queue,
+                                mem_props);
+          uint32_t host_visible_mem_index = 0;
+          std::vector<uint8_t> data;
+          std::tie(host_visible_mem_index, data) =
+              helper.GetImageSubrangeData(img, range, data_size);
+          RecreateImageSubrangeData(
+              observer, dev_handle, img_handle, img_info.mLayout, &range,
+              host_visible_mem_index, img->mLastBoundQueue->mVulkanHandle,
+              res_offset, data.size(), data.data());
+        };
 
-        while (buffer_memory_requirements.mmemoryTypeBits) {
-          if (buffer_memory_requirements.mmemoryTypeBits & 0x1) {
-            if (properties.mmemoryTypes[index].mpropertyFlags &
-                VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-              if (backup_index == 0xFFFFFFFF) {
-                backup_index = index;
-              }
-              if (0 == (properties.mmemoryTypes[index].mpropertyFlags &
-                        VkMemoryPropertyFlagBits::
-                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-                break;
+        // Returns true if all the miptail regions are bound. If |recreate_data|
+        // is set to true, recreate the data along the check.
+        auto check_or_recreate_miptail_data = [&](bool recreate_data) {
+          for (const auto& ri : img->mSparseMemoryRequirements) {
+            const auto& req = ri.second;
+            // Check the tail regions for all non-metadata regions.
+            if (0 == (req.mformatProperties.maspectMask &
+                      VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT)) {
+              if (0 != (req.mformatProperties.mflags &
+                        VkSparseImageFormatFlagBits::
+                            VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT)) {
+                // One mip tail region to hold all mip tails for this apect.
+                if (!IsFullyBound(req.mimageMipTailOffset,
+                                    req.mimageMipTailSize,
+                                    mOpaqueImageSparseBindings[img_handle])) {
+                  return false;
+                }
+                if (recreate_data) {
+                  VkImageSubresourceRange rng{
+                      req.mformatProperties.maspectMask,
+                      req.mimageMipTailFirstLod,
+                      img_info.mMipLevels - req.mimageMipTailFirstLod,
+                      0,
+                      img_info.mArrayLayers,
+                  };
+                  recreate_subrng_data(rng, req.mimageMipTailOffset, req.mimageMipTailSize);
+                }
+              } else {
+                // Each layer has its own mip tail region, check each of them.
+                for (uint32_t i = 0; i < uint32_t(img_info.mArrayLayers); i++) {
+                  VkDeviceSize offset = req.mimageMipTailOffset + i * req.mimageMipTailStride;
+                  if (!IsFullyBound(
+                          offset,
+                          req.mimageMipTailSize,
+                          mOpaqueImageSparseBindings[img_handle])) {
+                    return false;
+                  }
+                  if (recreate_data) {
+                    VkImageSubresourceRange rng{
+                        req.mformatProperties.maspectMask,
+                        req.mimageMipTailFirstLod,
+                        img_info.mMipLevels - req.mimageMipTailFirstLod,
+                        i,
+                        1,
+                    };
+                    recreate_subrng_data(rng, offset, req.mimageMipTailSize);
+                  }
+                }
               }
             }
           }
-          buffer_memory_requirements.mmemoryTypeBits >>= 1;
-          index++;
-        }
+          return true;
+        };
 
-        // If we could not find a non-coherent memory, then use
-        // the only one we found.
-        if (buffer_memory_requirements.mmemoryTypeBits != 0) {
-          host_buffer_memory_index = index;
+        if (sparseResidency) {
+          // Handle MipTails first, all metadata (mip tail) regions must be
+          // bound before the image can be accessed.
+          if(!check_or_recreate_miptail_data(false)) {
+            continue;
+          }
+          check_or_recreate_miptail_data(true);
+          for (auto& b : imageBinds) {
+            recreate_sparse_bind_data(b);
+          }
         } else {
-          host_buffer_memory_index = backup_index;
+          // If the image has opaque sparse bindings, check if all the regions
+          // are bound before accessing the image. If it is not fully bound,
+          // do not access its data.
+          if (sparseBound) {
+            if (!IsFullyBound(0, img->mMemoryRequirements.msize,
+                              mOpaqueImageSparseBindings[img_handle])) {
+              continue;
+            }
+          }
+          // The image must have been bound entirely, copy the whole data
+          VkImageSubresourceRange rng {
+            img->mImageAspect,
+            0, img_info.mMipLevels,
+            0, img_info.mArrayLayers,
+          };
+          recreate_subrng_data(rng, 0, img->mMemoryRequirements.msize);
         }
-
-        VkMemoryAllocateInfo create_copy_memory{
-            VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, nullptr,
-            buffer_memory_requirements.msize, host_buffer_memory_index};
-
-        uint32_t res = device_functions.vkAllocateMemory(
-            device, &create_copy_memory, nullptr, &copy_memory);
-
-        device_functions.vkBindBufferMemory(device, copy_buffer, copy_memory,
-                                            0);
-
-        VkCommandPool pool;
-        VkCommandPoolCreateInfo command_pool_create{
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            nullptr,
-            VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-            lastQueueFamily};
-        res = device_functions.vkCreateCommandPool(device, &command_pool_create,
-                                                   nullptr, &pool);
-
-        VkCommandBuffer copy_commands;
-        VkCommandBufferAllocateInfo copy_command_create_info{
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            nullptr, pool,
-            VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
-
-        res = device_functions.vkAllocateCommandBuffers(
-            device, &copy_command_create_info, &copy_commands);
-        VkCommandBufferBeginInfo begin_info = {
-            VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            nullptr, VkCommandBufferUsageFlagBits::
-                         VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-            nullptr};
-
-        device_functions.vkBeginCommandBuffer(copy_commands, &begin_info);
-
-        std::vector<VkBufferImageCopy> image_copies(info.mMipLevels);
-        size_t buffer_offset = 0;
-        for (size_t i = 0; i < info.mMipLevels; ++i) {
-          const size_t width =
-              subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, i);
-          const size_t height =
-              subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, i);
-          const size_t depth =
-              subGetMipSize(nullptr, nullptr, info.mExtent.mDepth, i);
-          image_copies[i] = {
-              static_cast<uint64_t>(buffer_offset),
-              0,  // bufferRowLength << tightly packed
-              0,  // bufferImageHeight << tightly packed
-              {
-                  image.second->mImageAspect, static_cast<uint32_t>(i), 0,
-                  info.mArrayLayers,
-              },  /// subresource
-              {0, 0, 0},
-              {static_cast<uint32_t>(width), static_cast<uint32_t>(height),
-               static_cast<uint32_t>(depth)}};
-
-          buffer_offset +=
-              subInferImageLevelSize(nullptr, nullptr, image.second, i);
-        }
-
-        VkImageMemoryBarrier memory_barrier = {
-            VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            nullptr,
-            (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
-            VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
-            imageLayout,
-            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            0xFFFFFFFF,
-            0xFFFFFFFF,
-            image.second->mVulkanHandle,
-            {image.second->mImageAspect, 0, info.mMipLevels, 0,
-             info.mArrayLayers}};
-
-        device_functions.vkCmdPipelineBarrier(
-            copy_commands,
-            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr,
-            0, nullptr, 1, &memory_barrier);
-
-        device_functions.vkCmdCopyImageToBuffer(
-            copy_commands, image.second->mVulkanHandle,
-            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, copy_buffer,
-            image_copies.size(), image_copies.data());
-
-        memory_barrier.msrcAccessMask =
-            VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
-        memory_barrier.mdstAccessMask =
-            (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
-        memory_barrier.moldLayout =
-            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        memory_barrier.mnewLayout = imageLayout;
-
-        VkBufferMemoryBarrier buffer_barrier = {
-            VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-            nullptr,
-            VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
-            VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
-            0xFFFFFFFF,
-            0xFFFFFFFF,
-            copy_buffer,
-            0,
-            data_size};
-
-        device_functions.vkCmdPipelineBarrier(
-            copy_commands,
-            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr,
-            1, &buffer_barrier, 1, &memory_barrier);
-
-        device_functions.vkEndCommandBuffer(copy_commands);
-
-        VkSubmitInfo submit_info = {
-            VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            nullptr,
-            0,
-            nullptr,
-            nullptr,
-            1,
-            &copy_commands,
-            0,
-            nullptr};
-
-        res = device_functions.vkQueueSubmit(lastQueue, 1, &submit_info, 0);
-        res = device_functions.vkQueueWaitIdle(lastQueue);
-        device_functions.vkMapMemory(device, copy_memory, 0, data_size, 0,
-                                     &data);
-        VkMappedMemoryRange range{
-            VkStructureType::VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, nullptr,
-            copy_memory, 0, data_size};
-
-        device_functions.vkInvalidateMappedMemoryRanges(device, 1, &range);
-
-        device_functions.vkDestroyCommandPool(device, pool, nullptr);
-      }
-
-      uint32_t opaqueSparseBindCount = opaqueSparseBound ? mOpaqueImageSparseBindings[image.first].count() : 0;
-      std::vector<VkSparseMemoryBind> opaqueSparseBinds;
-      for (const auto& b : mOpaqueImageSparseBindings[image.first]) {
-        if (DeviceMemories.find(b.memory()) != DeviceMemories.end()) {
-          opaqueSparseBinds.emplace_back(b.sparseMemoryBind());
-        }
-      }
-
-      RecreateBindImageMemory(
-          observer, image.second->mDevice, image.second->mVulkanHandle,
-          denseBound ? image.second->mBoundMemory->mVulkanHandle
-                     : VkDeviceMemory(0),
-          image.second->mBoundMemoryOffset,
-          opaqueSparseBound ? opaqueSparseBindCount : 0,
-          opaqueSparseBound ? opaqueSparseBinds.data() : nullptr);
-
-      // If there are sparse residency bindings for this image, recreate them.
-      if (image.second->mSparseImageMemoryBindings.size() > 0) {
-        uint32_t count = image.second->mSparseImageMemoryBindings.size();
-        std::vector<VkSparseImageMemoryBind> imageSparseBinds;
-        // Put the bindings in chronological order.
-        std::vector<uint32_t> order_keys;
-        imageSparseBinds.reserve(count);
-        order_keys.reserve(count);
-        for (const auto& b : image.second->mSparseImageMemoryBindings) {
-          order_keys.push_back(b.first);
-        }
-        std::sort(order_keys.begin(), order_keys.end());
-        for (auto k : order_keys) {
-          imageSparseBinds.push_back(image.second->mSparseImageMemoryBindings[k]);
-        }
-        RecreateBindImageSparseMemoryBindings(observer, image.second->mDevice,
-                                              image.second->mVulkanHandle,
-                                              count, imageSparseBinds.data());
-      }
-
-      RecreateImageData(observer, image.second->mDevice,
-                        image.second->mVulkanHandle, imageLayout,
-                        host_buffer_memory_index, lastQueue, data_size, data);
-
-      if (need_to_clean_up_temps) {
-        device_functions.vkDestroyBuffer(device, copy_buffer, nullptr);
-        device_functions.vkFreeMemory(device, copy_memory, nullptr);
       }
     }
+
+
   }
 
   {

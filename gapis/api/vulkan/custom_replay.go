@@ -1172,7 +1172,7 @@ func (a *RecreateImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalS
 	return nil
 }
 
-func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *RecreateImageMemoryBindings) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	if a.Memory != VkDeviceMemory(0) {
 		cb := CommandBuilder{Thread: a.thread}
@@ -1180,14 +1180,20 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 			return err
 		}
 	}
-	if a.OpaqueSparseBindCount > 0 {
+	if a.OpaqueSparseBindCount > 0 || a.ImageSparseBindCount > 0 {
 		o := a.Extras().Observations()
 		o.ApplyReads(s.Memory.ApplicationPool())
 		cb := CommandBuilder{Thread: a.thread}
 		for _, bind := range a.POpaqueSparseBinds.Slice(0, uint64(a.OpaqueSparseBindCount), s.MemoryLayout).MustRead(ctx, a, s, nil) {
 			if !GetState(s).DeviceMemories.Contains(bind.Memory) {
 				// TODO: Move this message to report view
-				log.E(ctx, "Sparse memory binding for opaque image: %v, Memory: %v does not exist.", a.Image, bind.Memory)
+				log.E(ctx, "Opaque sparse memory binding for image: %v, Memory: %v not found.", a.Image, bind.Memory)
+			}
+		}
+		for _, bind := range a.PImageSparseBinds.Slice(0, uint64(a.ImageSparseBindCount), s.MemoryLayout).MustRead(ctx, a, s, nil) {
+			if !GetState(s).DeviceMemories.Contains(bind.Memory) {
+				// TODO: Move this message to report view
+				log.E(ctx, "Image sparse memory binding for image: %v, Memory: %v not found.", a.Image, bind.Memory)
 			}
 		}
 		opaqueMemBindInfo := VkSparseImageOpaqueMemoryBindInfo{
@@ -1197,6 +1203,13 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 		}
 		opaqueMemBindInfoData := s.AllocDataOrPanic(ctx, opaqueMemBindInfo)
 		defer opaqueMemBindInfoData.Free()
+		imageMemBindInfo := VkSparseImageMemoryBindInfo{
+			Image:     a.Image,
+			BindCount: a.ImageSparseBindCount,
+			PBinds:    a.PImageSparseBinds,
+		}
+		imageMemBindInfoData := s.AllocDataOrPanic(ctx, imageMemBindInfo)
+		defer imageMemBindInfoData.Free()
 		queueBindInfo := VkBindSparseInfo{
 			SType:                VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
 			PNext:                NewVoidᶜᵖ(memory.Nullptr),
@@ -1206,8 +1219,8 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 			PBufferBinds:         NewVkSparseBufferMemoryBindInfoᶜᵖ(memory.Nullptr),
 			ImageOpaqueBindCount: 1,
 			PImageOpaqueBinds:    NewVkSparseImageOpaqueMemoryBindInfoᶜᵖ(opaqueMemBindInfoData.Ptr()),
-			ImageBindCount:       0,
-			PImageBinds:          NewVkSparseImageMemoryBindInfoᶜᵖ(memory.Nullptr),
+			ImageBindCount:       1,
+			PImageBinds:          NewVkSparseImageMemoryBindInfoᶜᵖ(imageMemBindInfoData.Ptr()),
 			SignalSemaphoreCount: 0,
 			PSignalSemaphores:    NewVkSemaphoreᶜᵖ(memory.Nullptr),
 		}
@@ -1225,6 +1238,8 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 			queueBindInfoData.Data(),
 		).AddRead(
 			opaqueMemBindInfoData.Data(),
+		).AddRead(
+			imageMemBindInfoData.Data(),
 		).Mutate(ctx, id, s, b); err != nil {
 			return err
 		}
@@ -1234,59 +1249,7 @@ func (a *RecreateBindImageMemory) Mutate(ctx context.Context, id api.CmdID, s *a
 	return nil
 }
 
-func (a *RecreateBindImageSparseMemoryBindings) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	defer EnterRecreate(ctx, s)()
-	l := s.MemoryLayout
-	c := GetState(s)
-	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory.ApplicationPool())
-	cb := CommandBuilder{Thread: a.thread}
-	// binds MUST be in chronological order.
-	for _, bind := range a.PBinds.Slice(0, uint64(a.Count), l).MustRead(ctx, a, s, nil) {
-		if !c.DeviceMemories.Contains(bind.Memory) {
-			continue
-		}
-		bindData := s.AllocDataOrPanic(ctx, bind)
-		defer bindData.Free()
-		imgMemBindInfo := VkSparseImageMemoryBindInfo{
-			Image:     a.Image,
-			BindCount: 1,
-			PBinds:    NewVkSparseImageMemoryBindᶜᵖ(bindData.Ptr()),
-		}
-		imgMemBindInfoData := s.AllocDataOrPanic(ctx, imgMemBindInfo)
-		defer imgMemBindInfoData.Free()
-		queueBindInfo := VkBindSparseInfo{
-			SType:                VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
-			PNext:                NewVoidᶜᵖ(memory.Nullptr),
-			WaitSemaphoreCount:   0,
-			PWaitSemaphores:      NewVkSemaphoreᶜᵖ(memory.Nullptr),
-			BufferBindCount:      0,
-			PBufferBinds:         NewVkSparseBufferMemoryBindInfoᶜᵖ(memory.Nullptr),
-			ImageOpaqueBindCount: 0,
-			PImageOpaqueBinds:    NewVkSparseImageOpaqueMemoryBindInfoᶜᵖ(memory.Nullptr),
-			ImageBindCount:       1,
-			PImageBinds:          NewVkSparseImageMemoryBindInfoᶜᵖ(imgMemBindInfoData.Ptr()),
-			SignalSemaphoreCount: 0,
-			PSignalSemaphores:    NewVkSemaphoreᶜᵖ(memory.Nullptr),
-		}
-		queueBindInfoData := s.AllocDataOrPanic(ctx, queueBindInfo)
-		defer queueBindInfoData.Free()
-		queue := findSupportedQueueForDevice(a.Device, s, VkQueueFlags(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT))
-		if err := cb.VkQueueBindSparse(
-			queue, 1, queueBindInfoData.Ptr(), VkFence(0), VkResult_VK_SUCCESS).AddRead(
-			queueBindInfoData.Data()).AddRead(imgMemBindInfoData.Data()).AddRead(
-			bindData.Data()).Mutate(ctx, id, s, b); err != nil {
-			return err
-		}
-		// Guarantee the binding order.
-		if err := cb.VkQueueWaitIdle(queue, VkResult_VK_SUCCESS).Mutate(ctx, id, s, b); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *RecreateImageSubrangeData) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	l := s.MemoryLayout
 	t := a.thread
@@ -1312,6 +1275,7 @@ func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 		srcLayout := VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED
 
 		if !a.Data.IsNullptr() {
+			subrange := a.PRange.MustRead(ctx, a, s, nil)
 			imageInfo := imageObject.Info
 			bufferId, memoryId, err = createAndBindSourceBuffer(ctx, id, cb, s, b, device, a.DataSize, a.HostMemoryIndex)
 			if err != nil {
@@ -1334,7 +1298,7 @@ func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 				srcLayout,
 				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				a.Image,
-				imageObject.ImageAspect,
+				subrange.AspectMask,
 				commandBuffer); err != nil {
 				return err
 			}
@@ -1343,7 +1307,7 @@ func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 
 			offset := VkDeviceSize(0)
 
-			for i := uint32(0); i < imageInfo.MipLevels; i++ {
+			for i := uint32(subrange.BaseMipLevel); i < subrange.BaseMipLevel+subrange.LevelCount; i++ {
 				width, _ := subGetMipSize(ctx, a, id, nil, s, nil, t, nil, imageInfo.Extent.Width, i)
 				height, _ := subGetMipSize(ctx, a, id, nil, s, nil, t, nil, imageInfo.Extent.Height, i)
 				depth, _ := subGetMipSize(ctx, a, id, nil, s, nil, t, nil, imageInfo.Extent.Depth, i)
@@ -1352,10 +1316,10 @@ func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 					BufferRowLength:   0, // Tightly packed
 					BufferImageHeight: 0, // Tightly packed
 					ImageSubresource: VkImageSubresourceLayers{
-						AspectMask:     imageObject.ImageAspect,
+						AspectMask:     subrange.AspectMask,
 						MipLevel:       i,
-						BaseArrayLayer: 0,
-						LayerCount:     imageObject.Info.ArrayLayers,
+						BaseArrayLayer: subrange.BaseArrayLayer,
+						LayerCount:     subrange.LayerCount,
 					},
 					ImageOffset: VkOffset3D{
 						X: 0,
@@ -1423,6 +1387,122 @@ func (a *RecreateImageData) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	return nil
 }
 
+func (a *RecreateSparseImageBindData) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+	defer EnterRecreate(ctx, s)()
+	l := s.MemoryLayout
+	o := a.Extras().Observations()
+	o.ApplyReads(s.Memory.ApplicationPool())
+	imageObject := GetState(s).Images.Get(a.Image)
+	cb := CommandBuilder{Thread: a.thread}
+	if a.LastBoundQueue != VkQueue(0) && a.LastLayout != VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
+		queueObject := GetState(s).Queues.Get(a.LastBoundQueue)
+		device := queueObject.Device
+		commandPool, err := createCommandPool(ctx, id, cb, s, b, a.LastBoundQueue, device)
+		if err != nil {
+			return err
+		}
+		commandBuffer, err := createAndBeginCommandBuffer(ctx, id, cb, s, b, device, commandPool)
+		if err != nil {
+			return err
+		}
+
+		bufferId := VkBuffer(0)
+		memoryId := VkDeviceMemory(0)
+		mem := uint64(0)
+		srcLayout := VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED
+
+		if !a.Data.IsNullptr() {
+			sparseBind := a.PImageSparseBind.MustRead(ctx, a, s, nil)
+			subresource := sparseBind.Subresource
+			offset := sparseBind.Offset
+			extent := sparseBind.Extent
+			bufferId, memoryId, err = createAndBindSourceBuffer(ctx, id, cb, s, b, device, a.DataSize, a.HostMemoryIndex)
+			if err != nil {
+				return err
+			}
+			mappedLocation := NewVoidᵖ(memory.Nullptr)
+			mappedLocation, mem, err = mapBufferMemory(ctx, id, cb, s, b, a, device, a.DataSize, memoryId)
+			if err != nil {
+				return err
+			}
+			mappedChars := U8ᵖ(mappedLocation)
+			dataP := U8ᵖ(a.Data)
+			mappedChars.Slice(uint64(0), uint64(a.DataSize), l).Copy(ctx, dataP.Slice(uint64(0), uint64(a.DataSize), l), a, s, b)
+
+			if err := flushBufferMemory(ctx, id, cb, s, b, device, a.DataSize, memoryId, mappedChars); err != nil {
+				return err
+			}
+
+			if err := createImageTransition(ctx, id, cb, s, b,
+				srcLayout,
+				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				a.Image,
+				subresource.AspectMask,
+				commandBuffer); err != nil {
+				return err
+			}
+			srcLayout = VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+
+			copyRegion := VkBufferImageCopy{
+				BufferOffset:      0,
+				BufferRowLength:   0, // Tightly packed
+				BufferImageHeight: 0, // Tightly packed
+				ImageSubresource: VkImageSubresourceLayers{
+					AspectMask:     subresource.AspectMask,
+					MipLevel:       subresource.MipLevel,
+					BaseArrayLayer: subresource.ArrayLayer,
+					LayerCount:     1,
+				},
+				ImageOffset: offset,
+				ImageExtent: extent,
+			}
+			pointer := s.AllocDataOrPanic(ctx, copyRegion)
+			defer pointer.Free()
+
+			copy := cb.VkCmdCopyBufferToImage(commandBuffer, bufferId, a.Image,
+				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, uint32(1), pointer.Ptr())
+			copy.AddRead(pointer.Data())
+			if err := copy.Mutate(ctx, id, s, b); err != nil {
+				return err
+			}
+		}
+
+		if err := createImageTransition(ctx, id, cb, s, b,
+			srcLayout,
+			a.LastLayout,
+			a.Image,
+			imageObject.ImageAspect,
+			commandBuffer); err != nil {
+			return err
+		}
+		if err := createEndCommandBufferAndQueueSubmit(ctx, id, cb, s, b, a.LastBoundQueue, commandBuffer); err != nil {
+			return err
+		}
+		if err := cb.VkQueueWaitIdle(a.LastBoundQueue, VkResult_VK_SUCCESS).Mutate(ctx, id, s, b); err != nil {
+			return err
+		}
+		if err := destroyCommandPool(ctx, id, cb, s, b, device, commandPool); err != nil {
+			return err
+		}
+		if bufferId != VkBuffer(0) {
+			if err := cb.VkDestroyBuffer(
+				device, bufferId, memory.Nullptr,
+			).Mutate(ctx, id, s, b); err != nil {
+				return err
+			}
+			if err := cb.VkFreeMemory(
+				device, memoryId, memory.Nullptr,
+			).Mutate(ctx, id, s, b); err != nil {
+				return err
+			}
+			s.Allocator.Free(mem)
+		}
+
+	}
+
+	return nil
+}
+
 func (a *RecreateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	// ApplyReads() is necessary only because we need to access the Read
@@ -1445,7 +1525,7 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	return nil
 }
 
-func (a *RecreateBindBufferMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *RecreateBufferMemoryBindings) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	defer EnterRecreate(ctx, s)()
 	if a.Memory != VkDeviceMemory(0) {
 		cb := CommandBuilder{Thread: a.thread}
@@ -1514,23 +1594,21 @@ func (a *RecreateBufferData) Mutate(ctx context.Context, id api.CmdID, s *api.Gl
 		queue := a.LastBoundQueue
 		queueObject := GetState(s).Queues.Get(queue)
 		device := queueObject.Device
-		bufferObject := GetState(s).Buffers.Get(a.Buffer)
-		bufferInfo := bufferObject.Info
 		cb := CommandBuilder{Thread: a.thread}
 
-		bufferId, memoryId, err := createAndBindSourceBuffer(ctx, id, cb, s, b, device, bufferInfo.Size, a.HostBufferMemoryIndex)
+		bufferId, memoryId, err := createAndBindSourceBuffer(ctx, id, cb, s, b, device, a.Size, a.HostBufferMemoryIndex)
 		if err != nil {
 			return err
 		}
-		mappedLocation, mem, err := mapBufferMemory(ctx, id, cb, s, b, a, device, bufferInfo.Size, memoryId)
+		mappedLocation, mem, err := mapBufferMemory(ctx, id, cb, s, b, a, device, a.Size, memoryId)
 		if err != nil {
 			return err
 		}
 		mappedChars := U8ᵖ(mappedLocation)
 		dataP := U8ᵖ(a.Data)
-		mappedChars.Slice(uint64(0), uint64(bufferInfo.Size), l).Copy(ctx, dataP.Slice(uint64(0), uint64(bufferInfo.Size), l), a, s, b)
+		mappedChars.Slice(uint64(0), uint64(a.Size), l).Copy(ctx, dataP.Slice(uint64(0), uint64(a.Size), l), a, s, b)
 
-		if err := flushBufferMemory(ctx, id, cb, s, b, device, bufferInfo.Size, memoryId, mappedChars); err != nil {
+		if err := flushBufferMemory(ctx, id, cb, s, b, device, a.Size, memoryId, mappedChars); err != nil {
 			return err
 		}
 
@@ -1546,8 +1624,8 @@ func (a *RecreateBufferData) Mutate(ctx context.Context, id api.CmdID, s *api.Gl
 
 		bufferCopy := VkBufferCopy{
 			SrcOffset: VkDeviceSize(0),
-			DstOffset: VkDeviceSize(0),
-			Size:      bufferInfo.Size,
+			DstOffset: a.Offset,
+			Size:      a.Size,
 		}
 		bufferData := s.AllocDataOrPanic(ctx, bufferCopy)
 		defer bufferData.Free()
@@ -1556,7 +1634,7 @@ func (a *RecreateBufferData) Mutate(ctx context.Context, id api.CmdID, s *api.Gl
 			return err
 		}
 
-		if err := createBufferBarrier(ctx, id, cb, s, b, bufferId, bufferInfo.Size, commandBuffer); err != nil {
+		if err := createBufferBarrier(ctx, id, cb, s, b, bufferId, a.Size, commandBuffer); err != nil {
 			return err
 		}
 

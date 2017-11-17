@@ -1209,18 +1209,46 @@ type FootprintBuilder struct {
 	swapchainImagePresented map[VkSwapchainKHR][]label
 }
 
-// getImageData records a read operation of the Vulkan handle, a read operation
-// of the image layout, a read operation of the image binding, then returns
-// the underlying data.
+// getImageData records a read operation of the Vulkan image handle, a read
+// operation of the image layout, a read operation of the image bindings, then
+// returns the underlying data.
 func (vb *FootprintBuilder) getImageData(ctx context.Context,
 	bh *dependencygraph.Behavior, vkImg VkImage) []dependencygraph.DefUseVariable {
 	read(ctx, bh, vkHandle(vkImg))
+	read(ctx, bh, vb.images[vkImg].layout)
 	data := vb.images[vkImg].opaqueData.getBoundData(ctx, bh, 0, vkWholeSize)
 	for _, sb := range vb.images[vkImg].sparseData {
 		read(ctx, bh, sb)
 		data = append(data, sb.backingData)
 	}
 	return data
+}
+
+// getImageOpaqueData records a read operation of the Vulkan image handle, a
+// read operation of the image layout, a read operation of the overlapping
+// bindings, then returns the underlying data. This only works for opaque image
+// bindings (non-sparse-resident bindings), and the image must NOT be created
+// by swapchains.
+func (vb *FootprintBuilder) getImageOpaqueData(ctx context.Context,
+	bh *dependencygraph.Behavior, vkImg VkImage, offset, size uint64) []dependencygraph.DefUseVariable {
+	read(ctx, bh, vkHandle(vkImg))
+	data := vb.images[vkImg].opaqueData.getBoundData(ctx, bh, offset, size)
+	return data
+}
+
+func (vb *FootprintBuilder) getSparseImageBindData(ctx context.Context,
+	bh *dependencygraph.Behavior, vkImg VkImage, bind VkSparseImageMemoryBind) (
+	fullyCovered, partiallyCovered []dependencygraph.DefUseVariable) {
+	for _, sd := range vb.images[vkImg].sparseData {
+		if fullyCover(sd.getBind(), bind) {
+			fullyCovered = append(fullyCovered, sd.backingData)
+			continue
+		}
+		if partiallyCover(sd.getBind(), bind) {
+			partiallyCovered = append(partiallyCovered, sd.backingData)
+		}
+	}
+	return
 }
 
 // getImageLayoutAndData records a read operation of the Vulkan handle, a read
@@ -1657,7 +1685,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 		size := uint64(inferredSize)
 		vb.addOpaqueImageMemBinding(ctx, bh, cmd.Image, cmd.Memory, 0, size, offset)
-	case *RecreateBindImageMemory:
+	case *RecreateImageMemoryBindings:
 		read(ctx, bh, vkHandle(cmd.Image))
 		if read(ctx, bh, vkHandle(cmd.Memory)) {
 			offset := uint64(cmd.Offset)
@@ -1681,11 +1709,24 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				}
 			}
 		}
-	case *RecreateBindImageSparseMemoryBindings:
-		// qining
+		if cmd.ImageSparseBindCount > uint32(0) &&
+			cmd.PImageSparseBinds != NewVkSparseImageMemoryBindᶜᵖ(memory.Nullptr) {
+			count := uint64(cmd.ImageSparseBindCount)
+			for _, bind := range cmd.PImageSparseBinds.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
+				if read(ctx, bh, vkHandle(bind.Memory)) {
+					vb.addSparseImageMemBinding(ctx, s, bh, cmd.Image, bind)
+				}
+			}
+		}
 
-	case *RecreateImageData:
-		write(ctx, bh, vb.getImageData(ctx, bh, cmd.Image)...)
+	case *RecreateImageSubrangeData:
+		write(ctx, bh, vb.getImageOpaqueData(ctx, bh, cmd.Image,
+			uint64(cmd.ResourceOffset), uint64(cmd.DataSize))...)
+	case *RecreateSparseImageBindData:
+		bind := cmd.PImageSparseBind.MustRead(ctx, cmd, s, nil)
+		fullyCovered, partiallyCovered := vb.getSparseImageBindData(ctx, bh, cmd.Image, bind)
+		write(ctx, bh, fullyCovered...)
+		modify(ctx, bh, partiallyCovered...)
 
 	case *VkCreateImageView:
 		write(ctx, bh, vkHandle(cmd.PView.MustRead(ctx, cmd, s, nil)))
@@ -1719,7 +1760,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		offset := uint64(cmd.MemoryOffset)
 		size := uint64(GetState(s).Buffers.Get(cmd.Buffer).Info.Size)
 		vb.addBufferMemBinding(ctx, bh, cmd.Buffer, cmd.Memory, 0, size, offset)
-	case *RecreateBindBufferMemory:
+	case *RecreateBufferMemoryBindings:
 		read(ctx, bh, vkHandle(cmd.Buffer))
 		if read(ctx, bh, vkHandle(cmd.Memory)) {
 			offset := uint64(cmd.Offset)
@@ -3229,13 +3270,13 @@ func sparseImageMemoryBindSize(ctx context.Context, imgObj *ImageObject,
 		return uint64(0)
 	}
 	blockSize := uint64(imgObj.MemoryRequirements.Alignment)
-	numBlock := numberOfSparseBlocks(bind.Offset, bind.Extent, gran)
+	numBlock := numberOfSparseBlocks(bind.Extent, gran)
 	return numBlock * blockSize
 }
 
-func numberOfSparseBlocks(offset VkOffset3D, extent VkExtent3D, gran VkExtent3D) uint64 {
-	dx := (extent.Width - uint32(offset.X) + gran.Width - 1) / gran.Width
-	dy := (extent.Height - uint32(offset.Y) + gran.Height - 1) / gran.Height
-	dz := (extent.Depth - uint32(offset.Z) + gran.Depth - 1) / gran.Depth
+func numberOfSparseBlocks(extent VkExtent3D, gran VkExtent3D) uint64 {
+	dx := (extent.Width + gran.Width - 1) / gran.Width
+	dy := (extent.Height + gran.Height - 1) / gran.Height
+	dz := (extent.Depth + gran.Depth - 1) / gran.Depth
 	return uint64(dx * dy * dz)
 }

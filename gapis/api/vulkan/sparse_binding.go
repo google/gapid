@@ -85,3 +85,36 @@ func fullyCover(orig, new VkSparseImageMemoryBind) bool {
 	}
 	return true
 }
+
+func partiallyCover(orig, new VkSparseImageMemoryBind) bool {
+	origAspect := orig.Subresource.AspectMask
+	newAspect := new.Subresource.AspectMask
+	if newAspect&origAspect != origAspect {
+		return false
+	}
+	if orig.Subresource.MipLevel != new.Subresource.MipLevel {
+		return false
+	}
+	if orig.Subresource.ArrayLayer != new.Subresource.ArrayLayer {
+		return false
+	}
+	if !rangeOverlap(orig.Offset.X, orig.Extent.Width, new.Offset.X, new.Extent.Width) {
+		return false
+	}
+	if !rangeOverlap(orig.Offset.Y, orig.Extent.Height, new.Offset.Y, new.Extent.Height) {
+		return false
+	}
+	if !rangeOverlap(orig.Offset.Z, orig.Extent.Depth, new.Offset.Z, new.Extent.Depth) {
+		return false
+	}
+	return true
+}
+
+func rangeOverlap(x1 int32, xd uint32, y1 int32, yd uint32) bool {
+	x2 := x1 + int32(xd)
+	y2 := y1 + int32(yd)
+	if x1 < y2 && y1 < x2 {
+		return true
+	}
+	return false
+}
