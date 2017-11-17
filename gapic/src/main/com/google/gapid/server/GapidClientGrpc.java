@@ -21,6 +21,8 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ClientEventRequest;
+import com.google.gapid.proto.service.Service.ClientEventResponse;
 import com.google.gapid.proto.service.Service.EnableAnalyticsRequest;
 import com.google.gapid.proto.service.Service.EnableAnalyticsResponse;
 import com.google.gapid.proto.service.Service.EnableCrashReportingRequest;
@@ -157,6 +159,12 @@ public class GapidClientGrpc implements GapidClient {
   public ListenableFuture<EnableAnalyticsResponse> enableAnalytics(EnableAnalyticsRequest request) {
     return client.enableAnalytics(request);
   }
+
+  @Override
+  public ListenableFuture<ClientEventResponse> postClientEvent(ClientEventRequest request) {
+    return client.clientEvent(request);
+  }
+
 
   @Override
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {

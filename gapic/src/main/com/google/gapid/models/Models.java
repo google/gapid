@@ -22,7 +22,7 @@ import org.eclipse.swt.widgets.Shell;
 
 public class Models {
   public final Settings settings;
-  public final ExceptionHandler handler;
+  public final Analytics analytics;
   public final Follower follower;
   public final Capture capture;
   public final Devices devices;
@@ -35,12 +35,12 @@ public class Models {
   public final Thumbnails thumbs;
   public final ConstantSets constants;
 
-  public Models(Settings settings, ExceptionHandler handler, Follower follower, Capture capture,
+  public Models(Settings settings, Analytics analytics, Follower follower, Capture capture,
       Devices devices, AtomStream atoms, ApiContext contexts, Timeline timeline,
       Resources resources, ApiState state, Reports reports, Thumbnails thumbs,
       ConstantSets constants) {
     this.settings = settings;
-    this.handler = handler;
+    this.analytics = analytics;
     this.follower = follower;
     this.capture = capture;
     this.devices = devices;
@@ -56,18 +56,19 @@ public class Models {
 
   public static Models create(
       Shell shell, Settings settings, ExceptionHandler handler, Client client) {
+    Analytics analytics = new Analytics(client, settings, handler);
     ConstantSets constants = new ConstantSets(client);
     Follower follower = new Follower(shell, client);
-    Capture capture = new Capture(shell, handler, client, settings);
-    Devices devices = new Devices(shell, handler, client, capture);
-    ApiContext contexts = new ApiContext(shell, handler, client, capture);
-    Timeline timeline = new Timeline(shell, handler, client, capture, contexts);
-    AtomStream atoms = new AtomStream(shell, handler, client, capture, contexts, constants);
-    Resources resources = new Resources(shell, handler, client, capture);
-    ApiState state = new ApiState(shell, handler, client, follower, atoms, contexts, constants);
-    Reports reports = new Reports(shell, handler, client, capture, devices, contexts);
+    Capture capture = new Capture(shell, analytics, client, settings);
+    Devices devices = new Devices(shell, analytics, client, capture);
+    ApiContext contexts = new ApiContext(shell, analytics, client, capture);
+    Timeline timeline = new Timeline(shell, analytics, client, capture, contexts);
+    AtomStream atoms = new AtomStream(shell, analytics, client, capture, contexts, constants);
+    Resources resources = new Resources(shell, analytics, client, capture);
+    ApiState state = new ApiState(shell, analytics, client, follower, atoms, contexts, constants);
+    Reports reports = new Reports(shell, analytics, client, capture, devices, contexts);
     Thumbnails thumbs = new Thumbnails(client, devices, capture, settings);
-    return new Models(settings, handler, follower, capture, devices, atoms, contexts, timeline,
+    return new Models(settings, analytics, follower, capture, devices, atoms, contexts, timeline,
         resources, state, reports, thumbs, constants);
   }
 

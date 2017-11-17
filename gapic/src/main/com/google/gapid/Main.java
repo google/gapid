@@ -90,8 +90,6 @@ public class Main {
     private final ApplicationWindow window;
     private Models models;
     private Widgets widgets;
-    private boolean reportCrashes;
-    private boolean analyticsEnabled;
 
     public UI(Settings settings, ExceptionHandler handler, Client client, String[] args) {
       this.settings = settings;
@@ -99,30 +97,6 @@ public class Main {
       this.client = client;
       this.args = args;
       this.window = new MainWindow(client, this);
-      this.reportCrashes = settings.reportCrashes;
-      this.analyticsEnabled = settings.analyticsEnabled();
-
-      settings.addListener(ignored -> {
-        boolean nowReportCrashes = settings.reportCrashes;
-        if (reportCrashes != nowReportCrashes) {
-          reportCrashes = nowReportCrashes;
-          if (nowReportCrashes) {
-            client.enableCrashReports();
-          } else {
-            client.disableCrashReports();
-          }
-        }
-
-        boolean nowAnalyticsEnabled = settings.analyticsEnabled();
-        if (analyticsEnabled != nowAnalyticsEnabled) {
-          analyticsEnabled = nowAnalyticsEnabled;
-          if (nowAnalyticsEnabled) {
-            client.enableAnalytics(settings.analyticsClientId);
-          } else {
-            client.disableAnalytics();
-          }
-        }
-      });
 
       registerWindowExceptionHandler(handler);
     }

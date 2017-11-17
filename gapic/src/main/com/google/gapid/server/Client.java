@@ -26,6 +26,7 @@ import com.google.gapid.models.Strings;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.CheckForUpdatesRequest;
+import com.google.gapid.proto.service.Service.ClientEventRequest;
 import com.google.gapid.proto.service.Service.EnableAnalyticsRequest;
 import com.google.gapid.proto.service.Service.EnableCrashReportingRequest;
 import com.google.gapid.proto.service.Service.ExportCaptureRequest;
@@ -197,33 +198,32 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getImage(), in.getError(), stack))));
   }
 
-  public void enableCrashReports() {
-    call(() -> String.format("RPC->enableCrashReports()"),
-        stack -> client.enableCrashReporting(EnableCrashReportingRequest.newBuilder()
-            .setEnable(true)
-            .build()));
+  public ListenableFuture<Void> setCrashReportsEnabled(boolean enabled) {
+    return call(() -> String.format("RPC->setCrashReportsEnabled(%b)", enabled),
+        stack -> Futures.transform(
+            client.enableCrashReporting(EnableCrashReportingRequest.newBuilder()
+                .setEnable(enabled)
+                .build()),
+            in -> null));
   }
 
-  public void disableCrashReports() {
-    call(() -> String.format("RPC->disableCrashReports()"),
-        stack -> client.enableCrashReporting(EnableCrashReportingRequest.newBuilder()
-            .setEnable(false)
-            .build()));
+  public ListenableFuture<Void> setAnalyticsEnabled(boolean enabled, String clientId) {
+    return call(() -> String.format("RPC->setAnalyticsEnabled(%b, %s)", enabled, clientId),
+        stack -> Futures.transform(
+            client.enableAnalytics(EnableAnalyticsRequest.newBuilder()
+                .setEnable(enabled)
+                .setClientId(enabled ? clientId : "")
+                .build()),
+            in -> null));
   }
 
-  public void enableAnalytics(String clientId) {
-    call(() -> String.format("RPC->enableAnalytics(%s)", clientId),
-        stack -> client.enableAnalytics(EnableAnalyticsRequest.newBuilder()
-                .setEnable(true)
-                .setClientId(clientId)
-                .build()));
-  }
-
-  public void disableAnalytics() {
-    call(() -> String.format("RPC->disableAnalytics()"),
-        stack -> client.enableAnalytics(EnableAnalyticsRequest.newBuilder()
-            .setEnable(false)
-            .build()));
+  public ListenableFuture<Void> postEvent(Service.ClientInteraction interaction) {
+    return call(() -> String.format("RPC->postClientEvent(%s)", shortDebugString(interaction)),
+        stack -> Futures.transform(
+            client.postClientEvent(ClientEventRequest.newBuilder()
+                .setInteraction(interaction)
+                .build()),
+            in -> null));
   }
 
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
