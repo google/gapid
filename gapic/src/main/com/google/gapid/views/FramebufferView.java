@@ -15,6 +15,8 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
+import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
@@ -123,36 +125,45 @@ public class FramebufferView extends Composite
   private ToolBar createToolBar(Theme theme) {
     ToolBar bar = new ToolBar(this, SWT.VERTICAL | SWT.FLAT);
     targetItem = createBaloonToolItem(bar, theme.colorBuffer0(), shell -> {
+      models.analytics.postInteraction(View.Framebuffer, "target", Show);
       Composite c = createComposite(shell, new FillLayout(SWT.VERTICAL), SWT.BORDER);
       ToolBar b = new ToolBar(c, SWT.HORIZONTAL | SWT.FLAT);
       exclusiveSelection(
-          createToggleToolItem(b, theme.colorBuffer0(),
-              e -> updateRenderTarget(API.FramebufferAttachment.Color0, theme.colorBuffer0()),
-              "Show 1st color buffer"),
-          createToggleToolItem(b, theme.colorBuffer1(),
-              e -> updateRenderTarget(API.FramebufferAttachment.Color1, theme.colorBuffer1()),
-              "Show 2nd color buffer"),
-          createToggleToolItem(b, theme.colorBuffer2(),
-              e -> updateRenderTarget(API.FramebufferAttachment.Color2, theme.colorBuffer2()),
-              "Show 3rd color buffer"),
-          createToggleToolItem(b, theme.colorBuffer3(),
-              e -> updateRenderTarget(API.FramebufferAttachment.Color3, theme.colorBuffer3()),
-              "Show 4th color buffer"),
-          createToggleToolItem(b, theme.depthBuffer(),
-              e -> updateRenderTarget(API.FramebufferAttachment.Depth, theme.depthBuffer()),
-              "Show depth buffer"));
+          createToggleToolItem(b, theme.colorBuffer0(), e -> {
+            models.analytics.postInteraction(View.Framebuffer, "color0", Invoke);
+            updateRenderTarget(API.FramebufferAttachment.Color0, theme.colorBuffer0());
+          }, "Show 1st color buffer"),
+          createToggleToolItem(b, theme.colorBuffer1(), e -> {
+            models.analytics.postInteraction(View.Framebuffer, "color1", Invoke);
+            updateRenderTarget(API.FramebufferAttachment.Color1, theme.colorBuffer1());
+          }, "Show 2nd color buffer"),
+          createToggleToolItem(b, theme.colorBuffer2(), e -> {
+            models.analytics.postInteraction(View.Framebuffer, "color2", Invoke);
+            updateRenderTarget(API.FramebufferAttachment.Color2, theme.colorBuffer2());
+          }, "Show 3rd color buffer"),
+          createToggleToolItem(b, theme.colorBuffer3(), e -> {
+            models.analytics.postInteraction(View.Framebuffer, "color3", Invoke);
+            updateRenderTarget(API.FramebufferAttachment.Color3, theme.colorBuffer3());
+          }, "Show 4th color buffer"),
+          createToggleToolItem(b, theme.depthBuffer(), e -> {
+            models.analytics.postInteraction(View.Framebuffer, "depth", Invoke);
+            updateRenderTarget(API.FramebufferAttachment.Depth, theme.depthBuffer());
+          }, "Show depth buffer"));
     }, "Choose framebuffer attachment to display");
     createSeparator(bar);
     exclusiveSelection(
         createToggleToolItem(bar, theme.wireframeNone(), e -> {
+          models.analytics.postInteraction(View.Framebuffer, "shaded", Invoke);
           renderSettings = RENDER_SHADED;
           updateBuffer();
         }, "Render shaded geometry"),
         createToggleToolItem(bar, theme.wireframeOverlay(), e -> {
+          models.analytics.postInteraction(View.Framebuffer, "overlay", Invoke);
           renderSettings = RENDER_OVERLAY;
           updateBuffer();
         }, "Render shaded geometry and overlay wireframe of last draw call"),
         createToggleToolItem(bar, theme.wireframeAll(), e -> {
+          models.analytics.postInteraction(View.Framebuffer, "wireframe", Invoke);
           renderSettings = RENDER_WIREFRAME;
           updateBuffer();
         }, "Render wireframe geometry"));
