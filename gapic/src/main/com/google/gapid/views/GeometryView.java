@@ -16,6 +16,7 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.glviewer.Geometry.isPolygon;
+import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
 import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
@@ -161,51 +162,62 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     ToolBar bar = new ToolBar(this, SWT.VERTICAL | SWT.FLAT);
     createToolItem(bar, theme.yUp(), e -> {
       boolean zUp = !data.geometry.zUp;
+      models.analytics.postInteraction(View.Geometry, zUp ? "zUp" : "yUp", Invoke);
       ((ToolItem)e.widget).setImage(zUp ? theme.zUp() : theme.yUp());
       setSceneData(data.withGeometry(new Geometry(data.geometry.model, zUp), displayMode));
     }, "Toggle Y/Z up");
     createToolItem(bar, theme.windingCCW(), e -> {
-      ((ToolItem)e.widget).setImage((data.winding == GeometryScene.Winding.CCW) ?
-          theme.windingCW() : theme.windingCCW());
+      boolean cw = data.winding == GeometryScene.Winding.CCW; // cw represent the new value.
+      models.analytics.postInteraction(View.Geometry, cw ? "cw" : "ccw", Invoke);
+      ((ToolItem)e.widget).setImage(cw ? theme.windingCW() : theme.windingCCW());
       setSceneData(data.withToggledWinding());
     }, "Toggle triangle winding");
     createSeparator(bar);
     exclusiveSelection(
         renderAsTriangles = createToggleToolItem(bar, theme.wireframeNone(), e -> {
+          models.analytics.postInteraction(View.Geometry, "triangles", Invoke);
           desiredDisplayMode = displayMode = Geometry.DisplayMode.TRIANGLES;
           updateRenderable();
         }, "Render as triangles"),
         renderAsLines = createToggleToolItem(bar, theme.wireframeAll(), e -> {
+          models.analytics.postInteraction(View.Geometry, "lines", Invoke);
           desiredDisplayMode = displayMode = Geometry.DisplayMode.LINES;
           updateRenderable();
         }, "Render as lines"),
         renderAsPoints = createToggleToolItem(bar, theme.pointCloud(), e -> {
+          models.analytics.postInteraction(View.Geometry, "points", Invoke);
           desiredDisplayMode = displayMode = Geometry.DisplayMode.POINTS;
           updateRenderable();
         }, "Render as points"));
     createSeparator(bar);
     exclusiveSelection(
         originalModelItem = createToggleToolItem(bar, theme.smooth(), e -> {
+          models.analytics.postInteraction(View.Geometry, "smooth", Invoke);
           setModel(originalModel);
         }, "Use original normals"),
         facetedModelItem = createToggleToolItem(bar, theme.faceted(), e -> {
+          models.analytics.postInteraction(View.Geometry, "faceted", Invoke);
           setModel(facetedModel);
         }, "Use computed per-face normals"));
     createSeparator(bar);
     createToolItem(bar, theme.cullingDisabled(), e -> {
-      ((ToolItem)e.widget).setImage((data.culling == GeometryScene.Culling.ON) ?
-          theme.cullingDisabled() : theme.cullingEnabled());
+      boolean cull = data.culling == GeometryScene.Culling.OFF; // cull represents the new value.
+      models.analytics.postInteraction(View.Geometry, cull ? "cullOn" : "cullOff", Invoke);
+      ((ToolItem)e.widget).setImage(cull ? theme.cullingDisabled() : theme.cullingEnabled());
       setSceneData(data.withToggledCulling());
     }, "Toggle backface culling");
     createSeparator(bar);
     exclusiveSelection(
         createToggleToolItem(bar, theme.lit(), e -> {
+          models.analytics.postInteraction(View.Geometry, "lit", Invoke);
           setSceneData(data.withShading(GeometryScene.Shading.LIT));
         }, "Render with a lit shader"),
         createToggleToolItem(bar, theme.flat(), e -> {
+          models.analytics.postInteraction(View.Geometry, "flat", Invoke);
           setSceneData(data.withShading(GeometryScene.Shading.FLAT));
         }, "Render with a flat shader (silhouette)"),
         createToggleToolItem(bar, theme.normals(), e -> {
+          models.analytics.postInteraction(View.Geometry, "normals", Invoke);
           setSceneData(data.withShading(GeometryScene.Shading.NORMALS));
         }, "Render normals"));
     createSeparator(bar);
