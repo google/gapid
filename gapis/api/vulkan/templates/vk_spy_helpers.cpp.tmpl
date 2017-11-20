@@ -622,16 +622,8 @@ void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
           for (const auto& ib : cmd.mSparseBinds->mImageBinds) {
             VkImage img = ib.first;
             for (const auto& b : ib.second->mSparseImageMemoryBinds) {
-              uint32_t last = 0;
-              for (const auto& eb : Images[img]->mSparseImageMemoryBindings) {
-                if (eb.first > last) {
-                  last = eb.first;
-                }
-                if (fullyCover(eb.second, b.second)) {
-                  Images[img]->mSparseImageMemoryBindings.erase(eb.first);
-                }
-              }
-              Images[img]->mSparseImageMemoryBindings[last+1] = b.second;
+              VkSparseImageMemoryBind bind = b.second;
+              subAddSparseImageMemoryBinding(observer, nullptr, img, bind);
             }
           }
         }

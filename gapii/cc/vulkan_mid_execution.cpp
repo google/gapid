@@ -1184,8 +1184,22 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           for (const auto& b : mOpaqueImageSparseBindings[img_handle]) {
             opaqueBinds.emplace_back(b.sparseMemoryBind());
           }
-          for (const auto& b : img->mSparseImageMemoryBindings) {
-            imageBinds.emplace_back(b.second);
+          for (const auto& aspect_i : img->mSparseImageMemoryBindings) {
+            for (const auto& layer_i : aspect_i.second->mLayers) {
+              for (const auto& level_i : layer_i.second->mLevels) {
+                for (const auto& block_i : level_i.second->mBlocks) {
+                  imageBinds.emplace_back(VkSparseImageMemoryBind{
+                      VkImageSubresource{
+                          VkImageAspectFlags(aspect_i.first), level_i.first,
+                          layer_i.first,
+                      },
+                      block_i.second->mOffset, block_i.second->mExtent,
+                      block_i.second->mMemory, block_i.second->mMemoryOffset,
+                      block_i.second->mFlags,
+                  });
+                }
+              }
+            }
           }
         }
         // recover image memory bindings

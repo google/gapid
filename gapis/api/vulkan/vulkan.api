@@ -3374,6 +3374,59 @@ cmd VkResult vkQueueBindSparse(
   return ?
 }
 
+sub void addSparseImageMemoryBinding(VkImage image, VkSparseImageMemoryBind bind) {
+  img := Images[image]
+  aspect := as!u32(bind.subresource.aspectMask)
+  if !(aspect in img.SparseImageMemoryBindings) {
+    img.SparseImageMemoryBindings[aspect] = new!SparseBoundImageAspectInfo()
+  }
+  aspectInfo := img.SparseImageMemoryBindings[aspect]
+	layer := bind.subresource.arrayLayer
+	if !(layer in aspectInfo.Layers) {
+		aspectInfo.Layers[layer] = new!SparseBoundImageLayerInfo()
+	}
+	layerInfo := aspectInfo.Layers[layer]
+	level := bind.subresource.mipLevel
+  if !(level in layerInfo.Levels) {
+		layerInfo.Levels[level] = new!SparseBoundImageLevelInfo()
+	}
+	levelInfo := layerInfo.Levels[level]
+
+	blockSize := img.MemoryRequirements.alignment
+  if (aspect in img.SparseMemoryRequirements) {
+	  gran := img.SparseMemoryRequirements[aspect].formatProperties.imageGranularity
+    mipWidth := getMipSize(img.Info.Extent.Width, level)
+    mipHeight := getMipSize(img.Info.Extent.Height, level)
+    widthInBlocks := roundUpTo(mipWidth, gran.Width)
+    heightInBlocks := roundUpTo(mipHeight, gran.Height)
+
+    xe := roundUpTo(bind.extent.Width, gran.Width)
+    ye := roundUpTo(bind.extent.Height, gran.Height)
+    ze := roundUpTo(bind.extent.Depth, gran.Depth)
+    for zi in (0 .. ze) {
+      for yi in (0 .. ye) {
+        for xi in (0 .. xe) {
+          loc := xi + yi*widthInBlocks + zi*widthInBlocks*heightInBlocks
+          offset := VkOffset3D(
+            x: bind.offset.x + as!s32(xi * gran.Width),
+            y: bind.offset.y + as!s32(yi * gran.Height),
+            z: bind.offset.z + as!s32(zi * gran.Depth),
+          )
+          memOffset := as!u64(bind.memoryOffset + as!VkDeviceSize(loc) * blockSize)
+          levelInfo.Blocks[memOffset] = new!SparseBoundImageBlockInfo(
+            Offset: offset,
+            Extent: gran,
+            Memory: bind.memory,
+            MemoryOffset: as!VkDeviceSize(memOffset),
+            Size: blockSize,
+            Flags: bind.flags,
+          )
+        }
+      }
+    }
+  }
+}
+
 @override
 @custom
 @no_replay
@@ -3921,7 +3974,8 @@ cmd void cacheImageSparseMemoryRequirements(
   if (count > 0) && (pSparseMemoryRequirements != null) {
   reqs := pSparseMemoryRequirements[0:count]
   for i in (0 .. count) {
-    Images[image].SparseMemoryRequirements[i] = reqs[i]
+    aspect := as!u32(reqs[i].formatProperties.aspectMask)
+    Images[image].SparseMemoryRequirements[aspect] = reqs[i]
   }
   }
 }
@@ -9441,7 +9495,7 @@ enum SemaphoreUpdate {
   ref!DeviceMemoryObject    BoundMemory
   VkDeviceSize              BoundMemoryOffset
   map!(u32, VkSparseMemoryBind) OpaqueSparseMemoryBindings
-  map!(u32, VkSparseImageMemoryBind) SparseImageMemoryBindings
+  map!(u32, ref!SparseBoundImageAspectInfo) SparseImageMemoryBindings
   @unused bool              IsSwapchainImage
   VkImage                   VulkanHandle
   ImageInfo                 Info
@@ -9463,6 +9517,27 @@ enum SemaphoreUpdate {
   @spy_disabled
   @hidden @nobox @internal u8[] Data
   @unused u32                   Size
+}
+
+@internal class SparseBoundImageAspectInfo {
+  map!(u32, ref!SparseBoundImageLayerInfo) Layers
+}
+
+@internal class SparseBoundImageLayerInfo {
+  map!(u32, ref!SparseBoundImageLevelInfo) Levels
+}
+
+@internal class SparseBoundImageLevelInfo {
+  map!(u64, ref!SparseBoundImageBlockInfo) Blocks
+}
+
+@internal class SparseBoundImageBlockInfo {
+  VkOffset3D      Offset
+  VkExtent3D      Extent
+  VkDeviceMemory  Memory
+  VkDeviceSize    MemoryOffset
+  VkDeviceSize    Size
+  VkSparseMemoryBindFlags Flags
 }
 
 @internal class ImageViewObject {

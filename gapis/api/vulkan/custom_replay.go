@@ -1165,8 +1165,9 @@ func (a *RecreateImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalS
 		GetState(s).Images.Get(img).MemoryRequirements = memReqs
 	}
 	if (a.SparseMemoryRequirementCount > uint32(0)) && (a.PSparseMemoryRequirements != VkSparseImageMemoryRequirementsᵖ{}) {
-		for i, req := range a.PSparseMemoryRequirements.Slice(0, uint64(a.SparseMemoryRequirementCount), l).MustRead(ctx, a, s, nil) {
-			GetState(s).Images.Get(img).SparseMemoryRequirements.Set(uint32(i), req)
+		for _, req := range a.PSparseMemoryRequirements.Slice(0, uint64(a.SparseMemoryRequirementCount), l).MustRead(ctx, a, s, nil) {
+			aspect := uint32(req.FormatProperties.AspectMask)
+			GetState(s).Images.Get(img).SparseMemoryRequirements.Set(aspect, req)
 		}
 	}
 	return nil

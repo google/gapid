@@ -50,19 +50,6 @@ func addSparseBinding(l sparseBindingList, b *VkSparseMemoryBind) (sparseBinding
 	return sparseBindingList(nl), nil
 }
 
-func addSparseImageBinding(bs U32ːVkSparseImageMemoryBindᵐ, b VkSparseImageMemoryBind) {
-	last := uint32(0)
-	for i, eb := range bs.Range() {
-		if fullyCover(eb, b) {
-			bs.Delete(i)
-		}
-		if i > last {
-			last = i
-		}
-	}
-	bs.Set(last+1, b)
-}
-
 func fullyCover(orig, new VkSparseImageMemoryBind) bool {
 	origAspect := orig.Subresource.AspectMask
 	newAspect := new.Subresource.AspectMask
