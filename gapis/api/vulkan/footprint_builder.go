@@ -1139,27 +1139,22 @@ func newBoundDescriptorSet(ctx context.Context, bh *dependencygraph.Behavior,
 func (*boundDescriptorSet) DefUseVariable() {}
 
 type sparseImageMemoryBinding struct {
-	bind        VkSparseImageMemoryBind
 	backingData dependencygraph.DefUseVariable
 }
 
 func newSparseImageMemoryBinding(ctx context.Context, bh *dependencygraph.Behavior,
-	bind VkSparseImageMemoryBind, size uint64) *sparseImageMemoryBinding {
+	memory VkDeviceMemory,
+	memoryOffset, size uint64) *sparseImageMemoryBinding {
 	b := &sparseImageMemoryBinding{
-		bind: bind,
 		backingData: memorySpan{
 			span: interval.U64Span{
-				Start: uint64(bind.MemoryOffset),
-				End:   uint64(bind.MemoryOffset) + size,
+				Start: memoryOffset,
+				End:   memoryOffset + size,
 			},
-			memory: bind.Memory,
+			memory: memory,
 		}}
 	write(ctx, bh, b)
 	return b
-}
-
-func (s *sparseImageMemoryBinding) getBind() VkSparseImageMemoryBind {
-	return s.bind
 }
 
 func (*sparseImageMemoryBinding) DefUseVariable() {}
@@ -1167,13 +1162,13 @@ func (*sparseImageMemoryBinding) DefUseVariable() {}
 type imageLayoutAndData struct {
 	layout     label
 	opaqueData resBindingList
-	sparseData []*sparseImageMemoryBinding
+	sparseData map[VkImageAspectFlags]map[uint32]map[uint32]map[uint64]*sparseImageMemoryBinding
 }
 
 func newImageLayoutAndData(ctx context.Context,
 	bh *dependencygraph.Behavior) *imageLayoutAndData {
 	d := &imageLayoutAndData{layout: newLabel()}
-	d.sparseData = []*sparseImageMemoryBinding{}
+	d.sparseData = map[VkImageAspectFlags]map[uint32]map[uint32]map[uint64]*sparseImageMemoryBinding{}
 	write(ctx, bh, d.layout)
 	return d
 }
@@ -1217,9 +1212,15 @@ func (vb *FootprintBuilder) getImageData(ctx context.Context,
 	read(ctx, bh, vkHandle(vkImg))
 	read(ctx, bh, vb.images[vkImg].layout)
 	data := vb.images[vkImg].opaqueData.getBoundData(ctx, bh, 0, vkWholeSize)
-	for _, sb := range vb.images[vkImg].sparseData {
-		read(ctx, bh, sb)
-		data = append(data, sb.backingData)
+	for _, aspecti := range vb.images[vkImg].sparseData {
+		for _, layeri := range aspecti {
+			for _, leveli := range layeri {
+				for _, blocki := range leveli {
+					read(ctx, bh, blocki)
+					data = append(data, blocki.backingData)
+				}
+			}
+		}
 	}
 	return data
 }
@@ -1237,18 +1238,26 @@ func (vb *FootprintBuilder) getImageOpaqueData(ctx context.Context,
 }
 
 func (vb *FootprintBuilder) getSparseImageBindData(ctx context.Context,
-	bh *dependencygraph.Behavior, vkImg VkImage, bind VkSparseImageMemoryBind) (
-	fullyCovered, partiallyCovered []dependencygraph.DefUseVariable) {
-	for _, sd := range vb.images[vkImg].sparseData {
-		if fullyCover(sd.getBind(), bind) {
-			fullyCovered = append(fullyCovered, sd.backingData)
-			continue
+	cmd api.Cmd, id api.CmdID, s *api.GlobalState, bh *dependencygraph.Behavior,
+	vkImg VkImage, bind VkSparseImageMemoryBind) []dependencygraph.DefUseVariable {
+	data := []dependencygraph.DefUseVariable{}
+	vb.visitBlocksInVkSparseImageMemoryBind(ctx, cmd, id, s, bh, vkImg, bind, func(
+		aspects VkImageAspectFlags, layer, level uint32, blockIndex, memoryOffset uint64) {
+		if _, ok := vb.images[vkImg].sparseData[aspects]; !ok {
+			return
 		}
-		if partiallyCover(sd.getBind(), bind) {
-			partiallyCovered = append(partiallyCovered, sd.backingData)
+		if _, ok := vb.images[vkImg].sparseData[aspects][layer]; !ok {
+			return
 		}
-	}
-	return
+		if _, ok := vb.images[vkImg].sparseData[aspects][layer][level]; !ok {
+			return
+		}
+		if _, ok := vb.images[vkImg].sparseData[aspects][layer][level][blockIndex]; !ok {
+			return
+		}
+		data = append(data, vb.images[vkImg].sparseData[aspects][layer][level][blockIndex].backingData)
+	})
+	return data
 }
 
 // getImageLayoutAndData records a read operation of the Vulkan handle, a read
@@ -1273,21 +1282,58 @@ func (vb *FootprintBuilder) addSwapchainImageMemBinding(ctx context.Context,
 		newNonSpanResBinding(ctx, bh, vkWholeSize))
 }
 
+// Traverse through the blocks covered by the given bind.
+func (vb *FootprintBuilder) visitBlocksInVkSparseImageMemoryBind(ctx context.Context,
+	cmd api.Cmd, id api.CmdID, s *api.GlobalState, bh *dependencygraph.Behavior,
+	vkImg VkImage, bind VkSparseImageMemoryBind, cb func(aspects VkImageAspectFlags,
+		layer, level uint32, blockIndex, memOffset uint64)) {
+	imgObj := GetState(s).Images.Get(vkImg)
+
+	aspect := bind.Subresource.AspectMask
+	layer := bind.Subresource.ArrayLayer
+	level := bind.Subresource.MipLevel
+
+	gran, found := sparseImageMemoryBindGranularity(ctx, imgObj, bind)
+	if found {
+		width, _ := subGetMipSize(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, imgObj.Info.Extent.Width, level)
+		height, _ := subGetMipSize(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, imgObj.Info.Extent.Height, level)
+		wb, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, width, gran.Width)
+		hb, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, height, gran.Height)
+		xe, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, bind.Extent.Width, gran.Width)
+		ye, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, bind.Extent.Height, gran.Height)
+		ze, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, bind.Extent.Depth, gran.Depth)
+		blockSize := uint64(imgObj.MemoryRequirements.Alignment)
+		for zi := uint32(0); zi < ze; zi++ {
+			for yi := uint32(0); yi < ye; yi++ {
+				for xi := uint32(0); xi < xe; xi++ {
+					loc := xi + yi*wb + zi*wb*hb
+					memoryOffset := uint64(bind.MemoryOffset) + uint64(loc)*blockSize
+					cb(aspect, layer, level, uint64(loc), memoryOffset)
+				}
+			}
+		}
+	}
+}
+
 func (vb *FootprintBuilder) addSparseImageMemBinding(ctx context.Context,
+	cmd api.Cmd, id api.CmdID,
 	s *api.GlobalState, bh *dependencygraph.Behavior, vkImg VkImage,
 	bind VkSparseImageMemoryBind) {
-	imgObj := GetState(s).Images.Get(vkImg)
-	for i := 0; i < len(vb.images[vkImg].sparseData); {
-		// If the new one fully cover an existing bind, drop the existing one.
-		if fullyCover(vb.images[vkImg].sparseData[i].getBind(), bind) {
-			vb.images[vkImg].sparseData = append(vb.images[vkImg].sparseData[:i], vb.images[vkImg].sparseData[i+1:]...)
-		}
-		i++
-	}
-	// calculate the sparse binding size
-	size := sparseImageMemoryBindSize(ctx, imgObj, bind)
-	vb.images[vkImg].sparseData = append(vb.images[vkImg].sparseData,
-		newSparseImageMemoryBinding(ctx, bh, bind, size))
+	blockSize := GetState(s).Images.Get(vkImg).MemoryRequirements.Alignment
+	vb.visitBlocksInVkSparseImageMemoryBind(ctx, cmd, id, s, bh, vkImg, bind,
+		func(aspects VkImageAspectFlags, layer, level uint32, blockIndex, memoryOffset uint64) {
+			if _, ok := vb.images[vkImg].sparseData[aspects]; !ok {
+				vb.images[vkImg].sparseData[aspects] = map[uint32]map[uint32]map[uint64]*sparseImageMemoryBinding{}
+			}
+			if _, ok := vb.images[vkImg].sparseData[aspects][layer]; !ok {
+				vb.images[vkImg].sparseData[aspects][layer] = map[uint32]map[uint64]*sparseImageMemoryBinding{}
+			}
+			if _, ok := vb.images[vkImg].sparseData[aspects][layer][level]; !ok {
+				vb.images[vkImg].sparseData[aspects][layer][level] = map[uint64]*sparseImageMemoryBinding{}
+			}
+			vb.images[vkImg].sparseData[aspects][layer][level][blockIndex] = newSparseImageMemoryBinding(
+				ctx, bh, bind.Memory, memoryOffset, uint64(blockSize))
+		})
 }
 
 func (vb *FootprintBuilder) getBufferData(ctx context.Context,
@@ -1714,7 +1760,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			count := uint64(cmd.ImageSparseBindCount)
 			for _, bind := range cmd.PImageSparseBinds.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 				if read(ctx, bh, vkHandle(bind.Memory)) {
-					vb.addSparseImageMemBinding(ctx, s, bh, cmd.Image, bind)
+					vb.addSparseImageMemBinding(ctx, cmd, id, s, bh, cmd.Image, bind)
 				}
 			}
 		}
@@ -1724,9 +1770,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			uint64(cmd.ResourceOffset), uint64(cmd.DataSize))...)
 	case *RecreateSparseImageBindData:
 		bind := cmd.PImageSparseBind.MustRead(ctx, cmd, s, nil)
-		fullyCovered, partiallyCovered := vb.getSparseImageBindData(ctx, bh, cmd.Image, bind)
-		write(ctx, bh, fullyCovered...)
-		modify(ctx, bh, partiallyCovered...)
+		write(ctx, bh, vb.getSparseImageBindData(ctx, cmd, id, s, bh, cmd.Image, bind)...)
 
 	case *VkCreateImageView:
 		write(ctx, bh, vkHandle(cmd.PView.MustRead(ctx, cmd, s, nil)))
@@ -2797,7 +2841,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 						ctx, cmd, s, nil)
 					for _, bind := range binds {
 						if read(ctx, bh, vkHandle(bind.Memory)) {
-							vb.addSparseImageMemBinding(ctx, s, bh, img, bind)
+							vb.addSparseImageMemBinding(ctx, cmd, id, s, bh, img, bind)
 						}
 					}
 				}
@@ -3254,29 +3298,16 @@ func getSubBufferData(bufData memorySpan, offset, size uint64) memorySpan {
 	}
 }
 
-func sparseImageMemoryBindSize(ctx context.Context, imgObj *ImageObject,
-	bind VkSparseImageMemoryBind) uint64 {
+func sparseImageMemoryBindGranularity(ctx context.Context, imgObj *ImageObject,
+	bind VkSparseImageMemoryBind) (VkExtent3D, bool) {
 	var gran VkExtent3D
-	found := false
 	for _, r := range imgObj.SparseMemoryRequirements.Range() {
 		if r.FormatProperties.AspectMask == bind.Subresource.AspectMask {
 			gran = r.FormatProperties.ImageGranularity
-			found = true
+			return gran, true
 		}
 	}
-	if !found {
-		log.E(ctx, "Sparse image granularity not found for VkImage: %v, "+
-			"with AspectMask: %v", imgObj.VulkanHandle, bind.Subresource.AspectMask)
-		return uint64(0)
-	}
-	blockSize := uint64(imgObj.MemoryRequirements.Alignment)
-	numBlock := numberOfSparseBlocks(bind.Extent, gran)
-	return numBlock * blockSize
-}
-
-func numberOfSparseBlocks(extent VkExtent3D, gran VkExtent3D) uint64 {
-	dx := (extent.Width + gran.Width - 1) / gran.Width
-	dy := (extent.Height + gran.Height - 1) / gran.Height
-	dz := (extent.Depth + gran.Depth - 1) / gran.Depth
-	return uint64(dx * dy * dz)
+	log.E(ctx, "Sparse image granularity not found for VkImage: %v, "+
+		"with AspectMask: %v", imgObj.VulkanHandle, bind.Subresource.AspectMask)
+	return VkExtent3D{0, 0, 0}, false
 }
