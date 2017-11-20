@@ -347,7 +347,9 @@ bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
   return true;
 }
 
-// Handy toolbox
+// A helper class to copy the data from a given buffer range or subresources of
+// an image. It handles the creation of extra Vulkan handles to do the job and
+// cleaning of those helper handles.
 class CopyDataHelper {
   public:
    CopyDataHelper(VulkanSpy* spy,
@@ -1258,67 +1260,93 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
               res_offset, data.size(), data.data());
         };
 
-        // Returns true if all the miptail regions are bound. If |recreate_data|
-        // is set to true, recreate the data along the check.
-        auto check_or_recreate_miptail_data = [&](bool recreate_data) {
+        // Returns true if the metadata is fully bound.
+        auto is_metadata_bound = [&]() {
           for (const auto& ri : img->mSparseMemoryRequirements) {
-            const auto& req = ri.second;
-            // Check the tail regions for all non-metadata regions.
-            if (0 == (req.mformatProperties.maspectMask &
-                      VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT)) {
-              if (0 != (req.mformatProperties.mflags &
-                        VkSparseImageFormatFlagBits::
-                            VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT)) {
-                // One mip tail region to hold all mip tails for this apect.
-                if (!IsFullyBound(req.mimageMipTailOffset,
-                                    req.mimageMipTailSize,
-                                    mOpaqueImageSparseBindings[img_handle])) {
-                  return false;
-                }
-                if (recreate_data) {
-                  VkImageSubresourceRange rng{
-                      req.mformatProperties.maspectMask,
-                      req.mimageMipTailFirstLod,
-                      img_info.mMipLevels - req.mimageMipTailFirstLod,
-                      0,
-                      img_info.mArrayLayers,
-                  };
-                  recreate_subrng_data(rng, req.mimageMipTailOffset, req.mimageMipTailSize);
-                }
-              } else {
-                // Each layer has its own mip tail region, check each of them.
-                for (uint32_t i = 0; i < uint32_t(img_info.mArrayLayers); i++) {
-                  VkDeviceSize offset = req.mimageMipTailOffset + i * req.mimageMipTailStride;
-                  if (!IsFullyBound(
-                          offset,
-                          req.mimageMipTailSize,
-                          mOpaqueImageSparseBindings[img_handle])) {
-                    return false;
-                  }
-                  if (recreate_data) {
-                    VkImageSubresourceRange rng{
-                        req.mformatProperties.maspectMask,
-                        req.mimageMipTailFirstLod,
-                        img_info.mMipLevels - req.mimageMipTailFirstLod,
-                        i,
-                        1,
-                    };
-                    recreate_subrng_data(rng, offset, req.mimageMipTailSize);
-                  }
-                }
+            const auto& prop = ri.second.mformatProperties;
+            if (prop.maspectMask ==
+                VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT) {
+              // All Metadata must be bound before use. And metdata aspect only
+              // has a miptail region for all the data.
+              if (!IsFullyBound(ri.second.mimageMipTailOffset,
+                    ri.second.mimageMipTailSize,
+                    mOpaqueImageSparseBindings[img_handle])) {
+                return false;
               }
             }
           }
           return true;
         };
 
+        // Helper function to recreate miptail region data.
+        auto recreate_miptail = [&]() {
+          for (const auto& ri : img->mSparseMemoryRequirements) {
+            const auto& prop = ri.second.mformatProperties;
+            if (prop.maspectMask ==
+                VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT) {
+              VkImageSubresourceRange rng{
+                  VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT,
+                  ri.second.mimageMipTailFirstLod,
+                  img_info.mMipLevels - ri.second.mimageMipTailFirstLod,
+                  0,
+                  img_info.mArrayLayers,
+              };
+              recreate_subrng_data(rng, ri.second.mimageMipTailOffset,
+                                   ri.second.mimageMipTailSize);
+            } else {
+              // Other aspects than Metadata.
+              if ((prop.mflags &
+                   VkSparseImageFormatFlagBits::
+                       VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) != 0) {
+                // One miptail region for all layers' miptails.
+                if (IsFullyBound(ri.second.mimageMipTailOffset,
+                                 ri.second.mimageMipTailSize,
+                                 mOpaqueImageSparseBindings[img_handle])) {
+                  VkImageSubresourceRange rng{
+                      // TODO: To add support of depth/stencil images, need to
+                      // handle the case that there are multiple bits in
+                      // AspectMask here. vkCmdCopyBufferToImage or
+                      // ImageToBuffer does not support multiple bits in the
+                      // aspectMask.
+                      ri.second.mformatProperties.maspectMask,
+                      ri.second.mimageMipTailFirstLod,
+                      img_info.mMipLevels - ri.second.mimageMipTailFirstLod,
+                      0,
+                      img_info.mArrayLayers,
+                  };
+                  recreate_subrng_data(rng, ri.second.mimageMipTailOffset,
+                                       ri.second.mimageMipTailSize);
+                }
+              } else {
+                // Each layer has its own miptail region
+                for (uint32_t i = 0; i < uint32_t(img_info.mArrayLayers); i++) {
+                  VkDeviceSize offset = ri.second.mimageMipTailOffset +
+                                        i * ri.second.mimageMipTailStride;
+                  if (IsFullyBound(offset, ri.second.mimageMipTailSize,
+                                   mOpaqueImageSparseBindings[img_handle])) {
+                    VkImageSubresourceRange rng{
+                        ri.second.mformatProperties.maspectMask,
+                        ri.second.mimageMipTailFirstLod,
+                        img_info.mMipLevels - ri.second.mimageMipTailFirstLod,
+                        i,
+                        1,
+                    };
+                    recreate_subrng_data(rng, offset,
+                                         ri.second.mimageMipTailSize);
+                  }
+                }
+              }
+            }
+          }
+        };
+
         if (sparseResidency) {
           // Handle MipTails first, all metadata (mip tail) regions must be
           // bound before the image can be accessed.
-          if(!check_or_recreate_miptail_data(false)) {
+          if(!is_metadata_bound()) {
             continue;
           }
-          check_or_recreate_miptail_data(true);
+          recreate_miptail();
           for (auto& b : imageBinds) {
             recreate_sparse_bind_data(b);
           }
