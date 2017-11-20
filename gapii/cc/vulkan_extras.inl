@@ -147,16 +147,24 @@ void SpyOverride_RecreateSwapchain(VkDevice, const VkSwapchainCreateInfoKHR*,
                                    VkSwapchainKHR*) {}
 void SpyOverride_RecreateImage(
     VkDevice, const VkImageCreateInfo*, VkImage*,
-    VkMemoryRequirements* pMemoryRequirements, uint32_t sparseMemoryRequirementCount,
+    VkMemoryRequirements* pMemoryRequirements,
+    uint32_t sparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {}
-void SpyOverride_RecreateBindImageMemory(VkDevice, VkImage, VkDeviceMemory,
+void SpyOverride_RecreateImageMemoryBindings(VkDevice, VkImage, VkDeviceMemory,
                                          VkDeviceSize offset,
-                                         uint32_t bindCount,
-                                         VkSparseMemoryBind* binds) {}
-void SpyOverride_RecreateImageData(VkDevice, VkImage,
-                                   uint32_t /*VkImageLayout*/,
-                                   uint32_t hostMemoryIndex, VkQueue,
-                                   VkDeviceSize dataSize, void* data) {}
+                                         uint32_t opaqueBindCount,
+                                         VkSparseMemoryBind* pOpaqueBinds,
+                                         uint32_t imageBindCount,
+                                         VkSparseImageMemoryBind* pImageBinds) {}
+void SpyOverride_RecreateImageSubrangeData(VkDevice, VkImage,
+                                           uint32_t /*VkImageLayout*/,
+                                           VkImageSubresourceRange* range,
+                                           uint32_t hostMemoryIndex, VkQueue,
+                                           VkDeviceSize resourceOffset,
+                                           VkDeviceSize dataSize, void* data) {}
+void SpyOverride_RecreateSparseImageBindData(
+    VkDevice, VkImage, uint32_t /*VkImageLayout*/, VkSparseImageMemoryBind*,
+    uint32_t hostMemoryIndex, VkQueue, VkDeviceSize dataSize, void* data) {}
 void SpyOverride_RecreateImageView(VkDevice, const VkImageViewCreateInfo*,
                                    VkImageView*) {}
 void SpyOverride_RecreateSampler(VkDevice, const VkSamplerCreateInfo*,
@@ -174,13 +182,17 @@ void SpyOverride_RecreateComputePipeline(VkDevice, VkPipelineCache,
                                          const VkComputePipelineCreateInfo*,
                                          VkPipeline*) {}
 void SpyOverride_RecreateBuffer(VkDevice, VkBufferCreateInfo*, VkBuffer*) {}
-void SpyOverride_RecreateBindBufferMemory(VkDevice, VkBuffer, VkDeviceMemory,
-                                          VkDeviceSize offset,
-                                          uint32_t bindCount,
-                                          VkSparseMemoryBind* binds) {}
-void SpyOverride_RecreateBufferData(VkDevice, VkBuffer,
+void SpyOverride_RecreateBufferMemoryBindings(VkDevice, VkBuffer,
+                                              VkDeviceMemory,
+                                              VkDeviceSize offset,
+                                              uint32_t sparseBindCount,
+                                              VkSparseMemoryBind* binds) {}
+void SpyOverride_RecreateBufferData(VkDevice, VkBuffer, VkDeviceSize,
+                                    VkDeviceSize,
                                     uint32_t hostBufferMemoryIndex, VkQueue,
                                     void* data) {}
+void SpyOverride_RecreateSparseBufferData(VkDevice, VkBuffer, VkDeviceSize,
+                                          VkDeviceSize, void*) {}
 void SpyOverride_RecreateBufferView(VkDevice, const VkBufferViewCreateInfo*,
                                     VkBufferView*) {}
 void SpyOverride_RecreatePhysicalDeviceProperties(
@@ -220,7 +232,6 @@ uint32_t SpyOverride_createImageAndCacheMemoryRequirements(
 void SpyOverride_cacheImageSparseMemoryRequirements(
     VkDevice device, VkImage image, uint32_t count,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements);
-
 
 class SparseBindingInterval {
  public:

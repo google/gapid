@@ -1510,7 +1510,7 @@ class VkMemoryRequirements {
 }
 
 class VkSparseImageFormatProperties {
-  VkImageAspectFlagBits    aspectMask
+  VkImageAspectFlags       aspectMask
   VkExtent3D               imageGranularity
   VkSparseImageFormatFlags flags
 }
@@ -1544,7 +1544,7 @@ class VkSparseImageOpaqueMemoryBindInfo {
 }
 
 class VkImageSubresource {
-  VkImageAspectFlagBits aspectMask
+  VkImageAspectFlags    aspectMask
   u32                   mipLevel
   u32                   arrayLayer
 }
@@ -3110,6 +3110,8 @@ cmd void RecreateState() {
 cmd void RecreateBufferData(
     VkDevice device,
     VkBuffer buffer,
+    VkDeviceSize offset,
+    VkDeviceSize size,
     u32      hostBufferMemoryIndex,
     VkQueue  lastBoundQueue,
     void*    data) {
@@ -3119,7 +3121,7 @@ cmd void RecreateBufferData(
 @override
 @custom
 @no_replay
-cmd void RecreateBindBufferMemory(
+cmd void RecreateBufferMemoryBindings(
     VkDevice       device,
     VkBuffer       buffer,
     VkDeviceMemory memory,
@@ -3149,32 +3151,60 @@ cmd VkResult vkBindBufferMemory(
 @override
 @custom
 @no_replay
-cmd void RecreateImageData(
+cmd void RecreateImageSubrangeData(
     VkDevice      device,
     VkImage       image,
     VkImageLayout lastLayout,
+    const VkImageSubresourceRange* pRange,
     u32           hostMemoryIndex,
     VkQueue       lastBoundQueue,
+    VkDeviceSize  resourceOffset,
     VkDeviceSize  dataSize,
     void*         data) {
+  _ = pRange[0]
   read(as!u8*(data)[0:dataSize])
 }
 
 @override
 @custom
 @no_replay
-cmd void RecreateBindImageMemory(
+cmd void RecreateSparseImageBindData(
+    VkDevice      device,
+    VkImage       image,
+    VkImageLayout lastLayout,
+    VkSparseImageMemoryBind* pImageSparseBind,
+    u32           hostMemoryIndex,
+    VkQueue       lastBoundQueue,
+    VkDeviceSize  dataSize,
+    void*         data) {
+  _ = pImageSparseBind[0]
+  read(as!u8*(data)[0:dataSize])
+}
+
+@override
+@custom
+@no_replay
+cmd void RecreateImageMemoryBindings(
     VkDevice       device,
     VkImage        image,
     VkDeviceMemory memory,
     VkDeviceSize   offset,
     u32            opaqueSparseBindCount,
-    const VkSparseMemoryBind* pOpaqueSparseBinds) {
+    const VkSparseMemoryBind* pOpaqueSparseBinds,
+    u32            imageSparseBindCount,
+    const VkSparseImageMemoryBind* pImageSparseBinds) {
     if opaqueSparseBindCount > 0 {
-      binds := pOpaqueSparseBinds[0:opaqueSparseBindCount]
+      opaqueBinds := pOpaqueSparseBinds[0:opaqueSparseBindCount]
       for i in (0 .. opaqueSparseBindCount) {
-        bind := binds[i]
-        _ = bind
+        ob := opaqueBinds[i]
+        _ = ob
+      }
+    }
+    if imageSparseBindCount > 0 {
+      imageBinds := pImageSparseBinds[0:imageSparseBindCount]
+      for i in (0 .. imageSparseBindCount) {
+        ib := imageBinds[i]
+        _ = ib
       }
     }
 }
@@ -9411,6 +9441,7 @@ enum SemaphoreUpdate {
   ref!DeviceMemoryObject    BoundMemory
   VkDeviceSize              BoundMemoryOffset
   map!(u32, VkSparseMemoryBind) OpaqueSparseMemoryBindings
+  map!(u32, VkSparseImageMemoryBind) SparseImageMemoryBindings
   @unused bool              IsSwapchainImage
   VkImage                   VulkanHandle
   ImageInfo                 Info
