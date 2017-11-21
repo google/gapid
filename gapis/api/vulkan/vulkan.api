@@ -3731,7 +3731,8 @@ cmd VkResult vkGetQueryPoolResults(
 cmd void RecreateBuffer(
     VkDevice                  device,
     const VkBufferCreateInfo* pCreateInfo,
-    VkBuffer*                 pBuffer) {
+    VkBuffer*                 pBuffer
+    VkMemoryRequirements*     pMemoryRequirements) {
   create_info := pCreateInfo[0]
   if (create_info.queueFamilyIndexCount > 0) {
     read(create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount])
@@ -3751,6 +3752,46 @@ cmd void RecreateBuffer(
     }
   }
   write(pBuffer[0:1])
+  if pMemoryRequirements != null {
+    write(pMemoryRequirements[0:1])
+  }
+}
+
+@threadSafety("system")
+@override
+@no_replay
+cmd VkResult createBufferAndCacheMemoryRequirements(
+  VkDevice device,
+  const VkBufferCreateInfo* pCreateInfo,
+  const VkAllocationCallbacks* pAllocator,
+  VkBuffer* pBuffer,
+  VkMemoryRequirements* pMemoryRequirements) {
+  // TODO: pAllocator
+  buffer_create_info := pCreateInfo[0]
+
+  read(buffer_create_info.pQueueFamilyIndices[0:buffer_create_info.queueFamilyIndexCount])
+
+  // Handle pNext
+  if buffer_create_info.pNext != null {
+    numPNext := numberOfPNext(buffer_create_info.pNext)
+    next := MutableVoidPtr(as!void*(buffer_create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: {
+          read(as!VkDedicatedAllocationBufferCreateInfoNV*(next.Ptr)[0:1])
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
+  buffer := ?
+  pBuffer[0] = buffer
+  bufferObject := new!BufferObject()
+  bufferObject.MemoryRequirements = pMemoryRequirements[0]
+  Buffers[buffer] = bufferObject
+  return ?
 }
 
 @threadSafety("system")
@@ -3796,17 +3837,22 @@ cmd VkResult vkCreateBuffer(
     }
   }
 
-  bufferObject := new!BufferObject(Device: device,
-    Memory:              null,
-    MemoryOffset:        0,
-    Info:                bufferInfo,
-  )
 
   buffer := ?
   if pBuffer == null {vkErrorNullPointer("VkBuffer")}
   pBuffer[0] = buffer
+
+  bufferObject := switch (Buffers[buffer] == null){
+    case true:
+       new!BufferObject()
+    case false:
+      Buffers[buffer]
+  }
+  bufferObject.Device = device
   bufferObject.VulkanHandle = buffer
+  bufferObject.Info = bufferInfo
   Buffers[buffer] = bufferObject
+
   return ?
 }
 
@@ -9457,9 +9503,10 @@ enum SemaphoreUpdate {
   @unused BufferInfo      Info
   ref!DeviceMemoryObject  Memory
   VkDeviceSize            MemoryOffset
-  map!(u32, VkSparseMemoryBind) SparseMemoryBindings
+  map!(u64, VkSparseMemoryBind) SparseMemoryBindings
   @unused ref!QueueObject LastBoundQueue
   @unused ref!VulkanDebugMarkerInfo   DebugInfo
+  VkMemoryRequirements     MemoryRequirements
 }
 
 @internal class BufferViewObject {
@@ -9494,7 +9541,9 @@ enum SemaphoreUpdate {
   @unused ref!QueueObject   LastBoundQueue
   ref!DeviceMemoryObject    BoundMemory
   VkDeviceSize              BoundMemoryOffset
-  map!(u32, VkSparseMemoryBind) OpaqueSparseMemoryBindings
+  // mapping from the resource offsets to the sparse bindings in the unit of sparse blocks
+  map!(u64, VkSparseMemoryBind) OpaqueSparseMemoryBindings
+  // mapping from image aspect flags to binding info
   map!(u32, ref!SparseBoundImageAspectInfo) SparseImageMemoryBindings
   @unused bool              IsSwapchainImage
   VkImage                   VulkanHandle
