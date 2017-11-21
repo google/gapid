@@ -1697,15 +1697,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	// image
-	case *CreateImageAndCacheMemoryRequirements:
-		vkImg := cmd.PImage.MustRead(ctx, cmd, s, nil)
-		write(ctx, bh, vkHandle(vkImg))
-		vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
-	case *CacheImageSparseMemoryRequirements:
-		modify(ctx, bh, vkHandle(cmd.Image))
 	case *VkCreateImage:
 		vkImg := cmd.PImage.MustRead(ctx, cmd, s, nil)
-		modify(ctx, bh, vkHandle(vkImg))
+		write(ctx, bh, vkHandle(vkImg))
 		vb.images[vkImg] = newImageLayoutAndData(ctx, bh)
 	case *RecreateImage:
 		vkImg := cmd.PImage.MustRead(ctx, cmd, s, nil)
@@ -1717,6 +1711,16 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			delete(vb.images, vkImg)
 		}
 		bh.Alive = true
+	case *VkGetImageMemoryRequirements:
+		// TODO: Once the memory requirements are moved out from the image object,
+		// drop the 'modify' on the image handle, replace it with another proper
+		// representation of the cached data.
+		modify(ctx, bh, vkHandle(cmd.Image))
+	case *VkGetImageSparseMemoryRequirements:
+		// TODO: Once the memory requirements are moved out from the image object,
+		// drop the 'modify' on the image handle, replace it with another proper
+		// representation of the cached data.
+		modify(ctx, bh, vkHandle(cmd.Image))
 
 	case *VkBindImageMemory:
 		read(ctx, bh, vkHandle(cmd.Image))
@@ -1785,12 +1789,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		bh.Alive = true
 
 	// buffer
-	case *CreateBufferAndCacheMemoryRequirements:
-		vkBuf := cmd.PBuffer.MustRead(ctx, cmd, s, nil)
-		write(ctx, bh, vkHandle(vkBuf))
 	case *VkCreateBuffer:
 		vkBuf := cmd.PBuffer.MustRead(ctx, cmd, s, nil)
-		modify(ctx, bh, vkHandle(vkBuf))
+		write(ctx, bh, vkHandle(vkBuf))
 	case *RecreateBuffer:
 		vkBuf := cmd.PBuffer.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkBuf))
@@ -1800,6 +1801,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			delete(vb.buffers, vkBuf)
 		}
 		bh.Alive = true
+	case *VkGetBufferMemoryRequirements:
+		// TODO: Once the memory requirements are moved out from the buffer object,
+		// drop the 'modify' on the buffer handle, replace it with another proper
+		// representation of the cached data.
+		modify(ctx, bh, vkHandle(cmd.Buffer))
 
 	case *VkBindBufferMemory:
 		read(ctx, bh, vkHandle(cmd.Buffer))
@@ -2956,14 +2962,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	// Property queries, can be dropped if they are not the requested command.
 	case *VkGetDeviceMemoryCommitment:
 		read(ctx, bh, vkHandle(cmd.Memory))
-	case *VkGetImageMemoryRequirements:
-		read(ctx, bh, vkHandle(cmd.Image))
-	case *VkGetImageSparseMemoryRequirements:
-		read(ctx, bh, vkHandle(cmd.Image))
 	case *VkGetImageSubresourceLayout:
 		read(ctx, bh, vkHandle(cmd.Image))
-	case *VkGetBufferMemoryRequirements:
-		read(ctx, bh, vkHandle(cmd.Buffer))
 	case *VkGetRenderAreaGranularity:
 		read(ctx, bh, vkHandle(cmd.RenderPass))
 	case *VkEnumerateInstanceExtensionProperties,
