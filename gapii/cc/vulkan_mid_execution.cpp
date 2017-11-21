@@ -332,7 +332,39 @@ uint32_t GetMemoryTypeIndexForStagingResources(
 // covered in the |bindings|.
 bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
                   const U64ToVkSparseMemoryBind& bindings) {
-  return true;
+  std::vector<uint64_t> resource_offsets;
+  resource_offsets.reserve(bindings.size());
+  for (const auto& bi : bindings) {
+    resource_offsets.push_back(bi.first);
+  }
+  std::sort(resource_offsets.begin(), resource_offsets.end());
+  auto one_after_req_range = std::upper_bound(
+      resource_offsets.begin(), resource_offsets.end(), offset + size);
+  if (one_after_req_range - resource_offsets.begin() == 0) {
+    return false;
+  }
+  uint64_t i = one_after_req_range - resource_offsets.begin() - 1;
+  VkDeviceSize end = offset + size;
+  while (i > 0 && end > offset) {
+    uint64_t res_offset = resource_offsets[i];
+    if (res_offset + bindings.find(res_offset)->second.msize >= end) {
+      end = res_offset;
+      i--;
+      continue;
+    }
+    return false;
+  }
+  if (end <= offset) {
+    return true;
+  }
+  if (i == 0) {
+    uint64_t res_offset = resource_offsets[0];
+    if (res_offset <= offset &&
+        res_offset + bindings.find(res_offset)->second.msize >= end) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // A helper class to copy the data from a given buffer range or subresources of
