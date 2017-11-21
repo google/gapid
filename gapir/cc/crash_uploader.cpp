@@ -51,7 +51,7 @@ CrashUploader::CrashUploader(
             return false;
         }
 
-        if (!mConnection.crash(minidumpPath, minidumpData.get(), minidumpSize)) {
+        if (!mConnection.postCrashdump(minidumpPath, minidumpData.get(), minidumpSize)) {
             GAPID_ERROR("Failed to send minidump to server");
             return false;
         }
@@ -64,4 +64,4 @@ CrashUploader::~CrashUploader() {
     mCrashHandler.unsetHandlerFunction();
 }
 
-}
+} // namespace gapir

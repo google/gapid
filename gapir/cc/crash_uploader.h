@@ -37,6 +37,6 @@ private:
   const ServerConnection& mConnection;
 };
 
-}
+} // namespace gapir
 
 #endif // GAPIR_CRASH_REPORTER_H

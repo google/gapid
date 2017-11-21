@@ -80,6 +80,7 @@ func Disable() {
 	}
 }
 
+// ReportMinidump encodes and sends a minidump report to the crashURL endpoint.
 func ReportMinidump(r Reporter, minidumpName string, minidumpData []byte) error {
 	if disable != nil {
 		if err := r.reportMinidump(minidumpName, minidumpData, crashURL); err != nil {
@@ -89,6 +90,7 @@ func ReportMinidump(r Reporter, minidumpName string, minidumpData []byte) error 
 	return nil
 }
 
+// Reporter stores the common information sent in a crash report.
 type Reporter struct {
 	AppName    string
 	AppVersion string
