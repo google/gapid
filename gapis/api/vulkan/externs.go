@@ -1056,63 +1056,69 @@ func (e externs) popAndPushMarkerForNextSubpass(nextSubpass uint32) {
 }
 
 func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState, binds *QueuedSparseBinds) {
-	var err error
+	// Do not use the subroutine: subRoundUpTo because the subroutine takes uint32 arguments
+	roundUpTo := func(dividend, divisor VkDeviceSize) VkDeviceSize {
+		return (dividend + divisor - 1) / divisor
+	}
 	st := GetState(s)
-	if st.bufferSparseBindings == nil {
-		st.bufferSparseBindings = map[VkBuffer]sparseBindingList{}
-	}
-	if st.opaqueImageSparseBindings == nil {
-		st.opaqueImageSparseBindings = map[VkImage]sparseBindingList{}
-	}
 	for buffer, binds := range binds.BufferBinds.Range() {
-		for _, bind := range binds.SparseMemoryBinds.Range() {
-			if _, ok := st.bufferSparseBindings[buffer]; !ok {
-				st.bufferSparseBindings[buffer] = sparseBindingList{}
-			}
-			dbind, _ := bind.duplicate().(*VkSparseMemoryBind)
-			st.bufferSparseBindings[buffer], err = addSparseBinding(
-				st.bufferSparseBindings[buffer], dbind)
-			if err != nil {
-				log.E(ctx, err.Error())
-			}
+		if !st.Buffers.Contains(buffer) {
+			subVkErrorInvalidBuffer(ctx, a, id, nil, s, nil, a.Thread(), nil, buffer)
 		}
-		// update the data for UI
 		bufObj := st.Buffers.Get(buffer)
-		for i := 0; i < len(st.bufferSparseBindings[buffer]) || i < bufObj.SparseMemoryBindings.Len(); i++ {
-			if i >= len(st.bufferSparseBindings[buffer]) {
-				bufObj.SparseMemoryBindings.Delete(uint32(i))
-			}
-			if ptr, ok := st.bufferSparseBindings[buffer][i].(*VkSparseMemoryBind); ok {
-				bufObj.SparseMemoryBindings.Set(uint32(i), *ptr)
+		blockSize := bufObj.MemoryRequirements.Alignment
+		for _, bind := range binds.SparseMemoryBinds.Range() {
+			// TODO: assert bind.Size and bind.MemoryOffset must be multiple times of
+			// block size.
+			numBlocks := roundUpTo(bind.Size, blockSize)
+			memOffset := bind.MemoryOffset
+			resOffset := bind.ResourceOffset
+			for i := VkDeviceSize(0); i < numBlocks; i++ {
+				bufObj.SparseMemoryBindings.Set(
+					uint64(resOffset), VkSparseMemoryBind{
+						ResourceOffset: resOffset,
+						Size:           blockSize,
+						Memory:         bind.Memory,
+						MemoryOffset:   memOffset,
+						Flags:          bind.Flags,
+					})
+				memOffset += blockSize
+				resOffset += blockSize
 			}
 		}
 	}
 	for image, binds := range binds.OpaqueImageBinds.Range() {
-		for _, bind := range binds.SparseMemoryBinds.Range() {
-			if _, ok := st.opaqueImageSparseBindings[image]; !ok {
-				st.opaqueImageSparseBindings[image] = sparseBindingList{}
-			}
-			dbind, _ := bind.duplicate().(*VkSparseMemoryBind)
-			st.opaqueImageSparseBindings[image], err = addSparseBinding(
-				st.opaqueImageSparseBindings[image], dbind)
-			if err != nil {
-				log.E(ctx, err.Error())
-			}
+		if !st.Images.Contains(image) {
+			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, image)
 		}
-		// update the data for UI
 		imgObj := st.Images.Get(image)
-		for i := 0; i < len(st.opaqueImageSparseBindings[image]) || i < imgObj.OpaqueSparseMemoryBindings.Len(); i++ {
-			if i >= len(st.opaqueImageSparseBindings[image]) {
-				imgObj.OpaqueSparseMemoryBindings.Delete(uint32(i))
-			}
-			if ptr, ok := st.opaqueImageSparseBindings[image][i].(*VkSparseMemoryBind); ok {
-				imgObj.OpaqueSparseMemoryBindings.Set(uint32(i), *ptr)
+		blockSize := imgObj.MemoryRequirements.Alignment
+		for _, bind := range binds.SparseMemoryBinds.Range() {
+			// TODO: assert bind.Size and bind.MemoryOffset must be multiple times of
+			// block size.
+			numBlocks := roundUpTo(bind.Size, blockSize)
+			memOffset := bind.MemoryOffset
+			resOffset := bind.ResourceOffset
+			for i := VkDeviceSize(0); i < numBlocks; i++ {
+				imgObj.OpaqueSparseMemoryBindings.Set(
+					uint64(resOffset), VkSparseMemoryBind{
+						ResourceOffset: resOffset,
+						Size:           blockSize,
+						Memory:         bind.Memory,
+						MemoryOffset:   memOffset,
+						Flags:          bind.Flags,
+					})
+				memOffset += blockSize
+				resOffset += blockSize
 			}
 		}
 	}
 	for image, binds := range binds.ImageBinds.Range() {
+		if !st.Images.Contains(image) {
+			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, image)
+		}
+		imgObj := st.Images.Get(image)
 		for _, bind := range binds.SparseImageMemoryBinds.Range() {
-			imgObj := st.Images.Get(image)
 			if imgObj != nil {
 				err := subAddSparseImageMemoryBinding(ctx, a, id, nil, s, nil, a.Thread(), nil, image, bind)
 				if err != nil {

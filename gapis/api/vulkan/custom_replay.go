@@ -1523,6 +1523,11 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	if err := hijack.Mutate(ctx, id, s, b); err != nil {
 		return err
 	}
+	buf := a.PBuffer.MustRead(ctx, a, s, nil)
+	if a.PMemoryRequirements != (VkMemoryRequirementsᵖ{}) {
+		memReqs := a.PMemoryRequirements.MustRead(ctx, a, s, nil)
+		GetState(s).Buffers.Get(buf).MemoryRequirements = memReqs
+	}
 	return nil
 }
 

@@ -331,20 +331,40 @@ uint32_t GetMemoryTypeIndexForStagingResources(
 // Returns true if the resource range from |offset| with |size| is fully
 // covered in the |bindings|.
 bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
-                  const VulkanSpy::SparseBindingList& bindings) {
-  auto overlapped = bindings.intersect(offset, offset + size);
-  VkDeviceSize pos = offset;
-  for (const auto& o : overlapped) {
-    if (o.start() <= pos) {
-      pos = o.end();
-    } else {
-      return false;
-    }
+                  const U64ToVkSparseMemoryBind& bindings) {
+  std::vector<uint64_t> resource_offsets;
+  resource_offsets.reserve(bindings.size());
+  for (const auto& bi : bindings) {
+    resource_offsets.push_back(bi.first);
   }
-  if (pos < offset + size) {
+  std::sort(resource_offsets.begin(), resource_offsets.end());
+  auto one_after_req_range = std::upper_bound(
+      resource_offsets.begin(), resource_offsets.end(), offset + size);
+  if (one_after_req_range - resource_offsets.begin() == 0) {
     return false;
   }
-  return true;
+  uint64_t i = one_after_req_range - resource_offsets.begin() - 1;
+  VkDeviceSize end = offset + size;
+  while (i > 0 && end > offset) {
+    uint64_t res_offset = resource_offsets[i];
+    if (res_offset + bindings.find(res_offset)->second.msize >= end) {
+      end = res_offset;
+      i--;
+      continue;
+    }
+    return false;
+  }
+  if (end <= offset) {
+    return true;
+  }
+  if (i == 0) {
+    uint64_t res_offset = resource_offsets[0];
+    if (res_offset <= offset &&
+        res_offset + bindings.find(res_offset)->second.msize >= end) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // A helper class to copy the data from a given buffer range or subresources of
@@ -952,7 +972,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         buffer_create_info.mpNext = &dedicated_allocation_create_info;
       }
       RecreateBuffer(observer, buffer.second->mDevice, &buffer_create_info,
-                     &buffer.second->mVulkanHandle);
+                     &buffer.second->mVulkanHandle, &buffer.second->mMemoryRequirements);
       recreateDebugInfo(
           this, observer,
           VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT,
@@ -1060,9 +1080,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
       auto buf = bi.second;
       const BufferInfo& buf_info = buf->mInfo;
       bool denseBound = buf->mMemory != nullptr;
-      bool sparseBound = (mBufferSparseBindings.find(buf_handle) !=
-                          mBufferSparseBindings.end()) &&
-                         (mBufferSparseBindings[buf_handle].count() > 0);
+      bool sparseBound = (buf->mSparseMemoryBindings.size() > 0);
       bool sparseBinding =
           (buf_info.mCreateFlags &
            VkBufferCreateFlagBits::VK_BUFFER_CREATE_SPARSE_BINDING_BIT) != 0;
@@ -1075,15 +1093,15 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         // recover buffer memory bindings
         std::vector<VkSparseMemoryBind> sparseBinds;
         if (sparseBound) {
-          for(const auto& b : mBufferSparseBindings[buf_handle]) {
-            sparseBinds.emplace_back(b.sparseMemoryBind());
+          for (const auto& b: buf->mSparseMemoryBindings) {
+            sparseBinds.emplace_back(b.second);
           }
         }
         RecreateBufferMemoryBindings(
             observer, buf->mDevice, buf_handle,
             denseBound ? buf->mMemory->mVulkanHandle : VkDeviceMemory(0),
             denseBound ? buf->mMemoryOffset : VkDeviceSize(0),
-            sparseBound ? this->mBufferSparseBindings[buf_handle].count()
+            sparseBound ? sparseBinds.size()
                         : 0,
             sparseBound ? sparseBinds.data() : nullptr);
 
@@ -1116,8 +1134,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         } else {
           if (sparseBinding) {
             // If the buffer is not fully bound, do not try to access its data.
-            if (!IsFullyBound(0, buf_info.mSize,
-                              mBufferSparseBindings[buf_handle])) {
+            if (!IsFullyBound(0, buf_info.mSize, buf->mSparseMemoryBindings)) {
               continue;
             }
           }
@@ -1165,10 +1182,8 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
       }
       const ImageInfo& img_info = ii.second->mInfo;
       bool denseBound = img->mBoundMemory != nullptr;
-      bool sparseBound = ((mOpaqueImageSparseBindings.find(img_handle) !=
-                           mOpaqueImageSparseBindings.end()) &&
-                          mOpaqueImageSparseBindings[img_handle].count() > 0) ||
-                         (img->mSparseImageMemoryBindings.size() > 0);
+      bool sparseBound = (img->mOpaqueSparseMemoryBindings.size() >0) ||
+        (img->mSparseImageMemoryBindings.size() > 0);
       bool sparseBinding =
           (img_info.mFlags &
            VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_BINDING_BIT) != 0;
@@ -1181,8 +1196,8 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         std::vector<VkSparseMemoryBind> opaqueBinds;
         std::vector<VkSparseImageMemoryBind> imageBinds;
         if (sparseBound) {
-          for (const auto& b : mOpaqueImageSparseBindings[img_handle]) {
-            opaqueBinds.emplace_back(b.sparseMemoryBind());
+          for (const auto& b : img->mOpaqueSparseMemoryBindings) {
+            opaqueBinds.emplace_back(b.second);
           }
           for (const auto& aspect_i : img->mSparseImageMemoryBindings) {
             for (const auto& layer_i : aspect_i.second->mLayers) {
@@ -1283,8 +1298,8 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
               // All Metadata must be bound before use. And metdata aspect only
               // has a miptail region for all the data.
               if (!IsFullyBound(ri.second.mimageMipTailOffset,
-                    ri.second.mimageMipTailSize,
-                    mOpaqueImageSparseBindings[img_handle])) {
+                                ri.second.mimageMipTailSize,
+                                img->mOpaqueSparseMemoryBindings)) {
                 return false;
               }
             }
@@ -1315,7 +1330,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                 // One miptail region for all layers' miptails.
                 if (IsFullyBound(ri.second.mimageMipTailOffset,
                                  ri.second.mimageMipTailSize,
-                                 mOpaqueImageSparseBindings[img_handle])) {
+                                 img->mOpaqueSparseMemoryBindings)) {
                   VkImageSubresourceRange rng{
                       // TODO: To add support of depth/stencil images, need to
                       // handle the case that there are multiple bits in
@@ -1337,7 +1352,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
                   VkDeviceSize offset = ri.second.mimageMipTailOffset +
                                         i * ri.second.mimageMipTailStride;
                   if (IsFullyBound(offset, ri.second.mimageMipTailSize,
-                                   mOpaqueImageSparseBindings[img_handle])) {
+                        img->mOpaqueSparseMemoryBindings)) {
                     VkImageSubresourceRange rng{
                         ri.second.mformatProperties.maspectMask,
                         ri.second.mimageMipTailFirstLod,
@@ -1370,7 +1385,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           // do not access its data.
           if (sparseBound) {
             if (!IsFullyBound(0, img->mMemoryRequirements.msize,
-                              mOpaqueImageSparseBindings[img_handle])) {
+                              img->mOpaqueSparseMemoryBindings)) {
               continue;
             }
           }

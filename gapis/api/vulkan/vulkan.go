@@ -30,17 +30,15 @@ import (
 )
 
 type CustomState struct {
-	SubCmdIdx                 api.SubCmdIdx
-	CurrentSubmission         api.Cmd
-	PreSubcommand             func(interface{})
-	PostSubcommand            func(interface{})
-	AddCommand                func(interface{})
-	IsRebuilding              bool
-	pushMarkerGroup           func(name string, next bool, ty MarkerType)
-	popMarkerGroup            func(ty MarkerType)
-	bufferSparseBindings      map[VkBuffer]sparseBindingList
-	opaqueImageSparseBindings map[VkImage]sparseBindingList
-	postBindSparse            func(binds *QueuedSparseBinds)
+	SubCmdIdx         api.SubCmdIdx
+	CurrentSubmission api.Cmd
+	PreSubcommand     func(interface{})
+	PostSubcommand    func(interface{})
+	AddCommand        func(interface{})
+	IsRebuilding      bool
+	pushMarkerGroup   func(name string, next bool, ty MarkerType)
+	popMarkerGroup    func(ty MarkerType)
+	postBindSparse    func(binds *QueuedSparseBinds)
 }
 
 func getStateObject(s *api.GlobalState) *State {

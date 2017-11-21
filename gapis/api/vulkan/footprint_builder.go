@@ -1785,9 +1785,12 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		bh.Alive = true
 
 	// buffer
-	case *VkCreateBuffer:
+	case *CreateBufferAndCacheMemoryRequirements:
 		vkBuf := cmd.PBuffer.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkBuf))
+	case *VkCreateBuffer:
+		vkBuf := cmd.PBuffer.MustRead(ctx, cmd, s, nil)
+		modify(ctx, bh, vkHandle(vkBuf))
 	case *RecreateBuffer:
 		vkBuf := cmd.PBuffer.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkBuf))

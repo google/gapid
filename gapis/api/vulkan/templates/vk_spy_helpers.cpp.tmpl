@@ -418,18 +418,36 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(VkPhysicalDevice physicalDevice, 
     return result;
 }
 
+uint32_t VulkanSpy::SpyOverride_createBufferAndCacheMemoryRequirements(
+    VkDevice device, VkBufferCreateInfo* pCreateInfo,
+    VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer,
+    VkMemoryRequirements* pMemoryRequirements) {
+  uint32_t result = VkResult::VK_SUCCESS;
+  if (is_suspended()) {
+    VkBufferCreateInfo override_create_info = *pCreateInfo;
+    override_create_info.musage |=
+        VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    result = mImports.mVkDeviceFunctions[device].vkCreateBuffer(
+        device, &override_create_info, pAllocator, pBuffer);
+  } else {
+    result = mImports.mVkDeviceFunctions[device].vkCreateBuffer(
+        device, pCreateInfo, pAllocator, pBuffer);
+  }
+  if (result != VkResult::VK_SUCCESS) {
+    return result;
+  }
+  if (pMemoryRequirements != nullptr) {
+    mImports.mVkDeviceFunctions[device].vkGetBufferMemoryRequirements(
+        device, *pBuffer, pMemoryRequirements);
+  }
+  return result;
+}
 uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
-        VkDevice                     device,
-        VkBufferCreateInfo*          pCreateInfo,
-        VkAllocationCallbacks*       pAllocator,
-        VkBuffer*                    pBuffer) {
-    if (is_suspended()) {
-        VkBufferCreateInfo override_create_info = *pCreateInfo;
-        override_create_info.musage |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        return  mImports.mVkDeviceFunctions[device].vkCreateBuffer(device, &override_create_info, pAllocator, pBuffer);
-    } else {
-        return  mImports.mVkDeviceFunctions[device].vkCreateBuffer(device, pCreateInfo, pAllocator, pBuffer);
-    }
+    VkDevice device, VkBufferCreateInfo* pCreateInfo,
+    VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
+  VkMemoryRequirements memReq;
+  return gapii::createBufferAndCacheMemoryRequirements(
+      device, pCreateInfo, pAllocator, pBuffer, &memReq);
 }
 
 uint32_t VulkanSpy::SpyOverride_createImageAndCacheMemoryRequirements(
@@ -546,55 +564,66 @@ void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
       } else if (cmd.mSemaphoreUpdate == SemaphoreUpdate::Unsignal) {
         Semaphores[cmd.mSemaphore]->mSignaled = false;
       }
+
       if (cmd.mSparseBinds != nullptr) {
+        // Sparse buffer bindings
         for (const auto& bb : cmd.mSparseBinds->mBufferBinds) {
           VkBuffer buf = bb.first;
-          if (mBufferSparseBindings.find(buf) == mBufferSparseBindings.end()) {
-            mBufferSparseBindings[buf] = SparseBindingList();
+          if (Buffers.find(buf) == Buffers.end()) {
+            subVkErrorInvalidBuffer(observer, nullptr, buf);
           }
+          auto buf_obj = Buffers[buf];
+          VkDeviceSize block_size = buf_obj->mMemoryRequirements.malignment;
           for (const auto& b : bb.second->mSparseMemoryBinds) {
-            mBufferSparseBindings[buf].replace(
-                VulkanSpy::SparseBindingInterval(b.second));
-          }
-          for (uint32_t i = 0; (i < Buffers[buf]->mSparseMemoryBindings.size()) ||
-                               (i < mBufferSparseBindings[buf].count());
-               i++) {
-            if (i >= mBufferSparseBindings[buf].count()) {
-              Buffers[buf]->mSparseMemoryBindings.erase(i);
+            // TODO: assert bind size and memory offsets must be multiple
+            // times of the block size
+            VkDeviceSize num_blocks =
+                (b.second.msize + block_size - 1) / block_size;
+            VkDeviceSize mem_offset = b.second.mmemoryOffset;
+            VkDeviceSize res_offset = b.second.mresourceOffset;
+            for (VkDeviceSize i = 0; i < num_blocks; i++) {
+              buf_obj->mSparseMemoryBindings[uint64_t(res_offset)] =
+                  VkSparseMemoryBind{res_offset, block_size, b.second.mmemory,
+                                     mem_offset, b.second.mflags};
+              mem_offset += block_size;
+              res_offset += block_size;
             }
-            Buffers[buf]->mSparseMemoryBindings[i] =
-                mBufferSparseBindings[buf][i].sparseMemoryBind();
           }
         }
+        // Opaque sparse image bindings
         for (const auto& ob : cmd.mSparseBinds->mOpaqueImageBinds) {
           VkImage img = ob.first;
-          if (mOpaqueImageSparseBindings.find(img) ==
-              mOpaqueImageSparseBindings.end()) {
-            mOpaqueImageSparseBindings[img] = SparseBindingList();
+          if (Images.find(img) == Images.end()) {
+            subVkErrorInvalidImage(observer, nullptr, img);
           }
+          auto img_obj = Images[img];
+          VkDeviceSize block_size = img_obj->mMemoryRequirements.malignment;
           for (const auto& b : ob.second->mSparseMemoryBinds) {
-            mOpaqueImageSparseBindings[img].replace(
-                VulkanSpy::SparseBindingInterval(b.second));
-          }
-          for (uint32_t i = 0;
-               (i < Images[img]->mOpaqueSparseMemoryBindings.size()) ||
-               (i < mOpaqueImageSparseBindings[img].count());
-               i++) {
-            if (i >= mOpaqueImageSparseBindings[img].count()) {
-              Images[img]->mOpaqueSparseMemoryBindings.erase(i);
+            // TODO: assert bind size and memory offsets must be multiple
+            // times of the block size
+            VkDeviceSize num_blocks =
+                (b.second.msize + block_size - 1) / block_size;
+            VkDeviceSize mem_offset = b.second.mmemoryOffset;
+            VkDeviceSize res_offset = b.second.mresourceOffset;
+            for (VkDeviceSize i = 0; i < num_blocks; i++) {
+              img_obj->mOpaqueSparseMemoryBindings[uint64_t(res_offset)] =
+                  VkSparseMemoryBind{res_offset, block_size, b.second.mmemory,
+                                     mem_offset, b.second.mflags};
+              mem_offset += block_size;
+              res_offset += block_size;
             }
-            Images[img]->mOpaqueSparseMemoryBindings[i] =
-                mOpaqueImageSparseBindings[img][i].sparseMemoryBind();
           }
-          for (const auto& ib : cmd.mSparseBinds->mImageBinds) {
-            VkImage img = ib.first;
-            for (const auto& b : ib.second->mSparseImageMemoryBinds) {
-              VkSparseImageMemoryBind bind = b.second;
-              subAddSparseImageMemoryBinding(observer, nullptr, img, bind);
-            }
+        }
+        // Sparse image bindings
+        for (const auto& ib : cmd.mSparseBinds->mImageBinds) {
+          VkImage img = ib.first;
+          for (const auto& b : ib.second->mSparseImageMemoryBinds) {
+            VkSparseImageMemoryBind bind = b.second;
+            subAddSparseImageMemoryBinding(observer, nullptr, img, bind);
           }
         }
       }
+
       if (cmd.mBuffer == 0) {
           continue;
       }
