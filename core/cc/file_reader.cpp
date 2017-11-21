@@ -56,4 +56,4 @@ uint64_t FileReader::size() {
     return size;
 }
 
-}
+} // namespace core

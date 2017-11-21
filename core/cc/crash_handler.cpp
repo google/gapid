@@ -40,4 +40,4 @@ bool CrashHandler::handleMinidump(const std::string& minidumpPath, bool succeede
 }
 
 
-}
+} // namespace core

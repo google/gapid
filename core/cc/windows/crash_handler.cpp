@@ -59,4 +59,4 @@ CrashHandler::CrashHandler() : mHandlerFunction(defaultHandlerFunction) {
 // The incomplete type is the previously forward declared google_breakpad::ExceptionHandler.
 CrashHandler::~CrashHandler() = default;
 
-}
+} // namespace core

@@ -58,7 +58,7 @@ public:
 
     // Post a crash minidump from the given address with the given filename to the server. Returns
     // true if the posting was successful false otherwise.
-    bool crash(const std::string& filename, const void* crashData, uint32_t crashSize) const;
+    bool postCrashdump(const std::string& filename, const void* crashData, uint32_t crashSize) const;
 
     // Type of the message sent to the server. It have to be consistent with the values expected by
     // the server

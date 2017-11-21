@@ -126,8 +126,8 @@ bool ServerConnection::post(const void* postData, uint32_t postSize) const {
     return true;
 }
 
-bool ServerConnection::crash(const std::string& filename, const void* crashData, uint32_t crashSize) const {
-    GAPID_DEBUG("CRASH: [%s] %p (%d)", filename.c_str(), crashData, crashSize);
+bool ServerConnection::postCrashdump(const std::string& filename, const void* crashData, uint32_t crashSize) const {
+    GAPID_WARNING("CRASH: [%s] %p (%d)", filename.c_str(), crashData, crashSize);
 
     MessageType type = MESSAGE_TYPE_CRASH;
     if (mConn->send(&type, sizeof(type)) != sizeof(type)) {

@@ -24,7 +24,8 @@
 
 namespace core {
 
-// FileReader is a pure-virtual interface used to read from binary files.
+// FileReader is an implementation of the StreamReader interface that reads
+// from binary files.
 class FileReader : public StreamReader {
 public:
     FileReader(const char* path);
