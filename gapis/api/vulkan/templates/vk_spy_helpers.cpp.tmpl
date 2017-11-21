@@ -531,39 +531,6 @@ bool VulkanSpy::hasDynamicProperty(CallObserver* observer, VkPipelineDynamicStat
 void VulkanSpy::mapMemory(CallObserver*, void**, Slice<uint8_t>) {}
 void VulkanSpy::unmapMemory(CallObserver*, Slice<uint8_t>) {}
 
-namespace {
-// A helper function to check if a coming VkSparseImageMemoryBind can fully
-// cover (overwrite) an existing original bind.
-bool fullyCover(const VkSparseImageMemoryBind& orig,
-                const VkSparseImageMemoryBind& coming) {
-  auto orig_aspect = orig.msubresource.maspectMask;
-  auto coming_aspect = coming.msubresource.maspectMask;
-  if ((coming_aspect & orig_aspect) != orig_aspect) {
-    return false;
-  }
-  if (orig.msubresource.mmipLevel != coming.msubresource.mmipLevel) {
-    return false;
-  }
-  if (orig.msubresource.marrayLayer != coming.msubresource.marrayLayer) {
-    return false;
-  }
-  if (coming.moffset.mx > orig.moffset.mx ||
-      coming.moffset.my > orig.moffset.my ||
-      coming.moffset.mz > orig.moffset.mz) {
-    return false;
-  }
-  if (coming.moffset.mx + int32_t(coming.mextent.mWidth) <
-          orig.moffset.mx + int32_t(coming.mextent.mWidth) ||
-      coming.moffset.my + int32_t(coming.mextent.mHeight) <
-          orig.moffset.my + int32_t(coming.mextent.mHeight) ||
-      coming.moffset.mz + int32_t(coming.mextent.mDepth) <
-          orig.moffset.mz + int32_t(coming.mextent.mDepth)) {
-    return false;
-  }
-  return true;
-}
-}
-
 void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
   LastBoundQueue = Queues[queue];
   U32ToCommandReference newPendingCommands;
@@ -622,16 +589,8 @@ void VulkanSpy::execPendingCommands(CallObserver* observer, VkQueue queue) {
           for (const auto& ib : cmd.mSparseBinds->mImageBinds) {
             VkImage img = ib.first;
             for (const auto& b : ib.second->mSparseImageMemoryBinds) {
-              uint32_t last = 0;
-              for (const auto& eb : Images[img]->mSparseImageMemoryBindings) {
-                if (eb.first > last) {
-                  last = eb.first;
-                }
-                if (fullyCover(eb.second, b.second)) {
-                  Images[img]->mSparseImageMemoryBindings.erase(eb.first);
-                }
-              }
-              Images[img]->mSparseImageMemoryBindings[last+1] = b.second;
+              VkSparseImageMemoryBind bind = b.second;
+              subAddSparseImageMemoryBinding(observer, nullptr, img, bind);
             }
           }
         }

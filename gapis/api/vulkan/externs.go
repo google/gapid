@@ -926,7 +926,7 @@ func (e externs) execPendingCommands(queue VkQueue) {
 				}
 			}
 			if command.SparseBinds != nil {
-				bindSparse(e.ctx, e.s, command.SparseBinds)
+				bindSparse(e.ctx, e.cmd, e.cmdID, e.s, command.SparseBinds)
 				if o.postBindSparse != nil {
 					o.postBindSparse(command.SparseBinds)
 				}
@@ -1055,7 +1055,7 @@ func (e externs) popAndPushMarkerForNextSubpass(nextSubpass uint32) {
 	}
 }
 
-func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBinds) {
+func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState, binds *QueuedSparseBinds) {
 	var err error
 	st := GetState(s)
 	if st.bufferSparseBindings == nil {
@@ -1114,7 +1114,10 @@ func bindSparse(ctx context.Context, s *api.GlobalState, binds *QueuedSparseBind
 		for _, bind := range binds.SparseImageMemoryBinds.Range() {
 			imgObj := st.Images.Get(image)
 			if imgObj != nil {
-				addSparseImageBinding(imgObj.SparseImageMemoryBindings, bind)
+				err := subAddSparseImageMemoryBinding(ctx, a, id, nil, s, nil, a.Thread(), nil, image, bind)
+				if err != nil {
+					return
+				}
 			}
 		}
 	}
