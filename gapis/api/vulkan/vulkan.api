@@ -3986,7 +3986,43 @@ cmd VkResult createImageAndCacheMemoryRequirements(
 
   // TODO: pAllocator
   info := pCreateInfo[0]
-  read(info.pQueueFamilyIndices[0:info.queueFamilyIndexCount])
+  queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
+
+  imageInfo := ImageInfo(
+    Flags:        info.flags,
+    ImageType:    info.imageType,
+    Format:       info.format,
+    Extent:       info.extent,
+    MipLevels:    info.mipLevels,
+    ArrayLayers:  info.arrayLayers,
+    Samples:      info.samples,
+    Tiling:       info.tiling,
+    Usage:        info.usage,
+    SharingMode:  info.sharingMode,
+    Layout:       info.initialLayout,
+  )
+
+  for i in (0 .. info.queueFamilyIndexCount) {
+    imageInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+  }
+
+  imageAspect := as!VkImageAspectFlags(
+    switch info.format {
+      case VK_FORMAT_D16_UNORM,
+          VK_FORMAT_X8_D24_UNORM_PACK32,
+          VK_FORMAT_D32_SFLOAT:
+        VK_IMAGE_ASPECT_DEPTH_BIT
+      case VK_FORMAT_S8_UINT:
+        VK_IMAGE_ASPECT_STENCIL_BIT
+      case VK_FORMAT_D16_UNORM_S8_UINT,
+          VK_FORMAT_D24_UNORM_S8_UINT,
+          VK_FORMAT_D32_SFLOAT_S8_UINT:
+        VK_IMAGE_ASPECT_DEPTH_BIT |
+        VK_IMAGE_ASPECT_COLOR_BIT
+      default:
+        VK_IMAGE_ASPECT_COLOR_BIT
+    })
+
   // Handle pNext
   if info.pNext != null {
     numPNext := numberOfPNext(info.pNext)
@@ -4001,10 +4037,19 @@ cmd VkResult createImageAndCacheMemoryRequirements(
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
+
   handle := ?
   pImage[0] = handle
-  object := new!ImageObject()
-  object.MemoryRequirements = pMemoryRequirements[0]
+  memReq := ?
+  pMemoryRequirements[0] = memReq
+  object := new!ImageObject(
+    Device: device,
+    IsSwapchainImage: false,
+    VulkanHandle: handle,
+    Info: imageInfo,
+    ImageAspect: imageAspect,
+    MemoryRequirements: memReq,
+  )
   Images[handle] = object
   return ?
 }
@@ -4099,16 +4144,16 @@ cmd VkResult vkCreateImage(
   pImage[0] = handle
   object := switch (Images[handle] == null) {
     case true:
-      new!ImageObject()
+      new!ImageObject(
+        Device: device,
+        IsSwapchainImage: false,
+        VulkanHandle: handle,
+        Info: imageInfo,
+        ImageAspect: imageAspect,
+      )
     case false:
       Images[handle]
   }
-
-  object.Device = device
-  object.IsSwapchainImage = false
-  object.VulkanHandle = handle
-  object.Info = imageInfo
-  object.ImageAspect = imageAspect
 
   for j in (0 .. info.arrayLayers) {
     layer := new!ImageLayer()
