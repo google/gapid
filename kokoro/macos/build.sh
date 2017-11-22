@@ -81,14 +81,6 @@ echo $(date): Starting build...
 ./do build --test build --buildnum $KOKORO_BUILD_NUMBER --buildsha "$BUILD_SHA"
 echo $(date): Build completed.
 
-# Dump symbols from GAPIR then strip them
-pushd "$BUILD_ROOT/out/release/bin/"
-dsymutil "gapir" -o "gapir.dSYM"
-./dump_syms -g "gapir.dSYM" "gapir" > gapir.sym
-rm -r "gapir.dSYM"
-strip "gapir"
-popd
-
 # Build the release packages.
 $SRC/kokoro/macos/package.sh $BUILD_ROOT/out
 

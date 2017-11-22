@@ -15,12 +15,14 @@
 set(gles gles/gles.api)
 set(vulkan vulkan/vulkan.api)
 
+if(NOT MSVC)
 apic(${gles} PATH ${cc_gapir} TEMPLATE specific_gfx_api.cpp.tmpl OUTPUTS gles_gfx_api.cpp)
 apic(${gles} PATH ${cc_gapir} TEMPLATE specific_gfx_api.h.tmpl OUTPUTS gles_gfx_api.h)
 
 apic(${vulkan} PATH ${cc_gapir} TEMPLATE specific_gfx_api.cpp.tmpl OUTPUTS vulkan_gfx_api.cpp)
 apic(${vulkan} PATH ${cc_gapir} TEMPLATE specific_gfx_api.h.tmpl OUTPUTS vulkan_gfx_api.h)
 apic(${vulkan} PATH ${cc_gapir} TEMPLATE vulkan_gfx_api_extras.tmpl OUTPUTS vulkan_gfx_api_extras.cpp)
+endif()
 
 glob_all_dirs()
 
@@ -35,6 +37,7 @@ glob(test_sources
     INCLUDE "_test.cpp$"
 )
 
+if(NOT MSVC)
 foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
     set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
     add_cmake_target(${abi} gapir ${dst} "libgapir.so"
@@ -42,12 +45,22 @@ foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
         DEPENDS ${sources} ${android_files}
     )
 endforeach()
+endif()
+if(MSVC_GAPIR AND WIN32)
+    add_cmake_target("gapir-msvc" gapir_static "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" "gapir.lib"
+        DEPENDEES cc-core breakpad
+        DEPENDS ${sources}
+    )
+endif()
 
 if(NOT DISABLED_CXX)
     add_library(gapir_static STATIC  ${sources})
     set_target_properties(gapir_static PROPERTIES OUTPUT_NAME gapir)
     target_link_libraries(gapir_static cc-core)
-    if(CMAKE_BUILD_TYPE MATCHES Release)
+
+    if(MSVC)
+        target_compile_options(gapir_static PUBLIC "/Zi")
+    elseif(CMAKE_BUILD_TYPE MATCHES Release)
         target_compile_options(gapir_static PUBLIC "-g")
     endif()
 

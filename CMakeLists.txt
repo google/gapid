@@ -51,41 +51,54 @@ project(GAPID
 )
 include(Config)
 
-foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
-    # Build a cmake output directory for the specific abi
-    add_cmake(${abi} ${CMAKE_SOURCE_DIR} "-DANDROID_ABI:STRING=${abi}")
-endforeach()
-
-if(ARMLINUX_GAPII)
-    set(GAPII_TOOLCHAIN "ArmLinux")
-    string(TOLOWER "${GAPII_TOOLCHAIN}" GAPII_PROJECT)
-    add_cmake(${GAPII_PROJECT} ${CMAKE_SOURCE_DIR} "-DGAPII_TARGET:STRING=${GAPII_TOOLCHAIN}")
+if(MSVC_GAPIR AND WIN32)
+    find_package(MSVC)
+    add_cmake("gapir-msvc" ${CMAKE_SOURCE_DIR} "-DMSVC_PATH:STRING=${MSVC_PATH}" "-DCMAKE_C_COMPILER:STRING=${MSVC_CL}" "-DCMAKE_CXX_COMPILER:STRING=${MSVC_CL}")
 endif()
 
-# Third party libraries
-include(third_party/astc-encoder.cmake)
-include(third_party/breakpad.cmake)
-include(third_party/cityhash.cmake)
-include(third_party/khronos.cmake)
-include(third_party/protobuf.cmake)
-include(third_party/grpc-java.cmake)
+if(MSVC)
+    include(third_party/breakpad.cmake)
+    include(third_party/cityhash.cmake)
+    build_subdirectory(core/cc)
+    build_subdirectory(gapir/cc)
+    build_subdirectory(cmd/gapir)
+else()
 
-# Must come first (declares rules like apic).
-build_subdirectory(cmd)
+    foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
+        # Build a cmake output directory for the specific abi
+        add_cmake(${abi} ${CMAKE_SOURCE_DIR} "-DANDROID_ABI:STRING=${abi}")
+    endforeach()
 
-build_subdirectory(core)
-build_subdirectory(gapic)
-build_subdirectory(gapii)
-if(NOT GAPII_TARGET)
-build_subdirectory(gapil)
-build_subdirectory(gapir)
-build_subdirectory(gapis)
-build_subdirectory(gapidapk)
-build_subdirectory(test)
+    if(ARMLINUX_GAPII)
+        set(GAPII_TOOLCHAIN "ArmLinux")
+        string(TOLOWER "${GAPII_TOOLCHAIN}" GAPII_PROJECT)
+        add_cmake(${GAPII_PROJECT} ${CMAKE_SOURCE_DIR} "-DGAPII_TARGET:STRING=${GAPII_TOOLCHAIN}")
+    endif()
+
+    # Third party libraries
+    include(third_party/astc-encoder.cmake)
+    include(third_party/breakpad.cmake)
+    include(third_party/cityhash.cmake)
+    include(third_party/khronos.cmake)
+    include(third_party/protobuf.cmake)
+    include(third_party/grpc-java.cmake)
+
+    # Must come first (declares rules like apic).
+    build_subdirectory(cmd)
+
+    build_subdirectory(core)
+    build_subdirectory(gapic)
+    build_subdirectory(gapii)
+    if(NOT GAPII_TARGET)
+    build_subdirectory(gapil)
+    build_subdirectory(gapir)
+    build_subdirectory(gapis)
+    build_subdirectory(gapidapk)
+    build_subdirectory(test)
+    endif()
+
+    scan_for_protos()
 endif()
-
-scan_for_protos()
-
 # Add root as include path for all c includes.
 include_directories(${CMAKE_SOURCE_DIR})
 

@@ -40,7 +40,7 @@ func env(cfg Config) *shell.Env {
 		system32 := cmd.Parent()
 		windows := system32.Parent()
 		path = append(path, system32.System(), windows.System())
-		path = append(path, exePaths(cfg, "node.exe", "adb.exe", "git.exe", "ffmpeg.exe")...)
+		path = append(path, exePaths(cfg, "cl.exe", "rc.exe", "node.exe", "adb.exe", "git.exe", "ffmpeg.exe")...)
 	} else {
 		path = append(path, exePaths(cfg,
 			"sh", "uname", "sed", "clang", "gcc", "node", "adb",

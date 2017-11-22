@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/google/gapid/core/log"
 )
 
 func doGlob(ctx context.Context, cfg Config) {
@@ -82,6 +84,10 @@ func doCMake(ctx context.Context, cfg Config, options BuildOptions, targets ...s
 	}
 	if cfg.ArmLinuxGapii {
 		args = append(args, "-DARMLINUX_GAPII=1")
+	}
+	if cfg.MSVCWinGapir {
+		log.I(ctx, "building gapir with msvc, here goes...")
+		args = append(args, "-DMSVC_GAPIR=1")
 	}
 	switch options.Test {
 	case RunTests:
