@@ -32,10 +32,20 @@ static bool handleCrash(const google_breakpad::MinidumpDescriptor& descriptor, v
 
 namespace core {
 
+namespace {
+const char* GetTempDir() {
+    const char* tmpdir = getenv("TMPDIR");
+    if (!tmpdir) {
+        tmpdir = "/tmp/";
+    }
+    return tmpdir;
+}
+} // namespace
+
 CrashHandler::CrashHandler() :
     mHandlerFunction(defaultHandlerFunction),
     mHandler(new google_breakpad::ExceptionHandler(
-            google_breakpad::MinidumpDescriptor(getenv("TMPDIR")),
+            google_breakpad::MinidumpDescriptor(GetTempDir()),
             NULL, ::handleCrash, reinterpret_cast<void*>(this), true, -1)) {
 }
 
