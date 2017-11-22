@@ -17,6 +17,7 @@
 #include "../query.h"
 
 #include "core/cc/gl/versions.h"
+#include "core/cc/get_gles_proc_address.h"
 
 #include <X11/Xresource.h>
 #include <GL/glx.h>
@@ -128,8 +129,7 @@ bool createContext(void* platform_data) {
             Bool direct, const int *attrib_list);
 
     glXCreateContextAttribsARBProc glXCreateContextAttribsARB =
-        (glXCreateContextAttribsARBProc)glXGetProcAddress(
-            reinterpret_cast<const GLubyte*>("glXCreateContextAttribsARB"));
+        (glXCreateContextAttribsARBProc)core::GetGlesProcAddress("glXCreateContextAttribsARB", true);
     if (glXCreateContextAttribsARB == nullptr) {
         gContext.mContext = glXCreateNewContext(gContext.mDisplay,
                                                 fbConfig,
@@ -175,7 +175,11 @@ bool createContext(void* platform_data) {
         destroyContext();
         return false;
     }
+    typedef Bool
+        (*glXMakeContextCurrentProc)(Display *dpy, GLXDrawable draw, GLXDrawable read, GLXContext ctx);
 
+    glXMakeContextCurrentProc glXMakeContextCurrent =
+        (glXMakeContextCurrentProc)core::GetGlesProcAddress("glXMakeContextCurrent", true);
     glXMakeContextCurrent(gContext.mDisplay, gContext.mPbuffer, gContext.mPbuffer, gContext.mContext);
     return true;
 }
