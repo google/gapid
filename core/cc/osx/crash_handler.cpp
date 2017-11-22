@@ -33,10 +33,20 @@ static bool handleCrash(const char* minidumpDir, const char* minidumpId, void* c
 
 namespace core {
 
+namespace {
+const char* GetTempDir() {
+    const char* tmpdir = getenv("TMPDIR");
+    if (!tmpdir) {
+        tmpdir = "/tmp/";
+    }
+    return tmpdir;
+}
+} // namespace
+
 CrashHandler::CrashHandler() :
     mHandlerFunction(defaultHandlerFunction),
     mHandler(new google_breakpad::ExceptionHandler(
-            getenv("TMPDIR"), NULL, ::handleCrash, reinterpret_cast<void*>(this), true, NULL)) {
+        GetTempDir(), NULL, ::handleCrash, reinterpret_cast<void*>(this), true, NULL)) {
 }
 
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.

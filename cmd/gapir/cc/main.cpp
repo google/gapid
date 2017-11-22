@@ -211,14 +211,14 @@ int main(int argc, const char* argv[]) {
         }
     }
 
-    core::CrashHandler crashHandler;
-
-    GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
-
     if (wait_for_debugger) {
         GAPID_INFO("Waiting for debugger to attach");
         core::Debugger::waitForAttach();
     }
+
+    core::CrashHandler crashHandler;
+
+    GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
 
     MemoryManager memoryManager(memorySizes);
     auto conn = SocketConnection::createSocket("127.0.0.1", portStr);
