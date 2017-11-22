@@ -78,12 +78,13 @@ else()
     )
 endif()
 
-# TODO
-# symupload
-# minidump_upload
+abs_list(breakpad_srcs ${breakpad_dir})
+
+if(MSVC_GAPIR AND WIN32)
+    add_cmake_step("gapir-msvc" breakpad DEPENDS ${breakpad_srcs})
+endif()
 
 if(NOT DISABLED_CXX)
-    abs_list(breakpad_srcs ${breakpad_dir})
     add_library(breakpad STATIC ${breakpad_srcs})
     target_include_directories(breakpad PUBLIC ${breakpad_dir})
 
@@ -133,6 +134,8 @@ if(NOT DISABLED_CXX)
 
     elseif(WIN32)
         target_compile_definitions(breakpad PRIVATE "_UNICODE" "UNICODE")
-        target_compile_options(breakpad PRIVATE "-Wno-conversion-null")
+        if(NOT MSVC)
+            target_compile_options(breakpad PRIVATE "-Wno-conversion-null")
+        endif()
     endif()
 endif()

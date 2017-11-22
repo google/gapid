@@ -64,6 +64,7 @@ type Config struct {
 	PythonPath     file.Path `desc:"Path to python executable" type:"file"`
 	MSYS2Path      file.Path `desc:"Path to msys2 root" type:"dir" os:"windows"`
 	ArmLinuxGapii  bool      `desc:"Build additional gapii for armlinux"`
+	MSVCWinGapir   bool      `desc:"Build gapir using msvc on windows"`
 }
 
 func defaults() Config {

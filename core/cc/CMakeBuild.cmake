@@ -33,13 +33,20 @@ glob(test_sources
     PATH .
     INCLUDE "_test.cpp$"
 )
+if(NOT MSVC)
+    foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
+        add_cmake_step(${abi} cc-core DEPENDS ${sources} ${android_files})
+    endforeach()
 
-foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
-    add_cmake_step(${abi} cc-core DEPENDS ${sources} ${android_files})
-endforeach()
-
-if(GAPII_PROJECT)
-    add_cmake_step(${GAPII_PROJECT} cc-core DEPENDS ${sources})
+    if(GAPII_PROJECT)
+        add_cmake_step(${GAPII_PROJECT} cc-core DEPENDS ${sources})
+    endif()
+endif()
+if(MSVC_GAPIR AND WIN32)
+    add_cmake_step("gapir-msvc" cc-core
+        DEPENDEES cityhash breakpad
+        DEPENDS ${sources}
+    )
 endif()
 
 

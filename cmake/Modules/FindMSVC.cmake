@@ -14,13 +14,15 @@
 
 # TODO: actually find msvc rather than assuming a specfic version and location, probably
 # by starting from the CXX compiler location
-set(MSVC_PATH "C:/Program Files (x86)/Microsoft Visual Studio 12.0/VC")
-
-# Add the sdk to the standard search paths
-if(IS_DIRECTORY ${MSVC_PATH})
-    link_directories("${MSVC_PATH}/lib/amd64")
-    include_directories("${MSVC_PATH}/include")
+set(paths)
+find_program(MSVC_CL cl.exe PATHS paths)
+if(MSVC_CL MATCHES NOTFOUND)
+    message(FATAL_ERROR "cl not found cannot continue building with MSVC")
 endif()
+get_filename_component(MSVC_CL_DIR ${MSVC_CL} DIRECTORY)
+get_filename_component(MSVC_BIN_DIR ${MSVC_CL_DIR} DIRECTORY)
+get_filename_component(MSVC_PATH ${MSVC_BIN_DIR} DIRECTORY)
+
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(MSVC REQUIRED_VARS MSVC_PATH)

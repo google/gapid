@@ -83,6 +83,9 @@ func doCMake(ctx context.Context, cfg Config, options BuildOptions, targets ...s
 	if cfg.ArmLinuxGapii {
 		args = append(args, "-DARMLINUX_GAPII=1")
 	}
+	if cfg.MSVCWinGapir {
+		args = append(args, "-DMSVC_GAPIR=1")
+	}
 	switch options.Test {
 	case RunTests:
 	case BuildTests:
