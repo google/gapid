@@ -119,7 +119,11 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetInstanceProcAddr(VkInstance insta
         {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance")}}
             {{$name := Macro "CmdName" $c}}
             if(!strcmp(pName, "{{$name}}"))
+            {{if eq $name "vkEnumeratePhysicalDevices"}}
+              return reinterpret_cast<PFN_vkVoidFunction>(VulkanSpy::EnumeratePhysicalDevicesAndCacheProperties);
+            {{else}}
               return reinterpret_cast<PFN_vkVoidFunction>(gapii::{{$name}});
+            {{end}}
         {{end}}
     {{end}}
 
@@ -652,46 +656,6 @@ uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(VkDevice device, VkMemoryAlloca
     return r;
 }
 
-void VulkanSpy::SpyOverride_prefetchPhysicalDeviceProperties(
-    VkInstance instance, VkPhysicalDevice physicalDevice,
-    VkPhysicalDeviceProperties* pProperties) {
-  return mImports.mVkInstanceFunctions[instance].vkGetPhysicalDeviceProperties(
-      physicalDevice, pProperties);
-}
-
-void VulkanSpy::SpyOverride_prefetchPhysicalDeviceQueueFamilyProperties(
-    VkInstance instance, VkPhysicalDevice physicalDevice,
-    uint32_t* pQueueFamilyPropertyCount,
-    VkQueueFamilyProperties* pQueueFamilyProperties) {
-  return mImports.mVkInstanceFunctions[instance]
-      .vkGetPhysicalDeviceQueueFamilyProperties(
-          physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
-}
-
-uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDevices(
-VkInstance instance, uint32_t* pPhysicalDeviceCount,
-VkPhysicalDevice* pPhysicalDevices) {
-    uint32_t fill_count = pPhysicalDevices? *pPhysicalDeviceCount : 0;
-    uint32_t r = mImports.mVkInstanceFunctions[instance].vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
-    if (fill_count > *pPhysicalDeviceCount) {
-        fill_count = *pPhysicalDeviceCount;
-    }
-    for (size_t i = 0; i < fill_count; ++i) {
-        VkPhysicalDeviceProperties properties;
-        gapii::prefetchPhysicalDeviceProperties(instance, pPhysicalDevices[i],
-                                                &properties);
-        uint32_t queue_family_prop_count = 0;
-        gapii::prefetchPhysicalDeviceQueueFamilyProperties(
-            instance, pPhysicalDevices[i], &queue_family_prop_count, nullptr);
-        std::vector<VkQueueFamilyProperties> queue_family_properties(
-            queue_family_prop_count, VkQueueFamilyProperties{});
-        gapii::prefetchPhysicalDeviceQueueFamilyProperties(
-            instance, pPhysicalDevices[i], &queue_family_prop_count,
-            queue_family_properties.data());
-    }
-    return r;
-}
-
 uint32_t VulkanSpy::numberOfPNext(CallObserver* observer, void* pNext) {
   uint32_t counter = 0;
   while (pNext) {
@@ -737,6 +701,31 @@ uint32_t VulkanSpy::CreateBufferAndGetMemoryRequirements(
   if (result == gapii::VkResult::VK_SUCCESS) {
     gapii::VkMemoryRequirements mem_req{};
     gapii::vkGetBufferMemoryRequirements(device, *pBuffer, &mem_req);
+  }
+  return result;
+}
+
+uint32_t VulkanSpy::EnumeratePhysicalDevicesAndCacheProperties(
+    VkInstance instance, uint32_t* pPhysicalDeviceCount,
+    VkPhysicalDevice* pPhysicalDevices) {
+  uint32_t result = gapii::vkEnumeratePhysicalDevices(
+      instance, pPhysicalDeviceCount, pPhysicalDevices);
+  if ((result == gapii::VkResult::VK_SUCCESS) &&
+      (pPhysicalDevices != nullptr)) {
+    uint32_t dev_count = *pPhysicalDeviceCount;
+    std::vector<VkPhysicalDevice> devs(pPhysicalDevices,
+                                       pPhysicalDevices + dev_count);
+    for (VkPhysicalDevice dev : devs) {
+      gapii::VkPhysicalDeviceProperties dev_prop{};
+      gapii::vkGetPhysicalDeviceProperties(dev, &dev_prop);
+      uint32_t queue_family_count = 0;
+      gapii::vkGetPhysicalDeviceQueueFamilyProperties(dev, &queue_family_count,
+                                                      nullptr);
+      std::vector<VkQueueFamilyProperties> queue_family_props(
+          queue_family_count, VkQueueFamilyProperties{});
+      gapii::vkGetPhysicalDeviceQueueFamilyProperties(
+          dev, &queue_family_count, queue_family_props.data());
+    }
   }
   return result;
 }

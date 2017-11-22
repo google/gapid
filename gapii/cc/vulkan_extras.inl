@@ -25,16 +25,6 @@ PFN_vkVoidFunction SpyOverride_vkGetInstanceProcAddr(VkInstance instance,
                                                      const char* pName);
 PFN_vkVoidFunction SpyOverride_vkGetDeviceProcAddr(VkDevice device,
                                                    const char* pName);
-void SpyOverride_prefetchPhysicalDeviceQueueFamilyProperties(
-    VkInstance instance, VkPhysicalDevice physicalDevice,
-    uint32_t* pQueueFamilyPropertyCount,
-    VkQueueFamilyProperties* pQueueFamilyProperties);
-void SpyOverride_prefetchPhysicalDeviceProperties(
-    VkInstance instance, VkPhysicalDevice physicalDevice,
-    VkPhysicalDeviceProperties* pProperties);
-uint32_t SpyOverride_vkEnumeratePhysicalDevices(
-    VkInstance instance, uint32_t* pPhysicalDeviceCount,
-    VkPhysicalDevice* pPhysicalDevices);
 uint32_t SpyOverride_vkEnumerateInstanceExtensionProperties(
     const char* pLayerName, uint32_t* pCount,
     VkExtensionProperties* pProperties);
@@ -231,5 +221,9 @@ static uint32_t CreateBufferAndGetMemoryRequirements(VkDevice,
                                                      VkBufferCreateInfo*,
                                                      VkAllocationCallbacks*,
                                                      VkBuffer*);
+
+static uint32_t EnumeratePhysicalDevicesAndCacheProperties(
+    VkInstance, uint32_t* pPhysicalDeviceCount,
+    VkPhysicalDevice* pPhysicalDevices);
 
 bool m_coherent_memory_tracking_enabled = false;

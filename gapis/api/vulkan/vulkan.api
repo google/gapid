@@ -2404,60 +2404,7 @@ cmd void RecreatePhysicalDeviceProperties(
 }
 
 @threadSafety("system")
-@override
-@no_replay
-cmd void prefetchPhysicalDeviceProperties(
-    VkInstance instance,
-    VkPhysicalDevice physicalDevice,
-    VkPhysicalDeviceProperties* pProperties) {
-  pProperties[0] = ?
-  object := switch (PhysicalDevices[physicalDevice] == null) {
-    case true:
-      new!PhysicalDeviceObject()
-    case false:
-      PhysicalDevices[physicalDevice]
-  }
-  object.PhysicalDeviceProperties = pProperties[0]
-  PhysicalDevices[physicalDevice] = object
-}
-
-@threadSafety("system")
-@override
-@no_replay
-cmd void prefetchPhysicalDeviceQueueFamilyProperties(
-    VkInstance instance,
-    VkPhysicalDevice physicalDevice,
-    u32* pQueueFamilyPropertyCount,
-    VkQueueFamilyProperties* pQueueFamilyProperties) {
-  if pQueueFamilyPropertyCount == null {vkErrorNullPointer("uint32_t")}
-  _ = pQueueFamilyPropertyCount[0]
-  fence
-  if pQueueFamilyProperties == null {
-    pQueueFamilyPropertyCount[0] = ?
-  } else {
-    count := as!u32(?)
-    properties := pQueueFamilyProperties[0:count]
-    for i in (0 .. count) {
-      properties[i] = ?
-    }
-    pQueueFamilyPropertyCount[0] = count
-    if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
-    object := switch (PhysicalDevices[physicalDevice] == null) {
-      case true:
-        new!PhysicalDeviceObject()
-      case false:
-        PhysicalDevices[physicalDevice]
-    }
-    for i in (0 .. count) {
-      object.QueueFamilyProperties[i] = properties[i]
-    }
-    PhysicalDevices[physicalDevice] = object
-  }
-}
-
-@threadSafety("system")
 @indirect("VkInstance")
-@override
 cmd VkResult vkEnumeratePhysicalDevices(
     VkInstance        instance,
     u32*              pPhysicalDeviceCount,
@@ -2535,6 +2482,8 @@ cmd void vkGetPhysicalDeviceProperties(
     VkPhysicalDeviceProperties* pProperties) {
   if pProperties == null {vkErrorNullPointer("VkPhysicalDeviceProperties")}
   pProperties[0] = ?
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  PhysicalDevices[physicalDevice].PhysicalDeviceProperties = pProperties[0]
 }
 
 @indirect("VkPhysicalDevice", "VkInstance")

@@ -114,6 +114,14 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread()}
 	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+
+	// Info for physical device enumeration
+	inPhyDevEnumeration := false
+	numPhyDevLeft := uint32(0)
+	vkInst := VkInstance(0)
+	phyDevs := []VkPhysicalDevice{}
+	phyDevProps := []VkPhysicalDeviceProperties{}
+
 	if image, ok := cmd.(*VkCreateImage); ok {
 		pinfo := image.PCreateInfo
 		info := pinfo.MustRead(ctx, image, s, nil)
@@ -329,23 +337,37 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		return
 	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok {
 		if e.PPhysicalDevices == NewVkPhysicalDeviceᵖ(nil) {
+			// First call to vkEnumeratePhysicalDevices
 			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
-		// vkEnumeratePhysicalDevices called with no-null VkPhysicalDevices pointer,
-		// Need to make sure the enumerated order on the replay side is the same
-		// as the trace.
+		// Second call to vkEnumeratePhysicalDevices
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		count := uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
-		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
-		propOrder := []VkPhysicalDeviceProperties{}
-		for _, d := range devices {
-			propOrder = append(propOrder, GetState(s).PhysicalDevices.Get(d).PhysicalDeviceProperties)
+		numPhyDevLeft = uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
+		// Do not mutate the second call to vkEnumeratePhysicalDevices, all the following vkGetPhysicalDeviceProperties belong to this
+		// physical device enumeration.
+		inPhyDevEnumeration = true
+
+	} else if g, ok := cmd.(*VkGetPhysicalDeviceProperties); ok {
+		if inPhyDevEnumeration {
+			cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
+			prop := g.PProperties.MustRead(ctx, cmd, s, nil)
+			phyDevProps = append(phyDevProps, prop)
+			phyDevs = append(phyDevs, g.PhysicalDevice)
+			if numPhyDevLeft > 0 {
+				numPhyDevLeft--
+			}
+			if numPhyDevLeft == 0 {
+				newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, vkInst, uint32(len(phyDevs)), phyDevs, phyDevProps)
+				out.MutateAndWrite(ctx, id, newEnumerate)
+				inPhyDevEnumeration = false
+			}
+			return
+		} else {
+			out.MutateAndWrite(ctx, id, g)
+			return
 		}
-		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance, count, devices, propOrder)
-		out.MutateAndWrite(ctx, id, newEnumerate)
-		return
 	} else if e, ok := cmd.(*RecreatePhysicalDevices); ok {
 		l := s.MemoryLayout
 		count := uint32(e.Count.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
