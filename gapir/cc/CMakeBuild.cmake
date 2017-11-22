@@ -15,12 +15,14 @@
 set(gles gles/gles.api)
 set(vulkan vulkan/vulkan.api)
 
-apic(${gles} PATH ${cc_gapir} TEMPLATE specific_gfx_api.cpp.tmpl OUTPUTS gles_gfx_api.cpp)
-apic(${gles} PATH ${cc_gapir} TEMPLATE specific_gfx_api.h.tmpl OUTPUTS gles_gfx_api.h)
+if(NOT MSVC)
+    apic(${gles} PATH ${cc_gapir} TEMPLATE specific_gfx_api.cpp.tmpl OUTPUTS gles_gfx_api.cpp)
+    apic(${gles} PATH ${cc_gapir} TEMPLATE specific_gfx_api.h.tmpl OUTPUTS gles_gfx_api.h)
 
-apic(${vulkan} PATH ${cc_gapir} TEMPLATE specific_gfx_api.cpp.tmpl OUTPUTS vulkan_gfx_api.cpp)
-apic(${vulkan} PATH ${cc_gapir} TEMPLATE specific_gfx_api.h.tmpl OUTPUTS vulkan_gfx_api.h)
-apic(${vulkan} PATH ${cc_gapir} TEMPLATE vulkan_gfx_api_extras.tmpl OUTPUTS vulkan_gfx_api_extras.cpp)
+    apic(${vulkan} PATH ${cc_gapir} TEMPLATE specific_gfx_api.cpp.tmpl OUTPUTS vulkan_gfx_api.cpp)
+    apic(${vulkan} PATH ${cc_gapir} TEMPLATE specific_gfx_api.h.tmpl OUTPUTS vulkan_gfx_api.h)
+    apic(${vulkan} PATH ${cc_gapir} TEMPLATE vulkan_gfx_api_extras.tmpl OUTPUTS vulkan_gfx_api_extras.cpp)
+endif()
 
 glob_all_dirs()
 
@@ -35,13 +37,20 @@ glob(test_sources
     INCLUDE "_test.cpp$"
 )
 
-foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
-    set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
-    add_cmake_target(${abi} gapir ${dst} "libgapir.so"
-        DEPENDEES cc-core
-        DEPENDS ${sources} ${android_files}
-    )
-endforeach()
+if(NOT MSVC)
+    foreach(abi ${ANDROID_ACTIVE_ABI_LIST})
+        set(dst "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ANDROID_BUILD_PATH_${abi}}")
+        add_cmake_target(${abi} gapir ${dst} "libgapir.so"
+            DEPENDEES cc-core
+            DEPENDS ${sources} ${android_files}
+        )
+    endforeach()
+endif()
+
+if(MSVC_GAPIR AND WIN32)
+    add_cmake_step("gapir-msvc" gapir_static DEPENDEES cc-core breakpad DEPENDS ${sources})
+    return()
+endif()
 
 if(NOT DISABLED_CXX)
     add_library(gapir_static STATIC  ${sources})

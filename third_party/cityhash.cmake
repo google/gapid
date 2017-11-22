@@ -21,6 +21,10 @@ set(cityhash_gen "${CMAKE_BINARY_DIR}/third_party/cityhash")
 configure_file("third_party/cityhash_config.h.in" "${cityhash_gen}/config.h" @ONLY)
 configure_file("third_party/cityhash_byteswap.h.in" "${cityhash_gen}/byteswap.h" @ONLY)
 
+if(MSVC_GAPIR AND WIN32)
+    add_cmake_step("gapir-msvc" cityhash DEPENDS ${sources})
+endif()
+
 if(NOT DISABLED_CXX)
     add_library(cityhash ${sources})
 

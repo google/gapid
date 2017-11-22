@@ -14,6 +14,15 @@
 
 set(sources "${CMAKE_CURRENT_SOURCE_DIR}/cc/main.cpp")
 
+
+if(MSVC_GAPIR AND WIN32)
+    add_cmake_target("gapir-msvc" gapir "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" "gapir.exe"
+        DEPENDEES gapir_static
+        DEPENDS ${sources}
+    )
+    return()
+endif()
+
 if(NOT DISABLED_CXX)
     if(ANDROID)
         get_filename_component(glue "${ANDROID_NDK_ROOT}/sources/android/native_app_glue" ABSOLUTE)
