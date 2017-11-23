@@ -105,7 +105,7 @@ type vulkanMachine struct {
 	descriptors                   map[*descriptor]struct{}
 	boundDescriptorSets           map[*boundDescriptorSet]struct{}
 	forwardPairedLabels           map[*forwardPairedLabel]struct{}
-	lastBoundFramebufferImageData map[*dependencygraph.Behavior][]*resBinding
+	lastBoundFramebufferImageData map[api.CmdID][]dependencygraph.DefUseVariable
 }
 
 func newVulkanMachine() *vulkanMachine {
@@ -119,7 +119,7 @@ func newVulkanMachine() *vulkanMachine {
 		descriptors:                   map[*descriptor]struct{}{},
 		boundDescriptorSets:           map[*boundDescriptorSet]struct{}{},
 		forwardPairedLabels:           map[*forwardPairedLabel]struct{}{},
-		lastBoundFramebufferImageData: map[*dependencygraph.Behavior][]*resBinding{},
+		lastBoundFramebufferImageData: map[api.CmdID][]dependencygraph.DefUseVariable{},
 	}
 }
 
@@ -133,7 +133,7 @@ func (m *vulkanMachine) Clear() {
 	m.descriptors = map[*descriptor]struct{}{}
 	m.boundDescriptorSets = map[*boundDescriptorSet]struct{}{}
 	m.forwardPairedLabels = map[*forwardPairedLabel]struct{}{}
-	m.lastBoundFramebufferImageData = map[*dependencygraph.Behavior][]*resBinding{}
+	m.lastBoundFramebufferImageData = map[api.CmdID][]dependencygraph.DefUseVariable{}
 }
 
 func (m *vulkanMachine) IsAlive(behaviorIndex uint64,
@@ -147,13 +147,12 @@ func (m *vulkanMachine) IsAlive(behaviorIndex uint64,
 	return false
 }
 
-func (m *vulkanMachine) FramebufferRequest(behaviorIndex uint64,
+func (m *vulkanMachine) FramebufferRequest(id api.CmdID,
 	ft *dependencygraph.Footprint) {
-	bh := ft.Behaviors[behaviorIndex]
-	fbImgs, ok := m.lastBoundFramebufferImageData[bh]
+	fbData, ok := m.lastBoundFramebufferImageData[id]
 	if ok {
-		for _, img := range fbImgs {
-			m.use(img)
+		for _, d := range fbData {
+			m.use(d)
 		}
 	}
 }
@@ -953,6 +952,7 @@ func (ds *descriptorSet) setDescriptor(ctx context.Context,
 			d.sampler = sampler
 			d.ty = ty
 			d.bufRng = rng
+			d.bufOffset = boundOffset
 			if ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
 				ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
 				ds.dynamicDescriptorCount++
@@ -1209,14 +1209,18 @@ type FootprintBuilder struct {
 // returns the underlying data.
 func (vb *FootprintBuilder) getImageData(ctx context.Context,
 	bh *dependencygraph.Behavior, vkImg VkImage) []dependencygraph.DefUseVariable {
-	read(ctx, bh, vkHandle(vkImg))
-	read(ctx, bh, vb.images[vkImg].layout)
+	if bh != nil {
+		read(ctx, bh, vkHandle(vkImg))
+		read(ctx, bh, vb.images[vkImg].layout)
+	}
 	data := vb.images[vkImg].opaqueData.getBoundData(ctx, bh, 0, vkWholeSize)
 	for _, aspecti := range vb.images[vkImg].sparseData {
 		for _, layeri := range aspecti {
 			for _, leveli := range layeri {
 				for _, blocki := range leveli {
-					read(ctx, bh, blocki)
+					if bh != nil {
+						read(ctx, bh, blocki)
+					}
 					data = append(data, blocki.backingData)
 				}
 			}
@@ -1433,15 +1437,9 @@ func (vb *FootprintBuilder) recordReadsWritesModifies(
 	cbc := vb.newCommand(ctx, bh, vkCb)
 	cbc.behave = func(sc submittedCommand, execInfo *queueExecutionState) {
 		cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
-		for _, d := range reads {
-			read(ctx, cbh, d)
-		}
-		for _, d := range writes {
-			write(ctx, cbh, d)
-		}
-		for _, d := range modifies {
-			modify(ctx, cbh, d)
-		}
+		read(ctx, cbh, reads...)
+		write(ctx, cbh, writes...)
+		modify(ctx, cbh, modifies...)
 		ft.AddBehavior(ctx, cbh)
 	}
 }
@@ -1634,9 +1632,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				if lastDrawInfo.Framebuffer != nil {
 					for _, view := range lastDrawInfo.Framebuffer.ImageAttachments.Range() {
 						img := view.Image
-						data := vb.images[img.VulkanHandle].opaqueData
-						vb.machine.lastBoundFramebufferImageData[bh] = append(
-							vb.machine.lastBoundFramebufferImageData[bh], data.resBindings()...)
+						data := vb.getImageData(ctx, nil, img.VulkanHandle)
+						vb.machine.lastBoundFramebufferImageData[id] = append(
+							vb.machine.lastBoundFramebufferImageData[id], data...)
 					}
 				}
 			}
