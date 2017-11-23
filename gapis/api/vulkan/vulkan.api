@@ -298,6 +298,10 @@ enum VkStructureType {
   VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2_KHR = 1000146002,
   VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR = 1000146003,
   VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2_KHR = 1000146004,
+
+  //@extension("VK_KHR_dedicated_allocation")
+  VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR = 1000127000,
+  VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR = 1000127001,
 }
 
 enum VkSystemAllocationScope {
@@ -2359,14 +2363,35 @@ cmd void vkGetImageMemoryRequirements2KHR(
   if !(device in Devices) {vkErrorInvalidDevice(device)}
   info := pInfo[0]
   // TODO: handle pNext for 'info'
-  memReq := ?
-  // TODO: handle pNext for 'memReq'
+
+  fence
+
   if pMemoryRequirements == null {vkErrorNullPointer("VkMemoryRequirements2KHR")}
-  pMemoryRequirements[0] = memReq
+  pMemoryRequirements[0] = ?
+  memReq := pMemoryRequirements[0]
+
   if !(info.image in Images) {vkErrorInvalidImage(info.image)}
   // TODO: Drop the touch of the image object once we extract the memory
   // requirement info out of the image object.
-  Images[info.image].MemoryRequirements = pMemoryRequirements[0].memoryRequirements
+  Images[info.image].MemoryRequirements = memReq.memoryRequirements
+
+  if memReq.pNext != null {
+    numPNext := numberOfPNext(as!const void*(memReq.pNext))
+    next := MutableVoidPtr(as!void*(memReq.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR: {
+          ext := as!VkMemoryDedicatedRequirementsKHR*(next.Ptr)[0:1][0]
+          Images[info.image].DedicatedRequirementsKHR = new!DedicatedRequirementsKHR(
+            PrefersDedicatedAllocation: ext.prefersDedicatedAllocation,
+            RequiresDedicatedAllocation: ext.requiresDedicatedAllocation,
+          )
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 }
 
 @extension("VK_KHR_get_memory_requirements2")
@@ -2377,14 +2402,35 @@ cmd void vkGetBufferMemoryRequirements2KHR(
   if !(device in Devices) {vkErrorInvalidDevice(device)}
   info := pInfo[0]
   // TODO: handle pNext
-  memReq := ?
-  // TODO: handle pNext for 'memReq'
+
+  fence
+
   if pMemoryRequirements == null {vkErrorNullPointer("VkMemoryRequirements2KHR")}
-  pMemoryRequirements[0] = memReq
+  pMemoryRequirements[0] = ?
+  // TODO: handle pNext for 'memReq'
+  memReq := pMemoryRequirements[0]
   if !(info.buffer in Buffers) {vkErrorInvalidBuffer(info.buffer)}
   // TODO: Do the touch of the buffer object once we extract the memory
   // requirement info out of the buffer objectd.
-  Buffers[info.buffer].MemoryRequirements = pMemoryRequirements[0].memoryRequirements
+  Buffers[info.buffer].MemoryRequirements = memReq.memoryRequirements
+
+  if memReq.pNext != null {
+    numPNext := numberOfPNext(as!const void*(memReq.pNext))
+    next := MutableVoidPtr(as!void*(memReq.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR: {
+          ext := as!VkMemoryDedicatedRequirementsKHR*(next.Ptr)[0:1][0]
+          Buffers[info.buffer].DedicatedRequirementsKHR = new!DedicatedRequirementsKHR(
+            PrefersDedicatedAllocation: ext.prefersDedicatedAllocation,
+            RequiresDedicatedAllocation: ext.requiresDedicatedAllocation,
+          )
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 }
 
 @extension("VK_KHR_get_memory_requirements2")
@@ -2417,6 +2463,24 @@ cmd void vkGetImageSparseMemoryRequirements2KHR(
     }
     pSparseMemoryRequirementCount[0] = count
   }
+}
+
+// VK_KHR_dedicated_allocation
+
+@extension("VK_KHR_dedicated_allocation")
+class VkMemoryDedicatedRequirementsKHR {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        prefersDedicatedAllocation
+  VkBool32        requiresDedicatedAllocation
+}
+
+@extension("VK_KHR_dedicated_allocation")
+class VkMemoryDedicatedAllocationInfoKHR {
+  VkStructureType sType
+  const void*     pNext
+  VkImage         image
+  VkBuffer        buffer
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2938,6 +3002,9 @@ cmd void RecreateDeviceMemory(
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
           _ = as!VkDedicatedAllocationMemoryAllocateInfoNV*(next.Ptr)[0:1][0]
         }
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR: {
+          _ = as!VkMemoryDedicatedAllocationInfoKHR*(next.Ptr)[0:1][0]
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
@@ -2991,9 +3058,16 @@ cmd VkResult vkAllocateMemory(
       switch sType {
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
           ext := as!VkDedicatedAllocationMemoryAllocateInfoNV*(next.Ptr)[0:1][0]
-          memoryObject.DedicatedAllocationNV = new!DedicatedAllocationMemoryAllocateInfoNV(
+          memoryObject.DedicatedAllocationNV = new!MemoryDedicatedAllocationInfo(
             Image:   ext.image,
             Buffer:  ext.buffer,
+          )
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR: {
+          ext := as!VkMemoryDedicatedAllocationInfoKHR*(next.Ptr)[0:1][0]
+          memoryObject.DedicatedAllocationKHR = new!MemoryDedicatedAllocationInfo(
+            Image: ext.image,
+            Buffer: ext.buffer,
           )
         }
       }
@@ -3804,7 +3878,8 @@ cmd void RecreateBuffer(
     VkDevice                  device,
     const VkBufferCreateInfo* pCreateInfo,
     VkBuffer*                 pBuffer
-    VkMemoryRequirements*     pMemoryRequirements) {
+    VkMemoryRequirements*     pMemoryRequirements,
+    VkMemoryDedicatedRequirementsKHR* pDedicatedRequirements) {
   create_info := pCreateInfo[0]
   if (create_info.queueFamilyIndexCount > 0) {
     read(create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount])
@@ -3825,6 +3900,9 @@ cmd void RecreateBuffer(
   }
   write(pBuffer[0:1])
   if pMemoryRequirements != null {
+    write(pMemoryRequirements[0:1])
+  }
+  if pDedicatedRequirements != null {
     write(pMemoryRequirements[0:1])
   }
 }
@@ -3976,7 +4054,8 @@ cmd void RecreateImage(
     VkImage*                         pImage,
     VkMemoryRequirements*            pMemoryRequirements,
     u32                              sparseMemoryRequirementCount,
-    VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements,
+    VkMemoryDedicatedRequirementsKHR* pDedicatedRequirements) {
   info := pCreateInfo[0]
 
   // Handle pNext
@@ -4000,6 +4079,9 @@ cmd void RecreateImage(
   }
   if (sparseMemoryRequirementCount > 0) && (pSparseMemoryRequirements != null) {
     write(pSparseMemoryRequirements[0:sparseMemoryRequirementCount])
+  }
+  if pDedicatedRequirements != null {
+    write(pDedicatedRequirements[0:1])
   }
 }
 
@@ -9094,6 +9176,7 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   supportedExtensions.ExtensionNames["VK_KHR_ANDROID_native_buffer"] = true
   supportedExtensions.ExtensionNames["VK_NV_dedicated_allocation"] = true
   supportedExtensions.ExtensionNames["VK_KHR_get_memory_requirements2"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_dedicated_allocation"] = true
 
   extensionNames := info.ppEnabledExtensionNames[0:info.enabledExtensionCount]
   for i in (0 .. info.enabledExtensionCount) {
@@ -9459,7 +9542,8 @@ enum SemaphoreUpdate {
   @spy_disabled
   @hidden @nobox @internal u8[]               Data
   @unused ref!VulkanDebugMarkerInfo           DebugInfo
-  ref!DedicatedAllocationMemoryAllocateInfoNV DedicatedAllocationNV
+  ref!MemoryDedicatedAllocationInfo DedicatedAllocationNV
+  ref!MemoryDedicatedAllocationInfo DedicatedAllocationKHR
 }
 
 @internal class BufferInfo {
@@ -9481,6 +9565,7 @@ enum SemaphoreUpdate {
   @unused ref!QueueObject LastBoundQueue
   @unused ref!VulkanDebugMarkerInfo   DebugInfo
   VkMemoryRequirements     MemoryRequirements
+  ref!DedicatedRequirementsKHR  DedicatedRequirementsKHR
 }
 
 @internal class BufferViewObject {
@@ -9526,7 +9611,8 @@ enum SemaphoreUpdate {
   map!(u32, ref!ImageLayer) Layers
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
   VkMemoryRequirements      MemoryRequirements
-  map!(u32, VkSparseImageMemoryRequirements) SparseMemoryRequirements
+  map!(u32, VkSparseImageMemoryRequirements)  SparseMemoryRequirements
+  ref!DedicatedRequirementsKHR                DedicatedRequirementsKHR
 }
 
 @internal class ImageLayer {
@@ -9906,7 +9992,12 @@ class VulkanStructHeader {
   VkBool32 DedicatedAllocation
 }
 
-@internal class DedicatedAllocationMemoryAllocateInfoNV {
+@internal class MemoryDedicatedAllocationInfo {
   VkImage  Image
   VkBuffer Buffer
+}
+
+@internal class DedicatedRequirementsKHR {
+  VkBool32 PrefersDedicatedAllocation
+  VkBool32 RequiresDedicatedAllocation
 }

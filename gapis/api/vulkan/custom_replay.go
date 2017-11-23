@@ -1170,6 +1170,13 @@ func (a *RecreateImage) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalS
 			GetState(s).Images.Get(img).SparseMemoryRequirements.Set(aspect, req)
 		}
 	}
+	if a.PDedicatedRequirements != (VkMemoryDedicatedRequirementsKHRᵖ{}) {
+		dedicatedReqs := a.PDedicatedRequirements.MustRead(ctx, a, s, nil)
+		GetState(s).Images.Get(img).DedicatedRequirementsKHR = &DedicatedRequirementsKHR{
+			PrefersDedicatedAllocation:  dedicatedReqs.PrefersDedicatedAllocation,
+			RequiresDedicatedAllocation: dedicatedReqs.RequiresDedicatedAllocation,
+		}
+	}
 	return nil
 }
 
@@ -1527,6 +1534,13 @@ func (a *RecreateBuffer) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	if a.PMemoryRequirements != (VkMemoryRequirementsᵖ{}) {
 		memReqs := a.PMemoryRequirements.MustRead(ctx, a, s, nil)
 		GetState(s).Buffers.Get(buf).MemoryRequirements = memReqs
+	}
+	if a.PDedicatedRequirements != (VkMemoryDedicatedRequirementsKHRᵖ{}) {
+		dedicatedReqs := a.PDedicatedRequirements.MustRead(ctx, a, s, nil)
+		GetState(s).Buffers.Get(buf).DedicatedRequirementsKHR = &DedicatedRequirementsKHR{
+			PrefersDedicatedAllocation:  dedicatedReqs.PrefersDedicatedAllocation,
+			RequiresDedicatedAllocation: dedicatedReqs.RequiresDedicatedAllocation,
+		}
 	}
 	return nil
 }
