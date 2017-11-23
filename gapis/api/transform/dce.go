@@ -70,7 +70,6 @@ type DCE struct {
 	endBehaviorIndex uint64
 	endCmdIndex      api.CmdID
 	requests         *commandIndicesSet
-	requestCount     uint64
 }
 
 // NewDCE constructs a new DCE instance and returns a pointer to the created
@@ -85,7 +84,6 @@ func NewDCE(ctx context.Context, footprint *dependencygraph.Footprint) *DCE {
 // Request added a requsted command or subcommand, represented by its full
 // command index, to the DCE.
 func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
-	t.requestCount++
 	t.requests.insert(fci)
 	bi := t.footprint.BehaviorIndex(ctx, fci)
 	if bi > t.endBehaviorIndex {
@@ -187,6 +185,7 @@ func (t *DCE) backPropagate(ctx context.Context) (
 	livenessBoard := make([]bool, t.endBehaviorIndex+1)
 	aliveCommands := newCommandIndicesSet()
 	usedMachines := map[dependencygraph.BackPropagationMachine]struct{}{}
+	fbRequested := map[api.CmdID]struct{}{}
 	for bi := int64(t.endBehaviorIndex); bi >= 0; bi-- {
 		bh := t.footprint.Behaviors[bi]
 		fci := bh.Owner
@@ -198,7 +197,10 @@ func (t *DCE) backPropagate(ctx context.Context) (
 
 		if t.requests.contains(fci) || t.requests.contains(api.SubCmdIdx{fci[0]}) {
 			bh.Alive = true
-			machine.FramebufferRequest(uint64(bi), t.footprint)
+			if _, ok := fbRequested[api.CmdID(fci[0])]; !ok {
+				machine.FramebufferRequest(api.CmdID(fci[0]), t.footprint)
+				fbRequested[api.CmdID(fci[0])] = struct{}{}
+			}
 		}
 
 		if bh.Alive || machine.IsAlive(uint64(bi), t.footprint) {
