@@ -302,6 +302,17 @@ enum VkStructureType {
   //@extension("VK_KHR_dedicated_allocation")
   VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR = 1000127000,
   VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR = 1000127001,
+
+  //@extension("VK_KHR_get_physical_device_properties2")
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR = 1000059000,
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR = 1000059001,
+  VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR = 1000059002,
+  VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR = 1000059003,
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR = 1000059004,
+  VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR = 1000059005,
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR = 1000059006,
+  VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR = 1000059007,
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2_KHR = 1000059008,
 }
 
 enum VkSystemAllocationScope {
@@ -2356,6 +2367,7 @@ class VkSparseImageMemoryRequirements2KHR {
 }
 
 @extension("VK_KHR_get_memory_requirements2")
+@indirect("VkDevice")
 cmd void vkGetImageMemoryRequirements2KHR(
   VkDevice                                  device,
   const VkImageMemoryRequirementsInfo2KHR*  pInfo,
@@ -2395,6 +2407,7 @@ cmd void vkGetImageMemoryRequirements2KHR(
 }
 
 @extension("VK_KHR_get_memory_requirements2")
+@indirect("VkDevice")
 cmd void vkGetBufferMemoryRequirements2KHR(
   VkDevice                                  device,
   const VkBufferMemoryRequirementsInfo2KHR* pInfo,
@@ -2434,6 +2447,7 @@ cmd void vkGetBufferMemoryRequirements2KHR(
 }
 
 @extension("VK_KHR_get_memory_requirements2")
+@indirect("VkDevice")
 cmd void vkGetImageSparseMemoryRequirements2KHR(
   VkDevice                              device,
   const VkImageSparseMemoryRequirementsInfo2KHR*  pInfo,
@@ -2481,6 +2495,195 @@ class VkMemoryDedicatedAllocationInfoKHR {
   const void*     pNext
   VkImage         image
   VkBuffer        buffer
+}
+
+// VK_KHR_get_physical_device_properties2
+
+@extension("VK_KHR_device_properties2")
+class VkPhysicalDeviceFeatures2KHR {
+  VkStructureType           sType
+  void*                     pNext
+  VkPhysicalDeviceFeatures  features
+}
+
+@extension("VK_KHR_device_properties2")
+class VkPhysicalDeviceProperties2KHR {
+  VkStructureType             sType
+  void*                       pNext
+  VkPhysicalDeviceProperties  properties
+}
+
+@extension("VK_KHR_device_properties2")
+class VkFormatProperties2KHR {
+  VkStructureType     sType
+  void*               pNext
+  VkFormatProperties  formatProperties
+}
+
+@extension("VK_KHR_device_properties2")
+class VkImageFormatProperties2KHR {
+  VkStructureType            sType
+  void*                      pNext
+  VkImageFormatProperties    imageFormatProperties
+}
+
+@extension("VK_KHR_device_properties2")
+class VkPhysicalDeviceImageFormatInfo2KHR {
+    VkStructureType       sType
+    const void*           pNext
+    VkFormat              format
+    VkImageType           type
+    VkImageTiling         tiling
+    VkImageUsageFlags     usage
+    VkImageCreateFlags    flags
+}
+
+@extension("VK_KHR_device_properties2")
+class VkQueueFamilyProperties2KHR {
+    VkStructureType            sType
+    void*                      pNext
+    VkQueueFamilyProperties    queueFamilyProperties
+}
+
+@extension("VK_KHR_device_properties2")
+class VkPhysicalDeviceMemoryProperties2KHR {
+    VkStructureType                     sType
+    void*                               pNext
+    VkPhysicalDeviceMemoryProperties    memoryProperties
+}
+
+@extension("VK_KHR_device_properties2")
+class VkSparseImageFormatProperties2KHR {
+    VkStructureType                  sType
+    void*                            pNext
+    VkSparseImageFormatProperties    properties
+}
+
+@extension("VK_KHR_device_properties2")
+class VkPhysicalDeviceSparseImageFormatInfo2KHR {
+    VkStructureType          sType
+    const void*              pNext
+    VkFormat                 format
+    VkImageType              type
+    VkSampleCountFlagBits    samples
+    VkImageUsageFlags        usage
+    VkImageTiling            tiling
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceFeatures2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceFeatures2KHR*               pFeatures) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pFeatures == null {vkErrorNullPointer("VkPhysicalDeviceFeatures2KHR")}
+  pFeatures[0] = ?
+  // TODO: handle pNext
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceProperties2KHR*             pProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pProperties == null {vkErrorNullPointer("VkPhysicalDeviceProperties2KHR")}
+  pProperties[0] = ?
+  // TODO: handle pNext
+  PhysicalDevices[physicalDevice].PhysicalDeviceProperties = pProperties[0].properties
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceFormatProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkFormat                                    format,
+    VkFormatProperties2KHR*                     pFormatProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pFormatProperties == null {vkErrorNullPointer("VkFormatProperties2KHR")}
+  pFormatProperties[0] = ?
+  // TODO: handle pNext
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDeviceImageFormatProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceImageFormatInfo2KHR*  pImageFormatInfo,
+    VkImageFormatProperties2KHR*                pImageFormatProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pImageFormatInfo == null {vkErrorNullPointer("const VkPhysicalDeviceImageFormatInfo2KHR")}
+  if pImageFormatProperties == null {vkErrorNullPointer("VkImageFormatProperties2KHR")}
+  pImageFormatProperties[0] = ?
+  // TODO: handle pNext
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceQueueFamilyProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    u32*                                        pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties2KHR*                pQueueFamilyProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pQueueFamilyPropertyCount == null {vkErrorNullPointer("uint32_t")}
+  _ = pQueueFamilyPropertyCount[0]
+
+  fence
+
+  if pQueueFamilyProperties == null {
+    pQueueFamilyPropertyCount[0] = ?
+  } else {
+    count := as!u32(?)
+    properties := pQueueFamilyProperties[0:count]
+    for i in (0 .. count) {
+      properties[i] = ?
+      // TODO: handle pNext
+    }
+    pQueueFamilyPropertyCount[0] = count
+    if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+    for i in (0 .. count) {
+      PhysicalDevices[physicalDevice].QueueFamilyProperties[i] = properties[i].queueFamilyProperties
+    }
+  }
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceMemoryProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceMemoryProperties2KHR*       pMemoryProperties) {
+  if pMemoryProperties == null {vkErrorNullPointer("VkPhysicalDeviceMemoryProperties2KHR")}
+  fence
+  pMemoryProperties[0] = ?
+  memoryProperties := pMemoryProperties[0]
+
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  PhysicalDevices[physicalDevice].MemoryProperties = memoryProperties.memoryProperties
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
+    VkPhysicalDevice                                  physicalDevice,
+    const VkPhysicalDeviceSparseImageFormatInfo2KHR*  pFormatInfo,
+    u32*                                              pPropertyCount,
+    VkSparseImageFormatProperties2KHR*                pProperties) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pPropertyCount == null {vkErrorNullPointer("uint32_t")}
+  _ = pPropertyCount[0]
+
+  if pProperties == null {
+    pPropertyCount[0] = ?
+  } else {
+    count := as!u32(?)
+    properties := pProperties[0:count]
+    for i in (0 .. count) {
+      properties[i] = ?
+    }
+    pPropertyCount[0] = count
+  }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2705,7 +2908,6 @@ cmd void vkGetPhysicalDeviceMemoryProperties(
   dev := PhysicalDevices[physicalDevice]
   dev.MemoryProperties = memoryProperties
   PhysicalDevices[physicalDevice] = dev
-
 }
 
 @indirect("VkInstance")
@@ -9133,6 +9335,7 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
   supportedExtensions.ExtensionNames["VK_KHR_mir_surface"] = true
   supportedExtensions.ExtensionNames["VK_KHR_android_surface"] = true
   supportedExtensions.ExtensionNames["VK_KHR_win32_surface"] = true
+  supportedExtensions.ExtensionNames["VK_KHR_get_physical_device_properties2"] = true
 
   extensionNames := info.ppEnabledExtensionNames[0:info.enabledExtensionCount]
   for i in (0 .. info.enabledExtensionCount) {
