@@ -313,6 +313,11 @@ enum VkStructureType {
   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR = 1000059006,
   VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR = 1000059007,
   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2_KHR = 1000059008,
+
+  //@extension("VK_KHR_get_surface_capabilities2")
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR = 1000119000,
+  VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR = 1000119001,
+  VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR = 1000119002,
 }
 
 enum VkSystemAllocationScope {
@@ -2572,6 +2577,7 @@ class VkPhysicalDeviceSparseImageFormatInfo2KHR {
 
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_device_properties2")
 cmd void vkGetPhysicalDeviceFeatures2KHR(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceFeatures2KHR*               pFeatures) {
@@ -2583,6 +2589,7 @@ cmd void vkGetPhysicalDeviceFeatures2KHR(
 
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_device_properties2")
 cmd void vkGetPhysicalDeviceProperties2KHR(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceProperties2KHR*             pProperties) {
@@ -2595,6 +2602,7 @@ cmd void vkGetPhysicalDeviceProperties2KHR(
 
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_device_properties2")
 cmd void vkGetPhysicalDeviceFormatProperties2KHR(
     VkPhysicalDevice                            physicalDevice,
     VkFormat                                    format,
@@ -2607,6 +2615,7 @@ cmd void vkGetPhysicalDeviceFormatProperties2KHR(
 
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_device_properties2")
 cmd VkResult vkGetPhysicalDeviceImageFormatProperties2KHR(
     VkPhysicalDevice                            physicalDevice,
     const VkPhysicalDeviceImageFormatInfo2KHR*  pImageFormatInfo,
@@ -2621,6 +2630,7 @@ cmd VkResult vkGetPhysicalDeviceImageFormatProperties2KHR(
 
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_device_properties2")
 cmd void vkGetPhysicalDeviceQueueFamilyProperties2KHR(
     VkPhysicalDevice                            physicalDevice,
     u32*                                        pQueueFamilyPropertyCount,
@@ -2650,6 +2660,7 @@ cmd void vkGetPhysicalDeviceQueueFamilyProperties2KHR(
 
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_device_properties2")
 cmd void vkGetPhysicalDeviceMemoryProperties2KHR(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceMemoryProperties2KHR*       pMemoryProperties) {
@@ -2664,6 +2675,7 @@ cmd void vkGetPhysicalDeviceMemoryProperties2KHR(
 
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_device_properties2")
 cmd void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
     VkPhysicalDevice                                  physicalDevice,
     const VkPhysicalDeviceSparseImageFormatInfo2KHR*  pFormatInfo,
@@ -2683,7 +2695,76 @@ cmd void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
     }
     pPropertyCount[0] = count
   }
+}
 
+@extension("VK_KHR_get_surface_capabilities2")
+class VkPhysicalDeviceSurfaceInfo2KHR {
+    VkStructureType    sType
+    const void*        pNext
+    VkSurfaceKHR       surface
+}
+
+@extension("VK_KHR_get_surface_capabilities2")
+class VkSurfaceCapabilities2KHR {
+    VkStructureType             sType
+    void*                       pNext
+    VkSurfaceCapabilitiesKHR    surfaceCapabilities
+}
+
+@extension("VK_KHR_get_surface_capabilities2")
+class VkSurfaceFormat2KHR {
+    VkStructureType       sType
+    void*                 pNext
+    VkSurfaceFormatKHR    surfaceFormat
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_get_surface_capabilities2")
+cmd VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
+    VkSurfaceCapabilities2KHR*                  pSurfaceCapabilities) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pSurfaceInfo == null {vkErrorNullPointer("const VkPhysicalDeviceSurfaceInfo2KHR")}
+  info := pSurfaceInfo[0]
+  // TODO: handle pNext
+  if !(info.surface in Surfaces) {vkErrorInvalidSurface(info.surface)}
+  if pSurfaceCapabilities == null {vkErrorNullPointer("VkSurfaceCapabilitiesKHR")}
+  pSurfaceCapabilities[0] = ?
+  // TODO: handle pNext
+  return ?
+
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_get_surface_capabilities2")
+cmd VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
+    u32*                                        pSurfaceFormatCount,
+    VkSurfaceFormat2KHR*                        pSurfaceFormats) {
+  if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if pSurfaceInfo == null {vkErrorNullPointer("const VkPhysicalDeviceSurfaceInfo2KHR")}
+  info := pSurfaceInfo[0]
+  // TODO: handle pNext
+  if !(info.surface in Surfaces) {vkErrorInvalidSurface(info.surface)}
+  if pSurfaceFormatCount == null {vkErrorNullPointer("uint32_t")}
+  _ = pSurfaceFormatCount[0]
+  fence
+  if pSurfaceFormats == null {
+    pSurfaceFormatCount[0] = ?
+  } else {
+    count := as!u32(?)
+    formats := pSurfaceFormats[0:count]
+    for i in (0 .. count) {
+      formats[i] = ?
+    }
+    pSurfaceFormatCount[0] = count
+  }
+
+  return ?
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8163,6 +8244,7 @@ cmd VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
     VkSurfaceKHR              surface,
     VkSurfaceCapabilitiesKHR* pSurfaceCapabilities) {
   if !(physicalDevice in PhysicalDevices) {vkErrorInvalidPhysicalDevice(physicalDevice)}
+  if !(surface in Surfaces) {vkErrorInvalidSurface(surface)}
   if pSurfaceCapabilities == null {vkErrorNullPointer("VkSurfaceCapabilitiesKHR")}
   pSurfaceCapabilities[0] = ?
   return ?
@@ -9336,6 +9418,7 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
   supportedExtensions.ExtensionNames["VK_KHR_android_surface"] = true
   supportedExtensions.ExtensionNames["VK_KHR_win32_surface"] = true
   supportedExtensions.ExtensionNames["VK_KHR_get_physical_device_properties2"] = true
+  supportedExtensions.ExtensionNames["Vk_KHR_get_surface_capabilities2"] = true
 
   extensionNames := info.ppEnabledExtensionNames[0:info.enabledExtensionCount]
   for i in (0 .. info.enabledExtensionCount) {
