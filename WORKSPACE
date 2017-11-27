@@ -58,23 +58,16 @@ windows_sdk(
 
 android_sdk_repository(
     name="androidsdk",
-    api_level=21,
+    api_level=27,
 )
 
 android_ndk_repository(
     name="androidndk",
-    api_level=21,
+    api_level=14,
 )
 
 ####################################
 # Now get all our other dependancies
-
-github_repository(
-    name = "io_bazel",
-    organization = "bazelbuild",
-    project = "bazel",
-    commit = "b78d8c8b31a530e1a94d1feeac34aceac67a31df",
-)
 
 github_repository(
     name = "com_github_grpc_java",
@@ -247,4 +240,12 @@ github_go_repository(
     project = "sourcemap",
     commit = "8c68805598ab8d5637b1a72b5f7d381ea0f39c31",
     importpath = "github.com/neelance/sourcemap",
+)
+
+github_go_repository(
+    name = "com_github_google_go_github",
+    organization = "google",
+    project = "go-github",
+    commit = "a89ea1cdf79929726a9416663609269ada774da0",
+    importpath = "github.com/google/go-github/github",
 )
