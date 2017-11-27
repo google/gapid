@@ -23,7 +23,7 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/math/sint"
-	"github.com/google/gapid/third_party/src/github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
 // ErrUnknownType is the error returned by Reader.Unmarshal() when it
