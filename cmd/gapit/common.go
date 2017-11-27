@@ -49,6 +49,9 @@ func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Se
 
 func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags) (client.Client, error) {
 	args := strings.Fields(gapisFlags.Args)
+
+	args = append(args, "--enable-local-files")
+
 	if app.Flags.Analytics != "" {
 		args = append(args, "--analytics", app.Flags.Analytics)
 	}
