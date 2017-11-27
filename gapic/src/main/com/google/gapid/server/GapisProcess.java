@@ -89,6 +89,8 @@ public class GapisProcess extends ChildProcess<Integer> {
 
     String gapirFlags = "";
 
+    args.add("-enable-local-files");
+
     if (settings.reportCrashes) {
       args.add("-crashreport");
     }

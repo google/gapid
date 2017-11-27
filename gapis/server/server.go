@@ -51,12 +51,13 @@ import (
 
 // Config holds the server configuration settings.
 type Config struct {
-	Info           *service.ServerInfo
-	StringTables   []*stringtable.StringTable
-	AuthToken      auth.Token
-	DeviceScanDone task.Signal
-	LogBroadcaster *log.Broadcaster
-	IdleTimeout    time.Duration
+	Info             *service.ServerInfo
+	StringTables     []*stringtable.StringTable
+	EnableLocalFiles bool
+	AuthToken        auth.Token
+	DeviceScanDone   task.Signal
+	LogBroadcaster   *log.Broadcaster
+	IdleTimeout      time.Duration
 }
 
 // Server is the server interface to GAPIS.
@@ -69,6 +70,7 @@ func New(ctx context.Context, cfg Config) Server {
 	return &server{
 		cfg.Info,
 		cfg.StringTables,
+		cfg.EnableLocalFiles,
 		cfg.DeviceScanDone,
 		cfg.LogBroadcaster,
 		bytes.Buffer{},
@@ -76,11 +78,12 @@ func New(ctx context.Context, cfg Config) Server {
 }
 
 type server struct {
-	info           *service.ServerInfo
-	stbs           []*stringtable.StringTable
-	deviceScanDone task.Signal
-	logBroadcaster *log.Broadcaster
-	profile        bytes.Buffer
+	info             *service.ServerInfo
+	stbs             []*stringtable.StringTable
+	enableLocalFiles bool
+	deviceScanDone   task.Signal
+	logBroadcaster   *log.Broadcaster
+	profile          bytes.Buffer
 }
 
 func (s *server) Ping(ctx context.Context) error {
@@ -176,6 +179,9 @@ func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, er
 
 func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
 	ctx = log.Enter(ctx, "LoadCapture")
+	if !s.enableLocalFiles {
+		return nil, fmt.Errorf("Server not configured to allow reading of local files")
+	}
 	name := filepath.Base(path)
 	in, err := ioutil.ReadFile(path)
 	if err != nil {

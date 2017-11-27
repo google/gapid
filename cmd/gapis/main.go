@@ -44,16 +44,17 @@ import (
 )
 
 var (
-	rpc             = flag.String("rpc", "localhost:0", "TCP host:port of the server's RPC listener")
-	stringsPath     = flag.String("strings", "strings", "Directory containing string table packages")
-	persist         = flag.Bool("persist", false, "Server will keep running even when no connections remain")
-	gapisAuthToken  = flag.String("gapis-auth-token", "", "The connection authorization token for gapis")
-	gapirAuthToken  = flag.String("gapir-auth-token", "", "The connection authorization token for gapir")
-	gapirArgStr     = flag.String("gapir-args", "", `"The arguments to be passed to the host-run gapir"`)
-	scanAndroidDevs = flag.Bool("monitor-android-devices", true, "Server will scan for locally connected Android devices")
-	addLocalDevice  = flag.Bool("add-local-device", true, "Server will create a new local replay device")
-	idleTimeout     = flag.Duration("idle-timeout", 0, "Closes GAPIS if the server is not repeatedly pinged within this duration")
-	adbPath         = flag.String("adb", "", "Path to the adb executable; leave empty to search the environment")
+	rpc              = flag.String("rpc", "localhost:0", "TCP host:port of the server's RPC listener")
+	stringsPath      = flag.String("strings", "strings", "Directory containing string table packages")
+	persist          = flag.Bool("persist", false, "Server will keep running even when no connections remain")
+	gapisAuthToken   = flag.String("gapis-auth-token", "", "The connection authorization token for gapis")
+	gapirAuthToken   = flag.String("gapir-auth-token", "", "The connection authorization token for gapir")
+	gapirArgStr      = flag.String("gapir-args", "", `"The arguments to be passed to the host-run gapir"`)
+	scanAndroidDevs  = flag.Bool("monitor-android-devices", true, "Server will scan for locally connected Android devices")
+	addLocalDevice   = flag.Bool("add-local-device", true, "Server will create a new local replay device")
+	idleTimeout      = flag.Duration("idle-timeout", 0, "Closes GAPIS if the server is not repeatedly pinged within this duration")
+	adbPath          = flag.String("adb", "", "Path to the adb executable; leave empty to search the environment")
+	enableLocalFiles = flag.Bool("enable-local-files", false, "Allow clients to access local .gfxtrace files by path")
 )
 
 func main() {
@@ -115,11 +116,12 @@ func run(ctx context.Context) error {
 			VersionPoint: uint32(app.Version.Point),
 			Features:     features,
 		},
-		StringTables:   loadStrings(ctx),
-		AuthToken:      auth.Token(*gapisAuthToken),
-		DeviceScanDone: deviceScanDone,
-		LogBroadcaster: logBroadcaster,
-		IdleTimeout:    *idleTimeout,
+		StringTables:     loadStrings(ctx),
+		EnableLocalFiles: *enableLocalFiles,
+		AuthToken:        auth.Token(*gapisAuthToken),
+		DeviceScanDone:   deviceScanDone,
+		LogBroadcaster:   logBroadcaster,
+		IdleTimeout:      *idleTimeout,
 	})
 }
 
