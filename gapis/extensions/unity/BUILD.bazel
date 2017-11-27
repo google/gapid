@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "state_reset_grouper.go",
+        "unity.go",
+    ],
+    importpath = "github.com/google/gapid/gapis/extensions/unity",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//gapis/api:go_default_library",
+        "//gapis/api/gles:go_default_library",
+        "//gapis/extensions:go_default_library",
+        "//gapis/resolve/cmdgrouper:go_default_library",
+        "//gapis/service/path:go_default_library",
+    ],
+)

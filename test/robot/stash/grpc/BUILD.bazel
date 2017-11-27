@@ -1,22 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//test/robot/search:pb",
-        "//test/robot/stash:pb",
-    ],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    grpc = True,
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -24,8 +7,8 @@ go_library(
         "client.go",
         "doc.go",
         "server.go",
-        ":pb_go",  # keep
     ],
+    embed = [":grpc_go_proto"],
     importpath = "github.com/google/gapid/test/robot/stash/grpc",
     visibility = ["//visibility:public"],
     deps = [
@@ -58,5 +41,26 @@ go_test(
         "//test/robot/stash:go_default_library",
         "//test/robot/stash/local:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+
+proto_library(
+    name = "grpc_proto",
+    srcs = ["stash.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//test/robot/search:search_proto",
+        "//test/robot/stash:stash_proto",
+    ],
+)
+
+go_grpc_library(
+    name = "grpc_go_proto",
+    importpath = "github.com/google/gapid/test/robot/stash/grpc",
+    proto = ":grpc_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//test/robot/search:go_default_library",
+        "//test/robot/stash:go_default_library",
     ],
 )

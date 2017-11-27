@@ -30,7 +30,7 @@ go_library(
 
 go_binary(
     name = "stringgen",
+    embed = [":go_default_library"],
     importpath = "github.com/google/gapid/cmd/stringgen",
-    library = ":go_default_library",
     visibility = ["//visibility:public"],
 )

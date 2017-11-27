@@ -1,29 +1,16 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//core/os/device:pb",
-    ],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
     srcs = [
         "capture.go",
         "context.go",
+        "decoder.go",
         "doc.go",
-        ":pb_go",  # keep
+        "encoder.go",
     ],
+    embed = [":capture_go_proto"],
     importpath = "github.com/google/gapid/gapis/capture",
     visibility = ["//visibility:public"],
     deps = [
@@ -35,10 +22,9 @@ go_library(
         "//core/math/interval:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
-        "//gapis/atom:go_default_library",
-        "//gapis/atom/atom_pb:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/memory:go_default_library",
+        "//gapis/messages:go_default_library",
         "//gapis/replay/value:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
@@ -60,4 +46,19 @@ go_test(
         "//gapis/api/testcmd:go_default_library",
         "//gapis/database:go_default_library",
     ],
+)
+
+proto_library(
+    name = "capture_proto",
+    srcs = ["capture.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//core/os/device:device_proto"],
+)
+
+go_proto_library(
+    name = "capture_go_proto",
+    importpath = "github.com/google/gapid/gapis/capture",
+    proto = ":capture_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//core/os/device:go_default_library"],
 )

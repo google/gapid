@@ -1,22 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//gapis/api:pb",
-        "//gapis/service:pb",
-        "//gapis/service/path:pb",
-    ],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -36,6 +19,7 @@ go_library(
         "framebuffer_attachment.go",
         "framebuffer_attachment_data.go",
         "framebuffer_changes.go",
+        "framebuffer_observation.go",
         "get.go",
         "index_limits.go",
         "memory.go",
@@ -51,33 +35,35 @@ go_library(
         "state_tree.go",
         "synchronization_data.go",
         "thumbnail.go",
-        ":pb_go",  # keep
     ],
+    embed = [":resolve_go_proto"],
     importpath = "github.com/google/gapid/gapis/resolve",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/deep:go_default_library",
+        "//core/data/dictionary:go_default_library",
         "//core/data/endian:go_default_library",
         "//core/data/id:go_default_library",
         "//core/data/protoutil:go_default_library",
-        "//core/data/slice:go_default_library",
         "//core/event/task:go_default_library",
         "//core/fault:go_default_library",
         "//core/image:go_default_library",
         "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
+        "//core/math/sint:go_default_library",
         "//core/math/u64:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/sync:go_default_library",
-        "//gapis/atom:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",
+        "//gapis/extensions:go_default_library",
         "//gapis/memory:go_default_library",
         "//gapis/messages:go_default_library",
         "//gapis/replay:go_default_library",
         "//gapis/replay/devices:go_default_library",
+        "//gapis/resolve/cmdgrouper:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/box:go_default_library",
         "//gapis/service/path:go_default_library",
@@ -94,8 +80,8 @@ go_test(
         "requests_test.go",
         "state_tree_test.go",
     ],
+    embed = [":go_default_library"],
     importpath = "github.com/google/gapid/gapis/resolve",
-    library = ":go_default_library",
     deps = [
         "//core/assert:go_default_library",
         "//core/data/id:go_default_library",
@@ -109,6 +95,31 @@ go_test(
         "//gapis/messages:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/box:go_default_library",
+        "//gapis/service/path:go_default_library",
+    ],
+)
+
+proto_library(
+    name = "resolve_proto",
+    srcs = ["resolvables.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/image:image_proto",
+        "//gapis/api:api_proto",
+        "//gapis/service:service_proto",
+        "//gapis/service/path:path_proto",
+    ],
+)
+
+go_grpc_library(
+    name = "resolve_go_proto",
+    importpath = "github.com/google/gapid/gapis/resolve",
+    proto = ":resolve_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/image:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
     ],
 )

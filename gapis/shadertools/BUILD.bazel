@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -8,6 +8,14 @@ go_library(
         "@spirv-tools//:spirv-tools",
     ],
     cgo = True,
+    clinkopts = [
+        "-lspv -lkhronos -lstdc++ -lpthread -lm",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "-Wl,--allow-multiple-definition",
+        ],
+        "//conditions:default": [],
+    }),
     #TODO: we should not need these
     #clinkopts = [
     #    "-lspv -lkhronos -lstdc++ -lpthread -lm",
@@ -22,5 +30,16 @@ go_library(
     deps = [
         "//core/fault:go_default_library",
         "//core/text:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["shadertools_test.go"],
+    importpath = "github.com/google/gapid/gapis/shadertools_test",
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
     ],
 )

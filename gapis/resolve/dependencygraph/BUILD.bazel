@@ -1,28 +1,14 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "go_proto_sources")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//gapis/service/path:pb",
-    ],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "dependency_graph.go",
         "doc.go",
-        ":pb_go",  # keep
+        "footprint.go",
     ],
+    embed = [":dependencygraph_go_proto"],
     importpath = "github.com/google/gapid/gapis/resolve/dependencygraph",
     visibility = ["//visibility:public"],
     deps = [
@@ -33,5 +19,32 @@ go_library(
         "//gapis/database:go_default_library",
         "//gapis/service/path:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
+    ],
+)
+
+proto_library(
+    name = "dependencygraph_proto",
+    srcs = ["resolvables.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//gapis/service/path:path_proto"],
+)
+
+go_proto_library(
+    name = "dependencygraph_go_proto",
+    importpath = "github.com/google/gapid/gapis/resolve/dependencygraph",
+    proto = ":dependencygraph_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//gapis/service/path:go_default_library"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["footprint_test.go"],
+    embed = [":go_default_library"],
+    importpath = "github.com/google/gapid/gapis/resolve/dependencygraph",
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+        "//gapis/api:go_default_library",
     ],
 )

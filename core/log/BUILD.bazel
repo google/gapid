@@ -9,8 +9,10 @@ go_library(
         "err.go",
         "filter.go",
         "handler.go",
+        "indirect.go",
         "log.go",
         "message.go",
+        "onclosed.go",
         "process.go",
         "severity.go",
         "stacktracer.go",
@@ -25,6 +27,7 @@ go_library(
     importpath = "github.com/google/gapid/core/log",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/crash:go_default_library",
         "//core/app/flags:go_default_library",
         "//core/context/keys:go_default_library",
         "//core/text:go_default_library",

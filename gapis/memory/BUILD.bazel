@@ -1,23 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources", "java_proto_library")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
-
-java_proto_library(
-    name = "pb_java",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -39,12 +21,13 @@ go_library(
         "read.go",
         "resource.go",
         "slice.go",
+        "store.go",
         "subslice.go",
         "types.go",
         "write.go",
         "writer.go",
-        ":pb_go",  # keep
     ],
+    embed = [":memory_go_proto"],
     importpath = "github.com/google/gapid/gapis/memory",
     visibility = ["//visibility:public"],
     deps = [
@@ -70,8 +53,8 @@ go_test(
         "pool_test.go",
         "write_test.go",
     ],
+    embed = [":go_default_library"],
     importpath = "github.com/google/gapid/gapis/memory",
-    library = ":go_default_library",
     deps = [
         "//core/assert:go_default_library",
         "//core/data/endian:go_default_library",
@@ -82,4 +65,23 @@ go_test(
         "//gapis/database:go_default_library",
         "@com_github_pkg_errors//:go_default_library",
     ],
+)
+
+proto_library(
+    name = "memory_proto",
+    srcs = ["memory.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_grpc_library(
+    name = "memory_go_proto",
+    importpath = "github.com/google/gapid/gapis/memory",
+    proto = ":memory_proto",
+    visibility = ["//visibility:public"],
+)
+
+java_proto_library(
+    name = "memory_java_proto",
+    visibility = ["//visibility:public"],
+    deps = [":memory_proto"],
 )

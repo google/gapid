@@ -14,7 +14,7 @@ go_library(
 
 go_binary(
     name = "embed",
+    embed = [":go_default_library"],
     importpath = "github.com/google/gapid/cmd/embed",
-    library = ":go_default_library",
     visibility = ["//visibility:public"],
 )

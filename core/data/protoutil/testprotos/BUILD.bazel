@@ -1,8 +1,23 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
     srcs = ["doc.go"],
+    embed = [":testprotos_go_proto"],
     importpath = "github.com/google/gapid/core/data/protoutil/testprotos",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "testprotos_proto",
+    srcs = ["testprotos.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "testprotos_go_proto",
+    importpath = "github.com/google/gapid/core/data/protoutil/testprotos",
+    proto = ":testprotos_proto",
     visibility = ["//visibility:public"],
 )
