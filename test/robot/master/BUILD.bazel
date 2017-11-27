@@ -1,19 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "go_proto_sources")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = ["//test/robot/search:pb"],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    grpc = True,
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -25,11 +11,12 @@ go_library(
         "remote.go",
         "satellite.go",
         "server.go",
-        ":pb_go",  # keep
     ],
+    embed = [":master_go_proto"],
     importpath = "github.com/google/gapid/test/robot/master",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/crash:go_default_library",
         "//core/event:go_default_library",
         "//core/log:go_default_library",
         "//core/net/grpcutil:go_default_library",
@@ -40,4 +27,19 @@ go_library(
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_x_net//context:go_default_library",
     ],
+)
+
+proto_library(
+    name = "master_proto",
+    srcs = ["master.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//test/robot/search:search_proto"],
+)
+
+go_grpc_library(
+    name = "master_go_proto",
+    importpath = "github.com/google/gapid/test/robot/master",
+    proto = ":master_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//test/robot/search:go_default_library"],
 )

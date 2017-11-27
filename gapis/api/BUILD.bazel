@@ -1,30 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources", "java_proto_library")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//core/data/pod:pb",
-        "//core/image:pb",
-        "//gapis/service/box:pb",
-        "//gapis/service/path:pb",
-        "//gapis/vertex:pb",
-    ],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
-
-java_proto_library(
-    name = "pb_java",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -35,6 +10,7 @@ go_library(
         "cmd_errors.go",
         "cmd_extras.go",
         "cmd_flags.go",
+        "cmd_foreach.go",
         "cmd_id.go",
         "cmd_id_group.go",
         "cmd_id_range.go",
@@ -46,13 +22,17 @@ go_library(
         "labeled.go",
         "mesh.go",
         "resource.go",
+        "service.go",
         "state.go",
+        "subcmd_idx.go",
+        "subcmd_idx_trie.go",
         "texture.go",
-        ":pb_go",  # keep
     ],
+    embed = [":api_go_proto"],
     importpath = "github.com/google/gapid/gapis/api",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/context/keys:go_default_library",
         "//core/data/binary:go_default_library",
         "//core/data/deep:go_default_library",
         "//core/data/endian:go_default_library",
@@ -61,6 +41,7 @@ go_library(
         "//core/data/protoconv:go_default_library",
         "//core/data/protoutil:go_default_library",
         "//core/data/slice:go_default_library",
+        "//core/event/task:go_default_library",
         "//core/fault:go_default_library",
         "//core/image:go_default_library",
         "//core/log:go_default_library",
@@ -71,8 +52,6 @@ go_library(
         "//core/stream:go_default_library",
         "//core/stream/fmts:go_default_library",
         "//gapil/constset:go_default_library",
-        "//gapis/api/core/core_pb:go_default_library",
-        "//gapis/atom/atom_pb:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/memory:go_default_library",
         "//gapis/memory/memory_pb:go_default_library",
@@ -89,11 +68,16 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["cmd_id_group_test.go"],
+    srcs = [
+        "cmd_id_group_test.go",
+        "subcmd_idx_test.go",
+        "subcmd_idx_trie_test.go",
+    ],
+    embed = [":go_default_library"],
     importpath = "github.com/google/gapid/gapis/api",
-    library = ":go_default_library",
     deps = [
         "//core/assert:go_default_library",
+        "//core/data/slice:go_default_library",
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
     ],
@@ -109,4 +93,38 @@ go_test(
         "//core/log:go_default_library",
         "//gapis/api/testcmd:go_default_library",
     ],
+)
+
+proto_library(
+    name = "api_proto",
+    srcs = [
+        "gfxtrace.proto",
+        "service.proto",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/image:image_proto",
+        "//gapis/service/box:box_proto",
+        "//gapis/service/path:path_proto",
+        "//gapis/vertex:vertex_proto",
+    ],
+)
+
+go_grpc_library(
+    name = "api_go_proto",
+    importpath = "github.com/google/gapid/gapis/api",
+    proto = ":api_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/image:go_default_library",
+        "//gapis/service/box:go_default_library",
+        "//gapis/service/path:go_default_library",
+        "//gapis/vertex:go_default_library",
+    ],
+)
+
+java_proto_library(
+    name = "api_java_proto",
+    visibility = ["//visibility:public"],
+    deps = [":api_proto"],
 )

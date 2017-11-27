@@ -7,6 +7,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//gapis/api/gles:go_default_library",
+        "//gapis/api/gvr:go_default_library",
         "//gapis/api/vulkan:go_default_library",
     ],
 )

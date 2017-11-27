@@ -17,6 +17,7 @@ syntax = "proto3";
 package device;
 option java_package = "com.google.gapid.proto.device";
 option java_outer_classname = "Device";
+option go_package = "github.com/google/gapid/core/os/device";
 // cc_package
 // js_path = "proto";
 

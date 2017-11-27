@@ -1,20 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "go_proto_sources")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//core/os/device:pb",
-    ],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -23,8 +8,8 @@ go_library(
         "doc.go",
         "local.go",
         "worker.go",
-        ":pb_go",  # keep
     ],
+    embed = [":worker_go_proto"],
     importpath = "github.com/google/gapid/test/robot/job/worker",
     visibility = ["//visibility:public"],
     deps = [
@@ -38,4 +23,19 @@ go_library(
         "//test/robot/search/eval:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
+)
+
+proto_library(
+    name = "worker_proto",
+    srcs = ["worker.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//core/os/device:device_proto"],
+)
+
+go_proto_library(
+    name = "worker_go_proto",
+    importpath = "github.com/google/gapid/test/robot/job/worker",
+    proto = ":worker_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//core/os/device:go_default_library"],
 )

@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["extensions.go"],
+    importpath = "github.com/google/gapid/gapis/extensions",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//gapis/api:go_default_library",
+        "//gapis/resolve/cmdgrouper:go_default_library",
+        "//gapis/service:go_default_library",
+        "//gapis/service/path:go_default_library",
+    ],
+)

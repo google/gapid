@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "main.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "console_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
+    importpath = "github.com/google/gapid/cmd/gapid",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "gapid",
+    embed = [":go_default_library"],
+    importpath = "github.com/google/gapid/cmd/gapid",
+    visibility = ["//visibility:public"],
+)

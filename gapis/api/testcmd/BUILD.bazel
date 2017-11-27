@@ -10,6 +10,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/data:go_default_library",
+        "//core/data/deep:go_default_library",
+        "//core/data/dictionary:go_default_library",
         "//core/data/protoconv:go_default_library",
         "//core/image:go_default_library",
         "//core/os/device:go_default_library",

@@ -3,14 +3,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
-        "doc.go",
-        "encoder.go",
+        "cmdgrouper.go",
+        "sequence.go",
     ],
-    importpath = "github.com/google/gapid/core/video",
+    importpath = "github.com/google/gapid/gapis/resolve/cmdgrouper",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/app/crash:go_default_library",
         "//core/log:go_default_library",
-        "//core/os/shell:go_default_library",
+        "//gapis/api:go_default_library",
     ],
 )

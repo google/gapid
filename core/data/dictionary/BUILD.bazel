@@ -2,20 +2,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "doc.go",
-        "filter.go",
-        "stacktrace.go",
-    ],
-    importpath = "github.com/google/gapid/core/fault/stacktrace",
+    srcs = ["dictionary.go"],
+    importpath = "github.com/google/gapid/core/data/dictionary",
     visibility = ["//visibility:public"],
+    deps = ["//core/data/slice:go_default_library"],
 )
 
 go_test(
     name = "go_default_xtest",
-    size = "small",
-    srcs = ["stacktrace_test.go"],
-    importpath = "github.com/google/gapid/core/fault/stacktrace_test",
+    srcs = ["dictionary_test.go"],
+    importpath = "github.com/google/gapid/core/data/dictionary_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

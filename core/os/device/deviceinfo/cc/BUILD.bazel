@@ -7,7 +7,7 @@ mm_library(
         "query.h",
     ],
     deps = [
-        "//core/os/device:pb_cc",
+        "//core/os/device:device_cc_proto",
     ]
 )
 
@@ -33,7 +33,7 @@ cc_library(
     deps = [
         "//core/cc",
         "@com_google_protobuf//:protobuf",
-        "//core/os/device:pb_cc",
+        "//core/os/device:device_cc_proto",
     ] + select({
         "//tools/build:darwin": [":darwin_query"],
         "//conditions:default": [],
