@@ -66,15 +66,6 @@ go_grpc_library(
 
 java_proto_library(
     name = "service_java_proto",
-    deps = [
-        "//core/image:pb_java",
-        "//core/log/log_pb:pb_java",
-        "//core/os/device:pb_java",
-        "//gapis/api:pb_java",
-        "//gapis/service/path:pb_java",
-        "//core/data/pod:pb_java",
-        "//gapis/stringtable:pb_java",
-        ":service_proto",
-    ],
     visibility = ["//visibility:public"],
+    deps = [":service_proto"],
 )
