@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/binary"
+	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/gapis/api"
 )
 
@@ -74,7 +75,9 @@ func getIndices(
 	} else {
 		// Get the index buffer data from buffer, offset by the 'indices' pointer.
 		offset += ptr.addr
-		reader = indexBuffer.Data.Slice(offset, offset+size, s.MemoryLayout).Reader(ctx, s)
+		start := u64.Min(offset, indexBuffer.Data.count)
+		end := u64.Min(offset+size, indexBuffer.Data.count)
+		reader = indexBuffer.Data.Slice(start, end, s.MemoryLayout).Reader(ctx, s)
 	}
 
 	indices, err := decodeIndices(reader, ty)
