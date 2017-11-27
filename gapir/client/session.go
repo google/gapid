@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"time"
 
@@ -75,10 +76,12 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, laun
 
 // newHost spawns and returns a new GAPIR instance on the host machine.
 func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []string) error {
-	authToken := auth.GenToken()
+	authTokenFile, authToken := auth.GenTokenFile()
+	defer os.Remove(authTokenFile)
+
 	args := []string{
 		"--idle-timeout-ms", strconv.Itoa(int(sessionTimeout / time.Millisecond)),
-		"--auth-token", string(authToken),
+		"--auth-token-file", authTokenFile,
 	}
 	args = append(args, launchArgs...)
 

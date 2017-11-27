@@ -158,15 +158,15 @@ int main(int argc, const char* argv[]) {
     bool enable_crash_reporting = false;
     const char* cachePath = nullptr;
     const char* portStr = "0";
-    const char* authToken = nullptr;
+    const char* authTokenFile = nullptr;
     int idleTimeoutMs = Connection::NO_TIMEOUT;
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--auth-token") == 0) {
+        if (strcmp(argv[i], "--auth-token-file") == 0) {
             if (i + 1 >= argc) {
-                GAPID_FATAL("Usage: --auth-token <token-string>");
+                GAPID_FATAL("Usage: --auth-token-file <token-string>");
             }
-            authToken = argv[++i];
+            authTokenFile = argv[++i];
         } else if (strcmp(argv[i], "--cache") == 0) {
             if (i + 1 >= argc) {
                 GAPID_FATAL("Usage: --cache <cache-directory>");
@@ -220,12 +220,40 @@ int main(int argc, const char* argv[]) {
 
     GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
 
+    // Read the auth-token.
+    // Note: This must come before the socket is created as the auth token
+    // file is deleted by GAPIS as soon as the port is written to stdout.
+    std::vector<char> authToken;
+    if (authTokenFile != nullptr) {
+        FILE* file = fopen(authTokenFile, "rb");
+        if (file == nullptr) {
+            GAPID_FATAL("Unable to open auth-token file: %s", authTokenFile);
+        }
+        if (fseek(file, 0, SEEK_END) != 0) {
+            GAPID_FATAL("Unable to get length of auth-token file: %s", authTokenFile);
+        }
+        size_t size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+        authToken.resize(size + 1, 0);
+        if (fread(&authToken[0], 1, size, file) != size) {
+            GAPID_FATAL("Unable to read auth-token file: %s", authTokenFile);
+        }
+        fclose(file);
+    }
+
     MemoryManager memoryManager(memorySizes);
     auto conn = SocketConnection::createSocket("127.0.0.1", portStr);
     if (conn == nullptr) {
         GAPID_FATAL("Failed to create listening socket on port: %s", portStr);
     }
-    listenConnections(std::move(conn), authToken, cachePath, idleTimeoutMs, &memoryManager, crashHandler);
+
+    listenConnections(
+            std::move(conn),
+            (authToken.size() > 0) ? authToken.data() : nullptr,
+            cachePath,
+            idleTimeoutMs,
+            &memoryManager,
+            crashHandler);
     return EXIT_SUCCESS;
 }
 
