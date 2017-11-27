@@ -9,7 +9,6 @@ build --cxxopt="-std=c++11"
 # Options to work around bazel limitations
 build --proto_compiler=@com_google_protobuf//:protoc
 build --proto_toolchain_for_cc=@com_google_protobuf//:cc_toolchain
-build --proto_toolchain_for_java=//tools/build:java_toolchain
 
 # Exclude directories that may be left around from cmake build
 build --deleted_packages=//third_party/protobuf,//third_party/protobuf/util/python

@@ -9,8 +9,13 @@ go_library(
         "path.go",
         "rooted.go",
         "set.go",
-        "unix.go",
     ] + select({
+        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "unix.go",
+        ],
         "@io_bazel_rules_go//go/platform:windows_amd64": [
             "windows.go",
         ],

@@ -1,43 +1,18 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources", "java_proto_library")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//core/data/pod:pb",
-        "//core/image:pb",
-        "//gapis/vertex:pb",
-    ],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    grpc = True,
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
-
-java_proto_library(
-    name = "pb_java",
-    extra_deps = [],
-    grpc = True,
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
     srcs = [
         "box.go",
         "doc.go",
-        ":pb_go",  # keep
     ],
+    embed = [":box_go_proto"],
     importpath = "github.com/google/gapid/gapis/service/box",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/deep:go_default_library",
+        "//core/data/dictionary:go_default_library",
         "//core/data/pod:go_default_library",
         "//core/data/slice:go_default_library",
         "//gapis/memory:go_default_library",
@@ -54,4 +29,25 @@ go_test(
         "//core/assert:go_default_library",
         "//gapis/memory:go_default_library",
     ],
+)
+
+proto_library(
+    name = "box_proto",
+    srcs = ["box.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//core/data/pod:pod_proto"],
+)
+
+go_grpc_library(
+    name = "box_go_proto",
+    importpath = "github.com/google/gapid/gapis/service/box",
+    proto = ":box_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//core/data/pod:go_default_library"],
+)
+
+java_proto_library(
+    name = "box_java_proto",
+    visibility = ["//visibility:public"],
+    deps = [":box_proto"],
 )

@@ -10,8 +10,7 @@ github_repository(
     organization = "bazelbuild",
     project = "rules_go",
     branch = "master",
-    commit = "2e319588571f20fdaaf83058b690abd32f596e89", # Comment to use the master branch of this repository
-    # path = "../rules_go", # Uncomment to use a local copy of this repository
+    commit = "473ed9b2bf3279bfb52cc85dd3a9d22a2f99d9a6", # Comment to use the master branch of this repository
 )
 
 github_repository(
@@ -25,7 +24,7 @@ github_repository(
     name = "com_google_protobuf",
     organization = "google",
     project = "protobuf",
-    commit = "593e917c176b5bc5aafa57bf9f6030d749d91cd5",
+    commit = "f08e4dd9845c5ba121b402f8768f3d2617191bbe",
 )
 
 github_repository(
@@ -39,6 +38,7 @@ github_repository(
 # Load all our workspace rules
 
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//proto:def.bzl", "proto_register_toolchains")
 load("@io_bazel_rules_appengine//appengine:appengine.bzl", "appengine_repositories")
 load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
 load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository", "windows_sdk")
@@ -48,6 +48,7 @@ load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository", "wi
 
 go_rules_dependencies()
 go_register_toolchains()
+proto_register_toolchains()
 appengine_repositories()
 cc_configure()
 

@@ -1,36 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "go_proto_sources", "java_proto_library")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//core/data/pod:pb",
-        "//core/image:pb",
-        "//gapis/service/box:pb",
-        "//gapis/vertex:pb",
-    ],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    grpc = True,
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
-
-java_proto_library(
-    name = "pb_java",
-    extra_deps = [
-        "//core/image:pb_java",
-        "//core/data/pod:pb_java",
-        "//gapis/vertex:pb_java",
-    ],
-    grpc = True,
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -39,9 +8,10 @@ go_library(
         "id.go",
         "linker.go",
         "path.go",
+        "transform.go",
         "validate.go",
-        ":pb_go",  # keep
     ],
+    embed = [":path_go_proto"],
     importpath = "github.com/google/gapid/gapis/service/path",
     visibility = ["//visibility:public"],
     deps = [
@@ -53,4 +23,38 @@ go_library(
         "//gapis/vertex:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
+)
+
+proto_library(
+    name = "path_proto",
+    srcs = ["path.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/image:image_proto",
+        "//gapis/service/box:box_proto",
+        "//gapis/vertex:vertex_proto",
+    ],
+)
+
+go_grpc_library(
+    name = "path_go_proto",
+    importpath = "github.com/google/gapid/gapis/service/path",
+    proto = ":path_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/image:go_default_library",
+        "//gapis/service/box:go_default_library",
+        "//gapis/vertex:go_default_library",
+    ],
+)
+
+java_proto_library(
+    name = "path_java_proto",
+    deps = [
+        "//core/image:pb_java",
+        "//core/data/pod:pb_java",
+        "//gapis/vertex:pb_java",
+        ":path_proto",
+    ],
+    visibility = ["//visibility:public"],
 )

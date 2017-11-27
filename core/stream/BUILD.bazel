@@ -1,23 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources", "java_proto_library")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
-
-java_proto_library(
-    name = "pb_java",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -25,13 +7,14 @@ go_library(
         "channel.go",
         "component.go",
         "convert.go",
+        "curve.go",
         "datatype.go",
         "doc.go",
         "format.go",
         "sampling.go",
         "shared_exp.go",
-        ":pb_go",  # keep
     ],
+    embed = [":stream_go_proto"],
     importpath = "github.com/google/gapid/core/stream",
     visibility = ["//visibility:public"],
     deps = [
@@ -56,4 +39,23 @@ go_test(
         "//core/assert:go_default_library",
         "//core/stream/fmts:go_default_library",
     ],
+)
+
+proto_library(
+    name = "stream_proto",
+    srcs = ["stream.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "stream_go_proto",
+    importpath = "github.com/google/gapid/core/stream",
+    proto = ":stream_proto",
+    visibility = ["//visibility:public"],
+)
+
+java_proto_library(
+    name = "stream_java_proto",
+    visibility = ["//visibility:public"],
+    deps = [":stream_proto"],
 )

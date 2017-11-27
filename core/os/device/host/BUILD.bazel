@@ -19,7 +19,20 @@ go_library(
     }),
     cdeps = ["//core/os/device/deviceinfo/cc:cc"],
     cgo = True,
-    clinkopts = [],
+    clinkopts = [
+        "-ldeviceinfo-static -lcc-core -lprotobuf -lprotobuf_lite -lstdc++ -lpthread -lm -lcityhash",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+            "-framework Cocoa -framework OpenGL",
+        ],
+        "@io_bazel_rules_go//go/platform:linux_amd64": [
+            "-lGL -lX11 -ldl",
+        ],
+        "@io_bazel_rules_go//go/platform:windows_amd64": [
+            "-lopengl32 -lgdi32",
+        ],
+        "//conditions:default": [],
+    }),
     importpath = "github.com/google/gapid/core/os/device/host",
     visibility = ["//visibility:public"],
     deps = [
@@ -41,4 +54,3 @@ go_test(
         "//core/os/device:go_default_library",
     ],
 )
-

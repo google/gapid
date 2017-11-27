@@ -10,6 +10,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/auth:go_default_library",
+        "//core/app/crash:go_default_library",
+        "//core/event/task:go_default_library",
         "//core/os/shell:go_default_library",
     ],
 )

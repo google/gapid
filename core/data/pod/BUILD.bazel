@@ -1,23 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "go_proto_sources", "java_proto_library")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
-
-java_proto_library(
-    name = "pb_java",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -25,9 +7,28 @@ go_library(
         "doc.go",
         "pod.go",
         "value.go",
-        ":pb_go",  # keep
     ],
+    embed = [":pod_go_proto"],
     importpath = "github.com/google/gapid/core/data/pod",
     visibility = ["//visibility:public"],
     deps = ["@com_github_golang_protobuf//proto:go_default_library"],
+)
+
+proto_library(
+    name = "pod_proto",
+    srcs = ["pod.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "pod_go_proto",
+    importpath = "github.com/google/gapid/core/data/pod",
+    proto = ":pod_proto",
+    visibility = ["//visibility:public"],
+)
+
+java_proto_library(
+    name = "pod_java_proto",
+    visibility = ["//visibility:public"],
+    deps = [":pod_proto"],
 )

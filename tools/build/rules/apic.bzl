@@ -1,5 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "GoLibrary")
-load("@io_bazel_rules_go//go/private:providers.bzl", "CgoLibrary")
+load("@io_bazel_rules_go//go/private:providers.bzl", "sources")
 
 def api_search_path(inputs):
     roots = {}
@@ -33,20 +32,12 @@ def _apic_impl(ctx):
         )
         srcs = depset([f for f in generated if f.basename.endswith(".go")])
     return [
-        GoLibrary(#TODO: this is too complicated, needs cleaning up
-            label = ctx.label,
-            srcs = srcs,
-            transformed = srcs,
-            direct=(),
-            cgo_deps=(),
-            gc_goopts=(),
-            cover_vars=(),
-        ),
-        CgoLibrary(#TODO: remove this when we switch from the library attribute
-            object=None,
-        ),
         DefaultInfo(
             files = generated,
+        ),
+        sources.new(
+            srcs = srcs,
+            want_coverage = False,
         ),
     ]
 

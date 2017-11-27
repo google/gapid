@@ -1,29 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources", "java_proto_library")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
-
-cc_proto_library(
-    name = "pb_cc",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
-
-java_proto_library(
-    name = "pb_java",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
@@ -40,11 +16,11 @@ go_library(
         "instance.go",
         "linux.go",
         "osx.go",
-        ":pb_go",  # keep
     ],
     cdeps = [
         "//core/os/device/deviceinfo/cc:cc",
     ],
+    embed = [":device_go_proto"],
     importpath = "github.com/google/gapid/core/os/device",
     visibility = ["//visibility:public"],
     deps = [
@@ -73,4 +49,29 @@ go_test(
         "//core/log:go_default_library",
         "//core/os/device/host:go_default_library",
     ],
+)
+
+proto_library(
+    name = "device_proto",
+    srcs = ["device.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "device_go_proto",
+    importpath = "github.com/google/gapid/core/os/device",
+    proto = ":device_proto",
+    visibility = ["//visibility:public"],
+)
+
+cc_proto_library(
+    name = "device_cc_proto",
+    visibility = ["//visibility:public"],
+    deps = [":device_proto"],
+)
+
+java_proto_library(
+    name = "device_java_proto",
+    visibility = ["//visibility:public"],
+    deps = [":device_proto"],
 )

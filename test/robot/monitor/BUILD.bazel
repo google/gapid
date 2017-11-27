@@ -16,6 +16,7 @@ go_library(
     importpath = "github.com/google/gapid/test/robot/monitor",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/crash:go_default_library",
         "//core/log:go_default_library",
         "//core/os/android/apk:go_default_library",
         "//test/robot/build:go_default_library",

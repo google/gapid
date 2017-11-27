@@ -73,9 +73,3 @@ config_setting(
     },
     visibility = ["//visibility:public"],
 )
-
-alias(
-    name="java_toolchain",
-    actual="//tools/build/rules/proto:java_toolchain",
-    visibility = ["//visibility:public"],
-)

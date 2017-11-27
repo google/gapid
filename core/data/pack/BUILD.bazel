@@ -1,35 +1,27 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "go_proto_sources")
-
-proto_library(
-    name = "pb",
-    srcs = glob(["*.proto"]),
-    visibility = ["//visibility:public"],
-)
-
-go_proto_sources(
-    name = "pb_go",
-    visibility = ["//visibility:public"],
-    deps = [":pb"],
-)
 
 go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
+        "dynamic.go",
+        "events.go",
         "pack.go",
         "reader.go",
         "types.go",
         "writer.go",
-        ":pb_go",  # keep
     ],
+    embed = [":pack_go_proto"],
     importpath = "github.com/google/gapid/core/data/pack",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/protoutil:go_default_library",
+        "//core/event/task:go_default_library",
         "//core/fault:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_golang_protobuf//protoc-gen-go/descriptor:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
     ],
 )
 
@@ -37,6 +29,7 @@ go_test(
     name = "go_default_xtest",
     srcs = ["pack_test.go"],
     importpath = "github.com/google/gapid/core/data/pack_test",
+    tags = ["manual"],  # TODO: something to do with undefined: testprotos.MsgA
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",
@@ -44,5 +37,17 @@ go_test(
         "//core/log:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
-    tags = ["manual"], # TODO: something to do with undefined: testprotos.MsgA
+)
+
+proto_library(
+    name = "pack_proto",
+    srcs = ["pack.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "pack_go_proto",
+    importpath = "github.com/google/gapid/core/data/pack",
+    proto = ":pack_proto",
+    visibility = ["//visibility:public"],
 )
