@@ -15,6 +15,8 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
+import static com.google.gapid.proto.service.Service.ClientAction.Select;
 import static com.google.gapid.util.GeoUtils.top;
 import static com.google.gapid.util.Loadable.Message.error;
 import static com.google.gapid.util.Loadable.Message.info;
@@ -36,6 +38,8 @@ import com.google.common.primitives.UnsignedLongs;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.google.gapid.models.Analytics;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.AtomStream.Observation;
@@ -162,7 +166,7 @@ public class MemoryView extends Composite
       models.atoms.removeListener(this);
       models.follower.removeListener(this);
     });
-    memoryPanel.registerMouseEvents(memoryScroll);
+    memoryPanel.registerMouseEvents(memoryScroll, models.analytics);
   }
 
   @Override
@@ -239,6 +243,7 @@ public class MemoryView extends Composite
   }
 
   private void setObservation(Observation obs) {
+    models.analytics.postInteraction(View.Memory, "observation", Select);
     Path.Memory memoryPath = obs.getPath();
     uiState.update(memoryPath);
     update(memoryPath.getAddress());
@@ -504,7 +509,7 @@ public class MemoryView extends Composite
       gc.dispose();
     }
 
-    public void registerMouseEvents(InfiniteScrolledComposite parent) {
+    public void registerMouseEvents(InfiniteScrolledComposite parent, Analytics analytics) {
       parent.addContentListener(new MouseAdapter() {
         private final LongPoint selectionPoint = new LongPoint(0, 0);
         private boolean selecting;
@@ -530,6 +535,8 @@ public class MemoryView extends Composite
             if (selection != null && selection.isEmpty()) {
               selection = null;
               parent.redraw();
+            } else {
+              analytics.postInteraction(View.Memory, "range", Select);
             }
           }
         }
@@ -607,6 +614,7 @@ public class MemoryView extends Composite
 
         @Override
         public CopyData[] getCopyData() {
+          analytics.postInteraction(View.Memory, "copy", Invoke);
           return model.getCopyData(selection);
         }
       });
