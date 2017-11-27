@@ -15,6 +15,8 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
+import static com.google.gapid.proto.service.Service.ClientAction.Select;
 import static com.google.gapid.util.Colors.BLACK;
 import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.WHITE;
@@ -37,6 +39,7 @@ import static java.util.logging.Level.FINE;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
@@ -130,6 +133,7 @@ public class ShaderView extends Composite
     ShaderPanel panel = new ShaderPanel(parent, models, widgets.theme, Type.shader((data, src) -> {
       API.Shader shader = (data == null) ? null : (API.Shader)data.resource;
       if (shader != null) {
+        models.analytics.postInteraction(View.Shaders, "edit", Invoke);
         Service.Value value = Service.Value.newBuilder()
             .setResourceData(API.ResourceData.newBuilder()
                 .setShader(shader.toBuilder()
@@ -151,7 +155,10 @@ public class ShaderView extends Composite
         });
       }
     }));
-    panel.addListener(SWT.Selection, e -> getShaderSource((Data)e.data, panel::setSource));
+    panel.addListener(SWT.Selection, e -> {
+      models.analytics.postInteraction(View.Shaders, "shaders", Select);
+      getShaderSource((Data)e.data, panel::setSource);
+    });
     return panel;
   }
 
@@ -164,9 +171,11 @@ public class ShaderView extends Composite
 
     splitter.setWeights(models.settings.shaderSplitterWeights);
 
-    panel.addListener(SWT.Selection, e -> getProgramSource((Data)e.data,
-        program -> scheduleIfNotDisposed(uniforms, () -> uniforms.setUniforms(program)),
-        panel::setSource));
+    panel.addListener(SWT.Selection, e -> {
+      models.analytics.postInteraction(View.Shaders, "programs", Select);
+      getProgramSource((Data)e.data, program ->
+          scheduleIfNotDisposed(uniforms, () -> uniforms.setUniforms(program)), panel::setSource);
+    });
     splitter.addListener(
         SWT.Dispose, e -> models.settings.shaderSplitterWeights = splitter.getWeights());
     return splitter;

@@ -33,7 +33,8 @@ public class Analytics implements ExceptionHandler {
   public static enum View {
     Main, Trace,
     // See MainWindow.MainTab.Type
-    Commands, Framebuffer, Textures, Geometry, Shaders, Report, Log, State, Memory;
+    Commands, Framebuffer, Textures, Geometry, Shaders, Report, Log, State, Memory,
+    ContextSelector;
   }
 
   private final Client client;

@@ -18,6 +18,8 @@ package com.google.gapid.views;
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
+import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
+import static com.google.gapid.proto.service.Service.ClientAction.Select;
 import static com.google.gapid.util.Colors.getRandomColor;
 import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.Loadable.MessageType.Error;
@@ -28,6 +30,7 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.AtomStream;
@@ -121,6 +124,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
       @Override
       protected void updateModel(Event e) {
+        models.analytics.postInteraction(View.Commands, "node", Select);
         AtomStream.Node node = tree.getSelection();
         if (node != null) {
           AtomIndex index = node.getIndex();
@@ -146,6 +150,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         AtomEditor.shouldShowEditPopup(node.getCommand()));
 
     tree.registerAsCopySource(widgets.copypaste, node -> {
+      models.analytics.postInteraction(View.Commands, "copy", Invoke);
       Service.CommandTreeNode data = node.getData();
       if (data == null) {
         // Copy before loaded. Not ideal, but this is unlikely.
@@ -170,6 +175,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   private void search(String text, boolean regex) {
+    models.analytics.postInteraction(View.Commands, "search", Invoke);
     AtomStream.Node parent = models.atoms.getData();
     if (parent != null && !text.isEmpty()) {
       AtomStream.Node selection = tree.getSelection();
