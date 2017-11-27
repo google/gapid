@@ -323,19 +323,9 @@ enum ClientAction {
   Undefined = 0;
   Show = 1;
   Hide = 2;
-  Move = 13;
-  Invoke = 14;
-  Select = 15;
-  MouseClickLeft = 3;
-  MouseClickMiddle = 4;
-  MouseClickRight = 5;
-  MouseDoubleClick = 6;
-  MouseDrag = 7;
-  MouseScroll = 8;
-  MouseEnter = 9;
-  MouseExit = 10;
-  KeyPressUpOrDown = 11;
-  KeyPressLeftOrRight = 12;
+  Move = 3;
+  Select = 4;
+  Invoke = 5;
 }
 
 message ClientInteraction {
