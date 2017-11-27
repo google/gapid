@@ -50,11 +50,6 @@ go_grpc_library(
 
 java_proto_library(
     name = "path_java_proto",
-    deps = [
-        "//core/image:pb_java",
-        "//core/data/pod:pb_java",
-        "//gapis/vertex:pb_java",
-        ":path_proto",
-    ],
     visibility = ["//visibility:public"],
+    deps = [":path_proto"],
 )

@@ -61,7 +61,7 @@ def _github_repository_impl(ctx):
 
 _github_repository = repository_rule(
     _github_repository_impl,
-    attrs = _BUILD_FILE_ATTRS + dict(
+    attrs = dict(_BUILD_FILE_ATTRS,
         organization = attr.string(mandatory = True),
         project = attr.string(mandatory = True),
         branch = attr.string(),
