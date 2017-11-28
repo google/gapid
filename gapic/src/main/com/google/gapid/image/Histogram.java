@@ -83,7 +83,7 @@ public class Histogram {
   private double getPercentile(int percentile, boolean high) {
     int bin = bins.getPercentileBin(percentile, channels);
     return (bin < 0) ? mapper.limits.max :
-        getValueFromNormalizedX((bin + (high ? 1 : 0)) / bins.count());
+        getValueFromNormalizedX((bin + (high ? 1 : 0)) / (double)bins.count());
   }
 
   /**
