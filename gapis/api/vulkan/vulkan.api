@@ -5352,8 +5352,17 @@ cmd VkResult vkResetDescriptorPool(
   sets := DescriptorPools[descriptorPool].DescriptorSets
   for _ , s , _ in sets {
     delete(DescriptorSets, s)
-    delete(DescriptorPools[descriptorPool].DescriptorSets, s)
   }
+  old_object := DescriptorPools[descriptorPool]
+  pool := new!DescriptorPoolObject(
+    Device:   old_object.Device,
+    VulkanHandle: old_object.VulkanHandle,
+    Flags:    old_object.Flags,
+    MaxSets:  old_object.MaxSets,
+    Sizes: old_object.Sizes,
+    DebugInfo: old_object.DebugInfo
+  )
+  DescriptorPools[descriptorPool] = pool
   return ?
 }
 
