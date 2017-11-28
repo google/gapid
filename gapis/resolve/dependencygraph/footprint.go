@@ -206,6 +206,12 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil, err
 	}
 	cmds := c.Commands
+	// If the capture contains initial state, prepend the commands to build the state.
+	initialCmds := c.GetInitialCommands(ctx)
+	if len(initialCmds) > 0 {
+		cmds = append(initialCmds, cmds...)
+	}
+
 	builders := map[api.API]FootprintBuilder{}
 
 	ft := NewFootprint(ctx, cmds)

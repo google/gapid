@@ -196,44 +196,6 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			out.MutateAndWrite(ctx, id, newCmd)
 			return
 		}
-	} else if recreateImage, ok := cmd.(*RecreateImage); ok {
-		pinfo := recreateImage.PCreateInfo
-		info := pinfo.MustRead(ctx, image, s, nil)
-
-		if newUsage, changed := patchImageUsage(info.Usage); changed {
-			device := recreateImage.Device
-			pimage := memory.Pointer(recreateImage.PImage)
-
-			info.Usage = newUsage
-			newInfo := s.AllocDataOrPanic(ctx, info)
-			newCmd := cb.RecreateImage(device, newInfo.Ptr(), pimage,
-				recreateImage.PMemoryRequirements,
-				recreateImage.SparseMemoryRequirementCount,
-				recreateImage.PSparseMemoryRequirements,
-				recreateImage.PDedicatedRequirements)
-			// Carry all non-observation extras through.
-			for _, e := range recreateImage.Extras().All() {
-				if _, ok := e.(*api.CmdObservations); !ok {
-					newCmd.Extras().Add(e)
-				}
-			}
-			// Carry observations through. We cannot merge these code with the
-			// above code for handling extras together since we'd like to change
-			// the observations, which are slices.
-			observations := recreateImage.Extras().Observations()
-			for _, r := range observations.Reads {
-				// TODO: filter out the old RecreateImage. That should be done via
-				// creating new observations for data we are interested from t.state.
-				newCmd.AddRead(r.Range, r.ID)
-			}
-			// Use our new VkImageCreateInfo.
-			newCmd.AddRead(newInfo.Data())
-			for _, w := range observations.Writes {
-				newCmd.AddWrite(w.Range, w.ID)
-			}
-			out.MutateAndWrite(ctx, id, newCmd)
-			return
-		}
 	} else if swapchain, ok := cmd.(*VkCreateSwapchainKHR); ok {
 		pinfo := swapchain.PCreateInfo
 		info := pinfo.MustRead(ctx, swapchain, s, nil)
@@ -253,38 +215,6 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 				}
 			}
 			observations := swapchain.Extras().Observations()
-			for _, r := range observations.Reads {
-				// TODO: filter out the old VkSwapchainCreateInfoKHR. That should be done via
-				// creating new observations for data we are interested from t.state.
-				newCmd.AddRead(r.Range, r.ID)
-			}
-			newCmd.AddRead(newInfo.Data())
-			for _, w := range observations.Writes {
-				newCmd.AddWrite(w.Range, w.ID)
-			}
-			out.MutateAndWrite(ctx, id, newCmd)
-			return
-		}
-	} else if recreateSwapchain, ok := cmd.(*RecreateSwapchain); ok {
-		pinfo := recreateSwapchain.PCreateInfo
-		info := pinfo.MustRead(ctx, recreateSwapchain, s, nil)
-
-		if newUsage, changed := patchImageUsage(info.ImageUsage); changed {
-			device := recreateSwapchain.Device
-			pswapchain := memory.Pointer(recreateSwapchain.PSwapchain)
-			pswapchainImages := memory.Pointer(recreateSwapchain.PSwapchainImages)
-			pswapchainLayouts := memory.Pointer(recreateSwapchain.PSwapchainLayouts)
-			pinitialQueues := memory.Pointer(recreateSwapchain.PInitialQueues)
-
-			info.ImageUsage = newUsage
-			newInfo := s.AllocDataOrPanic(ctx, info)
-			newCmd := cb.RecreateSwapchain(device, newInfo.Ptr(), pswapchainImages, pswapchainLayouts, pinitialQueues, pswapchain)
-			for _, e := range recreateSwapchain.Extras().All() {
-				if _, ok := e.(*api.CmdObservations); !ok {
-					newCmd.Extras().Add(e)
-				}
-			}
-			observations := recreateSwapchain.Extras().Observations()
 			for _, r := range observations.Reads {
 				// TODO: filter out the old VkSwapchainCreateInfoKHR. That should be done via
 				// creating new observations for data we are interested from t.state.
@@ -338,45 +268,6 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		out.MutateAndWrite(ctx, id, newCmd)
 		return
-	} else if recreateRenderPass, ok := cmd.(*RecreateRenderPass); ok {
-		pInfo := recreateRenderPass.PCreateInfo
-		info := pInfo.MustRead(ctx, recreateRenderPass, s, nil)
-		pAttachments := info.PAttachments
-		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), l).MustRead(ctx, recreateRenderPass, s, nil)
-		changed := false
-		for i := range attachments {
-			if attachments[i].StoreOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
-				changed = true
-				attachments[i].StoreOp = VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE
-			}
-		}
-		// Returns if no attachment description needs to be changed
-		if !changed {
-			out.MutateAndWrite(ctx, id, cmd)
-			return
-		}
-		// Build new attachments data, new create info and new command
-		newAttachments := s.AllocDataOrPanic(ctx, attachments)
-		info.PAttachments = NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
-		newInfo := s.AllocDataOrPanic(ctx, info)
-		newCmd := cb.RecreateRenderPass(recreateRenderPass.Device,
-			newInfo.Ptr(),
-			memory.Pointer(recreateRenderPass.PRenderPass))
-		// Add back the extras and read/write observations
-		for _, e := range recreateRenderPass.Extras().All() {
-			if _, ok := e.(*api.CmdObservations); !ok {
-				newCmd.Extras().Add(e)
-			}
-		}
-		for _, r := range recreateRenderPass.Extras().Observations().Reads {
-			newCmd.AddRead(r.Range, r.ID)
-		}
-		newCmd.AddRead(newInfo.Data()).AddRead(newAttachments.Data())
-		for _, w := range recreateRenderPass.Extras().Observations().Writes {
-			newCmd.AddWrite(w.Range, w.ID)
-		}
-		out.MutateAndWrite(ctx, id, newCmd)
-		return
 	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok {
 		if e.PPhysicalDevices == NewVkPhysicalDeviceᵖ(nil) {
 			// First call to vkEnumeratePhysicalDevices
@@ -410,17 +301,6 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			out.MutateAndWrite(ctx, id, g)
 			return
 		}
-	} else if e, ok := cmd.(*RecreatePhysicalDevices); ok {
-		l := s.MemoryLayout
-		count := uint32(e.Count.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
-		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		devices := e.PPhysicalDevices.Slice(uint64(uint32(0)), uint64(count), l).MustRead(ctx, cmd, s, nil)
-		// The order of the properties must match with the order of the physical devices.
-		// This should be guaranteed in the caller of RecreatePhysicalDevices.
-		properties := e.PProperties.Slice(uint64(0), uint64(count), l).MustRead(ctx, cmd, s, nil)
-		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance, count, devices, properties)
-		out.MutateAndWrite(ctx, id, newEnumerate)
-		return
 	}
 	out.MutateAndWrite(ctx, id, cmd)
 }
@@ -593,7 +473,7 @@ func (a API) Replay(
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
 
-	optimize := true
+	optimize := !config.DisableDeadCodeElimination
 
 	cmds := capture.Commands
 
@@ -614,16 +494,9 @@ func (a API) Replay(
 		return err
 	}
 
-	// Prepare data for dead-code-elimination
+	// Populate the dead-code eliminitation later, only once we are sure
+	// we will need it.
 	dceInfo := dCEInfo{}
-	if !config.DisableDeadCodeElimination {
-		ft, err := dependencygraph.GetFootprint(ctx)
-		if err != nil {
-			return err
-		}
-		dceInfo.ft = ft
-		dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
-	}
 
 	wire := false
 
@@ -651,14 +524,24 @@ func (a API) Replay(
 				after = earlyTerminator.lastRequest
 			}
 
-			if !config.DisableDeadCodeElimination {
-				dceInfo.dce.Request(ctx, api.SubCmdIdx{req.after[0]})
-			}
-
 			cfg := cfg.(drawConfig)
 			if cfg.disableReplayOptimization {
 				optimize = false
 			}
+
+			if optimize {
+				// If we have not set up the dependency graph, do it now.
+				if dceInfo.ft == nil {
+					ft, err := dependencygraph.GetFootprint(ctx)
+					if err != nil {
+						return err
+					}
+					dceInfo.ft = ft
+					dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
+				}
+				dceInfo.dce.Request(ctx, api.SubCmdIdx{req.after[0]})
+			}
+
 			switch cfg.wireframeMode {
 			case replay.WireframeMode_All:
 				wire = true
@@ -678,9 +561,15 @@ func (a API) Replay(
 	}
 
 	// Use the dead code elimination pass
-	if optimize && !config.DisableDeadCodeElimination {
+	if optimize {
 		cmds = []api.Cmd{}
 		transforms.Prepend(dceInfo.dce)
+	} else {
+		// If the capture contains initial state, prepend the commands to build the state.
+		initialCmds := capture.GetInitialCommands(ctx)
+		if len(initialCmds) > 0 {
+			cmds = append(initialCmds, cmds...)
+		}
 	}
 
 	if wire {

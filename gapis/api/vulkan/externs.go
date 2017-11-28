@@ -65,7 +65,8 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 	}
 }
 
-func (e externs) callSub(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder, sub, data interface{}) {
+// CallReflectedCommand unpacks the given subcommand and arguments, and calls the method
+func CallReflectedCommand(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder, sub, data interface{}) {
 	reflect.ValueOf(sub).Call([]reflect.Value{
 		reflect.ValueOf(ctx),
 		reflect.ValueOf(cmd),
@@ -77,6 +78,10 @@ func (e externs) callSub(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.
 		reflect.ValueOf(b),
 		reflect.ValueOf(data),
 	})
+}
+
+func (e externs) callSub(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder, sub, data interface{}) {
+	CallReflectedCommand(ctx, cmd, id, s, b, sub, data)
 }
 
 func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functionToCall interface{}) {

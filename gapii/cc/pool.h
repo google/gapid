@@ -25,6 +25,9 @@ namespace gapii {
 class Pool {
 public:
     static std::shared_ptr<Pool> create(uint32_t id, uint64_t size);
+// This creates a pool that can be serialized, but has no actual
+// backing memory
+    static std::shared_ptr<Pool> create_virtual(uint32_t id, uint64_t size);
 
     ~Pool();
 
@@ -37,7 +40,10 @@ public:
     // Pointer to first byte in the pool.
     inline void* base() const { return mData; }
 
+    const bool is_virtual() const { return mIsVirtual; }
 private:
+    struct virtual_pool {};
+    Pool(virtual_pool, uint32_t id, uint64_t size);
     Pool(uint32_t id, uint64_t size);
     Pool(const Pool&) = delete;
     Pool& operator=(const Pool&) = delete;
@@ -45,6 +51,7 @@ private:
     uint32_t mId;
     void*    mData;
     uint64_t mSize;
+    bool mIsVirtual;
 };
 }  // namespace gapii
 

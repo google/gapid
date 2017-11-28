@@ -41,6 +41,7 @@ set(files
     resolvables.proto
     resources.go
     state.go
+    state_rebuilder.go
     state_serialize.go
     vulkan.go
     vulkan_terminator.go

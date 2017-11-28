@@ -113,8 +113,7 @@ void SpyOverride_RecreateSemaphore(VkDevice, const VkSemaphoreCreateInfo*,
 void SpyOverride_RecreateFence(VkDevice, const VkFenceCreateInfo*, VkFence*) {}
 void SpyOverride_RecreateEvent(VkDevice, const VkEventCreateInfo*, VkBool32,
                                VkEvent*) {}
-void SpyOverride_RecreateCommandPool(VkDevice, const VkCommandPoolCreateInfo*,
-                                     VkCommandPool*) {}
+
 void SpyOverride_RecreatePipelineCache(VkDevice,
                                        const VkPipelineCacheCreateInfo*,
                                        VkPipelineCache*) {}
@@ -233,3 +232,9 @@ bool m_coherent_memory_tracking_enabled = false;
 #if TARGET_OS == GAPID_OS_ANDROID
 bool m_should_unset_debug_vulkan_layers = true;
 #endif // TARGET_OS == GAPID_OS_ANDROID
+
+void SpyOverride_cacheImageSparseMemoryRequirements(
+    VkDevice device, VkImage image, uint32_t count,
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements);
+
+void prepareGPUBuffers(PackEncoder* group, std::unordered_set<uint32_t>* gpu_pools);

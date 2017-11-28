@@ -57,20 +57,6 @@ func wireframe(ctx context.Context) transform.Transformer {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
 			out.MutateAndWrite(ctx, id, newCmd)
-		case *RecreateGraphicsPipeline:
-			info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
-			rasterState := info.PRasterizationState.MustRead(ctx, cmd, s, nil)
-			rasterState.PolygonMode = VkPolygonMode_VK_POLYGON_MODE_LINE
-			newRasterStateData := s.AllocDataOrPanic(ctx, rasterState)
-			info.PRasterizationState = NewVkPipelineRasterizationStateCreateInfoᶜᵖ(newRasterStateData.Ptr())
-			newInfoData := s.AllocDataOrPanic(ctx, info)
-			newCmd := cb.RecreateGraphicsPipeline(cmd.Device, cmd.PipelineCache,
-				newInfoData.Ptr(), cmd.PPipeline).AddRead(newInfoData.Data()).AddRead(
-				newRasterStateData.Data())
-			for _, w := range cmd.Extras().Observations().Writes {
-				newCmd.AddWrite(w.Range, w.ID)
-			}
-			out.MutateAndWrite(ctx, id, newCmd)
 		default:
 			out.MutateAndWrite(ctx, id, cmd)
 		}

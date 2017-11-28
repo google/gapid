@@ -47,17 +47,6 @@ class VkXlibSurfaceCreateInfoKHR {
   Window                      window
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateXlibSurfaceKHR(
-    VkInstance instance,
-    const VkXlibSurfaceCreateInfoKHR* pCreateInfo,
-    VkSurfaceKHR*                     pSurface) {
-  read(pCreateInfo[0:1])
-  write(pSurface[0:1])
-}
-
 @extension("VK_KHR_xlib_surface")
 @indirect("VkInstance")
 cmd VkResult vkCreateXlibSurfaceKHR(
@@ -108,17 +97,6 @@ class VkXcbSurfaceCreateInfoKHR {
   VkXcbSurfaceCreateFlagsKHR flags
   xcb_connection_t*          connection
   xcb_window_t               window
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateXCBSurfaceKHR(
-    VkInstance instance,
-    const VkXcbSurfaceCreateInfoKHR* pCreateInfo,
-    VkSurfaceKHR*                    pSurface) {
-  read(pCreateInfo[0:1])
-  write(pSurface[0:1])
 }
 
 @extension("VK_KHR_xcb_surface")
@@ -172,17 +150,6 @@ class VkWaylandSurfaceCreateInfoKHR {
   wl_surface*                    surface
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateWaylandSurfaceKHR(
-    VkInstance instance,
-    const VkWaylandSurfaceCreateInfoKHR* pCreateInfo,
-    VkSurfaceKHR*                        pSurface) {
-  read(pCreateInfo[0:1])
-  write(pSurface[0:1])
-}
-
 @extension("VK_KHR_wayland_surface")
 @indirect("VkInstance")
 cmd VkResult vkCreateWaylandSurfaceKHR(
@@ -231,17 +198,6 @@ class VkMirSurfaceCreateInfoKHR {
   VkMirSurfaceCreateFlagsKHR flags
   MirConnection*             connection
   MirSurface*                mirSurface
-}
-
-@override
-@custom
-@no_replay
-cmd void RecreateMirSurfaceKHR(
-    VkInstance instance,
-    const VkMirSurfaceCreateInfoKHR* pCreateInfo,
-    VkSurfaceKHR*                    pSurface) {
-  read(pCreateInfo[0:1])
-  write(pSurface[0:1])
 }
 
 @extension("VK_KHR_mir_surface")

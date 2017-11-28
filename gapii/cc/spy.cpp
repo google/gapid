@@ -34,6 +34,8 @@
 #include "gapis/api/gles/gles_pb/api.pb.h"
 #include "gapis/api/gles/gles_pb/extras.pb.h"
 
+#include "gapis/api/vulkan/vulkan_pb/api.pb.h"
+
 #include <cstdlib>
 #include <vector>
 #include <memory>
@@ -441,12 +443,13 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
 }
 
 void Spy::saveInitialSate() {
-    GAPID_INFO("Saving initial GLES state");
-    auto encoder = this->getEncoder(GlesSpy::kApiIndex);
+    GAPID_INFO("Saving initial state");
+    auto encoder = this->getEncoder(0);
+
+    capture::GlobalState global;
+    auto group = encoder->group(&global);
     if (should_trace(GlesSpy::kApiIndex)) {
       ToProtoContext pbCtx;
-      capture::GlobalState global;
-      auto group = encoder->group(&global);
       auto glesState = GlesSpy::serializeState(pbCtx);
       std::map<uint32_t, Pool*> seenPools;
       for (const auto& s : pbCtx.SeenSlices()) {
@@ -466,6 +469,30 @@ void Spy::saveInitialSate() {
       }
       group->object(glesState.get());
     }
+    if (should_trace(VulkanSpy::kApiIndex)) {
+        std::unordered_set<uint32_t> gpu_pools;
+        VulkanSpy::prepareGPUBuffers(group.get(), &gpu_pools);
+
+        ToProtoContext pbCtx;
+        auto vulkanState = VulkanSpy::serializeState(pbCtx);
+        std::map<uint32_t, Pool*> seenPools;
+        for (const auto& s : pbCtx.SeenSlices()) {
+          if (!s.isApplicationPool() && gpu_pools.find(s.poolID()) == gpu_pools.end()) {
+            seenPools.emplace(s.poolID(), s.pool().get());
+          }
+        }
+        for (const auto& kvp : seenPools) {
+          Pool* p = kvp.second;
+          auto resIndex = sendResource(VulkanSpy::kApiIndex, p->base(), p->size());
+          memory_pb::Observation observation;
+          observation.set_base(0);
+          observation.set_size(p->size());
+          observation.set_resindex(resIndex);
+          observation.set_pool(p->id());
+          group->object(&observation);
+        }
+        group->object(vulkanState.get());
+      }
     encoder->flush();
 }
 
@@ -483,14 +510,14 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
             exit();
             set_suspended(false);
             saveInitialSate();
-            set_recording_state(true);
+            //set_recording_state(true);
             auto spy_ctx = enter("RecreateState", 2);
-            if (!VulkanSpy::Devices.empty()) {
-                spy_ctx->enter(cmd::RecreateState{});
-                EnumerateVulkanResources(spy_ctx);
-                spy_ctx->exit();
-            }
-            set_recording_state(false);
+            //if (!VulkanSpy::Devices.empty()) {
+            //    spy_ctx->enter(cmd::RecreateState{});
+            //    EnumerateVulkanResources(spy_ctx);
+            //    spy_ctx->exit();
+            //}
+            //set_recording_state(false);*/
             // The outer call will handle the spy->exit() for us.
         }
     }

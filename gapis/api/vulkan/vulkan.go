@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
@@ -74,9 +75,19 @@ func (*State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	return p, nil
 }
 
-func (*State) SetupInitialState(ctx context.Context) {}
-
-func (*State) RebuildState(ctx context.Context, s *api.GlobalState) []api.Cmd { return nil }
+func (c *State) SetupInitialState(ctx context.Context) {
+	for _, b := range *c.CommandBuffers.Map {
+		for _, v := range b.CommandReferences.KeysSorted() {
+			cmd := b.CommandReferences.Get(v)
+			commandFunction := GetCommandFunction(cmd)
+			commandArgs := GetCommandArgs(ctx, cmd, c)
+			b.Commands = append(b.Commands, CommandBufferCommand{
+				func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder) {
+					CallReflectedCommand(ctx, cmd, id, s, b, commandFunction, commandArgs)
+				}})
+		}
+	}
+}
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil

@@ -36,15 +36,6 @@ class VkWin32SurfaceCreateInfoKHR {
     HWND                                        hwnd
 }
 
-@no_replay
-cmd void RecreateWin32SurfaceKHR(
-    VkInstance instance,
-    const VkWin32SurfaceCreateInfoKHR*      pCreateInfo,
-    VkSurfaceKHR*                           pSurface) {
-  read(pCreateInfo[0:1])
-  write(pSurface[0:1])
-}
-
 @extension("VK_KHR_win32_surface")
 @indirect("VkInstance")
 cmd VkResult vkCreateWin32SurfaceKHR(
@@ -53,10 +44,10 @@ cmd VkResult vkCreateWin32SurfaceKHR(
         const VkAllocationCallbacks*            pAllocator,
         VkSurfaceKHR*                           pSurface) {
     surface := createWin32SurfaceObject(pCreateInfo)
-    
+
     surface.Instance = instance
     surface.Type = SURFACE_TYPE_WIN32
-    
+
     handle := ?
     pSurface[0] = handle
     surface.VulkanHandle = handle

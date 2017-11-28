@@ -42,17 +42,6 @@ class VkAndroidSurfaceCreateInfoKHR {
     ANativeWindow*                     window
 }
 
-@override
-@custom
-@no_replay
-cmd void RecreateAndroidSurfaceKHR(
-    VkInstance instance,
-    const VkAndroidSurfaceCreateInfoKHR* pCreateInfo,
-    VkSurfaceKHR*                    pSurface) {
-  read(pCreateInfo[0:1])
-  write(pSurface[0:1])
-}
-
 @extension("VK_KHR_android_surface")
 @indirect("VkInstance")
 cmd VkResult vkCreateAndroidSurfaceKHR(
