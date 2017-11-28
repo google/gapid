@@ -41,6 +41,29 @@ if(APPLE)
         "client/mac/Framework/Breakpad.mm"
         "client/mac/Framework/OnDemandServer.mm"
     )
+    set(dump_syms_srcs
+        "common/dwarf/dwarf2diehandler.cc"
+        "common/dwarf/elf_reader.cc"
+        "common/dwarf/dwarf2reader.cc"
+        "common/dwarf/bytereader.cc"
+        "common/dwarf_cfi_to_module.cc"
+        "common/dwarf_cu_to_module.cc"
+        "common/dwarf_line_to_module.cc"
+        "common/language.cc"
+        "common/mac/arch_utilities.cc"
+        "common/mac/dump_syms.cc"
+        "common/mac/file_id.cc"
+        "common/mac/macho_id.cc"
+        "common/mac/macho_reader.cc"
+        "common/mac/macho_utilities.cc"
+        "common/mac/macho_walker.cc"
+        "common/md5.cc"
+        "common/module.cc"
+        "common/path_helper.cc"
+        "common/stabs_reader.cc"
+        "common/stabs_to_module.cc"
+        "tools/mac/dump_syms/dump_syms_tool.cc"
+    )
 elseif(WIN32)
     set(breakpad_srcs
         "client/windows/crash_generation/client_info.cc"
@@ -76,16 +99,49 @@ else()
         "common/md5.cc"
         "common/string_conversion.cc"
     )
+    set(dump_syms_srcs
+        "common/dwarf/bytereader.cc"
+        "common/dwarf/dwarf2diehandler.cc"
+        "common/dwarf/dwarf2reader.cc"
+        "common/dwarf/elf_reader.cc"
+        "common/dwarf_cfi_to_module.cc"
+        "common/dwarf_cu_to_module.cc"
+        "common/dwarf_line_to_module.cc"
+        "common/language.cc"
+        "common/linux/crc32.cc"
+        "common/linux/dump_symbols.cc"
+        "common/linux/dump_symbols.h"
+        "common/linux/elf_symbols_to_module.cc"
+        "common/linux/elf_symbols_to_module.h"
+        "common/linux/elfutils.cc"
+        "common/linux/file_id.cc"
+        "common/linux/linux_libc_support.cc"
+        "common/linux/memory_mapped_file.cc"
+        "common/linux/safe_readlink.cc"
+        "common/module.cc"
+        "common/path_helper.cc"
+        "common/stabs_reader.cc"
+        "common/stabs_to_module.cc"
+        "tools/linux/dump_syms/dump_syms.cc"
+    )
 endif()
 
-# TODO
-# symupload
-# minidump_upload
+abs_list(breakpad_srcs ${breakpad_dir})
+
+if(MSVC_GAPIR AND WIN32)
+    add_cmake_step("gapir-msvc" breakpad DEPENDS ${breakpad_srcs})
+endif()
 
 if(NOT DISABLED_CXX)
-    abs_list(breakpad_srcs ${breakpad_dir})
     add_library(breakpad STATIC ${breakpad_srcs})
     target_include_directories(breakpad PUBLIC ${breakpad_dir})
+
+    if (NOT WIN32)
+        abs_list(dump_syms_srcs ${breakpad_dir})
+        add_executable(dump_syms ${dump_syms_srcs})
+        target_include_directories(dump_syms PUBLIC ${breakpad_dir})
+        target_compile_definitions(dump_syms PRIVATE "N_UNDF=0x0")
+    endif()
 
     if(ANDROID)
         set_property(SOURCE "${breakpad_dir}/common/android/breakpad_getcontext.S" PROPERTY LANGUAGE C)
@@ -97,33 +153,6 @@ if(NOT DISABLED_CXX)
         find_library(FOUNDATION_LIBRARY Foundation)
         find_library(COCOA_LIBRARY Cocoa)
 
-        set(dump_syms_srcs
-            "common/dwarf/dwarf2diehandler.cc"
-            "common/dwarf/elf_reader.cc"
-            "common/dwarf/dwarf2reader.cc"
-            "common/dwarf/bytereader.cc"
-            "common/dwarf_cfi_to_module.cc"
-            "common/dwarf_cu_to_module.cc"
-            "common/dwarf_line_to_module.cc"
-            "common/language.cc"
-            "common/mac/arch_utilities.cc"
-            "common/mac/dump_syms.cc"
-            "common/mac/file_id.cc"
-            "common/mac/macho_id.cc"
-            "common/mac/macho_reader.cc"
-            "common/mac/macho_utilities.cc"
-            "common/mac/macho_walker.cc"
-            "common/md5.cc"
-            "common/module.cc"
-            "common/path_helper.cc"
-            "common/stabs_reader.cc"
-            "common/stabs_to_module.cc"
-            "tools/mac/dump_syms/dump_syms_tool.cc"
-        )
-        abs_list(dump_syms_srcs ${breakpad_dir})
-        add_executable(dump_syms ${dump_syms_srcs})
-        target_include_directories(dump_syms PUBLIC ${breakpad_dir})
-        target_compile_definitions(dump_syms PRIVATE "N_UNDF=0x0")
         target_compile_options(dump_syms PRIVATE "-Wno-deprecated")
         target_link_libraries(dump_syms ${FOUNDATION_LIBRARY})
 
@@ -133,6 +162,8 @@ if(NOT DISABLED_CXX)
 
     elseif(WIN32)
         target_compile_definitions(breakpad PRIVATE "_UNICODE" "UNICODE")
-        target_compile_options(breakpad PRIVATE "-Wno-conversion-null")
+        if(NOT MSVC)
+            target_compile_options(breakpad PRIVATE "-Wno-conversion-null")
+        endif()
     endif()
 endif()

@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: actually find msvc rather than assuming a specfic version and location, probably
-# by starting from the CXX compiler location
-set(paths)
-find_program(MSVC_CL cl.exe PATHS paths)
-if(MSVC_CL MATCHES NOTFOUND)
-    message(FATAL_ERROR "cl not found cannot continue building with MSVC")
+if(MSVC) # WIN32 Symbols require building with MSVC
+
+elseif(APPLE)
+  #execute_process(COMMAND "dsymutil" "gapir" "-o" "gapir.dSYM")
+  # "dump_syms" -g "gapir.dSYM" "gapir" > gapir.sym && rm -r "gapir.dSYM" && strip "gapir")
+else() # LINUX or ANDROID
+  # "dump_syms" "gapir" > gapir.sym && strip "gapir")
 endif()
-get_filename_component(MSVC_CL_DIR ${MSVC_CL} DIRECTORY)
-get_filename_component(MSVC_BIN_DIR ${MSVC_CL_DIR} DIRECTORY)
-get_filename_component(MSVC_PATH ${MSVC_BIN_DIR} DIRECTORY)
 
-
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(MSVC REQUIRED_VARS MSVC_PATH)
+#execute_process(COMMAND "${DUMP_SYMS_CMD}" RESULT_VARIABLE result)
+# if(result)
+#   message(FATAL_ERROR ${result})
+# endif()
