@@ -247,5 +247,12 @@ github_go_repository(
     organization = "google",
     project = "go-github",
     commit = "a89ea1cdf79929726a9416663609269ada774da0",
-    importpath = "github.com/google/go-github/github",
+    importpath = "github.com/google/go-github",
+)
+github_go_repository(
+    name = "com_github_google_go_querystring",
+    organization = "google",
+    project = "go-querystring",
+    commit = "53e6ce116135b80d037921a7fdd5138cf32d7a8a",
+    importpath = "github.com/google/go-querystring",
 )
