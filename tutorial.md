@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Tutorial
-sidebar: Tutorial: How do I...
+sidebar: Tutorial&#58; How do I...
 order: 5
 permalink: /tutorials/
 group: tutorials
