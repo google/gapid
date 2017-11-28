@@ -186,10 +186,16 @@ public class Histogram {
       double average = 0.0;
       for (Image image : images) {
         PixelInfo info = image.getInfo();
-        min = Math.min(info.getMin(), min);
-        max = Math.max(info.getMax(), max);
+        if (info.isNormalized()) {
+          min = Math.min(0.0, min);
+          max = Math.max(1.0, max);
+        } else {
+          min = Math.min(info.getMin(), min);
+          max = Math.max(info.getMax(), max);
+        }
         average += info.getAverage();
       }
+
       Range limits = new Range(min, max);
 
       // This is an average-of-averages, which is OK, because we only ever compute a histogram across

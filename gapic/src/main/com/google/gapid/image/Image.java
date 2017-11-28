@@ -207,6 +207,11 @@ public interface Image {
       public double getAlphaMax() {
         return 1;
       }
+
+      @Override
+      public boolean isNormalized() {
+        return true;
+      }
     };
 
     /**
@@ -220,7 +225,7 @@ public interface Image {
     public double getMax();
 
     /**
-     * Returns the average value accross all channels of the image date. Used for tone mapping.
+     * Returns the average value across all channels of the image date. Used for tone mapping.
      */
     public double getAverage();
 
@@ -233,6 +238,11 @@ public interface Image {
      * @return the maximum alpha value of the image data.
      */
     public double getAlphaMax();
+
+    /**
+     * Returns true if all values are between [0, 1].
+     */
+    public boolean isNormalized();
   }
 
   /**
