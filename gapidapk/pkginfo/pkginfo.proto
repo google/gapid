@@ -17,6 +17,7 @@ syntax = "proto3";
 package pkginfo;
 option java_package = "com.google.gapid.proto.pkginfo";
 option java_outer_classname = "PkgInfo";
+option go_package = "github.com/google/gapid/gapidapk/pkginfo";
 
 // Package describes a single Android package.
 message Package {

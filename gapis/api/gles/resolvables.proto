@@ -18,6 +18,7 @@ import "core/image/image.proto";
 import "gapis/service/path/path.proto";
 
 package gles;
+option go_package = "github.com/google/gapid/gapis/api/gles";
 
 // GAPIS internal structure.
 message GLSLParseResolvable {

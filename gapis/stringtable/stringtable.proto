@@ -20,6 +20,7 @@ import "gapis/service/box/box.proto";
 package stringtable;
 option java_package = "com.google.gapid.proto.stringtable";
 option java_outer_classname = "Stringtable";
+option go_package = "github.com/google/gapid/gapis/stringtable";
 
 // StringTable is the container for an entire string table.
 message StringTable {

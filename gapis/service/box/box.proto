@@ -19,6 +19,7 @@ import "core/data/pod/pod.proto";
 package box;
 option java_package = "com.google.gapid.proto.service.box";
 option java_outer_classname = "Box";
+option go_package = "github.com/google/gapid/gapis/service/box";
 
 message Value {
   // value_id is used to describe cyclic / 'diamond' values. The identifiers are

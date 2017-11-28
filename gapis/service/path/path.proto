@@ -21,6 +21,7 @@ import "gapis/vertex/vertex.proto";
 package path;
 option java_package = "com.google.gapid.proto.service.path";
 option java_outer_classname = "Path";
+option go_package = "github.com/google/gapid/gapis/service/path";
 
 // Any is a oneof union of all the path types.
 message Any {

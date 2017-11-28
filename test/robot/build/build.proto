@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 package build;
+option go_package = "github.com/google/gapid/test/robot/build";
 
 import "core/os/device/device.proto";
 import "test/robot/search/search.proto";

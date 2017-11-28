@@ -19,6 +19,7 @@ import "core/stream/stream.proto";
 package vertex;
 option java_package = "com.google.gapid.proto.service.vertex";
 option java_outer_classname = "Vertex";
+option go_package = "github.com/google/gapid/gapis/vertex";
 
 // Buffer represents a collection of vertex streams.
 message Buffer {

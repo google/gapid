@@ -21,6 +21,7 @@ package log_pb;
 
 option java_package = "com.google.gapid.proto.log";
 option java_outer_classname = "Log";
+option go_package = "github.com/google/gapid/core/log/log_pb";
 
 message Message {
     // The message text.

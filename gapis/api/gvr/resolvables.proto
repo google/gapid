@@ -17,6 +17,7 @@ syntax = "proto3";
 import "gapis/service/path/path.proto";
 
 package gvr;
+option go_package = "github.com/google/gapid/gapis/api/gvr";
 
 // GAPIS internal structure.
 message FrameBindingsResolvable {

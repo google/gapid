@@ -17,6 +17,7 @@ syntax = "proto3";
 package stream;
 option java_package = "com.google.gapid.proto.stream";
 option java_outer_classname = "Stream";
+option go_package = "github.com/google/gapid/core/stream";
 
 // Integer describes a signed or unsigned integer data type.
 message Integer {

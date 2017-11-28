@@ -17,6 +17,7 @@ syntax = "proto3";
 package pod;
 option java_package = "com.google.gapid.proto.core.pod";
 option java_outer_classname = "Pod";
+option go_package = "github.com/google/gapid/core/data/pod";
 
 message Value {
   oneof val {

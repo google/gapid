@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 package report;
+option go_package = "github.com/google/gapid/test/robot/report";
 
 import "test/robot/job/job.proto";
 import "test/robot/job/worker/worker.proto";

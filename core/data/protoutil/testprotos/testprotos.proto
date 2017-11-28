@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 package testprotos;
+option go_package = "github.com/google/gapid/core/data/protoutil/testprotos";
 
 message MsgA {
     float  f32 = 1;

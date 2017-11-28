@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 package subject;
+option go_package = "github.com/google/gapid/test/robot/subject";
 
 import "core/os/android/apk/apk.proto";
 import "test/robot/search/search.proto";
