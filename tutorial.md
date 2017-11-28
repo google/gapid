@@ -1,23 +1,23 @@
 ---
 layout: default
 title: Tutorial
-sidebar: Tutorial - How do I...
+sidebar: Tutorial: How do I...
 order: 5
 permalink: /tutorials/
 group: tutorials
 ---
 
-Here you will find guides to help you perform common tasks in GAPID.
+Learn how to perform common tasks in GAPID.
 
 <div class="callouts" markdown="block">
 
 How do I...:
 
-  * [...capture a trace?](../tutorials/capturetrace)
-  * [...see bound shaders?](../tutorials/seeboundshaders)
-  * [...iterate on shaders?](../tutorials/iterateonshaders)
-  * [...find largest textures?](../tutorials/findlargesttextures)
-  * [...optimize my application?](../tutorials/optimize)
-  * [...export resources?](../tutorials/export)
-  * [...create a video of my trace?](../tutorials/createvideo)
+  * [Capture a trace?](../tutorials/capturetrace)
+  * [See bound shaders?](../tutorials/seeboundshaders)
+  * [Iterate on shaders?](../tutorials/iterateonshaders)
+  * [Find the largest textures?](../tutorials/findlargesttextures)
+  * [Optimize my application?](../tutorials/optimize)
+  * [Export resources?](../tutorials/export)
+  * [Create a video of my trace?](../tutorials/createvideo)
 
