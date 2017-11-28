@@ -48,6 +48,7 @@
 #include <unordered_map>
 
 namespace gapii {
+const uint8_t kAllAPIs = 0xFF;
 
 class SpyBase {
 public:
@@ -89,7 +90,7 @@ public:
     void set_suspended(bool suspended) { mIsSuspended = suspended; }
 
     bool should_trace(uint8_t api) {
-        return !is_suspended() && (mWatchedApis & (1 << api)) != 0;
+        return !is_suspended() && (api == kAllAPIs || (mWatchedApis & (1 << api)) != 0);
     }
     void set_valid_apis(uint32_t apis) { mWatchedApis = apis; }
 

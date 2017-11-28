@@ -248,8 +248,9 @@ func postImageData(ctx context.Context,
 	bufferMemoryTypeIndex := uint32(0)
 	for i := uint32(0); i < physicalDevice.MemoryProperties.MemoryTypeCount; i++ {
 		t := physicalDevice.MemoryProperties.MemoryTypes[i]
-		if 0 != (t.PropertyFlags & VkMemoryPropertyFlags(VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|
-			VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+		if 0 != (t.PropertyFlags & VkMemoryPropertyFlags(
+			VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|
+				VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
 			bufferMemoryTypeIndex = i
 			break
 		}

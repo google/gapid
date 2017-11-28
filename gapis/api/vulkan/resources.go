@@ -702,9 +702,6 @@ func (shader *ShaderModuleObject) SetResourceData(
 		if cmd, ok := c.Commands[i].(*VkCreateShaderModule); ok {
 			edits(uint64(i), cmd.Replace(ctx, c, data))
 			return nil
-		} else if cmd, ok := c.Commands[i].(*RecreateShaderModule); ok {
-			edits(uint64(i), cmd.Replace(ctx, c, data))
-			return nil
 		}
 	}
 	return fmt.Errorf("No command to set data in")
@@ -734,44 +731,6 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
 	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
 	newCmd := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
-
-	// Carry all non-observation extras through.
-	for _, e := range cmd.Extras().All() {
-		if _, ok := e.(*api.CmdObservations); !ok {
-			newCmd.Extras().Add(e)
-		}
-	}
-
-	// Add observations
-	newCmd.AddRead(newCreateInfo.Data()).AddRead(code.Data())
-
-	for _, w := range cmd.Extras().Observations().Writes {
-		newCmd.AddWrite(w.Range, w.ID)
-	}
-	return newCmd
-}
-
-func (cmd *RecreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
-	ctx = log.Enter(ctx, "RecreateShaderModule.Replace()")
-	cb := CommandBuilder{Thread: cmd.thread}
-	state := c.NewState(ctx)
-	cmd.Mutate(ctx, api.CmdNoID, state, nil)
-
-	shader := data.GetShader()
-	codeSlice := shadertools.AssembleSpirvText(shader.Source)
-	if codeSlice == nil {
-		return nil
-	}
-
-	code := state.AllocDataOrPanic(ctx, codeSlice)
-	device := cmd.Device
-	pShaderModule := memory.Pointer(cmd.PShaderModule)
-	createInfo := cmd.PCreateInfo.MustRead(ctx, cmd, state, nil)
-
-	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
-	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
-	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
-	newCmd := cb.RecreateShaderModule(device, newCreateInfo.Ptr(), pShaderModule)
 
 	// Carry all non-observation extras through.
 	for _, e := range cmd.Extras().All() {

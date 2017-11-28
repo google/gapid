@@ -90,7 +90,10 @@ inline Slice<T>::Slice() : mBase(nullptr), mCount(0) {}
 template<typename T>
 inline Slice<T>::Slice(T* base, uint64_t count, const std::shared_ptr<Pool>& pool)
     : mBase(base), mCount(count), mPool(pool) {
-    GAPID_ASSERT(mBase != nullptr || count == 0 /* Slice: null pointer */);
+
+    if (!mPool || !mPool->is_virtual()) {
+        GAPID_ASSERT(mBase != nullptr || count == 0 /* Slice: null pointer */);
+    }
 }
 
 template<typename T>

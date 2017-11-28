@@ -69,7 +69,9 @@ bool ChunkWriterImpl::write(std::string& s) {
 }
 
 void ChunkWriterImpl::flush() {
-    mStreamGood = mWriter->write(mBuffer.data(), mBuffer.size());
+    size_t bufferSize = mBuffer.size();
+    // If we flush en empty buffer, this will return false, which is incorrect.
+    mStreamGood = mWriter->write(mBuffer.data(), mBuffer.size()) == bufferSize;
     mBuffer.clear();
 }
 

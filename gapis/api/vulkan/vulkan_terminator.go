@@ -246,7 +246,7 @@ func rebuildCommandBuffer(ctx context.Context,
 
 	for i := uint32(0); i < uint32(numCommandsToCopy); i++ {
 		cmd := commandBuffer.CommandReferences.Get(i)
-		c, a := AddCommand(ctx, cb, commandBufferId, s, GetCommandArgs(ctx, cmd, s))
+		c, a, _ := AddCommand(ctx, cb, commandBufferId, s, GetCommandArgs(ctx, cmd, GetState(s)))
 		x = append(x, a)
 		cleanup = append(cleanup, c)
 	}
@@ -258,10 +258,10 @@ func rebuildCommandBuffer(ctx context.Context,
 			CommandBuffers: NewU32ːVkCommandBufferᵐ(),
 		}
 		pcmd := commandBuffer.CommandReferences.Get(uint32(idx[0]))
-		execCmdData, ok := GetCommandArgs(ctx, pcmd, s).(*VkCmdExecuteCommandsArgs)
+		execCmdData, ok := GetCommandArgs(ctx, pcmd, GetState(s)).(*VkCmdExecuteCommandsArgs)
 		if !ok {
 			panic("Rebuild command buffer including secondary commands at a primary " +
-				"command other than VkCmdExecuteCommands or RecreateCmdExecuteCommands")
+				"command other than VkCmdExecuteCommands")
 		}
 		for scbi := uint32(0); scbi < uint32(numSecondaryCmdBuffersToCopy); scbi++ {
 			newCmdExecuteCommandsData.CommandBuffers.Set(scbi, execCmdData.CommandBuffers.Get(scbi))
@@ -273,21 +273,21 @@ func rebuildCommandBuffer(ctx context.Context,
 			cleanup = append(cleanup, extraCleanup...)
 			for sci := uint32(0); sci < uint32(numSecondaryCommandsToCopy); sci++ {
 				secCmd := GetState(s).CommandBuffers.Get(lastSecCmdBuf).CommandReferences.Get(sci)
-				newCleanups, newSecCmds := AddCommand(ctx, cb, newSecCmdBuf, s, GetCommandArgs(ctx, secCmd, s))
+				newCleanups, newSecCmds, _ := AddCommand(ctx, cb, newSecCmdBuf, s, GetCommandArgs(ctx, secCmd, GetState(s)))
 				x = append(x, newSecCmds)
 				cleanup = append(cleanup, newCleanups)
 			}
 			x = append(x, cb.VkEndCommandBuffer(newSecCmdBuf, VkResult_VK_SUCCESS))
 			newCmdExecuteCommandsData.CommandBuffers.Set(uint32(idx[1]), newSecCmdBuf)
 		}
-		cleanupNewExecSecCmds, newExecSecCmds := AddCommand(
+		cleanupNewExecSecCmds, newExecSecCmds, _ := AddCommand(
 			ctx, cb, commandBufferId, s, newCmdExecuteCommandsData)
 		cleanup = append(cleanup, cleanupNewExecSecCmds)
 		x = append(x, newExecSecCmds)
 	}
 
 	for i := range additionalCommands {
-		c, a := AddCommand(ctx, cb, commandBufferId, s, additionalCommands[i])
+		c, a, _ := AddCommand(ctx, cb, commandBufferId, s, additionalCommands[i])
 		x = append(x, a)
 		cleanup = append(cleanup, c)
 	}
