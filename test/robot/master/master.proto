@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 package master;
+option go_package = "github.com/google/gapid/test/robot/master";
 
 import "test/robot/search/search.proto";
 

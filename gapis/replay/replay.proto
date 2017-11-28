@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 package replay;
+option go_package = "github.com/google/gapid/gapis/replay";
 
 // WireframeMode is an enumerator of wireframe modes used by QueryColorBuffer.
 enum WireframeMode {

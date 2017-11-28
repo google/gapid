@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 package gles_pb;
+option go_package = "github.com/google/gapid/gapis/api/gles/gles_pb";
 
 // ErrorState is a command extra used to describe the GLES error state after
 // the command has been executed. It is optional - we use it only for testing.

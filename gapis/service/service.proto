@@ -25,6 +25,7 @@ import "gapis/stringtable/stringtable.proto";
 package service;
 option java_package = "com.google.gapid.proto.service";
 option java_outer_classname = "Service";
+option go_package = "github.com/google/gapid/gapis/service";
 
 // WireframeMode is an enumerator of wireframe modes that can be used by
 // RenderSettings.

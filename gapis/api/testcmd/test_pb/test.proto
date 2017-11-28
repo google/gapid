@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 package test_pb;
+option go_package = "github.com/google/gapid/gapis/api/testcmd/test_pb";
 
 import "gapis/service/box/box.proto";
 

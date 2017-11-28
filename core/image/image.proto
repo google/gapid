@@ -19,6 +19,7 @@ import "core/stream/stream.proto";
 package image;
 option java_package = "com.google.gapid.proto.image";
 option java_outer_classname = "Image";
+option go_package = "github.com/google/gapid/core/image";
 
 // ID is a 20-byte identifier.
 message ID {
