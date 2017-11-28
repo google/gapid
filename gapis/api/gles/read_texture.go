@@ -88,10 +88,21 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			return
 		}
 
-		if r.Layer == 0 {
-			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID, GLint(r.Level)))
-		} else {
+		switch tex.Kind {
+		case GLenum_GL_TEXTURE_3D,
+			GLenum_GL_IMAGE_CUBE_MAP_ARRAY,
+			GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
+			GLenum_GL_TEXTURE_2D_ARRAY,
+			GLenum_GL_TEXTURE_1D_ARRAY:
+
 			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID, GLint(r.Level), GLint(r.Layer)))
+
+		case GLenum_GL_TEXTURE_CUBE_MAP:
+			face := GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X + GLenum(r.Layer)
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture2D(GLenum_GL_DRAW_FRAMEBUFFER, attachment, face, tex.ID, GLint(r.Level)))
+
+		default:
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID, GLint(r.Level)))
 		}
 
 		// Compat may have altered the texture format.
