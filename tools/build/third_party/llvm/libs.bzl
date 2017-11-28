@@ -8,855 +8,855 @@
 load("@//tools/build/third_party:llvm/rules.bzl", "llvmLibrary")
 
 def llvm_auto_libs(**kwargs):
-	llvmLibrary(
-		name="Analysis",
-		path="lib/Analysis",
-		deps=[":Core", ":Support", ":ProfileData", ":Object"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AsmParser",
-		path="lib/AsmParser",
-		deps=[":Core", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="BitReader",
-		path="lib/Bitcode/Reader",
-		deps=[":Core", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="BitWriter",
-		path="lib/Bitcode/Writer",
-		deps=[":Analysis", ":Core", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AsmPrinter",
-		path="lib/CodeGen/AsmPrinter",
-		deps=[":Analysis", ":CodeGen", ":Core", ":DebugInfoCodeView", ":DebugInfoMSF", ":MC", ":MCParser", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="GlobalISel",
-		path="lib/CodeGen/GlobalISel",
-		deps=[":Analysis", ":CodeGen", ":Core", ":MC", ":Support", ":Target", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="CodeGen",
-		path="lib/CodeGen",
-		deps=[":Analysis", ":BitReader", ":BitWriter", ":Core", ":MC", ":Scalar", ":Support", ":Target", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MIRParser",
-		path="lib/CodeGen/MIRParser",
-		deps=[":AsmParser", ":CodeGen", ":Core", ":MC", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SelectionDAG",
-		path="lib/CodeGen/SelectionDAG",
-		deps=[":Analysis", ":CodeGen", ":Core", ":MC", ":Support", ":Target", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="DebugInfoCodeView",
-		path="lib/DebugInfo/CodeView",
-		deps=[":Support", ":DebugInfoMSF"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="DebugInfoDWARF",
-		path="lib/DebugInfo/DWARF",
-		deps=[":Object", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="DebugInfoMSF",
-		path="lib/DebugInfo/MSF",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="DebugInfoPDB",
-		path="lib/DebugInfo/PDB",
-		deps=[":Object", ":Support", ":DebugInfoCodeView", ":DebugInfoMSF"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Symbolize",
-		path="lib/DebugInfo/Symbolize",
-		deps=[":DebugInfoDWARF", ":DebugInfoPDB", ":Object", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Demangle",
-		path="lib/Demangle",
-		deps=[],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Interpreter",
-		path="lib/ExecutionEngine/Interpreter",
-		deps=[":CodeGen", ":Core", ":ExecutionEngine", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ExecutionEngine",
-		path="lib/ExecutionEngine",
-		deps=[":Core", ":MC", ":Object", ":RuntimeDyld", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MCJIT",
-		path="lib/ExecutionEngine/MCJIT",
-		deps=[":Core", ":ExecutionEngine", ":Object", ":RuntimeDyld", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="OrcJIT",
-		path="lib/ExecutionEngine/Orc",
-		deps=[":Core", ":ExecutionEngine", ":Object", ":RuntimeDyld", ":Support", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="RuntimeDyld",
-		path="lib/ExecutionEngine/RuntimeDyld",
-		deps=[":MC", ":Object", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Core",
-		path="lib/IR",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="IRReader",
-		path="lib/IRReader",
-		deps=[":AsmParser", ":BitReader", ":Core", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LTO",
-		path="lib/LTO",
-		deps=[":Analysis", ":BitReader", ":BitWriter", ":CodeGen", ":Core", ":IPO", ":InstCombine", ":Linker", ":MC", ":ObjCARC", ":Object", ":Passes", ":Scalar", ":Support", ":Target", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LibDriver",
-		path="lib/LibDriver",
-		deps=[":Object", ":Option", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LineEditor",
-		path="lib/LineEditor",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Linker",
-		path="lib/Linker",
-		deps=[":Core", ":Support", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MC",
-		path="lib/MC",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MCDisassembler",
-		path="lib/MC/MCDisassembler",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MCParser",
-		path="lib/MC/MCParser",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Object",
-		path="lib/Object",
-		deps=[":BitReader", ":Core", ":MC", ":MCParser", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ObjectYAML",
-		path="lib/ObjectYAML",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Option",
-		path="lib/Option",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Passes",
-		path="lib/Passes",
-		deps=[":Analysis", ":CodeGen", ":Core", ":IPO", ":InstCombine", ":Scalar", ":Support", ":TransformUtils", ":Vectorize", ":Instrumentation"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Coverage",
-		path="lib/ProfileData/Coverage",
-		deps=[":Core", ":Object", ":ProfileData", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ProfileData",
-		path="lib/ProfileData",
-		deps=[":Core", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Support",
-		path="lib/Support",
-		deps=[":Demangle"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="TableGen",
-		path="lib/TableGen",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AArch64AsmParser",
-		path="lib/Target/AArch64/AsmParser",
-		deps=[":AArch64Desc", ":AArch64Info", ":AArch64Utils", ":MC", ":MCParser", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AArch64Disassembler",
-		path="lib/Target/AArch64/Disassembler",
-		deps=[":AArch64Desc", ":AArch64Info", ":AArch64Utils", ":MC", ":MCDisassembler", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AArch64AsmPrinter",
-		path="lib/Target/AArch64/InstPrinter",
-		deps=[":AArch64Utils", ":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AArch64CodeGen",
-		path="lib/Target/AArch64",
-		deps=[":AArch64AsmPrinter", ":AArch64Desc", ":AArch64Info", ":AArch64Utils", ":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":GlobalISel"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AArch64Desc",
-		path="lib/Target/AArch64/MCTargetDesc",
-		deps=[":AArch64AsmPrinter", ":AArch64Info", ":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AArch64Info",
-		path="lib/Target/AArch64/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AArch64Utils",
-		path="lib/Target/AArch64/Utils",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AMDGPUAsmParser",
-		path="lib/Target/AMDGPU/AsmParser",
-		deps=[":MC", ":MCParser", ":AMDGPUDesc", ":AMDGPUInfo", ":AMDGPUUtils", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AMDGPUDisassembler",
-		path="lib/Target/AMDGPU/Disassembler",
-		deps=[":AMDGPUDesc", ":AMDGPUInfo", ":AMDGPUUtils", ":MC", ":MCDisassembler", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AMDGPUAsmPrinter",
-		path="lib/Target/AMDGPU/InstPrinter",
-		deps=[":MC", ":Support", ":AMDGPUUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AMDGPUCodeGen",
-		path="lib/Target/AMDGPU",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":IPO", ":MC", ":AMDGPUAsmPrinter", ":AMDGPUDesc", ":AMDGPUInfo", ":AMDGPUUtils", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils", ":Vectorize"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AMDGPUDesc",
-		path="lib/Target/AMDGPU/MCTargetDesc",
-		deps=[":Core", ":MC", ":AMDGPUAsmPrinter", ":AMDGPUInfo", ":AMDGPUUtils", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AMDGPUInfo",
-		path="lib/Target/AMDGPU/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AMDGPUUtils",
-		path="lib/Target/AMDGPU/Utils",
-		deps=[":Core", ":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ARMAsmParser",
-		path="lib/Target/ARM/AsmParser",
-		deps=[":ARMDesc", ":ARMInfo", ":MC", ":MCParser", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ARMDisassembler",
-		path="lib/Target/ARM/Disassembler",
-		deps=[":ARMDesc", ":ARMInfo", ":MCDisassembler", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ARMAsmPrinter",
-		path="lib/Target/ARM/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ARMCodeGen",
-		path="lib/Target/ARM",
-		deps=[":ARMAsmPrinter", ":ARMDesc", ":ARMInfo", ":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":GlobalISel"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ARMDesc",
-		path="lib/Target/ARM/MCTargetDesc",
-		deps=[":ARMAsmPrinter", ":ARMInfo", ":MC", ":MCDisassembler", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ARMInfo",
-		path="lib/Target/ARM/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AVRAsmParser",
-		path="lib/Target/AVR/AsmParser",
-		deps=[":MC", ":MCParser", ":AVRDesc", ":AVRInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AVRDisassembler",
-		path="lib/Target/AVR/Disassembler",
-		deps=[":MCDisassembler", ":AVRInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AVRAsmPrinter",
-		path="lib/Target/AVR/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AVRCodeGen",
-		path="lib/Target/AVR",
-		deps=[":AsmPrinter", ":CodeGen", ":Core", ":MC", ":AVRAsmPrinter", ":AVRDesc", ":AVRInfo", ":SelectionDAG", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AVRDesc",
-		path="lib/Target/AVR/MCTargetDesc",
-		deps=[":MC", ":AVRAsmPrinter", ":AVRInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="AVRInfo",
-		path="lib/Target/AVR/TargetInfo",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="BPFDisassembler",
-		path="lib/Target/BPF/Disassembler",
-		deps=[":MCDisassembler", ":BPFInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="BPFAsmPrinter",
-		path="lib/Target/BPF/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="BPFCodeGen",
-		path="lib/Target/BPF",
-		deps=[":AsmPrinter", ":CodeGen", ":Core", ":MC", ":BPFAsmPrinter", ":BPFDesc", ":BPFInfo", ":SelectionDAG", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="BPFDesc",
-		path="lib/Target/BPF/MCTargetDesc",
-		deps=[":MC", ":BPFAsmPrinter", ":BPFInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="BPFInfo",
-		path="lib/Target/BPF/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="HexagonAsmParser",
-		path="lib/Target/Hexagon/AsmParser",
-		deps=[":MC", ":MCParser", ":Support", ":HexagonDesc", ":HexagonInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="HexagonDisassembler",
-		path="lib/Target/Hexagon/Disassembler",
-		deps=[":HexagonDesc", ":HexagonInfo", ":MC", ":MCDisassembler", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="HexagonCodeGen",
-		path="lib/Target/Hexagon",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":HexagonAsmParser", ":HexagonDesc", ":HexagonInfo", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="HexagonDesc",
-		path="lib/Target/Hexagon/MCTargetDesc",
-		deps=[":HexagonInfo", ":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="HexagonInfo",
-		path="lib/Target/Hexagon/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Target",
-		path="lib/Target",
-		deps=[":Analysis", ":Core", ":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LanaiAsmParser",
-		path="lib/Target/Lanai/AsmParser",
-		deps=[":MC", ":MCParser", ":Support", ":LanaiDesc", ":LanaiInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LanaiDisassembler",
-		path="lib/Target/Lanai/Disassembler",
-		deps=[":LanaiDesc", ":LanaiInfo", ":MC", ":MCDisassembler", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LanaiInstPrinter",
-		path="lib/Target/Lanai/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LanaiCodeGen",
-		path="lib/Target/Lanai",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":LanaiAsmParser", ":LanaiDesc", ":LanaiInfo", ":LanaiInstPrinter", ":MC", ":SelectionDAG", ":Support", ":Target", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LanaiDesc",
-		path="lib/Target/Lanai/MCTargetDesc",
-		deps=[":LanaiInfo", ":LanaiInstPrinter", ":MC", ":MCDisassembler", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="LanaiInfo",
-		path="lib/Target/Lanai/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MSP430AsmPrinter",
-		path="lib/Target/MSP430/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MSP430CodeGen",
-		path="lib/Target/MSP430",
-		deps=[":AsmPrinter", ":CodeGen", ":Core", ":MC", ":MSP430AsmPrinter", ":MSP430Desc", ":MSP430Info", ":SelectionDAG", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MSP430Desc",
-		path="lib/Target/MSP430/MCTargetDesc",
-		deps=[":MC", ":MSP430AsmPrinter", ":MSP430Info", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MSP430Info",
-		path="lib/Target/MSP430/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MipsAsmParser",
-		path="lib/Target/Mips/AsmParser",
-		deps=[":MC", ":MCParser", ":MipsDesc", ":MipsInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MipsDisassembler",
-		path="lib/Target/Mips/Disassembler",
-		deps=[":MCDisassembler", ":MipsInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MipsAsmPrinter",
-		path="lib/Target/Mips/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MipsCodeGen",
-		path="lib/Target/Mips",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":MipsAsmPrinter", ":MipsDesc", ":MipsInfo", ":SelectionDAG", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MipsDesc",
-		path="lib/Target/Mips/MCTargetDesc",
-		deps=[":MC", ":MipsAsmPrinter", ":MipsInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="MipsInfo",
-		path="lib/Target/Mips/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="NVPTXAsmPrinter",
-		path="lib/Target/NVPTX/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="NVPTXCodeGen",
-		path="lib/Target/NVPTX",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":NVPTXAsmPrinter", ":NVPTXDesc", ":NVPTXInfo", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils", ":Vectorize"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="NVPTXDesc",
-		path="lib/Target/NVPTX/MCTargetDesc",
-		deps=[":MC", ":NVPTXAsmPrinter", ":NVPTXInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="NVPTXInfo",
-		path="lib/Target/NVPTX/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="PowerPCAsmParser",
-		path="lib/Target/PowerPC/AsmParser",
-		deps=[":MC", ":MCParser", ":PowerPCDesc", ":PowerPCInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="PowerPCDisassembler",
-		path="lib/Target/PowerPC/Disassembler",
-		deps=[":MCDisassembler", ":PowerPCInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="PowerPCAsmPrinter",
-		path="lib/Target/PowerPC/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="PowerPCCodeGen",
-		path="lib/Target/PowerPC",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":PowerPCAsmPrinter", ":PowerPCDesc", ":PowerPCInfo", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="PowerPCDesc",
-		path="lib/Target/PowerPC/MCTargetDesc",
-		deps=[":MC", ":PowerPCAsmPrinter", ":PowerPCInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="PowerPCInfo",
-		path="lib/Target/PowerPC/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="RISCVCodeGen",
-		path="lib/Target/RISCV",
-		deps=[":Core", ":CodeGen", ":RISCVInfo", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="RISCVDesc",
-		path="lib/Target/RISCV/MCTargetDesc",
-		deps=[":MC", ":RISCVInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="RISCVInfo",
-		path="lib/Target/RISCV/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SparcAsmParser",
-		path="lib/Target/Sparc/AsmParser",
-		deps=[":MC", ":MCParser", ":SparcDesc", ":SparcInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SparcDisassembler",
-		path="lib/Target/Sparc/Disassembler",
-		deps=[":MCDisassembler", ":SparcInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SparcAsmPrinter",
-		path="lib/Target/Sparc/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SparcCodeGen",
-		path="lib/Target/Sparc",
-		deps=[":AsmPrinter", ":CodeGen", ":Core", ":MC", ":SelectionDAG", ":SparcAsmPrinter", ":SparcDesc", ":SparcInfo", ":Support", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SparcDesc",
-		path="lib/Target/Sparc/MCTargetDesc",
-		deps=[":MC", ":SparcAsmPrinter", ":SparcInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SparcInfo",
-		path="lib/Target/Sparc/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SystemZAsmParser",
-		path="lib/Target/SystemZ/AsmParser",
-		deps=[":MC", ":MCParser", ":Support", ":SystemZDesc", ":SystemZInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SystemZDisassembler",
-		path="lib/Target/SystemZ/Disassembler",
-		deps=[":MC", ":MCDisassembler", ":Support", ":SystemZDesc", ":SystemZInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SystemZAsmPrinter",
-		path="lib/Target/SystemZ/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SystemZCodeGen",
-		path="lib/Target/SystemZ",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":SelectionDAG", ":Support", ":SystemZAsmPrinter", ":SystemZDesc", ":SystemZInfo", ":Target"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SystemZDesc",
-		path="lib/Target/SystemZ/MCTargetDesc",
-		deps=[":MC", ":Support", ":SystemZAsmPrinter", ":SystemZInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="SystemZInfo",
-		path="lib/Target/SystemZ/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="WebAssemblyDisassembler",
-		path="lib/Target/WebAssembly/Disassembler",
-		deps=[":MCDisassembler", ":WebAssemblyInfo", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="WebAssemblyAsmPrinter",
-		path="lib/Target/WebAssembly/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="WebAssemblyCodeGen",
-		path="lib/Target/WebAssembly",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils", ":WebAssemblyAsmPrinter", ":WebAssemblyDesc", ":WebAssemblyInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="WebAssemblyDesc",
-		path="lib/Target/WebAssembly/MCTargetDesc",
-		deps=[":MC", ":Support", ":WebAssemblyAsmPrinter", ":WebAssemblyInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="WebAssemblyInfo",
-		path="lib/Target/WebAssembly/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="X86AsmParser",
-		path="lib/Target/X86/AsmParser",
-		deps=[":MC", ":MCParser", ":Support", ":X86Desc", ":X86Info"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="X86Disassembler",
-		path="lib/Target/X86/Disassembler",
-		deps=[":MCDisassembler", ":Support", ":X86Info"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="X86AsmPrinter",
-		path="lib/Target/X86/InstPrinter",
-		deps=[":MC", ":Support", ":X86Utils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="X86CodeGen",
-		path="lib/Target/X86",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":SelectionDAG", ":Support", ":Target", ":X86AsmPrinter", ":X86Desc", ":X86Info", ":X86Utils", ":GlobalISel"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="X86Desc",
-		path="lib/Target/X86/MCTargetDesc",
-		deps=[":MC", ":MCDisassembler", ":Object", ":Support", ":X86AsmPrinter", ":X86Info"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="X86Info",
-		path="lib/Target/X86/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="X86Utils",
-		path="lib/Target/X86/Utils",
-		deps=[":Core", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="XCoreDisassembler",
-		path="lib/Target/XCore/Disassembler",
-		deps=[":MCDisassembler", ":Support", ":XCoreInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="XCoreAsmPrinter",
-		path="lib/Target/XCore/InstPrinter",
-		deps=[":MC", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="XCoreCodeGen",
-		path="lib/Target/XCore",
-		deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":SelectionDAG", ":Support", ":Target", ":TransformUtils", ":XCoreAsmPrinter", ":XCoreDesc", ":XCoreInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="XCoreDesc",
-		path="lib/Target/XCore/MCTargetDesc",
-		deps=[":MC", ":Support", ":XCoreAsmPrinter", ":XCoreInfo"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="XCoreInfo",
-		path="lib/Target/XCore/TargetInfo",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Coroutines",
-		path="lib/Transforms/Coroutines",
-		deps=[":Analysis", ":Core", ":IPO", ":Scalar", ":Support", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="IPO",
-		path="lib/Transforms/IPO",
-		deps=[":Analysis", ":BitWriter", ":Core", ":InstCombine", ":IRReader", ":Linker", ":Object", ":ProfileData", ":Scalar", ":Support", ":TransformUtils", ":Vectorize", ":Instrumentation"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="InstCombine",
-		path="lib/Transforms/InstCombine",
-		deps=[":Analysis", ":Core", ":Support", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Instrumentation",
-		path="lib/Transforms/Instrumentation",
-		deps=[":Analysis", ":Core", ":MC", ":Support", ":TransformUtils", ":ProfileData"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="ObjCARC",
-		path="lib/Transforms/ObjCARC",
-		deps=[":Analysis", ":Core", ":Support", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Scalar",
-		path="lib/Transforms/Scalar",
-		deps=[":Analysis", ":Core", ":InstCombine", ":Support", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="TransformUtils",
-		path="lib/Transforms/Utils",
-		deps=[":Analysis", ":Core", ":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="Vectorize",
-		path="lib/Transforms/Vectorize",
-		deps=[":Analysis", ":Core", ":Support", ":TransformUtils"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="gtest",
-		path="utils/unittest",
-		deps=[":Support"],
-		**kwargs
-	)
-	llvmLibrary(
-		name="gtest_main",
-		path="utils/unittest",
-		deps=[":gtest"],
-		**kwargs
-	)
+  llvmLibrary(
+    name="Analysis",
+    path="lib/Analysis",
+    deps=[":Core", ":Support", ":ProfileData", ":Object"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AsmParser",
+    path="lib/AsmParser",
+    deps=[":Core", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="BitReader",
+    path="lib/Bitcode/Reader",
+    deps=[":Core", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="BitWriter",
+    path="lib/Bitcode/Writer",
+    deps=[":Analysis", ":Core", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AsmPrinter",
+    path="lib/CodeGen/AsmPrinter",
+    deps=[":Analysis", ":CodeGen", ":Core", ":DebugInfoCodeView", ":DebugInfoMSF", ":MC", ":MCParser", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="GlobalISel",
+    path="lib/CodeGen/GlobalISel",
+    deps=[":Analysis", ":CodeGen", ":Core", ":MC", ":Support", ":Target", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="CodeGen",
+    path="lib/CodeGen",
+    deps=[":Analysis", ":BitReader", ":BitWriter", ":Core", ":MC", ":Scalar", ":Support", ":Target", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MIRParser",
+    path="lib/CodeGen/MIRParser",
+    deps=[":AsmParser", ":CodeGen", ":Core", ":MC", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SelectionDAG",
+    path="lib/CodeGen/SelectionDAG",
+    deps=[":Analysis", ":CodeGen", ":Core", ":MC", ":Support", ":Target", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="DebugInfoCodeView",
+    path="lib/DebugInfo/CodeView",
+    deps=[":Support", ":DebugInfoMSF"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="DebugInfoDWARF",
+    path="lib/DebugInfo/DWARF",
+    deps=[":Object", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="DebugInfoMSF",
+    path="lib/DebugInfo/MSF",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="DebugInfoPDB",
+    path="lib/DebugInfo/PDB",
+    deps=[":Object", ":Support", ":DebugInfoCodeView", ":DebugInfoMSF"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Symbolize",
+    path="lib/DebugInfo/Symbolize",
+    deps=[":DebugInfoDWARF", ":DebugInfoPDB", ":Object", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Demangle",
+    path="lib/Demangle",
+    deps=[],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Interpreter",
+    path="lib/ExecutionEngine/Interpreter",
+    deps=[":CodeGen", ":Core", ":ExecutionEngine", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ExecutionEngine",
+    path="lib/ExecutionEngine",
+    deps=[":Core", ":MC", ":Object", ":RuntimeDyld", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MCJIT",
+    path="lib/ExecutionEngine/MCJIT",
+    deps=[":Core", ":ExecutionEngine", ":Object", ":RuntimeDyld", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="OrcJIT",
+    path="lib/ExecutionEngine/Orc",
+    deps=[":Core", ":ExecutionEngine", ":Object", ":RuntimeDyld", ":Support", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="RuntimeDyld",
+    path="lib/ExecutionEngine/RuntimeDyld",
+    deps=[":MC", ":Object", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Core",
+    path="lib/IR",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="IRReader",
+    path="lib/IRReader",
+    deps=[":AsmParser", ":BitReader", ":Core", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LTO",
+    path="lib/LTO",
+    deps=[":Analysis", ":BitReader", ":BitWriter", ":CodeGen", ":Core", ":IPO", ":InstCombine", ":Linker", ":MC", ":ObjCARC", ":Object", ":Passes", ":Scalar", ":Support", ":Target", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LibDriver",
+    path="lib/LibDriver",
+    deps=[":Object", ":Option", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LineEditor",
+    path="lib/LineEditor",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Linker",
+    path="lib/Linker",
+    deps=[":Core", ":Support", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MC",
+    path="lib/MC",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MCDisassembler",
+    path="lib/MC/MCDisassembler",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MCParser",
+    path="lib/MC/MCParser",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Object",
+    path="lib/Object",
+    deps=[":BitReader", ":Core", ":MC", ":MCParser", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ObjectYAML",
+    path="lib/ObjectYAML",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Option",
+    path="lib/Option",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Passes",
+    path="lib/Passes",
+    deps=[":Analysis", ":CodeGen", ":Core", ":IPO", ":InstCombine", ":Scalar", ":Support", ":TransformUtils", ":Vectorize", ":Instrumentation"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Coverage",
+    path="lib/ProfileData/Coverage",
+    deps=[":Core", ":Object", ":ProfileData", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ProfileData",
+    path="lib/ProfileData",
+    deps=[":Core", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Support",
+    path="lib/Support",
+    deps=[":Demangle"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="TableGen",
+    path="lib/TableGen",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AArch64AsmParser",
+    path="lib/Target/AArch64/AsmParser",
+    deps=[":AArch64Desc", ":AArch64Info", ":AArch64Utils", ":MC", ":MCParser", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AArch64Disassembler",
+    path="lib/Target/AArch64/Disassembler",
+    deps=[":AArch64Desc", ":AArch64Info", ":AArch64Utils", ":MC", ":MCDisassembler", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AArch64AsmPrinter",
+    path="lib/Target/AArch64/InstPrinter",
+    deps=[":AArch64Utils", ":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AArch64CodeGen",
+    path="lib/Target/AArch64",
+    deps=[":AArch64AsmPrinter", ":AArch64Desc", ":AArch64Info", ":AArch64Utils", ":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":GlobalISel"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AArch64Desc",
+    path="lib/Target/AArch64/MCTargetDesc",
+    deps=[":AArch64AsmPrinter", ":AArch64Info", ":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AArch64Info",
+    path="lib/Target/AArch64/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AArch64Utils",
+    path="lib/Target/AArch64/Utils",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AMDGPUAsmParser",
+    path="lib/Target/AMDGPU/AsmParser",
+    deps=[":MC", ":MCParser", ":AMDGPUDesc", ":AMDGPUInfo", ":AMDGPUUtils", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AMDGPUDisassembler",
+    path="lib/Target/AMDGPU/Disassembler",
+    deps=[":AMDGPUDesc", ":AMDGPUInfo", ":AMDGPUUtils", ":MC", ":MCDisassembler", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AMDGPUAsmPrinter",
+    path="lib/Target/AMDGPU/InstPrinter",
+    deps=[":MC", ":Support", ":AMDGPUUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AMDGPUCodeGen",
+    path="lib/Target/AMDGPU",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":IPO", ":MC", ":AMDGPUAsmPrinter", ":AMDGPUDesc", ":AMDGPUInfo", ":AMDGPUUtils", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils", ":Vectorize"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AMDGPUDesc",
+    path="lib/Target/AMDGPU/MCTargetDesc",
+    deps=[":Core", ":MC", ":AMDGPUAsmPrinter", ":AMDGPUInfo", ":AMDGPUUtils", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AMDGPUInfo",
+    path="lib/Target/AMDGPU/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AMDGPUUtils",
+    path="lib/Target/AMDGPU/Utils",
+    deps=[":Core", ":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ARMAsmParser",
+    path="lib/Target/ARM/AsmParser",
+    deps=[":ARMDesc", ":ARMInfo", ":MC", ":MCParser", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ARMDisassembler",
+    path="lib/Target/ARM/Disassembler",
+    deps=[":ARMDesc", ":ARMInfo", ":MCDisassembler", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ARMAsmPrinter",
+    path="lib/Target/ARM/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ARMCodeGen",
+    path="lib/Target/ARM",
+    deps=[":ARMAsmPrinter", ":ARMDesc", ":ARMInfo", ":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":GlobalISel"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ARMDesc",
+    path="lib/Target/ARM/MCTargetDesc",
+    deps=[":ARMAsmPrinter", ":ARMInfo", ":MC", ":MCDisassembler", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ARMInfo",
+    path="lib/Target/ARM/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AVRAsmParser",
+    path="lib/Target/AVR/AsmParser",
+    deps=[":MC", ":MCParser", ":AVRDesc", ":AVRInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AVRDisassembler",
+    path="lib/Target/AVR/Disassembler",
+    deps=[":MCDisassembler", ":AVRInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AVRAsmPrinter",
+    path="lib/Target/AVR/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AVRCodeGen",
+    path="lib/Target/AVR",
+    deps=[":AsmPrinter", ":CodeGen", ":Core", ":MC", ":AVRAsmPrinter", ":AVRDesc", ":AVRInfo", ":SelectionDAG", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AVRDesc",
+    path="lib/Target/AVR/MCTargetDesc",
+    deps=[":MC", ":AVRAsmPrinter", ":AVRInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="AVRInfo",
+    path="lib/Target/AVR/TargetInfo",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="BPFDisassembler",
+    path="lib/Target/BPF/Disassembler",
+    deps=[":MCDisassembler", ":BPFInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="BPFAsmPrinter",
+    path="lib/Target/BPF/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="BPFCodeGen",
+    path="lib/Target/BPF",
+    deps=[":AsmPrinter", ":CodeGen", ":Core", ":MC", ":BPFAsmPrinter", ":BPFDesc", ":BPFInfo", ":SelectionDAG", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="BPFDesc",
+    path="lib/Target/BPF/MCTargetDesc",
+    deps=[":MC", ":BPFAsmPrinter", ":BPFInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="BPFInfo",
+    path="lib/Target/BPF/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="HexagonAsmParser",
+    path="lib/Target/Hexagon/AsmParser",
+    deps=[":MC", ":MCParser", ":Support", ":HexagonDesc", ":HexagonInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="HexagonDisassembler",
+    path="lib/Target/Hexagon/Disassembler",
+    deps=[":HexagonDesc", ":HexagonInfo", ":MC", ":MCDisassembler", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="HexagonCodeGen",
+    path="lib/Target/Hexagon",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":HexagonAsmParser", ":HexagonDesc", ":HexagonInfo", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="HexagonDesc",
+    path="lib/Target/Hexagon/MCTargetDesc",
+    deps=[":HexagonInfo", ":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="HexagonInfo",
+    path="lib/Target/Hexagon/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Target",
+    path="lib/Target",
+    deps=[":Analysis", ":Core", ":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LanaiAsmParser",
+    path="lib/Target/Lanai/AsmParser",
+    deps=[":MC", ":MCParser", ":Support", ":LanaiDesc", ":LanaiInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LanaiDisassembler",
+    path="lib/Target/Lanai/Disassembler",
+    deps=[":LanaiDesc", ":LanaiInfo", ":MC", ":MCDisassembler", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LanaiInstPrinter",
+    path="lib/Target/Lanai/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LanaiCodeGen",
+    path="lib/Target/Lanai",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":LanaiAsmParser", ":LanaiDesc", ":LanaiInfo", ":LanaiInstPrinter", ":MC", ":SelectionDAG", ":Support", ":Target", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LanaiDesc",
+    path="lib/Target/Lanai/MCTargetDesc",
+    deps=[":LanaiInfo", ":LanaiInstPrinter", ":MC", ":MCDisassembler", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="LanaiInfo",
+    path="lib/Target/Lanai/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MSP430AsmPrinter",
+    path="lib/Target/MSP430/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MSP430CodeGen",
+    path="lib/Target/MSP430",
+    deps=[":AsmPrinter", ":CodeGen", ":Core", ":MC", ":MSP430AsmPrinter", ":MSP430Desc", ":MSP430Info", ":SelectionDAG", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MSP430Desc",
+    path="lib/Target/MSP430/MCTargetDesc",
+    deps=[":MC", ":MSP430AsmPrinter", ":MSP430Info", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MSP430Info",
+    path="lib/Target/MSP430/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MipsAsmParser",
+    path="lib/Target/Mips/AsmParser",
+    deps=[":MC", ":MCParser", ":MipsDesc", ":MipsInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MipsDisassembler",
+    path="lib/Target/Mips/Disassembler",
+    deps=[":MCDisassembler", ":MipsInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MipsAsmPrinter",
+    path="lib/Target/Mips/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MipsCodeGen",
+    path="lib/Target/Mips",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":MipsAsmPrinter", ":MipsDesc", ":MipsInfo", ":SelectionDAG", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MipsDesc",
+    path="lib/Target/Mips/MCTargetDesc",
+    deps=[":MC", ":MipsAsmPrinter", ":MipsInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MipsInfo",
+    path="lib/Target/Mips/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="NVPTXAsmPrinter",
+    path="lib/Target/NVPTX/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="NVPTXCodeGen",
+    path="lib/Target/NVPTX",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":NVPTXAsmPrinter", ":NVPTXDesc", ":NVPTXInfo", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils", ":Vectorize"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="NVPTXDesc",
+    path="lib/Target/NVPTX/MCTargetDesc",
+    deps=[":MC", ":NVPTXAsmPrinter", ":NVPTXInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="NVPTXInfo",
+    path="lib/Target/NVPTX/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="PowerPCAsmParser",
+    path="lib/Target/PowerPC/AsmParser",
+    deps=[":MC", ":MCParser", ":PowerPCDesc", ":PowerPCInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="PowerPCDisassembler",
+    path="lib/Target/PowerPC/Disassembler",
+    deps=[":MCDisassembler", ":PowerPCInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="PowerPCAsmPrinter",
+    path="lib/Target/PowerPC/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="PowerPCCodeGen",
+    path="lib/Target/PowerPC",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":PowerPCAsmPrinter", ":PowerPCDesc", ":PowerPCInfo", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="PowerPCDesc",
+    path="lib/Target/PowerPC/MCTargetDesc",
+    deps=[":MC", ":PowerPCAsmPrinter", ":PowerPCInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="PowerPCInfo",
+    path="lib/Target/PowerPC/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="RISCVCodeGen",
+    path="lib/Target/RISCV",
+    deps=[":Core", ":CodeGen", ":RISCVInfo", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="RISCVDesc",
+    path="lib/Target/RISCV/MCTargetDesc",
+    deps=[":MC", ":RISCVInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="RISCVInfo",
+    path="lib/Target/RISCV/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SparcAsmParser",
+    path="lib/Target/Sparc/AsmParser",
+    deps=[":MC", ":MCParser", ":SparcDesc", ":SparcInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SparcDisassembler",
+    path="lib/Target/Sparc/Disassembler",
+    deps=[":MCDisassembler", ":SparcInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SparcAsmPrinter",
+    path="lib/Target/Sparc/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SparcCodeGen",
+    path="lib/Target/Sparc",
+    deps=[":AsmPrinter", ":CodeGen", ":Core", ":MC", ":SelectionDAG", ":SparcAsmPrinter", ":SparcDesc", ":SparcInfo", ":Support", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SparcDesc",
+    path="lib/Target/Sparc/MCTargetDesc",
+    deps=[":MC", ":SparcAsmPrinter", ":SparcInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SparcInfo",
+    path="lib/Target/Sparc/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SystemZAsmParser",
+    path="lib/Target/SystemZ/AsmParser",
+    deps=[":MC", ":MCParser", ":Support", ":SystemZDesc", ":SystemZInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SystemZDisassembler",
+    path="lib/Target/SystemZ/Disassembler",
+    deps=[":MC", ":MCDisassembler", ":Support", ":SystemZDesc", ":SystemZInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SystemZAsmPrinter",
+    path="lib/Target/SystemZ/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SystemZCodeGen",
+    path="lib/Target/SystemZ",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":SelectionDAG", ":Support", ":SystemZAsmPrinter", ":SystemZDesc", ":SystemZInfo", ":Target"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SystemZDesc",
+    path="lib/Target/SystemZ/MCTargetDesc",
+    deps=[":MC", ":Support", ":SystemZAsmPrinter", ":SystemZInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="SystemZInfo",
+    path="lib/Target/SystemZ/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="WebAssemblyDisassembler",
+    path="lib/Target/WebAssembly/Disassembler",
+    deps=[":MCDisassembler", ":WebAssemblyInfo", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="WebAssemblyAsmPrinter",
+    path="lib/Target/WebAssembly/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="WebAssemblyCodeGen",
+    path="lib/Target/WebAssembly",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils", ":WebAssemblyAsmPrinter", ":WebAssemblyDesc", ":WebAssemblyInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="WebAssemblyDesc",
+    path="lib/Target/WebAssembly/MCTargetDesc",
+    deps=[":MC", ":Support", ":WebAssemblyAsmPrinter", ":WebAssemblyInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="WebAssemblyInfo",
+    path="lib/Target/WebAssembly/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="X86AsmParser",
+    path="lib/Target/X86/AsmParser",
+    deps=[":MC", ":MCParser", ":Support", ":X86Desc", ":X86Info"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="X86Disassembler",
+    path="lib/Target/X86/Disassembler",
+    deps=[":MCDisassembler", ":Support", ":X86Info"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="X86AsmPrinter",
+    path="lib/Target/X86/InstPrinter",
+    deps=[":MC", ":Support", ":X86Utils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="X86CodeGen",
+    path="lib/Target/X86",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":SelectionDAG", ":Support", ":Target", ":X86AsmPrinter", ":X86Desc", ":X86Info", ":X86Utils", ":GlobalISel"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="X86Desc",
+    path="lib/Target/X86/MCTargetDesc",
+    deps=[":MC", ":MCDisassembler", ":Object", ":Support", ":X86AsmPrinter", ":X86Info"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="X86Info",
+    path="lib/Target/X86/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="X86Utils",
+    path="lib/Target/X86/Utils",
+    deps=[":Core", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="XCoreDisassembler",
+    path="lib/Target/XCore/Disassembler",
+    deps=[":MCDisassembler", ":Support", ":XCoreInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="XCoreAsmPrinter",
+    path="lib/Target/XCore/InstPrinter",
+    deps=[":MC", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="XCoreCodeGen",
+    path="lib/Target/XCore",
+    deps=[":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":MC", ":SelectionDAG", ":Support", ":Target", ":TransformUtils", ":XCoreAsmPrinter", ":XCoreDesc", ":XCoreInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="XCoreDesc",
+    path="lib/Target/XCore/MCTargetDesc",
+    deps=[":MC", ":Support", ":XCoreAsmPrinter", ":XCoreInfo"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="XCoreInfo",
+    path="lib/Target/XCore/TargetInfo",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Coroutines",
+    path="lib/Transforms/Coroutines",
+    deps=[":Analysis", ":Core", ":IPO", ":Scalar", ":Support", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="IPO",
+    path="lib/Transforms/IPO",
+    deps=[":Analysis", ":BitWriter", ":Core", ":InstCombine", ":IRReader", ":Linker", ":Object", ":ProfileData", ":Scalar", ":Support", ":TransformUtils", ":Vectorize", ":Instrumentation"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="InstCombine",
+    path="lib/Transforms/InstCombine",
+    deps=[":Analysis", ":Core", ":Support", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Instrumentation",
+    path="lib/Transforms/Instrumentation",
+    deps=[":Analysis", ":Core", ":MC", ":Support", ":TransformUtils", ":ProfileData"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ObjCARC",
+    path="lib/Transforms/ObjCARC",
+    deps=[":Analysis", ":Core", ":Support", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Scalar",
+    path="lib/Transforms/Scalar",
+    deps=[":Analysis", ":Core", ":InstCombine", ":Support", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="TransformUtils",
+    path="lib/Transforms/Utils",
+    deps=[":Analysis", ":Core", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="Vectorize",
+    path="lib/Transforms/Vectorize",
+    deps=[":Analysis", ":Core", ":Support", ":TransformUtils"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="gtest",
+    path="utils/unittest",
+    deps=[":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="gtest_main",
+    path="utils/unittest",
+    deps=[":gtest"],
+    **kwargs
+  )
