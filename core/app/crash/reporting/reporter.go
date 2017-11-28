@@ -13,6 +13,7 @@
 // limitations under the License.
 
 package reporting
+option go_package = "github.com/google/gapid/core/app/crash/reporting";
 
 // Reporter stores the common information sent in a crash report.
 type Reporter struct {
