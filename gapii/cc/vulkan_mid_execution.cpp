@@ -958,7 +958,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
       buffer_create_info.mpQueueFamilyIndices = queues.data();
 
       // Empty NV dedicated allocation struct
-      VkDedicatedAllocationBufferCreateInfoNV dedicated_allocation_create_info{
+      VkDedicatedAllocationBufferCreateInfoNV dedicated_allocation_nv_create_info{
           VkStructureType::
               VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV,  // sType
           nullptr,          // pNext
@@ -967,12 +967,30 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
       // If the buffer is created with Dedicated Allocation NV extension,
       // we need to populate the pNext pointer here.
       if (buffer.second->mInfo.mDedicatedAllocationNV) {
-        dedicated_allocation_create_info.mdedicatedAllocation =
+        dedicated_allocation_nv_create_info.mdedicatedAllocation =
             buffer.second->mInfo.mDedicatedAllocationNV->mDedicatedAllocation;
-        buffer_create_info.mpNext = &dedicated_allocation_create_info;
+        buffer_create_info.mpNext = &dedicated_allocation_nv_create_info;
+      }
+      // KHR dedicated allocation requirements
+      VkMemoryDedicatedRequirementsKHR dedicated_req_khr{
+        VkStructureType::VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR,  // sType
+          nullptr,                                              // pNext
+          VkBool32(false),  // prefersDedicatedAllocation
+          VkBool32(false),  // requiresDedicatedAllocation
+      };
+      if (buffer.second->mDedicatedRequirementsKHR != nullptr) {
+        dedicated_req_khr.mprefersDedicatedAllocation =
+            buffer.second->mDedicatedRequirementsKHR->mPrefersDedicatedAllocation;
+        dedicated_req_khr.mrequiresDedicatedAllocation =
+            buffer.second->mDedicatedRequirementsKHR
+                ->mRequiresDedicatedAllocation;
       }
       RecreateBuffer(observer, buffer.second->mDevice, &buffer_create_info,
-                     &buffer.second->mVulkanHandle, &buffer.second->mMemoryRequirements);
+                     &buffer.second->mVulkanHandle,
+                     &buffer.second->mMemoryRequirements,
+                     buffer.second->mDedicatedRequirementsKHR != nullptr
+                         ? &dedicated_req_khr
+                         : nullptr);
       recreateDebugInfo(
           this, observer,
           VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT,
@@ -1011,7 +1029,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
 
       // Empty NV dedicated allocation struct
-      VkDedicatedAllocationImageCreateInfoNV dedicated_allocation_create_info{
+      VkDedicatedAllocationImageCreateInfoNV dedicated_allocation_nv_create_info{
           VkStructureType::
               VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV,  // sType
           nullptr,          // pNext
@@ -1020,18 +1038,34 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
       // If the buffer is created with Dedicated Allocation NV extension,
       // we need to populate the pNext pointer here.
       if (info.mDedicatedAllocationNV) {
-        dedicated_allocation_create_info.mdedicatedAllocation =
+        dedicated_allocation_nv_create_info.mdedicatedAllocation =
             info.mDedicatedAllocationNV->mDedicatedAllocation;
-        image_create_info.mpNext = &dedicated_allocation_create_info;
+        image_create_info.mpNext = &dedicated_allocation_nv_create_info;
       }
       std::vector<VkSparseImageMemoryRequirements> sparse_img_mem_reqs;
       for (auto& req : image.second->mSparseMemoryRequirements) {
         sparse_img_mem_reqs.emplace_back(req.second);
       }
+      // KHR dedicated allocation requirements
+      VkMemoryDedicatedRequirementsKHR dedicated_req_khr{
+        VkStructureType::VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR, // sType
+        nullptr, // pNext
+        VkBool32(false), // prefersDedicatedAllocation
+        VkBool32(false), // requiresDedicatedAllocation
+      };
+      if (image.second->mDedicatedRequirementsKHR!= nullptr) {
+        dedicated_req_khr.mprefersDedicatedAllocation =
+            image.second->mDedicatedRequirementsKHR->mPrefersDedicatedAllocation;
+        dedicated_req_khr.mrequiresDedicatedAllocation =
+          image.second->mDedicatedRequirementsKHR->mRequiresDedicatedAllocation;
+      }
       RecreateImage(observer, image.second->mDevice, &image_create_info,
                     &image.second->mVulkanHandle,
                     &image.second->mMemoryRequirements,
-                    sparse_img_mem_reqs.size(), sparse_img_mem_reqs.data());
+                    sparse_img_mem_reqs.size(), sparse_img_mem_reqs.data(),
+                    image.second->mDedicatedRequirementsKHR != nullptr
+                        ? &dedicated_req_khr
+                        : nullptr);
       recreateDebugInfo(
           this, observer,
           VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
@@ -1042,12 +1076,18 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
   // Recreate AllocateMemory
   for (auto& memory : DeviceMemories) {
     // Empty NV dedicated allocation struct
-    VkDedicatedAllocationMemoryAllocateInfoNV dedicated_allocation_info{
+    VkDedicatedAllocationMemoryAllocateInfoNV dedicated_allocation_info_nv{
         VkStructureType::
             VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV,  // sType
         nullptr,      // pNext
         VkImage(0),   // image
         VkBuffer(0),  // buffer
+    };
+    VkMemoryDedicatedAllocationInfoKHR dedicated_allocation_info_khr{
+      VkStructureType::VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR, // sType
+      nullptr, // pNext
+      VkImage(0), // image
+      VkBuffer(0), // buffer
     };
 
     auto& dm = memory.second;
@@ -1055,13 +1095,22 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
     VkMemoryAllocateInfo allocate_info{
         VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, nullptr,
         dm->mAllocationSize, dm->mMemoryTypeIndex};
-
+    void** pp_next = &allocate_info.mpNext;
     if (memory.second->mDedicatedAllocationNV) {
-      dedicated_allocation_info.mimage =
+      dedicated_allocation_info_nv.mimage =
           memory.second->mDedicatedAllocationNV->mImage;
-      dedicated_allocation_info.mbuffer =
+      dedicated_allocation_info_nv.mbuffer =
           memory.second->mDedicatedAllocationNV->mBuffer;
-      allocate_info.mpNext = &dedicated_allocation_info;
+      *pp_next = &dedicated_allocation_info_nv;
+      pp_next = &dedicated_allocation_info_nv.mpNext;
+    }
+    if (memory.second->mDedicatedAllocationKHR) {
+      dedicated_allocation_info_khr.mimage =
+          memory.second->mDedicatedAllocationKHR->mImage;
+      dedicated_allocation_info_khr.mbuffer =
+          memory.second->mDedicatedAllocationKHR->mBuffer;
+      *pp_next = &dedicated_allocation_info_khr;
+      pp_next = &dedicated_allocation_info_khr.mpNext;
     }
 
     RecreateDeviceMemory(observer, dm->mDevice, &allocate_info,

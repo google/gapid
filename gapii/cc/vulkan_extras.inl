@@ -139,7 +139,8 @@ void SpyOverride_RecreateImage(
     VkDevice, const VkImageCreateInfo*, VkImage*,
     VkMemoryRequirements* pMemoryRequirements,
     uint32_t sparseMemoryRequirementCount,
-    VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {}
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements,
+    VkMemoryDedicatedRequirementsKHR* pDedicatedRequirements) {}
 void SpyOverride_RecreateImageMemoryBindings(VkDevice, VkImage, VkDeviceMemory,
                                          VkDeviceSize offset,
                                          uint32_t opaqueBindCount,
@@ -172,7 +173,8 @@ void SpyOverride_RecreateComputePipeline(VkDevice, VkPipelineCache,
                                          const VkComputePipelineCreateInfo*,
                                          VkPipeline*) {}
 void SpyOverride_RecreateBuffer(VkDevice, VkBufferCreateInfo*, VkBuffer*,
-                                VkMemoryRequirements*) {}
+                                VkMemoryRequirements*,
+                                VkMemoryDedicatedRequirementsKHR*) {}
 void SpyOverride_RecreateBufferMemoryBindings(VkDevice, VkBuffer,
                                               VkDeviceMemory,
                                               VkDeviceSize offset,
