@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/math/f16"
 	"github.com/google/gapid/core/math/f32"
 	"github.com/google/gapid/core/math/f64"
+	"github.com/google/gapid/core/math/u64"
 )
 
 type buf struct {
@@ -352,6 +353,11 @@ func stof(count int, dst, src buf) error {
 	return nil
 }
 
+func writeUintClamped(bs *binary.BitStream, bits uint64, count uint32) {
+	limit := uint64(1<<count) - 1
+	bs.Write(u64.Min(bits, limit), count)
+}
+
 // float to unsigned int
 func ftou(count int, dst, src buf) error {
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
@@ -370,7 +376,7 @@ func ftou(count int, dst, src buf) error {
 			if norm {
 				f *= scale
 			}
-			ds.Write(uint64(f), dstBits)
+			writeUintClamped(&ds, uint64(f), dstBits)
 			ds.WritePos += dst.stride - dstBits
 			ss.ReadPos += src.stride - 16
 		}
@@ -381,7 +387,7 @@ func ftou(count int, dst, src buf) error {
 			if norm {
 				f *= scale
 			}
-			ds.Write(uint64(f), dstBits)
+			writeUintClamped(&ds, uint64(f), dstBits)
 			ds.WritePos += dst.stride - dstBits
 			ss.ReadPos += src.stride - 32
 		}
@@ -392,7 +398,7 @@ func ftou(count int, dst, src buf) error {
 			if norm {
 				f *= scale
 			}
-			ds.Write(uint64(f), dstBits)
+			writeUintClamped(&ds, uint64(f), dstBits)
 			ds.WritePos += dst.stride - dstBits
 			ss.ReadPos += src.stride - 64
 		}
@@ -403,7 +409,7 @@ func ftou(count int, dst, src buf) error {
 			if norm {
 				f *= scale
 			}
-			ds.Write(uint64(f), dstBits)
+			writeUintClamped(&ds, uint64(f), dstBits)
 			ds.WritePos += dst.stride - dstBits
 			ss.ReadPos += src.stride - srcBits
 		}
@@ -413,6 +419,7 @@ func ftou(count int, dst, src buf) error {
 
 // float to signed integer
 func ftos(count int, dst, src buf) error {
+	// TODO: Clamp to signed integer limits.
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
 	srcIsF16, srcIsF32, srcIsF64 := srcTy.Is(F16), srcTy.Is(F32), srcTy.Is(F64)
 	srcExpBits, srcManBits := srcTy.GetFloat().ExponentBits, srcTy.GetFloat().MantissaBits
