@@ -635,6 +635,11 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     public double getAlphaMax() {
       return alphaMax;
     }
+
+    @Override
+    public boolean isNormalized() {
+      return false;
+    }
   }
 
   private static class IntPixelInfo implements PixelInfo {
@@ -716,6 +721,11 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     @Override
     public double getAlphaMax() {
       return alphaMax;
+    }
+
+    @Override
+    public boolean isNormalized() {
+      return true;
     }
   }
 }
