@@ -4295,7 +4295,9 @@ cmd VkResult vkCreateGraphicsPipelines(
     const VkAllocationCallbacks*        pAllocator,
     VkPipeline*                         pPipelines) {
   if !(device in Devices) {vkErrorInvalidDevice(device)}
-  if !(pipelineCache in PipelineCaches) {vkErrorInvalidPipelineCache(pipelineCache)}
+  if pipelineCache != as!VkPipelineCache(0) {
+    if !(pipelineCache in PipelineCaches) {vkErrorInvalidPipelineCache(pipelineCache)}
+  }
   // TODO(awoloszyn): Figure out what fields we want to store off
   //    in the state block.
   infos := pCreateInfos[0:createInfoCount]
@@ -4530,7 +4532,9 @@ cmd VkResult vkCreateComputePipelines(
     const VkAllocationCallbacks*       pAllocator,
     VkPipeline*                        pPipelines) {
   if !(device in Devices) {vkErrorInvalidDevice(device)}
-  if !(pipelineCache in PipelineCaches) {vkErrorInvalidPipelineCache(pipelineCache)}
+  if pipelineCache != as!VkPipelineCache(0) {
+    if !(pipelineCache in PipelineCaches) {vkErrorInvalidPipelineCache(pipelineCache)}
+  }
   created_pipelines := CreatedComputePipelines()
   infos := pCreateInfos[0:createInfoCount]
   for i in (0 .. createInfoCount) {
@@ -4653,7 +4657,6 @@ cmd void vkDestroyPipelineLayout(
     VkPipelineLayout             pipelineLayout,
     const VkAllocationCallbacks* pAllocator) {
   if !(device in Devices) {vkErrorInvalidDevice(device)}
-  if !(pipelineLayout in PipelineLayouts) {vkErrorInvalidPipelineLayout(pipelineLayout)}
   // TODO: pAllocator
   delete(PipelineLayouts, pipelineLayout)
 }
@@ -5574,13 +5577,15 @@ cmd void vkFreeCommandBuffers(
   cb := pCommandBuffers[0:commandBufferCount]
   for i in (0 .. commandBufferCount) {
     buffer := cb[i]
-    if !(buffer in CommandBuffers) {vkErrorInvalidCommandBuffer(buffer)}
-    buffer_object := CommandBuffers[buffer]
-    pool := buffer_object.Pool
-    pool_object := CommandPools[pool]
-    delete(pool_object.CommandBuffers, buffer)
-    CommandPools[pool] = pool_object
-    delete(CommandBuffers, buffer)
+    if buffer != as!VkCommandBuffer(0) {
+      if !(buffer in CommandBuffers) {vkErrorInvalidCommandBuffer(buffer)}
+      buffer_object := CommandBuffers[buffer]
+      pool := buffer_object.Pool
+      pool_object := CommandPools[pool]
+      delete(pool_object.CommandBuffers, buffer)
+      CommandPools[pool] = pool_object
+      delete(CommandBuffers, buffer)
+      }
   }
 }
 
