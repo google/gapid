@@ -130,9 +130,15 @@ public class ImagePanel extends Composite {
   private final StatusBar status;
   protected final ImageComponent imageComponent;
   private final BackgroundSelection backgroundSelection;
-  private ToolItem zoomFitItem, backgroundItem, saveItem, colorChanelsItem;
+  private ToolItem zoomFitItem, zoomActualItem, backgroundItem, saveItem, colorChanelsItem;
   private MultiLayerAndLevelImage image = MultiLayerAndLevelImage.EMPTY;
   private Image[] layers = NO_LAYERS;
+
+  public enum ZoomMode {
+    ZOOM_TO_FIT,
+    ZOOM_TO_ACTUAL,
+    ZOOM_MANUAL
+  }
 
   public ImagePanel(
       Composite parent, View view, Analytics analytics, Widgets widgets, boolean naturallyFlipped) {
@@ -182,7 +188,7 @@ public class ImagePanel extends Composite {
         } else if (isPanningButton(e)) {
           setMode(MODE_PANNING, e);
         } else {
-          setZoomToFit(true);
+          setZoomMode(ZoomMode.ZOOM_TO_FIT);
         }
       }
 
@@ -333,13 +339,15 @@ public class ImagePanel extends Composite {
   public void createToolbar(ToolBar bar, Theme theme) {
     zoomFitItem = createToggleToolItem(bar, theme.zoomFit(), e -> {
       analytics.postInteraction(view, "zoomFit", Invoke);
-      setZoomToFit(((ToolItem)e.widget).getSelection());
+      setZoomMode(((ToolItem)e.widget).getSelection() ?
+          ZoomMode.ZOOM_TO_FIT : ZoomMode.ZOOM_MANUAL);
     }, "Zoom to fit");
-    setZoomToFit(true);
-    createToolItem(bar, theme.zoomActual(), e -> {
+    zoomActualItem = createToggleToolItem(bar, theme.zoomActual(), e -> {
       analytics.postInteraction(view, "zoomActual", Invoke);
-      zoomToActual();
+      setZoomMode(((ToolItem)e.widget).getSelection() ?
+          ZoomMode.ZOOM_TO_ACTUAL : ZoomMode.ZOOM_MANUAL);
     }, "Original size");
+    setZoomMode(ZoomMode.ZOOM_TO_FIT);
     createToolItem(bar, theme.zoomIn(), e -> {
       analytics.postInteraction(view, "zoomIn", Invoke);
       zoom(-ZOOM_AMOUNT);
@@ -397,14 +405,10 @@ public class ImagePanel extends Composite {
         (imageComponent.isChannelEnabled(CHANNEL_ALPHA) ? 8 : 0)]);
   }
 
-  protected void setZoomToFit(boolean enabled) {
-    zoomFitItem.setSelection(enabled);
-    imageComponent.setZoomToFit(enabled);
-  }
-
-  protected void zoomToActual() {
-    setZoomToFit(false);
-    imageComponent.zoomToActual();
+  protected void setZoomMode(ZoomMode mode) {
+    zoomFitItem.setSelection(mode == ZoomMode.ZOOM_TO_FIT);
+    zoomActualItem.setSelection(mode == ZoomMode.ZOOM_TO_ACTUAL);
+    imageComponent.setZoomMode(mode);
   }
 
   protected void zoom(int amount) {
@@ -416,7 +420,7 @@ public class ImagePanel extends Composite {
   }
 
   protected void zoom(int amount, Point cursor) {
-    setZoomToFit(false);
+    setZoomMode(ZoomMode.ZOOM_MANUAL);
     imageComponent.zoom(amount, cursor);
   }
 
@@ -693,7 +697,7 @@ public class ImagePanel extends Composite {
     private VecD tileOffsets[] = {};
 
     private double scaleGridToView = 1.0;
-    private boolean zoomToFit;
+    private ZoomMode zoomMode = ZoomMode.ZOOM_MANUAL;
 
     private boolean alphaWasAutoDisabled = false;
 
@@ -781,8 +785,7 @@ public class ImagePanel extends Composite {
       }
 
       updateScaleLimits();
-      setScale(zoomToFit ? scaleGridToViewFit : scaleGridToView);
-      refresh();
+      updateZoomFromMode();
     }
 
     public void setHistogram(Histogram histogram) {
@@ -885,17 +888,20 @@ public class ImagePanel extends Composite {
       return Pixel.OUT_OF_BOUNDS;
     }
 
-    public void setZoomToFit(boolean zoomToFit) {
-      this.zoomToFit = zoomToFit;
-      if (zoomToFit) {
-        setScale(scaleGridToViewFit);
-        updateScrollbars();
-        refresh();
-      }
+    public void setZoomMode(ZoomMode mode) {
+      this.zoomMode = mode;
+      updateZoomFromMode();
     }
 
-    public void zoomToActual() {
-      setScale(DPIUtil.autoScaleDown(1.0f));
+    public void updateZoomFromMode() {
+      switch (this.zoomMode) {
+        case ZOOM_TO_FIT:
+          setScale(scaleGridToViewFit);
+          break;
+        case ZOOM_TO_ACTUAL:
+          setScale(DPIUtil.autoScaleDown(1.0f));
+          break;
+      }
       updateScrollbars();
       refresh();
     }
@@ -1001,11 +1007,7 @@ public class ImagePanel extends Composite {
 
       viewSize = new VecD(area.width, area.height, 0);
       updateScaleLimits();
-      if (zoomToFit) {
-        setScale(scaleGridToViewFit);
-      }
-      updateScrollbars();
-      refresh();
+      updateZoomFromMode();
     }
 
     private void updateScaleLimits() {
