@@ -1088,9 +1088,12 @@ public class ImagePanel extends Composite {
     public void update(Renderer renderer, SceneData newData) {
       // Release textures that are no longer in data.
       Set<Image> newSet = Sets.newHashSet(newData.images);
-      for (Image removed : Sets.difference(imageToTexture.keySet(), newSet)) {
-        imageToTexture.remove(removed).delete();
+      Set<Image> toRemove = Sets.difference(imageToTexture.keySet(), newSet);
+      for (Image removed : toRemove) {
+        // Do not attempt to remove the image from the map here - it will result in an exception!
+        imageToTexture.get(removed).delete();
       }
+      imageToTexture.keySet().removeAll(toRemove);
 
       this.textures = new Texture[newData.images.length];
       for (int i = 0; i < newData.images.length; i++) {
