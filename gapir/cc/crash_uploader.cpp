@@ -60,7 +60,6 @@ CrashUploader::CrashUploader(
 }
 
 CrashUploader::~CrashUploader() {
-    GAPID_INFO("destroying uploader");
     mCrashHandler.unsetHandlerFunction();
 }
 
