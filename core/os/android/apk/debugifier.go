@@ -124,7 +124,7 @@ func (a ApkDebugifier) makeApkDebuggableAndRemoveSignatureFiles(ctx context.Cont
 	w := zip.NewWriter(outFile)
 	defer w.Close()
 
-	jarSignatureFilePattern := regexp.MustCompile(`META-INF/[^/]*(DSA|RSA|SF)`)
+	jarSignatureFilePattern := regexp.MustCompile(`META-INF/([^/]*(DSA|RSA|SF)|MANIFEST\.MF)`)
 
 	for _, zf := range inZip.File {
 		if jarSignatureFilePattern.MatchString(zf.Name) {
