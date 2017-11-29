@@ -3,7 +3,7 @@ load("//tools/build:rules.bzl", "api_library", "apic", "filter")
 
 api_library(
     name = "api",
-    api = "gfxapi_test.api",
+    api = "test.api",
     apiname = "test",
     includes = glob(["*.api"]),
     visibility = ["//visibility:public"],

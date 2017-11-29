@@ -11,7 +11,7 @@ api_template(
     name = "api",
     template = "api.go.tmpl",
     includes = [":templates"],
-    outputs = ["api.go", "enum.go"], 
+    outputs = ["api.go", "enum.go"],
 )
 
 api_template(
@@ -79,10 +79,6 @@ api_template(
         "{api}_spy_1.cpp",
         "{api}_spy_2.cpp",
         "{api}_spy_3.cpp",
-        "{api}_spy_4.cpp",
-        "{api}_spy_5.cpp",
-        "{api}_spy_6.cpp",
-        "{api}_spy_7.cpp",
         "{api}_spy_subroutines_0.cpp",
         "{api}_spy_subroutines_1.cpp",
     ],
