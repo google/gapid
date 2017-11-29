@@ -70,34 +70,19 @@ func FramebufferAttachment(
 	return path.NewImageInfo(id), nil
 }
 
-// framebufferAttachmentInfo returns the framebuffer dimensions and format
-// after a given command in the given capture, command and attachment.
-// The first call to getFramebufferInfo for a given capture/context
-// will trigger a computation for all commands of this capture, which will be
-// cached to the database for subsequent calls, regardless of the given command.
-func getFramebufferAttachmentInfo(ctx context.Context, after *path.Command, att api.FramebufferAttachment) (framebufferAttachmentInfo, error) {
-	changes, err := FramebufferChanges(ctx, after.Capture)
-	if err != nil {
-		return framebufferAttachmentInfo{}, err
-	}
-	info, err := changes.attachments[att].after(ctx, api.SubCmdIdx(after.Indices))
-	if err != nil {
-		return framebufferAttachmentInfo{}, err
-	}
-	if info.err != nil {
-		log.W(ctx, "Framebuffer error after %v: %v", after, info.err)
-		return framebufferAttachmentInfo{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
-	}
-	return info, nil
-}
-
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	fbInfo, err := getFramebufferAttachmentInfo(ctx, r.After, r.Attachment)
+	changes, err := FramebufferChanges(ctx, r.After.Capture)
+	if err != nil {
+		return FramebufferAttachmentInfo{}, err
+	}
+
+	fbInfo, err := changes.Get(ctx, r.After, r.Attachment)
 	if err != nil {
 		return nil, err
 	}
-	width, height := uniformScale(fbInfo.width, fbInfo.height, r.Settings.MaxWidth, r.Settings.MaxHeight)
+
+	width, height := uniformScale(fbInfo.Width, fbInfo.Height, r.Settings.MaxWidth, r.Settings.MaxHeight)
 
 	id, err := database.Store(ctx, &FramebufferAttachmentBytesResolvable{
 		ReplaySettings:   r.ReplaySettings,
@@ -105,10 +90,10 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		Width:            width,
 		Height:           height,
 		Attachment:       r.Attachment,
-		FramebufferIndex: fbInfo.index,
+		FramebufferIndex: fbInfo.Index,
 		WireframeMode:    r.Settings.WireframeMode,
 		Hints:            r.Hints,
-		ImageFormat:      fbInfo.format,
+		ImageFormat:      fbInfo.Format,
 	})
 	if err != nil {
 		return nil, err
@@ -118,7 +103,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		Width:  width,
 		Height: height,
 		Depth:  1,
-		Format: fbInfo.format,
+		Format: fbInfo.Format,
 		Bytes:  image.NewID(id),
 	}, nil
 }
@@ -139,47 +124,59 @@ func uniformScale(width, height, maxWidth, maxHeight uint32) (w, h uint32) {
 // framebufferAttachmentChanges describes the list of changes to a single
 // attachment over the span of the entire capture.
 type framebufferAttachmentChanges struct {
-	changes []framebufferAttachmentInfo
+	changes []FramebufferAttachmentInfo
 }
 
-// framebufferAttachmentInfo describes the dimensions and format of a
+// FramebufferAttachmentInfo describes the dimensions and format of a
 // framebuffer attachment.
-type framebufferAttachmentInfo struct {
-	after  api.SubCmdIdx // index of the last command to change the attachment.
-	width  uint32
-	height uint32
-	index  uint32 // The api-specific attachment index
-	format *image.Format
-	err    error
+type FramebufferAttachmentInfo struct {
+	// After is the index of the last command to change the attachment.
+	After api.SubCmdIdx
+
+	// Width of the framebuffer attachment in pixels.
+	Width uint32
+
+	// Height of the framebuffer attachment in pixels.
+	Height uint32
+
+	// Index of the api-specific attachment.
+	Index uint32
+
+	// Format of the attachment.
+	Format *image.Format
+
+	// The error returned by the API. If this is non-null then all other fields
+	// may contain undefined values.
+	Err error
 }
 
-func (f framebufferAttachmentInfo) equal(o framebufferAttachmentInfo) bool {
-	fe := (f.format == nil && o.format == nil) || (f.format != nil && o.format != nil && f.format.Name == o.format.Name)
-	if (f.err == nil) != (o.err == nil) {
+func (f FramebufferAttachmentInfo) equal(o FramebufferAttachmentInfo) bool {
+	fe := (f.Format == nil && o.Format == nil) || (f.Format != nil && o.Format != nil && f.Format.Name == o.Format.Name)
+	if (f.Err == nil) != (o.Err == nil) {
 		return false
 	}
-	if f.err == nil {
-		return fe && f.width == o.width && f.height == o.height && f.index == o.index
+	if f.Err == nil {
+		return fe && f.Width == o.Width && f.Height == o.Height && f.Index == o.Index
 	}
-	return f.err.Error() == o.err.Error()
+	return f.Err.Error() == o.Err.Error()
 }
 
-func (c framebufferAttachmentChanges) after(ctx context.Context, i api.SubCmdIdx) (framebufferAttachmentInfo, error) {
-	idx := sort.Search(len(c.changes), func(x int) bool { return i.LessThan(c.changes[x].after) }) - 1
+func (c framebufferAttachmentChanges) after(ctx context.Context, i api.SubCmdIdx) (FramebufferAttachmentInfo, error) {
+	idx := sort.Search(len(c.changes), func(x int) bool { return i.LessThan(c.changes[x].After) }) - 1
 
 	if idx < 0 {
 		log.W(ctx, "No dimension records found after command %d. FB dimension records = %d", i, len(c.changes))
-		return framebufferAttachmentInfo{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
+		return FramebufferAttachmentInfo{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 
 	return c.changes[idx], nil
 }
 
-func (c framebufferAttachmentChanges) last() framebufferAttachmentInfo {
+func (c framebufferAttachmentChanges) last() FramebufferAttachmentInfo {
 	if count := len(c.changes); count > 0 {
 		return c.changes[count-1]
 	}
-	return framebufferAttachmentInfo{}
+	return FramebufferAttachmentInfo{}
 }
 
 var allFramebufferAttachments = []api.FramebufferAttachment{

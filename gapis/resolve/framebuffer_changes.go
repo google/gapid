@@ -18,10 +18,13 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/messages"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -39,6 +42,20 @@ func FramebufferChanges(ctx context.Context, c *path.Capture) (*AttachmentFrameb
 // the span of the entire capture.
 type AttachmentFramebufferChanges struct {
 	attachments []framebufferAttachmentChanges
+}
+
+// Get returns the framebuffer dimensions and format after a given command in
+// the given capture, command and attachment.
+func (c AttachmentFramebufferChanges) Get(ctx context.Context, after *path.Command, att api.FramebufferAttachment) (FramebufferAttachmentInfo, error) {
+	info, err := c.attachments[att].after(ctx, api.SubCmdIdx(after.Indices))
+	if err != nil {
+		return FramebufferAttachmentInfo{}, err
+	}
+	if info.Err != nil {
+		log.W(ctx, "Framebuffer error after %v: %v", after, info.Err)
+		return FramebufferAttachmentInfo{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
+	}
+	return info, nil
 }
 
 const errNoAPI = fault.Const("Command has no API")
@@ -61,15 +78,15 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		api := cmd.API()
 		idx := append([]uint64(nil), subcommandIndex...)
 		for _, att := range allFramebufferAttachments {
-			info := framebufferAttachmentInfo{after: idx}
+			info := FramebufferAttachmentInfo{After: idx}
 			if api != nil {
 				if w, h, i, f, err := api.GetFramebufferAttachmentInfo(ctx, idx, s, cmd.Thread(), att); err == nil && f != nil {
-					info.width, info.height, info.index, info.format = w, h, i, f
+					info.Width, info.Height, info.Index, info.Format = w, h, i, f
 				} else {
-					info.err = err
+					info.Err = err
 				}
 			} else {
-				info.err = errNoAPI
+				info.Err = errNoAPI
 			}
 			if last := out.attachments[att].last(); !last.equal(info) {
 				attachment := out.attachments[att]
