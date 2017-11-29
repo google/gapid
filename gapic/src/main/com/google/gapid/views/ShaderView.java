@@ -383,7 +383,7 @@ public class ShaderView extends Composite
     }
 
     private static boolean isKey(Event e, int stateMask, int keyCode) {
-      return (e.stateMask & stateMask) == e.stateMask && e.keyCode == keyCode;
+      return (e.stateMask & stateMask) == stateMask && e.keyCode == keyCode;
     }
 
     public void clearSource() {
