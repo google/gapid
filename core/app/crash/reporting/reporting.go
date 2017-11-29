@@ -90,14 +90,6 @@ func ReportMinidump(r Reporter, minidumpName string, minidumpData []byte) error 
 	return nil
 }
 
-// Reporter stores the common information sent in a crash report.
-type Reporter struct {
-	AppName    string
-	AppVersion string
-	OSName     string
-	OSVersion  string
-}
-
 func (r Reporter) sendReport(body io.Reader, contentType, endpoint string) error {
 	appNameAndVersion := r.AppName + ":" + r.AppVersion
 	url := fmt.Sprintf("%v?product=%v&version=%v", endpoint, url.QueryEscape(crashProduct), url.QueryEscape(appNameAndVersion))
