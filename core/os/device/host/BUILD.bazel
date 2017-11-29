@@ -40,4 +40,5 @@ go_test(
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
     ],
+    tags = ["manual"], # TODO: XOpenDisplay returned nullptr
 )
