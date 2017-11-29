@@ -17,15 +17,18 @@
 #include "core/cc/crash_handler.h"
 #include "core/cc/log.h"
 
-namespace core {
-
-CrashHandler::HandlerFunction CrashHandler::defaultHandlerFunction =
-        [] (const std::string& minidump_path, bool succeeded) {
+namespace {
+auto handler = [] (const std::string& minidump_path, bool succeeded) {
             if (!succeeded) {
                 GAPID_ERROR("Failed to write minidump out to %s", minidump_path.c_str());
             }
             return succeeded;
         };
+}
+
+namespace core {
+
+CrashHandler::HandlerFunction CrashHandler::defaultHandlerFunction = handler;
 
 void CrashHandler::setHandlerFunction(HandlerFunction newHandlerFunction) {
     mHandlerFunction = newHandlerFunction;
