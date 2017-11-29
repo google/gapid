@@ -61,6 +61,7 @@ go_test(
         "//core/os/device:go_default_library",
         "//gapis/database:go_default_library",
     ],
+    data = glob(["test_data/*"])
 )
 
 proto_library(
