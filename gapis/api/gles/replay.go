@@ -46,7 +46,8 @@ type issuesConfig struct{}
 // depthBufferRequests.
 type drawConfig struct {
 	wireframeMode             replay.WireframeMode
-	wireframeOverlayID        api.CmdID // used when wireframeMode == WireframeMode_Overlay
+	wireframeOverlayID        api.CmdID     // used when wireframeMode == WireframeMode_Overlay
+	wireframeFramebufferID    FramebufferId // used when wireframeMode == WireframeMode_All
 	disableReplayOptimization bool
 }
 
@@ -114,7 +115,7 @@ func (a API) Replay(
 	var rf *readFramebuffer // Transform for all framebuffer reads.
 	var rt *readTexture     // Transform for all texture reads.
 
-	wire := false
+	var wire transform.Transformer
 
 	transforms := transform.Transforms{deadCodeElimination}
 
@@ -158,15 +159,15 @@ func (a API) Replay(
 			}
 			switch cfg.wireframeMode {
 			case replay.WireframeMode_All:
-				wire = true
+				wire = wireframe(ctx, cfg.wireframeFramebufferID)
 			case replay.WireframeMode_Overlay:
-				transforms.Add(wireframeOverlay(ctx, req.after))
+				wire = wireframeOverlay(ctx, req.after)
 			}
 		}
 	}
 
-	if wire {
-		transforms.Add(wireframe(ctx))
+	if wire != nil {
+		transforms.Add(wire)
 	}
 
 	if issues != nil {
@@ -254,9 +255,14 @@ func (a API) QueryFramebufferAttachment(
 	}
 
 	c := drawConfig{wireframeMode: wireframeMode, disableReplayOptimization: disableReplayOptimization}
-	if wireframeMode == replay.WireframeMode_Overlay {
+	switch wireframeMode {
+	case replay.WireframeMode_Overlay:
 		c.wireframeOverlayID = api.CmdID(after[0])
+
+	case replay.WireframeMode_All:
+		c.wireframeFramebufferID = FramebufferId(framebufferIndex)
 	}
+
 	r := framebufferRequest{
 		after:      api.CmdID(after[0]),
 		width:      width,
