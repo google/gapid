@@ -303,6 +303,11 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	// Now using a single thread, bind each context and delete all objects.
 	cb := CommandBuilder{Thread: 0}
 	for i, c := range GetState(s).EGLContexts.Range() {
+		if !c.Other.Initialized {
+			// This context was never bound. Skip it.
+			continue
+		}
+
 		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, i, 1))
 
 		// Delete all Renderbuffers.
