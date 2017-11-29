@@ -20,10 +20,11 @@
 set(files
     encoder.go
     encoder_test.go
+    reporter.go
     reporting.go
     reporting_test.go
     stubs.go
 )
 set(dirs
-    
+
 )

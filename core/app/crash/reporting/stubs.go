@@ -30,3 +30,6 @@ func Enable(ctx context.Context, appName, appVersion string) {}
 
 // Disable turns off crash reporting previously enabled by Enable()
 func Disable() {}
+
+// ReportMinidump encodes and sends a minidump report to the crashURL endpoint.
+func ReportMinidump(r Reporter, minidumpName string, minidumpData []byte) error { return nil }
