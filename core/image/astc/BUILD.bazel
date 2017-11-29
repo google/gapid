@@ -9,7 +9,7 @@ go_library(
     ],
     cdeps = ["@astc-encoder//:astc-encoder"],
     cgo = True,
-    clinkopts = ["-lastc-encoder -lstdc++"],
+    clinkopts = [], # keep
     importpath = "github.com/google/gapid/core/image/astc",
     visibility = ["//visibility:public"],
     deps = ["//core/image:go_default_library"],
