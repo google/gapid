@@ -29,14 +29,30 @@ import (
 
 // wireframe returns a command transform that replaces all draw calls of
 // triangle primitives with draw calls of a wireframe equivalent.
-func wireframe(ctx context.Context) transform.Transformer {
+func wireframe(ctx context.Context, framebuffer FramebufferId) transform.Transformer {
 	ctx = log.Enter(ctx, "Wireframe")
 	return transform.Transform("Wireframe", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		if dc, ok := cmd.(drawCall); ok {
 			s := out.State()
+			c := GetContext(s, cmd.Thread())
+
+			fb := c.Bound.DrawFramebuffer
+			if fb == nil {
+				out.MutateAndWrite(ctx, id, cmd)
+				return
+			}
+
+			if fb.ID != framebuffer {
+				out.MutateAndWrite(ctx, id, cmd)
+				return
+			}
+
 			dID := id.Derived()
 			cb := CommandBuilder{Thread: cmd.Thread()}
+
 			t := newTweaker(out, dID, cb)
+			defer t.revert(ctx)
+
 			t.glEnable(ctx, GLenum_GL_LINE_SMOOTH)
 			t.glEnable(ctx, GLenum_GL_BLEND)
 			t.glBlendFunc(ctx, GLenum_GL_SRC_ALPHA, GLenum_GL_ONE_MINUS_SRC_ALPHA)
