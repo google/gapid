@@ -179,7 +179,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		vkQu := (s.CurrentSubmission).(*VkQueueSubmit).Queue
 		stack := markerStack[vkQu]
 		if len(stack) == 0 {
-			log.W(ctx, "Cannot pop marker with type: %v, no open marker with same type at: VkQueueSubmit ID: %v, SubCmdIdx: %v",
+			log.D(ctx, "Cannot pop marker with type: %v, no open marker with same type at: VkQueueSubmit ID: %v, SubCmdIdx: %v",
 				ty, submissionMap[s.CurrentSubmission], s.SubCmdIdx)
 			return
 		}
@@ -190,7 +190,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		// marker, discard it.
 		top := len(stack) - 1
 		for top >= 0 && stack[top].ty != ty {
-			log.W(ctx, "Type of the top marker does not match with the pop request")
+			log.D(ctx, "Type of the top marker does not match with the pop request")
 			end := s.SubCmdIdx[len(s.SubCmdIdx)-1] + 1
 			d.SubCommandMarkerGroups.NewMarkerGroup(stack[top].parent, stack[top].name, stack[top].start, end)
 			switch stack[top].ty {
@@ -198,7 +198,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				markersToOpen[vkQu] = append(markersToOpen[vkQu], stack[top])
 				log.D(ctx, "Debug marker popped due to popping renderpass marker, new debug marker group will be opened again in the next subcommand")
 			default:
-				log.W(ctx, "Renderpass marker popped due to popping debug marker, renderpass marker group will be closed here")
+				log.D(ctx, "Renderpass marker popped due to popping debug marker, renderpass marker group will be closed here")
 			}
 			top--
 		}
