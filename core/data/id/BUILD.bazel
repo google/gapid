@@ -6,6 +6,7 @@ go_library(
         "doc.go",
         "hash.go",
         "id.go",
+        "id_remap.go",
     ],
     importpath = "github.com/google/gapid/core/data/id",
     visibility = ["//visibility:public"],

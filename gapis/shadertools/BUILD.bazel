@@ -8,7 +8,7 @@ go_library(
         "@spirv-tools//:spirv-tools",
     ],
     cgo = True,
-    clinkopts = [], # keep
+    clinkopts = [],  # keep
     importpath = "github.com/google/gapid/gapis/shadertools",
     visibility = ["//visibility:public"],
     deps = [

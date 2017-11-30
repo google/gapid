@@ -17,6 +17,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/replay",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/analytics:go_default_library",
         "//core/app/benchmark:go_default_library",
         "//core/context/keys:go_default_library",
         "//core/data/id:go_default_library",

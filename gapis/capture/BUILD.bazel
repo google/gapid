@@ -14,7 +14,9 @@ go_library(
     importpath = "github.com/google/gapid/gapis/capture",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/analytics:go_default_library",
         "//core/context/keys:go_default_library",
+        "//core/data/deep:go_default_library",
         "//core/data/id:go_default_library",
         "//core/data/pack:go_default_library",
         "//core/data/protoconv:go_default_library",

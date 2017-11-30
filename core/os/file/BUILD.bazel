@@ -23,7 +23,9 @@ go_library(
     }),
     importpath = "github.com/google/gapid/core/os/file",
     visibility = ["//visibility:public"],
-    deps = ["//core/log:go_default_library"],
+    deps = [
+        "//core/log:go_default_library",
+    ],
 )
 
 go_test(

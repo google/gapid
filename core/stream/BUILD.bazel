@@ -24,6 +24,7 @@ go_library(
         "//core/math/f16:go_default_library",
         "//core/math/f32:go_default_library",
         "//core/math/f64:go_default_library",
+        "//core/math/u64:go_default_library",
         "//core/os/device:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
