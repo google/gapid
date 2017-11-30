@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["useragent.go"],
+    importpath = "github.com/google/gapid/core/net",
+    visibility = ["//visibility:public"],
+    deps = ["//core/os/device:go_default_library"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["useragent_test.go"],
+    embed = [":go_default_library"],
+    importpath = "github.com/google/gapid/core/net",
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+        "//core/os/device:go_default_library",
+    ],
+)

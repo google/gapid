@@ -26,6 +26,7 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//core/app:go_default_library",
+        "//core/app/analytics:go_default_library",
         "//core/app/auth:go_default_library",
         "//core/app/crash:go_default_library",
         "//core/app/flags:go_default_library",
@@ -41,6 +42,7 @@ go_library(
         "//core/os/android/apk:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
+        "//core/os/device/host:go_default_library",
         "//core/os/file:go_default_library",
         "//core/os/process:go_default_library",
         "//core/os/shell:go_default_library",

@@ -1,4 +1,3 @@
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
@@ -12,13 +11,13 @@ go_library(
         "types.go",
         "writer.go",
     ],
-    embed = [":pack_go_proto"],
     importpath = "github.com/google/gapid/core/data/pack",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/protoutil:go_default_library",
         "//core/event/task:go_default_library",
         "//core/fault:go_default_library",
+        "//core/math/sint:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_golang_protobuf//protoc-gen-go/descriptor:go_default_library",
         "@com_github_pkg_errors//:go_default_library",
@@ -37,17 +36,4 @@ go_test(
         "//core/log:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
-)
-
-proto_library(
-    name = "pack_proto",
-    srcs = ["pack.proto"],
-    visibility = ["//visibility:public"],
-)
-
-go_proto_library(
-    name = "pack_go_proto",
-    importpath = "github.com/google/gapid/core/data/pack",
-    proto = ":pack_proto",
-    visibility = ["//visibility:public"],
 )

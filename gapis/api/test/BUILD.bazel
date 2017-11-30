@@ -68,6 +68,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "convert_test.go",
         "intrinsics_test.go",
         "mutate_test.go",
         "subroutines_test.go",
@@ -77,6 +78,7 @@ go_test(
     deps = [
         "//core/assert:go_default_library",
         "//core/data/id:go_default_library",
+        "//core/data/protoconv:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
@@ -85,5 +87,6 @@ go_test(
         "//gapis/replay/builder:go_default_library",
         "//gapis/replay/opcode:go_default_library",
         "//gapis/replay/protocol:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )

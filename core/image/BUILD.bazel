@@ -51,6 +51,7 @@ go_test(
         "image_test.go",
         "rgba_f32_test.go",
     ],
+    data = glob(["test_data/*"]),
     importpath = "github.com/google/gapid/core/image_test",
     deps = [
         ":go_default_library",
@@ -61,7 +62,6 @@ go_test(
         "//core/os/device:go_default_library",
         "//gapis/database:go_default_library",
     ],
-    data = glob(["test_data/*"])
 )
 
 proto_library(
