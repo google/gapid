@@ -16,7 +16,7 @@
 # Increment these numbers immediately after releasing a new version.
 set(GAPID_VERSION_MAJOR 0)
 set(GAPID_VERSION_MINOR 9)
-set(GAPID_VERSION_POINT 2)
+set(GAPID_VERSION_POINT 3)
 
 if (NOT DEFINED GAPID_BUILD_NUMBER)
     set(GAPID_BUILD_NUMBER 0)
