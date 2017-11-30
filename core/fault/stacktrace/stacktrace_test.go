@@ -62,11 +62,6 @@ var (
 		expect: []string{
 			"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
 		},
-		brief:  `Error`,
-		normal: `Error:init.0⇒{stacktrace_test.go@38}`,
-		detailed: `
-Error
-    init.1 ⇒ stacktrace_test.go@38`,
 	}, {
 		fun: nested1,
 		expect: []string{
