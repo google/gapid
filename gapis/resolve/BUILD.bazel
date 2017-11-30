@@ -40,6 +40,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/resolve",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/analytics:go_default_library",
         "//core/data/deep:go_default_library",
         "//core/data/dictionary:go_default_library",
         "//core/data/endian:go_default_library",
