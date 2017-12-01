@@ -20,7 +20,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/u32"
 	"github.com/google/gapid/core/os/device"
@@ -213,17 +212,15 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			// TODO(dsrbecky): This might make some atoms valid for replay which were invalid on trace.
 			scs := FindStaticContextState(cmd.Extras())
 			if scs != nil && !version.IsES && scs.Constants.MajorVersion < 3 {
-				clone, err := deep.Clone(cmd)
-				if err != nil {
-					panic(err)
-				}
-				cmd = clone.(*EglMakeCurrent)
-				for _, e := range cmd.extras.All() {
+				clone := cb.EglMakeCurrent(cmd.Display, cmd.Draw, cmd.Read, cmd.Context, cmd.Result)
+				clone.Extras().MustClone(cmd.Extras().All()...)
+				for _, e := range clone.Extras().All() {
 					if cs, ok := e.(*StaticContextState); ok {
 						cs.Constants.MajorVersion = 3
 						cs.Constants.MinorVersion = 0
 					}
 				}
+				cmd = clone
 			}
 
 			// Mutate to set the context, Version and Extensions strings.
