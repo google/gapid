@@ -37,6 +37,15 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 	t.Add(id, func(ctx context.Context, out transform.Writer) {
 		s := out.State()
 		c := GetContext(s, r.Thread)
+
+		if c == nil {
+			err := fmt.Errorf("Attempting to read from texture %v when context does not exist.\n"+
+				"Resolvable: %+v", r.Texture, r)
+			log.W(ctx, "%v", err)
+			res(nil, err)
+			return
+		}
+
 		dID := id.Derived()
 		cb := CommandBuilder{Thread: r.Thread}
 
