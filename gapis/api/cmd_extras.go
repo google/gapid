@@ -37,7 +37,7 @@ func (e *CmdExtras) Add(es ...CmdExtra) {
 	}
 }
 
-// MustClone clones on or more CmdExtras to the list of CmdExtras,
+// MustClone clones all of es, adding them to e.
 // if there was an error, a panic is raised
 func (e *CmdExtras) MustClone(es ...CmdExtra) {
 	if e != nil {
