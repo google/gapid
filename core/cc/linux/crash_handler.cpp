@@ -36,7 +36,7 @@ namespace {
 const char* GetTempDir() {
     const char* tmpdir = getenv("TMPDIR");
     if (!tmpdir) {
-        tmpdir = "/tmp/";
+        tmpdir = "/tmp";
     }
     return tmpdir;
 }
