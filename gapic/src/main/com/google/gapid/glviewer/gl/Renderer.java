@@ -161,6 +161,7 @@ public final class Renderer {
   public static void draw(Shader shader, int primitive, int vertexCount) {
     shader.bind();
     GL11.glDrawArrays(primitive, 0, vertexCount);
+    shader.unbind();
   }
 
   /**
@@ -171,6 +172,7 @@ public final class Renderer {
     shader.bind();
     indices.bind();
     GL11.glDrawElements(primitive, indices.count, indices.type, 0);
+    shader.unbind();
   }
 
   /**
