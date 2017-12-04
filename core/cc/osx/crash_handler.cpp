@@ -26,6 +26,7 @@ static bool handleCrash(const char* minidumpDir, const char* minidumpId, void* c
     core::CrashHandler* crashHandler = reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
     std::string minidumpPath(minidumpDir);
     minidumpPath.append(minidumpId);
+    minidumpPath.append(".dmp");
     return crashHandler->handleMinidump(minidumpPath, succeeded);
 }
 
