@@ -194,11 +194,14 @@ func scanDevices(ctx context.Context) error {
 	defer cacheMutex.Unlock()
 
 	for serial, status := range parsed {
-		device, ok := cache[serial]
-		if !ok {
-			device, err = newDevice(ctx, serial, status)
+		cached, ok := cache[serial]
+		if !ok || status != cached.Status() {
+			device, err := newDevice(ctx, serial, status)
 			if err != nil {
 				return err
+			}
+			if ok {
+				registry.RemoveDevice(ctx, cached)
 			}
 			cache[serial] = device
 			registry.AddDevice(ctx, device)
@@ -206,10 +209,10 @@ func scanDevices(ctx context.Context) error {
 	}
 
 	// Remove cached results for removed devices.
-	for serial, device := range cache {
+	for serial, cached := range cache {
 		if _, found := parsed[serial]; !found {
 			delete(cache, serial)
-			registry.RemoveDevice(ctx, device)
+			registry.RemoveDevice(ctx, cached)
 		}
 	}
 
