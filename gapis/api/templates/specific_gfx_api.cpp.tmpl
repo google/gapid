@@ -133,7 +133,7 @@
           GAPID_DEBUG("[%u]{{$name}} returned {{Template "C++.PrintfFormatCode" $.Return.Type}}", cmdLabel, return_value);
           {{if eq $name "glGetError"}}
             if (return_value != Gles::GLenum::GL_NO_ERROR) {
-              GAPID_ERROR("glGetError() returned: 0x%x", return_value);
+              GAPID_ERROR("[%u]glGetError() returned: 0x%x", cmdLabel, return_value);
             }
           {{end}}
           if (pushReturn) {
