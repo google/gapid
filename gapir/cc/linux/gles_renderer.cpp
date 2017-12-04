@@ -221,14 +221,20 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     int safe_width = (backbuffer.width > 0) ? backbuffer.width : 8;
     int safe_height = (backbuffer.height > 0) ? backbuffer.height : 8;
 
-    if (mBackbuffer.format == backbuffer.format) {
-        // Only a resize is necessary
-        GAPID_INFO("Resizing renderer: %dx%d -> %dx%d",
-                mBackbuffer.width, mBackbuffer.height, backbuffer.width, backbuffer.height);
-        createPbuffer(safe_width, safe_height);
-        glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext);
-        mBackbuffer = backbuffer;
-        return;
+    if (mContext != nullptr) {
+        if (mBackbuffer.format == backbuffer.format) {
+            // Only a resize is necessary
+            GAPID_INFO("Resizing renderer: %dx%d -> %dx%d",
+                    mBackbuffer.width, mBackbuffer.height, backbuffer.width, backbuffer.height);
+            createPbuffer(safe_width, safe_height);
+            glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext);
+            mBackbuffer = backbuffer;
+            return;
+        }
+
+        GAPID_WARNING("Recreating renderer: [0x%x, 0x%x, 0x%x] -> [0x%x, 0x%x, 0x%x]",
+                mBackbuffer.format.color, mBackbuffer.format.depth, mBackbuffer.format.stencil,
+                backbuffer.format.color, backbuffer.format.depth, backbuffer.format.stencil);
     }
 
     auto wasBound = tlsBound == this;
