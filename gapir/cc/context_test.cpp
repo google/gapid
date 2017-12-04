@@ -67,8 +67,9 @@ TEST_F(ContextTest, Create) {
     auto replayData = createReplayData(0, 0, {}, {}, {});
 
     expectLoadReplay(mResourceProvider.get(), replayData);
-    auto connection = createServerConnection(REPLAY_ID, replayData.size());
-    auto context = Context::create(*connection, mResourceProvider.get(), mMemoryManager.get());
+    auto server = createServerConnection(REPLAY_ID, replayData.size());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
 
     EXPECT_THAT(context, NotNull());
 }
@@ -81,7 +82,8 @@ TEST_F(ContextTest, CreateErrorReplayRequest) {
             .WillOnce(Return(false));
 
     auto server = createServerConnection(REPLAY_ID, 10);
-    auto context = Context::create(*server, mResourceProvider.get(), mMemoryManager.get());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
 
     EXPECT_THAT(context, IsNull());
 }
@@ -95,7 +97,8 @@ TEST_F(ContextTest, CreateErrorVolatileMemory) {
             .WillOnce(DoAll(WithArg<3>(SetVoidPointee(replayData)), Return(true)));
 
     auto server = createServerConnection(REPLAY_ID, replayData.size());
-    auto context = Context::create(*server, mResourceProvider.get(), mMemoryManager.get());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
 
     EXPECT_THAT(context, IsNull());
 }
@@ -114,7 +117,8 @@ TEST_F(ContextTest, LoadResource) {
             .WillOnce(DoAll(WithArg<3>(SetVoidPointee(resourceA)), Return(true)));
 
     auto server = createServerConnection(REPLAY_ID, replayData.size());
-    auto context = Context::create(*server, mResourceProvider.get(), mMemoryManager.get());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
 
     EXPECT_THAT(context, NotNull());
     EXPECT_TRUE(context->interpret());
@@ -128,7 +132,8 @@ TEST_F(ContextTest, LoadResourcePopFailed) {
 
     expectLoadReplay(mResourceProvider.get(), replayData);
     auto server = createServerConnection(REPLAY_ID, replayData.size());
-    auto context = Context::create(*server, mResourceProvider.get(), mMemoryManager.get());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
 
     EXPECT_THAT(context, NotNull());
     EXPECT_FALSE(context->interpret());
@@ -145,7 +150,8 @@ TEST_F(ContextTest, LoadResourceGetFailed) {
     EXPECT_CALL(*mResourceProvider, get(Pointee(Eq(A)), 1, _, _, 4)).WillOnce(Return(false));
 
     auto server = createServerConnection(REPLAY_ID, replayData.size());
-    auto context = Context::create(*server, mResourceProvider.get(), mMemoryManager.get());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
 
     EXPECT_THAT(context, NotNull());
     EXPECT_FALSE(context->interpret());
@@ -165,7 +171,8 @@ TEST_F(ContextTest, PostData) {
     auto connection = new core::test::MockConnection();
     expectLoadReplay(mResourceProvider.get(), replayData);
     auto server = createServerConnection(connection, REPLAY_ID, replayData.size());
-    auto context = Context::create(*server, mResourceProvider.get(), mMemoryManager.get());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
     EXPECT_THAT(context, NotNull());
     EXPECT_TRUE(context->interpret());
     EXPECT_EQ(connection->out, expected);
@@ -180,7 +187,8 @@ TEST_F(ContextTest, PostDataErrorPop) {
 
     expectLoadReplay(mResourceProvider.get(), replayData);
     auto server = createServerConnection(REPLAY_ID, replayData.size());
-    auto context = Context::create(*server, mResourceProvider.get(), mMemoryManager.get());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
 
     EXPECT_THAT(context, NotNull());
     EXPECT_FALSE(context->interpret());
@@ -197,7 +205,8 @@ TEST_F(ContextTest, PostDataErrorPost) {
     connection->out_limit = 7;
     expectLoadReplay(mResourceProvider.get(), replayData);
     auto server = createServerConnection(connection, REPLAY_ID, replayData.size());
-    auto context = Context::create(*server, mResourceProvider.get(), mMemoryManager.get());
+    core::CrashHandler crash_handler;
+    auto context = Context::create(*server, crash_handler, mResourceProvider.get(), mMemoryManager.get());
     EXPECT_THAT(context, NotNull());
     EXPECT_FALSE(context->interpret());
 }

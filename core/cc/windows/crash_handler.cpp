@@ -46,13 +46,17 @@ static bool handleCrash(const wchar_t* minidumpDir, const wchar_t* minidumpId, v
 
 namespace core {
 
-CrashHandler::CrashHandler() : mHandlerFunction(defaultHandlerFunction) {
+CrashHandler::CrashHandler() :
+    mNextHandlerID(0) {
     wchar_t tempPathBuf[MAX_PATH+1];
     GetTempPathW(MAX_PATH+1, tempPathBuf);
     std::wstring tempPath(tempPathBuf);
-    mHandler = std::unique_ptr<google_breakpad::ExceptionHandler>(new google_breakpad::ExceptionHandler(
+    mExceptionHandler = std::unique_ptr<google_breakpad::ExceptionHandler>(
+        new google_breakpad::ExceptionHandler(
             tempPath, NULL, ::handleCrash, reinterpret_cast<void*>(this),
             google_breakpad::ExceptionHandler::HandlerType::HANDLER_ALL));
+
+    registerHandler(defaultHandler);
 }
 
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.

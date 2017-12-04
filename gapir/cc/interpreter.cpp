@@ -18,6 +18,7 @@
 #include "memory_manager.h"
 
 #include "core/cc/log.h"
+#include "core/cc/crash_handler.h"
 
 #if !defined(_MSC_VER) || defined(__GNUC__)
 // If compiling with MSVC, (rather than MSYS)
@@ -49,16 +50,22 @@ inline bool sum(Stack& stack, uint32_t count) {
 
 } // anonymous namespace
 
-Interpreter::Interpreter(const MemoryManager* memoryManager, uint32_t stackDepth,
-                         ApiRequestCallback callback) :
-        mMemoryManager(memoryManager),
+Interpreter::Interpreter(
+        core::CrashHandler& crash_handler,
+        const MemoryManager* memory_manager,
+        uint32_t stack_depth,
+        ApiRequestCallback callback) :
+
+        mCrashHandler(crash_handler),
+        mMemoryManager(memory_manager),
         apiRequestCallback(std::move(callback)),
-        mStack(stackDepth, mMemoryManager),
+        mStack(stack_depth, mMemoryManager),
         mInstructions(nullptr),
         mInstructionCount(0),
         mCurrentInstruction(0),
         mNextThread(0),
         mLabel(0) {
+
     registerBuiltin(GLOBAL_INDEX, PRINT_STACK_FUNCTION_ID, [](uint32_t, Stack* stack, bool) {
         stack->printStack();
         return true;
@@ -83,7 +90,14 @@ bool Interpreter::run(const uint32_t* instructions, uint32_t count) {
     GAPID_ASSERT(mCurrentInstruction == 0);
     mInstructions = instructions;
     mInstructionCount = count;
+    auto unregisterHandler = mCrashHandler.registerHandler(
+            [this](const std::string& minidumpPath, bool succeeded) {
+                GAPID_ERROR("--- CRASH DURING REPLAY ---");
+                GAPID_ERROR("LAST COMMAND:     %d", mLabel);
+                GAPID_ERROR("LAST INSTRUCTION: %d", mCurrentInstruction);
+            });
     exec();
+    unregisterHandler();
     return mExecResult.get_future().get() == SUCCESS;
 }
 

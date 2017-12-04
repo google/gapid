@@ -21,6 +21,8 @@
 #include "stack.h"
 #include "thread_pool.h"
 
+#include <core/cc/crash_handler.h>
+
 #include <stdint.h>
 
 #include <functional>
@@ -82,8 +84,11 @@ public:
 
     // Creates a new interpreter with the specified memory manager (for resolving memory addresses)
     // and with the specified maximum stack size
-    Interpreter(const MemoryManager* memoryManager, uint32_t stackDepth,
-                ApiRequestCallback callback);
+    Interpreter(
+            core::CrashHandler& crash_handler,
+            const MemoryManager* memory_manager,
+            uint32_t stack_depth,
+            ApiRequestCallback callback);
 
     // Registers a builtin function to the builtin function table.
     void registerBuiltin(uint8_t api, FunctionTable::Id, FunctionTable::Function);
@@ -164,6 +169,9 @@ private:
 
     // Interpret one specific opcode.
     Result interpret(uint32_t opcode);
+
+    // The crash handler used for catching and reporting crashes.
+    core::CrashHandler& mCrashHandler;
 
     // Memory manager which managing the memory used during the interpretation
     const MemoryManager* mMemoryManager;

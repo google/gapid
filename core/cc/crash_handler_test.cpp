@@ -26,12 +26,12 @@ namespace test {
 
 TEST(CrashHandlerTest, HandleCrash) {
     CrashHandler crashHandler;
-    crashHandler.setHandlerFunction([] (const std::string& minidumpPath, bool succeeded) {
-        if (succeeded)
+    crashHandler.registerHandler([] (const std::string& minidumpPath, bool succeeded) {
+        if (succeeded) {
             std::cerr << "crash handled.";
-        else
+        } else {
             std::cerr << "crash not handled.";
-        return succeeded;
+        }
     });
 
     EXPECT_DEATH({ int i = *((volatile int*)(0)); }, "crash handled.");
