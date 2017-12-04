@@ -20,6 +20,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace google_breakpad {
 class ExceptionHandler;
@@ -30,21 +31,22 @@ namespace core {
 // Utility class for attaching a crash handler.
 class CrashHandler {
 public:
-    typedef std::function<bool(const std::string& minidumpPath, bool succeeded)> HandlerFunction;
+    typedef std::function<void(const std::string& minidumpPath, bool succeeded)> Handler;
+    typedef std::function<void()> Unregister;
 
     CrashHandler();
     ~CrashHandler();
 
-    void setHandlerFunction(HandlerFunction newHandlerFunction);
-    void unsetHandlerFunction();
+    Unregister registerHandler(Handler handler);
 
     bool handleMinidump(const std::string& minidumpPath, bool succeeded);
 
 private:
-    HandlerFunction mHandlerFunction;
-    std::unique_ptr<google_breakpad::ExceptionHandler> mHandler;
+    std::unordered_map<unsigned int, Handler> mHandlers;
+    std::unique_ptr<google_breakpad::ExceptionHandler> mExceptionHandler;
+    unsigned int mNextHandlerID;
 
-    static HandlerFunction defaultHandlerFunction;
+    static Handler defaultHandler;
 };
 
 }

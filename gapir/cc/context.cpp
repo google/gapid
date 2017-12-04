@@ -38,10 +38,14 @@
 
 namespace gapir {
 
-std::unique_ptr<Context> Context::create(const ServerConnection& gazer,
-                                         ResourceProvider* resourceProvider,
-                                         MemoryManager* memoryManager) {
-    std::unique_ptr<Context> context(new Context(gazer, resourceProvider, memoryManager));
+std::unique_ptr<Context> Context::create(
+        const ServerConnection& server,
+        core::CrashHandler& crash_handler,
+        ResourceProvider* resource_provider,
+        MemoryManager* memory_manager) {
+
+    std::unique_ptr<Context> context(new Context(
+        server, crash_handler, resource_provider, memory_manager));
 
     if (context->initialize()) {
         return context;
@@ -51,9 +55,16 @@ std::unique_ptr<Context> Context::create(const ServerConnection& gazer,
 }
 
 // TODO: Make the PostBuffer size dynamic? It currently holds 2MB of data.
-Context::Context(const ServerConnection& gazer, ResourceProvider* resourceProvider,
-                 MemoryManager* memoryManager) :
-        mServer(gazer), mResourceProvider(resourceProvider), mMemoryManager(memoryManager),
+Context::Context(
+        const ServerConnection& server,
+        core::CrashHandler& crash_handler,
+        ResourceProvider* resource_provider,
+        MemoryManager* memory_manager) :
+
+        mServer(server),
+        mCrashHandler(crash_handler),
+        mResourceProvider(resource_provider),
+        mMemoryManager(memory_manager),
         mVulkanRenderer(nullptr),
         mPostBuffer(new PostBuffer(POST_BUFFER_SIZE, [this](const void* address, uint32_t count) {
             return this->mServer.post(address, count);
@@ -116,7 +127,7 @@ bool Context::interpret() {
             return false;
         };
 
-    mInterpreter.reset(new Interpreter(mMemoryManager, mReplayRequest->getStackSize(), std::move(callback)));
+    mInterpreter.reset(new Interpreter(mCrashHandler, mMemoryManager, mReplayRequest->getStackSize(), std::move(callback)));
     registerCallbacks(mInterpreter.get());
     auto instAndCount = mReplayRequest->getInstructionList();
     auto res = mInterpreter->run(instAndCount.first, instAndCount.second) &&
@@ -170,7 +181,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
     interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayCreateRenderer, [this](uint32_t label, Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
-            GAPID_DEBUG("replayCreateRenderer(%u)", id);
+            GAPID_INFO("[%u]replayCreateRenderer(%u)", label, id);
             auto existing = mGlesRenderers.find(id);
             if (existing != mGlesRenderers.end()) {
                 delete existing->second;
@@ -201,7 +212,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
     interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayBindRenderer, [this, interpreter](uint32_t label, Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
-            GAPID_DEBUG("[%u]replayBindRenderer(%u)", label, id);
+            GAPID_INFO("[%u]replayBindRenderer(%u)", label, id);
             auto renderer = mGlesRenderers[id];
             renderer->bind();
             Api* api = renderer->api();

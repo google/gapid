@@ -16,9 +16,14 @@
 
 #include "../crash_handler.h"
 
+#include "../debugger.h"
+
 #include "client/mac/handler/exception_handler.h"
 
 #include <stdlib.h>
+
+#include <execinfo.h>
+#include <stdio.h>
 
 namespace {
 
@@ -45,9 +50,16 @@ const char* GetTempDir() {
 } // namespace
 
 CrashHandler::CrashHandler() :
-    mHandlerFunction(defaultHandlerFunction),
-    mHandler(new google_breakpad::ExceptionHandler(
-        GetTempDir(), NULL, ::handleCrash, reinterpret_cast<void*>(this), true, NULL)) {
+    mNextHandlerID(0),
+    mExceptionHandler(nullptr) {
+
+    if (!Debugger::isAttached()) {
+        mExceptionHandler = std::unique_ptr<google_breakpad::ExceptionHandler>(
+            new google_breakpad::ExceptionHandler(
+                GetTempDir(), nullptr, ::handleCrash,
+                reinterpret_cast<void*>(this), true, nullptr));
+    }
+    registerHandler(defaultHandler);
 }
 
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.

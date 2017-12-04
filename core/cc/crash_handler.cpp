@@ -17,30 +17,28 @@
 #include "core/cc/crash_handler.h"
 #include "core/cc/log.h"
 
-namespace {
-auto handler = [] (const std::string& minidump_path, bool succeeded) {
+namespace core {
+
+CrashHandler::Handler CrashHandler::defaultHandler =
+        [] (const std::string& minidump_path, bool succeeded) {
             if (!succeeded) {
                 GAPID_ERROR("Failed to write minidump out to %s", minidump_path.c_str());
             }
-            return succeeded;
         };
-}
 
-namespace core {
-
-CrashHandler::HandlerFunction CrashHandler::defaultHandlerFunction = handler;
-
-void CrashHandler::setHandlerFunction(HandlerFunction newHandlerFunction) {
-    mHandlerFunction = newHandlerFunction;
-}
-
-void CrashHandler::unsetHandlerFunction() {
-    mHandlerFunction = defaultHandlerFunction;
+CrashHandler::Unregister CrashHandler::registerHandler(Handler handler) {
+    auto id = mNextHandlerID++;
+    mHandlers[id] = handler;
+    return [this, id] () {
+        mHandlers.erase(id);
+    };
 }
 
 bool CrashHandler::handleMinidump(const std::string& minidumpPath, bool succeeded) {
-    return mHandlerFunction(minidumpPath, succeeded);
+    for (const auto& it : mHandlers) {
+        it.second(minidumpPath, succeeded);
+    }
+    return succeeded;
 }
-
 
 } // namespace core

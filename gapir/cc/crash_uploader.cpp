@@ -26,9 +26,8 @@ namespace gapir {
 CrashUploader::CrashUploader(
         core::CrashHandler& crash_handler,
         const ServerConnection& conn) :
-    mCrashHandler(crash_handler),
     mConnection(conn) {
-    mCrashHandler.setHandlerFunction([this] (const std::string& minidumpPath, bool succeeded) -> bool {
+    mUnregister = crash_handler.registerHandler([this] (const std::string& minidumpPath, bool succeeded) {
         if (!succeeded) {
             GAPID_ERROR("Failed to write minidump out to %s", minidumpPath.c_str());
         }
@@ -36,31 +35,30 @@ CrashUploader::CrashUploader(
         core::FileReader minidumpFile(minidumpPath.c_str());
         if (const char* err = minidumpFile.error()) {
             GAPID_ERROR("Failed to open minidump file %s: %s", minidumpPath.c_str(), err);
-            return false;
+            return;
         }
 
         uint64_t minidumpSize = minidumpFile.size();
         if (minidumpSize == 0u) {
             GAPID_ERROR("Failed to get minidump file size %s", minidumpPath.c_str());
-            return false;
+            return;
         }
         std::unique_ptr<char[]> minidumpData = std::unique_ptr<char[]>(new char[minidumpSize]);
         uint64_t read = minidumpFile.read(minidumpData.get(), minidumpSize);
         if (read != minidumpSize) {
             GAPID_ERROR("Failed to read in the minidump file");
-            return false;
+            return;
         }
 
         if (!mConnection.postCrashdump(minidumpPath, minidumpData.get(), minidumpSize)) {
             GAPID_ERROR("Failed to send minidump to server");
-            return false;
+            return;
         }
-        return succeeded;
     });
 }
 
 CrashUploader::~CrashUploader() {
-    mCrashHandler.unsetHandlerFunction();
+    mUnregister();
 }
 
 } // namespace gapir

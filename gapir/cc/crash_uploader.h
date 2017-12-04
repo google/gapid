@@ -33,7 +33,7 @@ public:
 
 private:
 
-  core::CrashHandler& mCrashHandler;
+  core::CrashHandler::Unregister mUnregister;
   const ServerConnection& mConnection;
 };
 

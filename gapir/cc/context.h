@@ -17,6 +17,7 @@
 #ifndef GAPIR_CONTEXT_H
 #define GAPIR_CONTEXT_H
 
+#include "core/cc/crash_handler.h"
 #include "core/cc/target.h"
 #include "core/cc/timer.h"
 
@@ -45,9 +46,11 @@ class Context : private Renderer::Listener {
 public:
     // Creates a new Context object and initialize it with loading the replay request, setting up
     // the memory manager, setting up the caches and prefetching the resources
-    static std::unique_ptr<Context> create(const ServerConnection& gazer,
-                                           ResourceProvider* resourceProvider,
-                                           MemoryManager* memoryManager);
+    static std::unique_ptr<Context> create(
+            const ServerConnection& server,
+            core::CrashHandler& crash_handler,
+            ResourceProvider* resource_provider,
+            MemoryManager* memory_manager);
 
     ~Context();
 
@@ -67,8 +70,10 @@ private:
         POST_BUFFER_SIZE = 2*1024*1024,
     };
 
-    Context(const ServerConnection& gazer, ResourceProvider* resourceProvider,
-            MemoryManager* memoryManager);
+    Context(const ServerConnection& server,
+            core::CrashHandler& crash_handler,
+            ResourceProvider* resource_provider,
+            MemoryManager* memory_manager);
 
     // Initialize the context object with loading the replay request, setting up the memory manager,
     // setting up the caches and prefetching the resources
@@ -96,6 +101,9 @@ private:
 
     // Server connection object to fetch and post resources back to the server
     const ServerConnection& mServer;
+
+    // The crash handler used for catching and reporting crashes.
+    core::CrashHandler& mCrashHandler;
 
     // Resource provider (possibly with caching) to fetch the resources required by the replay. It
     // is owned by the creator of the Context object.

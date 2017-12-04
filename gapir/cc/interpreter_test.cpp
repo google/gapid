@@ -44,7 +44,8 @@ protected:
         std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
         mMemoryManager.reset(new MemoryManager(memorySizes));
         auto callback = [](Interpreter*, uint8_t) { return false; };
-        mInterpreter.reset(new Interpreter(mMemoryManager.get(), STACK_SIZE, std::move(callback)));
+        core::CrashHandler crash_handler;
+        mInterpreter.reset(new Interpreter(crash_handler, mMemoryManager.get(), STACK_SIZE, std::move(callback)));
     }
 
     std::unique_ptr<MemoryManager> mMemoryManager;

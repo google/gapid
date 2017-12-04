@@ -43,10 +43,12 @@ const char* GetTempDir() {
 } // namespace
 
 CrashHandler::CrashHandler() :
-    mHandlerFunction(defaultHandlerFunction),
-    mHandler(new google_breakpad::ExceptionHandler(
+    mNextHandlerID(0),
+    mExceptionHandler(new google_breakpad::ExceptionHandler(
             google_breakpad::MinidumpDescriptor(GetTempDir()),
             NULL, ::handleCrash, reinterpret_cast<void*>(this), true, -1)) {
+
+    registerHandler(defaultHandler);
 }
 
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.

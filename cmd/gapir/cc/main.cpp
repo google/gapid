@@ -92,7 +92,7 @@ void listenConnections(Connection* conn,
         std::unique_ptr<CrashUploader> crash_uploader = std::unique_ptr<CrashUploader>(new CrashUploader(crashHandler, *acceptedConn));
 
         std::unique_ptr<Context> context =
-                Context::create(*acceptedConn, resourceProvider.get(), memoryManager);
+                Context::create(*acceptedConn, crashHandler, resourceProvider.get(), memoryManager);
         if (context == nullptr) {
             GAPID_WARNING("Loading Context failed!");
             continue;
@@ -177,7 +177,6 @@ int main(int argc, const char* argv[]) {
     const char* logPath = "logs/gapir.log";
 
     bool wait_for_debugger = false;
-    bool enable_crash_reporting = false;
     const char* cachePath = nullptr;
     const char* portStr = "0";
     const char* authTokenFile = nullptr;
