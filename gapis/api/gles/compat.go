@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/u32"
 	"github.com/google/gapid/core/os/device"
@@ -931,6 +932,14 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				return
 			}
 
+		case *GlDeleteBuffers:
+			ids, err := cmd.Buffers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				deleteCompat(ctx, ids, dID, c.Objects.Buffers.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteBuffers(cnt, buf) })
+				return
+			}
+
 		case *GlDeleteFramebuffers:
 			// If you delete a framebuffer that is currently bound then the
 			// binding automatically reverts back to the default framebuffer
@@ -948,7 +957,65 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						t.Transform(ctx, dID, cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, 0), out)
 					}
 				}
-				out.MutateAndWrite(ctx, dID, cmd)
+
+				deleteCompat(ctx, fbs, dID, c.Objects.Framebuffers.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteFramebuffers(cnt, buf) })
+				return
+			}
+
+		case *GlDeleteProgramPipelines:
+			ids, err := cmd.Pipelines.Slice(0, uint64(cmd.N), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				deleteCompat(ctx, ids, dID, c.Objects.Pipelines.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteProgramPipelines(cnt, buf) })
+				return
+			}
+
+		case *GlDeleteQueries:
+			ids, err := cmd.Queries.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				deleteCompat(ctx, ids, dID, c.Objects.Queries.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteQueries(cnt, buf) })
+				return
+			}
+
+		case *GlDeleteRenderbuffers:
+			ids, err := cmd.Renderbuffers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				deleteCompat(ctx, ids, dID, c.Objects.Renderbuffers.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteRenderbuffers(cnt, buf) })
+				return
+			}
+
+		case *GlDeleteSamplers:
+			ids, err := cmd.Samplers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				deleteCompat(ctx, ids, dID, c.Objects.Samplers.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteSamplers(cnt, buf) })
+				return
+			}
+
+		case *GlDeleteTextures:
+			ids, err := cmd.Textures.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				deleteCompat(ctx, ids, dID, c.Objects.Textures.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteTextures(cnt, buf) })
+				return
+			}
+
+		case *GlDeleteTransformFeedbacks:
+			ids, err := cmd.Ids.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				deleteCompat(ctx, ids, dID, c.Objects.TransformFeedbacks.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteTransformFeedbacks(cnt, buf) })
+				return
+			}
+
+		case *GlDeleteVertexArrays:
+			ids, err := cmd.Arrays.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err == nil {
+				deleteCompat(ctx, ids, dID, c.Objects.VertexArrays.Dictionary(), s, out,
+					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteVertexArrays(cnt, buf) })
 				return
 			}
 
@@ -1198,4 +1265,34 @@ func (fb *Framebuffer) ForEachAttachment(action func(GLenum, FramebufferAttachme
 // captured with the context c can be replayed on the device d.
 func canUsePrecompiledShader(c *Context, d *device.OpenGLDriver) bool {
 	return c.Constants.Vendor == d.Vendor && c.Constants.Version == d.Version
+}
+
+// It is a no-op to delete objects that do not exist.
+// GAPID uses a shared context for replay - while its fine to delete ids that do
+// not exist in this context, they might exist in another. Strip out any ids
+// that do not belong to this context.
+func deleteCompat(
+	ctx context.Context,
+	ids interface{},
+	id api.CmdID,
+	d dictionary.I,
+	s *api.GlobalState,
+	out transform.Writer,
+	create func(GLsizei, memory.Pointer) api.Cmd) {
+
+	r := reflect.ValueOf(ids)
+	count := r.Len()
+	zero := reflect.Zero(r.Type().Elem())
+	for i := 0; i < count; i++ {
+		id := r.Index(i).Interface()
+		if !d.Contains(id) {
+			r.Index(i).Set(zero) // Deleting 0 is also a no-op.
+		}
+	}
+
+	tmp := s.AllocDataOrPanic(ctx, ids)
+	cmd := create(GLsizei(count), tmp.Ptr())
+	cmd.Extras().GetOrAppendObservations().AddRead(tmp.Data())
+	out.MutateAndWrite(ctx, id, cmd)
+	tmp.Free()
 }
