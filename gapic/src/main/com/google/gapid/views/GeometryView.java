@@ -203,7 +203,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     createToolItem(bar, theme.cullingDisabled(), e -> {
       boolean cull = data.culling == GeometryScene.Culling.OFF; // cull represents the new value.
       models.analytics.postInteraction(View.Geometry, cull ? "cullOn" : "cullOff", Invoke);
-      ((ToolItem)e.widget).setImage(cull ? theme.cullingDisabled() : theme.cullingEnabled());
+      ((ToolItem)e.widget).setImage(cull ? theme.cullingEnabled() : theme.cullingDisabled());
       setSceneData(data.withToggledCulling());
     }, "Toggle backface culling");
     createSeparator(bar);
