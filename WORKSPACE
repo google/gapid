@@ -89,7 +89,7 @@ github_repository(
     name = "astc-encoder",
     organization = "ARM-software",
     project = "astc-encoder",
-    commit = "a1b3a964ea999a7284a223ebd23bc1a65b991073",
+    commit = "b6bf6e7a523ddafdb8cfdc84b068d8fe70ffb45e",
     build_file = "//tools/build/third_party:astc-encoder.BUILD",
 )
 
@@ -131,6 +131,13 @@ github_repository(
     project = "llvm",
     commit = "4fba04fd9608115c1813dfba8909ab43e36ba92d",
     build_file = "//tools/build/third_party:llvm.BUILD",
+)
+
+new_git_repository(
+    name = "breakpad",
+    remote = "https://chromium.googlesource.com/breakpad/breakpad",
+    commit = "a61afe7a3e865f1da7ff7185184fe23977c2adca",
+    build_file = "//tools/build/third_party:breakpad.BUILD",
 )
 
 github_go_repository(
