@@ -58,8 +58,9 @@ endif()
 
 if(MSVC)
     # turn off msvc specific warnings, define platform, turn on pdb generation
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4091 /wd4267 /wd4996 /wd4244 /D__x86_64 /Zi")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4091 /wd4267 /wd4996 /wd4244 /D__x86_64 /Zi")
+    # warning C4996: This function may be unsafe, use the _s version instead.
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996 /D__x86_64 /Zi")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996 /D__x86_64 /Zi")
     # linktime pdb generation is ignored unless /DEBUG is specified, /OPT:REF turns linker optimizations back on.
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG /OPT:REF")
     include(third_party/breakpad.cmake)

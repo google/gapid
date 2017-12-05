@@ -20,6 +20,11 @@ if(MSVC_GAPIR AND WIN32)
         DEPENDEES gapir_static
         DEPENDS ${sources}
     )
+    ExternalProject_Add_Step("gapir-msvc" dump_syms
+        COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/breakpad/src/tools/windows/binaries/dump_syms.exe" "<BINARY_DIR>/bin/gapir.pdb" > "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../gapir.sym"
+        DEPENDEES gapir
+        BYPRODUCTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../gapir.sym"
+    )
     return()
 endif()
 
@@ -31,13 +36,6 @@ if(NOT DISABLED_CXX)
     elseif(NOT GAPII_TARGET)
         add_executable(gapir ${sources})
         install(TARGETS gapir DESTINATION ${TARGET_INSTALL_PATH})
-        if(MSVC)
-            add_custom_command(
-                TARGET gapir
-                POST_BUILD
-                COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/breakpad/src/tools/windows/binaries/dump_syms.exe" "${CMAKE_CURRENT_BINARY_DIR}/bin/gapir.pdb" > "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../../../../gapir.sym"
-            )
-        endif()
     endif()
     if(NOT GAPII_TARGET)
         target_link_libraries(gapir gapir_static)
