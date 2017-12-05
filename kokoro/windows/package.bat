@@ -60,4 +60,6 @@ copy "%~dp0\*.bmp" .
 "%WIX%\candle.exe" -dGAPIDVersion="%VERSION%" gapid.wxs component.wxs
 "%WIX%\light.exe" gapid.wixobj component.wixobj -b gapid -ext WixUIExtension -cultures:en-us -o gapid-%VERSION%-windows.msi
 
+copy ..\current\gapir.sym gapir-%VERSION%-windows.sym
+
 popd
