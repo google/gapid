@@ -27,7 +27,8 @@ cc_library(
     visibility = ["//visibility:public"],
     hdrs = [":headers"],
     deps = [
-        "@cityhash//:cityhash",
+        "@cityhash",
+        "@breakpad",
     ] + select({
         "//tools/build:windows": ["@windows_sdk//:includes"],
         "//conditions:default": [],
