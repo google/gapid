@@ -52,11 +52,13 @@ func adjustContexts(ctx context.Context, ctxs []*api.ContextInfo) {
 	renderer := findContextByCommand(ctxs, tyGvrFrameSubmit)
 	reprojection := findContextByCommand(ctxs, tyGlFlush)
 
-	if renderer != nil && reprojection != nil {
+	if renderer != nil {
 		renderer.UserData[rendererCtx] = true
-		renderer.Name = "Main context (" + renderer.Name + ")"
-		reprojection.UserData[reprojectionCtx] = true
-		reprojection.Name = "Reprojection context (" + reprojection.Name + ")"
+		if reprojection != nil && renderer != reprojection {
+			renderer.Name = "Main context (" + renderer.Name + ")"
+			reprojection.Name = "Reprojection context (" + reprojection.Name + ")"
+			reprojection.UserData[reprojectionCtx] = true
+		}
 	}
 }
 
