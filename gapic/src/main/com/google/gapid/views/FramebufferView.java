@@ -89,7 +89,6 @@ public class FramebufferView extends Composite
   private final Models models;
   private final SingleInFlight rpcController = new SingleInFlight();
   protected final ImagePanel imagePanel;
-  protected final Loadable loading;
   private Service.RenderSettings renderSettings = RENDER_SHADED;
   private API.FramebufferAttachment target = API.FramebufferAttachment.Color0;
   private ToolItem targetItem;
@@ -103,7 +102,6 @@ public class FramebufferView extends Composite
 
     ToolBar toolBar = createToolBar(widgets.theme);
     imagePanel = new ImagePanel(this, View.Framebuffer, models.analytics, widgets, true);
-    loading = imagePanel.getLoading();
 
     toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
     imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -188,14 +186,14 @@ public class FramebufferView extends Composite
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
     imagePanel.setImage(null);
-    loading.showMessage(Info, Messages.LOADING_CAPTURE);
+    imagePanel.showMessage(Info, Messages.LOADING_CAPTURE);
   }
 
   @Override
   public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       imagePanel.setImage(null);
-      loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+      imagePanel.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }
   }
 
@@ -223,11 +221,11 @@ public class FramebufferView extends Composite
   private void updateBuffer() {
     AtomIndex atomPath = models.atoms.getSelectedAtoms();
     if (atomPath == null) {
-      loading.showMessage(Info, Messages.SELECT_ATOM);
+      imagePanel.showMessage(Info, Messages.SELECT_ATOM);
     } else if (!models.devices.hasReplayDevice()) {
-      loading.showMessage(Error, Messages.NO_REPLAY_DEVICE);
+      imagePanel.showMessage(Error, Messages.NO_REPLAY_DEVICE);
     } else {
-      loading.startLoading();
+      imagePanel.startLoading();
       rpcController.start().listen(
           FetchedImage.load(client, getImageInfoPath(atomPath.getCommand())),
           new UiErrorCallback<FetchedImage, MultiLayerAndLevelImage, Loadable.Message>(this, LOG) {
@@ -250,7 +248,7 @@ public class FramebufferView extends Composite
 
         @Override
         protected void onUiThreadError(Loadable.Message message) {
-          loading.showMessage(message);
+          imagePanel.showMessage(message);
         }
       });
     }
