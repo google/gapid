@@ -40,5 +40,5 @@ namespace core {
 GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress = getVulkanInstanceProcAddress;
 GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress = getVulkanDeviceProcAddress;
 GetVulkanProcAddressFunc* GetVulkanProcAddress = getVulkanProcAddress;
-
+bool HasVulkanLoader() { return false; }
 }  // namespace core

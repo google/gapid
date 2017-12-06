@@ -29,23 +29,19 @@
 
 namespace {
 
+// load defs
 #if TARGET_OS == GAPID_OS_WINDOWS
-
-void* load(const char* name) {
+void* load(const char* name, bool must = true) {
     void* res = reinterpret_cast<void*>(LoadLibraryExA(name, NULL, 0));
-    if (res == nullptr) {
+    if (res == nullptr && must) {
         GAPID_FATAL("Can't load library %s: %d", name, GetLastError());
     }
     return res;
 }
 
-void* resolve(void* handle, const char* name) {
-    return reinterpret_cast<void*>(GetProcAddress(reinterpret_cast<HMODULE>(handle), name));
-}
-
 #elif  TARGET_OS == GAPID_OS_OSX
 
-void* load(const char* name) {
+void* load(const char* name, bool must = true) {
     if (name == nullptr) {
         return nullptr;
     }
@@ -62,31 +58,50 @@ void* load(const char* name) {
             remove(tmp);
         }
     }
-    if (res == nullptr) {
+    if (res == nullptr && must) {
         GAPID_FATAL("Can't load library %s: %s", name, dlerror());
     }
     return res;
-}
-
-void* resolve(void* handle, const char* name) {
-    return dlsym(handle, name);
 }
 
 #else  // TARGET_OS
 
-void* load(const char* name) {
+void* load(const char* name, bool must = true) {
     void* res = dlopen(name, RTLD_NOW | RTLD_LOCAL);
-    if (res == nullptr) {
+    if (res == nullptr && must) {
         GAPID_FATAL("Can't load library %s: %s", name, dlerror());
     }
     return res;
 }
 
+#endif  // TARGET_OS
+
+// resolve defs
+#if TARGET_OS ==  TARGET_OS_WINDOWS
+void* resolve(void* handle, const char* name) {
+    return reinterpret_cast<void*>(GetProcAddress(reinterpret_cast<HMODULE>(handle), name));
+}
+#else // TARGET_OS
 void* resolve(void* handle, const char* name) {
     return dlsym(handle, name);
 }
+#endif // TARGET_OS
 
-#endif  // TARGET_OS
+
+// close defs
+#if TARGET_OS == GAPID_OS_WINDOWS
+void close(void* lib) {
+    if (lib != nullptr) {
+        FreeLibrary(reinterpret_cast<HMODULE>(lib));
+    }
+}
+#else // TARGET_OS
+void close(void* lib) {
+    if (lib != nullptr) {
+        dlclose(lib);
+    }
+}
+#endif // TARGET_OS
 
 }  // anonymous namespace
 
@@ -94,30 +109,26 @@ namespace core {
 
 DlLoader::DlLoader(const char* name) : mLibrary(load(name)) {}
 
-#if TARGET_OS == GAPID_OS_WINDOWS
-
 DlLoader::~DlLoader() {
-    if (mLibrary != nullptr) {
-        FreeLibrary(reinterpret_cast<HMODULE>(mLibrary));
-    }
+    close(mLibrary);
 }
 
+#if TARGET_OS == GAPID_OS_WINDOWS
 void* DlLoader::lookup(const char* name) {
     return resolve(mLibrary, name);
 }
-
 #else  // TARGET_OS
-
-DlLoader::~DlLoader() {
-    if (mLibrary != nullptr) {
-        dlclose(mLibrary);
-    }
-}
-
 void* DlLoader::lookup(const char* name) {
     return resolve((mLibrary ? mLibrary : RTLD_DEFAULT), name);
 }
-
 #endif  // TARGET_OS
+
+bool DlLoader::can_load(const char* lib_name) {
+  if (void* lib = load(lib_name, false)) {
+    close(lib);
+    return true;
+  }
+  return false;
+}
 
 }  // namespace core

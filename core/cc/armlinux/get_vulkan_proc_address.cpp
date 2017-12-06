@@ -71,5 +71,7 @@ namespace core {
 GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress = getVulkanInstanceProcAddress;
 GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress = getVulkanDeviceProcAddress;
 GetVulkanProcAddressFunc* GetVulkanProcAddress = getVulkanProcAddress;
-
+bool HasVulkanLoader() {
+  return DlLoader::can_load("libvulkan.so");
+}
 }  // namespace core

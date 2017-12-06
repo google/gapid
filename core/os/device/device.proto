@@ -204,12 +204,32 @@ message OpenGLDriver {
 
 // VulkanDriver describes the device driver support for the Vulkan API.
 message VulkanDriver {
-    // Supported extensions.
-    repeated string Extensions = 1;
-    // Driver name. e.g. "Adreno (TM) 320".
-    string Renderer = 2;
-    // Driver vendor name. e.g. "Qualcomm".
-    string Vendor = 3;
-    // Renderer version. e.g. "OpenGL ES 3.0 V@53.0 AU@  (CL@)".
-    string Version = 4;
+    // Enumerated instance layers.
+    repeated VulkanLayer Layers = 1;
+    // Instance extensions provided by Vulkan implementations and implicit
+    // layers.
+    repeated string IcdAndImplicitLayerExtensions = 2;
+    // Physical devices that have Vulkan supports.
+    repeated VulkanPhysicalDevice PhysicalDevices = 3;
+}
+
+message VulkanLayer {
+  string Name = 1;
+  repeated string Extensions = 2;
+}
+
+// VulkanPhysicalDevice describes a Vulkan physical device
+message VulkanPhysicalDevice {
+  //  ApiVerison is the version of Vulkan supported by the device, encoded as
+  //  described in the Vulkan Spec: API Version Numbers and Semantics section.
+  uint32 ApiVersion = 1;
+  // driverVersion is the vendor-specified version of the driver.
+  uint32 DriverVersion = 2;
+  // vendorID is the unique identifier for the vendor of the physical device.
+  uint32 VendorID = 3;
+  // deviceID is a unique identifier for the physical device among devices
+  // available from the vendor.
+  uint32 DeviceID = 4;
+  // deviceName is a null-terminated string containing the name of the device.
+  string DeviceName = 5;
 }

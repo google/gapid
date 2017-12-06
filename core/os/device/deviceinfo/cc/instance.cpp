@@ -23,6 +23,8 @@ device_instance get_device_instance(void* platform_data) {
     device_instance out = {};
 
     auto instance = query::getDeviceInstance(platform_data);
+    // VkGraphicsSpy layer must NOT be loaded.
+    query::updateVulkanDriver(instance);
     if (!instance) {
         return out;
     }

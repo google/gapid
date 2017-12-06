@@ -22,6 +22,10 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
+// CurrentCaptureVersion is incremented on breaking changes to the capture format.
+// NB: Also update equally named field in capture.go
+static const int CurrentCaptureVersion = 1;
+
 using core::Interval;
 
 namespace gapii {
@@ -29,6 +33,8 @@ namespace gapii {
 SpyBase::SpyBase()
     : mObserveApplicationPool(true)
     , mNullEncoder(PackEncoder::noop())
+    , mDeviceInstance(nullptr)
+    , mCurrentABI(nullptr)
     , mResources{{core::Id{{0}}, 0}}
     , mNextPoolID(1)
     , mWatchedApis(0xFFFFFFFF)
@@ -46,10 +52,12 @@ void SpyBase::init(CallObserver* observer) {
 
 void SpyBase::lock(CallObserver* observer) {
     mMutex.lock();
+  GAPID_WARNING("SpyBase: locked");
 }
 
 void SpyBase::unlock() {
     mMutex.unlock();
+  GAPID_WARNING("SpyBase: unlocked");
 }
 
 void SpyBase::abort() {
@@ -84,6 +92,24 @@ int64_t SpyBase::sendResource(uint8_t api, const void* data, size_t size) {
     }
 
     return index;
+}
+
+bool SpyBase::writeHeader() {
+  capture::Header file_header;
+  file_header.set_version(CurrentCaptureVersion);
+  if (mDeviceInstance != nullptr) {
+      device::Instance* t = new device::Instance(*device_instance());
+      file_header.set_allocated_device(t);
+  }
+  if (mCurrentABI != nullptr) {
+    device::ABI* t = new device::ABI(*current_abi());
+    file_header.set_allocated_abi(t);
+  }
+  if (mEncoder != nullptr && mEncoder != mNullEncoder) {
+    mEncoder->object(&file_header);
+    return true;
+  }
+  return false;
 }
 
 }  // namespace gapii

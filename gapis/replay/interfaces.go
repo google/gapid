@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -30,7 +31,7 @@ type Support interface {
 	// replaying this trace on the given device.
 	// A lower number represents a higher priority, and Zero represents
 	// an inability for the trace to be replayed on the given device.
-	GetReplayPriority(context.Context, *device.Instance, *device.MemoryLayout) uint32
+	GetReplayPriority(context.Context, *device.Instance, *capture.Header) uint32
 }
 
 // QueryIssues is the interface implemented by types that can verify the replay

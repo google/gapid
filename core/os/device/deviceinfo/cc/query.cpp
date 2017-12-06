@@ -23,24 +23,52 @@
 namespace {
 
 inline bool isLittleEndian() {
-    union {
-        uint32_t i;
-        char c[4];
-    } u;
-    u.i = 0x01020304;
-    return u.c[0] == 4;
+  union {
+    uint32_t i;
+    char c[4];
+  } u;
+  u.i = 0x01020304;
+  return u.c[0] == 4;
 }
 
 template <typename T>
 device::DataTypeLayout* new_dt_layout() {
-    struct AlignmentStruct {
-        char c;
-        T t;
-    };
-    auto out = new device::DataTypeLayout();
-    out->set_size(sizeof(T));
-    out->set_alignment(offsetof(AlignmentStruct, t));
-    return out;
+  struct AlignmentStruct {
+    char c;
+    T t;
+  };
+  auto out = new device::DataTypeLayout();
+  out->set_size(sizeof(T));
+  out->set_alignment(offsetof(AlignmentStruct, t));
+  return out;
+}
+
+void deviceInstanceID(device::Instance* instance) {
+  if (instance == nullptr) {
+    return;
+  }
+  instance->clear_id();
+  auto id = instance->mutable_id();
+
+  // Serialize the instance so we can hash it.
+  auto proto_size = instance->ByteSize();
+  auto proto_data = new uint8_t[proto_size];
+  instance->SerializeToArray(proto_data, proto_size);
+
+  // Generate the ID from the serialized instance.
+  // auto id = new device::ID();
+  auto hash128 =
+      CityHash128(reinterpret_cast<const char*>(proto_data), proto_size);
+  auto hash32 =
+      CityHash32(reinterpret_cast<const char*>(proto_data), proto_size);
+  char id_data[20];
+  memcpy(&id_data[0], &hash128, 16);
+  memcpy(&id_data[16], &hash32, 4);
+  id->set_data(id_data, sizeof(id_data));
+  // instance->set_allocated_id(id);
+
+  // Free the memory for the hashed instance.
+  delete[] proto_data;
 }
 
 void buildDeviceInstance(void* platform_data, device::Instance** out) {
@@ -48,29 +76,34 @@ void buildDeviceInstance(void* platform_data, device::Instance** out) {
     using namespace google::protobuf::io;
 
     if (!query::createContext(platform_data)) {
-        return;
+      return;
     }
 
     // OS
     auto os = new OS();
-    os->set_kind(query::osKind());
-	os->set_name(query::osName());
-	os->set_build(query::osBuild());
-	os->set_major(query::osMajor());
-	os->set_minor(query::osMinor());
-	os->set_point(query::osPoint());
+      os->set_kind(query::osKind());
+      os->set_name(query::osName());
+      os->set_build(query::osBuild());
+      os->set_major(query::osMajor());
+      os->set_minor(query::osMinor());
+      os->set_point(query::osPoint());
+
+    // Instance.Configuration.Drivers
+    auto drivers = new Drivers();
 
     // Instance.Configuration.Drivers.OpenGLDriver
     auto opengl_driver = new OpenGLDriver();
     query::glDriver(opengl_driver);
-
-    // Instance.Configuration.Drivers.VulkanDriver
-    auto vulkan_driver = new VulkanDriver();
-
-    // Instance.Configuration.Drivers
-    auto drivers = new Drivers();
     drivers->set_allocated_opengl(opengl_driver);
-    drivers->set_allocated_vulkan(vulkan_driver);
+
+    // Here we only check if the device supports Vulkan (has Vulkan loader).
+    // Real content of VulkanDriver may require an VkInstance handle, use
+    // updateVulkanDriver() to populate the VulkanDriver info for an
+    // device::Instance.
+    if (query::hasVulkanLoader()) {
+      auto vulkan_driver = new VulkanDriver();
+      drivers->set_allocated_vulkan(vulkan_driver);
+    }
 
     // Instance.Configuration.Hardware.CPU
     auto cpu = new CPU();
@@ -111,24 +144,7 @@ void buildDeviceInstance(void* platform_data, device::Instance** out) {
     auto instance = new Instance();
     instance->set_name(query::instanceName());
     instance->set_allocated_configuration(configuration);
-
-    // Serialize the instance so we can hash it.
-    auto proto_size = instance->ByteSize();
-    auto proto_data = new uint8_t[proto_size];
-    instance->SerializeToArray(proto_data, proto_size);
-
-    // Generate the ID from the serialized instance.
-    auto id = new ID();
-    auto hash128 = CityHash128(reinterpret_cast<const char*>(proto_data), proto_size);
-    auto hash32 = CityHash32(reinterpret_cast<const char*>(proto_data), proto_size);
-    char id_data[20];
-    memcpy(&id_data[0], &hash128, 16);
-    memcpy(&id_data[16], &hash32, 4);
-    id->set_data(id_data, sizeof(id_data));
-    instance->set_allocated_id(id);
-
-    // Free the memory for the hashed instance.
-    delete [] proto_data;
+    deviceInstanceID(instance);
 
     query::destroyContext();
 
@@ -146,8 +162,46 @@ device::Instance* getDeviceInstance(void* platform_data) {
     // currently bound context.
     std::thread thread(buildDeviceInstance, platform_data, &instance);
     thread.join();
-
     return instance;
+}
+
+bool updateVulkanDriver(
+    device::Instance* inst,
+    size_t vk_inst_handle,
+    std::function<void*(size_t, const char*)> get_inst_proc_addr) {
+
+  using namespace device;
+  using namespace google::protobuf::io;
+
+  if (inst == nullptr) {
+    return false;
+  }
+
+  device::VulkanDriver* vk_driver = new device::VulkanDriver();
+  if (!query::vkLayersAndExtensions(vk_driver)) {
+    // Failed at getting Vulkan layers and extensions info, the device may not
+    // support Vulkan, return without touching the device::Instance.
+    return false;
+  }
+  if (!query::vkPhysicalDevices(vk_driver, vk_inst_handle, get_inst_proc_addr)) {
+    // Failed at getting Vulkan physical device info, the device may not
+    // support Vulkan, return without touching the device::Instance.
+    return false;
+  }
+
+  if (!inst->has_configuration()) {
+    auto conf = new Configuration();
+    inst->set_allocated_configuration(conf);
+  }
+  if (!inst->configuration().has_drivers()) {
+    auto drivers = new Drivers();
+    inst->mutable_configuration()->set_allocated_drivers(drivers);
+  }
+  inst->mutable_configuration()->mutable_drivers()->set_allocated_vulkan(vk_driver);
+
+  // rehash the ID
+  deviceInstanceID(inst);
+  return true;
 }
 
 device::MemoryLayout* currentMemoryLayout() {

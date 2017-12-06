@@ -141,7 +141,9 @@ func Start(ctx context.Context, name string, opts StartOptions) (int, error) {
 
 	c, cancel := task.WithCancel(ctx)
 	defer cancel()
-	crash.Go(func() { stdout.waitForFile(c) })
+	crash.Go(func() {
+		stdout.waitForFile(c)
+	})
 	crash.Go(func() {
 		cmd := shell.
 			Command(name, opts.Args...).

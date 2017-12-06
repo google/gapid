@@ -57,7 +57,7 @@ func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 				"api":    fmt.Sprintf("%T", api),
 				"device": instance.Name,
 			}.Bind(ctx)
-			priority := api.GetReplayPriority(ctx, instance, c.Header.Abi.MemoryLayout)
+			priority := api.GetReplayPriority(ctx, instance, c.Header)
 			p = p * priority
 			if priority != 0 {
 				log.D(ctx, "Compatible %d", priority)

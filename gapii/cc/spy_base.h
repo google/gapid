@@ -23,13 +23,15 @@
 #include "slice.h"
 
 #include "core/cc/assert.h"
-#include "core/cc/scratch_allocator.h"
 #include "core/cc/encoder.h"
-#include "core/cc/null_encoder.h"
+#include "core/cc/id.h"
 #include "core/cc/interval_list.h"
+#include "core/cc/null_encoder.h"
+#include "core/cc/scratch_allocator.h"
 #include "core/cc/thread_local.h"
 #include "core/cc/vector.h"
-#include "core/cc/id.h"
+
+#include "core/os/device/deviceinfo/cc/query.h"
 
 #include "gapis/capture/capture.pb.h"
 
@@ -62,6 +64,10 @@ public:
     // Encode and write data blob if we have not already sent it.
     // Returns the index of the resource which can be used to reference it.
     int64_t sendResource(uint8_t api, const void* data, size_t size);
+
+    // writeHeader encodes a header with current tracing device and
+    // ABI info then return true, if the encoder is ready. Otherwise returns false.
+    bool writeHeader();
 
     // returns new unique pool ID.
     inline uint32_t getPoolID() { return mNextPoolID.fetch_add(1); }
@@ -150,6 +156,18 @@ protected:
     // The output stream encoder.
     PackEncoder::SPtr mEncoder;
 
+    // setter of the tracing device info.
+    void set_device_instance(device::Instance* inst) {
+      mDeviceInstance.reset(inst);
+    }
+    // getters of the tracing device info.
+    device::Instance* device_instance() const { return mDeviceInstance.get(); }
+
+    // setter of the tracing ABI info.
+    void set_current_abi(device::ABI* abi) { mCurrentABI.reset(abi); }
+    // getter of the tracing ABI info.
+    device::ABI* current_abi() const { return mCurrentABI.get(); }
+
 #if COHERENT_TRACKING_ENABLED
     track_memory::MemoryTracker mMemoryTracker;
 #endif // TARGET_OS
@@ -159,6 +177,10 @@ private:
 
     // The stream encoder that does nothing.
     PackEncoder::SPtr mNullEncoder;
+
+    // The information about the current tracing device and ABI.
+    std::unique_ptr<device::Instance> mDeviceInstance;
+    std::unique_ptr<device::ABI> mCurrentABI;
 
     // The list of resources that have already been encoded and sent.
     std::unordered_map<core::Id, int64_t> mResources;

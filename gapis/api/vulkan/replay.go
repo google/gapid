@@ -44,10 +44,46 @@ var (
 // replaying this trace on the given device.
 // A lower number represents a higher priority, and Zero represents
 // an inability for the trace to be replayed on the given device.
-func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, l *device.MemoryLayout) uint32 {
-	for _, abi := range i.GetConfiguration().GetABIs() {
-		if abi.GetMemoryLayout().SameAs(l) {
-			return 1
+func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *capture.Header) uint32 {
+	devConf := i.GetConfiguration()
+	devAbis := devConf.GetABIs()
+	devVkDriver := devConf.GetDrivers().GetVulkan()
+	traceVkDriver := h.GetDevice().GetConfiguration().GetDrivers().GetVulkan()
+
+	if traceVkDriver == nil {
+		log.E(ctx, "Vulkan trace does not contain VulkanDriver info.")
+		return 0
+	}
+
+	// The device does not support Vulkan
+	if devVkDriver == nil {
+		return 0
+	}
+
+	for _, abi := range devAbis {
+		if abi.GetMemoryLayout().SameAs(h.GetAbi().GetMemoryLayout()) {
+			// If there is no physical devices, the trace must not contain
+			// vkCreateInstance, any ABI compatible Vulkan device should be able to
+			// replay.
+			if len(traceVkDriver.GetPhysicalDevices()) == 0 {
+				return 1
+			}
+			// Requires same vendor, device and version of API.
+			for _, devPhyInfo := range devVkDriver.GetPhysicalDevices() {
+				for _, tracePhyInfo := range traceVkDriver.GetPhysicalDevices() {
+					// TODO: More sophisticated rules
+					if devPhyInfo.GetVendorID() != tracePhyInfo.GetVendorID() {
+						continue
+					}
+					if devPhyInfo.GetDeviceID() != tracePhyInfo.GetDeviceID() {
+						continue
+					}
+					if devPhyInfo.GetApiVersion() != tracePhyInfo.GetApiVersion() {
+						continue
+					}
+					return 1
+				}
+			}
 		}
 	}
 	return 0
@@ -551,7 +587,7 @@ func (a API) Replay(
 	device *device.Instance,
 	capture *capture.Capture,
 	out transform.Writer) error {
-	if a.GetReplayPriority(ctx, device, capture.Header.Abi.MemoryLayout) == 0 {
+	if a.GetReplayPriority(ctx, device, capture.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
 
