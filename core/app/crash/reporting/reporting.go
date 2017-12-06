@@ -32,10 +32,10 @@ import (
 	"github.com/google/gapid/core/os/device/host"
 )
 
-// TODO(baldwinn860): Send to production url when we get approval.
 const (
 	crashStagingURL = "https://clients2.google.com/cr/staging_report"
-	crashURL        = crashStagingURL
+	crashProdURL    = "https://clients2.google.com/cr/report"
+	crashURL        = crashProdURL
 )
 
 var (
