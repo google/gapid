@@ -38,6 +38,11 @@ public abstract class GlCanvas extends GLCanvas {
     return result;
   }
 
+  public boolean isOpenGL() {
+    // TODO: do our own initialization, so we can handle the failure case.
+    return true;
+  }
+
   /**
    * Override to perform GL cleanup handling.
    */
