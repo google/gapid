@@ -19,6 +19,7 @@ class AndroidNativeBufferExtra {
   @unused u32                         Stride
   AndroidGraphicsBufferFormat         Format
   @unused AndroidGraphicsBufferUsage  Usage
+  u32                                 LayerCount
 }
 
 type void* AHardwareBuffer

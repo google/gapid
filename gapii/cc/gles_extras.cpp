@@ -523,7 +523,8 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
         int stride;
         int format;
         int usage;
-        void* reserved[2];
+        int layer_count;
+        void* reserved;
         void* handle;
         void* reserved_proc[8];
     };
@@ -540,7 +541,8 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
         buffer->height,
         buffer->stride,
         buffer->format,
-        buffer->usage
+        buffer->usage,
+        buffer->layer_count
     ));
     GAPID_DEBUG("Created AndroidNativeBufferExtra: width=%i, height=%i", buffer->width, buffer->height);
     observer->encodeAndDelete(extra->toProto());
