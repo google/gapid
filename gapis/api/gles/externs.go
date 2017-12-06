@@ -76,7 +76,7 @@ func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
 	if d := FindEGLImageData(e.cmd.Extras()); d != nil {
 		if GetState(e.s).EGLImages.Contains(id) {
 			ei := GetState(e.s).EGLImages.Get(id)
-			if img := ei.Image; img != nil {
+			for _, img := range ei.Images.Range() {
 				poolID, pool := e.s.Memory.New()
 				pool.Write(0, memory.Resource(d.ID, d.Size))
 				data := U8ˢ{pool: poolID, count: d.Size}
@@ -85,6 +85,7 @@ func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
 				img.Data = data
 				img.DataFormat = d.Format
 				img.DataType = d.Type
+				break // TODO: Support image arrays.
 			}
 		}
 	}

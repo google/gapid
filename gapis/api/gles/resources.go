@@ -80,13 +80,17 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		}
 
 	case GLenum_GL_TEXTURE_EXTERNAL_OES:
-		levels := make([]*image.Info, 1)
-		if ei := t.EGLImage; ei != nil && ei.Image != nil {
-			img, err := ei.Image.ImageInfo(ctx, s)
+		ei := t.EGLImage
+		if ei == nil {
+			return api.NewResourceData(api.NewTexture(&api.Texture2D{})), nil
+		}
+		levels := make([]*image.Info, ei.Images.Len())
+		for i, img := range ei.Images.Range() {
+			ii, err := img.ImageInfo(ctx, s)
 			if err != nil {
 				return nil, err
 			}
-			levels[0] = img
+			levels[i] = ii
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture2D{Levels: levels})), nil
 

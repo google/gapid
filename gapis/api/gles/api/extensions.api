@@ -625,13 +625,16 @@ cmd void glEGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES ima
 
 }
 
-@if(Extension.GL_OES_EGL_image || Extension.GL_OES_EGL_image_external)
+@if(Extension.GL_OES_EGL_image || Extension.GL_EXT_EGL_image_array || Extension.GL_OES_EGL_image_external)
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image.txt", Extension.GL_OES_EGL_image)
+@doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_EGL_image_array.txt", Extension.GL_EXT_EGL_image_array)
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image_external.txt", Extension.GL_OES_EGL_image_external)
 cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
   switch (target) {
     @if(Extension.GL_OES_EGL_image)
     case GL_TEXTURE_2D: {}
+    @if(Extension.GL_EXT_EGL_image_array)
+    case GL_TEXTURE_2D_ARRAY: {}
     @if(Extension.GL_OES_EGL_image_external)
     case GL_TEXTURE_EXTERNAL_OES: {}
     default:
@@ -642,9 +645,12 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
     glErrorInvalidOperation_ObjectDoesNotExist!GLeglImageOES(image)
   }
   t := GetBoundTextureOrErrorInvalidEnum(target)
-  SetTextureImage(t, 0, 0, eglImage.Image)
-  t.EGLImage = eglImage
-  GetEGLImageData(eglImage.ID, eglImage.Image.Width, eglImage.Image.Height)
+
+  for _, l, img in eglImage.Images {
+    SetTextureImage(t, 0, as!GLint(l), img)
+    t.EGLImage = eglImage
+    GetEGLImageData(eglImage.ID, img.Width, img.Height)
+  }
 }
 
 @if(Extension.GL_QCOM_driver_control)

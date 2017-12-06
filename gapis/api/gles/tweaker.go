@@ -375,6 +375,14 @@ func (t *tweaker) glBindTexture_2D(ctx context.Context, id TextureId) {
 	}
 }
 
+func (t *tweaker) glBindTexture_2DArray(ctx context.Context, id TextureId) {
+	if o := t.c.Bound.TextureUnit.Binding2dArray.GetID(); o != id {
+		t.doAndUndo(ctx,
+			t.cb.GlBindTexture(GLenum_GL_TEXTURE_2D_ARRAY, id),
+			t.cb.GlBindTexture(GLenum_GL_TEXTURE_2D_ARRAY, o))
+	}
+}
+
 func (t *tweaker) glBindVertexArray(ctx context.Context, id VertexArrayId) {
 	if o := t.c.Bound.VertexArray.GetID(); o != id {
 		t.doAndUndo(ctx,

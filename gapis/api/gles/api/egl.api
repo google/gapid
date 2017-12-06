@@ -73,7 +73,7 @@ class EGLImage {
   EGLint[]        AttribList
 
   @hidden ref!AndroidNativeBufferExtra Extra
-  @hiddne ref!Image                    Image
+  @hidden map!(EGLint, ref!Image)      Images
 }
 
 @serialize map!(EGLContext, ref!Context)   EGLContexts
@@ -421,23 +421,25 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      display,
       assert(c != null) // EGL_BAD_CONTEXT
       image := GetTextureImage(c.Objects.Textures[as!TextureId(as!u64(buffer))], 0, 0)
       assert(image != null) // EGL_BAD_PARAMETER
-      eglImage.Image = image
+      eglImage.Images[0] = image
     }
     case EGL_NATIVE_BUFFER_ANDROID: {
       info := GetAndroidNativeBufferExtra(as!void*(buffer))
       sf := EGLSizedFormat2GLSizedFormat(info.Format)
       sfInfo := GetSizedFormatInfo(sf)
-      image := new!Image(
-        Width:        as!GLsizei(info.Width),
-        Height:       as!GLsizei(info.Height),
-        SizedFormat:  sf,
-        DataFormat:   sfInfo.UnsizedFormat,
-        DataType:     sfInfo.DataType,
-      )
-      size := uncompressedImageSize(image.Width, image.Height, image.DataFormat, image.DataType)
-      image.Data = make!u8(size)
-      eglImage.Image = image
       eglImage.Extra = info
+      for i in 0 .. max!u32(info.LayerCount, 1) {
+        image := new!Image(
+          Width:        as!GLsizei(info.Width),
+          Height:       as!GLsizei(info.Height),
+          SizedFormat:  sf,
+          DataFormat:   sfInfo.UnsizedFormat,
+          DataType:     sfInfo.DataType,
+        )
+        size := uncompressedImageSize(image.Width, image.Height, image.DataFormat, image.DataType)
+        image.Data = make!u8(size)
+        eglImage.Images[as!EGLint(i)] = image
+      }
     }
   }
   EGLImages[id] = eglImage

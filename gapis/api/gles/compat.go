@@ -1070,18 +1070,32 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 					{
 						// We do not have any kind of native buffers available during replay.
 						// Instead, create a new texture in this context, and point the EGLImage to it.
+
+						imgs := eglImage.Images
+						img := imgs.Get(0)
+						sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
+
 						texID := newTexture(id, cb, out)
 						t := newTweaker(out, dID, cb)
-						t.glBindTexture_2D(ctx, texID)
-						img := eglImage.Image
-						sizedFormat := img.SizedFormat // Might be RGB565 which is not supported on desktop
-						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, id, cmd)
-						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
+						target := cmd.Target
+						switch target {
+						case GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_EXTERNAL_OES:
+							target = GLenum_GL_TEXTURE_2D
+							t.glBindTexture_2D(ctx, texID)
+							textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, &sizedFormat, nil, nil, out, id, cmd)
+							out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width, img.Height, 0, img.DataFormat, img.DataType, memory.Nullptr))
+						case GLenum_GL_TEXTURE_2D_ARRAY:
+							t.glBindTexture_2DArray(ctx, texID)
+							textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D_ARRAY, &sizedFormat, nil, nil, out, id, cmd)
+							out.MutateAndWrite(ctx, dID, cb.GlTexImage3D(GLenum_GL_TEXTURE_2D_ARRAY, 0, GLint(sizedFormat), img.Width, img.Height, GLsizei(imgs.Len()), 0, img.DataFormat, img.DataType, memory.Nullptr))
+						default:
+							panic(fmt.Errorf("Unexpected GlEGLImageTargetTexture2DOES target: %v", target))
+						}
 						// Set the default filtering modes applicable to external images.
 						// This is important as the default (mipmap) mode would result in incomplete texture.
 						// TODO: Ensure that different contexts can set different modes at the same time.
-						out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MIN_FILTER, GLint(GLenum_GL_LINEAR)))
-						out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MAG_FILTER, GLint(GLenum_GL_LINEAR)))
+						out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(target, GLenum_GL_TEXTURE_MIN_FILTER, GLint(GLenum_GL_LINEAR)))
+						out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(target, GLenum_GL_TEXTURE_MAG_FILTER, GLint(GLenum_GL_LINEAR)))
 
 						out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 							eglImage.Context = eglContextHandle[c]
