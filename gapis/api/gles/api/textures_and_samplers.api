@@ -466,6 +466,10 @@ sub void TexImage(TexImageFlags  flags,
           img.Data = make!u8(data_size)
           img.DataFormat = data_format
         }
+      } else if isTexStorageCmd {
+        info := GetSizedFormatInfo(sfBox.SizedFormat)
+        img.Data = make!u8(uncompressedImageSize(width, height, info.UnsizedFormat, info.DataType))
+        img.DataFormat = data_format
       }
     }
   }
