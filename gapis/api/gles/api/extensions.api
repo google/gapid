@@ -648,8 +648,10 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
 
   for _, l, img in eglImage.Images {
     SetTextureImage(t, 0, as!GLint(l), img)
-    t.EGLImage = eglImage
-    GetEGLImageData(eglImage.ID, img.Width, img.Height)
+    if l == 0 {
+      t.EGLImage = eglImage
+      GetEGLImageData(eglImage.ID, img.Width, img.Height)
+    }
   }
 }
 
