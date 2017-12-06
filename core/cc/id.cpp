@@ -20,6 +20,10 @@
 
 #include <string.h>
 
+#include <iomanip>
+#include <string>
+#include <sstream>
+
 namespace {
 
 void hash(const void* ptr, uint64_t size, core::Id& out) {
@@ -44,5 +48,16 @@ Id Id::Hash(const void* ptr, uint64_t size) {
 bool Id::operator == (const Id& rhs) const {
     return memcmp(data, rhs.data, sizeof(data)) == 0;
 }
+
+std::string Id::string() const {
+    std::stringstream ss;
+    ss << "0x";
+    ss << std::setfill('0') << std::hex;
+    for(int i = 0; i < 20; ++i) {
+        ss << std::setw(2) << (unsigned int)data[i];
+    }
+    return ss.str();
+}
+
 
 }  // namespace core
