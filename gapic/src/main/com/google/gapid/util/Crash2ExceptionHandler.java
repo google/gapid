@@ -38,8 +38,7 @@ import java.util.logging.Logger;
 public class Crash2ExceptionHandler implements Thread.UncaughtExceptionHandler, ExceptionHandler {
   protected static final Logger LOG = Logger.getLogger(Crash2ExceptionHandler.class.getName());
 
-  // TODO(baldwinn860): Send to production url when we get approval.
-  protected static final String CRASH_REPORT_URL_BASE = "https://clients2.google.com/cr/staging_report?";
+  protected static final String CRASH_REPORT_URL_BASE = "https://clients2.google.com/cr/report?";
   protected static final String CRASH_REPORT_PRODUCT = "GAPID";
   protected static final String CRASH_REPORT_VERSION = "Client:" + GAPID_VERSION.toString();
   protected static final String CRASH_REPORT_URL = CRASH_REPORT_URL_BASE + getUrlParameters();
