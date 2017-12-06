@@ -18,8 +18,6 @@ package com.google.gapid.views;
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
-import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
-import static com.google.gapid.proto.service.Service.ClientAction.Select;
 import static com.google.gapid.util.Colors.getRandomColor;
 import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.Loadable.MessageType.Error;
@@ -41,6 +39,7 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -124,7 +123,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
       @Override
       protected void updateModel(Event e) {
-        models.analytics.postInteraction(View.Commands, "node", Select);
+        models.analytics.postInteraction(View.Commands, ClientAction.Select);
         AtomStream.Node node = tree.getSelection();
         if (node != null) {
           AtomIndex index = node.getIndex();
@@ -150,7 +149,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
         AtomEditor.shouldShowEditPopup(node.getCommand()));
 
     tree.registerAsCopySource(widgets.copypaste, node -> {
-      models.analytics.postInteraction(View.Commands, "copy", Invoke);
+      models.analytics.postInteraction(View.Commands, ClientAction.Copy);
       Service.CommandTreeNode data = node.getData();
       if (data == null) {
         // Copy before loaded. Not ideal, but this is unlikely.
@@ -175,7 +174,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   private void search(String text, boolean regex) {
-    models.analytics.postInteraction(View.Commands, "search", Invoke);
+    models.analytics.postInteraction(View.Commands, ClientAction.Search);
     AtomStream.Node parent = models.atoms.getData();
     if (parent != null && !text.isEmpty()) {
       AtomStream.Node selection = tree.getSelection();

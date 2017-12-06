@@ -15,8 +15,6 @@
  */
 package com.google.gapid.widgets;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Move;
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.GeoUtils.withW;
 import static com.google.gapid.util.GeoUtils.withX;
@@ -29,6 +27,7 @@ import static com.google.gapid.widgets.Widgets.createTabItem;
 import com.google.common.base.Objects;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
+import com.google.gapid.proto.service.Service.ClientAction;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
@@ -98,7 +97,7 @@ public class TabArea extends Composite {
       @Override
       public void onTabMoved(
           CTabFolder sourceFolder, CTabItem oldItem, CTabFolder destFolder, CTabItem newItem) {
-        analytics.postInteraction(TabInfo.getFrom(newItem).view, "tab", Move);
+        analytics.postInteraction(TabInfo.getFrom(newItem).view, ClientAction.Move);
         if (sourceFolder.getItemCount() == 0 || destFolder.getItemCount() == 1) {
           updateEmptyFolders();
         }
@@ -515,10 +514,10 @@ public class TabArea extends Composite {
       }
 
       folder.addListener(SWT.Selection, e -> {
-        analytics.postInteraction(TabInfo.getFrom(e.item).view, "tab", Show);
+        analytics.postInteraction(TabInfo.getFrom(e.item).view, ClientAction.Show);
       });
       if (info.tabs.length != 0) {
-        analytics.postInteraction(info.tabs[0].view, "tab", Show);
+        analytics.postInteraction(info.tabs[0].view, ClientAction.Show);
       }
     }
 

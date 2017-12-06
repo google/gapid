@@ -15,7 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static org.eclipse.jface.dialogs.IDialogConstants.OK_ID;
@@ -27,6 +26,7 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.pkginfo.PkgInfo;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.server.GapitPkgInfoProcess;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable.MessageType;
@@ -166,7 +166,7 @@ public class ActivityPickerDialog extends DialogBase {
 
   @Override
   public int open() {
-    models.analytics.postInteraction(View.Trace, "activityPicker", Show);
+    models.analytics.postInteraction(View.Trace, ClientAction.ShowActivityPicker);
     return super.open();
   }
 

@@ -15,7 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
@@ -27,6 +26,7 @@ import static com.google.gapid.widgets.Widgets.withSpans;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
@@ -62,7 +62,7 @@ public class SettingsDialog extends DialogBase {
   }
 
   public static void showSettingsDialog(Shell shell, Models models, Theme theme) {
-    models.analytics.postInteraction(View.Main, "settings", Show);
+    models.analytics.postInteraction(View.Settings, ClientAction.Show);
     new SettingsDialog(shell, models.settings, theme).open();
   }
 

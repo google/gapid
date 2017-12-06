@@ -15,9 +15,6 @@
  */
 package com.google.gapid;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Hide;
-import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.views.AboutDialog.showAbout;
 import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.AboutDialog.showLogDir;
@@ -40,6 +37,7 @@ import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.MacApplication;
@@ -331,7 +329,7 @@ public class MainWindow extends ApplicationWindow {
         m.add(new Action(file) {
           @Override
           public void run() {
-            models().analytics.postInteraction(View.Main, "openRecent", Invoke);
+            models().analytics.postInteraction(View.Main, ClientAction.OpenRecent);
             models().capture.loadCapture(new File(file));
           }
         });
@@ -343,7 +341,7 @@ public class MainWindow extends ApplicationWindow {
   private MenuManager createEditMenu() {
     MenuManager manager = new MenuManager("&Edit");
     editCopy = MenuItems.EditCopy.create(() -> {
-      models().analytics.postInteraction(View.Main, "copy", Invoke);
+      models().analytics.postInteraction(View.Main, ClientAction.Copy);
       widgets().copypaste.doCopy();
     });
 
@@ -374,21 +372,24 @@ public class MainWindow extends ApplicationWindow {
     MenuManager manager = new MenuManager("&View");
     viewScrubber = MenuItems.ViewThumbnails.createCheckbox(show -> {
       if (splitter != null) {
-        models().analytics.postInteraction(View.Main, "filmStrip", show ? Show : Hide);
+        models().analytics.postInteraction(
+            View.FilmStrip, show ? ClientAction.Enable : ClientAction.Disable);
         splitter.setTopVisible(show);
         models().settings.hideScrubber = !show;
       }
     });
     viewLeft = MenuItems.ViewLeft.createCheckbox(show -> {
       if (tabs != null) {
-        models().analytics.postInteraction(View.Main, "leftTabs", show ? Show : Hide);
+        models().analytics.postInteraction(
+            View.LeftTabs, show ? ClientAction.Enable : ClientAction.Disable);
         tabs.setLeftVisible(show);
         models().settings.hideLeft = !show;
       }
     });
     viewRight = MenuItems.ViewRight.createCheckbox(show -> {
       if (tabs != null) {
-        models().analytics.postInteraction(View.Main, "rightTabs", show ? Show : Hide);
+        models().analytics.postInteraction(
+            View.RightTabs, show ? ClientAction.Enable : ClientAction.Disable);
         tabs.setRightVisible(show);
         models().settings.hideRight = !show;
       }
@@ -405,7 +406,8 @@ public class MainWindow extends ApplicationWindow {
     MenuManager manager = new MenuManager("&Tabs");
     for (MainTab.Type type : MainTab.Type.values()) {
       Action action = type.createAction(shown -> {
-        models().analytics.postInteraction(type.view, "menu", shown ? Show : Hide);
+        models().analytics.postInteraction(
+            type.view, shown ? ClientAction.Enable : ClientAction.Disable);
         if (shown) {
           tabs.addNewTabToCenter(new MainTab(type, parent -> {
             Tab tab = type.factory.create(parent, client, models(), widgets());

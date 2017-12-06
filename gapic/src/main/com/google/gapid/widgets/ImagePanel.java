@@ -15,9 +15,6 @@
  */
 package com.google.gapid.widgets;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Hide;
-import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.Caches.getUnchecked;
 import static com.google.gapid.util.Caches.softCache;
 import static com.google.gapid.util.Loadable.MessageType.Error;
@@ -53,6 +50,7 @@ import com.google.gapid.image.Image.PixelValue;
 import com.google.gapid.image.MultiLayerAndLevelImage;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.stream.Stream.Channel;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -364,32 +362,33 @@ public class ImagePanel extends Composite implements Loadable {
 
   public void createToolbar(ToolBar bar, Theme theme) {
     zoomFitItem = createToggleToolItem(bar, theme.zoomFit(), e -> {
-      analytics.postInteraction(view, "zoomFit", Invoke);
+      analytics.postInteraction(view, ClientAction.ZoomFit);
       setZoomMode(((ToolItem)e.widget).getSelection() ?
           ZoomMode.ZOOM_TO_FIT : ZoomMode.ZOOM_MANUAL);
     }, "Zoom to fit");
     zoomActualItem = createToggleToolItem(bar, theme.zoomActual(), e -> {
-      analytics.postInteraction(view, "zoomActual", Invoke);
+      analytics.postInteraction(view, ClientAction.ZoomActual);
       setZoomMode(((ToolItem)e.widget).getSelection() ?
           ZoomMode.ZOOM_TO_ACTUAL : ZoomMode.ZOOM_MANUAL);
     }, "Original size");
     setZoomMode(ZoomMode.ZOOM_TO_FIT);
     createToolItem(bar, theme.zoomIn(), e -> {
-      analytics.postInteraction(view, "zoomIn", Invoke);
+      analytics.postInteraction(view, ClientAction.ZoomIn);
       zoom(-ZOOM_AMOUNT);
     }, "Zoom in");
     createToolItem(bar, theme.zoomOut(), e -> {
-      analytics.postInteraction(view, "zoomOut", Invoke);
+      analytics.postInteraction(view, ClientAction.ZoomOut);
       zoom(ZOOM_AMOUNT);
     }, "Zoom out");
     createSeparator(bar);
     createToggleToolItem(bar, theme.toggleHistogram(), e -> {
       boolean show = ((ToolItem)e.widget).getSelection();
-      analytics.postInteraction(view, "histogram", show ? Show : Hide);
+      analytics.postInteraction(
+          view, show ? ClientAction.ShowHistogram : ClientAction.HideHistogram);
       setShowHistogram(show);
     }, "Toggle histogram");
     colorChanelsItem = createBaloonToolItem(bar, theme.colorChannels()[15], shell -> {
-      analytics.postInteraction(view, "colorChannels", Show);
+      analytics.postInteraction(view, ClientAction.ShowColorChannels);
       Composite c = createComposite(shell, new RowLayout(SWT.HORIZONTAL), SWT.BORDER);
       final ImageComponent i = imageComponent;
       createCheckbox(c, "Red", i.isChannelEnabled(CHANNEL_RED), e -> {
@@ -410,12 +409,12 @@ public class ImagePanel extends Composite implements Loadable {
       });
     }, "Color channel selection");
     backgroundItem = createBaloonToolItem(bar, theme.transparency(), shell -> {
-      analytics.postInteraction(view, "background", Show);
+      analytics.postInteraction(view, ClientAction.ShowBackground);
       backgroundSelection.createBaloonContents(
           shell, theme, mode -> updateBackgroundMode(mode, theme));
     }, "Choose image background");
     createToggleToolItem(bar, theme.flipVertically(), e -> {
-      analytics.postInteraction(view, "flip", Invoke);
+      analytics.postInteraction(view, ClientAction.Flip);
       imageComponent.setFlipped(((ToolItem)e.widget).getSelection());
     }, "Flip vertically");
     createSeparator(bar);
@@ -465,7 +464,7 @@ public class ImagePanel extends Composite implements Loadable {
   }
 
   protected void save() {
-    analytics.postInteraction(view, "save", Show);
+    analytics.postInteraction(view, ClientAction.Save);
     FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
     dialog.setText("Save image to...");
     dialog.setFilterNames(new String[] { "PNG Images" });

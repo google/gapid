@@ -15,7 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.Paths.memoryAfter;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
@@ -23,6 +22,7 @@ import static com.google.gapid.widgets.Widgets.createTextbox;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Messages;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -44,7 +44,7 @@ public class GotoMemory {
   }
 
   public static void showGotoMemoryDialog(Shell shell, Models models) {
-    models.analytics.postInteraction(View.Main, "gotoMemory", Show);
+    models.analytics.postInteraction(View.GotoMemory, ClientAction.Show);
     GotoDialog dialog = new GotoDialog(shell);
     if (dialog.open() == Window.OK) {
       long address;

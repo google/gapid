@@ -15,8 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
-import static com.google.gapid.proto.service.Service.ClientAction.Select;
 import static com.google.gapid.util.Colors.BLACK;
 import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.WHITE;
@@ -47,6 +45,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -133,7 +132,7 @@ public class ShaderView extends Composite
     ShaderPanel panel = new ShaderPanel(parent, models, widgets.theme, Type.shader((data, src) -> {
       API.Shader shader = (data == null) ? null : (API.Shader)data.resource;
       if (shader != null) {
-        models.analytics.postInteraction(View.Shaders, "edit", Invoke);
+        models.analytics.postInteraction(View.Shaders, ClientAction.Edit);
         Service.Value value = Service.Value.newBuilder()
             .setResourceData(API.ResourceData.newBuilder()
                 .setShader(shader.toBuilder()
@@ -156,7 +155,7 @@ public class ShaderView extends Composite
       }
     }));
     panel.addListener(SWT.Selection, e -> {
-      models.analytics.postInteraction(View.Shaders, "shaders", Select);
+      models.analytics.postInteraction(View.Shaders, ClientAction.SelectShader);
       getShaderSource((Data)e.data, panel::setSource);
     });
     return panel;
@@ -172,7 +171,7 @@ public class ShaderView extends Composite
     splitter.setWeights(models.settings.shaderSplitterWeights);
 
     panel.addListener(SWT.Selection, e -> {
-      models.analytics.postInteraction(View.Shaders, "programs", Select);
+      models.analytics.postInteraction(View.Shaders, ClientAction.SelectProgram);
       getProgramSource((Data)e.data, program ->
           scheduleIfNotDisposed(uniforms, () -> uniforms.setUniforms(program)), panel::setSource);
     });
