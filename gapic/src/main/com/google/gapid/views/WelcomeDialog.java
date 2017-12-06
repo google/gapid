@@ -49,6 +49,7 @@ import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
@@ -62,9 +63,22 @@ import java.util.function.Consumer;
  * Welcome dialog shown when the application is run without a capture as an argument.
  */
 public class WelcomeDialog {
+  private static final String API_TOS_URL = "https://developers.google.com/terms/";
   private static final String PRIVACY_POLICY_URL = "https://www.google.com/policies/privacy/";
 
   private WelcomeDialog() {
+  }
+
+  public static void showPolicy(Event evt) {
+    if ("TOS".equals(evt.text)) {
+      showApiTermsOfService();
+    } else {
+      showPrivacyPolicy();
+    }
+  }
+
+  public static void showApiTermsOfService() {
+    Program.launch(API_TOS_URL);
   }
 
   public static void showPrivacyPolicy() {
@@ -106,7 +120,7 @@ public class WelcomeDialog {
               createCheckbox(form, Messages.UPDATE_CHECK_OPTION, true),
               withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
           withLayoutData(
-              createLink(form, Messages.PRIVACY_POLICY, e -> showPrivacyPolicy()),
+              createLink(form, Messages.PRIVACY_POLICY, WelcomeDialog::showPolicy),
               withIndents(
                   withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1), 0, 20));
         });

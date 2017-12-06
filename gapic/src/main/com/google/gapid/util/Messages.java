@@ -61,7 +61,8 @@ public interface Messages {
       "Help GAPID identify issues by sending crash reports to Google";
   public static final String UPDATE_CHECK_OPTION = "Automatically check for GAPID updates";
   public static final String PRIVACY_POLICY =
-      "This data is collected in accordance with Google's <a>privacy policy</a>.";
+      "Google's <a href=\"TOS\">APIs Terms of Service</a> and <a href=\"PP\">Privacy Policy</a>" +
+      " govern your use of this application.";
   public static final String NO_REPLAY_DEVICE = "No replay device available for this capture.";
   public static final String SETTINGS_TITLE = "Modify Settings";
   public static final String ERROR_MESSAGE =
