@@ -75,6 +75,9 @@ cd gapid/opt/
 zip -r ../../gapid-$VERSION-linux.zip gapid/
 cd ../../
 
+# Copy the GAPIR symbols
+cp ../current/gapir.sym gapir-$VERSION-linux.sym
+
 # Build the .deb package.
 echo "$(date): Building package."
 fakeroot dpkg-deb -v --build gapid

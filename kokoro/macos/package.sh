@@ -58,6 +58,9 @@ for i in 512 256 128 64 32 16; do
 done
 iconutil -c icns -o GAPID.app/Contents/Resources/GAPID.icns GAPID.iconset
 
+# Copy the GAPIR Symbols
+cp ../current/gapir.sym gapir-$VERSION-macos.sym
+
 # Make a dmg file.
 pip install --upgrade --user dmgbuild pyobjc-framework-Quartz
 cp "$SRC"/background*.png .
