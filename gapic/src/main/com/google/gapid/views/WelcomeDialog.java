@@ -15,8 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.views.AboutDialog.showHelp;
@@ -35,6 +33,7 @@ import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
@@ -148,7 +147,7 @@ public class WelcomeDialog {
   }
 
   public static void showWelcomeDialog(Shell shell, Models models, Widgets widgets) {
-    models.analytics.postInteraction(View.Main, "welcome", Show);
+    models.analytics.postInteraction(View.Welcome, ClientAction.Show);
     new WelcomeDialogBase(shell, widgets.theme) {
       private Button showWelcome;
 
@@ -169,7 +168,7 @@ public class WelcomeDialog {
               Menu popup = new Menu(c);
               for (String file : models.settings.recentFiles) {
                 createMenuItem(popup, file, 0, ev -> {
-                  models.analytics.postInteraction(View.Main, "openRecent", Invoke);
+                  models.analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
                   close(true);
                   models.capture.loadCapture(new File(file));
                 });

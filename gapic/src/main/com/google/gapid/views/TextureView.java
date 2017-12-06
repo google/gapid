@@ -15,8 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.proto.service.api.API.ResourceType.TextureResource;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.util.Loadable.MessageType.Error;
@@ -46,6 +44,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -541,7 +540,7 @@ public class TextureView extends Composite
 
     public ToolItem createToolItem(ToolBar bar) {
       item = Widgets.createToolItem(bar, theme.jump(), e -> {
-        models.analytics.postInteraction(View.Textures, "goto", Show);
+        models.analytics.postInteraction(View.Textures, ClientAction.ShowReferences);
         popupMenu.setLocation(bar.toDisplay(bottomLeft(((ToolItem)e.widget).getBounds())));
         popupMenu.setVisible(true);
         loadAllCommands();
@@ -576,7 +575,7 @@ public class TextureView extends Composite
         Path.Command id = atomIds.get(i);
         MenuItem child = createMenuItem(
             popupMenu, Formatter.atomIndex(id) + ": Loading...", 0, e -> {
-              models.analytics.postInteraction(View.Textures, "goto", Invoke);
+              models.analytics.postInteraction(View.Textures, ClientAction.GotoReference);
               listener.accept(id);
             });
         child.setData(id);

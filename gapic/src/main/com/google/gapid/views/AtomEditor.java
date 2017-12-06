@@ -15,8 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
@@ -30,6 +28,7 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.ConstantSets;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.path.Path;
@@ -96,10 +95,10 @@ public class AtomEditor {
   }
 
   public void showEditPopup(Shell parent, Path.Command path, API.Command command) {
-    models.analytics.postInteraction(View.Commands, "edit", Show);
+    models.analytics.postInteraction(View.Commands, ClientAction.ShowEdit);
     EditDialog dialog = new EditDialog(parent, models, theme, command);
     if (dialog.open() == Window.OK) {
-      models.analytics.postInteraction(View.Commands, "edit", Invoke);
+      models.analytics.postInteraction(View.Commands, ClientAction.Edit);
       Rpc.listen(client.set(Paths.toAny(path), Values.value(dialog.newAtom)),
           new UiCallback<Path.Any, Path.Any>(parent, LOG) {
         @Override

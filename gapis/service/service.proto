@@ -319,20 +319,64 @@ message FindResponse {
   }
 }
 
-
 enum ClientAction {
   Undefined = 0;
-  Show = 1;
-  Hide = 2;
-  Move = 3;
-  Select = 4;
-  Invoke = 5;
+  Color0 = 1;
+  Color1 = 2;
+  Color2 = 3;
+  Color3 = 4;
+  Copy = 5;
+  CullOn = 6;
+  CullOff = 7;
+  Depth = 8;
+  Disable = 9;
+  Edit = 10;
+  Enable = 11;
+  Faceted = 12;
+  Flat = 13;
+  Flip = 14;
+  GotoReference = 15;
+  HideHistogram = 16;
+  Move = 17;
+  Normals = 18;
+  Open = 19;
+  OpenRecent = 20;
+  OverlayWireframe = 21;
+  Points = 22;
+  Save = 23;
+  Search = 24;
+  Select = 25;
+  SelectObservation = 26;
+  SelectProgram = 27;
+  SelectShader = 28;
+  Shaded = 29;
+  Show = 30;
+  ShowActivityPicker = 31;
+  ShowBackground = 32;
+  ShowColorChannels = 33;
+  ShowEdit = 34;
+  ShowError = 35;
+  ShowHelp = 36;
+  ShowHistogram = 37;
+  ShowLogDir = 38;
+  ShowReferences = 39;
+  ShowTargets = 40;
+  Smooth = 41;
+  Triangles = 42;
+  WindingCCW = 43;
+  WindingCW = 44;
+  Wireframe = 45;
+  YUp = 46;
+  ZUp = 47;
+  ZoomActual = 48;
+  ZoomFit = 49;
+  ZoomIn = 50;
+  ZoomOut = 51;
 }
 
 message ClientInteraction {
   string view = 1;
-  string control = 2;
-  ClientAction action = 3;
+  ClientAction action = 2;
 };
 
 message EnableCrashReportingRequest {

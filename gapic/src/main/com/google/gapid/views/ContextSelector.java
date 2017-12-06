@@ -15,13 +15,13 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Select;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service.ClientAction;
 
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
@@ -53,7 +53,7 @@ public class ContextSelector extends Composite implements ApiContext.Listener {
     });
 
     contextCombo.getCombo().addListener(SWT.Selection, e -> {
-      models.analytics.postInteraction(View.ContextSelector, "contet", Select);
+      models.analytics.postInteraction(View.ContextSelector, ClientAction.Select);
       int selection = contextCombo.getCombo().getSelectionIndex();
       if (selection >= 0 && selection < models.contexts.count()) {
         models.contexts.selectContext(models.contexts.getData()[selection]);

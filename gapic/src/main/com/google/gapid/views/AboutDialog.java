@@ -15,7 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -26,6 +25,7 @@ import static java.util.logging.Level.SEVERE;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Info;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
@@ -56,12 +56,12 @@ public class AboutDialog {
   }
 
   public static void showHelp(Analytics analytics) {
-    analytics.postInteraction(View.Main, "help", Show);
+    analytics.postInteraction(View.Main, ClientAction.ShowHelp);
     Program.launch(HELP_URL);
   }
 
   public static void showLogDir(Analytics analytics) {
-    analytics.postInteraction(View.Main, "logDir", Show);
+    analytics.postInteraction(View.Main, ClientAction.ShowLogDir);
     try {
       OS.openFileInSystemExplorer(Logging.getLogDir());
     } catch (IOException e) {
@@ -70,7 +70,7 @@ public class AboutDialog {
   }
 
   public static void showAbout(Shell shell, Analytics analytics, Theme theme) {
-    analytics.postInteraction(View.Main, "about", Show);
+    analytics.postInteraction(View.About, ClientAction.Show);
     new DialogBase(shell, theme) {
       @Override
       public String getTitle() {

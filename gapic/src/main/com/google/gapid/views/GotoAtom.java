@@ -15,7 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSpinner;
@@ -24,6 +23,7 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.AtomStream;
 import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Messages;
 
@@ -46,7 +46,7 @@ public class GotoAtom {
   }
 
   public static void showGotoAtomDialog(Shell shell, Models models) {
-    models.analytics.postInteraction(View.Main, "gotoCommand", Show);
+    models.analytics.postInteraction(View.GotoCommand, ClientAction.Show);
     GotoDialog dialog = new GotoDialog(shell, models.atoms);
     if (dialog.open() == Window.OK) {
       models.atoms.selectAtoms(AtomIndex.forCommand(Path.Command.newBuilder()

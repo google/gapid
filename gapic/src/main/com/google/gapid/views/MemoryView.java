@@ -15,8 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
-import static com.google.gapid.proto.service.Service.ClientAction.Select;
 import static com.google.gapid.util.GeoUtils.top;
 import static com.google.gapid.util.Loadable.Message.error;
 import static com.google.gapid.util.Loadable.Message.info;
@@ -47,6 +45,7 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -243,7 +242,7 @@ public class MemoryView extends Composite
   }
 
   private void setObservation(Observation obs) {
-    models.analytics.postInteraction(View.Memory, "observation", Select);
+    models.analytics.postInteraction(View.Memory, ClientAction.SelectObservation);
     Path.Memory memoryPath = obs.getPath();
     uiState.update(memoryPath);
     update(memoryPath.getAddress());
@@ -536,7 +535,7 @@ public class MemoryView extends Composite
               selection = null;
               parent.redraw();
             } else {
-              analytics.postInteraction(View.Memory, "range", Select);
+              analytics.postInteraction(View.Memory, ClientAction.Select);
             }
           }
         }
@@ -614,7 +613,7 @@ public class MemoryView extends Composite
 
         @Override
         public CopyData[] getCopyData() {
-          analytics.postInteraction(View.Memory, "copy", Invoke);
+          analytics.postInteraction(View.Memory, ClientAction.Copy);
           return model.getCopyData(selection);
         }
       });

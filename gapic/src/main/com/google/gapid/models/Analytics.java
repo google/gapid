@@ -31,7 +31,8 @@ public class Analytics implements ExceptionHandler {
   private static final Logger LOG = Logger.getLogger(Analytics.class.getName());
 
   public static enum View {
-    Main, Trace,
+    Main, FilmStrip, LeftTabs, RightTabs,
+    About, GotoCommand, GotoMemory, Licenses, Settings, Trace, Welcome,
     // See MainWindow.MainTab.Type
     Commands, Framebuffer, Textures, Geometry, Shaders, Report, Log, State, Memory,
     ContextSelector;
@@ -58,10 +59,10 @@ public class Analytics implements ExceptionHandler {
     }
   }
 
-  public void postInteraction(View view, String control, Service.ClientAction action) {
-    LOG.log(FINE, "Interaction {2} on {0}.{1}", new Object[] { view, control, action });
+  public void postInteraction(View view, Service.ClientAction action) {
+    LOG.log(FINE, "Interaction {1} on {0}", new Object[] { view, action });
     if (enabled) {
-      Rpc.listen(client.postEvent(interaction(view, control, action)), Analytics::logIfFailure);
+      Rpc.listen(client.postEvent(interaction(view, action)), Analytics::logIfFailure);
     }
   }
 
@@ -84,11 +85,9 @@ public class Analytics implements ExceptionHandler {
     }
   }
 
-  private static Service.ClientInteraction interaction(
-      View view, String control, Service.ClientAction action) {
+  private static Service.ClientInteraction interaction(View view, Service.ClientAction action) {
     return Service.ClientInteraction.newBuilder()
         .setView(view.name())
-        .setControl(control)
         .setAction(action)
         .build();
   }

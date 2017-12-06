@@ -15,7 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -39,6 +38,7 @@ import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.device.Device;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.AndroidTraceRequest;
 import com.google.gapid.server.Tracer.DesktopTraceRequest;
@@ -93,7 +93,7 @@ public class TracerDialog {
   }
 
   public static void showOpenTraceDialog(Shell shell, Models models) {
-    models.analytics.postInteraction(View.Main, "openTrace", Show);
+    models.analytics.postInteraction(View.Main, ClientAction.Open);
     FileDialog dialog = new FileDialog(shell, SWT.OPEN);
     dialog.setFilterNames(new String[] { "Trace Files (*.gfxtrace)", "All Files" });
     dialog.setFilterExtensions(new String[] { "*.gfxtrace", "*" });
@@ -105,7 +105,7 @@ public class TracerDialog {
   }
 
   public static void showSaveTraceDialog(Shell shell, Models models) {
-    models.analytics.postInteraction(View.Main, "saveTrace", Show);
+    models.analytics.postInteraction(View.Main, ClientAction.Save);
     FileDialog dialog = new FileDialog(shell, SWT.SAVE);
     dialog.setFilterNames(new String[] { "Trace Files (*.gfxtrace)", "All Files" });
     dialog.setFilterExtensions(new String[] { "*.gfxtrace", "*" });
@@ -117,7 +117,7 @@ public class TracerDialog {
   }
 
   public static void showTracingDialog(Shell shell, Models models, Widgets widgets) {
-    models.analytics.postInteraction(View.Trace, "input", Show);
+    models.analytics.postInteraction(View.Trace, ClientAction.Show);
     TraceInputDialog input =
         new TraceInputDialog(shell, models, widgets, models.devices::loadDevices);
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {
