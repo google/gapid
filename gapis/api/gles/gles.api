@@ -107,6 +107,7 @@ class SupportedExtensions {
   bool GL_EXT_draw_elements_base_vertex                = true
   bool GL_EXT_draw_instanced                           = true
   bool GL_EXT_draw_transform_feedback                  = true
+  bool GL_EXT_EGL_image_array                          = true
   bool GL_EXT_geometry_shader                          = true
   bool GL_EXT_instanced_arrays                         = true
   bool GL_EXT_map_buffer_range                         = true
@@ -119,11 +120,11 @@ class SupportedExtensions {
   bool GL_EXT_primitive_bounding_box                   = true
   bool GL_EXT_raster_multisample                       = true
   bool GL_EXT_robustness                               = true
-  bool GL_EXT_sRGB_write_control                       = true
   bool GL_EXT_separate_shader_objects                  = true
   bool GL_EXT_shader_pixel_local_storage2              = true
   bool GL_EXT_shadow_samplers                          = true
   bool GL_EXT_sparse_texture                           = true
+  bool GL_EXT_sRGB_write_control                       = true
   bool GL_EXT_tessellation_shader                      = true
   bool GL_EXT_texture_border_clamp                     = true
   bool GL_EXT_texture_buffer                           = true
@@ -249,6 +250,7 @@ sub ref!SupportedExtensions InitSupportedExtensions(ref!Context ctx) {
     GL_EXT_draw_elements_base_vertex:                 set.Strings["GL_EXT_draw_elements_base_vertex"],
     GL_EXT_draw_instanced:                            set.Strings["GL_EXT_draw_instanced"],
     GL_EXT_draw_transform_feedback:                   set.Strings["GL_EXT_draw_transform_feedback"],
+    GL_EXT_EGL_image_array:                           set.Strings["GL_EXT_EGL_image_array"],
     GL_EXT_geometry_shader:                           set.Strings["GL_EXT_geometry_shader"],
     GL_EXT_instanced_arrays:                          set.Strings["GL_EXT_instanced_arrays"],
     GL_EXT_map_buffer_range:                          set.Strings["GL_EXT_map_buffer_range"],
