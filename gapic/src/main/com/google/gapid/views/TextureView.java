@@ -106,8 +106,7 @@ public class TextureView extends Composite
   private final GotoAction gotoAction;
   private final TableViewer textureTable;
   private final ImageProvider imageProvider;
-  protected final Loadable loading;
-  private final ImagePanel imagePanel;
+  protected final ImagePanel imagePanel;
 
   public TextureView(Composite parent, Client client, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -125,7 +124,6 @@ public class TextureView extends Composite
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
     ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
     imagePanel = new ImagePanel(imageAndToolbar, View.Textures, models.analytics, widgets, false);
-    loading = imagePanel.getLoading();
 
     splitter.setWeights(models.settings.texturesSplitterWeights);
     addListener(SWT.Dispose, e -> models.settings.texturesSplitterWeights = splitter.getWeights());
@@ -192,14 +190,14 @@ public class TextureView extends Composite
 
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
-    loading.showMessage(Info, Messages.LOADING_CAPTURE);
+    imagePanel.showMessage(Info, Messages.LOADING_CAPTURE);
     clear();
   }
 
   @Override
   public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
-      loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+      imagePanel.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
       clear();
     }
   }
@@ -234,13 +232,13 @@ public class TextureView extends Composite
       textureTable.setComparator(comparator);
 
       if (textures.isEmpty()) {
-        loading.showMessage(Info, Messages.NO_TEXTURES);
+        imagePanel.showMessage(Info, Messages.NO_TEXTURES);
       } else if (textureTable.getTable().getSelectionIndex() < 0) {
-        loading.showMessage(Info, Messages.SELECT_TEXTURE);
+        imagePanel.showMessage(Info, Messages.SELECT_TEXTURE);
       }
       updateSelection();
     } else {
-      loading.showMessage(Info, Messages.SELECT_ATOM);
+      imagePanel.showMessage(Info, Messages.SELECT_ATOM);
       clear();
     }
   }
@@ -258,7 +256,7 @@ public class TextureView extends Composite
       setImage(null);
       gotoAction.clear();
     } else {
-      loading.startLoading();
+      imagePanel.startLoading();
       Data data = (Data)textureTable.getElementAt(selection);
       rpcController.start().listen(FetchedImage.load(client, data.path.getResourceData()),
           new UiErrorCallback<FetchedImage, FetchedImage, String>(this, LOG) {
@@ -280,7 +278,7 @@ public class TextureView extends Composite
         @Override
         protected void onUiThreadError(String error) {
           setImage(null);
-          loading.showMessage(Info, error);
+          imagePanel.showMessage(Info, error);
         }
       });
       gotoAction.setAtomIds(data.info.getAccessesList(), data.path.getResourceData().getAfter());

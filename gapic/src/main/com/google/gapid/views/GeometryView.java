@@ -156,6 +156,8 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     originalModelItem.setEnabled(false);
     facetedModelItem.setEnabled(false);
     saveItem.setEnabled(false);
+
+    checkOpenGLAndShowMessage(null, null);
   }
 
   private ToolBar createToolbar(Theme theme) {
@@ -260,7 +262,7 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   @Override
   public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
-      loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+      checkOpenGLAndShowMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }
   }
 
@@ -279,18 +281,22 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     if (!assumeLoading && models.atoms.isLoaded()) {
       AtomIndex atom = models.atoms.getSelectedAtoms();
       if (atom == null) {
-        loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
+        checkOpenGLAndShowMessage(Info, Messages.SELECT_DRAW_CALL);
         saveItem.setEnabled(false);
       } else {
         fetchMeshes(atom);
       }
     } else {
-      loading.showMessage(Info, Messages.LOADING_CAPTURE);
+      checkOpenGLAndShowMessage(Info, Messages.LOADING_CAPTURE);
       saveItem.setEnabled(false);
     }
   }
 
   private void fetchMeshes(AtomIndex atom) {
+    if (!canvas.isOpenGL()) {
+      return;
+    }
+
     loading.startLoading();
     ListenableFuture<Model> originalFuture = fetchModel(
         meshAfter(atom, Path.MeshOptions.getDefaultInstance(), POS_NORM_XYZ_F32));
@@ -447,5 +453,13 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     this.data = data;
     camera.setEmitter(data.geometry.getEmitter());
     canvas.setSceneData(data);
+  }
+
+  private void checkOpenGLAndShowMessage(Loadable.MessageType type, String text) {
+    if (!canvas.isOpenGL()) {
+      loading.showMessage(Error, Messages.NO_OPENGL);
+    } else if (type != null && text != null) {
+      loading.showMessage(type, text);
+    }
   }
 }

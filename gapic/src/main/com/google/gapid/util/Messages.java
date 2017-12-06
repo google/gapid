@@ -72,4 +72,6 @@ public interface Messages {
       "OS: " + OS.name + " " + OS.arch + "\n\n" +
       "Please provide detailed steps that led to the error and copy-paste the stack trace.\n" +
       "Extra details from the logs and the trace file would be extra helpful.\n\n";
+  public static final String NO_OPENGL =
+      "Failed to create an OpenGL context. OpenGL is required to use this application.";
 }

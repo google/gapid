@@ -20,6 +20,7 @@ import static com.google.gapid.proto.service.Service.ClientAction.Invoke;
 import static com.google.gapid.proto.service.Service.ClientAction.Show;
 import static com.google.gapid.util.Caches.getUnchecked;
 import static com.google.gapid.util.Caches.softCache;
+import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
@@ -106,7 +107,7 @@ import java.util.logging.Logger;
 /**
  * Image viewer panel with various image inspection tools.
  */
-public class ImagePanel extends Composite {
+public class ImagePanel extends Composite implements Loadable {
   protected static final Logger LOG = Logger.getLogger(ImagePanel.class.getName());
   protected static final int ZOOM_AMOUNT = 5;
   protected static final int NUM_HISTOGRAM_BINS = 256;
@@ -320,6 +321,10 @@ public class ImagePanel extends Composite {
     });
 
     addListener(SWT.Dispose, e -> backgroundSelection.dispose());
+
+    if (!imageComponent.isOpenGL()) {
+      loading.showMessage(Error, Messages.NO_OPENGL);
+    }
   }
 
   protected void setPreviewPixel(Pixel pixel) {
@@ -334,6 +339,27 @@ public class ImagePanel extends Composite {
   private void setAlphaEnabled(boolean enabled) {
     imageComponent.autoToggleAlphaChannel(enabled);
     updateColorChannelsIcon();
+  }
+
+  @Override
+  public void startLoading() {
+    if (imageComponent.isOpenGL()) {
+      loading.startLoading();
+    }
+  }
+
+  @Override
+  public void stopLoading() {
+    if (imageComponent.isOpenGL()) {
+      loading.stopLoading();
+    }
+  }
+
+  @Override
+  public void showMessage(MessageType type, String text) {
+    if (imageComponent.isOpenGL()) {
+      loading.showMessage(type, text);
+    }
   }
 
   public void createToolbar(ToolBar bar, Theme theme) {
@@ -453,10 +479,6 @@ public class ImagePanel extends Composite {
     }
   }
 
-  public Loadable getLoading() {
-    return loading;
-  }
-
   public void setImage(MultiLayerAndLevelImage image) {
     if (image == null || image == MultiLayerAndLevelImage.EMPTY) {
       clearImage();
@@ -481,7 +503,7 @@ public class ImagePanel extends Composite {
   private void loadLevel(int requestedLecel) {
     if (image.getLevelCount() == 0) {
       clearImage();
-      loading.showMessage(Info, Messages.NO_IMAGE_DATA);
+      showMessage(Info, Messages.NO_IMAGE_DATA);
       if (saveItem != null) {
         saveItem.setEnabled(false);
       }
@@ -489,7 +511,7 @@ public class ImagePanel extends Composite {
     }
 
     int level = Math.min(image.getLevelCount() - 1, requestedLecel);
-    loading.startLoading();
+    startLoading();
 
     List<ListenableFuture<Image>> layerFutures = Lists.newArrayList();
     for (int layer = 0; layer < image.getLayerCount(); layer++) {
@@ -525,7 +547,7 @@ public class ImagePanel extends Composite {
       @Override
       protected void onUiThreadError(Loadable.Message message) {
         clearImage();
-        loading.showMessage(message);
+        showMessage(message);
       }
     });
   }
@@ -544,7 +566,7 @@ public class ImagePanel extends Composite {
     if (data.valid) {
       status.setLevelSize(layers[0].getWidth(), layers[0].getHeight());
     }
-    loading.stopLoading();
+    stopLoading();
 
     if (saveItem != null) {
       saveItem.setEnabled(data.valid);
@@ -901,6 +923,9 @@ public class ImagePanel extends Composite {
         case ZOOM_TO_ACTUAL:
           setScale(DPIUtil.autoScaleDown(1.0f));
           break;
+        case ZOOM_MANUAL:
+          /* do nothing */
+          break;
       }
       updateScrollbars();
       refresh();
@@ -932,6 +957,10 @@ public class ImagePanel extends Composite {
 
     public boolean getHistogramVisible() {
       return data.histogramVisible;
+    }
+
+    public boolean isOpenGL() {
+      return canvas.isOpenGL();
     }
 
     /**

@@ -54,6 +54,11 @@ public class ScenePanel<T> extends GlCanvas {
     this.scene = scene;
     renderer = new Renderer();
 
+    if (!isOpenGL()) {
+      caps = null;
+      return;
+    }
+
     setCurrent();
     caps = GL.createCapabilities();
     initialize();
@@ -66,6 +71,11 @@ public class ScenePanel<T> extends GlCanvas {
   // regardless of the number of listeners that request renders.
   @Override
   public void addListener(int eventType, Listener listener) {
+    if (!isOpenGL()) {
+      super.addListener(eventType, listener);
+      return;
+    }
+
     if (eventListeners == null) {
       eventListeners = Maps.newHashMap();
     }
@@ -97,6 +107,10 @@ public class ScenePanel<T> extends GlCanvas {
 
   @Override
   protected void terminate() {
+    if (!isOpenGL()) {
+      return;
+    }
+
     setCurrent();
     GL.setCapabilities(caps);
     renderer.terminate();
@@ -111,7 +125,7 @@ public class ScenePanel<T> extends GlCanvas {
 
   private void dispatchEvents(Event event) {
     withSuspendedUpdate(() -> {
-      if (event.type == SWT.Resize) {
+      if (event.type == SWT.Resize && isOpenGL()) {
         Point size = DPIUtil.autoScaleUp(getSize());
         setCurrent();
         renderer.setSize(size.x, size.y);
@@ -144,15 +158,17 @@ public class ScenePanel<T> extends GlCanvas {
       return;
     }
 
-    setCurrent();
-    GL.setCapabilities(caps);
-    T newData = sceneData.getAndSet(null);
-    if (newData != null) {
-      scene.update(renderer, newData);
-    }
-    if (render) {
-      scene.render(renderer);
-      swapBuffers();
+    if (isOpenGL()) {
+      setCurrent();
+      GL.setCapabilities(caps);
+      T newData = sceneData.getAndSet(null);
+      if (newData != null) {
+        scene.update(renderer, newData);
+      }
+      if (render) {
+        scene.render(renderer);
+        swapBuffers();
+      }
     }
   }
 }
