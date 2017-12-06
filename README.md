@@ -1,4 +1,4 @@
-# GAPID: **G**raphics **API** **D**ebugger
+# GAPID: Graphics API Debugger
 
 [![GoDoc](https://godoc.org/github.com/google/gapid?status.svg)](https://godoc.org/github.com/google/gapid)
 [![Gitter](https://badges.gitter.im/google/gapid.svg)](https://gitter.im/google/gapid?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -6,19 +6,20 @@
 <img alt="MacOS" src="kokoro/img/macos.png" width="20px" height="20px" hspace="2px"/>![MacOS Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_macos.svg)
 <img alt="Windows" src="kokoro/img/windows.png" width="20px" height="20px" hspace="2px"/>![Windows Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_windows.svg)
 
+## Downloads
 
-<p>
-  <a href="https://github.com/google/gapid/releases">
-    <b>Download the latest version of GAPID here.</b>
-  </a>
-</p>
+**[Download the latest version of GAPID here.](https://github.com/google/gapid/releases)**
+
+## Documentation
+
+**[User documentation can be found here.](https://google.github.io/gapid/about)**
 
 ## About
 
 GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.
 
 GAPID can trace any Android [debuggable application](https://developer.android.com/guide/topics/manifest/application-element.html#debug), or if you have root access to the device any application can be traced.
-GAPID can also trace any Desktop Vulkan application.
+GAPID can also trace any desktop Vulkan application.
 
 <table>
   <tr>
@@ -53,8 +54,6 @@ GAPID is still in development but already can be used to debug many Android Open
 The UI runs on Windows, Linux and MacOS and can currently be used to trace GLES on Android as well as Vulkan
 on Windows, Linux and Android.
 We also plan to be able to trace OpenGL ES applications on hosts that support the API.
-
-Pre-release downloadable binaries can be found [here](https://github.com/google/gapid/releases).
 
 Detailed current status for Vulkan can be found [here](gapis/api/vulkan/README.md).
 
