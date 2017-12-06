@@ -16,7 +16,6 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.proto.service.Service.ClientAction.Show;
-import static com.google.gapid.views.WelcomeDialog.showPrivacyPolicy;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
@@ -114,7 +113,7 @@ public class SettingsDialog extends DialogBase {
         withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
 
     withLayoutData(
-        createLink(container, Messages.PRIVACY_POLICY, e -> showPrivacyPolicy()),
+        createLink(container, Messages.PRIVACY_POLICY, WelcomeDialog::showPolicy),
         withIndents(
             withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1), 0, 20));
 
