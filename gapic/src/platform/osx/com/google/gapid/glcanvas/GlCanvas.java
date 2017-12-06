@@ -45,6 +45,7 @@ public abstract class GlCanvas extends Canvas {
 
   private NSOpenGLContext context;
   private NSOpenGLPixelFormat pixelFormat;
+  private boolean initialized;
 
   public GlCanvas(Composite parent, int style) {
     super(parent, style);
@@ -65,21 +66,20 @@ public abstract class GlCanvas extends Canvas {
     pixelFormat = (NSOpenGLPixelFormat)new NSOpenGLPixelFormat().alloc();
 
     if (pixelFormat == null) {
-      dispose();
-      SWT.error(SWT.ERROR_UNSUPPORTED_DEPTH);
+      return; // Fallback to regular canvas.
     }
     pixelFormat.initWithAttributes(attrib);
 
     context = (NSOpenGLContext)new NSOpenGLContext().alloc();
     if (context == null) {
-      dispose ();
-      SWT.error (SWT.ERROR_UNSUPPORTED_DEPTH);
+      return; // Fallback to regular canvas.
     }
     context = context.initWithFormat(pixelFormat, null);
     context.setValues(new int[] { -1 }, OS.NSOpenGLCPSurfaceOrder);
     setData(GLCONTEXT_KEY, context);
     NSNotificationCenter.defaultCenter().addObserver(view,
         OS.sel_updateOpenGLContext_, OS.NSViewGlobalFrameDidChangeNotification, view);
+    initialized = true;
 
     Listener listener = event -> {
       switch (event.type) {
@@ -103,12 +103,24 @@ public abstract class GlCanvas extends Canvas {
     addListener(SWT.Dispose, listener);
   }
 
+  public boolean isOpenGL() {
+    return initialized;
+  }
+
   public void setCurrent () {
+    if (!initialized) {
+      return;
+    }
+
     checkWidget();
     context.makeCurrentContext();
   }
 
   public void swapBuffers () {
+    if (!initialized) {
+      return;
+    }
+
     checkWidget();
     context.flushBuffer();
   }

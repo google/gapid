@@ -48,46 +48,65 @@ public abstract class GlCanvas extends Canvas {
   private static final String USE_OWNDC_KEY = "org.eclipse.swt.internal.win32.useOwnDC";
 
   private final long context;
+  private final boolean initialized;
 
   public GlCanvas(Composite parent, int style) {
     super(parent, checkStyle(parent, style));
     Canvas dummy = new Canvas(parent, style);
     parent.getDisplay().setData(USE_OWNDC_KEY, Boolean.FALSE);
 
-    Context dummyContext = new Context(dummy.handle)
-        .createSimplePixelFormat()
-        .createContext();
-    if (dummyContext.createPixelFormat()) {
-      context = new Context(handle)
-          .setPixelFormat(dummyContext.pixelFormat)
-          .createContext()
-          .context;
-    } else {
-      context = new Context(handle)
-          .createSimplePixelFormat()
-          .createContext()
-          .context;
+    Context dummyContext = new Context(dummy.handle).createSimplePixelFormat();
+    if (dummyContext == null) {
+      context = 0;
+      initialized = false;
+      return;
     }
+
+    Context actualContext;
+    if (dummyContext.createPixelFormat()) {
+      actualContext = new Context(handle).setPixelFormat(dummyContext.pixelFormat);
+    } else {
+      actualContext = new Context(handle).createSimplePixelFormat();
+    }
+
+    if (actualContext == null) {
+      context = 0;
+      initialized = false;
+    } else {
+      context = actualContext.context;
+      initialized = true;
+    }
+
     dummyContext.release();
     dummy.dispose();
 
-    addListener(SWT.Dispose, e -> {
-      terminate();
-      WGL.wglDeleteContext(context);
-    });
+    if (initialized) {
+      addListener(SWT.Dispose, e -> {
+        terminate();
+        WGL.wglDeleteContext(context);
+      });
+    }
   }
 
   private static int checkStyle(Composite parent, int style) {
     if (parent != null) {
-      if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-        parent.getDisplay ().setData (USE_OWNDC_KEY, new Boolean (true));
+      if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION(6, 0)) {
+        parent.getDisplay().setData(USE_OWNDC_KEY, Boolean.TRUE);
       }
     }
     return style;
   }
 
+  public boolean isOpenGL() {
+    return initialized;
+  }
+
   public void setCurrent () {
     checkWidget();
+    if (!initialized) {
+      return;
+    }
+
     long dc = User32.GetDC(handle);
     WGL.wglMakeCurrent(dc, context);
     User32.ReleaseDC(handle, dc);
@@ -95,6 +114,10 @@ public abstract class GlCanvas extends Canvas {
 
   public void swapBuffers () {
     checkWidget();
+    if (!initialized) {
+      return;
+    }
+
     long dc = User32.GetDC(handle);
     GDI32.SwapBuffers(dc);
     User32.ReleaseDC(handle, dc);
@@ -129,9 +152,9 @@ public abstract class GlCanvas extends Canvas {
       pixelFormat = GDI32.ChoosePixelFormat(dc, pfd);
       if (pixelFormat == 0 || !GDI32.SetPixelFormat(dc, pixelFormat, pfd)) {
         release();
-        SWT.error(SWT.ERROR_UNSUPPORTED_DEPTH);
+        return null;
       }
-      return this;
+      return createContext();
     }
 
     public Context setPixelFormat(int format) {
@@ -148,16 +171,16 @@ public abstract class GlCanvas extends Canvas {
       pfd.cDepthBits((byte)24);
       if (!GDI32.SetPixelFormat(dc, pixelFormat, pfd)) {
         release();
-        SWT.error(SWT.ERROR_UNSUPPORTED_DEPTH);
+        return null;
       }
-      return this;
+      return createContext();
     }
 
-    public Context createContext() {
+    private Context createContext() {
       context = WGL.wglCreateContext(dc);
       if (context == 0 || !WGL.wglMakeCurrent(dc, context)) {
         User32.ReleaseDC(handle, dc);
-        SWT.error(SWT.ERROR_NO_HANDLES);
+        return null;
       }
       return this;
     }
