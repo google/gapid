@@ -74,6 +74,8 @@ if(NOT DISABLED_CXX)
     if(WIN32)
         find_package(Winsock REQUIRED)
         target_link_libraries(cc-core Winsock::Lib)
+    else()
+        target_compile_options(cc-core PUBLIC "-g")
     endif()
 
     if(NOT ANDROID AND NOT GAPII_TARGET)

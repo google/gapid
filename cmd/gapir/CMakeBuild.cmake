@@ -39,5 +39,23 @@ if(NOT DISABLED_CXX)
     endif()
     if(NOT GAPII_TARGET)
         target_link_libraries(gapir gapir_static)
+        target_compile_options(gapir PUBLIC "-g")
+        if(APPLE)
+            add_custom_command(
+                TARGET gapir
+                POST_BUILD
+                COMMAND "dsymutil" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gapir" -o "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../gapir.dSYM"
+                COMMAND dump_syms -g "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../gapir.dSYM" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gapir" > "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../gapir.sym"
+                COMMAND "rm" "-r" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../gapir.dSYM"
+                COMMAND "strip" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gapir"
+            )
+        elseif(NOT WIN32 AND NOT ANDROID)
+            add_custom_command(
+                TARGET gapir
+                POST_BUILD
+                COMMAND dump_syms "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gapir" > "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../gapir.sym"
+                COMMAND "strip" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gapir"
+            )
+        endif()
     endif()
 endif()
