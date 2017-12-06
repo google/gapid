@@ -57,6 +57,10 @@ if(NOT DISABLED_CXX)
     set_target_properties(gapir_static PROPERTIES OUTPUT_NAME gapir)
     target_link_libraries(gapir_static cc-core)
 
+    if(NOT WIN32)
+        target_compile_options(gapir_static PUBLIC "-g")
+    endif()
+
     if(APPLE)
         find_package(Cocoa REQUIRED)
         target_link_libraries(gapir_static Cocoa::Lib)
