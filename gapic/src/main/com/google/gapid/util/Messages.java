@@ -56,8 +56,9 @@ public interface Messages {
       " your computer.";
   public static final String WELCOME_BUTTON = "Get Started";
   public static final String ANALYTICS_OPTION =
-      "Allow GAPID to send usage analytics to Google to improve the tool";
-  public static final String CRASH_REPORTING_OPTION = "Allow GAPID to send crash reports";
+      "Help improve GAPID by sending usage statistics to Google";
+  public static final String CRASH_REPORTING_OPTION =
+      "Help GAPID identify issues by sending crash reports to Google";
   public static final String UPDATE_CHECK_OPTION = "Automatically check for GAPID updates";
   public static final String PRIVACY_POLICY =
       "This data is collected in accordance with Google's <a>privacy policy</a>.";
