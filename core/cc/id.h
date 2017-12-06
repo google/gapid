@@ -32,6 +32,8 @@ struct Id {
     inline operator uint8_t*();
     inline operator const uint8_t*() const;
 
+    std::string string() const;
+
     uint8_t data[20];
 };
 
