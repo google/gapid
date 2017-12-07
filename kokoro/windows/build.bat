@@ -41,11 +41,6 @@ REM Fix up the MSYS environment: remove gcc and add mingw's gcc
 c:\tools\msys64\usr\bin\bash --login -c "pacman -R --noconfirm gcc"
 c:\tools\msys64\usr\bin\bash --login -c "pacman -S --noconfirm mingw-w64-x86_64-gcc"
 
-REM set up msvc build env
-set Platform="X64"
-set PreferredToolArchitecture="x64"
-call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
-
 REM Setup the build config file.
 (
   echo {
@@ -57,8 +52,7 @@ REM Setup the build config file.
   echo  "CMakePath": "c:\Program Files\Cmake\bin\cmake.exe",
   echo  "NinjaPath": "c:\ProgramData\chocolatey\bin\ninja.exe",
   echo  "PythonPath": "c:\Python35\python.exe",
-  echo  "MSYS2Path": "c:\tools\msys64",
-  echo  "MSVCWinGapir": true
+  echo  "MSYS2Path": "c:\tools\msys64"
   echo }
 ) > gapid-config
 type gapid-config
