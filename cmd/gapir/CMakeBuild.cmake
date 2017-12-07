@@ -19,6 +19,7 @@ if(MSVC_GAPIR AND WIN32)
     add_cmake_target("gapir-msvc" gapir "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" "gapir.exe"
         DEPENDEES gapir_static
         DEPENDS ${sources}
+        DESTINATION ${TARGET_INSTALL_PATH}
     )
     ExternalProject_Add_Step("gapir-msvc" dump_syms
         COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/breakpad/src/tools/windows/binaries/dump_syms.exe" "<BINARY_DIR>/bin/gapir.pdb" > "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/../gapir.sym"
