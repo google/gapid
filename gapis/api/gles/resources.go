@@ -60,7 +60,14 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 	ctx = log.Enter(ctx, "Texture.ResourceData()")
 	switch t.Kind {
 	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_2D_MULTISAMPLE:
-		levels := make([]*image.Info, t.Levels.Len())
+		count := GLint(0)
+		for i := range t.Levels.Range() {
+			if i >= count {
+				count = i + 1
+			}
+		}
+
+		levels := make([]*image.Info, count)
 		for i, level := range t.Levels.Range() {
 			img, err := level.Layers.Get(0).ImageInfo(ctx, s)
 			if err != nil {
