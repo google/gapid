@@ -150,20 +150,23 @@ private:
   pthread_t thread_;
 #endif
 
+  // Leave the mutexes above their associated condition_variables.
+  // On windows if you delete the mutex first, bad things happen somtimes.
+  threading::mutex
+      pending_images_lock_; // The lock for modifying our pending images list.
+
   threading::condition_variable pending_images_condition_; // Condition variable
                                                            // to wait for
                                                            // pending_images_ to
                                                            // contain an image.
+  
   threading::mutex
-      pending_images_lock_; // The lock for modifying our pending images list.
+      free_images_lock_; // The lock for modifying our free images list.
 
   threading::condition_variable free_images_condition_; // The condition
                                                         // variable to wait on
                                                         // for free_images_ to
                                                         // contain an image.
-
-  threading::mutex
-      free_images_lock_; // The lock for modifying our free images list.
 
   void (*callback_)(void *, uint8_t *, size_t); // The user-supplied callback.
   void *callback_user_data_; // The user-data to pass to this callback.
