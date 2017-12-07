@@ -933,6 +933,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDeleteBuffers:
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Buffers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, c.Objects.Buffers.Dictionary(), s, out,
@@ -964,6 +965,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDeleteProgramPipelines:
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Pipelines.Slice(0, uint64(cmd.N), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, c.Objects.Pipelines.Dictionary(), s, out,
@@ -972,6 +974,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDeleteQueries:
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Queries.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, c.Objects.Queries.Dictionary(), s, out,
@@ -980,6 +983,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDeleteRenderbuffers:
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Renderbuffers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, c.Objects.Renderbuffers.Dictionary(), s, out,
@@ -988,6 +992,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDeleteSamplers:
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Samplers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, c.Objects.Samplers.Dictionary(), s, out,
@@ -996,6 +1001,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDeleteTextures:
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Textures.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, c.Objects.Textures.Dictionary(), s, out,
@@ -1004,6 +1010,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDeleteTransformFeedbacks:
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Ids.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, c.Objects.TransformFeedbacks.Dictionary(), s, out,
@@ -1012,6 +1019,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 
 		case *GlDeleteVertexArrays:
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Arrays.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, c.Objects.VertexArrays.Dictionary(), s, out,
