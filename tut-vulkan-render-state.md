@@ -19,12 +19,8 @@ batches and command buffers. An expanded `vkQueueSubmit` with drawing commands
 in it will looks like the image below.
 
 <div class="callout-img">
-    <!-- TODO - new image
-    <div style="margin: 230px 430px">1</div>
-    <div style="margin: 290px 60px">2</div>
-    <div style="margin: 500px 60px">3</div>
-    <div style="margin: 605px 60px">4</div>
-    -->
+    <div style="margin: 246px 39px">1</div>
+    <div style="margin: 474px 39px">2</div>
     <img src="../images/command-pane-vulkan-renderpass-grouping.png" alt="Vulkan commands">
 </div>
 
@@ -53,7 +49,11 @@ The `LastBoundQueue` node contains the information of the queue used for the
 be used to find the drawing information of the current render state in
 `LastDrawInfos`.
 
-<img src="../images/state-pane-vulkan-last-bound-queue.png"/>
+<div class="callout-img">
+    <div style="margin: 89px 282px">1</div>
+    <div style="margin: 197px 282px">2</div>
+    <img src="../images/state-pane-vulkan-last-bound-queue.png"/>
+</div>
 
 <div class="callouts" markdown="block">
 
@@ -71,7 +71,13 @@ be used to find the drawing information of the current render state in
 Bound vertex/index buffers, Graphics pipeline and drawing parameters.
 
 #### Bound framebuffer
-<img src="../images/state-pane-vulkan-draw-info-framebuffer.png"/>
+<div class="callout-img">
+    <div style="margin: 44px 352px">1</div>
+    <div style="margin: 108px 352px">2</div>
+    <div style="margin: 256px 352px">3</div>
+    <div style="margin: 442px 352px">4</div>
+    <img src="../images/state-pane-vulkan-draw-info-framebuffer.png"/>
+</div>
 
 <div class="callouts" markdown="block">
 
@@ -91,7 +97,13 @@ Bound vertex/index buffers, Graphics pipeline and drawing parameters.
 </div>
 
 #### Bound renderpass
+<div class="callout-img">
+    <div style="margin: 171px 352px">1</div>
+    <div style="margin: 235px 352px">2</div>
+    <div style="margin: 547px 352px">3</div>
+    <div style="margin: 778px 352px">4</div>
 <img src="../images/state-pane-vulkan-draw-info-renderpass.png"/>
+</div>
 
 <div class="callouts" markdown="block">
 
@@ -109,7 +121,13 @@ Bound vertex/index buffers, Graphics pipeline and drawing parameters.
 </div>
 
 #### Bound descriptor sets
+<div class="callout-img">
+    <div style="margin: 65px 352px">1</div>
+    <div style="margin: 166px 352px">2</div>
+    <div style="margin: 278px 352px">3</div>
+    <div style="margin: 590px 352px">4</div>
 <img src="../images/state-pane-vulkan-draw-info-descriptorsets.png"/>
+</div>
 
 <div class="callouts" markdown="block">
 
@@ -130,7 +148,10 @@ Bound vertex/index buffers, Graphics pipeline and drawing parameters.
 </div>
 
 ### Bound graphics pipeline
+<div class="callout-img">
+    <div style="margin: 92px 258px">1</div>
 <img src="../images/state-pane-vulkan-draw-info-gfx-pipeline.png"/>
+</div>
 
 <div class="callouts" markdown="block">
 
@@ -141,7 +162,11 @@ Bound vertex/index buffers, Graphics pipeline and drawing parameters.
 </div>
 
 #### Bound buffers
+<div class="callout-img">
+    <div style="margin: 110px 297px">1</div>
+    <div style="margin: 380px 297px">2</div>
 <img src="../images/state-pane-vulkan-draw-info-bound-buffers.png"/>
+</div>
 
 <div class="callouts" markdown="block">
 
@@ -156,7 +181,10 @@ Bound vertex/index buffers, Graphics pipeline and drawing parameters.
 </div>
 
 #### Draw command parameters
+<div class="callout-img">
+    <div style="margin: 149px 227px">1</div>
 <img src="../images/state-pane-vulkan-draw-info-draw-params.png"/>
+</div>
 
 <div class="callouts" markdown="block">
 
