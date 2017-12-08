@@ -45,17 +45,28 @@ struct Context {
 static Context gContext;
 static int gContextRefCount = 0;
 
+typedef GLXFBConfig* (*pfn_glXChooseFBConfig)(Display* dpy, int screen, const int* attrib_list, int* nelements);
+typedef GLXContext (*pfn_glXCreateNewContext)(Display* dpy, GLXFBConfig config, int render_type, GLXContext shader_list, bool direct);
+typedef GLXPbuffer (*pfn_glXCreatePbuffer)(Display* dpy, GLXFBConfig config, const int* attrib_list);
+typedef void (*pfn_glXDestroyPbuffer)(Display*  dpy, GLXPbuffer  pbuf);
+typedef void (*pfn_glXDestroyContext)(Display *  dpy, GLXContext  ctx);
+
+
 void destroyContext() {
     if (--gContextRefCount > 0) {
         return;
     }
 
-    if (gContext.mPbuffer) {
-        glXDestroyPbuffer(gContext.mDisplay, gContext.mPbuffer);
+    pfn_glXDestroyPbuffer fn_glXDestroyPbuffer = (pfn_glXDestroyPbuffer)core::GetGlesProcAddress("glXDestroyPbuffer", true);
+    pfn_glXDestroyContext fn_glXDestroyContext = (pfn_glXDestroyContext)core::GetGlesProcAddress("glXDestroyContext", true);
+
+
+    if (gContext.mPbuffer && fn_glXDestroyPbuffer) {
+        (*fn_glXDestroyPbuffer)(gContext.mDisplay, gContext.mPbuffer);
         gContext.mPbuffer = 0;
     }
-    if (gContext.mContext) {
-        glXDestroyContext(gContext.mDisplay, gContext.mContext);
+    if (gContext.mContext && fn_glXDestroyContext) {
+        (*fn_glXDestroyContext)(gContext.mDisplay, gContext.mContext);
         gContext.mContext = nullptr;
     }
     if (gContext.mFBConfigs) {
@@ -71,6 +82,12 @@ void destroyContext() {
 bool createContext(void* platform_data) {
     if (gContextRefCount++ > 0) {
         return true;
+    }
+    pfn_glXChooseFBConfig fn_glXChooseFBConfig= (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig", true);
+    pfn_glXCreateNewContext fn_glXCreateNewContext = (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext", true);
+    pfn_glXCreatePbuffer fn_glXCreatePbuffer = (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer", true);
+    if (!fn_glXChooseFBConfig || !fn_glXCreateNewContext || !fn_glXCreatePbuffer) {
+        return false;
     }
 
     memset(&gContext, 0, sizeof(gContext));
@@ -111,7 +128,7 @@ bool createContext(void* platform_data) {
         None
     };
     int fbConfigsCount = 0;
-    gContext.mFBConfigs = glXChooseFBConfig(gContext.mDisplay,
+    gContext.mFBConfigs = (*fn_glXChooseFBConfig)(gContext.mDisplay,
                                             DefaultScreen(gContext.mDisplay),
                                             visualAttribs,
                                             &fbConfigsCount);
@@ -131,7 +148,7 @@ bool createContext(void* platform_data) {
     glXCreateContextAttribsARBProc glXCreateContextAttribsARB =
         (glXCreateContextAttribsARBProc)core::GetGlesProcAddress("glXCreateContextAttribsARB", true);
     if (glXCreateContextAttribsARB == nullptr) {
-        gContext.mContext = glXCreateNewContext(gContext.mDisplay,
+        gContext.mContext = (*fn_glXCreateNewContext)(gContext.mDisplay,
                                                 fbConfig,
                                                 GLX_RGBA_TYPE,
                                                 nullptr,
@@ -168,7 +185,7 @@ bool createContext(void* platform_data) {
         GLX_PBUFFER_WIDTH, 32, GLX_PBUFFER_HEIGHT, 32, None
     };
 
-    gContext.mPbuffer = glXCreatePbuffer(gContext.mDisplay, fbConfig, pbufferAttribs);
+    gContext.mPbuffer = (*fn_glXCreatePbuffer)(gContext.mDisplay, fbConfig, pbufferAttribs);
     if (!gContext.mPbuffer) {
 		snprintf(gContext.mError, sizeof(gContext.mError),
 				 "glXCreatePbuffer failed");
