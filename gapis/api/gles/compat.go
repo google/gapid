@@ -266,6 +266,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			return
 		}
 
+		if cmd.CmdFlags(ctx, id, s).IsDrawCall() {
+			t := newTweaker(out, dID, cb)
+			disableUnusedAttribArrays(ctx, t)
+			defer t.revert(ctx)
+		}
+
 		switch cmd := cmd.(type) {
 		case *GlBindBuffer:
 			if cmd.Buffer == 0 {
@@ -1287,6 +1293,33 @@ func (fb *Framebuffer) ForEachAttachment(action func(GLenum, FramebufferAttachme
 // captured with the context c can be replayed on the device d.
 func canUsePrecompiledShader(c *Context, d *device.OpenGLDriver) bool {
 	return c.Constants.Vendor == d.Vendor && c.Constants.Version == d.Version
+}
+
+// disableUnusedAttribArrays disables all vertex attribute arrays that are not
+// used by the currently bound program. This is a compatibility fix for devices
+// that will error with GL_INVALID_OPERATION if there's an enabled (but unused)
+// vertex attribute array that has no array data when drawing. AFAICT, this
+// particular behavior is undefined according to the spec.
+func disableUnusedAttribArrays(ctx context.Context, t *tweaker) {
+	p := t.c.Bound.Program
+	if p == nil || p.ActiveResources == nil {
+		return
+	}
+	inputs := p.ActiveResources.ProgramInputs
+	used := make([]bool, t.c.Constants.MaxVertexAttribBindings)
+	for _, input := range inputs.Range() {
+		for _, l := range input.Locations.Range() {
+			if l >= 0 && l < GLint(len(used)) {
+				used[l] = true
+			}
+		}
+	}
+
+	for l, arr := range t.c.Bound.VertexArray.VertexAttributeArrays.Range() {
+		if arr.Enabled == GLboolean_GL_TRUE && l < AttributeLocation(len(used)) && !used[l] {
+			t.glDisableVertexAttribArray(ctx, l)
+		}
+	}
 }
 
 // It is a no-op to delete objects that do not exist.

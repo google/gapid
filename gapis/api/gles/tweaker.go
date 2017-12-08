@@ -91,6 +91,15 @@ func (t *tweaker) glDisable(ctx context.Context, name GLenum) {
 	}
 }
 
+func (t *tweaker) glDisableVertexAttribArray(ctx context.Context, l AttributeLocation) {
+	arr := t.c.Bound.VertexArray.VertexAttributeArrays.Get(l)
+	if arr != nil && arr.Enabled == GLboolean_GL_TRUE {
+		t.doAndUndo(ctx,
+			t.cb.GlDisableVertexAttribArray(l),
+			t.cb.GlEnableVertexAttribArray(l))
+	}
+}
+
 func (t *tweaker) glDepthMask(ctx context.Context, v GLboolean) {
 	if o := t.c.Pixel.DepthWritemask; o != v {
 		t.doAndUndo(ctx,
