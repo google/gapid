@@ -1697,6 +1697,120 @@ cmd void glMatrixMultTranspose3x3fNV(GLenum matrixMode, const GLfloat* m) {
   // TODO
 }
 
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixLoadfEXT(GLenum matrixMode, const f32 *m) {
+  read(m[0:16]) // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixLoaddEXT(GLenum matrixMode, const f64 *m) {
+  read(m[0:16]) // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixMultfEXT(GLenum matrixMode, const f32 *m) {
+  read(m[0:16]) // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixMultdEXT(GLenum matrixMode, const f64 *m) {
+  read(m[0:16]) // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixLoadTransposefEXT(GLenum matrixMode, const f32 *m) {
+  read(m[0:16]) // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixLoadTransposedEXT(GLenum matrixMode, const f32 *m) {
+  read(m[0:16]) // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixMultTransposefEXT(GLenum matrixMode, const f32 *m) {
+  read(m[0:16]) // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixMultTransposedEXT(GLenum matrixMode, const f32 *m) {
+  read(m[0:16]) // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixLoadIdentityEXT(GLenum matrixMode) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixRotatefEXT(GLenum matrixMode, f32 angle, f32 x, f32 y, f32 z) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixRotatedEXT(GLenum matrixMode, f64 angle, f64 x, f64 y, f64 z) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixScalefEXT(GLenum matrixMode, f32 x, f32 y, f32 z) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixScaledEXT(GLenum matrixMode, f64 x, f64 y, f64 z) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixTranslatefEXT(GLenum matrixMode, f32 x, f32 y, f32 z) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixTranslatedEXT(GLenum matrixMode, f64 x, f64 y, f64 z) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixOrthoEXT(GLenum matrixMode, f64 l, f64 r, f64 b, f64 t, f64 n, f64 f) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixFrustumEXT(GLenum matrixMode, f64 l, f64 r, f64 b, f64 t, f64 n, f64 f) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixPushEXT(GLenum matrixMode) {
+  // TODO
+}
+
+@if(Extension.GL_EXT_direct_state_access)
+@doc("https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_direct_state_access.txt", Extension.GL_EXT_direct_state_access)
+cmd void MatrixPopEXT(GLenum matrixMode) {
+  // TODO
+}
+
 @if(Extension.GL_EXT_multi_draw_arrays)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_multi_draw_arrays.txt", Extension.GL_EXT_multi_draw_arrays)
 cmd void glMultiDrawArraysEXT(GLenum         mode,

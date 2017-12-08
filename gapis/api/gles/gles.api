@@ -100,6 +100,7 @@ class SupportedExtensions {
   bool GL_EXT_copy_image                               = true
   bool GL_EXT_debug_label                              = true
   bool GL_EXT_debug_marker                             = true
+  bool GL_EXT_direct_state_access                      = true
   bool GL_EXT_discard_framebuffer                      = true
   bool GL_EXT_disjoint_timer_query                     = true
   bool GL_EXT_draw_buffers                             = true
@@ -243,6 +244,7 @@ sub ref!SupportedExtensions InitSupportedExtensions(ref!Context ctx) {
     GL_EXT_copy_image:                                set.Strings["GL_EXT_copy_image"],
     GL_EXT_debug_label:                               set.Strings["GL_EXT_debug_label"],
     GL_EXT_debug_marker:                              set.Strings["GL_EXT_debug_marker"],
+    GL_EXT_direct_state_access:                       set.Strings["GL_EXT_direct_state_access"],
     GL_EXT_discard_framebuffer:                       set.Strings["GL_EXT_discard_framebuffer"],
     GL_EXT_disjoint_timer_query:                      set.Strings["GL_EXT_disjoint_timer_query"],
     GL_EXT_draw_buffers:                              set.Strings["GL_EXT_draw_buffers"],
