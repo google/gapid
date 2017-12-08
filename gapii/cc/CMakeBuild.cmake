@@ -117,7 +117,6 @@ if(NOT DISABLED_CXX)
           LINK_FLAGS "-Wl,--version-script,${CMAKE_CURRENT_SOURCE_DIR}/gapii.exports")
     elseif(NOT GAPII_TARGET)
         find_package(GL REQUIRED)
-        target_link_libraries(gapii GL::Lib)
 
         if(WIN32)
             install(TARGETS gapii RUNTIME DESTINATION "${TARGET_INSTALL_PATH}/lib")
