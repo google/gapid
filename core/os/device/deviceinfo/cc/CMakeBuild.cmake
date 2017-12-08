@@ -48,7 +48,7 @@ if(NOT DISABLED_CXX)
     target_include_directories(deviceinfo-static PUBLIC "${CMAKE_SOURCE_DIR}/external/protobuf/src")
 
     find_package(GL REQUIRED)
-    target_link_libraries(deviceinfo-static cc-core protobuf cityhash GL::Lib)
+    target_link_libraries(deviceinfo-static cc-core protobuf cityhash)
 
     if(ANDROID)
         target_link_libraries(deviceinfo-static -llog)
