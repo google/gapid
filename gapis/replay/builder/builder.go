@@ -75,8 +75,10 @@ type Builder struct {
 	decoders        []Postback
 	stack           []stackItem
 	memoryLayout    *device.MemoryLayout
-	inCmd           bool // true if between BeginCmd and CommitCommand/RevertCommand
-	cmdStart        int  // index of current commands's first instruction
+	inCmd           bool   // true if between BeginCommand and CommitCommand/RevertCommand
+	cmdStart        int    // index of current commands's first instruction
+	pendingLabel    uint64 // label passed to BeginCommand written
+	lastLabel       uint64 // label of last CommitCommand written
 
 	// Remappings is a map of a arbitrary keys to pointers. Typically, this is
 	// used as a map of observed values to values that are only known at replay
@@ -102,6 +104,7 @@ func New(memoryLayout *device.MemoryLayout) *Builder {
 		mappedMemory:    mappedMemoryRangeList{},
 		instructions:    []asm.Instruction{},
 		memoryLayout:    memoryLayout,
+		lastLabel:       ^uint64(0),
 		Remappings:      make(map[interface{}]value.Pointer),
 	}
 }
@@ -217,8 +220,10 @@ func (b *Builder) BeginCommand(cmdID, threadID uint64) {
 	b.inCmd = true
 	b.cmdStart = len(b.instructions)
 
-	if cmdID <= 0x3ffffff { // Labels have 26 bit values.
+	cmdID &= 0x3ffffff // Labels have 26 bit values.
+	if b.lastLabel != cmdID {
 		b.instructions = append(b.instructions, asm.Label{Value: uint32(cmdID)})
+		b.pendingLabel = cmdID
 	}
 
 	if b.currentThreadID != threadID {
@@ -239,6 +244,7 @@ func (b *Builder) CommitCommand() {
 	if !b.inCmd {
 		panic("CommitCommand called without a call to BeginCommand")
 	}
+	b.lastLabel, b.pendingLabel = b.pendingLabel, 0
 	b.inCmd = false
 	b.temp.reset()
 	pop := uint32(len(b.stack))
@@ -279,6 +285,7 @@ func (b *Builder) RevertCommand(err error) {
 	if !b.inCmd {
 		panic("RevertCommand called without a call to BeginCommand")
 	}
+	b.pendingLabel = 0
 	b.inCmd = false
 	// TODO: Revert calls to: AllocateMemory, Buffer, String, ReserveMemory, MapMemory, UnmapMemory, Write.
 	b.temp.reset()
