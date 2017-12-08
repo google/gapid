@@ -98,8 +98,9 @@ func (c Callstack) Entries() []Entry {
 }
 
 func (c Callstack) String() string {
-	lines := make([]string, len(c))
-	for i, e := range c.Entries() {
+	entries := c.Entries()
+	lines := make([]string, len(entries))
+	for i, e := range entries {
 		lines[i] = e.String()
 	}
 	return strings.Join(lines, "\n")

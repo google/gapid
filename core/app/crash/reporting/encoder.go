@@ -33,6 +33,8 @@ const (
 )
 
 func (e encoder) encodeStacktrace(stacktrace string) (io.Reader, string, error) {
+	stacktrace = filterStack(stacktrace)
+
 	buf := bytes.Buffer{}
 	w := multipart.NewWriter(&buf)
 	if err := w.SetBoundary(multipartBoundary); err != nil {
