@@ -306,12 +306,16 @@ sub void PrimitiveBoundingBox(GLfloat minX, GLfloat minY, GLfloat minZ, GLfloat 
 
 // WriteGPUFramebufferData updates the data of the given FramebufferAttachment.
 sub void WriteGPUFramebufferAttachment(FramebufferAttachment a) {
-  img := GetTextureImage(a.Texture, a.TextureLevel, a.TextureLayer)
-  if img != null {
-    if img.Data == null {
-      img.Data = ReadGPUTextureData(a.Texture, a.TextureLevel, a.TextureLayer)
-    } else {
-      copy(img.Data, ReadGPUTextureData(a.Texture, a.TextureLevel, a.TextureLayer))
+  numViews := a.NumViews
+  for view in (0 .. numViews) {
+    layer := a.TextureLayer + as!GLint(view)
+    img := GetTextureImage(a.Texture, a.TextureLevel, layer)
+    if img != null {
+      if img.Data == null {
+        img.Data = ReadGPUTextureData(a.Texture, a.TextureLevel, layer)
+      } else {
+        copy(img.Data, ReadGPUTextureData(a.Texture, a.TextureLevel, layer))
+      }
     }
   }
 }
