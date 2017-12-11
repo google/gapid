@@ -27,6 +27,7 @@ import (
 	_ "github.com/golang/protobuf/proto"
 	_ "github.com/google/gapid/core/data"
 	_ "github.com/google/gapid/core/data/binary"
+	_ "github.com/google/gapid/core/data/dictionary"
 	_ "github.com/google/gapid/core/data/id"
 	_ "github.com/google/gapid/core/data/protoconv"
 	_ "github.com/google/gapid/core/event/task"

@@ -26,6 +26,7 @@ import (
 
 	_ "github.com/google/gapid/core/data"
 	_ "github.com/google/gapid/core/data/binary"
+	_ "github.com/google/gapid/core/data/dictionary"
 	_ "github.com/google/gapid/core/data/id"
 	_ "github.com/google/gapid/core/data/pod"
 	_ "github.com/google/gapid/core/data/protoconv"
@@ -38,6 +39,7 @@ import (
 	_ "github.com/google/gapid/gapis/api/test/test_pb"
 	_ "github.com/google/gapid/gapis/api/vulkan/vulkan_pb"
 	_ "github.com/google/gapid/gapis/capture"
+	_ "github.com/google/gapid/gapis/database"
 	_ "github.com/google/gapid/gapis/memory"
 	_ "github.com/google/gapid/gapis/memory/memory_pb"
 	_ "github.com/google/gapid/gapis/messages"
