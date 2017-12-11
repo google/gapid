@@ -4,6 +4,7 @@ cc_library(
         "common.cpp",
         "libmanager.cpp",
         "name_manager.cpp",
+        "spirv2glsl.cpp",
         "spv_manager.cpp",
     ],
     hdrs = [
@@ -14,6 +15,7 @@ cc_library(
         "spv_manager.h",
     ],
     deps = [
+        "@spirv-cross//:spirv-cross",
         "@spirv-tools//:spirv-tools",
         "@glslang//:glslang",
     ],
