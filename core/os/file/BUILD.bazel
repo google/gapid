@@ -10,13 +10,37 @@ go_library(
         "rooted.go",
         "set.go",
     ] + select({
-        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+        "@io_bazel_rules_go//go/platform:android": [
             "unix.go",
         ],
-        "@io_bazel_rules_go//go/platform:linux_amd64": [
+        "@io_bazel_rules_go//go/platform:darwin": [
             "unix.go",
         ],
-        "@io_bazel_rules_go//go/platform:windows_amd64": [
+        "@io_bazel_rules_go//go/platform:dragonfly": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:nacl": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:netbsd": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:openbsd": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:plan9": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:solaris": [
+            "unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows": [
             "windows.go",
         ],
         "//conditions:default": [],
@@ -34,7 +58,7 @@ go_test(
     srcs = [
         "path_test.go",
     ] + select({
-        "@io_bazel_rules_go//go/platform:windows_amd64": [
+        "@io_bazel_rules_go//go/platform:windows": [
             "windows_test.go",
         ],
         "//conditions:default": [],

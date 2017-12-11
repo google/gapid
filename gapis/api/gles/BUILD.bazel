@@ -20,6 +20,7 @@ apic(
     templates = [
         "//gapis/api/templates:api",
         "//gapis/api/templates:mutate",
+        "//gapis/api/templates:constant_sets",
         "//gapis/api/templates:convert",
         "//gapis/api/templates:proto",
     ],
@@ -182,7 +183,7 @@ go_proto_library(
     proto = ":gles_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/image:go_default_library",
-        "//gapis/service/path:go_default_library",
+        "//core/image:image_go_proto",
+        "//gapis/service/path:path_go_proto",
     ],
 )

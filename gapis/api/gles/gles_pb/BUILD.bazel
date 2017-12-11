@@ -22,11 +22,7 @@ go_library(
 
 proto_library(
     name = "gles_pb_proto",
-    srcs = [
-        ":api_proto",
-        "extras.proto"
-    ],
-    deps = ["//gapis/memory/memory_pb:memory_pb_proto"],
+    srcs = ["extras.proto"],
     visibility = ["//visibility:public"],
 )
 
