@@ -10,7 +10,7 @@ github_repository(
     organization = "bazelbuild",
     project = "rules_go",
     branch = "master",
-    commit = "f2b23aaaea67b30ddf87b37e566c4e0384686db1", # Comment to use the master branch of this repository
+    commit = "44941765617a5040d4dbb96966073180e2d70f42", # Comment to use the master branch of this repository
 )
 
 github_repository(
@@ -38,7 +38,6 @@ github_repository(
 # Load all our workspace rules
 
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
-load("@io_bazel_rules_go//proto:def.bzl", "proto_register_toolchains")
 load("@io_bazel_rules_appengine//appengine:appengine.bzl", "appengine_repositories")
 load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
 load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository", "windows_sdk")
@@ -48,7 +47,6 @@ load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository", "wi
 
 go_rules_dependencies()
 go_register_toolchains()
-proto_register_toolchains()
 appengine_repositories()
 cc_configure()
 
