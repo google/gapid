@@ -1,7 +1,25 @@
 cc_library(
     name = "glslang",
-    srcs = [
-    ],
+
+    srcs = glob([
+        "glslang/GenericCodeGen/*.h",
+        "glslang/GenericCodeGen/*.cpp",
+        "glslang/Include/*.h",
+        "glslang/MachineIndependent/**/*.h",
+        "glslang/MachineIndependent/**/*.cpp",
+        "glslang/OSDependent/*.h",
+        "glslang/OSDependent/*.cpp",
+        "glslang/Public/*.h",
+        "glslang/Public/*.cpp",
+        "OGLCompilersDLL/*.h",
+        "OGLCompilersDLL/*.cpp",
+        "SPIRV/*.h",
+        "SPIRV/*.cpp",
+        "SPIRV/*.hpp",
+    ]) + select({
+        "@//tools/build:windows": glob(["glslang/OSDependent/Windows/*.cpp"]),
+        "//conditions:default": glob(["glslang/OSDependent/Unix/*.cpp"]),
+    }),
     hdrs = glob([
         "glslang/Include/*.h",
         "glslang/Public/*.h",

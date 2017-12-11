@@ -24,7 +24,17 @@ cc_library(
 
 cc_library(
     name = "spirv-tools",
+    srcs = glob([
+        "*.h",
+        "*.cpp",
+        "*.hpp",
+
+        "source/**/*.h",
+        "source/**/*.cpp",
+        "source/**/*.hpp",
+    ]),
     deps = [
+        "@spirv-headers//:spirv-headers",
         ":spirv-source",
         ":spirv-include",
     ],
