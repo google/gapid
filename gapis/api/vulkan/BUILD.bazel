@@ -22,6 +22,7 @@ apic(
     templates = [
         "//gapis/api/templates:api",
         "//gapis/api/templates:mutate",
+        "//gapis/api/templates:constant_sets",
         "//gapis/api/templates:convert",
         "//gapis/api/templates:proto",
     ],
@@ -82,7 +83,6 @@ go_library(
         "//gapis/api/sync:go_default_library",
         "//gapis/api/test/test_pb:go_default_library",
         "//gapis/api/transform:go_default_library",
-        "//gapis/api/vulkan/vulkan_pb:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",

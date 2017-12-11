@@ -34,7 +34,7 @@ go_proto_library(
     proto = ":log_pb_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/data/pod:go_default_library",
+        "//core/data/pod:pod_go_proto",
         "@com_github_golang_protobuf//ptypes/timestamp:go_default_library",
     ],
 )
