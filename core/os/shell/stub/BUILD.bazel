@@ -23,32 +23,32 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = select({
-        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+        "@io_bazel_rules_go//go/platform:darwin": [
             "stub_example_test.go",
         ],
-        "@io_bazel_rules_go//go/platform:linux_amd64": [
+        "@io_bazel_rules_go//go/platform:linux": [
             "stub_example_test.go",
         ],
-        "@io_bazel_rules_go//go/platform:windows_amd64": [
+        "@io_bazel_rules_go//go/platform:windows": [
             "stub_example_test.go",
         ],
         "//conditions:default": [],
     }),
     importpath = "github.com/google/gapid/core/os/shell/stub_test",
     deps = select({
-        "@io_bazel_rules_go//go/platform:darwin_amd64": [
+        "@io_bazel_rules_go//go/platform:darwin": [
             ":go_default_library",
             "//core/event/task:go_default_library",
             "//core/log:go_default_library",
             "//core/os/shell:go_default_library",
         ],
-        "@io_bazel_rules_go//go/platform:linux_amd64": [
+        "@io_bazel_rules_go//go/platform:linux": [
             ":go_default_library",
             "//core/event/task:go_default_library",
             "//core/log:go_default_library",
             "//core/os/shell:go_default_library",
         ],
-        "@io_bazel_rules_go//go/platform:windows_amd64": [
+        "@io_bazel_rules_go//go/platform:windows": [
             ":go_default_library",
             "//core/event/task:go_default_library",
             "//core/log:go_default_library",
