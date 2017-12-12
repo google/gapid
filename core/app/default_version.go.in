@@ -19,6 +19,6 @@ func init() {
 		Major: @GAPID_VERSION_MAJOR@,
 		Minor: @GAPID_VERSION_MINOR@,
 		Point: @GAPID_VERSION_POINT@,
-		Build: "@GAPID_BUILD_NUMBER@:@GAPID_BUILD_SHA@",
+		Build: "@GAPID_BUILD_SHA@",
 	}
 }
