@@ -14,9 +14,9 @@
 
 # True source of GAPID versions.
 # Increment these numbers immediately after releasing a new version.
-set(GAPID_VERSION_MAJOR 0)
-set(GAPID_VERSION_MINOR 9)
-set(GAPID_VERSION_POINT 7)
+set(GAPID_VERSION_MAJOR 1)
+set(GAPID_VERSION_MINOR 0)
+set(GAPID_VERSION_POINT 0)
 
 if (NOT DEFINED GAPID_BUILD_NUMBER)
     set(GAPID_BUILD_NUMBER 0)
