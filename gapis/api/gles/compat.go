@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/u32"
@@ -1073,7 +1074,12 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 		case *GlEGLImageTargetTexture2DOES:
 			{
 				eglImage := GetState(s).EGLImages.Get(EGLImageKHR(cmd.Image))
-
+				if eglImage == nil {
+					analytics.SendBug(1498)
+					log.E(ctx, "Encountered nil eglImage. Replay may be corrupt. See: https://github.com/google/gapid/issues/1498")
+					out.MutateAndWrite(ctx, id, cmd)
+					return
+				}
 				// Create GL texture as compat replacement of the EGL image (on first use)
 				switch eglImage.Target {
 				case EGLenum_EGL_GL_TEXTURE_2D:
