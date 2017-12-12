@@ -30,10 +30,11 @@ var footprintBuildCounter = benchmark.Duration("footprint.build")
 // Footprint contains a list of command and a list of Behaviors which
 // describes the side effect of executing the commands in that list.
 type Footprint struct {
-	Commands         []api.Cmd
-	Behaviors        []*Behavior
-	BehaviorIndices  map[*Behavior]uint64
-	cmdIdxToBehavior api.SubCmdIdxTrie
+	Commands           []api.Cmd
+	NumInitialCommands int
+	Behaviors          []*Behavior
+	BehaviorIndices    map[*Behavior]uint64
+	cmdIdxToBehavior   api.SubCmdIdxTrie
 }
 
 // NewEmptyFootprint creates a new Footprint with an empty command list, and
@@ -49,12 +50,13 @@ func NewEmptyFootprint(ctx context.Context) *Footprint {
 
 // NewFootprint takes a list of commands and creates a new Footprint with
 // that list of commands, and returns a pointer to that Footprint.
-func NewFootprint(ctx context.Context, cmds []api.Cmd) *Footprint {
+func NewFootprint(ctx context.Context, cmds []api.Cmd, numInitialCommands int) *Footprint {
 	return &Footprint{
-		Commands:         cmds,
-		Behaviors:        make([]*Behavior, 0, len(cmds)),
-		BehaviorIndices:  map[*Behavior]uint64{},
-		cmdIdxToBehavior: api.SubCmdIdxTrie{},
+		Commands:           cmds,
+		NumInitialCommands: numInitialCommands,
+		Behaviors:          make([]*Behavior, 0, len(cmds)),
+		BehaviorIndices:    map[*Behavior]uint64{},
+		cmdIdxToBehavior:   api.SubCmdIdxTrie{},
 	}
 }
 
@@ -208,13 +210,14 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	cmds := c.Commands
 	// If the capture contains initial state, prepend the commands to build the state.
 	initialCmds := c.GetInitialCommands(ctx)
+	numInitialCmds := len(initialCmds)
 	if len(initialCmds) > 0 {
 		cmds = append(initialCmds, cmds...)
 	}
 
 	builders := map[api.API]FootprintBuilder{}
 
-	ft := NewFootprint(ctx, cmds)
+	ft := NewFootprint(ctx, cmds, numInitialCmds)
 
 	s := c.NewState(ctx)
 	t0 := footprintBuildCounter.Start()

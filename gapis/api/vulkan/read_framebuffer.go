@@ -32,7 +32,8 @@ import (
 )
 
 type readFramebuffer struct {
-	injections map[api.CmdID][]func(context.Context, api.Cmd, transform.Writer)
+	injections         map[api.CmdID][]func(context.Context, api.Cmd, transform.Writer)
+	numInitialCommands int
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
@@ -58,7 +59,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		cmd.Mutate(ctx, id, out.State(), nil)
 	}
 
-	if r, ok := t.injections[id]; ok {
+	if r, ok := t.injections[id-api.CmdID(t.numInitialCommands)]; ok {
 		for _, injection := range r {
 			injection(ctx, cmd, out)
 		}
