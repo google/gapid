@@ -498,6 +498,36 @@ func (a API) Replay(
 	// we will need it.
 	dceInfo := dCEInfo{}
 
+	expandedCmds := false
+	numInitialCommands := 0
+	expandCommands := func() (int, error) {
+		if expandedCmds {
+			return numInitialCommands, nil
+		}
+		if optimize {
+			// If we have not set up the dependency graph, do it now.
+			if dceInfo.ft == nil {
+				ft, err := dependencygraph.GetFootprint(ctx)
+				if err != nil {
+					return 0, err
+				}
+				dceInfo.ft = ft
+				dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
+			}
+			cmds = []api.Cmd{}
+			numInitialCommands = dceInfo.ft.NumInitialCommands
+		} else {
+			// If the capture contains initial state, prepend the commands to build the state.
+			initialCmds := capture.GetInitialCommands(ctx)
+			numInitialCommands = len(initialCmds)
+			if len(initialCmds) > 0 {
+				cmds = append(initialCmds, cmds...)
+			}
+		}
+		expandedCmds = true
+		return numInitialCommands, nil
+	}
+
 	wire := false
 
 	for _, rr := range rrs {
@@ -510,36 +540,31 @@ func (a API) Replay(
 			optimize = false
 
 		case framebufferRequest:
-			// TODO(subcommands): Add subcommand support here
-			if err := earlyTerminator.Add(ctx, api.CmdID(req.after[0]), req.after[1:]); err != nil {
-				return err
-			}
-
-			after := api.CmdID(req.after[0])
-			if len(req.after) > 1 {
-				// If we are dealing with subcommands, 2 things are true.
-				// 1) We will never get multiple requests at the same time for different locations.
-				// 2) the earlyTerminator.lastRequest is the last command we have to actually run.
-				//     Either the VkQueueSubmit, or the VkSetEvent if synchronization comes in to play
-				after = earlyTerminator.lastRequest
-			}
 
 			cfg := cfg.(drawConfig)
 			if cfg.disableReplayOptimization {
 				optimize = false
 			}
+			extraCommands, err := expandCommands()
+			if err != nil {
+				return err
+			}
+			cmdid := req.after[0] + uint64(extraCommands)
+			// TODO(subcommands): Add subcommand support here
+			if err := earlyTerminator.Add(ctx, api.CmdID(cmdid), req.after[1:]); err != nil {
+				return err
+			}
+
+			after := api.CmdID(cmdid)
+			if len(req.after) > 1 {
+				// If we are dealing with subcommands, 2 things are true.
+				// 2) the earlyTerminator.lastRequest is the last command we have to actually run.
+				//     Either the VkQueueSubmit, or the VkSetEvent if synchronization comes in to play
+				after = earlyTerminator.lastRequest
+			}
 
 			if optimize {
-				// If we have not set up the dependency graph, do it now.
-				if dceInfo.ft == nil {
-					ft, err := dependencygraph.GetFootprint(ctx)
-					if err != nil {
-						return err
-					}
-					dceInfo.ft = ft
-					dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
-				}
-				dceInfo.dce.Request(ctx, api.SubCmdIdx{req.after[0]})
+				dceInfo.dce.Request(ctx, api.SubCmdIdx{cmdid})
 			}
 
 			switch cfg.wireframeMode {
@@ -560,16 +585,14 @@ func (a API) Replay(
 		}
 	}
 
+	_, err = expandCommands()
+	if err != nil {
+		return err
+	}
+
 	// Use the dead code elimination pass
 	if optimize {
-		cmds = []api.Cmd{}
 		transforms.Prepend(dceInfo.dce)
-	} else {
-		// If the capture contains initial state, prepend the commands to build the state.
-		initialCmds := capture.GetInitialCommands(ctx)
-		if len(initialCmds) > 0 {
-			cmds = append(initialCmds, cmds...)
-		}
 	}
 
 	if wire {
