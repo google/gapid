@@ -442,9 +442,9 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
     mNumDrawsPerFrame = 0;
 }
 
-void Spy::saveInitialSate() {
+void Spy::saveInitialState() {
     GAPID_INFO("Saving initial state");
-    auto encoder = this->getEncoder(0);
+    auto encoder = this->getEncoder(kAllAPIs);
 
     capture::GlobalState global;
     auto group = encoder->group(&global);
@@ -509,16 +509,8 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
         if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
             exit();
             set_suspended(false);
-            saveInitialSate();
-            //set_recording_state(true);
+            saveInitialState();
             auto spy_ctx = enter("RecreateState", 2);
-            //if (!VulkanSpy::Devices.empty()) {
-            //    spy_ctx->enter(cmd::RecreateState{});
-            //    EnumerateVulkanResources(spy_ctx);
-            //    spy_ctx->exit();
-            //}
-            //set_recording_state(false);*/
-            // The outer call will handle the spy->exit() for us.
         }
     }
 }
