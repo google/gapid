@@ -803,6 +803,7 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []u
 
 	dat := sb.newState.AllocDataOrPanic(sb.ctx, data)
 	at := NewVoidᵖ(dat.Ptr())
+	atdata := sb.newState.AllocDataOrPanic(sb.ctx, at)
 
 	sb.write(sb.cb.VkMapMemory(
 		device.VulkanHandle,
@@ -810,9 +811,9 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []u
 		VkDeviceSize(0),
 		size,
 		VkMemoryMapFlags(0),
-		sb.MustAllocWriteData(at).Ptr(),
+		atdata.Ptr(),
 		VkResult_VK_SUCCESS,
-	))
+	).AddRead(atdata.Data()).AddWrite(atdata.Data()))
 
 	sb.write(sb.cb.VkFlushMappedMemoryRanges(
 		device.VulkanHandle,
@@ -833,6 +834,7 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []u
 	))
 
 	dat.Free()
+	atdata.Free()
 
 	return buffer, deviceMemory
 }
@@ -2384,9 +2386,11 @@ func (sb *stateBuilder) createDescriptorSet(ds *DescriptorSetObject) {
 					continue
 				}
 				if im.Sampler != VkSampler(0) && !ns.Samplers.Contains(im.Sampler) {
+					log.W(sb.ctx, "Sampler %v is invalid, this descriptor[%v] will remain empty", im.Sampler, ds.VulkanHandle)
 					continue
 				}
 				if im.ImageView != VkImageView(0) && !ns.ImageViews.Contains(im.ImageView) {
+					log.W(sb.ctx, "ImageView %v is invalid, this descriptor[%v] will remain empty", im.Sampler, ds.VulkanHandle)
 					continue
 				}
 
@@ -2413,7 +2417,11 @@ func (sb *stateBuilder) createDescriptorSet(ds *DescriptorSetObject) {
 			numBuffers := uint32(len(*binding.BufferBinding.Map))
 			for i := uint32(0); i < numBuffers; i++ {
 				buff := binding.BufferBinding.Get(i)
-				if buff.Buffer != VkBuffer(0) || !ns.Buffers.Contains(buff.Buffer) {
+				if buff.Buffer == VkBuffer(0) {
+					continue
+				}
+				if buff.Buffer != VkBuffer(0) && !ns.Buffers.Contains(buff.Buffer) {
+					log.W(sb.ctx, "Buffer %v is invalid, this descriptor[%v] will remain empty", buff.Buffer, ds.VulkanHandle)
 					continue
 				}
 				writes = append(writes, VkWriteDescriptorSet{
@@ -2435,7 +2443,11 @@ func (sb *stateBuilder) createDescriptorSet(ds *DescriptorSetObject) {
 			numBuffers := uint32(len(*binding.BufferViewBindings.Map))
 			for i := uint32(0); i < numBuffers; i++ {
 				bv := binding.BufferViewBindings.Get(i)
-				if bv == VkBufferView(0) || !ns.BufferViews.Contains(bv) {
+				if bv == VkBufferView(0) {
+					continue
+				}
+				if bv != VkBufferView(0) && !ns.BufferViews.Contains(bv) {
+					log.W(sb.ctx, "BufferView %v is invalid, this descriptor[%v] will remain empty", bv, ds.VulkanHandle)
 					continue
 				}
 				writes = append(writes, VkWriteDescriptorSet{
@@ -2452,7 +2464,6 @@ func (sb *stateBuilder) createDescriptorSet(ds *DescriptorSetObject) {
 				})
 			}
 		}
-
 	}
 	sb.write(sb.cb.VkUpdateDescriptorSets(
 		ds.Device,
