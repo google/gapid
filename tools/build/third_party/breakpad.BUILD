@@ -1,4 +1,3 @@
-load("@//tools/build:rules.bzl", "copy")
 cc_library(
     name = "breakpad",
     srcs = [
@@ -8,6 +7,9 @@ cc_library(
     ]),
     copts = [
         "-I$(BINDIR)/external/brekpad",
+    ],
+    deps = [
+        "@lss",
     ],
     strip_include_prefix = "src/",
     visibility = ["//visibility:public"],
