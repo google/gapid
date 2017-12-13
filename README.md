@@ -48,16 +48,6 @@ GAPID can also trace any desktop Vulkan application.
   </tr>
 </table>
 
-## Status
-
-GAPID is still in development but already can be used to debug many Android OpenGL ES and Vulkan applications.
-
-The UI runs on Windows, Linux and MacOS and can currently be used to trace GLES on Android as well as Vulkan
-on Windows, Linux and Android.
-We also plan to be able to trace OpenGL ES applications on hosts that support the API.
-
-Detailed current status for Vulkan can be found [here](gapis/api/vulkan/README.md).
-
 ## Building
 
 **See [Building GAPID](BUILDING.md).**
