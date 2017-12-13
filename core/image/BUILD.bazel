@@ -76,7 +76,7 @@ go_proto_library(
     importpath = "github.com/google/gapid/core/image",
     proto = ":image_proto",
     visibility = ["//visibility:public"],
-    deps = ["//core/stream:stream_go_proto"],
+    deps = ["//core/stream:go_default_library"],
 )
 
 java_proto_library(

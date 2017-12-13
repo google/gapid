@@ -34,5 +34,5 @@ go_proto_library(
     importpath = "github.com/google/gapid/core/os/android/apk",
     proto = ":apk_proto",
     visibility = ["//visibility:public"],
-    deps = ["//core/os/device:device_go_proto"],
+    deps = ["//core/os/device:go_default_library"],
 )

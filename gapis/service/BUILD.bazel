@@ -53,13 +53,13 @@ go_grpc_library(
     proto = ":service_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/image:image_go_proto",
-        "//core/log/log_pb:log_pb_go_proto",
-        "//core/os/device:device_go_proto",
-        "//gapis/api:api_go_proto",
-        "//gapis/service/box:box_go_proto",
-        "//gapis/service/path:path_go_proto",
-        "//gapis/stringtable:stringtable_go_proto",
+        "//core/image:go_default_library",
+        "//core/log/log_pb:go_default_library",
+        "//core/os/device:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/service/box:go_default_library",
+        "//gapis/service/path:go_default_library",
+        "//gapis/stringtable:go_default_library",
     ],
 )
 
