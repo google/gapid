@@ -52,12 +52,10 @@ void SpyBase::init(CallObserver* observer) {
 
 void SpyBase::lock(CallObserver* observer) {
     mMutex.lock();
-  GAPID_WARNING("SpyBase: locked");
 }
 
 void SpyBase::unlock() {
     mMutex.unlock();
-  GAPID_WARNING("SpyBase: unlocked");
 }
 
 void SpyBase::abort() {
