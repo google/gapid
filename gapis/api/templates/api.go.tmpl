@@ -43,7 +43,14 @@
     "github.com/google/gapid/gapis/service/path"
 
     ϟmem "github.com/google/gapid/gapis/memory"
-)
+  )
+
+  // Avoid unused errors.
+  var (
+    _ = dictionary.Entry{}
+    _ = protocol.OpCall
+    _ = sort.IntSlice(nil)
+  )
 
   {{range $p := $.Pseudonyms}}
     {{template "Pseudonym" $p}}
