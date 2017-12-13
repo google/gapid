@@ -359,11 +359,19 @@ public final class ProtoDebugTextFormat {
     }
   }
 
-  public static String escapeBytes(final ByteString input) {
+  public static char[] escapeBytes(final ByteString input) {
     return escapeBytes(input.toByteArray());
   }
 
-  public static String escapeBytes(final byte[] input) {
-    return javax.xml.bind.DatatypeConverter.printHexBinary(input).toLowerCase();
+  private static final char[] HEX_CHARS = {
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+  };
+  public static char[] escapeBytes(final byte[] input) {
+    char[] r = new char[input.length * 2];
+    for (int i = 0, j = 0; i < input.length; i++, j += 2) {
+      r[j + 0] = HEX_CHARS[(input[i] & 0xF0) >> 4];
+      r[j + 1] = HEX_CHARS[input[i] & 0xF];
+    }
+    return r;
   }
 }
