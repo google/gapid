@@ -30,7 +30,7 @@ func TestReport(t *testing.T) {
 	if testCrashReport {
 		ctx := log.Testing(t)
 
-		err := Reporter{
+		_, err := Reporter{
 			AppName:    "crash-reporting-test",
 			AppVersion: "0",
 			OSName:     "unknown",
