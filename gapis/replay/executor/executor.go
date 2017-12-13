@@ -156,7 +156,6 @@ func (e executor) handleReplayCommunication(ctx context.Context, connection io.R
 				return fmt.Errorf("Failed to send replay resource data: %v", err)
 			}
 		case protocol.MessageType_Crash:
-			log.I(ctx, "Crash from GAPIR incoming")
 			if err := e.handleCrash(ctx, r); err != nil {
 				return fmt.Errorf("Failed to handle crash sent by gapir: %v", err)
 			}
@@ -189,13 +188,15 @@ func (e executor) handleCrash(ctx context.Context, r binary.Reader) error {
 	}
 
 	// TODO(baldwinn860): get the actual version from GAPIR in case it ever goes out of sync
-	if err := reporting.ReportMinidump(reporting.Reporter{
+	if res, err := reporting.ReportMinidump(reporting.Reporter{
 		AppName:    "GAPIR",
 		AppVersion: app.Version.String(),
 		OSName:     e.OS.GetName(),
 		OSVersion:  fmt.Sprintf("%v %v.%v.%v", e.OS.GetBuild(), e.OS.GetMajor(), e.OS.GetMinor(), e.OS.GetPoint()),
 	}, filename, crashData); err != nil {
 		return log.Err(ctx, err, "Failed to report crash in GAPIR")
+	} else {
+		log.I(ctx, "Crash Report Uploaded; ID: %v", res)
 	}
 	return nil
 }
