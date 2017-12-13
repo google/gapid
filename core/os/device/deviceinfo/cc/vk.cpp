@@ -30,17 +30,21 @@ namespace query {
 
 bool hasVulkanLoader() { return core::HasVulkanLoader(); }
 
-#define MUST_SUCCESS(expr)                                      \
-  if (VK_SUCCESS != expr) {                                     \
-    GAPID_WARNING("Does not return VK_SUCCESS: " #expr          \
-                  " for getting Vulkan physical device info."); \
-    return false;                                               \
+#define MUST_SUCCESS(expr)                              \
+  {                                                     \
+    auto r = expr;                                      \
+    if (VK_SUCCESS != r) {                              \
+      GAPID_WARNING("Return: %d != VK_SUCCESS: " #expr  \
+                    " for getting Vulkan Driver info.", \
+                    r);                                 \
+      return false;                                     \
+    }                                                   \
   }
 
 #define RETURN_IF_NOT_RESOLVED(FuncName)                        \
   if (FuncName == nullptr) {                                    \
     GAPID_WARNING("Failed at resolving: " #FuncName             \
-                  " for getting Vulkan physical device info."); \
+                  " for getting Vulkan Driver info."); \
     return false;                                               \
   }
 
