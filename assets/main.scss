@@ -103,6 +103,11 @@ table tr:nth-child(2n) {
     background-color: #f6f8fa
 }
 
+figcaption {
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
 // Code blocks
 code {
   background: rgba(0,0,0,0.1);
