@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/protocol"
@@ -197,6 +198,7 @@ func (e executor) handleCrash(ctx context.Context, r binary.Reader) error {
 		return log.Err(ctx, err, "Failed to report crash in GAPIR")
 	} else {
 		log.I(ctx, "Crash Report Uploaded; ID: %v", res)
+		file.Remove(file.Abs(filename))
 	}
 	return nil
 }
