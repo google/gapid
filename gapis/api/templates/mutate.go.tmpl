@@ -26,16 +26,24 @@
     "fmt"
     "strings"
 
+    "github.com/google/gapid/core/event/task"
     "github.com/google/gapid/gapis/api"
-    "github.com/google/gapid/gapis/core/event/task"
+    "github.com/google/gapid/gapis/messages"
     "github.com/google/gapid/gapis/replay/builder"
     "github.com/google/gapid/gapis/replay/protocol"
     "github.com/google/gapid/gapis/replay/value"
-
-    // "github.com/google/gapid/gapis/messages"
-    // "github.com/google/gapid/gapis/stringtable"
+    "github.com/google/gapid/gapis/stringtable"
 
     ϟmem "github.com/google/gapid/gapis/memory"
+  )
+
+  // Avoid unused errors.
+  var (
+    _ = fmt.Formatter(nil)
+    _ = messages.ErrFileCannotBeRead()
+    _ = strings.Reader{}
+    _ = stringtable.Msg{}
+    _ = ϟmem.Decoder{}
   )
 
   type callable interface {
