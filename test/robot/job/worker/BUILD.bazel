@@ -37,5 +37,5 @@ go_proto_library(
     importpath = "github.com/google/gapid/test/robot/job/worker",
     proto = ":worker_proto",
     visibility = ["//visibility:public"],
-    deps = ["//core/os/device:device_go_proto"],
+    deps = ["//core/os/device:go_default_library"],
 )
