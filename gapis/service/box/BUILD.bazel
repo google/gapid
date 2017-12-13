@@ -43,7 +43,7 @@ go_grpc_library(
     importpath = "github.com/google/gapid/gapis/service/box",
     proto = ":box_proto",
     visibility = ["//visibility:public"],
-    deps = ["//core/data/pod:pod_go_proto"],
+    deps = ["//core/data/pod:go_default_library"],
 )
 
 java_proto_library(

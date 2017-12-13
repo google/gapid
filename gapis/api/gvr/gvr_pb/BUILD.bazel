@@ -4,7 +4,7 @@ load("//tools/build:rules.bzl", "apic")
 
 apic(
     name = "api_proto",
-    api = "//gapis/api/gles:api",
+    api = "//gapis/api/gvr:api",
     templates = ["//gapis/api/templates:proto"],
     visibility = ["//visibility:public"],
 )
@@ -14,26 +14,27 @@ go_library(
     srcs = [
         "doc.go",
     ],
-    embed = [":gles_pb_go_proto"],
-    importpath = "github.com/google/gapid/gapis/api/gles/gles_pb",
+    embed = [":gvr_pb_go_proto"],  # keep
+    importpath = "github.com/google/gapid/gapis/api/gvr/gvr_pb",
     visibility = ["//visibility:public"],
-    deps = ["//gapis/memory/memory_pb:go_default_library"],
+    deps = [
+        "//gapis/memory/memory_pb:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+    ],
 )
 
 proto_library(
-    name = "gles_pb_proto",
-    srcs = [
-        "extras.proto",
-        ":api_proto",  # keep
-    ],
+    name = "gvr_pb_proto",
+    srcs = [":api_proto"],  # keep
     visibility = ["//visibility:public"],
     deps = ["//gapis/memory/memory_pb:memory_pb_proto"],  # keep
 )
 
+# keep
 go_proto_library(
-    name = "gles_pb_go_proto",
-    importpath = "github.com/google/gapid/gapis/api/gles/gles_pb",
-    proto = ":gles_pb_proto",
+    name = "gvr_pb_go_proto",
+    importpath = "github.com/google/gapid/gapis/api/gvr/gvr_pb",
+    proto = ":gvr_pb_proto",
     visibility = ["//visibility:public"],
-    deps = ["//gapis/memory/memory_pb:go_default_library"],  # keep
+    deps = ["//gapis/memory/memory_pb:go_default_library"],
 )

@@ -49,7 +49,7 @@ go_grpc_library(
     proto = ":build_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/os/device:device_go_proto",
-        "//test/robot/search:search_go_proto",
+        "//core/os/device:go_default_library",
+        "//test/robot/search:go_default_library",
     ],
 )

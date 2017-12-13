@@ -60,7 +60,7 @@ go_grpc_library(
     proto = ":grpc_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//test/robot/search:search_go_proto",
-        "//test/robot/stash:stash_go_proto",
+        "//test/robot/search:go_default_library",
+        "//test/robot/stash:go_default_library",
     ],
 )

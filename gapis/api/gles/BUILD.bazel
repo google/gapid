@@ -183,7 +183,7 @@ go_proto_library(
     proto = ":gles_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/image:image_go_proto",
-        "//gapis/service/path:path_go_proto",
+        "//core/image:go_default_library",
+        "//gapis/service/path:go_default_library",
     ],
 )

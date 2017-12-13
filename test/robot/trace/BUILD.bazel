@@ -59,10 +59,10 @@ go_grpc_library(
     proto = ":trace_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/os/device:device_go_proto",
-        "//test/robot/job:job_go_proto",
-        "//test/robot/job/worker:worker_go_proto",
-        "//test/robot/search:search_go_proto",
-        "//test/robot/subject:subject_go_proto",
+        "//core/os/device:go_default_library",
+        "//test/robot/job:go_default_library",
+        "//test/robot/job/worker:go_default_library",
+        "//test/robot/search:go_default_library",
+        "//test/robot/subject:go_default_library",
     ],
 )

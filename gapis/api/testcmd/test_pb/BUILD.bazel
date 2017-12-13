@@ -27,5 +27,5 @@ go_proto_library(
     importpath = "github.com/google/gapid/gapis/api/testcmd/test_pb",
     proto = ":test_pb_proto",
     visibility = ["//visibility:public"],
-    deps = ["//gapis/service/box:box_go_proto"],
+    deps = ["//gapis/service/box:go_default_library"],
 )

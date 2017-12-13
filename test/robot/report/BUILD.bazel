@@ -51,8 +51,8 @@ go_grpc_library(
     proto = ":report_proto",
     visibility = ["//visibility:public"],
     deps = [
-        "//test/robot/job:job_go_proto",
-        "//test/robot/job/worker:worker_go_proto",
-        "//test/robot/search:search_go_proto",
+        "//test/robot/job:go_default_library",
+        "//test/robot/job/worker:go_default_library",
+        "//test/robot/search:go_default_library",
     ],
 )

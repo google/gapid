@@ -41,5 +41,5 @@ go_grpc_library(
     importpath = "github.com/google/gapid/test/robot/master",
     proto = ":master_proto",
     visibility = ["//visibility:public"],
-    deps = ["//test/robot/search:search_go_proto"],
+    deps = ["//test/robot/search:go_default_library"],
 )
