@@ -138,6 +138,13 @@ new_git_repository(
     build_file = "//tools/build/third_party:breakpad.BUILD",
 )
 
+new_git_repository(
+    name = "lss",
+    remote = "https://chromium.googlesource.com/linux-syscall-support",
+    commit = "e6527b0cd469e3ff5764785dadcb39bf7d787154",
+    build_file = "//tools/build/third_party:lss.BUILD",
+)
+
 github_go_repository(
     name = "org_golang_x_crypto",
     organization = "golang",
