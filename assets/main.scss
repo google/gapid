@@ -54,6 +54,7 @@ body {
 }
 
 .site-footer {
+  margin-top: 20px;
   text-align: right;
   font-size: 0.6rem;
   padding: 5px;
@@ -78,10 +79,20 @@ h2 {
   border-bottom: solid 1px rgba(0,0,0,0.1);
 }
 
+.page {
+  display: flex;
+  flex-direction: row;
+}
+
 .page-content {
-  margin-left: $side-bar-width;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
   padding: 5px 5px 5px 1rem;
-  max-width: 70%;
+}
+
+.page-margin {
+  max-width: 95%;
 }
 
 table th {

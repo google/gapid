@@ -1,11 +1,8 @@
 @charset "utf-8";
 
 .sidebar {
+    flex: 0 0 15em;
     font-size: .9rem;
-    /* 15px */
-    position: fixed;
-    height: 100%;
-    width: 13rem;
     overflow-y: auto;
     color: rgba(255, 255, 255, 0.8);
     background-color: #202020;
