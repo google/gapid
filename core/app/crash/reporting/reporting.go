@@ -19,6 +19,7 @@
 package reporting
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -57,7 +58,7 @@ func Enable(ctx context.Context, appName, appVersion string) {
 					osVersion = fmt.Sprintf("%v %v.%v.%v", os.GetBuild(), os.GetMajor(), os.GetMinor(), os.GetPoint())
 				}
 			}
-			err := Reporter{
+			res, err := Reporter{
 				appName,
 				appVersion,
 				osName,
@@ -65,6 +66,8 @@ func Enable(ctx context.Context, appName, appVersion string) {
 			}.reportStacktrace(s, crashURL)
 			if err != nil {
 				log.E(ctx, "%v", err)
+			} else {
+				log.I(ctx, "%v", res)
 			}
 		})
 	}
@@ -81,36 +84,44 @@ func Disable() {
 }
 
 // ReportMinidump encodes and sends a minidump report to the crashURL endpoint.
-func ReportMinidump(r Reporter, minidumpName string, minidumpData []byte) error {
+func ReportMinidump(r Reporter, minidumpName string, minidumpData []byte) (string, error) {
 	if disable != nil {
-		if err := r.reportMinidump(minidumpName, minidumpData, crashURL); err != nil {
-			return err
+		if res, err := r.reportMinidump(minidumpName, minidumpData, crashURL); err != nil {
+			return "", err
+		} else {
+			return res, nil
 		}
 	}
-	return nil
+	return "Error reporting disabled", nil
 }
 
-func (r Reporter) sendReport(body io.Reader, contentType, endpoint string) error {
+func (r Reporter) sendReport(body io.Reader, contentType, endpoint string) (string, error) {
 	appNameAndVersion := r.AppName + ":" + r.AppVersion
 	url := fmt.Sprintf("%v?product=%v&version=%v", endpoint, url.QueryEscape(crashProduct), url.QueryEscape(appNameAndVersion))
 
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
-		return fmt.Errorf("Couldn't create new crash report request: %v", err)
+		return "", fmt.Errorf("Couldn't create new crash report request: %v", err)
 	}
 
 	req.Header.Set("Content-Type", contentType)
 
 	client := &http.Client{}
 	res, err := client.Do(req)
+	defer res.Body.Close()
 	if err != nil || res.StatusCode != http.StatusOK {
-		return fmt.Errorf("Failed to upload report request: %v (%v)", err, res.StatusCode)
+		return "", fmt.Errorf("Failed to upload report request: %v (%v)", err, res.StatusCode)
 	}
 
-	return nil
+	buf := new(bytes.Buffer)
+	if _, err := buf.ReadFrom(res.Body); err != nil {
+		return "", fmt.Errorf("Failed to write out response buffer: %v", err)
+	}
+
+	return buf.String(), nil
 }
 
-func (r Reporter) reportStacktrace(s stacktrace.Callstack, endpoint string) error {
+func (r Reporter) reportStacktrace(s stacktrace.Callstack, endpoint string) (string, error) {
 	body, contentType, err := encoder{
 		appName:    r.AppName,
 		appVersion: r.AppVersion,
@@ -118,13 +129,13 @@ func (r Reporter) reportStacktrace(s stacktrace.Callstack, endpoint string) erro
 		osVersion:  r.OSVersion,
 	}.encodeStacktrace(s.String())
 	if err != nil {
-		return fmt.Errorf("Couldn't encode crash report: %v", err)
+		return "", fmt.Errorf("Couldn't encode crash report: %v", err)
 	}
 
 	return r.sendReport(body, contentType, endpoint)
 }
 
-func (r Reporter) reportMinidump(minidumpName string, minidumpData []byte, endpoint string) error {
+func (r Reporter) reportMinidump(minidumpName string, minidumpData []byte, endpoint string) (string, error) {
 	body, contentType, err := encoder{
 		appName:    r.AppName,
 		appVersion: r.AppVersion,
@@ -132,7 +143,7 @@ func (r Reporter) reportMinidump(minidumpName string, minidumpData []byte, endpo
 		osVersion:  r.OSVersion,
 	}.encodeMinidump(minidumpName, minidumpData)
 	if err != nil {
-		return fmt.Errorf("Couldn't encode minidump crash report: %v", err)
+		return "", fmt.Errorf("Couldn't encode minidump crash report: %v", err)
 	}
 
 	return r.sendReport(body, contentType, endpoint)
