@@ -72,83 +72,83 @@ void deviceInstanceID(device::Instance* instance) {
 }
 
 void buildDeviceInstance(void* platform_data, device::Instance** out) {
-    using namespace device;
-    using namespace google::protobuf::io;
+  using namespace device;
+  using namespace google::protobuf::io;
 
-    if (!query::createContext(platform_data)) {
-      return;
-    }
+  if (!query::createContext(platform_data)) {
+    return;
+  }
 
-    // OS
-    auto os = new OS();
-      os->set_kind(query::osKind());
-      os->set_name(query::osName());
-      os->set_build(query::osBuild());
-      os->set_major(query::osMajor());
-      os->set_minor(query::osMinor());
-      os->set_point(query::osPoint());
+  // OS
+  auto os = new OS();
+  os->set_kind(query::osKind());
+  os->set_name(query::osName());
+  os->set_build(query::osBuild());
+  os->set_major(query::osMajor());
+  os->set_minor(query::osMinor());
+  os->set_point(query::osPoint());
 
-    // Instance.Configuration.Drivers
-    auto drivers = new Drivers();
+  // Instance.Configuration.Drivers
+  auto drivers = new Drivers();
 
-    // Instance.Configuration.Drivers.OpenGLDriver
-    auto opengl_driver = new OpenGLDriver();
-    query::glDriver(opengl_driver);
-    drivers->set_allocated_opengl(opengl_driver);
+  // Instance.Configuration.Drivers.OpenGLDriver
+  auto opengl_driver = new OpenGLDriver();
+  query::glDriver(opengl_driver);
+  drivers->set_allocated_opengl(opengl_driver);
 
-    // Here we only check if the device supports Vulkan (has Vulkan loader).
-    // Real content of VulkanDriver may require an VkInstance handle, use
-    // updateVulkanDriver() to populate the VulkanDriver info for an
-    // device::Instance.
-    if (query::hasVulkanLoader()) {
-      auto vulkan_driver = new VulkanDriver();
-      drivers->set_allocated_vulkan(vulkan_driver);
-    }
+  // Here we only check if the device supports Vulkan (has Vulkan loader).
+  // Real content of VulkanDriver may require an VkInstance handle, use
+  // updateVulkanDriver() to populate the VulkanDriver info for an
+  // device::Instance.
+  if (query::hasVulkanLoader()) {
+    auto vulkan_driver = new VulkanDriver();
+    drivers->set_allocated_vulkan(vulkan_driver);
+  }
 
-    // Instance.Configuration.Hardware.CPU
-    auto cpu = new CPU();
-    cpu->set_name(query::cpuName());
-    cpu->set_vendor(query::cpuVendor());
-    cpu->set_architecture(query::cpuArchitecture());
-    cpu->set_cores(query::cpuNumCores());
+  // Instance.Configuration.Hardware.CPU
+  auto cpu = new CPU();
+  cpu->set_name(query::cpuName());
+  cpu->set_vendor(query::cpuVendor());
+  cpu->set_architecture(query::cpuArchitecture());
+  cpu->set_cores(query::cpuNumCores());
 
-    // Instance.Configuration.Hardware.GPU
-    auto gpu = new GPU();
-    const char* gpuName = query::gpuName();
-    const char* gpuVendor = query::gpuVendor();
-    if (strlen(gpuName) == 0) {
-        gpuName = opengl_driver->renderer().c_str();
-    }
-    if (strlen(gpuVendor) == 0) {
-        gpuVendor = opengl_driver->vendor().c_str();
-    }
-    gpu->set_name(gpuName);
-    gpu->set_vendor(gpuVendor);
+  // Instance.Configuration.Hardware.GPU
+  auto gpu = new GPU();
+  const char* gpuName = query::gpuName();
+  const char* gpuVendor = query::gpuVendor();
+  if (strlen(gpuName) == 0) {
+    gpuName = opengl_driver->renderer().c_str();
+  }
+  if (strlen(gpuVendor) == 0) {
+    gpuVendor = opengl_driver->vendor().c_str();
+  }
+  gpu->set_name(gpuName);
+  gpu->set_vendor(gpuVendor);
 
-    // Instance.Configuration.Hardware
-    auto hardware = new Hardware();
-    hardware->set_name(query::hardwareName());
-    hardware->set_allocated_cpu(cpu);
-    hardware->set_allocated_gpu(gpu);
+  // Instance.Configuration.Hardware
+  auto hardware = new Hardware();
+  hardware->set_name(query::hardwareName());
+  hardware->set_allocated_cpu(cpu);
+  hardware->set_allocated_gpu(gpu);
 
-    // Instance.Configuration
-    auto configuration = new Configuration();
-    configuration->set_allocated_os(os);
-    configuration->set_allocated_hardware(hardware);
-    configuration->set_allocated_drivers(drivers);
-    for (int i = 0, c = query::numABIs(); i < c; i++) {
-        query::abi(i, configuration->add_abis());
-    }
+  // Instance.Configuration
+  auto configuration = new Configuration();
+  configuration->set_allocated_os(os);
+  configuration->set_allocated_hardware(hardware);
+  configuration->set_allocated_drivers(drivers);
+  for (int i = 0, c = query::numABIs(); i < c; i++) {
+    query::abi(i, configuration->add_abis());
+  }
 
-    // Instance
-    auto instance = new Instance();
-    instance->set_name(query::instanceName());
-    instance->set_allocated_configuration(configuration);
-    deviceInstanceID(instance);
+  // Instance
+  auto instance = new Instance();
+  instance->set_name(query::instanceName());
+  instance->set_allocated_configuration(configuration);
+  deviceInstanceID(instance);
 
-    query::destroyContext();
+  query::destroyContext();
 
-    *out = instance;
+  *out = instance;
 }
 
 }  // anonymous namespace
@@ -156,20 +156,18 @@ void buildDeviceInstance(void* platform_data, device::Instance** out) {
 namespace query {
 
 device::Instance* getDeviceInstance(void* platform_data) {
-    device::Instance* instance = nullptr;
+  device::Instance* instance = nullptr;
 
-    // buildDeviceInstance on a seperate thread to avoid EGL screwing with the
-    // currently bound context.
-    std::thread thread(buildDeviceInstance, platform_data, &instance);
-    thread.join();
-    return instance;
+  // buildDeviceInstance on a seperate thread to avoid EGL screwing with the
+  // currently bound context.
+  std::thread thread(buildDeviceInstance, platform_data, &instance);
+  thread.join();
+  return instance;
 }
 
 bool updateVulkanDriver(
-    device::Instance* inst,
-    size_t vk_inst_handle,
+    device::Instance* inst, size_t vk_inst_handle,
     std::function<void*(size_t, const char*)> get_inst_proc_addr) {
-
   using namespace device;
   using namespace google::protobuf::io;
 
@@ -183,7 +181,8 @@ bool updateVulkanDriver(
     // support Vulkan, return without touching the device::Instance.
     return false;
   }
-  if (!query::vkPhysicalDevices(vk_driver, vk_inst_handle, get_inst_proc_addr)) {
+  if (!query::vkPhysicalDevices(vk_driver, vk_inst_handle,
+                                get_inst_proc_addr)) {
     // Failed at getting Vulkan physical device info, the device may not
     // support Vulkan, return without touching the device::Instance.
     return false;
@@ -197,7 +196,8 @@ bool updateVulkanDriver(
     auto drivers = new Drivers();
     inst->mutable_configuration()->set_allocated_drivers(drivers);
   }
-  inst->mutable_configuration()->mutable_drivers()->set_allocated_vulkan(vk_driver);
+  inst->mutable_configuration()->mutable_drivers()->set_allocated_vulkan(
+      vk_driver);
 
   // rehash the ID
   deviceInstanceID(inst);
@@ -205,20 +205,20 @@ bool updateVulkanDriver(
 }
 
 device::MemoryLayout* currentMemoryLayout() {
-    auto out = new device::MemoryLayout();
-    out->set_endian(isLittleEndian() ? device::LittleEndian : device::BigEndian);
-    out->set_allocated_pointer(new_dt_layout<void*>());
-    out->set_allocated_integer(new_dt_layout<int>());
-    out->set_allocated_size(new_dt_layout<size_t>());
-    out->set_allocated_char_(new_dt_layout<char>());
-    out->set_allocated_i64(new_dt_layout<int64_t>());
-    out->set_allocated_i32(new_dt_layout<int32_t>());
-    out->set_allocated_i16(new_dt_layout<int16_t>());
-    out->set_allocated_i8(new_dt_layout<int8_t>());
-    out->set_allocated_f64(new_dt_layout<double>());
-    out->set_allocated_f32(new_dt_layout<float>());
-    out->set_allocated_f16(new_dt_layout<uint16_t>());
-    return out;
+  auto out = new device::MemoryLayout();
+  out->set_endian(isLittleEndian() ? device::LittleEndian : device::BigEndian);
+  out->set_allocated_pointer(new_dt_layout<void*>());
+  out->set_allocated_integer(new_dt_layout<int>());
+  out->set_allocated_size(new_dt_layout<size_t>());
+  out->set_allocated_char_(new_dt_layout<char>());
+  out->set_allocated_i64(new_dt_layout<int64_t>());
+  out->set_allocated_i32(new_dt_layout<int32_t>());
+  out->set_allocated_i16(new_dt_layout<int16_t>());
+  out->set_allocated_i8(new_dt_layout<int8_t>());
+  out->set_allocated_f64(new_dt_layout<double>());
+  out->set_allocated_f32(new_dt_layout<float>());
+  out->set_allocated_f16(new_dt_layout<uint16_t>());
+  return out;
 }
 
 }  // namespace query

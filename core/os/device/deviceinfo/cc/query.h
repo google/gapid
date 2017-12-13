@@ -42,8 +42,7 @@ device::Instance* getDeviceInstance(void* platform_data);
 // addresses from loader will cause a infinite calling stack and may deadlock
 // in the loader.
 bool updateVulkanDriver(
-    device::Instance* inst,
-    size_t vk_inst_handle = 0,
+    device::Instance* inst, size_t vk_inst_handle = 0,
     std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr);
 
 // vkLayersAndExtensions populates the layers and extension fields in the given
@@ -60,8 +59,7 @@ bool vkLayersAndExtensions(
 // vkGetInstanceProcAddress function is given, that function will be used to
 // resolve Vulkan API calls, otherwise Vulkan loader will be used.
 bool vkPhysicalDevices(
-    device::VulkanDriver*,
-    size_t vk_inst = 0,
+    device::VulkanDriver*, size_t vk_inst = 0,
     std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr);
 
 // hasVulkanLoader returns true if Vulkan loader is found, otherwise returns

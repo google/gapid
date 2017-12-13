@@ -28,9 +28,7 @@
 
 namespace query {
 
-bool hasVulkanLoader() {
-  return core::HasVulkanLoader();
-}
+bool hasVulkanLoader() { return core::HasVulkanLoader(); }
 
 #define MUST_SUCCESS(expr)                                      \
   if (VK_SUCCESS != expr) {                                     \
