@@ -196,7 +196,7 @@ func (e executor) handleCrash(ctx context.Context, r binary.Reader) error {
 		OSVersion:  fmt.Sprintf("%v %v.%v.%v", e.OS.GetBuild(), e.OS.GetMajor(), e.OS.GetMinor(), e.OS.GetPoint()),
 	}, filename, crashData); err != nil {
 		return log.Err(ctx, err, "Failed to report crash in GAPIR")
-	} else {
+	} else if res != "" {
 		log.I(ctx, "Crash Report Uploaded; ID: %v", res)
 		file.Remove(file.Abs(filename))
 	}
