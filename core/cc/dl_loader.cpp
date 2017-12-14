@@ -30,18 +30,10 @@
 namespace {
 
 // load defs
+void* load(const char* name) {
 #if TARGET_OS == GAPID_OS_WINDOWS
-void* load(const char* name, bool must = true) {
-    void* res = reinterpret_cast<void*>(LoadLibraryExA(name, NULL, 0));
-    if (res == nullptr && must) {
-        GAPID_FATAL("Can't load library %s: %d", name, GetLastError());
-    }
-    return res;
-}
-
-#elif  TARGET_OS == GAPID_OS_OSX
-
-void* load(const char* name, bool must = true) {
+    return reinterpret_cast<void*>(LoadLibraryExA(name, NULL, 0));
+#elif TARGET_OS == GAPID_OS_OSX
     if (name == nullptr) {
         return nullptr;
     }
@@ -58,23 +50,23 @@ void* load(const char* name, bool must = true) {
             remove(tmp);
         }
     }
-    if (res == nullptr && must) {
-        GAPID_FATAL("Can't load library %s: %s", name, dlerror());
-    }
     return res;
+#else
+    return dlopen(name, RTLD_NOW | RTLD_LOCAL);
+#endif // TARGET_OS
 }
 
-#else  // TARGET_OS
-
-void* load(const char* name, bool must = true) {
-    void* res = dlopen(name, RTLD_NOW | RTLD_LOCAL);
-    if (res == nullptr && must) {
-        GAPID_FATAL("Can't load library %s: %s", name, dlerror());
-    }
-    return res;
+void* must_load(const char* name) {
+  void* res = load(name);
+  if (res == nullptr) {
+#if TARGET_OS == GAPID_OS_WINDOWS
+    GAPID_FATAL("Can't load library %s: %d", name, GetLastError());
+#else
+    GAPID_FATAL("Can't load library %s: %s", name, dlerror());
+#endif // TARGET_OS
+  }
+  return res;
 }
-
-#endif  // TARGET_OS
 
 // resolve defs
 #if TARGET_OS ==  TARGET_OS_WINDOWS
@@ -107,7 +99,7 @@ void close(void* lib) {
 
 namespace core {
 
-DlLoader::DlLoader(const char* name) : mLibrary(load(name)) {}
+DlLoader::DlLoader(const char* name) : mLibrary(must_load(name)) {}
 
 DlLoader::~DlLoader() {
     close(mLibrary);
@@ -124,7 +116,7 @@ void* DlLoader::lookup(const char* name) {
 #endif  // TARGET_OS
 
 bool DlLoader::can_load(const char* lib_name) {
-  if (void* lib = load(lib_name, false)) {
+  if (void* lib = load(lib_name)) {
     close(lib);
     return true;
   }

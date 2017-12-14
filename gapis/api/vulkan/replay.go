@@ -61,28 +61,30 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 	}
 
 	for _, abi := range devAbis {
-		if abi.GetMemoryLayout().SameAs(h.GetAbi().GetMemoryLayout()) {
-			// If there is no physical devices, the trace must not contain
-			// vkCreateInstance, any ABI compatible Vulkan device should be able to
-			// replay.
-			if len(traceVkDriver.GetPhysicalDevices()) == 0 {
-				return 1
-			}
-			// Requires same vendor, device and version of API.
-			for _, devPhyInfo := range devVkDriver.GetPhysicalDevices() {
-				for _, tracePhyInfo := range traceVkDriver.GetPhysicalDevices() {
-					// TODO: More sophisticated rules
-					if devPhyInfo.GetVendorID() != tracePhyInfo.GetVendorID() {
-						continue
-					}
-					if devPhyInfo.GetDeviceID() != tracePhyInfo.GetDeviceID() {
-						continue
-					}
-					if devPhyInfo.GetApiVersion() != tracePhyInfo.GetApiVersion() {
-						continue
-					}
-					return 1
+		// Memory layout must match.
+		if !abi.GetMemoryLayout().SameAs(h.GetAbi().GetMemoryLayout()) {
+			continue
+		}
+		// If there is no physical devices, the trace must not contain
+		// vkCreateInstance, any ABI compatible Vulkan device should be able to
+		// replay.
+		if len(traceVkDriver.GetPhysicalDevices()) == 0 {
+			return 1
+		}
+		// Requires same vendor, device and version of API.
+		for _, devPhyInfo := range devVkDriver.GetPhysicalDevices() {
+			for _, tracePhyInfo := range traceVkDriver.GetPhysicalDevices() {
+				// TODO: More sophisticated rules
+				if devPhyInfo.GetVendorID() != tracePhyInfo.GetVendorID() {
+					continue
 				}
+				if devPhyInfo.GetDeviceID() != tracePhyInfo.GetDeviceID() {
+					continue
+				}
+				if devPhyInfo.GetApiVersion() != tracePhyInfo.GetApiVersion() {
+					continue
+				}
+				return 1
 			}
 		}
 	}

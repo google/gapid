@@ -185,7 +185,9 @@ Spy::Spy()
     // writeHeader needs to come before the installer is created as the
     // deviceinfo queries want to call into EGL / GL commands which will be
     // patched.
-    SpyBase::set_device_instance(query::getDeviceInstance(queryPlatformData()));
+    query::Option query_opt;
+    SpyBase::set_device_instance(
+        query::getDeviceInstance(query_opt, queryPlatformData()));
     SpyBase::set_current_abi(query::currentABI());
     if (!SpyBase::writeHeader()) {
       GAPID_ERROR("Failed at writing trace header.");
@@ -220,13 +222,6 @@ Spy::Spy()
     }
     set_suspended(mSuspendCaptureFrames.load() != 0);
     set_observing(mObserveFrameFrequency != 0 || mObserveDrawFrequency != 0);
-}
-
-void Spy::writeHeader() {
-    capture::Header file_header;
-    file_header.set_allocated_device(query::getDeviceInstance(queryPlatformData()));
-    file_header.set_allocated_abi(query::currentABI());
-    mEncoder->object(&file_header);
 }
 
 void Spy::resolveImports() {

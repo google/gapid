@@ -209,10 +209,12 @@ message VulkanDriver {
     // Instance extensions provided by Vulkan implementations and implicit
     // layers.
     repeated string IcdAndImplicitLayerExtensions = 2;
-    // Physical devices that have Vulkan supports.
+    // Physical devices that have Vulkan support.
     repeated VulkanPhysicalDevice PhysicalDevices = 3;
 }
 
+// VulkanLayer describes the layers currently installed on the device,
+// including the layers' name and its supported extensions.
 message VulkanLayer {
   string Name = 1;
   repeated string Extensions = 2;

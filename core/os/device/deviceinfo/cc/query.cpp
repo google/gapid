@@ -71,7 +71,8 @@ void deviceInstanceID(device::Instance* instance) {
   delete[] proto_data;
 }
 
-void buildDeviceInstance(void* platform_data, device::Instance** out) {
+void buildDeviceInstance(const query::Option& opt, void* platform_data,
+                         device::Instance** out) {
   using namespace device;
   using namespace google::protobuf::io;
 
@@ -96,12 +97,16 @@ void buildDeviceInstance(void* platform_data, device::Instance** out) {
   query::glDriver(opengl_driver);
   drivers->set_allocated_opengl(opengl_driver);
 
-  // Here we only check if the device supports Vulkan (has Vulkan loader).
-  // Real content of VulkanDriver may require an VkInstance handle, use
-  // updateVulkanDriver() to populate the VulkanDriver info for an
-  // device::Instance.
+  // Checks if the device supports Vulkan (have Vulkan loader) first, then
+  // populates the VulkanDriver message.
   if (query::hasVulkanLoader()) {
     auto vulkan_driver = new VulkanDriver();
+    if (opt.vulkan.query_layers_and_extensions) {
+      query::vkLayersAndExtensions(vulkan_driver);
+    }
+    if (opt.vulkan.query_physical_devices) {
+      query::vkPhysicalDevices(vulkan_driver);
+    }
     drivers->set_allocated_vulkan(vulkan_driver);
   }
 
@@ -155,12 +160,12 @@ void buildDeviceInstance(void* platform_data, device::Instance** out) {
 
 namespace query {
 
-device::Instance* getDeviceInstance(void* platform_data) {
+device::Instance* getDeviceInstance(const Option& opt, void* platform_data) {
   device::Instance* instance = nullptr;
 
   // buildDeviceInstance on a seperate thread to avoid EGL screwing with the
   // currently bound context.
-  std::thread thread(buildDeviceInstance, platform_data, &instance);
+  std::thread thread(buildDeviceInstance, opt, platform_data, &instance);
   thread.join();
   return instance;
 }

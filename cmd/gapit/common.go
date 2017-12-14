@@ -114,6 +114,7 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 	}
 
 	filteredByFlags := make([]*path.Device, 0, len(paths))
+	filteredInsts := map[*path.Device]*device.Instance{}
 	for i := 0; i < len(paths); i++ {
 		p := paths[i]
 		o, err := client.Get(ctx, p.Path())
@@ -125,27 +126,46 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 		case "":
 			// empty flag
 			filteredByFlags = append(filteredByFlags, p)
+			filteredInsts[p] = d
 		case "host":
 			if d == host.Instance(ctx) {
 				filteredByFlags = append(filteredByFlags, p)
+				filteredInsts[p] = d
 				break
 			}
 		case "android":
 			if d.GetConfiguration().GetOS().GetKind() == device.OSKind_Android {
 				filteredByFlags = append(filteredByFlags, p)
+				filteredInsts[p] = d
 			}
 		default:
 			// serial number
 			// TODO: Regex matching instead of exact match?
 			if d.GetSerial() == flags.Device {
 				filteredByFlags = append(filteredByFlags, p)
+				filteredInsts[p] = d
 				break
 			}
 		}
 	}
 
+	filteredSerialOrNames := map[*path.Device]string{}
+	if len(filteredByFlags) > 1 {
+		log.I(ctx, "Found multiple usable replay devices:")
+		for _, p := range filteredByFlags {
+			serial_or_name := filteredInsts[p].Serial
+			if len(serial_or_name) == 0 {
+				serial_or_name = filteredInsts[p].Name
+			}
+			filteredSerialOrNames[p] = serial_or_name
+			log.I(ctx, "\tserial_or_name")
+		}
+	}
+
 	if len(filteredByFlags) > 0 {
-		return filteredByFlags[0], nil
+		selected := filteredByFlags[0]
+		log.I(ctx, "Device on which to replay: %s", filteredSerialOrNames[selected])
+		return selected, nil
 	}
 
 	log.W(ctx, "No compatible devices found. Attempting to use the first device anyway...")

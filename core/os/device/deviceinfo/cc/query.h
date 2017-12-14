@@ -23,9 +23,41 @@
 
 namespace query {
 
+// VulkanOption specifies whether Vulkan layers/extentions info or Vulkan
+// physical devices info should be queried with query::getDeviceInstance().
+// By default, layers/extensions info and physical devices info will not be
+// queried.
+struct VulkanOption {
+  // Default VulkanOption specifies NOT to query layers/extensions and physical
+  // devices info.
+  VulkanOption()
+      : query_layers_and_extensions(false), query_physical_devices(false) {}
+  // QueryLayerAndExtensions set the flag which specifies layers and extensions
+  // info should be queried.
+  VulkanOption& QueryLayersAndExtensions() {
+    this->query_layers_and_extensions = true;
+    return *this;
+  }
+  // QueryPhysicalDevices set the flag which specifies physical devices info
+  // should be queried.
+  VulkanOption& QueryPhysicalDevices() {
+    this->query_physical_devices = true;
+    return *this;
+  }
+  // Flags to indicate whether some info should be queried.
+  bool query_layers_and_extensions;
+  bool query_physical_devices;
+};
+
+// Option specifies how some optional device info to be queried with
+// query::getDeviceInstance().
+struct Option {
+  VulkanOption vulkan;
+};
+
 // getDeviceInstance returns the device::Instance proto message for the
 // current device. It must be freed with delete.
-device::Instance* getDeviceInstance(void* platform_data);
+device::Instance* getDeviceInstance(const Option& opt, void* platform_data);
 
 // updateVulkanPhysicalDevices modifies the given device::Instance by adding
 // device::VulkanPhysicalDevice to the device::Instance. If a

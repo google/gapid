@@ -22,9 +22,9 @@ extern "C" {
 device_instance get_device_instance(void* platform_data) {
     device_instance out = {};
 
-    auto instance = query::getDeviceInstance(platform_data);
-    // VkGraphicsSpy layer must NOT be loaded.
-    query::updateVulkanDriver(instance);
+    query::Option query_opt;
+    query_opt.vulkan.QueryLayersAndExtensions().QueryPhysicalDevices();
+    auto instance = query::getDeviceInstance(query_opt, platform_data);
     if (!instance) {
         return out;
     }
