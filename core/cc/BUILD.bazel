@@ -29,10 +29,7 @@ cc_library(
     deps = [
         "@cityhash",
         "@breakpad",
-    ] + select({
-        "//tools/build:windows": ["@windows_sdk//:includes"],
-        "//conditions:default": [],
-    }),
+    ],
     linkopts = select({
         "//tools/build:linux": [],
         "//tools/build:darwin": [],
