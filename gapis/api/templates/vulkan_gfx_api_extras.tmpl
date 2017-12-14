@@ -447,7 +447,7 @@ bool Vulkan::replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn) {
                 }
               }
               if (j == count) {
-                GAPID_WARNING("Could not find device with deviceID %d, and vendorID %d", (device_id >> 32) & 0xFFFFFFFF, 
+                GAPID_WARNING("Could not find device with deviceID %d, and vendorID %d", (device_id >> 32) & 0xFFFFFFFF,
                     device_id & 0xFFFFFFFF);
                 j = count - 1;
               }
@@ -456,7 +456,7 @@ bool Vulkan::replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn) {
               }
               physicalDevices[i] = devices[j];
             }
-            
+
             if (pushReturn) {
                 stack->push<VkResult>(return_value);
             }

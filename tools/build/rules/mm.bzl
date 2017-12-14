@@ -25,11 +25,18 @@ def mm_library(name, srcs=[], hdrs = [], copy_hdrs=[], **kwargs):
     for src in srcs:
         copy_name = name+"_copy_"+src
         copied_srcs += [":"+copy_name]
-        copy(
-            name = copy_name,
-            src = src,
-            dst = name+"/"+src+".cc",
-        )
+        if src.endswith(".mm"):
+            copy(
+                name = copy_name,
+                src = src,
+                dst = name+"/"+src+".cc",
+            )
+        else:
+            copy(
+                name = copy_name,
+                src = src,
+                dst = name+"/"+src,
+            )
     filter_headers(
         name = name+"_headers",
         srcs = hdrs,

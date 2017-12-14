@@ -155,7 +155,6 @@ int main(int argc, const char* argv[]) {
     const char* logPath = "logs/gapir.log";
 
     bool wait_for_debugger = false;
-    bool enable_crash_reporting = false;
     const char* cachePath = nullptr;
     const char* portStr = "0";
     const char* authTokenFile = nullptr;
