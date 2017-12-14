@@ -259,7 +259,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateInstance(VkInstanceCreateInfo *pCreateIn
     // Send a header with Vulkan info added if we haven't done so.
     auto should_send_header = [&]() {
       const device::Drivers& drivers =
-          SpyBase::device_instance()->configuration().drivers();
+        this->SpyBase::device_instance()->configuration().drivers();
       // If the has_vulkan() returns false, it means the Vulkan loader is not
       // found in the first time we get device instance. However, if this
       // vkCreateInstance is called (so we are here), the loader must be

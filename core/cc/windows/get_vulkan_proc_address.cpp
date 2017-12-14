@@ -87,7 +87,7 @@ namespace core {
 GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress = getVulkanInstanceProcAddress;
 GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress = getVulkanDeviceProcAddress;
 GetVulkanProcAddressFunc* GetVulkanProcAddress = getVulkanProcAddress;
-bool hasVulkanLoader() {
+bool HasVulkanLoader() {
   return DlLoader::can_load(systemVulkanPath().c_str()) ||
          DlLoader::can_load("vulkan-1.dll");
 }
