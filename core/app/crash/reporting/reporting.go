@@ -66,7 +66,7 @@ func Enable(ctx context.Context, appName, appVersion string) {
 			}.reportStacktrace(s, crashURL)
 			if err != nil {
 				log.E(ctx, "%v", err)
-			} else {
+			} else if res != "" {
 				log.I(ctx, "%v", res)
 			}
 		})
@@ -86,11 +86,7 @@ func Disable() {
 // ReportMinidump encodes and sends a minidump report to the crashURL endpoint.
 func ReportMinidump(r Reporter, minidumpName string, minidumpData []byte) (string, error) {
 	if disable != nil {
-		if res, err := r.reportMinidump(minidumpName, minidumpData, crashURL); err != nil {
-			return "", err
-		} else {
-			return res, nil
-		}
+		return r.reportMinidump(minidumpName, minidumpData, crashURL)
 	}
 	return "Error reporting disabled", nil
 }
