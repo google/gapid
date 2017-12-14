@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "encoder.go",
+        "filter_stack.go",
         "reporter.go",
         "stubs.go",
     ],
@@ -13,7 +14,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["encoder_test.go"],
+    srcs = [
+        "encoder_test.go",
+        "filter_stack_test.go",
+    ],
     embed = [":go_default_library"],
     importpath = "github.com/google/gapid/core/app/crash/reporting",
     deps = [
