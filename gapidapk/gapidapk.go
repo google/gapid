@@ -59,88 +59,102 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 
 	ctx = log.Enter(ctx, "gapidapk.EnsureInstalled")
 
-	if abi.SameAs(device.UnknownABI) {
-		abi = d.Instance().GetConfiguration().PreferredABI(nil)
-	}
+	try_abi := func(abi *device.ABI) (*APK, error) {
+		ctx = log.V{"abi": abi.Name}.Bind(ctx)
 
-	ctx = log.V{"abi": abi.Name}.Bind(ctx)
-
-	// Was this recently checked?
-	reg, checkKey := bind.GetRegistry(ctx), lastInstallCheckKey{abi}
-	if res, ok := reg.DeviceProperty(ctx, d, checkKey).(lastInstallCheckRes); ok {
-		if time.Since(res.time) < checkFrequency {
-			return res.apk, nil
-		}
-	}
-
-	// Check the device actually supports the requested ABI.
-	if !d.Instance().Configuration.SupportsABI(abi) {
-		return nil, log.Errf(ctx, nil, "Device does not support requested abi: %v", abi.Name)
-	}
-
-	name := pkgName(abi)
-
-	log.I(ctx, "Examining gapid.apk on host...")
-	apkPath, err := layout.GapidApk(ctx, abi)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Finding gapid.apk on host")
-	}
-
-	ctx = log.V{"gapid.apk": apkPath.System()}.Bind(ctx)
-	apkData, err := ioutil.ReadFile(apkPath.System())
-	if err != nil {
-		return nil, log.Err(ctx, err, "Opening gapid.apk")
-	}
-
-	apkFiles, err := apk.Read(ctx, apkData)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Reading gapid.apk")
-	}
-
-	apkManifest, err := apk.GetManifest(ctx, apkFiles)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Reading gapid.apk manifest")
-	}
-
-	ctx = log.V{
-		"target-version-name": apkManifest.VersionName,
-		"target-version-code": apkManifest.VersionCode,
-	}.Bind(ctx)
-
-	for attempts := installAttempts; attempts > 0; attempts-- {
-		log.I(ctx, "Looking for gapid.apk...")
-		gapid, err := d.InstalledPackage(ctx, name)
-		if err != nil {
-			log.I(ctx, "Installing gapid.apk...")
-			if err := d.InstallAPK(ctx, apkPath.System(), false, true); err != nil {
-				return nil, log.Err(ctx, err, "Installing gapid.apk")
+		// Was this recently checked?
+		reg, checkKey := bind.GetRegistry(ctx), lastInstallCheckKey{abi}
+		if res, ok := reg.DeviceProperty(ctx, d, checkKey).(lastInstallCheckRes); ok {
+			if time.Since(res.time) < checkFrequency {
+				return res.apk, nil
 			}
-			continue
+		}
+
+		// Check the device actually supports the requested ABI.
+		if !d.Instance().Configuration.SupportsABI(abi) {
+			return nil, log.Errf(ctx, nil, "Device does not support requested abi: %v", abi.Name)
+		}
+
+		name := pkgName(abi)
+
+		log.I(ctx, "Examining gapid.apk on host...")
+		apkPath, err := layout.GapidApk(ctx, abi)
+		if err != nil {
+			return nil, log.Err(ctx, err, "Finding gapid.apk on host")
+		}
+
+		ctx = log.V{"gapid.apk": apkPath.System()}.Bind(ctx)
+		apkData, err := ioutil.ReadFile(apkPath.System())
+		if err != nil {
+			return nil, log.Err(ctx, err, "Opening gapid.apk")
+		}
+
+		apkFiles, err := apk.Read(ctx, apkData)
+		if err != nil {
+			return nil, log.Err(ctx, err, "Reading gapid.apk")
+		}
+
+		apkManifest, err := apk.GetManifest(ctx, apkFiles)
+		if err != nil {
+			return nil, log.Err(ctx, err, "Reading gapid.apk manifest")
 		}
 
 		ctx = log.V{
-			"installed-version-name": gapid.VersionName,
-			"installed-version-code": gapid.VersionCode,
+			"target-version-name": apkManifest.VersionName,
+			"target-version-code": apkManifest.VersionCode,
 		}.Bind(ctx)
 
-		if gapid.VersionCode != apkManifest.VersionCode ||
-			gapid.VersionName != apkManifest.VersionName {
-			log.I(ctx, "Uninstalling existing gapid.apk as version has changed.")
-			gapid.Uninstall(ctx)
-			continue
+		for attempts := installAttempts; attempts > 0; attempts-- {
+			log.I(ctx, "Looking for gapid.apk...")
+			gapid, err := d.InstalledPackage(ctx, name)
+			if err != nil {
+				log.I(ctx, "Installing gapid.apk...")
+				if err := d.InstallAPK(ctx, apkPath.System(), false, true); err != nil {
+					return nil, log.Err(ctx, err, "Installing gapid.apk")
+				}
+				continue
+			}
+
+			ctx = log.V{
+				"installed-version-name": gapid.VersionName,
+				"installed-version-code": gapid.VersionCode,
+			}.Bind(ctx)
+
+			if gapid.VersionCode != apkManifest.VersionCode ||
+				gapid.VersionName != apkManifest.VersionName {
+				log.I(ctx, "Uninstalling existing gapid.apk as version has changed.")
+				gapid.Uninstall(ctx)
+				continue
+			}
+
+			apkPath, err := gapid.Path(ctx)
+			if err != nil {
+				return nil, log.Err(ctx, err, "Obtaining GAPID package path")
+			}
+			log.I(ctx, "Found gapid package...")
+
+			out := &APK{gapid, path.Dir(apkPath)}
+			reg.SetDeviceProperty(ctx, d, checkKey, lastInstallCheckRes{time.Now(), out})
+			return out, nil
 		}
 
-		apkPath, err := gapid.Path(ctx)
-		if err != nil {
-			return nil, log.Err(ctx, err, "Obtaining GAPID package path")
-		}
-		log.I(ctx, "Found gapid package...")
-
-		out := &APK{gapid, path.Dir(apkPath)}
-		reg.SetDeviceProperty(ctx, d, checkKey, lastInstallCheckRes{time.Now(), out})
-		return out, nil
+		return nil, log.Err(ctx, nil, "Unable to install GAPID")
 	}
 
+	if abi.SameAs(device.UnknownABI) {
+		abis_to_try := []*device.ABI{d.Instance().GetConfiguration().PreferredABI(nil)}
+		abis_to_try = append(abis_to_try, d.Instance().GetConfiguration().GetABIs()...)
+		for _, a := range abis_to_try {
+			ctx = log.Enter(ctx, fmt.Sprintf("Try ABI: %s", a.Name))
+			apk, err := try_abi(a)
+			if err == nil {
+				return apk, nil
+			}
+			log.I(ctx, err.Error())
+		}
+	} else {
+		return try_abi(abi)
+	}
 	return nil, log.Err(ctx, nil, "Unable to install GAPID")
 }
 
