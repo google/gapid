@@ -114,7 +114,13 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 	}
 
 	filteredByFlags := make([]*path.Device, 0, len(paths))
-	filteredInsts := map[*path.Device]*device.Instance{}
+	filteredSerialsOrNames := map[*path.Device]string{}
+	getSerialOrName := func(d *device.Instance) string {
+		if len(d.GetSerial()) > 0 {
+			return d.GetSerial()
+		}
+		return d.GetName()
+	}
 	for i := 0; i < len(paths); i++ {
 		p := paths[i]
 		o, err := client.Get(ctx, p.Path())
@@ -126,45 +132,40 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 		case "":
 			// empty flag
 			filteredByFlags = append(filteredByFlags, p)
-			filteredInsts[p] = d
+			filteredSerialsOrNames[p] = getSerialOrName(d)
 		case "host":
 			if d == host.Instance(ctx) {
 				filteredByFlags = append(filteredByFlags, p)
-				filteredInsts[p] = d
+				filteredSerialsOrNames[p] = getSerialOrName(d)
 				break
 			}
 		case "android":
 			if d.GetConfiguration().GetOS().GetKind() == device.OSKind_Android {
 				filteredByFlags = append(filteredByFlags, p)
-				filteredInsts[p] = d
+				filteredSerialsOrNames[p] = getSerialOrName(d)
 			}
 		default:
 			// serial number
 			// TODO: Regex matching instead of exact match?
 			if d.GetSerial() == flags.Device {
 				filteredByFlags = append(filteredByFlags, p)
-				filteredInsts[p] = d
+				filteredSerialsOrNames[p] = getSerialOrName(d)
 				break
 			}
 		}
 	}
 
-	filteredSerialOrNames := map[*path.Device]string{}
 	if len(filteredByFlags) > 1 {
-		log.I(ctx, "Found multiple usable replay devices:")
-		for _, p := range filteredByFlags {
-			serial_or_name := filteredInsts[p].Serial
-			if len(serial_or_name) == 0 {
-				serial_or_name = filteredInsts[p].Name
-			}
-			filteredSerialOrNames[p] = serial_or_name
-			log.I(ctx, "\tserial_or_name")
+		log.I(ctx, "Found multiple usable devices (by serial, or name if serial is empty:")
+		for _, sn := range filteredSerialsOrNames {
+			log.I(ctx, "\t%s", sn)
 		}
 	}
 
 	if len(filteredByFlags) > 0 {
 		selected := filteredByFlags[0]
-		log.I(ctx, "Device on which to replay: %s", filteredSerialOrNames[selected])
+		log.I(ctx, "Selected device (by serial, or name if serial is empty): %s",
+			filteredSerialsOrNames[selected])
 		return selected, nil
 	}
 
