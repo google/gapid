@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/os/android/apk"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/test/robot/build"
 )
 
@@ -70,6 +71,20 @@ func (p *Package) FindTools(ctx context.Context, d *Device) *build.ToolSet {
 // if present in the package.
 func (p *Package) FindToolsForAPK(ctx context.Context, host *Device, target *Device, apkInfo *apk.Information) *build.AndroidToolSet {
 	targetToolsAbi := target.GetInformation().GetConfiguration().PreferredABI(apkInfo.ABI)
+	if targetToolsAbi == nil {
+		return nil
+	}
+	for _, abi := range host.Information.Configuration.ABIs {
+		if tools := p.Package.GetTargetTools(abi, targetToolsAbi); tools != nil {
+			return tools
+		}
+	}
+	return nil
+}
+
+// FindToolsForDevice returns the best matching tool set for a certain device.
+func (p *Package) FindToolsForDevice(ctx context.Context, host *Device, target *Device) *build.AndroidToolSet {
+	targetToolsAbi := target.GetInformation().GetConfiguration().PreferredABI([]*device.ABI{})
 	if targetToolsAbi == nil {
 		return nil
 	}

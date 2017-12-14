@@ -20,6 +20,7 @@ option go_package = "github.com/google/gapid/test/robot/report";
 import "test/robot/job/job.proto";
 import "test/robot/job/worker/worker.proto";
 import "test/robot/search/search.proto";
+import "core/os/device/device.proto";
 
 // Input describes the inputs to a report action.
 message Input{
@@ -29,8 +30,21 @@ message Input{
   string gapit = 2;
   // Gapis is the stash id of the graphics analysis server to use.
   string gapis = 3;
+  // GapidApk is the stash id of the gapid.apk to use for a Vulkan trace.
+  string gapid_apk = 4;
+  // ToolingLayout represents the ABI details for Vulkan report.
+  ToolingLayout tooling_layout = 5;
   // Package is the stash id of the package used to generate the report.
-  string package = 4;
+  string package = 6;
+  // Api is the API of the commands to report in the trace.
+  string  api = 7;
+  // GapirDevice is the device on which to run the trace for report.
+  string gapir_device = 8;
+}
+
+// ToolingLayout describes tools we use for tracing.
+message ToolingLayout {
+  device.ABI gapid_abi = 1;
 }
 
 // Output describes the outputs of a report action.

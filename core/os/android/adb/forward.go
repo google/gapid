@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+
+	"github.com/google/gapid/core/context/keys"
 )
 
 // Port is the interface for sockets ports that can be forwarded from an Android
@@ -77,5 +79,7 @@ func (b *binding) Forward(ctx context.Context, local, device Port) error {
 
 // RemoveForward removes a port forward made by Forward.
 func (b *binding) RemoveForward(ctx context.Context, local Port) error {
+	// Clone context to ignore cancellation.
+	ctx = keys.Clone(context.Background(), ctx)
 	return b.Command("forward", "--remove", local.adbForwardString()).Run(ctx)
 }

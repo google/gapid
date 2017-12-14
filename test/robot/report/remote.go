@@ -49,7 +49,8 @@ func (m *remote) Search(ctx context.Context, query *search.Query, handler Action
 
 // Register implements Manager.Register
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) Register(ctx context.Context, host *device.Instance, target *device.Instance, handler TaskHandler) error {
+func (m *remote) Register(ctx context.Context, host *device.Instance,
+	target *device.Instance, handler TaskHandler) error {
 	request := &worker.RegisterRequest{Host: host, Target: target}
 	stream, err := m.client.Register(ctx, request)
 	if err != nil {

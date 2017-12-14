@@ -32,7 +32,7 @@ type TaskHandler func(context.Context, *Task) error
 type Manager interface {
 	// Search invokes handler with each output that matches the query.
 	Search(ctx context.Context, query *search.Query, handler ActionHandler) error
-	// Register a handler that will accept incoming tasks.
+	// Register registers a handler that will accept incoming tasks.
 	Register(ctx context.Context, host *device.Instance, target *device.Instance, handler TaskHandler) error
 	// Do asks the manager to send a task to a device.
 	Do(ctx context.Context, device string, input *Input) (string, error)

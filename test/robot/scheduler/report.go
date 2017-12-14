@@ -24,17 +24,28 @@ import (
 	"github.com/google/gapid/test/robot/report"
 )
 
-func (s schedule) doReport(ctx context.Context, t *monitor.Trace, tools *build.ToolSet) error {
+func (s schedule) doReport(ctx context.Context, t *monitor.Trace,
+	tools *build.ToolSet, androidTools *build.AndroidToolSet) error {
 	if !s.worker.Supports(job.Report) {
 		return nil
 	}
+
 	ctx = log.Enter(ctx, "Report")
 	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
+
 	input := &report.Input{
-		Trace:   t.Action.Output.Trace,
-		Gapit:   tools.Host.Gapit,
-		Gapis:   tools.Host.Gapis,
-		Package: s.pkg.Id,
+		Trace:       t.Action.Output.Trace,
+		Gapit:       tools.Host.Gapit,
+		Gapis:       tools.Host.Gapis,
+		Package:     s.pkg.Id,
+		Api:         t.Input.Hints.API,
+		GapirDevice: s.gapirDevice(),
+	}
+	if androidTools != nil {
+		input.GapidApk = androidTools.GapidApk
+		input.ToolingLayout = &report.ToolingLayout{
+			GapidAbi: androidTools.Abi,
+		}
 	}
 	action := &report.Action{
 		Input:  input,

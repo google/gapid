@@ -39,16 +39,16 @@ type schedule struct {
 // tasks to idle workers only returning quickly on the assumption it will be ticked again
 // as soon as the data changes.
 func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) []error {
-	s := schedule{
-		managers: managers,
-		data:     data,
-	}
 	var errs []error
 	// TODO: a real scheduler, not just try to do everything in any order
 	for _, pkg := range data.Packages.All() {
-		s.pkg = pkg
 		for _, w := range data.Workers.All() {
-			s.worker = w
+			s := schedule{
+				managers: managers,
+				data:     data,
+				pkg:      pkg,
+				worker:   w,
+			}
 			tools := s.getHostTools(ctx)
 			if tools == nil {
 				continue
@@ -69,10 +69,18 @@ func Tick(ctx context.Context, managers *monitor.Managers, data *monitor.Data) [
 				if t.Output == nil {
 					continue
 				}
-				if err := s.doReport(ctx, t, tools); err != nil {
+				if !s.canReplay(t) {
+					continue
+				}
+				tracedSubj := data.Subjects.Get(t.Input.Subject)
+				if tracedSubj == nil {
+					errs = append(errs, log.Errf(ctx, nil, "Subject of trace: id= %v not found", t.Id))
+				}
+				androidTools := s.getAndroidTools(ctx, tracedSubj)
+				if err := s.doReport(ctx, t, tools, androidTools); err != nil {
 					errs = append(errs, err)
 				}
-				if err := s.doReplay(ctx, t, tools); err != nil {
+				if err := s.doReplay(ctx, t, tools, androidTools); err != nil {
 					errs = append(errs, err)
 				}
 			}
@@ -107,6 +115,9 @@ func (s schedule) getHostTools(ctx context.Context) *build.ToolSet {
 
 func (s schedule) getAndroidTools(ctx context.Context, subj *monitor.Subject) *build.AndroidToolSet {
 	ctx = log.V{"target": s.worker.Target}.Bind(ctx)
+	if subj == nil {
+		return nil
+	}
 	tools := s.pkg.FindToolsForAPK(ctx, s.data.FindDevice(s.worker.Host), s.data.FindDevice(s.worker.Target), subj.GetAPK())
 	if tools == nil {
 		return nil
@@ -115,4 +126,46 @@ func (s schedule) getAndroidTools(ctx context.Context, subj *monitor.Subject) *b
 		return nil
 	}
 	return tools
+}
+
+func (s schedule) getDeviceInfoTools(ctx context.Context) *build.AndroidToolSet {
+	ctx = log.V{"target": s.worker.Target}.Bind(ctx)
+	tools := s.pkg.FindToolsForDevice(ctx, s.data.FindDevice(s.worker.Host), s.data.FindDevice(s.worker.Target))
+	if tools == nil {
+		return nil
+	}
+	if tools.GapidApk == "" {
+		return nil
+	}
+	return tools
+}
+
+// canReplay determines whether the given trace can be replayed (and reported)
+// on the target device in the worker of this schedule.
+func (s schedule) canReplay(t *monitor.Trace) bool {
+	if s.worker == nil {
+		return false
+	}
+	// Gles trace must be replayed on host while Vulkan trace must be replayed
+	// on the same device where the trace was captured.
+	switch t.Input.Hints.API {
+	case "gles":
+		return s.worker.GetTarget() == t.GetHost()
+	case "vulkan":
+		return s.worker.GetTarget() == t.GetTarget()
+	}
+	return false
+}
+
+// gapirDevice returns "host" or Android device serial number in string of the
+// target device of the worker of this schedule. If the schedule does not have
+// a worker, returns an empty string.
+func (s schedule) gapirDevice() string {
+	if s.worker == nil {
+		return ""
+	}
+	if s.worker.GetTarget() == s.worker.GetHost() {
+		return "host"
+	}
+	return s.data.FindDevice(s.worker.GetTarget()).GetInformation().GetSerial()
 }

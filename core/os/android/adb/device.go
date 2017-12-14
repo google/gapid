@@ -112,20 +112,20 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 	}
 
 	// Lookup the basic hardware information
-	if res, err := d.Shell("getprop", "ro.build.product").Call(ctx); err == nil {
+	if res, err := d.SystemProperty(ctx, "ro.build.product"); err == nil {
 		d.To.Configuration.Hardware = &device.Hardware{
 			Name: strings.TrimSpace(res),
 		}
 	}
 
 	// Collect the operating system version
-	if version, err := d.Shell("getprop", "ro.build.version.release").Call(ctx); err == nil {
+	if version, err := d.SystemProperty(ctx, "ro.build.version.release"); err == nil {
 		var major, minor, point int32
 		fmt.Sscanf(version, "%d.%d.%d", &major, &minor, &point)
 		d.To.Configuration.OS = device.AndroidOS(major, minor, point)
 	}
 
-	if description, err := d.Shell("getprop", "ro.build.description").Call(ctx); err == nil {
+	if description, err := d.SystemProperty(ctx, "ro.build.description"); err == nil {
 		d.To.Configuration.OS.Build = strings.TrimSpace(description)
 	}
 
@@ -137,7 +137,7 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		"ro.product.cpu.abi",
 		"ro.product.cpu.abi2",
 	} {
-		abis, _ := d.Shell("getprop", prop).Call(ctx)
+		abis, _ := d.SystemProperty(ctx, prop)
 		if strings.TrimSpace(abis) == "" {
 			continue
 		}
@@ -266,7 +266,7 @@ func (b *binding) NativeBridgeABI(ctx context.Context, emulated *device.ABI) *de
 	if isa == "" {
 		return emulated
 	}
-	isa, err := b.Shell("getprop", "ro.dalvik.vm.isa."+isa).Call(ctx)
+	isa, err := b.SystemProperty(ctx, "ro.dalvik.vm.isa."+isa)
 	if err != nil {
 		return emulated
 	}

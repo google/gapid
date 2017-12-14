@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/core/os/flock"
 	"github.com/google/gapid/test/robot/build"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/master"
@@ -135,6 +136,9 @@ func (v *masterVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		if err := serveAll(ctx, server, managers); err != nil {
 			return err
+		}
+		if err := flock.ReleaseAllLocks(); err != nil {
+			return log.Errf(ctx, err, "Could not remove FLock files for all devices")
 		}
 		if v.StartWorkers {
 			if err := startAllWorkers(ctx, managers, tempDir); err != nil {

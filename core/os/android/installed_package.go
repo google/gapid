@@ -103,7 +103,7 @@ func (l InstalledPackages) FindSingleByPartialName(s string) (*InstalledPackage,
 // WrapProperties returns the list of wrap-properties for the given installed
 // package.
 func (p *InstalledPackage) WrapProperties(ctx context.Context) ([]string, error) {
-	list, err := p.Device.Shell("getprop", p.wrapPropName()).Call(ctx)
+	list, err := p.Device.SystemProperty(ctx, p.wrapPropName())
 	return strings.Fields(list), err
 }
 
@@ -111,11 +111,10 @@ func (p *InstalledPackage) WrapProperties(ctx context.Context) ([]string, error)
 // package.
 func (p *InstalledPackage) SetWrapProperties(ctx context.Context, props ...string) error {
 	arg := strings.Join(props, " ")
-	res, err := p.Device.Shell("setprop", p.wrapPropName(), arg).Call(ctx)
-	if res != "" {
-		return fmt.Errorf("setprop returned error:\n%s", res)
+	if err := p.Device.SetSystemProperty(ctx, p.wrapPropName(), arg); err != nil {
+		return err
 	}
-	return err
+	return nil
 }
 
 // ClearCache deletes all data associated with a package.

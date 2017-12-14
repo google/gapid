@@ -33,8 +33,8 @@ message Input {
   string gapid_apk = 3;
   // hints represents the set of trace hints
   subject.Hints hints = 4;
-  // layout represents details about what tools we're using to trace.
-  ToolingLayout layout = 5;
+  // ToolingLayout represents details about what tools we're using to trace.
+  ToolingLayout tooling_layout = 5;
   // Package is the stash id of the package used to trace.
   string package = 6;
   // Obb is the stash id of the OBB used by the subject in the trace.

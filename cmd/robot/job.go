@@ -131,6 +131,7 @@ func (v *workerStartFlags) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 func startAllWorkers(ctx context.Context, managers monitor.Managers, tempDir file.Path) error {
+	ctx = job.BindRegistry(ctx)
 	// TODO: not just ignore all the errors...
 	crash.Go(func() { trace.Run(ctx, managers.Stash, managers.Trace, tempDir) })
 	crash.Go(func() { report.Run(ctx, managers.Stash, managers.Report, tempDir) })
