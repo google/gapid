@@ -126,7 +126,9 @@ func TargetDevice(d *device.Configuration) Payload {
 type targetDevice struct{ *device.Configuration }
 
 func (m targetDevice) values(add func(param.Parameter, interface{})) {
-	os, gpu := getOSAndGPU(m.Configuration)
-	add(param.TargetOS, os)
-	add(param.TargetGPU, gpu)
+	if m.Configuration != nil {
+		os, gpu := getOSAndGPU(m.Configuration)
+		add(param.TargetOS, os)
+		add(param.TargetGPU, gpu)
+	}
 }
