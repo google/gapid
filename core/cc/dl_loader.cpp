@@ -69,7 +69,7 @@ void* must_load(const char* name) {
 }
 
 // resolve defs
-#if TARGET_OS ==  TARGET_OS_WINDOWS
+#if TARGET_OS ==  GAPID_OS_WINDOWS
 void* resolve(void* handle, const char* name) {
     return reinterpret_cast<void*>(GetProcAddress(reinterpret_cast<HMODULE>(handle), name));
 }
