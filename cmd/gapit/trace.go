@@ -171,15 +171,16 @@ type traceOptions struct {
 }
 
 func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, start task.Signal, options traceOptions) error {
+	device := host.Instance(ctx)
 	defer analytics.SendTiming("trace", "local")(
-		analytics.TargetDevice(host.Instance(ctx).GetConfiguration()),
+		analytics.TargetDevice(device.GetConfiguration()),
 	)
 
 	output := verb.Out
 	if output == "" {
 		output = "capture.gfxtrace"
 	}
-	process := &client.Process{Port: port, Options: options.Options}
+	process := &client.Process{Port: port, Device: device, Options: options.Options}
 	return doCapture(ctx, process, output, start, verb.For)
 }
 
