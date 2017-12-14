@@ -40,6 +40,9 @@ type Process struct {
 	// The local host port used to connect to GAPII.
 	Port int
 
+	// Information about the target device.
+	Device *device.Instance
+
 	// The options used for the capture.
 	Options Options
 
@@ -140,6 +143,7 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 
 	process := &Process{
 		Port:    int(port),
+		Device:  d.Instance(),
 		Options: o,
 	}
 	if err := process.loadAndConnectViaJDWP(ctx, apk, pid, d); err != nil {
