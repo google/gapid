@@ -59,7 +59,7 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 
 	ctx = log.Enter(ctx, "gapidapk.EnsureInstalled")
 
-	try_abi := func(abi *device.ABI) (*APK, error) {
+	try_abi := func(ctx context.Context, abi *device.ABI) (*APK, error) {
 		ctx = log.V{"abi": abi.Name}.Bind(ctx)
 
 		// Was this recently checked?
@@ -145,15 +145,15 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 		abis_to_try := []*device.ABI{d.Instance().GetConfiguration().PreferredABI(nil)}
 		abis_to_try = append(abis_to_try, d.Instance().GetConfiguration().GetABIs()...)
 		for _, a := range abis_to_try {
-			ctx = log.Enter(ctx, fmt.Sprintf("Try ABI: %s", a.Name))
-			apk, err := try_abi(a)
+			tempCtx := log.Enter(ctx, fmt.Sprintf("Try ABI: %s", a.Name))
+			apk, err := try_abi(tempCtx, a)
 			if err == nil {
 				return apk, nil
 			}
-			log.I(ctx, err.Error())
+			log.I(tempCtx, err.Error())
 		}
 	} else {
-		return try_abi(abi)
+		return try_abi(ctx, abi)
 	}
 	return nil, log.Err(ctx, nil, "Unable to install GAPID")
 }

@@ -148,6 +148,14 @@ func (b *binding) StartService(ctx context.Context, a android.ServiceAction, ext
 	return b.Shell("am", args...).Run(ctx)
 }
 
+// ForceStop stops everything associated with the given package.
+func (b *binding) ForceStop(ctx context.Context, pkg string) error {
+	args := append([]string{
+		"force-stop", pkg,
+	})
+	return b.Shell("am", args...).Run(ctx)
+}
+
 func extrasFlags(extras []android.ActionExtra) []string {
 	flags := []string{}
 	for _, e := range extras {
