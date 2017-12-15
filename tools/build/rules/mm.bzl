@@ -21,6 +21,9 @@ filter_headers = rule(
 )
 
 def mm_library(name, srcs=[], hdrs = [], copy_hdrs=[], **kwargs):
+    # bazel doesn't care for .mm files in the srcs attribute of C++ targets.
+    # Copy all the .mm files to .mm.cc files and compile them with the C++
+    # compiler, but passing the "-x objective-c++" language selection argument.
     copied_srcs = []
     for src in srcs:
         copy_name = name+"_copy_"+src
