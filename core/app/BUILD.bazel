@@ -1,9 +1,11 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//:version.bzl", "gapid_version")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "atexit.go",
+        "default_version.go",
         "doc.go",
         "flags.go",
         "help.go",
@@ -28,4 +30,10 @@ go_library(
         "//core/os/file:go_default_library",
         "@com_github_pkg_errors//:go_default_library",
     ],
+)
+
+gapid_version(
+    name = "version",
+    out = "default_version.go",
+    template = "default_version.go.in",
 )

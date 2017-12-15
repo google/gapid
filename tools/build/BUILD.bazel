@@ -1,6 +1,26 @@
-exports_files([
-    "source.properties",
-])
+load("//:version.bzl", "gapid_version")
+
+gapid_version(
+    name = "build_properties",
+    template = ":build_host_and_time",
+    out = "build.properties",
+)
+
+# Note, this genrule reads the volatile-status.txt file, but is *not* executed on each build.
+# However, the build timestamp is only really relevant for "official" builds from our build
+# servers, which always start out with a clean env, and so the date actually makes sense.
+# In other words, on developer machines, Build.Date in build.properties is meaningless.
+genrule(
+    name = "build_host_and_time",
+    srcs = ["build.properties.in"],
+    outs = ["build.properties.out"],
+    cmd = "(" +
+          " echo Build.Host=$$(grep BUILD_HOST bazel-out/stable-status.txt | cut -d ' ' -f 2);" +
+          # The timestamp is in millis, but date -d @timestamp, expects the timestamp to be in seconds.
+          " echo Build.Date=$$(date -d @$$(echo $$((($$(grep BUILD_TIMESTAMP2 bazel-out/volatile-status.txt | cut -d ' ' -f 2)+500)/1000))));" +
+          ") | cat $< - > $@",
+    stamp = 1,
+)
 
 config_setting(
     name = "linux",
