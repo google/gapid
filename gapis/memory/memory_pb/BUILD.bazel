@@ -18,6 +18,12 @@ proto_library(
     visibility = ["//visibility:public"],
 )
 
+cc_proto_library(
+    name = "memory_pb_cc_proto",
+    visibility = ["//visibility:public"],
+    deps = [":memory_pb_proto"],
+)
+
 go_proto_library(
     name = "memory_pb_go_proto",
     importpath = "github.com/google/gapid/gapis/memory/memory_pb",
