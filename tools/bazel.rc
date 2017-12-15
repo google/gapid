@@ -1,5 +1,5 @@
 # Adjusting defaults to favour developer workflows
-build --verbose_failures 
+build --verbose_failures
 test --test_output=errors
 query --nohost_deps --noimplicit_deps
 
@@ -17,3 +17,6 @@ build --deleted_packages=//third_party/protobuf,//third_party/protobuf/util/pyth
 build:arm --fat_apk_cpu armeabi-v7a
 build:x86 --fat_apk_cpu x86
 build:aarch64 --fat_apk_cpu aarch64
+
+# Default version defines
+build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer

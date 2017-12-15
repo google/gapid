@@ -1,15 +1,9 @@
 java_library(
     name="platform",
     srcs = select({
-        "//tools/build:linux": [
-            "linux/com/google/gapid/glcanvas/GlCanvas.java",
-        ],
-        "//tools/build:darwin": [
-            "osx/com/google/gapid/glcanvas/GlCanvas.java",
-        ],
-        "//tools/build:windows": [
-            "windows/com/google/gapid/glcanvas/GlCanvas.java",
-        ],
+        "//tools/build:linux": glob(["linux/**/*.java"]),
+        "//tools/build:darwin": glob(["osx/**/*.java"]),
+        "//tools/build:windows": glob(["windows/**/*.java"]),
     }),
     visibility = ["//visibility:public"],
     deps=[
