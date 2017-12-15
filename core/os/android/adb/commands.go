@@ -156,6 +156,20 @@ func (b *binding) ForceStop(ctx context.Context, pkg string) error {
 	return b.Shell("am", args...).Run(ctx)
 }
 
+// GetSystemProperty returns the system property in string
+func (b *binding) GetSystemProperty(ctx context.Context, name string) (string, error) {
+	var stdout bytes.Buffer
+	if err := b.Shell("getprop", name).Capture(&stdout, nil).Run(ctx); err != nil {
+		return "", err
+	}
+	return stdout.String(), nil
+}
+
+// SetSystemProperty sets the system property with the given string value
+func (b *binding) SetSystemProperty(ctx context.Context, name, value string) error {
+	return b.Shell("setprop", name, value).Run(ctx)
+}
+
 func extrasFlags(extras []android.ActionExtra) []string {
 	flags := []string{}
 	for _, e := range extras {

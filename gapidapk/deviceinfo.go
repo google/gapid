@@ -65,7 +65,9 @@ func startDevInfoService(ctx context.Context, d adb.Device, apk *APK) error {
 	}
 
 	// Start a fresh run.
-	d.ForceStop(ctx, apk.InstalledPackage.Name)
+	if err := d.ForceStop(ctx, apk.InstalledPackage.Name); err != nil {
+		return log.Errf(ctx, err, "Can not stop package %s...", apk.InstalledPackage.Name)
+	}
 
 	// Try to start service.
 	for i := 0; i < startServiceAttempts; i++ {
@@ -102,6 +104,32 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		// information.
 		log.W(ctx, "Couldn't find gapid.apk for device. Error: %v", err)
 		return nil
+	}
+
+	// Remove VkGraphicsSpy in the debug.vulkan.layers property to avoid loading
+	// our spy layer.
+	old_layers_str, err := d.GetSystemProperty(ctx, "debug.vulkan.layers")
+	if err != nil {
+		return log.Err(ctx, err, "Getting system property...")
+	}
+	log.I(ctx, "debug.vulkan.layers: %s", old_layers_str)
+	need_reset := false
+	var new_layers_str string
+	for i, l := range strings.Split(old_layers_str, ":") {
+		if strings.TrimSpace(l) == "VkGraphicsSpy" {
+			need_reset = true
+		} else {
+			new_layers_str += l
+		}
+		if i != len(strings.Split(old_layers_str, ":"))-1 {
+			new_layers_str += ":"
+		}
+	}
+	if need_reset {
+		if err := d.SetSystemProperty(ctx, "debug.vulkan.layers", ""); err != nil {
+			return err
+		}
+		defer d.SetSystemProperty(ctx, "debug.vulkan.layers", old_layers_str)
 	}
 
 	// Tries to start the device info service.
