@@ -27,12 +27,49 @@ apic(
     ]
 )
 
+apic(
+    name = "gvr",
+    api = "//gapis/api/gvr:api",
+    templates = [
+        "//gapis/api/templates:api_imports.h",
+        "//gapis/api/templates:api_spy.h",
+        "//gapis/api/templates:api_spy.cpp",
+        "//gapis/api/templates:api_types.h",
+        "//gapis/api/gvr/templates:api_exports.cpp",
+        "//gapis/api/gvr/templates:api_exports.h",
+        "//gapis/api/gvr/templates:api_imports.cpp",
+    ]
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+        "*.inl",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "api_lib",
+    srcs = [":gles", ":gvr", ":vulkan", ":headers"],
+    hdrs = [":gles", ":gvr", ":vulkan", ":headers"],
+    deps = [
+        "//core/cc",
+        "//core/memory_tracker/cc",
+        "//gapis/api:api_cc_proto",
+        "//gapis/capture:capture_cc_proto",
+        "//gapis/memory/memory_pb:memory_pb_cc_proto",
+        "@com_google_protobuf//:protobuf"
+    ],
+    include_prefix = "gapii/cc",
+    defines = cc_defines(),
+    copts = cc_copts(),
+)
+
 cc_library(
     name = "gapii",
-    srcs = [
-        ":gles",
-        ":vulkan",
-    ] + glob([
+    srcs = glob([
         "*.cpp",
     ], exclude = [
         "*_test.cpp",
@@ -42,14 +79,13 @@ cc_library(
         "//tools/build:windows": ["//gapii/cc/windows:srcs"],
         "//conditions:default": glob(["android/*.cpp"]),
     }),
-    hdrs = glob([
-        "*.h",
-        "*.inl",
-    ]),
+    hdrs = [":headers"],
     defines = cc_defines(),
     deps = [
+        ":api_lib",
         "//core/cc",
-        "//core/memory_tracker/cc",
+        "//core/os/device/deviceinfo/cc",
+        "//gapis/api/gles/gles_pb:gles_pb_cc_proto",
     ],
     copts = cc_copts(),
     linkopts = select({

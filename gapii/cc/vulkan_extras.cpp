@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "vulkan_spy.h"
+#include "gapii/cc/vulkan_spy.h"
 
 namespace gapii {
 

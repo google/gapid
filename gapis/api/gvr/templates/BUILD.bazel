@@ -1,0 +1,31 @@
+load("//tools/build:rules.bzl", "api_template")
+
+package(default_visibility = ["//visibility:public"])
+
+api_template(
+    name = "api_exports.h",
+    template = "api_exports.h.tmpl",
+    includes = ["//gapis/api/templates:templates"],
+    outputs = ["{api}_exports.h"],
+)
+
+api_template(
+    name = "api_exports.cpp",
+    template = "api_exports.cpp.tmpl",
+    includes = ["//gapis/api/templates:templates"],
+    outputs = ["{api}_exports.cpp"],
+)
+
+api_template(
+    name = "api_imports.cpp",
+    template = "api_imports.cpp.tmpl",
+    includes = ["//gapis/api/templates:templates"],
+    outputs = ["{api}_imports.cpp"],
+)
+
+api_template(
+    name = "api_install.cpp",
+    template = "api_install.cpp.tmpl",
+    includes = ["//gapis/api/templates:templates"],
+    outputs = ["{api}_install.cpp"],
+)
