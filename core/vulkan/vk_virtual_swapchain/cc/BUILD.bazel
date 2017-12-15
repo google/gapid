@@ -11,7 +11,11 @@ cc_library(
     deps=[
         "//core/vulkan/cc/include/vulkan",
     ],
-    defines = cc_defines(),
+    defines = cc_defines() + select({
+        "//tools/build:linux": ["VK_USE_PLATFORM_XCB_KHR"],
+        "//tools/build:windows": ["VK_USE_PLATFORM_WIN32_KHR"],
+        "//conditions:default": [],
+    }),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
 )
