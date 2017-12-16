@@ -28,6 +28,8 @@ import (
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/memory"
@@ -111,8 +113,60 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 		return nil, log.Err(ctx, err, "Failed query list of devices for replay")
 	}
 
-	if len(paths) > 0 {
-		return paths[0], nil
+	filteredByFlags := make([]*path.Device, 0, len(paths))
+	filteredSerialsOrNames := map[*path.Device]string{}
+	getSerialOrName := func(d *device.Instance) string {
+		if len(d.GetSerial()) > 0 {
+			return d.GetSerial()
+		}
+		return d.GetName()
+	}
+	for i := 0; i < len(paths); i++ {
+		p := paths[i]
+		o, err := client.Get(ctx, p.Path())
+		if err != nil {
+			return nil, log.Err(ctx, err, "Couldn't resolve device")
+		}
+		d := o.(*device.Instance)
+		switch flags.Device {
+		case "":
+			// empty flag
+			filteredByFlags = append(filteredByFlags, p)
+			filteredSerialsOrNames[p] = getSerialOrName(d)
+		case "host":
+			if d == host.Instance(ctx) {
+				filteredByFlags = append(filteredByFlags, p)
+				filteredSerialsOrNames[p] = getSerialOrName(d)
+				break
+			}
+		case "android":
+			if d.GetConfiguration().GetOS().GetKind() == device.OSKind_Android {
+				filteredByFlags = append(filteredByFlags, p)
+				filteredSerialsOrNames[p] = getSerialOrName(d)
+			}
+		default:
+			// serial number
+			// TODO: Regex matching instead of exact match?
+			if d.GetSerial() == flags.Device {
+				filteredByFlags = append(filteredByFlags, p)
+				filteredSerialsOrNames[p] = getSerialOrName(d)
+				break
+			}
+		}
+	}
+
+	if len(filteredByFlags) > 1 {
+		log.I(ctx, "Found multiple usable devices (by serial, or name if serial is empty:")
+		for _, sn := range filteredSerialsOrNames {
+			log.I(ctx, "\t%s", sn)
+		}
+	}
+
+	if len(filteredByFlags) > 0 {
+		selected := filteredByFlags[0]
+		log.I(ctx, "Selected device (by serial, or name if serial is empty): %s",
+			filteredSerialsOrNames[selected])
+		return selected, nil
 	}
 
 	log.W(ctx, "No compatible devices found. Attempting to use the first device anyway...")

@@ -34,6 +34,10 @@ public:
     // Returns nullptr if the function is not found.
     void* lookup(const char* name);
 
+    // can_load checks if the dynamic library specified with the given name can
+    // be loaded. Returns true if so, otherwise returns false.
+    static bool can_load(const char* lib_name);
+
 private:
     DlLoader() =default;
     DlLoader(const DlLoader&) =delete;
