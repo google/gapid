@@ -104,7 +104,7 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 	// FileDir may fail here. This happens if/when the app is non-debuggable.
 	// Don't set up vulkan tracing here, since the loader will not try and load the layer
 	// if we aren't debuggable regardless.
-	if err := d.Command("shell", "setprop", "debug.vulkan.layers", "VkGraphicsSpy").Run(ctx); err != nil {
+	if err := d.SetSystemProperty(ctx, "debug.vulkan.layers", "VkGraphicsSpy"); err != nil {
 		// Clone context to ignore cancellation.
 		ctx := keys.Clone(context.Background(), ctx)
 		d.RemoveForward(ctx, port)
@@ -115,7 +115,7 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 		// Clone context to ignore cancellation.
 		ctx := keys.Clone(context.Background(), ctx)
 		d.RemoveForward(ctx, port)
-		d.Command("shell", "setprop", "debug.vulkan.layers", "\"\"").Run(ctx)
+		d.SetSystemProperty(ctx, "debug.vulkan.layers", "")
 	})
 
 	if a != nil {

@@ -102,7 +102,7 @@ func stripVkGraphicsSpyLayer(ctx context.Context, d adb.Device) (func(), error) 
 	const layerName = "VkGraphicsSpy"
 	ctx = log.Enter(ctx, "stripVkGraphicsSpyLayer")
 	log.I(ctx, "Check the existence of %s in %s", layerName, propName)
-	old_layer_str, err := d.GetSystemProperty(ctx, propName)
+	old_layer_str, err := d.SystemProperty(ctx, propName)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Getting %s.", propName)
 	}
