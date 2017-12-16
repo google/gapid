@@ -22,14 +22,6 @@ java_import(
 )
 
 java_import(
-    name = "protobuf",
-    jars = [
-        "protobuf-java-3.0.0-beta-4.jar",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-java_import(
     name = "grpc",
     jars = [
         "grpc/grpc-context-1.0.1.jar",

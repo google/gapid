@@ -155,7 +155,7 @@ public class Histogram {
     public void bin(float value, Stream.Channel channel) {
       int binIdx = (int)(mapper.map(value) * (numBins - 1));
       binIdx = Math.max(0, Math.min(numBins - 1, binIdx));
-      bins[binIdx][channel.ordinal()]++;
+      bins[binIdx][getChannelIdx(channel)]++;
     }
 
     /**
@@ -325,7 +325,7 @@ public class Histogram {
      * Returns the count for the given channel in the given bin, normalized to a [0, 1] range.
      */
     public float getNormalized(Stream.Channel channel, int bin) {
-      int cIdx = channel.ordinal();
+      int cIdx = getChannelIdx(channel);
       return (float)bins[bin][cIdx] / max[cIdx];
     }
 
@@ -339,14 +339,14 @@ public class Histogram {
     public int getPercentileBin(int percentile, Set<Stream.Channel> channels) {
       int highestCount = 0;
       for (Stream.Channel c : channels) {
-        highestCount = Math.max(highestCount, total[c.ordinal()]);
+        highestCount = Math.max(highestCount, total[getChannelIdx(c)]);
       }
 
       int threshold = percentile * highestCount / 100;
       int[] sum = new int[Stream.Channel.values().length];
       for (int b = 0; b < bins.length; b++) {
         for (Stream.Channel c : channels) {
-          int cIdx = c.ordinal();
+          int cIdx = getChannelIdx(c);
           int s = sum[cIdx] += bins[b][cIdx];
           if (s >= threshold) {
             return b;
@@ -355,5 +355,10 @@ public class Histogram {
       }
       return -1;
     }
+  }
+
+  @SuppressWarnings("ProtocolBufferOrdinal")
+  private static int getChannelIdx(Stream.Channel channel) {
+    return channel.ordinal();
   }
 }
