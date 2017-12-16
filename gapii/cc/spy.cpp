@@ -38,10 +38,6 @@
 #include <vector>
 #include <memory>
 
-// CurrentCaptureVersion is incremented on breaking changes to the capture format.
-// NB: Also update equally named field in capture.go
-static const int CurrentCaptureVersion = 1;
-
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include "windows/wgl.h"
 #endif //  TARGET_OS == GAPID_OS_WINDOWS
@@ -189,7 +185,13 @@ Spy::Spy()
     // writeHeader needs to come before the installer is created as the
     // deviceinfo queries want to call into EGL / GL commands which will be
     // patched.
-    writeHeader();
+    query::Option query_opt;
+    SpyBase::set_device_instance(
+        query::getDeviceInstance(query_opt, queryPlatformData()));
+    SpyBase::set_current_abi(query::currentABI());
+    if (!SpyBase::writeHeader()) {
+      GAPID_ERROR("Failed at writing trace header.");
+    }
 
 #if TARGET_OS == GAPID_OS_ANDROID
     if (strlen(header.mLibInterceptorPath) > 0) {
@@ -220,14 +222,6 @@ Spy::Spy()
     }
     set_suspended(mSuspendCaptureFrames.load() != 0);
     set_observing(mObserveFrameFrequency != 0 || mObserveDrawFrequency != 0);
-}
-
-void Spy::writeHeader() {
-    capture::Header file_header;
-    file_header.set_version(CurrentCaptureVersion);
-    file_header.set_allocated_device(query::getDeviceInstance(queryPlatformData()));
-    file_header.set_allocated_abi(query::currentABI());
-    mEncoder->object(&file_header);
 }
 
 void Spy::resolveImports() {

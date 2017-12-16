@@ -35,6 +35,10 @@ extern GetVulkanProcAddressFunc* GetVulkanProcAddress;
 extern GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress;
 extern GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress;
 
+// HasVulkanLoader returns true if Vulkan loader is found, otherwise returns
+// false.
+bool HasVulkanLoader();
+
 }  // namespace core
 
 #endif  // CORE_GET_VULKAN_PROC_ADDRESS_H

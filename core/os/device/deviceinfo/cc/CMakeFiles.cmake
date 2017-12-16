@@ -20,10 +20,13 @@
 set(files
     cpu.cpp
     gl.cpp
+    gl_lite.h
     instance.cpp
     instance.h
     query.cpp
     query.h
+    vk.cpp
+    vk_lite.h
 )
 set(dirs
     android

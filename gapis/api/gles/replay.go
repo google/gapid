@@ -74,7 +74,7 @@ type framebufferRequest struct {
 // replaying this trace on the given device.
 // A lower number represents a higher priority, and Zero represents
 // an inability for the trace to be replayed on the given device.
-func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, l *device.MemoryLayout) uint32 {
+func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *capture.Header) uint32 {
 	if i.GetConfiguration().GetOS().GetKind() != device.Android {
 		return 1
 	}
@@ -91,7 +91,7 @@ func (a API) Replay(
 	capture *capture.Capture,
 	out transform.Writer) error {
 
-	if a.GetReplayPriority(ctx, device, capture.Header.Abi.MemoryLayout) == 0 {
+	if a.GetReplayPriority(ctx, device, capture.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay GLES commands on device '%v'", device.Name)
 	}
 

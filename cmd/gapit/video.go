@@ -51,7 +51,7 @@ type videoVerb struct{ VideoFlags }
 
 func init() {
 	verb := &videoVerb{}
-	verb.Gapir.Device = "host"
+	verb.Gapir.Device = ""
 	// The maximum width and height need to match the values in spy.cpp
 	// in order to properly compare observed and rendered framebuffers.
 	verb.Max.Width = 1920
