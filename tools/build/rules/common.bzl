@@ -13,8 +13,15 @@ generate = rule(
     },
 )
 
+def _copy(ctx, src, dst):
+    ctx.action(
+        command = "cp \"" + src.path + "\" \"" + dst.path + "\"",
+        inputs = [src],
+        outputs = [dst]
+    )
+
 def _copy_impl(ctx):
-    ctx.template_action(template=ctx.file.src, output=ctx.outputs.dst, substitutions={})
+    _copy(ctx, ctx.file.src, ctx.outputs.dst)
 
 copy = rule(
     _copy_impl,
@@ -41,9 +48,10 @@ def _copy_to_impl(ctx):
     for src in filtered:
         dst = ctx.new_file(ctx.bin_dir, ctx.attr.to + "/" + src.basename)
         outs += [dst]
-        ctx.template_action(template=src, output=dst, substitutions={})
+        _copy(ctx, src, dst)
+
     return struct(
-        files= outs,
+        files = outs,
     )
 
 copy_to = rule(
@@ -71,9 +79,10 @@ def _copy_tree_impl(ctx):
             path = ctx.attr.to + "/" + path
         dst = ctx.new_file(ctx.bin_dir, path)
         outs += [dst]
-        ctx.template_action(template=src, output=dst, substitutions={})
+        _copy(ctx, src, dst)
+
     return struct(
-        files= outs,
+        files = outs,
     )
 
 copy_tree = rule(
@@ -121,7 +130,7 @@ def filter_impl(ctx):
     return [
         DefaultInfo(
             files=depset([
-                src for src in ctx.files.srcs 
+                src for src in ctx.files.srcs
                 if any([
                     src.basename.endswith(ext) for ext in ctx.attr.suffix
                 ])
