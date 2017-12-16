@@ -6,15 +6,9 @@ java_binary(
         "//gapic/src/main",
         "//gapic/res:res",
     ],
-    data = [
-        "//:install-runtime",
-        "//:install-gapit",
-    ],
     jvm_flags = select({
         "//tools/build:darwin": ["-XstartOnFirstThread"],
+        "//tools/build:linux": ["-DSWT_GTK3=0", "-DLIBOVERLAY_SCROLLBAR=0"],
         "//conditions:default": [],
     }),
-    args = [
-        "--gapid", ".",
-    ]
 )
