@@ -112,6 +112,7 @@ public final class GapiPaths {
     return gapisPath != null && gapisPath.exists();
   }
 
+  @SuppressWarnings("ReturnValueIgnored") // TODO: checkForTools shouldn't have side-effects, yuk!
   private static void findTools() {
     ImmutableList.<Supplier<File>>of(
       () -> {
