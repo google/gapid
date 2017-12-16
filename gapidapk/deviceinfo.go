@@ -94,6 +94,41 @@ func startDevInfoService(ctx context.Context, d adb.Device, apk *APK) error {
 	return log.Errf(ctx, nil, "Run out of attempts: %v", startServiceAttempts)
 }
 
+// Checks the existence of VkGraphicsSpyLayer in the debug.vulkan.layers system
+// property. If found, strip the layer, otherwise keep the property unchanged.
+// Returns a property value recover callback and error.
+func stripVkGraphicsSpyLayer(ctx context.Context, d adb.Device) (func(), error) {
+	const propName = "debug.vulkan.layers"
+	const layerName = "VkGraphicsSpy"
+	ctx = log.Enter(ctx, "stripVkGraphicsSpyLayer")
+	log.I(ctx, "Check the existence of %s in %s", layerName, propName)
+	old_layer_str, err := d.GetSystemProperty(ctx, propName)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Getting %s.", propName)
+	}
+	should_strip := false
+	old_layers := strings.Split(old_layer_str, ":")
+	var new_layer_str string
+	for i, l := range old_layers {
+		if strings.TrimSpace(l) == layerName {
+			should_strip = true
+			continue
+		}
+		new_layer_str += l
+		if i+1 != len(old_layers) {
+			new_layer_str += ":"
+		}
+	}
+	if should_strip {
+		log.I(ctx, "%s layer does exist, set %s to new value: %s", layerName, propName, new_layer_str)
+		if err := d.SetSystemProperty(ctx, propName, new_layer_str); err != nil {
+			return nil, log.Errf(ctx, err, "Setting %s to %s", propName, new_layer_str)
+		}
+		return func() { d.SetSystemProperty(ctx, propName, old_layer_str) }, nil
+	}
+	return nil, nil
+}
+
 func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	apk, err := EnsureInstalled(ctx, d, device.UnknownABI)
 	if err != nil {
@@ -108,28 +143,13 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 
 	// Remove VkGraphicsSpy in the debug.vulkan.layers property to avoid loading
 	// our spy layer.
-	old_layers_str, err := d.GetSystemProperty(ctx, "debug.vulkan.layers")
+	recover, err := stripVkGraphicsSpyLayer(ctx, d)
 	if err != nil {
-		return log.Err(ctx, err, "Getting system property...")
+		log.W(ctx, err.Error())
+		return err
 	}
-	log.I(ctx, "debug.vulkan.layers: %s", old_layers_str)
-	need_reset := false
-	var new_layers_str string
-	for i, l := range strings.Split(old_layers_str, ":") {
-		if strings.TrimSpace(l) == "VkGraphicsSpy" {
-			need_reset = true
-		} else {
-			new_layers_str += l
-		}
-		if i != len(strings.Split(old_layers_str, ":"))-1 {
-			new_layers_str += ":"
-		}
-	}
-	if need_reset {
-		if err := d.SetSystemProperty(ctx, "debug.vulkan.layers", ""); err != nil {
-			return err
-		}
-		defer d.SetSystemProperty(ctx, "debug.vulkan.layers", old_layers_str)
+	if recover != nil {
+		defer recover()
 	}
 
 	// Tries to start the device info service.

@@ -167,6 +167,9 @@ func (b *binding) GetSystemProperty(ctx context.Context, name string) (string, e
 
 // SetSystemProperty sets the system property with the given string value
 func (b *binding) SetSystemProperty(ctx context.Context, name, value string) error {
+	if len(value) == 0 {
+		value = "\"\""
+	}
 	return b.Shell("setprop", name, value).Run(ctx)
 }
 
