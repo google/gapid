@@ -23,7 +23,8 @@ device_instance get_device_instance(void* platform_data) {
     device_instance out = {};
 
     query::Option query_opt;
-    query_opt.vulkan.QueryLayersAndExtensions().QueryPhysicalDevices();
+    query_opt.vulkan.set_query_layers_and_extensions(true)
+        .set_query_physical_devices(true);
     auto instance = query::getDeviceInstance(query_opt, platform_data);
     if (!instance) {
         return out;

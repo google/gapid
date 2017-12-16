@@ -101,10 +101,10 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
   // populates the VulkanDriver message.
   if (query::hasVulkanLoader()) {
     auto vulkan_driver = new VulkanDriver();
-    if (opt.vulkan.query_layers_and_extensions) {
+    if (opt.vulkan.query_layers_and_extensions()) {
       query::vkLayersAndExtensions(vulkan_driver);
     }
-    if (opt.vulkan.query_physical_devices) {
+    if (opt.vulkan.query_physical_devices()) {
       query::vkPhysicalDevices(vulkan_driver);
     }
     drivers->set_allocated_vulkan(vulkan_driver);

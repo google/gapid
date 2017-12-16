@@ -27,26 +27,33 @@ namespace query {
 // physical devices info should be queried with query::getDeviceInstance().
 // By default, layers/extensions info and physical devices info will not be
 // queried.
-struct VulkanOption {
+class VulkanOption {
+ public:
   // Default VulkanOption specifies NOT to query layers/extensions and physical
   // devices info.
   VulkanOption()
-      : query_layers_and_extensions(false), query_physical_devices(false) {}
-  // QueryLayerAndExtensions set the flag which specifies layers and extensions
-  // info should be queried.
-  VulkanOption& QueryLayersAndExtensions() {
-    this->query_layers_and_extensions = true;
+      : query_layers_and_extensions_(false), query_physical_devices_(false) {}
+  // set_query_layers_and_extensions sets the flag to indicate whether layers
+  // and extensions info should be queried.
+  VulkanOption& set_query_layers_and_extensions(bool f) {
+    this->query_layers_and_extensions_ = f;
     return *this;
   }
-  // QueryPhysicalDevices set the flag which specifies physical devices info
-  // should be queried.
-  VulkanOption& QueryPhysicalDevices() {
-    this->query_physical_devices = true;
+  // set_query_physical_devices sets the flag to indicate whether physical
+  // devices info should be queried.
+  VulkanOption& set_query_physical_devices(bool f) {
+    this->query_physical_devices_ = f;
     return *this;
   }
+  inline bool query_layers_and_extensions() const {
+    return query_layers_and_extensions_;
+  }
+  inline bool query_physical_devices() const { return query_physical_devices_; }
+
+ private:
   // Flags to indicate whether some info should be queried.
-  bool query_layers_and_extensions;
-  bool query_physical_devices;
+  bool query_layers_and_extensions_;
+  bool query_physical_devices_;
 };
 
 // Option specifies how some optional device info to be queried with
