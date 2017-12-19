@@ -26,6 +26,8 @@
 
 extern "C" {
 
+/* TODO - delete this file?
+
 int sigemptyset(sigset_t *set) {
     memset(set, 0, sizeof *set);
     return 0;
@@ -34,5 +36,6 @@ int sigemptyset(sigset_t *set) {
 int getpagesize(void) {
   return 4096; // doesn't really matter - we're just satisfying the linker.
 }
+*/
 
 } // extern "C"

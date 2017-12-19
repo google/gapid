@@ -56,12 +56,12 @@ windows_sdk(
 
 android_sdk_repository(
     name="androidsdk",
-    api_level=27,
+    api_level=21,
 )
 
 android_ndk_repository(
     name="androidndk",
-    api_level=14,
+    api_level=21,
 )
 
 ####################################
