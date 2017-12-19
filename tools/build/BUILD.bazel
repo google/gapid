@@ -4,6 +4,7 @@ gapid_version(
     name = "build_properties",
     template = ":build_host_and_time",
     out = "build.properties",
+    visibility = ["//visibility:public"],
 )
 
 # Note, this genrule reads the volatile-status.txt file, but is *not* executed on each build.

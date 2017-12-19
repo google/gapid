@@ -119,8 +119,8 @@ copy(
 
 copy(
     name = "install-properties",
-    src = "//tools/build:source.properties",
-    dst = "source.properties",
+    src = "//tools/build:build.properties",
+    dst = "build.properties",
     tags = ["manual"],
     visibility = ["//visibility:private"],
 )
