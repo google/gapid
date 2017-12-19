@@ -227,6 +227,11 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start
 		if err := d.InstallAPK(ctx, options.APK.System(), true, true); err != nil {
 			return log.Err(ctx, err, "Install APK")
 		}
+		if !verb.OBB.IsEmpty() {
+			if err := d.PushOBB(ctx, info.Name, info.VersionCode, verb.OBB.System()); err != nil {
+				return log.Err(ctx, err, "Push OBB")
+			}
+		}
 		pkg = &android.InstalledPackage{
 			Name:       info.Name,
 			Device:     d,

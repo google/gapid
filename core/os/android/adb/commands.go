@@ -99,6 +99,15 @@ func (b *binding) InstallAPK(ctx context.Context, path string, reinstall bool, g
 	return b.Command("install", args...).Run(ctx)
 }
 
+func (b *binding) PushOBB(ctx context.Context, package_name string, version_code int32, obb_path string) error {
+	storage, err := b.Shell("echo", "$EXTERNAL_STORAGE").Call(ctx)
+	if err != nil {
+		return err
+	}
+	obb_storage_path := fmt.Sprintf("%s/obb/%s/main.%d.%[2]s.obb", storage, package_name, version_code)
+	return b.Push(ctx, obb_path, obb_storage_path)
+}
+
 // SELinuxEnforcing returns true if the device is currently in a
 // SELinux enforcing mode, or false if the device is currently in a SELinux
 // permissive mode.

@@ -30,6 +30,8 @@ type Device interface {
 	// InstallAPK installs the specified APK to the device. If reinstall is true
 	// and the package is already installed on the device then it will be replaced.
 	InstallAPK(ctx context.Context, path string, reinstall bool, grantPermissions bool) error
+	// PushOBB places a local OBB file to the correct location for an APK to access.
+	PushOBB(ctx context.Context, package_name string, version_code int32, obb_path string) error
 	// SELinuxEnforcing returns true if the device is currently in a
 	// SELinux enforcing mode, or false if the device is currently in a SELinux
 	// permissive mode.
