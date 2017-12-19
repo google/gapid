@@ -8,28 +8,29 @@ POSIX_SRCS = [
     "src/common/simple_string_dictionary.cc",
     "src/common/string_conversion.cc",
 ]
+LINUX_SRCS = POSIX_SRCS + [
+    "src/client/linux/crash_generation/crash_generation_client.cc",
+    "src/client/linux/dump_writer_common/thread_info.cc",
+    "src/client/linux/dump_writer_common/ucontext_reader.cc",
+    "src/client/linux/handler/exception_handler.cc",
+    "src/client/linux/handler/minidump_descriptor.cc",
+    "src/client/linux/log/log.cc",
+    "src/client/linux/microdump_writer/microdump_writer.cc",
+    "src/client/linux/minidump_writer/linux_dumper.cc",
+    "src/client/linux/minidump_writer/linux_ptrace_dumper.cc",
+    "src/client/linux/minidump_writer/minidump_writer.cc",
+    "src/common/linux/elfutils.cc",
+    "src/common/linux/file_id.cc",
+    "src/common/linux/guid_creator.cc",
+    "src/common/linux/linux_libc_support.cc",
+    "src/common/linux/memory_mapped_file.cc",
+    "src/common/linux/safe_readlink.cc",
+]
 
 cc_library(
     name = "breakpad",
     srcs = select({
-        "@//tools/build:linux": POSIX_SRCS + [
-            "src/client/linux/crash_generation/crash_generation_client.cc",
-            "src/client/linux/dump_writer_common/thread_info.cc",
-            "src/client/linux/dump_writer_common/ucontext_reader.cc",
-            "src/client/linux/handler/exception_handler.cc",
-            "src/client/linux/handler/minidump_descriptor.cc",
-            "src/client/linux/log/log.cc",
-            "src/client/linux/microdump_writer/microdump_writer.cc",
-            "src/client/linux/minidump_writer/linux_dumper.cc",
-            "src/client/linux/minidump_writer/linux_ptrace_dumper.cc",
-            "src/client/linux/minidump_writer/minidump_writer.cc",
-            "src/common/linux/elfutils.cc",
-            "src/common/linux/file_id.cc",
-            "src/common/linux/guid_creator.cc",
-            "src/common/linux/linux_libc_support.cc",
-            "src/common/linux/memory_mapped_file.cc",
-            "src/common/linux/safe_readlink.cc",
-        ],
+        "@//tools/build:linux": LINUX_SRCS,
         "@//tools/build:darwin": POSIX_SRCS + [
             "src/common/mac/arch_utilities.cc",
             "src/common/mac/bootstrap_compat.cc",
@@ -60,6 +61,10 @@ cc_library(
             "src/common/windows/http_upload.cc",
             "src/common/windows/string_utils.cc",
         ],
+        # Android.
+        "//conditions:default": LINUX_SRCS + [
+            "src/common/android/breakpad_getcontext.S",
+        ],
     }),
     hdrs = glob([
         "src/client/*.h",
@@ -78,20 +83,34 @@ cc_library(
             "src/client/windows/**/*.h",
             "src/common/windows/**/*.h",
         ]),
+        # Android.
+        "//conditions:default": glob([
+            "src/common/android/*.h",
+            "src/client/linux/**/*.h",
+            "src/common/linux/**/*.h",
+        ]),
     }),
     strip_include_prefix = "src",
     deps = select({
         "@//tools/build:linux": ["@lss"],
         "@//tools/build:darwin": [":breakpad_darwin"],
-        "//conditions:default": [],
+        "@//tools/build:windows": [],
+        # Android.
+        "//conditions:default": [":breakpad_android_includes", "@lss"],
     }),
     linkopts = select({
         "@//tools/build:linux": ["-lpthread"],
+        "@//tools/build:darwin": [],
+        "@//tools/build:windows": [],
+        # Android.
         "//conditions:default": [],
     }),
     defines = cc_defines() + select({
+        "@//tools/build:linux": [],
+        "@//tools/build:darwin": [],
         "@//tools/build:windows": ["_UNICODE", "UNICODE"],
-        "//conditions:default": [],
+        # Android.
+        "//conditions:default": ["__STDC_FORMAT_MACROS"],
     }),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
@@ -129,4 +148,13 @@ cc_library(
     defines = cc_defines(),
     copts = cc_copts(),
     strip_include_prefix = "src/client/apple/Framework",
+)
+
+# Needed because breakpad "fakes" some system includes in src/common/android/include.
+cc_library(
+    name = "breakpad_android_includes",
+    hdrs = glob(["src/common/android/include/**/*.h"]),
+    defines = cc_defines(),
+    copts = cc_copts(),
+    strip_include_prefix = "src/common/android/include",
 )
