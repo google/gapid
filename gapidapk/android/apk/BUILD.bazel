@@ -10,22 +10,19 @@ _NATIVE_LIBRARIES = {
 }
 
 gapid_apk(
-    name = "armeabi", 
-    abi = "armeabi-v7a",
+    name = "armeabi-v7a",
+    abi = "armeabi",
     libs = _NATIVE_LIBRARIES,
 )
 
 gapid_apk(
-    name = "x86", 
-    abi = "x86",
+    name = "arm64-v8a",
+    abi = "aarch64",
     libs = _NATIVE_LIBRARIES,
 )
 
-filegroup(
-    name = "gapid",
-    srcs = select({
-        "//tools/build:config-armeabi": [":armeabi"],
-        "//tools/build:config-x86": [":x86"],
-        "//tools/build:config-aarch64": [":aarch64"],
-    }),
+gapid_apk(
+    name = "x86",
+    abi = "x86",
+    libs = _NATIVE_LIBRARIES,
 )

@@ -54,6 +54,7 @@ cc_library(
         "//tools/build:linux": glob(["linux/*.cpp"]),
         "//tools/build:darwin": glob(["osx/*.cpp"]),
         "//tools/build:windows": glob(["windows/*.cpp"]),
+        # Android
         "//conditions:default": glob(["android/*.cpp"]),
     }),
     defines = cc_defines(),
