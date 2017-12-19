@@ -8,7 +8,7 @@ def gapid_apk(name= "", abi="", libs={}):
         extract(
             name = libname,
             zip = "{}:{}.apk".format(libs[lib],lib),
-            entries = ["lib/{}/lib{}.so".format(abi, lib)],
+            entries = ["lib/{}/lib{}.so".format(name, lib)],
             tags = ["manual"],
         )
     native.filegroup(
@@ -39,8 +39,7 @@ def gapid_apk(name= "", abi="", libs={}):
     native.android_binary(
         name = name,
         manifest_values = {
-            "name": name,
-            "abi": abi,
+            "name": abi,
         },
         custom_package = "com.google.android.gapid",
         manifest = ":"+name+"_manifest",
