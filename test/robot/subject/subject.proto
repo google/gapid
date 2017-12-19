@@ -28,9 +28,11 @@ message Subject {
   // Information is the extracted details we know about the subject.
   oneof Information {
     // APK is the information if the subject type is an android APK.
-	  apk.Information APK = 2;
+    apk.Information APK = 2;
   }
   Hints hints = 3;
+  // Obb is the id of the OBB file in the stash.
+  string obb = 4;
 }
 
 message Hints {
@@ -52,10 +54,12 @@ service Service {
 }
 
 message AddRequest {
-  // Id is the id of the subject in the stash
+  // Id is the id of the subject in the stash.
   string id = 1;
   // hints is the set of trace hints for this subject.
   Hints hints = 2;
+  // Obb is the id of the OBB file in the stash.
+  string obb = 3;
 }
 
 message AddResponse {

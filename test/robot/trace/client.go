@@ -148,6 +148,7 @@ func (r *runner) trace(ctx context.Context, t *Task) error {
 // be partially filled in the event of an upload error from store in order to allow examination of the logs.
 func doTrace(ctx context.Context, action string, in *Input, store *stash.Client, d bind.Device, tempDir file.Path) (*Output, error) {
 	subject := tempDir.Join(action + ".apk")
+	obb := tempDir.Join(action + ".obb")
 	tracefile := tempDir.Join(action + ".gfxtrace")
 	extractedDir := tempDir.Join(action + "_tools")
 	extractedLayout := layout.BinLayout(extractedDir)
@@ -169,11 +170,17 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 
 	defer func() {
 		file.Remove(subject)
+		file.Remove(obb)
 		file.Remove(tracefile)
 		file.RemoveAll(extractedDir)
 	}()
 	if err := store.GetFile(ctx, in.Subject, subject); err != nil {
 		return nil, err
+	}
+	if in.Obb != "" {
+		if err := store.GetFile(ctx, in.Obb, obb); err != nil {
+			return nil, err
+		}
 	}
 	if err := store.GetFile(ctx, in.Gapit, gapit); err != nil {
 		return nil, err
@@ -191,6 +198,9 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		"-record-errors",
 		"-gapii-device", d.Instance().Serial,
 		"-api", in.GetHints().GetAPI(),
+	}
+	if in.Obb != "" {
+		params = append(params, "-obb", obb.System())
 	}
 	cmd := shell.Command(gapit.System(), params...)
 	output, callErr := cmd.Call(ctx)
