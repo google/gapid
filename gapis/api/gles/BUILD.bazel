@@ -27,12 +27,6 @@ apic(
     visibility = ["//visibility:public"],
 )
 
-filter(
-    name = "generated_go",
-    srcs = [":generated"],
-    suffix = [".go"],
-)
-
 go_library(
     name = "go_default_library",
     srcs = [
@@ -70,9 +64,11 @@ go_library(
         "version.go",
         "vertex_attribute_array.go",
         "wireframe.go",
-        ":generated_go",  # keep
     ],
-    embed = [":gles_go_proto"],
+    embed = [
+        ":generated",  # keep
+        ":gles_go_proto",
+    ],
     importpath = "github.com/google/gapid/gapis/api/gles",
     visibility = ["//visibility:public"],
     deps = [
