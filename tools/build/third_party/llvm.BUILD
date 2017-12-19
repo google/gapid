@@ -210,7 +210,7 @@ cc_binary(
     deps = [":TableGen"],
     linkopts = select({
         "@//tools/build:linux": ["-ldl", "-lpthread", "-lcurses"],
-        "@//tools/build:darwin": ["-framework Cocoa"],
+        "@//tools/build:darwin": ["-framework Cocoa", "-lcurses"],
         "@//tools/build:windows": [],
     }),
     copts = cc_copts(),
