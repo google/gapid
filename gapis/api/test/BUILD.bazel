@@ -22,18 +22,14 @@ apic(
     visibility = ["//visibility:public"],
 )
 
-filter(
-    name = "generated_go",
-    srcs = [":generated"],
-    suffix = [".go"],
-)
-
 go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
         "test.go",
-        ":generated_go",  # keep
+    ],
+    embed = [
+        ":generated",  # keep
     ],
     importpath = "github.com/google/gapid/gapis/api/test",
     visibility = ["//visibility:public"],
