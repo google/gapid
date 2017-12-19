@@ -177,6 +177,7 @@ type (
 			Logcat   bool   `help:"print the output of logcat while tracing"`
 		}
 		APK     file.Path `help:"the path to an apk to install"`
+		OBB     file.Path `help:"the path to an obb to install for APK"`
 		Observe struct {
 			Frames uint `help:"capture the framebuffer every n frames (0 to disable)"`
 			Draws  uint `help:"capture the framebuffer every n draws (0 to disable)"`
