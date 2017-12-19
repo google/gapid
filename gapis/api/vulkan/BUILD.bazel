@@ -29,13 +29,6 @@ apic(
     visibility = ["//visibility:public"],
 )
 
-filter(
-    #TODO: use GoEmbed so we also get the deps
-    name = "generated_go",
-    srcs = [":generated"],
-    suffix = [".go"],
-)
-
 go_library(
     name = "go_default_library",
     srcs = [
@@ -56,9 +49,11 @@ go_library(
         "vulkan.go",
         "vulkan_terminator.go",
         "wireframe.go",
-        ":generated_go",  # keep
     ],
-    embed = [":vulkan_go_proto"],
+    embed = [
+        ":generated",  # keep
+        ":vulkan_go_proto",
+    ],
     importpath = "github.com/google/gapid/gapis/api/vulkan",
     visibility = ["//visibility:public"],
     deps = [

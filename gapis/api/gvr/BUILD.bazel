@@ -41,12 +41,6 @@ apic(
     visibility = ["//visibility:public"],
 )
 
-filter(
-    name = "generated_go",
-    srcs = [":generated"],
-    suffix = [".go"],
-)
-
 go_library(
     name = "go_default_library",
     srcs = [
@@ -55,7 +49,6 @@ go_library(
         "framebindings.go",
         "gvr.go",
         "importance.go",
-        ":generated_go",  # keep
     ],
     embed = [":gvr_go_proto"],
     importpath = "github.com/google/gapid/gapis/api/gvr",
