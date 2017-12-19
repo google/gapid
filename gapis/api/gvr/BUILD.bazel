@@ -50,7 +50,10 @@ go_library(
         "gvr.go",
         "importance.go",
     ],
-    embed = [":gvr_go_proto"],
+    embed = [
+        ":generated",  # keep
+        ":gvr_go_proto",
+    ],
     importpath = "github.com/google/gapid/gapis/api/gvr",
     visibility = ["//visibility:public"],
     deps = [
