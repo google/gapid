@@ -45,10 +45,7 @@ mm_library(
     name = "darwin_renderer",
     srcs = glob(["osx/*.mm"]),
     defines = cc_defines(),
-    deps = [
-        ":gles_lib",
-        ":vulkan_lib",
-    ],
+    deps = [":api_lib"],
 )
 
 cc_library(
