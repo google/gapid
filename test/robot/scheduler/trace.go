@@ -32,6 +32,7 @@ func (s schedule) doTrace(ctx context.Context, subj *monitor.Subject, tools *bui
 	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
 	input := &trace.Input{
 		Subject:  subj.Id,
+		Obb:      subj.Obb,
 		Gapit:    tools.Host.Gapit,
 		GapidApk: androidTools.GapidApk,
 		Package:  s.pkg.Id,
