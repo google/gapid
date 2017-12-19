@@ -28,10 +28,11 @@ import (
 )
 
 const (
-	sendDevInfoAction    = "com.google.android.gapid.action.SEND_DEV_INFO"
-	sendDevInfoService   = "com.google.android.gapid.DeviceInfoService"
-	sendDevInfoPort      = "gapid-devinfo"
-	startServiceAttempts = 3
+	sendDevInfoAction           = "com.google.android.gapid.action.SEND_DEV_INFO"
+	sendDevInfoService          = "com.google.android.gapid.DeviceInfoService"
+	sendDevInfoPort             = "gapid-devinfo"
+	startServiceAttempts        = 3
+	portListeningTimeoutSeconds = 5 * time.Second
 )
 
 func init() {
@@ -64,24 +65,33 @@ func startDevInfoService(ctx context.Context, d adb.Device, apk *APK) error {
 		return log.Err(ctx, nil, "Service intent was not found")
 	}
 
-	// Start a fresh run.
-	if err := d.ForceStop(ctx, apk.InstalledPackage.Name); err != nil {
-		return log.Errf(ctx, err, "Can not stop package %s...", apk.InstalledPackage.Name)
-	}
-
 	// Try to start service.
 	for i := 0; i < startServiceAttempts; i++ {
-		time.Sleep(time.Second)
 		log.I(ctx, "Attempt to start service: %s", sendDevInfoService)
 		if se = d.StartService(ctx, *action); se != nil {
 			continue
 		}
-		listening, le = devInfoPortListening(ctx, d)
-		if le != nil {
-			continue
-		}
+
+		stop_checking_port := make(chan bool)
+		timer := time.AfterFunc(portListeningTimeoutSeconds, func() {
+			stop_checking_port <- true
+			close(stop_checking_port)
+		})
+		func() {
+			select {
+			case <-stop_checking_port:
+				return
+			default:
+				log.I(ctx, "Checking port: %s on device %s", sendDevInfoPort, d.Instance().GetSerial())
+				listening, le = devInfoPortListening(ctx, d)
+				if le != nil || listening {
+					return
+				}
+				time.Sleep(time.Second)
+			}
+		}()
+		timer.Stop()
 		if listening {
-			// Services started and port is listening to incoming connections.
 			return nil
 		}
 	}

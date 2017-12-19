@@ -43,9 +43,10 @@ const uint64_t MAX_MEMORY_SIZE = 1024;
 class ServerListenerTest : public ::testing::Test {
 protected:
     virtual void SetUp() {
-        mConnection = new core::test::MockConnection();
-        mServerListener.reset(
-            new ServerListener(std::unique_ptr<core::Connection>(mConnection), MAX_MEMORY_SIZE));
+      mConnection = std::unique_ptr<core::test::MockConnection>(
+          new core::test::MockConnection());
+      mServerListener.reset(
+          new ServerListener(mConnection.get(), MAX_MEMORY_SIZE));
     }
 
     inline void pushValidReplayRequest(std::vector<uint8_t>* buf) {
@@ -53,7 +54,7 @@ protected:
         pushString(buf, "");
         pushUint32(buf, 0);
     }
-    core::test::MockConnection* mConnection;
+    std::unique_ptr<core::test::MockConnection> mConnection;
     std::unique_ptr<ServerListener> mServerListener;
 };
 

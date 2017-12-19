@@ -34,6 +34,7 @@
 #include <memory>
 #include <stdlib.h>
 #include <string.h>
+#include <thread>
 
 #if TARGET_OS == GAPID_OS_ANDROID
 #include <android_native_app_glue.h>
@@ -70,13 +71,13 @@ std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
     }
 }
 
-void listenConnections(std::unique_ptr<Connection> conn,
+void listenConnections(Connection* conn,
                        const char* authToken,
                        const char* cachePath,
                        int idleTimeoutMs,
                        MemoryManager* memoryManager,
                        core::CrashHandler& crashHandler) {
-    ServerListener listener(std::move(conn), memoryManager->getSize());
+    ServerListener listener(conn, memoryManager->getSize());
 
     std::unique_ptr<ResourceInMemoryCache> resourceProvider(
             createResourceProvider(cachePath, memoryManager));
@@ -144,7 +145,28 @@ void android_main(struct android_app* app) {
 
     // Note if you want to create a disk cache create it under:
     // app->activity->internalDataPath
-    listenConnections(std::move(conn), nullptr, nullptr, Connection::NO_TIMEOUT, &memoryManager, crashHandler);
+    std::thread listening_thread([&]() {
+      listenConnections(conn.get(), nullptr, nullptr, Connection::NO_TIMEOUT,
+                        &memoryManager, crashHandler);
+    });
+    while (true) {
+      int ident;
+      int fdesc;
+      int events;
+      struct android_poll_source* source;
+      while ((ident = ALooper_pollAll(0, &fdesc, &events, (void**)&source)) >=
+             0) {
+        // process this event
+        if (source) {
+          source->process(app, source);
+        }
+        if (app->destroyRequested) {
+          conn->close();
+          break;
+        }
+      }
+    }
+    listening_thread.join();
 }
 
 #else  // TARGET_OS == GAPID_OS_ANDROID
@@ -247,13 +269,9 @@ int main(int argc, const char* argv[]) {
         GAPID_FATAL("Failed to create listening socket on port: %s", portStr);
     }
 
-    listenConnections(
-            std::move(conn),
-            (authToken.size() > 0) ? authToken.data() : nullptr,
-            cachePath,
-            idleTimeoutMs,
-            &memoryManager,
-            crashHandler);
+    listenConnections(conn.get(),
+                      (authToken.size() > 0) ? authToken.data() : nullptr,
+                      cachePath, idleTimeoutMs, &memoryManager, crashHandler);
     return EXIT_SUCCESS;
 }
 
