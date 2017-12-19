@@ -16,19 +16,12 @@ cc_library(
     srcs = glob(["*.cpp"]) + select({
         "//tools/build:linux": glob(["linux/query.cpp"]),
         "//tools/build:windows": glob(["windows/query.cpp"]),
-        "//tools/build:android-armeabi": glob([
+        "//tools/build:darwin": [],
+        # Android
+        "//conditions:default": glob([
             "android/*.cpp",
             "android/*.h",
         ]),
-        "//tools/build:android-x86": glob([
-            "android/*.cpp",
-            "android/*.h",
-        ]),
-        "//tools/build:android-aarch64": glob([
-            "android/*.cpp",
-            "android/*.h",
-        ]),
-        "//conditions:default": [],
     }),
     deps = [
         "//core/cc",
@@ -45,6 +38,7 @@ cc_library(
         "//tools/build:linux": ["-ldl", "-lGL", "-lX11"],
         "//tools/build:darwin": ["-framework Cocoa", "-framework OpenGL"],
         "//tools/build:windows": [],
+        # Android
         "//conditions:default": ["-lEGL", "-lGLESv2", "-llog", "-landroid", "-lm"],
     }),
     visibility = ["//visibility:public"],

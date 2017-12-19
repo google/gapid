@@ -7,17 +7,17 @@ cc_library(
         "lib/*.cc",
         "lib/*.h",
     ]) + select({
-        "//tools/build:android-armeabi": glob([
+        "//tools/build:android-armeabi-v7a": glob([
             "lib/ARM/*.cc",
             "lib/ARM/*.h",
+        ]),
+        "//tools/build:android-arm64-v8a": glob([
+            "lib/AArch64/*.cc",
+            "lib/AArch64/*.h",
         ]),
         "//tools/build:android-x86": glob([
             "lib/X86/*.cc",
             "lib/X86/*.h",
-        ]),
-        "//tools/build:android-aarch64": glob([
-            "lib/AArch64/*.cc",
-            "lib/AArch64/*.h",
         ]),
     }),
     includes = ["lib"],

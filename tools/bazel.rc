@@ -14,9 +14,9 @@ build --cxxopt="-std=c++11"
 build --deleted_packages=//third_party/protobuf,//third_party/protobuf/util/python
 
 # Android special build configurations
-build:arm --fat_apk_cpu armeabi-v7a
+build:armeabi-v7a --fat_apk_cpu armeabi-v7a
+build:arm64-v8a --fat_apk_cpu arm64-v8a
 build:x86 --fat_apk_cpu x86
-build:aarch64 --fat_apk_cpu aarch64
 
 # Default version defines
 build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer
