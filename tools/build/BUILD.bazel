@@ -18,7 +18,7 @@ genrule(
     cmd = "(" +
           " echo Build.Host=$$(grep BUILD_HOST bazel-out/stable-status.txt | cut -d ' ' -f 2);" +
           # The timestamp is in millis, but date -d @timestamp, expects the timestamp to be in seconds.
-          " echo Build.Date=$$(date -d @$$(echo $$((($$(grep BUILD_TIMESTAMP2 bazel-out/volatile-status.txt | cut -d ' ' -f 2)+500)/1000))));" +
+          " echo Build.Date=$$(date -d @$$(echo $$((($$(grep BUILD_TIMESTAMP bazel-out/volatile-status.txt | cut -d ' ' -f 2)+500)/1000))));" +
           ") | cat $< - > $@",
     stamp = 1,
 )
