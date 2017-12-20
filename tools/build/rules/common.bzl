@@ -38,15 +38,16 @@ copy = rule(
 
 def _copy_to_impl(ctx):
     filtered = []
-    if not ctx.attr.matching:
+    if not ctx.attr.extensions:
         filtered = ctx.files.srcs
     else:
         for src in ctx.files.srcs:
-            if src.basename in ctx.attr.matching:
+            if src.extension in ctx.attr.extensions:
                 filtered += [src]
     outs = depset()
     for src in filtered:
-        dst = ctx.new_file(ctx.bin_dir, ctx.attr.to + "/" + src.basename)
+        dstname = ctx.attr.rename.get(key = src.basename, default = src.basename)
+        dst = ctx.new_file(ctx.bin_dir, ctx.attr.to + "/" + dstname)
         outs += [dst]
         _copy(ctx, src, dst)
 
@@ -61,7 +62,8 @@ copy_to = rule(
             allow_files = True,
             mandatory = True,
         ),
-        "matching": attr.string_list(),
+        "extensions": attr.string_list(),
+        "rename": attr.string_dict(),
         "to": attr.string(
             mandatory=True,
         ),
@@ -96,35 +98,6 @@ copy_tree = rule(
         "to": attr.string(),
     },
 )
-
-def copy_platform_binaries(name, src, **kwargs):
-    copy_to(
-        name = "linux_"+name,
-        srcs = [src],
-        to = "linux/x86_64",
-        tags = ["manual"],
-    )
-    copy_to(
-        name = "osx_"+name,
-        srcs = [src],
-        to = "osx/x86_64",
-        tags = ["manual"],
-    )
-    copy_to(
-        name = "windows_"+name,
-        srcs = [src],
-        to = "windows/x86_64",
-        tags = ["manual"],
-    )
-    native.filegroup(
-        name = name,
-        srcs = select({
-            "//tools/build:linux": [":linux_"+name],
-            "//tools/build:darwin": [":osx_"+name],
-            "//tools/build:windows": [":windows_"+name],
-        }),
-        **kwargs
-    )
 
 def filter_impl(ctx):
     return [
