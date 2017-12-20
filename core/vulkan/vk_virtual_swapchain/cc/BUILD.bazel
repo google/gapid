@@ -19,3 +19,9 @@ cc_library(
     copts = cc_copts(),
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "json",
+    srcs = ["VirtualSwapchainLayer.json"],
+    visibility = ["//visibility:public"],
+)

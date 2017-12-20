@@ -1,4 +1,4 @@
-load("@//tools/build:rules.bzl", "copy_to", "cc_copts")
+load("@//tools/build:rules.bzl", "cc_copts")
 
 def llvm_sources(name, exclude=[]):
     return native.glob([
@@ -35,7 +35,7 @@ def _tablegen_impl(ctx):
     args = ctx.attr.flags + [
         "-I", include,
         "-I", ctx.file.table.dirname,
-        "-o", ctx.outputs.generate.path, 
+        "-o", ctx.outputs.generate.path,
         ctx.file.table.path,
     ]
     ctx.action(

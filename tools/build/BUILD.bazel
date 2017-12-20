@@ -48,30 +48,6 @@ config_setting(
 )
 
 config_setting(
-    name = "config-armeabi-v7a",
-    values = {
-        "fat_apk_cpu": "armeabi-v7a",
-    },
-    visibility = ["//visibility:public"],
-)
-
-config_setting(
-    name = "config-arm64-v8a",
-    values = {
-        "fat_apk_cpu": "arm64-v8a",
-    },
-    visibility = ["//visibility:public"],
-)
-
-config_setting(
-    name = "config-x86",
-    values = {
-        "fat_apk_cpu": "x86",
-    },
-    visibility = ["//visibility:public"],
-)
-
-config_setting(
     name = "android-armeabi-v7a",
     values = {
         "cpu": "armeabi-v7a",
