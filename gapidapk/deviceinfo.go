@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/gapid/core/event/task"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -28,11 +30,11 @@ import (
 )
 
 const (
-	sendDevInfoAction           = "com.google.android.gapid.action.SEND_DEV_INFO"
-	sendDevInfoService          = "com.google.android.gapid.DeviceInfoService"
-	sendDevInfoPort             = "gapid-devinfo"
-	startServiceAttempts        = 3
-	portListeningTimeoutSeconds = 5 * time.Second
+	sendDevInfoAction     = "com.google.android.gapid.action.SEND_DEV_INFO"
+	sendDevInfoService    = "com.google.android.gapid.DeviceInfoService"
+	sendDevInfoPort       = "gapid-devinfo"
+	startServiceAttempts  = 3
+	portListeningAttempts = 5
 )
 
 func init() {
@@ -56,8 +58,6 @@ func devInfoPortListening(ctx context.Context, d adb.Device) (bool, error) {
 // the service to send device info.
 func startDevInfoService(ctx context.Context, d adb.Device, apk *APK) error {
 	ctx = log.Enter(ctx, "startDevInfoService")
-	var se error
-	var le error
 	var listening bool
 
 	action := apk.ServiceActions.FindByName(sendDevInfoAction, sendDevInfoService)
@@ -66,42 +66,25 @@ func startDevInfoService(ctx context.Context, d adb.Device, apk *APK) error {
 	}
 
 	// Try to start service.
-	for i := 0; i < startServiceAttempts; i++ {
-		log.I(ctx, "Attempt to start service: %s", sendDevInfoService)
-		if se = d.StartService(ctx, *action); se != nil {
-			continue
-		}
-
-		stop_checking_port := make(chan bool)
-		timer := time.AfterFunc(portListeningTimeoutSeconds, func() {
-			stop_checking_port <- true
-			close(stop_checking_port)
-		})
-		func() {
-			select {
-			case <-stop_checking_port:
-				return
-			default:
-				log.I(ctx, "Checking port: %s on device %s", sendDevInfoPort, d.Instance().GetSerial())
-				listening, le = devInfoPortListening(ctx, d)
-				if le != nil || listening {
-					return
-				}
-				time.Sleep(time.Second)
+	err := task.Retry(ctx, startServiceAttempts, 100*time.Millisecond,
+		func(ctx context.Context) (bool, error) {
+			log.I(ctx, "Attempt to start service: %s", sendDevInfoService)
+			if err := d.StartService(ctx, *action); err != nil {
+				return false, err
 			}
-		}()
-		timer.Stop()
-		if listening {
-			return nil
-		}
+			err := task.Retry(ctx, portListeningAttempts, time.Second, func(
+				ctx context.Context) (bool, error) {
+				var err error
+				listening, err = devInfoPortListening(ctx, d)
+				return listening, err
+			})
+			return listening, err
+		})
+	if listening {
+		return nil
 	}
-	if se != nil {
-		return se
-	}
-	if le != nil {
-		return le
-	}
-	return log.Errf(ctx, nil, "Run out of attempts: %v", startServiceAttempts)
+	return log.Errf(ctx, err, "Start DevInfo service: Run out of attempts: %v",
+		startServiceAttempts)
 }
 
 // Checks the existence of VkGraphicsSpyLayer in the debug.vulkan.layers system
@@ -112,29 +95,29 @@ func stripVkGraphicsSpyLayer(ctx context.Context, d adb.Device) (func(), error) 
 	const layerName = "VkGraphicsSpy"
 	ctx = log.Enter(ctx, "stripVkGraphicsSpyLayer")
 	log.I(ctx, "Check the existence of %s in %s", layerName, propName)
-	old_layer_str, err := d.SystemProperty(ctx, propName)
+	oldLayerStr, err := d.SystemProperty(ctx, propName)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Getting %s.", propName)
 	}
-	should_strip := false
-	old_layers := strings.Split(old_layer_str, ":")
-	var new_layer_str string
-	for i, l := range old_layers {
+	shouldStrip := false
+	oldLayers := strings.Split(oldLayerStr, ":")
+	var newLayerStr string
+	for i, l := range oldLayers {
 		if strings.TrimSpace(l) == layerName {
-			should_strip = true
+			shouldStrip = true
 			continue
 		}
-		new_layer_str += l
-		if i+1 != len(old_layers) {
-			new_layer_str += ":"
+		newLayerStr += l
+		if i+1 != len(oldLayers) {
+			newLayerStr += ":"
 		}
 	}
-	if should_strip {
-		log.I(ctx, "%s layer does exist, set %s to new value: %s", layerName, propName, new_layer_str)
-		if err := d.SetSystemProperty(ctx, propName, new_layer_str); err != nil {
-			return nil, log.Errf(ctx, err, "Setting %s to %s", propName, new_layer_str)
+	if shouldStrip {
+		log.I(ctx, "%s layer does exist, set %s to new value: %s", layerName, propName, newLayerStr)
+		if err := d.SetSystemProperty(ctx, propName, newLayerStr); err != nil {
+			return nil, log.Errf(ctx, err, "Setting %s to %s", propName, newLayerStr)
 		}
-		return func() { d.SetSystemProperty(ctx, propName, old_layer_str) }, nil
+		return func() { d.SetSystemProperty(ctx, propName, oldLayerStr) }, nil
 	}
 	return nil, nil
 }
@@ -153,13 +136,13 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 
 	// Remove VkGraphicsSpy in the debug.vulkan.layers property to avoid loading
 	// our spy layer.
-	recover, err := stripVkGraphicsSpyLayer(ctx, d)
+	cleanUp, err := stripVkGraphicsSpyLayer(ctx, d)
 	if err != nil {
 		log.W(ctx, err.Error())
 		return err
 	}
-	if recover != nil {
-		defer recover()
+	if cleanUp != nil {
+		defer cleanUp()
 	}
 
 	// Tries to start the device info service.
