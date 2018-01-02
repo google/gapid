@@ -90,6 +90,27 @@ func (m *Pool) Slice(rng Range) Data {
 	return poolSlice{rng: rng, writes: writes}
 }
 
+// TempSlice returns a slice that is only valid until the next
+// Read/Write operation on this pool.
+// This puts much less pressure on the garbage collector since we don't
+// have to make a copy of the range.
+func (m *Pool) TempSlice(rng Range) Data {
+	i, c := interval.Intersect(&m.writes, rng.Span())
+	if c == 1 {
+		w := m.writes[i]
+		if rng == w.dst {
+			// Exact hit
+			return w.src
+		}
+		if rng.First() >= w.dst.First() && rng.Last() <= w.dst.Last() {
+			// Subset of a write.
+			rng.Base -= w.dst.First()
+			return w.src.Slice(rng)
+		}
+	}
+	return poolSlice{rng: rng, writes: m.writes[i : i+c]}
+}
+
 // At returns an unbounded Data starting at p.
 func (m *Pool) At(addr uint64) Data {
 	return m.Slice(Range{Base: addr, Size: ^uint64(0) - addr})
