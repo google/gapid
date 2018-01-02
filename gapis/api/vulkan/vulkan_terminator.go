@@ -58,7 +58,7 @@ func NewVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTer
 // Add adds the command with identifier id to the set of commands that must be
 // seen before the VulkanTerminator will consume all commands (excluding the EOS
 // command).
-func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand api.SubCmdIdx) error {
+func (t *VulkanTerminator) Add(ctx context.Context, extraCommands int, id api.CmdID, subcommand api.SubCmdIdx) error {
 	if len(t.requestSubIndex) != 0 {
 		return log.Errf(ctx, nil, "Cannot handle multiple requests when requesting a subcommand")
 	}
@@ -75,10 +75,10 @@ func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand api
 	t.requestSubIndex = append([]uint64{uint64(id)}, subcommand...)
 	sc := api.SubCmdIdx(t.requestSubIndex[1:])
 	handled := false
-	if rng, ok := t.syncData.CommandRanges[id]; ok {
+	if rng, ok := t.syncData.CommandRanges[api.CmdID(uint64(id)-uint64(extraCommands))]; ok {
 		for _, k := range rng.SortedKeys() {
 			if !rng.Ranges[k].LessThan(sc) {
-				t.lastRequest = api.CmdID(k)
+				t.lastRequest = k + api.CmdID(extraCommands)
 				handled = true
 				break
 			}
