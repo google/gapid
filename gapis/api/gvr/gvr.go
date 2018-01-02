@@ -136,6 +136,13 @@ func (API) FlattenSubcommandIdx(idx api.SubCmdIdx, data *sync.Data, unused bool)
 	return api.CmdID(0), false
 }
 
+// RecoverMidExecutionCommand returns a virtual command, used to describe the
+// a subcommand that was created before the start of the trace
+// GVR has no subcommands of this type, so this should never be called
+func (API) RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, i interface{}) (api.Cmd, error) {
+	return nil, sync.NoMECSubcommandsError{}
+}
+
 // MutateSubcommands mutates the given Cmd and calls callbacks for subcommands
 // called before and after executing each subcommand callback.
 func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState,

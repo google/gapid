@@ -36,8 +36,13 @@ type ExecutionRanges struct {
 // SubcommandReference contains a subcommand index as well as an api.CmdID that
 // references the command that generated this subcommand.
 type SubcommandReference struct {
-	Index         api.SubCmdIdx
+	Index api.SubCmdIdx
+	// If api.CmdID is api.CmdNoID then the generating command came from before
+	// the start of the trace.
 	GeneratingCmd api.CmdID
+	// If GeneratingCmd is nil, then MidExecutionCommandData contains the data
+	// that the API needs in order to reconstruct this command.
+	MidExecutionCommandData interface{}
 	// IsCalledGroup is true if the reference is to a nested call, otherwise
 	// the reference belongs to a command-list.
 	IsCallerGroup bool
