@@ -29,6 +29,14 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+// NoMECSubcommandsError is used to notify the caller that this API does not
+// support MEC subcomands.
+type NoMECSubcommandsError struct{}
+
+func (e NoMECSubcommandsError) Error() string {
+	return "This api does not have MEC subcommands"
+}
+
 // SynchronizedAPI defines an API that explicitly has multiple threads of
 // execution. This means that replays are not necessarily linear in terms
 // of commands.
@@ -53,6 +61,11 @@ type SynchronizedAPI interface {
 	// command id and true will be returned, otherwise, zero and false will be
 	// returned.
 	FlattenSubcommandIdx(idx api.SubCmdIdx, d *Data, initialCall bool) (api.CmdID, bool)
+
+	// RecoverMidExecutionCommand returns a virtual command, used to describe the
+	// a subcommand that was created before the start of the trace.
+	// If the api does not have mid-execution commands, NoMECSubcommandsError should be returned.
+	RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, data interface{}) (api.Cmd, error)
 }
 
 type writer struct {

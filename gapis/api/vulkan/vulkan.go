@@ -81,6 +81,12 @@ func (c *State) SetupInitialState(ctx context.Context) {
 			cmd := b.CommandReferences.Get(v)
 			commandFunction := GetCommandFunction(cmd)
 			commandArgs := GetCommandArgs(ctx, cmd, c)
+			cmd.QueuedCommandData = QueuedCommand{
+				initialCall:      nil,
+				submit:           nil,
+				submissionIndex:  []uint64(nil),
+				actualSubmission: true,
+			}
 			b.Commands = append(b.Commands, CommandBufferCommand{
 				func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder) {
 					CallReflectedCommand(ctx, cmd, id, s, b, commandFunction, commandArgs)
@@ -298,13 +304,17 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		}
 		// No way for this to not exist, we put it in up there
 		k := submissionMap[s.CurrentSubmission]
+		id := api.CmdNoID
+		if data.QueuedCommandData.initialCall != nil {
+			id = commandMap[data.QueuedCommandData.initialCall]
+		}
 		if v, ok := d.SubcommandReferences[k]; ok {
 			v = append(v,
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.QueuedCommandData.initialCall], false})
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), id, &data, false})
 			d.SubcommandReferences[k] = v
 		} else {
 			d.SubcommandReferences[k] = []sync.SubcommandReference{
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), commandMap[data.QueuedCommandData.initialCall], false}}
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), id, &data, false}}
 		}
 
 		fullSubCmdIdx := api.SubCmdIdx(append([]uint64{uint64(k)}, s.SubCmdIdx...))
@@ -386,6 +396,29 @@ func (API) FlattenSubcommandIdx(idx api.SubCmdIdx, data *sync.Data, initialCall 
 		}
 	}
 	return api.CmdID(0), false
+}
+
+// RecoverMidExecutionCommand returns a virtual command, used to describe the
+// a subcommand that was created before the start of the trace
+func (API) RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, dat interface{}) (api.Cmd, error) {
+	cr, ok := dat.(*CommandReference)
+	if !ok {
+		return nil, fmt.Errorf("Not a command reference")
+	}
+
+	ctx = capture.Put(ctx, c)
+	st, err := capture.NewState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s := GetState(st)
+
+	cb := CommandBuilder{Thread: 0}
+	_, a, err := AddCommand(ctx, cb, cr.Buffer, st, GetCommandArgs(ctx, *cr, s))
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Invalid Command")
+	}
+	return a, nil
 }
 
 // Interface check

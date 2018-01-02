@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
@@ -67,6 +68,26 @@ func Cmd(ctx context.Context, p *path.Command) (api.Cmd, error) {
 			if v.Index.Equals(idx) {
 				found = true
 				atomIdx = uint64(v.GeneratingCmd)
+				if atomIdx == uint64(api.CmdNoID) {
+					capture, err := capture.ResolveFromPath(ctx, p.Capture)
+					if err != nil {
+						return nil, err
+					}
+
+					for _, api := range capture.APIs {
+						if snc, ok := api.(sync.SynchronizedAPI); ok {
+							a, err := snc.RecoverMidExecutionCommand(ctx, p.Capture, v.MidExecutionCommandData)
+							if err != nil {
+								if _, ok := err.(sync.NoMECSubcommandsError); !ok {
+									return nil, err
+								}
+							} else {
+								return a, nil
+							}
+						}
+					}
+					atomIdx = 0
+				}
 				break
 			}
 		}
