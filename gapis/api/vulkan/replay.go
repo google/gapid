@@ -551,7 +551,7 @@ func (a API) Replay(
 			}
 			cmdid := req.after[0] + uint64(extraCommands)
 			// TODO(subcommands): Add subcommand support here
-			if err := earlyTerminator.Add(ctx, api.CmdID(cmdid), req.after[1:]); err != nil {
+			if err := earlyTerminator.Add(ctx, extraCommands, api.CmdID(cmdid), req.after[1:]); err != nil {
 				return err
 			}
 
