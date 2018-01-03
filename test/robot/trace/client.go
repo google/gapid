@@ -170,17 +170,11 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 
 	defer func() {
 		file.Remove(subject)
-		file.Remove(obb)
 		file.Remove(tracefile)
 		file.RemoveAll(extractedDir)
 	}()
 	if err := store.GetFile(ctx, in.Subject, subject); err != nil {
 		return nil, err
-	}
-	if in.Obb != "" {
-		if err := store.GetFile(ctx, in.Obb, obb); err != nil {
-			return nil, err
-		}
 	}
 	if err := store.GetFile(ctx, in.Gapit, gapit); err != nil {
 		return nil, err
@@ -200,6 +194,12 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		"-api", in.GetHints().GetAPI(),
 	}
 	if in.Obb != "" {
+		if err := store.GetFile(ctx, in.Obb, obb); err != nil {
+			return nil, err
+		}
+		defer func() {
+			file.Remove(obb)
+		}()
 		params = append(params, "-obb", obb.System())
 	}
 	cmd := shell.Command(gapit.System(), params...)
