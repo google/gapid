@@ -16,11 +16,14 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/context/keys"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -85,7 +88,7 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 
 	port, err := adb.LocalFreeTCPPort()
 	if err != nil {
-		return nil, log.Err(ctx, err, "Finding free port")
+		return nil, log.Err(ctx, err, "Finding free port for gapii")
 	}
 
 	log.I(ctx, "Checking gapid.apk is installed")
@@ -98,24 +101,63 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 
 	log.I(ctx, "Forwarding")
 	if err := d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket("gapii")); err != nil {
-		return nil, log.Err(ctx, err, "Setting up port forwarding")
+		return nil, log.Err(ctx, err, "Setting up port forwarding for gapii")
 	}
 
 	// FileDir may fail here. This happens if/when the app is non-debuggable.
 	// Don't set up vulkan tracing here, since the loader will not try and load the layer
 	// if we aren't debuggable regardless.
-	if err := d.SetSystemProperty(ctx, "debug.vulkan.layers", "VkGraphicsSpy"); err != nil {
-		// Clone context to ignore cancellation.
-		ctx := keys.Clone(context.Background(), ctx)
-		d.RemoveForward(ctx, port)
-		return nil, log.Err(ctx, err, "Setting up vulkan layer")
+	if o.APIs&VulkanAPI != uint32(0) {
+		if err := d.SetSystemProperty(ctx, "debug.vulkan.layers", "VkGraphicsSpy"); err != nil {
+			// Clone context to ignore cancellation.
+			ctx := keys.Clone(context.Background(), ctx)
+			d.RemoveForward(ctx, port)
+			return nil, log.Err(ctx, err, "Setting up vulkan layer")
+		}
+		// Make a thread to listen to the debug.vulkan.layers unset signal.
+		go func() {
+			port, err := adb.LocalFreeTCPPort()
+			if err != nil {
+				log.Err(ctx, err, "Finding free port for listening to debug.vulkan.layers unset signal.")
+				return
+			}
+			if err = d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket("unset-debug-vulkan-layers")); err != nil {
+				log.Err(ctx, err, "Setting up port forwarding for listening to debug.vulkan.layers unset signal.")
+				return
+			}
+			defer d.RemoveForward(ctx, port)
+			// Try to connect to the unset signal port, if the port is open
+			// and messages can be received, unset the debug.vulkan.layers.
+			log.I(ctx, "Waitting for debug.vulkan.layers unset signal on localhost:%d", port)
+			task.Retry(ctx, 0, time.Second, func(ctx context.Context) (bool, error) {
+				conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", port))
+				if err != nil {
+					return false, err
+				}
+				conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+				var n int
+				// No need to read the whole message
+				n, err = conn.Read(make([]byte, 1))
+				if err != nil || n == 0 {
+					return false, err
+				}
+				log.I(ctx, "VkGraphcsSpy loaded, unset debug.vulkan.layers now.")
+				if err = d.SetSystemProperty(ctx, "debug.vulkan.layers", ""); err != nil {
+					log.Errf(ctx, err, "Unsetting debug.vulkan.layers...")
+				}
+				return true, nil
+			})
+		}()
 	}
 
 	app.AddCleanup(ctx, func() {
 		// Clone context to ignore cancellation.
 		ctx := keys.Clone(context.Background(), ctx)
 		d.RemoveForward(ctx, port)
-		d.SetSystemProperty(ctx, "debug.vulkan.layers", "")
+		dvl, _ := d.SystemProperty(ctx, "debug.vulkan.layers")
+		if strings.Contains(dvl, "debug.vulkan.layers") {
+			d.SetSystemProperty(ctx, "debug.vulkan.layers", "")
+		}
 	})
 
 	if a != nil {
