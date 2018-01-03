@@ -28,7 +28,7 @@ type Subjects interface {
 	// Search returns a iterator of matching subjects from the store.
 	Search(context.Context, *search.Query, Handler) error
 	// Add adds a new subject to the set.
-	Add(ctx context.Context, id string, hints *Hints) (*Subject, bool, error)
+	Add(ctx context.Context, id string, obbId string, hints *Hints) (*Subject, bool, error)
 	// Update changes the values of a subject.
 	Update(ctx context.Context, subj *Subject) (*Subject, error)
 }

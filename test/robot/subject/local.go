@@ -91,7 +91,7 @@ func (s *local) Search(ctx context.Context, query *search.Query, handler Handler
 }
 
 // Add implements Subjects.Add
-func (s *local) Add(ctx context.Context, id string, hints *Hints) (*Subject, bool, error) {
+func (s *local) Add(ctx context.Context, id string, obbId string, hints *Hints) (*Subject, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if subject, ok := s.byID[id]; ok {
@@ -115,6 +115,7 @@ func (s *local) Add(ctx context.Context, id string, hints *Hints) (*Subject, boo
 			APK: info,
 		},
 		Hints: hints,
+		Obb:   obbId,
 	}
 	if err := s.ledger.Add(ctx, subject); err != nil {
 		return nil, false, err

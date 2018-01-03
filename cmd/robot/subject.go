@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/gapid/core/os/file"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/gapid/core/app"
@@ -75,23 +77,38 @@ type subjectUploadVerb struct {
 	RobotOptions
 	API       APIType       `help:"the api to capture, can be either gles or vulkan (default:gles)"`
 	TraceTime time.Duration `help:"trace time override (if non-zero)"`
+	OBB       file.Path     `help:"path of the subject's obb file"`
+	obbId     string
 	subjects  subject.Subjects
 }
 
 func (v *subjectUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return upload(ctx, flags, v.ServerAddress, v)
+	if !v.OBB.IsEmpty() {
+		if len(flags.Args()) != 1 {
+			return log.Err(ctx, nil, "Cannot specify multiple subjects with OBB flag")
+		}
+		log.I(ctx, "Uploading OBB: %s", v.OBB)
+		return upload(ctx, []string{v.OBB.String(), flags.Arg(0)}, v.ServerAddress, v)
+	}
+	return upload(ctx, flags.Args(), v.ServerAddress, v)
 }
 func (v *subjectUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
 	v.subjects = subject.NewRemote(ctx, conn)
 	return nil
 }
 func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
+	if !v.OBB.IsEmpty() && v.obbId == "" {
+		// obbId always comes first so just set it here.
+		log.I(ctx, "Uploaded OBB, ID: %s", id)
+		v.obbId = id
+		return nil
+	}
 	hints := &subject.Hints{}
 	if v.TraceTime != 0 {
 		hints.TraceTime = ptypes.DurationProto(v.TraceTime)
 	}
 	hints.API = v.API.String()
-	subject, created, err := v.subjects.Add(ctx, id, hints)
+	subject, created, err := v.subjects.Add(ctx, id, v.obbId, hints)
 	if err != nil {
 		return log.Err(ctx, err, "Failed processing subject")
 	}

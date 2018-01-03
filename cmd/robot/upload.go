@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"flag"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
@@ -31,8 +30,8 @@ type uploader interface {
 	process(context.Context, string) error
 }
 
-func upload(ctx context.Context, flags flag.FlagSet, serverAddress string, u uploader) error {
-	if flags.NArg() == 0 {
+func upload(ctx context.Context, files []string, serverAddress string, u uploader) error {
+	if len(files) == 0 {
 		app.Usage(ctx, "No files given")
 		return nil
 	}
@@ -44,7 +43,7 @@ func upload(ctx context.Context, flags flag.FlagSet, serverAddress string, u upl
 		if err := u.prepare(ctx, conn); err != nil {
 			return err
 		}
-		for _, partial := range flags.Args() {
+		for _, partial := range files {
 			id, err := client.UploadFile(ctx, file.Abs(partial))
 			if err != nil {
 				return log.Err(ctx, err, "Failed calling Upload")
