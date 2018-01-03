@@ -28,48 +28,59 @@ func Write(e *Encoder, v interface{}) {
 
 func encode(e *Encoder, v reflect.Value) {
 	t := v.Type()
-	switch {
-	case t.Implements(tyPointer):
-		e.Pointer(v.Interface().(Pointer).Address())
-	case t.Implements(tyCharTy):
-		e.Char(Char(deref(v).Uint()))
-	case t.Implements(tyIntTy):
-		e.Int(Int(deref(v).Int()))
-	case t.Implements(tyUintTy):
-		e.Uint(Uint(deref(v).Uint()))
-	case t.Implements(tySizeTy):
-		e.Size(Size(deref(v).Uint()))
-	default:
-		switch t.Kind() {
-		case reflect.Float32:
-			e.F32(float32(v.Float()))
-		case reflect.Float64:
-			e.F64(v.Float())
-		case reflect.Int8:
-			e.I8(int8(v.Int()))
-		case reflect.Int16:
-			e.I16(int16(v.Int()))
-		case reflect.Int32:
-			e.I32(int32(v.Int()))
-		case reflect.Int64:
-			e.I64(v.Int())
-		case reflect.Uint8:
-			e.U8(uint8(v.Uint()))
-		case reflect.Uint16:
-			e.U16(uint16(v.Uint()))
-		case reflect.Uint32:
-			e.U32(uint32(v.Uint()))
-		case reflect.Uint64:
-			e.U64(v.Uint())
-		case reflect.Int:
+	handlePointer := func() bool {
+		if t.Implements(tyPointer) {
+			e.Pointer(v.Interface().(Pointer).Address())
+			return true
+		}
+		return false
+	}
+
+	switch t.Kind() {
+	case reflect.Float32:
+		e.F32(float32(v.Float()))
+	case reflect.Float64:
+		e.F64(v.Float())
+	case reflect.Int8:
+		e.I8(int8(v.Int()))
+	case reflect.Int16:
+		e.I16(int16(v.Int()))
+	case reflect.Int32:
+		e.I32(int32(v.Int()))
+	case reflect.Int64:
+		if t.Implements(tyIntTy) {
 			e.Int(Int(v.Int()))
-		case reflect.Uint:
+		} else {
+			e.I64(v.Int())
+		}
+	case reflect.Uint8:
+		if t.Implements(tyCharTy) {
+			e.Char(Char(v.Uint()))
+		} else {
+			e.U8(uint8(v.Uint()))
+		}
+	case reflect.Uint16:
+		e.U16(uint16(v.Uint()))
+	case reflect.Uint32:
+		e.U32(uint32(v.Uint()))
+	case reflect.Uint64:
+		if t.Implements(tySizeTy) {
+			e.Size(Size(v.Uint()))
+		} else if t.Implements(tyUintTy) {
 			e.Uint(Uint(v.Uint()))
-		case reflect.Array, reflect.Slice:
-			for i, c := 0, v.Len(); i < c; i++ {
-				encode(e, v.Index(i))
-			}
-		case reflect.Struct:
+		} else {
+			e.U64(v.Uint())
+		}
+	case reflect.Int:
+		e.Int(Int(v.Int()))
+	case reflect.Uint:
+		e.Uint(Uint(v.Uint()))
+	case reflect.Array, reflect.Slice:
+		for i, c := 0, v.Len(); i < c; i++ {
+			encode(e, v.Index(i))
+		}
+	case reflect.Struct:
+		if !handlePointer() {
 			e.Align(AlignOf(v.Type(), e.m))
 			base := e.o
 			for i, c := 0, v.NumField(); i < c; i++ {
@@ -78,14 +89,16 @@ func encode(e *Encoder, v reflect.Value) {
 			written := e.o - base
 			padding := SizeOf(v.Type(), e.m) - written
 			e.Pad(padding)
-		case reflect.String:
-			e.String(v.String())
-		case reflect.Bool:
-			e.Bool(v.Bool())
-		case reflect.Interface, reflect.Ptr:
-			encode(e, v.Elem())
-		default:
-			panic(fmt.Errorf("Cannot write type: %v", t))
 		}
+	case reflect.String:
+		e.String(v.String())
+	case reflect.Bool:
+		e.Bool(v.Bool())
+	case reflect.Interface, reflect.Ptr:
+		if !handlePointer() {
+			encode(e, v.Elem())
+		}
+	default:
+		panic(fmt.Errorf("Cannot write type: %v", t))
 	}
 }

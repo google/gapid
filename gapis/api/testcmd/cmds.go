@@ -108,6 +108,7 @@ var _ memory.Pointer = &Pointer{}
 
 func (p Pointer) String() string                            { return memory.PointerToString(p) }
 func (p Pointer) IsNullptr() bool                           { return p.addr == 0 && p.pool == memory.ApplicationPool }
+func (p Pointer) APointer()                                 { return }
 func (p Pointer) Address() uint64                           { return p.addr }
 func (p Pointer) Pool() memory.PoolID                       { return p.pool }
 func (p Pointer) Offset(n uint64) memory.Pointer            { panic("not implemented") }

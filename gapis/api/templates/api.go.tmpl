@@ -232,6 +232,9 @@
   // IsNullptr returns true if the address is 0 and the pool is ϟmem.ApplicationPool.
   func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == ϟmem.ApplicationPool }
 
+  // APointer implements the ReflectPointer interface
+  func (p {{$ptr_ty}}) APointer() { return }
+
   // Address returns the pointer's memory address.
   func (p {{$ptr_ty}}) Address() uint64 { return p.addr }
 
