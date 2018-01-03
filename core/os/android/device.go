@@ -30,8 +30,13 @@ type Device interface {
 	// InstallAPK installs the specified APK to the device. If reinstall is true
 	// and the package is already installed on the device then it will be replaced.
 	InstallAPK(ctx context.Context, path string, reinstall bool, grantPermissions bool) error
-	// PushOBB places a local OBB file to the correct location for an APK to access.
+	// PushOBB places a OBB file to the correct location for an APK to access.
 	PushOBB(ctx context.Context, package_name string, version_code int32, obb_path string) error
+	// RemoveOBB removes the OBB file for a specific package from external storage.
+	RemoveOBB(ctx context.Context, package_name string, version_code int32) error
+	// GrantExternalStorageRW gives an installed package read and write permissions for external
+	// storage, this is mainly used to give an apk access to a pushed OBB file.
+	GrantExternalStorageRW(ctx context.Context, package_name string) error
 	// SELinuxEnforcing returns true if the device is currently in a
 	// SELinux enforcing mode, or false if the device is currently in a SELinux
 	// permissive mode.
