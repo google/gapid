@@ -41,56 +41,67 @@ func deref(v reflect.Value) reflect.Value {
 
 func decode(d *Decoder, v reflect.Value) {
 	t := v.Type()
-	switch {
-	case t.Implements(tyPointer):
-		ptr := v.Addr().Interface()
-		if a, ok := ptr.(data.Assignable); ok {
-			if ok := a.Assign(BytePtr(d.Pointer(), ApplicationPool)); !ok {
-				panic(fmt.Errorf("Could not assign to %T", ptr))
-			}
-		} else {
-			panic(fmt.Errorf("Pointer type %T does not implement data.Assignable", ptr))
-		}
-	case t.Implements(tyCharTy):
-		deref(v).SetUint(uint64(d.Char()))
-	case t.Implements(tyIntTy):
-		deref(v).SetInt(int64(d.Int()))
-	case t.Implements(tyUintTy):
-		deref(v).SetUint(uint64(d.Uint()))
-	case t.Implements(tySizeTy):
-		deref(v).SetUint(uint64(d.Size()))
-	default:
 
-		switch t.Kind() {
-		case reflect.Float32:
-			v.SetFloat(float64(d.F32()))
-		case reflect.Float64:
-			v.SetFloat(d.F64())
-		case reflect.Int8:
-			v.SetInt(int64(d.I8()))
-		case reflect.Int16:
-			v.SetInt(int64(d.I16()))
-		case reflect.Int32:
-			v.SetInt(int64(d.I32()))
-		case reflect.Int64:
-			v.SetInt(d.I64())
-		case reflect.Uint8:
-			v.SetUint(uint64(d.U8()))
-		case reflect.Uint16:
-			v.SetUint(uint64(d.U16()))
-		case reflect.Uint32:
-			v.SetUint(uint64(d.U32()))
-		case reflect.Uint64:
-			v.SetUint(d.U64())
-		case reflect.Int:
-			v.SetInt(int64(d.Int()))
-		case reflect.Uint:
-			v.SetUint(uint64(d.Uint()))
-		case reflect.Array, reflect.Slice:
-			for i, c := 0, v.Len(); i < c; i++ {
-				decode(d, v.Index(i))
+	handlePointer := func() bool {
+		if t.Implements(tyPointer) {
+			ptr := v.Addr().Interface()
+			if a, ok := ptr.(data.Assignable); ok {
+				if ok := a.Assign(BytePtr(d.Pointer(), ApplicationPool)); !ok {
+					panic(fmt.Errorf("Could not assign to %T", ptr))
+				}
+			} else {
+				panic(fmt.Errorf("Pointer type %T does not implement data.Assignable", ptr))
 			}
-		case reflect.Struct:
+			return true
+		}
+		return false
+	}
+
+	switch t.Kind() {
+	case reflect.Float32:
+		v.SetFloat(float64(d.F32()))
+	case reflect.Float64:
+		v.SetFloat(d.F64())
+	case reflect.Int8:
+		v.SetInt(int64(d.I8()))
+	case reflect.Int16:
+		v.SetInt(int64(d.I16()))
+	case reflect.Int32:
+		v.SetInt(int64(d.I32()))
+	case reflect.Int64:
+		if t.Implements(tyIntTy) {
+			v.SetInt(int64(d.Int()))
+		} else {
+			v.SetInt(d.I64())
+		}
+	case reflect.Uint8:
+		if t.Implements(tyCharTy) {
+			v.SetUint(uint64(d.Char()))
+		} else {
+			v.SetUint(uint64(d.U8()))
+		}
+	case reflect.Uint16:
+		v.SetUint(uint64(d.U16()))
+	case reflect.Uint32:
+		v.SetUint(uint64(d.U32()))
+	case reflect.Uint64:
+		if t.Implements(tySizeTy) {
+			v.SetUint(uint64(d.Size()))
+		} else if t.Implements(tyUintTy) {
+			v.SetUint(uint64(d.Uint()))
+		} else {
+			v.SetUint(d.U64())
+		}
+	case reflect.Int:
+		v.SetInt(int64(d.Int()))
+	case reflect.Uint:
+		v.SetUint(uint64(d.Uint()))
+	case reflect.Array, reflect.Slice:
+		for i, c := 0, v.Len(); i < c; i++ {
+			decode(d, v.Index(i))
+		}
+	case reflect.Struct:
+		if !handlePointer() {
 			d.Align(AlignOf(v.Type(), d.m))
 			base := d.o
 			for i, c := 0, v.NumField(); i < c; i++ {
@@ -99,14 +110,16 @@ func decode(d *Decoder, v reflect.Value) {
 			read := d.o - base
 			padding := SizeOf(v.Type(), d.m) - read
 			d.Skip(padding)
-		case reflect.String:
-			v.SetString(d.String())
-		case reflect.Bool:
-			v.SetBool(d.Bool())
-		case reflect.Interface, reflect.Ptr:
-			decode(d, v.Elem())
-		default:
-			panic(fmt.Errorf("Cannot write type: %v", t))
 		}
+	case reflect.String:
+		v.SetString(d.String())
+	case reflect.Bool:
+		v.SetBool(d.Bool())
+	case reflect.Interface, reflect.Ptr:
+		if !handlePointer() {
+			decode(d, v.Elem())
+		}
+	default:
+		panic(fmt.Errorf("Cannot write type: %v", t))
 	}
 }

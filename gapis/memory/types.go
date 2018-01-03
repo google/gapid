@@ -17,7 +17,7 @@ package memory
 import "reflect"
 
 var (
-	tyPointer = reflect.TypeOf((*Pointer)(nil)).Elem()
+	tyPointer = reflect.TypeOf((*ReflectPointer)(nil)).Elem()
 	tyCharTy  = reflect.TypeOf((*CharTy)(nil)).Elem()
 	tyIntTy   = reflect.TypeOf((*IntTy)(nil)).Elem()
 	tyUintTy  = reflect.TypeOf((*UintTy)(nil)).Elem()
