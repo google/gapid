@@ -52,7 +52,7 @@ type traceUploadVerb struct {
 }
 
 func (v *traceUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return upload(ctx, flags, v.ServerAddress, v)
+	return upload(ctx, flags.Args(), v.ServerAddress, v)
 }
 func (v *traceUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
 	v.traces = trace.NewRemote(ctx, conn)

@@ -103,7 +103,7 @@ type buildUploadVerb struct {
 }
 
 func (v *buildUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return upload(ctx, flags, v.ServerAddress, v)
+	return upload(ctx, flags.Args(), v.ServerAddress, v)
 }
 
 func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
@@ -134,7 +134,7 @@ func (v *packageUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		log.I(ctx, "artifact path is %s", v.ArtifactPath)
 	}
 
-	return upload(ctx, flags, v.ServerAddress, v)
+	return upload(ctx, flags.Args(), v.ServerAddress, v)
 }
 
 func (v *packageUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {

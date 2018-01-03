@@ -37,7 +37,7 @@ func Serve(ctx context.Context, grpcServer *grpc.Server, subjects Subjects) erro
 // Add implements ServiceServer.Add
 // It delegates the call to the provided Subjects implementation.
 func (s *server) Add(ctx xctx.Context, request *AddRequest) (*AddResponse, error) {
-	subj, created, err := s.subjects.Add(ctx, request.Id, request.Hints)
+	subj, created, err := s.subjects.Add(ctx, request.Id, request.Obb, request.Hints)
 	if err != nil {
 		return nil, err
 	}

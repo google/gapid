@@ -46,8 +46,8 @@ func (m *remote) Search(ctx context.Context, query *search.Query, handler Handle
 
 // Add implements Subjects.Add
 // It forwards the call through grpc to the remote implementation.
-func (m *remote) Add(ctx context.Context, id string, hints *Hints) (*Subject, bool, error) {
-	request := &AddRequest{Id: id, Hints: hints}
+func (m *remote) Add(ctx context.Context, id string, obbId string, hints *Hints) (*Subject, bool, error) {
+	request := &AddRequest{Id: id, Hints: hints, Obb: obbId}
 	response, err := m.client.Add(ctx, request)
 	if err != nil {
 		return nil, false, err
