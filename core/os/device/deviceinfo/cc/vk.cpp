@@ -90,9 +90,9 @@ bool vkLayersAndExtensions(
     MUST_SUCCESS(vkEnumerateInstanceExtensionProperties(l.layerName, &ext_count,
                                                         ext_props.data()));
     driver->add_layers();
-    driver->mutable_layers(i)->set_name(l.layerName);
+    driver->mutable_layers(driver->layers_size() - 1)->set_name(l.layerName);
     for (size_t j = 0; j < ext_props.size(); j++) {
-      driver->mutable_layers(i)->add_extensions(ext_props[j].extensionName);
+      driver->mutable_layers(driver->layers_size() - 1)->add_extensions(ext_props[j].extensionName);
     }
   }
   // For implicit layers and ICD extensions
