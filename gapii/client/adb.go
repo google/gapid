@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/flock"
 	"github.com/google/gapid/gapidapk"
 	"github.com/pkg/errors"
 )
@@ -107,12 +108,18 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 	// FileDir may fail here. This happens if/when the app is non-debuggable.
 	// Don't set up vulkan tracing here, since the loader will not try and load the layer
 	// if we aren't debuggable regardless.
+	var vkDevLock *flock.DeviceFLock
 	if o.APIs&VulkanAPI != uint32(0) {
 		if err := d.SetSystemProperty(ctx, "debug.vulkan.layers", "VkGraphicsSpy"); err != nil {
 			// Clone context to ignore cancellation.
 			ctx := keys.Clone(context.Background(), ctx)
 			d.RemoveForward(ctx, port)
 			return nil, log.Err(ctx, err, "Setting up vulkan layer")
+		}
+		var err error
+		vkDevLock, err = flock.LockDevice(d.Instance().GetSerial())
+		if err != nil {
+			return nil, log.Err(ctx, err, "Reserve device for tracing Vulkan API")
 		}
 		// Make a thread to listen to the debug.vulkan.layers unset signal.
 		go func() {
@@ -145,6 +152,7 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 				if err = d.SetSystemProperty(ctx, "debug.vulkan.layers", ""); err != nil {
 					log.Errf(ctx, err, "Unsetting debug.vulkan.layers...")
 				}
+				vkDevLock.Unlock()
 				return true, nil
 			})
 		}()
@@ -157,6 +165,9 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 		dvl, _ := d.SystemProperty(ctx, "debug.vulkan.layers")
 		if strings.Contains(dvl, "debug.vulkan.layers") {
 			d.SetSystemProperty(ctx, "debug.vulkan.layers", "")
+		}
+		if vkDevLock != nil {
+			vkDevLock.Unlock()
 		}
 	})
 

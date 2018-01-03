@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/os/flock"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/log"
@@ -87,41 +88,6 @@ func startDevInfoService(ctx context.Context, d adb.Device, apk *APK) error {
 		startServiceAttempts)
 }
 
-// Checks the existence of VkGraphicsSpyLayer in the debug.vulkan.layers system
-// property. If found, strip the layer, otherwise keep the property unchanged.
-// Returns a property value recover callback and error.
-func stripVkGraphicsSpyLayer(ctx context.Context, d adb.Device) (func(), error) {
-	const propName = "debug.vulkan.layers"
-	const layerName = "VkGraphicsSpy"
-	ctx = log.Enter(ctx, "stripVkGraphicsSpyLayer")
-	log.I(ctx, "Check the existence of %s in %s", layerName, propName)
-	oldLayerStr, err := d.SystemProperty(ctx, propName)
-	if err != nil {
-		return nil, log.Errf(ctx, err, "Getting %s.", propName)
-	}
-	shouldStrip := false
-	oldLayers := strings.Split(oldLayerStr, ":")
-	var newLayerStr string
-	for i, l := range oldLayers {
-		if strings.TrimSpace(l) == layerName {
-			shouldStrip = true
-			continue
-		}
-		newLayerStr += l
-		if i+1 != len(oldLayers) {
-			newLayerStr += ":"
-		}
-	}
-	if shouldStrip {
-		log.I(ctx, "%s layer does exist, set %s to new value: %s", layerName, propName, newLayerStr)
-		if err := d.SetSystemProperty(ctx, propName, newLayerStr); err != nil {
-			return nil, log.Errf(ctx, err, "Setting %s to %s", propName, newLayerStr)
-		}
-		return func() { d.SetSystemProperty(ctx, propName, oldLayerStr) }, nil
-	}
-	return nil, nil
-}
-
 func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	apk, err := EnsureInstalled(ctx, d, device.UnknownABI)
 	if err != nil {
@@ -134,16 +100,13 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		return nil
 	}
 
-	// Remove VkGraphicsSpy in the debug.vulkan.layers property to avoid loading
-	// our spy layer.
-	cleanUp, err := stripVkGraphicsSpyLayer(ctx, d)
+	// Make sure the device is available to query device info, this is to prevent
+	// Vulkan trace from happening at the same with with device info query.
+	devLock, err := flock.LockDevice(d.Instance().GetSerial())
 	if err != nil {
-		log.W(ctx, err.Error())
-		return err
+		return log.Err(ctx, err, "Reserving device for device info query...")
 	}
-	if cleanUp != nil {
-		defer cleanUp()
-	}
+	defer devLock.Unlock()
 
 	// Tries to start the device info service.
 	if err := startDevInfoService(ctx, d, apk); err != nil {
