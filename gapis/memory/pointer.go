@@ -31,6 +31,8 @@ const bits32 = uint64(1) << 32
 
 // Pointer is the type representing a memory pointer.
 type Pointer interface {
+	ReflectPointer
+
 	// IsNullptr returns true if the address is 0 and the pool is memory.ApplicationPool.
 	IsNullptr() bool
 
@@ -52,6 +54,15 @@ type Pointer interface {
 	// ISlice returns a new Slice of elements based from this pointer using
 	// start and end indices.
 	ISlice(start, end uint64, m *device.MemoryLayout) Slice
+}
+
+// This is a helper interface, if you want your pointer to be reflected
+// then it must ALSO implement this interface. Since reflection is slow
+// having a much smaller interface to check is significantly better
+// We name this APointer since reflect.Implements checks functions
+// in alphabetical order, meaning this should get hit first (or close to).
+type ReflectPointer interface {
+	APointer()
 }
 
 // NewPtr returns a new pointer.
@@ -78,6 +89,7 @@ func (p ptr) Pool() PoolID                              { return p.pool }
 func (p ptr) Offset(n uint64) Pointer                   { return ptr{p.addr + n, p.pool, p.elTy} }
 func (p ptr) ElementSize(m *device.MemoryLayout) uint64 { return SizeOf(p.elTy, m) }
 func (p ptr) ElementType() reflect.Type                 { return p.elTy }
+func (p ptr) APointer()                                 { return }
 func (p ptr) ISlice(start, end uint64, m *device.MemoryLayout) Slice {
 	if start > end {
 		panic(fmt.Errorf("%v.Slice start (%d) is greater than the end (%d)", p, start, end))
