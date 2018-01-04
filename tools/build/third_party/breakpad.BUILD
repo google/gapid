@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@//tools/build:rules.bzl", "copy", "mm_library", "cc_copts")
+load("@//tools/build:rules.bzl", "mm_library", "cc_copts")
 
 POSIX_SRCS = [
     "src/client/minidump_file_writer.cc",
@@ -118,7 +118,7 @@ cc_library(
     linkopts = select({
         "@//tools/build:linux": ["-lpthread"],
         "@//tools/build:darwin": [],
-        "@//tools/build:windows": [],
+        "@//tools/build:windows": ["-lwininet"],
         # Android.
         "//conditions:default": [],
     }),
