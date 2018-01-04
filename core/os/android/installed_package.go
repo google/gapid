@@ -142,23 +142,52 @@ func (p *InstalledPackage) Path(ctx context.Context) (string, error) {
 	return path, err
 }
 
+func (p *InstalledPackage) obbStoragePath(ctx context.Context) (string, error) {
+	storage, err := p.Device.Shell("echo", "$EXTERNAL_STORAGE").Call(ctx)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/obb/%s/main.%d.%[2]s.obb", storage, p.Name, p.VersionCode), nil
+}
+
+// OBBExists checks whether an OBB file exists in the matching location for this APK on
+// the device's external storage.
+func (p *InstalledPackage) OBBExists(ctx context.Context) bool {
+	obbStoragePath, err := p.obbStoragePath(ctx)
+	if err != nil {
+		return false
+	}
+	if p.Device.Shell("stat", obbStoragePath).Run(ctx) != nil {
+		return false
+	}
+	return true
+}
+
 // PushOBB places a OBB file to the correct location for an APK to access.
 func (p *InstalledPackage) PushOBB(ctx context.Context, obbPath string) error {
-	storage, err := p.Device.Shell("echo", "$EXTERNAL_STORAGE").Call(ctx)
+	obbStoragePath, err := p.obbStoragePath(ctx)
 	if err != nil {
 		return err
 	}
-	obbStoragePath := fmt.Sprintf("%s/obb/%s/main.%d.%[2]s.obb", storage, p.Name, p.VersionCode)
 	return p.Device.Push(ctx, obbPath, obbStoragePath)
+}
+
+// PullOBB pulls the matching OBB file from the device's external storage to the specified
+// local directory.
+func (p *InstalledPackage) PullOBB(ctx context.Context, target string) error {
+	obbStoragePath, err := p.obbStoragePath(ctx)
+	if err != nil {
+		return err
+	}
+	return p.Device.Pull(ctx, obbStoragePath, target)
 }
 
 // RemoveOBB removes the OBB file for a specific package from external storage.
 func (p *InstalledPackage) RemoveOBB(ctx context.Context) error {
-	storage, err := p.Device.Shell("echo", "$EXTERNAL_STORAGE").Call(ctx)
+	obbStoragePath, err := p.obbStoragePath(ctx)
 	if err != nil {
 		return err
 	}
-	obbStoragePath := fmt.Sprintf("%s/obb/%s/main.%d.%[2]s.obb", storage, p.Name, p.VersionCode)
 	return p.Device.Shell("rm", "-f", obbStoragePath).Run(ctx)
 }
 

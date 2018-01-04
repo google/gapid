@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -33,8 +34,9 @@ const (
 )
 
 var (
-	output = flag.String("out", "", "The output file path")
-	serial = flag.String("device", "", "The serial of the device to pull from")
+	output  = flag.String("out", "", "The output file path")
+	serial  = flag.String("device", "", "The serial of the device to pull from")
+	skipOBB = flag.Bool("skip-obb", false, "Set this flag to skip trying to pull a matching OBB file from the device")
 )
 
 func main() {
@@ -90,6 +92,14 @@ func run(ctx context.Context) error {
 	out, err = filepath.Abs(out)
 	if err != nil {
 		return err
+	}
+
+	if !*skipOBB && found.OBBExists(ctx) {
+		obbOut := filepath.Join(filepath.Dir(out), fmt.Sprintf("main.%d.%s.obb", found.VersionCode, found.Name))
+		err := found.PullOBB(ctx, obbOut)
+		if err != nil {
+			return err
+		}
 	}
 
 	return found.Pull(ctx, out)
