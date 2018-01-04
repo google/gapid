@@ -391,7 +391,10 @@ cc_binary(
             "-framework Cocoa",
             "-lcurses",
         ],
-        "@//tools/build:windows": [],
+        "@//tools/build:windows": [
+            "-luuid",
+            "-lole32",
+        ],
     }),
     deps = [":TableGen"],
 )
