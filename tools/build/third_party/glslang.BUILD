@@ -32,8 +32,8 @@ cc_library(
         "SPIRV/*.cpp",
         "SPIRV/*.hpp",
     ]) + select({
-        "@//tools/build:windows": glob(["glslang/OSDependent/Windows/*.cpp"]),
-        "//conditions:default": glob(["glslang/OSDependent/Unix/*.cpp"]),
+        "@//tools/build:windows": ["glslang/OSDependent/Windows/ossource.cpp"],
+        "//conditions:default": ["glslang/OSDependent/Unix/ossource.cpp"],
     }),
     hdrs = glob([
         "glslang/Include/*.h",
