@@ -142,6 +142,36 @@ func (p *InstalledPackage) Path(ctx context.Context) (string, error) {
 	return path, err
 }
 
+// PushOBB places a OBB file to the correct location for an APK to access.
+func (p *InstalledPackage) PushOBB(ctx context.Context, obbPath string) error {
+	storage, err := p.Device.Shell("echo", "$EXTERNAL_STORAGE").Call(ctx)
+	if err != nil {
+		return err
+	}
+	obbStoragePath := fmt.Sprintf("%s/obb/%s/main.%d.%[2]s.obb", storage, p.Name, p.VersionCode)
+	return p.Device.Push(ctx, obbPath, obbStoragePath)
+}
+
+// RemoveOBB removes the OBB file for a specific package from external storage.
+func (p *InstalledPackage) RemoveOBB(ctx context.Context) error {
+	storage, err := p.Device.Shell("echo", "$EXTERNAL_STORAGE").Call(ctx)
+	if err != nil {
+		return err
+	}
+	obbStoragePath := fmt.Sprintf("%s/obb/%s/main.%d.%[2]s.obb", storage, p.Name, p.VersionCode)
+	return p.Device.Shell("rm", "-f", obbStoragePath).Run(ctx)
+}
+
+// GrantExternalStorageRW gives an installed package read and write permissions for external
+// storage, this is mainly used to give an apk access to a pushed OBB file.
+func (p *InstalledPackage) GrantExternalStorageRW(ctx context.Context) error {
+	err := p.Device.Shell("pm", "grant", p.Name, "android.permission.READ_EXTERNAL_STORAGE").Run(ctx)
+	if err != nil {
+		return err
+	}
+	return p.Device.Shell("pm", "grant", p.Name, "android.permission.WRITE_EXTERNAL_STORAGE").Run(ctx)
+}
+
 // FileDir returns the absolute path of the installed packages files directory.
 func (p *InstalledPackage) FileDir(ctx context.Context) (string, error) {
 	out, err := p.Device.Shell("run-as", p.Name, "pwd").Call(ctx)

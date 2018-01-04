@@ -78,7 +78,7 @@ type subjectUploadVerb struct {
 	API       APIType       `help:"the api to capture, can be either gles or vulkan (default:gles)"`
 	TraceTime time.Duration `help:"trace time override (if non-zero)"`
 	OBB       file.Path     `help:"path of the subject's obb file"`
-	obbId     string
+	obbID     string
 	subjects  subject.Subjects
 }
 
@@ -97,10 +97,10 @@ func (v *subjectUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) 
 	return nil
 }
 func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
-	if !v.OBB.IsEmpty() && v.obbId == "" {
-		// obbId always comes first so just set it here.
+	if !v.OBB.IsEmpty() && v.obbID == "" {
+		// obbID always comes first so just set it here.
 		log.I(ctx, "Uploaded OBB, ID: %s", id)
-		v.obbId = id
+		v.obbID = id
 		return nil
 	}
 	hints := &subject.Hints{}
@@ -108,7 +108,7 @@ func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
 		hints.TraceTime = ptypes.DurationProto(v.TraceTime)
 	}
 	hints.API = v.API.String()
-	subject, created, err := v.subjects.Add(ctx, id, v.obbId, hints)
+	subject, created, err := v.subjects.Add(ctx, id, v.obbID, hints)
 	if err != nil {
 		return log.Err(ctx, err, "Failed processing subject")
 	}
