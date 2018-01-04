@@ -62,7 +62,9 @@ void* must_load(const char* name) {
 #if TARGET_OS == GAPID_OS_WINDOWS
     GAPID_FATAL("Can't load library %s: %d", name, GetLastError());
 #else
-    GAPID_FATAL("Can't load library %s: %s", name, dlerror());
+    if (name != nullptr) {
+        GAPID_FATAL("Can't load library %s: %s", name, dlerror());
+    }
 #endif // TARGET_OS
   }
   return res;
