@@ -227,23 +227,25 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start
 		if err := d.InstallAPK(ctx, options.APK.System(), true, true); err != nil {
 			return log.Err(ctx, err, "Install APK")
 		}
+		pkg = &android.InstalledPackage{
+			Name:        info.Name,
+			Device:      d,
+			ABI:         d.Instance().GetConfiguration().PreferredABI(info.ABI),
+			Debuggable:  info.Debuggable,
+			VersionCode: int(info.VersionCode),
+			VersionName: info.VersionName,
+		}
 		if !verb.OBB.IsEmpty() {
-			if err := d.PushOBB(ctx, info.Name, info.VersionCode, verb.OBB.System()); err != nil {
+			if err := pkg.PushOBB(ctx, verb.OBB.System()); err != nil {
 				return log.Err(ctx, err, "Push OBB")
 			}
 			defer func() {
 				log.I(ctx, "Remove OBB")
-				d.RemoveOBB(ctx, info.Name, info.VersionCode)
+				pkg.RemoveOBB(ctx)
 			}()
-			if err := d.GrantExternalStorageRW(ctx, info.Name); err != nil {
+			if err := pkg.GrantExternalStorageRW(ctx); err != nil {
 				return log.Err(ctx, err, "Grant OBB Read/Write Permission")
 			}
-		}
-		pkg = &android.InstalledPackage{
-			Name:       info.Name,
-			Device:     d,
-			ABI:        d.Instance().GetConfiguration().PreferredABI(info.ABI),
-			Debuggable: info.Debuggable,
 		}
 		defer func() {
 			log.I(ctx, "Uninstall APK")
