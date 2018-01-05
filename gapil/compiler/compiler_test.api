@@ -1,0 +1,803 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+s32             GlobalS32         = 42
+f32[]           GlobalF32Slice
+map!(u32*, s32) GlobalU32PtrToS32
+
+class C {
+  X x
+  Y y
+  Z z
+}
+
+class X {
+  u32 a = 0
+  u32 b = 1
+  u32 c = 2
+}
+
+class Y {
+  f32 a
+  f32 b
+  f32 c
+}
+
+class Z {
+  s8 a = 6
+  s8 b = 7
+  s8 c = 8
+}
+
+type f32[4] Vec4f
+
+class Mat4f {
+  Vec4f A = Vec4f(1, 0, 0, 0)
+  Vec4f B = Vec4f(0, 1, 0, 0)
+  Vec4f C = Vec4f(0, 0, 1, 0)
+  Vec4f D = Vec4f(0, 0, 0, 1)
+}
+
+@ir(`
+define void @noop(%context* %"→ctx", %noop_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→observations" = getelementptr %noop_params, %noop_params* %"→params", i32 0, i32 0
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void noop() {  }
+
+@ir(`
+define void @setGlobalS32(%context* %"→ctx", %setGlobalS32_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].a" = getelementptr %setGlobalS32_params, %setGlobalS32_params* %"→params", i32 0, i32 0
+  %a = load i32, i32* %"→params[0].a"
+  %"→observations" = getelementptr %setGlobalS32_params, %setGlobalS32_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→globals[0].GlobalS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 %a, i32* %"→globals[0].GlobalS32"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void setGlobalS32(s32 a) {
+  GlobalS32 = a
+}
+
+@ir(`
+define i32 @add(%context* %"→ctx", i32 %a, i32 %b) {
+entry:
+  %"→returnval" = alloca i32
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  store i32 0, i32* %"→returnval"
+  %"a+b" = add i32 %a, %b
+  store i32 %"a+b", i32* %"→returnval"
+  %returnval = load i32, i32* %"→returnval"
+  ret i32 %returnval
+}`)
+sub u32 add(u32 a, u32 b) {
+  return a + b
+}
+
+@ir(`
+define void @call(%context* %"→ctx", %call_params* %"→params") {
+entry:
+  %"→_res_0" = alloca i32
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].a" = getelementptr %call_params, %call_params* %"→params", i32 0, i32 0
+  %a = load i32, i32* %"→params[0].a"
+  %"→params[0].b" = getelementptr %call_params, %call_params* %"→params", i32 0, i32 1
+  %b = load i32, i32* %"→params[0].b"
+  %"→observations" = getelementptr %call_params, %call_params* %"→params", i32 0, i32 2
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %add = call i32 @add(%context* %"→ctx", i32 %a, i32 %b)
+  store i32 %add, i32* %"→_res_0"
+  %_res_0 = load i32, i32* %"→_res_0"
+  %"→globals[0].GlobalS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 %_res_0, i32* %"→globals[0].GlobalS32"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void call(u32 a, u32 b) {
+  GlobalS32 = as!s32(add(a, b))
+}
+
+@ir(`
+define void @abort(%context* %"→ctx", %abort_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].b" = getelementptr %abort_params, %abort_params* %"→params", i32 0, i32 0
+  %b = load i1, i1* %"→params[0].b"
+  %"→observations" = getelementptr %abort_params, %abort_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→globals[0].GlobalS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 1, i32* %"→globals[0].GlobalS32"
+  br i1 %b, label %if_true, label %end_if
+
+if_true:                                          ; preds = %entry
+  call void @gapil_error(%context* %"→ctx", i32 1)
+  br label %end_if
+
+end_if:                                           ; preds = %if_true, %entry
+  %"→globals[0].GlobalS321" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 0, i32* %"→globals[0].GlobalS321"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}
+`)
+cmd void abort(bool b) {
+  GlobalS32 = 1
+  if b {
+    abort
+  }
+  GlobalS32 = 0
+}
+
+@ir(`
+define void @min(%context* %"→ctx", %min_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].a" = getelementptr %min_params, %min_params* %"→params", i32 0, i32 0
+  %a = load i32, i32* %"→params[0].a"
+  %"→params[0].b" = getelementptr %min_params, %min_params* %"→params", i32 0, i32 1
+  %b = load i32, i32* %"→params[0].b"
+  %"→observations" = getelementptr %min_params, %min_params* %"→params", i32 0, i32 2
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"a<b" = icmp slt i32 %a, %b
+  br i1 %"a<b", label %if_true, label %if_false
+
+if_true:                                          ; preds = %entry
+  %"→globals[0].GlobalS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 %a, i32* %"→globals[0].GlobalS32"
+  br label %end_if
+
+if_false:                                         ; preds = %entry
+  %"→globals[0].GlobalS321" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 %b, i32* %"→globals[0].GlobalS321"
+  br label %end_if
+
+end_if:                                           ; preds = %if_false, %if_true
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void min(s32 a, s32 b) {
+  if a < b {
+    GlobalS32 = a
+  } else {
+    GlobalS32 = b
+  }
+}
+
+@ir(`
+define void @switch_stmt(%context* %"→ctx", %switch_stmt_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].a" = getelementptr %switch_stmt_params, %switch_stmt_params* %"→params", i32 0, i32 0
+  %a = load i32, i32* %"→params[0].a"
+  %"→observations" = getelementptr %switch_stmt_params, %switch_stmt_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  br label %switch_case_0_test
+
+switch_case_0_test:                               ; preds = %entry
+  %"a==1" = icmp eq i32 %a, 1
+  %"a==2" = icmp eq i32 %a, 2
+  %"a==1|a==2" = or i1 %"a==1", %"a==2"
+  %"a==3" = icmp eq i32 %a, 3
+  %"a==1|a==2|a==3" = or i1 %"a==1|a==2", %"a==3"
+  br i1 %"a==1|a==2|a==3", label %switch_case_0_block, label %switch_case_1_test
+
+switch_case_0_block:                              ; preds = %switch_case_0_test
+  %"→globals[0].GlobalS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 10, i32* %"→globals[0].GlobalS32"
+  br label %end_switch
+
+switch_case_1_test:                               ; preds = %switch_case_0_test
+  %"a==4" = icmp eq i32 %a, 4
+  %"a==5" = icmp eq i32 %a, 5
+  %"a==4|a==5" = or i1 %"a==4", %"a==5"
+  br i1 %"a==4|a==5", label %switch_case_1_block, label %switch_case_2_test
+
+switch_case_1_block:                              ; preds = %switch_case_1_test
+  %"→globals[0].GlobalS321" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 20, i32* %"→globals[0].GlobalS321"
+  br label %end_switch
+
+switch_case_2_test:                               ; preds = %switch_case_1_test
+  %"a==6" = icmp eq i32 %a, 6
+  br i1 %"a==6", label %switch_case_2_block, label %switch_case_default
+
+switch_case_2_block:                              ; preds = %switch_case_2_test
+  %"→globals[0].GlobalS322" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 30, i32* %"→globals[0].GlobalS322"
+  br label %end_switch
+
+switch_case_default:                              ; preds = %switch_case_2_test
+  %"→globals[0].GlobalS323" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 40, i32* %"→globals[0].GlobalS323"
+  br label %end_switch
+
+end_switch:                                       ; preds = %switch_case_default, %switch_case_2_block, %switch_case_1_block, %switch_case_0_block
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void switch_stmt(s32 a) {
+  switch a {
+    case 1, 2, 3: GlobalS32 = 10
+    case 4, 5:    GlobalS32 = 20
+    case 6:       GlobalS32 = 30
+    default:      GlobalS32 = 40
+  }
+}
+
+@ir(`
+define void @select_expr(%context* %"→ctx", %select_expr_params* %"→params") {
+entry:
+  %"→selectval" = alloca i32
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].a" = getelementptr %select_expr_params, %select_expr_params* %"→params", i32 0, i32 0
+  %a = load i32, i32* %"→params[0].a"
+  %"→observations" = getelementptr %select_expr_params, %select_expr_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  store i32 40, i32* %"→selectval"
+  br label %switch_case_0_test
+
+switch_case_0_test:                               ; preds = %entry
+  %"a==1" = icmp eq i32 %a, 1
+  %"a==2" = icmp eq i32 %a, 2
+  %"a==1|a==2" = or i1 %"a==1", %"a==2"
+  %"a==3" = icmp eq i32 %a, 3
+  %"a==1|a==2|a==3" = or i1 %"a==1|a==2", %"a==3"
+  br i1 %"a==1|a==2|a==3", label %switch_case_0_block, label %switch_case_1_test
+
+switch_case_0_block:                              ; preds = %switch_case_0_test
+  store i32 10, i32* %"→selectval"
+  br label %end_switch
+
+switch_case_1_test:                               ; preds = %switch_case_0_test
+  %"a==4" = icmp eq i32 %a, 4
+  %"a==5" = icmp eq i32 %a, 5
+  %"a==4|a==5" = or i1 %"a==4", %"a==5"
+  br i1 %"a==4|a==5", label %switch_case_1_block, label %switch_case_2_test
+
+switch_case_1_block:                              ; preds = %switch_case_1_test
+  store i32 20, i32* %"→selectval"
+  br label %end_switch
+
+switch_case_2_test:                               ; preds = %switch_case_1_test
+  %"a==6" = icmp eq i32 %a, 6
+  br i1 %"a==6", label %switch_case_2_block, label %end_switch
+
+switch_case_2_block:                              ; preds = %switch_case_2_test
+  store i32 30, i32* %"→selectval"
+  br label %end_switch
+
+end_switch:                                       ; preds = %switch_case_2_block, %switch_case_2_test, %switch_case_1_block, %switch_case_0_block
+  %selectval = load i32, i32* %"→selectval"
+  %"→globals[0].GlobalS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 %selectval, i32* %"→globals[0].GlobalS32"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void select_expr(s32 a) {
+  GlobalS32 = switch a {
+    case 1, 2, 3: 10
+    case 4, 5:    20
+    case 6:       30
+    default:      40
+  }
+}
+
+@ir(`
+define void @ptr_slice(%context* %"→ctx", %ptr_slice_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].ptr" = getelementptr %ptr_slice_params, %ptr_slice_params* %"→params", i32 0, i32 0
+  %ptr = load %Pointer, %Pointer* %"→params[0].ptr"
+  %"→params[0].s" = getelementptr %ptr_slice_params, %ptr_slice_params* %"→params", i32 0, i32 1
+  %s = load i32, i32* %"→params[0].s"
+  %"→params[0].e" = getelementptr %ptr_slice_params, %ptr_slice_params* %"→params", i32 0, i32 2
+  %e = load i32, i32* %"→params[0].e"
+  %"→observations" = getelementptr %ptr_slice_params, %ptr_slice_params* %"→params", i32 0, i32 3
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %root = extractvalue %Pointer %ptr, 0
+  %pool = extractvalue %Pointer %ptr, 1
+  %start = zext i32 %s to i64
+  %end = zext i32 %e to i64
+  %count = sub i64 %end, %start
+  %"start*sizeof(float32)" = mul i64 %start, 4
+  %base = add i64 %root, %"start*sizeof(float32)"
+  %slice = insertvalue %Slice undef, i64 %root, 0
+  %slice1 = insertvalue %Slice %slice, i64 %base, 1
+  %slice2 = insertvalue %Slice %slice1, i64 %count, 2
+  %slice3 = insertvalue %Slice %slice2, i32 %pool, 3
+  %"→globals[0].GlobalF32Slice" = getelementptr %globals, %globals* %"→globals", i32 0, i32 1
+  store %Slice %slice3, %Slice* %"→globals[0].GlobalF32Slice"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void ptr_slice(f32* ptr, u32 s, u32 e) {
+  GlobalF32Slice = ptr[s:e]
+}
+
+@ir(`
+define void @subslice(%context* %"→ctx", %subslice_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].s" = getelementptr %subslice_params, %subslice_params* %"→params", i32 0, i32 0
+  %s = load i32, i32* %"→params[0].s"
+  %"→params[0].e" = getelementptr %subslice_params, %subslice_params* %"→params", i32 0, i32 1
+  %e = load i32, i32* %"→params[0].e"
+  %"→observations" = getelementptr %subslice_params, %subslice_params* %"→params", i32 0, i32 2
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→globals[0].GlobalF32Slice" = getelementptr %globals, %globals* %"→globals", i32 0, i32 1
+  %"globals[0].GlobalF32Slice" = load %Slice, %Slice* %"→globals[0].GlobalF32Slice"
+  %Base = extractvalue %Slice %"globals[0].GlobalF32Slice", 1
+  %start = zext i32 %s to i64
+  %end = zext i32 %e to i64
+  %count = sub i64 %end, %start
+  %offset = mul i64 %start, 4
+  %newbase = add i64 %Base, %offset
+  %"globals[0].GlobalF32Slice1" = insertvalue %Slice %"globals[0].GlobalF32Slice", i64 %count, 2
+  %"globals[0].GlobalF32Slice2" = insertvalue %Slice %"globals[0].GlobalF32Slice1", i64 %newbase, 1
+  %"→globals[0].GlobalF32Slice3" = getelementptr %globals, %globals* %"→globals", i32 0, i32 1
+  store %Slice %"globals[0].GlobalF32Slice2", %Slice* %"→globals[0].GlobalF32Slice3"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void subslice(u32 s, u32 e) {
+  GlobalF32Slice = GlobalF32Slice[s:e]
+}
+
+@ir(`
+define void @copy_slice(%context* %"→ctx", %copy_slice_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].a" = getelementptr %copy_slice_params, %copy_slice_params* %"→params", i32 0, i32 0
+  %a = load %Pointer, %Pointer* %"→params[0].a"
+  %"→params[0].b" = getelementptr %copy_slice_params, %copy_slice_params* %"→params", i32 0, i32 1
+  %b = load %Pointer, %Pointer* %"→params[0].b"
+  %"→observations" = getelementptr %copy_slice_params, %copy_slice_params* %"→params", i32 0, i32 2
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  %root = extractvalue %Pointer %b, 0
+  %pool = extractvalue %Pointer %b, 1
+  %base = add i64 %root, 8
+  %slice = insertvalue %Slice undef, i64 %root, 0
+  %slice1 = insertvalue %Slice %slice, i64 %base, 1
+  %slice2 = insertvalue %Slice %slice1, i64 1, 2
+  %slice3 = insertvalue %Slice %slice2, i32 %pool, 3
+  %root4 = extractvalue %Pointer %a, 0
+  %pool5 = extractvalue %Pointer %a, 1
+  %base6 = add i64 %root4, 4
+  %slice7 = insertvalue %Slice undef, i64 %root4, 0
+  %slice8 = insertvalue %Slice %slice7, i64 %base6, 1
+  %slice9 = insertvalue %Slice %slice8, i64 2, 2
+  %slice10 = insertvalue %Slice %slice9, i32 %pool5, 3
+  %Base = extractvalue %Slice %slice10, 1
+  %Count = extractvalue %Slice %slice10, 2
+  %"Count*sizeof(uint32)" = mul i64 %Count, 4
+  %Pool = extractvalue %Slice %slice10, 3
+  %Base11 = extractvalue %Slice %slice3, 1
+  %Count12 = extractvalue %Slice %slice3, 2
+  %"Count12*sizeof(uint32)" = mul i64 %Count12, 4
+  %Pool13 = extractvalue %Slice %slice3, 3
+  call void @gapil_copy_slice(%context* %"→ctx", i64 %Base, i64 %"Count*sizeof(uint32)", i32 %Pool, i64 %Base11, i64 %"Count12*sizeof(uint32)", i32 %Pool13)
+  ret void
+}`)
+cmd void copy_slice(u32* a, u32* b) {
+  copy(a[1:3], b[2:3])
+}
+
+@ir(`
+define void @member_assign(%context* %"→ctx", %member_assign_params* %"→params") {
+entry:
+  %"→c" = alloca %C
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].v" = getelementptr %member_assign_params, %member_assign_params* %"→params", i32 0, i32 0
+  %v = load i32, i32* %"→params[0].v"
+  %"→observations" = getelementptr %member_assign_params, %member_assign_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  store %C { %X { i32 0, i32 1, i32 2 }, %Y zeroinitializer, %Z { i8 6, i8 7, i8 8 } }, %C* %"→c"
+  %"→c[0].y.c" = getelementptr %C, %C* %"→c", i32 0, i32 1, i32 2
+  store float 1.000000e+00, float* %"→c[0].y.c"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void member_assign(u32 v) {
+  c := C()
+  c.y.c = 1
+}
+
+@ir(`
+define void @vec_assign(%context* %"→ctx", %vec_assign_params* %"→params") {
+entry:
+  %"→a" = alloca [4 x float]
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].v" = getelementptr %vec_assign_params, %vec_assign_params* %"→params", i32 0, i32 0
+  %v = load i32, i32* %"→params[0].v"
+  %"→observations" = getelementptr %vec_assign_params, %vec_assign_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  store [4 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00], [4 x float]* %"→a"
+  %"→a[0][2]" = getelementptr [4 x float], [4 x float]* %"→a", i32 0, i64 2
+  store float 1.000000e+00, float* %"→a[0][2]"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void vec_assign(u32 v) {
+  a := Vec4f(1, 2, 3, 4)
+  a[2] = 1
+}
+
+@ir(`
+define void @mat_assign(%context* %"→ctx", %mat_assign_params* %"→params") {
+entry:
+  %"→m" = alloca %Mat4f
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].v" = getelementptr %mat_assign_params, %mat_assign_params* %"→params", i32 0, i32 0
+  %v = load i32, i32* %"→params[0].v"
+  %"→observations" = getelementptr %mat_assign_params, %mat_assign_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  store %Mat4f { [4 x float] [float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00], [4 x float] [float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00], [4 x float] [float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00], [4 x float] [float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00] }, %Mat4f* %"→m"
+  %"→m[0].D" = getelementptr %Mat4f, %Mat4f* %"→m", i32 0, i32 3
+  store [4 x float] [float 1.000000e+01, float 2.000000e+01, float 3.000000e+01, float 1.000000e+00], [4 x float]* %"→m[0].D"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void mat_assign(u32 v) {
+  m := Mat4f()
+  m.D = Vec4f(10, 20, 30, 1)
+}
+
+@ir(`
+define void @ref_member_assign(%context* %"→ctx", %ref_member_assign_params* %"→params") {
+entry:
+  %"→c" = alloca %C*
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].v" = getelementptr %ref_member_assign_params, %ref_member_assign_params* %"→params", i32 0, i32 0
+  %v = load i32, i32* %"→params[0].v"
+  %"→observations" = getelementptr %ref_member_assign_params, %ref_member_assign_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %gapil_alloc = call i8* @gapil_alloc(%context* %"→ctx", i32 ptrtoint (%C* getelementptr (%C, %C* null, i32 1) to i32), i32 ptrtoint (%C* getelementptr ({ i1, %C }, { i1, %C }* null, i64 0, i32 1) to i32))
+  %"*uint8->*C" = bitcast i8* %gapil_alloc to %C*
+  store %C { %X { i32 0, i32 1, i32 2 }, %Y zeroinitializer, %Z { i8 6, i8 7, i8 8 } }, %C* %"*uint8->*C"
+  store %C* %"*uint8->*C", %C** %"→c"
+  %c = load %C*, %C** %"→c"
+  %"→c[0].y.c" = getelementptr %C, %C* %c, i32 0, i32 1, i32 2
+  store float 1.000000e+00, float* %"→c[0].y.c"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void ref_member_assign(u32 v) {
+  c := new!C()
+  c.y.c = 1
+}
+
+@ir(`
+define void @map_contains(%context* %"→ctx", %map_contains_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].ptr" = getelementptr %map_contains_params, %map_contains_params* %"→params", i32 0, i32 0
+  %ptr = load %Pointer, %Pointer* %"→params[0].ptr"
+  %"→observations" = getelementptr %map_contains_params, %map_contains_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→globals[0].GlobalU32PtrToS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 2
+  %map_contains = call i1 @"U32ᵖːs32ᵐ•contains"(%context* %"→ctx", %"U32ᵖːs32ᵐ"* %"→globals[0].GlobalU32PtrToS32", %Pointer %ptr)
+  br i1 %map_contains, label %if_true, label %if_false
+
+if_true:                                          ; preds = %entry
+  %"→globals[0].GlobalS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 1, i32* %"→globals[0].GlobalS32"
+  br label %end_if
+
+if_false:                                         ; preds = %entry
+  %"→globals[0].GlobalS321" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 0, i32* %"→globals[0].GlobalS321"
+  br label %end_if
+
+end_if:                                           ; preds = %if_false, %if_true
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void map_contains(u32* ptr) {
+  if ptr in GlobalU32PtrToS32 {
+    GlobalS32 = 1
+  } else {
+    GlobalS32 = 0
+  }
+}
+
+@ir(`
+define void @map_get(%context* %"→ctx", %map_get_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].ptr" = getelementptr %map_get_params, %map_get_params* %"→params", i32 0, i32 0
+  %ptr = load %Pointer, %Pointer* %"→params[0].ptr"
+  %"→observations" = getelementptr %map_get_params, %map_get_params* %"→params", i32 0, i32 1
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→globals[0].GlobalU32PtrToS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 2
+  %"→map_get" = call i32* @"U32ᵖːs32ᵐ•index"(%context* %"→ctx", %"U32ᵖːs32ᵐ"* %"→globals[0].GlobalU32PtrToS32", %Pointer %ptr, i1 true)
+  %"→map_get[0]" = getelementptr i32, i32* %"→map_get", i32 0
+  %"map_get[0]" = load i32, i32* %"→map_get[0]"
+  %"→globals[0].GlobalS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 0
+  store i32 %"map_get[0]", i32* %"→globals[0].GlobalS32"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void map_get(u32* ptr) {
+  GlobalS32 = GlobalU32PtrToS32[ptr]
+}
+
+@ir(`
+define void @map_put(%context* %"→ctx", %map_put_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].k" = getelementptr %map_put_params, %map_put_params* %"→params", i32 0, i32 0
+  %k = load %Pointer, %Pointer* %"→params[0].k"
+  %"→params[0].v" = getelementptr %map_put_params, %map_put_params* %"→params", i32 0, i32 1
+  %v = load i32, i32* %"→params[0].v"
+  %"→observations" = getelementptr %map_put_params, %map_put_params* %"→params", i32 0, i32 2
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→globals[0].GlobalU32PtrToS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 2
+  %"U32ᵖːs32ᵐ•index" = call i32* @"U32ᵖːs32ᵐ•index"(%context* %"→ctx", %"U32ᵖːs32ᵐ"* %"→globals[0].GlobalU32PtrToS32", %Pointer %k, i1 true)
+  store i32 %v, i32* %"U32ᵖːs32ᵐ•index"
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void map_put(u32* k, s32 v) {
+  GlobalU32PtrToS32[k] = v
+}
+
+@ir(`
+define void @map_remove(%context* %"→ctx", %map_remove_params* %"→params") {
+entry:
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→params[0].k" = getelementptr %map_remove_params, %map_remove_params* %"→params", i32 0, i32 0
+  %k = load %Pointer, %Pointer* %"→params[0].k"
+  %"→params[0].v" = getelementptr %map_remove_params, %map_remove_params* %"→params", i32 0, i32 1
+  %v = load i32, i32* %"→params[0].v"
+  %"→observations" = getelementptr %map_remove_params, %map_remove_params* %"→params", i32 0, i32 2
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→globals[0].GlobalU32PtrToS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 2
+  call void @"U32ᵖːs32ᵐ•remove"(%context* %"→ctx", %"U32ᵖːs32ᵐ"* %"→globals[0].GlobalU32PtrToS32", %Pointer %k)
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void map_remove(u32* k, s32 v) {
+  delete(GlobalU32PtrToS32, k)
+}
+
+@ir(`
+define void @map_it(%context* %"→ctx", %map_it_params* %"→params") {
+entry:
+  %"→z" = alloca i32
+  %"→y" = alloca %Pointer
+  %"→x" = alloca i32
+  %"→loop_iterator" = alloca i32
+  %"→i" = alloca i32
+  %"→ctx[0].Globals" = getelementptr %context, %context* %"→ctx", i32 0, i32 2
+  %"→globals" = load %globals*, %globals** %"→ctx[0].Globals"
+  %"→observations" = getelementptr %map_it_params, %map_it_params* %"→params", i32 0, i32 0
+  %"→NumReads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %NumReads = load i32, i32* %"→NumReads"
+  %"→Reads" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 0
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumReads, %Observation* %"→Reads")
+  %"→globals[0].GlobalU32PtrToS32" = getelementptr %globals, %globals* %"→globals", i32 0, i32 2
+  %"→globals[0].GlobalU32PtrToS32[0].Count" = getelementptr %"U32ᵖːs32ᵐ", %"U32ᵖːs32ᵐ"* %"→globals[0].GlobalU32PtrToS32", i32 0, i32 0
+  %"globals[0].GlobalU32PtrToS32[0].Count" = load i32, i32* %"→globals[0].GlobalU32PtrToS32[0].Count"
+  %"→globals[0].GlobalU32PtrToS32[0].Elements" = getelementptr %"U32ᵖːs32ᵐ", %"U32ᵖːs32ᵐ"* %"→globals[0].GlobalU32PtrToS32", i32 0, i32 2
+  %"globals[0].GlobalU32PtrToS32[0].Elements" = load %"Pointer…int32"*, %"Pointer…int32"** %"→globals[0].GlobalU32PtrToS32[0].Elements"
+  store i32 0, i32* %"→loop_iterator"
+  br label %for_n_test
+
+for_n_test:                                       ; preds = %for_n_loop, %entry
+  %loop_iterator = load i32, i32* %"→loop_iterator"
+  %for_n_condition = icmp slt i32 %loop_iterator, %"globals[0].GlobalU32PtrToS32[0].Count"
+  br i1 %for_n_condition, label %for_n_loop, label %for_n_exit
+
+for_n_loop:                                       ; preds = %for_n_test
+  %loop_iterator1 = load i32, i32* %"→loop_iterator"
+  store i32 %loop_iterator1, i32* %"→i"
+  %"→globals[0].GlobalU32PtrToS32[0].Elements[loop_iterator1].k" = getelementptr %"Pointer…int32", %"Pointer…int32"* %"globals[0].GlobalU32PtrToS32[0].Elements", i32 %loop_iterator1, i32 0
+  %"→globals[0].GlobalU32PtrToS32[0].Elements[loop_iterator1].v" = getelementptr %"Pointer…int32", %"Pointer…int32"* %"globals[0].GlobalU32PtrToS32[0].Elements", i32 %loop_iterator1, i32 1
+  %i = load i32, i32* %"→i"
+  store i32 %i, i32* %"→x"
+  %"globals[0].GlobalU32PtrToS32[0].Elements[loop_iterator1].k" = load %Pointer, %Pointer* %"→globals[0].GlobalU32PtrToS32[0].Elements[loop_iterator1].k"
+  store %Pointer %"globals[0].GlobalU32PtrToS32[0].Elements[loop_iterator1].k", %Pointer* %"→y"
+  %"globals[0].GlobalU32PtrToS32[0].Elements[loop_iterator1].v" = load i32, i32* %"→globals[0].GlobalU32PtrToS32[0].Elements[loop_iterator1].v"
+  store i32 %"globals[0].GlobalU32PtrToS32[0].Elements[loop_iterator1].v", i32* %"→z"
+  %for_n_iterator_inc = add i32 %loop_iterator1, 1
+  store i32 %for_n_iterator_inc, i32* %"→loop_iterator"
+  br label %for_n_test
+
+for_n_exit:                                       ; preds = %for_n_test
+  %"→NumWrites" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 1
+  %NumWrites = load i32, i32* %"→NumWrites"
+  %"→WritesOffset" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 0
+  %WritesOffset = load i32, i32* %"→WritesOffset"
+  %"→Writes" = getelementptr %Observations, %Observations* %"→observations", i32 0, i32 2, i32 %WritesOffset
+  call void @gapil_apply_observations(%context* %"→ctx", i32 %NumWrites, %Observation* %"→Writes")
+  ret void
+}`)
+cmd void map_it() {
+  for i, k, v in GlobalU32PtrToS32 {
+    x := i
+    y := k
+    z := v
+  }
+}
