@@ -159,7 +159,7 @@ private:
                                                            // to wait for
                                                            // pending_images_ to
                                                            // contain an image.
-  
+
   threading::mutex
       free_images_lock_; // The lock for modifying our free images list.
 

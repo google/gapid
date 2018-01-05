@@ -104,3 +104,7 @@ bool replayAllocateImageMemory(Stack* stack, bool pushReturn);
 // to customize this is that the device can choose to return the
 // physical devices in any order.
 bool replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn);
+
+// Builtin function for turning on the automatic swapchain index generation,
+// during swapchain creation.
+bool replayCreateSwapchain(Stack* stack, bool pushReturn);

@@ -24,6 +24,12 @@ namespace swapchain {
 // device data associated with an instance.
 void RegisterInstance(VkInstance instance, const InstanceData &data);
 
+static const uint32_t VIRTUAL_SWAPCHAIN_CREATE_PNEXT = 0xFFFFFFAA;
+struct CreateNext {
+  uint32_t sType;
+  void* pNext;
+};
+
 // All of the following functions are the same as the Vulkan functions
 // with the same names. vkCreateVirtualSurface can be used interchangeably
 // with any vkCreate*Surface, since it ignores its pCreateInfo parameter.

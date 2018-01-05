@@ -148,3 +148,50 @@ cmd VkResult replayEnumeratePhysicalDevices(
   }
   return ?
 }
+
+@synthetic
+cmd VkResult ReplayCreateSwapchain(
+    VkDevice                        device,
+    const VkSwapchainCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*    pAllocator,
+    VkSwapchainKHR*                 pSwapchain) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkSwapchainCreateInfoKHR") }
+  create_info := pCreateInfo[0]
+  queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
+  // TODO: pAllocator
+
+  swapchainObject := new!SwapchainObject(Device: device,
+    Info:                   ImageInfo(
+      ImageType:    VK_IMAGE_TYPE_2D,
+      Format:       create_info.imageFormat,
+      Extent:       VkExtent3D(create_info.imageExtent.Width, create_info.imageExtent.Height, 1),
+      MipLevels:    1,
+      ArrayLayers:  create_info.imageArrayLayers,
+      Samples:      VK_SAMPLE_COUNT_1_BIT,
+      Tiling:       VK_IMAGE_TILING_OPTIMAL,
+      Usage:        create_info.imageUsage,
+      SharingMode:  create_info.imageSharingMode,
+      Layout:       VK_IMAGE_LAYOUT_UNDEFINED
+    ),
+    Surface:         Surfaces[create_info.surface],
+    ColorSpace:      create_info.imageColorSpace,
+    PreTransform:    create_info.preTransform,
+    CompositeAlpha:  create_info.compositeAlpha,
+    PresentMode:     create_info.presentMode,
+    Clipped:         create_info.clipped
+  )
+
+  for i in (0 .. create_info.queueFamilyIndexCount) {
+    swapchainObject.Info.QueueFamilyIndices[i] =
+    queueFamilyIndices[i]
+  }
+
+  handle := ?
+  if pSwapchain == null { vkErrorNullPointer("VkSwapchain") }
+  pSwapchain[0] = handle
+  swapchainObject.VulkanHandle = handle
+  Swapchains[handle] = swapchainObject
+
+  return ?
+}
