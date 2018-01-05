@@ -34,8 +34,6 @@
   #include "gapir/cc/interpreter.h"
   #include "gapir/cc/stack.h"
 ¶
-  #include "core/vulkan/vk_virtual_swapchain/cc/virtual_swapchain.h"
-¶
   #include "core/cc/get_vulkan_proc_address.h"
   #include "core/cc/log.h"
 ¶
@@ -277,17 +275,26 @@
     }
   }
 ¶
-  bool Vulkan::toggleVirtualSwapchainReturnAcquiredImage(Stack* stack) {
+  static const uint32_t VIRTUAL_SWAPCHAIN_CREATE_PNEXT = 0xFFFFFFAA;
+
+  bool Vulkan::replayCreateSwapchain(Stack* stack, bool pushReturn) {
     auto pSwapchain = stack->pop<VkSwapchainKHR*>();
-    if (stack->isValid()) {
-      GAPID_DEBUG("toggleVirtualSwapchainReturnAcquiredImage(%p)", pSwapchain);
-      auto virtual_swapchain = reinterpret_cast<swapchain::VirtualSwapchain*>(*pSwapchain);
-      virtual_swapchain->SetAlwaysGetAcquiredImage(true);
-      return true;
-    } else {
-      GAPID_WARNING("Error during calling function toggleVirtualSwapchainReturnAcquiredImage");
-      return false;
-   }
+    auto pAllocator = stack->pop<VkAllocationCallbacks*>();
+    auto pCreateInfo = stack->pop<VkSwapchainCreateInfoKHR*>();
+    auto device = stack->pop<VkDevice>();
+    auto newCreateInfo = *pCreateInfo;
+
+    struct {
+      uint32_t sType;
+      void* pNext;
+    } pNextStruct = {VIRTUAL_SWAPCHAIN_CREATE_PNEXT, pCreateInfo->pNext};
+    newCreateInfo.pNext = &pNextStruct;
+
+    stack->push(device);
+    stack->push(&newCreateInfo);
+    stack->push(pAllocator);
+    stack->push(pSwapchain);
+    return callVkCreateSwapchainKHR(~0, stack, pushReturn);
   }
 ¶
 namespace {
@@ -447,7 +454,7 @@ bool Vulkan::replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn) {
                 }
               }
               if (j == count) {
-                GAPID_WARNING("Could not find device with deviceID %d, and vendorID %d", (device_id >> 32) & 0xFFFFFFFF, 
+                GAPID_WARNING("Could not find device with deviceID %d, and vendorID %d", (device_id >> 32) & 0xFFFFFFFF,
                     device_id & 0xFFFFFFFF);
                 j = count - 1;
               }
@@ -456,7 +463,7 @@ bool Vulkan::replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn) {
               }
               physicalDevices[i] = devices[j];
             }
-            
+
             if (pushReturn) {
                 stack->push<VkResult>(return_value);
             }

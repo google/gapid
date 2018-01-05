@@ -373,14 +373,14 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
     });
 
-    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ToggleVirtualSwapchainReturnAcquiredImage,
-                                 [this, interpreter](uint32_t label, Stack* stack, bool) {
-        GAPID_DEBUG("[%u]ToggleVirtualSwapchainReturnAcquiredImage()", label);
+    interpreter->registerBuiltin(Vulkan::INDEX, Builtins::ReplayCreateSwapchain,
+                                    [this, interpreter](uint32_t label, Stack* stack, bool pushReturn) {
+        GAPID_DEBUG("[%u]replayCreateSwapchain()", label);
         if (mVulkanRenderer != nullptr) {
             auto* api = mVulkanRenderer->getApi<Vulkan>();
-            return api->toggleVirtualSwapchainReturnAcquiredImage(stack);
+            return api->replayCreateSwapchain(stack, pushReturn);
         } else {
-            GAPID_WARNING("[%u]toggleVirtualSwapchainReturnAcquiredImage called without a bound Vulkan renderer", label);
+            GAPID_WARNING("[%u]replayCreateSwapchain called without a bound Vulkan renderer", label);
             return false;
         }
     });

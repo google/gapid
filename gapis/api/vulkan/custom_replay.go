@@ -733,13 +733,16 @@ func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.
 }
 
 func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	// Call the underlying VkCreateSwapchainKHR() and do the observation
-	cb := CommandBuilder{Thread: a.thread}
-	err := a.mutate(ctx, id, s, b)
-	if b == nil || err != nil {
-		return err
+	if b == nil {
+		return a.mutate(ctx, id, s, b)
 	}
-	return cb.ToggleVirtualSwapchainReturnAcquiredImage(a.PSwapchain).Mutate(ctx, id, s, b)
+
+	cb := CommandBuilder{Thread: a.thread}
+	hijack := cb.ReplayCreateSwapchain(a.Device, a.PCreateInfo, a.PAllocator, a.PSwapchain, a.Result)
+	hijack.Extras().MustClone(a.Extras().All()...)
+	err := hijack.Mutate(ctx, id, s, b)
+
+	return err
 }
 
 func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
