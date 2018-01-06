@@ -16,6 +16,7 @@ apic(
     templates = [
         "//gapis/api/templates:api",
         "//gapis/api/templates:mutate",
+        "//gapis/api/templates:constant_sets",
         "//gapis/api/templates:convert",
         "//gapis/api/templates:proto",
     ],
@@ -57,6 +58,7 @@ go_library(
         "//gapis/replay/value:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/stringtable:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_pkg_errors//:go_default_library",
     ],
 )
