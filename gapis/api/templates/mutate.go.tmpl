@@ -27,6 +27,7 @@
     "strings"
 
     "github.com/google/gapid/core/event/task"
+    "github.com/google/gapid/core/math/u64"
     "github.com/google/gapid/gapis/api"
     "github.com/google/gapid/gapis/messages"
     "github.com/google/gapid/gapis/replay/builder"
@@ -44,6 +45,7 @@
     _ = strings.Reader{}
     _ = stringtable.Msg{}
     _ = ϟmem.Decoder{}
+    _ = u64.Min
   )
 
   type callable interface {
