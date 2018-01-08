@@ -15,8 +15,14 @@
 package gapidapk
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
+	"strings"
+	"time"
+
+	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/os/flock"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/log"
@@ -25,13 +31,61 @@ import (
 )
 
 const (
-	sendDevInfoAction  = "com.google.android.gapid.action.SEND_DEV_INFO"
-	sendDevInfoService = "com.google.android.gapid.DeviceInfoService"
-	sendDevInfoPort    = "gapid-devinfo"
+	sendDevInfoAction     = "com.google.android.gapid.action.SEND_DEV_INFO"
+	sendDevInfoService    = "com.google.android.gapid.DeviceInfoService"
+	sendDevInfoPort       = "gapid-devinfo"
+	startServiceAttempts  = 3
+	portListeningAttempts = 5
 )
 
 func init() {
 	adb.RegisterDeviceInfoProvider(fetchDeviceInfo)
+}
+
+// Returns true if the device is listening to sendDevInfoPort, false if not.
+// Error if failed at getting the port info.
+func devInfoPortListening(ctx context.Context, d adb.Device) (bool, error) {
+	var stdout bytes.Buffer
+	if err := d.Shell("cat", "/proc/net/unix").Capture(&stdout, nil).Run(ctx); err != nil {
+		return false, log.Errf(ctx, err, "Getting unix abstract port info...")
+	}
+	if strings.Contains(stdout.String(), sendDevInfoPort) {
+		return true, nil
+	}
+	return false, nil
+}
+
+// startDevInfoService tries to start the fresh run of the package and start
+// the service to send device info.
+func startDevInfoService(ctx context.Context, d adb.Device, apk *APK) error {
+	ctx = log.Enter(ctx, "startDevInfoService")
+	var listening bool
+
+	action := apk.ServiceActions.FindByName(sendDevInfoAction, sendDevInfoService)
+	if action == nil {
+		return log.Err(ctx, nil, "Service intent was not found")
+	}
+
+	// Try to start service.
+	err := task.Retry(ctx, startServiceAttempts, 100*time.Millisecond,
+		func(ctx context.Context) (bool, error) {
+			log.I(ctx, "Attempt to start service: %s", sendDevInfoService)
+			if err := d.StartService(ctx, *action); err != nil {
+				return false, err
+			}
+			err := task.Retry(ctx, portListeningAttempts, time.Second, func(
+				ctx context.Context) (bool, error) {
+				var err error
+				listening, err = devInfoPortListening(ctx, d)
+				return listening, err
+			})
+			return listening, err
+		})
+	if listening {
+		return nil
+	}
+	return log.Errf(ctx, err, "Start DevInfo service: Run out of attempts: %v",
+		startServiceAttempts)
 }
 
 func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
@@ -46,12 +100,16 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		return nil
 	}
 
-	action := apk.ServiceActions.FindByName(sendDevInfoAction, sendDevInfoService)
-	if action == nil {
-		return log.Err(ctx, nil, "Service intent was not found")
+	// Make sure the device is available to query device info, this is to prevent
+	// Vulkan trace from happening at the same with with device info query.
+	devLock, err := flock.LockDevice(d.Instance().GetSerial())
+	if err != nil {
+		return log.Err(ctx, err, "Reserving device for device info query...")
 	}
+	defer devLock.Unlock()
 
-	if err := d.StartService(ctx, *action); err != nil {
+	// Tries to start the device info service.
+	if err := startDevInfoService(ctx, d, apk); err != nil {
 		return log.Err(ctx, err, "Starting service")
 	}
 

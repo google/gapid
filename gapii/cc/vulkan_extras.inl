@@ -229,3 +229,7 @@ static uint32_t EnumeratePhysicalDevicesAndCacheProperties(
     VkPhysicalDevice* pPhysicalDevices);
 
 bool m_coherent_memory_tracking_enabled = false;
+
+#if TARGET_OS == GAPID_OS_ANDROID
+bool m_should_unset_debug_vulkan_layers = true;
+#endif // TARGET_OS == GAPID_OS_ANDROID

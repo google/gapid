@@ -148,6 +148,38 @@ func (b *binding) StartService(ctx context.Context, a android.ServiceAction, ext
 	return b.Shell("am", args...).Run(ctx)
 }
 
+// ForceStop stops everything associated with the given package.
+func (b *binding) ForceStop(ctx context.Context, pkg string) error {
+	args := append([]string{
+		"force-stop", pkg,
+	})
+	return b.Shell("am", args...).Run(ctx)
+}
+
+// SystemProperty returns the system property in string
+func (b *binding) SystemProperty(ctx context.Context, name string) (string, error) {
+	res, err := b.Shell("getprop", name).Call(ctx)
+	if err != nil {
+		return "", log.Errf(ctx, err, "getprop returned error: \n%s", err.Error())
+	}
+	return res, nil
+}
+
+// SetSystemProperty sets the system property with the given string value
+func (b *binding) SetSystemProperty(ctx context.Context, name, value string) error {
+	if len(value) == 0 {
+		value = "\"\""
+	}
+	res, err := b.Shell("setprop", name, value).Call(ctx)
+	if res != "" {
+		return log.Errf(ctx, nil, "setprop returned error: \n%s", res)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func extrasFlags(extras []android.ActionExtra) []string {
 	flags := []string{}
 	for _, e := range extras {

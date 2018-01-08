@@ -50,19 +50,7 @@ type lastInstallCheckRes struct {
 	apk  *APK
 }
 
-// EnsureInstalled ensures that gapid.apk with the specified ABI is installed on
-// d with the same version as the host APK and returns the installed APK.
-// If abi is nil or UnknownABI then the preferred ABI of the device is used.
-func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, error) {
-	ensureInstalledMutex.Lock()
-	defer ensureInstalledMutex.Unlock()
-
-	ctx = log.Enter(ctx, "gapidapk.EnsureInstalled")
-
-	if abi.SameAs(device.UnknownABI) {
-		abi = d.Instance().GetConfiguration().PreferredABI(nil)
-	}
-
+func ensureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, error) {
 	ctx = log.V{"abi": abi.Name}.Bind(ctx)
 
 	// Was this recently checked?
@@ -141,6 +129,31 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 		return out, nil
 	}
 
+	return nil, log.Err(ctx, nil, "Unable to install GAPID")
+}
+
+// EnsureInstalled ensures that gapid.apk with the specified ABI is installed on
+// d with the same version as the host APK and returns the installed APK.
+// If abi is nil or UnknownABI then the preferred ABI of the device is used.
+func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, error) {
+	ensureInstalledMutex.Lock()
+	defer ensureInstalledMutex.Unlock()
+
+	ctx = log.Enter(ctx, "gapidapk.EnsureInstalled")
+	if abi.SameAs(device.UnknownABI) {
+		abisToTry := []*device.ABI{d.Instance().GetConfiguration().PreferredABI(nil)}
+		abisToTry = append(abisToTry, d.Instance().GetConfiguration().GetABIs()...)
+		for _, a := range abisToTry {
+			tempCtx := log.Enter(ctx, fmt.Sprintf("Try ABI: %s", a.Name))
+			apk, err := ensureInstalled(tempCtx, d, a)
+			if err == nil {
+				return apk, nil
+			}
+			log.I(tempCtx, err.Error())
+		}
+	} else {
+		return ensureInstalled(ctx, d, abi)
+	}
 	return nil, log.Err(ctx, nil, "Unable to install GAPID")
 }
 

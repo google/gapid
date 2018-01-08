@@ -77,6 +77,12 @@ type Device interface {
 	// system properties. If there is no native ABI for the given ABI, then abi
 	// is simply returned.
 	NativeBridgeABI(ctx context.Context, abi *device.ABI) *device.ABI
+	// ForceStop stops the everything associated with the given package.
+	ForceStop(ctx context.Context, pkg string) error
+	// SystemProperty returns the system property in string
+	SystemProperty(ctx context.Context, name string) (string, error)
+	// SetSystemProperty sets the system property with the given string value
+	SetSystemProperty(ctx context.Context, name, value string) error
 }
 
 // LogcatMessage represents a single logcat message.
