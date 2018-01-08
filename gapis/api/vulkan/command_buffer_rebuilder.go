@@ -117,6 +117,7 @@ func rebuildVkCmdBeginRenderPass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdBeginRenderPassArgs) (func(), api.Cmd, error) {
 	if !GetState(s).RenderPasses.Contains(d.RenderPass) {
@@ -157,6 +158,7 @@ func rebuildVkCmdEndRenderPass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdEndRenderPassArgs) (func(), api.Cmd, error) {
 
@@ -167,6 +169,7 @@ func rebuildVkCmdNextSubpass(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdNextSubpassArgs) (func(), api.Cmd, error) {
 	return func() {}, cb.VkCmdNextSubpass(commandBuffer, d.Contents), nil
@@ -176,6 +179,7 @@ func rebuildVkCmdBindPipeline(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdBindPipelineArgs) (func(), api.Cmd, error) {
 	if !GetState(s).ComputePipelines.Contains(d.Pipeline) &&
@@ -190,6 +194,7 @@ func rebuildVkCmdBindIndexBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdBindIndexBufferArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Buffers.Contains(d.Buffer) {
@@ -203,6 +208,7 @@ func rebuildVkCmdSetLineWidth(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetLineWidthArgs) (func(), api.Cmd, error) {
 
@@ -213,6 +219,7 @@ func rebuildVkCmdBindDescriptorSets(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdBindDescriptorSetsArgs) (func(), api.Cmd, error) {
 
@@ -245,6 +252,7 @@ func rebuildVkCmdBindVertexBuffers(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdBindVertexBuffersArgs) (func(), api.Cmd, error) {
 
@@ -272,6 +280,7 @@ func rebuildVkCmdWaitEvents(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdWaitEventsArgs) (func(), api.Cmd, error) {
 
@@ -321,6 +330,7 @@ func rebuildVkCmdPipelineBarrier(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdPipelineBarrierArgs) (func(), api.Cmd, error) {
 
@@ -361,6 +371,7 @@ func rebuildVkCmdBeginQuery(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdBeginQueryArgs) (func(), api.Cmd, error) {
 
@@ -376,6 +387,7 @@ func rebuildVkCmdBlitImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdBlitImageArgs) (func(), api.Cmd, error) {
 
@@ -406,6 +418,7 @@ func rebuildVkCmdClearAttachments(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdClearAttachmentsArgs) (func(), api.Cmd, error) {
 
@@ -427,6 +440,7 @@ func rebuildVkCmdClearColorImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdClearColorImageArgs) (func(), api.Cmd, error) {
 
@@ -454,6 +468,7 @@ func rebuildVkCmdClearDepthStencilImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdClearDepthStencilImageArgs) (func(), api.Cmd, error) {
 
@@ -481,6 +496,7 @@ func rebuildVkCmdCopyBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdCopyBufferArgs) (func(), api.Cmd, error) {
 
@@ -507,6 +523,7 @@ func rebuildVkCmdCopyBufferToImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdCopyBufferToImageArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Buffers.Contains(d.SrcBuffer) {
@@ -532,6 +549,7 @@ func rebuildVkCmdCopyImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdCopyImageArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Images.Contains(d.SrcImage) {
@@ -558,6 +576,7 @@ func rebuildVkCmdCopyImageToBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdCopyImageToBufferArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Images.Contains(d.SrcImage) {
@@ -583,6 +602,7 @@ func rebuildVkCmdCopyQueryPoolResults(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdCopyQueryPoolResultsArgs) (func(), api.Cmd, error) {
 	if !GetState(s).QueryPools.Contains(d.QueryPool) {
@@ -606,6 +626,7 @@ func rebuildVkCmdDispatch(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDispatchArgs) (func(), api.Cmd, error) {
 
@@ -620,6 +641,7 @@ func rebuildVkCmdDispatchIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDispatchIndirectArgs) (func(), api.Cmd, error) {
 
@@ -636,6 +658,7 @@ func rebuildVkCmdDraw(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDrawArgs) (func(), api.Cmd, error) {
 
@@ -651,6 +674,7 @@ func rebuildVkCmdDrawIndexed(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDrawIndexedArgs) (func(), api.Cmd, error) {
 
@@ -662,6 +686,7 @@ func rebuildVkCmdDrawIndexedIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDrawIndexedIndirectArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Buffers.Contains(d.Buffer) {
@@ -679,6 +704,7 @@ func rebuildVkCmdDrawIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDrawIndirectArgs) (func(), api.Cmd, error) {
 
@@ -697,6 +723,7 @@ func rebuildVkCmdEndQuery(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdEndQueryArgs) (func(), api.Cmd, error) {
 	if !GetState(s).QueryPools.Contains(d.QueryPool) {
@@ -712,6 +739,7 @@ func rebuildVkCmdExecuteCommands(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdExecuteCommandsArgs) (func(), api.Cmd, error) {
 
@@ -735,6 +763,7 @@ func rebuildVkCmdFillBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdFillBufferArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Buffers.Contains(d.Buffer) {
@@ -753,10 +782,11 @@ func rebuildVkCmdPushConstants(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdPushConstantsArgs) (func(), api.Cmd, error) {
 
-	dat := d.Data.MustRead(ctx, nil, s, nil)
+	dat := d.Data.MustRead(ctx, nil, r, nil)
 	data := s.AllocDataOrPanic(ctx, dat)
 
 	return func() {
@@ -774,6 +804,7 @@ func rebuildVkCmdResetQueryPool(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdResetQueryPoolArgs) (func(), api.Cmd, error) {
 	if !GetState(s).QueryPools.Contains(d.QueryPool) {
@@ -791,6 +822,7 @@ func rebuildVkCmdResolveImage(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdResolveImageArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Images.Contains(d.SrcImage) {
@@ -817,6 +849,7 @@ func rebuildVkCmdSetBlendConstants(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetBlendConstantsArgs) (func(), api.Cmd, error) {
 
@@ -836,6 +869,7 @@ func rebuildVkCmdSetDepthBias(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetDepthBiasArgs) (func(), api.Cmd, error) {
 
@@ -851,6 +885,7 @@ func rebuildVkCmdSetDepthBounds(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetDepthBoundsArgs) (func(), api.Cmd, error) {
 
@@ -865,6 +900,7 @@ func rebuildVkCmdSetEvent(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetEventArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Events.Contains(d.Event) {
@@ -881,6 +917,7 @@ func rebuildVkCmdResetEvent(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdResetEventArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Events.Contains(d.Event) {
@@ -897,6 +934,7 @@ func rebuildVkCmdSetScissor(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetScissorArgs) (func(), api.Cmd, error) {
 
@@ -915,6 +953,7 @@ func rebuildVkCmdSetStencilCompareMask(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetStencilCompareMaskArgs) (func(), api.Cmd, error) {
 
@@ -929,6 +968,7 @@ func rebuildVkCmdSetStencilReference(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetStencilReferenceArgs) (func(), api.Cmd, error) {
 
@@ -943,6 +983,7 @@ func rebuildVkCmdSetStencilWriteMask(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetStencilWriteMaskArgs) (func(), api.Cmd, error) {
 
@@ -957,6 +998,7 @@ func rebuildVkCmdSetViewport(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdSetViewportArgs) (func(), api.Cmd, error) {
 
@@ -975,13 +1017,14 @@ func rebuildVkCmdUpdateBuffer(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdUpdateBufferArgs) (func(), api.Cmd, error) {
 	if !GetState(s).Buffers.Contains(d.DstBuffer) {
 		return nil, nil, fmt.Errorf("Cannot find buffer %v", d.DstBuffer)
 	}
 
-	dat := d.Data.MustRead(ctx, nil, s, nil)
+	dat := d.Data.MustRead(ctx, nil, r, nil)
 	data := s.AllocDataOrPanic(ctx, dat)
 
 	return func() {
@@ -998,6 +1041,7 @@ func rebuildVkCmdWriteTimestamp(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdWriteTimestampArgs) (func(), api.Cmd, error) {
 	if !GetState(s).QueryPools.Contains(d.QueryPool) {
@@ -1015,6 +1059,7 @@ func rebuildVkCmdDebugMarkerBeginEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDebugMarkerBeginEXTArgs) (func(), api.Cmd, error) {
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
@@ -1041,6 +1086,7 @@ func rebuildVkCmdDebugMarkerEndEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDebugMarkerEndEXTArgs) (func(), api.Cmd, error) {
 	return func() {}, cb.VkCmdDebugMarkerEndEXT(commandBuffer), nil
@@ -1050,6 +1096,7 @@ func rebuildVkCmdDebugMarkerInsertEXT(
 	ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	d *VkCmdDebugMarkerInsertEXTArgs) (func(), api.Cmd, error) {
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
@@ -1285,103 +1332,104 @@ func GetCommandFunction(cr CommandReference) interface{} {
 func AddCommand(ctx context.Context,
 	cb CommandBuilder,
 	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
 	s *api.GlobalState,
 	rebuildInfo interface{}) (func(), api.Cmd, error) {
 	switch t := rebuildInfo.(type) {
 	case *VkCmdBeginRenderPassArgs:
-		return rebuildVkCmdBeginRenderPass(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdBeginRenderPass(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdEndRenderPassArgs:
-		return rebuildVkCmdEndRenderPass(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdEndRenderPass(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdNextSubpassArgs:
-		return rebuildVkCmdNextSubpass(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdNextSubpass(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdBindPipelineArgs:
-		return rebuildVkCmdBindPipeline(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdBindPipeline(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdBindDescriptorSetsArgs:
-		return rebuildVkCmdBindDescriptorSets(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdBindDescriptorSets(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdBindVertexBuffersArgs:
-		return rebuildVkCmdBindVertexBuffers(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdBindVertexBuffers(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdBindIndexBufferArgs:
-		return rebuildVkCmdBindIndexBuffer(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdBindIndexBuffer(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdPipelineBarrierArgs:
-		return rebuildVkCmdPipelineBarrier(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdPipelineBarrier(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdWaitEventsArgs:
-		return rebuildVkCmdWaitEvents(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdWaitEvents(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdBeginQueryArgs:
-		return rebuildVkCmdBeginQuery(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdBeginQuery(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdBlitImageArgs:
-		return rebuildVkCmdBlitImage(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdBlitImage(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdClearAttachmentsArgs:
-		return rebuildVkCmdClearAttachments(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdClearAttachments(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdClearColorImageArgs:
-		return rebuildVkCmdClearColorImage(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdClearColorImage(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdClearDepthStencilImageArgs:
-		return rebuildVkCmdClearDepthStencilImage(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdClearDepthStencilImage(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdCopyBufferArgs:
-		return rebuildVkCmdCopyBuffer(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdCopyBuffer(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdCopyBufferToImageArgs:
-		return rebuildVkCmdCopyBufferToImage(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdCopyBufferToImage(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdCopyImageArgs:
-		return rebuildVkCmdCopyImage(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdCopyImage(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdCopyImageToBufferArgs:
-		return rebuildVkCmdCopyImageToBuffer(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdCopyImageToBuffer(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdCopyQueryPoolResultsArgs:
-		return rebuildVkCmdCopyQueryPoolResults(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdCopyQueryPoolResults(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDispatchArgs:
-		return rebuildVkCmdDispatch(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDispatch(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDispatchIndirectArgs:
-		return rebuildVkCmdDispatchIndirect(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDispatchIndirect(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDrawArgs:
-		return rebuildVkCmdDraw(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDraw(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDrawIndexedArgs:
-		return rebuildVkCmdDrawIndexed(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDrawIndexed(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDrawIndexedIndirectArgs:
-		return rebuildVkCmdDrawIndexedIndirect(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDrawIndexedIndirect(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDrawIndirectArgs:
-		return rebuildVkCmdDrawIndirect(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDrawIndirect(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdEndQueryArgs:
-		return rebuildVkCmdEndQuery(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdEndQuery(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdExecuteCommandsArgs:
-		return rebuildVkCmdExecuteCommands(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdExecuteCommands(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdFillBufferArgs:
-		return rebuildVkCmdFillBuffer(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdFillBuffer(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdPushConstantsArgs:
-		return rebuildVkCmdPushConstants(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdPushConstants(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdResetQueryPoolArgs:
-		return rebuildVkCmdResetQueryPool(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdResetQueryPool(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdResolveImageArgs:
-		return rebuildVkCmdResolveImage(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdResolveImage(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetBlendConstantsArgs:
-		return rebuildVkCmdSetBlendConstants(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetBlendConstants(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetDepthBiasArgs:
-		return rebuildVkCmdSetDepthBias(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetDepthBias(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetDepthBoundsArgs:
-		return rebuildVkCmdSetDepthBounds(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetDepthBounds(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetEventArgs:
-		return rebuildVkCmdSetEvent(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetEvent(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdResetEventArgs:
-		return rebuildVkCmdResetEvent(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdResetEvent(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetLineWidthArgs:
-		return rebuildVkCmdSetLineWidth(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetLineWidth(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetScissorArgs:
-		return rebuildVkCmdSetScissor(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetScissor(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetStencilCompareMaskArgs:
-		return rebuildVkCmdSetStencilCompareMask(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetStencilCompareMask(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetStencilReferenceArgs:
-		return rebuildVkCmdSetStencilReference(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetStencilReference(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetStencilWriteMaskArgs:
-		return rebuildVkCmdSetStencilWriteMask(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetStencilWriteMask(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdSetViewportArgs:
-		return rebuildVkCmdSetViewport(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdSetViewport(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdUpdateBufferArgs:
-		return rebuildVkCmdUpdateBuffer(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdUpdateBuffer(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdWriteTimestampArgs:
-		return rebuildVkCmdWriteTimestamp(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdWriteTimestamp(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDebugMarkerBeginEXTArgs:
-		return rebuildVkCmdDebugMarkerBeginEXT(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDebugMarkerBeginEXT(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDebugMarkerEndEXTArgs:
-		return rebuildVkCmdDebugMarkerEndEXT(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDebugMarkerEndEXT(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDebugMarkerInsertEXTArgs:
-		return rebuildVkCmdDebugMarkerInsertEXT(ctx, cb, commandBuffer, s, t)
+		return rebuildVkCmdDebugMarkerInsertEXT(ctx, cb, commandBuffer, r, s, t)
 
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)

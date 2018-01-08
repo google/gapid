@@ -549,10 +549,13 @@ func (sb *stateBuilder) createDevice(d *DeviceObject) {
 	reordered_queue_creates := map[uint32]VkDeviceQueueCreateInfo{}
 	i := uint32(0)
 	for k, v := range queue_create {
+		log.E(sb.ctx, "Initial queue_creates %+v", queue_priorities[k])
 		v.PQueuePriorities = NewF32ᶜᵖ(sb.MustAllocReadData(queue_priorities[k]).Ptr())
 		reordered_queue_creates[i] = v
 		i++
 	}
+	
+	log.E(sb.ctx, "Queues %+v", reordered_queue_creates)
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice,
@@ -2561,7 +2564,7 @@ func (sb *stateBuilder) createCommandBuffer(cb *CommandBufferObject, level VkCom
 	// fill command buffer
 	for i := uint32(0); i < uint32(len(*cb.CommandReferences.Map)); i++ {
 		arg := GetCommandArgs(sb.ctx, cb.CommandReferences.Get(i), GetState(sb.oldState))
-		cleanup, cmd, err := AddCommand(sb.ctx, sb.cb, cb.VulkanHandle, sb.newState, arg)
+		cleanup, cmd, err := AddCommand(sb.ctx, sb.cb, cb.VulkanHandle, sb.oldState, sb.newState, arg)
 		if err != nil {
 			log.W(sb.ctx, "Command Buffer %v is invalid, it will not be recorded: - %v", cb.VulkanHandle, err)
 			hasError = true
