@@ -246,7 +246,7 @@ func rebuildCommandBuffer(ctx context.Context,
 
 	for i := uint32(0); i < uint32(numCommandsToCopy); i++ {
 		cmd := commandBuffer.CommandReferences.Get(i)
-		c, a, _ := AddCommand(ctx, cb, commandBufferId, s, GetCommandArgs(ctx, cmd, GetState(s)))
+		c, a, _ := AddCommand(ctx, cb, commandBufferId, s, s, GetCommandArgs(ctx, cmd, GetState(s)))
 		x = append(x, a)
 		cleanup = append(cleanup, c)
 	}
@@ -273,7 +273,7 @@ func rebuildCommandBuffer(ctx context.Context,
 			cleanup = append(cleanup, extraCleanup...)
 			for sci := uint32(0); sci < uint32(numSecondaryCommandsToCopy); sci++ {
 				secCmd := GetState(s).CommandBuffers.Get(lastSecCmdBuf).CommandReferences.Get(sci)
-				newCleanups, newSecCmds, _ := AddCommand(ctx, cb, newSecCmdBuf, s, GetCommandArgs(ctx, secCmd, GetState(s)))
+				newCleanups, newSecCmds, _ := AddCommand(ctx, cb, newSecCmdBuf, s, s, GetCommandArgs(ctx, secCmd, GetState(s)))
 				x = append(x, newSecCmds)
 				cleanup = append(cleanup, newCleanups)
 			}
@@ -281,13 +281,13 @@ func rebuildCommandBuffer(ctx context.Context,
 			newCmdExecuteCommandsData.CommandBuffers.Set(uint32(idx[1]), newSecCmdBuf)
 		}
 		cleanupNewExecSecCmds, newExecSecCmds, _ := AddCommand(
-			ctx, cb, commandBufferId, s, newCmdExecuteCommandsData)
+			ctx, cb, commandBufferId, s, s, newCmdExecuteCommandsData)
 		cleanup = append(cleanup, cleanupNewExecSecCmds)
 		x = append(x, newExecSecCmds)
 	}
 
 	for i := range additionalCommands {
-		c, a, _ := AddCommand(ctx, cb, commandBufferId, s, additionalCommands[i])
+		c, a, _ := AddCommand(ctx, cb, commandBufferId, s, s, additionalCommands[i])
 		x = append(x, a)
 		cleanup = append(cleanup, c)
 	}
