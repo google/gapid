@@ -16,5 +16,5 @@
 
 package host
 
-// #cgo LDFLAGS: -lopengl32 -lgdi32
+// #cgo LDFLAGS: -lgdi32
 import "C"

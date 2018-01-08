@@ -16,6 +16,8 @@
 
 #include "../query.h"
 
+#include "core/cc/get_gles_proc_address.h"
+
 #include <windows.h>
 #include <wingdi.h>
 #include <GL/gl.h>
@@ -41,6 +43,10 @@ WNDCLASS registerWindowClass() {
 
 namespace query {
 
+typedef HGLRC (CALLBACK* pfn_wglCreateContext)(HDC);
+typedef BOOL (CALLBACK* pfn_wglMakeCurrent)(HDC, HGLRC);
+typedef BOOL (CALLBACK* pfn_wglDeleteContext)(HGLRC);
+
 struct Context {
     char mError[512];
     HWND mWnd;
@@ -50,6 +56,10 @@ struct Context {
     char mHostName[MAX_COMPUTERNAME_LENGTH*4+1]; // Stored as UTF-8
     OSVERSIONINFOEX mOsVersion;
     const char* mOsName;
+
+    pfn_wglCreateContext wglCreateContext;
+    pfn_wglMakeCurrent wglMakeCurrent;
+    pfn_wglDeleteContext wglDeleteContext;
 };
 
 static Context gContext;
@@ -64,14 +74,26 @@ void destroyContext() {
         DestroyWindow(gContext.mWnd);
     }
     if (gContext.mCtx != nullptr) {
-        wglMakeCurrent(gContext.mHDC, 0);
-        wglDeleteContext(gContext.mCtx);
+        gContext.wglMakeCurrent(gContext.mHDC, 0);
+        gContext.wglDeleteContext(gContext.mCtx);
     }
 }
 
 bool createContext(void* platform_data) {
     if (gContextRefCount++ > 0) {
         return true;
+    }
+
+    gContext.wglCreateContext = (pfn_wglCreateContext)core::GetGlesProcAddress("wglCreateContext", true);
+    gContext.wglMakeCurrent = (pfn_wglMakeCurrent)core::GetGlesProcAddress("wglMakeCurrent", true);
+    gContext.wglDeleteContext = (pfn_wglDeleteContext)core::GetGlesProcAddress("wglDeleteContext", true);
+
+    if (gContext.wglCreateContext == nullptr ||
+            gContext.wglMakeCurrent == nullptr ||
+            gContext.wglDeleteContext == nullptr) {
+        snprintf(gContext.mError, sizeof(gContext.mError),
+                "Failed to load wgl functions: %d", GetLastError());
+        return false;
     }
 
     WNDCLASS wc = registerWindowClass();
@@ -97,14 +119,14 @@ bool createContext(void* platform_data) {
     pfd.iLayerType = PFD_MAIN_PLANE;
     gContext.mHDC = GetDC(gContext.mWnd);
     SetPixelFormat(gContext.mHDC, ChoosePixelFormat(gContext.mHDC, &pfd), &pfd);
-    gContext.mCtx = wglCreateContext(gContext.mHDC);
+    gContext.mCtx = gContext.wglCreateContext(gContext.mHDC);
     if (gContext.mCtx == nullptr) {
         snprintf(gContext.mError, sizeof(gContext.mError),
                  "wglCreateContext returned error: %d", GetLastError());
         destroyContext();
         return false;
     }
-    wglMakeCurrent(gContext.mHDC, gContext.mCtx);
+    gContext.wglMakeCurrent(gContext.mHDC, gContext.mCtx);
 
     gContext.mOsVersion.dwOSVersionInfoSize = sizeof(gContext.mOsVersion);
     GetVersionEx((OSVERSIONINFO*)(&gContext.mOsVersion));
