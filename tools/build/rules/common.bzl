@@ -14,7 +14,7 @@ generate = rule(
 )
 
 def _copy(ctx, src, dst):
-    ctx.action(
+    ctx.actions.run_shell(
         command = "cp \"" + src.path + "\" \"" + dst.path + "\"",
         inputs = [src],
         outputs = [dst]

@@ -5,12 +5,14 @@ def _filehash_impl(ctx):
         "-out", ctx.outputs.out.path,
     ]
     args += [f.path for f in ctx.files.srcs]
-    ctx.action(
-        inputs=ctx.files.srcs + [ctx.file.template],
-        outputs=[ctx.outputs.out],
-        arguments=args,
-        progress_message="Hashing files into %s" % ctx.outputs.out.short_path,
-        executable=ctx.executable._filehash)
+    ctx.actions.run(
+        inputs = ctx.files.srcs + [ctx.file.template],
+        outputs = [ctx.outputs.out],
+        arguments = args,
+        progress_message = "Hashing files into %s" % ctx.outputs.out.short_path,
+        executable = ctx.executable._filehash,
+        use_default_shell_env = True,
+    )
 
 filehash = rule(
     _filehash_impl,

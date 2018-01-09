@@ -7,10 +7,10 @@ def _extract_impl(ctx):
         out = ctx.new_file(ctx.bin_dir, base + entry)
         to =  out.path[:-len(entry)]
         outs += [out]
-        ctx.action(
-            inputs=[ctx.file.zip],
-            outputs=[out],
-            command=["unzip", "-d", to, ctx.file.zip.path, entry],
+        ctx.actions.run_shell(
+            inputs = [ctx.file.zip],
+            outputs = [out],
+            command = "unzip -d {} {} {}".format(to, ctx.file.zip.path, entry),
         )
     return struct(
         files = outs

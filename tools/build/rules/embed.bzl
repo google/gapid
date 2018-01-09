@@ -6,12 +6,13 @@ def _embed_impl(ctx):
     if ctx.attr.root:
         args += ["--root", ctx.attr.root]
     args += [f.path for f in ctx.files.srcs]
-    ctx.action(
-        inputs=ctx.files.srcs,
-        outputs=[out],
-        arguments=args,
-        progress_message="Embedding into %s" % out.short_path,
-        executable=ctx.executable._embedder,
+    ctx.actions.run(
+        inputs = ctx.files.srcs,
+        outputs = [out],
+        arguments = args,
+        progress_message = "Embedding into %s" % out.short_path,
+        executable = ctx.executable._embedder,
+        use_default_shell_env = True,
     )
     return [DefaultInfo(files = depset([out]))]
 
