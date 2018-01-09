@@ -16,12 +16,15 @@ limitations under the License.
 Windows Build Script.
 
 :start
-SET BUILD_ROOT=%cd%
-SET SRC=%cd%\github\src\github.com\google\gapid
+set BUILD_ROOT=%cd%
+set SRC=%cd%\github\src\github.com\google\gapid
+
+REM Use a fixed JDK.
+set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_144
 
 REM Install the Android SDK components and NDK.
 set ANDROID_SDK_HOME=%LOCALAPPDATA%\Android\Sdk
-echo y | %ANDROID_SDK_HOME%\tools\android.bat update sdk -u -a --filter build-tools-21.1.2,android-21
+echo y | %ANDROID_SDK_HOME%\tools\bin\sdkmanager build-tools\;21.1.2 platforms\;android-21
 wget -q https://dl.google.com/android/repository/android-ndk-r15b-windows-x86_64.zip
 unzip -q android-ndk-r15b-windows-x86_64.zip
 
