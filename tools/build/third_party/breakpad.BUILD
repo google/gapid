@@ -105,14 +105,14 @@ cc_library(
         # Android.
         "//conditions:default": [],
     }),
-    defines = cc_defines() + select({
+    defines = cc_defines(),
+    copts = cc_copts() + select({
         "@//tools/build:linux": [],
         "@//tools/build:darwin": [],
-        "@//tools/build:windows": ["_UNICODE", "UNICODE"],
+        "@//tools/build:windows": ["-D_UNICODE", "-DUNICODE"],
         # Android.
-        "//conditions:default": ["__STDC_FORMAT_MACROS"],
+        "//conditions:default": ["-D__STDC_FORMAT_MACROS"],
     }),
-    copts = cc_copts(),
     visibility = ["//visibility:public"],
 )
 
