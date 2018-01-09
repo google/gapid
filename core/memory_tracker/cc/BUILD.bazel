@@ -7,10 +7,10 @@ cc_library(
     ], exclude = [
         "*_test.cpp",
     ]),
-    hdrs = glob([
-        "**/*.h",
-        "**/*.inl",
-    ]),
+    hdrs = glob(["*.h"]) + select({
+        "//tools/build:windows": glob(["windows/*.h", "windows/*.inl"]),
+        "//conditions:default": glob(["posix/*.h", "posix/*.inl"]),
+    }),
     defines = cc_defines(),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
