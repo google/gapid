@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "apic", "cc_copts", "cc_defines")
+load("//tools/build:rules.bzl", "apic", "cc_copts", "cc_defines", "cc_dynamic_library")
 
 apic(
     name = "gles",
@@ -69,7 +69,7 @@ cc_library(
 )
 
 cc_library(
-    name = "gapii",
+    name = "cc",
     srcs = glob([
         "*.cpp",
     ], exclude = [
@@ -94,5 +94,11 @@ cc_library(
         "//tools/build:windows": [],
         "//conditions:default": ["-lEGL", "-llog", "-lm"],
     }),
+    visibility = ["//visibility:public"],
+)
+
+cc_dynamic_library(
+    name = "libgapii",
+    deps = [":cc"],
     visibility = ["//visibility:public"],
 )

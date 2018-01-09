@@ -1,7 +1,7 @@
 load("//tools/build:rules.bzl", "cc_copts", "cc_defines")
 
 cc_library(
-    name = "interceptor",
+    name = "cc",
     tags = ["manual"],
     srcs = glob([
         "lib/*.cc",

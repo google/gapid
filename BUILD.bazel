@@ -52,25 +52,15 @@ copy_to(
 copy_to(
     name = "install-pkg-lib",
     srcs = [
-        "//core/vulkan/vk_virtual_swapchain/cc:cc",
+        "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
         "//core/vulkan/vk_virtual_swapchain/cc:json",
         "//gapic:gapic_deploy.jar",
+        "//gapii/cc:libgapii",
         "//gapii/vulkan/vk_graphics_spy/cc:json",
-        "//gapii/cc:gapii",
     ],
-    extensions = ["jar", "json", "so"],
-    # Unfortunatly, no dict concatination support.
-    rename = select({
-        "//tools/build:darwin": {
-            "gapic_deploy.jar": "gapic.jar",
-            "libgapii.so": "libgapii.dylib",
-            "libcc.so": "libVkLayer_VirtualSwapchain.dylib",
-        },
-        "//conditions:default": {
-            "gapic_deploy.jar": "gapic.jar",
-            "libcc.so": "libVkLayer_VirtualSwapchain.so",
-        }
-    }),
+    rename = {
+         "gapic_deploy.jar": "gapic.jar",
+    },
     to = "pkg/lib",
 )
 
