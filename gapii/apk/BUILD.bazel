@@ -2,13 +2,13 @@ load("//tools/build:rules.bzl", "android_native")
 
 android_native(
     name = "gapii",
-    deps = ["//gapii/cc:gapii"],
+    deps = ["//gapii/cc:cc"],
     visibility = ["//visibility:public"],
 )
 
 android_native(
     name = "interceptor",
-    deps = ["//gapii/interceptor-lib/cc:interceptor"],
+    deps = ["//gapii/interceptor-lib/cc:cc"],
     visibility = ["//visibility:public"],
 )
 
