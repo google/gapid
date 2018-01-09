@@ -18,7 +18,7 @@
 // File: vk_platform.h
 //
 /*
-** Copyright (c) 2014-2015 The Khronos Group Inc.
+** Copyright (c) 2014-2017 The Khronos Group Inc.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ extern "C"
     #define VKAPI_PTR  VKAPI_CALL
 #elif defined(__ANDROID__) && defined(__ARM_ARCH) && __ARM_ARCH < 7
     #error "Vulkan isn't supported for the 'armeabi' NDK ABI"
-#elif defined(__ANDROID__) && __ARM_ARCH >= 7 && __ARM_32BIT_STATE
+#elif defined(__ANDROID__) && defined(__ARM_ARCH) && __ARM_ARCH >= 7 && defined(__ARM_32BIT_STATE)
     // On Android 32-bit ARM targets, Vulkan functions use the "hardfloat"
     // calling convention, i.e. float parameters are passed in registers. This
     // is true even if the rest of the application passes floats on the stack,
@@ -109,40 +109,28 @@ extern "C"
 // These are enabled prior to #including "vulkan.h". The same enable then
 // controls inclusion of the extension interfaces in vulkan.h.
 
-// The includes were removed in favour of manually defining what is needed
 #ifdef VK_USE_PLATFORM_ANDROID_KHR
-//#include <android/native_window.h>
-struct ANativeWindow;
-typedef void* buffer_handle_t;
+#include <android/native_window.h>
 #endif
 
 #ifdef VK_USE_PLATFORM_MIR_KHR
-//#include <mir_toolkit/client_types.h>
+#include <mir_toolkit/client_types.h>
 #endif
 
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-//#include <wayland-client.h>
+#include <wayland-client.h>
 #endif
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-//#include <windows.h>
-typedef void* HINSTANCE;
-typedef void* HWND;
+#include <windows.h>
 #endif
 
 #ifdef VK_USE_PLATFORM_XLIB_KHR
-//#include <X11/Xlib.h>
-struct Display;
-typedef size_t Window;
-typedef size_t VisualID;
+#include <X11/Xlib.h>
 #endif
 
-
 #ifdef VK_USE_PLATFORM_XCB_KHR
-//#include <xcb/xcb.h>
-struct xcb_connection_t;
-typedef uint32_t xcb_window_t;
-typedef uint32_t xcb_visualid_t;
+#include <xcb/xcb.h>
 #endif
 
 #endif
