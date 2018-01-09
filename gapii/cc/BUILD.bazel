@@ -57,6 +57,7 @@ cc_library(
     deps = [
         "//core/cc",
         "//core/memory_tracker/cc",
+        "//core/os/device/deviceinfo/cc",
         "//gapis/api:api_cc_proto",
         "//gapis/capture:capture_cc_proto",
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
@@ -84,7 +85,6 @@ cc_library(
     deps = [
         ":api_lib",
         "//core/cc",
-        "//core/os/device/deviceinfo/cc",
         "//gapis/api/gles/gles_pb:gles_pb_cc_proto",
     ],
     copts = cc_copts(),
