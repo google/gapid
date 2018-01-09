@@ -105,6 +105,7 @@ cc_library(
         "//tools/build:linux": [],
         "//tools/build:darwin": [":osx_opengl_framework"],
         "//tools/build:windows": [":windows_opengl32"] + glob(["windows/*.cpp", "windows/*.h"]),
+        # Android
         "//conditions:default": glob(["android/*.cpp", "android/*.h"]),
     }),
     hdrs = [":headers"],
