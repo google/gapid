@@ -1,11 +1,12 @@
 def _lingo_impl(ctx):
     outs = [ctx.new_file(src.basename[:-6]+".go") for src in ctx.files.srcs]
-    ctx.action(
-        inputs=ctx.files.srcs,
-        outputs=outs,
-        arguments=["-base", outs[0].dirname] + [f.path for f in ctx.files.srcs],
-        progress_message="Lingo",
-        executable=ctx.executable._lingo,
+    ctx.actions.run(
+        inputs = ctx.files.srcs,
+        outputs = outs,
+        arguments = ["-base", outs[0].dirname] + [f.path for f in ctx.files.srcs],
+        progress_message = "Lingo",
+        executable = ctx.executable._lingo,
+        use_default_shell_env = True,
     )
     return [
         DefaultInfo(

@@ -38,12 +38,14 @@ def _tablegen_impl(ctx):
         "-o", ctx.outputs.generate.path,
         ctx.file.table.path,
     ]
-    ctx.action(
-        inputs=[ctx.file.table] + ctx.files.deps,
-        outputs=[ctx.outputs.generate],
-        arguments=args,
-        progress_message="Table gen into %s" % ctx.outputs.generate,
-        executable=ctx.executable._tblgen)
+    ctx.actions.run(
+        inputs = [ctx.file.table] + ctx.files.deps,
+        outputs = [ctx.outputs.generate],
+        arguments = args,
+        progress_message = "Table gen into %s" % ctx.outputs.generate,
+        executable = ctx.executable._tblgen,
+        use_default_shell_env = True,
+    )
 
 llvm_tablegen = rule(
     _tablegen_impl,

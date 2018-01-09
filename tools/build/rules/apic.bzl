@@ -23,7 +23,7 @@ def _apic_impl(ctx):
         templatelist = template.uses.to_list()
         outputs = [ctx.new_file(out.format(api=apiname)) for out in template.outputs]
         generated += outputs
-        ctx.action(
+        ctx.actions.run(
             inputs = apilist + templatelist,
             outputs = outputs,
             arguments = [
@@ -35,7 +35,8 @@ def _apic_impl(ctx):
             ],
             mnemonic = "apic",
             progress_message = "apic " + api.main.short_path + " with " + template.main.short_path,
-            executable = ctx.executable._apic
+            executable = ctx.executable._apic,
+            use_default_shell_env = True,
         )
     go_srcs.extend([f for f in generated if f.basename.endswith(".go")])
     library = go.new_library(go, srcs=go_srcs, resolver=_apic_library_to_source)

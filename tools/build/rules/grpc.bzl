@@ -29,7 +29,7 @@ def _gensource_impl(ctx):
     srcs = [f for dep in ctx.attr.srcs for f in dep.proto.direct_sources]
     includes = [f for dep in ctx.attr.srcs for f in dep.proto.transitive_imports]
 
-    ctx.action(
+    ctx.actions.run(
         inputs = [ctx.executable._java_plugin] + srcs + includes,
         outputs = [srcdotjar],
         executable = ctx.executable._protoc,
@@ -38,12 +38,15 @@ def _gensource_impl(ctx):
             "--grpc-java_out=" + srcdotjar.path
         ] + [
             "-I{0}={1}".format(_path_ignoring_repository(include), include.path) for include in includes
-        ] + [src.short_path for src in srcs])
+        ] + [src.short_path for src in srcs],
+        use_default_shell_env = True,
+    )
 
-    ctx.action(
+    ctx.actions.run_shell(
         command = "cp \"" + srcdotjar.path + "\" \"" + ctx.outputs.srcjar.path + "\"",
         inputs = [srcdotjar],
-        outputs = [ctx.outputs.srcjar])
+        outputs = [ctx.outputs.srcjar],
+    )
 
 _gensource = rule(
     attrs = {
