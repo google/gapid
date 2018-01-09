@@ -7,7 +7,9 @@ apic(
         "//gapis/api/templates:api_imports.h",
         "//gapis/api/templates:api_spy.h",
         "//gapis/api/templates:api_spy.cpp",
+        "//gapis/api/templates:api_spy_serialize.cpp",
         "//gapis/api/templates:api_types.h",
+        "//gapis/api/templates:api_types.cpp",
         "//gapis/api/gles/templates:api_exports.cpp",
         "//gapis/api/gles/templates:api_imports.cpp",
     ]
@@ -20,7 +22,9 @@ apic(
         "//gapis/api/templates:api_imports.h",
         "//gapis/api/templates:api_spy.h",
         "//gapis/api/templates:api_spy.cpp",
+        "//gapis/api/templates:api_spy_serialize.cpp",
         "//gapis/api/templates:api_types.h",
+        "//gapis/api/templates:api_types.cpp",
         "//gapis/api/vulkan/templates:api_exports.cpp",
         "//gapis/api/vulkan/templates:api_imports.cpp",
         "//gapis/api/vulkan/templates:vk_spy_helpers.cpp",
@@ -34,11 +38,31 @@ apic(
         "//gapis/api/templates:api_imports.h",
         "//gapis/api/templates:api_spy.h",
         "//gapis/api/templates:api_spy.cpp",
+        "//gapis/api/templates:api_spy_serialize.cpp",
         "//gapis/api/templates:api_types.h",
+        "//gapis/api/templates:api_types.cpp",
         "//gapis/api/gvr/templates:api_exports.cpp",
         "//gapis/api/gvr/templates:api_exports.h",
         "//gapis/api/gvr/templates:api_imports.cpp",
     ]
+)
+
+apic(
+    name = "osx_opengl_framework",
+    api = "//gapis/api/gles:api",
+    templates = [
+        "//gapis/api/templates:opengl_framework_exports.cpp",
+    ],
+)
+
+apic(
+    name = "windows_opengl32",
+    api = "//gapis/api/gles:api",
+    templates = [
+        "//gapis/api/templates:opengl32_resolve.cpp",
+        #TODO "//gapis/api/templates:opengl32_exports.def"
+        #TODO "//gapis/api/templates:opengl32_x64.asm",
+    ],
 )
 
 filegroup(
@@ -59,6 +83,9 @@ cc_library(
         "//core/memory_tracker/cc",
         "//core/os/device/deviceinfo/cc",
         "//gapis/api:api_cc_proto",
+        "//gapis/api/gles/gles_pb:gles_pb_cc_proto",
+        "//gapis/api/gvr/gvr_pb:gvr_pb_cc_proto",
+        "//gapis/api/vulkan/vulkan_pb:vulkan_pb_cc_proto",
         "//gapis/capture:capture_cc_proto",
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
         "@com_google_protobuf//:protobuf"
@@ -75,9 +102,9 @@ cc_library(
     ], exclude = [
         "*_test.cpp",
     ]) + select({
-        "//tools/build:linux": glob(["linux/*.cpp"]),
-        "//tools/build:darwin": ["//gapii/cc/osx:generated"],
-        "//tools/build:windows": ["//gapii/cc/windows:srcs"],
+        "//tools/build:linux": [],
+        "//tools/build:darwin": [":osx_opengl_framework"],
+        "//tools/build:windows": [":windows_opengl32"] + glob(["windows/*.cpp", "windows/*.h"]),
         "//conditions:default": glob(["android/*.cpp", "android/*.h"]),
     }),
     hdrs = [":headers"],
