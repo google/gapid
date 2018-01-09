@@ -34,7 +34,6 @@ cc_library(
     hdrs = [":gles", ":vulkan", ":headers"],
     deps = [
         "//core/cc",
-        "//core/vulkan/vk_virtual_swapchain/cc",
     ],
     include_prefix = "gapir/cc",
     defines = cc_defines(),
