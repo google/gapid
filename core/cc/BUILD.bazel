@@ -17,10 +17,10 @@ cc_library(
     ], exclude = [
         "*_test.cpp",
     ]) + select({
-        "//tools/build:linux": glob(["linux/*.cpp"]),
-        "//tools/build:darwin": glob(["osx/*.cpp"]),
+        "//tools/build:linux": glob(["linux/*.cpp", "posix/*.cpp"]),
+        "//tools/build:darwin": glob(["osx/*.cpp", "posix/*.cpp"]),
         "//tools/build:windows": glob(["windows/*.cpp"]),
-        "//conditions:default": glob(["android/*.cpp", "android/*.h"]),
+        "//conditions:default": glob(["android/*.cpp", "android/*.h", "posix/*.cpp"]),
     }),
     defines = cc_defines(),
     copts = cc_copts(),

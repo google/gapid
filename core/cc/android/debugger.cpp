@@ -20,6 +20,10 @@ static volatile bool gIsDebuggerAttached = false;
 
 namespace core {
 
+void Debugger::waitForAttach() {
+    while (!isAttached()) {}
+}
+
 bool Debugger::isAttached() {
     return gIsDebuggerAttached;
 }

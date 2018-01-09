@@ -15,7 +15,7 @@
  */
 
 #include "wgl.h"
-#include "../gles_types.h"
+#include "gapii/cc/gles_types.h"
 
 #include <windows.h>
 
