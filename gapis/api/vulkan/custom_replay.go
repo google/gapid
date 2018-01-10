@@ -306,27 +306,25 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 		newCreateInfoData := s.AllocDataOrPanic(ctx, createInfo)
 		allocated = append(allocated, &newCreateInfoData)
 		createInfoPtr = NewVkDeviceCreateInfoᶜᵖ(newCreateInfoData.Ptr())
-	}
 
-	cb := CommandBuilder{Thread: a.thread}
-	hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice, createInfoPtr, a.PAllocator, a.PDevice, a.Result)
-	hijack.Extras().MustClone(a.Extras().All()...)
-
-	if b != nil {
+		cb := CommandBuilder{Thread: a.thread}
+		hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice, createInfoPtr, a.PAllocator, a.PDevice, a.Result)
+		hijack.Extras().MustClone(a.Extras().All()...)
+		
 		for _, d := range allocated {
 			hijack.AddRead(d.Data())
 		}
+		
+		err := hijack.Mutate(ctx, id, s, b)
+		if err != nil {
+			return err
+		}
+		// Call the replayRegisterVkDevice() synthetic API function.
+		device := a.PDevice.MustRead(ctx, a, s, b)
+		return cb.ReplayRegisterVkDevice(a.PhysicalDevice, device, a.PCreateInfo).Mutate(ctx, id, s, b)
 	}
-
-	err := hijack.Mutate(ctx, id, s, b)
-
-	if b == nil || err != nil {
-		return err
-	}
-
-	// Call the replayRegisterVkDevice() synthetic API function.
-	device := a.PDevice.MustRead(ctx, a, s, b)
-	return cb.ReplayRegisterVkDevice(a.PhysicalDevice, device, a.PCreateInfo).Mutate(ctx, id, s, b)
+	
+	return a.mutate(ctx, id, s, b)
 }
 
 func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {

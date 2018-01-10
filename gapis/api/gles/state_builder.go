@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/compare"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
@@ -34,9 +35,10 @@ type stateBuilder struct {
 	cb       CommandBuilder   // Default command builder for thread 0
 	preCmd   []func(api.Cmd)  // Actions to be done on the next written command
 	seen     map[interface{}]bool
+	memoryIntervals interval.U64RangeList
 }
 
-func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) []api.Cmd {
+func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
 	newState := api.NewStateWithAllocator(memory.NewBasicAllocator(value.ValidMemoryRanges), oldState.MemoryLayout)
 	sb := &stateBuilder{
 		ctx:      ctx,
@@ -44,6 +46,7 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) []a
 		newState: newState,
 		cb:       CommandBuilder{Thread: 0},
 		seen:     map[interface{}]bool{},
+		memoryIntervals: interval.U64RangeList{},
 	}
 
 	// Ensure that all pool IDs are distinct between the old state and new state.
@@ -99,7 +102,7 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) []a
 		log.W(ctx, "Initial state: %v", d)
 	})
 
-	return sb.cmds
+	return sb.cmds, sb.memoryIntervals
 }
 
 func (sb *stateBuilder) E(ctx context.Context, fmt string, args ...interface{}) {
@@ -108,6 +111,8 @@ func (sb *stateBuilder) E(ctx context.Context, fmt string, args ...interface{}) 
 
 func (sb *stateBuilder) readsData(ctx context.Context, v interface{}) memory.Pointer {
 	tmp := sb.newState.AllocDataOrPanic(ctx, v)
+	rng := tmp.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
 	sb.preCmd = append(sb.preCmd, func(cmd api.Cmd) {
 		cmd.Extras().GetOrAppendObservations().AddRead(tmp.Data())
 		tmp.Free()
@@ -117,6 +122,8 @@ func (sb *stateBuilder) readsData(ctx context.Context, v interface{}) memory.Poi
 
 func (sb *stateBuilder) readsSlice(ctx context.Context, v U8ˢ) memory.Pointer {
 	tmp := sb.newState.AllocOrPanic(ctx, v.Count())
+	rng := tmp.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
 	id := v.ResourceID(ctx, sb.oldState)
 	sb.preCmd = append(sb.preCmd, func(cmd api.Cmd) {
 		cmd.Extras().GetOrAppendObservations().AddRead(tmp.Range(), id)
@@ -127,6 +134,8 @@ func (sb *stateBuilder) readsSlice(ctx context.Context, v U8ˢ) memory.Pointer {
 
 func (sb *stateBuilder) writesData(ctx context.Context, v interface{}) memory.Pointer {
 	tmp := sb.newState.AllocDataOrPanic(ctx, v)
+	rng := tmp.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
 	sb.preCmd = append(sb.preCmd, func(cmd api.Cmd) {
 		cmd.Extras().GetOrAppendObservations().AddWrite(tmp.Data())
 		tmp.Free()

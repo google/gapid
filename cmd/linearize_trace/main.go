@@ -64,8 +64,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	initialCmds := capt.GetInitialCommands(ctx)
-	_ = initialCmds
+	initialCmds, _ := capt.GetInitialCommands(ctx)
 
 	log.I(ctx, "Generated %v initial commands", len(initialCmds))
 

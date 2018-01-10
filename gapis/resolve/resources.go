@@ -50,8 +50,10 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
+	// If the capture contains initial state, build the necessary commands to recreate it.
+	initialCmds, rnges := c.GetInitialCommands(ctx)
 
-	state := c.NewUninitializedState(ctx)
+	state := c.NewUninitializedState(ctx, rnges)
 	state.OnResourceCreated = func(r api.Resource) {
 		currentCmdResourceCount++
 		seen[r] = len(seen)
@@ -70,8 +72,6 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		}
 	}
 
-	// If the capture contains initial state, build the necessary commands to recreate it.
-	initialCmds := c.GetInitialCommands(ctx)
 	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, state, nil); err != nil {
 			log.W(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)

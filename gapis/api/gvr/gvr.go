@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/api/sync"
@@ -38,7 +39,9 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 
 func (*State) SetupInitialState(ctx context.Context) {}
 
-func (*State) RebuildState(ctx context.Context, s *api.GlobalState) []api.Cmd { return nil }
+func (*State) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
+	return nil, nil
+}
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil

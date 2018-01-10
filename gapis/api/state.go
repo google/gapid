@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -80,7 +81,9 @@ type State interface {
 
 	// RebuildState returns a set of commands which, if executed
 	// on a clean new state, will reproduce the current state.
-	RebuildState(ctx context.Context, s *GlobalState) []Cmd
+	// The segments of memory that were used to create these commands
+	// are returned in the rangeList.
+	RebuildState(ctx context.Context, s *GlobalState) ([]Cmd, interval.U64RangeList)
 }
 
 // NewStateWithEmptyAllocator returns a new, default-initialized State object,

@@ -209,7 +209,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 	cmds := c.Commands
 	// If the capture contains initial state, prepend the commands to build the state.
-	initialCmds := c.GetInitialCommands(ctx)
+	initialCmds, ranges := c.GetInitialCommands(ctx)
 	numInitialCmds := len(initialCmds)
 	if len(initialCmds) > 0 {
 		cmds = append(initialCmds, cmds...)
@@ -219,7 +219,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	ft := NewFootprint(ctx, cmds, numInitialCmds)
 
-	s := c.NewUninitializedState(ctx)
+	s := c.NewUninitializedState(ctx, ranges)
 	t0 := footprintBuildCounter.Start()
 	defer footprintBuildCounter.Stop(t0)
 	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
