@@ -18,7 +18,7 @@ package config
 const (
 	DebugReplay                = false
 	DebugReplayBuilder         = false
-	DisableDeadCodeElimination = true
+	DisableDeadCodeElimination = false
 	DebugDeadCodeElimination   = false
 	LogExtrasInTransforms      = false // Logs all atoms' extras together with transforms
 	LogMemoryInExtras          = false // Logs all atoms' read/write memory observation together with extras
