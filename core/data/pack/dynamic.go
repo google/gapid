@@ -49,10 +49,10 @@ func (d Dynamic) Format(f fmt.State, r rune) {
 		fields := []string{}
 		for n, v := range d.Fields {
 			suffix := ""
-			/*if bytes, ok := v.([]byte); ok && len(bytes) > 32 {
+			if bytes, ok := v.([]byte); ok && len(bytes) > 32 {
 				suffix = fmt.Sprintf(" (truncated %v bytes)", len(bytes))
 				v = bytes[:32]
-			}*/
+			}
 			if f.Flag('+') {
 				fields = append(fields, fmt.Sprintf("%v: %+v%v", n, v, suffix))
 			} else {
