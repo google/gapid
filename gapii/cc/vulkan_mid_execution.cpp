@@ -273,6 +273,13 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder* group, std::unordered_set<uint32_
       auto& device_functions = mImports.mVkDeviceFunctions[device.second->mVulkanHandle];
       device_functions.vkDeviceWaitIdle(device.second->mVulkanHandle);
 
+      // Prep fences
+      for (auto& fence: Fences) {
+        if (fence.second->mDevice == device.second->mVulkanHandle) {;
+          fence.second->mSignaled = (device_functions.vkGetFenceStatus(device.second->mVulkanHandle, fence.second->mVulkanHandle) == VkResult::VK_SUCCESS);
+        }
+      }
+
       VkBuffer buffer;
       VkBufferCreateInfo create_info {
         VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
