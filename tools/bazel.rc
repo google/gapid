@@ -22,3 +22,6 @@ build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer
 # Without this, bazel wraps each cc_library with "--whole-archive" flags for the
 # linker when building the dynamic library, which leads to over-bloated libs.
 build --nolegacy_whole_archive
+
+# Windows mingw build config
+build:mingw --crosstool_top=//tools/build/mingw_toolchain:toolchain --cpu x64_windows --host_cpu x64_windows --compiler mingw
