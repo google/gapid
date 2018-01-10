@@ -69,8 +69,9 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	if err != nil {
 		return nil, err
 	}
+	initialCmds, ranges := capture.GetInitialCommands(ctx)
 
-	state := capture.NewUninitializedState(ctx)
+	state := capture.NewUninitializedState(ctx, ranges)
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
 	idMap := api.ResourceMap{}
@@ -84,7 +85,6 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 		resources[i] = r
 	}
 
-	initialCmds := capture.GetInitialCommands(ctx)
 	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, state, nil); err != nil {
 			log.W(ctx, "Get resources at %v: Initial cmd [%v]%v - %v", p.Indices, id, cmd, err)

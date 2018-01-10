@@ -18,33 +18,35 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
-	"github.com/google/gapid/gapis/replay/value"
 )
 
 type stateBuilder struct {
-	ctx           context.Context
-	s             *State
-	oldState      *api.GlobalState
-	newState      *api.GlobalState
-	cmds          []api.Cmd
-	cb            CommandBuilder
-	readMemories  []*api.AllocResult
-	writeMemories []*api.AllocResult
+	ctx             context.Context
+	s               *State
+	oldState        *api.GlobalState
+	newState        *api.GlobalState
+	cmds            []api.Cmd
+	cb              CommandBuilder
+	readMemories    []*api.AllocResult
+	writeMemories   []*api.AllocResult
+	memoryIntervals interval.U64RangeList
 }
 
 // TODO: wherever possible, use old resources instead of doing full reads on the old pools.
 //       This is especially useful for things that are internal pools, (Shader words for example)
-func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) []api.Cmd {
+func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
 	// TODO: Debug Info
-	newState := api.NewStateWithAllocator(memory.NewBasicAllocator(value.ValidMemoryRanges), oldState.MemoryLayout)
+	newState := api.NewStateWithAllocator(memory.NewBasicAllocator(oldState.Allocator.FreeList()), oldState.MemoryLayout)
 	sb := &stateBuilder{
-		ctx:      ctx,
-		s:        s,
-		oldState: oldState,
-		newState: newState,
-		cb:       CommandBuilder{Thread: 0},
+		ctx:             ctx,
+		s:               s,
+		oldState:        oldState,
+		newState:        newState,
+		cb:              CommandBuilder{Thread: 0},
+		memoryIntervals: interval.U64RangeList{},
 	}
 	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID())
 
@@ -166,7 +168,7 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) []a
 		sb.createCommandBuffer(s.CommandBuffers.Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
 	}
 
-	return sb.cmds
+	return sb.cmds, sb.memoryIntervals
 }
 
 func GetPipelinesInOrder(s *State, compute bool) []VkPipeline {
@@ -220,24 +222,32 @@ func GetPipelinesInOrder(s *State, compute bool) []VkPipeline {
 func (sb *stateBuilder) MustAllocReadData(v ...interface{}) api.AllocResult {
 	allocate_result := sb.newState.AllocDataOrPanic(sb.ctx, v...)
 	sb.readMemories = append(sb.readMemories, &allocate_result)
+	rng := allocate_result.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
 	return allocate_result
 }
 
 func (sb *stateBuilder) MustAllocWriteData(v ...interface{}) api.AllocResult {
 	allocate_result := sb.newState.AllocDataOrPanic(sb.ctx, v...)
 	sb.writeMemories = append(sb.writeMemories, &allocate_result)
+	rng := allocate_result.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
 	return allocate_result
 }
 
 func (sb *stateBuilder) MustUnpackReadMap(v interface{}) api.AllocResult {
 	allocate_result, _ := unpackMap(sb.ctx, sb.newState, v)
 	sb.readMemories = append(sb.readMemories, &allocate_result)
+	rng := allocate_result.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
 	return allocate_result
 }
 
 func (sb *stateBuilder) MustUnpackWriteMap(v interface{}) api.AllocResult {
 	allocate_result, _ := unpackMap(sb.ctx, sb.newState, v)
 	sb.writeMemories = append(sb.writeMemories, &allocate_result)
+	rng := allocate_result.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
 	return allocate_result
 }
 
@@ -549,13 +559,10 @@ func (sb *stateBuilder) createDevice(d *DeviceObject) {
 	reordered_queue_creates := map[uint32]VkDeviceQueueCreateInfo{}
 	i := uint32(0)
 	for k, v := range queue_create {
-		log.E(sb.ctx, "Initial queue_creates %+v", queue_priorities[k])
 		v.PQueuePriorities = NewF32ᶜᵖ(sb.MustAllocReadData(queue_priorities[k]).Ptr())
 		reordered_queue_creates[i] = v
 		i++
 	}
-	
-	log.E(sb.ctx, "Queues %+v", reordered_queue_creates)
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice,

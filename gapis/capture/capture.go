@@ -117,8 +117,11 @@ func NewState(ctx context.Context) (*api.GlobalState, error) {
 }
 
 // NewUninitializedState returns a new, uninitialized State object built for the capture.
-func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
+func (c *Capture) NewUninitializedState(ctx context.Context, rngs interval.U64RangeList) *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
+	for _, r := range rngs {
+		interval.Remove(&freeList, r.Span())
+	}
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
 	s := api.NewStateWithAllocator(
 		memory.NewBasicAllocator(freeList),
@@ -130,7 +133,7 @@ func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
 // NewState returns a new, default-initialized State object built for the
 // capture.
 func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
-	s := c.NewUninitializedState(ctx)
+	s := c.NewUninitializedState(ctx, interval.U64RangeList{})
 	if c.InitialState != nil {
 		for _, m := range c.InitialState.Memory {
 			pool, _ := s.Memory.Get(memory.PoolID(m.Pool))
@@ -150,15 +153,20 @@ func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 }
 
 // GetInitialCommands returns a set of commands which will setup the initial state.
-func (c *Capture) GetInitialCommands(ctx context.Context) (cmds []api.Cmd) {
+func (c *Capture) GetInitialCommands(ctx context.Context) ([]api.Cmd, interval.U64RangeList) {
+	ranges := interval.U64RangeList{}
+	cmds := []api.Cmd{}
 	// TODO: This can be easily cached for the given capture.
 	if c.InitialState != nil {
 		s := c.NewState(ctx)
 		for _, v := range s.APIs {
-			cmds = append(cmds, v.RebuildState(ctx, s)...)
+			s, r := v.RebuildState(ctx, s)
+			ranges = append(ranges, r...)
+			cmds = append(cmds, s...)
 		}
+		return cmds, ranges
 	}
-	return
+	return nil, interval.U64RangeList{}
 }
 
 // Service returns the service.Capture description for this capture.

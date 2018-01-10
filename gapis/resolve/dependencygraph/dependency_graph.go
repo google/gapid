@@ -163,7 +163,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 	behaviourProviders := map[api.API]BehaviourProvider{}
 
 	// If the capture contains initial state, prepend the commands to build the state.
-	initialCmds := c.GetInitialCommands(ctx)
+	initialCmds, ranges := c.GetInitialCommands(ctx)
 	if len(initialCmds) > 0 {
 		cmds = append(initialCmds, cmds...)
 	}
@@ -180,7 +180,8 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 		},
 	}
 
-	s := c.NewUninitializedState(ctx)
+	s := c.NewUninitializedState(ctx, ranges)
+
 	dependencyGraphBuildCounter.Time(func() {
 		api.ForeachCmd(ctx, cmds, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
 			a := cmd.API()

@@ -137,8 +137,10 @@ func (m *Manager) execute(
 
 	b := builder.New(replayABI.MemoryLayout)
 
+	_, ranges := c.GetInitialCommands(ctx)
+
 	out := &adapter{
-		state:   c.NewUninitializedState(ctx),
+		state:   c.NewUninitializedState(ctx, ranges),
 		builder: b,
 	}
 
