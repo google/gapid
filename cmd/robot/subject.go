@@ -38,7 +38,7 @@ func init() {
 		Name:       "subject",
 		ShortHelp:  "Upload a traceable application to the server",
 		ShortUsage: "<filenames>",
-		Action:     &subjectUploadVerb{RobotOptions: defaultRobotOptions, API: GLESAPI},
+		Action:     &subjectUploadVerb{RobotOptions: defaultRobotOptions, API: GLESAPI, CaptureFrames: 0},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "subject",
@@ -75,11 +75,12 @@ func (a APIType) String() string {
 
 type subjectUploadVerb struct {
 	RobotOptions
-	API       APIType       `help:"the api to capture, can be either gles or vulkan (default:gles)"`
-	TraceTime time.Duration `help:"trace time override (if non-zero)"`
-	OBB       file.Path     `help:"path of the subject's obb file"`
-	obbID     string
-	subjects  subject.Subjects
+	API           APIType       `help:"the api to capture, can be either gles or vulkan (default:gles)"`
+	TraceTime     time.Duration `help:"trace time override (if non-zero)"`
+	OBB           file.Path     `help:"path of the subject's obb file"`
+	obbID         string
+	CaptureFrames uint `help:"capture the given number of frames. 0 for all (default:0)"`
+	subjects      subject.Subjects
 }
 
 func (v *subjectUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -107,6 +108,7 @@ func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
 	if v.TraceTime != 0 {
 		hints.TraceTime = ptypes.DurationProto(v.TraceTime)
 	}
+	hints.CaptureFrames = uint32(v.CaptureFrames)
 	hints.API = v.API.String()
 	subject, created, err := v.subjects.Add(ctx, id, v.obbID, hints)
 	if err != nil {

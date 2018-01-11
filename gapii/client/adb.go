@@ -16,15 +16,19 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/context/keys"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/flock"
 	"github.com/google/gapid/gapidapk"
 	"github.com/pkg/errors"
 )
@@ -33,6 +37,9 @@ const (
 	// getPidRetries is the number of retries for getting the pid of the process
 	// our newly-started activity runs in.
 	getPidRetries = 7
+	// vkImplicitLayersProp is the name of the system property that contains implicit
+	// Vulkan layers to be loaded by Vulkan loader on Android
+	vkImplicitLayersProp = "debug.vulkan.layers"
 )
 
 // Process represents a running process to capture.
@@ -85,7 +92,7 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 
 	port, err := adb.LocalFreeTCPPort()
 	if err != nil {
-		return nil, log.Err(ctx, err, "Finding free port")
+		return nil, log.Err(ctx, err, "Finding free port for gapii")
 	}
 
 	log.I(ctx, "Checking gapid.apk is installed")
@@ -98,24 +105,62 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 
 	log.I(ctx, "Forwarding")
 	if err := d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket("gapii")); err != nil {
-		return nil, log.Err(ctx, err, "Setting up port forwarding")
+		return nil, log.Err(ctx, err, "Setting up port forwarding for gapii")
 	}
 
 	// FileDir may fail here. This happens if/when the app is non-debuggable.
 	// Don't set up vulkan tracing here, since the loader will not try and load the layer
 	// if we aren't debuggable regardless.
-	if err := d.Command("shell", "setprop", "debug.vulkan.layers", "VkGraphicsSpy").Run(ctx); err != nil {
-		// Clone context to ignore cancellation.
-		ctx := keys.Clone(context.Background(), ctx)
-		d.RemoveForward(ctx, port)
-		return nil, log.Err(ctx, err, "Setting up vulkan layer")
+	var m *flock.Mutex
+	if o.APIs&VulkanAPI != uint32(0) {
+		m, err := reserveVulkanDevice(ctx, d)
+		if err != nil {
+			d.RemoveForward(ctx, port)
+			return nil, log.Err(ctx, err, "Setting up for tracing Vulkan")
+		}
+		// Make a thread to listen to the signal for unsetting Vulkan implicit
+		// layers property.
+		// TODO: This mechanism will be dropped once the whole communication
+		// with GAPII being migrated to gRPC.
+		crash.Go(func() {
+			port, err := adb.LocalFreeTCPPort()
+			if err != nil {
+				log.Err(ctx, err, "Finding free port for listening to debug.vulkan.layers unset signal.")
+				return
+			}
+			if err = d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket("unset-debug-vulkan-layers")); err != nil {
+				log.Err(ctx, err, "Setting up port forwarding for listening to debug.vulkan.layers unset signal.")
+				return
+			}
+			defer d.RemoveForward(ctx, port)
+			// Try to connect to the unset signal port, if the port is open
+			// and messages can be received, unset the Vulkan implicit layers
+			// property.
+			log.I(ctx, "Waiting for signal to unset %s on localhost:%d", vkImplicitLayersProp, port)
+			task.Retry(ctx, 0, time.Second, func(ctx context.Context) (bool, error) {
+				conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", port))
+				if err != nil {
+					return false, err
+				}
+				conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+				var n int
+				// No need to read the whole message
+				n, err = conn.Read(make([]byte, 1))
+				if err != nil || n == 0 {
+					return false, err
+				}
+				log.I(ctx, "VkGraphcsSpy loaded, unset %s now.", vkImplicitLayersProp)
+				if err = releaseVulkanDevice(ctx, d, m); err != nil {
+					log.Errf(ctx, err, "Unsetting %s", vkImplicitLayersProp)
+				}
+				return true, nil
+			})
+		})
 	}
 
 	app.AddCleanup(ctx, func() {
-		// Clone context to ignore cancellation.
-		ctx := keys.Clone(context.Background(), ctx)
 		d.RemoveForward(ctx, port)
-		d.Command("shell", "setprop", "debug.vulkan.layers", "\"\"").Run(ctx)
+		releaseVulkanDevice(ctx, d, m)
 	})
 
 	if a != nil {
@@ -147,4 +192,29 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 	}
 
 	return process, nil
+}
+
+// reserveVulkanDevice reserves the given device for starting Vulkan trace and
+// set the implicit Vulkan layers property to let the Vulkan loader loads
+// VkGraphicsSpy layer. It returns the mutex which reserves the device and error.
+func reserveVulkanDevice(ctx context.Context, d adb.Device) (*flock.Mutex, error) {
+	m := flock.Lock(d.Instance().GetSerial())
+	if err := d.SetSystemProperty(ctx, vkImplicitLayersProp, "VkGraphicsSpy"); err != nil {
+		return nil, log.Err(ctx, err, "Setting up vulkan layer")
+	}
+	return m, nil
+}
+
+// releaseVulkanDevice checks if the given mutex is nil, and if not, unsets the
+// implicit Vulkan layers property on the given Android device and release the
+// lock in the given mutex.
+func releaseVulkanDevice(ctx context.Context, d adb.Device, m *flock.Mutex) error {
+	if m != nil {
+		ctx = keys.Clone(context.Background(), ctx)
+		if err := d.SetSystemProperty(ctx, vkImplicitLayersProp, ""); err != nil {
+			return err
+		}
+		m.Unlock()
+	}
+	return nil
 }

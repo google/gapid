@@ -19,14 +19,22 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/test/robot/job"
 	"github.com/google/gapid/test/robot/job/worker"
 	"github.com/google/gapid/test/robot/stash"
+)
+
+const (
+	replayTimeout = time.Hour
 )
 
 type client struct {
@@ -38,8 +46,27 @@ type client struct {
 // Run starts new replay client if any hardware is available.
 func Run(ctx context.Context, store *stash.Client, manager Manager, tempDir file.Path) error {
 	c := &client{store: store, manager: manager, tempDir: tempDir}
+	job.OnDeviceAdded(ctx, c.onDeviceAdded)
 	host := host.Instance(ctx)
 	return manager.Register(ctx, host, host, c.replay)
+}
+
+func (c *client) onDeviceAdded(ctx context.Context, host *device.Instance, target bind.Device) {
+	replayOnTarget := func(ctx context.Context, t *Task) error {
+		job.LockDevice(ctx, target)
+		defer job.UnlockDevice(ctx, target)
+		if target.Status() != bind.Status_Online {
+			log.I(ctx, "Trying to replay %s on %s not started, device status %s",
+				t.Input.Trace, target.Instance().GetSerial(), target.Status().String())
+			return nil
+		}
+		return c.replay(ctx, t)
+	}
+	crash.Go(func() {
+		if err := c.manager.Register(ctx, host, target.Instance(), replayOnTarget); err != nil {
+			log.E(ctx, "Error running replay client: %v", err)
+		}
+	})
 }
 
 func (c *client) replay(ctx context.Context, t *Task) error {
@@ -48,9 +75,12 @@ func (c *client) replay(ctx context.Context, t *Task) error {
 	}
 	var output *Output
 	err := worker.RetryFunction(ctx, 4, time.Millisecond*100, func() (err error) {
+		ctx, cancel := task.WithTimeout(ctx, replayTimeout)
+		defer cancel()
 		output, err = doReplay(ctx, t.Action, t.Input, c.store, c.tempDir)
-		return
+		return err
 	})
+
 	status := job.Succeeded
 	if err != nil {
 		status = job.Failed
@@ -114,8 +144,19 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 		}
 	}
 
+	if in.GetToolingLayout() != nil {
+		gapidAPK, err := extractedLayout.GapidApk(ctx, in.GetToolingLayout().GetGapidAbi())
+		if err != nil {
+			return nil, err
+		}
+		if err := store.GetFile(ctx, in.GapidApk, gapidAPK); err != nil {
+			return nil, err
+		}
+	}
+
 	params := []string{
 		"video",
+		"-gapir-device", in.GetGapirDevice(),
 		"-type", "sxs",
 		"-out", videofile.System(),
 		tracefile.System(),

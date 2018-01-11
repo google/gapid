@@ -45,7 +45,8 @@ func (s *server) Search(query *search.Query, stream Service_SearchServer) error 
 // It delegates the call to the provided Manager implementation.
 func (s *server) Register(request *worker.RegisterRequest, stream Service_RegisterServer) error {
 	ctx := stream.Context()
-	return s.manager.Register(ctx, request.Host, request.Target, func(ctx context.Context, t *Task) error { return stream.Send(t) })
+	return s.manager.Register(ctx, request.Host, request.Target,
+		func(ctx context.Context, t *Task) error { return stream.Send(t) })
 }
 
 // Do implements ServiceServer.Do

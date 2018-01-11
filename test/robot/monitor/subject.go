@@ -35,11 +35,23 @@ func (s *Subjects) All() []*Subject {
 	return s.entries
 }
 
+// Get returns the Subject which has the given Id, returns nil if such a
+// Subject is not found.
+func (s *Subjects) Get(id string) *Subject {
+	for _, subj := range s.All() {
+		if subj.Id == id {
+			return subj
+		}
+	}
+	return nil
+}
+
 func (o *DataOwner) updateSubject(ctx context.Context, subj *subject.Subject) error {
 	o.Write(func(data *Data) {
 		for i, e := range data.Subjects.entries {
 			if subj.Id == e.Id {
 				data.Subjects.entries[i].Subject = *subj
+				return
 			}
 		}
 		data.Subjects.entries = append(data.Subjects.entries, &Subject{Subject: *subj})

@@ -36,7 +36,7 @@ public:
     // Construct a ServerListener using the specified connection.
     // maxMemorySize is the maximum memory size that can be reported as
     // supported by this device.
-    explicit ServerListener(std::unique_ptr<core::Connection> conn, uint64_t maxMemorySize);
+    explicit ServerListener(core::Connection* conn, uint64_t maxMemorySize);
 
     // Accept a new incoming connection on the underlying socket and create a ServerConnection over
     // the newly created socket object. idleTimeoutMs is the timeout in milliseconds to wait for
@@ -52,7 +52,7 @@ public:
 
 private:
     // The underlying server socket for the listener
-    std::unique_ptr<core::Connection> mConn;
+    core::Connection* mConn;
     // The maximum memory size that can be reported as supported by this device.
     uint64_t mMaxMemorySize;
 };

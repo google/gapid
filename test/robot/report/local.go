@@ -57,7 +57,8 @@ func (l *local) Search(ctx context.Context, query *search.Query, handler ActionH
 
 // Register implements Manager.Register
 // See Workers.Register for more details on the implementation.
-func (l *local) Register(ctx context.Context, host *device.Instance, target *device.Instance, handler TaskHandler) error {
+func (l *local) Register(ctx context.Context, host *device.Instance,
+	target *device.Instance, handler TaskHandler) error {
 	return l.w.Workers.Register(ctx, host, target, handler)
 }
 

@@ -37,7 +37,7 @@ func (s schedule) doTrace(ctx context.Context, subj *monitor.Subject, tools *bui
 		GapidApk: androidTools.GapidApk,
 		Package:  s.pkg.Id,
 		Hints:    subj.Hints,
-		Layout: &trace.ToolingLayout{
+		ToolingLayout: &trace.ToolingLayout{
 			GapidAbi: androidTools.Abi,
 		},
 	}

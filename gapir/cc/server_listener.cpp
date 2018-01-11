@@ -39,8 +39,8 @@ const char kAuthTokenHeader[] = { 'A', 'U', 'T', 'H' };
 
 namespace gapir {
 
-ServerListener::ServerListener(std::unique_ptr<core::Connection> conn, uint64_t maxMemorySize) :
-        mConn(std::move(conn)),
+ServerListener::ServerListener(core::Connection* conn, uint64_t maxMemorySize) :
+        mConn(conn),
         mMaxMemorySize(maxMemorySize) {
 }
 

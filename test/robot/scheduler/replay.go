@@ -24,12 +24,15 @@ import (
 	"github.com/google/gapid/test/robot/replay"
 )
 
-func (s schedule) doReplay(ctx context.Context, t *monitor.Trace, tools *build.ToolSet) error {
+func (s schedule) doReplay(ctx context.Context, t *monitor.Trace,
+	tools *build.ToolSet, androidTools *build.AndroidToolSet) error {
 	if !s.worker.Supports(job.Replay) {
 		return nil
 	}
+
 	ctx = log.Enter(ctx, "Replay")
 	ctx = log.V{"Package": s.pkg.Id}.Bind(ctx)
+
 	input := &replay.Input{
 		Trace:                t.Action.Output.Trace,
 		Gapit:                tools.Host.Gapit,
@@ -38,6 +41,14 @@ func (s schedule) doReplay(ctx context.Context, t *monitor.Trace, tools *build.T
 		VirtualSwapChainLib:  tools.Host.VirtualSwapChainLib,
 		VirtualSwapChainJson: tools.Host.VirtualSwapChainJson,
 		Package:              s.pkg.Id,
+		Api:                  t.Input.Hints.API,
+		GapirDevice:          s.gapirDevice(),
+	}
+	if androidTools != nil {
+		input.GapidApk = androidTools.GapidApk
+		input.ToolingLayout = &replay.ToolingLayout{
+			GapidAbi: androidTools.Abi,
+		}
 	}
 	action := &replay.Action{
 		Input:  input,

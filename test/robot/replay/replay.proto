@@ -20,6 +20,7 @@ option go_package = "github.com/google/gapid/test/robot/replay";
 import "test/robot/job/job.proto";
 import "test/robot/job/worker/worker.proto";
 import "test/robot/search/search.proto";
+import "core/os/device/device.proto";
 
 // Input describes the inputs to a replay action.
 message Input {
@@ -29,16 +30,29 @@ message Input {
   string gapit = 2;
   // Gapis is the stash id of the graphics analysis server to use.
   string gapis = 3;
-  // Gapir is the stash id of the graphics replay daemon to use.
+  // Gapir is the stash id of the graphics replay daemon for replay on host.
   string gapir = 4;
+  // GapidApk is the stash id of the gapid.apk to use for Vulkan trace
+  string gapid_apk = 5;
+  // ToolingLayout represents the ABI details for Vulkan replay.
+  ToolingLayout tooling_layout = 6;
   // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
   // library.
-  string virtual_swap_chain_lib = 5;
+  string virtual_swap_chain_lib = 7;
   // VirtualSwapChainLib is the stash id of the vulkan virtual-swap-chain loader
   // json file.
-  string virtual_swap_chain_json = 6;
+  string virtual_swap_chain_json = 8;
   // Package is the stash id of the package used to generate the report.
-  string package = 7;
+  string package = 9;
+  // Api is the API of the commands to replay in the trace.
+  string api = 10;
+  // GapirDevice is the device on which to run the replay.
+  string gapir_device = 11;
+}
+
+// ToolingLayout describes tools we use for tracing.
+message ToolingLayout {
+  device.ABI gapid_abi = 1;
 }
 
 // Output holds the outputs of a replay action.
