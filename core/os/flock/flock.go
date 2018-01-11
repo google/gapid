@@ -15,6 +15,7 @@
 package flock
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -149,12 +150,14 @@ func (m *mutex) tryLock() error {
 	if err != nil {
 		return err
 	}
-	m.f = f
 	err = sysTryLock(f)
-	if err == nil {
-		m.locked = true
+	if err != nil {
+		f.Close()
+		return err
 	}
-	return err
+	m.f = f
+	m.locked = true
+	return nil
 }
 
 func (m *mutex) unlock() error {
@@ -173,15 +176,33 @@ func (m *mutex) unlock() error {
 
 // ReleaseAllLocks releases all the FLocks by removing all the underlying files.
 func ReleaseAllLocks() error {
-	info, err := os.Stat(dir)
+	dirInfo, err := os.Stat(dir)
 	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if info.IsDir() {
-		return os.RemoveAll(dir)
+	if !dirInfo.IsDir() {
+		return fmt.Errorf("%v is not a directory", dir)
+	}
+	err = os.RemoveAll(dir)
+	if err == nil {
+		return nil
+	}
+	cantRemove := []string{}
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		err = os.Remove(path)
+		if err != nil {
+			cantRemove = append(cantRemove, path)
+		}
+		return nil
+	})
+	if len(cantRemove) > 0 {
+		return fmt.Errorf("Lock files cannot be removed: %v", cantRemove)
 	}
 	return nil
 }

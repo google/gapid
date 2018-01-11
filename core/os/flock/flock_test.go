@@ -21,6 +21,8 @@ import (
 )
 
 func TestMutex(t *testing.T) {
+	ReleaseAllLocks()
+	defer ReleaseAllLocks()
 	done := make(chan bool)
 
 	expectLocked := func(m *Mutex, expectResult bool) {
@@ -95,4 +97,12 @@ func TestMutex(t *testing.T) {
 	}()
 	expectUnlock(dflA1, true)
 	<-done
+
+	// Helper function: ReleaseAllLocks
+	dflB := expectTryLock("B", true)
+	dflC := expectTryLock("C", true)
+	expectUnlock(dflB, true)
+	expectUnlock(dflC, true)
+	err := ReleaseAllLocks()
+	assert.To(t).For("ReleaseAllLocks should succeed").That(err).IsNil()
 }
