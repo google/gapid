@@ -491,6 +491,37 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder* group, std::unordered_set<uint32_
         uint32_t height;
         uint32_t depth;
       };
+
+
+      struct pitch {
+        uint32_t height_pitch;
+        uint32_t depth_pitch;
+        uint32_t texel_width;
+        uint32_t texel_height;
+        uint32_t element_size;
+      };
+
+      auto block_pitch = [this](const VkExtent3D& extent, uint32_t format, uint32_t mip_level) -> pitch {
+         auto elementAndTexelBlockSize =
+          subGetElementAndTexelBlockSize(nullptr, nullptr, format);
+        const uint32_t texel_width = elementAndTexelBlockSize.mTexelBlockSize.mWidth;
+        const uint32_t texel_height = elementAndTexelBlockSize.mTexelBlockSize.mHeight;
+
+        const uint32_t width = subGetMipSize(nullptr, nullptr, extent.mWidth, mip_level);
+        const uint32_t height = subGetMipSize(nullptr, nullptr, extent.mHeight, mip_level);
+        const uint32_t width_in_blocks = subRoundUpTo(nullptr, nullptr, width, texel_width);
+        const uint32_t height_in_blocks = subRoundUpTo(nullptr, nullptr, height, texel_height);
+        const size_t size = width_in_blocks * height_in_blocks * elementAndTexelBlockSize.mElementSize;
+
+        return pitch {
+          uint32_t(width_in_blocks * elementAndTexelBlockSize.mElementSize),
+          uint32_t(size),
+          uint32_t(elementAndTexelBlockSize.mTexelBlockSize.mWidth),
+          uint32_t(elementAndTexelBlockSize.mTexelBlockSize.mHeight),
+          uint32_t(elementAndTexelBlockSize.mElementSize),
+        };
+      };
+
       auto level_size =
         [this](const VkExtent3D& extent, uint32_t format, uint32_t mip_level) -> byte_size_and_extent {
         auto elementAndTexelBlockSize =
@@ -518,15 +549,13 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder* group, std::unordered_set<uint32_
 
       for (auto& l: img->mLayers) {
         auto& layer = l.second;
-        int i = 0;
         for (auto& lev: layer->mLevels) {
           auto& level = lev.second;
-          byte_size_and_extent e = level_size(image_info.mExtent, image_info.mFormat, i);
+          byte_size_and_extent e = level_size(image_info.mExtent, image_info.mFormat, lev.first);
           level->mData = Slice<uint8_t>(nullptr, e.level_size,
             Pool::create_virtual(getPoolID(), e.level_size));
           gpu_pools->insert(level->mData.poolID());
         }
-        ++i;
       }
 
       std::vector<VkImageSubresourceRange> opaque_ranges;
@@ -696,16 +725,19 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder* group, std::unordered_set<uint32_
           size_t next_offset =
             (i == copies.size() - 1)? offset: copies[i+1].mbufferOffset;
 
-          size_t copy_size = next_offset - new_offset;
           for (size_t j = copy.mimageSubresource.mbaseArrayLayer;
               j < copy.mimageSubresource.mbaseArrayLayer + copy.mimageSubresource.mlayerCount; ++j) {
                 byte_size_and_extent e = level_size(copy.mimageExtent, image_info.mFormat, 0);
-                byte_size_and_extent offs = level_size(
-                    VkExtent3D{
-                      static_cast<uint32_t>(copy.mimageOffset.mx),
-                      static_cast<uint32_t>(copy.mimageOffset.my),
-                        static_cast<uint32_t>(copy.mimageOffset.mz)
-                    }, image_info.mFormat, 0);
+                auto bp = block_pitch(copy.mimageExtent, image_info.mFormat, copy.mimageSubresource.mmipLevel);
+
+                if ((copy.mimageOffset.mx % bp.texel_width != 0)
+                    || (copy.mimageOffset.my % bp.texel_height != 0)) {
+                  // We cannot place partial blocks
+                  return;
+                }
+                uint32_t x = (copy.mimageOffset.mx / bp.texel_width)  * bp.element_size;
+                uint32_t y = (copy.mimageOffset.my / bp.texel_height) * bp.height_pitch;
+                uint32_t z = copy.mimageOffset.mz * bp.depth_pitch;
 
                 auto resIndex = sendResource(VulkanSpy::kApiIndex, pData + new_offset,
                     e.level_size);
@@ -713,7 +745,7 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder* group, std::unordered_set<uint32_
                 const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
                 const uint32_t array_layer = j;
                 memory_pb::Observation observation;
-                observation.set_base(offs.level_size);
+                observation.set_base(x + y + z);
                 observation.set_size(e.level_size);
                 observation.set_resindex(resIndex);
                 observation.set_pool(
