@@ -15,6 +15,7 @@
 package flock
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -85,11 +86,10 @@ func (m *Mutex) TryLock() bool {
 	m.tm.Lock()
 	defer m.tm.Unlock()
 
-	err := m.fm.tryLock()
-	if err == nil {
-		return true
+	if err := m.fm.tryLock(); err != nil {
+		return false
 	}
-	return false
+	return true
 }
 
 // Lock acquires the inter-process lock in a blocking way, it only returns
@@ -149,12 +149,13 @@ func (m *mutex) tryLock() error {
 	if err != nil {
 		return err
 	}
-	m.f = f
-	err = sysTryLock(f)
-	if err == nil {
-		m.locked = true
+	if err = sysTryLock(f); err != nil {
+		f.Close()
+		return err
 	}
-	return err
+	m.f = f
+	m.locked = true
+	return nil
 }
 
 func (m *mutex) unlock() error {
@@ -163,25 +164,43 @@ func (m *mutex) unlock() error {
 	if !m.locked {
 		panic(unlockAlreadyReleasedLockMsg)
 	}
-	defer m.f.Close()
-	err := sysUnlock(m.f)
-	if err == nil {
-		m.locked = false
+	if m.f != nil {
+		defer m.f.Close()
 	}
-	return err
+	if err := sysUnlock(m.f); err != nil {
+		return err
+	}
+	m.locked = false
+	return nil
 }
 
 // ReleaseAllLocks releases all the FLocks by removing all the underlying files.
 func ReleaseAllLocks() error {
-	info, err := os.Stat(dir)
+	dirInfo, err := os.Stat(dir)
 	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if info.IsDir() {
-		return os.RemoveAll(dir)
+	if !dirInfo.IsDir() {
+		return fmt.Errorf("%v is not a directory", dir)
+	}
+	if err = os.RemoveAll(dir); err == nil {
+		return nil
+	}
+	cantRemove := []string{}
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		if err = os.Remove(path); err != nil {
+			cantRemove = append(cantRemove, path)
+		}
+		return nil
+	})
+	if len(cantRemove) > 0 {
+		return fmt.Errorf("Lock files cannot be removed: %v", cantRemove)
 	}
 	return nil
 }
