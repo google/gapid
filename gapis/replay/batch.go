@@ -30,6 +30,7 @@ import (
 	"github.com/google/gapid/gapis/replay/executor"
 	"github.com/google/gapid/gapis/replay/protocol"
 	"github.com/google/gapid/gapis/replay/scheduler"
+	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -137,7 +138,7 @@ func (m *Manager) execute(
 
 	b := builder.New(replayABI.MemoryLayout)
 
-	_, ranges := c.GetInitialCommands(ctx)
+	_, ranges, err := initialcmds.InitialCommands(ctx, capturePath)
 
 	out := &adapter{
 		state:   c.NewUninitializedState(ctx, ranges),

@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/resolve/initialcmds"
 )
 
 var footprintBuildCounter = benchmark.Duration("footprint.build")
@@ -209,7 +210,11 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 	cmds := c.Commands
 	// If the capture contains initial state, prepend the commands to build the state.
-	initialCmds, ranges := c.GetInitialCommands(ctx)
+
+	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)
+	if err != nil {
+		return nil, err
+	}
 	numInitialCmds := len(initialCmds)
 	if len(initialCmds) > 0 {
 		cmds = append(initialCmds, cmds...)

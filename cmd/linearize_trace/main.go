@@ -31,6 +31,7 @@ import (
 	_ "github.com/google/gapid/gapis/api/vulkan"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/resolve/initialcmds"
 )
 
 var (
@@ -64,7 +65,10 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	initialCmds, _ := capt.GetInitialCommands(ctx)
+	initialCmds, _, err := initialcmds.InitialCommands(ctx, p)
+	if err != nil {
+		return err
+	}
 
 	log.I(ctx, "Generated %v initial commands", len(initialCmds))
 

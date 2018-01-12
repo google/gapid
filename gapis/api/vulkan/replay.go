@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -31,6 +30,7 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
+	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -498,7 +498,6 @@ func (a API) Replay(
 	// Populate the dead-code eliminitation later, only once we are sure
 	// we will need it.
 	dceInfo := dCEInfo{}
-	initMem := interval.U64RangeList{}
 
 	expandedCmds := false
 	numInitialCommands := 0
@@ -520,8 +519,8 @@ func (a API) Replay(
 			numInitialCommands = dceInfo.ft.NumInitialCommands
 		} else {
 			// If the capture contains initial state, prepend the commands to build the state.
-			initialCmds, im := capture.GetInitialCommands(ctx)
-			initMem = im
+			initialCmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)
+			out.State().Allocator.ReserveRanges(im)
 			numInitialCommands = len(initialCmds)
 			if len(initialCmds) > 0 {
 				cmds = append(initialCmds, cmds...)

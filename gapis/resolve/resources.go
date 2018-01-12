@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -51,8 +52,10 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
 	// If the capture contains initial state, build the necessary commands to recreate it.
-	initialCmds, rnges := c.GetInitialCommands(ctx)
-
+	initialCmds, rnges, err := initialcmds.InitialCommands(ctx, r.Capture)
+	if err != nil {
+		return nil, err
+	}
 	state := c.NewUninitializedState(ctx, rnges)
 	state.OnResourceCreated = func(r api.Resource) {
 		currentCmdResourceCount++
