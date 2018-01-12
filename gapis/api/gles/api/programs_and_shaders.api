@@ -140,25 +140,27 @@ sub void ApplyLinkProgramExtra(ref!Program p, ref!LinkProgramExtra i) {
 
     // Set uniform values to default (zeroed)
     p.UniformLocations = null
-    for _, uniformIndex, uniform in i.ActiveResources.DefaultUniformBlock {
-      elementInfo := GetUniformTypeInfo(uniform.Type)
-      elementSize := elementInfo.primitiveSize * elementInfo.vectorSize * elementInfo.vectorCount
-      values := make!u8(elementSize * as!u32(uniform.ArraySize))
-      // Each element of the array is assigned a location by compiler.
-      // The location acts as a handle. Locations do not have to be consecutive.
-      for _, elementIndex, loc in uniform.Locations {
-        if (loc != -1) {
-          assert(elementIndex < as!u32(uniform.ArraySize))
-          offset := elementIndex * elementSize
-          p.UniformLocations[as!UniformLocation(loc)] = Uniform(
-            Type:          uniform.Type,
-            Value:         values[offset:offset + elementSize],
-            Values:        values[offset:len(values)],
-            UniformIndex:  uniformIndex
-          )
+    if i.LinkStatus == GL_TRUE {
+      for _, uniformIndex, uniform in i.ActiveResources.DefaultUniformBlock {
+        elementInfo := GetUniformTypeInfo(uniform.Type)
+        elementSize := elementInfo.primitiveSize * elementInfo.vectorSize * elementInfo.vectorCount
+        values := make!u8(elementSize * as!u32(uniform.ArraySize))
+        // Each element of the array is assigned a location by compiler.
+        // The location acts as a handle. Locations do not have to be consecutive.
+        for _, elementIndex, loc in uniform.Locations {
+          if (loc != -1) {
+            assert(elementIndex < as!u32(uniform.ArraySize))
+            offset := elementIndex * elementSize
+            p.UniformLocations[as!UniformLocation(loc)] = Uniform(
+              Type:          uniform.Type,
+              Value:         values[offset:offset + elementSize],
+              Values:        values[offset:len(values)],
+              UniformIndex:  uniformIndex
+            )
+          }
         }
+        uniform.Value = values
       }
-      uniform.Value = values
     }
   }
 }
