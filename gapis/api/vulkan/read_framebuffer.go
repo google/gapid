@@ -265,7 +265,7 @@ func postImageData(ctx context.Context,
 	bufferMemoryAllocInfo := VkMemoryAllocateInfo{
 		SType:           VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 		PNext:           NewVoidᶜᵖ(memory.Nullptr),
-		AllocationSize:  VkDeviceSize(bufferSize),
+		AllocationSize:  VkDeviceSize(bufferSize * 2),
 		MemoryTypeIndex: bufferMemoryTypeIndex,
 	}
 	bufferMemoryAllocateInfoData := MustAllocData(ctx, s, bufferMemoryAllocInfo)

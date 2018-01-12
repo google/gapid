@@ -316,6 +316,13 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
         nullptr, memory->mAllocationSize,
         Pool::create_virtual(getPoolID(), memory->mAllocationSize));
     gpu_pools->insert(memory->mData.poolID());
+    if (memory->mMappedLocation != nullptr) {
+      if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
+        trackMappedCoherentMemory(
+            nullptr, reinterpret_cast<uint64_t>(memory->mMappedLocation),
+            memory->mMappedSize);
+      }
+    }
   }
 
   for (auto &buffer : Buffers) {
