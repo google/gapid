@@ -43,8 +43,6 @@ cc_library(
         "@llvm//:AArch64Disassembler",
         "@llvm//:ARMCodeGen",
         "@llvm//:ARMDisassembler",
-        "@llvm//:MipsCodeGen",
-        "@llvm//:MipsDisassembler",
         "@llvm//:X86CodeGen",
         "@llvm//:X86Disassembler",
     ],
