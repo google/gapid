@@ -913,7 +913,7 @@ func (sb *stateBuilder) createBuffer(buffer *BufferObject) {
 	if buffer.Info.DedicatedAllocationNV != nil {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
 			VkDedicatedAllocationBufferCreateInfoNV{
-				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV,
+				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV,
 				NewVoidᶜᵖ(memory.Nullptr),
 				buffer.Info.DedicatedAllocationNV.DedicatedAllocation,
 			},
@@ -1218,7 +1218,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 	if img.Info.DedicatedAllocationNV != nil {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
 			VkDedicatedAllocationImageCreateInfoNV{
-				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV,
+				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV,
 				NewVoidᶜᵖ(memory.Nullptr),
 				img.Info.DedicatedAllocationNV.DedicatedAllocation,
 			},

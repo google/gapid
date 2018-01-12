@@ -271,6 +271,20 @@ private:
 
 void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
                                   std::unordered_set<uint32_t> *gpu_pools) {
+  char empty = 0;
+  auto empty_index = sendResource(VulkanSpy::kApiIndex, &empty, 0);
+
+  auto create_virtual_pool = [&](uint64_t pool_size) {
+    auto pool = Pool::create_virtual(getPoolID(), pool_size);
+    memory_pb::Observation observation;
+    observation.set_base(0);
+    observation.set_size(0);
+    observation.set_resindex(empty_index);
+    observation.set_pool(pool->id());
+    group->object(&observation);
+    return pool;
+  };
+
   for (auto &device : Devices) {
     auto &device_functions =
         mImports.mVkDeviceFunctions[device.second->mVulkanHandle];
@@ -314,7 +328,7 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
     auto &memory = mem.second;
     memory->mData = Slice<uint8_t>(
         nullptr, memory->mAllocationSize,
-        Pool::create_virtual(getPoolID(), memory->mAllocationSize));
+        create_virtual_pool(memory->mAllocationSize));
     gpu_pools->insert(memory->mData.poolID());
     if (memory->mMappedLocation != nullptr) {
       if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
@@ -430,68 +444,6 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
     const ImageInfo &image_info = img->mInfo;
     auto &device_functions = mImports.mVkDeviceFunctions[img->mDevice];
 
-    if (img->mIsSwapchainImage) {
-      // Don't bind and fill swapchain images memory here
-      continue;
-    }
-    if (image_info.mSamples != VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT) {
-      // TODO(awoloszyn): Handle multisampled images here.
-      continue;
-    }
-    if (img->mImageAspect != VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT) {
-      // TODO(awoloszyn): Handle depth stencil images
-      continue;
-    }
-    if (image_info.mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
-      // Don't capture images with undefined layout. The resulting data
-      // itself will be undefined.
-      continue;
-    }
-
-    bool denseBound = img->mBoundMemory != nullptr;
-    bool sparseBound = (img->mOpaqueSparseMemoryBindings.size() > 0) ||
-                       (img->mSparseImageMemoryBindings.size() > 0);
-    bool sparseBinding =
-        (image_info.mFlags &
-         VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_BINDING_BIT) != 0;
-    bool sparseResidency =
-        sparseBinding &&
-        (image_info.mFlags &
-         VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) != 0;
-    if (!denseBound && !sparseBound) {
-      continue;
-    }
-    // First check for validity before we go any further.
-    if (sparseBound) {
-      if (sparseResidency) {
-        bool is_valid = true;
-        // If this is a sparsely resident image, then at least ALL metadata
-        // must be bound.
-        for (const auto &requirements : img->mSparseMemoryRequirements) {
-          const auto &prop = requirements.second.mformatProperties;
-          if (prop.maspectMask ==
-              VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT) {
-            if (!IsFullyBound(requirements.second.mimageMipTailOffset,
-                              requirements.second.mimageMipTailSize,
-                              img->mOpaqueSparseMemoryBindings)) {
-              is_valid = false;
-              break;
-            }
-          }
-        }
-        if (!is_valid) {
-          continue;
-        }
-      } else {
-        // If we are not sparsely-resident, then all memory must
-        // be bound before we are used.
-        if (!IsFullyBound(0, img->mMemoryRequirements.msize,
-                          img->mOpaqueSparseMemoryBindings)) {
-          continue;
-        }
-      }
-    }
-
     struct byte_size_and_extent {
       size_t level_size;
       size_t aligned_level_size;
@@ -573,8 +525,70 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
             level_size(image_info.mExtent, image_info.mFormat, lev.first);
         level->mData =
             Slice<uint8_t>(nullptr, e.level_size,
-                           Pool::create_virtual(getPoolID(), e.level_size));
+                           create_virtual_pool(e.level_size));
         gpu_pools->insert(level->mData.poolID());
+      }
+    }
+
+    if (img->mIsSwapchainImage) {
+      // Don't bind and fill swapchain images memory here
+      continue;
+    }
+    if (image_info.mSamples != VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT) {
+      // TODO(awoloszyn): Handle multisampled images here.
+      continue;
+    }
+    if (img->mImageAspect != VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT) {
+      // TODO(awoloszyn): Handle depth stencil images
+      continue;
+    }
+    if (image_info.mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
+      // Don't capture images with undefined layout. The resulting data
+      // itself will be undefined.
+      continue;
+    }
+
+    bool denseBound = img->mBoundMemory != nullptr;
+    bool sparseBound = (img->mOpaqueSparseMemoryBindings.size() > 0) ||
+                       (img->mSparseImageMemoryBindings.size() > 0);
+    bool sparseBinding =
+        (image_info.mFlags &
+         VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_BINDING_BIT) != 0;
+    bool sparseResidency =
+        sparseBinding &&
+        (image_info.mFlags &
+         VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) != 0;
+    if (!denseBound && !sparseBound) {
+      continue;
+    }
+    // First check for validity before we go any further.
+    if (sparseBound) {
+      if (sparseResidency) {
+        bool is_valid = true;
+        // If this is a sparsely resident image, then at least ALL metadata
+        // must be bound.
+        for (const auto &requirements : img->mSparseMemoryRequirements) {
+          const auto &prop = requirements.second.mformatProperties;
+          if (prop.maspectMask ==
+              VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT) {
+            if (!IsFullyBound(requirements.second.mimageMipTailOffset,
+                              requirements.second.mimageMipTailSize,
+                              img->mOpaqueSparseMemoryBindings)) {
+              is_valid = false;
+              break;
+            }
+          }
+        }
+        if (!is_valid) {
+          continue;
+        }
+      } else {
+        // If we are not sparsely-resident, then all memory must
+        // be bound before we are used.
+        if (!IsFullyBound(0, img->mMemoryRequirements.msize,
+                          img->mOpaqueSparseMemoryBindings)) {
+          continue;
+        }
       }
     }
 

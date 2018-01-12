@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -69,8 +70,10 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	if err != nil {
 		return nil, err
 	}
-	initialCmds, ranges := capture.GetInitialCommands(ctx)
-
+	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, p.Capture)
+	if err != nil {
+		return nil, err
+	}
 	state := capture.NewUninitializedState(ctx, ranges)
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int

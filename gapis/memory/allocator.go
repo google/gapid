@@ -35,6 +35,10 @@ type Allocator interface {
 
 	// FreeList returns the free ranges this allocator can allocate from.
 	FreeList() interval.U64RangeList
+
+	// ReserveRanges reserves the given ranges in the free-list, meaning
+	// they cannot be allocated from
+	ReserveRanges(interval.U64RangeList)
 }
 
 // BasicAllocator is a simple memory range allocator
@@ -91,6 +95,13 @@ func (c *basicAllocator) AllocList() interval.U64RangeList {
 // FreeList implements Allocator.
 func (c *basicAllocator) FreeList() interval.U64RangeList {
 	return c.freeList.Clone()
+}
+
+// ReserveRanges removes the given ranges from the freelist.
+func (c *basicAllocator) ReserveRanges(ranges interval.U64RangeList) {
+	for _, r := range ranges {
+		interval.Remove(&c.freeList, r.Span())
+	}
 }
 
 // NewBasicAllocator creates a new allocator which allocates
