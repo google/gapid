@@ -129,7 +129,7 @@ Installer::Installer(const char* libInterceptorPath) {
 
     auto lib = dlopen(libInterceptorPath, RTLD_NOW);
     if (lib == nullptr) {
-        GAPID_FATAL("Couldn't load interceptor library from: %s", libInterceptorPath);
+        GAPID_FATAL("Couldn't load interceptor library from: %s: %s", libInterceptorPath, dlerror());
     }
 
     gInitializeInterceptor = reinterpret_cast<InitializeInterceptorFunc*>(dlsym(lib, "InitializeInterceptor"));
