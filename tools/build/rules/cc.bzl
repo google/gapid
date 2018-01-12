@@ -1,14 +1,21 @@
 load("//:version.bzl", "version_defines")
 
+_ANDROID_COPTS = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-fvisibility-inlines-hidden",
+    "-DANDROID",
+]
+
 # This should probably all be done by fixing the toolchains...
 def cc_copts():
     return select({
         "@//tools/build:linux": [],
         "@//tools/build:darwin": [],
         "@//tools/build:windows": [],
-        "@//tools/build:android-armeabi-v7a": [],
-        "@//tools/build:android-arm64-v8a": [],
-        "@//tools/build:android-x86": [],
+        "@//tools/build:android-armeabi-v7a": _ANDROID_COPTS,
+        "@//tools/build:android-arm64-v8a": _ANDROID_COPTS,
+        "@//tools/build:android-x86": _ANDROID_COPTS,
     })
 
 def cc_defines():

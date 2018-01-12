@@ -27,7 +27,16 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
         name = name,
         srcs =  llvm_sources(path, exclude=exclude),
         deps = deps,
-        copts = cc_copts(),
+        copts = cc_copts() + select({
+            "@//tools/build:linux": [],
+            "@//tools/build:darwin": [],
+            "@//tools/build:windows": [],
+            # Android
+            "//conditions:default": [
+                "-fno-rtti",
+                "-fno-exceptions",
+            ]
+        })
     )
 
 def _tablegen_impl(ctx):

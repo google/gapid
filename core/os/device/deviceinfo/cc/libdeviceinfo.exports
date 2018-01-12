@@ -1,0 +1,4 @@
+get_device_instance
+get_device_instance_error
+free_device_instance
+Java_com_google_android_gapid_DeviceInfoService_getDeviceInfo

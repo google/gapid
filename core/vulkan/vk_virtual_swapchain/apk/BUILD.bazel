@@ -2,6 +2,6 @@ load("//tools/build:rules.bzl", "android_native")
 
 android_native(
     name = "VkLayer_VirtualSwapchain",
-    deps = ["//core/vulkan/vk_virtual_swapchain/cc:cc"],
+    deps = ["//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain_android"],
     visibility = ["//visibility:public"],
 )

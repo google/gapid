@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "mm_library", "cc_copts", "cc_defines")
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_defines", "mm_library")
 
 mm_library(
     name = "darwin_query",
@@ -41,5 +41,12 @@ cc_library(
         # Android
         "//conditions:default": ["-lEGL", "-lGLESv2", "-llog", "-landroid", "-lm"],
     }),
+    visibility = ["//visibility:public"],
+)
+
+android_dynamic_library(
+    name = "libdeviceinfo",
+    deps = [":cc"],
+    exports = "libdeviceinfo.exports",
     visibility = ["//visibility:public"],
 )
