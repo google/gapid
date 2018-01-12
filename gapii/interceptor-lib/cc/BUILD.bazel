@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "cc_copts", "cc_defines")
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_defines")
 
 cc_library(
     name = "cc",
@@ -27,12 +27,16 @@ cc_library(
     ]),
     strip_include_prefix = "include",
     defines = cc_defines(),
-    copts = cc_copts(),
+    copts = cc_copts() + [
+        "-fno-rtti",
+        "-fno-exceptions",
+    ],
     linkopts = select({
         "//tools/build:linux": [],
         "//tools/build:darwin": [],
         "//tools/build:windows": [],
-        "//conditions:default": ["-lm", "-llog", "-lz"],
+        # Android
+        "//conditions:default": ["-lm", "-llog", "-lz", "-lstdc++"],
     }),
     deps = [
         "@llvm//:AArch64CodeGen",
@@ -44,5 +48,12 @@ cc_library(
         "@llvm//:X86CodeGen",
         "@llvm//:X86Disassembler",
     ],
+    visibility = ["//visibility:public"],
+)
+
+android_dynamic_library(
+    name = "libinterceptor",
+    deps = [":cc"],
+    exports = "lib/libinterceptor.exports",
     visibility = ["//visibility:public"],
 )

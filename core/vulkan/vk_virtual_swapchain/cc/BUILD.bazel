@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "cc_copts", "cc_defines", "cc_dynamic_library")
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_defines", "cc_dynamic_library")
 
 cc_library(
     name = "cc",
@@ -10,8 +10,20 @@ cc_library(
     defines = cc_defines(),
     copts = cc_copts() + select({
         "//tools/build:linux": ["-DVK_USE_PLATFORM_XCB_KHR"],
+        "//tools/build:darwin": [],
         "//tools/build:windows": ["-DVK_USE_PLATFORM_WIN32_KHR"],
-        "//conditions:default": [],
+        # Android
+        "//conditions:default": ["-DVK_USE_PLATFORM_ANDROID_KHR"],
+    }) + [
+        "-fno-rtti",
+        "-fno-exceptions",
+    ],
+    linkopts = select({
+        "//tools/build:linux": ["-lpthread"],
+        "//tools/build:darwin": [],
+        "//tools/build:windows": ["-lpthread"],
+        # Android
+        "//conditions:default": ["-lm"],
     }),
     visibility = ["//visibility:public"],
 )
@@ -19,8 +31,17 @@ cc_library(
 cc_dynamic_library(
     name = "libVkLayer_VirtualSwapchain",
     deps = [":cc"],
+    exports = "virtual_swapchain_desktop.exports",
     visibility = ["//visibility:public"],
 )
+
+android_dynamic_library(
+    name = "libVkLayer_VirtualSwapchain_android",
+    deps = [":cc"],
+    exports = "virtual_swapchain_android.exports",
+    visibility = ["//visibility:public"],
+)
+
 
 filegroup(
     name = "json",

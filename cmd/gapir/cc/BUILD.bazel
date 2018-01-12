@@ -1,6 +1,23 @@
+load("//tools/build:rules.bzl", "android_dynamic_library", "android_native_app_glue")
+
 cc_binary(
     name = "gapir",
     srcs = ["main.cpp"],
     deps = ["//gapir/cc:gapir"],
+    visibility = ["//visibility:public"],
+)
+
+android_native_app_glue(
+    name = "native_app_glue",
+)
+
+android_dynamic_library(
+    name = "libgapir",
+    srcs = ["main.cpp"],
+    deps = [
+        ":native_app_glue",
+        "//gapir/cc:gapir",
+    ],
+    exports = "gapir.exports",
     visibility = ["//visibility:public"],
 )

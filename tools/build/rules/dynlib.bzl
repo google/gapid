@@ -14,21 +14,64 @@
 
 # This is needed due to https://github.com/bazelbuild/bazel/issues/914
 
-def cc_dynamic_library(name, visibility, **kwargs):
+def _symbol_exports(name, exports):
+    # Creates an assembly file that references all the exported symbols, so the linker won't trim them.
+    native.genrule(
+        name = name + "_syms",
+        srcs = [exports],
+        outs = [name + "_syms.S"],
+        cmd = "cat $< | awk '{print \".global\",$$0}' > $@",
+    )
+
+    # Creates a linker script to export the public symbols/hide the rest.
+    native.genrule(
+        name = name + "_ldscript",
+        srcs = [exports],
+        outs = [name + ".ldscript"],
+        cmd = "(" + ";".join([
+            "echo '{ global:'",
+            "cat $< | awk '{print $$0\";\"}'",
+            "echo 'local: *;};'",
+            "echo",
+        ]) + ") > $@",
+    )
+
+    # Creates a OSX linker script to export the public symbols/hide the rest.
+    native.genrule(
+        name = name + "_osx_ldscript",
+        srcs = [exports],
+        outs = [name + "_osx.ldscript"],
+        cmd = "cat $< | awk '{print \"_\"$$0}' > $@",
+    )
+
+def cc_dynamic_library(name, exports = "", visibility = ["//visibility:private"], deps = [], linkopts = [], **kwargs):
+    _symbol_exports(name, exports)
+
     # All but one of these will fail, but the select in the filegroup
     # will pick up the correct one.
     native.cc_binary(
         name = name + ".so",
+        srcs = [":" + name + "_syms"],
+        deps = deps + [name + ".ldscript"],
+        linkopts = linkopts + ["-Wl,--version-script", name + ".ldscript"],
         linkshared = 1,
         **kwargs
     )
     native.cc_binary(
         name = name + ".dylib",
+        deps = deps + [name + "_osx.ldscript"],
+        linkopts = linkopts + [
+            "-Wl,-exported_symbols_list", name + "_osx.ldscript",
+            "-Wl,-dead_strip",
+        ],
         linkshared = 1,
         **kwargs
     )
     native.cc_binary(
         name = name + ".dll",
+        srcs = [":" + name + "_syms"],
+        deps = deps + [name + ".ldscript"],
+        linkopts = linkopts + ["-Wl,--version-script", name + ".ldscript"],
         linkshared = 1,
         **kwargs
     )
@@ -40,5 +83,24 @@ def cc_dynamic_library(name, visibility, **kwargs):
             "//tools/build:linux": [":" + name + ".so"],
             "//tools/build:darwin": [":" + name + ".dylib"],
             "//tools/build:windows": [":" + name + ".dll"],
+            # Android
+            "//conditions:default": [":" + name + ".so"],
         })
+    )
+
+def android_dynamic_library(name, exports = "", deps = [], linkopts = [], **kwargs):
+    _symbol_exports(name, exports)
+
+    # This doesn't actually create a dynamic library, but sets up the linking
+    # correctly for when the android_binary actually creates the .so.
+    native.cc_library(
+        name = name,
+        deps = deps + [name + ".ldscript"],
+        linkopts = linkopts + [
+            "-Wl,--version-script", name + ".ldscript",
+            "-Wl,--gc-sections",
+            "-Wl,--exclude-libs,libgcc.a",
+            "-Wl,-z,noexecstack,-z,relro,-z,now,-z,nocopyreloc",
+        ],
+        **kwargs
     )

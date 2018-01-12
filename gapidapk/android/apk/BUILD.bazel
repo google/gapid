@@ -5,8 +5,8 @@ _NATIVE_LIBRARIES = {
     "VkLayer_VirtualSwapchain": "//core/vulkan/vk_virtual_swapchain/apk",
     "gapii": "//gapii/apk",
     "interceptor": "//gapii/apk",
-    "VKLayerGraphicsSpy": "//gapii/apk",
-    "gapir": "//gapir/apk",
+    "VkLayerGraphicsSpy": "//gapii/apk",
+    "gapir": "//cmd/gapir/apk",
 }
 
 gapid_apk(

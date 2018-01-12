@@ -1,0 +1,7 @@
+JNI_OnLoad
+gapid_vkGetDeviceProcAddr
+gapid_vkGetInstanceProcAddr
+gapid_vkEnumerateInstanceLayerProperties
+gapid_vkEnumerateInstanceExtensionProperties
+gapid_vkEnumerateDeviceLayerProperties
+gapid_vkEnumerateDeviceExtensionProperties

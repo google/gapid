@@ -2,6 +2,6 @@ load("//tools/build:rules.bzl", "android_native")
 
 android_native(
     name = "gapir",
-    deps = ["//gapir/cc:gapir"],
+    deps = ["//cmd/gapir/cc:libgapir"],
     visibility = ["//visibility:public"],
 )

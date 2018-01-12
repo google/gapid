@@ -18,3 +18,7 @@ build --fat_apk_cpu armeabi-v7a,arm64-v8a,x86
 
 # Default version defines
 build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer
+
+# Without this, bazel wraps each cc_library with "--whole-archive" flags for the
+# linker when building the dynamic library, which leads to over-bloated libs.
+build --nolegacy_whole_archive
