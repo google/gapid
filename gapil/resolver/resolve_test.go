@@ -128,6 +128,11 @@ cmd void foo() { a := A(1,2,3) a[2] = 2 }`,
 			source: `type u32[3] A
 cmd void foo() { a := A(1,2,3) i := a[3] }`,
 			errors: err("array index 3 is out of bounds for u32[3]"),
+		}, {
+			name: "StaticArray sliced. Error: cannot slice static arrays",
+			source: `type u32[3] A
+cmd void foo() { a := A(1,2,3) i := a[1:2] }`,
+			errors: err("cannot slice static arrays"),
 		},
 	} {
 		test.check(ctx)
