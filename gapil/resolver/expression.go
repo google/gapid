@@ -337,9 +337,8 @@ func index(rv *resolver, in *ast.Index) semantic.Expression {
 			rv.mappings.add(in, out)
 			return out
 		}
-		if n, ok := index.(semantic.Uint64Value); ok && n == 0 {
-			// pointer[0]
-			// TODO: clean up the magical 0 index on pointers
+		if n, ok := index.(semantic.Uint64Value); ok {
+			// pointer[n]
 			r := &semantic.BinaryOp{LHS: n, Operator: ast.OpSlice, RHS: n + 1}
 			slice := &semantic.PointerRange{AST: in, Pointer: object, Type: at.Slice, Range: r}
 			out := &semantic.SliceIndex{AST: in, Slice: slice, Type: at.Slice, Index: n}
