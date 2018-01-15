@@ -6586,18 +6586,41 @@ cmd void vkCmdBindVertexBuffers(
   addCmd(commandBuffer, args, dovkCmdBindVertexBuffers)
 }
 
+sub VkDeviceSize deviceMemoryOffsetToMappedSpace(ref!DeviceMemoryObject memory, VkDeviceSize offsetInDeviceMemory) {
+  ret := switch memory.MappedLocation == null {
+    case true:
+      as!VkDeviceSize(0xFFFFFFFFFFFFFFFF)
+    case false:
+      switch offsetInDeviceMemory < memory.MappedOffset {
+        case true:
+          as!VkDeviceSize(0xFFFFFFFFFFFFFFFF)
+        case false:
+          switch offsetInDeviceMemory >= memory.MappedOffset + memory.MappedSize {
+            case true:
+              as!VkDeviceSize(0xFFFFFFFFFFFFFFFF)
+            case false:
+              offsetInDeviceMemory - memory.MappedOffset
+          }
+      }
+  }
+  return ret
+}
+
 sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffset, VkDeviceSize readSize) {
   if IsMemoryCoherent(memory) && (memory.MappedLocation != null) {
-    if (as!VkDeviceSize(readOffset) >= memory.MappedOffset) && (as!VkDeviceSize(readOffset) < memory.MappedOffset + memory.MappedSize) {
-      offset_in_mapped := as!u64(readOffset) - as!u64(memory.MappedOffset)
-      read_size_in_mapped := switch ((as!u64(readSize) == 0xFFFFFFFFFFFFFFFF) || ((offset_in_mapped + as!u64(readSize)) > as!u64(memory.MappedSize))) {
-        case true:
-          memory.MappedSize - as!VkDeviceSize(offset_in_mapped)
-        case false:
-          readSize
-      }
-      if ((offset_in_mapped + as!u64(read_size_in_mapped)) > offset_in_mapped) {
-        readMappedCoherentMemory(memory.VulkanHandle, offset_in_mapped, as!size(read_size_in_mapped))
+    offset_in_mapped := deviceMemoryOffsetToMappedSpace(memory, readOffset)
+    if offset_in_mapped != as!VkDeviceSize(0xFFFFFFFFFFFFFFFF) {
+      read_size_in_mapped := switch(
+        (readSize == as!VkDeviceSize(0xFFFFFFFFFFFFFFFF)) ||
+        ((offset_in_mapped + readSize) > memory.MappedSize)) {
+          case true:
+            memory.MappedSize - offset_in_mapped
+          case false:
+            readSize
+        }
+      if (offset_in_mapped + read_size_in_mapped) > offset_in_mapped {
+        readMappedCoherentMemory(memory.VulkanHandle, as!u64(offset_in_mapped),
+        as!size(read_size_in_mapped))
       }
     }
   }
