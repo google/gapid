@@ -1763,6 +1763,10 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
     @if(Version.GLES32)
     case GL_TEXTURE_BORDER_COLOR: {
       // TODO: Handle - has different behaviour based on the I suffix.
+      t.BorderColor[0] = as!GLfloat(params[0])
+      t.BorderColor[1] = as!GLfloat(params[1])
+      t.BorderColor[2] = as!GLfloat(params[2])
+      t.BorderColor[3] = as!GLfloat(params[3])
     }
     @if(Extension.GL_EXT_texture_filter_anisotropic)
     case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
@@ -1805,8 +1809,8 @@ sub void TexParameterIuiv(GLenum target, GLenum pname, const GLuint* params) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", Version.GLES32)
 cmd void glTexParameterf(GLenum target, GLenum parameter, GLfloat value) {
   if parameter == GL_TEXTURE_BORDER_COLOR { glErrorInvalidEnum(parameter) } // not scalar
-  params := Vec1f(value)
-  TexParameterv!Vec1f(target, parameter, params)
+  params := Vec4f(value, 0, 0, 0)
+  TexParameterv!Vec4f(target, parameter, params)
 }
 
 @if(Version.GLES10)
@@ -1825,8 +1829,8 @@ cmd void glTexParameterfv(GLenum target, GLenum pname, const GLfloat* params) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glTexParameter.xhtml", Version.GLES32)
 cmd void glTexParameteri(GLenum target, GLenum parameter, GLint value) {
   if parameter == GL_TEXTURE_BORDER_COLOR { glErrorInvalidEnum(parameter) } // not scalar
-  params := Vec1i(value)
-  TexParameterv!Vec1i(target, parameter, params)
+  params := Vec4i(value, 0, 0, 0)
+  TexParameterv!Vec4i(target, parameter, params)
 }
 
 @if(Version.GLES10)
