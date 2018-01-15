@@ -305,6 +305,11 @@ func index(rv *resolver, in *ast.Index) semantic.Expression {
 		rv.with(semantic.Uint64Type, func() {
 			index = expression(rv, in.Index)
 		})
+		if bop, ok := index.(*semantic.BinaryOp); ok && bop.Operator == ast.OpSlice {
+			rv.errorf(in, "cannot slice static arrays")
+			return semantic.Invalid{}
+		}
+
 		it := index.ExpressionType()
 		if isNumber(semantic.Underlying(it)) {
 			if v, ok := index.(semantic.Uint64Value); ok && uint32(v) >= at.Size {
