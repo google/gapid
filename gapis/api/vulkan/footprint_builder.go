@@ -1670,13 +1670,26 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			delete(vb.mappedCoherentMemories, cmd.Memory)
 		}
 	case *VkFlushMappedMemoryRanges:
+		coherentMemDone := false
 		count := uint64(cmd.MemoryRangeCount)
 		for _, rng := range cmd.PMemoryRanges.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(rng.Memory))
+			mem := GetState(s).DeviceMemories.Get(rng.Memory)
+			if mem == nil {
+				continue
+			}
+			isCoherent, _ := subIsMemoryCoherent(ctx, cmd, id, nil, s, GetState(s), cmd.thread, nil, mem)
+			if isCoherent{
+				if !coherentMemDone {
+					vb.writeCoherentMemoryData(ctx, cmd, bh)
+					coherentMemDone = true
+				}
+				continue
+			}
 			offset := uint64(rng.Offset)
 			size := uint64(rng.Size)
 			ms := memorySpan{
-				span:   interval.U64Span{Start: offset, End: offset + size},
+				span: interval.U64Span{Start:offset, End: offset +size},
 				memory: rng.Memory,
 			}
 			write(ctx, bh, ms)
@@ -1844,6 +1857,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkCreateSwapchainKHR:
 		vkSw := cmd.PSwapchain.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkSw))
+	case *VkCreateSharedSwapchainsKHR:
+		count := uint64(cmd.SwapchainCount)
+		for _, vkSw := range cmd.PSwapchains.Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
+			write(ctx, bh, vkHandle(vkSw))
+		}
 	case *RecreateSwapchain:
 		vkSw := cmd.PSwapchain.MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkSw))
@@ -3006,11 +3024,16 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		*VkDestroySurfaceKHR:
 		bh.Alive = true
 	case *VkCreateCommandPool,
-		*RecreateCommandPool:
+		*RecreateCommandPool,
+		// TODO: ResetCommandPool should overwrite all the command buffers in this
+		// pool.
+		*VkResetCommandPool,
+		*VkDestroyCommandPool:
 		bh.Alive = true
 	case *VkGetPhysicalDeviceXlibPresentationSupportKHR,
 		*VkGetPhysicalDeviceXcbPresentationSupportKHR,
 		*VkGetPhysicalDeviceWaylandPresentationSupportKHR,
+		*VkGetPhysicalDeviceWin32PresentationSupportKHR,
 		*VkGetPhysicalDeviceMirPresentationSupportKHR:
 		bh.Alive = true
 	case *VkGetPhysicalDeviceProperties,
@@ -3027,6 +3050,12 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		*VkGetPhysicalDeviceSurfaceCapabilitiesKHR,
 		*VkGetPhysicalDeviceSurfaceFormatsKHR,
 		*VkGetPhysicalDeviceSurfacePresentModesKHR:
+		bh.Alive = true
+	case *VkGetDisplayPlaneSupportedDisplaysKHR,
+		*VkGetDisplayModePropertiesKHR,
+		*VkGetDisplayPlaneCapabilitiesKHR,
+		*VkCreateDisplayPlaneSurfaceKHR,
+		*VkCreateDisplayModeKHR:
 		bh.Alive = true
 	case *RecreateState:
 		bh.Alive = true
