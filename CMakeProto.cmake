@@ -63,6 +63,7 @@ protoc_go("github.com/google/gapid/gapis/replay/protocol" "gapis/replay/protocol
 protoc_go("github.com/google/gapid/gapis/replay" "gapis/replay" "replay.proto")
 protoc_go("github.com/google/gapid/gapis/resolve" "gapis/resolve" "resolvables.proto")
 protoc_go("github.com/google/gapid/gapis/resolve/dependencygraph" "gapis/resolve/dependencygraph" "resolvables.proto")
+protoc_go("github.com/google/gapid/gapis/resolve/initialcmds" "gapis/resolve/initialcmds" "resolvables.proto")
 protoc_go("github.com/google/gapid/gapis/service/path" "gapis/service/path" "path.proto")
 protoc_java("gapis/service/path" "path.proto" "com/google/gapid/proto/service/path/Path")
 protoc_go("github.com/google/gapid/gapis/service/box" "gapis/service/box" "box.proto")
