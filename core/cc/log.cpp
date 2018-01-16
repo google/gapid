@@ -56,7 +56,14 @@ Logger::~Logger() {
     }
 }
 
-void Logger::log(unsigned level, const char* src_file, unsigned src_line, const char* format, ...) const {
+void Logger::logf(unsigned level, const char* file, unsigned line, const char* format, ...) const {
+    va_list args;
+    va_start(args, format);
+    vlogf(level, file, line, format, args);
+    va_end(args);
+}
+
+void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line, const char* format, va_list args) const {
     // Get the current time with milliseconds precision
     auto t = std::chrono::system_clock::now();
     std::time_t now = std::chrono::system_clock::to_time_t(t);
@@ -69,10 +76,7 @@ void Logger::log(unsigned level, const char* src_file, unsigned src_line, const 
                 static_cast<int>(ms.count() % 1000), "FEWIDV"[level], mSystem, src_file, src_line);
 
         // Print out the actual log message
-        va_list args;
-        va_start(args, format);
         vfprintf(file, format, args);
-        va_end(args);
 
         // Always finish with a newline
         fprintf(file, "\n");
