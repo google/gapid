@@ -113,6 +113,10 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
   switch (capability) {
     @if(Version.GLES20)
     case GL_BLEND: {
+      i := as!DrawBufferIndex(index)
+      if !(i in ctx.Pixel.Blend) {
+        glErrorInvalidValue!DrawBufferIndex(i)
+      }
     }
     @if(Version.GLES20)
     case GL_CULL_FACE,
