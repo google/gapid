@@ -51,7 +51,6 @@ type compiler struct {
 	locations     []Location
 	ty            types
 	refRels       refRels
-	emptyString   codegen.Global
 	currentFunc   *semantic.Function
 	currentStmt   semantic.Node
 	currentExpr   semantic.Expression
@@ -191,16 +190,6 @@ func (c *compiler) build(api *semantic.API) {
 	defer c.augmentPanics()
 
 	c.buildTypes(api)
-
-	c.emptyString = c.module.Global("empty_string",
-		c.module.ConstStruct(c.ty.str.(*codegen.Struct),
-			map[string]interface{}{
-				stringRefCount: 1,
-				stringLength:   0,
-				stringData:     nil,
-				stringOwnsData: 0,
-			}),
-	)
 
 	{
 		c.callbacks.alloc = c.module.ParseFunctionSignature(C.GoString(C.gapil_alloc_sig))

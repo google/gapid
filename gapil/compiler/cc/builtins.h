@@ -2,6 +2,7 @@
 
 typedef struct pool_t    pool;
 typedef struct globals_t globals;
+typedef struct string_t  string;
 
 static const uint32_t ERR_SUCCESS = 0;
 static const uint32_t ERR_ABORTED = 1;
@@ -11,6 +12,7 @@ typedef struct context_t {
 	uint32_t    location;
 	globals*    globals;
 	pool*       app_pool;
+	string*     empty_string;
 } context;
 
 typedef struct pool_t {
@@ -28,8 +30,7 @@ typedef struct slice_t {
 typedef struct string_t {
 	uint32_t ref_count;
 	uint64_t length;
-	uint8_t* data;
-	uint8_t  owns_data;
+	uint8_t  data[1];
 } string;
 
 typedef struct map_t {
