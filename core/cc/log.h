@@ -93,7 +93,9 @@ public:
     // If a message is logged with level LOG_LEVEL_FATAL, the program will terminate after the
     // message is printed.
     // Log messages take the form: <time> <level> <system> <file:line> : <message>
-    void log(unsigned level, const char* file, unsigned line, const char* format, ...) const;
+    void logf(unsigned level, const char* file, unsigned line, const char* format, ...) const;
+
+    void vlogf(unsigned level, const char* file, unsigned line, const char* format, va_list args) const;
 
     static const Logger& instance() { return mInstance; }
 
@@ -116,7 +118,7 @@ private:
 #define GAPID_LOGGER_INIT(...) ::core::Logger::init(__VA_ARGS__)
 #define GAPID_LOG(LEVEL, FORMAT, ...)                                                             \
   if (::core::Logger::level() >= LEVEL) {                                                         \
-    ::core::Logger::instance().log(LEVEL, __FILE__, __LINE__, FORMAT, ##__VA_ARGS__);             \
+    ::core::Logger::instance().logf(LEVEL, __FILE__, __LINE__, FORMAT, ##__VA_ARGS__);             \
   }
 #define GAPID_FATAL(FORMAT, ...) GAPID_LOG(LOG_LEVEL_FATAL, FORMAT, ##__VA_ARGS__)
 #define GAPID_ERROR(FORMAT, ...) GAPID_LOG(LOG_LEVEL_ERROR, FORMAT, ##__VA_ARGS__)
