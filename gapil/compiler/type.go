@@ -274,7 +274,9 @@ func (c *compiler) basicType(t semantic.Type) (out codegen.Type) {
 func (c *compiler) initialValue(s *scope, t semantic.Type) *codegen.Value {
 	switch t {
 	case semantic.StringType:
-		return c.emptyString.Value(s.Builder)
+		str := s.ctx.Index(0, contextEmptyString).Load()
+		c.reference(s, str, semantic.StringType)
+		return str
 	}
 	switch t := t.(type) {
 	case *semantic.Class:

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "core/cc/assert.h"
 #include "core/cc/log.h"
 #include "core/memory/arena/cc/arena.h"
 
@@ -41,17 +42,24 @@ exec_context* create_context(uint32_t id, globals* globals, arena* a) {
     app_pool->ref_count = 1;
     app_pool->buffer = nullptr;
 
+    auto empty_string = new string;
+    empty_string->ref_count = 1;
+    empty_string->length = 0;
+    empty_string->data[0] = 0;
+
     Arena* arena = reinterpret_cast<Arena*>(a);
     exec_context* ec = new exec_context();
     ec->ctx.id = id;
     ec->ctx.location = 0xffffffff;
     ec->ctx.globals = globals;
     ec->ctx.app_pool = app_pool;
+    ec->ctx.empty_string = empty_string;
     ec->arena = a;
     return ec;
 }
 
 void destroy_context(exec_context* ec) {
+    delete ec->ctx.empty_string;
     delete ec->ctx.app_pool;
     delete ec;
 }
@@ -186,36 +194,32 @@ string* gapil_make_string(context* ctx, uint64_t length, void* data) {
     auto ec = reinterpret_cast<exec_context*>(ctx);
     Arena* arena = reinterpret_cast<Arena*>(ec->arena);
 
-    uint8_t* buf = reinterpret_cast<uint8_t*>(arena->allocate(length + 1, 1));
+    auto str = reinterpret_cast<string_t*>(arena->allocate(sizeof(string_t) + length + 1, 1));
+    str->ref_count = 1;
+    str->length = length;
+
     if (data != nullptr) {
-        memcpy(buf, data, length);
+        memcpy(str->data, data, length);
+        str->data[length] = 0;
+    } else {
+        memset(str->data, 0, length + 1);
     }
-    buf[length] = 0;
 
-    auto out = arena->create<string>();
-    out->ref_count = 1;
-    out->length = length;
-    out->data = buf;
-    out->owns_data = true;
-
-    return out;
+    return str;
 }
 
 void gapil_free_string(context* ctx, string* str) {
-    DEBUG_PRINT("gapil_free_string(ref_count: %d, len: %llu, str: '%s' (%p), owns_data: %s)",
-        str->ref_count, str->length, str->data, str->data, str->owns_data ? "true" : "false");
+    DEBUG_PRINT("gapil_free_string(ref_count: %d, len: %llu, str: '%s' (%p))",
+        str->ref_count, str->length, str->data, str->data);
+
+    GAPID_ASSERT_MSG(str != ctx->empty_string,
+        "Attempting to free the global empty string. "
+        "This suggests asymmetrical reference/release logic.");
 
     auto ec = reinterpret_cast<exec_context*>(ctx);
     Arena* arena = reinterpret_cast<Arena*>(ec->arena);
 
-    if (str->data == nullptr) {
-        return; // The empty-string is a shared, non-allocated structure.
-    }
-
-    if (str->owns_data) {
-        arena->free(str->data);
-    }
-    arena->destroy(str);
+    arena->free(str);
 }
 
 string* gapil_slice_to_string(context* ctx, slice* slice) {

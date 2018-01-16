@@ -39,10 +39,6 @@ import (
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
-const (
-	allocsPerString = 2 // string* and data
-)
-
 func TestExecutor(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
@@ -1235,9 +1231,7 @@ cmd void StringInState(char* str) {
 				data:   D(ptrA),
 				extras: read(ptrA, 12, resHelloWorld),
 			}},
-			expected: expected{
-				numAllocs: allocsPerString,
-			},
+			expected: expected{numAllocs: 1},
 		},
 		////////////////////////////////////////////////////////
 		// Memory Layout                                      //
