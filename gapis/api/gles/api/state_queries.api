@@ -191,6 +191,13 @@ sub GLboolean IsEnabledi(GLenum capability, GLuint index) {
   return GetCapability(capability, index)
 }
 
+sub ref!BlendState getBlendStateOrInvalidValue(ref!Context ctx, DrawBufferIndex index) {
+    if !(index in ctx.Pixel.Blend) {
+      glErrorInvalidValue!DrawBufferIndex(index)
+    }
+    return ctx.Pixel.Blend[index]
+}
+
 sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
   ctx := GetContext()
   switch (name) {
@@ -244,8 +251,8 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_BLEND: {
-      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.Pixel.Blend[i].Enabled)
+      // SPEC: Man page does not mention indexing.
+      v[0] = as!T(getBlendStateOrInvalidValue(ctx, as!DrawBufferIndex(index)).Enabled)
     }
     @if(Version.GLES20)
     case GL_BLEND_COLOR: {
@@ -257,33 +264,33 @@ sub void GetStateVariable!T(GLenum name, bool isIndexed, GLuint index, T* v) {
     }
     @if(Version.GLES20)
     case GL_BLEND_DST_ALPHA: {
-      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.Pixel.Blend[i].DstAlpha)
+      // SPEC: Man page does not mention indexing.
+      v[0] = as!T(getBlendStateOrInvalidValue(ctx, as!DrawBufferIndex(index)).DstAlpha)
     }
     @if(Version.GLES20)
     case GL_BLEND_DST_RGB: {
-      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.Pixel.Blend[i].DstRgb)
+      // SPEC: Man page does not mention indexing.
+      v[0] = as!T(getBlendStateOrInvalidValue(ctx, as!DrawBufferIndex(index)).DstRgb)
     }
     @if(Version.GLES20)
     case GL_BLEND_EQUATION_ALPHA: {
-      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.Pixel.Blend[i].EquationAlpha)
+      // SPEC: Man page does not mention indexing.
+      v[0] = as!T(getBlendStateOrInvalidValue(ctx, as!DrawBufferIndex(index)).EquationAlpha)
     }
     @if(Version.GLES20)
     case GL_BLEND_EQUATION_RGB: {
-      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.Pixel.Blend[i].EquationRgb)
+      // SPEC: Man page does not mention indexing.
+      v[0] = as!T(getBlendStateOrInvalidValue(ctx, as!DrawBufferIndex(index)).EquationRgb)
     }
     @if(Version.GLES20)
     case GL_BLEND_SRC_ALPHA: {
-      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.Pixel.Blend[i].SrcAlpha)
+      // SPEC: Man page does not mention indexing.
+      v[0] = as!T(getBlendStateOrInvalidValue(ctx, as!DrawBufferIndex(index)).SrcAlpha)
     }
     @if(Version.GLES20)
     case GL_BLEND_SRC_RGB: {
-      i := as!DrawBufferIndex(index) // SPEC: Man page does not mention indexing.
-      v[0] = as!T(ctx.Pixel.Blend[i].SrcRgb)
+      // SPEC: Man page does not mention indexing.
+      v[0] = as!T(getBlendStateOrInvalidValue(ctx, as!DrawBufferIndex(index)).SrcRgb)
     }
     @if(Version.GLES20)
     case GL_BLUE_BITS: {
