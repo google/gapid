@@ -16,6 +16,7 @@ package binary
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/google/gapid/core/math/f16"
 )
@@ -96,5 +97,43 @@ func WriteInt(w Writer, bits int32, v int64) {
 func WriteBytes(w Writer, v uint8, count int32) {
 	for i := int32(0); i < count; i++ {
 		w.Uint8(v)
+	}
+}
+
+// Write writes v to the writer w. v must be an byte, integer, float, boolean,
+// string, slice or array.
+func Write(w Writer, v interface{}) {
+	r := reflect.ValueOf(v)
+	switch r.Kind() {
+	case reflect.Bool:
+		w.Bool(r.Bool())
+	case reflect.Int8:
+		w.Int8(int8(r.Int()))
+	case reflect.Int16:
+		w.Int16(int16(r.Int()))
+	case reflect.Int32:
+		w.Int32(int32(r.Int()))
+	case reflect.Int, reflect.Int64:
+		w.Int64(int64(r.Int()))
+	case reflect.Uint8:
+		w.Uint8(uint8(r.Uint()))
+	case reflect.Uint16:
+		w.Uint16(uint16(r.Uint()))
+	case reflect.Uint32:
+		w.Uint32(uint32(r.Uint()))
+	case reflect.Uint, reflect.Uint64, reflect.Uintptr:
+		w.Uint64(uint64(r.Uint()))
+	case reflect.Float32:
+		w.Float32(float32(r.Float()))
+	case reflect.Float64:
+		w.Float64(r.Float())
+	case reflect.Slice, reflect.Array:
+		for i, c := 0, r.Len(); i < c; i++ {
+			Write(w, r.Index(i).Interface())
+		}
+	case reflect.String:
+		w.String(r.String())
+	default:
+		panic(fmt.Errorf("Cannot write type %T", v))
 	}
 }
