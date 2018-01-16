@@ -836,7 +836,7 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []u
 			size,
 		}).Ptr(),
 		VkResult_VK_SUCCESS,
-	).AddWrite(dat.Data()))
+	).AddRead(dat.Data()))
 
 	sb.write(sb.cb.VkUnmapMemory(
 		device.VulkanHandle,
