@@ -26,7 +26,7 @@ permalink: /requirements/
 
 ## Android
 
-* Android L (5.0) or later for OpenGL ES tracing.
+* Android L (5.0) or later for OpenGL ES 2.0+ tracing (OpenGL ES 1.x is not supported).
 * Android N (7.0) or later for Vulkan tracing.
 
 <div class="issue">
