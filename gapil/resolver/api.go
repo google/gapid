@@ -130,15 +130,15 @@ func resolve(rv *resolver) {
 	for _, c := range rv.api.Definitions {
 		definition(rv, c)
 	}
+	for _, c := range rv.api.Classes {
+		class(rv, c)
+	}
 	for _, g := range rv.api.Globals {
 		global(rv, g)
 	}
 	for _, e := range rv.api.Externs {
 		functionSignature(rv, e)
 		functionBody(rv, nil, e)
-	}
-	for _, c := range rv.api.Classes {
-		class(rv, c)
 	}
 	for _, s := range rv.api.Subroutines {
 		functionSignature(rv, s)
