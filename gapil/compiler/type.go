@@ -274,9 +274,7 @@ func (c *compiler) basicType(t semantic.Type) (out codegen.Type) {
 func (c *compiler) initialValue(s *scope, t semantic.Type) *codegen.Value {
 	switch t {
 	case semantic.StringType:
-		str := s.ctx.Index(0, contextEmptyString).Load()
-		c.reference(s, str, semantic.StringType)
-		return str
+		return s.ctx.Index(0, contextEmptyString).Load()
 	}
 	switch t := t.(type) {
 	case *semantic.Class:
@@ -296,6 +294,7 @@ func (c *compiler) initialValue(s *scope, t semantic.Type) *codegen.Value {
 		mapPtr.Index(0, mapCount).Store(s.Scalar(uint64(0)))
 		mapPtr.Index(0, mapCapacity).Store(s.Scalar(uint64(0)))
 		mapPtr.Index(0, mapElements).Store(s.Zero(c.ty.Pointer(mapInfo.Elements)))
+		c.deferRelease(s, mapPtr, t)
 		return mapPtr
 	default:
 		return s.Zero(c.targetType(t))

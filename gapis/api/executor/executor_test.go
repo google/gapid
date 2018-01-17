@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -1232,6 +1231,44 @@ cmd void StringInState(char* str) {
 				extras: read(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{numAllocs: 1},
+		}, {
+			name: "RefCount.StringInClass",
+			src: `
+class C { string s }
+C c
+cmd void StringInClass() { c = C("purr") }
+`,
+			cmds:     []cmd{{name: "StringInClass"}},
+			expected: expected{numAllocs: 1},
+		}, {
+			name: "RefCount.ReleaseStringInClass",
+			src: `
+class C { string s }
+C c
+cmd void Assign() { c = C("purr") }
+cmd void Clear() { c = null }
+`,
+			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
+			expected: expected{numAllocs: 0},
+		}, {
+			name: "RefCount.StringInRef",
+			src: `
+class C { string s }
+ref!C c
+cmd void StringInRef() { c = new!C("purr") }
+`,
+			cmds:     []cmd{{name: "StringInRef"}},
+			expected: expected{numAllocs: 2},
+		}, {
+			name: "RefCount.ReleaseStringInRef",
+			src: `
+class C { string s }
+ref!C c
+cmd void Assign() { c = new!C("purr") }
+cmd void Clear() { c = null }
+`,
+			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
+			expected: expected{numAllocs: 0},
 		},
 		////////////////////////////////////////////////////////
 		// Memory Layout                                      //
@@ -1355,6 +1392,8 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 		}
 	}()
 
+	fmt.Printf("--- %s ---\n", t.name)
+
 	processor := gapil.NewProcessor()
 	processor.Loader = gapil.NewDataLoader([]byte(t.src))
 	api, errs := processor.Resolve(t.name + ".api")
@@ -1372,16 +1411,17 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 	defer env.Dispose()
 
 	if t.dump {
-		fmt.Fprintf(os.Stderr, "%s\n\n%s\n", t.name, program.Dump())
+		fmt.Println(program.Dump())
 	}
 
 	defer func() {
 		if !succeeded {
-			log.I(ctx, "\n\n%s", program.Dump())
+			fmt.Println(program.Dump())
 		}
 	}()
 
 	for i, cmd := range t.cmds {
+		fmt.Printf("    > %s\n", cmd.name)
 		err = env.Execute(ctx, cmd)
 		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.name).ThatError(err).Equals(t.expected.err) {
 			return false

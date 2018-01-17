@@ -23,21 +23,24 @@ import (
 const debugLogRefCounts = false
 
 type refRel struct {
-	reference codegen.Function
-	release   codegen.Function
+	name      string
+	reference codegen.Function // void T_reference(context*, T)
+	release   codegen.Function // void T_release(context*, T)
+}
+
+func (f *refRel) declare(c *compiler, name string, ty codegen.Type) {
+	m := c.module
+	f.reference = m.Function(c.ty.Void, name+"_reference", c.ty.ctxPtr, ty)
+	f.release = m.Function(c.ty.Void, name+"_release", c.ty.ctxPtr, ty)
+	f.name = name
 }
 
 func (f *refRel) build(
 	c *compiler,
-	name string,
-	ty codegen.Type,
 	isNull func(s *scope, val *codegen.Value) *codegen.Value,
 	getRefPtr func(s *scope, val *codegen.Value) *codegen.Value,
 	del func(s *scope, ctx, val *codegen.Value),
 ) {
-	m := c.module
-	// void T_reference(context*, T)
-	f.reference = m.Function(c.ty.Void, name+"_reference", c.ty.ctxPtr, ty)
 	f.reference.Build(func(b *codegen.Builder) {
 		s := c.scope(b)
 		val := s.Parameter(1)
@@ -47,17 +50,15 @@ func (f *refRel) build(
 		refPtr := getRefPtr(s, val)
 		oldCount := refPtr.Load()
 		s.If(s.Equal(oldCount, s.Scalar(uint32(0))), func() {
-			c.logf(s, log.Fatal, "Attempting to reference released "+name)
+			c.logf(s, log.Fatal, "Attempting to reference released "+f.name)
 		})
 		newCount := s.Add(oldCount, s.Scalar(uint32(1)))
 		if debugLogRefCounts {
-			c.logf(s, log.Info, name+" ref_count: %d -> %d", oldCount, newCount)
+			c.logf(s, log.Info, f.name+" ref_count: %d -> %d", oldCount, newCount)
 		}
 		refPtr.Store(newCount)
 	})
 
-	// void T_release(context*, T)
-	f.release = m.Function(c.ty.Void, name+"_release", c.ty.ctxPtr, ty)
 	f.release.Build(func(b *codegen.Builder) {
 		s := c.scope(b)
 		ctx, val := s.Parameter(0), s.Parameter(1)
@@ -67,11 +68,11 @@ func (f *refRel) build(
 		refPtr := getRefPtr(s, val)
 		oldCount := refPtr.Load()
 		s.If(s.Equal(oldCount, s.Scalar(uint32(0))), func() {
-			c.logf(s, log.Fatal, "Attempting to release "+name+" with no remaining references!")
+			c.logf(s, log.Fatal, "Attempting to release "+f.name+" with no remaining references!")
 		})
 		newCount := s.Sub(oldCount, s.Scalar(uint32(1)))
 		if debugLogRefCounts {
-			c.logf(s, log.Info, name+" ref_count: %d -> %d", oldCount, newCount)
+			c.logf(s, log.Info, f.name+" ref_count: %d -> %d", oldCount, newCount)
 		}
 		refPtr.Store(newCount)
 		s.If(s.Equal(newCount, s.Scalar(uint32(0))), func() {
@@ -86,7 +87,8 @@ func (r *refRels) build(c *compiler) {
 	*r = map[semantic.Type]refRel{}
 
 	sli := refRel{}
-	sli.build(c, "slice", c.ty.sli,
+	sli.declare(c, "slice", c.ty.sli)
+	sli.build(c,
 		func(s *scope, sli *codegen.Value) *codegen.Value {
 			poolPtr := sli.Extract(slicePool)
 			return s.Equal(poolPtr, s.Zero(poolPtr.Type()))
@@ -101,7 +103,8 @@ func (r *refRels) build(c *compiler) {
 		})
 
 	str := refRel{}
-	str.build(c, "string", c.ty.strPtr,
+	str.declare(c, "string", c.ty.strPtr)
+	str.build(c,
 		func(s *scope, strPtr *codegen.Value) *codegen.Value {
 			return s.Equal(strPtr, s.Zero(c.ty.strPtr))
 		},
@@ -113,93 +116,124 @@ func (r *refRels) build(c *compiler) {
 		})
 	(*r)[semantic.StringType] = str
 
+	var isRefTy func(ty semantic.Type) bool
+	isRefTy = func(ty semantic.Type) bool {
+		ty = semantic.Underlying(ty)
+		if ty == semantic.StringType {
+			return true
+		}
+		switch ty := ty.(type) {
+		case *semantic.Slice, *semantic.Reference, *semantic.Map:
+			return true
+		case *semantic.Class:
+			for _, f := range ty.Fields {
+				if isRefTy(f.Type) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	// Forward declare all the reference types.
 	for apiTy, cgTy := range c.ty.target {
-		switch apiTy := apiTy.(type) {
-		case *semantic.Slice:
-			(*r)[apiTy] = sli
+		apiTy = semantic.Underlying(apiTy)
+		switch apiTy {
+		case semantic.StringType:
+			// Already implemented
 
-		case *semantic.Reference:
-			funcs := refRel{}
-			funcs.build(c, apiTy.Name(), cgTy,
-				func(s *scope, refPtr *codegen.Value) *codegen.Value {
-					return s.Equal(refPtr, s.Zero(cgTy))
-				},
-				func(s *scope, refPtr *codegen.Value) *codegen.Value {
-					return refPtr.Index(0, refRefCount)
-				},
-				func(s *scope, ctx, refPtr *codegen.Value) {
-					c.release(s, refPtr.Index(0, refValue), apiTy.To)
-					s.Call(c.callbacks.free, ctx, refPtr.Cast(c.ty.voidPtr))
-				})
-			(*r)[apiTy] = funcs
+		default:
+			switch apiTy := apiTy.(type) {
+			case *semantic.Slice:
+				(*r)[apiTy] = sli
 
-		case *semantic.Map:
-			funcs := refRel{}
-			funcs.build(c, apiTy.Name(), cgTy,
-				func(s *scope, mapPtr *codegen.Value) *codegen.Value {
-					return s.Equal(mapPtr, s.Zero(cgTy))
-				},
-				func(s *scope, mapPtr *codegen.Value) *codegen.Value {
-					return mapPtr.Index(0, mapRefCount)
-				},
-				func(s *scope, ctx, mapPtr *codegen.Value) {
-					elPtr := mapPtr.Index(0, mapElements).Load()
-					s.Call(c.callbacks.free, ctx, elPtr.Cast(c.ty.voidPtr))
-					s.Call(c.callbacks.free, ctx, mapPtr.Cast(c.ty.voidPtr))
-				})
-			(*r)[apiTy] = funcs
+			default:
+				if isRefTy(apiTy) {
+					funcs := refRel{}
+					funcs.declare(c, apiTy.Name(), cgTy)
+					(*r)[apiTy] = funcs
+				}
+			}
 		}
 	}
 
-	for apiTy, cgTy := range c.ty.target {
-		switch apiTy := semantic.Underlying(apiTy).(type) {
-		case *semantic.Class: // Must come after all other types are constructed.
-			refFields := []*semantic.Field{}
-			for _, f := range apiTy.Fields {
-				if _, ok := (*r)[f.Type]; ok { // TODO: This needs to be split into two passes to handle structs in structs.
-					refFields = append(refFields, f)
+	// Implement all the reference types.
+	for apiTy, funcs := range *r {
+		switch apiTy {
+		case semantic.StringType:
+			// Already implemented
+
+		default:
+			switch apiTy := apiTy.(type) {
+			case *semantic.Slice:
+				// Already implemented
+
+			case *semantic.Reference:
+				cgTy := c.ty.target[apiTy]
+				funcs.build(c,
+					func(s *scope, refPtr *codegen.Value) *codegen.Value {
+						return s.Equal(refPtr, s.Zero(cgTy))
+					},
+					func(s *scope, refPtr *codegen.Value) *codegen.Value {
+						return refPtr.Index(0, refRefCount)
+					},
+					func(s *scope, ctx, refPtr *codegen.Value) {
+						c.release(s, refPtr.Index(0, refValue).Load(), apiTy.To)
+						s.Call(c.callbacks.free, ctx, refPtr.Cast(c.ty.voidPtr))
+					})
+
+			case *semantic.Map:
+				cgTy := c.ty.target[apiTy]
+				funcs.build(c,
+					func(s *scope, mapPtr *codegen.Value) *codegen.Value {
+						return s.Equal(mapPtr, s.Zero(cgTy))
+					},
+					func(s *scope, mapPtr *codegen.Value) *codegen.Value {
+						return mapPtr.Index(0, mapRefCount)
+					},
+					func(s *scope, ctx, mapPtr *codegen.Value) {
+						elPtr := mapPtr.Index(0, mapElements).Load()
+						s.Call(c.callbacks.free, ctx, elPtr.Cast(c.ty.voidPtr))
+						s.Call(c.callbacks.free, ctx, mapPtr.Cast(c.ty.voidPtr))
+					})
+
+			case *semantic.Class:
+				refFields := []*semantic.Field{}
+				for _, f := range apiTy.Fields {
+					if _, ok := (*r)[f.Type]; ok {
+						refFields = append(refFields, f)
+					}
 				}
+
+				funcs.reference.Build(func(b *codegen.Builder) {
+					s := c.scope(b)
+					ptr := s.Parameter(1)
+					for _, f := range refFields {
+						c.reference(s, ptr.Extract(f.Name()), f.Type)
+					}
+				})
+				funcs.release.Build(func(b *codegen.Builder) {
+					s := c.scope(b)
+					ptr := s.Parameter(1)
+					for _, f := range refFields {
+						c.release(s, ptr.Extract(f.Name()), f.Type)
+					}
+				})
+			default:
+				fail("Unhandled reference type %T", apiTy)
 			}
-			if len(refFields) == 0 {
-				continue
-			}
-
-			name := apiTy.Name()
-			funcs := refRel{}
-
-			// void T_reference(context*, T)
-			funcs.reference = c.module.Function(c.ty.Void, name+"_reference", c.ty.ctxPtr, cgTy)
-			funcs.reference.Build(func(b *codegen.Builder) {
-				s := c.scope(b)
-				ptr := s.Parameter(1)
-				for _, f := range refFields {
-					c.reference(s, ptr.Extract(f.Name()), f.Type)
-				}
-			})
-
-			// void T_release(context*, T)
-			funcs.release = c.module.Function(c.ty.Void, name+"_release", c.ty.ctxPtr, cgTy)
-			funcs.release.Build(func(b *codegen.Builder) {
-				s := c.scope(b)
-				ptr := s.Parameter(1)
-				for _, f := range refFields {
-					c.release(s, ptr.Extract(f.Name()), f.Type)
-				}
-			})
-
-			(*r)[apiTy] = funcs
 		}
 	}
 }
 
 func (c *compiler) reference(s *scope, val *codegen.Value, ty semantic.Type) {
-	if f, ok := c.refRels[ty]; ok {
+	if f, ok := c.refRels[semantic.Underlying(ty)]; ok {
 		s.Call(f.reference, s.ctx, val)
 	}
 }
 
 func (c *compiler) release(s *scope, val *codegen.Value, ty semantic.Type) {
-	if f, ok := c.refRels[ty]; ok {
+	if f, ok := c.refRels[semantic.Underlying(ty)]; ok {
 		s.Call(f.release, s.ctx, val)
 	}
 }
