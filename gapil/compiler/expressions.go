@@ -206,9 +206,6 @@ func (c *compiler) boolValue(s *scope, e semantic.BoolValue) *codegen.Value {
 
 func (c *compiler) call(s *scope, e *semantic.Call) *codegen.Value {
 	tf := e.Target.Function
-	if extern, ok := c.externs[tf]; ok {
-		return c.callExtern(s, extern, e)
-	}
 	args := make([]*codegen.Value, len(e.Arguments)+1)
 	args[0] = s.ctx
 	for i, a := range e.Arguments {

@@ -80,6 +80,11 @@ var (
 	envs      = map[envID]*Env{}
 )
 
+// GetEnv returns the Env from the C context pointer c.
+func GetEnv(c unsafe.Pointer) *Env {
+	return env((*C.context)(c))
+}
+
 func env(c *C.context) *Env {
 	id := envID(c.id)
 	envMutex.Lock()

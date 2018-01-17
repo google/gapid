@@ -32,6 +32,7 @@ import (
 	"github.com/google/gapid/gapil/compiler"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/executor"
+	"github.com/google/gapid/gapis/api/executor/testexterns"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -436,6 +437,25 @@ cmd void BitTest() {
 }`,
 			cmds:     []cmd{{name: "BitTest"}},
 			expected: expected{data: D(true, false, true)},
+		}, { /////////////////////////////////////////////////////
+			name: "Expressions.Call.Extern",
+			src: `
+u64  p
+bool q
+extern u64  test_extern_a(u64 a, f32 b, bool c)
+extern bool test_extern_b(string s)
+cmd void CallExterns(u64 a, f32 b, bool c) {
+	p = test_extern_a(as!u64(10), 20.0, true)
+	q = test_extern_b("meow")
+}`,
+			cmds: []cmd{{name: "CallExterns"}},
+			expected: expected{
+				data: D(30, true, pad(7)),
+				externCalls: []interface{}{
+					externA{10, 20.0, true},
+					externB{"meow"},
+				},
+			},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Call.Subroutine",
 			src: `
@@ -1557,10 +1577,21 @@ func D(vals ...interface{}) []byte {
 
 func pad(bytes int) []byte { return make([]byte, bytes) }
 
+type externA struct {
+	I uint64
+	F float32
+	B bool
+}
+
+type externB struct {
+	S string
+}
+
 type expected struct {
-	data      []byte
-	err       error
-	numAllocs int
+	data        []byte
+	err         error
+	numAllocs   int
+	externCalls []interface{}
 }
 
 type test struct {
@@ -1607,8 +1638,18 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 		}
 	}()
 
+	externCalls := []interface{}{}
+
 	for i, cmd := range t.cmds {
 		fmt.Printf("    > %s\n", cmd.name)
+		testexterns.ExternA = func(env *executor.Env, i uint64, f float32, b bool) uint64 {
+			externCalls = append(externCalls, externA{i, f, b})
+			return i + uint64(f)
+		}
+		testexterns.ExternB = func(env *executor.Env, s string) bool {
+			externCalls = append(externCalls, externB{s})
+			return s == "meow"
+		}
 		err = env.Execute(ctx, cmd)
 		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.name).ThatError(err).Equals(t.expected.err) {
 			return false
@@ -1617,6 +1658,12 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 
 	if t.expected.data != nil {
 		if !assert.For(ctx, "Globals").ThatSlice(env.Globals).Equals(t.expected.data) {
+			return false
+		}
+	}
+
+	if t.expected.externCalls != nil {
+		if !assert.For(ctx, "ExternCalls").ThatSlice(externCalls).Equals(t.expected.externCalls) {
 			return false
 		}
 	}
