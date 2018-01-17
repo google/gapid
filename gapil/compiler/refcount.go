@@ -83,38 +83,21 @@ func (f *refRel) build(
 
 type refRels map[semantic.Type]refRel
 
-func (r *refRels) build(c *compiler) {
-	*r = map[semantic.Type]refRel{}
+var slicePrototype = &semantic.Slice{}
+
+// declareRefRels declares all the reference type's reference() and release()
+// functions.
+func (c *compiler) declareRefRels() {
+	r := map[semantic.Type]refRel{}
+	c.refRels = r
 
 	sli := refRel{}
 	sli.declare(c, "slice", c.ty.sli)
-	sli.build(c,
-		func(s *scope, sli *codegen.Value) *codegen.Value {
-			poolPtr := sli.Extract(slicePool)
-			return s.Equal(poolPtr, s.Zero(poolPtr.Type()))
-		},
-		func(s *scope, sli *codegen.Value) *codegen.Value {
-			poolPtr := sli.Extract(slicePool)
-			return poolPtr.Index(0, poolRefCount)
-		},
-		func(s *scope, ctx, sli *codegen.Value) {
-			poolPtr := sli.Extract(slicePool)
-			s.Call(c.callbacks.freePool, ctx, poolPtr)
-		})
+	r[slicePrototype] = sli
 
 	str := refRel{}
 	str.declare(c, "string", c.ty.strPtr)
-	str.build(c,
-		func(s *scope, strPtr *codegen.Value) *codegen.Value {
-			return s.Equal(strPtr, s.Zero(c.ty.strPtr))
-		},
-		func(s *scope, strPtr *codegen.Value) *codegen.Value {
-			return strPtr.Index(0, stringRefCount)
-		},
-		func(s *scope, ctx, strPtr *codegen.Value) {
-			s.Call(c.callbacks.freeString, ctx, strPtr)
-		})
-	(*r)[semantic.StringType] = str
+	r[semantic.StringType] = str
 
 	var isRefTy func(ty semantic.Type) bool
 	isRefTy = func(ty semantic.Type) bool {
@@ -145,20 +128,52 @@ func (r *refRels) build(c *compiler) {
 		default:
 			switch apiTy := apiTy.(type) {
 			case *semantic.Slice:
-				(*r)[apiTy] = sli
+				r[apiTy] = sli
 
 			default:
 				if isRefTy(apiTy) {
 					funcs := refRel{}
 					funcs.declare(c, apiTy.Name(), cgTy)
-					(*r)[apiTy] = funcs
+					r[apiTy] = funcs
 				}
 			}
 		}
 	}
+}
 
-	// Implement all the reference types.
-	for apiTy, funcs := range *r {
+// buildRefRels implements all the reference type's reference() and release()
+// functions.
+func (c *compiler) buildRefRels() {
+	r := c.refRels
+
+	sli := r[slicePrototype]
+	sli.build(c,
+		func(s *scope, sli *codegen.Value) *codegen.Value {
+			poolPtr := sli.Extract(slicePool)
+			return s.Equal(poolPtr, s.Zero(poolPtr.Type()))
+		},
+		func(s *scope, sli *codegen.Value) *codegen.Value {
+			poolPtr := sli.Extract(slicePool)
+			return poolPtr.Index(0, poolRefCount)
+		},
+		func(s *scope, ctx, sli *codegen.Value) {
+			poolPtr := sli.Extract(slicePool)
+			s.Call(c.callbacks.freePool, ctx, poolPtr)
+		})
+
+	str := r[semantic.StringType]
+	str.build(c,
+		func(s *scope, strPtr *codegen.Value) *codegen.Value {
+			return s.Equal(strPtr, s.Zero(c.ty.strPtr))
+		},
+		func(s *scope, strPtr *codegen.Value) *codegen.Value {
+			return strPtr.Index(0, stringRefCount)
+		},
+		func(s *scope, ctx, strPtr *codegen.Value) {
+			s.Call(c.callbacks.freeString, ctx, strPtr)
+		})
+
+	for apiTy, funcs := range r {
 		switch apiTy {
 		case semantic.StringType:
 			// Already implemented
@@ -169,38 +184,35 @@ func (r *refRels) build(c *compiler) {
 				// Already implemented
 
 			case *semantic.Reference:
-				cgTy := c.ty.target[apiTy]
 				funcs.build(c,
 					func(s *scope, refPtr *codegen.Value) *codegen.Value {
-						return s.Equal(refPtr, s.Zero(cgTy))
+						return refPtr.IsNull()
 					},
 					func(s *scope, refPtr *codegen.Value) *codegen.Value {
 						return refPtr.Index(0, refRefCount)
 					},
 					func(s *scope, ctx, refPtr *codegen.Value) {
 						c.release(s, refPtr.Index(0, refValue).Load(), apiTy.To)
-						s.Call(c.callbacks.free, ctx, refPtr.Cast(c.ty.voidPtr))
+						c.free(s, refPtr)
 					})
 
 			case *semantic.Map:
-				cgTy := c.ty.target[apiTy]
 				funcs.build(c,
 					func(s *scope, mapPtr *codegen.Value) *codegen.Value {
-						return s.Equal(mapPtr, s.Zero(cgTy))
+						return mapPtr.IsNull()
 					},
 					func(s *scope, mapPtr *codegen.Value) *codegen.Value {
 						return mapPtr.Index(0, mapRefCount)
 					},
 					func(s *scope, ctx, mapPtr *codegen.Value) {
-						elPtr := mapPtr.Index(0, mapElements).Load()
-						s.Call(c.callbacks.free, ctx, elPtr.Cast(c.ty.voidPtr))
-						s.Call(c.callbacks.free, ctx, mapPtr.Cast(c.ty.voidPtr))
+						s.Call(c.ty.maps[apiTy].Clear, s.ctx, mapPtr)
+						c.free(s, mapPtr)
 					})
 
 			case *semantic.Class:
 				refFields := []*semantic.Field{}
 				for _, f := range apiTy.Fields {
-					if _, ok := (*r)[f.Type]; ok {
+					if _, ok := r[f.Type]; ok {
 						refFields = append(refFields, f)
 					}
 				}

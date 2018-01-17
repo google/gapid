@@ -1269,6 +1269,52 @@ cmd void Clear() { c = null }
 `,
 			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
 			expected: expected{numAllocs: 0},
+		}, {
+			name: "RefCount.ReleaseStringKeyInMap",
+			src: `
+map!(string, u32) m
+cmd void Assign() {
+	m["one"] = 1
+	m["two"] = 2
+	m["one"] = 1
+	m["two"] = 2
+}
+cmd void Clear() {
+	delete(m, "one")
+	delete(m, "two")
+}
+`,
+			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
+			expected: expected{numAllocs: 2}, // map + map's elements
+		}, {
+			name: "RefCount.ReleaseStringValueInMap",
+			src: `
+map!(u32, string) m
+cmd void Assign() {
+	m[1] = "one"
+	m[2] = "two"
+	m[1] = "one"
+	m[2] = "two"
+}
+cmd void Clear() {
+	delete(m, 1)
+	delete(m, 2)
+}
+`,
+			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
+			expected: expected{numAllocs: 2}, // map + map's elements
+		}, {
+			name: "RefCount.ClearMapOnFree",
+			src: `
+class C { map!(string, string) m }
+cmd void ClearMapOnFree() {
+	c := C()
+	c.m["one"] = "I"
+	c.m["two"] = "II"
+}
+`,
+			cmds:     []cmd{{name: "ClearMapOnFree"}},
+			expected: expected{numAllocs: 0},
 		},
 		////////////////////////////////////////////////////////
 		// Memory Layout                                      //
