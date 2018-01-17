@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class UpdateWatcher {
   private static final long CHECK_INTERVAL_MS = TimeUnit.HOURS.toMillis(8);
-  private static final boolean INCLUDE_PRE_RELEASES = true;
+  private static final boolean INCLUDE_PRE_RELEASES = false;
 
   private final Settings settings;
   private final Client client;
