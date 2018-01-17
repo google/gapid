@@ -252,11 +252,14 @@ func (c *compiler) init(api *semantic.API) codegen.Function {
 	err(init.Build(func(jb *codegen.Builder) {
 		s := c.scope(jb)
 		for _, g := range api.Globals {
+			var val *codegen.Value
 			if g.Default != nil {
-				s.globals.Index(0, g.Name()).Store(c.expression(s, g.Default))
+				val = c.expression(s, g.Default)
 			} else {
-				s.globals.Index(0, g.Name()).Store(c.initialValue(s, g.Type))
+				val = c.initialValue(s, g.Type)
 			}
+			c.reference(s, val, g.Type)
+			s.globals.Index(0, g.Name()).Store(val)
 		}
 	}))
 	return init

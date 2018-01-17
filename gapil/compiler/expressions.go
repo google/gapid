@@ -250,6 +250,12 @@ func (c *compiler) cast(s *scope, e *semantic.Cast) *codegen.Value {
 }
 
 func (c *compiler) classInitializer(s *scope, e *semantic.ClassInitializer) *codegen.Value {
+	class := c.classInitializerNoRelease(s, e)
+	c.deferRelease(s, class, e.Class)
+	return class
+}
+
+func (c *compiler) classInitializerNoRelease(s *scope, e *semantic.ClassInitializer) *codegen.Value {
 	class := s.Undef(c.targetType(e.ExpressionType()))
 	for i, iv := range e.InitialValues() {
 		if iv != nil {
@@ -258,7 +264,7 @@ func (c *compiler) classInitializer(s *scope, e *semantic.ClassInitializer) *cod
 			class = class.Insert(i, c.initialValue(s, e.Class.Fields[i].Type))
 		}
 	}
-	c.deferRelease(s, class, e.Class)
+	c.reference(s, class, e.Class) // references all referencable fields.
 	return class
 }
 
@@ -267,7 +273,7 @@ func (c *compiler) create(s *scope, e *semantic.Create) *codegen.Value {
 	refTy := refPtrTy.Element
 	ptr := c.alloc(s, s.Scalar(uint64(1)), refTy)
 	ptr.Index(0, refRefCount).Store(s.Scalar(uint32(1)))
-	ptr.Index(0, refValue).Store(c.classInitializer(s, e.Initializer))
+	ptr.Index(0, refValue).Store(c.classInitializerNoRelease(s, e.Initializer))
 	c.deferRelease(s, ptr, e.Type)
 	return ptr
 }
