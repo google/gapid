@@ -50,9 +50,8 @@ func (c *compiler) command(f *semantic.Function) {
 	}
 	paramTy := c.ty.Pointer(c.ty.Struct(f.Name()+"_params", fields...))
 	out := c.module.Function(resTy, f.Name(), c.ty.ctxPtr, paramTy)
-	err(out.Build(func(jb *codegen.Builder) {
-		s := c.scope(jb)
-		params := jb.Parameter(1).SetName("params")
+	c.build(out, func(s *scope) {
+		params := s.Parameter(1).SetName("params")
 		for _, p := range f.FullParameters {
 			v := params.Index(0, p.Name()).Load()
 			v.SetName(p.Name())
@@ -62,7 +61,7 @@ func (c *compiler) command(f *semantic.Function) {
 		c.applyReads(s)
 
 		c.block(s, f.Block)
-	}))
+	})
 	c.functions[f] = out
 	c.setCurrentFunction(old)
 }
@@ -81,23 +80,24 @@ func (c *compiler) subroutine(f *semantic.Function) {
 		paramTys[i+1] = c.targetType(p.Type)
 	}
 	out := c.module.Function(resTy, f.Name(), paramTys...)
-	err(out.Build(func(jb *codegen.Builder) {
-		s := c.scope(jb)
+	c.build(out, func(s *scope) {
 		for i, p := range params {
-			s.parameters[p] = jb.Parameter(i + 1).SetName(p.Name())
+			s.parameters[p] = s.Parameter(i + 1).SetName(p.Name())
 		}
 		c.block(s, f.Block)
-	}))
+	})
 	c.functions[f] = out
 	c.setCurrentFunction(old)
 }
 
 func (c *compiler) block(s *scope, n *semantic.Block) {
-	for _, st := range n.Statements {
-		if !c.statement(s, st) {
-			break
+	s.enter(func(s *scope) {
+		for _, st := range n.Statements {
+			if !c.statement(s, st) {
+				break
+			}
 		}
-	}
+	})
 }
 
 func (c *compiler) statement(s *scope, n semantic.Node) bool {
@@ -148,7 +148,7 @@ func (c *compiler) statement(s *scope, n semantic.Node) bool {
 
 func (c *compiler) abort(s *scope, n *semantic.Abort) {
 	retTy := c.returnType(c.currentFunc)
-	s.Return(s.Zero(retTy).Insert(retError, s.Scalar(ErrAborted)))
+	c.doReturn(s, s.Zero(retTy).Insert(retError, s.Scalar(ErrAborted)))
 }
 
 func (c *compiler) applyReads(s *scope) {
@@ -343,9 +343,18 @@ func (c *compiler) read(s *scope, n *semantic.Read) {
 }
 
 func (c *compiler) return_(s *scope, n *semantic.Return) {
-	retTy := c.returnType(c.currentFunc)
-	retVal := s.Zero(retTy).Insert(retValue, c.expression(s, n.Value))
-	s.Return(retVal)
+	val := c.expression(s, n.Value)
+	c.reference(s, val, n.Value.ExpressionType())
+
+	retTy := c.returnType(c.currentFunc) // <error, value>
+	c.doReturn(s, s.Zero(retTy).Insert(retValue, val))
+}
+
+func (c *compiler) doReturn(s *scope, val *codegen.Value) {
+	for s := s; s != nil; s = s.parent {
+		s.exit()
+	}
+	s.Return(val)
 }
 
 func (c *compiler) sliceAssign(s *scope, n *semantic.SliceAssign) {
@@ -386,24 +395,34 @@ func (c *compiler) sliceAssign(s *scope, n *semantic.SliceAssign) {
 }
 
 func (c *compiler) switch_(s *scope, n *semantic.Switch) {
+	val := c.expression(s, n.Value)
+
 	cases := make([]codegen.SwitchCase, len(n.Cases))
 	for i, kase := range n.Cases {
 		i, kase := i, kase
 		cases[i] = codegen.SwitchCase{
 			Conditions: func() []*codegen.Value {
 				conds := make([]*codegen.Value, len(kase.Conditions))
-				for i, cond := range kase.Conditions {
-					conds[i] = c.expression(s, cond)
-				}
+				s.enter(func(s *scope) {
+					// Ensure all condition variables are done in this block as
+					// the condition expressions may require releasing.
+					for i, cond := range kase.Conditions {
+						conds[i] = c.equal(s, val, c.expression(s, cond))
+					}
+				})
 				return conds
 			},
-			Block: func() { c.block(s, kase.Block) },
+			Block: func() {
+				s.enter(func(s *scope) {
+					c.block(s, kase.Block)
+				})
+			},
 		}
 	}
 	if n.Default != nil {
-		s.Switch(c.expression(s, n.Value), cases, func() { c.block(s, n.Default) })
+		s.Switch(cases, func() { c.block(s, n.Default) })
 	} else {
-		s.Switch(c.expression(s, n.Value), cases, nil)
+		s.Switch(cases, nil)
 	}
 }
 

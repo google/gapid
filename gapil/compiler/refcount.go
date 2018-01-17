@@ -41,8 +41,7 @@ func (f *refRel) build(
 	getRefPtr func(s *scope, val *codegen.Value) *codegen.Value,
 	del func(s *scope, ctx, val *codegen.Value),
 ) {
-	f.reference.Build(func(b *codegen.Builder) {
-		s := c.scope(b)
+	c.build(f.reference, func(s *scope) {
 		val := s.Parameter(1)
 		s.If(isNull(s, val), func() {
 			s.Return(nil)
@@ -59,8 +58,7 @@ func (f *refRel) build(
 		refPtr.Store(newCount)
 	})
 
-	f.release.Build(func(b *codegen.Builder) {
-		s := c.scope(b)
+	c.build(f.release, func(s *scope) {
 		ctx, val := s.Parameter(0), s.Parameter(1)
 		s.If(isNull(s, val), func() {
 			s.Return(nil)
@@ -217,15 +215,13 @@ func (c *compiler) buildRefRels() {
 					}
 				}
 
-				funcs.reference.Build(func(b *codegen.Builder) {
-					s := c.scope(b)
+				c.build(funcs.reference, func(s *scope) {
 					ptr := s.Parameter(1)
 					for _, f := range refFields {
 						c.reference(s, ptr.Extract(f.Name()), f.Type)
 					}
 				})
-				funcs.release.Build(func(b *codegen.Builder) {
-					s := c.scope(b)
+				c.build(funcs.release, func(s *scope) {
 					ptr := s.Parameter(1)
 					for _, f := range refFields {
 						c.release(s, ptr.Extract(f.Name()), f.Type)
@@ -251,7 +247,20 @@ func (c *compiler) release(s *scope, val *codegen.Value, ty semantic.Type) {
 }
 
 func (c *compiler) deferRelease(s *scope, val *codegen.Value, ty semantic.Type) {
-	s.Defer(func() { c.release(s, val, ty) })
+	s.onExit(func() {
+		if s.IsBlockTerminated() {
+			// The last instruction written to the current block was a
+			// terminator instruction. This should only happen if we've emitted
+			// a return statement and the scopes around this statement are
+			// closing. The løogic in compiler.return_ will have already exited
+			// all the contexts, so we can safely return here.
+			//
+			// TODO: This is really icky - more time should be spent thinking
+			// of ways to avoid special casing return statements like this.
+			return
+		}
+		c.release(s, val, ty)
+	})
 }
 
 func (c *compiler) isRefCounted(ty semantic.Type) bool {

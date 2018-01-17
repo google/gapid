@@ -95,7 +95,7 @@ func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Progr
 		locations:     []Location{},
 	}
 
-	c.build(api)
+	c.compile(api)
 	init := c.init(api)
 	prog, err := c.program(s, init)
 	if err != nil {
@@ -157,36 +157,7 @@ func err(err error) {
 
 func fail(msg string, args ...interface{}) { err(fmt.Errorf(msg, args...)) }
 
-type scope struct {
-	*codegen.Builder
-	parent      *scope
-	parameters  map[*semantic.Parameter]*codegen.Value
-	locals      map[*semantic.Local]*codegen.Value
-	ctx         *codegen.Value // ExecutionContext*
-	location    *codegen.Value // u32*
-	globals     *codegen.Value // globals*
-	appPool     *codegen.Value // Pool*
-	locationIdx int
-}
-
-func (s *scope) enter(f func(s *scope)) {
-	locals := make(map[*semantic.Local]*codegen.Value, len(s.locals))
-	for l, v := range s.locals {
-		locals[l] = v
-	}
-	f(&scope{
-		Builder:    s.Builder,
-		parent:     s,
-		parameters: s.parameters,
-		locals:     locals,
-		ctx:        s.ctx,
-		location:   s.location,
-		globals:    s.globals,
-		appPool:    s.appPool,
-	})
-}
-
-func (c *compiler) build(api *semantic.API) {
+func (c *compiler) compile(api *semantic.API) {
 	defer c.augmentPanics()
 
 	c.declareTypes(api)
@@ -225,29 +196,31 @@ func (c *compiler) build(api *semantic.API) {
 	}
 }
 
-func (c *compiler) scope(jb *codegen.Builder) *scope {
-	ctx := jb.Parameter(0).SetName("ctx")
-	if ctx.Type() != c.ty.ctxPtr {
-		fail("Expected context pointer as first argument. Got %v", ctx.Type().TypeName())
-	}
-	globals := ctx.Index(0, contextGlobals).Load().SetName("globals")
-	appPool := ctx.Index(0, contextAppPool).Load().SetName("app_pool")
-	location := ctx.Index(0, contextLocation)
-	return &scope{
-		Builder:    jb,
-		locals:     map[*semantic.Local]*codegen.Value{},
-		parameters: map[*semantic.Parameter]*codegen.Value{},
-		ctx:        ctx,
-		location:   location,
-		globals:    globals,
-		appPool:    appPool,
-	}
+func (c *compiler) build(f codegen.Function, do func(*scope)) {
+	err(f.Build(func(jb *codegen.Builder) {
+		ctx := jb.Parameter(0).SetName("ctx")
+		if ctx.Type() != c.ty.ctxPtr {
+			fail("Expected context pointer as first argument. Got %v", ctx.Type().TypeName())
+		}
+		globals := ctx.Index(0, contextGlobals).Load().SetName("globals")
+		appPool := ctx.Index(0, contextAppPool).Load().SetName("app_pool")
+		location := ctx.Index(0, contextLocation)
+		s := &scope{
+			Builder:    jb,
+			locals:     map[*semantic.Local]*codegen.Value{},
+			parameters: map[*semantic.Parameter]*codegen.Value{},
+			ctx:        ctx,
+			location:   location,
+			globals:    globals,
+			appPool:    appPool,
+		}
+		s.enter(do)
+	}))
 }
 
 func (c *compiler) init(api *semantic.API) codegen.Function {
 	init := c.module.Function(c.ty.Void, "init", c.ty.Pointer(c.ty.ctx))
-	err(init.Build(func(jb *codegen.Builder) {
-		s := c.scope(jb)
+	c.build(init, func(s *scope) {
 		for _, g := range api.Globals {
 			var val *codegen.Value
 			if g.Default != nil {
@@ -258,7 +231,7 @@ func (c *compiler) init(api *semantic.API) codegen.Function {
 			c.reference(s, val, g.Type)
 			s.globals.Index(0, g.Name()).Store(val)
 		}
-	}))
+	})
 	return init
 }
 

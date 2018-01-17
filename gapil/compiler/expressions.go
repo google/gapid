@@ -224,6 +224,7 @@ func (c *compiler) call(s *scope, e *semantic.Call) *codegen.Value {
 	if !ok {
 		panic(fmt.Errorf("Couldn't resolve call target %v", tf.Name()))
 	}
+
 	res := s.Call(f, args...)
 
 	if tf.Subroutine {
@@ -238,8 +239,10 @@ func (c *compiler) call(s *scope, e *semantic.Call) *codegen.Value {
 			return nil
 		}
 		// Return the value.
-		return res.Extract(retValue)
+		res = res.Extract(retValue)
 	}
+
+	c.deferRelease(s, res, tf.Return.Type)
 
 	return res
 }
@@ -441,26 +444,50 @@ func (c *compiler) pointerRange(s *scope, e *semantic.PointerRange) *codegen.Val
 }
 
 func (c *compiler) select_(s *scope, e *semantic.Select) *codegen.Value {
+	val := c.expression(s, e.Value)
+
 	cases := make([]codegen.SwitchCase, len(e.Choices))
-	res := s.Local("selectval", c.targetType(e.Type))
-	if e.Default != nil {
-		res.Store(c.expression(s, e.Default))
-	}
+	res := s.Local("select_result", c.targetType(e.Type))
 	for i, choice := range e.Choices {
 		i, choice := i, choice
 		cases[i] = codegen.SwitchCase{
 			Conditions: func() []*codegen.Value {
 				conds := make([]*codegen.Value, len(choice.Conditions))
-				for i, cond := range choice.Conditions {
-					conds[i] = c.expression(s, cond)
-				}
+				s.enter(func(s *scope) {
+					// Ensure all condition variables are done in this block as
+					// the condition expressions may require releasing.
+					for i, cond := range choice.Conditions {
+						conds[i] = c.equal(s, val, c.expression(s, cond))
+					}
+				})
 				return conds
 			},
-			Block: func() { res.Store(c.expression(s, choice.Expression)) },
+			Block: func() {
+				s.enter(func(s *scope) {
+					val := c.expression(s, choice.Expression)
+					c.reference(s, val, e.Type)
+					res.Store(val)
+				})
+			},
 		}
 	}
-	s.Switch(c.expression(s, e.Value), cases, nil)
-	return res.Load()
+
+	var def func()
+	if e.Default != nil {
+		def = func() {
+			s.enter(func(s *scope) {
+				val := c.expression(s, e.Default)
+				c.reference(s, val, e.Type)
+				res.Store(val)
+			})
+		}
+	}
+
+	s.Switch(cases, def)
+
+	out := res.Load()
+	c.deferRelease(s, out, e.Type)
+	return out
 }
 
 func (c *compiler) sliceIndex(s *scope, e *semantic.SliceIndex) *codegen.Value {

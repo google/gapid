@@ -145,7 +145,7 @@ func (b *Builder) While(test func() *Value, loop func()) {
 
 	b.block(testBlock, llvm.BasicBlock{}, func() {
 		cond := test()
-		if !b.isBlockTerminated() {
+		if !b.IsBlockTerminated() {
 			b.llvm.CreateCondBr(cond.llvm, loopBlock, exitBlock)
 		}
 	})
@@ -182,7 +182,7 @@ func (b *Builder) ForN(n *Value, cb func(iterator *Value) (cont *Value)) {
 	b.block(loop, llvm.BasicBlock{}, func() {
 		it := iterator.Load()
 		cont := cb(it)
-		if b.isBlockTerminated() {
+		if b.IsBlockTerminated() {
 			return
 		}
 		b.llvm.CreateStore(b.llvm.CreateAdd(it.llvm, one, "for_n_iterator_inc"), iterator.llvm)
@@ -203,7 +203,7 @@ type SwitchCase struct {
 }
 
 // Switch builds a switch statement.
-func (b *Builder) Switch(val *Value, cases []SwitchCase, defaultCase func()) {
+func (b *Builder) Switch(cases []SwitchCase, defaultCase func()) {
 	tests := make([]llvm.BasicBlock, len(cases))
 	blocks := make([]llvm.BasicBlock, len(cases))
 	for i := range cases {
@@ -225,9 +225,9 @@ func (b *Builder) Switch(val *Value, cases []SwitchCase, defaultCase func()) {
 		i, c := i, c
 		b.block(tests[i], llvm.BasicBlock{}, func() {
 			conds := c.Conditions()
-			match := b.Equal(val, conds[0])
+			match := conds[0]
 			for _, c := range conds[1:] {
-				match = b.Or(match, b.Equal(val, c))
+				match = b.Or(match, c)
 			}
 			next := exit
 			if i+1 < len(tests) {
@@ -256,19 +256,10 @@ func (b *Builder) Return(val *Value) {
 	b.llvm.CreateBr(b.exit)
 }
 
-// Defer executes the logic of f just before the current function returns.
-func (b *Builder) Defer(f func()) {
-	block := b.llvm.GetInsertBlock()
-	b.llvm.SetInsertPointAtEnd(b.exit)
-	f()
-	b.exit = b.llvm.GetInsertBlock()
-	b.llvm.SetInsertPointAtEnd(block)
-}
-
-// isBlockTerminated returns true if the last instruction is a terminator
+// IsBlockTerminated returns true if the last instruction is a terminator
 // (unconditional jump). It is illegal to write another instruction after a
 // terminator.
-func (b *Builder) isBlockTerminated() bool {
+func (b *Builder) IsBlockTerminated() bool {
 	return !b.llvm.GetInsertBlock().LastInstruction().IsATerminatorInst().IsNil()
 }
 
@@ -286,7 +277,7 @@ func (b *Builder) block(block, next llvm.BasicBlock, f func()) {
 
 	f()
 
-	if !next.IsNil() && !b.isBlockTerminated() {
+	if !next.IsNil() && !b.IsBlockTerminated() {
 		b.llvm.CreateBr(next)
 	}
 }

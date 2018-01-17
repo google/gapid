@@ -26,20 +26,20 @@ import "C"
 
 type types struct {
 	codegen.Types
-	ctx               codegen.Type
-	ctxPtr            codegen.Type
-	globals           *codegen.Struct
-	pool              codegen.Type
-	sli               codegen.Type
-	str               codegen.Type
-	strPtr            codegen.Type
-	u8Ptr             codegen.Type
-	voidPtr           codegen.Type
-	target            map[semantic.Type]codegen.Type
-	storage           map[semantic.Type]codegen.Type
-	target_to_storage map[semantic.Type]*codegen.Function
-	storage_to_target map[semantic.Type]*codegen.Function
-	maps              map[*semantic.Map]*MapInfo
+	ctx             codegen.Type
+	ctxPtr          codegen.Type
+	globals         *codegen.Struct
+	pool            codegen.Type
+	sli             codegen.Type
+	str             codegen.Type
+	strPtr          codegen.Type
+	u8Ptr           codegen.Type
+	voidPtr         codegen.Type
+	target          map[semantic.Type]codegen.Type
+	storage         map[semantic.Type]codegen.Type
+	targetToStorage map[semantic.Type]codegen.Function
+	storageToTarget map[semantic.Type]codegen.Function
+	maps            map[*semantic.Map]*MapInfo
 }
 
 // isStorageType returns true if ty can be used as a storage type.
@@ -127,8 +127,8 @@ func (c *compiler) declareTypes(api *semantic.API) {
 	c.ty.ctxPtr = c.ty.Pointer(c.ty.ctx)
 	c.ty.target = map[semantic.Type]codegen.Type{}
 	c.ty.storage = map[semantic.Type]codegen.Type{}
-	c.ty.target_to_storage = map[semantic.Type]*codegen.Function{}
-	c.ty.storage_to_target = map[semantic.Type]*codegen.Function{}
+	c.ty.targetToStorage = map[semantic.Type]codegen.Function{}
+	c.ty.storageToTarget = map[semantic.Type]codegen.Function{}
 	c.ty.maps = map[*semantic.Map]*MapInfo{}
 
 	// Forward-declare all the class types.
@@ -216,16 +216,15 @@ func (c *compiler) buildTypes(api *semantic.API) {
 				targetTypePtr := c.ty.Pointer(c.targetType(t))
 
 				copyToTarget := c.module.Function(c.ty.Void, "S_"+t.Name()+"•copy_to_target", c.ty.ctxPtr, storageTypePtr, targetTypePtr)
-				c.ty.storage_to_target[t] = &copyToTarget
-				err(copyToTarget.Build(func(jb *codegen.Builder) {
-					s := c.scope(jb)
+				c.ty.storageToTarget[t] = copyToTarget
+				c.build(copyToTarget, func(s *scope) {
 					src := s.Parameter(1).SetName("src")
 					dst := s.Parameter(2).SetName("dst")
 					for _, f := range t.Fields {
 						firstElem := src.Index(0, f.Name()).LoadUnaligned()
 						dst.Index(0, f.Name()).Store(c.castStorageToTarget(s, f.Type, firstElem))
 					}
-				}))
+				})
 			}
 		}
 	}
@@ -514,8 +513,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 	valPtrTy := c.ty.Pointer(valTy)
 
 	contains := c.module.Function(c.ty.Bool, t.Name()+"•contains", c.ty.ctxPtr, mapPtrTy, keyTy)
-	err(contains.Build(func(jb *codegen.Builder) {
-		s := c.scope(jb)
+	c.build(contains, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
 		count := m.Index(0, mapCount).Load()
@@ -527,11 +525,10 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 			return s.Not(found)
 		})
 		s.Return(s.Scalar(false))
-	}))
+	})
 
 	index := c.module.Function(valPtrTy, t.Name()+"•index", c.ty.ctxPtr, mapPtrTy, keyTy, c.ty.Bool)
-	err(index.Build(func(jb *codegen.Builder) {
-		s := c.scope(jb)
+	c.build(index, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
 		addIfNotFound := s.Parameter(3).SetName("addIfNotFound")
@@ -576,11 +573,10 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 
 			s.Return(valPtr)
 		})
-	}))
+	})
 
 	lookup := c.module.Function(valTy, t.Name()+"•lookup", c.ty.ctxPtr, mapPtrTy, keyTy)
-	err(lookup.Build(func(jb *codegen.Builder) {
-		s := c.scope(jb)
+	c.build(lookup, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
 		ptr := s.Call(index, s.ctx, m, k, s.Scalar(false))
@@ -590,11 +586,10 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		v := ptr.Load()
 		c.reference(s, v, t.ValueType)
 		s.Return(v)
-	}))
+	})
 
 	remove := c.module.Function(c.ty.Void, t.Name()+"•remove", c.ty.ctxPtr, mapPtrTy, keyTy)
-	err(remove.Build(func(jb *codegen.Builder) {
-		s := c.scope(jb)
+	c.build(remove, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
 
@@ -624,11 +619,10 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 			})
 			return s.Not(found)
 		})
-	}))
+	})
 
 	clear := c.module.Function(nil, t.Name()+"•clear", c.ty.ctxPtr, mapPtrTy)
-	err(clear.Build(func(jb *codegen.Builder) {
-		s := c.scope(jb)
+	c.build(clear, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		count := m.Index(0, mapCount).Load()
 		elements := m.Index(0, mapElements).Load()
@@ -646,7 +640,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		c.free(s, elements)
 		m.Index(0, mapCount).Store(s.Scalar(uint64(0)))
 		m.Index(0, mapCapacity).Store(s.Scalar(uint64(0)))
-	}))
+	})
 
 	mi := c.ty.maps[t]
 	mi.Contains = contains

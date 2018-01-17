@@ -1253,7 +1253,14 @@ cmd void StringInState(char* str) {
 				extras: read(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{numAllocs: 1},
-		}, {
+		}, { /////////////////////////////////////////////////////
+			name: "RefCount.StringFromSubroutine",
+			src: `
+sub string ReturnAString() { return "A string" }
+cmd void StringFromSubroutine() { x := ReturnAString() }
+`,
+			cmds: []cmd{{name: "StringFromSubroutine"}},
+		}, { /////////////////////////////////////////////////////
 			name: "RefCount.StringInClass",
 			src: `
 class C { string s }
@@ -1262,7 +1269,7 @@ cmd void StringInClass() { c = C("purr") }
 `,
 			cmds:     []cmd{{name: "StringInClass"}},
 			expected: expected{numAllocs: 1},
-		}, {
+		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ReleaseStringInClass",
 			src: `
 class C { string s }
@@ -1272,7 +1279,7 @@ cmd void Clear() { c = null }
 `,
 			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
 			expected: expected{numAllocs: 0},
-		}, {
+		}, { /////////////////////////////////////////////////////
 			name: "RefCount.StringInRef",
 			src: `
 class C { string s }
@@ -1281,7 +1288,7 @@ cmd void StringInRef() { c = new!C("purr") }
 `,
 			cmds:     []cmd{{name: "StringInRef"}},
 			expected: expected{numAllocs: 2},
-		}, {
+		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ReleaseStringInRef",
 			src: `
 class C { string s }
@@ -1291,7 +1298,7 @@ cmd void Clear() { c = null }
 `,
 			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
 			expected: expected{numAllocs: 0},
-		}, {
+		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ReleaseStringKeyInMap",
 			src: `
 map!(string, u32) m
@@ -1308,7 +1315,7 @@ cmd void Clear() {
 `,
 			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
 			expected: expected{numAllocs: 2}, // map + map's elements
-		}, {
+		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ReleaseStringValueInMap",
 			src: `
 map!(u32, string) m
@@ -1325,7 +1332,7 @@ cmd void Clear() {
 `,
 			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
 			expected: expected{numAllocs: 2}, // map + map's elements
-		}, {
+		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ClearMapOnFree",
 			src: `
 class C { map!(string, string) m }
@@ -1337,6 +1344,41 @@ cmd void ClearMapOnFree() {
 `,
 			cmds:     []cmd{{name: "ClearMapOnFree"}},
 			expected: expected{numAllocs: 0},
+		}, { /////////////////////////////////////////////////////
+			// Stress-test reference count releasing on variables declared
+			// within nested scopes. Incorrectly handling scopes may try to
+			// release a LLVM variable that was declared in upstream block,
+			// causing a "Instruction does not dominate all uses!" error.
+			name: "RefCount.ReleaseInNestedScopes",
+			src: `
+sub string CrazyNestedLogic(u32 i) {
+	if i == 0 {
+		s := "cat"
+		switch(s) {
+			case "purr": {
+				x := switch(i) {
+					case 4:  "fluffy"
+					default: "hiss"
+				}
+				y := x + "kitty"
+			}
+			case "dog":
+				abort
+			default:
+				_ := "nap"
+		}
+	} else {
+		s := "meow"
+	}
+	return "the-end"
+}
+cmd void ReleaseInNestedScopes(u32 i) {
+	x := CrazyNestedLogic(i)
+}`,
+			cmds: []cmd{{
+				name: "ReleaseInNestedScopes",
+				data: D(uint32(4)),
+			}},
 		},
 		////////////////////////////////////////////////////////
 		// Memory Layout                                      //

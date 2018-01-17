@@ -72,7 +72,7 @@ func (f Function) Build(cb func(*Builder)) (err error) {
 
 	cb(b)
 
-	if !b.isBlockTerminated() {
+	if !b.IsBlockTerminated() {
 		lb.CreateBr(firstExitBlock)
 	}
 
