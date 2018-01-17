@@ -59,11 +59,13 @@ func (m *Module) Executor(optimize bool) (*Executor, error) {
 		pass := llvm.NewPassManager()
 		defer pass.Dispose()
 
+		pass.AddFunctionInliningPass()
 		pass.AddConstantPropagationPass()
 		pass.AddInstructionCombiningPass()
 		pass.AddPromoteMemoryToRegisterPass()
 		pass.AddGVNPass()
 		pass.AddCFGSimplificationPass()
+		pass.AddAggressiveDCEPass()
 		pass.Run(m.llvm)
 	}
 

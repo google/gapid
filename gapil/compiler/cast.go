@@ -67,9 +67,20 @@ func (c *compiler) castTargetToStorage(s *scope, ty semantic.Type, v *codegen.Va
 	}
 
 	_, isPtr := ty.(*semantic.Pointer)
+	_, isClass := ty.(*semantic.Class)
 	switch {
 	case isPtr: // pointer -> uint64
 		return v.Cast(dstTy)
+	case isClass:
+		if fn, ok := c.ty.targetToStorage[ty]; ok {
+			tmpTarget := s.Local("cast_target_"+ty.Name(), dstTy)
+			tmpSource := s.LocalInit("cast_source_"+ty.Name(), v)
+			s.Call(fn, s.ctx, tmpSource, tmpTarget)
+			return tmpTarget.Load()
+		} else {
+			fail("castStorageToTarget() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
+			return nil
+		}
 	case ty == semantic.IntType:
 		return v.Cast(dstTy)
 	case ty == semantic.SizeType:

@@ -32,6 +32,13 @@ func (f Function) String() string {
 	return fmt.Sprintf("%v %v(%v)", f.Type.Signature.Result, f.Name, f.Type.Signature.Parameters)
 }
 
+// SetInline makes this function prefer inlining
+func (f Function) MakeInline() {
+	kind := llvm.AttributeKindID("alwaysinline")
+	attr := f.m.ctx.CreateEnumAttribute(kind, 0)
+	f.llvm.AddFunctionAttr(attr)
+}
+
 // Build calls cb with a Builder that can construct the function body.
 func (f Function) Build(cb func(*Builder)) (err error) {
 	lb := f.m.ctx.NewBuilder()
