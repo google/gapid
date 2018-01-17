@@ -39,8 +39,8 @@ cmd void glBeginTransformFeedback(GLenum primitiveMode) {
     }
   }
   ctx := GetContext()
-  ctx.Bound.TransformFeedback.Paused = 0
-  ctx.Bound.TransformFeedback.Active = 1
+  ctx.Bound.TransformFeedback.Paused = GL_FALSE
+  ctx.Bound.TransformFeedback.Active = GL_TRUE
   ctx.Bound.TransformFeedback.PrimitiveMode = primitiveMode
 }
 
@@ -97,8 +97,8 @@ cmd void glDeleteTransformFeedbacks(GLsizei count, const TransformFeedbackId* id
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBeginTransformFeedback.xhtml", Version.GLES32)
 cmd void glEndTransformFeedback() {
   ctx := GetContext()
-  ctx.Bound.TransformFeedback.Paused = 0
-  ctx.Bound.TransformFeedback.Active = 0
+  ctx.Bound.TransformFeedback.Paused = GL_FALSE
+  ctx.Bound.TransformFeedback.Active = GL_FALSE
   ctx.Bound.TransformFeedback.PrimitiveMode = GL_NONE
 }
 
@@ -141,7 +141,7 @@ cmd void glGetTransformFeedbackVarying(ProgramId program,
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsTransformFeedback.xhtml", Version.GLES32)
 cmd GLboolean glIsTransformFeedback(TransformFeedbackId id) {
   ctx := GetContext()
-  return as!GLboolean(id in ctx.Objects.TransformFeedbacks)
+  return toGLboolean(id in ctx.Objects.TransformFeedbacks)
 }
 
 @if(Version.GLES30)
@@ -150,7 +150,7 @@ cmd GLboolean glIsTransformFeedback(TransformFeedbackId id) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glPauseTransformFeedback.xhtml", Version.GLES32)
 cmd void glPauseTransformFeedback() {
   ctx := GetContext()
-  ctx.Bound.TransformFeedback.Paused = 1
+  ctx.Bound.TransformFeedback.Paused = GL_TRUE
 }
 
 @if(Version.GLES30)
@@ -159,7 +159,7 @@ cmd void glPauseTransformFeedback() {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glResumeTransformFeedback.xhtml", Version.GLES32)
 cmd void glResumeTransformFeedback() {
   ctx := GetContext()
-  ctx.Bound.TransformFeedback.Paused = 0
+  ctx.Bound.TransformFeedback.Paused = GL_FALSE
 }
 
 @if(Version.GLES30)

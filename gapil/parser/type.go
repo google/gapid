@@ -88,7 +88,7 @@ func definition(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Def
 	return d
 }
 
-// { annotation } ( 'enum' | 'bitfield' ) '{' { identifier '=' expression [ ',' ] } '}'
+// { annotation } ( 'enum' | 'bitfield' ) name [ : type ] '{' { identifier '=' expression [ ',' ] } '}'
 func enum(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Enum {
 	if !peekKeyword(ast.KeywordEnum, p) && !peekKeyword(ast.KeywordBitfield, p) {
 		return nil
@@ -102,6 +102,9 @@ func enum(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Enum {
 			s.IsBitfield = true
 		}
 		s.Name = requireIdentifier(p, cst)
+		if operator(ast.OpExtends, p, cst) {
+			s.NumberType = requireTypeRef(p, cst)
+		}
 		requireOperator(ast.OpBlockStart, p, cst)
 		for !operator(ast.OpBlockEnd, p, cst) {
 			p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
@@ -113,39 +116,6 @@ func enum(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Enum {
 				operator(ast.OpListSeparator, p, cst)
 				s.Entries = append(s.Entries, entry)
 			})
-		}
-	})
-	return s
-}
-
-// { annotation } 'label' ( ( '{' { identifier '=' expression } '}' ) | ( identifier '=' expression ) )
-func label(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.LabelGroup {
-	if !peekKeyword(ast.KeywordLabel, p) {
-		return nil
-	}
-	s := &ast.LabelGroup{}
-	consumeAnnotations(&s.Annotations, a)
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(s, cst)
-		requireKeyword(ast.KeywordLabel, p, cst)
-		s.LabeledType = requireIdentifier(p, cst)
-
-		labelParser := func(p *parse.Parser, cst *parse.Branch) {
-			label := &ast.Label{}
-			label.Owner = s
-			p.SetCST(label, cst)
-			label.Name = requireIdentifier(p, cst)
-			requireOperator(ast.OpAssign, p, cst)
-			label.Value = requireNumber(p, cst)
-			s.Labels = append(s.Labels, label)
-		}
-
-		if operator(ast.OpBlockStart, p, cst) {
-			for !operator(ast.OpBlockEnd, p, cst) {
-				p.ParseBranch(cst, labelParser)
-			}
-		} else {
-			p.ParseBranch(cst, labelParser)
 		}
 	})
 	return s

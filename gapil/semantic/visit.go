@@ -133,14 +133,10 @@ func Replace(node Node, visitor func(Node) Node) {
 			n.Entries[i] = visitor(e).(*EnumEntry)
 		}
 	case *EnumEntry:
-	case *Label:
 	case *Pseudonym:
 		n.To = visitor(n.To).(Type)
 		for i, m := range n.Methods {
 			n.Methods[i] = visitor(m).(*Function)
-		}
-		for i, l := range n.labels {
-			n.labels[i] = visitor(l).(*Label)
 		}
 	case *Fence:
 		if n.Statement != nil {

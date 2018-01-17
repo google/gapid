@@ -575,7 +575,6 @@
   {{else if IsBinaryOp         $}}({{Template "C++.Read" $.LHS}}) {{$.Operator}} ({{Template "C++.Read" $.RHS}})
   {{else if IsUnaryOp          $}}{{$.Operator}}({{Template "C++.Read" $.Expression}})
   {{else if IsEnumEntry        $}}{{Template "C++.EnumName" $.Owner}}::{{Template "C++.EnumEntryName" $}}
-  {{else if IsLabel            $}}{{Template "C++.LabelNamespaceName" $.Owner}}::{{Template "C++.LabelName" $}}
   {{else if IsLocal            $}}{{Template "C++.LocalName" $}}
   {{else if IsBitTest          $}}({{Template "C++.Read" $.Bitfield}} & {{Template "C++.Read" $.Bits}}) != 0
   {{else if IsBinaryOp         $}}({{Template "C++.Read" $.LHS}}) {{$.Operator}} ({{Template "C++.Read" $.RHS}})
@@ -935,19 +934,6 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the C++ name of a label group.
--------------------------------------------------------------------------------
-*/}}
-{{define "C++.LabelNamespaceName"}}
-
-  {{if $p := Global "prefix"}}{{$p}}{{Title $}}
-  {{else}}{{$.Name}}Labels
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits the C++ name of an enum entry.
 -------------------------------------------------------------------------------
 */}}
@@ -961,24 +947,6 @@
   {{else if $apiPrefix := Global "prefix"}}
     {{Upper $apiPrefix}}_§
     {{$.Owner.Name | SplitPascalCase | Upper | JoinWith "_"}}_§
-  {{end}}
-  {{TrimLeft "_" $.Name}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits the C++ name of a label.
--------------------------------------------------------------------------------
-*/}}
-{{define "C++.LabelName"}}
-  {{AssertType $.Name "string"}}
-
-  {{if $labelPrefix := GetAnnotation $ "prefix"}}
-    {{index $labelPrefix.Arguments 0}}_§
-  {{else if $apiPrefix := Global "prefix"}}
-    {{Upper $apiPrefix}}_§
-    {{$.Owner.LabeledType | SplitPascalCase | Upper | JoinWith "_"}}_§
   {{end}}
   {{TrimLeft "_" $.Name}}
 {{end}}

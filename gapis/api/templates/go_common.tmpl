@@ -473,7 +473,6 @@
   {{else if IsStringValue      $}}{{printf "%q" $}}
   {{else if IsMessageValue     $}}messages.{{$.AST.Name.Value | SplitOn "_" | Lower | Title}}({{ForEach $.Arguments "Go.Read" | JoinWith ", "}})
   {{else if IsEnumEntry        $}}{{$.Owner.Name}}_{{$.Name}}
-  {{else if IsLabel            $}}{{$.Owner.Name}}_{{$.Name}}
   {{else if IsLocal            $}}{{$.Name}}
   {{else if IsBitTest          $}}(({{Template "Go.Read" $.Bits}}) & ({{Template "Go.Read" $.Bitfield}}) != 0)
   {{else if IsBinaryOp         $}}({{Template "Go.Read" $.LHS}}) {{$.Operator}} ({{Template "Go.Read" $.RHS}})

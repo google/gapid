@@ -65,8 +65,6 @@ func (c *compiler) expression(s *scope, e semantic.Expression) *codegen.Value {
 		out = c.int64Value(s, e)
 	case semantic.Int8Value:
 		out = c.int8Value(s, e)
-	case *semantic.Label:
-		out = c.label(s, e)
 	case *semantic.Length:
 		out = c.length(s, e)
 	case *semantic.Local:
@@ -327,10 +325,6 @@ func (c *compiler) int32Value(s *scope, e semantic.Int32Value) *codegen.Value {
 
 func (c *compiler) int64Value(s *scope, e semantic.Int64Value) *codegen.Value {
 	return s.Scalar(int64(e))
-}
-
-func (c *compiler) label(s *scope, e *semantic.Label) *codegen.Value {
-	return c.expression(s, e.Value)
 }
 
 func (c *compiler) length(s *scope, e *semantic.Length) *codegen.Value {

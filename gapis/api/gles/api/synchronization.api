@@ -118,7 +118,7 @@ cmd GLboolean glIsSync(GLsync sync) {
 
 sub GLboolean IsSync(GLsync sync) {
   ctx := GetContext()
-  return as!GLboolean(sync in ctx.Objects.SyncObjects)
+  return toGLboolean(sync in ctx.Objects.SyncObjects)
 }
 
 @if(Version.GLES30)

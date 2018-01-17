@@ -1352,7 +1352,7 @@ cmd GLboolean glIsSampler(SamplerId sampler) {
   ctx := GetContext()
   // This seems to be different to all other glIs* commands.
   // Just have generated name seems sufficient to return true.
-  return as!GLboolean(ctx.Objects.GeneratedNames.Samplers[sampler])
+  return toGLboolean(ctx.Objects.GeneratedNames.Samplers[sampler])
 }
 
 @if(Version.GLES10)
@@ -1363,7 +1363,7 @@ cmd GLboolean glIsSampler(SamplerId sampler) {
 cmd GLboolean glIsTexture(TextureId texture) {
 
   ctx := GetContext()
-  return as!GLboolean(texture in ctx.Objects.Textures)
+  return toGLboolean(texture in ctx.Objects.Textures)
 }
 
 @if(Version.GLES10)

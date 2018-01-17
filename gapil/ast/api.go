@@ -26,7 +26,6 @@ type API struct {
 	Pseudonyms  []*Pseudonym  // strong type aliases declared with the "type" keyword
 	Aliases     []*Alias      // weak type aliases declared with the "alias" keyword
 	Enums       []*Enum       // enumerated types, declared with the "enum" keyword
-	LabelGroups []*LabelGroup // labels for values of types, declared with the "label" keyword
 	Classes     []*Class      // class types, declared with the "class" keyword
 	Fields      []*Field      // variables declared at the global scope
 	Definitions []*Definition // definitions declared with the "define" keyword

@@ -165,6 +165,7 @@ type Enum struct {
 	Named                     // the type name of the enum
 	Docs        Documentation // the documentation for the enum
 	IsBitfield  bool          // whether this enum is actually a bitfield
+	NumberType  Type          // the numerical type of each entry
 	Entries     []*EnumEntry  // the entries of this enum
 }
 
@@ -179,7 +180,7 @@ type EnumEntry struct {
 	AST   *ast.EnumEntry // the underlying syntax node this was built from
 	Named                // the name of this entry
 	Docs  Documentation  // the documentation for the enum entry
-	Value uint32         // the value this entry represents
+	Value Expression     // the value this entry represents
 }
 
 func (*EnumEntry) isNode()       {}
@@ -191,61 +192,11 @@ func (e *EnumEntry) ExpressionType() Type {
 	return t
 }
 
-// Labeled is the interface implemented by types that support labels.
-type Labeled interface {
-	Type
-	// Labels returns the full list of labels.
-	Labels() []*Label
-	// AddLabel appends the label to the list.
-	// Returns an error if a label with the same name already exists.
-	AddLabel(*Label) error
-}
-
-// labels is a collection of Labels, which implements the Labeled interface
-type labels []*Label
-
-// Labels returns the full list of labels.
-func (ls *labels) Labels() []*Label {
-	return ([]*Label)(*ls)
-}
-
-// AddLabel appends the label to the list.
-// Returns an error if a label with the same name already exists.
-func (ls *labels) AddLabel(l *Label) error {
-	for _, existing := range ls.Labels() {
-		if existing.Name() == l.Name() {
-			return fmt.Errorf("Duplicate label '%s'", l.Name())
-		}
-	}
-	*ls = append(*ls, l)
-	return nil
-}
-
-// Label represents a named constant for a type (e.g. a pseudonym).
-type Label struct {
-	owned
-	AST         *ast.Label    // the underlying syntax node this was built from
-	Annotations               // the annotations applied to the containing LabelGroup of this label's AST node
-	Named                     // the name of this label
-	Docs        Documentation // the documentation for the label
-	Value       Expression    // the value this label represents
-}
-
-func (*Label) isNode()       {}
-func (*Label) isExpression() {}
-
-// ExpressionType implements Expression returning the labeled type.
-func (e *Label) ExpressionType() Type {
-	l, _ := e.Owner().(Type)
-	return l
-}
-
 // Pseudonym represents the type construct.
 // It acts as a type in it's own right that can carry methods, but is defined
 // in terms of another type.
 type Pseudonym struct {
 	owned
-	labels
 	members     Symbols
 	AST         *ast.Pseudonym // the underlying syntax node this was built from
 	Annotations                // the annotations applied to this pseudonym
@@ -260,7 +211,7 @@ func (*Pseudonym) isType() {}
 
 func (t *Pseudonym) ASTNode() ast.Node { return t.AST }
 
-// Implements Type returning the direct member if it has it, otherwise
+// Member implements Type returning the direct member if it has it, otherwise
 // delegating the lookup to the underlying type.
 func (t *Pseudonym) Member(name string) Owned {
 	n, err := t.members.Find(name)
@@ -473,6 +424,22 @@ func IsUnsigned(ty Type) bool {
 		return true
 	}
 	return false
+}
+
+// IntegerSizeInBits returns the size in bits of the given integer type.
+// If ty is not an integer, then IntegerSizeInBits returns 0.
+func IntegerSizeInBits(ty Type) int {
+	switch ty {
+	case Int8Type, Uint8Type:
+		return 8
+	case Int16Type, Uint16Type:
+		return 16
+	case Int32Type, Uint32Type:
+		return 32
+	case Int64Type, Uint64Type:
+		return 64
+	}
+	return 0
 }
 
 // Underlying returns the underlying type for ty by recursively traversing the

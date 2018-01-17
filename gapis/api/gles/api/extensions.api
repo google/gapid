@@ -1504,7 +1504,7 @@ cmd GLboolean glIsProgramPipelineEXT(PipelineId pipeline) {
 cmd GLboolean glIsQueryEXT(QueryId query) {
 
   ctx := GetContext()
-  return as!GLboolean(query in ctx.Objects.Queries)
+  return toGLboolean(query in ctx.Objects.Queries)
 }
 
 @if(Extension.GL_APPLE_sync)

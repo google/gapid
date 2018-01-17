@@ -91,41 +91,18 @@ func apiNames(rv *resolver, in *ast.API) {
 		rv.api.Definitions = append(rv.api.Definitions, n)
 		rv.addNamed(n)
 	}
-	for _, e := range in.LabelGroups {
-		labeledTypeName := e.LabeledType.Value
-		for _, al := range e.Labels {
-			sl := &semantic.Label{
-				AST:   al,
-				Named: semantic.Named(al.Name.Value),
-			}
-
-			lls, ok := rv.labels[labeledTypeName]
-			if !ok {
-				rv.labels[labeledTypeName] = []*semantic.Label{sl}
-			} else {
-				rv.labels[labeledTypeName] = append(lls, sl)
-			}
-		}
-	}
 }
 
 func resolve(rv *resolver) {
 	rv.globals = rv.scope
 
 	rv.addMembers(rv.api)
-	// First resolve enum entries
 	for _, e := range rv.api.Enums {
 		enum(rv, e)
-	}
-	// Now build collapsed enum lists
-	for _, e := range rv.api.Enums {
-		enumEntries(rv, e, e)
 	}
 	for _, p := range rv.api.Pseudonyms {
 		pseudonym(rv, p)
 	}
-	// Resolve and merge label entries
-	resolveLabels(rv)
 
 	for _, c := range rv.api.Definitions {
 		definition(rv, c)
@@ -239,10 +216,3 @@ type functionsByName []*semantic.Function
 func (a functionsByName) Len() int           { return len(a) }
 func (a functionsByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a functionsByName) Less(i, j int) bool { return a[i].Name() < a[j].Name() }
-
-// labelsByName is used to sort a slice of labels by their name
-type labelsByName []*semantic.Label
-
-func (a labelsByName) Len() int           { return len(a) }
-func (a labelsByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a labelsByName) Less(i, j int) bool { return a[i].Name() < a[j].Name() }

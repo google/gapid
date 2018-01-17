@@ -78,7 +78,6 @@ var (
 		semantic.Ignore{},
 		semantic.Iteration{},
 		semantic.MapIteration{},
-		semantic.Label{},
 		semantic.Length{},
 		semantic.Local{},
 		semantic.Make{},
@@ -115,7 +114,6 @@ var (
 		(*semantic.Annotated)(nil),
 		(*semantic.Expression)(nil),
 		(*semantic.Type)(nil),
-		(*semantic.Labeled)(nil),
 		(*semantic.Owned)(nil),
 	}
 
@@ -198,7 +196,7 @@ func (*Functions) IsNumericType(t interface{}) bool {
 // UniqueEnumKeys returns the enum's list of EnumEntry with duplicate values
 // removed. To remove duplicates the entry with the shortest name is picked.
 func (*Functions) UniqueEnumKeys(e *semantic.Enum) ([]*semantic.EnumEntry, error) {
-	keys := map[uint32]*semantic.EnumEntry{}
+	keys := map[semantic.Expression]*semantic.EnumEntry{}
 	for _, e := range e.Entries {
 		if got, found := keys[e.Value]; !found || len(got.Name()) > len(e.Name()) {
 			keys[e.Value] = e
