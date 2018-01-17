@@ -17,9 +17,6 @@
 {{/* ---- Includes ---- */}}
 {{Include "cpp_common.tmpl"}}
 
-{{/* ---- Overrides ---- */}}
-{{Global "C++.EnumTypeOverride" "uint32_t"}}
-
 {{$filename := print (Global "API") "_types.cpp" }}
 {{$ | Macro "Types" | Reflow 4 | Write $filename}}
 
@@ -96,6 +93,7 @@
     }
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------

@@ -248,7 +248,7 @@
   {{else if IsUint        $.Type}}value.U64({{$.Name}})
   {{else if IsString      $.Type}}ϟb.String({{$.Name}})
   {{else if IsPointer     $.Type}}{{$.Name}}.value(ϟb, ϟa, ϟs)
-  {{else if IsEnum        $.Type}}value.U32({{$.Name}})
+  {{else if IsEnum        $.Type}}{{Template "Go.Replay.Value" "Type" $.Type.NumberType "Name" $.Name}}
   {{else if IsStaticArray $.Type}}{{$.Name}}.value(ϟb, ϟa, ϟs)
   {{else if IsPseudonym   $.Type}}{{$.Name}}.value(ϟb, ϟa, ϟs)
   {{else if IsClass       $.Type}}{{$.Name}}.value(ϟb, ϟa, ϟs)
@@ -473,7 +473,6 @@
   {{else if IsStringValue      $}}{{printf "%q" $}}
   {{else if IsMessageValue     $}}messages.{{$.AST.Name.Value | SplitOn "_" | Lower | Title}}({{ForEach $.Arguments "Go.Read" | JoinWith ", "}})
   {{else if IsEnumEntry        $}}{{$.Owner.Name}}_{{$.Name}}
-  {{else if IsLabel            $}}{{$.Owner.Name}}_{{$.Name}}
   {{else if IsLocal            $}}{{$.Name}}
   {{else if IsBitTest          $}}(({{Template "Go.Read" $.Bits}}) & ({{Template "Go.Read" $.Bitfield}}) != 0)
   {{else if IsBinaryOp         $}}({{Template "Go.Read" $.LHS}}) {{$.Operator}} ({{Template "Go.Read" $.RHS}})

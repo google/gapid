@@ -110,7 +110,7 @@
   {{else if IsF64           $}}double
   {{else if IsNumericType   $}}sint64 {{/* Must be after floats */}}
   {{else if IsString        $}}string
-  {{else if IsEnum          $}}sint32
+  {{else if IsEnum          $}}sint64
   {{else if IsPointer       $}}sint64
   {{else if IsReference     $}}{{$.To.Name}}_Reference
   {{else if IsSlice         $}}memory_pb.Slice

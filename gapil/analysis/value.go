@@ -255,7 +255,7 @@ func (s *scope) unknownOf(ty semantic.Type) (out Value) {
 		case semantic.BoolType:
 			return &BoolValue{Maybe}
 
-		case semantic.Int8Type, semantic.Uint8Type:
+		case semantic.Int8Type, semantic.Uint8Type, semantic.CharType:
 			return newUintRange(ty, 0, 0xff)
 
 		case semantic.Int16Type, semantic.Uint16Type:
@@ -264,7 +264,9 @@ func (s *scope) unknownOf(ty semantic.Type) (out Value) {
 		case semantic.Int32Type, semantic.Uint32Type:
 			return newUintRange(ty, 0, 0xffffffff)
 
-		case semantic.Int64Type, semantic.Uint64Type, semantic.IntType:
+		case semantic.Int64Type, semantic.Uint64Type,
+			semantic.IntType, semantic.UintType,
+			semantic.SizeType:
 			// TODO: Fix interval package to allow for entire range!
 			return newUintRange(ty, 0, 0xfffffffffffffffe)
 		}
@@ -325,7 +327,7 @@ func (s *scope) defaultOf(ty semantic.Type) (out Value) {
 		case semantic.BoolType:
 			return &BoolValue{False}
 
-		case semantic.Int8Type:
+		case semantic.Int8Type, semantic.CharType:
 			return newInt8Value(0)
 
 		case semantic.Int16Type:
@@ -337,7 +339,12 @@ func (s *scope) defaultOf(ty semantic.Type) (out Value) {
 		case semantic.Int64Type, semantic.IntType:
 			return newInt64Value(0)
 
-		case semantic.Uint8Type, semantic.Uint16Type, semantic.Uint32Type, semantic.Uint64Type:
+		case semantic.Uint8Type,
+			semantic.Uint16Type,
+			semantic.Uint32Type,
+			semantic.Uint64Type,
+			semantic.UintType,
+			semantic.SizeType:
 			return newUintValue(ty, 0)
 		}
 	}
@@ -387,15 +394,33 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 	case semantic.Null:
 		return s.defaultOf(n.Type), nil
 
-	case *semantic.Label:
-		return s.valueOf(n.Value)
-
 	case *semantic.EnumEntry:
-		v, _ := s.valueOf(semantic.Uint64Value(n.Value))
+		v, _ := s.valueOf(n.Value)
+		var i uint64
+		switch v := n.Value.(type) {
+		case semantic.Uint8Value:
+			i = uint64(v)
+		case semantic.Int8Value:
+			i = uint64(v)
+		case semantic.Uint16Value:
+			i = uint64(v)
+		case semantic.Int16Value:
+			i = uint64(v)
+		case semantic.Uint32Value:
+			i = uint64(v)
+		case semantic.Int32Value:
+			i = uint64(v)
+		case semantic.Uint64Value:
+			i = uint64(v)
+		case semantic.Int64Value:
+			i = uint64(v)
+		default:
+			panic(fmt.Errorf("EnumEntry value was of type %v", n.Value))
+		}
 		return &EnumValue{
 			Ty:      n.Owner().(*semantic.Enum),
 			Numbers: v.(*UintValue),
-			Labels:  Labels{uint64(n.Value): n.Name()},
+			Labels:  Labels{i: n.Name()},
 		}, nil
 
 	case *semantic.Cast:

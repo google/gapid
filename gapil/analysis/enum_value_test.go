@@ -75,7 +75,7 @@ func TestEnumParameterAnalysis(t *testing.T) {
 	ctx := log.Testing(t)
 
 	common := `
-    enum E{ A = 0x1  B = 0x2  C = 0x3 }
+    enum E : u64 { A = 0x1  B = 0x2  C = 0x3 }
     `
 
 	for _, test := range []struct {
@@ -129,7 +129,7 @@ func TestBitfieldGlobalAnalysis(t *testing.T) {
 	ctx := log.Testing(t)
 
 	common := `
-    bitfield E{ A = 0x1  B = 0x2  C = 0x4 }
+    bitfield E : u64 { A = 0x1  B = 0x2  C = 0x4 }
     E G
     `
 
@@ -186,7 +186,7 @@ func TestBitfieldParameterAnalysis(t *testing.T) {
 	ctx := log.Testing(t)
 
 	common := `
-    bitfield E{ A = 0x1  B = 0x2  C = 0x4 }
+    bitfield E : u64 { A = 0x1  B = 0x2  C = 0x4 }
     `
 
 	for _, test := range []struct {

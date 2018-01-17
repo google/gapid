@@ -1241,7 +1241,7 @@ sub void GetnUniformuiv(ProgramId program, UniformLocation location, GLsizei buf
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsProgram.xhtml", Version.GLES32)
 cmd GLboolean glIsProgram(ProgramId program) {
   ctx := GetContext()
-  return as!GLboolean(program in ctx.Objects.Programs)
+  return toGLboolean(program in ctx.Objects.Programs)
 }
 
 @if(Version.GLES31)
@@ -1249,7 +1249,7 @@ cmd GLboolean glIsProgram(ProgramId program) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsProgramPipeline.xhtml", Version.GLES32)
 cmd GLboolean glIsProgramPipeline(PipelineId pipeline) {
   ctx := GetContext()
-  return as!GLboolean(pipeline in ctx.Objects.Pipelines)
+  return toGLboolean(pipeline in ctx.Objects.Pipelines)
 }
 
 @if(Version.GLES20)
@@ -1259,7 +1259,7 @@ cmd GLboolean glIsProgramPipeline(PipelineId pipeline) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glIsShader.xhtml", Version.GLES32)
 cmd GLboolean glIsShader(ShaderId shader) {
   ctx := GetContext()
-  return as!GLboolean(shader in ctx.Objects.Shaders)
+  return toGLboolean(shader in ctx.Objects.Shaders)
 }
 
 @if(Version.GLES20)

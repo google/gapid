@@ -338,10 +338,10 @@ uint32_t getMemoryTypeIndex(
         mem_type_index};
       VkDeviceMemory memory;
       auto AllocateMemoryFuncPtr = mVkDeviceFunctionStubs[device].vkAllocateMemory;
-      VkResult get_alloc_result = AllocateMemoryFuncPtr(device, &allocate_info, nullptr, &memory);
+      auto get_alloc_result = AllocateMemoryFuncPtr(device, &allocate_info, nullptr, &memory);
       pMemory[0] = memory;
       if (pushReturn) {
-          stack->push<VkResult>(get_alloc_result);
+          stack->push(get_alloc_result);
       }
       return true;
     } else {
@@ -351,14 +351,14 @@ uint32_t getMemoryTypeIndex(
   }
 ¶
 bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
-    auto success = gapir::Vulkan::VkResult(stack->pop<uint32_t>());
+    auto success = stack->pop<uint32_t>();
     auto fence = stack->pop<uint64_t>();
     auto device = static_cast<size_val>(stack->pop<size_val>());
     if (stack->isValid()) {
         GAPID_DEBUG("vkGetFenceStatus(%" PRIsize ", %" PRIu64 ")", device, fence);
         if (mVkDeviceFunctionStubs.find(device) != mVkDeviceFunctionStubs.end() &&
         mVkDeviceFunctionStubs[device].vkGetFenceStatus) {
-            VkResult return_value;
+            uint32_t return_value;
             if (success == gapir::Vulkan::VkResult::VK_SUCCESS) {
               // TODO(qining): Theoretically the following busy loop should be
               // equivalent to a call to vkWaitForFences(). However, an unclear
@@ -373,7 +373,7 @@ bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
             }
             GAPID_DEBUG("Returned: %u", return_value);
             if (pushReturn) {
-                stack->push<VkResult>(return_value);
+                stack->push(return_value);
             }
         } else {
             GAPID_WARNING("Attempted to call unsupported function vkGetFenceStatus");
@@ -387,20 +387,20 @@ bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
 ¶
 bool Vulkan::replayGetEventStatus(Stack* stack, bool pushReturn) {
     auto wait = stack->pop<bool>();
-    auto expected = gapir::Vulkan::VkResult(stack->pop<uint32_t>());
+    auto expected = stack->pop<uint32_t>();
     auto event = stack->pop<uint64_t>();
     auto device = static_cast<size_val>(stack->pop<size_val>());
     if (stack->isValid()) {
         GAPID_DEBUG("vkGetEventStatus(%" PRIsize ", %" PRIu64 ")", device, event);
         if (mVkDeviceFunctionStubs.find(device) != mVkDeviceFunctionStubs.end() &&
         mVkDeviceFunctionStubs[device].vkGetEventStatus) {
-            VkResult return_value;
+            uint32_t return_value;
             do {
                 return_value = mVkDeviceFunctionStubs[device].vkGetEventStatus(device, event);
             } while (wait && (return_value != expected));
             GAPID_DEBUG("Returned: %u", return_value);
             if (pushReturn) {
-                stack->push<VkResult>(return_value);
+                stack->push(return_value);
             }
         } else {
             GAPID_WARNING("Attempted to call unsupported function vkGetEventStatus");
@@ -465,7 +465,7 @@ bool Vulkan::replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn) {
             }
 
             if (pushReturn) {
-                stack->push<VkResult>(return_value);
+                stack->push(return_value);
             }
         } else {
             GAPID_WARNING("Attempted to call unsupported function replayEnumeratePhysicalDevices");
