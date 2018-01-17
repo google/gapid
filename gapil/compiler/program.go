@@ -26,7 +26,6 @@ import (
 type Program struct {
 	Settings    Settings
 	Commands    map[string]*CommandInfo
-	Externs     map[string]*ExternInfo
 	Structs     map[string]*StructInfo
 	Globals     *StructInfo
 	Maps        map[string]*MapInfo
@@ -38,12 +37,6 @@ type Program struct {
 type CommandInfo struct {
 	Function   codegen.Function // void (ctx*, Params*)
 	Parameters *codegen.Struct
-}
-
-type ExternInfo struct {
-	Name       string
-	Parameters *codegen.Struct
-	Result     codegen.Type
 }
 
 type StructInfo struct {

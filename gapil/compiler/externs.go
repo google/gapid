@@ -32,25 +32,5 @@ func (c *compiler) extern(f *semantic.Function) {
 	for i, p := range params {
 		paramTys[i+1] = c.targetType(p.Type)
 	}
-
-func (c *compiler) callExtern(s *scope, e *ExternInfo, call *semantic.Call) *codegen.Value {
-	panic("TODO")
-	/*
-		args := s.Local(e.Name+"_args", e.Parameters)
-		for i, f := range e.Parameters.Fields {
-			arg := c.expression(s, call.Arguments[i]).SetName(f.Name)
-			args.Index(0, f.Name).Store(arg)
-		}
-
-		id := c.addString(s, e.Name)
-
-		if e.Result != c.ty.Void {
-			res := s.Local(e.Name+"_res", e.Result)
-			s.Call(c.callbacks.callExtern, s.ctx, id, args.Cast(c.u8PtrTy), res.Cast(c.u8PtrTy))
-			return res.Load()
-		}
-
-		s.Call(c.callbacks.callExtern, s.ctx, id, args.Cast(c.u8PtrTy), s.Zero(c.u8PtrTy))
-		return nil
-	*/
+	c.functions[f] = c.module.Function(resTy, f.Name(), paramTys...)
 }

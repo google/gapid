@@ -45,7 +45,6 @@ type compiler struct {
 	settings      Settings
 	module        *codegen.Module
 	functions     map[*semantic.Function]codegen.Function
-	externs       map[*semantic.Function]*ExternInfo
 	mappings      *resolver.Mappings
 	locationIndex map[Location]int
 	locations     []Location
@@ -89,7 +88,6 @@ func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Progr
 		settings:      s,
 		module:        codegen.NewModule("api.executor", s.TargetABI),
 		functions:     map[*semantic.Function]codegen.Function{},
-		externs:       map[*semantic.Function]*ExternInfo{},
 		mappings:      mappings,
 		locationIndex: map[Location]int{},
 		locations:     []Location{},
@@ -117,10 +115,6 @@ func (c *compiler) program(s Settings, init codegen.Function) (*Program, error) 
 			Parameters: params,
 		}
 	}
-	externs := make(map[string]*ExternInfo, len(c.externs))
-	for f, e := range c.externs {
-		externs[f.Name()] = e
-	}
 
 	globals := &StructInfo{Type: c.ty.globals}
 
@@ -139,7 +133,6 @@ func (c *compiler) program(s Settings, init codegen.Function) (*Program, error) 
 	return &Program{
 		Settings:    c.settings,
 		Commands:    commands,
-		Externs:     externs,
 		Structs:     structs,
 		Globals:     globals,
 		Maps:        maps,
