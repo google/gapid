@@ -64,7 +64,7 @@ func TestExecutor(t *testing.T) {
 		uint32(0xdeadbeef),
 		uint16(0x0a0b),
 		// 6 bytes of padding
-		[]byte{0xdf, 0xdf, 0xdf, 0xdf, 0xdf, 0xdf},
+		[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		uint64(0xbadf00dbadf00d00),
 		uint32(0x31323334),
 	))
@@ -73,11 +73,11 @@ func TestExecutor(t *testing.T) {
 		uint32(0xaabbccdd),
 		uint16(0xfefe),
 		// 2 bytes padding
-		[]byte{0xdf, 0xdf},
+		[]byte{0x00, 0x00},
 		uint64(0xdadadadadabcdabc),
 		uint16(0xaabb),
 		// 6 bytes padding
-		[]byte{0xdf, 0xdf, 0xdf, 0xdf, 0xdf, 0xdf},
+		[]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		uint16(0x4253),
 	))
 
@@ -1483,7 +1483,6 @@ cmd void Read(StructInStruct* input) {
 				data:   D(ptrA),
 				extras: read(ptrA, 26, resArmStructInStruct),
 			}},
-			dump: true,
 			expected: expected{
 				data: D(
 					uint64(0x00000000aabbccdd),
@@ -1498,6 +1497,70 @@ cmd void Read(StructInStruct* input) {
 			},
 			settings: compiler.Settings{
 				StorageABI: device.AndroidARMv7a,
+			},
+		},
+		{
+			name: "StorageMemoryLayout.Write.Struct",
+			src: `
+class PodStruct {
+	u32 a
+	void* b
+	u16 c
+	u64 d
+	size  e
+}
+
+cmd void Write(PodStruct* input, void* ptr) {
+	p := PodStruct(0x00010203, ptr, 0x0a0b, 0xbadf00dbadf00d00, as!size(0x31323334))
+	input[0] = p
+}
+`,
+			cmds: []cmd{{
+				name: "Write",
+				data: D(ptrA, uint64(0xdeadbeef)),
+			}},
+			expected: expected{
+				buffers: buffers{
+					ptrA:      D(uint32(0x00010203), uint32(0xdeadbeef), uint16(0x0a0b)),
+					ptrA + 16: D(uint64(0xbadf00dbadf00d00), uint32(0x31323334)),
+				},
+			},
+			settings: compiler.Settings{
+				StorageABI:             device.AndroidARMv7a,
+				WriteToApplicationPool: true,
+			},
+		},
+		{
+			name: "StorageMemoryLayout.Write.StructWithStruct",
+			src: `
+class SizeStruct {
+	u64 a
+	u16 b
+}
+class StructInStruct {
+	size a
+	u16 b
+	SizeStruct c
+	u16 d
+}
+cmd void Read(StructInStruct* input) {
+	s := StructInStruct(as!size(0x3abbccdd), 0xfefe, SizeStruct(0xdadadadadabcdabc, 0xaabb), 0x4253)
+	input[0] = s
+}`,
+			cmds: []cmd{{
+				name: "Read",
+				data: D(ptrA),
+			}},
+			expected: expected{
+				buffers: buffers{
+					ptrA:      D(uint32(0x3abbccdd), uint16(0xfefe)),
+					ptrA + 8:  D(uint64(0xdadadadadabcdabc), uint16(0xaabb)),
+					ptrA + 24: D(uint16(0x4253)),
+				},
+			},
+			settings: compiler.Settings{
+				StorageABI:             device.AndroidARMv7a,
+				WriteToApplicationPool: true,
 			},
 		},
 	} {
@@ -1587,10 +1650,13 @@ type externB struct {
 	S string
 }
 
+type buffers map[uint64][]byte
+
 type expected struct {
 	data        []byte
 	err         error
 	numAllocs   int
+	buffers     buffers
 	externCalls []interface{}
 }
 
@@ -1664,6 +1730,15 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 
 	if t.expected.externCalls != nil {
 		if !assert.For(ctx, "ExternCalls").ThatSlice(externCalls).Equals(t.expected.externCalls) {
+			return false
+		}
+	}
+
+	for k, v := range t.expected.buffers {
+		rng := memory.Range{k, uint64(len(v))}
+		storedBytes := env.GetBytes(rng)
+
+		if !assert.For(ctx, "Buffers").ThatSlice(storedBytes).Equals(v) {
 			return false
 		}
 	}

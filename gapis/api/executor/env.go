@@ -163,6 +163,12 @@ func (e *Env) ArenaStats() arena.Stats {
 	return e.arena.Stats()
 }
 
+// GetBytes returns the bytes that are in the given memory range.
+func (e *Env) GetBytes(rng memory.Range) []byte {
+	basePtr := e.buffers.remap(rng)
+	return byteSlice(basePtr, rng.Size)
+}
+
 func byteSlice(ptr unsafe.Pointer, size uint64) []byte {
 	return ((*[1 << 30]byte)(ptr))[:size]
 }

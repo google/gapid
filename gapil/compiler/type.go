@@ -216,6 +216,7 @@ func (c *compiler) buildTypes(api *semantic.API) {
 				targetTypePtr := c.ty.Pointer(c.targetType(t))
 
 				copyToTarget := c.module.Function(c.ty.Void, "S_"+t.Name()+"•copy_to_target", c.ty.ctxPtr, storageTypePtr, targetTypePtr)
+				copyToTarget.MakeInline()
 				c.ty.storageToTarget[t] = copyToTarget
 				c.build(copyToTarget, func(s *scope) {
 					src := s.Parameter(1).SetName("src")
@@ -223,6 +224,18 @@ func (c *compiler) buildTypes(api *semantic.API) {
 					for _, f := range t.Fields {
 						firstElem := src.Index(0, f.Name()).LoadUnaligned()
 						dst.Index(0, f.Name()).Store(c.castStorageToTarget(s, f.Type, firstElem))
+					}
+				})
+
+				copyToStorage := c.module.Function(c.ty.Void, "T_"+t.Name()+"•copy_to_storage", c.ty.ctxPtr, targetTypePtr, storageTypePtr)
+				copyToStorage.MakeInline()
+				c.ty.targetToStorage[t] = copyToStorage
+				c.build(copyToStorage, func(s *scope) {
+					src := s.Parameter(1).SetName("src")
+					dst := s.Parameter(2).SetName("dst")
+					for _, f := range t.Fields {
+						firstElem := src.Index(0, f.Name()).Load()
+						dst.Index(0, f.Name()).StoreUnaligned(c.castTargetToStorage(s, f.Type, firstElem))
 					}
 				})
 			}
