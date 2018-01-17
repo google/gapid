@@ -11,6 +11,7 @@ go_library(
         "externs.go",
         "program.go",
         "refcount.go",
+        "scope.go",
         "statements.go",
         "type.go",
     ],

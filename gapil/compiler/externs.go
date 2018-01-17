@@ -25,24 +25,13 @@ func (c *compiler) extern(f *semantic.Function) {
 	if _, ok := c.functions[f]; ok {
 		panic(fmt.Errorf("Duplicate extern '%v'", f.Name()))
 	}
-	old := c.setCurrentFunction(f)
 	resTy := c.targetType(f.Return.Type)
 	params := f.CallParameters()
-	fields := make([]codegen.Field, len(params))
+	paramTys := make([]codegen.Type, len(params)+1)
+	paramTys[0] = c.ty.ctxPtr
 	for i, p := range params {
-		fields[i] = codegen.Field{
-			Name: p.Name(),
-			Type: c.targetType(p.Type),
-		}
+		paramTys[i+1] = c.targetType(p.Type)
 	}
-	paramsTy := c.ty.Struct(f.Name()+"_params", fields...)
-	c.externs[f] = &ExternInfo{
-		Name:       f.Name(),
-		Parameters: paramsTy,
-		Result:     resTy,
-	}
-	c.setCurrentFunction(old)
-}
 
 func (c *compiler) callExtern(s *scope, e *ExternInfo, call *semantic.Call) *codegen.Value {
 	panic("TODO")
