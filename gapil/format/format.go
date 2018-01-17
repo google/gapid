@@ -259,26 +259,6 @@ func (p *printer) markup(n ast.Node) {
 	case *ast.Import:
 		p.inject(n.Path, afterPrefix, "•")
 
-	case *ast.Label:
-		cst := p.CST(n)
-		isBlock := cst.Parent().Children[2].Token().String() == ast.OpBlockStart
-		if isBlock && !isNewline(cst) {
-			// to avoid pasting together two labels which are on the same line
-			p.inject(n.Name, beforePrefix, "•")
-		}
-		p.inject(n.Name, beforeSuffix, "\t•")
-		p.inject(n.Value, afterPrefix, "\t•")
-		p.inject(n.Value, beforeSuffix, "\t")
-
-	case *ast.LabelGroup:
-		p.align(n)
-		p.inject(n.LabeledType, afterPrefix, "•")
-		p.inject(n.LabeledType, beforeSuffix, "•")
-		if c := len(n.Labels); c > 0 {
-			p.inject(n.LabeledType, beforeSuffix, "»")
-			p.inject(n.Labels[c-1], beforeSuffix, "«")
-		}
-
 	case *ast.NamedArg:
 		p.inject(n.Value, afterPrefix, "•\t")
 

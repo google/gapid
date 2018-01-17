@@ -374,7 +374,7 @@ cmd GLboolean glIsVertexArray(VertexArrayId array) {
 
 sub GLboolean IsVertexArray(VertexArrayId array) {
   ctx := GetContext()
-  return as!GLboolean((array != 0) && (array in ctx.Objects.VertexArrays))
+  return toGLboolean((array != 0) && (array in ctx.Objects.VertexArrays))
 }
 
 sub void VertexAttrib!T(AttributeLocation location, GLenum ty, T value) {
@@ -571,7 +571,7 @@ sub void VertexAttribFormat(ref!Context       ctx,
     format.Normalized = normalized
   }
   format.RelativeOffset = relativeOffset
-  format.Integer = as!GLboolean(integer)
+  format.Integer = toGLboolean(integer)
 }
 
 @if(Version.GLES31)
@@ -629,7 +629,7 @@ cmd void glVertexAttribI4uiv(AttributeLocation index, const GLuint* values) {
 cmd void glVertexAttribIFormat(AttributeLocation index, GLint size, GLenum type, GLuint relativeoffset) {
   ctx := GetContext()
   CheckNonDefaultVertexArrayBound()
-  VertexAttribFormat(ctx, index, size, type, as!GLboolean(0), relativeoffset, true)
+  VertexAttribFormat(ctx, index, size, type, GL_FALSE, relativeoffset, true)
 }
 
 sub void VertexAttribPointer(ref!Context       ctx,
@@ -677,7 +677,7 @@ cmd void glVertexAttribIPointer(AttributeLocation location,
                                 GLsizei           stride,
                                 VertexPointer     data) {
   ctx := GetContext()
-  VertexAttribPointer(ctx, location, size, type, as!GLboolean(0), stride, data, true)
+  VertexAttribPointer(ctx, location, size, type, GL_FALSE, stride, data, true)
 }
 
 @if(Version.GLES20)

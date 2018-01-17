@@ -184,5 +184,5 @@ cmd void glGetQueryiv(GLenum target, GLenum parameter, GLint* value) {
 cmd GLboolean glIsQuery(QueryId query) {
 
   ctx := GetContext()
-  return as!GLboolean(query in ctx.Objects.Queries)
+  return toGLboolean(query in ctx.Objects.Queries)
 }

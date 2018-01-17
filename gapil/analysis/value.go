@@ -387,15 +387,33 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 	case semantic.Null:
 		return s.defaultOf(n.Type), nil
 
-	case *semantic.Label:
-		return s.valueOf(n.Value)
-
 	case *semantic.EnumEntry:
-		v, _ := s.valueOf(semantic.Uint64Value(n.Value))
+		v, _ := s.valueOf(n.Value)
+		var i uint64
+		switch v := n.Value.(type) {
+		case semantic.Uint8Value:
+			i = uint64(v)
+		case semantic.Int8Value:
+			i = uint64(v)
+		case semantic.Uint16Value:
+			i = uint64(v)
+		case semantic.Int16Value:
+			i = uint64(v)
+		case semantic.Uint32Value:
+			i = uint64(v)
+		case semantic.Int32Value:
+			i = uint64(v)
+		case semantic.Uint64Value:
+			i = uint64(v)
+		case semantic.Int64Value:
+			i = uint64(v)
+		default:
+			panic(fmt.Errorf("EnumEntry value was of type %v", n.Value))
+		}
 		return &EnumValue{
 			Ty:      n.Owner().(*semantic.Enum),
 			Numbers: v.(*UintValue),
-			Labels:  Labels{uint64(n.Value): n.Name()},
+			Labels:  Labels{i: n.Name()},
 		}, nil
 
 	case *semantic.Cast:

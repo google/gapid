@@ -82,7 +82,6 @@ func Resolve(includes []*ast.API, mappings *Mappings) (*semantic.API, parse.Erro
 		},
 		mappings:           mappings,
 		genericSubroutines: map[string]genericSubroutine{},
-		labels:             map[string][]*semantic.Label{},
 	}
 	func() {
 		defer func() {

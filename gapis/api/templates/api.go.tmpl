@@ -150,8 +150,6 @@
       return {{$name}}({{Template "Go.Decode" $u}})
     }
   {{end}}
-
-  {{template "LabelsForLabeledType" $}}
 {{end}}
 
 
@@ -1175,44 +1173,6 @@
         {{$.Name}}_{{$e.Name}} = {{$.Name}}({{$e.Value}})
      {{end}}
    )
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a type declaration and implementation for the specified label group.
--------------------------------------------------------------------------------
-*/}}
-{{define "LabelsForLabeledType"}}
-  {{if $.Labels}}
-    {{template "Go.CommentHeader" print "Labels (named constants) for " $.Name }}
-
-    {{Template "LabelConstants" "Labeled" $ "Name" $.Name}}
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a list of labels for the specified labeled type.
--------------------------------------------------------------------------------
-*/}}
-{{define "LabelConstants"}}
-  {{AssertType $.Name "string"}}
-  const (
-     {{range $e := $.Labeled.Labels}}
-        {{$.Name}}_{{$e.Name}} = {{$.Name}}({{Template "Go.ReadNoCast" $e.Value}})
-     {{end}}
-  )
-
-  func (e {{$.Name}}) String() string {
-    switch e {
-      {{range $e := $.Labeled.Labels}}
-        case {{$.Name}}_{{$e.Name}}: return "{{$e.Name}}"
-      {{end}}
-    }
-    return fmt.Sprintf("{{$.Name}}(%d)", e)
-  }
 {{end}}
 
 
