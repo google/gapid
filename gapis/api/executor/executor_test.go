@@ -58,6 +58,28 @@ func TestExecutor(t *testing.T) {
 	resU32Data, _ := database.Store(ctx, D(u32Data))
 	resHelloWorld, _ := database.Store(ctx, []byte("Hello World\x00"))
 
+	resArmPodStruct, _ := database.Store(ctx, D(
+		uint32(0x00010203),
+		uint32(0xdeadbeef),
+		uint16(0x0a0b),
+		// 6 bytes of padding
+		[]byte{0xdf, 0xdf, 0xdf, 0xdf, 0xdf, 0xdf},
+		uint64(0xbadf00dbadf00d00),
+		uint32(0x31323334),
+	))
+
+	resArmStructInStruct, _ := database.Store(ctx, D(
+		uint32(0xaabbccdd),
+		uint16(0xfefe),
+		// 2 bytes padding
+		[]byte{0xdf, 0xdf},
+		uint64(0xdadadadadabcdabc),
+		uint16(0xaabb),
+		// 6 bytes padding
+		[]byte{0xdf, 0xdf, 0xdf, 0xdf, 0xdf, 0xdf},
+		uint16(0x4253),
+	))
+
 	for _, test := range []test{
 		////////////////////////////////////////////////////////
 		// Types                                              //
@@ -1337,6 +1359,83 @@ C s = C(a: 1, b: 2, c: 3, d: 4)
 					uint16(3),
 					uint8(4), pad(1),
 				),
+			},
+		},
+		////////////////////////////////////////////////////////
+		// Storage Memory Layout                              //
+		////////////////////////////////////////////////////////
+		{
+			name: "StorageMemoryLayout.Struct",
+			src: `
+class PodStruct {
+	u32 a
+	void* b
+	u16 c
+	u64 d
+	size  e
+}
+PodStruct s
+cmd void Read(PodStruct* input) {
+	s = input[0]
+}
+`,
+			cmds: []cmd{{
+				name:   "Read",
+				data:   D(ptrA),
+				extras: read(ptrA, 28, resArmPodStruct),
+			}},
+			expected: expected{
+				data: D(
+					uint32(0x00010203),
+					pad(4),
+					uint64(0x00000000deadbeef),
+					uint16(0x0a0b),
+					pad(6),
+					uint64(0xbadf00dbadf00d00),
+					uint64(0x0000000031323334),
+				),
+			},
+			settings: compiler.Settings{
+				StorageABI: device.AndroidARMv7a,
+			},
+		},
+		{
+			name: "StorageMemoryLayout.StructWithStruct",
+			src: `
+class SizeStruct {
+	u64 a
+	u16 b
+}
+class StructInStruct {
+	size a
+	u16 b
+	SizeStruct c
+	u16 d
+}
+StructInStruct s
+cmd void Read(StructInStruct* input) {
+	s = input[0]
+}`,
+			cmds: []cmd{{
+				name:   "Read",
+				data:   D(ptrA),
+				extras: read(ptrA, 26, resArmStructInStruct),
+			}},
+			dump: true,
+			expected: expected{
+				data: D(
+					uint64(0x00000000aabbccdd),
+					uint16(0xfefe),
+					pad(6),
+					uint64(0xdadadadadabcdabc),
+					uint16(0xaabb),
+					pad(6),
+					uint16(0x4253),
+					pad(6),
+				),
+			},
+			settings: compiler.Settings{
+				StorageABI: device.AndroidARMv7a,
 			},
 		},
 	} {

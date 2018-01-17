@@ -72,6 +72,8 @@ func (c *compiler) castTargetToStorage(s *scope, ty semantic.Type, v *codegen.Va
 		return v.Cast(dstTy)
 	case ty == semantic.IntType:
 		return v.Cast(dstTy)
+	case ty == semantic.SizeType:
+		return v.Cast(dstTy)
 	default:
 		fail("castTargetToStorage() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
 		return nil
@@ -82,18 +84,30 @@ func (c *compiler) castStorageToTarget(s *scope, ty semantic.Type, v *codegen.Va
 	ty = semantic.Underlying(ty)
 	dstTy, srcTy := c.targetType(ty), c.storageType(ty)
 	if srcTy != v.Type() {
-		fail("castStorageToTarget called with a value that is not of the memory type")
+		fail("castStorageToTarget called with a value that is not of the memory type %+v, %+v", srcTy, v.Type())
 	}
 	if dstTy == srcTy {
 		return v
 	}
 
 	_, isPtr := ty.(*semantic.Pointer)
-
+	_, isClass := ty.(*semantic.Class)
 	switch {
 	case isPtr: // uint64 -> pointer
 		return v.Cast(dstTy)
+	case isClass:
+		if fn, ok := c.ty.storage_to_target[ty]; ok {
+			tmp_target := s.Local("cast_target_"+ty.Name(), dstTy)
+			tmp_source := s.LocalInit("cast_source_"+ty.Name(), v)
+			s.Call(*fn, s.ctx, tmp_source, tmp_target)
+			return tmp_target.Load()
+		} else {
+			fail("castStorageToTarget() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
+			return nil
+		}
 	case ty == semantic.IntType:
+		return v.Cast(dstTy)
+	case ty == semantic.SizeType:
 		return v.Cast(dstTy)
 	default:
 		fail("castStorageToTarget() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
