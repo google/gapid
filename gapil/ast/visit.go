@@ -53,9 +53,6 @@ func Visit(node Node, visitor func(Node)) {
 		for _, m := range n.Enums {
 			visitor(m)
 		}
-		for _, m := range n.LabelGroups {
-			visitor(m)
-		}
 		for _, m := range n.Classes {
 			visitor(m)
 		}
@@ -205,19 +202,6 @@ func Visit(node Node, visitor func(Node)) {
 		visitor(n.ValueVariable)
 		visitor(n.Map)
 		visitor(n.Block)
-
-	case *LabelGroup:
-		for _, a := range n.Annotations {
-			visitor(a)
-		}
-		visitor(n.LabeledType)
-		for _, e := range n.Labels {
-			visitor(e)
-		}
-
-	case *Label:
-		visitor(n.Name)
-		visitor(n.Value)
 
 	case *Member:
 		visitor(n.Object)

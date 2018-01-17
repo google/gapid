@@ -17,9 +17,6 @@
 {{/* ---- Includes ---- */}}
 {{Include "cpp_common.tmpl"}}
 
-{{/* ---- Overrides ---- */}}
-{{Global "C++.EnumTypeOverride" "uint32_t"}}
-
 {{$filename := print (Global "API") "_types.h" }}
 {{$ | Macro "Types" | Reflow 4 | Write $filename}}
 
@@ -94,6 +91,7 @@
 ¶
 {{end}}
 
+
 {{/*
 -------------------------------------------------------------------------------
   Emits C++ type forward declaration for specified AST type
@@ -104,6 +102,7 @@
     {{if IsClass $}}class {{Template "C++.Type" $}};¶{{end}}
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------
@@ -198,14 +197,14 @@
   {{AssertType $ "Enum"}}
 
   {{range $entry := $.Entries}}
-  static const uint32_t {{Template "C++.EnumEntryName" $entry}} = {{$entry.Value}};
+    static const {{Template "C++.Type" $.NumberType}} {{Template "C++.EnumEntryName" $entry}} = {{$entry.Value}};
   {{end}}
 {{end}}
 
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits an enum declaration as a number of uint32_t constants in a namespace.
+  Emits an enum declaration as a number of integer constants in a namespace.
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclareEnum"}}
@@ -214,36 +213,6 @@
   namespace {{Template "C++.EnumName" $}} {
     {{Template "DeclareEnumEntries" $}}
   }
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits label declarations as a number of constants of the labeled type.
--------------------------------------------------------------------------------
-*/}}
-{{define "DeclareLabeledTypeLabels"}}
-  {{/* {{AssertType $ "Labeled"}} */}}
-
-  {{range $label := $.Labels}}
-  static const {{$.Name}} {{Template "C++.LabelName" $label}} = {{Template "C++.ReadNoCast" $label.Value}};
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a labeled type declaration as a number of constants in a namespace.
--------------------------------------------------------------------------------
-*/}}
-{{define "DeclareLabeledType"}}
-  {{/* {{AssertType $ "Labeled"}} */}}
-
-  {{if $.Labels}}
-    namespace {{Template "C++.LabelNamespaceName" $}} {
-      {{Template "DeclareLabeledTypeLabels" $}}
-    }
-  {{end}}
 {{end}}
 
 
@@ -259,8 +228,6 @@
   {{Template "DeclareType" $.To}}
 
   typedef {{Template "C++.Type" $.To}} {{Template "C++.Type" $}};
-
-  {{template "DeclareLabeledType" $}}
 {{end}}
 
 
@@ -279,6 +246,7 @@
   typedef SharedMap<{{Template "C++.Type" $.KeyType}}, {{Template "C++.Type" $.ValueType}}> {{Template "C++.Type" $}};
 {{end}}
 
+
 {{/*
 -------------------------------------------------------------------------------
   Emits a type declaration for the specified command.
@@ -288,10 +256,10 @@
   {{AssertType $ "Function"}}
   {{$name := $.Name}}
   {{if not (GetAnnotation $ "pfn")}}
-    ¶
+¶
     struct {{$name}} {
       ::google::protobuf::Message* toProto() const;
-      ¶
+¶
       uint64_t thread;¶
       {{range $p := $.CallParameters}}
         {{$ty := TypeOf $p | Underlying}}

@@ -31,7 +31,6 @@ type resolver struct {
 	globals            *scope // The global scope
 	nextID             uint64
 	mappings           *Mappings
-	labels             map[string][]*semantic.Label
 	genericSubroutines map[string]genericSubroutine
 	aliasStack         stack // Currently resolving aliases.
 	defStack           stack // Currently resolving definitions.
@@ -57,8 +56,6 @@ func name(n interface{}) string {
 		return typename(n)
 	case named:
 		return n.Name()
-	case *ast.Label:
-		return n.Name.Value
 	case *ast.Identifier:
 		return n.Value
 	default:

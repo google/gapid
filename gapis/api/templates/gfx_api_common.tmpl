@@ -45,17 +45,30 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits an enum declaration as a number of uint32_t constants in a namespace.
+  Emits enum entry declarations as a number of uint32_t constants.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareEnumEntries"}}
+  {{AssertType $ "Enum"}}
+
+  {{range $entry := $.Entries}}
+    static const {{Template "C++.Type" $.NumberType}} {{Template "C++.EnumEntryName" $entry}} = {{$entry.Value}};
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits an enum declaration as a number of integer constants in a struct
+  namespace.
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclareEnum"}}
   {{AssertType $ "Enum"}}
 
-  enum class {{Template "C++.EnumName" $}} : uint32_t {
-    {{range $entry := $.Entries}}
-      {{Template "C++.EnumEntryName" $entry}} = {{$entry.Value}},
-    {{end}}
-  };¶
+  struct {{Template "C++.EnumName" $}} {
+    {{Template "DeclareEnumEntries" $}}
+  };
 {{end}}
 
 

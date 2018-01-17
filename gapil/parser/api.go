@@ -33,8 +33,6 @@ func requireAPI(p *parse.Parser, cst *parse.Branch) *ast.API {
 			api.Externs = append(api.Externs, e)
 		} else if e := enum(p, cst, annotations); e != nil {
 			api.Enums = append(api.Enums, e)
-		} else if e := label(p, cst, annotations); e != nil {
-			api.LabelGroups = append(api.LabelGroups, e)
 		} else if a := alias(p, cst, annotations); a != nil {
 			api.Aliases = append(api.Aliases, a)
 		} else if pn := pseudonym(p, cst, annotations); pn != nil {

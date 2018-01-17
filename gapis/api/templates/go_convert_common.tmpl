@@ -224,7 +224,7 @@
   {{else if IsF64           $}}float64
   {{else if IsNumericType   $}}int64 {{/* Must be after floats */}}
   {{else if IsString        $}}string
-  {{else if IsEnum          $}}int32
+  {{else if IsEnum          $}}int64
   {{else if IsPointer       $}}int64
   {{else if IsSlice         $}}memory_pb.Slice
   {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}

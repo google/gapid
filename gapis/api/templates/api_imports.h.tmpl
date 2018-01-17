@@ -18,9 +18,6 @@
 {{Include "cpp_common.tmpl"    }}
 {{Include "api_classnames.tmpl"}}
 
-{{/* ---- Overrides ---- */}}
-{{Global "C++.EnumTypeOverride" "uint32_t"}}
-
 {{$filename := print (Global "API") "_imports.h" }}
 {{$ | Macro "imports.h" | Reflow 4 | Write $filename}}
 

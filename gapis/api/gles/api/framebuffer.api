@@ -527,7 +527,10 @@ cmd void glFramebufferParameteri(GLenum target, GLenum pname, GLint param) {
   CheckNonDefaultFramebuffer(framebuffer)
   switch (pname) {
     case GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS: {
-      framebuffer.DefaultFixedSampleLocations = as!GLboolean(param)
+      switch param {
+        case 0:  framebuffer.DefaultFixedSampleLocations = GL_TRUE
+        default: framebuffer.DefaultFixedSampleLocations = GL_FALSE
+      }
     }
     case GL_FRAMEBUFFER_DEFAULT_HEIGHT: {
       framebuffer.DefaultHeight = param
@@ -918,7 +921,7 @@ cmd void glInvalidateSubFramebuffer(GLenum        target,
 cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
 
   ctx := GetContext()
-  return as!GLboolean(framebuffer in ctx.Objects.Framebuffers)
+  return toGLboolean(framebuffer in ctx.Objects.Framebuffers)
 }
 
 @if(Version.GLES20)
@@ -929,7 +932,7 @@ cmd GLboolean glIsFramebuffer(FramebufferId framebuffer) {
 cmd GLboolean glIsRenderbuffer(RenderbufferId renderbuffer) {
 
   ctx := GetContext()
-  return as!GLboolean(renderbuffer in ctx.Objects.Renderbuffers)
+  return toGLboolean(renderbuffer in ctx.Objects.Renderbuffers)
 }
 
 @if(Version.GLES30)

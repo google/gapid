@@ -18,9 +18,6 @@
 {{Include "api_classnames.tmpl"}}
 {{Include "cpp_common.tmpl"    }}
 
-{{/* ---- Overrides ---- */}}
-{{Global "C++.EnumTypeOverride"   "uint32_t"}}
-
 {{$filename := print (Global "API") "_spy.h" }}
 {{Global "SpyName" (print (Title (Global "API")) "Spy")}}
 {{$ | Macro "Spy" | Reflow 4 | Write $filename}}
