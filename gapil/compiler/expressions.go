@@ -141,6 +141,10 @@ func (c *compiler) binaryOp(s *scope, e *semantic.BinaryOp) *codegen.Value {
 	return c.doBinaryOp(s, op, lhs, rhs)
 }
 
+func (c *compiler) equal(s *scope, lhs, rhs *codegen.Value) *codegen.Value {
+	return c.doBinaryOp(s, "==", lhs, rhs)
+}
+
 func (c *compiler) doBinaryOp(s *scope, op string, lhs, rhs *codegen.Value) *codegen.Value {
 	if lhs.Type() == c.ty.strPtr {
 		switch op {

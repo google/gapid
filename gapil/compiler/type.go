@@ -61,7 +61,7 @@ func isStorageType(ty semantic.Type) bool {
 	}
 }
 
-func (c *compiler) buildTypes(api *semantic.API) {
+func (c *compiler) declareTypes(api *semantic.API) {
 	c.ty.Types = c.module.Types
 	c.ty.globals = c.ty.DeclareStruct("globals")
 	c.ty.pool = c.ty.TypeOf(C.pool{})
@@ -109,6 +109,20 @@ func (c *compiler) buildTypes(api *semantic.API) {
 		}
 	}
 
+	c.declareRefRels()
+}
+
+func (c *compiler) buildTypes(api *semantic.API) {
+	usages := []struct {
+		prefix  string
+		get     func(t semantic.Type) codegen.Type
+		out     map[semantic.Type]codegen.Type
+		storage bool
+	}{
+		{"T_", c.targetType, c.ty.target, false},
+		{"S_", c.storageType, c.ty.storage, true},
+	}
+
 	for _, usage := range usages {
 		// Build all the class types.
 		for _, t := range api.Classes {
@@ -153,9 +167,13 @@ func (c *compiler) buildTypes(api *semantic.API) {
 					codegen.Field{Name: mapElements, Type: c.ty.Pointer(elTy)},
 				)
 				c.ty.maps[t] = &MapInfo{Type: mapStrTy, Elements: elTy, Key: keyTy, Val: valTy}
+
+				c.buildMapType(t)
 			}
 		}
 	}
+
+	c.buildRefRels()
 
 	globalsFields := make([]codegen.Field, len(api.Globals))
 	for i, g := range api.Globals {
@@ -310,7 +328,7 @@ func (c *compiler) buildSlice(s *scope, root, base, size, pool *codegen.Value) *
 	return slice
 }
 
-func (c *compiler) initMapType(t *semantic.Map) {
+func (c *compiler) buildMapType(t *semantic.Map) {
 	info, ok := c.ty.maps[t]
 	if !ok {
 		fail("Unknown map")
@@ -329,7 +347,7 @@ func (c *compiler) initMapType(t *semantic.Map) {
 		elements := m.Index(0, mapElements).Load()
 		s.ForN(count, func(it *codegen.Value) *codegen.Value {
 			key := elements.Index(it, "k")
-			found := s.Equal(key.Load(), k)
+			found := c.equal(s, key.Load(), k)
 			s.If(found, func() { s.Return(s.Scalar(true)) })
 			return s.Not(found)
 		})
@@ -352,7 +370,7 @@ func (c *compiler) initMapType(t *semantic.Map) {
 
 		// Search for existing
 		s.ForN(count, func(it *codegen.Value) *codegen.Value {
-			found := s.Equal(elements.Index(it, "k").Load(), k)
+			found := c.equal(s, elements.Index(it, "k").Load(), k)
 			s.If(found, func() { s.Return(elements.Index(it, "v")) })
 			return nil
 		})
@@ -374,8 +392,13 @@ func (c *compiler) initMapType(t *semantic.Map) {
 			elements := elementsPtr.Load()
 			elements.Index(count, "k").Store(k)
 			valPtr := elements.Index(count, "v")
-			valPtr.Store(c.initialValue(s, t.ValueType))
+			v := c.initialValue(s, t.ValueType)
+			valPtr.Store(v)
 			countPtr.Store(s.AddS(count, uint64(1)))
+
+			c.reference(s, v, t.ValueType)
+			c.reference(s, k, t.KeyType)
+
 			s.Return(valPtr)
 		})
 	}))
@@ -386,11 +409,12 @@ func (c *compiler) initMapType(t *semantic.Map) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
 		ptr := s.Call(index, s.ctx, m, k, s.Scalar(false))
-		null := s.Zero(ptr.Type())
-		s.If(s.Equal(ptr, null), func() {
+		s.If(ptr.IsNull(), func() {
 			s.Return(c.initialValue(s, t.ValueType))
 		})
-		s.Return(ptr.Load())
+		v := ptr.Load()
+		c.reference(s, v, t.ValueType)
+		s.Return(v)
 	}))
 
 	remove := c.module.Function(c.ty.Void, t.Name()+"•remove", c.ty.ctxPtr, mapPtrTy, keyTy)
@@ -406,12 +430,20 @@ func (c *compiler) initMapType(t *semantic.Map) {
 
 		// Search for element
 		s.ForN(count, func(it *codegen.Value) *codegen.Value {
-			found := s.Equal(elements.Index(it, "k").Load(), k)
+			found := c.equal(s, elements.Index(it, "k").Load(), k)
 			s.If(found, func() {
+				// Release references to el
+				elPtr := elements.Index(it)
+				if c.isRefCounted(t.KeyType) {
+					c.release(s, elPtr.Index(0, "k").Load(), t.KeyType)
+				}
+				if c.isRefCounted(t.ValueType) {
+					c.release(s, elPtr.Index(0, "v").Load(), t.ValueType)
+				}
 				// Replace element with last
 				countM1 := s.SubS(count, uint64(1)).SetName("count-1")
 				last := elements.Index(countM1).SetName("last").Load()
-				elements.Index(it).Store(last)
+				elPtr.Store(last)
 				// Decrement count
 				countPtr.Store(countM1)
 			})
@@ -419,11 +451,34 @@ func (c *compiler) initMapType(t *semantic.Map) {
 		})
 	}))
 
+	clear := c.module.Function(nil, t.Name()+"•clear", c.ty.ctxPtr, mapPtrTy)
+	err(clear.Build(func(jb *codegen.Builder) {
+		s := c.scope(jb)
+		m := s.Parameter(1).SetName("map")
+		count := m.Index(0, mapCount).Load()
+		elements := m.Index(0, mapElements).Load()
+		if c.isRefCounted(t.KeyType) || c.isRefCounted(t.ValueType) {
+			s.ForN(count, func(it *codegen.Value) *codegen.Value {
+				if c.isRefCounted(t.KeyType) {
+					c.release(s, elements.Index(it, "k").Load(), t.KeyType)
+				}
+				if c.isRefCounted(t.ValueType) {
+					c.release(s, elements.Index(it, "v").Load(), t.ValueType)
+				}
+				return nil
+			})
+		}
+		c.free(s, elements)
+		m.Index(0, mapCount).Store(s.Scalar(uint64(0)))
+		m.Index(0, mapCapacity).Store(s.Scalar(uint64(0)))
+	}))
+
 	mi := c.ty.maps[t]
 	mi.Contains = contains
 	mi.Index = index
 	mi.Lookup = lookup
 	mi.Remove = remove
+	mi.Clear = clear
 	c.ty.maps[t] = mi
 }
 

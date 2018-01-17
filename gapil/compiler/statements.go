@@ -303,7 +303,12 @@ func (c *compiler) mapAssign(s *scope, n *semantic.MapAssign) {
 	m := c.expression(s, n.To.Map)
 	k := c.expression(s, n.To.Index)
 	v := c.expression(s, n.Value)
-	s.Call(c.ty.maps[ty].Index, s.ctx, m, k, s.Scalar(true)).Store(v)
+	dst := s.Call(c.ty.maps[ty].Index, s.ctx, m, k, s.Scalar(true))
+	if ty := n.To.Type.ValueType; c.isRefCounted(ty) {
+		c.reference(s, v, ty)
+		c.release(s, dst.Load(), ty)
+	}
+	dst.Store(v)
 }
 
 func (c *compiler) mapIteration(s *scope, n *semantic.MapIteration) {

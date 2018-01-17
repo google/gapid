@@ -189,7 +189,7 @@ func (s *scope) enter(f func(s *scope)) {
 func (c *compiler) build(api *semantic.API) {
 	defer c.augmentPanics()
 
-	c.buildTypes(api)
+	c.declareTypes(api)
 
 	{
 		c.callbacks.alloc = c.module.ParseFunctionSignature(C.GoString(C.gapil_alloc_sig))
@@ -212,11 +212,8 @@ func (c *compiler) build(api *semantic.API) {
 		c.callbacks.logf = c.module.ParseFunctionSignature(C.GoString(C.gapil_logf_sig))
 	}
 
-	c.refRels.build(c)
+	c.buildTypes(api)
 
-	for _, m := range api.Maps {
-		c.initMapType(m)
-	}
 	for _, f := range api.Externs {
 		c.extern(f)
 	}
@@ -275,6 +272,10 @@ func (c *compiler) realloc(s *scope, old, count *codegen.Value, ty codegen.Type)
 	size := s.Mul(count, s.SizeOf(ty).Cast(c.ty.Uint64))
 	align := s.AlignOf(ty).Cast(c.ty.Uint64)
 	return s.Call(c.callbacks.realloc, s.ctx, old.Cast(c.ty.u8Ptr), size, align).Cast(c.ty.Pointer(ty))
+}
+
+func (c *compiler) free(s *scope, ptr *codegen.Value) {
+	s.Call(c.callbacks.free, s.ctx, ptr.Cast(c.ty.voidPtr))
 }
 
 func (c *compiler) logf(s *scope, severity log.Severity, msg string, args ...interface{}) {

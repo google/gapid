@@ -59,6 +59,7 @@ type MapInfo struct {
 	Index    codegen.Function //   V*(ctx*, M*, K, addIfNotFound)
 	Lookup   codegen.Function //   V(ctx*, M*, K)
 	Remove   codegen.Function // void(ctx*, M*, K)
+	Clear    codegen.Function // void(ctx*, M*)
 }
 
 type Location struct {
