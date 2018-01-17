@@ -1435,19 +1435,21 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 		))
 	}
 
+	// We won't have to handle UNDEFINED.
+	if img.Info.Layout == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
+		return
+	}
 	// We don't currently prime the data in any of these formats.
 	if img.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
+		sb.transitionImage(img,VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout)
 		return
 	}
 	if img.ImageAspect !=
 		VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT) {
+		sb.transitionImage(img,VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout)
 		return
 	}
-	// We have to handle the above cases at some point, but right now
-	// we won't have to handle UNDEFINED.
-	if img.Info.Layout == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
-		return
-	}
+	// We have to handle the above cases at some point.
 
 	offset := VkDeviceSize(0)
 	{
@@ -1687,12 +1689,22 @@ func (sb *stateBuilder) createSemaphore(sem *SemaphoreObject) {
 		VkResult_VK_SUCCESS,
 	))
 
-	if !sem.Signaled || !sb.s.Queues.Contains(sem.LastQueue) {
+	if !sem.Signaled {
 		return
 	}
 
+	queue := sem.LastQueue
+	if !sb.s.Queues.Contains(sem.LastQueue) {
+		// find a queue with the same device
+		for _, q := range sb.s.Queues.Range() {
+			if q.Device == sem.Device {
+				queue = q.VulkanHandle
+			}
+		}
+	}
+
 	sb.write(sb.cb.VkQueueSubmit(
-		sem.LastQueue,
+		queue,
 		1,
 		sb.MustAllocReadData(VkSubmitInfo{
 			VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -2556,14 +2568,29 @@ func (sb *stateBuilder) createCommandBuffer(cb *CommandBufferObject, level VkCom
 		return
 	}
 
+	beginInfo := VkCommandBufferBeginInfo{
+		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		NewVoidᶜᵖ(memory.Nullptr),
+		VkCommandBufferUsageFlags(cb.BeginInfo.Flags),
+		NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr),
+	}
+	if cb.BeginInfo.Inherited {
+		inheritanceInfo := sb.MustAllocReadData(VkCommandBufferInheritanceInfo{
+			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
+			NewVoidᶜᵖ(memory.Nullptr),
+			cb.BeginInfo.InheritedRenderPass,
+			cb.BeginInfo.InheritedSubpass,
+			cb.BeginInfo.InheritedFramebuffer,
+			cb.BeginInfo.InheritedOcclusionQuery,
+			cb.BeginInfo.InheritedQueryFlags,
+			cb.BeginInfo.InheritedPipelineStatsFlags,
+		})
+		beginInfo.PInheritanceInfo = NewVkCommandBufferInheritanceInfoᶜᵖ(inheritanceInfo.Ptr())
+	}
+
 	sb.write(sb.cb.VkBeginCommandBuffer(
 		cb.VulkanHandle,
-		sb.MustAllocReadData(VkCommandBufferBeginInfo{
-			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-			NewVoidᶜᵖ(memory.Nullptr),
-			VkCommandBufferUsageFlags(0),
-			NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr),
-		}).Ptr(),
+		sb.MustAllocReadData(beginInfo).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
 

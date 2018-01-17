@@ -46,6 +46,7 @@
 ¶
   #define __STDC_FORMAT_MACROS
   #include <inttypes.h>
+  #include <unistd.h>
 ¶
   namespace gapir {«
 ¶
@@ -366,6 +367,8 @@ bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
               // to vkWaitForFences() once the issue is fixed.
               do {
                 return_value = mVkDeviceFunctionStubs[device].vkGetFenceStatus(device, fence);
+                GAPID_DEBUG("vkGetFenceStatus(%" PRIsize ", %" PRIu64 ") expect return 0x0, actual return value: 0x%X", device, fence, return_value);
+                usleep(3000);
               } while (return_value != gapir::Vulkan::VkResult::VK_SUCCESS &&
                          return_value != gapir::Vulkan::VkResult::VK_ERROR_DEVICE_LOST);
             } else {
