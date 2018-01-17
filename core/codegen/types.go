@@ -374,6 +374,11 @@ func (t *Types) DeclareStruct(name string) *Struct {
 	return t.struct_(name, false, nil)
 }
 
+// DeclarePackedStruct creates a new, packed empty struct type.
+func (t *Types) DeclarePackedStruct(name string) *Struct {
+	return t.struct_(name, true, nil)
+}
+
 // Struct creates a new unpacked struct type.
 func (t *Types) Struct(name string, fields ...Field) *Struct {
 	return t.struct_(name, false, fields)

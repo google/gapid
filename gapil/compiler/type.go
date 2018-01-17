@@ -26,25 +26,34 @@ import "C"
 
 type types struct {
 	codegen.Types
-	ctx     codegen.Type
-	ctxPtr  codegen.Type
-	globals *codegen.Struct
-	pool    codegen.Type
-	sli     codegen.Type
-	str     codegen.Type
-	strPtr  codegen.Type
-	u8Ptr   codegen.Type
-	voidPtr codegen.Type
-	target  map[semantic.Type]codegen.Type
-	storage map[semantic.Type]codegen.Type
-	maps    map[*semantic.Map]*MapInfo
+	ctx               codegen.Type
+	ctxPtr            codegen.Type
+	globals           *codegen.Struct
+	pool              codegen.Type
+	sli               codegen.Type
+	str               codegen.Type
+	strPtr            codegen.Type
+	u8Ptr             codegen.Type
+	voidPtr           codegen.Type
+	target            map[semantic.Type]codegen.Type
+	storage           map[semantic.Type]codegen.Type
+	target_to_storage map[semantic.Type]*codegen.Function
+	storage_to_target map[semantic.Type]*codegen.Function
+	maps              map[*semantic.Map]*MapInfo
 }
 
 // isStorageType returns true if ty can be used as a storage type.
 func isStorageType(ty semantic.Type) bool {
 	switch ty := ty.(type) {
 	case *semantic.Builtin:
-		return true
+		switch ty {
+		case semantic.StringType,
+			semantic.AnyType,
+			semantic.MessageType:
+			return false
+		default:
+			return true
+		}
 	case *semantic.Pseudonym:
 		return isStorageType(ty.To)
 	case *semantic.Pointer:
@@ -61,6 +70,50 @@ func isStorageType(ty semantic.Type) bool {
 	}
 }
 
+func (c *compiler) declareStorageTypes(api *semantic.API) {
+	for _, t := range api.Classes {
+		if isStorageType(t) {
+			if c.settings.StorageABI == c.settings.TargetABI {
+				c.ty.storage[t] = c.ty.target[t]
+			} else {
+				c.ty.storage[t] = c.ty.DeclarePackedStruct("S_" + t.Name())
+			}
+		}
+	}
+}
+
+func (c *compiler) buildStorageTypes(api *semantic.API) {
+	if c.settings.StorageABI == c.settings.TargetABI {
+		return
+	}
+	for _, t := range api.Classes {
+		if isStorageType(t) {
+			offset := int32(0)
+			fields := make([]codegen.Field, 0, len(t.Fields))
+			dummyFields := 0
+			for _, f := range t.Fields {
+				size := c.storageAllocaSize(f.Type)
+				alignment := c.storageABIAlignment(f.Type)
+				newOffset := (offset + (alignment - 1)) & ^(alignment - 1)
+				if newOffset != offset {
+					nm := fmt.Sprintf("__dummy%d", dummyFields)
+					dummyFields++
+					fields = append(fields, codegen.Field{Name: nm, Type: c.ty.Array(c.storageType(semantic.Uint8Type), int(newOffset-offset))})
+				}
+				offset = newOffset + size
+				fields = append(fields, codegen.Field{Name: f.Name(), Type: c.storageType(f.Type)})
+			}
+			totalSize := c.storageAllocaSize(t)
+			if totalSize != offset {
+				nm := fmt.Sprintf("__dummy%d", dummyFields)
+				fields = append(fields, codegen.Field{Name: nm, Type: c.ty.Array(c.storageType(semantic.Uint8Type), int(totalSize-offset))})
+			}
+
+			c.ty.storage[t].(*codegen.Struct).SetBody(true, fields...)
+		}
+	}
+}
+
 func (c *compiler) declareTypes(api *semantic.API) {
 	c.ty.Types = c.module.Types
 	c.ty.globals = c.ty.DeclareStruct("globals")
@@ -74,103 +127,79 @@ func (c *compiler) declareTypes(api *semantic.API) {
 	c.ty.ctxPtr = c.ty.Pointer(c.ty.ctx)
 	c.ty.target = map[semantic.Type]codegen.Type{}
 	c.ty.storage = map[semantic.Type]codegen.Type{}
+	c.ty.target_to_storage = map[semantic.Type]*codegen.Function{}
+	c.ty.storage_to_target = map[semantic.Type]*codegen.Function{}
 	c.ty.maps = map[*semantic.Map]*MapInfo{}
 
-	usages := []struct {
-		prefix  string
-		get     func(t semantic.Type) codegen.Type
-		out     map[semantic.Type]codegen.Type
-		storage bool
-	}{
-		{"T_", c.targetType, c.ty.target, false},
-		{"S_", c.storageType, c.ty.storage, true},
+	// Forward-declare all the class types.
+	for _, t := range api.Classes {
+		c.ty.target[t] = c.ty.DeclareStruct("T_" + t.Name())
 	}
 
-	for _, usage := range usages {
-		// Forward-declare all the class types.
-		for _, t := range api.Classes {
-			if !usage.storage || isStorageType(t) {
-				usage.out[t] = c.ty.DeclareStruct(usage.prefix + t.Name())
-			}
-		}
-		if !usage.storage { // references and maps cannot be put in storage
-			// Forward-declare all the reference types.
-			for _, t := range api.References {
-				usage.out[t] = c.ty.Pointer(c.ty.DeclareStruct(t.Name()))
-			}
-			// Forward-declare all the map types.
-			for _, t := range api.Maps {
-				usage.out[t] = c.ty.Pointer(c.ty.DeclareStruct(t.Name()))
-			}
-			// Declare all the slice types.
-			for _, t := range api.Slices {
-				usage.out[t] = c.ty.sli
-			}
-		}
+	// Forward-declare all the reference types.
+	for _, t := range api.References {
+		c.ty.target[t] = c.ty.Pointer(c.ty.DeclareStruct(t.Name()))
 	}
+	// Forward-declare all the map types.
+	for _, t := range api.Maps {
+		c.ty.target[t] = c.ty.Pointer(c.ty.DeclareStruct(t.Name()))
+	}
+	// Declare all the slice types.
+	for _, t := range api.Slices {
+		c.ty.target[t] = c.ty.sli
+	}
+
+	c.declareStorageTypes(api)
 
 	c.declareRefRels()
 }
 
 func (c *compiler) buildTypes(api *semantic.API) {
-	usages := []struct {
-		prefix  string
-		get     func(t semantic.Type) codegen.Type
-		out     map[semantic.Type]codegen.Type
-		storage bool
-	}{
-		{"T_", c.targetType, c.ty.target, false},
-		{"S_", c.storageType, c.ty.storage, true},
+
+	// Build all the class types.
+	for _, t := range api.Classes {
+		fields := make([]codegen.Field, len(t.Fields))
+		for i, f := range t.Fields {
+			fields[i] = codegen.Field{Name: f.Name(), Type: c.targetType(f.Type)}
+		}
+		c.ty.target[t].(*codegen.Struct).SetBody(false, fields...)
 	}
 
-	for _, usage := range usages {
-		// Build all the class types.
-		for _, t := range api.Classes {
-			if !usage.storage || isStorageType(t) {
-				fields := make([]codegen.Field, len(t.Fields))
-				for i, f := range t.Fields {
-					fields[i] = codegen.Field{Name: f.Name(), Type: usage.get(f.Type)}
-				}
-				usage.out[t].(*codegen.Struct).SetBody(false, fields...)
-			}
-		}
+	c.buildStorageTypes(api)
 
-		if !usage.storage { // references and maps cannot be put in storage
-			// Build all the reference types.
-			for _, t := range api.References {
-				// struct ref!T {
-				//      uint32_t ref_count;
-				//      T        value;
-				// }
-				ptr := usage.out[t].(codegen.Pointer)
-				str := ptr.Element.(*codegen.Struct)
-				str.SetBody(false,
-					codegen.Field{Name: refRefCount, Type: c.ty.Uint32},
-					codegen.Field{Name: refValue, Type: usage.get(t.To)},
-				)
-			}
+	// Build all the reference types.
+	for _, t := range api.References {
+		// struct ref!T {
+		//      uint32_t ref_count;
+		//      T        value;
+		// }
+		ptr := c.ty.target[t].(codegen.Pointer)
+		str := ptr.Element.(*codegen.Struct)
+		str.SetBody(false,
+			codegen.Field{Name: refRefCount, Type: c.ty.Uint32},
+			codegen.Field{Name: refValue, Type: c.targetType(t.To)},
+		)
+	}
 
-			// Build all the map types.
-			for _, t := range api.Maps {
-				mapPtrTy := usage.out[t].(codegen.Pointer)
-				mapStrTy := mapPtrTy.Element.(*codegen.Struct)
-				keyTy := usage.get(t.KeyType)
-				valTy := usage.get(t.ValueType)
-				elTy := c.ty.Struct(fmt.Sprintf("%v…%v", keyTy.TypeName(), valTy.TypeName()),
-					codegen.Field{Name: "k", Type: keyTy},
-					codegen.Field{Name: "v", Type: valTy},
-				)
-				mapStrTy.SetBody(false,
-					codegen.Field{Name: mapRefCount, Type: c.ty.Uint32},
-					codegen.Field{Name: mapCount, Type: c.ty.Uint64},
-					codegen.Field{Name: mapCapacity, Type: c.ty.Uint64},
-					codegen.Field{Name: mapElements, Type: c.ty.Pointer(elTy)},
-				)
-				c.ty.maps[t] = &MapInfo{Type: mapStrTy, Elements: elTy, Key: keyTy, Val: valTy}
+	// Build all the map types.
+	for _, t := range api.Maps {
+		mapPtrTy := c.ty.target[t].(codegen.Pointer)
+		mapStrTy := mapPtrTy.Element.(*codegen.Struct)
+		keyTy := c.targetType(t.KeyType)
+		valTy := c.targetType(t.ValueType)
+		elTy := c.ty.Struct(fmt.Sprintf("%v…%v", keyTy.TypeName(), valTy.TypeName()),
+			codegen.Field{Name: "k", Type: keyTy},
+			codegen.Field{Name: "v", Type: valTy},
+		)
+		mapStrTy.SetBody(false,
+			codegen.Field{Name: mapRefCount, Type: c.ty.Uint32},
+			codegen.Field{Name: mapCount, Type: c.ty.Uint64},
+			codegen.Field{Name: mapCapacity, Type: c.ty.Uint64},
+			codegen.Field{Name: mapElements, Type: c.ty.Pointer(elTy)},
+		)
+		c.ty.maps[t] = &MapInfo{Type: mapStrTy, Elements: elTy, Key: keyTy, Val: valTy}
 
-				c.buildMapType(t)
-			}
-		}
+		c.buildMapType(t)
 	}
 
 	c.buildRefRels()
@@ -180,19 +209,39 @@ func (c *compiler) buildTypes(api *semantic.API) {
 		globalsFields[i] = codegen.Field{Name: g.Name(), Type: c.targetType(g.Type)}
 	}
 	c.ty.globals.SetBody(false, globalsFields...)
+	if c.settings.StorageABI != c.settings.TargetABI {
+		for _, t := range api.Classes {
+			if isStorageType(t) {
+				storageTypePtr := c.ty.Pointer(c.storageType(t))
+				targetTypePtr := c.ty.Pointer(c.targetType(t))
+
+				copyToTarget := c.module.Function(c.ty.Void, "S_"+t.Name()+"•copy_to_target", c.ty.ctxPtr, storageTypePtr, targetTypePtr)
+				c.ty.storage_to_target[t] = &copyToTarget
+				err(copyToTarget.Build(func(jb *codegen.Builder) {
+					s := c.scope(jb)
+					src := s.Parameter(1).SetName("src")
+					dst := s.Parameter(2).SetName("dst")
+					for _, f := range t.Fields {
+						firstElem := src.Index(0, f.Name()).LoadUnaligned()
+						dst.Index(0, f.Name()).Store(c.castStorageToTarget(s, f.Type, firstElem))
+					}
+				}))
+			}
+		}
+	}
 }
 
 // targetType returns the codegen type used to represent t in the
 // target-preferred form.
 func (c *compiler) targetType(t semantic.Type) codegen.Type {
-	layout := c.settings.StorageABI.MemoryLayout
+	layout := c.settings.TargetABI.MemoryLayout
 	switch t := semantic.Underlying(t).(type) {
 	case *semantic.Builtin:
 		switch t {
 		case semantic.IntType:
 			return c.basicType(c.intType(layout.Integer.Size))
 		case semantic.SizeType:
-			return c.basicType(c.intType(layout.Size.Size))
+			return c.basicType(c.uintType(layout.Size.Size))
 		}
 	case *semantic.StaticArray:
 		return c.ty.Array(c.targetType(t.ValueType), int(t.Size))
@@ -220,16 +269,16 @@ func (c *compiler) storageType(t semantic.Type) codegen.Type {
 		case semantic.IntType:
 			return c.basicType(c.intType(layout.Integer.Size))
 		case semantic.SizeType:
-			return c.basicType(c.intType(layout.Size.Size))
+			return c.basicType(c.uintType(layout.Size.Size))
 		}
 	case *semantic.StaticArray:
 		return c.ty.Array(c.storageType(t.ValueType), int(t.Size))
 	case *semantic.Pseudonym:
 		return c.storageType(t.To)
 	case *semantic.Pointer:
-		return c.ty.Pointer(c.storageType(t.To))
+		return c.basicType(c.uintType(layout.Pointer.Size))
 	case *semantic.Class:
-		if out, ok := c.ty.target[t]; ok {
+		if out, ok := c.ty.storage[t]; ok {
 			return out
 		}
 		fail("Storage class not registered: '%v'", t.Name())
@@ -287,6 +336,132 @@ func (c *compiler) basicType(t semantic.Type) (out codegen.Type) {
 		fail("Unsupported basic type %v (%T)", t.Name(), t)
 		return nil
 	}
+}
+
+// storageABIAlignment is the alignment of this type when stored
+func (c *compiler) storageABIAlignment(t semantic.Type) int32 {
+	layout := c.settings.StorageABI.MemoryLayout
+	switch t := semantic.Underlying(t).(type) {
+	case *semantic.Builtin:
+		switch t {
+		case semantic.BoolType:
+			return int32(layout.I8.Alignment)
+		case semantic.IntType:
+			return int32(layout.Integer.Alignment)
+		case semantic.UintType:
+			return int32(layout.Integer.Alignment)
+		case semantic.SizeType:
+			return int32(layout.Size.Alignment)
+		case semantic.CharType:
+			return int32(layout.Char.Alignment)
+		case semantic.Int8Type:
+			return int32(layout.I8.Alignment)
+		case semantic.Uint8Type:
+			return int32(layout.I8.Alignment)
+		case semantic.Int16Type:
+			return int32(layout.I16.Alignment)
+		case semantic.Uint16Type:
+			return int32(layout.I16.Alignment)
+		case semantic.Int32Type:
+			return int32(layout.I32.Alignment)
+		case semantic.Uint32Type:
+			return int32(layout.I32.Alignment)
+		case semantic.Int64Type:
+			return int32(layout.I64.Alignment)
+		case semantic.Uint64Type:
+			return int32(layout.I64.Alignment)
+		case semantic.Float32Type:
+			return int32(layout.F32.Alignment)
+		case semantic.Float64Type:
+			return int32(layout.F64.Alignment)
+		default:
+			fail("Cannot determine the storage alignemnt for %T", t)
+			return 1
+		}
+	case *semantic.StaticArray:
+		return c.storageABIAlignment(t.ValueType)
+	case *semantic.Pointer:
+		return layout.Pointer.Alignment
+	case *semantic.Class:
+		alignment := int32(1)
+		for _, f := range t.Fields {
+			a := c.storageABIAlignment(f.Type)
+			if alignment < a {
+				alignment = a
+			}
+		}
+		return alignment
+	default:
+		fail("Cannot determine the storage alignemnt for %T", t)
+		return 1
+	}
+}
+
+// storageSize is the number of bytes needed to store this type
+func (c *compiler) storageSize(t semantic.Type) int32 {
+	layout := c.settings.StorageABI.MemoryLayout
+	switch t := semantic.Underlying(t).(type) {
+	case *semantic.Builtin:
+		switch t {
+		case semantic.BoolType:
+			return int32(layout.I8.Size)
+		case semantic.IntType:
+			return int32(layout.Integer.Size)
+		case semantic.UintType:
+			return int32(layout.Integer.Size)
+		case semantic.SizeType:
+			return int32(layout.Size.Size)
+		case semantic.CharType:
+			return int32(layout.Char.Size)
+		case semantic.Int8Type:
+			return int32(layout.I8.Size)
+		case semantic.Uint8Type:
+			return int32(layout.I8.Size)
+		case semantic.Int16Type:
+			return int32(layout.I16.Size)
+		case semantic.Uint16Type:
+			return int32(layout.I16.Size)
+		case semantic.Int32Type:
+			return int32(layout.I32.Size)
+		case semantic.Uint32Type:
+			return int32(layout.I32.Size)
+		case semantic.Int64Type:
+			return int32(layout.I64.Size)
+		case semantic.Uint64Type:
+			return int32(layout.I64.Size)
+		case semantic.Float32Type:
+			return int32(layout.F32.Size)
+		case semantic.Float64Type:
+			return int32(layout.F64.Size)
+		default:
+			fail("Cannot determine the storage size for %T, %v", t, t)
+			return 1
+		}
+	case *semantic.StaticArray:
+		return int32(t.Size) * c.storageAllocaSize(t.ValueType)
+	case *semantic.Pointer:
+		return layout.Pointer.Size
+	case *semantic.Class:
+		size := int32(0)
+		for _, f := range t.Fields {
+			fieldSize := c.storageAllocaSize(f.Type)
+			fieldAlignment := c.storageABIAlignment(f.Type)
+			size = (size + fieldAlignment - 1) & ^(fieldAlignment - 1)
+			size += fieldSize
+		}
+		return size
+	default:
+		fail("Cannot determine the storage size of %T", t)
+		return 1
+	}
+}
+
+// storageAllocaSize is the number of bytes per object if you were to
+// store two next to each other in memory
+func (c *compiler) storageAllocaSize(t semantic.Type) int32 {
+	alignment := c.storageABIAlignment(t)
+	size := c.storageSize(t)
+	return (size + alignment - 1) & ^(alignment - 1)
 }
 
 func (c *compiler) initialValue(s *scope, t semantic.Type) *codegen.Value {
@@ -494,6 +669,22 @@ func (c *compiler) intType(bytes int32) (out semantic.Type) {
 		return semantic.Int32Type
 	case 8:
 		return semantic.Int64Type
+	default:
+		fail("Unexpected target integer size %v", bytes)
+		return nil
+	}
+}
+
+func (c *compiler) uintType(bytes int32) (out semantic.Type) {
+	switch bytes {
+	case 1:
+		return semantic.Uint8Type
+	case 2:
+		return semantic.Uint16Type
+	case 4:
+		return semantic.Uint32Type
+	case 8:
+		return semantic.Uint64Type
 	default:
 		fail("Unexpected target integer size %v", bytes)
 		return nil

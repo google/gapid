@@ -69,6 +69,33 @@ func (v *Value) Load() *Value {
 	return v.b.val(elTy, v.b.llvm.CreateLoad(v.llvm, v.name))
 }
 
+// LoadUnaligned loads the element from the pointer value, it allows the loaded
+// value to be unaligned
+func (v *Value) LoadUnaligned() *Value {
+	if !IsPointer(v.ty) {
+		fail("Load must be from a pointer. Got %v", v.Type)
+	}
+	elTy := v.Type().(Pointer).Element
+	load := v.b.llvm.CreateLoad(v.llvm, v.name)
+	load.SetAlignment(1)
+	return v.b.val(elTy, load)
+}
+
+// StoreUnaligned stores val to the pointer ptr. It assumes that the
+// destination address may be unaligned
+func (v *Value) StoreUnaligned(val *Value) {
+	if !IsPointer(v.ty) {
+		fail("Store must be to a pointer. Got %v", v.Type)
+	}
+	elTy := v.Type().(Pointer).Element
+	if val.ty.String() != elTy.String() {
+		fail("Attempted to store value of type %v to pointer element type %v",
+			val.ty.TypeName(), elTy.TypeName())
+	}
+	store := v.b.llvm.CreateStore(val.llvm, v.llvm)
+	store.SetAlignment(1)
+}
+
 // Store stores val to the pointer ptr.
 func (v *Value) Store(val *Value) {
 	if !IsPointer(v.ty) {
