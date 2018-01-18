@@ -1462,6 +1462,51 @@ cmd void Read(PodStruct* input) {
 			},
 		},
 		{
+			name: "StorageMemoryLayout.Slice.Struct",
+			src: `
+class PodStruct {
+	u32 a
+	void* b
+	u16 c
+	u64 d
+	size  e
+}
+PodStruct s
+PodStruct s2
+cmd void Read(PodStruct* input) {
+	myS := input[0:1]
+	s = myS[0]
+	s2 = myS[1]
+}
+`,
+			cmds: []cmd{{
+				name:   "Read",
+				data:   D(ptrA),
+				extras: read(ptrA, 28, resArmPodStruct).read(ptrA+32, 28, resArmPodStruct),
+			}},
+			expected: expected{
+				data: D(
+					uint32(0x00010203),
+					pad(4),
+					uint64(0x00000000deadbeef),
+					uint16(0x0a0b),
+					pad(6),
+					uint64(0xbadf00dbadf00d00),
+					uint64(0x0000000031323334),
+					uint32(0x00010203),
+					pad(4),
+					uint64(0x00000000deadbeef),
+					uint16(0x0a0b),
+					pad(6),
+					uint64(0xbadf00dbadf00d00),
+					uint64(0x0000000031323334),
+				),
+			},
+			settings: compiler.Settings{
+				StorageABI: device.AndroidARMv7a,
+			},
+		},
+		{
 			name: "StorageMemoryLayout.StructWithStruct",
 			src: `
 class SizeStruct {
@@ -1485,6 +1530,55 @@ cmd void Read(StructInStruct* input) {
 			}},
 			expected: expected{
 				data: D(
+					uint64(0x00000000aabbccdd),
+					uint16(0xfefe),
+					pad(6),
+					uint64(0xdadadadadabcdabc),
+					uint16(0xaabb),
+					pad(6),
+					uint16(0x4253),
+					pad(6),
+				),
+			},
+			settings: compiler.Settings{
+				StorageABI: device.AndroidARMv7a,
+			},
+		},
+		{
+			name: "StorageMemoryLayout.Slice.StructWithStruct",
+			src: `
+class SizeStruct {
+	u64 a
+	u16 b
+}
+class StructInStruct {
+	size a
+	u16 b
+	SizeStruct c
+	u16 d
+}
+StructInStruct s
+StructInStruct s2
+cmd void Read(StructInStruct* input) {
+	mys := input[0:1]
+	s = mys[0]
+	s2 = mys[1]
+}`,
+			cmds: []cmd{{
+				name:   "Read",
+				data:   D(ptrA),
+				extras: read(ptrA, 26, resArmStructInStruct).read(ptrA+32, 26, resArmStructInStruct),
+			}},
+			expected: expected{
+				data: D(
+					uint64(0x00000000aabbccdd),
+					uint16(0xfefe),
+					pad(6),
+					uint64(0xdadadadadabcdabc),
+					uint16(0xaabb),
+					pad(6),
+					uint16(0x4253),
+					pad(6),
 					uint64(0x00000000aabbccdd),
 					uint16(0xfefe),
 					pad(6),
@@ -1531,6 +1625,40 @@ cmd void Write(PodStruct* input, void* ptr) {
 			},
 		},
 		{
+			name: "StorageMemoryLayout.WriteSlice.Struct",
+			src: `
+class PodStruct {
+	u32 a
+	void* b
+	u16 c
+	u64 d
+	size  e
+}
+
+cmd void Write(PodStruct* input, void* ptr) {
+	i := input[0:1]
+	i[0] = PodStruct(0x00010203, ptr, 0x0a0b, 0xbadf00dbadf00d00, as!size(0x31323334))
+	i[1] = PodStruct(0x00010203, ptr, 0x0a0b, 0xbadf00dbadf00d00, as!size(0x31323334))
+}
+`,
+			cmds: []cmd{{
+				name: "Write",
+				data: D(ptrA, uint64(0xdeadbeef)),
+			}},
+			expected: expected{
+				buffers: buffers{
+					ptrA:      D(uint32(0x00010203), uint32(0xdeadbeef), uint16(0x0a0b)),
+					ptrA + 16: D(uint64(0xbadf00dbadf00d00), uint32(0x31323334)),
+					ptrA + 32: D(uint32(0x00010203), uint32(0xdeadbeef), uint16(0x0a0b)),
+					ptrA + 48: D(uint64(0xbadf00dbadf00d00), uint32(0x31323334)),
+				},
+			},
+			settings: compiler.Settings{
+				StorageABI:             device.AndroidARMv7a,
+				WriteToApplicationPool: true,
+			},
+		},
+		{
 			name: "StorageMemoryLayout.Write.StructWithStruct",
 			src: `
 class SizeStruct {
@@ -1556,6 +1684,43 @@ cmd void Read(StructInStruct* input) {
 					ptrA:      D(uint32(0x3abbccdd), uint16(0xfefe)),
 					ptrA + 8:  D(uint64(0xdadadadadabcdabc), uint16(0xaabb)),
 					ptrA + 24: D(uint16(0x4253)),
+				},
+			},
+			settings: compiler.Settings{
+				StorageABI:             device.AndroidARMv7a,
+				WriteToApplicationPool: true,
+			},
+		},
+		{
+			name: "StorageMemoryLayout.Write.Slice.StructWithStruct",
+			src: `
+class SizeStruct {
+	u64 a
+	u16 b
+}
+class StructInStruct {
+	size a
+	u16 b
+	SizeStruct c
+	u16 d
+}
+cmd void Read(StructInStruct* input) {
+	i := input[0:1]
+	i[0] = StructInStruct(as!size(0x3abbccdd), 0xfefe, SizeStruct(0xdadadadadabcdabc, 0xaabb), 0x4253)
+	i[1] = StructInStruct(as!size(0x3abbccdd), 0xfefe, SizeStruct(0xdadadadadabcdabc, 0xaabb), 0x4253)
+}`,
+			cmds: []cmd{{
+				name: "Read",
+				data: D(ptrA),
+			}},
+			expected: expected{
+				buffers: buffers{
+					ptrA:      D(uint32(0x3abbccdd), uint16(0xfefe)),
+					ptrA + 8:  D(uint64(0xdadadadadabcdabc), uint16(0xaabb)),
+					ptrA + 24: D(uint16(0x4253)),
+					ptrA + 32: D(uint32(0x3abbccdd), uint16(0xfefe)),
+					ptrA + 40: D(uint64(0xdadadadadabcdabc), uint16(0xaabb)),
+					ptrA + 56: D(uint16(0x4253)),
 				},
 			},
 			settings: compiler.Settings{
