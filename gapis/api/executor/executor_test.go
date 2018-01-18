@@ -43,7 +43,9 @@ func TestExecutor(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	ptrA := uint64(0x0807060504030000)
+	// 32-bit address since we want this to be able to
+	// represent addresses in the ARM abi
+	ptrA := uint64(0x0000000004030000)
 
 	c := &capture.Capture{
 		Observed: interval.U64RangeList{
@@ -58,6 +60,15 @@ func TestExecutor(t *testing.T) {
 	res0x6789, _ := database.Store(ctx, D(uint16(0x6789)))
 	resU32Data, _ := database.Store(ctx, D(u32Data))
 	resHelloWorld, _ := database.Store(ctx, []byte("Hello World\x00"))
+
+	resPointerTo500, _ := database.Store(ctx, D(
+		uint32(uint32(ptrA)+500),
+	))
+
+	resPointee, _ := database.Store(ctx, D(
+		uint64(0xdeadbeefdeadbeef),
+		uint16(0xffee),
+	))
 
 	resArmPodStruct, _ := database.Store(ctx, D(
 		uint32(0x00010203),
@@ -1802,6 +1813,38 @@ cmd void Read(StructInStruct* input) {
 					ptrA + 40: D(uint64(0xdadadadadabcdabc), uint16(0xaabb)),
 					ptrA + 56: D(uint16(0x4253)),
 				},
+			},
+			settings: compiler.Settings{
+				StorageABI:             device.AndroidARMv7a,
+				WriteToApplicationPool: true,
+			},
+		},
+		{
+			name: "StorageMemoryLayout.StructWithPointer",
+			src: `
+class SizeStruct {
+	u64 a
+	u16 b
+}
+class StructInStruct {
+	SizeStruct* s
+}
+SizeStruct s
+cmd void Read(StructInStruct* input) {
+	myS := input[0]
+	s = myS.s[0]
+}`,
+			cmds: []cmd{{
+				name:   "Read",
+				data:   D(ptrA),
+				extras: read(ptrA, 32, resPointerTo500).read(ptrA+500, 10, resPointee),
+			}},
+			expected: expected{
+				data: D(
+					uint64(0xdeadbeefdeadbeef),
+					uint16(0xffee),
+					pad(6),
+				),
 			},
 			settings: compiler.Settings{
 				StorageABI:             device.AndroidARMv7a,
