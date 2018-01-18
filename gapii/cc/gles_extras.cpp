@@ -20,6 +20,11 @@
 
 #include "gapis/api/gles/gles_pb/extras.pb.h"
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif  // __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #define ANDROID_NATIVE_MAKE_CONSTANT(a,b,c,d) \
     (((unsigned)(a)<<24)|((unsigned)(b)<<16)|((unsigned)(c)<<8)|(unsigned)(d))
 
@@ -536,16 +541,22 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
         return nullptr;
     }
 
+    auto android_version_major = device_instance()->configuration().os().major();
+
+    bool use_layer_count = android_version_major >= 8; // Android O
+
     std::shared_ptr<AndroidNativeBufferExtra> extra(new AndroidNativeBufferExtra(
         buffer->width,
         buffer->height,
         buffer->stride,
         buffer->format,
         buffer->usage,
-        buffer->layer_count
+        use_layer_count ? buffer->layer_count : 0
     ));
-    GAPID_INFO("Created AndroidNativeBufferExtra: width=%i, height=%i, layers=%llx",
-        buffer->width, buffer->height, (uint64_t)buffer->layer_count);
+
+    GAPID_INFO("Created AndroidNativeBufferExtra: os_version:%i, width=%i, height=%i, layers=%" PRIx64,
+        (int)android_version_major, buffer->width, buffer->height, (uint64_t)buffer->layer_count);
+
     observer->encodeAndDelete(extra->toProto());
     return extra;
 #else

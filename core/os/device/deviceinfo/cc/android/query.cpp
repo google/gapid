@@ -329,6 +329,14 @@ bool createContext(void* platform_data) {
     }
 
     switch (gContext.mOSVersion) {
+        case 27:  // Oreo
+            gContext.mOSVersionMajor = 8;
+            gContext.mOSVersionMinor = 1;
+            break;
+        case 26:  // Oreo
+            gContext.mOSVersionMajor = 8;
+            gContext.mOSVersionMinor = 0;
+            break;
         case 25:  // Nougat
             gContext.mOSVersionMajor = 7;
             gContext.mOSVersionMinor = 1;
