@@ -2294,7 +2294,6 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			ft.AddBehavior(ctx, cbh)
 		}
 	case *VkCmdBindPipeline:
-		bh.Alive = true
 		vkPi := cmd.Pipeline
 		read(ctx, bh, vkHandle(vkPi))
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer)
@@ -2585,12 +2584,16 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			queue:          cmd.Queue,
 		}
 		submitCount := uint64(cmd.SubmitCount)
+		hasCmd := false
 		for i, submit := range cmd.PSubmits.Slice(0, submitCount, l).MustRead(ctx, cmd, s, nil) {
 			commandBufferCount := uint64(submit.CommandBufferCount)
 			for j, vkCb := range submit.PCommandBuffers.Slice(0, commandBufferCount, l).MustRead(ctx, cmd, s, nil) {
 				read(ctx, bh, vkHandle(vkCb))
 				read(ctx, bh, vb.commandBuffers[vkCb].end)
 				for k, cbc := range vb.commands[vkCb] {
+					if !hasCmd {
+						hasCmd = true
+					}
 					fci := api.SubCmdIdx{uint64(id), uint64(i), uint64(j), uint64(k)}
 					submittedCmd := newSubmittedCommand(fci, cbc, nil)
 					vb.submitInfos[id].pendingCommands = append(vb.submitInfos[id].pendingCommands, submittedCmd)
@@ -2628,11 +2631,14 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 		for _, sp := range vb.submitInfos[id].waitSemaphores {
 			if read(ctx, bh, vkHandle(sp)) {
-				read(ctx, bh, vb.semaphoreSignals[sp])
+				modify(ctx, bh, vb.semaphoreSignals[sp])
 			}
 		}
 		for _, sp := range vb.submitInfos[id].signalSemaphores {
 			read(ctx, bh, vkHandle(sp))
+			if !hasCmd {
+				write(ctx, bh, vkHandle(sp))
+			}
 		}
 		read(ctx, bh, vkHandle(vb.submitInfos[id].signalFence))
 
