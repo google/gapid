@@ -103,8 +103,10 @@ cc_library(
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
         "@com_google_protobuf//:protobuf"
     ],
-    include_prefix = "gapii/cc",
-    copts = cc_copts(),
+    copts = cc_copts() + select({
+        "//tools/build:windows": ["-Wa,-mbig-obj"],
+        "//conditions:default": [],
+    }),
     linkopts = select({
         "//tools/build:linux": ["-ldl", "-lGL", "-lX11"],
         "//tools/build:darwin": ["-framework Cocoa", "-framework OpenGL"],
