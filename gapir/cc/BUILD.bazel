@@ -1,47 +1,52 @@
 load("//tools/build:rules.bzl", "apic", "mm_library", "cc_copts", "cc_defines")
 
 apic(
-    name = "gles",
+    name = "gles_cc",
     api = "//gapis/api/gles:api",
     templates = [
         "//gapis/api/templates:specific_gfx_api.cpp",
+    ]
+)
+
+apic(
+    name = "gles_h",
+    api = "//gapis/api/gles:api",
+    templates = [
         "//gapis/api/templates:specific_gfx_api.h",
     ]
 )
 
 apic(
-    name = "vulkan",
+    name = "vulkan_cc",
     api = "//gapis/api/vulkan:api",
     templates = [
         "//gapis/api/templates:specific_gfx_api.cpp",
+        "//gapis/api/templates:vulkan_gfx_api_extras.cpp",
+    ]
+)
+
+apic(
+    name = "vulkan_h",
+    api = "//gapis/api/vulkan:api",
+    templates = [
         "//gapis/api/templates:specific_gfx_api.h",
-        "//gapis/api/templates:vulkan_gfx_api_extras",
     ]
 )
 
 filegroup(
     name = "headers",
-    srcs = glob(["*.h"]),
+    srcs = glob(["*.h", "*.inc"]) + [":gles_h", ":vulkan_h"],
     visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "api_lib",
-    srcs = [":gles", ":vulkan", ":headers"] + glob(["*.inc"]),
-    hdrs = [":gles", ":vulkan", ":headers"],
-    deps = [
-        "//core/cc",
-    ],
-    include_prefix = "gapir/cc",
-    defines = cc_defines(),
-    copts = cc_copts(),
 )
 
 mm_library(
     name = "darwin_renderer",
     srcs = glob(["osx/*.mm"]),
+    hdrs = [":headers"],
+    deps = [
+        "//core/cc",
+    ],
     defines = cc_defines(),
-    deps = [":api_lib"],
 )
 
 cc_library(
@@ -52,10 +57,12 @@ cc_library(
         "//tools/build:windows": glob(["windows/*.cpp"]),
         # Android
         "//conditions:default": glob(["android/*.cpp"]),
-    }),
+    }) + [":gles_cc", ":gles_h", ":vulkan_cc", ":vulkan_h"],
     defines = cc_defines(),
     hdrs = [":headers"],
-    deps = [":api_lib"] + select({
+    deps = [
+         "//core/cc",
+    ] + select({
         "//tools/build:darwin": [":darwin_renderer"],
         "//conditions:default": [],
     }),

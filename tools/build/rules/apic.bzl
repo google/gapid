@@ -31,7 +31,7 @@ def _apic_impl(ctx):
                 "--dir", outputs[0].dirname,
                 "--search", api_search_path(apilist),
                 api.main.path,
-                template.main.path, 
+                template.main.path,
             ],
             mnemonic = "apic",
             progress_message = "apic " + api.main.short_path + " with " + template.main.short_path,
@@ -73,4 +73,5 @@ apic = rule(
         "_go_context_data": attr.label(default=Label("@io_bazel_rules_go//:go_context_data")),
     },
     toolchains = ["@io_bazel_rules_go//go:toolchain"],
+    output_to_genfiles = True,
 )
