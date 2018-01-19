@@ -25,7 +25,7 @@ def api_search_path(inputs):
 def _apic_library_to_source(go, attr, source, merge):
   for t in attr.templates: merge(source, t)
 
-def _apic_impl(ctx):
+def _apic_template_impl(ctx):
     go = go_context(ctx)
     api = ctx.attr.api
     apiname = api.apiname
@@ -60,9 +60,9 @@ def _apic_impl(ctx):
         DefaultInfo(files = depset(generated)),
     ]
 
-"""Adds an API compiler rule"""
-apic = rule(
-    _apic_impl,
+"""Adds an API template rule"""
+apic_template = rule(
+    _apic_template_impl,
     attrs = {
         "api": attr.label(
             allow_files = False,
