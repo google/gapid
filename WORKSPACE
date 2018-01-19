@@ -32,7 +32,7 @@ github_repository(
 
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
 load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
-load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository", "windows_sdk")
+load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository")
 
 #########################################################
 # Run our workspace preparation rules
@@ -40,10 +40,6 @@ load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository", "wi
 go_rules_dependencies()
 go_register_toolchains()
 cc_configure()
-
-windows_sdk(
-    name="windows_sdk",
-)
 
 android_sdk_repository(
     name="androidsdk",
