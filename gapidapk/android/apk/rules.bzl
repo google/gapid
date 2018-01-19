@@ -56,7 +56,6 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
         out = name + "/" + "AndroidManifest.xml",
         replace = "£{srchash}",
         srcs = fatapks + ["//gapidapk/android/app/src/main:gapid"],
-        tags = ["manual"],
         visibility = ["//visibility:public"],
     )
     native.cc_library(
@@ -80,5 +79,4 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
             ":" + name + "_native",
         ],
         visibility = ["//visibility:public"],
-        tags = ["manual"],
     )

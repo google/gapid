@@ -2,7 +2,6 @@ load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts")
 
 cc_library(
     name = "cc",
-    tags = ["manual"],
     srcs = glob([
         "lib/*.cc",
         "lib/*.h",
@@ -19,6 +18,7 @@ cc_library(
             "lib/X86/*.cc",
             "lib/X86/*.h",
         ]),
+        "//conditions:default": [],
     }),
     includes = ["lib"],
     hdrs = glob([
