@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "cc_copts", "cc_defines")
+load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "cc",
@@ -11,7 +11,6 @@ cc_library(
         "//conditions:default": glob(["posix/*.h", "posix/*.inc"]),
     }),
     hdrs = glob(["*.h"]),
-    defines = cc_defines(),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [

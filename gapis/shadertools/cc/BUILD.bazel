@@ -1,3 +1,5 @@
+load("//tools/build:rules.bzl", "cc_copts")
+
 cc_library(
     name = "cc",
     srcs = [
@@ -19,5 +21,6 @@ cc_library(
         "@spirv-tools//:spirv-tools",
         "@glslang//:glslang",
     ],
+    copts = cc_copts(),
     visibility = ["//visibility:public"],
 )

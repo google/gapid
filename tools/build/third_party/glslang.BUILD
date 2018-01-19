@@ -1,3 +1,5 @@
+load("@//tools/build:rules.bzl", "cc_copts")
+
 cc_library(
     name = "glslang",
 
@@ -27,5 +29,6 @@ cc_library(
         "SPIRV/*.h",
     ]),
     include_prefix = "third_party/glslang",
+    copts = cc_copts(),
     visibility = ["//visibility:public"],
 )

@@ -1,4 +1,4 @@
-load("@//tools/build:rules.bzl", "copy", "mm_library", "cc_copts", "cc_defines")
+load("@//tools/build:rules.bzl", "copy", "mm_library", "cc_copts")
 
 POSIX_SRCS = [
     "src/client/minidump_file_writer.cc",
@@ -105,7 +105,6 @@ cc_library(
         # Android.
         "//conditions:default": [],
     }),
-    defines = cc_defines(),
     copts = cc_copts() + select({
         "@//tools/build:linux": [],
         "@//tools/build:darwin": [],
@@ -137,7 +136,7 @@ mm_library(
         "src/google_breakpad/**/*.h"
     ]),
     deps = [":breakpad_darwin_defines"],
-    defines = cc_defines(),
+    copts = cc_copts(),
     strip_include_prefix = "src",
 )
 
@@ -145,7 +144,6 @@ mm_library(
 cc_library(
     name = "breakpad_darwin_defines",
     hdrs = ["src/client/apple/Framework/BreakpadDefines.h"],
-    defines = cc_defines(),
     copts = cc_copts(),
     strip_include_prefix = "src/client/apple/Framework",
 )
@@ -154,7 +152,6 @@ cc_library(
 cc_library(
     name = "breakpad_android_includes",
     hdrs = glob(["src/common/android/include/**/*.h"]),
-    defines = cc_defines(),
     copts = cc_copts(),
     strip_include_prefix = "src/common/android/include",
 )

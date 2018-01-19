@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_defines")
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts")
 
 cc_library(
     name = "cc",
@@ -26,7 +26,6 @@ cc_library(
         "include/*.hpp",
     ]),
     strip_include_prefix = "include",
-    defines = cc_defines(),
     copts = cc_copts() + [
         "-fno-rtti",
         "-fno-exceptions",

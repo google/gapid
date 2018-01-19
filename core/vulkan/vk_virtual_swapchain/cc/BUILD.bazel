@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_defines", "cc_dynamic_library")
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_dynamic_library")
 
 cc_library(
     name = "cc",
@@ -7,7 +7,6 @@ cc_library(
     deps = [
         "//core/vulkan/cc/include/vulkan",
     ],
-    defines = cc_defines(),
     copts = cc_copts() + select({
         "//tools/build:linux": ["-DVK_USE_PLATFORM_XCB_KHR"],
         "//tools/build:darwin": [],
