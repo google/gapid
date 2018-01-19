@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "apic", "mm_library", "cc_copts")
+load("//tools/build:rules.bzl", "apic_template", "mm_library", "cc_copts")
 
-apic(
+apic_template(
     name = "gles_cc",
     api = "//gapis/api/gles:api",
     templates = [
@@ -22,7 +22,7 @@ apic(
     ],
 )
 
-apic(
+apic_template(
     name = "gles_h",
     api = "//gapis/api/gles:api",
     templates = [
@@ -30,7 +30,7 @@ apic(
     ],
 )
 
-apic(
+apic_template(
     name = "vulkan_cc",
     api = "//gapis/api/vulkan:api",
     templates = [
@@ -39,7 +39,7 @@ apic(
     ],
 )
 
-apic(
+apic_template(
     name = "vulkan_h",
     api = "//gapis/api/vulkan:api",
     templates = [
