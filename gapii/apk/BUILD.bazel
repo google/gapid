@@ -2,18 +2,18 @@ load("//tools/build:rules.bzl", "android_native")
 
 android_native(
     name = "gapii",
-    deps = ["//gapii/cc:libgapii_android"],
     visibility = ["//visibility:public"],
+    deps = ["//gapii/cc:libgapii_android"],
 )
 
 android_native(
     name = "interceptor",
-    deps = ["//gapii/interceptor-lib/cc:libinterceptor"],
     visibility = ["//visibility:public"],
+    deps = ["//gapii/interceptor-lib/cc:libinterceptor"],
 )
 
 android_native(
     name = "VkLayerGraphicsSpy",
-    deps = ["//gapii/vulkan/vk_graphics_spy/cc:libVkLayerGraphicsSpy"],
     visibility = ["//visibility:public"],
+    deps = ["//gapii/vulkan/vk_graphics_spy/cc:libVkLayerGraphicsSpy"],
 )

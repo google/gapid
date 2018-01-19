@@ -3,11 +3,12 @@ load("@//tools/build:rules.bzl", "copy", "mm_library", "cc_copts")
 POSIX_SRCS = [
     "src/client/minidump_file_writer.cc",
     "src/common/convert_UTF.c",
-    "src/common/convert_UTF.h", # needs to be here, because of an unqualified import
+    "src/common/convert_UTF.h",  # needs to be here, because of an unqualified import
     "src/common/md5.cc",
     "src/common/simple_string_dictionary.cc",
     "src/common/string_conversion.cc",
 ]
+
 LINUX_SRCS = POSIX_SRCS + [
     "src/client/linux/crash_generation/crash_generation_client.cc",
     "src/client/linux/dump_writer_common/thread_info.cc",
@@ -69,7 +70,7 @@ cc_library(
     hdrs = glob([
         "src/client/*.h",
         "src/common/*.h",
-        "src/google_breakpad/**/*.h"
+        "src/google_breakpad/**/*.h",
     ]) + select({
         "@//tools/build:linux": glob([
             "src/client/linux/**/*.h",
@@ -78,7 +79,7 @@ cc_library(
         "@//tools/build:darwin": glob([
             "src/client/mac/**/*.h",
             "src/common/mac/**/*.h",
-        ]) + ["src/common/linux/linux_libc_support.h"], # no joke
+        ]) + ["src/common/linux/linux_libc_support.h"],  # no joke
         "@//tools/build:windows": glob([
             "src/client/windows/**/*.h",
             "src/common/windows/**/*.h",
@@ -90,13 +91,15 @@ cc_library(
             "src/common/linux/**/*.h",
         ]),
     }),
-    strip_include_prefix = "src",
-    deps = select({
-        "@//tools/build:linux": ["@lss"],
-        "@//tools/build:darwin": [":breakpad_darwin"],
-        "@//tools/build:windows": [],
+    copts = cc_copts() + select({
+        "@//tools/build:linux": [],
+        "@//tools/build:darwin": [],
+        "@//tools/build:windows": [
+            "-D_UNICODE",
+            "-DUNICODE",
+        ],
         # Android.
-        "//conditions:default": [":breakpad_android_includes", "@lss"],
+        "//conditions:default": ["-D__STDC_FORMAT_MACROS"],
     }),
     linkopts = select({
         "@//tools/build:linux": ["-lpthread"],
@@ -105,27 +108,31 @@ cc_library(
         # Android.
         "//conditions:default": [],
     }),
-    copts = cc_copts() + select({
-        "@//tools/build:linux": [],
-        "@//tools/build:darwin": [],
-        "@//tools/build:windows": ["-D_UNICODE", "-DUNICODE"],
-        # Android.
-        "//conditions:default": ["-D__STDC_FORMAT_MACROS"],
-    }),
+    strip_include_prefix = "src",
     visibility = ["//visibility:public"],
+    deps = select({
+        "@//tools/build:linux": ["@lss"],
+        "@//tools/build:darwin": [":breakpad_darwin"],
+        "@//tools/build:windows": [],
+        # Android.
+        "//conditions:default": [
+            ":breakpad_android_includes",
+            "@lss",
+        ],
+    }),
 )
 
 mm_library(
     name = "breakpad_darwin",
     srcs = [
-        "src/common/mac/MachIPC.h",
-        "src/common/mac/MachIPC.mm",
-        "src/client/mac/crash_generation/ConfigFile.h",
-        "src/client/mac/crash_generation/ConfigFile.mm",
         "src/client/mac/Framework/Breakpad.h",
         "src/client/mac/Framework/Breakpad.mm",
         "src/client/mac/Framework/OnDemandServer.h",
         "src/client/mac/Framework/OnDemandServer.mm",
+        "src/client/mac/crash_generation/ConfigFile.h",
+        "src/client/mac/crash_generation/ConfigFile.mm",
+        "src/common/mac/MachIPC.h",
+        "src/common/mac/MachIPC.mm",
     ],
     hdrs = glob([
         "src/common/*.h",
@@ -133,11 +140,11 @@ mm_library(
         "src/client/*.h",
         "src/client/apple/**/*.h",
         "src/client/mac/**/*.h",
-        "src/google_breakpad/**/*.h"
+        "src/google_breakpad/**/*.h",
     ]),
-    deps = [":breakpad_darwin_defines"],
     copts = cc_copts(),
     strip_include_prefix = "src",
+    deps = [":breakpad_darwin_defines"],
 )
 
 # Needed because the BreakpadDefines is also included without a full path.

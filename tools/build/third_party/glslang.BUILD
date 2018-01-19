@@ -2,7 +2,6 @@ load("@//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "glslang",
-
     srcs = glob([
         "glslang/GenericCodeGen/*.h",
         "glslang/GenericCodeGen/*.cpp",
@@ -28,7 +27,7 @@ cc_library(
         "glslang/MachineIndependent/*.h",
         "SPIRV/*.h",
     ]),
-    include_prefix = "third_party/glslang",
     copts = cc_copts(),
+    include_prefix = "third_party/glslang",
     visibility = ["//visibility:public"],
 )

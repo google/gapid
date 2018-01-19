@@ -32,14 +32,14 @@ filegroup(
 copy_to(
     name = "install-pkg",
     srcs = [
-        "//tools/build:build.properties",
         "//cmd/gapid",
         "//cmd/gapir/cc:gapir",
         "//cmd/gapis",
         "//cmd/gapit",
-        "//gapidapk/android/apk:armeabi-v7a.apk",
         "//gapidapk/android/apk:arm64-v8a.apk",
+        "//gapidapk/android/apk:armeabi-v7a.apk",
         "//gapidapk/android/apk:x86.apk",
+        "//tools/build:build.properties",
     ],
     rename = {
         "armeabi-v7a.apk": "gapid-armeabi.apk",
@@ -52,14 +52,14 @@ copy_to(
 copy_to(
     name = "install-pkg-lib",
     srcs = [
-        "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
         "//core/vulkan/vk_virtual_swapchain/cc:json",
+        "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
         "//gapic:gapic_deploy.jar",
         "//gapii/cc:libgapii",
         "//gapii/vulkan/vk_graphics_spy/cc:json",
     ],
     rename = {
-         "gapic_deploy.jar": "gapic.jar",
+        "gapic_deploy.jar": "gapic.jar",
     },
     to = "pkg/lib",
 )

@@ -9,9 +9,12 @@ filegroup(
 
 api_template(
     name = "api",
-    template = "api.go.tmpl",
     includes = [":templates"],
-    outputs = ["api.go", "enum.go"],
+    outputs = [
+        "api.go",
+        "enum.go",
+    ],
+    template = "api.go.tmpl",
     deps = [
         "//core/data:go_default_library",
         "//core/data/binary:go_default_library",
@@ -21,81 +24,80 @@ api_template(
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/capture:go_default_library",
+        "//gapis/memory:go_default_library",
         "//gapis/replay:go_default_library",
         "//gapis/replay/builder:go_default_library",
         "//gapis/replay/protocol:go_default_library",
         "//gapis/replay/value:go_default_library",
         "//gapis/service/path:go_default_library",
-        "//gapis/memory:go_default_library",
     ],
 )
 
 api_template(
     name = "mutate",
-    template = "mutate.go.tmpl",
     includes = [":templates"],
     outputs = ["mutate.go"],
+    template = "mutate.go.tmpl",
 )
 
 api_template(
     name = "constant_sets",
-    template = "constant_sets.go.tmpl",
     includes = [":templates"],
     outputs = ["constant_sets.go"],
+    template = "constant_sets.go.tmpl",
 )
 
 api_template(
     name = "convert",
-    template = "convert.go.tmpl",
     includes = [":templates"],
     outputs = ["convert.go"],
+    template = "convert.go.tmpl",
 )
 
 api_template(
     name = "proto",
-    template = "api.proto.tmpl",
     includes = [":templates"],
     outputs = ["api.proto"],
+    template = "api.proto.tmpl",
 )
 
 api_template(
     name = "specific_gfx_api.cpp",
-    template = "specific_gfx_api.cpp.tmpl",
     includes = [":templates"],
     outputs = ["{api}_gfx_api.cpp"],
+    template = "specific_gfx_api.cpp.tmpl",
 )
 
 api_template(
     name = "specific_gfx_api.h",
-    template = "specific_gfx_api.h.tmpl",
     includes = [":templates"],
     outputs = ["{api}_gfx_api.h"],
+    template = "specific_gfx_api.h.tmpl",
 )
 
 api_template(
     name = "vulkan_gfx_api_extras.cpp",
-    template = "vulkan_gfx_api_extras.tmpl",
     includes = [":templates"],
     outputs = ["vulkan_gfx_api_extras.cpp"],
+    template = "vulkan_gfx_api_extras.tmpl",
 )
 
 api_template(
     name = "api_imports.h",
-    template = "api_imports.h.tmpl",
     includes = [":templates"],
     outputs = ["{api}_imports.h"],
+    template = "api_imports.h.tmpl",
 )
 
 api_template(
     name = "api_spy.h",
-    template = "api_spy.h.tmpl",
     includes = [":templates"],
     outputs = ["{api}_spy.h"],
+    template = "api_spy.h.tmpl",
 )
 
 api_template(
     name = "api_spy.cpp",
-    template = "api_spy.cpp.tmpl",
     includes = [":templates"],
     outputs = [
         "{api}_spy_0.cpp",
@@ -105,53 +107,54 @@ api_template(
         "{api}_spy_subroutines_0.cpp",
         "{api}_spy_subroutines_1.cpp",
     ],
+    template = "api_spy.cpp.tmpl",
 )
 
 api_template(
     name = "api_spy_serialize.cpp",
-    template = "api_spy_serialize.cpp.tmpl",
     includes = [":templates"],
     outputs = ["{api}_spy_serialize.cpp"],
+    template = "api_spy_serialize.cpp.tmpl",
 )
 
 api_template(
     name = "api_types.h",
-    template = "api_types.h.tmpl",
     includes = [":templates"],
     outputs = ["{api}_types.h"],
+    template = "api_types.h.tmpl",
 )
 
 api_template(
     name = "api_types.cpp",
-    template = "api_types.cpp.tmpl",
     includes = [":templates"],
     outputs = ["{api}_types.cpp"],
+    template = "api_types.cpp.tmpl",
 )
 
 api_template(
     name = "opengl32_exports.def",
-    template = "opengl32_exports.def.tmpl",
     includes = [":templates"],
     outputs = ["opengl32_exports.def"],
+    template = "opengl32_exports.def.tmpl",
 )
 
 api_template(
     name = "opengl32_resolve.cpp",
-    template = "opengl32_resolve.cpp.tmpl",
     includes = [":templates"],
     outputs = ["opengl32_resolve.cpp"],
+    template = "opengl32_resolve.cpp.tmpl",
 )
 
 api_template(
     name = "opengl32_x64.asm",
-    template = "opengl32_x64.asm.tmpl",
     includes = [":templates"],
     outputs = ["opengl32_x64.asm"],
+    template = "opengl32_x64.asm.tmpl",
 )
 
 api_template(
     name = "opengl_framework_exports.cpp",
-    template = "opengl_framework_exports.cpp.tmpl",
     includes = [":templates"],
     outputs = ["opengl_framework_exports.cpp"],
+    template = "opengl_framework_exports.cpp.tmpl",
 )

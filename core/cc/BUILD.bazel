@@ -2,28 +2,44 @@ load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "cc",
-    srcs = glob([
-        "*.cpp",
-        "gl/*.cpp",
-    ], exclude = [
-        "*_test.cpp",
-    ]) + select({
-        "//tools/build:linux": glob(["linux/*.cpp", "posix/*.cpp"]),
-        "//tools/build:darwin": glob(["osx/*.cpp", "posix/*.cpp"]),
+    srcs = glob(
+        [
+            "*.cpp",
+            "gl/*.cpp",
+        ],
+        exclude = [
+            "*_test.cpp",
+        ],
+    ) + select({
+        "//tools/build:linux": glob([
+            "linux/*.cpp",
+            "posix/*.cpp",
+        ]),
+        "//tools/build:darwin": glob([
+            "osx/*.cpp",
+            "posix/*.cpp",
+        ]),
         "//tools/build:windows": glob(["windows/*.cpp"]),
-        "//conditions:default": glob(["android/*.cpp", "android/*.h", "posix/*.cpp"]),
+        "//conditions:default": glob([
+            "android/*.cpp",
+            "android/*.h",
+            "posix/*.cpp",
+        ]),
     }),
+    hdrs = glob([
+        "*.h",
+        "gl/*.h",
+    ]),
     copts = cc_copts(),
-    visibility = ["//visibility:public"],
-    hdrs = glob(["*.h", "gl/*.h"]),
-    deps = [
-        "@cityhash",
-        "@breakpad",
-    ],
     linkopts = select({
         "//tools/build:linux": [],
         "//tools/build:darwin": [],
         "//tools/build:windows": ["-lws2_32"],
         "//conditions:default": [],
     }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@breakpad",
+        "@cityhash",
+    ],
 )

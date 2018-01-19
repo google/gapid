@@ -4,28 +4,28 @@ package(default_visibility = ["//visibility:public"])
 
 api_template(
     name = "api_exports.h",
-    template = "api_exports.h.tmpl",
-    includes = ["//gapis/api/templates:templates"],
+    includes = ["//gapis/api/templates"],
     outputs = ["{api}_exports.h"],
+    template = "api_exports.h.tmpl",
 )
 
 api_template(
     name = "api_exports.cpp",
-    template = "api_exports.cpp.tmpl",
-    includes = ["//gapis/api/templates:templates"],
+    includes = ["//gapis/api/templates"],
     outputs = ["{api}_exports.cpp"],
+    template = "api_exports.cpp.tmpl",
 )
 
 api_template(
     name = "api_imports.cpp",
-    template = "api_imports.cpp.tmpl",
-    includes = ["//gapis/api/templates:templates"],
+    includes = ["//gapis/api/templates"],
     outputs = ["{api}_imports.cpp"],
+    template = "api_imports.cpp.tmpl",
 )
 
 api_template(
     name = "api_install.cpp",
-    template = "api_install.cpp.tmpl",
-    includes = ["//gapis/api/templates:templates"],
+    includes = ["//gapis/api/templates"],
     outputs = ["{api}_install.cpp"],
+    template = "api_install.cpp.tmpl",
 )

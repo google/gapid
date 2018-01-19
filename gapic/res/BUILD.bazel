@@ -11,8 +11,7 @@ copy_tree(
 )
 
 java_library(
-    name="res",
-    resources=[":copy_resources"],
+    name = "res",
+    resources = [":copy_resources"],
     visibility = ["//visibility:public"],
 )
-

@@ -4,8 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 api_template(
     name = "api_exports.cpp",
-    template = "api_exports.cpp.tmpl",
-    includes = ["//gapis/api/templates:templates"],
+    includes = ["//gapis/api/templates"],
     outputs = [
         "{api}_exports.h",
         "{api}_exports.cpp",
@@ -15,21 +14,22 @@ api_template(
         "{api}_VkPhysicalDevice_exports.cpp",
         "{api}_VkQueue_exports.cpp",
     ],
+    template = "api_exports.cpp.tmpl",
 )
 
 api_template(
     name = "api_imports.cpp",
-    template = "api_imports.cpp.tmpl",
-    includes = ["//gapis/api/templates:templates"],
+    includes = ["//gapis/api/templates"],
     outputs = ["{api}_imports.cpp"],
+    template = "api_imports.cpp.tmpl",
 )
 
 api_template(
     name = "vk_spy_helpers.cpp",
-    template = "vk_spy_helpers.cpp.tmpl",
     includes = [
         "vulkan_common.tmpl",
-        "//gapis/api/templates:templates",
+        "//gapis/api/templates",
     ],
     outputs = ["{api}_spy_helpers.cpp"],
+    template = "vk_spy_helpers.cpp.tmpl",
 )

@@ -3,19 +3,19 @@ load("//tools/build:rules.bzl", "cc_copts", "android_dynamic_library", "android_
 cc_binary(
     name = "gapir",
     srcs = ["main.cpp"],
-    deps = ["//gapir/cc:gapir"],
     copts = cc_copts(),
     visibility = ["//visibility:public"],
+    deps = ["//gapir/cc:gapir"],
 )
 
 android_dynamic_library(
     name = "libgapir",
     srcs = ["main.cpp"],
-    deps = [
-        "@android_native_app_glue//:native_app_glue",
-        "//gapir/cc:gapir",
-    ],
-    exports = "gapir.exports",
     copts = cc_copts(),
     visibility = ["//visibility:public"],
+    exports = "gapir.exports",
+    deps = [
+        "//gapir/cc:gapir",
+        "@android_native_app_glue//:native_app_glue",
+    ],
 )
