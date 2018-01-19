@@ -19,50 +19,29 @@ def android_native(name, deps=[], **kwargs):
         **kwargs
     )
 
-def _android_ndk_file_impl(ctx):
-    outs = depset()
+def _android_native_app_glue_impl(ctx):
+    ctx.symlink(
+        ctx.path(ctx.os.environ["ANDROID_NDK_HOME"] +
+            "/sources/android/native_app_glue/android_native_app_glue.c"),
+        "android_native_app_glue.c")
+    ctx.symlink(
+        ctx.path(ctx.os.environ["ANDROID_NDK_HOME"] +
+            "/sources/android/native_app_glue/android_native_app_glue.h"),
+        "android_native_app_glue.h")
 
-    for f in ctx.attr.files:
-        out = ctx.new_file(f.rpartition("/")[2])
-        ctx.actions.run_shell(
-            command = "cp {}/{} {}".format(
-                ctx.files._ndk[0].path,
-                f,
-                out.path
-            ),
-            inputs = ctx.files._ndk,
-            outputs = [out]
-        )
-        outs += [out]
-    return struct(
-        files = outs
-    )
+    ctx.file("BUILD", "\n".join([
+        "cc_library(",
+        "    name = \"native_app_glue\",",
+        "    srcs = [\"android_native_app_glue.c\", \"android_native_app_glue.h\"],",
+        "    hdrs = [\"android_native_app_glue.h\"],",
+        "    visibility = [\"//visibility:public\"],",
+        ")"
+    ]))
 
-android_ndk_file = rule(
-    implementation = _android_ndk_file_impl,
-    attrs = {
-        "files": attr.string_list(
-            mandatory = True,
-        ),
-        "_ndk": attr.label(
-            default = "@androidndk//:files",
-        )
-    },
+android_native_app_glue = repository_rule(
+    implementation = _android_native_app_glue_impl,
+    local = True,
+    environ = [
+        "ANDROID_NDK_HOME",
+    ]
 )
-
-def android_native_app_glue(name, **kwargs):
-    android_ndk_file(
-        name = "android_native_app_glue.c",
-        files = ["sources/android/native_app_glue/android_native_app_glue.c"],
-    )
-    android_ndk_file(
-        name = "android_native_app_glue.h",
-        files = ["sources/android/native_app_glue/android_native_app_glue.h"],
-    )
-    native.cc_library(
-        name = name,
-        srcs = ["android_native_app_glue.c", "android_native_app_glue.h"],
-        hdrs = ["android_native_app_glue.h"],
-        strip_include_prefix = "", # force the virtual include link creation so the header is found
-        **kwargs
-    )

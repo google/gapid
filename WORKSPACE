@@ -32,7 +32,7 @@ github_repository(
 
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
 load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
-load("@//tools/build:rules.bzl", "github_go_repository")
+load("@//tools/build:rules.bzl", "android_native_app_glue", "github_go_repository")
 
 #########################################################
 # Run our workspace preparation rules
@@ -49,6 +49,10 @@ android_sdk_repository(
 android_ndk_repository(
     name="androidndk",
     api_level=21,
+)
+
+android_native_app_glue(
+    name = "android_native_app_glue",
 )
 
 ####################################

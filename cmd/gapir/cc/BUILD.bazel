@@ -7,15 +7,11 @@ cc_binary(
     visibility = ["//visibility:public"],
 )
 
-android_native_app_glue(
-    name = "native_app_glue",
-)
-
 android_dynamic_library(
     name = "libgapir",
     srcs = ["main.cpp"],
     deps = [
-        ":native_app_glue",
+        "@android_native_app_glue//:native_app_glue",
         "//gapir/cc:gapir",
     ],
     exports = "gapir.exports",

@@ -36,7 +36,7 @@
 #include <string.h>
 
 #if TARGET_OS == GAPID_OS_ANDROID
-#include <android_native_app_glue.h>
+#include "android_native_app_glue.h"
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
 using namespace core;
