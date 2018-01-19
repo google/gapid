@@ -1,4 +1,4 @@
-load("//tools/build/rules:android.bzl", "android_native_app_glue", "android_native", "android_ndk_file")
+load("//tools/build/rules:android.bzl", "android_native_app_glue", "android_native")
 load("//tools/build/rules:apic.bzl", "apic")
 load("//tools/build/rules:cc.bzl", "cc_copts", "cc_defines")
 load("//tools/build/rules:common.bzl", "generate", "copy", "copy_to", "copy_tree", "filter")
