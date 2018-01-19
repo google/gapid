@@ -21,16 +21,13 @@ apic(
 
 filegroup(
     name = "headers",
-    srcs = glob([
-        "*.h",
-        "*.inl",
-    ]),
+    srcs = glob(["*.h"]),
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "api_lib",
-    srcs = [":gles", ":vulkan", ":headers"],
+    srcs = [":gles", ":vulkan", ":headers"] + glob(["*.inc"]),
     hdrs = [":gles", ":vulkan", ":headers"],
     deps = [
         "//core/cc",
