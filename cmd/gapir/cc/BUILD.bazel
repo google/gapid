@@ -1,9 +1,10 @@
-load("//tools/build:rules.bzl", "android_dynamic_library", "android_native_app_glue")
+load("//tools/build:rules.bzl", "cc_copts", "android_dynamic_library", "android_native_app_glue")
 
 cc_binary(
     name = "gapir",
     srcs = ["main.cpp"],
     deps = ["//gapir/cc:gapir"],
+    copts = cc_copts(),
     visibility = ["//visibility:public"],
 )
 
@@ -15,5 +16,6 @@ android_dynamic_library(
         "//gapir/cc:gapir",
     ],
     exports = "gapir.exports",
+    copts = cc_copts(),
     visibility = ["//visibility:public"],
 )

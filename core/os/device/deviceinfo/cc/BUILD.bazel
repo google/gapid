@@ -1,14 +1,11 @@
-load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_defines", "mm_library")
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "mm_library")
 
 mm_library(
     name = "darwin_query",
     srcs = glob(["osx/*.mm"]),
-    copy_hdrs = [
-        "query.h",
-    ],
-    deps = [
-        "//core/os/device:device_cc_proto",
-    ]
+    copy_hdrs = ["query.h"],
+    deps = ["//core/os/device:device_cc_proto"],
+    copts = cc_copts(),
 )
 
 cc_library(
@@ -32,7 +29,6 @@ cc_library(
         "//conditions:default": [],
     }),
     hdrs = glob(["*.h"]),
-    defines = cc_defines(),
     copts = cc_copts(),
     linkopts = select({
         "//tools/build:linux": ["-ldl", "-lGL", "-lX11"],

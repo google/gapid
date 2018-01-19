@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "android_dynamic_library", "apic", "cc_copts", "cc_defines", "cc_dynamic_library")
+load("//tools/build:rules.bzl", "android_dynamic_library", "apic", "cc_copts", "cc_dynamic_library")
 
 apic(
     name = "gles",
@@ -90,7 +90,6 @@ cc_library(
         "//conditions:default": glob(["android/*.cpp", "android/*.h"]),
     }),
     hdrs = [":gles", ":gvr", ":vulkan", ":headers"] + glob(["android/*.h"]), # TODO
-    defines = cc_defines(),
     deps = [
         "//core/cc",
         "//core/memory_tracker/cc",

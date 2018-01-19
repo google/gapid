@@ -1,4 +1,4 @@
-load("//tools/build:rules.bzl", "apic", "mm_library", "cc_copts", "cc_defines")
+load("//tools/build:rules.bzl", "apic", "mm_library", "cc_copts")
 
 apic(
     name = "gles_cc",
@@ -46,7 +46,7 @@ mm_library(
     deps = [
         "//core/cc",
     ],
-    defines = cc_defines(),
+    copts = cc_copts(),
 )
 
 cc_library(
@@ -58,7 +58,6 @@ cc_library(
         # Android
         "//conditions:default": glob(["android/*.cpp"]),
     }) + [":gles_cc", ":gles_h", ":vulkan_cc", ":vulkan_h"],
-    defines = cc_defines(),
     hdrs = [":headers"],
     deps = [
          "//core/cc",
