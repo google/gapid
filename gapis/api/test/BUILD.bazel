@@ -58,7 +58,7 @@ go_library(
         "//gapis/replay/value:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/stringtable:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",  # keep
         "@com_github_pkg_errors//:go_default_library",
     ],
 )
