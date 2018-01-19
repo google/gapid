@@ -12,20 +12,20 @@ _NATIVE_LIBRARIES = {
 gapid_apk(
     name = "armeabi-v7a",
     abi = "armeabi-v7a",
-    pkg = "armeabi",
     libs = _NATIVE_LIBRARIES,
+    pkg = "armeabi",
 )
 
 gapid_apk(
     name = "arm64-v8a",
     abi = "arm64-v8a",
-    pkg = "aarch64",
     libs = _NATIVE_LIBRARIES,
+    pkg = "aarch64",
 )
 
 gapid_apk(
     name = "x86",
     abi = "x86",
-    pkg = "x86",
     libs = _NATIVE_LIBRARIES,
+    pkg = "x86",
 )

@@ -2,18 +2,27 @@ load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "cc",
-    srcs = glob([
-        "*.cpp",
-    ], exclude = [
-        "*_test.cpp",
-    ]) + select({
-        "//tools/build:windows": glob(["windows/*.h", "windows/*.inc"]),
-        "//conditions:default": glob(["posix/*.h", "posix/*.inc"]),
+    srcs = glob(
+        [
+            "*.cpp",
+        ],
+        exclude = [
+            "*_test.cpp",
+        ],
+    ) + select({
+        "//tools/build:windows": glob([
+            "windows/*.h",
+            "windows/*.inc",
+        ]),
+        "//conditions:default": glob([
+            "posix/*.h",
+            "posix/*.inc",
+        ]),
     }),
     hdrs = glob(["*.h"]),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [
         "//core/cc",
-    ]
+    ],
 )

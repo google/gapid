@@ -5,7 +5,7 @@ apic(
     api = "//gapis/api/gles:api",
     templates = [
         "//gapis/api/templates:specific_gfx_api.cpp",
-    ]
+    ],
 )
 
 apic(
@@ -13,7 +13,7 @@ apic(
     api = "//gapis/api/gles:api",
     templates = [
         "//gapis/api/templates:specific_gfx_api.h",
-    ]
+    ],
 )
 
 apic(
@@ -22,7 +22,7 @@ apic(
     templates = [
         "//gapis/api/templates:specific_gfx_api.cpp",
         "//gapis/api/templates:vulkan_gfx_api_extras.cpp",
-    ]
+    ],
 )
 
 apic(
@@ -30,7 +30,7 @@ apic(
     api = "//gapis/api/vulkan:api",
     templates = [
         "//gapis/api/templates:specific_gfx_api.h",
-    ]
+    ],
 )
 
 mm_library(
@@ -38,40 +38,67 @@ mm_library(
     srcs = glob(["osx/*.mm"]),
     hdrs = glob([
         "*.h",
-        "*.inc"
-    ]) + [":gles_h", ":vulkan_h"],
+        "*.inc",
+    ]) + [
+        ":gles_h",
+        ":vulkan_h",
+    ],
+    copts = cc_copts(),
     deps = [
         "//core/cc",
     ],
-    copts = cc_copts(),
 )
 
 cc_library(
     name = "gapir",
-    srcs = glob([
-        "*.cpp",
-        "*.h",
-        "*.inc",
-    ], exclude = ["*_test.cpp"]) + select({
+    srcs = glob(
+        [
+            "*.cpp",
+            "*.h",
+            "*.inc",
+        ],
+        exclude = ["*_test.cpp"],
+    ) + select({
         "//tools/build:linux": glob(["linux/*.cpp"]),
         "//tools/build:darwin": glob(["osx/*.cpp"]),
         "//tools/build:windows": glob(["windows/*.cpp"]),
         # Android
         "//conditions:default": glob(["android/*.cpp"]),
-    }) + [":gles_cc", ":gles_h", ":vulkan_cc", ":vulkan_h"],
+    }) + [
+        ":gles_cc",
+        ":gles_h",
+        ":vulkan_cc",
+        ":vulkan_h",
+    ],
+    copts = cc_copts(),
+    linkopts = select({
+        "//tools/build:linux": [
+            "-ldl",
+            "-lGL",
+            "-lX11",
+        ],
+        "//tools/build:darwin": [
+            "-framework Cocoa",
+            "-framework OpenGL",
+        ],
+        "//tools/build:windows": [
+            "-lopengl32",
+            "-lgdi32",
+        ],
+        # Android
+        "//conditions:default": [
+            "-lm",
+            "-llog",
+            "-lEGL",
+            "-lGLESv2",
+            "-landroid",
+        ],
+    }),
+    visibility = ["//visibility:public"],
     deps = [
-         "//core/cc",
+        "//core/cc",
     ] + select({
         "//tools/build:darwin": [":darwin_renderer"],
         "//conditions:default": [],
     }),
-    copts = cc_copts(),
-    linkopts = select({
-        "//tools/build:linux": ["-ldl", "-lGL", "-lX11"],
-        "//tools/build:darwin": ["-framework Cocoa", "-framework OpenGL"],
-        "//tools/build:windows": ["-lopengl32", "-lgdi32"],
-        # Android
-        "//conditions:default": ["-lm", "-llog", "-lEGL", "-lGLESv2", "-landroid"],
-    }),
-    visibility = ["//visibility:public"],
 )

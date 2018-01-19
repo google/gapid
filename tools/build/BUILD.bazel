@@ -2,8 +2,8 @@ load("//:version.bzl", "gapid_version")
 
 gapid_version(
     name = "build_properties",
-    template = ":build_host_and_time",
     out = "build.properties",
+    template = ":build_host_and_time",
     visibility = ["//visibility:public"],
 )
 
@@ -16,10 +16,10 @@ genrule(
     srcs = ["build.properties.in"],
     outs = ["build.properties.out"],
     cmd = "(" + ";".join([
-          "echo Build.Host=$$(grep BUILD_HOST bazel-out/stable-status.txt | cut -d ' ' -f 2)",
-          # The timestamp is in millis, but date -d @timestamp, expects the timestamp to be in seconds.
-          "V=$$((($$(grep BUILD_TIMESTAMP bazel-out/volatile-status.txt | cut -d ' ' -f 2)+500)/1000))",
-          "echo Build.Date=$$([ $$(uname) = 'Darwin' ] && date -jf %s $$V || date -d @$$V)",
+        "echo Build.Host=$$(grep BUILD_HOST bazel-out/stable-status.txt | cut -d ' ' -f 2)",
+        # The timestamp is in millis, but date -d @timestamp, expects the timestamp to be in seconds.
+        "V=$$((($$(grep BUILD_TIMESTAMP bazel-out/volatile-status.txt | cut -d ' ' -f 2)+500)/1000))",
+        "echo Build.Date=$$([ $$(uname) = 'Darwin' ] && date -jf %s $$V || date -d @$$V)",
     ]) + ") | cat $< - > $@",
     stamp = 1,
 )

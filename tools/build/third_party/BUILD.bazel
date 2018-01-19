@@ -28,9 +28,9 @@ cc_library(
 cc_library(
     name = "llvm-config",
     hdrs = glob(["llvm/include/**/*"]),
-    deps = [":llvm-platform-config"],
     strip_include_prefix = "llvm/include",
     visibility = ["//visibility:public"],
+    deps = [":llvm-platform-config"],
 )
 
 cc_library(

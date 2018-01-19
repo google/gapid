@@ -12,7 +12,7 @@ apic(
         "//gapis/api/templates:api_types.cpp",
         "//gapis/api/gles/templates:api_exports.cpp",
         "//gapis/api/gles/templates:api_imports.cpp",
-    ]
+    ],
 )
 
 apic(
@@ -28,7 +28,7 @@ apic(
         "//gapis/api/vulkan/templates:api_exports.cpp",
         "//gapis/api/vulkan/templates:api_imports.cpp",
         "//gapis/api/vulkan/templates:vk_spy_helpers.cpp",
-    ]
+    ],
 )
 
 apic(
@@ -44,7 +44,7 @@ apic(
         "//gapis/api/gvr/templates:api_exports.cpp",
         "//gapis/api/gvr/templates:api_exports.h",
         "//gapis/api/gvr/templates:api_imports.cpp",
-    ]
+    ],
 )
 
 apic(
@@ -52,7 +52,7 @@ apic(
     api = "//gapis/api/gvr:api",
     templates = [
         "//gapis/api/gvr/templates:api_install.cpp",
-    ]
+    ],
 )
 
 apic(
@@ -75,19 +75,54 @@ apic(
 
 cc_library(
     name = "cc",
-    srcs = glob([
-        "*.cpp",
-        "*.h",
-        "*.inc",
-    ], exclude = [
-        "*_test.cpp",
-    ]) + select({
+    srcs = glob(
+        [
+            "*.cpp",
+            "*.h",
+            "*.inc",
+        ],
+        exclude = [
+            "*_test.cpp",
+        ],
+    ) + select({
         "//tools/build:linux": [],
         "//tools/build:darwin": [":osx_opengl_framework"],
-        "//tools/build:windows": [":windows_opengl32"] + glob(["windows/*.cpp", "windows/*.h"]),
+        "//tools/build:windows": [":windows_opengl32"] + glob([
+            "windows/*.cpp",
+            "windows/*.h",
+        ]),
         # Android
-        "//conditions:default": glob(["android/*.cpp", "android/*.h"]) + [":gvr_install"],
-    }) + [":gles", ":gvr", ":vulkan"],
+        "//conditions:default": glob([
+            "android/*.cpp",
+            "android/*.h",
+        ]) + [":gvr_install"],
+    }) + [
+        ":gles",
+        ":gvr",
+        ":vulkan",
+    ],
+    copts = cc_copts() + select({
+        "//tools/build:windows": ["-Wa,-mbig-obj"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "//tools/build:linux": [
+            "-ldl",
+            "-lGL",
+            "-lX11",
+        ],
+        "//tools/build:darwin": [
+            "-framework Cocoa",
+            "-framework OpenGL",
+        ],
+        "//tools/build:windows": [],
+        "//conditions:default": [
+            "-lEGL",
+            "-llog",
+            "-lm",
+        ],
+    }),
+    visibility = ["//visibility:public"],
     deps = [
         "//core/cc",
         "//core/memory_tracker/cc",
@@ -98,31 +133,20 @@ cc_library(
         "//gapis/api/vulkan/vulkan_pb:vulkan_pb_cc_proto",
         "//gapis/capture:capture_cc_proto",
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
-        "@com_google_protobuf//:protobuf"
+        "@com_google_protobuf//:protobuf",
     ],
-    copts = cc_copts() + select({
-        "//tools/build:windows": ["-Wa,-mbig-obj"],
-        "//conditions:default": [],
-    }),
-    linkopts = select({
-        "//tools/build:linux": ["-ldl", "-lGL", "-lX11"],
-        "//tools/build:darwin": ["-framework Cocoa", "-framework OpenGL"],
-        "//tools/build:windows": [],
-        "//conditions:default": ["-lEGL", "-llog", "-lm"],
-    }),
-    visibility = ["//visibility:public"],
 )
 
 cc_dynamic_library(
     name = "libgapii",
-    deps = [":cc"],
-    exports = "gapii_desktop.exports",
     visibility = ["//visibility:public"],
+    exports = "gapii_desktop.exports",
+    deps = [":cc"],
 )
 
 android_dynamic_library(
     name = "libgapii_android",
-    deps = [":cc"],
-    exports = "gapii_android.exports",
     visibility = ["//visibility:public"],
+    exports = "gapii_android.exports",
+    deps = [":cc"],
 )

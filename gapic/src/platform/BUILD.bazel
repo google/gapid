@@ -1,13 +1,13 @@
 java_library(
-    name="platform",
+    name = "platform",
     srcs = select({
         "//tools/build:linux": glob(["linux/**/*.java"]),
         "//tools/build:darwin": glob(["osx/**/*.java"]),
         "//tools/build:windows": glob(["windows/**/*.java"]),
     }),
     visibility = ["//visibility:public"],
-    deps=[
-        "//gapic/third_party:swt",
+    deps = [
         "//gapic/third_party:lwjgl",
+        "//gapic/third_party:swt",
     ],
 )

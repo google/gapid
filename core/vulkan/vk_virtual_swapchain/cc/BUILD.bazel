@@ -4,11 +4,8 @@ cc_library(
     name = "cc",
     srcs = glob([
         "*.cpp",
-        "*.h"
+        "*.h",
     ]),
-    deps = [
-        "//core/vulkan/cc/include/vulkan",
-    ],
     copts = cc_copts() + select({
         "//tools/build:linux": ["-DVK_USE_PLATFORM_XCB_KHR"],
         "//tools/build:darwin": [],
@@ -27,20 +24,23 @@ cc_library(
         "//conditions:default": ["-lm"],
     }),
     visibility = ["//visibility:public"],
+    deps = [
+        "//core/vulkan/cc/include/vulkan",
+    ],
 )
 
 cc_dynamic_library(
     name = "libVkLayer_VirtualSwapchain",
-    deps = [":cc"],
-    exports = "virtual_swapchain_desktop.exports",
     visibility = ["//visibility:public"],
+    exports = "virtual_swapchain_desktop.exports",
+    deps = [":cc"],
 )
 
 android_dynamic_library(
     name = "libVkLayer_VirtualSwapchain_android",
-    deps = [":cc"],
-    exports = "virtual_swapchain_android.exports",
     visibility = ["//visibility:public"],
+    exports = "virtual_swapchain_android.exports",
+    deps = [":cc"],
 )
 
 filegroup(

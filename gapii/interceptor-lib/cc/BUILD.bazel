@@ -20,23 +20,29 @@ cc_library(
         ]),
         "//conditions:default": [],
     }),
-    includes = ["lib"],
     hdrs = glob([
         "include/*.h",
         "include/*.hpp",
     ]),
-    strip_include_prefix = "include",
     copts = cc_copts() + [
         "-fno-rtti",
         "-fno-exceptions",
     ],
+    includes = ["lib"],
     linkopts = select({
         "//tools/build:linux": [],
         "//tools/build:darwin": [],
         "//tools/build:windows": [],
         # Android
-        "//conditions:default": ["-lm", "-llog", "-lz", "-lstdc++"],
+        "//conditions:default": [
+            "-lm",
+            "-llog",
+            "-lz",
+            "-lstdc++",
+        ],
     }),
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
     deps = [
         "@llvm//:AArch64CodeGen",
         "@llvm//:AArch64Disassembler",
@@ -45,12 +51,11 @@ cc_library(
         "@llvm//:X86CodeGen",
         "@llvm//:X86Disassembler",
     ],
-    visibility = ["//visibility:public"],
 )
 
 android_dynamic_library(
     name = "libinterceptor",
-    deps = [":cc"],
-    exports = "lib/libinterceptor.exports",
     visibility = ["//visibility:public"],
+    exports = "lib/libinterceptor.exports",
+    deps = [":cc"],
 )

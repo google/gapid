@@ -14,12 +14,12 @@ cc_library(
         "source/**/*.h",
         "source/**/*.inc",
     ]),
-    deps = [
-        "@spirv-headers//:spirv-headers",
-        "@//tools/build/third_party:spirv-tools-generated",
-    ],
     strip_include_prefix = "source/",
     visibility = ["//visibility:private"],
+    deps = [
+        "@//tools/build/third_party:spirv-tools-generated",
+        "@spirv-headers//:spirv-headers",
+    ],
 )
 
 cc_library(
@@ -28,20 +28,19 @@ cc_library(
         "*.h",
         "*.cpp",
         "*.hpp",
-
         "source/**/*.h",
         "source/**/*.cpp",
         "source/**/*.hpp",
     ]),
-    deps = [
-        "@spirv-headers//:spirv-headers",
-        ":spirv-source",
-        ":spirv-include",
-    ],
     hdrs = glob([
         "include/spirv-tools/*",
         "source/**/*.h",
     ]),
     include_prefix = "third_party/SPIRV-Tools/",
     visibility = ["//visibility:public"],
+    deps = [
+        ":spirv-include",
+        ":spirv-source",
+        "@spirv-headers//:spirv-headers",
+    ],
 )

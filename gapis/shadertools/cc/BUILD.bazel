@@ -4,14 +4,14 @@ cc_library(
     name = "cc",
     srcs = glob([
         "*.cpp",
-        "*.h"
+        "*.h",
     ]),
     hdrs = ["libmanager.h"],
-    deps = [
-        "@spirv-cross//:spirv-cross",
-        "@spirv-tools//:spirv-tools",
-        "@glslang//:glslang",
-    ],
     copts = cc_copts(),
     visibility = ["//visibility:public"],
+    deps = [
+        "@glslang",
+        "@spirv-cross//:spirv-cross",
+        "@spirv-tools//:spirv-tools",
+    ],
 )

@@ -4,21 +4,21 @@ cc_library(
     name = "cc",
     srcs = glob([
         "*.cpp",
-        "*.h"
+        "*.h",
     ]),
-    deps = ["//core/vulkan/cc/include/vulkan"],
     copts = cc_copts() + [
         "-fno-rtti",
         "-fno-exceptions",
     ],
     visibility = ["//visibility:public"],
+    deps = ["//core/vulkan/cc/include/vulkan"],
 )
 
 android_dynamic_library(
     name = "libVkLayerGraphicsSpy",
-    deps = [":cc"],
-    exports = "vk_graphics_spy.exports",
     visibility = ["//visibility:public"],
+    exports = "vk_graphics_spy.exports",
+    deps = [":cc"],
 )
 
 filegroup(
