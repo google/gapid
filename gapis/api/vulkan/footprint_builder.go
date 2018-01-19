@@ -81,7 +81,7 @@ func (cbc *commandBufferCommand) newBehavior(ctx context.Context,
 	qei *queueExecutionState) *dependencygraph.Behavior {
 	bh := dependencygraph.NewBehavior(sc.id, m)
 	read(ctx, bh, cbc)
-	read(ctx, bh, qei.currentSubmitInfo.executionBegin)
+	read(ctx, bh, qei.currentSubmitInfo.queued)
 	if sc.parentCmd != nil {
 		read(ctx, bh, sc.parentCmd)
 	}
@@ -306,8 +306,9 @@ func (sc *submittedCommand) runCommand(ctx context.Context,
 
 type queueSubmitInfo struct {
 	queue            VkQueue
-	executionBegin   label
-	executionEnd     label
+	began            bool
+	queued   label
+	done     label
 	waitSemaphores   []VkSemaphore
 	signalSemaphores []VkSemaphore
 	signalFence      VkFence
@@ -1393,10 +1394,22 @@ func (vb *FootprintBuilder) rollOutExecuted(ctx context.Context,
 	executedCommands []api.SubCmdIdx) {
 	for _, executedFCI := range executedCommands {
 		submitID := executedFCI[0]
-		submittedCmd := vb.submitInfos[api.CmdID(submitID)].pendingCommands[0]
+		submitinfo := vb.submitInfos[api.CmdID(submitID)]
+		if !submitinfo.began {
+			bh := dependencygraph.NewBehavior(api.SubCmdIdx{submitID}, vb.machine)
+			for _, sp := range submitinfo.waitSemaphores {
+				if read(ctx, bh, vkHandle(sp)) {
+					modify(ctx, bh, vb.semaphoreSignals[sp])
+				}
+			}
+			// write(ctx, bh, submitinfo.queued)
+			ft.AddBehavior(ctx, bh)
+			submitinfo.began = true
+		}
+		submittedCmd := submitinfo.pendingCommands[0]
 		if executedFCI.Equals(submittedCmd.id) {
-			execInfo := vb.executionStates[vb.submitInfos[api.CmdID(submitID)].queue]
-			execInfo.currentSubmitInfo = vb.submitInfos[api.CmdID(submitID)]
+			execInfo := vb.executionStates[submitinfo.queue]
+			execInfo.currentSubmitInfo =submitinfo
 			execInfo.updateCurrentCommand(ctx, executedFCI)
 			submittedCmd.runCommand(ctx, ft, vb.machine, execInfo)
 		} else {
@@ -1406,17 +1419,16 @@ func (vb *FootprintBuilder) rollOutExecuted(ctx context.Context,
 			return
 		}
 		// Remove the front submitted command.
-		vb.submitInfos[api.CmdID(submitID)].pendingCommands =
-			vb.submitInfos[api.CmdID(submitID)].pendingCommands[1:]
+		submitinfo.pendingCommands =
+			submitinfo.pendingCommands[1:]
 		// After the last command of the submit, we need to add a behavior for
 		// semaphore and fence signaling.
-		if len(vb.submitInfos[api.CmdID(submitID)].pendingCommands) == 0 {
+		if len(submitinfo.pendingCommands) == 0 {
 			bh := dependencygraph.NewBehavior(api.SubCmdIdx{
 				executedFCI[0]}, vb.machine)
 			// add writes to the semaphores and fences
-			submitinfo := vb.submitInfos[api.CmdID(submitID)]
-			read(ctx, bh, submitinfo.executionBegin)
-			write(ctx, bh, submitinfo.executionEnd)
+			read(ctx, bh, submitinfo.queued)
+			write(ctx, bh, submitinfo.done)
 			for _, sp := range submitinfo.signalSemaphores {
 				if read(ctx, bh, vkHandle(sp)) {
 					write(ctx, bh, vb.semaphoreSignals[sp])
@@ -2579,8 +2591,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		vb.executionStates[cmd.Queue].lastSubmitID = id
 		// collect submission info and submitted commands
 		vb.submitInfos[id] = &queueSubmitInfo{
-			executionBegin: newLabel(),
-			executionEnd:   newLabel(),
+			began: false,
+			queued: newLabel(),
+			done:   newLabel(),
 			queue:          cmd.Queue,
 		}
 		submitCount := uint64(cmd.SubmitCount)
@@ -2623,24 +2636,40 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		vb.submitInfos[id].signalFence = cmd.Fence
 
 		// queue execution begin
-		write(ctx, bh, vb.submitInfos[id].executionBegin)
 		vb.writeCoherentMemoryData(ctx, cmd, bh)
 		if read(ctx, bh, vkHandle(cmd.Fence)) {
 			read(ctx, bh, vb.fences[cmd.Fence].unsignal)
 			write(ctx, bh, vb.fences[cmd.Fence].signal)
 		}
+		// If the submission does not contains commands, records the write
+		// behavior here as we don't have any callbacks for those operations.
+		// This is not exactly correct. If the whole submission is in pending
+		// state, even if there is no command to submit, those semaphore/fence
+		// signal/unsignal operations will be in pending, instead of being
+		// carried out immediately.
+		// TODO: Once we merge the dependency tree building process to mutate
+		// calls, make sure the signal/unsignal operations in pending state
+		// are handled correctly.
+		write(ctx, bh, vb.submitInfos[id].queued)
 		for _, sp := range vb.submitInfos[id].waitSemaphores {
 			if read(ctx, bh, vkHandle(sp)) {
-				modify(ctx, bh, vb.semaphoreSignals[sp])
+				if !hasCmd {
+					modify(ctx, bh, vb.semaphoreSignals[sp])
+				}
 			}
 		}
 		for _, sp := range vb.submitInfos[id].signalSemaphores {
-			read(ctx, bh, vkHandle(sp))
-			if !hasCmd {
-				write(ctx, bh, vkHandle(sp))
+			if read(ctx, bh, vkHandle(sp)) {
+				if !hasCmd {
+					write(ctx, bh, vkHandle(sp))
+				}
 			}
 		}
-		read(ctx, bh, vkHandle(vb.submitInfos[id].signalFence))
+		if read(ctx, bh, vkHandle(cmd.Fence)) {
+			if !hasCmd {
+				write(ctx, bh, vb.fences[cmd.Fence].signal)
+			}
+		}
 
 	case *VkSetEvent:
 		if read(ctx, bh, vkHandle(cmd.Event)) {
@@ -2778,7 +2807,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkDeviceWaitIdle:
 		for _, qei := range vb.executionStates {
 			lastSubmitInfo := vb.submitInfos[qei.lastSubmitID]
-			read(ctx, bh, lastSubmitInfo.executionEnd)
+			read(ctx, bh, lastSubmitInfo.done)
 			bh.Alive = true
 		}
 
