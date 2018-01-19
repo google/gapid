@@ -55,7 +55,6 @@ def mm_library(name, srcs = [], hdrs = [], copy_hdrs = [], copts = [], **kwargs)
         )
     native.cc_library(
         name = name,
-        tags = ["manual"],
         srcs = copied_srcs,
         hdrs = use_headers,
         copts = ["-x","objective-c++"] + copts,
