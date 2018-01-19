@@ -41,7 +41,6 @@ android_dynamic_library(
     visibility = ["//visibility:public"],
 )
 
-
 filegroup(
     name = "json",
     srcs = ["VirtualSwapchainLayer.json"],

@@ -33,16 +33,13 @@ apic(
     ]
 )
 
-filegroup(
-    name = "headers",
-    srcs = glob(["*.h", "*.inc"]) + [":gles_h", ":vulkan_h"],
-    visibility = ["//visibility:public"],
-)
-
 mm_library(
     name = "darwin_renderer",
     srcs = glob(["osx/*.mm"]),
-    hdrs = [":headers"],
+    hdrs = glob([
+        "*.h",
+        "*.inc"
+    ]) + [":gles_h", ":vulkan_h"],
     deps = [
         "//core/cc",
     ],
@@ -51,14 +48,17 @@ mm_library(
 
 cc_library(
     name = "gapir",
-    srcs = glob(["*.cpp"], exclude = ["*_test.cpp"]) + select({
+    srcs = glob([
+        "*.cpp",
+        "*.h",
+        "*.inc",
+    ], exclude = ["*_test.cpp"]) + select({
         "//tools/build:linux": glob(["linux/*.cpp"]),
         "//tools/build:darwin": glob(["osx/*.cpp"]),
         "//tools/build:windows": glob(["windows/*.cpp"]),
         # Android
         "//conditions:default": glob(["android/*.cpp"]),
     }) + [":gles_cc", ":gles_h", ":vulkan_cc", ":vulkan_h"],
-    hdrs = [":headers"],
     deps = [
          "//core/cc",
     ] + select({
