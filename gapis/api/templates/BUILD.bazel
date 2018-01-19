@@ -73,7 +73,7 @@ api_template(
 )
 
 api_template(
-    name = "vulkan_gfx_api_extras",
+    name = "vulkan_gfx_api_extras.cpp",
     template = "vulkan_gfx_api_extras.tmpl",
     includes = [":templates"],
     outputs = ["vulkan_gfx_api_extras.cpp"],

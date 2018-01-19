@@ -44,10 +44,8 @@ def mm_library(name, srcs=[], hdrs = [], copy_hdrs=[], **kwargs):
         name = name+"_headers",
         srcs = hdrs,
     )
-    index = 0
     use_headers = [":"+name+"_headers"]
     for hdr in copy_hdrs:
-        index+=1
         copied = "hdr_"+hdr
         use_headers += [":"+copied]
         copy(
