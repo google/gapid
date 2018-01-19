@@ -44,6 +44,13 @@ apic(
         "//gapis/api/gvr/templates:api_exports.cpp",
         "//gapis/api/gvr/templates:api_exports.h",
         "//gapis/api/gvr/templates:api_imports.cpp",
+    ]
+)
+
+apic(
+    name = "gvr_install",
+    api = "//gapis/api/gvr:api",
+    templates = [
         "//gapis/api/gvr/templates:api_install.cpp",
     ]
 )
@@ -66,19 +73,11 @@ apic(
     ],
 )
 
-filegroup(
-    name = "headers",
-    srcs = glob([
-        "*.h",
-        "*.inl",
-    ]),
-    visibility = ["//visibility:public"],
-)
-
 cc_library(
     name = "cc",
-    srcs = [":gles", ":gvr", ":vulkan", ":headers"] + glob([
+    srcs = glob([
         "*.cpp",
+        "*.h",
         "*.inc",
     ], exclude = [
         "*_test.cpp",
@@ -87,9 +86,8 @@ cc_library(
         "//tools/build:darwin": [":osx_opengl_framework"],
         "//tools/build:windows": [":windows_opengl32"] + glob(["windows/*.cpp", "windows/*.h"]),
         # Android
-        "//conditions:default": glob(["android/*.cpp", "android/*.h"]),
-    }),
-    hdrs = [":gles", ":gvr", ":vulkan", ":headers"] + glob(["android/*.h"]), # TODO
+        "//conditions:default": glob(["android/*.cpp", "android/*.h"]) + [":gvr_install"],
+    }) + [":gles", ":gvr", ":vulkan"],
     deps = [
         "//core/cc",
         "//core/memory_tracker/cc",

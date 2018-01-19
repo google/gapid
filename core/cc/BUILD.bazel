@@ -1,14 +1,5 @@
 load("//tools/build:rules.bzl", "cc_copts")
 
-filegroup(
-    name = "headers",
-    srcs = glob([
-        "*.h",
-        "gl/*.h",
-    ]),
-    visibility = ["//visibility:public"],
-)
-
 cc_library(
     name = "cc",
     srcs = glob([
@@ -24,7 +15,7 @@ cc_library(
     }),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
-    hdrs = [":headers"],
+    hdrs = glob(["*.h", "gl/*.h"]),
     deps = [
         "@cityhash",
         "@breakpad",
