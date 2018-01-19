@@ -2,20 +2,11 @@ load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "cc",
-    srcs = [
-        "common.cpp",
-        "libmanager.cpp",
-        "name_manager.cpp",
-        "spirv2glsl.cpp",
-        "spv_manager.cpp",
-    ],
-    hdrs = [
-        "common.h",
-        "libmanager.h",
-        "name_manager.h",
-        "spirv2glsl.h",
-        "spv_manager.h",
-    ],
+    srcs = glob([
+        "*.cpp",
+        "*.h"
+    ]),
+    hdrs = ["libmanager.h"],
     deps = [
         "@spirv-cross//:spirv-cross",
         "@spirv-tools//:spirv-tools",

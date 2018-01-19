@@ -2,8 +2,10 @@ load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_dynam
 
 cc_library(
     name = "cc",
-    srcs = glob(["*.cpp"]),
-    hdrs = glob(["*.h"]),
+    srcs = glob([
+        "*.cpp",
+        "*.h"
+    ]),
     deps = [
         "//core/vulkan/cc/include/vulkan",
     ],
