@@ -32,7 +32,7 @@ github_repository(
 
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
 load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
-load("@//tools/build:rules.bzl", "empty_repository", "github_go_repository")
+load("@//tools/build:rules.bzl", "github_go_repository")
 
 #########################################################
 # Run our workspace preparation rules
@@ -202,11 +202,6 @@ github_go_repository(
     project = "protobuf",
     commit = "8ee79997227bf9b34611aee7946ae64735e6fd93",
     importpath = "github.com/golang/protobuf",
-)
-
-empty_repository(
-    name = "ptypes",
-    build_file = "//tools/build/third_party:ptypes.BUILD",
 )
 
 github_go_repository(
