@@ -1850,6 +1850,8 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 		return false
 	}
 
+	t.settings.EmitExec = true
+
 	program, err := compiler.Compile(api, processor.Mappings, t.settings)
 	if !assert.For(ctx, "Compile").ThatError(err).Succeeded() {
 		return false

@@ -247,7 +247,8 @@ func (c *compiler) buildTypes(api *semantic.API) {
 // target-preferred form.
 func (c *compiler) targetType(t semantic.Type) codegen.Type {
 	layout := c.settings.TargetABI.MemoryLayout
-	switch t := semantic.Underlying(t).(type) {
+	t = semantic.Underlying(t)
+	switch t := t.(type) {
 	case *semantic.Builtin:
 		switch t {
 		case semantic.IntType:
@@ -259,8 +260,6 @@ func (c *compiler) targetType(t semantic.Type) codegen.Type {
 		return c.ty.Array(c.targetType(t.ValueType), int(t.Size))
 	case *semantic.Slice:
 		return c.ty.sli
-	case *semantic.Pseudonym:
-		return c.targetType(t.To)
 	case *semantic.Pointer:
 		return c.ty.Uint64
 	case *semantic.Class, *semantic.Reference, *semantic.Map:
@@ -275,7 +274,8 @@ func (c *compiler) targetType(t semantic.Type) codegen.Type {
 // storageType returns the codegen type used to store t in a buffer.
 func (c *compiler) storageType(t semantic.Type) codegen.Type {
 	layout := c.settings.StorageABI.MemoryLayout
-	switch t := semantic.Underlying(t).(type) {
+	t = semantic.Underlying(t)
+	switch t := t.(type) {
 	case *semantic.Builtin:
 		switch t {
 		case semantic.IntType:
@@ -285,8 +285,6 @@ func (c *compiler) storageType(t semantic.Type) codegen.Type {
 		}
 	case *semantic.StaticArray:
 		return c.ty.Array(c.storageType(t.ValueType), int(t.Size))
-	case *semantic.Pseudonym:
-		return c.storageType(t.To)
 	case *semantic.Pointer:
 		return c.basicType(c.uintType(layout.Pointer.Size))
 	case *semantic.Class:

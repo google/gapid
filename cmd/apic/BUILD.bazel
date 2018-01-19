@@ -17,8 +17,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
+        "compile.go",
         "format.go",
         "main.go",
+        "resolve.go",
         "template.go",
         "validate.go",
     ],
@@ -31,10 +33,13 @@ go_library(
         "//core/os/file:go_default_library",
         "//core/text/parse:go_default_library",
         "//gapil:go_default_library",
+        "//gapil/compiler:go_default_library",
         "//gapil/format:go_default_library",
         "//gapil/parser:go_default_library",
+        "//gapil/resolver:go_default_library",
         "//gapil/template:go_default_library",
         "//gapil/validate:go_default_library",
+    	"//gapil/semantic:go_default_library",
     ],
 )
 

@@ -22,8 +22,7 @@ import (
 )
 
 type Executor struct {
-	program *compiler.Program
-	// Externs      Externs
+	program      *compiler.Program
 	exec         *codegen.Executor
 	initFunction unsafe.Pointer
 	cmdFunctions map[string]unsafe.Pointer
@@ -37,17 +36,11 @@ func New(prog *compiler.Program, optimize bool) *Executor {
 	}
 
 	exec := &Executor{
-		program: prog,
-		// Externs:      make(Externs, len(prog.Externs)),
+		program:      prog,
 		exec:         e,
 		initFunction: e.FunctionAddress(prog.Initializer),
 		cmdFunctions: map[string]unsafe.Pointer{},
 	}
-
-	// Register each of the program's externs as binding points.
-	// for name := range prog.Externs {
-	// 	exec.Externs[name] = &extern{layout: e.Layout.Externs[name]}
-	// }
 
 	for name, info := range prog.Commands {
 		exec.cmdFunctions[name] = e.FunctionAddress(info.Function)

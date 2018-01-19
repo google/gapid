@@ -26,8 +26,8 @@ import (
 // References:
 // https://github.com/llvm-mirror/llvm/blob/master/lib/Support/Triple.cpp
 // https://clang.llvm.org/docs/CrossCompilation.html
-func targetTriple(dev *device.ABI) string {
-	arch, vendor, os, abi := "unknown", "unknown", "unknown", "unknown"
+func targetTriple(dev *device.ABI) triple {
+	out := triple{"unknown", "unknown", "unknown", "unknown"}
 	// Consult Triple.cpp for legal values for each of these.
 	// arch:   parseArch() + parseSubArch()
 	// vendor: parseVendor()
@@ -36,25 +36,33 @@ func targetTriple(dev *device.ABI) string {
 
 	switch dev.Architecture {
 	case device.ARMv7a:
-		arch = "armv7"
+		out.arch = "armv7"
 	case device.ARMv8a:
-		arch = "aarch64"
+		out.arch = "aarch64"
 	case device.X86:
-		arch = "i386"
+		out.arch = "i386"
 	case device.X86_64:
-		arch = "x86_64"
+		out.arch = "x86_64"
 	}
 
 	switch dev.OS {
 	case device.Windows:
-		vendor, os = "pc", "win32"
+		out.vendor, out.os = "pc", "win32"
 	case device.OSX:
-		vendor, os = "apple", "darwin"
+		out.vendor, out.os = "apple", "darwin"
 	case device.Linux:
-		os = "linux"
+		out.os = "linux"
 	case device.Android:
-		os, abi = "linux", "androideabi"
+		out.os, out.abi = "linux", "androideabi"
 	}
 
-	return strings.Join([]string{arch, vendor, os, abi}, "-")
+	return out
+}
+
+type triple struct {
+	arch, vendor, os, abi string
+}
+
+func (t triple) String() string {
+	return strings.Join([]string{t.arch, t.vendor, t.os, t.abi}, "-")
 }

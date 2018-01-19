@@ -33,6 +33,45 @@ type Executor struct {
 	funcPtrs map[string]unsafe.Pointer
 }
 
+// Object compiles the module down to an object file.
+func (m *Module) Object(optimize bool) ([]byte, error) {
+	t, err := llvm.GetTargetFromTriple(m.triple.String())
+	if err != nil {
+		return nil, err
+	}
+	cpu := ""
+	features := ""
+	opt := llvm.CodeGenLevelNone
+	if optimize {
+		opt = llvm.CodeGenLevelDefault
+	}
+	reloc := llvm.RelocDefault
+	model := llvm.CodeModelDefault
+	tm := t.CreateTargetMachine(m.triple.String(), cpu, features, opt, reloc, model)
+	defer tm.Dispose()
+	buf, err := tm.EmitToMemoryBuffer(m.llvm, llvm.ObjectFile)
+	if err != nil {
+		return nil, err
+	}
+	defer buf.Dispose()
+	return buf.Bytes(), nil
+}
+
+// Optimize optimizes the module.
+func (m *Module) Optimize() {
+	pass := llvm.NewPassManager()
+	defer pass.Dispose()
+
+	pass.AddFunctionInliningPass()
+	pass.AddConstantPropagationPass()
+	pass.AddInstructionCombiningPass()
+	pass.AddPromoteMemoryToRegisterPass()
+	pass.AddGVNPass()
+	pass.AddCFGSimplificationPass()
+	pass.AddAggressiveDCEPass()
+	pass.Run(m.llvm)
+}
+
 // Executor constructs an executor.
 func (m *Module) Executor(optimize bool) (*Executor, error) {
 	if dbg := m.llvmDbg; dbg != nil {
@@ -53,20 +92,6 @@ func (m *Module) Executor(optimize bool) (*Executor, error) {
 	engine, err := llvm.NewMCJITCompiler(m.llvm, opts)
 	if err != nil {
 		return nil, err
-	}
-
-	if optimize {
-		pass := llvm.NewPassManager()
-		defer pass.Dispose()
-
-		pass.AddFunctionInliningPass()
-		pass.AddConstantPropagationPass()
-		pass.AddInstructionCombiningPass()
-		pass.AddPromoteMemoryToRegisterPass()
-		pass.AddGVNPass()
-		pass.AddCFGSimplificationPass()
-		pass.AddAggressiveDCEPass()
-		pass.Run(m.llvm)
 	}
 
 	return &Executor{
