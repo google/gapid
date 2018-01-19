@@ -70,7 +70,8 @@ cc_library(
     linkopts = select({
         "//tools/build:linux": ["-ldl", "-lGL", "-lX11"],
         "//tools/build:darwin": ["-framework Cocoa", "-framework OpenGL"],
-        "//tools/build:windows": [],
+        "//tools/build:windows": ["-lopengl32", "-lgdi32"],
+        # Android
         "//conditions:default": ["-lm", "-llog", "-lEGL", "-lGLESv2", "-landroid"],
     }),
     visibility = ["//visibility:public"],
