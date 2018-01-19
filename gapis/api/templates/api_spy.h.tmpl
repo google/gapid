@@ -74,7 +74,7 @@ namespace {{(Global "API")}}_pb {
       {{Template "C++.Type" $g}} {{$g.Name}};
     {{end}}
 ¶
-    #include "gapii/cc/{{Global "API"}}_extras.inl"
+    #include "gapii/cc/{{Global "API"}}_extras.inc"
 ¶
   «protected:»
 ¶
@@ -102,7 +102,7 @@ namespace {{(Global "API")}}_pb {
     return mImports;
   }
 ¶
-  #include "gapii/cc/{{Global "API"}}_inlines.inl"
+  #include "gapii/cc/{{Global "API"}}_inlines.inc"
 ¶
   »} // namespace gapii
 ¶

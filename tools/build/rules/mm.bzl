@@ -4,7 +4,7 @@ def _filter_headers_impl(ctx):
     outs = depset()
     for src in ctx.files.srcs:
         path = src.short_path
-        if path.endswith(".h") or  path.endswith(".inl"):
+        if path.endswith(".h") or path.endswith(".inc"):
             outs += [src]
     return struct(
         files = outs,
