@@ -36,6 +36,7 @@ cc_proto_library(
     deps = [":vulkan_pb_proto"],
 )
 
+# keep
 go_proto_library(
     name = "vulkan_pb_go_proto",
     importpath = "github.com/google/gapid/gapis/api/vulkan/vulkan_pb",

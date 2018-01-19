@@ -14,8 +14,8 @@ go_library(
     srcs = [
         "doc.go",
     ],
+    embed = [":test_pb_go_proto"],  # keep
     importpath = "github.com/google/gapid/gapis/api/test/test_pb",
-    embed = [":test_pb_go_proto"],
     visibility = ["//visibility:public"],
     deps = [
         "//gapis/memory/memory_pb:go_default_library",
@@ -32,6 +32,7 @@ proto_library(
     deps = ["//gapis/memory/memory_pb:memory_pb_proto"],  # keep
 )
 
+# keep
 go_proto_library(
     name = "test_pb_go_proto",
     importpath = "github.com/google/gapid/gapis/api/test/test_pb",

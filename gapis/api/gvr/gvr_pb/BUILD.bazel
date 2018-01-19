@@ -36,6 +36,7 @@ cc_proto_library(
     deps = [":gvr_pb_proto"],
 )
 
+# keep
 go_proto_library(
     name = "gvr_pb_go_proto",
     importpath = "github.com/google/gapid/gapis/api/gvr/gvr_pb",

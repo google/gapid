@@ -36,7 +36,6 @@ import (
 	_ "github.com/google/gapid/core/os/device"
 	_ "github.com/google/gapid/gapil/constset"
 	_ "github.com/google/gapid/gapis/api"
-	_ "github.com/google/gapid/gapis/api/test/test_pb"
 	_ "github.com/google/gapid/gapis/api/vulkan/vulkan_pb"
 	_ "github.com/google/gapid/gapis/capture"
 	_ "github.com/google/gapid/gapis/database"
