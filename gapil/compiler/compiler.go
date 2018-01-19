@@ -37,6 +37,8 @@ import "C"
 type Settings struct {
 	TargetABI              *device.ABI
 	StorageABI             *device.ABI
+	EmitExec               bool // Should the compiler generate execution functions for each API command?
+	EmitEncode             bool // Should the compiler generate encode functions for each API serializable type?
 	CodeLocations          bool
 	WriteToApplicationPool bool
 }
@@ -45,6 +47,8 @@ type compiler struct {
 	settings      Settings
 	module        *codegen.Module
 	functions     map[*semantic.Function]codegen.Function
+	stateInit     codegen.Function
+	serialization *serialization
 	mappings      *resolver.Mappings
 	locationIndex map[Location]int
 	locations     []Location
@@ -94,8 +98,8 @@ func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Progr
 	}
 
 	c.compile(api)
-	init := c.init(api)
-	prog, err := c.program(s, init)
+
+	prog, err := c.program(s)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +107,7 @@ func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Progr
 	return prog, nil
 }
 
-func (c *compiler) program(s Settings, init codegen.Function) (*Program, error) {
+func (c *compiler) program(s Settings) (*Program, error) {
 	commands := make(map[string]*CommandInfo, len(c.functions))
 	for a, f := range c.functions {
 		if a.Subroutine || a.Extern {
@@ -138,7 +142,7 @@ func (c *compiler) program(s Settings, init codegen.Function) (*Program, error) 
 		Maps:        maps,
 		Locations:   c.locations,
 		Module:      c.module,
-		Initializer: init,
+		Initializer: c.stateInit,
 	}, nil
 }
 
@@ -178,14 +182,21 @@ func (c *compiler) compile(api *semantic.API) {
 
 	c.buildTypes(api)
 
-	for _, f := range api.Externs {
-		c.extern(f)
+	if c.settings.EmitExec {
+		for _, f := range api.Externs {
+			c.extern(f)
+		}
+		for _, f := range api.Subroutines {
+			c.subroutine(f)
+		}
+		for _, f := range api.Functions {
+			c.command(f)
+		}
+		c.buildStateInit(api)
 	}
-	for _, f := range api.Subroutines {
-		c.subroutine(f)
-	}
-	for _, f := range api.Functions {
-		c.command(f)
+
+	if c.settings.EmitEncode {
+		c.buildSerialization()
 	}
 }
 
@@ -211,9 +222,9 @@ func (c *compiler) build(f codegen.Function, do func(*scope)) {
 	}))
 }
 
-func (c *compiler) init(api *semantic.API) codegen.Function {
-	init := c.module.Function(c.ty.Void, "init", c.ty.Pointer(c.ty.ctx))
-	c.build(init, func(s *scope) {
+func (c *compiler) buildStateInit(api *semantic.API) {
+	c.stateInit = c.module.Function(c.ty.Void, "init", c.ty.Pointer(c.ty.ctx))
+	c.build(c.stateInit, func(s *scope) {
 		for _, g := range api.Globals {
 			var val *codegen.Value
 			if g.Default != nil {
@@ -225,7 +236,6 @@ func (c *compiler) init(api *semantic.API) codegen.Function {
 			s.globals.Index(0, g.Name()).Store(val)
 		}
 	})
-	return init
 }
 
 func (c *compiler) alloc(s *scope, count *codegen.Value, ty codegen.Type) *codegen.Value {

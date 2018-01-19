@@ -12,6 +12,7 @@ go_library(
         "program.go",
         "refcount.go",
         "scope.go",
+        "serialization.go",
         "statements.go",
         "type.go",
     ],

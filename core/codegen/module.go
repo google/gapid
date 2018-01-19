@@ -31,6 +31,7 @@ type Module struct {
 	Types   Types
 	llvm    llvm.Module
 	ctx     llvm.Context
+	triple  triple
 	name    string
 	funcTys map[string]FunctionType
 	llvmDbg *llvm.DIBuilder
@@ -70,7 +71,8 @@ func NewModule(name string, target *device.ABI) *Module {
 		funcTys: map[string]FunctionType{},
 	}
 
-	m.llvm.SetTarget(targetTriple(target))
+	m.triple = targetTriple(target)
+	m.llvm.SetTarget(m.triple.String())
 
 	m.Types.m = m
 	return m
