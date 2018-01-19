@@ -61,7 +61,7 @@ def android_native_app_glue(name, **kwargs):
     )
     native.cc_library(
         name = name,
-        srcs = ["android_native_app_glue.c"],
+        srcs = ["android_native_app_glue.c", "android_native_app_glue.h"],
         hdrs = ["android_native_app_glue.h"],
         strip_include_prefix = "", # force the virtual include link creation so the header is found
         **kwargs
