@@ -23,6 +23,6 @@ func (t Text) Set(s string) {
 }
 
 // Get returns the text content
-func (t Text) Get(s string) {
-	t.Object.Get("textContent").String()
+func (t Text) Get() string {
+	return t.Object.Get("textContent").String()
 }

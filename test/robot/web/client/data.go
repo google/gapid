@@ -128,41 +128,41 @@ var (
 		},
 		enumSrc: func() enum {
 			result := itemGetter("{{.id}}", packageDisplayTemplate, template.FuncMap{"isUserType": isUserType})(queryArray("/packages/"))
-			track_items := itemGetter("{{.id}}", "{{.name}}", template.FuncMap{})(queryArray("/tracks/"))
+			trackItems := itemGetter("{{.id}}", "{{.name}}", template.FuncMap{})(queryArray("/tracks/"))
 			itemMap := map[string]Item{}
 			childMap := map[string]string{}
 			rootPkgs := []string{}
 			for _, it := range result {
 				pkgRoot := it.Underlying().(map[string]interface{})
-				pkgId, ok := pkgRoot["id"].(string)
-				itemMap[pkgId] = it
+				pkgID, ok := pkgRoot["id"].(string)
+				itemMap[pkgID] = it
 				if !ok {
 					continue
 				}
 				if parentMem, ok := pkgRoot["parent"]; ok {
-					parentId, ok := parentMem.(string)
+					parentID, ok := parentMem.(string)
 					if !ok {
 						continue
 					}
-					childMap[parentId] = pkgId
+					childMap[parentID] = pkgID
 				} else {
-					rootPkgs = append(rootPkgs, pkgId)
+					rootPkgs = append(rootPkgs, pkgID)
 				}
 			}
 			for _, root := range rootPkgs {
 				packageList := []string{}
 				packageDisplayToOrder[itemMap[root].Display()] = len(packageDisplayToOrder)
 				packageList = append(packageList, root)
-				for childId, ok := childMap[root]; ok; childId, ok = childMap[root] {
-					packageDisplayToOrder[itemMap[childId].Display()] = len(packageDisplayToOrder)
+				for childID, ok := childMap[root]; ok; childID, ok = childMap[root] {
+					packageDisplayToOrder[itemMap[childID].Display()] = len(packageDisplayToOrder)
 					// want tracks stored from Root -> Head
-					packageList = append(packageList, childId)
-					root = childId
+					packageList = append(packageList, childID)
+					root = childID
 				}
 
 				head := root
 				foundTrack := false
-				for _, destTrackItem := range track_items {
+				for _, destTrackItem := range trackItems {
 					destTrack := destTrackItem.Underlying().(map[string]interface{})
 					trackHead, ok := destTrack["head"].(string)
 					if !ok {
@@ -200,6 +200,15 @@ var (
 			}
 			return a < b
 		},
+		defVal: func() string {
+			if m, found := tracks["master"]; found {
+				return m.headPackage
+			} else if len(tracks["auto"].packageList) != 0 {
+				return tracks["auto"].headPackage
+			} else {
+				return ""
+			}
+		},
 	}
 
 	trackDimension = &dimension{
@@ -216,34 +225,24 @@ var (
 			packageDimension.getEnum()
 			var result enum
 			for _, it := range tracks {
-				track_item := it.track
-				result = append(result, track_item)
+				trackItem := it.track
+				result = append(result, trackItem)
 			}
 			return result
 		},
-		selectAuto: func(c *constraints, d *dimension) {
+		defVal: func() string {
 			if m, found := tracks["master"]; found {
-				(*c)[d] = m.track
+				return m.track.Id()
 			} else if len(tracks["auto"].packageList) != 0 {
-				(*c)[d] = tracks["auto"].track
+				return tracks["auto"].track.Id()
 			} else {
-				delete(*c, d)
+				return ""
 			}
 		},
 	}
 
 	dimensions = []*dimension{kindDimension, subjectDimension, packageDimension, trackDimension, targetDimension, hostDimension}
 )
-
-func init() {
-	packageDimension.selectAuto = func(c *constraints, d *dimension) {
-		if t, found := (*c)[trackDimension]; found {
-			(*c)[d] = d.GetItem(tracks[t.Display()].headPackage)
-		} else {
-			delete(*c, d)
-		}
-	}
-}
 
 func isUserType(t reflect.Value) bool {
 	// cannot currently use build.Type_UserType to check the type need to fix that.
