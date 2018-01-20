@@ -89,19 +89,21 @@ void gapil_logf(context* ctx, uint8_t severity, uint8_t* fmt, ...) {
 }
 
 void* gapil_alloc(context* ctx, uint64_t size, uint64_t align) {
-    DEBUG_PRINT("gapil_alloc(size: 0x%llx, align: 0x%llx)", size, align);
     auto ec = reinterpret_cast<exec_context*>(ctx);
 
     Arena* arena = reinterpret_cast<Arena*>(ec->arena);
-    return arena->allocate(size, align);
+    void* ptr = arena->allocate(size, align);
+    DEBUG_PRINT("gapil_alloc(size: 0x%llx, align: 0x%llx) -> 0x%p", size, align, ptr);
+    return ptr;
 }
 
 void* gapil_realloc(context* ctx, void* ptr, uint64_t size, uint64_t align) {
-    DEBUG_PRINT("gapil_realloc(ptr: %p, 0x%llx, align: 0x%llx)", ptr, size, align);
     auto ec = reinterpret_cast<exec_context*>(ctx);
 
     Arena* arena = reinterpret_cast<Arena*>(ec->arena);
-    return arena->reallocate(ptr, size, align);
+    void* retptr = arena->reallocate(ptr, size, align);
+    DEBUG_PRINT("gapil_realloc(ptr: %p, 0x%llx, align: 0x%llx) -> 0x%p", ptr, size, align, retptr);
+    return retptr;
 }
 
 void gapil_free(context* ctx, void* ptr) {

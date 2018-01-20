@@ -9,6 +9,7 @@ go_library(
         "errors.go",
         "expressions.go",
         "externs.go",
+        "map.go",
         "program.go",
         "refcount.go",
         "scope.go",
