@@ -64,13 +64,13 @@ func (e enum) indexOf(s Item) int {
 }
 
 type dimension struct {
-	name       string
-	enumData   enum
-	valueOf    func(*task) Item
-	itemMap    map[string]Item
-	enumSrc    func() enum
-	enumSort   func(a, b string) bool
-	selectAuto func(c *constraints, d *dimension)
+	name     string
+	enumData enum
+	valueOf  func(*task) Item
+	itemMap  map[string]Item
+	enumSrc  func() enum
+	enumSort func(a, b string) bool
+	defVal   func() string
 }
 
 func (d *dimension) getEnum() enum {
@@ -78,6 +78,13 @@ func (d *dimension) getEnum() enum {
 		d.enumData = d.enumSrc()
 	}
 	return d.enumData
+}
+
+func (d *dimension) defaultId() string {
+	if d.defVal != nil {
+		return d.defVal()
+	}
+	return ""
 }
 
 type Item interface {
@@ -126,191 +133,6 @@ func (d *dimension) GetItem(val interface{}) Item {
 	return d.itemMap[id]
 }
 
-type constraints map[*dimension]Item
-
-func (s constraints) nextUnconstrained(exclude ...*dimension) *dimension {
-nextDimension:
-	for _, d := range dimensions {
-		for _, e := range exclude {
-			if d == e {
-				continue nextDimension
-			}
-		}
-		if _, ok := s[d]; !ok {
-			return d
-		}
-	}
-	return nil
-}
-
-func (s constraints) constrained(d *dimension) bool {
-	_, found := s[d]
-	return found
-}
-
-func (s constraints) match(t *task) bool {
-	for d, v := range s {
-		if v.Id() != d.valueOf(t).Id() {
-			return false
-		}
-	}
-	return true
-}
-
-func (s constraints) clone() constraints {
-	out := constraints{}
-	for d, v := range s {
-		out[d] = v
-	}
-	return out
-}
-
-func (s constraints) add(d *dimension, v Item) constraints {
-	s[d] = v
-	return s
-}
-
-func (s constraints) key() grid.Key {
-	parts := make([]string, 0, len(s))
-	for _, d := range dimensions {
-		if v, ok := s[d]; ok {
-			parts = append(parts, fmt.Sprintf("%s=%v", d.name, v))
-		}
-	}
-	return strings.Join(parts, ", ")
-}
-
-func combineContraints(a, b constraints) constraints {
-	out := constraints{}
-	for d, v := range a {
-		out[d] = v
-	}
-	for d, v := range b {
-		out[d] = v
-	}
-	return out
-}
-
-type page struct {
-	grid              *grid.Grid
-	tasks             []*task
-	columnDimension   *dimension
-	rowDimension      *dimension
-	columnConstraints map[grid.Key]constraints
-	rowConstraints    map[grid.Key]constraints
-	constraints       constraints
-	onViewChanged     func(c constraints, column, row *dimension)
-}
-
-func (p *page) view() (c constraints, column, row *dimension) {
-	return p.constraints.clone(), p.columnDimension, p.rowDimension
-}
-
-func (p *page) setView(c constraints, column, row *dimension) {
-	if p.constraints != nil && p.constraints.key() == c.key() && p.columnDimension == column && p.rowDimension == row {
-		return // no change
-	}
-
-	// Unconstrain new dimensions
-	delete(c, column)
-	delete(c, row)
-
-	if len(dimensions) == len(c) {
-		delete(c, dimensions[0]) // We need at least one free dimension.
-	}
-
-	if column == nil {
-		column = p.constraints.nextUnconstrained(row)
-	}
-	if row == nil {
-		row = p.constraints.nextUnconstrained(column)
-	}
-
-	if p.constraints.key() != c.key() || p.columnDimension != column || p.rowDimension != row {
-		p.constraints, p.columnDimension, p.rowDimension = c, column, row
-		p.refresh()
-	}
-
-	// Broadcast change even if the restricted view hasn't changed so that the
-	// UI reflects the actual view.
-	p.onViewChanged(c, column, row)
-}
-
-func (p *page) refresh() {
-	data := grid.Data{
-		Columns: map[grid.Key]*grid.HeaderData{},
-		Rows:    map[grid.Key]*grid.HeaderData{},
-	}
-
-	p.columnConstraints = map[grid.Key]constraints{}
-
-	switch {
-	case p.columnDimension == nil:
-	case p.constraints.constrained(p.columnDimension):
-		k := p.constraints.key()
-		p.columnConstraints[k] = p.constraints
-		data.Columns[k] = &grid.HeaderData{Name: string(p.constraints[p.columnDimension].Display())}
-	default:
-		for _, v := range p.columnDimension.getEnum() {
-			c := p.constraints.clone().add(p.columnDimension, v)
-			k := c.key()
-			p.columnConstraints[k] = c
-			data.Columns[k] = &grid.HeaderData{Name: v.Display()}
-		}
-	}
-
-	p.rowConstraints = map[grid.Key]constraints{}
-
-	switch {
-	case p.rowDimension == nil:
-	case p.constraints.constrained(p.rowDimension):
-		k := p.constraints.key()
-		p.rowConstraints[k] = p.constraints
-		data.Rows[k] = &grid.HeaderData{Name: p.constraints[p.rowDimension].Display()}
-	default:
-		for _, v := range p.rowDimension.getEnum() {
-			c := p.constraints.clone().add(p.rowDimension, v)
-			k := c.key()
-			p.rowConstraints[k] = c
-			data.Rows[k] = &grid.HeaderData{Name: v.Display()}
-		}
-	}
-
-	data.Cells = make(map[grid.CellIndex]*grid.CellData)
-	for _, task := range p.tasks {
-		t := grid.Task{Result: task.result, Status: task.status, Data: task}
-		for rowKey, rowConstraint := range p.rowConstraints {
-			if rowConstraint.match(task) {
-				row := data.Rows[rowKey]
-				row.Tasks = append(row.Tasks, t)
-			}
-		}
-		for colKey, colConstraint := range p.columnConstraints {
-			if colConstraint.match(task) {
-				col := data.Columns[colKey]
-				col.Tasks = append(col.Tasks, t)
-			}
-		}
-		for rowKey, rowConstraint := range p.rowConstraints {
-			if rowConstraint.match(task) {
-				for colKey, colConstraint := range p.columnConstraints {
-					if colConstraint.match(task) {
-						idx := grid.CellIndex{Column: colKey, Row: rowKey}
-						cell, ok := data.Cells[idx]
-						if !ok {
-							cell = &grid.CellData{Key: combineContraints(colConstraint, rowConstraint).key()}
-							data.Cells[idx] = cell
-						}
-						cell.Tasks = append(cell.Tasks, t)
-					}
-				}
-			}
-		}
-	}
-
-	p.grid.SetData(data, p.rowDimension.enumSort, p.columnDimension.enumSort)
-}
-
 func robotEntityLink(path string, s interface{}) interface{} {
 	id := s.(string)
 	a := dom.NewA()
@@ -328,12 +150,12 @@ func robotTextPreview(path string, s interface{}) interface{} {
 	div.Element.Style.Overflow = "auto"
 	div.Element.Style.WhiteSpace = "pre"
 	go func() {
-		full_text, err := queryRestEndpoint(fmt.Sprintf("/entities/%s", id))
+		fullText, err := queryRestEndpoint(fmt.Sprintf("/entities/%s", id))
 		if err != nil {
 			panic(err)
 		}
 
-		div.Append(string(full_text))
+		div.Append(string(fullText))
 	}()
 	return div
 }
@@ -345,165 +167,356 @@ func robotVideoView(path string, s interface{}) interface{} {
 	return v
 }
 
-func setupGrid(tasks []*task) *page {
-	const (
-		optAuto  = "!!auto"
-		optAll   = "!!all"
-		optXAxis = "!!x-axis"
-		optYAxis = "!!y-axis"
-	)
+type filter struct {
+	selecter *dom.Select
+	options  map[string]string
+	dim      *dimension
+	sort     func(a, b string) bool
+}
 
-	g := grid.New()
-	p := &page{grid: g, tasks: tasks}
+type view struct {
+	div        *dom.Div
+	objView    *objview.View
+	formatters *objview.Formatters
+	filters    []*filter
+	column     *filter
+	row        *filter
+}
 
-	div := dom.NewDiv()
+func newView() *view {
+	v := &view{div: dom.NewDiv(), objView: objview.NewView()}
 
 	// The object viewer Representation() for a task looks like:
 	// [ {"trace host": ..., "trace target": ...,}, {"id": ..., "input": ..., "host": ..., "target": ..., } ]
 	// We customize the display of some of these. For example '/1/target' means the second element of the top-level
 	// array, and then the 'target' field in that struct. We format that one as a link to push the target device in
 	// the viewer, and then collapse the MemoryLayout parts (see devFmts).
-	objView := objview.NewView()
-	devFmts := objview.NewFormatters().Add("/information/Configuration/ABIs/\\d+/MemoryLayout", objView.Expandable)
-	taskFmts := objview.NewFormatters().Add(
-		"^/1/target$",
+	devFmts := objview.NewFormatters().Add("/information/Configuration/ABIs/\\d+/MemoryLayout", v.objView.Expandable)
+	v.formatters = objview.NewFormatters().Add(
+		"/1/trace_target",
 		func(path string, a interface{}) interface{} {
 			id := a.(string)
-			return objView.NewPusher(id, "target", targetDimension.GetItem(id).Underlying, devFmts)
+			return v.objView.NewPusher(id, "trace_target", targetDimension.GetItem(id).Underlying, devFmts)
 		},
 	).Add(
-		"^/1/host$",
+		"/1/host",
 		func(path string, a interface{}) interface{} {
 			id := a.(string)
-			return objView.NewPusher(id, "host", hostDimension.GetItem(id).Underlying, devFmts)
+			return v.objView.NewPusher(id, "host", hostDimension.GetItem(id).Underlying, devFmts)
 		},
 	).Add("/1/input/((gapi[irst])|gapid_apk|trace|subject|interceptor|vulkanLayer)", robotEntityLink).
-		Add("/1/input/layout", objView.Expandable).
+		Add("/1/input/layout", v.objView.Expandable).
 		Add("/1/output/(log|report)", robotTextPreview).
 		Add("/1/output/video", robotVideoView).
-		Add("/0/", objView.Expandable)
-
-	filters := map[*dimension]*dom.Select{}
-	for _, d := range dimensions {
-		d := d
-		row := dom.NewDiv()
-		label := dom.NewSpan()
-		label.Text().Set(d.name + ": ")
-		selecter := dom.NewSelect()
-		selecter.Append(dom.NewOption("<auto>", optAuto))
-		selecter.Append(dom.NewOption("<all>", optAll))
-		selecter.Append(dom.NewOption("<x-axis>", optXAxis))
-		selecter.Append(dom.NewOption("<y-axis>", optYAxis))
-		for _, e := range d.getEnum() {
-			selecter.Append(dom.NewOption(e.Display(), e.Id()))
-		}
-		filters[d] = selecter
-		selecter.OnChange(func() {
-			c, column, row := p.view()
-			// Clear old value
-			delete(c, d)
-			if column == d {
-				column = nil
-			}
-			if row == d {
-				row = nil
-			}
-			// Set new value
-			switch selecter.Value {
-			case optXAxis:
-				column = d
-			case optYAxis:
-				row = d
-			case optAuto:
-				if d.selectAuto != nil {
-					d.selectAuto(&c, d)
-					break
-				}
-				fallthrough
-			case optAll:
-				delete(c, d)
-			default:
-				c[d] = d.GetItem(selecter.Value)
-			}
-			p.setView(c, column, row)
-		})
-		row.Append(label)
-		row.Append(selecter)
-		div.Append(row)
-	}
-	updateFilters := func(c constraints, column, row *dimension) {
-		for _, d := range dimensions {
-			constraint, constrained := c[d]
-			switch {
-			case constrained:
-				filters[d].Value = constraint.Id()
-			case d == column:
-				filters[d].Value = optXAxis
-			case d == row:
-				filters[d].Value = optYAxis
-			default:
-				filters[d].Value = optAll
-			}
-		}
-	}
-	div.Append(g)
+		Add("/0/", v.objView.Expandable)
 
 	body := dom.Doc().Body()
 	body.Style.BackgroundColor = dom.RGB(0.98, 0.98, 0.98)
-	objView.Div.Element.Style.Position = "sticky"
-	objView.Div.Element.Style.Top = "0"
-	objView.Div.Element.Style.Float = "right"
-	body.Append(objView)
-	body.Append(div)
+	v.objView.Div.Element.Style.Position = "sticky"
+	v.objView.Div.Element.Style.Top = "0"
+	v.objView.Div.Element.Style.Float = "right"
+	body.Append(v.objView)
+	body.Append(v.div)
 
-	dom.Win.Location.OnHashChange(func(dom.HashChangeEvent) {
-		p.setView(decodeState(strings.TrimLeft(dom.Win.Location.Hash, "#")))
+	return v
+}
+
+func (v *view) optAllValue() string {
+	return "!!all"
+}
+
+func (v *view) optXAxisValue() string {
+	return "!!x-axis"
+}
+
+func (v *view) optYAxisValue() string {
+	return "!!y-axis"
+}
+
+func (v *view) addFilter(d *dimension) *filter {
+	row := dom.NewDiv()
+	label := dom.NewSpan()
+	label.Text().Set(d.name + ": ")
+	selecter := dom.NewSelect()
+	selecter.Append(dom.NewOption("<all>", v.optAllValue()))
+	selecter.Append(dom.NewOption("<x-axis>", v.optXAxisValue()))
+	selecter.Append(dom.NewOption("<y-axis>", v.optYAxisValue()))
+
+	f := &filter{
+		selecter: selecter,
+		options:  make(map[string]string),
+		dim:      d,
+		sort:     d.enumSort,
+	}
+
+	for _, e := range d.getEnum() {
+		selecter.Append(dom.NewOption(e.Display(), e.Id()))
+		f.options[e.Display()] = e.Id()
+	}
+
+	if id := d.defaultId(); id != "" {
+		f.selecter.Value = id
+	} else if v.column == nil {
+		f.selecter.Value = v.optXAxisValue()
+		v.column = f
+	} else if v.row == nil {
+		f.selecter.Value = v.optYAxisValue()
+		v.row = f
+	} else {
+		f.selecter.Value = v.optAllValue()
+	}
+
+	v.filters = append(v.filters, f)
+
+	row.Append(label)
+	row.Append(selecter)
+	v.div.Append(row)
+
+	return f
+}
+
+func (v *view) setAxis(f *filter) *filter {
+	if f.selecter.Value == v.optXAxisValue() {
+		if v.column == f {
+			// no change
+			return nil
+		} else if v.row == f {
+			// perform a swap
+			return nil
+		} else {
+			oldAxis := v.column
+			v.column = f
+			return oldAxis
+		}
+	} else if f.selecter.Value == v.optYAxisValue() {
+		if v.row == f {
+			// no change
+			return nil
+		} else if v.column == f {
+			// perform a swap
+			return nil
+		} else {
+			oldAxis := v.row
+			v.row = f
+			return oldAxis
+		}
+	} else {
+		return nil
+	}
+}
+
+func (v *view) refreshGrid(tasks []*task, g *grid.Grid) {
+	data := grid.Data{
+		Columns: map[grid.Key]*grid.HeaderData{},
+		Rows:    map[grid.Key]*grid.HeaderData{},
+		Cells:   map[grid.CellIndex]*grid.CellData{},
+	}
+
+	for d, v := range v.column.options {
+		data.Columns[v] = &grid.HeaderData{Name: d}
+	}
+
+	for d, v := range v.row.options {
+		data.Rows[v] = &grid.HeaderData{Name: d}
+	}
+
+nextTask:
+	for _, task := range tasks {
+		t := grid.Task{Result: task.result, Status: task.status, Data: task}
+		colKey, rowKey := "", ""
+		for _, f := range v.filters {
+			if f.selecter.Value == v.optAllValue() {
+				continue
+			}
+			dimValue := f.dim.valueOf(task).Id()
+			switch f.selecter.Value {
+			case v.optXAxisValue():
+				colKey = dimValue
+			case v.optYAxisValue():
+				rowKey = dimValue
+			default:
+				if f.selecter.Value != dimValue {
+					// doesn't match the filter, don't add this task
+					continue nextTask
+				}
+			}
+		}
+		col := data.Columns[colKey]
+		col.Tasks = append(col.Tasks, t)
+		row := data.Rows[rowKey]
+		row.Tasks = append(row.Tasks, t)
+		idx := grid.CellIndex{Column: colKey, Row: rowKey}
+		if cell, ok := data.Cells[idx]; !ok {
+			cell = &grid.CellData{Key: idx, Tasks: grid.TaskList{t}}
+			data.Cells[idx] = cell
+		} else {
+			cell.Tasks = append(cell.Tasks, t)
+		}
+	}
+
+	g.SetData(data, v.column.sort, v.row.sort)
+}
+
+type controller struct {
+	tasks []*task
+	free  map[*filter]*filter
+	v     *view
+	g     *grid.Grid
+}
+
+func newController(tasks []*task) *controller {
+	return &controller{
+		tasks: tasks,
+		free:  map[*filter]*filter{},
+		v:     newView(),
+		g:     nil,
+	}
+}
+
+func (c *controller) nextFree() *filter {
+	for _, k := range c.free {
+		return k
+	}
+	return nil
+}
+
+func (c *controller) resolveFilter(changed *filter) {
+	switch changed.selecter.Value {
+	case c.v.optAllValue():
+		c.free[changed] = changed
+	case c.v.optXAxisValue(), c.v.optYAxisValue():
+		if axis := c.v.setAxis(changed); axis != nil {
+			c.free[axis] = axis
+			delete(c.free, changed)
+		}
+	default:
+		delete(c.free, changed)
+	}
+}
+
+func (c *controller) resolveAxis(oldAxis *filter, newValue string) *filter {
+	if f := c.nextFree(); f != nil {
+		switch oldAxis.selecter.Value {
+		case c.v.optXAxisValue():
+			f.selecter.Value = c.v.optXAxisValue()
+		case c.v.optYAxisValue():
+			f.selecter.Value = c.v.optYAxisValue()
+		default:
+			return nil
+		}
+		c.resolveFilter(f)
+		c.setFilterValue(oldAxis, newValue)
+		return f
+	}
+	return nil
+}
+
+func (c *controller) setFilterValue(f *filter, newValue string) {
+	if c.v.column == f || c.v.row == f {
+		c.resolveAxis(f, newValue)
+	} else {
+		f.selecter.Value = newValue
+		c.resolveFilter(f)
+	}
+}
+
+func (c *controller) addDimension(d *dimension) {
+	filter := c.v.addFilter(d)
+
+	c.resolveFilter(filter)
+
+	filter.selecter.OnChange(func() {
+		c.resolveFilter(filter)
+		c.commitViewState()
 	})
-	p.onViewChanged = func(c constraints, column, row *dimension) {
-		dom.Win.Location.Hash = encodeState(c, column, row)
-		updateFilters(p.constraints, column, row)
+}
+
+func (c *controller) addGrid() {
+	c.g = grid.New()
+
+	c.g.OnColumnClicked = func(k grid.Key, _ *grid.HeaderData) {
+		c.resolveAxis(c.v.column, k.(string))
+		c.commitViewState()
 	}
-	g.OnColumnClicked = func(k grid.Key, _ *grid.HeaderData) {
-		c := p.columnConstraints[k]
-		_, _, row := p.view()
-		if u := c.nextUnconstrained(row); u != nil {
-			p.setView(c, u, row)
-		}
+	c.g.OnRowClicked = func(k grid.Key, _ *grid.HeaderData) {
+		c.resolveAxis(c.v.row, k.(string))
+		c.commitViewState()
 	}
-	g.OnRowClicked = func(k grid.Key, _ *grid.HeaderData) {
-		c := p.rowConstraints[k]
-		_, column, _ := p.view()
-		if u := c.nextUnconstrained(column); u != nil {
-			p.setView(c, column, u)
-		}
-	}
-	g.OnCellClicked = func(i grid.CellIndex, d *grid.CellData) {
+	c.g.OnCellClicked = func(i grid.CellIndex, d *grid.CellData) {
 		if len(d.Tasks) == 1 {
 			t := d.Tasks[0].Data.(*task)
-			objView.Set(t.kind.Display(), t, taskFmts)
+			c.v.objView.Set(t.kind.Display(), t, c.v.formatters)
 			return
 		}
-
-		c := combineContraints(p.columnConstraints[i.Column], p.rowConstraints[i.Row])
-		_, column, row := p.view()
-		if u := c.nextUnconstrained(); u != nil {
-			column = u
-		}
-		if u := c.nextUnconstrained(column); u != nil {
-			row = u
-		}
-		p.setView(c, column, row)
+		c.resolveAxis(c.v.column, i.Column.(string))
+		c.resolveAxis(c.v.row, i.Row.(string))
+		c.commitViewState()
 	}
 
-	p.setView(decodeState(strings.TrimLeft(dom.Win.Location.Hash, "#")))
-	return p
+	c.v.div.Append(c.g)
+}
+
+func (c *controller) commitViewState() {
+	c.v.refreshGrid(c.tasks, c.g)
+
+	if c.v.column == nil || c.v.row == nil {
+		panic("column or row not set! This should not happen.")
+	}
+
+	parts := []string{}
+	parts = append(parts, "columns="+c.v.column.dim.name)
+	parts = append(parts, "rows="+c.v.row.dim.name)
+	for _, f := range c.v.filters {
+		if _, ok := c.free[f]; !ok {
+			parts = append(parts, f.dim.name+"="+f.selecter.Value)
+		}
+	}
+	dom.Win.Location.Hash = strings.Join(parts, "&")
+}
+
+func (c *controller) decodeViewState() {
+	s := strings.TrimLeft(dom.Win.Location.Hash, "#")
+	vals := map[string]string{}
+	for _, s := range strings.Split(s, "&") {
+		pair := strings.Split(s, "=")
+		if len(pair) != 2 {
+			continue
+		}
+		vals[pair[0]] = string(pair[1])
+	}
+
+	for _, f := range c.v.filters {
+		if name, ok := vals["columns"]; ok && f.dim.name == string(name) {
+			c.setFilterValue(f, c.v.optXAxisValue())
+		} else if name, ok := vals["rows"]; ok && f.dim.name == string(name) {
+			c.setFilterValue(f, c.v.optYAxisValue())
+		} else if value, ok := vals[f.dim.name]; ok {
+			c.setFilterValue(f, value)
+		} else {
+			c.setFilterValue(f, c.v.optAllValue())
+		}
+	}
+
+	c.commitViewState()
+	dom.Win.Location.OnHashChange(func(dom.HashChangeEvent) { c.decodeViewState() })
+}
+
+func setupController(tasks []*task) *controller {
+	c := newController(tasks)
+	for _, d := range dimensions {
+		c.addDimension(d)
+	}
+	c.addGrid()
+	c.commitViewState()
+	c.decodeViewState()
+	return c
 }
 
 func main() {
 	dom.Win.OnLoad(func() {
 		go func() {
 			var seenSeq int64 = -1
-			var p *page
+			var c *controller
 			for ticker := time.Tick(time.Second * 10); true; <-ticker {
 				// TODO: error handling so we can come back on server restart
 				seenData := queryObject(fmt.Sprintf("/status/?seen=%d", seenSeq))
@@ -514,55 +527,14 @@ func main() {
 					clearDimensionData()
 					tasks := getRobotTasks()
 
-					if p == nil {
-						p = setupGrid(tasks)
+					if c == nil {
+						c = setupController(tasks)
 					} else {
-						p.tasks = tasks
-						p.refresh()
+						c.tasks = tasks
+						c.v.refreshGrid(c.tasks, c.g)
 					}
 				}
-
 			}
 		}()
 	})
-}
-
-func encodeState(c constraints, columns, rows *dimension) string {
-	parts := []string{}
-	if columns != nil {
-		parts = append(parts, "columns="+columns.name)
-	}
-	if rows != nil {
-		parts = append(parts, "rows="+rows.name)
-	}
-	for _, d := range dimensions {
-		if v, ok := c[d]; ok {
-			parts = append(parts, fmt.Sprintf("%s=%v", d.name, v.Id()))
-		}
-	}
-	return strings.Join(parts, "&")
-}
-
-func decodeState(s string) (c constraints, columns, rows *dimension) {
-	vals := map[string]string{}
-	for _, s := range strings.Split(s, "&") {
-		pair := strings.Split(s, "=")
-		if len(pair) != 2 {
-			continue
-		}
-		vals[pair[0]] = string(pair[1])
-	}
-
-	c = constraints{}
-	for _, d := range dimensions {
-		if name, ok := vals["columns"]; ok && d.name == string(name) {
-			columns = d
-		} else if name, ok := vals["rows"]; ok && d.name == string(name) {
-			rows = d
-		} else if value, ok := vals[d.name]; ok {
-			c[d] = d.GetItem(value)
-		}
-	}
-
-	return c, columns, rows
 }
