@@ -183,23 +183,7 @@ func (c *compiler) buildTypes(api *semantic.API) {
 
 	// Build all the map types.
 	for _, t := range api.Maps {
-		mapPtrTy := c.ty.target[t].(codegen.Pointer)
-		mapStrTy := mapPtrTy.Element.(*codegen.Struct)
-		keyTy := c.targetType(t.KeyType)
-		valTy := c.targetType(t.ValueType)
-		elTy := c.ty.Struct(fmt.Sprintf("%v…%v", keyTy.TypeName(), valTy.TypeName()),
-			codegen.Field{Name: "k", Type: keyTy},
-			codegen.Field{Name: "v", Type: valTy},
-		)
-		mapStrTy.SetBody(false,
-			codegen.Field{Name: mapRefCount, Type: c.ty.Uint32},
-			codegen.Field{Name: mapCount, Type: c.ty.Uint64},
-			codegen.Field{Name: mapCapacity, Type: c.ty.Uint64},
-			codegen.Field{Name: mapElements, Type: c.ty.Pointer(elTy)},
-		)
-		c.ty.maps[t] = &MapInfo{Type: mapStrTy, Elements: elTy, Key: keyTy, Val: valTy}
-
-		c.buildMapType(t)
+		c.defineMapType(t)
 	}
 
 	c.buildRefRels()
@@ -215,7 +199,7 @@ func (c *compiler) buildTypes(api *semantic.API) {
 				storageTypePtr := c.ty.Pointer(c.storageType(t))
 				targetTypePtr := c.ty.Pointer(c.targetType(t))
 
-				copyToTarget := c.module.Function(c.ty.Void, "S_"+t.Name()+"•copy_to_target", c.ty.ctxPtr, storageTypePtr, targetTypePtr)
+				copyToTarget := c.module.Function(c.ty.Void, "S_"+t.Name()+"_copy_to_target", c.ty.ctxPtr, storageTypePtr, targetTypePtr)
 				copyToTarget.MakeInline()
 				c.ty.storageToTarget[t] = copyToTarget
 				c.build(copyToTarget, func(s *scope) {
@@ -227,7 +211,7 @@ func (c *compiler) buildTypes(api *semantic.API) {
 					}
 				})
 
-				copyToStorage := c.module.Function(c.ty.Void, "T_"+t.Name()+"•copy_to_storage", c.ty.ctxPtr, targetTypePtr, storageTypePtr)
+				copyToStorage := c.module.Function(c.ty.Void, "T_"+t.Name()+"_copy_to_storage", c.ty.ctxPtr, targetTypePtr, storageTypePtr)
 				copyToStorage.MakeInline()
 				c.ty.targetToStorage[t] = copyToStorage
 				c.build(copyToStorage, func(s *scope) {
@@ -512,157 +496,6 @@ func (c *compiler) buildSlice(s *scope, root, base, size, pool *codegen.Value) *
 	slice = slice.Insert(slicePool, pool)
 	return slice
 }
-
-func (c *compiler) buildMapType(t *semantic.Map) {
-	info, ok := c.ty.maps[t]
-	if !ok {
-		fail("Unknown map")
-	}
-
-	mapPtrTy := c.targetType(t)
-	elTy, keyTy, valTy := info.Elements, info.Key, info.Val
-	valPtrTy := c.ty.Pointer(valTy)
-
-	contains := c.module.Function(c.ty.Bool, t.Name()+"•contains", c.ty.ctxPtr, mapPtrTy, keyTy)
-	c.build(contains, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		k := s.Parameter(2).SetName("key")
-		count := m.Index(0, mapCount).Load()
-		elements := m.Index(0, mapElements).Load()
-		s.ForN(count, func(it *codegen.Value) *codegen.Value {
-			key := elements.Index(it, "k")
-			found := c.equal(s, key.Load(), k)
-			s.If(found, func() { s.Return(s.Scalar(true)) })
-			return s.Not(found)
-		})
-		s.Return(s.Scalar(false))
-	})
-
-	index := c.module.Function(valPtrTy, t.Name()+"•index", c.ty.ctxPtr, mapPtrTy, keyTy, c.ty.Bool)
-	c.build(index, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		k := s.Parameter(2).SetName("key")
-		addIfNotFound := s.Parameter(3).SetName("addIfNotFound")
-
-		countPtr := m.Index(0, mapCount)
-		capacityPtr := m.Index(0, mapCapacity)
-		elementsPtr := m.Index(0, mapElements)
-		count := countPtr.Load()
-		capacity := capacityPtr.Load()
-		elements := elementsPtr.Load()
-
-		// Search for existing
-		s.ForN(count, func(it *codegen.Value) *codegen.Value {
-			found := c.equal(s, elements.Index(it, "k").Load(), k)
-			s.If(found, func() { s.Return(elements.Index(it, "v")) })
-			return nil
-		})
-
-		s.If(addIfNotFound, func() {
-			space := s.Sub(capacity, count).SetName("space")
-			s.If(s.Equal(space, s.Zero(space.Type())), func() {
-				// Grow
-				capacity := s.AddS(capacity, uint64(mapGrowBy))
-				capacityPtr.Store(capacity)
-				s.IfElse(elements.IsNull(), func() {
-					elementsPtr.Store(c.alloc(s, capacity, elTy))
-				}, /* else */ func() {
-					elementsPtr.Store(c.realloc(s, elements, capacity, elTy))
-				})
-			})
-
-			count := countPtr.Load()
-			elements := elementsPtr.Load()
-			elements.Index(count, "k").Store(k)
-			valPtr := elements.Index(count, "v")
-			v := c.initialValue(s, t.ValueType)
-			valPtr.Store(v)
-			countPtr.Store(s.AddS(count, uint64(1)))
-
-			c.reference(s, v, t.ValueType)
-			c.reference(s, k, t.KeyType)
-
-			s.Return(valPtr)
-		})
-	})
-
-	lookup := c.module.Function(valTy, t.Name()+"•lookup", c.ty.ctxPtr, mapPtrTy, keyTy)
-	c.build(lookup, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		k := s.Parameter(2).SetName("key")
-		ptr := s.Call(index, s.ctx, m, k, s.Scalar(false))
-		s.If(ptr.IsNull(), func() {
-			s.Return(c.initialValue(s, t.ValueType))
-		})
-		v := ptr.Load()
-		c.reference(s, v, t.ValueType)
-		s.Return(v)
-	})
-
-	remove := c.module.Function(c.ty.Void, t.Name()+"•remove", c.ty.ctxPtr, mapPtrTy, keyTy)
-	c.build(remove, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		k := s.Parameter(2).SetName("key")
-
-		countPtr := m.Index(0, mapCount)
-		elementsPtr := m.Index(0, mapElements)
-		count := countPtr.Load()
-		elements := elementsPtr.Load()
-
-		// Search for element
-		s.ForN(count, func(it *codegen.Value) *codegen.Value {
-			found := c.equal(s, elements.Index(it, "k").Load(), k)
-			s.If(found, func() {
-				// Release references to el
-				elPtr := elements.Index(it)
-				if c.isRefCounted(t.KeyType) {
-					c.release(s, elPtr.Index(0, "k").Load(), t.KeyType)
-				}
-				if c.isRefCounted(t.ValueType) {
-					c.release(s, elPtr.Index(0, "v").Load(), t.ValueType)
-				}
-				// Replace element with last
-				countM1 := s.SubS(count, uint64(1)).SetName("count-1")
-				last := elements.Index(countM1).SetName("last").Load()
-				elPtr.Store(last)
-				// Decrement count
-				countPtr.Store(countM1)
-			})
-			return s.Not(found)
-		})
-	})
-
-	clear := c.module.Function(nil, t.Name()+"•clear", c.ty.ctxPtr, mapPtrTy)
-	c.build(clear, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		count := m.Index(0, mapCount).Load()
-		elements := m.Index(0, mapElements).Load()
-		if c.isRefCounted(t.KeyType) || c.isRefCounted(t.ValueType) {
-			s.ForN(count, func(it *codegen.Value) *codegen.Value {
-				if c.isRefCounted(t.KeyType) {
-					c.release(s, elements.Index(it, "k").Load(), t.KeyType)
-				}
-				if c.isRefCounted(t.ValueType) {
-					c.release(s, elements.Index(it, "v").Load(), t.ValueType)
-				}
-				return nil
-			})
-		}
-		c.free(s, elements)
-		m.Index(0, mapCount).Store(s.Scalar(uint64(0)))
-		m.Index(0, mapCapacity).Store(s.Scalar(uint64(0)))
-	})
-
-	mi := c.ty.maps[t]
-	mi.Contains = contains
-	mi.Index = index
-	mi.Lookup = lookup
-	mi.Remove = remove
-	mi.Clear = clear
-	c.ty.maps[t] = mi
-}
-
-const mapGrowBy = 16
 
 func (c *compiler) intType(bytes int32) (out semantic.Type) {
 	switch bytes {

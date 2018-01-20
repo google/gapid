@@ -1052,66 +1052,146 @@ cmd void IterationRange() {
 			src: `
 u32[5] k_
 u32[5] v_
+u32[5] i_
 class C{ map!(u32, u32) m }
 cmd void IterationMap() {
 	m := C().m
-	m[4] = 40
-	m[7] = 70
-	m[9] = 90
+	m[0] = 40
+	m[1] = 70
+	m[2] = 90
 	for i, k, v in m {
-		k_[i] = k
-		v_[i] = v
+		k_[k] = k
+		v_[k] = v
+		i_[i] = as!u32(i)
 	}
 }`,
 			cmds:     []cmd{{name: "IterationMap"}},
-			expected: expected{data: D([]uint32{4, 7, 9, 0, 0, 40, 70, 90, 0, 0})},
+			expected: expected{data: D([]uint32{0, 1, 2, 0, 0, 40, 70, 90, 0, 0, 0, 1, 2, 0, 0})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Iteration.MapAssign",
 			src: `
-class S{
-	u32 a
-	u32 b
-}
-S[5] v
-class C{ map!(S, S) m }
+u32[5] v
+class C{ map!(u32, u32) m }
 cmd void MapAssign() {
 	m := C().m
-	m[S(1,2)] = S(10, 20)
-	m[S(4,7)] = S(40, 70)
-	m[S(3,5)] = S(30, 50)
-	v[0] = m[S(1,2)]
-	v[1] = m[S(2,2)]
-	v[2] = m[S(4,7)]
-	v[3] = m[S(4,4)]
-	v[4] = m[S(3,5)]
+	m[1] = 71
+	m[3] = 23
+	m[32] = 12
+	v[0] = m[1]
+	v[1] = m[84]
+	v[2] = m[32]
+	v[3] = m[42]
+	v[4] = m[3]
 }`,
 			cmds:     []cmd{{name: "MapAssign"}},
-			expected: expected{data: D([]uint32{10, 20, 0, 0, 40, 70, 0, 0, 30, 50})},
+			expected: expected{data: D([]uint32{71, 0, 12, 0, 23})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Iteration.MapRemove",
 			src: `
-class S{
-	u32 a
-	u32 b
-}
-S[5] v
+u32[10] v
 u32 count
-class C{ map!(S, S) m }
+class C{ map!(u32, u32) m }
 cmd void MapRemove() {
 	m := C().m
-	m[S(1,2)] = S(10, 20)
-	m[S(4,7)] = S(40, 70)
-	m[S(3,5)] = S(30, 50)
-	delete(m, S(4,7))
-	v[0] = m[S(1,2)]
-	v[1] = m[S(2,2)]
-	v[2] = m[S(4,7)]
-	v[3] = m[S(4,4)]
-	v[4] = m[S(3,5)]
+	m[3] = 42
+	m[12] = 114
+	m[32] = 52
+	m[19] = 33
+	m[40] = 43
+	m[86] = 90
+	m[11] = 12
+	m[89] = 92
+	m[23] = 13
+	m[14] = 31
+	delete(m, 12)
+	v[0] = m[3]
+	v[1] = m[4]
+	v[2] = m[12]
+	v[3] = m[21]
+	v[4] = m[32]
+	v[5] = m[86]
+	v[6] = m[11]
+	v[7] = m[89]
+	v[8] = m[23]
+	v[9] = m[14]
 	count = len(m)
 }`,
 			cmds:     []cmd{{name: "MapRemove"}},
-			expected: expected{data: D([]uint32{10, 20, 0, 0, 0, 0, 0, 0, 30, 50, 2})},
+			expected: expected{data: D([]uint32{42, 0, 0, 0, 52, 90, 12, 92, 13, 31, 9})},
+		}, { /////////////////////////////////////////////////////
+			name: "Statements.Iteration.MapRehash",
+			src: `
+u32 count
+u32[17] _v
+class C{ map!(u32, u32) m }
+cmd void MapRehash() {
+	m := C().m
+	m[0] = 0
+	m[1] = 1
+	m[2] = 2
+	m[3] = 3
+	m[4] = 4
+	m[5] = 5
+	m[6] = 6
+	m[7] = 7
+	m[8] = 8
+	m[9] = 9
+	// We should hash here, add a few more things
+	m[10] = 10
+	m[11] = 11
+	m[12] = 12
+	m[13] = 13
+	m[14] = 14
+	m[15] = 15
+	// If we haven't rehashed, we will write over random memory here
+	m[16] = 16
+	count = len(m)
+	for _, k, v in m {
+		_v[k] = v
+	}
+}`,
+			cmds:     []cmd{{name: "MapRehash"}},
+			expected: expected{data: D([]uint32{17, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})},
+		}, { /////////////////////////////////////////////////////
+			name: "Statements.Iteration.MapRehashExplicit",
+			src: `
+u32 orderChanged
+class C{
+	map!(u32, u32) m
+}
+cmd void MapRehashExplicit() {
+	m := C().m
+	_v := make!u32(13)
+	m[0] = 0
+	m[1] = 1
+	m[2] = 2
+	m[3] = 3
+	m[4] = 4
+	m[5] = 5
+	m[6] = 6
+	m[7] = 7
+	m[8] = 8
+	m[9] = 9
+	m[10] = 10
+	m[11] = 11
+	m[12] = 12
+	for i, k, v in m {
+		_v[i] = v
+	}
+	// We should have re-hashed here, make sure that the order of elements
+	// changed.
+	// If this fails, either the order didn't change (unlikely),
+	// The rehash didn't happen, or the modulus is broken somewhere
+	m[13] = 13
+	delete(m, 13)
+	for i, k, v in m {
+		if (_v[i] != v) {
+			orderChanged = 1
+		}
+	}
+}`,
+			cmds:     []cmd{{name: "MapRehashExplicit"}},
+			expected: expected{data: D([]uint32{1})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Read",
 			src: `

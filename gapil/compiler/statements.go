@@ -313,19 +313,22 @@ func (c *compiler) mapAssign(s *scope, n *semantic.MapAssign) {
 
 func (c *compiler) mapIteration(s *scope, n *semantic.MapIteration) {
 	mapPtr := c.expression(s, n.Map)
-	count := mapPtr.Index(0, mapCount).Load()
+	capacity := mapPtr.Index(0, mapCapacity).Load()
 	elPtr := mapPtr.Index(0, mapElements).Load()
 	iTy := c.targetType(n.IndexIterator.Type)
-	i := s.Local("i", iTy)
-	s.ForN(count.Cast(iTy), func(it *codegen.Value) *codegen.Value {
-		i.Store(it)
-		k := elPtr.Index(it, "k")
-		v := elPtr.Index(it, "v")
-		s.enter(func(s *scope) {
-			s.locals[n.IndexIterator] = i
-			s.locals[n.KeyIterator] = k
-			s.locals[n.ValueIterator] = v
-			c.block(s, n.Block)
+	i := s.LocalInit("i", s.Scalar(0).Cast(iTy))
+	s.ForN(capacity.Cast(iTy), func(it *codegen.Value) *codegen.Value {
+		used := elPtr.Index(it, "used").Load()
+		s.If(s.Equal(used, s.Scalar(full)), func() {
+			k := elPtr.Index(it, "k")
+			v := elPtr.Index(it, "v")
+			s.enter(func(s *scope) {
+				s.locals[n.IndexIterator] = i
+				s.locals[n.KeyIterator] = k
+				s.locals[n.ValueIterator] = v
+				c.block(s, n.Block)
+			})
+			i.Store(s.Add(i.Load(), s.Scalar(1).Cast(iTy)))
 		})
 		return nil
 	})

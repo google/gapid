@@ -52,6 +52,11 @@ func (b *Builder) Not(x *Value) *Value {
 	return b.val(b.m.Types.Bool, b.llvm.CreateNot(x.llvm, ""))
 }
 
+// Not returns ~x.
+func (b *Builder) Invert(x *Value) *Value {
+	return b.val(x.ty, b.llvm.CreateNot(x.llvm, ""))
+}
+
 func (b *Builder) cmp(x *Value, op string, y *Value, ucmp, scmp llvm.IntPredicate, fcmp llvm.FloatPredicate) *Value {
 	assertTypesEqual(x.Type(), y.Type())
 	ty := x.Type()
@@ -205,6 +210,23 @@ func (b *Builder) Div(x, y *Value) *Value {
 	}
 }
 
+// Rem returns x % y. The types of the two values must be equal.
+func (b *Builder) Rem(x, y *Value) *Value {
+	assertTypesEqual(x.Type(), y.Type())
+	ty := Scalar(x.Type())
+	name := x.Name() + "%" + y.Name()
+	switch {
+	case IsSignedInteger(ty):
+		return b.val(ty, b.llvm.CreateSRem(x.llvm, y.llvm, name))
+	case IsUnsignedInteger(ty):
+		return b.val(ty, b.llvm.CreateURem(x.llvm, y.llvm, name))
+	case IsFloat(ty):
+		return b.val(ty, b.llvm.CreateFRem(x.llvm, y.llvm, name))
+	default:
+		panic(fmt.Errorf("Cannot divide values of type %v", ty))
+	}
+}
+
 // DivS returns x / y. The types of the two values must be equal.
 func (b *Builder) DivS(x *Value, y interface{}) *Value {
 	return b.Div(x, b.Scalar(y))
@@ -222,6 +244,13 @@ func (b *Builder) And(x, y *Value) *Value {
 func (b *Builder) Or(x, y *Value) *Value {
 	assertTypesEqual(x.Type(), y.Type())
 	return b.val(x.Type(), b.llvm.CreateOr(x.llvm, y.llvm, x.Name()+"|"+y.Name()))
+}
+
+// Xor performs a bitwise-xor of the two integers.
+// The types of the two values must be equal.
+func (b *Builder) Xor(x, y *Value) *Value {
+	assertTypesEqual(x.Type(), y.Type())
+	return b.val(x.Type(), b.llvm.CreateXor(x.llvm, y.llvm, x.Name()+"^"+y.Name()))
 }
 
 // Shuffle performs a vector-shuffle operation of the two vector values x and y
@@ -250,7 +279,15 @@ func (b *Builder) ShiftLeft(x, y *Value) *Value {
 // ShiftRight performs a bit-shift right by shift bits.
 func (b *Builder) ShiftRight(x, y *Value) *Value {
 	assertTypesEqual(x.Type(), y.Type())
-	return b.val(x.Type(), b.llvm.CreateAShr(x.llvm, y.llvm, x.Name()+">>"+y.Name()))
+	ty := x.Type()
+	switch {
+	case IsSignedInteger(ty):
+		return b.val(ty, b.llvm.CreateAShr(x.llvm, y.llvm, x.Name()+">>"+y.Name()))
+	case IsUnsignedInteger(ty):
+		return b.val(ty, b.llvm.CreateLShr(x.llvm, y.llvm, x.Name()+">>"+y.Name()))
+	default:
+		panic(fmt.Errorf("Cannot divide values of type %v", ty))
+	}
 }
 
 // Scalar returns a constant scalar with the value v.
