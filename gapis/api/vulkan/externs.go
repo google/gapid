@@ -1148,6 +1148,9 @@ func (e externs) onVkError(err interface{}) {
 	case *ERR_UNRECOGNIZED_EXTENSION:
 		issue.Severity = service.Severity_WarningLevel
 		issue.Error = fmt.Errorf("Unsupported extension: %s", err.Name)
+	case *ERR_EXPECT_NV_DEDICATEDLY_ALLOCATED_HANDLE:
+		issue.Severity = service.Severity_WarningLevel
+		issue.Error = fmt.Errorf("%v: %v is not created with VK_NV_dedicated_allocation extension structure, but is bound to a dedicatedly allocated handle", err.HandleType, err.Handle)
 	default:
 		log.W(e.ctx, "Unhandled Vulkan error (%T): %v", err, err)
 		return

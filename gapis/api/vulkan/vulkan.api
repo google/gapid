@@ -3395,6 +3395,12 @@ cmd VkResult vkBindBufferMemory(
   Buffers[buffer].Memory = DeviceMemories[memory]
   Buffers[buffer].MemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(buffer)] = memoryOffset
+  if (Buffers[buffer].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
+    vkErrorExpectNVDedicatedlyAllocatedHandle("VkBuffer", as!u64(buffer))
+  }
+  if (Buffers[buffer].Info.DedicatedAllocationNV == null) && (DeviceMemories[memory].DedicatedAllocationNV != null) {
+    vkErrorExpectNVDedicatedlyAllocatedHandle("VkDeviceMemory", as!u64(memory))
+  }
   return ?
 }
 
@@ -3410,6 +3416,12 @@ cmd VkResult vkBindImageMemory(
   Images[image].BoundMemory = DeviceMemories[memory]
   Images[image].BoundMemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
+  if (Images[image].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
+    vkErrorExpectNVDedicatedlyAllocatedHandle("VkImage", as!u64(image))
+  }
+  if (Images[image].Info.DedicatedAllocationNV == null) && (DeviceMemories[memory].DedicatedAllocationNV != null) {
+    vkErrorExpectNVDedicatedlyAllocatedHandle("VkDeviceMemory", as!u64(memory))
+  }
   return ?
 }
 

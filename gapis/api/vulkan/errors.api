@@ -168,6 +168,11 @@ sub void vkErrorUnrecognizedExtension(const char* name) {
   // Continue the mutation as this may not cause problem.
 }
 
+sub void vkErrorExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle) {
+  onVkError(new!ERR_EXPECT_NV_DEDICATEDLY_ALLOCATED_HANDLE(
+    handleType: handleType, handle: handle))
+  // Continue the mutation as this may not cause problem.
+}
 
 // TODO: Add the following classes to messages in messages/en-us.stb.md once
 // the compilation conflict of importing messages.api is resolved.
@@ -182,4 +187,9 @@ class ERR_NULL_POINTER {
 
 class ERR_UNRECOGNIZED_EXTENSION {
   string name
+}
+
+class ERR_EXPECT_NV_DEDICATEDLY_ALLOCATED_HANDLE {
+  string handleType
+  u64    handle
 }
