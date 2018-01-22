@@ -1,9 +1,0 @@
-gfxtrace.pb.go
-service.pb.go
-
-/*/api.go
-/*/constant_sets.go
-/*/convert.go
-/*/enum.go
-/*/mutate.go
-/*/state_serialize.go
