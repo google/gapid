@@ -17,17 +17,6 @@ load("//tools/build:rules.bzl", "copy", "copy_to")
 
 go_prefix("github.com/google/gapid")
 
-# Aliases for easy access
-alias(
-    name = "gapic",
-    actual = "//gapic:gapic",
-)
-
-alias(
-    name = "gapit",
-    actual = "//cmd/gapit",
-)
-
 gazelle(
     name = "gazelle",
     mode = "fix",
@@ -35,16 +24,16 @@ gazelle(
 
 # Rules to build the expected installed structure for running
 filegroup(
-    name = "install",
+    name = "pkg",
     srcs = [
-        ":install-pkg",
-        ":install-pkg-lib",
-        ":install-pkg-strings",
+        ":pkg-root",
+        ":pkg-lib",
+        ":pkg-strings",
     ],
 )
 
 copy_to(
-    name = "install-pkg",
+    name = "pkg-root",
     srcs = [
         "//cmd/gapid",
         "//cmd/gapir/cc:gapir",
@@ -64,7 +53,7 @@ copy_to(
 )
 
 copy_to(
-    name = "install-pkg-lib",
+    name = "pkg-lib",
     srcs = [
         "//core/vulkan/vk_virtual_swapchain/cc:json",
         "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
@@ -79,13 +68,7 @@ copy_to(
 )
 
 copy_to(
-    name = "install-pkg-strings",
+    name = "pkg-strings",
     srcs = ["//gapis/messages:stb"],
     to = "pkg/strings",
-)
-
-proto_library(
-    name = "ptypes",
-    srcs = glob(["google/protobuf/*.proto"]),
-    visibility = ["//visibility:public"],
 )
