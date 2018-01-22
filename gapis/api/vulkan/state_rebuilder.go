@@ -694,8 +694,8 @@ func (sb *stateBuilder) createSwapchain(swp *SwapchainObject) {
 	}
 }
 
-func (sb *stateBuilder) createDeviceMemory(mem *DeviceMemoryObject, allowDedicated bool) {
-	if !allowDedicated && mem.DedicatedAllocationNV != nil {
+func (sb *stateBuilder) createDeviceMemory(mem *DeviceMemoryObject, allowDedicatedNV bool) {
+	if !allowDedicatedNV && mem.DedicatedAllocationNV != nil {
 		return
 	}
 
@@ -954,7 +954,22 @@ func (sb *stateBuilder) createBuffer(buffer *BufferObject) {
 		sb.MustAllocWriteData(buffer.MemoryRequirements).Ptr(),
 	))
 
-	if buffer.Info.DedicatedAllocationNV != nil && buffer.Memory != nil {
+	// Dedicated allocation buffer/image must NOT be a sparse binding one.
+	// Checking the dedicated allocation info on both the memory and the buffer
+	// side, because we've found applications that do miss one of them.
+	dedicatedMemoryNV := buffer.Memory != nil && (buffer.Info.DedicatedAllocationNV != nil || buffer.Memory.DedicatedAllocationNV != nil)
+	// Emit error message to report view if we found one of the dedicate allocation
+	// info struct is missing.
+	if dedicatedMemoryNV && buffer.Info.DedicatedAllocationNV == nil {
+		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
+			sb.oldState, GetState(sb.oldState), 0, nil, "VkBuffer", uint64(buffer.VulkanHandle))
+	}
+	if dedicatedMemoryNV && buffer.Memory.DedicatedAllocationNV == nil {
+		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
+			sb.oldState, GetState(sb.oldState), 0, nil, "VkDeviceMemory", uint64(buffer.Memory.VulkanHandle))
+	}
+
+	if dedicatedMemoryNV {
 		sb.createDeviceMemory(buffer.Memory, true)
 	}
 
@@ -1267,7 +1282,22 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 		sb.MustAllocWriteData(img.MemoryRequirements).Ptr(),
 	))
 
-	if img.Info.DedicatedAllocationNV != nil && img.BoundMemory != nil {
+	// Dedicated allocation buffer/image must NOT be a sparse binding one.
+	// Checking the dedicated allocation info on both the memory and the buffer
+	// side, because we've found applications that do miss one of them.
+	dedicatedMemoryNV := img.BoundMemory != nil && (img.Info.DedicatedAllocationNV != nil || img.BoundMemory.DedicatedAllocationNV != nil)
+	// Emit error message to report view if we found one of the dedicate allocation
+	// info struct is missing.
+	if dedicatedMemoryNV && img.Info.DedicatedAllocationNV == nil {
+		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
+			sb.oldState, GetState(sb.oldState), 0, nil, "VkImage", uint64(img.VulkanHandle))
+	}
+	if dedicatedMemoryNV && img.BoundMemory.DedicatedAllocationNV == nil {
+		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
+			sb.oldState, GetState(sb.oldState), 0, nil, "VkDeviceMemory", uint64(img.BoundMemory.VulkanHandle))
+	}
+
+	if dedicatedMemoryNV {
 		sb.createDeviceMemory(img.BoundMemory, true)
 	}
 
@@ -1441,12 +1471,12 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 	}
 	// We don't currently prime the data in any of these formats.
 	if img.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
-		sb.transitionImage(img,VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout)
+		sb.transitionImage(img, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout)
 		return
 	}
 	if img.ImageAspect !=
 		VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT) {
-		sb.transitionImage(img,VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout)
+		sb.transitionImage(img, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout)
 		return
 	}
 	// We have to handle the above cases at some point.
