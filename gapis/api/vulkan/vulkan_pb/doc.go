@@ -14,10 +14,3 @@
 
 // Package vulkan_pb describes the serialization format for the vulkan api.
 package vulkan_pb
-
-// The following are the imports that generated source files pull in when present
-// Having these here helps out tools that can't cope with missing dependancies
-import (
-	_ "github.com/golang/protobuf/proto"
-	_ "github.com/google/gapid/gapis/memory/memory_pb"
-)

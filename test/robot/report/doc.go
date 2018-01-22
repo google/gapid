@@ -15,9 +15,3 @@
 // Package report holds the functionality for running trace reports and
 // verifying correctness of a trace in the robot system.
 package report
-
-// The following are the imports that generated source files pull in when present
-// Having these here helps out tools that can't cope with missing dependancies
-import (
-	_ "github.com/golang/protobuf/proto"
-)

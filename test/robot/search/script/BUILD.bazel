@@ -29,8 +29,8 @@ go_library(
     importpath = "github.com/google/gapid/test/robot/search/script",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/log:go_default_library",
-        "//test/robot/lingo:go_default_library",
-        "//test/robot/search/query:go_default_library",
+        "//core/log:go_default_library",  # keep
+        "//test/robot/lingo:go_default_library",  # keep
+        "//test/robot/search/query:go_default_library",  # keep
     ],
 )

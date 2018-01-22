@@ -33,8 +33,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/endian:go_default_library",
-        "//core/data/id:go_default_library",
-        "//core/data/pod:go_default_library",
         "//core/image:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",

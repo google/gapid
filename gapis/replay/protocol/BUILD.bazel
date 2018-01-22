@@ -26,11 +26,6 @@ go_library(
     embed = [":protocol_go_proto"],
     importpath = "github.com/google/gapid/gapis/replay/protocol",
     visibility = ["//visibility:public"],
-    deps = [
-        "//core/data/id:go_default_library",
-        "//core/data/pod:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
-    ],
 )
 
 proto_library(

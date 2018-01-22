@@ -29,9 +29,9 @@ go_library(
     importpath = "github.com/google/gapid/test/robot/lingo/examples/simplecalc",
     visibility = ["//visibility:private"],
     deps = [
-        "//core/app:go_default_library",
-        "//core/log:go_default_library",
-        "//test/robot/lingo:go_default_library",
+        "//core/app:go_default_library",  # keep
+        "//core/log:go_default_library",  # keep
+        "//test/robot/lingo:go_default_library",  # keep
     ],
 )
 

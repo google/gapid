@@ -51,7 +51,6 @@ go_library(
         "//core/data/deep:go_default_library",
         "//core/data/endian:go_default_library",
         "//core/data/id:go_default_library",
-        "//core/data/pod:go_default_library",
         "//core/data/protoconv:go_default_library",
         "//core/data/protoutil:go_default_library",
         "//core/data/slice:go_default_library",

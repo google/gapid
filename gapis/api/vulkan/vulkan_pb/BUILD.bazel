@@ -31,10 +31,6 @@ go_library(
     embed = [":vulkan_pb_go_proto"],  # keep
     importpath = "github.com/google/gapid/gapis/api/vulkan/vulkan_pb",
     visibility = ["//visibility:public"],
-    deps = [
-        "//gapis/memory/memory_pb:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
-    ],
 )
 
 proto_library(

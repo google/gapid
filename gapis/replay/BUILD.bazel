@@ -50,7 +50,6 @@ go_library(
         "//gapis/replay/scheduler:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )
 

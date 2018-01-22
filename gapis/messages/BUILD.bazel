@@ -57,5 +57,7 @@ go_library(
     ],
     importpath = "github.com/google/gapid/gapis/messages",
     visibility = ["//visibility:public"],
-    deps = ["//gapis/stringtable:go_default_library"],
+    deps = [
+        "//gapis/stringtable:go_default_library",  #keep
+    ],
 )

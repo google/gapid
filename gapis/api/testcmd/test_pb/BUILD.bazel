@@ -23,10 +23,6 @@ go_library(
     embed = [":test_pb_go_proto"],
     importpath = "github.com/google/gapid/gapis/api/testcmd/test_pb",
     visibility = ["//visibility:public"],
-    deps = [
-        "//gapis/service/box:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
-    ],
 )
 
 proto_library(
