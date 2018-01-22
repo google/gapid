@@ -32,7 +32,6 @@ go_library(
         "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/service/path:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )
 

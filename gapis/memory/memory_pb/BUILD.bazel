@@ -23,7 +23,6 @@ go_library(
     embed = [":memory_pb_go_proto"],
     importpath = "github.com/google/gapid/gapis/memory/memory_pb",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_golang_protobuf//proto:go_default_library"],
 )
 
 proto_library(

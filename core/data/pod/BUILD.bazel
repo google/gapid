@@ -25,7 +25,6 @@ go_library(
     embed = [":pod_go_proto"],
     importpath = "github.com/google/gapid/core/data/pod",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_golang_protobuf//proto:go_default_library"],
 )
 
 proto_library(

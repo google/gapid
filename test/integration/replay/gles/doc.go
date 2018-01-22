@@ -14,10 +14,3 @@
 
 // Package gles contains the OpenGL ES integration tests with the replay system.
 package gles
-
-// The following are the imports that generated source files pull in when present
-// Having these here helps out tools that can't cope with missing dependancies
-import (
-	_ "github.com/google/gapid/core/data/id"
-	_ "github.com/google/gapid/core/data/pod"
-)
