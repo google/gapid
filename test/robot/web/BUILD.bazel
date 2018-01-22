@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# gazelle:exclude client
+
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("//tools/build:rules.bzl", "embed")
 
