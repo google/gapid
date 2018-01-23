@@ -2042,23 +2042,23 @@ func (sb *stateBuilder) createGraphicsPipeline(gp *GraphicsPipelineObject) {
 	for _, ss := range stagesInOrder {
 		s := gp.Stages.Get(ss)
 		if !GetState(sb.newState).ShaderModules.Contains(s.Module.VulkanHandle) {
+			// create temporary shader modules for the pipeline to be created.
 			sb.createShaderModule(s.Module)
 			temporaryShaderModules = append(temporaryShaderModules, s.Module)
-			log.E(sb.ctx, "Initial cmd %v Creating temp shader module: %+v", len(sb.cmds), s.Module)
 		}
 	}
 
 	var temporaryPipelineLayout *PipelineLayoutObject
 	if !GetState(sb.newState).PipelineLayouts.Contains(gp.Layout.VulkanHandle) {
+		// create temporary pipeline layout for the pipeline to be created.
 		sb.createPipelineLayout(gp.Layout)
-		log.E(sb.ctx, "Initial cmd %v Creating temp pipeline layout: %+v", len(sb.cmds), gp.Layout)
 		temporaryPipelineLayout = GetState(sb.newState).PipelineLayouts.Get(gp.Layout.VulkanHandle)
 	}
 
 	var temporaryRenderPass *RenderPassObject
 	if !GetState(sb.newState).RenderPasses.Contains(gp.RenderPass.VulkanHandle) {
+		// create temporary render pass for the pipeline to be created.
 		sb.createRenderPass(gp.RenderPass)
-		log.E(sb.ctx, "Initial cmd %v Creating temp renderpass layout: %+v", len(sb.cmds), gp.RenderPass)
 		temporaryRenderPass = GetState(sb.newState).RenderPasses.Get(gp.RenderPass.VulkanHandle)
 	}
 
