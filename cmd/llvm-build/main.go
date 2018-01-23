@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Command llvm-build generated bazel build rules for the LLVM dependency.
+// Command llvm-build generates bazel build rules for the LLVM dependency.
 package main
 
 import (
