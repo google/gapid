@@ -2399,6 +2399,9 @@ func (sb *stateBuilder) createFramebuffer(fb *FramebufferObject) {
 
 func (sb *stateBuilder) createDescriptorSet(ds *DescriptorSetObject) {
 	ns := GetState(sb.newState)
+	if !ns.DescriptorPools.Contains(ds.DescriptorPool) {
+		return
+	}
 	sb.write(sb.cb.VkAllocateDescriptorSets(
 		ds.Device,
 		sb.MustAllocReadData(VkDescriptorSetAllocateInfo{
