@@ -4792,7 +4792,14 @@ cmd void vkDestroyDescriptorPool(
     VkDescriptorPool             descriptorPool,
     const VkAllocationCallbacks* pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  delete(DescriptorPools, descriptorPool)
+  if (descriptorPool != as!VkDescriptorPool(0)) {
+    if !(descriptorPool in DescriptorPools) { vkErrorInvalidDescriptorPool(descriptorPool) }
+    sets := DescriptorPools[descriptorPool].DescriptorSets
+    for _ , s , _ in sets {
+      delete(DescriptorSets, s)
+    }
+    delete(DescriptorPools, descriptorPool)
+  }
 }
 
 @threadSafety("app")
@@ -4801,6 +4808,8 @@ cmd VkResult vkResetDescriptorPool(
     VkDevice                   device,
     VkDescriptorPool           descriptorPool,
     VkDescriptorPoolResetFlags flags) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(descriptorPool in DescriptorPools) { vkErrorInvalidDescriptorPool(descriptorPool) }
   // We need to iterate through all the descriptor sets in the descriptor pool
   // and remove them from the pool. The following line will makes a copy of
   // the map in the generated C++ code, to prevent us from deleting an item
@@ -4809,8 +4818,6 @@ cmd VkResult vkResetDescriptorPool(
   // Effective Go (https://golang.org/doc/effective_go.html#for), deleting
   // while iterating is safe for Go. So the code here should behave as we
   // expect.
-  if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if !(descriptorPool in DescriptorPools) { vkErrorInvalidDescriptorPool(descriptorPool) }
   sets := DescriptorPools[descriptorPool].DescriptorSets
   for _ , s , _ in sets {
     delete(DescriptorSets, s)
@@ -5349,11 +5356,13 @@ cmd void vkDestroyCommandPool(
     VkCommandPool                commandPool,
     const VkAllocationCallbacks* pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  fence
-  for _ , k , _ in CommandPools[commandPool].CommandBuffers {
-    delete(CommandBuffers, k)
+  if (commandPool != as!VkCommandPool(0)) {
+    if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
+    for _ , k , _ in CommandPools[commandPool].CommandBuffers {
+      delete(CommandBuffers, k)
+    }
+    delete(CommandPools, commandPool)
   }
-  delete(CommandPools, commandPool)
 }
 
 sub void resetCommandBuffer(ref!CommandBufferObject obj) {
@@ -5957,17 +5966,17 @@ sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffs
   if IsMemoryCoherent(memory) && (memory.MappedLocation != null) {
     offset_in_mapped := deviceMemoryOffsetToMappedSpace(memory, readOffset)
     if offset_in_mapped != as!VkDeviceSize(0xFFFFFFFFFFFFFFFF) {
-      read_size_in_mapped := switch(
-        (readSize == as!VkDeviceSize(0xFFFFFFFFFFFFFFFF)) ||
-        ((offset_in_mapped + readSize) > memory.MappedSize)) {
-          case true:
-            memory.MappedSize - offset_in_mapped
-          case false:
-            readSize
-        }
+      read_size_in_mapped := switch (
+      (readSize == as!VkDeviceSize(0xFFFFFFFFFFFFFFFF)) ||
+      ((offset_in_mapped + readSize) > memory.MappedSize)) {
+        case true:
+          memory.MappedSize - offset_in_mapped
+        case false:
+          readSize
+      }
       if (offset_in_mapped + read_size_in_mapped) > offset_in_mapped {
         readMappedCoherentMemory(memory.VulkanHandle, as!u64(offset_in_mapped),
-        as!size(read_size_in_mapped))
+          as!size(read_size_in_mapped))
       }
     }
   }
