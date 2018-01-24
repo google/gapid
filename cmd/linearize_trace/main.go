@@ -79,6 +79,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
 	if err = capt.Export(ctx, f); err != nil {
 		return err

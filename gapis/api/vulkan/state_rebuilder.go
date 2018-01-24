@@ -857,11 +857,24 @@ func (sb *stateBuilder) freeScratchBuffer(device *DeviceObject, buffer VkBuffer,
 func (sb *stateBuilder) getSparseQueueFor(lastBoundQueue *QueueObject, device VkDevice, queueFamilyIndices *map[uint32]uint32) *QueueObject {
 	hasQueueFamilyIndices := queueFamilyIndices != nil
 
-	queueProperties := sb.s.PhysicalDevices.Get(sb.s.Devices.Get(lastBoundQueue.Device).PhysicalDevice).QueueFamilyProperties
+	if lastBoundQueue != nil {
+		queueProperties := sb.s.PhysicalDevices.Get(sb.s.Devices.Get(lastBoundQueue.Device).PhysicalDevice).QueueFamilyProperties
+		if 0 != (uint32(queueProperties.Get(lastBoundQueue.Family).QueueFlags)&uint32(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT)) {
+			return lastBoundQueue
+		}
+	}
 
-	if lastBoundQueue != nil && 0 != (uint32(queueProperties.Get(lastBoundQueue.Family).QueueFlags)&uint32(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT)) {
+	dev := sb.s.Devices.Get(device)
+	if dev == nil {
 		return lastBoundQueue
 	}
+	phyDev := sb.s.PhysicalDevices.Get(dev.PhysicalDevice)
+	if phyDev == nil {
+		return lastBoundQueue
+	}
+
+	queueProperties := sb.s.PhysicalDevices.Get(sb.s.Devices.Get(device).PhysicalDevice).QueueFamilyProperties
+
 	if hasQueueFamilyIndices {
 		for _, v := range *sb.s.Queues.Map {
 			if v.Device != device {
