@@ -22,9 +22,8 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
-func TestCallSub(t *testing.T) {
+func TestCallReflectedCommand(t *testing.T) {
 	ctx := log.Testing(t)
-	e := externs{}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	e.callSub(ctx, &VkCreateBuffer{}, 10, s, nil, subDovkCmdDispatch, &VkCmdDispatchArgs{})
+	CallReflectedCommand(ctx, &VkCreateBuffer{}, 10, s, nil, subDovkCmdDispatch, &VkCmdDispatchArgs{})
 }

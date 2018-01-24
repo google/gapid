@@ -80,10 +80,6 @@ func CallReflectedCommand(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api
 	})
 }
 
-func (e externs) callSub(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder, sub, data interface{}) {
-	CallReflectedCommand(ctx, cmd, id, s, b, sub, data)
-}
-
 func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functionToCall interface{}) {
 	o := GetState(e.s).CommandBuffers.Get(commandBuffer)
 
@@ -845,7 +841,7 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 
 	o.Commands = append(o.Commands, CommandBufferCommand{
 		func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder) {
-			e.callSub(ctx, cmd, id, s, b, functionToCall, data)
+			CallReflectedCommand(ctx, cmd, id, s, b, functionToCall, data)
 		}})
 
 	if GetState(e.s).AddCommand != nil {

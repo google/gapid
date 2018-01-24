@@ -1119,6 +1119,8 @@ func rebuildVkCmdDebugMarkerInsertEXT(
 			markerNameData.Data()).AddRead(markerInfoData.Data()), nil
 }
 
+// GetCommandArgs takes a command reference and returns the command arguments
+// of that recorded command.
 func GetCommandArgs(ctx context.Context,
 	cr CommandReference,
 	s *State) interface{} {
@@ -1223,6 +1225,9 @@ func GetCommandArgs(ctx context.Context,
 	}
 }
 
+// GetCommandFunction takes a command reference (recorded command buffer
+// command) and returns the function which mutates the state as the recorded
+// command get executed.
 func GetCommandFunction(cr CommandReference) interface{} {
 	switch cr.Type {
 	case CommandType_cmd_vkCmdBeginRenderPass:
