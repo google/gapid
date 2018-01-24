@@ -136,6 +136,7 @@ VirtualSwapchain::VirtualSwapchain(
       // Create the command buffer
       functions_->vkAllocateCommandBuffers(device_, &command_buffer_info,
                                            &image_data.command_buffer_);
+      set_dispatch_from_parent(image_data.command_buffer_, device_);
 
       // Create the fence
       {

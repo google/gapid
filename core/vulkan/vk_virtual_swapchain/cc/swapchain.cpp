@@ -263,6 +263,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
   VkQueue q;
 
   dat.vkGetDeviceQueue(device, swp->DeviceQueue(), 0, &q);
+  set_dispatch_from_parent(q, device);
 
   bool has_semaphore = semaphore != VK_NULL_HANDLE;
 
