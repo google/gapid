@@ -2128,9 +2128,9 @@ func (sb *stateBuilder) createGraphicsPipeline(gp *GraphicsPipelineObject) {
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
 				NewVoidᶜᵖ(memory.Nullptr),
 				VkPipelineViewportStateCreateFlags(0),
-				uint32(len(*gp.ViewportState.Viewports.Map)),
+				gp.ViewportState.ViewportCount,
 				viewports,
-				uint32(len(*gp.ViewportState.Scissors.Map)),
+				gp.ViewportState.ScissorCount,
 				scissors,
 			}).Ptr())
 	}
