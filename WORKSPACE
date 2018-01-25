@@ -24,7 +24,7 @@ github_repository(
     organization = "bazelbuild",
     project = "rules_go",
     branch = "master",
-    commit = "6b653a809d768269dedffe17a66c684dbbdf13fb", # Comment to use the master branch of this repository
+    commit = "6b653a809d768269dedffe17a66c684dbbdf13fb",
 )
 
 github_repository(
