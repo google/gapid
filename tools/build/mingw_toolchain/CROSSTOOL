@@ -35,7 +35,7 @@ toolchain {
   cxx_flag: "-DNTDDI_VERSION=NTDDI_VISTA"
   cxx_flag: "-D_WIN32_WINNT=_WIN32_WINNT_VISTA"
 
-  #linker_flag: "-LC:/tools/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.2.0"
+  #linker_flag: "-LC:/tools/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.3.0"
   #linker_flag: "-l:libgcc.a"
   #linker_flag: "-l:libgcc_eh.a"
   #linker_flag: "-l:libpthread.a"
@@ -48,8 +48,8 @@ toolchain {
   linking_mode_flags { mode: DYNAMIC  }
 
   cxx_builtin_include_directory: "C:/tools/msys64/mingw64/include/"
-  cxx_builtin_include_directory: "C:/tools/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.2.0/include/"
-  cxx_builtin_include_directory: "C:/tools/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.2.0/include-fixed/"
+  cxx_builtin_include_directory: "C:/tools/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.3.0/include/"
+  cxx_builtin_include_directory: "C:/tools/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.3.0/include-fixed/"
   cxx_builtin_include_directory: "C:/tools/msys64/mingw64/x86_64-w64-mingw32/include"
 
   compilation_mode_flags {

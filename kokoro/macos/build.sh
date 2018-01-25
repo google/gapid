@@ -17,76 +17,34 @@
 set -ex
 
 BUILD_ROOT=$PWD
-SRC=$PWD/github/src/github.com/google/gapid/
-
-# Get NINJA.
-curl -L -k -O -s https://github.com/ninja-build/ninja/releases/download/v1.7.2/ninja-mac.zip
-unzip -q ninja-mac.zip
-
-# Get GO 1.8.3
-GO_ARCHIVE=go1.8.3.darwin-amd64.tar.gz
-curl -L -k -O -s https://storage.googleapis.com/golang/$GO_ARCHIVE
-tar -xzf $GO_ARCHIVE
-
-# Setup GO paths (remove old, add new).
-export GOROOT=$BUILD_ROOT/go
-export PATH=${PATH//:\/usr\/local\/go\/bin/}
-export PATH=${PATH//:\/usr\/local\/go\/packages\/bin/}
-export PATH=$GOROOT/bin:$PATH
+SRC=$PWD/github/gapid/
 
 # Setup the Android SDK and NDK
 curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
 mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
-echo y | ./android/tools/bin/sdkmanager build-tools\;21.1.2 platforms\;android-21 ndk-bundle
+echo y | ./android/tools/bin/sdkmanager build-tools\;26.0.1 platforms\;android-21
+curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r15c-darwin-x86_64.zip
+unzip -q android-ndk-r15c-darwin-x86_64.zip -d android
+export ANDROID_HOME=$PWD/android
+export ANDROID_NDK_HOME=$PWD/android/android-ndk-r15c
 
-# Create the debug keystore, so gradle won't try to and fail due to a race.
-mkdir -p ~/.android
-$(/usr/libexec/java_home -v 1.8)/bin/keytool -genkey -keystore ~/.android/debug.keystore \
-  -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
-  -validity 10950 -dname "CN=Android Debug,O=Android,C=US"
-
-
-# Setup the build config file.
-cat <<EOF>gapid-config
-{
-    "Flavor": "release",
-    "OutRoot": "$BUILD_ROOT/out",
-    "JavaHome": "$(/usr/libexec/java_home -v 1.8)",
-    "AndroidSDKRoot": "$BUILD_ROOT/android",
-    "AndroidNDKRoot": "$BUILD_ROOT/android/ndk-bundle",
-    "CMakePath": "/usr/local/bin/cmake",
-    "NinjaPath": "$BUILD_ROOT/ninja",
-    "PythonPath": "/usr/bin/python",
-    "MSYS2Path": ""
-}
-EOF
-cat gapid-config
-cp gapid-config $SRC/.gapid-config
-
-# Fetch the submodules.
-cd $SRC
-git submodule update --init
-
-# Disable ccache as it seems to be flaky on mac build server
-export CCACHE_DISABLE=1
+# Get bazel.
+curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.9.0/bazel-0.9.0-without-jdk-installer-darwin-x86_64.sh
+mkdir bazel
+sh bazel-0.9.0-without-jdk-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 
 # Specify the version of XCode
 export DEVELOPER_DIR=/Applications/Xcode_8.2.app/Contents/Developer
 
-# Invoke the build. At this point, only ensure that the tests build, but don't
-# execute the tests.
+cd $SRC
+
+# Invoke the build.
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 echo $(date): Starting build...
-./do build --test build --buildnum $KOKORO_BUILD_NUMBER --buildsha "$BUILD_SHA"
+$BUILD_ROOT/bazel/bin/bazel build -c opt --strip always --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" --define GAPID_BUILD_SHA="$BUILD_SHA" //:pkg
 echo $(date): Build completed.
 
 # Build the release packages.
+mkdir $BUILD_ROOT/out
 $SRC/kokoro/macos/package.sh $BUILD_ROOT/out
-
-# Clean up - this prevents kokoro from rsyncing many unneeded files
-shopt -s extglob
-cd $BUILD_ROOT
-rm -rf github/src/github.com/google/gapid/third_party
-rm -rf out/release
-rm -rf -- !(github|out)

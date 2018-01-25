@@ -23,12 +23,18 @@ if "%1." == "." (
   exit /b
 )
 
+if "%2." == "." (
+  echo Expected the source root as an argument.
+  exit /b
+)
+
 if "%WIX%." == "." (
   echo Expected the WIX env variable to point to the WIX toolset.
   exit /b
 )
 
 set BUILD_OUT=%1
+set BIN_DIR=%2\bazel-bin
 
 if exist "%BUILD_OUT%\dist" (
   rmdir /Q /S "%BUILD_OUT%\dist"
@@ -41,20 +47,22 @@ awk -F= 'BEGIN {major=0; minor=0; micro=0}^
          /Major/ {major=$2}^
          /Minor/ {minor=$2}^
          /Micro/ {micro=$2}^
-         END {print major"."minor"."micro}' ..\pkg\build.properties > version.txt
+         END {print major"."minor"."micro}' %BIN_DIR%\pkg\build.properties > version.txt
 set /p VERSION=<version.txt
 
 REM Combine package contents.
-xcopy /e ..\pkg\* gapid\
-copy ..\current\java\gapic-windows.jar gapid\lib\gapic.jar
+xcopy /e %BIN_DIR%\pkg\* gapid\
 copy "%~dp0\gapid.ico" gapid
+copy c:\tools\msys64\mingw64\bin\libgcc_s_seh-1.dll gapid
+copy c:\tools\msys64\mingw64\bin\libstdc++-6.dll gapid
+copy c:\tools\msys64\mingw64\bin\libwinpthread-1.dll gapid
 call "%~dp0\copy_jre.bat" "%cd%\gapid\jre"
 
 REM Package up the zip file.
 zip -r gapid-%VERSION%-windows.zip gapid
 
-REM Copy the GAPIR symbols
-copy ..\current\gapir.sym gapir-%VERSION%-windows.sym
+REM TODO Copy the GAPIR symbols
+REM copy ..\current\gapir.sym gapir-%VERSION%-windows.sym
 
 REM Create an MSI installer.
 copy "%~dp0\gapid.wxs" .
