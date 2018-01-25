@@ -4382,25 +4382,30 @@ cmd VkResult vkCreateGraphicsPipelines(
 
       viewport_data := new!ViewportData()
 
+      // Even if the viewports and scissors are set dynamically, the number of
+      // viewports and scissors must match with the viewportCount and
+      // sicssorCount set in this VkPipelineViewportStateCreateInfo struct.
+      viewport_data.ViewportCount = pipeline_viewport_state_create_info.viewportCount
+      viewport_data.ScissorCount = pipeline_viewport_state_create_info.scissorCount
+
       if (!hasDynamicProperty(
             create_info.pDynamicState,
             VK_DYNAMIC_STATE_VIEWPORT)) {
-
-        viewports := pipeline_viewport_state_create_info.pViewports[0:
-        pipeline_viewport_state_create_info.viewportCount]
-        for k in (0 .. pipeline_viewport_state_create_info.viewportCount) {
+        viewports := pipeline_viewport_state_create_info.pViewports[0:viewport_data.ViewportCount]
+        for k in (0 .. viewport_data.ViewportCount) {
           viewport_data.Viewports[k] = viewports[k]
         }
       }
+
       if (!hasDynamicProperty(
             create_info.pDynamicState,
             VK_DYNAMIC_STATE_SCISSOR)) {
-        scissors := pipeline_viewport_state_create_info.pScissors[0:
-        pipeline_viewport_state_create_info.scissorCount]
-        for k in (0 .. pipeline_viewport_state_create_info.scissorCount) {
+        scissors := pipeline_viewport_state_create_info.pScissors[0:viewport_data.ScissorCount]
+        for k in (0 .. viewport_data.ScissorCount) {
           viewport_data.Scissors[k] = scissors[k]
         }
       }
+
       obj.ViewportState = viewport_data
     }
     rasterization_state := create_info.pRasterizationState[0]
@@ -9344,7 +9349,9 @@ enum SemaphoreUpdate {
 }
 
 @internal class ViewportData {
+  @unused u32 ViewportCount
   @unused map!(u32, VkViewport) Viewports
+  @unused u32 ScissorCount
   @unused map!(u32, VkRect2D)   Scissors
 }
 
