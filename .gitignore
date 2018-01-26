@@ -3,6 +3,7 @@
 /.idea
 /.vscode
 /bazel-*
+/fused
 
 # Single files
 /.gapid-config
