@@ -366,7 +366,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAllocateCommandBuffers(
                                                        pCommandBuffers);
   if (res == VK_SUCCESS) {
     for (size_t i = 0; i < pAllocateInfo->commandBufferCount; ++i) {
-      set_dispatch_from_parent(pCommandBuffers[i], device);
       (*command_buffer_map)[pCommandBuffers[i]] = {
           device, device_data->vkCmdPipelineBarrier,
           device_data->vkCmdWaitEvents};
