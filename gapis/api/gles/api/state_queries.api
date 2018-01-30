@@ -148,8 +148,10 @@ cmd const GLubyte* glGetString(GLenum param) {
     }
   }
 
-  ret := ?
-  _ = as!string(as!(char*)(ret)) // Make sure we observe the string.
+  ret := as!(const GLubyte*)(?)
+  if (ret != null) {
+    _ = as!string(as!(char*)(ret)) // Make sure we observe the string.
+  }
   return ret
 }
 
@@ -167,8 +169,10 @@ cmd const GLubyte* glGetStringi(GLenum name, GLuint index) {
     }
   }
 
-  ret := ?
-  _ = as!string(as!(char*)(ret)) // Make sure we observe the string.
+  ret := as!(const GLubyte*)(?)
+  if ret != null {
+    _ = as!string(as!(char*)(ret)) // Make sure we observe the string.
+  }
   return ret
 }
 
