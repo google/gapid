@@ -113,6 +113,10 @@ public:
     template <typename T>
     inline Slice<T> copy(const Slice<T>& dst, const Slice<T>& src);
 
+    // Make a slice on a new Pool.
+    template <typename T>
+    inline Slice<T> make(uint64_t count);
+
     // clone observes src as a read operation and returns a copy of src in a
     // new Pool.
     template <typename T>
@@ -162,10 +166,6 @@ private:
     bool shouldObserve(const Slice<T>& slice) const {
         return mObserveApplicationPool && slice.isApplicationPool();
     }
-
-    // Make a slice on a new Pool.
-    template <typename T>
-    inline Slice<T> make(uint64_t count);
 
     // A pointer to the spy instance.
     SpyBase* mSpy;

@@ -33,6 +33,8 @@ set(files
     gles_extras.cpp
     gles_imports.cpp
     gles_imports.h
+    gles_mec.cpp
+    gles_mec.h
     gles_spy.h
     gles_spy_0.cpp
     gles_spy_1.cpp

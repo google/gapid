@@ -22,6 +22,7 @@
 #include "gapii/cc/gles_exports.h"
 #include "gapii/cc/spy.h"
 #include "gapii/cc/to_proto.h"
+#include "gapii/cc/gles_mec.h"
 
 #include "core/cc/encoder.h"
 #include "core/cc/gl/formats.h"
@@ -447,16 +448,25 @@ void Spy::saveInitialSate() {
       ToProtoContext pbCtx;
       capture::GlobalState global;
       auto group = encoder->group(&global);
+      // For each pool, store resource ID that refers to its full content.
+      // This allows MEC to stream the GPU data directly to the encoder.
+      // The goal is to avoid making a copy of all GPU data in the state.
+      std::map<Pool*, uint64_t> poolResIndex;
+      SendGlesMecData(encoder.get(), this, poolResIndex);
       auto glesState = GlesSpy::serializeState(pbCtx);
-      std::map<uint32_t, Pool*> seenPools;
+      // Also send the content of all pools which have not been handled so far.
       for (const auto& s : pbCtx.SeenSlices()) {
         if (!s.isApplicationPool()) {
-          seenPools.emplace(s.poolID(), s.pool().get());
+          Pool* p = s.pool().get();
+          if (poolResIndex.count(p) == 0) {
+            poolResIndex[p] = sendResource(GlesSpy::kApiIndex, p->base(), p->size());
+          }
         }
       }
-      for (const auto& kvp : seenPools) {
-        Pool* p = kvp.second;
-        auto resIndex = sendResource(GlesSpy::kApiIndex, p->base(), p->size());
+      // Create memory observation for all pools.
+      for (const auto& it : poolResIndex) {
+        Pool* p = it.first;
+        auto resIndex = it.second;
         memory_pb::Observation observation;
         observation.set_base(0);
         observation.set_size(p->size());
