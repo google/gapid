@@ -190,13 +190,15 @@ void Spy::glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values)
 
 GLubyte* Spy::glGetString(CallObserver* observer, uint32_t name) {
     if (mDisablePrecompiledShaders && name == GL_EXTENSIONS) {
-        std::string list = reinterpret_cast<const char*>(GlesSpy::mImports.glGetString(name));
-        size_t start = list.find(kOESGetProgramBinary);
-        if (start != std::string::npos) {
-            static std::string copy = list;
-            copy.replace(start, strlen(kOESGetProgramBinary), kReplacementExtension);
-            // TODO: write command.
-            return reinterpret_cast<GLubyte*>(const_cast<char*>(copy.c_str()));
+        if (auto exts = reinterpret_cast<const char*>(GlesSpy::mImports.glGetString(name))) {
+            std::string list = reinterpret_cast<const char*>(exts);
+            size_t start = list.find(kOESGetProgramBinary);
+            if (start != std::string::npos) {
+                static std::string copy = list;
+                copy.replace(start, strlen(kOESGetProgramBinary), kReplacementExtension);
+                // TODO: write command.
+                return reinterpret_cast<GLubyte*>(const_cast<char*>(copy.c_str()));
+            }
         }
     }
     return GlesSpy::glGetString(observer, name);
