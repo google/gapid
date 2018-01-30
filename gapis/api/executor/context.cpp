@@ -18,6 +18,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #if 1
 #include <cstdio> // printf debug

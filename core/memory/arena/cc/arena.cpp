@@ -45,7 +45,7 @@ Arena::Arena() {}
 
 Arena::~Arena() {
     for (void* ptr : allocations) {
-        free(ptr);
+        ::free(ptr);
     }
     allocations.clear();
 }
