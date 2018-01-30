@@ -277,7 +277,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 			s.If(resize.Load(), func() {
 				// Grow
 				s.IfElse(elements.IsNull(), func() {
-					capacity := s.AddS(capacity, uint64(mapGrowBy))
+					capacity := s.Scalar(uint64(minMapSize))
 					capacityPtr.Store(capacity)
 					elements := c.alloc(s, capacity, elTy)
 					elementsPtr.Store(elements)
@@ -286,7 +286,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 						return nil
 					})
 				}, /* else */ func() {
-					newCapacity := s.AddS(capacity, uint64(mapGrowBy))
+					newCapacity := s.MulS(capacity, uint64(mapGrowMultiplier))
 					capacityPtr.Store(newCapacity)
 					newElements := c.alloc(s, newCapacity, elTy)
 					s.ForN(newCapacity, func(it *codegen.Value) *codegen.Value {
@@ -413,5 +413,6 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 	c.ty.maps[t] = mi
 }
 
-const mapGrowBy = 16
+const mapGrowMultiplier = 2
+const minMapSize = 16
 const mapMaxCapacity = 0.8
