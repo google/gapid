@@ -23,8 +23,11 @@ import (
 )
 
 func init() {
-	llvm.InitializeNativeTarget()
-	llvm.InitializeNativeAsmPrinter()
+	llvm.InitializeAllTargetInfos()
+	llvm.InitializeAllTargets()
+	llvm.InitializeAllTargetMCs()
+	// llvm.InitializeAllAsmParsers()
+	llvm.InitializeAllAsmPrinters()
 }
 
 // Executor executes module functions.
@@ -37,7 +40,7 @@ type Executor struct {
 func (m *Module) Object(optimize bool) ([]byte, error) {
 	t, err := llvm.GetTargetFromTriple(m.triple.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Couldn't get target for triple '%v': %v", m.triple, err)
 	}
 	cpu := ""
 	features := ""
