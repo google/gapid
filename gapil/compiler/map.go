@@ -88,9 +88,18 @@ func (c *compiler) defineMapType(t *semantic.Map) {
 		codegen.Field{Name: mapCapacity, Type: c.ty.Uint64},
 		codegen.Field{Name: mapElements, Type: c.ty.Pointer(elTy)},
 	)
-	c.ty.maps[t] = &MapInfo{Type: mapStrTy, Elements: elTy, Key: keyTy, Val: valTy}
-
-	c.buildMapType(t)
+	valPtrTy := c.ty.Pointer(valTy)
+	c.ty.maps[t] = &MapInfo{
+		Type:     mapStrTy,
+		Elements: elTy,
+		Key:      keyTy,
+		Val:      valTy,
+		Contains: c.module.Function(c.ty.Bool, t.Name()+"_contains", c.ty.ctxPtr, mapPtrTy, keyTy),
+		Index:    c.module.Function(valPtrTy, t.Name()+"_index", c.ty.ctxPtr, mapPtrTy, keyTy, c.ty.Bool),
+		Lookup:   c.module.Function(valTy, t.Name()+"_lookup", c.ty.ctxPtr, mapPtrTy, keyTy),
+		Remove:   c.module.Function(c.ty.Void, t.Name()+"_remove", c.ty.ctxPtr, mapPtrTy, keyTy),
+		Clear:    c.module.Function(nil, t.Name()+"_clear", c.ty.ctxPtr, mapPtrTy),
+	}
 }
 
 // If we know the values are going to be small & sequential, we can
@@ -173,14 +182,14 @@ func (c *compiler) hashValue(s *scope, t semantic.Type, value *codegen.Value) *c
 			fail("Cannot determine the hash for %T, %v", t, t)
 			return nil
 		}
+	case *semantic.Pointer,
+		*semantic.Enum:
+		return c.hash64Bit(s, value.Cast(u64Type))
 	case *semantic.StaticArray:
 		fail("Cannot use a static array as a hash key")
 		return nil
-	case *semantic.Pointer:
-		fail("Cannot use a pointer array as a hash key")
-		return nil
 	case *semantic.Reference:
-		fail("Cannot use a reference array as a hash key")
+		fail("Cannot use a reference as a hash key")
 		return nil
 	case *semantic.Class:
 		// Cannot hash a class
@@ -193,18 +202,15 @@ func (c *compiler) hashValue(s *scope, t semantic.Type, value *codegen.Value) *c
 }
 
 func (c *compiler) buildMapType(t *semantic.Map) {
-	info, ok := c.ty.maps[t]
+	mi, ok := c.ty.maps[t]
 	if !ok {
 		fail("Unknown map")
 	}
 
-	mapPtrTy := c.targetType(t)
-	elTy, keyTy, valTy := info.Elements, info.Key, info.Val
-	valPtrTy := c.ty.Pointer(valTy)
+	elTy := mi.Elements
 	u64Type := c.targetType(semantic.Uint64Type)
 
-	contains := c.module.Function(c.ty.Bool, t.Name()+"_contains", c.ty.ctxPtr, mapPtrTy, keyTy)
-	c.build(contains, func(s *scope) {
+	c.build(mi.Contains, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
 		h := c.hashValue(s, t.KeyType, k)
@@ -226,9 +232,8 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		s.Return(s.Scalar(false))
 	})
 
-	index := c.module.Function(valPtrTy, t.Name()+"_index", c.ty.ctxPtr, mapPtrTy, keyTy, c.ty.Bool)
 	f32Type := c.targetType(semantic.Float32Type)
-	c.build(index, func(s *scope) {
+	c.build(mi.Index, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
 		addIfNotFound := s.Parameter(3).SetName("addIfNotFound")
@@ -330,11 +335,10 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		})
 	})
 
-	lookup := c.module.Function(valTy, t.Name()+"_lookup", c.ty.ctxPtr, mapPtrTy, keyTy)
-	c.build(lookup, func(s *scope) {
+	c.build(mi.Lookup, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
-		ptr := s.Call(index, s.ctx, m, k, s.Scalar(false))
+		ptr := s.Call(mi.Index, s.ctx, m, k, s.Scalar(false))
 		s.If(ptr.IsNull(), func() {
 			s.Return(c.initialValue(s, t.ValueType))
 		})
@@ -343,8 +347,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		s.Return(v)
 	})
 
-	remove := c.module.Function(c.ty.Void, t.Name()+"_remove", c.ty.ctxPtr, mapPtrTy, keyTy)
-	c.build(remove, func(s *scope) {
+	c.build(mi.Remove, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		k := s.Parameter(2).SetName("key")
 		countPtr := m.Index(0, mapCount)
@@ -380,8 +383,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		})
 	})
 
-	clear := c.module.Function(nil, t.Name()+"_clear", c.ty.ctxPtr, mapPtrTy)
-	c.build(clear, func(s *scope) {
+	c.build(mi.Clear, func(s *scope) {
 		m := s.Parameter(1).SetName("map")
 		capacity := m.Index(0, mapCapacity).Load()
 		elements := m.Index(0, mapElements).Load()
@@ -403,14 +405,6 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		m.Index(0, mapCount).Store(s.Scalar(uint64(0)))
 		m.Index(0, mapCapacity).Store(s.Scalar(uint64(0)))
 	})
-
-	mi := c.ty.maps[t]
-	mi.Contains = contains
-	mi.Index = index
-	mi.Lookup = lookup
-	mi.Remove = remove
-	mi.Clear = clear
-	c.ty.maps[t] = mi
 }
 
 const mapGrowMultiplier = 2
