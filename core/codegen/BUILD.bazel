@@ -37,3 +37,19 @@ go_test(
         ":go_default_library",
     ],
 )
+
+go_test(
+    name = "go_default_xtest_internal",
+    size = "small",
+    srcs = [
+        "triple_test.go",
+    ],
+    embed = [":go_default_library"],
+    importpath = "github.com/google/gapid/core/codegen",
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+        "//core/os/device:go_default_library",
+        "//core/os/device/host:go_default_library",
+    ],
+)
