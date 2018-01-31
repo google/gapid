@@ -18,20 +18,23 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	cg "github.com/google/gapid/core/codegen"
+	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/codegen/call"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device/host"
 )
 
 func TestCodegen(t *testing.T) {
 	ctx := log.Testing(t)
 
-	m := cg.NewModule("test")
+	hostABI := host.Instance(ctx).Configuration.ABIs[0]
+
+	m := codegen.NewModule("test", hostABI)
 	f := m.Function(m.Types.Int, "add", m.Types.Int, m.Types.Int)
-	err := f.Build(func(b *cg.Builder) *cg.Value {
+	err := f.Build(func(b *codegen.Builder) {
 		x := b.Parameter(0)
 		y := b.Parameter(1)
-		return b.Add(x, y)
+		b.Return(b.Add(x, y))
 	})
 	if !assert.For(ctx, "f.Build").ThatError(err).Succeeded() {
 		return
