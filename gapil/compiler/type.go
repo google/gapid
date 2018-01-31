@@ -225,6 +225,11 @@ func (c *compiler) buildTypes(api *semantic.API) {
 			}
 		}
 	}
+
+	// Build all the map types.
+	for _, t := range api.Maps {
+		c.buildMapType(t)
+	}
 }
 
 // targetType returns the codegen type used to represent t in the
