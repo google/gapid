@@ -64,12 +64,6 @@ import (
 // TODO: Investigate rehashing once #full + #previously_full > 80%
 //     If we end up with lots of insertions/deletions, this will prevent linear search
 
-const (
-	empty = uint64(iota)
-	full
-	used
-)
-
 func (c *compiler) defineMapType(t *semantic.Map) {
 	mapPtrTy := c.ty.target[t].(codegen.Pointer)
 	mapStrTy := mapPtrTy.Element.(*codegen.Struct)
@@ -219,10 +213,10 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
 			check := s.Rem(s.Add(h, it), capacity)
 			valid := elements.Index(check, "used").Load()
-			s.If(c.equal(s, valid, s.Scalar(empty)), func() {
+			s.If(c.equal(s, valid, s.Scalar(C.mapElementEmpty)), func() {
 				s.Return(s.Scalar(false))
 			})
-			s.If(c.equal(s, valid, s.Scalar(full)), func() {
+			s.If(c.equal(s, valid, s.Scalar(C.mapElementFull)), func() {
 				key := elements.Index(check, "k")
 				found := c.equal(s, key.Load(), k)
 				s.If(found, func() { s.Return(s.Scalar(true)) })
@@ -250,30 +244,30 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
 			check := s.Rem(s.Add(h, it), capacity)
 			valid := elements.Index(check, "used").Load()
-			s.If(c.equal(s, valid, s.Scalar(full)), func() {
+			s.If(c.equal(s, valid, s.Scalar(C.mapElementFull)), func() {
 				found := c.equal(s, elements.Index(check, "k").Load(), k)
 				s.If(found, func() {
 					s.Return(elements.Index(check, "v"))
 				})
 			})
 
-			return s.Not(c.equal(s, valid, s.Scalar(empty)))
+			return s.Not(c.equal(s, valid, s.Scalar(C.mapElementEmpty)))
 		})
 
 		s.If(addIfNotFound, func() {
 			resize := s.LocalInit("resize", elements.IsNull())
 			s.If(s.Not(resize.Load()), func() {
 				used := s.Div(count.Cast(f32Type), capacity.Cast(f32Type))
-				resize.Store(s.GreaterThan(used, s.Scalar(float32(mapMaxCapacity))))
+				resize.Store(s.GreaterThan(used, s.Scalar(float32(C.mapMaxCapacity))))
 			})
 
-			getStorageBucket := func(k, h, table, tablesize *codegen.Value) *codegen.Value {
+			getStorageBucket := func(h, table, tablesize *codegen.Value) *codegen.Value {
 				newBucket := s.Local("newBucket", u64Type)
 				s.ForN(tablesize, func(it *codegen.Value) *codegen.Value {
 					check := s.Rem(s.Add(h, it), tablesize).SetName("hash_bucket")
 					newBucket.Store(check)
 					valid := table.Index(check, "used").Load()
-					notFound := c.equal(s, valid, s.Scalar(full))
+					notFound := c.equal(s, valid, s.Scalar(C.mapElementFull))
 					return notFound
 				})
 				return newBucket.Load()
@@ -282,33 +276,33 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 			s.If(resize.Load(), func() {
 				// Grow
 				s.IfElse(elements.IsNull(), func() {
-					capacity := s.Scalar(uint64(minMapSize))
+					capacity := s.Scalar(uint64(C.minMapSize))
 					capacityPtr.Store(capacity)
 					elements := c.alloc(s, capacity, elTy)
 					elementsPtr.Store(elements)
 					s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
-						elements.Index(it, "used").Store(s.Scalar(empty))
+						elements.Index(it, "used").Store(s.Scalar(C.mapElementEmpty))
 						return nil
 					})
 				}, /* else */ func() {
-					newCapacity := s.MulS(capacity, uint64(mapGrowMultiplier))
+					newCapacity := s.MulS(capacity, uint64(C.mapGrowMultiplier))
 					capacityPtr.Store(newCapacity)
 					newElements := c.alloc(s, newCapacity, elTy)
 					s.ForN(newCapacity, func(it *codegen.Value) *codegen.Value {
-						newElements.Index(it, "used").Store(s.Scalar(empty))
+						newElements.Index(it, "used").Store(s.Scalar(C.mapElementEmpty))
 						return nil
 					})
 
 					s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
 						valid := elements.Index(it, "used").Load()
-						s.If(c.equal(s, valid, s.Scalar(full)), func() {
+						s.If(c.equal(s, valid, s.Scalar(C.mapElementFull)), func() {
 							k := elements.Index(it, "k").Load()
 							v := elements.Index(it, "v").Load()
 							h := c.hashValue(s, t.KeyType, k)
-							bucket := getStorageBucket(k, h, newElements, newCapacity)
+							bucket := getStorageBucket(h, newElements, newCapacity)
 							newElements.Index(bucket, "k").Store(k)
 							newElements.Index(bucket, "v").Store(v)
-							newElements.Index(bucket, "used").Store(s.Scalar(full))
+							newElements.Index(bucket, "used").Store(s.Scalar(C.mapElementFull))
 						})
 						return nil
 					})
@@ -320,9 +314,9 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 			count := countPtr.Load()
 			capacity := capacityPtr.Load()
 			elements := elementsPtr.Load()
-			bucket := getStorageBucket(k, h, elements, capacity)
+			bucket := getStorageBucket(h, elements, capacity)
 			elements.Index(bucket, "k").Store(k)
-			elements.Index(bucket, "used").Store(s.Scalar(full))
+			elements.Index(bucket, "used").Store(s.Scalar(C.mapElementFull))
 			valPtr := elements.Index(bucket, "v")
 			v := c.initialValue(s, t.ValueType)
 			valPtr.Store(v)
@@ -358,7 +352,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
 			check := s.Rem(s.Add(h, it), capacity)
 			valid := elements.Index(check, "used").Load()
-			s.If(c.equal(s, valid, s.Scalar(full)), func() {
+			s.If(c.equal(s, valid, s.Scalar(C.mapElementFull)), func() {
 				found := c.equal(s, elements.Index(check, "k").Load(), k)
 				s.If(found, func() {
 					elPtr := elements.Index(check)
@@ -370,7 +364,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 						c.release(s, elPtr.Index(0, "v").Load(), t.ValueType)
 					}
 					// Replace element with last
-					elPtr.Index(0, "used").Store(s.Scalar(used))
+					elPtr.Index(0, "used").Store(s.Scalar(C.mapElementUsed))
 					count := countPtr.Load()
 					countM1 := s.SubS(count, uint64(1)).SetName("count-1")
 					// Decrement count
@@ -379,7 +373,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 				})
 			})
 
-			return s.Not(c.equal(s, valid, s.Scalar(empty)))
+			return s.Not(c.equal(s, valid, s.Scalar(C.mapElementEmpty)))
 		})
 	})
 
@@ -390,7 +384,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		if c.isRefCounted(t.KeyType) || c.isRefCounted(t.ValueType) {
 			s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
 				valid := elements.Index(it, "used").Load()
-				s.If(c.equal(s, valid, s.Scalar(full)), func() {
+				s.If(c.equal(s, valid, s.Scalar(C.mapElementFull)), func() {
 					if c.isRefCounted(t.KeyType) {
 						c.release(s, elements.Index(it, "k").Load(), t.KeyType)
 					}
@@ -406,7 +400,3 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 		m.Index(0, mapCapacity).Store(s.Scalar(uint64(0)))
 	})
 }
-
-const mapGrowMultiplier = 2
-const minMapSize = 16
-const mapMaxCapacity = 0.8
