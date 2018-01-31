@@ -48,6 +48,7 @@ type MapInfo struct {
 	Elements *codegen.Struct
 	Key      codegen.Type
 	Val      codegen.Type
+	Element  codegen.Type
 	Contains codegen.Function // bool(ctx*, M*, K)
 	Index    codegen.Function //   V*(ctx*, M*, K, addIfNotFound)
 	Lookup   codegen.Function //   V(ctx*, M*, K)

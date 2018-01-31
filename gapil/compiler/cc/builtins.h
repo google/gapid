@@ -1,5 +1,5 @@
 #include <stdint.h>
-
+#include <stddef.h>
 typedef struct pool_t    pool;
 typedef struct globals_t globals;
 typedef struct string_t  string;
@@ -7,10 +7,19 @@ typedef struct string_t  string;
 static const uint32_t ERR_SUCCESS = 0;
 static const uint32_t ERR_ABORTED = 1;
 
+static const uint64_t mapElementEmpty = 0;
+static const uint64_t mapElementFull = 1;
+static const uint64_t mapElementUsed = 2;
+
+static const uint64_t mapGrowMultiplier = 2;
+static const uint64_t minMapSize = 16;
+static const float mapMaxCapacity = 0.8f;
+
+
 typedef struct context_t {
 	uint32_t    id;
 	uint32_t    location;
-	globals*    globals;
+	globals*    globals_;
 	pool*       app_pool;
 	string*     empty_string;
 } context;
@@ -21,7 +30,7 @@ typedef struct pool_t {
 } pool;
 
 typedef struct slice_t {
-	pool*    pool; // The underlying pool.
+	pool*    pool_; // The underlying pool.
 	void*    root; // Original pointer this slice derives from.
 	void*    base; // Address of first element.
 	uint64_t size; // Size in bytes of the slice.

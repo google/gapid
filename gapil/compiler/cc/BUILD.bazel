@@ -17,6 +17,40 @@ load("//tools/build:rules.bzl", "cc_copts")
 cc_library(
     name = "cc",
     hdrs = glob(["*.h"]),
+    srcs = ["map.cpp"],
     copts = cc_copts(),
     visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "test_alloc_free",
+    hdrs = ["test_alloc_free.h"],
+    srcs = ["test_alloc_free.cpp"],
+    copts = cc_copts(),
+    deps = [
+        ":cc",
+    ]
+)
+
+cc_library(
+    name = "test_map",
+    # Yes I really do mean, map.cpp as a header.
+    # This is literally just for testing.
+    hdrs = ["map.cpp"],
+    copts = cc_copts(),
+    deps = [
+        ":cc",
+    ]
+)
+
+cc_test(
+    name = "map_test",
+    srcs = ["test_alloc_free.cpp", "map_test.cpp"],
+    copts = cc_copts(),
+    deps = [
+        ":test_alloc_free",
+        ":cc",
+        ":test_map",
+        "@gtest//:gtest_main",
+    ]
 )
