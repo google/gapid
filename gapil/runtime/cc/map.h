@@ -63,7 +63,7 @@ public:
             size_t offset = elem - reinterpret_cast<element*>(map->elements);
             for (size_t i = offset; i < map->capacity; ++i) {
                 ++elem;
-                if (elem->used == mapElementFull) {
+                if (elem->used == GAPIL_MAP_ELEMENT_FULL) {
                     break;
                 }
             }
@@ -108,7 +108,7 @@ public:
             size_t offset = elem - reinterpret_cast<element*>(map->elements);
             for (size_t i = offset; i < map->capacity; ++i) {
                 ++elem;
-                if (elem->used == mapElementFull) {
+                if (elem->used == GAPIL_MAP_ELEMENT_FULL) {
                     break;
                 }
             }
@@ -133,7 +133,7 @@ public:
     const const_iterator begin() const {
         auto it = const_iterator{elements(), this};
         for (size_t i = 0; i < map_t::capacity; ++i) {
-            if (it.elem->used == mapElementFull) {
+            if (it.elem->used == GAPIL_MAP_ELEMENT_FULL) {
                 break;
             }
             it.elem++;
@@ -144,7 +144,7 @@ public:
     iterator begin() {
         auto it = iterator{elements(), this};
         for (size_t i = 0; i < map_t::capacity; ++i) {
-            if (it.elem->used == mapElementFull) {
+            if (it.elem->used == GAPIL_MAP_ELEMENT_FULL) {
                 break;
             }
             it.elem++;

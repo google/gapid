@@ -27,17 +27,16 @@ typedef struct pool_t    pool;
 typedef struct globals_t globals;
 typedef struct string_t  string;
 
-static const uint32_t ERR_SUCCESS = 0;
-static const uint32_t ERR_ABORTED = 1;
+#define GAPIL_ERR_SUCCESS 0
+#define GAPIL_ERR_ABORTED 1
 
-static const uint64_t mapElementEmpty = 0;
-static const uint64_t mapElementFull = 1;
-static const uint64_t mapElementUsed = 2;
+#define GAPIL_MAP_ELEMENT_EMPTY 0
+#define GAPIL_MAP_ELEMENT_FULL  1
+#define GAPIL_MAP_ELEMENT_USED  2
 
-static const uint64_t mapGrowMultiplier = 2;
-static const uint64_t minMapSize = 16;
-static const float mapMaxCapacity = 0.8f;
-
+#define GAPIL_MAP_GROW_MULTIPLIER 2
+#define GAPIL_MIN_MAP_SIZE        16
+#define GAPIL_MAP_MAX_CAPACITY    0.8f
 
 typedef struct context_t {
 	uint32_t    id;
@@ -73,6 +72,15 @@ typedef struct map_t {
 	void*    elements;
 } map;
 
+////////////////////////////////////////////////////////////////////////////////
+// Functions to be implemented by the user of the runtime                     //
+////////////////////////////////////////////////////////////////////////////////
+void* gapil_remap_pointer(context* ctx, uint64_t pointer, uint64_t length);
+void  gapil_get_code_location(context* ctx, char** file, uint32_t* line);
+
+////////////////////////////////////////////////////////////////////////////////
+// Runtime API                                                                //
+////////////////////////////////////////////////////////////////////////////////
 void gapil_init_context(context* ctx);
 void gapil_term_context(context* ctx);
 

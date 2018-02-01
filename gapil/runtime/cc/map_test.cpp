@@ -42,7 +42,7 @@ TYPED_TEST(MapTest, basic_insert) {
     EXPECT_EQ(42, map[std::make_pair(ctx, key_type(32))]);
     EXPECT_EQ(0, map[std::make_pair(ctx, key_type(42))]);
     EXPECT_EQ(2, map.count());
-    EXPECT_EQ(minMapSize, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
 }
 
 TYPED_TEST(MapTest, multi_insert) {
@@ -51,12 +51,12 @@ TYPED_TEST(MapTest, multi_insert) {
     TypeParam map;
     context_t* ctx = nullptr;
 
-    uint64_t resize_threshold = static_cast<uint64_t>(minMapSize * mapMaxCapacity);
+    uint64_t resize_threshold = static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
     for (uint64_t i = 0; i <= resize_threshold; ++i) {
         map[std::make_pair(ctx, key_type(i))] = value_type(i);
     }
     EXPECT_EQ(resize_threshold+1, map.count());
-    EXPECT_EQ(minMapSize, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
 
 
     for (uint64_t i = 0; i < resize_threshold + 1; ++i) {
@@ -65,7 +65,7 @@ TYPED_TEST(MapTest, multi_insert) {
 
     map[std::make_pair(ctx, key_type(resize_threshold + 1))] = value_type(resize_threshold + 1);
     EXPECT_EQ(resize_threshold + 2, map.count());
-    EXPECT_EQ(minMapSize * mapGrowMultiplier, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
 
     for (uint64_t i = 0; i < resize_threshold + 1; ++i) {
         EXPECT_EQ(value_type(i), map[std::make_pair(ctx, key_type(i))]);
@@ -78,12 +78,12 @@ TYPED_TEST(MapTest, erase) {
     TypeParam map;
     context_t* ctx = nullptr;
 
-    uint64_t resize_threshold = static_cast<uint64_t>(minMapSize * mapMaxCapacity);
+    uint64_t resize_threshold = static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
     for (uint64_t i = 0; i <= resize_threshold; ++i) {
         map[std::make_pair(ctx, key_type(i))] = value_type(i);
     }
     EXPECT_EQ(resize_threshold+1, map.count());
-    EXPECT_EQ(minMapSize, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
 
 
     for (uint64_t i = 0; i < resize_threshold + 1; ++i) {
@@ -92,7 +92,7 @@ TYPED_TEST(MapTest, erase) {
 
     map[std::make_pair(ctx, key_type(resize_threshold + 1))] = value_type(resize_threshold + 1);
     EXPECT_EQ(resize_threshold + 2, map.count());
-    EXPECT_EQ(minMapSize * mapGrowMultiplier, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
 
     for (uint64_t i = 0; i < resize_threshold + 1; ++i) {
         EXPECT_EQ(value_type(i), map[std::make_pair(ctx, key_type(i))]);
@@ -164,18 +164,18 @@ TEST(CppMapTest, constructible_object) {
     context_t* ctx = nullptr;
 
 
-    uint64_t resize_threshold = static_cast<uint64_t>(minMapSize * mapMaxCapacity);
+    uint64_t resize_threshold = static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
     for (uint64_t i = 0; i <= resize_threshold; ++i) {
         map[std::make_pair(ctx, i)] = non_movable_object(i + 10);
     }
     EXPECT_EQ(resize_threshold+1, map.count());
-    EXPECT_EQ(minMapSize, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
 
 
 
     map[std::make_pair(ctx, resize_threshold + 1)] = non_movable_object(10 + resize_threshold + 1);
     EXPECT_EQ(resize_threshold + 2, map.count());
-    EXPECT_EQ(minMapSize * mapGrowMultiplier, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
 }
 
 class movable_object {
@@ -215,16 +215,16 @@ TEST(CppMapTest, movable_object) {
     context_t* ctx = nullptr;
 
 
-    uint64_t resize_threshold = static_cast<uint64_t>(minMapSize * mapMaxCapacity);
+    uint64_t resize_threshold = static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
     for (uint64_t i = 0; i <= resize_threshold; ++i) {
         map[std::make_pair(ctx, i)] = non_movable_object(i + 10);
     }
     EXPECT_EQ(resize_threshold+1, map.count());
-    EXPECT_EQ(minMapSize, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
 
 
 
     map[std::make_pair(ctx, resize_threshold + 1)] = non_movable_object(10 + resize_threshold + 1);
     EXPECT_EQ(resize_threshold + 2, map.count());
-    EXPECT_EQ(minMapSize * mapGrowMultiplier, map.capacity());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
 }

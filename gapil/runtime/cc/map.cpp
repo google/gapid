@@ -15,6 +15,16 @@
 #include "map.h"
 #include <unordered_map>
 
+extern "C" {
+
+void* gapil_remap_pointer(context* ctx, uint64_t pointer, uint64_t length) {
+    return reinterpret_cast<void*>(pointer);
+}
+
+void gapil_get_code_location(context* ctx, char** file, uint32_t* line) {}
+
+}  // extern "C"
+
 namespace gapil {
 
 template<typename K, typename V>
@@ -42,12 +52,12 @@ V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
         bool leave = false;
         uint64_t lookup_pos = (hash + i) % map_t::capacity;
         switch(elems[lookup_pos].used) {
-            case mapElementEmpty:
+            case GAPIL_MAP_ELEMENT_EMPTY:
                 leave = true;
                 break;
-            case mapElementUsed:
+            case GAPIL_MAP_ELEMENT_USED:
                 continue;
-            case mapElementFull:
+            case GAPIL_MAP_ELEMENT_FULL:
                 if (eq(key, elems[lookup_pos].first)) {
                     return &elems[lookup_pos].second;
                 }
@@ -63,7 +73,7 @@ V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
         auto elems = elements();
         for (uint64_t i = 0; i < map_t::capacity; ++i) {
             uint64_t x = (h + i) %  map_t::capacity;
-            if (elems[x].used != mapElementFull) {
+            if (elems[x].used != GAPIL_MAP_ELEMENT_FULL) {
                 return x;
             }
         }
@@ -72,31 +82,31 @@ V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
 
     if (insert) {
         bool resize = (map_t::elements == nullptr);
-        resize = resize || ((float)map_t::count / (float)map_t::capacity) > mapMaxCapacity;
+        resize = resize || ((float)map_t::count / (float)map_t::capacity) > GAPIL_MAP_MAX_CAPACITY;
 
         if (resize) {
             if (map_t::elements == nullptr) {
-                map_t::capacity = minMapSize;
-                map_t::elements = gapil_alloc(ctx, sizeof(element) * minMapSize, alignof(V));
+                map_t::capacity = GAPIL_MIN_MAP_SIZE;
+                map_t::elements = gapil_alloc(ctx, sizeof(element) * GAPIL_MIN_MAP_SIZE, alignof(V));
                 for (uint64_t i = 0; i < map_t::capacity; ++i) {
-                    elements()[i].used = mapElementEmpty;
+                    elements()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                  }
             } else {
                  auto oldElements = elements();
                  auto oldCapacity = map_t::capacity;
 
-                 map_t::capacity = map_t::capacity * mapGrowMultiplier;
+                 map_t::capacity = map_t::capacity * GAPIL_MAP_GROW_MULTIPLIER;
                  map_t::elements = gapil_alloc(ctx, sizeof(element) * map_t::capacity, alignof(V));
                  for (uint64_t i = 0; i < map_t::capacity; ++i) {
-                    elements()[i].used = mapElementEmpty;
+                    elements()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                  }
                  auto new_elements = elements();
                  for (uint64_t i = 0; i < oldCapacity; ++i) {
-                     if (oldElements[i].used == mapElementFull) {
+                     if (oldElements[i].used == GAPIL_MAP_ELEMENT_FULL) {
                         uint64_t bucket_location = storageBucket(hasher(oldElements[i].first));
                         new(&new_elements[bucket_location].second) V(std::move(oldElements[i].second));
                         new(&new_elements[bucket_location].first) K(std::move(oldElements[i].first));
-                        new_elements[bucket_location].used = mapElementFull;
+                        new_elements[bucket_location].used = GAPIL_MAP_ELEMENT_FULL;
                         oldElements[i].second.~V();
                         oldElements[i].first.~K();
                      }
@@ -108,7 +118,7 @@ V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
         uint64_t bucket_location = storageBucket(hasher(key));
         new(&elements()[bucket_location].second) V();
         new(&elements()[bucket_location].first) K(key);
-        elements()[bucket_location].used = mapElementFull;
+        elements()[bucket_location].used = GAPIL_MAP_ELEMENT_FULL;
         map_t::count++;
 
         return &elements()[bucket_location].second;
@@ -133,13 +143,13 @@ void Map<K, V>::remove(context_t*, K key) {
     for (uint64_t i = 0; i < map_t::capacity; ++i) {
         uint64_t lookup_pos = (hash + i) % map_t::capacity;
         switch(elems[lookup_pos].used) {
-            case mapElementEmpty:
+            case GAPIL_MAP_ELEMENT_EMPTY:
                 return;
-            case mapElementUsed:
+            case GAPIL_MAP_ELEMENT_USED:
                 continue;
-            case mapElementFull:
+            case GAPIL_MAP_ELEMENT_FULL:
                 if (eq(key, elems[lookup_pos].first)) {
-                    elems[lookup_pos].used = mapElementUsed;
+                    elems[lookup_pos].used = GAPIL_MAP_ELEMENT_USED;
                     elems[lookup_pos].first.~K();
                     elems[lookup_pos].second.~V();
                     --map_t::count;
@@ -154,10 +164,10 @@ void Map<K, V>::clear(context_t* ctx) {
     auto elems = elements();
     for (uint64_t i = 0; i < map_t::capacity; ++i) {
         switch(elems[i].used) {
-            case mapElementEmpty:
-            case mapElementUsed:
+            case GAPIL_MAP_ELEMENT_EMPTY:
+            case GAPIL_MAP_ELEMENT_USED:
                 continue;
-            case mapElementFull:
+            case GAPIL_MAP_ELEMENT_FULL:
                 elems[i].first.~K();
                 elems[i].second.~V();
                 --map_t::count;

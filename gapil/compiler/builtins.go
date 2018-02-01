@@ -24,15 +24,15 @@ import "C"
 type ErrorCode uint32
 
 const (
-	ErrSuccess = ErrorCode(C.ERR_SUCCESS)
-	ErrAborted = ErrorCode(C.ERR_ABORTED)
+	ErrSuccess = ErrorCode(C.GAPIL_ERR_SUCCESS)
+	ErrAborted = ErrorCode(C.GAPIL_ERR_ABORTED)
 
-	mapElementEmpty   = (uint64)(C.mapElementEmpty)
-	mapElementFull    = (uint64)(C.mapElementFull)
-	mapElementUsed    = (uint64)(C.mapElementUsed)
-	mapGrowMultiplier = (uint64)(C.mapGrowMultiplier)
-	minMapSize        = (uint64)(C.minMapSize)
-	mapMaxCapacity    = (float32)(C.mapMaxCapacity)
+	mapElementEmpty   = (uint64)(C.GAPIL_MAP_ELEMENT_EMPTY)
+	mapElementFull    = (uint64)(C.GAPIL_MAP_ELEMENT_FULL)
+	mapElementUsed    = (uint64)(C.GAPIL_MAP_ELEMENT_USED)
+	mapGrowMultiplier = (uint64)(C.GAPIL_MAP_GROW_MULTIPLIER)
+	minMapSize        = (uint64)(C.GAPIL_MIN_MAP_SIZE)
+	mapMaxCapacity    = (float32)(C.GAPIL_MAP_MAX_CAPACITY)
 
 	contextLocation    = "location"
 	contextGlobals     = "globals"
