@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
 
 #include "runtime.h"
 
-#include <tuple>
+namespace core {
+class Arena;
+}  // namespace core
 
 namespace gapil {
 
@@ -28,7 +30,10 @@ public:
     using key_type = K;
     using value_type = V;
 
-    Map();
+    static Map<K, V>* create(core::Arena* a);
+
+    void reference();
+    void release();
 
     class iterator {
         friend class Map<K, V>;
@@ -160,22 +165,22 @@ public:
         return const_iterator{elements() + capacity(), this};
     }
 
-    void erase(context_t* ctx, const K& k) {
-        remove(ctx, k);
+    void erase(const K& k) {
+        remove(k);
     }
 
-    void erase(context_t* ctx, const_iterator it) {
-        remove(ctx, it->first);
+    void erase(const_iterator it) {
+        remove(it->first);
     }
 
     template<typename T>
-    V& operator[](const typename std::pair<context_t*, T>& p) {
-        V* v = index(p.first, p.second, true);
+    V& operator[](const T& key) {
+        V* v = index(key, true);
         return *v;
     }
 
-    iterator find(context_t* ctx, const K& k) {
-        V* idx = index(ctx, k, false);
+    iterator find(const K& key) {
+        V* idx = index(key, false);
         if (idx == nullptr) {
             return end();
         }
@@ -184,10 +189,10 @@ public:
         return iterator {elements() + offs, this};
     }
 
-    const_iterator find(context_t* ctx, const K& k) const {
+    const_iterator find(const K& k) const {
         // Sorry for the const_cast. We know that if the last element is false,
         // this wont be modified.
-        const V* idx = const_cast<Map<K, V>*>(this)->index(ctx, k, false);
+        const V* idx = const_cast<Map<K, V>*>(this)->index(k, false);
         if (idx == nullptr) {
             return end();
         }
@@ -211,11 +216,15 @@ private:
         return reinterpret_cast<element*>(map_t::elements);
     }
 
-    bool contains(context_t*, K);
-    V*   index(context_t*, K, bool);
-    V    lookup(context_t*, K);
-    void remove(context_t*, K);
-    void clear(context_t*);
+    bool contains(K);
+    V*   index(K, bool);
+    V    lookup(K);
+    void remove(K);
+    void clear();
+
+    Map() = delete;
+    Map(const Map<K,V>&) = delete;
+    Map<K,V>& operator = (const Map<K,V>&) = delete;
 };
 
 }  // namespace gapil

@@ -147,7 +147,7 @@ func (c *compiler) doBinaryOp(s *scope, op string, lhs, rhs *codegen.Value) *cod
 	if lhs.Type() == c.ty.strPtr {
 		switch op {
 		case ast.OpEQ, ast.OpGT, ast.OpLT, ast.OpGE, ast.OpLE, ast.OpNE:
-			cmp := s.Call(c.callbacks.stringCompare, s.ctx, lhs, rhs)
+			cmp := s.Call(c.callbacks.stringCompare, lhs, rhs)
 			lhs, rhs = cmp, s.Zero(cmp.Type())
 		}
 	}
@@ -171,7 +171,7 @@ func (c *compiler) doBinaryOp(s *scope, op string, lhs, rhs *codegen.Value) *cod
 		return s.And(lhs, rhs)
 	case ast.OpPlus:
 		if lhs.Type() == c.ty.strPtr {
-			str := s.Call(c.callbacks.stringConcat, s.ctx, lhs, rhs)
+			str := s.Call(c.callbacks.stringConcat, lhs, rhs)
 			c.deferRelease(s, str, semantic.StringType)
 			return str
 		}
@@ -273,8 +273,9 @@ func (c *compiler) classInitializerNoRelease(s *scope, e *semantic.ClassInitiali
 func (c *compiler) create(s *scope, e *semantic.Create) *codegen.Value {
 	refPtrTy := c.targetType(e.Type).(codegen.Pointer)
 	refTy := refPtrTy.Element
-	ptr := c.alloc(s, s.Scalar(uint64(1)), refTy)
+	ptr := c.alloc(s, s.arena, s.Scalar(uint64(1)), refTy)
 	ptr.Index(0, refRefCount).Store(s.Scalar(uint32(1)))
+	ptr.Index(0, refArena).Store(s.arena)
 	ptr.Index(0, refValue).Store(c.classInitializerNoRelease(s, e.Initializer))
 	c.deferRelease(s, ptr, e.Type)
 	return ptr
@@ -374,13 +375,13 @@ func (c *compiler) make(s *scope, e *semantic.Make) *codegen.Value {
 func (c *compiler) mapContains(s *scope, e *semantic.MapContains) *codegen.Value {
 	m := c.expression(s, e.Map)
 	k := c.expression(s, e.Key)
-	return s.Call(c.ty.maps[e.Type].Contains, s.ctx, m, k).SetName("map_contains")
+	return s.Call(c.ty.maps[e.Type].Contains, m, k).SetName("map_contains")
 }
 
 func (c *compiler) mapIndex(s *scope, e *semantic.MapIndex) *codegen.Value {
 	m := c.expression(s, e.Map)
 	k := c.expression(s, e.Index)
-	res := s.Call(c.ty.maps[e.Type].Lookup, s.ctx, m, k).SetName("map_lookup")
+	res := s.Call(c.ty.maps[e.Type].Lookup, m, k).SetName("map_lookup")
 	c.deferRelease(s, res, e.Type.ValueType)
 	return res
 }
@@ -523,7 +524,7 @@ func (c *compiler) sliceRange(s *scope, e *semantic.SliceRange) *codegen.Value {
 }
 
 func (c *compiler) stringValue(s *scope, e semantic.StringValue) *codegen.Value {
-	str := s.Call(c.callbacks.makeString, s.ctx, s.Scalar(uint64(len(e))), s.GlobalString(string(e)))
+	str := s.Call(c.callbacks.makeString, s.arena, s.Scalar(uint64(len(e))), s.GlobalString(string(e)))
 	c.deferRelease(s, str, semantic.StringType)
 	return str
 }

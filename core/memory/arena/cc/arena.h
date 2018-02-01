@@ -27,7 +27,8 @@ namespace core {
 // Arena is a memory allocator that owns each of the allocations made by it.
 // If there are any outstanding allocations when the Arena is destructed then
 // these allocations are automatically freed.
-struct Arena {
+class Arena {
+public:
     Arena();
     ~Arena();
 
@@ -57,7 +58,7 @@ struct Arena {
     inline void destroy(T* ptr);
 
     // stats returns statistics of the current state of the arena.
-    void stats(size_t* num_allocations, size_t* num_bytes_allocated);
+    void stats(size_t* num_allocations, size_t* num_bytes_allocated) const;
 
 private:
     std::unordered_set<void*> allocations;

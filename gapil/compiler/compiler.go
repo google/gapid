@@ -48,6 +48,7 @@ type compiler struct {
 	module        *codegen.Module
 	functions     map[*semantic.Function]codegen.Function
 	stateInit     codegen.Function
+	emptyString   codegen.Global
 	serialization *serialization
 	mappings      *resolver.Mappings
 	locationIndex map[Location]int
@@ -180,6 +181,13 @@ func (c *compiler) compile(api *semantic.API) {
 		c.callbacks.logf = c.module.ParseFunctionSignature(C.GoString(C.gapil_logf_sig))
 	}
 
+	c.emptyString = c.module.Global("gapil_empty_string",
+		c.module.ConstStruct(
+			c.ty.str,
+			map[string]interface{}{"ref_count": 1},
+		),
+	)
+
 	c.buildTypes(api)
 
 	if c.settings.EmitExec {
@@ -202,22 +210,25 @@ func (c *compiler) compile(api *semantic.API) {
 
 func (c *compiler) build(f codegen.Function, do func(*scope)) {
 	err(f.Build(func(jb *codegen.Builder) {
-		ctx := jb.Parameter(0).SetName("ctx")
-		if ctx.Type() != c.ty.ctxPtr {
-			fail("Expected context pointer as first argument. Got %v", ctx.Type().TypeName())
-		}
-		globals := ctx.Index(0, contextGlobals).Load().SetName("globals")
-		appPool := ctx.Index(0, contextAppPool).Load().SetName("app_pool")
-		location := ctx.Index(0, contextLocation)
 		s := &scope{
 			Builder:    jb,
 			locals:     map[*semantic.Local]*codegen.Value{},
 			parameters: map[*semantic.Parameter]*codegen.Value{},
-			ctx:        ctx,
-			location:   location,
-			globals:    globals,
-			appPool:    appPool,
 		}
+		for i, p := range f.Type.Signature.Parameters {
+			if p == c.ty.ctxPtr {
+				ctx := jb.Parameter(i).SetName("ctx")
+				globals := ctx.Index(0, contextGlobals).Load().SetName("globals")
+				arena := ctx.Index(0, contextArena).Load().SetName("arena")
+				location := ctx.Index(0, contextLocation)
+				s.ctx = ctx
+				s.location = location
+				s.globals = globals
+				s.arena = arena
+				break
+			}
+		}
+
 		s.enter(do)
 	}))
 }
@@ -238,25 +249,29 @@ func (c *compiler) buildStateInit(api *semantic.API) {
 	})
 }
 
-func (c *compiler) alloc(s *scope, count *codegen.Value, ty codegen.Type) *codegen.Value {
+func (c *compiler) alloc(s *scope, arena, count *codegen.Value, ty codegen.Type) *codegen.Value {
 	size := s.Mul(count, s.SizeOf(ty).Cast(c.ty.Uint64))
 	align := s.AlignOf(ty).Cast(c.ty.Uint64)
-	return s.Call(c.callbacks.alloc, s.ctx, size, align).Cast(c.ty.Pointer(ty))
+	return s.Call(c.callbacks.alloc, s.arena, size, align).Cast(c.ty.Pointer(ty))
 }
 
-func (c *compiler) realloc(s *scope, old, count *codegen.Value, ty codegen.Type) *codegen.Value {
+func (c *compiler) realloc(s *scope, arena, old, count *codegen.Value, ty codegen.Type) *codegen.Value {
 	size := s.Mul(count, s.SizeOf(ty).Cast(c.ty.Uint64))
 	align := s.AlignOf(ty).Cast(c.ty.Uint64)
-	return s.Call(c.callbacks.realloc, s.ctx, old.Cast(c.ty.u8Ptr), size, align).Cast(c.ty.Pointer(ty))
+	return s.Call(c.callbacks.realloc, s.arena, old.Cast(c.ty.u8Ptr), size, align).Cast(c.ty.Pointer(ty))
 }
 
-func (c *compiler) free(s *scope, ptr *codegen.Value) {
-	s.Call(c.callbacks.free, s.ctx, ptr.Cast(c.ty.voidPtr))
+func (c *compiler) free(s *scope, arena, ptr *codegen.Value) {
+	s.Call(c.callbacks.free, arena, ptr.Cast(c.ty.voidPtr))
 }
 
 func (c *compiler) logf(s *scope, severity log.Severity, msg string, args ...interface{}) {
+	ctx := s.ctx
+	if ctx == nil {
+		ctx = s.Zero(c.ty.ctxPtr)
+	}
 	fullArgs := []*codegen.Value{
-		s.ctx,
+		ctx,
 		s.Scalar(uint8(severity)),
 		s.Scalar(msg),
 	}
@@ -289,7 +304,9 @@ func (c *compiler) setCodeLocation(s *scope, t parse.Token) {
 }
 
 func (c *compiler) updateCodeLocation(s *scope) {
-	s.location.Store(s.Scalar(uint32(s.locationIdx)))
+	if s.location != nil {
+		s.location.Store(s.Scalar(uint32(s.locationIdx)))
+	}
 }
 
 func (c *compiler) setCurrentFunction(f *semantic.Function) *semantic.Function {

@@ -13,16 +13,50 @@
 // limitations under the License.
 
 
-#include "map.cpp"
-#include "test_alloc_free.h"
+#include "map.inc"
+
+#include "core/cc/assert.h"
+#include "core/memory/arena/cc/arena.h"
+
 #include <gtest/gtest.h>
+
+extern "C" {
+
+void* gapil_remap_pointer(context* ctx, uint64_t pointer, uint64_t length) {
+    return reinterpret_cast<void*>(pointer);
+}
+
+void gapil_get_code_location(context* ctx, char** file, uint32_t* line) {}
+
+}  // extern "C"
 
 template<typename T>
 class MapTest : public ::testing::Test {
     void TearDown() {
-        EXPECT_EQ(0, testing::allocated_bytes);
-        EXPECT_EQ(0, testing::num_allocations);
+        size_t num_allocations = 0;
+        size_t num_bytes_allocated = 0;
+        arena.stats(&num_allocations, &num_bytes_allocated);
+
+        EXPECT_EQ(0, num_allocations);
+        EXPECT_EQ(0, num_bytes_allocated);
     }
+
+public:
+    size_t num_allocations() const {
+        size_t num_allocations = 0;
+        size_t num_bytes_allocated = 0;
+        arena.stats(&num_allocations, &num_bytes_allocated);
+        return num_allocations;
+    }
+
+    size_t num_bytes_allocated() const {
+        size_t num_allocations = 0;
+        size_t num_bytes_allocated = 0;
+        arena.stats(&num_allocations, &num_bytes_allocated);
+        return num_bytes_allocated;
+    }
+
+    core::Arena arena;
 };
 
 using MapTestTypes = ::testing::Types<
@@ -35,196 +69,218 @@ TYPED_TEST_CASE(MapTest, MapTestTypes);
 TYPED_TEST(MapTest, basic_insert) {
     using key_type = typename TypeParam::key_type;
     using value_type = typename TypeParam::value_type;
-    TypeParam map;
-    context_t* ctx = nullptr;
 
-    map[std::make_pair(ctx, key_type(32))] = value_type(42);
-    EXPECT_EQ(42, map[std::make_pair(ctx, key_type(32))]);
-    EXPECT_EQ(0, map[std::make_pair(ctx, key_type(42))]);
-    EXPECT_EQ(2, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
+    auto map = TypeParam::create(&this->TestFixture::arena);
+
+    (*map)[key_type(32)] = value_type(42);
+    EXPECT_EQ(42, (*map)[key_type(32)]);
+    EXPECT_EQ(0, (*map)[key_type(42)]);
+    EXPECT_EQ(2, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map->capacity());
+
+    map->release();
 }
 
 TYPED_TEST(MapTest, multi_insert) {
     using key_type = typename TypeParam::key_type;
     using value_type = typename TypeParam::value_type;
-    TypeParam map;
-    context_t* ctx = nullptr;
+
+    auto map = TypeParam::create(&this->TestFixture::arena);
 
     uint64_t resize_threshold = static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
     for (uint64_t i = 0; i <= resize_threshold; ++i) {
-        map[std::make_pair(ctx, key_type(i))] = value_type(i);
+        (*map)[key_type(i)] = value_type(i);
     }
-    EXPECT_EQ(resize_threshold+1, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
+    EXPECT_EQ(resize_threshold+1, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map->capacity());
 
 
     for (uint64_t i = 0; i < resize_threshold + 1; ++i) {
-        EXPECT_EQ(value_type(i), map[std::make_pair(ctx, key_type(i))]);
+        EXPECT_EQ(value_type(i), (*map)[key_type(i)]);
     }
 
-    map[std::make_pair(ctx, key_type(resize_threshold + 1))] = value_type(resize_threshold + 1);
-    EXPECT_EQ(resize_threshold + 2, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
+    (*map)[key_type(resize_threshold + 1)] = value_type(resize_threshold + 1);
+    EXPECT_EQ(resize_threshold + 2, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map->capacity());
 
     for (uint64_t i = 0; i < resize_threshold + 1; ++i) {
-        EXPECT_EQ(value_type(i), map[std::make_pair(ctx, key_type(i))]);
+        EXPECT_EQ(value_type(i), (*map)[key_type(i)]);
     }
+
+    map->release();
 }
 
 TYPED_TEST(MapTest, erase) {
     using key_type = typename TypeParam::key_type;
     using value_type = typename TypeParam::value_type;
-    TypeParam map;
-    context_t* ctx = nullptr;
+    auto map = TypeParam::create(&this->TestFixture::arena);
 
     uint64_t resize_threshold = static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
     for (uint64_t i = 0; i <= resize_threshold; ++i) {
-        map[std::make_pair(ctx, key_type(i))] = value_type(i);
+        (*map)[key_type(i)] = value_type(i);
     }
-    EXPECT_EQ(resize_threshold+1, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
+    EXPECT_EQ(resize_threshold+1, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map->capacity());
 
 
     for (uint64_t i = 0; i < resize_threshold + 1; ++i) {
-        EXPECT_EQ(value_type(i), map[std::make_pair(ctx, key_type(i))]);
+        EXPECT_EQ(value_type(i), (*map)[key_type(i)]);
     }
 
-    map[std::make_pair(ctx, key_type(resize_threshold + 1))] = value_type(resize_threshold + 1);
-    EXPECT_EQ(resize_threshold + 2, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
+    (*map)[key_type(resize_threshold + 1)] = value_type(resize_threshold + 1);
+    EXPECT_EQ(resize_threshold + 2, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map->capacity());
 
     for (uint64_t i = 0; i < resize_threshold + 1; ++i) {
-        EXPECT_EQ(value_type(i), map[std::make_pair(ctx, key_type(i))]);
+        EXPECT_EQ(value_type(i), (*map)[key_type(i)]);
     }
 
-    map.erase(ctx, key_type(10));
-    EXPECT_EQ(0, map[std::make_pair(ctx, key_type(10))]);
+    map->erase(key_type(10));
+    EXPECT_EQ(0, (*map)[key_type(10)]);
+
+    map->release();
 }
 
 TYPED_TEST(MapTest, range) {
     using key_type = typename TypeParam::key_type;
     using value_type = typename TypeParam::value_type;
-    TypeParam map;
-    context_t* ctx = nullptr;
+
+    auto map = TypeParam::create(&this->TestFixture::arena);
 
     std::vector<value_type> result_vector;
     result_vector.resize(16);
 
     for (uint64_t i = 0; i < 16; ++i) {
-        map[std::make_pair(ctx, key_type(i))] = value_type(i);
+        (*map)[key_type(i)] = value_type(i);
     }
 
-    uint64_t old_allocations = ::testing::num_allocations;
+    uint64_t old_allocations = TestFixture::num_allocations();
 
-    for (auto& val: map) {
+    for (auto& val: *map) {
         result_vector[val.first] = val.second;
     }
 
     // Ranging over a map should not have caused any allocations.
-    EXPECT_EQ(old_allocations, ::testing::num_allocations);
-
+    EXPECT_EQ(old_allocations, TestFixture::num_allocations());
 
     for (uint64_t i = 0; i < 16; ++i) {
         EXPECT_EQ(result_vector[i], value_type(i));
     }
+
+    map->release();
 }
 
 class non_movable_object {
-    public:
+public:
     non_movable_object() {
         size = 0;
         v = nullptr;
+        arena = nullptr;
     }
 
-    non_movable_object(uint64_t i) {
-        v = gapil_alloc(nullptr, i, 1);
+    non_movable_object(arena_t* a, uint64_t i) {
         size = i;
+        v = gapil_alloc(a, i, 1);
+        arena = a;
     }
 
     non_movable_object& operator=(const non_movable_object& _other) {
         size = _other.size;
-        v = gapil_alloc(nullptr, size, 1);
+        arena = _other.arena;
+        v = gapil_alloc(arena, size, 1);
         return *this;
     }
 
     ~non_movable_object() {
-        gapil_free(nullptr, v);
+        if (arena != nullptr) {
+            gapil_free(arena, v);
+        }
     }
     non_movable_object(const non_movable_object& _other) {
-        v = gapil_alloc(nullptr, _other.size, 1);
+        v = gapil_alloc(_other.arena, _other.size, 1);
     }
-    private:
+
+private:
     void * v;
     uint64_t size;
+    arena_t* arena;
 };
 
-TEST(CppMapTest, constructible_object) {
-    gapil::Map<uint32_t, non_movable_object> map;
-    context_t* ctx = nullptr;
+TEST(CppMapTest, non_movable_object) {
+    core::Arena arena;
+    auto map = gapil::Map<uint32_t, non_movable_object>::create(&arena);
 
+    auto a = reinterpret_cast<arena_t*>(&arena);
 
     uint64_t resize_threshold = static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
     for (uint64_t i = 0; i <= resize_threshold; ++i) {
-        map[std::make_pair(ctx, i)] = non_movable_object(i + 10);
+        (*map)[i] = non_movable_object(a, i + 10);
     }
-    EXPECT_EQ(resize_threshold+1, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
+    EXPECT_EQ(resize_threshold+1, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map->capacity());
 
+    (*map)[resize_threshold + 1] = non_movable_object(a, 10 + resize_threshold + 1);
+    EXPECT_EQ(resize_threshold + 2, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map->capacity());
 
-
-    map[std::make_pair(ctx, resize_threshold + 1)] = non_movable_object(10 + resize_threshold + 1);
-    EXPECT_EQ(resize_threshold + 2, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
+    map->release();
 }
 
 class movable_object {
-    public:
+public:
     movable_object() {
         size = 0;
         v = nullptr;
+        arena = nullptr;
     }
 
-    movable_object(uint64_t i) {
-        v = gapil_alloc(nullptr, i, 1);
+    movable_object(arena_t* a, uint64_t i) {
+        v = gapil_alloc(a, i, 1);
         size = i;
+        arena = a;
     }
 
     movable_object& operator=(movable_object&& _other) {
-        size = _other.size;
         v = _other.v;
-        _other.size = 0;
+        size = _other.size;
+        arena = _other.arena;
         _other.v = nullptr;
+        _other.size = 0;
+        _other.arena = nullptr;
         return *this;
     }
 
     ~movable_object() {
-        gapil_free(nullptr, v);
+        if (arena != nullptr) {
+            gapil_free(arena, v);
+        }
     }
     movable_object(movable_object&& _other) {
         *this = std::move(_other);
     }
 
-    private:
+private:
     void * v;
     uint64_t size;
+    arena_t* arena;
 };
 
 TEST(CppMapTest, movable_object) {
-    gapil::Map<uint32_t, non_movable_object> map;
-    context_t* ctx = nullptr;
+    core::Arena arena;
+    auto map = gapil::Map<uint32_t, movable_object>::create(&arena);
 
+    auto a = reinterpret_cast<arena_t*>(&arena);
 
     uint64_t resize_threshold = static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
     for (uint64_t i = 0; i <= resize_threshold; ++i) {
-        map[std::make_pair(ctx, i)] = non_movable_object(i + 10);
+        (*map)[i] = movable_object(a, i + 10);
     }
-    EXPECT_EQ(resize_threshold+1, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
+    EXPECT_EQ(resize_threshold+1, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map->capacity());
 
+    (*map)[resize_threshold + 1] = movable_object(a, 10 + resize_threshold + 1);
+    EXPECT_EQ(resize_threshold + 2, map->count());
+    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map->capacity());
 
-
-    map[std::make_pair(ctx, resize_threshold + 1)] = non_movable_object(10 + resize_threshold + 1);
-    EXPECT_EQ(resize_threshold + 2, map.count());
-    EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
+    map->release();
 }

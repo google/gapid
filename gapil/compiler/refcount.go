@@ -24,14 +24,14 @@ const debugLogRefCounts = false
 
 type refRel struct {
 	name      string
-	reference codegen.Function // void T_reference(context*, T)
-	release   codegen.Function // void T_release(context*, T)
+	reference codegen.Function // void T_reference(T)
+	release   codegen.Function // void T_release(T)
 }
 
 func (f *refRel) declare(c *compiler, name string, ty codegen.Type) {
 	m := c.module
-	f.reference = m.Function(c.ty.Void, name+"_reference", c.ty.ctxPtr, ty)
-	f.release = m.Function(c.ty.Void, name+"_release", c.ty.ctxPtr, ty)
+	f.reference = m.Function(c.ty.Void, name+"_reference", ty)
+	f.release = m.Function(c.ty.Void, name+"_release", ty)
 	f.name = name
 }
 
@@ -39,10 +39,10 @@ func (f *refRel) build(
 	c *compiler,
 	isNull func(s *scope, val *codegen.Value) *codegen.Value,
 	getRefPtr func(s *scope, val *codegen.Value) *codegen.Value,
-	del func(s *scope, ctx, val *codegen.Value),
+	del func(s *scope, val *codegen.Value),
 ) {
 	c.build(f.reference, func(s *scope) {
-		val := s.Parameter(1)
+		val := s.Parameter(0)
 		s.If(isNull(s, val), func() {
 			s.Return(nil)
 		})
@@ -59,7 +59,7 @@ func (f *refRel) build(
 	})
 
 	c.build(f.release, func(s *scope) {
-		ctx, val := s.Parameter(0), s.Parameter(1)
+		val := s.Parameter(0)
 		s.If(isNull(s, val), func() {
 			s.Return(nil)
 		})
@@ -74,7 +74,7 @@ func (f *refRel) build(
 		}
 		refPtr.Store(newCount)
 		s.If(s.Equal(newCount, s.Scalar(uint32(0))), func() {
-			del(s, ctx, val)
+			del(s, val)
 		})
 	})
 }
@@ -154,9 +154,9 @@ func (c *compiler) buildRefRels() {
 			poolPtr := sli.Extract(slicePool)
 			return poolPtr.Index(0, poolRefCount)
 		},
-		func(s *scope, ctx, sli *codegen.Value) {
+		func(s *scope, sli *codegen.Value) {
 			poolPtr := sli.Extract(slicePool)
-			s.Call(c.callbacks.freePool, ctx, poolPtr)
+			s.Call(c.callbacks.freePool, poolPtr)
 		})
 
 	str := r[semantic.StringType]
@@ -167,8 +167,8 @@ func (c *compiler) buildRefRels() {
 		func(s *scope, strPtr *codegen.Value) *codegen.Value {
 			return strPtr.Index(0, stringRefCount)
 		},
-		func(s *scope, ctx, strPtr *codegen.Value) {
-			s.Call(c.callbacks.freeString, ctx, strPtr)
+		func(s *scope, strPtr *codegen.Value) {
+			s.Call(c.callbacks.freeString, strPtr)
 		})
 
 	for apiTy, funcs := range r {
@@ -189,9 +189,10 @@ func (c *compiler) buildRefRels() {
 					func(s *scope, refPtr *codegen.Value) *codegen.Value {
 						return refPtr.Index(0, refRefCount)
 					},
-					func(s *scope, ctx, refPtr *codegen.Value) {
+					func(s *scope, refPtr *codegen.Value) {
 						c.release(s, refPtr.Index(0, refValue).Load(), apiTy.To)
-						c.free(s, refPtr)
+						arena := refPtr.Index(0, refArena).Load().SetName("arena")
+						c.free(s, arena, refPtr)
 					})
 
 			case *semantic.Map:
@@ -202,9 +203,10 @@ func (c *compiler) buildRefRels() {
 					func(s *scope, mapPtr *codegen.Value) *codegen.Value {
 						return mapPtr.Index(0, mapRefCount)
 					},
-					func(s *scope, ctx, mapPtr *codegen.Value) {
-						s.Call(c.ty.maps[apiTy].Clear, s.ctx, mapPtr)
-						c.free(s, mapPtr)
+					func(s *scope, mapPtr *codegen.Value) {
+						s.Call(c.ty.maps[apiTy].Clear, mapPtr)
+						arena := mapPtr.Index(0, mapArena).Load().SetName("arena")
+						c.free(s, arena, mapPtr)
 					})
 
 			case *semantic.Class:
@@ -216,13 +218,13 @@ func (c *compiler) buildRefRels() {
 				}
 
 				c.build(funcs.reference, func(s *scope) {
-					ptr := s.Parameter(1)
+					ptr := s.Parameter(0)
 					for _, f := range refFields {
 						c.reference(s, ptr.Extract(f.Name()), f.Type)
 					}
 				})
 				c.build(funcs.release, func(s *scope) {
-					ptr := s.Parameter(1)
+					ptr := s.Parameter(0)
 					for _, f := range refFields {
 						c.release(s, ptr.Extract(f.Name()), f.Type)
 					}
@@ -236,13 +238,13 @@ func (c *compiler) buildRefRels() {
 
 func (c *compiler) reference(s *scope, val *codegen.Value, ty semantic.Type) {
 	if f, ok := c.refRels[semantic.Underlying(ty)]; ok {
-		s.Call(f.reference, s.ctx, val)
+		s.Call(f.reference, val)
 	}
 }
 
 func (c *compiler) release(s *scope, val *codegen.Value, ty semantic.Type) {
 	if f, ok := c.refRels[semantic.Underlying(ty)]; ok {
-		s.Call(f.release, s.ctx, val)
+		s.Call(f.release, val)
 	}
 }
 

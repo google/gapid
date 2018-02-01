@@ -27,7 +27,7 @@ type scope struct {
 	ctx         *codegen.Value // ExecutionContext*
 	location    *codegen.Value // u32*
 	globals     *codegen.Value // globals*
-	appPool     *codegen.Value // Pool*
+	arena       *codegen.Value // arena*
 	locationIdx int
 	onExitLogic []func()
 }
@@ -46,7 +46,7 @@ func (s *scope) enter(f func(s *scope)) {
 		ctx:        s.ctx,
 		location:   s.location,
 		globals:    s.globals,
-		appPool:    s.appPool,
+		arena:      s.arena,
 	}
 
 	f(child)
