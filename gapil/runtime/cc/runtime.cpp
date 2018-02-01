@@ -23,6 +23,8 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
+#include <cstring>
+
 #if 1
 #include <cstdio> // printf debug
 #define DEBUG_PRINT(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
