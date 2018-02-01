@@ -19,6 +19,7 @@ package encoder
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/cases"
@@ -26,8 +27,6 @@ import (
 	"github.com/google/gapid/gapil/compiler/mangling"
 	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/gapil/serialization"
-
-	"github.com/golang/protobuf/proto"
 )
 
 const (

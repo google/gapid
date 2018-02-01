@@ -46,23 +46,9 @@
   #include <vector>
 ¶
   #include <stdint.h>
-
-  // Forward declarations
-  namespace google {«
-  namespace protobuf {«
-  class Message;
-  »}
-  »}
-  namespace {{Global "API"}} {«
-  class State;
-  {{range $c := $.Classes}}
-    {{if not (GetAnnotation $c "noserialize")}} class {{$c.Name}}; {{end}}
-  {{end}}
-  »}
+  #include <string.h>
 ¶
   namespace gapii {«
-  class ToProtoContext;
-¶
   class CallObserver;
 ¶
   {{range $c := $.Classes}}
@@ -158,9 +144,6 @@
   {{$name := Macro "C++.Type" $}}
   class {{$name}} {
     «public:»
-    {{if $serializable}}
-      typedef {{Global "API"}}::{{$name}} ProtoType;
-    {{end}}
 
     {{if len $.Fields}}
       explicit {{$name}}(core::Arena*);
@@ -181,8 +164,7 @@
     {{end}}
 
     {{if $serializable}}
-      ::google::protobuf::Message* toProto() const;
-      void toProto(ProtoType* out, ToProtoContext& pbCtx) const;
+      void* encode(void* encoder, bool is_group) const;
     {{end}}
 ¶
     {{range $f := $.Fields}}
@@ -211,10 +193,6 @@
 
   class {{$name}} {
     «public:»
-    typedef {{Global "API"}}::State ProtoType;
-
-    ::google::protobuf::Message* toProto() const;
-    void toProto(ProtoType* out, ToProtoContext& pbCtx) const;
 
     explicit {{$name}}(core::Arena*);
 
@@ -297,7 +275,7 @@
   {{if not (GetAnnotation $ "pfn")}}
 ¶
     struct {{$name}} {
-      ::google::protobuf::Message* toProto() const;
+      void* encode(void* encoder, bool is_group) const;
 ¶
       uint64_t thread;¶
       {{range $p := $.CallParameters}}
@@ -307,7 +285,8 @@
     };
     {{if not (IsVoid $.Return.Type)}}¶
       struct {{$name}}Call {
-         ::google::protobuf::Message* toProto() const;
+        void* encode(void* encoder, bool is_group) const;
+¶
         {{Template "C++.Type" $.Return.Type}} result;
       };
     {{end}}

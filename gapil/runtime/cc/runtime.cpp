@@ -32,7 +32,7 @@
 
 #include <cstring>
 
-#if TARGET_OS == GAPID_OS_WINDOWS
+#if 0
 #define DEBUG_PRINT(...) GAPID_DEBUG(__VA_ARGS__)
 #else
 #define DEBUG_PRINT(...)

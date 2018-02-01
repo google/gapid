@@ -27,7 +27,7 @@ struct gvr_mat4_abi : core::CStaticArray<float, 16> {};
 gvr_mat4f::gvr_mat4f(gvr_mat4_abi const& abi) : mm(abi) {}
 gvr_mat4f::operator gvr_mat4_abi() const {
     gvr_mat4_abi out;
-    memcpy(&out, this, sizeof(out));
+    memcpy(&out, &this->mm, sizeof(out));
     return out;
 }
 
