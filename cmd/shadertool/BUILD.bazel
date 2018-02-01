@@ -29,6 +29,5 @@ go_library(
 go_binary(
     name = "shadertool",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/shadertool",
     visibility = ["//visibility:public"],
 )

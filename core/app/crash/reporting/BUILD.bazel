@@ -33,7 +33,6 @@ go_test(
         "filter_stack_test.go",
     ],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/core/app/crash/reporting",
     deps = [
         "//core/assert:go_default_library",
         "//core/log:go_default_library",

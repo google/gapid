@@ -52,6 +52,5 @@ go_test(
     ],
     data = glob(["testdata/*"]),
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/core/os/android/binaryxml",
     deps = ["//core/assert:go_default_library"],
 )

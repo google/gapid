@@ -48,7 +48,6 @@ go_test(
         ],
         "//conditions:default": [],
     }),
-    importpath = "github.com/google/gapid/core/os/shell/stub_test",
     deps = select({
         "@io_bazel_rules_go//go/platform:darwin": [
             ":go_default_library",

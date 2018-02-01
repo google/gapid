@@ -54,5 +54,4 @@ go_test(
         "strings_test.go",
     ],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/gapil/template",
 )

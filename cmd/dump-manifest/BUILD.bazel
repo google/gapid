@@ -28,6 +28,5 @@ go_library(
 go_binary(
     name = "dump-manifest",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/dump-manifest",
     visibility = ["//visibility:public"],
 )

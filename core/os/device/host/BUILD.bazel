@@ -45,7 +45,6 @@ go_library(
 go_test(
     name = "go_default_xtest",
     srcs = ["host_test.go"],
-    importpath = "github.com/google/gapid/core/os/device/host_test",
     tags = ["manual"],  # TODO: XOpenDisplay returned nullptr
     deps = [
         ":go_default_library",

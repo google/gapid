@@ -44,6 +44,5 @@ go_library(
 go_binary(
     name = "gapis",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/gapis",
     visibility = ["//visibility:public"],
 )

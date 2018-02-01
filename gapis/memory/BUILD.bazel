@@ -67,7 +67,6 @@ go_test(
         "write_test.go",
     ],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/gapis/memory",
     deps = [
         "//core/assert:go_default_library",
         "//core/data/endian:go_default_library",

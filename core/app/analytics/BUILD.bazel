@@ -29,6 +29,5 @@ go_test(
     name = "go_default_test",
     srcs = ["analytics_test.go"],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/core/app/analytics",
     deps = ["//core/log:go_default_library"],
 )

@@ -65,7 +65,6 @@ go_test(
         "rgba_f32_test.go",
     ],
     data = glob(["test_data/*"]),
-    importpath = "github.com/google/gapid/core/image_test",
     deps = [
         ":go_default_library",
         "//core/data/endian:go_default_library",

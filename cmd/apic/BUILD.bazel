@@ -41,6 +41,5 @@ go_library(
 go_binary(
     name = "apic",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/apic",
     visibility = ["//visibility:public"],
 )

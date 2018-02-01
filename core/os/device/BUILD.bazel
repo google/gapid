@@ -31,9 +31,6 @@ go_library(
         "linux.go",
         "osx.go",
     ],
-    cdeps = [
-        "//core/os/device/deviceinfo/cc:cc",
-    ],
     embed = [":device_go_proto"],
     importpath = "github.com/google/gapid/core/os/device",
     visibility = ["//visibility:public"],
@@ -55,7 +52,6 @@ go_test(
         "linux_test.go",
         "osx_test.go",
     ],
-    importpath = "github.com/google/gapid/core/os/device_test",
     tags = ["manual"],  # TODO: This is only while it requires the x display
     deps = [
         ":go_default_library",

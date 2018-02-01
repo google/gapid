@@ -42,7 +42,6 @@ go_test(
     size = "small",
     srcs = ["reader_test.go"],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/core/text/parse",
     deps = ["//core/assert:go_default_library"],
 )
 
@@ -50,7 +49,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["parser_test.go"],
-    importpath = "github.com/google/gapid/core/text/parse_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

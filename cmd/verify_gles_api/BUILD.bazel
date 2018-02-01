@@ -34,6 +34,5 @@ go_library(
 go_binary(
     name = "verify_gles_api",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/verify_gles_api",
     visibility = ["//visibility:public"],
 )

@@ -65,7 +65,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["jdwp_test.go"],
-    importpath = "github.com/google/gapid/core/java/jdwp_test",
     tags = ["integration"],
     deps = [
         ":go_default_library",

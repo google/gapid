@@ -41,7 +41,6 @@ go_library(
 go_test(
     name = "go_default_xtest",
     srcs = ["pack_test.go"],
-    importpath = "github.com/google/gapid/core/data/pack_test",
     tags = ["manual"],  # TODO: something to do with undefined: testprotos.MsgA
     deps = [
         ":go_default_library",

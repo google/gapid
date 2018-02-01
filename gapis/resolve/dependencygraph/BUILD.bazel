@@ -54,7 +54,6 @@ go_test(
     name = "go_default_test",
     srcs = ["footprint_test.go"],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/gapis/resolve/dependencygraph",
     deps = [
         "//core/assert:go_default_library",
         "//core/log:go_default_library",

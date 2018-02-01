@@ -38,7 +38,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["jdbg_test.go"],
-    importpath = "github.com/google/gapid/core/java/jdbg_test",
     tags = ["integration"],
     deps = [
         ":go_default_library",

@@ -49,7 +49,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["resolve_test.go"],
-    importpath = "github.com/google/gapid/gapil/resolver_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

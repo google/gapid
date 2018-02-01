@@ -30,6 +30,5 @@ go_library(
 go_binary(
     name = "pullapk",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/pullapk",
     visibility = ["//visibility:public"],
 )

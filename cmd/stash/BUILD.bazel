@@ -40,6 +40,5 @@ go_library(
 go_binary(
     name = "stash",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/stash",
     visibility = ["//visibility:public"],
 )

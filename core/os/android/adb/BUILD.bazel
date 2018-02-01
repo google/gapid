@@ -59,7 +59,6 @@ go_test(
         "logcat_test.go",
         "screen_test.go",
     ],
-    importpath = "github.com/google/gapid/core/os/android/adb_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

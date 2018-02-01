@@ -31,7 +31,6 @@ go_test(
     size = "small",
     srcs = ["u64_test.go"],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/core/math/interval",
     deps = [
         "//core/assert:go_default_library",
         "//core/log:go_default_library",

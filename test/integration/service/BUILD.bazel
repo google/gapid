@@ -24,7 +24,6 @@ go_library(
 go_test(
     name = "go_default_xtest",
     srcs = ["service_test.go"],
-    importpath = "github.com/google/gapid/test/integration/service_test",
     tags = [
         "integration",
         "manual",  # TODO: Needs access to a working gl driver

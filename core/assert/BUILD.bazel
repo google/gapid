@@ -52,6 +52,5 @@ go_test(
         "time_test.go",
         "value_test.go",
     ],
-    importpath = "github.com/google/gapid/core/assert_test",
     deps = [":go_default_library"],
 )

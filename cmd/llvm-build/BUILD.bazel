@@ -24,6 +24,5 @@ go_library(
 go_binary(
     name = "llvm-build",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/llvm-build",
     visibility = ["//visibility:public"],
 )

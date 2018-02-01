@@ -84,6 +84,5 @@ go_binary(
     #data = [
     #    "//:install-runtime",
     #],
-    importpath = "github.com/google/gapid/cmd/gapit",
     visibility = ["//visibility:public"],
 )

@@ -77,7 +77,6 @@ go_test(
         ],
         "//conditions:default": [],
     }),
-    importpath = "github.com/google/gapid/core/os/file_test",
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

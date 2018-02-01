@@ -66,6 +66,5 @@ go_library(
 go_binary(
     name = "robot",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/robot",
     visibility = ["//visibility:public"],
 )

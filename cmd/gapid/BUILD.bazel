@@ -61,7 +61,6 @@ go_library(
 go_binary(
     name = "gapid",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/cmd/gapid",
     gc_linkopts = select({
         "//tools/build:windows": ["-H", "windowsgui"],
         "//conditions:default": [],

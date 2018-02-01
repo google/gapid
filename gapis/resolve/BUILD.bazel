@@ -95,7 +95,6 @@ go_test(
         "state_tree_test.go",
     ],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/gapis/resolve",
     deps = [
         "//core/assert:go_default_library",
         "//core/data/id:go_default_library",

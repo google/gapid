@@ -38,6 +38,5 @@ go_library(
 go_binary(
     name = "simplecalc",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/test/robot/lingo/examples/simplecalc",
     visibility = ["//visibility:public"],
 )

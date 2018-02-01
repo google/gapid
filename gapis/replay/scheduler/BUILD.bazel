@@ -29,7 +29,6 @@ go_test(
     name = "go_default_test",
     srcs = ["scheduler_test.go"],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/gapis/replay/scheduler",
     deps = [
         "//core/assert:go_default_library",
         "//core/event/task:go_default_library",

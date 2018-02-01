@@ -29,7 +29,6 @@ go_test(
     name = "go_default_test",
     srcs = ["crunch_test.go"],
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/core/fault/stacktrace/crunch",
     deps = [
         "//core/assert:go_default_library",
         "//core/data/binary:go_default_library",

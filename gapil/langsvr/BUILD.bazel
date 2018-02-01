@@ -45,6 +45,5 @@ go_library(
 go_binary(
     name = "langsvr",
     embed = [":go_default_library"],
-    importpath = "github.com/google/gapid/gapil/langsvr",
     visibility = ["//visibility:public"],
 )
