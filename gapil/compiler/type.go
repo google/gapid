@@ -21,7 +21,7 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
-//#include "gapil/compiler/cc/builtins.h"
+//#include "gapil/runtime/cc/runtime.h"
 import "C"
 
 type types struct {

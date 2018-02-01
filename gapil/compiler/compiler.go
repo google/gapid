@@ -31,7 +31,7 @@ import (
 //#define QUOTE(x) #x
 //#define DECL_GAPIL_CALLBACK(RETURN, NAME, ...) \
 //	const char* NAME##_sig = QUOTE(RETURN NAME(__VA_ARGS__));
-//#include "gapil/compiler/cc/builtins.h"
+//#include "gapil/runtime/cc/runtime.h"
 import "C"
 
 type Settings struct {

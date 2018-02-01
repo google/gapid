@@ -10,7 +10,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/api/executor/testexterns",
     visibility = ["//visibility:public"],
     cdeps = [
-        "//gapil/compiler/cc",
+        "//gapil/runtime/cc",
     ],
     deps = [
         "//gapis/api/executor:go_default_library",
