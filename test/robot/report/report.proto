@@ -53,8 +53,8 @@ message Output{
   string log = 1;
   // Report is the stash id of the generated report file.
   string report = 2;
-  // CallError is the error string returned by the call to gapit.
-  string call_error = 3;
+  // Err is the stderr buffer returned by the call to gapit.
+  string err = 3;
 }
 
 // Action holds the information about an execution of a task.
