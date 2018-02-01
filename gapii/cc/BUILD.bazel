@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "android_dynamic_library", "apic_template", "cc_copts", "cc_dynamic_library")
+load("//tools/build:rules.bzl", "android_dynamic_library", "apic_compile", "apic_template", "cc_copts", "cc_dynamic_library")
 
 apic_template(
-    name = "gles",
+    name = "gles_templated",
     api = "//gapis/api/gles:api",
     templates = [
         "//gapis/api/templates:api_imports.h",
@@ -28,8 +28,16 @@ apic_template(
     ],
 )
 
+apic_compile(
+    name = "gles_compiled",
+    api = "//gapis/api/gles:api", # TODO: Let apic handle multiple api files in one compile.
+#    optimize = True,
+    emit = ["encode"],
+    namespace = "gapii",
+)
+
 apic_template(
-    name = "vulkan",
+    name = "vulkan_templated",
     api = "//gapis/api/vulkan:api",
     templates = [
         "//gapis/api/templates:api_imports.h",
@@ -42,9 +50,16 @@ apic_template(
         "//gapis/api/vulkan/templates:vk_spy_helpers.cpp",
     ],
 )
+apic_compile(
+    name = "vulkan_compiled",
+    api = "//gapis/api/vulkan:api", # TODO: Let apic handle multiple api files in one compile.
+#    optimize = True,
+    emit = ["encode"],
+    namespace = "gapii",
+)
 
 apic_template(
-    name = "gvr",
+    name = "gvr_templated",
     api = "//gapis/api/gvr:api",
     templates = [
         "//gapis/api/templates:api_imports.h",
@@ -56,6 +71,14 @@ apic_template(
         "//gapis/api/gvr/templates:api_exports.h",
         "//gapis/api/gvr/templates:api_imports.cpp",
     ],
+)
+
+apic_compile(
+    name = "gvr_compiled",
+    api = "//gapis/api/gvr:api", # TODO: Let apic handle multiple api files in one compile.
+#    optimize = True,
+    emit = ["encode"],
+    namespace = "gapii",
 )
 
 apic_template(
@@ -108,10 +131,11 @@ cc_library(
             "android/*.h",
         ]) + [":gvr_install"],
     }) + [
-        ":gles",
-        ":gvr",
-        ":vulkan",
+        ":gles_templated", ":gles_compiled",
+        ":gvr_templated", ":gvr_compiled",
+        ":vulkan_templated", ":vulkan_compiled",
     ],
+    alwayslink = True,
     copts = cc_copts() + select({
         "//tools/build:windows": ["-Wa,-mbig-obj"],
         "//conditions:default": [],
@@ -128,6 +152,7 @@ cc_library(
         "//conditions:default": [
             "-llog",
             "-lm",
+            "-Wl,--no-undefined",
         ],
     }),
     visibility = ["//visibility:public"],
@@ -138,9 +163,7 @@ cc_library(
         "//core/os/device/deviceinfo/cc",
         "//gapil/runtime/cc",
         "//gapis/api:api_cc_proto",
-        "//gapis/api/gles/gles_pb:gles_pb_cc_proto",
-        "//gapis/api/gvr/gvr_pb:gvr_pb_cc_proto",
-        "//gapis/api/vulkan/vulkan_pb:vulkan_pb_cc_proto",
+        "//gapis/api/gles/gles_pb:extras_cc_proto",
         "//gapis/capture:capture_cc_proto",
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
         "@com_google_protobuf//:protobuf",

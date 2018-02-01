@@ -441,7 +441,7 @@ gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer
   extra->mSeparable                   = p->mSeparable;
   extra->mBinaryRetrievableHint       = p->mBinaryRetrievableHint;
 
-  observer->encodeAndDelete(extra->toProto());
+  observer->encode(*extra.get());
   return std::move(extra);
 }
 
@@ -466,7 +466,7 @@ gapil::Ref<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(CallObserver* obse
   extra->mSource = p->mSource;
   extra->mBinary = binary;
 
-  observer->encodeAndDelete(extra->toProto());
+  observer->encode(*extra.get());
   return std::move(extra);
 }
 
@@ -487,7 +487,7 @@ gapil::Ref<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(CallObserver* 
   mImports.glGetProgramInfoLog(program, buffer.size(), &infoLogLength, buffer.data());
   extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
-  observer->encodeAndDelete(extra->toProto());
+  observer->encode(*extra.get());
   return std::move(extra);
 }
 
@@ -508,7 +508,7 @@ gapil::Ref<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelineExtr
   mImports.glGetProgramPipelineInfoLog(pipe, buffer.size(), &infoLogLength, buffer.data());
   extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
-  observer->encodeAndDelete(extra->toProto());
+  observer->encode(*extra.get());
 
   return std::move(extra);
 }
@@ -559,7 +559,7 @@ gapil::Ref<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(CallOb
     GAPID_INFO("Created AndroidNativeBufferExtra: os_version:%i, width=%i, height=%i, layers=%" PRIx64,
         (int)android_version_major, buffer->width, buffer->height, (uint64_t)buffer->layer_count);
 
-    observer->encodeAndDelete(extra->toProto());
+    observer->encode(*extra.get());
     return extra;
 #else
     return nullptr;
