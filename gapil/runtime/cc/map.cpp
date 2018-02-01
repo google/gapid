@@ -27,6 +27,7 @@ template<typename K, typename V>
 bool Map<K, V>::contains(context_t* ctx, K key) {
     return index(ctx, key, false) != nullptr;
 }
+
 template<typename K, typename V>
 V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
     auto hasher = std::hash<K>{};

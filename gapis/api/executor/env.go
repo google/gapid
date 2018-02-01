@@ -62,7 +62,7 @@ type Env struct {
 	id      envID
 	exec    *Executor
 	arena   arena.Arena
-	cCtx    *C.exec_context // The gapil C context.
+	cCtx    *C.context      // The gapil C context.
 	goCtx   context.Context // The go context.
 	cmd     api.Cmd         // The currently executing command.
 	buffers buffers
@@ -107,12 +107,10 @@ func (e *Executor) NewEnv(ctx context.Context, capture *capture.Capture) *Env {
 		id = nextEnvID
 		nextEnvID++
 
-		a := arena.New()
 		env = &Env{
 			Globals: make([]byte, e.exec.SizeOf(e.program.Globals.Type)),
 			id:      envID(id),
 			exec:    e,
-			arena:   a,
 		}
 		envs[id] = env
 	}()
@@ -123,10 +121,9 @@ func (e *Executor) NewEnv(ctx context.Context, capture *capture.Capture) *Env {
 		globals = (unsafe.Pointer)(&env.Globals[0])
 	}
 	env.goCtx = ctx
-	env.cCtx = C.create_context(
-		C.uint32_t(id),
-		(*C.globals)(globals),
-		(*C.arena)(env.arena.Pointer))
+	env.cCtx = C.create_context(C.uint32_t(id), (*C.globals)(globals))
+
+	env.arena = arena.Arena{Pointer: unsafe.Pointer(env.cCtx.arena)}
 
 	C.init_context(env.cCtx, (*C.TInit)(e.initFunction))
 	env.goCtx = nil
@@ -224,27 +221,9 @@ func gapil_remap_pointer(c *C.context, ptr, length uint64) unsafe.Pointer {
 func gapil_get_code_location(c *C.context, file **C.char, line *C.uint32_t) {
 	e := env(c)
 	l := compiler.Location{File: "<unknown>"}
-	if loc := int(e.cCtx.ctx.location); loc < len(e.exec.program.Locations) {
+	if loc := int(e.cCtx.location); loc < len(e.exec.program.Locations) {
 		l = e.exec.program.Locations[loc]
 	}
 	*file = C.CString(l.File)
 	*line = (C.uint32_t)(l.Line)
 }
-
-/*
-//export gapil_call_extern
-func gapil_call_extern(c *C.context, cname *C.char, args, res unsafe.Pointer) {
-	e := env(c)
-	name := C.GoString(cname)
-	extern, ok := e.Executor.Externs[name]
-	if !ok {
-		panic("callExtern called with unknown extern: " + name)
-	}
-	log := ctx.log()
-	if e.binding == nil {
-		log.Error().Logf("callExtern called unbound extern '%v'", name)
-		return
-	}
-	extern.binding(log, ctx, args, res)
-}
-*/

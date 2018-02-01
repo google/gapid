@@ -16,10 +16,16 @@ load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "cc",
-    hdrs = glob(["*.h"]),
-    srcs = ["map.cpp"],
+    srcs = ["runtime.cpp"],
+    hdrs = [
+        "runtime.h",
+        "map.h",
+    ],
     copts = cc_copts(),
     visibility = ["//visibility:public"],
+    deps = [
+        "//core/memory/arena/cc",
+    ],
 )
 
 cc_library(

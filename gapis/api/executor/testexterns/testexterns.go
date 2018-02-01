@@ -20,7 +20,7 @@ import (
 	"github.com/google/gapid/gapis/api/executor"
 )
 
-//#include "gapil/compiler/cc/builtins.h"
+//#include "gapil/runtime/cc/runtime.h"
 import "C"
 
 var (

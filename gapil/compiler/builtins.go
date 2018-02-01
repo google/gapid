@@ -15,10 +15,10 @@
 package compiler
 
 ////////////////////////////////////////////////////////////////////////////////
-// All types in this file need to match those in gapil/compiler/cc/builtins.h //
+// All types in this file need to match those in  gapil/runtime/cc/runtime.h  //
 ////////////////////////////////////////////////////////////////////////////////
 
-//#include "gapil/compiler/cc/builtins.h"
+//#include "gapil/runtime/cc/runtime.h"
 import "C"
 
 type ErrorCode uint32

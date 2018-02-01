@@ -22,7 +22,7 @@ cc_library(
     visibility = ["//visibility:private"],
     deps = [
         "//core/memory/arena/cc",
-        "//gapil/compiler/cc",
+        "//gapil/runtime/cc",
     ],
 )
 

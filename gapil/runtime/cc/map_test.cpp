@@ -23,7 +23,6 @@ class MapTest : public ::testing::Test {
         EXPECT_EQ(0, testing::allocated_bytes);
         EXPECT_EQ(0, testing::num_allocations);
     }
-
 };
 
 using MapTestTypes = ::testing::Types<

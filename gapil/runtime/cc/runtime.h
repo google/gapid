@@ -1,5 +1,25 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <stdint.h>
 #include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+typedef struct arena_t   arena;
 typedef struct pool_t    pool;
 typedef struct globals_t globals;
 typedef struct string_t  string;
@@ -20,6 +40,7 @@ typedef struct context_t {
 	uint32_t    id;
 	uint32_t    location;
 	globals*    globals;
+	arena*      arena;
 	pool*       app_pool;
 	string*     empty_string;
 } context;
@@ -49,6 +70,9 @@ typedef struct map_t {
 	void*    elements;
 } map;
 
+void gapil_init_context(context* ctx);
+void gapil_term_context(context* ctx);
+
 #ifndef DECL_GAPIL_CALLBACK
 #define DECL_GAPIL_CALLBACK(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
 #endif
@@ -73,3 +97,7 @@ DECL_GAPIL_CALLBACK(void,    gapil_call_extern,       context* ctx, string* name
 DECL_GAPIL_CALLBACK(void,    gapil_logf,              context* ctx, uint8_t severity, uint8_t* fmt, ...);
 
 #undef DECL_GAPIL_CALLBACK
+
+#ifdef __cplusplus
+} // extern "C"
+#endif // __cplusplus
