@@ -25,54 +25,82 @@
 namespace gapil {
 
 template<typename K, typename V>
-Map<K, V>* Map<K, V>::create(core::Arena* a) {
+Map<K, V>::Map(core::Arena* a) {
     GAPID_ASSERT_MSG(a != nullptr, "arena must not be null");
-    auto buf = a->allocate(sizeof(Map<K, V>), alignof(Map<K, V>));
-    auto map = reinterpret_cast<Map<K, V>*>(buf);
-    map->map_t::arena = reinterpret_cast<arena_t*>(a);
-    map->map_t::capacity = 0;
-    map->map_t::count = 0;
-    map->map_t::elements = nullptr;
-    map->map_t::ref_count = 1;
-    return map;
+    ptr = a->create<Map<K, V>::Allocation>();
+    ptr->arena = reinterpret_cast<arena_t*>(a);
+    ptr->capacity = 0;
+    ptr->count = 0;
+    ptr->elements = nullptr;
+    ptr->ref_count = 1;
 }
 
 template<typename K, typename V>
-inline void Map<K, V>::reference() {
-    GAPID_ASSERT_MSG(map_t::ref_count > 0, "Attempting to reference deleted map");
-    map_t::ref_count++;
+Map<K, V>::Map(const Map<K, V>& s) {
+    ptr = s.ptr;
+    ptr->ref_count++;
 }
 
 template<typename K, typename V>
-inline void Map<K, V>::release() {
-    GAPID_ASSERT_MSG(map_t::ref_count > 0, "Attempting to release deleted map");
-    map_t::ref_count--;
-    if (map_t::ref_count > 0) {
+Map<K, V>::Map(Map<K, V>&& s) {
+    ptr = s.ptr;
+    s.ptr = nullptr;
+}
+
+template<typename K, typename V>
+Map<K, V>::~Map() {
+    if (ptr != nullptr) { // note: nullptr is only valid in the case of a move
+        ptr->release();
+    }
+}
+
+template<typename K, typename V>
+Map<K, V>& Map<K, V>::operator = (const Map<K, V>& other) {
+    GAPID_ASSERT_MSG(other.ptr->ref_count > 0, "attempting to reference freed map");
+    if (ptr != other.ptr) {
+        ptr->release();
+        ptr = other.ptr;
+        ptr->reference();
+    }
+    return *this;
+}
+
+template<typename K, typename V>
+inline void Map<K, V>::Allocation::reference() {
+    GAPID_ASSERT_MSG(ref_count > 0, "Attempting to reference deleted map");
+    ref_count++;
+}
+
+template<typename K, typename V>
+inline void Map<K, V>::Allocation::release() {
+    GAPID_ASSERT_MSG(ref_count > 0, "Attempting to release deleted map");
+    ref_count--;
+    if (ref_count > 0) {
         return;
     }
-    auto arena = reinterpret_cast<core::Arena*>(map_t::arena);
-    if (map_t::elements != nullptr) {
-        arena->free(map_t::elements);
+    auto arena = reinterpret_cast<core::Arena*>(this->arena);
+    if (elements != nullptr) {
+        arena->free(elements);
     }
     arena->free(this);
 }
 
 template<typename K, typename V>
-bool Map<K, V>::contains(K key) {
+bool Map<K, V>::Allocation::contains(K key) {
     return index(key, false) != nullptr;
 }
 
 template<typename K, typename V>
-V* Map<K, V>::index(K key, bool insert) {
+V* Map<K, V>::Allocation::index(K key, bool insert) {
     auto hasher = std::hash<K>{};
     auto eq = std::equal_to<K>{};
     uint64_t hash = hasher(key);
 
-    auto elems = elements();
+    auto elems = els();
 
-    for (uint64_t i = 0; i < map_t::capacity; ++i) {
+    for (uint64_t i = 0; i < capacity; ++i) {
         bool leave = false;
-        uint64_t lookup_pos = (hash + i) % map_t::capacity;
+        uint64_t lookup_pos = (hash + i) % capacity;
         switch(elems[lookup_pos].used) {
             case GAPIL_MAP_ELEMENT_EMPTY:
                 leave = true;
@@ -92,9 +120,9 @@ V* Map<K, V>::index(K key, bool insert) {
     // storageBucket assumes there is at least one open cell.
     // Make sure before you run this, that is the case.
     auto storageBucket = [&](uint64_t h) {
-        auto elems = elements();
-        for (uint64_t i = 0; i < map_t::capacity; ++i) {
-            uint64_t x = (h + i) %  map_t::capacity;
+        auto elems = els();
+        for (uint64_t i = 0; i < capacity; ++i) {
+            uint64_t x = (h + i) %  capacity;
             if (elems[x].used != GAPIL_MAP_ELEMENT_FULL) {
                 return x;
             }
@@ -103,26 +131,26 @@ V* Map<K, V>::index(K key, bool insert) {
     };
 
     if (insert) {
-        bool resize = (map_t::elements == nullptr);
-        resize = resize || ((float)map_t::count / (float)map_t::capacity) > GAPIL_MAP_MAX_CAPACITY;
+        bool resize = (elements == nullptr);
+        resize = resize || ((float)count / (float)capacity) > GAPIL_MAP_MAX_CAPACITY;
 
         if (resize) {
-            if (map_t::elements == nullptr) {
-                map_t::capacity = GAPIL_MIN_MAP_SIZE;
-                map_t::elements = gapil_alloc(map_t::arena, sizeof(element) * GAPIL_MIN_MAP_SIZE, alignof(V));
-                for (uint64_t i = 0; i < map_t::capacity; ++i) {
-                    elements()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
+            if (elements == nullptr) {
+                capacity = GAPIL_MIN_MAP_SIZE;
+                elements = gapil_alloc(arena, sizeof(element) * GAPIL_MIN_MAP_SIZE, alignof(V));
+                for (uint64_t i = 0; i < capacity; ++i) {
+                    this->els()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                  }
             } else {
-                 auto oldElements = elements();
-                 auto oldCapacity = map_t::capacity;
+                 auto oldElements = this->els();
+                 auto oldCapacity = capacity;
 
-                 map_t::capacity = map_t::capacity * GAPIL_MAP_GROW_MULTIPLIER;
-                 map_t::elements = gapil_alloc(map_t::arena, sizeof(element) * map_t::capacity, alignof(V));
-                 for (uint64_t i = 0; i < map_t::capacity; ++i) {
-                    elements()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
+                 capacity = capacity * GAPIL_MAP_GROW_MULTIPLIER;
+                 elements = gapil_alloc(arena, sizeof(element) * capacity, alignof(V));
+                 for (uint64_t i = 0; i < capacity; ++i) {
+                    els()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                  }
-                 auto new_elements = elements();
+                 auto new_elements = els();
                  for (uint64_t i = 0; i < oldCapacity; ++i) {
                      if (oldElements[i].used == GAPIL_MAP_ELEMENT_FULL) {
                         uint64_t bucket_location = storageBucket(hasher(oldElements[i].first));
@@ -133,37 +161,37 @@ V* Map<K, V>::index(K key, bool insert) {
                         oldElements[i].first.~K();
                      }
                  }
-                 gapil_free(map_t::arena, oldElements);
+                 gapil_free(arena, oldElements);
              }
         }
 
         uint64_t bucket_location = storageBucket(hasher(key));
-        new(&elements()[bucket_location].second) V();
-        new(&elements()[bucket_location].first) K(key);
-        elements()[bucket_location].used = GAPIL_MAP_ELEMENT_FULL;
-        map_t::count++;
+        new(&els()[bucket_location].second) V();
+        new(&els()[bucket_location].first) K(key);
+        els()[bucket_location].used = GAPIL_MAP_ELEMENT_FULL;
+        count++;
 
-        return &elements()[bucket_location].second;
+        return &els()[bucket_location].second;
     }
 
     return nullptr;
 }
 
 template<typename K, typename V>
-V Map<K, V>::lookup(K key) {
+V Map<K, V>::Allocation::lookup(K key) {
     V* v = index(key, false);
     return *v;
 }
 
 template<typename K, typename V>
-void Map<K, V>::remove(K key) {
+void Map<K, V>::Allocation::remove(K key) {
     auto hasher = std::hash<K>{};
     auto eq = std::equal_to<K>{};
     uint64_t hash = hasher(key);
-    auto elems = elements();
+    auto elems = els();
 
-    for (uint64_t i = 0; i < map_t::capacity; ++i) {
-        uint64_t lookup_pos = (hash + i) % map_t::capacity;
+    for (uint64_t i = 0; i < capacity; ++i) {
+        uint64_t lookup_pos = (hash + i) % capacity;
         switch(elems[lookup_pos].used) {
             case GAPIL_MAP_ELEMENT_EMPTY:
                 return;
@@ -174,7 +202,7 @@ void Map<K, V>::remove(K key) {
                     elems[lookup_pos].used = GAPIL_MAP_ELEMENT_USED;
                     elems[lookup_pos].first.~K();
                     elems[lookup_pos].second.~V();
-                    --map_t::count;
+                    --count;
                     return;
                 }
         }
@@ -182,9 +210,9 @@ void Map<K, V>::remove(K key) {
 }
 
 template<typename K, typename V>
-void Map<K, V>::clear() {
-    auto elems = elements();
-    for (uint64_t i = 0; i < map_t::capacity; ++i) {
+void Map<K, V>::Allocation::clear() {
+    auto elems = els();
+    for (uint64_t i = 0; i < capacity; ++i) {
         switch(elems[i].used) {
             case GAPIL_MAP_ELEMENT_EMPTY:
             case GAPIL_MAP_ELEMENT_USED:
@@ -192,13 +220,13 @@ void Map<K, V>::clear() {
             case GAPIL_MAP_ELEMENT_FULL:
                 elems[i].first.~K();
                 elems[i].second.~V();
-                --map_t::count;
+                --count;
         }
     }
-    gapil_free(map_t::arena, map_t::elements);
-    map_t::count = 0;
-    map_t::capacity = 0;
-    map_t::elements = nullptr;
+    gapil_free(arena, elements);
+    count = 0;
+    capacity = 0;
+    elements = nullptr;
 }
 
 }  // namespace gapil
