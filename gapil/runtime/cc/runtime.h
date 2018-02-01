@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef __GAPIL_RUNTIME_H__
+#define __GAPIL_RUNTIME_H__
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -101,3 +104,5 @@ DECL_GAPIL_CALLBACK(void,    gapil_logf,              context* ctx, uint8_t seve
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus
+
+#endif  // __GAPIL_RUNTIME_H__

@@ -15,6 +15,8 @@
 #include "map.h"
 #include <unordered_map>
 
+namespace gapil {
+
 template<typename K, typename V>
 Map<K, V>::Map() {
     map_t::capacity = 0;
@@ -166,3 +168,5 @@ void Map<K, V>::clear(context_t* ctx) {
     map_t::capacity = 0;
     map_t::elements = nullptr;
 }
+
+}  // namespace gapil
