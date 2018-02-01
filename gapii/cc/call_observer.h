@@ -30,6 +30,7 @@
 #include "core/memory/arena/cc/arena.h"
 
 #include <stack>
+#include <type_traits>
 #include <unordered_map>
 
 namespace gapii {
@@ -43,6 +44,11 @@ class SpyBase;
 // deleted at the end.
 class CallObserver : public context_t {
 public:
+    template<class T>
+    using enable_if_encodable = typename std::enable_if<std::is_member_function_pointer<decltype(&T::encode)>::value>::type;
+
+    typedef std::function<void(slice_t*)> OnSliceEncodedCallback;
+
     CallObserver(SpyBase* spy_p, CallObserver* parent, uint8_t api);
 
     ~CallObserver();
@@ -72,6 +78,21 @@ public:
 
     // getCurrentThread returns the current thread identifier.
     inline uint64_t getCurrentThread() { return mCurrentThread; }
+
+    // Returns the unique reference identifier for the given object address,
+    // and true when the address is seen for the first time.
+    // Nullptr address is always mapped to identifier 0.
+    inline std::pair<uint64_t, bool> reference_id(const void* address) {
+        auto it = mSeenReferences.emplace(address, mSeenReferences.size());
+        return std::pair<uint64_t, bool>(it.first->second, it.second);
+    }
+
+    // on_slice_encoded sets the callback to be invoked when slice_encoded is
+    // called.
+    inline void on_slice_encoded(OnSliceEncodedCallback f) { mOnSliceEncoded = f; }
+
+    // slice_encoded should be called whenever a slice is encoded.
+    inline void slice_encoded(slice_t* slice) { if (mOnSliceEncoded) { mOnSliceEncoded(slice); } }
 
     // arena returns the active memory arena.
     core::Arena* arena() const;
@@ -130,24 +151,28 @@ public:
     // encoder returns the PackEncoder currently in use.
     inline PackEncoder::SPtr encoder();
 
-    // enter calls toProto() on obj, then passes the proto to enterAndDelete.
-    template <typename T>
-    inline void enter(const T& obj);
+    // enter encodes cmd as a group. All encodables will be encoded to this
+    // group until exit() is called.
+    void enter(const ::google::protobuf::Message* cmd);
 
-    // encode calls toProto() on obj, then passes the proto to encodeAndDelete.
-    template <typename T>
-    inline void encode(const T& obj);
-
-    // enter encodes and deletes cmd as a group. All protobuf messages will be
-    // encoded to this group until exit() is called.
-    void enterAndDelete(::google::protobuf::Message* cmd);
-
-    // exit returns encoding to the group bound before calling enter().
-    void exit();
+    // encode encodes cmd the proto message to the PackEncoder.
+    void encode(const ::google::protobuf::Message* cmd);
 
     // encodeAndDelete encodes the proto message to the PackEncoder and then
     // deletes the message.
     void encodeAndDelete(::google::protobuf::Message* cmd);
+
+    // enter encodes the encodable to the PackEncoder. All encodables will be
+    // encoded to this group until exit() is called.
+    template<typename T, typename = enable_if_encodable<T> >
+    inline void enter(const T& obj);
+
+    // encode encodes the encodable to the PackEncoder.
+    template<typename T, typename = enable_if_encodable<T> >
+    inline void encode(const T& obj);
+
+    // exit returns encoding to the group bound before calling enter().
+    void exit();
 
     // observePending observes and encodes all the pending memory observations.
     // The list of pending memory observations is cleared on returning.
@@ -174,6 +199,9 @@ private:
     // The encoder stack.
     std::stack<PackEncoder::SPtr> mEncoderStack;
 
+    // A map of object pointer to encoded reference identifier.
+    std::unordered_map<const void*, uint64_t> mSeenReferences;
+
     // A pointer to the static array that contains the current command name.
     const char* mCurrentCommandName;
 
@@ -194,6 +222,9 @@ private:
 
     // The current thread id.
     uint64_t mCurrentThread;
+
+    // Callback invoked whenever slice_encoded() is called.
+    OnSliceEncodedCallback mOnSliceEncoded;
 };
 
 template <typename T>
@@ -261,14 +292,17 @@ inline PackEncoder::SPtr CallObserver::encoder() {
     return mEncoderStack.top();
 }
 
-template <typename T>
+template<typename T, typename /* = enable_if_encodable<T> */ >
 inline void CallObserver::enter(const T& obj) {
-    enterAndDelete(obj.toProto());
+    auto group = reinterpret_cast<PackEncoder*>(obj.encode(this, true));
+    GAPID_ASSERT_MSG(group != nullptr, "encode() for group did not return sub-encoder");
+    mEncoderStack.push(PackEncoder::SPtr(group));
 }
 
-template <typename T>
+template<typename T, typename /* = enable_if_encodable<T> */ >
 inline void CallObserver::encode(const T& obj) {
-    encodeAndDelete(obj.toProto());
+    auto group = obj.encode(this, false);
+    GAPID_ASSERT_MSG(group == nullptr, "encode() for non-group returned sub-encoder");
 }
 
 }  // namespace gapii

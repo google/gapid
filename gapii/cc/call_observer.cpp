@@ -53,6 +53,7 @@ namespace gapii {
 CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
     : mSpy(spy),
       mParent(parent),
+      mSeenReferences{{ nullptr, 0 }},
       mCurrentCommandName(nullptr),
       mObserveApplicationPool(spy->shouldObserveApplicationPool()),
       mScratch(
@@ -116,9 +117,12 @@ void CallObserver::observePending() {
     mPendingObservations.clear();
 }
 
-void CallObserver::enterAndDelete(::google::protobuf::Message* cmd) {
+void CallObserver::enter(const ::google::protobuf::Message* cmd) {
     mEncoderStack.push(encoder()->group(cmd));
-    delete cmd;
+}
+
+void CallObserver::encode(const ::google::protobuf::Message* cmd) {
+    encoder()->object(cmd);
 }
 
 void CallObserver::exit() {
