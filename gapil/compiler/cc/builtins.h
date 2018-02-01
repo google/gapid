@@ -19,7 +19,7 @@ static const float mapMaxCapacity = 0.8f;
 typedef struct context_t {
 	uint32_t    id;
 	uint32_t    location;
-	globals*    globals_;
+	globals*    globals;
 	pool*       app_pool;
 	string*     empty_string;
 } context;
@@ -30,7 +30,7 @@ typedef struct pool_t {
 } pool;
 
 typedef struct slice_t {
-	pool*    pool_; // The underlying pool.
+	pool*    pool; // The underlying pool.
 	void*    root; // Original pointer this slice derives from.
 	void*    base; // Address of first element.
 	uint64_t size; // Size in bytes of the slice.

@@ -319,7 +319,7 @@ func (c *compiler) mapIteration(s *scope, n *semantic.MapIteration) {
 	i := s.LocalInit("i", s.Scalar(0).Cast(iTy))
 	s.ForN(capacity.Cast(iTy), func(it *codegen.Value) *codegen.Value {
 		used := elPtr.Index(it, "used").Load()
-		s.If(s.Equal(used, s.Scalar(full)), func() {
+		s.If(s.Equal(used, s.Scalar(mapElementFull)), func() {
 			k := elPtr.Index(it, "k")
 			v := elPtr.Index(it, "v")
 			s.enter(func(s *scope) {
