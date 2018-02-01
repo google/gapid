@@ -18,14 +18,22 @@ package compiler
 // All types in this file need to match those in gapil/compiler/cc/builtins.h //
 ////////////////////////////////////////////////////////////////////////////////
 
+//#include "gapil/compiler/cc/builtins.h"
+import "C"
+
 type ErrorCode uint32
 
 const (
-	ErrSuccess = ErrorCode(iota)
-	ErrAborted
-)
+	ErrSuccess = ErrorCode(C.ERR_SUCCESS)
+	ErrAborted = ErrorCode(C.ERR_ABORTED)
 
-const (
+	mapElementEmpty   = (uint64)(C.mapElementEmpty)
+	mapElementFull    = (uint64)(C.mapElementFull)
+	mapElementUsed    = (uint64)(C.mapElementUsed)
+	mapGrowMultiplier = (uint64)(C.mapGrowMultiplier)
+	minMapSize        = (uint64)(C.minMapSize)
+	mapMaxCapacity    = (float32)(C.mapMaxCapacity)
+
 	contextLocation    = "location"
 	contextGlobals     = "globals"
 	contextAppPool     = "app_pool"
