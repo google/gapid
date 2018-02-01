@@ -12,29 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef __GAPIL_RUNTIME_MAP_H__
+#define __GAPIL_RUNTIME_MAP_H__
+
 #include "runtime.h"
 
 #include <tuple>
 
+namespace gapil {
+
 template<typename K, typename V>
-class Map : public map_t {
-    public:
+class Map : protected map_t {
+    struct element;
+public:
     using key_type = K;
     using value_type = V;
 
     Map();
-    bool contains(context_t*, K);
-    V* index(context_t*, K, bool);
-    V lookup(context_t*, K);
-    void remove(context_t*, K);
-    public:
-    void clear(context_t*);
 
-    struct element {uint64_t used; K first; V second; };
-    struct iterator {
-        using it_elem = Map<K, V>::element;
-        it_elem* elem;
+    class iterator {
+        friend class Map<K, V>;
+        element* elem;
         map_t* map;
+
+        iterator(element* elem, map_t* map):
+           elem(elem), map(map) {}
+
+    public:
+        iterator(const iterator& it):
+            elem(it.elem), map(it.map) {
+        }
 
         bool operator==(const iterator& other) {
             return map == other.map && elem == other.elem;
@@ -44,16 +51,16 @@ class Map : public map_t {
             return !(*this == other);
         }
 
-        it_elem& operator*() {
+        element& operator*() {
             return *elem;
         }
 
-        it_elem* operator->() {
+        element* operator->() {
             return elem;
         }
 
         const iterator& operator++() {
-            size_t offset = elem - reinterpret_cast<it_elem*>(map->elements);
+            size_t offset = elem - reinterpret_cast<element*>(map->elements);
             for (size_t i = offset; i < map->capacity; ++i) {
                 ++elem;
                 if (elem->used == mapElementFull) {
@@ -70,18 +77,17 @@ class Map : public map_t {
         }
     };
 
-    struct const_iterator {
-        using it_elem = Map<K, V>::element;
-
-        const it_elem* elem;
+    class const_iterator {
+        const element* elem;
         const map_t* map;
 
-        const_iterator(const it_elem* elem, const map_t* map):
+        const_iterator(const element* elem, const map_t* map):
            elem(elem), map(map) {}
         const_iterator(const iterator& it):
             elem(it.elem), map(it.map) {
         }
 
+    public:
         bool operator==(const const_iterator& other) {
             return map == other.map && elem == other.elem;
         }
@@ -90,17 +96,16 @@ class Map : public map_t {
             return !(*this == other);
         }
 
-
-        const it_elem& operator*() {
+        const element& operator*() {
             return *elem;
         }
 
-        const it_elem* operator->() {
+        const element* operator->() {
             return elem;
         }
 
         const_iterator& operator++() {
-            size_t offset = elem - reinterpret_cast<it_elem*>(map->elements);
+            size_t offset = elem - reinterpret_cast<element*>(map->elements);
             for (size_t i = offset; i < map->capacity; ++i) {
                 ++elem;
                 if (elem->used == mapElementFull) {
@@ -115,16 +120,7 @@ class Map : public map_t {
             ++(*this);
             return ret;
         }
-
     };
-
-    const element* elements() const {
-        return reinterpret_cast<const element*>(map_t::elements);
-    }
-
-    element* elements() {
-        return reinterpret_cast<element*>(map_t::elements);
-    }
 
     uint64_t capacity() const {
         return map_t::capacity;
@@ -199,4 +195,29 @@ class Map : public map_t {
             (reinterpret_cast<uintptr_t>(idx) - reinterpret_cast<uintptr_t>(elements())) / sizeof(element);
         return const_iterator {elements() + offs, this};
     }
+
+private:
+    struct element {
+        uint64_t used;
+        K first;
+        V second;
+    };
+
+    const element* elements() const {
+        return reinterpret_cast<const element*>(map_t::elements);
+    }
+
+    element* elements() {
+        return reinterpret_cast<element*>(map_t::elements);
+    }
+
+    bool contains(context_t*, K);
+    V*   index(context_t*, K, bool);
+    V    lookup(context_t*, K);
+    void remove(context_t*, K);
+    void clear(context_t*);
 };
+
+}  // namespace gapil
+
+#endif  // __GAPIL_RUNTIME_MAP_H__

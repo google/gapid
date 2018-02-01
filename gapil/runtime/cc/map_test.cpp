@@ -26,9 +26,9 @@ class MapTest : public ::testing::Test {
 };
 
 using MapTestTypes = ::testing::Types<
-    Map<uint32_t, uint32_t>,
-    Map<uint16_t, uint32_t>,
-    Map<uint32_t, uint64_t>>;
+    gapil::Map<uint32_t, uint32_t>,
+    gapil::Map<uint16_t, uint32_t>,
+    gapil::Map<uint32_t, uint64_t>>;
 
 TYPED_TEST_CASE(MapTest, MapTestTypes);
 
@@ -160,7 +160,7 @@ class non_movable_object {
 };
 
 TEST(CppMapTest, constructible_object) {
-    Map<uint32_t, non_movable_object> map;
+    gapil::Map<uint32_t, non_movable_object> map;
     context_t* ctx = nullptr;
 
 
@@ -211,7 +211,7 @@ class movable_object {
 };
 
 TEST(CppMapTest, movable_object) {
-    Map<uint32_t, non_movable_object> map;
+    gapil::Map<uint32_t, non_movable_object> map;
     context_t* ctx = nullptr;
 
 
