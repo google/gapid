@@ -146,7 +146,7 @@ func (p *InstalledPackage) obbStoragePath(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/obb/%s/main.%d.%[2]s.obb", storage, p.Name, p.VersionCode), nil
+	return fmt.Sprintf("%s/Android/obb/%s/main.%d.%[2]s.obb", storage, p.Name, p.VersionCode), nil
 }
 
 // OBBExists checks whether an OBB file exists in the matching location for this APK on
