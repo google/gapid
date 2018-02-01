@@ -206,7 +206,7 @@ func newView() *view {
 		},
 	).Add("/1/input/((gapi[irst])|gapid_apk|trace|subject|interceptor|vulkanLayer)", robotEntityLink).
 		Add("/1/input/layout", v.objView.Expandable).
-		Add("/1/output/(log|report)", robotTextPreview).
+		Add("/1/output/(log|report|err)", robotTextPreview).
 		Add("/1/output/video", robotVideoView).
 		Add("/0/", v.objView.Expandable)
 

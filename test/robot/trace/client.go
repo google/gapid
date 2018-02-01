@@ -15,8 +15,10 @@
 package trace
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -37,6 +39,9 @@ import (
 
 const (
 	traceTimeout = time.Hour
+	// this string is returned when GAPIT fails to connect to the GAPIS, particularly due to ETXTBSY
+	// look at https://github.com/google/gapid/pull/933 for more information
+	retryString = "Failed to connect to the GAPIS server"
 )
 
 type client struct {
@@ -86,9 +91,9 @@ func (c *client) trace(ctx context.Context, d bind.Device, t *Task) error {
 	if err != nil {
 		status = job.Failed
 		log.E(ctx, "Error running trace: %v", err)
-	} else if output.CallError != "" {
+	} else if output.Err != "" {
 		status = job.Failed
-		log.E(ctx, "Error during trace: %v", output.CallError)
+		log.E(ctx, "Error during trace: %v", output.Err)
 	}
 
 	return c.manager.Update(ctx, t.Action, status, output)
@@ -155,19 +160,23 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		params = append(params, "-obb", obb.System())
 	}
 	cmd := shell.Command(gapit.System(), params...)
-	output, callErr := cmd.Call(ctx)
-	if err := worker.NeedsRetry(output, "Failed to connect to the GAPIS server"); err != nil {
+	outBuf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	outputObj := &Output{}
+	errs := []string{}
+	if err := cmd.Capture(outBuf, errBuf).Run(ctx); err != nil {
+		if err := worker.NeedsRetry(err.Error()); err != nil {
+			return nil, err
+		}
+		errs = append(errs, err.Error())
+	}
+	errs = append(errs, strings.TrimSpace(errBuf.String()))
+	outputObj.Err = strings.Join(errs, "\n")
+	if err := worker.NeedsRetry(outputObj.Err, retryString); err != nil {
 		return nil, err
 	}
 
-	outputObj := &Output{}
-	if callErr != nil {
-		if err := worker.NeedsRetry(callErr.Error()); err != nil {
-			return nil, err
-		}
-		outputObj.CallError = callErr.Error()
-	}
-	output = fmt.Sprintf("%s\n\n%s", cmd, output)
+	output := fmt.Sprintf("%s\n\n%s", cmd, strings.TrimSpace(outBuf.String()))
 	log.I(ctx, output)
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"trace.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {
