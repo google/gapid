@@ -74,7 +74,7 @@ bool Arena::owns(void* ptr) {
     return allocations.count(ptr) == 1;
 }
 
-void Arena::stats(size_t* num_allocations, size_t* num_bytes_allocated) {
+void Arena::stats(size_t* num_allocations, size_t* num_bytes_allocated) const {
     size_t bytes = 0;
     for (void* ptr : allocations) {
         bytes += alloc_size(ptr);

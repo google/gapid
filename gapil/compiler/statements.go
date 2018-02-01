@@ -228,7 +228,7 @@ func (c *compiler) expressionAddr(s *scope, target semantic.Expression) *codegen
 			revPath()
 			m := c.expression(s, n.Map)
 			k := c.expression(s, n.Index)
-			v := s.Call(c.ty.maps[n.Type].Index, s.ctx, m, k, s.Scalar(false)).SetName("map_get")
+			v := s.Call(c.ty.maps[n.Type].Index, m, k, s.Scalar(false)).SetName("map_get")
 			return v.Index(path...)
 		case *semantic.Unknown:
 			target = n.Inferred
@@ -303,7 +303,7 @@ func (c *compiler) mapAssign(s *scope, n *semantic.MapAssign) {
 	m := c.expression(s, n.To.Map)
 	k := c.expression(s, n.To.Index)
 	v := c.expression(s, n.Value)
-	dst := s.Call(c.ty.maps[ty].Index, s.ctx, m, k, s.Scalar(true))
+	dst := s.Call(c.ty.maps[ty].Index, m, k, s.Scalar(true))
 	if ty := n.To.Type.ValueType; c.isRefCounted(ty) {
 		c.reference(s, v, ty)
 		c.release(s, dst.Load(), ty)
@@ -338,7 +338,7 @@ func (c *compiler) mapRemove(s *scope, n *semantic.MapRemove) {
 	ty := n.Type
 	m := c.expression(s, n.Map)
 	k := c.expression(s, n.Key)
-	s.Call(c.ty.maps[ty].Remove, s.ctx, m, k)
+	s.Call(c.ty.maps[ty].Remove, m, k)
 }
 
 func (c *compiler) read(s *scope, n *semantic.Read) {
@@ -383,7 +383,8 @@ func (c *compiler) sliceAssign(s *scope, n *semantic.SliceAssign) {
 		actuallyWrite := write
 		write = func(el *codegen.Value) {
 			pool := slice.Extract(slicePool)
-			s.If(s.NotEqual(pool, s.appPool), func() {
+			appPool := s.Zero(c.ty.poolPtr)
+			s.If(s.NotEqual(pool, appPool), func() {
 				actuallyWrite(el)
 			})
 		}

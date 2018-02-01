@@ -34,6 +34,8 @@ import (
 //    ValueType v;
 // }
 // struct Map {
+//    uint32_t ref_count;
+//    arena*   arena;
 //    uint64_t count;
 //    uint64_t capacity;
 //    element* elements;
@@ -78,6 +80,7 @@ func (c *compiler) defineMapType(t *semantic.Map) {
 	)
 	mapStrTy.SetBody(false,
 		codegen.Field{Name: mapRefCount, Type: c.ty.Uint32},
+		codegen.Field{Name: mapArena, Type: c.ty.arenaPtr},
 		codegen.Field{Name: mapCount, Type: c.ty.Uint64},
 		codegen.Field{Name: mapCapacity, Type: c.ty.Uint64},
 		codegen.Field{Name: mapElements, Type: c.ty.Pointer(elTy)},
@@ -88,11 +91,11 @@ func (c *compiler) defineMapType(t *semantic.Map) {
 		Elements: elTy,
 		Key:      keyTy,
 		Val:      valTy,
-		Contains: c.module.Function(c.ty.Bool, t.Name()+"_contains", c.ty.ctxPtr, mapPtrTy, keyTy),
-		Index:    c.module.Function(valPtrTy, t.Name()+"_index", c.ty.ctxPtr, mapPtrTy, keyTy, c.ty.Bool),
-		Lookup:   c.module.Function(valTy, t.Name()+"_lookup", c.ty.ctxPtr, mapPtrTy, keyTy),
-		Remove:   c.module.Function(c.ty.Void, t.Name()+"_remove", c.ty.ctxPtr, mapPtrTy, keyTy),
-		Clear:    c.module.Function(nil, t.Name()+"_clear", c.ty.ctxPtr, mapPtrTy),
+		Contains: c.module.Function(c.ty.Bool, t.Name()+"_contains", mapPtrTy, keyTy),
+		Index:    c.module.Function(valPtrTy, t.Name()+"_index", mapPtrTy, keyTy, c.ty.Bool),
+		Lookup:   c.module.Function(valTy, t.Name()+"_lookup", mapPtrTy, keyTy),
+		Remove:   c.module.Function(c.ty.Void, t.Name()+"_remove", mapPtrTy, keyTy),
+		Clear:    c.module.Function(nil, t.Name()+"_clear", mapPtrTy),
 	}
 }
 
@@ -205,8 +208,8 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 	u64Type := c.targetType(semantic.Uint64Type)
 
 	c.build(mi.Contains, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		k := s.Parameter(2).SetName("key")
+		m := s.Parameter(0).SetName("map")
+		k := s.Parameter(1).SetName("key")
 		h := c.hashValue(s, t.KeyType, k)
 		capacity := m.Index(0, mapCapacity).Load()
 		elements := m.Index(0, mapElements).Load()
@@ -228,9 +231,10 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 
 	f32Type := c.targetType(semantic.Float32Type)
 	c.build(mi.Index, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		k := s.Parameter(2).SetName("key")
-		addIfNotFound := s.Parameter(3).SetName("addIfNotFound")
+		m := s.Parameter(0).SetName("map")
+		k := s.Parameter(1).SetName("key")
+		s.arena = m.Index(0, mapArena).Load().SetName("arena")
+		addIfNotFound := s.Parameter(2).SetName("addIfNotFound")
 
 		countPtr := m.Index(0, mapCount)
 		capacityPtr := m.Index(0, mapCapacity)
@@ -278,7 +282,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 				s.IfElse(elements.IsNull(), func() {
 					capacity := s.Scalar(uint64(minMapSize))
 					capacityPtr.Store(capacity)
-					elements := c.alloc(s, capacity, elTy)
+					elements := c.alloc(s, s.arena, capacity, elTy)
 					elementsPtr.Store(elements)
 					s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
 						elements.Index(it, "used").Store(s.Scalar(mapElementEmpty))
@@ -287,7 +291,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 				}, /* else */ func() {
 					newCapacity := s.MulS(capacity, uint64(mapGrowMultiplier))
 					capacityPtr.Store(newCapacity)
-					newElements := c.alloc(s, newCapacity, elTy)
+					newElements := c.alloc(s, s.arena, newCapacity, elTy)
 					s.ForN(newCapacity, func(it *codegen.Value) *codegen.Value {
 						newElements.Index(it, "used").Store(s.Scalar(mapElementEmpty))
 						return nil
@@ -306,7 +310,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 						})
 						return nil
 					})
-					c.free(s, elements)
+					c.free(s, s.arena, elements)
 					elementsPtr.Store(newElements)
 				})
 			})
@@ -330,9 +334,9 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 	})
 
 	c.build(mi.Lookup, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		k := s.Parameter(2).SetName("key")
-		ptr := s.Call(mi.Index, s.ctx, m, k, s.Scalar(false))
+		m := s.Parameter(0).SetName("map")
+		k := s.Parameter(1).SetName("key")
+		ptr := s.Call(mi.Index, m, k, s.Scalar(false))
 		s.If(ptr.IsNull(), func() {
 			s.Return(c.initialValue(s, t.ValueType))
 		})
@@ -342,8 +346,9 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 	})
 
 	c.build(mi.Remove, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
-		k := s.Parameter(2).SetName("key")
+		m := s.Parameter(0).SetName("map")
+		k := s.Parameter(1).SetName("key")
+		s.arena = m.Index(0, mapArena).Load().SetName("arena")
 		countPtr := m.Index(0, mapCount)
 		capacity := m.Index(0, mapCapacity).Load()
 		h := c.hashValue(s, t.KeyType, k)
@@ -378,7 +383,7 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 	})
 
 	c.build(mi.Clear, func(s *scope) {
-		m := s.Parameter(1).SetName("map")
+		m := s.Parameter(0).SetName("map")
 		capacity := m.Index(0, mapCapacity).Load()
 		elements := m.Index(0, mapElements).Load()
 		if c.isRefCounted(t.KeyType) || c.isRefCounted(t.ValueType) {
@@ -395,7 +400,8 @@ func (c *compiler) buildMapType(t *semantic.Map) {
 				return nil
 			})
 		}
-		c.free(s, elements)
+		arena := m.Index(0, mapArena).Load().SetName("arena")
+		c.free(s, arena, elements)
 		m.Index(0, mapCount).Store(s.Scalar(uint64(0)))
 		m.Index(0, mapCapacity).Store(s.Scalar(uint64(0)))
 	})

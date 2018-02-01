@@ -30,10 +30,12 @@ type types struct {
 	ctxPtr          codegen.Type
 	globals         *codegen.Struct
 	pool            codegen.Type
+	poolPtr         codegen.Type
 	sli             codegen.Type
-	str             codegen.Type
+	str             *codegen.Struct
 	strPtr          codegen.Type
 	u8Ptr           codegen.Type
+	arenaPtr        codegen.Type
 	voidPtr         codegen.Type
 	target          map[semantic.Type]codegen.Type
 	storage         map[semantic.Type]codegen.Type
@@ -118,10 +120,12 @@ func (c *compiler) declareTypes(api *semantic.API) {
 	c.ty.Types = c.module.Types
 	c.ty.globals = c.ty.DeclareStruct("globals")
 	c.ty.pool = c.ty.TypeOf(C.pool{})
+	c.ty.poolPtr = c.ty.Pointer(c.ty.pool)
 	c.ty.sli = c.ty.TypeOf(C.slice{})
-	c.ty.str = c.ty.TypeOf(C.string{})
+	c.ty.str = c.ty.TypeOf(C.string{}).(*codegen.Struct)
 	c.ty.strPtr = c.ty.Pointer(c.ty.str)
 	c.ty.u8Ptr = c.ty.Pointer(c.ty.Uint8)
+	c.ty.arenaPtr = c.ty.Pointer(c.ty.DeclareStruct("arena"))
 	c.ty.voidPtr = c.ty.Pointer(c.ty.Void)
 	c.ty.ctx = c.ty.TypeOf(C.context{})
 	c.ty.ctxPtr = c.ty.Pointer(c.ty.ctx)
@@ -155,7 +159,6 @@ func (c *compiler) declareTypes(api *semantic.API) {
 }
 
 func (c *compiler) buildTypes(api *semantic.API) {
-
 	// Build all the class types.
 	for _, t := range api.Classes {
 		fields := make([]codegen.Field, len(t.Fields))
@@ -171,12 +174,14 @@ func (c *compiler) buildTypes(api *semantic.API) {
 	for _, t := range api.References {
 		// struct ref!T {
 		//      uint32_t ref_count;
+		//      arena*   arena;
 		//      T        value;
 		// }
 		ptr := c.ty.target[t].(codegen.Pointer)
 		str := ptr.Element.(*codegen.Struct)
 		str.SetBody(false,
 			codegen.Field{Name: refRefCount, Type: c.ty.Uint32},
+			codegen.Field{Name: refArena, Type: c.ty.arenaPtr},
 			codegen.Field{Name: refValue, Type: c.targetType(t.To)},
 		)
 	}
@@ -466,7 +471,7 @@ func (c *compiler) storageAllocaSize(t semantic.Type) int32 {
 func (c *compiler) initialValue(s *scope, t semantic.Type) *codegen.Value {
 	switch t {
 	case semantic.StringType:
-		return s.ctx.Index(0, contextEmptyString).Load()
+		return c.emptyString.Value(s.Builder)
 	}
 	switch t := t.(type) {
 	case *semantic.Class:
@@ -481,8 +486,9 @@ func (c *compiler) initialValue(s *scope, t semantic.Type) *codegen.Value {
 		return class
 	case *semantic.Map:
 		mapInfo := c.ty.maps[t]
-		mapPtr := c.alloc(s, s.Scalar(uint64(1)), mapInfo.Type)
+		mapPtr := c.alloc(s, s.arena, s.Scalar(uint64(1)), mapInfo.Type)
 		mapPtr.Index(0, mapRefCount).Store(s.Scalar(uint32(1)))
+		mapPtr.Index(0, mapArena).Store(s.arena)
 		mapPtr.Index(0, mapCount).Store(s.Scalar(uint64(0)))
 		mapPtr.Index(0, mapCapacity).Store(s.Scalar(uint64(0)))
 		mapPtr.Index(0, mapElements).Store(s.Zero(c.ty.Pointer(mapInfo.Elements)))

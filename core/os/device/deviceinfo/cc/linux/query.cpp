@@ -108,12 +108,15 @@ bool createContext(void* platform_data) {
         return false;
     }
 
-    gContext.mDisplay = XOpenDisplay(0);
+    gContext.mDisplay = XOpenDisplay(nullptr);
     if (!gContext.mDisplay) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "XOpenDisplay returned nullptr");
-        destroyContext();
-        return false;
+        gContext.mDisplay = XOpenDisplay(":0");
+        if (!gContext.mDisplay) {
+            snprintf(gContext.mError, sizeof(gContext.mError),
+                    "XOpenDisplay returned nullptr");
+            destroyContext();
+            return false;
+        }
     }
 
     const int visualAttribs[] = {

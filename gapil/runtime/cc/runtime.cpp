@@ -43,32 +43,16 @@ void* gapil_remap_pointer(context* ctx, uint64_t pointer, uint64_t length);
 void  gapil_get_code_location(context* ctx, char** file, uint32_t* line);
 
 void gapil_init_context(context* ctx) {
-    auto app_pool = new pool;
-    app_pool->ref_count = 1;
-    app_pool->buffer = nullptr;
-
-    auto empty_string = new string;
-    empty_string->ref_count = 1;
-    empty_string->length = 0;
-    empty_string->data[0] = 0;
-
     ctx->id = 0;
     ctx->location = 0xffffffff;
     ctx->globals = nullptr;
-    ctx->app_pool = app_pool;
-    ctx->empty_string = empty_string;
     ctx->arena = reinterpret_cast<arena*>(new Arena);
 }
 
 void gapil_term_context(context* ctx) {
     Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
     delete arena;
-    delete ctx->empty_string;
-    delete ctx->app_pool;
-
     ctx->arena = nullptr;
-    ctx->empty_string = nullptr;
-    ctx->app_pool = nullptr;
 }
 
 void gapil_logf(context* ctx, uint8_t severity, uint8_t* fmt, ...) {
@@ -93,24 +77,24 @@ void gapil_logf(context* ctx, uint8_t severity, uint8_t* fmt, ...) {
     }
 }
 
-void* gapil_alloc(context* ctx, uint64_t size, uint64_t align) {
-    Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
+void* gapil_alloc(arena_t* a, uint64_t size, uint64_t align) {
+    Arena* arena = reinterpret_cast<Arena*>(a);
     void* ptr = arena->allocate(size, align);
     DEBUG_PRINT("gapil_alloc(size: 0x%" PRIx64 ", align: 0x%" PRIx64 ") -> 0x%p", size, align, ptr);
     return ptr;
 }
 
-void* gapil_realloc(context* ctx, void* ptr, uint64_t size, uint64_t align) {
-    Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
+void* gapil_realloc(arena_t* a, void* ptr, uint64_t size, uint64_t align) {
+    Arena* arena = reinterpret_cast<Arena*>(a);
     void* retptr = arena->reallocate(ptr, size, align);
     DEBUG_PRINT("gapil_realloc(ptr: %p, 0x%" PRIx64 ", align: 0x%" PRIx64 ") -> 0x%p", ptr, size, align, retptr);
     return retptr;
 }
 
-void gapil_free(context* ctx, void* ptr) {
+void gapil_free(arena_t* a, void* ptr) {
     DEBUG_PRINT("gapil_free(ptr: %p)", ptr);
 
-    Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
+    Arena* arena = reinterpret_cast<Arena*>(a);
     arena->free(ptr);
 }
 
@@ -121,6 +105,7 @@ pool* gapil_make_pool(context* ctx, uint64_t size) {
     memset(buffer, 0, size);
 
     auto pool = arena->create<pool_t>();
+    pool->arena = ctx->arena;
     pool->ref_count = 1;
     pool->buffer = buffer;
 
@@ -128,15 +113,15 @@ pool* gapil_make_pool(context* ctx, uint64_t size) {
     return pool;
 }
 
-void gapil_free_pool(context* ctx, pool* pool) {
+void gapil_free_pool(pool* pool) {
     DEBUG_PRINT("gapil_free_pool(pool: %p)", pool);
-    Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
 
-    if (pool == ctx->app_pool) {
+    if (pool == nullptr) { // Application pool.
         // TODO: Panic?
         return;
     }
 
+    Arena* arena = reinterpret_cast<Arena*>(pool->arena);
     arena->free(pool->buffer);
     arena->destroy(pool);
 }
@@ -170,9 +155,7 @@ void gapil_pointer_to_slice(context* ctx, uint64_t ptr, uint64_t offset, uint64_
     auto root = reinterpret_cast<uint8_t*>(gapil_remap_pointer(ctx, ptr, end - ptr));
     auto base = root + offset;
 
-    ctx->app_pool->ref_count++;
-
-    out->pool = ctx->app_pool;
+    out->pool = nullptr; // application pool
     out->root = root;
     out->base = base;
     out->size = size;
@@ -184,13 +167,14 @@ string* gapil_pointer_to_string(context* ctx, uint64_t ptr) {
     auto data = reinterpret_cast<char*>(gapil_remap_pointer(ctx, ptr, 1));
     auto len = strlen(data);
 
-    return gapil_make_string(ctx, len, data);
+    return gapil_make_string(ctx->arena, len, data);
 }
 
-string* gapil_make_string(context* ctx, uint64_t length, void* data) {
-    Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
+string* gapil_make_string(arena* a, uint64_t length, void* data) {
+    Arena* arena = reinterpret_cast<Arena*>(a);
 
     auto str = reinterpret_cast<string_t*>(arena->allocate(sizeof(string_t) + length + 1, 1));
+    str->arena = a;
     str->ref_count = 1;
     str->length = length;
 
@@ -204,16 +188,11 @@ string* gapil_make_string(context* ctx, uint64_t length, void* data) {
     return str;
 }
 
-void gapil_free_string(context* ctx, string* str) {
+void gapil_free_string(string* str) {
     DEBUG_PRINT("gapil_free_string(ref_count: %" PRIu32 ", len: %" PRIu64 ", str: '%s' (%p))",
             str->ref_count, str->length, str->data, str->data);
 
-    GAPID_ASSERT_MSG(str != ctx->empty_string,
-        "Attempting to free the global empty string. "
-        "This suggests asymmetrical reference/release logic.");
-
-    Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
-
+    Arena* arena = reinterpret_cast<Arena*>(str->arena);
     arena->free(str);
 }
 
@@ -221,7 +200,7 @@ string* gapil_slice_to_string(context* ctx, slice* slice) {
     DEBUG_PRINT("gapil_slice_to_string(base: %p, size: 0x%" PRIx64 ", pool: %p)",
             slice->base, slice->size, slice->pool);
 
-    return gapil_make_string(ctx, slice->size, slice->base);
+    return gapil_make_string(ctx->arena, slice->size, slice->base);
 }
 
 void gapil_string_to_slice(context* ctx, string* str, slice* out) {
@@ -231,16 +210,18 @@ void gapil_string_to_slice(context* ctx, string* str, slice* out) {
     memcpy(out->base, str->data, str->length);
 }
 
-string* gapil_string_concat(context* ctx, string* a, string* b) {
+string* gapil_string_concat(string* a, string* b) {
     DEBUG_PRINT("gapil_string_concat(a: '%s', b: '%s')", a->data, b->data);
 
-    auto str = gapil_make_string(ctx, a->length + b->length, nullptr);
+    GAPID_ASSERT_MSG(a->arena == b->arena, "string concat of strings from different arenas!");
+
+    auto str = gapil_make_string(a->arena, a->length + b->length, nullptr);
     memcpy(str->data, a->data, a->length);
     memcpy(str->data + a->length, b->data, b->length);
     return str;
 }
 
-int32_t gapil_string_compare(context* ctx, string* a, string* b) {
+int32_t gapil_string_compare(string* a, string* b) {
     DEBUG_PRINT("gapil_string_compare(a: '%s', b: '%s')", a->data, b->data);
     if (a == b) {
         return 0;

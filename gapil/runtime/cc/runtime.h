@@ -43,17 +43,16 @@ typedef struct context_t {
 	uint32_t    location;
 	globals*    globals;
 	arena*      arena;
-	pool*       app_pool;
-	string*     empty_string;
 } context;
 
 typedef struct pool_t {
 	uint32_t ref_count;
-	void*    buffer;
+	arena*   arena;  // arena that owns the allocation of this pool and its buffer.
+	void*    buffer; // nullptr for application pool
 } pool;
 
 typedef struct slice_t {
-	pool*    pool; // The underlying pool.
+	pool*    pool; // The underlying pool. nullptr represents the application pool.
 	void*    root; // Original pointer this slice derives from.
 	void*    base; // Address of first element.
 	uint64_t size; // Size in bytes of the slice.
@@ -61,12 +60,14 @@ typedef struct slice_t {
 
 typedef struct string_t {
 	uint32_t ref_count;
+	arena*   arena; // arena that owns this string allocation.
 	uint64_t length;
 	uint8_t  data[1];
 } string;
 
 typedef struct map_t {
 	uint32_t ref_count;
+	arena*   arena; // arena that owns this map allocation and its elements buffer.
 	uint64_t count;
 	uint64_t capacity;
 	void*    elements;
@@ -88,22 +89,23 @@ void gapil_term_context(context* ctx);
 #define DECL_GAPIL_CALLBACK(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
 #endif
 
-DECL_GAPIL_CALLBACK(void*,   gapil_alloc,             context* ctx, uint64_t size, uint64_t align);
-DECL_GAPIL_CALLBACK(void*,   gapil_realloc,           context* ctx, void* ptr, uint64_t size, uint64_t align);
-DECL_GAPIL_CALLBACK(void,    gapil_free,              context* ctx, void* ptr);
+DECL_GAPIL_CALLBACK(void*,   gapil_alloc,          arena*, uint64_t size, uint64_t align);
+DECL_GAPIL_CALLBACK(void*,   gapil_realloc,        arena*, void* ptr, uint64_t size, uint64_t align);
+DECL_GAPIL_CALLBACK(void,    gapil_free,           arena*, void* ptr);
+DECL_GAPIL_CALLBACK(void,    gapil_free_pool,      pool*);
+DECL_GAPIL_CALLBACK(string*, gapil_make_string,    arena*, uint64_t length, void* data);
+DECL_GAPIL_CALLBACK(void,    gapil_free_string,    string*);
+DECL_GAPIL_CALLBACK(string*, gapil_string_concat,  string*, string*);
+DECL_GAPIL_CALLBACK(int32_t, gapil_string_compare, string*, string*);
+
 DECL_GAPIL_CALLBACK(void,    gapil_apply_reads,       context* ctx);
 DECL_GAPIL_CALLBACK(void,    gapil_apply_writes,      context* ctx);
-DECL_GAPIL_CALLBACK(void,    gapil_free_pool,         context* ctx, pool*);
 DECL_GAPIL_CALLBACK(void,    gapil_make_slice,        context* ctx, uint64_t size, slice* out);
 DECL_GAPIL_CALLBACK(void,    gapil_copy_slice,        context* ctx, slice* dst, slice* src);
 DECL_GAPIL_CALLBACK(void,    gapil_pointer_to_slice,  context* ctx, uint64_t ptr, uint64_t offset, uint64_t size, slice* out);
 DECL_GAPIL_CALLBACK(string*, gapil_pointer_to_string, context* ctx, uint64_t ptr);
 DECL_GAPIL_CALLBACK(string*, gapil_slice_to_string,   context* ctx, slice* slice);
-DECL_GAPIL_CALLBACK(string*, gapil_make_string,       context* ctx, uint64_t length, void* data);
-DECL_GAPIL_CALLBACK(void,    gapil_free_string,       context* ctx, string* string);
 DECL_GAPIL_CALLBACK(void,    gapil_string_to_slice,   context* ctx, string* string, slice* out);
-DECL_GAPIL_CALLBACK(string*, gapil_string_concat,     context* ctx, string* a, string* b);
-DECL_GAPIL_CALLBACK(int32_t, gapil_string_compare,    context* ctx, string* a, string* b);
 DECL_GAPIL_CALLBACK(void,    gapil_call_extern,       context* ctx, string* name, void* args, void* res);
 DECL_GAPIL_CALLBACK(void,    gapil_logf,              context* ctx, uint8_t severity, uint8_t* fmt, ...);
 

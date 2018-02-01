@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,36 +12,58 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef __GAPIL_RUNTIME_MAP_INC__
+#define __GAPIL_RUNTIME_MAP_INC__
+
 #include "map.h"
+
+#include "core/cc/assert.h"
+#include "core/memory/arena/cc/arena.h"
+
 #include <unordered_map>
-
-extern "C" {
-
-void* gapil_remap_pointer(context* ctx, uint64_t pointer, uint64_t length) {
-    return reinterpret_cast<void*>(pointer);
-}
-
-void gapil_get_code_location(context* ctx, char** file, uint32_t* line) {}
-
-}  // extern "C"
 
 namespace gapil {
 
 template<typename K, typename V>
-Map<K, V>::Map() {
-    map_t::capacity = 0;
-    map_t::count = 0;
-    map_t::elements = nullptr;
-    map_t::ref_count = 0;
+Map<K, V>* Map<K, V>::create(core::Arena* a) {
+    GAPID_ASSERT_MSG(a != nullptr, "arena must not be null");
+    auto buf = a->allocate(sizeof(Map<K, V>), alignof(Map<K, V>));
+    auto map = reinterpret_cast<Map<K, V>*>(buf);
+    map->map_t::arena = reinterpret_cast<arena_t*>(a);
+    map->map_t::capacity = 0;
+    map->map_t::count = 0;
+    map->map_t::elements = nullptr;
+    map->map_t::ref_count = 1;
+    return map;
 }
 
 template<typename K, typename V>
-bool Map<K, V>::contains(context_t* ctx, K key) {
-    return index(ctx, key, false) != nullptr;
+inline void Map<K, V>::reference() {
+    GAPID_ASSERT_MSG(map_t::ref_count > 0, "Attempting to reference deleted map");
+    map_t::ref_count++;
 }
 
 template<typename K, typename V>
-V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
+inline void Map<K, V>::release() {
+    GAPID_ASSERT_MSG(map_t::ref_count > 0, "Attempting to release deleted map");
+    map_t::ref_count--;
+    if (map_t::ref_count > 0) {
+        return;
+    }
+    auto arena = reinterpret_cast<core::Arena*>(map_t::arena);
+    if (map_t::elements != nullptr) {
+        arena->free(map_t::elements);
+    }
+    arena->free(this);
+}
+
+template<typename K, typename V>
+bool Map<K, V>::contains(K key) {
+    return index(key, false) != nullptr;
+}
+
+template<typename K, typename V>
+V* Map<K, V>::index(K key, bool insert) {
     auto hasher = std::hash<K>{};
     auto eq = std::equal_to<K>{};
     uint64_t hash = hasher(key);
@@ -87,7 +109,7 @@ V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
         if (resize) {
             if (map_t::elements == nullptr) {
                 map_t::capacity = GAPIL_MIN_MAP_SIZE;
-                map_t::elements = gapil_alloc(ctx, sizeof(element) * GAPIL_MIN_MAP_SIZE, alignof(V));
+                map_t::elements = gapil_alloc(map_t::arena, sizeof(element) * GAPIL_MIN_MAP_SIZE, alignof(V));
                 for (uint64_t i = 0; i < map_t::capacity; ++i) {
                     elements()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                  }
@@ -96,7 +118,7 @@ V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
                  auto oldCapacity = map_t::capacity;
 
                  map_t::capacity = map_t::capacity * GAPIL_MAP_GROW_MULTIPLIER;
-                 map_t::elements = gapil_alloc(ctx, sizeof(element) * map_t::capacity, alignof(V));
+                 map_t::elements = gapil_alloc(map_t::arena, sizeof(element) * map_t::capacity, alignof(V));
                  for (uint64_t i = 0; i < map_t::capacity; ++i) {
                     elements()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                  }
@@ -111,7 +133,7 @@ V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
                         oldElements[i].first.~K();
                      }
                  }
-                 gapil_free(ctx, oldElements);
+                 gapil_free(map_t::arena, oldElements);
              }
         }
 
@@ -128,13 +150,13 @@ V* Map<K, V>::index(context_t* ctx, K key, bool insert) {
 }
 
 template<typename K, typename V>
-V Map<K, V>::lookup(context_t* ctx, K key) {
-    V* v = index(ctx, key, false);
+V Map<K, V>::lookup(K key) {
+    V* v = index(key, false);
     return *v;
 }
 
 template<typename K, typename V>
-void Map<K, V>::remove(context_t*, K key) {
+void Map<K, V>::remove(K key) {
     auto hasher = std::hash<K>{};
     auto eq = std::equal_to<K>{};
     uint64_t hash = hasher(key);
@@ -160,7 +182,7 @@ void Map<K, V>::remove(context_t*, K key) {
 }
 
 template<typename K, typename V>
-void Map<K, V>::clear(context_t* ctx) {
+void Map<K, V>::clear() {
     auto elems = elements();
     for (uint64_t i = 0; i < map_t::capacity; ++i) {
         switch(elems[i].used) {
@@ -173,10 +195,12 @@ void Map<K, V>::clear(context_t* ctx) {
                 --map_t::count;
         }
     }
-    gapil_free(ctx, map_t::elements);
+    gapil_free(map_t::arena, map_t::elements);
     map_t::count = 0;
     map_t::capacity = 0;
     map_t::elements = nullptr;
 }
 
 }  // namespace gapil
+
+#endif  // __GAPIL_RUNTIME_MAP_INC__
