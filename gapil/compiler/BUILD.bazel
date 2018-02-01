@@ -56,7 +56,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["compiler_test.go"],
-    importpath = "github.com/google/gapid/gapil/compiler_test",
     deps = [
         "//core/assert:go_default_library",
         "//gapil:go_default_library",
