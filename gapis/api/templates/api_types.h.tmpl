@@ -18,7 +18,8 @@
 {{Include "cpp_common.tmpl"}}
 
 {{/* ---- Overrides ---- */}}
-{{Global "C++.EnumTypeOverride" "uint32_t"}}
+{{Global "C++.EnumTypeOverride"   "uint32_t"}}
+{{Global "C++.StringTypeOverride" "gapil::String"}}
 
 {{$filename := print (Global "API") "_types.h" }}
 {{$ | Macro "Types" | Reflow 4 | Write $filename}}
@@ -34,6 +35,8 @@
   #include "gapii/cc/shared_map.h"
   #include "gapii/cc/slice.h"
 ¶
+  #include "gapil/runtime/cc/string.h"
+¶
   #include "core/cc/static_array.h"
 ¶
   #include <functional>
@@ -43,8 +46,7 @@
   #include <vector>
 ¶
   #include <stdint.h>
-  #include <string.h>
-¶
+
   // Forward declarations
   namespace google {«
   namespace protobuf {«
@@ -94,6 +96,7 @@
 ¶
 {{end}}
 
+
 {{/*
 -------------------------------------------------------------------------------
   Emits C++ type forward declaration for specified AST type
@@ -104,6 +107,7 @@
     {{if IsClass $}}class {{Template "C++.Type" $}};¶{{end}}
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------

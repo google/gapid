@@ -120,4 +120,19 @@ void CallObserver::encodeAndDelete(::google::protobuf::Message* cmd) {
     delete cmd;
 }
 
+gapil::String CallObserver::string(const char* str) {
+    GAPID_ASSERT(str != nullptr);
+    for (uint64_t i = 0;; i++) {
+        if (str[i] == 0) {
+            read(str, i + 1);
+            return gapil::String(mSpy->getArena(), str, str + i);
+        }
+    }
+}
+
+gapil::String CallObserver::string(const Slice<char>& slice) {
+    read(slice);
+    return gapil::String(mSpy->getArena(), slice.begin(), slice.end());
+}
+
 }  // namespace gapii

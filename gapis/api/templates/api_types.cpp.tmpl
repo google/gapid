@@ -19,6 +19,7 @@
 
 {{/* ---- Overrides ---- */}}
 {{Global "C++.EnumTypeOverride" "uint32_t"}}
+{{Global "C++.StringTypeOverride" "gapil::String"}}
 
 {{$filename := print (Global "API") "_types.cpp" }}
 {{$ | Macro "Types" | Reflow 4 | Write $filename}}
@@ -96,6 +97,7 @@
     }
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------

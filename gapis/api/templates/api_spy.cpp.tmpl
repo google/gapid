@@ -20,6 +20,7 @@
 
 {{/* ---- Overrides ---- */}}
 {{Global "C++.EnumTypeOverride"   "uint32_t"}}
+{{Global "C++.StringTypeOverride" "gapil::String"}}
 {{Global "C++.Statement.Override" "Statement"}}
 
 {{Global "ApiIndex" $.Index}}
@@ -172,6 +173,7 @@
     {{$name      := Macro "C++.MethodName" $}}
     {{$spyname   := Global "SpyName"}}
     {{$synthetic := GetAnnotation $ "synthetic"}}
+    {{$retTy     := $.Return.Type}}
 
     {{Template "C++.ReturnType" $}} {{$spyname}}::{{$name}}({{Macro "C++.CallParameters" $ | Strings "CallObserver* observer" | JoinWith ", "}}) {
       GAPID_DEBUG({{Template "C++.PrintfCommandCall" $}});
@@ -185,7 +187,7 @@
         {{end}}
           §) {
           GAPID_ERROR("Application called unsupported function {{$name}}");
-          return{{if not (IsVoid $.Return.Type)}} {{Template "C++.Null" (TypeOf $.Return)}}{{end}};
+          return {{if not (IsVoid $retTy)}}{{Template "C++.NullArgument" $retTy}}{{end}};
         }¶
       {{end}}
 
@@ -196,8 +198,8 @@
         {{end}}
       });
 ¶
-      {{if not (IsVoid $.Return.Type)}}
-        {{Template "C++.ReturnType" $}} result = {{Template "C++.Null" (TypeOf $.Return)}};
+      {{if not (IsVoid $retTy)}}
+        {{Template "C++.ReturnType" $}} result = {{Template "C++.NullArgument" $retTy}};
       {{end}}
 
       bool called = false;
@@ -235,7 +237,11 @@
         {{if IsVoid $.Return.Type}}
           observer->encodeAndDelete(new api::CmdCall);
         {{else}}
-          observer->encode(cmd::{{.Name}}Call{result});
+          observer->encode(cmd::{{.Name}}Call{§
+          {{if IsString $.Return.Type}}gapil::String(&mArena, result)
+          {{else                     }}result
+          {{end}}
+          §});
         {{end}}
 ¶
         onPostFence(observer);
@@ -360,6 +366,7 @@
     break;
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------

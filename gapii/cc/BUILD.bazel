@@ -139,8 +139,10 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/cc",
+        "//core/memory/arena/cc",
         "//core/memory_tracker/cc",
         "//core/os/device/deviceinfo/cc",
+        "//gapil/runtime/cc",
         "//gapis/api:api_cc_proto",
         "//gapis/api/gles/gles_pb:gles_pb_cc_proto",
         "//gapis/api/gvr/gvr_pb:gvr_pb_cc_proto",
