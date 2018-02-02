@@ -24,6 +24,8 @@ cc_library(
         "runtime.h",
         "map.h",
         "map.inc",
+        "ref.h",
+        "ref.inc",
         "string.h",
     ],
     copts = cc_copts(),
@@ -37,6 +39,7 @@ cc_test(
     name = "tests",
     srcs = [
         "map_test.cpp",
+        "ref_test.cpp",
         "string_test.cpp",
     ],
     copts = cc_copts(),
