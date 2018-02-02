@@ -53,6 +53,10 @@ cc_test(
     name = "map_test",
     srcs = ["test_alloc_free.cpp", "map_test.cpp"],
     copts = cc_copts(),
+    linkopts = select({
+        "//tools/build:linux": ["-ldl"], # TODO: Move this to the gtest rules.
+        "//conditions:default": [],
+    }),
     deps = [
         ":test_alloc_free",
         ":cc",
