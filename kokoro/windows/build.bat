@@ -45,8 +45,8 @@ REM set PreferredToolArchitecture="x64"
 REM call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
 REM Install Bazel 0.10.0
-wget -q https://releases.bazel.build/0.10.0/rc6/bazel-0.10.0rc6-without-jdk-windows-x86_64.zip
-unzip -q bazel-0.10.0rc6-without-jdk-windows-x86_64.zip
+wget -q https://github.com/bazelbuild/bazel/releases/download/0.10.0/bazel-0.10.0-without-jdk-windows-x86_64.zip
+unzip -q bazel-0.10.0-without-jdk-windows-x86_64.zip
 set PATH=C:\python27;%PATH%
 
 cd %SRC%
