@@ -33,7 +33,7 @@ size_t alloc_size(void* ptr) {
     WINDOWS_ONLY(return _msize(ptr));
     OSX_ONLY(return malloc_size(ptr));
     LINUX_ONLY(return malloc_usable_size(ptr));
-    ANDROID_ONLY(return dlmalloc_usable_size(ptr));
+    ANDROID_ONLY(return malloc_usable_size(ptr));
     return 0;
 }
 
