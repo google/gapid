@@ -74,13 +74,16 @@ bool Arena::owns(void* ptr) {
     return allocations.count(ptr) == 1;
 }
 
-void Arena::stats(size_t* num_allocations, size_t* num_bytes_allocated) const {
+size_t Arena::num_allocations() const {
+    return allocations.size();
+}
+
+size_t Arena::num_bytes_allocated() const {
     size_t bytes = 0;
     for (void* ptr : allocations) {
         bytes += alloc_size(ptr);
     }
-    *num_allocations = allocations.size();
-    *num_bytes_allocated = bytes;
+    return bytes;
 }
 
 }  // namespace core
@@ -109,7 +112,9 @@ void arena_free(arena* a, void* ptr) {
 
 // arena_stats returns statistics of the current state of the arena.
 void arena_stats(arena* a, size_t* num_allocations, size_t* num_bytes_allocated) {
-    reinterpret_cast<core::Arena*>(a)->stats(num_allocations, num_bytes_allocated);
+    auto arena = reinterpret_cast<core::Arena*>(a);
+    *num_allocations = arena->num_allocations();
+    *num_bytes_allocated = arena->num_bytes_allocated();
 }
 
 } // extern "C"

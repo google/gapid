@@ -57,8 +57,11 @@ public:
     template<typename T>
     inline void destroy(T* ptr);
 
-    // stats returns statistics of the current state of the arena.
-    void stats(size_t* num_allocations, size_t* num_bytes_allocated) const;
+    // returns the total number of allocations owned by this arena.
+    size_t num_allocations() const;
+
+    // returns the total number of bytes allocated by this arena.
+    size_t num_bytes_allocated() const;
 
 private:
     std::unordered_set<void*> allocations;

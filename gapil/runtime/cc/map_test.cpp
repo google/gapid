@@ -15,7 +15,6 @@
 
 #include "map.inc"
 
-#include "core/cc/assert.h"
 #include "core/memory/arena/cc/arena.h"
 
 #include <gtest/gtest.h>
@@ -33,29 +32,11 @@ void gapil_get_code_location(context* ctx, char** file, uint32_t* line) {}
 template<typename T>
 class MapTest : public ::testing::Test {
     void TearDown() {
-        size_t num_allocations = 0;
-        size_t num_bytes_allocated = 0;
-        arena.stats(&num_allocations, &num_bytes_allocated);
-
-        EXPECT_EQ(0, num_allocations);
-        EXPECT_EQ(0, num_bytes_allocated);
+        EXPECT_EQ(0, arena.num_allocations());
+        EXPECT_EQ(0, arena.num_bytes_allocated());
     }
 
 public:
-    size_t num_allocations() const {
-        size_t num_allocations = 0;
-        size_t num_bytes_allocated = 0;
-        arena.stats(&num_allocations, &num_bytes_allocated);
-        return num_allocations;
-    }
-
-    size_t num_bytes_allocated() const {
-        size_t num_allocations = 0;
-        size_t num_bytes_allocated = 0;
-        arena.stats(&num_allocations, &num_bytes_allocated);
-        return num_bytes_allocated;
-    }
-
     core::Arena arena;
 };
 
@@ -148,14 +129,14 @@ TYPED_TEST(MapTest, range) {
         map[key_type(i)] = value_type(i);
     }
 
-    uint64_t old_allocations = TestFixture::num_allocations();
+    uint64_t old_allocations = TestFixture::arena.num_allocations();
 
     for (auto& val: map) {
         result_vector[val.first] = val.second;
     }
 
     // Ranging over a map should not have caused any allocations.
-    EXPECT_EQ(old_allocations, TestFixture::num_allocations());
+    EXPECT_EQ(old_allocations, TestFixture::arena.num_allocations());
 
     for (uint64_t i = 0; i < 16; ++i) {
         EXPECT_EQ(result_vector[i], value_type(i));

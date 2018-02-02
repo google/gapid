@@ -109,7 +109,7 @@ pool* gapil_make_pool(context* ctx, uint64_t size) {
     pool->ref_count = 1;
     pool->buffer = buffer;
 
-    DEBUG_PRINT("gapil_make_pool(size: %llu) -> [pool: %p, buffer: %p]", size, pool, buffer);
+    DEBUG_PRINT("gapil_make_pool(size: 0x%" PRIx64 ") -> [pool: %p, buffer: %p]", size, pool, buffer);
     return pool;
 }
 
@@ -213,7 +213,11 @@ void gapil_string_to_slice(context* ctx, string* str, slice* out) {
 string* gapil_string_concat(string* a, string* b) {
     DEBUG_PRINT("gapil_string_concat(a: '%s', b: '%s')", a->data, b->data);
 
-    GAPID_ASSERT_MSG(a->arena == b->arena, "string concat of strings from different arenas!");
+    if (a->length == 0) { b->ref_count++; return b; }
+    if (b->length == 0) { a->ref_count++; return a; }
+
+    GAPID_ASSERT_MSG(a->arena != nullptr, "string concat using string with no arena");
+    GAPID_ASSERT_MSG(b->arena != nullptr, "string concat using string with no arena");
 
     auto str = gapil_make_string(a->arena, a->length + b->length, nullptr);
     memcpy(str->data, a->data, a->length);

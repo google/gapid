@@ -16,11 +16,15 @@ load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "cc",
-    srcs = ["runtime.cpp"],
+    srcs = [
+        "runtime.cpp",
+        "string.cpp",
+    ],
     hdrs = [
         "runtime.h",
         "map.h",
         "map.inc",
+        "string.h",
     ],
     copts = cc_copts(),
     visibility = ["//visibility:public"],
@@ -30,8 +34,11 @@ cc_library(
 )
 
 cc_test(
-    name = "map_test",
-    srcs = ["map_test.cpp"],
+    name = "tests",
+    srcs = [
+        "map_test.cpp",
+        "string_test.cpp",
+    ],
     copts = cc_copts(),
     linkopts = select({
         "//tools/build:linux": ["-ldl"], # TODO: Move this to the gtest rules.
