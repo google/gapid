@@ -42,7 +42,7 @@
   {{else if IsS64         $}}int64_t
   {{else if IsEnum        $}}{{Template "C++.EnumType" $}}
   {{else if IsReference   $}}std::shared_ptr<{{Template "C++.Type" $.To}}>
-  {{else if IsString      $}}std::string
+  {{else if IsString      $}}{{Template "C++.StringType" $}}
   {{else if IsStaticArray $}}core::StaticArray<{{Template "C++.Type" $.ValueType}}, {{$.Size}}>
   {{else if IsSlice       $}}Slice<{{if IsVoid $.To}}uint8_t{{else}}{{Template "C++.Type" $.To}}{{end}}>
   {{else if IsPointer     $}}{{Template "C++.Type" $.To}}*
@@ -125,7 +125,7 @@
   {{else if IsF64         $}}0
   {{else if IsEnum        $}}0
   {{else if IsChar        $}}0
-  {{else if IsString      $}}""
+  {{else if IsString      $}}gapil::String()
   {{else if IsStaticArray $}}{{Template "C++.Type" $}}{}
   {{else if IsPseudonym   $}}{{Template "C++.Null" $.To}}
   {{else if IsClass       $}}{{Template "C++.Type" $}}()
@@ -134,6 +134,20 @@
   {{else if IsPointer     $}}nullptr
   {{else if IsReference   $}}{{Template "C++.Type" $}}()
   {{else}}{{Error "macro Null called with unsupported type: %s" $.Name}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ default value for the provided AST type when used as an argument
+  or return value.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.NullArgument"}}
+  {{AssertType $ "Type"}}
+  {{     if IsString      $}}""
+  {{else}}{{Template "C++.Null" $}}
   {{end}}
 {{end}}
 
@@ -150,6 +164,20 @@
 
   {{if $override := Global "C++.EnumTypeOverride"}}{{$override}}
   {{else}}{{Template "C++.EnumName" $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ type for the specified String.
+  By default this emits std::string, but this behaviour can be overridden with
+  the global "C++.StringTypeOverride".
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.StringType"}}
+  {{if $override := Global "C++.StringTypeOverride"}}{{$override}}
+  {{else}}std::string
   {{end}}
 {{end}}
 
@@ -208,6 +236,7 @@
   {{Title $.Named}}
 {{end}}
 
+
 {{/*
 -------------------------------------------------------------------------------
   Emits the C++ type for use as a parameter for the given parameter or type.
@@ -228,7 +257,6 @@
   {{else if IsPointer     $}}{{Template "C++.ParameterTypeNoSuffix" $.To}}*
   {{else if IsStaticArray $}}{{Template "C++.Type" $.ValueType}}
   {{else if IsString      $}} {{if $func.Extern}} std::string {{else}} const char* {{end}}
-
   {{else                   }}{{Template "C++.Type" $}}
   {{end}}
 {{end}}
@@ -298,7 +326,7 @@
   {{AssertType $ "Function"}}
 
   {{$ty := TypeOf $.Return}}
-  {{if IsString $ty}}std::string{{else}}{{Macro "C++.ReturnType" $}}{{end}}
+  {{if IsString $ty}}gapil::String{{else}}{{Macro "C++.ReturnType" $}}{{end}}
 {{end}}
 
 
@@ -569,9 +597,9 @@
 {{define "C++.Read"}}
   {{     if IsBoolValue        $}}{{$}}
   {{else if IsNumericValue     $}}{{Template "C++.NumericValue" $}}
-  {{else if IsStringValue      $}}{{printf "%q" $}}
+  {{else if IsStringValue      $}}gapil::String(&mArena, {{printf "%q" $}})
   {{else if IsMessageValue     $}}"{{$.AST.Name.Value}}"
-  {{else if IsParameter        $}}{{$.Name}}
+  {{else if IsParameter        $}}{{Template "C++.ReadParameter" $}}
   {{else if IsBinaryOp         $}}({{Template "C++.Read" $.LHS}}) {{$.Operator}} ({{Template "C++.Read" $.RHS}})
   {{else if IsUnaryOp          $}}{{$.Operator}}({{Template "C++.Read" $.Expression}})
   {{else if IsEnumEntry        $}}{{Template "C++.EnumName" $.Owner}}::{{Template "C++.EnumEntryName" $}}
@@ -613,6 +641,21 @@
   Emits the C++ logic to read the given expression, skipping any outer casts.
 -------------------------------------------------------------------------------
 */}}
+{{define "C++.ReadParameter"}}
+  {{AssertType $ "Parameter"}}
+
+  {{$ty := TypeOf $}}
+  {{if IsString $ty}}gapil::String(&mArena, {{$.Name}})
+  {{else           }}{{$.Name}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ logic to read the given expression, skipping any outer casts.
+-------------------------------------------------------------------------------
+*/}}
 {{define "C++.ReadNoCast"}}
   {{if IsCast $}}{{Template "C++.ReadNoCast" $.Object}}
   {{else}}{{Template "C++.Read" $}}
@@ -628,8 +671,15 @@
 {{define "C++.ReadAsCallArgument"}}
   {{$wasCallArgument := Global "CallArgument"}}
   {{Global "IsCallArgument" true}}
-  {{Template "C++.Read" $}}
+  {{$arg := Macro "C++.Read" $}}
   {{Global "IsCallArgument" $wasCallArgument}}
+
+  {{$ty := TypeOf $}}
+  {{     if IsParameter $  }}{{$.Name}}
+  {{else if IsString    $ty}}({{$arg}}).c_str()
+  {{else}}{{$arg}}
+  {{end}}
+
 {{end}}
 
 
@@ -686,7 +736,7 @@
       {{if IsNil $v}}
         {{Template "C++.Null" (TypeOf (index $.Class.Fields $i))}}
       {{else}}
-        {{Template "C++.ReadAsCallArgument" $v}}
+        {{Template "C++.Read" $v}}
       {{end}}§
     {{end}}
   )
@@ -736,25 +786,15 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits a comma-separated list of reads.
--------------------------------------------------------------------------------
-*/}}
-{{define "C++.ReadList"}}
-  {{range $i, $v := $}}
-    {{if $i}}, {{end}}{{Template "C++.Read" $v}}§
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits a comma-separated list of reads as call arguments.
 -------------------------------------------------------------------------------
 */}}
 {{define "C++.ReadListAsCallArgument"}}
   {{$wasCallArgument := Global "CallArgument"}}
   {{Global "IsCallArgument" true}}
-  {{Template "C++.ReadList" $}}
+  {{range $i, $v := $}}
+    {{if $i}}, {{end}}{{Template "C++.ReadAsCallArgument" $v}}§
+  {{end}}
   {{Global "IsCallArgument" $wasCallArgument}}
 {{end}}
 
@@ -769,7 +809,7 @@
 
   {{$src_ty := $.Object | TypeOf | Underlying | Unpack}}
   {{$dst_ty := $.Type | Underlying | Unpack}}
-  {{$src    := Macro "C++.Read" $.Object}}
+  {{$src    := Macro "C++.ReadAsCallArgument" $.Object}}
 
   {{/* A[] -> B[] */}}{{if and (IsSlice $src_ty) (IsSlice $dst_ty)}}
     {{$src}}.as<{{Template "C++.Type" $dst_ty.To}}>()
@@ -779,7 +819,7 @@
     observer->string({{$src}})
   {{/* char[] -> string */}}{{else if and (IsSlice $src_ty) (IsString $dst_ty)}}
     observer->string({{$src}})
-  {{/* string[] -> char[] */}}{{else if and (IsString $src_ty) (IsSlice $dst_ty)}}
+  {{/* string -> char[] */}}{{else if and (IsString $src_ty) (IsSlice $dst_ty)}}
     slice({{$src}})
   {{else}}
     ({{Template "C++.Type" $.Type}})({{$src}})
@@ -799,7 +839,7 @@
   {{$ty := Unpack $.Type}}
   {{     if IsPseudonym   $ty}}{{Template "C++.ReadLength" "Type" $ty.To "Value" $.Value}}
   {{else if IsSlice       $ty}}{{Template "C++.Read" $.Value}}.count()
-  {{else if IsString      $ty}}{{Template "C++.Read" $.Value}}.size()
+  {{else if IsString      $ty}}{{Template "C++.Read" $.Value}}.length()
   {{else if IsMap         $ty}}{{Template "C++.Read" $.Value}}.size()
   {{else                     }}{{Error "macro C++.ReadLength called with unsupported type: %v" $.Type}}
   {{end}}

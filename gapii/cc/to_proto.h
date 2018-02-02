@@ -116,6 +116,14 @@ struct ProtoConverter<Out, core::StaticArray<In, N>> {
     }
 };
 
+// Converts gapil::String to std::string
+template <>
+struct ProtoConverter<std::string, gapil::String> {
+    static inline void convert(std::string* out, const gapil::String& in, ToProtoContext& ctx) {
+        *out = in.c_str();
+    }
+};
+
 // Converts SharedMap to proto
 template <typename Out, typename K, typename V>
 struct ProtoConverter<Out, SharedMap<K, V>> {
@@ -170,6 +178,10 @@ inline void toProto(Out* out, const In& in, ToProtoContext& ctx) {
 
 inline const std::string& toProtoString(const std::string& str) {
     return str;
+}
+
+inline const char* toProtoString(const gapil::String& str) {
+    return str.c_str();
 }
 
 inline const char* toProtoString(const char* str) {

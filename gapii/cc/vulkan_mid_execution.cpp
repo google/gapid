@@ -1688,7 +1688,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
           compute_pipeline.second);
     }
 
-    std::set<std::string> entrypoint_names;
+    std::set<gapil::String> entrypoint_names;
     auto last_insert = entrypoint_names.begin();
 
     for (auto& graphics_pipeline : GraphicsPipelines) {

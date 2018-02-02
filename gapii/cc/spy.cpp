@@ -318,11 +318,11 @@ std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserv
     Constants constants;
     getContextConstants(constants);
 
-    std::string threadName;
+    gapil::String threadName;
 #if TARGET_OS == GAPID_OS_ANDROID
     char buffer[256] = { 0 };
     prctl(PR_GET_NAME, (unsigned long)buffer, 0, 0, 0);
-    threadName = std::string(buffer);
+    threadName = gapil::String(&mArena, buffer);
 #endif
 
     std::shared_ptr<StaticContextState> out(new StaticContextState(constants, threadName));
