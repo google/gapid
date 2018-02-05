@@ -1,0 +1,118 @@
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//tools/build:rules.bzl", "apic", "mm_library", "cc_copts")
+
+apic(
+    name = "gles_cc",
+    api = "//gapis/api/gles:api",
+    templates = [
+        "//gapis/api/templates:specific_gfx_api.cpp",
+    ],
+)
+
+apic(
+    name = "gles_h",
+    api = "//gapis/api/gles:api",
+    templates = [
+        "//gapis/api/templates:specific_gfx_api.h",
+    ],
+)
+
+apic(
+    name = "vulkan_cc",
+    api = "//gapis/api/vulkan:api",
+    templates = [
+        "//gapis/api/templates:specific_gfx_api.cpp",
+        "//gapis/api/templates:vulkan_gfx_api_extras.cpp",
+    ],
+)
+
+apic(
+    name = "vulkan_h",
+    api = "//gapis/api/vulkan:api",
+    templates = [
+        "//gapis/api/templates:specific_gfx_api.h",
+    ],
+)
+
+mm_library(
+    name = "darwin_renderer",
+    srcs = glob(["osx/*.mm"]),
+    hdrs = glob([
+        "*.h",
+        "*.inc",
+    ]) + [
+        ":gles_h",
+        ":vulkan_h",
+    ],
+    copts = cc_copts(),
+    deps = [
+        "//core/cc",
+    ],
+)
+
+cc_library(
+    name = "gapir",
+    srcs = glob(
+        [
+            "*.cpp",
+            "*.h",
+            "*.inc",
+        ],
+        exclude = ["*_test.cpp"],
+    ) + select({
+        "//tools/build:linux": glob(["linux/*.cpp"]),
+        "//tools/build:darwin": glob(["osx/*.cpp"]),
+        "//tools/build:windows": glob(["windows/*.cpp"]),
+        # Android
+        "//conditions:default": glob(["android/*.cpp"]),
+    }) + [
+        ":gles_cc",
+        ":gles_h",
+        ":vulkan_cc",
+        ":vulkan_h",
+    ],
+    copts = cc_copts(),
+    linkopts = select({
+        "//tools/build:linux": [
+            "-ldl",
+            "-lGL",
+            "-lX11",
+        ],
+        "//tools/build:darwin": [
+            "-framework Cocoa",
+            "-framework OpenGL",
+        ],
+        "//tools/build:windows": [
+            "-lopengl32",
+            "-lgdi32",
+        ],
+        # Android
+        "//conditions:default": [
+            "-lm",
+            "-llog",
+            "-lEGL",
+            "-lGLESv2",
+            "-landroid",
+        ],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/cc",
+    ] + select({
+        "//tools/build:darwin": [":darwin_renderer"],
+        "//conditions:default": [],
+    }),
+)

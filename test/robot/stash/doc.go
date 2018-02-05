@@ -15,10 +15,3 @@
 // Package stash provides the defenition of a service that stores immutable blobs of data
 // keyed by id, and the client helpers for dealing with that service.
 package stash
-
-// The following are the imports that generated source files pull in when present
-// Having these here helps out tools that can't cope with missing dependancies
-import (
-	_ "github.com/golang/protobuf/proto"
-	_ "github.com/golang/protobuf/ptypes/timestamp"
-)

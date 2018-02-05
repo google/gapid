@@ -16,7 +16,7 @@
 # Linux Package Script.
 set -ex
 
-if [ $# -ne 1 -o ! -f "$1/pkg/build.properties" ]; then
+if [ $# -ne 1 -o ! -d "$1" ]; then
 	echo Expected the build folder as an argument.
 	exit 1
 fi
@@ -27,6 +27,12 @@ function absname {
 
 BUILD_OUT=$1
 SRC=$(absname "$(dirname "${BASH_SOURCE[0]}")")
+BIN=$SRC/../../bazel-bin
+
+if [ ! -f "$BIN/pkg/build.properties" ]; then
+  echo Unable to find pkg/build.properties in $BIN
+  exit 1
+fi
 
 rm -rf "$BUILD_OUT/dist"
 mkdir -p "$BUILD_OUT/dist"
@@ -35,12 +41,11 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
                   /Major/ {major=$2}
                   /Minor/ {minor=$2}
                   /Micro/ {micro=$2}
-                  END {print major"."minor"."micro}' ../pkg/build.properties)
+                  END {print major"."minor"."micro}' $BIN/pkg/build.properties)
 
 # Combine package contents.
 mkdir -p gapid/DEBIAN gapid/opt/gapid gapid/usr/share/applications gapid/usr/share/menu gapid/usr/share/mime/packages
-cp -r ../pkg/* gapid/opt/gapid
-cp -r ../current/java/gapic-linux.jar gapid/opt/gapid/lib/gapic.jar
+cp -r $BIN/pkg/* gapid/opt/gapid
 cp "$SRC/../../gapic/res/icons/logo_256.png" gapid/opt/gapid/icon.png
 cp "$SRC/gapid.desktop" gapid/usr/share/applications/google-gapid.desktop
 cp "$SRC/gapid.menu" gapid/usr/share/menu/google-gapid.menu
@@ -75,8 +80,8 @@ cd gapid/opt/
 zip -r ../../gapid-$VERSION-linux.zip gapid/
 cd ../../
 
-# Copy the GAPIR symbols
-cp ../current/gapir.sym gapir-$VERSION-linux.sym
+# TODO Copy the GAPIR symbols
+# cp ../current/gapir.sym gapir-$VERSION-linux.sym
 
 # Build the .deb package.
 echo "$(date): Building package."

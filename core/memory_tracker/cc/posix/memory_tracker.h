@@ -20,6 +20,7 @@
 #include "core/memory_tracker/cc/memory_protections.h"
 
 #include <cstdint>
+#include <pthread.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/mman.h>
@@ -33,7 +34,7 @@ inline bool set_protection(void* p, size_t size, PageProtections prot) {
   uint32_t protections = (prot == PageProtections::kRead) ? PROT_READ :
                     (prot == PageProtections::kWrite) ? PROT_WRITE :
                 (prot == PageProtections::kReadWrite) ? PROT_READ | PROT_WRITE: 0;
-  return mprotect(p, size, protections); 
+  return mprotect(p, size, protections);
 }
 
 // SignalBlocker blocks the specified signal when it is constructed, and

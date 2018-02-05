@@ -1,0 +1,75 @@
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "mm_library")
+
+mm_library(
+    name = "darwin_query",
+    srcs = glob(["osx/*.mm"]),
+    copts = cc_copts(),
+    copy_hdrs = ["query.h"],
+    deps = ["//core/os/device:device_cc_proto"],
+)
+
+cc_library(
+    name = "cc",
+    srcs = glob(["*.cpp"]) + select({
+        "//tools/build:linux": glob(["linux/query.cpp"]),
+        "//tools/build:windows": glob(["windows/query.cpp"]),
+        "//tools/build:darwin": [],
+        # Android
+        "//conditions:default": glob([
+            "android/*.cpp",
+            "android/*.h",
+        ]),
+    }),
+    hdrs = glob(["*.h"]),
+    copts = cc_copts(),
+    linkopts = select({
+        "//tools/build:linux": [
+            "-ldl",
+            "-lGL",
+            "-lX11",
+        ],
+        "//tools/build:darwin": [
+            "-framework Cocoa",
+            "-framework OpenGL",
+        ],
+        "//tools/build:windows": ["-lgdi32"],
+        # Android
+        "//conditions:default": [
+            "-lEGL",
+            "-lGLESv2",
+            "-llog",
+            "-landroid",
+            "-lm",
+        ],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/cc",
+        "@com_google_protobuf//:protobuf",
+        "//core/os/device:device_cc_proto",
+    ] + select({
+        "//tools/build:darwin": [":darwin_query"],
+        "//conditions:default": [],
+    }),
+)
+
+android_dynamic_library(
+    name = "libdeviceinfo",
+    visibility = ["//visibility:public"],
+    exports = "libdeviceinfo.exports",
+    deps = [":cc"],
+)

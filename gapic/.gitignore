@@ -4,6 +4,3 @@
 /out
 gapic.jar
 hs_err_pid*.log
-
-# Generated files.
-src/generated/

@@ -1,0 +1,56 @@
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["log.go"],
+    embed = [":log_pb_go_proto"],
+    importpath = "github.com/google/gapid/core/log/log_pb",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/data/pod:go_default_library",
+        "//core/log:go_default_library",
+        "@com_github_golang_protobuf//ptypes/timestamp:go_default_library",
+    ],
+)
+
+proto_library(
+    name = "log_pb_proto",
+    srcs = ["log.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/data/pod:pod_proto",
+        "@com_google_protobuf//:timestamp_proto",
+    ],
+)
+
+go_proto_library(
+    name = "log_pb_go_proto",
+    importpath = "github.com/google/gapid/core/log/log_pb",
+    proto = ":log_pb_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/data/pod:go_default_library",
+        "@com_github_golang_protobuf//ptypes/timestamp:go_default_library",
+    ],
+)
+
+java_proto_library(
+    name = "log_pb_java_proto",
+    visibility = ["//visibility:public"],
+    deps = [":log_pb_proto"],
+)

@@ -1,0 +1,75 @@
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts")
+
+cc_library(
+    name = "cc",
+    srcs = glob([
+        "lib/*.cc",
+        "lib/*.h",
+    ]) + select({
+        "//tools/build:android-armeabi-v7a": glob([
+            "lib/ARM/*.cc",
+            "lib/ARM/*.h",
+        ]),
+        "//tools/build:android-arm64-v8a": glob([
+            "lib/AArch64/*.cc",
+            "lib/AArch64/*.h",
+        ]),
+        "//tools/build:android-x86": glob([
+            "lib/X86/*.cc",
+            "lib/X86/*.h",
+        ]),
+        "//conditions:default": [],
+    }),
+    hdrs = glob([
+        "include/*.h",
+        "include/*.hpp",
+    ]),
+    copts = cc_copts() + [
+        "-fno-rtti",
+        "-fno-exceptions",
+    ],
+    includes = ["lib"],
+    linkopts = select({
+        "//tools/build:linux": [],
+        "//tools/build:darwin": [],
+        "//tools/build:windows": [],
+        # Android
+        "//conditions:default": [
+            "-lm",
+            "-llog",
+            "-lz",
+            "-lstdc++",
+        ],
+    }),
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@llvm//:AArch64CodeGen",
+        "@llvm//:AArch64Disassembler",
+        "@llvm//:ARMCodeGen",
+        "@llvm//:ARMDisassembler",
+        "@llvm//:X86CodeGen",
+        "@llvm//:X86Disassembler",
+    ],
+)
+
+android_dynamic_library(
+    name = "libinterceptor",
+    visibility = ["//visibility:public"],
+    exports = "lib/libinterceptor.exports",
+    deps = [":cc"],
+)

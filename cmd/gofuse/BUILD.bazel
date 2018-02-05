@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/google/gapid/cmd/gofuse",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "gofuse",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,6 @@
+Version.Major=@GAPID_VERSION_MAJOR@
+Version.Minor=@GAPID_VERSION_MINOR@
+Version.Micro=@GAPID_VERSION_POINT@
+
+Build.Number=@GAPID_BUILD_NUMBER@
+Build.SHA=@GAPID_BUILD_SHA@

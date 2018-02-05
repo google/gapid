@@ -1,0 +1,72 @@
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "main.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:dragonfly": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:nacl": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:netbsd": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:openbsd": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:plan9": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:solaris": [
+            "console_other.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows": [
+            "console_windows.go",
+        ],
+        "//conditions:default": [],
+    }),
+    importpath = "github.com/google/gapid/cmd/gapid",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "gapid",
+    embed = [":go_default_library"],
+    gc_linkopts = select({
+        "//tools/build:windows": [
+            "-H",
+            "windowsgui",
+        ],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+)

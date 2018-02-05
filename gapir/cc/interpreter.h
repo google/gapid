@@ -21,7 +21,7 @@
 #include "stack.h"
 #include "thread_pool.h"
 
-#include <core/cc/crash_handler.h>
+#include "core/cc/crash_handler.h"
 
 #include <stdint.h>
 
