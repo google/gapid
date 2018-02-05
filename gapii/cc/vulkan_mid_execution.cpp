@@ -32,8 +32,8 @@
 namespace gapii {
 
 template <typename T>
-std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R &queues,
-                                      const std::shared_ptr<T> &obj) {
+gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R &queues,
+                                 const gapil::Ref<T> &obj) {
   if (obj->mLastBoundQueue) {
     return obj->mLastBoundQueue;
   }

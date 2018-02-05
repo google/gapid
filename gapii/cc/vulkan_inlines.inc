@@ -18,12 +18,12 @@
 // of the gapid namespace.
 
 template<typename T>
-inline void AppendCommand(VkCommandBuffer, VulkanSpy*, std::shared_ptr<T>&) {
+inline void AppendCommand(VkCommandBuffer, VulkanSpy*, gapil::Ref<T>&) {
     GAPID_FATAL("Not implemented");
 }
 
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBindPipelineArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdBindPipelineArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBindPipeline;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -33,7 +33,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetViewportArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetViewportArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetViewport;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -43,7 +43,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetScissorArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetScissorArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetScissor;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -53,7 +53,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetLineWidthArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetLineWidthArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetLineWidth;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -63,7 +63,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetDepthBiasArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetDepthBiasArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetDepthBias;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -73,7 +73,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetBlendConstantsArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetBlendConstantsArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetBlendConstants;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -83,7 +83,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetDepthBoundsArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetDepthBoundsArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetDepthBounds;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -93,7 +93,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetStencilCompareMaskArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetStencilCompareMaskArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetStencilCompareMask;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -103,7 +103,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetStencilWriteMaskArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetStencilWriteMaskArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetStencilWriteMask;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -113,7 +113,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetStencilReferenceArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetStencilReferenceArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetStencilReference;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -123,7 +123,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBindDescriptorSetsArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdBindDescriptorSetsArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBindDescriptorSets;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -133,7 +133,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBindIndexBufferArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdBindIndexBufferArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBindIndexBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -143,7 +143,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBindVertexBuffersArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdBindVertexBuffersArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBindVertexBuffers;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -153,7 +153,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDrawArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDrawArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDraw;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -163,7 +163,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDrawIndexedArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDrawIndexedArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDrawIndexed;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -173,7 +173,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDrawIndirectArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDrawIndirectArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDrawIndirect;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -183,7 +183,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDrawIndexedIndirectArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDrawIndexedIndirectArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDrawIndexedIndirect;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -193,7 +193,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDispatchArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDispatchArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDispatch;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -203,7 +203,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDispatchIndirectArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDispatchIndirectArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDispatchIndirect;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -213,7 +213,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyBufferArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdCopyBufferArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -223,7 +223,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyImageArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdCopyImageArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -233,7 +233,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBlitImageArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdBlitImageArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBlitImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -243,7 +243,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyBufferToImageArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdCopyBufferToImageArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyBufferToImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -253,7 +253,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyImageToBufferArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdCopyImageToBufferArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyImageToBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -263,7 +263,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdUpdateBufferArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdUpdateBufferArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdUpdateBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -273,7 +273,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdFillBufferArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdFillBufferArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdFillBuffer;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -283,7 +283,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdClearColorImageArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdClearColorImageArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdClearColorImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -293,7 +293,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdClearDepthStencilImageArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdClearDepthStencilImageArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdClearDepthStencilImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -303,7 +303,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdClearAttachmentsArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdClearAttachmentsArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdClearAttachments;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -313,7 +313,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdResolveImageArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdResolveImageArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdResolveImage;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -323,7 +323,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdSetEventArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdSetEventArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdSetEvent;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -333,7 +333,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdResetEventArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdResetEventArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdResetEvent;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -343,7 +343,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdWaitEventsArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdWaitEventsArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdWaitEvents;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -353,7 +353,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdPipelineBarrierArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdPipelineBarrierArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdPipelineBarrier;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -363,7 +363,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBeginQueryArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdBeginQueryArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBeginQuery;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -373,7 +373,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdEndQueryArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdEndQueryArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdEndQuery;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -383,7 +383,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdResetQueryPoolArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdResetQueryPoolArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdResetQueryPool;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -393,7 +393,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdWriteTimestampArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdWriteTimestampArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdWriteTimestamp;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -403,7 +403,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdCopyQueryPoolResultsArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdCopyQueryPoolResultsArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdCopyQueryPoolResults;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -413,7 +413,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdPushConstantsArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdPushConstantsArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdPushConstants;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -423,7 +423,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdBeginRenderPassArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdBeginRenderPassArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdBeginRenderPass;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -433,7 +433,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdNextSubpassArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdNextSubpassArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdNextSubpass;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -443,7 +443,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdEndRenderPassArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdEndRenderPassArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdEndRenderPass;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -453,7 +453,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdExecuteCommandsArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdExecuteCommandsArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdExecuteCommands;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -463,7 +463,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDebugMarkerBeginEXTArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDebugMarkerBeginEXTArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDebugMarkerBeginEXT;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -473,7 +473,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDebugMarkerEndEXTArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDebugMarkerEndEXTArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDebugMarkerEndEXT;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -483,7 +483,7 @@ inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_pt
     );
 }
 template<>
-inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, std::shared_ptr<vkCmdDebugMarkerInsertEXTArgs>& args) {
+inline void AppendCommand(VkCommandBuffer buffer, VulkanSpy* spy, gapil::Ref<vkCmdDebugMarkerInsertEXTArgs>& args) {
     auto& map = spy->CommandBuffers[buffer]->mBufferCommands.mvkCmdDebugMarkerInsertEXT;
     map[map.size()] = args;
     auto& references = spy->CommandBuffers[buffer]->mCommandReferences;
@@ -513,16 +513,16 @@ inline void VulkanSpy::onVkError(CallObserver* observer, VkErrorType err) {
 }
 
 template<>
-inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_INVALID_HANDLE> err) {
+inline void VulkanSpy::onVkError(CallObserver*, gapil::Ref<ERR_INVALID_HANDLE> err) {
   GAPID_WARNING("Error: Invalid %s: %llu", err->mhandleType.c_str(), err->mhandle)
 }
 
 template<>
-inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_NULL_POINTER> err) {
+inline void VulkanSpy::onVkError(CallObserver*, gapil::Ref<ERR_NULL_POINTER> err) {
   GAPID_WARNING("Error: Null pointer of %s", err->mpointerType.c_str())
 }
 
 template<>
-inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_UNRECOGNIZED_EXTENSION> err) {
+inline void VulkanSpy::onVkError(CallObserver*, gapil::Ref<ERR_UNRECOGNIZED_EXTENSION> err) {
   GAPID_WARNING("Error: Unrecognized extension: %s", err->mname.c_str())
 }

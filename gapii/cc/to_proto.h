@@ -161,8 +161,8 @@ struct ProtoConverter<Out, SharedMap<K, V>> {
 
 // Converts reference to proto
 template <typename Out, typename T>
-struct ProtoConverter<Out, std::shared_ptr<T>> {
-    static inline void convert(Out* out, const std::shared_ptr<T>& in, ToProtoContext& ctx) {
+struct ProtoConverter<Out, gapil::Ref<T>> {
+    static inline void convert(Out* out, const gapil::Ref<T>& in, ToProtoContext& ctx) {
         auto ref = ctx.GetReferenceID(in.get());
         out->set_referenceid(ref.first);
         if (ref.second) {
