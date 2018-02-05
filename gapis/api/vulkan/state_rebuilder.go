@@ -795,7 +795,10 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []u
 			VkMemoryAllocateInfo{
 				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 				NewVoidᶜᵖ(memory.Nullptr),
-				size * 2, // Overallocate by a factor of 2.
+				size * 2,
+				// Since we cannot guess how much the driver will actually
+				// request of us, overallocate by a factor of 2. This should
+				// be enough.
 				memoryTypeIndex,
 			}).Ptr()),
 		memory.Nullptr,
@@ -859,7 +862,7 @@ func (sb *stateBuilder) getSparseQueueFor(lastBoundQueue *QueueObject, device Vk
 
 	if lastBoundQueue != nil {
 		queueProperties := sb.s.PhysicalDevices.Get(sb.s.Devices.Get(lastBoundQueue.Device).PhysicalDevice).QueueFamilyProperties
-		if 0 != (uint32(queueProperties.Get(lastBoundQueue.Family).QueueFlags)&uint32(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT)) {
+		if 0 != (uint32(queueProperties.Get(lastBoundQueue.Family).QueueFlags) & uint32(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT)) {
 			return lastBoundQueue
 		}
 	}

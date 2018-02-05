@@ -75,6 +75,8 @@ func (*State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	return p, nil
 }
 
+// SetupInitialState recreates the command lamdas from the state block.
+// These are not encoded so we have to set them up here.
 func (c *State) SetupInitialState(ctx context.Context) {
 	for _, b := range *c.CommandBuffers.Map {
 		for _, v := range b.CommandReferences.KeysSorted() {
