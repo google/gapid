@@ -1,0 +1,52 @@
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "doc.go",
+        "dynamic.go",
+        "events.go",
+        "pack.go",
+        "reader.go",
+        "types.go",
+        "writer.go",
+    ],
+    importpath = "github.com/google/gapid/core/data/pack",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/data/protoutil:go_default_library",
+        "//core/event/task:go_default_library",
+        "//core/fault:go_default_library",
+        "//core/math/sint:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@com_github_golang_protobuf//protoc-gen-go/descriptor:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["pack_test.go"],
+    tags = ["manual"],  # TODO: something to do with undefined: testprotos.MsgA
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+        "//core/data/protoutil/testprotos:go_default_library",
+        "//core/log:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+    ],
+)

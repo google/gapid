@@ -79,8 +79,14 @@ public class Crash2ExceptionHandler implements Thread.UncaughtExceptionHandler, 
   @Override
   public void uncaughtException(Thread thread, Throwable thrown) {
     reportException(thrown);
-    // Pass the exception back to the os to get logged
-    previousHandler.uncaughtException(thread, thrown);
+
+    // Pass the exception back to the os to get logged.
+    if (previousHandler != null) {
+      previousHandler.uncaughtException(thread, thrown);
+    } else {
+      System.err.println("Uncaught exception in thread " + thread + ":");
+      thrown.printStackTrace();
+    }
   }
 
   @Override

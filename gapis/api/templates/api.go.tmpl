@@ -25,22 +25,32 @@
   import (
     "context"
     "fmt"
+    "reflect"
+    "sort"
 
+    "github.com/google/gapid/core/data"
     "github.com/google/gapid/core/data/binary"
     "github.com/google/gapid/core/data/dictionary"
     "github.com/google/gapid/core/data/id"
     "github.com/google/gapid/core/math/u64"
+	  "github.com/google/gapid/core/os/device"
     "github.com/google/gapid/gapis/api"
     "github.com/google/gapid/gapis/capture"
+    "github.com/google/gapid/gapis/replay"
     "github.com/google/gapid/gapis/replay/builder"
     "github.com/google/gapid/gapis/replay/protocol"
     "github.com/google/gapid/gapis/replay/value"
-    "github.com/google/gapid/gapis/resolve"
-    "github.com/google/gapid/gapis/service"
     "github.com/google/gapid/gapis/service/path"
 
     ϟmem "github.com/google/gapid/gapis/memory"
-)
+  )
+
+  // Avoid unused errors.
+  var (
+    _ = dictionary.Entry{}
+    _ = protocol.OpCall
+    _ = sort.IntSlice(nil)
+  )
 
   {{range $p := $.Pseudonyms}}
     {{template "Pseudonym" $p}}
@@ -94,12 +104,6 @@
   {{if $.Enums}}
     import (
       "fmt"
-
-      "github.com/google/gapid/core/log"
-      "github.com/google/gapid/gapis/api"
-      "github.com/google/gapid/gapis/memory"
-      "github.com/google/gapid/gapis/replay/builder"
-      "github.com/google/gapid/gapis/service"
 
       ϟmem "github.com/google/gapid/gapis/memory"
     )

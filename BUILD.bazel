@@ -1,0 +1,75 @@
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_prefix")
+load("@bazel_gazelle//:def.bzl", "gazelle")
+load("//tools/build:rules.bzl", "copy", "copy_to")
+
+go_prefix("github.com/google/gapid")
+
+gazelle(
+    name = "gazelle",
+    mode = "fix",
+)
+
+# Rules to build the expected installed structure for running
+filegroup(
+    name = "pkg",
+    srcs = [
+        ":pkg-root",
+        ":pkg-lib",
+        ":pkg-strings",
+    ],
+)
+
+copy_to(
+    name = "pkg-root",
+    srcs = [
+        "//cmd/gapid",
+        "//cmd/gapir/cc:gapir",
+        "//cmd/gapis",
+        "//cmd/gapit",
+        "//gapidapk/android/apk:arm64-v8a.apk",
+        "//gapidapk/android/apk:armeabi-v7a.apk",
+        "//gapidapk/android/apk:x86.apk",
+        "//tools/build:build.properties",
+    ],
+    rename = {
+        "armeabi-v7a.apk": "gapid-armeabi.apk",
+        "arm64-v8a.apk": "gapid-aarch64.apk",
+        "x86.apk": "gapid-x86.apk",
+    },
+    to = "pkg",
+)
+
+copy_to(
+    name = "pkg-lib",
+    srcs = [
+        "//core/vulkan/vk_virtual_swapchain/cc:json",
+        "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
+        "//gapic:gapic_deploy.jar",
+        "//gapii/cc:libgapii",
+        "//gapii/vulkan/vk_graphics_spy/cc:json",
+    ],
+    rename = {
+        "gapic_deploy.jar": "gapic.jar",
+    },
+    to = "pkg/lib",
+)
+
+copy_to(
+    name = "pkg-strings",
+    srcs = ["//gapis/messages:stb"],
+    to = "pkg/strings",
+)

@@ -23,10 +23,10 @@
 #if COHERENT_TRACKING_ENABLED
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #define IS_POSIX 1
-#include "core/memory_tracker/cc/posix/memory_tracker.h"
+#include "posix/memory_tracker.h"
 #elif (TARGET_OS == GAPID_OS_WINDOWS)
 #define IS_POSIX 0
-#include "core/memory_tracker/cc/windows/memory_tracker.h"
+#include "windows/memory_tracker.h"
 #else
 #undef COHERENT_TRACKING_ENABLED
 #define COHERENT_TRACKING_ENABLED 0
@@ -467,9 +467,9 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
 }  // namespace gapii
 
 #if IS_POSIX
-#include  "core/memory_tracker/cc/posix/memory_tracker.inl"
+#include  "core/memory_tracker/cc/posix/memory_tracker.inc"
 #else
-#include  "core/memory_tracker/cc/windows/memory_tracker.inl"
+#include  "core/memory_tracker/cc/windows/memory_tracker.inc"
 #endif
 
 #endif // COHERENT_TRACKING_ENABLED

@@ -25,7 +25,7 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
 import com.google.gapid.views.Formatter;
-import com.google.protobuf.GeneratedMessage;
+import com.google.protobuf.Message;
 
 import java.util.LinkedList;
 import java.util.function.Predicate;
@@ -499,8 +499,8 @@ public class Paths {
       return visitor.visit((Path.StateTreeNodeForPath)path, arg);
     } else if (path instanceof Path.Thumbnail) {
       return visitor.visit((Path.Thumbnail)path, arg);
-    } else if (path instanceof GeneratedMessage.Builder) {
-      return dispatch(((GeneratedMessage.Builder<?>)path).build(), visitor, arg);
+    } else if (path instanceof Message.Builder) {
+      return dispatch(((Message.Builder)path).build(), visitor, arg);
     } else {
       throw new RuntimeException("Unexpected path type: " + path.getClass().getName());
     }

@@ -14,15 +14,3 @@
 
 // Package api exposes the shared behavior of all graphics api's.
 package api
-
-// binary: java.source = service
-// binary: java.package = com.google.gapid.service.api
-// binary: java.indent = "  "
-// binary: java.member_prefix = my
-
-// The following are the imports that generated source files pull in when present
-// Having these here helps out tools that can't cope with missing dependancies
-import (
-	_ "github.com/golang/protobuf/proto"
-	_ "github.com/google/gapid/core/data/pod"
-)

@@ -1,0 +1,62 @@
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//:version.bzl", "gapid_version")
+load("//tools/build:rules.bzl", "java_grpc_library")
+
+java_library(
+    name = "main",
+    srcs = glob(["com/google/gapid/**/*.java"]) + [":version"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":service_grpc",
+        "//core/data/pod:pod_java_proto",
+        "//core/image:image_java_proto",
+        "//core/log/log_pb:log_pb_java_proto",
+        "//core/os/device:device_java_proto",
+        "//core/stream:stream_java_proto",
+        "//gapic/src/platform",
+        "//gapic/third_party:grpc",
+        "//gapic/third_party:guava",
+        "//gapic/third_party:jface",
+        "//gapic/third_party:lwjgl",
+        "//gapic/third_party:swt",
+        "//gapidapk/pkginfo:pkginfo_java_proto",
+        "//gapis/api:api_java_proto",
+        "//gapis/memory:memory_java_proto",
+        "//gapis/service:service_java_proto",
+        "//gapis/service/box:box_java_proto",
+        "//gapis/service/path:path_java_proto",
+        "//gapis/stringtable:stringtable_java_proto",
+        "//gapis/vertex:vertex_java_proto",
+        "@com_google_protobuf//:protobuf_java",
+    ],
+)
+
+gapid_version(
+    name = "version",
+    out = "com/google/gapid/util/GapidVersion.java",
+    template = "com/google/gapid/util/GapidVersion.java.in",
+)
+
+java_grpc_library(
+    name = "service_grpc",
+    srcs = ["//gapis/service:service_proto"],
+    deps = [
+        "//core/log/log_pb:log_pb_java_proto",
+        "//gapic/third_party:grpc",
+        "//gapic/third_party:guava",
+        "//gapis/service:service_java_proto",
+    ],
+)

@@ -17,7 +17,7 @@ package com.google.gapid.util;
 /**
  * Current version specifier.
  */
-@javax.annotation.Generated("by GAPID cmake")
+@javax.annotation.Generated("by GAPID bazel")
 public interface GapidVersion {
   public static final Version GAPID_VERSION = new Version(@GAPID_VERSION_MAJOR@, @GAPID_VERSION_MINOR@, @GAPID_VERSION_POINT@, "@GAPID_BUILD_SHA@");
 }

@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "initialcmds_proto",
+    srcs = ["resolvables.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//gapis/service/path:path_proto"],
+)
+
+go_proto_library(
+    name = "initialcmds_go_proto",
+    importpath = "github.com/google/gapid/gapis/resolve/initialcmds",
+    proto = ":initialcmds_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//gapis/service/path:go_default_library"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["initial_commands.go"],
+    embed = [":initialcmds_go_proto"],
+    importpath = "github.com/google/gapid/gapis/resolve/initialcmds",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/app/benchmark:go_default_library",
+        "//core/math/interval:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/capture:go_default_library",
+        "//gapis/database:go_default_library",
+        "//gapis/service/path:go_default_library",
+    ],
+)

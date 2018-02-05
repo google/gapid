@@ -65,10 +65,11 @@ func (f *Functions) GoFmt(value string) (string, error) {
 		return "", fmt.Errorf("%s : %s", f.active.Name(), err)
 	}
 	opt := &imports.Options{
-		TabWidth:  goIndent,
-		TabIndent: true,
-		Comments:  true,
-		Fragment:  true,
+		TabWidth:   goIndent,
+		TabIndent:  true,
+		Comments:   true,
+		Fragment:   true,
+		FormatOnly: true,
 	}
 	formatted, err := imports.Process(f.active.Name(), result, opt)
 	if err != nil {
