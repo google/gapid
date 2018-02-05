@@ -37,8 +37,7 @@ class TemporaryShaderModule {
   TemporaryShaderModule(CallObserver* observer, VulkanSpy* spy)
       : observer_(observer), spy_(spy), temporary_shader_modules_() {}
 
-  VkShaderModule CreateShaderModule(
-      std::shared_ptr<ShaderModuleObject> module_obj) {
+  VkShaderModule CreateShaderModule(gapil::Ref<ShaderModuleObject> module_obj) {
     if (!module_obj) {
       return VkShaderModule(0);
     }
@@ -65,12 +64,12 @@ class TemporaryShaderModule {
  private:
   CallObserver* observer_;
   VulkanSpy* spy_;
-  std::vector<std::shared_ptr<ShaderModuleObject>> temporary_shader_modules_;
+  std::vector<gapil::Ref<ShaderModuleObject>> temporary_shader_modules_;
 };
 
 VkRenderPass RebuildRenderPass(
     CallObserver* observer, VulkanSpy* spy,
-    std::shared_ptr<RenderPassObject>& render_pass_object) {
+    gapil::Ref<RenderPassObject>& render_pass_object) {
   if (!render_pass_object) {
     return VkRenderPass(0);
   }
@@ -152,8 +151,7 @@ class TemporaryRenderPass {
   TemporaryRenderPass(CallObserver* observer, VulkanSpy* spy)
       : observer_(observer), spy_(spy), temporary_render_passes_() {}
 
-  VkRenderPass CreateRenderPass(
-      std::shared_ptr<RenderPassObject>& render_pass_object) {
+  VkRenderPass CreateRenderPass(gapil::Ref<RenderPassObject>& render_pass_object) {
     RebuildRenderPass(observer_, spy_, render_pass_object);
     temporary_render_passes_.push_back(render_pass_object);
     return render_pass_object->mVulkanHandle;
@@ -168,7 +166,7 @@ class TemporaryRenderPass {
   bool has(VkRenderPass renderpass) {
     return std::find_if(temporary_render_passes_.begin(),
                         temporary_render_passes_.end(),
-                        [renderpass](std::shared_ptr<RenderPassObject>& p) {
+                        [renderpass](gapil::Ref<RenderPassObject>& p) {
                           return p->mVulkanHandle == renderpass;
                         }) != temporary_render_passes_.end();
   }
@@ -176,44 +174,44 @@ class TemporaryRenderPass {
  private:
   CallObserver* observer_;
   VulkanSpy* spy_;
-  std::vector<std::shared_ptr<RenderPassObject>> temporary_render_passes_;
+  std::vector<gapil::Ref<RenderPassObject>> temporary_render_passes_;
 };
 
 template <typename ObjectClass>
-VkDevice getObjectCreatingDevice(const std::shared_ptr<ObjectClass>& obj) {
+VkDevice getObjectCreatingDevice(const gapil::Ref<ObjectClass>& obj) {
   return obj->mDevice;
 }
 
 template <>
 VkDevice getObjectCreatingDevice<InstanceObject>(
-    const std::shared_ptr<InstanceObject>& obj) {
+    const gapil::Ref<InstanceObject>& obj) {
   return VkDevice(0);
 }
 
 
 template <>
 VkDevice getObjectCreatingDevice<PhysicalDeviceObject>(
-    const std::shared_ptr<PhysicalDeviceObject>& obj) {
+    const gapil::Ref<PhysicalDeviceObject>& obj) {
   return VkDevice(0);
 }
 
 template <>
 VkDevice getObjectCreatingDevice<DeviceObject>(
-    const std::shared_ptr<DeviceObject>& obj) {
+    const gapil::Ref<DeviceObject>& obj) {
   return obj->mVulkanHandle;
 }
 
 template <>
 VkDevice getObjectCreatingDevice<SurfaceObject>(
-    const std::shared_ptr<SurfaceObject>& obj) {
+    const gapil::Ref<SurfaceObject>& obj) {
   return VkDevice(0);
 }
 
 template <typename ObjectClass>
 void recreateDebugInfo(VulkanSpy* spy, CallObserver* observer,
                        uint32_t objectType,
-                       const std::shared_ptr<ObjectClass>& obj) {
-  const std::shared_ptr<VulkanDebugMarkerInfo>& info = obj->mDebugInfo;
+                       const gapil::Ref<ObjectClass>& obj) {
+  const gapil::Ref<VulkanDebugMarkerInfo>& info = obj->mDebugInfo;
   if (!info) {
     return;
   }
@@ -252,8 +250,8 @@ void recreateDebugInfo(VulkanSpy* spy, CallObserver* observer,
 // handle is created with the same device of the object. If such a queue object
 // is not found, returns nullptr.
 template <typename ObjectClass>
-std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
-                                      const std::shared_ptr<ObjectClass>& obj) {
+gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
+                                      const gapil::Ref<ObjectClass>& obj) {
   for (const auto& qi : queues) {
     if (qi.second->mDevice == getObjectCreatingDevice(obj)) {
       return qi.second;
@@ -263,8 +261,8 @@ std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
 }
 
 template <>
-std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
-                                      const std::shared_ptr<ImageObject>& obj) {
+gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
+                                      const gapil::Ref<ImageObject>& obj) {
   if (obj->mLastBoundQueue) {
     return obj->mLastBoundQueue;
   }
@@ -277,8 +275,8 @@ std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
 }
 
 template <>
-std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
-                                      const std::shared_ptr<BufferObject>& obj) {
+gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
+                                      const gapil::Ref<BufferObject>& obj) {
   if (obj->mLastBoundQueue) {
     return obj->mLastBoundQueue;
   }
@@ -374,7 +372,7 @@ class CopyDataHelper {
   public:
    CopyDataHelper(VulkanSpy* spy,
        VulkanImports::VkDeviceFunctions& device_functions,
-                  VkDevice dev, std::shared_ptr<QueueObject> queue,
+                  VkDevice dev, gapil::Ref<QueueObject> queue,
                   const VkPhysicalDeviceMemoryProperties& mem_props)
        : spy_(spy),
          dev_funcs_(device_functions),
@@ -420,7 +418,7 @@ class CopyDataHelper {
 
 
   std::tuple<uint32_t, std::vector<uint8_t>> GetImageSparseSubresourceData(
-      std::shared_ptr<ImageObject> img, const VkImageSubresource& subres, const VkOffset3D& offset,
+      gapil::Ref<ImageObject> img, const VkImageSubresource& subres, const VkOffset3D& offset,
       const VkExtent3D& extent) {
     VkExtent3D gran{};
     bool found = false;
@@ -486,7 +484,7 @@ class CopyDataHelper {
   }
 
   std::tuple<uint32_t, std::vector<uint8_t>> GetImageSubrangeData(
-      std::shared_ptr<ImageObject> img, const VkImageSubresourceRange& range, VkDeviceSize data_size) {
+      gapil::Ref<ImageObject> img, const VkImageSubresourceRange& range, VkDeviceSize data_size) {
     uint32_t mem_type_index = Prepare(data_size);
     std::vector<VkBufferImageCopy> copies(range.mlevelCount);
     uint64_t buffer_offset = 0;
@@ -632,7 +630,7 @@ class CopyDataHelper {
    VulkanSpy* spy_;
    VulkanImports::VkDeviceFunctions& dev_funcs_;
    VkDevice dev_;
-   std::shared_ptr<QueueObject> queue_obj_;
+   gapil::Ref<QueueObject> queue_obj_;
    VkCommandPool cmd_pool_;
    VkCommandBuffer cmd_buf_;
    VkDeviceMemory mem_;
@@ -1163,7 +1161,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         VkPhysicalDeviceMemoryProperties mem_props =
             PhysicalDevices[Devices[dev_handle]->mPhysicalDevice]
                 ->mMemoryProperties;
-        std::shared_ptr<QueueObject> queue = GetQueue(Queues, buf);
+        gapil::Ref<QueueObject> queue = GetQueue(Queues, buf);
 
         auto recreate_data = [&](VkDeviceSize res_offset, VkDeviceSize size) {
           CopyDataHelper helper(this, device_functions, dev_handle, queue,
@@ -1307,7 +1305,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
         VkPhysicalDeviceMemoryProperties mem_props =
             PhysicalDevices[Devices[dev_handle]->mPhysicalDevice]
                 ->mMemoryProperties;
-        std::shared_ptr<QueueObject> queue = GetQueue(Queues, img);
+        gapil::Ref<QueueObject> queue = GetQueue(Queues, img);
 
         auto recreate_sparse_bind_data = [&](VkSparseImageMemoryBind& bind) {
           CopyDataHelper helper(this, device_functions, dev_handle, queue,
@@ -2179,7 +2177,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
   // Helper function to recreate and begin a given command buffer object.
   auto recreate_and_begin_cmd_buf = [this](
-      CallObserver* observer, std::shared_ptr<CommandBufferObject> cmdBuff) {
+      CallObserver* observer, gapil::Ref<CommandBufferObject> cmdBuff) {
     VkCommandBufferAllocateInfo allocate_info{
         VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         nullptr, cmdBuff->mPool, cmdBuff->mLevel, 1};
@@ -2219,7 +2217,7 @@ void VulkanSpy::EnumerateVulkanResources(CallObserver* observer) {
 
   // Helper function to fill and end a given command buffer object.
   auto fill_and_end_cmd_buf = [this](
-      CallObserver* observer, std::shared_ptr<CommandBufferObject> cmdBuff) {
+      CallObserver* observer, gapil::Ref<CommandBufferObject> cmdBuff) {
     // We have to reset the state of this command buffer after we record,
     // since we might be modifying it.
     bool failure = false;

@@ -29,7 +29,7 @@ struct destroyer {
 
 bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
-    std::shared_ptr<ImageObject> image;
+    gapil::Ref<ImageObject> image;
     if (LastSubmission == LastSubmissionType::SUBMIT) {
         if (!LastBoundQueue) {
             return false;

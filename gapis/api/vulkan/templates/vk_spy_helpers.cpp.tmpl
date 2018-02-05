@@ -668,7 +668,7 @@ void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start, size_
 
 uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(VkDevice device, VkMemoryAllocateInfo* pAllocateInfo, VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
     uint32_t r = mImports.mVkDeviceFunctions[device].vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
-    std::shared_ptr<PhysicalDeviceObject> l_physical_device = PhysicalDevices[Devices[device]->mPhysicalDevice];
+    auto l_physical_device = PhysicalDevices[Devices[device]->mPhysicalDevice];
     if (0 != (l_physical_device->mMemoryProperties.mmemoryTypes[pAllocateInfo->mmemoryTypeIndex].mpropertyFlags &
         ((uint32_t)(VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))) {
         // This is host-coherent memory. Some drivers actually allocate these pages on-demand.

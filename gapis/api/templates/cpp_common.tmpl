@@ -41,7 +41,7 @@
   {{else if IsU64         $}}uint64_t
   {{else if IsS64         $}}int64_t
   {{else if IsEnum        $}}{{Template "C++.EnumType" $}}
-  {{else if IsReference   $}}std::shared_ptr<{{Template "C++.Type" $.To}}>
+  {{else if IsReference   $}}gapil::Ref<{{Template "C++.Type" $.To}}>
   {{else if IsString      $}}{{Template "C++.StringType" $}}
   {{else if IsStaticArray $}}core::StaticArray<{{Template "C++.Type" $.ValueType}}, {{$.Size}}>
   {{else if IsSlice       $}}Slice<{{if IsVoid $.To}}uint8_t{{else}}{{Template "C++.Type" $.To}}{{end}}>
@@ -617,7 +617,7 @@
   {{else if IsMapContains      $}}{{Template "C++.Read" $.Map}}.count({{Template "C++.Read" $.Key}}) > 0
   {{else if IsLength           $}}{{Template "C++.Type" $.Type}}(({{Template "C++.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}}))
   {{else if IsNull             $}}{{Template "C++.Null" $.Type}}
-  {{else if IsNew              $}}{{$ty := Unpack $.Type}}std::shared_ptr<{{Template "C++.Type" $ty.To}}>(new {{Template "C++.Type" $ty.To}}())
+  {{else if IsNew              $}}gapil::Ref<{{Template "C++.Type" (Unpack $.Type).To}}>::create(&mArena)
   {{else if IsCreate           $}}{{Template "C++.Create" $}}
   {{else if IsArrayInitializer $}}{{Template "C++.ArrayInitializer" $}}
   {{else if IsClassInitializer $}}{{Template "C++.ClassInitializer" $}}
@@ -752,7 +752,7 @@
   {{AssertType $ "Create"}}
 
   {{$ty := Unpack $.Type}}
-  std::shared_ptr<{{Template "C++.Type" $ty.To}}>(new {{Template "C++.ClassInitializer" $.Initializer}})
+  gapil::Ref<{{Template "C++.Type" $ty.To}}>::create(&mArena, {{Template "C++.ClassInitializer" $.Initializer}})
 {{end}}
 
 
