@@ -25,8 +25,8 @@ namespace gapii {
 class Pool {
 public:
     static std::shared_ptr<Pool> create(uint32_t id, uint64_t size);
-// This creates a pool that can be serialized, but has no actual
-// backing memory
+    // This creates a pool that can be serialized, but has no actual
+    // backing memory
     static std::shared_ptr<Pool> create_virtual(uint32_t id, uint64_t size);
 
     ~Pool();
