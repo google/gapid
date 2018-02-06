@@ -15,6 +15,7 @@
 load("@//tools/build/third_party:llvm/rules.bzl", "llvm_sources", "tablegen")
 load("@//tools/build/third_party:llvm/libs.bzl", "llvm_auto_libs")
 load("@//tools/build/rules:cc.bzl", "cc_copts")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -204,64 +205,23 @@ cc_library(
     deps = [":tables-ARM"],
 )
 
-tablegen(
-    name = "tables-Mips",
-    rules = [
-        [
-            "lib/Target/Mips/MipsGenRegisterInfo.inc",
-            "-gen-register-info",
-        ],
-        [
-            "lib/Target/Mips/MipsGenInstrInfo.inc",
-            "-gen-instr-info",
-        ],
-        [
-            "lib/Target/Mips/MipsGenDisassemblerTables.inc",
-            "-gen-disassembler",
-        ],
-        [
-            "lib/Target/Mips/MipsGenMCCodeEmitter.inc",
-            "-gen-emitter",
-        ],
-        [
-            "lib/Target/Mips/MipsGenAsmWriter.inc",
-            "-gen-asm-writer",
-        ],
-        [
-            "lib/Target/Mips/MipsGenDAGISel.inc",
-            "-gen-dag-isel",
-        ],
-        [
-            "lib/Target/Mips/MipsGenFastISel.inc",
-            "-gen-fast-isel",
-        ],
-        [
-            "lib/Target/Mips/MipsGenCallingConv.inc",
-            "-gen-callingconv",
-        ],
-        [
-            "lib/Target/Mips/MipsGenSubtargetInfo.inc",
-            "-gen-subtarget",
-        ],
-        [
-            "lib/Target/Mips/MipsGenAsmMatcher.inc",
-            "-gen-asm-matcher",
-        ],
-        [
-            "lib/Target/Mips/MipsGenMCPseudoLowering.inc",
-            "-gen-pseudo-lowering",
-        ],
-    ],
-    strip_include_prefix = "lib/Target/Mips",
-    table = "lib/Target/Mips/Mips.td",
-    deps = [":table_includes"] + glob(["lib/Target/Mips/*.td"]),
-)
 
 cc_library(
-    name = "headers-Mips",
-    hdrs = glob(["lib/Target/Mips/**/*.h"]),
-    strip_include_prefix = "lib/Target/Mips",
-    deps = [":tables-Mips"],
+    name = "headers-RuntimeDyld",
+    hdrs = glob(["lib/ExecutionEngine/RuntimeDyld/*.h"]),
+    strip_include_prefix = "lib/ExecutionEngine/RuntimeDyld",
+)
+
+# RuntimeDyldELFMips is referenced by RuntimeDyldELF.cpp whether we're building
+# MIPS or not.
+cc_library(
+    name = "RuntimeDyldELFMips",
+    srcs = glob([
+        "lib/ExecutionEngine/RuntimeDyld/Targets/RuntimeDyldELFMips.cpp",
+        "lib/ExecutionEngine/RuntimeDyld/**/*.h",
+    ]),
+    strip_include_prefix = "lib/ExecutionEngine/RuntimeDyld/Targets",
+    deps = [":headers"],
 )
 
 tablegen(
@@ -343,11 +303,10 @@ llvm_auto_libs(
     excludes = {
         "AArch64CodeGen": ISEL_EXCLUDES,
         "ARMCodeGen": ISEL_EXCLUDES,
-        "MipsCodeGen": ISEL_EXCLUDES,
         "X86CodeGen": ISEL_EXCLUDES,
     },
     # The table below is the extra dependancies not declared in the LLVMBuild.txt files
-    # They are added to the depdendancies declared in the generated llvm/rules.bzl file
+    # They are added to the dependancies declared in the generated llvm/rules.bzl file
     extras = {
         "Demangle": [":headers"],
         "Core": [
@@ -360,13 +319,7 @@ llvm_auto_libs(
         "ARMDesc": [":headers-ARM"],
         "ARMAsmPrinter": [":headers-ARM"],
         "ARMInfo": [":headers-ARM"],
-        "MipsDesc": [":headers-Mips"],
-        "MipsAsmPrinter": [":headers-Mips"],
-        "MipsInfo": [
-            ":headers-Mips",
-            ":Intrinsics",
-            ":Attributes",
-        ],
+        "RuntimeDyld": [":headers-RuntimeDyld", ":RuntimeDyldELFMips"],
         "X86Utils": [":headers-X86"],
         "X86Info": [":headers-X86"],
         "LibDriver": [":LibDriver/Options"],
@@ -397,4 +350,81 @@ cc_binary(
         ],
     }),
     deps = [":TableGen"],
+)
+
+cc_library(
+    name = "go_binding_headers",
+    hdrs = glob(["bindings/go/llvm/*.h"]),
+    deps = [],
+    strip_include_prefix = "bindings/go/llvm",
+)
+
+go_library(
+    name = "GoBindings",
+    srcs = glob([
+        "bindings/go/llvm/*.go",
+        "bindings/go/llvm/*.cpp",
+    ], exclude=["bindings/go/llvm/llvm_dep.go"]),
+    cgo = True,
+    importpath = "llvm/bindings/go/llvm",
+    visibility = ["//visibility:public"],
+    clinkopts = select({
+        "@//tools/build:linux": ["-ldl", "-lpthread", "-lcurses", "-lz", "-lm"],
+        "@//tools/build:darwin": ["-framework Cocoa", "-lcurses", "-lz", "-lm"],
+        "@//tools/build:windows": [],
+    }),
+    cdeps = [
+        ":headers",
+        ":go_binding_headers",
+        ":Attributes",
+        ":Intrinsics",
+        ":AArch64CodeGen",
+        ":AArch64AsmParser",
+        ":AArch64Desc",
+        ":AArch64Info",
+        ":AArch64AsmPrinter",
+        ":AArch64Utils",
+        ":ARMCodeGen",
+        ":ARMAsmParser",
+        ":ARMDesc",
+        ":ARMInfo",
+        ":ARMAsmPrinter",
+        ":X86AsmParser",
+        ":X86CodeGen",
+        ":GlobalISel",
+        ":SelectionDAG",
+        ":AsmPrinter",
+        ":DebugInfoCodeView",
+        ":DebugInfoMSF",
+        ":X86Desc",
+        ":MCDisassembler",
+        ":X86Info",
+        ":X86AsmPrinter",
+        ":X86Utils",
+        ":MCJIT",
+        ":Interpreter",
+        ":ExecutionEngine",
+        ":RuntimeDyld",
+        ":CodeGen",
+        ":Target",
+        ":IPO",
+        ":Instrumentation",
+        ":Vectorize",
+        ":Scalar",
+        ":Linker",
+        ":IRReader",
+        ":AsmParser",
+        ":InstCombine",
+        ":TransformUtils",
+        ":BitWriter",
+        ":Analysis",
+        ":Object",
+        ":MCParser",
+        ":MC",
+        ":BitReader",
+        ":ProfileData",
+        ":Core",
+        ":Support",
+        ":Demangle",
+    ],
 )
