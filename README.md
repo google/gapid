@@ -54,16 +54,7 @@ GAPID can also trace any desktop Vulkan application.
 
 ## Running the client
 
-<table>
-  <tr>
-    <th>Windows</th>
-    <th>MacOS / Linux</th>
-  </tr>
-  <tr>
-    <td><pre>cd %GOPATH%\src\github.com\google\gapid<br>do run gapic</pre></td>
-    <td><pre>cd $GOPATH/src/github.com/google/gapid<br>./do run gapic</pre></td>
-  </tr>
-</table>
+After building GAPID, you can run the client from `<gapid-root>/bazel-bin/pkg/gapid`.
 
 ## Project Structure
 
