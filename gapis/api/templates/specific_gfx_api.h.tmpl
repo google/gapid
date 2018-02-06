@@ -101,7 +101,6 @@ class {{Title (Global "API")}} : public Api {
 ¶
   #include "gapir/cc/{{Global "API"}}_gfx_api.inc"
 ¶
-«private:»
   {{range $c := AllCommands $}}
     {{if and (not (GetAnnotation $c "synthetic")) (not (GetAnnotation $c "pfn"))}}
       {{$name := Macro "CmdName" $c}}

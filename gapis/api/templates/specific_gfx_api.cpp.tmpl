@@ -41,22 +41,32 @@
   #define __STDC_FORMAT_MACROS
   #include <inttypes.h>
 ¶
-  namespace gapir {«
   {{$api := Title (Global "API")}}
+  namespace {«
+    typedef bool (gapir::{{$api}}::*Function)(uint32_t, gapir::Stack*, bool);
+
+    {{$non_synthetics := $.Functions | WithoutAnnotation "synthetic"}}
+
+    Function functions[] = {
+      {{range $i, $c := $non_synthetics}}
+        {{if (not (GetAnnotation $c "pfn"))}}
+          {{$name := Macro "C++.Public" (Macro "CmdName" $c)}}
+          &gapir::{{$api}}::call{{$name}},
+        {{end}}
+      {{end}}
+      nullptr,
+    };
+  »}
+  namespace gapir {«
 ¶
   const char* {{$api}}::ID = "{{$api}}";
   uint8_t {{$api}}::INDEX = {{$.Index}};
 ¶
   {{$api}}::{{$api}}() {
     using namespace std::placeholders;
-    ¶
-    {{$non_synthetics := $.Functions | WithoutAnnotation "synthetic"}}
-    {{range $i, $c := $non_synthetics}}
-      {{if (not (GetAnnotation $c "pfn"))}}
-        {{$name := Macro "C++.Public" (Macro "CmdName" $c)}}
-        mFunctions.insert({{$i}}, std::bind(&{{$api}}::call{{$name}}, this, _1, _2, _3));
-      {{end}}
-    {{end}}
+    for (int i = 0; functions[i] != nullptr; i++) {
+        mFunctions.insert(i, std::bind(functions[i], this, _1, _2, _3));
+    }
   }
 ¶
   void {{$api}}::resolve() {
