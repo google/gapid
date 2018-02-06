@@ -55,6 +55,13 @@ api_template(
 )
 
 api_template(
+    name = "state_serialize",
+    includes = [":templates"],
+    outputs = ["state_serialize.go"],
+    template = "state_serialize.go.tmpl",
+)
+
+api_template(
     name = "constant_sets",
     includes = [":templates"],
     outputs = ["constant_sets.go"],
