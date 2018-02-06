@@ -150,7 +150,7 @@ The following environment variables will need to be set prior to building:
 In a terminal type:
 ```
 cd <path-to-gapid-source>
-bazel build build pkg
+bazel build pkg
 ```
 The build output will be at `bazel-bin/pkg`.
 
@@ -199,7 +199,7 @@ The following environment variables will need to be set prior to building:
 In a terminal type:
 ```
 cd <path-to-gapid-source>
-bazel build build pkg
+bazel build pkg
 ```
 The build output will be at `bazel-bin/pkg`.
 
