@@ -39,6 +39,7 @@ apic(
         "//gapis/api/templates:constant_sets",
         "//gapis/api/templates:convert",
         "//gapis/api/templates:proto",
+        "//gapis/api/templates:state_serialize",
     ],
     visibility = ["//visibility:public"],
 )
