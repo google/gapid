@@ -314,18 +314,18 @@ EGLBoolean Spy::eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSu
     return res;
 }
 
-std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserver* observer, EGLDisplay display, EGLContext context) {
+gapil::Ref<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserver* observer, EGLDisplay display, EGLContext context) {
     Constants constants;
     getContextConstants(constants);
 
-    std::string threadName;
+    gapil::String threadName;
 #if TARGET_OS == GAPID_OS_ANDROID
     char buffer[256] = { 0 };
     prctl(PR_GET_NAME, (unsigned long)buffer, 0, 0, 0);
-    threadName = std::string(buffer);
+    threadName = gapil::String(&mArena, buffer);
 #endif
 
-    std::shared_ptr<StaticContextState> out(new StaticContextState(constants, threadName));
+    auto out = gapil::Ref<StaticContextState>::create(&mArena, constants, threadName);
 
     observer->encodeAndDelete(out->toProto());
 
@@ -341,7 +341,7 @@ if (GlesSpy::mImports.eglGetConfigAttrib(display, config, name, var) != EGL_TRUE
     GAPID_WARNING("eglGetConfigAttrib(0x%p, 0x%p, " #name ", " #var ") failed", display, config); \
 }
 
-std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLContext context) {
+gapil::Ref<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLContext context) {
     EGLint width = 0;
     EGLint height = 0;
     EGLint swapBehavior = 0;
@@ -392,13 +392,13 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
     bool resetViewportScissor = true;
     bool preserveBuffersOnSwap = swapBehavior == EGL_BUFFER_PRESERVED;
 
-    std::shared_ptr<DynamicContextState> out(new DynamicContextState(
+    auto out = gapil::Ref<DynamicContextState>::create(&mArena,
         width, height,
         backbufferColorFmt, backbufferDepthFmt, backbufferStencilFmt,
         resetViewportScissor,
         preserveBuffersOnSwap,
         r, g, b, a, d, s
-    ));
+    );
 
     // Store the DynamicContextState as an extra.
     observer->encodeAndDelete(out->toProto());
@@ -623,7 +623,7 @@ void Spy::onPostFence(CallObserver* observer) {
 }
 
 void Spy::setFakeGlError(CallObserver* observer, GLenum_Error error) {
-    std::shared_ptr<Context> ctx = this->Contexts[observer->getCurrentThread()];
+    auto ctx = this->Contexts[observer->getCurrentThread()];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError == 0) {
@@ -633,7 +633,7 @@ void Spy::setFakeGlError(CallObserver* observer, GLenum_Error error) {
 }
 
 uint32_t Spy::glGetError(CallObserver* observer) {
-    std::shared_ptr<Context> ctx = this->Contexts[observer->getCurrentThread()];
+    auto ctx = this->Contexts[observer->getCurrentThread()];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError != 0) {
@@ -647,7 +647,7 @@ uint32_t Spy::glGetError(CallObserver* observer) {
 }
 
 #if 0 // NON-EGL CONTEXTS ARE CURRENTLY NOT SUPPORTED
-std::shared_ptr<ContextState> Spy::getWGLContextState(CallObserver*, HDC hdc, HGLRC hglrc) {
+gapil::Ref<ContextState> Spy::getWGLContextState(CallObserver*, HDC hdc, HGLRC hglrc) {
     if (hglrc == nullptr) {
         return nullptr;
     }
@@ -664,7 +664,7 @@ std::shared_ptr<ContextState> Spy::getWGLContextState(CallObserver*, HDC hdc, HG
 #endif // TARGET_OS
 }
 
-std::shared_ptr<ContextState> Spy::getCGLContextState(CallObserver* observer, CGLContextObj ctx) {
+gapil::Ref<ContextState> Spy::getCGLContextState(CallObserver* observer, CGLContextObj ctx) {
     if (ctx == nullptr) {
         return nullptr;
     }
@@ -689,7 +689,7 @@ std::shared_ptr<ContextState> Spy::getCGLContextState(CallObserver* observer, CG
             /* preserveBuffersOnSwap */ false);
 }
 
-std::shared_ptr<ContextState> Spy::getGLXContextState(CallObserver* observer, void* display, GLXDrawable draw, GLXDrawable read, GLXContext ctx) {
+gapil::Ref<ContextState> Spy::getGLXContextState(CallObserver* observer, void* display, GLXDrawable draw, GLXDrawable read, GLXContext ctx) {
     if (display == nullptr) {
         return nullptr;
     }

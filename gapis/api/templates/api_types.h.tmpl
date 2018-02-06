@@ -18,7 +18,8 @@
 {{Include "cpp_common.tmpl"}}
 
 {{/* ---- Overrides ---- */}}
-{{Global "C++.EnumTypeOverride" "uint32_t"}}
+{{Global "C++.EnumTypeOverride"   "uint32_t"}}
+{{Global "C++.StringTypeOverride" "gapil::String"}}
 
 {{$filename := print (Global "API") "_types.h" }}
 {{$ | Macro "Types" | Reflow 4 | Write $filename}}
@@ -34,6 +35,9 @@
   #include "gapii/cc/shared_map.h"
   #include "gapii/cc/slice.h"
 ¶
+  #include "gapil/runtime/cc/ref.inc"
+  #include "gapil/runtime/cc/string.h"
+¶
   #include "core/cc/static_array.h"
 ¶
   #include <functional>
@@ -43,8 +47,7 @@
   #include <vector>
 ¶
   #include <stdint.h>
-  #include <string.h>
-¶
+
   // Forward declarations
   namespace google {«
   namespace protobuf {«
@@ -94,6 +97,7 @@
 ¶
 {{end}}
 
+
 {{/*
 -------------------------------------------------------------------------------
   Emits C++ type forward declaration for specified AST type
@@ -104,6 +108,7 @@
     {{if IsClass $}}class {{Template "C++.Type" $}};¶{{end}}
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------
@@ -219,36 +224,6 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits label declarations as a number of constants of the labeled type.
--------------------------------------------------------------------------------
-*/}}
-{{define "DeclareLabeledTypeLabels"}}
-  {{/* {{AssertType $ "Labeled"}} */}}
-
-  {{range $label := $.Labels}}
-  static const {{$.Name}} {{Template "C++.LabelName" $label}} = {{Template "C++.ReadNoCast" $label.Value}};
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a labeled type declaration as a number of constants in a namespace.
--------------------------------------------------------------------------------
-*/}}
-{{define "DeclareLabeledType"}}
-  {{/* {{AssertType $ "Labeled"}} */}}
-
-  {{if $.Labels}}
-    namespace {{Template "C++.LabelNamespaceName" $}} {
-      {{Template "DeclareLabeledTypeLabels" $}}
-    }
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits the declaration of the pseudonym's target type (if it is not already
   declared) followed by the pseudonym's typedef declaration.
 -------------------------------------------------------------------------------
@@ -259,8 +234,6 @@
   {{Template "DeclareType" $.To}}
 
   typedef {{Template "C++.Type" $.To}} {{Template "C++.Type" $}};
-
-  {{template "DeclareLabeledType" $}}
 {{end}}
 
 

@@ -31,6 +31,8 @@
 #include "core/cc/thread_local.h"
 #include "core/cc/vector.h"
 
+#include "core/memory/arena/cc/arena.h"
+
 #include "core/os/device/deviceinfo/cc/query.h"
 
 #include "gapis/capture/capture.pb.h"
@@ -71,6 +73,9 @@ public:
 
     // returns new unique pool ID.
     inline uint32_t getPoolID() { return mNextPoolID.fetch_add(1); }
+
+    // returns the spy's memory arena.
+    inline core::Arena* getArena() { return &mArena; }
 
     // Returns the transimission encoder.
     // TODO(qining): To support multithreaded uses, mutex is required to manage
@@ -152,6 +157,9 @@ protected:
     inline virtual void onPostEndOfFrame() {}
     // onPostFence is called immediately after the driver call.
     inline virtual void onPostFence(CallObserver* observer) {}
+
+    // Memory arena.
+    core::Arena mArena;
 
     // The output stream encoder.
     PackEncoder::SPtr mEncoder;

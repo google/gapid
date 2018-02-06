@@ -118,13 +118,13 @@ public:
     template <typename T>
     inline Slice<T> clone(const Slice<T>& src);
 
-    // string returns a std::string from the null-terminated string str.
+    // string returns a gapil::String from the null-terminated string str.
     // str is observed as a read operation.
-    inline std::string string(const char* str);
+    gapil::String string(const char* str);
 
-    // string returns a std::string from the Slice<char> slice.
+    // string returns a gapil::String from the Slice<char> slice.
     // slice is observed as a read operation.
-    inline std::string string(const Slice<char>& slice);
+    gapil::String string(const Slice<char>& slice);
 
     // encoder returns the PackEncoder currently in use.
     inline PackEncoder::SPtr encoder();
@@ -184,9 +184,6 @@ private:
 
     // A pre-allocated memory allocator to store observation data.
     core::DefaultScratchAllocator mScratch;
-
-    // The protobuf Arena to use for proto allocations.
-    google::protobuf::Arena mArena;
 
     // The list of pending reads or writes observations that are yet to be made.
     core::IntervalList<uintptr_t> mPendingObservations;
@@ -261,21 +258,6 @@ template <typename T>
 inline Slice<T> CallObserver::make(uint64_t count) {
     auto pool = Pool::create(getPoolID(), count * sizeof(T));
     return Slice<T>(reinterpret_cast<T*>(pool->base()), count, pool);
-}
-
-inline std::string CallObserver::string(const char* str) {
-    GAPID_ASSERT(str != nullptr);
-    for (uint64_t i = 0;; i++) {
-        if (str[i] == 0) {
-            read(str, i + 1);
-            return std::string(str, str + i);
-        }
-    }
-}
-
-inline std::string CallObserver::string(const Slice<char>& slice) {
-    read(slice);
-    return std::string(slice.begin(), slice.end());
 }
 
 inline PackEncoder::SPtr CallObserver::encoder() {

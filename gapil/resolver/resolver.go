@@ -31,7 +31,6 @@ type resolver struct {
 	globals            *scope // The global scope
 	nextID             uint64
 	mappings           *Mappings
-	labels             map[string][]*semantic.Label
 	genericSubroutines map[string]genericSubroutine
 	aliasStack         stack // Currently resolving aliases.
 	defStack           stack // Currently resolving definitions.
@@ -57,8 +56,8 @@ func name(n interface{}) string {
 		return typename(n)
 	case named:
 		return n.Name()
-	case *ast.Label:
-		return n.Name.Value
+	case *ast.Identifier:
+		return n.Value
 	default:
 		return fmt.Sprintf("%v %T", n, n)
 	}
@@ -263,6 +262,8 @@ func (rv *resolver) ambiguousIdentifier(at ast.Node, matches []interface{}) {
 			possibilities += fmt.Sprintf("%s.%s", t.Owner().Name(), t.Name())
 		case *semantic.Parameter:
 			possibilities += fmt.Sprintf("parameter %q", t.Name())
+		case *semantic.Global:
+			possibilities += fmt.Sprintf("global %q", t.Name())
 		case semantic.Type:
 			possibilities += fmt.Sprintf("type %q [%T]", typename(t), t)
 		default:

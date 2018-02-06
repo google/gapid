@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "testexterns.go",
+    ],
+    cgo = True,
+    clinkopts = [],  # keep
+    importpath = "github.com/google/gapid/gapis/api/executor/testexterns",
+    visibility = ["//visibility:public"],
+    cdeps = [
+        "//gapil/runtime/cc",
+    ],
+    deps = [
+        "//gapis/api/executor:go_default_library",
+    ],
+)

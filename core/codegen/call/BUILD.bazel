@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "call.go",
+    ],
+    cgo = True,
+    clinkopts = [],  # keep
+    importpath = "github.com/google/gapid/core/codegen/call",
+    visibility = ["//visibility:public"],
+)

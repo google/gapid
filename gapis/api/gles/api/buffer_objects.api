@@ -437,7 +437,7 @@ sub void GetBufferPointerv(GLenum target, GLenum pname, void** params) {
 cmd GLboolean glIsBuffer(BufferId buffer) {
 
   ctx := GetContext()
-  return as!GLboolean(buffer in ctx.Objects.Buffers)
+  return toGLboolean(buffer in ctx.Objects.Buffers)
 }
 
 // This command only exits in desktop GL - but we need the signature in compat.

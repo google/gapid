@@ -108,12 +108,15 @@ bool createContext(void* platform_data) {
         return false;
     }
 
-    gContext.mDisplay = XOpenDisplay(0);
+    gContext.mDisplay = XOpenDisplay(nullptr);
     if (!gContext.mDisplay) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "XOpenDisplay returned nullptr");
-        destroyContext();
-        return false;
+        gContext.mDisplay = XOpenDisplay(":0");
+        if (!gContext.mDisplay) {
+            snprintf(gContext.mError, sizeof(gContext.mError),
+                    "XOpenDisplay returned nullptr");
+            destroyContext();
+            return false;
+        }
     }
 
     const int visualAttribs[] = {
@@ -208,7 +211,7 @@ const char* contextError() {
 int numABIs() { return 1; }
 
 void abi(int idx, device::ABI* abi) {
-    abi->set_name("X86_64");
+    abi->set_name("x86_64");
     abi->set_os(device::Linux);
     abi->set_architecture(device::X86_64);
     abi->set_allocated_memorylayout(currentMemoryLayout());

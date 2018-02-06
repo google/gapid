@@ -45,33 +45,16 @@ type EnumEntry struct {
 func (EnumEntry) isNode() {}
 
 // Enum represents an enumerated type declaration, of the form
-// «"enum" name { entries }» where entries is a comma separated list of «name = value»
+// «"enum" name [: type] { entries }» where entries is a comma separated list of «name = value»
 type Enum struct {
 	Annotations Annotations  // the annotations applied to the enum
+	NumberType  Node         // the optional numerical type of the enum
 	Name        *Identifier  // the name of the enum
 	IsBitfield  bool         // whether this enum represents a bitfield form
 	Entries     []*EnumEntry // the set of valid entries for this enum
 }
 
 func (Enum) isNode() {}
-
-// Label represents a single name-value mapping in a LabelGroup declaration
-type Label struct {
-	Owner *LabelGroup // the label declaration this entry is a part of
-	Name  *Identifier // the name this entry is given
-	Value *Number     // the value of this entry
-}
-
-func (Label) isNode() {}
-
-// LabelGroup associates one or more named constants / labels with a given type.
-type LabelGroup struct {
-	Annotations Annotations // the annotations applied to the declaration
-	LabeledType *Identifier // the type this declaration is for
-	Labels      []*Label    // set of name-value pairs for this declaration
-}
-
-func (LabelGroup) isNode() {}
 
 // IndexedType represents a type declaration with an indexing suffix,
 // which looks like «type[index]»

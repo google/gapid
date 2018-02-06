@@ -111,6 +111,9 @@ func castable(from semantic.Type, to semantic.Type) bool {
 	_, fromIsEnum := fromBase.(*semantic.Enum)
 	_, toIsEnum := toBase.(*semantic.Enum)
 	fromIsNumber, toIsNumber := isNumber(fromBase), isNumber(toBase)
+	if fromIsEnum && toIsEnum {
+		return true // enum -> enum
+	}
 	if fromIsEnum && toIsNumber {
 		return true // enum -> number
 	}

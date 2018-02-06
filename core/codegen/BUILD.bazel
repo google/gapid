@@ -1,0 +1,43 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "arithmetic.go",
+        "assert.go",
+        "builder.go",
+        "cast.go",
+        "function.go",
+        "module.go",
+        "output.go",
+        "triple.go",
+        "types.go",
+        "value.go",
+    ],
+    cgo = True,
+    clinkopts = [],  # keep
+    importpath = "github.com/google/gapid/core/codegen",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/os/device:go_default_library",
+
+        "@llvm//:GoBindings"
+    ],
+)
+
+go_test(
+    name = "go_default_xtest",
+    size = "small",
+    srcs = [
+        "codegen_test.go",
+        "triple_test.go",
+    ],
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+        "//core/codegen/call:go_default_library",
+        "//core/log:go_default_library",
+        "//core/os/device:go_default_library",
+        "//core/os/device/host:go_default_library",
+    ],
+)

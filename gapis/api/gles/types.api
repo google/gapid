@@ -15,9 +15,17 @@
 // OpenGL ES 3.1 data-types. See:
 // https://www.khronos.org/registry/gles/specs/3.1/es_spec_3.1.pdf
 
-type u8 GLboolean // Boolean value.
-label GLboolean GL_FALSE = 0x00
-label GLboolean GL_TRUE = 0x01
+enum GLboolean : u8 { // Boolean value.
+    GL_FALSE = 0x00
+    GL_TRUE = 0x01
+}
+
+sub GLboolean toGLboolean(bool v) {
+    return switch v {
+        case true:  GL_TRUE
+        case false: GL_FALSE
+    }
+}
 
 // type s8    GLbyte // 8 bit, signed, two's complement binary integer. (Currently unused)
 type u8   GLubyte // 8 bit, unsigned binary integer.

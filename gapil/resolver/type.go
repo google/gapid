@@ -16,7 +16,6 @@ package resolver
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -61,9 +60,6 @@ func type_(rv *resolver, in interface{}) semantic.Type {
 				sizeExpr = ty.Definition
 				e = ty.Expression
 			case *semantic.EnumEntry:
-				sizeExpr = e
-				e = semantic.Uint32Value(ty.Value)
-			case *semantic.Label:
 				sizeExpr = e
 				e = ty.Value
 			default:
@@ -270,78 +266,65 @@ func enum(rv *resolver, out *semantic.Enum) {
 	out.Docs = rv.findDocumentation(in)
 	out.Annotations = annotations(rv, in.Annotations)
 	out.IsBitfield = in.IsBitfield
+	out.NumberType = semantic.Uint32Type
+	if in.NumberType != nil {
+		out.NumberType = type_(rv, in.NumberType)
+	}
+	if !semantic.IsInteger(out.NumberType) {
+		rv.errorf(in.NumberType, "enum numerical type must be an integer, got: %v", out.NumberType)
+	}
 	for _, e := range in.Entries {
-		v, err := strconv.ParseUint(e.Value.Value, 0, 32)
+		var v semantic.Expression
+		var err error
+		intSize := semantic.IntegerSizeInBits(out.NumberType)
+		if semantic.IsUnsigned(out.NumberType) {
+			var i uint64
+			i, err = strconv.ParseUint(e.Value.Value, 0, intSize)
+			switch intSize {
+			case 8:
+				v = semantic.Uint8Value(i)
+			case 16:
+				v = semantic.Uint16Value(i)
+			case 32:
+				v = semantic.Uint32Value(i)
+			case 64:
+				v = semantic.Uint64Value(i)
+			default:
+				panic(fmt.Errorf("Unexpected enum entry unsigned integer size: %v", intSize))
+			}
+		} else {
+			var i int64
+			i, err = strconv.ParseInt(e.Value.Value, 0, intSize)
+			switch intSize {
+			case 8:
+				v = semantic.Int8Value(i)
+			case 16:
+				v = semantic.Int16Value(i)
+			case 32:
+				v = semantic.Int32Value(i)
+			case 64:
+				v = semantic.Int64Value(i)
+			default:
+				panic(fmt.Errorf("Unexpected enum entry signed integer size: %v", intSize))
+			}
+		}
 		if err != nil {
-			rv.errorf(e, "could not parse %s as uint32", e.Value)
+			rv.errorf(e, "could not parse %v as %v", e.Value, out.NumberType)
 			continue
 		}
+
 		entry := &semantic.EnumEntry{
 			AST:   e,
 			Named: semantic.Named(e.Name.Value),
 			Docs:  rv.findDocumentation(e),
-			Value: uint32(v),
+			Value: v,
 		}
 		out.Entries = append(out.Entries, entry)
 		rv.mappings.add(e, entry)
+		semantic.Add(out, entry)
+		rv.addNamed(entry)
 	}
 	rv.mappings.add(in, out)
-}
-
-func enumEntries(rv *resolver, out, scan *semantic.Enum) {
-	for _, e := range scan.Entries {
-		if out != scan {
-			e = &semantic.EnumEntry{
-				AST:   e.AST,
-				Named: e.Named,
-				Value: e.Value,
-			}
-		}
-		semantic.Add(out, e)
-		rv.addNamed(e)
-	}
-}
-
-func resolveLabels(rv *resolver) {
-	for typeName, lls := range rv.labels {
-		for _, l := range lls {
-			al := l.AST
-			alg := l.AST.Owner
-
-			typeNode := rv.get(al, typeName)
-			if typeNode == nil {
-				continue
-			}
-
-			labeled, ok := typeNode.(semantic.Labeled)
-			if !ok {
-				rv.errorf(al, "Cannot attach label '%s' to type '%s' which does not support labels.", l.Name(), name(typeNode))
-				continue
-			} else {
-				labeled.AddLabel(l)
-			}
-
-			l.Docs = append(l.Docs, rv.findDocumentation(alg)...)
-			l.Docs = append(l.Docs, rv.findDocumentation(al)...)
-
-			l.Annotations = annotations(rv, alg.Annotations)
-
-			ty, _ := typeNode.(semantic.Type)
-			rv.with(ty, func() { l.Value = expression(rv, al.Value) })
-
-			rv.mappings.add(al, l)
-			rv.addNamed(l)
-			semantic.Add(labeled, l)
-		}
-	}
-
-	for typeName, lls := range rv.labels {
-		for _, l := range lls {
-			if ls, ok := rv.get(l.AST, typeName).(semantic.Labeled); ok {
-				sort.Sort(labelsByName(ls.Labels()))
-			}
-		}
-	}
 }
 
 func class(rv *resolver, out *semantic.Class) {
