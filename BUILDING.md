@@ -6,23 +6,22 @@ Bazel is able to fetch most of the dependencies required to build GAPID, but cur
 
 Please see the following OS specific guides for setting up the build environment.
 
+After setting up the build environment, GAPID can be built in a terminal with:
+
+```
+cd <path-to-gapid-source>
+bazel build pkg
+```
+
+The build output will be at `<path-to-gapid-source>/bazel-bin/pkg`.
+
+---
+
 ## Windows
 
 ### Install Chocolatey
 
 [Follow these instructions](https://chocolatey.org/install) to install Chocolatey.
-
-### Install Java Runtime 8
-
-[Install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
-
-### Install additional tools
-
-Using the msys64 shell at `c:\tools\msys64\mingw64`:
-1. Update MSYS with: `pacman -Syu`.
-2. If the update ends with “close the window and run it again”, close and reopen the window and repeat 1.
-3. Fetch required tools with: `pacman -S mingw-w64-x86_64-gcc curl git zip unzip`
-4. Close the MSYS terminal
 
 ### Install Bazel
 
@@ -30,7 +29,19 @@ In the console type:
 
 `choco install bazel`
 
-Note: Installing bazel will also install MSYS into `c:\tools\msys64`.
+Note: Installing bazel will also install MSYS into `C:\tools\msys64` and Python into `C:\tools\python27`.
+
+### Install additional tools
+
+Using the msys64 shell at `C:\tools\msys64\mingw64`:
+1. Update MSYS with: `pacman -Syu`.
+2. If the update ends with “close the window and run it again”, close and reopen the window and repeat 1.
+3. Fetch required tools with: `pacman -S mingw-w64-x86_64-gcc curl git zip unzip`
+4. Close the MSYS terminal
+
+### Install Java Runtime 8
+
+A JRE is required by the Android SDK tools. If you do not already have a JRE installed, please [install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
 
 ### Install Android SDK
 
@@ -40,9 +51,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools\bin\sdkmanager "platforms;android-21"
-tools\bin\sdkmanager "platforms;android-27"
-tools\bin\sdkmanager "build-tools;26.0.1
+tools\bin\sdkmanager platforms;android-21 build-tools;26.0.1
 ```
 
 ### Install the Android NDK
@@ -55,43 +64,36 @@ Either do this globally or in your shell every time.
 
 Make sure the environment is setup before you run bazel (`bazel shutdown` will shut it down).
 
-1. Make sure there is no instance of go on your `PATH`
-Run `where go`. If a version of go is found, please remove it from `PATH`.
+1. Add `C:\tools\msys64\mingw64` to the PATH:
+   `set PATH=C:\tools\msys64\mingw64\bin;%PATH%`
+   Running `where gcc` should now find mingw’s gcc.
 
-1. Add `c:\tools\msys64\mingw64` to the PATH 
-`set PATH=c:\tools\msys64\mingw64\bin;%PATH%`
+1. Add `C:\tools\python27` to the PATH:
+   `set PATH=C:\tools\python27;%PATH%`
+   Alternatively, pass the path to python via the `--python_path` to bazel. See the [bazel documentation](https://docs.bazel.build/versions/master/windows.html#build-python) for more info.
 
-Running `where gcc` should now find mingw’s gcc.
+1. Set TMP to something very short. `C:\tmp` is known to work. For faster builds, add this folder to the excemptions of the Windows Defender anti-malware scanner.
 
 The following environment variables will need to be set prior to building:
 
-| Variable            | Target                            |
-| ------------------- | --------------------------------- |
-| `JAVA_HOME`         | Path to the Java Runtime          |
-| `ANDROID_HOME`      | Path to Android SDK               |
-| `ANDROID_NDK_HOME`  | Path to Android NDK               |
-| `BAZEL_SH`          | `C:\tools\msys64\usr\bin\bash.exe`|
-| `GOPATH`            | \<unset\>                         |
-| `GOROOT`            | \<unset\>                         |
-| `TMP`               | `c:\tmp`                          |
-
-
-### Building
-
-In a terminal type:
-```
-cd <path-to-gapid-source>
-bazel build --config mingw pkg
-```
-The build output will be at `bazel-bin/pkg`.
+| Variable            | Target                             |
+| ------------------- | ---------------------------------- |
+| `ANDROID_HOME`      | Path to Android SDK                |
+| `ANDROID_NDK_HOME`  | Path to Android NDK                |
+| `BAZEL_SH`          | `C:\tools\msys64\usr\bin\bash.exe` |
+| `TMP`               | `C:\tmp`                           |
 
 ---
 
 ## MacOS
 
+### Install Bazel
+
+Follow the [MacOS Bazel Install](https://docs.bazel.build/versions/master/install-os-x.html) directions to install bazel.
+
 ### Install Java Runtime 8
 
-[Install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
+A JRE is required by the Android SDK tools. If you do not already have a JRE installed, please [install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
 
 ### Install Android SDK
 
@@ -101,9 +103,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-21"
-tools/bin/sdkmanager "platforms;android-27"
-tools/bin/sdkmanager "build-tools;26.0.1
+tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1"
 ```
 
 ### Install Android NDK
@@ -137,30 +137,24 @@ Make sure the environment is setup before you run bazel (`bazel shutdown` will s
 
 The following environment variables will need to be set prior to building:
 
-| Variable            | Target                            |
-| ------------------- | --------------------------------- |
-| `JAVA_HOME`         | Path to the Java Runtime          |
-| `ANDROID_HOME`      | Path to Android SDK               |
-| `ANDROID_NDK_HOME`  | Path to Android NDK               |
-| `GOPATH`            | <unset>                           |
-| `GOROOT`            | <unset>                           |
-
-### Building
-
-In a terminal type:
-```
-cd <path-to-gapid-source>
-bazel build pkg
-```
-The build output will be at `bazel-bin/pkg`.
+| Variable            | Target               |
+| ------------------- | -------------------- |
+| `ANDROID_HOME`      | Path to Android SDK  |
+| `ANDROID_NDK_HOME`  | Path to Android NDK  |
 
 ---
 
 ## Linux
 
+### Install Bazel
+
+Follow the [Ubuntu Bazel Install](https://docs.bazel.build/versions/master/install-ubuntu.html) or the[Fedora/CentOS Bazel Install](https://docs.bazel.build/versions/master/install-redhat.html) directions to install bazel.
+
+Alternatively, bazel can be downloaded from its [GitHub Releases Page](https://github.com/bazelbuild/bazel/releases).
+
 ### Install Java Runtime 8
 
-[Install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
+A JRE is required by the Android SDK tools. If you do not already have a JRE installed, please [install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
 
 ### Install Android SDK
 
@@ -170,13 +164,12 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-21"
-tools/bin/sdkmanager "platforms;android-27"
-tools/bin/sdkmanager "build-tools;26.0.1
+tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1
 ```
 
 ### Install Android NDK
-* Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip) to a directory of your choosing.
+
+Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip) to a directory of your choosing.
 
 ### Configure the environment
 
@@ -186,20 +179,7 @@ Make sure the environment is setup before you run bazel (`bazel shutdown` will s
 
 The following environment variables will need to be set prior to building:
 
-| Variable            | Target                            |
-| ------------------- | --------------------------------- |
-| `JAVA_HOME`         | Path to the Java Runtime          |
-| `ANDROID_HOME`      | Path to Android SDK               |
-| `ANDROID_NDK_HOME`  | Path to Android NDK               |
-| `GOPATH`            | <unset>                           |
-| `GOROOT`            | <unset>                           |
-
-### Building
-
-In a terminal type:
-```
-cd <path-to-gapid-source>
-bazel build pkg
-```
-The build output will be at `bazel-bin/pkg`.
-
+| Variable            | Target              |
+| ------------------- | ------------------- |
+| `ANDROID_HOME`      | Path to Android SDK |
+| `ANDROID_NDK_HOME`  | Path to Android NDK |
