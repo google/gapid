@@ -12,9 +12,9 @@
 # General patterns
 *.gfxtrace
 *ycm_extra_conf.py*
-*_embed.go
 gapir.log
 gapis.log
+
 # Vim
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]
