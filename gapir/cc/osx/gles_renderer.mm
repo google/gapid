@@ -73,8 +73,8 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         : mQueriedExtensions(false)
         , mWindow(nullptr)
         , mContext(nullptr)
-        , mNeedsResolve(true)
-        , mSharedContext(shared_context != nullptr ? shared_context->mContext : 0) {
+        , mSharedContext(shared_context != nullptr ? shared_context->mContext : 0)
+        , mNeedsResolve(true) {
 
     // Initialize with a default target.
     setBackbuffer(Backbuffer(
