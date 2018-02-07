@@ -71,12 +71,15 @@ void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line, cons
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t.time_since_epoch());
 
     for (FILE* file : mFiles) {
+        va_list args_copy;
+        va_copy(args_copy, args);
+
         // Print out the common part of the log messages
         fprintf(file, "%02d:%02d:%02d.%03d %c %s: [%s:%u] ", loc->tm_hour, loc->tm_min, loc->tm_sec,
                 static_cast<int>(ms.count() % 1000), "FEWIDV"[level], mSystem, src_file, src_line);
 
         // Print out the actual log message
-        vfprintf(file, format, args);
+        vfprintf(file, format, args_copy);
 
         // Always finish with a newline
         fprintf(file, "\n");
