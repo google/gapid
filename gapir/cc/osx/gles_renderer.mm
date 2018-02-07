@@ -176,6 +176,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     }
 
     [mContext setView:[mWindow contentView]];
+    [mWindow display];
 
     mBackbuffer = backbuffer;
     mNeedsResolve = true;
