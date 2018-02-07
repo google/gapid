@@ -19,6 +19,11 @@ set -ex
 BUILD_ROOT=$PWD
 SRC=$PWD/github/gapid/
 
+# Get bazel.
+curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.10.0/bazel-0.10.0-without-jdk-installer-linux-x86_64.sh
+mkdir bazel
+bash bazel-0.10.0-without-jdk-installer-linux-x86_64.sh --prefix=$PWD/bazel
+
 # Setup environment.
 export ANDROID_NDK_HOME=/opt/android-ndk-r15c
 
@@ -27,7 +32,7 @@ cd $SRC
 # Invoke the build.
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 echo $(date): Starting build...
-bazel build -c opt --strip always --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" --define GAPID_BUILD_SHA="$BUILD_SHA" //:pkg
+$BUILD_ROOT/bazel/bin/bazel build -c opt --strip always --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" --define GAPID_BUILD_SHA="$BUILD_SHA" //:pkg
 echo $(date): Build completed.
 
 # Build the release packages.
