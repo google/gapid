@@ -360,7 +360,7 @@ cc_library(
 )
 
 go_library(
-    name = "GoBindings",
+    name = "go_default_library",
     srcs = glob([
         "bindings/go/llvm/*.go",
         "bindings/go/llvm/*.cpp",
