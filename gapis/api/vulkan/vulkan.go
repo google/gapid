@@ -84,10 +84,9 @@ func (c *State) SetupInitialState(ctx context.Context) {
 			commandFunction := GetCommandFunction(cmd)
 			commandArgs := GetCommandArgs(ctx, cmd, c)
 			cmd.QueuedCommandData = QueuedCommand{
-				initialCall:      nil,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     nil,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			}
 			b.Commands = append(b.Commands, CommandBufferCommand{
 				func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder) {
