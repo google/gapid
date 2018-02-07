@@ -94,10 +94,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetViewportArgs):
@@ -110,10 +109,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetScissorArgs):
@@ -126,10 +124,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetLineWidthArgs):
@@ -142,10 +139,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetDepthBiasArgs):
@@ -158,10 +154,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetBlendConstantsArgs):
@@ -174,10 +169,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetDepthBoundsArgs):
@@ -190,10 +184,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetStencilCompareMaskArgs):
@@ -206,10 +199,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetStencilWriteMaskArgs):
@@ -222,10 +214,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetStencilReferenceArgs):
@@ -238,10 +229,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdBindDescriptorSetsArgs):
@@ -254,10 +244,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdBindIndexBufferArgs):
@@ -270,10 +259,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdBindVertexBuffersArgs):
@@ -286,10 +274,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDrawArgs):
@@ -302,10 +289,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDrawIndexedArgs):
@@ -318,10 +304,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDrawIndirectArgs):
@@ -334,10 +319,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDrawIndexedIndirectArgs):
@@ -350,10 +334,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDispatchArgs):
@@ -366,10 +349,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDispatchIndirectArgs):
@@ -382,10 +364,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdCopyBufferArgs):
@@ -398,10 +379,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdCopyImageArgs):
@@ -414,10 +394,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdBlitImageArgs):
@@ -430,10 +409,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdCopyBufferToImageArgs):
@@ -446,10 +424,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdCopyImageToBufferArgs):
@@ -462,10 +439,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdUpdateBufferArgs):
@@ -478,10 +454,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdFillBufferArgs):
@@ -494,10 +469,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdClearColorImageArgs):
@@ -510,10 +484,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdClearDepthStencilImageArgs):
@@ -526,10 +499,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdClearAttachmentsArgs):
@@ -542,10 +514,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdResolveImageArgs):
@@ -558,10 +529,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdSetEventArgs):
@@ -574,10 +544,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdResetEventArgs):
@@ -590,10 +559,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdWaitEventsArgs):
@@ -606,10 +574,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdPipelineBarrierArgs):
@@ -622,10 +589,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdBeginQueryArgs):
@@ -638,10 +604,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdEndQueryArgs):
@@ -654,10 +619,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdResetQueryPoolArgs):
@@ -670,10 +634,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdWriteTimestampArgs):
@@ -686,10 +649,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdCopyQueryPoolResultsArgs):
@@ -702,10 +664,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdPushConstantsArgs):
@@ -718,10 +679,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdBeginRenderPassArgs):
@@ -734,10 +694,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdNextSubpassArgs):
@@ -750,10 +709,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdEndRenderPassArgs):
@@ -766,10 +724,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdExecuteCommandsArgs):
@@ -782,10 +739,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDebugMarkerBeginEXTArgs):
@@ -798,10 +754,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDebugMarkerEndEXTArgs):
@@ -814,10 +769,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	case (*VkCmdDebugMarkerInsertEXTArgs):
@@ -830,10 +784,9 @@ func (e externs) addCmd(commandBuffer VkCommandBuffer, data interface{}, functio
 			SemaphoreUpdate: SemaphoreUpdate_None,
 			Semaphore:       VkSemaphore(0),
 			QueuedCommandData: QueuedCommand{
-				initialCall:      e.cmd,
-				submit:           nil,
-				submissionIndex:  []uint64(nil),
-				actualSubmission: true,
+				initialCall:     e.cmd,
+				submit:          nil,
+				submissionIndex: []uint64(nil),
 			},
 		})
 	default:
@@ -863,7 +816,6 @@ func (e externs) notifyPendingCommandAdded(queue VkQueue) {
 	s.SubCmdIdx[len(s.SubCmdIdx)-1] = uint64(command.CommandIndex)
 	command.QueuedCommandData.submit = e.cmd
 	command.QueuedCommandData.submissionIndex = append([]uint64(nil), s.SubCmdIdx...)
-	command.QueuedCommandData.actualSubmission = true
 	queueObject.PendingCommands.Set(uint32(queueObject.PendingCommands.Len()-1), command)
 }
 
@@ -937,12 +889,12 @@ func (e externs) execPendingCommands(queue VkQueue) {
 			}
 
 			o.CurrentSubmission = command.QueuedCommandData.submit
-			if command.QueuedCommandData.actualSubmission && o.PreSubcommand != nil {
+			if o.PreSubcommand != nil {
 				o.PreSubcommand(command)
 			}
 			buffer := o.CommandBuffers.Get(command.Buffer)
 			buffer.Commands[command.CommandIndex].function(e.ctx, e.cmd, e.cmdID, e.s, e.b)
-			if command.QueuedCommandData.actualSubmission && o.PostSubcommand != nil {
+			if o.PostSubcommand != nil {
 				// If the just executed subcommand blocks as there are pending events,
 				// e.g.: vkCmdWaitEvents, this subcommand should not be considered
 				// as finshed and the PostSubcommand callback should not be called.

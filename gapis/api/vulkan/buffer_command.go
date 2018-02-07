@@ -28,10 +28,9 @@ type CommandBufferCommand struct {
 }
 
 type QueuedCommand struct {
-	initialCall      api.Cmd
-	submit           api.Cmd
-	submissionIndex  []uint64
-	actualSubmission bool
+	initialCall     api.Cmd
+	submit          api.Cmd
+	submissionIndex []uint64
 }
 
 type CommandBufferCommands []CommandBufferCommand
