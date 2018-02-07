@@ -42,6 +42,9 @@
   #include <inttypes.h>
 ¶
   {{$api := Title (Global "API")}}
+
+#define NELEM(x) (sizeof(x) / sizeof(x[0]))
+
   namespace {«
     typedef bool (gapir::{{$api}}::*Function)(uint32_t, gapir::Stack*, bool);
 
@@ -49,12 +52,12 @@
 
     Function functions[] = {
       {{range $i, $c := $non_synthetics}}
-        {{if (not (GetAnnotation $c "pfn"))}}
-          {{$name := Macro "C++.Public" (Macro "CmdName" $c)}}
-          &gapir::{{$api}}::call{{$name}},
+        {{if (GetAnnotation $c "pfn")}}
+          nullptr,
+        {{else}}
+          &gapir::{{$api}}::call{{Template "C++.Public" (Macro "CmdName" $c)}},
         {{end}}
       {{end}}
-      nullptr,
     };
   »}
   namespace gapir {«
@@ -64,8 +67,10 @@
 ¶
   {{$api}}::{{$api}}() {
     using namespace std::placeholders;
-    for (int i = 0; functions[i] != nullptr; i++) {
+    for (int i = 0; i < NELEM(functions); i++) {
+      if (functions[i] != nullptr) {
         mFunctions.insert(i, std::bind(functions[i], this, _1, _2, _3));
+      }
     }
   }
 ¶
