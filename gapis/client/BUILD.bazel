@@ -25,12 +25,11 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/auth:go_default_library",
+        "//core/app/layout:go_default_library",
         "//core/event:go_default_library",
         "//core/log:go_default_library",
         "//core/log/log_pb:go_default_library",
         "//core/net/grpcutil:go_default_library",
-        "//core/os/device:go_default_library",
-        "//core/os/device/host:go_default_library",
         "//core/os/file:go_default_library",
         "//core/os/process:go_default_library",
         "//gapis/api:go_default_library",

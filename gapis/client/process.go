@@ -19,10 +19,9 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/app/auth"
+	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"google.golang.org/grpc"
@@ -31,39 +30,6 @@ import (
 const (
 	BinaryName = "gapis"
 )
-
-var (
-	// GapisPath is the full filepath to the gapir executable.
-	GapisPath file.Path
-)
-
-func init() {
-	// Search directory that this executable is in.
-	if path, err := file.FindExecutable(file.ExecutablePath().Parent().Join(BinaryName).System()); err == nil {
-		GapisPath = path
-		return
-	}
-	// Search standard package structure
-	packagePath := file.Abs(".")
-	switch host.Instance(context.Background()).Configuration.OS.Kind {
-	case device.Windows:
-		packagePath = packagePath.Join("windows")
-	case device.OSX:
-		packagePath = packagePath.Join("osx")
-	case device.Linux:
-		packagePath = packagePath.Join("linux")
-	}
-	packagePath = packagePath.Join("x86_64")
-	if path, err := file.FindExecutable(packagePath.Join(BinaryName).System()); err == nil {
-		GapisPath = path
-		return
-	}
-	// Search $PATH.
-	if path, err := file.FindExecutable(BinaryName); err == nil {
-		GapisPath = path
-		return
-	}
-}
 
 type Config struct {
 	Path  *file.Path
@@ -76,11 +42,13 @@ type Config struct {
 // If port is zero, a new GAPIS server will be started, otherwise a connection
 // will be made to the specified port.
 func Connect(ctx context.Context, cfg Config) (Client, error) {
+	var err error
 	if cfg.Path == nil {
-		cfg.Path = &GapisPath
+		if cfg.Path, err = findGapis(ctx); err != nil {
+			return nil, err
+		}
 	}
 
-	var err error
 	if cfg.Port == 0 || len(cfg.Args) > 0 {
 		cfg.Args = append(cfg.Args,
 			"--log-level", logLevel(ctx).String(),
@@ -119,4 +87,18 @@ func logLevel(ctx context.Context) log.Severity {
 		}
 	}
 	return log.Warning
+}
+
+
+func findGapis(ctx context.Context) (*file.Path, error) {
+	if path, err := layout.Gapis(ctx); err == nil {
+		return &path, nil
+	}
+
+	// Search $PATH.
+	if path, err := file.FindExecutable(BinaryName); err == nil {
+		return &path, nil
+	}
+
+	return nil, fmt.Errorf("Unable to locate the gapis executable '%s'", BinaryName)
 }
