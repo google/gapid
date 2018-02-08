@@ -23,7 +23,7 @@ github_repository(
     name = "io_bazel_rules_go",
     organization = "bazelbuild",
     project = "rules_go",
-    commit = "6b653a809d768269dedffe17a66c684dbbdf13fb",
+    commit = "c949c4d2235a3988ed3c7ac9beb70f707d29d465",
 )
 
 github_repository(
