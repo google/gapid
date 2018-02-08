@@ -40,3 +40,8 @@ filegroup(
     name = "empty",
     srcs = [],
 )
+
+filegroup(
+    name = "cc_wrapper",
+    srcs = [],
+)
