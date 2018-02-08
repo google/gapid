@@ -45,7 +45,7 @@ toolchain {
   objcopy_embed_flag: "-I"
   objcopy_embed_flag: "binary"
 
-  linking_mode_flags { mode: DYNAMIC  }
+  linking_mode_flags { mode: FULLY_STATIC }
 
   %{CXX_BUILTIN_INCLUDE_DIRECTORIES}
 
