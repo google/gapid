@@ -183,7 +183,7 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 		return nil, err
 	}
 
-	output := fmt.Sprintf("%s\n\n%s", cmd, strings.TrimSpace(outBuf.String()))
+	output := fmt.Sprintf("%s\n\n%s\n%s\n\n", cmd, strings.TrimSpace(outBuf.String()), strings.TrimSpace(errBuf.String()))
 	log.I(ctx, output)
 	logID, err := store.UploadString(ctx, stash.Upload{Name: []string{"replay.log"}, Type: []string{"text/plain"}}, output)
 	if err != nil {

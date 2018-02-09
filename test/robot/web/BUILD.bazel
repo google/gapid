@@ -20,12 +20,12 @@ load("//tools/build:rules.bzl", "embed")
 embed(
     name = "embed",
     srcs = glob([
-        "www/*.html",
-        "www/*.css",
-        "www/*.js",
-        "www/*.png",
-        "template/*.tmpl",
+        "www/**/*.html",
+        "www/**/*.css",
+        "www/**/*.js",
+        "www/**/*.png",
     ]),
+    root = "./test/robot/web/"
 )
 
 go_library(

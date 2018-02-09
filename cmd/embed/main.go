@@ -111,6 +111,7 @@ func run(ctx context.Context) error {
 			rel := ""
 			if root != "" {
 				// if Rel fails, we just fallback to basename in the loop below
+				root, err = filepath.Abs(root)
 				rel, _ = filepath.Rel(root, path)
 			} else {
 				rel = filepath.Base(path)
