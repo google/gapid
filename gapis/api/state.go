@@ -84,6 +84,9 @@ type State interface {
 	// The segments of memory that were used to create these commands
 	// are returned in the rangeList.
 	RebuildState(ctx context.Context, s *GlobalState) ([]Cmd, interval.U64RangeList)
+
+	// InitializeCustomState initializes any custom state on this object
+	InitializeCustomState()
 }
 
 // NewStateWithEmptyAllocator returns a new, default-initialized State object,

@@ -356,8 +356,14 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
     return true;
 }
 
-void VulkanSpy::enterSubcontext(CallObserver* observer) {}
-void VulkanSpy::leaveSubcontext(CallObserver* observer) {}
-void VulkanSpy::nextSubcontext(CallObserver* observer) {}
-
+void VulkanSpy::enterSubcontext(CallObserver*) {}
+void VulkanSpy::leaveSubcontext(CallObserver*) {}
+void VulkanSpy::nextSubcontext(CallObserver*) {}
+void VulkanSpy::resetSubcontext(CallObserver*) {}
+void VulkanSpy::onPreSubcommand(CallObserver*, std::shared_ptr<CommandReference>) {}
+void VulkanSpy::onPreProcessCommand(CallObserver*, std::shared_ptr<CommandReference>) {}
+void VulkanSpy::onPostSubcommand(CallObserver*, std::shared_ptr<CommandReference>) {}
+void VulkanSpy::onDeferSubcommand(CallObserver*, std::shared_ptr<CommandReference>) {}
+void VulkanSpy::onCommandAdded(CallObserver*, VkCommandBuffer) {}
+void VulkanSpy::postBindSparse(CallObserver*, std::shared_ptr<QueuedSparseBinds>) {}
 }

@@ -307,8 +307,8 @@ func (sc *submittedCommand) runCommand(ctx context.Context,
 type queueSubmitInfo struct {
 	queue            VkQueue
 	began            bool
-	queued   label
-	done     label
+	queued           label
+	done             label
 	waitSemaphores   []VkSemaphore
 	signalSemaphores []VkSemaphore
 	signalFence      VkFence
@@ -1409,7 +1409,7 @@ func (vb *FootprintBuilder) rollOutExecuted(ctx context.Context,
 		submittedCmd := submitinfo.pendingCommands[0]
 		if executedFCI.Equals(submittedCmd.id) {
 			execInfo := vb.executionStates[submitinfo.queue]
-			execInfo.currentSubmitInfo =submitinfo
+			execInfo.currentSubmitInfo = submitinfo
 			execInfo.updateCurrentCommand(ctx, executedFCI)
 			submittedCmd.runCommand(ctx, ft, vb.machine, execInfo)
 		} else {
@@ -1688,7 +1688,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				continue
 			}
 			isCoherent, _ := subIsMemoryCoherent(ctx, cmd, id, nil, s, GetState(s), cmd.thread, nil, mem)
-			if isCoherent{
+			if isCoherent {
 				if !coherentMemDone {
 					vb.writeCoherentMemoryData(ctx, cmd, bh)
 					coherentMemDone = true
@@ -1698,7 +1698,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			offset := uint64(rng.Offset)
 			size := uint64(rng.Size)
 			ms := memorySpan{
-				span: interval.U64Span{Start:offset, End: offset +size},
+				span:   interval.U64Span{Start: offset, End: offset + size},
 				memory: rng.Memory,
 			}
 			write(ctx, bh, ms)
@@ -2591,10 +2591,10 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		vb.executionStates[cmd.Queue].lastSubmitID = id
 		// collect submission info and submitted commands
 		vb.submitInfos[id] = &queueSubmitInfo{
-			began: false,
+			began:  false,
 			queued: newLabel(),
 			done:   newLabel(),
-			queue:          cmd.Queue,
+			queue:  cmd.Queue,
 		}
 		submitCount := uint64(cmd.SubmitCount)
 		hasCmd := false

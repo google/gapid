@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service/path"
@@ -40,6 +39,8 @@ type CustomState struct {
 	pushMarkerGroup   func(name string, next bool, ty MarkerType)
 	popMarkerGroup    func(ty MarkerType)
 	postBindSparse    func(binds *QueuedSparseBinds)
+	queuedCommands    map[*CommandReference]QueuedCommand
+	initialCommands   map[VkCommandBuffer][]api.Cmd
 }
 
 func getStateObject(s *api.GlobalState) *State {
@@ -78,22 +79,12 @@ func (*State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 // SetupInitialState recreates the command lamdas from the state block.
 // These are not encoded so we have to set them up here.
 func (c *State) SetupInitialState(ctx context.Context) {
-	for _, b := range *c.CommandBuffers.Map {
-		for _, v := range b.CommandReferences.KeysSorted() {
-			cmd := b.CommandReferences.Get(v)
-			commandFunction := GetCommandFunction(cmd)
-			commandArgs := GetCommandArgs(ctx, cmd, c)
-			cmd.QueuedCommandData = QueuedCommand{
-				initialCall:     nil,
-				submit:          nil,
-				submissionIndex: []uint64(nil),
-			}
-			b.Commands = append(b.Commands, CommandBufferCommand{
-				func(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder) {
-					CallReflectedCommand(ctx, cmd, id, s, b, commandFunction, commandArgs)
-				}})
-		}
-	}
+	c.InitializeCustomState()
+}
+
+func (c *State) InitializeCustomState() {
+	c.queuedCommands = make(map[*CommandReference]QueuedCommand)
+	c.initialCommands = make(map[VkCommandBuffer][]api.Cmd)
 }
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
@@ -290,32 +281,29 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	}
 
 	s.PostSubcommand = func(a interface{}) {
-		// We do not record/handle any subcommands inside any of our
-		// rebuild commands
-		if s.IsRebuilding {
-			return
-		}
-
-		data := a.(CommandReference)
+		data := a.(*CommandReference)
 		rootIdx := api.CmdID(i)
 		if k, ok := submissionMap[s.CurrentSubmission]; ok {
 			rootIdx = api.CmdID(k)
 		} else {
 			submissionMap[s.CurrentSubmission] = i
 		}
+
 		// No way for this to not exist, we put it in up there
 		k := submissionMap[s.CurrentSubmission]
 		id := api.CmdNoID
-		if data.QueuedCommandData.initialCall != nil {
-			id = commandMap[data.QueuedCommandData.initialCall]
+
+		if initialCommands, ok := s.initialCommands[data.Buffer]; ok {
+			id = commandMap[initialCommands[data.CommandIndex]]
 		}
+
 		if v, ok := d.SubcommandReferences[k]; ok {
 			v = append(v,
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), id, &data, false})
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), id, data, false})
 			d.SubcommandReferences[k] = v
 		} else {
 			d.SubcommandReferences[k] = []sync.SubcommandReference{
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), id, &data, false}}
+				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), id, data, false}}
 		}
 
 		fullSubCmdIdx := api.SubCmdIdx(append([]uint64{uint64(k)}, s.SubCmdIdx...))
@@ -348,13 +336,17 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	}
 
 	s.AddCommand = func(a interface{}) {
-		data := a.(CommandReference)
-		commandMap[data.QueuedCommandData.initialCall] = i
+		data := a.(*CommandReference)
+		if initialCommands, ok := s.initialCommands[data.Buffer]; ok {
+			commandMap[initialCommands[data.CommandIndex]] = i
+		}
 	}
 
 	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		i = id
-		cmd.Mutate(ctx, id, st, nil)
+		if err := cmd.Mutate(ctx, id, st, nil); err != nil {
+			panic(err)
+		}
 		return nil
 	})
 	if err != nil {
@@ -363,6 +355,9 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 
 	submittedCmdBufs := lastSubCmdsInSubmittedCmdBufs.PostOrderSortedKeys()
 	for _, submittedCmdBufIdx := range submittedCmdBufs {
+		if len(submittedCmdBufIdx) == 0 {
+			panic(fmt.Sprintf("%+v", submittedCmdBufs))
+		}
 		submissionId := api.CmdID(submittedCmdBufIdx[0])
 		lastSubCmdIdInCmdBuf := lastSubCmdsInSubmittedCmdBufs.Value(submittedCmdBufIdx).(uint64)
 		if v, ok := d.SubcommandGroups[submissionId]; ok {
@@ -374,6 +369,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -415,7 +411,7 @@ func (API) RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, dat 
 	s := GetState(st)
 
 	cb := CommandBuilder{Thread: 0}
-	_, a, err := AddCommand(ctx, cb, cr.Buffer, st, st, GetCommandArgs(ctx, *cr, s))
+	_, a, err := AddCommand(ctx, cb, cr.Buffer, st, st, GetCommandArgs(ctx, cr, s))
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Invalid Command")
 	}
