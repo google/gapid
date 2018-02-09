@@ -57,8 +57,9 @@ func Connect(ctx context.Context, cfg Config) (Client, error) {
 		if cfg.Token != auth.NoAuth {
 			cfg.Args = append(cfg.Args, "--gapis-auth-token", string(cfg.Token))
 		}
+
 		cfg.Port, err = process.Start(ctx, cfg.Path.System(), process.StartOptions{
-			Args:    cfg.Args,
+			Args:    append(cfg.Args, layout.GoArgs(ctx)...),
 			Verbose: true,
 		})
 		if err != nil {

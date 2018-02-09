@@ -79,10 +79,15 @@ go_library(
 
 go_binary(
     name = "gapit",
+    data = [
+        "//cmd/gapis",
+        "//core/vulkan/vk_virtual_swapchain/cc:json",
+        "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
+        "//gapii/cc:libgapii",
+        "//gapis/messages:stb",
+        "//gapii/vulkan/vk_graphics_spy/cc:json",
+
+    ],
     embed = [":go_default_library"],
-    #TODO: need to work out why this breaks the analysis phase
-    #data = [
-    #    "//:install-runtime",
-    #],
     visibility = ["//visibility:public"],
 )
