@@ -547,3 +547,133 @@ func TestApiIndex(t *testing.T) {
 		test.check(ctx)
 	}
 }
+
+func TestRecursive(t *testing.T) {
+	ctx := log.Testing(t)
+	for _, test := range []test{
+		{
+			name: "Simple Recursive Function",
+			source: `
+sub void recursive(bool b) {
+	if (b) {
+		recursive(!b)
+	}
+}
+cmd void test() {
+	recursive(true)
+}
+`,
+		},
+		{
+			name: "Invalid Recursive Function",
+			source: `
+sub void recursive(bool b) {
+	if (b) {
+		fence
+		recursive(!b)
+	}
+ }
+ cmd void test() {
+	recursive(true)
+}
+`,
+			errors: err("Fence in recursive function"),
+		},
+		{
+			name: "Implicit Recursive Function",
+			source: `
+sub void recursive(bool b) {
+	if (b) {
+		recursive(!b)
+	}
+	x := ?
+ }
+ cmd void test() {
+	recursive(true)
+}
+`,
+			errors: err("Fence in recursive function"),
+		},
+		{
+			name: "Implicit Recursive Function",
+			source: `
+sub void recursive(bool b) {
+	x := ?
+	if (b) {
+		recursive(!b)
+	}
+ }
+ cmd void test() {
+	recursive(true)
+}
+`,
+			errors: err("Fence in recursive function"),
+		},
+		{
+			name: "Allowed outer Fence Recursive Function",
+			source: `
+sub void recursive(bool b) {
+	if (b) {
+		recursive(!b)
+	}
+ }
+ cmd void test() {
+	fence
+	recursive(true)
+}
+`,
+		},
+		{
+			name: "Allowed Outer Pre-Fence Recursive Function",
+			source: `
+sub void recursive(bool b) {
+	if (b) {
+		recursive(!b)
+	}
+ }
+ cmd void test() {
+	fence
+	recursive(true)
+}
+`,
+		},
+		{
+			name: "Doubly Recursive Function",
+			source: `
+sub void recursive2(bool b) {
+	if (b) {
+		recursive(!b)
+	}
+}
+sub void recursive(bool b) {
+	if (b) {
+		recursive2(!b)
+	}
+ }
+ cmd void test() {
+	recursive(true)
+}
+`,
+		},
+		{
+			name: "Invalid Doubly Recursive Function",
+			source: `
+sub void recursive2(bool b) {
+	fence
+	if (b) {
+		recursive(!b)
+	}
+}
+sub void recursive(bool b) {
+	recursive2(!b)
+ }
+ cmd void test() {
+	recursive(true)
+}
+`,
+			errors: err("Fence in recursive function"),
+		},
+	} {
+		test.check(ctx)
+	}
+}

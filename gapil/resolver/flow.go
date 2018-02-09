@@ -25,7 +25,7 @@ func resolveFenceOrder(rv *resolver, f *semantic.Function, visitedFuncs visitedF
 		return f.Order // Already resolved
 	}
 	if visitedFuncs[f] {
-		rv.errorf(f, "Cyclic dependeny found")
+		f.Recursive = true
 		return 0
 	}
 	visitedFuncs[f] = true
@@ -158,6 +158,7 @@ func (t *fenceTracker) analyse(n semantic.Node) semantic.LogicalOrder {
 	case *semantic.Call:
 		f := n.Target.Function
 		o = resolveFenceOrder(t.resolver, f, t.visitedFuncs)
+
 		if f.AST.Annotations.GetAnnotation("pre_fence") != nil {
 			o |= semantic.Pre
 		}
@@ -177,6 +178,7 @@ func (t *fenceTracker) analyse(n semantic.Node) semantic.LogicalOrder {
 	default:
 		semantic.Visit(n, func(c semantic.Node) { o |= t.analyse(c) })
 	}
+
 	t.orders[n] = o
 	return o
 }
