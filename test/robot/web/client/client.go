@@ -145,18 +145,22 @@ func robotTextPreview(path string, s interface{}) interface{} {
 	id := s.(string)
 
 	div := dom.NewDiv()
-	div.Element.Style.MaxWidth = 600
-	div.Element.Style.MaxHeight = 420
-	div.Element.Style.Overflow = "auto"
-	div.Element.Style.WhiteSpace = "pre"
+	a := robotEntityLink(path, s)
+	div.Append(a)
+	textDiv := dom.NewDiv()
+	textDiv.Element.Style.MaxWidth = 600
+	textDiv.Element.Style.MaxHeight = 420
+	textDiv.Element.Style.Overflow = "auto"
+	textDiv.Element.Style.WhiteSpace = "pre"
 	go func() {
 		fullText, err := queryRestEndpoint(fmt.Sprintf("/entities/%s", id))
 		if err != nil {
 			panic(err)
 		}
 
-		div.Append(string(fullText))
+		textDiv.Append(string(fullText))
 	}()
+	div.Append(textDiv)
 	return div
 }
 
@@ -206,7 +210,17 @@ func newView() *view {
 		},
 	).Add("/1/input/((gapi[irst])|gapid_apk|trace|subject|interceptor|vulkanLayer)", robotEntityLink).
 		Add("/1/input/layout", v.objView.Expandable).
-		Add("/1/output/(log|report|err)", robotTextPreview).
+		Add("/1/output/(log|report)", robotTextPreview).
+		Add("/1/output/err", func(path string, a interface{}) interface{} {
+			err := a.(string)
+			div := dom.NewDiv()
+			div.Element.Style.MaxWidth = 600
+			div.Element.Style.MaxHeight = 420
+			div.Element.Style.Overflow = "auto"
+			div.Element.Style.WhiteSpace = "pre"
+			div.Append(err)
+			return div
+		}).
 		Add("/1/output/video", robotVideoView).
 		Add("/0/", v.objView.Expandable)
 
