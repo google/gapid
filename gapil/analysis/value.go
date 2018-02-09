@@ -637,6 +637,13 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 				}
 			}
 
+			// If this is recursive, then return unknown.
+			for _, b := range s.callstack {
+				if b.Function == f {
+					return s.unknownOf(n.ExpressionType()), nil
+				}
+			}
+
 			s.callstack.enter(s.shared.mappings.CST(f.AST), f, params)
 			defer s.callstack.exit()
 

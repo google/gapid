@@ -30,6 +30,7 @@ type Function struct {
 	Signature      *Signature    // the type signature of the function
 	Extern         bool          // true if this was declared as an extern
 	Subroutine     bool          // true if this was declared as a subroutine
+	Recursive      bool          // true if this function is part of a recursive chain
 	Order          LogicalOrder  // the logical order of the statements relative to the fence
 }
 
