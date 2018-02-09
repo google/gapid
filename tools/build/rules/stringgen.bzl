@@ -47,4 +47,5 @@ stringgen = rule(
             default = Label("//cmd/stringgen:stringgen"),
         ),
     },
+    output_to_genfiles = True,
 )
