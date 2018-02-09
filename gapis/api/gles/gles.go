@@ -73,6 +73,8 @@ func (s *State) SetupInitialState(ctx context.Context) {
 	}
 }
 
+func (s *State) InitializeCustomState() {}
+
 func (s *State) contextRoot(p *path.Command, thread uint64) *path.MapIndex {
 	return path.NewField("Contexts", resolve.APIStateAfter(p, ID)).MapIndex(thread)
 }

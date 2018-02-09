@@ -3096,8 +3096,8 @@ cmd VkResult vkQueueSubmit(
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for j in (0 .. info.waitSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = CommandReference( as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Unsignal, wait_semaphores[j],    null)
+      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+        Unsignal,    wait_semaphores[j],    null)
     }
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
 
@@ -3108,10 +3108,18 @@ cmd VkResult vkQueueSubmit(
       enterSubcontext()
       cb := CommandBuffers[command_buffers[j]]
       for k in (0 .. len(cb.CommandReferences)) {
-        LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-        = cb.CommandReferences[as!u32(k)]
-        notifyPendingCommandAdded(queue)
         ref := cb.CommandReferences[as!u32(k)]
+        LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+        = new!CommandReference(
+          ref.Buffer,
+          ref.CommandIndex,
+          ref.Type,
+          ref.MapIndex,
+          ref.SemaphoreUpdate,
+          ref.Semaphore,
+          ref.SparseBinds,
+        )
+        notifyPendingCommandAdded(queue)
         if ref.Type == cmd_vkCmdExecuteCommands {
           enterSubcontext()
           ec := cb.BufferCommands.vkCmdExecuteCommands[ref.MapIndex]
@@ -3119,8 +3127,17 @@ cmd VkResult vkQueueSubmit(
             scb := CommandBuffers[ec.CommandBuffers[as!u32(l)]]
             enterSubcontext()
             for c in (0 .. len(scb.CommandReferences)) {
+              sref := scb.CommandReferences[as!u32(c)]
               LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-              = scb.CommandReferences[as!u32(c)]
+              = new!CommandReference(
+                sref.Buffer,
+                sref.CommandIndex,
+                sref.Type,
+                sref.MapIndex,
+                sref.SemaphoreUpdate,
+                sref.Semaphore,
+                sref.SparseBinds,
+              )
               notifyPendingCommandAdded(queue)
             }
             leaveSubcontext()
@@ -3137,8 +3154,8 @@ cmd VkResult vkQueueSubmit(
     signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
     for j in (0 .. info.signalSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Signal,  signal_semaphores[j],  null)
+      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+        Signal,      signal_semaphores[j],  null)
     }
     nextSubcontext()
   }
@@ -3528,8 +3545,8 @@ cmd VkResult vkQueueBindSparse(
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for j in (0 .. info.waitSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = CommandReference( as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Unsignal, wait_semaphores[j],    null)
+      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+        Unsignal,    wait_semaphores[j],    null)
     }
 
     queuedBinds := new!QueuedSparseBinds()
@@ -3574,14 +3591,14 @@ cmd VkResult vkQueueBindSparse(
     }
 
     LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-    = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-      None,      as!VkSemaphore(0),     queuedBinds)
+    = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+      None,          as!VkSemaphore(0),     queuedBinds)
 
     signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
     for j in (0 .. info.signalSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Signal,  signal_semaphores[j],  null)
+      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+        Signal,      signal_semaphores[j],  null)
     }
   }
   leaveSubcontext()
@@ -3816,6 +3833,7 @@ cmd VkResult vkSetEvent(
       execPendingCommands(queue)
     }
   }
+  fence
   return ?
 }
 
@@ -5370,8 +5388,14 @@ cmd void vkDestroyCommandPool(
   }
 }
 
+@internal class emptyMap {
+  map!(u32, ref!CommandReference) m
+}
+
 sub void resetCommandBuffer(ref!CommandBufferObject obj) {
   obj.BufferCommands = BufferCommands()
+  obj.CommandReferences = emptyMap().m
+  resetCmd(obj.VulkanHandle)
 }
 
 @indirect("VkDevice")
@@ -5382,11 +5406,10 @@ cmd VkResult vkResetCommandPool(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
   pool := CommandPools[commandPool]
-  for _ , k , b in pool.CommandBuffers {
+  for _ , _ , b in pool.CommandBuffers {
     b.BeginInfo = null
     b.Recording = NOT_STARTED
     resetCommandBuffer(b)
-    resetCmd(k)
   }
   return ?
 }
@@ -5443,6 +5466,7 @@ cmd void vkFreeCommandBuffers(
       pool_object := CommandPools[pool]
       delete(pool_object.CommandBuffers, buffer)
       CommandPools[pool] = pool_object
+      resetCmd(buffer)
       delete(CommandBuffers, buffer)
     }
   }
@@ -5475,7 +5499,6 @@ cmd VkResult vkBeginCommandBuffer(
   buff.Recording = RECORDING
   CommandBuffers[commandBuffer] = buff
   resetCommandBuffer(buff)
-  resetCmd(commandBuffer)
   return ?
 }
 @threadSafety("app")
@@ -5503,6 +5526,37 @@ cmd VkResult vkResetCommandBuffer(
   return ?
 }
 
+extern void notifyPendingCommandAdded(VkQueue queue)
+extern void enterSubcontext()
+extern void nextSubcontext()
+extern void leaveSubcontext()
+extern void resetSubcontext()
+extern void pushDebugMarker(string name)
+extern void popDebugMarker()
+extern void pushRenderPassMarker(VkRenderPass renderPass)
+extern void popRenderPassMarker()
+extern void popAndPushMarkerForNextSubpass(u32 nextSubpass)
+extern void postBindSparse(ref!QueuedSparseBinds binds)
+extern void onPreSubcommand(ref!CommandReference ref)
+extern void onPreProcessCommand(ref!CommandReference ref)
+extern void onPostSubcommand(ref!CommandReference ref)
+extern void onDeferSubcommand(ref!CommandReference ref)
+extern void onCommandAdded(VkCommandBuffer buffer)
+extern void resetCmd(VkCommandBuffer buffer)
+
+sub void AddCommand(
+    VkCommandBuffer commandBuffer,
+    CommandType     type,
+    u32             mapPos
+) {
+  commandIndex := as!u32(len(CommandBuffers[commandBuffer].CommandReferences))
+  cmd := new!CommandReference(commandBuffer, commandIndex,      type,
+    mapPos,          None,          as!VkSemaphore(0), as!ref!QueuedSparseBinds(null))
+  CommandBuffers[commandBuffer].CommandReferences[commandIndex] = cmd
+  onCommandAdded(commandBuffer)
+}
+
+
 @internal class vkCmdBindPipelineArgs {
   VkPipelineBindPoint PipelineBindPoint
   VkPipeline          Pipeline
@@ -5524,25 +5578,15 @@ cmd void vkCmdBindPipeline(
     VkPipelineBindPoint pipelineBindPoint,
     VkPipeline          pipeline) {
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdBindPipelineArgs(
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindPipeline))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindPipeline[mapPos] =
+  new!vkCmdBindPipelineArgs(
     PipelineBindPoint: pipelineBindPoint,
     Pipeline:          pipeline)
 
-  addCmd(commandBuffer, args, dovkCmdBindPipeline)
+  AddCommand(commandBuffer, cmd_vkCmdBindPipeline, mapPos)
 }
-
-extern void addCmd(VkCommandBuffer cmdbuf, any data, any func)
-extern void resetCmd(VkCommandBuffer cmdBuf)
-extern void notifyPendingCommandAdded(VkQueue queue)
-extern void execPendingCommands(VkQueue queue)
-extern void enterSubcontext()
-extern void nextSubcontext()
-extern void leaveSubcontext()
-extern void pushDebugMarker(string name)
-extern void popDebugMarker()
-extern void pushRenderPassMarker(VkRenderPass renderPass)
-extern void popRenderPassMarker()
-extern void popAndPushMarkerForNextSubpass(u32 nextSubpass)
 
 @internal class vkCmdSetViewportArgs {
   u32                   FirstViewport
@@ -5569,7 +5613,11 @@ cmd void vkCmdSetViewport(
     args.Viewports[i] = viewports[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdSetViewport)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetViewport))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetViewport[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetViewport, mapPos)
 }
 
 @internal class vkCmdSetScissorArgs {
@@ -5597,7 +5645,11 @@ cmd void vkCmdSetScissor(
     args.Scissors[i] = scissors[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdSetScissor)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetScissor))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetScissor[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetScissor, mapPos)
 }
 
 @internal class vkCmdSetLineWidthArgs {
@@ -5614,7 +5666,12 @@ cmd void vkCmdSetLineWidth(
     f32             lineWidth) {
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdSetLineWidthArgs(lineWidth)
-  addCmd(commandBuffer, args, dovkCmdSetLineWidth)
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetLineWidth))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetLineWidth[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetLineWidth, mapPos)
 }
 
 @internal class vkCmdSetDepthBiasArgs {
@@ -5640,7 +5697,11 @@ cmd void vkCmdSetDepthBias(
     depthBiasSlopeFactor
   )
 
-  addCmd(commandBuffer, args, dovkCmdSetDepthBias)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetDepthBias))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetDepthBias[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetDepthBias, mapPos)
 }
 
 @internal class vkCmdSetBlendConstantsArgs {
@@ -5665,8 +5726,11 @@ cmd void vkCmdSetBlendConstants(
     blendConstants[2],
     blendConstants[3])
 
-  addCmd( commandBuffer,
-    args, dovkCmdSetBlendConstants)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetBlendConstants))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetBlendConstants[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetBlendConstants, mapPos)
 }
 
 @internal class vkCmdSetDepthBoundsArgs {
@@ -5688,8 +5752,11 @@ cmd void vkCmdSetDepthBounds(
     minDepthBounds,
     maxDepthBounds)
 
-  addCmd( commandBuffer,
-    args, dovkCmdSetDepthBounds)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetDepthBounds))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetDepthBounds[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetDepthBounds, mapPos)
 }
 
 @internal class vkCmdSetStencilCompareMaskArgs {
@@ -5712,7 +5779,11 @@ cmd void vkCmdSetStencilCompareMask(
     compareMask
   )
 
-  addCmd(commandBuffer, args, dovkCmdSetStencilCompareMask)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilCompareMask))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilCompareMask[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetStencilCompareMask, mapPos)
 }
 
 @internal class vkCmdSetStencilWriteMaskArgs {
@@ -5735,7 +5806,11 @@ cmd void vkCmdSetStencilWriteMask(
     writeMask
   )
 
-  addCmd(commandBuffer, args, dovkCmdSetStencilWriteMask)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilWriteMask))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilWriteMask[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetStencilWriteMask, mapPos)
 }
 
 @internal class vkCmdSetStencilReferenceArgs {
@@ -5758,7 +5833,11 @@ cmd void vkCmdSetStencilReference(
     reference
   )
 
-  addCmd(commandBuffer, args, dovkCmdSetStencilReference)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilReference))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilReference[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetStencilReference, mapPos)
 }
 
 @internal class
@@ -5850,7 +5929,11 @@ cmd void vkCmdBindDescriptorSets(
     args.DescriptorSets[i] = sets[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdBindDescriptorSets)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBindDescriptorSets, mapPos)
 }
 
 @internal
@@ -5896,9 +5979,11 @@ cmd void vkCmdBindIndexBuffer(
     IndexType:  indexType
   )
 
-  addCmd( commandBuffer,
-    args,
-    dovkCmdBindIndexBuffer)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindIndexBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindIndexBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBindIndexBuffer, mapPos)
 }
 
 @internal class
@@ -5944,7 +6029,11 @@ cmd void vkCmdBindVertexBuffers(
     args.Offsets[i] = offsets[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdBindVertexBuffers)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindVertexBuffers))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindVertexBuffers[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBindVertexBuffers, mapPos)
 }
 
 sub VkDeviceSize deviceMemoryOffsetToMappedSpace(ref!DeviceMemoryObject memory, VkDeviceSize offsetInDeviceMemory) {
@@ -6068,7 +6157,12 @@ cmd void vkCmdDraw(
     u32             firstInstance) {
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdDrawArgs(vertexCount, instanceCount, firstVertex, firstInstance)
-  addCmd(commandBuffer, args, dovkCmdDraw)
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDraw))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDraw[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDraw, mapPos)
 }
 
 @internal class
@@ -6121,7 +6215,11 @@ cmd void vkCmdDrawIndexed(
     FirstInstance:  firstInstance
   )
 
-  addCmd(commandBuffer, args, dovkCmdDrawIndexed)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndexed))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndexed[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDrawIndexed, mapPos)
 }
 
 @internal class vkCmdDrawIndirectArgs {
@@ -6155,7 +6253,11 @@ cmd void vkCmdDrawIndirect(
   if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
   args := new!vkCmdDrawIndirectArgs(buffer, offset, drawCount, stride)
 
-  addCmd(commandBuffer, args, dovkCmdDrawIndirect)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndirect))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndirect[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDrawIndirect, mapPos)
 }
 
 @internal class vkCmdDrawIndexedIndirectArgs {
@@ -6191,7 +6293,12 @@ cmd void vkCmdDrawIndexedIndirect(
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
   args := new!vkCmdDrawIndexedIndirectArgs(buffer, offset, drawCount, stride)
-  addCmd(commandBuffer, args, dovkCmdDrawIndexedIndirect)
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndexedIndirect))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndexedIndirect[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDrawIndexedIndirect, mapPos)
 }
 
 @internal class vkCmdDispatchArgs {
@@ -6214,7 +6321,11 @@ cmd void vkCmdDispatch(
   args :=
   new!vkCmdDispatchArgs(groupCountX, groupCountY, groupCountZ)
 
-  addCmd(commandBuffer, args, dovkCmdDispatch)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDispatch))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDispatch[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDispatch, mapPos)
 }
 
 @internal
@@ -6238,7 +6349,11 @@ cmd void vkCmdDispatchIndirect(
   if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
   args := new!vkCmdDispatchIndirectArgs(buffer, offset)
 
-  addCmd(commandBuffer, args, dovkCmdDispatchIndirect)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDispatchIndirect))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDispatchIndirect[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDispatchIndirect, mapPos)
 }
 
 @internal class vkCmdCopyBufferArgs {
@@ -6279,7 +6394,11 @@ cmd void vkCmdCopyBuffer(
     args.CopyRegions[i] = regions[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdCopyBuffer)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyBuffer, mapPos)
 }
 
 @internal
@@ -6380,7 +6499,11 @@ cmd void vkCmdCopyImage(
     args.Regions[as!u32(i)] = regions[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdCopyImage)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyImage, mapPos)
 }
 
 @internal
@@ -6422,7 +6545,11 @@ cmd void vkCmdBlitImage(
     args.Regions[as!u32(i)] = regions[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdBlitImage)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBlitImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBlitImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBlitImage, mapPos)
 }
 
 @internal
@@ -6793,7 +6920,11 @@ cmd void vkCmdCopyBufferToImage(
     args.Regions[as!u32(i)] = regions[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdCopyBufferToImage)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBufferToImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBufferToImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyBufferToImage, mapPos)
 }
 
 @internal
@@ -6829,7 +6960,11 @@ cmd void vkCmdCopyImageToBuffer(
     args.Regions[as!u32(i)] = regions[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdCopyImageToBuffer)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImageToBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImageToBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyImageToBuffer, mapPos)
 }
 
 @internal class vkCmdUpdateBufferArgs {
@@ -6864,8 +6999,11 @@ cmd void vkCmdUpdateBuffer(
   )
   args.Data = clone(as!u8*(pData)[0:dataSize])
 
-  addCmd(commandBuffer, args,
-    dovkCmdUpdateBuffer)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdUpdateBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdUpdateBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdUpdateBuffer, mapPos)
 }
 
 @internal
@@ -6897,7 +7035,11 @@ cmd void vkCmdFillBuffer(
     data
   )
 
-  addCmd(commandBuffer, args, dovkCmdFillBuffer)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdFillBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdFillBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdFillBuffer, mapPos)
 }
 
 @internal
@@ -6934,7 +7076,11 @@ cmd void vkCmdClearColorImage(
     args.Ranges[as!u32(i)] = ranges[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdClearColorImage)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearColorImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearColorImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdClearColorImage, mapPos)
 }
 
 @internal
@@ -6971,7 +7117,11 @@ cmd void vkCmdClearDepthStencilImage(
     args.Ranges[as!u32(i)] = ranges[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdClearDepthStencilImage)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearDepthStencilImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearDepthStencilImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdClearDepthStencilImage, mapPos)
 }
 
 @internal
@@ -7002,7 +7152,11 @@ cmd void vkCmdClearAttachments(
     args.Rects[as!u32(i)] = rects[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdClearAttachments)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearAttachments))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearAttachments[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdClearAttachments, mapPos)
 }
 
 @internal class vkCmdResolveImageArgs {
@@ -7040,7 +7194,11 @@ cmd void vkCmdResolveImage(
     args.ResolveRegions[as!u32(i)] = regions[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdResolveImage)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResolveImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdResolveImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdResolveImage, mapPos)
 }
 
 @internal class vkCmdSetEventArgs {
@@ -7066,7 +7224,11 @@ cmd void vkCmdSetEvent(
     StageMask:  stageMask
   )
 
-  addCmd(commandBuffer, args, dovkCmdSetEvent)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetEvent, mapPos)
 }
 
 @internal class vkCmdResetEventArgs {
@@ -7092,7 +7254,11 @@ cmd void vkCmdResetEvent(
     StageMask:  stageMask,
   )
 
-  addCmd(commandBuffer, args, dovkCmdResetEvent)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdResetEvent, mapPos)
 }
 
 @internal class vkCmdWaitEventsArgs {
@@ -7161,7 +7327,11 @@ cmd void vkCmdWaitEvents(
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdWaitEvents)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdWaitEvents, mapPos)
 }
 
 @internal class vkCmdPipelineBarrierArgs {
@@ -7216,7 +7386,11 @@ cmd void vkCmdPipelineBarrier(
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdPipelineBarrier)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdPipelineBarrier, mapPos)
 }
 
 @internal class vkCmdBeginQueryArgs {
@@ -7243,7 +7417,11 @@ cmd void vkCmdBeginQuery(
     queryPool,          query, flags
   )
 
-  addCmd(commandBuffer, args, dovkCmdBeginQuery)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginQuery))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginQuery[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBeginQuery, mapPos)
 }
 
 @internal class
@@ -7269,7 +7447,11 @@ cmd void vkCmdEndQuery(
     queryPool,        query
   )
 
-  addCmd(commandBuffer, args, dovkCmdEndQuery)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndQuery))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdEndQuery[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdEndQuery, mapPos)
 }
 
 @internal class
@@ -7299,7 +7481,11 @@ cmd void vkCmdResetQueryPool(
     queryPool,              firstQuery, queryCount
   )
 
-  addCmd(commandBuffer, args, dovkCmdResetQueryPool)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResetQueryPool))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdResetQueryPool[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdResetQueryPool, mapPos)
 }
 
 @internal class vkCmdWriteTimestampArgs {
@@ -7324,7 +7510,11 @@ cmd void vkCmdWriteTimestamp(
     pipelineStage,          queryPool, query
   )
 
-  addCmd(commandBuffer, args, dovkCmdWriteTimestamp)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWriteTimestamp))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdWriteTimestamp[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdWriteTimestamp, mapPos)
 }
 
 @internal
@@ -7365,7 +7555,11 @@ cmd void vkCmdCopyQueryPoolResults(
     Flags:       flags
   )
 
-  addCmd(commandBuffer, args, dovkCmdCopyQueryPoolResults)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyQueryPoolResults))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyQueryPoolResults[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyQueryPoolResults, mapPos)
 }
 
 @internal class
@@ -7393,7 +7587,11 @@ cmd void vkCmdPushConstants(
     layout,                stageFlags, offset, size, clone(as!u8*(pValues)[0:size])
   )
 
-  addCmd(commandBuffer, args, dovkCmdPushConstants)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPushConstants))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdPushConstants[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdPushConstants, mapPos)
 }
 
 @internal class
@@ -7463,7 +7661,11 @@ cmd void vkCmdBeginRenderPass(
     args.ClearValues[i] = clear_values[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdBeginRenderPass)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass, mapPos)
 }
 
 @internal class
@@ -7499,7 +7701,11 @@ cmd void vkCmdNextSubpass(
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdNextSubpassArgs(contents)
 
-  addCmd(commandBuffer, args, dovkCmdNextSubpass)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdNextSubpass, mapPos)
 }
 
 @internal class
@@ -7507,14 +7713,13 @@ vkCmdEndRenderPassArgs {
 }
 
 sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
-  for _, i, a in lastDrawInfo().RenderPass.AttachmentDescriptions {
+  for _ , i , a in lastDrawInfo().RenderPass.AttachmentDescriptions {
     lastDrawInfo().Framebuffer.ImageAttachments[i].Image.Info.Layout = a.finalLayout
   }
   lastDrawInfo().InRenderPass = false
   popRenderPassMarker()
-  switch len(lastDrawInfo().RenderPass.SubpassDescriptions) > 1 {
-    case true:
-      popRenderPassMarker()
+  if (len(lastDrawInfo().RenderPass.SubpassDescriptions) > 1) {
+    popRenderPassMarker()
   }
 }
 
@@ -7524,7 +7729,12 @@ cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdEndRenderPassArgs()
-  addCmd(commandBuffer, args, dovkCmdEndRenderPass)
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
 }
 
 @internal
@@ -7548,7 +7758,11 @@ cmd void vkCmdExecuteCommands(
     args.CommandBuffers[as!u32(i)] = cmd_buffers[i]
   }
 
-  addCmd(commandBuffer, args, dovkCmdExecuteCommands)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdExecuteCommands))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdExecuteCommands[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdExecuteCommands, mapPos)
 }
 
 // ----------------------------------------------------------------------------
@@ -8674,7 +8888,11 @@ cmd void vkCmdDebugMarkerBeginEXT(
   args.Color[2] = markerInfo.color[2]
   args.Color[3] = markerInfo.color[3]
 
-  addCmd(commandBuffer, args, dovkCmdDebugMarkerBeginEXT)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerBeginEXT))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerBeginEXT[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDebugMarkerBeginEXT, mapPos)
 }
 
 @internal class
@@ -8695,7 +8913,11 @@ cmd void vkCmdDebugMarkerEndEXT(
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdDebugMarkerEndEXTArgs()
 
-  addCmd(commandBuffer, args, dovkCmdDebugMarkerEndEXT)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerEndEXT))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerEndEXT[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDebugMarkerEndEXT, mapPos)
 }
 
 @internal class
@@ -8726,7 +8948,11 @@ cmd void vkCmdDebugMarkerInsertEXT(
   args.Color[2] = markerInfo.color[2]
   args.Color[3] = markerInfo.color[3]
 
-  addCmd(commandBuffer, args, dovkCmdDebugMarkerInsertEXT)
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerInsertEXT))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerInsertEXT[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdDebugMarkerInsertEXT, mapPos)
 }
 
 /////////////////////////////
@@ -9021,7 +9247,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   map!(VkEvent, ref!EventObject)         PendingEvents
   map!(VkSemaphore, ref!SemaphoreObject) PendingSemaphores
   @unused ref!VulkanDebugMarkerInfo      DebugInfo
-  map!(u32, CommandReference)            PendingCommands
+  map!(u32, ref!CommandReference)        PendingCommands
 }
 
 enum RecordingState {
@@ -9173,15 +9399,15 @@ enum SemaphoreUpdate {
 }
 
 @internal class CommandBufferObject {
-  @unused VkDevice                    Device
-  @unused RecordingState              Recording
-  @unused VkCommandBuffer             VulkanHandle
-  @unused VkCommandPool               Pool
-  @unused VkCommandBufferLevel        Level
-  @unused map!(u32, CommandReference) CommandReferences
-  @unused BufferCommands              BufferCommands
-  @unused ref!CommandBufferBegin      BeginInfo
-  @unused ref!VulkanDebugMarkerInfo   DebugInfo
+  @unused VkDevice                        Device
+  @unused RecordingState                  Recording
+  @unused VkCommandBuffer                 VulkanHandle
+  @unused VkCommandPool                   Pool
+  @unused VkCommandBufferLevel            Level
+  @unused map!(u32, ref!CommandReference) CommandReferences
+  @unused BufferCommands                  BufferCommands
+  @unused ref!CommandBufferBegin          BeginInfo
+  @unused ref!VulkanDebugMarkerInfo       DebugInfo
 }
 
 @internal class DeviceMemoryObject {
@@ -9349,9 +9575,9 @@ enum SemaphoreUpdate {
 }
 
 @internal class ViewportData {
-  @unused u32 ViewportCount
+  @unused u32                   ViewportCount
   @unused map!(u32, VkViewport) Viewports
-  @unused u32 ScissorCount
+  @unused u32                   ScissorCount
   @unused map!(u32, VkRect2D)   Scissors
 }
 
@@ -9656,4 +9882,217 @@ class VulkanStructHeader {
 @internal class DedicatedRequirementsKHR {
   VkBool32 PrefersDedicatedAllocation
   VkBool32 RequiresDedicatedAllocation
+}
+
+@internal class queueMap {
+  map!(u32, VkQueue) m
+}
+
+class MutableBool {
+  bool b
+}
+
+sub void execPendingCommands(VkQueue queue) {
+  q := Queues[queue]
+  newCmds := emptyMap().m
+  signaledQueues := queueMap().m
+  processSubcommand := MutableBool()
+  processSubcommand.b = true
+
+  for i in (0 .. len(q.PendingCommands)) {
+    cmd := q.PendingCommands[as!u32(i)]
+    if ((len(q.PendingEvents) != 0) || (len(q.PendingSemaphores) != 0)) {
+      newCmds[len(newCmds)] = cmd
+    } else {
+      onPreProcessCommand(cmd)
+      if (cmd.SemaphoreUpdate == Signal) {
+        semaphore := Semaphores[cmd.Semaphore]
+        semaphore.Signaled = true
+        if semaphore.WaitingQueue != as!VkQueue(0) {
+          delete(Queues[semaphore.WaitingQueue].PendingSemaphores, cmd.Semaphore)
+          signaledQueues[len(signaledQueues)] = semaphore.WaitingQueue
+          semaphore.WaitingQueue = as!VkQueue(0)
+        }
+      } else if (cmd.SemaphoreUpdate == Unsignal) {
+          semaphore := Semaphores[cmd.Semaphore]
+          if !semaphore.Signaled {
+            semaphore.WaitingQueue = queue
+            q.PendingSemaphores[cmd.Semaphore] = semaphore
+            onDeferSubcommand(cmd)
+            newCmds[len(newCmds)] = cmd
+            processSubcommand.b = false
+          } else {
+            Semaphores[cmd.Semaphore].Signaled = false
+          }
+        }
+      if processSubcommand.b {
+        // Handle sparse image binding.
+        if (cmd.SparseBinds != null) {
+          for _ , buf , binds in cmd.SparseBinds.BufferBinds {
+            if !(buf in Buffers) { vkErrorInvalidBuffer(buf) }
+            buffer := Buffers[buf]
+            blockSize := buffer.MemoryRequirements.alignment
+            for _ , _ , bind in binds.SparseMemoryBinds {
+              numBlocks := (bind.size + blockSize - 1) / blockSize
+              memOffset := bind.memoryOffset
+              resOffset := bind.resourceOffset
+              for j in (0 .. numBlocks) {
+                buffer.SparseMemoryBindings[as!u64(resOffset)] =
+                VkSparseMemoryBind(resOffset + (j * blockSize),
+                  blockSize,       bind.memory,                 memOffset + (j * blockSize),
+                  bind.flags)
+              }
+            }
+          }
+
+          for _ , img , binds in cmd.SparseBinds.OpaqueImageBinds {
+            if (!img in Images) { vkErrorInvalidImage(img) }
+            image := Images[img]
+            blockSize := image.MemoryRequirements.alignment
+            for _ , _ , bind in binds.SparseMemoryBinds {
+              numBlocks := (bind.size + blockSize - 1) / blockSize
+              memOffset := bind.memoryOffset
+              resOffset := bind.resourceOffset
+              for j in (0 .. numBlocks) {
+                image.OpaqueSparseMemoryBindings[as!u64(resOffset)] =
+                VkSparseMemoryBind(resOffset + (j * blockSize),
+                  blockSize,       bind.memory,                 memOffset + (j * blockSize),
+                  bind.flags)
+              }
+            }
+          }
+
+          for _ , img , binds in cmd.SparseBinds.ImageBinds {
+            if (!img in Images) { vkErrorInvalidImage(img) }
+            for _ , _ , bind in binds.SparseImageMemoryBinds {
+              addSparseImageMemoryBinding(img, bind)
+            }
+          }
+
+          postBindSparse(cmd.SparseBinds)
+        } // Done sparse images
+
+        if ((cmd.Buffer != as!VkCommandBuffer(0))) {
+          onPreSubcommand(cmd)
+          callCommand(cmd)
+
+          if len(q.PendingEvents) != 0 {
+            // Make sure that the VkCmdWaitEvents also gets added to the pending list.
+            // We have to do some things when it is called.
+            newCmds[len(newCmds)] = cmd
+            onDeferSubcommand(cmd)
+          } else {
+            onPostSubcommand(cmd)
+          }
+        }
+      }
+    }
+  }
+  q.PendingCommands = newCmds
+
+  resetSubcontext()
+  for i in (0 .. len(signaledQueues)) {
+    execPendingCommands(signaledQueues[as!u32(i)])
+  }
+}
+
+sub void callCommand(ref!CommandReference reference) {
+  switch reference.Type {
+    case cmd_vkCmdBindPipeline:
+      dovkCmdBindPipeline(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBindPipeline[reference.MapIndex])
+    case cmd_vkCmdSetViewport:
+      dovkCmdSetViewport(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetViewport[reference.MapIndex])
+    case cmd_vkCmdSetScissor:
+      dovkCmdSetScissor(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetScissor[reference.MapIndex])
+    case cmd_vkCmdSetLineWidth:
+      dovkCmdSetLineWidth(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetLineWidth[reference.MapIndex])
+    case cmd_vkCmdSetDepthBias:
+      dovkCmdSetDepthBias(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetDepthBias[reference.MapIndex])
+    case cmd_vkCmdSetBlendConstants:
+      dovkCmdSetBlendConstants(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetBlendConstants[reference.MapIndex])
+    case cmd_vkCmdSetDepthBounds:
+      dovkCmdSetDepthBounds(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetDepthBounds[reference.MapIndex])
+    case cmd_vkCmdSetStencilCompareMask:
+      dovkCmdSetStencilCompareMask(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetStencilCompareMask[reference.MapIndex])
+    case cmd_vkCmdSetStencilWriteMask:
+      dovkCmdSetStencilWriteMask(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetStencilWriteMask[reference.MapIndex])
+    case cmd_vkCmdSetStencilReference:
+      dovkCmdSetStencilReference(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetStencilReference[reference.MapIndex])
+    case cmd_vkCmdBindDescriptorSets:
+      dovkCmdBindDescriptorSets(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBindDescriptorSets[reference.MapIndex])
+    case cmd_vkCmdBindIndexBuffer:
+      dovkCmdBindIndexBuffer(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBindIndexBuffer[reference.MapIndex])
+    case cmd_vkCmdBindVertexBuffers:
+      dovkCmdBindVertexBuffers(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBindVertexBuffers[reference.MapIndex])
+    case cmd_vkCmdDraw:
+      dovkCmdDraw(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDraw[reference.MapIndex])
+    case cmd_vkCmdDrawIndexed:
+      dovkCmdDrawIndexed(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndexed[reference.MapIndex])
+    case cmd_vkCmdDrawIndirect:
+      dovkCmdDrawIndirect(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndirect[reference.MapIndex])
+    case cmd_vkCmdDrawIndexedIndirect:
+      dovkCmdDrawIndexedIndirect(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndexedIndirect[reference.MapIndex])
+    case cmd_vkCmdDispatch:
+      dovkCmdDispatch(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDispatch[reference.MapIndex])
+    case cmd_vkCmdDispatchIndirect:
+      dovkCmdDispatchIndirect(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDispatchIndirect[reference.MapIndex])
+    case cmd_vkCmdCopyBuffer:
+      dovkCmdCopyBuffer(CommandBuffers[reference.Buffer].BufferCommands.vkCmdCopyBuffer[reference.MapIndex])
+    case cmd_vkCmdCopyImage:
+      dovkCmdCopyImage(CommandBuffers[reference.Buffer].BufferCommands.vkCmdCopyImage[reference.MapIndex])
+    case cmd_vkCmdBlitImage:
+      dovkCmdBlitImage(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBlitImage[reference.MapIndex])
+    case cmd_vkCmdCopyBufferToImage:
+      dovkCmdCopyBufferToImage(CommandBuffers[reference.Buffer].BufferCommands.vkCmdCopyBufferToImage[reference.MapIndex])
+    case cmd_vkCmdCopyImageToBuffer:
+      dovkCmdCopyImageToBuffer(CommandBuffers[reference.Buffer].BufferCommands.vkCmdCopyImageToBuffer[reference.MapIndex])
+    case cmd_vkCmdUpdateBuffer:
+      dovkCmdUpdateBuffer(CommandBuffers[reference.Buffer].BufferCommands.vkCmdUpdateBuffer[reference.MapIndex])
+    case cmd_vkCmdFillBuffer:
+      dovkCmdFillBuffer(CommandBuffers[reference.Buffer].BufferCommands.vkCmdFillBuffer[reference.MapIndex])
+    case cmd_vkCmdClearColorImage:
+      dovkCmdClearColorImage(CommandBuffers[reference.Buffer].BufferCommands.vkCmdClearColorImage[reference.MapIndex])
+    case cmd_vkCmdClearDepthStencilImage:
+      dovkCmdClearDepthStencilImage(CommandBuffers[reference.Buffer].BufferCommands.vkCmdClearDepthStencilImage[reference.MapIndex])
+    case cmd_vkCmdClearAttachments:
+      dovkCmdClearAttachments(CommandBuffers[reference.Buffer].BufferCommands.vkCmdClearAttachments[reference.MapIndex])
+    case cmd_vkCmdResolveImage:
+      dovkCmdResolveImage(CommandBuffers[reference.Buffer].BufferCommands.vkCmdResolveImage[reference.MapIndex])
+    case cmd_vkCmdSetEvent:
+      dovkCmdSetEvent(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetEvent[reference.MapIndex])
+    case cmd_vkCmdResetEvent:
+      dovkCmdResetEvent(CommandBuffers[reference.Buffer].BufferCommands.vkCmdResetEvent[reference.MapIndex])
+    case cmd_vkCmdWaitEvents:
+      dovkCmdWaitEvents(CommandBuffers[reference.Buffer].BufferCommands.vkCmdWaitEvents[reference.MapIndex])
+    case cmd_vkCmdPipelineBarrier:
+      dovkCmdPipelineBarrier(CommandBuffers[reference.Buffer].BufferCommands.vkCmdPipelineBarrier[reference.MapIndex])
+    case cmd_vkCmdBeginQuery:
+      dovkCmdBeginQuery(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginQuery[reference.MapIndex])
+    case cmd_vkCmdEndQuery:
+      dovkCmdEndQuery(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndQuery[reference.MapIndex])
+    case cmd_vkCmdResetQueryPool:
+      dovkCmdResetQueryPool(CommandBuffers[reference.Buffer].BufferCommands.vkCmdResetQueryPool[reference.MapIndex])
+    case cmd_vkCmdWriteTimestamp:
+      dovkCmdWriteTimestamp(CommandBuffers[reference.Buffer].BufferCommands.vkCmdWriteTimestamp[reference.MapIndex])
+    case cmd_vkCmdCopyQueryPoolResults:
+      dovkCmdCopyQueryPoolResults(CommandBuffers[reference.Buffer].BufferCommands.vkCmdCopyQueryPoolResults[reference.MapIndex])
+    case cmd_vkCmdPushConstants:
+      dovkCmdPushConstants(CommandBuffers[reference.Buffer].BufferCommands.vkCmdPushConstants[reference.MapIndex])
+    case cmd_vkCmdBeginRenderPass:
+      dovkCmdBeginRenderPass(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginRenderPass[reference.MapIndex])
+    case cmd_vkCmdNextSubpass:
+      dovkCmdNextSubpass(CommandBuffers[reference.Buffer].BufferCommands.vkCmdNextSubpass[reference.MapIndex])
+    case cmd_vkCmdEndRenderPass:
+      dovkCmdEndRenderPass(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndRenderPass[reference.MapIndex])
+    case cmd_vkCmdExecuteCommands:
+      dovkCmdExecuteCommands(CommandBuffers[reference.Buffer].BufferCommands.vkCmdExecuteCommands[reference.MapIndex])
+    case cmd_vkCmdDebugMarkerBeginEXT:
+      dovkCmdDebugMarkerBeginEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDebugMarkerBeginEXT[reference.MapIndex])
+    case cmd_vkCmdDebugMarkerEndEXT:
+      dovkCmdDebugMarkerEndEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDebugMarkerEndEXT[reference.MapIndex])
+    case cmd_vkCmdDebugMarkerInsertEXT:
+      dovkCmdDebugMarkerInsertEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDebugMarkerInsertEXT[reference.MapIndex])
+    default:
+      vkErrorInvalidCommandBuffer(reference.Buffer)
+  }
 }

@@ -39,6 +39,8 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 
 func (*State) SetupInitialState(ctx context.Context) {}
 
+func (s *State) InitializeCustomState() {}
+
 func (*State) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
 	return nil, nil
 }

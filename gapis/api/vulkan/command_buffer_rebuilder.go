@@ -1122,7 +1122,7 @@ func rebuildVkCmdDebugMarkerInsertEXT(
 // GetCommandArgs takes a command reference and returns the command arguments
 // of that recorded command.
 func GetCommandArgs(ctx context.Context,
-	cr CommandReference,
+	cr *CommandReference,
 	s *State) interface{} {
 	switch cr.Type {
 	case CommandType_cmd_vkCmdBeginRenderPass:
@@ -1228,7 +1228,7 @@ func GetCommandArgs(ctx context.Context,
 // GetCommandFunction takes a command reference (recorded command buffer
 // command) and returns the function which mutates the state as the recorded
 // command get executed.
-func GetCommandFunction(cr CommandReference) interface{} {
+func GetCommandFunction(cr *CommandReference) interface{} {
 	switch cr.Type {
 	case CommandType_cmd_vkCmdBeginRenderPass:
 		return subDovkCmdBeginRenderPass
@@ -1435,7 +1435,6 @@ func AddCommand(ctx context.Context,
 		return rebuildVkCmdDebugMarkerEndEXT(ctx, cb, commandBuffer, r, s, t)
 	case *VkCmdDebugMarkerInsertEXTArgs:
 		return rebuildVkCmdDebugMarkerInsertEXT(ctx, cb, commandBuffer, r, s, t)
-
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)
 		panic(x)

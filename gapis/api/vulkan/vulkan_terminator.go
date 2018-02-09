@@ -97,8 +97,8 @@ func (t *VulkanTerminator) Add(ctx context.Context, extraCommands int, id api.Cm
 }
 
 func walkCommands(s *State,
-	commands *U32ːCommandReferenceᵐ,
-	callback func(CommandReference)) {
+	commands *U32ːCommandReferenceʳᵐ,
+	callback func(*CommandReference)) {
 	for _, c := range commands.KeysSorted() {
 		callback((*commands).Get(c))
 		if (*commands).Get(c).Type == CommandType_cmd_vkCmdExecuteCommands {
@@ -138,7 +138,7 @@ func resolveCurrentRenderPass(ctx context.Context, s *api.GlobalState, submit *V
 	queue := c.Queues.Get(submit.Queue)
 	l := s.MemoryLayout
 
-	f := func(o CommandReference) {
+	f := func(o *CommandReference) {
 		switch o.Type {
 		case CommandType_cmd_vkCmdBeginRenderPass:
 			t := c.CommandBuffers.Get(o.Buffer).BufferCommands.VkCmdBeginRenderPass.Get(o.MapIndex)
@@ -280,9 +280,18 @@ func rebuildCommandBuffer(ctx context.Context,
 			x = append(x, cb.VkEndCommandBuffer(newSecCmdBuf, VkResult_VK_SUCCESS))
 			newCmdExecuteCommandsData.CommandBuffers.Set(uint32(idx[1]), newSecCmdBuf)
 		}
-		cleanupNewExecSecCmds, newExecSecCmds, _ := AddCommand(
-			ctx, cb, commandBufferId, s, s, newCmdExecuteCommandsData)
-		cleanup = append(cleanup, cleanupNewExecSecCmds)
+
+		// If we use AddCommand, it will check for the existence of the command buffer,
+		// which wont yet exist (because it hasn't been mutated yet)
+		commandBufferData, commandBufferCount := unpackMap(ctx, s, newCmdExecuteCommandsData.CommandBuffers)
+		newExecSecCmds := cb.VkCmdExecuteCommands(commandBufferId,
+			commandBufferCount,
+			commandBufferData.Ptr(),
+		).AddRead(commandBufferData.Data())
+
+		cleanup = append(cleanup, func() {
+			commandBufferData.Free()
+		})
 		x = append(x, newExecSecCmds)
 	}
 

@@ -1061,13 +1061,6 @@
 
   type {{$name}} struct {
     {{Template "ClassFields" $}}
-    {{/* TODO: Remove this once closure support is in the API language */}}
-    {{if (eq $.Name "CommandBufferObject")}}
-      Commands CommandBufferCommands `hidden:"true" nobox:"true"`
-    {{end}}
-    {{if (eq $.Name "CommandReference")}}
-      QueuedCommandData QueuedCommand `nobox:"true"`
-    {{end}}
   }
 
   func New{{$name}}() {{$name}} {
@@ -1238,6 +1231,7 @@
         g.{{$g.Name | GoPublicName}} = {{$init}}
       {{end}}
     {{end}}
+    g.InitializeCustomState()
   }
 {{end}}
 
