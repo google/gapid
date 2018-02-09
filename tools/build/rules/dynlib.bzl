@@ -98,6 +98,7 @@ def android_dynamic_library(name, exports = "", deps = [], linkopts = [], **kwar
         deps = deps + [name + ".ldscript"],
         linkopts = linkopts + [
             "-Wl,--version-script", name + ".ldscript",
+            "-Wl,--unresolved-symbols=report-all",
             "-Wl,--gc-sections",
             "-Wl,--exclude-libs,libgcc.a",
             "-Wl,-z,noexecstack,-z,relro,-z,now,-z,nocopyreloc",
