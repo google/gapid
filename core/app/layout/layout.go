@@ -15,8 +15,12 @@
 package layout
 
 import (
+	"bufio"
 	"context"
+	"os"
+	"regexp"
 	"runtime"
+	"strings"
 
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
@@ -54,6 +58,8 @@ type FileLayout interface {
 	Library(ctx context.Context, lib LibraryType) (file.Path, error)
 	// Json returns the path to the Vulkan layer JSON definition for the given library.
 	Json(ctx context.Context, lib LibraryType) (file.Path, error)
+	// GoArgs returns additional arguments to pass to go binaries.
+	GoArgs(ctx context.Context) []string
 }
 
 func withExecutablePlatformSuffix(exe string) string {
@@ -122,6 +128,10 @@ func (l pkgLayout) Library(ctx context.Context, lib LibraryType) (file.Path, err
 
 func (l pkgLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
 	return l.root.Join("lib", libTypeToJson[lib]), nil
+}
+
+func (l pkgLayout) GoArgs(ctx context.Context) []string {
+	return nil
 }
 
 var binABIToDir = map[string]string{
@@ -198,6 +208,108 @@ func (l binLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error)
 	return l.root.Join(libTypeToJson[lib]), nil
 }
 
+func (l binLayout) GoArgs(ctx context.Context) []string {
+	return nil
+}
+
+// runfilesLayout is a layout that uses the bazel generated runfiles manifest
+// to find the various dependencies.
+type runfilesLayout struct {
+	manifest string
+	mapping  map[string]string
+}
+
+var gapiXRegex = regexp.MustCompile("gapid/cmd/(gapi[st])/[^/]+/" + withExecutablePlatformSuffix("gapi[st]"))
+
+var abiToApkPath = map[device.Architecture]string{
+	device.ARMv7a: "arm64-v8a.apk",
+	device.ARMv8a: "armeabi-v7a.apk",
+	device.X86:    "x86.apk",
+}
+
+var libTypeToLibPath = map[LibraryType]string{
+	LibGraphicsSpy:      withLibraryPlatformSuffix("gapid/gapii/cc/libgapii"),
+	LibVirtualSwapChain: withLibraryPlatformSuffix("gapid/core/vulkan/vk_virtual_swapchain/cc/libVkLayer_VirtualSwapchain"),
+}
+
+var libTypeToJsonPath = map[LibraryType]string{
+	LibGraphicsSpy:      "gapid/gapii/vulkan/vk_graphics_spy/cc/GraphicsSpyLayer.json",
+	LibVirtualSwapChain: "gapid/core/vulkan/vk_virtual_swapchain/cc/VirtualSwapchainLayer.json",
+}
+
+// RunfilesLayout creates a new layout based on the given runfiles manifest.
+func RunfilesLayout(manifest file.Path) (FileLayout, error) {
+	file, err := os.Open(manifest.System())
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	r := runfilesLayout{
+		manifest: manifest.System(),
+		mapping: make(map[string]string),
+	}
+	for scanner.Scan() {
+		line := scanner.Text()
+		if p := strings.IndexRune(line, ' '); p > 0 {
+			key, value := line[:p], line[p+1:]
+			r.mapping[key] = value
+
+			// Go binaries have an extra segment in their path for the platform and build type.
+			// Add an extra mapping, so they are easily found.
+			match := gapiXRegex.FindStringSubmatch(key)
+			if len(match) == 2 {
+				r.mapping[match[1]] = value
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+func (l *runfilesLayout) find(key string) (file.Path, error) {
+	if r, ok := l.mapping[key]; ok {
+		return file.Abs(r), nil
+	}
+	return file.Path{}, ErrCannotFindPackageFiles
+}
+
+func (l *runfilesLayout) Strings(ctx context.Context) (file.Path, error) {
+	return l.find("gapis/messages/en-us.stb")
+}
+
+func (l *runfilesLayout) Gapit(ctx context.Context) (file.Path, error) {
+	return l.find("gapit")
+}
+
+func (l *runfilesLayout) Gapis(ctx context.Context) (file.Path, error) {
+	return l.find("gapis")
+}
+
+func (l *runfilesLayout) Gapir(ctx context.Context) (file.Path, error) {
+	return l.find(withExecutablePlatformSuffix("cmd/gapir/cc/gapir"))
+}
+
+func (l *runfilesLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
+	return l.find("gapid/gapidapk/android/apk/"+abiToApkPath[abi.Architecture])
+}
+
+func (l *runfilesLayout) Library(ctx context.Context, lib LibraryType) (file.Path, error) {
+	return l.find(libTypeToLibPath[lib])
+}
+
+func (l *runfilesLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
+	return l.find(libTypeToJsonPath[lib])
+}
+
+func (l *runfilesLayout) GoArgs(ctx context.Context) []string {
+	return []string{"-runfiles", l.manifest}
+}
+
 // unknownLayout is the file layout used when no other layout can be discovered.
 // All methods will return an error.
 type unknownLayout struct{}
@@ -206,19 +318,19 @@ func (l unknownLayout) Strings(ctx context.Context) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (a unknownLayout) Gapit(ctx context.Context) (file.Path, error) {
+func (l unknownLayout) Gapit(ctx context.Context) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (a unknownLayout) Gapis(ctx context.Context) (file.Path, error) {
+func (l unknownLayout) Gapis(ctx context.Context) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (a unknownLayout) Gapir(ctx context.Context) (file.Path, error) {
+func (l unknownLayout) Gapir(ctx context.Context) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (a unknownLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
+func (l unknownLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
@@ -228,6 +340,10 @@ func (l unknownLayout) Library(ctx context.Context, lib LibraryType) (file.Path,
 
 func (l unknownLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
+}
+
+func (l unknownLayout) GoArgs(ctx context.Context) []string {
+	return nil
 }
 
 // BinLayout returns a binLayout implementation of FileLayout rooted in the given directory.

@@ -16,6 +16,7 @@ package layout
 
 import (
 	"context"
+	"flag"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -25,6 +26,10 @@ import (
 // resolvedLayout is the data file layout discovered by layout()
 // Call layout() instead of using this directly.
 var resolvedLayout FileLayout
+
+var (
+	runfiles = flag.String("runfiles", "", "Location of the runfiles manifest")
+)
 
 func layout(ctx context.Context) (out FileLayout) {
 	if resolvedLayout != nil {
@@ -70,12 +75,28 @@ func layout(ctx context.Context) (out FileLayout) {
 				return binLayout{dir}
 			}
 		}
-		// We're possibly dealing with a sparse-build, as used by robot.
-		// gapis always has to exist.
-		if _, err := file.FindExecutable(dir.Join("gapis").System()); err == nil {
-			return binLayout{dir}
+	}
+
+	if *runfiles != "" {
+		if layout, err := RunfilesLayout(file.Abs(*runfiles)); err == nil {
+			return layout
 		}
 	}
+
+	if path := file.Abs(file.ExecutablePath().System() + ".runfiles_manifest"); path.Exists() {
+		if layout, err := RunfilesLayout(path); err == nil {
+			return layout
+		}
+	}
+
+	// We're possibly dealing with a sparse-build, as used by robot.
+	// gapis always has to exist.
+	// TODO: this is kind of dumb, since gapis will always find itself.
+	dir := file.ExecutablePath().Parent()
+	if _, err := file.FindExecutable(dir.Join("gapis").System()); err == nil {
+		return binLayout{dir}
+	}
+
 	return unknownLayout{}
 }
 
@@ -112,4 +133,9 @@ func Library(ctx context.Context, lib LibraryType) (file.Path, error) {
 // Json returns the path to the Vulkan layer JSON definition for the given library.
 func Json(ctx context.Context, lib LibraryType) (file.Path, error) {
 	return layout(ctx).Json(ctx, lib)
+}
+
+// GoArgs returns additional arguments to pass to go binaries.
+func GoArgs(ctx context.Context) []string {
+	return layout(ctx).GoArgs(ctx)
 }
