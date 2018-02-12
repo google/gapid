@@ -32,14 +32,8 @@
 /* LLVM architecture name for the native architecture, if available */
 #define LLVM_NATIVE_ARCH X86
 
-/* LLVM name for the native AsmParser init function, if available */
-#define LLVM_NATIVE_ASMPARSER LLVMInitializeX86AsmParser
-
 /* LLVM name for the native AsmPrinter init function, if available */
 #define LLVM_NATIVE_ASMPRINTER LLVMInitializeX86AsmPrinter
-
-/* LLVM name for the native Disassembler init function, if available */
-#define LLVM_NATIVE_DISASSEMBLER LLVMInitializeX86Disassembler
 
 /* LLVM name for the native Target init function, if available */
 #define LLVM_NATIVE_TARGET LLVMInitializeX86Target
