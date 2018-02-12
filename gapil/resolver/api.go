@@ -174,12 +174,12 @@ func resolve(rv *resolver) {
 	sort.Sort(mapsByName(rv.api.Maps))
 
 	for _, f := range rv.api.Functions {
-		if f.Recursive && (f.Order.Pre() || f.Order.Post()) {
+		if f.Recursive && (f.Order.Pre() && f.Order.Post()) {
 			rv.errorf(f, "Fence in recursive function")
 		}
 	}
 	for _, f := range rv.api.Subroutines {
-		if f.Recursive && (f.Order.Pre() || f.Order.Post()) {
+		if f.Recursive && (f.Order.Pre() && f.Order.Post()) {
 			rv.errorf(f, "Fence in recursive function")
 		}
 	}

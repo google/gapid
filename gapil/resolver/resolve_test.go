@@ -580,7 +580,7 @@ sub void recursive(bool b) {
 			errors: err("Fence in recursive function"),
 		},
 		{
-			name: "Implicit Recursive Function",
+			name: "Implicit Recursive Function PostFence",
 			source: `
 sub void recursive(bool b) {
 	if (b) {
@@ -592,10 +592,9 @@ sub void recursive(bool b) {
 	recursive(true)
 }
 `,
-			errors: err("Fence in recursive function"),
 		},
 		{
-			name: "Implicit Recursive Function",
+			name: "Implicit Recursive Function PostFence",
 			source: `
 sub void recursive(bool b) {
 	x := ?
@@ -607,7 +606,6 @@ sub void recursive(bool b) {
 	recursive(true)
 }
 `,
-			errors: err("Fence in recursive function"),
 		},
 		{
 			name: "Allowed outer Fence Recursive Function",
@@ -666,9 +664,44 @@ sub void recursive2(bool b) {
 }
 sub void recursive(bool b) {
 	recursive2(!b)
- }
- cmd void test() {
+}
+
+cmd void test() {
 	recursive(true)
+}
+`,
+			errors: err("Fence in recursive function"),
+		},
+		{
+			name: "Implicit PreFence Recursive Function",
+			source: `
+
+sub void recursive2(u8* dat) {
+	read(dat[0:1])
+	recursive(dat)
+}
+sub void recursive(u8* dat) {
+	recursive2(dat)
+ }
+ cmd void test(u8* pData) {
+	recursive(pData)
+}
+`,
+		},
+		{
+			name: "Invalid Implicit Fence Recursive Function",
+			source: `
+
+sub void recursive2(u8* dat) {
+	read(dat[0:1])
+	recursive(dat)
+	write(dat[0:1])
+}
+sub void recursive(u8* dat) {
+	recursive2(dat)
+ }
+ cmd void test(u8* pData) {
+	recursive(pData)
 }
 `,
 			errors: err("Fence in recursive function"),
