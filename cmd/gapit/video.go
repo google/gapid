@@ -58,6 +58,7 @@ func init() {
 	verb.Max.Height = 1280
 	verb.FPS = 5
 	verb.Frames.Count = allTheWay
+	verb.Frames.Minimum = 1
 	app.AddVerb(&app.Verb{
 		Name:      "video",
 		ShortHelp: "Produce a video or sequence of frames from a .gfxtrace file",
@@ -95,6 +96,10 @@ func (verb *videoVerb) regularVideoSource(
 	eofEvents, err := getEvents(ctx, client, &requestEvents)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Couldn't get frame events")
+	}
+
+	if verb.Frames.Minimum > len(eofEvents) {
+		return nil, log.Errf(ctx, nil, "Captured only %v frames, requires %v frames at minimum", len(eofEvents), verb.Frames.Minimum)
 	}
 
 	if verb.Frames.Start < len(eofEvents) {

@@ -151,6 +151,9 @@ func (verb *videoVerb) sxsVideoSource(
 			numDrawCalls = 0
 		}
 	}
+	if verb.Frames.Minimum > len(videoFrames) {
+		return nil, log.Errf(ctx, nil, "Captured only %v frames, require %v frames at minimum", len(videoFrames), verb.Frames.Minimum)
+	}
 
 	// Get all the observed and rendered frames, and compare them.
 	start := time.Now()
@@ -179,6 +182,7 @@ func (verb *videoVerb) sxsVideoSource(
 		})
 	}
 	wg.Wait()
+
 	log.D(ctx, "Frames rendered in %v", time.Since(start))
 	for _, v := range videoFrames {
 		if v.renderError != nil {

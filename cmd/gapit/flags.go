@@ -115,8 +115,9 @@ type (
 		Text     string    `help:"summary prefix (use '║' for aligned columns, '¶' for new line)"`
 		Commands bool      `help:"Treat every command as its own frame"`
 		Frames   struct {
-			Start int `help:"frame to start capture from"`
-			Count int `help:"number of frames after Start to capture: -1 for all frames"`
+			Start   int `help:"frame to start capture from"`
+			Count   int `help:"number of frames after Start to capture: -1 for all frames"`
+			Minimum int `help:"return error when less than this number of frames is found"`
 		}
 		CommandFilterFlags
 	}

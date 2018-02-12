@@ -162,6 +162,7 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 	params := []string{
 		"video",
 		"-gapir-device", in.GetGapirDevice(),
+		"-frames-minimum", "10",
 		"-type", "sxs",
 		"-out", videofile.System(),
 		tracefile.System(),
