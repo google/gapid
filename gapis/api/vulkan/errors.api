@@ -38,7 +38,10 @@
 
 // TODO: Change to take message type once the error messages below are moved to
 // en-us.stb.md.
-extern void onVkError(any err)
+extern void vkErrInvalidHandle(string handleType, u64 handle)
+extern void vkErrNullPointer(string pointerType)
+extern void vkErrUnrecognizedExtension(string name)
+extern void vkErrExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle)
 
 sub void vkErrorInvalidInstance(VkInstance inst) {
   vkErrorInvalidHandle("VkInstance", as!u64(inst))
@@ -154,42 +157,21 @@ sub void vkErrorInvalidDisplayMode(VkDisplayModeKHR mode) {
 }
 
 sub void vkErrorInvalidHandle(string handleType, u64 handle) {
-  onVkError(new!ERR_INVALID_HANDLE(handleType: handleType, handle: handle))
+  vkErrInvalidHandle(handleType, handle)
   abort
 }
 
 sub void vkErrorNullPointer(string pointerType) {
-  onVkError(new!ERR_NULL_POINTER(pointerType: pointerType))
+  vkErrNullPointer(pointerType)
   abort
 }
 
 sub void vkErrorUnrecognizedExtension(const char* name) {
-  onVkError(new!ERR_UNRECOGNIZED_EXTENSION(name: as!string(name)))
+  vkErrUnrecognizedExtension(as!string(name))
   // Continue the mutation as this may not cause problem.
 }
 
 sub void vkErrorExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle) {
-  onVkError(new!ERR_EXPECT_NV_DEDICATEDLY_ALLOCATED_HANDLE(
-    handleType: handleType, handle: handle))
+  vkErrExpectNVDedicatedlyAllocatedHandle(handleType, handle)
   // Continue the mutation as this may not cause problem.
-}
-
-// TODO: Add the following classes to messages in messages/en-us.stb.md once
-// the compilation conflict of importing messages.api is resolved.
-class ERR_INVALID_HANDLE {
-  string handleType
-  u64    handle
-}
-
-class ERR_NULL_POINTER {
-  string pointerType
-}
-
-class ERR_UNRECOGNIZED_EXTENSION {
-  string name
-}
-
-class ERR_EXPECT_NV_DEDICATEDLY_ALLOCATED_HANDLE {
-  string handleType
-  u64    handle
 }
