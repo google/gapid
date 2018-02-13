@@ -18,19 +18,23 @@ import (
 	"reflect"
 	"unicode"
 	"unicode/utf8"
-	"unsafe"
 )
 
 // Comparator is passed to custom comparison functions holding the current comparison context.
 type Comparator struct {
 	Path    Path
 	Handler Handler
-	seenRef seen // mapping of seen 'reference' pointers to corresponding 'value' pointers
-	seenVal seen // inverse of the seenRef map
+	seen    seen
 	custom  *Custom
 }
 
-type seen map[unsafe.Pointer]unsafe.Pointer
+type seen map[seenKey]struct{}
+
+type seenKey struct {
+	typ   reflect.Type
+	addr1 uintptr
+	addr2 uintptr
+}
 
 func toValue(v reflect.Value, wasPointer bool) interface{} {
 	if wasPointer {
@@ -66,28 +70,22 @@ func (t Comparator) AddDiff(reference, value interface{}) {
 func (t Comparator) compareValues(v1, v2 reflect.Value, ptr bool) {
 	// First see if we have seen this comparison already
 	switch v1.Kind() {
-	case reflect.Map, reflect.Slice, reflect.Ptr:
-		if v1.Kind() == v2.Kind() {
-			addr1 := unsafe.Pointer(v1.Pointer())
-			addr2 := unsafe.Pointer(v2.Pointer())
-			if addr1 != unsafe.Pointer(uintptr(0)) && addr2 != unsafe.Pointer(uintptr(0)) {
-				if seen, ok := t.seenRef[addr1]; ok {
-					if seen != addr2 {
-						// Two identical v1 objects are being compared to two distinct v2 objects.
-						t.Handler(t.Path.Diff(v1.Interface(), v2.Interface()))
-					}
-					return // The contents was already compared before.
-				}
-				if seen, ok := t.seenVal[addr2]; ok {
-					if seen != addr1 {
-						// Two distinct v1 objects are being compared to two identical v2 objects.
-						t.Handler(t.Path.Diff(v1.Interface(), v2.Interface()))
-					}
-					return // The contents was already compared before.
-				}
-				t.seenRef[addr1] = addr2
-				t.seenVal[addr2] = addr1
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.Struct:
+		if v1.CanAddr() && v2.CanAddr() {
+			key := seenKey{
+				typ:   v1.Type(),
+				addr1: v1.UnsafeAddr(),
+				addr2: v2.UnsafeAddr(),
 			}
+			if key.addr1 > key.addr2 {
+				// swap for stable ordering
+				key.addr1, key.addr2 = key.addr2, key.addr1
+			}
+			if _, seen := t.seen[key]; seen {
+				// Already seen, no need to traverse again
+				return
+			}
+			t.seen[key] = struct{}{}
 		}
 	}
 
