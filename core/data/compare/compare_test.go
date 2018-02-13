@@ -30,12 +30,11 @@ var (
 	funcNotNil = func() { funcNil1() } // Not nil.
 
 	leafBase      = &Object{0, nil}
-	leafBase2     = &Object{0, nil}
 	leafEqual     = &Object{0, nil}
 	leafDifferent = &Object{2, nil}
 
-	objectBase       = &Object{0, []interface{}{leafBase, leafBase2}}
-	objectEqual1     = &Object{0, []interface{}{leafBase, leafBase2}}
+	objectBase       = &Object{0, []interface{}{leafBase, leafBase}}
+	objectEqual1     = &Object{0, []interface{}{leafBase, leafBase}}
 	objectEqual2     = &Object{0, []interface{}{leafEqual, leafBase}}
 	objectDifferent  = &Object{0, []interface{}{leafDifferent, leafBase}}
 	objectInverse    = &Object{0, []interface{}{leafBase, leafEqual}}
@@ -76,14 +75,6 @@ var (
 	mapDifferentLength = map[int]string{1: "one"}
 	mapUint            = map[uint]string{1: "one", 2: "two"}
 
-	intBase               = 42
-	pointerArrayBase      = [2]*int{&intBase, &intBase}
-	intEqual              = 42
-	pointerArrayEqual     = [2]*int{&intEqual, &intEqual}
-	intDifferent1         = 42
-	intDifferent2         = 42
-	pointerArrayDifferent = [2]*int{&intDifferent1, &intDifferent2}
-
 	hidden1 = compare.Hidden{Value: Hide{1}}
 	hidden2 = compare.Hidden{Value: Hide{2}}
 
@@ -121,7 +112,6 @@ var (
 		{"custom 3", Special(1), Special(3), noDiff},
 		{"special struct custom 1", SpecialStruct{false, 1}, SpecialStruct{false, 1}, noDiff},
 		{"special struct custom 3", SpecialStruct{false, 1}, SpecialStruct{false, 3}, noDiff},
-		{"pointer array ==", pointerArrayBase, pointerArrayEqual, noDiff},
 
 		// Inequalities
 		{"int !=", 1, 2, []compare.Path{root.Diff(1, 2)}},
@@ -220,12 +210,6 @@ var (
 		{"not so special struct", SpecialStruct{true, 1}, SpecialStruct{true, 3}, []compare.Path{
 			root.Member("Value", SpecialStruct{true, 1}, SpecialStruct{true, 3}).
 				Diff(Special(1), Special(3)),
-		}},
-		{"pointer array !=", pointerArrayBase, pointerArrayDifferent, []compare.Path{
-			root.Index(1, pointerArrayBase, pointerArrayDifferent).Diff(pointerArrayBase[1], pointerArrayDifferent[1]),
-		}},
-		{"pointer array != (reversed)", pointerArrayDifferent, pointerArrayBase, []compare.Path{
-			root.Index(1, pointerArrayDifferent, pointerArrayBase).Diff(pointerArrayDifferent[1], pointerArrayBase[1]),
 		}},
 
 		// Mismatched types
