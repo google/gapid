@@ -316,29 +316,30 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 	}
 }
 
-// TODO: Change to take error message type once all the errors are merged to
-// en-us.stb.md
-func (e externs) onVkError(err interface{}) {
+func (e externs) vkErrInvalidHandle(handleType string, handle uint64) {
 	var issue replay.Issue
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_ErrorLevel
-	switch err := err.(type) {
-	case *ERR_INVALID_HANDLE:
-		issue.Error = fmt.Errorf("Invalid %s: %v", err.HandleType, err.Handle)
-	case *ERR_NULL_POINTER:
-		issue.Error = fmt.Errorf("Null pointer of %s", err.PointerType)
-	case *ERR_UNRECOGNIZED_EXTENSION:
-		issue.Severity = service.Severity_WarningLevel
-		issue.Error = fmt.Errorf("Unsupported extension: %s", err.Name)
-	case *ERR_EXPECT_NV_DEDICATEDLY_ALLOCATED_HANDLE:
-		issue.Severity = service.Severity_WarningLevel
-		issue.Error = fmt.Errorf("%v: %v is not created with VK_NV_dedicated_allocation extension structure, but is bound to a dedicatedly allocated handle", err.HandleType, err.Handle)
-	default:
-		log.W(e.ctx, "Unhandled Vulkan error (%T): %v", err, err)
-		return
-	}
-	// Call the state's callback function for API error.
-	if f := e.s.OnError; f != nil {
-		f(issue)
-	}
+	issue.Error = fmt.Errorf("Invalid %s: %v", handleType, handle)
+}
+
+func (e externs) vkErrNullPointer(pointerType string) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Null pointer of %s", pointerType)
+}
+
+func (e externs) vkErrUnrecognizedExtension(name string) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_WarningLevel
+	issue.Error = fmt.Errorf("Unsupported extension: %s", name)
+}
+
+func (e externs) vkErrExpectNVDedicatedlyAllocatedHandle(handleType string, handle uint64) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_WarningLevel
+	issue.Error = fmt.Errorf("%v: %v is not created with VK_NV_dedicated_allocation extension structure, but is bound to a dedicatedly allocated handle", handleType, handle)
 }

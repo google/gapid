@@ -19,22 +19,18 @@
 
 inline void VulkanSpy::notifyPendingCommandAdded(CallObserver*, VkQueue) {}
 
-template<typename VkErrorType>
-inline void VulkanSpy::onVkError(CallObserver* observer, VkErrorType err) {
-  GAPID_WARNING("Unhandled Vulkan error");
+inline void VulkanSpy::vkErrInvalidHandle(CallObserver*, std::string handleType, uint64_t handle){
+    GAPID_WARNING("Error: Invalid %s: %llu", handleType.c_str(), handle)
 }
 
-template<>
-inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_INVALID_HANDLE> err) {
-  GAPID_WARNING("Error: Invalid %s: %llu", err->mhandleType.c_str(), err->mhandle)
+inline void VulkanSpy::vkErrNullPointer(CallObserver*, std::string pointerType) {
+    GAPID_WARNING("Error: Null pointer of %s", pointerType.c_str())
 }
 
-template<>
-inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_NULL_POINTER> err) {
-  GAPID_WARNING("Error: Null pointer of %s", err->mpointerType.c_str())
+inline void VulkanSpy::vkErrUnrecognizedExtension(CallObserver*, std::string name) {
+    GAPID_WARNING("Error: Unrecognized extension: %s", name.c_str())
 }
 
-template<>
-inline void VulkanSpy::onVkError(CallObserver*, std::shared_ptr<ERR_UNRECOGNIZED_EXTENSION> err) {
-  GAPID_WARNING("Error: Unrecognized extension: %s", err->mname.c_str())
+inline void VulkanSpy::vkErrExpectNVDedicatedlyAllocatedHandle(CallObserver*, std::string handleType, uint64_t handle) {
+    GAPID_WARNING("Error: Expected handle that was allocated with a dedicated allocation: %s: %llu", handleType.c_str(), handle)
 }

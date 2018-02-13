@@ -8181,7 +8181,7 @@ type VkFlags VkDisplaySurfaceCreateFlagsKHR
 @extension("VK_KHR_display")
 class VkDisplayPropertiesKHR {
   VkDisplayKHR               display
-  string                     displayName
+  char*                      displayName
   VkExtent2D                 physicalDimensions
   VkExtent2D                 physicalResolution
   VkSurfaceTransformFlagsKHR supportedTransforms
