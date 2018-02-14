@@ -20,7 +20,7 @@ def _strip_impl(ctx):
         out = ctx.new_file("lib/{}/{}".format(ctx.attr.abi, ctx.file.lib.basename))
         ctx.actions.run(
             executable = ctx.fragments.cpp.strip_executable,
-            arguments = ["-s", "-o", out.path, ctx.file.lib.path],
+            arguments = ["--strip-unneeded", "-o", out.path, ctx.file.lib.path],
             inputs = [ctx.file.lib] + ctx.files._ndk,
             outputs = [out],
         )
