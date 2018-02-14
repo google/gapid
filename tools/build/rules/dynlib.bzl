@@ -14,6 +14,8 @@
 
 # This is needed due to https://github.com/bazelbuild/bazel/issues/914
 
+load("//tools/build/rules:cc.bzl", "cc_stripped_binary")
+
 def _symbol_exports(name, exports):
     # Creates an assembly file that references all the exported symbols, so the linker won't trim them.
     native.genrule(
@@ -49,15 +51,16 @@ def cc_dynamic_library(name, exports = "", visibility = ["//visibility:private"]
 
     # All but one of these will fail, but the select in the filegroup
     # will pick up the correct one.
-    native.cc_binary(
+    cc_stripped_binary(
         name = name + ".so",
         srcs = [":" + name + "_syms"],
         deps = deps + [name + ".ldscript"],
         linkopts = linkopts + ["-Wl,--version-script", name + ".ldscript"],
         linkshared = 1,
+        visibility = ["//visibility:private"],
         **kwargs
     )
-    native.cc_binary(
+    cc_stripped_binary(
         name = name + ".dylib",
         deps = deps + [name + "_osx.ldscript"],
         linkopts = linkopts + [
@@ -65,14 +68,16 @@ def cc_dynamic_library(name, exports = "", visibility = ["//visibility:private"]
             "-Wl,-dead_strip",
         ],
         linkshared = 1,
+        visibility = ["//visibility:private"],
         **kwargs
     )
-    native.cc_binary(
+    cc_stripped_binary(
         name = name + ".dll",
         srcs = [":" + name + "_syms"],
         deps = deps + [name + ".ldscript"],
         linkopts = linkopts + ["-Wl,--version-script", name + ".ldscript"],
         linkshared = 1,
+        visibility = ["//visibility:private"],
         **kwargs
     )
 

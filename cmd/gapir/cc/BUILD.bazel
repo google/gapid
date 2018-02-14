@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "cc_copts", "android_dynamic_library", "android_native_app_glue")
+load("//tools/build:rules.bzl", "cc_copts", "cc_stripped_binary", "android_dynamic_library", "android_native_app_glue")
 
-cc_binary(
+cc_stripped_binary(
     name = "gapir",
     srcs = ["main.cpp"],
     copts = cc_copts(),
