@@ -14,7 +14,7 @@
 
 load("@//tools/build:rules.bzl", "mm_library", "cc_copts")
 
-POSIX_SRCS = [
+LIB_POSIX = [
     "src/client/minidump_file_writer.cc",
     "src/common/convert_UTF.c",
     "src/common/convert_UTF.h",  # needs to be here, because of an unqualified import
@@ -23,7 +23,7 @@ POSIX_SRCS = [
     "src/common/string_conversion.cc",
 ]
 
-LINUX_SRCS = POSIX_SRCS + [
+LIB_LINUX = LIB_POSIX + [
     "src/client/linux/crash_generation/crash_generation_client.cc",
     "src/client/linux/dump_writer_common/thread_info.cc",
     "src/client/linux/dump_writer_common/ucontext_reader.cc",
@@ -42,69 +42,50 @@ LINUX_SRCS = POSIX_SRCS + [
     "src/common/linux/safe_readlink.cc",
 ]
 
+LIB_MACOS = LIB_POSIX + [
+    "src/common/mac/arch_utilities.cc",
+    "src/common/mac/bootstrap_compat.cc",
+    "src/common/mac/file_id.cc",
+    "src/common/mac/launch_reporter.cc",
+    "src/common/mac/macho_id.cc",
+    "src/common/mac/macho_utilities.cc",
+    "src/common/mac/macho_walker.cc",
+    "src/common/mac/string_utilities.cc",
+    "src/client/mac/crash_generation/crash_generation_client.cc",
+    "src/client/mac/crash_generation/crash_generation_server.cc",
+    "src/client/mac/handler/breakpad_nlist_64.h", # unqualified import
+    "src/client/mac/handler/breakpad_nlist_64.cc",
+    "src/client/mac/handler/dynamic_images.cc",
+    "src/client/mac/handler/exception_handler.cc",
+    "src/client/mac/handler/minidump_generator.cc",
+    "src/client/mac/handler/protected_memory_allocator.h", # unqualified import
+    "src/client/mac/handler/protected_memory_allocator.cc",
+]
+
+LIB_WINDOWS = [
+    "src/client/windows/crash_generation/client_info.cc",
+    "src/client/windows/crash_generation/crash_generation_client.cc",
+    "src/client/windows/crash_generation/crash_generation_server.cc",
+    "src/client/windows/crash_generation/minidump_generator.cc",
+    "src/client/windows/handler/exception_handler.cc",
+    "src/client/windows/sender/crash_report_sender.cc",
+    "src/common/windows/guid_string.cc",
+    "src/common/windows/http_upload.cc",
+    "src/common/windows/string_utils.cc",
+]
+
 cc_library(
     name = "breakpad",
     srcs = select({
-        "@//tools/build:linux": LINUX_SRCS,
-        "@//tools/build:darwin": POSIX_SRCS + [
-            "src/common/mac/arch_utilities.cc",
-            "src/common/mac/bootstrap_compat.cc",
-            "src/common/mac/file_id.cc",
-            "src/common/mac/launch_reporter.cc",
-            "src/common/mac/macho_id.cc",
-            "src/common/mac/macho_utilities.cc",
-            "src/common/mac/macho_walker.cc",
-            "src/common/mac/string_utilities.cc",
-            "src/client/mac/crash_generation/crash_generation_client.cc",
-            "src/client/mac/crash_generation/crash_generation_server.cc",
-            "src/client/mac/handler/breakpad_nlist_64.h",
-            "src/client/mac/handler/breakpad_nlist_64.cc",
-            "src/client/mac/handler/dynamic_images.cc",
-            "src/client/mac/handler/exception_handler.cc",
-            "src/client/mac/handler/minidump_generator.cc",
-            "src/client/mac/handler/protected_memory_allocator.h",
-            "src/client/mac/handler/protected_memory_allocator.cc",
-        ],
-        "@//tools/build:windows": [
-            "src/client/windows/crash_generation/client_info.cc",
-            "src/client/windows/crash_generation/crash_generation_client.cc",
-            "src/client/windows/crash_generation/crash_generation_server.cc",
-            "src/client/windows/crash_generation/minidump_generator.cc",
-            "src/client/windows/handler/exception_handler.cc",
-            "src/client/windows/sender/crash_report_sender.cc",
-            "src/common/windows/guid_string.cc",
-            "src/common/windows/http_upload.cc",
-            "src/common/windows/string_utils.cc",
-        ],
+        "@//tools/build:linux": LIB_LINUX,
+        "@//tools/build:darwin": LIB_MACOS,
+        "@//tools/build:windows": LIB_WINDOWS,
         # Android.
-        "//conditions:default": LINUX_SRCS + [
+        "//conditions:default": LIB_LINUX + [
             "src/common/android/breakpad_getcontext.S",
         ],
     }),
-    hdrs = glob([
-        "src/client/*.h",
-        "src/common/*.h",
-        "src/google_breakpad/**/*.h",
-    ]) + select({
-        "@//tools/build:linux": glob([
-            "src/client/linux/**/*.h",
-            "src/common/linux/**/*.h",
-        ]),
-        "@//tools/build:darwin": glob([
-            "src/client/mac/**/*.h",
-            "src/common/mac/**/*.h",
-        ]) + ["src/common/linux/linux_libc_support.h"],  # no joke
-        "@//tools/build:windows": glob([
-            "src/client/windows/**/*.h",
-            "src/common/windows/**/*.h",
-        ]),
-        # Android.
-        "//conditions:default": glob([
-            "src/common/android/*.h",
-            "src/client/linux/**/*.h",
-            "src/common/linux/**/*.h",
-        ]),
-    }),
+    hdrs = glob(["src/**/*.h"]),
     copts = cc_copts() + select({
         "@//tools/build:linux": [],
         "@//tools/build:darwin": [],
@@ -175,4 +156,68 @@ cc_library(
     hdrs = glob(["src/common/android/include/**/*.h"]),
     copts = cc_copts(),
     strip_include_prefix = "src/common/android/include",
+)
+
+
+DUMP_SYMS_POSIX = [
+    "src/common/dwarf/bytereader.cc",
+    "src/common/dwarf/dwarf2diehandler.cc",
+    "src/common/dwarf/dwarf2reader.cc",
+    "src/common/dwarf/elf_reader.cc",
+    "src/common/dwarf/elf_reader.h", # unqualified import
+    "src/common/dwarf_cfi_to_module.cc",
+    "src/common/dwarf_cu_to_module.cc",
+    "src/common/dwarf_line_to_module.cc",
+    "src/common/language.cc",
+    "src/common/module.cc",
+    "src/common/path_helper.cc",
+    "src/common/stabs_reader.cc",
+    "src/common/stabs_to_module.cc",
+]
+
+DUMP_SYMS_LINUX = DUMP_SYMS_POSIX + [
+    "src/common/linux/crc32.cc",
+    "src/common/linux/dump_symbols.cc",
+    "src/common/linux/elf_symbols_to_module.cc",
+    "src/common/linux/elfutils.cc",
+    "src/common/linux/file_id.cc",
+    "src/common/linux/linux_libc_support.cc",
+    "src/common/linux/memory_mapped_file.cc",
+    "src/common/linux/safe_readlink.cc",
+    "src/tools/linux/dump_syms/dump_syms.cc",
+]
+
+DUMP_SYMS_MACOS = DUMP_SYMS_POSIX + [
+    "src/common/mac/arch_utilities.cc",
+    "src/common/mac/dump_syms.cc",
+    "src/common/mac/file_id.cc",
+    "src/common/mac/macho_id.cc",
+    "src/common/mac/macho_reader.cc",
+    "src/common/mac/macho_utilities.cc",
+    "src/common/mac/macho_walker.cc",
+    "src/common/md5.cc",
+    "src/tools/mac/dump_syms/dump_syms_tool.cc",
+]
+
+cc_library(
+    name = "dump_syms-lib",
+    srcs = select({
+        "@//tools/build:linux": DUMP_SYMS_LINUX,
+        "@//tools/build:darwin": DUMP_SYMS_MACOS,
+    }),
+    hdrs = glob(["src/**/*.h"]),
+    strip_include_prefix = "src",
+    copts = cc_copts() + [
+        "-DN_UNDF=0x0",
+    ],
+    deps = select({
+        "@//tools/build:linux": ["@lss"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_binary(
+    name = "dump_syms",
+    deps = [":dump_syms-lib"],
+    visibility = ["//visibility:public"],
 )
