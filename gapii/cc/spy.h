@@ -53,20 +53,21 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   // Intercepted GLES methods to optionally fake no support for precompiled
   // shaders.
   void glProgramBinary(CallObserver* observer, uint32_t program,
-                       uint32_t binary_format, void* binary,
+                       uint32_t binary_format, const void* binary,
                        int32_t binary_size);
   void glProgramBinaryOES(CallObserver* observer, uint32_t program,
-                          uint32_t binary_format, void* binary,
+                          uint32_t binary_format, const void* binary,
                           int32_t binary_size);
-  void glShaderBinary(CallObserver* observer, int32_t count, uint32_t* shaders,
-                      uint32_t binary_format, void* binary,
+  void glShaderBinary(CallObserver* observer,
+                      int32_t count, const uint32_t* shaders,
+                      uint32_t binary_format, const void* binary,
                       int32_t binary_size);
   void glGetInteger64v(CallObserver* observer, uint32_t param, int64_t* values);
   void glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values);
-  GLubyte* glGetString(CallObserver* observer, uint32_t name);
-  GLubyte* glGetStringi(CallObserver* observer, uint32_t name, GLuint index);
+  const GLubyte* glGetString(CallObserver* observer, uint32_t name);
+  const GLubyte* glGetStringi(CallObserver* observer, uint32_t name, GLuint index);
 
-  void gvr_frame_submit(CallObserver* observer, gvr_frame** frame, gvr_buffer_viewport_list* list, gvr_mat4_abi head_space_from_start_space);
+  void gvr_frame_submit(CallObserver* observer, gvr_frame** frame, const gvr_buffer_viewport_list* list, gvr_mat4_abi head_space_from_start_space);
 
   void onPostDrawCall(CallObserver* observer, uint8_t api) override;
   void onPreStartOfFrame(CallObserver* observer, uint8_t api) override;

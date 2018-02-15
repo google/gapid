@@ -468,12 +468,12 @@ cmd void glAttachShader(ProgramId program, ShaderId shader) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glBindAttribLocation.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glBindAttribLocation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glBindAttribLocation.xhtml", Version.GLES32)
-cmd void glBindAttribLocation(ProgramId program, AttributeLocation location, string name) {
-  n := as!char[](name)
-  if (len(n) > 2) && (as!string(n[0:3]) == "gl_") { glErrorInvalidOperation() }
+cmd void glBindAttribLocation(ProgramId program, AttributeLocation location, const GLchar* name) {
+  n := as!string(as!char*(name))
+  if (len(n) > 2) && (as!string(as!char*(name)[0:3]) == "gl_") { glErrorInvalidOperation() }
   p := GetProgramOrError(program)
   CheckAttributeLocation(location)
-  p.AttributeBindings[name] = location
+  p.AttributeBindings[n] = location
 }
 
 @if(Version.GLES31)
@@ -795,7 +795,8 @@ cmd void glGetAttachedShaders(ProgramId program,
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetAttribLocation.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetAttribLocation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetAttribLocation.xhtml", Version.GLES32)
-cmd GLint glGetAttribLocation(ProgramId program, string name) {
+cmd GLint glGetAttribLocation(ProgramId program, const GLchar* name) {
+  _ = as!string(as!char*(name))
   // The HTML and PDF give different error codes. This matches the PDF.
   _ = GetProgramOrError(program)
   return ?
@@ -805,7 +806,8 @@ cmd GLint glGetAttribLocation(ProgramId program, string name) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetFragDataLocation.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetFragDataLocation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetFragDataLocation.xhtml", Version.GLES32)
-cmd GLint glGetFragDataLocation(ProgramId program, string name) {
+cmd GLint glGetFragDataLocation(ProgramId program, const GLchar* name) {
+  _ = as!string(as!char*(name))
   _ = GetProgramOrError(program)
   return ?
 }
@@ -910,9 +912,10 @@ cmd void glGetProgramPipelineiv(PipelineId pipeline, GLenum pname, GLint* params
 @if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetProgramResourceIndex.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetProgramResourceIndex.xhtml", Version.GLES32)
-cmd GLuint glGetProgramResourceIndex(ProgramId program,
-                                     GLenum    programInterface,
-                                     string    name) {
+cmd GLuint glGetProgramResourceIndex(ProgramId     program,
+                                     GLenum        programInterface,
+                                     const GLchar* name) {
+  _ = as!string(as!char*(name))
   switch (programInterface) {
     case GL_BUFFER_VARIABLE, GL_PROGRAM_INPUT, GL_PROGRAM_OUTPUT, GL_SHADER_STORAGE_BLOCK,
         GL_TRANSFORM_FEEDBACK_VARYING, GL_UNIFORM, GL_UNIFORM_BLOCK: {
@@ -929,9 +932,10 @@ cmd GLuint glGetProgramResourceIndex(ProgramId program,
 @if(Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetProgramResourceLocation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetProgramResourceLocation.xhtml", Version.GLES32)
-cmd GLint glGetProgramResourceLocation(ProgramId program,
-                                       GLenum    programInterface,
-                                       string    name) {
+cmd GLint glGetProgramResourceLocation(ProgramId     program,
+                                       GLenum        programInterface,
+                                       const GLchar* name) {
+  _ = as!string(as!char*(name))
   switch (programInterface) {
     case GL_PROGRAM_INPUT, GL_PROGRAM_OUTPUT, GL_TRANSFORM_FEEDBACK_BUFFER, GL_UNIFORM: {
       // version 3.1
@@ -1125,7 +1129,8 @@ cmd void glGetShaderiv(ShaderId shader, GLenum parameter, GLint* value) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetUniformBlockIndex.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetUniformBlockIndex.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetUniformBlockIndex.xhtml", Version.GLES32)
-cmd UniformBlockIndex glGetUniformBlockIndex(ProgramId program, string uniformBlockName) {
+cmd UniformBlockIndex glGetUniformBlockIndex(ProgramId program, const GLchar* uniformBlockName) {
+  _ = as!string(as!char*(uniformBlockName))
   // TODO
   return ?
 }
@@ -1151,7 +1156,8 @@ cmd void glGetUniformIndices(ProgramId            program,
 @doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glGetUniformLocation.xhtml", Version.GLES30)
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glGetUniformLocation.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glGetUniformLocation.xhtml", Version.GLES32)
-cmd UniformLocation glGetUniformLocation(ProgramId program, string name) {
+cmd UniformLocation glGetUniformLocation(ProgramId program, const GLchar* name) {
+  _ = as!string(as!char*(name))
   _ = GetProgramOrError(program)
   return ?
 }

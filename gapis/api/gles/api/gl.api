@@ -43,7 +43,8 @@ cmd void glGetQueryObjectui64v(QueryId query, GLenum parameter, u64* value) {
 cmd void glTexStorage1D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width) {
 }
 
-cmd void glBindFragDataLocation(ProgramId program, GLuint color, string name) {
+cmd void glBindFragDataLocation(ProgramId program, GLuint color, const char* name) {
+  _ = as!string(name)
 }
 
 cmd void glTexImage2DMultisample(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations) {

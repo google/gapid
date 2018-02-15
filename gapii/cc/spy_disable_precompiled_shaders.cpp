@@ -74,8 +74,8 @@ using namespace gapii::GLenum;
 
 namespace gapii {
 
-void Spy::glProgramBinary(CallObserver* observer, uint32_t program, uint32_t binary_format, void* binary,
-                          int32_t binary_size) {
+void Spy::glProgramBinary(CallObserver* observer, uint32_t program, uint32_t binary_format,
+                          const void* binary, int32_t binary_size) {
     if (mDisablePrecompiledShaders) {
         GAPID_WARNING("glProgramBinary(%" PRIu32 ", 0x%X, %p, %" PRId32 ") "
                 "called when precompiled shaders are disabled",
@@ -101,8 +101,8 @@ void Spy::glProgramBinary(CallObserver* observer, uint32_t program, uint32_t bin
     }
 }
 
-void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program, uint32_t binary_format, void* binary,
-                             int32_t binary_size) {
+void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program, uint32_t binary_format,
+                             const void* binary, int32_t binary_size) {
     if (mDisablePrecompiledShaders) {
         GAPID_WARNING("glProgramBinaryOES(%" PRIu32 ", 0x%X, %p, %" PRId32 ") "
                 "called when precompiled shaders are disabled",
@@ -128,8 +128,9 @@ void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program, uint32_t 
     }
 }
 
-void Spy::glShaderBinary(CallObserver* observer, int32_t count, uint32_t* shaders, uint32_t binary_format, void* binary,
-                         int32_t binary_size) {
+void Spy::glShaderBinary(CallObserver* observer, int32_t count,
+                         const uint32_t* shaders, uint32_t binary_format,
+                         const void* binary, int32_t binary_size) {
     if (mDisablePrecompiledShaders) {
         GAPID_WARNING("glShaderBinary(%" PRId32 ", %p, 0x%X, %p, %" PRId32 ") "
                 "called when precompiled shaders are disabled",
@@ -188,7 +189,7 @@ void Spy::glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values)
     }
 }
 
-GLubyte* Spy::glGetString(CallObserver* observer, uint32_t name) {
+const GLubyte* Spy::glGetString(CallObserver* observer, uint32_t name) {
     if (mDisablePrecompiledShaders && name == GL_EXTENSIONS) {
         if (auto exts = reinterpret_cast<const char*>(GlesSpy::mImports.glGetString(name))) {
             std::string list = reinterpret_cast<const char*>(exts);
@@ -204,7 +205,7 @@ GLubyte* Spy::glGetString(CallObserver* observer, uint32_t name) {
     return GlesSpy::glGetString(observer, name);
 }
 
-GLubyte* Spy::glGetStringi(CallObserver* observer, uint32_t name, GLuint index) {
+const GLubyte* Spy::glGetStringi(CallObserver* observer, uint32_t name, GLuint index) {
     if (mDisablePrecompiledShaders && (name == GL_EXTENSIONS)) {
         const char* extension = reinterpret_cast<const char*>(GlesSpy::mImports.glGetStringi(name, index));
         if (strcmp(extension, kOESGetProgramBinary) == 0) {

@@ -2937,16 +2937,20 @@ cmd void vkGetPhysicalDeviceMemoryProperties(
 @indirect("VkInstance")
 @override
 cmd PFN_vkVoidFunction vkGetInstanceProcAddr(
-    VkInstance instance,
-    string     pName) {
+    VkInstance  instance,
+    const char* pName) {
+
+  _ = as!string(pName)
   return ?
 }
 
 @indirect("VkDevice")
 @override
 cmd PFN_vkVoidFunction vkGetDeviceProcAddr(
-    VkDevice device,
-    string   pName) {
+    VkDevice    device,
+    const char* pName) {
+
+  _ = as!string(pName)
   return ?
 }
 
@@ -3004,9 +3008,12 @@ sub void queryExtensionProperties(u32* pPropertyCount, VkExtensionProperties* pP
 
 @override
 cmd VkResult vkEnumerateInstanceExtensionProperties(
-    string                 pLayerName,
+    const char*            pLayerName,
     u32*                   pPropertyCount,
     VkExtensionProperties* pProperties) {
+
+  _ = as!string(pLayerName)
+
   queryExtensionProperties(pPropertyCount, pProperties)
 
   return ?
@@ -3016,9 +3023,12 @@ cmd VkResult vkEnumerateInstanceExtensionProperties(
 @override
 cmd VkResult vkEnumerateDeviceExtensionProperties(
     VkPhysicalDevice       physicalDevice,
-    string                 pLayerName,
+    const char*            pLayerName,
     u32*                   pPropertyCount,
     VkExtensionProperties* pProperties) {
+
+  _ = as!string(pLayerName)
+
   // Do not check validness of physicalDevice as the loader may feed 0 to it.
   queryExtensionProperties(pPropertyCount, pProperties)
 
@@ -8533,9 +8543,12 @@ type VkFlags VkDebugReportFlagsEXT
     u64                        object,
     size                       location,
     s32                        messageCode,
-    string                     pLayerPrefix,
-    string                     pMessage,
+    const char*                pLayerPrefix,
+    const char*                pMessage,
     void*                      pUserData) {
+
+  _ = as!string(pLayerPrefix)
+  _ = as!string(pMessage)
   return ?
 }
 
@@ -8580,8 +8593,11 @@ cmd void vkDebugReportMessageEXT(
     u64                        object,
     size                       location,
     s32                        messageCode,
-    string                     pLayerPrefix,
-    string                     pMessage) {
+    const char*                pLayerPrefix,
+    const char*                pMessage) {
+
+  _ = as!string(pLayerPrefix)
+  _ = as!string(pMessage)
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
 }
 extern void validate(string layerName, bool condition, string message)

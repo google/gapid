@@ -30,17 +30,17 @@ uint32_t SpyOverride_vkEnumerateInstanceExtensionProperties(
     VkExtensionProperties* pProperties);
 uint32_t SpyOverride_vkEnumerateInstanceLayerProperties(
     uint32_t* pPropertyCount, VkLayerProperties* pProperties);
-uint32_t SpyOverride_vkCreateInstance(VkInstanceCreateInfo* pCreateInfo,
-                                      VkAllocationCallbacks* pAllocator,
+uint32_t SpyOverride_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
+                                      const VkAllocationCallbacks* pAllocator,
                                       VkInstance* pInstance);
 void SpyOverride_vkDestroyInstance(VkInstance instance,
-                                   VkAllocationCallbacks* pAllocator);
+                                   const VkAllocationCallbacks* pAllocator);
 uint32_t SpyOverride_vkCreateDevice(VkPhysicalDevice physicalDevice,
-                                    VkDeviceCreateInfo* pCreateInfo,
-                                    VkAllocationCallbacks* pAllocator,
+                                    const VkDeviceCreateInfo* pCreateInfo,
+                                    const VkAllocationCallbacks* pAllocator,
                                     VkDevice* pDevice);
 void SpyOverride_vkDestroyDevice(VkDevice device,
-                                 VkAllocationCallbacks* pAllocator);
+                                 const VkAllocationCallbacks* pAllocator);
 uint32_t SpyOverride_vkEnumerateDeviceLayerProperties(
     VkPhysicalDevice dev, uint32_t* pCount, VkLayerProperties* pProperties);
 uint32_t SpyOverride_vkEnumerateDeviceExtensionProperties(
@@ -52,20 +52,20 @@ uint32_t SpyOverride_vkAllocateCommandBuffers(
     VkDevice device, VkCommandBufferAllocateInfo* pAllocateInfo,
     VkCommandBuffer* pCommandBuffers);
 uint32_t SpyOverride_vkCreateBuffer(VkDevice device,
-                                    VkBufferCreateInfo* pCreateInfo,
-                                    VkAllocationCallbacks* pAllocator,
+                                    const VkBufferCreateInfo* pCreateInfo,
+                                    const VkAllocationCallbacks* pAllocator,
                                     VkBuffer* pBuffer);
 uint32_t SpyOverride_vkCreateImage(VkDevice device,
-                                   VkImageCreateInfo* pCreateInfo,
-                                   VkAllocationCallbacks* pAllocator,
+                                   const VkImageCreateInfo* pCreateInfo,
+                                   const VkAllocationCallbacks* pAllocator,
                                    VkImage* pBuffer);
 uint32_t SpyOverride_vkAllocateMemory(VkDevice device,
-                                      VkMemoryAllocateInfo* pAllocateInfo,
-                                      VkAllocationCallbacks* pAllocator,
+                                      const VkMemoryAllocateInfo* pAllocateInfo,
+                                      const VkAllocationCallbacks* pAllocator,
                                       VkDeviceMemory* pMemory);
 uint32_t SpyOverride_vkCreateSwapchainKHR(VkDevice device,
-                                          VkSwapchainCreateInfoKHR* pCreateInfo,
-                                          VkAllocationCallbacks* pAllocator,
+                                          const VkSwapchainCreateInfoKHR* pCreateInfo,
+                                          const VkAllocationCallbacks* pAllocator,
                                           VkSwapchainKHR* pImage);
 uint32_t SpyOverride_vkDebugMarkerSetObjectTagEXT(
     VkDevice device, VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
@@ -88,12 +88,12 @@ void SpyOverride_vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
 
 static uint32_t CreateImageAndGetMemoryRequirements(VkDevice,
-                                                    VkImageCreateInfo*,
-                                                    VkAllocationCallbacks*,
+                                                    const VkImageCreateInfo*,
+                                                    const VkAllocationCallbacks*,
                                                     VkImage*);
 static uint32_t CreateBufferAndGetMemoryRequirements(VkDevice,
-                                                     VkBufferCreateInfo*,
-                                                     VkAllocationCallbacks*,
+                                                     const VkBufferCreateInfo*,
+                                                     const VkAllocationCallbacks*,
                                                      VkBuffer*);
 
 static uint32_t EnumeratePhysicalDevicesAndCacheProperties(

@@ -60,15 +60,17 @@ cmd void glBeginQueryEXT(GLenum target, QueryId query) {
 
 @if(Extension.GL_EXT_blend_func_extended)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", Extension.GL_EXT_blend_func_extended)
-cmd void glBindFragDataLocationEXT(ProgramId program, GLuint color, string name) {
+cmd void glBindFragDataLocationEXT(ProgramId program, GLuint color, const GLchar* name) {
+  _ = as!string(as!char*(name))
 }
 
 @if(Extension.GL_EXT_blend_func_extended)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", Extension.GL_EXT_blend_func_extended)
-cmd void glBindFragDataLocationIndexedEXT(ProgramId program,
-                                          GLuint    colorNumber,
-                                          GLuint    index,
-                                          string    name) {
+cmd void glBindFragDataLocationIndexedEXT(ProgramId     program,
+                                          GLuint        colorNumber,
+                                          GLuint        index,
+                                          const GLchar* name) {
+  _ = as!string(as!char*(name))
 }
 
 @if(Extension.GL_EXT_separate_shader_objects)
@@ -989,7 +991,8 @@ cmd void glGetFloati_vNV(GLenum target, GLuint index, GLfloat* data) {
 
 @if(Extension.GL_EXT_blend_func_extended)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", Extension.GL_EXT_blend_func_extended)
-cmd GLint glGetFragDataIndexEXT(ProgramId program, string name) {
+cmd GLint glGetFragDataIndexEXT(ProgramId program, const GLchar* name) {
+  _ = as!string(as!char*(name))
   return ?
 }
 
@@ -1266,9 +1269,10 @@ cmd void glGetProgramPipelineivEXT(PipelineId pipeline, GLenum pname, GLint* par
 
 @if(Extension.GL_EXT_blend_func_extended)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_blend_func_extended.txt", Extension.GL_EXT_blend_func_extended)
-cmd GLint glGetProgramResourceLocationIndexEXT(ProgramId program,
-                                               GLenum    programInterface,
-                                               string    name) {
+cmd GLint glGetProgramResourceLocationIndexEXT(ProgramId     program,
+                                               GLenum        programInterface,
+                                               const GLchar* name) {
+  _ = as!string(as!char*(name))
   return ?
 }
 
@@ -1433,7 +1437,7 @@ cmd void glInsertEventMarkerEXT(GLsizei length, const GLchar* marker) {
     read(marker[0:length])
   } else {
     // TODO: Remove the extra cast.
-    _ = as!string(as!char*(marker)) // Read null-terminated string. TODO: Better syntax.
+    _ = as!string(as!char*(marker))
   }
 }
 
@@ -2435,11 +2439,10 @@ cmd void glProgramUniformMatrix4x3fvEXT(ProgramId       program,
 @push_user_marker
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_debug_marker.txt", Extension.GL_EXT_debug_marker)
 cmd void glPushGroupMarkerEXT(GLsizei length, const GLchar* marker) {
-
   if length > 0 {
     read(marker[0:length])
   } else {
-    _ = as!string(as!char*(marker)) // Read null-terminated string. TODO: Better syntax.
+    _ = as!string(as!char*(marker))
   }
 }
 
