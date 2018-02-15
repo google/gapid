@@ -149,7 +149,7 @@ struct link_info_traits {
 // passed in.
 template <typename T>
 typename link_info_traits<T>::layer_info_type *get_layer_link_info(
-    T *pCreateInfo) {
+    const T *pCreateInfo) {
   using layer_info_type = typename link_info_traits<T>::layer_info_type;
 
   auto layer_info = const_cast<layer_info_type *>(

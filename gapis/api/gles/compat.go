@@ -1212,7 +1212,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 								name = fmt.Sprintf("%v[%v]", name, i)
 							}
 							loc := UniformLocation(uniform.Locations.Get(i))
-							out.MutateAndWrite(ctx, dID, cb.GlGetUniformLocation(cmd.Program, name, loc))
+							tmp := s.AllocDataOrPanic(ctx, name)
+							cmd := cb.GlGetUniformLocation(cmd.Program, tmp.Ptr(), loc).
+								AddRead(tmp.Data())
+							tmp.Free()
+							out.MutateAndWrite(ctx, dID, cmd)
 						}
 					}
 				}
@@ -1264,7 +1268,11 @@ func compatMultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out tra
 			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 				if c.Bound.Program != nil {
 					viewIDLocation := UniformLocation(0x7FFF0000)
-					cb.GlGetUniformLocation(c.Bound.Program.ID, "gapid_gl_ViewID_OVR", viewIDLocation).Call(ctx, s, b)
+					tmp := s.AllocDataOrPanic(ctx, "gapid_gl_ViewID_OVR")
+					defer tmp.Free()
+					cb.GlGetUniformLocation(c.Bound.Program.ID, tmp.Ptr(), viewIDLocation).
+						AddRead(tmp.Data()).
+						Call(ctx, s, b)
 					cb.GlUniform1ui(viewIDLocation, viewID).Call(ctx, s, b)
 				}
 				return nil

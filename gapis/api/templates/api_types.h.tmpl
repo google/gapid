@@ -268,9 +268,7 @@
       uint64_t thread;¶
       {{range $p := $.CallParameters}}
         {{$ty := TypeOf $p | Underlying}}
-        {{if IsString $ty}}const char* {{$p.Name}};
-        {{else           }}{{Template "C++.Type" $p}} {{$p.Name}};
-        {{end            }}
+        {{Template "C++.Type" $p}} {{$p.Name}};
       {{end}}
     };
     {{if not (IsVoid $.Return.Type)}}¶

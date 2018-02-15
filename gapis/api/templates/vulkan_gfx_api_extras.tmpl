@@ -87,15 +87,16 @@
 
     const auto count = pCreateInfo->enabledLayerCount;
 
-    char** layers = static_cast<char**>(alloca((count + 2) * sizeof(char*)));
+    const char** layers = static_cast<const char**>(alloca((count + 2) * sizeof(char*)));
 
     bool has_spy = false;
     for (size_t i = 0; i < count; ++i) {
-      if (strcmp("VkGraphicsSpy", pCreateInfo->ppEnabledLayerNames[i]) == 0) {
-        pCreateInfo->ppEnabledLayerNames[i] = virtualSwapchainName;
-        has_spy = true;
-      }
-      layers[i] = pCreateInfo->ppEnabledLayerNames[i];
+        if (strcmp("VkGraphicsSpy", pCreateInfo->ppEnabledLayerNames[i]) == 0) {
+            layers[i] = virtualSwapchainName;
+            has_spy = true;
+        } else {
+            layers[i] = pCreateInfo->ppEnabledLayerNames[i];
+        }
     }
 
     if (!has_spy) {
@@ -286,7 +287,7 @@
 
     struct {
       uint32_t sType;
-      void* pNext;
+      const void* pNext;
     } pNextStruct = {VIRTUAL_SWAPCHAIN_CREATE_PNEXT, pCreateInfo->pNext};
     newCreateInfo.pNext = &pNextStruct;
 

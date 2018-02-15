@@ -102,7 +102,10 @@ func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, de
 
 	programID := t.makeProgram(ctx, vertexShaderSource, fragmentShaderSource)
 
-	out.MutateAndWrite(ctx, dID, cb.GlBindAttribLocation(programID, aScreenCoordsLocation, "aScreenCoords"))
+	tmp0 := t.AllocData(ctx, "aScreenCoords")
+	out.MutateAndWrite(ctx, dID, cb.GlBindAttribLocation(programID, aScreenCoordsLocation, tmp0.Ptr()).
+		AddRead(tmp0.Data()))
+	tmp0.Free()
 	out.MutateAndWrite(ctx, dID, api.WithExtras(cb.GlLinkProgram(programID), &LinkProgramExtra{
 		LinkStatus:      GLboolean_GL_TRUE,
 		ActiveResources: &ActiveProgramResources{},
@@ -112,9 +115,10 @@ func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, de
 	bufferID := t.glGenBuffer(ctx)
 	t.GlBindBuffer_ArrayBuffer(ctx, bufferID)
 
-	tmp := t.AllocData(ctx, positions)
-	out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_ARRAY_BUFFER, GLsizeiptr(4*len(positions)), tmp.Ptr(), GLenum_GL_STATIC_DRAW).
-		AddRead(tmp.Data()))
+	tmp1 := t.AllocData(ctx, positions)
+	out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_ARRAY_BUFFER, GLsizeiptr(4*len(positions)), tmp1.Ptr(), GLenum_GL_STATIC_DRAW).
+		AddRead(tmp1.Data()))
+	tmp1.Free()
 
 	out.MutateAndWrite(ctx, dID, cb.GlVertexAttribPointer(aScreenCoordsLocation, 2, GLenum_GL_FLOAT, GLboolean(0), 0, memory.Nullptr))
 	out.MutateAndWrite(ctx, dID, cb.GlDrawArrays(GLenum_GL_TRIANGLE_STRIP, 0, 4))

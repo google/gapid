@@ -45,7 +45,7 @@
   {{else if IsString      $}}{{Template "C++.StringType" $}}
   {{else if IsStaticArray $}}core::StaticArray<{{Template "C++.Type" $.ValueType}}, {{$.Size}}>
   {{else if IsSlice       $}}gapil::Slice<{{if IsVoid $.To}}uint8_t{{else}}{{Template "C++.Type" $.To}}{{end}}>
-  {{else if IsPointer     $}}{{Template "C++.Type" $.To}}*
+  {{else if IsPointer     $}}{{Template "C++.Type" $.To}}{{if $.Const}} const{{end}}*
   {{else if IsAny         $}}auto
   {{else}}{{Template "C++.TypeName" $}}
   {{end}}
@@ -262,7 +262,7 @@
     {{else}}
       {{Template "C++.ParameterTypeNoSuffix" (TypeOf $)}}
     {{end}}
-  {{else if IsPointer     $}}{{Template "C++.ParameterTypeNoSuffix" $.To}}*
+  {{else if IsPointer     $}}{{Template "C++.ParameterTypeNoSuffix" $.To}}{{if $.Const}} const{{end}}*
   {{else if IsStaticArray $}}{{Template "C++.Type" $.ValueType}}
   {{else if IsString      $}}{{if $func.Extern}} std::string {{else}} const char* {{end}}
   {{else                   }}{{Template "C++.Type" $}}

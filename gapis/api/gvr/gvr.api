@@ -22,7 +22,7 @@ cmd gvr_version gvr_get_version() {
 }
 
 @no_replay
-cmd string gvr_get_version_string() {
+cmd const char* gvr_get_version_string() {
   return ?
 }
 
@@ -37,7 +37,7 @@ cmd s32 gvr_clear_error(gvr_context* gvr) {
 }
 
 @no_replay
-cmd string gvr_get_error_string(s32 error_code) {
+cmd const char* gvr_get_error_string(s32 error_code) {
   return ?
 }
 
@@ -380,7 +380,8 @@ cmd void gvr_recenter_tracking(gvr_context* gvr) {
 
 @no_replay
 cmd bool gvr_set_default_viewer_profile(gvr_context* gvr,
-                                        string       viewer_profile_uri) {
+                                        const char*  viewer_profile_uri) {
+  _ = as!string(viewer_profile_uri)
   return ?
 }
 
@@ -390,12 +391,12 @@ cmd void gvr_refresh_viewer_profile(gvr_context* gvr) {
 }
 
 @no_replay
-cmd string gvr_get_viewer_vendor(const gvr_context* gvr) {
+cmd const char* gvr_get_viewer_vendor(const gvr_context* gvr) {
   return ?
 }
 
 @no_replay
-cmd string gvr_get_viewer_model(const gvr_context* gvr) {
+cmd const char* gvr_get_viewer_model(const gvr_context* gvr) {
   return ?
 }
 

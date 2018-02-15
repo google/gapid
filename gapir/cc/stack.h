@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <type_traits>
 #include <vector>
 
 namespace gapir {
@@ -288,7 +289,7 @@ private:
         template <typename T>
         void set(T* p) {
             mType = BaseType::AbsolutePointer;
-            mValue.p = p;
+            mValue.p = const_cast<typename std::remove_const<T>::type*>(p);
         }
 
         template <typename T>

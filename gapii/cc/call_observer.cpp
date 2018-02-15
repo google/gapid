@@ -131,7 +131,9 @@ void CallObserver::encodeAndDelete(::google::protobuf::Message* cmd) {
 }
 
 gapil::String CallObserver::string(const char* str) {
-    GAPID_ASSERT(str != nullptr);
+    if (str == nullptr) {
+        return gapil::String();
+    }
     for (uint64_t i = 0;; i++) {
         if (str[i] == 0) {
             read(str, i + 1);

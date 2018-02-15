@@ -407,7 +407,10 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.
 		cb := CommandBuilder{Thread: cmd.Thread()}
 		for _, attr := range pi.ActiveResources.ProgramInputs.Range() {
 			if int32(attr.Locations.Get(0)) != -1 {
-				cmd := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Locations.Get(0)), attr.Name)
+				tmp := s.AllocDataOrPanic(ctx, attr.Name)
+				cmd := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Locations.Get(0)), tmp.Ptr()).
+					AddRead(tmp.Data())
+				tmp.Free()
 				if strings.HasPrefix(attr.Name, "gl_") {
 					// Active built-in mush have location of -1
 					log.E(ctx, "Can not set location for built-in attribute: %v", cmd)
@@ -429,7 +432,10 @@ func bindUniformBlocks(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.Gl
 		cb := CommandBuilder{Thread: cmd.Thread()}
 		for i, ub := range pi.ActiveResources.UniformBlocks.Range() {
 			// Query replay-time uniform block index so that the remapping is established
-			cmd := cb.GlGetUniformBlockIndex(pid, ub.Name, UniformBlockIndex(i))
+			tmp := s.AllocDataOrPanic(ctx, ub.Name)
+			defer tmp.Free()
+			cmd := cb.GlGetUniformBlockIndex(pid, tmp.Ptr(), UniformBlockIndex(i)).
+				AddRead(tmp.Data())
 			if err := cmd.Mutate(ctx, id, s, b); err != nil {
 				return err
 			}

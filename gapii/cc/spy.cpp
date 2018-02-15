@@ -411,7 +411,7 @@ gapil::Ref<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver*
 #undef EGL_QUERY_SURFACE
 #undef EGL_GET_CONFIG_ATTRIB
 
-void Spy::gvr_frame_submit(CallObserver* observer, gvr_frame** frame, gvr_buffer_viewport_list* list, gvr_mat4_abi head_space_from_start_space) {
+void Spy::gvr_frame_submit(CallObserver* observer, gvr_frame** frame, const gvr_buffer_viewport_list* list, gvr_mat4_abi head_space_from_start_space) {
     GvrSpy::mLastSubmittedFrame = (frame != nullptr) ? (*frame) : nullptr;
     GvrSpy::gvr_frame_submit(observer, frame, list, head_space_from_start_space);
 }

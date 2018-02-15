@@ -192,7 +192,8 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
   // Helper method to get all locations of program resource
   auto getResourceLocations = [&](uint32_t interface, const gapil::String& name, GLint arraySize) {
     U32ToGLint locations(spy->arena());
-    locations[0] = imports.glGetProgramResourceLocation(program, interface, name.c_str());
+    locations[0] = imports.glGetProgramResourceLocation(program, interface,
+        reinterpret_cast<const GLchar*>(name.c_str()));
     if (arraySize > 1) {
       // Copy the array base name (without the [0] suffix) to the temporary buffer
       size_t baseLength = name.length();
@@ -643,12 +644,12 @@ static bool ReadExternalPixels(GlesImports& imports, EGLImageKHR img, GLsizei wi
     auto prog = imports.glCreateProgram();
 
     auto vs = imports.glCreateShader(GL_VERTEX_SHADER);
-    imports.glShaderSource(vs, 1, const_cast<char**>(&vsSource), nullptr);
+    imports.glShaderSource(vs, 1, &vsSource, nullptr);
     imports.glCompileShader(vs);
     imports.glAttachShader(prog, vs);
 
     auto fs = imports.glCreateShader(GL_FRAGMENT_SHADER);
-    imports.glShaderSource(fs, 1, const_cast<char**>(&fsSource), nullptr);
+    imports.glShaderSource(fs, 1, &fsSource, nullptr);
     imports.glCompileShader(fs);
     imports.glAttachShader(prog, fs);
 
