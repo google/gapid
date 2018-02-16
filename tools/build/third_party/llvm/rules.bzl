@@ -41,7 +41,16 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
         name = name,
         srcs =  llvm_sources(path, exclude=exclude),
         deps = deps,
-        copts = cc_copts() + select({
+        copts = cc_copts() + [
+            # LLVM is used to build parts of GAPID. We're not so interested in
+            # debugging LLVM itself, but we would like the parts of the build
+            # using LLVM to be as fast as possible, so always build LLVM
+            # optimized.
+            "-O2",
+            "-DNDEBUG",
+            "-ffunction-sections",
+            "-fdata-sections",
+        ] + select({
             "@//tools/build:linux": [],
             "@//tools/build:darwin": [],
             "@//tools/build:windows": [],
@@ -50,7 +59,12 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
                 "-fno-rtti",
                 "-fno-exceptions",
             ]
-        })
+        }),
+        linkopts = select({
+            # Optimized linker settings. See above.
+            "@//tools/build:darwin": ["-Wl,-dead_strip"],
+            "//conditions:default": ["-Wl,--gc-sections"],
+        }),
     )
 
 def _tablegen_impl(ctx):
