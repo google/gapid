@@ -152,10 +152,6 @@ Follow the [Ubuntu Bazel Install](https://docs.bazel.build/versions/master/insta
 
 Alternatively, bazel can be downloaded from its [GitHub Releases Page](https://github.com/bazelbuild/bazel/releases).
 
-### Install Java Runtime 8
-
-A JRE is required by the Android SDK tools. If you do not already have a JRE installed, please [install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
-
 ### Install Android SDK
 
 Unzip the [Android SDK](https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip) to a directory of your choosing.
@@ -170,6 +166,13 @@ tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1
 ### Install Android NDK
 
 Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip) to a directory of your choosing.
+
+### Install other libraries
+
+```
+sudo apt-get update
+sudo apt-get install mesa-common-dev libncurses5-dev libgl1-mesa-dev
+```
 
 ### Configure the environment
 
