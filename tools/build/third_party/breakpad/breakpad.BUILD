@@ -199,19 +199,40 @@ DUMP_SYMS_MACOS = DUMP_SYMS_POSIX + [
     "src/tools/mac/dump_syms/dump_syms_tool.cc",
 ]
 
+DUMP_SYMS_WINDOWS = [
+    "src/tools/windows/dump_syms/dump_syms_pe.cc",
+    "src/common/module.cc",
+    "src/common/path_helper.cc",
+    "src/common/dwarf/bytereader.cc",
+    "src/common/dwarf/dwarf2diehandler.cc",
+    "src/common/dwarf/dwarf2reader.cc",
+    "src/common/dwarf_cfi_to_module.cc",
+    "src/common/dwarf_cu_to_module.cc",
+    "src/common/dwarf_line_to_module.cc",
+    "src/common/language.cc",
+]
+
 cc_library(
     name = "dump_syms-lib",
     srcs = select({
         "@//tools/build:linux": DUMP_SYMS_LINUX,
         "@//tools/build:darwin": DUMP_SYMS_MACOS,
+        "@//tools/build:windows": DUMP_SYMS_WINDOWS,
     }),
     hdrs = glob(["src/**/*.h"]),
     strip_include_prefix = "src",
     copts = cc_copts() + [
         "-DN_UNDF=0x0",
-    ],
+    ] + select({
+        "@//tools/build:windows": ["-DNO_STABS_SUPPORT"],
+        "//conditions:default": [],
+    }),
     deps = select({
         "@//tools/build:linux": ["@lss"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "@//tools/build:windows": ["-limagehlp"],
         "//conditions:default": [],
     }),
 )

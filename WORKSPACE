@@ -103,11 +103,10 @@ github_repository(
     build_file = "//tools/build/third_party:astc-encoder.BUILD",
 )
 
-new_git_repository(
+load("//tools/build/third_party:breakpad.bzl", "breakpad")
+breakpad(
     name = "breakpad",
-    remote = "https://chromium.googlesource.com/breakpad/breakpad",
     commit = "a61afe7a3e865f1da7ff7185184fe23977c2adca",
-    build_file = "//tools/build/third_party:breakpad.BUILD",
 )
 
 github_repository(

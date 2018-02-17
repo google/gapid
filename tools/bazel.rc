@@ -17,4 +17,4 @@ build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer
 build --nolegacy_whole_archive
 
 # Config used by the build servers to dump symbols.
-build:symbols --copt="-g"
+build:symbols --copt="-g" --strip=never
