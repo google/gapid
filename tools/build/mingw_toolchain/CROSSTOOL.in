@@ -41,6 +41,7 @@ toolchain {
   #linker_flag: "-l:libpthread.a"
   #linker_flag: "-l:libstdc++.a"
   linker_flag: "-lstdc++"
+  linker_flag: "-Wl,--build-id"
 
   objcopy_embed_flag: "-I"
   objcopy_embed_flag: "binary"
