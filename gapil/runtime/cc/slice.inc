@@ -67,6 +67,16 @@ Slice<T>::~Slice() {
 }
 
 template <typename T>
+Slice<T> Slice<T>::create(pool_t* pool) {
+    Slice<T> out;
+    out.data.pool = pool;
+    out.data.root = pool->buffer;
+    out.data.base = pool->buffer;
+    out.data.size = pool->size;
+    return out;
+}
+
+template <typename T>
 Slice<T> Slice<T>::create(context_t* ctx, uint64_t count) {
     Slice<T> out;
     gapil_make_slice(ctx, count * sizeof(T), &out.data);

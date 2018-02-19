@@ -316,18 +316,18 @@ EGLBoolean Spy::eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSu
     return res;
 }
 
-std::shared_ptr<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserver* observer, EGLDisplay display, EGLContext context) {
-    Constants constants;
+gapil::Ref<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserver* observer, EGLDisplay display, EGLContext context) {
+    Constants constants(arena());
     getContextConstants(constants);
 
-    std::string threadName;
+    gapil::String threadName;
 #if TARGET_OS == GAPID_OS_ANDROID
     char buffer[256] = { 0 };
     prctl(PR_GET_NAME, (unsigned long)buffer, 0, 0, 0);
-    threadName = std::string(buffer);
+    threadName = gapil::String(arena(), buffer);
 #endif
 
-    std::shared_ptr<StaticContextState> out(new StaticContextState(constants, threadName));
+    auto out = gapil::Ref<StaticContextState>::create(arena(), constants, threadName);
 
     observer->encodeAndDelete(out->toProto());
 
@@ -343,7 +343,7 @@ if (GlesSpy::mImports.eglGetConfigAttrib(display, config, name, var) != EGL_TRUE
     GAPID_WARNING("eglGetConfigAttrib(0x%p, 0x%p, " #name ", " #var ") failed", display, config); \
 }
 
-std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLContext context) {
+gapil::Ref<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLContext context) {
     EGLint width = 0;
     EGLint height = 0;
     EGLint swapBehavior = 0;
@@ -394,13 +394,13 @@ std::shared_ptr<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObse
     bool resetViewportScissor = true;
     bool preserveBuffersOnSwap = swapBehavior == EGL_BUFFER_PRESERVED;
 
-    std::shared_ptr<DynamicContextState> out(new DynamicContextState(
+    auto out = gapil::Ref<DynamicContextState>::create(arena(),
         width, height,
         backbufferColorFmt, backbufferDepthFmt, backbufferStencilFmt,
         resetViewportScissor,
         preserveBuffersOnSwap,
         r, g, b, a, d, s
-    ));
+    );
 
     // Store the DynamicContextState as an extra.
     observer->encodeAndDelete(out->toProto());
@@ -451,47 +451,50 @@ void Spy::saveInitialState() {
     if (should_trace(GlesSpy::kApiIndex)) {
       ToProtoContext pbCtx;
       auto glesState = GlesSpy::serializeState(pbCtx);
-      std::map<uint32_t, Pool*> seenPools;
+      std::map<uint32_t, const pool_t*> seenPools;
       for (const auto& s : pbCtx.SeenSlices()) {
-        if (!s.isApplicationPool()) {
-          seenPools.emplace(s.poolID(), s.pool().get());
+        if (auto p = s.pool()) {
+          seenPools.emplace(p->id, p);
         }
       }
       for (const auto& kvp : seenPools) {
-        Pool* p = kvp.second;
-        auto resIndex = sendResource(GlesSpy::kApiIndex, p->base(), p->size());
+        auto p = kvp.second;
+        auto resIndex = sendResource(GlesSpy::kApiIndex, p->buffer, p->size);
         memory_pb::Observation observation;
         observation.set_base(0);
-        observation.set_size(p->size());
+        observation.set_size(p->size);
         observation.set_resindex(resIndex);
-        observation.set_pool(p->id());
+        observation.set_pool(p->id);
         group->object(&observation);
       }
       group->object(glesState.get());
     }
     if (should_trace(VulkanSpy::kApiIndex)) {
+        auto observer = enter("initial-state", VulkanSpy::kApiIndex);
         std::unordered_set<uint32_t> gpu_pools;
-        VulkanSpy::prepareGPUBuffers(group.get(), &gpu_pools);
+        VulkanSpy::prepareGPUBuffers(observer, group.get(), &gpu_pools);
 
         ToProtoContext pbCtx;
         auto vulkanState = VulkanSpy::serializeState(pbCtx);
-        std::map<uint32_t, Pool*> seenPools;
+        std::map<uint32_t, const pool_t*> seenPools;
         for (const auto& s : pbCtx.SeenSlices()) {
-          if (!s.isApplicationPool() && gpu_pools.find(s.poolID()) == gpu_pools.end()) {
-            seenPools.emplace(s.poolID(), s.pool().get());
+          auto p = s.pool();
+          if (p != nullptr && gpu_pools.find(p->id) == gpu_pools.end()) {
+            seenPools.emplace(p->id, p);
           }
         }
         for (const auto& kvp : seenPools) {
-          Pool* p = kvp.second;
-          auto resIndex = sendResource(VulkanSpy::kApiIndex, p->base(), p->size());
+          auto p = kvp.second;
+          auto resIndex = sendResource(VulkanSpy::kApiIndex, p->buffer, p->size);
           memory_pb::Observation observation;
           observation.set_base(0);
-          observation.set_size(p->size());
+          observation.set_size(p->size);
           observation.set_resindex(resIndex);
-          observation.set_pool(p->id());
+          observation.set_pool(p->id);
           group->object(&observation);
         }
         group->object(vulkanState.get());
+        exit();
       }
     encoder->flush();
 }
@@ -642,7 +645,7 @@ void Spy::onPostFence(CallObserver* observer) {
 }
 
 void Spy::setFakeGlError(CallObserver* observer, GLenum_Error error) {
-    std::shared_ptr<Context> ctx = this->Contexts[observer->getCurrentThread()];
+    auto ctx = this->Contexts[observer->getCurrentThread()];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError == 0) {
@@ -652,7 +655,7 @@ void Spy::setFakeGlError(CallObserver* observer, GLenum_Error error) {
 }
 
 uint32_t Spy::glGetError(CallObserver* observer) {
-    std::shared_ptr<Context> ctx = this->Contexts[observer->getCurrentThread()];
+    auto ctx = this->Contexts[observer->getCurrentThread()];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError != 0) {
@@ -666,7 +669,7 @@ uint32_t Spy::glGetError(CallObserver* observer) {
 }
 
 #if 0 // NON-EGL CONTEXTS ARE CURRENTLY NOT SUPPORTED
-std::shared_ptr<ContextState> Spy::getWGLContextState(CallObserver*, HDC hdc, HGLRC hglrc) {
+gapil::Ref<ContextState> Spy::getWGLContextState(CallObserver*, HDC hdc, HGLRC hglrc) {
     if (hglrc == nullptr) {
         return nullptr;
     }
@@ -683,7 +686,7 @@ std::shared_ptr<ContextState> Spy::getWGLContextState(CallObserver*, HDC hdc, HG
 #endif // TARGET_OS
 }
 
-std::shared_ptr<ContextState> Spy::getCGLContextState(CallObserver* observer, CGLContextObj ctx) {
+gapil::Ref<ContextState> Spy::getCGLContextState(CallObserver* observer, CGLContextObj ctx) {
     if (ctx == nullptr) {
         return nullptr;
     }
@@ -708,7 +711,7 @@ std::shared_ptr<ContextState> Spy::getCGLContextState(CallObserver* observer, CG
             /* preserveBuffersOnSwap */ false);
 }
 
-std::shared_ptr<ContextState> Spy::getGLXContextState(CallObserver* observer, void* display, GLXDrawable draw, GLXDrawable read, GLXContext ctx) {
+gapil::Ref<ContextState> Spy::getGLXContextState(CallObserver* observer, void* display, GLXDrawable draw, GLXDrawable read, GLXContext ctx) {
     if (display == nullptr) {
         return nullptr;
     }

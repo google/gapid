@@ -19,6 +19,8 @@
 
 #include "core/cc/thread.h"
 
+#include "gapis/memory/memory_pb/memory.pb.h"
+
 #include <tuple>
 
 using core::Interval;
@@ -56,9 +58,17 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
       mScratch(
           [](size_t size) { return createBuffer(size, SCRATCH_BUFFER_SIZE); },
           [](uint8_t* buffer) { return releaseBuffer(buffer); }),
-      mError(GLenum::GL_NO_ERROR),
+      mError(0 /*GL_NO_ERROR*/),
       mApi(api),
       mCurrentThread(core::Thread::current().id()) {
+
+    // context_t initialization.
+    this->context_t::id = 0;
+    this->context_t::location = 0;
+    this->context_t::next_pool_id = &spy->next_pool_id();
+    this->context_t::globals = nullptr;
+    this->context_t::arena = reinterpret_cast<arena_t*>(spy->arena());
+
     mEncoderStack.push((parent == nullptr) ?
             mSpy->getEncoder(mApi) : parent->encoder());
     mPendingObservations.setMergeThreshold(MEMORY_MERGE_THRESHOLD);
@@ -67,8 +77,8 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
 // Releases the observation data memory at the end.
 CallObserver::~CallObserver() {}
 
-uint32_t CallObserver::getPoolID() {
-    return mSpy->getPoolID();
+core::Arena* CallObserver::arena() const {
+    return mSpy->arena();
 }
 
 void CallObserver::read(const void* base, uint64_t size) {
@@ -118,6 +128,21 @@ void CallObserver::exit() {
 void CallObserver::encodeAndDelete(::google::protobuf::Message* cmd) {
     encoder()->object(cmd);
     delete cmd;
+}
+
+gapil::String CallObserver::string(const char* str) {
+    GAPID_ASSERT(str != nullptr);
+    for (uint64_t i = 0;; i++) {
+        if (str[i] == 0) {
+            read(str, i + 1);
+            return gapil::String(mSpy->arena(), str, str + i);
+        }
+    }
+}
+
+gapil::String CallObserver::string(const gapil::Slice<char>& slice) {
+    read(slice);
+    return gapil::String(mSpy->arena(), slice.begin(), slice.end());
 }
 
 }  // namespace gapii

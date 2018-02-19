@@ -39,7 +39,7 @@ namespace gapii {
 // Handles GLES 2.0 and GLES 3.0 (the old reflection API)
 static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extra, Program* p) {
   using namespace GLenum;
-  std::shared_ptr<ActiveProgramResources> resources(new ActiveProgramResources());
+  auto resources = gapil::Ref<ActiveProgramResources>::create(spy->arena());
 
   const GLuint program = extra->mID;
   const bool gles30 = spy->Version != nullptr && spy->Version->mGLES30;
@@ -68,11 +68,11 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
 
   int32_t activeUniforms = getProgramiv(GL_ACTIVE_UNIFORMS);
   for (uint32_t i = 0; i < activeUniforms; i++) {
-    std::shared_ptr<ProgramResource> res(new ProgramResource());
+    auto res = gapil::Ref<ProgramResource>::create(spy->arena());
 
     int32_t nameLength = 0;
     imports.glGetActiveUniform(program, i, buffer.size(), &nameLength, &res->mArraySize, &res->mType, buffer.data());
-    res->mName = std::string(buffer.data(), nameLength);
+    res->mName = gapil::String(spy->arena(), buffer.data(), nameLength);
 
     if (gles30) {
       res->mBlockIndex = getActiveUniformsiv(i, GL_UNIFORM_BLOCK_INDEX);
@@ -90,7 +90,7 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
         res->mLocations[j] = imports.glGetUniformLocation(program, buffer.data());
       }
     } else {
-      std::shared_ptr<ProgramResourceLayout> layout(new ProgramResourceLayout());
+      auto layout = gapil::Ref<ProgramResourceLayout>::create(spy->arena());
       layout->mOffset = getActiveUniformsiv(i, GL_UNIFORM_OFFSET);
       layout->mArrayStride = getActiveUniformsiv(i, GL_UNIFORM_ARRAY_STRIDE);
       layout->mMatrixStride = getActiveUniformsiv(i, GL_UNIFORM_MATRIX_STRIDE);
@@ -104,11 +104,11 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
   int32_t activeAttributes = 0;
   activeAttributes = getProgramiv(GL_ACTIVE_ATTRIBUTES);
   for (int32_t i = 0; i < activeAttributes; i++) {
-    std::shared_ptr<ProgramResource> res(new ProgramResource());
+    auto res = gapil::Ref<ProgramResource>::create(spy->arena());
 
     int32_t nameLength = 0;
     imports.glGetActiveAttrib(program, i, buffer.size(), &nameLength, &res->mArraySize, &res->mType, buffer.data());
-    res->mName = std::string(buffer.data(), nameLength);
+    res->mName = gapil::String(spy->arena(), buffer.data(), nameLength);
     res->mLocations[0] = imports.glGetAttribLocation(program, buffer.data());
 
     resources->mProgramInputs[i] = std::move(res);
@@ -124,16 +124,16 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
 
     activeUniformBlocks = getProgramiv(GL_ACTIVE_UNIFORM_BLOCKS);
     for (int32_t i = 0; i < activeUniformBlocks; i++) {
-      std::shared_ptr<ProgramResourceBlock> block(new ProgramResourceBlock());
+      auto block = gapil::Ref<ProgramResourceBlock>::create(spy->arena());
 
       int32_t nameLength = 0;
       imports.glGetActiveUniformBlockName(program, i, buffer.size(), &nameLength, buffer.data());
-      block->mName = std::string(buffer.data(), nameLength);
+      block->mName = gapil::String(spy->arena(), buffer.data(), nameLength);
 
       block->mBinding = getUniformBlockiv(i, GL_UNIFORM_BLOCK_BINDING);
       block->mDataSize = getUniformBlockiv(i, GL_UNIFORM_BLOCK_DATA_SIZE);
 
-      std::shared_ptr<ProgramResourceUses> usedBy(new ProgramResourceUses());
+      auto usedBy = gapil::Ref<ProgramResourceUses>::create(spy->arena());
       usedBy->mVertexShader = getUniformBlockiv(i, GL_UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER);
       usedBy->mFragmentShader = getUniformBlockiv(i, GL_UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
       block->mReferencedBy = std::move(usedBy);
@@ -152,10 +152,10 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
   const GLuint program = extra->mID;
   const auto& imports = spy->imports();
 
-  const bool hasGeometryShader       = p->mShaders.count(GL_GEOMETRY_SHADER) > 0;
-  const bool hasTessControlShader    = p->mShaders.count(GL_TESS_CONTROL_SHADER) > 0;
-  const bool hasTessEvaluationShader = p->mShaders.count(GL_TESS_EVALUATION_SHADER) > 0;
-  const bool hasComputeShader        = p->mShaders.count(GL_COMPUTE_SHADER) > 0;
+  const bool hasGeometryShader       = p->mShaders.contains(GL_GEOMETRY_SHADER);
+  const bool hasTessControlShader    = p->mShaders.contains(GL_TESS_CONTROL_SHADER);
+  const bool hasTessEvaluationShader = p->mShaders.contains(GL_TESS_EVALUATION_SHADER);
+  const bool hasComputeShader        = p->mShaders.contains(GL_COMPUTE_SHADER);
 
   std::vector<char> buffer;  // Temporary buffer for getting string.
   const int bufferSuffixSize = 16;  // Allocate a bit more extra space so we can append integer to name.
@@ -186,16 +186,16 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
     GAPID_ASSERT(getResourceiv(interface, i, GL_NAME_LENGTH) <= buffer.size());
     GLsizei length = 0;
     imports.glGetProgramResourceName(program, interface, i, buffer.size(), &length, buffer.data());
-    return std::string(buffer.data(), length);
+    return gapil::String(spy->arena(), buffer.data(), length);
   };
 
   // Helper method to get all locations of program resource
-  auto getResourceLocations = [&](uint32_t interface, const std::string& name, GLint arraySize) {
-    U32ToGLint locations;
+  auto getResourceLocations = [&](uint32_t interface, const gapil::String& name, GLint arraySize) {
+    U32ToGLint locations(spy->arena());
     locations[0] = imports.glGetProgramResourceLocation(program, interface, name.c_str());
     if (arraySize > 1) {
       // Copy the array base name (without the [0] suffix) to the temporary buffer
-      size_t baseLength = name.size();
+      size_t baseLength = name.length();
       if (baseLength >= 3 && strcmp(name.c_str() + baseLength - 3, "[0]") == 0) {
         baseLength -= 3; // Remove the "[0]" suffix of array
       }
@@ -212,7 +212,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 
   // Helper method to get all referenced-by properties
   auto getResourceUses = [&](uint32_t interface, GLuint i) {
-    std::shared_ptr<ProgramResourceUses> usedBy(new ProgramResourceUses());
+    auto usedBy = gapil::Ref<ProgramResourceUses>::create(spy->arena());
     usedBy->mVertexShader = getResourceiv(interface, i, GL_REFERENCED_BY_VERTEX_SHADER) != 0;
     if (hasTessControlShader) {
       usedBy->mTessControlShader = getResourceiv(interface, i, GL_REFERENCED_BY_TESS_CONTROL_SHADER) != 0;
@@ -230,13 +230,13 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 
   // Helper method to get all resource blocks of given type
   auto getResourceBlocks = [&](uint32_t interface) {
-    U32ToProgramResourceBlock__R blocks;
+    U32ToProgramResourceBlock__R blocks(spy->arena());
     GLint count = getInterfaceiv(interface, GL_ACTIVE_RESOURCES);
     if (interface != GL_ATOMIC_COUNTER_BUFFER) {
       buffer.resize(getInterfaceiv(interface, GL_MAX_NAME_LENGTH) + bufferSuffixSize);
     }
     for (int i = 0; i < count; i++) {
-      std::shared_ptr<ProgramResourceBlock> block(new ProgramResourceBlock());
+      auto block = gapil::Ref<ProgramResourceBlock>::create(spy->arena());
       if (interface != GL_ATOMIC_COUNTER_BUFFER) {
         block->mName = getResourceName(interface, i);
       }
@@ -258,11 +258,11 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
     const bool bv = (interface == GL_BUFFER_VARIABLE);
     const bool tfv = (interface == GL_TRANSFORM_FEEDBACK_VARYING);
 
-    U32ToProgramResource__R resources;
+    U32ToProgramResource__R resources(spy->arena());
     GLint count = getInterfaceiv(interface, GL_ACTIVE_RESOURCES);
     buffer.resize(getInterfaceiv(interface, GL_MAX_NAME_LENGTH) + bufferSuffixSize);
     for (int i = 0; i < count; i++) {
-      std::shared_ptr<ProgramResource> resource(new ProgramResource());
+      auto resource = gapil::Ref<ProgramResource>::create(spy->arena());
       resource->mName = getResourceName(interface, i);
       resource->mType = getResourceiv(interface, i, GL_TYPE);
       resource->mArraySize = getResourceiv(interface, i, GL_ARRAY_SIZE);
@@ -280,7 +280,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
         resource->mReferencedBy = getResourceUses(interface, i);
       }
       if (backedByBufferObject) {
-        std::shared_ptr<ProgramResourceLayout> layout(new ProgramResourceLayout());
+        auto layout = gapil::Ref<ProgramResourceLayout>::create(spy->arena());
         if (bv || u) {
           layout->mOffset = getResourceiv(interface, i, GL_OFFSET);
           layout->mArrayStride = getResourceiv(interface, i, GL_ARRAY_STRIDE);
@@ -312,7 +312,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 
   // Get all active resources.
   {
-    std::shared_ptr<ActiveProgramResources> resources(new ActiveProgramResources());
+    auto resources = gapil::Ref<ActiveProgramResources>::create(spy->arena());
     resources->mProgramInputs             = getResources(GL_PROGRAM_INPUT);
     resources->mProgramOutputs            = getResources(GL_PROGRAM_OUTPUT);
     resources->mUniforms                  = getResources(GL_UNIFORM);
@@ -326,7 +326,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 
   // Get global layout qualifiers from shaders.
   {
-    std::shared_ptr<ShaderLayoutQualifiers> layout(new ShaderLayoutQualifiers);
+    auto layout = gapil::Ref<ShaderLayoutQualifiers>::create(spy->arena());
 
     if (hasGeometryShader) {
       layout->mGeometryVerticesOut = getProgramiv(GL_GEOMETRY_VERTICES_OUT);
@@ -356,7 +356,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 }
 
 // GetLinkProgramExtra is called by glLinkProgram and glProgramBinary
-std::shared_ptr<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer, std::shared_ptr<Context> ctx, std::shared_ptr<Program> p, std::shared_ptr<BinaryExtra> binary) {
+gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Program> p, gapil::Ref<BinaryExtra> binary) {
   using namespace GLenum;
 
   // TODO: It is kind of evil to call glGetError, as it modifies the driver state.
@@ -372,7 +372,7 @@ std::shared_ptr<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* obs
     return value;
   };
 
-  std::shared_ptr<LinkProgramExtra> extra(new LinkProgramExtra());
+  auto extra = gapil::Ref<LinkProgramExtra>::create(arena());
   extra->mID = program;
   extra->mLinkStatus = getProgramiv(GL_LINK_STATUS);
 
@@ -381,7 +381,7 @@ std::shared_ptr<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* obs
   buffer.resize(getProgramiv(GL_INFO_LOG_LENGTH)); // Returned length includes null-terminator.
   GLint infoLogLength = 0; // Returned length by the command below excludes null-terminator.
   mImports.glGetProgramInfoLog(program, buffer.size(), &infoLogLength, buffer.data());
-  extra->mInfoLog = std::string(buffer.data(), infoLogLength);
+  extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
   // Get meta-data about the active resources generated by the compiler.
   if (extra->mLinkStatus) {
@@ -398,13 +398,13 @@ std::shared_ptr<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* obs
       auto& id = kvp.first;
       auto& u = kvp.second;
       if (u->mBlockIndex != -1) {
-        GAPID_ASSERT(resources->mUniformBlocks.count(u->mBlockIndex) == 1);
+        GAPID_ASSERT(resources->mUniformBlocks.contains(u->mBlockIndex));
         resources->mUniformBlocks[u->mBlockIndex]->mResources[id] = u;
       } else {
         resources->mDefaultUniformBlock[id] = u;
       }
       if (u->mAtomicCounterBufferIndex != -1) {
-        GAPID_ASSERT(resources->mAtomicCounterBuffers.count(u->mAtomicCounterBufferIndex) == 1);
+        GAPID_ASSERT(resources->mAtomicCounterBuffers.contains(u->mAtomicCounterBufferIndex));
         resources->mAtomicCounterBuffers[u->mAtomicCounterBufferIndex]->mResources[id] = u;
       }
     }
@@ -412,7 +412,7 @@ std::shared_ptr<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* obs
       auto& id = kvp.first;
       auto& u = kvp.second;
       if (u->mBlockIndex != -1) {
-        GAPID_ASSERT(resources->mShaderStorageBlocks.count(u->mBlockIndex) == 1);
+        GAPID_ASSERT(resources->mShaderStorageBlocks.contains(u->mBlockIndex));
         resources->mShaderStorageBlocks[u->mBlockIndex]->mResources[id] = u;
       }
     }
@@ -445,9 +445,9 @@ std::shared_ptr<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* obs
 }
 
 // GetCompileShaderExtra is called by glCompileShader and glShaderBinary
-std::shared_ptr<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(CallObserver* observer, std::shared_ptr<Context> ctx, std::shared_ptr<Shader> p, std::shared_ptr<BinaryExtra> binary) {
+gapil::Ref<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Shader> p, gapil::Ref<BinaryExtra> binary) {
   using namespace GLenum;
-  std::shared_ptr<CompileShaderExtra> extra(new CompileShaderExtra());
+  auto extra = gapil::Ref<CompileShaderExtra>::create(arena());
   GLuint shader = p->mID;
   extra->mID = shader;
 
@@ -459,7 +459,7 @@ std::shared_ptr<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(CallObserver*
   mImports.glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
   std::vector<char> buffer(logLength + 1);
   mImports.glGetShaderInfoLog(shader, buffer.size(), &logLength, buffer.data());
-  extra->mInfoLog = std::string(buffer.data(), logLength);
+  extra->mInfoLog = gapil::String(arena(), buffer.data(), logLength);
 
   // Make snapshot of the inputs.
   extra->mSource = p->mSource;
@@ -470,9 +470,9 @@ std::shared_ptr<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(CallObserver*
 }
 
 // GetValidateProgramExtra is called by glValidateProgram
-std::shared_ptr<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(CallObserver* observer, std::shared_ptr<Context> ctx, std::shared_ptr<Program> p) {
+gapil::Ref<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Program> p) {
   using namespace GLenum;
-  std::shared_ptr<ValidateProgramExtra> extra(new ValidateProgramExtra());
+  auto extra = gapil::Ref<ValidateProgramExtra>::create(arena());
   GLuint program = p->mID;
   extra->mID = program;
 
@@ -484,16 +484,16 @@ std::shared_ptr<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(CallObser
   mImports.glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
   std::vector<char> buffer(infoLogLength + 1);
   mImports.glGetProgramInfoLog(program, buffer.size(), &infoLogLength, buffer.data());
-  extra->mInfoLog = std::string(buffer.data(), infoLogLength);
+  extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
   observer->encodeAndDelete(extra->toProto());
   return std::move(extra);
 }
 
 // GetValidateProgramPipelineExtra is called by glValidateProgramPipeline
-std::shared_ptr<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelineExtra(CallObserver* observer, std::shared_ptr<Context> ctx, std::shared_ptr<Pipeline> p) {
+gapil::Ref<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelineExtra(CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Pipeline> p) {
   using namespace GLenum;
-  std::shared_ptr<ValidateProgramPipelineExtra> extra(new ValidateProgramPipelineExtra());
+  auto extra = gapil::Ref<ValidateProgramPipelineExtra>::create(arena());
   GLuint pipe = p->mID;
   extra->mID = pipe;
 
@@ -505,13 +505,13 @@ std::shared_ptr<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelin
   mImports.glGetProgramPipelineiv(pipe, GL_INFO_LOG_LENGTH, &infoLogLength);
   std::vector<char> buffer(infoLogLength + 1);
   mImports.glGetProgramPipelineInfoLog(pipe, buffer.size(), &infoLogLength, buffer.data());
-  extra->mInfoLog = std::string(buffer.data(), infoLogLength);
+  extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
   observer->encodeAndDelete(extra->toProto());
   return std::move(extra);
 }
 
-std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(CallObserver* observer, void* ptr) {
+gapil::Ref<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(CallObserver* observer, void* ptr) {
 #if TARGET_OS == GAPID_OS_ANDROID
     struct android_native_base_t {
         int magic;
@@ -545,14 +545,14 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
 
     bool use_layer_count = android_version_major >= 8; // Android O
 
-    std::shared_ptr<AndroidNativeBufferExtra> extra(new AndroidNativeBufferExtra(
+    auto extra = gapil::Ref<AndroidNativeBufferExtra>::create(arena(),
         buffer->width,
         buffer->height,
         buffer->stride,
         buffer->format,
         buffer->usage,
         use_layer_count ? buffer->layer_count : 0
-    ));
+    );
 
     GAPID_INFO("Created AndroidNativeBufferExtra: os_version:%i, width=%i, height=%i, layers=%" PRIx64,
         (int)android_version_major, buffer->width, buffer->height, (uint64_t)buffer->layer_count);
@@ -567,7 +567,7 @@ std::shared_ptr<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(C
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
 bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer, uint32_t* width, uint32_t* height) {
-    std::shared_ptr<Context> ctx = Contexts[observer->getCurrentThread()];
+    gapil::Ref<Context> ctx = Contexts[observer->getCurrentThread()];
     if (ctx == nullptr) {
       return false;
     }

@@ -41,10 +41,10 @@
   {{else if IsU64         $}}uint64_t
   {{else if IsS64         $}}int64_t
   {{else if IsEnum        $}}{{Template "C++.EnumType" $}}
-  {{else if IsReference   $}}std::shared_ptr<{{Template "C++.Type" $.To}}>
-  {{else if IsString      $}}std::string
+  {{else if IsReference   $}}gapil::Ref<{{Template "C++.Type" $.To}}>
+  {{else if IsString      $}}{{Template "C++.StringType" $}}
   {{else if IsStaticArray $}}core::StaticArray<{{Template "C++.Type" $.ValueType}}, {{$.Size}}>
-  {{else if IsSlice       $}}Slice<{{if IsVoid $.To}}uint8_t{{else}}{{Template "C++.Type" $.To}}{{end}}>
+  {{else if IsSlice       $}}gapil::Slice<{{if IsVoid $.To}}uint8_t{{else}}{{Template "C++.Type" $.To}}{{end}}>
   {{else if IsPointer     $}}{{Template "C++.Type" $.To}}*
   {{else if IsAny         $}}auto
   {{else}}{{Template "C++.TypeName" $}}
@@ -125,15 +125,41 @@
   {{else if IsF64         $}}0
   {{else if IsEnum        $}}0
   {{else if IsChar        $}}0
-  {{else if IsString      $}}""
-  {{else if IsStaticArray $}}{{Template "C++.Type" $}}{}
+  {{else if IsString      $}}gapil::String()
+  {{else if IsStaticArray $}}{{Template "C++.Type" $}}::create({{Template "C++.Null" $.ValueType}})
   {{else if IsPseudonym   $}}{{Template "C++.Null" $.To}}
-  {{else if IsClass       $}}{{Template "C++.Type" $}}()
+  {{else if IsClass       $}}{{Template "C++.Type" $}}({{Template "C++.Arena"}})
   {{else if IsSlice       $}}{{Template "C++.Type" $}}()
-  {{else if IsMap         $}}{{Template "C++.Type" $}}()
+  {{else if IsMap         $}}{{Template "C++.Type" $}}({{Template "C++.Arena"}})
   {{else if IsPointer     $}}nullptr
   {{else if IsReference   $}}{{Template "C++.Type" $}}()
   {{else}}{{Error "macro Null called with unsupported type: %s" $.Name}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the identifier of the memory arena which is by default 'arena'.
+  This can be overridden with the "C++.ArenaOverride" global.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.Arena"}}
+  {{$a := Global "C++.ArenaOverride"}}
+  {{if $a}}{{$a}}{{else}}arena{{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ default value for the provided AST type when used as an argument
+  or return value.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.NullArgument"}}
+  {{AssertType $ "Type"}}
+  {{     if IsString      $}}""
+  {{else}}{{Template "C++.Null" $}}
   {{end}}
 {{end}}
 
@@ -147,6 +173,20 @@
   {{AssertType $ "Enum"}}
 
   {{Template "C++.Type" $.NumberType}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ type for the specified String.
+  By default this emits std::string, but this behaviour can be overridden with
+  the global "C++.StringTypeOverride".
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.StringType"}}
+  {{if $override := Global "C++.StringTypeOverride"}}{{$override}}
+  {{else}}std::string
+  {{end}}
 {{end}}
 
 
@@ -224,8 +264,7 @@
     {{end}}
   {{else if IsPointer     $}}{{Template "C++.ParameterTypeNoSuffix" $.To}}*
   {{else if IsStaticArray $}}{{Template "C++.Type" $.ValueType}}
-  {{else if IsString      $}} {{if $func.Extern}} std::string {{else}} const char* {{end}}
-
+  {{else if IsString      $}}{{if $func.Extern}} std::string {{else}} const char* {{end}}
   {{else                   }}{{Template "C++.Type" $}}
   {{end}}
 {{end}}
@@ -240,7 +279,7 @@
   {{AssertType $ "Type" "Parameter"}}
 
   {{     if IsParameter $}}{{Template "C++.ConstQualifiedParameterType" (TypeOf $)}}
-  {{else if IsPointer   $}}{{if $.Const}}const {{end}}{{Template "C++.ParameterType" $.To}}*
+  {{else if IsPointer   $}}{{Template "C++.ParameterType" $.To}}{{if $.Const}} const{{end}}*
   {{else if IsString    $}}const char*
   {{else if IsAny       $}}{{Template "C++.ParameterTypeAny" $}}
   {{else                 }}{{Template "C++.Type" $}}
@@ -295,7 +334,7 @@
   {{AssertType $ "Function"}}
 
   {{$ty := TypeOf $.Return}}
-  {{if IsString $ty}}std::string{{else}}{{Macro "C++.ReturnType" $}}{{end}}
+  {{if IsString $ty}}gapil::String{{else}}{{Macro "C++.ReturnType" $}}{{end}}
 {{end}}
 
 
@@ -566,9 +605,9 @@
 {{define "C++.Read"}}
   {{     if IsBoolValue        $}}{{$}}
   {{else if IsNumericValue     $}}{{Template "C++.NumericValue" $}}
-  {{else if IsStringValue      $}}{{printf "%q" $}}
+  {{else if IsStringValue      $}}gapil::String({{Template "C++.Arena"}}, {{printf "%q" $}})
   {{else if IsMessageValue     $}}"{{$.AST.Name.Value}}"
-  {{else if IsParameter        $}}{{$.Name}}
+  {{else if IsParameter        $}}{{Template "C++.ReadParameter" $}}
   {{else if IsBinaryOp         $}}({{Template "C++.Read" $.LHS}}) {{$.Operator}} ({{Template "C++.Read" $.RHS}})
   {{else if IsUnaryOp          $}}{{$.Operator}}({{Template "C++.Read" $.Expression}})
   {{else if IsEnumEntry        $}}{{Template "C++.EnumName" $.Owner}}::{{Template "C++.EnumEntryName" $}}
@@ -582,11 +621,11 @@
   {{else if IsMember           $}}{{Template "C++.Dereference" $.Object}}{{Template "C++.Read" $.Field}}
   {{else if IsGlobal           $}}{{Template "C++.Global" $}}
   {{else if IsArrayIndex       $}}{{Template "C++.Read" $.Array}}[{{Template "C++.Read" $.Index}}]
-  {{else if IsMapIndex         $}}findOrZero({{Template "C++.Read" $.Map}}, {{Template "C++.Read" $.Index}})
-  {{else if IsMapContains      $}}{{Template "C++.Read" $.Map}}.count({{Template "C++.Read" $.Key}}) > 0
+  {{else if IsMapIndex         $}}{{Template "C++.Read" $.Map}}.findOrZero({{Template "C++.Read" $.Index}})
+  {{else if IsMapContains      $}}{{Template "C++.Read" $.Map}}.contains({{Template "C++.Read" $.Key}})
   {{else if IsLength           $}}{{Template "C++.Type" $.Type}}(({{Template "C++.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}}))
   {{else if IsNull             $}}{{Template "C++.Null" $.Type}}
-  {{else if IsNew              $}}{{$ty := Unpack $.Type}}std::shared_ptr<{{Template "C++.Type" $ty.To}}>(new {{Template "C++.Type" $ty.To}}())
+  {{else if IsNew              $}}gapil::Ref<{{Template "C++.Type" (Unpack $.Type).To}}>::create({{Template "C++.Arena"}})
   {{else if IsCreate           $}}{{Template "C++.Create" $}}
   {{else if IsArrayInitializer $}}{{Template "C++.ArrayInitializer" $}}
   {{else if IsClassInitializer $}}{{Template "C++.ClassInitializer" $}}
@@ -595,12 +634,27 @@
   {{else if IsSliceRange       $}}slice({{Template "C++.Read" $.Slice}}, {{Template "C++.Read" $.Range.LHS}}, {{Template "C++.Read" $.Range.RHS}})
   {{else if IsPointerRange     $}}slice({{Template "C++.Read" $.Pointer}}, {{Template "C++.Read" $.Range.LHS}}, {{Template "C++.Read" $.Range.RHS}})
   {{else if IsClone            $}}observer->clone({{Template "C++.Read" $.Slice}})
-  {{else if IsMake             $}}make<{{Template "C++.Type" ($.Type | Unpack).To}}>({{Template "C++.Read" $.Size}})
+  {{else if IsMake             $}}make<{{Template "C++.Type" ($.Type | Unpack).To}}>(observer, {{Template "C++.Read" $.Size}})
   {{else if IsSelect           $}}{{Template "C++.Select" $}}
   {{else if IsField            $}}m{{$.Name}}
   {{else if IsCallable         $}}
     &{{Title (Global "API")}}Spy::{{Template "C++.MethodName" $.Function}}
   {{else}}{{Error "macro C++.Read called with unsupported type: %T" $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ logic to read the given expression, skipping any outer casts.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.ReadParameter"}}
+  {{AssertType $ "Parameter"}}
+
+  {{$ty := TypeOf $}}
+  {{if IsString $ty}}gapil::String({{Template "C++.Arena"}}, {{$.Name}})
+  {{else           }}{{$.Name}}
   {{end}}
 {{end}}
 
@@ -625,8 +679,15 @@
 {{define "C++.ReadAsCallArgument"}}
   {{$wasCallArgument := Global "CallArgument"}}
   {{Global "IsCallArgument" true}}
-  {{Template "C++.Read" $}}
+  {{$arg := Macro "C++.Read" $}}
   {{Global "IsCallArgument" $wasCallArgument}}
+
+  {{$ty := TypeOf $}}
+  {{     if IsParameter $  }}{{$.Name}}
+  {{else if IsString    $ty}}({{$arg}}).c_str()
+  {{else}}{{$arg}}
+  {{end}}
+
 {{end}}
 
 
@@ -636,14 +697,14 @@
 -------------------------------------------------------------------------------
 */}}
 {{define "C++.NumericValue"}}
-  {{     if IsInt8Value    $}}{{$}}
-  {{else if IsUint8Value   $}}{{$}}U
-  {{else if IsInt16Value   $}}{{$}}
-  {{else if IsUint16Value  $}}{{$}}U
-  {{else if IsInt32Value   $}}{{$}}L
-  {{else if IsUint32Value  $}}{{$}}UL
-  {{else if IsInt64Value   $}}{{$}}LL
-  {{else if IsUint64Value  $}}{{$}}ULL
+  {{     if IsInt8Value    $}}static_cast<int8_t>({{$}})
+  {{else if IsUint8Value   $}}static_cast<uint8_t>({{$}})
+  {{else if IsInt16Value   $}}static_cast<int16_t>({{$}})
+  {{else if IsUint16Value  $}}static_cast<uint16_t>({{$}})
+  {{else if IsInt32Value   $}}static_cast<int32_t>({{$}})
+  {{else if IsUint32Value  $}}static_cast<uint32_t>({{$}})
+  {{else if IsInt64Value   $}}static_cast<int64_t>({{$}})
+  {{else if IsUint64Value  $}}static_cast<uint64_t>({{$}})
   {{else if IsFloat32Value $}}{{$s := print $}}{{$s}}{{if not (Contains "." $s)}}.{{end}}f
   {{else if IsFloat64Value $}}{{$}}
   {{else}}{{Error "macro C++.NumericValue called with unsupported type: %T" $}}
@@ -683,7 +744,7 @@
       {{if IsNil $v}}
         {{Template "C++.Null" (TypeOf (index $.Class.Fields $i))}}
       {{else}}
-        {{Template "C++.ReadAsCallArgument" $v}}
+        {{Template "C++.Read" $v}}
       {{end}}§
     {{end}}
   )
@@ -699,7 +760,7 @@
   {{AssertType $ "Create"}}
 
   {{$ty := Unpack $.Type}}
-  std::shared_ptr<{{Template "C++.Type" $ty.To}}>(new {{Template "C++.ClassInitializer" $.Initializer}})
+  gapil::Ref<{{Template "C++.Type" $ty.To}}>::create({{Template "C++.Arena"}}, {{Template "C++.ClassInitializer" $.Initializer}})
 {{end}}
 
 
@@ -733,25 +794,15 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits a comma-separated list of reads.
--------------------------------------------------------------------------------
-*/}}
-{{define "C++.ReadList"}}
-  {{range $i, $v := $}}
-    {{if $i}}, {{end}}{{Template "C++.Read" $v}}§
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits a comma-separated list of reads as call arguments.
 -------------------------------------------------------------------------------
 */}}
 {{define "C++.ReadListAsCallArgument"}}
   {{$wasCallArgument := Global "CallArgument"}}
   {{Global "IsCallArgument" true}}
-  {{Template "C++.ReadList" $}}
+  {{range $i, $v := $}}
+    {{if $i}}, {{end}}{{Template "C++.ReadAsCallArgument" $v}}§
+  {{end}}
   {{Global "IsCallArgument" $wasCallArgument}}
 {{end}}
 
@@ -766,7 +817,7 @@
 
   {{$src_ty := $.Object | TypeOf | Underlying | Unpack}}
   {{$dst_ty := $.Type | Underlying | Unpack}}
-  {{$src    := Macro "C++.Read" $.Object}}
+  {{$src    := Macro "C++.ReadAsCallArgument" $.Object}}
 
   {{/* A[] -> B[] */}}{{if and (IsSlice $src_ty) (IsSlice $dst_ty)}}
     {{$src}}.as<{{Template "C++.Type" $dst_ty.To}}>()
@@ -776,8 +827,8 @@
     observer->string({{$src}})
   {{/* char[] -> string */}}{{else if and (IsSlice $src_ty) (IsString $dst_ty)}}
     observer->string({{$src}})
-  {{/* string[] -> char[] */}}{{else if and (IsString $src_ty) (IsSlice $dst_ty)}}
-    slice({{$src}})
+  {{/* string -> char[] */}}{{else if and (IsString $src_ty) (IsSlice $dst_ty)}}
+    slice(observer, {{$src}})
   {{else}}
     ({{Template "C++.Type" $.Type}})({{$src}})
   {{end}}
@@ -796,8 +847,8 @@
   {{$ty := Unpack $.Type}}
   {{     if IsPseudonym   $ty}}{{Template "C++.ReadLength" "Type" $ty.To "Value" $.Value}}
   {{else if IsSlice       $ty}}{{Template "C++.Read" $.Value}}.count()
-  {{else if IsString      $ty}}{{Template "C++.Read" $.Value}}.size()
-  {{else if IsMap         $ty}}{{Template "C++.Read" $.Value}}.size()
+  {{else if IsString      $ty}}{{Template "C++.Read" $.Value}}.length()
+  {{else if IsMap         $ty}}{{Template "C++.Read" $.Value}}.count()
   {{else                     }}{{Error "macro C++.ReadLength called with unsupported type: %v" $.Type}}
   {{end}}
 {{end}}

@@ -41,6 +41,9 @@ public:
     // Constructs a new slice and pool sized to the given number of elements.
     inline Slice(T* base, uint64_t count);
 
+    // Creates and returns a new slice wrapping the given pool.
+    inline static Slice create(pool_t* pool);
+
     // Creates and returns a new slice and pool sized to the given number of
     // elements.
     inline static Slice create(context_t* ctx, uint64_t count);

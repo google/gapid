@@ -45,7 +45,7 @@
         if (uint32_t err = mImports.glGetError()) {                           \
             GAPID_WARNING("glGetString(" #name ") gave error 0x%x", err);     \
         } else {                                                              \
-            *out = const_cast<char*>(reinterpret_cast<const char*>(str));     \
+            *out = gapil::String(arena(), reinterpret_cast<const char*>(str));\
         }                                                                     \
     } while(false)
 
@@ -76,8 +76,8 @@ void GlesSpy::getContextConstants(Constants& out) {
         int32_t c;
         GET(glGetIntegerv, GL_NUM_EXTENSIONS, &c);
         for (int32_t i = 0; i < c; i++) {
-            out.mExtensions[i] =
-                reinterpret_cast<const char*>(mImports.glGetStringi(GL_EXTENSIONS, i));
+            auto ext = reinterpret_cast<const char*>(mImports.glGetStringi(GL_EXTENSIONS, i));
+            out.mExtensions[i] = gapil::String(arena(), ext);
             if (uint32_t err = mImports.glGetError()) {
                 GAPID_WARNING("glGetStringi(GL_EXTENSIONS, %d) gave error 0x%x", i, err);
             }
@@ -91,7 +91,7 @@ void GlesSpy::getContextConstants(Constants& out) {
         std::istringstream iss(extensions);
         std::string extension;
         while (std::getline(iss, extension, ' ')) {
-            out.mExtensions[out.mExtensions.size()] = extension;
+            out.mExtensions[out.mExtensions.count()] = gapil::String(arena(), extension.c_str());
         }
     }
     bool gles20 = true;

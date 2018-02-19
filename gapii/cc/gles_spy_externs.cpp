@@ -23,12 +23,12 @@ template<typename T> T inline min(T a, T b) { return (a < b) ? a : b; }
 template<typename T> T inline max(T a, T b) { return (a > b) ? a : b; }
 
 // Externs not implemented in GAPII.
-void GlesSpy::mapMemory(CallObserver*, Slice<uint8_t>) {}
-void GlesSpy::unmapMemory(CallObserver*, Slice<uint8_t>) {}
+void GlesSpy::mapMemory(CallObserver*, gapil::Slice<uint8_t>) {}
+void GlesSpy::unmapMemory(CallObserver*, gapil::Slice<uint8_t>) {}
 MsgID GlesSpy::newMsg(CallObserver*, uint32_t, const char*) { return 0; }
 void GlesSpy::addTag(CallObserver*, uint32_t, const char*) {}
 
-u32Limits GlesSpy::IndexLimits(CallObserver*, Slice<uint8_t> indices, int32_t sizeof_index) {
+u32Limits GlesSpy::IndexLimits(CallObserver*, gapil::Slice<uint8_t> indices, int32_t sizeof_index) {
     uint32_t low = ~(uint32_t)0;
     uint32_t high = 0;
     switch (sizeof_index) {
@@ -102,8 +102,8 @@ void GlesSpy::onGlError(CallObserver* observer, GLenum_Error err) {
     }
 }
 
-Slice<uint8_t> GlesSpy::ReadGPUTextureData(CallObserver* observer, std::shared_ptr<Texture> texture, GLint level, GLint layer) {
-    return Slice<uint8_t>(); // Not currently required for gapii.
+gapil::Slice<uint8_t> GlesSpy::ReadGPUTextureData(CallObserver* observer, gapil::Ref<Texture> texture, GLint level, GLint layer) {
+    return gapil::Slice<uint8_t>(); // Not currently required for gapii.
 }
 
 }

@@ -17,6 +17,9 @@
 {{/* ---- Includes ---- */}}
 {{Include "cpp_common.tmpl"}}
 
+{{/* ---- Overrides ---- */}}
+{{Global "C++.StringTypeOverride" "gapil::String"}}
+
 {{$filename := print (Global "API") "_types.cpp" }}
 {{$ | Macro "Types" | Reflow 4 | Write $filename}}
 
@@ -27,7 +30,6 @@
   #include "gapii/cc/{{Global "API"}}_types.h"
   #include "gapis/api/{{Global "API"}}/{{Global "API"}}_pb/api.pb.h"
 ¶
-  #include "gapii/cc/slice.h"
   #include "gapii/cc/to_proto.h"
 ¶
   #include "core/cc/scratch_allocator.h"
@@ -61,7 +63,7 @@
   {{$name := Macro "C++.Type" $}}
   {{if len $.Fields}}
 ¶
-    {{$name}}::{{$name}}()»»
+    {{$name}}::{{$name}}(core::Arena* arena)»»
       {{$a := ForEach $.Fields "DeclareDefaultInitializer" | JoinWith "\n, "}}
       {{if $a}}: {{$a}}{{end}}
       ««§•{}
