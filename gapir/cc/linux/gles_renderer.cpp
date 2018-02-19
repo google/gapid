@@ -136,10 +136,15 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         mOwnsDisplay = false;
     } else {
         mDisplay = XOpenDisplay(nullptr);
-        mOwnsDisplay = true;
+        if (mDisplay == nullptr) {
+            // Default display was not found. This may be because we're executing in
+            // the bazel sandbox. Attempt to connect to the 0'th display instead.
+            mDisplay = XOpenDisplay(":0");
+        }
         if (mDisplay == nullptr) {
             GAPID_FATAL("Unable to to open X display");
         }
+        mOwnsDisplay = true;
     }
 
     int major;

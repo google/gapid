@@ -108,10 +108,15 @@ bool createContext(void* platform_data) {
         return false;
     }
 
-    gContext.mDisplay = XOpenDisplay(0);
-    if (!gContext.mDisplay) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "XOpenDisplay returned nullptr");
+    gContext.mDisplay = XOpenDisplay(nullptr);
+    if (gContext.mDisplay == nullptr) {
+        // Default display was not found. This may be because we're executing in
+        // the bazel sandbox. Attempt to connect to the 0'th display instead.
+        gContext.mDisplay = XOpenDisplay(":0");
+    }
+    if (gContext.mDisplay == nullptr) {
+        snprintf(gContext.mError, sizeof(gContext.mError),
+                "XOpenDisplay returned nullptr");
         destroyContext();
         return false;
     }
