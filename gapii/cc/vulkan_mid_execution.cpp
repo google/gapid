@@ -16,6 +16,9 @@
 
 #include "gapii/cc/vulkan_exports.h"
 #include "gapii/cc/vulkan_spy.h"
+
+#include "gapis/memory/memory_pb/memory.pb.h"
+
 #include <algorithm>
 #include <deque>
 #include <map>
@@ -32,8 +35,8 @@
 namespace gapii {
 
 template <typename T>
-std::shared_ptr<QueueObject> GetQueue(const VkQueueToQueueObject__R &queues,
-                                      const std::shared_ptr<T> &obj) {
+gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R &queues,
+                                 const gapil::Ref<T> &obj) {
   if (obj->mLastBoundQueue) {
     return obj->mLastBoundQueue;
   }
@@ -88,7 +91,7 @@ uint32_t GetMemoryTypeIndexForStagingResources(
 bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
                   const U64ToVkSparseMemoryBind &bindings) {
   std::vector<uint64_t> resource_offsets;
-  resource_offsets.reserve(bindings.size());
+  resource_offsets.reserve(bindings.count());
   for (const auto &bi : bindings) {
     resource_offsets.push_back(bi.first);
   }
@@ -126,13 +129,14 @@ bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
 // hold incomming data from other GPU resources.
 class StagingBuffer {
 public:
-  StagingBuffer(VulkanImports::VkDeviceFunctions &device_functions,
+  StagingBuffer(core::Arena* arena,
+                VulkanImports::VkDeviceFunctions &device_functions,
                 VkDevice device,
                 const VkPhysicalDeviceMemoryProperties &memory_properties,
                 uint32_t size)
       : device_functions_(device_functions), device_(device), size_(size) {
 
-    VkBufferCreateInfo staging_buffer_create_info{};
+    VkBufferCreateInfo staging_buffer_create_info{arena};
     staging_buffer_create_info.msType =
         VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     staging_buffer_create_info.msize = size;
@@ -144,7 +148,7 @@ public:
     device_functions_.vkCreateBuffer(device_, &staging_buffer_create_info,
                                      nullptr, &staging_buffer_);
 
-    VkMemoryRequirements memory_requirements{};
+    VkMemoryRequirements memory_requirements{arena};
     device_functions_.vkGetBufferMemoryRequirements(device_, staging_buffer_,
                                                     &memory_requirements);
 
@@ -269,18 +273,26 @@ private:
   VkCommandBuffer command_buffer_;
 };
 
-void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
+void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
+                                  PackEncoder *group,
                                   std::unordered_set<uint32_t> *gpu_pools) {
   char empty = 0;
   auto empty_index = sendResource(VulkanSpy::kApiIndex, &empty, 0);
 
   auto create_virtual_pool = [&](uint64_t pool_size) {
-    auto pool = Pool::create_virtual(getPoolID(), pool_size);
+    auto arena = this->arena();
+    auto pool = arena->create<pool_t>();
+    pool->arena = reinterpret_cast<arena_t*>(arena);
+    pool->id = (*observer->next_pool_id)++;
+    pool->size = pool_size;
+    pool->ref_count = 1;
+    pool->buffer = nullptr;
+
     memory_pb::Observation observation;
     observation.set_base(0);
     observation.set_size(0);
     observation.set_resindex(empty_index);
-    observation.set_pool(pool->id());
+    observation.set_pool(pool->id);
     group->object(&observation);
     return pool;
   };
@@ -293,7 +305,6 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
     // Prep fences
     for (auto &fence : Fences) {
       if (fence.second->mDevice == device.second->mVulkanHandle) {
-        ;
         fence.second->mSignaled =
             (device_functions.vkGetFenceStatus(device.second->mVulkanHandle,
                                                fence.second->mVulkanHandle) ==
@@ -315,7 +326,7 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
         device.second->mVulkanHandle, &create_info, nullptr, &buffer);
 
     TransferBufferMemoryRequirements[device.second->mVulkanHandle] =
-        VkMemoryRequirements{};
+        VkMemoryRequirements{arena()};
     mImports.mVkDeviceFunctions[device.second->mVulkanHandle]
         .vkGetBufferMemoryRequirements(
             device.second->mVulkanHandle, buffer,
@@ -326,10 +337,9 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
 
   for (auto &mem : DeviceMemories) {
     auto &memory = mem.second;
-    memory->mData = Slice<uint8_t>(
-        nullptr, memory->mAllocationSize,
+    memory->mData = gapil::Slice<uint8_t>::create(
         create_virtual_pool(memory->mAllocationSize));
-    gpu_pools->insert(memory->mData.poolID());
+    gpu_pools->insert(memory->mData.pool_id());
     if (memory->mMappedLocation != nullptr) {
       if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
         trackMappedCoherentMemory(
@@ -349,7 +359,7 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
 
     const BufferInfo &buf_info = buf->mInfo;
     bool denseBound = buf->mMemory != nullptr;
-    bool sparseBound = (buf->mSparseMemoryBindings.size() > 0);
+    bool sparseBound = (buf->mSparseMemoryBindings.count() > 0);
     bool sparseBinding =
         (buf_info.mCreateFlags &
          VkBufferCreateFlagBits::VK_BUFFER_CREATE_SPARSE_BINDING_BIT) != 0;
@@ -394,7 +404,7 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
       }
       auto &deviceMemory = DeviceMemories[bind.mmemory];
       StagingBuffer stage(
-          device_functions, buf->mDevice,
+          arena(), device_functions, buf->mDevice,
           PhysicalDevices[Devices[buf->mDevice]->mPhysicalDevice]
               ->mMemoryProperties,
           bind.msize);
@@ -433,7 +443,7 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
       observation.set_base(bind.mmemoryOffset);
       observation.set_size(bind.msize);
       observation.set_resindex(resIndex);
-      observation.set_pool(deviceMemory->mData.poolID());
+      observation.set_pool(deviceMemory->mData.pool_id());
       group->object(&observation);
     }
   }
@@ -523,10 +533,9 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
         auto &level = lev.second;
         byte_size_and_extent e =
             level_size(image_info.mExtent, image_info.mFormat, lev.first);
-        level->mData =
-            Slice<uint8_t>(nullptr, e.level_size,
-                           create_virtual_pool(e.level_size));
-        gpu_pools->insert(level->mData.poolID());
+        level->mData = gapil::Slice<uint8_t>::create(
+            create_virtual_pool(e.level_size));
+        gpu_pools->insert(level->mData.pool_id());
       }
     }
 
@@ -549,8 +558,8 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
     }
 
     bool denseBound = img->mBoundMemory != nullptr;
-    bool sparseBound = (img->mOpaqueSparseMemoryBindings.size() > 0) ||
-                       (img->mSparseImageMemoryBindings.size() > 0);
+    bool sparseBound = (img->mOpaqueSparseMemoryBindings.count() > 0) ||
+                       (img->mSparseImageMemoryBindings.count() > 0);
     bool sparseBinding =
         (image_info.mFlags &
          VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_BINDING_BIT) != 0;
@@ -693,7 +702,7 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
       }
 
       StagingBuffer stage(
-          device_functions, img->mDevice,
+          arena(), device_functions, img->mDevice,
           PhysicalDevices[Devices[img->mDevice]->mPhysicalDevice]
               ->mMemoryProperties,
           offset);
@@ -791,7 +800,7 @@ void VulkanSpy::prepareGPUBuffers(PackEncoder *group,
           observation.set_size(e.level_size);
           observation.set_resindex(resIndex);
           observation.set_pool(
-              img->mLayers[array_layer]->mLevels[mip_level]->mData.poolID());
+              img->mLayers[array_layer]->mLevels[mip_level]->mData.pool_id());
           group->object(&observation);
         }
         new_offset = next_offset;

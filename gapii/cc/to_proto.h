@@ -17,8 +17,8 @@
 #ifndef GAPII_TO_PROTO_H
 #define GAPII_TO_PROTO_H
 
-#include "gapii/cc/shared_map.h"
-#include "gapii/cc/slice.h"
+#include "gapil/runtime/cc/slice.h"
+
 #include "gapis/memory/memory_pb/memory.pb.h"
 
 #include "core/cc/static_array.h"
@@ -42,18 +42,17 @@ class ToProtoContext {
 
     // This method is called for all serialized slices.
     template<typename T>
-    void SeenSlice(const Slice<T>& s) {
-      uint8_t* base = reinterpret_cast<uint8_t*>(s.begin());
-      mSeenSlices.push_back(Slice<uint8_t>(base, s.size(), s.pool()));
+    void SeenSlice(const gapil::Slice<T>& s) {
+      mSeenSlices.push_back(s.template as<uint8_t>());
     }
 
     // Return a vector of all serialized slices within this context.
     // Note that slices are recorded as byte-slices (the original type is discarded).
-    const std::vector<Slice<uint8_t>>& SeenSlices() { return mSeenSlices; }
+    const std::vector<gapil::Slice<uint8_t>>& SeenSlices() { return mSeenSlices; }
 
   private:
     std::unordered_map<const void*, uint64_t> mSeenReferences;
-    std::vector<Slice<uint8_t>> mSeenSlices;
+    std::vector<gapil::Slice<uint8_t>> mSeenSlices;
 };
 
 // Default converter for any type which is not specialized below.
@@ -82,14 +81,15 @@ struct ProtoConverter<Out, void*> {
 
 // Converts Slice to proto
 template<typename T>
-struct ProtoConverter<memory_pb::Slice, Slice<T>> {
-    static inline void convert(memory_pb::Slice* out, const Slice<T>& in, ToProtoContext& ctx) {
+struct ProtoConverter<memory_pb::Slice, gapil::Slice<T>> {
+    static inline void convert(memory_pb::Slice* out, const gapil::Slice<T>& in, ToProtoContext& ctx) {
         ctx.SeenSlice(in);
+
         auto base = reinterpret_cast<uintptr_t>(in.begin());
-        if (!in.isApplicationPool()) {
-          base -= reinterpret_cast<uintptr_t>(in.pool()->base());
+        if (auto p = in.pool()) {
+          base -= reinterpret_cast<uintptr_t>(p->buffer);
+          out->set_pool(p->id);
         }
-        out->set_pool(in.poolID());
         out->set_root(base);
         out->set_base(base);
         out->set_count(in.count());
@@ -116,14 +116,25 @@ struct ProtoConverter<Out, core::StaticArray<In, N>> {
     }
 };
 
-// Converts SharedMap to proto
+// Converts gapil::String to std::string
+template <>
+struct ProtoConverter<std::string, gapil::String> {
+    static inline void convert(std::string* out, const gapil::String& in, ToProtoContext& ctx) {
+        *out = in.c_str();
+    }
+};
+
+// Converts gapil::Map to proto
 template <typename Out, typename K, typename V>
-struct ProtoConverter<Out, SharedMap<K, V>> {
-    static inline void convert(Out* out, const SharedMap<K, V>& in, ToProtoContext& ctx) {
-        auto ref = ctx.GetReferenceID(in.get());
+struct ProtoConverter<Out, gapil::Map<K, V>> {
+    static inline void convert(Out* out, const gapil::Map<K, V>& in, ToProtoContext& ctx) {
+        auto ref = ctx.GetReferenceID(in.instance_ptr());
         out->set_referenceid(ref.first);
         if (ref.second) {
-            std::map<K, V> sorted(in.begin(), in.end());
+            std::map<K, V> sorted;
+            for (auto it : in) {
+                sorted.emplace(std::make_pair(it.first, it.second));
+            }
             auto keys = out->mutable_keys();
             auto values = out->mutable_values();
             keys->Reserve(sorted.size());
@@ -153,8 +164,8 @@ struct ProtoConverter<Out, SharedMap<K, V>> {
 
 // Converts reference to proto
 template <typename Out, typename T>
-struct ProtoConverter<Out, std::shared_ptr<T>> {
-    static inline void convert(Out* out, const std::shared_ptr<T>& in, ToProtoContext& ctx) {
+struct ProtoConverter<Out, gapil::Ref<T>> {
+    static inline void convert(Out* out, const gapil::Ref<T>& in, ToProtoContext& ctx) {
         auto ref = ctx.GetReferenceID(in.get());
         out->set_referenceid(ref.first);
         if (ref.second) {
@@ -170,6 +181,10 @@ inline void toProto(Out* out, const In& in, ToProtoContext& ctx) {
 
 inline const std::string& toProtoString(const std::string& str) {
     return str;
+}
+
+inline const char* toProtoString(const gapil::String& str) {
+    return str.c_str();
 }
 
 inline const char* toProtoString(const char* str) {

@@ -18,6 +18,8 @@
 #ifndef GAPII_GVR_ABI_TYPES_H
 #define GAPII_GVR_ABI_TYPES_H
 
+#include <cstring>
+
 namespace gapii {
 
 struct gvr_mat4_abi : core::CStaticArray<float, 16> {};

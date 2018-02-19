@@ -29,12 +29,12 @@ struct destroyer {
 
 bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
-    std::shared_ptr<ImageObject> image;
+    gapil::Ref<ImageObject> image;
     if (LastSubmission == LastSubmissionType::SUBMIT) {
         if (!LastBoundQueue) {
             return false;
         }
-        if (!LastDrawInfos.count(LastBoundQueue->mVulkanHandle)) {
+        if (!LastDrawInfos.contains(LastBoundQueue->mVulkanHandle)) {
             return false;
         }
         auto& lastDrawInfo = *LastDrawInfos[LastBoundQueue->mVulkanHandle];
@@ -45,7 +45,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
             return false;
         }
         if (lastDrawInfo.mLastSubpass >=
-            lastDrawInfo.mRenderPass->mSubpassDescriptions.size()) {
+            lastDrawInfo.mRenderPass->mSubpassDescriptions.count()) {
             return false;
         }
         if (lastDrawInfo.mRenderPass->mSubpassDescriptions[lastDrawInfo.mLastSubpass].mColorAttachments.empty()) {
@@ -53,7 +53,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         }
 
         uint32_t color_attachment_index = lastDrawInfo.mRenderPass->mSubpassDescriptions[lastDrawInfo.mLastSubpass].mColorAttachments[0].mAttachment;
-        if (lastDrawInfo.mFramebuffer->mImageAttachments.count(color_attachment_index) == 0) {
+        if (!lastDrawInfo.mFramebuffer->mImageAttachments.contains(color_attachment_index)) {
             return false;
         }
 
@@ -80,7 +80,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
     uint32_t queue_family = image->mLastBoundQueue->mFamily;
     auto& instance_fn = mImports.mVkInstanceFunctions[instance];
 
-    VkPhysicalDeviceMemoryProperties memory_properties;
+    VkPhysicalDeviceMemoryProperties memory_properties(arena());
     instance_fn.vkGetPhysicalDeviceMemoryProperties(physical_device,
         &memory_properties);
 
@@ -118,7 +118,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
     });
 
 
-    VkMemoryRequirements image_reqs;
+    VkMemoryRequirements image_reqs(arena());
     fn.vkGetImageMemoryRequirements(device, resolve_image, &image_reqs);
 
     uint32_t image_memory_req = 0xFFFFFFFF;
@@ -168,7 +168,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         fn.vkDestroyBuffer(device, buffer, nullptr);
     });
 
-    VkMemoryRequirements buffer_reqs;
+    VkMemoryRequirements buffer_reqs(arena());
     fn.vkGetBufferMemoryRequirements(device, buffer, &buffer_reqs);
 
     uint32_t buffer_memory_req = 0;
@@ -267,9 +267,9 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         nullptr, 0, nullptr, 2, barriers);
     VkImageBlit blit = {
         {VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
-        {{0, 0, 0}, {static_cast<int32_t>(*w), static_cast<int32_t>(*h), 1}},
+        core::StaticArray<VkOffset3D,2>::create({{0, 0, 0}, {static_cast<int32_t>(*w), static_cast<int32_t>(*h), 1}}),
         {VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
-        {{0, 0, 0}, {static_cast<int32_t>(*w), static_cast<int32_t>(*h), 1}}
+        core::StaticArray<VkOffset3D,2>::create({{0, 0, 0}, {static_cast<int32_t>(*w), static_cast<int32_t>(*h), 1}})
     };
     fn.vkCmdBlitImage(command_buffer, image->mVulkanHandle,
         VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -360,10 +360,10 @@ void VulkanSpy::enterSubcontext(CallObserver*) {}
 void VulkanSpy::leaveSubcontext(CallObserver*) {}
 void VulkanSpy::nextSubcontext(CallObserver*) {}
 void VulkanSpy::resetSubcontext(CallObserver*) {}
-void VulkanSpy::onPreSubcommand(CallObserver*, std::shared_ptr<CommandReference>) {}
-void VulkanSpy::onPreProcessCommand(CallObserver*, std::shared_ptr<CommandReference>) {}
-void VulkanSpy::onPostSubcommand(CallObserver*, std::shared_ptr<CommandReference>) {}
-void VulkanSpy::onDeferSubcommand(CallObserver*, std::shared_ptr<CommandReference>) {}
+void VulkanSpy::onPreSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
+void VulkanSpy::onPreProcessCommand(CallObserver*, gapil::Ref<CommandReference>) {}
+void VulkanSpy::onPostSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
+void VulkanSpy::onDeferSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
 void VulkanSpy::onCommandAdded(CallObserver*, VkCommandBuffer) {}
-void VulkanSpy::postBindSparse(CallObserver*, std::shared_ptr<QueuedSparseBinds>) {}
+void VulkanSpy::postBindSparse(CallObserver*, gapil::Ref<QueuedSparseBinds>) {}
 }

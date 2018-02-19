@@ -15,7 +15,6 @@
  */
 
 #include "spy_base.h"
-#include "to_proto.h"
 
 #include "core/cc/log.h"
 
@@ -36,7 +35,6 @@ SpyBase::SpyBase()
     , mDeviceInstance(nullptr)
     , mCurrentABI(nullptr)
     , mResources{{core::Id{{0}}, 0}}
-    , mNextPoolID(1)
     , mWatchedApis(0xFFFFFFFF)
 #if COHERENT_TRACKING_ENABLED
     , mMemoryTracker()

@@ -20,7 +20,6 @@
 #include "abort_exception.h"
 #include "call_observer.h"
 #include "pack_encoder.h"
-#include "slice.h"
 
 #include "core/cc/assert.h"
 #include "core/cc/encoder.h"
@@ -31,6 +30,8 @@
 #include "core/cc/thread_local.h"
 #include "core/cc/vector.h"
 
+#include "core/memory/arena/cc/arena.h"
+
 #include "core/os/device/deviceinfo/cc/query.h"
 
 #include "gapis/capture/capture.pb.h"
@@ -38,6 +39,8 @@
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID)
 #include "core/memory_tracker/cc/memory_tracker.h"
 #endif // TARGET_OS
+
+#include "gapil/runtime/cc/slice.h"
 
 #include <stdint.h>
 
@@ -49,6 +52,9 @@
 
 namespace gapii {
 const uint8_t kAllAPIs = 0xFF;
+
+// Forward declaration
+class PackEncoder;
 
 class SpyBase {
 public:
@@ -70,8 +76,11 @@ public:
     // ABI info then return true, if the encoder is ready. Otherwise returns false.
     bool writeHeader();
 
-    // returns new unique pool ID.
-    inline uint32_t getPoolID() { return mNextPoolID.fetch_add(1); }
+    // returns the spy's memory arena.
+    inline core::Arena* arena() { return &mArena; }
+
+    // returns a handle to the identifier of the next pool to be allocated.
+    inline uint32_t& next_pool_id() { return mNextPoolId; }
 
     // Returns the transimission encoder.
     // TODO(qining): To support multithreaded uses, mutex is required to manage
@@ -111,24 +120,26 @@ protected:
 
     // make constructs and returns a Slice backed by a new pool.
     template<typename T>
-    inline Slice<T> make(uint64_t count);
+    inline gapil::Slice<T> make(CallObserver* cb, uint64_t count);
 
     // slice returns a slice wrapping the application-pool pointer src, starting at elements s
     // ending at one element before e.
     template<typename T>
-    inline Slice<T> slice(T* src, uint64_t s, uint64_t e) const;
+    inline gapil::Slice<typename std::remove_const<T>::type>
+    slice(T* src, uint64_t s, uint64_t e) const;
 
     // slice returns a slice wrapping the application-pool pointer src, starting at s bytes
     // from src and ending at one byte before e.
-    inline Slice<uint8_t> slice(void* src, uint64_t s, uint64_t e) const;
+    inline gapil::Slice<uint8_t> slice(const void* src, uint64_t s, uint64_t e) const;
+    inline gapil::Slice<uint8_t> slice(void* src, uint64_t s, uint64_t e) const;
 
-    // slice returns a Slice<char>, backed by a new pool, holding a copy of the string src.
+    // slice returns a gapil::Slice<char>, backed by a new pool, holding a copy of the string src.
     // src is observed as a read operation.
-    inline Slice<char> slice(const std::string& src);
+    inline gapil::Slice<char> slice(CallObserver* cb, const std::string& src);
 
     // slice returns a sub-slice of src, starting at elements s and ending at one element before e.
     template<typename T>
-    inline Slice<T> slice(const Slice<T>& src, uint64_t s, uint64_t e) const;
+    inline gapil::Slice<T> slice(const gapil::Slice<T>& src, uint64_t s, uint64_t e) const;
 
     // abort signals that the atom should stop execution immediately.
     void abort();
@@ -147,6 +158,7 @@ protected:
 
     // onPostEndOfFrame is after any command annotated with @frame_end
     inline virtual void onPostEndOfFrame() {}
+
     // onPostFence is called immediately after the driver call.
     inline virtual void onPostFence(CallObserver* observer) {}
 
@@ -170,7 +182,13 @@ protected:
 #endif // TARGET_OS
 
 private:
-    template <class T> bool shouldObserve(const Slice<T>& slice) const;
+    template <class T> bool shouldObserve(const gapil::Slice<T>& slice) const;
+
+    // Memory arena.
+    core::Arena mArena;
+
+    // The identifier of the next pool to be allocated.
+    uint32_t mNextPoolId;
 
     // The stream encoder that does nothing.
     PackEncoder::SPtr mNullEncoder;
@@ -188,9 +206,6 @@ private:
 
     // True if we should observe the application pool.
     bool mObserveApplicationPool;
-
-    // Holds the next free pool ID.
-    std::atomic<int> mNextPoolID;
 
     // True if we should not be currently tracing, false if we should be tracing.
     bool mIsSuspended;
@@ -211,20 +226,9 @@ private:
     bool mIsRecordingState;
 };
 
-// finds a key in the map and returns the value. If no value is present
-// returns the zero for that type.
-template<typename Map>
-const typename Map::mapped_type findOrZero(const Map& m, const typename Map::key_type& key) {
-  auto it = m.find(key);
-  if (it == m.end()) {
-    return typename Map::mapped_type();
-  }
-  return it->second;
-}
-
 template <class T>
-bool SpyBase::shouldObserve(const Slice<T>& slice) const {
-    return mObserveApplicationPool && slice.isApplicationPool();
+bool SpyBase::shouldObserve(const gapil::Slice<T>& slice) const {
+    return mObserveApplicationPool && slice.is_app_pool();
 }
 
 inline void SpyBase::setObserveApplicationPool(bool observeApplicationPool) {
@@ -232,23 +236,31 @@ inline void SpyBase::setObserveApplicationPool(bool observeApplicationPool) {
 }
 
 template<typename T>
-inline Slice<T> SpyBase::make(uint64_t count) {
-    auto pool = Pool::create(getPoolID(), count * sizeof(T));
-    return Slice<T>(reinterpret_cast<T*>(pool->base()), count, pool);
+inline gapil::Slice<T> SpyBase::make(CallObserver* cb, uint64_t count) {
+    return gapil::Slice<T>::create(cb, count);
 }
 
 template<typename T>
-inline Slice<T> SpyBase::slice(T* src, uint64_t s, uint64_t e) const {
-    // TODO: Find the pool containing src
-    return Slice<T>(src+s, e-s, std::shared_ptr<Pool>());
+inline gapil::Slice<typename std::remove_const<T>::type>
+SpyBase::slice(T* src, uint64_t s, uint64_t e) const {
+    // We don't want to have implement a ConstSlice...
+    typedef typename std::remove_const<T>::type R;
+    auto ptr = const_cast<R*>(src);
+    return gapil::Slice<R>(ptr+s, e-s);
 }
 
-inline Slice<uint8_t> SpyBase::slice(void* src, uint64_t s, uint64_t e) const {
-    return slice(reinterpret_cast<uint8_t*>(src), s, e);
+inline gapil::Slice<uint8_t> SpyBase::slice(const void* src, uint64_t s, uint64_t e) const {
+    auto ptr = reinterpret_cast<uint8_t*>(const_cast<void*>(src));
+    return slice<uint8_t>(ptr, s, e);
 }
 
-inline Slice<char> SpyBase::slice(const std::string& src) {
-    Slice<char> dst = make<char>(src.length());
+inline gapil::Slice<uint8_t> SpyBase::slice(void* src, uint64_t s, uint64_t e) const {
+    auto ptr = reinterpret_cast<uint8_t*>(const_cast<void*>(src));
+    return slice<uint8_t>(ptr, s, e);
+}
+
+inline gapil::Slice<char> SpyBase::slice(CallObserver* cb, const std::string& src) {
+    gapil::Slice<char> dst = make<char>(cb, src.length());
     for (uint64_t i = 0; i < src.length(); i++) {
         dst[i] = src[i];
     }
@@ -256,7 +268,7 @@ inline Slice<char> SpyBase::slice(const std::string& src) {
 }
 
 template<typename T>
-inline Slice<T> SpyBase::slice(const Slice<T>& src, uint64_t s, uint64_t e) const {
+inline gapil::Slice<T> SpyBase::slice(const gapil::Slice<T>& src, uint64_t s, uint64_t e) const {
     return src(s, e);
 }
 

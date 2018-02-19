@@ -51,10 +51,6 @@ static gapil_get_code_location* code_locator = &default_code_locator;
 
 extern "C" {
 
-// Declared externally
-void* gapil_remap_pointer(context* ctx, uint64_t pointer, uint64_t length);
-void  gapil_get_code_location(context* ctx, char** file, uint32_t* line);
-
 void gapil_init_context(context* ctx) {
     auto arena = new Arena;
     ctx->id = 0;
@@ -177,7 +173,7 @@ void gapil_copy_slice(context* ctx, slice* dst, slice* src) {
     memcpy(dst->base, src->base, size);
 }
 
-void gapil_pointer_to_slice(context* ctx, uint64_t ptr, uint64_t offset, uint64_t size, slice* out) {
+void gapil_pointer_to_slice(context* ctx, uintptr_t ptr, uint64_t offset, uint64_t size, slice* out) {
     DEBUG_PRINT("gapil_pointer_to_slice(ptr: 0x%" PRIx64 ", offset: 0x%" PRIx64 ", size: 0x%" PRIx64 ")",
             ptr, offset, size);
 
@@ -191,7 +187,7 @@ void gapil_pointer_to_slice(context* ctx, uint64_t ptr, uint64_t offset, uint64_
     out->size = size;
 }
 
-string* gapil_pointer_to_string(context* ctx, uint64_t ptr) {
+string* gapil_pointer_to_string(context* ctx, uintptr_t ptr) {
     DEBUG_PRINT("gapil_pointer_to_string(ptr: 0x%" PRIx64 ")", ptr);
 
     auto data = reinterpret_cast<char*>(pointer_remapper(ctx, ptr, 1));

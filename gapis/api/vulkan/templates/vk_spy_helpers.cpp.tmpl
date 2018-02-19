@@ -198,7 +198,7 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(VkPhysicalD
             return next_layer_result;
         }
     }
-    std::vector<VkExtensionProperties> properties(next_layer_count, VkExtensionProperties{});
+    std::vector<VkExtensionProperties> properties(next_layer_count, VkExtensionProperties{arena()});
     //properties.reserve(next_layer_count+1);
     if (next_layer_enumerate_extensions) {
         next_layer_result = next_layer_enumerate_extensions(physicalDevice, pLayerName, &next_layer_count, properties.data());
@@ -428,7 +428,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(VkPhysicalDevice physicalDevice, 
 
             VkInstance instance = PhysicalDevices[physicalDevice]->mInstance;
             auto& instance_functions = mImports.mVkInstanceFunctions[instance];
-            VkPhysicalDeviceMemoryProperties props;
+            VkPhysicalDeviceMemoryProperties props(arena());
             instance_functions.vkGetPhysicalDeviceMemoryProperties(physicalDevice, &props);
             uint32_t coherent_bit = static_cast<uint32_t>(-1);
             for (uint32_t i = 0 ; i < props.mmemoryTypeCount; ++i) {
@@ -544,8 +544,8 @@ bool VulkanSpy::hasDynamicProperty(CallObserver* observer, VkPipelineDynamicStat
 }
 
 // Externs not implemented in GAPII.
-void VulkanSpy::mapMemory(CallObserver*, void**, Slice<uint8_t>) {}
-void VulkanSpy::unmapMemory(CallObserver*, Slice<uint8_t>) {}
+void VulkanSpy::mapMemory(CallObserver*, void**, gapil::Slice<uint8_t>) {}
+void VulkanSpy::unmapMemory(CallObserver*, gapil::Slice<uint8_t>) {}
 
 void VulkanSpy::resetCmd(CallObserver* observer, VkCommandBuffer cmdBuf) {
 }
@@ -596,7 +596,7 @@ void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start, size_
 
 uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(VkDevice device, VkMemoryAllocateInfo* pAllocateInfo, VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
     uint32_t r = mImports.mVkDeviceFunctions[device].vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
-    std::shared_ptr<PhysicalDeviceObject> l_physical_device = PhysicalDevices[Devices[device]->mPhysicalDevice];
+    auto l_physical_device = PhysicalDevices[Devices[device]->mPhysicalDevice];
     if (0 != (l_physical_device->mMemoryProperties.mmemoryTypes[pAllocateInfo->mmemoryTypeIndex].mpropertyFlags &
         ((uint32_t)(VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))) {
         // This is host-coherent memory. Some drivers actually allocate these pages on-demand.
@@ -629,10 +629,12 @@ void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
 uint32_t VulkanSpy::CreateImageAndGetMemoryRequirements(
     VkDevice device, VkImageCreateInfo* pCreateInfo,
     VkAllocationCallbacks* pAllocator, VkImage* pImage) {
+
+  core::Arena arena;
   uint32_t result =
       gapii::vkCreateImage(device, pCreateInfo, pAllocator, pImage);
   if (result == gapii::VkResult::VK_SUCCESS) {
-    gapii::VkMemoryRequirements mem_req{};
+    gapii::VkMemoryRequirements mem_req{&arena};
     gapii::vkGetImageMemoryRequirements(device, *pImage, &mem_req);
     if ((pCreateInfo->mflags &
          VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_BINDING_BIT) != 0) {
@@ -640,7 +642,7 @@ uint32_t VulkanSpy::CreateImageAndGetMemoryRequirements(
       gapii::vkGetImageSparseMemoryRequirements(device, *pImage,
                                                 &sparse_mem_req_count, nullptr);
       std::vector<VkSparseImageMemoryRequirements> sparse_mem_reqs(
-          sparse_mem_req_count, VkSparseImageMemoryRequirements{});
+          sparse_mem_req_count, VkSparseImageMemoryRequirements{&arena});
       gapii::vkGetImageSparseMemoryRequirements(
           device, *pImage, &sparse_mem_req_count, sparse_mem_reqs.data());
     }
@@ -651,10 +653,12 @@ uint32_t VulkanSpy::CreateImageAndGetMemoryRequirements(
 uint32_t VulkanSpy::CreateBufferAndGetMemoryRequirements(
     VkDevice device, VkBufferCreateInfo* pCreateInfo,
     VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
+
+  core::Arena arena;
   uint32_t result =
       gapii::vkCreateBuffer(device, pCreateInfo, pAllocator, pBuffer);
   if (result == gapii::VkResult::VK_SUCCESS) {
-    gapii::VkMemoryRequirements mem_req{};
+    gapii::VkMemoryRequirements mem_req{&arena};
     gapii::vkGetBufferMemoryRequirements(device, *pBuffer, &mem_req);
   }
   return result;
@@ -663,6 +667,8 @@ uint32_t VulkanSpy::CreateBufferAndGetMemoryRequirements(
 uint32_t VulkanSpy::EnumeratePhysicalDevicesAndCacheProperties(
     VkInstance instance, uint32_t* pPhysicalDeviceCount,
     VkPhysicalDevice* pPhysicalDevices) {
+
+  core::Arena arena;
   uint32_t result = gapii::vkEnumeratePhysicalDevices(
       instance, pPhysicalDeviceCount, pPhysicalDevices);
   if ((result == gapii::VkResult::VK_SUCCESS) &&
@@ -671,13 +677,13 @@ uint32_t VulkanSpy::EnumeratePhysicalDevicesAndCacheProperties(
     std::vector<VkPhysicalDevice> devs(pPhysicalDevices,
                                        pPhysicalDevices + dev_count);
     for (VkPhysicalDevice dev : devs) {
-      gapii::VkPhysicalDeviceProperties dev_prop{};
+      gapii::VkPhysicalDeviceProperties dev_prop{&arena};
       gapii::vkGetPhysicalDeviceProperties(dev, &dev_prop);
       uint32_t queue_family_count = 0;
       gapii::vkGetPhysicalDeviceQueueFamilyProperties(dev, &queue_family_count,
                                                       nullptr);
       std::vector<VkQueueFamilyProperties> queue_family_props(
-          queue_family_count, VkQueueFamilyProperties{});
+          queue_family_count, VkQueueFamilyProperties{&arena});
       gapii::vkGetPhysicalDeviceQueueFamilyProperties(
           dev, &queue_family_count, queue_family_props.data());
     }
