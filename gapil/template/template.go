@@ -16,13 +16,11 @@ package template
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 	"runtime/debug"
-	"strings"
 	"text/template"
 	"unicode/utf8"
 
@@ -31,45 +29,6 @@ import (
 )
 
 const maxErrors = 10
-
-var (
-	inputs  []string
-	outputs []string
-)
-
-func InputDep(name string) {
-	path, _ := filepath.Abs(name)
-	inputs = append(inputs, path)
-}
-
-func outputDep(name string) {
-	path, _ := filepath.Abs(name)
-	outputs = append(outputs, path)
-}
-
-func WriteDeps(ctx context.Context, w io.Writer) {
-	fmt.Fprintln(w, "==Inputs==")
-	for _, entry := range inputs {
-		fmt.Fprintln(w, entry)
-	}
-	fmt.Fprintln(w, "==Outputs==")
-	for _, entry := range outputs {
-		fmt.Fprintln(w, entry)
-	}
-}
-
-func WriteCMake(ctx context.Context, w io.Writer) {
-	fmt.Fprintln(w, "set(api_inputs")
-	for _, entry := range inputs {
-		fmt.Fprintln(w, strings.Replace(entry, "\\", "/", -1))
-	}
-	fmt.Fprintln(w, ")")
-	fmt.Fprintln(w, "set(api_outputs")
-	for _, entry := range outputs {
-		fmt.Fprintln(w, strings.Replace(entry, "\\", "/", -1))
-	}
-	fmt.Fprintln(w, ")")
-}
 
 // Note isTrimSpace is only testing the Latin1 spaces.
 func isTrimSpace(b byte) bool {
@@ -191,7 +150,6 @@ func (f *Functions) Include(templates ...string) error {
 		}
 		if f.templates.Lookup(t) == nil {
 			log.D(f.ctx, "Reading %v", t)
-			InputDep(t)
 			tmplData, err := f.loader(t)
 			if err != nil {
 				return fmt.Errorf("%s: %s\n", t, err)
@@ -215,7 +173,6 @@ func (f *Functions) Include(templates ...string) error {
 func (f *Functions) Write(fileName string, value string) (string, error) {
 	outputPath := filepath.Join(f.basePath, fileName)
 	log.D(f.ctx, "Writing output to %v", outputPath)
-	outputDep(outputPath)
 
 	return "", ioutil.WriteFile(outputPath, []byte(value), 0666)
 }
