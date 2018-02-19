@@ -50,8 +50,8 @@ public:
     bool owns(void* ptr);
 
     // create constructs and returns a pointer to a new T.
-    template<typename T>
-    inline T* create();
+    template<typename T, typename... ARGS>
+    inline T* create(ARGS&&... args);
 
     // destroy destructs an object constructed with create<T>().
     template<typename T>
@@ -67,10 +67,10 @@ private:
     std::unordered_set<void*> allocations;
 };
 
-template<typename T>
-inline T* Arena::create() {
+template<typename T, typename... ARGS>
+inline T* Arena::create(ARGS&&... args) {
     auto buf = allocate(sizeof(T), alignof(T));
-    return new(buf) T;
+    return new(buf) T(std::forward<ARGS>(args)...);
 }
 
 template<typename T>
