@@ -15,11 +15,12 @@
 package template
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"strings"
 	"unicode"
+
+	"github.com/google/gapid/core/text/cases"
 )
 
 type stringList []string
@@ -127,26 +128,9 @@ func (Functions) SplitUpperCase(v ...interface{}) stringList {
 // SplitPascalCase slices each string segment at each transition from an letter
 // rune to a upper-case letter rune.
 func (Functions) SplitPascalCase(v ...interface{}) stringList {
-	l := stringify(v...)
 	out := stringList{}
-	for _, str := range l {
-		runes := bytes.Runes([]byte(str))
-		str := ""
-		p := 'x'
-		for _, c := range runes {
-			if unicode.IsLetter(p) && unicode.IsUpper(c) {
-				if len(str) > 0 {
-					out = append(out, str)
-				}
-				str = string(c)
-			} else {
-				str += string(c)
-			}
-			p = c
-		}
-		if len(str) > 0 {
-			out = append(out, str)
-		}
+	for _, s := range stringify(v...) {
+		out = append(out, cases.Pascal(s)...)
 	}
 	return out
 }
@@ -154,56 +138,25 @@ func (Functions) SplitPascalCase(v ...interface{}) stringList {
 // Title capitalizes each letter of each string segment.
 func (Functions) Title(v ...interface{}) stringList {
 	l := stringify(v...)
-	out := make(stringList, len(l))
-	for i, s := range l {
-		first := true
-		out[i] = strings.Map(func(r rune) rune {
-			if first {
-				first = false
-				return unicode.ToTitle(r)
-			} else {
-				return r
-			}
-		}, s)
-	}
-	return out
+	return stringList(cases.Words(l).Title())
 }
 
 // Untitle lower-cases each letter of each string segment.
 func (Functions) Untitle(v ...interface{}) stringList {
 	l := stringify(v...)
-	out := make(stringList, len(l))
-	for i, s := range l {
-		first := true
-		out[i] = strings.Map(func(r rune) rune {
-			if first {
-				first = false
-				return unicode.ToLower(r)
-			}
-			return r
-		}, s)
-	}
-	return out
+	return stringList(cases.Words(l).Untitle())
 }
 
 // Lower lower-cases all letters of each string segment.
 func (Functions) Lower(v ...interface{}) stringList {
 	l := stringify(v...)
-	out := make(stringList, len(l))
-	for i, s := range l {
-		out[i] = strings.ToLower(s)
-	}
-	return out
+	return stringList(cases.Words(l).ToLower())
 }
 
 // Upper upper-cases all letters of each string segment.
 func (Functions) Upper(v ...interface{}) stringList {
 	l := stringify(v...)
-	out := make(stringList, len(l))
-	for i, s := range l {
-		out[i] = strings.ToUpper(s)
-	}
-	return out
+	return stringList(cases.Words(l).ToUpper())
 }
 
 // Contains returns true if any string segment contains substr.

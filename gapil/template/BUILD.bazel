@@ -35,6 +35,7 @@ go_library(
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
         "//core/os/shell:go_default_library",
+        "//core/text/cases:go_default_library",
         "//core/text/copyright:go_default_library",
         "//core/text/reflow:go_default_library",
         "//gapil/analysis:go_default_library",
