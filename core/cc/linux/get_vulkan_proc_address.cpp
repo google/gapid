@@ -30,7 +30,7 @@ typedef size_t VkInstance;
 void* getVulkanInstanceProcAddress(size_t instance, const char *name, bool bypassLocal) {
     typedef PFN_vkVoidFunction (*VPAPROC)(VkInstance instance, const char *name);
 
-    static DlLoader dylib("libvulkan.so");
+    static DlLoader dylib("libvulkan.so", "libvulkan.so.1");
 
     if (VPAPROC vpa = reinterpret_cast<VPAPROC>(dylib.lookup("vkGetInstanceProcAddr"))) {
         if (void* proc = vpa(instance, name)) {

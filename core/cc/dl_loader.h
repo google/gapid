@@ -25,7 +25,8 @@ public:
     // Loads the specified dynamic library.
     // If the library cannot be loaded then this is a fatal error.
     // For *nix systems, a nullptr can be used to search the application's functions.
-    DlLoader(const char* name);
+    template<typename... ConstCharPtrs>
+    DlLoader(const char* name, ConstCharPtrs... fallback_names);
 
     // Unloads the library loaded in the constructor.
     ~DlLoader();
