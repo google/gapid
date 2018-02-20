@@ -48,8 +48,6 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
             # optimized.
             "-O2",
             "-DNDEBUG",
-            "-ffunction-sections",
-            "-fdata-sections",
         ] + select({
             "@//tools/build:linux": [],
             "@//tools/build:darwin": [],
@@ -59,11 +57,6 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
                 "-fno-rtti",
                 "-fno-exceptions",
             ]
-        }),
-        linkopts = select({
-            # Optimized linker settings. See above.
-            "@//tools/build:darwin": ["-Wl,-dead_strip"],
-            "//conditions:default": ["-Wl,--gc-sections"],
         }),
     )
 
