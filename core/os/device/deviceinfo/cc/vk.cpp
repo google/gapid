@@ -56,11 +56,10 @@ bool vkLayersAndExtensions(
   }
 
 // Resolve functions.
-#define MUST_RESOLVE(FuncType, FuncName)                 \
-  FuncType FuncName = reinterpret_cast<FuncType>(        \
-      get_inst_proc_addr == nullptr                      \
-          ? core::GetVulkanProcAddress(#FuncName, false) \
-          : get_inst_proc_addr(0, #FuncName));           \
+#define MUST_RESOLVE(FuncType, FuncName)                                    \
+  FuncType FuncName = reinterpret_cast<FuncType>(                           \
+      get_inst_proc_addr == nullptr ? core::GetVulkanProcAddress(#FuncName) \
+                                    : get_inst_proc_addr(0, #FuncName));    \
   RETURN_IF_NOT_RESOLVED(FuncName)
   MUST_RESOLVE(PFNVKENUMERATEINSTANCELAYERPROPERTIES,
                vkEnumerateInstanceLayerProperties);
@@ -123,8 +122,7 @@ bool vkPhysicalDevices(
 #define MUST_RESOLVE(FuncType, FuncName)                                  \
   FuncType FuncName = reinterpret_cast<FuncType>(                         \
       get_inst_proc_addr == nullptr                                       \
-          ? core::GetVulkanInstanceProcAddress(vk_inst_handle, #FuncName, \
-                                               false)                     \
+          ? core::GetVulkanInstanceProcAddress(vk_inst_handle, #FuncName) \
           : get_inst_proc_addr(vk_inst_handle, #FuncName));               \
   RETURN_IF_NOT_RESOLVED(FuncName)
 

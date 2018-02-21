@@ -46,7 +46,7 @@ extern "C" {«
     int resolved = 0;
     void __stdcall resolve() {
       {{range $f := $resolve}}
-        real__{{$f}} = core::GetGlesProcAddress("{{$f}}", true);
+        real__{{$f}} = core::GetGlesProcAddress("{{$f}}");
       {{end}}
         resolved = 1;
     }

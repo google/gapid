@@ -85,7 +85,7 @@ const char* gDriverPaths[] = {
     SYSTEM_LIB_PATH "libGLESv3.so",
 };
 
-void* resolveCallback(const char* name, bool bypassLocal) {
+void* resolveCallback(const char* name) {
   if (void* ptr = gCallbacks[name]) {
     return ptr;
   }
@@ -207,7 +207,7 @@ void Installer::install_gles() {
         functions[func_import] = func{name, func_export};
       }
     }
-    if (void* func_import = core::GetGlesProcAddress(name, true)) {
+    if (void* func_import = core::GetGlesProcAddress(name)) {
       import_found = true;
       functions[func_import] = func{name, func_export};
     }

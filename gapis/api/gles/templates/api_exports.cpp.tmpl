@@ -81,7 +81,7 @@ Symbol kGLESExports[] = {
       return proc;
     } else {
       GAPID_ERROR("%s will NOT be captured.", name);
-      return core::GetGlesProcAddress(name, true);
+      return core::GetGlesProcAddress(name);
     }
   }
 ¶

@@ -50,7 +50,7 @@ extern "C" {«
   __attribute__((constructor))
   static void initExports() {
     {{range $f := $expose}}
-      real__{{$f}} = core::GetGlesProcAddress("{{$f}}", true);
+      real__{{$f}} = core::GetGlesProcAddress("{{$f}}");
     {{end}}
   }
 »} // extern "C"

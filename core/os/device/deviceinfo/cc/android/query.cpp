@@ -156,11 +156,11 @@ void destroyContext() {
   }
 
   auto eglDestroyContext = reinterpret_cast<PFNEGLDESTROYCONTEXT>(
-      core::GetGlesProcAddress("eglDestroyContext", true));
+      core::GetGlesProcAddress("eglDestroyContext"));
   auto eglDestroySurface = reinterpret_cast<PFNEGLDESTROYSURFACE>(
-      core::GetGlesProcAddress("eglDestroySurface", true));
+      core::GetGlesProcAddress("eglDestroySurface"));
   auto eglTerminate = reinterpret_cast<PFNEGLTERMINATE>(
-      core::GetGlesProcAddress("eglTerminate", true));
+      core::GetGlesProcAddress("eglTerminate"));
 
   if (gContext.mContext) {
     eglDestroyContext(gContext.mDisplay, gContext.mContext);
@@ -192,8 +192,8 @@ bool createContext(void* platform_data) {
     return false;
   }
 
-#define RESOLVE(name, pfun)                                                  \
-  auto name = reinterpret_cast<pfun>(core::GetGlesProcAddress(#name, true)); \
+#define RESOLVE(name, pfun)                                            \
+  auto name = reinterpret_cast<pfun>(core::GetGlesProcAddress(#name)); \
   GAPID_ASSERT(name != nullptr)
 
   RESOLVE(eglGetError, PFNEGLGETERROR);

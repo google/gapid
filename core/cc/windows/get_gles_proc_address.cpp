@@ -36,28 +36,27 @@ std::string systemOpengl32Path() {
   return path.str();
 }
 
-void* getGlesProcAddress(const char* name, bool bypassLocal) {
+void* getGlesProcAddress(const char* name) {
   using namespace core;
   typedef void* (*GPAPROC)(const char* name);
 
-  static DlLoader opengl(bypassLocal ? systemOpengl32Path().c_str()
-                                     : "opengl32.dll");
+  static DlLoader opengl(systemOpengl32Path().c_str());
   if (GPAPROC gpa =
           reinterpret_cast<GPAPROC>(opengl.lookup("wglGetProcAddress"))) {
     if (void* proc = gpa(name)) {
       GAPID_DEBUG(
-          "GetGlesProcAddress(%s, %d) -> 0x%x (via opengl32 wglGetProcAddress)",
-          name, bypassLocal, proc);
+          "GetGlesProcAddress(%s) -> 0x%x (via opengl32 wglGetProcAddress)",
+          name, proc);
       return proc;
     }
   }
   if (void* proc = opengl.lookup(name)) {
-    GAPID_DEBUG("GetGlesProcAddress(%s, %d) -> 0x%x (from opengl32 symbol)",
-                name, bypassLocal, proc);
+    GAPID_DEBUG("GetGlesProcAddress(%s) -> 0x%x (from opengl32 symbol)", name,
+                proc);
     return proc;
   }
 
-  GAPID_DEBUG("GetGlesProcAddress(%s, %d) -> not found", name, bypassLocal);
+  GAPID_DEBUG("GetGlesProcAddress(%s) -> not found", name);
   return nullptr;
 }
 

@@ -95,11 +95,9 @@ void destroyContext() {
       (pfn_XCloseDisplay)libX.lookup("XCloseDisplay");
 
   pfn_glXDestroyPbuffer fn_glXDestroyPbuffer =
-      (pfn_glXDestroyPbuffer)core::GetGlesProcAddress("glXDestroyPbuffer",
-                                                      true);
+      (pfn_glXDestroyPbuffer)core::GetGlesProcAddress("glXDestroyPbuffer");
   pfn_glXDestroyContext fn_glXDestroyContext =
-      (pfn_glXDestroyContext)core::GetGlesProcAddress("glXDestroyContext",
-                                                      true);
+      (pfn_glXDestroyContext)core::GetGlesProcAddress("glXDestroyContext");
 
   if (gContext.mPbuffer && fn_glXDestroyPbuffer) {
     (*fn_glXDestroyPbuffer)(gContext.mDisplay, gContext.mPbuffer);
@@ -123,19 +121,18 @@ void createGlContext() {
   if (!core::hasGLorGLES()) {
     return;
   }
-  auto fn_glXChooseFBConfig = (pfn_glXChooseFBConfig)core::GetGlesProcAddress(
-      "glXChooseFBConfig", true);
+  auto fn_glXChooseFBConfig =
+      (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig");
   auto fn_glXCreateNewContext =
-      (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext",
-                                                        true);
+      (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext");
   auto fn_glXCreatePbuffer =
-      (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer", true);
+      (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer");
   auto fn_glXMakeContextCurrent =
       (pfn_glXMakeContextCurrent)core::GetGlesProcAddress(
-          "glXMakeContextCurrent", true);
+          "glXMakeContextCurrent");
   auto fn_glXCreateContextAttribsARB =
       (pfn_glXCreateContextAttribsARB)core::GetGlesProcAddress(
-          "glXCreateContextAttribsARB", true);
+          "glXCreateContextAttribsARB");
 
   if (!fn_glXChooseFBConfig || !fn_glXCreateNewContext ||
       !fn_glXCreatePbuffer || !fn_glXMakeContextCurrent) {

@@ -19,20 +19,19 @@
 
 namespace {
 
-void* getVulkanInstanceProcAddress(size_t instance, const char* name,
-                                   bool bypassLocal) {
+void* getVulkanInstanceProcAddress(size_t instance, const char* name) {
   GAPID_FATAL("No Vulkan support on macOS");
   return nullptr;
 }
 
 void* getVulkanDeviceProcAddress(size_t instance, size_t device,
-                                 const char* name, bool bypassLocal) {
+                                 const char* name) {
   GAPID_FATAL("No Vulkan support on macOS");
   return nullptr;
 }
 
-void* getVulkanProcAddress(const char* name, bool bypassLocal) {
-  return getVulkanInstanceProcAddress(0u, name, bypassLocal);
+void* getVulkanProcAddress(const char* name) {
+  return getVulkanInstanceProcAddress(0u, name);
 }
 
 }  // anonymous namespace
