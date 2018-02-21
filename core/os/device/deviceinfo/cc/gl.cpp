@@ -37,13 +37,13 @@ void glDriver(device::OpenGLDriver* driver) {
   GLint maxtransformfeedbackinterleavedcomponents = 0;
 
   auto glGetIntegerv = reinterpret_cast<PFNGLGETINTEGERV>(
-      core::GetGlesProcAddress("glGetIntegerv", true));
-  auto glGetError = reinterpret_cast<PFNGLGETERROR>(
-      core::GetGlesProcAddress("glGetError", true));
-  auto glGetString = reinterpret_cast<PFNGLGETSTRING>(
-      core::GetGlesProcAddress("glGetString", true));
+      core::GetGlesProcAddress("glGetIntegerv"));
+  auto glGetError =
+      reinterpret_cast<PFNGLGETERROR>(core::GetGlesProcAddress("glGetError"));
+  auto glGetString =
+      reinterpret_cast<PFNGLGETSTRING>(core::GetGlesProcAddress("glGetString"));
   auto glGetStringi = reinterpret_cast<PFNGLGETSTRINGI>(
-      core::GetGlesProcAddress("glGetStringi", true));
+      core::GetGlesProcAddress("glGetStringi"));
 
   GAPID_ASSERT(glGetError != nullptr);
   GAPID_ASSERT(glGetString != nullptr);

@@ -205,7 +205,7 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
         {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance")}}
           {{$name := Macro "CmdName" $c}}
           stubs.{{$name}} = LazyResolved<{{Template "C++.FunctionPtrType" $c}}>(
-            [instance]() -> void* { return core::GetVulkanInstanceProcAddress(instance, "{{$name}}", false); });
+            [instance]() -> void* { return core::GetVulkanInstanceProcAddress(instance, "{{$name}}"); });
         {{end}}
       {{end}}
       // Get all physical devices for this instance and bind them.
@@ -256,7 +256,7 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
         {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice")}}
           {{$name := Macro "CmdName" $c}}
           stubs.{{$name}} = LazyResolved<{{Template "C++.FunctionPtrType" $c}}>(
-            [instance, device]() -> void* { return core::GetVulkanDeviceProcAddress(instance, device, "{{$name}}", false); });
+            [instance, device]() -> void* { return core::GetVulkanDeviceProcAddress(instance, device, "{{$name}}"); });
         {{end}}
       {{end}}
       // Get all queues for this device and bind them.

@@ -167,23 +167,23 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
   fn_XSetErrorHandler = (pfn_XSetErrorHandler)libX.lookup("XSetErrorHandler");
   fn_XSync = (pfn_XSync)libX.lookup("XSync");
 
-  fn_glXChooseFBConfig = (pfn_glXChooseFBConfig)core::GetGlesProcAddress(
-      "glXChooseFBConfig", true);
-  fn_glXCreateNewContext = (pfn_glXCreateNewContext)core::GetGlesProcAddress(
-      "glXCreateNewContext", true);
+  fn_glXChooseFBConfig =
+      (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig");
+  fn_glXCreateNewContext =
+      (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext");
   fn_glXCreatePbuffer =
-      (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer", true);
-  fn_glXDestroyPbuffer = (pfn_glXDestroyPbuffer)core::GetGlesProcAddress(
-      "glXDestroyPbuffer", true);
+      (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer");
+  fn_glXDestroyPbuffer =
+      (pfn_glXDestroyPbuffer)core::GetGlesProcAddress("glXDestroyPbuffer");
   fn_glXMakeContextCurrent =
       (pfn_glXMakeContextCurrent)core::GetGlesProcAddress(
-          "glXMakeContextCurrent", true);
+          "glXMakeContextCurrent");
   fn_glXQueryVersion =
-      (pfn_glXQueryVersion)core::GetGlesProcAddress("glXQueryVersion", true);
-  fn_glXDestroyContext = (pfn_glXDestroyContext)core::GetGlesProcAddress(
-      "glXDestroyContext", true);
-  fn_glXGetProcAddress = (pfn_glXGetProcAddress)core::GetGlesProcAddress(
-      "glXGetProcAddress", true);
+      (pfn_glXQueryVersion)core::GetGlesProcAddress("glXQueryVersion");
+  fn_glXDestroyContext =
+      (pfn_glXDestroyContext)core::GetGlesProcAddress("glXDestroyContext");
+  fn_glXGetProcAddress =
+      (pfn_glXGetProcAddress)core::GetGlesProcAddress("glXGetProcAddress");
 
   if (shared_context != nullptr) {
     // Ensure that shared contexts also share X-display.

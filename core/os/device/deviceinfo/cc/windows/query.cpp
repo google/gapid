@@ -84,11 +84,11 @@ void destroyContext() {
 
 void createGlContext() {
   gContext.wglCreateContext =
-      (pfn_wglCreateContext)core::GetGlesProcAddress("wglCreateContext", true);
+      (pfn_wglCreateContext)core::GetGlesProcAddress("wglCreateContext");
   gContext.wglMakeCurrent =
-      (pfn_wglMakeCurrent)core::GetGlesProcAddress("wglMakeCurrent", true);
+      (pfn_wglMakeCurrent)core::GetGlesProcAddress("wglMakeCurrent");
   gContext.wglDeleteContext =
-      (pfn_wglDeleteContext)core::GetGlesProcAddress("wglDeleteContext", true);
+      (pfn_wglDeleteContext)core::GetGlesProcAddress("wglDeleteContext");
 
   if (gContext.wglCreateContext == nullptr ||
       gContext.wglMakeCurrent == nullptr ||

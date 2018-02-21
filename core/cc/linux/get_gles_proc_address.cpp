@@ -22,7 +22,7 @@
 
 namespace {
 
-void* getGlesProcAddress(const char* name, bool bypassLocal) {
+void* getGlesProcAddress(const char* name) {
   using namespace core;
   typedef void* (*GPAPROC)(const char* name);
 
@@ -38,43 +38,25 @@ void* getGlesProcAddress(const char* name, bool bypassLocal) {
   (void)_dummy1;
   (void)_dummy2;
 
-  if (bypassLocal) {
-    // Why .1 ?
-    // See: https://bugs.launchpad.net/ubuntu/+source/python-qt4/+bug/941826
-    static DlLoader libgl("libGL.so.1");
-    if (GPAPROC gpa =
-            reinterpret_cast<GPAPROC>(libgl.lookup("glXGetProcAddress"))) {
-      if (void* proc = gpa(name)) {
-        GAPID_VERBOSE(
-            "GetGlesProcAddress(%s, %d) -> 0x%x (via libGL glXGetProcAddress)",
-            name, bypassLocal, proc);
-        return proc;
-      }
-    }
-    if (void* proc = libgl.lookup(name)) {
-      GAPID_VERBOSE("GetGlesProcAddress(%s, %d) -> 0x%x (from libGL dlsym)",
-                    name, bypassLocal, proc);
-      return proc;
-    }
-  } else {
-    static DlLoader local(nullptr);
-    if (GPAPROC gpa =
-            reinterpret_cast<GPAPROC>(local.lookup("glXGetProcAddress"))) {
-      if (void* proc = gpa(name)) {
-        GAPID_VERBOSE(
-            "GetGlesProcAddress(%s, %d) -> 0x%x (via local glXGetProcAddress)",
-            name, bypassLocal, proc);
-        return proc;
-      }
-    }
-    if (void* proc = local.lookup(name)) {
-      GAPID_VERBOSE("GetGlesProcAddress(%s, %d) -> 0x%x (from local dlsym)",
-                    name, bypassLocal, proc);
+  // Why .1 ?
+  // See: https://bugs.launchpad.net/ubuntu/+source/python-qt4/+bug/941826
+  static DlLoader libgl("libGL.so.1");
+  if (GPAPROC gpa =
+          reinterpret_cast<GPAPROC>(libgl.lookup("glXGetProcAddress"))) {
+    if (void* proc = gpa(name)) {
+      GAPID_VERBOSE(
+          "GetGlesProcAddress(%s) -> 0x%x (via libGL glXGetProcAddress)", name,
+          proc);
       return proc;
     }
   }
+  if (void* proc = libgl.lookup(name)) {
+    GAPID_VERBOSE("GetGlesProcAddress(%s) -> 0x%x (from libGL dlsym)", name,
+                  proc);
+    return proc;
+  }
 
-  GAPID_DEBUG("GetGlesProcAddress(%s, %d) -> not found", name, bypassLocal);
+  GAPID_DEBUG("GetGlesProcAddress(%s) -> not found", name);
   return nullptr;
 }
 
