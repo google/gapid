@@ -196,6 +196,8 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start
 
 	if options.monitorLogcat {
 		c := make(chan android.LogcatMessage, 32)
+		// this is to prevent logcat messages from triggering failures in robot
+		ctx := log.PutHandler(ctx, log.Channel(app.Flags.Log.Style.Handler(log.Stdout()), 32))
 		go func() {
 			for m := range c {
 				m.Log(ctx)
