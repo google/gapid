@@ -22,9 +22,10 @@ namespace core {
 // Utility class for retrieving function pointers from dynamic libraries.
 class DlLoader {
 public:
-    // Loads the specified dynamic library.
-    // If the library cannot be loaded then this is a fatal error.
-    // For *nix systems, a nullptr can be used to search the application's functions.
+    // Loads the dynamic library specified by the given name and fallback names
+    // (if any). Names will be used to try to find the library in order. If the
+    // library cannot be loaded then this is a fatal error. For *nix systems,
+    // a nullptr can be used to search the application's functions.
     template<typename... ConstCharPtrs>
     DlLoader(const char* name, ConstCharPtrs... fallback_names);
 

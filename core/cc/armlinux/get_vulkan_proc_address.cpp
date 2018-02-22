@@ -72,6 +72,6 @@ GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress = getVulkanInstan
 GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress = getVulkanDeviceProcAddress;
 GetVulkanProcAddressFunc* GetVulkanProcAddress = getVulkanProcAddress;
 bool HasVulkanLoader() {
-  return DlLoader::can_load("libvulkan.so");
+  return DlLoader::can_load("libvulkan.so") || DlLoader::can_load("libvulkan.so.1");
 }
 }  // namespace core
