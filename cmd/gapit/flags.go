@@ -171,11 +171,12 @@ type (
 			WorkingDir string    `help:"working directory for the process"`
 		}
 		Android struct {
-			Package  string `help:"the full package name"`
-			Activity string `help:"the full activity name"`
-			Action   string `help:"the full action name"`
-			Attach   bool   `help:"attach to running instance of the specified package"`
-			Logcat   bool   `help:"print the output of logcat while tracing"`
+			Package        string `help:"the full package name"`
+			Activity       string `help:"the full activity name"`
+			Action         string `help:"the full action name"`
+			Attach         bool   `help:"attach to running instance of the specified package"`
+			Logcat         bool   `help:"print the output of logcat while tracing"`
+			AdditionalArgs string `help:"additional arguments to pass to am start"`
 		}
 		APK     file.Path `help:"the path to an apk to install"`
 		OBB     file.Path `help:"the path to an obb to install for APK"`

@@ -146,6 +146,9 @@ type URIExtra struct {
 	Value string
 }
 
+// CustomExtras is a list of custom intent extras
+type CustomExtras []string
+
 // Flags returns the formatted flags to pass to the Android am command.
 func (e StringExtra) Flags() []string { return []string{"--es", e.Key, fmt.Sprintf(`"%v"`, e.Value)} }
 
@@ -163,3 +166,6 @@ func (e FloatExtra) Flags() []string { return []string{"--ef", e.Key, fmt.Sprint
 
 // Flags returns the formatted flags to pass to the Android am command.
 func (e URIExtra) Flags() []string { return []string{"--eu", e.Key, fmt.Sprintf("%v", e.Value)} }
+
+// Flags returns the formatted flags to pass to the Android am command.
+func (e CustomExtras) Flags() []string { return []string(e) }
