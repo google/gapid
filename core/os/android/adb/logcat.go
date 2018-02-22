@@ -123,7 +123,7 @@ func (b *binding) Logcat(ctx context.Context, msgs chan<- android.LogcatMessage)
 		}
 	})
 
-	if err := b.Command("logcat", "-v", "long", "-T", "0").Capture(stdout, nil).Run(ctx); err != nil {
+	if err := b.Command("logcat", "-v", "long", "-T", "0", "GAPID:V", "*:W").Capture(stdout, nil).Run(ctx); err != nil {
 		stdout.Close()
 		return err
 	}
