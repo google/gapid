@@ -144,7 +144,7 @@ DL(CC _1, CC _2);
 DL(CC _1, CC _2, CC _3);
 DL(CC _1, CC _2, CC _3, CC _4);
 DL(CC _1, CC _2, CC _3, CC _4, CC _5);
-#undef DLLOADER
+#undef DL
 #undef CC
 
 }  // namespace core
