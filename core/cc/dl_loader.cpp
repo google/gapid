@@ -30,9 +30,15 @@
 namespace {
 
 // load defs
-void* load(const char* name) {
+void* load() {
+    return nullptr;
+}
+
+template<typename... ConstCharPtrs>
+void* load(const char* name, ConstCharPtrs... fallback_names) {
+    void* ret = nullptr;
 #if TARGET_OS == GAPID_OS_WINDOWS
-    return reinterpret_cast<void*>(LoadLibraryExA(name, NULL, 0));
+    ret = reinterpret_cast<void*>(LoadLibraryExA(name, NULL, 0));
 #elif TARGET_OS == GAPID_OS_OSX
     if (name == nullptr) {
         return nullptr;
@@ -50,14 +56,19 @@ void* load(const char* name) {
             remove(tmp);
         }
     }
-    return res;
+    ret = res;
 #else
-    return dlopen(name, RTLD_NOW | RTLD_LOCAL);
+    ret = dlopen(name, RTLD_NOW | RTLD_LOCAL);
 #endif // TARGET_OS
+    if (ret == nullptr) {
+        return load(fallback_names...);
+    }
+    return ret;
 }
 
-void* must_load(const char* name) {
-  void* res = load(name);
+template<typename... ConstCharPtrs>
+void* must_load(const char* name, ConstCharPtrs... fallback_names) {
+  void* res = load(name, fallback_names...);
   if (res == nullptr) {
 #if TARGET_OS == GAPID_OS_WINDOWS
     GAPID_FATAL("Can't load library %s: %d", name, GetLastError());
@@ -100,8 +111,8 @@ void close(void* lib) {
 }  // anonymous namespace
 
 namespace core {
-
-DlLoader::DlLoader(const char* name) : mLibrary(must_load(name)) {}
+template<typename... ConstCharPtrs>
+DlLoader::DlLoader(const char* name, ConstCharPtrs... fallback_names) : mLibrary(must_load(name, fallback_names...)) {}
 
 DlLoader::~DlLoader() {
     close(mLibrary);
@@ -124,5 +135,16 @@ bool DlLoader::can_load(const char* lib_name) {
   }
   return false;
 }
+
+#define CC const char*
+#define DL(...) \
+    template DlLoader::DlLoader(__VA_ARGS__)
+DL(CC _1);
+DL(CC _1, CC _2);
+DL(CC _1, CC _2, CC _3);
+DL(CC _1, CC _2, CC _3, CC _4);
+DL(CC _1, CC _2, CC _3, CC _4, CC _5);
+#undef DL
+#undef CC
 
 }  // namespace core
