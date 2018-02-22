@@ -52,3 +52,19 @@ func TestSplitArgs(t *testing.T) {
 		assert.For(ctx, "text.SplitArgs(%v)", test.str).ThatSlice(got).Equals(test.expected)
 	}
 }
+
+func TestQuote(t *testing.T) {
+	ctx := log.Testing(t)
+	for _, test := range []struct {
+		str      []string
+		expected []string
+	}{
+		{[]string{`a`, `b`, `c`}, []string{`a`, `b`, `c`}},
+		{[]string{`a`, `a b c`}, []string{`a`, `"a b c"`}},
+		{[]string{`\"a`, `b`, `c\"`}, []string{`\\\\"a`, `b`, `c\\\\"`}},
+		{[]string{`meow \" woof`}, []string{`"meow \\\\" woof"`}},
+	} {
+		got := text.Quote(test.str)
+		assert.For(ctx, "test.Quote(%v)", test.str).ThatSlice(got).Equals(test.expected)
+	}
+}

@@ -49,3 +49,35 @@ func SplitArgs(s string) []string {
 	flush()
 	return out
 }
+
+// Quote takes a slice of strings, and returns a slice where each
+// string has been quoted and escaped to pass down to the command-line.
+func Quote(s []string) []string {
+	out := []string{}
+
+	for _, str := range s {
+		hasSpace := false
+		outStr := ""
+		for _, c := range str {
+			if c == '"' {
+				outStr += "\\\""
+			} else {
+				outStr += string(c)
+			}
+			if c == '\\' {
+				outStr += "\\\\"
+			}
+
+			if c == ' ' {
+				hasSpace = true
+			}
+		}
+
+		if hasSpace {
+			out = append(out, "\""+outStr+"\"")
+		} else {
+			out = append(out, outStr)
+		}
+	}
+	return out
+}

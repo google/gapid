@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/flock"
+	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapidapk"
 	"github.com/pkg/errors"
 )
@@ -166,9 +167,14 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 		releaseVulkanDevice(ctx, d, m)
 	})
 
+	var additionalArgs []android.ActionExtra
+	if o.AdditionalFlags != "" {
+		additionalArgs = append(additionalArgs, android.CustomExtras(text.Quote(text.SplitArgs(o.AdditionalFlags))))
+	}
+
 	if a != nil {
 		log.I(ctx, "Starting activity in debug mode")
-		if err := d.StartActivityForDebug(ctx, *a); err != nil {
+		if err := d.StartActivityForDebug(ctx, *a, additionalArgs...); err != nil {
 			return nil, log.Err(ctx, err, "Starting activity in debug mode")
 		}
 	} else {

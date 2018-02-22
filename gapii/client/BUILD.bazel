@@ -34,6 +34,7 @@ go_library(
         "//core/event/task:go_default_library",
         "//core/java/jdbg:go_default_library",
         "//core/java/jdwp:go_default_library",
+        "//core/text:go_default_library",
         "//core/log:go_default_library",
         "//core/os/android:go_default_library",
         "//core/os/android/adb:go_default_library",

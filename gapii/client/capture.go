@@ -72,6 +72,8 @@ type Options struct {
 	Flags Flags
 	// APK is an apk to install before tracing
 	APK file.Path
+	// Additional flags to pass to am start
+	AdditionalFlags string
 }
 
 const sizeGap = 1024 * 1024 * 5

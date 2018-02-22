@@ -67,6 +67,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			FramesToCapture:       uint32(verb.Capture.Frames),
 			APIs:                  uint32(0xFFFFFFFF),
 			APK:                   verb.APK,
+			AdditionalFlags:       verb.Android.AdditionalArgs,
 		},
 		monitorLogcat: verb.TraceFlags.Android.Logcat,
 	}
