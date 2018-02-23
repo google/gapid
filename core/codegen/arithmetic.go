@@ -57,6 +57,20 @@ func (b *Builder) Invert(x *Value) *Value {
 	return b.val(x.ty, b.llvm.CreateNot(x.llvm, ""))
 }
 
+// Negate returns -x. The type of x must be a signed integer or float.
+func (b *Builder) Negate(x *Value) *Value {
+	ty := Scalar(x.Type())
+	name := "-" + x.Name()
+	switch {
+	case IsSignedInteger(ty):
+		return b.val(ty, b.llvm.CreateNeg(x.llvm, name))
+	case IsFloat(ty):
+		return b.val(ty, b.llvm.CreateFNeg(x.llvm, name))
+	default:
+		panic(fmt.Errorf("Cannot divide values of type %v", ty))
+	}
+}
+
 func (b *Builder) cmp(x *Value, op string, y *Value, ucmp, scmp llvm.IntPredicate, fcmp llvm.FloatPredicate) *Value {
 	assertTypesEqual(x.Type(), y.Type())
 	ty := x.Type()
@@ -290,11 +304,20 @@ func (b *Builder) ShiftRight(x, y *Value) *Value {
 	}
 }
 
+// Select returns (cond ? x : y). x and y must be of the same type.
+func (b *Builder) Select(cond, x, y *Value) *Value {
+	assertTypesEqual(x.Type(), y.Type())
+	assertTypesEqual(cond.Type(), b.m.Types.Bool)
+	return b.val(x.Type(), b.llvm.CreateSelect(cond.llvm, x.llvm, y.llvm,
+		fmt.Sprintf("(%v?%v:%v)", cond.Name(), x.Name(), y.Name())))
+}
+
 // Scalar returns a constant scalar with the value v.
 func (b *Builder) Scalar(v interface{}) *Value {
+	rty := reflect.TypeOf(v)
 	ty := b.m.Types.TypeOf(v)
 	switch {
-	case reflect.TypeOf(v).Kind() == reflect.String:
+	case rty.Kind() == reflect.String:
 		val := b.llvm.CreateGlobalStringPtr(reflect.ValueOf(v).String(), "str")
 		return b.val(ty, val)
 

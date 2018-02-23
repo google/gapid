@@ -251,7 +251,7 @@ func (b *Builder) Return(val *Value) {
 		assertTypesEqual(val.Type(), b.function.Type.Signature.Result)
 		b.llvm.CreateStore(val.llvm, b.result)
 	} else if !b.result.IsNil() {
-		b.llvm.CreateStore(llvm.ConstNull(b.result.Type()), b.result)
+		b.llvm.CreateStore(llvm.ConstNull(b.function.Type.Signature.Result.llvmTy()), b.result)
 	}
 	b.llvm.CreateBr(b.exit)
 }

@@ -15,8 +15,6 @@
 package codegen
 
 import (
-	"fmt"
-
 	"llvm/bindings/go/llvm"
 )
 
@@ -81,7 +79,6 @@ func (v *Value) Bitcast(ty Type) *Value {
 	if srcSize, dstSize := srcTy.sizeInBits(), dstTy.sizeInBits(); srcSize != dstSize {
 		fail("Bitcast cannot change sizes. (%v -> %v)", srcTy, dstTy)
 	}
-	fmt.Printf("%v -> %v\n", srcTy.TypeName(), dstTy.TypeName())
 	return v.b.val(ty, v.b.llvm.CreateBitCast(v.llvm, ty.llvmTy(), "bitcast"))
 }
 

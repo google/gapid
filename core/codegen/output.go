@@ -17,7 +17,11 @@ package codegen
 import (
 	"bytes"
 	"fmt"
+	"reflect"
+	"strings"
 	"unsafe"
+
+	"github.com/google/gapid/core/os/device"
 
 	"llvm/bindings/go/llvm"
 )
@@ -47,16 +51,55 @@ func (m *Module) Object(optimize bool) ([]byte, error) {
 	if optimize {
 		opt = llvm.CodeGenLevelDefault
 	}
-	reloc := llvm.RelocDefault
+	reloc := llvm.RelocPIC
 	model := llvm.CodeModelDefault
 	tm := t.CreateTargetMachine(m.triple.String(), cpu, features, opt, reloc, model)
 	defer tm.Dispose()
+
+	td := tm.CreateTargetData()
+	defer td.Dispose()
+	m.validateTargetData(td)
+
 	buf, err := tm.EmitToMemoryBuffer(m.llvm, llvm.ObjectFile)
 	if err != nil {
 		return nil, err
 	}
 	defer buf.Dispose()
 	return buf.Bytes(), nil
+}
+
+func (m *Module) validateTargetData(td llvm.TargetData) {
+	abi := m.target
+	errs := []string{}
+	check := func(llvm, gapid interface{}, name string) {
+		if reflect.DeepEqual(llvm, gapid) {
+			return
+		}
+		errs = append(errs, fmt.Sprintf("%v target mismatch for %v: %v (llvm) != %v (gapid)", name, abi.Name, llvm, gapid))
+	}
+	checkTD := func(ty Type, dtl *device.DataTypeLayout) {
+		check(td.TypeStoreSize(ty.llvmTy()), uint64(dtl.Size), ty.String()+"-size")
+		check(td.ABITypeAlignment(ty.llvmTy()), int(dtl.Alignment), ty.String()+"-align")
+	}
+
+	layout := abi.MemoryLayout
+	isLE := td.ByteOrder() == llvm.LittleEndian
+	check(isLE, layout.Endian == device.LittleEndian, "is-little-endian")
+	check(td.PointerSize(), int(layout.Pointer.Size), "pointer-size")
+
+	checkTD(m.Types.Pointer(m.Types.Int), layout.Pointer)
+	checkTD(m.Types.Int, layout.Integer)
+	checkTD(m.Types.Size, layout.Size)
+	checkTD(m.Types.Int64, layout.I64)
+	checkTD(m.Types.Int32, layout.I32)
+	checkTD(m.Types.Int16, layout.I16)
+	checkTD(m.Types.Int8, layout.I8)
+	checkTD(m.Types.Float32, layout.F32)
+	checkTD(m.Types.Float64, layout.F64)
+
+	if len(errs) > 0 {
+		panic(fmt.Errorf("%v has ABI mismatches!\n%v", abi.Name, strings.Join(errs, "\n")))
+	}
 }
 
 // Optimize optimizes the module.

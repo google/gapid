@@ -60,6 +60,8 @@ type Types struct {
 	Uint16  Type // Uint16 is an unigned 16-bit integer type.
 	Uint32  Type // Uint32 is an unsigned 32-bit integer type.
 	Uint64  Type // Uint64 is an unsigned 64-bit integer type.
+	Uintptr Type // Uinptr is an unsigned integer type of the same width as a pointer.
+	Size    Type // Size is an unsigned integer of native bit-width.
 	Float32 Type // Float32 is a 32-bit floating-point number type.
 	Float64 Type // Float64 is a 64-bit floating-point number type.
 
@@ -431,6 +433,8 @@ func (t *Types) TypeOf(v interface{}) Type {
 		return t.Pointer(t.Uint8)
 	case reflect.Array:
 		return t.Array(t.TypeOf(ty.Elem()), ty.Len())
+	case reflect.Slice:
+		return t.Array(t.TypeOf(ty.Elem()), reflect.ValueOf(v).Len())
 	case reflect.String:
 		return t.Pointer(t.Uint8)
 	case reflect.Struct:
@@ -447,6 +451,9 @@ func (t *Types) TypeOf(v interface{}) Type {
 		fields := make([]Field, 0, c)
 		for i := 0; i < c; i++ {
 			f := ty.Field(i)
+			if f.Name == "_" {
+				continue // Cgo padding struct. No thanks.
+			}
 			ty := t.TypeOf(f.Type)
 			if f.Type == reflect.TypeOf(unsafe.Pointer(nil)) {
 				if name, ok := f.Tag.Lookup("ptr"); ok {
