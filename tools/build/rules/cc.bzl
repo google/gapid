@@ -79,9 +79,19 @@ strip = rule(
 # stack traces of uploaded crash dumps.
 def _symbols_impl(ctx):
     out = ctx.new_file(ctx.label.name)
+    bin = ctx.file.src
+    if ctx.fragments.cpp.cpu.startswith("darwin"):
+        dsym = ctx.actions.declare_directory(bin.basename + ".dSYM")
+        ctx.actions.run_shell(
+            command = "dsymutil  -o {} {}".format(dsym.path, bin.path),
+            inputs = [bin],
+            outputs = [dsym],
+            use_default_shell_env = True,
+        )
+        bin = dsym
     ctx.actions.run_shell(
-        command = "{} {} > {}".format(ctx.executable._dump_syms.path, ctx.file.src.path, out.path),
-        inputs = [ctx.executable._dump_syms, ctx.file.src],
+        command = "{} {} > {}".format(ctx.executable._dump_syms.path, bin.path, out.path),
+        inputs = [ctx.executable._dump_syms, bin],
         outputs = [out],
         use_default_shell_env = True,
     )
@@ -106,7 +116,8 @@ _symbols = rule(
             allow_files = True,
             default = Label("@breakpad//:dump_syms"),
         ),
-    }
+    },
+    fragments = ["cpp"],
 )
 
 # Macro to replace cc_binary rules. Creates the following targets:
