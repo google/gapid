@@ -12,11 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["assignable.go"],
+    srcs = [
+        "assignable.go",
+        "dedupe.go",
+    ],
     importpath = "github.com/google/gapid/core/data",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_xtest",
+    size = "small",
+    srcs = ["dedupe_test.go"],
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+    ],
 )
