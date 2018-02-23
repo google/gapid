@@ -216,6 +216,9 @@ const typename Map<K, V>::iterator& Map<K, V>::iterator::operator++() {
     size_t offset = elem - reinterpret_cast<element*>(map->elements);
     for (size_t i = offset; i < map->capacity; ++i) {
         ++elem;
+        if (i == map->capacity - 1) {
+            break;
+        }
         if (elem->used == GAPIL_MAP_ELEMENT_FULL) {
             break;
         }
@@ -268,6 +271,9 @@ typename Map<K, V>::const_iterator& Map<K, V>::const_iterator::operator++() {
     size_t offset = elem - reinterpret_cast<element*>(map->elements);
     for (size_t i = offset; i < map->capacity; ++i) {
         ++elem;
+        if (i == map->capacity - 1) {
+            break;
+        }
         if (elem->used == GAPIL_MAP_ELEMENT_FULL) {
             break;
         }
