@@ -24,12 +24,7 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
-    size = "small",
-    srcs = [
-        "cases_test.go",
-    ],
-    embed = [
-        ":go_default_library",
-    ],
+    name = "go_default_test",
+    srcs = ["cases_test.go"],
+    embed = [":go_default_library"],
 )
