@@ -23,7 +23,7 @@
 
 // CurrentCaptureVersion is incremented on breaking changes to the capture format.
 // NB: Also update equally named field in capture.go
-static const int CurrentCaptureVersion = 1;
+static const int CurrentCaptureVersion = 2;
 
 using core::Interval;
 
