@@ -91,6 +91,13 @@ android_native_app_glue(
 ####################################################################
 # Now get all our other dependencies
 
+http_archive(
+    name = "gtest",
+    url = "https://github.com/google/googletest/archive/62dbaa2947f7d058ea7e16703faea69b1134b024.zip",
+    sha256 = "c86258bf52616f5fa52a622ba58ce700eb2dd9f6ec15ff13ad2b2a579afb9c67",
+    strip_prefix = "googletest-62dbaa2947f7d058ea7e16703faea69b1134b024",
+)
+
 github_repository(
     name = "astc-encoder",
     organization = "ARM-software",
