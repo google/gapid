@@ -405,6 +405,18 @@ func IsReference(ty Type) bool {
 	return ok
 }
 
+// IsNumeric returns true if t is one of the primitive numeric types.
+func IsNumeric(ty Type) bool {
+	if IsInteger(ty) {
+		return true
+	}
+	switch ty {
+	case Float32Type, Float64Type:
+		return true
+	}
+	return false
+}
+
 // IsInteger returns true if ty is an integer type
 func IsInteger(ty Type) bool {
 	switch ty {
@@ -443,6 +455,40 @@ func IntegerSizeInBits(ty Type) int {
 		return 64
 	}
 	return 0
+}
+
+// Integer returns a signed integer type of the given size in bytes.
+// size must be 1, 2, 4 or 8.
+func Integer(size int32) Type {
+	switch size {
+	case 1:
+		return Int8Type
+	case 2:
+		return Int16Type
+	case 4:
+		return Int32Type
+	case 8:
+		return Int64Type
+	default:
+		panic(fmt.Errorf("Unexpected target integer size %v", size))
+	}
+}
+
+// UnsignedInteger returns an unsigned integer type of the given size in bytes.
+// size must be 1, 2, 4 or 8.
+func UnsignedInteger(size int32) Type {
+	switch size {
+	case 1:
+		return Uint8Type
+	case 2:
+		return Uint16Type
+	case 4:
+		return Uint32Type
+	case 8:
+		return Uint64Type
+	default:
+		panic(fmt.Errorf("Unexpected target integer size %v", size))
+	}
 }
 
 // Underlying returns the underlying type for ty by recursively traversing the
