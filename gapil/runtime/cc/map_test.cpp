@@ -135,8 +135,17 @@ TYPED_TEST(MapTest, range) {
     }
 }
 
-TEST(CppMapTest, string_as_value) {
+class CppMapTest : public ::testing::Test {
+    void TearDown() {
+        EXPECT_EQ(0, arena.num_allocations());
+        EXPECT_EQ(0, arena.num_bytes_allocated());
+    }
+
+public:
     core::Arena arena;
+};
+
+TEST_F(CppMapTest, string_as_value) {
     auto map = gapil::Map<uint32_t, gapil::String>(&arena);
 
     EXPECT_EQ(0, map.count());
@@ -181,6 +190,8 @@ public:
     }
     non_movable_object(const non_movable_object& _other) {
         v = gapil_alloc(_other.arena, _other.size, 1);
+        arena = _other.arena;
+        size = _other.size;
     }
 
 private:
@@ -189,8 +200,7 @@ private:
     arena_t* arena;
 };
 
-TEST(CppMapTest, non_movable_object) {
-    core::Arena arena;
+TEST_F(CppMapTest, non_movable_object) {
     auto map = gapil::Map<uint32_t, non_movable_object>(&arena);
 
     auto a = reinterpret_cast<arena_t*>(&arena);
@@ -246,8 +256,7 @@ private:
     arena_t* arena;
 };
 
-TEST(CppMapTest, movable_object) {
-    core::Arena arena;
+TEST_F(CppMapTest, movable_object) {
     auto map = gapil::Map<uint32_t, movable_object>(&arena);
 
     auto a = reinterpret_cast<arena_t*>(&arena);

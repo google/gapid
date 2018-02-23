@@ -89,7 +89,7 @@ inline void Map<K, V>::Allocation::release() {
     }
     auto arena = reinterpret_cast<core::Arena*>(this->arena);
     if (elements != nullptr) {
-        arena->free(elements);
+        clear();
     }
     arena->free(this);
 }
