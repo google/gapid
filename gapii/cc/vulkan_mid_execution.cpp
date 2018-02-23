@@ -128,14 +128,13 @@ bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
 // A helper class that contains a temporary buffer that is bound to
 // hold incomming data from other GPU resources.
 class StagingBuffer {
-public:
-  StagingBuffer(core::Arena* arena,
+ public:
+  StagingBuffer(core::Arena *arena,
                 VulkanImports::VkDeviceFunctions &device_functions,
                 VkDevice device,
                 const VkPhysicalDeviceMemoryProperties &memory_properties,
                 uint32_t size)
       : device_functions_(device_functions), device_(device), size_(size) {
-
     VkBufferCreateInfo staging_buffer_create_info{arena};
     staging_buffer_create_info.msType =
         VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -175,11 +174,11 @@ public:
                                     &bound_memory_);
     }
     VkMappedMemoryRange range{
-        VkStructureType::VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
-        nullptr,                                                // pNext
-        staging_memory_,                                        // memory
-        0,                                                      // offset
-        size_                                                   // size
+        VkStructureType::VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,  // sType
+        nullptr,                                                 // pNext
+        staging_memory_,                                         // memory
+        0,                                                       // offset
+        size_                                                    // size
     };
     device_functions_.vkInvalidateMappedMemoryRanges(device_, 1, &range);
     return bound_memory_;
@@ -196,7 +195,7 @@ public:
     }
   }
 
-private:
+ private:
   VulkanImports::VkDeviceFunctions &device_functions_;
   VkDevice device_;
   VkBuffer staging_buffer_ = VkBuffer(0);
@@ -206,37 +205,37 @@ private:
 };
 
 class StagingCommandBuffer {
-public:
+ public:
   StagingCommandBuffer(VulkanImports::VkDeviceFunctions &device_functions,
                        VkDevice device, uint32_t queueFamilyIndex)
       : device_functions_(device_functions), device_(device) {
     VkCommandPoolCreateInfo pool_create_info = {
-        VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, // sType
-        nullptr,                                                     // pNext
-        0,                                                           // flags
-        queueFamilyIndex, // queueFamilyIndex
+        VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,  // sType
+        nullptr,                                                      // pNext
+        0,                                                            // flags
+        queueFamilyIndex,  // queueFamilyIndex
     };
     device_functions_.vkCreateCommandPool(device_, &pool_create_info, nullptr,
                                           &command_pool_);
 
     VkCommandBufferAllocateInfo allocate_info = {
         VkStructureType::
-            VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,    // sType
-        nullptr,                                               // pNext
-        command_pool_,                                         // commandLoop
-        VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY, // level
-        1,                                                     // count
+            VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,     // sType
+        nullptr,                                                // pNext
+        command_pool_,                                          // commandLoop
+        VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,  // level
+        1,                                                      // count
     };
 
     device_functions_.vkAllocateCommandBuffers(device, &allocate_info,
                                                &command_buffer_);
 
     VkCommandBufferBeginInfo begin_info = {
-        VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
-        nullptr,                                                      // pNext
+        VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,  // sType
+        nullptr,                                                       // pNext
         VkCommandBufferUsageFlagBits::
-            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, // usage
-        nullptr                                          // pInheritanceInfo
+            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,  // usage
+        nullptr                                           // pInheritanceInfo
     };
 
     device_functions_.vkBeginCommandBuffer(command_buffer_, &begin_info);
@@ -248,15 +247,15 @@ public:
     device_functions_.vkEndCommandBuffer(command_buffer_);
 
     VkSubmitInfo submit_info = {
-        VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
-        nullptr,                                        // pNext
-        0,                                              // waitSemaphoreCount
-        nullptr,                                        // pWaitSemaphores
-        nullptr,                                        // pWaitDstStageMask
-        1,                                              // commandBufferCount
-        &command_buffer_,                               // pCommandBuffers
-        0,                                              // signalSemaphoreCount
-        nullptr                                         // pSignalSemaphores
+        VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,  // sType
+        nullptr,                                         // pNext
+        0,                                               // waitSemaphoreCount
+        nullptr,                                         // pWaitSemaphores
+        nullptr,                                         // pWaitDstStageMask
+        1,                                               // commandBufferCount
+        &command_buffer_,                                // pCommandBuffers
+        0,                                               // signalSemaphoreCount
+        nullptr                                          // pSignalSemaphores
     };
 
     device_functions_.vkQueueSubmit(queue, 1, &submit_info, VkFence(0));
@@ -266,15 +265,14 @@ public:
     device_functions_.vkDestroyCommandPool(device_, command_pool_, nullptr);
   }
 
-private:
+ private:
   VulkanImports::VkDeviceFunctions &device_functions_;
   VkDevice device_;
   VkCommandPool command_pool_;
   VkCommandBuffer command_buffer_;
 };
 
-void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
-                                  PackEncoder *group,
+void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
                                   std::unordered_set<uint32_t> *gpu_pools) {
   char empty = 0;
   auto empty_index = sendResource(VulkanSpy::kApiIndex, &empty, 0);
@@ -282,7 +280,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
   auto create_virtual_pool = [&](uint64_t pool_size) {
     auto arena = this->arena();
     auto pool = arena->create<pool_t>();
-    pool->arena = reinterpret_cast<arena_t*>(arena);
+    pool->arena = reinterpret_cast<arena_t *>(arena);
     pool->id = (*observer->next_pool_id)++;
     pool->size = pool_size;
     pool->ref_count = 1;
@@ -305,6 +303,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
     // Prep fences
     for (auto &fence : Fences) {
       if (fence.second->mDevice == device.second->mVulkanHandle) {
+        ;
         fence.second->mSignaled =
             (device_functions.vkGetFenceStatus(device.second->mVulkanHandle,
                                                fence.second->mVulkanHandle) ==
@@ -376,11 +375,11 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
     std::vector<VkSparseMemoryBind> allBindings;
     if (denseBound) {
       allBindings.push_back(VkSparseMemoryBind{
-          0,                           // resourceOffset
-          buf_info.mSize,              // size
-          buf->mMemory->mVulkanHandle, // memory
-          buf->mMemoryOffset,          // memoryOffset
-          0,                           // flags
+          0,                            // resourceOffset
+          buf_info.mSize,               // size
+          buf->mMemory->mVulkanHandle,  // memory
+          buf->mMemoryOffset,           // memoryOffset
+          0,                            // flags
       });
     } else {
       if (!sparseResidency) {
@@ -534,7 +533,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
         byte_size_and_extent e =
             level_size(image_info.mExtent, image_info.mFormat, lev.first);
         level->mData = gapil::Slice<uint8_t>::create(
-            create_virtual_pool(e.level_size));
+            create_virtual_pool(e.aligned_level_size));
         gpu_pools->insert(level->mData.pool_id());
       }
     }
@@ -604,11 +603,11 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
     std::vector<VkImageSubresourceRange> opaque_ranges;
     if (denseBound || !sparseResidency) {
       opaque_ranges.push_back(VkImageSubresourceRange{
-          img->mImageAspect,      // aspectMask
-          0,                      // baseMipLevel
-          image_info.mMipLevels,  // levelCount
-          0,                      // baseArrayLayer
-          image_info.mArrayLayers // layerCount
+          img->mImageAspect,       // aspectMask
+          0,                       // baseMipLevel
+          image_info.mMipLevels,   // levelCount
+          0,                       // baseArrayLayer
+          image_info.mArrayLayers  // layerCount
       });
     } else {
       for (const auto &req : img->mSparseMemoryRequirements) {
@@ -622,12 +621,12 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
               continue;
             }
             opaque_ranges.push_back(VkImageSubresourceRange{
-                img->mImageAspect,                // aspectMask
-                req.second.mimageMipTailFirstLod, // baseMipLevel
+                img->mImageAspect,                 // aspectMask
+                req.second.mimageMipTailFirstLod,  // baseMipLevel
                 image_info.mMipLevels -
-                    req.second.mimageMipTailFirstLod, // levelCount
-                0,                                    // baseArrayLayer
-                image_info.mArrayLayers               // layerCount
+                    req.second.mimageMipTailFirstLod,  // levelCount
+                0,                                     // baseArrayLayer
+                image_info.mArrayLayers                // layerCount
             });
           } else {
             for (uint32_t i = 0; i < uint32_t(image_info.mArrayLayers); i++) {
@@ -658,19 +657,22 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
           uint32_t mip_level = range.mbaseMipLevel + i;
           byte_size_and_extent e =
               level_size(image_info.mExtent, image_info.mFormat, mip_level);
-          copies.push_back(
-              VkBufferImageCopy{offset, // bufferOffset,
-                                0,      // bufferRowLength,
-                                0,      // bufferImageHeight,
-                                {
-                                    img->mImageAspect, // aspectMask
-                                    mip_level,
-                                    range.mbaseArrayLayer, // baseArrayLayer
-                                    range.mlayerCount      // layerCount
-                                },
-                                {0, 0, 0},
-                                {e.width, e.height, e.depth}});
-          offset += (e.aligned_level_size * range.mlayerCount);
+          for (size_t j = 0; j < range.mlayerCount; j++) {
+            uint32_t layer = range.mbaseArrayLayer + j;
+            copies.push_back(
+                VkBufferImageCopy{offset,  // bufferOffset,
+                                  0,       // bufferRowLength,
+                                  0,       // bufferImageHeight,
+                                  {
+                                      img->mImageAspect,  // aspectMask
+                                      mip_level,
+                                      layer,  // baseArrayLayer
+                                      1       // layerCount
+                                  },
+                                  {0, 0, 0},
+                                  {e.width, e.height, e.depth}});
+            offset += e.aligned_level_size;
+          }
         }
       }
 
@@ -682,14 +684,14 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
             for (const auto &level_i : layer_i.second->mLevels) {
               for (const auto &block_i : level_i.second->mBlocks) {
                 copies.push_back(VkBufferImageCopy{
-                    offset, // bufferOffset,
-                    0,      // bufferRowLength,
-                    0,      // bufferImageHeight,
+                    offset,  // bufferOffset,
+                    0,       // bufferRowLength,
+                    0,       // bufferImageHeight,
                     VkImageSubresourceLayers{
-                        img->mImageAspect, // aspectMask
+                        img->mImageAspect,  // aspectMask
                         level_i.first,
-                        layer_i.first, // baseArrayLayer
-                        1              // layerCount
+                        layer_i.first,  // baseArrayLayer
+                        1               // layerCount
                     },
                     block_i.second->mOffset, block_i.second->mExtent});
                 byte_size_and_extent e =
@@ -769,44 +771,36 @@ void VulkanSpy::prepareGPUBuffers(CallObserver* observer,
         auto &copy = copies[i];
         size_t next_offset =
             (i == copies.size() - 1) ? offset : copies[i + 1].mbufferOffset;
+        byte_size_and_extent e =
+            level_size(copy.mimageExtent, image_info.mFormat, 0);
+        auto bp = block_pitch(copy.mimageExtent, image_info.mFormat,
+                              copy.mimageSubresource.mmipLevel);
 
-        for (size_t j = copy.mimageSubresource.mbaseArrayLayer;
-             j < copy.mimageSubresource.mbaseArrayLayer +
-                     copy.mimageSubresource.mlayerCount;
-             ++j) {
-          byte_size_and_extent e =
-              level_size(copy.mimageExtent, image_info.mFormat, 0);
-          auto bp = block_pitch(copy.mimageExtent, image_info.mFormat,
-                                copy.mimageSubresource.mmipLevel);
-
-          if ((copy.mimageOffset.mx % bp.texel_width != 0) ||
-              (copy.mimageOffset.my % bp.texel_height != 0)) {
-            // We cannot place partial blocks
-            return;
-          }
-          uint32_t x =
-              (copy.mimageOffset.mx / bp.texel_width) * bp.element_size;
-          uint32_t y =
-              (copy.mimageOffset.my / bp.texel_height) * bp.height_pitch;
-          uint32_t z = copy.mimageOffset.mz * bp.depth_pitch;
-
-          auto resIndex = sendResource(VulkanSpy::kApiIndex, pData + new_offset,
-                                       e.level_size);
-          new_offset += e.aligned_level_size;
-          const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
-          const uint32_t array_layer = j;
-          memory_pb::Observation observation;
-          observation.set_base(x + y + z);
-          observation.set_size(e.level_size);
-          observation.set_resindex(resIndex);
-          observation.set_pool(
-              img->mLayers[array_layer]->mLevels[mip_level]->mData.pool_id());
-          group->object(&observation);
+        if ((copy.mimageOffset.mx % bp.texel_width != 0) ||
+            (copy.mimageOffset.my % bp.texel_height != 0)) {
+          // We cannot place partial blocks
+          return;
         }
+        uint32_t x = (copy.mimageOffset.mx / bp.texel_width) * bp.element_size;
+        uint32_t y = (copy.mimageOffset.my / bp.texel_height) * bp.height_pitch;
+        uint32_t z = copy.mimageOffset.mz * bp.depth_pitch;
+
+        auto resIndex = sendResource(VulkanSpy::kApiIndex, pData + new_offset,
+                                     e.level_size);
+        new_offset += e.aligned_level_size;
+        const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
+        const uint32_t array_layer = copy.mimageSubresource.mbaseArrayLayer;
+        memory_pb::Observation observation;
+        observation.set_base(x + y + z);
+        observation.set_size(e.level_size);
+        observation.set_resindex(resIndex);
+        observation.set_pool(
+            img->mLayers[array_layer]->mLevels[mip_level]->mData.pool_id());
+        group->object(&observation);
         new_offset = next_offset;
       }
     }
   }
 }
 
-} // namespace gapii
+}  // namespace gapii

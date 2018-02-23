@@ -4130,7 +4130,8 @@ cmd VkResult vkCreateImage(
       // Roundup the width and height in the number of blocks.
       widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
       heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
-      size := widthInBlocks * heightInBlocks * depth * elementAndTexelBlockSize.ElementSize
+      // Align to the next multiple times of 8
+      size := ((widthInBlocks * heightInBlocks * depth * elementAndTexelBlockSize.ElementSize) + 7) & (0xFFFFFFF8)
       level.Data = make!u8(size)
       object.Layers[j].Levels[i] = level
     }

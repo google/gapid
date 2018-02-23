@@ -1503,28 +1503,30 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 			for i := uint32(0); i < rng.LevelCount; i++ {
 				mipLevel := rng.BaseMipLevel + i
 				e := sb.levelSize(img.Info.Extent, img.Info.Format, mipLevel)
-				copies = append(copies, VkBufferImageCopy{
-					offset,
-					0,
-					0,
-					VkImageSubresourceLayers{
-						img.ImageAspect,
-						mipLevel,
-						rng.BaseArrayLayer,
-						rng.LayerCount,
-					},
-					VkOffset3D{
-						0, 0, 0,
-					},
-					VkExtent3D{
-						uint32(e.width),
-						uint32(e.height),
-						uint32(e.depth),
-					},
-				})
-				for l := rng.BaseArrayLayer; l < rng.LayerCount; l++ {
-					data := img.Layers.Get(l).Levels.Get(mipLevel).Data.MustRead(sb.ctx, nil, sb.oldState, nil)
+				for j := uint32(0); j < rng.LayerCount; j++ {
+					layer := rng.BaseArrayLayer + j
+					copies = append(copies, VkBufferImageCopy{
+						offset,
+						0,
+						0,
+						VkImageSubresourceLayers{
+							img.ImageAspect,
+							mipLevel,
+							layer,
+							1,
+						},
+						VkOffset3D{
+							0, 0, 0,
+						},
+						VkExtent3D{
+							uint32(e.width),
+							uint32(e.height),
+							uint32(e.depth),
+						},
+					})
+					data := img.Layers.Get(layer).Levels.Get(mipLevel).Data.MustRead(sb.ctx, nil, sb.oldState, nil)
 					contents = append(contents, data...)
+					// len(data) must be equal to e.alignedLevelSize
 					offset += VkDeviceSize(e.alignedLevelSize)
 				}
 			}
@@ -1561,6 +1563,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 							sb.oldState.MemoryLayout,
 						).MustRead(sb.ctx, nil, sb.oldState, nil)
 						contents = append(contents, data...)
+						// len(data) must be equal to e.alignedLevelSize
 						offset += VkDeviceSize(e.alignedLevelSize)
 					}
 				}
