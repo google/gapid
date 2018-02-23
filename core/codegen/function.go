@@ -32,11 +32,27 @@ func (f Function) String() string {
 	return fmt.Sprintf("%v %v(%v)", f.Type.Signature.Result, f.Name, f.Type.Signature.Parameters)
 }
 
-// SetInline makes this function prefer inlining
-func (f Function) MakeInline() {
+// Inline makes this function prefer inlining
+func (f Function) Inline() Function {
 	kind := llvm.AttributeKindID("alwaysinline")
 	attr := f.m.ctx.CreateEnumAttribute(kind, 0)
 	f.llvm.AddFunctionAttr(attr)
+	return f
+}
+
+// LinkOnceODR sets this function's linkage to "linkonce_odr". This lets the
+// function be merged with other global symbols with the same name, with the
+// assumption their implementation is identical. Unlike "linkonce" this
+// also preserves inlining.
+func (f Function) LinkOnceODR() Function {
+	f.llvm.SetLinkage(llvm.WeakODRLinkage)
+	return f
+}
+
+// LinkPrivate makes this function use private linkage.
+func (f Function) LinkPrivate() Function {
+	f.llvm.SetLinkage(llvm.PrivateLinkage)
+	return f
 }
 
 // Build calls cb with a Builder that can construct the function body.

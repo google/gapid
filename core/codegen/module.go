@@ -31,10 +31,12 @@ type Module struct {
 	Types   Types
 	llvm    llvm.Module
 	ctx     llvm.Context
+	target  *device.ABI
 	triple  triple
 	name    string
 	funcTys map[string]FunctionType
 	llvmDbg *llvm.DIBuilder
+	memcpy  Function
 }
 
 // NewModule returns a new module with the specified name.
@@ -42,8 +44,15 @@ func NewModule(name string, target *device.ABI) *Module {
 	layout := target.MemoryLayout
 	intSize := 8 * int(layout.Integer.Size)
 	ptrSize := 8 * int(layout.Pointer.Size)
+	sizeSize := 8 * int(layout.Size.Size)
+
+	triple := targetTriple(target)
 
 	ctx := llvm.NewContext()
+
+	module := ctx.NewModule(name)
+	module.SetTarget(triple.String())
+
 	m := &Module{
 		Types: Types{
 			Void:          basicType{"void", 0, ctx.VoidType()},
@@ -58,6 +67,8 @@ func NewModule(name string, target *device.ABI) *Module {
 			Uint16:        Integer{false, basicType{"uint16", 16, ctx.Int16Type()}},
 			Uint32:        Integer{false, basicType{"uint32", 32, ctx.Int32Type()}},
 			Uint64:        Integer{false, basicType{"uint64", 64, ctx.Int64Type()}},
+			Uintptr:       Integer{false, basicType{"uintptr", ptrSize, ctx.IntType(ptrSize)}},
+			Size:          Integer{false, basicType{"size", sizeSize, ctx.IntType(sizeSize)}},
 			Float32:       Float{basicType{"float32", 32, ctx.FloatType()}},
 			Float64:       Float{basicType{"float64", 64, ctx.DoubleType()}},
 			ptrSizeInBits: ptrSize,
@@ -65,14 +76,18 @@ func NewModule(name string, target *device.ABI) *Module {
 			arrays:        map[typeInt]*Array{},
 			structs:       map[string]*Struct{},
 		},
-		llvm:    ctx.NewModule(name),
+		llvm:    module,
 		ctx:     ctx,
+		target:  target,
+		triple:  triple,
 		name:    name,
 		funcTys: map[string]FunctionType{},
 	}
 
-	m.triple = targetTriple(target)
-	m.llvm.SetTarget(m.triple.String())
+	// llvm.memcpy.p0i8.p0i8.i32(i8 * <dest>, i8 * <src>, i32 <len>, i32 <align>, i1 <isvolatile>)
+	voidPtr := m.Types.Pointer(m.Types.Void)
+	m.memcpy = m.Function(m.Types.Void, "llvm.memcpy.p0i8.p0i8.i32",
+		voidPtr, voidPtr, m.Types.Uint32, m.Types.Uint32, m.Types.Bool)
 
 	m.Types.m = m
 	return m
@@ -208,6 +223,8 @@ func (m *Module) parseTypeName(name string) Type {
 		return m.Types.Float32
 	case "double":
 		return m.Types.Float64
+	case "uintptr_t":
+		return m.Types.Uintptr
 	case "...":
 		return Variadic
 	default:
@@ -243,6 +260,12 @@ func (g Global) Value(b *Builder) *Value {
 	return b.val(g.Type, g.llvm)
 }
 
+// LinkPrivate makes this global use private linkage.
+func (g Global) LinkPrivate() Global {
+	g.llvm.SetLinkage(llvm.PrivateLinkage)
+	return g
+}
+
 // ZeroGlobal returns a zero-initialized new global variable with the specified
 // name and type.
 func (m *Module) ZeroGlobal(name string, ty Type) Global {
@@ -261,6 +284,13 @@ func (m *Module) Global(name string, val Const) Global {
 	return Global{m.Types.Pointer(val.Type), v}
 }
 
+// Extern returns a global variable declared externally with the given name and
+// type.
+func (m *Module) Extern(name string, ty Type) Global {
+	v := llvm.AddGlobal(m.llvm, ty.llvmTy(), name)
+	return Global{m.Types.Pointer(ty), v}
+}
+
 // Const is an immutable value.
 type Const struct {
 	Type Type
@@ -274,9 +304,17 @@ func (c Const) Value(b *Builder) *Value {
 
 // Scalar returns a constant scalar with the value v.
 func (m *Module) Scalar(v interface{}) Const {
+	rty := reflect.TypeOf(v)
 	ty := m.Types.TypeOf(v)
 	var val llvm.Value
 	switch {
+	case rty.Kind() == reflect.Slice:
+		rv := reflect.ValueOf(v)
+		vals := make([]llvm.Value, rv.Len())
+		for i := range vals {
+			vals[i] = m.Scalar(rv.Index(i).Interface()).llvm
+		}
+		val = llvm.ConstArray(ty.llvmTy(), vals)
 	case ty == m.Types.Bool:
 		if reflect.ValueOf(v).Bool() {
 			val = llvm.ConstInt(ty.llvmTy(), 1, false)
@@ -301,9 +339,9 @@ func (m *Module) Scalar(v interface{}) Const {
 		fail("Scalar does not support type %T", v)
 	}
 
-	// if a, b := val.Type().String(), ty.llvmTy().String(); a != b {
-	// 	fail("Value type mismatch: value: %v, type: %v", a, b)
-	// }
+	if a, b := val.Type().String(), ty.llvmTy().String(); a != b {
+		fail("Value type mismatch for %T: value: %v, type: %v", v, a, b)
+	}
 
 	val.SetName(fmt.Sprintf("%v", v))
 	return Const{ty, val}

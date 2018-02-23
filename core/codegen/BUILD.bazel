@@ -23,6 +23,7 @@ go_library(
         "cast.go",
         "doc.go",
         "function.go",
+        "intrinsics.go",
         "module.go",
         "output.go",
         "triple.go",
