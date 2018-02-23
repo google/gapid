@@ -53,7 +53,7 @@
   class Message;
   »}
   »}
-  namespace {{Global "API"}}_pb {«
+  namespace {{Global "API"}} {«
   {{range $c := $.Classes}}
     {{if not (GetAnnotation $c "noserialize")}} class {{$c.Name}}; {{end}}
   {{end}}
@@ -157,7 +157,7 @@
   class {{$name}} {
     «public:»
     {{if $serializable}}
-      typedef {{Global "API"}}_pb::{{$name}} ProtoType;
+      typedef {{Global "API"}}::{{$name}} ProtoType;
     {{end}}
 
     {{if len $.Fields}}

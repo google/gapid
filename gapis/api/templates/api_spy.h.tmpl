@@ -49,7 +49,7 @@
   #include <memory>
   #include <unordered_set>
 ¶
-namespace {{(Global "API")}}_pb {
+namespace {{(Global "API")}} {
   class State;
 }
 ¶
@@ -80,7 +80,7 @@ namespace {{(Global "API")}}_pb {
 ¶
   «protected:»
 ¶
-    std::unique_ptr<{{Global "API"}}_pb::State> serializeState(ToProtoContext& pbCtx);
+    std::unique_ptr<{{Global "API"}}::State> serializeState(ToProtoContext& pbCtx);
 ¶
     bool observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data);
 ¶

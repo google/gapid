@@ -188,8 +188,10 @@ func (Functions) Replace(old string, new string, v ...interface{}) stringList {
 	return out
 }
 
-func (Functions) TrimLeft(cutset string, v ...interface{}) stringList {
-	l := stringify(v...)
+// TrimLeft returns from with the all leading Unicode code points contained
+// in cutset removed.
+func (Functions) TrimLeft(cutset string, from ...interface{}) stringList {
+	l := stringify(from...)
 	out := stringList{}
 	for _, s := range l {
 		s = strings.TrimLeft(s, cutset)
@@ -200,8 +202,10 @@ func (Functions) TrimLeft(cutset string, v ...interface{}) stringList {
 	return out
 }
 
-func (Functions) TrimRight(cutset string, v ...interface{}) stringList {
-	l := stringify(v...)
+// TrimRight returns from with the all trailing Unicode code points contained
+// in cutset removed.
+func (Functions) TrimRight(cutset string, from ...interface{}) stringList {
+	l := stringify(from...)
 	out := stringList{}
 	for _, s := range l {
 		s = strings.TrimRight(s, cutset)
@@ -212,11 +216,25 @@ func (Functions) TrimRight(cutset string, v ...interface{}) stringList {
 	return out
 }
 
-func (Functions) TrimPrefix(prefix string, v ...interface{}) stringList {
-	l := stringify(v...)
+// TrimPrefix returns from with without the provided leading prefix string.
+func (Functions) TrimPrefix(prefix string, from ...interface{}) stringList {
+	l := stringify(from...)
 	out := stringList{}
 	for _, s := range l {
 		s = strings.TrimPrefix(s, prefix)
+		if len(s) > 0 {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// TrimSuffix returns from without the provided trailing suffix string.
+func (Functions) TrimSuffix(suffix string, from ...interface{}) stringList {
+	l := stringify(from...)
+	out := stringList{}
+	for _, s := range l {
+		s = strings.TrimSuffix(s, suffix)
 		if len(s) > 0 {
 			out = append(out, s)
 		}

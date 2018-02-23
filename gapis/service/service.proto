@@ -474,7 +474,7 @@ service Gapid {
 
   // GetLogStream calls the handler with each log record raised until the
   // context is cancelled.
-  rpc GetLogStream(GetLogStreamRequest) returns (stream log_pb.Message) {}
+  rpc GetLogStream(GetLogStreamRequest) returns (stream log.Message) {}
 
   // Find searches for data, streaming the results.
   rpc Find(FindRequest) returns (stream FindResponse) {}

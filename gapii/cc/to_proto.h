@@ -81,8 +81,8 @@ struct ProtoConverter<Out, void*> {
 
 // Converts Slice to proto
 template<typename T>
-struct ProtoConverter<memory_pb::Slice, gapil::Slice<T>> {
-    static inline void convert(memory_pb::Slice* out, const gapil::Slice<T>& in, ToProtoContext& ctx) {
+struct ProtoConverter<memory::Slice, gapil::Slice<T>> {
+    static inline void convert(memory::Slice* out, const gapil::Slice<T>& in, ToProtoContext& ctx) {
         ctx.SeenSlice(in);
 
         auto base = reinterpret_cast<uintptr_t>(in.begin());

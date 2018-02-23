@@ -17,7 +17,7 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 import "core/data/pod/pod.proto";
 
-package log_pb;
+package log;
 
 option java_package = "com.google.gapid.proto.log";
 option java_outer_classname = "Log";

@@ -17,9 +17,6 @@
 {{/* ---- Includes ---- */}}
 {{Include "../../templates/cpp_common.tmpl"}}
 
-{{/* ---- Overrides ---- */}}
-{{Global "C++.EnumTypeOverride" "uint32_t"}}
-
 {{$filename := print (Global "API") "_exports.h" }}
 {{$ | Macro "Exports" | Reflow 4 | Write $filename}}
 

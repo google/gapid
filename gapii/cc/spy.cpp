@@ -460,7 +460,7 @@ void Spy::saveInitialState() {
       for (const auto& kvp : seenPools) {
         auto p = kvp.second;
         auto resIndex = sendResource(GlesSpy::kApiIndex, p->buffer, p->size);
-        memory_pb::Observation observation;
+        memory::Observation observation;
         observation.set_base(0);
         observation.set_size(p->size);
         observation.set_resindex(resIndex);
@@ -486,7 +486,7 @@ void Spy::saveInitialState() {
         for (const auto& kvp : seenPools) {
           auto p = kvp.second;
           auto resIndex = sendResource(VulkanSpy::kApiIndex, p->buffer, p->size);
-          memory_pb::Observation observation;
+          memory::Observation observation;
           observation.set_base(0);
           observation.set_size(p->size);
           observation.set_resindex(resIndex);
@@ -659,7 +659,7 @@ uint32_t Spy::glGetError(CallObserver* observer) {
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError != 0) {
-            observer->encodeAndDelete(new gles_pb::glGetError());
+            observer->encodeAndDelete(new gles::glGetError());
             GLenum_Error err = fakeGlError;
             fakeGlError = 0;
             return err;

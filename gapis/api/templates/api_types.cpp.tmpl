@@ -82,7 +82,7 @@
   {{if $serializable}}
 ¶
     ::google::protobuf::Message* {{$name}}::toProto() const {
-      auto out = new {{Global "API"}}_pb::{{$name}}();
+      auto out = new {{Global "API"}}::{{$name}}();
       ToProtoContext pbCtx;
       toProto(out, pbCtx);
       return out;
@@ -131,7 +131,7 @@
   {{if not (GetAnnotation $ "pfn")}}
     ::google::protobuf::Message* {{$name}}::toProto() const {
       ToProtoContext pbCtx;
-      auto out = new {{Global "API"}}_pb::{{$name}}();
+      auto out = new {{Global "API"}}::{{$name}}();
       out->set_thread(thread);
       {{range $f := $.CallParameters}}
         {{Template "C++.SetProtoField" "Proto" "out->" "Prefix" "" "Name" $f.Name "Type" $f}}
@@ -141,7 +141,7 @@
     {{if not (IsVoid $.Return.Type)}}
       ::google::protobuf::Message* {{$name}}Call::toProto() const {
         ToProtoContext pbCtx;
-        auto out = new {{Global "API"}}_pb::{{$name}}Call();
+        auto out = new {{Global "API"}}::{{$name}}Call();
         {{Template "C++.SetProtoField" "Proto" "out->" "Prefix" "" "Name" "result" "Type" $.Return.Type}}
         return out;
       };

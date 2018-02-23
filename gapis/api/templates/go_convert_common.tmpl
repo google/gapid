@@ -74,7 +74,7 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits a type declaration and implementation for the specified class.
+  Emits conversion logic for the given class type.
 -------------------------------------------------------------------------------
 */}}
 {{define "ClassEntry"}}
@@ -103,7 +103,53 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the conversion for a signle field from live type to storage proto.
+  Emits a type declaration and implementation for the specified map.
+-------------------------------------------------------------------------------
+*/}}
+{{define "MapEntry"}}
+  ¶
+  {{$name := Macro "Go.Type" $}}
+  {{$proto := print (Global "Store") "." (Macro "Convert.StorageTypeName" $)}}
+
+  // ToProto returns the storage form of the {{$name}}.¶
+  func (ϟa *{{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
+    referenceID, isNew := ϟrefs.GetReferenceID(ϟa, {{$name}}{})¶
+    if isNew {»¶
+      out := &{{$proto}}{ReferenceID: referenceID}¶
+      keys := ϟa.KeysSorted()¶
+      for _, ϟk := range keys {»¶
+        v := ϟa.Get(ϟk)¶
+        out.Keys = append(out.Keys, {{Template "Convert.ToProto" "Type" $.KeyType "Value" "ϟk"}})¶
+        out.Values = append(out.Values, {{Template "Convert.ToProto" "Type" $.ValueType "Value" "v"}})¶
+      «}¶
+      return out
+    «}¶
+    return &{{$proto}}{ReferenceID: referenceID}¶
+  «}¶
+  ¶
+  // {{$name}}From builds a {{$name}} from the storage form.¶
+  func {{$name}}From(from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
+    return ϟrefs.GetReferencedObject(from.GetReferenceID(), {{$name}}{}, func () (interface{}, func()) {»¶
+      ϟobj := New{{$name}}()¶
+      return ϟobj, func() {»¶
+        {{$keytype := Macro "Convert.StorageType" $.KeyType}}
+        {{$numeric := or (eq $keytype "int32") (eq $keytype "int64")}}
+        var ϟk {{$keytype}}¶
+        for ϟi, ϟv := range from.Values {»¶
+          {{if $numeric}}if ϟi < len(from.Keys){{end}} { ϟk = from.Keys[ϟi] }¶
+          ϟobj.Set({{Template "Convert.FromProto" "Type" $.KeyType "Value" "ϟk"}},
+                   {{Template "Convert.FromProto" "Type" $.ValueType "Value" "ϟv"}})¶
+          {{if $numeric}}ϟk++ // Increment if keys are trimmed ¶{{end}}
+        «}¶
+      «}¶
+    «}).({{$name}})¶
+  «}¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the conversion for a single field from live type to storage proto.
 -------------------------------------------------------------------------------
 */}}
 {{define "Convert.To"}}
@@ -116,21 +162,6 @@
     for ϟi := 0; ϟi < {{$truetype.Size}}; ϟi++ {»¶
       ϟv := ϟa.{{$name}}[ϟi]¶
       to.{{$proto}}[ϟi] = {{Template "Convert.ToProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
-    «}¶
-  {{else if IsMap $truetype}}
-    {{$maptype := printf "%s_%s_Map" $.Outer $.Field.Name}}
-    {{$maptype := printf "%s_pb.%s" (Global "OutputDir") (ProtoGoName $maptype)}}
-    if referenceID, isNew := ϟrefs.GetReferenceID(ϟa.{{$name}}, {{$type.Name}}{}); isNew {»¶
-      ϟobj := &{{$maptype}}{ReferenceID: referenceID}¶
-      ϟkeys := ϟa.{{$name}}.KeysSorted()¶
-      for _, ϟk := range ϟkeys {»¶
-        ϟv := ϟa.{{$name}}.Get(ϟk)¶
-        ϟobj.Keys = append(ϟobj.Keys, {{Template "Convert.ToProto" "Type" $type.KeyType "Value" "ϟk"}})¶
-        ϟobj.Values = append(ϟobj.Values, {{Template "Convert.ToProto" "Type" $type.ValueType "Value" "ϟv"}})¶
-      «}¶
-      to.{{$proto}} = ϟobj¶
-    «} else {»¶
-      to.{{$proto}} = &{{$maptype}}{ReferenceID: referenceID}¶
     «}¶
   {{else}}
     {{$value := printf "ϟa.%s" $name}}
@@ -154,21 +185,6 @@
       ϟv := from.{{$proto}}[ϟi]¶
       ϟa.{{$name}}[ϟi] = {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}}¶
     «}¶
-  {{else if IsMap $truetype}}
-    ϟa.{{$name}} = ϟrefs.GetReferencedObject(from.{{$proto}}.GetReferenceID(), {{$.Field.Type.Name}}{}, func () (interface{}, func()) {»¶
-      ϟobj := New{{$.Field.Type.Name}}()¶
-      return ϟobj, func() {»¶
-        {{$keytype := Macro "Convert.StorageType" $truetype.KeyType}}
-        {{$numeric := or (eq $keytype "int32") (eq $keytype "int64")}}
-        var ϟk {{$keytype}}¶
-        for ϟi, ϟv:= range from.{{$proto}}.Values {»¶
-          {{if $numeric}}if ϟi < len(from.{{$proto}}.Keys){{end}} { ϟk = from.{{$proto}}.Keys[ϟi] }¶
-          ϟobj.Set({{Template "Convert.FromProto" "Type" $truetype.KeyType "Value" "ϟk"}},
-                   {{Template "Convert.FromProto" "Type" $truetype.ValueType "Value" "ϟv"}})¶
-          {{if $numeric}}ϟk++ // Increment if keys are trimmed ¶{{end}}
-        «}¶
-      «}¶
-    «}).({{$.Field.Type.Name}})¶
   {{else}}
     {{$value := printf "from.%s" $proto}}
     ϟa.{{$name}} = {{Template "Convert.FromProto" "Type" $type "Value" $value}}¶
@@ -178,7 +194,7 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the proto type for the provided AST type or expression.
+  Emits the go type for the provided AST type or expression.
 -------------------------------------------------------------------------------
 */}}
 {{define "Convert.LiveType"}}
@@ -215,7 +231,7 @@
   Emits the proto type for the provided AST type or expression.
 -------------------------------------------------------------------------------
 */}}
-{{define "Convert.StorageType"}}
+{{define "Convert.StorageTypeName"}}
   {{if IsBool               $}}int32
   {{else if IsInt           $}}int64
   {{else if IsUint          $}}int64
@@ -227,10 +243,26 @@
   {{else if IsEnum          $}}int64
   {{else if IsPointer       $}}int64
   {{else if IsSlice         $}}memory_pb.Slice
-  {{else if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
-  {{else if IsClass         $}}*{{Global "Store"}}.{{$.Name | ProtoGoName}}
-  {{else if IsReference     $}}*{{Global "Store"}}.{{$.To.Name | ProtoGoName}}_Reference
+  {{else if IsPseudonym     $}}{{Template "Convert.StorageTypeName" $.To}}
+  {{else if IsClass         $}}{{ProtoType $ | ProtoGoName}}
+  {{else if IsReference     $}}{{ProtoType $ | ProtoGoName}}
+  {{else if IsMap           $}}{{ProtoType $ | ProtoGoName}}
   {{else}}{{Error "macro Convert.StorageType called with unsupported type: %T" $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the proto type for the provided AST type or expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Convert.StorageType"}}
+  {{     if IsPseudonym     $}}{{Template "Convert.StorageType" $.To}}
+  {{else if IsClass         $}}*{{Global "Store"}}.{{Template "Convert.StorageTypeName" $}}
+  {{else if IsReference     $}}*{{Global "Store"}}.{{Template "Convert.StorageTypeName" $}}
+  {{else if IsMap           $}}*{{Global "Store"}}.{{Template "Convert.StorageTypeName" $}}
+  {{else                     }}{{Template "Convert.StorageTypeName" $}}
   {{end}}
 {{end}}
 
@@ -245,8 +277,9 @@
     {{$target := Macro "Convert.StorageType" $.Type}}
     {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{$.Value}}.ToProto(ϟrefs)
+    {{else if IsMap $truetype}}{{$.Value}}.ToProto(ϟrefs)
     {{else if IsReference $truetype}}
-      {{$reftype := printf "%s_pb.%s_Reference" (Global "OutputDir") ($truetype.To.Name | ProtoGoName)}}
+      {{$reftype := print (Global "Store") "." (Macro "Convert.StorageTypeName" $truetype)}}
       func() *{{$reftype}} {¶»
         ϟobj := &{{$reftype}}{}¶
         referenceID, isNew := ϟrefs.GetReferenceID({{$.Value}}, {{$source}}(nil))¶
@@ -280,6 +313,7 @@
     {{$target := Macro "Convert.LiveType" $.Type}}
     {{$truetype := Underlying $.Type}}
     {{if IsClass $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}}, ϟrefs)
+    {{else if IsMap $truetype}}{{Template "Go.Type" $.Type}}From({{$.Value}}, ϟrefs)
     {{else if IsReference $truetype}}
       ϟrefs.GetReferencedObject({{$.Value}}.GetReferenceID(), ({{$target}})(nil), func() (interface{}, func()) {»¶
         {{$value := printf "%s.Value" $.Value}}

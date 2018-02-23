@@ -22,6 +22,7 @@ import (
 	"unicode"
 
 	"github.com/google/gapid/gapil/semantic"
+	"github.com/google/gapid/gapil/serialization"
 )
 
 var (
@@ -146,12 +147,12 @@ func initNodeTypes(f *Functions) {
 	}
 }
 
-// Returns the resolved semantic type of an expression node.
+// TypeOf returns the resolved semantic type of an expression node.
 func (*Functions) TypeOf(v semantic.Node) (semantic.Type, error) {
 	return semantic.TypeOf(v)
 }
 
-// Returns true if v is one of the primitive numeric value types.
+// IsNumericValue returns true if v is one of the primitive numeric value types.
 func (*Functions) IsNumericValue(v interface{}) bool {
 	switch v.(type) {
 	case semantic.Int8Value,
@@ -170,27 +171,10 @@ func (*Functions) IsNumericValue(v interface{}) bool {
 	}
 }
 
-// Returns true if t is one of the primitive numeric types.
+// IsNumericType returns true if t is one of the primitive numeric types.
 func (*Functions) IsNumericType(t interface{}) bool {
-	if _, builtin := t.(*semantic.Builtin); !builtin {
-		return false
-	}
-	switch t {
-	case semantic.Int8Type,
-		semantic.Uint8Type,
-		semantic.Int16Type,
-		semantic.Uint16Type,
-		semantic.Int32Type,
-		semantic.Uint32Type,
-		semantic.Int64Type,
-		semantic.Uint64Type,
-		semantic.Float32Type,
-		semantic.Float64Type,
-		semantic.SizeType:
-		return true
-	default:
-		return false
-	}
+	ty, ok := t.(semantic.Type)
+	return ok && semantic.IsNumeric(ty)
 }
 
 // UniqueEnumKeys returns the enum's list of EnumEntry with duplicate values
@@ -280,4 +264,9 @@ func (*Functions) AssertType(v interface{}, expected ...string) (string, error) 
 		msg += expected[0]
 	}
 	return "", errors.New(msg)
+}
+
+// ProtoType returns the proto type name for the given type.
+func (f *Functions) ProtoType(ty interface{}) string {
+	return serialization.ProtoTypeName(ty.(semantic.Type))
 }

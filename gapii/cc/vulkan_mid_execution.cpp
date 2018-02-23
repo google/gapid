@@ -286,7 +286,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     pool->ref_count = 1;
     pool->buffer = nullptr;
 
-    memory_pb::Observation observation;
+    memory::Observation observation;
     observation.set_base(0);
     observation.set_size(0);
     observation.set_resindex(empty_index);
@@ -438,7 +438,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
       void *pData = stage.GetMappedMemory();
       auto resIndex = sendResource(VulkanSpy::kApiIndex, pData, bind.msize);
 
-      memory_pb::Observation observation;
+      memory::Observation observation;
       observation.set_base(bind.mmemoryOffset);
       observation.set_size(bind.msize);
       observation.set_resindex(resIndex);
@@ -790,7 +790,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
         new_offset += e.aligned_level_size;
         const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
         const uint32_t array_layer = copy.mimageSubresource.mbaseArrayLayer;
-        memory_pb::Observation observation;
+        memory::Observation observation;
         observation.set_base(x + y + z);
         observation.set_size(e.level_size);
         observation.set_resindex(resIndex);
