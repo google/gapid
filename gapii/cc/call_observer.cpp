@@ -107,7 +107,7 @@ void CallObserver::observePending() {
         uint8_t* data = reinterpret_cast<uint8_t*>(p.start());
         uint64_t size = p.end() - p.start();
         auto resIndex = mSpy->sendResource(mApi, data, size);
-        auto observation = new memory_pb::Observation();
+        auto observation = new memory::Observation();
         observation->set_base(p.start());
         observation->set_size(size);
         observation->set_resindex(resIndex);

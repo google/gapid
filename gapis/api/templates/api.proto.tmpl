@@ -19,7 +19,7 @@
 {{$ | Macro "api.proto" | NewReflow "    " | Write "api.proto"}}
 
 {{define "api.proto"}}
-  {{template "Proto.GeneratedHeader" (Global "OutputDir")}}
+  {{template "Proto.GeneratedHeader" (Global "OutputDir" | TrimSuffix "_pb")}}
 
   option optimize_for = CODE_SIZE;
 
@@ -29,6 +29,14 @@
 
   {{range $c := $.Classes}}
     {{if not (GetAnnotation $c "noserialize")}}{{Template "ClassEntry" $c}}{{end}}
+  {{end}}
+
+  {{range $r := $.References}}
+    {{if not (GetAnnotation $r "noserialize")}}{{Template "ReferenceEntry" $r}}{{end}}
+  {{end}}
+
+  {{range $m := $.Maps}}
+    {{if not (GetAnnotation $m "noserialize")}}{{Template "MapEntry" $m}}{{end}}
   {{end}}
 
   {{Global "ProtoID" 0}}
@@ -80,7 +88,7 @@
 -------------------------------------------------------------------------------
 */}}
 {{define "ClassEntry"}}
-  {{$name := $.Name}}
+  {{$name := ProtoType $}}
   {{Global "ProtoID" 0}}
   ¶
   // {{$name}} is the structure for serializing the class {{$.Name}}¶
@@ -89,36 +97,45 @@
       {{Template "Proto.Entry" "Param" $v "Type" (TypeOf $v)}}
     {{end}}
   «}¶
-  message {{$name}}_Reference {»¶
-    sint64 ReferenceID = 1;¶
-    {{$name}} Value = 2;¶
-  «}¶
 {{end}}
 
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the proto type for the provided AST type or expression.
+  Emits a type declaration and implementation for the specified reference.
 -------------------------------------------------------------------------------
 */}}
-{{define "Proto.Type"}}
-  {{if IsBool               $}}sint32
-  {{else if IsInt           $}}sint64
-  {{else if IsUint          $}}sint64
-  {{else if IsChar          $}}sint32
-  {{else if IsF32           $}}float
-  {{else if IsF64           $}}double
-  {{else if IsNumericType   $}}sint64 {{/* Must be after floats */}}
-  {{else if IsString        $}}string
-  {{else if IsEnum          $}}sint64
-  {{else if IsPointer       $}}sint64
-  {{else if IsReference     $}}{{$.To.Name}}_Reference
-  {{else if IsSlice         $}}memory_pb.Slice
-  {{else if IsClass         $}}{{$.Name}}
-  {{else if IsPseudonym     $}}{{Template "Proto.Type" $.To}}
-  {{else}}{{Error "macro Proto.Type called with unsupported type: %T" $}}
+{{define "ReferenceEntry"}}
+  {{$name := ProtoType $}}
+  {{Global "ProtoID" 0}}
+  ¶
+  message {{$name}} {»¶
+    sint64 ReferenceID = 1;¶
+    {{ProtoType $.To}} Value = 2;¶
+  «}¶
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified map.
+-------------------------------------------------------------------------------
+*/}}
+{{define "MapEntry"}}
+  {{$name := ProtoType $}}
+  {{$key := print "declared:" $name}}
+  {{$declared := Global $key}}
+  {{if not $declared}}
+    {{Global $key "true"}}
+    ¶
+    // {{$name}} is the structure for serializing the map {{$.Name}}¶
+    message {{$name}} {»¶
+      sint64 ReferenceID = 1;¶
+      repeated {{ProtoType $.ValueType}} Values = 2;¶
+      repeated {{ProtoType $.KeyType}} Keys = 3;¶
+    «}¶
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------
@@ -129,15 +146,7 @@
   {{$name := $.Param.Name}}
   {{if IsPseudonym     $.Type}}{{Template "Proto.Entry" "Param" $.Param "Type" $.Type.To}}
   {{else if IsStaticArray   $.Type}}repeated {{Template "Proto.Entry" "Param" $.Param "Type" $.Type.ValueType}}
-  {{else if IsMap           $.Type}}
-    {{$entry := printf "%s_Map" $name}}
-    message {{$entry}} {»¶
-      sint64 ReferenceID = 1;¶
-      repeated {{Template "Proto.Type" $.Type.ValueType}} Values = 2;¶
-      repeated {{Template "Proto.Type" $.Type.KeyType}} Keys = 3;¶
-    «}¶
-    {{$entry}} {{$name}} = {{Inc "ProtoID"}};¶
-  {{else}}{{Template "Proto.Type" $.Type}} {{$name}} = {{Inc "ProtoID"}};¶
+  {{else}}{{ProtoType $.Type}} {{$name}} = {{Inc "ProtoID"}};¶
   {{end}}
 {{end}}
 

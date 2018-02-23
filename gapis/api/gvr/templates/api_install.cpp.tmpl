@@ -17,9 +17,6 @@
 {{/* ---- Includes ---- */}}
 {{Include "../../templates/cpp_common.tmpl"}}
 
-{{/* ---- Overrides ---- */}}
-{{Global "C++.EnumTypeOverride" "uint32_t"}}
-
 {{$filename := print "gvr_install.cpp" }}
 {{$ | Macro "Install" | Reflow 4 | Write $filename}}
 

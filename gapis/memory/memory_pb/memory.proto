@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package memory_pb;
+package memory;
 option go_package = "github.com/google/gapid/gapis/memory/memory_pb";
 // cc_package
 
