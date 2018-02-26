@@ -22,6 +22,9 @@
 
 #include <unordered_map>
 
+static_assert((GAPIL_MIN_MAP_SIZE & (GAPIL_MIN_MAP_SIZE - 1)) == 0, "Map size must be a power of 2");
+static_assert((GAPIL_MAP_GROW_MULTIPLIER & (GAPIL_MAP_GROW_MULTIPLIER - 1)) == 0, "Map size must be a power of 2");
+
 namespace gapil {
 
 template<typename K, typename V>
@@ -109,7 +112,7 @@ V* Map<K, V>::Allocation::index(K key, bool insert) {
 
     for (uint64_t i = 0; i < capacity; ++i) {
         bool leave = false;
-        uint64_t lookup_pos = (hash + i) % capacity;
+        uint64_t lookup_pos = (hash + i) & (capacity - 1);
         switch(elems[lookup_pos].used) {
             case GAPIL_MAP_ELEMENT_EMPTY:
                 leave = true;
@@ -131,7 +134,7 @@ V* Map<K, V>::Allocation::index(K key, bool insert) {
     auto storageBucket = [&](uint64_t h) {
         auto elems = els();
         for (uint64_t i = 0; i < capacity; ++i) {
-            uint64_t x = (h + i) %  capacity;
+            uint64_t x = (h + i) & (capacity - 1);
             if (elems[x].used != GAPIL_MAP_ELEMENT_FULL) {
                 return x;
             }
@@ -201,7 +204,7 @@ void Map<K, V>::Allocation::remove(K key) {
     auto elems = els();
 
     for (uint64_t i = 0; i < capacity; ++i) {
-        uint64_t lookup_pos = (hash + i) % capacity;
+        uint64_t lookup_pos = (hash + i) & (capacity - 1);
         switch(elems[lookup_pos].used) {
             case GAPIL_MAP_ELEMENT_EMPTY:
                 return;
