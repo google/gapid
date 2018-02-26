@@ -48,7 +48,7 @@ def _apic_template_impl(ctx):
                 template.main.path,
             ],
             mnemonic = "apic",
-            progress_message = "apic " + api.main.short_path + " with " + template.main.short_path,
+            progress_message = "apic generating " + api.main.short_path + " with " + template.main.short_path,
             executable = ctx.executable._apic,
             use_default_shell_env = True,
         )
@@ -88,4 +88,75 @@ apic_template = rule(
     },
     toolchains = ["@io_bazel_rules_go//go:toolchain"],
     output_to_genfiles = True,
+)
+
+
+def _apic_compile_impl(ctx):
+    api = ctx.attr.api
+    apiname = api.apiname
+    apilist = api.includes.to_list()
+    generated = depset()
+
+    target = ctx.fragments.cpp.cpu
+    outputs = [ctx.new_file(ctx.label.name + ".o")]
+    generated += outputs
+
+    ctx.actions.run(
+        inputs = apilist,
+        outputs = outputs,
+        arguments = [
+            "compile",
+            "--search", api_search_path(apilist),
+            "--target", target,
+            "--output", outputs[0].path,
+            "--optimize=%s" % ctx.attr.optimize,
+            "--namespace", ctx.attr.namespace,
+            "--symbols", ctx.attr.symbols,
+        ] + ["--emit-" + emit for emit in ctx.attr.emit] + [
+            api.main.path,
+        ],
+        mnemonic = "apic",
+        progress_message = "apic compiling " + api.main.short_path + " for " + target,
+        executable = ctx.executable._apic,
+        use_default_shell_env = True,
+    )
+
+    return [
+        DefaultInfo(files = depset(generated)),
+    ]
+
+"""Adds an API compile rule"""
+apic_compile = rule(
+    _apic_compile_impl,
+    attrs = {
+        "api": attr.label(
+            allow_files = False,
+            mandatory = True,
+            providers = [
+                "apiname",
+                "main",
+                "includes",
+            ],
+        ),
+        "optimize": attr.bool(default = False),
+        "emit": attr.string_list(
+            allow_empty = False,
+            mandatory = True,
+        ),
+        "namespace": attr.string(
+            default = "",
+            mandatory = False,
+        ),
+        "symbols": attr.string(
+            default = "c++",
+            mandatory = False,
+        ),
+        "_apic": attr.label(
+            executable = True,
+            cfg = "host",
+            allow_files = True,
+            default = Label("//cmd/apic:apic"),
+        ),
+    },
+    fragments = ["cpp"],
 )
