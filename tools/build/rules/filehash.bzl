@@ -49,4 +49,5 @@ filehash = rule(
             default = Label("//cmd/filehash:filehash"),
         ),
     },
+    output_to_genfiles = True,
 )
