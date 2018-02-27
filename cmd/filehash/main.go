@@ -72,5 +72,8 @@ func run(ctx context.Context) error {
 	if *out == "" {
 		fmt.Print(result)
 	}
+	if result == string(data) {
+		return fmt.Errorf("'%v' was not found in file %v", *replace, *in)
+	}
 	return ioutil.WriteFile(*out, []byte(result), 0777)
 }
