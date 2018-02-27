@@ -105,6 +105,9 @@ bool vkPhysicalDevices(
 // false.
 bool hasVulkanLoader();
 
+// hasGLorGLES returns true if libGL or libGLES can be found.
+bool hasGLorGLES();
+
 // The functions below are used by getDeviceInstance(), and are implemented
 // in the target-dependent sub-directories.
 

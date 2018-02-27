@@ -92,10 +92,16 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
   // Instance.Configuration.Drivers
   auto drivers = new Drivers();
 
-  // Instance.Configuration.Drivers.OpenGLDriver
-  auto opengl_driver = new OpenGLDriver();
-  query::glDriver(opengl_driver);
-  drivers->set_allocated_opengl(opengl_driver);
+  const char* backupVendor = "";
+  const char* backupName = "";
+  if (query::hasGLorGLES()) {
+    // Instance.Configuration.Drivers.OpenGLDriver
+    auto opengl_driver = new OpenGLDriver();
+    query::glDriver(opengl_driver);
+    drivers->set_allocated_opengl(opengl_driver);
+    backupVendor = opengl_driver->vendor().c_str();
+    backupName = opengl_driver->renderer().c_str();
+  }
 
   // Checks if the device supports Vulkan (have Vulkan loader) first, then
   // populates the VulkanDriver message.
@@ -106,6 +112,9 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
     }
     if (opt.vulkan.query_physical_devices()) {
       query::vkPhysicalDevices(vulkan_driver);
+      if (strlen(backupName) == 0 && vulkan_driver->physicaldevices_size() > 0) {
+        backupName = vulkan_driver->physicaldevices(0).devicename().c_str();
+      }
     }
     drivers->set_allocated_vulkan(vulkan_driver);
   }
@@ -122,10 +131,10 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
   const char* gpuName = query::gpuName();
   const char* gpuVendor = query::gpuVendor();
   if (strlen(gpuName) == 0) {
-    gpuName = opengl_driver->renderer().c_str();
+    gpuName = backupName;
   }
   if (strlen(gpuVendor) == 0) {
-    gpuVendor = opengl_driver->vendor().c_str();
+    gpuVendor = backupVendor;
   }
   gpu->set_name(gpuName);
   gpu->set_vendor(gpuVendor);

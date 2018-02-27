@@ -191,6 +191,10 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             // It is ok since correct replay will only reference what it is supposed to.
             if (!mRootGlesRenderer) {
                 mRootGlesRenderer.reset(GlesRenderer::create(nullptr));
+                if (!mRootGlesRenderer) {
+                    GAPID_ERROR("Could not create GLES renderer on this device");
+                    return false;
+                }
                 mRootGlesRenderer->bind();
                 mRootGlesRenderer->setBackbuffer(GlesRenderer::Backbuffer(
                     8, 8,
@@ -200,6 +204,10 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                 ));
             }
             auto renderer = GlesRenderer::create(mRootGlesRenderer.get());
+            if (!renderer) {
+                GAPID_ERROR("Could not create GLES renderer on this device");
+                return false;
+            }
             renderer->setListener(this);
             mGlesRenderers[id] = renderer;
             return true;

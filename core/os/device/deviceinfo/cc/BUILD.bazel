@@ -39,7 +39,6 @@ cc_library(
     linkopts = select({
         "//tools/build:linux": [
             "-ldl",
-            "-lX11",
         ],
         "//tools/build:darwin": [
             "-framework Cocoa",

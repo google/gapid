@@ -18,6 +18,7 @@
 
 #include "core/cc/gl/versions.h"
 #include "core/cc/get_gles_proc_address.h"
+#include "core/cc/dl_loader.h"
 
 #include <X11/Xresource.h>
 #include <GL/glx.h>
@@ -26,6 +27,12 @@
 
 #include <sys/utsname.h>
 #include <unistd.h>
+
+#if defined(__LP64__)
+#define SYSTEM_LIB_PATH "/system/lib64/"
+#else
+#define SYSTEM_LIB_PATH "/system/lib/"
+#endif
 
 #define STR_OR_EMPTY(x) ((x != nullptr) ? x : "")
 
@@ -52,10 +59,23 @@ typedef void (*pfn_glXDestroyPbuffer)(Display*  dpy, GLXPbuffer  pbuf);
 typedef void (*pfn_glXDestroyContext)(Display *  dpy, GLXContext  ctx);
 
 
+typedef int(*pfn_XFree) (void*);
+typedef int(*pfn_XCloseDisplay)(Display*);
+typedef Display* (*pfn_XOpenDisplay)(_Xconst char*);
+typedef XErrorHandler (*pfn_XSetErrorHandler) (XErrorHandler);
+
 void destroyContext() {
     if (--gContextRefCount > 0) {
         return;
     }
+
+    if (!core::DlLoader::can_load("libX11.so")) {
+        return;
+    }
+
+    core::DlLoader libX("libX11.so");
+    pfn_XFree free = (pfn_XFree)libX.lookup("XFree");
+    pfn_XCloseDisplay closeDisplay = (pfn_XCloseDisplay)libX.lookup("XCloseDisplay");
 
     pfn_glXDestroyPbuffer fn_glXDestroyPbuffer = (pfn_glXDestroyPbuffer)core::GetGlesProcAddress("glXDestroyPbuffer", true);
     pfn_glXDestroyContext fn_glXDestroyContext = (pfn_glXDestroyContext)core::GetGlesProcAddress("glXDestroyContext", true);
@@ -70,11 +90,11 @@ void destroyContext() {
         gContext.mContext = nullptr;
     }
     if (gContext.mFBConfigs) {
-        XFree(gContext.mFBConfigs);
+        free(gContext.mFBConfigs);
         gContext.mFBConfigs = nullptr;
     }
     if (gContext.mDisplay) {
-        XCloseDisplay(gContext.mDisplay);
+        closeDisplay(gContext.mDisplay);
         gContext.mDisplay = nullptr;
     }
 }
@@ -82,12 +102,6 @@ void destroyContext() {
 bool createContext(void* platform_data) {
     if (gContextRefCount++ > 0) {
         return true;
-    }
-    pfn_glXChooseFBConfig fn_glXChooseFBConfig= (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig", true);
-    pfn_glXCreateNewContext fn_glXCreateNewContext = (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext", true);
-    pfn_glXCreatePbuffer fn_glXCreatePbuffer = (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer", true);
-    if (!fn_glXChooseFBConfig || !fn_glXCreateNewContext || !fn_glXCreatePbuffer) {
-        return false;
     }
 
     memset(&gContext, 0, sizeof(gContext));
@@ -108,12 +122,32 @@ bool createContext(void* platform_data) {
         return false;
     }
 
-    gContext.mDisplay = XOpenDisplay(nullptr);
+    pfn_glXChooseFBConfig fn_glXChooseFBConfig= (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig", true);
+    pfn_glXCreateNewContext fn_glXCreateNewContext = (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext", true);
+    pfn_glXCreatePbuffer fn_glXCreatePbuffer = (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer", true);
+    if (!fn_glXChooseFBConfig || !fn_glXCreateNewContext || !fn_glXCreatePbuffer) {
+        return true;
+    }
+
+    if (!core::DlLoader::can_load("libX11.so")) {
+        return true;
+    }
+
+    core::DlLoader libX("libX11.so");
+
+    pfn_XOpenDisplay openDisplay = (pfn_XOpenDisplay)libX.lookup("XOpenDisplay");
+    pfn_XSetErrorHandler setErrorHandler = (pfn_XSetErrorHandler)libX.lookup("XSetErrorHandler");
+
+    gContext.mDisplay = openDisplay(nullptr);
     if (gContext.mDisplay == nullptr) {
         // Default display was not found. This may be because we're executing in
         // the bazel sandbox. Attempt to connect to the 0'th display instead.
-        gContext.mDisplay = XOpenDisplay(":0");
+        gContext.mDisplay = openDisplay(":0");
+        if (gContext.mDisplay == nullptr) {
+            return true;
+        }
     }
+
     if (gContext.mDisplay == nullptr) {
         snprintf(gContext.mError, sizeof(gContext.mError),
                 "XOpenDisplay returned nullptr");
@@ -160,7 +194,7 @@ bool createContext(void* platform_data) {
                                                 True);
     } else {
         // Prevent X from taking down the process if the GL version is not supported.
-        auto oldHandler = XSetErrorHandler([](Display*, XErrorEvent*)->int{ return 0; });
+        auto oldHandler = setErrorHandler([](Display*, XErrorEvent*)->int{ return 0; });
         for (auto gl_version : core::gl::sVersionSearchOrder) {
             // List of name-value pairs.
             const int contextAttribs[] = {
@@ -177,7 +211,7 @@ bool createContext(void* platform_data) {
                 break;
             }
         }
-        XSetErrorHandler(oldHandler);
+        setErrorHandler(oldHandler);
     }
 
     if (!gContext.mContext) {

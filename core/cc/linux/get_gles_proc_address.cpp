@@ -61,5 +61,9 @@ void* getGlesProcAddress(const char *name, bool bypassLocal) {
 namespace core {
 
 GetGlesProcAddressFunc* GetGlesProcAddress = getGlesProcAddress;
+bool hasGLorGLES() {
+    return DlLoader::can_load("libGL.so.1");
+}
+
 
 }  // namespace core
