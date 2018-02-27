@@ -44,46 +44,66 @@ namespace core {
 Arena::Arena() {}
 
 Arena::~Arena() {
+#ifdef TRACK_ALLOCATIONS
     for (void* ptr : allocations) {
         ::free(ptr);
     }
     allocations.clear();
+#endif
 }
 
 void* Arena::allocate(uint32_t size, uint32_t align) {
     void* ptr = malloc(size); // TODO: alignment
+#ifdef TRACK_ALLOCATIONS
     allocations.insert(ptr);
+#endif
     return ptr;
 }
 
 void* Arena::reallocate(void* ptr, uint32_t size, uint32_t align) {
     GAPID_ASSERT_MSG(this->owns(ptr), "ptr: %p", ptr);
     void* newptr = realloc(ptr, size); // TODO: alignment
+#ifdef TRACK_ALLOCATIONS
     allocations.erase(ptr);
     allocations.insert(newptr);
+#endif
     return newptr;
 }
 
 void Arena::free(void* ptr) {
     GAPID_ASSERT_MSG(this->owns(ptr), "ptr: %p", ptr);
+#ifdef TRACK_ALLOCATIONS
     allocations.erase(ptr);
+#endif
     ::free(ptr);
 }
 
 bool Arena::owns(void* ptr) {
+#ifdef TRACK_ALLOCATIONS
     return allocations.count(ptr) == 1;
+#else
+    return true;
+#endif
 }
 
 size_t Arena::num_allocations() const {
+#ifdef TRACK_ALLOCATIONS
     return allocations.size();
+#else
+    return 0;
+#endif
 }
 
 size_t Arena::num_bytes_allocated() const {
+#ifdef TRACK_ALLOCATIONS
     size_t bytes = 0;
     for (void* ptr : allocations) {
         bytes += alloc_size(ptr);
     }
     return bytes;
+#else
+    return 0;
+#endif
 }
 
 }  // namespace core

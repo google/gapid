@@ -24,3 +24,16 @@ cc_library(
     copts = cc_copts(),
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "tracking_arena",
+    srcs = glob(
+        ["*.cpp"],
+    ),
+    deps = [
+        "//core/cc",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = cc_copts() + ["-DTRACK_ALLOCATIONS"],
+    visibility = ["//visibility:public"],
+)

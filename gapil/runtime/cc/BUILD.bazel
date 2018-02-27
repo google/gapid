@@ -19,9 +19,6 @@ cc_library(
     hdrs = glob(["*.h"]),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
-    deps = [
-        "//core/memory/arena/cc",
-    ],
 )
 
 cc_library(
@@ -35,7 +32,22 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":headers",
-        "//core/memory/arena/cc",
+        "//core/memory/arena/cc:cc",
+    ],
+)
+
+cc_library(
+    name = "test_cc",
+    srcs = [
+        "runtime.cpp",
+        "string.cpp",
+    ],
+    hdrs = glob(["*.inc"]),
+    copts = cc_copts(),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":headers",
+        "//core/memory/arena/cc:tracking_arena",
     ],
 )
 
@@ -53,7 +65,7 @@ cc_test(
         "//conditions:default": [],
     }),
     deps = [
-        ":cc",
+        ":test_cc",
         "@gtest//:gtest_main",
     ]
 )
