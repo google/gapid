@@ -179,7 +179,7 @@ func (c *C) hashValue(s *S, t semantic.Type, value *codegen.Value) *codegen.Valu
 			semantic.Uint32Type,
 			semantic.Int64Type,
 			semantic.Uint64Type:
-			return c.hash64Bit(s, value.Cast(u64Type))
+			return value.Cast(u64Type)
 		case semantic.Float32Type:
 			return c.hash64Bit(s, value.Bitcast(u32Type).Cast(u64Type))
 		case semantic.Float64Type:
@@ -190,9 +190,10 @@ func (c *C) hashValue(s *S, t semantic.Type, value *codegen.Value) *codegen.Valu
 			fail("Cannot determine the hash for %T, %v", t, t)
 			return nil
 		}
+	case *semantic.Enum:
+		return value.Cast(u64Type)
 	case *semantic.Pointer,
-		*semantic.Enum:
-		return c.hash64Bit(s, value.Cast(u64Type))
+		return s.ShiftRight(value.Cast(u64Type), s.Scalar(uint64(2))) 
 	case *semantic.StaticArray:
 		fail("Cannot use a static array as a hash key")
 		return nil
