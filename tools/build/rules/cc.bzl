@@ -74,8 +74,44 @@ strip = rule(
     fragments = ["cpp"],
 )
 
+# Symbol rule implementation, which invokes the _dump_syms binary to generate
+# a symbol dump file that can be uploaded to the crash server to symbolize
+# stack traces of uploaded crash dumps.
+def _symbols_impl(ctx):
+    out = ctx.new_file(ctx.label.name)
+    ctx.actions.run_shell(
+        command = "{} {} > {}".format(ctx.executable._dump_syms.path, ctx.file.src.path, out.path),
+        inputs = [ctx.executable._dump_syms, ctx.file.src],
+        outputs = [out],
+        use_default_shell_env = True,
+    )
+    return struct(
+        files = depset([out])
+    )
+
+# Symbol rule to dump the symbol information of a binary to be uploaded to the
+# crash server. Has a single "src" attribute, which should point to the
+# (unstripped) binary whose symbol information should be extracted. Generates
+# the symbol data file that can be uploaded to the crash server.
+_symbols = rule(
+    _symbols_impl,
+    attrs = {
+        "src": attr.label(
+            allow_files = True,
+            single_file = True,
+        ),
+        "_dump_syms": attr.label(
+            executable = True,
+            cfg = "host",
+            allow_files = True,
+            default = Label("@breakpad//:dump_syms"),
+        ),
+    }
+)
+
 # Macro to replace cc_binary rules. Creates the following targets:
 #  <name>_unstripped[.<extension>] - The cc_binary linked with debug _symbols
+#  <name>.sym - The symbol dump file that can be uploaded to the crash server
 #  <name> - The stripped cc_binary
 def cc_stripped_binary(name, visibility, **kwargs):
     parts = name.rpartition(".")
@@ -84,6 +120,12 @@ def cc_stripped_binary(name, visibility, **kwargs):
         name = unstripped,
         **kwargs
     )
+
+    _symbols(
+        name = name + ".sym",
+        src = unstripped,
+    )
+
     strip(
         name = name,
         src = unstripped,
