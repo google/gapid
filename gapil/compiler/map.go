@@ -225,7 +225,7 @@ func (c *C) buildMapType(t *semantic.Map) {
 		capacity := m.Index(0, MapCapacity).Load()
 		elements := m.Index(0, MapElements).Load()
 		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
-			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(u64(1))))
+			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(uint64(1))))
 			valid := elements.Index(check, "used").Load()
 			s.If(c.equal(s, valid, s.Scalar(mapElementEmpty)), func() {
 				s.Return(s.Scalar(false))
@@ -257,7 +257,7 @@ func (c *C) buildMapType(t *semantic.Map) {
 		h := c.hashValue(s, t.KeyType, k)
 		// Search for existing
 		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
-			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(u64(1))))
+			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(uint64(1))))
 			valid := elements.Index(check, "used").Load()
 			s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func() {
 				found := c.equal(s, elements.Index(check, "k").Load(), k)
@@ -279,7 +279,7 @@ func (c *C) buildMapType(t *semantic.Map) {
 			getStorageBucket := func(h, table, tablesize *codegen.Value) *codegen.Value {
 				newBucket := s.Local("newBucket", u64Type)
 				s.ForN(tablesize, func(it *codegen.Value) *codegen.Value {
-					check := s.And(s.Add(h, it), s.Sub(tablesize, s.Scalar(u64(1)))).SetName("hash_bucket")
+					check := s.And(s.Add(h, it), s.Sub(tablesize, s.Scalar(uint64(1)))).SetName("hash_bucket")
 					newBucket.Store(check)
 					valid := table.Index(check, "used").Load()
 					notFound := c.equal(s, valid, s.Scalar(mapElementFull))
@@ -370,7 +370,7 @@ func (c *C) buildMapType(t *semantic.Map) {
 		elements := m.Index(0, MapElements).Load()
 		// Search for existing
 		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
-			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(u64(1))))
+			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(uint64(1))))
 			valid := elements.Index(check, "used").Load()
 			s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func() {
 				found := c.equal(s, elements.Index(check, "k").Load(), k)
