@@ -414,7 +414,7 @@ cc_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "go",
     srcs = glob([
         "bindings/go/llvm/*.go",
         "bindings/go/llvm/*.cpp",

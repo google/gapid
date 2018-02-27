@@ -34,7 +34,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/os/device:go_default_library",
-        "@llvm//:go_default_library",  # keep
+        "@llvm//:go",  # keep
     ],
 )
 
