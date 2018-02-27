@@ -16,7 +16,7 @@
 #define __GAPIL_RUNTIME_MAP_INC__
 
 #include "map.h"
-#include "string.h"
+#include "hash.h"
 
 #include "core/cc/assert.h"
 #include "core/memory/arena/cc/arena.h"
@@ -25,99 +25,6 @@
 
 static_assert((GAPIL_MIN_MAP_SIZE & (GAPIL_MIN_MAP_SIZE - 1)) == 0, "Map size must be a power of 2");
 static_assert((GAPIL_MAP_GROW_MULTIPLIER & (GAPIL_MAP_GROW_MULTIPLIER - 1)) == 0, "Map size must be a power of 2");
-
-// Note these implementations should match map.go
-
-namespace {
-struct fixedValue {
-    uint64_t fixed64;
-};
-
-template<typename T>
-struct gapil_hash {
-    uint64_t operator()(const T& t) {
-        GAPID_ASSERT_MSG(false, "unknown hash type");
-        return 0;
-    }
-};
-
-uint64_t rotate_right(const uint64_t& v, const uint64_t bits) {
-    return (v >> bits) | (v << (64-bits));
-}
-
-uint64_t shift_left(const uint64_t& v, const uint64_t bits) {
-    return v << bits;
-}
-
-template<>
-struct gapil_hash<fixedValue> {
-    uint64_t operator() (const fixedValue& val) {
-        uint64_t v = val.fixed64;
-        v += shift_left(v, 21);
-        v ^= rotate_right(v, 24);
-        v += shift_left(v, 3) + shift_left(v, 8);
-        v ^= rotate_right(v, 14);
-        v += shift_left(v, 2) + shift_left(v, 4);
-        v ^= rotate_right(v, 28);
-        v += shift_left(v, 31);
-        return v;
-    }
-};
-
-template<>
-struct gapil_hash<float> {
-    uint64_t operator() (const float& f) {
-        return gapil_hash<fixedValue>()(fixedValue{static_cast<uint64_t>(*reinterpret_cast<const uint32_t*>(&f))});
-    }
-};
-
-template<>
-struct gapil_hash<double> {
-    uint64_t operator() (const double& f) {
-        return gapil_hash<fixedValue>()(fixedValue{*reinterpret_cast<const uint64_t*>(&f)});
-    }
-};
-
-#define HASH_INTEGER(type) \
-template<> \
-struct gapil_hash<type> {\
-    uint64_t operator() (const type&  v) { \
-        return static_cast<uint64_t>(v); \
-    } \
-};
-
-HASH_INTEGER(bool)
-HASH_INTEGER(uint8_t)
-HASH_INTEGER(int8_t)
-HASH_INTEGER(uint16_t)
-HASH_INTEGER(int16_t)
-HASH_INTEGER(uint32_t)
-HASH_INTEGER(int32_t)
-HASH_INTEGER(uint64_t)
-HASH_INTEGER(int64_t)
-
-#undef HASH_INTEGER
-
-template<typename T>
-struct gapil_hash<T*> {
-    uint64_t operator() (const T* ptr) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(ptr) >> 2);
-    }
-};
-
-template<>
-struct gapil_hash<gapil::String> {
-    uint64_t operator() (const gapil::String& str) {
-        uint64_t h = 0;
-        const char* c_str = str.c_str();
-        for (size_t i = 0; i < str.length(); ++i) {
-            h += (h << 6) + (h << 16) + c_str[i];
-        }
-        return h;
-    }
-};
-
-} // anonymous namespace
 
 namespace gapil {
 
@@ -198,7 +105,7 @@ bool Map<K, V>::Allocation::contains(K key) {
 
 template<typename K, typename V>
 V* Map<K, V>::Allocation::index(K key, bool insert) {
-    auto hasher = gapil_hash<K>{};
+    auto hasher = gapil::hash<K>{};
     auto eq = std::equal_to<K>{};
     uint64_t hash = hasher(key);
 
@@ -292,7 +199,7 @@ V Map<K, V>::Allocation::lookup(K key) {
 
 template<typename K, typename V>
 void Map<K, V>::Allocation::remove(K key) {
-    auto hasher = gapil_hash<K>{};
+    auto hasher = gapil::hash<K>{};
     auto eq = std::equal_to<K>{};
     uint64_t hash = hasher(key);
     auto elems = els();
