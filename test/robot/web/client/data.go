@@ -269,6 +269,16 @@ func itemGetter(idPattern string, displayPattern string, functions template.Func
 	}
 }
 
+func queryRestEndpointWithCutoff(path string, cutoff int64) ([]byte, error) {
+	head, err := http.Head(path)
+	if err != nil {
+		return nil, err
+	} else if head.ContentLength > cutoff {
+		return nil, fmt.Errorf("Content Length (%d) is larger than cutoff (%d)", head.ContentLength, cutoff)
+	}
+	return queryRestEndpoint(path)
+}
+
 func queryRestEndpoint(path string) ([]byte, error) {
 	resp, err := http.Get(path)
 	if err != nil {
