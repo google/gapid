@@ -122,8 +122,6 @@ cc_library(
     linkopts = select({
         "//tools/build:linux": [
             "-ldl",
-            "-lGL",
-            "-lX11",
         ],
         "//tools/build:darwin": [
             "-framework Cocoa",
@@ -131,7 +129,6 @@ cc_library(
         ],
         "//tools/build:windows": [],
         "//conditions:default": [
-            "-lEGL",
             "-llog",
             "-lm",
         ],

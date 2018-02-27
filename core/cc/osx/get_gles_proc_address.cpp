@@ -67,5 +67,11 @@ void* getGlesProcAddress(const char *name, bool bypassLocal) {
 namespace core {
 
 GetGlesProcAddressFunc* GetGlesProcAddress = getGlesProcAddress;
+bool hasGLorGLES() {
+    return DlLoader::can_load(FRAMEWORK_ROOT "OpenGL") ||
+           DlLoader::can_load(FRAMEWORK_ROOT "Libraries/libGL.dylib") ||
+           DlLoader::can_load(FRAMEWORK_ROOT "Libraries/libGLU.dylib") ||
+           DlLoader::can_load(CORE_GRAPHICS);
+}
 
 }  // namespace core

@@ -29,6 +29,9 @@ const char* safe_string(void* x) {
     return (x != nullptr) ? reinterpret_cast<const char*>(x) : "";
 }
 
+bool hasGLorGLES() {
+    return core::hasGLorGLES();
+}
 
 void glDriver(device::OpenGLDriver* driver) {
     GLint major_version = 2;
@@ -42,23 +45,18 @@ void glDriver(device::OpenGLDriver* driver) {
     auto glGetString = reinterpret_cast<PFNGLGETSTRING>(core::GetGlesProcAddress("glGetString", true));
     auto glGetStringi = reinterpret_cast<PFNGLGETSTRINGI>(core::GetGlesProcAddress("glGetStringi", true));
 
-    GAPID_ASSERT(glGetError != nullptr);
-    GAPID_ASSERT(glGetString != nullptr);
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformbufferalignment);
+    glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS, &maxtransformfeedbackseparateattribs);
+    glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS, &maxtransformfeedbackinterleavedcomponents);
 
-    if (glGetIntegerv != nullptr) {
-        glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformbufferalignment);
-        glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS, &maxtransformfeedbackseparateattribs);
-        glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS, &maxtransformfeedbackinterleavedcomponents);
-
-        glGetError();  // Clear error state.
-        glGetIntegerv(GL_MAJOR_VERSION, &major_version);
-        glGetIntegerv(GL_MINOR_VERSION, &minor_version);
-        if (glGetError() != GL_NO_ERROR) {
-            // GL_MAJOR_VERSION/GL_MINOR_VERSION were introduced in GLES 3.0,
-            // so if the commands returned error we assume it is GLES 2.0.
-            major_version = 2;
-            minor_version = 0;
-        }
+    glGetError();  // Clear error state.
+    glGetIntegerv(GL_MAJOR_VERSION, &major_version);
+    glGetIntegerv(GL_MINOR_VERSION, &minor_version);
+    if (glGetError() != GL_NO_ERROR) {
+        // GL_MAJOR_VERSION/GL_MINOR_VERSION were introduced in GLES 3.0,
+        // so if the commands returned error we assume it is GLES 2.0.
+        major_version = 2;
+        minor_version = 0;
     }
 
     if (major_version >= 3) {

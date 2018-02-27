@@ -27,6 +27,8 @@ typedef void* (GetGlesProcAddressFunc)(const char* name, bool bypassLocal);
 // context.
 extern GetGlesProcAddressFunc* GetGlesProcAddress;
 
+bool hasGLorGLES();
+
 }  // namespace core
 
 #endif  // CORE_GET_GLES_PROC_ADDRESS_H

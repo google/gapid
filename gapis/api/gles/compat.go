@@ -142,6 +142,9 @@ type scratchBuffer struct {
 
 func compat(ctx context.Context, device *device.Instance) (transform.Transformer, error) {
 	ctx = log.Enter(ctx, "compat")
+	if device.Configuration.Drivers.OpenGL == nil {
+		return nil, fmt.Errorf("Could not find OpenGL device on host")
+	}
 
 	glDev := device.Configuration.Drivers.OpenGL
 	target, version, err := getFeatures(ctx, glDev.Version, listToExtensions(glDev.Extensions))
