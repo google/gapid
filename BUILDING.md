@@ -54,6 +54,12 @@ cd <sdk-path>
 tools\bin\sdkmanager platforms;android-21 build-tools;26.0.1
 ```
 
+If you do not have adb installed you can do so with:
+```
+cd <sdk-path>
+tools\bin\sdkmanager platform-tools
+```
+
 ### Install the Android NDK
 
 Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-windows-x86_64.zip) to a directory of your choosing.
@@ -104,6 +110,12 @@ To fetch the required packages, using a console type:
 ```
 cd <sdk-path>
 tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1"
+```
+
+If you do not have adb installed you can do so with:
+```
+cd <sdk-path>
+tools/bin/sdkmanager platform-tools
 ```
 
 ### Install Android NDK
@@ -160,7 +172,13 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1
+tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1"
+```
+
+If you do not have adb installed you can do so with:
+```
+cd <sdk-path>
+tools/bin/sdkmanager platform-tools
 ```
 
 ### Install Android NDK
