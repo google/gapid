@@ -153,9 +153,11 @@ func robotTextPreview(path string, s interface{}) interface{} {
 	textDiv.Element.Style.Overflow = "auto"
 	textDiv.Element.Style.WhiteSpace = "pre"
 	go func() {
-		fullText, err := queryRestEndpoint(fmt.Sprintf("/entities/%s", id))
+		// if the text is larger than a megabyte, cut off early.
+		fullText, err := queryRestEndpointWithCutoff(fmt.Sprintf("/entities/%s", id), 1024*1024)
 		if err != nil {
-			panic(err)
+			textDiv.Append("Error previewing text:" + err.Error())
+			return
 		}
 
 		textDiv.Append(string(fullText))
