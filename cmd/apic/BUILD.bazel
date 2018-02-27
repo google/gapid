@@ -37,7 +37,7 @@ go_library(
         "//gapil/compiler:go_default_library",
         "//gapil/compiler/mangling/c:go_default_library",
         "//gapil/compiler/mangling/ia64:go_default_library",
-        "//gapil/compiler/plugins/encoder:go_default_library",
+        "//gapil/compiler/plugins/encoder:go",
         "//gapil/format:go_default_library",
         "//gapil/parser:go_default_library",
         "//gapil/resolver:go_default_library",
