@@ -353,29 +353,11 @@ cc_binary(
 )
 
 cc_library(
-    name = "go_binding_headers",
+    name = "go_binding_lib",
     hdrs = glob(["bindings/go/llvm/*.h"]),
-    deps = [],
     strip_include_prefix = "bindings/go/llvm",
-)
-
-go_library(
-    name = "go_default_library",
-    srcs = glob([
-        "bindings/go/llvm/*.go",
-        "bindings/go/llvm/*.cpp",
-    ], exclude=["bindings/go/llvm/llvm_dep.go"]),
-    cgo = True,
-    importpath = "llvm/bindings/go/llvm",
-    visibility = ["//visibility:public"],
-    clinkopts = select({
-        "@//tools/build:linux": ["-ldl", "-lpthread", "-lcurses", "-lz", "-lm"],
-        "@//tools/build:darwin": ["-framework Cocoa", "-lcurses", "-lz", "-lm"],
-        "@//tools/build:windows": [],
-    }),
-    cdeps = [
+    deps = [
         ":headers",
-        ":go_binding_headers",
         ":Attributes",
         ":Intrinsics",
         ":AArch64CodeGen",
@@ -423,4 +405,22 @@ go_library(
         ":Support",
         ":Demangle",
     ],
+    linkopts = select({
+        "@//tools/build:linux": ["-ldl", "-lpthread", "-lcurses", "-lz", "-lm"],
+        "@//tools/build:darwin": ["-framework Cocoa", "-lcurses", "-lz", "-lm"],
+        "@//tools/build:windows": ["-luuid", "-lole32"],
+    }),
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = glob([
+        "bindings/go/llvm/*.go",
+        "bindings/go/llvm/*.cpp",
+    ], exclude=["bindings/go/llvm/llvm_dep.go"]),
+    cgo = True,
+    importpath = "llvm/bindings/go/llvm",
+    visibility = ["//visibility:public"],
+    cdeps = [":go_binding_lib"],
 )
