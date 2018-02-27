@@ -66,6 +66,12 @@ import (
 //     If we end up with lots of insertions/deletions, this will prevent linear search
 
 func (c *C) defineMapType(t *semantic.Map) {
+
+	if ((minMapSize & (minMapSize - 1)) != 0) ||
+		((mapGrowMultiplier & (mapGrowMultiplier - 1)) != 0) {
+		fail("Map size must be a power of 2")
+	}
+
 	mapPtrTy := c.T.target[t].(codegen.Pointer)
 	mapStrTy := mapPtrTy.Element.(*codegen.Struct)
 	keyTy := c.T.Target(t.KeyType)
