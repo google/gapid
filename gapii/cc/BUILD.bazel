@@ -142,7 +142,7 @@ cc_library(
         "//core/memory/arena/cc",
         "//core/memory_tracker/cc",
         "//core/os/device/deviceinfo/cc",
-        "//gapil/runtime/cc",
+        "//gapil/runtime/cc:cc",
         "//gapis/api:api_cc_proto",
         "//gapis/api/gles/gles_pb:gles_pb_cc_proto",
         "//gapis/api/gvr/gvr_pb:gvr_pb_cc_proto",

@@ -22,6 +22,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#if TARGET_OS == GAPID_OS_ANDROID
+// for snprintf
+#include <cstdio>
+#endif
+
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
