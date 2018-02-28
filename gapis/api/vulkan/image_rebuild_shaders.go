@@ -18,8 +18,21 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 	switch outputFmt {
 	// color, int, unsigned, narrower than 32 bits
 	case VkFormat_VK_FORMAT_R8_UINT,
+		VkFormat_VK_FORMAT_R8G8_UINT,
+		VkFormat_VK_FORMAT_R8G8B8_UINT,
 		VkFormat_VK_FORMAT_R8G8B8A8_UINT,
-		VkFormat_VK_FORMAT_R16G16B16A16_UINT:
+		VkFormat_VK_FORMAT_B8G8R8_UINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_UINT,
+		VkFormat_VK_FORMAT_R16_UINT,
+		VkFormat_VK_FORMAT_R16G16_UINT,
+		VkFormat_VK_FORMAT_R16G16B16_UINT,
+		VkFormat_VK_FORMAT_R16G16B16A16_UINT,
+		VkFormat_VK_FORMAT_R32_UINT,
+		VkFormat_VK_FORMAT_R32G32_UINT,
+		VkFormat_VK_FORMAT_R32G32B32_UINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_UINT,
+		VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
 		/*
 			#version 450
 			layout(location = 0) out uvec4 out_color;
@@ -98,8 +111,21 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 
 	// color, int, signed, narrower than 32 bits
 	case VkFormat_VK_FORMAT_R8_SINT,
+		VkFormat_VK_FORMAT_R8G8_SINT,
+		VkFormat_VK_FORMAT_R8G8B8_SINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_SINT,
+		VkFormat_VK_FORMAT_R16_SINT,
+		VkFormat_VK_FORMAT_R16G16_SINT,
+		VkFormat_VK_FORMAT_R16G16B16_SINT,
 		VkFormat_VK_FORMAT_R16G16B16A16_SINT,
-		VkFormat_VK_FORMAT_R32_SINT:
+		VkFormat_VK_FORMAT_R32_SINT,
+		VkFormat_VK_FORMAT_R32G32_SINT,
+		VkFormat_VK_FORMAT_R32G32B32_SINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SINT,
+		VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
 		/*
 			#version 450
 			layout(location = 0) out ivec4 out_color;
@@ -183,7 +209,10 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 
 	// color, norm 8 bits, unsigned
 	case VkFormat_VK_FORMAT_R8_UNORM,
+		VkFormat_VK_FORMAT_R8G8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8_UNORM,
 		VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8_UNORM,
 		VkFormat_VK_FORMAT_B8G8R8A8_UNORM:
 		/*
 			#version 450
@@ -273,8 +302,76 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 			0x0003003e, 0x00000030, 0x0000002f, 0x000100fd,
 			0x00010038}
 
-	// color, norm a2r10g10b10
-	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+	// color, norm 16 bits, unsigned
+	case VkFormat_VK_FORMAT_R16_UNORM,
+		VkFormat_VK_FORMAT_R16G16_UNORM,
+		VkFormat_VK_FORMAT_R16G16B16_UNORM,
+		VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
+		/*
+			#version 450
+			layout(location = 0) out vec4 out_color;
+			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+			void main() {
+				out_color.r = subpassLoad(in_color).r/65535.0;
+				out_color.g = subpassLoad(in_color).g/65535.0;
+				out_color.b = subpassLoad(in_color).b/65535.0;
+				out_color.a = subpassLoad(in_color).a/65535.0;
+			}
+		*/
+		return []uint32{}
+
+	// color, norm r4g4b4a4 unsigned
+	case VkFormat_VK_FORMAT_R4G4_UNORM_PACK8,
+		VkFormat_VK_FORMAT_R4G4B4A4_UNORM_PACK16,
+		VkFormat_VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+		/*
+			#version 450
+			layout(location = 0) out vec4 out_color;
+			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+			void main() {
+				out_color.r = subpassLoad(in_color).r/15.0;
+				out_color.g = subpassLoad(in_color).g/15.0;
+				out_color.b = subpassLoad(in_color).b/15.0;
+				out_color.a = subpassLoad(in_color).a/15.0;
+			}
+		*/
+		return []uint32{}
+
+	// color, norm r5g6b5 unsigned
+	case VkFormat_VK_FORMAT_R5G6B5_UNORM_PACK16,
+		VkFormat_VK_FORMAT_B5G6R5_UNORM_PACK16:
+		/*
+			#version 450
+			layout(location = 0) out vec4 out_color;
+			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+			void main() {
+				out_color.r = subpassLoad(in_color).r/31.0;
+				out_color.g = subpassLoad(in_color).g/63.0;
+				out_color.b = subpassLoad(in_color).b/31.0;
+			}
+		*/
+		return []uint32{}
+
+	// color, norm r5g5b5a1 unsigned
+	case VkFormat_VK_FORMAT_R5G5B5A1_UNORM_PACK16,
+		VkFormat_VK_FORMAT_B5G5R5A1_UNORM_PACK16,
+		VkFormat_VK_FORMAT_A1R5G5B5_UNORM_PACK16:
+		/*
+			#version 450
+			layout(location = 0) out vec4 out_color;
+			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+			void main() {
+				out_color.r = subpassLoad(in_color).r/31.0;
+				out_color.g = subpassLoad(in_color).g/31.0;
+				out_color.b = subpassLoad(in_color).b/31.0;
+				out_color.a = subpassLoad(in_color).a/1.0;
+			}
+		*/
+		return []uint32{}
+
+	// color, norm a2r10g10b10 unsigned
+	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
 		/*
 			#version 450
 			layout(location = 0) out vec4 out_color;
@@ -364,7 +461,12 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 			0x00010038}
 
 	// color, norm 8 bits, signed
-	case VkFormat_VK_FORMAT_R8G8B8A8_SNORM:
+	case VkFormat_VK_FORMAT_R8_SNORM,
+		VkFormat_VK_FORMAT_R8G8_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_SNORM:
 		/*
 			#version 450
 			layout(location = 0) out vec4 out_color;
@@ -480,8 +582,41 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 			0x00000018, 0x00000016, 0x00000017, 0x000200fe,
 			0x00000018, 0x00010038}
 
+	case VkFormat_VK_FORMAT_R16_SNORM,
+		VkFormat_VK_FORMAT_R16G16_SNORM,
+		VkFormat_VK_FORMAT_R16G16B16_SNORM,
+		VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
+		/*
+			#version 450
+			layout(location = 0) out vec4 out_color;
+			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+			float snorm(in uint u) {
+				return (int(u) + 32768) * 2.0 / 65535.0 - 1.0;
+			}
+			void main() {
+				out_color.r = snorm(subpassLoad(in_color).r);
+				out_color.g = snorm(subpassLoad(in_color).g);
+				out_color.b = snorm(subpassLoad(in_color).b);
+				out_color.a = snorm(subpassLoad(in_color).a);
+			}
+		*/
+		return []uint32{}
+
+	// color, norm a2r10g10b10 signed
+	case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+		// TODO:
+		return []uint32{}
+
 	// color, float, narrower than 32 bits
-	case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
+	case VkFormat_VK_FORMAT_R16_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16B16_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
+		VkFormat_VK_FORMAT_R32_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32B32_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
 		VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
 		/*
 			#version 450
