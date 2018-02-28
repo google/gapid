@@ -110,7 +110,7 @@ func (p Path) Format(f fmt.State, r rune) {
 	if last.Operation != nil {
 		fmt.Fprint(f, last.Operation, " ")
 	}
-	fmt.Fprint(f, "⟦", last.Reference, "⟧ != ⟦", last.Value, "⟧")
+	fmt.Fprintf(f, "⟦%+v⟧ != ⟦%+v⟧", last.Reference, last.Value)
 	if len(remains) > 0 {
 		fmt.Fprint(f, " for v")
 		for _, e := range remains {
