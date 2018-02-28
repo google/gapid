@@ -1,0 +1,86 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+api_index 7
+
+cmd int cmd_ints(u8 a, s8 b, u16 c, s16 d, u32 e, s32 f, u64 g, s64 h) {
+    return as!int(123)
+}
+
+cmd void cmd_floats(f32 a, f64 b) {}
+
+enum E { X = 1  Y = 2  Z = 3 }
+enum Es64 : s64 { A = 1  B = 2 }
+
+cmd void cmd_enums(E e, Es64 e_s64) {}
+
+cmd void cmd_arrays(u8[1] a, s32[2] b, f32[3] c) {}
+
+cmd void cmd_pointers(u8* a, s32* b, f32* c) {}
+
+cmd void cmd_strings(string a, string b) {}
+
+class int_types {
+    u8     a
+    s8     b
+    u16    c
+    s16    d
+    u32    f
+    s32    g
+}
+
+class basic_types {
+    u8     a
+    s8     b
+    u16    c
+    s16    d
+    f32    e
+    u32    f
+    s32    g
+    f64    h
+    u64    i
+    s64    j
+    bool   k
+    E      l
+    u32*   m
+    string n
+}
+
+class inner_class {
+    basic_types a
+}
+
+class nested_classes {
+    inner_class a
+}
+
+class map_types {
+    map!(u32, u32)       a
+    map!(string, string) b
+    map!(u32, u32)       c
+    map!(string, string) d
+}
+
+class ref_types {
+    ref!basic_types a
+    ref!inner_class b
+    ref!basic_types c
+    ref!inner_class d
+}
+
+class slice_types {
+    u8[]        a
+    f32[]       b
+    int_types[] c
+}
