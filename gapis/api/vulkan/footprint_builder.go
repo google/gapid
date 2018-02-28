@@ -17,7 +17,6 @@ package vulkan
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -1641,8 +1640,6 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	// Records the current last draw framebuffer image data, so that later when
 	// the user request a command, we can always guarantee that the last draw
 	// framebuffer is alive.
-	log.W(ctx, "id: %v, cmd: %v", id, cmd)
-	time.Sleep(time.Microsecond * 300)
 	if GetState(s).LastSubmission == LastSubmissionType_SUBMIT {
 		lastBoundQueue := GetState(s).LastBoundQueue
 		if lastBoundQueue != nil {

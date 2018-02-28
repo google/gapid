@@ -667,7 +667,7 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 			0x0003003e, 0x00000031, 0x00000030, 0x000100fd,
 			0x00010038}
 
-	// color unorm r10g10b10a2
+	// color unorm a2r10g10b10
 	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
 		VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
 		/*
@@ -1034,7 +1034,7 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 			0x00000016, 0x00000017, 0x000200fe, 0x00000018,
 			0x00010038}
 
-	// color snorm r10g10b10a2
+	// color snorm a2r10g10b10
 	case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32,
 		VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
 		/*
@@ -1177,7 +1177,9 @@ func primingFragSpv(outputFmt VkFormat) []uint32 {
 		VkFormat_VK_FORMAT_R32G32_SFLOAT,
 		VkFormat_VK_FORMAT_R32G32B32_SFLOAT,
 		VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
+		VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32,
 		VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+
 		/*
 			#version 450
 			precision highp int;

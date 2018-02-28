@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 
+	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
@@ -1496,7 +1497,10 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 
 	offset := VkDeviceSize(0)
 	{
-		for si, dstImg := range copyDstImgs {
+		for dstIndex, dstImg := range copyDstImgs {
+			// dstIndex is reserved for handling wide channel image format, like R64G64B64A64
+			// TODO: handle wide format
+			_ = dstIndex
 			if _, ok := copies[dstImg]; !ok {
 				copies[dstImg] = []VkBufferImageCopy{}
 			}
@@ -1523,9 +1527,20 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 							extent,
 						})
 						data := img.Layers.Get(layer).Levels.Get(mipLevel).Data.MustRead(sb.ctx, nil, sb.oldState, nil)
-						unpacked, err := helper.unpackDataForCopy(data, img.Info.Format, uint32(si), dstImg.Info.Format, extent)
+						srcFmt, err := getImageFormatFromVulkanFormat(img.Info.Format)
 						if err != nil {
-							log.E(sb.ctx, "[Unpacking data from format: %v, layer: %v, level: %v, extent: %v to format: %v] %v", img.Info.Format, layer, mipLevel, extent, dstImg.Info.Format, err)
+							log.E(sb.ctx, "[Unpacking data from image with format: %v] %v", img.Info.Format, err)
+							continue
+						}
+						dstFmt, err := getImageFormatFromVulkanFormat(dstImg.Info.Format)
+						if err != nil {
+							log.E(sb.ctx, "[Unpacking data to image with format: %v] %v", dstImg.Info.Format, err)
+							continue
+						}
+						unpacked, err := image.Convert(data, int(e.width), int(e.height), int(e.depth), srcFmt, dstFmt)
+						if err != nil {
+							log.E(sb.ctx, "[Converting data from image: %v, layer: %v, level: %v, extent: %v] %v", img.VulkanHandle, layer, mipLevel, extent, err)
+							continue
 						}
 						contents = append(contents, unpacked...)
 						// len(unpacked) must be equal to e.alignedLevelSize
@@ -1538,7 +1553,10 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 
 	if sparseResidency {
 		if bindings, ok := (*img.SparseImageMemoryBindings.Map)[uint32(img.ImageAspect)]; ok {
-			for si, dstImg := range copyDstImgs {
+			for dstIndex, dstImg := range copyDstImgs {
+				// dstIndex is reserved for handling wide channel image format, like R64G64B64A64
+				// TODO: Handle wide format
+				_ = dstIndex
 				if _, ok := copies[dstImg]; !ok {
 					copies[dstImg] = []VkBufferImageCopy{}
 				}
@@ -1569,9 +1587,20 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 								uint64(o.levelSize+e.levelSize),
 								sb.oldState.MemoryLayout,
 							).MustRead(sb.ctx, nil, sb.oldState, nil)
-							unpacked, err := helper.unpackDataForCopy(data, img.Info.Format, uint32(si), dstImg.Info.Format, blockData.Extent)
+							srcFmt, err := getImageFormatFromVulkanFormat(img.Info.Format)
 							if err != nil {
-								log.E(sb.ctx, "[Unpacking data from format: %v, layer: %v, level: %v, extent: %v to format: %v] %v", img.Info.Format, layer, level, blockData.Extent, dstImg.Info.Format, err)
+								log.E(sb.ctx, "[Unpacking data from image with format: %v] %v", img.Info.Format, err)
+								continue
+							}
+							dstFmt, err := getImageFormatFromVulkanFormat(dstImg.Info.Format)
+							if err != nil {
+								log.E(sb.ctx, "[Unpacking data to image with format: %v] %v", dstImg.Info.Format, err)
+								continue
+							}
+							unpacked, err := image.Convert(data, int(e.width), int(e.height), int(e.depth), srcFmt, dstFmt)
+							if err != nil {
+								log.E(sb.ctx, "[Converting data from image: %v, layer: %v, level: %v, extent: %v] %v", img.VulkanHandle, layer, level, blockData.Extent, err)
+								continue
 							}
 							contents = append(contents, unpacked...)
 							// len(unpacked) must be equal to e.alignedLevelSize
