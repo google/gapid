@@ -87,6 +87,8 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		abi = device.LinuxX86_64
 	case "darwin_x86_64":
 		abi = device.OSXX86_64
+	case "x64_windows":
+		abi = device.WindowsX86_64
 	case "armeabi-v7a":
 		abi = device.AndroidARMv7a
 	case "arm64-v8a":
