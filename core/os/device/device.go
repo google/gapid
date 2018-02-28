@@ -45,6 +45,74 @@ const (
 )
 
 var (
+	// ARMv7aLayout is the memory layout for the armv7a ABI.
+	// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
+	// 4 DATA TYPES AND ALIGNMENT
+	ARMv7aLayout = &MemoryLayout{
+		Endian:  LittleEndian,
+		Pointer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Integer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &DataTypeLayout{Size: 1, Alignment: 1},
+		I64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &DataTypeLayout{Size: 2, Alignment: 2},
+	}
+
+	// ARM64v8aLayout is the memory layout for the arm64v8a ABI.
+	// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
+	// 4 DATA TYPES AND ALIGNMENT
+	ARM64v8aLayout = &MemoryLayout{
+		Endian:  LittleEndian,
+		Pointer: &DataTypeLayout{Size: 8, Alignment: 8},
+		Integer: &DataTypeLayout{Size: 8, Alignment: 8},
+		Size:    &DataTypeLayout{Size: 8, Alignment: 8},
+		Char:    &DataTypeLayout{Size: 1, Alignment: 1},
+		I64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &DataTypeLayout{Size: 2, Alignment: 2},
+	}
+
+	// X86IA32Layout is the memory layout for the x86 IA-32 ABI.
+	X86IA32Layout = &MemoryLayout{
+		Endian:  LittleEndian,
+		Pointer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Integer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &DataTypeLayout{Size: 1, Alignment: 1},
+		I64:     &DataTypeLayout{Size: 8, Alignment: 4},
+		I32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &DataTypeLayout{Size: 8, Alignment: 4},
+		F32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &DataTypeLayout{Size: 2, Alignment: 2},
+	}
+
+	// X86_64Layout is the memory layout for the x86_64 ABI.
+	X86_64Layout = &MemoryLayout{
+		Endian:  LittleEndian,
+		Pointer: &DataTypeLayout{Size: 8, Alignment: 8},
+		Integer: &DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &DataTypeLayout{Size: 4, Alignment: 4},
+		Char:    &DataTypeLayout{Size: 1, Alignment: 1},
+		I64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		I32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		I16:     &DataTypeLayout{Size: 2, Alignment: 2},
+		I8:      &DataTypeLayout{Size: 1, Alignment: 1},
+		F64:     &DataTypeLayout{Size: 8, Alignment: 8},
+		F32:     &DataTypeLayout{Size: 4, Alignment: 4},
+		F16:     &DataTypeLayout{Size: 2, Alignment: 2},
+	}
+
 	Little32 = &MemoryLayout{
 		Endian:  LittleEndian,
 		Pointer: &DataTypeLayout{Size: 4, Alignment: 4},
