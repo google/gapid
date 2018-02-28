@@ -122,11 +122,11 @@ private:
 
     static thread_local GlesRendererImpl* tlsBound;
 
-    pfn_XFree free;
-    pfn_XCloseDisplay closeDisplay;
-    pfn_XOpenDisplay openDisplay;
-    pfn_XSetErrorHandler setErrorHandler;
-    pfn_XSync sync;
+    pfn_XFree fn_XFree;
+    pfn_XCloseDisplay fn_XCloseDisplay;
+    pfn_XOpenDisplay fn_XOpenDisplay;
+    pfn_XSetErrorHandler fn_XSetErrorHandler;
+    pfn_XSync fn_XSync;
     core::DlLoader libX;
 
     pfn_glXChooseFBConfig fn_glXChooseFBConfig;
@@ -154,11 +154,11 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         , libX("libX11.so") {
 
     
-    free = (pfn_XFree)libX.lookup("XFree");
-    closeDisplay = (pfn_XCloseDisplay)libX.lookup("XCloseDisplay");
-    openDisplay = (pfn_XOpenDisplay)libX.lookup("XOpenDisplay");
-    setErrorHandler = (pfn_XSetErrorHandler)libX.lookup("XSetErrorHandler");
-    sync = (pfn_XSync)libX.lookup("XSync");
+    fn_XFree = (pfn_XFree)libX.lookup("XFree");
+    fn_XCloseDisplay = (pfn_XCloseDisplay)libX.lookup("XCloseDisplay");
+    fn_XOpenDisplay = (pfn_XOpenDisplay)libX.lookup("XOpenDisplay");
+    fn_XSetErrorHandler = (pfn_XSetErrorHandler)libX.lookup("XSetErrorHandler");
+    fn_XSync = (pfn_XSync)libX.lookup("XSync");
 
     fn_glXChooseFBConfig = (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig", true);
     fn_glXCreateNewContext = (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext", true);
@@ -176,11 +176,11 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
         mDisplay = shared_context->mDisplay;
         mOwnsDisplay = false;
     } else {
-        mDisplay = openDisplay(nullptr);
+        mDisplay = fn_XOpenDisplay(nullptr);
         if (mDisplay == nullptr) {
             // Default display was not found. This may be because we're executing in
             // the bazel sandbox. Attempt to connect to the 0'th display instead.
-            mDisplay = openDisplay(":0");
+            mDisplay = fn_XOpenDisplay(":0");
         }
         if (mDisplay == nullptr) {
             GAPID_FATAL("Unable to to open X display");
@@ -206,7 +206,7 @@ GlesRendererImpl::~GlesRendererImpl() {
     reset();
 
     if (mOwnsDisplay && mDisplay != nullptr) {
-        closeDisplay(mDisplay);
+        fn_XCloseDisplay(mDisplay);
     }
 }
 
@@ -310,7 +310,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         GAPID_FATAL("Unable to find a suitable X framebuffer config");
     }
     mFBConfig = fbConfigs[0];
-    free(fbConfigs);
+    fn_XFree(fbConfigs);
 
     glXCreateContextAttribsARBProc glXCreateContextAttribsARB =
         (glXCreateContextAttribsARBProc)fn_glXGetProcAddress("glXCreateContextAttribsARB");
@@ -318,7 +318,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         GAPID_FATAL("Unable to get address of glXCreateContextAttribsARB");
     }
     // Prevent X from taking down the process if the GL version is not supported.
-    auto oldHandler = setErrorHandler([](Display*, XErrorEvent*)->int{ return 0; });
+    auto oldHandler = fn_XSetErrorHandler([](Display*, XErrorEvent*)->int{ return 0; });
     for (auto gl_version : core::gl::sVersionSearchOrder) {
         // List of name-value pairs.
         const int contextAttribs[] = {
@@ -337,11 +337,11 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
             break;
         }
     }
-    setErrorHandler(oldHandler);
+    fn_XSetErrorHandler(oldHandler);
     if (mContext == nullptr) {
         GAPID_FATAL("Failed to create glX context");
     }
-    sync(mDisplay, False);
+    fn_XSync(mDisplay, False);
 
     createPbuffer(safe_width, safe_height);
 

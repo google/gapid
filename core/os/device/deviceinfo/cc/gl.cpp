@@ -45,6 +45,9 @@ void glDriver(device::OpenGLDriver* driver) {
     auto glGetString = reinterpret_cast<PFNGLGETSTRING>(core::GetGlesProcAddress("glGetString", true));
     auto glGetStringi = reinterpret_cast<PFNGLGETSTRINGI>(core::GetGlesProcAddress("glGetStringi", true));
 
+    GAPID_ASSERT(glGetError != nullptr);
+    GAPID_ASSERT(glGetString != nullptr);
+
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformbufferalignment);
     glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS, &maxtransformfeedbackseparateattribs);
     glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS, &maxtransformfeedbackinterleavedcomponents);

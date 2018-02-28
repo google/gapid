@@ -79,7 +79,7 @@
       {{if (Macro "IsRealDirectFunction" $c)}}
         {{$name := Macro "CmdName" $c}}
         mFunctionStubs.{{$name}} = reinterpret_cast<{{Template "C++.FunctionPtrType" $c}}>(§
-          core::Get{{$api}}ProcAddress("{{$name}}", false));
+          core::Get{{$api}}ProcAddress("{{$name}}", true));
       {{end}}
     {{end}}
   }
