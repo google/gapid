@@ -298,8 +298,7 @@ func (p *Process) loadAndConnectViaJDWP(
 
 		// Load the library.
 		log.D(ctx, "Loading GAPII library...")
-		// Work around for loading libraries in the N previews. See b/29441142.
-		j.Class("java.lang.Runtime").Call("getRuntime").Call("doLoad", gapiiPath, nil)
+		j.Class("java.lang.System").Call("load", gapiiPath)
 		log.D(ctx, "Library loaded")
 		return nil
 	})
