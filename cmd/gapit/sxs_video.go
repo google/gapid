@@ -22,10 +22,9 @@ import (
 	"image/color"
 	"image/draw"
 	"math"
-	"sync"
 	"time"
 
-	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/event/task"
 	img "github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/font"
 	"github.com/google/gapid/core/log"
@@ -156,13 +155,17 @@ func (verb *videoVerb) sxsVideoSource(
 	}
 
 	// Get all the observed and rendered frames, and compare them.
+	const workers = 32
+	execEvents := &task.Events{}
+	pool, shutdown := task.Pool(0, workers)
+	defer shutdown(ctx)
+	executor := task.Batch(pool, execEvents)
+
 	start := time.Now()
 	w, h = uniformScale(w, h, verb.Max.Width/2, verb.Max.Height/2)
-	var wg sync.WaitGroup
 	for _, v := range videoFrames {
 		v := v
-		wg.Add(1)
-		crash.Go(func() {
+		executor(ctx, func(ctx context.Context) error {
 			v.observed = &image.NRGBA{
 				Pix:    v.fbo.Bytes,
 				Stride: int(v.fbo.Width) * 4,
@@ -178,10 +181,10 @@ func (verb *videoVerb) sxsVideoSource(
 			if v.observed != nil && v.rendered != nil {
 				v.difference, v.squareError = getDifference(v.observed, v.rendered, &v.histogramData)
 			}
-			wg.Done()
+			return nil
 		})
 	}
-	wg.Wait()
+	execEvents.Wait(ctx)
 
 	log.D(ctx, "Frames rendered in %v", time.Since(start))
 	for _, v := range videoFrames {
