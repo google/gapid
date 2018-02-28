@@ -694,7 +694,10 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	}
 	pipelineLayout := h.createTempPipelineLayoutForPriming(descSetLayout)
 	vertShader := h.createTempVertShaderModuleForPriming(outputImg.Device)
-	fragShader := h.createTempFragShaderModuleForPriming(inputImgs, outputImg)
+	fragShader, err := h.createTempFragShaderModuleForPriming(inputImgs, outputImg)
+	if err != nil {
+		return fmt.Errorf("[Creating fragment shader module] %v", err)
+	}
 	e := h.sb.levelSize(outputImg.Info.Extent, outputImg.Info.Format, level)
 	viewport := VkViewport{
 		0.0, 0.0,
@@ -1210,7 +1213,7 @@ func (h *imageRebuildHelper) createTempVertShaderModuleForPriming(dev VkDevice) 
 	return h.tempShaders[handle]
 }
 
-func (h *imageRebuildHelper) createTempFragShaderModuleForPriming(stagingImgs []*ImageObject, dstImg *ImageObject) *ShaderModuleObject {
+func (h *imageRebuildHelper) createTempFragShaderModuleForPriming(stagingImgs []*ImageObject, dstImg *ImageObject) (*ShaderModuleObject, error) {
 	handle := VkShaderModule(newUnusedID(true, func(x uint64) bool {
 		inState := h.sb.s.ShaderModules.Contains(VkShaderModule(x))
 		_, inHelper := h.tempShaders[VkShaderModule(x)]
@@ -1218,6 +1221,9 @@ func (h *imageRebuildHelper) createTempFragShaderModuleForPriming(stagingImgs []
 	}))
 
 	spv := primingFragSpv(dstImg.Info.Format)
+	if len(spv) == 0 {
+		return nil, fmt.Errorf("unsupported format: %v", dstImg.Info.Format)
+	}
 
 	createInfo := VkShaderModuleCreateInfo{
 		VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -1234,7 +1240,7 @@ func (h *imageRebuildHelper) createTempFragShaderModuleForPriming(stagingImgs []
 		VkResult_VK_SUCCESS,
 	))
 	h.tempShaders[handle] = GetState(h.sb.newState).ShaderModules.Get(handle)
-	return h.tempShaders[handle]
+	return h.tempShaders[handle], nil
 }
 
 func (h *imageRebuildHelper) createTempGfxPipelineForPriming(vertShader, fragShader *ShaderModuleObject, pipelineLayout *PipelineLayoutObject, renderpass *RenderPassObject, viewport VkViewport, scissor VkRect2D) *GraphicsPipelineObject {
