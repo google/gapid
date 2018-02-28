@@ -89,4 +89,7 @@ fakeroot dpkg-deb -v --build gapid
 mv gapid.deb gapid-$VERSION-linux.deb
 echo "$(date): Done."
 
+# Copy the symbol file to the output.
+[ -f "$BIN/cmd/gapir/cc/gapir.sym" ] && cp "$BIN/cmd/gapir/cc/gapir.sym" gapir-$VERSION-linux.sym
+
 popd

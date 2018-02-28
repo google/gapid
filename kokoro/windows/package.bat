@@ -71,4 +71,9 @@ copy "%~dp0\*.bmp" .
 "%WIX%\candle.exe" -dGAPIDVersion="%VERSION%" gapid.wxs component.wxs
 "%WIX%\light.exe" gapid.wixobj component.wixobj -b gapid -ext WixUIExtension -cultures:en-us -o gapid-%VERSION%-windows.msi
 
+REM Copy the symbol file to the output.
+if exist "%BIN_DIR%\cmd\gapir\cc\gapir.sym" (
+  copy "%BIN_DIR%\cmd\gapir\cc\gapir.sym" gapir-%VERSION%-windows.sym
+)
+
 popd

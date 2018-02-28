@@ -35,8 +35,9 @@ unzip -q -d wix wix311-binaries.zip
 set WIX=%cd%\wix
 
 REM Fix up the MSYS environment.
+c:\tools\msys64\usr\bin\bash --login -c "pacman -R --noconfirm catgets libcatgets"
 c:\tools\msys64\usr\bin\bash --login -c "pacman -Syu --noconfirm"
-c:\tools\msys64\usr\bin\bash --login -c "pacman -S --noconfirm mingw-w64-x86_64-gcc"
+c:\tools\msys64\usr\bin\bash --login -c "pacman -S --noconfirm mingw-w64-x86_64-gcc patch"
 set PATH=c:\tools\msys64\mingw64\bin;%PATH%
 
 REM TODO set up msvc build env
@@ -58,7 +59,7 @@ if "%KOKORO_GITHUB_COMMIT%." == "." (
 ) else (
   set BUILD_SHA=%KOKORO_GITHUB_COMMIT%
 )
-%BUILD_ROOT%\bazel build --config mingw --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" --define GAPID_BUILD_SHA="%BUILD_SHA%" //:pkg
+%BUILD_ROOT%\bazel build --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" --define GAPID_BUILD_SHA="%BUILD_SHA%" //:pkg
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 cd %BUILD_ROOT%
