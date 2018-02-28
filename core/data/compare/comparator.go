@@ -193,7 +193,7 @@ func (t Comparator) compareValues(v1, v2 reflect.Value, ptr bool) {
 	default:
 		// Normal equality suffices
 		if toValue(v1, false) != toValue(v2, false) {
-			t.Handler(t.Path.Diff(toValue(v1, ptr), toValue(v2, ptr)))
+			t.Handler(t.Path.Diff(toValue(v1, false), toValue(v2, false)))
 		}
 	}
 }

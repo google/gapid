@@ -202,7 +202,7 @@ var (
 			root.Diff(hidden1, hidden2),
 		}},
 		{"pointer!=", &valueBase, &valueDifferent, []compare.Path{
-			root.Diff(&valueBase, &valueDifferent),
+			root.Diff(valueBase, valueDifferent),
 		}},
 		{"custom", Special(1), Special(2), []compare.Path{
 			root.Diff(Special(1), Special(2)),
