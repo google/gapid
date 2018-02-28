@@ -29,7 +29,7 @@ func TestTargetTriple(t *testing.T) {
 		abi      *device.ABI
 		expected triple
 	}{
-		{"win-x64", device.WindowsX86_64, triple{"x86_64", "pc", "win32", "unknown"}},
+		{"win-x64", device.WindowsX86_64, triple{"x86_64", "pc", "win32", "elf"}},
 		{"osx-x64", device.OSXX86_64, triple{"x86_64", "apple", "darwin", "unknown"}},
 		{"linux-x64", device.LinuxX86_64, triple{"x86_64", "unknown", "linux", "unknown"}},
 		{"android-arm64", device.AndroidARM64v8a, triple{"aarch64", "unknown", "linux", "androideabi"}},
