@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
@@ -249,9 +250,9 @@ func (h *imageRebuildHelper) unpackTexelBlock(src []uint8, srcFmt VkFormat, dstI
 		}
 		binary.Write(&buf, binary.LittleEndian, u)
 	}
-	writeFloat := func(fracStart, oneOverFracEnd, expStart, oneOverExpEnd uint32, sign signedness, signBit uint32) {
+	writeFloat := func(info floatUnpackingInfo) {
 		var f float32
-		f, err := unpackFloatToFloat32(src, fracStart, oneOverFracEnd, expStart, oneOverExpEnd, sign, signBit)
+		f, err := unpackFloatToFloat32(src, info)
 		if err != nil && firstUnpackingErr == nil {
 			firstUnpackingErr = err
 		}
@@ -396,7 +397,7 @@ func (h *imageRebuildHelper) unpackTexelBlock(src []uint8, srcFmt VkFormat, dstI
 		VkFormat_VK_FORMAT_R16_SINT:
 		writeInt(0, 16, signed)
 	case VkFormat_VK_FORMAT_R16_SFLOAT:
-		writeFloat(0, 10, 10, 15, signed, 15)
+		writeFloat(firstF16)
 
 	case VkFormat_VK_FORMAT_R16G16_UNORM,
 		VkFormat_VK_FORMAT_R16G16_UINT:
@@ -407,8 +408,8 @@ func (h *imageRebuildHelper) unpackTexelBlock(src []uint8, srcFmt VkFormat, dstI
 		writeInt(0, 16, signed)
 		writeInt(16, 32, signed)
 	case VkFormat_VK_FORMAT_R16G16_SFLOAT:
-		writeFloat(0, 10, 10, 15, signed, 15)
-		writeFloat(16, 26, 26, 31, signed, 31)
+		writeFloat(firstF16)
+		writeFloat(secondF16)
 
 	case VkFormat_VK_FORMAT_R16G16B16_UNORM,
 		VkFormat_VK_FORMAT_R16G16B16_UINT:
@@ -421,9 +422,9 @@ func (h *imageRebuildHelper) unpackTexelBlock(src []uint8, srcFmt VkFormat, dstI
 		writeInt(16, 32, signed)
 		writeInt(32, 48, signed)
 	case VkFormat_VK_FORMAT_R16G16B16_SFLOAT:
-		writeFloat(0, 10, 10, 15, signed, 15)
-		writeFloat(16, 26, 26, 31, signed, 31)
-		writeFloat(32, 42, 42, 47, signed, 47)
+		writeFloat(firstF16)
+		writeFloat(secondF16)
+		writeFloat(thirdF16)
 
 	case VkFormat_VK_FORMAT_R16G16B16A16_UNORM,
 		VkFormat_VK_FORMAT_R16G16B16A16_UINT:
@@ -437,7 +438,11 @@ func (h *imageRebuildHelper) unpackTexelBlock(src []uint8, srcFmt VkFormat, dstI
 		writeInt(16, 32, signed)
 		writeInt(32, 48, signed)
 		writeInt(48, 64, signed)
-	// TODO: rgba16_sfloat
+	case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT:
+		writeFloat(firstF16)
+		writeFloat(secondF16)
+		writeFloat(thirdF16)
+		writeFloat(fourthF16)
 
 	case VkFormat_VK_FORMAT_R32_UINT:
 		writeInt(0, 32, unsigned)
@@ -512,9 +517,9 @@ func (h *imageRebuildHelper) unpackTexelBlock(src []uint8, srcFmt VkFormat, dstI
 	// TODO: rgba64 sfloat
 
 	case VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
-		writeFloat(0, 9, 27, 32, unsigned, 0)
-		writeFloat(9, 18, 27, 32, unsigned, 0)
-		writeFloat(18, 27, 27, 32, unsigned, 0)
+		writeFloat(floatUnpackingInfo{0, 9, 27, 32, unsigned, 0})
+		writeFloat(floatUnpackingInfo{9, 18, 27, 32, unsigned, 0})
+		writeFloat(floatUnpackingInfo{18, 27, 27, 32, unsigned, 0})
 
 	case VkFormat_VK_FORMAT_D16_UNORM:
 		writeInt(0, 16, unsigned)
@@ -549,21 +554,62 @@ func unpackIntToUint32(src []uint8, start, oneOverEnd uint32, sign signedness) (
 	return uint32(sret), nil
 }
 
+type floatUnpackingInfo struct {
+	fracStart      uint32
+	oneOverFracEnd uint32
+	expStart       uint32
+	oneOverExpEnd  uint32
+	sign           signedness
+	signBit        uint32
+}
+
+var (
+	firstF16  = floatUnpackingInfo{}
+	secondF16 = floatUnpackingInfo{}
+	thirdF16  = floatUnpackingInfo{}
+	fourthF16 = floatUnpackingInfo{}
+)
+
 // TODO: This is not correct!
-func unpackFloatToFloat32(src []uint8, fracStart, oneOverFracEnd, expStart, oneOverExpEnd uint32, sign signedness, signBit uint32) (float32, error) {
-	frac, err := extractBitsToUin32(src, fracStart, oneOverFracEnd)
+func unpackFloatToFloat32(src []uint8, info floatUnpackingInfo) (float32, error) {
+	frac, err := extractBitsToUin32(src, info.fracStart, info.oneOverFracEnd)
 	if err != nil {
 		return 0, err
 	}
-	exp, err := extractBitsToUin32(src, expStart, oneOverExpEnd)
+	fracShift := 23 - (info.oneOverFracEnd - info.fracStart)
+	newFrac := frac << fracShift
+
+	expRaw, err := extractBitsToUin32(src, info.expStart, info.oneOverExpEnd)
 	if err != nil {
 		return 0, err
 	}
+	expWidth := info.oneOverExpEnd - info.expStart
+
+	var newSign uint32
+	if info.sign == signed {
+		newSign, err = extractBitsToUint32(src, info.signBit, info.signBit+1)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	// Check NaN and Infinity
+	if expRaw == uint32(1<<expWidth)-1 {
+		if frac == 0 {
+			return float32(math.Inf(int(newSign) * int(-1))), nil
+		} else {
+			return float32(math.Nan())
+		}
+	}
+
+	expBase := uint32(1<<(expWidth-1) - 1)
+	newExp := (expRaw - expBase) + 127
+
 	var u uint32
-	u += frac << (23 - (oneOverFracEnd - fracStart))
-	u += exp << (31 - (oneOverExpEnd - expStart))
-	if sign == signed {
-		s, err := extractBitsToUin32(src, signBit, signBit+1)
+	u += frac << (23 - (info.oneOverFracEnd - info.fracStart))
+	u += exp << (31 - (info.oneOverExpEnd - info.expStart))
+	if info.sign == signed {
+		s, err := extractBitsToUin32(src, info.signBit, info.signBit+1)
 		if err != nil {
 			return 0, err
 		}
