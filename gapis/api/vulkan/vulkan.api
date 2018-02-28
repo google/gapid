@@ -4228,8 +4228,17 @@ cmd void vkDestroyImageView(
   delete(ImageViews, imageView)
   for _, _, drawInfo in LastDrawInfos {
     for _, i, v in drawInfo.Framebuffer.ImageAttachments {
-      if v.VulkanHandle == imageView {
+      if (v != null) && (v.VulkanHandle == imageView) {
         drawInfo.Framebuffer.ImageAttachments[i] = null
+      }
+    }
+  }
+  for _, _, descSet in DescriptorSets {
+    for _, _, binding in descSet.Bindings {
+      for _, _, imgBinding in binding.ImageBinding {
+        if imgBinding.ImageView == imageView {
+          imgBinding.ImageView = as!VkImageView(0)
+        }
       }
     }
   }
