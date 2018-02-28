@@ -113,8 +113,9 @@
   {{AssertType $.FromClass "string"}}
   {{AssertType $.ToClass   "string"}}
   {{AssertType $.Element   "string"}}
-  {{Template "RemoveUpperPrefix" $.FromClass}}s[{{$.Element}}]->m{{Template "RemoveUpperPrefix" $.ToClass}}
+  mState.{{Template "RemoveUpperPrefix" $.FromClass}}s[{{$.Element}}]->m{{Template "RemoveUpperPrefix" $.ToClass}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------
@@ -133,7 +134,7 @@
     {{$next_annotation := print (index $.Annotations 1)}}
     {{$from_class := $annotation}}
     {{$to_class := $next_annotation}}
-    {{Template "RemoveUpperPrefix" (print $from_class)}}s.find({{$.Element}}) == {{Template "RemoveUpperPrefix" (print $from_class)}}s.end() ||
+    mState.{{Template "RemoveUpperPrefix" (print $from_class)}}s.find({{$.Element}}) == mState.{{Template "RemoveUpperPrefix" (print $from_class)}}s.end() ||
     {{$next_elements := Macro "ConcatenateImports" "FromClass" $from_class "ToClass" $to_class "Element" $.Element}}
     {{Template "GetIndirectedFunction" "Annotations" (Tail 1 $.Annotations) "Element" (print $next_elements) "Function" $.Function}}
   {{end}}

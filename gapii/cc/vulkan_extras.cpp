@@ -30,14 +30,14 @@ struct destroyer {
 bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
     gapil::Ref<ImageObject> image;
-    if (LastSubmission == LastSubmissionType::SUBMIT) {
-        if (!LastBoundQueue) {
+    if (mState.LastSubmission == LastSubmissionType::SUBMIT) {
+        if (!mState.LastBoundQueue) {
             return false;
         }
-        if (!LastDrawInfos.contains(LastBoundQueue->mVulkanHandle)) {
+        if (!mState.LastDrawInfos.contains(mState.LastBoundQueue->mVulkanHandle)) {
             return false;
         }
-        auto& lastDrawInfo = *LastDrawInfos[LastBoundQueue->mVulkanHandle];
+        auto& lastDrawInfo = *mState.LastDrawInfos[mState.LastBoundQueue->mVulkanHandle];
         if (!lastDrawInfo.mRenderPass) {
             return false;
         }
@@ -62,10 +62,10 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         *w = lastDrawInfo.mFramebuffer->mWidth;
         *h = lastDrawInfo.mFramebuffer->mHeight;
     } else {
-        if (LastPresentInfo.mPresentImageCount == 0) {
+        if (mState.LastPresentInfo.mPresentImageCount == 0) {
             return false;
         }
-        image = LastPresentInfo.mPresentImages[0];
+        image = mState.LastPresentInfo.mPresentImages[0];
         *w = image->mInfo.mExtent.mWidth;
         *h = image->mInfo.mExtent.mHeight;
     }
@@ -74,8 +74,8 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
     // draw-level observations.
 
     VkDevice device = image->mDevice;
-    VkPhysicalDevice physical_device = Devices[device]->mPhysicalDevice;
-    VkInstance instance = PhysicalDevices[physical_device]->mInstance;
+    VkPhysicalDevice physical_device = mState.Devices[device]->mPhysicalDevice;
+    VkInstance instance = mState.PhysicalDevices[physical_device]->mInstance;
     VkQueue queue = image->mLastBoundQueue->mVulkanHandle;
     uint32_t queue_family = image->mLastBoundQueue->mFamily;
     auto& instance_fn = mImports.mVkInstanceFunctions[instance];

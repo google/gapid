@@ -40,6 +40,7 @@
   {{range $c := $.Classes}}
     {{Template "DefineClassMethods" $c}}
   {{end}}
+  {{Template "DeclareState" $}}
 ¶
   namespace cmd {«
     {{range $c := AllCommands $}}
@@ -99,6 +100,41 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits the definition for the API state.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareState"}}
+  {{AssertType $ "API"}}
+
+  {{$name := print (Title (Global "API")) "State"}}
+
+¶
+  {{$name}}::{{$name}}(core::Arena* arena) »»
+    {{range $i, $g := $.Globals}}
+      {{if $i}}, {{else}}: {{end}}§
+      {{$g.Name}}({{Macro "C++.Null" (TypeOf $g)}})§
+    {{end}}
+    ««§•{}
+¶
+  ::google::protobuf::Message* {{$name}}::toProto() const {
+    auto out = new {{Global "API"}}::State();
+    ToProtoContext pbCtx;
+    toProto(out, pbCtx);
+    return out;
+  }
+¶
+  void {{$name}}::toProto(ProtoType* out, ToProtoContext& pbCtx) const {
+    {{range $g := $.Globals}}
+      {{if (GetAnnotation $g "serialize")}}
+        {{Template "C++.SetProtoField" "Proto" "out->" "Prefix" "" "Name" $g.Name "Type" $g}}
+      {{end}}
+    {{end}}
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits a default initializer for the field.
 -------------------------------------------------------------------------------
 */}}
@@ -113,7 +149,7 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits a copy initializer if the element is not a static array.
+  Emits a field copy initializer.
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclareCopyInitializer"}}

@@ -42,7 +42,7 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
   auto resources = gapil::Ref<ActiveProgramResources>::create(spy->arena());
 
   const GLuint program = extra->mID;
-  const bool gles30 = spy->Version != nullptr && spy->Version->mGLES30;
+  const bool gles30 = spy->mState.Version != nullptr && spy->mState.Version->mGLES30;
   const auto& imports = spy->imports();
 
   // Helper method to get property of program
@@ -364,7 +364,7 @@ gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer
   GlesSpy::mImports.glGetError(); // Clear error.
 
   const GLuint program = p->mID;
-  const bool gles31 = this->Version != nullptr && this->Version->mGLES31;
+  const bool gles31 = mState.Version != nullptr && mState.Version->mGLES31;
 
   // Helper method to get property of program
   auto getProgramiv = [&](uint32_t pname) {
@@ -509,6 +509,7 @@ gapil::Ref<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelineExtr
   extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
   observer->encodeAndDelete(extra->toProto());
+
   return std::move(extra);
 }
 
@@ -568,7 +569,7 @@ gapil::Ref<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(CallOb
 // TODO: When gfx api macros produce functions instead of inlining, move this logic
 // to the gles.api file.
 bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer, uint32_t* width, uint32_t* height) {
-    gapil::Ref<Context> ctx = Contexts[observer->getCurrentThread()];
+    gapil::Ref<Context> ctx = mState.Contexts[observer->getCurrentThread()];
     if (ctx == nullptr) {
       return false;
     }

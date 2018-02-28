@@ -773,7 +773,7 @@
   {{AssertType $ "Global"}}
 
   {{if eq $.Name "$Thread"}}observer->getCurrentThread()
-  {{else                  }}this->{{$.Name}}
+  {{else                  }}mState.{{$.Name}}
   {{end}}
 {{end}}
 
