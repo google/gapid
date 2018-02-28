@@ -1647,12 +1647,13 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				lastDrawInfo := GetState(s).LastDrawInfos.Get(lastBoundQueue.VulkanHandle)
 				if lastDrawInfo.Framebuffer != nil {
 					for _, view := range lastDrawInfo.Framebuffer.ImageAttachments.Range() {
-						img := view.Image
-						if _, ok := vb.images[img.VulkanHandle]; ok {
-							data := vb.getImageData(ctx, nil, img.VulkanHandle)
-							vb.machine.lastBoundFramebufferImageData[id] = append(
-								vb.machine.lastBoundFramebufferImageData[id], data...)
+						if view == nil || view.Image == nil {
+							continue
 						}
+						img := view.Image
+						data := vb.getImageData(ctx, nil, img.VulkanHandle)
+						vb.machine.lastBoundFramebufferImageData[id] = append(
+							vb.machine.lastBoundFramebufferImageData[id], data...)
 					}
 				}
 			}

@@ -4166,6 +4166,11 @@ cmd void vkDestroyImage(
       delete(imageObject.BoundMemory.BoundObjects, as!u64(image))
     }
     delete(Images, image)
+    for _, _, v in ImageViews {
+      if v.Image.VulkanHandle == image {
+        v.Image = null
+      }
+    }
   }
 
 }
@@ -4221,6 +4226,13 @@ cmd void vkDestroyImageView(
   // TODO: pAllocator
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(ImageViews, imageView)
+  for _, _, drawInfo in LastDrawInfos {
+    for _, i, v in drawInfo.Framebuffer.ImageAttachments {
+      if v.VulkanHandle == imageView {
+        drawInfo.Framebuffer.ImageAttachments[i] = null
+      }
+    }
+  }
 }
 
 @indirect("VkDevice")
