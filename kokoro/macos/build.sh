@@ -42,7 +42,11 @@ cd $SRC
 # Invoke the build.
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 echo $(date): Starting build...
-$BUILD_ROOT/bazel/bin/bazel build -c opt --strip always --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" --define GAPID_BUILD_SHA="$BUILD_SHA" //:pkg
+$BUILD_ROOT/bazel/bin/bazel build -c opt --config symbols \
+    --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+    --define GAPID_BUILD_SHA="$BUILD_SHA" \
+    --copt "-fdebug-prefix-map=/Volumes/BuildData/tmpfs/tmp/bazel/bazel-sandbox/*/execroot/gapid=." \
+    //:pkg //cmd/gapir/cc:gapir.sym
 echo $(date): Build completed.
 
 # Build the release packages.
