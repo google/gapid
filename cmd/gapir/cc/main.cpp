@@ -149,7 +149,8 @@ void android_main(struct android_app* app) {
       listenConnections(conn.get(), nullptr, nullptr, Connection::NO_TIMEOUT,
                         &memoryManager, crashHandler);
     });
-    while (true) {
+    bool alive = true;
+    while (alive) {
       int ident;
       int fdesc;
       int events;
@@ -162,6 +163,7 @@ void android_main(struct android_app* app) {
         }
         if (app->destroyRequested) {
           conn->close();
+          alive = false;
           break;
         }
       }

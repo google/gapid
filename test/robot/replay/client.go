@@ -59,6 +59,12 @@ func Run(ctx context.Context, store *stash.Client, manager Manager, tempDir file
 func (c *client) onDeviceAdded(ctx context.Context, host *device.Instance, target bind.Device) {
 	replayOnTarget := func(ctx context.Context, t *Task) error {
 		job.LockDevice(ctx, target)
+		defer func() {
+			// HACK: kill gapid.apk manually for now as subsequent reports/replays may freeze the app.
+			// Remove when https://github.com/google/gapid/issues/1666 is fixed.
+			target.Shell("am", "force-stop", "com.google.android.gapid.aarch64").Run(ctx)
+			target.Shell("am", "force-stop", "com.google.android.gapid.armeabi").Run(ctx)
+		}()
 		defer job.UnlockDevice(ctx, target)
 		if target.Status() != bind.Status_Online {
 			log.I(ctx, "Trying to replay %s on %s not started, device status %s",
@@ -178,6 +184,7 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 		}
 		errs = append(errs, err.Error())
 	}
+
 	errs = append(errs, strings.TrimSpace(errBuf.String()))
 	outputObj.Err = strings.Join(errs, "\n")
 	if err := worker.NeedsRetry(outputObj.Err, retryString); err != nil {
