@@ -192,8 +192,8 @@ func (c *C) hashValue(s *S, t semantic.Type, value *codegen.Value) *codegen.Valu
 		}
 	case *semantic.Enum:
 		return value.Cast(u64Type)
-	case *semantic.Pointer,
-		return s.ShiftRight(value.Cast(u64Type), s.Scalar(uint64(2))) 
+	case *semantic.Pointer:
+		return s.ShiftRight(value.Cast(u64Type), s.Scalar(uint64(2)))
 	case *semantic.StaticArray:
 		fail("Cannot use a static array as a hash key")
 		return nil
