@@ -1685,9 +1685,13 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 
 	if primeByRendering {
 		// Render the staging image content to the state block image.
-		err := helper.renderStagingImages(copyDstImgs, img, queue)
-		if err != nil {
-			log.E(sb.ctx, "[Rendering to state block image: %v] %v", img.VulkanHandle, err)
+		for layer := uint32(0); layer < img.Info.ArrayLayers; layer++ {
+			for level := uint32(0); level < img.Info.MipLevels; level++ {
+				err := helper.renderStagingImages(copyDstImgs, img, queue, layer, level)
+				if err != nil {
+					log.E(sb.ctx, "[Rendering to state block image: %v] %v", img.VulkanHandle, err)
+				}
+			}
 		}
 		return
 	}

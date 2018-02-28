@@ -259,43 +259,266 @@ func (h *imageRebuildHelper) unpackTexelBlock(src []uint8, srcFmt VkFormat, dstI
 	}
 	// Always write in order: R, G, B, A
 	switch srcFmt {
-	case VkFormat_VK_FORMAT_R8_UINT:
+	case VkFormat_VK_FORMAT_R4G4_UNORM_PACK8:
+		writeInt(4, 8, unsigned)
+		writeInt(0, 4, unsigned)
+	case VkFormat_VK_FORMAT_R4G4B4A4_UNORM_PACK16:
+		writeInt(12, 16, unsigned)
+		writeInt(8, 12, unsigned)
+		writeInt(4, 8, unsigned)
+		writeInt(0, 4, unsigned)
+	case VkFormat_VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+		writeInt(4, 8, unsigned)
+		writeInt(8, 12, unsigned)
+		writeInt(12, 16, unsigned)
+		writeInt(0, 4, unsigned)
+	case VkFormat_VK_FORMAT_R5G6B5_UNORM_PACK16:
+		writeInt(11, 16, unsigned)
+		writeInt(5, 11, unsigned)
+		writeInt(0, 5, unsigned)
+	case VkFormat_VK_FORMAT_B5G6R5_UNORM_PACK16:
+		writeInt(0, 5, unsigned)
+		writeInt(5, 11, unsigned)
+		writeInt(11, 16, unsigned)
+	case VkFormat_VK_FORMAT_R5G5B5A1_UNORM_PACK16:
+		writeInt(11, 16, unsigned)
+		writeInt(6, 11, unsigned)
+		writeInt(1, 6, unsigned)
+		writeInt(0, 1, unsigned)
+	case VkFormat_VK_FORMAT_B5G5R5A1_UNORM_PACK16:
+		writeInt(1, 6, unsigned)
+		writeInt(6, 11, unsigned)
+		writeInt(11, 16, unsigned)
+		writeInt(0, 1, unsigned)
+	case VkFormat_VK_FORMAT_A1R5G5B5_UNORM_PACK16:
+		writeInt(10, 15, unsigned)
+		writeInt(5, 10, unsigned)
+		writeInt(0, 5, unsigned)
+		writeInt(15, 16, unsigned)
+	case VkFormat_VK_FORMAT_R8_UNORM,
+		VkFormat_VK_FORMAT_R8_UINT:
 		writeInt(0, 8, unsigned)
-	case VkFormat_VK_FORMAT_R8_SINT:
+	case VkFormat_VK_FORMAT_R8_SNORM,
+		VkFormat_VK_FORMAT_R8_SINT:
 		writeInt(0, 8, signed)
-	case VkFormat_VK_FORMAT_R16G16B16A16_SINT:
-		writeInt(0, 16, signed)
-		writeInt(16, 32, signed)
-		writeInt(32, 48, signed)
-		writeInt(48, 64, signed)
-	case VkFormat_VK_FORMAT_R32_SINT:
-		writeInt(0, 32, signed)
-	case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT:
-		writeFloat(0, 10, 10, 15, signed, 15)
-		writeFloat(16, 26, 26, 31, signed, 31)
-		writeFloat(32, 42, 42, 47, signed, 47)
-		writeFloat(48, 58, 58, 63, signed, 63)
+
+	case VkFormat_VK_FORMAT_R8G8_UNORM,
+		VkFormat_VK_FORMAT_R8G8_UINT:
+		writeInt(0, 8, unsigned)
+		writeInt(8, 16, unsigned)
+	case VkFormat_VK_FORMAT_R8G8_SNORM,
+		VkFormat_VK_FORMAT_R8G8_SINT:
+		writeInt(0, 8, signed)
+		writeInt(8, 16, signed)
+
+	case VkFormat_VK_FORMAT_R8G8B8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8_UINT:
+		writeInt(0, 8, unsigned)
+		writeInt(8, 16, unsigned)
+		writeInt(16, 24, unsigned)
+	case VkFormat_VK_FORMAT_R8G8B8_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8_SINT:
+		writeInt(0, 8, signed)
+		writeInt(8, 16, signed)
+		writeInt(16, 24, signed)
+
+	case VkFormat_VK_FORMAT_B8G8R8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8_UINT:
+		writeInt(16, 24, unsigned)
+		writeInt(8, 16, unsigned)
+		writeInt(0, 8, unsigned)
+	case VkFormat_VK_FORMAT_B8G8R8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8_SINT:
+		writeInt(16, 24, signed)
+		writeInt(8, 16, signed)
+		writeInt(0, 8, signed)
+
 	case VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
-		VkFormat_VK_FORMAT_R8G8B8A8_UINT:
+		VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32:
 		writeInt(0, 8, unsigned)
 		writeInt(8, 16, unsigned)
 		writeInt(16, 24, unsigned)
 		writeInt(24, 32, unsigned)
-	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+	case VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32,
+		VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32:
+		writeInt(0, 8, signed)
+		writeInt(8, 16, signed)
+		writeInt(16, 24, signed)
+		writeInt(24, 32, signed)
+
+	case VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_UINT:
+		writeInt(16, 24, unsigned)
+		writeInt(8, 16, unsigned)
+		writeInt(0, 8, unsigned)
+		writeInt(24, 32, unsigned)
+	case VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_SINT:
+		writeInt(16, 24, signed)
+		writeInt(8, 16, signed)
+		writeInt(0, 8, signed)
+		writeInt(24, 32, signed)
+
+	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32:
 		writeInt(20, 30, unsigned)
 		writeInt(10, 20, unsigned)
 		writeInt(0, 10, unsigned)
 		writeInt(30, 32, unsigned)
+	case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32,
+		VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32:
+		writeInt(20, 30, signed)
+		writeInt(10, 20, signed)
+		writeInt(0, 10, signed)
+		writeInt(30, 32, signed)
+
+	case VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
+		writeInt(0, 10, unsigned)
+		writeInt(10, 20, unsigned)
+		writeInt(20, 30, unsigned)
+		writeInt(30, 32, unsigned)
+	case VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
+		writeInt(0, 10, signed)
+		writeInt(10, 20, signed)
+		writeInt(20, 30, signed)
+		writeInt(30, 32, signed)
+
+	case VkFormat_VK_FORMAT_R16_UNORM,
+		VkFormat_VK_FORMAT_R16_UINT:
+		writeInt(0, 16, unsigned)
+	case VkFormat_VK_FORMAT_R16_SNORM,
+		VkFormat_VK_FORMAT_R16_SINT:
+		writeInt(0, 16, signed)
+	case VkFormat_VK_FORMAT_R16_SFLOAT:
+		writeFloat(0, 10, 10, 15, signed, 15)
+
+	case VkFormat_VK_FORMAT_R16G16_UNORM,
+		VkFormat_VK_FORMAT_R16G16_UINT:
+		writeInt(0, 16, unsigned)
+		writeInt(16, 32, unsigned)
+	case VkFormat_VK_FORMAT_R16G16_SNORM,
+		VkFormat_VK_FORMAT_R16G16_SINT:
+		writeInt(0, 16, signed)
+		writeInt(16, 32, signed)
+	case VkFormat_VK_FORMAT_R16G16_SFLOAT:
+		writeFloat(0, 10, 10, 15, signed, 15)
+		writeFloat(16, 26, 26, 31, signed, 31)
+
+	case VkFormat_VK_FORMAT_R16G16B16_UNORM,
+		VkFormat_VK_FORMAT_R16G16B16_UINT:
+		writeInt(0, 16, unsigned)
+		writeInt(16, 32, unsigned)
+		writeInt(32, 48, unsigned)
+	case VkFormat_VK_FORMAT_R16G16B16_SNORM,
+		VkFormat_VK_FORMAT_R16G16B16_SINT:
+		writeInt(0, 16, signed)
+		writeInt(16, 32, signed)
+		writeInt(32, 48, signed)
+	case VkFormat_VK_FORMAT_R16G16B16_SFLOAT:
+		writeFloat(0, 10, 10, 15, signed, 15)
+		writeFloat(16, 26, 26, 31, signed, 31)
+		writeFloat(32, 42, 42, 47, signed, 47)
+
+	case VkFormat_VK_FORMAT_R16G16B16A16_UNORM,
+		VkFormat_VK_FORMAT_R16G16B16A16_UINT:
+		writeInt(0, 16, unsigned)
+		writeInt(16, 32, unsigned)
+		writeInt(32, 48, unsigned)
+		writeInt(48, 64, unsigned)
+	case VkFormat_VK_FORMAT_R16G16B16A16_SNORM,
+		VkFormat_VK_FORMAT_R16G16B16A16_SINT:
+		writeInt(0, 16, signed)
+		writeInt(16, 32, signed)
+		writeInt(32, 48, signed)
+		writeInt(48, 64, signed)
+	// TODO: rgba16_sfloat
+
+	case VkFormat_VK_FORMAT_R32_UINT:
+		writeInt(0, 32, unsigned)
+	case VkFormat_VK_FORMAT_R32_SINT:
+		writeInt(0, 32, signed)
+	// TODO: r32 sfloat
+
+	case VkFormat_VK_FORMAT_R32G32_UINT:
+		writeInt(0, 32, unsigned)
+		writeInt(32, 64, unsigned)
+	case VkFormat_VK_FORMAT_R32G32_SINT:
+		writeInt(0, 32, signed)
+		writeInt(32, 64, signed)
+	// TODO: rg32 sfloat
+
+	case VkFormat_VK_FORMAT_R32G32B32_UINT:
+		writeInt(0, 32, unsigned)
+		writeInt(32, 64, unsigned)
+		writeInt(64, 96, unsigned)
+	case VkFormat_VK_FORMAT_R32G32B32_SINT:
+		writeInt(0, 32, signed)
+		writeInt(32, 64, signed)
+		writeInt(64, 96, signed)
+	// TODO: rgb32 sfloat
+
+	case VkFormat_VK_FORMAT_R32G32B32A32_UINT:
+		writeInt(0, 32, unsigned)
+		writeInt(32, 64, unsigned)
+		writeInt(64, 96, unsigned)
+		writeInt(96, 128, unsigned)
+	case VkFormat_VK_FORMAT_R32G32B32A32_SINT:
+		writeInt(0, 32, signed)
+		writeInt(32, 64, signed)
+		writeInt(64, 96, signed)
+		writeInt(96, 128, signed)
+	// TODO: rgba32 sfloat
+
+	case VkFormat_VK_FORMAT_R64_UINT:
+		writeInt(0+dstImgIndex*32, 64+dstImgIndex*32, unsigned)
+	case VkFormat_VK_FORMAT_R64_SINT:
+		writeInt(0+dstImgIndex*32, 64+dstImgIndex*32, signed)
+	// TODO: r64 sfloat
+
+	case VkFormat_VK_FORMAT_R64G64_UINT:
+		writeInt(0+dstImgIndex*32, 64+dstImgIndex*32, unsigned)
+		writeInt(64+dstImgIndex*32, 128+dstImgIndex*32, unsigned)
+	case VkFormat_VK_FORMAT_R64G64_SINT:
+		writeInt(0+dstImgIndex*32, 64+dstImgIndex*32, signed)
+		writeInt(64+dstImgIndex*32, 128+dstImgIndex*32, signed)
+	// TODO: rg64 sfloat
+
+	case VkFormat_VK_FORMAT_R64G64B64_UINT:
+		writeInt(0+dstImgIndex*32, 64+dstImgIndex*32, unsigned)
+		writeInt(64+dstImgIndex*32, 128+dstImgIndex*32, unsigned)
+		writeInt(128+dstImgIndex*32, 192+dstImgIndex*32, unsigned)
+	case VkFormat_VK_FORMAT_R64G64B64_SINT:
+		writeInt(0+dstImgIndex*32, 64+dstImgIndex*32, signed)
+		writeInt(64+dstImgIndex*32, 128+dstImgIndex*32, signed)
+		writeInt(128+dstImgIndex*32, 192+dstImgIndex*32, signed)
+	// TODO: rgb64 sfloat
+
+	case VkFormat_VK_FORMAT_R64G64B64A64_UINT:
+		writeInt(0+dstImgIndex*32, 64+dstImgIndex*32, unsigned)
+		writeInt(64+dstImgIndex*32, 128+dstImgIndex*32, unsigned)
+		writeInt(128+dstImgIndex*32, 192+dstImgIndex*32, unsigned)
+		writeInt(192+dstImgIndex*32, 256+dstImgIndex*32, unsigned)
+	case VkFormat_VK_FORMAT_R64G64B64A64_SINT:
+		writeInt(0+dstImgIndex*32, 64+dstImgIndex*32, signed)
+		writeInt(64+dstImgIndex*32, 128+dstImgIndex*32, signed)
+		writeInt(128+dstImgIndex*32, 192+dstImgIndex*32, signed)
+		writeInt(192+dstImgIndex*32, 256+dstImgIndex*32, signed)
+	// TODO: rgba64 sfloat
+
 	case VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
 		writeFloat(0, 9, 27, 32, unsigned, 0)
 		writeFloat(9, 18, 27, 32, unsigned, 0)
 		writeFloat(18, 27, 27, 32, unsigned, 0)
-	case VkFormat_VK_FORMAT_R64G64B64A64_UINT:
-		offset := dstImgIndex * 32
-		writeInt(0+offset, 32+offset, unsigned)
-		writeInt(64+offset, 96+offset, unsigned)
-		writeInt(128+offset, 160+offset, unsigned)
-		writeInt(192+offset, 224+offset, unsigned)
+
+	case VkFormat_VK_FORMAT_D16_UNORM:
+		writeInt(0, 16, unsigned)
+
 	default:
 		return []uint8{}, fmt.Errorf("unsupported format: %v", srcFmt)
 	}
@@ -430,7 +653,7 @@ func texelBlockHeight(ctx context.Context, s *api.GlobalState, fmt VkFormat) (ui
 	return elementAndTexelSizeInfo.TexelBlockSize.Height, nil
 }
 
-func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outputImg *ImageObject, queue *QueueObject) error {
+func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outputImg *ImageObject, queue *QueueObject, layer, level uint32) error {
 	descPool := h.createTempDescriptorPool(outputImg.Device, 1, []VkDescriptorPoolSize{
 		VkDescriptorPoolSize{
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
@@ -449,9 +672,9 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	descSet := h.allocateTempDescriptorSet(descPool, descSetLayout)
 	inputViews := []*ImageViewObject{}
 	for _, input := range inputImgs {
-		inputViews = append(inputViews, h.createTempImageView(input))
+		inputViews = append(inputViews, h.createTempImageView(input, layer, level))
 	}
-	outputView := h.createTempImageView(outputImg)
+	outputView := h.createTempImageView(outputImg, layer, level)
 	imgInfo := []VkDescriptorImageInfo{}
 	for _, view := range inputViews {
 		imgInfo = append(imgInfo, VkDescriptorImageInfo{
@@ -463,23 +686,24 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	h.writeDescriptorSet(descSet, 0, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, imgInfo, []VkDescriptorBufferInfo{}, []VkBufferView{})
 	renderpass, err := h.createTempRenderPassForPriming(inputImgs, outputImg)
 	if err != nil {
-		return fmt.Errorf("[creating RenderPass] %v", err)
+		return fmt.Errorf("[Creating RenderPass] %v", err)
 	}
-	framebuffer, err := h.createTempFrameBufferForPriming(renderpass, append(inputViews, outputView))
+	framebuffer, err := h.createTempFrameBufferForPriming(renderpass, append(inputViews, outputView), level)
 	if err != nil {
-		return fmt.Errorf("[creating Framebuffer] %v", err)
+		return fmt.Errorf("[Creating Framebuffer] %v", err)
 	}
 	pipelineLayout := h.createTempPipelineLayoutForPriming(descSetLayout)
 	vertShader := h.createTempVertShaderModuleForPriming(outputImg.Device)
 	fragShader := h.createTempFragShaderModuleForPriming(inputImgs, outputImg)
+	e := h.sb.levelSize(outputImg.Info.Extent, outputImg.Info.Format, level)
 	viewport := VkViewport{
 		0.0, 0.0,
-		float32(outputImg.Info.Extent.Width), float32(outputImg.Info.Extent.Height),
+		float32(e.width), float32(e.height),
 		0.0, 1.0,
 	}
 	scissor := VkRect2D{
 		VkOffset2D{int32(0), int32(0)},
-		VkExtent2D{uint32(outputImg.Info.Extent.Width), uint32(outputImg.Info.Extent.Height)},
+		VkExtent2D{uint32(e.width), uint32(e.height)},
 	}
 	gfxPipeline := h.createTempGfxPipelineForPriming(vertShader, fragShader, pipelineLayout, renderpass, viewport, scissor)
 
@@ -833,10 +1057,11 @@ func (h *imageRebuildHelper) createTempRenderPassForPriming(stagingImgs []*Image
 	return h.tempRenderPasses[handle], nil
 }
 
-func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderPassObject, imgViews []*ImageViewObject) (*FramebufferObject, error) {
+func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderPassObject, imgViews []*ImageViewObject, level uint32) (*FramebufferObject, error) {
 	if len(imgViews) < 2 {
 		return nil, fmt.Errorf("requires at least two image views, %d are given", len(imgViews))
 	}
+	e := h.sb.levelSize(imgViews[0].Image.Info.Extent, imgViews[0].Image.Info.Format, level)
 	attachments := []VkImageView{}
 	for _, v := range imgViews {
 		attachments = append(attachments, v.VulkanHandle)
@@ -848,9 +1073,9 @@ func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderP
 		renderpass.VulkanHandle,
 		uint32(len(imgViews)),
 		NewVkImageViewᶜᵖ(h.sb.MustAllocReadData(attachments).Ptr()),
-		imgViews[0].Image.Info.Extent.Width,
-		imgViews[0].Image.Info.Extent.Height,
-		imgViews[0].Image.Info.ArrayLayers,
+		uint32(e.width),
+		uint32(e.height),
+		1,
 	}
 
 	handle := VkFramebuffer(newUnusedID(true, func(x uint64) bool {
@@ -871,16 +1096,12 @@ func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderP
 	return h.tempFramebuffers[handle], nil
 }
 
-func (h *imageRebuildHelper) createTempImageView(img *ImageObject) *ImageViewObject {
+func (h *imageRebuildHelper) createTempImageView(img *ImageObject, layer, level uint32) *ImageViewObject {
 	handle := VkImageView(newUnusedID(true, func(x uint64) bool {
 		inState := h.sb.s.ImageViews.Contains(VkImageView(x))
 		_, inHelper := h.tempImageViews[VkImageView(x)]
 		return inState || inHelper
 	}))
-	viewType := VkImageViewType_VK_IMAGE_VIEW_TYPE_2D
-	if img.Info.ArrayLayers > uint32(1) {
-		viewType = VkImageViewType_VK_IMAGE_VIEW_TYPE_2D_ARRAY
-	}
 	h.sb.write(h.sb.cb.VkCreateImageView(
 		img.Device,
 		NewVkImageViewCreateInfoᶜᵖ(h.sb.MustAllocReadData(
@@ -889,7 +1110,7 @@ func (h *imageRebuildHelper) createTempImageView(img *ImageObject) *ImageViewObj
 				NewVoidᶜᵖ(memory.Nullptr),
 				VkImageViewCreateFlags(0),
 				img.VulkanHandle,
-				viewType,
+				VkImageViewType_VK_IMAGE_VIEW_TYPE_2D,
 				img.Info.Format,
 				VkComponentMapping{
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -899,10 +1120,10 @@ func (h *imageRebuildHelper) createTempImageView(img *ImageObject) *ImageViewObj
 				},
 				VkImageSubresourceRange{
 					img.ImageAspect,
-					uint32(0),
-					img.Info.MipLevels,
-					uint32(0),
-					img.Info.ArrayLayers,
+					level,
+					1,
+					layer,
+					1,
 				},
 			}).Ptr()),
 		memory.Nullptr,
