@@ -302,7 +302,8 @@ static void STDCALL DebugCallback(uint32_t source, uint32_t type, uint32_t id, u
 
 EGLBoolean Spy::eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLSurface read, EGLContext context) {
     EGLBoolean res = GlesSpy::eglMakeCurrent(observer, display, draw, read, context);
-    if (mRecordGLErrorState && Extension != nullptr && Extension->mGL_KHR_debug) {
+    auto& ext = GlesSpy::mState.Extension;
+    if (mRecordGLErrorState && ext != nullptr && ext->mGL_KHR_debug) {
         void* old_callback = nullptr;
         void* new_callback = reinterpret_cast<void*>(&DebugCallback);
         GlesSpy::mImports.glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &old_callback);
@@ -450,7 +451,8 @@ void Spy::saveInitialState() {
     auto group = encoder->group(&global);
     if (should_trace(GlesSpy::kApiIndex)) {
       ToProtoContext pbCtx;
-      auto glesState = GlesSpy::serializeState(pbCtx);
+      gles::State state;
+      GlesSpy::mState.toProto(&state, pbCtx);
       std::map<uint32_t, const pool_t*> seenPools;
       for (const auto& s : pbCtx.SeenSlices()) {
         if (auto p = s.pool()) {
@@ -467,7 +469,7 @@ void Spy::saveInitialState() {
         observation.set_pool(p->id);
         group->object(&observation);
       }
-      group->object(glesState.get());
+      group->object(&state);
     }
     if (should_trace(VulkanSpy::kApiIndex)) {
         auto observer = enter("initial-state", VulkanSpy::kApiIndex);
@@ -475,7 +477,8 @@ void Spy::saveInitialState() {
         VulkanSpy::prepareGPUBuffers(observer, group.get(), &gpu_pools);
 
         ToProtoContext pbCtx;
-        auto vulkanState = VulkanSpy::serializeState(pbCtx);
+        vulkan::State state;
+        VulkanSpy::mState.toProto(&state, pbCtx);
         std::map<uint32_t, const pool_t*> seenPools;
         for (const auto& s : pbCtx.SeenSlices()) {
           auto p = s.pool();
@@ -493,7 +496,7 @@ void Spy::saveInitialState() {
           observation.set_pool(p->id);
           group->object(&observation);
         }
-        group->object(vulkanState.get());
+        group->object(&state);
         exit();
       }
     encoder->flush();
@@ -645,7 +648,7 @@ void Spy::onPostFence(CallObserver* observer) {
 }
 
 void Spy::setFakeGlError(CallObserver* observer, GLenum_Error error) {
-    auto ctx = this->Contexts[observer->getCurrentThread()];
+    auto ctx = this->GlesSpy::mState.Contexts[observer->getCurrentThread()];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError == 0) {
@@ -655,11 +658,11 @@ void Spy::setFakeGlError(CallObserver* observer, GLenum_Error error) {
 }
 
 uint32_t Spy::glGetError(CallObserver* observer) {
-    auto ctx = this->Contexts[observer->getCurrentThread()];
+    auto ctx = this->GlesSpy::mState.Contexts[observer->getCurrentThread()];
     if (ctx) {
         GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
         if (fakeGlError != 0) {
-            observer->encodeAndDelete(new gles::glGetError());
+            observer->encode(cmd::glGetError{observer->getCurrentThread()});
             GLenum_Error err = fakeGlError;
             fakeGlError = 0;
             return err;

@@ -20,9 +20,10 @@ namespace gapii {
 
 bool GvrSpy::observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
     auto spy = static_cast<Spy*>(this);
+    auto gles_state = static_cast<GlesSpy*>(spy)->mState;
 
-    auto contextIt = spy->Contexts.find(observer->getCurrentThread());
-    if (contextIt == spy->Contexts.end() || contextIt->second == nullptr) {
+    auto contextIt = gles_state.Contexts.find(observer->getCurrentThread());
+    if (contextIt == gles_state.Contexts.end() || contextIt->second == nullptr) {
         GAPID_WARNING("No GLES context bound to thread");
         return false;
     }

@@ -295,13 +295,13 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     return pool;
   };
 
-  for (auto &device : Devices) {
+  for (auto &device : mState.Devices) {
     auto &device_functions =
         mImports.mVkDeviceFunctions[device.second->mVulkanHandle];
     device_functions.vkDeviceWaitIdle(device.second->mVulkanHandle);
 
     // Prep fences
-    for (auto &fence : Fences) {
+    for (auto &fence : mState.Fences) {
       if (fence.second->mDevice == device.second->mVulkanHandle) {
         ;
         fence.second->mSignaled =
@@ -324,17 +324,17 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     mImports.mVkDeviceFunctions[device.second->mVulkanHandle].vkCreateBuffer(
         device.second->mVulkanHandle, &create_info, nullptr, &buffer);
 
-    TransferBufferMemoryRequirements[device.second->mVulkanHandle] =
+    mState.TransferBufferMemoryRequirements[device.second->mVulkanHandle] =
         VkMemoryRequirements{arena()};
     mImports.mVkDeviceFunctions[device.second->mVulkanHandle]
         .vkGetBufferMemoryRequirements(
             device.second->mVulkanHandle, buffer,
-            &TransferBufferMemoryRequirements[device.second->mVulkanHandle]);
+            &mState.TransferBufferMemoryRequirements[device.second->mVulkanHandle]);
     mImports.mVkDeviceFunctions[device.second->mVulkanHandle].vkDestroyBuffer(
         device.second->mVulkanHandle, buffer, nullptr);
   }
 
-  for (auto &mem : DeviceMemories) {
+  for (auto &mem : mState.DeviceMemories) {
     auto &memory = mem.second;
     memory->mData = gapil::Slice<uint8_t>::create(
         create_virtual_pool(memory->mAllocationSize));
@@ -348,10 +348,10 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     }
   }
 
-  for (auto &buffer : Buffers) {
+  for (auto &buffer : mState.Buffers) {
     VkBuffer buf_handle = buffer.first;
     auto buf = buffer.second;
-    auto &device = Devices[buf->mDevice];
+    auto &device = mState.Devices[buf->mDevice];
 
     auto &device_functions = mImports.mVkDeviceFunctions[buf->mDevice];
     device_functions.vkDeviceWaitIdle(device->mVulkanHandle);
@@ -398,17 +398,17 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     // We can either batch them, or spin up a second thread that
     // simply waits for the reads to be done before continuing.
     for (auto &bind : allBindings) {
-      if (DeviceMemories.find(bind.mmemory) == DeviceMemories.end()) {
+      if (mState.DeviceMemories.find(bind.mmemory) == mState.DeviceMemories.end()) {
         continue;
       }
-      auto &deviceMemory = DeviceMemories[bind.mmemory];
+      auto &deviceMemory = mState.DeviceMemories[bind.mmemory];
       StagingBuffer stage(
           arena(), device_functions, buf->mDevice,
-          PhysicalDevices[Devices[buf->mDevice]->mPhysicalDevice]
+          mState.PhysicalDevices[mState.Devices[buf->mDevice]->mPhysicalDevice]
               ->mMemoryProperties,
           bind.msize);
       StagingCommandBuffer commandBuffer(device_functions, buf->mDevice,
-                                         GetQueue(Queues, buf)->mFamily);
+                                         GetQueue(mState.Queues, buf)->mFamily);
 
       VkBufferCopy region{bind.mresourceOffset, 0, bind.msize};
 
@@ -432,8 +432,8 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1,
           &barrier, 0, nullptr);
 
-      commandBuffer.FinishAndSubmit(GetQueue(Queues, buf)->mVulkanHandle);
-      device_functions.vkQueueWaitIdle(GetQueue(Queues, buf)->mVulkanHandle);
+      commandBuffer.FinishAndSubmit(GetQueue(mState.Queues, buf)->mVulkanHandle);
+      device_functions.vkQueueWaitIdle(GetQueue(mState.Queues, buf)->mVulkanHandle);
 
       void *pData = stage.GetMappedMemory();
       auto resIndex = sendResource(VulkanSpy::kApiIndex, pData, bind.msize);
@@ -447,8 +447,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     }
   }
 
-  for (auto &image : Images) {
-    VkImage img_handle = image.first;
+  for (auto &image : mState.Images) {
     auto img = image.second;
     const ImageInfo &image_info = img->mInfo;
     auto &device_functions = mImports.mVkDeviceFunctions[img->mDevice];
@@ -507,7 +506,6 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           elementAndTexelBlockSize.mTexelBlockSize.mWidth;
       const uint32_t texel_height =
           elementAndTexelBlockSize.mTexelBlockSize.mHeight;
-      const uint32_t texel_depth = 1;
       const uint32_t width =
           subGetMipSize(nullptr, nullptr, extent.mWidth, mip_level);
       const uint32_t height =
@@ -705,12 +703,12 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
 
       StagingBuffer stage(
           arena(), device_functions, img->mDevice,
-          PhysicalDevices[Devices[img->mDevice]->mPhysicalDevice]
+          mState.PhysicalDevices[mState.Devices[img->mDevice]->mPhysicalDevice]
               ->mMemoryProperties,
           offset);
 
       StagingCommandBuffer commandBuffer(device_functions, img->mDevice,
-                                         GetQueue(Queues, img)->mFamily);
+                                         GetQueue(mState.Queues, img)->mFamily);
 
       VkImageMemoryBarrier img_barrier{
           VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -762,8 +760,8 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0,
           nullptr, 1, &buf_barrier, 1, &img_barrier);
 
-      commandBuffer.FinishAndSubmit(GetQueue(Queues, img)->mVulkanHandle);
-      device_functions.vkQueueWaitIdle(GetQueue(Queues, img)->mVulkanHandle);
+      commandBuffer.FinishAndSubmit(GetQueue(mState.Queues, img)->mVulkanHandle);
+      device_functions.vkQueueWaitIdle(GetQueue(mState.Queues, img)->mVulkanHandle);
 
       uint8_t *pData = reinterpret_cast<uint8_t *>(stage.GetMappedMemory());
       size_t new_offset = 0;

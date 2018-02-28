@@ -29,6 +29,7 @@
   {{AssertType $ "API"}}
   {{Template "C++.Copyright"}}
   {{$spyname := Global "SpyName"}}
+  {{$statename := print (Title (Global "API")) "State"}}
   {{$guard := print "GAPII_" (Upper (Global "API")) "_SPY_H"}}
 ¶
   #ifndef {{$guard}}
@@ -71,16 +72,11 @@ namespace {{(Global "API")}} {
 ¶
     const static uint32_t kApiIndex = {{$.Index}};
 ¶
-    // Globals
-    {{range $g := $.Globals}}
-      {{Template "C++.Type" $g}} {{$g.Name}};
-    {{end}}
+    {{$statename}} mState;
 ¶
     #include "gapii/cc/{{Global "API"}}_extras.inc"
 ¶
   «protected:»
-¶
-    std::unique_ptr<{{Global "API"}}::State> serializeState(ToProtoContext& pbCtx);
 ¶
     bool observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data);
 ¶
@@ -88,17 +84,12 @@ namespace {{(Global "API")}} {
   };
 ¶
   // Inline methods
-  inline {{$spyname}}::{{$spyname}}()
-    {{range $i, $g := $.Globals}}
-      {{if $i}}, {{else}}: {{end}}§
-      {{$g.Name}}({{Macro "C++.Null" (TypeOf $g)}}) §
-    {{end}}
-  {}
+  inline {{$spyname}}::{{$spyname}}() : mState(arena()) {}
 ¶
   inline void {{$spyname}}::init() {
     mImports.resolve();
     {{range $g := $.Globals}}
-      {{$g.Name}} = §
+      mState.{{$g.Name}} = §
         {{if $g.Default}}
           {{Macro "C++.Read" $g.Default}};
         {{else}}

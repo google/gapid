@@ -132,13 +132,6 @@ api_template(
 )
 
 api_template(
-    name = "api_spy_serialize.cpp",
-    includes = [":templates"],
-    outputs = ["{api}_spy_serialize.cpp"],
-    template = "api_spy_serialize.cpp.tmpl",
-)
-
-api_template(
     name = "api_types.h",
     includes = [":templates"],
     outputs = ["{api}_types.h"],

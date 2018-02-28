@@ -54,6 +54,7 @@
   »}
   »}
   namespace {{Global "API"}} {«
+  class State;
   {{range $c := $.Classes}}
     {{if not (GetAnnotation $c "noserialize")}} class {{$c.Name}}; {{end}}
   {{end}}
@@ -80,6 +81,7 @@
   {{range $c := $.Classes}}
     {{Template "DeclareType" $c}}
   {{end}}
+  {{Template "DeclareState" $}}
 ¶
   namespace cmd {«
     {{range $c := AllCommands $}}
@@ -195,6 +197,38 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits the declaration for the API state.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareState"}}
+  {{AssertType $ "API"}}
+
+  {{range $g := $.Globals}}
+    {{Template "DeclareType" (TypeOf $g)}}
+  {{end}}
+
+  {{$name := print (Title (Global "API")) "State"}}
+
+  class {{$name}} {
+    «public:»
+    typedef {{Global "API"}}::State ProtoType;
+
+    ::google::protobuf::Message* toProto() const;
+    void toProto(ProtoType* out, ToProtoContext& pbCtx) const;
+
+    explicit {{$name}}(core::Arena*);
+
+    void* encode(void* encoder, bool is_group) const;
+¶
+    {{range $g := $.Globals}}
+      {{Template "C++.Type" $g}} {{$g.Name}};
+    {{end}}
+  };
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits enum entry declarations as a number of uint32_t constants.
 -------------------------------------------------------------------------------
 */}}
@@ -273,7 +307,7 @@
     };
     {{if not (IsVoid $.Return.Type)}}¶
       struct {{$name}}Call {
-        ::google::protobuf::Message* toProto() const;
+         ::google::protobuf::Message* toProto() const;
         {{Template "C++.Type" $.Return.Type}} result;
       };
     {{end}}
