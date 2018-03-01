@@ -2986,7 +2986,17 @@ cmd VkResult vkCreateDevice(
 cmd void vkDestroyDevice(
     VkDevice                     device,
     const VkAllocationCallbacks* pAllocator) {
-  // TODO: pAllocator
+  if (device in Devices) {
+    dev := Devices[device]
+    for _, _, v in dev.QueueObjects {
+      if LastBoundQueue == v {
+        LastBoundQueue = null
+      }
+      delete(Queues, v.VulkanHandle)
+    }
+  }
+  
+  // TODO: pAllocator  
   delete(Devices, device)
 }
 
@@ -3078,8 +3088,12 @@ cmd void vkGetDeviceQueue(
     u32      queueIndex,
     VkQueue* pQueue) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
+  dev := Devices[device]
   id := ?
   Queues[id] = new!QueueObject(Device: device,Family:  queueFamilyIndex,Index:  queueIndex,VulkanHandle:  id)
+  
+  dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
+
   if pQueue == null { vkErrorNullPointer("VkQueue") }
   pQueue[0] = id
 }
@@ -9272,6 +9286,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   @unused map!(u32, string)         EnabledExtensions
   @unused map!(u32, string)         EnabledLayers
   @unused map!(u32, QueueInfo)      Queues
+  @unused map!(u32, ref!QueueObject)    QueueObjects
   @unused VkPhysicalDeviceFeatures  EnabledFeatures
   @unused VkDevice                  VulkanHandle
   @unused ref!VulkanDebugMarkerInfo DebugInfo
