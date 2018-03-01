@@ -1211,8 +1211,12 @@ type FootprintBuilder struct {
 func (vb *FootprintBuilder) getImageData(ctx context.Context,
 	bh *dependencygraph.Behavior, vkImg VkImage) []dependencygraph.DefUseVariable {
 	if bh != nil {
-		read(ctx, bh, vkHandle(vkImg))
-		read(ctx, bh, vb.images[vkImg].layout)
+		if !read(ctx, bh, vkHandle(vkImg)) {
+			return []dependencygraph.DefUseVariable{}
+		}
+		if !read(ctx, bh, vb.images[vkImg].layout) {
+			return []dependencygraph.DefUseVariable{}
+		}
 	}
 	data := vb.images[vkImg].opaqueData.getBoundData(ctx, bh, 0, vkWholeSize)
 	for _, aspecti := range vb.images[vkImg].sparseData {
@@ -1643,6 +1647,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				lastDrawInfo := GetState(s).LastDrawInfos.Get(lastBoundQueue.VulkanHandle)
 				if lastDrawInfo.Framebuffer != nil {
 					for _, view := range lastDrawInfo.Framebuffer.ImageAttachments.Range() {
+						if view == nil || view.Image == nil {
+							continue
+						}
 						img := view.Image
 						data := vb.getImageData(ctx, nil, img.VulkanHandle)
 						vb.machine.lastBoundFramebufferImageData[id] = append(
