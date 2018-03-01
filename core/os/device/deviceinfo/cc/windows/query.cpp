@@ -51,7 +51,7 @@ struct Context {
     char mError[512];
     HWND mWnd;
     HDC mHDC;
-    HGLRC mCtx;
+    HGLRC mGlCtx;
     int mNumCores;
     char mHostName[MAX_COMPUTERNAME_LENGTH*4+1]; // Stored as UTF-8
     OSVERSIONINFOEX mOsVersion;
@@ -73,36 +73,30 @@ void destroyContext() {
     if (gContext.mWnd != nullptr) {
         DestroyWindow(gContext.mWnd);
     }
-    if (gContext.mCtx != nullptr) {
+    if (gContext.mGlCtx != nullptr) {
         gContext.wglMakeCurrent(gContext.mHDC, 0);
-        gContext.wglDeleteContext(gContext.mCtx);
+        gContext.wglDeleteContext(gContext.mGlCtx);
     }
 }
 
-bool createContext(void* platform_data) {
-    if (gContextRefCount++ > 0) {
-        return true;
-    }
-
+void createGlContext() {
     gContext.wglCreateContext = (pfn_wglCreateContext)core::GetGlesProcAddress("wglCreateContext", true);
     gContext.wglMakeCurrent = (pfn_wglMakeCurrent)core::GetGlesProcAddress("wglMakeCurrent", true);
     gContext.wglDeleteContext = (pfn_wglDeleteContext)core::GetGlesProcAddress("wglDeleteContext", true);
 
     if (gContext.wglCreateContext == nullptr ||
-            gContext.wglMakeCurrent == nullptr ||
-            gContext.wglDeleteContext == nullptr) {
-        snprintf(gContext.mError, sizeof(gContext.mError),
-                "Failed to load wgl functions: %d", GetLastError());
-        return false;
+        gContext.wglMakeCurrent == nullptr ||
+        gContext.wglDeleteContext == nullptr) {
+
+        return;
     }
 
     WNDCLASS wc = registerWindowClass();
     gContext.mWnd = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0, 8, 8, 0, 0, GetModuleHandle(0), 0);
     if (gContext.mWnd == nullptr) {
-        snprintf(gContext.mError, sizeof(gContext.mError),
-                 "CreateWindow returned error: %d", GetLastError());
-        return false;
+        return;
     }
+
     PIXELFORMATDESCRIPTOR pfd;
     memset(&pfd, 0, sizeof(pfd));
     pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
@@ -119,14 +113,20 @@ bool createContext(void* platform_data) {
     pfd.iLayerType = PFD_MAIN_PLANE;
     gContext.mHDC = GetDC(gContext.mWnd);
     SetPixelFormat(gContext.mHDC, ChoosePixelFormat(gContext.mHDC, &pfd), &pfd);
-    gContext.mCtx = gContext.wglCreateContext(gContext.mHDC);
-    if (gContext.mCtx == nullptr) {
-        snprintf(gContext.mError, sizeof(gContext.mError),
-                 "wglCreateContext returned error: %d", GetLastError());
-        destroyContext();
-        return false;
+    gContext.mGlCtx = gContext.wglCreateContext(gContext.mHDC);
+    if (gContext.mGlCtx != nullptr) {
+        gContext.wglMakeCurrent(gContext.mHDC, gContext.mGlCtx);
     }
-    gContext.wglMakeCurrent(gContext.mHDC, gContext.mCtx);
+
+    return;
+}
+
+bool createContext(void* platform_data) {
+    if (gContextRefCount++ > 0) {
+        return true;
+    }
+
+    createGlContext();
 
     gContext.mOsVersion.dwOSVersionInfoSize = sizeof(gContext.mOsVersion);
     GetVersionEx((OSVERSIONINFO*)(&gContext.mOsVersion));
@@ -188,9 +188,9 @@ bool createContext(void* platform_data) {
     return true;
 }
 
-const char* contextError() {
-    return gContext.mError;
-}
+const char* contextError() { return gContext.mError; }
+
+bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
 
 int numABIs() { return 1; }
 

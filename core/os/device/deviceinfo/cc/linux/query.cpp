@@ -42,7 +42,7 @@ struct Context {
     char mError[512];
     Display* mDisplay;
     GLXFBConfig* mFBConfigs;
-    GLXContext mContext;
+    GLXContext mGlCtx;
     GLXPbuffer mPbuffer;
     int mNumCores;
     utsname mUbuf;
@@ -57,7 +57,9 @@ typedef GLXContext (*pfn_glXCreateNewContext)(Display* dpy, GLXFBConfig config, 
 typedef GLXPbuffer (*pfn_glXCreatePbuffer)(Display* dpy, GLXFBConfig config, const int* attrib_list);
 typedef void (*pfn_glXDestroyPbuffer)(Display*  dpy, GLXPbuffer  pbuf);
 typedef void (*pfn_glXDestroyContext)(Display *  dpy, GLXContext  ctx);
-
+typedef Bool (*pfn_glXMakeContextCurrent)(Display *dpy, GLXDrawable draw, GLXDrawable read, GLXContext ctx);
+typedef GLXContext (*pfn_glXCreateContextAttribsARB)(Display *dpy, GLXFBConfig config, GLXContext share_context,
+                                                     Bool direct, const int *attrib_list);
 
 typedef int(*pfn_XFree) (void*);
 typedef int(*pfn_XCloseDisplay)(Display*);
@@ -80,14 +82,13 @@ void destroyContext() {
     pfn_glXDestroyPbuffer fn_glXDestroyPbuffer = (pfn_glXDestroyPbuffer)core::GetGlesProcAddress("glXDestroyPbuffer", true);
     pfn_glXDestroyContext fn_glXDestroyContext = (pfn_glXDestroyContext)core::GetGlesProcAddress("glXDestroyContext", true);
 
-
     if (gContext.mPbuffer && fn_glXDestroyPbuffer) {
         (*fn_glXDestroyPbuffer)(gContext.mDisplay, gContext.mPbuffer);
         gContext.mPbuffer = 0;
     }
-    if (gContext.mContext && fn_glXDestroyContext) {
-        (*fn_glXDestroyContext)(gContext.mDisplay, gContext.mContext);
-        gContext.mContext = nullptr;
+    if (gContext.mGlCtx && fn_glXDestroyContext) {
+        (*fn_glXDestroyContext)(gContext.mDisplay, gContext.mGlCtx);
+        gContext.mGlCtx = nullptr;
     }
     if (gContext.mFBConfigs) {
         fn_XFree(gContext.mFBConfigs);
@@ -97,6 +98,102 @@ void destroyContext() {
         fn_XCloseDisplay(gContext.mDisplay);
         gContext.mDisplay = nullptr;
     }
+}
+
+void createGlContext() {
+    auto fn_glXChooseFBConfig= (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig", true);
+    auto fn_glXCreateNewContext = (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext", true);
+    auto fn_glXCreatePbuffer = (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer", true);
+    auto fn_glXMakeContextCurrent = (pfn_glXMakeContextCurrent)core::GetGlesProcAddress("glXMakeContextCurrent", true);
+    auto fn_glXCreateContextAttribsARB = (pfn_glXCreateContextAttribsARB)core::GetGlesProcAddress("glXCreateContextAttribsARB", true);
+
+    if (!fn_glXChooseFBConfig || !fn_glXCreateNewContext || !fn_glXCreatePbuffer || !fn_glXMakeContextCurrent) {
+        return;
+    }
+
+    if (!core::DlLoader::can_load("libX11.so")) {
+        return;
+    }
+
+    core::DlLoader libX("libX11.so");
+
+    pfn_XOpenDisplay fn_XOpenDisplay = (pfn_XOpenDisplay)libX.lookup("XOpenDisplay");
+    pfn_XSetErrorHandler fn_XSetErrorHandler = (pfn_XSetErrorHandler)libX.lookup("XSetErrorHandler");
+
+    gContext.mDisplay = fn_XOpenDisplay(nullptr);
+    if (gContext.mDisplay == nullptr) {
+        // Default display was not found. This may be because we're executing in
+        // the bazel sandbox. Attempt to connect to the 0'th display instead.
+        gContext.mDisplay = fn_XOpenDisplay(":0");
+        if (gContext.mDisplay == nullptr) {
+            return;
+        }
+    }
+
+    const int visualAttribs[] = {
+        GLX_RED_SIZE, 8,
+        GLX_GREEN_SIZE, 8,
+        GLX_BLUE_SIZE, 8,
+        GLX_ALPHA_SIZE, 8,
+        GLX_DEPTH_SIZE, 24,
+        GLX_STENCIL_SIZE, 8,
+        GLX_RENDER_TYPE, GLX_RGBA_BIT,
+        GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT,
+        None
+    };
+    int fbConfigsCount = 0;
+    gContext.mFBConfigs = (*fn_glXChooseFBConfig)(gContext.mDisplay,
+                                            DefaultScreen(gContext.mDisplay),
+                                            visualAttribs,
+                                            &fbConfigsCount);
+    if (!gContext.mFBConfigs) {
+        return;
+    }
+
+    GLXFBConfig fbConfig = gContext.mFBConfigs[0];
+
+    if (fn_glXCreateContextAttribsARB == nullptr) {
+        gContext.mGlCtx = (*fn_glXCreateNewContext)(gContext.mDisplay,
+                                                fbConfig,
+                                                GLX_RGBA_TYPE,
+                                                nullptr,
+                                                True);
+    } else {
+        // Prevent X from taking down the process if the GL version is not supported.
+        auto oldHandler = fn_XSetErrorHandler([](Display*, XErrorEvent*)->int{ return 0; });
+        for (auto gl_version : core::gl::sVersionSearchOrder) {
+            // List of name-value pairs.
+            const int contextAttribs[] = {
+                GLX_RENDER_TYPE, GLX_RGBA_TYPE,
+                GLX_CONTEXT_MAJOR_VERSION_ARB, gl_version.major,
+                GLX_CONTEXT_MINOR_VERSION_ARB, gl_version.minor,
+                GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
+                GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+                None,
+            };
+            gContext.mGlCtx = fn_glXCreateContextAttribsARB(
+                gContext.mDisplay, fbConfig, nullptr, /* direct */ True, contextAttribs);
+            if (gContext.mGlCtx != nullptr) {
+                break;
+            }
+        }
+        fn_XSetErrorHandler(oldHandler);
+    }
+
+    if (!gContext.mGlCtx) {
+        return;
+    }
+
+    const int pbufferAttribs[] = {
+        GLX_PBUFFER_WIDTH, 32, GLX_PBUFFER_HEIGHT, 32, None
+    };
+
+    gContext.mPbuffer = fn_glXCreatePbuffer(gContext.mDisplay, fbConfig, pbufferAttribs);
+    if (!gContext.mPbuffer) {
+        return;
+    }
+
+    fn_glXMakeContextCurrent(gContext.mDisplay, gContext.mPbuffer, gContext.mPbuffer, gContext.mGlCtx);
 }
 
 bool createContext(void* platform_data) {
@@ -122,120 +219,14 @@ bool createContext(void* platform_data) {
         return false;
     }
 
-    pfn_glXChooseFBConfig fn_glXChooseFBConfig= (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig", true);
-    pfn_glXCreateNewContext fn_glXCreateNewContext = (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext", true);
-    pfn_glXCreatePbuffer fn_glXCreatePbuffer = (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer", true);
-    if (!fn_glXChooseFBConfig || !fn_glXCreateNewContext || !fn_glXCreatePbuffer) {
-        return true;
-    }
+    createGlContext();
 
-    if (!core::DlLoader::can_load("libX11.so")) {
-        return true;
-    }
-
-    core::DlLoader libX("libX11.so");
-
-    pfn_XOpenDisplay fn_XOpenDisplay = (pfn_XOpenDisplay)libX.lookup("XOpenDisplay");
-    pfn_XSetErrorHandler fn_XSetErrorHandler = (pfn_XSetErrorHandler)libX.lookup("XSetErrorHandler");
-
-    gContext.mDisplay = fn_XOpenDisplay(nullptr);
-    if (gContext.mDisplay == nullptr) {
-        // Default display was not found. This may be because we're executing in
-        // the bazel sandbox. Attempt to connect to the 0'th display instead.
-        gContext.mDisplay = fn_XOpenDisplay(":0");
-        if (gContext.mDisplay == nullptr) {
-            return true;
-        }
-    }
-
-    const int visualAttribs[] = {
-        GLX_RED_SIZE, 8,
-        GLX_GREEN_SIZE, 8,
-        GLX_BLUE_SIZE, 8,
-        GLX_ALPHA_SIZE, 8,
-        GLX_DEPTH_SIZE, 24,
-        GLX_STENCIL_SIZE, 8,
-        GLX_RENDER_TYPE, GLX_RGBA_BIT,
-        GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT,
-        None
-    };
-    int fbConfigsCount = 0;
-    gContext.mFBConfigs = (*fn_glXChooseFBConfig)(gContext.mDisplay,
-                                            DefaultScreen(gContext.mDisplay),
-                                            visualAttribs,
-                                            &fbConfigsCount);
-    if (!gContext.mFBConfigs) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "glXChooseFBConfig failed");
-        destroyContext();
-        return false;
-    }
-
-    GLXFBConfig fbConfig = gContext.mFBConfigs[0];
-
-    typedef GLXContext (*pfn_glXCreateContextAttribsARB)(
-            Display *dpy, GLXFBConfig config, GLXContext share_context,
-            Bool direct, const int *attrib_list);
-
-    pfn_glXCreateContextAttribsARB fn_glXCreateContextAttribsARB =
-        (pfn_glXCreateContextAttribsARB)core::GetGlesProcAddress("glXCreateContextAttribsARB", true);
-    if (fn_glXCreateContextAttribsARB == nullptr) {
-        gContext.mContext = (*fn_glXCreateNewContext)(gContext.mDisplay,
-                                                fbConfig,
-                                                GLX_RGBA_TYPE,
-                                                nullptr,
-                                                True);
-    } else {
-        // Prevent X from taking down the process if the GL version is not supported.
-        auto oldHandler = fn_XSetErrorHandler([](Display*, XErrorEvent*)->int{ return 0; });
-        for (auto gl_version : core::gl::sVersionSearchOrder) {
-            // List of name-value pairs.
-            const int contextAttribs[] = {
-                GLX_RENDER_TYPE, GLX_RGBA_TYPE,
-                GLX_CONTEXT_MAJOR_VERSION_ARB, gl_version.major,
-                GLX_CONTEXT_MINOR_VERSION_ARB, gl_version.minor,
-                GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
-                GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
-                None,
-            };
-            gContext.mContext = fn_glXCreateContextAttribsARB(
-                gContext.mDisplay, fbConfig, nullptr, /* direct */ True, contextAttribs);
-            if (gContext.mContext != nullptr) {
-                break;
-            }
-        }
-        fn_XSetErrorHandler(oldHandler);
-    }
-
-    if (!gContext.mContext) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "glXCreateNewContext failed");
-        destroyContext();
-        return false;
-    }
-    const int pbufferAttribs[] = {
-        GLX_PBUFFER_WIDTH, 32, GLX_PBUFFER_HEIGHT, 32, None
-    };
-
-    gContext.mPbuffer = (*fn_glXCreatePbuffer)(gContext.mDisplay, fbConfig, pbufferAttribs);
-    if (!gContext.mPbuffer) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "glXCreatePbuffer failed");
-        destroyContext();
-        return false;
-    }
-    typedef Bool
-        (*pfn_glXMakeContextCurrent)(Display *dpy, GLXDrawable draw, GLXDrawable read, GLXContext ctx);
-
-    pfn_glXMakeContextCurrent fn_glXMakeContextCurrent =
-        (pfn_glXMakeContextCurrent)core::GetGlesProcAddress("glXMakeContextCurrent", true);
-    fn_glXMakeContextCurrent(gContext.mDisplay, gContext.mPbuffer, gContext.mPbuffer, gContext.mContext);
     return true;
 }
 
-const char* contextError() {
-	return gContext.mError;
-}
+const char* contextError() { return gContext.mError; }
+
+bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
 
 int numABIs() { return 1; }
 

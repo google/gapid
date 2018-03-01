@@ -105,7 +105,8 @@ bool vkPhysicalDevices(
 // false.
 bool hasVulkanLoader();
 
-// hasGLorGLES returns true if libGL or libGLES can be found.
+// hasGLorGLES returns true if there is a OpenGL or OpenGL ES display driver
+// that can be used.
 bool hasGLorGLES();
 
 // The functions below are used by getDeviceInstance(), and are implemented

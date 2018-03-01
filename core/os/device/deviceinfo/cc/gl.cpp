@@ -29,10 +29,6 @@ const char* safe_string(void* x) {
     return (x != nullptr) ? reinterpret_cast<const char*>(x) : "";
 }
 
-bool hasGLorGLES() {
-    return core::hasGLorGLES();
-}
-
 void glDriver(device::OpenGLDriver* driver) {
     GLint major_version = 2;
     GLint minor_version = 0;
