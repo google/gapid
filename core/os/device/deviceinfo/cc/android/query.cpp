@@ -429,9 +429,9 @@ bool createContext(void* platform_data) {
     return true;
 }
 
-const char* contextError() {
-    return gContext.mError;
-}
+const char* contextError() { return gContext.mError; }
+
+bool hasGLorGLES() { return true; }
 
 int numABIs() { return gContext.mSupportedABIs.size(); }
 

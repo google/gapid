@@ -61,13 +61,7 @@ void destroyContext() {
     }
 }
 
-bool createContext(void* platform_data) {
-    if (gContextRefCount++ > 0) {
-        return true;
-    }
-
-    memset(&gContext, 0, sizeof(gContext));
-
+void createGlContext() {
     NSOpenGLPixelFormatAttribute attributes[] = {
         NSOpenGLPFANoRecovery,
         NSOpenGLPFAColorSize, (NSOpenGLPixelFormatAttribute)32,
@@ -78,6 +72,24 @@ bool createContext(void* platform_data) {
         NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
         (NSOpenGLPixelFormatAttribute)0
     };
+
+    gContext.mGlFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
+    if (gContext.mGlFmt != nullptr) {
+        gContext.mGlCtx = [[NSOpenGLContext alloc] initWithFormat:gContext.mGlFmt shareContext:nil];
+        if (gContext.mGlCtx == nullptr) {
+            return;
+        }
+
+        [gContext.mGlCtx makeCurrentContext];
+    }
+}
+
+bool createContext(void* platform_data) {
+    if (gContextRefCount++ > 0) {
+        return true;
+    }
+
+    memset(&gContext, 0, sizeof(gContext));
 
     size_t len = 0;
     int mib[2] = {CTL_HW, HW_MODEL};
@@ -105,32 +117,16 @@ bool createContext(void* platform_data) {
         return false;
     }
 
-    gContext.mGlFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
-    if (gContext.mGlFmt == 0) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "NSOpenGLPixelFormat alloc failed");
-        destroyContext();
-        return false;
-    }
-
-    gContext.mGlCtx = [[NSOpenGLContext alloc] initWithFormat:gContext.mGlFmt shareContext:nil];
-    if (gContext.mGlCtx == 0) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "NSOpenGLContext alloc failed");
-        destroyContext();
-        return false;
-    }
-
-    [gContext.mGlCtx makeCurrentContext];
+    createGlContext();
 
     gContext.mOsVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
 
     return true;
 }
 
-const char* contextError() {
-	return gContext.mError;
-}
+const char* contextError() { return gContext.mError; }
+
+bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
 
 int numABIs() { return 1; }
 
