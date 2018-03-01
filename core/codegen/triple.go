@@ -47,7 +47,7 @@ func targetTriple(dev *device.ABI) triple {
 
 	switch dev.OS {
 	case device.Windows:
-		out.vendor, out.os, out.abi = "pc", "win32", "elf"
+		out.vendor, out.os = "w64", "mingw32"
 	case device.OSX:
 		out.vendor, out.os = "apple", "darwin"
 	case device.Linux:
