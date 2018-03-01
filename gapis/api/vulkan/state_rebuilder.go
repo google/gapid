@@ -752,8 +752,7 @@ func (sb *stateBuilder) GetScratchBufferMemoryIndex(device *DeviceObject) uint32
 	if index >= 0 {
 		return uint32(index)
 	}
-	//TODO: log error, can not find the index of the memory type that support
-	// host visible bit
+	log.E(sb.ctx, "cannnot get the memory type index for host visible memory to create scratch buffer, fallback to use index 0")
 	return 0
 }
 
@@ -798,6 +797,12 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []u
 
 	memoryTypeIndex := sb.GetScratchBufferMemoryIndex(device)
 
+	// Since we cannot guess how much the driver will actually request of us,
+	// overallocate by a factor of 2. This should be enough.
+	// Align to 0x100 to make validation layers happy. Assuming the buffer memory
+	// requirement has an alignment value compatible with 0x100.
+	allocSize := VkDeviceSize((uint64(size*2) + uint64(255)) & ^uint64(255))
+
 	// Make sure we allocate a buffer that is more than big enough for the
 	// data
 	sb.write(sb.cb.VkAllocateMemory(
@@ -806,10 +811,7 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []u
 			VkMemoryAllocateInfo{
 				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 				NewVoidᶜᵖ(memory.Nullptr),
-				size * 2,
-				// Since we cannot guess how much the driver will actually
-				// request of us, overallocate by a factor of 2. This should
-				// be enough.
+				allocSize,
 				memoryTypeIndex,
 			}).Ptr()),
 		memory.Nullptr,

@@ -275,10 +275,6 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	binary.Write(&vertexBufContent, binary.LittleEndian, []float32{
 		// positions, offset: 0 bytes
 		1.0, 1.0, 0.0, -1.0, -1.0, 0.0, -1.0, 1.0, 0.0, 1.0, -1.0, 0.0,
-		// uv, offset: 48 bytes
-		1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-		// normals, offset : 80 bytes
-		0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
 	})
 	vertexBuf, vertexBufMem := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices.Get(outputImg.Device), vertexBufContent.Bytes())
 	h.tempBuffers[vertexBuf] = GetState(h.sb.newState).Buffers.Get(vertexBuf)
@@ -421,18 +417,14 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 
 	h.sb.write(h.sb.cb.VkCmdBindVertexBuffers(
 		commandBuffer,
-		0, 3,
+		0, 1,
 		h.sb.MustAllocReadData(
 			[]VkBuffer{
-				vertexBuf,
-				vertexBuf,
 				vertexBuf,
 			}).Ptr(),
 		h.sb.MustAllocReadData(
 			[]VkDeviceSize{
 				VkDeviceSize(0),
-				VkDeviceSize(48),
-				VkDeviceSize(80),
 			}).Ptr(),
 	))
 
@@ -836,19 +828,15 @@ func (h *imageRebuildHelper) createTempGfxPipelineForPriming(vertShader, fragSha
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
 				NewVoidᶜᵖ(memory.Nullptr),
 				VkPipelineVertexInputStateCreateFlags(0),
-				uint32(3),
+				uint32(1),
 				NewVkVertexInputBindingDescriptionᶜᵖ(h.sb.MustAllocReadData(
 					[]VkVertexInputBindingDescription{
 						VkVertexInputBindingDescription{0, 12, 0},
-						VkVertexInputBindingDescription{1, 8, 0},
-						VkVertexInputBindingDescription{2, 12, 0},
 					}).Ptr()),
-				uint32(3),
+				uint32(1),
 				NewVkVertexInputAttributeDescriptionᶜᵖ(h.sb.MustAllocReadData(
 					[]VkVertexInputAttributeDescription{
 						VkVertexInputAttributeDescription{0, 0, VkFormat_VK_FORMAT_R32G32B32_SFLOAT, 0},
-						VkVertexInputAttributeDescription{1, 1, VkFormat_VK_FORMAT_R32G32_SFLOAT, 0},
-						VkVertexInputAttributeDescription{2, 2, VkFormat_VK_FORMAT_R32G32B32_SFLOAT, 0},
 					}).Ptr()),
 			}).Ptr()),
 		NewVkPipelineInputAssemblyStateCreateInfoᶜᵖ(h.sb.MustAllocReadData(
