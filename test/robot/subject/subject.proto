@@ -38,8 +38,8 @@ message Subject {
 message Hints {
   // traceTime is the preferred duration for tracing this subject.
   google.protobuf.Duration traceTime = 1;
-  // CaptureFrames is the preferred number of frames to capture for tracing this subject, 0 for all.
-  uint32 captureFrames = 2;
+  // ObserveFrames is the preferred number of frames to observe for tracing this subject, 0 for all.
+  uint32 observeFrames = 2;
   // API is the name of the api to capture on this subject, values can be gles and vulkan
   string API = 4;
 }
