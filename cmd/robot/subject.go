@@ -38,7 +38,7 @@ func init() {
 		Name:       "subject",
 		ShortHelp:  "Upload a traceable application to the server",
 		ShortUsage: "<filenames>",
-		Action:     &subjectUploadVerb{RobotOptions: defaultRobotOptions, API: GLESAPI, CaptureFrames: 0},
+		Action:     &subjectUploadVerb{RobotOptions: defaultRobotOptions, API: GLESAPI, ObserveFrames: 0},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "subject",
@@ -79,7 +79,7 @@ type subjectUploadVerb struct {
 	TraceTime     time.Duration `help:"trace time override (if non-zero)"`
 	OBB           file.Path     `help:"path of the subject's obb file"`
 	obbID         string
-	CaptureFrames uint `help:"capture the given number of frames. 0 for all (default:0)"`
+	ObserveFrames uint `help:"Observe the given number of frames. 0 for all (default:0)"`
 	subjects      subject.Subjects
 }
 
@@ -108,7 +108,7 @@ func (v *subjectUploadVerb) process(ctx context.Context, id string) error {
 	if v.TraceTime != 0 {
 		hints.TraceTime = ptypes.DurationProto(v.TraceTime)
 	}
-	hints.CaptureFrames = uint32(v.CaptureFrames)
+	hints.ObserveFrames = uint32(v.ObserveFrames)
 	hints.API = v.API.String()
 	subject, created, err := v.subjects.Add(ctx, id, v.obbID, hints)
 	if err != nil {

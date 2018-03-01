@@ -180,7 +180,6 @@ function test_subj() {
 
   adb -s $DEV install $SUBJ
   if [[ -e $OBBFILE ]]; then
-    adb -s $DEV sh mkdir /sdcard/Android/obb/${SUBJFILE%%.apk}
     adb -s $DEV push $OBBFILE /sdcard/Android/obb/${SUBJFILE%%.apk}/${OBBFILE##*/}
   fi
 
@@ -212,10 +211,10 @@ function upload_subj() {
   fi
 
   echo ">>> Uploading subject $SUBJ"
-  local TIME
-  read -p ">>> Enter trace time [default: 1m]: " TIME
-  TIME=${TIME:=1m}
-  bazel-bin/pkg/robot upload subject -tracetime=$TIME -api="$API" $OBB $SUBJ > /dev/null 2>> uploaderr.log
+  local FRAMES
+  read -p ">>> Enter frames to observe [default: 30]: " FRAMES
+  FRAMES=${FRAMES:=30}
+  bazel-bin/pkg/robot upload subject -observeframes=$FRAMES -api="$API" $OBB $SUBJ > /dev/null 2>> uploaderr.log
   echo ">>> Uploaded"
 }
 

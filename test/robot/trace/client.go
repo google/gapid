@@ -120,7 +120,7 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 
 	traceTime, err := ptypes.Duration(in.GetHints().GetTraceTime())
 	if err != nil {
-		traceTime = time.Minute // TODO: support Robot-wide override
+		traceTime = 10 * time.Minute // TODO: support Robot-wide override
 	}
 
 	defer func() {
@@ -143,7 +143,7 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		"-out", tracefile.System(),
 		"-apk", subject.System(),
 		"-for", traceTime.String(),
-		"-capture-frames", fmt.Sprintf("%v", in.GetHints().GetCaptureFrames()),
+		"-capture-frames", fmt.Sprintf("%v", (in.GetHints().GetObserveFrames()+1)*5),
 		"-disable-pcs",
 		"-observe-frames", "5",
 		"-record-errors",
