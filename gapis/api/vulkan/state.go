@@ -35,7 +35,7 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 		return returnError("There have been no previous draws")
 	}
 
-	if lastDrawInfo.Framebuffer == nil {
+	if lastDrawInfo.Framebuffer == nil || !st.Framebuffers.Contains(lastDrawInfo.Framebuffer.VulkanHandle) {
 		return returnError("%s is not bound", attachment)
 	}
 
