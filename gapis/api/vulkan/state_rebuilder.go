@@ -1494,6 +1494,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 
 	} else {
 		// There is no way to prime the data
+		log.W(sb.ctx, "Unable to prime the data for image: %v, since there is no valid way to add data in the first place", img.VulkanHandle)
 		return
 	}
 

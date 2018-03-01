@@ -317,7 +317,9 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 		NewVoidᶜᵖ(memory.Nullptr),
 		VkAccessFlags(0),
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+		// The old layout is undefined, as the content will all be overwritten.
 		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
+		// The new layout is set below according to the image aspect bits.
 		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 		queue.Family,
 		queue.Family,
@@ -538,7 +540,9 @@ func (h *imageRebuildHelper) createTempRenderPassForPriming(stagingImgs []*Image
 			})
 	}
 	outputAttachmentRef := VkAttachmentReference{
-		uint32(len(stagingImgs)), VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
+		uint32(len(stagingImgs)),
+		// The layout will be set later according to the image apsect bits.
+		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 	}
 	outputAttachmentDesc := VkAttachmentDescription{
 		VkAttachmentDescriptionFlags(0),
@@ -548,6 +552,7 @@ func (h *imageRebuildHelper) createTempRenderPassForPriming(stagingImgs []*Image
 		VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE,
 		VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		// The layout will be set later according to the image aspect bits.
 		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 		dstImg.Info.Layout,
 	}
