@@ -165,7 +165,12 @@ func storeBuild(ctx context.Context, store build.Store, info *build.Information,
 
 func (o *UploadOptions) createBuildInfo(ctx context.Context) *build.Information {
 	// see if we can find a git cl in the cwd
-	typ := build.BuildBot
+	var typ build.Type
+	if o.Tag != "" {
+		typ = build.BuildBot
+	} else {
+		typ = build.User
+	}
 	if g, err := git.New("."); err != nil {
 		log.E(ctx, "Git failed. Error: %v", err)
 	} else if o.CL != "" {
@@ -174,7 +179,6 @@ func (o *UploadOptions) createBuildInfo(ctx context.Context) *build.Information 
 			o.Track = "auto"
 		}
 	} else {
-		typ = build.User
 		if cl, err := g.HeadCL(ctx); err != nil {
 			log.E(ctx, "CL failed. Error: %v", err)
 		} else {
