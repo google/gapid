@@ -32,9 +32,8 @@
 
 #include <cstring>
 
-#if 0
-#include <cstdio> // printf debug
-#define DEBUG_PRINT(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#if TARGET_OS == GAPID_OS_WINDOWS
+#define DEBUG_PRINT(...) GAPID_DEBUG(__VA_ARGS__)
 #else
 #define DEBUG_PRINT(...)
 #endif
