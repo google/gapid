@@ -2992,6 +2992,11 @@ cmd void vkDestroyDevice(
       if LastBoundQueue == v {
         LastBoundQueue = null
       }
+      for i in (0 .. LastPresentInfo.PresentImageCount) {
+        if (LastPresentInfo.PresentImages[i].Device == device) {
+          delete(LastPresentInfo.PresentImages, i)
+        }
+      }
       delete(Queues, v.VulkanHandle)
     }
   }
@@ -4185,8 +4190,12 @@ cmd void vkDestroyImage(
         v.Image = null
       }
     }
+    for i in (0 .. LastPresentInfo.PresentImageCount) {
+      if (LastPresentInfo.PresentImages[i].VulkanHandle == image) {
+        delete(LastPresentInfo.PresentImages, i)
+      }
+    }
   }
-
 }
 
 @indirect("VkDevice")
