@@ -90,7 +90,9 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 			return returnError("Swapchain does not contain image %v", attachment)
 		}
 		color_img := st.LastPresentInfo.PresentImages.Get(image_idx)
-		return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Format, image_idx, nil
+		if color_img != nil {
+			return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Format, image_idx, nil
+		}
 	case api.FramebufferAttachment_Depth:
 		fallthrough
 	case api.FramebufferAttachment_Stencil:
@@ -98,6 +100,7 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 	default:
 		return returnError("Swapchain attachment %v does not exist", attachment)
 	}
+	return returnError("Swapchain attachment %v does not exist", attachment)
 }
 
 func (st *State) getFramebufferAttachmentInfo(attachment api.FramebufferAttachment) (uint32, uint32, VkFormat, uint32, error) {
