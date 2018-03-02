@@ -107,7 +107,7 @@ func (m *Module) Optimize() {
 	pass := llvm.NewPassManager()
 	defer pass.Dispose()
 
-	pass.AddFunctionInliningPass()
+	// pass.AddFunctionInliningPass() // Way too slow with this pass
 	pass.AddConstantPropagationPass()
 	pass.AddInstructionCombiningPass()
 	pass.AddPromoteMemoryToRegisterPass()
