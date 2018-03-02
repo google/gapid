@@ -36,7 +36,7 @@ Note: Installing bazel will also install MSYS into `C:\tools\msys64` and Python 
 Using the msys64 shell at `C:\tools\msys64\mingw64`:
 1. Update MSYS with: `pacman -Syu`.
 2. If the update ends with “close the window and run it again”, close and reopen the window and repeat 1.
-3. Fetch required tools with: `pacman -S mingw-w64-x86_64-gcc curl git zip unzip`
+3. Fetch required tools with: `pacman -S mingw-w64-x86_64-gcc curl git zip unzip patch`
 4. Close the MSYS terminal
 
 ### Install Java Runtime 8
