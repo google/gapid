@@ -27,27 +27,34 @@ func TestIA64(t *testing.T) {
 	ctx := log.Testing(t)
 
 	/*
-	   namespace food {
-	   namespace fruit {
+		namespace food {
+		namespace fruit {
 
-	   class Apple {
-	   public:
-	       int yummy(int, char*);
-	       bool eat(void* person);
-	       int calories();
-	       bool looks_like(Apple*);
-	       static bool healthy();
-	       static int compare(Apple* a, Apple* b);
-	       template <typename T> bool same_as(T other); (T: int)
-	       template <typename X, typename Y> static void juice(); (X: int, Y: bool)
-	   };
+		class Apple {
+		public:
+			int yummy(int, char*);
+			bool eat(void* person);
+			int calories();
+			bool looks_like(Apple*);
+			static bool healthy();
+			static int compare(Apple* a, Apple* b);
+			template <typename T> bool same_as(T other); (T: int)
+			template <typename X, typename Y> static void juice(); (X: int, Y: bool)
+		};
 
-	   } // namespace fruit
-	   } // namespace food
+		template <typename F>
+		class Smoothie {
+		public:
+			void slurp(F);  (F: fruit)
+		};
+
+		} // namespace fruit
+		} // namespace food
 	*/
 	food := &mangling.Namespace{Name: "food"}
 	fruit := &mangling.Namespace{Name: "fruit", Parent: food}
 	apple := &mangling.Class{Name: "Apple", Parent: fruit}
+	smoothie := &mangling.Class{Name: "Smoothie", Parent: fruit, TemplateArgs: []mangling.Type{apple}}
 
 	yummy := &mangling.Function{
 		Name:       "yummy",
@@ -106,6 +113,13 @@ func TestIA64(t *testing.T) {
 		Parent:       apple,
 	}
 
+	slurp := &mangling.Function{
+		Name:       "slurp",
+		Return:     mangling.Void,
+		Parameters: []mangling.Type{apple},
+		Parent:     smoothie,
+	}
+
 	for _, t := range []struct {
 		name     string
 		sym      mangling.Entity
@@ -120,6 +134,7 @@ func TestIA64(t *testing.T) {
 		{"food::fruit::Apple::compare", compare, "_ZN4food5fruit5Apple7compareEPS1_S2_"},
 		{"food::fruit::Apple::same_as", sameAs, "_ZN4food5fruit5Apple7same_asIiEEbT_"},
 		{"food::fruit::Apple::juice", juice, "_ZN4food5fruit5Apple5juiceIibEEvv"},
+		{"food::fruit::Smoothie::slurp", slurp, "_ZN4food5fruit8SmoothieINS0_5AppleEE5slurpES2_"},
 	} {
 		assert.For(ctx, t.name).ThatString(ia64.Mangle(t.sym)).Equals(t.expected)
 	}
