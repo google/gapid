@@ -131,12 +131,11 @@ github_repository(
 
 github_repository(
     name = "llvm",
-    organization = "llvm-mirror",
+    organization = "ben-clayton",
     project = "llvm",
-    commit = "4fba04fd9608115c1813dfba8909ab43e36ba92d",
+    commit = "4c7186401413dad4dc7d6923b69b05554e762cff",
     build_file = "//tools/build/third_party:llvm.BUILD",
 )
-
 
 new_git_repository(
     name = "lss",
