@@ -158,6 +158,12 @@ func (m *mangler) templateArgs(v mangling.Entity) {
 }
 
 func (m *mangler) prefix(v mangling.Entity) {
+	if isTemplated(v) {
+		m.templatePrefix(v)
+		m.templateArgs(v)
+		return
+	}
+
 	m.substitution(v, func() {
 		switch {
 		case isClass(v), isNamespace(v):
@@ -169,7 +175,6 @@ func (m *mangler) prefix(v mangling.Entity) {
 		}
 		unhandled("prefix", v)
 
-		// TODO: <template-prefix> <template-args>  # class template specialization
 		// TODO: <template-param>                   # template type parameter
 		// TODO: <decltype>                         # decltype qualifier
 		// TODO: <prefix> <data-member-prefix>      # initializer of a data member
