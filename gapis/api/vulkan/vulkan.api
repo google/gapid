@@ -4186,8 +4186,10 @@ cmd void vkDestroyImage(
     }
     delete(Images, image)
     for _, _, v in ImageViews {
-      if v.Image.VulkanHandle == image {
-        v.Image = null
+      if v.Image != null {
+        if v.Image.VulkanHandle == image {
+          v.Image = null
+        }
       }
     }
     for i in (0 .. LastPresentInfo.PresentImageCount) {
