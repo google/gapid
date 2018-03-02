@@ -48,6 +48,8 @@ type Class struct {
 	Methods     []*Function   // the set of functions associated with the class
 }
 
+func (c Class) String() string { return c.Name() }
+
 func (*Class) isNode() {}
 func (*Class) isType() {}
 
@@ -73,6 +75,8 @@ type Field struct {
 	Docs        Documentation // the documentation for the field
 	Default     Expression    // the default value of the field
 }
+
+func (f Field) String() string { return f.Name() }
 
 func (*Field) isNode()       {}
 func (*Field) isExpression() {}
@@ -114,9 +118,8 @@ func (c *ClassInitializer) InitialValues() []Expression {
 func (c *ClassInitializer) ExpressionType() Type {
 	if c.Class != nil {
 		return c.Class
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // FieldInitializer represents the value initialization of a class field.
@@ -169,6 +172,8 @@ type Enum struct {
 	Entries     []*EnumEntry  // the entries of this enum
 }
 
+func (e Enum) String() string { return e.Name() }
+
 func (*Enum) isNode() {}
 func (*Enum) isType() {}
 
@@ -182,6 +187,8 @@ type EnumEntry struct {
 	Docs  Documentation  // the documentation for the enum entry
 	Value Expression     // the value this entry represents
 }
+
+func (e EnumEntry) String() string { return e.Name() }
 
 func (*EnumEntry) isNode()       {}
 func (*EnumEntry) isExpression() {}
@@ -205,6 +212,8 @@ type Pseudonym struct {
 	To          Type           // the underlying type
 	Methods     []*Function    // the methods added directly to the pseudonym
 }
+
+func (p Pseudonym) String() string { return p.Name() }
 
 func (*Pseudonym) isNode() {}
 func (*Pseudonym) isType() {}
@@ -263,6 +272,8 @@ type StaticArray struct {
 	SizeExpr  Expression // the expression representing the array size
 }
 
+func (a StaticArray) String() string { return fmt.Sprintf("%v[%v]", a.ValueType, a.Size) }
+
 func (*StaticArray) isNode() {}
 func (*StaticArray) isType() {}
 
@@ -292,6 +303,8 @@ type Map struct {
 	ValueType Type // the type stored in the map
 }
 
+func (m Map) String() string { return fmt.Sprintf("Map!(%v, %v)", m.KeyType, m.ValueType) }
+
 func (*Map) isNode() {}
 func (*Map) isType() {}
 
@@ -304,6 +317,8 @@ type Pointer struct {
 	Const bool   // whether the pointer was declared with the const attribute
 	Slice *Slice // The complementary slice type for this pointer.
 }
+
+func (p Pointer) String() string { return fmt.Sprintf("%v*", p.To) }
 
 func (*Pointer) isNode() {}
 func (*Pointer) isType() {}
@@ -325,6 +340,8 @@ type Slice struct {
 	Pointer *Pointer // The complementary pointer type for this slice.
 }
 
+func (s Slice) String() string { return fmt.Sprintf("%v[]", s.To) }
+
 func (*Slice) isNode() {}
 func (*Slice) isType() {}
 
@@ -336,6 +353,8 @@ type Reference struct {
 	Named      // the full type name
 	To    Type // the type this is a reference to
 }
+
+func (r Reference) String() string { return fmt.Sprintf("ref!%v", r.To) }
 
 func (*Reference) isNode() {}
 func (*Reference) isType() {}
@@ -354,6 +373,8 @@ type Builtin struct {
 	noMembers
 	Named // the primitive type name
 }
+
+func (b Builtin) String() string { return b.Name() }
 
 func (*Builtin) isNode() {}
 func (*Builtin) isType() {}
