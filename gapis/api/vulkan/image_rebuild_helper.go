@@ -20,6 +20,9 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -167,6 +170,91 @@ func (h *imageRebuildHelper) allocateTempMemoryForStagingImage(stagingImg, origI
 	mem := GetState(h.sb.newState).DeviceMemories.Get(handle)
 	h.tempMemories[handle] = mem
 	return mem, nil
+}
+
+func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, dstSizeInBytes uint64, srcFmt, dstFmt VkFormat) ([]uint8, error) {
+	if srcFmt == dstFmt {
+		return data, nil
+	}
+	if dstFmt != colorStagingFormat && dstFmt != depthStagingFormat {
+		return []uint8{}, fmt.Errorf("unsupported dst format: %v", dstFmt)
+	}
+	width := int(extent.Width)
+	height := int(extent.Height)
+	depth := int(extent.Depth)
+	sf, err := getImageFormatFromVulkanFormat(srcFmt)
+	if err != nil {
+		return []uint8{}, fmt.Errorf("[Getting image.Format from src format: %v] %v", srcFmt, err)
+	}
+	if sf.GetUncompressed() == nil {
+		return []uint8{}, fmt.Errorf("[Getting image.Format from src format: %v] %s", srcFmt, "only support uncompressed format")
+	}
+	cf := proto.Clone(sf).(*image.Format)
+	// If the format has shared exponent channel, convert it to f32 first,
+	// there should not be any precision lost.
+	if srcFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
+		cf, err := getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_R32G32B32_SFLOAT)
+		data, err = image.Convert(data, width, height, depth, sf, cf)
+		if err != nil {
+			return []uint8{}, fmt.Errorf("[Converting from: %v to %v] %v", sf, cf, err)
+		}
+	}
+
+	df, err := getImageFormatFromVulkanFormat(dstFmt)
+	if err != nil {
+		return []uint8{}, fmt.Errorf("[Getting image.Format from dst format: %v] %v", dstFmt, err)
+	}
+
+	// The casting rule is described as below:
+	// If the data layout is UNORM, unsigned extends the src data to uint32
+	// If the data layout is SNORM, signed extends the src data to sint32
+	// If the data layout is UINT, unsigned extends the src data to uint32
+	// If the data layout is SINT, signed extends the src data to sint32
+	// If the data layout is Float, cast the src data to sfloat32
+	// Note that, the staging image formats are always UINT32, the data within
+	// the staging image should be encoded as float32, if the source data is
+	// in float point type. The data will be bitcasted to float32 in the shader
+	// when rendering to the state block image in the replay side.
+	// If the source data is in normalized type, it will be treated as integer,
+	// and will be normalized in the shader when rendering in the replay side.
+	// Also, to keep data in SRGB untouched, the sampling curve of the source
+	// format will be changed to linear.
+
+	// switch to use stream.Format
+	sdf := df.GetUncompressed().GetFormat()
+	scf := cf.GetUncompressed().GetFormat()
+
+	// Modify the src and dst format stream to follow the rule above.
+	for _, sc := range scf.Components {
+		dc, _ := sdf.Component(sc.Channel)
+		if dc == nil {
+			// Use the red channel by default.
+			dc, _ = sdf.Component(stream.Channel_Red)
+		}
+		sc.Sampling = stream.Linear
+		if sc.GetDataType().GetInteger() != nil {
+			dc.DataType = &stream.U32
+			dc.Sampling = stream.Linear
+			if sc.GetDataType().GetSigned() {
+				dc.DataType = &stream.S32
+			}
+		} else if sc.GetDataType().GetFloat() != nil {
+			dc.DataType = &stream.F32
+			dc.Sampling = stream.Linear
+		} else {
+			return []uint8{}, fmt.Errorf("[Building dst format for: %v] %s", scf, "DataType other than stream.Integer and stream.Float are not handled.")
+		}
+	}
+
+	converted, err := stream.Convert(sdf, scf, data)
+	if err != nil {
+		return []uint8{}, fmt.Errorf("[Converting from: %v to %v] %v", scf, sdf, err)
+	}
+	if uint64(len(converted)) < dstSizeInBytes {
+		diff := dstSizeInBytes - uint64(len(converted))
+		converted = append(converted, make([]uint8, diff)[:]...)
+	}
+	return converted[0:dstSizeInBytes], nil
 }
 
 // stagingImageFormat returns the format of the staging image for the given

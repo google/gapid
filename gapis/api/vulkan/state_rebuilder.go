@@ -17,7 +17,6 @@ package vulkan
 import (
 	"context"
 
-	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
@@ -1468,9 +1467,9 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
 
-	primeByBufCopy := img.Info.Usage&transDstBit != VkImageUsageFlags(0)
-	primeByRendering := (!primeByBufCopy) && (img.Info.Usage&attBits != VkImageUsageFlags(0))
-	primeByShaderCopy := (!primeByBufCopy) && (!primeByRendering) && (img.Info.Usage&storageBit != VkImageUsageFlags(0))
+	primeByBufCopy := (img.Info.Usage & transDstBit) != VkImageUsageFlags(0)
+	primeByRendering := (!primeByBufCopy) && ((img.Info.Usage & attBits) != VkImageUsageFlags(0))
+	primeByShaderCopy := (!primeByBufCopy) && (!primeByRendering) && ((img.Info.Usage & storageBit) != VkImageUsageFlags(0))
 
 	copyDstImgs := []*ImageObject{}
 	copies := map[*ImageObject][]VkBufferImageCopy{}
@@ -1510,9 +1509,9 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 			for _, rng := range opaqueRanges {
 				for i := uint32(0); i < rng.LevelCount; i++ {
 					mipLevel := rng.BaseMipLevel + i
-					e := sb.levelSize(dstImg.Info.Extent, img.Info.Format, mipLevel)
-					extent := VkExtent3D{
-						uint32(e.width), uint32(e.height), uint32(e.depth),
+					dstE := sb.levelSize(dstImg.Info.Extent, dstImg.Info.Format, mipLevel)
+					dstExtent := VkExtent3D{
+						uint32(dstE.width), uint32(dstE.height), uint32(dstE.depth),
 					}
 					for j := uint32(0); j < rng.LayerCount; j++ {
 						layer := rng.BaseArrayLayer + j
@@ -1527,27 +1526,17 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 								1,
 							},
 							VkOffset3D{0, 0, 0},
-							extent,
+							dstExtent,
 						})
 						data := img.Layers.Get(layer).Levels.Get(mipLevel).Data.MustRead(sb.ctx, nil, sb.oldState, nil)
-						srcFmt, err := getImageFormatFromVulkanFormat(img.Info.Format)
+						unpacked, err := helper.unpackData(data, dstExtent, dstE.alignedLevelSize, img.Info.Format, dstImg.Info.Format)
 						if err != nil {
-							log.E(sb.ctx, "[Unpacking data from image with format: %v] %v", img.Info.Format, err)
+							log.E(sb.ctx, "[Converting data from image: %v, layer: %v, level: %v, extent: %v] %v", img.VulkanHandle, layer, mipLevel, dstExtent, err)
 							continue
 						}
-						dstFmt, err := getImageFormatFromVulkanFormat(dstImg.Info.Format)
-						if err != nil {
-							log.E(sb.ctx, "[Unpacking data to image with format: %v] %v", dstImg.Info.Format, err)
-							continue
-						}
-						unpacked, err := image.Convert(data, int(e.width), int(e.height), int(e.depth), srcFmt, dstFmt)
-						if err != nil {
-							log.E(sb.ctx, "[Converting data from image: %v, layer: %v, level: %v, extent: %v] %v", img.VulkanHandle, layer, mipLevel, extent, err)
-							continue
-						}
+
 						contents = append(contents, unpacked...)
-						// len(unpacked) must be equal to e.alignedLevelSize
-						offset += VkDeviceSize(e.alignedLevelSize)
+						offset += VkDeviceSize(dstE.alignedLevelSize)
 					}
 				}
 			}
@@ -1590,24 +1579,15 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 								uint64(o.levelSize+e.levelSize),
 								sb.oldState.MemoryLayout,
 							).MustRead(sb.ctx, nil, sb.oldState, nil)
-							srcFmt, err := getImageFormatFromVulkanFormat(img.Info.Format)
-							if err != nil {
-								log.E(sb.ctx, "[Unpacking data from image with format: %v] %v", img.Info.Format, err)
-								continue
-							}
-							dstFmt, err := getImageFormatFromVulkanFormat(dstImg.Info.Format)
-							if err != nil {
-								log.E(sb.ctx, "[Unpacking data to image with format: %v] %v", dstImg.Info.Format, err)
-								continue
-							}
-							unpacked, err := image.Convert(data, int(e.width), int(e.height), int(e.depth), srcFmt, dstFmt)
+
+							dstE := sb.levelSize(blockData.Extent, dstImg.Info.Format, 0)
+							unpacked, err := helper.unpackData(data, blockData.Extent, dstE.alignedLevelSize, img.Info.Format, dstImg.Info.Format)
 							if err != nil {
 								log.E(sb.ctx, "[Converting data from image: %v, layer: %v, level: %v, extent: %v] %v", img.VulkanHandle, layer, level, blockData.Extent, err)
 								continue
 							}
 							contents = append(contents, unpacked...)
-							// len(unpacked) must be equal to e.alignedLevelSize
-							offset += VkDeviceSize(e.alignedLevelSize)
+							offset += VkDeviceSize(dstE.alignedLevelSize)
 						}
 					}
 				}
