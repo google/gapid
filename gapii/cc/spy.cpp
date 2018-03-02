@@ -19,9 +19,10 @@
 #include "connection_header.h"
 #include "connection_stream.h"
 
+#include "gapil/runtime/cc/runtime.h"
+
 #include "gapii/cc/gles_exports.h"
 #include "gapii/cc/spy.h"
-#include "gapii/cc/to_proto.h"
 
 #include "core/cc/encoder.h"
 #include "core/cc/gl/formats.h"
@@ -330,7 +331,7 @@ gapil::Ref<StaticContextState> GlesSpy::GetEGLStaticContextState(CallObserver* o
 
     auto out = gapil::Ref<StaticContextState>::create(arena(), constants, threadName);
 
-    observer->encodeAndDelete(out->toProto());
+    observer->encode(*out.get());
 
     return out;
 }
@@ -404,7 +405,7 @@ gapil::Ref<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver*
     );
 
     // Store the DynamicContextState as an extra.
-    observer->encodeAndDelete(out->toProto());
+    observer->encode(*out.get());
 
     return out;
 }
@@ -445,61 +446,61 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
 
 void Spy::saveInitialState() {
     GAPID_INFO("Saving initial state");
-    auto encoder = this->getEncoder(kAllAPIs);
 
     capture::GlobalState global;
-    auto group = encoder->group(&global);
+
     if (should_trace(GlesSpy::kApiIndex)) {
-      ToProtoContext pbCtx;
-      gles::State state;
-      GlesSpy::mState.toProto(&state, pbCtx);
-      std::map<uint32_t, const pool_t*> seenPools;
-      for (const auto& s : pbCtx.SeenSlices()) {
-        if (auto p = s.pool()) {
-          seenPools.emplace(p->id, p);
-        }
-      }
-      for (const auto& kvp : seenPools) {
-        auto p = kvp.second;
-        auto resIndex = sendResource(GlesSpy::kApiIndex, p->buffer, p->size);
-        memory::Observation observation;
-        observation.set_base(0);
-        observation.set_size(p->size);
-        observation.set_resindex(resIndex);
-        observation.set_pool(p->id);
-        group->object(&observation);
-      }
-      group->object(&state);
+        auto observer = enter("gles-initial-state", GlesSpy::kApiIndex);
+        observer->enter(&global);
+
+        std::unordered_set<uint32_t> pools;
+        observer->on_slice_encoded([&] (slice_t* slice) {
+            auto p = slice->pool;
+            if (p != nullptr && pools.count(p->id) == 0) {
+                pools.insert(p->id);
+
+                auto resIndex = sendResource(GlesSpy::kApiIndex, p->buffer, p->size);
+                memory::Observation observation;
+                observation.set_base(0);
+                observation.set_size(p->size);
+                observation.set_resindex(resIndex);
+                observation.set_pool(p->id);
+                observer->encode(&observation);
+            }
+        });
+        observer->encode(this->GlesSpy::mState);
+        observer->on_slice_encoded(nullptr);
+        exit();
     }
     if (should_trace(VulkanSpy::kApiIndex)) {
-        auto observer = enter("initial-state", VulkanSpy::kApiIndex);
-        std::unordered_set<uint32_t> gpu_pools;
-        VulkanSpy::prepareGPUBuffers(observer, group.get(), &gpu_pools);
+        auto observer = enter("vulkan-initial-state", VulkanSpy::kApiIndex);
+        observer->enter(&global);
 
-        ToProtoContext pbCtx;
-        vulkan::State state;
-        VulkanSpy::mState.toProto(&state, pbCtx);
-        std::map<uint32_t, const pool_t*> seenPools;
-        for (const auto& s : pbCtx.SeenSlices()) {
-          auto p = s.pool();
-          if (p != nullptr && gpu_pools.find(p->id) == gpu_pools.end()) {
-            seenPools.emplace(p->id, p);
-          }
-        }
-        for (const auto& kvp : seenPools) {
-          auto p = kvp.second;
-          auto resIndex = sendResource(VulkanSpy::kApiIndex, p->buffer, p->size);
-          memory::Observation observation;
-          observation.set_base(0);
-          observation.set_size(p->size);
-          observation.set_resindex(resIndex);
-          observation.set_pool(p->id);
-          group->object(&observation);
-        }
-        group->object(&state);
+        std::unordered_set<uint32_t> gpu_pools;
+        VulkanSpy::prepareGPUBuffers(observer, observer->encoder().get(), &gpu_pools);
+        std::unordered_set<uint32_t> pools;
+        observer->on_slice_encoded([&] (slice_t* slice) {
+            auto p = slice->pool;
+            if (p != nullptr &&
+                    gpu_pools.count(p->id) == 0 &&
+                    pools.count(p->id) == 0) {
+
+                pools.insert(p->id);
+
+                auto resIndex = sendResource(VulkanSpy::kApiIndex, p->buffer, p->size);
+                memory::Observation observation;
+                observation.set_base(0);
+                observation.set_size(p->size);
+                observation.set_resindex(resIndex);
+                observation.set_pool(p->id);
+                observer->encode(&observation);
+            }
+        });
+        observer->encode(this->VulkanSpy::mState);
+        observer->on_slice_encoded(nullptr);
+
         exit();
-      }
-    encoder->flush();
+    }
 }
 
 void Spy::onPostFrameBoundary(bool isStartOfFrame) {

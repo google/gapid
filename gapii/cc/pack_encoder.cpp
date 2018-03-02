@@ -45,14 +45,17 @@ public:
     PackEncoderImpl(const std::shared_ptr<core::StringWriter>& writer);
     ~PackEncoderImpl();
 
+    virtual TypeIDAndIsNew type(const char* name, size_t size, const void* data) override;
     virtual void object(const Message* msg) override;
+    virtual void object(TypeID type, size_t size, const void* data) override;
     virtual SPtr group(const Message* msg) override;
+    virtual PackEncoder* group(TypeID type, size_t size, const void* data) override;
     virtual void flush() override;
 
 private:
     struct TypeIDCache {
         std::mutex mutex;
-        std::unordered_map<const Descriptor*, uint32_t> type_ids;
+        std::unordered_map<const void*, TypeID> type_ids;
     };
 
     struct Shared {
@@ -60,7 +63,7 @@ private:
 
         std::recursive_mutex mutex;
         std::shared_ptr<core::StringWriter> writer;
-        std::unordered_map<const Descriptor*, uint32_t> type_ids;
+        std::unordered_map<const void*, TypeID> type_ids;
         TypeIDCache type_id_caches[TYPE_ID_CACHE_COUNT];
         uint64_t mCurrentChunkId;
     };
@@ -68,8 +71,10 @@ private:
     PackEncoderImpl(const std::shared_ptr<Shared>& shared, uint64_t parentChunkId);
 
     void writeParentID(std::string& buffer);
-    uint64_t writeTypeIfNew(const Descriptor* desc);
-    uint64_t writeTypeIfNewBlocking(const Descriptor* desc);
+    TypeIDAndIsNew writeTypeIfNew(const Descriptor* desc);
+    TypeIDAndIsNew writeTypeIfNew(const char* name, size_t size, const void* data);
+    TypeIDAndIsNew writeTypeIfNewBlocking(const Descriptor* desc);
+    TypeIDAndIsNew writeTypeIfNewBlocking(const char* name, size_t size, const void* data);
     void writeString(std::string& buffer, const std::string& str);
     void writeZigzag(std::string& buffer, int64_t value);
     void writeVarint(std::string& buffer, uint64_t value);
@@ -106,9 +111,14 @@ void PackEncoderImpl::flush() {
     mShared->writer->flush();
 }
 
+gapii::PackEncoder::TypeIDAndIsNew
+PackEncoderImpl::type(const char* name, size_t size, const void* data) {
+    return writeTypeIfNew(name, size, data);
+}
+
 void PackEncoderImpl::object(const Message* msg) {
     std::string buffer;
-    auto type_id = writeTypeIfNew(msg->GetDescriptor());
+    auto type_id = writeTypeIfNew(msg->GetDescriptor()).first;
 
     std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
     writeParentID(buffer);
@@ -117,9 +127,18 @@ void PackEncoderImpl::object(const Message* msg) {
     flushChunk(buffer, false);
 }
 
+void PackEncoderImpl::object(TypeID type_id, size_t size, const void* data) {
+    std::string buffer;
+    std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
+    writeParentID(buffer);
+    writeZigzag(buffer, type_id);
+    buffer.append(reinterpret_cast<const char*>(data), size);
+    flushChunk(buffer, false);
+}
+
 gapii::PackEncoder::SPtr PackEncoderImpl::group(const Message* msg) {
     std::string buffer;
-    auto type_id = writeTypeIfNew(msg->GetDescriptor());
+    auto type_id = writeTypeIfNew(msg->GetDescriptor()).first;
 
     std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
     writeParentID(buffer);
@@ -130,6 +149,17 @@ gapii::PackEncoder::SPtr PackEncoderImpl::group(const Message* msg) {
     return PackEncoder::SPtr(new PackEncoderImpl(mShared, chunkID));
 }
 
+gapii::PackEncoder* PackEncoderImpl::group(TypeID type_id, size_t size, const void* data) {
+    std::string buffer;
+    std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
+    writeParentID(buffer);
+    writeZigzag(buffer, -(int64_t)type_id);
+    buffer.append(reinterpret_cast<const char*>(data), size);
+    auto chunkID = flushChunk(buffer, false);
+
+    return new PackEncoderImpl(mShared, chunkID);
+}
+
 void PackEncoderImpl::writeParentID(std::string& buffer) {
     if (mParentChunkId == NO_ID) {
         writeZigzag(buffer, 0);
@@ -138,7 +168,10 @@ void PackEncoderImpl::writeParentID(std::string& buffer) {
     }
 }
 
-uint64_t PackEncoderImpl::writeTypeIfNew(const Descriptor* desc) {
+// TODO: Refactor the body of this out into something that can be shared with
+//       the two overloads.
+gapii::PackEncoder::TypeIDAndIsNew
+PackEncoderImpl::writeTypeIfNew(const Descriptor* desc) {
     TypeIDCache* type_id_cache = nullptr;
     std::unique_lock<std::mutex> cache_lock;
 
@@ -153,41 +186,90 @@ uint64_t PackEncoderImpl::writeTypeIfNew(const Descriptor* desc) {
         return writeTypeIfNewBlocking(desc);
     }
 
-    uint64_t type_id;
+    TypeIDAndIsNew res;
 
     auto iter_id = type_id_cache->type_ids.find(desc);
     if (iter_id == end(type_id_cache->type_ids)) {
-        type_id = writeTypeIfNewBlocking(desc);
-        type_id_cache->type_ids.insert(std::make_pair(desc, type_id));
+        res = writeTypeIfNewBlocking(desc);
+        type_id_cache->type_ids.insert(std::make_pair(desc, res.first));
     } else {
-        type_id = iter_id->second;
+        res = std::make_pair(iter_id->second, false);
     }
 
-    return type_id;
+    return res;
 }
 
-uint64_t PackEncoderImpl::writeTypeIfNewBlocking(const Descriptor* desc) {
-    std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
-    auto insert = mShared->type_ids.insert(std::make_pair(desc, mShared->type_ids.size()));
-    uint64_t type_id = insert.first->second;
-    if (insert.second) {
-        std::string buffer;
-        DescriptorProto descMsg;
-        desc->CopyTo(&descMsg);
-        writeString(buffer, desc->full_name());
-        descMsg.AppendToString(&buffer);
-        flushChunk(buffer, true);
+gapii::PackEncoder::TypeIDAndIsNew
+PackEncoderImpl::writeTypeIfNew(const char* name, size_t size, const void* data) {
+    TypeIDCache* type_id_cache = nullptr;
+    std::unique_lock<std::mutex> cache_lock;
 
-        for (int i = 0; i < desc->field_count(); i++) {
-            if (auto fieldDesc = desc->field(i)->message_type()) {
-                writeTypeIfNewBlocking(fieldDesc);
-            }
-        }
-        for (int i = 0; i < desc->nested_type_count(); i++) {
-            writeTypeIfNewBlocking(desc->nested_type(i));
+    for(int index = 0; !type_id_cache && index < TYPE_ID_CACHE_COUNT; ++index) {
+        if (mShared->type_id_caches[index].mutex.try_lock()) {
+            type_id_cache = &mShared->type_id_caches[index];
+            cache_lock = std::unique_lock<std::mutex>(type_id_cache->mutex, std::adopt_lock);
         }
     }
-    return type_id;
+
+    if (!type_id_cache) {
+        return writeTypeIfNewBlocking(name, size, data);
+    }
+
+    TypeIDAndIsNew res;
+
+    auto iter_id = type_id_cache->type_ids.find(data);
+    if (iter_id == end(type_id_cache->type_ids)) {
+        res = writeTypeIfNewBlocking(name, size, data);
+        type_id_cache->type_ids.insert(std::make_pair(data, res.first));
+    } else {
+        res = std::make_pair(iter_id->second, false);
+    }
+
+    return res;
+}
+
+gapii::PackEncoder::TypeIDAndIsNew
+PackEncoderImpl::writeTypeIfNewBlocking(const char* name, size_t size, const void* data) {
+    std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
+    auto insert = mShared->type_ids.insert(std::make_pair(data, mShared->type_ids.size()));
+    auto type_id = insert.first->second;
+    if (!insert.second) {
+        return std::make_pair(type_id, false);
+    }
+
+    std::string buffer;
+    writeString(buffer, name);
+    buffer.append(reinterpret_cast<const char*>(data), size);
+    flushChunk(buffer, true);
+    return std::make_pair(type_id, true);
+}
+
+gapii::PackEncoder::TypeIDAndIsNew
+PackEncoderImpl::writeTypeIfNewBlocking(const Descriptor* desc) {
+    std::lock_guard<std::recursive_mutex> lock(mShared->mutex);
+    auto insert = mShared->type_ids.insert(std::make_pair(desc, mShared->type_ids.size()));
+    auto type_id = insert.first->second;
+    if (!insert.second) {
+        return std::make_pair(type_id, false);
+    }
+
+    std::string buffer;
+    DescriptorProto descMsg;
+    desc->CopyTo(&descMsg);
+    writeString(buffer, desc->full_name());
+    descMsg.AppendToString(&buffer);
+    flushChunk(buffer, true);
+
+    for (int i = 0; i < desc->field_count(); i++) {
+        if (auto fieldDesc = desc->field(i)->message_type()) {
+            writeTypeIfNewBlocking(fieldDesc);
+        }
+    }
+    for (int i = 0; i < desc->nested_type_count(); i++) {
+        writeTypeIfNewBlocking(desc->nested_type(i));
+    }
+
+    return std::make_pair(type_id, true);
 }
 
 void PackEncoderImpl::writeString(std::string& buffer, const std::string& str) {
@@ -220,11 +302,18 @@ class PackEncoderNoop : public gapii::PackEncoder {
 public:
     static SPtr instance;
 
-    virtual void object(const ::google::protobuf::Message* msg) override {}
-    virtual SPtr group(const ::google::protobuf::Message* msg) override {
+    virtual TypeIDAndIsNew type(const char* name, size_t size, const void* data) override {
+        return std::make_pair(0, false);
+    }
+    virtual void object(const Message* msg) override {}
+    virtual void object(TypeID type, size_t size, const void* data) override {}
+    virtual SPtr group(const Message* msg) override {
         return instance;
     }
-    virtual void flush() override{}
+    virtual PackEncoder* group(TypeID type, size_t size, const void* data) override {
+        return new PackEncoderNoop();
+    }
+    virtual void flush() override {}
 };
 
 gapii::PackEncoder::SPtr PackEncoderNoop::instance = gapii::PackEncoder::SPtr(new PackEncoderNoop);
