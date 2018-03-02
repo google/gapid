@@ -31,7 +31,7 @@ apic_template(
 apic_compile(
     name = "gles_compiled",
     api = "//gapis/api/gles:api", # TODO: Let apic handle multiple api files in one compile.
-#    optimize = True,
+    optimize = True,
     emit = ["encode"],
     namespace = "gapii",
 )
@@ -53,7 +53,7 @@ apic_template(
 apic_compile(
     name = "vulkan_compiled",
     api = "//gapis/api/vulkan:api", # TODO: Let apic handle multiple api files in one compile.
-#    optimize = True,
+    optimize = True,
     emit = ["encode"],
     namespace = "gapii",
 )
@@ -76,7 +76,7 @@ apic_template(
 apic_compile(
     name = "gvr_compiled",
     api = "//gapis/api/gvr:api", # TODO: Let apic handle multiple api files in one compile.
-#    optimize = True,
+    optimize = True,
     emit = ["encode"],
     namespace = "gapii",
 )
