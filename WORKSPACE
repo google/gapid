@@ -69,9 +69,6 @@ load("@//tools/build:rules.bzl", "android_native_app_glue", "github_go_repositor
 ####################################################################
 # Run our workspace preparation rules
 
-go_rules_dependencies()
-go_register_toolchains()
-gazelle_dependencies()
 cc_configure()
 
 android_sdk_repository(
@@ -242,6 +239,11 @@ github_go_repository(
     commit = "3da34b1b520a543128e8441cd2ffffc383111d03",
     importpath = "golang.org/x/tools",
 )
+
+# Setup the go rules after all our repos have been setup.
+go_rules_dependencies()
+go_register_toolchains()
+gazelle_dependencies()
 
 ####################################################################
 # Java dependencies.
