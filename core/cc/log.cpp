@@ -29,6 +29,10 @@
 #include <chrono>
 #include <ctime> // Required for MSVC.
 
+#if TARGET_OS == GAPID_OS_WINDOWS
+#include "Windows.h"
+#endif // GAPID_OS_WINDOWS
+
 namespace core {
 
 Logger Logger::mInstance = Logger();
@@ -70,13 +74,28 @@ void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line, cons
     std::tm* loc = std::localtime(&now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t.time_since_epoch());
 
+#define LOG_COMMON "%02d:%02d:%02d.%03d %c %s: [%s:%u] ", loc->tm_hour, loc->tm_min, loc->tm_sec, \
+    static_cast<int>(ms.count() % 1000), "FEWIDV"[level], mSystem, src_file, src_line 
+
+#if TARGET_OS == GAPID_OS_WINDOWS
+    {
+        va_list args_copy;
+        va_copy(args_copy, args);
+        char buf[2048];
+        snprintf(buf, sizeof(buf), LOG_COMMON);
+        OutputDebugStringA(buf);
+        vsnprintf(buf, sizeof(buf), format, args_copy);
+        OutputDebugStringA(buf);
+        OutputDebugStringA("\r\n");
+    }
+#endif // GAPID_OS_WINDOWS
+
     for (FILE* file : mFiles) {
         va_list args_copy;
         va_copy(args_copy, args);
 
         // Print out the common part of the log messages
-        fprintf(file, "%02d:%02d:%02d.%03d %c %s: [%s:%u] ", loc->tm_hour, loc->tm_min, loc->tm_sec,
-                static_cast<int>(ms.count() % 1000), "FEWIDV"[level], mSystem, src_file, src_line);
+        fprintf(file, LOG_COMMON);
 
         // Print out the actual log message
         vfprintf(file, format, args_copy);
