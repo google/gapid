@@ -18,6 +18,8 @@ import (
 	"fmt"
 
 	"llvm/bindings/go/llvm"
+
+	"github.com/google/gapid/core/os/device"
 )
 
 // Function represents a callable function.
@@ -45,9 +47,11 @@ func (f Function) Inline() Function {
 // assumption their implementation is identical. Unlike "linkonce" this
 // also preserves inlining.
 func (f Function) LinkOnceODR() Function {
-	c := f.m.llvm.Comdat(f.Name)
-	c.SetSelectionKind(llvm.AnyComdatSelectionKind)
-	f.llvm.SetComdat(c)
+	if f.m.target.OS == device.Windows {
+		c := f.m.llvm.Comdat(f.Name)
+		c.SetSelectionKind(llvm.AnyComdatSelectionKind)
+		f.llvm.SetComdat(c)
+	}
 	f.llvm.SetLinkage(llvm.WeakODRLinkage)
 	return f
 }
