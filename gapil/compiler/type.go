@@ -182,7 +182,7 @@ func (c *C) declareTypes() {
 		c.T.target[t] = mapPtrTy
 		c.T.mangled[cgTy] = &mangling.Class{
 			Parent: c.Root,
-			Name:   "Ref",
+			Name:   "Map",
 		}
 	}
 
@@ -222,6 +222,10 @@ func (c *C) buildTypes() {
 			codegen.Field{Name: RefArena, Type: c.T.ArenaPtr},
 			codegen.Field{Name: RefValue, Type: c.T.Target(t.To)},
 		)
+
+		c.T.mangled[str].(*mangling.Class).TemplateArgs = []mangling.Type{
+			c.Mangle(c.T.Target(t.To)),
+		}
 	}
 
 	// Build all the map types.
