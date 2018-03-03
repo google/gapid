@@ -59,7 +59,10 @@ if "%KOKORO_GITHUB_COMMIT%." == "." (
 ) else (
   set BUILD_SHA=%KOKORO_GITHUB_COMMIT%
 )
-%BUILD_ROOT%\bazel build --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" --define GAPID_BUILD_SHA="%BUILD_SHA%" //:pkg
+%BUILD_ROOT%\bazel build -c opt --config symbols ^
+    --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
+    --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
+    //:pkg //cmd/gapir/cc:gapir.sym
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 cd %BUILD_ROOT%
