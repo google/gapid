@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -1529,12 +1530,16 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 							dstExtent,
 						})
 						data := img.Layers.Get(layer).Levels.Get(mipLevel).Data.MustRead(sb.ctx, nil, sb.oldState, nil)
-						unpacked, err := helper.unpackData(data, dstExtent, dstE.alignedLevelSize, img.Info.Format, dstImg.Info.Format)
+						unpacked, err := helper.unpackData(data, dstExtent, img.Info.Format, dstImg.Info.Format)
+						errMsg := fmt.Sprintf("Unpacking data from image: %v, layer: %v, level: %v, extent: %v", img.VulkanHandle, layer, mipLevel, dstExtent)
 						if err != nil {
-							log.E(sb.ctx, "[Converting data from image: %v, layer: %v, level: %v, extent: %v] %v", img.VulkanHandle, layer, mipLevel, dstExtent, err)
+							log.E(sb.ctx, "[%s] %v", errMsg, err)
 							continue
 						}
-
+						if uint64(len(unpacked)) != dstE.alignedLevelSize {
+							log.E(sb.ctx, "[%s] %s", errMsg, "size of unpacked data does not match")
+							continue
+						}
 						contents = append(contents, unpacked...)
 						offset += VkDeviceSize(dstE.alignedLevelSize)
 					}
@@ -1581,9 +1586,14 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 							).MustRead(sb.ctx, nil, sb.oldState, nil)
 
 							dstE := sb.levelSize(blockData.Extent, dstImg.Info.Format, 0)
-							unpacked, err := helper.unpackData(data, blockData.Extent, dstE.alignedLevelSize, img.Info.Format, dstImg.Info.Format)
+							unpacked, err := helper.unpackData(data, blockData.Extent, img.Info.Format, dstImg.Info.Format)
+							errMsg := fmt.Sprintf("Unpacking data from image: %v, layer: %v, level: %v, extent: %v", img.VulkanHandle, layer, level, blockData.Extent)
 							if err != nil {
-								log.E(sb.ctx, "[Converting data from image: %v, layer: %v, level: %v, extent: %v] %v", img.VulkanHandle, layer, level, blockData.Extent, err)
+								log.E(sb.ctx, "[%s] %v", errMsg, err)
+								continue
+							}
+							if uint64(len(unpacked)) != dstE.alignedLevelSize {
+								log.E(sb.ctx, "[%s] %s", errMsg, "size of unpacked data does not match")
 								continue
 							}
 							contents = append(contents, unpacked...)

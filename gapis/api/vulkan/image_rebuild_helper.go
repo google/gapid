@@ -27,12 +27,6 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-const (
-	// Only uncompressed and unpacked formats shall be used for staging.
-	colorStagingFormat = VkFormat_VK_FORMAT_R32G32B32A32_UINT
-	depthStagingFormat = VkFormat_VK_FORMAT_R32_UINT
-)
-
 type imageRebuildHelper struct {
 	sb                       *stateBuilder
 	stagingImages            map[VkImage]*ImageObject
@@ -47,6 +41,9 @@ type imageRebuildHelper struct {
 	tempRenderPasses         map[VkRenderPass]*RenderPassObject
 	tempFramebuffers         map[VkFramebuffer]*FramebufferObject
 	tempShaders              map[VkShaderModule]*ShaderModuleObject
+
+	colorStagingFormat VkFormat
+	depthStagingFormat VkFormat
 }
 
 func newImageRebuildHelper(sb *stateBuilder) *imageRebuildHelper {
@@ -64,6 +61,9 @@ func newImageRebuildHelper(sb *stateBuilder) *imageRebuildHelper {
 		tempRenderPasses:         map[VkRenderPass]*RenderPassObject{},
 		tempFramebuffers:         map[VkFramebuffer]*FramebufferObject{},
 		tempShaders:              map[VkShaderModule]*ShaderModuleObject{},
+
+		colorStagingFormat: VkFormat_VK_FORMAT_R32G32B32A32_UINT,
+		depthStagingFormat: VkFormat_VK_FORMAT_R32_UINT,
 	}
 }
 
@@ -85,7 +85,7 @@ func (h *imageRebuildHelper) allocateStagingImagesFor(img *ImageObject) ([]*Imag
 		return empty, err
 	}
 	numPixelsInImgTexelBlock := tbw * tbh
-	stagingFormat := stagingImageFormat(img)
+	stagingFormat := h.stagingImageFormat(img)
 	if stagingFormat == VkFormat_VK_FORMAT_UNDEFINED {
 		return empty, fmt.Errorf("appropriate staging image format not found")
 	}
@@ -172,11 +172,11 @@ func (h *imageRebuildHelper) allocateTempMemoryForStagingImage(stagingImg, origI
 	return mem, nil
 }
 
-func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, dstSizeInBytes uint64, srcFmt, dstFmt VkFormat) ([]uint8, error) {
+func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, srcFmt, dstFmt VkFormat) ([]uint8, error) {
 	if srcFmt == dstFmt {
 		return data, nil
 	}
-	if dstFmt != colorStagingFormat && dstFmt != depthStagingFormat {
+	if dstFmt != h.colorStagingFormat && dstFmt != h.depthStagingFormat {
 		return []uint8{}, fmt.Errorf("unsupported dst format: %v", dstFmt)
 	}
 	width := int(extent.Width)
@@ -193,11 +193,13 @@ func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, dstSize
 	// If the format has shared exponent channel, convert it to f32 first,
 	// there should not be any precision lost.
 	if srcFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
-		cf, err := getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_R32G32B32_SFLOAT)
+		fmt.Printf("before cf data: %v\n", data)
+		cf, err = getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_R32G32B32_SFLOAT)
 		data, err = image.Convert(data, width, height, depth, sf, cf)
 		if err != nil {
 			return []uint8{}, fmt.Errorf("[Converting from: %v to %v] %v", sf, cf, err)
 		}
+		fmt.Printf("after cf data: %v\n", data)
 	}
 
 	df, err := getImageFormatFromVulkanFormat(dstFmt)
@@ -228,8 +230,8 @@ func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, dstSize
 	for _, sc := range scf.Components {
 		dc, _ := sdf.Component(sc.Channel)
 		if dc == nil {
-			// Use the red channel by default.
-			dc, _ = sdf.Component(stream.Channel_Red)
+			// TODO support Depth and stencil images
+			return []uint8{}, fmt.Errorf("[Building dst format for %v] src format contains unsupported channel %v", scf, sc.Channel)
 		}
 		sc.Sampling = stream.Linear
 		if sc.GetDataType().GetInteger() != nil {
@@ -250,23 +252,19 @@ func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, dstSize
 	if err != nil {
 		return []uint8{}, fmt.Errorf("[Converting from: %v to %v] %v", scf, sdf, err)
 	}
-	if uint64(len(converted)) < dstSizeInBytes {
-		diff := dstSizeInBytes - uint64(len(converted))
-		converted = append(converted, make([]uint8, diff)[:]...)
-	}
-	return converted[0:dstSizeInBytes], nil
+	return converted, nil
 }
 
 // stagingImageFormat returns the format of the staging image for the given
 // image object.
-func stagingImageFormat(img *ImageObject) VkFormat {
+func (h *imageRebuildHelper) stagingImageFormat(img *ImageObject) VkFormat {
 	switch img.ImageAspect {
 	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT):
 		// color
-		return colorStagingFormat
+		return h.colorStagingFormat
 	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT):
 		// depth
-		return depthStagingFormat
+		return h.depthStagingFormat
 	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT) | VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT):
 		// depth+stencil
 		break
