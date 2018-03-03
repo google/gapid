@@ -12,11 +12,115 @@
 
 <body>
     <!-- Pre-load the icons font -->
-    <div style="opacity:0; height:0; width:0; display:inline-block;">
+    <div class="icons-preload" style="opacity:0; height:0; width:0; display:inline-block;">
         <i class="material-icons">done</i>
     </div>
 
-    <script src="grid/grid.js"></script>
+    <script src="models/robotModel.js"></script>
+    <script src="views/breadcrumbView.js"></script>
+    <script src="controllers/actionController.js"></script>
+    <script src="views/gridView.js"></script>
+    <script src="controllers/gridController.js"></script>
 </body>
+
+<script>
+    var decodefilterStrings = function (filterString) {
+        var operatorIndex;
+        if ((operatorIndex = filterString.indexOf("==")) != -1) {
+            return {
+                property: filterString.substring(0, operatorIndex),
+                operator: "==",
+                value: filterString.substring(operatorIndex + 2)
+            };
+        }
+        return null;
+    }
+
+    newRobotModel().then(function (model) {
+        var grid = newGridController(model);
+        // remove the font block, they should be loaded by now...
+        var iconPreloadEl = document.body.getElementsByClassName("icons-preload")
+        document.body.removeChild(iconPreloadEl[0])
+        var commitState = function () {
+            grid.commitViewState()
+        }
+
+        var actions = newActionController(commitState);
+
+        var decodeState = function (filterStrings) {
+            grid.clear()
+            actions.popActions(actions.actionList.length, false);
+
+            var forcedHash = "";
+            var popAction = function (filterString) {
+                var action = decodefilterStrings(filterString);
+                if (action != null) {
+                    delete grid.filters[action.property];
+                }
+            }
+            for (var i = 0; i < filterStrings.length; ++i) {
+                var str = filterStrings[i];
+                if (str == "") {
+                    continue;
+                }
+                var action = decodefilterStrings(str);
+                if (action == null) {
+                    continue
+                }
+                var newFilter;
+                if (action.operator == "==") {
+                    newFilter = function (dimension, key) { return function (task) { return dimension.keyOf(task) == key; }; }
+                } else {
+                    continue;
+                }
+                for (var j = 0; j < model.dimensions.length; ++j) {
+                    if (model.dimensions[j].name == action.property) {
+                        var dimension = model.dimensions[j];
+                        if (dimension.keyExists(action.value)) {
+                            grid.filters[dimension.name] = newFilter(dimension, action.value);
+                        }
+                        continue;
+                    }
+                }
+
+                if (forcedHash == "") {
+                    forcedHash = "#" + str;
+                } else {
+                    forcedHash = forcedHash + "&" + str;
+                }
+                actions.pushAction(str, popAction, forcedHash);
+            }
+            grid.initialize()
+        };
+
+
+        window.addEventListener("hashchange", function () {
+            if (actions.changing) {
+                actions.changing = false;
+                return;
+            }
+            var filterStrings = window.location.hash.substring(1).split("&")
+            decodeState(filterStrings);
+
+        });
+        grid.onFilterChanged.push(function (dimension, operator, value) {
+            actions.pushAction(dimension + operator + value, function () {
+                delete grid.filters[dimension];
+            });
+        });
+        grid.onAxisChanged.push(function (axisName, oldAxisDim, newAxisDim) {
+            actions.actionList[actions.actionList.length - 1].popStack.push(function () {
+                grid.axes[axisName] = oldAxisDim;
+            });
+        })
+
+        document.body.appendChild(actions.view.element);
+        document.body.appendChild(grid.view.div);
+
+
+
+        model.fillRobotTasks().then(() => decodeState(window.location.hash.substring(1).split("&")));
+    });
+</script>
 
 </html>
