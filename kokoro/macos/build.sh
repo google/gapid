@@ -42,10 +42,14 @@ cd $SRC
 # Invoke the build.
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 echo $(date): Starting build...
-$BUILD_ROOT/bazel/bin/bazel build -c opt \
+# "--strategy CppLink=local" disables the sandbox when linking, which is
+# required for the symbol dumping to work, as the linker *always* puts absolute
+# paths to the .a files into the debug section of the executable.
+$BUILD_ROOT/bazel/bin/bazel build -c opt --config symbols \
     --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
     --define GAPID_BUILD_SHA="$BUILD_SHA" \
-    //:pkg
+    --strategy CppLink=local \
+    //:pkg //cmd/gapir/cc:gapir.sym
 echo $(date): Build completed.
 
 # Build the release packages.
