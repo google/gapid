@@ -12,38 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "go_default_library",
     srcs = [
-        "branch.go",
-        "changelist.go",
-        "checkout.go",
-        "constants.go",
-        "doc.go",
-        "fetch.go",
-        "get.go",
-        "git.go",
-        "log.go",
-        "patch.go",
-        "rebase.go",
-        "reset_to_head.go",
-        "sha.go",
-        "status.go",
+        "main.go",
     ],
-    importpath = "github.com/google/gapid/core/git",
-    visibility = ["//visibility:public"],
+    importpath = "github.com/google/gapid/cmd/regres",
+    visibility = ["//visibility:private"],
     deps = [
-        "//core/data/id:go_default_library",
+        "//core/app:go_default_library",
+        "//core/app/flags:go_default_library",
         "//core/os/shell:go_default_library",
+        "//core/git:go_default_library",
+        "//core/log:go_default_library",
     ],
 )
 
-go_test(
-    name = "go_default_test",
-    size = "small",
-    srcs = ["log_test.go"],
+go_binary(
+    name = "regres",
     embed = [":go_default_library"],
-    deps = ["//core/assert:go_default_library"],
+    visibility = ["//visibility:public"],
 )

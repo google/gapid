@@ -14,10 +14,18 @@
 
 package git
 
-import "context"
+import (
+	"context"
+)
 
-// Rebase performs a `git rebase` on to the target branch.
-func (g Git) Rebase(ctx context.Context, targetBranch string) error {
-	_, _, err := g.run(ctx, "rebase", targetBranch)
+// Checkout checks out the given CL by SHA.
+func (g Git) Checkout(ctx context.Context, sha SHA) error {
+	_, _, err := g.run(ctx, "checkout", sha)
+	return err
+}
+
+// CheckoutBranch checks out the given branch by name.
+func (g Git) CheckoutBranch(ctx context.Context, branch string) error {
+	_, _, err := g.run(ctx, "checkout", branch)
 	return err
 }
