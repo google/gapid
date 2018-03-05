@@ -61,5 +61,8 @@ func (g Git) runWithStdin(ctx context.Context, stdin io.Reader, args ...interfac
 	stderr := &bytes.Buffer{}
 	cmd := shell.Command("git", argstrs...).In(g.wd).Read(stdin).Capture(stdout, stderr)
 	err := cmd.Run(ctx)
+	if err != nil {
+		err = fmt.Errorf("%v\n%v", err, stderr.String())
+	}
 	return stdout.String(), stderr.String(), err
 }

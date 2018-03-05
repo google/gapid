@@ -14,10 +14,13 @@
 
 package git
 
-import "context"
+import (
+	"context"
+	"strings"
+)
 
-// Rebase performs a `git rebase` on to the target branch.
-func (g Git) Rebase(ctx context.Context, targetBranch string) error {
-	_, _, err := g.run(ctx, "rebase", targetBranch)
-	return err
+// CurrentBranch returns the current branch name at HEAD.
+func (g Git) CurrentBranch(ctx context.Context) (string, error) {
+	name, _, err := g.run(ctx, "symbolic-ref", "--short", "HEAD")
+	return strings.TrimSpace(name), err
 }
