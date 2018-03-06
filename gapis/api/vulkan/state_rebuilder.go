@@ -1516,7 +1516,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 					}
 					for j := uint32(0); j < rng.LayerCount; j++ {
 						layer := rng.BaseArrayLayer + j
-						copies[dstImg] = append(copies[dstImg], VkBufferImageCopy{
+						bufImgCopy := VkBufferCopy{
 							offset,
 							0,
 							0,
@@ -1528,7 +1528,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 							},
 							VkOffset3D{0, 0, 0},
 							dstExtent,
-						})
+						}
 						data := img.Layers.Get(layer).Levels.Get(mipLevel).Data.MustRead(sb.ctx, nil, sb.oldState, nil)
 						unpacked, err := helper.unpackData(data, dstExtent, img.Info.Format, dstImg.Info.Format)
 						errMsg := fmt.Sprintf("Unpacking data from image: %v, layer: %v, level: %v, extent: %v", img.VulkanHandle, layer, mipLevel, dstExtent)
@@ -1540,6 +1540,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 							log.E(sb.ctx, "[%s] %s", errMsg, "size of unpacked data does not match")
 							continue
 						}
+						copies[dstImg] = append(copies[dstImg], bufImgCopy)
 						contents = append(contents, unpacked...)
 						offset += VkDeviceSize(dstE.alignedLevelSize)
 					}
@@ -1560,7 +1561,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 				for layer, layerData := range *bindings.Layers.Map {
 					for level, levelData := range *layerData.Levels.Map {
 						for _, blockData := range *levelData.Blocks.Map {
-							copies[dstImg] = append(copies[dstImg], VkBufferImageCopy{
+							bufImgCopy := VkBufferImageCopy{
 								offset,
 								0,
 								0,
@@ -1572,7 +1573,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 								},
 								blockData.Offset,
 								blockData.Extent,
-							})
+							}
 							e := sb.levelSize(blockData.Extent, img.Info.Format, 0)
 							o := sb.levelSize(VkExtent3D{
 								uint32(blockData.Offset.X),
@@ -1596,6 +1597,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 								log.E(sb.ctx, "[%s] %s", errMsg, "size of unpacked data does not match")
 								continue
 							}
+							copies[dstImg] = append(copies[dstImg], bufImgCopy)
 							contents = append(contents, unpacked...)
 							offset += VkDeviceSize(dstE.alignedLevelSize)
 						}
