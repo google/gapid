@@ -373,6 +373,7 @@ public class TracerDialog {
       private Label pcsWarning;
       private Link adbWarning;
       private ActionTextbox traceTarget;
+      private Text arguments;
       private Button clearCache;
       private Button disablePcs;
       private List<Device.Instance> devices;
@@ -475,11 +476,9 @@ public class TracerDialog {
           }
         }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
-        // Space used by the desktop trace tab, helps line things up a bit.
-        if (!OS.isMac) {
-          createLabel(this, "");
-          createLabel(this, "");
-        }
+        createLabel(this, "Intent Arguments:");
+        arguments = withLayoutData(createTextbox(this, models.settings.traceIntentArgs),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
       }
 
       @Override
@@ -556,6 +555,7 @@ public class TracerDialog {
 
         settings.traceDevice = getSelectedDevice().getSerial();
         settings.tracePackage = traceTarget.getText();
+        settings.traceIntentArgs = arguments.getText();
         settings.traceClearCache = clearCache.getSelection();
         settings.traceDisablePcs = disablePcs.getSelection();
 
@@ -564,10 +564,11 @@ public class TracerDialog {
           String pkg = target.substring(actionSep + 1, pkgSep);
           String activity = target.substring(pkgSep + 1);
           return new AndroidTraceRequest(traceApi, getSelectedDevice(), pkg, activity, action,
-              output, frames, midExecution, clearCache.getSelection(), disablePcs.getSelection());
+              arguments.getText(), output, frames, midExecution, clearCache.getSelection(),
+              disablePcs.getSelection());
         } else {
-          return new AndroidTraceRequest(traceApi, getSelectedDevice(), target, output,
-              frames, midExecution, clearCache.getSelection(), disablePcs.getSelection());
+          return new AndroidTraceRequest(traceApi, getSelectedDevice(), target, arguments.getText(),
+              output, frames, midExecution, clearCache.getSelection(), disablePcs.getSelection());
         }
       }
 
