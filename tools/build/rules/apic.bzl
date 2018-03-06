@@ -110,6 +110,7 @@ def _apic_compile_impl(ctx):
             "--target", target,
             "--output", outputs[0].path,
             "--optimize=%s" % ctx.attr.optimize,
+            "--dump=%s" % ctx.attr.dump,
             "--namespace", ctx.attr.namespace,
             "--symbols", ctx.attr.symbols,
         ] + ["--emit-" + emit for emit in ctx.attr.emit] + [
@@ -139,6 +140,7 @@ apic_compile = rule(
             ],
         ),
         "optimize": attr.bool(default = False),
+        "dump": attr.bool(default = False),
         "emit": attr.string_list(
             allow_empty = False,
             mandatory = True,

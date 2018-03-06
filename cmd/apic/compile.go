@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/google/gapid/core/app"
@@ -67,9 +68,10 @@ type compileVerb struct {
 		Exec   bool `help:"Emit executor logic"`
 		Encode bool `help:"Emit encoder logic"`
 	}
-	Namespace string  `help:"Dot-delimited root namespace(s)"`
-	Symbols   symbols `help:"Symbol generation method."`
-	Optimize  bool
+	Namespace string        `help:"Dot-delimited root namespace(s)"`
+	Symbols   symbols       `help:"Symbol generation method"`
+	Optimize  bool          `help:"Optimize generated code"`
+	Dump      bool          `help:"Dump LLVM IR to stderr"`
 	Search    file.PathList `help:"The set of paths to search for includes"`
 }
 
@@ -129,6 +131,11 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	if v.Optimize {
 		prog.Module.Optimize()
+	}
+
+	if v.Dump {
+		fmt.Fprintln(os.Stderr, prog.Module.String())
+		return fmt.Errorf("IR dump")
 	}
 
 	obj, err := prog.Module.Object(v.Optimize)
