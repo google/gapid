@@ -18,6 +18,7 @@ package com.google.gapid.views;
 import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
+import static com.google.gapid.util.Strings.stripQuotes;
 import static java.util.Arrays.stream;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
@@ -128,8 +129,11 @@ public class StateView extends Composite
 
         TextViewer.showViewTextPopup(getShell(), widgets, data.getName() + ":",
             Futures.transform(client.get(data.getValuePath()),
-                v -> Formatter.toString(
-                    v.getBox(),  models.constants.getConstants(data.getConstants()), false)));
+                // Formatter.toString(<string value>) formats the string as "<string>". This makes
+                // sense in all but this context, so we simply strip them here rather than
+                // complicate the formatting code.
+                v -> stripQuotes(Formatter.toString(
+                    v.getBox(),  models.constants.getConstants(data.getConstants()), false))));
       }
     });
     tree.setPopupMenu(popup, StateView::canShowPopup);
