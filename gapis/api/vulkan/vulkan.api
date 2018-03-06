@@ -3482,7 +3482,7 @@ cmd void vkGetBufferMemoryRequirements(
   if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements") }
   pMemoryRequirements[0] = requirements
   Buffers[buffer].MemoryRequirements = requirements
-  if (as!u32(Buffers[buffer].Info.Usage) & as!u32(VK_IMAGE_USAGE_TRANSFER_SRC_BIT)) != 0 {
+  if (as!u32(Buffers[buffer].Info.Usage) & as!u32(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)) != 0 {
     if !(device in TransferBufferMemoryRequirements) {
       TransferBufferMemoryRequirements[device] = VkMemoryRequirements()
     }
