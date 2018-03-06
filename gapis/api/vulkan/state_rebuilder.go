@@ -1607,6 +1607,11 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 		}
 	}
 
+	if len(contents) == 0 {
+		log.E(sb.ctx, "No valid data to be primed to image: %v", img.VulkanHandle)
+		return
+	}
+
 	scratchBuffer, scratchMemory := sb.allocAndFillScratchBuffer(
 		sb.s.Devices.Get(img.Device),
 		contents)
