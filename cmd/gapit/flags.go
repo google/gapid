@@ -94,8 +94,6 @@ type (
 	GapiiFlags struct {
 		DeviceFlags
 	}
-	InfoFlags struct {
-	}
 	ReportFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
