@@ -23,6 +23,22 @@ gazelle(
     mode = "fix",
 )
 
+# Alias meant to be used with 'bazel run <alias> -- <arguments>'.
+alias(
+    name = "gapis",
+    actual = "//cmd/gapis",
+)
+
+alias(
+    name = "gapir",
+    actual = "//cmd/gapir/cc:gapir",
+)
+
+alias(
+    name = "gapit",
+    actual = "//cmd/gapit",
+)
+
 # Rules to build the expected installed structure for running
 filegroup(
     name = "pkg",

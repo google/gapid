@@ -58,7 +58,8 @@ def _strip_impl(ctx):
         outputs = [out],
     )
     return struct(
-        files = depset([out])
+        files = depset([out]),
+        executable = out,
     )
 
 # Strip rule to strip debugging information from binaries. Has a single
@@ -71,6 +72,7 @@ strip = rule(
             single_file = True,
         ),
     },
+    executable = True,
     fragments = ["cpp"],
 )
 
