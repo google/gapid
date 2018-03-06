@@ -17,6 +17,7 @@ package gles
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
@@ -548,6 +549,8 @@ func (p *Program) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		}
 	}
 
+	sort.Slice(shaders, func(i, j int) bool { return shaders[i].Type < shaders[j].Type })
+	sort.Slice(uniforms, func(i, j int) bool { return uniforms[i].UniformLocation < uniforms[j].UniformLocation })
 	return api.NewResourceData(&api.Program{Shaders: shaders, Uniforms: uniforms}), nil
 }
 
