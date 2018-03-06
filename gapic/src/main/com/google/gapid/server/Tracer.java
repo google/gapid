@@ -165,23 +165,25 @@ public class Tracer {
     public final String pkg;
     public final String activity;
     public final String action;
+    public final String intentArgs;
     public final boolean clearCache;
     public final boolean disablePcs;
 
-    public AndroidTraceRequest(Api api, Device.Instance device, String action, File output,
-        int frameCount, boolean midExecution, boolean clearCache, boolean disablePcs) {
-      this(api, device, null, null, action, output, frameCount, midExecution, clearCache,
-          disablePcs);
+    public AndroidTraceRequest(Api api, Device.Instance device, String action, String intentArgs,
+        File output, int frameCount, boolean midExecution, boolean clearCache, boolean disablePcs) {
+      this(api, device, null, null, action, intentArgs, output, frameCount, midExecution,
+          clearCache, disablePcs);
     }
 
     public AndroidTraceRequest(Api api, Device.Instance device, String pkg, String activity,
-        String action, File output, int frameCount, boolean midExecution, boolean clearCache,
-        boolean disablePcs) {
+        String action, String intentArgs, File output, int frameCount, boolean midExecution,
+        boolean clearCache, boolean disablePcs) {
       super(api, output, frameCount, midExecution);
       this.device = device;
       this.pkg = pkg;
       this.activity = activity;
       this.action = action;
+      this.intentArgs = intentArgs;
       this.clearCache = clearCache;
       this.disablePcs = disablePcs;
     }
@@ -197,6 +199,11 @@ public class Tracer {
       cmd.add("-clear-cache=" + Boolean.toString(clearCache));
 
       cmd.add("-disable-pcs=" + Boolean.toString(disablePcs));
+
+      if (!intentArgs.isEmpty()) {
+        cmd.add("-android-additionalargs");
+        cmd.add(intentArgs);
+      }
 
       if (pkg != null) {
         cmd.add("-android-package");

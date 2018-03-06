@@ -77,6 +77,7 @@ public class Settings {
   public String traceCwd = "";
   public boolean traceMidExecution = false;
   public int traceFrameCount = 0;
+  public String traceIntentArgs = "";
   public boolean skipWelcomeScreen = false;
   public boolean skipFirstRunDialog = false;
   public String[] recentFiles = new String[0];
@@ -213,6 +214,7 @@ public class Settings {
     traceCwd  = properties.getProperty("trace.cwd", traceCwd);
     traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
     traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
+    traceIntentArgs = properties.getProperty("trace.intentArgs", traceIntentArgs);
     skipWelcomeScreen = getBoolean(properties, "skip.welcome", skipWelcomeScreen);
     skipFirstRunDialog = getBoolean(properties, "skip.firstTime", skipFirstRunDialog);
     recentFiles = getStringList(properties, "open.recent", recentFiles);
@@ -253,6 +255,7 @@ public class Settings {
     properties.setProperty("trace.cwd", traceCwd);
     properties.setProperty("trace.midExecution", Boolean.toString(traceMidExecution));
     properties.setProperty("trace.frameCount", Integer.toString(traceFrameCount));
+    properties.setProperty("trace.intentArgs", traceIntentArgs);
     properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
     properties.setProperty("skip.firstTime", Boolean.toString(skipFirstRunDialog));
     setStringList(properties, "open.recent", recentFiles);
