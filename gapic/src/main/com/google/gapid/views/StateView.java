@@ -333,7 +333,7 @@ public class StateView extends Composite
     protected final Models models;
 
     public StateTree(Composite parent, Models models, Widgets widgets) {
-      super(parent, SWT.H_SCROLL | SWT.V_SCROLL, widgets);
+      super(parent, SWT.H_SCROLL | SWT.V_SCROLL | SWT.MULTI, widgets);
       this.models = models;
     }
 

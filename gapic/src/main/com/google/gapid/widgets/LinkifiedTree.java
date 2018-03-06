@@ -16,6 +16,7 @@
 package com.google.gapid.widgets;
 
 import static com.google.gapid.models.Follower.nullPrefetcher;
+import static com.google.gapid.util.Arrays.last;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
 
@@ -162,7 +163,7 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
   public T getSelection() {
     if (viewer.getTree().getSelectionCount() >= 1) {
-      return getElement(viewer.getTree().getSelection()[0]);
+      return getElement(last(viewer.getTree().getSelection()));
     }
     return null;
   }

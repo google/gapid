@@ -332,7 +332,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     private final Map<Long, Color> threadBackgroundColors = Maps.newHashMap();
 
     public CommandTree(Composite parent, Models models, Widgets widgets) {
-      super(parent, SWT.H_SCROLL | SWT.V_SCROLL, widgets);
+      super(parent, SWT.H_SCROLL | SWT.V_SCROLL | SWT.MULTI, widgets);
       this.models = models;
       this.widgets = widgets;
     }
