@@ -36,7 +36,11 @@ def cc_copts():
 # Strip rule implementation, which invokes the fragment.cpp.strip_executable
 # to strip debugging information from binaries.
 def _strip_impl(ctx):
-    extension = ctx.file.src.extension
+    if len(ctx.files.srcs) != 1:
+        fail("strip rule with multiple inputs")
+
+    src = ctx.files.srcs[0]
+    extension = src.extension
     if not extension == "":
         extension = "." + extension
     if ctx.label.name.endswith(extension):
@@ -53,12 +57,13 @@ def _strip_impl(ctx):
 
     ctx.actions.run(
         executable = ctx.fragments.cpp.strip_executable,
-        arguments = flags + ["-o", out.path, ctx.file.src.path],
-        inputs = [ctx.file.src],
+        arguments = flags + ["-o", out.path, src.path],
+        inputs = [src],
         outputs = [out],
     )
     return struct(
         files = depset([out]),
+        runfiles = ctx.runfiles(collect_data = True),
         executable = out,
     )
 
@@ -67,9 +72,12 @@ def _strip_impl(ctx):
 strip = rule(
     _strip_impl,
     attrs = {
-        "src": attr.label(
+        # Needs to be a list and called srcs, so collect_data above will work.
+        # If more than one label is provided, strip will fail.
+        "srcs": attr.label_list(
             allow_files = True,
-            single_file = True,
+            mandatory = True,
+            allow_empty = False,
         ),
     },
     executable = True,
@@ -126,7 +134,9 @@ _symbols = rule(
 #  <name>_unstripped[.<extension>] - The cc_binary linked with debug _symbols
 #  <name>.sym - The symbol dump file that can be uploaded to the crash server
 #  <name> - The stripped cc_binary
-def cc_stripped_binary(name, visibility, **kwargs):
+def cc_stripped_binary(name, **kwargs):
+    visibility = kwargs.pop("visibility")
+
     parts = name.rpartition(".")
     unstripped = name + "_unstripped" if parts[1] == "" else parts[0] + "_unstripped." + parts[2]
     native.cc_binary(
@@ -141,6 +151,6 @@ def cc_stripped_binary(name, visibility, **kwargs):
 
     strip(
         name = name,
-        src = unstripped,
+        srcs = [unstripped],
         visibility = visibility,
     )

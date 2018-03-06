@@ -17,33 +17,35 @@ load("//tools/build/rules:repository.bzl", "github_http_args")
 load("@io_bazel_rules_go//go:def.bzl", "go_repository", "go_binary")
 
 def github_go_repository(name, organization, project, commit="", branch="", path="", **kwargs):
-  if path:
-    print("Override with {}".format(path))
-  else:
-    github = github_http_args(
-        organization = organization,
-        project = project,
-        commit = commit,
-        branch = branch,
-      )
-    go_repository(
-      name = name,
-      urls = [github.url],
-      type = github.type,
-      strip_prefix = github.strip_prefix,
-      **kwargs
-    )
+    if path:
+        print("Override with {}".format(path))
+    else:
+        github = github_http_args(
+            organization = organization,
+            project = project,
+            commit = commit,
+            branch = branch,
+        )
+        go_repository(
+            name = name,
+            urls = [github.url],
+            type = github.type,
+            strip_prefix = github.strip_prefix,
+            **kwargs
+        )
 
 # Macro to replace go_binary rules. Creates the following targets:
 #  <name>_unstripped - The unstripped go_binary with debug information.
 #  <name> - The stripped go_binary.
-def go_stripped_binary(name, visibility, **kwargs):
+def go_stripped_binary(name, **kwargs):
+    visibility = kwargs.pop("visibility")
+
     go_binary(
         name = name + "_unstripped",
         **kwargs
     )
     strip(
         name = name,
-        src = name + "_unstripped",
+        srcs = [name + "_unstripped"],
         visibility = visibility,
     )

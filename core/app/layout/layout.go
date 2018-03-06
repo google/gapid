@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"context"
 	"os"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -219,8 +218,6 @@ type runfilesLayout struct {
 	mapping  map[string]string
 }
 
-var gapiXRegex = regexp.MustCompile("gapid/cmd/(gapi[st])/[^/]+/" + withExecutablePlatformSuffix("gapi[st]"))
-
 var abiToApkPath = map[device.Architecture]string{
 	device.ARMv7a: "arm64-v8a.apk",
 	device.ARMv8a: "armeabi-v7a.apk",
@@ -255,13 +252,6 @@ func RunfilesLayout(manifest file.Path) (FileLayout, error) {
 		if p := strings.IndexRune(line, ' '); p > 0 {
 			key, value := line[:p], line[p+1:]
 			r.mapping[key] = value
-
-			// Go binaries have an extra segment in their path for the platform and build type.
-			// Add an extra mapping, so they are easily found.
-			match := gapiXRegex.FindStringSubmatch(key)
-			if len(match) == 2 {
-				r.mapping[match[1]] = value
-			}
 		}
 	}
 
@@ -279,19 +269,19 @@ func (l *runfilesLayout) find(key string) (file.Path, error) {
 }
 
 func (l *runfilesLayout) Strings(ctx context.Context) (file.Path, error) {
-	return l.find("gapis/messages/en-us.stb")
+	return l.find("gapid/gapis/messages/en-us.stb")
 }
 
 func (l *runfilesLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.find("gapit")
+	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapit/gapit"))
 }
 
 func (l *runfilesLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.find("gapis")
+	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapis/gapis"))
 }
 
 func (l *runfilesLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.find(withExecutablePlatformSuffix("cmd/gapir/cc/gapir"))
+	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapir/cc/gapir"))
 }
 
 func (l *runfilesLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
