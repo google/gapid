@@ -28,6 +28,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -43,7 +44,13 @@ var externals = map[string]string{
 	"llvm":                       "llvm",
 }
 
+var (
+	fuseDir = flag.String("dir", "", "directory to use as the fuse root")
+)
+
 func main() {
+	flag.Parse()
+
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -59,6 +66,9 @@ func run() error {
 
 	// fusedRoot is the root of the generated directory.
 	fusedRoot := filepath.Join(projectRoot, "fused")
+	if *fuseDir != "" {
+		fusedRoot = *fuseDir
+	}
 
 	fmt.Println("Updating fused directory at:", fusedRoot)
 
