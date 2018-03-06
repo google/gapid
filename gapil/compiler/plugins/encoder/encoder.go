@@ -58,6 +58,7 @@ type funcs struct {
 	termBuf     codegen.Function                     // void term_buf(buffer*)
 	appendBuf   codegen.Function                     // void append_buf(buffer*, u32 size, void* data)
 	writeVarint codegen.Function                     // void write_varint(buffer*, u64 val)
+	writeZigzag codegen.Function                     // void write_zigzag(buffer*, u64 val)
 	encodeToBuf map[*semantic.Class]codegen.Function // void(context*, buffer*)
 }
 
@@ -146,7 +147,7 @@ func (e *encoder) buildBufferFuncs() {
 		})
 	})
 
-	e.funcs.writeVarint = e.M.Function(e.T.VoidPtr, "write_varint", e.T.CtxPtr, e.bufPtrTy, e.T.Uint64).
+	e.funcs.writeVarint = e.M.Function(e.T.Void, "write_varint", e.T.CtxPtr, e.bufPtrTy, e.T.Uint64).
 		LinkOnceODR()
 	e.C.Build(e.funcs.writeVarint, func(s *compiler.S) {
 		buf, val := s.Parameter(1), s.Parameter(2)
@@ -169,6 +170,18 @@ func (e *encoder) buildBufferFuncs() {
 		})
 		bytes.Index(0, length.Load()).Store(i.Load().Cast(e.T.Uint8))
 		s.Call(e.funcs.appendBuf, s.Ctx, buf, s.Add(length.Load(), s.Scalar(uint32(1))), bytes.Index(0, 0))
+	})
+
+	e.funcs.writeZigzag = e.M.Function(e.T.Void, "write_zigzag", e.T.CtxPtr, e.bufPtrTy, e.T.Uint64).
+		LinkOnceODR()
+	e.C.Build(e.funcs.writeZigzag, func(s *compiler.S) {
+		buf, val := s.Parameter(1), s.Parameter(2)
+		// (n << 1) ^ (n >> 63)
+		val = val.Cast(e.T.Int64)
+		lhs := s.ShiftLeft(val, s.Scalar(int64(1)))
+		rhs := s.ShiftRight(val, s.Scalar(int64(63)))
+		zigzag := s.Xor(lhs, rhs)
+		e.writeVarint(s, buf, zigzag)
 	})
 }
 
@@ -649,19 +662,14 @@ func (e *encoder) writeFixed64(s *compiler.S, buf, val *codegen.Value) {
 	s.Call(e.funcs.appendBuf, s.Ctx, buf, s.Scalar(uint32(8)), i.Cast(e.T.VoidPtr))
 }
 
-// writeZigzag writes a zigzag encoded, variable length integer to buf.
-func (e *encoder) writeZigzag(s *compiler.S, buf, val *codegen.Value) {
-	// (n << 1) ^ (n >> 63)
-	val = val.Cast(e.T.Int64)
-	lhs := s.ShiftLeft(val, s.Scalar(int64(1)))
-	rhs := s.ShiftRight(val, s.Scalar(int64(63)))
-	zigzag := s.Xor(lhs, rhs)
-	e.writeVarint(s, buf, zigzag)
-}
-
 // writeZigzag writes a variable length integer to buf.
 func (e *encoder) writeVarint(s *compiler.S, buf, val *codegen.Value) {
 	s.Call(e.funcs.writeVarint, s.Ctx, buf, val.Cast(e.T.Uint64))
+}
+
+// writeZigzag writes a zigzag encoded, variable length integer to buf.
+func (e *encoder) writeZigzag(s *compiler.S, buf, val *codegen.Value) {
+	s.Call(e.funcs.writeZigzag, s.Ctx, buf, val.Cast(e.T.Uint64))
 }
 
 // writeBlob writes calls inner with a new buffer. Once inner returns the buffer
