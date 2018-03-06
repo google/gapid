@@ -24,7 +24,9 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -37,8 +39,11 @@ import (
 var (
 	root     = flag.String("root", "", "Path to the root GAPID source directory")
 	verbose  = flag.Bool("verbose", false, "Verbose logging")
+	incBuild = flag.Bool("inc", true, "Time incremental builds")
 	optimize = flag.Bool("optimize", false, "Build using '-c opt'")
+	pkg      = flag.String("pkg", "", "Partial name of a package name to capture")
 	output   = flag.String("out", "", "The results output file. Empty writes to stdout")
+	atSHA    = flag.String("at", "", "The SHA or branch of the first changelist to profile")
 	count    = flag.Int("count", 2, "The number of changelists to profile since HEAD")
 )
 
@@ -61,6 +66,11 @@ type stats struct {
 		GAPIR                      int64
 		GAPIS                      int64
 		GAPIT                      int64
+	}
+	CaptureStats struct {
+		Frames    int
+		DrawCalls int
+		Commands  int
 	}
 }
 
@@ -92,7 +102,7 @@ func run(ctx context.Context) error {
 
 	defer g.CheckoutBranch(ctx, branch)
 
-	cls, err := g.Log(ctx, *count)
+	cls, err := g.LogFrom(ctx, *atSHA, *count)
 	if err != nil {
 		return err
 	}
@@ -112,43 +122,65 @@ func run(ctx context.Context) error {
 			return err
 		}
 
-		duration, err := build(ctx)
+		_, err := build(ctx)
 		if err != nil {
 			continue
 		}
-		r.BuildTime = duration.Seconds()
 
-		if err := withTouchedGLES(ctx, rnd, func() error {
-			log.I(ctx, "HEAD~%.2d: Building incremental change at %v: %v", i, sha, cl.Subject)
-			if duration, err := build(ctx); err == nil {
-				r.IncrementalBuildTime = duration.Seconds()
-			}
-			return nil
-		}); err != nil {
-			continue
-		}
-
-		pkg := filepath.Join(*root, "bazel-bin", "pkg")
+		// Gather file size build stats
+		pkgDir := filepath.Join(*root, "bazel-bin", "pkg")
 		for _, f := range []struct {
 			path string
 			size *int64
 		}{
-			{filepath.Join(pkg, "lib", dllExt("libgapii")), &r.FileSizes.LibGAPII},
-			{filepath.Join(pkg, "lib", dllExt("libVkLayer_VirtualSwapchain")), &r.FileSizes.LibVkLayerVirtualSwapchain},
-			{filepath.Join(pkg, "gapid-aarch64.apk"), &r.FileSizes.GAPIDAarch64APK},
-			{filepath.Join(pkg, "gapid-armeabi.apk"), &r.FileSizes.GAPIDArmeabi64APK},
-			{filepath.Join(pkg, "gapid-x86.apk"), &r.FileSizes.GAPIDX86APK},
-			{filepath.Join(pkg, exeExt("gapid")), &r.FileSizes.GAPID},
-			{filepath.Join(pkg, exeExt("gapir")), &r.FileSizes.GAPIR},
-			{filepath.Join(pkg, exeExt("gapis")), &r.FileSizes.GAPIS},
-			{filepath.Join(pkg, exeExt("gapit")), &r.FileSizes.GAPIT},
+			{filepath.Join(pkgDir, "lib", dllExt("libgapii")), &r.FileSizes.LibGAPII},
+			{filepath.Join(pkgDir, "lib", dllExt("libVkLayer_VirtualSwapchain")), &r.FileSizes.LibVkLayerVirtualSwapchain},
+			{filepath.Join(pkgDir, "gapid-aarch64.apk"), &r.FileSizes.GAPIDAarch64APK},
+			{filepath.Join(pkgDir, "gapid-armeabi.apk"), &r.FileSizes.GAPIDArmeabi64APK},
+			{filepath.Join(pkgDir, "gapid-x86.apk"), &r.FileSizes.GAPIDX86APK},
+			{filepath.Join(pkgDir, exeExt("gapid")), &r.FileSizes.GAPID},
+			{filepath.Join(pkgDir, exeExt("gapir")), &r.FileSizes.GAPIR},
+			{filepath.Join(pkgDir, exeExt("gapis")), &r.FileSizes.GAPIS},
+			{filepath.Join(pkgDir, exeExt("gapit")), &r.FileSizes.GAPIT},
 		} {
 			fi, err := os.Stat(f.path)
 			if err != nil {
+				log.W(ctx, "Couldn't stat file '%v': %v", f.path, err)
 				continue
 			}
 			*f.size = fi.Size()
 		}
+
+		// Gather capture stats
+		if *pkg != "" {
+			file, err := trace(ctx)
+			if err != nil {
+				log.W(ctx, "Couldn't capture trace: %v", err)
+				continue
+			}
+			defer os.Remove(file)
+			frames, draws, cmds, err := captureStats(ctx, file)
+			if err != nil {
+				continue
+			}
+			r.CaptureStats.Frames = frames
+			r.CaptureStats.DrawCalls = draws
+			r.CaptureStats.Commands = cmds
+		}
+
+		// Gather incremental build stats
+		if *incBuild {
+			if err := withTouchedGLES(ctx, rnd, func() error {
+				log.I(ctx, "HEAD~%.2d: Building incremental change at %v: %v", i, sha, cl.Subject)
+				if duration, err := build(ctx); err == nil {
+					r.IncrementalBuildTime = duration.Seconds()
+				}
+				return nil
+			}); err != nil {
+				continue
+			}
+		}
+
 		res = append(res, r)
 	}
 
@@ -157,22 +189,34 @@ func run(ctx context.Context) error {
 	w := tabwriter.NewWriter(os.Stdout, 1, 4, 0, ' ', 0)
 	defer w.Flush()
 
-	fmt.Fprint(w, "sha"+
-		"\t | build_time"+
-		"\t | incremental_build_time"+
-		"\t | lib_gapii"+
-		"\t | lib_vklayervirtualswapchain"+
-		"\t | gapid-aarch64.apk"+
-		"\t | gapid-armeabi64.apk"+
-		"\t | gapid-x86.apk"+
-		"\t | gapid"+
-		"\t | gapir"+
-		"\t | gapis"+
-		"\t | gapit\n")
+	fmt.Fprint(w, "sha")
+	if *incBuild {
+		fmt.Fprint(w, "\t | incremental_build_time")
+	}
+	if *pkg != "" {
+		fmt.Fprint(w, "\t | commands")
+		fmt.Fprint(w, "\t | draws")
+		fmt.Fprint(w, "\t | frames")
+	}
+	fmt.Fprint(w, "\t | lib_gapii")
+	fmt.Fprint(w, "\t | lib_swapchain")
+	fmt.Fprint(w, "\t | aarch64.apk")
+	fmt.Fprint(w, "\t | armeabi64.apk")
+	fmt.Fprint(w, "\t | x86.apk")
+	fmt.Fprint(w, "\t | gapid")
+	fmt.Fprint(w, "\t | gapir")
+	fmt.Fprint(w, "\t | gapis")
+	fmt.Fprint(w, "\t | gapit\n")
 	for _, r := range res {
 		fmt.Fprintf(w, "%v,", r.SHA)
-		fmt.Fprintf(w, "\t   %v,", r.BuildTime)
-		fmt.Fprintf(w, "\t   %v,", r.IncrementalBuildTime)
+		if *incBuild {
+			fmt.Fprintf(w, "\t   %v,", r.IncrementalBuildTime)
+		}
+		if *pkg != "" {
+			fmt.Fprintf(w, "\t   %v,", r.CaptureStats.Commands)
+			fmt.Fprintf(w, "\t   %v,", r.CaptureStats.DrawCalls)
+			fmt.Fprintf(w, "\t   %v,", r.CaptureStats.Frames)
+		}
 		fmt.Fprintf(w, "\t   %v,", r.FileSizes.LibGAPII)
 		fmt.Fprintf(w, "\t   %v,", r.FileSizes.LibVkLayerVirtualSwapchain)
 		fmt.Fprintf(w, "\t   %v,", r.FileSizes.GAPIDAarch64APK)
@@ -224,6 +268,8 @@ func dllExt(n string) string {
 	switch runtime.GOOS {
 	case "windows":
 		return n + ".dll"
+	case "darwin":
+		return n + ".dylib"
 	default:
 		return n + ".so"
 	}
@@ -236,4 +282,52 @@ func exeExt(n string) string {
 	default:
 		return n
 	}
+}
+
+func gapitPath() string { return filepath.Join(*root, "bazel-bin", "pkg", exeExt("gapit")) }
+
+func trace(ctx context.Context) (string, error) {
+	file := filepath.Join(os.TempDir(), "gapid-regres.gfxtrace")
+	cmd := shell.Cmd{
+		Name:      gapitPath(),
+		Args:      []string{"--log-style", "raw", "trace", "--for", "60s", "--out", file, *pkg},
+		Verbosity: *verbose,
+	}
+	_, err := cmd.Call(ctx)
+	if err != nil {
+		os.Remove(file)
+		return "", err
+	}
+	return file, err
+}
+
+func captureStats(ctx context.Context, file string) (numFrames, numDraws, numCmds int, err error) {
+	cmd := shell.Cmd{
+		Name:      gapitPath(),
+		Args:      []string{"--log-style", "raw", "--log-level", "error", "stats", file},
+		Verbosity: *verbose,
+	}
+	stdout, err := cmd.Call(ctx)
+	if err != nil {
+		return 0, 0, 0, nil
+	}
+	re := regexp.MustCompile(`([a-zA-Z]+):\s+([0-9]+)`)
+	for _, matches := range re.FindAllStringSubmatch(stdout, -1) {
+		if len(matches) != 3 {
+			continue
+		}
+		n, err := strconv.Atoi(matches[2])
+		if err != nil {
+			continue
+		}
+		switch matches[1] {
+		case "Frames":
+			numFrames = n
+		case "Draws":
+			numDraws = n
+		case "Commands":
+			numCmds = n
+		}
+	}
+	return
 }
