@@ -62,6 +62,8 @@ go_library(
         "resources.go",
         "state.go",
         "state_rebuilder.go",
+        "image_rebuild_helper.go",
+        "image_rebuild_shaders.go",
         "vulkan.go",
         "vulkan_terminator.go",
         "wireframe.go",
@@ -128,6 +130,7 @@ go_test(
     srcs = [
         "externs_test.go",
         "footprint_builder_test.go",
+        "image_rebuild_helper_test.go",
     ],
     embed = [":go_default_library"],
     deps = [

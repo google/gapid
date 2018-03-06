@@ -92,7 +92,15 @@ func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 		w, h := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height
 
 		imageViewDepth := lastDrawInfo.Framebuffer.ImageAttachments.Get(idx)
+		if imageViewDepth == nil {
+			res(nil, fmt.Errorf("Invalid depth attachment in the framebuffer, the attachment VkImageView might have been destroyed"))
+			return
+		}
 		depthImageObject := imageViewDepth.Image
+		if depthImageObject == nil {
+			res(nil, fmt.Errorf("Invalid depth attachment in the framebuffer, the attachment VkImage might have been destroyed"))
+			return
+		}
 		cb := CommandBuilder{Thread: cmd.Thread()}
 		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Format, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
 	})
@@ -128,7 +136,15 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				res(nil, fmt.Errorf("There has been no attchment %v in the framebuffer", bufferIdx))
 				return
 			}
+			if imageView == nil {
+				res(nil, fmt.Errorf("Invalid attachment %v in the framebuffer, the attachment VkImageView might have been destroyed", bufferIdx))
+				return
+			}
 			imageObject := imageView.Image
+			if imageObject == nil {
+				res(nil, fmt.Errorf("Invalid attachment %v in the framebuffer, the attachment VkImage might have been destroyed", bufferIdx))
+				return
+			}
 			w, h, form := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height, imageView.Format
 			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		} else {
