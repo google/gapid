@@ -22,7 +22,15 @@ import (
 
 // Log returns the top count ChangeList at HEAD.
 func (g Git) Log(ctx context.Context, count int) ([]ChangeList, error) {
-	str, _, err := g.run(ctx, "log", "--pretty=format:ǁ%Hǀ%an <%ae>ǀ%sǀ%b", fmt.Sprintf("-%d", count), g.wd)
+	return g.LogFrom(ctx, "HEAD", count)
+}
+
+// LogFrom returns the top count ChangeList starting from at.
+func (g Git) LogFrom(ctx context.Context, at string, count int) ([]ChangeList, error) {
+	if at == "" {
+		at = "HEAD"
+	}
+	str, _, err := g.run(ctx, "log", at, "--pretty=format:ǁ%Hǀ%an <%ae>ǀ%sǀ%b", fmt.Sprintf("-%d", count), g.wd)
 	if err != nil {
 		return nil, err
 	}
