@@ -1516,7 +1516,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 					}
 					for j := uint32(0); j < rng.LayerCount; j++ {
 						layer := rng.BaseArrayLayer + j
-						bufImgCopy := VkBufferCopy{
+						bufImgCopy := VkBufferImageCopy{
 							offset,
 							0,
 							0,
