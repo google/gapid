@@ -358,7 +358,7 @@ public class Histogram {
   }
 
   @SuppressWarnings("ProtocolBufferOrdinal")
-  private static int getChannelIdx(Stream.Channel channel) {
+  public static int getChannelIdx(Stream.Channel channel) {
     return channel.ordinal();
   }
 }

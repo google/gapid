@@ -46,7 +46,7 @@ public class Strings {
   }
 
   public static String getMessage(Stringtable.Msg reason) {
-    return getMessage(reason.getIdentifier(), reason.getArguments());
+    return getMessage(reason.getIdentifier(), reason.getArgumentsMap());
   }
 
   public static String getMessage(String identifier, Map<String, Stringtable.Value> arguments) {
@@ -61,7 +61,7 @@ public class Strings {
   }
 
   private static Stringtable.Node getNode(Stringtable.StringTable table, String identifier) {
-    return table.getEntries().get(identifier);
+    return table.getEntriesMap().get(identifier);
   }
 
   private static StringBuilder getString(

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="gapic/src/main"/>
+	<classpathentry excluding="BUILD.bazel" kind="src" path="gapic/src/main"/>
 	<classpathentry kind="src" path="bazel-genfiles/gapic/src/main"/>
-	<classpathentry kind="src" path="platform_src"/>
-	<classpathentry kind="src" path="gapic/res"/>
+	<classpathentry excluding="BUILD.bazel" kind="src" path="platform_src"/>
+	<classpathentry excluding="BUILD.bazel" kind="src" path="gapic/res"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="lib" path="gapic/third_party/guava-20.0.jar" sourcepath="gapic/third_party/guava-20.0-sources.jar"/>
 	<classpathentry kind="lib" path="gapic/third_party/grpc/grpc-context-1.0.1.jar" sourcepath="gapic/third_party/grpc/grpc-context-1.0.1-sources.jar"/>
