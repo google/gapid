@@ -24,6 +24,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -53,24 +54,23 @@ func main() {
 }
 
 type stats struct {
-	SHA                  string
-	BuildTime            float64  // in seconds
-	IncrementalBuildTime float64  // in seconds
+	SHA                  string   `name:"sha"`
+	IncrementalBuildTime float64  `name:"incremental-build"` // in seconds
 	FileSizes            struct { // in bytes
-		LibGAPII                   int64
-		LibVkLayerVirtualSwapchain int64
-		GAPIDAarch64APK            int64
-		GAPIDArmeabi64APK          int64
-		GAPIDX86APK                int64
-		GAPID                      int64
-		GAPIR                      int64
-		GAPIS                      int64
-		GAPIT                      int64
+		LibGAPII                   int `name:"libgapii"`
+		LibVkLayerVirtualSwapchain int `name:"libVkLayer_VirtualSwapchain"`
+		GAPIDAarch64APK            int `name:"gapid-aarch64"`
+		GAPIDArmeabi64APK          int `name:"gapid-armeabi"`
+		GAPIDX86APK                int `name:"gapid-x86"`
+		GAPID                      int `name:"gapid"`
+		GAPIR                      int `name:"gapir"`
+		GAPIS                      int `name:"gapis"`
+		GAPIT                      int `name:"gapit"`
 	}
 	CaptureStats struct {
-		Frames    int
-		DrawCalls int
-		Commands  int
+		Frames   int `name:"frames"`
+		Draws    int `name:"draws"`
+		Commands int `name:"commands"`
 	}
 }
 
@@ -131,7 +131,7 @@ func run(ctx context.Context) error {
 		pkgDir := filepath.Join(*root, "bazel-bin", "pkg")
 		for _, f := range []struct {
 			path string
-			size *int64
+			size *int
 		}{
 			{filepath.Join(pkgDir, "lib", dllExt("libgapii")), &r.FileSizes.LibGAPII},
 			{filepath.Join(pkgDir, "lib", dllExt("libVkLayer_VirtualSwapchain")), &r.FileSizes.LibVkLayerVirtualSwapchain},
@@ -148,7 +148,7 @@ func run(ctx context.Context) error {
 				log.W(ctx, "Couldn't stat file '%v': %v", f.path, err)
 				continue
 			}
-			*f.size = fi.Size()
+			*f.size = int(fi.Size())
 		}
 
 		// Gather capture stats
@@ -164,7 +164,7 @@ func run(ctx context.Context) error {
 				continue
 			}
 			r.CaptureStats.Frames = frames
-			r.CaptureStats.DrawCalls = draws
+			r.CaptureStats.Draws = draws
 			r.CaptureStats.Commands = cmds
 		}
 
@@ -184,50 +184,53 @@ func run(ctx context.Context) error {
 		res = append(res, r)
 	}
 
-	fmt.Printf("-----------------------\n")
-
 	w := tabwriter.NewWriter(os.Stdout, 1, 4, 0, ' ', 0)
 	defer w.Flush()
 
-	fmt.Fprint(w, "sha")
-	if *incBuild {
-		fmt.Fprint(w, "\t | incremental_build_time")
-	}
-	if *pkg != "" {
-		fmt.Fprint(w, "\t | commands")
-		fmt.Fprint(w, "\t | draws")
-		fmt.Fprint(w, "\t | frames")
-	}
-	fmt.Fprint(w, "\t | lib_gapii")
-	fmt.Fprint(w, "\t | lib_swapchain")
-	fmt.Fprint(w, "\t | aarch64.apk")
-	fmt.Fprint(w, "\t | armeabi64.apk")
-	fmt.Fprint(w, "\t | x86.apk")
-	fmt.Fprint(w, "\t | gapid")
-	fmt.Fprint(w, "\t | gapir")
-	fmt.Fprint(w, "\t | gapis")
-	fmt.Fprint(w, "\t | gapit\n")
-	for _, r := range res {
-		fmt.Fprintf(w, "%v,", r.SHA)
-		if *incBuild {
-			fmt.Fprintf(w, "\t   %v,", r.IncrementalBuildTime)
+	var display func(get func(stats) reflect.Value, ty reflect.Type, name string)
+	display = func(get func(stats) reflect.Value, ty reflect.Type, name string) {
+		switch ty.Kind() {
+		case reflect.Struct:
+			for i, c := 0, ty.NumField(); i < c; i++ {
+				f := ty.Field(i)
+				get := func(s stats) reflect.Value { return get(s).Field(i) }
+				name := f.Name
+				if n := f.Tag.Get("name"); n != "" {
+					name = n
+				}
+				display(get, f.Type, name)
+			}
+		default:
+			fmt.Fprint(w, name)
+			var prev reflect.Value
+			for i, s := range res {
+				v := get(s)
+				var old, new float64
+				if i > 0 {
+					switch v.Kind() {
+					case reflect.Int:
+						old, new = float64(prev.Int()), float64(v.Int())
+					case reflect.Float64:
+						old, new = prev.Float(), v.Float()
+					}
+				}
+				if old != new {
+					percent := 100 * (new - old) / old
+					fmt.Fprintf(w, "\t | %v \t(%+4.1f%%)", v.Interface(), percent)
+				} else {
+					fmt.Fprintf(w, "\t | %v \t", v.Interface())
+				}
+				prev = v
+			}
+			fmt.Fprintln(w)
 		}
-		if *pkg != "" {
-			fmt.Fprintf(w, "\t   %v,", r.CaptureStats.Commands)
-			fmt.Fprintf(w, "\t   %v,", r.CaptureStats.DrawCalls)
-			fmt.Fprintf(w, "\t   %v,", r.CaptureStats.Frames)
-		}
-		fmt.Fprintf(w, "\t   %v,", r.FileSizes.LibGAPII)
-		fmt.Fprintf(w, "\t   %v,", r.FileSizes.LibVkLayerVirtualSwapchain)
-		fmt.Fprintf(w, "\t   %v,", r.FileSizes.GAPIDAarch64APK)
-		fmt.Fprintf(w, "\t   %v,", r.FileSizes.GAPIDArmeabi64APK)
-		fmt.Fprintf(w, "\t   %v,", r.FileSizes.GAPIDX86APK)
-		fmt.Fprintf(w, "\t   %v,", r.FileSizes.GAPID)
-		fmt.Fprintf(w, "\t   %v,", r.FileSizes.GAPIR)
-		fmt.Fprintf(w, "\t   %v,", r.FileSizes.GAPIS)
-		fmt.Fprintf(w, "\t   %v", r.FileSizes.GAPIT)
-		fmt.Fprintf(w, "\n")
 	}
+
+	display(
+		func(s stats) reflect.Value { return reflect.ValueOf(s) },
+		reflect.TypeOf(stats{}),
+		"")
+
 	return nil
 }
 
