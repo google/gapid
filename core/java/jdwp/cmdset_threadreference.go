@@ -14,16 +14,47 @@
 
 package jdwp
 
+// GetThreadName returns a thread's name.
+func (c *Connection) GetThreadName(id ThreadID) (string, error) {
+	var res string
+	err := c.get(cmdThreadReferenceName, id, &res)
+	return res, err
+}
+
 // Suspend suspends the specified thread.
 func (c *Connection) Suspend(id ThreadID) error {
 	var res struct{}
-	return c.get(cmdSetThreadReference, 2, id, &res)
+	return c.get(cmdThreadReferenceSuspend, id, &res)
 }
 
 // Resume resumes the specified thread.
 func (c *Connection) Resume(id ThreadID) error {
 	var res struct{}
-	return c.get(cmdSetThreadReference, 3, id, &res)
+	return c.get(cmdThreadReferenceResume, id, &res)
+}
+
+// GetThreadStatus returns the status of the thread.
+func (c *Connection) GetThreadStatus(id ThreadID) (ThreadStatus, SuspendStatus, error) {
+	var res struct {
+		T ThreadStatus
+		S SuspendStatus
+	}
+	err := c.get(cmdThreadReferenceStatus, id, &res)
+	if err != nil {
+		return 0, 0, err
+	}
+	return res.T, res.S, nil
+}
+
+// GetSuspendCount returns the number of times the thread has been suspended
+// without a corresponding resume.
+func (c *Connection) GetSuspendCount(id ThreadID) (int, error) {
+	var count int
+	err := c.get(cmdThreadReferenceSuspendCount, id, &count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // FrameInfo describes a single stack frame.
@@ -39,6 +70,6 @@ func (c *Connection) GetFrames(thread ThreadID, start, count int) ([]FrameInfo, 
 		Start, Count int
 	}{thread, start, count}
 	var res []FrameInfo
-	err := c.get(cmdSetThreadReference, 6, req, &res)
+	err := c.get(cmdThreadReferenceFrames, req, &res)
 	return res, err
 }

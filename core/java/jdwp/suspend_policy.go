@@ -14,6 +14,8 @@
 
 package jdwp
 
+import "fmt"
+
 // SuspendPolicy describes what threads should be suspended on an event being
 // raised.
 type SuspendPolicy byte
@@ -26,3 +28,15 @@ const (
 	// SuspendAll suspends all threads when a event is raised.
 	SuspendAll = SuspendPolicy(2)
 )
+
+func (s SuspendPolicy) String() string {
+	switch s {
+	case SuspendNone:
+		return "SuspendNone"
+	case SuspendEventThread:
+		return "SuspendEventThread"
+	case SuspendAll:
+		return "SuspendAll"
+	}
+	return fmt.Sprint(int(s))
+}

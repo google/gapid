@@ -46,8 +46,8 @@ func expect(r io.Reader, expected []byte) error {
 }
 
 // waitForOnCreate waits for android.app.Application.onCreate to be called, and
-// then suspends the thread.
-func waitForOnCreate(ctx context.Context, conn *jdwp.Connection, wakeup jdwp.ThreadID) (*jdwp.EventMethodEntry, error) {
+// then suspends all threads.
+func waitForOnCreate(ctx context.Context, conn *jdwp.Connection) (*jdwp.EventMethodEntry, error) {
 	app, err := conn.GetClassBySignature("Landroid/app/Application;")
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func waitForOnCreate(ctx context.Context, conn *jdwp.Connection, wakeup jdwp.Thr
 	}
 
 	log.I(ctx, "   Waiting for Application.<init>()")
-	initEntry, err := conn.WaitForMethodEntry(ctx, app.ClassID(), constructor.ID, wakeup)
+	initEntry, err := conn.WaitForMethodEntry(ctx, app.ClassID(), constructor.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func waitForOnCreate(ctx context.Context, conn *jdwp.Connection, wakeup jdwp.Thr
 			return fmt.Errorf("Couldn't find Application.onCreate")
 		}
 		log.I(ctx, "   Waiting for %v.onCreate()", class.String())
-		out, err := conn.WaitForMethodEntry(ctx, class.ID(), onCreate.ID, initEntry.Thread)
+		out, err := conn.WaitForMethodEntry(ctx, class.ID(), onCreate.ID)
 		if err != nil {
 			return err
 		}
@@ -114,7 +114,7 @@ func waitForVulkanLoad(ctx context.Context, conn *jdwp.Connection) (*jdwp.EventM
 		}
 	}
 
-	return conn.WaitForMethodEntry(ctx, loaders.ClassID(), getClassLoader.ID, 0)
+	return conn.WaitForMethodEntry(ctx, loaders.ClassID(), getClassLoader.ID)
 }
 
 // loadAndConnectViaJDWP connects to the application waiting for a JDWP
@@ -180,6 +180,9 @@ func (p *Process) loadAndConnectViaJDWP(
 	}
 	defer sock.Close()
 
+	// Start by suspending all the threads.
+	conn.SuspendAll()
+
 	processABI := func(j *jdbg.JDbg) (*device.ABI, error) {
 		abiName := j.Class("android.os.Build").Field("CPU_ABI").Get().(string)
 		abi := device.ABIByName(abiName)
@@ -194,14 +197,11 @@ func (p *Process) loadAndConnectViaJDWP(
 		return abi, nil
 	}
 
-	classLoaderThread := jdwp.ThreadID(0)
-
 	log.I(ctx, "Waiting for ApplicationLoaders.getClassLoader()")
 	getClassLoader, err := waitForVulkanLoad(ctx, conn)
 	if err == nil {
 		// If err != nil that means we could not find or break in getClassLoader
 		// so we have no vulkan support.
-		classLoaderThread = getClassLoader.Thread
 		err = jdbg.Do(conn, getClassLoader.Thread, func(j *jdbg.JDbg) error {
 			abi, err := processABI(j)
 			if err != nil {
@@ -222,9 +222,14 @@ func (p *Process) loadAndConnectViaJDWP(
 
 	// Wait for Application.onCreate to be called.
 	log.I(ctx, "Waiting for Application Creation")
-	onCreate, err := waitForOnCreate(ctx, conn, classLoaderThread)
+	onCreate, err := waitForOnCreate(ctx, conn)
 	if err != nil {
 		return log.Err(ctx, err, "Waiting for Application Creation")
+	}
+
+	// We can now let the non-main threads resume.
+	if err := conn.ResumeAllExcept(onCreate.Thread); err != nil {
+		return log.Err(ctx, err, "Resuming non-main threads")
 	}
 
 	// Attempt to get the GVR library handle.

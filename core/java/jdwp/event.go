@@ -14,66 +14,15 @@
 
 package jdwp
 
-import (
-	"context"
-
-	"github.com/google/gapid/core/event/task"
-)
-
-// OnEvent is the callback passed to WatchEvents. If no more events need to be
-// handled, return false.
-type OnEvent func(Event, SuspendPolicy) bool
-
-// WatchEvents calls cb each time a new event arrives.
-// WatchEvents will block until cb returns false, or the ctx is cancelled.
-// If wakeup is not 0, then the given thread is resumed before we wait for the
-// method.
-func (c *Connection) WatchEvents(ctx context.Context, wakeup ThreadID, cb OnEvent) {
-	id, events := c.newEventsHandler()
-	defer c.deleteEventsHandler(id)
-
-	if wakeup != 0 {
-		c.Resume(wakeup)
-	}
-
-	for {
-		select {
-		case <-task.ShouldStop(ctx):
-			return
-		case list := <-events:
-			for _, event := range list.Events {
-				if !cb(event, list.SuspendPolicy) {
-					return
-				}
-			}
-		}
-	}
-}
-
-func (c *Connection) newEventsHandler() (eventsID, <-chan Events) {
-	events := make(chan Events, 1)
-	c.Lock()
-	id := c.nextEventsID
-	c.nextEventsID++
-	c.events[id] = events
-	c.Unlock()
-	return id, events
-}
-
-func (c *Connection) deleteEventsHandler(id eventsID) {
-	c.Lock()
-	delete(c.events, id)
-	c.Unlock()
-}
-
-// Events is a collection of events.
-type Events struct {
-	SuspendPolicy SuspendPolicy
-	Events        []Event
+// events is a collection of events.
+type events struct {
+	Policy SuspendPolicy
+	Events []Event
 }
 
 // Event is the interface implemented by all events raised by the VM.
 type Event interface {
+	request() EventRequestID
 	Kind() EventKind
 }
 
@@ -175,6 +124,20 @@ type EventFieldModification struct {
 	Object    TaggedObjectID
 	NewValue  Value
 }
+
+func (e EventVMStart) request() EventRequestID           { return e.Request }
+func (e EventVMDeath) request() EventRequestID           { return e.Request }
+func (e EventSingleStep) request() EventRequestID        { return e.Request }
+func (e EventBreakpoint) request() EventRequestID        { return e.Request }
+func (e EventMethodEntry) request() EventRequestID       { return e.Request }
+func (e EventMethodExit) request() EventRequestID        { return e.Request }
+func (e EventException) request() EventRequestID         { return e.Request }
+func (e EventThreadStart) request() EventRequestID       { return e.Request }
+func (e EventThreadDeath) request() EventRequestID       { return e.Request }
+func (e EventClassPrepare) request() EventRequestID      { return e.Request }
+func (e EventClassUnload) request() EventRequestID       { return e.Request }
+func (e EventFieldAccess) request() EventRequestID       { return e.Request }
+func (e EventFieldModification) request() EventRequestID { return e.Request }
 
 // Kind returns VMStart
 func (EventVMStart) Kind() EventKind { return VMStart }

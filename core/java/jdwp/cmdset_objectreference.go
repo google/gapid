@@ -23,14 +23,14 @@ type ObjectType struct {
 // GetObjectType returns the type of the specified object.
 func (c *Connection) GetObjectType(object ObjectID) (ObjectType, error) {
 	var res ObjectType
-	err := c.get(cmdSetObjectReference, 1, object, &res)
+	err := c.get(cmdObjectReferenceReferenceType, object, &res)
 	return res, err
 }
 
 // GetFieldValues returns the values of all the instance fields.
 func (c *Connection) GetFieldValues(obj ObjectID, fields ...FieldID) ([]Value, error) {
 	var res []Value
-	err := c.get(cmdSetObjectReference, 2, struct {
+	err := c.get(cmdObjectReferenceGetValues, struct {
 		Obj    ObjectID
 		Fields []FieldID
 	}{obj, fields}, &res)
@@ -48,16 +48,16 @@ func (c *Connection) InvokeMethod(object ObjectID, class ClassID, method MethodI
 		Options InvokeOptions
 	}{object, thread, class, method, args, options}
 	var res InvokeResult
-	err := c.get(cmdSetObjectReference, 6, req, &res)
+	err := c.get(cmdObjectReferenceInvokeMethod, req, &res)
 	return res, err
 }
 
 // DisableGC disables garbage collection for the specified object.
 func (c *Connection) DisableGC(object ObjectID) error {
-	return c.get(cmdSetObjectReference, 7, object, nil)
+	return c.get(cmdObjectReferenceDisableCollection, object, nil)
 }
 
 // EnableGC enables garbage collection for the specified object.
 func (c *Connection) EnableGC(object ObjectID) error {
-	return c.get(cmdSetObjectReference, 8, object, nil)
+	return c.get(cmdObjectReferenceEnableCollection, object, nil)
 }

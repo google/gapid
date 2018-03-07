@@ -17,6 +17,6 @@ package jdwp
 // GetString returns the string text for the given StringID.
 func (c *Connection) GetString(id StringID) (string, error) {
 	var res string
-	err := c.get(cmdSetStringReference, 1, id, &res)
+	err := c.get(cmdStringReferenceValue, id, &res)
 	return res, err
 }

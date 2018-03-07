@@ -43,8 +43,6 @@ var (
 	}
 )
 
-type eventsID uint64
-
 // Connection represents a JDWP connection.
 type Connection struct {
 	in           io.Reader
@@ -53,8 +51,7 @@ type Connection struct {
 	flush        func() error
 	idSizes      IDSizes
 	nextPacketID packetID
-	nextEventsID eventsID
-	events       map[eventsID]chan<- Events
+	events       map[EventRequestID]chan<- Event
 	replies      map[packetID]chan<- replyPacket
 	sync.Mutex
 }
@@ -68,16 +65,14 @@ func Open(ctx context.Context, conn io.ReadWriteCloser) (*Connection, error) {
 	buf := bufio.NewWriterSize(conn, 1024)
 	r := endian.Reader(conn, device.BigEndian)
 	w := endian.Writer(buf, device.BigEndian)
-	events := map[eventsID]chan<- Events{}
-	replies := map[packetID]chan<- replyPacket{}
 	c := &Connection{
 		in:      conn,
 		r:       r,
 		w:       w,
 		flush:   buf.Flush,
 		idSizes: defaultIDSizes,
-		events:  events,
-		replies: replies,
+		events:  map[EventRequestID]chan<- Event{},
+		replies: map[packetID]chan<- replyPacket{},
 	}
 
 	crash.Go(func() { c.recv(ctx) })
@@ -123,29 +118,56 @@ func expect(conn io.Reader, expected []byte) (bool, error) {
 }
 
 // get sends the specified command and waits for a reply.
-func (c *Connection) get(cmdSet cmdSet, cmd cmdID, req interface{}, out interface{}) error {
+func (c *Connection) get(cmd cmd, req interface{}, out interface{}) error {
+	p, err := c.req(cmd, req)
+	if err != nil {
+		return err
+	}
+	return p.wait(out)
+}
+
+// req sends the specified command and returns a pending.
+func (c *Connection) req(cmd cmd, req interface{}) (*pending, error) {
 	data := bytes.Buffer{}
 	if req != nil {
 		e := endian.Writer(&data, device.BigEndian)
 		if err := c.encode(e, reflect.ValueOf(req)); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	id, replyChan := c.newReplyHandler()
-	defer c.deleteReplyHandler(id)
 
-	p := cmdPacket{id: id, cmdSet: cmdSet, cmdID: cmd, data: data.Bytes()}
+	p := cmdPacket{id: id, cmdSet: cmd.set, cmdID: cmd.id, data: data.Bytes()}
+
+	c.Lock()
+	defer c.Unlock()
+
 	if err := p.write(c.w); err != nil {
-		return err
+		return nil, err
 	}
 	if err := c.flush(); err != nil {
-		return err
+		return nil, err
 	}
 
+	dbg("<%v> send: %v, %+v", id, cmd, req)
+
+	return &pending{c, replyChan, id}, nil
+}
+
+type pending struct {
+	c  *Connection
+	p  <-chan replyPacket
+	id packetID
+}
+
+// wait blocks until the penging response is received, filling out with the
+// response data.
+func (p *pending) wait(out interface{}) error {
 	select {
-	case reply := <-replyChan:
+	case reply := <-p.p:
 		if reply.err != ErrNone {
+			dbg("<%v> recv err: %+v", p.id, reply.err)
 			return reply.err
 		}
 		if out == nil {
@@ -153,9 +175,10 @@ func (c *Connection) get(cmdSet cmdSet, cmd cmdID, req interface{}, out interfac
 		}
 		r := bytes.NewReader(reply.data)
 		d := endian.Reader(r, device.BigEndian)
-		if err := c.decode(d, reflect.ValueOf(out)); err != nil {
+		if err := p.c.decode(d, reflect.ValueOf(out)); err != nil {
 			return err
 		}
+		dbg("<%v> recv: %+v", p.id, out)
 		if offset, _ := r.Seek(0, 1); offset != int64(len(reply.data)) {
 			panic(fmt.Errorf("Only %d/%d bytes read from reply packet", offset, len(reply.data)))
 		}
@@ -173,10 +196,4 @@ func (c *Connection) newReplyHandler() (packetID, <-chan replyPacket) {
 	c.replies[id] = reply
 	c.Unlock()
 	return id, reply
-}
-
-func (c *Connection) deleteReplyHandler(id packetID) {
-	c.Lock()
-	delete(c.replies, id)
-	c.Unlock()
 }
