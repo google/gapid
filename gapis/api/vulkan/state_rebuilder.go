@@ -1275,9 +1275,27 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 	if img.IsSwapchainImage {
 		return
 	}
+
+	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
+
+	primeByBufCopy := (img.Info.Usage & transDstBit) != VkImageUsageFlags(0)
+	primeByRendering := (!primeByBufCopy) && ((img.Info.Usage & attBits) != VkImageUsageFlags(0))
+	primeByShaderCopy := (!primeByBufCopy) && (!primeByRendering) && ((img.Info.Usage & storageBit) != VkImageUsageFlags(0))
+
 	helper := newImageRebuildHelper(sb)
 	defer helper.freeTempObjects()
-	helper.vkCreateImage(img.Device, &img.Info, img.VulkanHandle)
+
+	// TODO: drop this once storage images are handled.
+	info := img.Info
+	if primeByShaderCopy {
+		log.W(sb.ctx, "Priming data for image: %v by copying in shader is not implemented yet, fallback to priming the data by buffer->image copy", img.VulkanHandle)
+		info.Usage = info.Usage | VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+		primeByBufCopy = true
+	}
+
+	helper.vkCreateImage(img.Device, &info, img.VulkanHandle)
 	helper.vkGetImageMemoryRequirements(img.Device, img.VulkanHandle, &img.MemoryRequirements)
 
 	denseBound := img.BoundMemory != nil
@@ -1483,14 +1501,6 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 	// We have to handle the above cases at some point.
 
 	// Prime the image data according to the usage bits
-	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
-
-	primeByBufCopy := (img.Info.Usage & transDstBit) != VkImageUsageFlags(0)
-	primeByRendering := (!primeByBufCopy) && ((img.Info.Usage & attBits) != VkImageUsageFlags(0))
-	primeByShaderCopy := (!primeByBufCopy) && (!primeByRendering) && ((img.Info.Usage & storageBit) != VkImageUsageFlags(0))
-
 	copyDstImgs := []*ImageObject{}
 	copies := map[*ImageObject][]VkBufferImageCopy{}
 
