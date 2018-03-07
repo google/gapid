@@ -20,8 +20,6 @@ import (
 	"github.com/google/gapid/core/data/binary"
 )
 
-type cmdID uint8
-
 type packetID uint32
 
 type packetFlags uint8

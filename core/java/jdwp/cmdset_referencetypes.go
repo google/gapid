@@ -17,28 +17,28 @@ package jdwp
 // GetTypeSignature returns the Java type signature for the specified type.
 func (c *Connection) GetTypeSignature(ty ReferenceTypeID) (string, error) {
 	var res string
-	err := c.get(cmdSetReferenceType, 1, ty, &res)
+	err := c.get(cmdReferenceTypeSignature, ty, &res)
 	return res, err
 }
 
 // GetFields returns all the fields for the specified type.
 func (c *Connection) GetFields(ty ReferenceTypeID) (Fields, error) {
 	var res Fields
-	err := c.get(cmdSetReferenceType, 4, ty, &res)
+	err := c.get(cmdReferenceTypeFields, ty, &res)
 	return res, err
 }
 
 // GetMethods returns all the methods for the specified type.
 func (c *Connection) GetMethods(ty ReferenceTypeID) (Methods, error) {
 	var res Methods
-	err := c.get(cmdSetReferenceType, 5, ty, &res)
+	err := c.get(cmdReferenceTypeMethods, ty, &res)
 	return res, err
 }
 
 // GetStaticFieldValues returns the values of all the requests static fields.
 func (c *Connection) GetStaticFieldValues(ty ReferenceTypeID, fields ...FieldID) ([]Value, error) {
 	var res []Value
-	err := c.get(cmdSetReferenceType, 6, struct {
+	err := c.get(cmdReferenceTypeGetValues, struct {
 		Ty     ReferenceTypeID
 		Fields []FieldID
 	}{ty, fields}, &res)
@@ -49,6 +49,6 @@ func (c *Connection) GetStaticFieldValues(ty ReferenceTypeID, fields ...FieldID)
 // type.
 func (c *Connection) GetImplemented(ty ReferenceTypeID) ([]InterfaceID, error) {
 	var res []InterfaceID
-	err := c.get(cmdSetReferenceType, 10, ty, &res)
+	err := c.get(cmdReferenceTypeInterfaces, ty, &res)
 	return res, err
 }

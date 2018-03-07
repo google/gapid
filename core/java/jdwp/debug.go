@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +14,11 @@
 
 package jdwp
 
-// ReflectedType returns the reference type reflected by the class object.
-func (c *Connection) ReflectedType(id ClassObjectID) (ReferenceTypeID, error) {
-	req := struct {
-		ID ClassObjectID
-	}{id}
-	var res struct {
-		Kind byte
-		ID   ReferenceTypeID
+import "fmt"
+
+func dbg(msg string, args ...interface{}) {
+	const enabled = false
+	if enabled {
+		fmt.Println(fmt.Sprintf(msg, args...))
 	}
-	err := c.get(cmdClassObjectReferenceReflectedType, req, &res)
-	return res.ID, err
 }

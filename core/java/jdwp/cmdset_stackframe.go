@@ -22,7 +22,7 @@ func (c *Connection) GetThisObject(thread ThreadID, frame FrameID) (TaggedObject
 		Frame  FrameID
 	}{thread, frame}
 	res := TaggedObjectID{}
-	err := c.get(cmdSetStackFrame, 3, req, &res)
+	err := c.get(cmdStackFrameThisObject, req, &res)
 	return res, err
 }
 
@@ -40,7 +40,7 @@ func (c *Connection) GetValues(thread ThreadID, frame FrameID, slots []VariableR
 		Slots  []VariableRequest
 	}{thread, frame, slots}
 	res := ValueSlice{}
-	err := c.get(cmdSetStackFrame, 1, req, &res)
+	err := c.get(cmdStackFrameGetValues, req, &res)
 	return res, err
 }
 
@@ -57,6 +57,6 @@ func (c *Connection) SetValues(thread ThreadID, frame FrameID, slots []VariableA
 		Slots  []VariableAssignmentRequest
 	}{thread, frame, slots}
 
-	err := c.get(cmdSetStackFrame, 2, req, nil)
+	err := c.get(cmdStackFrameSetValues, req, nil)
 	return err
 }

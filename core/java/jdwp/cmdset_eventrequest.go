@@ -14,13 +14,28 @@
 
 package jdwp
 
+import (
+	"context"
+	"fmt"
+
+	"github.com/google/gapid/core/event/task"
+)
+
 // EventRequestID is an identifier of an event request.
 type EventRequestID int
 
 const cmdCompositeEvent = cmdID(100)
 
-// SetEvent sets an event request.
-func (c *Connection) SetEvent(kind EventKind, suspendPolity SuspendPolicy, modifiers ...EventModifier) (EventRequestID, error) {
+// WatchEvents sets an event watcher, calling handler for each received event.
+// WatchEvents will continue to watch for events until handler returns false or
+// the context is cancelled.
+func (c *Connection) WatchEvents(
+	ctx context.Context,
+	kind EventKind,
+	suspendPolity SuspendPolicy,
+	handler func(Event) bool,
+	modifiers ...EventModifier) error {
+
 	req := struct {
 		Kind          EventKind
 		SuspendPolicy SuspendPolicy
@@ -30,22 +45,64 @@ func (c *Connection) SetEvent(kind EventKind, suspendPolity SuspendPolicy, modif
 		SuspendPolicy: suspendPolity,
 		Modifiers:     modifiers,
 	}
-	var res EventRequestID
-	err := c.get(cmdSetEventRequest, 1, req, &res)
-	return res, err
-}
 
-// ClearEvent cancels an event request.
-func (c *Connection) ClearEvent(kind EventKind, id EventRequestID) error {
-	req := struct {
+	var id EventRequestID
+	err := c.get(cmdEventRequestSet, req, &id)
+	if err != nil {
+		return err
+	}
+
+	events := make(chan Event, 8)
+	c.Lock()
+	c.events[id] = events
+	c.Unlock()
+
+	defer func() {
+		c.Lock()
+		delete(c.events, id)
+		c.Unlock()
+	}()
+
+	if err := c.ResumeAll(); err != nil {
+		return err
+	}
+
+run: // Consume events until the handler returns false or the context is cancelled.
+	for {
+		select {
+		case event := <-events:
+			if !handler(event) {
+				break run
+			}
+		case <-task.ShouldStop(ctx):
+			break run
+		}
+	}
+
+	//  Clear the event.
+	clear := struct {
 		Kind EventKind
 		ID   EventRequestID
 	}{
 		Kind: kind,
 		ID:   id,
 	}
-	err := c.get(cmdSetEventRequest, 2, req, nil)
-	return err
+
+	if err := c.get(cmdEventRequestClear, clear, nil); err != nil {
+		return err
+	}
+
+flush: // Consume any remaining events in the pipe.
+	for {
+		select {
+		case event := <-events:
+			handler(event)
+		default:
+			break flush
+		}
+	}
+
+	return nil
 }
 
 // EventModifier is the interface implemented by all event modifier types.
@@ -126,3 +183,36 @@ func (ExceptionOnlyEventModifier) modKind() uint8 { return 8 }
 func (FieldOnlyEventModifier) modKind() uint8     { return 9 }
 func (StepEventModifier) modKind() uint8          { return 10 }
 func (InstanceOnlyEventModifier) modKind() uint8  { return 11 }
+
+func (m CountEventModifier) String() string {
+	return fmt.Sprintf("CountEventModifier<%v>", int(m))
+}
+func (m ThreadOnlyEventModifier) String() string {
+	return fmt.Sprintf("ThreadOnlyEventModifier<%v>", int(m))
+}
+func (m ClassOnlyEventModifier) String() string {
+	return fmt.Sprintf("ClassOnlyEventModifier<%v>", int(m))
+}
+func (m ClassMatchEventModifier) String() string {
+	return fmt.Sprintf("ClassMatchEventModifier<%v>", string(m))
+}
+func (m ClassExcludeEventModifier) String() string {
+	return fmt.Sprintf("ClassExcludeEventModifier<%v>", string(m))
+}
+func (m LocationOnlyEventModifier) String() string {
+	return fmt.Sprintf("LocationOnlyEventModifier<%v>", Location(m))
+}
+func (m ExceptionOnlyEventModifier) String() string {
+	return fmt.Sprintf("ExceptionOnlyEventModifier<Exception: %v, Caught: %v, Uncaught: %v>",
+		m.ExceptionOrNull, m.Caught, m.Uncaught)
+}
+func (m FieldOnlyEventModifier) String() string {
+	return fmt.Sprintf("FieldOnlyEventModifier<Type: %v, Field: %v>", m.Type, m.Field)
+}
+func (m StepEventModifier) String() string {
+	return fmt.Sprintf("StepEventModifier<Thread: %v, Size: %v, Depth: %v>",
+		m.Thread, m.Size, m.Depth)
+}
+func (m InstanceOnlyEventModifier) String() string {
+	return fmt.Sprintf("InstanceOnlyEventModifier<%v>", ObjectID(m))
+}

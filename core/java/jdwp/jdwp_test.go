@@ -54,11 +54,6 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 	ctx = log.PutHandler(ctx, log.Normal.Handler(log.Std()))
 	os.Exit(test.BuildRunAndConnect(ctx, source, func(ctx context.Context, c *jdwp.Connection) int {
-		if err := c.ResumeAll(); err != nil {
-			log.F(ctx, true, "Failed resume VM. Error: %v", err)
-			return -1
-		}
-
 		// Wait for java to load the prepare class
 		t, err := c.WaitForClassPrepare(ctx, "Calculator")
 		if err != nil {

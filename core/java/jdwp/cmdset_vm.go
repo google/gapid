@@ -26,7 +26,7 @@ type Version struct {
 // GetVersion returns the JDWP version from the server.
 func (c *Connection) GetVersion() (Version, error) {
 	res := Version{}
-	err := c.get(cmdSetVirtualMachine, 1, struct{}{}, &res)
+	err := c.get(cmdVirtualMachineVersion, struct{}{}, &res)
 	return res, err
 }
 
@@ -51,7 +51,7 @@ func (c *Connection) GetClassesBySignature(signature string) ([]ClassInfo, error
 		TypeID ReferenceTypeID
 		Status ClassStatus
 	}{}
-	err := c.get(cmdSetVirtualMachine, 2, &signature, &res)
+	err := c.get(cmdVirtualMachineClassesBySignature, &signature, &res)
 	out := make([]ClassInfo, len(res))
 	for i, c := range res {
 		out[i] = ClassInfo{c.Kind, c.TypeID, signature, c.Status}
@@ -62,14 +62,14 @@ func (c *Connection) GetClassesBySignature(signature string) ([]ClassInfo, error
 // GetAllClasses returns all the active threads by ID.
 func (c *Connection) GetAllClasses() ([]ClassInfo, error) {
 	res := []ClassInfo{}
-	err := c.get(cmdSetVirtualMachine, 3, struct{}{}, &res)
+	err := c.get(cmdVirtualMachineAllClasses, struct{}{}, &res)
 	return res, err
 }
 
 // GetAllThreads returns all the active threads by ID.
 func (c *Connection) GetAllThreads() ([]ThreadID, error) {
 	res := []ThreadID{}
-	err := c.get(cmdSetVirtualMachine, 4, struct{}{}, &res)
+	err := c.get(cmdVirtualMachineAllThreads, struct{}{}, &res)
 	return res, err
 }
 
@@ -85,23 +85,31 @@ type IDSizes struct {
 // GetIDSizes returns the sizes of all the variably sized data types.
 func (c *Connection) GetIDSizes() (IDSizes, error) {
 	res := IDSizes{}
-	err := c.get(cmdSetVirtualMachine, 7, struct{}{}, &res)
+	err := c.get(cmdVirtualMachineIDSizes, struct{}{}, &res)
 	return res, err
 }
 
 // SuspendAll suspends all threads.
 func (c *Connection) SuspendAll() error {
-	return c.get(cmdSetVirtualMachine, 8, struct{}{}, nil)
+	return c.get(cmdVirtualMachineSuspend, struct{}{}, nil)
 }
 
 // ResumeAll resumes all threads.
 func (c *Connection) ResumeAll() error {
-	return c.get(cmdSetVirtualMachine, 9, struct{}{}, nil)
+	return c.get(cmdVirtualMachineResume, struct{}{}, nil)
+}
+
+// ResumeAllExcept resumes all threads except for the specified thread.
+func (c *Connection) ResumeAllExcept(thread ThreadID) error {
+	if err := c.Suspend(thread); err != nil {
+		return err
+	}
+	return c.ResumeAll()
 }
 
 // CreateString returns the StringID for the given string.
 func (c *Connection) CreateString(str string) (StringID, error) {
 	res := StringID(0)
-	err := c.get(cmdSetVirtualMachine, 11, str, &res)
+	err := c.get(cmdVirtualMachineCreateString, str, &res)
 	return res, err
 }

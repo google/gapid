@@ -14,14 +14,14 @@
 
 package jdwp
 
-// VariableTable returns all of the variables that are present
-// in the given Method.
+// VariableTable returns all of the variables that are present in the given
+// Method.
 func (c *Connection) VariableTable(classTy ReferenceTypeID, method MethodID) (VariableTable, error) {
 	req := struct {
 		Class  ReferenceTypeID
 		Method MethodID
 	}{classTy, method}
 	var res VariableTable
-	err := c.get(cmdSetMethod, 2, req, &res)
+	err := c.get(cmdMethodTypeVariableTable, req, &res)
 	return res, err
 }

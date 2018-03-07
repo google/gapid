@@ -48,6 +48,7 @@ func (c *Connection) recv(ctx context.Context) {
 		case replyPacket:
 			c.Lock()
 			out, ok := c.replies[packet.id]
+			delete(c.replies, packet.id)
 			c.Unlock()
 			if !ok {
 				log.W(ctx, "Unexpected reply for packet %d", packet.id)
@@ -59,18 +60,28 @@ func (c *Connection) recv(ctx context.Context) {
 			switch {
 			case packet.cmdSet == cmdSetEvent && packet.cmdID == cmdCompositeEvent:
 				d := endian.Reader(bytes.NewReader(packet.data), device.BigEndian)
-				events := Events{}
-				if err := c.decode(d, reflect.ValueOf(&events)); err != nil {
+				l := events{}
+				if err := c.decode(d, reflect.ValueOf(&l)); err != nil {
 					log.F(ctx, true, "Couldn't decode composite event data. Error: %v", err)
 					continue
 				}
-				c.Lock()
-				for _, handler := range c.events {
-					handler <- events
+
+				for _, ev := range l.Events {
+					dbg("<%v> event: %T %+v", ev.request(), ev, ev)
+
+					c.Lock()
+					handler, ok := c.events[ev.request()]
+					c.Unlock()
+
+					if ok {
+						handler <- ev
+					} else {
+						dbg("No event handler registered for %+v", ev)
+					}
 				}
-				c.Unlock()
 
 			default:
+				dbg("received unknown packet %+v", packet)
 				// Unknown packet. Ignore.
 			}
 		}
