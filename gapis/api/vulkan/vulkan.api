@@ -2993,8 +2993,10 @@ cmd void vkDestroyDevice(
         LastBoundQueue = null
       }
       for i in (0 .. LastPresentInfo.PresentImageCount) {
-        if (LastPresentInfo.PresentImages[i].Device == device) {
-          delete(LastPresentInfo.PresentImages, i)
+        if (LastPresentInfo.PresentImages[i] != null) {
+          if (LastPresentInfo.PresentImages[i].Device == device) {
+            LastPresentInfo.PresentImages[i] = null
+          }
         }
       }
       delete(Queues, v.VulkanHandle)
@@ -4193,8 +4195,10 @@ cmd void vkDestroyImage(
       }
     }
     for i in (0 .. LastPresentInfo.PresentImageCount) {
-      if (LastPresentInfo.PresentImages[i].VulkanHandle == image) {
-        delete(LastPresentInfo.PresentImages, i)
+      if (LastPresentInfo.PresentImages[i] != null) {
+        if (LastPresentInfo.PresentImages[i].VulkanHandle == image) {
+          LastPresentInfo.PresentImages[i] = null
+        }
       }
     }
   }
@@ -7667,7 +7671,9 @@ sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
   lastDrawInfo().RenderPass = RenderPasses[args.RenderPass]
   lastDrawInfo().InRenderPass = true
   for _ , _ , v in lastDrawInfo().Framebuffer.ImageAttachments {
-    v.Image.LastBoundQueue = LastBoundQueue
+    if (v.Image != null) {
+      v.Image.LastBoundQueue = LastBoundQueue
+    }
   }
   subpass := lastDrawInfo().RenderPass.SubpassDescriptions[0]
   for _ , _ , a in subpass.InputAttachments {
