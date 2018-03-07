@@ -498,7 +498,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     };
 
     auto level_size = [this](const VkExtent3D &extent, uint32_t format,
-                             uint32_t mip_level) -> byte_size_and_extent {
+                             uint32_t mip_level, uint32_t aspect_bit) -> byte_size_and_extent {
       auto elementAndTexelBlockSize =
           subGetElementAndTexelBlockSize(nullptr, nullptr, format);
 
@@ -516,23 +516,46 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           subRoundUpTo(nullptr, nullptr, width, texel_width);
       const uint32_t height_in_blocks =
           subRoundUpTo(nullptr, nullptr, height, texel_height);
-      const size_t size = width_in_blocks * height_in_blocks * depth *
-                          elementAndTexelBlockSize.mElementSize;
+      const uint32_t element_size = [&]() -> uint32_t {
+        switch (aspect_bit) {
+          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT:
+            return elementAndTexelBlockSize.mElementSize;
+          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT:
+            return subGetDepthElementSizeForCopy(nullptr, nullptr, format);
+          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT:
+            return 1;
+        }
+        return 0;
+      }();
+      const size_t size = width_in_blocks * height_in_blocks * depth * element_size;
       const size_t next_multiple_of_8 = (size + 7) & (~7);
 
       return byte_size_and_extent{size, next_multiple_of_8, width, height,
                                   depth};
     };
 
-    for (auto &l : img->mLayers) {
-      auto &layer = l.second;
-      for (auto &lev : layer->mLevels) {
-        auto &level = lev.second;
-        byte_size_and_extent e =
-            level_size(image_info.mExtent, image_info.mFormat, lev.first);
-        level->mData = gapil::Slice<uint8_t>::create(
-            create_virtual_pool(e.aligned_level_size));
-        gpu_pools->insert(level->mData.pool_id());
+    auto aspect_flag_bits =
+        [this](VkImageAspectFlags flags) -> std::vector<uint32_t> {
+      auto unpacked = subUnpackImageAspectFlags(nullptr, nullptr, flags);
+      std::vector<uint32_t> aspect_bits;
+      for (auto &b : unpacked->mBits) {
+        aspect_bits.push_back(b.second);
+      }
+      return aspect_bits;
+    };
+
+    for (auto &a : img->mAspects) {
+      auto& aspect = a.second;
+      for (auto& l : aspect->mLayers) {
+        auto& layer = l.second;
+        for (auto& lev : layer->mLevels) {
+          auto& level = lev.second;
+          byte_size_and_extent e =
+              level_size(image_info.mExtent, image_info.mFormat, lev.first, a.first);
+          level->mData = gapil::Slice<uint8_t>::create(
+              create_virtual_pool(e.aligned_level_size));
+          gpu_pools->insert(level->mData.pool_id());
+        }
       }
     }
 
@@ -650,51 +673,57 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     {
       VkDeviceSize offset = 0;
       std::vector<VkBufferImageCopy> copies;
-      for (auto &range : opaque_ranges) {
-        for (size_t i = 0; i < range.mlevelCount; ++i) {
-          uint32_t mip_level = range.mbaseMipLevel + i;
-          byte_size_and_extent e =
-              level_size(image_info.mExtent, image_info.mFormat, mip_level);
-          for (size_t j = 0; j < range.mlayerCount; j++) {
-            uint32_t layer = range.mbaseArrayLayer + j;
-            copies.push_back(
-                VkBufferImageCopy{offset,  // bufferOffset,
-                                  0,       // bufferRowLength,
-                                  0,       // bufferImageHeight,
-                                  {
-                                      img->mImageAspect,  // aspectMask
-                                      mip_level,
-                                      layer,  // baseArrayLayer
-                                      1       // layerCount
-                                  },
-                                  {0, 0, 0},
-                                  {e.width, e.height, e.depth}});
-            offset += e.aligned_level_size;
+      for (auto& range : opaque_ranges) {
+        auto aspect_bits = aspect_flag_bits(range.maspectMask);
+        for (auto aspect_bit : aspect_bits) {
+          for (size_t i = 0; i < range.mlevelCount; ++i) {
+            uint32_t mip_level = range.mbaseMipLevel + i;
+            byte_size_and_extent e =
+                level_size(image_info.mExtent, image_info.mFormat, mip_level, aspect_bit);
+            for (size_t j = 0; j < range.mlayerCount; j++) {
+              uint32_t layer = range.mbaseArrayLayer + j;
+              copies.push_back(VkBufferImageCopy{
+                  offset,  // bufferOffset,
+                  0,       // bufferRowLength,
+                  0,       // bufferImageHeight,
+                  {
+                      aspect_bit,  // aspectMask
+                      mip_level,
+                      layer,  // baseArrayLayer
+                      1       // layerCount
+                  },
+                  {0, 0, 0},
+                  {e.width, e.height, e.depth}});
+              offset += e.aligned_level_size;
+            }
           }
         }
       }
 
       if (sparseResidency) {
-        if (img->mSparseImageMemoryBindings.find(img->mImageAspect) !=
-            img->mSparseImageMemoryBindings.end()) {
-          for (const auto &layer_i :
-               img->mSparseImageMemoryBindings[img->mImageAspect]->mLayers) {
-            for (const auto &level_i : layer_i.second->mLevels) {
-              for (const auto &block_i : level_i.second->mBlocks) {
-                copies.push_back(VkBufferImageCopy{
-                    offset,  // bufferOffset,
-                    0,       // bufferRowLength,
-                    0,       // bufferImageHeight,
-                    VkImageSubresourceLayers{
-                        img->mImageAspect,  // aspectMask
-                        level_i.first,
-                        layer_i.first,  // baseArrayLayer
-                        1               // layerCount
-                    },
-                    block_i.second->mOffset, block_i.second->mExtent});
-                byte_size_and_extent e =
-                    level_size(block_i.second->mExtent, image_info.mFormat, 0);
-                offset += e.aligned_level_size;
+        auto aspect_bits = aspect_flag_bits(img->mImageAspect);
+        for (auto aspect_bit : aspect_bits) {
+          if (img->mSparseImageMemoryBindings.find(aspect_bit) !=
+              img->mSparseImageMemoryBindings.end()) {
+            for (const auto &layer_i :
+                 img->mSparseImageMemoryBindings[aspect_bit]->mLayers) {
+              for (const auto &level_i : layer_i.second->mLevels) {
+                for (const auto &block_i : level_i.second->mBlocks) {
+                  copies.push_back(VkBufferImageCopy{
+                      offset,  // bufferOffset,
+                      0,       // bufferRowLength,
+                      0,       // bufferImageHeight,
+                      VkImageSubresourceLayers{
+                          aspect_bit,  // aspectMask
+                          level_i.first,
+                          layer_i.first,  // baseArrayLayer
+                          1               // layerCount
+                      },
+                      block_i.second->mOffset, block_i.second->mExtent});
+                  byte_size_and_extent e =
+                      level_size(block_i.second->mExtent, image_info.mFormat, 0, aspect_bit);
+                  offset += e.aligned_level_size;
+                }
               }
             }
           }
@@ -769,8 +798,9 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
         auto &copy = copies[i];
         size_t next_offset =
             (i == copies.size() - 1) ? offset : copies[i + 1].mbufferOffset;
+        const uint32_t aspect_bit = (uint32_t) copy.mimageSubresource.maspectMask;
         byte_size_and_extent e =
-            level_size(copy.mimageExtent, image_info.mFormat, 0);
+            level_size(copy.mimageExtent, image_info.mFormat, 0, aspect_bit);
         auto bp = block_pitch(copy.mimageExtent, image_info.mFormat,
                               copy.mimageSubresource.mmipLevel);
 
@@ -793,7 +823,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
         observation.set_size(e.level_size);
         observation.set_resindex(resIndex);
         observation.set_pool(
-            img->mLayers[array_layer]->mLevels[mip_level]->mData.pool_id());
+            img->mAspects[aspect_bit]->mLayers[array_layer]->mLevels[mip_level]->mData.pool_id());
         group->object(&observation);
         new_offset = next_offset;
       }

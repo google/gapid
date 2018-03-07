@@ -300,7 +300,7 @@ func texelBlockHeight(ctx context.Context, s *api.GlobalState, fmt VkFormat) (ui
 	return elementAndTexelSizeInfo.TexelBlockSize.Height, nil
 }
 
-func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outputImg *ImageObject, queue *QueueObject, layer, level uint32) error {
+func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outputImg *ImageObject, queue *QueueObject, layer, level uint32, aspect VkImageAspectFlagBits) error {
 	descPool := h.createTempDescriptorPool(outputImg.Device, 1, []VkDescriptorPoolSize{
 		VkDescriptorPoolSize{
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
@@ -319,9 +319,9 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	descSet := h.allocateTempDescriptorSet(descPool, descSetLayout)
 	inputViews := []*ImageViewObject{}
 	for _, input := range inputImgs {
-		inputViews = append(inputViews, h.createTempImageView(input, layer, level))
+		inputViews = append(inputViews, h.createTempImageView(input, layer, level, aspect))
 	}
-	outputView := h.createTempImageView(outputImg, layer, level)
+	outputView := h.createTempImageView(outputImg, layer, level, aspect)
 	imgInfo := []VkDescriptorImageInfo{}
 	for _, view := range inputViews {
 		imgInfo = append(imgInfo, VkDescriptorImageInfo{
@@ -331,11 +331,11 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 		})
 	}
 	h.writeDescriptorSet(descSet, 0, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, imgInfo, []VkDescriptorBufferInfo{}, []VkBufferView{})
-	renderpass, err := h.createTempRenderPassForPriming(inputImgs, outputImg)
+	renderpass, err := h.createTempRenderPassForPriming(inputImgs, outputImg, aspect)
 	if err != nil {
 		return fmt.Errorf("[Creating RenderPass] %v", err)
 	}
-	framebuffer, err := h.createTempFrameBufferForPriming(renderpass, append(inputViews, outputView), level)
+	framebuffer, err := h.createTempFrameBufferForPriming(renderpass, append(inputViews, outputView), level, aspect)
 	if err != nil {
 		return fmt.Errorf("[Creating Framebuffer] %v", err)
 	}
@@ -345,7 +345,7 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	if err != nil {
 		return fmt.Errorf("[Creating fragment shader module] %v", err)
 	}
-	e := h.sb.levelSize(outputImg.Info.Extent, outputImg.Info.Format, level)
+	e := h.sb.levelSize(outputImg.Info.Extent, outputImg.Info.Format, level, aspect)
 	viewport := VkViewport{
 		0.0, 0.0,
 		float32(e.width), float32(e.height),
@@ -390,7 +390,7 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 				queue.Family,
 				img.VulkanHandle,
 				VkImageSubresourceRange{
-					img.ImageAspect,
+					VkImageAspectFlags(aspect),
 					0,
 					img.Info.MipLevels,
 					0,
@@ -411,14 +411,14 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 		queue.Family,
 		outputImg.VulkanHandle,
 		VkImageSubresourceRange{
-			outputImg.ImageAspect,
+			VkImageAspectFlags(aspect),
 			0,
 			outputImg.Info.MipLevels,
 			0,
 			outputImg.Info.ArrayLayers,
 		}}
 
-	switch outputImg.ImageAspect {
+	switch VkImageAspectFlags(aspect) {
 	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT):
 		outputBarrier.NewLayout = VkImageLayout_VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT):
@@ -426,7 +426,7 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT) | VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT):
 		outputBarrier.NewLayout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 	default:
-		return fmt.Errorf("unsupported image aspect flags: %v", outputImg.ImageAspect)
+		return fmt.Errorf("unsupported image aspect flags: %v", aspect)
 	}
 
 	imgBarriers = append(imgBarriers, outputBarrier)
@@ -604,7 +604,7 @@ func (h *imageRebuildHelper) allocateTempDescriptorSet(pool *DescriptorPoolObjec
 	return h.tempDescriptorSets[handle]
 }
 
-func (h *imageRebuildHelper) createTempRenderPassForPriming(stagingImgs []*ImageObject, dstImg *ImageObject) (*RenderPassObject, error) {
+func (h *imageRebuildHelper) createTempRenderPassForPriming(stagingImgs []*ImageObject, dstImg *ImageObject, aspect VkImageAspectFlagBits) (*RenderPassObject, error) {
 	inputAttachmentRefs := []VkAttachmentReference{}
 	inputAttachmentDescs := []VkAttachmentDescription{}
 	for i, img := range stagingImgs {
@@ -654,7 +654,7 @@ func (h *imageRebuildHelper) createTempRenderPassForPriming(stagingImgs []*Image
 		uint32(0),
 		NewU32ᶜᵖ(memory.Nullptr),
 	}
-	switch dstImg.ImageAspect {
+	switch VkImageAspectFlags(aspect) {
 	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT):
 		outputAttachmentRef.Layout = VkImageLayout_VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 		outputAttachmentDesc.InitialLayout = VkImageLayout_VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -669,7 +669,7 @@ func (h *imageRebuildHelper) createTempRenderPassForPriming(stagingImgs []*Image
 		outputAttachmentDesc.InitialLayout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 		subpassDesc.PDepthStencilAttachment = NewVkAttachmentReferenceᶜᵖ(h.sb.MustAllocReadData(outputAttachmentRef).Ptr())
 	default:
-		return nil, fmt.Errorf("unsupported image aspect flags: %v", dstImg.ImageAspect)
+		return nil, fmt.Errorf("unsupported image aspect flags: %v", aspect)
 	}
 
 	createInfo := VkRenderPassCreateInfo{
@@ -704,11 +704,11 @@ func (h *imageRebuildHelper) createTempRenderPassForPriming(stagingImgs []*Image
 	return h.tempRenderPasses[handle], nil
 }
 
-func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderPassObject, imgViews []*ImageViewObject, level uint32) (*FramebufferObject, error) {
+func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderPassObject, imgViews []*ImageViewObject, level uint32, aspect VkImageAspectFlagBits) (*FramebufferObject, error) {
 	if len(imgViews) < 2 {
 		return nil, fmt.Errorf("requires at least two image views, %d are given", len(imgViews))
 	}
-	e := h.sb.levelSize(imgViews[0].Image.Info.Extent, imgViews[0].Image.Info.Format, level)
+	e := h.sb.levelSize(imgViews[0].Image.Info.Extent, imgViews[0].Image.Info.Format, level, aspect)
 	attachments := []VkImageView{}
 	for _, v := range imgViews {
 		attachments = append(attachments, v.VulkanHandle)
@@ -743,7 +743,7 @@ func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderP
 	return h.tempFramebuffers[handle], nil
 }
 
-func (h *imageRebuildHelper) createTempImageView(img *ImageObject, layer, level uint32) *ImageViewObject {
+func (h *imageRebuildHelper) createTempImageView(img *ImageObject, layer, level uint32, aspect VkImageAspectFlagBits) *ImageViewObject {
 	handle := VkImageView(newUnusedID(true, func(x uint64) bool {
 		inState := h.sb.s.ImageViews.Contains(VkImageView(x))
 		_, inHelper := h.tempImageViews[VkImageView(x)]
@@ -766,7 +766,7 @@ func (h *imageRebuildHelper) createTempImageView(img *ImageObject, layer, level 
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY,
 				},
 				VkImageSubresourceRange{
-					img.ImageAspect,
+					VkImageAspectFlags(aspect),
 					level,
 					1,
 					layer,

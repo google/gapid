@@ -4067,6 +4067,40 @@ sub u32 roundUpTo(u32 dividend, u32 divisor) {
   return (dividend + divisor - 1) / divisor
 }
 
+// This should correspond to the data layout specified at VkBufferImageCopy
+sub u32 getDepthElementSizeForCopy(VkFormat format) {
+  d16Size := getElementAndTexelBlockSize(VK_FORMAT_D16_UNORM).ElementSize
+  d32Size := getElementAndTexelBlockSize(VK_FORMAT_D32_SFLOAT).ElementSize
+  return switch (format) {
+    case VK_FORMAT_D16_UNORM, VK_FORMAT_D16_UNORM_S8_UINT:
+      d16Size
+    case VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT:
+      d32Size
+    case VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D24_UNORM_S8_UINT:
+      // For those two formats, data is packed with one 32-bit word per texel
+      // with the D24 value in the LSBs of the word, and undefined values in
+      // the eight MSBs.
+      d32Size
+    default:
+      as!u32(0)
+  }
+}
+
+@internal
+class unpackedImageAspectFlagBits {
+  map!(u32, VkImageAspectFlagBits) Bits
+}
+
+sub ref!unpackedImageAspectFlagBits unpackImageAspectFlags(VkImageAspectFlags flag) {
+  u := new!unpackedImageAspectFlagBits()
+  for i in (0 .. 32) {
+    if (as!u32(1<<as!u32(i))&as!u32(flag)) != as!u32(0) {
+      u.Bits[len(u.Bits)] = as!VkImageAspectFlagBits(1<<as!u32(i))
+    }
+  }
+  return u
+}
+
 @threadSafety("system")
 @indirect("VkDevice")
 @override
@@ -4149,22 +4183,36 @@ cmd VkResult vkCreateImage(
     ImageAspect:       imageAspect,
   )
 
-  for j in (0 .. info.arrayLayers) {
-    layer := new!ImageLayer()
-    object.Layers[j] = layer
-    for i in (0 .. info.mipLevels) {
-      width := getMipSize(info.extent.Width, i)
-      height := getMipSize(info.extent.Height, i)
-      depth := getMipSize(info.extent.Depth, i)
-      level := new!ImageLevel(Width: width,Height:  height,Depth:  depth)
-      elementAndTexelBlockSize := getElementAndTexelBlockSize(object.Info.Format)
-      // Roundup the width and height in the number of blocks.
-      widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
-      heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
-      // Align to the next multiple times of 8
-      size := ((widthInBlocks * heightInBlocks * depth * elementAndTexelBlockSize.ElementSize) + 7) & (0xFFFFFFF8)
-      level.Data = make!u8(size)
-      object.Layers[j].Levels[i] = level
+  for _, _, aspectBit in unpackImageAspectFlags(imageAspect).Bits {
+    object.Aspects[aspectBit] = new!ImageAspect()
+    aspect := object.Aspects[aspectBit]
+    for j in (0 .. info.arrayLayers) {
+      aspect.Layers[j] = new!ImageLayer()
+      for i in (0 .. info.mipLevels) {
+        width := getMipSize(info.extent.Width, i)
+        height := getMipSize(info.extent.Height, i)
+        depth := getMipSize(info.extent.Depth, i)
+        level := new!ImageLevel(Width: width,Height:  height,Depth:  depth)
+        elementAndTexelBlockSize := getElementAndTexelBlockSize(object.Info.Format)
+        depthElementSize := getDepthElementSizeForCopy(object.Info.Format)
+        // Roundup the width and height in the number of blocks.
+        widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
+        heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
+        //elementSize := elementAndTexelBlockSize.ElementSize
+        elementSize := switch (aspectBit) {
+          case VK_IMAGE_ASPECT_COLOR_BIT:
+            elementAndTexelBlockSize.ElementSize
+          case VK_IMAGE_ASPECT_DEPTH_BIT:
+            depthElementSize
+          case VK_IMAGE_ASPECT_STENCIL_BIT:
+            // stencil element is always 1 byte wide
+            as!u32(1)
+        }
+        // Align to the next multiple times of 8
+        size := ((widthInBlocks * heightInBlocks * depth * elementSize) + 7) & (0xFFFFFFF8)
+        level.Data = make!u8(size)
+        aspect.Layers[j].Levels[i] = level
+      }
     }
   }
   Images[handle] = object
@@ -6483,8 +6531,10 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
 
   srcFormat := srcImageObject.Info.Format
   srcElementAndTexelBlockSize := getElementAndTexelBlockSize(srcFormat)
+  srcDepthElementSize := getDepthElementSizeForCopy(srcFormat)
   dstFormat := dstImageObject.Info.Format
   dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
+  dstDepthElementSize := getDepthElementSizeForCopy(dstFormat)
   for r in (0 .. len(args.Regions)) {
     // TODO: (qining) Handle the apsect mask
     region := args.Regions[as!u32(r)]
@@ -6493,43 +6543,60 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
     srcMipLevel := region.srcSubresource.mipLevel
     dstMipLevel := region.dstSubresource.mipLevel
 
-    srcElementSize := as!u64(srcElementAndTexelBlockSize.ElementSize)
-    srcBlockWidth := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Width)
-    srcBlockHeight := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Height)
-    dstElementSize := as!u64(dstElementAndTexelBlockSize.ElementSize)
-    dstBlockWidth := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Width)
-    dstBlockHeight := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Height)
+    for _, _, aspectBit in unpackImageAspectFlags(region.srcSubresource.aspectMask).Bits {
+      srcElementSize := switch (aspectBit) {
+        case VK_IMAGE_ASPECT_COLOR_BIT:
+          as!u64(srcElementAndTexelBlockSize.ElementSize)
+        case VK_IMAGE_ASPECT_DEPTH_BIT:
+          as!u64(srcDepthElementSize)
+        case VK_IMAGE_ASPECT_STENCIL_BIT:
+          as!u64(1)
+      }
+      srcBlockWidth := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Width)
+      srcBlockHeight := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Height)
 
-    srcXStartInBlocks := as!u64(as!u64(region.srcOffset.x) / srcBlockWidth)
-    srcYStartInBlocks := as!u64(as!u64(region.srcOffset.y) / srcBlockHeight)
-    srcZStart := as!u64(region.srcOffset.z)
-    dstXStartInBlocks := as!u64(as!u64(region.dstOffset.x) / dstBlockWidth)
-    dstYStartInBlocks := as!u64(as!u64(region.dstOffset.y) / dstBlockHeight)
-    dstZStart := as!u64(region.dstOffset.z)
+      dstElementSize := switch (aspectBit) {
+        case VK_IMAGE_ASPECT_COLOR_BIT:
+          as!u64(dstElementAndTexelBlockSize.ElementSize)
+        case VK_IMAGE_ASPECT_DEPTH_BIT:
+          as!u64(dstDepthElementSize)
+        case VK_IMAGE_ASPECT_STENCIL_BIT:
+          as!u64(1)
+      }
+      dstBlockWidth := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Width)
+      dstBlockHeight := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Height)
 
-    extentXInBlocks := roundUpTo(region.extent.Width, as!u32(srcBlockWidth))
-    extentYInBlocks := roundUpTo(region.extent.Height, as!u32(srcBlockHeight))
-    extentZ := region.extent.Depth
+      srcXStartInBlocks := as!u64(as!u64(region.srcOffset.x) / srcBlockWidth)
+      srcYStartInBlocks := as!u64(as!u64(region.srcOffset.y) / srcBlockHeight)
+      srcZStart := as!u64(region.srcOffset.z)
+      dstXStartInBlocks := as!u64(as!u64(region.dstOffset.x) / dstBlockWidth)
+      dstYStartInBlocks := as!u64(as!u64(region.dstOffset.y) / dstBlockHeight)
+      dstZStart := as!u64(region.dstOffset.z)
 
-    for l in (0 .. region.srcSubresource.layerCount) {
-      srcImageLevel := srcImageObject.Layers[srcBaseLayer + l].Levels[srcMipLevel]
-      dstImageLevel := dstImageObject.Layers[dstBaseLayer + l].Levels[dstMipLevel]
+      extentXInBlocks := roundUpTo(region.extent.Width, as!u32(srcBlockWidth))
+      extentYInBlocks := roundUpTo(region.extent.Height, as!u32(srcBlockHeight))
+      extentZ := region.extent.Depth
 
-      srcImageLevelWidthInBlocks := as!u64(roundUpTo(srcImageLevel.Width, as!u32(srcBlockWidth)))
-      srcImageLevelHeightInBlocks := as!u64(roundUpTo(srcImageLevel.Height, as!u32(srcBlockHeight)))
-      dstImageLevelWidthInBlocks := as!u64(roundUpTo(dstImageLevel.Width, as!u32(dstBlockWidth)))
-      dstImageLevelHeightInBlocks := as!u64(roundUpTo(dstImageLevel.Height, as!u32(dstBlockHeight)))
+      for l in (0 .. region.srcSubresource.layerCount) {
+        srcImageLevel := srcImageObject.Aspects[aspectBit].Layers[srcBaseLayer + l].Levels[srcMipLevel]
+        dstImageLevel := dstImageObject.Aspects[aspectBit].Layers[dstBaseLayer + l].Levels[dstMipLevel]
 
-      for z in (0 .. extentZ) {
-        for y in (0 .. extentYInBlocks) {
-          copySize := as!u64(extentXInBlocks) * srcElementSize
-          dstY := dstYStartInBlocks + as!u64(y)
-          dstZ := dstZStart + as!u64(z)
-          srcY := srcYStartInBlocks + as!u64(y)
-          srcZ := srcZStart + as!u64(z)
-          dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * dstElementSize
-          srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * srcElementSize
-          copy(dstImageLevel.Data[dstStart:dstStart + copySize], srcImageLevel.Data[srcStart:srcStart + copySize])
+        srcImageLevelWidthInBlocks := as!u64(roundUpTo(srcImageLevel.Width, as!u32(srcBlockWidth)))
+        srcImageLevelHeightInBlocks := as!u64(roundUpTo(srcImageLevel.Height, as!u32(srcBlockHeight)))
+        dstImageLevelWidthInBlocks := as!u64(roundUpTo(dstImageLevel.Width, as!u32(dstBlockWidth)))
+        dstImageLevelHeightInBlocks := as!u64(roundUpTo(dstImageLevel.Height, as!u32(dstBlockHeight)))
+
+        for z in (0 .. extentZ) {
+          for y in (0 .. extentYInBlocks) {
+            copySize := as!u64(extentXInBlocks) * srcElementSize
+            dstY := dstYStartInBlocks + as!u64(y)
+            dstZ := dstZStart + as!u64(z)
+            srcY := srcYStartInBlocks + as!u64(y)
+            srcZ := srcZStart + as!u64(z)
+            dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * dstElementSize
+            srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * srcElementSize
+            copy(dstImageLevel.Data[dstStart:dstStart + copySize], srcImageLevel.Data[srcStart:srcStart + copySize])
+          }
         }
       }
     }
@@ -6919,43 +6986,53 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   imageObject := Images[args.DstImage]
   format := imageObject.Info.Format
   elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
+  depthElementSize := getDepthElementSizeForCopy(format)
   // Iterate through regions
   for i in (0 .. len(args.Regions)) {
     region := args.Regions[as!u32(i)]
     rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
     rowLength := as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width)
     imageHeight := as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height)
-    elementSize := as!u64(elementAndTexelBlockSize.ElementSize)
-    layerSize := rowLength * imageHeight * elementSize
-    zStart := as!u64(region.imageOffset.z)
-    zEnd := zStart + as!u64(region.imageExtent.Depth)
-    yStart := as!u64(as!u32(region.imageOffset.y) / elementAndTexelBlockSize.TexelBlockSize.Height)
-    yEnd := yStart + as!u64(region.imageExtent.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
-    xStart := as!u64(as!u32(region.imageOffset.x) / elementAndTexelBlockSize.TexelBlockSize.Width)
-    xEnd := xStart + as!u64(region.imageExtent.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
-    // When multiple layers are specified in the buffer image copy region,
-    // Vulkan assumes the data of all the layers are placed continuously in
-    // the source buffer memory.
-    // TODO: (qining) Handle aspect mask
-    for j in (0 .. region.imageSubresource.layerCount) {
-      layerIndex := region.imageSubresource.baseArrayLayer + j
-      bufferLayerOffset := as!u64(j) * layerSize
-      imageLevel := imageObject.Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
-      imageLevelWidthInBlocks := as!u64(imageLevel.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
-      imageLevelHeightInBlocks := as!u64(imageLevel.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
-      // Iterate through depths and rows to copy
-      for z in (zStart .. zEnd) {
-        for y in (yStart .. yEnd) {
-          copySize := (xEnd - xStart) * elementSize
-          dstStart := ((((z * imageLevelHeightInBlocks) + y) * imageLevelWidthInBlocks) + xStart) * elementSize
-          dstEnd := dstStart + copySize
-          zInExtent := z - zStart
-          yInExtent := y - yStart
-          rowStartInExtent := (((zInExtent * imageHeight) + yInExtent) * rowLength) * elementSize
-          srcStart := as!u64(bufferObject.MemoryOffset) + as!u64(region.bufferOffset) + bufferLayerOffset + rowStartInExtent
-          srcEnd := srcStart + copySize
-          readCoherentMemoryInBuffer(bufferObject, region.bufferOffset + as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
-          copy(imageLevel.Data[dstStart:dstEnd], bufferObject.Memory.Data[srcStart:srcEnd])
+    for _, _, aspectBit in unpackImageAspectFlags(region.imageSubresource.aspectMask).Bits {
+      elementSize := switch (aspectBit) {
+        case VK_IMAGE_ASPECT_COLOR_BIT:
+          as!u64(elementAndTexelBlockSize.ElementSize)
+        case VK_IMAGE_ASPECT_DEPTH_BIT:
+          as!u64(depthElementSize)
+        case VK_IMAGE_ASPECT_STENCIL_BIT:
+          as!u64(1)
+      }
+      layerSize := rowLength * imageHeight * elementSize
+      zStart := as!u64(region.imageOffset.z)
+      zEnd := zStart + as!u64(region.imageExtent.Depth)
+      yStart := as!u64(as!u32(region.imageOffset.y) / elementAndTexelBlockSize.TexelBlockSize.Height)
+      yEnd := yStart + as!u64(region.imageExtent.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
+      xStart := as!u64(as!u32(region.imageOffset.x) / elementAndTexelBlockSize.TexelBlockSize.Width)
+      xEnd := xStart + as!u64(region.imageExtent.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
+      // When multiple layers are specified in the buffer image copy region,
+      // Vulkan assumes the data of all the layers are placed continuously in
+      // the source buffer memory.
+      // TODO: (qining) Handle aspect mask
+      for j in (0 .. region.imageSubresource.layerCount) {
+        layerIndex := region.imageSubresource.baseArrayLayer + j
+        bufferLayerOffset := as!u64(j) * layerSize
+        imageLevel := imageObject.Aspects[aspectBit].Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
+        imageLevelWidthInBlocks := as!u64(imageLevel.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
+        imageLevelHeightInBlocks := as!u64(imageLevel.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
+        // Iterate through depths and rows to copy
+        for z in (zStart .. zEnd) {
+          for y in (yStart .. yEnd) {
+            copySize := (xEnd - xStart) * elementSize
+            dstStart := ((((z * imageLevelHeightInBlocks) + y) * imageLevelWidthInBlocks) + xStart) * elementSize
+            dstEnd := dstStart + copySize
+            zInExtent := z - zStart
+            yInExtent := y - yStart
+            rowStartInExtent := (((zInExtent * imageHeight) + yInExtent) * rowLength) * elementSize
+            srcStart := as!u64(bufferObject.MemoryOffset) + as!u64(region.bufferOffset) + bufferLayerOffset + rowStartInExtent
+            srcEnd := srcStart + copySize
+            readCoherentMemoryInBuffer(bufferObject, region.bufferOffset + as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
+            copy(imageLevel.Data[dstStart:dstEnd], bufferObject.Memory.Data[srcStart:srcEnd])
+          }
         }
       }
     }
@@ -8136,8 +8213,9 @@ cmd VkResult vkGetSwapchainImagesKHR(
         heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
         size := widthInBlocks * heightInBlocks * elementAndTexelBlockSize.ElementSize
         level.Data = make!u8(size)
-        object.Layers[0] = layer
-        object.Layers[0].Levels[0] = level
+        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT] = new!ImageAspect()
+        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0] = layer
+        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0].Levels[0] = level
         Images[images[i]] = object
       }
       swapchainObject.SwapchainImages[i] = Images[images[i]]
@@ -9558,11 +9636,15 @@ enum SemaphoreUpdate {
   VkImage                                    VulkanHandle
   ImageInfo                                  Info
   VkImageAspectFlags                         ImageAspect
-  map!(u32, ref!ImageLayer)                  Layers
+  map!(VkImageAspectFlagBits, ref!ImageAspect) Aspects
   @unused ref!VulkanDebugMarkerInfo          DebugInfo
   VkMemoryRequirements                       MemoryRequirements
   map!(u32, VkSparseImageMemoryRequirements) SparseMemoryRequirements
   ref!DedicatedRequirementsKHR               DedicatedRequirementsKHR
+}
+
+@internal class ImageAspect {
+  map!(u32, ref!ImageLayer) Layers
 }
 
 @internal class ImageLayer {
