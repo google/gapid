@@ -597,15 +597,15 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 		return
 	case *semantic.Slice:
 		e.writeBlob(s, buf, func(buf *codegen.Value) {
-			root := s.LocalInit("root", ptr.Index(0, compiler.SliceRoot).Load().Cast(e.T.Uint64))
-			base := s.LocalInit("base", ptr.Index(0, compiler.SliceBase).Load().Cast(e.T.Uint64))
+			root := s.LocalInit("root", ptr.Index(0, compiler.SliceRoot).Load().Cast(e.T.Size))
+			base := s.LocalInit("base", ptr.Index(0, compiler.SliceBase).Load().Cast(e.T.Size))
 			size := ptr.Index(0, compiler.SliceSize).Load()
 			pool := ptr.Index(0, compiler.SlicePool).Load()
 			count := s.Div(size, s.SizeOf(e.T.Storage(ty.To)))
 
 			s.If(s.Not(pool.IsNull()), func() {
 				// Adjust root and base to be relative to the pool base
-				offset := pool.Index(0, compiler.PoolBuffer).Load().Cast(e.T.Uint64)
+				offset := pool.Index(0, compiler.PoolBuffer).Load().Cast(e.T.Size)
 				root.Store(s.Sub(root.Load(), offset))
 				base.Store(s.Sub(base.Load(), offset))
 			})
@@ -615,12 +615,12 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 
 			s.If(s.NotEqual(root, s.Zero(root.Type())), func() {
 				e.writeWireAndTag(s, buf, proto.WireVarint, serialization.SliceRoot)
-				e.writeVarint(s, buf, root)
+				e.writeVarint(s, buf, root.Cast(e.T.Uint64))
 			})
 
 			s.If(s.NotEqual(base, s.Zero(base.Type())), func() {
 				e.writeWireAndTag(s, buf, proto.WireVarint, serialization.SliceBase)
-				e.writeVarint(s, buf, base)
+				e.writeVarint(s, buf, base.Cast(e.T.Uint64))
 			})
 
 			s.If(s.NotEqual(count, s.Zero(count.Type())), func() {

@@ -108,8 +108,9 @@ func (m *Module) Optimize() {
 	defer pass.Dispose()
 
 	// pass.AddFunctionInliningPass() // Way too slow with this pass
-	pass.AddConstantPropagationPass()
 	pass.AddInstructionCombiningPass()
+	pass.AddReassociatePass()
+	pass.AddConstantPropagationPass()
 	pass.AddPromoteMemoryToRegisterPass()
 	pass.AddGVNPass()
 	pass.AddCFGSimplificationPass()
