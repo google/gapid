@@ -526,18 +526,23 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		// represent a cubemap, and the image type must not be VK_IMAGE_TYPE_3D
 		if uint32(t.Info.Flags)&uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0 {
 			// Cubemap
-			cubeMapLevels := make([]*api.CubemapLevel, t.Layers.Get(0).Levels.Len())
+			cubeMapLevels := make([]*api.CubemapLevel, t.Info.MipLevels)
 			for l := range cubeMapLevels {
 				cubeMapLevels[l] = &api.CubemapLevel{}
 			}
-			for layerIndex, imageLayer := range t.Layers.Range() {
-				for levelIndex, imageLevel := range imageLayer.Levels.Range() {
-					img := imageLevel.imageInfo(ctx, s, format)
-					if img == nil {
-						continue
-					}
-					if !setCubemapFace(img, cubeMapLevels[levelIndex], layerIndex) {
-						continue
+			for aspectBit, aspect := range t.Aspects.Range() {
+				if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+					continue
+				}
+				for layerIndex, imageLayer := range aspect.Layers.Range() {
+					for levelIndex, imageLevel := range imageLayer.Levels.Range() {
+						img := imageLevel.imageInfo(ctx, s, format)
+						if img == nil {
+							continue
+						}
+						if !setCubemapFace(img, cubeMapLevels[levelIndex], layerIndex) {
+							continue
+						}
 					}
 				}
 			}
@@ -547,42 +552,57 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		if t.Info.ArrayLayers > uint32(1) {
 			// 2D texture array
 			layers := make([]*api.Texture2D, int(t.Info.ArrayLayers))
-			for layerIndex := range layers {
-				imageLayer := t.Layers.Get(uint32(layerIndex))
-				levels := make([]*image.Info, imageLayer.Levels.Len())
-				for levelIndex := range levels {
-					imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
-					img := imageLevel.imageInfo(ctx, s, format)
-					if img == nil {
-						continue
-					}
-					levels[levelIndex] = img
+			for aspectBit, aspect := range t.Aspects.Range() {
+				if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+					continue
 				}
-				layers[layerIndex] = &api.Texture2D{Levels: levels}
+				for layerIndex := range layers {
+					imageLayer := aspect.Layers.Get(uint32(layerIndex))
+					levels := make([]*image.Info, t.Info.MipLevels)
+					for levelIndex := range levels {
+						imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
+						img := imageLevel.imageInfo(ctx, s, format)
+						if img == nil {
+							continue
+						}
+						levels[levelIndex] = img
+					}
+					layers[layerIndex] = &api.Texture2D{Levels: levels}
+				}
 			}
 			return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers})), nil
 		}
 
 		// Single layer 2D texture
-		levels := make([]*image.Info, t.Layers.Get(0).Levels.Len())
-		for i, level := range t.Layers.Get(0).Levels.Range() {
-			img := level.imageInfo(ctx, s, format)
-			if img == nil {
+		levels := make([]*image.Info, t.Info.MipLevels)
+		for aspectBit, aspect := range t.Aspects.Range() {
+			if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 				continue
 			}
-			levels[i] = img
+			for i, level := range aspect.Layers.Get(0).Levels.Range() {
+				img := level.imageInfo(ctx, s, format)
+				if img == nil {
+					continue
+				}
+				levels[i] = img
+			}
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture2D{Levels: levels})), nil
 
 	case VkImageType_VK_IMAGE_TYPE_3D:
 		// 3D images can have only one layer
-		levels := make([]*image.Info, t.Layers.Get(0).Levels.Len())
-		for i, level := range t.Layers.Get(0).Levels.Range() {
-			img := level.imageInfo(ctx, s, format)
-			if img == nil {
+		levels := make([]*image.Info, t.Info.MipLevels)
+		for aspectBit, aspect := range t.Aspects.Range() {
+			if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 				continue
 			}
-			levels[i] = img
+			for i, level := range aspect.Layers.Get(0).Levels.Range() {
+				img := level.imageInfo(ctx, s, format)
+				if img == nil {
+					continue
+				}
+				levels[i] = img
+			}
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture3D{Levels: levels})), nil
 
@@ -590,29 +610,39 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		if t.Info.ArrayLayers > uint32(1) {
 			// 1D texture array
 			layers := make([]*api.Texture1D, int(t.Info.ArrayLayers))
-			for layerIndex := range layers {
-				imageLayer := t.Layers.Get(uint32(layerIndex))
-				levels := make([]*image.Info, imageLayer.Levels.Len())
-				for levelIndex := range levels {
-					imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
-					img := imageLevel.imageInfo(ctx, s, format)
-					if img == nil {
-						continue
-					}
-					levels[levelIndex] = img
+			for aspectBit, aspect := range t.Aspects.Range() {
+				if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+					continue
 				}
-				layers[layerIndex] = &api.Texture1D{Levels: levels}
+				for layerIndex := range layers {
+					imageLayer := aspect.Layers.Get(uint32(layerIndex))
+					levels := make([]*image.Info, t.Info.MipLevels)
+					for levelIndex := range levels {
+						imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
+						img := imageLevel.imageInfo(ctx, s, format)
+						if img == nil {
+							continue
+						}
+						levels[levelIndex] = img
+					}
+					layers[layerIndex] = &api.Texture1D{Levels: levels}
+				}
 			}
 			return api.NewResourceData(api.NewTexture(&api.Texture1DArray{Layers: layers})), nil
 		}
 		// Single layer 1D texture
-		levels := make([]*image.Info, t.Layers.Get(0).Levels.Len())
-		for i, level := range t.Layers.Get(0).Levels.Range() {
-			img := level.imageInfo(ctx, s, format)
-			if img == nil {
+		levels := make([]*image.Info, t.Info.MipLevels)
+		for aspectBit, aspect := range t.Aspects.Range() {
+			if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 				continue
 			}
-			levels[i] = img
+			for i, level := range aspect.Layers.Get(0).Levels.Range() {
+				img := level.imageInfo(ctx, s, format)
+				if img == nil {
+					continue
+				}
+				levels[i] = img
+			}
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture1D{Levels: levels})), nil
 

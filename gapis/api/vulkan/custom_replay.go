@@ -310,11 +310,11 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 		cb := CommandBuilder{Thread: a.thread}
 		hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice, createInfoPtr, a.PAllocator, a.PDevice, a.Result)
 		hijack.Extras().MustClone(a.Extras().All()...)
-		
+
 		for _, d := range allocated {
 			hijack.AddRead(d.Data())
 		}
-		
+
 		err := hijack.Mutate(ctx, id, s, b)
 		if err != nil {
 			return err
@@ -323,7 +323,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 		device := a.PDevice.MustRead(ctx, a, s, b)
 		return cb.ReplayRegisterVkDevice(a.PhysicalDevice, device, a.PCreateInfo).Mutate(ctx, id, s, b)
 	}
-	
+
 	return a.mutate(ctx, id, s, b)
 }
 
@@ -434,8 +434,8 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	c := GetState(s)
 	memory := a.PMemory.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, a, s, nil)
 	imageObject := c.Images.Get(a.Image)
-	imageWidth := imageObject.Layers.Get(0).Levels.Get(0).Width
-	imageHeight := imageObject.Layers.Get(0).Levels.Get(0).Height
+	imageWidth := imageObject.Info.Extent.Width
+	imageHeight := imageObject.Info.Extent.Height
 	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info.Format)
 	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight), 1))
 	memoryObject := &DeviceMemoryObject{
