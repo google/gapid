@@ -498,18 +498,78 @@ func setCubemapFace(img *image.Info, cubeMap *api.CubemapLevel, layerIndex uint3
 	return true
 }
 
-func (l *ImageLevel) imageInfo(ctx context.Context, s *api.GlobalState, format *image.Format) *image.Info {
-	if l.Data.Count() == 0 {
+func (t *ImageObject) imageInfo(ctx context.Context, s *api.GlobalState, format *image.Format, layer, level uint32) *image.Info {
+	if t.Info.ArrayLayers <= layer || t.Info.MipLevels <= level {
 		return nil
 	}
-	out := &image.Info{
-		Format: format,
-		Width:  l.Width,
-		Height: l.Height,
-		Depth:  l.Depth,
-		Bytes:  image.NewID(l.Data.ResourceID(ctx, s)),
+	switch VkImageAspectFlagBits(t.ImageAspect) {
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		l := t.Aspects.Get(VkImageAspectFlagBits(t.ImageAspect)).Layers.Get(layer).Levels.Get(level)
+		if l.Data.Count() == 0 {
+			return nil
+		}
+		return &image.Info{
+			Format: format,
+			Width:  l.Width,
+			Height: l.Height,
+			Depth:  l.Depth,
+			Bytes:  image.NewID(l.Data.ResourceID(ctx, s)),
+		}
+
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT | VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		depthLevel := t.Aspects.Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers.Get(layer).Levels.Get(level)
+		depthData := depthLevel.Data.MustRead(ctx, nil, s, nil)
+		stencilLevel := t.Aspects.Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).Layers.Get(layer).Levels.Get(level)
+		stencilData := stencilLevel.Data.MustRead(ctx, nil, s, nil)
+		dsData := make([]uint8, len(depthData)+len(stencilData))
+
+		var dStep, sStep int
+		// Stencil data is always 1 byte wide
+		sStep = 1
+		switch t.Info.Format {
+		case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
+			dStep = 2
+		case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
+			dStep = 3
+		case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+			dStep = 4
+		default:
+			log.E(ctx, "[Mergeing depth and stencil data] unsupported depth+stencil format: %v", t.Info.Format)
+			return nil
+		}
+
+		if len(depthData)/dStep != len(stencilData)/sStep {
+			log.E(ctx, "[Merging depth and stencil data] depth/stencil data does not match")
+			return nil
+		}
+
+		// This assumes there are no 'packed' depth+stencil format, so the order
+		// is always depth first, stencil later.
+		for i := 0; i < len(stencilData); i++ {
+			dsO := i * (dStep + sStep)
+			dO := i * dStep
+			sO := i
+			copy(dsData[dsO:dsO+dStep], depthData[dO:dO+dStep])
+			copy(dsData[dsO+dStep:dsO+dStep+sStep], stencilData[sO:sO+sStep])
+		}
+
+		imgData := &image.Data{
+			Format: format,
+			Width:  depthLevel.Width,
+			Height: depthLevel.Height,
+			Depth:  depthLevel.Depth,
+			Bytes:  dsData[:],
+		}
+		info, err := imgData.NewInfo(ctx)
+		if err != nil {
+			log.E(ctx, "[Merging depth and stencil data] %v", err)
+			return nil
+		}
+		return info
 	}
-	return out
+	return nil
 }
 
 // ResourceData returns the resource data given the current state.
@@ -530,19 +590,14 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 			for l := range cubeMapLevels {
 				cubeMapLevels[l] = &api.CubemapLevel{}
 			}
-			for aspectBit, aspect := range t.Aspects.Range() {
-				if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
-					continue
-				}
-				for layerIndex, imageLayer := range aspect.Layers.Range() {
-					for levelIndex, imageLevel := range imageLayer.Levels.Range() {
-						img := imageLevel.imageInfo(ctx, s, format)
-						if img == nil {
-							continue
-						}
-						if !setCubemapFace(img, cubeMapLevels[levelIndex], layerIndex) {
-							continue
-						}
+			for layer := uint32(0); layer < t.Info.ArrayLayers; layer++ {
+				for level := uint32(0); level < t.Info.MipLevels; level++ {
+					info := t.imageInfo(ctx, s, format, layer, level)
+					if info == nil {
+						continue
+					}
+					if !setCubemapFace(info, cubeMapLevels[level], layer) {
+						continue
 					}
 				}
 			}
@@ -552,57 +607,41 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		if t.Info.ArrayLayers > uint32(1) {
 			// 2D texture array
 			layers := make([]*api.Texture2D, int(t.Info.ArrayLayers))
-			for aspectBit, aspect := range t.Aspects.Range() {
-				if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
-					continue
-				}
-				for layerIndex := range layers {
-					imageLayer := aspect.Layers.Get(uint32(layerIndex))
-					levels := make([]*image.Info, t.Info.MipLevels)
-					for levelIndex := range levels {
-						imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
-						img := imageLevel.imageInfo(ctx, s, format)
-						if img == nil {
-							continue
-						}
-						levels[levelIndex] = img
+
+			for layer := uint32(0); layer < t.Info.ArrayLayers; layer++ {
+				levels := make([]*image.Info, t.Info.MipLevels)
+				for level := uint32(0); level < t.Info.MipLevels; level++ {
+					info := t.imageInfo(ctx, s, format, layer, level)
+					if info == nil {
+						continue
 					}
-					layers[layerIndex] = &api.Texture2D{Levels: levels}
+					levels[level] = info
 				}
+				layers[layer] = &api.Texture2D{Levels: levels}
 			}
 			return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers})), nil
 		}
 
 		// Single layer 2D texture
 		levels := make([]*image.Info, t.Info.MipLevels)
-		for aspectBit, aspect := range t.Aspects.Range() {
-			if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+		for level := uint32(0); level < t.Info.MipLevels; level++ {
+			info := t.imageInfo(ctx, s, format, 0, level)
+			if info == nil {
 				continue
 			}
-			for i, level := range aspect.Layers.Get(0).Levels.Range() {
-				img := level.imageInfo(ctx, s, format)
-				if img == nil {
-					continue
-				}
-				levels[i] = img
-			}
+			levels[level] = info
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture2D{Levels: levels})), nil
 
 	case VkImageType_VK_IMAGE_TYPE_3D:
 		// 3D images can have only one layer
 		levels := make([]*image.Info, t.Info.MipLevels)
-		for aspectBit, aspect := range t.Aspects.Range() {
-			if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+		for level := uint32(0); level < t.Info.MipLevels; level++ {
+			info := t.imageInfo(ctx, s, format, 0, level)
+			if info == nil {
 				continue
 			}
-			for i, level := range aspect.Layers.Get(0).Levels.Range() {
-				img := level.imageInfo(ctx, s, format)
-				if img == nil {
-					continue
-				}
-				levels[i] = img
-			}
+			levels[level] = info
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture3D{Levels: levels})), nil
 
@@ -610,39 +649,27 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		if t.Info.ArrayLayers > uint32(1) {
 			// 1D texture array
 			layers := make([]*api.Texture1D, int(t.Info.ArrayLayers))
-			for aspectBit, aspect := range t.Aspects.Range() {
-				if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
-					continue
-				}
-				for layerIndex := range layers {
-					imageLayer := aspect.Layers.Get(uint32(layerIndex))
-					levels := make([]*image.Info, t.Info.MipLevels)
-					for levelIndex := range levels {
-						imageLevel := imageLayer.Levels.Get(uint32(levelIndex))
-						img := imageLevel.imageInfo(ctx, s, format)
-						if img == nil {
-							continue
-						}
-						levels[levelIndex] = img
+			for layer := uint32(0); layer < t.Info.ArrayLayers; layer++ {
+				levels := make([]*image.Info, t.Info.MipLevels)
+				for level := uint32(0); level < t.Info.MipLevels; level++ {
+					info := t.imageInfo(ctx, s, format, layer, level)
+					if info == nil {
+						continue
 					}
-					layers[layerIndex] = &api.Texture1D{Levels: levels}
+					levels[level] = info
 				}
+				layers[layer] = &api.Texture1D{Levels: levels}
 			}
 			return api.NewResourceData(api.NewTexture(&api.Texture1DArray{Layers: layers})), nil
 		}
 		// Single layer 1D texture
 		levels := make([]*image.Info, t.Info.MipLevels)
-		for aspectBit, aspect := range t.Aspects.Range() {
-			if aspectBit == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+		for level := uint32(0); level < t.Info.MipLevels; level++ {
+			info := t.imageInfo(ctx, s, format, 0, level)
+			if info == nil {
 				continue
 			}
-			for i, level := range aspect.Layers.Get(0).Levels.Range() {
-				img := level.imageInfo(ctx, s, format)
-				if img == nil {
-					continue
-				}
-				levels[i] = img
-			}
+			levels[level] = info
 		}
 		return api.NewResourceData(api.NewTexture(&api.Texture1D{Levels: levels})), nil
 
