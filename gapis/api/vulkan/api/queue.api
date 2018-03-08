@@ -169,7 +169,11 @@ cmd VkResult vkQueueSubmit(
   }
   leaveSubcontext()
   execPendingCommands(queue)
-  fence
+  fence // 'fence' keyword, marking the point where observed memory writes become visible
+  if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword above
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
+    Fences[fence].Signaled = true
+  }
   return ?
 }
 
