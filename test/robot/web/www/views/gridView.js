@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*jslint white: true*/
+'use strict';
 
-var visibleRect = function (element) {
+function visibleRect(element) {
   var boundingRect = element.getBoundingClientRect();
   return {
     left: Math.max(-boundingRect.left, 0),
@@ -22,13 +24,14 @@ var visibleRect = function (element) {
     width: Math.min(boundingRect.right, window.innerWidth),
     height: Math.min(boundingRect.bottom, window.innerHeight)
   };
-};
-var contains = function (rect, x, y) {
+}
+function contains(rect, x, y) {
   return rect.left <= x && rect.left + rect.width >= x
     && rect.top <= y && rect.top + rect.height >= y;
-};
-var taskStats = function (tasks) {
-  if (typeof taskStats.initialized == 'undefined') {
+}
+var taskStats;
+taskStats = function (tasks) {
+  if (taskStats.initialized === undefined) {
     taskStats.CurrentSucceeded = function (t) { return t.result === "Succeeded" && t.status === "Current"; };
     taskStats.StaleSucceeded = function (t) { return t.result === "Succeeded" && t.status === "Stale"; };
     taskStats.InProgressWasSucceeded = function (t) { return t.result === "Succeeded" && t.status === "InProgress"; };
@@ -41,11 +44,11 @@ var taskStats = function (tasks) {
     taskStats.StaleUnknown = function (t) { return t.result === "Unknown" && t.status === "Stale"; };
     taskStats.countif = function (tasks, pred) {
       var count = 0;
-      for (var i = 0; i < tasks.length; ++i) {
-        if (pred(tasks[i])) {
-          count++;
+      tasks.forEach(function (task) {
+        if (pred(task)) {
+          count += 1;
         }
-      }
+      });
       return count;
     };
     taskStats.initialized = 0;
@@ -65,7 +68,8 @@ var taskStats = function (tasks) {
   };
 };
 var newGridView = function () {
-  var grid = {
+  var view;
+  view = {
     div: document.createElement('div'),
     style: {
       gridPadding: 4,
@@ -100,55 +104,56 @@ var newGridView = function () {
     },
     clusterBackgroundColor: function (clusterStats) {
       if (clusterStats.numFailedWasSucceeded + clusterStats.numCurrentFailed > 0) {
-        return grid.style.currentFailedBackgroundColor;
+        return view.style.currentFailedBackgroundColor;
       } else if (clusterStats.numSucceededWasFailed > 0) {
-        return grid.style.currentSucceededBackgroundColor;
+        return view.style.currentSucceededBackgroundColor;
       } else if (clusterStats.numInProgressWasFailed + clusterStats.numStaleFailed > 0) {
-        return grid.style.staleFailedBackgroundColor;
+        return view.style.staleFailedBackgroundColor;
       } else if (clusterStats.numInProgressWasSucceeded + clusterStats.numStaleSucceeded > 0) {
-        return grid.style.staleSucceededBackgroundColor;
+        return view.style.staleSucceededBackgroundColor;
       } else if (clusterStats.numCurrentSucceeded > 0) {
-        return grid.style.currentSucceededBackgroundColor;
+        return view.style.currentSucceededBackgroundColor;
       } else if (clusterStats.numInprogressWasUnknown + clusterStats.numStaleUnknown > 0) {
-        return grid.style.unknownBackgroundColor;
+        return view.style.unknownBackgroundColor;
       } else {
-        return grid.style.backgroundColor;
+        return view.style.backgroundColor;
       }
     },
     clusterForegroundColor: function (clusterStats) {
       if (clusterStats.numFailedWasSucceeded > 0) {
-        return grid.style.regressedForegroundColor;
+        return view.style.regressedForegroundColor;
       } else if (clusterStats.numCurrentFailed > 0) {
-        return grid.style.currentFailedForegroundColor;
+        return view.style.currentFailedForegroundColor;
       } else if (clusterStats.numSucceededWasFailed > 0) {
-        return grid.style.fixedForegroundColor;
+        return view.style.fixedForegroundColor;
       } else if (clusterStats.numInProgressWasFailed + clusterStats.numStaleFailed > 0) {
-        return grid.style.staleFailedForegroundColor;
+        return view.style.staleFailedForegroundColor;
       } else if (clusterStats.numInProgressWasSucceeded + clusterStats.numStaleSucceeded > 0) {
-        return grid.style.staleSucceededForegroundColor;
+        return view.style.staleSucceededForegroundColor;
       } else if (clusterStats.numCurrentSucceeded > 0) {
-        return grid.style.currentSucceededForegroundColor;
+        return view.style.currentSucceededForegroundColor;
       } else {
-        return grid.style.unknownForegroundColor;
+        return view.style.unknownForegroundColor;
       }
     },
     clusterIcon: function (clusterStats) {
       if (clusterStats.numFailedWasSucceeded + clusterStats.numCurrentFailed > 0) {
-        return grid.style.icons.Failed;
+        return view.style.icons.Failed;
       } else if (clusterStats.numSucceededWasFailed > 0) {
-        return grid.style.icons.Succeeded;
+        return view.style.icons.Succeeded;
       } else if (clusterStats.numInProgressWasFailed + clusterStats.numStaleFailed > 0) {
-        return grid.style.icons.Failed;
+        return view.style.icons.Failed;
       } else if (clusterStats.numInProgressWasSucceeded + clusterStats.numStaleSucceeded + clusterStats.numCurrentSucceeded > 0) {
-        return grid.style.icons.Succeeded;
+        return view.style.icons.Succeeded;
       } else {
-        return grid.style.icons.Unknown;
+        return view.style.icons.Unknown;
       }
     },
     measureHeader: function (header) {
+      var measure;
       var ctx = header.canvas.getContext('2d');
       ctx.save();
-      ctx.font = grid.style.headerFont;
+      ctx.font = view.style.headerFont;
       measure = ctx.measureText(header.text);
       ctx.restore();
       return Math.ceil(measure.width);
@@ -156,32 +161,82 @@ var newGridView = function () {
 
     // input data from model
     dataset: {},
-    setData: function (tasks, rowDim, columnDim, filterFn) {
-      var newDataset = {
-        cells: [],
-        rows: [],
-        columns: [],
-        canvases: []
-      };
-      var cellIndex = function (cIndex, rIndex) {
-        return (cIndex * newDataset.rows.length) + rIndex;
-      }
+    resetDiv: function (newDataset, rowsWidth, columnsHeight) {
+      // fastest way to clear out all canvas elements
+      var cDiv = view.div.cloneNode(false);
+      view.div.parentNode.replaceChild(cDiv, view.div);
+      view.div = cDiv;
+      view.div.style.position = "relative";
 
+      newDataset.canvases.forEach((canvas) => view.div.appendChild(canvas));
+      view.div.addEventListener("mouseleave", view.onMouseLeave);
+      view.div.addEventListener("mousemove", view.onMouseMove);
+      view.div.addEventListener("click", view.onClick);
+      view.width = view.style.gridPadding * 2 + rowsWidth + view.style.cellSize * newDataset.columns.length;
+      view.height = view.style.gridPadding * 2 + columnsHeight + view.style.cellSize * newDataset.rows.length;
+      view.div.style.width = view.width + "px";
+      view.div.style.height = view.height + "px";
+    },
+    fillEmptyCells: function (newDataset, rowsWidth, columnsHeight) {
+      var i, j, index, cell;
+      var x = view.style.gridPadding + rowsWidth;
+      var y = view.style.gridPadding + columnsHeight;
+      for (i = 0; i < newDataset.columns.length; i += 1) {
+        for (j = 0; j < newDataset.rows.length; j += 1) {
+          index = newDataset.cellIndex(i, j);
+          if (newDataset.cells[index] == null) {
+            cell = {
+              canvas: document.createElement('canvas'),
+              clusterStats: taskStats([]),
+              rect: {
+                left: x + view.style.cellSize * i,
+                top: y + view.style.cellSize * j,
+                width: view.style.cellSize,
+                height: view.style.cellSize
+              },
+              dirty: true
+            };
+            newDataset.cells[index] = cell;
+            cell.canvas.style.left = cell.rect.left;
+            cell.canvas.style.top = cell.rect.top;
+            cell.canvas.style.position = "absolute";
+            newDataset.canvases.push(cell.canvas);
+          }
+        }
+      }
+    },
+    setData: function (tasks, rowDim, columnDim, filterFn) {
+      var newDataset;
       var rowTasks = {};
       var columnTasks = {};
       var cellTasks = {};
-      for (var i = 0; i < tasks.length; ++i) {
-        var task = tasks[i];
-        if (filterFn(task) == false) {
-          continue;
+      var keyToRows = {}, keyToColumns = {};
+      var maxRowWidth = 0, maxColumnHeight = 0;
+      var rowsWidth, columnsHeight;
+      var x, y;
+
+      newDataset = {
+        cells: [],
+        rows: [],
+        columns: [],
+        canvases: [],
+        cellIndex: function (cIndex, rIndex) {
+          return (cIndex * newDataset.rows.length) + rIndex;
         }
-        var rowKey = rowDim.keyOf(task);
+      };
+
+      tasks.forEach(function (task) {
+        var rowKey, columnKey;
+        if (filterFn(task) === false) {
+          return;
+        }
+        rowKey = rowDim.keyOf(task);
         if (rowTasks[rowKey] == null) {
           rowTasks[rowKey] = [task];
         } else {
           rowTasks[rowKey].push(task);
         }
-        var columnKey = columnDim.keyOf(task);
+        columnKey = columnDim.keyOf(task);
         if (columnTasks[columnKey] == null) {
           columnTasks[columnKey] = [task];
         } else {
@@ -195,16 +250,14 @@ var newGridView = function () {
         } else {
           cellTasks[rowKey][columnKey].push(task);
         }
-      }
+      });
 
       // Build rows and columns, then sort them.
-      var keyToRows = {};
-      var maxRowWidth = 0;
-      for (var i = 0; i < rowDim.items.length; ++i) {
-        var key = rowDim.items[i].key;
+      rowDim.items.forEach(function (item) {
+        var key = item.key;
         if (rowTasks[key] == null) {
           // no tasks for this key
-          rowTasks[key] = []
+          rowTasks[key] = [];
         }
         var header = {
           key: key,
@@ -214,21 +267,19 @@ var newGridView = function () {
           clusterStats: taskStats(rowTasks[key]),
           dirty: true
         };
-        header.textMeasure = grid.measureHeader(header);
+        header.textMeasure = view.measureHeader(header);
         newDataset.rows.push(header);
         keyToRows[key] = header;
-        maxRowWidth = Math.max(maxRowWidth, header.textMeasure)
-      }
+        maxRowWidth = Math.max(maxRowWidth, header.textMeasure);
+      });
       maxRowWidth += 20;
-      var rowsWidth = maxRowWidth + grid.style.cellSize;
+      rowsWidth = maxRowWidth + view.style.cellSize;
 
-      var keyToColumns = {};
-      var maxColumnHeight = 0;
-      for (var i = 0; i < columnDim.items.length; ++i) {
-        var key = columnDim.items[i].key;
+      columnDim.items.forEach(function (item) {
+        var key = item.key;
         if (columnTasks[key] == null) {
           // no tasks for this key
-          columnTasks[key] = []
+          columnTasks[key] = [];
         }
         var header = {
           key: key,
@@ -239,13 +290,13 @@ var newGridView = function () {
           textRotate: 90,
           dirty: true
         };
-        header.textMeasure = grid.measureHeader(header);
+        header.textMeasure = view.measureHeader(header);
         newDataset.columns.push(header);
         keyToColumns[key] = header;
         maxColumnHeight = Math.max(maxColumnHeight, header.textMeasure);
-      }
+      });
       maxColumnHeight += 20;
-      var columnsHeight = maxColumnHeight + grid.style.cellSize;
+      columnsHeight = maxColumnHeight + view.style.cellSize;
 
       if (rowDim.sort != null) {
         newDataset.rows.sort(rowDim.sort);
@@ -259,77 +310,69 @@ var newGridView = function () {
       }
 
       // Finalize the rows and columns.
-      var x = grid.style.gridPadding;
-      var y = grid.style.gridPadding + columnsHeight;
-      for (var i = 0; i < newDataset.rows.length; ++i) {
-        header = newDataset.rows[i];
-        header.index = i;
+      x = view.style.gridPadding;
+      y = view.style.gridPadding + columnsHeight;
+      newDataset.rows.forEach(function (header, index) {
+        header.index = index;
         header.rect = {
           left: x,
           top: y,
           width: rowsWidth,
-          height: grid.style.cellSize
+          height: view.style.cellSize
         };
         header.textOffset = {
           x: (maxRowWidth - header.textMeasure) / 2,
-          y: grid.style.cellSize / 2
+          y: view.style.cellSize / 2
         };
         header.clusterRect = {
-          left: rowsWidth - grid.style.cellSize - 5,
+          left: rowsWidth - view.style.cellSize - 5,
           top: 0,
-          width: grid.style.cellSize,
-          height: grid.style.cellSize
+          width: view.style.cellSize,
+          height: view.style.cellSize
         };
         header.canvas.style.left = header.rect.left;
         header.canvas.style.top = header.rect.top;
         header.canvas.style.position = "absolute";
         newDataset.canvases.push(header.canvas);
-        y += grid.style.cellSize;
-      }
+        y += view.style.cellSize;
+      });
 
-      x = grid.style.gridPadding + rowsWidth;
-      y = grid.style.gridPadding;
-      for (var i = 0; i < newDataset.columns.length; ++i) {
-        header = newDataset.columns[i];
-        header.index = i;
+      x = view.style.gridPadding + rowsWidth;
+      y = view.style.gridPadding;
+      newDataset.columns.forEach(function (header, index) {
+        header.index = index;
         header.rect = {
           left: x,
           top: y,
-          width: grid.style.cellSize,
+          width: view.style.cellSize,
           height: columnsHeight
         };
         header.textOffset = {
-          x: grid.style.cellSize / 2,
-          y: (maxColumnHeight - header.textMeasure) / 2,
+          x: view.style.cellSize / 2,
+          y: (maxColumnHeight - header.textMeasure) / 2
         };
         header.clusterRect = {
           left: 0,
-          top: columnsHeight - grid.style.cellSize - 5,
-          width: grid.style.cellSize,
-          height: grid.style.cellSize
+          top: columnsHeight - view.style.cellSize - 5,
+          width: view.style.cellSize,
+          height: view.style.cellSize
         };
         header.canvas.style.left = header.rect.left;
         header.canvas.style.top = header.rect.top;
         header.canvas.style.position = "absolute";
         newDataset.canvases.push(header.canvas);
-        x += grid.style.cellSize;
-      }
+        x += view.style.cellSize;
+      });
 
       // Sort all of the cells wrt rows and columns.
-      x = grid.style.gridPadding + rowsWidth;
-      y = grid.style.gridPadding + columnsHeight;
-      for (var rowKey in cellTasks) {
-        if (!cellTasks.hasOwnProperty(rowKey)) {
-          continue;
-        }
+      x = view.style.gridPadding + rowsWidth;
+      y = view.style.gridPadding + columnsHeight;
+      Object.keys(cellTasks).forEach(function (rowKey) {
         var row = keyToRows[rowKey];
         var cellRowTasks = cellTasks[rowKey];
-        for (var columnKey in cellRowTasks) {
-          if (!cellRowTasks.hasOwnProperty(columnKey)) {
-            continue;
-          }
+        Object.keys(cellRowTasks).forEach(function (columnKey) {
           var column = keyToColumns[columnKey];
-          var index = cellIndex(column.index, row.index);
+          var index = newDataset.cellIndex(column.index, row.index);
 
           var cell = {
             rowKey: rowKey,
@@ -338,10 +381,10 @@ var newGridView = function () {
             canvas: document.createElement('canvas'),
             clusterStats: taskStats(cellRowTasks[columnKey]),
             rect: {
-              left: x + grid.style.cellSize * column.index,
-              top: y + grid.style.cellSize * row.index,
-              width: grid.style.cellSize,
-              height: grid.style.cellSize
+              left: x + view.style.cellSize * column.index,
+              top: y + view.style.cellSize * row.index,
+              width: view.style.cellSize,
+              height: view.style.cellSize
             },
             dirty: true
           };
@@ -350,90 +393,43 @@ var newGridView = function () {
           cell.canvas.style.top = cell.rect.top;
           cell.canvas.style.position = "absolute";
           newDataset.canvases.push(cell.canvas);
-        }
-      }
+        });
+      });
+      view.fillEmptyCells(newDataset, rowsWidth, columnsHeight);
 
+      // transition here
+      view.resetDiv(newDataset, rowsWidth, columnsHeight);
+      view.dataset = newDataset;
+      view.dirty = true;
 
-      // Create an empty cell for any missing cells.
-      for (var i = 0; i < newDataset.columns.length; ++i) {
-        for (var j = 0; j < newDataset.rows.length; ++j) {
-          var index = cellIndex(i, j);
-          if (newDataset.cells[index] == null) {
-            var cell = {
-              canvas: document.createElement('canvas'),
-              clusterStats: taskStats([]),
-              rect: {
-                left: x + grid.style.cellSize * i,
-                top: y + grid.style.cellSize * j,
-                width: grid.style.cellSize,
-                height: grid.style.cellSize
-              },
-              dirty: true
-            };
-            newDataset.cells[index] = cell;
-            cell.canvas.style.left = cell.rect.left;
-            cell.canvas.style.top = cell.rect.top;
-            cell.canvas.style.position = "absolute";
-            newDataset.canvases.push(cell.canvas);
-          }
-        }
-      }
-
-
-      // TODO: transitions
-
-      // fastest way to clear out all canvas elements
-      var cDiv = grid.div.cloneNode(false);
-      grid.div.parentNode.replaceChild(cDiv, grid.div);
-      grid.div = cDiv;
-      grid.div.style.position = "relative";
-
-      for (var i = 0; i < newDataset.canvases.length; ++i) {
-        grid.div.appendChild(newDataset.canvases[i]);
-      }
-      grid.div.addEventListener("mouseleave", grid.onMouseLeave);
-      grid.div.addEventListener("mousemove", grid.onMouseMove);
-      grid.div.addEventListener("click", grid.onClick);
-      grid.width = grid.style.gridPadding * 2 + rowsWidth + grid.style.cellSize * newDataset.columns.length;
-      grid.height = grid.style.gridPadding * 2 + columnsHeight + grid.style.cellSize * newDataset.rows.length;
-      grid.div.style.width = grid.width + "px";
-      grid.div.style.height = grid.height + "px";
-
-
-      grid.dataset = newDataset;
-      grid.dirty = true;
-
-      grid.tick();
+      view.tick();
     },
 
     // events set by the controller
     rowAt: function (x, y) {
-      for (var i = 0; i < grid.dataset.rows.length; ++i) {
-        var row = grid.dataset.rows[i];
-        if (contains(row.rect, x, y)) {
-          return row;
-        }
+      var result;
+      if (view.dataset.rows.some(function (row) { result = row; return contains(row.rect, x, y); })) {
+        return result;
       }
+      return null;
     },
     columnAt: function (x, y) {
-      for (var i = 0; i < grid.dataset.columns.length; ++i) {
-        var column = grid.dataset.columns[i];
-        if (contains(column.rect, x, y)) {
-          return column;
-        }
+      var result;
+      if (view.dataset.columns.some(function (column) { result = column; return contains(column.rect, x, y); })) {
+        return result;
       }
+      return null;
     },
     cellAt: function (x, y) {
-      for (var i = 0; i < grid.dataset.cells.length; ++i) {
-        var cell = grid.dataset.cells[i];
-        if (contains(cell.rect, x, y)) {
-          return cell;
-        }
+      var result;
+      if (view.dataset.cells.some(function (cell) { result = cell; return contains(cell.rect, x, y); })) {
+        return result;
       }
+      return null;
     },
-    onMouseDown: function (event) {
-      var x = event.pageX - grid.offsetLeft;
-      var y = event.pageY - grid.offsetTop;
+    /*onMouseDown: function (event) {
+      var x = event.pageX - view.offsetLeft;
+      var y = event.pageY - view.offsetTop;
       switch (event.which) {
         case 0: { // no button
         } break;
@@ -446,108 +442,112 @@ var newGridView = function () {
           // show dataview
         } break;
       }
-    },
-    onMouseUp: function (event) { },
+    },*/
     highlighted: null,
     onMouseMove: function (event) {
-      var x = event.pageX - grid.div.offsetLeft;
-      var y = event.pageY - grid.div.offsetTop;;
+      var x = event.pageX - view.div.offsetLeft;
+      var y = event.pageY - view.div.offsetTop;
+      var hit;
       // set highlighted element
-      if (grid.highlighted != null) {
-        grid.highlighted.dirty = true;
+      if (view.highlighted != null) {
+        view.highlighted.dirty = true;
       }
-      var hit = grid.rowAt(x, y);
-      if (hit != null) {
-        grid.highlighted = hit;
-        grid.highlighted.dirty = false;
-      } else if ((hit = grid.columnAt(x, y)) != null) {
-        grid.highlighted = hit;
-        grid.highlighted.dirty = false;
-      } else if ((hit = grid.cellAt(x, y)) != null) {
-        grid.highlighted = hit;
-        grid.highlighted.dirty = false;
-      } else {
-        grid.highlighted = null;
+      hit = view.rowAt(x, y);
+      if (hit !== null) {
+        view.highlighted = hit;
+        view.highlighted.dirty = false;
+        view.tick();
+        return;
       }
-      grid.tick();
+      hit = view.columnAt(x, y);
+      if (hit !== null) {
+        view.highlighted = hit;
+        view.highlighted.dirty = false;
+        view.tick();
+        return;
+      }
+      hit = view.cellAt(x, y);
+      if (hit !== null) {
+        view.highlighted = hit;
+        view.highlighted.dirty = false;
+        view.tick();
+        return;
+      }
+
+      view.highlighted = null;
+      view.tick();
     },
-    onMouseLeave: function (event) {
-      if (grid.highlighted != null) {
-        grid.highlighted.dirty = true;
+    onMouseLeave: function () {
+      if (view.highlighted !== null) {
+        view.highlighted.dirty = true;
       }
-      grid.tick();
+      view.tick();
     },
     onRowClicked: [],
     onColumnClicked: [],
     onCellClicked: [],
     onClick: function (event) {
-      var x = event.pageX - grid.div.offsetLeft;
-      var y = event.pageY - grid.div.offsetTop;
+      var x = event.pageX - view.div.offsetLeft;
+      var y = event.pageY - view.div.offsetTop;
       // row? column? cell?
-      var hit = grid.rowAt(x, y);
-      if (hit != null) {
-        for (var j = 0; j < grid.onRowClicked.length; ++j) {
-          grid.onRowClicked[j](hit);
-        }
+      var hit = view.rowAt(x, y);
+      if (hit !== null) {
+        view.onRowClicked.forEach((callback) => callback(hit));
         return;
       }
-      hit = grid.columnAt(x, y);
-      if (hit != null) {
-        for (var j = 0; j < grid.onColumnClicked.length; ++j) {
-          grid.onColumnClicked[j](hit);
-        }
+      hit = view.columnAt(x, y);
+      if (hit !== null) {
+        view.onColumnClicked.forEach((callback) => callback(hit));
         return;
       }
 
-      hit = grid.cellAt(x, y);
-      if (hit != null) {
-        for (var j = 0; j < grid.onCellClicked.length; ++j) {
-          grid.onCellClicked[j](hit);
-        }
-        return
+      hit = view.cellAt(x, y);
+      if (hit !== null) {
+        view.onCellClicked.forEach((callback) => callback(hit));
+        return;
       }
     },
 
     // drawing, animation, etc.
     startTime: Date.now(),
-    time: this.startTime,
     animating: false,
     dirty: false,
     queueTick: function () {
-      if (grid.tickPending) {
+      if (view.tickPending) {
         return;
       }
       window.requestAnimationFrame(function () {
-        grid.tickPending = false
-        grid.tick()
+        view.tickPending = false;
+        view.tick();
       });
-      grid.tickPending = true;
+      view.tickPending = true;
     },
     tick: function () {
+      var time;
+
       // check if tick is already pending
-      if (grid.tickPending) {
+      if (view.tickPending) {
         return;
       }
 
-      // convert to seconds
-      var time = (grid.startTime - Date.now()) / 1000;
-      var dt = time - grid.time;
-      grid.time = time;
+      time = (Date.now() - view.startTime) / 1000;
+      view.time = time;
 
       // update transitions
 
       // true when drawing transitions
-      grid.animating = false;
+      view.animating = false;
 
-      grid.draw(dt);
+      view.draw();
 
-      if (grid.animating) {
-        grid.queueTick();
+      if (view.animating) {
+        view.queueTick();
       }
     },
-    draw: function (dt) {
+    draw: function () {
       // find what we are drawing
-      var vRect = visibleRect(grid.div);
+      var toDraw = [];
+      var vRect = visibleRect(view.div);
 
       var doesAOverlapB = function (rectA, rectB) {
         return rectA.left < rectB.left + rectB.width
@@ -556,59 +556,56 @@ var newGridView = function () {
           && rectA.top + rectA.height > rectB.top;
       };
 
-      var toDraw = [];
-      for (var i = 0; i < grid.dataset.rows.length; ++i) {
-        var row = grid.dataset.rows[i];
-        if (!doesAOverlapB(vRect, row.rect) || grid.highlighted == row) {
-          continue;
-        } else if (row.dirty || grid.dirty) {
+      toDraw = [];
+      view.dataset.rows.forEach(function (row) {
+        if (!doesAOverlapB(vRect, row.rect) || view.highlighted === row) {
+          return;
+        }
+        if (row.dirty || view.dirty) {
           toDraw.push(row);
         }
-      }
-      for (var i = 0; i < grid.dataset.columns.length; ++i) {
-        var column = grid.dataset.columns[i];
-        if (!doesAOverlapB(vRect, column.rect) || grid.highlighted == column) {
-          continue;
-        } else if (column.dirty || grid.dirty) {
+      });
+      view.dataset.columns.forEach(function (column) {
+        if (!doesAOverlapB(vRect, column.rect) || view.highlighted === column) {
+          return;
+        }
+        if (column.dirty || view.dirty) {
           toDraw.push(column);
         }
-      }
-      for (var i = 0; i < grid.dataset.cells.length; ++i) {
-        var cell = grid.dataset.cells[i];
-        if (!doesAOverlapB(vRect, cell.rect) || grid.highlighted == cell) {
-          continue;
-        } else if (cell.dirty || grid.dirty) {
+      });
+      view.dataset.cells.forEach(function (cell) {
+        if (!doesAOverlapB(vRect, cell.rect) || view.highlighted === cell) {
+          return;
+        }
+        if (cell.dirty || view.dirty) {
           toDraw.push(cell);
         }
+      });
+
+      if (view.highlighted !== null) {
+        toDraw.push(view.highlighted);
       }
 
-      if (grid.highlighted != null) {
-        toDraw.push(grid.highlighted);
-      }
-
-      var dpr = window.devicePixelRatio
-      for (var i = 0; i < toDraw.length; ++i) {
-        var drawn = toDraw[i]
-
+      toDraw.forEach(function (drawn) {
         var ctx = drawn.canvas.getContext('2d');
+        var rect, clusterRect;
         ctx.save();
         ctx.translate(0.5, 0.5);
 
-        var rect = drawn.rect;
-        drawn.canvas.width = rect.width * dpr;
-        drawn.canvas.height = rect.height * dpr;
-        ctx.scale(dpr, dpr);
+        rect = drawn.rect;
+        drawn.canvas.width = rect.width;
+        drawn.canvas.height = rect.height;
 
         // draw background
-        ctx.fillStyle = grid.clusterBackgroundColor(drawn.clusterStats);
+        ctx.fillStyle = view.clusterBackgroundColor(drawn.clusterStats);
         ctx.fillRect(0, 0, rect.width, rect.height);
 
-        if (drawn == grid.highlighted) {
+        if (drawn === view.highlighted) {
           // draw shadow
           ctx.shadowBlur = 30;
           ctx.shadowOffsetX = 3;
           ctx.shadowOffsetY = 3;
-          ctx.shadowColor = grid.style.cellShadowColor;
+          ctx.shadowColor = view.style.cellShadowColor;
           ctx.fillStyle = "white";
           ctx.fillRect(0, 0, rect.width, rect.height);
           ctx.shadowBlur = 0;
@@ -617,94 +614,92 @@ var newGridView = function () {
         }
 
         // draw ripples
-        grid.drawClickRipples();
+        // view.drawClickRipples();
 
         // draw grid
-        ctx.strokeStyle = grid.style.gridLineColor;
-        ctx.lineWidth = grid.style.gridLineWidth;
+        ctx.strokeStyle = view.style.gridLineColor;
+        ctx.lineWidth = view.style.gridLineWidth;
         ctx.strokeRect(0, 0, rect.width, rect.height);
 
         // draw cluster
-
-        var clusterRect
         if (drawn.clusterRect == null) {
           clusterRect = { left: 0, top: 0, width: rect.width, height: rect.height };
         } else {
           clusterRect = drawn.clusterRect;
         }
-        drawn.dirty = grid.drawCluster(ctx, drawn.clusterStats, clusterRect);
+        drawn.dirty = view.drawCluster(ctx, drawn.clusterStats, clusterRect);
 
         // draw text
         if (drawn.text != null) {
-          ctx.font = grid.style.headerFont;
-          ctx.fillStyle = grid.style.headerFontColor;
+          ctx.font = view.style.headerFont;
+          ctx.fillStyle = view.style.headerFontColor;
           ctx.textBaseline = "middle";
           ctx.translate(drawn.textOffset.x, drawn.textOffset.y);
           ctx.rotate(drawn.textRotate * Math.PI / 180);
           ctx.fillText(drawn.text, 0, 0);
         }
         ctx.restore();
-      }
-      grid.dirty = false;
+      });
+      view.dirty = false;
     },
     drawCluster: function (ctx, clusterStats, rect) {
-      ctx.save();
-
       var halfWidth = rect.width / 2;
       var centerX = rect.left + halfWidth;
       var centerY = rect.top + halfWidth;
-      ctx.lineWidth = 5;
       var radius = halfWidth * 0.8;
       var dashLen = (2 * Math.PI * radius) / 10;
       var angle = -Math.PI / 2;
       var countToAngle = 2 * Math.PI / clusterStats.numTasks;
       var animating = false;
+      var icon = view.clusterIcon(clusterStats);
+      var iconColor = view.clusterForegroundColor(clusterStats);
+      function drawClusterSegment(color, dash, count) {
+        var step = countToAngle * count;
+        var nextAngle = angle - step;
 
-      var drawClusterSegment = function (color, dash, count) {
         if (count === 0) {
           return;
         }
         ctx.save();
-        var step = countToAngle * count;
-        var nextAngle = angle - step;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, angle, nextAngle, true);
         ctx.strokeStyle = color;
         ctx.stroke();
 
         if (dash) {
-          ctx.lineDashOffset = grid.time * 5;
+          ctx.lineDashOffset = view.time * 5;
           ctx.lineWidth = 3;
-          ctx.strokeStyle = grid.style.inProgressForegroundColor;
+          ctx.strokeStyle = view.style.inProgressForegroundColor;
           ctx.setLineDash([dashLen * 0.4, dashLen * 0.6]);
           ctx.beginPath();
           ctx.arc(centerX, centerY, radius, angle, nextAngle, true);
           ctx.stroke();
           animating = true;
-          grid.animating = true;
+          view.animating = true;
         }
 
         angle = nextAngle;
         ctx.restore();
       }
 
-      drawClusterSegment(grid.style.staleUnknownForegroundColor, false, clusterStats.numStaleUnknown);
-      drawClusterSegment(grid.style.currentSucceededForegroundColor, false, clusterStats.numCurrentSucceeded);
-      drawClusterSegment(grid.style.staleSucceededForegroundColor, true, clusterStats.numInProgressWasSucceeded + clusterStats.numInProgressWasUnknown);
-      drawClusterSegment(grid.style.staleSucceededForegroundColor, false, clusterStats.numStaleSucceeded);
-      drawClusterSegment(grid.style.staleFailedForegroundColor, false, clusterStats.numStaleFailed);
-      drawClusterSegment(grid.style.staleFailedForegroundColor, true, clusterStats.numInProgressWasFailed);
-      drawClusterSegment(grid.style.currentFailedForegroundColor, false, clusterStats.numCurrentFailed);
-      drawClusterSegment(grid.style.fixedForegroundColor, false, clusterStats.numSucceededWasFailed);
-      drawClusterSegment(grid.style.regressedForegroundColor, false, clusterStats.numFailedWasSucceeded);
+      ctx.save();
+      ctx.lineWidth = 5;
 
-      var icon = grid.clusterIcon(clusterStats);
-      var iconColor = grid.clusterForegroundColor(clusterStats);
-      if (icon != 0) {
+      drawClusterSegment(view.style.staleUnknownForegroundColor, false, clusterStats.numStaleUnknown);
+      drawClusterSegment(view.style.currentSucceededForegroundColor, false, clusterStats.numCurrentSucceeded);
+      drawClusterSegment(view.style.staleSucceededForegroundColor, true, clusterStats.numInProgressWasSucceeded + clusterStats.numInProgressWasUnknown);
+      drawClusterSegment(view.style.staleSucceededForegroundColor, false, clusterStats.numStaleSucceeded);
+      drawClusterSegment(view.style.staleFailedForegroundColor, false, clusterStats.numStaleFailed);
+      drawClusterSegment(view.style.staleFailedForegroundColor, true, clusterStats.numInProgressWasFailed);
+      drawClusterSegment(view.style.currentFailedForegroundColor, false, clusterStats.numCurrentFailed);
+      drawClusterSegment(view.style.fixedForegroundColor, false, clusterStats.numSucceededWasFailed);
+      drawClusterSegment(view.style.regressedForegroundColor, false, clusterStats.numFailedWasSucceeded);
+
+      if (icon !== 0) {
         // draw icon
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.font = grid.style.iconsFont;
+        ctx.font = view.style.iconsFont;
         ctx.fillStyle = iconColor;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -714,9 +709,8 @@ var newGridView = function () {
 
       ctx.restore();
       return animating;
-    },
-    drawClickRipples: function (/*ctx, dt, ripples, clip*/) {
-      //todo implement grid?
+    }
+    /* drawClickRipples: function (ctx, dt, ripples, clip) {
       // ripples.update(dt)
       // if len(*ripples) == 0 {
       //   return
@@ -724,9 +718,9 @@ var newGridView = function () {
       // g.animating = true
       // ctx.Save()
       // if clip != nil {
-      // 	 ctx.BeginPath()
-      // 	 clip()
-      // 	 ctx.Clip()
+      //   ctx.BeginPath()
+      //   clip()
+      //   ctx.Clip()
       // }
       // for _, r := range *ripples {
       //   ctx.Save()
@@ -738,11 +732,11 @@ var newGridView = function () {
       //   ctx.Restore()
       // }
       // ctx.Restore()
-    }
-  }
+    }*/
+  };
 
-  window.addEventListener("scroll", function (event) {
-    grid.queueTick();
+  window.addEventListener("scroll", function () {
+    view.queueTick();
   });
-  return grid
-}
+  return view;
+};

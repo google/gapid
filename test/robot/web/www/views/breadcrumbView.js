@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+'use strict';
 
 var newBreadcrumbView = function () {
-  var view = {
+  var view;
+  view = {
     element: document.createElement('span'),
     addBreadcrumb: function (name, href) {
       var breadcrumb = {
@@ -35,7 +37,7 @@ var newBreadcrumbView = function () {
   };
 
   view.rootCrumb = view.element.appendChild(document.createElement('a'));
-  view.rootCrumb.text = "grid"
+  view.rootCrumb.text = "grid";
   view.rootCrumb.href = "#";
   return view;
-}
+};

@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*jslint white: true*/
+'use strict';
 
 var newRobotModel = async function () {
-
-  var queryArray = async function (path) {
+  async function queryArray(path) {
     return new Promise(function (resolve, reject) {
       var request = new XMLHttpRequest();
-      request.open("GET", path, true)
-      request.setRequestHeader("Content-type", "application/json")
-      var ready = false
+      request.open("GET", path, true);
+      request.setRequestHeader("Content-type", "application/json");
       request.onload = function () {
         if (request.status >= 200 && request.status <= 300) {
           resolve(JSON.parse(request.responseText));
@@ -30,358 +30,368 @@ var newRobotModel = async function () {
         }
       };
       request.onerror = () => reject({ status: request.status, statusText: request.statusText });
-      request.send()
+      request.send();
     });
   }
 
-  var model = {
-    dimensions: [
-      {
-        name: "kind",
-        keyOf: function (task) {
-          return task.kind;
-        },
-        sort: function (keyA, keyB) {
-          if (keyA === keyB) {
-            return 0;
-          } else if (keyA === "trace") {
-            return -1;
-          } else if (keyB === "trace") {
-            return 1;
-          } else if (keyA === "report") {
-            return -1;
-          } else if (keyB === "report") {
-            return 1;
-          }
-        },
-        items: [{ key: "trace" }, { key: "report" }, { key: "replay" }],
-        displayName: function (key) {
-          return key;
-        },
-        keyExists: function (key) {
-          return key == "trace" || key == "report" || key == "replay"
-        }
-      },
-      {
-        name: "subject",
-        keyOf: function (task) {
-          return task.trace.subject;
-        },
-        items: [],
-        keysToItems: {},
-        source: async function (queryString) {
-          var subjects = await queryArray("subjects/" + queryString);
-          for (var i = 0; i < subjects.length; ++i) {
-            var subject = subjects[i];
-            var item = {
-              key: subject.id,
-              display: subject.Information.APK.package,
-              underlying: subject
-            }
-            this.items.push(item);
-            this.keysToItems[item.key] = item;
-          }
-        },
-        displayName: function (key) {
-          return this.keysToItems[key].display;
-        },
-        keyExists: function (key) {
-          return this.keysToItems[key] != null;
-        }
-      },
-      {
-        name: "traceTarget",
-        keyOf: function (task) {
-          return task.trace.target;
-        },
-        items: [],
-        keysToItems: {},
-        source: async function (queryString) {
-          var devices = await queryArray("devices/");
-          var workers = await queryArray("workers/");
-          for (var i = 0; i < devices.length; ++i) {
-            var device = devices[i];
-            for (var j = 0; j < workers.length; ++j) {
-              var worker = workers[j];
-              if (device.id == worker.target && worker.Operation.includes(2) && this.keysToItems[device.id] == null) {
-                var item = {
-                  key: device.id,
-                  display: device.information.Configuration.Hardware.Name,
-                  underlying: device
-                };
-                this.items.push(item)
-                this.keysToItems[item.key] = item;
-              }
-            }
-          }
-        },
-        displayName: function (key) {
-          return this.keysToItems[key].display;
-        },
-        keyExists: function (key) {
-          return this.keysToItems[key] != null;
-        }
-      },
-      {
-        name: "host",
-        keyOf: function (task) {
-          return task.host;
-        },
-        items: [],
-        keysToItems: {},
-        source: async function (queryString) {
-          var devices = await queryArray("devices/");
-          var workers = await queryArray("workers/");
-          for (var i = 0; i < devices.length; ++i) {
-            var device = devices[i];
-            for (var j = 0; j < workers.length; ++j) {
-              var worker = workers[j];
-              if (device.id == worker.host && this.keysToItems[device.id] == null) {
-                var item = {
-                  key: device.id,
-                  display: device.information.Configuration.Hardware.Name,
-                  underlying: device
-                };
-                this.items.push(item)
-                this.keysToItems[item.key] = item;
-              }
-            }
-          }
-        },
-        displayName: function (key) {
-          return this.keysToItems[key].display;
-        },
-        keyExists: function (key) {
-          return this.keysToItems[key] != null;
-        }
-      },
-      {
-        name: "package",
-        keyOf: function (task) {
-          return task.package
-        },
-        items: [],
-        keysToItems: {},
-        packageDisplayToOrder: {},
-        tracks: {
-          "auto": {
-            key: "",
-            display: "auto",
-            underlying: { "id": "", "name": "auto", "head": "" },
-            packageList: [],
-            headPackage: ""
-          }
-        },
-        sort: function (keyA, keyB) {
-          var aO = this.packageDisplayToOrder[keyA];
-          var bO = this.packageDisplayToOrder[keyB];
-          if (aO != null && bO != null) {
-            return aO - bO
-          }
-          return keyA < keyB ? -1 : keyB < keyA ? 1 : 0;
-        },
-        packageToTrack: {},
-        source: async function (queryString) {
-          var packages = await queryArray("packages/");
-          var tracks = await queryArray("tracks/");
-          var childMap = {};
-          var rootPkgs = [];
-          var result = [];
-          for (var i = 0; i < packages.length; ++i) {
-            var package = packages[i]
-            var packageItem = {
-              underlying: package,
-              display: "unknown - " + package.id,
-              key: package.id,
-            }
-            this.items.push(packageItem);
-            this.keysToItems[packageItem.key] = packageItem;
-            if (package.information.tag != null) {
-              packageItem.display = package.information.tag;
-            } else if (package.information.type == 2 && package.information.cl != null) {
-              packageItem.display = package.information.cl;
-            } else if (package.information.uploader) {
-              packageItem.display = package.information.uploader + " - " + package.id;
-            }
-            var id = package.id;
-            if (package["parent"] != null) {
-              parentId = package["parent"];
-              childMap[parentId] = id;
-            } else {
-              rootPkgs.push(id)
-            }
-          }
-          for (var i = 0; i < rootPkgs.length; ++i) {
-            var root = rootPkgs[i];
-            var packageList = [];
-            this.packageDisplayToOrder[this.keysToItems[root].display] = Object.keys(this.packageDisplayToOrder).length;
-            packageList.push(root);
-            var childId;
-            while ((childId = childMap[root]) != null) {
-              this.packageDisplayToOrder[this.keysToItems[childId].display] = Object.keys(this.packageDisplayToOrder).length;
-              // want tracks stored from Root -> Head
-              packageList.push(childId);
-              root = childId;
-            }
+  var model;
+  var kindDimension, subjectDimension, traceTargetDimension, hostDimension, packageDimension, trackDimension;
 
-            var head = root;
-            var foundTrack = false;
-            for (var j = 0; j < tracks.length; ++j) {
-              var track = tracks[j];
-              if (track["head"] == head) {
-                trackInfo = {
-                  key: track.id,
-                  display: track.name,
-                  underlying: track,
-                  packageList: packageList,
-                  headPackage: head
-                };
-                this.tracks[track.name] = trackInfo;
-                for (var k = 0; k < packageList.length; ++k) {
-                  this.packageToTrack[packageList[k]] = trackInfo
-                }
-                foundTrack = true;
-                break
-              }
-            }
-            if (!foundTrack) {
-              this.tracks["auto"].packageList.push(...packageList);
-              this.tracks["auto"].headPackage = packageList[packageList.length - 1];
-            }
-          }
-        },
-        displayName: function (key) {
-          return this.keysToItems[key].display;
-        },
-        keyExists: function (key) {
-          return this.keysToItems[key] != null;
-        }
-      },
-      {
-        name: "track",
-        packageToTrack: {},
-        keyOf: function (task) {
-          if (this.packageToTrack[task.package] == null) {
-            return "";
-          }
-          return this.packageToTrack[task.package].key;
-        },
-        items: [],
-        source: function (queryString) {
-          for (var i = 0; i < model.dimensions.length; ++i) {
-            if (model.dimensions[i].name == "package") {
-              var packageDim = model.dimensions[i];
-              for (var track in packageDim.tracks) {
-                if (packageDim.tracks.hasOwnProperty(track) && packageDim.tracks[track].packageList.length > 0) {
-                  this.items.push(packageDim.tracks[track]);
-                }
-                this.packageToTrack = model.dimensions[i].packageToTrack
-              }
-            }
-          }
-        },
-        displayName: function (key) {
-          for (var i = 0; i < this.items.length; ++i) {
-            if (this.items[i].key == key) {
-              return this.items[i].display;
-            }
-          }
-          return "";
-        },
-        keyExists: function (key) {
-          return this.displayName(key) != "";
-        }
+  kindDimension = {
+    name: "kind",
+    keyOf: function (task) {
+      return task.kind;
+    },
+    sort: function (keyA, keyB) {
+      if (keyA === keyB) {
+        return 0;
       }
+      if (keyA === "trace") {
+        return -1;
+      }
+      if (keyB === "trace") {
+        return 1;
+      }
+      if (keyA === "report") {
+        return -1;
+      }
+      if (keyB === "report") {
+        return 1;
+      }
+    },
+    items: [{ key: "trace" }, { key: "report" }, { key: "replay" }],
+    displayName: function (key) {
+      return key;
+    },
+    keyExists: function (key) {
+      return key === "trace" || key === "report" || key === "replay";
+    }
+  };
+  subjectDimension = {
+    name: "subject",
+    keyOf: function (task) {
+      return task.trace.subject;
+    },
+    items: [],
+    keysToItems: {},
+    source: async function () {
+      var subjects = await queryArray("subjects/");
+      subjects.forEach(function (subject) {
+        var item = {
+          key: subject.id,
+          display: subject.Information.APK.package,
+          underlying: subject
+        };
+        subjectDimension.items.push(item);
+        subjectDimension.keysToItems[item.key] = item;
+      });
+    },
+    displayName: function (key) {
+      return subjectDimension.keysToItems[key].display;
+    },
+    keyExists: function (key) {
+      return subjectDimension.keysToItems[key] != null;
+    }
+  };
+  traceTargetDimension = {
+    name: "traceTarget",
+    keyOf: function (task) {
+      return task.trace.target;
+    },
+    items: [],
+    keysToItems: {},
+    source: async function () {
+      var devices = await queryArray("devices/");
+      var workers = await queryArray("workers/");
+
+      devices.forEach(function (device) {
+        workers.forEach(function (worker) {
+          if (device.id === worker.target && worker.Operation.includes(2) && traceTargetDimension.keysToItems[device.id] == null) {
+            var item = {
+              key: device.id,
+              display: device.information.Configuration.Hardware.Name,
+              underlying: device
+            };
+            traceTargetDimension.items.push(item);
+            traceTargetDimension.keysToItems[item.key] = item;
+          }
+        });
+      });
+    },
+    displayName: function (key) {
+      return traceTargetDimension.keysToItems[key].display;
+    },
+    keyExists: function (key) {
+      return traceTargetDimension.keysToItems[key] != null;
+    }
+  };
+
+  hostDimension = {
+    name: "host",
+    keyOf: function (task) {
+      return task.host;
+    },
+    items: [],
+    keysToItems: {},
+    source: async function () {
+      var devices = await queryArray("devices/");
+      var workers = await queryArray("workers/");
+
+      devices.forEach(function (device) {
+        workers.forEach(function (worker) {
+          if (device.id === worker.host && hostDimension.keysToItems[device.id] == null) {
+            var item = {
+              key: device.id,
+              display: device.information.Configuration.Hardware.Name,
+              underlying: device
+            };
+            hostDimension.items.push(item);
+            hostDimension.keysToItems[item.key] = item;
+          }
+        });
+      });
+    },
+    displayName: function (key) {
+      return hostDimension.keysToItems[key].display;
+    },
+    keyExists: function (key) {
+      return hostDimension.keysToItems[key] != null;
+    }
+  };
+
+  packageDimension = {
+    name: "package",
+    keyOf: function (task) {
+      return task.package;
+    },
+    items: [],
+    keysToItems: {},
+    packageDisplayToOrder: {},
+    tracks: {
+      "auto": {
+        key: "",
+        display: "auto",
+        underlying: { "id": "", "name": "auto", "head": "" },
+        packageList: [],
+        headPackage: ""
+      }
+    },
+    sort: function (keyA, keyB) {
+      var aO = packageDimension.packageDisplayToOrder[keyA];
+      var bO = packageDimension.packageDisplayToOrder[keyB];
+      if (aO != null && bO != null) {
+        return aO - bO;
+      }
+      return keyA < keyB ? -1 : keyB < keyA ? 1 : 0;
+    },
+    packageToTrack: {},
+    done: false,
+    source: async function () {
+      packageDimension.packageToTrack = {};
+      packageDimension.items = [];
+      packageDimension.keysToItems = {};
+      packageDimension.ackageDisplayToOrder = {};
+      packageDimension.tracks = {
+        "auto": {
+          key: "",
+          display: "auto",
+          underlying: { "id": "", "name": "auto", "head": "" },
+          packageList: [],
+          headPackage: ""
+        }
+      };
+      var packages = await queryArray("packages/");
+      var tracks = await queryArray("tracks/");
+      var childMap = {};
+      var rootPkgs = [];
+
+      packages.forEach(function (pkg) {
+        var packageItem = {
+          underlying: pkg,
+          display: "unknown - " + pkg.id,
+          key: pkg.id
+        };
+        packageDimension.items.push(packageItem);
+        packageDimension.keysToItems[packageItem.key] = packageItem;
+        if (pkg.information.tag != null) {
+          packageItem.display = pkg.information.tag;
+        } else if (pkg.information.type === 2 && pkg.information.cl != null) {
+          packageItem.display = pkg.information.cl;
+        } else if (pkg.information.uploader) {
+          packageItem.display = pkg.information.uploader + " - " + pkg.id;
+        }
+        if (pkg.parent != null) {
+          childMap[pkg.parent] = pkg.id;
+        } else {
+          rootPkgs.push(pkg.id);
+        }
+      });
+
+      rootPkgs.forEach(function (root) {
+        var packageList = [];
+        var childId, head, foundTrack;
+        packageDimension.packageDisplayToOrder[packageDimension.keysToItems[root].display] = Object.keys(packageDimension.packageDisplayToOrder).length;
+        packageList.push(root);
+        childId = childMap[root];
+        while (childId != null) {
+          packageDimension.packageDisplayToOrder[packageDimension.keysToItems[childId].display] = Object.keys(packageDimension.packageDisplayToOrder).length;
+          // want tracks stored from Root -> Head
+          packageList.push(childId);
+          root = childId;
+        }
+
+        head = root;
+        if (tracks.every(function (track) {
+          var trackInfo;
+          if (track.head === head) {
+            trackInfo = {
+              key: track.id,
+              display: track.name,
+              underlying: track,
+              packageList: packageList,
+              headPackage: head
+            };
+            packageDimension.tracks[track.name] = trackInfo;
+            packageList.forEach((pkg) => packageDimension.packageToTrack[pkg] = trackInfo);
+            return false;
+          }
+          return true;
+        })) {
+          packageDimension.tracks.auto.packageList.push(...packageList);
+          packageDimension.tracks.auto.headPackage = packageList[packageList.length - 1];
+        }
+      });
+    },
+    displayName: function (key) {
+      return packageDimension.keysToItems[key].display;
+    },
+    keyExists: function (key) {
+      return packageDimension.keysToItems[key] != null;
+    }
+  };
+
+  trackDimension = {
+    name: "track",
+    packageToTrack: {},
+    keyOf: function (task) {
+      if (trackDimension.packageToTrack[task.package] == null) {
+        return "";
+      }
+      return trackDimension.packageToTrack[task.package].key;
+    },
+    items: [],
+    source: async function () {
+      // busy loop to wait for package?
+      await packageDimension.source();
+
+      Object.keys(packageDimension.tracks).forEach(function (track) {
+        if (packageDimension.tracks[track].packageList.length > 0) {
+          trackDimension.items.push(packageDimension.tracks[track]);
+        }
+      });
+      trackDimension.packageToTrack = packageDimension.packageToTrack;
+    },
+    displayName: function (key) {
+      var result;
+      if (trackDimension.items.some(function (item) { result = item.key; return item.key === key; })) {
+        return result;
+      }
+      return "";
+    },
+    keyExists: function (key) {
+      return trackDimension.displayName(key) !== "";
+    }
+  };
+  model = {
+    dimensions: [
+      kindDimension,
+      subjectDimension,
+      packageDimension,
+      trackDimension,
+      traceTargetDimension,
+      hostDimension
     ],
     dimensionsByName: {},
 
     tasks: [],
     connectTaskParentChild: function (childListMap, parentListMap, packageDim, task) {
-      var findParentPackageInList = function (idList, childId) {
+      function findParentPackageInList(idList, childId) {
         // if is the index of the id's parent
-        for (var i = 1; i < idList.length; ++i) {
-          var id = idList[i];
-          if (childId == id) {
-            return id;
-          }
+        var result;
+        if (idList.some(function (id) { result = id; return childId === id; })) {
+          return result;
         }
-      };
-      var compareTasksSimilar = function (t1, t2) {
-        return t1.trace.target == t2.trace.target && t1.trace.subject == t2.trace.subject && t1.host == t2.host;
+        return null;
       }
+      function compareTasksSimilar(t1, t2) {
+        return t1.trace.target === t2.trace.target && t1.trace.subject === t2.trace.subject && t1.host === t2.host;
+      }
+      var i;
+      var parentPackage, parentList, childList, pkg;
 
-      package = task.package;
-      if (parentListMap[package] == null) {
-        parentListMap[package] = [task];
+      pkg = task.package;
+      if (parentListMap[pkg] == null) {
+        parentListMap[pkg] = [task];
       } else {
-        parentListMap[package].push(task);
+        parentListMap[pkg].push(task);
       }
 
-      var parentPackage = findParentPackageInList(packageDim.packageToTrack[package].packageList, package);
+      parentPackage = findParentPackageInList(packageDimension.packageToTrack[pkg].packageList.slice(1), pkg);
       if (parentPackage != null) {
-        if (childList[parentPackage] == null) {
+        if (childListMap[parentPackage] == null) {
           childListMap[parentPackage] = [task];
         } else {
           childListMap[parentPackage].push(task);
         }
 
-        var parentList = parentListMap[package]
+        parentList = parentListMap[pkg];
         if (parentList != null) {
-          for (var i = 0; i < parentList.length; ++i) {
-            if (compareTasksSimilar(task, parentList[i])) {
-              task.parent = parentList[i]
+          parentList.forEach(function (parent) {
+            if (compareTasksSimilar(task, parent)) {
+              task.parent = parent;
             }
-          }
+          });
         }
       }
 
-      var childList = childListMap[package]
+      childList = childListMap[pkg];
       if (childList != null) {
-        for (var i = 0; i < childList.length; ++i) {
-          var child = childList[i];
-          if (compareTasksSimilar(task, childList[i])) {
+        childList.forEach(function (child) {
+          if (compareTasksSimilar(task, child)) {
             if (child.parent == null) {
               child.parent = task;
             } else {
-              throw "A task's parent was found twice! parent: " + package + "; child: " + child + ";"
+              throw "A task's parent was found twice! parent: " + pkg + "; child: " + child + ";";
             }
           }
-        }
+        });
       }
     },
     robotTasksPerKind: async function (kind, path, proc) {
       var statusMap = {
-        1: {
+        "1": {
           status: "InProgress",
           result: "Unknown"
         },
-        2: {
+        "2": {
           status: "Current",
           result: "Succeeded"
         },
-        3: {
+        "3": {
           status: "Current",
           result: "Failed"
-        },
-      }
+        }
+      };
       var tasks = [];
       var notCurrentTasks = [];
       var currentTasks = [];
       var childMap = {};
       var parentMap = {};
-      var packageDim;
-      for (var i = 0; i < this.dimensions.length; ++i) {
-        var dimension = this.dimensions[i];
-        if (dimension.name == "package") {
-          packageDim = dimension;
-          break;
-        }
-      }
+      var entities;
 
-      var entities = await queryArray(path);
-      for (var i = 0; i < entities.length; ++i) {
-        var entity = entities[i];
-        task = {
+      entities = await queryArray(path);
+      entities.forEach(function (entity) {
+        var task = {
           underlying: entity,
           kind: kind,
           parent: null
@@ -394,66 +404,70 @@ var newRobotModel = async function () {
           task.result = "Unknown";
         }
         proc(entity, task);
-        this.connectTaskParentChild(childMap, parentMap, packageDim, task);
+        model.connectTaskParentChild(childMap, parentMap, packageDimension, task);
         // TODO: connect task parent and child...
         tasks.push(task);
-        if (task.status != "Current") {
+        if (task.status !== "Current") {
           notCurrentTasks.push(task);
         } else {
           currentTasks.push(task);
         }
-      }
-      for (var i = 0; i < notCurrentTasks.length; ++i) {
-        var task = notCurrentTasks[i];
+      });
+      notCurrentTasks.forEach(function (task) {
         if (task.parent != null) {
           task.result = task.parent.result;
         }
-      }
-      for (var i = 0; i < currentTasks.length; ++i) {
-        var task = currentTasks[i];
-        if (task.parent != null && task.parent.result != task.result) {
+      });
+      currentTasks.forEach(function (task) {
+        if (task.parent != null && task.parent.result !== task.result) {
           task.status = "Changed";
         }
-      }
+      });
       return tasks;
     },
     fillRobotTasks: async function () {
       var traceMap = {};
-      var tasks = [];
-
-      var kindDim = this.dimensionsByName["kind"]
-      tasks.push(...await this.robotTasksPerKind("trace", "traces/", function (entity, task) {
-        task.trace = {
-          target: entity.target,
-          subject: entity.input.subject,
-        };
-        task.host = entity.host;
-        task.package = entity.input.package;
-        if (entity.output != null && entity.output.trace != null) {
-          traceMap[entity.output.trace] = task;
-        }
-      }));
-
-      var repTaskProc = function (entity, task) {
+      var tasks = [], traceTasks, reportTasks, replayTasks;
+      function repTaskProc(entity, task) {
         if (traceMap[entity.input.trace] != null) {
           task.trace = traceMap[entity.input.trace].trace;
         }
         task.host = entity.host;
         task.package = entity.input.package;
       }
-      tasks.push(...await this.robotTasksPerKind("report", "reports/", repTaskProc));
-      tasks.push(...await this.robotTasksPerKind("replay", "replays/", repTaskProc));
 
-      this.tasks = tasks;
-    }
-  }
+      traceTasks = await model.robotTasksPerKind("trace", "traces/", function (entity, task) {
+        task.trace = {
+          target: entity.target,
+          subject: entity.input.subject
+        };
+        task.host = entity.host;
+        task.package = entity.input.package;
+        if (entity.output != null && entity.output.trace != null) {
+          traceMap[entity.output.trace] = task;
+        }
+      });
+      tasks.push(...traceTasks);
 
-  for (var i = 0; i < model.dimensions.length; ++i) {
-    var dimension = model.dimensions[i];
-    model.dimensionsByName[dimension.name] = dimension
-    if (dimension.source != null) {
-      await dimension.source("");
+      reportTasks = await model.robotTasksPerKind("report", "reports/", repTaskProc);
+      tasks.push(...reportTasks);
+      replayTasks = await model.robotTasksPerKind("replay", "replays/", repTaskProc);
+      tasks.push(...replayTasks);
+
+      model.tasks = tasks;
     }
+  };
+
+  async function sourceDimensions() {
+    var sourcePromises = [];
+    model.dimensions.forEach(function (dimension) {
+      model.dimensionsByName[dimension.name] = dimension;
+      if (dimension.source != null) {
+        sourcePromises.push(dimension.source());
+      }
+    });
+    return Promise.all(sourcePromises);
   }
-  return model
-}
+  await sourceDimensions();
+  return model;
+};

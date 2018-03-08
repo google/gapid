@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+/*jslint white: true*/
+'use strict';
 
 var newGridController = function (model) {
-  var controller = {
+  var controller;
+  controller = {
     model: model,
     filters: {},
     filterFn: function (task) {
       var pass = true;
-      for (var filterKey in controller.filters) {
-        if (!controller.filters.hasOwnProperty(filterKey)) {
-          continue;
-        }
-        var filter = controller.filters[filterKey];
-        pass = pass && filter(task)
-      }
+      var filter;
+
+      Object.keys(controller.filters).forEach(function (filterKey) {
+        filter = controller.filters[filterKey];
+        pass = pass && filter(task);
+      });
       return pass;
     },
     view: newGridView(),
@@ -36,9 +37,9 @@ var newGridController = function (model) {
       column: {}
     },
     clear: function () {
-      controller.filters = {}
-      controller.axes.row = {}
-      controller.axes.column = {}
+      controller.filters = {};
+      controller.axes.row = {};
+      controller.axes.column = {};
     },
     initialize: function () {
       controller.axes.column = controller.nextUnfiltered();
@@ -49,43 +50,42 @@ var newGridController = function (model) {
     addKeyEqualityFilter: function (filterDim, key) {
       if (controller.filters[filterDim.name] != null
         || controller.model.dimensions.length > Object.keys(controller.filters).length + 2) {
-        controller.filters[filterDim.name] = function (task) { filterDim.keyOf(task) == key };
-        for (var i = 0; i < controller.onFilterChanged.length; ++i) {
-          controller.onFilterChanged[i](filterDim.name, "==", key);
-        }
+        controller.filters[filterDim.name] = function (task) { return filterDim.keyOf(task) === key; };
+        controller.onFilterChanged.forEach((callback) => callback(filterDim.name, "==", key));
         return true;
       }
 
       return false;
     },
     nextUnfiltered: function () {
-      for (var i = 0; i < controller.model.dimensions.length; ++i) {
-        var dim = controller.model.dimensions[i];
-        if (controller.filters[dim.name] == null && controller.axes.row != dim && controller.axes.column != dim) {
-          return dim;
-        }
+      var result;
+
+      if (controller.model.dimensions.some(function (dim) {
+        result = dim;
+        return (controller.filters[dim.name] == null && controller.axes.row !== dim && controller.axes.column !== dim);
+      })) {
+        return result;
       }
       return null;
     },
     onAxisChanged: [],
     setAxis: function (axisName, newAxisDim) {
+      var oldAxisDim;
+
       if (controller.axes[axisName].name === newAxisDim.name) {
         return;
       }
-      var oldAxisDim = controller.axes[axisName]
+      oldAxisDim = controller.axes[axisName];
       controller.axes[axisName] = newAxisDim;
-      for (var i = 0; i < controller.onAxisChanged.length; ++i) {
-        controller.onAxisChanged[i](axisName, oldAxisDim, newAxisDim);
-      }
+      controller.onAxisChanged.forEach((callback) => callback(axisName, oldAxisDim, newAxisDim));
     },
     commitViewState: function () {
       controller.view.setData(controller.model.tasks, controller.axes.row, controller.axes.column, controller.filterFn);
-    },
-  }
+    }
+  };
 
   controller.view.onRowClicked.push(function (row) {
     var rowDim = controller.axes.row;
-    console.log(rowDim.displayName(row.key))
     if (controller.addKeyEqualityFilter(rowDim, row.key)) {
       controller.setAxis("row", controller.nextUnfiltered());
       controller.commitViewState();
@@ -93,7 +93,6 @@ var newGridController = function (model) {
   });
   controller.view.onColumnClicked.push(function (column) {
     var columnDim = controller.axes.column;
-    console.log(columnDim.displayName(column.key))
     if (controller.addKeyEqualityFilter(columnDim, column.key)) {
       controller.setAxis("column", controller.nextUnfiltered());
       controller.commitViewState();
@@ -102,8 +101,7 @@ var newGridController = function (model) {
   controller.view.onCellClicked.push(function (cell) {
     var rowDim = controller.axes.row;
     var columnDim = controller.axes.column;
-    console.log(rowDim.displayName(cell.rowKey) + ", " + columnDim.displayName(cell.columnKey))
-    if (cell.tasks.length != 1) {
+    if (cell.tasks.length !== 1) {
       if (controller.addKeyEqualityFilter(rowDim, cell.rowKey)) {
         controller.setAxis("row", controller.nextUnfiltered());
         if (controller.addKeyEqualityFilter(columnDim, cell.columnKey)) {
@@ -114,4 +112,4 @@ var newGridController = function (model) {
     }
   });
   return controller;
-}
+};

@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*jslint white: true*/
+'use strict';
 
-var newActionController = function (commitState, defaultPopFunction) {
-  var controller = {
+var newActionController = function (commitState) {
+  var controller;
+  controller = {
     view: newBreadcrumbView(),
     changing: false,
     targetHash: "",
@@ -23,13 +26,14 @@ var newActionController = function (commitState, defaultPopFunction) {
     pushAction: function (actionHash, popFunction, forcedHash) {
       var action = {
         hash: actionHash,
-        popStack: [popFunction],
+        popStack: [popFunction]
       };
-      action.index = controller.actionList.push(action);
       var fullHash;
+
+      action.index = controller.actionList.push(action);
       if (forcedHash != null) {
-        fullHash = forcedHash
-      } else if (window.location.hash == "") {
+        fullHash = forcedHash;
+      } else if (window.location.hash === "") {
         fullHash = "#" + actionHash;
       } else {
         fullHash = window.location.hash + "&" + actionHash;
@@ -37,7 +41,7 @@ var newActionController = function (commitState, defaultPopFunction) {
       action.breadcrumb = controller.view.addBreadcrumb(actionHash, fullHash);
       action.breadcrumb.a.onclick = function () {
         controller.popActions(controller.actionList.length - action.index, true);
-      }
+      };
       if (forcedHash == null) {
         controller.changing = true;
         controller.targetHash = fullHash;
@@ -46,20 +50,20 @@ var newActionController = function (commitState, defaultPopFunction) {
 
     },
     popActions: function (count, moveLocation) {
-      if (count == 0) {
+      if (count === 0) {
         return;
       }
       var newLocation = window.location.hash;
-      var oldCount = controller.actionList.length
-      for (var i = 0; i < Math.min(count, oldCount); ++i) {
-        var action = controller.actionList.pop()
+      var oldCount = controller.actionList.length;
+      var i, j, action;
+
+      for (i = 0; i < Math.min(count, oldCount); i += 1) {
+        action = controller.actionList.pop();
         // undo the action
-        for (var j = 0; j < action.popStack.length; ++j) {
-          action.popStack[j](action.hash)
-        }
+        action.popStack.forEach((callback) => callback(action.hash));
         controller.view.removeBreadcrumb(action.breadcrumb);
-        if (controller.actionList.length != 0) {
-          action.hash = "&" + action.hash
+        if (controller.actionList.length !== 0) {
+          action.hash = "&" + action.hash;
         }
         newLocation = newLocation.replace(action.hash, "");
       }
@@ -70,6 +74,6 @@ var newActionController = function (commitState, defaultPopFunction) {
         window.location.hash = newLocation;
       }
     }
-  }
+  };
   return controller;
-}
+};
