@@ -444,6 +444,8 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 		return image.NewUncompressed("VK_FORMAT_X8_D24_UNORM_PACK32", fmts.ЖD_U8U24_NORM), nil
 	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
 		return image.NewUncompressed("VK_FORMAT_D24_UNORM_S8_UINT", fmts.DS_NU24S8), nil
+	case VkFormat_VK_FORMAT_S8_UINT:
+		return image.NewUncompressed("VK_FORMAT_S8_UINT", fmts.S_U8), nil
 	default:
 		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
 	}
