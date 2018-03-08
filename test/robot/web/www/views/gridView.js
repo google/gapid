@@ -537,6 +537,7 @@ var newGridView = function () {
       // find what we are drawing
       var toDraw = [];
       var vRect = visibleRect(view.div);
+      var dpr = window.devicePixelRatio;
 
       var doesAOverlapB = function (rectA, rectB) {
         return rectA.left < rectB.left + rectB.width
@@ -582,8 +583,11 @@ var newGridView = function () {
         ctx.translate(0.5, 0.5);
 
         rect = drawn.rect;
-        drawn.canvas.width = rect.width;
-        drawn.canvas.height = rect.height;
+        drawn.canvas.width = rect.width * dpr;
+        drawn.canvas.height = rect.height * dpr;
+        drawn.canvas.style.width = rect.width;
+        drawn.canvas.style.height = rect.height;
+        ctx.scale(dpr, dpr);
 
         // draw background
         ctx.fillStyle = view.clusterBackgroundColor(drawn.clusterStats);
