@@ -88,6 +88,22 @@ func (b *Data) Convert(to *Format) (*Data, error) {
 	return &Data{Bytes: bytes, Width: b.Width, Height: b.Height, Depth: b.Depth, Format: to}, nil
 }
 
+// NewInfo stores the image.Data's content to the database then uses the ID to
+// create a new image.Info which describes this image.Data.
+func (b *Data) NewInfo(ctx context.Context) (*Info, error) {
+	id, err := database.Store(ctx, b.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create imageInfo from imageData %v: %v", b, err)
+	}
+	return &Info{
+		Format: b.Format,
+		Width:  b.Width,
+		Height: b.Height,
+		Depth:  b.Depth,
+		Bytes:  NewID(id),
+	}, nil
+}
+
 // Difference returns the normalized square error between the two images.
 // A return value of 0 denotes identical images, a return value of 1 denotes
 // a complete mismatch (black vs white).
