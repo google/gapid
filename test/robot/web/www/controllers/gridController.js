@@ -16,6 +16,9 @@
 /*jslint white: true*/
 'use strict';
 
+// The grid controller handles changing the view and setting it's data when
+// it's axes or it's filters change. It also deals with changing those filters
+// when the grid is clicked.
 var newGridController = function (model) {
   var controller;
   controller = {
@@ -48,6 +51,8 @@ var newGridController = function (model) {
     },
     onFilterChanged: [],
     addKeyEqualityFilter: function (filterDim, key) {
+      // Only add a filter if there is either enough dimensions to still have a grid
+      // or the filter would override a dimension that is already filtered.
       if (controller.filters[filterDim.name] != null
         || controller.model.dimensions.length > Object.keys(controller.filters).length + 2) {
         controller.filters[filterDim.name] = function (task) { return filterDim.keyOf(task) === key; };
@@ -61,6 +66,7 @@ var newGridController = function (model) {
       var result;
 
       if (controller.model.dimensions.some(function (dim) {
+        // The first dimension without a filter that is also not an axis will be the end result.
         result = dim;
         return (controller.filters[dim.name] == null && controller.axes.row !== dim && controller.axes.column !== dim);
       })) {

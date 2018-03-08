@@ -16,6 +16,9 @@
 /*jslint white: true*/
 'use strict';
 
+// The action controller holds a stack of actions that have been commited over time and
+// encodes them into the window's hash. It also holds a breadcrumb view that allows better
+// movement in the history of the actions.
 var newActionController = function (commitState) {
   var controller;
   controller = {
@@ -31,9 +34,12 @@ var newActionController = function (commitState) {
       var fullHash;
 
       action.index = controller.actionList.push(action);
+
+      // We force the hash when we are responding to the hash changing from above us.
       if (forcedHash != null) {
         fullHash = forcedHash;
       } else if (window.location.hash === "") {
+        // No hash yet, so we need to add the octothorpe ourselves.
         fullHash = "#" + actionHash;
       } else {
         fullHash = window.location.hash + "&" + actionHash;
@@ -63,6 +69,7 @@ var newActionController = function (commitState) {
         action.popStack.forEach((callback) => callback(action.hash));
         controller.view.removeBreadcrumb(action.breadcrumb);
         if (controller.actionList.length !== 0) {
+          // Don't add the ampersand on the last action.
           action.hash = "&" + action.hash;
         }
         newLocation = newLocation.replace(action.hash, "");

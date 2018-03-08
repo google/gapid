@@ -16,19 +16,6 @@
 /*jslint white: true*/
 'use strict';
 
-function visibleRect(element) {
-  var boundingRect = element.getBoundingClientRect();
-  return {
-    left: Math.max(-boundingRect.left, 0),
-    top: Math.max(-boundingRect.top, 0),
-    width: Math.min(boundingRect.right, window.innerWidth),
-    height: Math.min(boundingRect.bottom, window.innerHeight)
-  };
-}
-function contains(rect, x, y) {
-  return rect.left <= x && rect.left + rect.width >= x
-    && rect.top <= y && rect.top + rect.height >= y;
-}
 var taskStats;
 taskStats = function (tasks) {
   if (taskStats.initialized === undefined) {
@@ -67,6 +54,8 @@ taskStats = function (tasks) {
     numTasks: tasks.length
   };
 };
+
+// The grid view presents a div containing canvases that draw the state of a model in a 2D representation.
 var newGridView = function () {
   var view;
   view = {

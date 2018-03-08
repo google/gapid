@@ -16,6 +16,8 @@
 /*jslint white: true*/
 'use strict';
 
+// The robot model handles retrieving and sorting all of the data from the
+// instance of robot running on the server.
 var newRobotModel = async function () {
   async function queryArray(path) {
     return new Promise(function (resolve, reject) {
@@ -106,7 +108,9 @@ var newRobotModel = async function () {
 
       devices.forEach(function (device) {
         workers.forEach(function (worker) {
-          if (device.id === worker.target && worker.Operation.includes(2) && traceTargetDimension.keysToItems[device.id] == null) {
+          // Create an item for each device that is also a target worker and can perform trace operations ('2')
+          const traceOp = 2;
+          if (device.id === worker.target && worker.Operation.includes(traceOp) && traceTargetDimension.keysToItems[device.id] == null) {
             var item = {
               key: device.id,
               display: device.information.Configuration.Hardware.Name,
@@ -139,6 +143,7 @@ var newRobotModel = async function () {
 
       devices.forEach(function (device) {
         workers.forEach(function (worker) {
+          // any device that is also a host worker
           if (device.id === worker.host && hostDimension.keysToItems[device.id] == null) {
             var item = {
               key: device.id,
@@ -213,6 +218,7 @@ var newRobotModel = async function () {
         };
         packageDimension.items.push(packageItem);
         packageDimension.keysToItems[packageItem.key] = packageItem;
+        // Figure out the proper display name for the package.
         if (pkg.information.tag != null) {
           packageItem.display = pkg.information.tag;
         } else if (pkg.information.type === 2 && pkg.information.cl != null) {
@@ -220,6 +226,7 @@ var newRobotModel = async function () {
         } else if (pkg.information.uploader) {
           packageItem.display = pkg.information.uploader + " - " + pkg.id;
         }
+        // No parent means this package is the root of a track.
         if (pkg.parent != null) {
           childMap[pkg.parent] = pkg.id;
         } else {
@@ -230,12 +237,13 @@ var newRobotModel = async function () {
       rootPkgs.forEach(function (root) {
         var packageList = [];
         var childId, head, foundTrack;
+        // making sure packages have a clear order from root -> head.
         packageDimension.packageDisplayToOrder[packageDimension.keysToItems[root].display] = Object.keys(packageDimension.packageDisplayToOrder).length;
         packageList.push(root);
         childId = childMap[root];
         while (childId != null) {
           packageDimension.packageDisplayToOrder[packageDimension.keysToItems[childId].display] = Object.keys(packageDimension.packageDisplayToOrder).length;
-          // want tracks stored from Root -> Head
+          // We want tracks stored from Root -> Head.
           packageList.push(childId);
           root = childId;
         }
@@ -257,6 +265,7 @@ var newRobotModel = async function () {
           }
           return true;
         })) {
+          // If not every track failed to match the head we can store them all under the auto track.
           packageDimension.tracks.auto.packageList.push(...packageList);
           packageDimension.tracks.auto.headPackage = packageList[packageList.length - 1];
         }
@@ -281,7 +290,8 @@ var newRobotModel = async function () {
     },
     items: [],
     source: async function () {
-      // busy loop to wait for package?
+      // TODO: find another way to wait, since we are already waiting for source in another
+      // promise upstream, this is really wasteful.
       await packageDimension.source();
 
       Object.keys(packageDimension.tracks).forEach(function (track) {
@@ -316,9 +326,9 @@ var newRobotModel = async function () {
     tasks: [],
     connectTaskParentChild: function (childListMap, parentListMap, packageDim, task) {
       function findParentPackageInList(idList, childId) {
-        // if is the index of the id's parent
+        // result is the index of the id's parent
         var result;
-        if (idList.some(function (id) { result = id; return childId === id; })) {
+        if (idList.slice(1).some(function (id) { result = id; return childId === id; })) {
           return result;
         }
         return null;
@@ -336,7 +346,7 @@ var newRobotModel = async function () {
         parentListMap[pkg].push(task);
       }
 
-      parentPackage = findParentPackageInList(packageDimension.packageToTrack[pkg].packageList.slice(1), pkg);
+      parentPackage = findParentPackageInList(packageDimension.packageToTrack[pkg].packageList, pkg);
       if (parentPackage != null) {
         if (childListMap[parentPackage] == null) {
           childListMap[parentPackage] = [task];
@@ -405,7 +415,6 @@ var newRobotModel = async function () {
         }
         proc(entity, task);
         model.connectTaskParentChild(childMap, parentMap, packageDimension, task);
-        // TODO: connect task parent and child...
         tasks.push(task);
         if (task.status !== "Current") {
           notCurrentTasks.push(task);
@@ -413,6 +422,7 @@ var newRobotModel = async function () {
           currentTasks.push(task);
         }
       });
+      // Make sure we resolve the parented task's result/status.
       notCurrentTasks.forEach(function (task) {
         if (task.parent != null) {
           task.result = task.parent.result;

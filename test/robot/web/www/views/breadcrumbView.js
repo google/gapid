@@ -15,6 +15,8 @@
  */
 'use strict';
 
+// The breadcrumb view presents hyperlinks between states in the webapp in
+// a linear order.
 var newBreadcrumbView = function () {
   var view;
   view = {
