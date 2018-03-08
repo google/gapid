@@ -68,6 +68,7 @@ cmd void vkGetDeviceQueue(
       VulkanHandle:  id)
     dev := Devices[device]
     dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
+    _ = PhysicalDevices[dev.PhysicalDevice].QueueFamilyProperties[queueFamilyIndex]
   }
   if pQueue == null { vkErrorNullPointer("VkQueue") }
   pQueue[0] = id
