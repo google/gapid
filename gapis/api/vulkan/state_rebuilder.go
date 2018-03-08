@@ -1185,7 +1185,7 @@ type byteSizeAndExtent struct {
 	depth            uint64
 }
 
-func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel uint32, aspect VkImageAspectFlagBits) byteSizeAndExtent {
+func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel uint32, aspect VkImageAspectFlagBits, inBuffer bool) byteSizeAndExtent {
 
 	elementAndTexelBlockSize, _ :=
 		subGetElementAndTexelBlockSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, format)
@@ -1202,7 +1202,7 @@ func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel u
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
 		elementSize = elementAndTexelBlockSize.ElementSize
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
-		elementSize, _ = subGetDepthElementSizeForCopy(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, format)
+		elementSize, _ = subGetDepthElementSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, format, inBuffer)
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		// Stencil element is always 1 byte wide
 		elementSize = uint32(1)
@@ -1540,7 +1540,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 				for _, aspectBit := range sb.imageAspectFlagBits(rng.AspectMask) {
 					for i := uint32(0); i < rng.LevelCount; i++ {
 						mipLevel := rng.BaseMipLevel + i
-						dstE := sb.levelSize(dstImg.Info.Extent, dstImg.Info.Format, mipLevel, aspectBit)
+						dstE := sb.levelSize(dstImg.Info.Extent, dstImg.Info.Format, mipLevel, aspectBit, true)
 						dstExtent := VkExtent3D{
 							uint32(dstE.width), uint32(dstE.height), uint32(dstE.depth),
 						}
@@ -1606,19 +1606,19 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 									blockData.Offset,
 									blockData.Extent,
 								}
-								e := sb.levelSize(blockData.Extent, img.Info.Format, 0, aspectBit)
+								e := sb.levelSize(blockData.Extent, img.Info.Format, 0, aspectBit, false)
 								o := sb.levelSize(VkExtent3D{
 									uint32(blockData.Offset.X),
 									uint32(blockData.Offset.Y),
 									uint32(blockData.Offset.Z),
-								}, img.Info.Format, 0, aspectBit)
+								}, img.Info.Format, 0, aspectBit, false)
 								data := img.Aspects.Get(aspectBit).Layers.Get(layer).Levels.Get(level).Data.Slice(
 									uint64(o.levelSize),
 									uint64(o.levelSize+e.levelSize),
 									sb.oldState.MemoryLayout,
 								).MustRead(sb.ctx, nil, sb.oldState, nil)
 
-								dstE := sb.levelSize(blockData.Extent, dstImg.Info.Format, 0, aspectBit)
+								dstE := sb.levelSize(blockData.Extent, dstImg.Info.Format, 0, aspectBit, true)
 								unpacked, err := helper.unpackData(data, blockData.Extent, img.Info.Format, dstImg.Info.Format)
 								errMsg := fmt.Sprintf("Unpacking data from image: %v, layer: %v, level: %v, extent: %v", img.VulkanHandle, layer, level, blockData.Extent)
 								if err != nil {

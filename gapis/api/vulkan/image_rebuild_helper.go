@@ -345,7 +345,7 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	if err != nil {
 		return fmt.Errorf("[Creating fragment shader module] %v", err)
 	}
-	e := h.sb.levelSize(outputImg.Info.Extent, outputImg.Info.Format, level, aspect)
+	e := h.sb.levelSize(outputImg.Info.Extent, outputImg.Info.Format, level, aspect, false)
 	viewport := VkViewport{
 		0.0, 0.0,
 		float32(e.width), float32(e.height),
@@ -708,7 +708,7 @@ func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderP
 	if len(imgViews) < 2 {
 		return nil, fmt.Errorf("requires at least two image views, %d are given", len(imgViews))
 	}
-	e := h.sb.levelSize(imgViews[0].Image.Info.Extent, imgViews[0].Image.Info.Format, level, aspect)
+	e := h.sb.levelSize(imgViews[0].Image.Info.Extent, imgViews[0].Image.Info.Format, level, aspect, false)
 	attachments := []VkImageView{}
 	for _, v := range imgViews {
 		attachments = append(attachments, v.VulkanHandle)

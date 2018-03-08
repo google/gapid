@@ -4068,19 +4068,25 @@ sub u32 roundUpTo(u32 dividend, u32 divisor) {
 }
 
 // This should correspond to the data layout specified at VkBufferImageCopy
-sub u32 getDepthElementSizeForCopy(VkFormat format) {
-  d16Size := getElementAndTexelBlockSize(VK_FORMAT_D16_UNORM).ElementSize
-  d32Size := getElementAndTexelBlockSize(VK_FORMAT_D32_SFLOAT).ElementSize
+sub u32 getDepthElementSize(VkFormat format, bool inBuffer) {
+  d16Size := as!u32(2)
+  d24Size := as!u32(3)
+  d32Size := as!u32(4)
   return switch (format) {
     case VK_FORMAT_D16_UNORM, VK_FORMAT_D16_UNORM_S8_UINT:
       d16Size
     case VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT:
       d32Size
     case VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D24_UNORM_S8_UINT:
-      // For those two formats, data is packed with one 32-bit word per texel
+      // For VkBufferImageCopy, data is packed with one 32-bit word per texel
       // with the D24 value in the LSBs of the word, and undefined values in
       // the eight MSBs.
-      d32Size
+      switch (inBuffer) {
+        case true:
+          d32Size
+        case false:
+          d24Size
+      }
     default:
       as!u32(0)
   }
@@ -4194,7 +4200,7 @@ cmd VkResult vkCreateImage(
         depth := getMipSize(info.extent.Depth, i)
         level := new!ImageLevel(Width: width,Height:  height,Depth:  depth)
         elementAndTexelBlockSize := getElementAndTexelBlockSize(object.Info.Format)
-        depthElementSize := getDepthElementSizeForCopy(object.Info.Format)
+        depthElementSize := getDepthElementSize(object.Info.Format, false)
         // Roundup the width and height in the number of blocks.
         widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
         heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
@@ -6531,10 +6537,10 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
 
   srcFormat := srcImageObject.Info.Format
   srcElementAndTexelBlockSize := getElementAndTexelBlockSize(srcFormat)
-  srcDepthElementSize := getDepthElementSizeForCopy(srcFormat)
+  srcDepthElementSize := getDepthElementSize(srcFormat, false)
   dstFormat := dstImageObject.Info.Format
   dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
-  dstDepthElementSize := getDepthElementSizeForCopy(dstFormat)
+  dstDepthElementSize := getDepthElementSize(dstFormat, false)
   for r in (0 .. len(args.Regions)) {
     // TODO: (qining) Handle the apsect mask
     region := args.Regions[as!u32(r)]
@@ -6986,7 +6992,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   imageObject := Images[args.DstImage]
   format := imageObject.Info.Format
   elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
-  depthElementSize := getDepthElementSizeForCopy(format)
+  depthElementSize := getDepthElementSize(format, true)
   // Iterate through regions
   for i in (0 .. len(args.Regions)) {
     region := args.Regions[as!u32(i)]
