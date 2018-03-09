@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@//tools/build:rules.bzl", "mm_library", "cc_copts")
+load("@gapid//tools/build:rules.bzl", "mm_library", "cc_copts")
 
 LIB_POSIX = [
     "src/client/minidump_file_writer.cc",
@@ -77,9 +77,9 @@ LIB_WINDOWS = [
 cc_library(
     name = "breakpad",
     srcs = select({
-        "@//tools/build:linux": LIB_LINUX,
-        "@//tools/build:darwin": LIB_MACOS,
-        "@//tools/build:windows": LIB_WINDOWS,
+        "@gapid//tools/build:linux": LIB_LINUX,
+        "@gapid//tools/build:darwin": LIB_MACOS,
+        "@gapid//tools/build:windows": LIB_WINDOWS,
         # Android.
         "//conditions:default": LIB_LINUX + [
             "src/common/android/breakpad_getcontext.S",
@@ -87,9 +87,9 @@ cc_library(
     }),
     hdrs = glob(["src/**/*.h"]),
     copts = cc_copts() + select({
-        "@//tools/build:linux": [],
-        "@//tools/build:darwin": [],
-        "@//tools/build:windows": [
+        "@gapid//tools/build:linux": [],
+        "@gapid//tools/build:darwin": [],
+        "@gapid//tools/build:windows": [
             "-D_UNICODE",
             "-DUNICODE",
         ],
@@ -97,18 +97,18 @@ cc_library(
         "//conditions:default": ["-D__STDC_FORMAT_MACROS"],
     }),
     linkopts = select({
-        "@//tools/build:linux": ["-lpthread"],
-        "@//tools/build:darwin": [],
-        "@//tools/build:windows": ["-lwininet"],
+        "@gapid//tools/build:linux": ["-lpthread"],
+        "@gapid//tools/build:darwin": [],
+        "@gapid//tools/build:windows": ["-lwininet"],
         # Android.
         "//conditions:default": [],
     }),
     strip_include_prefix = "src",
     visibility = ["//visibility:public"],
     deps = select({
-        "@//tools/build:linux": ["@lss"],
-        "@//tools/build:darwin": [":breakpad_darwin"],
-        "@//tools/build:windows": [],
+        "@gapid//tools/build:linux": ["@lss"],
+        "@gapid//tools/build:darwin": [":breakpad_darwin"],
+        "@gapid//tools/build:windows": [],
         # Android.
         "//conditions:default": [
             ":breakpad_android_includes",
@@ -215,24 +215,24 @@ DUMP_SYMS_WINDOWS = [
 cc_library(
     name = "dump_syms-lib",
     srcs = select({
-        "@//tools/build:linux": DUMP_SYMS_LINUX,
-        "@//tools/build:darwin": DUMP_SYMS_MACOS,
-        "@//tools/build:windows": DUMP_SYMS_WINDOWS,
+        "@gapid//tools/build:linux": DUMP_SYMS_LINUX,
+        "@gapid//tools/build:darwin": DUMP_SYMS_MACOS,
+        "@gapid//tools/build:windows": DUMP_SYMS_WINDOWS,
     }),
     hdrs = glob(["src/**/*.h"]),
     strip_include_prefix = "src",
     copts = cc_copts() + [
         "-DN_UNDF=0x0",
     ] + select({
-        "@//tools/build:windows": ["-DNO_STABS_SUPPORT"],
+        "@gapid//tools/build:windows": ["-DNO_STABS_SUPPORT"],
         "//conditions:default": [],
     }),
     deps = select({
-        "@//tools/build:linux": ["@lss"],
+        "@gapid//tools/build:linux": ["@lss"],
         "//conditions:default": [],
     }),
     linkopts = select({
-        "@//tools/build:windows": ["-limagehlp"],
+        "@gapid//tools/build:windows": ["-limagehlp"],
         "//conditions:default": [],
     }),
 )

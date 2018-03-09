@@ -47,8 +47,8 @@ def _configure_windows_toolchain(repository_ctx):
     cc = _find_cc(repository_ctx)
     inc = _get_inc_directories(repository_ctx, cc)
 
-    repository_ctx.symlink(Label("@//tools/build/mingw_toolchain:BUILD.bazel"), "BUILD")
-    repository_ctx.template("CROSSTOOL", Label("@//tools/build/mingw_toolchain:CROSSTOOL.in"), {
+    repository_ctx.symlink(Label("@gapid//tools/build/mingw_toolchain:BUILD.bazel"), "BUILD")
+    repository_ctx.template("CROSSTOOL", Label("@gapid//tools/build/mingw_toolchain:CROSSTOOL.in"), {
         "%{BINDIR}": str(cc.dirname),
         "%{CXX_BUILTIN_INCLUDE_DIRECTORIES}": "\n".join([
             ("cxx_builtin_include_directory: \"%s\"" % p) for p in inc

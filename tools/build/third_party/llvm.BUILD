@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@//tools/build/third_party:llvm/rules.bzl", "llvm_sources", "tablegen")
-load("@//tools/build/third_party:llvm/libs.bzl", "llvm_auto_libs")
-load("@//tools/build/rules:cc.bzl", "cc_copts")
+load("@gapid//tools/build/third_party:llvm/rules.bzl", "llvm_sources", "tablegen")
+load("@gapid//tools/build/third_party:llvm/libs.bzl", "llvm_auto_libs")
+load("@gapid//tools/build/rules:cc.bzl", "cc_copts")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -286,7 +286,7 @@ cc_library(
     hdrs = glob(["include/**/*"]),
     strip_include_prefix = "include",
     deps = [
-        "@//tools/build/third_party:llvm-config",
+        "@gapid//tools/build/third_party:llvm-config",
     ],
 )
 
@@ -335,16 +335,16 @@ cc_binary(
     srcs = llvm_sources("utils/TableGen") + glob(["lib/Target/**/*.h"]),
     copts = cc_copts(),
     linkopts = select({
-        "@//tools/build:linux": [
+        "@gapid//tools/build:linux": [
             "-ldl",
             "-lpthread",
             "-lcurses",
         ],
-        "@//tools/build:darwin": [
+        "@gapid//tools/build:darwin": [
             "-framework Cocoa",
             "-lcurses",
         ],
-        "@//tools/build:windows": [
+        "@gapid//tools/build:windows": [
             "-luuid",
             "-lole32",
         ],
@@ -406,9 +406,9 @@ cc_library(
         ":Demangle",
     ],
     linkopts = select({
-        "@//tools/build:linux": ["-ldl", "-lpthread", "-lcurses", "-lz", "-lm"],
-        "@//tools/build:darwin": ["-framework Cocoa", "-lcurses", "-lz", "-lm"],
-        "@//tools/build:windows": ["-luuid", "-lole32"],
+        "@gapid//tools/build:linux": ["-ldl", "-lpthread", "-lcurses", "-lz", "-lm"],
+        "@gapid//tools/build:darwin": ["-framework Cocoa", "-lcurses", "-lz", "-lm"],
+        "@gapid//tools/build:windows": ["-luuid", "-lole32"],
     }),
     visibility = ["//visibility:public"],
 )

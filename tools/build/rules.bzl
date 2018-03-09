@@ -20,7 +20,7 @@ load("//tools/build/rules:dynlib.bzl", "android_dynamic_library", "cc_dynamic_li
 load("//tools/build/rules:embed.bzl", "embed")
 load("//tools/build/rules:filehash.bzl", "filehash")
 load("//tools/build/rules:gapil.bzl", "api_library", "api_template")
-load("//tools/build/rules:go.bzl", "github_go_repository", "go_stripped_binary")
+load("//tools/build/rules:go.bzl", "go_stripped_binary")
 load("//tools/build/rules:grpc.bzl", "java_grpc_library")
 load("//tools/build/rules:lingo.bzl", "lingo")
 load("//tools/build/rules:mm.bzl", "mm_library")

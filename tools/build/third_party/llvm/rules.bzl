@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@//tools/build:rules.bzl", "cc_copts")
+load("@gapid//tools/build:rules.bzl", "cc_copts")
 
 def llvm_sources(name, exclude=[]):
     return native.glob([
@@ -21,7 +21,7 @@ def llvm_sources(name, exclude=[]):
             name+"/*.h",
             name+"/*.inc",
         ], exclude=exclude) + select({
-            "@//tools/build:windows": native.glob([
+            "@gapid//tools/build:windows": native.glob([
                 name+"/Windows/*.h",
                 name+"/Windows/*.inc",
             ], exclude=exclude),
@@ -49,9 +49,9 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
             "-O2",
             "-DNDEBUG",
         ] + select({
-            "@//tools/build:linux": [],
-            "@//tools/build:darwin": [],
-            "@//tools/build:windows": [],
+            "@gapid//tools/build:linux": [],
+            "@gapid//tools/build:darwin": [],
+            "@gapid//tools/build:windows": [],
             # Android
             "//conditions:default": [
                 "-fno-rtti",

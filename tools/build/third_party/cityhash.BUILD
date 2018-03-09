@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@//tools/build:rules.bzl", "copy")
+load("@gapid//tools/build:rules.bzl", "copy")
 
 copy(
     name = "config",
-    src = "@//tools/build/third_party:cityhash-config.h",
+    src = "@gapid//tools/build/third_party:cityhash-config.h",
     dst = "src/config.h",
 )
 
 copy(
     name = "byteswap",
-    src = "@//tools/build/third_party:cityhash-byteswap.h",
+    src = "@gapid//tools/build/third_party:cityhash-byteswap.h",
     dst = "src/byteswap.h",
 )
 
