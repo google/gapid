@@ -6999,6 +6999,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
     rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
     rowLength := as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width)
     imageHeight := as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height)
+    // The VkImageSubresourceLayer used for buffer image copy should specify only one aspect bit.
     for _, _, aspectBit in unpackImageAspectFlags(region.imageSubresource.aspectMask).Bits {
       elementSize := switch (aspectBit) {
         case VK_IMAGE_ASPECT_COLOR_BIT:
@@ -7021,23 +7022,36 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
       // TODO: (qining) Handle aspect mask
       for j in (0 .. region.imageSubresource.layerCount) {
         layerIndex := region.imageSubresource.baseArrayLayer + j
-        bufferLayerOffset := as!u64(j) * layerSize
+        bufferLayerOffset := as!u64(j) * layerSize + as!u64(region.bufferOffset)
         imageLevel := imageObject.Aspects[aspectBit].Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
         imageLevelWidthInBlocks := as!u64(imageLevel.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
         imageLevelHeightInBlocks := as!u64(imageLevel.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
         // Iterate through depths and rows to copy
         for z in (zStart .. zEnd) {
+          zInExtent := z - zStart
           for y in (yStart .. yEnd) {
-            copySize := (xEnd - xStart) * elementSize
-            dstStart := ((((z * imageLevelHeightInBlocks) + y) * imageLevelWidthInBlocks) + xStart) * elementSize
-            dstEnd := dstStart + copySize
-            zInExtent := z - zStart
             yInExtent := y - yStart
-            rowStartInExtent := (((zInExtent * imageHeight) + yInExtent) * rowLength) * elementSize
-            srcStart := as!u64(bufferObject.MemoryOffset) + as!u64(region.bufferOffset) + bufferLayerOffset + rowStartInExtent
-            srcEnd := srcStart + copySize
-            readCoherentMemoryInBuffer(bufferObject, region.bufferOffset + as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
-            copy(imageLevel.Data[dstStart:dstEnd], bufferObject.Memory.Data[srcStart:srcEnd])
+            rowStartBlock := ((z * imageLevelHeightInBlocks) + y) * imageLevelWidthInBlocks
+            rowStartBlockInExtent := ((zInExtent * imageHeight) + yInExtent) * rowLength
+            if ((format == VK_FORMAT_D24_UNORM_S8_UINT) || (format == VK_FORMAT_X8_D24_UNORM_PACK32)) && (aspectBit == VK_IMAGE_ASPECT_DEPTH_BIT) {
+              elementSizeInImage := as!u64(getDepthElementSize(format, false))
+              for x in (xStart .. xEnd) {
+                dstStart := (rowStartBlock + x) * elementSizeInImage
+                rowStartInExtent := (rowStartBlockInExtent + x) * elementSize
+                srcStart := as!u64(bufferObject.MemoryOffset) + bufferLayerOffset + rowStartInExtent
+                readCoherentMemory(bufferObject.Memory, as!VkDeviceSize(srcStart), as!VkDeviceSize(elementSize))
+                copy(imageLevel.Data[dstStart:dstStart+elementSizeInImage], bufferObject.Memory.Data[srcStart:srcStart+elementSize])
+              }
+            } else {
+              copySize := (xEnd - xStart) * elementSize
+              dstStart := (rowStartBlock + xStart) * elementSize
+              dstEnd := dstStart + copySize
+              rowStartInExtent := rowStartBlockInExtent * elementSize
+              srcStart := as!u64(bufferObject.MemoryOffset) + bufferLayerOffset + rowStartInExtent
+              srcEnd := srcStart + copySize
+              readCoherentMemoryInBuffer(bufferObject, as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
+              copy(imageLevel.Data[dstStart:dstEnd], bufferObject.Memory.Data[srcStart:srcEnd])
+            }
           }
         }
       }
