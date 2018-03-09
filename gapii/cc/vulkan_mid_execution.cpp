@@ -329,7 +329,8 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     mImports.mVkDeviceFunctions[device.second->mVulkanHandle]
         .vkGetBufferMemoryRequirements(
             device.second->mVulkanHandle, buffer,
-            &mState.TransferBufferMemoryRequirements[device.second->mVulkanHandle]);
+            &mState.TransferBufferMemoryRequirements[device.second
+                                                         ->mVulkanHandle]);
     mImports.mVkDeviceFunctions[device.second->mVulkanHandle].vkDestroyBuffer(
         device.second->mVulkanHandle, buffer, nullptr);
   }
@@ -398,7 +399,8 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     // We can either batch them, or spin up a second thread that
     // simply waits for the reads to be done before continuing.
     for (auto &bind : allBindings) {
-      if (mState.DeviceMemories.find(bind.mmemory) == mState.DeviceMemories.end()) {
+      if (mState.DeviceMemories.find(bind.mmemory) ==
+          mState.DeviceMemories.end()) {
         continue;
       }
       auto &deviceMemory = mState.DeviceMemories[bind.mmemory];
@@ -432,8 +434,10 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1,
           &barrier, 0, nullptr);
 
-      commandBuffer.FinishAndSubmit(GetQueue(mState.Queues, buf)->mVulkanHandle);
-      device_functions.vkQueueWaitIdle(GetQueue(mState.Queues, buf)->mVulkanHandle);
+      commandBuffer.FinishAndSubmit(
+          GetQueue(mState.Queues, buf)->mVulkanHandle);
+      device_functions.vkQueueWaitIdle(
+          GetQueue(mState.Queues, buf)->mVulkanHandle);
 
       void *pData = stage.GetMappedMemory();
       auto resIndex = sendResource(VulkanSpy::kApiIndex, pData, bind.msize);
@@ -469,7 +473,8 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     };
 
     auto block_pitch = [this](const VkExtent3D &extent, uint32_t format,
-                              uint32_t mip_level) -> pitch {
+                              uint32_t mip_level, uint32_t aspect_bit,
+                              bool in_buffer) -> pitch {
       auto elementAndTexelBlockSize =
           subGetElementAndTexelBlockSize(nullptr, nullptr, format);
       const uint32_t texel_width =
@@ -485,20 +490,31 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           subRoundUpTo(nullptr, nullptr, width, texel_width);
       const uint32_t height_in_blocks =
           subRoundUpTo(nullptr, nullptr, height, texel_height);
-      const size_t size = width_in_blocks * height_in_blocks *
-                          elementAndTexelBlockSize.mElementSize;
+      const uint32_t element_size = [&]() -> uint32_t {
+        switch (aspect_bit) {
+          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT:
+            return elementAndTexelBlockSize.mElementSize;
+          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT:
+            return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
+          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT:
+            return 1;
+        }
+        return 0;
+      }();
+      const size_t size = width_in_blocks * height_in_blocks * element_size;
 
       return pitch{
-          uint32_t(width_in_blocks * elementAndTexelBlockSize.mElementSize),
+          uint32_t(width_in_blocks * element_size),
           uint32_t(size),
           uint32_t(elementAndTexelBlockSize.mTexelBlockSize.mWidth),
           uint32_t(elementAndTexelBlockSize.mTexelBlockSize.mHeight),
-          uint32_t(elementAndTexelBlockSize.mElementSize),
+          uint32_t(element_size),
       };
     };
 
     auto level_size = [this](const VkExtent3D &extent, uint32_t format,
-                             uint32_t mip_level, uint32_t aspect_bit) -> byte_size_and_extent {
+                             uint32_t mip_level, uint32_t aspect_bit,
+                             bool in_buffer) -> byte_size_and_extent {
       auto elementAndTexelBlockSize =
           subGetElementAndTexelBlockSize(nullptr, nullptr, format);
 
@@ -521,13 +537,14 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           case VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT:
             return elementAndTexelBlockSize.mElementSize;
           case VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT:
-            return subGetDepthElementSizeForCopy(nullptr, nullptr, format);
+            return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
           case VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT:
             return 1;
         }
         return 0;
       }();
-      const size_t size = width_in_blocks * height_in_blocks * depth * element_size;
+      const size_t size =
+          width_in_blocks * height_in_blocks * depth * element_size;
       const size_t next_multiple_of_8 = (size + 7) & (~7);
 
       return byte_size_and_extent{size, next_multiple_of_8, width, height,
@@ -545,13 +562,14 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     };
 
     for (auto &a : img->mAspects) {
-      auto& aspect = a.second;
-      for (auto& l : aspect->mLayers) {
-        auto& layer = l.second;
-        for (auto& lev : layer->mLevels) {
-          auto& level = lev.second;
+      auto &aspect = a.second;
+      for (auto &l : aspect->mLayers) {
+        auto &layer = l.second;
+        for (auto &lev : layer->mLevels) {
+          auto &level = lev.second;
           byte_size_and_extent e =
-              level_size(image_info.mExtent, image_info.mFormat, lev.first, a.first);
+              level_size(image_info.mExtent, image_info.mFormat, lev.first,
+                         a.first, false);
           level->mData = gapil::Slice<uint8_t>::create(
               create_virtual_pool(e.aligned_level_size));
           gpu_pools->insert(level->mData.pool_id());
@@ -673,27 +691,27 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     {
       VkDeviceSize offset = 0;
       std::vector<VkBufferImageCopy> copies;
-      for (auto& range : opaque_ranges) {
+      for (auto &range : opaque_ranges) {
         auto aspect_bits = aspect_flag_bits(range.maspectMask);
         for (auto aspect_bit : aspect_bits) {
           for (size_t i = 0; i < range.mlevelCount; ++i) {
             uint32_t mip_level = range.mbaseMipLevel + i;
             byte_size_and_extent e =
-                level_size(image_info.mExtent, image_info.mFormat, mip_level, aspect_bit);
+                level_size(image_info.mExtent, image_info.mFormat, mip_level,
+                           aspect_bit, true);
             for (size_t j = 0; j < range.mlayerCount; j++) {
               uint32_t layer = range.mbaseArrayLayer + j;
-              copies.push_back(VkBufferImageCopy{
-                  offset,  // bufferOffset,
-                  0,       // bufferRowLength,
-                  0,       // bufferImageHeight,
-                  {
-                      aspect_bit,  // aspectMask
-                      mip_level,
-                      layer,  // baseArrayLayer
-                      1       // layerCount
-                  },
-                  {0, 0, 0},
-                  {e.width, e.height, e.depth}});
+              copies.push_back(VkBufferImageCopy{offset,  // bufferOffset,
+                                                 0,       // bufferRowLength,
+                                                 0,       // bufferImageHeight,
+                                                 {
+                                                     aspect_bit,  // aspectMask
+                                                     mip_level,
+                                                     layer,  // baseArrayLayer
+                                                     1       // layerCount
+                                                 },
+                                                 {0, 0, 0},
+                                                 {e.width, e.height, e.depth}});
               offset += e.aligned_level_size;
             }
           }
@@ -721,7 +739,8 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
                       },
                       block_i.second->mOffset, block_i.second->mExtent});
                   byte_size_and_extent e =
-                      level_size(block_i.second->mExtent, image_info.mFormat, 0, aspect_bit);
+                      level_size(block_i.second->mExtent, image_info.mFormat, 0,
+                                 aspect_bit, true);
                   offset += e.aligned_level_size;
                 }
               }
@@ -789,8 +808,10 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0,
           nullptr, 1, &buf_barrier, 1, &img_barrier);
 
-      commandBuffer.FinishAndSubmit(GetQueue(mState.Queues, img)->mVulkanHandle);
-      device_functions.vkQueueWaitIdle(GetQueue(mState.Queues, img)->mVulkanHandle);
+      commandBuffer.FinishAndSubmit(
+          GetQueue(mState.Queues, img)->mVulkanHandle);
+      device_functions.vkQueueWaitIdle(
+          GetQueue(mState.Queues, img)->mVulkanHandle);
 
       uint8_t *pData = reinterpret_cast<uint8_t *>(stage.GetMappedMemory());
       size_t new_offset = 0;
@@ -798,11 +819,13 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
         auto &copy = copies[i];
         size_t next_offset =
             (i == copies.size() - 1) ? offset : copies[i + 1].mbufferOffset;
-        const uint32_t aspect_bit = (uint32_t) copy.mimageSubresource.maspectMask;
-        byte_size_and_extent e =
-            level_size(copy.mimageExtent, image_info.mFormat, 0, aspect_bit);
-        auto bp = block_pitch(copy.mimageExtent, image_info.mFormat,
-                              copy.mimageSubresource.mmipLevel);
+        const uint32_t aspect_bit =
+            (uint32_t)copy.mimageSubresource.maspectMask;
+        byte_size_and_extent e = level_size(
+            copy.mimageExtent, image_info.mFormat, 0, aspect_bit, false);
+        auto bp =
+            block_pitch(copy.mimageExtent, image_info.mFormat,
+                        copy.mimageSubresource.mmipLevel, aspect_bit, false);
 
         if ((copy.mimageOffset.mx % bp.texel_width != 0) ||
             (copy.mimageOffset.my % bp.texel_height != 0)) {
@@ -813,17 +836,40 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
         uint32_t y = (copy.mimageOffset.my / bp.texel_height) * bp.height_pitch;
         uint32_t z = copy.mimageOffset.mz * bp.depth_pitch;
 
+        if ((image_info.mFormat == VkFormat::VK_FORMAT_X8_D24_UNORM_PACK32 ||
+             image_info.mFormat == VkFormat::VK_FORMAT_D24_UNORM_S8_UINT) &&
+            (aspect_bit == VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT)) {
+          // The width of the depth channel are different for img buf copy.
+          byte_size_and_extent copy_e = level_size(
+              copy.mimageExtent, image_info.mFormat, 0, aspect_bit, true);
+          size_t element_size_in_img = 3;
+          size_t element_size_in_buf = 4;
+          // It is always the MSB byte to be stripped.
+          uint8_t *buf = pData + new_offset;
+          for (size_t i = 0;
+               i < copy_e.aligned_level_size / element_size_in_buf; i++) {
+            if (i < 3) {
+              memmove(&buf[i * element_size_in_img],
+                      &buf[i * element_size_in_buf], element_size_in_img);
+            } else {
+              memcpy(&buf[i * element_size_in_img],
+                     &buf[i * element_size_in_buf], element_size_in_img);
+            }
+          }
+        }
+
         auto resIndex = sendResource(VulkanSpy::kApiIndex, pData + new_offset,
                                      e.level_size);
-        new_offset += e.aligned_level_size;
+        memory::Observation observation;
         const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
         const uint32_t array_layer = copy.mimageSubresource.mbaseArrayLayer;
-        memory::Observation observation;
         observation.set_base(x + y + z);
         observation.set_size(e.level_size);
         observation.set_resindex(resIndex);
-        observation.set_pool(
-            img->mAspects[aspect_bit]->mLayers[array_layer]->mLevels[mip_level]->mData.pool_id());
+        observation.set_pool(img->mAspects[aspect_bit]
+                                 ->mLayers[array_layer]
+                                 ->mLevels[mip_level]
+                                 ->mData.pool_id());
         group->object(&observation);
         new_offset = next_offset;
       }

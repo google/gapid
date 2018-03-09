@@ -182,7 +182,7 @@ func postImageData(ctx context.Context,
 	s *api.GlobalState,
 	imageObject *ImageObject,
 	vkFormat VkFormat,
-	aspectMask VkImageAspectFlagBits,
+	aspect VkImageAspectFlagBits,
 	imgWidth,
 	imgHeight,
 	reqWidth,
@@ -195,9 +195,9 @@ func postImageData(ctx context.Context,
 	// image is not created with this format.
 	var formatOfImgRes *image.Format = nil
 	var err error = nil
-	if aspectMask == VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
+	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
 		formatOfImgRes, err = getImageFormatFromVulkanFormat(vkFormat)
-	} else if aspectMask == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
+	} else if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
 		// When depth image is requested, the format, which is used for
 		// resolving/bliting/copying attachment image data to the mapped buffer
 		// might be different with the format used in image resource. This is
@@ -274,6 +274,13 @@ func postImageData(ctx context.Context,
 	}
 
 	bufferSize := uint64(formatOfImgRes.Size(int(reqWidth), int(reqHeight), 1))
+	// For the depth aspect of VK_FORMAT_X8_D24_UNORM_PACK32 and
+	// VK_FORMAT_D24_UNORM_S8_UINT format, each depth element requires 4 bytes in
+	// the buffer when used in buffer image copy.
+	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT && (vkFormat == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32 || vkFormat == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) {
+		r32Fmt, _ := getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_R32_UINT)
+		bufferSize = uint64(r32Fmt.Size(int(reqWidth), int(reqHeight), 1))
+	}
 
 	// Data and info for destination buffer creation
 	bufferId := VkBuffer(newUnusedID(false, func(x uint64) bool { ok := GetState(s).Buffers.Contains(VkBuffer(x)); return ok }))
@@ -400,7 +407,7 @@ func postImageData(ctx context.Context,
 		BufferRowLength:   0,
 		BufferImageHeight: 0,
 		ImageSubresource: VkImageSubresourceLayers{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			MipLevel:       0,
 			BaseArrayLayer: 0,
 			LayerCount:     1,
@@ -455,7 +462,7 @@ func postImageData(ctx context.Context,
 		DstQueueFamilyIndex: 0xFFFFFFFF,
 		Image:               stagingImageId,
 		SubresourceRange: VkImageSubresourceRange{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			BaseMipLevel:   0,
 			LevelCount:     1,
 			BaseArrayLayer: 0,
@@ -477,7 +484,7 @@ func postImageData(ctx context.Context,
 		DstQueueFamilyIndex: 0xFFFFFFFF,
 		Image:               stagingImageId,
 		SubresourceRange: VkImageSubresourceRange{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			BaseMipLevel:   0,
 			LevelCount:     1,
 			BaseArrayLayer: 0,
@@ -504,7 +511,7 @@ func postImageData(ctx context.Context,
 		DstQueueFamilyIndex: 0xFFFFFFFF,
 		Image:               resolveImageId,
 		SubresourceRange: VkImageSubresourceRange{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			BaseMipLevel:   0,
 			LevelCount:     1,
 			BaseArrayLayer: 0,
@@ -526,7 +533,7 @@ func postImageData(ctx context.Context,
 		DstQueueFamilyIndex: 0xFFFFFFFF,
 		Image:               resolveImageId,
 		SubresourceRange: VkImageSubresourceRange{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			BaseMipLevel:   0,
 			LevelCount:     1,
 			BaseArrayLayer: 0,
@@ -553,7 +560,7 @@ func postImageData(ctx context.Context,
 		DstQueueFamilyIndex: 0xFFFFFFFF,
 		Image:               imageObject.VulkanHandle,
 		SubresourceRange: VkImageSubresourceRange{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			BaseMipLevel:   0,
 			LevelCount:     1,
 			BaseArrayLayer: 0,
@@ -580,7 +587,7 @@ func postImageData(ctx context.Context,
 		DstQueueFamilyIndex: 0xFFFFFFFF,
 		Image:               imageObject.VulkanHandle,
 		SubresourceRange: VkImageSubresourceRange{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			BaseMipLevel:   0,
 			LevelCount:     1,
 			BaseArrayLayer: 0,
@@ -592,7 +599,7 @@ func postImageData(ctx context.Context,
 	// Observation data for vkCmdBlitImage
 	imageBlit := VkImageBlit{
 		SrcSubresource: VkImageSubresourceLayers{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			MipLevel:       0,
 			BaseArrayLayer: 0,
 			LayerCount:     1,
@@ -610,7 +617,7 @@ func postImageData(ctx context.Context,
 			},
 		},
 		DstSubresource: VkImageSubresourceLayers{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			MipLevel:       0,
 			BaseArrayLayer: 0,
 			LayerCount:     1,
@@ -633,7 +640,7 @@ func postImageData(ctx context.Context,
 	// Observation data for vkCmdResolveImage
 	imageResolve := VkImageResolve{
 		SrcSubresource: VkImageSubresourceLayers{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			MipLevel:       0,
 			BaseArrayLayer: 0,
 			LayerCount:     1,
@@ -644,7 +651,7 @@ func postImageData(ctx context.Context,
 			Z: 0,
 		},
 		DstSubresource: VkImageSubresourceLayers{
-			AspectMask:     VkImageAspectFlags(aspectMask),
+			AspectMask:     VkImageAspectFlags(aspect),
 			MipLevel:       0,
 			BaseArrayLayer: 0,
 			LayerCount:     1,
@@ -896,7 +903,7 @@ func postImageData(ctx context.Context,
 	}
 	// If the src image is a depth/stencil image, the filter must be NEAREST
 	filter := VkFilter_VK_FILTER_LINEAR
-	if aspectMask != VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
+	if aspect != VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
 		filter = VkFilter_VK_FILTER_NEAREST
 	}
 	writeEach(ctx, out,
@@ -1013,6 +1020,20 @@ func postImageData(ctx context.Context,
 					bytes = make([]byte, bufferSize)
 					r.Data(bytes)
 					r.Error()
+
+					// For the depth aspect of VK_FORMAT_X8_D24_UNORM_PACK32 and
+					// VK_FORMAT_D24_UNORM_S8_UINT format, we need to strip the
+					// undefined value in the MSB byte.
+					if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT && (vkFormat == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32 || vkFormat == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) {
+						inBufSize := 4
+						inImgSize := 3
+						count := len(bytes) / inBufSize
+						for i := 0; i < count; i++ {
+							copy(bytes[i*inImgSize:(i+1)*inImgSize], bytes[i*inBufSize:(i+1)*inBufSize])
+						}
+						bufferSize = uint64(count * inImgSize)
+						bytes = bytes[0:bufferSize]
+					}
 
 					// Flip the image in Y axis
 					rowSizeInBytes := uint64(formatOfImgRes.Size(int(reqWidth), 1, 1))
