@@ -59,11 +59,7 @@ func getIndices(
 	first, count GLsizei,
 	ptr IndicesPointer) (drawCallIndices, error) {
 
-	indexSize := map[GLenum]uint64{
-		GLenum_GL_UNSIGNED_BYTE:  1,
-		GLenum_GL_UNSIGNED_SHORT: 2,
-		GLenum_GL_UNSIGNED_INT:   4,
-	}[ty]
+	indexSize := uint64(DataTypeSize(ty))
 	indexBuffer := c.Bound.VertexArray.ElementArrayBuffer
 	size := uint64(count) * indexSize
 	offset := uint64(first) * indexSize

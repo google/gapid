@@ -49,6 +49,7 @@ go_library(
         "compat_client.go",
         "context.go",
         "custom_replay.go",
+        "datatypes.go",
         "dependency_graph_behaviour_provider.go",
         "doc.go",
         "draw_call.go",
@@ -77,7 +78,6 @@ go_library(
         "tweaker.go",
         "undefined_framebuffer.go",
         "version.go",
-        "vertex_attribute_array.go",
         "wireframe.go",
     ],
     embed = [
