@@ -5,7 +5,7 @@
 # To update this file run
 # bazel run //cmd/llvm-build $(bazel info output_base)/external/llvm > $(bazel info workspace)/bazel/external/llvm/libs.bzl
 
-load("@//tools/build/third_party:llvm/rules.bzl", "llvmLibrary")
+load("@gapid//tools/build/third_party:llvm/rules.bzl", "llvmLibrary")
 
 def llvm_auto_libs(**kwargs):
   llvmLibrary(

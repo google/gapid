@@ -21,12 +21,12 @@ def _breakpad_impl(repository_ctx):
         url = _BASE + "/+archive/" + repository_ctx.attr.commit + ".tar.gz",
         output = ".",
     )
-    repository_ctx.symlink(Label("@//tools/build/third_party/breakpad:breakpad.BUILD"), "BUILD")
+    repository_ctx.symlink(Label("@gapid//tools/build/third_party/breakpad:breakpad.BUILD"), "BUILD")
 
     if repository_ctx.os.name.startswith("windows"):
       # Patch up breakpad on windows and add the dump_syms src.
-      repository_ctx.symlink(Label("@//tools/build/third_party/breakpad:windows.patch"), "windows.patch")
-      repository_ctx.symlink(Label("@//tools/build/third_party/breakpad:dump_syms_pe.cc"), "src/tools/windows/dump_syms/dump_syms_pe.cc")
+      repository_ctx.symlink(Label("@gapid//tools/build/third_party/breakpad:windows.patch"), "windows.patch")
+      repository_ctx.symlink(Label("@gapid//tools/build/third_party/breakpad:dump_syms_pe.cc"), "src/tools/windows/dump_syms/dump_syms_pe.cc")
 
       bash_exe = repository_ctx.os.environ["BAZEL_SH"] if "BAZEL_SH" in repository_ctx.os.environ else "c:/tools/msys64/usr/bin/bash.exe"
       result = repository_ctx.execute([bash_exe, "-c",

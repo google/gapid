@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@//tools/build:rules.bzl", "cc_copts")
+load("@gapid//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "glslang",
@@ -32,7 +32,7 @@ cc_library(
         "SPIRV/*.cpp",
         "SPIRV/*.hpp",
     ]) + select({
-        "@//tools/build:windows": ["glslang/OSDependent/Windows/ossource.cpp"],
+        "@gapid//tools/build:windows": ["glslang/OSDependent/Windows/ossource.cpp"],
         "//conditions:default": ["glslang/OSDependent/Unix/ossource.cpp"],
     }),
     hdrs = glob([

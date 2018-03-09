@@ -31,7 +31,7 @@ cc_library(
     strip_include_prefix = "source/",
     visibility = ["//visibility:private"],
     deps = [
-        "@//tools/build/third_party:spirv-tools-generated",
+        "@gapid//tools/build/third_party:spirv-tools-generated",
         "@spirv-headers//:spirv-headers",
     ],
 )

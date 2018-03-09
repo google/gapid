@@ -21,12 +21,12 @@ exports_files(glob([
 cc_library(
     name = "llvm-platform-config",
     hdrs = select({
-        "@//tools/build:linux": glob(["llvm/include-linux/**/*"]),
-        "@//tools/build:darwin": glob(["llvm/include-darwin/**/*"]),
-        "@//tools/build:windows": glob(["llvm/include-windows/**/*"]),
-        "@//tools/build:android-armeabi-v7a": glob(["llvm/include-armeabi/**/*"]),
-        "@//tools/build:android-arm64-v8a": glob(["llvm/include-aarch64/**/*"]),
-        "@//tools/build:android-x86": glob(["llvm/include-x86/**/*"]),
+        "//tools/build:linux": glob(["llvm/include-linux/**/*"]),
+        "//tools/build:darwin": glob(["llvm/include-darwin/**/*"]),
+        "//tools/build:windows": glob(["llvm/include-windows/**/*"]),
+        "//tools/build:android-armeabi-v7a": glob(["llvm/include-armeabi/**/*"]),
+        "//tools/build:android-arm64-v8a": glob(["llvm/include-aarch64/**/*"]),
+        "//tools/build:android-x86": glob(["llvm/include-x86/**/*"]),
     }),
     strip_include_prefix = select({
         "//tools/build:linux": "llvm/include-linux",

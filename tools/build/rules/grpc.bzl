@@ -38,7 +38,7 @@ def _gensource_impl(ctx):
             "--grpc-java_out=" + srcdotjar.path
         ] + [
             "-I{0}={1}".format(_path_ignoring_repository(include), include.path) for include in includes
-        ] + [src.short_path for src in srcs],
+        ] + [_path_ignoring_repository(src) for src in srcs],
         use_default_shell_env = True,
     )
 
