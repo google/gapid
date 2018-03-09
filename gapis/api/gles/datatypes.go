@@ -29,6 +29,7 @@ func DataTypeSize(t GLenum) int {
 		return 2
 	case GLenum_GL_FIXED,
 		GLenum_GL_FLOAT,
+		GLenum_GL_INT,
 		GLenum_GL_UNSIGNED_INT,
 		GLenum_GL_UNSIGNED_INT_2_10_10_10_REV:
 		return 4
