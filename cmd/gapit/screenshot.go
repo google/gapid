@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"image"
 	"image/png"
 	"os"
@@ -38,6 +39,7 @@ func init() {
 	verb := &screenshotVerb{
 		ScreenshotFlags{
 			At:    flags.U64Slice{},
+			Frame: -1,
 			NoOpt: false,
 		},
 	}
@@ -76,7 +78,16 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
-	command := capture.Command(verb.At[0], verb.At[1:]...)
+	var command *path.Command
+	if len(verb.At) > 0 {
+		command = capture.Command(verb.At[0], verb.At[1:]...)
+	} else {
+		var err error
+		command, err = verb.frameCommand(ctx, capture, client)
+		if err != nil {
+			return err
+		}
+	}
 
 	if frame, err := getSingleFrame(ctx, command, device, client, verb.NoOpt); err == nil {
 		return verb.writeSingleFrame(flipImg(frame), "screenshot.png")
@@ -136,4 +147,29 @@ func getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device,
 		Stride: stride,
 		Pix:    data,
 	}, nil
+}
+
+func (verb *screenshotVerb) frameCommand(ctx context.Context, capture *path.Capture, client service.Service) (*path.Command, error) {
+	filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capture)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get filter")
+	}
+
+	requestEvents := path.Events{
+		Capture:     capture,
+		LastInFrame: true,
+		Filter:      filter,
+	}
+
+	// Get the end-of-frame events.
+	eofEvents, err := getEvents(ctx, client, &requestEvents)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get frame events")
+	}
+
+	if verb.Frame == -1 {
+		verb.Frame = int64(len(eofEvents)) - 1
+	}
+	fmt.Printf("Frame Command: %v\n", eofEvents[verb.Frame].Command.GetIndices())
+	return eofEvents[verb.Frame].Command, nil
 }

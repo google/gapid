@@ -228,8 +228,10 @@ type (
 	ScreenshotFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
-		At    flags.U64Slice `help:"command/subcommand index for the screenshot. Empty for last"`
+		At    flags.U64Slice `help:"command/subcommand index for the screenshot"`
+		Frame int64          `help:"frame index for the screenshot. Empty for last"`
 		NoOpt bool           `help:"disables optimization of the replay stream"`
+		CommandFilterFlags
 	}
 	UnpackFlags struct {
 		Verbose bool `help:"if true, then output will not be truncated"`
