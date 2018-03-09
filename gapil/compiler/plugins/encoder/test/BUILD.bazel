@@ -40,7 +40,7 @@ cc_library(
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [
-        "//core/memory/arena/cc",
+        "//core/memory/arena/cc:tracking_arena",
         "//gapil/runtime/cc",
     ],
 )
@@ -69,6 +69,7 @@ go_library(
 
 go_test(
     name = "go_default_test",
+    size = "small",
     srcs = ["encoder_test.go"],
     embed = [":go_default_library"],
     deps = [
