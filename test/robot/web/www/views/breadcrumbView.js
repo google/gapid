@@ -17,13 +17,14 @@
 
 // The breadcrumb view presents hyperlinks between states in the webapp in
 // a linear order.
-var newBreadcrumbView = function () {
+var newBreadcrumbView = function (rootText, rootHref) {
   var view;
   view = {
-    element: document.createElement('span'),
+    element: document.createElement('div'),
+    separatorText: " >> ",
     addBreadcrumb: function (name, href) {
       var breadcrumb = {
-        separator: document.createTextNode(" >> "),
+        separator: document.createTextNode(view.separatorText),
         a: document.createElement('a')
       };
       view.element.appendChild(breadcrumb.separator);
@@ -39,7 +40,7 @@ var newBreadcrumbView = function () {
   };
 
   view.rootCrumb = view.element.appendChild(document.createElement('a'));
-  view.rootCrumb.text = "grid";
-  view.rootCrumb.href = "#";
+  view.rootCrumb.text = rootText;
+  view.rootCrumb.href = rootHref;
   return view;
 };

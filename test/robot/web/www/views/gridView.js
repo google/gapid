@@ -59,7 +59,7 @@ taskStats = function (tasks) {
 var newGridView = function () {
   var view;
   view = {
-    div: document.createElement('div'),
+    element: document.createElement('div'),
     style: {
       gridPadding: 4,
       cellSize: 48,
@@ -152,19 +152,19 @@ var newGridView = function () {
     dataset: {},
     resetDiv: function (newDataset, rowsWidth, columnsHeight) {
       // fastest way to clear out all canvas elements
-      var cDiv = view.div.cloneNode(false);
-      view.div.parentNode.replaceChild(cDiv, view.div);
-      view.div = cDiv;
-      view.div.style.position = "relative";
+      var cDiv = view.element.cloneNode(false);
+      view.element.parentNode.replaceChild(cDiv, view.element);
+      view.element = cDiv;
+      view.element.style.position = "relative";
 
-      newDataset.canvases.forEach((canvas) => view.div.appendChild(canvas));
-      view.div.addEventListener("mouseleave", view.onMouseLeave);
-      view.div.addEventListener("mousemove", view.onMouseMove);
-      view.div.addEventListener("click", view.onClick);
+      newDataset.canvases.forEach((canvas) => view.element.appendChild(canvas));
+      view.element.addEventListener("mouseleave", view.onMouseLeave);
+      view.element.addEventListener("mousemove", view.onMouseMove);
+      view.element.addEventListener("click", view.onClick);
       view.width = view.style.gridPadding * 2 + rowsWidth + view.style.cellSize * newDataset.columns.length;
       view.height = view.style.gridPadding * 2 + columnsHeight + view.style.cellSize * newDataset.rows.length;
-      view.div.style.width = view.width + "px";
-      view.div.style.height = view.height + "px";
+      view.element.style.width = view.width + "px";
+      view.element.style.height = view.height + "px";
     },
     fillEmptyCells: function (newDataset, rowsWidth, columnsHeight) {
       var i, j, index, cell;
@@ -434,8 +434,8 @@ var newGridView = function () {
     },*/
     highlighted: null,
     onMouseMove: function (event) {
-      var x = event.pageX - view.div.offsetLeft;
-      var y = event.pageY - view.div.offsetTop;
+      var x = event.pageX - view.element.offsetLeft;
+      var y = event.pageY - view.element.offsetTop;
       var hit;
       // set highlighted element
       if (view.highlighted != null) {
@@ -476,8 +476,8 @@ var newGridView = function () {
     onColumnClicked: [],
     onCellClicked: [],
     onClick: function (event) {
-      var x = event.pageX - view.div.offsetLeft;
-      var y = event.pageY - view.div.offsetTop;
+      var x = event.pageX - view.element.offsetLeft;
+      var y = event.pageY - view.element.offsetTop;
       // row? column? cell?
       var hit = view.rowAt(x, y);
       if (hit !== null) {
@@ -536,7 +536,7 @@ var newGridView = function () {
     draw: function () {
       // find what we are drawing
       var toDraw = [];
-      var vRect = visibleRect(view.div);
+      var vRect = visibleRect(view.element);
       var dpr = window.devicePixelRatio;
 
       var doesAOverlapB = function (rectA, rectB) {

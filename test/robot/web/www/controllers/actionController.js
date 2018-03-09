@@ -22,7 +22,7 @@
 var newActionController = function (commitState) {
   var controller;
   controller = {
-    view: newBreadcrumbView(),
+    view: newBreadcrumbView("grid:", "#"),
     changing: false,
     targetHash: "",
     actionList: [],

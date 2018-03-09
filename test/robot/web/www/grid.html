@@ -22,24 +22,29 @@
     <script src="controllers/actionController.js"></script>
     <script src="views/gridView.js"></script>
     <script src="controllers/gridController.js"></script>
+    <script src="views/objectView.js"></script>
     <script src="utils/decodeFilters.js"></script>
 </body>
 
 <script>
     newRobotModel().then(function (model) {
-        var grid, actions;
+        var grid, actions, objectView;
         var iconPreloadEl;
         var commitState, decodeState;
+        var modelFmtGroup;
 
         grid = newGridController(model);
         // remove the font block, they should be loaded by now...
-        iconPreloadEl = document.body.getElementsByClassName("icons-preload")
-        document.body.removeChild(iconPreloadEl[0])
+        iconPreloadEl = document.body.getElementsByClassName("icons-preload");
+        document.body.removeChild(iconPreloadEl[0]);
         commitState = function () {
-            grid.commitViewState()
+            grid.commitViewState();
         }
 
         actions = newActionController(commitState);
+
+        objectView = newObjectView();
+        modelFmtGroup = model.addTaskFormatters(objectView);
 
         decodeState = function (filterStrings) {
             grid.clear()
@@ -84,6 +89,10 @@
             grid.initialize()
         };
 
+        document.body.appendChild(objectView.element);
+        document.body.appendChild(actions.view.element);
+        document.body.appendChild(grid.view.element);
+
         window.addEventListener("hashchange", function () {
             if (actions.changing) {
                 actions.changing = false;
@@ -103,9 +112,14 @@
                 grid.axes[axisName] = oldAxisDim;
             });
         })
+        grid.view.onCellClicked.push(function (cell) {
+            var task;
+            if (cell.tasks.length === 1) {
+                task = cell.tasks[0];
+                objectView.set(task.kind, task, modelFmtGroup);
+            }
+        });
 
-        document.body.appendChild(actions.view.element);
-        document.body.appendChild(grid.view.div);
 
         model.fillRobotTasks().then(() => decodeState(window.location.hash.substring(1).split("&")));
     });

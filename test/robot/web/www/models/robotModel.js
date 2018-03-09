@@ -19,20 +19,48 @@
 // The robot model handles retrieving and sorting all of the data from the
 // instance of robot running on the server.
 var newRobotModel = async function () {
-  async function queryArray(path) {
+  async function queryRestEndpoint(path) {
     return new Promise(function (resolve, reject) {
       var request = new XMLHttpRequest();
       request.open("GET", path, true);
       request.setRequestHeader("Content-type", "application/json");
       request.onload = function () {
         if (request.status >= 200 && request.status <= 300) {
-          resolve(JSON.parse(request.responseText));
+          resolve(request.responseText);
         } else {
           reject({ status: request.status, statusText: request.statusText });
         }
       };
       request.onerror = () => reject({ status: request.status, statusText: request.statusText });
       request.send();
+    });
+  }
+  async function queryArray(path) {
+    return queryRestEndpoint(path).then((text) => JSON.parse(text));
+  }
+  async function queryEndpointWithCutoff(path, cutoff) {
+    return new Promise(function (resolve, reject) {
+      var headRequest = new XMLHttpRequest();
+      headRequest.open("HEAD", path, true);
+      headRequest.onload = async function () {
+        var contentLength;
+        var getRequest;
+        if (headRequest.status < 200 || headRequest.status > 300) {
+          reject({ status: headRequest.status, statusText: headRequest.statusText });
+        } else {
+          contentLength = headRequest.getResponseHeader("Content-Length");
+          if (contentLength > cutoff) {
+            reject({
+              status: headRequest.status,
+              statusText: "Content-Length (" + contentLength + ") is larget than cutoff (" + cutoff + ")"
+            });
+          } else {
+            await queryRestEndpoint(path).then((text) => resolve(text));
+          }
+        }
+      }
+      headRequest.onerror = () => reject({ status: headRequest.status, statusText: headRequest.statusText });
+      headRequest.send();
     });
   }
 
@@ -69,6 +97,7 @@ var newRobotModel = async function () {
       return key === "trace" || key === "report" || key === "replay";
     }
   };
+
   subjectDimension = {
     name: "subject",
     keyOf: function (task) {
@@ -95,6 +124,7 @@ var newRobotModel = async function () {
       return subjectDimension.keysToItems[key] != null;
     }
   };
+
   traceTargetDimension = {
     name: "traceTarget",
     keyOf: function (task) {
@@ -321,10 +351,9 @@ var newRobotModel = async function () {
       traceTargetDimension,
       hostDimension
     ],
-    dimensionsByName: {},
 
     tasks: [],
-    connectTaskParentChild: function (childListMap, parentListMap, packageDim, task) {
+    connectTaskParentChild: function (childListMap, parentListMap, task) {
       function findParentPackageInList(idList, childId) {
         // result is the index of the id's parent
         var result;
@@ -414,7 +443,7 @@ var newRobotModel = async function () {
           task.result = "Unknown";
         }
         proc(entity, task);
-        model.connectTaskParentChild(childMap, parentMap, packageDimension, task);
+        model.connectTaskParentChild(childMap, parentMap, task);
         tasks.push(task);
         if (task.status !== "Current") {
           notCurrentTasks.push(task);
@@ -444,6 +473,15 @@ var newRobotModel = async function () {
         }
         task.host = entity.host;
         task.package = entity.input.package;
+        task.representation = function () {
+          var tr = {
+            "target": traceTargetDimension.keysToItems[task.trace.target].underlying,
+            "subject": subjectDimension.keysToItems[task.trace.subject].underlying,
+            "host": hostDimension.keysToItems[task.host].underlying,
+            "package": packageDimension.keysToItems[task.package].underlying,
+          };
+          return Object.assign({}, task.underlying, tr);
+        };
       }
 
       traceTasks = await model.robotTasksPerKind("trace", "traces/", function (entity, task) {
@@ -456,6 +494,15 @@ var newRobotModel = async function () {
         if (entity.output != null && entity.output.trace != null) {
           traceMap[entity.output.trace] = task;
         }
+        task.representation = function () {
+          var tr = {
+            "target": traceTargetDimension.keysToItems[task.trace.target].underlying,
+            "subject": subjectDimension.keysToItems[task.trace.subject].underlying,
+            "host": hostDimension.keysToItems[task.host].underlying,
+            "package": packageDimension.keysToItems[task.package].underlying
+          };
+          return Object.assign({}, task.underlying, tr);
+        };
       });
       tasks.push(...traceTasks);
 
@@ -465,13 +512,40 @@ var newRobotModel = async function () {
       tasks.push(...replayTasks);
 
       model.tasks = tasks;
+    },
+
+    addTaskFormatters: function (view) {
+      var devFmt = view.newFormatterGroup()
+        .add(/\/MemoryLayout/, view.expandable)
+        .add(/\/OpenGL\/Extensions/, view.expandable);
+      var modelFmtGroup = view.newFormatterGroup()
+        .add(/^\/(target|subject|host|package)$/, function (path, target) {
+          return view.newPusher(target.id, path.substring(path.lastIndexOf('/') + 1), target, devFmt);
+        }).add(/\/input\/((gapi[irst])|gapid_apk|trace|subject|interceptor|vulkanLayer)/, function (path, objectId) {
+          return view.newLink(objectId, "entities/" + objectId);
+        }).add(/\/input\/tooling_layout/, view.expandable)
+        .add(/\/output\/(log|report)/, function (path, objectId) {
+          var container = view.newContainer();
+          var link = view.newLink(objectId, "entities/" + objectId);
+          var text = view.newTextPreview();
+          queryEndpointWithCutoff("entities/" + objectId, 1024 * 1024).then((preview) => text.append(preview));
+          container.append(link);
+          container.append(text);
+          return container;
+        }).add(/\/output\/err/, function (path, errText) {
+          return view.newTextPreview(errText);
+        }).add(/\/output\/video/, function (path, videoId) {
+          return view.newVideo("entities/" + videoId);
+        }).add(/\/output\/trace/, function (path, objectId) {
+          return view.newLink(objectId, "entities/" + objectId);
+        });
+      return modelFmtGroup;
     }
   };
 
   async function sourceDimensions() {
     var sourcePromises = [];
     model.dimensions.forEach(function (dimension) {
-      model.dimensionsByName[dimension.name] = dimension;
       if (dimension.source != null) {
         sourcePromises.push(dimension.source());
       }
