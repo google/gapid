@@ -31,15 +31,27 @@ def _find_cc(repository_ctx):
     return cc
 
 def _get_inc_directories(repository_ctx, cc):
-  cmd = [cc, "-E", "-xc++", "-Wp,-v", str(repository_ctx.path("empty.cpp"))]
-  r = repository_ctx.execute(cmd, environment = { "PATH": str(cc.dirname) })
-  if r.return_code != 0:
-    fail(("Filed to execute '%s' to get include dirs: %s\n%s") % (cmd, r.return_code, r.stderr))
-  s = r.stderr.find("#include <...>")
-  e = r.stderr.find("End of search list", s)
-  if s == -1 or e == -1:
-    return []
-  return [repository_ctx.path(l.strip()) for l in r.stderr[s:e - 1].splitlines()[1:]]
+    cmd = [cc, "-E", "-xc++", "-Wp,-v", str(repository_ctx.path("empty.cpp"))]
+    r = repository_ctx.execute(cmd, environment = { "PATH": str(cc.dirname) })
+    if r.return_code != 0:
+        fail(("Filed to execute '%s' to get include dirs: %s\n%s") % (cmd, r.return_code, r.stderr))
+    s = r.stderr.find("#include <...>")
+    e = r.stderr.find("End of search list", s)
+    if s == -1 or e == -1:
+        return []
+    return [repository_ctx.path(l.strip()) for l in r.stderr[s:e - 1].splitlines()[1:]]
+
+def _compile_wrapper(repository_ctx, cc, name):
+    cmd = [
+        cc,
+        str(repository_ctx.path(name + ".cpp")),
+        str(repository_ctx.path("file_collector.cpp")),
+        "-o", str(repository_ctx.path(name + ".exe")),
+        "-lstdc++", "-lshlwapi"
+    ]
+    r = repository_ctx.execute(cmd, environment = { "PATH": str(cc.dirname) })
+    if r.return_code != 0:
+        fail(("Filed to build %s: %s\n%s") % (name, r.return_code, r.stderr))
 
 def _configure_windows_toolchain(repository_ctx):
     repository_ctx.file("empty.cpp", executable = False)
@@ -47,9 +59,24 @@ def _configure_windows_toolchain(repository_ctx):
     cc = _find_cc(repository_ctx)
     inc = _get_inc_directories(repository_ctx, cc)
 
+    repository_ctx.symlink(Label("@gapid//tools/build/mingw_toolchain:file_collector.cpp"), "file_collector.cpp")
+    repository_ctx.symlink(Label("@gapid//tools/build/mingw_toolchain:file_collector.h"), "file_collector.h")
+
+    repository_ctx.template("gcc_wrapper.cpp", Label("@gapid//tools/build/mingw_toolchain:gcc_wrapper.cpp.tpl"), {
+        "%{CC}": str(cc),
+    })
+    _compile_wrapper(repository_ctx, cc, "gcc_wrapper")
+
+    repository_ctx.template("ar_wrapper.cpp", Label("@gapid//tools/build/mingw_toolchain:ar_wrapper.cpp.tpl"), {
+        "%{AR}": str(cc.dirname) + "/ar.exe",
+    })
+    _compile_wrapper(repository_ctx, cc, "ar_wrapper")
+
     repository_ctx.symlink(Label("@gapid//tools/build/mingw_toolchain:BUILD.bazel"), "BUILD")
     repository_ctx.template("CROSSTOOL", Label("@gapid//tools/build/mingw_toolchain:CROSSTOOL.in"), {
         "%{BINDIR}": str(cc.dirname),
+        "%{GCC_WRAPPER}": str(repository_ctx.path("gcc_wrapper.exe")),
+        "%{AR_WRAPPER}": str(repository_ctx.path("ar_wrapper.exe")),
         "%{CXX_BUILTIN_INCLUDE_DIRECTORIES}": "\n".join([
             ("cxx_builtin_include_directory: \"%s\"" % p) for p in inc
         ]),

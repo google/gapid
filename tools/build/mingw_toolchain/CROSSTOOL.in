@@ -19,11 +19,11 @@ toolchain {
   target_system_name: "local"
   toolchain_identifier: "mingw"
 
-  tool_path { name: "ar" path: "%{BINDIR}/ar" }
+  tool_path { name: "ar" path: "%{AR_WRAPPER}" }
   tool_path { name: "compat-ld" path: "%{BINDIR}/ld" }
   tool_path { name: "cpp" path: "%{BINDIR}/cpp" }
   tool_path { name: "dwp" path: "%{BINDIR}/dwp" }
-  tool_path { name: "gcc" path: "%{BINDIR}/gcc" }
+  tool_path { name: "gcc" path: "%{GCC_WRAPPER}" }
   tool_path { name: "gcov" path: "%{BINDIR}/gcov" }
   tool_path { name: "ld" path: "%{BINDIR}/ld" }
   tool_path { name: "nm" path: "%{BINDIR}/nm" }
