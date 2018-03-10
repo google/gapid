@@ -23,14 +23,14 @@ github_repository(
     name = "io_bazel_rules_go",
     organization = "bazelbuild",
     project = "rules_go",
-    commit = "c949c4d2235a3988ed3c7ac9beb70f707d29d465",
+    commit = "67f44035d84a352cffb9465159e199066ecb814c",
 )
 
 github_repository(
     name = "bazel_gazelle",
     organization = "bazelbuild",
     project = "bazel-gazelle",
-    commit = "2f186389e2d9a91ee64007914f9b9d0ecae1d8e9",
+    commit = "f4ae892927eeabd060c59693c38e82303f41558d",
 )
 
 github_repository(
@@ -39,15 +39,6 @@ github_repository(
     project = "protobuf",
     commit = "f08e4dd9845c5ba121b402f8768f3d2617191bbe",
     # Override with our own BUILD file, to make the compiler/config selection work.
-    build_file = "//tools/build/third_party:protobuf.BUILD",
-)
-
-# rules_go has a second copy of the protobuf repo. Add it here, so we can override the BUILD file.
-github_repository(
-    name = "com_github_google_protobuf",
-    organization = "google",
-    project = "protobuf",
-    commit = "f08e4dd9845c5ba121b402f8768f3d2617191bbe",
     build_file = "//tools/build/third_party:protobuf.BUILD",
 )
 
