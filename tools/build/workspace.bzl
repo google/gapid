@@ -30,7 +30,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True):
         name = "io_bazel_rules_go",
         organization = "bazelbuild",
         project = "rules_go",
-        commit = "67f44035d84a352cffb9465159e199066ecb814c",
+        commit = "2d3336269eab48bac7adcaff03e7232e14463619",
     )
 
     _maybe(github_repository,
