@@ -7022,7 +7022,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
       // TODO: (qining) Handle aspect mask
       for j in (0 .. region.imageSubresource.layerCount) {
         layerIndex := region.imageSubresource.baseArrayLayer + j
-        bufferLayerOffset := as!u64(j) * layerSize + as!u64(region.bufferOffset)
+        bufferLayerOffset := (as!u64(j) * layerSize) + as!u64(region.bufferOffset)
         imageLevel := imageObject.Aspects[aspectBit].Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
         imageLevelWidthInBlocks := as!u64(imageLevel.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
         imageLevelHeightInBlocks := as!u64(imageLevel.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
