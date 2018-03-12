@@ -119,6 +119,11 @@ func (a API) Replay(
 
 	transforms := transform.Transforms{deadCodeElimination}
 
+	onCompatError := func(ctx context.Context, id api.CmdID, cmd api.Cmd, err error) {
+		ctx = log.Enter(ctx, "Compat")
+		log.E(ctx, "%v: %v - %v", id, cmd, err)
+	}
+
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case issuesRequest:
@@ -127,6 +132,9 @@ func (a API) Replay(
 				issues = newFindIssues(ctx, capture, device)
 			}
 			issues.reportTo(rr.Result)
+			onCompatError = func(ctx context.Context, id api.CmdID, cmd api.Cmd, err error) {
+				issues.onIssue(cmd, id, service.Severity_ErrorLevel, err)
+			}
 
 		case textureRequest:
 			if rt == nil {
@@ -186,7 +194,7 @@ func (a API) Replay(
 	}
 
 	// Device-dependent transforms.
-	compatTransform, err := compat(ctx, device)
+	compatTransform, err := compat(ctx, device, onCompatError)
 	if err == nil {
 		transforms.Add(compatTransform)
 	} else {

@@ -140,7 +140,9 @@ type scratchBuffer struct {
 	id   BufferId
 }
 
-func compat(ctx context.Context, device *device.Instance) (transform.Transformer, error) {
+type onCompatError func(context.Context, api.CmdID, api.Cmd, error)
+
+func compat(ctx context.Context, device *device.Instance, onError onCompatError) (transform.Transformer, error) {
 	ctx = log.Enter(ctx, "compat")
 	if device.Configuration.Drivers.OpenGL == nil {
 		return nil, fmt.Errorf("Could not find OpenGL device on host")
@@ -150,7 +152,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 	target, version, err := getFeatures(ctx, glDev.Version, listToExtensions(glDev.Extensions))
 	if err != nil {
 		return nil, fmt.Errorf(
-			"Error '%v' when getting feature list for version: '%s', extensions: '%s'.",
+			"Error '%v' when getting feature list for version: '%s', extensions: '%s'",
 			err, glDev.Version, glDev.Extensions)
 	}
 
@@ -344,11 +346,11 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			if cmd.Buffer == 0 {
 				genBuf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
 				if err != nil {
-					log.E(ctx, "Can not get bound buffer: %v ", err)
+					onError(ctx, id, cmd, fmt.Errorf("Can not get bound buffer: %v", err))
 				}
 				idxBuf, err := subGetBoundBufferAtIndex(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target, cmd.Index)
 				if err != nil {
-					log.E(ctx, "Can not get bound buffer: %v ", err)
+					onError(ctx, id, cmd, fmt.Errorf("Can not get bound buffer: %v", err))
 				}
 				if genBuf == nil && idxBuf == nil {
 					// Both of the binding points are already clear. Thus this command is a no-op.
@@ -458,7 +460,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 			st, err := shader.Type.ShaderType()
 			if err != nil {
-				log.W(ctx, "%v compat: %v", cmd, err)
+				onError(ctx, id, cmd, err)
 			}
 			opts := shadertools.Options{
 				ShaderType:         st,
@@ -473,7 +475,9 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 
 			res, err := shadertools.ConvertGlsl(src, &opts)
 			if err != nil {
-				log.E(ctx, "%v compat: %v", cmd, err)
+				// Could not convert the shader.
+				onError(ctx, id, cmd, err)
+				out.MutateAndWrite(ctx, id, cmd)
 				return
 			}
 
@@ -533,7 +537,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				if err := decompressTexImage2D(ctx, id, cmd, s, out); err == nil {
 					return
 				}
-				log.E(ctx, "Error decompressing texture: %v", err)
+				onError(ctx, id, cmd, fmt.Errorf("Error decompressing texture: %v", err))
 			}
 
 		case *GlCompressedTexSubImage2D:
@@ -541,7 +545,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				if err := decompressTexSubImage2D(ctx, id, cmd, s, out); err == nil {
 					return
 				}
-				log.E(ctx, "Error decompressing texture: %v", err)
+				onError(ctx, id, cmd, fmt.Errorf("Error decompressing texture: %v", err))
 			}
 
 		case *GlTexBufferEXT:
@@ -1079,7 +1083,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 				eglImage := GetState(s).EGLImages.Get(EGLImageKHR(cmd.Image))
 				if eglImage == nil {
 					analytics.SendBug(1498)
-					log.E(ctx, "Encountered nil eglImage. Replay may be corrupt. See: https://github.com/google/gapid/issues/1498")
+					onError(ctx, id, cmd, fmt.Errorf("Encountered nil eglImage. Replay may be corrupt. See: https://github.com/google/gapid/issues/1498"))
 					out.MutateAndWrite(ctx, id, cmd)
 					return
 				}
@@ -1112,7 +1116,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 							textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D_ARRAY, &sizedFormat, nil, nil, out, id, cmd)
 							out.MutateAndWrite(ctx, dID, cb.GlTexImage3D(GLenum_GL_TEXTURE_2D_ARRAY, 0, GLint(sizedFormat), img.Width, img.Height, GLsizei(imgs.Len()), 0, img.DataFormat, img.DataType, memory.Nullptr))
 						default:
-							panic(fmt.Errorf("Unexpected GlEGLImageTargetTexture2DOES target: %v", target))
+							onError(ctx, id, cmd, fmt.Errorf("Unexpected GlEGLImageTargetTexture2DOES target: %v", target))
 						}
 						// Set the default filtering modes applicable to external images.
 						// This is important as the default (mipmap) mode would result in incomplete texture.
@@ -1129,7 +1133,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 						t.revert(ctx)
 					}
 				default:
-					panic(fmt.Errorf("Unknown EGLImage target: %v", eglImage.Target))
+					onError(ctx, id, cmd, fmt.Errorf("Unknown EGLImage target: %v", eglImage.Target))
 				}
 
 				cmd := *cmd
@@ -1241,7 +1245,7 @@ func compat(ctx context.Context, device *device.Instance) (transform.Transformer
 			}
 			if flags.IsDrawCall() {
 				if clientVAsBound(c, clientVAs) {
-					log.W(ctx, "Draw call with client-pointers not handled by the compatability layer. Command: %v", cmd)
+					onError(ctx, id, cmd, fmt.Errorf("Draw call with client-pointers not handled by the compatability layer. Command: %v", cmd))
 				}
 				compatMultiviewDraw(ctx, id, cmd, out)
 				return
