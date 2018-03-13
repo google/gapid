@@ -121,7 +121,7 @@ github_repository(
     name = "glslang",
     organization = "KhronosGroup",
     project = "glslang",
-    commit = "778806a69246b8921e867e839c9e87ccddc924f2",
+    commit = "2ad4737dc2bde938a0d121fca040af66b7b8a35d",
     build_file = "//tools/build/third_party:glslang.BUILD",
 )
 
@@ -152,7 +152,7 @@ github_repository(
     name = "spirv-cross",
     organization = "KhronosGroup",
     project = "SPIRV-Cross",
-    commit = "98a17431c24b47392cbe343da8dbd1f5ffbb23e8",
+    commit = "29315f3b3fd6dcafab0075e1a3d898c3ff995fed",
     build_file = "//tools/build/third_party:spirv-cross.BUILD",
 )
 
