@@ -16,7 +16,6 @@ package vulkan
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -85,8 +84,12 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 		sb.createBuffer(s.Buffers.Get(buf))
 	}
 
-	for _, img := range s.Images.KeysSorted() {
-		sb.createImage(s.Images.Get(img))
+	{
+		imgPrimer := newImagePrimer(sb)
+		for _, img := range s.Images.KeysSorted() {
+			sb.createImage(s.Images.Get(img), imgPrimer)
+		}
+		imgPrimer.free()
 	}
 
 	for _, smp := range s.Samplers.KeysSorted() {
@@ -771,11 +774,15 @@ func memoryTypeIndexFor(memTypeBits uint32, props *VkPhysicalDeviceMemoryPropert
 	return -1
 }
 
-func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []uint8) (VkBuffer, VkDeviceMemory) {
+func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []uint8, usages ...VkBufferUsageFlagBits) (VkBuffer, VkDeviceMemory) {
 	buffer := VkBuffer(newUnusedID(true, func(x uint64) bool { return sb.s.Buffers.Contains(VkBuffer(x)) }))
 	deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool { return sb.s.DeviceMemories.Contains(VkDeviceMemory(x)) }))
 
 	size := VkDeviceSize(len(data))
+	usageFlags := VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+	for _, u := range usages {
+		usageFlags |= VkBufferUsageFlags(u)
+	}
 
 	sb.write(sb.cb.VkCreateBuffer(
 		device.VulkanHandle,
@@ -785,7 +792,7 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device *DeviceObject, data []u
 				NewVoidᶜᵖ(memory.Nullptr),
 				VkBufferCreateFlags(0),
 				size,
-				VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+				usageFlags,
 				VkSharingMode_VK_SHARING_MODE_EXCLUSIVE,
 				uint32(0),
 				NewU32ᶜᵖ(memory.Nullptr),
@@ -1104,8 +1111,8 @@ func (sb *stateBuilder) createBuffer(buffer *BufferObject) {
 	}
 
 	scratchBuffer, scratchMemory := sb.allocAndFillScratchBuffer(
-		sb.s.Devices.Get(buffer.Device),
-		contents)
+		sb.s.Devices.Get(buffer.Device), contents,
+		VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
 
 	commandBuffer, commandPool := sb.getCommandBuffer(queue)
 
@@ -1284,7 +1291,7 @@ func IsFullyBound(offset VkDeviceSize, size VkDeviceSize,
 	return false
 }
 
-func (sb *stateBuilder) createImage(img *ImageObject) {
+func (sb *stateBuilder) createImage(img *ImageObject, imgPrimer *imagePrimer) {
 	if img.IsSwapchainImage {
 		return
 	}
@@ -1297,9 +1304,6 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 	primeByRendering := (!primeByBufCopy) && ((img.Info.Usage & attBits) != VkImageUsageFlags(0))
 	primeByShaderCopy := (!primeByBufCopy) && (!primeByRendering) && ((img.Info.Usage & storageBit) != VkImageUsageFlags(0))
 
-	helper := newImageRebuildHelper(sb)
-	defer helper.freeTempObjects()
-
 	// TODO: drop this once storage images are handled.
 	info := img.Info
 	if primeByShaderCopy {
@@ -1308,8 +1312,8 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 		primeByBufCopy = true
 	}
 
-	helper.vkCreateImage(img.Device, &info, img.VulkanHandle)
-	helper.vkGetImageMemoryRequirements(img.Device, img.VulkanHandle, &img.MemoryRequirements)
+	vkCreateImage(sb, img.Device, info, img.VulkanHandle)
+	vkGetImageMemoryRequirements(sb, img.Device, img.VulkanHandle, &img.MemoryRequirements)
 
 	denseBound := img.BoundMemory != nil
 	sparseBound := len(*img.SparseImageMemoryBindings.Map) > 0 ||
@@ -1346,18 +1350,16 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 	}
 
 	queue := sb.getQueueFor(img.LastBoundQueue, img.Device, img.Info.QueueFamilyIndices.Map)
-	contents := []uint8{}
+	var sparseQueue *QueueObject
 	opaqueRanges := []VkImageSubresourceRange{}
 
-	oldFamilyIndex := -1
 	if len(*img.OpaqueSparseMemoryBindings.Map) > 0 || len(*img.SparseImageMemoryBindings.Map) > 0 {
 		// If this img has sparse memory bindings, then we have to set them all
 		// now
 		if queue == nil {
 			return
 		}
-		sparseQueue := sb.getSparseQueueFor(img.LastBoundQueue, img.Device, img.Info.QueueFamilyIndices.Map)
-		oldFamilyIndex = int(sparseQueue.Family)
+		sparseQueue = sb.getSparseQueueFor(img.LastBoundQueue, img.Device, img.Info.QueueFamilyIndices.Map)
 		memories := make(map[VkDeviceMemory]bool)
 
 		nonSparseInfos := []VkSparseImageMemoryBind{}
@@ -1493,7 +1495,7 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 			0,
 			img.Info.ArrayLayers,
 		})
-		helper.vkBindImageMemory(img.Device, img.VulkanHandle,
+		vkBindImageMemory(sb, img.Device, img.VulkanHandle,
 			img.BoundMemory.VulkanHandle, img.BoundMemoryOffset)
 	}
 
@@ -1507,270 +1509,17 @@ func (sb *stateBuilder) createImage(img *ImageObject) {
 		return
 	}
 	// We have to handle the above cases at some point.
-
-	// Prime the image data according to the usage bits
-	copyDstImgs := map[VkImageAspectFlagBits][]*ImageObject{}
-	for _, aspect := range sb.imageAspectFlagBits(img.ImageAspect) {
-		copyDstImgs[aspect] = []*ImageObject{}
-	}
-	copies := map[*ImageObject][]VkBufferImageCopy{}
-
+	var err error
 	if primeByBufCopy {
-		// Copy to the state block image directly
-		for aspect := range copyDstImgs {
-			copyDstImgs[aspect] = []*ImageObject{img}
-		}
-		copies[img] = []VkBufferImageCopy{}
-	} else if primeByRendering || primeByShaderCopy {
-		// Copy to a staging image. Later the staging image will be used to
-		// render to the state block image, or copied into the state block image.
-		for aspect := range copyDstImgs {
-			stagingImgs, err := helper.allocateStagingImagesFor(img, aspect)
-			if err != nil {
-				log.E(sb.ctx, "[Creating staging image for %v, %v] %v", img.VulkanHandle, aspect, err)
-				return
-			}
-			if len(stagingImgs) == 0 {
-				log.E(sb.ctx, "No staging image created for %v, %v", img.VulkanHandle, aspect)
-				return
-			}
-			copyDstImgs[aspect] = stagingImgs
-			for _, si := range stagingImgs {
-				copies[si] = []VkBufferImageCopy{}
-			}
-		}
-
-	} else {
-		// There is no way to prime the data
-		log.W(sb.ctx, "Unable to prime the data for image: %v, since there is no valid way to add data in the first place", img.VulkanHandle)
-		return
+		err = imgPrimer.primeByBufferCopy(img, opaqueRanges, queue, sparseQueue)
+	} else if primeByRendering {
+		err = imgPrimer.primeByRendering(img, opaqueRanges, queue, sparseQueue)
+	} else if primeByShaderCopy {
+		err = imgPrimer.primeByShaderCopy(img)
 	}
-
-	offset := VkDeviceSize(0)
-	{
-		for _, rng := range opaqueRanges {
-			for _, aspect := range sb.imageAspectFlagBits(rng.AspectMask) {
-				for i := uint32(0); i < rng.LevelCount; i++ {
-					mipLevel := rng.BaseMipLevel + i
-					extent := VkExtent3D{
-						uint32(sb.levelSize(img.Info.Extent, img.Info.Format, mipLevel, aspect).width),
-						uint32(sb.levelSize(img.Info.Extent, img.Info.Format, mipLevel, aspect).height),
-						uint32(sb.levelSize(img.Info.Extent, img.Info.Format, mipLevel, aspect).depth),
-					}
-					for j := uint32(0); j < rng.LayerCount; j++ {
-						layer := rng.BaseArrayLayer + j
-						for dstIndex, dstImg := range copyDstImgs[aspect] {
-							// dstIndex is reserved for handling wide channel image format, like R64G64B64A64
-							// TODO: handle wide format
-							_ = dstIndex
-							data := img.Aspects.Get(aspect).Layers.Get(layer).Levels.Get(mipLevel).Data.MustRead(sb.ctx, nil, sb.oldState, nil)
-							unpacked, copyAspect, err := helper.unpackForCopying(data, extent, img.Info.Format, dstImg.Info.Format, aspect)
-							errMsg := fmt.Sprintf("Unpacking data from image: %v, layer: %v, level: %v, extent: %v, aspect: %v", img.VulkanHandle, layer, mipLevel, extent, aspect)
-							if err != nil {
-								log.E(sb.ctx, "[%s] %v", errMsg, err)
-								continue
-							}
-							e := sb.levelSize(dstImg.Info.Extent, dstImg.Info.Format, mipLevel, copyAspect)
-							if uint64(len(unpacked)) != e.alignedLevelSizeInBuf {
-								log.E(sb.ctx, "[%s] size of unpacked data does not match expectation, acutal: %v, expected: %v", errMsg, len(unpacked), e.alignedLevelSizeInBuf)
-								continue
-							}
-							bufImgCopy := VkBufferImageCopy{
-								offset, 0, 0, VkImageSubresourceLayers{
-									VkImageAspectFlags(copyAspect),
-									mipLevel, layer, 1,
-								}, VkOffset3D{0, 0, 0}, extent,
-							}
-							copies[dstImg] = append(copies[dstImg], bufImgCopy)
-							contents = append(contents, unpacked...)
-							offset += VkDeviceSize(e.alignedLevelSizeInBuf)
-						}
-					}
-				}
-			}
-		}
+	if err != nil {
+		log.E(sb.ctx, "[Priming the data of image: %v] %v", img.VulkanHandle, err)
 	}
-
-	if sparseResidency {
-		for _, aspect := range sb.imageAspectFlagBits(img.ImageAspect) {
-			if bindings, ok := (*img.SparseImageMemoryBindings.Map)[uint32(aspect)]; ok {
-				for dstIndex, dstImg := range copyDstImgs[aspect] {
-					// dstIndex is reserved for handling wide channel image format, like R64G64B64A64
-					// TODO: Handle wide format
-					_ = dstIndex
-					if _, ok := copies[dstImg]; !ok {
-						copies[dstImg] = []VkBufferImageCopy{}
-					}
-					for layer, layerData := range *bindings.Layers.Map {
-						for level, levelData := range *layerData.Levels.Map {
-							for _, blockData := range *levelData.Blocks.Map {
-								dataOffset := uint64(sb.levelSize(VkExtent3D{
-									uint32(blockData.Offset.X),
-									uint32(blockData.Offset.Y),
-									uint32(blockData.Offset.Z),
-								}, img.Info.Format, 0, aspect).levelSize)
-								dataLength := uint64(sb.levelSize(
-									blockData.Extent, img.Info.Format, 0, aspect).levelSize)
-								data := img.Aspects.Get(aspect).Layers.Get(layer).Levels.Get(level).Data.Slice(
-									dataOffset, dataOffset+dataLength, sb.oldState.MemoryLayout).MustRead(sb.ctx, nil, sb.oldState, nil)
-								unpacked, copyAspect, err := helper.unpackForCopying(data, blockData.Extent, img.Info.Format, dstImg.Info.Format, aspect)
-								errMsg := fmt.Sprintf("Unpacking data from image: %v, layer: %v, level: %v, extent: %v", img.VulkanHandle, layer, level, blockData.Extent)
-								if err != nil {
-									log.E(sb.ctx, "[%s] %v", errMsg, err)
-									continue
-								}
-								e := sb.levelSize(dstImg.Info.Extent, dstImg.Info.Format, level, copyAspect)
-								if uint64(len(unpacked)) != e.alignedLevelSizeInBuf {
-									log.E(sb.ctx, "[%s] size of unpacked data does not match expectation, acutal: %v, expected: %v", errMsg, len(unpacked), e.alignedLevelSizeInBuf)
-									continue
-								}
-								bufImgCopy := VkBufferImageCopy{
-									offset, 0, 0,
-									VkImageSubresourceLayers{
-										VkImageAspectFlags(copyAspect),
-										level, layer, 1},
-									blockData.Offset, blockData.Extent,
-								}
-								copies[dstImg] = append(copies[dstImg], bufImgCopy)
-								contents = append(contents, unpacked...)
-								offset += VkDeviceSize(e.alignedLevelSizeInBuf)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if len(contents) == 0 {
-		log.E(sb.ctx, "No valid data to be primed to image: %v", img.VulkanHandle)
-		return
-	}
-
-	scratchBuffer, scratchMemory := sb.allocAndFillScratchBuffer(
-		sb.s.Devices.Get(img.Device), contents)
-
-	commandBuffer, commandPool := sb.getCommandBuffer(queue)
-
-	newFamilyIndex := queue.Family
-
-	if oldFamilyIndex == -1 {
-		oldFamilyIndex = 0
-		newFamilyIndex = 0
-	}
-
-	dstImgBarriers := []VkImageMemoryBarrier{}
-	for aspect := range copyDstImgs {
-		for _, dstImg := range copyDstImgs[aspect] {
-			barrier := VkImageMemoryBarrier{
-				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-				NewVoidᶜᵖ(memory.Nullptr),
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
-				VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
-				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				uint32(oldFamilyIndex),
-				uint32(newFamilyIndex),
-				dstImg.VulkanHandle,
-				VkImageSubresourceRange{
-					VkImageAspectFlags(aspect),
-					0,
-					dstImg.Info.MipLevels,
-					0,
-					dstImg.Info.ArrayLayers,
-				},
-			}
-			dstImgBarriers = append(dstImgBarriers, barrier)
-		}
-	}
-
-	sb.write(sb.cb.VkCmdPipelineBarrier(
-		commandBuffer,
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkDependencyFlags(0),
-		uint32(0),
-		memory.Nullptr,
-		uint32(1),
-		sb.MustAllocReadData(
-			VkBufferMemoryBarrier{
-				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-				NewVoidᶜᵖ(memory.Nullptr),
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
-				uint32(oldFamilyIndex),
-				uint32(newFamilyIndex),
-				scratchBuffer,
-				0,
-				VkDeviceSize(len(contents)),
-			}).Ptr(),
-		uint32(len(dstImgBarriers)),
-		sb.MustAllocReadData(dstImgBarriers).Ptr(),
-	))
-
-	for aspect := range copyDstImgs {
-		for _, dstImg := range copyDstImgs[aspect] {
-			sb.write(sb.cb.VkCmdCopyBufferToImage(
-				commandBuffer,
-				scratchBuffer,
-				dstImg.VulkanHandle,
-				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				uint32(len(copies[dstImg])),
-				sb.MustAllocReadData(copies[dstImg]).Ptr(),
-			))
-		}
-	}
-
-	if primeByBufCopy {
-		for _, barrier := range dstImgBarriers {
-			barrier.OldLayout = VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-			barrier.NewLayout = img.Info.Layout
-		}
-
-		sb.write(sb.cb.VkCmdPipelineBarrier(
-			commandBuffer,
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkDependencyFlags(0),
-			uint32(0),
-			memory.Nullptr,
-			uint32(0),
-			memory.Nullptr,
-			uint32(len(dstImgBarriers)),
-			sb.MustAllocReadData(dstImgBarriers).Ptr(),
-		))
-	}
-
-	sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
-
-	sb.freeScratchBuffer(sb.s.Devices.Get(img.Device), scratchBuffer, scratchMemory)
-
-	if primeByBufCopy {
-		// Copy is done
-		return
-	}
-
-	if primeByRendering {
-		// Render the staging image content to the state block image.
-		for _, aspect := range sb.imageAspectFlagBits(img.ImageAspect) {
-			for layer := uint32(0); layer < img.Info.ArrayLayers; layer++ {
-				for level := uint32(0); level < img.Info.MipLevels; level++ {
-					err := helper.renderStagingImages(copyDstImgs[aspect], img, queue, layer, level, aspect)
-					if err != nil {
-						log.E(sb.ctx, "[Rendering to state block image: %v] %v", img.VulkanHandle, err)
-					}
-				}
-			}
-		}
-		return
-	}
-
-	if primeByShaderCopy {
-		// TODO, recover the image data by copying in shader
-		log.E(sb.ctx, "[Copying to state block image: %v through shader copy] Not Implemented", img.VulkanHandle)
-		return
-	}
-
 	return
 }
 

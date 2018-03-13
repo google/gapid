@@ -4058,7 +4058,11 @@ cmd void vkDestroyBufferView(
 sub u32 getMipSize(u32 original, u32 level) {
   value := original / (1 << level)
   return switch (value) {
-    case 0:  1
+    case 0:
+      switch original {
+        case 0: 0
+        default: 1
+      }
     default: value
   }
 }
@@ -4214,8 +4218,7 @@ cmd VkResult vkCreateImage(
             // stencil element is always 1 byte wide
             as!u32(1)
         }
-        // Align to the next multiple times of 8
-        size := ((widthInBlocks * heightInBlocks * depth * elementSize) + 7) & (0xFFFFFFF8)
+        size := widthInBlocks * heightInBlocks * depth * elementSize
         level.Data = make!u8(size)
         aspect.Layers[j].Levels[i] = level
       }
