@@ -41,7 +41,7 @@ cc_library(
         "glslang/MachineIndependent/*.h",
         "SPIRV/*.h",
     ]),
-    copts = cc_copts(),
+    copts = cc_copts() + ["-DNV_EXTENSIONS"],
     include_prefix = "third_party/glslang",
     visibility = ["//visibility:public"],
 )

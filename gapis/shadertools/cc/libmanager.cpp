@@ -149,6 +149,19 @@ std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
   glslang::TShader shader(lang);
   shader.setPreamble(preamble);
   shader.setStrings(&code, 1);
+  shader.setAutoMapLocations(true);
+  shader.setEnvInput(glslang::EShSourceGlsl, lang, glslang::EShClientOpenGL, 100);
+  shader.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
+  // HACK: Disabled the call to setEnvTarget() as specifying the SPIRV version
+  // currently causes the parser to fail with:
+  //   ERROR: #version: ES shaders for OpenGL SPIR-V are not supported.
+  //
+  // A hacky workaround is to omit this call (which let's it parse) and add in
+  // the SPIR-V version code (see below). This is terrible, but works in the
+  // interim.
+  //
+  // shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+
   // use 100 for ES environment, 330 for desktop
   int default_version = es_profile ? 100 : 330;
   EProfile profile = es_profile ? EEsProfile : ECoreProfile;
@@ -166,12 +179,16 @@ std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
       *err_msg += "Linking failed:\n" + std::string(program.getInfoLog());
     }
     std::string warningsErrors;
-    spv::SpvBuildLogger logger;
-    glslang::GlslangToSpv(*program.getIntermediate(lang), spirv, &logger);
+    glslang::GlslangToSpv(*program.getIntermediate(lang), spirv);
   }
 
   // The compiler initialization is fairly expensive, so keep it initialized indefinitely.
   // glslang::FinalizeProcess();
+
+  // Hack the SPIR-V to add a version to the header
+  if (spirv.size() >= 2) {
+    spirv[1] = glslang::EShTargetSpv_1_0;
+  }
 
   return spirv;
 }
