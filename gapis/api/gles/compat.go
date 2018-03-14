@@ -135,11 +135,6 @@ func getFeatures(ctx context.Context, version string, ext extensions) (features,
 	return f, v, nil
 }
 
-type scratchBuffer struct {
-	size GLsizeiptr
-	id   BufferId
-}
-
 type onCompatError func(context.Context, api.CmdID, api.Cmd, error)
 
 func compat(ctx context.Context, device *device.Instance, onError onCompatError) (transform.Transformer, error) {
@@ -157,18 +152,8 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 	}
 
 	contexts := map[*Context]features{}
+	bufferCompat := newBufferCompat(int(glDev.UniformBufferAlignment))
 	eglContextHandle := map[*Context]EGLContext{}
-
-	scratchBuffers := map[interface{}]scratchBuffer{}
-	nextBufferID := BufferId(0xffff0000)
-	newBuffer := func(i api.CmdID, cb CommandBuilder, out transform.Writer) BufferId {
-		s := out.State()
-		id := nextBufferID
-		tmp := s.AllocDataOrPanic(ctx, id)
-		out.MutateAndWrite(ctx, i.Derived(), cb.GlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()))
-		nextBufferID--
-		return id
-	}
 
 	nextTextureID := TextureId(0xffff0000)
 	newTexture := func(i api.CmdID, cb CommandBuilder, out transform.Writer) TextureId {
@@ -359,57 +344,21 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				}
 			}
 
+		case *GlBufferData:
+			bufferCompat.modifyBufferData(ctx, out, cb, c, id, cmd.Target, func() { out.MutateAndWrite(ctx, id, cmd) })
+			return
+
+		case *GlBufferSubData:
+			bufferCompat.modifyBufferData(ctx, out, cb, c, id, cmd.Target, func() { out.MutateAndWrite(ctx, id, cmd) })
+			return
+
+		case *GlCopyBufferSubData:
+			bufferCompat.modifyBufferData(ctx, out, cb, c, id, cmd.WriteTarget, func() { out.MutateAndWrite(ctx, id, cmd) })
+			return
+
 		case *GlBindBufferRange:
-			misalignment := cmd.Offset % GLintptr(glDev.UniformBufferAlignment)
-			if cmd.Target == GLenum_GL_UNIFORM_BUFFER && misalignment != 0 {
-				// We have a glBindBufferRange() taking a uniform buffer with an
-				// illegal offset alignment.
-				// TODO: We don't handle the case where the buffer is kept bound
-				// while the buffer is updated. It's an unlikely issue, but
-				// something that may break us.
-				if !c.Objects.Buffers.Contains(cmd.Buffer) {
-					return // Don't know what buffer this is referring to.
-				}
-
-				// We need a scratch buffer to copy the buffer data to a correct
-				// alignment.
-				key := struct {
-					c      *Context
-					Target GLenum
-					Index  GLuint
-				}{c, cmd.Target, cmd.Index}
-
-				// Look for pre-existing buffer we can reuse.
-				buffer, ok := scratchBuffers[key]
-				if !ok {
-					buffer.id = newBuffer(dID, cb, out)
-					scratchBuffers[key] = buffer
-				}
-
-				// Bind the scratch buffer to GL_COPY_WRITE_BUFFER
-				origCopyWriteBuffer := c.Bound.CopyWriteBuffer
-				out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, buffer.id))
-
-				if buffer.size < cmd.Size {
-					// Resize the scratch buffer
-					out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_COPY_WRITE_BUFFER, cmd.Size, memory.Nullptr, GLenum_GL_DYNAMIC_COPY))
-					buffer.size = cmd.Size
-					scratchBuffers[key] = buffer
-				}
-
-				// Copy out the misaligned data to the scratch buffer in the
-				// GL_COPY_WRITE_BUFFER binding.
-				out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(cmd.Target, cmd.Buffer))
-				out.MutateAndWrite(ctx, dID, cb.GlCopyBufferSubData(cmd.Target, GLenum_GL_COPY_WRITE_BUFFER, cmd.Offset, 0, cmd.Size))
-
-				// We can now bind the range with correct alignment.
-				out.MutateAndWrite(ctx, id, cb.GlBindBufferRange(cmd.Target, cmd.Index, buffer.id, 0, cmd.Size))
-
-				// Restore old GL_COPY_WRITE_BUFFER binding.
-				out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_COPY_WRITE_BUFFER, origCopyWriteBuffer.GetID()))
-
-				return
-			}
+			bufferCompat.bindBufferRange(ctx, out, cb, c, id, cmd)
+			return
 
 		case *GlDisableVertexAttribArray:
 			if c.Bound.VertexArray.VertexAttributeArrays.Get(cmd.Location).Enabled == GLboolean_GL_FALSE {

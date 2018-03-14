@@ -47,6 +47,7 @@ go_library(
     srcs = [
         "compat.go",
         "compat_client.go",
+        "compat_buffers.go",
         "context.go",
         "custom_replay.go",
         "datatypes.go",
