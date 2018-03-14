@@ -458,6 +458,21 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 			return
 
+		case *GlDrawBuffers:
+			// Currently the default framebuffer for replay is single-buffered
+			// and so we need to transform any usage of GL_BACK to GL_FRONT.
+			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			bufs := cmd.Bufs.Slice(0, uint64(cmd.N), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
+			for i, buf := range bufs {
+				if buf == GLenum_GL_BACK {
+					bufs[i] = GLenum_GL_FRONT
+				}
+			}
+			tmp := s.AllocDataOrPanic(ctx, bufs)
+			out.MutateAndWrite(ctx, id, cb.GlDrawBuffers(cmd.N, tmp.Ptr()).AddRead(tmp.Data()))
+			tmp.Free()
+			return
+
 		case *GlDrawArrays:
 			if target.vertexArrayObjects == required {
 				if clientVAsBound(c, clientVAs) {
