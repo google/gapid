@@ -33,6 +33,7 @@ go_library(
         "rgb.go",
         "rgba.go",
         "rgbe.go",
+        "s.go",
         "sd.go",
         "x.go",
         "xy.go",

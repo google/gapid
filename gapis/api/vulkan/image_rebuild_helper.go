@@ -42,8 +42,9 @@ type imageRebuildHelper struct {
 	tempFramebuffers         map[VkFramebuffer]*FramebufferObject
 	tempShaders              map[VkShaderModule]*ShaderModuleObject
 
-	colorStagingFormat VkFormat
-	depthStagingFormat VkFormat
+	colorStagingFormat   VkFormat
+	depthStagingFormat   VkFormat
+	stencilStagingFormat VkFormat
 }
 
 func newImageRebuildHelper(sb *stateBuilder) *imageRebuildHelper {
@@ -62,17 +63,18 @@ func newImageRebuildHelper(sb *stateBuilder) *imageRebuildHelper {
 		tempFramebuffers:         map[VkFramebuffer]*FramebufferObject{},
 		tempShaders:              map[VkShaderModule]*ShaderModuleObject{},
 
-		colorStagingFormat: VkFormat_VK_FORMAT_R32G32B32A32_UINT,
-		depthStagingFormat: VkFormat_VK_FORMAT_R32_UINT,
+		colorStagingFormat:   VkFormat_VK_FORMAT_R32G32B32A32_UINT,
+		depthStagingFormat:   VkFormat_VK_FORMAT_R32_UINT,
+		stencilStagingFormat: VkFormat_VK_FORMAT_R32_UINT,
 	}
 }
 
 // allocateStagingImagesFor creates an array of staging images for the given
-// image whose data to be recovered.
-func (h *imageRebuildHelper) allocateStagingImagesFor(img *ImageObject) ([]*ImageObject, error) {
+// image-aspect pair whose data to be recovered.
+func (h *imageRebuildHelper) allocateStagingImagesFor(img *ImageObject, aspect VkImageAspectFlagBits) ([]*ImageObject, error) {
 	stagingImgs := []*ImageObject{}
 	empty := []*ImageObject{}
-	imgTexelBlockSizeInBytes, err := texelBlockSizeInBytes(h.sb.ctx, h.sb.oldState, img.Info.Format)
+	imgTexelBlockSizeInBytes, err := texelBlockSizeInBytes(h.sb.ctx, h.sb.oldState, img.Info.Format, aspect)
 	if err != nil {
 		return empty, err
 	}
@@ -85,15 +87,14 @@ func (h *imageRebuildHelper) allocateStagingImagesFor(img *ImageObject) ([]*Imag
 		return empty, err
 	}
 	numPixelsInImgTexelBlock := tbw * tbh
-	stagingFormat := h.stagingImageFormat(img)
+	stagingFormat := h.stagingImageFormat(aspect)
 	if stagingFormat == VkFormat_VK_FORMAT_UNDEFINED {
 		return empty, fmt.Errorf("appropriate staging image format not found")
 	}
-	stagingImgPixelSizeInBytes, err := texelBlockSizeInBytes(h.sb.ctx, h.sb.oldState, stagingFormat)
+	stagingImgPixelSizeInBytes, err := texelBlockSizeInBytes(h.sb.ctx, h.sb.oldState, stagingFormat, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT)
 	if err != nil {
 		return empty, err
 	}
-	index := uint32(0)
 	covered := uint32(0)
 	for covered < imgTexelBlockSizeInBytes {
 		// Create staging image handle
@@ -118,7 +119,6 @@ func (h *imageRebuildHelper) allocateStagingImagesFor(img *ImageObject) ([]*Imag
 		h.vkBindImageMemory(img.Device, handle, mem.VulkanHandle, 0)
 		stagingImgs = append(stagingImgs, stagingImg)
 		covered += numPixelsInImgTexelBlock * stagingImgPixelSizeInBytes
-		index++
 	}
 	return stagingImgs, nil
 }
@@ -172,47 +172,106 @@ func (h *imageRebuildHelper) allocateTempMemoryForStagingImage(stagingImg, origI
 	return mem, nil
 }
 
-func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, srcFmt, dstFmt VkFormat) ([]uint8, error) {
-	if srcFmt == dstFmt {
-		return data, nil
-	}
-	if dstFmt != h.colorStagingFormat && dstFmt != h.depthStagingFormat {
-		return []uint8{}, fmt.Errorf("unsupported dst format: %v", dstFmt)
-	}
-	width := int(extent.Width)
-	height := int(extent.Height)
-	depth := int(extent.Depth)
-	sf, err := getImageFormatFromVulkanFormat(srcFmt)
+func ebgrDataToRGB32SFloat(data []uint8, extent VkExtent3D) ([]uint8, error) {
+	sf, err := getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
 	if err != nil {
-		return []uint8{}, fmt.Errorf("[Getting image.Format from src format: %v] %v", srcFmt, err)
+		return []uint8{}, err
+	}
+	df, err := getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_R32G32B32_SFLOAT)
+	if err != nil {
+		return []uint8{}, err
+	}
+	retData, err := image.Convert(data, int(extent.Width), int(extent.Height), int(extent.Depth), sf, df)
+	if err != nil {
+		return []uint8{}, err
+	}
+	return retData, nil
+}
+
+// unpackForCopying taskes the data from an image with the src format, process
+// the data so that it can be copyied into a dst image with the dst format
+// through buffer->image copy without lossing any precision. The dst image
+// should either be the state block image whose data to be primed (in which case
+// the src format and the dst format is the same), or a staging image who will
+// be used for rendering/in-shader copying to prime the data of a state block
+// image (in which case the src format and the dst format are different).
+func (h *imageRebuildHelper) unpackForCopying(data []uint8, extent VkExtent3D, srcFmt, dstFmt VkFormat, srcAspect VkImageAspectFlagBits) ([]uint8, VkImageAspectFlagBits, error) {
+	// If the src and dst format are the same, return the data directly in most of the cases.
+	if srcFmt == dstFmt {
+		// Handle the D24 format special case.
+		if (srcAspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT) &&
+			(srcFmt == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT || srcFmt == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32) {
+			// Insert 0x0 to the MSB byte for each element.
+			retData, _, err := h.unpackForCopying(data, extent, srcFmt, h.depthStagingFormat, srcAspect)
+			if err != nil {
+				return []uint8{}, srcAspect, err
+			}
+			return retData, srcAspect, nil
+		}
+		return data, srcAspect, nil
+	}
+
+	// Src and dst format are different, need to unpack data.
+	var err error
+	if srcFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
+		data, err = ebgrDataToRGB32SFloat(data, extent)
+		if err != nil {
+			return []uint8{}, srcAspect, fmt.Errorf("[Converting data in VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 to VK_FORMAT_R32G32B32_SFLOAT] %v", err)
+		}
+		srcFmt = VkFormat_VK_FORMAT_R32G32B32_SFLOAT
+	}
+	checkDstFmt := func(expectedFmt VkFormat) error {
+		if dstFmt == expectedFmt {
+			return nil
+		}
+		return fmt.Errorf("unsupported dst format: %v for data from aspect: %v", dstFmt, srcAspect)
+	}
+	var sf *image.Format
+	var srcFmtErr error
+	switch srcAspect {
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
+		if err := checkDstFmt(h.colorStagingFormat); err != nil {
+			return []uint8{}, srcAspect, err
+		}
+		sf, srcFmtErr = getImageFormatFromVulkanFormat(srcFmt)
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
+		if err := checkDstFmt(h.depthStagingFormat); err != nil {
+			return []uint8{}, srcAspect, err
+		}
+		// The given data contains only the data of depth aspect, so we need to
+		// strip the stencil channel in the source format.
+		sf, srcFmtErr = getDepthImageFormatFromVulkanFormat(srcFmt)
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		if err := checkDstFmt(h.stencilStagingFormat); err != nil {
+			return []uint8{}, srcAspect, err
+		}
+		// The given data contains only the data of stencil aspect, so we need
+		// to strip all the other channels. And stencil channel data is always
+		// in format uint8.
+		sf, srcFmtErr = getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_S8_UINT)
+	default:
+		return []uint8{}, srcAspect, fmt.Errorf("unsupported aspect: %v", srcAspect)
+	}
+	if srcFmtErr != nil {
+		return []uint8{}, srcAspect, fmt.Errorf("[Getting image.Format for src Vulkan format: %v and aspect: %v] %v", srcFmt, srcAspect, err)
 	}
 	if sf.GetUncompressed() == nil {
-		return []uint8{}, fmt.Errorf("[Getting image.Format from src format: %v] %s", srcFmt, "only support uncompressed format")
-	}
-	cf := proto.Clone(sf).(*image.Format)
-	// If the format has shared exponent channel, convert it to f32 first,
-	// there should not be any precision lost.
-	if srcFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
-		fmt.Printf("before cf data: %v\n", data)
-		cf, err = getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_R32G32B32_SFLOAT)
-		data, err = image.Convert(data, width, height, depth, sf, cf)
-		if err != nil {
-			return []uint8{}, fmt.Errorf("[Converting from: %v to %v] %v", sf, cf, err)
-		}
-		fmt.Printf("after cf data: %v\n", data)
+		return []uint8{}, srcAspect, fmt.Errorf("[Getting image.Format from src Vulkan format: %v and aspect: %v] %s", srcFmt, srcAspect, "only support uncompressed format")
 	}
 
 	df, err := getImageFormatFromVulkanFormat(dstFmt)
 	if err != nil {
-		return []uint8{}, fmt.Errorf("[Getting image.Format from dst format: %v] %v", dstFmt, err)
+		return []uint8{}, srcAspect, fmt.Errorf("[Getting image.Format from dst format (staging image format): %v] %v", dstFmt, err)
 	}
+	ssf := proto.Clone(sf).(*image.Format).GetUncompressed().GetFormat()
+	sdf := proto.Clone(df).(*image.Format).GetUncompressed().GetFormat()
 
 	// The casting rule is described as below:
 	// If the data layout is UNORM, unsigned extends the src data to uint32
 	// If the data layout is SNORM, signed extends the src data to sint32
 	// If the data layout is UINT, unsigned extends the src data to uint32
 	// If the data layout is SINT, signed extends the src data to sint32
-	// If the data layout is Float, cast the src data to sfloat32
+	// If the data layout is FLOAT, cast the src data to sfloat32
 	// Note that, the staging image formats are always UINT32, the data within
 	// the staging image should be encoded as float32, if the source data is
 	// in float point type. The data will be bitcasted to float32 in the shader
@@ -222,16 +281,19 @@ func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, srcFmt,
 	// Also, to keep data in SRGB untouched, the sampling curve of the source
 	// format will be changed to linear.
 
-	// switch to use stream.Format
-	sdf := df.GetUncompressed().GetFormat()
-	scf := cf.GetUncompressed().GetFormat()
-
 	// Modify the src and dst format stream to follow the rule above.
-	for _, sc := range scf.Components {
-		dc, _ := sdf.Component(sc.Channel)
+	for _, sc := range ssf.Components {
+		var dc *stream.Component
+		switch srcAspect {
+		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
+			VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+			dc, _ = sdf.Component(stream.Channel_Red)
+			sc.Channel = stream.Channel_Red
+		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
+			dc, _ = sdf.Component(sc.Channel)
+		}
 		if dc == nil {
-			// TODO support Depth and stencil images
-			return []uint8{}, fmt.Errorf("[Building dst format for %v] src format contains unsupported channel %v", scf, sc.Channel)
+			return []uint8{}, srcAspect, fmt.Errorf("[Building dst format for %v] src format contains unsupported channel %v", ssf, sc.Channel)
 		}
 		sc.Sampling = stream.Linear
 		if sc.GetDataType().GetInteger() != nil {
@@ -244,44 +306,60 @@ func (h *imageRebuildHelper) unpackData(data []uint8, extent VkExtent3D, srcFmt,
 			dc.DataType = &stream.F32
 			dc.Sampling = stream.Linear
 		} else {
-			return []uint8{}, fmt.Errorf("[Building dst format for: %v] %s", scf, "DataType other than stream.Integer and stream.Float are not handled.")
+			return []uint8{}, srcAspect, fmt.Errorf("[Building dst format for: %v] %s", ssf, "DataType other than stream.Integer and stream.Float are not handled.")
 		}
 	}
 
-	converted, err := stream.Convert(sdf, scf, data)
+	converted, err := stream.Convert(sdf, ssf, data)
 	if err != nil {
-		return []uint8{}, fmt.Errorf("[Converting from: %v to %v] %v", scf, sdf, err)
+		return []uint8{}, srcAspect, fmt.Errorf("[Converting from %v to %v] %v", ssf, sdf, err)
 	}
-	return converted, nil
+	return converted, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, nil
+
 }
 
 // stagingImageFormat returns the format of the staging image for the given
-// image object.
-func (h *imageRebuildHelper) stagingImageFormat(img *ImageObject) VkFormat {
-	switch img.ImageAspect {
-	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT):
+// image aspect.
+func (h *imageRebuildHelper) stagingImageFormat(aspect VkImageAspectFlagBits) VkFormat {
+	switch aspect {
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
 		// color
 		return h.colorStagingFormat
-	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT):
-		// depth
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
+		// depth alone
 		return h.depthStagingFormat
-	case VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT) | VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT):
-		// depth+stencil
-		break
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		// stencil alone
+		return h.stencilStagingFormat
 	default:
 		break
 	}
 	return VkFormat_VK_FORMAT_UNDEFINED
 }
 
-func texelBlockSizeInBytes(ctx context.Context, s *api.GlobalState, fmt VkFormat) (uint32, error) {
-	elementAndTexelSizeInfo, err := subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, GetState(s), 0, nil, fmt)
+func texelBlockSizeInBytes(ctx context.Context, s *api.GlobalState, format VkFormat, aspect VkImageAspectFlagBits) (uint32, error) {
+	elementAndTexelSizeInfo, err := subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, GetState(s), 0, nil, format)
 	if err != nil {
 		return 0, err
 	}
 	w := elementAndTexelSizeInfo.TexelBlockSize.Width
 	h := elementAndTexelSizeInfo.TexelBlockSize.Height
-	return elementAndTexelSizeInfo.ElementSize * w * h, nil
+
+	elementSize := uint32(0)
+	switch aspect {
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
+		elementSize = elementAndTexelSizeInfo.ElementSize
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
+		elementSize, err = subGetDepthElementSize(ctx, nil, api.CmdNoID, nil, s, GetState(s), 0, nil, format, false)
+		if err != nil {
+			return uint32(0), err
+		}
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		elementSize = uint32(1)
+	default:
+		return uint32(0), fmt.Errorf("unsupported aspect: %v", aspect)
+	}
+	return elementSize * w * h, nil
 }
 
 func texelBlockWidth(ctx context.Context, s *api.GlobalState, fmt VkFormat) (uint32, error) {
@@ -345,7 +423,7 @@ func (h *imageRebuildHelper) renderStagingImages(inputImgs []*ImageObject, outpu
 	if err != nil {
 		return fmt.Errorf("[Creating fragment shader module] %v", err)
 	}
-	e := h.sb.levelSize(outputImg.Info.Extent, outputImg.Info.Format, level, aspect, false)
+	e := h.sb.levelSize(outputImg.Info.Extent, outputImg.Info.Format, level, aspect)
 	viewport := VkViewport{
 		0.0, 0.0,
 		float32(e.width), float32(e.height),
@@ -708,7 +786,7 @@ func (h *imageRebuildHelper) createTempFrameBufferForPriming(renderpass *RenderP
 	if len(imgViews) < 2 {
 		return nil, fmt.Errorf("requires at least two image views, %d are given", len(imgViews))
 	}
-	e := h.sb.levelSize(imgViews[0].Image.Info.Extent, imgViews[0].Image.Info.Format, level, aspect, false)
+	e := h.sb.levelSize(imgViews[0].Image.Info.Extent, imgViews[0].Image.Info.Format, level, aspect)
 	attachments := []VkImageView{}
 	for _, v := range imgViews {
 		attachments = append(attachments, v.VulkanHandle)

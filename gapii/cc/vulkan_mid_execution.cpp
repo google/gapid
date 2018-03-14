@@ -456,12 +456,21 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     const ImageInfo &image_info = img->mInfo;
     auto &device_functions = mImports.mVkDeviceFunctions[img->mDevice];
 
-    struct byte_size_and_extent {
-      size_t level_size;
-      size_t aligned_level_size;
-      uint32_t width;
-      uint32_t height;
-      uint32_t depth;
+    auto get_element_size = [this](uint32_t format, uint32_t aspect_bit,
+                                   bool in_buffer) -> uint32_t {
+      switch (aspect_bit) {
+        case VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT:
+          return subGetElementAndTexelBlockSize(nullptr, nullptr, format).mElementSize;
+        case VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT:
+          return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
+        case VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT:
+          return 1;
+      }
+      return 0;
+    };
+
+    auto next_multiple_of_8 = [](size_t value) -> size_t {
+      return (value + 7) & (~7);
     };
 
     struct pitch {
@@ -472,9 +481,10 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
       uint32_t element_size;
     };
 
-    auto block_pitch = [this](const VkExtent3D &extent, uint32_t format,
-                              uint32_t mip_level, uint32_t aspect_bit,
-                              bool in_buffer) -> pitch {
+    // block pitch is calculated with the in-image element size.
+    auto block_pitch = [this, &get_element_size, &next_multiple_of_8](
+                           const VkExtent3D &extent, uint32_t format,
+                           uint32_t mip_level, uint32_t aspect_bit) -> pitch {
       auto elementAndTexelBlockSize =
           subGetElementAndTexelBlockSize(nullptr, nullptr, format);
       const uint32_t texel_width =
@@ -490,17 +500,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           subRoundUpTo(nullptr, nullptr, width, texel_width);
       const uint32_t height_in_blocks =
           subRoundUpTo(nullptr, nullptr, height, texel_height);
-      const uint32_t element_size = [&]() -> uint32_t {
-        switch (aspect_bit) {
-          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT:
-            return elementAndTexelBlockSize.mElementSize;
-          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT:
-            return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
-          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT:
-            return 1;
-        }
-        return 0;
-      }();
+      const uint32_t element_size = get_element_size(format, aspect_bit, false);
       const size_t size = width_in_blocks * height_in_blocks * element_size;
 
       return pitch{
@@ -512,9 +512,20 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
       };
     };
 
-    auto level_size = [this](const VkExtent3D &extent, uint32_t format,
-                             uint32_t mip_level, uint32_t aspect_bit,
-                             bool in_buffer) -> byte_size_and_extent {
+    struct byte_size_and_extent {
+      size_t level_size;
+      size_t aligned_level_size;
+      size_t level_size_in_buf;
+      size_t aligned_level_size_in_buf;
+      uint32_t width;
+      uint32_t height;
+      uint32_t depth;
+    };
+
+    auto level_size = [this, &get_element_size, &next_multiple_of_8](
+                          const VkExtent3D &extent, uint32_t format,
+                          uint32_t mip_level,
+                          uint32_t aspect_bit) -> byte_size_and_extent {
       auto elementAndTexelBlockSize =
           subGetElementAndTexelBlockSize(nullptr, nullptr, format);
 
@@ -532,23 +543,22 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           subRoundUpTo(nullptr, nullptr, width, texel_width);
       const uint32_t height_in_blocks =
           subRoundUpTo(nullptr, nullptr, height, texel_height);
-      const uint32_t element_size = [&]() -> uint32_t {
-        switch (aspect_bit) {
-          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT:
-            return elementAndTexelBlockSize.mElementSize;
-          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT:
-            return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
-          case VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT:
-            return 1;
-        }
-        return 0;
-      }();
+      const uint32_t element_size = get_element_size(format, aspect_bit, false);
+      const uint32_t element_size_in_buf = get_element_size(format, aspect_bit, true);
       const size_t size =
           width_in_blocks * height_in_blocks * depth * element_size;
-      const size_t next_multiple_of_8 = (size + 7) & (~7);
+      const size_t size_in_buf =
+          width_in_blocks * height_in_blocks * depth * element_size_in_buf;
 
-      return byte_size_and_extent{size, next_multiple_of_8, width, height,
-                                  depth};
+      return byte_size_and_extent{
+        size,
+        next_multiple_of_8(size),
+        size_in_buf,
+        next_multiple_of_8(size_in_buf),
+        width,
+        height,
+        depth
+      };
     };
 
     auto aspect_flag_bits =
@@ -562,14 +572,14 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     };
 
     for (auto &a : img->mAspects) {
-      auto &aspect = a.second;
-      for (auto &l : aspect->mLayers) {
-        auto &layer = l.second;
-        for (auto &lev : layer->mLevels) {
-          auto &level = lev.second;
+      auto& aspect = a.second;
+      for (auto& l : aspect->mLayers) {
+        auto& layer = l.second;
+        for (auto& lev : layer->mLevels) {
+          auto& level = lev.second;
           byte_size_and_extent e =
               level_size(image_info.mExtent, image_info.mFormat, lev.first,
-                         a.first, false);
+                         a.first);
           level->mData = gapil::Slice<uint8_t>::create(
               create_virtual_pool(e.aligned_level_size));
           gpu_pools->insert(level->mData.pool_id());
@@ -585,10 +595,11 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
       // TODO(awoloszyn): Handle multisampled images here.
       continue;
     }
-    if (img->mImageAspect != VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT) {
-      // TODO(awoloszyn): Handle depth stencil images
-      continue;
-    }
+
+    // Since we add TRANSFER_SRC_BIT to all the created images (except the
+    // swapchain ones), we can copy directly from all such images. Note that
+    // later this fact soon will be changed.
+
     if (image_info.mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
       // Don't capture images with undefined layout. The resulting data
       // itself will be undefined.
@@ -691,14 +702,14 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     {
       VkDeviceSize offset = 0;
       std::vector<VkBufferImageCopy> copies;
-      for (auto &range : opaque_ranges) {
+      for (auto& range : opaque_ranges) {
         auto aspect_bits = aspect_flag_bits(range.maspectMask);
         for (auto aspect_bit : aspect_bits) {
           for (size_t i = 0; i < range.mlevelCount; ++i) {
             uint32_t mip_level = range.mbaseMipLevel + i;
             byte_size_and_extent e =
                 level_size(image_info.mExtent, image_info.mFormat, mip_level,
-                           aspect_bit, true);
+                           aspect_bit);
             for (size_t j = 0; j < range.mlayerCount; j++) {
               uint32_t layer = range.mbaseArrayLayer + j;
               copies.push_back(VkBufferImageCopy{offset,  // bufferOffset,
@@ -712,7 +723,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
                                                  },
                                                  {0, 0, 0},
                                                  {e.width, e.height, e.depth}});
-              offset += e.aligned_level_size;
+              offset += e.aligned_level_size_in_buf;
             }
           }
         }
@@ -740,8 +751,8 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
                       block_i.second->mOffset, block_i.second->mExtent});
                   byte_size_and_extent e =
                       level_size(block_i.second->mExtent, image_info.mFormat, 0,
-                                 aspect_bit, true);
-                  offset += e.aligned_level_size;
+                                 aspect_bit);
+                  offset += e.aligned_level_size_in_buf;
                 }
               }
             }
@@ -822,10 +833,10 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
         const uint32_t aspect_bit =
             (uint32_t)copy.mimageSubresource.maspectMask;
         byte_size_and_extent e = level_size(
-            copy.mimageExtent, image_info.mFormat, 0, aspect_bit, false);
+            copy.mimageExtent, image_info.mFormat, 0, aspect_bit);
         auto bp =
             block_pitch(copy.mimageExtent, image_info.mFormat,
-                        copy.mimageSubresource.mmipLevel, aspect_bit, false);
+                        copy.mimageSubresource.mmipLevel, aspect_bit);
 
         if ((copy.mimageOffset.mx % bp.texel_width != 0) ||
             (copy.mimageOffset.my % bp.texel_height != 0)) {
@@ -840,14 +851,12 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
              image_info.mFormat == VkFormat::VK_FORMAT_D24_UNORM_S8_UINT) &&
             (aspect_bit == VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT)) {
           // The width of the depth channel are different for img buf copy.
-          byte_size_and_extent copy_e = level_size(
-              copy.mimageExtent, image_info.mFormat, 0, aspect_bit, true);
           size_t element_size_in_img = 3;
           size_t element_size_in_buf = 4;
           // It is always the MSB byte to be stripped.
           uint8_t *buf = pData + new_offset;
           for (size_t i = 0;
-               i < copy_e.aligned_level_size / element_size_in_buf; i++) {
+               i < e.aligned_level_size_in_buf / element_size_in_buf; i++) {
             if (i < 3) {
               memmove(&buf[i * element_size_in_img],
                       &buf[i * element_size_in_buf], element_size_in_img);
@@ -855,6 +864,15 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
               memcpy(&buf[i * element_size_in_img],
                      &buf[i * element_size_in_buf], element_size_in_img);
             }
+          }
+        } else {
+          if (e.level_size_in_buf != e.level_size) {
+            // Unhandled case where the element size is different in buffer and
+            // image.
+            GAPID_ERROR(
+                "[Recovering data for image: %" PRIu64 ", format: %" PRIu32
+                "] unhandled case: element size different in buffer and image",
+                img->mVulkanHandle, img->mInfo.mFormat);
           }
         }
 
