@@ -357,3 +357,10 @@ func (e externs) vkErrCommandBufferIncomplete(cmdbuf VkCommandBuffer) {
 	issue.Severity = service.Severity_ErrorLevel
 	issue.Error = fmt.Errorf("Executing command buffer %v was not in the COMPLETED state", cmdbuf)
 }
+
+func (e externs) vkErrImageLayout(layout VkImageLayout, expectedLayout VkImageLayout) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_WarningLevel
+	issue.Error = fmt.Errorf("Image was in layout %v, but was expected to be in layout %v", layout, expectedLayout)
+}

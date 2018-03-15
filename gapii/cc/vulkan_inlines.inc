@@ -42,3 +42,7 @@ inline void VulkanSpy::vkErrInvalidDescriptorArrayElement(CallObserver*, uint64_
 inline void VulkanSpy::vkErrCommandBufferIncomplete(CallObserver*, VkCommandBuffer cmdbuf) {
     GAPID_WARNING("Error: Executing command buffer %llu was not in the COMPLETED state", cmdbuf)
 }
+
+inline void VulkanSpy::vkErrImageLayout(CallObserver*, uint32_t layout, uint32_t expectedLayout) {
+  GAPID_WARNING("Error: Image was in layout %lu, but was expected to be in layout %lu", layout, expectedLayout);
+}
