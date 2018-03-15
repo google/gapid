@@ -74,7 +74,8 @@ bool NameManager::isDeprecatedBuiltInName(std::string name) const {
  **************************** private **********************************
  ***********************************************************************/
 void NameManager::collectNames(Module* module) {
-  for (auto& inst : module->debugs()) {
+  // debugs2 returns OpName and OpMemeberName instructions.
+  for (auto& inst : module->debugs2()) {
     addName(&inst);
   }
 }

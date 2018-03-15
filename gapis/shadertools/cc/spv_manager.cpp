@@ -68,10 +68,10 @@ void SpvManager::addOutputForInputs(std::string outs_pref) {
     }
   }
   // add curr_block_insts to first block in main
-  auto it = module->begin()->begin()->begin();
+  auto it = context->module()->begin()->begin()->begin();
   for (auto& curr_block_inst : curr_block_insts) {
     it = it.InsertBefore(std::move(curr_block_inst));
-    it++;
+    ++it;
   }
   curr_block_insts.clear();
 }
@@ -81,7 +81,7 @@ void SpvManager::addOutputForInputs(std::string outs_pref) {
  **/
 void SpvManager::mapDeclarationNames(std::string name_pref) {
   std::unordered_set<uint32_t> builtIns;
-  for (auto& annotations_it : module->annotations())
+  for (auto& annotations_it : context->annotations())
     if (isBuiltInDecoration(annotations_it)) builtIns.insert(annotations_it.GetSingleWordOperand(0));
 
   namemanager::name_map::iterator it;
@@ -99,14 +99,13 @@ void SpvManager::mapDeclarationNames(std::string name_pref) {
 void SpvManager::renameViewIndex() {
   for (auto& id : name_mgr->getNamedIds()) {
     if (name_mgr->getStrName(id) == "gl_ViewID_OVR") {
-      Instruction* inst = def_use_mgr->GetDef(id);
       globals.viewID.type_id = addTypeInst(SpvOpTypeInt, {{WIDTH}, {0}});
       addGlobalVariable(spv::StorageClassUniformConstant, &globals.viewID);
-      for (auto& use : *def_use_mgr->GetUses(id)) {
-        if (use.inst->opcode() == SpvOpLoad) {
-          use.inst->SetInOperand(0, {globals.viewID.ref_id});
+      def_use_mgr->ForEachUser(id, [this](Instruction* user) {
+        if (user->opcode() == SpvOpLoad) {
+          user->SetInOperand(0, {globals.viewID.ref_id});
         }
-      }
+      });
       return;
     }
   }
@@ -116,7 +115,7 @@ void SpvManager::renameViewIndex() {
 // where it may generate code which reads locals before initializing them.
 // For example, "v.x = 42.0;" becomes "v = vec4(42.0, v.y, v.z, v.w);"
 void SpvManager::initLocals() {
-  for (auto& function : *module) {
+  for (auto& function : *context->module()) {
     std::map<Instruction*, std::unique_ptr<Instruction>> replacement;
     std::unordered_set<Instruction*> seen;
     function.ForEachInst([this,&seen,&replacement](Instruction* inst) {
@@ -135,7 +134,7 @@ void SpvManager::initLocals() {
               uint32_t elem_type_id = TypeToId(vecType->element_type());
               uint32_t elem_id = addConstant(elem_type_id, {0});
               uint32_t init_value_id = getUnique();
-              module->AddGlobalValue(makeInstruction(SpvOpConstantComposite, TypeToId(vecType), init_value_id,
+              context->AddGlobalValue(makeInstruction(SpvOpConstantComposite, TypeToId(vecType), init_value_id,
                                      {{elem_id, elem_id, elem_id, elem_id}}));
               replacement[var] = makeInstruction(var->opcode(), var->type_id(), var->result_id(),
                                                  {{var->GetSingleWordInOperand(0)}, {init_value_id}});
@@ -145,14 +144,14 @@ void SpvManager::initLocals() {
       }
     });
     for (auto& basic_block : function) {
-      for (auto it = basic_block.begin(); it != basic_block.end(); it++) {
+      for (auto it = basic_block.begin(); it != basic_block.end(); ++it) {
         std::unique_ptr<Instruction> newInst(std::move(replacement[&*it]));
         if (newInst != nullptr) {
           it = it.Erase().InsertBefore(std::move(newInst));
         }
       }
     }
-    for (auto it = module->types_values_begin(); it != module->types_values_end(); it++) {
+    for (auto it = context->types_values_begin(); it != context->types_values_end(); ++it) {
       std::unique_ptr<Instruction> newInst(std::move(replacement[&*it]));
       if (newInst != nullptr) {
         it = it.Erase().InsertBefore(std::move(newInst));
@@ -166,7 +165,7 @@ void SpvManager::initLocals() {
 // are assigned explicit location or compiler generated one.
 // TODO: Handle separate shader objects - we just hope the game uses consistent block names for now.
 void SpvManager::removeLayoutLocations() {
-  for (auto& it : module->annotations()) {
+  for (auto& it : context->annotations()) {
     if (it.opcode() == SpvOpDecorate && it.GetSingleWordOperand(1) == SpvDecorationLocation) {
       it.ToNop();
     }
@@ -178,7 +177,7 @@ void SpvManager::removeLayoutLocations() {
  **/
 std::vector<unsigned int> SpvManager::getSpvBinary() {
   std::vector<unsigned int> res;
-  module->ToBinary(&res, false);
+  context->module()->ToBinary(&res, false);
 
   return res;
 }
@@ -189,7 +188,7 @@ std::vector<unsigned int> SpvManager::getSpvBinary() {
 debug_instructions_t* SpvManager::getDebugInstructions() {
   debug_instructions_t* result = new debug_instructions_t{};
   std::vector<instruction_t> insts;
-  module->ForEachInst(
+  context->module()->ForEachInst(
       std::bind(&SpvManager::appendDebugInstruction, this, &insts, std::placeholders::_1), true);
 
   // Little bit of reordering to improve debug readability of the disassembly.
@@ -272,7 +271,7 @@ std::unique_ptr<Instruction> SpvManager::makeInstruction(
   res = grammar->lookupOpcode(op, &op_desc);
   assert(res == SPV_SUCCESS && "makeInstruction: cannot find opcode description");
   if (res == SPV_SUCCESS) {
-    inst = spvtools::MakeUnique<Instruction>(op, type_id, result_id,
+    inst = spvtools::MakeUnique<Instruction>(context.get(), op, type_id, result_id,
                                              makeOperands(op_desc, words, literal_string));
     def_use_mgr->AnalyzeInstDefUse(inst.get());
   }
@@ -302,7 +301,7 @@ uint32_t SpvManager::addName(const char* name) {
   uint32_t ref_id = getUnique();
   auto inst = makeInstruction(SpvOpName, 0, 0, {{ref_id}}, name);
   name_mgr->addName(inst.get());
-  module->AddDebugInst(std::move(inst));
+  context->AddDebug2Inst(std::move(inst));
   return ref_id;
 }
 
@@ -315,7 +314,7 @@ uint32_t SpvManager::addName(const char* name) {
 uint32_t SpvManager::addConstant(uint32_t type_id, std::initializer_list<uint32_t> num) {
   uint32_t result_id = getUnique();
   auto inst = makeInstruction(SpvOpConstant, type_id, result_id, {num});
-  module->AddGlobalValue(std::move(inst));
+  context->AddGlobalValue(std::move(inst));
   return result_id;
 }
 
@@ -326,7 +325,7 @@ uint32_t SpvManager::addTypeInst(SpvOp_ op, std::initializer_list<std::initializ
   // Kill type-manager, we will lazily rebuild it.
   // TODO: Add functions to SPRV-Tool to make sure it stays up to date.
   type_mgr.reset();
-  module->AddType(std::move(inst));
+  context->AddType(std::move(inst));
   return result_id;
 }
 
@@ -335,7 +334,7 @@ uint32_t SpvManager::TypeToId(const Type* type) {
     auto print_msg_to_stderr = [](spv_message_level_t, const char*, const spv_position_t&, const char* m) {
       std::cerr << "error: " << m << std::endl;
     };
-    type_mgr.reset(new TypeManager(print_msg_to_stderr, *module));
+    type_mgr.reset(new TypeManager(print_msg_to_stderr, context.get()));
   }
   return type_mgr->GetId(type);
 }
@@ -345,7 +344,7 @@ Type* SpvManager::IdToType(uint32_t id) {
     auto print_msg_to_stderr = [](spv_message_level_t, const char*, const spv_position_t&, const char* m) {
       std::cerr << "error: " << m << std::endl;
     };
-    type_mgr.reset(new TypeManager(print_msg_to_stderr, *module));
+    type_mgr.reset(new TypeManager(print_msg_to_stderr, context.get()));
   }
   return type_mgr->GetType(id);
 }
@@ -355,7 +354,7 @@ void SpvManager::addVariable(uint32_t type_id, uint32_t ref_id, spv::StorageClas
   if (storage_class == spv::StorageClassFunction)
     curr_block_insts.emplace_back(std::move(inst));
   else
-    module->AddGlobalValue(std::move(inst));
+    context->AddGlobalValue(std::move(inst));
 }
 
 void SpvManager::addGlobalVariable(spv::StorageClass storage_class, Variable* const var) {
@@ -423,7 +422,7 @@ uint32_t SpvManager::addFunction(const char* name, uint32_t result_type_id, uint
 
   auto inst_end = makeInstruction(SpvOpFunctionEnd, 0, 0, {{}});
   fun->SetFunctionEnd(std::move(inst_end));
-  module->AddFunction(std::move(fun));
+  context->AddFunction(std::move(fun));
   return name_id;
 }
 
@@ -644,7 +643,7 @@ void SpvManager::insertPrintCallsIntoFunctions() {
   // main function is first, add insts to the first block
   setStepVariable();
 
-  for (Module::iterator it = module->begin(); it != module->end(); it++) {
+  for (Module::iterator it = context->module()->begin(); it != context->module()->end(); it++) {
     if (isDebugFunction(*it)) continue;
 
     for (Function::iterator fun_it = it->begin(); fun_it != it->end(); fun_it++)
@@ -655,7 +654,7 @@ void SpvManager::insertPrintCallsIntoFunctions() {
 void SpvManager::moveCollectedBlockInsts(BasicBlock::iterator& it) {
   for (auto& i : curr_block_insts) {
     it = it.InsertBefore(std::move(i));
-    it++;
+    ++it;
   }
   curr_block_insts.clear();
 }
@@ -665,7 +664,7 @@ void SpvManager::moveCollectedBlockInsts(BasicBlock::iterator& it) {
  **/
 void SpvManager::insertPrintCallsIntoBlock(BasicBlock& bb) {
   BasicBlock::iterator it = bb.begin();
-  uint32_t label_id = bb.Label().result_id();
+  uint32_t label_id = bb.id();
   // print label id to indicate current BasicBlock
   assert(globals.label_print_id != 0 &&
          "insertPrintCallsIntoBlock: label_print_id has to be bigger then zero.");
@@ -695,7 +694,7 @@ void SpvManager::insertPrintCallsIntoBlock(BasicBlock& bb) {
       }
     }
 
-    it++;
+    ++it;
     moveCollectedBlockInsts(it);
   }
 }
@@ -830,7 +829,7 @@ bool SpvManager::isArgStoreInst(BasicBlock::iterator bb_curr, BasicBlock::iterat
     uint32_t dest_id = bb_curr->GetSingleWordOperand(0);
 
     while (bb_curr->opcode() == SpvOpStore && bb_curr != bb_end) {
-      bb_curr++;
+      ++bb_curr;
     }
 
     if (bb_curr != bb_end)
@@ -888,8 +887,8 @@ uint32_t SpvManager::getConstId(uint32_t val) {
  **/
 uint32_t SpvManager::getUnique() {
   uint32_t res;
-  res = module->IdBound();
-  module->SetIdBound(res + 1);
+  res = context->module()->IdBound();
+  context->module()->SetIdBound(res + 1);
   return res;
 }
 

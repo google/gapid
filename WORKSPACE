@@ -135,7 +135,7 @@ github_repository(
     name = "spirv-headers",
     organization = "KhronosGroup",
     project = "SPIRV-Headers",
-    commit = "2bf02308656f97898c5f7e433712f21737c61e4e",
+    commit = "9f6846f973a1ef53790e75b9190820ab1557434f",
     build_file = "//tools/build/third_party:spirv-headers.BUILD",
 )
 
@@ -151,7 +151,7 @@ github_repository(
     name = "spirv-tools",
     organization = "KhronosGroup",
     project = "SPIRV-Tools",
-    commit = "0b0454c42c6b6f6746434bd5c78c5c70f65d9c51",
+    commit = "8d8a71278bf9e83dd0fb30d5474386d30870b74d",
     build_file = "//tools/build/third_party:spirv-tools.BUILD",
 )
 

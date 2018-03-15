@@ -28,7 +28,7 @@ std::string spirv2glsl(std::vector<uint32_t> spirv, bool strip_optimizations) {
   cross_options.es = false;
   cross_options.force_temporary = false;
   cross_options.vertex.fixup_clipspace = false;
-  glsl.set_options(cross_options);
+  glsl.set_common_options(cross_options);
   if (strip_optimizations) {
     glsl.unset_execution_mode(spv::ExecutionModeEarlyFragmentTests);
   }
