@@ -14,3 +14,6 @@
 {13, "Google", "Shaderc over Glslang", "Google Shaderc over Glslang"},
 {14, "Google", "spiregg", "Google spiregg"},
 {15, "Google", "rspirv", "Google rspirv"},
+{16, "X-LEGEND", "Mesa-IR/SPIR-V Translator", "X-LEGEND Mesa-IR/SPIR-V Translator"},
+{17, "Khronos", "SPIR-V Tools Linker", "Khronos SPIR-V Tools Linker"},
+{18, "Wine", "VKD3D Shader Compiler", "Wine VKD3D Shader Compiler"},

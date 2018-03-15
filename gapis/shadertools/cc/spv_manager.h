@@ -17,7 +17,7 @@
 #ifndef SPV_MANAGER_H_
 #define SPV_MANAGER_H_
 
-#include "third_party/SPIRV-Headers/include/spirv/1.2/spirv.hpp"
+#include "third_party/SPIRV-Headers/include/spirv/unified1/spirv.hpp"
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.h"
 #include "third_party/SPIRV-Tools/source/assembly_grammar.h"
 #include "third_party/SPIRV-Tools/source/opcode.h"
@@ -25,6 +25,7 @@
 #include "third_party/SPIRV-Tools/source/opt/def_use_manager.h"
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.hpp"
 #include "third_party/SPIRV-Tools/source/opt/build_module.h"
+#include "third_party/SPIRV-Tools/source/opt/ir_context.h"
 #include "third_party/SPIRV-Tools/source/opt/make_unique.h"
 #include "third_party/SPIRV-Tools/source/opt/reflect.h"
 #include "third_party/SPIRV-Tools/source/opt/type_manager.h"
@@ -46,6 +47,7 @@
 
 namespace spvmanager {
 
+using spvtools::ir::IRContext;
 using spvtools::ir::Module;
 using spvtools::ir::Instruction;
 using spvtools::ir::BasicBlock;
@@ -75,13 +77,13 @@ class SpvManager {
       std::cerr << "error: " << m << std::endl;
     };
 
-    std::unique_ptr<spv_context_t> context(spvContextCreate(MANAGER_SPV_ENV));
-    grammar.reset(new libspirv::AssemblyGrammar(context.get()));
+    std::unique_ptr<spv_context_t> spvContext(spvContextCreate(MANAGER_SPV_ENV));
+    grammar.reset(new libspirv::AssemblyGrammar(spvContext.get()));
     // init module
-    module = spvtools::BuildModule(MANAGER_SPV_ENV, print_msg_to_stderr, spv_binary.data(), spv_binary.size());
-    type_mgr.reset(new TypeManager(print_msg_to_stderr, *module));
-    def_use_mgr.reset(new DefUseManager(print_msg_to_stderr, module.get()));
-    name_mgr.reset(new namemanager::NameManager(module.get()));
+    context = spvtools::BuildModule(MANAGER_SPV_ENV, print_msg_to_stderr, spv_binary.data(), spv_binary.size());
+    type_mgr.reset(new TypeManager(print_msg_to_stderr, context.get()));
+    def_use_mgr.reset(new DefUseManager(context->module()));
+    name_mgr.reset(new namemanager::NameManager(context->module()));
   }
 
   void addOutputForInputs(std::string = "_out");
@@ -112,7 +114,7 @@ class SpvManager {
   };
 
   std::unique_ptr<libspirv::AssemblyGrammar> grammar;
-  std::unique_ptr<Module> module;
+  std::unique_ptr<IRContext> context;
   std::unique_ptr<TypeManager> type_mgr;
   std::unique_ptr<DefUseManager> def_use_mgr;
   std::unique_ptr<namemanager::NameManager> name_mgr;
