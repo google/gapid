@@ -591,8 +591,6 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
           if (!Float.isNaN(value) && !Float.isInfinite(value)) {
             alphaMin = Math.min(alphaMin, value);
             alphaMax = Math.max(alphaMax, value);
-            average += value;
-            count++;
           }
         }
       } else {
@@ -695,7 +693,7 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
         average /= data.length;
       }
       return new IntPixelInfo(
-          min / 255.0, max / 255.0, average, alphaMin / 255.0, alphaMax / 255.0);
+          min / 255.0, max / 255.0, average / 255.0, alphaMin / 255.0, alphaMax / 255.0);
     }
 
     @Override
