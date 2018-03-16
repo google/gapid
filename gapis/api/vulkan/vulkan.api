@@ -4310,9 +4310,11 @@ cmd void vkDestroyImageView(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(ImageViews, imageView)
   for _, _, drawInfo in LastDrawInfos {
-    for _, i, v in drawInfo.Framebuffer.ImageAttachments {
-      if (v != null) && (v.VulkanHandle == imageView) {
-        drawInfo.Framebuffer.ImageAttachments[i] = null
+    if (drawInfo.Framebuffer != null) {
+      for _, i, v in drawInfo.Framebuffer.ImageAttachments {
+        if (v != null) && (v.VulkanHandle == imageView) {
+          drawInfo.Framebuffer.ImageAttachments[i] = null
+        }
       }
     }
   }
