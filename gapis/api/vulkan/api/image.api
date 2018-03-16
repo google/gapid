@@ -206,23 +206,6 @@ cmd VkResult vkCreateImage(
         height := getMipSize(info.extent.Height, i)
         depth := getMipSize(info.extent.Depth, i)
         level := new!ImageLevel(Width: width,Height:  height,Depth:  depth)
-        elementAndTexelBlockSize := getElementAndTexelBlockSize(object.Info.Format)
-        depthElementSize := getDepthElementSize(object.Info.Format, false)
-        // Roundup the width and height in the number of blocks.
-        widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
-        heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
-        //elementSize := elementAndTexelBlockSize.ElementSize
-        elementSize := switch (aspectBit) {
-          case VK_IMAGE_ASPECT_COLOR_BIT:
-            elementAndTexelBlockSize.ElementSize
-          case VK_IMAGE_ASPECT_DEPTH_BIT:
-            depthElementSize
-          case VK_IMAGE_ASPECT_STENCIL_BIT:
-            // stencil element is always 1 byte wide
-            as!u32(1)
-        }
-        size := widthInBlocks * heightInBlocks * depth * elementSize
-        level.Data = make!u8(size)
         aspect.Layers[j].Levels[i] = level
       }
     }
@@ -285,9 +268,37 @@ cmd VkResult vkBindImageMemory(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(memory in DeviceMemories) { vkErrorInvalidDeviceMemory(memory) }
   if !(image in Images) { vkErrorInvalidImage(image) }
-  Images[image].BoundMemory = DeviceMemories[memory]
-  Images[image].BoundMemoryOffset = memoryOffset
+  imageObject := Images[image]
+  imageObject.BoundMemory = DeviceMemories[memory]
+  imageObject.BoundMemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
+
+  for _, _, aspectBit in unpackImageAspectFlags(imageObject.ImageAspect).Bits {
+    aspect := imageObject.Aspects[aspectBit]
+    for j in (0 .. imageObject.Info.ArrayLayers) {
+      for i in (0 .. imageObject.Info.MipLevels) {
+        level := aspect.Layers[j].Levels[i]
+        elementAndTexelBlockSize := getElementAndTexelBlockSize(imageObject.Info.Format)
+        depthElementSize := getDepthElementSize(imageObject.Info.Format, false)
+        // Roundup the width and height in the number of blocks.
+        widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+        heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+        elementSize := switch (aspectBit) {
+          case VK_IMAGE_ASPECT_COLOR_BIT:
+            elementAndTexelBlockSize.ElementSize
+          case VK_IMAGE_ASPECT_DEPTH_BIT:
+            depthElementSize
+          case VK_IMAGE_ASPECT_STENCIL_BIT:
+            // stencil element is always 1 byte wide
+            as!u32(1)
+        }
+        // Align to the next multiple times of 8
+        size := widthInBlocks * heightInBlocks * level.Depth * elementSize
+        level.Data = make!u8(size)
+      }
+    }
+  }
+
   if (Images[image].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
     vkErrorExpectNVDedicatedlyAllocatedHandle("VkImage", as!u64(image))
   }
