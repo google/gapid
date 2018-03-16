@@ -304,10 +304,10 @@ enum LastSubmissionType {
 @serialize map!(VkDebugReportCallbackEXT, ref!DebugReportCallbackObject) DebugReportCallbacks
 // Other state Tracking
 @hidden @serialize map!(VkDevice, VkMemoryRequirements) TransferBufferMemoryRequirements
-@serialize ref!QueueObject                              LastBoundQueue
-@serialize map!(VkQueue, ref!DrawInfo)                  LastDrawInfos
-@serialize map!(VkQueue, ref!ComputeInfo)               LastComputeInfos
-@serialize PresentInfo                                  LastPresentInfo
+@serialize @untracked ref!QueueObject                   LastBoundQueue
+@serialize @untrackedMap map!(VkQueue, ref!DrawInfo)    LastDrawInfos
+@serialize @untrackedMap map!(VkQueue, ref!ComputeInfo) LastComputeInfos
+@serialize @untracked PresentInfo                       LastPresentInfo
 @serialize LastSubmissionType                           LastSubmission
 
 @hidden bool IsRebuilding
