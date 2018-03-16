@@ -109,6 +109,9 @@ cmd VkResult vkQueueSubmit(
     for j in (0 .. info.commandBufferCount) {
       enterSubcontext()
       cb := CommandBuffers[command_buffers[j]]
+      if cb.Recording != COMPLETED {
+        vkErrorCommandBufferIncomplete(command_buffers[j])
+      }
       for k in (0 .. len(cb.CommandReferences)) {
         ref := cb.CommandReferences[as!u32(k)]
         LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
@@ -127,6 +130,9 @@ cmd VkResult vkQueueSubmit(
           ec := cb.BufferCommands.vkCmdExecuteCommands[ref.MapIndex]
           for l in (0 .. len(ec.CommandBuffers)) {
             scb := CommandBuffers[ec.CommandBuffers[as!u32(l)]]
+            if scb.Recording != COMPLETED {
+              vkErrorCommandBufferIncomplete(ec.CommandBuffers[as!u32(l)])
+            }
             enterSubcontext()
             for c in (0 .. len(scb.CommandReferences)) {
               sref := scb.CommandReferences[as!u32(c)]
