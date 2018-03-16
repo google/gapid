@@ -303,7 +303,6 @@ cmd VkResult vkAllocateCommandBuffers(
       Level:         allocateInfo.level)
     command_pool := CommandPools[allocateInfo.commandPool]
     command_pool.CommandBuffers[command_buffer] = CommandBuffers[command_buffer]
-    CommandPools[allocateInfo.commandPool] = command_pool
   }
   return ?
 }
@@ -327,7 +326,6 @@ cmd void vkFreeCommandBuffers(
       pool := buffer_object.Pool
       pool_object := CommandPools[pool]
       delete(pool_object.CommandBuffers, buffer)
-      CommandPools[pool] = pool_object
       resetCmd(buffer)
       delete(CommandBuffers, buffer)
     }
@@ -359,7 +357,6 @@ cmd VkResult vkBeginCommandBuffer(
   buff := CommandBuffers[commandBuffer]
   buff.BeginInfo = begin
   buff.Recording = RECORDING
-  CommandBuffers[commandBuffer] = buff
   resetCommandBuffer(buff)
   return ?
 }
@@ -370,7 +367,6 @@ cmd VkResult vkEndCommandBuffer(
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   buff := CommandBuffers[commandBuffer]
   buff.Recording = COMPLETED
-  CommandBuffers[commandBuffer] = buff
   return ?
 }
 
@@ -383,7 +379,6 @@ cmd VkResult vkResetCommandBuffer(
   buff := CommandBuffers[commandBuffer]
   buff.Recording = NOT_STARTED
   buff.BeginInfo = null
-  CommandBuffers[commandBuffer] = buff
   resetCommandBuffer(buff)
   return ?
 }

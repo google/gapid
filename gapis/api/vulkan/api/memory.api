@@ -165,7 +165,6 @@ cmd VkResult vkMapMemory(
 
   mapMemory(ppData, as!u8*(memoryLocation)[0:memoryObject.MappedSize])
   memoryObject.MappedLocation = memoryLocation
-  DeviceMemories[memory] = memoryObject
   if (IsMemoryCoherent(memoryObject)) {
     trackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
   }
