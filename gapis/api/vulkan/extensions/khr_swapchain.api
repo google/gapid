@@ -266,7 +266,11 @@ cmd VkResult vkQueuePresentKHR(
   if (info.pWaitSemaphores != null) {
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for i in (0 .. info.waitSemaphoreCount) {
-      Semaphores[wait_semaphores[i]].Signaled = false
+      if (Semaphores[wait_semaphores[i]].Signaled) {
+        Semaphores[wait_semaphores[i]].Signaled = false
+      } else {
+        // TODO: handle case when semaphore is not yet signaled
+      }
     }
   }
   swapchains := info.pSwapchains[0:info.swapchainCount]
