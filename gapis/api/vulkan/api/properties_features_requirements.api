@@ -205,7 +205,6 @@ cmd void vkGetPhysicalDeviceMemoryProperties(
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   dev := PhysicalDevices[physicalDevice]
   dev.MemoryProperties = memoryProperties
-  PhysicalDevices[physicalDevice] = dev
 }
 
 @indirect("VkPhysicalDevice", "VkInstance")
