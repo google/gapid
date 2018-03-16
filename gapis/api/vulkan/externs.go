@@ -350,3 +350,10 @@ func (e externs) vkErrInvalidDescriptorArrayElement(set uint64, binding, arrayIn
 	issue.Severity = service.Severity_WarningLevel
 	issue.Error = fmt.Errorf("Invalid descriptor array element specified by descriptor set: %v, binding: %v array index: %v", set, binding, arrayIndex)
 }
+
+func (e externs) vkErrCommandBufferIncomplete(cmdbuf VkCommandBuffer) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Executing command buffer %v was not in the COMPLETED state", cmdbuf)
+}

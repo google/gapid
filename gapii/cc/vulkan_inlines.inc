@@ -38,3 +38,7 @@ inline void VulkanSpy::vkErrExpectNVDedicatedlyAllocatedHandle(CallObserver*, st
 inline void VulkanSpy::vkErrInvalidDescriptorArrayElement(CallObserver*, uint64_t set, uint32_t binding, uint32_t array_index) {
   GAPID_WARNING("Error: Invalid descriptor array element specified by descriptor set: %llu, binding: %lu, array index: %lu", set, binding, array_index);
 }
+
+inline void VulkanSpy::vkErrCommandBufferIncomplete(CallObserver*, VkCommandBuffer cmdbuf) {
+    GAPID_WARNING("Error: Executing command buffer %llu was not in the COMPLETED state", cmdbuf)
+}
