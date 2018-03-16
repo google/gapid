@@ -46,10 +46,14 @@ go_stripped_binary(
     name = "gapis",
     data = [
         "//cmd/gapir/cc:gapir",
-        "//gapidapk/android/apk:arm64-v8a.apk",
-        "//gapidapk/android/apk:armeabi-v7a.apk",
-        "//gapidapk/android/apk:x86.apk",
-    ],
+    ] + select({
+        "//tools/build:no-android": [],
+        "//conditions:default": [
+            "//gapidapk/android/apk:arm64-v8a.apk",
+            "//gapidapk/android/apk:armeabi-v7a.apk",
+            "//gapidapk/android/apk:x86.apk",
+        ],
+    }),
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )

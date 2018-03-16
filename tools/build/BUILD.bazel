@@ -93,3 +93,10 @@ config_setting(
     },
     visibility = ["//visibility:public"],
 )
+
+config_setting(
+    name = "no-android",
+    define_values = {
+        "NO_ANDROID": "1",
+    }
+)

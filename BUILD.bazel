@@ -61,11 +61,15 @@ copy_to(
         "//cmd/gapir/cc:gapir",
         "//cmd/gapis",
         "//cmd/gapit",
-        "//gapidapk/android/apk:arm64-v8a.apk",
-        "//gapidapk/android/apk:armeabi-v7a.apk",
-        "//gapidapk/android/apk:x86.apk",
         "//tools/build:build.properties",
-    ],
+    ] + select({
+        "//tools/build:no-android": [],
+        "//conditions:default": [
+            "//gapidapk/android/apk:arm64-v8a.apk",
+            "//gapidapk/android/apk:armeabi-v7a.apk",
+            "//gapidapk/android/apk:x86.apk",
+        ],
+    }),
     rename = {
         "armeabi-v7a.apk": "gapid-armeabi.apk",
         "arm64-v8a.apk": "gapid-aarch64.apk",
