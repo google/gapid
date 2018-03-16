@@ -67,10 +67,13 @@ go_library(
 go_binary(
     name = "robot",
     embed = [":go_default_library"],
-    data = [
-        "//gapidapk/android/apk:arm64-v8a.apk",
-        "//gapidapk/android/apk:armeabi-v7a.apk",
-        "//gapidapk/android/apk:x86.apk",
-    ],
+    data = select({
+        "//tools/build:no-android": [],
+        "//conditions:default": [
+            "//gapidapk/android/apk:arm64-v8a.apk",
+            "//gapidapk/android/apk:armeabi-v7a.apk",
+            "//gapidapk/android/apk:x86.apk",
+        ],
+    }),
     visibility = ["//visibility:public"],
 )
