@@ -221,7 +221,19 @@ type ipRenderJob struct {
 	finalLayout           VkImageLayout
 }
 
+const (
+	ipRenderInputAttachmentBinding = 0
+	ipRenderUniformBufferBinding   = 1
+)
+
+type ipRenderDescriptorSetInfo struct {
+	dev                 VkDevice
+	numInputAttachments int
+	numUniformBuffers   int
+}
+
 type ipRenderPassInfo struct {
+	dev                         VkDevice
 	numInputAttachments         int
 	inputAttachmentImageFormat  VkFormat
 	inputAttachmentImageSamples VkSampleCountFlagBits
@@ -236,17 +248,22 @@ type ipPipelineInfo struct {
 	renderPassInfo   ipRenderPassInfo
 }
 
+type ipShaderInfo struct {
+	dev    VkDevice
+	ticker imagePrimerShaderTicker
+}
+
 type ipRenderHandler struct {
 	sb *stateBuilder
 	// descriptor set layouts indexed by different number of input attachment
-	descriptorSetLayouts map[int]*DescriptorSetLayoutObject
+	descriptorSetLayouts map[ipRenderDescriptorSetInfo]*DescriptorSetLayoutObject
 	// pipeline layouts indexed by the number of input attachment in the only
 	// descriptor set layout of the pipeline layout.
-	pipelineLayouts map[int]*PipelineLayoutObject
+	pipelineLayouts map[ipRenderDescriptorSetInfo]*PipelineLayoutObject
 	// pipelines indexed by the pipeline info.
 	pipelines map[ipPipelineInfo]*GraphicsPipelineObject
 	// shaders indexed by shader ticker
-	shaders map[imagePrimerShaderTicker]*ShaderModuleObject
+	shaders map[ipShaderInfo]*ShaderModuleObject
 }
 
 // interfaces to interact with image primer
@@ -254,10 +271,10 @@ type ipRenderHandler struct {
 func newImagePrimerRenderHandler(sb *stateBuilder) *ipRenderHandler {
 	return &ipRenderHandler{
 		sb:                   sb,
-		descriptorSetLayouts: map[int]*DescriptorSetLayoutObject{},
-		pipelineLayouts:      map[int]*PipelineLayoutObject{},
+		descriptorSetLayouts: map[ipRenderDescriptorSetInfo]*DescriptorSetLayoutObject{},
+		pipelineLayouts:      map[ipRenderDescriptorSetInfo]*PipelineLayoutObject{},
 		pipelines:            map[ipPipelineInfo]*GraphicsPipelineObject{},
-		shaders:              map[imagePrimerShaderTicker]*ShaderModuleObject{},
+		shaders:              map[ipShaderInfo]*ShaderModuleObject{},
 	}
 }
 
@@ -277,26 +294,54 @@ func (h *ipRenderHandler) free() {
 }
 
 func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
-	if job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
-		return fmt.Errorf("rendering to stencil aspect is not implemented")
+	var outputBarrierAspect VkImageAspectFlags
+	switch job.aspect {
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
+		outputBarrierAspect = VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT)
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		switch job.renderTarget.Info.Format {
+		case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT,
+			VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
+			VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+			outputBarrierAspect = VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT |
+				VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT)
+		default:
+			outputBarrierAspect = VkImageAspectFlags(job.aspect)
+		}
+	default:
+		return fmt.Errorf("unsupported aspect: %v", job.aspect)
 	}
 
-	outputBarrierAspect := VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT)
-	outputPreRenderLayout := VkImageLayout_VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	if job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT ||
-		job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
-		outputBarrierAspect = VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT | VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT)
+	var outputPreRenderLayout VkImageLayout
+	switch job.aspect {
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
+		outputPreRenderLayout = VkImageLayout_VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		outputPreRenderLayout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+	default:
+		return fmt.Errorf("unsupported aspect: %v", job.aspect)
 	}
 
 	dev := job.renderTarget.Device
-	descPool := h.createDescriptorPool(dev, len(job.inputAttachmentImages))
+
+	descSetInfo := ipRenderDescriptorSetInfo{
+		dev:                 dev,
+		numInputAttachments: len(job.inputAttachmentImages),
+	}
+	if job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+		// If the render target aspect is stencil, an uniform buffer is required
+		// to store the stencil bit index value.
+		descSetInfo.numUniformBuffers = 1
+	}
+	descPool := h.createDescriptorPool(descSetInfo)
 	if descPool != nil {
 		defer h.sb.write(h.sb.cb.VkDestroyDescriptorPool(dev, descPool.VulkanHandle, memory.Nullptr))
 	} else {
 		return fmt.Errorf("failed to create descriptor pool for %v input attachments", len(job.inputAttachmentImages))
 	}
-	descSetLayout := h.getOrCreateDescriptorSetLayout(dev, len(job.inputAttachmentImages))
+	descSetLayout := h.getOrCreateDescriptorSetLayout(descSetInfo)
 	descSet := h.allocDescriptorSet(dev, descPool.VulkanHandle, descSetLayout.VulkanHandle)
 	if descSet != nil {
 		defer func() {
@@ -332,9 +377,27 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 		})
 	}
 
-	writeDescriptorSet(h.sb, dev, descSet.VulkanHandle, 0, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, imgInfoList, []VkDescriptorBufferInfo{}, []VkBufferView{})
+	writeDescriptorSet(h.sb, dev, descSet.VulkanHandle, ipRenderInputAttachmentBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, imgInfoList, []VkDescriptorBufferInfo{}, []VkBufferView{})
+
+	var stencilIndexBuf VkBuffer
+	var stencilIndexMem VkDeviceMemory
+	if job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+		// write the uniform buffer for rendering stencil value.
+		stencilBitIndices := []uint32{0}
+		var sbic bytes.Buffer
+		binary.Write(&sbic, binary.LittleEndian, stencilBitIndices)
+		stencilIndexBuf, stencilIndexMem = h.sb.allocAndFillScratchBuffer(h.sb.s.Devices.Get(dev), sbic.Bytes(), VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT|VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
+		defer h.sb.freeScratchBuffer(h.sb.s.Devices.Get(dev), stencilIndexBuf, stencilIndexMem)
+
+		bufInfoList := []VkDescriptorBufferInfo{
+			VkDescriptorBufferInfo{stencilIndexBuf, 0, 4},
+		}
+
+		writeDescriptorSet(h.sb, dev, descSet.VulkanHandle, ipRenderUniformBufferBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, []VkDescriptorImageInfo{}, bufInfoList, []VkBufferView{})
+	}
 
 	renderPassInfo := ipRenderPassInfo{
+		dev:                         dev,
 		numInputAttachments:         len(job.inputAttachmentImages),
 		inputAttachmentImageFormat:  job.inputAttachmentImages[0].Info.Format,
 		inputAttachmentImageSamples: job.inputAttachmentImages[0].Info.Samples,
@@ -342,7 +405,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 		targetFormat:                job.renderTarget.Info.Format,
 		targetSamples:               job.renderTarget.Info.Samples,
 	}
-	renderPass := h.createRenderPass(dev, renderPassInfo, job.finalLayout)
+	renderPass := h.createRenderPass(renderPassInfo, job.finalLayout)
 	if renderPass != nil {
 		defer h.sb.write(h.sb.cb.VkDestroyRenderPass(dev, renderPass.VulkanHandle, memory.Nullptr))
 	} else {
@@ -357,14 +420,15 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 
 	targetLevelSize := h.sb.levelSize(job.renderTarget.Info.Extent, job.renderTarget.Info.Format, job.level, job.aspect)
 
-	framebuffer := h.createFramebuffer(dev, renderPass.VulkanHandle, allViews, uint32(targetLevelSize.width), uint32(targetLevelSize.height))
+	framebuffer := h.createFramebuffer(dev, renderPass.VulkanHandle, allViews,
+		uint32(targetLevelSize.width), uint32(targetLevelSize.height))
 	if framebuffer != nil {
 		defer h.sb.write(h.sb.cb.VkDestroyFramebuffer(dev, framebuffer.VulkanHandle, memory.Nullptr))
 	} else {
 		return fmt.Errorf("failed to create framebuffer for rendering")
 	}
 
-	pipelineLayout := h.getOrCreatePipelineLayout(dev, len(job.inputAttachmentImages))
+	pipelineLayout := h.getOrCreatePipelineLayout(descSetInfo)
 	if pipelineLayout == nil {
 		return fmt.Errorf("failed to get pipeline layout for the rendering")
 	}
@@ -378,7 +442,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 		pipelineLayout:   pipelineLayout.VulkanHandle,
 		renderPassInfo:   renderPassInfo,
 	}
-	pipeline := h.getOrCreateGraphicsPipeline(dev, pipelineInfo, renderPass.VulkanHandle)
+	pipeline := h.getOrCreateGraphicsPipeline(pipelineInfo, renderPass.VulkanHandle)
 	if pipeline == nil {
 		return fmt.Errorf("failed to get pipeline for the rendering")
 	}
@@ -426,7 +490,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 		NewVoidᶜᵖ(memory.Nullptr),
 		VkAccessFlags(0),
-		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
 		GetState(h.sb.newState).Images.Get(job.renderTarget.VulkanHandle).Info.Layout,
 		outputPreRenderLayout,
 		queue.Family,
@@ -439,6 +503,30 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 			0,
 			job.renderTarget.Info.ArrayLayers,
 		}}
+	bufBarriers := []VkBufferMemoryBarrier{
+		VkBufferMemoryBarrier{
+			VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			NewVoidᶜᵖ(memory.Nullptr),
+			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
+			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT),
+			uint32(queue.Family),
+			uint32(queue.Family),
+			vertexBuf,
+			0,
+			VkDeviceSize(len(vc.Bytes())),
+		},
+		VkBufferMemoryBarrier{
+			VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			NewVoidᶜᵖ(memory.Nullptr),
+			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
+			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INDEX_READ_BIT),
+			uint32(queue.Family),
+			uint32(queue.Family),
+			indexBuf,
+			0,
+			VkDeviceSize(len(ic.Bytes())),
+		},
+	}
 
 	h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
 		commandBuffer,
@@ -447,47 +535,196 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 		VkDependencyFlags(0),
 		uint32(0),
 		memory.Nullptr,
-		uint32(2),
-		h.sb.MustAllocReadData(
-			[]VkBufferMemoryBarrier{
-				VkBufferMemoryBarrier{
-					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-					NewVoidᶜᵖ(memory.Nullptr),
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
-					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT),
-					uint32(queue.Family),
-					uint32(queue.Family),
-					vertexBuf,
-					0,
-					VkDeviceSize(len(vc.Bytes())),
-				},
-				VkBufferMemoryBarrier{
-					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-					NewVoidᶜᵖ(memory.Nullptr),
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
-					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INDEX_READ_BIT),
-					uint32(queue.Family),
-					uint32(queue.Family),
-					indexBuf,
-					0,
-					VkDeviceSize(len(ic.Bytes())),
-				},
-			}).Ptr(),
+		uint32(len(bufBarriers)),
+		h.sb.MustAllocReadData(bufBarriers).Ptr(),
 		uint32(len(append(inputBarriers, outputBarrier))),
 		h.sb.MustAllocReadData(append(inputBarriers, outputBarrier)).Ptr(),
 	))
 
+	switch job.aspect {
+	// render color or depth aspect
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
+		drawInfo := ipRenderDrawInfo{
+			commandBuffer:    commandBuffer,
+			renderPass:       renderPass,
+			framebuffer:      framebuffer,
+			descSet:          descSet,
+			pipelineLayout:   pipelineLayout,
+			pipeline:         pipeline,
+			vertexBuf:        vertexBuf,
+			indexBuf:         indexBuf,
+			aspect:           job.aspect,
+			width:            uint32(targetLevelSize.width),
+			height:           uint32(targetLevelSize.height),
+			stencilWriteMask: 0,
+			stencilReference: 0,
+			clearStencil:     false,
+		}
+		h.beginRenderPassAndDraw(drawInfo)
+
+	// render stencil aspect
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		// render the i'th bit of all pixels.
+		for i := uint32(0); i < uint32(8); i++ {
+			h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+				commandBuffer,
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkDependencyFlags(0),
+				uint32(0),
+				memory.Nullptr,
+				uint32(1),
+				h.sb.MustAllocReadData([]VkBufferMemoryBarrier{
+					VkBufferMemoryBarrier{
+						VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+						NewVoidᶜᵖ(memory.Nullptr),
+						VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
+						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT),
+						uint32(queue.Family),
+						uint32(queue.Family),
+						stencilIndexBuf,
+						0,
+						VkDeviceSize(0xFFFFFFFFFFFFFFFF),
+					}}).Ptr(),
+				uint32(1),
+				h.sb.MustAllocReadData([]VkImageMemoryBarrier{
+					VkImageMemoryBarrier{
+						VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+						NewVoidᶜᵖ(memory.Nullptr),
+						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+						VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+						VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+						queue.Family,
+						queue.Family,
+						job.renderTarget.VulkanHandle,
+						VkImageSubresourceRange{
+							outputBarrierAspect,
+							0,
+							job.renderTarget.Info.MipLevels,
+							0,
+							job.renderTarget.Info.ArrayLayers,
+						}},
+				}).Ptr(),
+			))
+			h.sb.write(h.sb.cb.VkCmdUpdateBuffer(
+				commandBuffer,
+				stencilIndexBuf,
+				0, 4, NewVoidᶜᵖ(h.sb.MustAllocReadData([]uint32{i}).Ptr()),
+			))
+			h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+				commandBuffer,
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkDependencyFlags(0),
+				uint32(0),
+				memory.Nullptr,
+				uint32(1),
+				h.sb.MustAllocReadData([]VkBufferMemoryBarrier{
+					VkBufferMemoryBarrier{
+						VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+						NewVoidᶜᵖ(memory.Nullptr),
+						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT),
+						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_UNIFORM_READ_BIT),
+						uint32(queue.Family),
+						uint32(queue.Family),
+						stencilIndexBuf,
+						0,
+						VkDeviceSize(0xFFFFFFFFFFFFFFFF),
+					}}).Ptr(),
+				uint32(0),
+				memory.Nullptr,
+			))
+			drawInfo := ipRenderDrawInfo{
+				commandBuffer:    commandBuffer,
+				renderPass:       renderPass,
+				framebuffer:      framebuffer,
+				descSet:          descSet,
+				pipelineLayout:   pipelineLayout,
+				pipeline:         pipeline,
+				vertexBuf:        vertexBuf,
+				indexBuf:         indexBuf,
+				aspect:           VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT,
+				width:            uint32(targetLevelSize.width),
+				height:           uint32(targetLevelSize.height),
+				stencilWriteMask: 0x1 << i,
+				stencilReference: 0x1 << i,
+				clearStencil:     false,
+			}
+			if i == uint32(0) {
+				drawInfo.clearStencil = true
+			}
+			h.beginRenderPassAndDraw(drawInfo)
+		}
+		h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+			commandBuffer,
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkDependencyFlags(0),
+			uint32(0),
+			memory.Nullptr,
+			uint32(0),
+			memory.Nullptr,
+			uint32(1),
+			h.sb.MustAllocReadData([]VkImageMemoryBarrier{
+				VkImageMemoryBarrier{
+					VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+					NewVoidᶜᵖ(memory.Nullptr),
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+					VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+					job.finalLayout,
+					queue.Family,
+					queue.Family,
+					job.renderTarget.VulkanHandle,
+					VkImageSubresourceRange{
+						outputBarrierAspect,
+						0,
+						job.renderTarget.Info.MipLevels,
+						0,
+						job.renderTarget.Info.ArrayLayers,
+					}},
+			}).Ptr(),
+		))
+	default:
+		return fmt.Errorf("invalid aspect: %v to render", job.aspect)
+	}
+
+	h.sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
+	return nil
+}
+
+// internal functions for render handler
+
+type ipRenderDrawInfo struct {
+	commandBuffer    VkCommandBuffer
+	renderPass       *RenderPassObject
+	framebuffer      *FramebufferObject
+	descSet          *DescriptorSetObject
+	pipelineLayout   *PipelineLayoutObject
+	pipeline         *GraphicsPipelineObject
+	vertexBuf        VkBuffer
+	indexBuf         VkBuffer
+	aspect           VkImageAspectFlagBits
+	width            uint32
+	height           uint32
+	stencilWriteMask uint32
+	stencilReference uint32
+	clearStencil     bool
+}
+
+func (h *ipRenderHandler) beginRenderPassAndDraw(info ipRenderDrawInfo) {
 	h.sb.write(h.sb.cb.VkCmdBeginRenderPass(
-		commandBuffer,
+		info.commandBuffer,
 		h.sb.MustAllocReadData(
 			VkRenderPassBeginInfo{
 				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 				NewVoidᶜᵖ(memory.Nullptr),
-				renderPass.VulkanHandle,
-				framebuffer.VulkanHandle,
+				info.renderPass.VulkanHandle,
+				info.framebuffer.VulkanHandle,
 				VkRect2D{
 					VkOffset2D{int32(0), int32(0)},
-					VkExtent2D{uint32(targetLevelSize.width), uint32(targetLevelSize.height)},
+					VkExtent2D{info.width, info.height},
 				},
 				uint32(0),
 				NewVkClearValueᶜᵖ(memory.Nullptr),
@@ -495,75 +732,97 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 		VkSubpassContents(0),
 	))
 
-	h.sb.write(h.sb.cb.VkCmdBindPipeline(
-		commandBuffer,
-		VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.VulkanHandle,
-	))
+	if info.clearStencil {
+		h.sb.write(h.sb.cb.VkCmdClearAttachments(
+			info.commandBuffer,
+			uint32(1),
+			h.sb.MustAllocReadData([]VkClearAttachment{
+				VkClearAttachment{
+					VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT),
+					uint32(0),
+					VkClearValue{VkClearColorValue{[4]uint32{0, 0, 0, 0}}},
+				},
+			}).Ptr(),
+			uint32(1),
+			h.sb.MustAllocReadData([]VkClearRect{
+				VkClearRect{
+					VkRect2D{
+						VkOffset2D{int32(0), int32(0)},
+						VkExtent2D{info.width, info.height},
+					}, // rect
+					// the baseArrayLayer counts from the base layer of the
+					// attachment image view.
+					uint32(0), // baseArrayLayer
+					uint32(1), // layerCount
+				},
+			}).Ptr(),
+		))
+	}
 
-	// set dynamic states
+	h.sb.write(h.sb.cb.VkCmdBindPipeline(
+		info.commandBuffer,
+		VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS,
+		info.pipeline.VulkanHandle,
+	))
+	h.sb.write(h.sb.cb.VkCmdBindVertexBuffers(
+		info.commandBuffer,
+		0, 1,
+		h.sb.MustAllocReadData(info.vertexBuf).Ptr(),
+		h.sb.MustAllocReadData(VkDeviceSize(0)).Ptr(),
+	))
+	h.sb.write(h.sb.cb.VkCmdBindIndexBuffer(
+		info.commandBuffer,
+		info.indexBuf,
+		VkDeviceSize(0),
+		VkIndexType_VK_INDEX_TYPE_UINT32,
+	))
 	h.sb.write(h.sb.cb.VkCmdSetViewport(
-		commandBuffer,
+		info.commandBuffer,
 		uint32(0),
 		uint32(1),
 		NewVkViewportᶜᵖ(h.sb.MustAllocReadData(VkViewport{
 			0.0, 0.0,
-			float32(targetLevelSize.width), float32(targetLevelSize.height),
+			float32(info.width), float32(info.height),
 			0.0, 1.0,
 		}).Ptr()),
 	))
 	h.sb.write(h.sb.cb.VkCmdSetScissor(
-		commandBuffer,
+		info.commandBuffer,
 		uint32(0),
 		uint32(1),
 		NewVkRect2Dᶜᵖ(h.sb.MustAllocReadData(VkRect2D{
 			VkOffset2D{int32(0), int32(0)},
-			VkExtent2D{uint32(targetLevelSize.width), uint32(targetLevelSize.height)},
+			VkExtent2D{info.width, info.height},
 		}).Ptr()),
 	))
-
-	if job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
-		// TODO set stencil test dynamic state.
+	if info.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+		h.sb.write(h.sb.cb.VkCmdSetStencilWriteMask(
+			info.commandBuffer,
+			VkStencilFaceFlags(VkStencilFaceFlagBits_VK_STENCIL_FRONT_AND_BACK),
+			info.stencilWriteMask,
+		))
+		h.sb.write(h.sb.cb.VkCmdSetStencilReference(
+			info.commandBuffer,
+			VkStencilFaceFlags(VkStencilFaceFlagBits_VK_STENCIL_FRONT_AND_BACK),
+			info.stencilReference,
+		))
 	}
-
 	h.sb.write(h.sb.cb.VkCmdBindDescriptorSets(
-		commandBuffer,
+		info.commandBuffer,
 		VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipelineLayout.VulkanHandle,
+		info.pipelineLayout.VulkanHandle,
 		0,
 		1,
-		h.sb.MustAllocReadData(descSet.VulkanHandle).Ptr(),
+		h.sb.MustAllocReadData(info.descSet.VulkanHandle).Ptr(),
 		0,
 		NewU32ᶜᵖ(memory.Nullptr),
 	))
-
-	h.sb.write(h.sb.cb.VkCmdBindVertexBuffers(
-		commandBuffer,
-		0, 1,
-		h.sb.MustAllocReadData(vertexBuf).Ptr(),
-		h.sb.MustAllocReadData(VkDeviceSize(0)).Ptr(),
-	))
-
-	h.sb.write(h.sb.cb.VkCmdBindIndexBuffer(
-		commandBuffer,
-		indexBuf,
-		VkDeviceSize(0),
-		VkIndexType_VK_INDEX_TYPE_UINT32,
-	))
-
 	h.sb.write(h.sb.cb.VkCmdDrawIndexed(
-		commandBuffer,
+		info.commandBuffer,
 		6, 1, 0, 0, 0,
 	))
-
-	h.sb.write(h.sb.cb.VkCmdEndRenderPass(commandBuffer))
-
-	h.sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
-
-	return nil
+	h.sb.write(h.sb.cb.VkCmdEndRenderPass(info.commandBuffer))
 }
-
-// internal functions for render handler
 
 func (h *ipRenderHandler) createFramebuffer(dev VkDevice, renderPass VkRenderPass, imgViews []VkImageView, width, height uint32) *FramebufferObject {
 	handle := VkFramebuffer(newUnusedID(true, func(x uint64) bool {
@@ -644,21 +903,32 @@ func (h *ipRenderHandler) allocDescriptorSet(dev VkDevice, pool VkDescriptorPool
 	return GetState(h.sb.newState).DescriptorSets.Get(handle)
 }
 
-func (h *ipRenderHandler) createDescriptorPool(dev VkDevice, numInputAttachments int) *DescriptorPoolObject {
+func (h *ipRenderHandler) createDescriptorPool(descSetInfo ipRenderDescriptorSetInfo) *DescriptorPoolObject {
 	handle := VkDescriptorPool(newUnusedID(true, func(x uint64) bool {
 		return GetState(h.sb.newState).DescriptorPools.Contains(VkDescriptorPool(x))
 	}))
-	vkCreateDescriptorPool(h.sb, dev, VkDescriptorPoolCreateFlags(
-		VkDescriptorPoolCreateFlagBits_VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-		1, []VkDescriptorPoolSize{VkDescriptorPoolSize{
+
+	poolSizes := []VkDescriptorPoolSize{}
+	if descSetInfo.numInputAttachments != 0 {
+		poolSizes = append(poolSizes, VkDescriptorPoolSize{
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-			uint32(numInputAttachments),
-		}},
-		handle)
+			uint32(descSetInfo.numInputAttachments),
+		})
+	}
+	if descSetInfo.numUniformBuffers != 0 {
+		poolSizes = append(poolSizes, VkDescriptorPoolSize{
+			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			uint32(descSetInfo.numUniformBuffers),
+		})
+	}
+
+	vkCreateDescriptorPool(h.sb, descSetInfo.dev, VkDescriptorPoolCreateFlags(
+		VkDescriptorPoolCreateFlagBits_VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+		1, poolSizes, handle)
 	return GetState(h.sb.newState).DescriptorPools.Get(handle)
 }
 
-func (h *ipRenderHandler) createRenderPass(dev VkDevice, info ipRenderPassInfo, finalLayout VkImageLayout) *RenderPassObject {
+func (h *ipRenderHandler) createRenderPass(info ipRenderPassInfo, finalLayout VkImageLayout) *RenderPassObject {
 	inputAttachmentRefs := make([]VkAttachmentReference, info.numInputAttachments)
 	inputAttachmentDescs := make([]VkAttachmentDescription, info.numInputAttachments)
 	for i := 0; i < info.numInputAttachments; i++ {
@@ -688,8 +958,10 @@ func (h *ipRenderHandler) createRenderPass(dev VkDevice, info ipRenderPassInfo, 
 		info.targetSamples,
 		VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE,
-		VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-		VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		// Keep the stencil aspect data. When rendering color or depth aspect,
+		// stencil test will be disabled so stencil data won't be modified.
+		VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD,
+		VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE,
 		// The layout will be set later according to the image aspect bit.
 		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 		finalLayout,
@@ -714,10 +986,16 @@ func (h *ipRenderHandler) createRenderPass(dev VkDevice, info ipRenderPassInfo, 
 		outputAttachmentDesc.InitialLayout = VkImageLayout_VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 		subpassDesc.ColorAttachmentCount = uint32(1)
 		subpassDesc.PColorAttachments = NewVkAttachmentReferenceᶜᵖ(h.sb.MustAllocReadData(outputAttachmentRef).Ptr())
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
-		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
 		outputAttachmentRef.Layout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 		outputAttachmentDesc.InitialLayout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+		subpassDesc.PDepthStencilAttachment = NewVkAttachmentReferenceᶜᵖ(h.sb.MustAllocReadData(outputAttachmentRef).Ptr())
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		outputAttachmentRef.Layout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+		outputAttachmentDesc.InitialLayout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+		// Rendering stencil data requires running the renderpass multiple times,
+		// so do not change the image layout at the end of the renderpass
+		outputAttachmentDesc.FinalLayout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 		subpassDesc.PDepthStencilAttachment = NewVkAttachmentReferenceᶜᵖ(h.sb.MustAllocReadData(outputAttachmentRef).Ptr())
 	default:
 		return nil
@@ -742,7 +1020,7 @@ func (h *ipRenderHandler) createRenderPass(dev VkDevice, info ipRenderPassInfo, 
 	}))
 
 	h.sb.write(h.sb.cb.VkCreateRenderPass(
-		dev,
+		info.dev,
 		NewVkRenderPassCreateInfoᶜᵖ(h.sb.MustAllocReadData(createInfo).Ptr()),
 		memory.Nullptr,
 		h.sb.MustAllocWriteData(handle).Ptr(),
@@ -752,16 +1030,16 @@ func (h *ipRenderHandler) createRenderPass(dev VkDevice, info ipRenderPassInfo, 
 	return GetState(h.sb.newState).RenderPasses.Get(handle)
 }
 
-func (h *ipRenderHandler) getOrCreateGraphicsPipeline(dev VkDevice, info ipPipelineInfo, renderPass VkRenderPass) *GraphicsPipelineObject {
+func (h *ipRenderHandler) getOrCreateGraphicsPipeline(info ipPipelineInfo, renderPass VkRenderPass) *GraphicsPipelineObject {
 	if p, ok := h.pipelines[info]; ok {
 		return p
 	}
 
-	vertShader := h.getOrCreateShaderModule(dev, ipRenderVert)
+	vertShader := h.getOrCreateShaderModule(info.renderPassInfo.dev, ipRenderVert)
 	if vertShader == nil {
 		return nil
 	}
-	fragShader := h.getOrCreateShaderModule(dev, info.fragShaderTicker)
+	fragShader := h.getOrCreateShaderModule(info.renderPassInfo.dev, info.fragShaderTicker)
 	if fragShader == nil {
 		return nil
 	}
@@ -802,7 +1080,7 @@ func (h *ipRenderHandler) getOrCreateGraphicsPipeline(dev VkDevice, info ipPipel
 			VkStencilOp_VK_STENCIL_OP_REPLACE, // passOp
 			VkStencilOp_VK_STENCIL_OP_REPLACE, // depthFailOp
 			VkCompareOp_VK_COMPARE_OP_ALWAYS,  // compareOp
-			0xFF, // compareMask
+			0, // compareMask
 			// write mask and reference must be set dynamically
 			0, // writeMask
 			0, // reference
@@ -942,7 +1220,7 @@ func (h *ipRenderHandler) getOrCreateGraphicsPipeline(dev VkDevice, info ipPipel
 	}))
 
 	h.sb.write(h.sb.cb.VkCreateGraphicsPipelines(
-		dev, VkPipelineCache(0), uint32(1),
+		info.renderPassInfo.dev, VkPipelineCache(0), uint32(1),
 		NewVkGraphicsPipelineCreateInfoᶜᵖ(h.sb.MustAllocReadData(createInfo).Ptr()),
 		memory.Nullptr, h.sb.MustAllocWriteData(handle).Ptr(), VkResult_VK_SUCCESS,
 	))
@@ -952,7 +1230,11 @@ func (h *ipRenderHandler) getOrCreateGraphicsPipeline(dev VkDevice, info ipPipel
 }
 
 func (h *ipRenderHandler) getOrCreateShaderModule(dev VkDevice, ticker imagePrimerShaderTicker) *ShaderModuleObject {
-	if m, ok := h.shaders[ticker]; ok {
+	info := ipShaderInfo{
+		dev:    dev,
+		ticker: ticker,
+	}
+	if m, ok := h.shaders[info]; ok {
 		return m
 	}
 	handle := VkShaderModule(newUnusedID(true, func(x uint64) bool {
@@ -963,25 +1245,25 @@ func (h *ipRenderHandler) getOrCreateShaderModule(dev VkDevice, ticker imagePrim
 		return nil
 	}
 	vkCreateShaderModule(h.sb, dev, code, handle)
-	h.shaders[ticker] = GetState(h.sb.newState).ShaderModules.Get(handle)
-	return h.shaders[ticker]
+	h.shaders[info] = GetState(h.sb.newState).ShaderModules.Get(handle)
+	return h.shaders[info]
 }
 
-func (h *ipRenderHandler) getOrCreatePipelineLayout(dev VkDevice, numInputAttachment int) *PipelineLayoutObject {
-	if l, ok := h.pipelineLayouts[numInputAttachment]; ok {
+func (h *ipRenderHandler) getOrCreatePipelineLayout(descSetInfo ipRenderDescriptorSetInfo) *PipelineLayoutObject {
+	if l, ok := h.pipelineLayouts[descSetInfo]; ok {
 		return l
 	}
 	handle := VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
 		return GetState(h.sb.newState).PipelineLayouts.Contains(VkPipelineLayout(x))
 	}))
-	descriptorSet := h.getOrCreateDescriptorSetLayout(dev, numInputAttachment)
-	vkCreatePipelineLayout(h.sb, dev, []VkDescriptorSetLayout{descriptorSet.VulkanHandle}, []VkPushConstantRange{}, handle)
-	h.pipelineLayouts[numInputAttachment] = GetState(h.sb.newState).PipelineLayouts.Get(handle)
-	return h.pipelineLayouts[numInputAttachment]
+	descriptorSet := h.getOrCreateDescriptorSetLayout(descSetInfo)
+	vkCreatePipelineLayout(h.sb, descSetInfo.dev, []VkDescriptorSetLayout{descriptorSet.VulkanHandle}, []VkPushConstantRange{}, handle)
+	h.pipelineLayouts[descSetInfo] = GetState(h.sb.newState).PipelineLayouts.Get(handle)
+	return h.pipelineLayouts[descSetInfo]
 }
 
-func (h *ipRenderHandler) getOrCreateDescriptorSetLayout(dev VkDevice, numInputAttachment int) *DescriptorSetLayoutObject {
-	if l, ok := h.descriptorSetLayouts[numInputAttachment]; ok {
+func (h *ipRenderHandler) getOrCreateDescriptorSetLayout(descSetInfo ipRenderDescriptorSetInfo) *DescriptorSetLayoutObject {
+	if l, ok := h.descriptorSetLayouts[descSetInfo]; ok {
 		return l
 	}
 
@@ -989,15 +1271,29 @@ func (h *ipRenderHandler) getOrCreateDescriptorSetLayout(dev VkDevice, numInputA
 		return GetState(h.sb.newState).DescriptorSetLayouts.Contains(VkDescriptorSetLayout(x))
 	}))
 
-	bindings := []VkDescriptorSetLayoutBinding{VkDescriptorSetLayoutBinding{
-		0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-		uint32(numInputAttachment),
-		VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT),
-		NewVkSamplerᶜᵖ(memory.Nullptr),
-	}}
-	vkCreateDescriptorSetLayout(h.sb, dev, bindings, handle)
-	h.descriptorSetLayouts[numInputAttachment] = GetState(h.sb.newState).DescriptorSetLayouts.Get(handle)
-	return h.descriptorSetLayouts[numInputAttachment]
+	bindings := []VkDescriptorSetLayoutBinding{}
+	if descSetInfo.numInputAttachments != 0 {
+		bindings = append(bindings, VkDescriptorSetLayoutBinding{
+			ipRenderInputAttachmentBinding,
+			VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+			uint32(descSetInfo.numInputAttachments),
+			VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT),
+			NewVkSamplerᶜᵖ(memory.Nullptr),
+		})
+	}
+	if descSetInfo.numUniformBuffers != 0 {
+		bindings = append(bindings, VkDescriptorSetLayoutBinding{
+			ipRenderUniformBufferBinding,
+			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			uint32(descSetInfo.numUniformBuffers),
+			VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT),
+			NewVkSamplerᶜᵖ(memory.Nullptr),
+		})
+	}
+
+	vkCreateDescriptorSetLayout(h.sb, descSetInfo.dev, bindings, handle)
+	h.descriptorSetLayouts[descSetInfo] = GetState(h.sb.newState).DescriptorSetLayouts.Get(handle)
+	return h.descriptorSetLayouts[descSetInfo]
 }
 
 // Buffer->Image copy session
@@ -1153,7 +1449,7 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue *QueueObject, dst
 				NewVoidᶜᵖ(memory.Nullptr),
 				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
 				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
-				VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
+				GetState(h.sb.newState).Images.Get(dstImg.VulkanHandle).Info.Layout,
 				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				oldQueueFamilyIndex,
 				uint32(submissionQueue.Family),
@@ -1207,10 +1503,13 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue *QueueObject, dst
 		}
 	}
 
-	for _, barrier := range dstImgBarriers {
-		barrier.OldLayout = VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-		barrier.NewLayout = h.job.finalLayout
-		barrier.SrcQueueFamilyIndex = uint32(submissionQueue.Family)
+	for i := range dstImgBarriers {
+		dstImgBarriers[i].OldLayout = VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+		dstImgBarriers[i].NewLayout = h.job.finalLayout
+		dstImgBarriers[i].SrcQueueFamilyIndex = uint32(submissionQueue.Family)
+		if h.job.srcImg.LastBoundQueue != nil {
+			dstImgBarriers[i].DstQueueFamilyIndex = uint32(h.job.srcImg.LastBoundQueue.Family)
+		}
 	}
 
 	h.sb.write(h.sb.cb.VkCmdPipelineBarrier(

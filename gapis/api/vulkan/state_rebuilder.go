@@ -1506,7 +1506,11 @@ func (sb *stateBuilder) createImage(img *ImageObject, imgPrimer *imagePrimer) {
 	// We don't currently prime the data in any of these formats.
 	if img.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
 		sb.transitionImage(img, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout)
+		log.E(sb.ctx, "[Priming the data of image: %v] priming data for MS images not implemented")
 		return
+	}
+	if img.LastBoundQueue == nil {
+		log.W(sb.ctx, "[Priming the data of image: %v] image has never been used on any queue, using arbitrary queue for the priming commands")
 	}
 	// We have to handle the above cases at some point.
 	var err error
