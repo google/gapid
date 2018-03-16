@@ -163,7 +163,6 @@ template <typename T>
 Slice<T> Slice<T>::operator()(uint64_t start, uint64_t end) const {
     GAPID_ASSERT_MSG(start <= end, "slice start is after end");
     GAPID_ASSERT_MSG(end <= count(), "slice index out of bounds");
-    GAPID_ASSERT_MSG(data.base != nullptr || (start == end), "slice of null slice");
     auto count = end - start;
     Slice<T> out;
     out.data.pool = data.pool;
