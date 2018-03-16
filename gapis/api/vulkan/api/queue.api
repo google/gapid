@@ -59,16 +59,16 @@ cmd void vkGetDeviceQueue(
     u32      queueIndex,
     VkQueue* pQueue) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  dev := Devices[device]
   id := ?
-  Queues[id] = new!QueueObject(
-    Device: device,
-    Family:  queueFamilyIndex,
-    Index:  queueIndex,
-    VulkanHandle:  id)
-
-  dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
-
+  if !(id in Queues) {
+    Queues[id] = new!QueueObject(
+      Device: device,
+      Family:  queueFamilyIndex,
+      Index:  queueIndex,
+      VulkanHandle:  id)
+    dev := Devices[device]
+    dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
+  }
   if pQueue == null { vkErrorNullPointer("VkQueue") }
   pQueue[0] = id
 }
