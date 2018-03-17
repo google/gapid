@@ -112,7 +112,7 @@ github_repository(
     name = "glslang",
     organization = "KhronosGroup",
     project = "glslang",
-    commit = "2ad4737dc2bde938a0d121fca040af66b7b8a35d",
+    commit = "56e8056582c92e0226d87418171d06f4e74ff29b",
     build_file = "//tools/build/third_party:glslang.BUILD",
 )
 
