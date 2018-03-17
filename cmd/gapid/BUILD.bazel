@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "go_stripped_binary")
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_binary")
 
 go_library(
     name = "go_default_library",
@@ -59,7 +58,8 @@ go_library(
     visibility = ["//visibility:private"],
 )
 
-go_stripped_binary(
+# BUG: This isn't go_stripped_binary due to issue #1753.
+go_binary(
     name = "gapid",
     embed = [":go_default_library"],
     gc_linkopts = select({
