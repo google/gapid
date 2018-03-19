@@ -286,17 +286,21 @@ sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
   if lastDrawInfo().LastSubpass < len(lastDrawInfo().RenderPass.SubpassDescriptions) {
     subpass := lastDrawInfo().RenderPass.SubpassDescriptions[lastDrawInfo().LastSubpass]
     for _ , _ , a in subpass.InputAttachments {
-      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpass.ColorAttachments {
-      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpass.ResolveAttachments {
-      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     if subpass.DepthStencilAttachment != null {
       dsRef := subpass.DepthStencilAttachment
-      lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+      attachment := lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment]
+      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, dsRef.Layout)
     }
   }
   popAndPushMarkerForNextSubpass(lastDrawInfo().LastSubpass)

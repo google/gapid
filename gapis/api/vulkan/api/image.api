@@ -452,16 +452,65 @@ cmd void vkDestroySampler(
 
 sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout layout) {
   if (image.Info.Layout != layout) { vkErrorImageLayout(image.Info.Layout, layout) }
+  VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
+  VK_REMAINING_MIP_LEVELS   := as!u32(0xFFFFFFFF)
   for _, _, aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
     aspect := image.Aspects[aspectBit]
-    for m in (0 .. rng.layerCount) {
-      layerIndex := as!u32(m) + rng.baseArrayLayer
+    layerEnd := switch (rng.layerCount == VK_REMAINING_ARRAY_LAYERS) {
+      case true:
+        image.Info.ArrayLayers - rng.baseArrayLayer
+      case false:
+        rng.layerCount
+    }
+    levelEnd := switch (rng.levelCount == VK_REMAINING_MIP_LEVELS) {
+      case true:
+        image.Info.MipLevels - rng.baseMipLevel
+      case false:
+        rng.levelCount
+    }
+    for layerIndex in (rng.baseArrayLayer .. layerEnd) {
       layer := aspect.Layers[layerIndex]
-      for n in (0 .. rng.levelCount) {
-        mipLevel := as!u32(n) + rng.baseMipLevel
+      for mipLevel in (rng.baseMipLevel .. levelEnd) {
         level := layer.Levels[mipLevel]
         read(level.Data)
       }
     }
   }
+}
+
+sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout layout) {
+  if layout != VK_IMAGE_LAYOUT_UNDEFINED {
+    if image.Info.Layout != layout { vkErrorImageLayout(image.Info.Layout, layout) }
+  }
+  VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
+  VK_REMAINING_MIP_LEVELS   := as!u32(0xFFFFFFFF)
+  for _, _, aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
+    aspect := image.Aspects[aspectBit]
+    layerEnd := switch (rng.layerCount == VK_REMAINING_ARRAY_LAYERS) {
+      case true:
+        image.Info.ArrayLayers - rng.baseArrayLayer
+      case false:
+        rng.layerCount
+    }
+    levelEnd := switch (rng.levelCount == VK_REMAINING_MIP_LEVELS) {
+      case true:
+        image.Info.MipLevels - rng.baseMipLevel
+      case false:
+        rng.levelCount
+    }
+    for layerIndex in (rng.baseArrayLayer .. layerEnd) {
+      layer := aspect.Layers[layerIndex]
+      for mipLevel in (rng.baseMipLevel .. levelEnd) {
+        level := layer.Levels[mipLevel]
+        write(level.Data)
+      }
+    }
+  }
+}
+
+sub void transitionImageLayout(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout oldLayout, VkImageLayout newLayout) {
+  if ((oldLayout != VK_IMAGE_LAYOUT_UNDEFINED) && (oldLayout != image.Info.Layout)) {
+    vkErrorImageLayout(image.Info.Layout, oldLayout)
+  }
+  image.Info.Layout = newLayout
 }
