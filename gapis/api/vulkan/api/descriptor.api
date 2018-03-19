@@ -664,6 +664,16 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
             readMemoryInBuffer(buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
           }
         }
+        for k in (0 .. len(binding.ImageBinding)) {
+          imageBinding := binding.ImageBinding[as!u32(k)]
+          _ = Samplers[imageBinding.Sampler]
+          if (imageBinding.ImageView != as!VkImageView(0)) {
+            imageViewObj := ImageViews[imageBinding.ImageView]
+            imageObj := imageViewObj.Image
+            rng := imageViewObj.SubresourceRange
+            readImageSubresource(imageObj, rng, imageBinding.ImageLayout)
+          }
+        }
       }
     }
   }

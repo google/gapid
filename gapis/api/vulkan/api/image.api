@@ -450,3 +450,18 @@ cmd void vkDestroySampler(
   delete(Samplers, sampler)
 }
 
+sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout layout) {
+  if (image.Info.Layout != layout) { vkErrorImageLayout(image.Info.Layout, layout) }
+  for _, _, aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
+    aspect := image.Aspects[aspectBit]
+    for m in (0 .. rng.layerCount) {
+      layerIndex := as!u32(m) + rng.baseArrayLayer
+      layer := aspect.Layers[layerIndex]
+      for n in (0 .. rng.levelCount) {
+        mipLevel := as!u32(n) + rng.baseMipLevel
+        level := layer.Levels[mipLevel]
+        read(level.Data)
+      }
+    }
+  }
+}
