@@ -138,8 +138,8 @@ cmd void vkCmdBindVertexBuffers(
 
 
 sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
-  readCoherentMemoryInBoundDescriptorSets()
-  readCoherentMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
+  readMemoryInBoundDescriptorSets()
+  readMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
   lastDrawInfo().CommandParameters.Draw = draw
 }
@@ -186,11 +186,11 @@ sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
   numBytes := as!VkDeviceSize(draw.IndexCount) * indexSize
   startOffset := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(draw.FirstIndex))
 
-  // Read the data of the index buffer if the index buffer is backed with coherent memory.
-  readCoherentMemoryInBuffer(indexBuffer, startOffset, numBytes)
-  // Read the whole vertex buffer if a buffer is backed with coherent memory.
-  readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
-  readCoherentMemoryInBoundDescriptorSets()
+  // Read the data of the index buffer.
+  readMemoryInBuffer(indexBuffer, startOffset, numBytes)
+  // Read the whole vertex buffer.
+  readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
+  readMemoryInBoundDescriptorSets()
   clearLastDrawInfoDrawCommandParameters()
   lastDrawInfo().CommandParameters.DrawIndexed = draw
 }
@@ -229,12 +229,12 @@ cmd void vkCmdDrawIndexed(
 
 sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
   if draw.DrawCount > 0 {
-    readCoherentMemoryInBoundDescriptorSets()
+    readMemoryInBoundDescriptorSets()
     command_size := as!VkDeviceSize(16)
     indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
-    readCoherentMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
+    readMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
     // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
-    readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+    readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
     lastDrawInfo().CommandParameters.DrawIndirect = draw
   }
@@ -268,15 +268,15 @@ cmd void vkCmdDrawIndirect(
 
 sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
   if draw.DrawCount > 0 {
-    readCoherentMemoryInBoundDescriptorSets()
+    readMemoryInBoundDescriptorSets()
     command_size := as!VkDeviceSize(16)
     indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
-    readCoherentMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
-    // Read through the whole index buffer if it uses coherent menory.
+    readMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
+    // Read through the whole index buffer.
     indexBuffer := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Buffer
-    readCoherentMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size)
-    // Read through all the coherent memory vertex buffers, as we cannot assume the buffer given to indirect draw is host
-    readCoherentMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+    readMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size)
+    // Read through all the vertex buffers.
+    readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
     lastDrawInfo().CommandParameters.DrawIndexedIndirect = draw
   }
@@ -308,7 +308,7 @@ cmd void vkCmdDrawIndexedIndirect(
 }
 
 sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
-  readCoherentMemoryInBoundDescriptorSets()
+  readMemoryInBoundDescriptorSets()
 }
 
 @threadSafety("app")
@@ -337,8 +337,8 @@ class vkCmdDispatchIndirectArgs {
 
 sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
   command_size := as!VkDeviceSize(12)
-  readCoherentMemoryInBuffer(Buffers[dispatch.Buffer], dispatch.Offset, command_size)
-  readCoherentMemoryInBoundDescriptorSets()
+  readMemoryInBuffer(Buffers[dispatch.Buffer], dispatch.Offset, command_size)
+  readMemoryInBoundDescriptorSets()
 }
 
 @threadSafety("app")

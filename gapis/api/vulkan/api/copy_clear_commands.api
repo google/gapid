@@ -48,7 +48,7 @@ sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
   for _ , _ , region in buffer.CopyRegions {
     srcMemoryOffset := sourceBuffer.MemoryOffset + region.srcOffset
     dstMemoryOffset := destBuffer.MemoryOffset + region.dstOffset
-    readCoherentMemoryInBuffer(sourceBuffer, region.srcOffset, region.size)
+    readMemoryInBuffer(sourceBuffer, region.srcOffset, region.size)
     copy(destBuffer.Memory.Data[dstMemoryOffset:dstMemoryOffset + region.size],
       sourceBuffer.Memory.Data[srcMemoryOffset:srcMemoryOffset + region.size])
   }
@@ -341,7 +341,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
               rowStartInExtent := rowStartBlockInExtent * elementSize
               srcStart := as!u64(bufferObject.MemoryOffset) + bufferLayerOffset + rowStartInExtent
               srcEnd := srcStart + copySize
-              readCoherentMemoryInBuffer(bufferObject, as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
+              readMemoryInBuffer(bufferObject, as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
               copy(imageLevel.Data[dstStart:dstEnd], bufferObject.Memory.Data[srcStart:srcEnd])
             }
           }
