@@ -56,39 +56,46 @@ sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffs
   }
 }
 
-sub void readCoherentMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize) {
+sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize) {
   mem := buffer.Memory
   if mem != null {
-    if as!u64(readSize) == 0xFFFFFFFFFFFFFFFF {
-      readCoherentMemory(mem, buffer.MemoryOffset + readOffset, buffer.Info.Size - readOffset)
-    } else {
-      readCoherentMemory(mem, buffer.MemoryOffset + readOffset, readSize)
+    readBegin := buffer.MemoryOffset + readOffset
+    actualReadSize := switch as!u64(readSize) {
+      case 0xFFFFFFFFFFFFFFFF:
+        buffer.Info.Size - readOffset
+      default:
+        readSize
+    }
+    readEnd := readBegin + actualReadSize
+    readCoherentMemory(mem, readBegin, actualReadSize)
+    if len(mem.Data) != 0 {
+      read(mem.Data[readBegin : readEnd])
     }
   }
 }
 
-sub void readCoherentMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings) {
+sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings) {
   for _, _, v in bufferBindings {
     if v.Buffer != as!VkBuffer(0) {
       if (v.Buffer in Buffers) {
-        readCoherentMemoryInBuffer(Buffers[v.Buffer], v.Offset, v.Range)
+        readMemoryInBuffer(Buffers[v.Buffer], v.Offset, v.Range)
       }
     }
   }
 }
 
-sub void readCoherentMemoryBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
+sub void readMemoryBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
   for _, _, v in bufferViews {
     if v in BufferViews {
       view := BufferViews[v]
       if (view.Buffer.VulkanHandle in Buffers) {
-        readCoherentMemoryInBuffer(view.Buffer, view.Offset, view.Range)
+        readMemoryInBuffer(view.Buffer, view.Offset, view.Range)
       }
     }
   }
 }
 
-sub void readCoherentMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set) {
+sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set) {
   for _, _, v in descriptor_set.Bindings {
     switch v.BindingType {
       case
@@ -96,18 +103,18 @@ sub void readCoherentMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_se
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-          readCoherentMemoryInBufferBindings(v.BufferBinding)
+          readMemoryInBufferBindings(v.BufferBinding)
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
         VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-          readCoherentMemoryBufferViewBindings(v.BufferViewBindings)
+          readMemoryBufferViewBindings(v.BufferViewBindings)
       default: {}
     }
   }
 }
 
-sub void readCoherentMemoryInBoundDescriptorSets() {
+sub void readMemoryInBoundDescriptorSets() {
   for _, _, s in lastDrawInfo().DescriptorSets {
-    readCoherentMemoryInDescriptorSet(s)
+    readMemoryInDescriptorSet(s)
   }
 }
 
@@ -126,12 +133,12 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
   }
 }
 
-sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
+sub void readMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
   for _ , _ , vertex_binding in lastDrawInfo().GraphicsPipeline.VertexInputState.BindingDescriptions {
     if vertex_binding.binding in lastDrawInfo().BoundVertexBuffers {
       bound_vertex_buffer := lastDrawInfo().BoundVertexBuffers[vertex_binding.binding]
       backing_buf := bound_vertex_buffer.Buffer
-      if ((backing_buf.Memory != null) && IsMemoryCoherent(backing_buf.Memory)) {
+      if backing_buf.Memory != null {
         start_vertex := switch vertex_binding.inputRate {
           case VK_VERTEX_INPUT_RATE_VERTEX:
             firstVertex
@@ -151,7 +158,7 @@ sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, 
           case false:
             as!VkDeviceSize(num_vertices * vertex_binding.stride)
         }
-        readCoherentMemoryInBuffer(backing_buf, start_offset, num)
+        readMemoryInBuffer(backing_buf, start_offset, num)
       }
     }
   }
