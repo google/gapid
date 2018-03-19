@@ -350,7 +350,7 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
     for _ , _ , b in args.ImageMemoryBarriers {
       if !(b.image in Images) { vkErrorInvalidImage(b.image) }
       image := Images[b.image]
-      image.Info.Layout = b.newLayout
+      transitionImageLayout(image, b.subresourceRange, b.oldLayout, b.newLayout)
       image.LastBoundQueue = LastBoundQueue
     }
   }
@@ -417,7 +417,10 @@ sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
   for _ , _ , v in args.ImageMemoryBarriers {
     if !(v.image in Images) { vkErrorInvalidImage(v.image) }
     image := Images[v.image]
-    image.Info.Layout = v.newLayout
+    transitionImageLayout(image, v.subresourceRange, v.oldLayout, v.newLayout)
+    if v.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED {
+      writeImageSubresource(image, v.subresourceRange, v.newLayout)
+    }
     image.LastBoundQueue = LastBoundQueue
   }
 }
