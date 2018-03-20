@@ -366,7 +366,7 @@ func changeCommands(ctx context.Context, a arena.Arena, p *path.Capture, newCmds
 	if err != nil {
 		return nil, err
 	}
-	c, err := capture.New(ctx, a, old.Name+"*", old.Header, newCmds)
+	c, err := capture.New(ctx, a, old.Name+"*", old.Header, old.InitialState, newCmds)
 	if err != nil {
 		return nil, err
 	}
