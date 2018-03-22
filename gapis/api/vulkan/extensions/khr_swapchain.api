@@ -270,6 +270,7 @@ cmd VkResult vkQueuePresentKHR(
         Semaphores[wait_semaphores[i]].Signaled = false
       } else {
         // TODO: handle case when semaphore is not yet signaled
+        // see https://github.com/google/gapid/issues/1860
       }
     }
   }
@@ -279,6 +280,12 @@ cmd VkResult vkQueuePresentKHR(
     if !(swapchains[i] in Swapchains) { vkErrorInvalidSwapchain(swapchains[i]) }
     swapchain := Swapchains[swapchains[i]]
     image := swapchain.SwapchainImages[imageIndices[i]]
+    readImageSubresource(image, VkImageSubresourceRange(
+      aspectMask: image.ImageAspect,
+      baseMipLevel: 0,
+      levelCount: image.Info.MipLevels,
+      baseArrayLayer: 0,
+      layerCount: image.Info.ArrayLayers), VK_IMAGE_LAYOUT_UNDEFINED)
     LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
     image
     LastPresentInfo.PresentImageCount = LastPresentInfo.PresentImageCount + 1
