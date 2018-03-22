@@ -14,37 +14,30 @@
 
 package vulkan
 
-type imagePrimerShaderTicker int
+import (
+	"fmt"
 
-const (
-	ipRenderUnsupported imagePrimerShaderTicker = iota
-	ipRenderVert
-	ipRenderFragColorUint32
-	ipRenderFragColorSint32
-	ipRenderFragColorUnorm8
-	ipRenderFragColorUnorm16
-	ipRenderFragColorUnorm4
-	ipRenderFragColorUnormR5G6B6
-	ipRenderFragColorUnormR5G5B5A1
-	ipRenderFragColorUnormR10G10B10A2
-	ipRenderFragColorSnorm8
-	ipRenderFragColorSnorm16
-	ipRenderFragColorSnormR10G10B10A2
-	ipRenderFragColorFloat
-	ipRenderFragDepthUnorm16
-	ipRenderFragDepthUnorm24
-	ipRenderFragDepthFloat
-	ipRenderFragStencil
+	"github.com/google/gapid/gapis/shadertools"
 )
 
-// fragShaderTicker takes the render target format and aspect and returns the
-// ticker of the shader which can be used to prime the target image data by
-// rendering.
-func (h *ipRenderHandler) fragShaderTicker(renderTargetFormat VkFormat, aspect VkImageAspectFlagBits) imagePrimerShaderTicker {
+func ipVertexShaderSpirv() ([]uint32, error) {
+	return shadertools.CompileGlsl(
+		`#version 450
+layout(location = 0) in vec3 position;
+void main() {
+	gl_Position = vec4(position, 1.0);
+}`,
+		shadertools.CompileOptions{
+			ShaderType: shadertools.TypeVertex,
+			ClientType: shadertools.Vulkan,
+		})
+}
+
+func ipFragmentShaderSpirv(vkFmt VkFormat, aspect VkImageAspectFlagBits) ([]uint32, error) {
 	switch aspect {
 	// Render color data
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
-		switch renderTargetFormat {
+		switch vkFmt {
 		case VkFormat_VK_FORMAT_R8_UINT,
 			VkFormat_VK_FORMAT_R8G8_UINT,
 			VkFormat_VK_FORMAT_R8G8B8_UINT,
@@ -62,7 +55,21 @@ func (h *ipRenderHandler) fragShaderTicker(renderTargetFormat VkFormat, aspect V
 			VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
 			VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
 			VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
-			return ipRenderFragColorUint32
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+layout(location = 0) out uvec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = subpassLoad(in_color).r;
+	out_color.g = subpassLoad(in_color).g;
+	out_color.b = subpassLoad(in_color).b;
+	out_color.a = subpassLoad(in_color).a;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R8_SINT,
 			VkFormat_VK_FORMAT_R8G8_SINT,
@@ -81,7 +88,21 @@ func (h *ipRenderHandler) fragShaderTicker(renderTargetFormat VkFormat, aspect V
 			VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
 			VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32,
 			VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
-			return ipRenderFragColorSint32
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+layout(location = 0) out ivec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = int(subpassLoad(in_color).r);
+	out_color.g = int(subpassLoad(in_color).g);
+	out_color.b = int(subpassLoad(in_color).b);
+	out_color.a = int(subpassLoad(in_color).a);
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R8_UNORM,
 			VkFormat_VK_FORMAT_R8G8_UNORM,
@@ -97,31 +118,120 @@ func (h *ipRenderHandler) fragShaderTicker(renderTargetFormat VkFormat, aspect V
 			VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
 			VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
 			VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-			return ipRenderFragColorUnorm8
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = subpassLoad(in_color).r/255.0;
+	out_color.g = subpassLoad(in_color).g/255.0;
+	out_color.b = subpassLoad(in_color).b/255.0;
+	out_color.a = subpassLoad(in_color).a/255.0;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R16_UNORM,
 			VkFormat_VK_FORMAT_R16G16_UNORM,
 			VkFormat_VK_FORMAT_R16G16B16_UNORM,
 			VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
-			return ipRenderFragColorUnorm16
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = subpassLoad(in_color).r/65535.0;
+	out_color.g = subpassLoad(in_color).g/65535.0;
+	out_color.b = subpassLoad(in_color).b/65535.0;
+	out_color.a = subpassLoad(in_color).a/65535.0;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R4G4_UNORM_PACK8,
 			VkFormat_VK_FORMAT_R4G4B4A4_UNORM_PACK16,
 			VkFormat_VK_FORMAT_B4G4R4A4_UNORM_PACK16:
-			return ipRenderFragColorUnorm4
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = subpassLoad(in_color).r/15.0;
+	out_color.g = subpassLoad(in_color).g/15.0;
+	out_color.b = subpassLoad(in_color).b/15.0;
+	out_color.a = subpassLoad(in_color).a/15.0;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R5G6B5_UNORM_PACK16,
 			VkFormat_VK_FORMAT_B5G6R5_UNORM_PACK16:
-			return ipRenderFragColorUnormR5G6B6
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = subpassLoad(in_color).r/31.0;
+	out_color.g = subpassLoad(in_color).g/63.0;
+	out_color.b = subpassLoad(in_color).b/31.0;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R5G5B5A1_UNORM_PACK16,
 			VkFormat_VK_FORMAT_B5G5R5A1_UNORM_PACK16,
 			VkFormat_VK_FORMAT_A1R5G5B5_UNORM_PACK16:
-			return ipRenderFragColorUnormR5G5B5A1
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = subpassLoad(in_color).r/31.0;
+	out_color.g = subpassLoad(in_color).g/31.0;
+	out_color.b = subpassLoad(in_color).b/31.0;
+	out_color.a = subpassLoad(in_color).a/1.0;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
 			VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-			return ipRenderFragColorUnormR10G10B10A2
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = subpassLoad(in_color).r/1023.0;
+	out_color.g = subpassLoad(in_color).g/1023.0;
+	out_color.b = subpassLoad(in_color).b/1023.0;
+	out_color.a = subpassLoad(in_color).a/3.0;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R8_SNORM,
 			VkFormat_VK_FORMAT_R8G8_SNORM,
@@ -130,17 +240,71 @@ func (h *ipRenderHandler) fragShaderTicker(renderTargetFormat VkFormat, aspect V
 			VkFormat_VK_FORMAT_B8G8R8_SNORM,
 			VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
 			VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
-			return ipRenderFragColorUnorm8
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+float snorm(in uint u, in float d) {
+	return (int(u) * 2.0  + 1.0) / d;
+}
+void main() {
+	out_color.r = snorm(subpassLoad(in_color).r, 255.0);
+	out_color.g = snorm(subpassLoad(in_color).g, 255.0);
+	out_color.b = snorm(subpassLoad(in_color).b, 255.0);
+	out_color.a = snorm(subpassLoad(in_color).a, 255.0);
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R16_SNORM,
 			VkFormat_VK_FORMAT_R16G16_SNORM,
 			VkFormat_VK_FORMAT_R16G16B16_SNORM,
 			VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
-			return ipRenderFragColorSnorm16
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+float snorm(in uint u, in float d) {
+	return (int(u) * 2.0  + 1.0) / d;
+}
+void main() {
+	out_color.r = snorm(subpassLoad(in_color).r, 65535.0);
+	out_color.g = snorm(subpassLoad(in_color).g, 65535.0);
+	out_color.b = snorm(subpassLoad(in_color).b, 65535.0);
+	out_color.a = snorm(subpassLoad(in_color).a, 65535.0);
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32,
 			VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
-			return ipRenderFragColorSnormR10G10B10A2
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+float snorm(in uint u, in float d) {
+	return (int(u) * 2.0  + 1.0) / d;
+}
+void main() {
+	out_color.r = snorm(subpassLoad(in_color).r, 1023.0);
+	out_color.g = snorm(subpassLoad(in_color).g, 1023.0);
+	out_color.b = snorm(subpassLoad(in_color).b, 1023.0);
+	out_color.a = snorm(subpassLoad(in_color).a, 1.0);
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_R16_SFLOAT,
 			VkFormat_VK_FORMAT_R16G16_SFLOAT,
@@ -152,1533 +316,511 @@ func (h *ipRenderHandler) fragShaderTicker(renderTargetFormat VkFormat, aspect V
 			VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
 			VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32,
 			VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
-			return ipRenderFragColorFloat
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+layout(location = 0) out vec4 out_color;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
+void main() {
+	out_color.r = uintBitsToFloat(subpassLoad(in_color).r);
+	out_color.g = uintBitsToFloat(subpassLoad(in_color).g);
+	out_color.b = uintBitsToFloat(subpassLoad(in_color).b);
+	out_color.a = uintBitsToFloat(subpassLoad(in_color).a);
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		default:
-			return ipRenderUnsupported
+			return []uint32{}, fmt.Errorf("%v is not supported", vkFmt)
 		}
 
 	// Render depth data
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
-		switch renderTargetFormat {
+		switch vkFmt {
 		case VkFormat_VK_FORMAT_D16_UNORM,
 			VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
-			return ipRenderFragDepthUnorm16
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+out float gl_FragDepth;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
+void main() {
+	gl_FragDepth = subpassLoad(in_depth).r / 65535.0;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
 			VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32:
-			return ipRenderFragDepthUnorm24
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+out float gl_FragDepth;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
+void main() {
+	gl_FragDepth = subpassLoad(in_depth).r / 16777215.0;
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		case VkFormat_VK_FORMAT_D32_SFLOAT,
 			VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
-			return ipRenderFragDepthFloat
+			return shadertools.CompileGlsl(
+				`#version 450
+precision highp int;
+precision highp float;
+out float gl_FragDepth;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
+void main() {
+	gl_FragDepth = uintBitsToFloat(subpassLoad(in_depth).r);
+}`,
+				shadertools.CompileOptions{
+					ShaderType: shadertools.TypeFragment,
+					ClientType: shadertools.Vulkan,
+				})
 
 		default:
-			return ipRenderUnsupported
+			return []uint32{}, fmt.Errorf("%v is not supported", vkFmt)
 		}
 
 	// Render stencil data
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		return ipRenderFragStencil
+		return shadertools.CompileGlsl(
+			`#version 450
+precision highp int;
+layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_stencil;
+layout(binding = 1, set = 0) uniform mask_data { uint current_bit;};
+void main() {
+  uint stencil_value = subpassLoad(in_stencil).r;
+  if ((stencil_value & (0x1 << current_bit)) == 0) {
+    discard;
+  }
+}`,
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
 	// other aspect data
 	default:
-		return ipRenderUnsupported
+		return []uint32{}, fmt.Errorf("%v is not supported", aspect)
 	}
 }
 
-// shaderWords returns the compiled shader words for the given shader ticker.
-func shaderWords(ticker imagePrimerShaderTicker) []uint32 {
-	switch ticker {
-	case ipRenderVert:
-		/*
-			#version 450
-			layout(location = 0) in vec3 position;
-			void main() {
-				gl_Position = vec4(position, 1.0);
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x0000001b,
-			0x00000000, 0x00020011, 0x00000001, 0x0006000b,
-			0x00000001, 0x4c534c47, 0x6474732e, 0x3035342e,
-			0x00000000, 0x0003000e, 0x00000000, 0x00000001,
-			0x0007000f, 0x00000000, 0x00000004, 0x6e69616d,
-			0x00000000, 0x0000000d, 0x00000012, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00060005, 0x0000000b, 0x505f6c67, 0x65567265,
-			0x78657472, 0x00000000, 0x00060006, 0x0000000b,
-			0x00000000, 0x505f6c67, 0x7469736f, 0x006e6f69,
-			0x00070006, 0x0000000b, 0x00000001, 0x505f6c67,
-			0x746e696f, 0x657a6953, 0x00000000, 0x00070006,
-			0x0000000b, 0x00000002, 0x435f6c67, 0x4470696c,
-			0x61747369, 0x0065636e, 0x00070006, 0x0000000b,
-			0x00000003, 0x435f6c67, 0x446c6c75, 0x61747369,
-			0x0065636e, 0x00030005, 0x0000000d, 0x00000000,
-			0x00050005, 0x00000012, 0x69736f70, 0x6e6f6974,
-			0x00000000, 0x00050048, 0x0000000b, 0x00000000,
-			0x0000000b, 0x00000000, 0x00050048, 0x0000000b,
-			0x00000001, 0x0000000b, 0x00000001, 0x00050048,
-			0x0000000b, 0x00000002, 0x0000000b, 0x00000003,
-			0x00050048, 0x0000000b, 0x00000003, 0x0000000b,
-			0x00000004, 0x00030047, 0x0000000b, 0x00000002,
-			0x00040047, 0x00000012, 0x0000001e, 0x00000000,
-			0x00020013, 0x00000002, 0x00030021, 0x00000003,
-			0x00000002, 0x00030016, 0x00000006, 0x00000020,
-			0x00040017, 0x00000007, 0x00000006, 0x00000004,
-			0x00040015, 0x00000008, 0x00000020, 0x00000000,
-			0x0004002b, 0x00000008, 0x00000009, 0x00000001,
-			0x0004001c, 0x0000000a, 0x00000006, 0x00000009,
-			0x0006001e, 0x0000000b, 0x00000007, 0x00000006,
-			0x0000000a, 0x0000000a, 0x00040020, 0x0000000c,
-			0x00000003, 0x0000000b, 0x0004003b, 0x0000000c,
-			0x0000000d, 0x00000003, 0x00040015, 0x0000000e,
-			0x00000020, 0x00000001, 0x0004002b, 0x0000000e,
-			0x0000000f, 0x00000000, 0x00040017, 0x00000010,
-			0x00000006, 0x00000003, 0x00040020, 0x00000011,
-			0x00000001, 0x00000010, 0x0004003b, 0x00000011,
-			0x00000012, 0x00000001, 0x0004002b, 0x00000006,
-			0x00000014, 0x3f800000, 0x00040020, 0x00000019,
-			0x00000003, 0x00000007, 0x00050036, 0x00000002,
-			0x00000004, 0x00000000, 0x00000003, 0x000200f8,
-			0x00000005, 0x0004003d, 0x00000010, 0x00000013,
-			0x00000012, 0x00050051, 0x00000006, 0x00000015,
-			0x00000013, 0x00000000, 0x00050051, 0x00000006,
-			0x00000016, 0x00000013, 0x00000001, 0x00050051,
-			0x00000006, 0x00000017, 0x00000013, 0x00000002,
-			0x00070050, 0x00000007, 0x00000018, 0x00000015,
-			0x00000016, 0x00000017, 0x00000014, 0x00050041,
-			0x00000019, 0x0000001a, 0x0000000d, 0x0000000f,
-			0x0003003e, 0x0000001a, 0x00000018, 0x000100fd,
-			0x00010038}
+func ipComputeShaderSpirv(vkFmt VkFormat, aspect VkImageAspectFlagBits, imageType VkImageType) ([]uint32, error) {
+	// Determine the image format token in shader
+	// Ref: https://www.khronos.org/opengl/wiki/Layout_Qualifier_(GLSL)#Image_formats
+	var imgFmtStr string
+	switch vkFmt {
+	// uint formats
+	case VkFormat_VK_FORMAT_R8_UINT:
+		imgFmtStr = "r8ui"
+	case VkFormat_VK_FORMAT_R16_UINT:
+		imgFmtStr = "r16ui"
+	case VkFormat_VK_FORMAT_R32_UINT:
+		imgFmtStr = "r32ui"
 
-	case ipRenderFragColorUint32:
-		/*
-			#version 450
-			precision highp int;
-			layout(location = 0) out uvec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = subpassLoad(in_color).r;
-				out_color.g = subpassLoad(in_color).g;
-				out_color.b = subpassLoad(in_color).b;
-				out_color.a = subpassLoad(in_color).a;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000026,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000c, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000c,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000c,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000c,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00040015,
-			0x00000006, 0x00000020, 0x00000000, 0x00040017,
-			0x00000007, 0x00000006, 0x00000004, 0x00040020,
-			0x00000008, 0x00000003, 0x00000007, 0x0004003b,
-			0x00000008, 0x00000009, 0x00000003, 0x00090019,
-			0x0000000a, 0x00000006, 0x00000006, 0x00000000,
-			0x00000000, 0x00000000, 0x00000002, 0x00000000,
-			0x00040020, 0x0000000b, 0x00000000, 0x0000000a,
-			0x0004003b, 0x0000000b, 0x0000000c, 0x00000000,
-			0x00040015, 0x0000000e, 0x00000020, 0x00000001,
-			0x0004002b, 0x0000000e, 0x0000000f, 0x00000000,
-			0x00040017, 0x00000010, 0x0000000e, 0x00000002,
-			0x0005002c, 0x00000010, 0x00000011, 0x0000000f,
-			0x0000000f, 0x0004002b, 0x00000006, 0x00000013,
-			0x00000000, 0x00040020, 0x00000015, 0x00000003,
-			0x00000006, 0x0004002b, 0x00000006, 0x00000019,
-			0x00000001, 0x0004002b, 0x00000006, 0x0000001e,
-			0x00000002, 0x0004002b, 0x00000006, 0x00000023,
-			0x00000003, 0x00050036, 0x00000002, 0x00000004,
-			0x00000000, 0x00000003, 0x000200f8, 0x00000005,
-			0x0004003d, 0x0000000a, 0x0000000d, 0x0000000c,
-			0x00050062, 0x00000007, 0x00000012, 0x0000000d,
-			0x00000011, 0x00050051, 0x00000006, 0x00000014,
-			0x00000012, 0x00000000, 0x00050041, 0x00000015,
-			0x00000016, 0x00000009, 0x00000013, 0x0003003e,
-			0x00000016, 0x00000014, 0x0004003d, 0x0000000a,
-			0x00000017, 0x0000000c, 0x00050062, 0x00000007,
-			0x00000018, 0x00000017, 0x00000011, 0x00050051,
-			0x00000006, 0x0000001a, 0x00000018, 0x00000001,
-			0x00050041, 0x00000015, 0x0000001b, 0x00000009,
-			0x00000019, 0x0003003e, 0x0000001b, 0x0000001a,
-			0x0004003d, 0x0000000a, 0x0000001c, 0x0000000c,
-			0x00050062, 0x00000007, 0x0000001d, 0x0000001c,
-			0x00000011, 0x00050051, 0x00000006, 0x0000001f,
-			0x0000001d, 0x00000002, 0x00050041, 0x00000015,
-			0x00000020, 0x00000009, 0x0000001e, 0x0003003e,
-			0x00000020, 0x0000001f, 0x0004003d, 0x0000000a,
-			0x00000021, 0x0000000c, 0x00050062, 0x00000007,
-			0x00000022, 0x00000021, 0x00000011, 0x00050051,
-			0x00000006, 0x00000024, 0x00000022, 0x00000003,
-			0x00050041, 0x00000015, 0x00000025, 0x00000009,
-			0x00000023, 0x0003003e, 0x00000025, 0x00000024,
-			0x000100fd, 0x00010038}
+	case VkFormat_VK_FORMAT_R8G8_UINT:
+		imgFmtStr = "rg8ui"
+	case VkFormat_VK_FORMAT_R16G16_UINT:
+		imgFmtStr = "rg16ui"
+	case VkFormat_VK_FORMAT_R32G32_UINT:
+		imgFmtStr = "rg32ui"
 
-	case ipRenderFragColorSint32:
-		/*
-			#version 450
-			precision highp int;
-			layout(location = 0) out ivec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = int(subpassLoad(in_color).r);
-				out_color.g = int(subpassLoad(in_color).g);
-				out_color.b = int(subpassLoad(in_color).b);
-				out_color.a = int(subpassLoad(in_color).a);
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x0000002b,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000d, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000d,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00040015,
-			0x00000006, 0x00000020, 0x00000001, 0x00040017,
-			0x00000007, 0x00000006, 0x00000004, 0x00040020,
-			0x00000008, 0x00000003, 0x00000007, 0x0004003b,
-			0x00000008, 0x00000009, 0x00000003, 0x00040015,
-			0x0000000a, 0x00000020, 0x00000000, 0x00090019,
-			0x0000000b, 0x0000000a, 0x00000006, 0x00000000,
-			0x00000000, 0x00000000, 0x00000002, 0x00000000,
-			0x00040020, 0x0000000c, 0x00000000, 0x0000000b,
-			0x0004003b, 0x0000000c, 0x0000000d, 0x00000000,
-			0x0004002b, 0x00000006, 0x0000000f, 0x00000000,
-			0x00040017, 0x00000010, 0x00000006, 0x00000002,
-			0x0005002c, 0x00000010, 0x00000011, 0x0000000f,
-			0x0000000f, 0x00040017, 0x00000012, 0x0000000a,
-			0x00000004, 0x0004002b, 0x0000000a, 0x00000014,
-			0x00000000, 0x00040020, 0x00000017, 0x00000003,
-			0x00000006, 0x0004002b, 0x0000000a, 0x0000001b,
-			0x00000001, 0x0004002b, 0x0000000a, 0x00000021,
-			0x00000002, 0x0004002b, 0x0000000a, 0x00000027,
-			0x00000003, 0x00050036, 0x00000002, 0x00000004,
-			0x00000000, 0x00000003, 0x000200f8, 0x00000005,
-			0x0004003d, 0x0000000b, 0x0000000e, 0x0000000d,
-			0x00050062, 0x00000012, 0x00000013, 0x0000000e,
-			0x00000011, 0x00050051, 0x0000000a, 0x00000015,
-			0x00000013, 0x00000000, 0x0004007c, 0x00000006,
-			0x00000016, 0x00000015, 0x00050041, 0x00000017,
-			0x00000018, 0x00000009, 0x00000014, 0x0003003e,
-			0x00000018, 0x00000016, 0x0004003d, 0x0000000b,
-			0x00000019, 0x0000000d, 0x00050062, 0x00000012,
-			0x0000001a, 0x00000019, 0x00000011, 0x00050051,
-			0x0000000a, 0x0000001c, 0x0000001a, 0x00000001,
-			0x0004007c, 0x00000006, 0x0000001d, 0x0000001c,
-			0x00050041, 0x00000017, 0x0000001e, 0x00000009,
-			0x0000001b, 0x0003003e, 0x0000001e, 0x0000001d,
-			0x0004003d, 0x0000000b, 0x0000001f, 0x0000000d,
-			0x00050062, 0x00000012, 0x00000020, 0x0000001f,
-			0x00000011, 0x00050051, 0x0000000a, 0x00000022,
-			0x00000020, 0x00000002, 0x0004007c, 0x00000006,
-			0x00000023, 0x00000022, 0x00050041, 0x00000017,
-			0x00000024, 0x00000009, 0x00000021, 0x0003003e,
-			0x00000024, 0x00000023, 0x0004003d, 0x0000000b,
-			0x00000025, 0x0000000d, 0x00050062, 0x00000012,
-			0x00000026, 0x00000025, 0x00000011, 0x00050051,
-			0x0000000a, 0x00000028, 0x00000026, 0x00000003,
-			0x0004007c, 0x00000006, 0x00000029, 0x00000028,
-			0x00050041, 0x00000017, 0x0000002a, 0x00000009,
-			0x00000027, 0x0003003e, 0x0000002a, 0x00000029,
-			0x000100fd, 0x00010038}
+	case VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_UINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32:
+		imgFmtStr = "rgba8ui"
+	case VkFormat_VK_FORMAT_R16G16B16A16_UINT:
+		imgFmtStr = "rgba16ui"
+	case VkFormat_VK_FORMAT_R32G32B32A32_UINT:
+		imgFmtStr = "rgba32ui"
 
-	case ipRenderFragColorUnorm8:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = subpassLoad(in_color).r/255.0;
-				out_color.g = subpassLoad(in_color).g/255.0;
-				out_color.b = subpassLoad(in_color).b/255.0;
-				out_color.a = subpassLoad(in_color).a/255.0;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000031,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000d, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000d,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040017, 0x00000007,
-			0x00000006, 0x00000004, 0x00040020, 0x00000008,
-			0x00000003, 0x00000007, 0x0004003b, 0x00000008,
-			0x00000009, 0x00000003, 0x00040015, 0x0000000a,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000b,
-			0x0000000a, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000c, 0x00000000, 0x0000000b, 0x0004003b,
-			0x0000000c, 0x0000000d, 0x00000000, 0x00040015,
-			0x0000000f, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000f, 0x00000010, 0x00000000, 0x00040017,
-			0x00000011, 0x0000000f, 0x00000002, 0x0005002c,
-			0x00000011, 0x00000012, 0x00000010, 0x00000010,
-			0x00040017, 0x00000013, 0x0000000a, 0x00000004,
-			0x0004002b, 0x0000000a, 0x00000015, 0x00000000,
-			0x0004002b, 0x00000006, 0x00000018, 0x437f0000,
-			0x00040020, 0x0000001a, 0x00000003, 0x00000006,
-			0x0004002b, 0x0000000a, 0x0000001e, 0x00000001,
-			0x0004002b, 0x0000000a, 0x00000025, 0x00000002,
-			0x0004002b, 0x0000000a, 0x0000002c, 0x00000003,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000b, 0x0000000e, 0x0000000d, 0x00050062,
-			0x00000013, 0x00000014, 0x0000000e, 0x00000012,
-			0x00050051, 0x0000000a, 0x00000016, 0x00000014,
-			0x00000000, 0x00040070, 0x00000006, 0x00000017,
-			0x00000016, 0x00050088, 0x00000006, 0x00000019,
-			0x00000017, 0x00000018, 0x00050041, 0x0000001a,
-			0x0000001b, 0x00000009, 0x00000015, 0x0003003e,
-			0x0000001b, 0x00000019, 0x0004003d, 0x0000000b,
-			0x0000001c, 0x0000000d, 0x00050062, 0x00000013,
-			0x0000001d, 0x0000001c, 0x00000012, 0x00050051,
-			0x0000000a, 0x0000001f, 0x0000001d, 0x00000001,
-			0x00040070, 0x00000006, 0x00000020, 0x0000001f,
-			0x00050088, 0x00000006, 0x00000021, 0x00000020,
-			0x00000018, 0x00050041, 0x0000001a, 0x00000022,
-			0x00000009, 0x0000001e, 0x0003003e, 0x00000022,
-			0x00000021, 0x0004003d, 0x0000000b, 0x00000023,
-			0x0000000d, 0x00050062, 0x00000013, 0x00000024,
-			0x00000023, 0x00000012, 0x00050051, 0x0000000a,
-			0x00000026, 0x00000024, 0x00000002, 0x00040070,
-			0x00000006, 0x00000027, 0x00000026, 0x00050088,
-			0x00000006, 0x00000028, 0x00000027, 0x00000018,
-			0x00050041, 0x0000001a, 0x00000029, 0x00000009,
-			0x00000025, 0x0003003e, 0x00000029, 0x00000028,
-			0x0004003d, 0x0000000b, 0x0000002a, 0x0000000d,
-			0x00050062, 0x00000013, 0x0000002b, 0x0000002a,
-			0x00000012, 0x00050051, 0x0000000a, 0x0000002d,
-			0x0000002b, 0x00000003, 0x00040070, 0x00000006,
-			0x0000002e, 0x0000002d, 0x00050088, 0x00000006,
-			0x0000002f, 0x0000002e, 0x00000018, 0x00050041,
-			0x0000001a, 0x00000030, 0x00000009, 0x0000002c,
-			0x0003003e, 0x00000030, 0x0000002f, 0x000100fd,
-			0x00010038}
+	case VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
+		imgFmtStr = "rgb10_a2ui"
 
-	case ipRenderFragColorUnorm16:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = subpassLoad(in_color).r/65535.0;
-				out_color.g = subpassLoad(in_color).g/65535.0;
-				out_color.b = subpassLoad(in_color).b/65535.0;
-				out_color.a = subpassLoad(in_color).a/65535.0;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000031,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000d, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000d,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040017, 0x00000007,
-			0x00000006, 0x00000004, 0x00040020, 0x00000008,
-			0x00000003, 0x00000007, 0x0004003b, 0x00000008,
-			0x00000009, 0x00000003, 0x00040015, 0x0000000a,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000b,
-			0x0000000a, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000c, 0x00000000, 0x0000000b, 0x0004003b,
-			0x0000000c, 0x0000000d, 0x00000000, 0x00040015,
-			0x0000000f, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000f, 0x00000010, 0x00000000, 0x00040017,
-			0x00000011, 0x0000000f, 0x00000002, 0x0005002c,
-			0x00000011, 0x00000012, 0x00000010, 0x00000010,
-			0x00040017, 0x00000013, 0x0000000a, 0x00000004,
-			0x0004002b, 0x0000000a, 0x00000015, 0x00000000,
-			0x0004002b, 0x00000006, 0x00000018, 0x477fff00,
-			0x00040020, 0x0000001a, 0x00000003, 0x00000006,
-			0x0004002b, 0x0000000a, 0x0000001e, 0x00000001,
-			0x0004002b, 0x0000000a, 0x00000025, 0x00000002,
-			0x0004002b, 0x0000000a, 0x0000002c, 0x00000003,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000b, 0x0000000e, 0x0000000d, 0x00050062,
-			0x00000013, 0x00000014, 0x0000000e, 0x00000012,
-			0x00050051, 0x0000000a, 0x00000016, 0x00000014,
-			0x00000000, 0x00040070, 0x00000006, 0x00000017,
-			0x00000016, 0x00050088, 0x00000006, 0x00000019,
-			0x00000017, 0x00000018, 0x00050041, 0x0000001a,
-			0x0000001b, 0x00000009, 0x00000015, 0x0003003e,
-			0x0000001b, 0x00000019, 0x0004003d, 0x0000000b,
-			0x0000001c, 0x0000000d, 0x00050062, 0x00000013,
-			0x0000001d, 0x0000001c, 0x00000012, 0x00050051,
-			0x0000000a, 0x0000001f, 0x0000001d, 0x00000001,
-			0x00040070, 0x00000006, 0x00000020, 0x0000001f,
-			0x00050088, 0x00000006, 0x00000021, 0x00000020,
-			0x00000018, 0x00050041, 0x0000001a, 0x00000022,
-			0x00000009, 0x0000001e, 0x0003003e, 0x00000022,
-			0x00000021, 0x0004003d, 0x0000000b, 0x00000023,
-			0x0000000d, 0x00050062, 0x00000013, 0x00000024,
-			0x00000023, 0x00000012, 0x00050051, 0x0000000a,
-			0x00000026, 0x00000024, 0x00000002, 0x00040070,
-			0x00000006, 0x00000027, 0x00000026, 0x00050088,
-			0x00000006, 0x00000028, 0x00000027, 0x00000018,
-			0x00050041, 0x0000001a, 0x00000029, 0x00000009,
-			0x00000025, 0x0003003e, 0x00000029, 0x00000028,
-			0x0004003d, 0x0000000b, 0x0000002a, 0x0000000d,
-			0x00050062, 0x00000013, 0x0000002b, 0x0000002a,
-			0x00000012, 0x00050051, 0x0000000a, 0x0000002d,
-			0x0000002b, 0x00000003, 0x00040070, 0x00000006,
-			0x0000002e, 0x0000002d, 0x00050088, 0x00000006,
-			0x0000002f, 0x0000002e, 0x00000018, 0x00050041,
-			0x0000001a, 0x00000030, 0x00000009, 0x0000002c,
-			0x0003003e, 0x00000030, 0x0000002f, 0x000100fd,
-			0x00010038}
+	// sint formats
+	case VkFormat_VK_FORMAT_R8_SINT:
+		imgFmtStr = "r8i"
+	case VkFormat_VK_FORMAT_R16_SINT:
+		imgFmtStr = "r16i"
+	case VkFormat_VK_FORMAT_R32_SINT:
+		imgFmtStr = "r32i"
 
-	case ipRenderFragColorUnorm4:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = subpassLoad(in_color).r/15.0;
-				out_color.g = subpassLoad(in_color).g/15.0;
-				out_color.b = subpassLoad(in_color).b/15.0;
-				out_color.a = subpassLoad(in_color).a/15.0;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000031,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000d, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000d,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040017, 0x00000007,
-			0x00000006, 0x00000004, 0x00040020, 0x00000008,
-			0x00000003, 0x00000007, 0x0004003b, 0x00000008,
-			0x00000009, 0x00000003, 0x00040015, 0x0000000a,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000b,
-			0x0000000a, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000c, 0x00000000, 0x0000000b, 0x0004003b,
-			0x0000000c, 0x0000000d, 0x00000000, 0x00040015,
-			0x0000000f, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000f, 0x00000010, 0x00000000, 0x00040017,
-			0x00000011, 0x0000000f, 0x00000002, 0x0005002c,
-			0x00000011, 0x00000012, 0x00000010, 0x00000010,
-			0x00040017, 0x00000013, 0x0000000a, 0x00000004,
-			0x0004002b, 0x0000000a, 0x00000015, 0x00000000,
-			0x0004002b, 0x00000006, 0x00000018, 0x41700000,
-			0x00040020, 0x0000001a, 0x00000003, 0x00000006,
-			0x0004002b, 0x0000000a, 0x0000001e, 0x00000001,
-			0x0004002b, 0x0000000a, 0x00000025, 0x00000002,
-			0x0004002b, 0x0000000a, 0x0000002c, 0x00000003,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000b, 0x0000000e, 0x0000000d, 0x00050062,
-			0x00000013, 0x00000014, 0x0000000e, 0x00000012,
-			0x00050051, 0x0000000a, 0x00000016, 0x00000014,
-			0x00000000, 0x00040070, 0x00000006, 0x00000017,
-			0x00000016, 0x00050088, 0x00000006, 0x00000019,
-			0x00000017, 0x00000018, 0x00050041, 0x0000001a,
-			0x0000001b, 0x00000009, 0x00000015, 0x0003003e,
-			0x0000001b, 0x00000019, 0x0004003d, 0x0000000b,
-			0x0000001c, 0x0000000d, 0x00050062, 0x00000013,
-			0x0000001d, 0x0000001c, 0x00000012, 0x00050051,
-			0x0000000a, 0x0000001f, 0x0000001d, 0x00000001,
-			0x00040070, 0x00000006, 0x00000020, 0x0000001f,
-			0x00050088, 0x00000006, 0x00000021, 0x00000020,
-			0x00000018, 0x00050041, 0x0000001a, 0x00000022,
-			0x00000009, 0x0000001e, 0x0003003e, 0x00000022,
-			0x00000021, 0x0004003d, 0x0000000b, 0x00000023,
-			0x0000000d, 0x00050062, 0x00000013, 0x00000024,
-			0x00000023, 0x00000012, 0x00050051, 0x0000000a,
-			0x00000026, 0x00000024, 0x00000002, 0x00040070,
-			0x00000006, 0x00000027, 0x00000026, 0x00050088,
-			0x00000006, 0x00000028, 0x00000027, 0x00000018,
-			0x00050041, 0x0000001a, 0x00000029, 0x00000009,
-			0x00000025, 0x0003003e, 0x00000029, 0x00000028,
-			0x0004003d, 0x0000000b, 0x0000002a, 0x0000000d,
-			0x00050062, 0x00000013, 0x0000002b, 0x0000002a,
-			0x00000012, 0x00050051, 0x0000000a, 0x0000002d,
-			0x0000002b, 0x00000003, 0x00040070, 0x00000006,
-			0x0000002e, 0x0000002d, 0x00050088, 0x00000006,
-			0x0000002f, 0x0000002e, 0x00000018, 0x00050041,
-			0x0000001a, 0x00000030, 0x00000009, 0x0000002c,
-			0x0003003e, 0x00000030, 0x0000002f, 0x000100fd,
-			0x00010038}
+	case VkFormat_VK_FORMAT_R8G8_SINT:
+		imgFmtStr = "rg8i"
+	case VkFormat_VK_FORMAT_R16G16_SINT:
+		imgFmtStr = "rg16i"
+	case VkFormat_VK_FORMAT_R32G32_SINT:
+		imgFmtStr = "rg32i"
 
-	case ipRenderFragColorUnormR5G6B6:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = subpassLoad(in_color).r/31.0;
-				out_color.g = subpassLoad(in_color).g/63.0;
-				out_color.b = subpassLoad(in_color).b/31.0;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x0000002b,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000d, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000d,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040017, 0x00000007,
-			0x00000006, 0x00000004, 0x00040020, 0x00000008,
-			0x00000003, 0x00000007, 0x0004003b, 0x00000008,
-			0x00000009, 0x00000003, 0x00040015, 0x0000000a,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000b,
-			0x0000000a, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000c, 0x00000000, 0x0000000b, 0x0004003b,
-			0x0000000c, 0x0000000d, 0x00000000, 0x00040015,
-			0x0000000f, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000f, 0x00000010, 0x00000000, 0x00040017,
-			0x00000011, 0x0000000f, 0x00000002, 0x0005002c,
-			0x00000011, 0x00000012, 0x00000010, 0x00000010,
-			0x00040017, 0x00000013, 0x0000000a, 0x00000004,
-			0x0004002b, 0x0000000a, 0x00000015, 0x00000000,
-			0x0004002b, 0x00000006, 0x00000018, 0x41f80000,
-			0x00040020, 0x0000001a, 0x00000003, 0x00000006,
-			0x0004002b, 0x0000000a, 0x0000001e, 0x00000001,
-			0x0004002b, 0x00000006, 0x00000021, 0x427c0000,
-			0x0004002b, 0x0000000a, 0x00000026, 0x00000002,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000b, 0x0000000e, 0x0000000d, 0x00050062,
-			0x00000013, 0x00000014, 0x0000000e, 0x00000012,
-			0x00050051, 0x0000000a, 0x00000016, 0x00000014,
-			0x00000000, 0x00040070, 0x00000006, 0x00000017,
-			0x00000016, 0x00050088, 0x00000006, 0x00000019,
-			0x00000017, 0x00000018, 0x00050041, 0x0000001a,
-			0x0000001b, 0x00000009, 0x00000015, 0x0003003e,
-			0x0000001b, 0x00000019, 0x0004003d, 0x0000000b,
-			0x0000001c, 0x0000000d, 0x00050062, 0x00000013,
-			0x0000001d, 0x0000001c, 0x00000012, 0x00050051,
-			0x0000000a, 0x0000001f, 0x0000001d, 0x00000001,
-			0x00040070, 0x00000006, 0x00000020, 0x0000001f,
-			0x00050088, 0x00000006, 0x00000022, 0x00000020,
-			0x00000021, 0x00050041, 0x0000001a, 0x00000023,
-			0x00000009, 0x0000001e, 0x0003003e, 0x00000023,
-			0x00000022, 0x0004003d, 0x0000000b, 0x00000024,
-			0x0000000d, 0x00050062, 0x00000013, 0x00000025,
-			0x00000024, 0x00000012, 0x00050051, 0x0000000a,
-			0x00000027, 0x00000025, 0x00000002, 0x00040070,
-			0x00000006, 0x00000028, 0x00000027, 0x00050088,
-			0x00000006, 0x00000029, 0x00000028, 0x00000018,
-			0x00050041, 0x0000001a, 0x0000002a, 0x00000009,
-			0x00000026, 0x0003003e, 0x0000002a, 0x00000029,
-			0x000100fd, 0x00010038}
+	case VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_SINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32:
+		imgFmtStr = "rgba8i"
+	case VkFormat_VK_FORMAT_R16G16B16A16_SINT:
+		imgFmtStr = "rgba16i"
+	case VkFormat_VK_FORMAT_R32G32B32A32_SINT:
+		imgFmtStr = "rgba32i"
 
-	case ipRenderFragColorUnormR5G5B5A1:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = subpassLoad(in_color).r/31.0;
-				out_color.g = subpassLoad(in_color).g/31.0;
-				out_color.b = subpassLoad(in_color).b/31.0;
-				out_color.a = subpassLoad(in_color).a/1.0;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000032,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000d, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000d,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040017, 0x00000007,
-			0x00000006, 0x00000004, 0x00040020, 0x00000008,
-			0x00000003, 0x00000007, 0x0004003b, 0x00000008,
-			0x00000009, 0x00000003, 0x00040015, 0x0000000a,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000b,
-			0x0000000a, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000c, 0x00000000, 0x0000000b, 0x0004003b,
-			0x0000000c, 0x0000000d, 0x00000000, 0x00040015,
-			0x0000000f, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000f, 0x00000010, 0x00000000, 0x00040017,
-			0x00000011, 0x0000000f, 0x00000002, 0x0005002c,
-			0x00000011, 0x00000012, 0x00000010, 0x00000010,
-			0x00040017, 0x00000013, 0x0000000a, 0x00000004,
-			0x0004002b, 0x0000000a, 0x00000015, 0x00000000,
-			0x0004002b, 0x00000006, 0x00000018, 0x41f80000,
-			0x00040020, 0x0000001a, 0x00000003, 0x00000006,
-			0x0004002b, 0x0000000a, 0x0000001e, 0x00000001,
-			0x0004002b, 0x0000000a, 0x00000025, 0x00000002,
-			0x0004002b, 0x0000000a, 0x0000002c, 0x00000003,
-			0x0004002b, 0x00000006, 0x0000002f, 0x3f800000,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000b, 0x0000000e, 0x0000000d, 0x00050062,
-			0x00000013, 0x00000014, 0x0000000e, 0x00000012,
-			0x00050051, 0x0000000a, 0x00000016, 0x00000014,
-			0x00000000, 0x00040070, 0x00000006, 0x00000017,
-			0x00000016, 0x00050088, 0x00000006, 0x00000019,
-			0x00000017, 0x00000018, 0x00050041, 0x0000001a,
-			0x0000001b, 0x00000009, 0x00000015, 0x0003003e,
-			0x0000001b, 0x00000019, 0x0004003d, 0x0000000b,
-			0x0000001c, 0x0000000d, 0x00050062, 0x00000013,
-			0x0000001d, 0x0000001c, 0x00000012, 0x00050051,
-			0x0000000a, 0x0000001f, 0x0000001d, 0x00000001,
-			0x00040070, 0x00000006, 0x00000020, 0x0000001f,
-			0x00050088, 0x00000006, 0x00000021, 0x00000020,
-			0x00000018, 0x00050041, 0x0000001a, 0x00000022,
-			0x00000009, 0x0000001e, 0x0003003e, 0x00000022,
-			0x00000021, 0x0004003d, 0x0000000b, 0x00000023,
-			0x0000000d, 0x00050062, 0x00000013, 0x00000024,
-			0x00000023, 0x00000012, 0x00050051, 0x0000000a,
-			0x00000026, 0x00000024, 0x00000002, 0x00040070,
-			0x00000006, 0x00000027, 0x00000026, 0x00050088,
-			0x00000006, 0x00000028, 0x00000027, 0x00000018,
-			0x00050041, 0x0000001a, 0x00000029, 0x00000009,
-			0x00000025, 0x0003003e, 0x00000029, 0x00000028,
-			0x0004003d, 0x0000000b, 0x0000002a, 0x0000000d,
-			0x00050062, 0x00000013, 0x0000002b, 0x0000002a,
-			0x00000012, 0x00050051, 0x0000000a, 0x0000002d,
-			0x0000002b, 0x00000003, 0x00040070, 0x00000006,
-			0x0000002e, 0x0000002d, 0x00050088, 0x00000006,
-			0x00000030, 0x0000002e, 0x0000002f, 0x00050041,
-			0x0000001a, 0x00000031, 0x00000009, 0x0000002c,
-			0x0003003e, 0x00000031, 0x00000030, 0x000100fd,
-			0x00010038}
+	// unorm formats
+	case VkFormat_VK_FORMAT_R8_UNORM,
+		VkFormat_VK_FORMAT_R8_SRGB:
+		imgFmtStr = "r8"
+	case VkFormat_VK_FORMAT_R16_UNORM:
+		imgFmtStr = "r16"
 
-	case ipRenderFragColorUnormR10G10B10A2:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = subpassLoad(in_color).r/1023.0;
-				out_color.g = subpassLoad(in_color).g/1023.0;
-				out_color.b = subpassLoad(in_color).b/1023.0;
-				out_color.a = subpassLoad(in_color).a/3.0;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000032,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000d, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000d,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040017, 0x00000007,
-			0x00000006, 0x00000004, 0x00040020, 0x00000008,
-			0x00000003, 0x00000007, 0x0004003b, 0x00000008,
-			0x00000009, 0x00000003, 0x00040015, 0x0000000a,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000b,
-			0x0000000a, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000c, 0x00000000, 0x0000000b, 0x0004003b,
-			0x0000000c, 0x0000000d, 0x00000000, 0x00040015,
-			0x0000000f, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000f, 0x00000010, 0x00000000, 0x00040017,
-			0x00000011, 0x0000000f, 0x00000002, 0x0005002c,
-			0x00000011, 0x00000012, 0x00000010, 0x00000010,
-			0x00040017, 0x00000013, 0x0000000a, 0x00000004,
-			0x0004002b, 0x0000000a, 0x00000015, 0x00000000,
-			0x0004002b, 0x00000006, 0x00000018, 0x447fc000,
-			0x00040020, 0x0000001a, 0x00000003, 0x00000006,
-			0x0004002b, 0x0000000a, 0x0000001e, 0x00000001,
-			0x0004002b, 0x0000000a, 0x00000025, 0x00000002,
-			0x0004002b, 0x0000000a, 0x0000002c, 0x00000003,
-			0x0004002b, 0x00000006, 0x0000002f, 0x40400000,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000b, 0x0000000e, 0x0000000d, 0x00050062,
-			0x00000013, 0x00000014, 0x0000000e, 0x00000012,
-			0x00050051, 0x0000000a, 0x00000016, 0x00000014,
-			0x00000000, 0x00040070, 0x00000006, 0x00000017,
-			0x00000016, 0x00050088, 0x00000006, 0x00000019,
-			0x00000017, 0x00000018, 0x00050041, 0x0000001a,
-			0x0000001b, 0x00000009, 0x00000015, 0x0003003e,
-			0x0000001b, 0x00000019, 0x0004003d, 0x0000000b,
-			0x0000001c, 0x0000000d, 0x00050062, 0x00000013,
-			0x0000001d, 0x0000001c, 0x00000012, 0x00050051,
-			0x0000000a, 0x0000001f, 0x0000001d, 0x00000001,
-			0x00040070, 0x00000006, 0x00000020, 0x0000001f,
-			0x00050088, 0x00000006, 0x00000021, 0x00000020,
-			0x00000018, 0x00050041, 0x0000001a, 0x00000022,
-			0x00000009, 0x0000001e, 0x0003003e, 0x00000022,
-			0x00000021, 0x0004003d, 0x0000000b, 0x00000023,
-			0x0000000d, 0x00050062, 0x00000013, 0x00000024,
-			0x00000023, 0x00000012, 0x00050051, 0x0000000a,
-			0x00000026, 0x00000024, 0x00000002, 0x00040070,
-			0x00000006, 0x00000027, 0x00000026, 0x00050088,
-			0x00000006, 0x00000028, 0x00000027, 0x00000018,
-			0x00050041, 0x0000001a, 0x00000029, 0x00000009,
-			0x00000025, 0x0003003e, 0x00000029, 0x00000028,
-			0x0004003d, 0x0000000b, 0x0000002a, 0x0000000d,
-			0x00050062, 0x00000013, 0x0000002b, 0x0000002a,
-			0x00000012, 0x00050051, 0x0000000a, 0x0000002d,
-			0x0000002b, 0x00000003, 0x00040070, 0x00000006,
-			0x0000002e, 0x0000002d, 0x00050088, 0x00000006,
-			0x00000030, 0x0000002e, 0x0000002f, 0x00050041,
-			0x0000001a, 0x00000031, 0x00000009, 0x0000002c,
-			0x0003003e, 0x00000031, 0x00000030, 0x000100fd,
-			0x00010038}
+	case VkFormat_VK_FORMAT_R8G8_UNORM,
+		VkFormat_VK_FORMAT_R8G8_SRGB:
+		imgFmtStr = "rg8"
+	case VkFormat_VK_FORMAT_R16G16_UNORM:
+		imgFmtStr = "rg16"
 
-	case ipRenderFragColorSnorm8:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			float snorm(in uint u, in float d) {
-				return (int(u) * 2.0  + 1.0) / d;
-			}
-			void main() {
-				out_color.r = snorm(subpassLoad(in_color).r, 255.0);
-				out_color.g = snorm(subpassLoad(in_color).g, 255.0);
-				out_color.b = snorm(subpassLoad(in_color).b, 255.0);
-				out_color.a = snorm(subpassLoad(in_color).a, 255.0);
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000047,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x0000001d,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00060005, 0x0000000d, 0x726f6e73, 0x3175286d,
-			0x3b31663b, 0x00000000, 0x00030005, 0x0000000b,
-			0x00000075, 0x00030005, 0x0000000c, 0x00000064,
-			0x00050005, 0x0000001d, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x00000020, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040005, 0x00000028,
-			0x61726170, 0x0000006d, 0x00040005, 0x0000002b,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000031,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000034,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000039,
-			0x61726170, 0x0000006d, 0x00040005, 0x0000003c,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000041,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000044,
-			0x61726170, 0x0000006d, 0x00040047, 0x0000001d,
-			0x0000001e, 0x00000000, 0x00040047, 0x00000020,
-			0x00000022, 0x00000000, 0x00040047, 0x00000020,
-			0x00000021, 0x00000000, 0x00040047, 0x00000020,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00040015,
-			0x00000006, 0x00000020, 0x00000000, 0x00040020,
-			0x00000007, 0x00000007, 0x00000006, 0x00030016,
-			0x00000008, 0x00000020, 0x00040020, 0x00000009,
-			0x00000007, 0x00000008, 0x00050021, 0x0000000a,
-			0x00000008, 0x00000007, 0x00000009, 0x00040015,
-			0x00000010, 0x00000020, 0x00000001, 0x0004002b,
-			0x00000008, 0x00000013, 0x40000000, 0x0004002b,
-			0x00000008, 0x00000015, 0x3f800000, 0x00040017,
-			0x0000001b, 0x00000008, 0x00000004, 0x00040020,
-			0x0000001c, 0x00000003, 0x0000001b, 0x0004003b,
-			0x0000001c, 0x0000001d, 0x00000003, 0x00090019,
-			0x0000001e, 0x00000006, 0x00000006, 0x00000000,
-			0x00000000, 0x00000000, 0x00000002, 0x00000000,
-			0x00040020, 0x0000001f, 0x00000000, 0x0000001e,
-			0x0004003b, 0x0000001f, 0x00000020, 0x00000000,
-			0x0004002b, 0x00000010, 0x00000022, 0x00000000,
-			0x00040017, 0x00000023, 0x00000010, 0x00000002,
-			0x0005002c, 0x00000023, 0x00000024, 0x00000022,
-			0x00000022, 0x00040017, 0x00000025, 0x00000006,
-			0x00000004, 0x0004002b, 0x00000008, 0x00000027,
-			0x437f0000, 0x0004002b, 0x00000006, 0x00000029,
-			0x00000000, 0x00040020, 0x0000002d, 0x00000003,
-			0x00000008, 0x0004002b, 0x00000006, 0x00000032,
-			0x00000001, 0x0004002b, 0x00000006, 0x0000003a,
-			0x00000002, 0x0004002b, 0x00000006, 0x00000042,
-			0x00000003, 0x00050036, 0x00000002, 0x00000004,
-			0x00000000, 0x00000003, 0x000200f8, 0x00000005,
-			0x0004003b, 0x00000007, 0x00000028, 0x00000007,
-			0x0004003b, 0x00000009, 0x0000002b, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000031, 0x00000007,
-			0x0004003b, 0x00000009, 0x00000034, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000039, 0x00000007,
-			0x0004003b, 0x00000009, 0x0000003c, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000041, 0x00000007,
-			0x0004003b, 0x00000009, 0x00000044, 0x00000007,
-			0x0004003d, 0x0000001e, 0x00000021, 0x00000020,
-			0x00050062, 0x00000025, 0x00000026, 0x00000021,
-			0x00000024, 0x00050051, 0x00000006, 0x0000002a,
-			0x00000026, 0x00000000, 0x0003003e, 0x00000028,
-			0x0000002a, 0x0003003e, 0x0000002b, 0x00000027,
-			0x00060039, 0x00000008, 0x0000002c, 0x0000000d,
-			0x00000028, 0x0000002b, 0x00050041, 0x0000002d,
-			0x0000002e, 0x0000001d, 0x00000029, 0x0003003e,
-			0x0000002e, 0x0000002c, 0x0004003d, 0x0000001e,
-			0x0000002f, 0x00000020, 0x00050062, 0x00000025,
-			0x00000030, 0x0000002f, 0x00000024, 0x00050051,
-			0x00000006, 0x00000033, 0x00000030, 0x00000001,
-			0x0003003e, 0x00000031, 0x00000033, 0x0003003e,
-			0x00000034, 0x00000027, 0x00060039, 0x00000008,
-			0x00000035, 0x0000000d, 0x00000031, 0x00000034,
-			0x00050041, 0x0000002d, 0x00000036, 0x0000001d,
-			0x00000032, 0x0003003e, 0x00000036, 0x00000035,
-			0x0004003d, 0x0000001e, 0x00000037, 0x00000020,
-			0x00050062, 0x00000025, 0x00000038, 0x00000037,
-			0x00000024, 0x00050051, 0x00000006, 0x0000003b,
-			0x00000038, 0x00000002, 0x0003003e, 0x00000039,
-			0x0000003b, 0x0003003e, 0x0000003c, 0x00000027,
-			0x00060039, 0x00000008, 0x0000003d, 0x0000000d,
-			0x00000039, 0x0000003c, 0x00050041, 0x0000002d,
-			0x0000003e, 0x0000001d, 0x0000003a, 0x0003003e,
-			0x0000003e, 0x0000003d, 0x0004003d, 0x0000001e,
-			0x0000003f, 0x00000020, 0x00050062, 0x00000025,
-			0x00000040, 0x0000003f, 0x00000024, 0x00050051,
-			0x00000006, 0x00000043, 0x00000040, 0x00000003,
-			0x0003003e, 0x00000041, 0x00000043, 0x0003003e,
-			0x00000044, 0x00000027, 0x00060039, 0x00000008,
-			0x00000045, 0x0000000d, 0x00000041, 0x00000044,
-			0x00050041, 0x0000002d, 0x00000046, 0x0000001d,
-			0x00000042, 0x0003003e, 0x00000046, 0x00000045,
-			0x000100fd, 0x00010038, 0x00050036, 0x00000008,
-			0x0000000d, 0x00000000, 0x0000000a, 0x00030037,
-			0x00000007, 0x0000000b, 0x00030037, 0x00000009,
-			0x0000000c, 0x000200f8, 0x0000000e, 0x0004003d,
-			0x00000006, 0x0000000f, 0x0000000b, 0x0004007c,
-			0x00000010, 0x00000011, 0x0000000f, 0x0004006f,
-			0x00000008, 0x00000012, 0x00000011, 0x00050085,
-			0x00000008, 0x00000014, 0x00000012, 0x00000013,
-			0x00050081, 0x00000008, 0x00000016, 0x00000014,
-			0x00000015, 0x0004003d, 0x00000008, 0x00000017,
-			0x0000000c, 0x00050088, 0x00000008, 0x00000018,
-			0x00000016, 0x00000017, 0x000200fe, 0x00000018,
-			0x00010038}
+	case VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
+		VkFormat_VK_FORMAT_B8G8R8A8_SRGB:
+		imgFmtStr = "rgba8"
 
-	case ipRenderFragColorSnorm16:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			float snorm(in uint u, in float d) {
-				return (int(u) * 2.0  + 1.0) / d;
-			}
-			void main() {
-				out_color.r = snorm(subpassLoad(in_color).r, 65535.0);
-				out_color.g = snorm(subpassLoad(in_color).g, 65535.0);
-				out_color.b = snorm(subpassLoad(in_color).b, 65535.0);
-				out_color.a = snorm(subpassLoad(in_color).a, 65535.0);
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000047,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x0000001d,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00060005, 0x0000000d, 0x726f6e73, 0x3175286d,
-			0x3b31663b, 0x00000000, 0x00030005, 0x0000000b,
-			0x00000075, 0x00030005, 0x0000000c, 0x00000064,
-			0x00050005, 0x0000001d, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x00000020, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040005, 0x00000028,
-			0x61726170, 0x0000006d, 0x00040005, 0x0000002b,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000031,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000034,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000039,
-			0x61726170, 0x0000006d, 0x00040005, 0x0000003c,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000041,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000044,
-			0x61726170, 0x0000006d, 0x00040047, 0x0000001d,
-			0x0000001e, 0x00000000, 0x00040047, 0x00000020,
-			0x00000022, 0x00000000, 0x00040047, 0x00000020,
-			0x00000021, 0x00000000, 0x00040047, 0x00000020,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00040015,
-			0x00000006, 0x00000020, 0x00000000, 0x00040020,
-			0x00000007, 0x00000007, 0x00000006, 0x00030016,
-			0x00000008, 0x00000020, 0x00040020, 0x00000009,
-			0x00000007, 0x00000008, 0x00050021, 0x0000000a,
-			0x00000008, 0x00000007, 0x00000009, 0x00040015,
-			0x00000010, 0x00000020, 0x00000001, 0x0004002b,
-			0x00000008, 0x00000013, 0x40000000, 0x0004002b,
-			0x00000008, 0x00000015, 0x3f800000, 0x00040017,
-			0x0000001b, 0x00000008, 0x00000004, 0x00040020,
-			0x0000001c, 0x00000003, 0x0000001b, 0x0004003b,
-			0x0000001c, 0x0000001d, 0x00000003, 0x00090019,
-			0x0000001e, 0x00000006, 0x00000006, 0x00000000,
-			0x00000000, 0x00000000, 0x00000002, 0x00000000,
-			0x00040020, 0x0000001f, 0x00000000, 0x0000001e,
-			0x0004003b, 0x0000001f, 0x00000020, 0x00000000,
-			0x0004002b, 0x00000010, 0x00000022, 0x00000000,
-			0x00040017, 0x00000023, 0x00000010, 0x00000002,
-			0x0005002c, 0x00000023, 0x00000024, 0x00000022,
-			0x00000022, 0x00040017, 0x00000025, 0x00000006,
-			0x00000004, 0x0004002b, 0x00000008, 0x00000027,
-			0x477fff00, 0x0004002b, 0x00000006, 0x00000029,
-			0x00000000, 0x00040020, 0x0000002d, 0x00000003,
-			0x00000008, 0x0004002b, 0x00000006, 0x00000032,
-			0x00000001, 0x0004002b, 0x00000006, 0x0000003a,
-			0x00000002, 0x0004002b, 0x00000006, 0x00000042,
-			0x00000003, 0x00050036, 0x00000002, 0x00000004,
-			0x00000000, 0x00000003, 0x000200f8, 0x00000005,
-			0x0004003b, 0x00000007, 0x00000028, 0x00000007,
-			0x0004003b, 0x00000009, 0x0000002b, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000031, 0x00000007,
-			0x0004003b, 0x00000009, 0x00000034, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000039, 0x00000007,
-			0x0004003b, 0x00000009, 0x0000003c, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000041, 0x00000007,
-			0x0004003b, 0x00000009, 0x00000044, 0x00000007,
-			0x0004003d, 0x0000001e, 0x00000021, 0x00000020,
-			0x00050062, 0x00000025, 0x00000026, 0x00000021,
-			0x00000024, 0x00050051, 0x00000006, 0x0000002a,
-			0x00000026, 0x00000000, 0x0003003e, 0x00000028,
-			0x0000002a, 0x0003003e, 0x0000002b, 0x00000027,
-			0x00060039, 0x00000008, 0x0000002c, 0x0000000d,
-			0x00000028, 0x0000002b, 0x00050041, 0x0000002d,
-			0x0000002e, 0x0000001d, 0x00000029, 0x0003003e,
-			0x0000002e, 0x0000002c, 0x0004003d, 0x0000001e,
-			0x0000002f, 0x00000020, 0x00050062, 0x00000025,
-			0x00000030, 0x0000002f, 0x00000024, 0x00050051,
-			0x00000006, 0x00000033, 0x00000030, 0x00000001,
-			0x0003003e, 0x00000031, 0x00000033, 0x0003003e,
-			0x00000034, 0x00000027, 0x00060039, 0x00000008,
-			0x00000035, 0x0000000d, 0x00000031, 0x00000034,
-			0x00050041, 0x0000002d, 0x00000036, 0x0000001d,
-			0x00000032, 0x0003003e, 0x00000036, 0x00000035,
-			0x0004003d, 0x0000001e, 0x00000037, 0x00000020,
-			0x00050062, 0x00000025, 0x00000038, 0x00000037,
-			0x00000024, 0x00050051, 0x00000006, 0x0000003b,
-			0x00000038, 0x00000002, 0x0003003e, 0x00000039,
-			0x0000003b, 0x0003003e, 0x0000003c, 0x00000027,
-			0x00060039, 0x00000008, 0x0000003d, 0x0000000d,
-			0x00000039, 0x0000003c, 0x00050041, 0x0000002d,
-			0x0000003e, 0x0000001d, 0x0000003a, 0x0003003e,
-			0x0000003e, 0x0000003d, 0x0004003d, 0x0000001e,
-			0x0000003f, 0x00000020, 0x00050062, 0x00000025,
-			0x00000040, 0x0000003f, 0x00000024, 0x00050051,
-			0x00000006, 0x00000043, 0x00000040, 0x00000003,
-			0x0003003e, 0x00000041, 0x00000043, 0x0003003e,
-			0x00000044, 0x00000027, 0x00060039, 0x00000008,
-			0x00000045, 0x0000000d, 0x00000041, 0x00000044,
-			0x00050041, 0x0000002d, 0x00000046, 0x0000001d,
-			0x00000042, 0x0003003e, 0x00000046, 0x00000045,
-			0x000100fd, 0x00010038, 0x00050036, 0x00000008,
-			0x0000000d, 0x00000000, 0x0000000a, 0x00030037,
-			0x00000007, 0x0000000b, 0x00030037, 0x00000009,
-			0x0000000c, 0x000200f8, 0x0000000e, 0x0004003d,
-			0x00000006, 0x0000000f, 0x0000000b, 0x0004007c,
-			0x00000010, 0x00000011, 0x0000000f, 0x0004006f,
-			0x00000008, 0x00000012, 0x00000011, 0x00050085,
-			0x00000008, 0x00000014, 0x00000012, 0x00000013,
-			0x00050081, 0x00000008, 0x00000016, 0x00000014,
-			0x00000015, 0x0004003d, 0x00000008, 0x00000017,
-			0x0000000c, 0x00050088, 0x00000008, 0x00000018,
-			0x00000016, 0x00000017, 0x000200fe, 0x00000018,
-			0x00010038}
+	case VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
+		imgFmtStr = "rgba16"
 
-	case ipRenderFragColorSnormR10G10B10A2:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			float snorm(in uint u, in float d) {
-				return (int(u) * 2.0  + 1.0) / d;
-			}
-			void main() {
-				out_color.r = snorm(subpassLoad(in_color).r, 1023.0);
-				out_color.g = snorm(subpassLoad(in_color).g, 1023.0);
-				out_color.b = snorm(subpassLoad(in_color).b, 1023.0);
-				out_color.a = snorm(subpassLoad(in_color).a, 1.0);
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000047,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x0000001d,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00060005, 0x0000000d, 0x726f6e73, 0x3175286d,
-			0x3b31663b, 0x00000000, 0x00030005, 0x0000000b,
-			0x00000075, 0x00030005, 0x0000000c, 0x00000064,
-			0x00050005, 0x0000001d, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x00000020, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040005, 0x00000028,
-			0x61726170, 0x0000006d, 0x00040005, 0x0000002b,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000031,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000034,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000039,
-			0x61726170, 0x0000006d, 0x00040005, 0x0000003c,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000041,
-			0x61726170, 0x0000006d, 0x00040005, 0x00000044,
-			0x61726170, 0x0000006d, 0x00040047, 0x0000001d,
-			0x0000001e, 0x00000000, 0x00040047, 0x00000020,
-			0x00000022, 0x00000000, 0x00040047, 0x00000020,
-			0x00000021, 0x00000000, 0x00040047, 0x00000020,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00040015,
-			0x00000006, 0x00000020, 0x00000000, 0x00040020,
-			0x00000007, 0x00000007, 0x00000006, 0x00030016,
-			0x00000008, 0x00000020, 0x00040020, 0x00000009,
-			0x00000007, 0x00000008, 0x00050021, 0x0000000a,
-			0x00000008, 0x00000007, 0x00000009, 0x00040015,
-			0x00000010, 0x00000020, 0x00000001, 0x0004002b,
-			0x00000008, 0x00000013, 0x40000000, 0x0004002b,
-			0x00000008, 0x00000015, 0x3f800000, 0x00040017,
-			0x0000001b, 0x00000008, 0x00000004, 0x00040020,
-			0x0000001c, 0x00000003, 0x0000001b, 0x0004003b,
-			0x0000001c, 0x0000001d, 0x00000003, 0x00090019,
-			0x0000001e, 0x00000006, 0x00000006, 0x00000000,
-			0x00000000, 0x00000000, 0x00000002, 0x00000000,
-			0x00040020, 0x0000001f, 0x00000000, 0x0000001e,
-			0x0004003b, 0x0000001f, 0x00000020, 0x00000000,
-			0x0004002b, 0x00000010, 0x00000022, 0x00000000,
-			0x00040017, 0x00000023, 0x00000010, 0x00000002,
-			0x0005002c, 0x00000023, 0x00000024, 0x00000022,
-			0x00000022, 0x00040017, 0x00000025, 0x00000006,
-			0x00000004, 0x0004002b, 0x00000008, 0x00000027,
-			0x447fc000, 0x0004002b, 0x00000006, 0x00000029,
-			0x00000000, 0x00040020, 0x0000002d, 0x00000003,
-			0x00000008, 0x0004002b, 0x00000006, 0x00000032,
-			0x00000001, 0x0004002b, 0x00000006, 0x0000003a,
-			0x00000002, 0x0004002b, 0x00000006, 0x00000042,
-			0x00000003, 0x00050036, 0x00000002, 0x00000004,
-			0x00000000, 0x00000003, 0x000200f8, 0x00000005,
-			0x0004003b, 0x00000007, 0x00000028, 0x00000007,
-			0x0004003b, 0x00000009, 0x0000002b, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000031, 0x00000007,
-			0x0004003b, 0x00000009, 0x00000034, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000039, 0x00000007,
-			0x0004003b, 0x00000009, 0x0000003c, 0x00000007,
-			0x0004003b, 0x00000007, 0x00000041, 0x00000007,
-			0x0004003b, 0x00000009, 0x00000044, 0x00000007,
-			0x0004003d, 0x0000001e, 0x00000021, 0x00000020,
-			0x00050062, 0x00000025, 0x00000026, 0x00000021,
-			0x00000024, 0x00050051, 0x00000006, 0x0000002a,
-			0x00000026, 0x00000000, 0x0003003e, 0x00000028,
-			0x0000002a, 0x0003003e, 0x0000002b, 0x00000027,
-			0x00060039, 0x00000008, 0x0000002c, 0x0000000d,
-			0x00000028, 0x0000002b, 0x00050041, 0x0000002d,
-			0x0000002e, 0x0000001d, 0x00000029, 0x0003003e,
-			0x0000002e, 0x0000002c, 0x0004003d, 0x0000001e,
-			0x0000002f, 0x00000020, 0x00050062, 0x00000025,
-			0x00000030, 0x0000002f, 0x00000024, 0x00050051,
-			0x00000006, 0x00000033, 0x00000030, 0x00000001,
-			0x0003003e, 0x00000031, 0x00000033, 0x0003003e,
-			0x00000034, 0x00000027, 0x00060039, 0x00000008,
-			0x00000035, 0x0000000d, 0x00000031, 0x00000034,
-			0x00050041, 0x0000002d, 0x00000036, 0x0000001d,
-			0x00000032, 0x0003003e, 0x00000036, 0x00000035,
-			0x0004003d, 0x0000001e, 0x00000037, 0x00000020,
-			0x00050062, 0x00000025, 0x00000038, 0x00000037,
-			0x00000024, 0x00050051, 0x00000006, 0x0000003b,
-			0x00000038, 0x00000002, 0x0003003e, 0x00000039,
-			0x0000003b, 0x0003003e, 0x0000003c, 0x00000027,
-			0x00060039, 0x00000008, 0x0000003d, 0x0000000d,
-			0x00000039, 0x0000003c, 0x00050041, 0x0000002d,
-			0x0000003e, 0x0000001d, 0x0000003a, 0x0003003e,
-			0x0000003e, 0x0000003d, 0x0004003d, 0x0000001e,
-			0x0000003f, 0x00000020, 0x00050062, 0x00000025,
-			0x00000040, 0x0000003f, 0x00000024, 0x00050051,
-			0x00000006, 0x00000043, 0x00000040, 0x00000003,
-			0x0003003e, 0x00000041, 0x00000043, 0x0003003e,
-			0x00000044, 0x00000015, 0x00060039, 0x00000008,
-			0x00000045, 0x0000000d, 0x00000041, 0x00000044,
-			0x00050041, 0x0000002d, 0x00000046, 0x0000001d,
-			0x00000042, 0x0003003e, 0x00000046, 0x00000045,
-			0x000100fd, 0x00010038, 0x00050036, 0x00000008,
-			0x0000000d, 0x00000000, 0x0000000a, 0x00030037,
-			0x00000007, 0x0000000b, 0x00030037, 0x00000009,
-			0x0000000c, 0x000200f8, 0x0000000e, 0x0004003d,
-			0x00000006, 0x0000000f, 0x0000000b, 0x0004007c,
-			0x00000010, 0x00000011, 0x0000000f, 0x0004006f,
-			0x00000008, 0x00000012, 0x00000011, 0x00050085,
-			0x00000008, 0x00000014, 0x00000012, 0x00000013,
-			0x00050081, 0x00000008, 0x00000016, 0x00000014,
-			0x00000015, 0x0004003d, 0x00000008, 0x00000017,
-			0x0000000c, 0x00050088, 0x00000008, 0x00000018,
-			0x00000016, 0x00000017, 0x000200fe, 0x00000018,
-			0x00010038}
+	case VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+		imgFmtStr = "rgba8"
 
-	case ipRenderFragColorFloat:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			layout(location = 0) out vec4 out_color;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-			void main() {
-				out_color.r = uintBitsToFloat(subpassLoad(in_color).r);
-				out_color.g = uintBitsToFloat(subpassLoad(in_color).g);
-				out_color.b = uintBitsToFloat(subpassLoad(in_color).b);
-				out_color.a = uintBitsToFloat(subpassLoad(in_color).a);
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x0000002c,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000009,
-			0x00030010, 0x00000004, 0x00000007, 0x00030003,
-			0x00000002, 0x000001c2, 0x000a0004, 0x475f4c47,
-			0x4c474f4f, 0x70635f45, 0x74735f70, 0x5f656c79,
-			0x656e696c, 0x7269645f, 0x69746365, 0x00006576,
-			0x00080004, 0x475f4c47, 0x4c474f4f, 0x6e695f45,
-			0x64756c63, 0x69645f65, 0x74636572, 0x00657669,
-			0x00040005, 0x00000004, 0x6e69616d, 0x00000000,
-			0x00050005, 0x00000009, 0x5f74756f, 0x6f6c6f63,
-			0x00000072, 0x00050005, 0x0000000d, 0x635f6e69,
-			0x726f6c6f, 0x00000000, 0x00040047, 0x00000009,
-			0x0000001e, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000d,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000d,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040017, 0x00000007,
-			0x00000006, 0x00000004, 0x00040020, 0x00000008,
-			0x00000003, 0x00000007, 0x0004003b, 0x00000008,
-			0x00000009, 0x00000003, 0x00040015, 0x0000000a,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000b,
-			0x0000000a, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000c, 0x00000000, 0x0000000b, 0x0004003b,
-			0x0000000c, 0x0000000d, 0x00000000, 0x00040015,
-			0x0000000f, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000f, 0x00000010, 0x00000000, 0x00040017,
-			0x00000011, 0x0000000f, 0x00000002, 0x0005002c,
-			0x00000011, 0x00000012, 0x00000010, 0x00000010,
-			0x00040017, 0x00000013, 0x0000000a, 0x00000004,
-			0x0004002b, 0x0000000a, 0x00000015, 0x00000000,
-			0x00040020, 0x00000018, 0x00000003, 0x00000006,
-			0x0004002b, 0x0000000a, 0x0000001c, 0x00000001,
-			0x0004002b, 0x0000000a, 0x00000022, 0x00000002,
-			0x0004002b, 0x0000000a, 0x00000028, 0x00000003,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000b, 0x0000000e, 0x0000000d, 0x00050062,
-			0x00000013, 0x00000014, 0x0000000e, 0x00000012,
-			0x00050051, 0x0000000a, 0x00000016, 0x00000014,
-			0x00000000, 0x0004007c, 0x00000006, 0x00000017,
-			0x00000016, 0x00050041, 0x00000018, 0x00000019,
-			0x00000009, 0x00000015, 0x0003003e, 0x00000019,
-			0x00000017, 0x0004003d, 0x0000000b, 0x0000001a,
-			0x0000000d, 0x00050062, 0x00000013, 0x0000001b,
-			0x0000001a, 0x00000012, 0x00050051, 0x0000000a,
-			0x0000001d, 0x0000001b, 0x00000001, 0x0004007c,
-			0x00000006, 0x0000001e, 0x0000001d, 0x00050041,
-			0x00000018, 0x0000001f, 0x00000009, 0x0000001c,
-			0x0003003e, 0x0000001f, 0x0000001e, 0x0004003d,
-			0x0000000b, 0x00000020, 0x0000000d, 0x00050062,
-			0x00000013, 0x00000021, 0x00000020, 0x00000012,
-			0x00050051, 0x0000000a, 0x00000023, 0x00000021,
-			0x00000002, 0x0004007c, 0x00000006, 0x00000024,
-			0x00000023, 0x00050041, 0x00000018, 0x00000025,
-			0x00000009, 0x00000022, 0x0003003e, 0x00000025,
-			0x00000024, 0x0004003d, 0x0000000b, 0x00000026,
-			0x0000000d, 0x00050062, 0x00000013, 0x00000027,
-			0x00000026, 0x00000012, 0x00050051, 0x0000000a,
-			0x00000029, 0x00000027, 0x00000003, 0x0004007c,
-			0x00000006, 0x0000002a, 0x00000029, 0x00050041,
-			0x00000018, 0x0000002b, 0x00000009, 0x00000028,
-			0x0003003e, 0x0000002b, 0x0000002a, 0x000100fd,
-			0x00010038}
+	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+		imgFmtStr = "rgb10_a2"
 
-	case ipRenderFragDepthUnorm16:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			out float gl_FragDepth;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
-			void main() {
-				gl_FragDepth = subpassLoad(in_depth).r / 65535.0;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000019,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000008,
-			0x00030010, 0x00000004, 0x00000007, 0x00030010,
-			0x00000004, 0x0000000c, 0x00030003, 0x00000002,
-			0x000001c2, 0x000a0004, 0x475f4c47, 0x4c474f4f,
-			0x70635f45, 0x74735f70, 0x5f656c79, 0x656e696c,
-			0x7269645f, 0x69746365, 0x00006576, 0x00080004,
-			0x475f4c47, 0x4c474f4f, 0x6e695f45, 0x64756c63,
-			0x69645f65, 0x74636572, 0x00657669, 0x00040005,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00060005,
-			0x00000008, 0x465f6c67, 0x44676172, 0x68747065,
-			0x00000000, 0x00050005, 0x0000000c, 0x645f6e69,
-			0x68747065, 0x00000000, 0x00040047, 0x00000008,
-			0x0000000b, 0x00000016, 0x00040047, 0x0000000c,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000c,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000c,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040020, 0x00000007,
-			0x00000003, 0x00000006, 0x0004003b, 0x00000007,
-			0x00000008, 0x00000003, 0x00040015, 0x00000009,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000a,
-			0x00000009, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000b, 0x00000000, 0x0000000a, 0x0004003b,
-			0x0000000b, 0x0000000c, 0x00000000, 0x00040015,
-			0x0000000e, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000e, 0x0000000f, 0x00000000, 0x00040017,
-			0x00000010, 0x0000000e, 0x00000002, 0x0005002c,
-			0x00000010, 0x00000011, 0x0000000f, 0x0000000f,
-			0x00040017, 0x00000012, 0x00000009, 0x00000004,
-			0x0004002b, 0x00000009, 0x00000014, 0x00000000,
-			0x0004002b, 0x00000006, 0x00000017, 0x477fff00,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000a, 0x0000000d, 0x0000000c, 0x00050062,
-			0x00000012, 0x00000013, 0x0000000d, 0x00000011,
-			0x00050051, 0x00000009, 0x00000015, 0x00000013,
-			0x00000000, 0x00040070, 0x00000006, 0x00000016,
-			0x00000015, 0x00050088, 0x00000006, 0x00000018,
-			0x00000016, 0x00000017, 0x0003003e, 0x00000008,
-			0x00000018, 0x000100fd, 0x00010038}
+	// snorm formats
+	case VkFormat_VK_FORMAT_R8_SNORM:
+		imgFmtStr = "r8_snorm"
+	case VkFormat_VK_FORMAT_R16_SNORM:
+		imgFmtStr = "r16_snorm"
 
-	case ipRenderFragDepthUnorm24:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			out float gl_FragDepth;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
-			void main() {
-				gl_FragDepth = subpassLoad(in_depth).r / 16777215.0;
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000019,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000008,
-			0x00030010, 0x00000004, 0x00000007, 0x00030010,
-			0x00000004, 0x0000000c, 0x00030003, 0x00000002,
-			0x000001c2, 0x000a0004, 0x475f4c47, 0x4c474f4f,
-			0x70635f45, 0x74735f70, 0x5f656c79, 0x656e696c,
-			0x7269645f, 0x69746365, 0x00006576, 0x00080004,
-			0x475f4c47, 0x4c474f4f, 0x6e695f45, 0x64756c63,
-			0x69645f65, 0x74636572, 0x00657669, 0x00040005,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00060005,
-			0x00000008, 0x465f6c67, 0x44676172, 0x68747065,
-			0x00000000, 0x00050005, 0x0000000c, 0x645f6e69,
-			0x68747065, 0x00000000, 0x00040047, 0x00000008,
-			0x0000000b, 0x00000016, 0x00040047, 0x0000000c,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000c,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000c,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040020, 0x00000007,
-			0x00000003, 0x00000006, 0x0004003b, 0x00000007,
-			0x00000008, 0x00000003, 0x00040015, 0x00000009,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000a,
-			0x00000009, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000b, 0x00000000, 0x0000000a, 0x0004003b,
-			0x0000000b, 0x0000000c, 0x00000000, 0x00040015,
-			0x0000000e, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000e, 0x0000000f, 0x00000000, 0x00040017,
-			0x00000010, 0x0000000e, 0x00000002, 0x0005002c,
-			0x00000010, 0x00000011, 0x0000000f, 0x0000000f,
-			0x00040017, 0x00000012, 0x00000009, 0x00000004,
-			0x0004002b, 0x00000009, 0x00000014, 0x00000000,
-			0x0004002b, 0x00000006, 0x00000017, 0x4b7fffff,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000a, 0x0000000d, 0x0000000c, 0x00050062,
-			0x00000012, 0x00000013, 0x0000000d, 0x00000011,
-			0x00050051, 0x00000009, 0x00000015, 0x00000013,
-			0x00000000, 0x00040070, 0x00000006, 0x00000016,
-			0x00000015, 0x00050088, 0x00000006, 0x00000018,
-			0x00000016, 0x00000017, 0x0003003e, 0x00000008,
-			0x00000018, 0x000100fd, 0x00010038}
+	case VkFormat_VK_FORMAT_R8G8_SNORM:
+		imgFmtStr = "rg8_snorm"
+	case VkFormat_VK_FORMAT_R16G16_SNORM:
+		imgFmtStr = "rg16_snorm"
 
-	case ipRenderFragDepthFloat:
-		/*
-			#version 450
-			precision highp int;
-			precision highp float;
-			out float gl_FragDepth;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
-			void main() {
-				gl_FragDepth = uintBitsToFloat(subpassLoad(in_depth).r);
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000017,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0006000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00000008,
-			0x00030010, 0x00000004, 0x00000007, 0x00030010,
-			0x00000004, 0x0000000c, 0x00030003, 0x00000002,
-			0x000001c2, 0x000a0004, 0x475f4c47, 0x4c474f4f,
-			0x70635f45, 0x74735f70, 0x5f656c79, 0x656e696c,
-			0x7269645f, 0x69746365, 0x00006576, 0x00080004,
-			0x475f4c47, 0x4c474f4f, 0x6e695f45, 0x64756c63,
-			0x69645f65, 0x74636572, 0x00657669, 0x00040005,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00060005,
-			0x00000008, 0x465f6c67, 0x44676172, 0x68747065,
-			0x00000000, 0x00050005, 0x0000000c, 0x645f6e69,
-			0x68747065, 0x00000000, 0x00040047, 0x00000008,
-			0x0000000b, 0x00000016, 0x00040047, 0x0000000c,
-			0x00000022, 0x00000000, 0x00040047, 0x0000000c,
-			0x00000021, 0x00000000, 0x00040047, 0x0000000c,
-			0x0000002b, 0x00000000, 0x00020013, 0x00000002,
-			0x00030021, 0x00000003, 0x00000002, 0x00030016,
-			0x00000006, 0x00000020, 0x00040020, 0x00000007,
-			0x00000003, 0x00000006, 0x0004003b, 0x00000007,
-			0x00000008, 0x00000003, 0x00040015, 0x00000009,
-			0x00000020, 0x00000000, 0x00090019, 0x0000000a,
-			0x00000009, 0x00000006, 0x00000000, 0x00000000,
-			0x00000000, 0x00000002, 0x00000000, 0x00040020,
-			0x0000000b, 0x00000000, 0x0000000a, 0x0004003b,
-			0x0000000b, 0x0000000c, 0x00000000, 0x00040015,
-			0x0000000e, 0x00000020, 0x00000001, 0x0004002b,
-			0x0000000e, 0x0000000f, 0x00000000, 0x00040017,
-			0x00000010, 0x0000000e, 0x00000002, 0x0005002c,
-			0x00000010, 0x00000011, 0x0000000f, 0x0000000f,
-			0x00040017, 0x00000012, 0x00000009, 0x00000004,
-			0x0004002b, 0x00000009, 0x00000014, 0x00000000,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003d,
-			0x0000000a, 0x0000000d, 0x0000000c, 0x00050062,
-			0x00000012, 0x00000013, 0x0000000d, 0x00000011,
-			0x00050051, 0x00000009, 0x00000015, 0x00000013,
-			0x00000000, 0x0004007c, 0x00000006, 0x00000016,
-			0x00000015, 0x0003003e, 0x00000008, 0x00000016,
-			0x000100fd, 0x00010038}
+	case VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+		imgFmtStr = "rgba8_snorm"
+	case VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
+		imgFmtStr = "rgba16_snorm"
 
-	case ipRenderFragStencil:
-		/*
-			#version 450
-			precision highp int;
-			layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_stencil;
-			layout(binding = 1, set = 0) uniform mask_data { uint current_bit;};
-			void main() {
-			  uint stencil_value = subpassLoad(in_stencil).r;
-			  if ((stencil_value & (0x1 << current_bit)) == 0) {
-			    discard;
-			  }
-			}
-		*/
-		return []uint32{0x07230203, 0x00010000, 0x000d0003, 0x00000025,
-			0x00000000, 0x00020011, 0x00000001, 0x00020011,
-			0x00000028, 0x0006000b, 0x00000001, 0x4c534c47,
-			0x6474732e, 0x3035342e, 0x00000000, 0x0003000e,
-			0x00000000, 0x00000001, 0x0005000f, 0x00000004,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00030010,
-			0x00000004, 0x00000007, 0x00030003, 0x00000002,
-			0x000001c2, 0x000a0004, 0x475f4c47, 0x4c474f4f,
-			0x70635f45, 0x74735f70, 0x5f656c79, 0x656e696c,
-			0x7269645f, 0x69746365, 0x00006576, 0x00080004,
-			0x475f4c47, 0x4c474f4f, 0x6e695f45, 0x64756c63,
-			0x69645f65, 0x74636572, 0x00657669, 0x00040005,
-			0x00000004, 0x6e69616d, 0x00000000, 0x00060005,
-			0x00000008, 0x6e657473, 0x5f6c6963, 0x756c6176,
-			0x00000065, 0x00050005, 0x0000000b, 0x735f6e69,
-			0x636e6574, 0x00006c69, 0x00050005, 0x00000017,
-			0x6b73616d, 0x7461645f, 0x00000061, 0x00060006,
-			0x00000017, 0x00000000, 0x72727563, 0x5f746e65,
-			0x00746962, 0x00030005, 0x00000019, 0x00000000,
-			0x00040047, 0x0000000b, 0x00000022, 0x00000000,
-			0x00040047, 0x0000000b, 0x00000021, 0x00000000,
-			0x00040047, 0x0000000b, 0x0000002b, 0x00000000,
-			0x00050048, 0x00000017, 0x00000000, 0x00000023,
-			0x00000000, 0x00030047, 0x00000017, 0x00000002,
-			0x00040047, 0x00000019, 0x00000022, 0x00000000,
-			0x00040047, 0x00000019, 0x00000021, 0x00000001,
-			0x00020013, 0x00000002, 0x00030021, 0x00000003,
-			0x00000002, 0x00040015, 0x00000006, 0x00000020,
-			0x00000000, 0x00040020, 0x00000007, 0x00000007,
-			0x00000006, 0x00090019, 0x00000009, 0x00000006,
-			0x00000006, 0x00000000, 0x00000000, 0x00000000,
-			0x00000002, 0x00000000, 0x00040020, 0x0000000a,
-			0x00000000, 0x00000009, 0x0004003b, 0x0000000a,
-			0x0000000b, 0x00000000, 0x00040015, 0x0000000d,
-			0x00000020, 0x00000001, 0x0004002b, 0x0000000d,
-			0x0000000e, 0x00000000, 0x00040017, 0x0000000f,
-			0x0000000d, 0x00000002, 0x0005002c, 0x0000000f,
-			0x00000010, 0x0000000e, 0x0000000e, 0x00040017,
-			0x00000011, 0x00000006, 0x00000004, 0x0004002b,
-			0x00000006, 0x00000013, 0x00000000, 0x0004002b,
-			0x0000000d, 0x00000016, 0x00000001, 0x0003001e,
-			0x00000017, 0x00000006, 0x00040020, 0x00000018,
-			0x00000002, 0x00000017, 0x0004003b, 0x00000018,
-			0x00000019, 0x00000002, 0x00040020, 0x0000001a,
-			0x00000002, 0x00000006, 0x00020014, 0x00000020,
-			0x00050036, 0x00000002, 0x00000004, 0x00000000,
-			0x00000003, 0x000200f8, 0x00000005, 0x0004003b,
-			0x00000007, 0x00000008, 0x00000007, 0x0004003d,
-			0x00000009, 0x0000000c, 0x0000000b, 0x00050062,
-			0x00000011, 0x00000012, 0x0000000c, 0x00000010,
-			0x00050051, 0x00000006, 0x00000014, 0x00000012,
-			0x00000000, 0x0003003e, 0x00000008, 0x00000014,
-			0x0004003d, 0x00000006, 0x00000015, 0x00000008,
-			0x00050041, 0x0000001a, 0x0000001b, 0x00000019,
-			0x0000000e, 0x0004003d, 0x00000006, 0x0000001c,
-			0x0000001b, 0x000500c4, 0x0000000d, 0x0000001d,
-			0x00000016, 0x0000001c, 0x0004007c, 0x00000006,
-			0x0000001e, 0x0000001d, 0x000500c7, 0x00000006,
-			0x0000001f, 0x00000015, 0x0000001e, 0x000500aa,
-			0x00000020, 0x00000021, 0x0000001f, 0x00000013,
-			0x000300f7, 0x00000023, 0x00000000, 0x000400fa,
-			0x00000021, 0x00000022, 0x00000023, 0x000200f8,
-			0x00000022, 0x000100fc, 0x000200f8, 0x00000023,
-			0x000100fd, 0x00010038}
+	// float formats
+	case VkFormat_VK_FORMAT_R16_SFLOAT:
+		imgFmtStr = "r16f"
+	case VkFormat_VK_FORMAT_R32_SFLOAT:
+		imgFmtStr = "r32f"
+
+	case VkFormat_VK_FORMAT_R16G16_SFLOAT:
+		imgFmtStr = "rg16f"
+	case VkFormat_VK_FORMAT_R32G32_SFLOAT:
+		imgFmtStr = "rg32f"
+
+	case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT:
+		imgFmtStr = "rgba16f"
+	case VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT:
+		imgFmtStr = "rgba32f"
+
+	case VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+		imgFmtStr = "r11f_g11f_b10f"
 
 	default:
-		return []uint32{}
+		return []uint32{}, fmt.Errorf("%v does not support imageStore", vkFmt)
 	}
+
+	var imgTypeG string
+	switch vkFmt {
+	// uint formats
+	case VkFormat_VK_FORMAT_R8_UINT,
+		VkFormat_VK_FORMAT_R16_UINT,
+		VkFormat_VK_FORMAT_R32_UINT,
+		VkFormat_VK_FORMAT_R8G8_UINT,
+		VkFormat_VK_FORMAT_R16G16_UINT,
+		VkFormat_VK_FORMAT_R32G32_UINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_UINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_UINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_UINT,
+		VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
+		imgTypeG = "u"
+
+	// sint formats
+	case VkFormat_VK_FORMAT_R8_SINT,
+		VkFormat_VK_FORMAT_R16_SINT,
+		VkFormat_VK_FORMAT_R32_SINT,
+		VkFormat_VK_FORMAT_R8G8_SINT,
+		VkFormat_VK_FORMAT_R16G16_SINT,
+		VkFormat_VK_FORMAT_R32G32_SINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_SINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_SINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SINT:
+		imgTypeG = "i"
+
+	// unorm formats
+	case VkFormat_VK_FORMAT_R8_UNORM,
+		VkFormat_VK_FORMAT_R8_SRGB,
+		VkFormat_VK_FORMAT_R16_UNORM,
+		VkFormat_VK_FORMAT_R8G8_UNORM,
+		VkFormat_VK_FORMAT_R8G8_SRGB,
+		VkFormat_VK_FORMAT_R16G16_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
+		VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
+		VkFormat_VK_FORMAT_R16G16B16A16_UNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32,
+		VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+		// snorm formats
+		VkFormat_VK_FORMAT_R8_SNORM,
+		VkFormat_VK_FORMAT_R16_SNORM,
+		VkFormat_VK_FORMAT_R8G8_SNORM,
+		VkFormat_VK_FORMAT_R16G16_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_SNORM,
+		// float formats
+		VkFormat_VK_FORMAT_R16_SFLOAT,
+		VkFormat_VK_FORMAT_R32_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
+		VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+		imgTypeG = ""
+	}
+
+	// image1D/image2D/image3D
+	var imgTypeStr string
+	switch imageType {
+	case VkImageType_VK_IMAGE_TYPE_1D:
+		imgTypeStr = imgTypeG + "image1D"
+	case VkImageType_VK_IMAGE_TYPE_2D:
+		imgTypeStr = imgTypeG + "image2D"
+	case VkImageType_VK_IMAGE_TYPE_3D:
+		imgTypeStr = imgTypeG + "image3D"
+	default:
+		return []uint32{}, fmt.Errorf("unknown image type: %v", imageType)
+	}
+
+	// Determine the declaration of block offsets
+	var blockOffsetStr string
+	switch imageType {
+	case VkImageType_VK_IMAGE_TYPE_1D:
+		blockOffsetStr = `uint block_offset_x;`
+	case VkImageType_VK_IMAGE_TYPE_2D:
+		blockOffsetStr = `uint block_offset_x;
+		uint block_offset_y;`
+	case VkImageType_VK_IMAGE_TYPE_3D:
+		blockOffsetStr = `uint block_offset_x;
+		uint block_offset_y;
+		uint block_offset_z;`
+	}
+
+	// Determine the declaration of block extent
+	var blockExtentStr string
+	switch imageType {
+	case VkImageType_VK_IMAGE_TYPE_1D:
+		blockExtentStr = `uint block_width;`
+	case VkImageType_VK_IMAGE_TYPE_2D:
+		blockExtentStr = `uint block_width;
+		uint block_height;`
+	case VkImageType_VK_IMAGE_TYPE_3D:
+		blockExtentStr = `uint block_width;
+		uint block_height;
+		uint block_depth;`
+	}
+
+	// Calculate the pixel position in the block
+	var posStr string
+	switch imageType {
+	case VkImageType_VK_IMAGE_TYPE_1D:
+		posStr = `int pos = int(linear_pos + block_offset_x);`
+	case VkImageType_VK_IMAGE_TYPE_2D:
+		posStr = `ivec2 pos = ivec2(int(linear_pos%block_width), int(linear_pos/block_width));
+		pos = pos + ivec2(int(block_offset_x), int(block_offset_y));`
+	case VkImageType_VK_IMAGE_TYPE_3D:
+		posStr = `uint depth_pitch = block_width * block_height;
+		int z = int(linear_pos / depth_pitch);
+		int y = int(linear_pos % depth_pitch) / int(block_width);
+		int x = int(linear_pos % depth_pitch) % int(block_width);
+		ivec3 pos = ivec3(x, y, z) + ivec3(int(block_offset_x), int(block_offset_y), int(block_offset_z));`
+	}
+
+	// Convert the data
+	var valueStr string
+	switch aspect {
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
+		switch vkFmt {
+		case VkFormat_VK_FORMAT_R8_UINT,
+			VkFormat_VK_FORMAT_R8G8_UINT,
+			// VkFormat_VK_FORMAT_R8G8B8_UINT,
+			VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+			// VkFormat_VK_FORMAT_B8G8R8_UINT,
+			VkFormat_VK_FORMAT_B8G8R8A8_UINT,
+			VkFormat_VK_FORMAT_R16_UINT,
+			VkFormat_VK_FORMAT_R16G16_UINT,
+			// VkFormat_VK_FORMAT_R16G16B16_UINT,
+			VkFormat_VK_FORMAT_R16G16B16A16_UINT,
+			VkFormat_VK_FORMAT_R32_UINT,
+			VkFormat_VK_FORMAT_R32G32_UINT,
+			// VkFormat_VK_FORMAT_R32G32B32_UINT,
+			VkFormat_VK_FORMAT_R32G32B32A32_UINT,
+			VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
+			VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
+			VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
+			valueStr = `uvec4 value = texelFetch(data, int(buf_index)).rgba;`
+
+		case VkFormat_VK_FORMAT_R8_SINT,
+			VkFormat_VK_FORMAT_R8G8_SINT,
+			// VkFormat_VK_FORMAT_R8G8B8_SINT,
+			VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+			// VkFormat_VK_FORMAT_B8G8R8_SINT,
+			VkFormat_VK_FORMAT_B8G8R8A8_SINT,
+			VkFormat_VK_FORMAT_R16_SINT,
+			VkFormat_VK_FORMAT_R16G16_SINT,
+			// VkFormat_VK_FORMAT_R16G16B16_SINT,
+			VkFormat_VK_FORMAT_R16G16B16A16_SINT,
+			VkFormat_VK_FORMAT_R32_SINT,
+			VkFormat_VK_FORMAT_R32G32_SINT,
+			// VkFormat_VK_FORMAT_R32G32B32_SINT,
+			VkFormat_VK_FORMAT_R32G32B32A32_SINT,
+			VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
+			VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32,
+			VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
+			valueStr = `int r = int(texelFetch(data, int(buf_index)).r);
+			int g = int(texelFetch(data, int(buf_index)).g);
+			int b = int(texelFetch(data, int(buf_index)).b);
+			int a = int(texelFetch(data, int(buf_index)).a);
+			ivec4 value = ivec4(r, g, b, a);`
+
+		case VkFormat_VK_FORMAT_R8_UNORM,
+			VkFormat_VK_FORMAT_R8G8_UNORM,
+			// VkFormat_VK_FORMAT_R8G8B8_UNORM,
+			VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
+			VkFormat_VK_FORMAT_B8G8R8_UNORM,
+			VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
+			VkFormat_VK_FORMAT_R8_SRGB,
+			VkFormat_VK_FORMAT_R8G8_SRGB,
+			// VkFormat_VK_FORMAT_R8G8B8_SRGB,
+			VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
+			// VkFormat_VK_FORMAT_B8G8R8_SRGB,
+			VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
+			VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+			VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+			valueStr = `vec4 value = texelFetch(data, int(buf_index)).rgba/vec4(255.0, 255.0, 255.0, 255.0);`
+
+		case VkFormat_VK_FORMAT_R16_UNORM,
+			VkFormat_VK_FORMAT_R16G16_UNORM,
+			// VkFormat_VK_FORMAT_R16G16B16_UNORM,
+			VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
+			valueStr = `vec4 value = texelFetch(data, int(buf_index)).rgba/vec4(65535.0, 65535.0, 65535.0, 65535.0);`
+
+		case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+			VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+			valueStr = `vec4 value = texelFetch(data, int(buf_index)).rgba/vec4(1023.0, 1023.0, 1023.0, 3.0);`
+
+		case VkFormat_VK_FORMAT_R8_SNORM,
+			VkFormat_VK_FORMAT_R8G8_SNORM,
+			// VkFormat_VK_FORMAT_R8G8B8_SNORM,
+			VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+			// VkFormat_VK_FORMAT_B8G8R8_SNORM,
+			VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+			VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+			valueStr = `float r = (int(texelFetch(data, int(buf_index)).r) * 2.0 + 1.0) / 255.0;
+			float g = (int(texelFetch(data, int(buf_index)).g) * 2.0 + 1.0) / 255.0;
+			float b = (int(texelFetch(data, int(buf_index)).b) * 2.0 + 1.0) / 255.0;
+			float a = (int(texelFetch(data, int(buf_index)).a) * 2.0 + 1.0) / 255.0;
+			vec4 value = vec4(r, g, b, a);`
+
+		case VkFormat_VK_FORMAT_R16_SNORM,
+			VkFormat_VK_FORMAT_R16G16_SNORM,
+			// VkFormat_VK_FORMAT_R16G16B16_SNORM,
+			VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
+			valueStr = `float r = (int(texelFetch(data, int(buf_index)).r) * 2.0 + 1.0) / 65535.0;
+			float g = (int(texelFetch(data, int(buf_index)).g) * 2.0 + 1.0) / 65535.0;
+			float b = (int(texelFetch(data, int(buf_index)).b) * 2.0 + 1.0) / 65535.0;
+			float a = (int(texelFetch(data, int(buf_index)).a) * 2.0 + 1.0) / 65535.0;
+			vec4 value = vec4(r, g, b, a);`
+
+		// case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32,
+		// 	VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+
+		case VkFormat_VK_FORMAT_R16_SFLOAT,
+			VkFormat_VK_FORMAT_R16G16_SFLOAT,
+			// VkFormat_VK_FORMAT_R16G16B16_SFLOAT,
+			VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
+			VkFormat_VK_FORMAT_R32_SFLOAT,
+			VkFormat_VK_FORMAT_R32G32_SFLOAT,
+			// VkFormat_VK_FORMAT_R32G32B32_SFLOAT,
+			VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
+			// VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,
+			VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+			valueStr = `float r = uintBitsToFloat(texelFetch(data, int(buf_index)).r);
+			float g = uintBitsToFloat(texelFetch(data, int(buf_index)).g);
+			float b = uintBitsToFloat(texelFetch(data, int(buf_index)).b);
+			float a = uintBitsToFloat(texelFetch(data, int(buf_index)).a);
+			vec4 value = vec4(r, g, b, a);`
+
+		default:
+			return []uint32{}, fmt.Errorf("unsupported format: %v", vkFmt)
+		}
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+		// should never reach here
+		return []uint32{}, fmt.Errorf("depth/stencil image does not support imageStore")
+	}
+
+	// Generate source code
+	source := fmt.Sprintf(
+		`#version 450
+	precision highp int;
+	layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+	layout (%s, set = 0, binding = 0) uniform %s img_output;
+	layout (set = 0, binding = 1) uniform usamplerBuffer data;
+	layout (set = 0, binding = 2) uniform metadata {
+		%s
+		%s
+		uint offset;
+		uint count;
+	};
+	void main() {
+		uint buf_index = gl_GlobalInvocationID.x;
+		if (buf_index >= count) {
+			return;
+		}
+		uint linear_pos = buf_index + offset;
+		%s
+		%s
+		imageStore(img_output, pos, value);
+	}
+	`, imgFmtStr, imgTypeStr, blockOffsetStr, blockExtentStr, posStr, valueStr)
+
+	opt := shadertools.CompileOptions{
+		ShaderType: shadertools.TypeCompute,
+		ClientType: shadertools.Vulkan,
+	}
+	return shadertools.CompileGlsl(source, opt)
 }

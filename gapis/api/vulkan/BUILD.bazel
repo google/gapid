@@ -132,6 +132,7 @@ go_test(
         "externs_test.go",
         "footprint_builder_test.go",
         "image_primer_test.go",
+        "image_primer_shaders_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
