@@ -29,33 +29,26 @@ apic_compile(
     symbols = "c",
 )
 
+# Needed because apic_compile, can't (yet) return a cc provider.
+# :api_compiled produces a .o file, so this doesn't actually compile anything.
 cc_library(
-    name = "cc",
-    srcs = [
-        "test.cpp",
-        "test.h",
-        ":api_compiled",
-    ],
-    hdrs = [],
-    copts = cc_copts(),
-    visibility = ["//visibility:public"],
-    deps = [
-        "//core/memory/arena/cc:tracking_arena",
-        "//gapil/runtime/cc",
-    ],
+    name = "api_lib",
+    srcs = [":api_compiled"],
 )
 
 go_library(
     name = "go_default_library",
     srcs = [
         "cgo.go",
+        "test.cpp",
         "test.h",
     ],
     cdeps = [
-        ":cc",
+        ":api_lib",
         "//gapil/runtime/cc",
     ],
     cgo = True,
+    copts = cc_copts(),  # keep
     importpath = "github.com/google/gapid/gapil/compiler/plugins/encoder/test",
     visibility = ["//visibility:public"],
     deps = [
