@@ -66,6 +66,7 @@ func run() int {
 		defer func() {
 			fmt.Println()
 			fmt.Println("Launcher Flags:")
+			fmt.Println(" --jar             Path to the gapic JAR to use")
 			fmt.Println(" --vm              Path to the JVM to use")
 			fmt.Println(" --vmarg           Extra argument for the JVM (repeatable)")
 			fmt.Println(" --console         Run GAPID inside a terminal console")
@@ -117,6 +118,9 @@ func newConfig() *config {
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
 		switch {
+		case args[i] == "--jar" && i < len(args)-1:
+			i++
+			c.gapic = args[i]
 		case args[i] == "--vm" && i < len(args)-1:
 			i++
 			c.vm = args[i]
@@ -240,23 +244,12 @@ func checkVM(java string, checkVersion bool) bool {
 }
 
 func (c *config) locateGAPIC() error {
-	gapic := filepath.Join(c.cwd, "lib", "gapic.jar")
+	gapic := c.gapic
+	if gapic == "" {
+		gapic = filepath.Join(c.cwd, "lib", "gapic.jar")
+	}
 	if _, err := os.Stat(gapic); !os.IsNotExist(err) {
 		c.gapic = gapic
-		return nil
-	}
-
-	jar := "gapic.jar"
-	switch runtime.GOOS {
-	case "linux", "windows":
-		jar = "gapic-" + runtime.GOOS + ".jar"
-	case "darwin":
-		jar = "gapic-osx.jar"
-	}
-
-	buildGapic := filepath.Join(c.cwd, "..", "java", jar)
-	if _, err := os.Stat(buildGapic); !os.IsNotExist(err) {
-		c.gapic = buildGapic
 		return nil
 	}
 
