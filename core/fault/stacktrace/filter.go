@@ -86,7 +86,7 @@ func TrimBottom(m Matcher) Filter {
 	return func(entries []Entry) []Entry {
 		for i := len(entries) - 1; i >= 0; i-- {
 			if m(entries[i]) {
-				return entries[:i]
+				return entries[:i+1]
 			}
 		}
 		return []Entry{}

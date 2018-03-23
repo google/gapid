@@ -65,7 +65,9 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		},
 	}}
 
-	transform, err := compat(ctx, dev)
+	transform, err := compat(ctx, dev, func(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, err error) {
+		t.Error(err)
+	})
 	if err != nil {
 		log.E(ctx, "Error creating compatability transform: %v", err)
 		return

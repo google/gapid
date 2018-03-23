@@ -109,11 +109,16 @@
 {{define "MapEntry"}}
   ¶
   {{$name := Macro "Go.Type" $}}
+  {{$key   := Macro "Go.Type" $.KeyType}}
+  {{$value := Macro "Go.Type" $.ValueType}}
   {{$proto := print (Global "Store") "." (Macro "Convert.StorageTypeName" $)}}
 
   // ToProto returns the storage form of the {{$name}}.¶
   func (ϟa *{{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
-    referenceID, isNew := ϟrefs.GetReferenceID(ϟa, {{$name}}{})¶
+    if ϟa.Map == nil {»¶
+      return  &{{$proto}}{}¶
+    «}¶
+    referenceID, isNew := ϟrefs.GetReferenceID(ϟa.Map, &struct{}{})¶
     if isNew {»¶
       out := &{{$proto}}{ReferenceID: referenceID}¶
       keys := ϟa.KeysSorted()¶
@@ -129,9 +134,12 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    return ϟrefs.GetReferencedObject(from.GetReferenceID(), {{$name}}{}, func () (interface{}, func()) {»¶
+    if from.GetReferenceID() == 0 {»¶
+      return {{$name}}{nil}¶
+    «}¶
+    return {{$name}}{ϟrefs.GetReferencedObject(from.GetReferenceID(), &struct{}{}, func () (interface{}, func()) {»¶
       ϟobj := New{{$name}}()¶
-      return ϟobj, func() {»¶
+      return ϟobj.Map, func() {»¶
         {{$keytype := Macro "Convert.StorageType" $.KeyType}}
         {{$numeric := or (eq $keytype "int32") (eq $keytype "int64")}}
         var ϟk {{$keytype}}¶
@@ -142,7 +150,7 @@
           {{if $numeric}}ϟk++ // Increment if keys are trimmed ¶{{end}}
         «}¶
       «}¶
-    «}).({{$name}})¶
+    «}).(*map[{{$key}}]{{$value}})}¶
   «}¶
 {{end}}
 

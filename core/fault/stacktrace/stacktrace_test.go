@@ -55,7 +55,7 @@ func (e traceEntry) Filtered() stacktrace.Callstack {
 }
 
 var (
-	filter = stacktrace.MatchPackage("github.com/google/gapid/.*")
+	filter = stacktrace.MatchPackage("core/.*")
 
 	traces = []traceEntry{{
 		fun: stacktrace.Capture,

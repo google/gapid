@@ -167,7 +167,7 @@ u0_a69    22841 5062  1255788 88672 SyS_epoll_ 0000000000 S com.example.meh`),
 		stub.Match(adbPath.System()+` -s error_device shell getenforce`, &stub.Response{WaitErr: fmt.Errorf(`not a normal response`)}),
 
 		// Logcat command responses
-		stub.RespondTo(adbPath.System()+` -s logcat_device logcat -v long -T 0`, `
+		stub.RespondTo(adbPath.System()+` -s logcat_device logcat -v long -T 0 GAPID:V *:W`, `
 [ 03-29 15:16:29.514 24153:24153 V/AndroidRuntime ]
 >>>>>> START com.android.internal.os.RuntimeInit uid 0 <<<<<<
 
