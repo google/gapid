@@ -19,18 +19,10 @@ go_library(
     srcs = [
         "host.go",
         "host_c.go",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "host_darwin.go",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "host_linux.go",
-        ],
-        "@io_bazel_rules_go//go/platform:windows": [
-            "host_windows.go",
-        ],
-        "//conditions:default": [],
-    }),
+        "host_darwin.go",
+        "host_linux.go",
+        "host_windows.go",
+    ],
     cdeps = ["//core/os/device/deviceinfo/cc:cc"],
     cgo = True,
     clinkopts = [],  # keep

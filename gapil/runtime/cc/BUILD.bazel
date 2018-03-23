@@ -62,11 +62,11 @@ cc_test(
     ],
     copts = cc_copts(),
     linkopts = select({
-        "//tools/build:linux": ["-ldl"], # TODO: Move this to the gtest rules.
+        "//tools/build:linux": ["-ldl"],  # TODO: Move this to the gtest rules.
         "//conditions:default": [],
     }),
     deps = [
         ":tracking_arena",
         "@gtest//:gtest_main",
-    ]
+    ],
 )

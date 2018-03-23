@@ -16,9 +16,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "ia64.go",
-    ],
+    srcs = ["ia64.go"],
     importpath = "github.com/google/gapid/gapil/compiler/mangling/ia64",
     visibility = ["//visibility:public"],
     deps = [

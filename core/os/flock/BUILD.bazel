@@ -5,18 +5,9 @@ go_library(
     srcs = [
         "doc.go",
         "flock.go",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "flock_unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "flock_unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:windows": [
-            "flock_windows.go",
-        ],
-        "//conditions:default": [],
-    }),
+        "flock_unix.go",
+        "flock_windows.go",
+    ],
     importpath = "github.com/google/gapid/core/os/flock",
     visibility = ["//visibility:public"],
 )

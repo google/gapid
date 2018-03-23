@@ -30,10 +30,10 @@ apic_template(
 
 apic_compile(
     name = "gles_compiled",
-    api = "//gapis/api/gles:api", # TODO: Let apic handle multiple api files in one compile.
-    optimize = True,
+    api = "//gapis/api/gles:api",  # TODO: Let apic handle multiple api files in one compile.
     emit = ["encode"],
     namespace = "gapii",
+    optimize = True,
 )
 
 apic_template(
@@ -50,12 +50,13 @@ apic_template(
         "//gapis/api/vulkan/templates:vk_spy_helpers.cpp",
     ],
 )
+
 apic_compile(
     name = "vulkan_compiled",
-    api = "//gapis/api/vulkan:api", # TODO: Let apic handle multiple api files in one compile.
-    optimize = True,
+    api = "//gapis/api/vulkan:api",  # TODO: Let apic handle multiple api files in one compile.
     emit = ["encode"],
     namespace = "gapii",
+    optimize = True,
 )
 
 apic_template(
@@ -75,10 +76,10 @@ apic_template(
 
 apic_compile(
     name = "gvr_compiled",
-    api = "//gapis/api/gvr:api", # TODO: Let apic handle multiple api files in one compile.
-    optimize = True,
+    api = "//gapis/api/gvr:api",  # TODO: Let apic handle multiple api files in one compile.
     emit = ["encode"],
     namespace = "gapii",
+    optimize = True,
 )
 
 apic_template(
@@ -131,11 +132,13 @@ cc_library(
             "android/*.h",
         ]) + [":gvr_install"],
     }) + [
-        ":gles_templated", ":gles_compiled",
-        ":gvr_templated", ":gvr_compiled",
-        ":vulkan_templated", ":vulkan_compiled",
+        ":gles_templated",
+        ":gles_compiled",
+        ":gvr_templated",
+        ":gvr_compiled",
+        ":vulkan_templated",
+        ":vulkan_compiled",
     ],
-    alwayslink = True,
     copts = cc_copts() + select({
         "//tools/build:windows": ["-Wa,-mbig-obj"],
         "//conditions:default": [],
@@ -168,6 +171,7 @@ cc_library(
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
+    alwayslink = True,
 )
 
 cc_dynamic_library(

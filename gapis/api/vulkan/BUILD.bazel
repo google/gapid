@@ -56,14 +56,14 @@ go_library(
         "externs.go",
         "find_issues.go",
         "footprint_builder.go",
+        "image_primer.go",
+        "image_primer_shaders.go",
         "mem_binding_list.go",
         "read_framebuffer.go",
         "replay.go",
         "resources.go",
         "state.go",
         "state_rebuilder.go",
-        "image_primer.go",
-        "image_primer_shaders.go",
         "vulkan.go",
         "vulkan_terminator.go",
         "wireframe.go",
@@ -109,6 +109,7 @@ go_library(
         "//gapis/shadertools:go_default_library",
         "//gapis/stringtable:go_default_library",  # keep
         "//gapis/vertex:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )
 
@@ -135,6 +136,7 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
+        "//core/image:go_default_library",
         "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
         "//core/os/device:go_default_library",

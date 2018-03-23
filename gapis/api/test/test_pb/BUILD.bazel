@@ -25,9 +25,7 @@ apic_template(
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "doc.go",
-    ],
+    srcs = ["doc.go"],
     embed = [":test_pb_go_proto"],  # keep
     importpath = "github.com/google/gapid/gapis/api/test/test_pb",
     visibility = ["//visibility:public"],

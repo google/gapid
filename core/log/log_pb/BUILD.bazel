@@ -43,10 +43,7 @@ go_proto_library(
     importpath = "github.com/google/gapid/core/log/log_pb",
     proto = ":log_pb_proto",
     visibility = ["//visibility:public"],
-    deps = [
-        "//core/data/pod:go_default_library",
-        "@com_github_golang_protobuf//ptypes/timestamp:go_default_library",
-    ],
+    deps = ["//core/data/pod:go_default_library"],
 )
 
 java_proto_library(
