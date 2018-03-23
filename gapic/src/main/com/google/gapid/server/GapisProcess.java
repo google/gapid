@@ -78,14 +78,9 @@ public class GapisProcess extends ChildProcess<Integer> {
   }
 
   @Override
-  protected Exception prepare(ProcessBuilder pb) {
-    if (!GapiPaths.isValid()) {
-      LOG.log(WARNING, "Could not find gapis, but needed to start the server.");
-      return new Exception("Could not find the gapis executable.");
-    }
-
+  protected Exception prepare(ProcessBuilder pb) throws GapiPaths.MissingToolsException {
     List<String> args = Lists.newArrayList();
-    args.add(GapiPaths.gapis().getAbsolutePath());
+    args.add(GapiPaths.get().gapis().getAbsolutePath());
 
     String gapirFlags = "";
 
@@ -119,8 +114,8 @@ public class GapisProcess extends ChildProcess<Integer> {
       args.add(gapirFlags);
     }
 
-    File strings = GapiPaths.strings();
-    if (strings.exists()) {
+    File strings = GapiPaths.get().strings();
+    if (strings != null && strings.exists()) {
       args.add("--strings");
       args.add(strings.getAbsolutePath());
     }

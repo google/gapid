@@ -47,7 +47,7 @@ public abstract class ChildProcess<T> {
     this.settings = settings;
   }
 
-  protected abstract Exception prepare(ProcessBuilder pb);
+  protected abstract Exception prepare(ProcessBuilder pb) throws GapiPaths.MissingToolsException;
 
   public boolean isRunning() {
     return serverThread != null && serverThread.isAlive();
@@ -56,10 +56,14 @@ public abstract class ChildProcess<T> {
   public ListenableFuture<T> start() {
     final ProcessBuilder pb = new ProcessBuilder();
     // Use the base directory as the working directory for the server.
-    pb.directory(GapiPaths.base());
-    Exception prepareError = prepare(pb);
-    if (prepareError != null) {
-      return Futures.immediateFailedFuture(prepareError);
+    pb.directory(GapiPaths.get().base());
+    try {
+      Exception prepareError = prepare(pb);
+      if (prepareError != null) {
+        return Futures.immediateFailedFuture(prepareError);
+      }
+    } catch (GapiPaths.MissingToolsException e) {
+      return Futures.immediateFailedFuture(e);
     }
 
     final SettableFuture<T> result = SettableFuture.create();

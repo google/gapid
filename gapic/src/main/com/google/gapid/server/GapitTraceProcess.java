@@ -23,7 +23,6 @@ import com.google.common.collect.Lists;
 import com.google.gapid.models.Settings;
 import com.google.gapid.server.Tracer.TraceRequest;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
@@ -48,15 +47,9 @@ public class GapitTraceProcess extends ChildProcess<Boolean> {
   }
 
   @Override
-  protected Exception prepare(ProcessBuilder pb) {
-    File gapit = GapiPaths.gapit();
-    if (gapit == null || !gapit.exists()) {
-      LOG.log(WARNING, "Could not find gapit for tracing.");
-      return new Exception("Could not find the gapit executable.");
-    }
-
+  protected Exception prepare(ProcessBuilder pb) throws GapiPaths.MissingToolsException {
     List<String> args = Lists.newArrayList();
-    args.add(gapit.getAbsolutePath());
+    args.add(GapiPaths.get().gapit().getAbsolutePath());
 
     if (settings.analyticsEnabled()) {
       args.add("-analytics");
