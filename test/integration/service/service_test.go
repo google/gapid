@@ -217,10 +217,13 @@ func TestGet(t *testing.T) {
 		ty   reflect.Type
 	}{
 		{capture, T((*service.Capture)(nil))},
-		{capture.Contexts(), T([]*service.Context{})},
-		{capture.Commands(), T(([]api.Cmd)(nil))},
-		{capture.Command(swapAtomIndex), T((*api.Cmd)(nil)).Elem()},
-		{capture.Command(swapAtomIndex).StateAfter(), any},
+		{capture.Contexts(), T((*service.Contexts)(nil))},
+		{capture.Commands(), T((*service.Commands)(nil))},
+		{capture.Command(swapAtomIndex), T((*api.Command)(nil))},
+		// TODO: box.go doesn't currently support serializing structs this big.
+		// See bug https://github.com/google/gapid/issues/1761
+		// panic: reflect.nameFrom: name too long
+		// {capture.Command(swapAtomIndex).StateAfter(), any},
 		{capture.Command(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},
 		{capture.Command(drawAtomIndex).Mesh(false), T((*api.Mesh)(nil))},
 		{capture.CommandTree(nil), T((*service.CommandTree)(nil))},

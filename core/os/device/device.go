@@ -102,7 +102,7 @@ var (
 		Endian:  LittleEndian,
 		Pointer: &DataTypeLayout{Size: 8, Alignment: 8},
 		Integer: &DataTypeLayout{Size: 4, Alignment: 4},
-		Size:    &DataTypeLayout{Size: 4, Alignment: 4},
+		Size:    &DataTypeLayout{Size: 8, Alignment: 8},
 		Char:    &DataTypeLayout{Size: 1, Alignment: 1},
 		I64:     &DataTypeLayout{Size: 8, Alignment: 8},
 		I32:     &DataTypeLayout{Size: 4, Alignment: 4},

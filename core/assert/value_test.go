@@ -96,7 +96,7 @@ func ExampleNotNil() {
 	//     Got       &{not_nil}
 	//     Expect == <nil>
 	// Error:not_nil deep equals nil
-	//     nil ⟦&{not_nil}⟧ != ⟦<nil>⟧
+	//     nil ⟦&{s:not_nil}⟧ != ⟦<nil>⟧
 	// Error:not_nil is nil
 	//     Got       &{not_nil}
 	//     Expect == `nil`

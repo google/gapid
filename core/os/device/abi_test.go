@@ -15,46 +15,11 @@
 package device_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/os/device"
 )
-
-var abiTestData = []struct {
-	abi         *device.ABI
-	name        string
-	width       int
-	align       int32
-	pointerSize int32
-	intSize     int32
-	endian      device.Endian
-}{
-	{device.UnknownABI, "unknown", 0, 0, 0, 0, device.UnknownEndian},
-	{device.AndroidARMv7a, "armeabi-v7a", 32, 4, 4, 4, device.LittleEndian},
-	{device.AndroidARM64v8a, "arm64-v8a", 64, 8, 8, 8, device.LittleEndian},
-	{device.AndroidX86, "x86", 32, 4, 4, 4, device.LittleEndian},
-	{device.AndroidX86_64, "x86-64", 64, 8, 8, 8, device.LittleEndian},
-	{device.AndroidMIPS, "mips", 32, 4, 4, 4, device.LittleEndian},
-	{device.AndroidMIPS64, "mips64", 64, 8, 8, 8, device.LittleEndian},
-}
-
-func TestABI(t *testing.T) {
-	assert := assert.To(t)
-	for _, test := range abiTestData {
-		name := fmt.Sprintf("%s ABI=%s", test.name, test.abi.Name)
-		abi := device.ABIByName(test.name)
-		// TODO: there's a collision between the x86-64 ABIs for OSX and Android.
-		// Should the ABI even include the OS?
-		// assert.For(ctx, "ABIByName").That(abi).Equals(test.abi)
-		assert.For("%s ABI.Architecture.Bitness", name).That(abi.Architecture.Bitness()).Equals(test.width)
-		assert.For("%s ABI.MemoryLayout.PointerAlignment", name).That(abi.GetMemoryLayout().GetPointer().GetAlignment()).Equals(test.align)
-		assert.For("%s ABI.MemoryLayout.PointerSize", name).That(abi.GetMemoryLayout().GetPointer().GetSize()).Equals(test.pointerSize)
-		assert.For("%s ABI.MemoryLayout.IntegerSize", name).That(abi.GetMemoryLayout().GetInteger().GetSize()).Equals(test.intSize)
-		assert.For("%s ABI.MemoryLayout.Endian", name).That(abi.GetMemoryLayout().GetEndian()).Equals(test.endian)
-	}
-}
 
 func TestABIByName(t *testing.T) {
 	assert := assert.To(t)
