@@ -17,12 +17,12 @@ load("//tools/build:rules.bzl", "cc_copts")
 cc_library(
     name = "cc",
     srcs = glob(["*.cpp"]),
-    deps = [
-        "//core/cc",
-    ],
     hdrs = glob(["*.h"]),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
+    deps = [
+        "//core/cc",
+    ],
 )
 
 cc_library(
@@ -30,10 +30,10 @@ cc_library(
     srcs = glob(
         ["*.cpp"],
     ),
-    deps = [
-        "//core/cc",
-    ],
     hdrs = glob(["*.h"]),
     copts = cc_copts() + ["-DTRACK_ALLOCATIONS"],
     visibility = ["//visibility:public"],
+    deps = [
+        "//core/cc",
+    ],
 )

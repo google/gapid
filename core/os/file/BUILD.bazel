@@ -23,42 +23,9 @@ go_library(
         "path.go",
         "rooted.go",
         "set.go",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:android": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:dragonfly": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:freebsd": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:nacl": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:netbsd": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:openbsd": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:plan9": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:solaris": [
-            "unix.go",
-        ],
-        "@io_bazel_rules_go//go/platform:windows": [
-            "windows.go",
-        ],
-        "//conditions:default": [],
-    }),
+        "unix.go",
+        "windows.go",
+    ],
     importpath = "github.com/google/gapid/core/os/file",
     visibility = ["//visibility:public"],
     deps = [
@@ -71,12 +38,8 @@ go_test(
     size = "small",
     srcs = [
         "path_test.go",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:windows": [
-            "windows_test.go",
-        ],
-        "//conditions:default": [],
-    }),
+        "windows_test.go",
+    ],
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",

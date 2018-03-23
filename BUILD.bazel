@@ -48,8 +48,8 @@ alias(
 filegroup(
     name = "pkg",
     srcs = [
-        ":pkg-root",
         ":pkg-lib",
+        ":pkg-root",
         ":pkg-strings",
     ],
 )

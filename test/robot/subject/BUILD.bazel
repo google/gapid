@@ -61,6 +61,5 @@ go_proto_library(
     deps = [
         "//core/os/android/apk:go_default_library",
         "//test/robot/search:go_default_library",
-        "@com_github_golang_protobuf//ptypes/duration:go_default_library",
     ],
 )

@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "testexterns.go",
+    srcs = ["testexterns.go"],
+    cdeps = [
+        "//gapil/runtime/cc:tracking_arena",
     ],
     cgo = True,
     clinkopts = [],  # keep
     importpath = "github.com/google/gapid/gapil/compiler/testexterns",
     visibility = ["//visibility:public"],
-    cdeps = [
-        "//gapil/runtime/cc:tracking_arena",
-    ],
     deps = [
         "//gapil/executor:go_default_library",
     ],

@@ -36,18 +36,7 @@ go_library(
 go_test(
     name = "go_default_xtest",
     size = "small",
-    srcs = select({
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "stub_example_test.go",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "stub_example_test.go",
-        ],
-        "@io_bazel_rules_go//go/platform:windows": [
-            "stub_example_test.go",
-        ],
-        "//conditions:default": [],
-    }),
+    srcs = ["stub_example_test.go"],
     deps = select({
         "@io_bazel_rules_go//go/platform:darwin": [
             ":go_default_library",

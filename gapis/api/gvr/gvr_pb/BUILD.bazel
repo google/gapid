@@ -25,9 +25,7 @@ apic_template(
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "doc.go",
-    ],
+    srcs = ["doc.go"],
     embed = [":gvr_pb_go_proto"],  # keep
     importpath = "github.com/google/gapid/gapis/api/gvr/gvr_pb",
     visibility = ["//visibility:public"],

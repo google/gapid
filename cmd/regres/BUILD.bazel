@@ -16,17 +16,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = [
-        "main.go",
-    ],
+    srcs = ["main.go"],
     importpath = "github.com/google/gapid/cmd/regres",
     visibility = ["//visibility:private"],
     deps = [
         "//core/app:go_default_library",
-        "//core/app/flags:go_default_library",
-        "//core/os/shell:go_default_library",
         "//core/git:go_default_library",
         "//core/log:go_default_library",
+        "//core/os/shell:go_default_library",
     ],
 )
 
