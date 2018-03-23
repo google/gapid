@@ -15,8 +15,6 @@
  */
 package com.google.gapid.server;
 
-import static java.util.logging.Level.WARNING;
-
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
 import com.google.common.util.concurrent.SettableFuture;
@@ -24,7 +22,6 @@ import com.google.gapid.models.Settings;
 import com.google.gapid.proto.pkginfo.PkgInfo;
 
 import java.io.BufferedInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -49,15 +46,9 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
   }
 
   @Override
-  protected Exception prepare(ProcessBuilder pb) {
-    File gapit = GapiPaths.gapit();
-    if (gapit == null || !gapit.exists()) {
-      LOG.log(WARNING, "Could not find gapit for package info.");
-      return new Exception("Could not find the gapit executable.");
-    }
-
+  protected Exception prepare(ProcessBuilder pb) throws GapiPaths.MissingToolsException {
     List<String> args = Lists.newArrayList();
-    args.add(gapit.getAbsolutePath());
+    args.add(GapiPaths.get().gapit().getAbsolutePath());
 
     if (settings.analyticsEnabled()) {
       args.add("-analytics");

@@ -35,6 +35,7 @@ public final class GapiPaths {
       Flags.value("gapid", "", "Path to the gapid binaries.");
   public static final Flag<String> adbPath = Flags.value("adb", "", "Path to the adb binary.");
 
+  public static final GapiPaths MISSING = new GapiPaths(null, null, null, null);
   private static final Logger LOG = Logger.getLogger(GapiPaths.class.getName());
 
   private static final String GAPIS_EXECUTABLE_NAME = "gapis" + OS.exeExtension;
@@ -43,37 +44,52 @@ public final class GapiPaths {
   private static final String USER_HOME_GAPID_ROOT = "gapid";
   private static final String GAPID_PKG_SUBDIR = "pkg";
   private static final String GAPID_ROOT_ENV_VAR = "GAPID";
+  private static GapiPaths tools;
 
-  private static File baseDir;
-  private static File gapisPath;
-  private static File gapitPath;
-  private static File stringsPath;
-
-  public static synchronized boolean isValid() {
-    if (allExist()) {
-      return true;
-    }
-    findTools();
-    return allExist();
+  private final File baseDir;
+  private final File gapisPath;
+  private final File gapitPath;
+  private final File stringsPath;
+  public GapiPaths(File baseDir) {
+    this.baseDir = baseDir;
+    this.gapisPath = new File(baseDir, GAPIS_EXECUTABLE_NAME);
+    this.gapitPath = new File(baseDir, GAPIT_EXECUTABLE_NAME);
+    this.stringsPath = new File(baseDir, STRINGS_DIR_NAME);
   }
 
-  public static synchronized File base() {
-    isValid();
+  protected GapiPaths(File baseDir, File gapisPath, File gapitPath, File stringsPath) {
+    this.baseDir = baseDir;
+    this.gapisPath = gapisPath;
+    this.gapitPath = gapitPath;
+    this.stringsPath = stringsPath;
+  }
+
+  public static synchronized GapiPaths get() {
+    if (tools == null) {
+      tools = findTools();
+    }
+    return tools;
+  }
+
+  public File base() {
     return baseDir;
   }
 
-  public static synchronized File gapis() {
-    isValid();
+  public File gapis() throws MissingToolsException {
+    if (gapisPath == null || !gapisPath.exists()) {
+      throw new MissingToolsException("gapis");
+    }
     return gapisPath;
   }
 
-  public static synchronized File gapit() {
-    isValid();
+  public File gapit() throws MissingToolsException {
+    if (gapisPath == null || !gapisPath.exists()) {
+      throw new MissingToolsException("gapit");
+    }
     return gapitPath;
   }
 
-  public static synchronized File strings() {
-    isValid();
+  public File strings() {
     return stringsPath;
   }
 
@@ -82,18 +98,14 @@ public final class GapiPaths {
     return adb.isEmpty() ? settings.adb : adb;
   }
 
-  private static boolean checkForTools(File dir) {
+  private static GapiPaths checkForTools(File dir) {
     if (dir == null) {
-      return false;
+      return null;
     }
 
-    baseDir = dir;
-    gapisPath = new File(dir, GAPIS_EXECUTABLE_NAME);
-    gapitPath = new File(dir, GAPIT_EXECUTABLE_NAME);
-    stringsPath = new File(dir, STRINGS_DIR_NAME);
-
-    LOG.log(INFO, "Looking for GAPID in " + dir + " -> " + gapisPath);
-    return allExist();
+    GapiPaths paths = new GapiPaths(dir);
+    LOG.log(INFO, "Looking for GAPID in " + dir + " -> " + paths.gapisPath);
+    return paths;
   }
 
   private static File join(File root, String... paths) {
@@ -107,14 +119,13 @@ public final class GapiPaths {
     return new File(root, sb.toString());
   }
 
-  private static boolean allExist() {
+  private static boolean shouldUse(GapiPaths paths) {
     // We handle a missing strings and gapit explicitly, so ignore if they're missing.
-    return gapisPath != null && gapisPath.exists();
+    return paths != null && paths.gapisPath != null && paths.gapisPath.exists();
   }
 
-  @SuppressWarnings("ReturnValueIgnored") // TODO: checkForTools shouldn't have side-effects, yuk!
-  private static void findTools() {
-    ImmutableList.<Supplier<File>>of(
+  private static GapiPaths findTools() {
+    return ImmutableList.<Supplier<File>>of(
       () -> {
         String gapidRoot = gapidPath.get();
         return "".equals(gapidRoot) ? null : new File(gapidRoot);
@@ -124,7 +135,16 @@ public final class GapiPaths {
       },
       () -> join(new File(OS.userHomeDir), USER_HOME_GAPID_ROOT),
       () -> join(new File(OS.userHomeDir), USER_HOME_GAPID_ROOT, GAPID_PKG_SUBDIR)
-      //TODO GapiPaths::getSdkPath
-    ).stream().filter(p -> checkForTools(p.get())).findFirst();
+    ).stream()
+        .map(dir -> checkForTools(dir.get()))
+        .filter(GapiPaths::shouldUse)
+        .findFirst()
+        .orElse(MISSING);
+  }
+
+  public static class MissingToolsException extends Exception {
+    public MissingToolsException(String tool) {
+      super("Could not find the " + tool + " executable.");
+    }
   }
 }
