@@ -55,6 +55,8 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
       args.add(settings.analyticsClientId);
     }
 
+    GapiPaths.get().addRunfilesFlag(args);
+
     args.add("packages");
 
     args.add("--format");

@@ -59,6 +59,8 @@ public class GapitTraceProcess extends ChildProcess<Boolean> {
     args.add("-log-level");
     args.add(logLevel.get().gapisLevel);
 
+    GapiPaths.get().addRunfilesFlag(args);
+
     args.add("trace");
 
     String adb = GapiPaths.adb(settings);

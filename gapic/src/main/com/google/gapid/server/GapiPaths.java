@@ -15,15 +15,21 @@
  */
 package com.google.gapid.server;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.Files;
+import com.google.common.io.LineProcessor;
 import com.google.gapid.models.Settings;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.OS;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
@@ -35,7 +41,8 @@ public final class GapiPaths {
       Flags.value("gapid", "", "Path to the gapid binaries.");
   public static final Flag<String> adbPath = Flags.value("adb", "", "Path to the adb binary.");
 
-  public static final GapiPaths MISSING = new GapiPaths(null, null, null, null);
+  public static final GapiPaths MISSING = new GapiPaths(null, null, null, null, null);
+
   private static final Logger LOG = Logger.getLogger(GapiPaths.class.getName());
 
   private static final String GAPIS_EXECUTABLE_NAME = "gapis" + OS.exeExtension;
@@ -44,24 +51,31 @@ public final class GapiPaths {
   private static final String USER_HOME_GAPID_ROOT = "gapid";
   private static final String GAPID_PKG_SUBDIR = "pkg";
   private static final String GAPID_ROOT_ENV_VAR = "GAPID";
+  private static final String RUNFILES_MANIFEST = "gapid.runfiles_manifest";
+
   private static GapiPaths tools;
 
   private final File baseDir;
   private final File gapisPath;
   private final File gapitPath;
   private final File stringsPath;
+  private final File runfiles;
+
   public GapiPaths(File baseDir) {
     this.baseDir = baseDir;
     this.gapisPath = new File(baseDir, GAPIS_EXECUTABLE_NAME);
     this.gapitPath = new File(baseDir, GAPIT_EXECUTABLE_NAME);
     this.stringsPath = new File(baseDir, STRINGS_DIR_NAME);
+    this.runfiles = null;
   }
 
-  protected GapiPaths(File baseDir, File gapisPath, File gapitPath, File stringsPath) {
+  protected GapiPaths(
+      File baseDir, File gapisPath, File gapitPath, File stringsPath, File runfiles) {
     this.baseDir = baseDir;
     this.gapisPath = gapisPath;
     this.gapitPath = gapitPath;
     this.stringsPath = stringsPath;
+    this.runfiles = runfiles;
   }
 
   public static synchronized GapiPaths get() {
@@ -93,6 +107,13 @@ public final class GapiPaths {
     return stringsPath;
   }
 
+  public void addRunfilesFlag(List<String> args) {
+    if (runfiles != null && runfiles.exists()) {
+      args.add("--runfiles");
+      args.add(runfiles.getAbsolutePath());
+    }
+  }
+
   public static String adb(Settings settings) {
     String adb = adbPath.get();
     return adb.isEmpty() ? settings.adb : adb;
@@ -103,9 +124,56 @@ public final class GapiPaths {
       return null;
     }
 
-    GapiPaths paths = new GapiPaths(dir);
+    GapiPaths paths;
+    File runfiles = new File(dir, RUNFILES_MANIFEST);
+    if (runfiles.exists() && runfiles.canRead()) {
+      paths = fromRunfiles(dir, runfiles);
+    } else {
+      paths = new GapiPaths(dir);
+    }
+
     LOG.log(INFO, "Looking for GAPID in " + dir + " -> " + paths.gapisPath);
     return paths;
+  }
+
+  private static GapiPaths fromRunfiles(File dir, File runfiles) {
+    try {
+      return Files.readLines(runfiles, UTF_8, new LineProcessor<GapiPaths>() {
+        private File gapis, gapit, strings;
+
+        @Override
+        public boolean processLine(String line) throws IOException {
+          String[] tokens = line.split("\\s+", 2);
+          if (tokens.length == 2) {
+            switch (tokens[0]) {
+              case "gapid/cmd/gapis/gapis":
+              case "gapid/cmd/gapis/gapis.exe":
+                gapis = new File(tokens[1]);
+                break;
+              case "gapid/cmd/gapit/gapit":
+              case "gapid/cmd/gapit/gapit.exe":
+                gapit = new File(tokens[1]);
+                break;
+              case "gapid/gapis/messages/en-us.stb":
+                strings = new File(tokens[1]);
+                break;
+            }
+          }
+          return true;
+        }
+
+        @Override
+        public GapiPaths getResult() {
+          // Fall back to ignoring the runfiles if no gapis was found.
+          return (gapis == null) ? new GapiPaths(dir) :
+              new GapiPaths(dir, gapis, gapit, strings, runfiles);
+        }
+      });
+    } catch (IOException e) {
+      LOG.log(WARNING, "Failed to process runfiles manifest " + runfiles, e);
+      // Fall back to ignoring the runfiles.
+      return new GapiPaths(dir);
+    }
   }
 
   private static File join(File root, String... paths) {
