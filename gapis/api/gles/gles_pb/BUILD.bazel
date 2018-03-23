@@ -41,7 +41,7 @@ proto_library(
 )
 
 proto_library(
-    name = "api_pb_proto",
+    name = "gles_pb_proto",
     srcs = [
         "extras.proto",
         ":api_proto",  # keep
@@ -59,7 +59,7 @@ cc_proto_library(
 go_proto_library(
     name = "gles_pb_go_proto",
     importpath = "github.com/google/gapid/gapis/api/gles/gles_pb",
-    proto = ":api_pb_proto",
+    proto = ":gles_pb_proto",
     visibility = ["//visibility:public"],
     deps = ["//gapis/memory/memory_pb:go_default_library"],  # keep
 )
