@@ -138,6 +138,8 @@ public class GapisProcess extends ChildProcess<Integer> {
       args.add(gapisArgs.get());
     }
 
+    GapiPaths.get().addRunfilesFlag(args);
+
     pb.command(args);
     return null;
   }

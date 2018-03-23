@@ -25,6 +25,11 @@ gazelle(
 
 # Alias meant to be used with 'bazel run <alias> -- <arguments>'.
 alias(
+    name = "gapid",
+    actual = "//cmd/gapid",
+)
+
+alias(
     name = "gapis",
     actual = "//cmd/gapis",
 )
