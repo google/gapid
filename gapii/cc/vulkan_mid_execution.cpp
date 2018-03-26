@@ -581,7 +581,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
               level_size(image_info.mExtent, image_info.mFormat, lev.first,
                          a.first);
           level->mData = gapil::Slice<uint8_t>::create(
-              create_virtual_pool(e.aligned_level_size));
+              create_virtual_pool(e.level_size));
           gpu_pools->insert(level->mData.pool_id());
         }
       }
@@ -868,7 +868,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
         } else {
           if (e.level_size_in_buf != e.level_size) {
             // Unhandled case where the element size is different in buffer and
-            // image.
+            // image. Should never reach here.
             GAPID_ERROR(
                 "[Recovering data for image: %" PRIu64 ", format: %" PRIu32
                 "] unhandled case: element size different in buffer and image",
