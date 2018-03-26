@@ -110,7 +110,7 @@ func reflectCopy(d, s reflect.Value, path string, seen seenMap) error {
 			d.Set(reflect.New(d.Type()).Elem()) // Assign nil
 			return nil
 		}
-		d.Set(reflect.MakeSlice(s.Type(), s.Len(), s.Len()))
+		d.Set(reflect.MakeSlice(d.Type(), s.Len(), s.Len()))
 		for i, c := 0, s.Len(); i < c; i++ {
 			path := path + fmt.Sprintf("[%v]", i)
 			if err := reflectCopy(d.Index(i), s.Index(i), path, seen); err != nil {

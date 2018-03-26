@@ -20,6 +20,9 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/data"
+	"github.com/google/gapid/core/data/deep"
+	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service/box"
 )
@@ -46,6 +49,39 @@ type Cyclic struct {
 type Memory struct {
 	P memory.Pointer
 	S memory.Slice
+}
+
+type StringːString struct {
+	M map[string]string
+}
+
+var _ data.Assignable = &StringːString{}
+
+func (m StringːString) Dictionary() dictionary.I { return dictionary.From(m.M) }
+
+func (m *StringːString) Assign(v interface{}) bool {
+	m.M = map[string]string{}
+	return deep.Copy(&m.M, v) == nil
+}
+
+type StringːDictionary struct {
+	M map[string]StringːString
+}
+
+var _ data.Assignable = &StringːDictionary{}
+
+func (m StringːDictionary) Dictionary() dictionary.I { return dictionary.From(m.M) }
+
+func (m *StringːDictionary) Assign(v interface{}) bool {
+	m.M = map[string]StringːString{}
+	return deep.Copy(&m.M, v) == nil
+}
+
+type DictInContainer struct {
+	Struct StringːString
+	Slice  []StringːString
+	Map    map[string]StringːString
+	Dict   StringːDictionary
 }
 
 func TestBoxSimpleTypes(t *testing.T) {
@@ -273,6 +309,32 @@ func TestBoxUnboxMemory(t *testing.T) {
 	}
 	boxed := box.NewValue(val)
 	var unboxed Memory
+	err := boxed.AssignTo(&unboxed)
+	if assert.To(t).For("AssignTo").ThatError(err).Succeeded() {
+		assert.To(t).For("unboxed").That(unboxed).DeepEquals(val)
+	}
+}
+
+func TestBoxUnboxDictionaryInContainer(t *testing.T) {
+	val := DictInContainer{
+		Struct: StringːString{map[string]string{"cat": "meow", "dog": "woof"}},
+		Slice: []StringːString{
+			StringːString{map[string]string{"bird": "tweet", "cow": "mooh"}},
+			StringːString{map[string]string{"mouse": "squeek", "sheep": "baah"}},
+		},
+		Map: map[string]StringːString{
+			"savanna": StringːString{map[string]string{"lion": "roar", "wildebeest": "grunt"}},
+			"prairie": StringːString{map[string]string{"coyote": "howl", "snake": "hiss"}},
+		},
+		Dict: StringːDictionary{
+			map[string]StringːString{
+				"grassland": StringːString{map[string]string{"hyena": "hehe"}},
+				"forest":    StringːString{map[string]string{"me": "sigh"}},
+			},
+		},
+	}
+	boxed := box.NewValue(val)
+	var unboxed DictInContainer
 	err := boxed.AssignTo(&unboxed)
 	if assert.To(t).For("AssignTo").ThatError(err).Succeeded() {
 		assert.To(t).For("unboxed").That(unboxed).DeepEquals(val)
