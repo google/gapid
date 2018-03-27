@@ -57,7 +57,7 @@ cmd VkResult vkCreateXlibSurfaceKHR(
   _ = pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
-  surface.Type = SURFACE_TYPE_WAYLAND
+  surface.Type = SURFACE_TYPE_XLIB
   // TODO: pAllocator
 
   handle := ?
@@ -210,7 +210,7 @@ cmd VkResult vkCreateMirSurfaceKHR(
   _ = pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
-  surface.Type = SURFACE_TYPE_WAYLAND
+  surface.Type = SURFACE_TYPE_MIR
   // TODO: pAllocator
 
   handle := ?
