@@ -68,11 +68,11 @@ def gapid_dependencies(android = True, java_client = True, mingw = True):
     ###########################################
     # Now get all our other non-go dependencies
 
-    _maybe(native.http_archive,
-        name = "gtest",
-        url = "https://github.com/google/googletest/archive/62dbaa2947f7d058ea7e16703faea69b1134b024.zip",
-        sha256 = "c86258bf52616f5fa52a622ba58ce700eb2dd9f6ec15ff13ad2b2a579afb9c67",
-        strip_prefix = "googletest-62dbaa2947f7d058ea7e16703faea69b1134b024",
+    _maybe(github_repository,
+        name = "com_google_googletest",
+        organization = "google",
+        project = "googletest",
+        commit = "62dbaa2947f7d058ea7e16703faea69b1134b024",
     )
 
     _maybe(github_repository,
