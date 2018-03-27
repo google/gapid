@@ -237,11 +237,13 @@ cmd VkResult vkAcquireNextImageKHR(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }
   if pImageIndex == null { vkErrorNullPointer("uint32_t") }
-  _ = pImageIndex[0]
-  pImageIndex[0] = ?
+  imageIndex := ?
+  pImageIndex[0] = imageIndex
   if (semaphore != as!VkSemaphore(0)) {
     Semaphores[semaphore].Signaled = true
   }
+  Swapchains[swapchain].ImagesAcquired[imageIndex] = true
+  recordAcquireNextImage(swapchain, imageIndex)
   return ?
 }
 
@@ -290,6 +292,9 @@ cmd VkResult vkQueuePresentKHR(
     image
     LastPresentInfo.PresentImageCount = LastPresentInfo.PresentImageCount + 1
     image.LastBoundQueue = Queues[queue]
+    _ = swapchain.ImagesAcquired[imageIndices[i]]
+    swapchain.ImagesAcquired[imageIndices[i]] = false
+    recordPresentSwapchainImage(swapchains[i], imageIndices[i])
   }
   fence
   if (info.pResults != null) {
@@ -320,5 +325,9 @@ cmd VkResult vkQueuePresentKHR(
   @unused VkPresentModeKHR              PresentMode
   @unused VkBool32                      Clipped
   map!(u32, ref!ImageObject)            SwapchainImages
+  map!(u32, bool)                       ImagesAcquired
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
 }
+
+extern void recordAcquireNextImage(VkSwapchainKHR swapchain, u32 imageIndex)
+extern void recordPresentSwapchainImage(VkSwapchainKHR swapchain, u32 imageIndex)
