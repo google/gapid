@@ -29,3 +29,17 @@ cc_library(
         "@spirv-tools//:spirv-tools",
     ],
 )
+
+cc_test(
+    name = "tests",
+    size = "small",
+    srcs = [
+        "disassemble_test.cpp",
+    ],
+    args = ["$(location spirv_example.spv)"],
+    copts = cc_copts(),
+    data = ["spirv_example.spv"],
+    deps = [
+        ":cc",
+    ],
+)

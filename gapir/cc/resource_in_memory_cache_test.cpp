@@ -390,7 +390,6 @@ TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
 
 TEST_F(ResourceInMemoryCacheTest, PrefecthOverrun) {
     InSequence x;
-    uint8_t* cache = reinterpret_cast<uint8_t*>(mMemoryManager->getBaseAddress());
 
     Resource A1("A1", 1), B1("B1", 1), C1("C1", 1), D1("D1", 1);
     Resource E1("E1", 1), F1("F1", 1), G1("G1", 1), H1("H1", 1);
@@ -398,10 +397,10 @@ TEST_F(ResourceInMemoryCacheTest, PrefecthOverrun) {
     mResourceInMemoryCache->resize(8);
 
     Resource resources1[] = {A1, B1, C1, D1, E1};
-    EXPECT_CALL(*mFallbackProvider, get(_, _, _, cache, 5))
+    EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, 5))
         .With(Args<0, 1>(ElementsAre(A1, B1, C1, D1, E1)))
         .WillOnce(Return(true));
-    mResourceInMemoryCache->prefetch(resources1, 5, *mServer, nullptr, 0);
+    mResourceInMemoryCache->prefetch(resources1, 5, *mServer, mTemp, TEMP_SIZE);
 
     // ┏━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┓
     // ┃  A1  ┃  B1  ┃  C1  ┃  D1  ┃  E1  ┃      ┃      ┃      ┃

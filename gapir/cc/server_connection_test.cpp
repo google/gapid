@@ -80,6 +80,8 @@ TEST_F(ServerConnectionTest, Get) {
     std::vector<uint8_t> expected;
     pushUint8(&expected, ServerConnection::MESSAGE_TYPE_GET);
     pushUint32(&expected, 2);
+    pushUint32(&expected, 3);
+    pushUint32(&expected, 0);
     pushString(&expected, "A");
     pushString(&expected, "B");
 

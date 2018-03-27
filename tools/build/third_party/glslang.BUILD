@@ -42,6 +42,10 @@ cc_library(
         "SPIRV/*.h",
     ]),
     copts = cc_copts() + ["-DNV_EXTENSIONS"],
+    linkopts = select({
+        "@gapid//tools/build:windows": [],
+        "//conditions:default": ["-lpthread"],
+    }),
     include_prefix = "third_party/glslang",
     visibility = ["//visibility:public"],
 )
