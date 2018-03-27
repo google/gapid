@@ -40,6 +40,7 @@ func init() {
 		ScreenshotFlags{
 			At:    flags.U64Slice{},
 			Frame: -1,
+			Out:   "screenshot.png",
 			NoOpt: false,
 		},
 	}
@@ -90,7 +91,7 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	if frame, err := getSingleFrame(ctx, command, device, client, verb.NoOpt); err == nil {
-		return verb.writeSingleFrame(flipImg(frame), "screenshot.png")
+		return verb.writeSingleFrame(flipImg(frame), verb.Out)
 	} else {
 		return err
 	}
