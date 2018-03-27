@@ -56,7 +56,7 @@ func storeReferenceImage(ctx context.Context, outputDir string, name string, img
 // loadReferenceImage loads the reference image with the specified name.
 func loadReferenceImage(ctx context.Context, name string) *gpuimg.Data {
 	ctx = log.V{"name": name}.Bind(ctx)
-	b64, found := embedded[filepath.Join("reference", name+".png")]
+	b64, found := embedded[name+".png"]
 	if !found {
 		log.F(ctx, true, "Embedded reference image '%s' not found", name)
 	}

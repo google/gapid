@@ -43,9 +43,13 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["gles_test.go"],
+    data = [
+        "//cmd/gapir/cc:gapir",
+        "//core/vulkan/vk_virtual_swapchain/cc:json",
+        "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
+    ],
     embed = [":go_default_library"],
     tags = [
-        "fail",
         "integration",
         "manual",
     ],

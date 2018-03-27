@@ -67,6 +67,30 @@ func CompileProgram(ctx context.Context, s *api.GlobalState, cb CommandBuilder,
 	return cmds
 }
 
+// GetUniformLocation returns the command to get a uniform location by name.
+func GetUniformLocation(ctx context.Context, s *api.GlobalState, cb CommandBuilder,
+	programID ProgramId, name string, loc UniformLocation) api.Cmd {
+
+	tmp := s.AllocDataOrPanic(ctx, name)
+	cmd := cb.GlGetUniformLocation(programID, tmp.Ptr(), loc).
+		AddRead(tmp.Data())
+
+	tmp.Free()
+	return cmd
+}
+
+// GetAttribLocation returns the command to get an attribute location by name.
+func GetAttribLocation(ctx context.Context, s *api.GlobalState, cb CommandBuilder,
+	programID ProgramId, name string, loc AttributeLocation) api.Cmd {
+
+	tmp := s.AllocDataOrPanic(ctx, name)
+	cmd := cb.GlGetAttribLocation(programID, tmp.Ptr(), GLint(loc)).
+		AddRead(tmp.Data())
+
+	tmp.Free()
+	return cmd
+}
+
 // DefaultConstants30 returns a Constants structure filled with default
 // values for a vaild OpenGL ES 3.0 context.
 func DefaultConstants30() Constants {

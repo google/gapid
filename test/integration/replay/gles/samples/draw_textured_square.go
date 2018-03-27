@@ -88,9 +88,15 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 						ArraySize: 1,
 						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(texLoc)),
 					}),
+					ProgramInputs: gles.NewU32ːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_FLOAT_VEC3,
+						Name:      "position",
+						ArraySize: 1,
+						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(pos)),
+					}),
 				},
 			}),
-		cb.GlGetUniformLocation(prog, "tex", texLoc),
+		gles.GetUniformLocation(ctx, b.state, cb, prog, "tex", texLoc),
 	)
 
 	// Build the texture resource
@@ -126,7 +132,7 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 		cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
 		cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
 		cb.GlUniform1i(texLoc, 0),
-		cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
+		gles.GetAttribLocation(ctx, b.state, cb, prog, "position", pos),
 		cb.GlEnableVertexAttribArray(pos),
 		cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
 		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
