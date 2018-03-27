@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gles
+package gles_test
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/api/testcmd"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -45,13 +46,13 @@ func TestDeadCommandRemoval(t *testing.T) {
 	isDead := map[api.Cmd]bool{}
 	dead := func(cmd api.Cmd) api.Cmd { isDead[cmd] = true; return cmd }
 
-	programInfoA := &LinkProgramExtra{
-		LinkStatus: GLboolean_GL_TRUE,
-		ActiveResources: &ActiveProgramResources{
-			DefaultUniformBlock: NewUniformIndexːProgramResourceʳᵐ().Add(0, &ProgramResource{
+	programInfoA := &gles.LinkProgramExtra{
+		LinkStatus: gles.GLboolean_GL_TRUE,
+		ActiveResources: &gles.ActiveProgramResources{
+			DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
 				Name: "uniforms",
-				Type: GLenum_GL_FLOAT_VEC4,
-				Locations: NewU32ːGLintᵐ().
+				Type: gles.GLenum_GL_FLOAT_VEC4,
+				Locations: gles.NewU32ːGLintᵐ().
 					Add(0, 0).Add(1, 1).Add(2, 2).Add(3, 3).Add(4, 4).
 					Add(5, 5).Add(6, 6).Add(7, 7).Add(8, 8).Add(9, 9),
 				ArraySize: 10,
@@ -59,13 +60,13 @@ func TestDeadCommandRemoval(t *testing.T) {
 		},
 	}
 
-	programInfoB := &LinkProgramExtra{
-		LinkStatus: GLboolean_GL_TRUE,
-		ActiveResources: &ActiveProgramResources{
-			DefaultUniformBlock: NewUniformIndexːProgramResourceʳᵐ().Add(0, &ProgramResource{
+	programInfoB := &gles.LinkProgramExtra{
+		LinkStatus: gles.GLboolean_GL_TRUE,
+		ActiveResources: &gles.ActiveProgramResources{
+			DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
 				Name:      "sampler",
-				Type:      GLenum_GL_SAMPLER_CUBE,
-				Locations: NewU32ːGLintᵐ().Add(0, 0),
+				Type:      gles.GLenum_GL_SAMPLER_CUBE,
+				Locations: gles.NewU32ːGLintᵐ().Add(0, 0),
 				ArraySize: 1,
 			}),
 		},
@@ -75,12 +76,12 @@ func TestDeadCommandRemoval(t *testing.T) {
 	ctxHandle2 := memory.BytePtr(2, memory.ApplicationPool)
 	displayHandle := memory.BytePtr(3, memory.ApplicationPool)
 	surfaceHandle := memory.BytePtr(4, memory.ApplicationPool)
-	cb := CommandBuilder{Thread: 0}
+	cb := gles.CommandBuilder{Thread: 0}
 	prologue := []api.Cmd{
 		cb.EglCreateContext(displayHandle, surfaceHandle, surfaceHandle, memory.Nullptr, ctxHandle1),
 		api.WithExtras(
 			cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle1, 0),
-			NewStaticContextStateForTest(), NewDynamicContextStateForTest(64, 64, false)),
+			gles.NewStaticContextStateForTest(), gles.NewDynamicContextStateForTest(64, 64, false)),
 		cb.GlCreateProgram(1),
 		cb.GlCreateProgram(2),
 		cb.GlCreateProgram(3),
@@ -89,40 +90,40 @@ func TestDeadCommandRemoval(t *testing.T) {
 		api.WithExtras(cb.GlLinkProgram(3), programInfoB),
 		cb.GlUseProgram(1),
 	}
-	allBuffers := GLbitfield_GL_COLOR_BUFFER_BIT | GLbitfield_GL_DEPTH_BUFFER_BIT | GLbitfield_GL_STENCIL_BUFFER_BIT
+	allBuffers := gles.GLbitfield_GL_COLOR_BUFFER_BIT | gles.GLbitfield_GL_DEPTH_BUFFER_BIT | gles.GLbitfield_GL_STENCIL_BUFFER_BIT
 	tests := map[string][]api.Cmd{
 		"Draw calls up to the requested point are preserved": {
-			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 1, 0)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 2, 0)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 3, 0)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 4, 0)),
+			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 1, 0)),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 2, 0)),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 3, 0)),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 4, 0)),
 		},
 		"No request in frame kills draw calls": {
 			dead(cb.GlClear(allBuffers)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 1, 0)),
-			dead(cb.EglSwapBuffers(displayHandle, surfaceHandle, EGLBoolean(1))),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 1, 0)),
+			dead(cb.EglSwapBuffers(displayHandle, surfaceHandle, gles.EGLBoolean(1))),
 			cb.GlClear(allBuffers),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Multiple requests": {
-			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
-			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
+			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Simple overwrite": {
 			dead(cb.GlUniform4fv(0, 1, memory.Nullptr)),
 			cb.GlUniform4fv(1, 1, memory.Nullptr),
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
-			dead(cb.GlVertexAttribPointer(0, 4, GLenum_GL_FLOAT, GLboolean_GL_FALSE, 0, memory.Nullptr)),
-			cb.GlVertexAttribPointer(1, 4, GLenum_GL_FLOAT, GLboolean_GL_FALSE, 0, memory.Nullptr),
-			cb.GlVertexAttribPointer(0, 4, GLenum_GL_FLOAT, GLboolean_GL_FALSE, 0, memory.Nullptr),
-			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			dead(cb.GlVertexAttribPointer(0, 4, gles.GLenum_GL_FLOAT, gles.GLboolean_GL_FALSE, 0, memory.Nullptr)),
+			cb.GlVertexAttribPointer(1, 4, gles.GLenum_GL_FLOAT, gles.GLboolean_GL_FALSE, 0, memory.Nullptr),
+			cb.GlVertexAttribPointer(0, 4, gles.GLenum_GL_FLOAT, gles.GLboolean_GL_FALSE, 0, memory.Nullptr),
+			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Overwrites should be tracked per program": {
 			cb.GlUseProgram(1),
@@ -132,19 +133,19 @@ func TestDeadCommandRemoval(t *testing.T) {
 			cb.GlUseProgram(1),
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
 			cb.GlUseProgram(1),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 			cb.GlUseProgram(2),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Arrays should not interact with scalars": {
 			cb.GlUniform4fv(0, 10, memory.Nullptr),
 			cb.GlUniform4fv(0, 1, memory.Nullptr), // Unaffected
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Arrays should not interact with scalars (2)": {
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
 			cb.GlUniform4fv(0, 10, memory.Nullptr), // Unaffected
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Unsupported commands are left unmodified": {
 			cb.GlUseProgram(1),
@@ -152,71 +153,70 @@ func TestDeadCommandRemoval(t *testing.T) {
 			cb.GlUniform1f(0, 3.14), // Not handled in the optimization.
 			cb.GlLinkProgram(1),     // Not handled in the optimization.
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Multiple contexts": {
 			// Draw in context 1
 			dead(cb.GlUniform4fv(0, 1, memory.Nullptr)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 			cb.GlClear(allBuffers),
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
-			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
+			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
 			// Draw in context 2
 			cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2),
 			api.WithExtras(
-				cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle2, 0),
-				NewStaticContextStateForTest(), NewDynamicContextStateForTest(64, 64, false)),
+				cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle2, 0), gles.NewStaticContextStateForTest(), gles.NewDynamicContextStateForTest(64, 64, false)),
 			cb.GlCreateProgram(1),
 			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
 			cb.GlUseProgram(1),
 			dead(cb.GlUniform4fv(0, 1, memory.Nullptr)),
-			dead(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 			cb.GlClear(allBuffers),
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
-			cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0),
+			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
 			// Request from both contexts
 			cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle1, 0),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 			cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle2, 0),
-			live(cb.GlDrawArrays(GLenum_GL_TRIANGLES, 0, 0)),
+			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Clear layers and read texture": {
-			cb.GlActiveTexture(GLenum_GL_TEXTURE3),
-			cb.GlBindTexture(GLenum_GL_TEXTURE_CUBE_MAP, 4),
-			cb.GlTexStorage2D(GLenum_GL_TEXTURE_CUBE_MAP, 10, GLenum_GL_RGBA8, 512, 512),
-			cb.GlActiveTexture(GLenum_GL_TEXTURE0),
+			cb.GlActiveTexture(gles.GLenum_GL_TEXTURE3),
+			cb.GlBindTexture(gles.GLenum_GL_TEXTURE_CUBE_MAP, 4),
+			cb.GlTexStorage2D(gles.GLenum_GL_TEXTURE_CUBE_MAP, 10, gles.GLenum_GL_RGBA8, 512, 512),
+			cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
 
-			cb.GlBindFramebuffer(GLenum_GL_FRAMEBUFFER, 1),
-			cb.GlFramebufferTexture2D(GLenum_GL_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 4, 0),
-			cb.GlClear(GLbitfield_GL_COLOR_BUFFER_BIT),
-			cb.GlDrawArrays(GLenum_GL_POINTS, 0, 1),
+			cb.GlBindFramebuffer(gles.GLenum_GL_FRAMEBUFFER, 1),
+			cb.GlFramebufferTexture2D(gles.GLenum_GL_FRAMEBUFFER, gles.GLenum_GL_COLOR_ATTACHMENT0, gles.GLenum_GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 4, 0),
+			cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+			cb.GlDrawArrays(gles.GLenum_GL_POINTS, 0, 1),
 
-			cb.GlBindFramebuffer(GLenum_GL_FRAMEBUFFER, 1),
-			cb.GlFramebufferTexture2D(GLenum_GL_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 4, 1),
-			cb.GlClear(GLbitfield_GL_COLOR_BUFFER_BIT),
-			cb.GlDrawArrays(GLenum_GL_POINTS, 0, 1),
+			cb.GlBindFramebuffer(gles.GLenum_GL_FRAMEBUFFER, 1),
+			cb.GlFramebufferTexture2D(gles.GLenum_GL_FRAMEBUFFER, gles.GLenum_GL_COLOR_ATTACHMENT0, gles.GLenum_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 4, 1),
+			cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+			cb.GlDrawArrays(gles.GLenum_GL_POINTS, 0, 1),
 
-			cb.GlBindFramebuffer(GLenum_GL_FRAMEBUFFER, 1),
-			cb.GlFramebufferTexture2D(GLenum_GL_FRAMEBUFFER, GLenum_GL_COLOR_ATTACHMENT0, GLenum_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 4, 2),
-			cb.GlClear(GLbitfield_GL_COLOR_BUFFER_BIT),
-			cb.GlDrawArrays(GLenum_GL_POINTS, 0, 1),
+			cb.GlBindFramebuffer(gles.GLenum_GL_FRAMEBUFFER, 1),
+			cb.GlFramebufferTexture2D(gles.GLenum_GL_FRAMEBUFFER, gles.GLenum_GL_COLOR_ATTACHMENT0, gles.GLenum_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 4, 2),
+			cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+			cb.GlDrawArrays(gles.GLenum_GL_POINTS, 0, 1),
 
 			cb.GlUseProgram(3),
 			cb.GlUniform1i(0, 3),
-			cb.GlBindFramebuffer(GLenum_GL_FRAMEBUFFER, 0),
-			cb.GlClear(GLbitfield_GL_COLOR_BUFFER_BIT),
-			live(cb.GlDrawArrays(GLenum_GL_POINTS, 0, 1)),
+			cb.GlBindFramebuffer(gles.GLenum_GL_FRAMEBUFFER, 0),
+			cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+			live(cb.GlDrawArrays(gles.GLenum_GL_POINTS, 0, 1)),
 		},
 		"Generate mipmaps": {
-			cb.GlActiveTexture(GLenum_GL_TEXTURE0),
-			cb.GlBindTexture(GLenum_GL_TEXTURE_2D, 10),
-			cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(GLenum_GL_RGB), 64, 64, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
-			dead(cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 1, GLint(GLenum_GL_RGB), 32, 32, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
-			dead(cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 2, GLint(GLenum_GL_RGB), 16, 16, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
-			dead(cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 3, GLint(GLenum_GL_RGB), 8, 8, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
-			dead(cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 4, GLint(GLenum_GL_RGB), 4, 4, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
-			dead(cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 5, GLint(GLenum_GL_RGB), 2, 2, 0, GLenum_GL_RGB, GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
-			live(cb.GlGenerateMipmap(GLenum_GL_TEXTURE_2D)),
+			cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
+			cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, 10),
+			cb.GlTexImage2D(gles.GLenum_GL_TEXTURE_2D, 0, gles.GLint(gles.GLenum_GL_RGB), 64, 64, 0, gles.GLenum_GL_RGB, gles.GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
+			dead(cb.GlTexImage2D(gles.GLenum_GL_TEXTURE_2D, 1, gles.GLint(gles.GLenum_GL_RGB), 32, 32, 0, gles.GLenum_GL_RGB, gles.GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
+			dead(cb.GlTexImage2D(gles.GLenum_GL_TEXTURE_2D, 2, gles.GLint(gles.GLenum_GL_RGB), 16, 16, 0, gles.GLenum_GL_RGB, gles.GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
+			dead(cb.GlTexImage2D(gles.GLenum_GL_TEXTURE_2D, 3, gles.GLint(gles.GLenum_GL_RGB), 8, 8, 0, gles.GLenum_GL_RGB, gles.GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
+			dead(cb.GlTexImage2D(gles.GLenum_GL_TEXTURE_2D, 4, gles.GLint(gles.GLenum_GL_RGB), 4, 4, 0, gles.GLenum_GL_RGB, gles.GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
+			dead(cb.GlTexImage2D(gles.GLenum_GL_TEXTURE_2D, 5, gles.GLint(gles.GLenum_GL_RGB), 2, 2, 0, gles.GLenum_GL_RGB, gles.GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr)),
+			live(cb.GlGenerateMipmap(gles.GLenum_GL_TEXTURE_2D)),
 		},
 	}
 
