@@ -58,3 +58,21 @@ cc_library(
         "@cityhash",
     ],
 )
+
+cc_test(
+    name = "tests",
+    size = "small",
+    srcs = [
+        "connection_test.cpp",
+        "crash_handler_test.cpp",
+        "encoder_test.cpp",
+        "interval_list_test.cpp",
+        "mru_cache_test.cpp",
+        "scratch_allocator_test.cpp",
+    ],
+    copts = cc_copts(),
+    deps = [
+        ":cc",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

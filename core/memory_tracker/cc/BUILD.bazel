@@ -40,3 +40,16 @@ cc_library(
         "//core/cc",
     ],
 )
+
+cc_test(
+    name = "tests",
+    size = "small",
+    srcs = [
+        "memory_tracker_test.cpp",
+    ],
+    copts = cc_copts(),
+    deps = [
+        ":cc",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
