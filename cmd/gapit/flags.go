@@ -230,6 +230,7 @@ type (
 		Gapir GapirFlags
 		At    flags.U64Slice `help:"command/subcommand index for the screenshot"`
 		Frame int64          `help:"frame index for the screenshot. Empty for last"`
+		Out   string         `help:"output image file (default 'screenshot.png')"`
 		NoOpt bool           `help:"disables optimization of the replay stream"`
 		CommandFilterFlags
 	}
