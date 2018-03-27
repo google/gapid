@@ -144,15 +144,15 @@ cc_library(
         "//conditions:default": [],
     }),
     linkopts = select({
-        "//tools/build:linux": [
-            "-ldl",
-        ],
+        "//tools/build:linux": [],
         "//tools/build:darwin": [
             "-framework Cocoa",
             "-framework OpenGL",
         ],
         "//tools/build:windows": [],
+        # Android
         "//conditions:default": [
+            "-ldl",
             "-llog",
             "-lm",
             "-Wl,--no-undefined",

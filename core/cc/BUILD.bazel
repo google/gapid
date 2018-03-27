@@ -46,10 +46,11 @@ cc_library(
     ]),
     copts = cc_copts(),
     linkopts = select({
-        "//tools/build:linux": [],
+        "//tools/build:linux": ["-ldl"],
         "//tools/build:darwin": [],
         "//tools/build:windows": ["-lws2_32"],
-        "//conditions:default": [],
+        # Android.
+        "//conditions:default": ["-ldl"],
     }),
     visibility = ["//visibility:public"],
     deps = [
