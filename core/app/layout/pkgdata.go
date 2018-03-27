@@ -17,6 +17,7 @@ package layout
 import (
 	"context"
 	"flag"
+	"path/filepath"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -83,7 +84,12 @@ func layout(ctx context.Context) (out FileLayout) {
 		}
 	}
 
-	if path := file.Abs(file.ExecutablePath().System() + ".runfiles_manifest"); path.Exists() {
+	exe := file.ExecutablePath().System()
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
+	log.D(ctx, "Looking for runfiles manifest for %v", exe)
+	if path := file.Abs(exe + ".runfiles_manifest"); path.Exists() {
 		if layout, err := RunfilesLayout(path); err == nil {
 			return layout
 		}

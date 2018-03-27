@@ -463,6 +463,12 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 						ArraySize: 1,
 						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(texLoc)),
 					}),
+					ProgramInputs: gles.NewU32ːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_FLOAT_VEC3,
+						Name:      "position",
+						ArraySize: 1,
+						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(pos)),
+					}),
 				},
 			}),
 		f.cb.GlUseProgram(missingProg),
@@ -470,13 +476,13 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 		f.cb.GlGetError(0),
 		f.cb.GlUseProgram(prog),
 		f.cb.GlGenTextures(1, textureNamesR.Ptr()).AddWrite(textureNamesR.Data()),
-		f.cb.GlGetUniformLocation(prog, "tex", texLoc),
+		gles.GetUniformLocation(ctx, f.s, f.cb, prog, "tex", texLoc),
 		f.cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
 		f.cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
 		f.cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
 		f.cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
 		f.cb.GlUniform1i(texLoc, 0),
-		f.cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
+		gles.GetAttribLocation(ctx, f.s, f.cb, prog, "position", pos),
 		f.cb.GlEnableVertexAttribArray(pos),
 		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesR.Ptr()),
 		f.cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesR.Ptr()).
@@ -495,7 +501,7 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 		checkReport(ctx, intent, mgr, cmds, []string{
 			"ErrorLevel@[15]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE_CHECK_EQ [constraint: 16385, value: 16384]>",
 			"ErrorLevel@[17]: glUseProgram(program: 4): <ERR_INVALID_VALUE [value: 4]>",
-			"ErrorLevel@[18]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: {4208 0}): <ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST [id: 123]>",
+			"ErrorLevel@[18]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: 4208): <ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST [id: 123]>",
 		}, nil)
 	}
 
@@ -515,9 +521,6 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 
 	cmds = append(cmds,
 		f.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
-	)
-
-	cmds = append(cmds,
 		f.cb.GlClearColor(br, bg, bb, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
 	)
@@ -540,12 +543,18 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 						ArraySize: 1,
 						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(angleLoc)),
 					}),
+					ProgramInputs: gles.NewU32ːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_FLOAT_VEC3,
+						Name:      "position",
+						ArraySize: 1,
+						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(pos)),
+					}),
 				},
 			}),
 		f.cb.GlUseProgram(prog),
-		f.cb.GlGetUniformLocation(prog, "angle", angleLoc),
+		gles.GetUniformLocation(ctx, f.s, f.cb, prog, "angle", angleLoc),
 		f.cb.GlUniform1f(angleLoc, gles.GLfloat(0)),
-		f.cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
+		gles.GetAttribLocation(ctx, f.s, f.cb, prog, "position", pos),
 		f.cb.GlEnableVertexAttribArray(pos),
 		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
 		f.cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()),
@@ -650,13 +659,23 @@ func TestResizeRenderer(t *testing.T) {
 		gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(1.0, 0.0, 0.0))...,
 	)
 	cmds = append(cmds,
-		f.cb.GlLinkProgram(prog),
+		api.WithExtras(
+			f.cb.GlLinkProgram(prog),
+			&gles.LinkProgramExtra{
+				LinkStatus: gles.GLboolean_GL_TRUE,
+				ActiveResources: &gles.ActiveProgramResources{
+					ProgramInputs: gles.NewU32ːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
+						Type:      gles.GLenum_GL_FLOAT_VEC3,
+						Name:      "position",
+						ArraySize: 1,
+						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(pos)),
+					}),
+				},
+			}),
 		f.cb.GlUseProgram(prog),
-		f.cb.GlGetAttribLocation(prog, "position", gles.GLint(pos)),
+		gles.GetAttribLocation(ctx, f.s, f.cb, prog, "position", pos),
 		f.cb.GlEnableVertexAttribArray(pos),
 		f.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, triangleVerticesR.Ptr()),
-	)
-	cmds = append(cmds,
 		f.makeCurrent(eglSurface, eglContext, 64, 64, false),
 		f.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),

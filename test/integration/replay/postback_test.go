@@ -42,8 +42,12 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func doReplay(t *testing.T, f func(*builder.Builder)) {
+func doReplay(t *testing.T, f func(*builder.Builder)) error {
 	ctx := log.Testing(t)
+
+	r := bind.NewRegistry()
+	ctx = bind.PutRegistry(ctx, r)
+
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
 	device := bind.Host(ctx)
@@ -53,7 +57,7 @@ func doReplay(t *testing.T, f func(*builder.Builder)) {
 	connection, err := client.Connect(ctx, device, abi)
 	if err != nil {
 		t.Errorf("Failed to connect to '%v': %v", device, err)
-		return
+		return err
 	}
 
 	b := builder.New(abi.MemoryLayout)
@@ -63,12 +67,16 @@ func doReplay(t *testing.T, f func(*builder.Builder)) {
 	payload, decoder, err := b.Build(ctx)
 	if err != nil {
 		t.Errorf("Build failed with error: %v", err)
+		return err
 	}
 
 	err = executor.Execute(ctx, payload, decoder, connection, abi.MemoryLayout, os)
 	if err != nil {
 		t.Errorf("Executor failed with error: %v", err)
+		return err
 	}
+
+	return nil
 }
 
 func TestPostbackString(t *testing.T) {
@@ -76,7 +84,7 @@ func TestPostbackString(t *testing.T) {
 
 	done := make(chan struct{})
 
-	doReplay(t, func(b *builder.Builder) {
+	if doReplay(t, func(b *builder.Builder) {
 		ptr := b.String(expected)
 		b.Post(ptr, uint64(len(expected)), func(r binary.Reader, err error) error {
 			defer close(done)
@@ -96,15 +104,15 @@ func TestPostbackString(t *testing.T) {
 			}
 			return err
 		})
-	})
-
-	<-done
+	}) == nil {
+		<-done
+	}
 }
 
 func TestMultiPostback(t *testing.T) {
 	done := make(chan struct{})
 
-	doReplay(t, func(b *builder.Builder) {
+	if doReplay(t, func(b *builder.Builder) {
 		ptr := b.AllocateTemporaryMemory(8)
 		b.Push(value.Bool(false))
 		b.Store(ptr)
@@ -166,7 +174,7 @@ func TestMultiPostback(t *testing.T) {
 			close(done)
 			return err
 		})
-	})
-
-	<-done
+	}) == nil {
+		<-done
+	}
 }
