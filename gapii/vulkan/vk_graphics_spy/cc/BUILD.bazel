@@ -24,6 +24,13 @@ cc_library(
         "-fno-rtti",
         "-fno-exceptions",
     ],
+    linkopts = select({
+        "//tools/build:linux": ["-ldl"],
+        "//tools/build:darwin": [],
+        "//tools/build:windows": [],
+        # Android.
+        "//conditions:default": ["-ldl"],
+    }),
     visibility = ["//visibility:public"],
     deps = ["//core/vulkan/cc/include/vulkan"],
 )

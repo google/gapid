@@ -37,9 +37,7 @@ cc_library(
     hdrs = glob(["*.h"]),
     copts = cc_copts(),
     linkopts = select({
-        "//tools/build:linux": [
-            "-ldl",
-        ],
+        "//tools/build:linux": [],
         "//tools/build:darwin": [
             "-framework Cocoa",
             "-framework OpenGL",
