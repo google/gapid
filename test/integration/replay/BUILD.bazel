@@ -32,7 +32,7 @@ go_test(
     embed = [":go_default_library"],
     tags = [
         "integration",
-        "manual",
+        "standalone",
     ],
     deps = [
         "//core/app:go_default_library",

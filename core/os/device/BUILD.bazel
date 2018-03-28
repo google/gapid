@@ -52,7 +52,6 @@ go_test(
         "linux_test.go",
         "osx_test.go",
     ],
-    tags = ["manual"],  # TODO: This is only while it requires the x display
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",
