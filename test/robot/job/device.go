@@ -112,6 +112,8 @@ func (l *devices) get(ctx context.Context, info *device.Instance) (*Device, erro
 		if err := l.ledger.Add(ctx, entry); err != nil {
 			return nil, err
 		}
+	} else {
+		entry.Information = info
 	}
 	return entry, nil
 }
