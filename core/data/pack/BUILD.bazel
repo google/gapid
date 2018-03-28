@@ -41,7 +41,6 @@ go_library(
 go_test(
     name = "go_default_xtest",
     srcs = ["pack_test.go"],
-    tags = ["manual"],  # TODO: something to do with undefined: testprotos.MsgA
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",
