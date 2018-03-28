@@ -55,10 +55,16 @@ typedef enum shader_type_t {
   COMPUTE
 } shader_type;
 
+typedef enum client_type_t {
+  OPENGL,
+  OPENGLES,
+  VULKAN,
+} client_type;
+
 /**
  * Debug options
  **/
-typedef struct options_t {
+typedef struct convert_options_t {
   shader_type shader_type;
   const char* preamble; /* optional */
   bool prefix_names;
@@ -70,14 +76,26 @@ typedef struct options_t {
   bool disassemble;
   bool relaxed;
   bool strip_optimizations;
-} options_t;
+} convert_options_t;
+
+typedef struct compile_options_t {
+  shader_type shader_type;
+  client_type client_type;
+  const char* preamble;
+} compile_options_t;
 
 typedef struct spirv_binary_t {
     uint32_t* words;
     size_t words_num;
 } spirv_binary_t;
 
-code_with_debug_info_t* convertGlsl(const char*, size_t, const options_t*);
+typedef struct glsl_compile_result_t {
+  bool ok;
+  char* message;
+  spirv_binary_t binary;
+} glsl_compile_result_t;
+
+code_with_debug_info_t* convertGlsl(const char*, size_t, const convert_options_t*);
 
 void deleteGlslCodeWithDebug(code_with_debug_info_t*);
 
@@ -90,6 +108,10 @@ spirv_binary_t* assembleToBinary(const char*);
 void deleteBinary(spirv_binary_t*);
 
 const char* opcodeToString(uint32_t);
+
+glsl_compile_result_t* compileGlsl(const char* code, const compile_options_t*);
+
+void deleteCompileResult(glsl_compile_result_t*);
 
 #ifdef __cplusplus
 }

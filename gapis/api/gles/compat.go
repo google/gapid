@@ -411,7 +411,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err != nil {
 				onError(ctx, id, cmd, err)
 			}
-			opts := shadertools.Options{
+			opts := shadertools.ConvertOptions{
 				ShaderType:         st,
 				Relaxed:            true, // find_issues will still report bad GLSL.
 				StripOptimizations: true,

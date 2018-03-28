@@ -89,7 +89,7 @@ func run(ctx context.Context) error {
 }
 
 func convert(source, shaderType string) (result string, err error) {
-	opts := shadertools.Options{}
+	opts := shadertools.ConvertOptions{}
 	switch shaderType {
 	case ".vert":
 		opts.ShaderType = shadertools.TypeVertex
