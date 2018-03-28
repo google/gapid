@@ -219,8 +219,8 @@ type runfilesLayout struct {
 }
 
 var abiToApkPath = map[device.Architecture]string{
-	device.ARMv7a: "arm64-v8a.apk",
-	device.ARMv8a: "armeabi-v7a.apk",
+	device.ARMv7a: "armeabi-v7a.apk",
+	device.ARMv8a: "arm64-v8a.apk",
 	device.X86:    "x86.apk",
 }
 
@@ -245,7 +245,7 @@ func RunfilesLayout(manifest file.Path) (FileLayout, error) {
 	scanner := bufio.NewScanner(file)
 	r := runfilesLayout{
 		manifest: manifest.System(),
-		mapping: make(map[string]string),
+		mapping:  make(map[string]string),
 	}
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -285,7 +285,7 @@ func (l *runfilesLayout) Gapir(ctx context.Context) (file.Path, error) {
 }
 
 func (l *runfilesLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
-	return l.find("gapid/gapidapk/android/apk/"+abiToApkPath[abi.Architecture])
+	return l.find("gapid/gapidapk/android/apk/" + abiToApkPath[abi.Architecture])
 }
 
 func (l *runfilesLayout) Library(ctx context.Context, lib LibraryType) (file.Path, error) {
