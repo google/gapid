@@ -49,15 +49,6 @@ def gapid_dependencies(android = True, java_client = True, mingw = True):
         build_file = "@gapid//tools/build/third_party:protobuf.BUILD",
     )
 
-    # rules_go has a second copy of the protobuf repo. Add it here, so we can override the BUILD file.
-    _maybe(github_repository,
-        name = "com_github_google_protobuf",
-        organization = "google",
-        project = "protobuf",
-        commit = "f08e4dd9845c5ba121b402f8768f3d2617191bbe",
-        build_file = "@gapid//tools/build/third_party:protobuf.BUILD",
-    )
-
     _maybe(github_repository,
         name = "com_github_grpc_grpc",
         organization = "grpc",
