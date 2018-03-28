@@ -97,7 +97,9 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 type makeAttachementReadable struct {
 	Instance                  VkInstance
 	EnumeratedPhysicalDevices []VkPhysicalDevice
-	Properties                map[VkPhysicalDevice]VkPhysicalDeviceProperties
+	Properties                []VkPhysicalDeviceProperties
+	InPhysicalDeviceEnumerate bool
+	NumPhysicalDevicesLeft 	  uint32
 }
 
 // drawConfig is a replay.Config used by colorBufferRequest and
@@ -153,13 +155,6 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread()}
 	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-
-	// Info for physical device enumeration
-	inPhyDevEnumeration := false
-	numPhyDevLeft := uint32(0)
-	vkInst := VkInstance(0)
-	phyDevs := []VkPhysicalDevice{}
-	phyDevProps := []VkPhysicalDeviceProperties{}
 
 	if image, ok := cmd.(*VkCreateImage); ok {
 		pinfo := image.PCreateInfo
@@ -271,31 +266,38 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		return
 	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok {
 		if e.PPhysicalDevices == NewVkPhysicalDeviceᵖ(nil) {
-			// First call to vkEnumeratePhysicalDevices
+			// Querying for the number of devices.
+			// No changes needed here.
 			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
-		// Second call to vkEnumeratePhysicalDevices
+		// Actually querying the physical devices.
+		// We have inserted e.PPhysicalDeviceCount calls to VkGetPhysicalDeviceProperties
+		// after this command. Use those to get the physical device info.
+		// This is temporary, we need to switch this to use Extras.
+		//   https://github.com/google/gapid/issues/1766 
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		numPhyDevLeft = uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
+		t.NumPhysicalDevicesLeft = uint32(e.PPhysicalDeviceCount.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(ctx, cmd, s, nil))
 		// Do not mutate the second call to vkEnumeratePhysicalDevices, all the following vkGetPhysicalDeviceProperties belong to this
 		// physical device enumeration.
-		inPhyDevEnumeration = true
-
+		t.InPhysicalDeviceEnumerate = true
+		t.Properties = make([]VkPhysicalDeviceProperties, 0)
+		t.EnumeratedPhysicalDevices = make([]VkPhysicalDevice, 0)
+		t.Instance = e.Instance
 	} else if g, ok := cmd.(*VkGetPhysicalDeviceProperties); ok {
-		if inPhyDevEnumeration {
+		if t.InPhysicalDeviceEnumerate {
 			cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 			prop := g.PProperties.MustRead(ctx, cmd, s, nil)
-			phyDevProps = append(phyDevProps, prop)
-			phyDevs = append(phyDevs, g.PhysicalDevice)
-			if numPhyDevLeft > 0 {
-				numPhyDevLeft--
+			t.Properties = append(t.Properties, prop)
+			t.EnumeratedPhysicalDevices = append(t.EnumeratedPhysicalDevices, g.PhysicalDevice)
+			if t.NumPhysicalDevicesLeft > 0 {
+				t.NumPhysicalDevicesLeft--
 			}
-			if numPhyDevLeft == 0 {
-				newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, vkInst, uint32(len(phyDevs)), phyDevs, phyDevProps)
+			if t.NumPhysicalDevicesLeft == 0 {
+				newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, t.Instance, uint32(len(t.EnumeratedPhysicalDevices)), t.EnumeratedPhysicalDevices, t.Properties)
 				out.MutateAndWrite(ctx, id, newEnumerate)
-				inPhyDevEnumeration = false
+				t.InPhysicalDeviceEnumerate = false
 			}
 			return
 		} else {
@@ -482,7 +484,9 @@ func (a API) Replay(
 	transforms.Add(&makeAttachementReadable{
 		VkInstance(0),
 		make([]VkPhysicalDevice, 0),
-		make(map[VkPhysicalDevice]VkPhysicalDeviceProperties),
+		make([]VkPhysicalDeviceProperties, 0),
+		false,
+		0,
 	})
 
 	readFramebuffer := newReadFramebuffer(ctx)
