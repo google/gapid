@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +43,8 @@ const (
 	// this string is returned when GAPIT fails to connect to the GAPIS, particularly due to ETXTBSY
 	// look at https://github.com/google/gapid/pull/933 for more information
 	retryString = "Failed to connect to the GAPIS server"
+	// The value to use for gapit's --observe-frames flag.
+	observeEveryNthFrame = 5
 )
 
 type client struct {
@@ -143,12 +146,15 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		"-out", tracefile.System(),
 		"-apk", subject.System(),
 		"-for", traceTime.String(),
-		"-capture-frames", fmt.Sprintf("%v", (in.GetHints().GetObserveFrames()+1)*5),
 		"-disable-pcs",
-		"-observe-frames", "5",
+		"-observe-frames", strconv.Itoa(observeEveryNthFrame),
 		"-record-errors",
 		"-gapii-device", d.Instance().Serial,
 		"-api", in.GetHints().GetAPI(),
+	}
+
+	if frames := in.GetHints().GetObserveFrames(); frames > 0 {
+		params = append(params, "-capture-frames", strconv.Itoa(frames*observeEveryNthFrame+1))
 	}
 	if in.Obb != "" {
 		if err := store.GetFile(ctx, in.Obb, obb); err != nil {
