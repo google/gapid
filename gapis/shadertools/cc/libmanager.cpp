@@ -131,12 +131,12 @@ void set_error_msg(code_with_debug_info_t* x, std::string msg) {
 }
 
 std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
-    std::string* err_msg, shader_type type, bool es_profile, bool relaxed_errs) {
+    std::string* err_msg, shader_type shader_ty, client_type client_ty, bool relaxed_errs) {
   std::vector<unsigned int> spirv;
 
   EShMessages messages = relaxed_errs ? EShMsgRelaxedErrors : EShMsgDefault;
   EShLanguage lang = EShLangVertex;
-  switch (type) {
+  switch (shader_ty) {
     case VERTEX: { lang = EShLangVertex; break; }
     case TESS_CONTROL: { lang = EShLangTessControl; break; }
     case TESS_EVALUATION: { lang = EShLangTessEvaluation; break; }
@@ -145,14 +145,55 @@ std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
     case COMPUTE: { lang = EShLangCompute; break; }
   }
 
+  glslang::EShClient env_client = glslang::EShClientNone;
+  int env_input_version = 100;
+  glslang::EshTargetClientVersion env_client_version = glslang::EShTargetOpenGL_450;
+  int parse_default_version = 100;
+  EProfile parse_profile = ECoreProfile;
+  // OpenGL:
+  //  default version: 330
+  //  profile: core
+  // OpenGLES:
+  //  default version: 100
+  //  profile: es
+  // Vulkan:
+  //  default version: 110
+  //  profile: no_profile
+  switch (client_ty) {
+    case OPENGL: {
+      env_client = glslang::EShClientOpenGL;
+      env_input_version = 100;
+      env_client_version = glslang::EShTargetOpenGL_450;
+      parse_default_version = 330;
+      parse_profile = ECoreProfile;
+      break;
+    }
+    case OPENGLES: {
+      env_client = glslang::EShClientOpenGL;
+      env_input_version = 100;
+      env_client_version = glslang::EShTargetOpenGL_450;
+      parse_default_version = 100;
+      parse_profile = EEsProfile;
+      break;
+    }
+    case VULKAN: {
+      env_client = glslang::EShClientVulkan;
+      env_input_version = 100;
+      env_client_version = glslang::EShTargetVulkan_1_0;
+      parse_default_version = 110;
+      parse_profile = ENoProfile;
+      break;
+    }
+  }
+
   glslang::InitializeProcess();
   glslang::TShader shader(lang);
   shader.setPreamble(preamble);
   shader.setStrings(&code, 1);
   shader.setAutoMapLocations(true);
-  shader.setEnvInput(glslang::EShSourceGlsl, lang, glslang::EShClientOpenGL, 100);
-  shader.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-  // HACK: Disabled the call to setEnvTarget() as specifying the SPIRV version
+  shader.setEnvInput(glslang::EShSourceGlsl, lang, env_client, env_input_version);
+  shader.setEnvClient(env_client, env_client_version);
+  // HACK for ES: Disabled the call to setEnvTarget() as specifying the SPIRV version
   // currently causes the parser to fail with:
   //   ERROR: #version: ES shaders for OpenGL SPIR-V are not supported.
   //
@@ -160,14 +201,15 @@ std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
   // the SPIR-V version code (see below). This is terrible, but works in the
   // interim.
   //
-  // shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+  // Note that for Vulkan, setEnvTarget() must be called.
+  if (client_ty == VULKAN) {
+    shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+  }
 
-  // use 100 for ES environment, 330 for desktop
-  int default_version = es_profile ? 100 : 330;
-  EProfile profile = es_profile ? EEsProfile : ECoreProfile;
-  bool parsed = shader.parse(&DefaultTBuiltInResource, default_version, profile,
-                             false /* force version and profile */, false, /* forward compatible */
-                             messages);
+  bool parsed = shader.parse(
+      &DefaultTBuiltInResource, parse_default_version, parse_profile,
+      false /* force version and profile */, false, /* forward compatible */
+      messages);
 
   if (!parsed) {
     *err_msg += "Compilation failed:\n" + std::string(shader.getInfoLog());
@@ -200,12 +242,12 @@ std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
  * 3. Decompiles changed spirv to source code using spirv-cross,
  * 4. Check, if changed source code correctly compiles.
  **/
-code_with_debug_info_t* convertGlsl(const char* input, size_t length, const options_t* options) {
+code_with_debug_info_t* convertGlsl(const char* input, size_t length, const convert_options_t* options) {
   code_with_debug_info_t* result = new code_with_debug_info_t{};
   std::string err_msg;
 
   std::vector<unsigned int> spirv = parseGlslang(
-      input, options->preamble, &err_msg, options->shader_type, true, options->relaxed);
+      input, options->preamble, &err_msg, options->shader_type, OPENGLES, options->relaxed);
 
   if (!err_msg.empty()) {
     set_error_msg(result, "Failed to parse original source code:\n" + err_msg);
@@ -258,7 +300,7 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const opti
 
   // check if changed source code compiles again
   if (options->check_after_changes) {
-    parseGlslang(result->source_code, nullptr, &err_msg, options->shader_type, false, false);
+    parseGlslang(result->source_code, nullptr, &err_msg, options->shader_type, OPENGL, false);
   }
 
   if (!err_msg.empty()) {
@@ -282,7 +324,7 @@ void deleteGlslCodeWithDebug(code_with_debug_info_t* debug) {
   delete[] debug->disassembly_string;
 
   if (debug->info) {
-    for (int i = 0; i < debug->info->insts_num; i++) {
+    for (uint32_t i = 0; i < debug->info->insts_num; i++) {
       delete[] debug->info->insts[i].words;
       delete[] debug->info->insts[i].name;
     }
@@ -298,7 +340,7 @@ void deleteGlslCodeWithDebug(code_with_debug_info_t* debug) {
  **/
 const char* getDisassembleText(uint32_t* spirv_binary, size_t length) {
   std::vector<uint32_t> spirv_vec(length);
-  for (int i = 0; i < length; i++){
+  for (size_t i = 0; i < length; i++){
     spirv_vec[i] = spirv_binary[i];
   }
 
@@ -352,4 +394,34 @@ void deleteBinary(spirv_binary_t* binary) {
 
 const char* opcodeToString(uint32_t opcode) {
   return spvOpcodeString(static_cast<SpvOp>(opcode));
+}
+
+glsl_compile_result_t* compileGlsl(const char* code, const compile_options_t* options) {
+  glsl_compile_result_t* result =
+      new glsl_compile_result_t{true, nullptr, spirv_binary_t{nullptr, 0}};
+
+  std::string err_msg;
+  std::vector<unsigned int> spirv =
+      parseGlslang(code, options->preamble, &err_msg, options->shader_type, options->client_type, false);
+  if (!err_msg.empty()) {
+    result->ok = false;
+    result->message = new char[err_msg.length() + 1];
+    strcpy(result->message, err_msg.c_str());
+  }
+  if (spirv.size() > 0) {
+    result->binary.words_num = spirv.size();
+    result->binary.words = new uint32_t[spirv.size()];
+    for (size_t i = 0; i < spirv.size(); i++) {
+      result->binary.words[i] = spirv[i];
+    }
+  }
+  return result;
+}
+
+void deleteCompileResult(glsl_compile_result_t* result) {
+  if (result) {
+    delete[] result->message;
+    delete[] result->binary.words;
+  }
+  delete result;
 }

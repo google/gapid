@@ -85,6 +85,15 @@ const (
 	TypeCompute        = ShaderType(C.COMPUTE)
 )
 
+// ClientType is the enumerator of client types.
+type ClientType int
+
+const (
+	OpenGL   = ClientType(C.OPENGL)
+	OpenGLES = ClientType(C.OPENGLES)
+	Vulkan   = ClientType(C.VULKAN)
+)
+
 func (t ShaderType) String() string {
 	switch t {
 	case TypeVertex:
@@ -104,8 +113,8 @@ func (t ShaderType) String() string {
 	}
 }
 
-// Options controls how ConvertGlsl converts its passed-in GLSL source code.
-type Options struct {
+// ConvertOptions controls how ConvertGlsl converts its passed-in GLSL source code.
+type ConvertOptions struct {
 	// The type of shader.
 	ShaderType ShaderType
 	// Shader source preamble.
@@ -137,7 +146,7 @@ type Options struct {
 // o and returns the modification status and result. Possible modifications
 // includes creating output variables for input variables, prefixing all
 // non-builtin symbols with a given prefix, etc.
-func ConvertGlsl(source string, o *Options) (CodeWithDebugInfo, error) {
+func ConvertGlsl(source string, o *ConvertOptions) (CodeWithDebugInfo, error) {
 	toFree := []unsafe.Pointer{}
 	defer func() {
 		for _, ptr := range toFree {
@@ -154,7 +163,7 @@ func ConvertGlsl(source string, o *Options) (CodeWithDebugInfo, error) {
 		return out
 	}
 
-	opts := C.struct_options_t{
+	opts := C.struct_convert_options_t{
 		shader_type:            C.shader_type(o.ShaderType),
 		preamble:               cstr(o.Preamble),
 		prefix_names:           C.bool(o.PrefixNames),
@@ -247,4 +256,61 @@ func AssembleSpirvText(chars string) []uint32 {
 // OpcodeToString converts opcode number to human readable string.
 func OpcodeToString(opcode uint32) string {
 	return C.GoString(C.opcodeToString(C.uint32_t(opcode)))
+}
+
+// CompileOptions controls how CompileGlsl compile its passed-in GLSL source code.
+type CompileOptions struct {
+	// The type of shader.
+	ShaderType ShaderType
+	// Either OpenGL, OpenGLES or Vulkan
+	ClientType ClientType
+	// Shader source preamble.
+	Preamble string
+}
+
+// CompileGlsl compiles GLSL source code to SPIR-V binary words.
+func CompileGlsl(source string, o CompileOptions) ([]uint32, error) {
+	toFree := []unsafe.Pointer{}
+	defer func() {
+		for _, ptr := range toFree {
+			C.free(ptr)
+		}
+	}()
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	cstr := func(s string) *C.char {
+		out := C.CString(s)
+		toFree = append(toFree, unsafe.Pointer(out))
+		return out
+	}
+
+	opts := C.struct_compile_options_t{
+		shader_type: C.shader_type(o.ShaderType),
+		client_type: C.client_type(o.ClientType),
+		preamble:    cstr(o.Preamble),
+	}
+
+	result := C.compileGlsl(cstr(source), &opts)
+	defer C.deleteCompileResult(result)
+
+	count := uint64(result.binary.words_num)
+	words := make([]uint32, count)
+	if result.ok {
+		// TODO: Remove the following hack and encoding the data without using unsafe.
+		data := (*[1 << 30]uint32)(unsafe.Pointer(result.binary.words))[:count:count]
+		copy(words, data)
+		return words, nil
+	}
+	msg := []string{
+		fmt.Sprintf("Failed to compile %v shader.", o.ShaderType),
+	}
+	if m := C.GoString(result.message); len(m) > 0 {
+		msg = append(msg, m)
+	}
+	msg = append(msg, "Source:", text.LineNumber(source))
+	if len(o.Preamble) > 0 {
+		msg = append(msg, "Preamble:", text.LineNumber(o.Preamble))
+	}
+	return words, fault.Const(strings.Join(msg, "\n"))
 }
