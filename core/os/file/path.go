@@ -45,6 +45,16 @@ func Abs(path string) Path {
 	return Path{filepath.Clean(abs)}
 }
 
+// Temp creates a new temp file and returns its path.
+func Temp() (Path, error) {
+	p, err := ioutil.TempFile("", "gapid")
+	if err != nil {
+		return Path{}, err
+	}
+	p.Close()
+	return Abs(p.Name()), nil
+}
+
 // ExecutablePath returns the path to the running executable.
 func ExecutablePath() Path {
 	path := Abs(os.Args[0])

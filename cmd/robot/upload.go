@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/test/robot/stash"
 	stashgrpc "github.com/google/gapid/test/robot/stash/grpc"
 	"google.golang.org/grpc"
 )
@@ -30,8 +31,45 @@ type uploader interface {
 	process(context.Context, string) error
 }
 
-func upload(ctx context.Context, files []string, serverAddress string, u uploader) error {
-	if len(files) == 0 {
+type uploadable interface {
+	upload(ctx context.Context, client *stash.Client) (string, error)
+}
+
+type path string
+
+func (p path) upload(ctx context.Context, client *stash.Client) (string, error) {
+	return client.UploadFile(ctx, file.Abs(string(p)))
+}
+
+func paths(paths []string) []uploadable {
+	r := make([]uploadable, len(paths), 0)
+	for _, p := range paths {
+		r = append(r, path(p))
+	}
+	return r
+}
+
+type slice struct {
+	data []byte
+	info stash.Upload
+}
+
+func (s slice) upload(ctx context.Context, client *stash.Client) (string, error) {
+	return client.UploadBytes(ctx, s.info, s.data)
+}
+
+func data(data []byte, name string, executable bool) slice {
+	return slice{
+		data: data,
+		info: stash.Upload{
+			Name:       []string{name},
+			Executable: executable,
+		},
+	}
+}
+
+func upload(ctx context.Context, uploadables []uploadable, serverAddress string, u uploader) error {
+	if len(uploadables) == 0 {
 		app.Usage(ctx, "No files given")
 		return nil
 	}
@@ -43,8 +81,8 @@ func upload(ctx context.Context, files []string, serverAddress string, u uploade
 		if err := u.prepare(ctx, conn); err != nil {
 			return err
 		}
-		for _, partial := range files {
-			id, err := client.UploadFile(ctx, file.Abs(partial))
+		for _, partial := range uploadables {
+			id, err := partial.upload(ctx, client)
 			if err != nil {
 				return log.Err(ctx, err, "Failed calling Upload")
 			}
