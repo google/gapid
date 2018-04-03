@@ -41,4 +41,5 @@ lingo = rule(
             default = Label("//cmd/lingo:lingo"),
         ),
     },
+    output_to_genfiles = True,
 )
