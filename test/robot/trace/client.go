@@ -109,7 +109,10 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 	obb := tempDir.Join(action + ".obb")
 	tracefile := tempDir.Join(action + ".gfxtrace")
 	extractedDir := tempDir.Join(action + "_tools")
-	extractedLayout := layout.BinLayout(extractedDir)
+	extractedLayout, err := layout.NewPkgLayout(extractedDir, true)
+	if err != nil {
+		return nil, err
+	}
 
 	gapidAPK, err := extractedLayout.GapidApk(ctx, in.GetToolingLayout().GetGapidAbi())
 	if err != nil {

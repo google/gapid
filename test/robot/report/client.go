@@ -110,7 +110,10 @@ func doReport(ctx context.Context, action string, in *Input, store *stash.Client
 	reportfile := tempDir.Join(action + "_report.txt")
 
 	extractedDir := tempDir.Join(action + "_tools")
-	extractedLayout := layout.BinLayout(extractedDir)
+	extractedLayout, err := layout.NewPkgLayout(extractedDir, true)
+	if err != nil {
+		return nil, err
+	}
 
 	gapit, err := extractedLayout.Gapit(ctx)
 	if err != nil {
