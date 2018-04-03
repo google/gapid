@@ -314,7 +314,7 @@ type ipStoreTexelBufferStoreInfo struct {
 
 // ipStoreDispatchInfo contains the information to submit a dispatch to store
 // staging data to the target image. It is guaranteed that each pixel of the
-// target image will be processed by an local invocation.
+// target image will be processed by a local invocation.
 type ipStoreDispatchInfo struct {
 	dev VkDevice
 	// About the staging data for dispatch

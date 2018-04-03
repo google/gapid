@@ -790,7 +790,7 @@ func ipComputeShaderSpirv(vkFmt VkFormat, aspect VkImageAspectFlagBits, imageTyp
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		// should never reach here
-		return []uint32{}, fmt.Errorf("depth/stencil image does not support imageStore")
+		return []uint32{}, fmt.Errorf("imageStore to depth/stencil image is not yet supported")
 	}
 
 	// Generate source code
