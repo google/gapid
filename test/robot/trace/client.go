@@ -154,7 +154,7 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 	}
 
 	if frames := in.GetHints().GetObserveFrames(); frames > 0 {
-		params = append(params, "-capture-frames", strconv.Itoa(frames*observeEveryNthFrame+1))
+		params = append(params, "-capture-frames", strconv.Itoa(int(frames*observeEveryNthFrame+1)))
 	}
 	if in.Obb != "" {
 		if err := store.GetFile(ctx, in.Obb, obb); err != nil {
