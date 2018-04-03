@@ -715,6 +715,7 @@ func (h *ipStoreHandler) getOrCreateComputePipeline(info ipStoreShaderInfo) (*Co
 	}
 
 	compShader, err := h.getOrCreateShaderModule(info)
+	// TODO: report to report view if the image is a depth/stencil image.
 	if err != nil {
 		return nil, fmt.Errorf("[Getting compute shader module] %v", err)
 	}
