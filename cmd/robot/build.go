@@ -15,19 +15,16 @@
 package main
 
 import (
-	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"flag"
-	"io"
 	"os"
 	"os/user"
-	"path/filepath"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/git"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
@@ -41,27 +38,20 @@ import (
 
 type UploadOptions struct {
 	RobotOptions
-	CL           string `help:"The build CL, will be guessed if not set"`
-	Description  string `help:"An optional build description"`
-	Tag          string `help:"The optional build tag"`
-	Track        string `help:"The package's track, will be guessed if not set"`
-	Uploader     string `help:"The uploading entity, will be guessed if not set"`
-	BuilderAbi   string `help:"The abi of the builder device, will assume this device if not set"`
-	ArtifactPath string `help:"The file path where the zipped artifact will be stored"`
+	CL          string `help:"The build CL, will be guessed if not set"`
+	Description string `help:"An optional build description"`
+	Tag         string `help:"The optional build tag"`
+	Track       string `help:"The package's track, will be guessed if not set"`
+	Uploader    string `help:"The uploading entity, will be guessed if not set"`
+	BuilderAbi  string `help:"The abi of the builder device, will assume this device if not set"`
 }
 
 func init() {
 	uploadVerb.Add(&app.Verb{
 		Name:       "build",
 		ShortHelp:  "Upload a build to the server",
-		ShortUsage: "<filenames>",
+		ShortUsage: "<zip file|directory>",
 		Action:     &buildUploadVerb{UploadOptions: UploadOptions{RobotOptions: defaultRobotOptions}},
-	})
-	uploadVerb.Add(&app.Verb{
-		Name:       "package",
-		ShortHelp:  "Package and upload a build to the server",
-		ShortUsage: "<filename>",
-		Action:     &packageUploadVerb{UploadOptions: UploadOptions{RobotOptions: defaultRobotOptions}},
 	})
 	searchVerb.Add(&app.Verb{
 		Name:       "artifact",
@@ -102,8 +92,25 @@ type buildUploadVerb struct {
 	info  *build.Information
 }
 
-func (v *buildUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return upload(ctx, flags.Args(), v.ServerAddress, v)
+func (v *buildUploadVerb) Run(ctx context.Context, flags flag.FlagSet) (err error) {
+	if flags.NArg() != 1 {
+		err = errors.New("Missing expected argument")
+		return log.Err(ctx, err, "build upload expects a single filepath as argument")
+	}
+
+	p := file.Abs(flags.Arg(0))
+	u := make([]uploadable, 1)
+	if p.IsDir() {
+		b, err := zip(p)
+		if err != nil {
+			return log.Err(ctx, err, "failed to create artifact zip")
+		}
+		u[0] = data(b.Bytes(), p.Basename()+".zip", false)
+	} else {
+		u[0] = path(p.System())
+	}
+
+	return upload(ctx, u, v.ServerAddress, v)
 }
 
 func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
@@ -113,40 +120,6 @@ func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) er
 }
 
 func (v *buildUploadVerb) process(ctx context.Context, id string) error {
-	return storeBuild(ctx, v.store, v.info, id)
-}
-
-type packageUploadVerb struct {
-	UploadOptions
-
-	store build.Store
-	info  *build.Information
-}
-
-func (v *packageUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	if v.ArtifactPath == "" {
-		if len(flags.Args()) != 1 {
-			err := errors.New("Missing expected argument")
-			return log.Err(ctx, err, "`do robot upload package` expects a single filepath as argument")
-		}
-		log.I(ctx, "Running packageUploadVerb, artifact arg is %s", flags.Args()[0])
-		v.ArtifactPath = flags.Args()[0]
-		log.I(ctx, "artifact path is %s", v.ArtifactPath)
-	}
-
-	return upload(ctx, flags.Args(), v.ServerAddress, v)
-}
-
-func (v *packageUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
-	if err := zipArtifacts(ctx, file.Abs(v.ArtifactPath)); err != nil {
-		return err
-	}
-	v.store = build.NewRemote(ctx, conn)
-	v.info = v.UploadOptions.createBuildInfo(ctx)
-	return nil
-}
-
-func (v *packageUploadVerb) process(ctx context.Context, id string) error {
 	return storeBuild(ctx, v.store, v.info, id)
 }
 
@@ -239,85 +212,12 @@ func (o *UploadOptions) createBuildInfo(ctx context.Context) *build.Information 
 	}
 }
 
-func zipFile(zipWriter *zip.Writer, zipVirtualPath string, filePath file.Path) error {
-	fileReader, err := os.Open(filePath.String())
-	if err != nil {
-		return err
+func zip(in file.Path) (*bytes.Buffer, error) {
+	buf := new(bytes.Buffer)
+	if err := file.ZIP(buf, in); err != nil {
+		return nil, err
 	}
-	defer fileReader.Close()
-
-	fileHeader, err := fileReader.Stat()
-	if err != nil {
-		return err
-	}
-
-	zipHeader, err := zip.FileInfoHeader(fileHeader)
-	if err != nil {
-		return err
-	}
-	zipHeader.Name = zipVirtualPath
-
-	zipFile, err := zipWriter.CreateHeader(zipHeader)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(zipFile, fileReader)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func zipArtifacts(ctx context.Context, artifactFile file.Path) error {
-	outputZipFile, err := os.Create(artifactFile.String())
-	if err != nil {
-		return err
-	}
-	artifacts := zip.NewWriter(outputZipFile)
-	defer artifacts.Close()
-
-	toolSetPathFunc := map[string]func(context.Context) (file.Path, error){
-		"gapid/gapis": layout.Gapis,
-		"gapid/gapit": layout.Gapit,
-		"gapid/gapir": layout.Gapir,
-		"gapid/libVkLayer_VirtualSwapchain.so": func(ctx context.Context) (file.Path, error) {
-			return layout.Library(ctx, layout.LibVirtualSwapChain)
-		},
-		"gapid/VirtualSwapchainLayer.json": func(ctx context.Context) (file.Path, error) {
-			return layout.Json(ctx, layout.LibVirtualSwapChain)
-		},
-	}
-	for toolName, pathFunc := range toolSetPathFunc {
-		path, err := pathFunc(ctx)
-		if err != nil {
-			return log.Errf(ctx, err, "Couldn't get layout path for tool %s", toolName)
-		}
-		if err := zipFile(artifacts, toolName, path); err != nil {
-			return log.Errf(ctx, err, "Failed to Zip the tool %s at path %s", toolName, path)
-		}
-	}
-
-	// TODO(baldwinn): these hardcoded architectures come from core/app/layout/layout.go, move this to a better place
-	androidAbiList := []*device.ABI{
-		device.AndroidARMv7a,
-		device.AndroidARM64v8a,
-		device.AndroidX86,
-	}
-	for _, abi := range androidAbiList {
-		gapidApkPath, err := layout.GapidApk(ctx, abi)
-		zipApkPath, err := layout.BinLayout(file.Abs("/gapid/")).GapidApk(ctx, abi)
-		zipApkVirtualPath, err := zipApkPath.RelativeTo(file.Abs("/"))
-		if err != nil || !gapidApkPath.Exists() {
-			continue
-		}
-		if err := zipFile(artifacts, filepath.ToSlash(zipApkVirtualPath), gapidApkPath); err != nil {
-			return log.Errf(ctx, err, "Failed to Zip the gapid.apk for abi %s at path %s", abi.Name, gapidApkPath)
-		}
-	}
-
-	return nil
+	return buf, nil
 }
 
 type artifactSearchVerb struct {

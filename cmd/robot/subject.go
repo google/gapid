@@ -89,9 +89,9 @@ func (v *subjectUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			return log.Err(ctx, nil, "Cannot specify multiple subjects with OBB flag")
 		}
 		log.I(ctx, "Uploading OBB: %s", v.OBB)
-		return upload(ctx, []string{v.OBB.String(), flags.Arg(0)}, v.ServerAddress, v)
+		return upload(ctx, []uploadable{path(v.OBB.String()), path(flags.Arg(0))}, v.ServerAddress, v)
 	}
-	return upload(ctx, flags.Args(), v.ServerAddress, v)
+	return upload(ctx, paths(flags.Args()), v.ServerAddress, v)
 }
 func (v *subjectUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
 	v.subjects = subject.NewRemote(ctx, conn)

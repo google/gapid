@@ -50,7 +50,7 @@ type stashUploadVerb struct {
 }
 
 func (v *stashUploadVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	return upload(ctx, flags.Args(), v.ServerAddress, v)
+	return upload(ctx, paths(flags.Args()), v.ServerAddress, v)
 }
 func (stashUploadVerb) prepare(context.Context, *grpc.ClientConn) error { return nil }
 func (stashUploadVerb) process(context.Context, string) error           { return nil }

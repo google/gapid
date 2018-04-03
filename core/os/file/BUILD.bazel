@@ -25,6 +25,7 @@ go_library(
         "set.go",
         "unix.go",
         "windows.go",
+        "zip.go",
     ],
     importpath = "github.com/google/gapid/core/os/file",
     visibility = ["//visibility:public"],
