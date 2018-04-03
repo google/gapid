@@ -59,6 +59,9 @@ func (g Git) HeadCL(ctx context.Context) (ChangeList, error) {
 	if err != nil {
 		return ChangeList{}, err
 	}
+	if len(cls) == 0 {
+		return ChangeList{}, fmt.Errorf("No commits found")
+	}
 	return cls[0], nil
 }
 
