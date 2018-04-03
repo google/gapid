@@ -16,6 +16,7 @@ package eval
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"regexp"
 
@@ -118,14 +119,14 @@ func compileBinaryBool(ctx context.Context, expr *search.Binary, t reflect.Type,
 		return nil, boolType, err
 	}
 	if res.Kind() != reflect.Bool {
-		return nil, boolType, log.Err(ctx, nil, "lhs was not bool")
+		return nil, boolType, log.Errf(ctx, nil, "lhs was not bool (%v)", res.Kind())
 	}
 	rhs, res, err := compileExpression(ctx, expr.Rhs, t)
 	if err != nil {
 		return nil, boolType, err
 	}
 	if res.Kind() != reflect.Bool {
-		return nil, boolType, log.Err(ctx, nil, "rhs was not bool")
+		return nil, boolType, log.Errf(ctx, nil, "rhs was not bool (%v)", res.Kind())
 	}
 	return func(ctx context.Context, value interface{}) interface{} {
 		return test(lhs(ctx, value).(bool), rhs(ctx, value).(bool))
@@ -141,12 +142,22 @@ func compileEqual(ctx context.Context, expr *search.Binary, t reflect.Type) (eva
 	if err != nil {
 		return nil, boolType, err
 	}
-	if lt != rt {
-		return nil, boolType, log.Err(ctx, nil, "Types to equal do not match")
+	switch {
+	case lt == rt:
+		return func(ctx context.Context, value interface{}) interface{} {
+			return reflect.DeepEqual(lhs(ctx, value), rhs(ctx, value))
+		}, boolType, nil
+	case rt.Kind() == reflect.String:
+		return func(ctx context.Context, value interface{}) interface{} {
+			return reflect.DeepEqual(fmt.Sprint(lhs(ctx, value)), rhs(ctx, value))
+		}, boolType, nil
+	case lt.Kind() == reflect.String:
+		return func(ctx context.Context, value interface{}) interface{} {
+			return reflect.DeepEqual(lhs(ctx, value), fmt.Sprint(rhs(ctx, value)))
+		}, boolType, nil
+	default:
+		return nil, boolType, log.Errf(ctx, nil, "Types to equal do not match (%v != %v)", lt, rt)
 	}
-	return func(ctx context.Context, value interface{}) interface{} {
-		return reflect.DeepEqual(lhs(ctx, value), rhs(ctx, value))
-	}, boolType, nil
 }
 
 func compileBinaryNumeric(ctx context.Context, expr *search.Binary, t reflect.Type,
@@ -177,7 +188,7 @@ func compileBinaryNumeric(ctx context.Context, expr *search.Binary, t reflect.Ty
 			return testD(lhs(ctx, value).(float64), rhs(ctx, value).(float64))
 		}, boolType, nil
 	}
-	return nil, boolType, log.Err(ctx, nil, "no numeric comparison possible")
+	return nil, boolType, log.Errf(ctx, nil, "no numeric comparison possible (%v with %v)", lt, rt)
 }
 
 func compileNot(ctx context.Context, expr *search.Expression, t reflect.Type) (eval, reflect.Type, error) {
@@ -186,7 +197,7 @@ func compileNot(ctx context.Context, expr *search.Expression, t reflect.Type) (e
 		return nil, boolType, err
 	}
 	if res.Kind() != reflect.Bool {
-		return nil, boolType, log.Err(ctx, nil, "Not only applies to bool")
+		return nil, boolType, log.Errf(ctx, nil, "Not only applies to bool (%v)", res.Kind())
 	}
 	return func(ctx context.Context, value interface{}) interface{} {
 		return !rhs(ctx, value).(bool)
@@ -206,7 +217,7 @@ func compileSubscript(ctx context.Context, expr *search.Subscript, t reflect.Typ
 	switch ct.Kind() {
 	case reflect.Slice:
 		if !kt.AssignableTo(signedType) {
-			return nil, boolType, log.Err(ctx, nil, "Slices must be indexed by int64")
+			return nil, boolType, log.Errf(ctx, nil, "Slices must be indexed by int64 (%v)", kt)
 		}
 		zeroValue := reflect.Zero(vt).Interface()
 		return func(ctx context.Context, value interface{}) interface{} {
@@ -219,13 +230,13 @@ func compileSubscript(ctx context.Context, expr *search.Subscript, t reflect.Typ
 		}, vt, nil
 	case reflect.Map:
 		if !kt.AssignableTo(ct.Key()) {
-			return nil, boolType, log.Err(ctx, nil, "Map index type does not match")
+			return nil, boolType, log.Errf(ctx, nil, "Map index type does not match (%v != %v)", kt, ct.Key())
 		}
 		return func(ctx context.Context, value interface{}) interface{} {
 			return reflect.ValueOf(container(ctx, value)).MapIndex(reflect.ValueOf(key(ctx, value))).Interface()
 		}, vt, nil
 	default:
-		return nil, boolType, log.Err(ctx, nil, "Can only subscript map or slice")
+		return nil, boolType, log.Errf(ctx, nil, "Can only subscript map or slice (%v)", ct)
 	}
 }
 
@@ -235,7 +246,7 @@ func compileRegex(ctx context.Context, expr *search.Regex, t reflect.Type) (eval
 		return nil, boolType, err
 	}
 	if vt.Kind() != reflect.String {
-		return nil, boolType, log.Err(ctx, nil, "Regex only applies to string")
+		return nil, boolType, log.Errf(ctx, nil, "Regex only applies to string (%v)", vt)
 	}
 	re, err := regexp.Compile(expr.Pattern)
 	if err != nil {
@@ -266,7 +277,7 @@ func compileGetMember(ctx context.Context, name string, t reflect.Type) (eval, r
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
-		return nil, boolType, log.Err(ctx, nil, "Field access on non struct type"+t.String())
+		return nil, boolType, log.Errf(ctx, nil, "Field access on non struct type (%v)", t)
 	}
 	field, found := t.FieldByName(name)
 	if !found {
