@@ -15,10 +15,10 @@
 package layout
 
 import (
+	"archive/zip"
 	"bufio"
 	"context"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/google/gapid/core/fault"
@@ -61,16 +61,16 @@ type FileLayout interface {
 	GoArgs(ctx context.Context) []string
 }
 
-func withExecutablePlatformSuffix(exe string) string {
-	if runtime.GOOS == "windows" {
+func withExecutablePlatformSuffix(exe string, os device.OSKind) string {
+	if os == device.Windows {
 		return exe + ".exe"
 	}
 	return exe
 }
 
 var libTypeToName = map[LibraryType]string{
-	LibGraphicsSpy:      withLibraryPlatformSuffix("libgapii"),
-	LibVirtualSwapChain: withLibraryPlatformSuffix("libVkLayer_VirtualSwapchain"),
+	LibGraphicsSpy:      "libgapii",
+	LibVirtualSwapChain: "libVkLayer_VirtualSwapchain",
 }
 
 var libTypeToJson = map[LibraryType]string{
@@ -78,11 +78,11 @@ var libTypeToJson = map[LibraryType]string{
 	LibVirtualSwapChain: "VirtualSwapchainLayer.json",
 }
 
-func withLibraryPlatformSuffix(lib string) string {
-	switch runtime.GOOS {
-	case "windows":
+func withLibraryPlatformSuffix(lib string, os device.OSKind) string {
+	switch os {
+	case device.Windows:
 		return lib + ".dll"
-	case "darwin":
+	case device.OSX:
 		return lib + ".dylib"
 	default:
 		return lib + ".so"
@@ -93,6 +93,10 @@ var abiToApk = map[device.Architecture]string{
 	device.ARMv7a: "gapid-armeabi.apk",
 	device.ARMv8a: "gapid-aarch64.apk",
 	device.X86:    "gapid-x86.apk",
+}
+
+func hostOS(ctx context.Context) device.OSKind {
+	return host.Instance(ctx).Configuration.OS.Kind
 }
 
 // pkgLayout is the file layout used when running executables from a packaged
@@ -106,15 +110,15 @@ func (l pkgLayout) Strings(ctx context.Context) (file.Path, error) {
 }
 
 func (l pkgLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapit")), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapit", hostOS(ctx))), nil
 }
 
 func (l pkgLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapir")), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapir", hostOS(ctx))), nil
 }
 
 func (l pkgLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapis")), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapis", hostOS(ctx))), nil
 }
 
 func (l pkgLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
@@ -122,7 +126,7 @@ func (l pkgLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, er
 }
 
 func (l pkgLayout) Library(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.root.Join("lib", libTypeToName[lib]), nil
+	return l.root.Join("lib", withLibraryPlatformSuffix(libTypeToName[lib], hostOS(ctx))), nil
 }
 
 func (l pkgLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
@@ -140,20 +144,6 @@ var binABIToDir = map[string]string{
 	"x86":         "android-x86",
 }
 
-var dirToBinABI map[string]string
-
-func init() {
-	dirToBinABI = make(map[string]string)
-	for abi, dir := range binABIToDir {
-		dirToBinABI[dir] = abi
-	}
-}
-
-// DirToBinABI returns the ABI name that corresponds to the given binLayout Directory
-func DirToBinABI(dir string) string {
-	return dirToBinABI[dir]
-}
-
 // binLayout is the file layout used when running executables from the build's
 // bin directory.
 type binLayout struct {
@@ -169,7 +159,7 @@ func abiDirectory(ctx context.Context, abi *device.ABI) (string, error) {
 }
 
 func (l binLayout) file(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
-	if abi.OS == host.Instance(ctx).Configuration.OS.Kind {
+	if abi.OS == hostOS(ctx) {
 		return l.root.Join(name), nil
 	}
 	dir, err := abiDirectory(ctx, abi)
@@ -184,15 +174,15 @@ func (l binLayout) Strings(ctx context.Context) (file.Path, error) {
 }
 
 func (l binLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapit")), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapit", hostOS(ctx))), nil
 }
 
 func (l binLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapir")), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapir", hostOS(ctx))), nil
 }
 
 func (l binLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapis")), nil
+	return l.root.Join(withExecutablePlatformSuffix("gapis", hostOS(ctx))), nil
 }
 
 func (l binLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
@@ -200,7 +190,7 @@ func (l binLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, er
 }
 
 func (l binLayout) Library(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.root.Join(libTypeToName[lib]), nil
+	return l.root.Join(withLibraryPlatformSuffix(libTypeToName[lib], hostOS(ctx))), nil
 }
 
 func (l binLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
@@ -225,8 +215,8 @@ var abiToApkPath = map[device.Architecture]string{
 }
 
 var libTypeToLibPath = map[LibraryType]string{
-	LibGraphicsSpy:      withLibraryPlatformSuffix("gapid/gapii/cc/libgapii"),
-	LibVirtualSwapChain: withLibraryPlatformSuffix("gapid/core/vulkan/vk_virtual_swapchain/cc/libVkLayer_VirtualSwapchain"),
+	LibGraphicsSpy:      "gapid/gapii/cc/libgapii",
+	LibVirtualSwapChain: "gapid/core/vulkan/vk_virtual_swapchain/cc/libVkLayer_VirtualSwapchain",
 }
 
 var libTypeToJsonPath = map[LibraryType]string{
@@ -273,15 +263,15 @@ func (l *runfilesLayout) Strings(ctx context.Context) (file.Path, error) {
 }
 
 func (l *runfilesLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapit/gapit"))
+	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapit/gapit", hostOS(ctx)))
 }
 
 func (l *runfilesLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapis/gapis"))
+	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapis/gapis", hostOS(ctx)))
 }
 
 func (l *runfilesLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapir/cc/gapir"))
+	return l.find(withExecutablePlatformSuffix("gapid/cmd/gapir/cc/gapir", hostOS(ctx)))
 }
 
 func (l *runfilesLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
@@ -289,7 +279,7 @@ func (l *runfilesLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Pa
 }
 
 func (l *runfilesLayout) Library(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.find(libTypeToLibPath[lib])
+	return l.find(withLibraryPlatformSuffix(libTypeToLibPath[lib], hostOS(ctx)))
 }
 
 func (l *runfilesLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
@@ -339,4 +329,69 @@ func (l unknownLayout) GoArgs(ctx context.Context) []string {
 // BinLayout returns a binLayout implementation of FileLayout rooted in the given directory.
 func BinLayout(root file.Path) FileLayout {
 	return binLayout{root}
+}
+
+// ZipLayout is a FileLayout view over a ZIP file.
+type ZipLayout struct {
+	f     *zip.Reader
+	files map[string]*zip.File
+	os    device.OSKind
+}
+
+// NewZipLayout returns a new ZipLayout using the given ZIP file.
+func NewZipLayout(f *zip.Reader, os device.OSKind) *ZipLayout {
+	r := &ZipLayout{
+		f:     f,
+		files: make(map[string]*zip.File, len(f.File)),
+		os:    os,
+	}
+
+	for _, file := range f.File {
+		r.files[strings.TrimPrefix(file.Name, "gapid/")] = file
+	}
+
+	return r
+}
+
+// file returns the zip.File of the given path or an error if it's not found.
+func (l *ZipLayout) file(path string) (*zip.File, error) {
+	if f, ok := l.files[path]; ok {
+		return f, nil
+	}
+	return nil, ErrCannotFindPackageFiles
+}
+
+// Strings returns the path to the binary string table.
+func (l *ZipLayout) Strings(ctx context.Context) (*zip.File, error) {
+	return l.file("strings/en-us.stb")
+}
+
+// Gapit returns the path to the gapit binary in this layout.
+func (l *ZipLayout) Gapit(ctx context.Context) (*zip.File, error) {
+	return l.file(withExecutablePlatformSuffix("gapit", l.os))
+}
+
+// Gapir returns the path to the gapir binary in this layout.
+func (l *ZipLayout) Gapir(ctx context.Context) (*zip.File, error) {
+	return l.file(withExecutablePlatformSuffix("gapir", l.os))
+}
+
+// Gapis returns the path to the gapis binary in this layout.
+func (l *ZipLayout) Gapis(ctx context.Context) (*zip.File, error) {
+	return l.file(withExecutablePlatformSuffix("gapis", l.os))
+}
+
+// GapidApk returns the path to gapid.apk in this layout.
+func (l *ZipLayout) GapidApk(ctx context.Context, abi *device.ABI) (*zip.File, error) {
+	return l.file(abiToApk[abi.Architecture])
+}
+
+// Library returns the path to the requested library.
+func (l *ZipLayout) Library(ctx context.Context, lib LibraryType) (*zip.File, error) {
+	return l.file("lib/" + withLibraryPlatformSuffix(libTypeToName[lib], l.os))
+}
+
+// Json returns the path to the Vulkan layer JSON definition for the given library.
+func (l *ZipLayout) Json(ctx context.Context, lib LibraryType) (*zip.File, error) {
+	return l.file("lib/" + libTypeToJson[lib])
 }

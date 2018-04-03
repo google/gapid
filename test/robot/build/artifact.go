@@ -18,10 +18,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"io"
-	"path/filepath"
+	"io/ioutil"
 	"reflect"
-	"strings"
 	"sync"
 
 	"github.com/google/gapid/core/app/layout"
@@ -82,66 +80,32 @@ func (a *artifacts) search(ctx context.Context, query *search.Query, handler Art
 	return event.Feed(ctx, filter, initial)
 }
 
-type zipEntry struct {
-	file *zip.File
-	id   string
-}
-
-type zipReader struct {
-	file *zip.File
-	r    io.ReadCloser
-}
-
-func (z *zipEntry) Open() (*zipReader, error) {
-	r := &zipReader{file: z.file}
-	return r, r.Reset()
-}
-
-func (z *zipReader) Read(data []byte) (int, error) {
-	return z.r.Read(data)
-}
-
-func (z *zipReader) Reset() error {
-	if err := z.Close(); err != nil {
-		return err
-	}
-	r, err := z.file.Open()
+func (a *artifacts) getID(ctx context.Context, getter func(ctx context.Context) (*zip.File, error), name string) (string, error) {
+	f, err := getter(ctx)
 	if err != nil {
-		return err
+		return "", log.Err(ctx, err, name+" not in zip file")
 	}
-	z.r = r
-	return nil
-}
 
-func (z *zipReader) Close() error {
-	if z.r == nil {
-		return nil
-	}
-	err := z.r.Close()
-	z.r = nil
-	return err
-}
-
-func (z *zipEntry) GetID(ctx context.Context, a *artifacts) string {
-	if z.id != "" {
-		return z.id
-	}
 	// we need to upload the content to stash to get an ID
-	r, err := z.Open()
+	r, err := f.Open()
 	if err != nil {
-		return ""
+		return "", log.Err(ctx, err, "failed to open zip entry for "+name)
 	}
 	defer r.Close()
-	info := stash.Upload{
-		Name:       []string{z.file.Name},
-		Executable: z.file.Mode()&0111 != 0,
-	}
-	id, err := a.store.UploadStream(ctx, info, r)
+	b, err := ioutil.ReadAll(r)
 	if err != nil {
-		return ""
+		return "", log.Err(ctx, err, "failed to read zip entry for "+name)
 	}
-	z.id = id
-	return z.id
+
+	info := stash.Upload{
+		Name:       []string{f.Name},
+		Executable: f.Mode()&0111 != 0,
+	}
+	id, err := a.store.UploadBytes(ctx, info, b)
+	if err != nil {
+		return "", log.Err(ctx, err, "failed to upload "+name)
+	}
+	return id, nil
 }
 
 func (a *artifacts) get(ctx context.Context, id string, builderAbi *device.ABI) (*Artifact, error) {
@@ -161,26 +125,41 @@ func (a *artifacts) get(ctx context.Context, id string, builderAbi *device.ABI) 
 	if err != nil {
 		return nil, log.Err(ctx, nil, "File is not a build artifact.")
 	}
-	toolSet := ToolSet{Abi: builderAbi, Host: new(HostToolSet)}
-	// TODO(baldwinn): move these paths to layout
-	toolSetIDByZipEntry := map[string]*string{
-		"gapid/gapir":                          &toolSet.Host.Gapir,
-		"gapid/gapis":                          &toolSet.Host.Gapis,
-		"gapid/gapit":                          &toolSet.Host.Gapit,
-		"gapid/libVkLayer_VirtualSwapchain.so": &toolSet.Host.VirtualSwapChainLib,
-		"gapid/VirtualSwapchainLayer.json":     &toolSet.Host.VirtualSwapChainJson,
-	}
-	for _, f := range zipFile.File {
-		f.Name = filepath.ToSlash(f.Name)
-		z := &zipEntry{file: f}
+	l := layout.NewZipLayout(zipFile, builderAbi.OS)
 
-		if dirs := strings.Split(f.Name, "/"); strings.HasPrefix(dirs[1], "android") {
-			androidTool := &AndroidToolSet{Abi: device.ABIByName(layout.DirToBinABI(dirs[1])), GapidApk: z.GetID(ctx, a)}
-			toolSet.Android = append(toolSet.Android, androidTool)
-		} else if toolID, ok := toolSetIDByZipEntry[f.Name]; ok {
-			*toolID = z.GetID(ctx, a)
-		}
+	toolSet := ToolSet{Abi: builderAbi, Host: new(HostToolSet)}
+	if toolSet.Host.Gapir, err = a.getID(ctx, l.Gapir, "gapir"); err != nil {
+		return nil, err
 	}
+	if toolSet.Host.Gapis, err = a.getID(ctx, l.Gapis, "gapis"); err != nil {
+		return nil, err
+	}
+	if toolSet.Host.Gapit, err = a.getID(ctx, l.Gapit, "gapit"); err != nil {
+		return nil, err
+	}
+	if toolSet.Host.VirtualSwapChainLib, err = a.getID(ctx, func(ctx context.Context) (*zip.File, error) {
+		return l.Library(ctx, layout.LibVirtualSwapChain)
+	}, "libVirtualSwapChain"); err != nil {
+		return nil, err
+	}
+	if toolSet.Host.VirtualSwapChainJson, err = a.getID(ctx, func(ctx context.Context) (*zip.File, error) {
+		return l.Json(ctx, layout.LibVirtualSwapChain)
+	}, "libVirtualSwapChain JSON"); err != nil {
+		return nil, err
+	}
+	for _, abi := range []*device.ABI{device.AndroidARMv7a, device.AndroidARM64v8a, device.AndroidX86} {
+		id, err := a.getID(ctx, func(ctx context.Context) (*zip.File, error) {
+			return l.GapidApk(ctx, abi)
+		}, abi.Name+"gapid APK")
+		if err != nil {
+			return nil, err
+		}
+		toolSet.Android = append(toolSet.Android, &AndroidToolSet{
+			Abi:      abi,
+			GapidApk: id,
+		})
+	}
+
 	entry := &Artifact{Id: id, Tool: &toolSet}
 	a.ledger.Add(ctx, entry)
 	return entry, nil
