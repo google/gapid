@@ -137,6 +137,21 @@ func (l pkgLayout) GoArgs(ctx context.Context) []string {
 	return nil
 }
 
+// NewPkgLayout returns a FileLayout rooted at the given directory with the standard package layout.
+// If create is true, the package layout is created if it doesn't exist, otherwise an error is returned.
+func NewPkgLayout(dir file.Path, create bool) (FileLayout, error) {
+	bp := dir.Join("build.properties")
+	if !bp.Exists() {
+		if !create {
+			return nil, ErrCannotFindPackageFiles
+		}
+		if err := file.Mkfile(bp); err != nil {
+			return nil, err
+		}
+	}
+	return pkgLayout{dir}, nil
+}
+
 var binABIToDir = map[string]string{
 	"armeabi":     "android-armv7a",
 	"armeabi-v7a": "android-armv7a",

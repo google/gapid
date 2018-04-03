@@ -111,7 +111,11 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 	videofile := tempDir.Join(action + "_replay.mp4")
 
 	extractedDir := tempDir.Join(action + "_tools")
-	extractedLayout := layout.BinLayout(extractedDir)
+	extractedLayout, err := layout.NewPkgLayout(extractedDir, true)
+	if err != nil {
+		return nil, err
+	}
+
 	gapit, err := extractedLayout.Gapit(ctx)
 	if err != nil {
 		return nil, err

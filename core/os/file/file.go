@@ -31,6 +31,21 @@ func Mkdir(dir Path) error {
 	return os.MkdirAll(dir.value, os.ModePerm)
 }
 
+// Mkfile creates an empty file ath the specified path.
+func Mkfile(p Path) error {
+	f, err := os.Create(p.value)
+	if os.IsNotExist(err) {
+		if err = Mkdir(p.Parent()); err != nil {
+			return err
+		}
+		f, err = os.Create(p.value)
+	}
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
 // Remove deletes the file at f.
 func Remove(f Path) error {
 	return os.Remove(f.value)

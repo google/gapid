@@ -55,8 +55,8 @@ func layout(ctx context.Context) (out FileLayout) {
 		//  ├─── gapis
 		//  ├─── gapit
 		//  ↓
-		if dir.Join("build.properties").Exists() {
-			return pkgLayout{dir}
+		if layout, err := NewPkgLayout(dir, false); err == nil {
+			return layout
 		}
 		// Check bin layout from executable's directory.
 		// bin
