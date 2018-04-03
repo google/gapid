@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/gapis/shadertools"
 )
 
+// ipVertexShaderSpirv returns a pass-through vertex shader in SPIR-V words.
 func ipVertexShaderSpirv() ([]uint32, error) {
 	return shadertools.CompileGlsl(
 		`#version 450
@@ -33,6 +34,8 @@ void main() {
 		})
 }
 
+// ipFragmentShaderSpirv returns the fragment shader to be used for priming
+// image data through rendering in SPIR-V words.
 func ipFragmentShaderSpirv(vkFmt VkFormat, aspect VkImageAspectFlagBits) ([]uint32, error) {
 	switch aspect {
 	// Render color data
@@ -416,6 +419,8 @@ void main() {
 	}
 }
 
+// ipComputeShaderSpirv returns the compute shader to be used for priming image
+// data through imageStore operation.
 func ipComputeShaderSpirv(vkFmt VkFormat, aspect VkImageAspectFlagBits, imageType VkImageType) ([]uint32, error) {
 	// Determine the image format token in shader
 	// Ref: https://www.khronos.org/opengl/wiki/Layout_Qualifier_(GLSL)#Image_formats
