@@ -598,14 +598,20 @@ func (sb *stateBuilder) createQueue(q *QueueObject) {
 }
 
 func (sb *stateBuilder) transitionImage(image *ImageObject,
-	oldLayout VkImageLayout,
-	newLayout VkImageLayout) {
+	oldLayout, newLayout VkImageLayout,
+	oldQueue, newQueue *QueueObject) {
 	if image.LastBoundQueue == nil {
 		// We cannot transition an image that has never been
 		// on a queue
 		return
 	}
 	commandBuffer, commandPool := sb.getCommandBuffer(image.LastBoundQueue)
+
+	newFamily := newQueue.Family
+	oldFamily := newQueue.Family
+	if oldQueue != nil {
+		oldFamily = oldQueue.Family
+	}
 
 	sb.write(sb.cb.VkCmdPipelineBarrier(
 		commandBuffer,
@@ -624,8 +630,8 @@ func (sb *stateBuilder) transitionImage(image *ImageObject,
 			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT - 1) | VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),
 			oldLayout,
 			newLayout,
-			uint32(0),
-			uint32(0),
+			oldFamily,
+			newFamily,
 			image.VulkanHandle,
 			VkImageSubresourceRange{
 				image.ImageAspect,
@@ -637,7 +643,7 @@ func (sb *stateBuilder) transitionImage(image *ImageObject,
 		}).Ptr(),
 	))
 
-	sb.endSubmitAndDestroyCommandBuffer(image.LastBoundQueue, commandBuffer, commandPool)
+	sb.endSubmitAndDestroyCommandBuffer(newQueue, commandBuffer, commandPool)
 }
 
 func (sb *stateBuilder) createSwapchain(swp *SwapchainObject) {
@@ -693,8 +699,9 @@ func (sb *stateBuilder) createSwapchain(swp *SwapchainObject) {
 		VkResult_VK_SUCCESS,
 	))
 	for _, v := range *swp.SwapchainImages.Map {
+		q := sb.getQueueFor(v.LastBoundQueue, v.Device, v.Info.QueueFamilyIndices.Map)
 		sb.transitionImage(v, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
-			v.Info.Layout)
+			v.Info.Layout, nil, q)
 	}
 }
 
@@ -1302,17 +1309,9 @@ func (sb *stateBuilder) createImage(img *ImageObject, imgPrimer *imagePrimer) {
 
 	primeByBufCopy := (img.Info.Usage & transDstBit) != VkImageUsageFlags(0)
 	primeByRendering := (!primeByBufCopy) && ((img.Info.Usage & attBits) != VkImageUsageFlags(0))
-	primeByShaderCopy := (!primeByBufCopy) && (!primeByRendering) && ((img.Info.Usage & storageBit) != VkImageUsageFlags(0))
+	primeByImageStore := (!primeByBufCopy) && (!primeByRendering) && ((img.Info.Usage & storageBit) != VkImageUsageFlags(0))
 
-	// TODO: drop this once storage images are handled.
-	info := img.Info
-	if primeByShaderCopy {
-		log.W(sb.ctx, "Priming data for image: %v by copying in shader is not implemented yet, fallback to priming the data by buffer->image copy", img.VulkanHandle)
-		info.Usage = info.Usage | VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-		primeByBufCopy = true
-	}
-
-	vkCreateImage(sb, img.Device, info, img.VulkanHandle)
+	vkCreateImage(sb, img.Device, img.Info, img.VulkanHandle)
 	vkGetImageMemoryRequirements(sb, img.Device, img.VulkanHandle, &img.MemoryRequirements)
 
 	denseBound := img.BoundMemory != nil
@@ -1505,7 +1504,7 @@ func (sb *stateBuilder) createImage(img *ImageObject, imgPrimer *imagePrimer) {
 	}
 	// We don't currently prime the data in any of these formats.
 	if img.Info.Samples != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
-		sb.transitionImage(img, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout)
+		sb.transitionImage(img, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info.Layout, sparseQueue, queue)
 		log.E(sb.ctx, "[Priming the data of image: %v] priming data for MS images not implemented")
 		return
 	}
@@ -1518,8 +1517,8 @@ func (sb *stateBuilder) createImage(img *ImageObject, imgPrimer *imagePrimer) {
 		err = imgPrimer.primeByBufferCopy(img, opaqueRanges, queue, sparseQueue)
 	} else if primeByRendering {
 		err = imgPrimer.primeByRendering(img, opaqueRanges, queue, sparseQueue)
-	} else if primeByShaderCopy {
-		err = imgPrimer.primeByShaderCopy(img)
+	} else if primeByImageStore {
+		err = imgPrimer.primeByImageStore(img, opaqueRanges, queue, sparseQueue)
 	}
 	if err != nil {
 		log.E(sb.ctx, "[Priming the data of image: %v] %v", img.VulkanHandle, err)
