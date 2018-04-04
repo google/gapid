@@ -137,14 +137,10 @@ func (p *packages) findArtifactPackage(ctx context.Context, a *Artifact, info *I
 			}
 		}
 	}
-	// if we don't have a tag, local builds never merge
-	if info.Type == Local {
-		return nil
-	}
-	if info.Cl != "" {
-		// non local builds with a matching cl can be merged
+	// Only BuildBot packages can be merged based on CL.
+	if info.Type == BuildBot && info.Cl != "" {
 		for _, pkg := range p.entries {
-			if pkg.Information.Cl == info.Cl {
+			if pkg.Information.Type == BuildBot && pkg.Information.Cl == info.Cl {
 				return pkg
 			}
 		}
