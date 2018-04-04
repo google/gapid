@@ -25,14 +25,11 @@ enum Type {
   // UnknownType is the default (invalid) type.
   UnknownType = 0;
   // BuildBot is the type for builds from the official build bots.
-  // For these kinds of builds, the tag must be set and can be used for merging.
+  // For these types of builds, the cl must be set and will be used for merging.
   BuildBot = 1;
   // User is the type for a user built build but without local modifications.
-  // For these types of builds, the cl must be set and can be used for merging.
   User = 2;
   // Local is the type for local modified source builds.
-  // For these kinds of builds, the tag may be set, and if it is, it will be used
-  // for merging.
   Local = 3;
 }
 
