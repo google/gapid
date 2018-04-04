@@ -44,6 +44,7 @@ type UploadOptions struct {
 	Track       string `help:"The package's track, will be guessed if not set"`
 	Uploader    string `help:"The uploading entity, will be guessed if not set"`
 	BuilderAbi  string `help:"The abi of the builder device, will assume this device if not set"`
+	BuildBot    bool   `help:"Whether this package was built by a build bot"`
 }
 
 func init() {
@@ -113,10 +114,10 @@ func (v *buildUploadVerb) Run(ctx context.Context, flags flag.FlagSet) (err erro
 	return upload(ctx, u, v.ServerAddress, v)
 }
 
-func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) error {
+func (v *buildUploadVerb) prepare(ctx context.Context, conn *grpc.ClientConn) (err error) {
 	v.store = build.NewRemote(ctx, conn)
-	v.info = v.UploadOptions.createBuildInfo(ctx)
-	return nil
+	v.info, err = v.UploadOptions.createBuildInfo(ctx)
+	return
 }
 
 func (v *buildUploadVerb) process(ctx context.Context, id string) error {
@@ -136,53 +137,22 @@ func storeBuild(ctx context.Context, store build.Store, info *build.Information,
 	return nil
 }
 
-func (o *UploadOptions) createBuildInfo(ctx context.Context) *build.Information {
+func (o *UploadOptions) createBuildInfo(ctx context.Context) (*build.Information, error) {
 	// see if we can find a git cl in the cwd
 	var typ build.Type
-	if o.Tag != "" {
+	if o.BuildBot {
 		typ = build.BuildBot
-	} else {
-		typ = build.User
-	}
-	if g, err := git.New("."); err != nil {
-		log.E(ctx, "Git failed. Error: %v", err)
-	} else if o.CL != "" {
-		if o.Track == "" {
-			log.W(ctx, "Cannot detect track from CL, defaulting to auto")
-			o.Track = "auto"
-		}
-	} else {
-		if cl, err := g.HeadCL(ctx); err != nil {
-			log.E(ctx, "CL failed. Error: %v", err)
-		} else {
-			if o.CL == "" {
-				// guess cl from git
-				o.CL = cl.SHA.String()
-				log.I(ctx, "Detected CL %s", o.CL)
-			}
-			if o.Description == "" {
-				// guess description from git
-				o.Description = cl.Subject
-				log.I(ctx, "Detected description %s", o.Description)
-			}
-		}
-		if status, err := g.Status(ctx); err != nil {
-			log.E(ctx, "Status failed. Error: %v", err)
-		} else {
-			if !status.Clean() {
-				typ = build.Local
-			}
+		if o.CL == "" || o.Description == "" || o.BuilderAbi == "" {
+			err := errors.New("Missing expected argument")
+			return nil, log.Err(ctx, err, "build bot packages require the CL, desciption and builder ABI")
 		}
 		if o.Track == "" {
-			// guess branch from git
-			if branch, err := g.CurrentBranch(ctx); err != nil {
-				log.E(ctx, "Branch failed. Error: %v", err)
-			} else {
-				o.Track = branch
-				log.I(ctx, "Detected track %s", o.Track)
-			}
+			o.Track = "master"
 		}
+	} else {
+		typ = o.initFromGit(ctx)
 	}
+
 	if o.Uploader == "" {
 		// guess uploader from environment
 		if user, err := user.Current(); err == nil {
@@ -209,7 +179,51 @@ func (o *UploadOptions) createBuildInfo(ctx context.Context) *build.Information 
 		Description: o.Description,
 		Builder:     builder,
 		Uploader:    o.Uploader,
+	}, nil
+}
+
+func (o *UploadOptions) initFromGit(ctx context.Context) (typ build.Type) {
+	// Assume not clean, until we can verify.
+	typ = build.Local
+
+	g, err := git.New(".")
+	if err != nil {
+		log.E(ctx, "Git failed. Error: %v", err)
+		return
 	}
+
+	if cl, err := g.HeadCL(ctx, o.CL); err != nil {
+		log.E(ctx, "CL failed. Error: %v", err)
+	} else {
+		if o.CL == "" {
+			// guess cl from git
+			o.CL = cl.SHA.String()
+			log.I(ctx, "Detected CL %s", o.CL)
+		}
+		if o.Description == "" {
+			// guess description from git
+			o.Description = cl.Subject
+			log.I(ctx, "Detected description %s", o.Description)
+		}
+	}
+
+	if status, err := g.Status(ctx); err != nil {
+		log.E(ctx, "Status failed. Error: %v", err)
+	} else if status.Clean() {
+		typ = build.User
+	}
+
+	if o.Track == "" {
+		// guess branch from git
+		if branch, err := g.CurrentBranch(ctx); err != nil {
+			log.E(ctx, "Branch failed. Error: %v", err)
+			o.Track = "auto"
+		} else {
+			o.Track = branch
+			log.I(ctx, "Detected track %s", o.Track)
+		}
+	}
+	return
 }
 
 func zip(in file.Path) (*bytes.Buffer, error) {
