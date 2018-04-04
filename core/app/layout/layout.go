@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
@@ -152,70 +151,6 @@ func NewPkgLayout(dir file.Path, create bool) (FileLayout, error) {
 	return pkgLayout{dir}, nil
 }
 
-var binABIToDir = map[string]string{
-	"armeabi":     "android-armv7a",
-	"armeabi-v7a": "android-armv7a",
-	"arm64-v8a":   "android-armv8a",
-	"x86":         "android-x86",
-}
-
-// binLayout is the file layout used when running executables from the build's
-// bin directory.
-type binLayout struct {
-	root file.Path
-}
-
-func abiDirectory(ctx context.Context, abi *device.ABI) (string, error) {
-	dir, ok := binABIToDir[abi.Name]
-	if !ok {
-		return "", log.Errf(ctx, ErrUnknownABI, "ABI: %v", abi)
-	}
-	return dir, nil
-}
-
-func (l binLayout) file(ctx context.Context, abi *device.ABI, name string) (file.Path, error) {
-	if abi.OS == hostOS(ctx) {
-		return l.root.Join(name), nil
-	}
-	dir, err := abiDirectory(ctx, abi)
-	if err != nil {
-		return file.Path{}, err
-	}
-	return l.root.Join(dir, name), nil
-}
-
-func (l binLayout) Strings(ctx context.Context) (file.Path, error) {
-	return l.root.Join("strings", "en-us.stb"), nil
-}
-
-func (l binLayout) Gapit(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapit", hostOS(ctx))), nil
-}
-
-func (l binLayout) Gapir(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapir", hostOS(ctx))), nil
-}
-
-func (l binLayout) Gapis(ctx context.Context) (file.Path, error) {
-	return l.root.Join(withExecutablePlatformSuffix("gapis", hostOS(ctx))), nil
-}
-
-func (l binLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
-	return l.file(ctx, abi, abiToApk[abi.Architecture])
-}
-
-func (l binLayout) Library(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.root.Join(withLibraryPlatformSuffix(libTypeToName[lib], hostOS(ctx))), nil
-}
-
-func (l binLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.root.Join(libTypeToJson[lib]), nil
-}
-
-func (l binLayout) GoArgs(ctx context.Context) []string {
-	return nil
-}
-
 // runfilesLayout is a layout that uses the bazel generated runfiles manifest
 // to find the various dependencies.
 type runfilesLayout struct {
@@ -339,11 +274,6 @@ func (l unknownLayout) Json(ctx context.Context, lib LibraryType) (file.Path, er
 
 func (l unknownLayout) GoArgs(ctx context.Context) []string {
 	return nil
-}
-
-// BinLayout returns a binLayout implementation of FileLayout rooted in the given directory.
-func BinLayout(root file.Path) FileLayout {
-	return binLayout{root}
 }
 
 // ZipLayout is a FileLayout view over a ZIP file.
