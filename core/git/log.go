@@ -53,9 +53,12 @@ func (g Git) Parent(ctx context.Context, cl ChangeList) (ChangeList, error) {
 	return cls[0], nil
 }
 
-// HeadCL returns the ChangeList at HEAD.
-func (g Git) HeadCL(ctx context.Context) (ChangeList, error) {
-	cls, err := g.Log(ctx, 1)
+// HeadCL returns the HEAD ChangeList at the given commit/tag/branch.
+func (g Git) HeadCL(ctx context.Context, at string) (ChangeList, error) {
+	if at == "" {
+		at = "HEAD"
+	}
+	cls, err := g.LogFrom(ctx, at, 1)
 	if err != nil {
 		return ChangeList{}, err
 	}
