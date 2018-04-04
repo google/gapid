@@ -40,8 +40,6 @@ func layout(ctx context.Context) (out FileLayout) {
 	for _, dir := range []file.Path{
 		file.ExecutablePath().Parent(),
 		file.Abs("."),
-		// This is needed for running integration tests.
-		file.ExecutablePath().Parent().Parent().Join("bin"),
 	} {
 		log.D(ctx, "Looking for package in %v", dir)
 
@@ -57,24 +55,6 @@ func layout(ctx context.Context) (out FileLayout) {
 		//  ↓
 		if layout, err := NewPkgLayout(dir, false); err == nil {
 			return layout
-		}
-		// Check bin layout from executable's directory.
-		// bin
-		//  ├─── android-armv7a
-		//  │     └─── gapid-armv7a.apk
-		//  ├─── android-armv8a
-		//  │     └─── gapid-armv8a.apk
-		//  ├─── android-x86
-		//  │     └─── gapid-x86.apk
-		//  ├─── strings
-		//  │     └─── en-us.stb
-		//  ├─── gapir
-		//  ├─── gapis
-		//  ↓
-		for _, abiDirName := range binABIToDir {
-			if dir.Join(abiDirName).Exists() {
-				return binLayout{dir}
-			}
 		}
 	}
 
@@ -93,14 +73,6 @@ func layout(ctx context.Context) (out FileLayout) {
 		if layout, err := RunfilesLayout(path); err == nil {
 			return layout
 		}
-	}
-
-	// We're possibly dealing with a sparse-build, as used by robot.
-	// gapis always has to exist.
-	// TODO: this is kind of dumb, since gapis will always find itself.
-	dir := file.ExecutablePath().Parent()
-	if _, err := file.FindExecutable(dir.Join("gapis").System()); err == nil {
-		return binLayout{dir}
 	}
 
 	return unknownLayout{}
