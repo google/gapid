@@ -40,6 +40,7 @@ import (
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
@@ -210,6 +211,19 @@ func (s *server) SaveCapture(ctx context.Context, c *path.Capture, path string) 
 	}
 	defer f.Close()
 	return capture.Export(ctx, c, f)
+}
+
+func (s *server) DCECapture(ctx context.Context, p *path.Capture, requested []*path.Command) (*path.Capture, error) {
+	ctx = log.Enter(ctx, "DCECapture")
+	c, err := capture.ResolveFromPath(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	trimmed, err := dependencygraph2.DCECapture(ctx, c.Name+"_dce", p, requested)
+	if err != nil {
+		return nil, err
+	}
+	return trimmed, nil
 }
 
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {

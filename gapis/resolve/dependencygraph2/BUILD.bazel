@@ -38,6 +38,7 @@ go_library(
         "//core/math/interval:go_default_library",
         "//core/memory/arena:go_default_library",
         "//gapis/api:go_default_library",
+        "//gapis/api/transform:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",
