@@ -42,9 +42,9 @@ func (p path) upload(ctx context.Context, client *stash.Client) (string, error) 
 }
 
 func paths(paths []string) []uploadable {
-	r := make([]uploadable, len(paths), 0)
-	for _, p := range paths {
-		r = append(r, path(p))
+	r := make([]uploadable, len(paths))
+	for i, p := range paths {
+		r[i] = path(p)
 	}
 	return r
 }
