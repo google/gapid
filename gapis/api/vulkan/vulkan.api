@@ -9950,6 +9950,55 @@ cmd VkResult vkEnumerateInstanceVersion(
   return ?
 }
 
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceFeatures2(
+    VkPhysicalDevice           physicalDevice,
+    VkPhysicalDeviceFeatures2* pFeatures) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pFeatures == null { vkErrorNullPointer("VkPhysicalDeviceFeatures2") }
+  pFeatures[0] = ?
+  // TODO: handle pNext
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceFormatProperties2(
+    VkPhysicalDevice     physicalDevice,
+    VkFormat             format,
+    VkFormatProperties2* pFormatProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pFormatProperties == null { vkErrorNullPointer("VkFormatProperties2") }
+  pFormatProperties[0] = ?
+  // TODO: handle pNext
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDeviceImageFormatProperties2(
+    VkPhysicalDevice                        physicalDevice,
+    const VkPhysicalDeviceImageFormatInfo2* pImageFormatInfo,
+    VkImageFormatProperties2*               pImageFormatProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pImageFormatInfo == null { vkErrorNullPointer("const VkPhysicalDeviceImageFormatInfo2") }
+  if pImageFormatProperties == null { vkErrorNullPointer("VkImageFormatProperties2") }
+  pImageFormatProperties[0] = ?
+  // TODO: handle pNext
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceProperties2(
+    VkPhysicalDevice             physicalDevice,
+    VkPhysicalDeviceProperties2* pProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pProperties == null { vkErrorNullPointer("VkPhysicalDeviceProperties2") }
+  pProperties[0] = ?
+  // TODO: handle pNext
+  PhysicalDevices[physicalDevice].PhysicalDeviceProperties = pProperties[0].properties
+}
+
 /////////////////////////////
 // Struct subroutines      //
 /////////////////////////////
