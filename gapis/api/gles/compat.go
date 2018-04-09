@@ -914,7 +914,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Buffers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
-				deleteCompat(ctx, ids, dID, c.Objects.Buffers.Dictionary(), s, out,
+				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects.Buffers), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteBuffers(cnt, buf) })
 				return
 			}
@@ -937,7 +937,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					}
 				}
 
-				deleteCompat(ctx, fbs, dID, c.Objects.Framebuffers.Dictionary(), s, out,
+				deleteCompat(ctx, fbs, dID, dictionary.From(c.Objects.Framebuffers), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteFramebuffers(cnt, buf) })
 				return
 			}
@@ -946,7 +946,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Pipelines.Slice(0, uint64(cmd.N), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
-				deleteCompat(ctx, ids, dID, c.Objects.Pipelines.Dictionary(), s, out,
+				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects.Pipelines), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteProgramPipelines(cnt, buf) })
 				return
 			}
@@ -955,7 +955,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Queries.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
-				deleteCompat(ctx, ids, dID, c.Objects.Queries.Dictionary(), s, out,
+				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects.Queries), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteQueries(cnt, buf) })
 				return
 			}
@@ -964,7 +964,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Renderbuffers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
-				deleteCompat(ctx, ids, dID, c.Objects.Renderbuffers.Dictionary(), s, out,
+				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects.Renderbuffers), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteRenderbuffers(cnt, buf) })
 				return
 			}
@@ -973,7 +973,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Samplers.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
-				deleteCompat(ctx, ids, dID, c.Objects.Samplers.Dictionary(), s, out,
+				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects.Samplers), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteSamplers(cnt, buf) })
 				return
 			}
@@ -982,7 +982,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Textures.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
-				deleteCompat(ctx, ids, dID, c.Objects.Textures.Dictionary(), s, out,
+				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects.Textures), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteTextures(cnt, buf) })
 				return
 			}
@@ -991,7 +991,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Ids.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
-				deleteCompat(ctx, ids, dID, c.Objects.TransformFeedbacks.Dictionary(), s, out,
+				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects.TransformFeedbacks), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteTransformFeedbacks(cnt, buf) })
 				return
 			}
@@ -1000,7 +1000,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			ids, err := cmd.Arrays.Slice(0, uint64(cmd.Count), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
-				deleteCompat(ctx, ids, dID, c.Objects.VertexArrays.Dictionary(), s, out,
+				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects.VertexArrays), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteVertexArrays(cnt, buf) })
 				return
 			}

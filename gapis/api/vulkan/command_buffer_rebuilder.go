@@ -36,7 +36,7 @@ func unpackMap(ctx context.Context, s *api.GlobalState, m interface{}) (api.Allo
 	}
 
 	sl := reflect.MakeSlice(reflect.SliceOf(d.ValTy()), d.Len(), d.Len())
-	for _, e := range d.Entries() {
+	for _, e := range dictionary.Entries(d) {
 		i := e.K.(uint32)
 		v := reflect.ValueOf(e.V)
 		sl.Index(int(i)).Set(v)

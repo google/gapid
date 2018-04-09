@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/data/deep"
-	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service/box"
 )
@@ -55,9 +54,37 @@ type StringːString struct {
 	M map[string]string
 }
 
-var _ data.Assignable = &StringːString{}
+// Get returns the value of the entry with the given key.
+func (m StringːString) Get(k string) string { return m.M[k] }
 
-func (m StringːString) Dictionary() dictionary.I { return dictionary.From(m.M) }
+// Put inserts the key-value pair, replacing any existing entry with the same
+// key.
+func (m StringːString) Put(k, v string) { m.M[k] = v }
+
+// Lookup searches for the value of the entry with the given key.
+func (m StringːString) Lookup(k string) (val string, ok bool) { val, ok = m.M[k]; return }
+
+// Contains returns true if the dictionary contains an entry with the given
+// key.
+func (m StringːString) Contains(k string) bool { _, ok := m.M[k]; return ok }
+
+// Remove removes the entry with the given key. If no entry with the given
+// key exists then this call is a no-op.
+func (m StringːString) Remove(k string) { delete(m.M, k) }
+
+// Len returns the number of entries in the dictionary.
+func (m StringːString) Len() int { return len(m.M) }
+
+// Keys returns all the entry keys in the map.
+func (m StringːString) Keys() []string {
+	out := make([]string, 0, len(m.M))
+	for k := range m.M {
+		out = append(out, k)
+	}
+	return out
+}
+
+var _ data.Assignable = &StringːString{}
 
 func (m *StringːString) Assign(v interface{}) bool {
 	m.M = map[string]string{}
@@ -68,9 +95,37 @@ type StringːDictionary struct {
 	M map[string]StringːString
 }
 
-var _ data.Assignable = &StringːDictionary{}
+// Get returns the value of the entry with the given key.
+func (m StringːDictionary) Get(k string) StringːString { return m.M[k] }
 
-func (m StringːDictionary) Dictionary() dictionary.I { return dictionary.From(m.M) }
+// Put inserts the key-value pair, replacing any existing entry with the same
+// key.
+func (m StringːDictionary) Put(k string, v StringːString) { m.M[k] = v }
+
+// Lookup searches for the value of the entry with the given key.
+func (m StringːDictionary) Lookup(k string) (val StringːString, ok bool) { val, ok = m.M[k]; return }
+
+// Contains returns true if the dictionary contains an entry with the given
+// key.
+func (m StringːDictionary) Contains(k string) bool { _, ok := m.M[k]; return ok }
+
+// Remove removes the entry with the given key. If no entry with the given
+// key exists then this call is a no-op.
+func (m StringːDictionary) Remove(k string) { delete(m.M, k) }
+
+// Len returns the number of entries in the dictionary.
+func (m StringːDictionary) Len() int { return len(m.M) }
+
+// Keys returns all the entry keys in the map.
+func (m StringːDictionary) Keys() []string {
+	out := make([]string, 0, len(m.M))
+	for k := range m.M {
+		out = append(out, k)
+	}
+	return out
+}
+
+var _ data.Assignable = &StringːDictionary{}
 
 func (m *StringːDictionary) Assign(v interface{}) bool {
 	m.M = map[string]StringːString{}
