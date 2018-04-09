@@ -632,7 +632,7 @@ func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 		}
 	}()
 
-	for _, subpass := range rp.SubpassDescriptions.KeysSorted() {
+	for _, subpass := range rp.SubpassDescriptions.Keys() {
 		desc := rp.SubpassDescriptions.Get(subpass)
 		qei.subpasses = append(qei.subpasses, subpassInfo{})
 		if subpass != uint32(len(qei.subpasses)-1) {
@@ -666,7 +666,7 @@ func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 			}
 		}
 
-		for _, ai := range rp.AttachmentDescriptions.KeysSorted() {
+		for _, ai := range rp.AttachmentDescriptions.Keys() {
 			if _, ok := colorAs[ai]; ok {
 				qei.subpasses[subpass].colorAttachments = append(
 					qei.subpasses[subpass].colorAttachments,

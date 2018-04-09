@@ -50,85 +50,85 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	}
 	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID())
 
-	for _, k := range s.Instances.KeysSorted() {
+	for _, k := range s.Instances.Keys() {
 		sb.createInstance(k, s.Instances.Get(k))
 	}
 
 	sb.createPhysicalDevices(s.PhysicalDevices)
 
-	for _, su := range s.Surfaces.KeysSorted() {
+	for _, su := range s.Surfaces.Keys() {
 		sb.createSurface(s.Surfaces.Get(su))
 	}
 
-	for _, d := range s.Devices.KeysSorted() {
+	for _, d := range s.Devices.Keys() {
 		sb.createDevice(s.Devices.Get(d))
 	}
 
-	for _, q := range s.Queues.KeysSorted() {
+	for _, q := range s.Queues.Keys() {
 		sb.createQueue(s.Queues.Get(q))
 	}
 
-	for _, swp := range s.Swapchains.KeysSorted() {
+	for _, swp := range s.Swapchains.Keys() {
 		sb.createSwapchain(s.Swapchains.Get(swp))
 	}
 
 	// Create all non-dedicated allocations.
 	// Dedicated allocations will be created with their
 	// objects
-	for _, mem := range s.DeviceMemories.KeysSorted() {
+	for _, mem := range s.DeviceMemories.Keys() {
 		// TODO: Handle KHR dedicated allocation as well as NV
 		sb.createDeviceMemory(s.DeviceMemories.Get(mem), false)
 	}
 
-	for _, buf := range s.Buffers.KeysSorted() {
+	for _, buf := range s.Buffers.Keys() {
 		sb.createBuffer(s.Buffers.Get(buf))
 	}
 
 	{
 		imgPrimer := newImagePrimer(sb)
-		for _, img := range s.Images.KeysSorted() {
+		for _, img := range s.Images.Keys() {
 			sb.createImage(s.Images.Get(img), imgPrimer)
 		}
 		imgPrimer.free()
 	}
 
-	for _, smp := range s.Samplers.KeysSorted() {
+	for _, smp := range s.Samplers.Keys() {
 		sb.createSampler(s.Samplers.Get(smp))
 	}
 
-	for _, fnc := range s.Fences.KeysSorted() {
+	for _, fnc := range s.Fences.Keys() {
 		sb.createFence(s.Fences.Get(fnc))
 	}
 
-	for _, sem := range s.Semaphores.KeysSorted() {
+	for _, sem := range s.Semaphores.Keys() {
 		sb.createSemaphore(s.Semaphores.Get(sem))
 	}
 
-	for _, evt := range s.Events.KeysSorted() {
+	for _, evt := range s.Events.Keys() {
 		sb.createEvent(s.Events.Get(evt))
 	}
 
-	for _, cp := range s.CommandPools.KeysSorted() {
+	for _, cp := range s.CommandPools.Keys() {
 		sb.createCommandPool(s.CommandPools.Get(cp))
 	}
 
-	for _, pc := range s.PipelineCaches.KeysSorted() {
+	for _, pc := range s.PipelineCaches.Keys() {
 		sb.createPipelineCache(s.PipelineCaches.Get(pc))
 	}
 
-	for _, dsl := range s.DescriptorSetLayouts.KeysSorted() {
+	for _, dsl := range s.DescriptorSetLayouts.Keys() {
 		sb.createDescriptorSetLayout(s.DescriptorSetLayouts.Get(dsl))
 	}
 
-	for _, pl := range s.PipelineLayouts.KeysSorted() {
+	for _, pl := range s.PipelineLayouts.Keys() {
 		sb.createPipelineLayout(s.PipelineLayouts.Get(pl))
 	}
 
-	for _, rp := range s.RenderPasses.KeysSorted() {
+	for _, rp := range s.RenderPasses.Keys() {
 		sb.createRenderPass(s.RenderPasses.Get(rp))
 	}
 
-	for _, sm := range s.ShaderModules.KeysSorted() {
+	for _, sm := range s.ShaderModules.Keys() {
 		sb.createShaderModule(s.ShaderModules.Get(sm))
 	}
 
@@ -140,35 +140,35 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 		sb.createGraphicsPipeline(s.GraphicsPipelines.Get(gp))
 	}
 
-	for _, iv := range s.ImageViews.KeysSorted() {
+	for _, iv := range s.ImageViews.Keys() {
 		sb.createImageView(s.ImageViews.Get(iv))
 	}
 
-	for _, bv := range s.BufferViews.KeysSorted() {
+	for _, bv := range s.BufferViews.Keys() {
 		sb.createBufferView(s.BufferViews.Get(bv))
 	}
 
-	for _, dp := range s.DescriptorPools.KeysSorted() {
+	for _, dp := range s.DescriptorPools.Keys() {
 		sb.createDescriptorPool(s.DescriptorPools.Get(dp))
 	}
 
-	for _, fb := range s.Framebuffers.KeysSorted() {
+	for _, fb := range s.Framebuffers.Keys() {
 		sb.createFramebuffer(s.Framebuffers.Get(fb))
 	}
 
-	for _, fb := range s.DescriptorSets.KeysSorted() {
+	for _, fb := range s.DescriptorSets.Keys() {
 		sb.createDescriptorSet(s.DescriptorSets.Get(fb))
 	}
 
-	for _, qp := range s.QueryPools.KeysSorted() {
+	for _, qp := range s.QueryPools.Keys() {
 		sb.createQueryPool(s.QueryPools.Get(qp))
 	}
 
-	for _, qp := range s.CommandBuffers.KeysSorted() {
+	for _, qp := range s.CommandBuffers.Keys() {
 		sb.createCommandBuffer(s.CommandBuffers.Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_SECONDARY)
 	}
 
-	for _, qp := range s.CommandBuffers.KeysSorted() {
+	for _, qp := range s.CommandBuffers.Keys() {
 		sb.createCommandBuffer(s.CommandBuffers.Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
 	}
 
@@ -181,12 +181,12 @@ func GetPipelinesInOrder(s *State, compute bool) []VkPipeline {
 	unhandledPipelines := map[VkPipeline]VkPipeline{}
 	handledPipelines := map[VkPipeline]bool{}
 	if compute {
-		for _, p := range s.ComputePipelines.KeysSorted() {
+		for _, p := range s.ComputePipelines.Keys() {
 			pp := s.ComputePipelines.Get(p)
 			unhandledPipelines[pp.VulkanHandle] = pp.BasePipeline
 		}
 	} else {
-		for _, p := range s.GraphicsPipelines.KeysSorted() {
+		for _, p := range s.GraphicsPipelines.Keys() {
 			pp := s.GraphicsPipelines.Get(p)
 			unhandledPipelines[pp.VulkanHandle] = pp.BasePipeline
 		}
@@ -389,7 +389,7 @@ func (sb *stateBuilder) createInstance(vk VkInstance, inst *InstanceObject) {
 func (sb *stateBuilder) createPhysicalDevices(Map VkPhysicalDeviceːPhysicalDeviceObjectʳᵐ) {
 
 	devices := map[VkInstance][]VkPhysicalDevice{}
-	for _, k := range Map.KeysSorted() {
+	for _, k := range Map.Keys() {
 		v := Map.Get(k)
 		_, ok := devices[v.Instance]
 		if !ok {
@@ -687,7 +687,7 @@ func (sb *stateBuilder) createSwapchain(swp *SwapchainObject) {
 	))
 
 	images := []VkImage{}
-	for _, v := range swp.SwapchainImages.KeysSorted() {
+	for _, v := range swp.SwapchainImages.Keys() {
 		images = append(images, (*swp.SwapchainImages.Map)[v].VulkanHandle)
 	}
 
@@ -1259,7 +1259,7 @@ func (sb *stateBuilder) imageAspectFlagBits(flag VkImageAspectFlags) []VkImageAs
 // covered in the |bindings|.
 func IsFullyBound(offset VkDeviceSize, size VkDeviceSize,
 	bindings U64ːVkSparseMemoryBindᵐ) bool {
-	resourceOffsets := bindings.KeysSorted()
+	resourceOffsets := bindings.Keys()
 
 	oneAfterReqRange := -1
 	for i := range resourceOffsets {
@@ -1688,12 +1688,12 @@ func (sb *stateBuilder) createPipelineCache(pc *PipelineCacheObject) {
 
 func (sb *stateBuilder) createDescriptorSetLayout(dsl *DescriptorSetLayoutObject) {
 	bindings := []VkDescriptorSetLayoutBinding{}
-	for _, k := range dsl.Bindings.KeysSorted() {
+	for _, k := range dsl.Bindings.Keys() {
 		b := dsl.Bindings.Get(k)
 		smp := NewVkSamplerᶜᵖ(memory.Nullptr)
 		if len(*b.ImmutableSamplers.Map) > 0 {
 			immutableSamplers := []VkSampler{}
-			for _, kk := range b.ImmutableSamplers.KeysSorted() {
+			for _, kk := range b.ImmutableSamplers.Keys() {
 				immutableSamplers = append(immutableSamplers, b.ImmutableSamplers.Get(kk).VulkanHandle)
 			}
 			allocate_result := sb.newState.AllocDataOrPanic(sb.ctx, immutableSamplers)
@@ -1732,7 +1732,7 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl *DescriptorSetLayoutObject
 func (sb *stateBuilder) createPipelineLayout(pl *PipelineLayoutObject) {
 
 	descriptorSets := []VkDescriptorSetLayout{}
-	for _, k := range pl.SetLayouts.KeysSorted() {
+	for _, k := range pl.SetLayouts.Keys() {
 		descriptorSets = append(descriptorSets, pl.SetLayouts.Get(k).VulkanHandle)
 	}
 
@@ -1760,7 +1760,7 @@ func (sb *stateBuilder) createPipelineLayout(pl *PipelineLayoutObject) {
 func (sb *stateBuilder) createRenderPass(rp *RenderPassObject) {
 
 	subpassDescriptions := []VkSubpassDescription{}
-	for _, k := range rp.SubpassDescriptions.KeysSorted() {
+	for _, k := range rp.SubpassDescriptions.Keys() {
 		sd := rp.SubpassDescriptions.Get(k)
 		depthStencil := NewVkAttachmentReferenceᶜᵖ(memory.Nullptr)
 		if sd.DepthStencilAttachment != nil {
@@ -1908,7 +1908,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp *GraphicsPipelineObject) {
 		}
 	}
 
-	stagesInOrder := gp.Stages.KeysSorted()
+	stagesInOrder := gp.Stages.Keys()
 
 	temporaryShaderModules := []*ShaderModuleObject{}
 	stages := []VkPipelineShaderStageCreateInfo{}
@@ -2237,7 +2237,7 @@ func (sb *stateBuilder) createFramebuffer(fb *FramebufferObject) {
 	}
 
 	imageViews := []VkImageView{}
-	for _, v := range fb.ImageAttachments.KeysSorted() {
+	for _, v := range fb.ImageAttachments.Keys() {
 		imageViews = append(imageViews, fb.ImageAttachments.Get(v).VulkanHandle)
 	}
 
@@ -2291,7 +2291,7 @@ func (sb *stateBuilder) createDescriptorSet(ds *DescriptorSetObject) {
 	))
 
 	writes := []VkWriteDescriptorSet{}
-	for _, k := range ds.Bindings.KeysSorted() {
+	for _, k := range ds.Bindings.Keys() {
 		binding := ds.Bindings.Get(k)
 		switch binding.BindingType {
 		case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER:

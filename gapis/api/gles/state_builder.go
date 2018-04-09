@@ -200,7 +200,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
 
 	if names := c.Objects.GeneratedNames.Buffers; sb.once(names) {
-		for _, id := range names.KeysSorted() {
+		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenBuffers(1, sb.writesData(ctx, id)))
 				if o := c.Objects.Buffers.Get(id); o != nil {
@@ -210,7 +210,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 		}
 	}
 	if names := c.Objects.GeneratedNames.Renderbuffers; sb.once(names) {
-		for _, id := range names.KeysSorted() {
+		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenRenderbuffers(1, sb.writesData(ctx, id)))
 				if o := c.Objects.Renderbuffers.Get(id); o != nil {
@@ -233,7 +233,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 		sb.textureObject(ctx, defaultTexture)
 	}
 	if names := c.Objects.GeneratedNames.Textures; sb.once(names) {
-		for _, id := range names.KeysSorted() {
+		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenTextures(1, sb.writesData(ctx, id)))
 				if o := c.Objects.Textures.Get(id); o != nil {
@@ -243,28 +243,28 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 		}
 	}
 	if objs := c.Objects.ImageUnits; sb.once(objs) {
-		for _, id := range objs.KeysSorted() {
+		for _, id := range objs.Keys() {
 			if o := c.Objects.ImageUnits.Get(id); o != nil {
 				sb.imageUnit(ctx, o)
 			}
 		}
 	}
 	if objs := c.Objects.Shaders; sb.once(objs) {
-		for _, id := range objs.KeysSorted() {
+		for _, id := range objs.Keys() {
 			if o := c.Objects.Shaders.Get(id); o != nil {
 				sb.shaderObject(ctx, o)
 			}
 		}
 	}
 	if objs := c.Objects.Programs; sb.once(objs) {
-		for _, id := range objs.KeysSorted() {
+		for _, id := range objs.Keys() {
 			if o := c.Objects.Programs.Get(id); o != nil {
 				sb.programObject(ctx, o)
 			}
 		}
 	}
 	if names := c.Objects.GeneratedNames.Pipelines; sb.once(names) {
-		for _, id := range names.KeysSorted() {
+		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenProgramPipelines(1, sb.writesData(ctx, id)))
 				if o := c.Objects.Pipelines.Get(id); o != nil {
@@ -274,7 +274,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 		}
 	}
 	if names := c.Objects.GeneratedNames.Samplers; sb.once(names) {
-		for _, id := range names.KeysSorted() {
+		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenSamplers(1, sb.writesData(ctx, id)))
 				if o := c.Objects.Samplers.Get(id); o != nil {
@@ -284,7 +284,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 		}
 	}
 	if names := c.Objects.GeneratedNames.Queries; sb.once(names) {
-		for _, id := range names.KeysSorted() {
+		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenQueries(1, sb.writesData(ctx, id)))
 				if o := c.Objects.Queries.Get(id); o != nil {
@@ -294,7 +294,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 		}
 	}
 	if objs := c.Objects.SyncObjects; sb.once(objs) {
-		for _, id := range objs.KeysSorted() {
+		for _, id := range objs.Keys() {
 			if o := c.Objects.SyncObjects.Get(id); o != nil {
 				sb.syncObject(ctx, o)
 			}
@@ -302,7 +302,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 	}
 	sb.transformFeedbackObject(ctx, c.Objects.Default.TransformFeedback)
 	if names := c.Objects.GeneratedNames.TransformFeedbacks; sb.once(names) {
-		for _, id := range names.KeysSorted() {
+		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenTransformFeedbacks(1, sb.writesData(ctx, id)))
 				if o := c.Objects.TransformFeedbacks.Get(id); o != nil {
@@ -313,7 +313,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 	}
 	sb.vertexArrayObject(ctx, c.Objects.Default.VertexArray)
 	if names := c.Objects.GeneratedNames.VertexArrays; sb.once(names) {
-		for _, id := range names.KeysSorted() {
+		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenVertexArrays(1, sb.writesData(ctx, id)))
 				if o := c.Objects.VertexArrays.Get(id); o != nil {
@@ -378,7 +378,7 @@ func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EG
 		// Create framebuffers
 		sb.framebufferObject(ctx, c, c.Objects.Default.Framebuffer)
 		if names := c.Objects.GeneratedNames.Framebuffers; sb.once(names) {
-			for _, id := range names.KeysSorted() {
+			for _, id := range names.Keys() {
 				if id != 0 && names.Get(id) {
 					write(cb.GlGenFramebuffers(1, sb.writesData(ctx, id)))
 					if o := c.Objects.Framebuffers.Get(id); o != nil {

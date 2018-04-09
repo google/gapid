@@ -878,7 +878,7 @@
     func (s {{$sorted}}) Less(i, j int) bool { return fmt.Sprint(s[i]) < fmt.Sprint(s[j]) }
   {{end}}
 
-  func (m {{$name}}) KeysSorted() []{{$key}} {
+  func (m {{$name}}) Keys() []{{$key}} {
     if m.Map == nil {
       return nil
     }

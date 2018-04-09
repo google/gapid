@@ -1174,7 +1174,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				// TODO: We should warn the developers that the consecutive layout is not guaranteed.
 				prog := c.Objects.Programs.Get(cmd.Program)
 				if res := prog.ActiveResources; res != nil {
-					for _, uniformIndex := range res.DefaultUniformBlock.KeysSorted() {
+					for _, uniformIndex := range res.DefaultUniformBlock.Keys() {
 						uniform := res.DefaultUniformBlock.Get(uniformIndex)
 						baseName := strings.TrimSuffix(uniform.Name, "[0]")
 						for i := uint32(0); i < uint32(uniform.ArraySize); i++ {

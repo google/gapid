@@ -235,7 +235,7 @@ func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 	attributes := lastDrawInfo.GraphicsPipeline.VertexInputState.AttributeDescriptions
 	bindings := lastDrawInfo.GraphicsPipeline.VertexInputState.BindingDescriptions
 	// For each attribute, get the vertex buffer data
-	for _, attributeIndex := range attributes.KeysSorted() {
+	for _, attributeIndex := range attributes.Keys() {
 		attribute := attributes.Get(attributeIndex)
 		if !bindings.Contains(attribute.Binding) {
 			// TODO(qining): This is an error, should emit error message here.
