@@ -579,7 +579,7 @@
 {{define "MapRemove"}}
   {{AssertType $ "MapRemove"}}
 
-  {{Template "Go.Read" $.Map}}.Delete({{Template "Go.Read" $.Key}})
+  {{Template "Go.Read" $.Map}}.Remove({{Template "Go.Read" $.Key}})
 {{end}}
 
 

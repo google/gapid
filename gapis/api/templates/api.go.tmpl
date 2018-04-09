@@ -844,7 +844,7 @@
     return
   }
 
-  func (m {{$name}}) Delete(key {{$key}}) {
+  func (m {{$name}}) Remove(key {{$key}}) {
     if m.Map != nil {
       delete(*m.Map, key)
     }
