@@ -115,6 +115,7 @@ test_suite(
         "//core/data/deep:go_default_xtest",
         "//core/data/dictionary:go_default_xtest",
         "//core/data/endian:go_default_xtest",
+        "//core/data/generic:go_default_xtest",
         "//core/data/id:go_default_xtest",
         "//core/data/pack:go_default_xtest",
         "//core/data/slice:go_default_test",
