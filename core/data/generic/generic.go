@@ -67,9 +67,10 @@ type Match struct {
 // Ok returns true if the type implemented the generic interface.
 func (m Match) Ok() bool { return len(m.Errors) == 0 }
 
-// Implements returns nil if ty implements the generic interface iface,
-// otherwise Implements returns the list of interface violations.
-// generics is a list of open types.
+// Implements checks that ty implements the generic interface iface.
+// Implements returns a Match which lists any generic type inconsistencies, and
+// lists the mappings of generic types to implementation types.
+// generics is a list of open types used by the generic interface iface.
 func Implements(ty, iface reflect.Type, generics ...reflect.Type) Match {
 	var errs []error
 

@@ -62,6 +62,7 @@ go_test(
     srcs = [
         "convert_test.go",
         "intrinsics_test.go",
+        "map_test.go",
         "mutate_test.go",
         "subroutines_test.go",
     ],

@@ -16,10 +16,16 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["dictionary.go"],
+    srcs = [
+        "dictionary.go",
+        "source.go",
+    ],
     importpath = "github.com/google/gapid/core/data/dictionary",
     visibility = ["//visibility:public"],
-    deps = ["//core/data/slice:go_default_library"],
+    deps = [
+        "//core/data/generic:go_default_library",
+        "//core/data/slice:go_default_library",
+    ],
 )
 
 go_test(
@@ -29,5 +35,6 @@ go_test(
         ":go_default_library",
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
+        "//core/data/slice:go_default_library",
     ],
 )

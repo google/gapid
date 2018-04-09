@@ -795,15 +795,6 @@
     return {{$name}} { &map[{{$key}}]{{$value}}{} }
   }
 
-  var _ dictionary.Provider = {{$name}}{}
-
-  func (m {{$name}}) Dictionary() dictionary.I {
-    if m.Map == nil {
-      return dictionary.From((map[{{$key}}]{{$value}})(nil))
-    }
-    return dictionary.From(*m.Map)
-  }
-
   func (m {{$name}}) Get(key {{$key}}) {{$value}} {
     {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
       v, ok := (*m.Map)[key]

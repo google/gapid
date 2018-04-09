@@ -61,16 +61,10 @@ func (v *Value) AssignTo(p interface{}) error {
 
 var (
 	tyEmptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
-	tyDictionary     = reflect.TypeOf((*dictionary.Provider)(nil)).Elem()
 	tyMemoryPointer  = reflect.TypeOf((*memory.Pointer)(nil)).Elem()
 	tyMemorySlice    = reflect.TypeOf((*memory.Slice)(nil)).Elem()
 	noValue          = reflect.Value{}
 )
-
-// IsDictionaryProvider returns true if t implements dictionary.Provider.
-func IsDictionaryProvider(t reflect.Type) bool {
-	return t.Implements(tyDictionary)
-}
 
 // IsMemoryPointer returns true if t is a (or is an alias of a) memory.Pointer.
 func IsMemoryPointer(t reflect.Type) bool {
@@ -146,10 +140,11 @@ func (b *boxer) val(v reflect.Value) *Value {
 	if d := dictionary.From(v.Interface()); d != nil {
 		entries := []*MapEntry{}
 		mapTy := b.ty(reflect.MapOf(d.KeyTy(), d.ValTy()))
-		for _, e := range d.Entries() {
+		for _, k := range d.Keys() {
+			v := d.Get(k)
 			entries = append(entries, &MapEntry{
-				Key:   b.val(reflect.ValueOf(e.K)),
-				Value: b.val(reflect.ValueOf(e.V)),
+				Key:   b.val(reflect.ValueOf(k)),
+				Value: b.val(reflect.ValueOf(v)),
 			})
 		}
 		m := &Map{Type: mapTy, Entries: entries}
@@ -218,8 +213,7 @@ func (b *boxer) ty(t reflect.Type) *Type {
 	id = uint32(len(b.types) + 1)
 	b.types[t] = id
 
-	if IsDictionaryProvider(t) {
-		d := reflect.New(t).Interface().(dictionary.Provider).Dictionary()
+	if d := dictionary.From(reflect.New(t).Interface()); d != nil {
 		keyTy := b.ty(d.KeyTy())
 		valTy := b.ty(d.ValTy())
 		return &Type{id, &Type_Map{&MapType{keyTy, valTy}}}

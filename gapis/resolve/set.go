@@ -283,7 +283,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 					p.Parent(), valTy, val.Type())
 			}
 
-			d.Set(key.Interface(), val.Interface())
+			d.Add(key.Interface(), val.Interface())
 
 			parent, err := change(ctx, p.Parent(), obj.Interface())
 			if err != nil {
