@@ -17,6 +17,7 @@ package app
 import (
 	"context"
 	"os"
+	"runtime"
 	"runtime/pprof"
 
 	"github.com/google/gapid/core/log"
@@ -35,6 +36,21 @@ func applyProfiler(ctx context.Context, flags *ProfileFlags) func() {
 			pprof.StopCPUProfile()
 			f.Close()
 			log.I(ctx, "CPU profile written")
+		})
+	}
+	if flags.Mem != "" {
+		log.I(ctx, "Mem profiling enabled")
+		f, err := os.Create(flags.Mem)
+		if err != nil {
+			log.F(ctx, true, "Mem profiling failed to start.\nError: %v", err)
+		}
+		closers = append(closers, func() {
+			runtime.GC()
+			if err := pprof.WriteHeapProfile(f); err != nil {
+				log.F(ctx, true, "Failed to write memory profile: %v", err)
+			}
+			f.Close()
+			log.I(ctx, "Mem profile written")
 		})
 	}
 	return func() {
