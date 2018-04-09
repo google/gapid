@@ -99,11 +99,11 @@ func (t *VulkanTerminator) Add(ctx context.Context, extraCommands int, id api.Cm
 func walkCommands(s *State,
 	commands *U32ːCommandReferenceʳᵐ,
 	callback func(*CommandReference)) {
-	for _, c := range commands.KeysSorted() {
+	for _, c := range commands.Keys() {
 		callback((*commands).Get(c))
 		if (*commands).Get(c).Type == CommandType_cmd_vkCmdExecuteCommands {
 			execSub := s.CommandBuffers.Get((*commands).Get(c).Buffer).BufferCommands.VkCmdExecuteCommands.Get((*commands).Get(c).MapIndex)
-			for _, k := range execSub.CommandBuffers.KeysSorted() {
+			for _, k := range execSub.CommandBuffers.Keys() {
 				cbc := s.CommandBuffers.Get(execSub.CommandBuffers.Get(k))
 				walkCommands(s, &cbc.CommandReferences, callback)
 			}

@@ -207,7 +207,7 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 
 	switch {
 	case dict != nil:
-		for _, key := range dict.KeysSorted() {
+		for _, key := range dict.Keys() {
 			children = append(children, &stn{
 				name:  fmt.Sprint(key),
 				value: deref(reflect.ValueOf(dict.Get(key))),

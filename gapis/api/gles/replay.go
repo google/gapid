@@ -372,12 +372,12 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		}
 
 		// Delete all Shaders.
-		for _, shaderId := range c.Objects.Shaders.KeysSorted() {
+		for _, shaderId := range c.Objects.Shaders.Keys() {
 			cmds = append(cmds, cb.GlDeleteShader(shaderId))
 		}
 
 		// Delete all Programs.
-		for _, programId := range c.Objects.Programs.KeysSorted() {
+		for _, programId := range c.Objects.Programs.Keys() {
 			cmds = append(cmds, cb.GlDeleteProgram(programId))
 		}
 

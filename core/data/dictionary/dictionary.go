@@ -33,7 +33,7 @@ type I interface {
 	Entries() []Entry
 	KeyTy() reflect.Type
 	ValTy() reflect.Type
-	KeysSorted() []interface{}
+	Keys() []interface{}
 }
 
 // Entry holds a key-value pair.
@@ -118,7 +118,7 @@ func (d dict) ValTy() reflect.Type {
 	return d.Value.Type().Elem()
 }
 
-func (d dict) KeysSorted() []interface{} {
+func (d dict) Keys() []interface{} {
 	keys := d.Value.MapKeys()
 	slice.SortValues(keys, d.KeyTy())
 	out := make([]interface{}, len(keys))

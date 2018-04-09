@@ -97,7 +97,7 @@ func (s Leaf_SortKeys) Len() int           { return len(s) }
 func (s Leaf_SortKeys) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s Leaf_SortKeys) Less(i, j int) bool { return fmt.Sprint(s[i]) < fmt.Sprint(s[j]) }
 
-func (m Leafːuint32) KeysSorted() []Leaf {
+func (m Leafːuint32) Keys() []Leaf {
 	s := make(Leaf_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -108,7 +108,7 @@ func (m Leafːuint32) KeysSorted() []Leaf {
 	return s
 }
 
-func (m LeafːLeaf) KeysSorted() []Leaf {
+func (m LeafːLeaf) Keys() []Leaf {
 	s := make(Leaf_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -131,7 +131,7 @@ func (s Uint32_SortKeys) Len() int           { return len(s) }
 func (s Uint32_SortKeys) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s Uint32_SortKeys) Less(i, j int) bool { return s[i] < s[j] }
 
-func (m Uint32ːLeaf) KeysSorted() []uint32 {
+func (m Uint32ːLeaf) Keys() []uint32 {
 	s := make(Uint32_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -142,7 +142,7 @@ func (m Uint32ːLeaf) KeysSorted() []uint32 {
 	return s
 }
 
-func (m Uint32ː3_Leaf) KeysSorted() []uint32 {
+func (m Uint32ː3_Leaf) Keys() []uint32 {
 	s := make(Uint32_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -153,7 +153,7 @@ func (m Uint32ː3_Leaf) KeysSorted() []uint32 {
 	return s
 }
 
-func (m Uint32ːSliceLeaf) KeysSorted() []uint32 {
+func (m Uint32ːSliceLeaf) Keys() []uint32 {
 	s := make(Uint32_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -164,7 +164,7 @@ func (m Uint32ːSliceLeaf) KeysSorted() []uint32 {
 	return s
 }
 
-func (m Uint32ːuint32) KeysSorted() []uint32 {
+func (m Uint32ːuint32) Keys() []uint32 {
 	s := make(Uint32_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -175,7 +175,7 @@ func (m Uint32ːuint32) KeysSorted() []uint32 {
 	return s
 }
 
-func (m Uint32ːLeafːLeaf) KeysSorted() []uint32 {
+func (m Uint32ːLeafːLeaf) Keys() []uint32 {
 	s := make(Uint32_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -198,7 +198,7 @@ func (s Contains_SortKeys) Len() int           { return len(s) }
 func (s Contains_SortKeys) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s Contains_SortKeys) Less(i, j int) bool { return fmt.Sprint(s[i]) < fmt.Sprint(s[j]) }
 
-func (m Containsː3_Contains) KeysSorted() []Contains {
+func (m Containsː3_Contains) Keys() []Contains {
 	s := make(Contains_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -209,7 +209,7 @@ func (m Containsː3_Contains) KeysSorted() []Contains {
 	return s
 }
 
-func (m ContainsːContains) KeysSorted() []Contains {
+func (m ContainsːContains) Keys() []Contains {
 	s := make(Contains_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -220,7 +220,7 @@ func (m ContainsːContains) KeysSorted() []Contains {
 	return s
 }
 
-func (m ContainsːSliceContains) KeysSorted() []Contains {
+func (m ContainsːSliceContains) Keys() []Contains {
 	s := make(Contains_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -231,7 +231,7 @@ func (m ContainsːSliceContains) KeysSorted() []Contains {
 	return s
 }
 
-func (m Containsː3_SliceContains) KeysSorted() []Contains {
+func (m Containsː3_SliceContains) Keys() []Contains {
 	s := make(Contains_SortKeys, len(m))
 	i := 0
 	for k := range m {
@@ -242,7 +242,7 @@ func (m Containsː3_SliceContains) KeysSorted() []Contains {
 	return s
 }
 
-func (m ContainsːSlice3_Contains) KeysSorted() []Contains {
+func (m ContainsːSlice3_Contains) Keys() []Contains {
 	s := make(Contains_SortKeys, len(m))
 	i := 0
 	for k := range m {

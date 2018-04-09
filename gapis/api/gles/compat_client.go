@@ -224,7 +224,7 @@ func moveClientVBsToVAs(
 	}
 
 	// Redirect all the vertex attrib arrays to point to the array-buffer data.
-	for _, l := range va.VertexAttributeArrays.KeysSorted() {
+	for _, l := range va.VertexAttributeArrays.Keys() {
 		arr := va.VertexAttributeArrays.Get(l)
 		if arr.Enabled == GLboolean_GL_TRUE {
 			if glVAP, ok := clientVAs[arr]; ok {

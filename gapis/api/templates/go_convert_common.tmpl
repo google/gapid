@@ -121,7 +121,7 @@
     referenceID, isNew := ϟrefs.GetReferenceID(ϟa.Map, &struct{}{})¶
     if isNew {»¶
       out := &{{$proto}}{ReferenceID: referenceID}¶
-      keys := ϟa.KeysSorted()¶
+      keys := ϟa.Keys()¶
       for _, ϟk := range keys {»¶
         v := ϟa.Get(ϟk)¶
         out.Keys = append(out.Keys, {{Template "Convert.ToProto" "Type" $.KeyType "Value" "ϟk"}})¶

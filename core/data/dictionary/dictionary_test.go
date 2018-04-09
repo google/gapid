@@ -59,7 +59,7 @@ func TestDictionary(t *testing.T) {
 		assert.For(ctx, "d.KeyTy()").That(d.KeyTy()).Equals(reflect.TypeOf(""))
 		assert.For(ctx, "d.ValTy()").That(d.ValTy()).Equals(reflect.TypeOf(1))
 		assert.For(ctx, "d.Len()").That(d.Len()).Equals(5)
-		assert.For(ctx, "d.KeysSorted()").ThatSlice(d.KeysSorted()).Equals([]string{
+		assert.For(ctx, "d.Keys()").ThatSlice(d.Keys()).Equals([]string{
 			"apple", "grape", "kiwi", "lemon", "orange",
 		})
 
