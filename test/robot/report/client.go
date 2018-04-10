@@ -160,6 +160,7 @@ func doReport(ctx context.Context, action string, in *Input, store *stash.Client
 	errBuf := &bytes.Buffer{}
 	outputObj := &Output{}
 	errs := []string{}
+	log.I(ctx, "Running report action %s", cmd)
 	if err := cmd.Capture(outBuf, errBuf).Run(ctx); err != nil {
 		if err := worker.NeedsRetry(err.Error()); err != nil {
 			return nil, err
