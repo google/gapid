@@ -32,6 +32,7 @@ go_library(
     deps = [
         "//core/app/crash:go_default_library",
         "//core/event:go_default_library",
+        "//core/event/task:go_default_library",
         "//core/log:go_default_library",
         "//core/net/grpcutil:go_default_library",
         "//test/robot/search:go_default_library",
