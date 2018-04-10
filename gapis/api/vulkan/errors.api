@@ -42,6 +42,7 @@ extern void vkErrInvalidHandle(string handleType, u64 handle)
 extern void vkErrNullPointer(string pointerType)
 extern void vkErrUnrecognizedExtension(string name)
 extern void vkErrExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle)
+extern void vkErrInvalidDescriptorArrayElement(u64 set, u32 binding, u32 arrayIndex)
 
 sub void vkErrorInvalidInstance(VkInstance inst) {
   vkErrorInvalidHandle("VkInstance", as!u64(inst))
