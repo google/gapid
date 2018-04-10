@@ -138,7 +138,9 @@ Spy::Spy()
   , mObserveFrameFrequency(0)
   , mObserveDrawFrequency(0)
   , mDisablePrecompiledShaders(false)
-  , mRecordGLErrorState(false) {
+  , mRecordGLErrorState(false)
+  , mNestedFrameStart(0)
+  , mNestedFrameEnd(0) {
 
 
 #if TARGET_OS == GAPID_OS_ANDROID
@@ -432,6 +434,9 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
     if (is_suspended()) {
         return;
     }
+    if (++mNestedFrameStart > 1) {
+        return;
+    }
     if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
         GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
         observeFramebuffer(observer, api);
@@ -521,11 +526,17 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
 }
 
 void Spy::onPostStartOfFrame() {
-    onPostFrameBoundary(true);
+    GAPID_ASSERT(mNestedFrameStart > 0);
+    if (--mNestedFrameStart == 0) {
+        onPostFrameBoundary(true);
+    }
 }
 
 void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
     if (is_suspended()) {
+        return;
+    }
+    if (++mNestedFrameEnd > 1) {
         return;
     }
     if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
@@ -539,7 +550,10 @@ void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
 }
 
 void Spy::onPostEndOfFrame() {
-    onPostFrameBoundary(false);
+    GAPID_ASSERT(mNestedFrameEnd > 0);
+    if (--mNestedFrameEnd == 0) {
+        onPostFrameBoundary(false);
+    }
 }
 
 static bool downsamplePixels(const std::vector<uint8_t>& srcData, uint32_t srcW, uint32_t srcH,

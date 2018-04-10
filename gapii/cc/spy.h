@@ -123,6 +123,9 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   int mObserveDrawFrequency;
   bool mDisablePrecompiledShaders;
   bool mRecordGLErrorState;
+  // These keep track of nested frame start/end callbacks.
+  int mNestedFrameStart;
+  int mNestedFrameEnd;
 
   std::unordered_map<ContextID, GLenum_Error> mFakeGlError;
   std::unique_ptr<core::AsyncJob> mDeferStartJob;
