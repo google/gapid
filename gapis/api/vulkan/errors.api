@@ -176,3 +176,8 @@ sub void vkErrorExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle
   vkErrExpectNVDedicatedlyAllocatedHandle(handleType, handle)
   // Continue the mutation as this may not cause problem.
 }
+
+// Vulkan 1.1
+sub void vkErrorInvalidDescriptorUpdateTemplate(VkDescriptorUpdateTemplate handle) {
+  vkErrInvalidHandle("VkDescriptorUpdateTemplate", as!u64(handle))
+}

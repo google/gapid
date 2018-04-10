@@ -5875,7 +5875,7 @@ cmd VkResult vkFreeDescriptorSets(
 @internal class DescriptorUpdateRecord {
   u32 Binding
   u32 ArrayIndex
-  u32 WriteOrCopyDescriptorIndex
+  u32 UpdateIndex
 }
 
 @internal class DescriptorSetWrite {
@@ -5903,9 +5903,9 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
     count := write.descriptorCount
     set := DescriptorSets[write.dstSet]
     updating := DescriptorUpdateRecord(
-      Binding: write.dstBinding,
-      ArrayIndex: write.dstArrayElement,
-      WriteOrCopyDescriptorIndex: 0,
+      Binding:      write.dstBinding,
+      ArrayIndex:   write.dstArrayElement,
+      UpdateIndex:  0,
     )
 
     for j in (0 .. count) {
@@ -5924,7 +5924,8 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
         }
       }
       if !found.b {
-        vkErrInvalidDescriptorArrayElement(as!u64(write.dstSet), write.dstBinding, write.dstArrayElement+j)
+        vkErrInvalidDescriptorArrayElement(as!u64(write.dstSet),
+          write.dstBinding, write.dstArrayElement + j)
       }
 
       switch (write.descriptorType) {
@@ -5933,8 +5934,8 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
             VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
-          imageInfos := write.pImageInfo[0:updating.WriteOrCopyDescriptorIndex+1]
-          imageInfo := imageInfos[updating.WriteOrCopyDescriptorIndex]
+          imageInfos := write.pImageInfo[0:updating.UpdateIndex + 1]
+          imageInfo := imageInfos[updating.UpdateIndex]
           ret_val.Map[len(ret_val.Map)] = DescriptorSetWrite(
             Binding:            updating.Binding,
             BindingArrayIndex:  updating.ArrayIndex,
@@ -5949,8 +5950,8 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
         }
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
             VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-          bufferViews := write.pTexelBufferView[0:updating.WriteOrCopyDescriptorIndex+ 1]
-          bufferView := bufferViews[updating.WriteOrCopyDescriptorIndex]
+          bufferViews := write.pTexelBufferView[0:updating.UpdateIndex + 1]
+          bufferView := bufferViews[updating.UpdateIndex]
           ret_val.Map[len(ret_val.Map)] = DescriptorSetWrite(
             Binding:            updating.Binding,
             Type:               write.descriptorType,
@@ -5963,8 +5964,8 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-          bufferInfos := write.pBufferInfo[0:updating.WriteOrCopyDescriptorIndex + 1]
-          bufferInfo := bufferInfos[updating.WriteOrCopyDescriptorIndex]
+          bufferInfos := write.pBufferInfo[0:updating.UpdateIndex + 1]
+          bufferInfo := bufferInfos[updating.UpdateIndex]
           ret_val.Map[len(ret_val.Map)] = DescriptorSetWrite(
             Binding:            updating.Binding,
             Type:               write.descriptorType,
@@ -5982,7 +5983,7 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
         }
       }
       updating.ArrayIndex += 1
-      updating.WriteOrCopyDescriptorIndex += 1
+      updating.UpdateIndex += 1
     }
   }
   return ret_val.Map
@@ -6014,14 +6015,14 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
     dstSet := DescriptorSets[copy.dstSet]
 
     srcRecord := DescriptorUpdateRecord(
-      Binding: copy.srcBinding,
-      ArrayIndex: copy.srcArrayElement,
-      WriteOrCopyDescriptorIndex: 0,
+      Binding:      copy.srcBinding,
+      ArrayIndex:   copy.srcArrayElement,
+      UpdateIndex:  0,
     )
     dstRecord := DescriptorUpdateRecord(
-      Binding: copy.dstBinding,
-      ArrayIndex: copy.dstArrayElement,
-      WriteOrCopyDescriptorIndex: 0,
+      Binding:      copy.dstBinding,
+      ArrayIndex:   copy.dstArrayElement,
+      UpdateIndex:  0,
     )
 
     for j in (0 .. count) {
@@ -6040,7 +6041,8 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
         }
       }
       if !srcFound.b {
-        vkErrInvalidDescriptorArrayElement(as!u64(copy.srcSet), copy.srcBinding, copy.srcArrayElement+j)
+        vkErrInvalidDescriptorArrayElement(as!u64(copy.srcSet),
+          copy.srcBinding, copy.srcArrayElement + j)
       }
 
       // Find the exact binding/array index pair for dst descriptor
@@ -6058,20 +6060,21 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
         }
       }
       if !dstFound.b {
-        vkErrInvalidDescriptorArrayElement(as!u64(copy.dstSet), copy.dstBinding, copy.dstArrayElement+j)
+        vkErrInvalidDescriptorArrayElement(as!u64(copy.dstSet),
+          copy.dstBinding, copy.dstArrayElement + j)
       }
 
       ret_val.Map[len(ret_val.Map)] = DescriptorSetCopy(
-        SrcBinding: srcRecord.Binding,
-        DstBinding: dstRecord.Binding,
-        SrcArrayIndex: srcRecord.ArrayIndex,
-        DstArrayIndex: dstRecord.ArrayIndex,
-        SrcSet: copy.srcSet,
-        DstSet: copy.dstSet,
+        SrcBinding:     srcRecord.Binding,
+        DstBinding:     dstRecord.Binding,
+        SrcArrayIndex:  srcRecord.ArrayIndex,
+        DstArrayIndex:  dstRecord.ArrayIndex,
+        SrcSet:         copy.srcSet,
+        DstSet:         copy.dstSet,
       )
-      srcRecord.WriteOrCopyDescriptorIndex += 1
+      srcRecord.UpdateIndex += 1
       srcRecord.ArrayIndex += 1
-      dstRecord.WriteOrCopyDescriptorIndex += 1
+      dstRecord.UpdateIndex += 1
       dstRecord.ArrayIndex += 1
     }
   }
@@ -10002,6 +10005,129 @@ cmd void vkGetPhysicalDeviceProperties2(
   PhysicalDevices[physicalDevice].PhysicalDeviceProperties = pProperties[0].properties
 }
 
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreateDescriptorUpdateTemplate(
+    VkDevice                                    device,
+    const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkDescriptorUpdateTemplate*                 pDescriptorUpdateTemplate) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkDescriptorUpdateTemplateCreateInfo") }
+  info := pCreateInfo[0]
+  template := new!DescriptorUpdateTemplateObject(
+    Device:               device,
+    Flags:                info.flags,
+    TemplateType:         info.templateType,
+    DescriptorSetLayout:  info.descriptorSetLayout,
+    PipelineBindPoint:    info.pipelineBindPoint,
+    PipelineLayout:       info.pipelineLayout,
+    Set:                  info.set,
+  )
+  numEntry := info.descriptorUpdateEntryCount
+  if (numEntry != 0) && (info.pDescriptorUpdateEntries == null) { vkErrorNullPointer("VkDescriptorUpdateTemplateEntry") }
+  entries := info.pDescriptorUpdateEntries[0:numEntry]
+  for i in (0 .. numEntry) {
+    template.DescriptorUpdateEntries[i] = entries[i]
+  }
+
+  handle := ?
+  if pDescriptorUpdateTemplate == null { vkErrorNullPointer("VkDescriptorUpdateTemplate") }
+  pDescriptorUpdateTemplate[0] = handle
+  template.VulkanHandle = handle
+  DescriptorUpdateTemplates[handle] = template
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroyDescriptorUpdateTemplate(
+    VkDevice                     device,
+    VkDescriptorUpdateTemplate   descriptorUpdateTemplate,
+    const VkAllocationCallbacks* pAllocator) {
+  // TODO: pAllocator
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  delete(DescriptorUpdateTemplates, descriptorUpdateTemplate)
+}
+
+@indirect("VkDevice")
+cmd void vkUpdateDescriptorSetWithTemplate(
+    VkDevice                   device,
+    VkDescriptorSet            descriptorSet,
+    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
+    const void*                pData) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(descriptorSet in DescriptorSets) { vkErrorInvalidDescriptorSet(descriptorSet) }
+  if !(descriptorUpdateTemplate in DescriptorUpdateTemplates) { vkErrorInvalidDescriptorUpdateTemplate(descriptorUpdateTemplate) }
+
+  template := DescriptorUpdateTemplates[descriptorUpdateTemplate]
+  set := DescriptorSets[descriptorSet]
+  for _ , _ , entry in template.DescriptorUpdateEntries {
+    updating := DescriptorUpdateRecord(
+      Binding:      entry.dstBinding,
+      ArrayIndex:   entry.dstArrayElement,
+      UpdateIndex:  0,
+    )
+    for j in (0 .. entry.descriptorCount) {
+      // Find the exact binding/array index pair for descriptor j
+      found := MutableBool(false)
+      for k in (updating.Binding .. set.Layout.MaximumBinding + 1) {
+        if !found.b {
+          if k in set.Layout.Bindings {
+            if updating.ArrayIndex < set.Layout.Bindings[k].Count {
+              updating.Binding = k
+              found.b = true
+            } else {
+              updating.ArrayIndex -= set.Layout.Bindings[k].Count
+            }
+          }
+        }
+      }
+      if !found.b {
+        vkErrInvalidDescriptorArrayElement(as!u64(descriptorSet),
+          entry.dstBinding, entry.dstArrayElement + j)
+      }
+
+      o := as!u64(entry.offset) + as!u64(j) * as!u64(entry.stride)
+      // The maximum size of VkDescriptorImageInfo, VkDescriptorBufferInfo and VkBufferView is 24 bytes,
+      // so we over-read the pData pointer here.
+      d := as!u8*(as!u8*(pData)[o:o + 24])
+      switch entry.descriptorType {
+        case VK_DESCRIPTOR_TYPE_SAMPLER,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+          imgInfo := (as!VkDescriptorImageInfo*(d)[0:1])[0]
+          set.Bindings[updating.Binding].ImageBinding[updating.ArrayIndex] = new!VkDescriptorImageInfo(
+            Sampler:      imgInfo.Sampler,
+            ImageView:    imgInfo.ImageView,
+            ImageLayout:  imgInfo.ImageLayout,
+          )
+        }
+        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+            VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+          bufView := as!VkBufferView*(d)[0:1][0]
+          set.Bindings[updating.Binding].BufferViewBindings[updating.ArrayIndex] = bufView
+        }
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+          bufInfo := as!VkDescriptorBufferInfo*(d)[0:1][0]
+          set.Bindings[updating.Binding].BufferBinding[updating.ArrayIndex] = new!VkDescriptorBufferInfo(
+            Buffer:  bufInfo.Buffer,
+            Offset:  bufInfo.Offset,
+            Range:   bufInfo.Range,
+          )
+        }
+      }
+      updating.ArrayIndex += 1
+      updating.UpdateIndex += 1
+    }
+  }
+}
+
 /////////////////////////////
 // Struct subroutines      //
 /////////////////////////////
@@ -10198,6 +10324,8 @@ enum LastSubmissionType {
 @serialize map!(VkSurfaceKHR, ref!SurfaceObject)                      Surfaces
 @serialize map!(VkSwapchainKHR, ref!SwapchainObject)                  Swapchains
 @serialize map!(VkDisplayModeKHR, ref!DisplayModeObject)              DisplayModes
+// Vulkan 1.1
+@serialize map!(VkDescriptorUpdateTemplate, ref!DescriptorUpdateTemplateObject) DescriptorUpdateTemplates
 // Other state Tracking
 @hidden @serialize map!(VkDevice, VkMemoryRequirements) TransferBufferMemoryRequirements
 @serialize ref!QueueObject                              LastBoundQueue
@@ -10936,11 +11064,25 @@ class VulkanStructHeader {
   VkBool32 RequiresDedicatedAllocation
 }
 
+// Vulkan 1.1
+@internal class DescriptorUpdateTemplateObject {
+  @unused VkDevice                                   Device
+  @unused VkDescriptorUpdateTemplate                 VulkanHandle
+  @unused VkDescriptorUpdateTemplateCreateFlags      Flags
+  @unused map!(u32, VkDescriptorUpdateTemplateEntry) DescriptorUpdateEntries
+  @unused VkDescriptorUpdateTemplateType             TemplateType
+  @unused VkDescriptorSetLayout                      DescriptorSetLayout
+  @unused VkPipelineBindPoint                        PipelineBindPoint
+  @unused VkPipelineLayout                           PipelineLayout
+  @unused u32                                        Set
+}
+
+// Command buffer command execution and queue submission
 @internal class queueMap {
   map!(u32, VkQueue) m
 }
 
-class MutableBool {
+@internal class MutableBool {
   bool b
 }
 
