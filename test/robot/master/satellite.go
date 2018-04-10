@@ -17,6 +17,8 @@ package master
 import (
 	"context"
 	"sync"
+
+	"github.com/google/gapid/core/event/task"
 )
 
 type satellite struct {
@@ -45,9 +47,14 @@ func newSatellite(ctx context.Context, name string, services ServiceList) *satel
 // processCommands reads the issues from the channel and hands them to the command handler, sending
 // the result back through the issue channel.
 func (sat *satellite) processCommands(ctx context.Context, handler CommandHandler) {
-	for i := range sat.issues {
-		i.result <- handler(ctx, i.command)
-		close(i.result)
+	for {
+		select {
+		case <-task.ShouldStop(ctx):
+			return
+		case i := <-sat.issues:
+			i.result <- handler(ctx, i.command)
+			close(i.result)
+		}
 	}
 }
 
