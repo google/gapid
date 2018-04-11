@@ -541,3 +541,35 @@ func TypeOf(v Node) (Type, error) {
 		return nil, fmt.Errorf("Type \"%T\" is not an expression", v)
 	}
 }
+
+// IsStorageType returns true if ty can be used as a storage type.
+func IsStorageType(ty Type) bool {
+	switch ty := ty.(type) {
+	case *Builtin:
+		switch ty {
+		case StringType,
+			AnyType,
+			MessageType:
+			return false
+		default:
+			return true
+		}
+	case *Pseudonym:
+		return IsStorageType(ty.To)
+	case *Pointer:
+		return IsStorageType(ty.To)
+	case *Class:
+		for _, f := range ty.Fields {
+			if !IsStorageType(f.Type) {
+				return false
+			}
+		}
+		return true
+	case *Enum:
+		return true
+	case *StaticArray:
+		return IsStorageType(ty.ValueType)
+	default:
+		return false
+	}
+}

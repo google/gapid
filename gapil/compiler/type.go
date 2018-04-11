@@ -53,41 +53,9 @@ type Types struct {
 	storageABI      *device.ABI
 }
 
-// isStorageType returns true if ty can be used as a storage type.
-func isStorageType(ty semantic.Type) bool {
-	switch ty := ty.(type) {
-	case *semantic.Builtin:
-		switch ty {
-		case semantic.StringType,
-			semantic.AnyType,
-			semantic.MessageType:
-			return false
-		default:
-			return true
-		}
-	case *semantic.Pseudonym:
-		return isStorageType(ty.To)
-	case *semantic.Pointer:
-		return isStorageType(ty.To)
-	case *semantic.Class:
-		for _, f := range ty.Fields {
-			if !isStorageType(f.Type) {
-				return false
-			}
-		}
-		return true
-	case *semantic.Enum:
-		return true
-	case *semantic.StaticArray:
-		return isStorageType(ty.ValueType)
-	default:
-		return false
-	}
-}
-
 func (c *C) declareStorageTypes() {
 	for _, t := range c.API.Classes {
-		if isStorageType(t) {
+		if semantic.IsStorageType(t) {
 			if c.T.storageABI == c.T.targetABI {
 				c.T.storage[t] = c.T.target[t]
 			} else {
@@ -102,7 +70,7 @@ func (c *C) buildStorageTypes() {
 		return
 	}
 	for _, t := range c.API.Classes {
-		if isStorageType(t) {
+		if semantic.IsStorageType(t) {
 			offset := int32(0)
 			fields := make([]codegen.Field, 0, len(t.Fields))
 			dummyFields := 0
@@ -242,7 +210,7 @@ func (c *C) buildTypes() {
 	c.T.Globals.SetBody(false, globalsFields...)
 	if c.settings.StorageABI != c.T.targetABI {
 		for _, t := range c.API.Classes {
-			if isStorageType(t) {
+			if semantic.IsStorageType(t) {
 				storageTypePtr := c.T.Pointer(c.T.Storage(t))
 				targetTypePtr := c.T.Pointer(c.T.Target(t))
 

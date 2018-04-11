@@ -152,6 +152,11 @@ func (*Functions) TypeOf(v semantic.Node) (semantic.Type, error) {
 	return semantic.TypeOf(v)
 }
 
+// IsStorageType returns true if ty can be used as a storage type.
+func (*Functions) IsStorageType(ty semantic.Type) bool {
+	return semantic.IsStorageType(ty)
+}
+
 // IsNumericValue returns true if v is one of the primitive numeric value types.
 func (*Functions) IsNumericValue(v interface{}) bool {
 	switch v.(type) {
