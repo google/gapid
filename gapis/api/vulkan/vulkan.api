@@ -5925,7 +5925,7 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
       }
       if !found.b {
         vkErrInvalidDescriptorArrayElement(as!u64(write.dstSet),
-          write.dstBinding, write.dstArrayElement + j)
+          write.dstBinding,                write.dstArrayElement + j)
       }
 
       switch (write.descriptorType) {
@@ -6042,7 +6042,7 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
       }
       if !srcFound.b {
         vkErrInvalidDescriptorArrayElement(as!u64(copy.srcSet),
-          copy.srcBinding, copy.srcArrayElement + j)
+          copy.srcBinding,                 copy.srcArrayElement + j)
       }
 
       // Find the exact binding/array index pair for dst descriptor
@@ -6061,7 +6061,7 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
       }
       if !dstFound.b {
         vkErrInvalidDescriptorArrayElement(as!u64(copy.dstSet),
-          copy.dstBinding, copy.dstArrayElement + j)
+          copy.dstBinding,                 copy.dstArrayElement + j)
       }
 
       ret_val.Map[len(ret_val.Map)] = DescriptorSetCopy(
@@ -10085,7 +10085,7 @@ cmd void vkUpdateDescriptorSetWithTemplate(
       }
       if !found.b {
         vkErrInvalidDescriptorArrayElement(as!u64(descriptorSet),
-          entry.dstBinding, entry.dstArrayElement + j)
+          entry.dstBinding,                entry.dstArrayElement + j)
       }
 
       o := as!u64(entry.offset) + as!u64(j) * as!u64(entry.stride)
@@ -10126,6 +10126,22 @@ cmd void vkUpdateDescriptorSetWithTemplate(
       updating.UpdateIndex += 1
     }
   }
+}
+
+@indirect("VkDevice")
+cmd void vkGetDescriptorSetLayoutSupport(
+    VkDevice                               device,
+    const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+    VkDescriptorSetLayoutSupport*          pSupport) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkDescriptorSetLayoutCreateInfo") }
+  info := pCreateInfo[0]
+  _ = info.pBindings[0:info.bindingCount]
+  // TODO: pNext pointer
+
+  support := ?
+  if pSupport == null { vkErrorNullPointer("VkDescriptorSetLayoutSupport") }
+  pSupport[0] = support
 }
 
 /////////////////////////////
