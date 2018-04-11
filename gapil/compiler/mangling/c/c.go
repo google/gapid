@@ -17,6 +17,7 @@ package c
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/google/gapid/gapil/compiler/mangling"
 )
@@ -39,5 +40,58 @@ func (m *mangler) mangle(v mangling.Entity) {
 			m.WriteString("__")
 		}
 	}
-	m.WriteString(v.(mangling.Named).GetName())
+	switch v := v.(type) {
+	case mangling.Builtin:
+		switch v {
+		case mangling.WChar:
+			m.WriteString("wchar")
+		case mangling.Bool:
+			m.WriteString("bool")
+		case mangling.Char:
+			m.WriteString("char")
+		case mangling.SChar:
+			m.WriteString("schar")
+		case mangling.UChar:
+			m.WriteString("uchar")
+		case mangling.Short:
+			m.WriteString("short")
+		case mangling.UShort:
+			m.WriteString("ushort")
+		case mangling.Int:
+			m.WriteString("int")
+		case mangling.UInt:
+			m.WriteString("uint")
+		case mangling.Long:
+			m.WriteString("long")
+		case mangling.ULong:
+			m.WriteString("ulong")
+		case mangling.S64:
+			m.WriteString("s64")
+		case mangling.U64:
+			m.WriteString("u64")
+		case mangling.Float:
+			m.WriteString("float")
+		case mangling.Double:
+			m.WriteString("double")
+		default:
+			panic(fmt.Errorf("Unhandled builtin type: %v", v))
+		}
+
+	case mangling.Pointer:
+		m.mangle(v.To)
+		m.WriteString("_ptr")
+
+	case mangling.Named:
+		m.WriteString(v.GetName())
+
+	default:
+		panic(fmt.Errorf("Unhandled type: %T", v))
+	}
+
+	if v, ok := v.(mangling.Templated); ok {
+		for _, ty := range v.TemplateArguments() {
+			m.WriteString("_")
+			m.mangle(ty)
+		}
+	}
 }

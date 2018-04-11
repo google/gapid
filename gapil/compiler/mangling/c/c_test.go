@@ -118,8 +118,8 @@ func TestC(t *testing.T) {
 		{"food::fruit::Apple::looks_like", looksLike, "food__fruit__Apple__looks_like"},
 		{"food::fruit::Apple::healthy", healthy, "food__fruit__Apple__healthy"},
 		{"food::fruit::Apple::compare", compare, "food__fruit__Apple__compare"},
-		{"food::fruit::Apple::same_as", sameAs, "food__fruit__Apple__same_as"},
-		{"food::fruit::Apple::juice", juice, "food__fruit__Apple__juice"},
+		{"food::fruit::Apple::same_as", sameAs, "food__fruit__Apple__same_as_int"},
+		{"food::fruit::Apple::juice", juice, "food__fruit__Apple__juice_int_bool"},
 	} {
 		assert.For(ctx, t.name).ThatString(c.Mangle(t.sym)).Equals(t.expected)
 	}
