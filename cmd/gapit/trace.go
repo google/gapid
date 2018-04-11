@@ -242,7 +242,7 @@ func (verb *traceVerb) captureADB(ctx context.Context, flags flag.FlagSet, start
 				pkg.RemoveOBB(ctx)
 			}()
 			if err := pkg.GrantExternalStorageRW(ctx); err != nil {
-				log.W(ctx, "Failed to grant OBB read/write permission, ensure your app already has this privilege")
+				log.W(ctx, "Failed to grant OBB read/write permission, (app likely already has them). Ignoring: %s", err)
 			}
 		}
 		defer func() {
