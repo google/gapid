@@ -1,0 +1,234 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_KHR_surface") define VK_KHR_SURFACE_SPEC_VERSION   25
+@extension("VK_KHR_surface") define VK_KHR_SURFACE_EXTENSION_NAME "VK_KHR_surface"
+
+///////////
+// Types //
+///////////
+
+@extension("VK_KHR_surface") @replay_remap @nonDispatchHandle type u64 VkSurfaceKHR
+
+///////////
+// Enums //
+///////////
+
+@extension("VK_KHR_surface")
+enum VkColorSpaceKHR {
+  VK_COLORSPACE_SRGB_NONLINEAR_KHR = 0x00000000,
+}
+
+@extension("VK_KHR_surface")
+enum VkPresentModeKHR {
+  VK_PRESENT_MODE_IMMEDIATE_KHR    = 0x00000000,
+  VK_PRESENT_MODE_MAILBOX_KHR      = 0x00000001,
+  VK_PRESENT_MODE_FIFO_KHR         = 0x00000002,
+  VK_PRESENT_MODE_FIFO_RELAXED_KHR = 0x00000003,
+}
+
+///////////////
+// Bitfields //
+///////////////
+
+@extension("VK_KHR_surface")
+bitfield VkSurfaceTransformFlagBitsKHR {
+  VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR                     = 0x00000001,
+  VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR                    = 0x00000002,
+  VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR                   = 0x00000004,
+  VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR                   = 0x00000008,
+  VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_BIT_KHR            = 0x00000010,
+  VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR  = 0x00000020,
+  VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR = 0x00000040,
+  VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR = 0x00000080,
+  VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR                      = 0x00000100,
+}
+@extension("VK_KHR_surface")
+type VkFlags VkSurfaceTransformFlagsKHR
+
+@extension("VK_KHR_surface")
+bitfield VkCompositeAlphaFlagBitsKHR {
+  VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR          = 0x00000001,
+  VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR  = 0x00000002,
+  VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR = 0x00000004,
+  VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR         = 0x00000008,
+}
+@extension("VK_KHR_surface")
+type VkFlags VkCompositeAlphaFlagsKHR
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_KHR_surface")
+class VkSurfaceCapabilitiesKHR {
+  u32                           minImageCount
+  u32                           maxImageCount
+  VkExtent2D                    currentExtent
+  VkExtent2D                    minImageExtent
+  VkExtent2D                    maxImageExtent
+  u32                           maxImageArrayLayers
+  VkSurfaceTransformFlagsKHR    supportedTransforms
+  VkSurfaceTransformFlagBitsKHR currentTransform
+  VkCompositeAlphaFlagsKHR      supportedCompositeAlpha
+  VkImageUsageFlags             supportedUsageFlags
+}
+
+@extension("VK_KHR_surface")
+class VkSurfaceFormatKHR {
+  VkFormat        format
+  VkColorSpaceKHR colorSpace
+}
+
+//////////////
+// Commands //
+//////////////
+
+@extension("VK_KHR_surface")
+@indirect("VkInstance")
+cmd void vkDestroySurfaceKHR(
+    VkInstance                   instance,
+    VkSurfaceKHR                 surface,
+    const VkAllocationCallbacks* pAllocator) {
+  // TODO: pAllocator
+  if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+  delete(Surfaces, surface)
+}
+
+@extension("VK_KHR_surface")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDeviceSurfaceSupportKHR(
+    VkPhysicalDevice physicalDevice,
+    u32              queueFamilyIndex,
+    VkSurfaceKHR     surface,
+    VkBool32*        pSupported) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pSupported == null { vkErrorNullPointer("VkBool32") }
+  pSupported[0] = ?
+  return ?
+}
+
+@extension("VK_KHR_surface")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+    VkPhysicalDevice          physicalDevice,
+    VkSurfaceKHR              surface,
+    VkSurfaceCapabilitiesKHR* pSurfaceCapabilities) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if !(surface in Surfaces) { vkErrorInvalidSurface(surface) }
+  if pSurfaceCapabilities == null { vkErrorNullPointer("VkSurfaceCapabilitiesKHR") }
+  pSurfaceCapabilities[0] = ?
+  return ?
+}
+
+@extension("VK_KHR_surface")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
+    VkPhysicalDevice    physicalDevice,
+    VkSurfaceKHR        surface,
+    u32*                pSurfaceFormatCount,
+    VkSurfaceFormatKHR* pSurfaceFormats) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if !(surface in Surfaces) { vkErrorInvalidSurface(surface) }
+  if pSurfaceFormatCount == null { vkErrorNullPointer("uint32_t") }
+  _ = pSurfaceFormatCount[0]
+
+  if pSurfaceFormats == null {
+    pSurfaceFormatCount[0] = ?
+  } else {
+    count := as!u32(?)
+    formats := pSurfaceFormats[0:count]
+    for i in (0 .. count) {
+      formats[i] = ?
+    }
+    pSurfaceFormatCount[0] = count
+  }
+
+  return ?
+}
+
+@extension("VK_KHR_surface")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
+    VkPhysicalDevice  physicalDevice,
+    VkSurfaceKHR      surface,
+    u32*              pPresentModeCount,
+    VkPresentModeKHR* pPresentModes) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if !(surface in Surfaces) { vkErrorInvalidSurface(surface) }
+  if pPresentModeCount == null { vkErrorNullPointer("uint32_t") }
+  _ = pPresentModeCount[0]
+
+  if pPresentModes == null {
+    pPresentModeCount[0] = ?
+  } else {
+    count := as!u32(?)
+    modes := pPresentModes[0:count]
+    for i in (0 .. count) {
+      modes[i] = ?
+    }
+    pPresentModeCount[0] = count
+  }
+
+  return ?
+}
+
+////////////////////
+// State tracking //
+////////////////////
+
+enum SurfaceType {
+  SURFACE_TYPE_UNKNOWN = 0
+  SURFACE_TYPE_XCB     = 1
+  SURFACE_TYPE_ANDROID = 2
+  SURFACE_TYPE_WIN32   = 3
+  SURFACE_TYPE_WAYLAND = 4
+  SURFACE_TYPE_XLIB    = 5
+  SURFACE_TYPE_MIR     = 6
+}
+
+@internal class SurfaceObject {
+  @unused VkInstance                Instance
+  @unused VkSurfaceKHR              VulkanHandle
+  @unused SurfaceType               Type
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}

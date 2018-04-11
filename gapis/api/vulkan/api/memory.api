@@ -1,0 +1,285 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////////
+// Device memory //
+///////////////////
+
+@internal class DeviceMemoryObject {
+  VkDevice                Device
+  @unused VkDeviceMemory  VulkanHandle
+  VkDeviceSize            AllocationSize
+  map!(u64, VkDeviceSize) BoundObjects
+  VkDeviceSize            MappedOffset
+  VkDeviceSize            MappedSize
+  void*                   MappedLocation
+  u32                     MemoryTypeIndex
+  @spy_disabled
+  @hidden @nobox @internal u8[]     Data
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+  ref!MemoryDedicatedAllocationInfo DedicatedAllocationNV
+  ref!MemoryDedicatedAllocationInfo DedicatedAllocationKHR
+}
+
+@internal class MemoryDedicatedAllocationInfo {
+  VkImage  Image
+  VkBuffer Buffer
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+@override
+cmd VkResult vkAllocateMemory(
+    VkDevice                     device,
+    const VkMemoryAllocateInfo*  pAllocateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkDeviceMemory*              pMemory) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pAllocateInfo == null { vkErrorNullPointer("VkMemoryAllocateInfo") }
+  allocateInfo := pAllocateInfo[0]
+
+  memoryObject := new!DeviceMemoryObject(
+    Device:           device,
+    VulkanHandle:     0,
+    AllocationSize:   allocateInfo.allocationSize,
+    MappedOffset:     0,
+    MappedSize:       0,
+    MappedLocation:   null,
+    MemoryTypeIndex:  allocateInfo.memoryTypeIndex
+  )
+  memoryObject.Data = make!u8(allocateInfo.allocationSize)
+
+  // Handle pNext
+  if allocateInfo.pNext != null {
+    numPNext := numberOfPNext(allocateInfo.pNext)
+    next := MutableVoidPtr(as!void*(allocateInfo.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
+          ext := as!VkDedicatedAllocationMemoryAllocateInfoNV*(next.Ptr)[0:1][0]
+          memoryObject.DedicatedAllocationNV = new!MemoryDedicatedAllocationInfo(
+            Image:   ext.image,
+            Buffer:  ext.buffer,
+          )
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR: {
+          ext := as!VkMemoryDedicatedAllocationInfoKHR*(next.Ptr)[0:1][0]
+          memoryObject.DedicatedAllocationKHR = new!MemoryDedicatedAllocationInfo(
+            Image:   ext.image,
+            Buffer:  ext.buffer,
+          )
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
+  memory := ?
+  if pMemory == null { vkErrorNullPointer("VkDeviceMemory") }
+  pMemory[0] = memory
+
+  memoryObject.VulkanHandle = memory
+  DeviceMemories[memory] = memoryObject
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkFreeMemory(
+    VkDevice                     device,
+    VkDeviceMemory               memory,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if (memory != as!VkDeviceMemory(0)) {
+    memoryObject := DeviceMemories[memory]
+
+    if (memoryObject.MappedSize != 0) {
+      mappedLocation := as!u8*(memoryObject.MappedLocation)
+      unmapMemory(mappedLocation[0:memoryObject.MappedSize])
+    }
+    delete(DeviceMemories, memory)
+  }
+}
+
+@threadSafety("app")
+@indirect("VkDevice")
+cmd VkResult vkMapMemory(
+    VkDevice         device,
+    VkDeviceMemory   memory,
+    VkDeviceSize     offset,
+    VkDeviceSize     size,
+    VkMemoryMapFlags flags,
+    void**           ppData) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(memory in DeviceMemories) { vkErrorInvalidDeviceMemory(memory) }
+  // TODO(awoloszyn): Figure out why we need the read/write here
+  // in order for the replay to allocate the memory we need.
+  // see: b/32300796
+  memoryObject := DeviceMemories[memory]
+  memoryObject.MappedOffset = offset
+  if (size == 0xFFFFFFFFFFFFFFFF) {
+    memoryObject.MappedSize = memoryObject.AllocationSize - offset
+  } else {
+    memoryObject.MappedSize = size
+  }
+  if ppData == null { vkErrorNullPointer("void*") }
+  read(ppData[0:1])
+  memoryLocation := ?
+  ppData[0] = memoryLocation
+
+  mapMemory(ppData, as!u8*(memoryLocation)[0:memoryObject.MappedSize])
+  memoryObject.MappedLocation = memoryLocation
+  DeviceMemories[memory] = memoryObject
+  if (IsMemoryCoherent(memoryObject)) {
+    trackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+  }
+  return ?
+}
+
+@threadSafety("app")
+@indirect("VkDevice")
+cmd void vkUnmapMemory(
+    VkDevice       device,
+    VkDeviceMemory memory) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(memory in DeviceMemories) { vkErrorInvalidDeviceMemory(memory) }
+  memoryObject := DeviceMemories[memory]
+  mappedLocation := as!u8*(memoryObject.MappedLocation)
+  if (IsMemoryCoherent(memoryObject)) {
+    readCoherentMemory(memoryObject, memoryObject.MappedOffset, memoryObject.MappedSize)
+    untrackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+  }
+  unmapMemory(mappedLocation[0:memoryObject.MappedSize])
+  memoryObject.MappedSize = 0
+  memoryObject.MappedLocation = null
+}
+
+@indirect("VkDevice")
+cmd VkResult vkFlushMappedMemoryRanges(
+    VkDevice                   device,
+    u32                        memoryRangeCount
+    const VkMappedMemoryRange* pMemoryRanges) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  memoryRanges := pMemoryRanges[0:memoryRangeCount]
+  for i in (0 .. memoryRangeCount) {
+    flushRange := memoryRanges[i]
+    if !(flushRange.memory in DeviceMemories) { vkErrorInvalidDeviceMemory(flushRange.memory) }
+    memoryObject := DeviceMemories[flushRange.memory]
+    mappedLocation := as!u8*(memoryObject.MappedLocation)
+    flushStart := flushRange.offset - memoryObject.MappedOffset
+    // TODO: Log errors if flush offset - mapped offset is negative or
+    // flushRange.size is out of bounds.
+
+    if (IsMemoryCoherent(memoryObject)) {
+      readCoherentMemory(memoryObject, flushRange.offset, flushRange.size)
+    } else {
+      if (flushRange.size == 0xFFFFFFFFFFFFFFFF) {
+        // copy() contains an implicit read observation
+        copy(memoryObject.Data[flushRange.offset:memoryObject.MappedOffset + memoryObject.MappedSize], (mappedLocation)[flushStart:memoryObject.MappedSize])
+      } else {
+        // copy() contains an implicit read observation
+        copy(memoryObject.Data[flushRange.offset:flushRange.offset + flushRange.size], (mappedLocation)[flushStart:flushStart + flushRange.size])
+      }
+    }
+  }
+  return ?
+}
+
+@internal
+class MemoryRangeArray {
+  map!(u32, void*) PData
+  map!(u32, u64)   Start
+  map!(u32, u64)   End
+}
+
+@indirect("VkDevice")
+cmd VkResult vkInvalidateMappedMemoryRanges(
+    VkDevice                   device,
+    u32                        memoryRangeCount,
+    const VkMappedMemoryRange* pMemoryRanges) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  ranges := new!MemoryRangeArray()
+  memoryRanges := pMemoryRanges[0:memoryRangeCount]
+  for i in (0 .. memoryRangeCount) {
+    invalidateRange := memoryRanges[i]
+    invalidateOffset := invalidateRange.offset
+    if !(invalidateRange.memory in DeviceMemories) { vkErrorInvalidDeviceMemory(invalidateRange.memory) }
+    mappedLocation := DeviceMemories[invalidateRange.memory].MappedLocation
+    mappedOffset := DeviceMemories[invalidateRange.memory].MappedOffset
+    mappedSize := DeviceMemories[invalidateRange.memory].MappedSize
+    ranges.PData[i] = mappedLocation
+    ranges.Start[i] = as!u64(invalidateOffset - mappedOffset)
+    // TODO: Log errors if invalidate offset - mapped offset is negative or
+    // invalidateRange.size is out of bounds.
+    if (invalidateRange.size == 0xFFFFFFFFFFFFFFFF) {
+      ranges.End[i] = as!u64(mappedSize)
+    } else {
+      ranges.End[i] = ranges.Start[i] + as!u64(invalidateRange.size)
+    }
+  }
+  for i in (0 .. memoryRangeCount) {
+    write(ranges.PData[i][ranges.Start[i]:ranges.End[i]])
+  }
+  return ?
+}
+
+
+// Memory management API functions
+
+@indirect("VkDevice")
+cmd void vkGetDeviceMemoryCommitment(
+    VkDevice       device,
+    VkDeviceMemory memory,
+    VkDeviceSize*  pCommittedMemoryInBytes) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(memory in DeviceMemories) { vkErrorInvalidDeviceMemory(memory) }
+  _ = pCommittedMemoryInBytes[0]
+}
+
+///////////////////////////
+// Sparse memory binding //
+///////////////////////////
+
+@internal class SparseMemoryBinds {
+  @unused map!(u32, VkSparseMemoryBind) SparseMemoryBinds
+}
+
+@internal class SparseImageMemoryBinds {
+  @unused map!(u32, VkSparseImageMemoryBind) SparseImageMemoryBinds
+}

@@ -1,0 +1,652 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+@internal class vkCmdCopyBufferArgs {
+  VkBuffer                SrcBuffer  ,
+  VkBuffer                DstBuffer  ,
+  map!(u32, VkBufferCopy) CopyRegions
+}
+
+sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
+  sourceBuffer := Buffers[buffer.SrcBuffer]
+  destBuffer := Buffers[buffer.DstBuffer]
+  for _ , _ , region in buffer.CopyRegions {
+    srcMemoryOffset := sourceBuffer.MemoryOffset + region.srcOffset
+    dstMemoryOffset := destBuffer.MemoryOffset + region.dstOffset
+    readCoherentMemoryInBuffer(sourceBuffer, region.srcOffset, region.size)
+    copy(destBuffer.Memory.Data[dstMemoryOffset:dstMemoryOffset + region.size],
+      sourceBuffer.Memory.Data[srcMemoryOffset:srcMemoryOffset + region.size])
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdCopyBuffer(
+    VkCommandBuffer     commandBuffer,
+    VkBuffer            srcBuffer,
+    VkBuffer            dstBuffer,
+    u32                 regionCount,
+    const VkBufferCopy* pRegions) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(srcBuffer in Buffers) { vkErrorInvalidBuffer(srcBuffer) }
+  if !(srcBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
+  args := new!vkCmdCopyBufferArgs(
+    SrcBuffer:  srcBuffer,
+    DstBuffer:  dstBuffer
+  )
+  regions := pRegions[0:regionCount]
+  for i in (0 .. regionCount) {
+    args.CopyRegions[i] = regions[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyBuffer, mapPos)
+}
+
+@internal
+class vkCmdCopyImageArgs {
+  VkImage                SrcImage
+  VkImageLayout          SrcImageLayout
+  VkImage                DstImage
+  VkImageLayout          DstImageLayout
+  map!(u32, VkImageCopy) Regions
+}
+
+sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
+  srcImageObject := Images[args.SrcImage]
+  dstImageObject := Images[args.DstImage]
+
+  // The following read on coherent memory of the source image does not affect the data in imageLevel.Data, as they are different memory spaces.
+  // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
+  // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
+  // the changes in coherent memory to the UI's texture view.
+  readCoherentMemoryInImage(srcImageObject)
+
+  srcFormat := srcImageObject.Info.Format
+  srcElementAndTexelBlockSize := getElementAndTexelBlockSize(srcFormat)
+  srcDepthElementSize := getDepthElementSize(srcFormat, false)
+  dstFormat := dstImageObject.Info.Format
+  dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
+  dstDepthElementSize := getDepthElementSize(dstFormat, false)
+  for r in (0 .. len(args.Regions)) {
+    // TODO: (qining) Handle the apsect mask
+    region := args.Regions[as!u32(r)]
+    srcBaseLayer := region.srcSubresource.baseArrayLayer
+    dstBaseLayer := region.srcSubresource.baseArrayLayer
+    srcMipLevel := region.srcSubresource.mipLevel
+    dstMipLevel := region.dstSubresource.mipLevel
+
+    for _ , _ , aspectBit in unpackImageAspectFlags(region.srcSubresource.aspectMask).Bits {
+      srcElementSize := switch (aspectBit) {
+        case VK_IMAGE_ASPECT_COLOR_BIT:
+          as!u64(srcElementAndTexelBlockSize.ElementSize)
+        case VK_IMAGE_ASPECT_DEPTH_BIT:
+          as!u64(srcDepthElementSize)
+        case VK_IMAGE_ASPECT_STENCIL_BIT:
+          as!u64(1)
+      }
+      srcBlockWidth := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Width)
+      srcBlockHeight := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Height)
+
+      dstElementSize := switch (aspectBit) {
+        case VK_IMAGE_ASPECT_COLOR_BIT:
+          as!u64(dstElementAndTexelBlockSize.ElementSize)
+        case VK_IMAGE_ASPECT_DEPTH_BIT:
+          as!u64(dstDepthElementSize)
+        case VK_IMAGE_ASPECT_STENCIL_BIT:
+          as!u64(1)
+      }
+      dstBlockWidth := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Width)
+      dstBlockHeight := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Height)
+
+      srcXStartInBlocks := as!u64(as!u64(region.srcOffset.x) / srcBlockWidth)
+      srcYStartInBlocks := as!u64(as!u64(region.srcOffset.y) / srcBlockHeight)
+      srcZStart := as!u64(region.srcOffset.z)
+      dstXStartInBlocks := as!u64(as!u64(region.dstOffset.x) / dstBlockWidth)
+      dstYStartInBlocks := as!u64(as!u64(region.dstOffset.y) / dstBlockHeight)
+      dstZStart := as!u64(region.dstOffset.z)
+
+      extentXInBlocks := roundUpTo(region.extent.Width, as!u32(srcBlockWidth))
+      extentYInBlocks := roundUpTo(region.extent.Height, as!u32(srcBlockHeight))
+      extentZ := region.extent.Depth
+
+      for l in (0 .. region.srcSubresource.layerCount) {
+        srcImageLevel := srcImageObject.Aspects[aspectBit].Layers[srcBaseLayer + l].Levels[srcMipLevel]
+        dstImageLevel := dstImageObject.Aspects[aspectBit].Layers[dstBaseLayer + l].Levels[dstMipLevel]
+
+        srcImageLevelWidthInBlocks := as!u64(roundUpTo(srcImageLevel.Width, as!u32(srcBlockWidth)))
+        srcImageLevelHeightInBlocks := as!u64(roundUpTo(srcImageLevel.Height, as!u32(srcBlockHeight)))
+        dstImageLevelWidthInBlocks := as!u64(roundUpTo(dstImageLevel.Width, as!u32(dstBlockWidth)))
+        dstImageLevelHeightInBlocks := as!u64(roundUpTo(dstImageLevel.Height, as!u32(dstBlockHeight)))
+
+        for z in (0 .. extentZ) {
+          for y in (0 .. extentYInBlocks) {
+            copySize := as!u64(extentXInBlocks) * srcElementSize
+            dstY := dstYStartInBlocks + as!u64(y)
+            dstZ := dstZStart + as!u64(z)
+            srcY := srcYStartInBlocks + as!u64(y)
+            srcZ := srcZStart + as!u64(z)
+            dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * dstElementSize
+            srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * srcElementSize
+            copy(dstImageLevel.Data[dstStart:dstStart + copySize], srcImageLevel.Data[srcStart:srcStart + copySize])
+          }
+        }
+      }
+    }
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdCopyImage(
+    VkCommandBuffer    commandBuffer,
+    VkImage            srcImage,
+    VkImageLayout      srcImageLayout,
+    VkImage            dstImage,
+    VkImageLayout      dstImageLayout,
+    u32                regionCount,
+    const VkImageCopy* pRegions) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(srcImage in Images) { vkErrorInvalidImage(srcImage) }
+  if !(dstImage in Images) { vkErrorInvalidImage(dstImage) }
+  args := new!vkCmdCopyImageArgs(
+    SrcImage:        srcImage,
+    SrcImageLayout:  srcImageLayout,
+    DstImage:        dstImage,
+    DstImageLayout:  dstImageLayout
+  )
+  regions := pRegions[0:regionCount]
+  for i in (0 .. regionCount) {
+    args.Regions[as!u32(i)] = regions[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyImage, mapPos)
+}
+
+@internal
+class vkCmdBlitImageArgs {
+  VkImage                SrcImage
+  VkImageLayout          SrcImageLayout
+  VkImage                DstImage
+  VkImageLayout          DstImageLayout
+  map!(u32, VkImageBlit) Regions
+  VkFilter               Filter
+}
+
+sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs dispatch) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdBlitImage(
+    VkCommandBuffer    commandBuffer,
+    VkImage            srcImage,
+    VkImageLayout      srcImageLayout,
+    VkImage            dstImage,
+    VkImageLayout      dstImageLayout,
+    u32                regionCount,
+    const VkImageBlit* pRegions,
+    VkFilter           filter) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(srcImage in Images) { vkErrorInvalidImage(srcImage) }
+  if !(dstImage in Images) { vkErrorInvalidImage(dstImage) }
+  args := new!vkCmdBlitImageArgs(
+    SrcImage:        srcImage,
+    SrcImageLayout:  srcImageLayout,
+    DstImage:        dstImage,
+    DstImageLayout:  dstImageLayout,
+    Filter:          filter
+  )
+  regions := pRegions[0:regionCount]
+  for i in (0 .. regionCount) {
+    args.Regions[as!u32(i)] = regions[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBlitImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBlitImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBlitImage, mapPos)
+}
+
+@internal
+class RowLengthAndImageHeight {
+  u32 RowLength
+  u32 ImageHeight
+}
+
+sub RowLengthAndImageHeight getRowLengthAndImageHeight(VkBufferImageCopy region) {
+  rowLength := switch region.bufferRowLength == 0 {
+    case true:  region.imageExtent.Width
+    case false: region.bufferRowLength
+  }
+  imageHeight := switch region.bufferImageHeight == 0 {
+    case true:  region.imageExtent.Height
+    case false: region.bufferImageHeight
+  }
+  return RowLengthAndImageHeight(rowLength, imageHeight)
+}
+
+
+
+@internal
+class vkCmdCopyBufferToImageArgs {
+  VkBuffer                     SrcBuffer
+  VkImage                      DstImage
+  VkImageLayout                Layout
+  map!(u32, VkBufferImageCopy) Regions
+}
+
+sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
+  bufferObject := Buffers[args.SrcBuffer]
+  imageObject := Images[args.DstImage]
+  format := imageObject.Info.Format
+  elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
+  depthElementSize := getDepthElementSize(format, true)
+  // Iterate through regions
+  for i in (0 .. len(args.Regions)) {
+    region := args.Regions[as!u32(i)]
+    rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
+    rowLength := as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width)
+    imageHeight := as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height)
+    // The VkImageSubresourceLayer used for buffer image copy should specify only one aspect bit.
+    for _ , _ , aspectBit in unpackImageAspectFlags(region.imageSubresource.aspectMask).Bits {
+      elementSize := switch (aspectBit) {
+        case VK_IMAGE_ASPECT_COLOR_BIT:
+          as!u64(elementAndTexelBlockSize.ElementSize)
+        case VK_IMAGE_ASPECT_DEPTH_BIT:
+          as!u64(depthElementSize)
+        case VK_IMAGE_ASPECT_STENCIL_BIT:
+          as!u64(1)
+      }
+      layerSize := rowLength * imageHeight * elementSize
+      zStart := as!u64(region.imageOffset.z)
+      zEnd := zStart + as!u64(region.imageExtent.Depth)
+      yStart := as!u64(as!u32(region.imageOffset.y) / elementAndTexelBlockSize.TexelBlockSize.Height)
+      yEnd := yStart + as!u64(region.imageExtent.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
+      xStart := as!u64(as!u32(region.imageOffset.x) / elementAndTexelBlockSize.TexelBlockSize.Width)
+      xEnd := xStart + as!u64(region.imageExtent.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
+      // When multiple layers are specified in the buffer image copy region,
+      // Vulkan assumes the data of all the layers are placed continuously in
+      // the source buffer memory.
+      // TODO: (qining) Handle aspect mask
+      for j in (0 .. region.imageSubresource.layerCount) {
+        layerIndex := region.imageSubresource.baseArrayLayer + j
+        bufferLayerOffset := (as!u64(j) * layerSize) + as!u64(region.bufferOffset)
+        imageLevel := imageObject.Aspects[aspectBit].Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
+        imageLevelWidthInBlocks := as!u64(imageLevel.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
+        imageLevelHeightInBlocks := as!u64(imageLevel.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
+        // Iterate through depths and rows to copy
+        for z in (zStart .. zEnd) {
+          zInExtent := z - zStart
+          for y in (yStart .. yEnd) {
+            yInExtent := y - yStart
+            rowStartBlock := ((z * imageLevelHeightInBlocks) + y) * imageLevelWidthInBlocks
+            rowStartBlockInExtent := ((zInExtent * imageHeight) + yInExtent) * rowLength
+            if ((format == VK_FORMAT_D24_UNORM_S8_UINT) || (format == VK_FORMAT_X8_D24_UNORM_PACK32)) && (aspectBit == VK_IMAGE_ASPECT_DEPTH_BIT) {
+              elementSizeInImage := as!u64(getDepthElementSize(format, false))
+              for x in (xStart .. xEnd) {
+                dstStart := (rowStartBlock + x) * elementSizeInImage
+                rowStartInExtent := (rowStartBlockInExtent + x) * elementSize
+                srcStart := as!u64(bufferObject.MemoryOffset) + bufferLayerOffset + rowStartInExtent
+                readCoherentMemory(bufferObject.Memory, as!VkDeviceSize(srcStart), as!VkDeviceSize(elementSize))
+                copy(imageLevel.Data[dstStart:dstStart + elementSizeInImage], bufferObject.Memory.Data[srcStart:srcStart + elementSize])
+              }
+            } else {
+              copySize := (xEnd - xStart) * elementSize
+              dstStart := (rowStartBlock + xStart) * elementSize
+              dstEnd := dstStart + copySize
+              rowStartInExtent := rowStartBlockInExtent * elementSize
+              srcStart := as!u64(bufferObject.MemoryOffset) + bufferLayerOffset + rowStartInExtent
+              srcEnd := srcStart + copySize
+              readCoherentMemoryInBuffer(bufferObject, as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
+              copy(imageLevel.Data[dstStart:dstEnd], bufferObject.Memory.Data[srcStart:srcEnd])
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdCopyBufferToImage(
+    VkCommandBuffer          commandBuffer,
+    VkBuffer                 srcBuffer,
+    VkImage                  dstImage,
+    VkImageLayout            dstImageLayout,
+    u32                      regionCount,
+    const VkBufferImageCopy* pRegions) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(srcBuffer in Buffers) { vkErrorInvalidBuffer(srcBuffer) }
+  if !(dstImage in Images) { vkErrorInvalidImage(dstImage) }
+  regions := pRegions[0:regionCount]
+  read(regions)
+  args := new!vkCmdCopyBufferToImageArgs(srcBuffer, dstImage, dstImageLayout)
+  for i in (0 .. regionCount) {
+    args.Regions[as!u32(i)] = regions[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBufferToImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBufferToImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyBufferToImage, mapPos)
+}
+
+@internal
+class vkCmdCopyImageToBufferArgs {
+  VkImage                      SrcImage
+  VkImageLayout                SrcImageLayout
+  VkBuffer                     DstBuffer
+  map!(u32, VkBufferImageCopy) Regions
+}
+
+sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs dispatch) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdCopyImageToBuffer(
+    VkCommandBuffer          commandBuffer,
+    VkImage                  srcImage,
+    VkImageLayout            srcImageLayout,
+    VkBuffer                 dstBuffer,
+    u32                      regionCount,
+    const VkBufferImageCopy* pRegions) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(dstBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
+  if !(srcImage in Images) { vkErrorInvalidImage(srcImage) }
+  regions := pRegions[0:regionCount]
+  args := new!vkCmdCopyImageToBufferArgs(
+    SrcImage:        srcImage,
+    SrcImageLayout:  srcImageLayout,
+    DstBuffer:       dstBuffer,
+  )
+  for i in (0 .. regionCount) {
+    args.Regions[as!u32(i)] = regions[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImageToBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImageToBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyImageToBuffer, mapPos)
+}
+
+@internal class vkCmdUpdateBufferArgs {
+  VkBuffer     DstBuffer
+  VkDeviceSize DstOffset
+  VkDeviceSize DataSize
+  u8[]         Data
+}
+
+sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
+  Buffers[args.DstBuffer].LastBoundQueue = LastBoundQueue
+  buff := Buffers[args.DstBuffer]
+  start := buff.MemoryOffset + args.DstOffset
+  copy(buff.Memory.Data[start:start + args.DataSize],
+    args.Data[0:args.DataSize])
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdUpdateBuffer(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        dstBuffer,
+    VkDeviceSize    dstOffset,
+    VkDeviceSize    dataSize,
+    const void*     pData) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(dstBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
+  args := new!vkCmdUpdateBufferArgs(
+    dstBuffer,
+    dstOffset,
+    dataSize,
+  )
+  args.Data = clone(as!u8*(pData)[0:dataSize])
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdUpdateBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdUpdateBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdUpdateBuffer, mapPos)
+}
+
+@internal
+class vkCmdFillBufferArgs {
+  VkBuffer     Buffer
+  VkDeviceSize DstOffset,
+  VkDeviceSize Size
+  u32          Data
+}
+
+sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
+  // DO NOT CHECK IN: IMPLEMENT THIS
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdFillBuffer(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        dstBuffer,
+    VkDeviceSize    dstOffset,
+    VkDeviceSize    size,
+    u32             data) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(dstBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
+  args := new!vkCmdFillBufferArgs(
+    dstBuffer,
+    dstOffset,
+    size,
+    data
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdFillBuffer))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdFillBuffer[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdFillBuffer, mapPos)
+}
+
+@internal
+class vkCmdClearColorImageArgs {
+  VkImage                            Image
+  VkImageLayout                      ImageLayout
+  VkClearColorValue                  Color
+  map!(u32, VkImageSubresourceRange) Ranges
+}
+
+sub void dovkCmdClearColorImage(ref!vkCmdClearColorImageArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdClearColorImage(
+    VkCommandBuffer                commandBuffer,
+    VkImage                        image,
+    VkImageLayout                  imageLayout,
+    const VkClearColorValue*       pColor,
+    u32                            rangeCount,
+    const VkImageSubresourceRange* pRanges) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(image in Images) { vkErrorInvalidImage(image) }
+  if pColor == null { vkErrorNullPointer("VkClearColorValue") }
+  color := pColor[0]
+  ranges := pRanges[0:rangeCount]
+  args := new!vkCmdClearColorImageArgs(
+    Image:        image,
+    ImageLayout:  imageLayout,
+    Color:        color,
+  )
+  for i in (0 .. rangeCount) {
+    args.Ranges[as!u32(i)] = ranges[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearColorImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearColorImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdClearColorImage, mapPos)
+}
+
+@internal
+class vkCmdClearDepthStencilImageArgs {
+  VkImage                            Image
+  VkImageLayout                      ImageLayout
+  VkClearDepthStencilValue           DepthStencil
+  map!(u32, VkImageSubresourceRange) Ranges
+}
+
+sub void dovkCmdClearDepthStencilImage(ref!vkCmdClearDepthStencilImageArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdClearDepthStencilImage(
+    VkCommandBuffer                 commandBuffer,
+    VkImage                         image,
+    VkImageLayout                   imageLayout,
+    const VkClearDepthStencilValue* pDepthStencil,
+    u32                             rangeCount,
+    const VkImageSubresourceRange*  pRanges) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(image in Images) { vkErrorInvalidImage(image) }
+  if pDepthStencil == null { vkErrorNullPointer("VkClearDepthStencilValue") }
+  depthStencil := pDepthStencil[0]
+  ranges := pRanges[0:rangeCount]
+  args := new!vkCmdClearDepthStencilImageArgs(
+    Image:         image,
+    ImageLayout:   imageLayout,
+    DepthStencil:  depthStencil,
+  )
+  for i in (0 .. rangeCount) {
+    args.Ranges[as!u32(i)] = ranges[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearDepthStencilImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearDepthStencilImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdClearDepthStencilImage, mapPos)
+}
+
+@internal
+class vkCmdClearAttachmentsArgs {
+  map!(u32, VkClearAttachment) Attachments
+  map!(u32, VkClearRect)       Rects
+}
+
+sub void dovkCmdClearAttachments(ref!vkCmdClearAttachmentsArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdClearAttachments(
+    VkCommandBuffer          commandBuffer,
+    u32                      attachmentCount,
+    const VkClearAttachment* pAttachments,
+    u32                      rectCount,
+    const VkClearRect*       pRects) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdClearAttachmentsArgs()
+  attachments := pAttachments[0:attachmentCount]
+  rects := pRects[0:rectCount]
+  for i in (0 .. attachmentCount) {
+    args.Attachments[as!u32(i)] = attachments[i]
+  }
+  for i in (0 .. rectCount) {
+    args.Rects[as!u32(i)] = rects[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearAttachments))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearAttachments[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdClearAttachments, mapPos)
+}
+
+@internal class vkCmdResolveImageArgs {
+  VkImage                   SrcImage      ,
+  VkImageLayout             SrcImageLayout,
+  VkImage                   DstImage      ,
+  VkImageLayout             DstImageLayout,
+  map!(u32, VkImageResolve) ResolveRegions
+}
+
+sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdResolveImage(
+    VkCommandBuffer       commandBuffer,
+    VkImage               srcImage,
+    VkImageLayout         srcImageLayout,
+    VkImage               dstImage,
+    VkImageLayout         dstImageLayout,
+    u32                   regionCount,
+    const VkImageResolve* pRegions) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(srcImage in Images) { vkErrorInvalidImage(srcImage) }
+  if !(dstImage in Images) { vkErrorInvalidImage(dstImage) }
+  args := new!vkCmdResolveImageArgs(
+    SrcImage:        srcImage,
+    SrcImageLayout:  srcImageLayout,
+    DstImage:        dstImage,
+    DstImageLayout:  dstImageLayout
+  )
+  regions := pRegions[0:regionCount]
+  for i in (0 .. regionCount) {
+    args.ResolveRegions[as!u32(i)] = regions[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResolveImage))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdResolveImage[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdResolveImage, mapPos)
+}

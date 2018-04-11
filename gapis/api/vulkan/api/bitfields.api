@@ -1,0 +1,556 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+@reserved_flags
+type VkFlags VkInstanceCreateFlags
+
+/// Format capability flags
+@unused
+bitfield VkFormatFeatureFlagBits {
+  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT                  = 0x00000001, /// Format can be used for sampled images (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
+  VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT                  = 0x00000002, /// Format can be used for storage images (STORAGE_IMAGE descriptor type)
+  VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT           = 0x00000004, /// Format supports atomic operations in case it's used for storage images
+  VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT           = 0x00000008, /// Format can be used for uniform texel buffers (TBOs)
+  VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT           = 0x00000010, /// Format can be used for storage texel buffers (IBOs)
+  VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT    = 0x00000020, /// Format supports atomic operations in case it's used for storage texel buffers
+  VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT                  = 0x00000040, /// Format can be used for vertex buffers (VBOs)
+  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT               = 0x00000080, /// Format can be used for color attachment images
+  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT         = 0x00000100, /// Format supports blending in case it's used for color attachment images
+  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT       = 0x00000200, /// Format can be used for depth/stencil attachment images
+  VK_FORMAT_FEATURE_BLIT_SRC_BIT                       = 0x00000400, /// Format can be used as the source image of blits with vkCommandBlitImage
+  VK_FORMAT_FEATURE_BLIT_DST_BIT                       = 0x00000800, /// Format can be used as the destination image of blits with vkCommandBlitImage
+  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT    = 0x00001000,
+  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_IMG = 0x00002000,
+  // Vulkan 1.1 core
+  VK_FORMAT_FEATURE_TRANSFER_SRC_BIT                                                            = 0x00004000,
+  VK_FORMAT_FEATURE_TRANSFER_DST_BIT                                                            = 0x00008000,
+  VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT                                                 = 0x00020000,
+  VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT                            = 0x00040000,
+  VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT           = 0x00080000,
+  VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT           = 0x00100000,
+  VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT = 0x00200000,
+  VK_FORMAT_FEATURE_DISJOINT_BIT                                                                = 0x00400000,
+  VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT                                                  = 0x00800000,
+}
+type VkFlags VkFormatFeatureFlags
+
+/// Image usage flags
+@unused
+bitfield VkImageUsageFlagBits {
+  VK_IMAGE_USAGE_TRANSFER_SRC_BIT             = 0x00000001, /// Can be used as a source of transfer operations
+  VK_IMAGE_USAGE_TRANSFER_DST_BIT             = 0x00000002, /// Can be used as a destination of transfer operations
+  VK_IMAGE_USAGE_SAMPLED_BIT                  = 0x00000004, /// Can be sampled from (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
+  VK_IMAGE_USAGE_STORAGE_BIT                  = 0x00000008, /// Can be used as storage image (STORAGE_IMAGE descriptor type)
+  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         = 0x00000010, /// Can be used as framebuffer color attachment
+  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT = 0x00000020, /// Can be used as framebuffer depth/stencil attachment
+  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT     = 0x00000040, /// Image data not needed outside of rendering
+  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT         = 0x00000080, /// Can be used as framebuffer input attachment
+}
+type VkFlags VkImageUsageFlags
+
+/// Image creation flags
+@unused
+bitfield VkImageCreateFlagBits {
+  VK_IMAGE_CREATE_SPARSE_BINDING_BIT   = 0x00000001, /// Image should support sparse backing
+  VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT = 0x00000002, /// Image should support sparse backing with partial residency
+  VK_IMAGE_CREATE_SPARSE_ALIASED_BIT   = 0x00000004, /// Image should support constent data access to physical memory blocks mapped into multiple locations of sparse images
+  VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT   = 0x00000008, /// Allows image views to have different format than the base image
+  VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT  = 0x00000010, /// Allows creating image views with cube type from the created image
+  // Vulkan 1.1 core
+  VK_IMAGE_CREATE_ALIAS_BIT                       = 0x00000400,
+  VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT = 0x00000040,
+  VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT         = 0x00000020,
+  VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT = 0x00000080,
+  VK_IMAGE_CREATE_EXTENDED_USAGE_BIT              = 0x00000100,
+  VK_IMAGE_CREATE_PROTECTED_BIT                   = 0x00000800,
+  VK_IMAGE_CREATE_DISJOINT_BIT                    = 0x00000200,
+}
+type VkFlags VkImageCreateFlags
+
+bitfield VkSampleCountFlagBits {
+  VK_SAMPLE_COUNT_1_BIT  = 0x00000001,
+  VK_SAMPLE_COUNT_2_BIT  = 0x00000002,
+  VK_SAMPLE_COUNT_4_BIT  = 0x00000004,
+  VK_SAMPLE_COUNT_8_BIT  = 0x00000008,
+  VK_SAMPLE_COUNT_16_BIT = 0x00000010,
+  VK_SAMPLE_COUNT_32_BIT = 0x00000020,
+  VK_SAMPLE_COUNT_64_BIT = 0x00000040,
+}
+type VkFlags VkSampleCountFlags
+
+bitfield VkQueueFlagBits {
+  VK_QUEUE_GRAPHICS_BIT       = 0x00000001, /// Queue supports graphics operations
+  VK_QUEUE_COMPUTE_BIT        = 0x00000002, /// Queue supports compute operations
+  VK_QUEUE_TRANSFER_BIT       = 0x00000004, /// Queue supports transfer operations
+  VK_QUEUE_SPARSE_BINDING_BIT = 0x00000008, /// Queue supports sparse resource memory management operations
+  // Vulkan 1.1 core
+  VK_QUEUE_PROTECTED_BIT = 0x00000010, /// Queue supports protected memory
+}
+type VkFlags VkQueueFlags
+
+bitfield VkMemoryPropertyFlagBits {
+  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT     = 0x00000001,
+  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT     = 0x00000002,
+  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT    = 0x00000004,
+  VK_MEMORY_PROPERTY_HOST_CACHED_BIT      = 0x00000008,
+  VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT = 0x00000010,
+  // Vulkan 1.1 core
+  VK_MEMORY_PROPERTY_PROTECTED_BIT = 0x00000020,
+}
+type VkFlags VkMemoryPropertyFlags
+
+@unused
+bitfield VkMemoryHeapFlagBits {
+  VK_MEMORY_HEAP_DEVICE_LOCAL_BIT   = 0x00000001,
+  VK_MEMORY_HEAP_MULTI_INSTANCE_BIT = 0x00000002,
+}
+type VkFlags VkMemoryHeapFlags
+
+@reserved_flags
+type VkFlags VkDeviceCreateFlags
+
+@unused
+bitfield VkDeviceQueueCreateFlagBits {
+  VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT = 0x00000001,
+}
+type VkFlags VkDeviceQueueCreateFlags
+
+/// Pipeline stages
+bitfield VkPipelineStageFlagBits {
+  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT                    = 0x00000001, /// Before subsequent commands are processed
+  VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT                  = 0x00000002, /// Draw/DispatchIndirect command fetch
+  VK_PIPELINE_STAGE_VERTEX_INPUT_BIT                   = 0x00000004, /// Vertex/index fetch
+  VK_PIPELINE_STAGE_VERTEX_SHADER_BIT                  = 0x00000008, /// Vertex shading
+  VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT    = 0x00000010, /// Tessellation control shading
+  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT = 0x00000020, /// Tessellation evaluation shading
+  VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT                = 0x00000040, /// Geometry shading
+  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT                = 0x00000080, /// Fragment shading
+  VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT           = 0x00000100, /// Early fragment (depth/stencil) tests
+  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT            = 0x00000200, /// Late fragment (depth/stencil) tests
+  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT        = 0x00000400, /// Color attachment writes
+  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT                 = 0x00000800, /// Compute shading
+  VK_PIPELINE_STAGE_TRANSFER_BIT                       = 0x00001000, /// Transfer/copy operations
+  VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT                 = 0x00002000,
+  VK_PIPELINE_STAGE_HOST_BIT                           = 0x00004000, /// Indicates host (CPU) is a source/sink of the dependency
+  VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT                   = 0x00008000, /// All stages of the graphics pipeline
+  VK_PIPELINE_STAGE_ALL_COMMANDS_BIT                   = 0x00010000, /// All graphics, compute, copy, and transition commands
+}
+type VkFlags VkPipelineStageFlags
+
+@reserved_flags
+type VkFlags VkMemoryMapFlags
+
+bitfield VkImageAspectFlagBits {
+  VK_IMAGE_ASPECT_COLOR_BIT    = 0x00000001,
+  VK_IMAGE_ASPECT_DEPTH_BIT    = 0x00000002,
+  VK_IMAGE_ASPECT_STENCIL_BIT  = 0x00000004,
+  VK_IMAGE_ASPECT_METADATA_BIT = 0x00000008,
+  // Vulkan 1.1 core
+  VK_IMAGE_ASPECT_PLANE_0_BIT = 0x00000010,
+  VK_IMAGE_ASPECT_PLANE_1_BIT = 0x00000020,
+  VK_IMAGE_ASPECT_PLANE_2_BIT = 0x00000040,
+}
+type VkFlags VkImageAspectFlags
+
+@unused
+bitfield VkSparseImageFormatFlagBits {
+  VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT         = 0x00000001, /// Image uses a single miptail region for all array slices
+  VK_SPARSE_IMAGE_FORMAT_ALIGNED_MIP_SIZE_BIT       = 0x00000002, /// Image requires mip levels to be an exact multiple of the sparse iamge block size for non-mip-tail levels.
+  VK_SPARSE_IMAGE_FORMAT_NONSTANDARD_BLOCK_SIZE_BIT = 0x00000004, /// Image uses a non-standard sparse block size
+}
+type VkFlags VkSparseImageFormatFlags
+
+@unused
+bitfield VkSparseMemoryBindFlagBits {
+  VK_SPARSE_MEMORY_BIND_METADATA_BIT = 0x00000001,
+}
+type VkFlags VkSparseMemoryBindFlags
+
+bitfield VkFenceCreateFlagBits {
+  VK_FENCE_CREATE_SIGNALED_BIT = 0x00000001,
+}
+type VkFlags VkFenceCreateFlags
+
+@reserved_flags
+type VkFlags VkSemaphoreCreateFlags
+
+@reserved_flags
+type VkFlags VkEventCreateFlags
+
+@reserved_flags
+type VkFlags VkQueryPoolCreateFlags
+
+@unused
+bitfield VkQueryPipelineStatisticFlagBits {
+  VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT                    = 0x00000001, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT                  = 0x00000002, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT                  = 0x00000004, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT                = 0x00000008, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT                 = 0x00000010, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT                       = 0x00000020, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT                        = 0x00000040, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT                = 0x00000080, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT        = 0x00000100, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT = 0x00000200, /// Optional
+  VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT                 = 0x00000400, /// Optional
+}
+type VkFlags VkQueryPipelineStatisticFlags
+
+@unused
+bitfield VkQueryResultFlagBits {
+  VK_QUERY_RESULT_64_BIT                = 0x00000001, /// Results of the queries are written to the destination buffer as 64-bit values
+  VK_QUERY_RESULT_WAIT_BIT              = 0x00000002, /// Results of the queries are waited on before proceeding with the result copy
+  VK_QUERY_RESULT_WITH_AVAILABILITY_BIT = 0x00000004, /// Besides the results of the query, the availability of the results is also written
+  VK_QUERY_RESULT_PARTIAL_BIT           = 0x00000008, /// Copy the partial results of the query even if the final results aren't available
+}
+type VkFlags VkQueryResultFlags
+
+@unused
+bitfield VkBufferCreateFlagBits {
+  VK_BUFFER_CREATE_SPARSE_BINDING_BIT   = 0x00000001, /// Buffer should support sparse backing
+  VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT = 0x00000002, /// Buffer should support sparse backing with partial residency
+  VK_BUFFER_CREATE_SPARSE_ALIASED_BIT   = 0x00000004, /// Buffer should support constent data access to physical memory blocks mapped into multiple locations of sparse buffers
+  // Vulkan 1.1 core
+  VK_BUFFER_CREATE_PROTECTED_BIT = 0x00000008, /// Buffer is a protected buffer
+}
+type VkFlags VkBufferCreateFlags
+
+@unused
+bitfield VkBufferUsageFlagBits {
+  VK_BUFFER_USAGE_TRANSFER_SRC_BIT         = 0x00000001, /// Can be used as a source of transfer operations
+  VK_BUFFER_USAGE_TRANSFER_DST_BIT         = 0x00000002, /// Can be used as a destination of transfer operations
+  VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT = 0x00000004, /// Can be used as TBO
+  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT = 0x00000008, /// Can be used as IBO
+  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT       = 0x00000010, /// Can be used as UBO
+  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT       = 0x00000020, /// Can be used as SSBO
+  VK_BUFFER_USAGE_INDEX_BUFFER_BIT         = 0x00000040, /// Can be used as source of fixed function index fetch (index buffer)
+  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT        = 0x00000080, /// Can be used as source of fixed function vertex fetch (VBO)
+  VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT      = 0x00000100, /// Can be the source of indirect parameters (e.g. indirect buffer, parameter buffer)
+}
+type VkFlags VkBufferUsageFlags
+
+@reserved_flags
+type VkFlags VkBufferViewCreateFlags
+
+@reserved_flags
+type VkFlags VkImageViewCreateFlags
+
+@reserved_flags
+type VkFlags VkShaderModuleCreateFlags
+
+@reserved_flags
+type VkFlags VkPipelineCacheCreateFlags
+
+@unused
+bitfield VkPipelineCreateFlagBits {
+  VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT = 0x00000001,
+  VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT    = 0x00000002,
+  VK_PIPELINE_CREATE_DERIVATIVE_BIT           = 0x00000004,
+  // Vulkan 1.1 core
+  VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT = 0x00000008,
+  VK_PIPELINE_CREATE_DISPATCH_BASE                    = 0x00000010,
+}
+type VkFlags VkPipelineCreateFlags
+
+@reserved_flags
+type VkFlags VkPipelineShaderStageCreateFlags
+
+
+bitfield VkShaderStageFlagBits {
+  VK_SHADER_STAGE_VERTEX_BIT                  = 0x00000001,
+  VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    = 0x00000002,
+  VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT = 0x00000004,
+  VK_SHADER_STAGE_GEOMETRY_BIT                = 0x00000008,
+  VK_SHADER_STAGE_FRAGMENT_BIT                = 0x00000010,
+  VK_SHADER_STAGE_COMPUTE_BIT                 = 0x00000020,
+  VK_SHADER_STAGE_ALL_GRAPHICS                = 0x0000001F,
+  VK_SHADER_STAGE_ALL                         = 0x7FFFFFFF,
+}
+type VkFlags VkShaderStageFlags
+
+@reserved_flags
+type VkFlags VkPipelineVertexInputStateCreateFlags
+
+@reserved_flags
+type VkFlags VkPipelineInputAssemblyStateCreateFlags
+
+@reserved_flags
+type VkFlags VkPipelineTessellationStateCreateFlags
+
+@reserved_flags
+type VkFlags VkPipelineViewportStateCreateFlags
+
+@reserved_flags
+type VkFlags VkPipelineRasterizationStateCreateFlags
+
+@unused
+bitfield VkCullModeFlagBits {
+  VK_CULL_MODE_NONE           = 0x00000000,
+  VK_CULL_MODE_FRONT_BIT      = 0x00000001,
+  VK_CULL_MODE_BACK_BIT       = 0x00000002,
+  VK_CULL_MODE_FRONT_AND_BACK = 0x00000003,
+}
+type VkFlags VkCullModeFlags
+
+@reserved_flags
+type VkFlags VkPipelineMultisampleStateCreateFlags
+@reserved_flags
+type VkFlags VkPipelineDepthStencilStateCreateFlags
+@reserved_flags
+type VkFlags VkPipelineColorBlendStateCreateFlags
+
+@unused
+bitfield VkColorComponentFlagBits {
+  VK_COLOR_COMPONENT_R_BIT = 0x00000001,
+  VK_COLOR_COMPONENT_G_BIT = 0x00000002,
+  VK_COLOR_COMPONENT_B_BIT = 0x00000004,
+  VK_COLOR_COMPONENT_A_BIT = 0x00000008,
+}
+type VkFlags VkColorComponentFlags
+
+@reserved_flags
+type VkFlags VkPipelineDynamicStateCreateFlags
+
+@reserved_flags
+type VkFlags VkPipelineLayoutCreateFlags
+
+@reserved_flags
+type VkFlags VkSamplerCreateFlags
+
+@reserved_flags
+type VkFlags VkDescriptorSetLayoutCreateFlags
+
+@unused
+bitfield VkDescriptorPoolCreateFlagBits {
+  VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT = 0x00000001,
+}
+type VkFlags VkDescriptorPoolCreateFlags
+
+@reserved_flags
+type VkFlags VkDescriptorPoolResetFlags
+
+@reserved_flags
+type VkFlags VkFramebufferCreateFlags
+
+@reserved_flags
+type VkFlags VkRenderPassCreateFlags
+
+@unused
+bitfield VkAttachmentDescriptionFlagBits {
+  VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT = 0x00000001, /// The attachment may alias physical memory of another attachment in the same renderpass
+}
+type VkFlags VkAttachmentDescriptionFlags
+
+@reserved_flags
+type VkFlags VkSubpassDescriptionFlags
+
+@unused
+bitfield VkAccessFlagBits {
+  VK_ACCESS_INDIRECT_COMMAND_READ_BIT          = 0x00000001,
+  VK_ACCESS_INDEX_READ_BIT                     = 0x00000002,
+  VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT          = 0x00000004,
+  VK_ACCESS_UNIFORM_READ_BIT                   = 0x00000008,
+  VK_ACCESS_INPUT_ATTACHMENT_READ_BIT          = 0x00000010,
+  VK_ACCESS_SHADER_READ_BIT                    = 0x00000020,
+  VK_ACCESS_SHADER_WRITE_BIT                   = 0x00000040,
+  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT          = 0x00000080,
+  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT         = 0x00000100,
+  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT  = 0x00000200,
+  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT = 0x00000400,
+  VK_ACCESS_TRANSFER_READ_BIT                  = 0x00000800,
+  VK_ACCESS_TRANSFER_WRITE_BIT                 = 0x00001000,
+  VK_ACCESS_HOST_READ_BIT                      = 0x00002000,
+  VK_ACCESS_HOST_WRITE_BIT                     = 0x00004000,
+  VK_ACCESS_MEMORY_READ_BIT                    = 0x00008000,
+  VK_ACCESS_MEMORY_WRITE_BIT                   = 0x00010000,
+}
+type VkFlags VkAccessFlags
+
+@unused
+bitfield VkDependencyFlagBits {
+  VK_DEPENDENCY_BY_REGION_BIT = 0x00000001,
+  // Vulkan 1.1 core
+  VK_DEPENDENCY_DEVICE_GROUP_BIT = 0x00000004,
+  VK_DEPENDENCY_VIEW_LOCAL_BIT   = 0x00000002,
+}
+type VkFlags VkDependencyFlags
+
+@unused
+bitfield VkCommandPoolCreateFlagBits {
+  VK_COMMAND_POOL_CREATE_TRANSIENT_BIT            = 0x00000001, /// Command buffers have a short lifetime
+  VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT = 0x00000002, /// Command buffers may release their memory individually
+  // Vulkan 1.1 core
+  VK_COMMAND_POOL_CREATE_PROTECTED_BIT = 0x00000004,
+}
+type VkFlags VkCommandPoolCreateFlags
+
+@unused
+bitfield VkCommandPoolResetFlagBits {
+  VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT = 0x00000001, /// Release resources owned by the pool
+}
+type VkFlags VkCommandPoolResetFlags
+
+@unused
+bitfield VkCommandBufferUsageFlagBits {
+  VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT      = 0x00000001,
+  VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT = 0x00000002,
+  VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT     = 0x00000004,
+}
+type VkFlags VkCommandBufferUsageFlags
+
+@unused
+bitfield VkQueryControlFlagBits {
+  VK_QUERY_CONTROL_PRECISE_BIT = 0x00000001,
+}
+type VkFlags VkQueryControlFlags
+
+@unused
+bitfield VkCommandBufferResetFlagBits {
+  VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT = 0x00000001, /// Release resources owned by the buffer
+}
+type VkFlags VkCommandBufferResetFlags
+
+@unused
+bitfield VkStencilFaceFlagBits {
+  VK_STENCIL_FACE_FRONT_BIT = 0x00000001, /// Front face
+  VK_STENCIL_FACE_BACK_BIT  = 0x00000002, /// Back face
+  VK_STENCIL_FRONT_AND_BACK = 0x00000003,
+}
+type VkFlags VkStencilFaceFlags
+
+// Vulkan 1.1 core
+@unused
+bitfield VkExternalFenceFeatureFlagBits {
+  VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT = 0x00000001,
+  VK_EXTERNAL_FENCE_FEATURE_IMPORTABLE_BIT = 0x00000002,
+}
+type VkFlags VkExternalFenceFeatureFlags
+
+@unused
+bitfield VkExternalFenceHandleTypeFlagBits {
+  VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT        = 0x00000001,
+  VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_WIN32_BIT     = 0x00000002,
+  VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT = 0x00000004,
+  VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT          = 0x00000008,
+}
+type VkFlags VkExternalFenceHandleTypeFlags
+
+@unused
+bitfield VkExternalMemoryFeatureFlagBits {
+  VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT = 0x00000001,
+  VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT     = 0x00000002,
+  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT     = 0x00000004,
+}
+type VkFlags VkExternalMemoryFeatureFlags
+
+@unused
+bitfield VkExternalMemoryHandleTypeFlagBits {
+  VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT         = 0x00000001,
+  VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT      = 0x00000002,
+  VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT  = 0x00000004,
+  VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT     = 0x00000008,
+  VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_KMT_BIT = 0x00000010,
+  VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT        = 0x00000020,
+  VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT    = 0x00000040,
+}
+type VkFlags VkExternalMemoryHandleTypeFlags
+
+@unused
+bitfield VkExternalSemaphoreFeatureFlagBits {
+  VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT = 0x00000001,
+  VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT = 0x00000002,
+}
+type VkFlags VkExternalSemaphoreFeatureFlags
+
+@unused
+bitfield VkExternalSemaphoreHandleTypeFlagBits {
+  VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT        = 0x00000001,
+  VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT     = 0x00000002,
+  VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT = 0x00000004,
+  VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_D3D12_FENCE_BIT      = 0x00000008,
+  VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT          = 0x00000010,
+}
+type VkFlags VkExternalSemaphoreHandleTypeFlags
+
+@unused
+bitfield VkFenceImportFlagBits {
+  VK_FENCE_IMPORT_TEMPORARY_BIT     = 0x00000001,
+  VK_FENCE_IMPORT_TEMPORARY_BIT_KHR = 0x000000001, // VK_FENCE_IMPORT_TEMPORARY_BIT,
+}
+type VkFlags VkFenceImportFlags
+
+@unused
+bitfield VkMemoryAllocateFlagBits {
+  VK_MEMORY_ALLOCATE_DEVICE_MASK_BIT = 0x00000001,
+}
+type VkFlags VkMemoryAllocateFlags
+
+@unused
+bitfield VkPeerMemoryFeatureFlagBits {
+  VK_PEER_MEMORY_FEATURE_COPY_SRC_BIT    = 0x00000001,
+  VK_PEER_MEMORY_FEATURE_COPY_DST_BIT    = 0x00000002,
+  VK_PEER_MEMORY_FEATURE_GENERIC_SRC_BIT = 0x00000004,
+  VK_PEER_MEMORY_FEATURE_GENERIC_DST_BIT = 0x00000008,
+}
+type VkFlags VkPeerMemoryFeatureFlags
+
+@unused
+bitfield VkSemaphoreImportFlagBits {
+  VK_SEMAPHORE_IMPORT_TEMPORARY_BIT     = 0x00000001,
+  VK_SEMAPHORE_IMPORT_TEMPORARY_BIT_KHR = 0x00000001, // VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,
+}
+type VkFlags VkSemaphoreImportFlags
+
+@unused
+bitfield VkSubgroupFeatureFlagBits {
+  VK_SUBGROUP_FEATURE_BASIC_BIT            = 0x00000001,
+  VK_SUBGROUP_FEATURE_VOTE_BIT             = 0x00000002,
+  VK_SUBGROUP_FEATURE_ARITHMETIC_BIT       = 0x00000004,
+  VK_SUBGROUP_FEATURE_BALLOT_BIT           = 0x00000008,
+  VK_SUBGROUP_FEATURE_SHUFFLE_BIT          = 0x00000010,
+  VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT = 0x00000020,
+  VK_SUBGROUP_FEATURE_CLUSTERED_BIT        = 0x00000040,
+  VK_SUBGROUP_FEATURE_QUAD_BIT             = 0x00000080,
+}
+type VkFlags VkSubgroupFeatureFlags
+
+@reserved_flags
+type VkFlags VkCommandPoolTrimFlags // reserved for future use
+
+@reserved_flags
+type VkFlags VkDescriptorUpdateTemplateCreateFlags // reserved for future use

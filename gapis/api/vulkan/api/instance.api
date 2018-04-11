@@ -1,0 +1,133 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+// Internal struct for holding useful instance level information from VkInstanceCreateInfo.
+@internal class InstanceObject {
+  @unused u32                       ApiVersion        // The api version the app requested when setting up the instance
+  @unused map!(u32, string)         EnabledExtensions // Map from enabled extension index to extension name
+  @unused map!(u32, string)         EnabledLayers
+  @unused VkInstance                VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}
+
+@custom
+@threadSafety("system")
+@override
+cmd VkResult vkCreateInstance(
+    const VkInstanceCreateInfo*  pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkInstance*                  pInstance) {
+  // NOTE: The logic for this function should be identical to the one of
+  // replayCreateVkInstance() in synthetic.api. Change both together.
+
+  instance := createInstanceObject(pCreateInfo)
+  // TODO: pAllocator
+  handle := ?
+  if pInstance == null { vkErrorNullPointer("VkInstance") }
+  pInstance[0] = handle
+  instance.VulkanHandle = handle
+  Instances[handle] = instance
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkInstance")
+@override
+@custom
+cmd void vkDestroyInstance(
+    VkInstance                   instance,
+    const VkAllocationCallbacks* pAllocator) {
+  // TODO: pAllocator
+  delete(Instances, instance)
+}
+
+@indirect("VkInstance")
+@override
+cmd PFN_vkVoidFunction vkGetInstanceProcAddr(
+    VkInstance  instance,
+    const char* pName) {
+
+  _ = as!string(pName)
+  return ?
+}
+
+// Marks the fields that need to be observed in a VkInstanceCreateInfo struct and populates and returns an InstanceObject.
+sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createInfo) {
+  object := new!InstanceObject()
+  if createInfo == null { vkErrorNullPointer("VkInstanceCreateInfo") }
+  info := createInfo[0]
+
+  // TODO: handle pNext
+  if (info.pApplicationInfo != null) {
+    object.ApiVersion = readVkApplicationInfo(info.pApplicationInfo)
+  } else {
+    object.ApiVersion = 0
+  }
+
+  layerNames := info.ppEnabledLayerNames[0:info.enabledLayerCount]
+  for i in (0 .. info.enabledLayerCount) {
+    // We do not need to store off the list of enabled layers, since
+    // a layer's presence should not affect any other calls in the API,
+    // only an enabled extension that is provided by a layer.
+    object.EnabledLayers[i] = as!string(layerNames[i])
+  }
+
+  supported := supportedInstanceExtensions()
+  extensionNames := info.ppEnabledExtensionNames[0:info.enabledExtensionCount]
+  for i in (0 .. info.enabledExtensionCount) {
+    ext := as!string(extensionNames[i])
+    if !(ext in supported.ExtensionNames) { vkErrorUnrecognizedExtension(extensionNames[i]) }
+    object.EnabledExtensions[i] = ext
+  }
+
+  return object
+}
+
+// Marks the fields that need to be observed in a VkApplicationInfo struct and returns the API version.
+sub u32 readVkApplicationInfo(const VkApplicationInfo* applicationInfo) {
+  info := applicationInfo[0]
+
+  // TODO: handle pNext
+  if (info.pApplicationName != null) {
+    _ = as!string(info.pApplicationName)
+  }
+  if (info.pEngineName != null) {
+    _ = as!string(info.pEngineName)
+  }
+  return info.apiVersion
+}

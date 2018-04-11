@@ -1,0 +1,428 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+//////////////////
+// Command pool //
+//////////////////
+
+@internal class CommandPoolObject {
+  @unused VkDevice                                       Device
+  @unused VkCommandPool                                  VulkanHandle
+  @unsued VkCommandPoolCreateFlags                       Flags
+  @unused u32                                            QueueFamilyIndex
+  @unused map!(VkCommandBuffer, ref!CommandBufferObject) CommandBuffers
+  @unused ref!VulkanDebugMarkerInfo                      DebugInfo
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreateCommandPool(
+    VkDevice                       device,
+    const VkCommandPoolCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*   pAllocator,
+    VkCommandPool*                 pCommandPool) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkCommandPoolCreateInfo") }
+  create_info := pCreateInfo[0]
+  // TODO: pAllocator
+
+  handle := ?
+  if pCommandPool == null { vkErrorNullPointer("VkCommandPool") }
+  pCommandPool[0] = handle
+  commandPoolObject := new!CommandPoolObject(Device: device,
+    VulkanHandle:             handle,
+    Flags:                    create_info.flags,
+    QueueFamilyIndex:         create_info.queueFamilyIndex)
+  CommandPools[handle] = commandPoolObject
+
+  return ?
+}
+
+@indirect("VkDevice")
+cmd void vkDestroyCommandPool(
+    VkDevice                     device,
+    VkCommandPool                commandPool,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if (commandPool != as!VkCommandPool(0)) {
+    if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
+    for _ , k , _ in CommandPools[commandPool].CommandBuffers {
+      delete(CommandBuffers, k)
+    }
+    delete(CommandPools, commandPool)
+  }
+}
+
+@indirect("VkDevice")
+cmd VkResult vkResetCommandPool(
+    VkDevice                device,
+    VkCommandPool           commandPool,
+    VkCommandPoolResetFlags flags) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
+  pool := CommandPools[commandPool]
+  for _ , _ , b in pool.CommandBuffers {
+    b.BeginInfo = null
+    b.Recording = NOT_STARTED
+    resetCommandBuffer(b)
+  }
+  return ?
+}
+
+////////////////////
+// Command buffer //
+////////////////////
+
+enum RecordingState {
+  NOT_STARTED = 0,
+  RECORDING   = 1,
+  COMPLETED   = 2
+}
+
+@internal class CommandBufferBegin {
+  VkCommandBufferUsageFlags     Flags
+  bool                          Inherited
+  VkRenderPass                  InheritedRenderPass
+  u32                           InheritedSubpass
+  VkFramebuffer                 InheritedFramebuffer
+  VkBool32                      InheritedOcclusionQuery
+  VkQueryControlFlags           InheritedQueryFlags
+  VkQueryPipelineStatisticFlags InheritedPipelineStatsFlags
+}
+
+enum CommandType {
+  cmd_vkCmdBindPipeline           = 0,
+  cmd_vkCmdSetViewport            = 1,
+  cmd_vkCmdSetScissor             = 2,
+  cmd_vkCmdSetLineWidth           = 3,
+  cmd_vkCmdSetDepthBias           = 4,
+  cmd_vkCmdSetBlendConstants      = 5,
+  cmd_vkCmdSetDepthBounds         = 6,
+  cmd_vkCmdSetStencilCompareMask  = 7,
+  cmd_vkCmdSetStencilWriteMask    = 8,
+  cmd_vkCmdSetStencilReference    = 9,
+  cmd_vkCmdBindDescriptorSets     = 10,
+  cmd_vkCmdBindIndexBuffer        = 11,
+  cmd_vkCmdBindVertexBuffers      = 12,
+  cmd_vkCmdDraw                   = 13,
+  cmd_vkCmdDrawIndexed            = 14,
+  cmd_vkCmdDrawIndirect           = 15,
+  cmd_vkCmdDrawIndexedIndirect    = 16,
+  cmd_vkCmdDispatch               = 17,
+  cmd_vkCmdDispatchIndirect       = 18,
+  cmd_vkCmdCopyBuffer             = 19,
+  cmd_vkCmdCopyImage              = 20,
+  cmd_vkCmdBlitImage              = 21,
+  cmd_vkCmdCopyBufferToImage      = 22,
+  cmd_vkCmdCopyImageToBuffer      = 23,
+  cmd_vkCmdUpdateBuffer           = 24,
+  cmd_vkCmdFillBuffer             = 25,
+  cmd_vkCmdClearColorImage        = 26,
+  cmd_vkCmdClearDepthStencilImage = 27,
+  cmd_vkCmdClearAttachments       = 28,
+  cmd_vkCmdResolveImage           = 29,
+  cmd_vkCmdSetEvent               = 30,
+  cmd_vkCmdResetEvent             = 31,
+  cmd_vkCmdWaitEvents             = 32,
+  cmd_vkCmdPipelineBarrier        = 33,
+  cmd_vkCmdBeginQuery             = 34,
+  cmd_vkCmdEndQuery               = 35,
+  cmd_vkCmdResetQueryPool         = 36,
+  cmd_vkCmdWriteTimestamp         = 37,
+  cmd_vkCmdCopyQueryPoolResults   = 38,
+  cmd_vkCmdPushConstants          = 39,
+  cmd_vkCmdBeginRenderPass        = 40,
+  cmd_vkCmdNextSubpass            = 41,
+  cmd_vkCmdEndRenderPass          = 42,
+  cmd_vkCmdExecuteCommands        = 43,
+  cmd_vkCmdDebugMarkerBeginEXT    = 44,
+  cmd_vkCmdDebugMarkerEndEXT      = 45,
+  cmd_vkCmdDebugMarkerInsertEXT   = 46,
+  cmd_vkNoCommand                 = 0xFFFFFFFF
+}
+
+enum SemaphoreUpdate {
+  None     = 0,
+  Unsignal = 1,
+  Signal   = 2
+}
+
+@internal class QueuedSparseBinds {
+  @unused map!(VkBuffer, ref!SparseMemoryBinds)     BufferBinds
+  @unused map!(VkImage, ref!SparseMemoryBinds)      OpaqueImageBinds
+  @unused map!(VkImage, ref!SparseImageMemoryBinds) ImageBinds
+}
+
+@internal class CommandReference {
+  @unused VkCommandBuffer       Buffer
+  @unused u32                   CommandIndex
+  @unused CommandType           Type
+  @unused u32                   MapIndex
+  @unused SemaphoreUpdate       SemaphoreUpdate
+  @unused VkSemaphore           Semaphore
+  @unused ref!QueuedSparseBinds SparseBinds
+}
+
+@internal class BufferCommands {
+  map!(u32, ref!vkCmdBindPipelineArgs)           vkCmdBindPipeline
+  map!(u32, ref!vkCmdSetViewportArgs)            vkCmdSetViewport
+  map!(u32, ref!vkCmdSetScissorArgs)             vkCmdSetScissor
+  map!(u32, ref!vkCmdSetLineWidthArgs)           vkCmdSetLineWidth
+  map!(u32, ref!vkCmdSetDepthBiasArgs)           vkCmdSetDepthBias
+  map!(u32, ref!vkCmdSetBlendConstantsArgs)      vkCmdSetBlendConstants
+  map!(u32, ref!vkCmdSetDepthBoundsArgs)         vkCmdSetDepthBounds
+  map!(u32, ref!vkCmdSetStencilCompareMaskArgs)  vkCmdSetStencilCompareMask
+  map!(u32, ref!vkCmdSetStencilWriteMaskArgs)    vkCmdSetStencilWriteMask
+  map!(u32, ref!vkCmdSetStencilReferenceArgs)    vkCmdSetStencilReference
+  map!(u32, ref!vkCmdBindDescriptorSetsArgs)     vkCmdBindDescriptorSets
+  map!(u32, ref!vkCmdBindIndexBufferArgs)        vkCmdBindIndexBuffer
+  map!(u32, ref!vkCmdBindVertexBuffersArgs)      vkCmdBindVertexBuffers
+  map!(u32, ref!vkCmdDrawArgs)                   vkCmdDraw
+  map!(u32, ref!vkCmdDrawIndexedArgs)            vkCmdDrawIndexed
+  map!(u32, ref!vkCmdDrawIndirectArgs)           vkCmdDrawIndirect
+  map!(u32, ref!vkCmdDrawIndexedIndirectArgs)    vkCmdDrawIndexedIndirect
+  map!(u32, ref!vkCmdDispatchArgs)               vkCmdDispatch
+  map!(u32, ref!vkCmdDispatchIndirectArgs)       vkCmdDispatchIndirect
+  map!(u32, ref!vkCmdCopyBufferArgs)             vkCmdCopyBuffer
+  map!(u32, ref!vkCmdCopyImageArgs)              vkCmdCopyImage
+  map!(u32, ref!vkCmdBlitImageArgs)              vkCmdBlitImage
+  map!(u32, ref!vkCmdCopyBufferToImageArgs)      vkCmdCopyBufferToImage
+  map!(u32, ref!vkCmdCopyImageToBufferArgs)      vkCmdCopyImageToBuffer
+  map!(u32, ref!vkCmdUpdateBufferArgs)           vkCmdUpdateBuffer
+  map!(u32, ref!vkCmdFillBufferArgs)             vkCmdFillBuffer
+  map!(u32, ref!vkCmdClearColorImageArgs)        vkCmdClearColorImage
+  map!(u32, ref!vkCmdClearDepthStencilImageArgs) vkCmdClearDepthStencilImage
+  map!(u32, ref!vkCmdClearAttachmentsArgs)       vkCmdClearAttachments
+  map!(u32, ref!vkCmdResolveImageArgs)           vkCmdResolveImage
+  map!(u32, ref!vkCmdSetEventArgs)               vkCmdSetEvent
+  map!(u32, ref!vkCmdResetEventArgs)             vkCmdResetEvent
+  map!(u32, ref!vkCmdWaitEventsArgs)             vkCmdWaitEvents
+  map!(u32, ref!vkCmdPipelineBarrierArgs)        vkCmdPipelineBarrier
+  map!(u32, ref!vkCmdBeginQueryArgs)             vkCmdBeginQuery
+  map!(u32, ref!vkCmdEndQueryArgs)               vkCmdEndQuery
+  map!(u32, ref!vkCmdResetQueryPoolArgs)         vkCmdResetQueryPool
+  map!(u32, ref!vkCmdWriteTimestampArgs)         vkCmdWriteTimestamp
+  map!(u32, ref!vkCmdCopyQueryPoolResultsArgs)   vkCmdCopyQueryPoolResults
+  map!(u32, ref!vkCmdPushConstantsArgs)          vkCmdPushConstants
+  map!(u32, ref!vkCmdBeginRenderPassArgs)        vkCmdBeginRenderPass
+  map!(u32, ref!vkCmdNextSubpassArgs)            vkCmdNextSubpass
+  map!(u32, ref!vkCmdEndRenderPassArgs)          vkCmdEndRenderPass
+  map!(u32, ref!vkCmdExecuteCommandsArgs)        vkCmdExecuteCommands
+  map!(u32, ref!vkCmdDebugMarkerBeginEXTArgs)    vkCmdDebugMarkerBeginEXT
+  map!(u32, ref!vkCmdDebugMarkerEndEXTArgs)      vkCmdDebugMarkerEndEXT
+  map!(u32, ref!vkCmdDebugMarkerInsertEXTArgs)   vkCmdDebugMarkerInsertEXT
+}
+
+@internal class CommandBufferObject {
+  @unused VkDevice                        Device
+  @unused RecordingState                  Recording
+  @unused VkCommandBuffer                 VulkanHandle
+  @unused VkCommandPool                   Pool
+  @unused VkCommandBufferLevel            Level
+  @unused map!(u32, ref!CommandReference) CommandReferences
+  @unused BufferCommands                  BufferCommands
+  @unused ref!CommandBufferBegin          BeginInfo
+  @unused ref!VulkanDebugMarkerInfo       DebugInfo
+}
+
+sub void AddCommand(
+    VkCommandBuffer commandBuffer,
+    CommandType     type,
+    u32             mapPos) {
+  commandIndex := as!u32(len(CommandBuffers[commandBuffer].CommandReferences))
+  cmd := new!CommandReference(
+    Buffer: commandBuffer,
+    CommandIndex: commandIndex,
+    Type: type,
+    MapIndex: mapPos,
+    SemaphoreUpdate: None,
+    Semaphore: as!VkSemaphore(0),
+    SparseBinds: as!ref!QueuedSparseBinds(null),
+  )
+  CommandBuffers[commandBuffer].CommandReferences[commandIndex] = cmd
+  onCommandAdded(commandBuffer)
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+@custom
+cmd VkResult vkAllocateCommandBuffers(
+    VkDevice                           device,
+    const VkCommandBufferAllocateInfo* pAllocateInfo,
+    VkCommandBuffer*                   pCommandBuffers) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pAllocateInfo == null { vkErrorNullPointer("VkCommandBufferAllocateInfo") }
+  allocateInfo := pAllocateInfo[0]
+  count := allocateInfo.commandBufferCount
+
+  fence
+  if pCommandBuffers == null { vkErrorNullPointer("VkCommandBuffer") }
+  cb := pCommandBuffers[0:count]
+
+  for i in (0 .. count) {
+    command_buffer := ?
+    cb[i] = command_buffer
+    CommandBuffers[command_buffer] = new!CommandBufferObject(
+      Device:        device,
+      VulkanHandle:  command_buffer,
+      Recording:     NOT_STARTED,
+      Pool:          allocateInfo.commandPool,
+      Level:         allocateInfo.level)
+    command_pool := CommandPools[allocateInfo.commandPool]
+    command_pool.CommandBuffers[command_buffer] = CommandBuffers[command_buffer]
+    CommandPools[allocateInfo.commandPool] = command_pool
+  }
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+@custom
+cmd void vkFreeCommandBuffers(
+    VkDevice               device,
+    VkCommandPool          commandPool,
+    u32                    commandBufferCount,
+    const VkCommandBuffer* pCommandBuffers) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
+  cb := pCommandBuffers[0:commandBufferCount]
+  for i in (0 .. commandBufferCount) {
+    buffer := cb[i]
+    if buffer != as!VkCommandBuffer(0) {
+      if !(buffer in CommandBuffers) { vkErrorInvalidCommandBuffer(buffer) }
+      buffer_object := CommandBuffers[buffer]
+      pool := buffer_object.Pool
+      pool_object := CommandPools[pool]
+      delete(pool_object.CommandBuffers, buffer)
+      CommandPools[pool] = pool_object
+      resetCmd(buffer)
+      delete(CommandBuffers, buffer)
+    }
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd VkResult vkBeginCommandBuffer(
+    VkCommandBuffer                 commandBuffer,
+    const VkCommandBufferBeginInfo* pBeginInfo) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if pBeginInfo == null { vkErrorNullPointer("VkCommandBufferBeginInfo") }
+  info := pBeginInfo[0]
+  begin := new!CommandBufferBegin(Flags: info.flags,Inherited:  false)
+
+  // TODO: pBeginInfo->pNext
+  if info.pInheritanceInfo != null {
+    inheritanceInfo := info.pInheritanceInfo[0]
+    begin.Inherited = true
+    begin.InheritedRenderPass = inheritanceInfo.renderPass
+    begin.InheritedSubpass = inheritanceInfo.subpass
+    begin.InheritedFramebuffer = inheritanceInfo.framebuffer
+    begin.InheritedOcclusionQuery = inheritanceInfo.occlusionQueryEnable
+    begin.InheritedQueryFlags = inheritanceInfo.queryFlags
+    begin.InheritedPipelineStatsFlags = inheritanceInfo.pipelineStatistics
+    // TODO: pBeginInfo->pInheritanceInfo->pNext
+  }
+  buff := CommandBuffers[commandBuffer]
+  buff.BeginInfo = begin
+  buff.Recording = RECORDING
+  CommandBuffers[commandBuffer] = buff
+  resetCommandBuffer(buff)
+  return ?
+}
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd VkResult vkEndCommandBuffer(
+    VkCommandBuffer commandBuffer) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  buff := CommandBuffers[commandBuffer]
+  buff.Recording = COMPLETED
+  CommandBuffers[commandBuffer] = buff
+  return ?
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd VkResult vkResetCommandBuffer(
+    VkCommandBuffer           commandBuffer,
+    VkCommandBufferResetFlags flags) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  buff := CommandBuffers[commandBuffer]
+  buff.Recording = NOT_STARTED
+  buff.BeginInfo = null
+  CommandBuffers[commandBuffer] = buff
+  resetCommandBuffer(buff)
+  return ?
+}
+
+sub void resetCommandBuffer(ref!CommandBufferObject obj) {
+  obj.BufferCommands = BufferCommands()
+  obj.CommandReferences = emptyMap().m
+  resetCmd(obj.VulkanHandle)
+}
+
+//////////////////////////////
+// Secondary command buffer //
+//////////////////////////////
+
+@internal
+class vkCmdExecuteCommandsArgs {
+  map!(u32, VkCommandBuffer) CommandBuffers
+}
+
+sub void dovkCmdExecuteCommands(ref!vkCmdExecuteCommandsArgs cmds) {
+}
+
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdExecuteCommands(
+    VkCommandBuffer        commandBuffer,
+    u32                    commandBufferCount,
+    const VkCommandBuffer* pCommandBuffers) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  cmd_buffers := pCommandBuffers[0:commandBufferCount]
+  args := new!vkCmdExecuteCommandsArgs()
+  for i in (0 .. commandBufferCount) {
+    if !(cmd_buffers[i] in CommandBuffers) { vkErrorInvalidCommandBuffer(cmd_buffers[i]) }
+    args.CommandBuffers[as!u32(i)] = cmd_buffers[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdExecuteCommands))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdExecuteCommands[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdExecuteCommands, mapPos)
+}

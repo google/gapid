@@ -1,0 +1,346 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+/////////////////
+// Framebuffer //
+/////////////////
+
+@internal class FramebufferObject {
+  @unused VkDevice                  Device
+  @unused VkFramebuffer             VulkanHandle
+  @unused ref!RenderPassObject      RenderPass
+  map!(u32, ref!ImageViewObject)    ImageAttachments
+  @unused u32                       Width
+  @unused u32                       Height
+  @unused u32                       Layers
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreateFramebuffer(
+    VkDevice                       device,
+    const VkFramebufferCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*   pAllocator,
+    VkFramebuffer*                 pFramebuffer) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkFramebufferCreateInfo") }
+  create_info := pCreateInfo[0]
+  attachments := create_info.pAttachments[0:create_info.attachmentCount]
+
+  framebufferObject := new!FramebufferObject(Device: device,
+    Width:                    create_info.width,
+    Height:                   create_info.height,
+    Layers:                   create_info.layers,
+    RenderPass:               RenderPasses[create_info.renderPass])
+  for i in (0 .. create_info.attachmentCount) {
+    framebufferObject.ImageAttachments[i] = ImageViews[attachments[i]]
+  }
+
+  handle := ?
+  if pFramebuffer == null { vkErrorNullPointer("VkFramebuffer") }
+  pFramebuffer[0] = handle
+  framebufferObject.VulkanHandle = handle
+  Framebuffers[handle] = framebufferObject
+
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroyFramebuffer(
+    VkDevice                     device,
+    VkFramebuffer                framebuffer,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  delete(Framebuffers, framebuffer)
+}
+
+////////////////
+// Renderpass //
+////////////////
+
+@internal class SubpassDescription {
+  @unused VkSubpassDescriptionFlags        Flags
+  @unused VkPipelineBindPoint              PipelineBindPoint
+  @unused map!(u32, VkAttachmentReference) InputAttachments
+  @unused map!(u32, VkAttachmentReference) ColorAttachments
+  @unused map!(u32, VkAttachmentReference) ResolveAttachments
+  @unused ref!VkAttachmentReference        DepthStencilAttachment
+  @unused map!(u32, u32)                   PreserveAttachments
+}
+
+@internal class RenderPassObject {
+  @unused VkDevice                           Device
+  @unused VkRenderPass                       VulkanHandle
+  @unused map!(u32, VkAttachmentDescription) AttachmentDescriptions
+  @unused map!(u32, SubpassDescription)      SubpassDescriptions
+  @unused map!(u32, VkSubpassDependency)     SubpassDependencies
+  @unused ref!VulkanDebugMarkerInfo          DebugInfo
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreateRenderPass(
+    VkDevice                      device,
+    const VkRenderPassCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*  pAllocator,
+    VkRenderPass*                 pRenderPass) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  renderPass := new!RenderPassObject()
+  renderPass.Device = device
+  if pCreateInfo == null { vkErrorNullPointer("VkRenderPassCreateInfo") }
+  info := pCreateInfo[0]
+
+  attachments := info.pAttachments[0:info.attachmentCount]
+  for i in (0 .. info.attachmentCount) {
+    renderPass.AttachmentDescriptions[i] = attachments[i]
+  }
+  subpasses := info.pSubpasses[0:info.subpassCount]
+  read(subpasses)
+  for i in (0 .. info.subpassCount) {
+    subpass := subpasses[i]
+    description := SubpassDescription(
+      PipelineBindPoint: subpass.pipelineBindPoint,
+    )
+    inputAttachments := subpass.pInputAttachments[0:subpass.inputAttachmentCount]
+    for j in (0 .. subpass.inputAttachmentCount) {
+      description.InputAttachments[j] = inputAttachments[j]
+    }
+    colorAttachments := subpass.pColorAttachments[0:subpass.colorAttachmentCount]
+    for j in (0 .. subpass.colorAttachmentCount) {
+      description.ColorAttachments[j] = colorAttachments[j]
+    }
+    if subpass.pResolveAttachments != null {
+      resolveAttachments := subpass.pResolveAttachments[0:subpass.colorAttachmentCount]
+      for j in (0 .. subpass.colorAttachmentCount) {
+        description.ResolveAttachments[j] = resolveAttachments[j]
+      }
+    }
+    if (subpass.pDepthStencilAttachment != null) {
+      depth_attachment := subpass.pDepthStencilAttachment[0]
+      description.DepthStencilAttachment = new!VkAttachmentReference(
+        Attachment: depth_attachment.Attachment,
+        Layout:     depth_attachment.Layout)
+    }
+    preserveAttachments := subpass.pPreserveAttachments[0:subpass.preserveAttachmentCount]
+    for j in (0 .. subpass.preserveAttachmentCount) {
+      description.PreserveAttachments[j] = preserveAttachments[j]
+    }
+    renderPass.SubpassDescriptions[i] = description
+  }
+  dependencies := info.pDependencies[0:info.dependencyCount]
+  for i in (0 .. info.dependencyCount) {
+    renderPass.SubpassDependencies[i] = dependencies[i]
+  }
+  handle := ?
+  if pRenderPass == null { vkErrorNullPointer("VkRenderPass") }
+  pRenderPass[0] = handle
+  renderPass.VulkanHandle = pRenderPass[0]
+  RenderPasses[handle] = renderPass
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroyRenderPass(
+    VkDevice                     device,
+    VkRenderPass                 renderPass,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  delete(RenderPasses, renderPass)
+}
+
+@indirect("VkDevice")
+cmd void vkGetRenderAreaGranularity(
+    VkDevice     device,
+    VkRenderPass renderPass,
+    VkExtent2D*  pGranularity) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(renderPass in RenderPasses) { vkErrorInvalidRenderPass(renderPass) }
+  write(pGranularity[0:1])
+}
+
+/////////////////////////////
+// Command buffer commands //
+/////////////////////////////
+
+@internal class
+vkCmdBeginRenderPassArgs {
+  VkSubpassContents       Contents
+  VkRenderPass            RenderPass
+  VkFramebuffer           Framebuffer
+  VkRect2D                RenderArea
+  map!(u32, VkClearValue) ClearValues
+}
+
+sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
+  VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
+  lastDrawInfo().Framebuffer = Framebuffers[args.Framebuffer]
+  lastDrawInfo().LastSubpass = 0
+  lastDrawInfo().RenderPass = RenderPasses[args.RenderPass]
+  lastDrawInfo().InRenderPass = true
+  for _ , _ , v in lastDrawInfo().Framebuffer.ImageAttachments {
+    if (v.Image != null) {
+      v.Image.LastBoundQueue = LastBoundQueue
+    }
+  }
+  subpass := lastDrawInfo().RenderPass.SubpassDescriptions[0]
+  for _ , _ , a in subpass.InputAttachments {
+    if a.Attachment != VK_ATTACHMENT_UNUSED {
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+  }
+  for _ , _ , a in subpass.ColorAttachments {
+    if a.Attachment != VK_ATTACHMENT_UNUSED {
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+  }
+  for _ , _ , a in subpass.ResolveAttachments {
+    if a.Attachment != VK_ATTACHMENT_UNUSED {
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+  }
+  if subpass.DepthStencilAttachment != null {
+    dsRef := subpass.DepthStencilAttachment
+    if dsRef.Attachment != VK_ATTACHMENT_UNUSED {
+      lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+    }
+  }
+
+  pushRenderPassMarker(args.RenderPass)
+}
+
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdBeginRenderPass(
+    VkCommandBuffer              commandBuffer,
+    const VkRenderPassBeginInfo* pRenderPassBegin,
+    VkSubpassContents            contents) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if pRenderPassBegin == null { vkErrorNullPointer("VkRenderPassBeginInfo") }
+  begin_info := pRenderPassBegin[0]
+  if !(begin_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(begin_info.renderPass) }
+  if !(begin_info.framebuffer in Framebuffers) { vkErrorInvalidFramebuffer(begin_info.framebuffer) }
+  args := new!vkCmdBeginRenderPassArgs(
+    Contents:     contents,
+    RenderPass:   begin_info.renderPass,
+    Framebuffer:  begin_info.framebuffer,
+    RenderArea:   begin_info.renderArea
+  )
+  clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
+  for i in (0 .. begin_info.clearValueCount) {
+    args.ClearValues[i] = clear_values[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass, mapPos)
+}
+
+@internal class
+vkCmdNextSubpassArgs {
+  VkSubpassContents Contents
+}
+
+sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
+  lastDrawInfo().LastSubpass += 1
+  if lastDrawInfo().LastSubpass < len(lastDrawInfo().RenderPass.SubpassDescriptions) {
+    subpass := lastDrawInfo().RenderPass.SubpassDescriptions[lastDrawInfo().LastSubpass]
+    for _ , _ , a in subpass.InputAttachments {
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+    for _ , _ , a in subpass.ColorAttachments {
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+    for _ , _ , a in subpass.ResolveAttachments {
+      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
+    }
+    if subpass.DepthStencilAttachment != null {
+      dsRef := subpass.DepthStencilAttachment
+      lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
+    }
+  }
+  popAndPushMarkerForNextSubpass(lastDrawInfo().LastSubpass)
+}
+
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdNextSubpass(
+    VkCommandBuffer   commandBuffer,
+    VkSubpassContents contents) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdNextSubpassArgs(contents)
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdNextSubpass, mapPos)
+}
+
+@internal class
+vkCmdEndRenderPassArgs {
+}
+
+sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
+  for _ , i , a in lastDrawInfo().RenderPass.AttachmentDescriptions {
+    lastDrawInfo().Framebuffer.ImageAttachments[i].Image.Info.Layout = a.finalLayout
+  }
+  lastDrawInfo().InRenderPass = false
+  popRenderPassMarker()
+  if (len(lastDrawInfo().RenderPass.SubpassDescriptions) > 1) {
+    popRenderPassMarker()
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdEndRenderPass(
+    VkCommandBuffer commandBuffer) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdEndRenderPassArgs()
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
+}

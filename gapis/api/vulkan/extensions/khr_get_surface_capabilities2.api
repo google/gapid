@@ -1,0 +1,107 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+@extension("VK_KHR_get_surface_capabilities2")
+class VkPhysicalDeviceSurfaceInfo2KHR {
+  VkStructureType sType
+  const void*     pNext
+  VkSurfaceKHR    surface
+}
+
+@extension("VK_KHR_get_surface_capabilities2")
+class VkSurfaceCapabilities2KHR {
+  VkStructureType          sType
+  void*                    pNext
+  VkSurfaceCapabilitiesKHR surfaceCapabilities
+}
+
+@extension("VK_KHR_get_surface_capabilities2")
+class VkSurfaceFormat2KHR {
+  VkStructureType    sType
+  void*              pNext
+  VkSurfaceFormatKHR surfaceFormat
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_get_surface_capabilities2")
+cmd VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+    VkPhysicalDevice                       physicalDevice,
+    const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+    VkSurfaceCapabilities2KHR*             pSurfaceCapabilities) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pSurfaceInfo == null { vkErrorNullPointer("const VkPhysicalDeviceSurfaceInfo2KHR") }
+  info := pSurfaceInfo[0]
+  // TODO: handle pNext
+  if !(info.surface in Surfaces) { vkErrorInvalidSurface(info.surface) }
+  if pSurfaceCapabilities == null { vkErrorNullPointer("VkSurfaceCapabilitiesKHR") }
+  pSurfaceCapabilities[0] = ?
+  // TODO: handle pNext
+  return ?
+
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+@extension("VK_KHR_get_surface_capabilities2")
+cmd VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
+    VkPhysicalDevice                       physicalDevice,
+    const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+    u32*                                   pSurfaceFormatCount,
+    VkSurfaceFormat2KHR*                   pSurfaceFormats) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pSurfaceInfo == null { vkErrorNullPointer("const VkPhysicalDeviceSurfaceInfo2KHR") }
+  info := pSurfaceInfo[0]
+  // TODO: handle pNext
+  if !(info.surface in Surfaces) { vkErrorInvalidSurface(info.surface) }
+  if pSurfaceFormatCount == null { vkErrorNullPointer("uint32_t") }
+  _ = pSurfaceFormatCount[0]
+  fence
+  if pSurfaceFormats == null {
+    pSurfaceFormatCount[0] = ?
+  } else {
+    count := as!u32(?)
+    formats := pSurfaceFormats[0:count]
+    for i in (0 .. count) {
+      formats[i] = ?
+    }
+    pSurfaceFormatCount[0] = count
+  }
+
+  return ?
+}
