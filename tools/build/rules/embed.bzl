@@ -45,4 +45,5 @@ embed = rule(
             default = Label("//cmd/embed:embed"),
         ),
     },
+    output_to_genfiles = True,
 )
