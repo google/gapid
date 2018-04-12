@@ -301,9 +301,6 @@ func (e *encoder) buildStateEncodeFunc() {
 // the proto message with gapil_encode_object.
 func (e *encoder) buildCommandEncodeFuncs() {
 	for _, cmd := range e.API.Functions {
-		if cmd.Subroutine || cmd.Extern {
-			continue
-		}
 		mgCmd := &mangling.Namespace{Name: "cmd", Parent: e.Root}
 		mgClass := &mangling.Class{Name: cmd.Name(), Parent: mgCmd}
 		mgEncode := e.mgEncode(mgClass)
@@ -354,7 +351,7 @@ func (e *encoder) buildCommandEncodeFuncs() {
 // the proto message with gapil_encode_object.
 func (e *encoder) buildCommandCallEncodeFuncs() {
 	for _, cmd := range e.API.Functions {
-		if cmd.Subroutine || cmd.Extern || cmd.Return.Type == semantic.VoidType {
+		if cmd.Return.Type == semantic.VoidType {
 			continue
 		}
 		mgCmd := &mangling.Namespace{Name: "cmd", Parent: e.Root}
