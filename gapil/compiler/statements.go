@@ -44,13 +44,7 @@ func (c *C) command(f *semantic.Function) {
 		return
 	}
 	old := c.setCurrentFunction(f)
-	resTy := c.returnType(f)
-	fields := make([]codegen.Field, len(f.FullParameters))
-	for i, p := range f.FullParameters {
-		fields[i] = codegen.Field{Name: p.Name(), Type: c.T.Target(p.Type)}
-	}
-	paramTy := c.T.Pointer(c.T.Struct(f.Name()+"_params", fields...))
-	out := c.M.Function(resTy, f.Name(), c.T.CtxPtr, paramTy)
+	out := c.M.Function(c.returnType(f), f.Name(), c.T.CtxPtr, c.T.Pointer(c.T.CmdParams[f]))
 	c.Build(out, func(s *S) {
 		params := s.Parameter(1).SetName("params")
 		for _, p := range f.FullParameters {
