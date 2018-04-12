@@ -55,6 +55,7 @@ cc_test(
     name = "tests",
     size = "small",
     srcs = [
+        "maker_test.cpp",
         "map_test.cpp",
         "ref_test.cpp",
         "slice_test.cpp",

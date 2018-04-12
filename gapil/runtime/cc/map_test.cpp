@@ -46,9 +46,15 @@ TYPED_TEST(MapTest, basic_insert) {
     auto map = TypeParam(&this->TestFixture::arena);
 
     map[key_type(32)] = value_type(42);
+    EXPECT_EQ(1, map.count());
+
+    EXPECT_EQ(42, map.findOrZero(32));
+    EXPECT_EQ(0, map.findOrZero(42));
+
     EXPECT_EQ(42, map[key_type(32)]);
     EXPECT_EQ(0, map[key_type(42)]);
     EXPECT_EQ(2, map.count());
+
     EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
 }
 
