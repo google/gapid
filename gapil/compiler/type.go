@@ -43,11 +43,11 @@ type Types struct {
 	VoidPtr         codegen.Type    // void* (aliased of uint8_t*)
 	Globals         *codegen.Struct // API global variables structure.
 	GlobalsPtr      codegen.Type    // Pointer to Globals.
+	Maps            map[*semantic.Map]*MapInfo
 	target          map[semantic.Type]codegen.Type
 	storage         map[semantic.Type]codegen.Type
 	targetToStorage map[semantic.Type]codegen.Function
 	storageToTarget map[semantic.Type]codegen.Function
-	maps            map[*semantic.Map]*MapInfo
 	mangled         map[codegen.Type]mangling.Type
 	targetABI       *device.ABI
 	storageABI      *device.ABI
@@ -115,11 +115,11 @@ func (c *C) declareTypes() {
 	c.T.VoidPtr = c.T.Pointer(c.T.Void)
 	c.T.Ctx = c.T.TypeOf(C.context{})
 	c.T.CtxPtr = c.T.Pointer(c.T.Ctx)
+	c.T.Maps = map[*semantic.Map]*MapInfo{}
 	c.T.target = map[semantic.Type]codegen.Type{}
 	c.T.storage = map[semantic.Type]codegen.Type{}
 	c.T.targetToStorage = map[semantic.Type]codegen.Function{}
 	c.T.storageToTarget = map[semantic.Type]codegen.Function{}
-	c.T.maps = map[*semantic.Map]*MapInfo{}
 	c.T.mangled = map[codegen.Type]mangling.Type{}
 
 	// Forward-declare all the class types.
@@ -491,7 +491,7 @@ func (c *C) initialValue(s *S, t semantic.Type) *codegen.Value {
 		}
 		return class
 	case *semantic.Map:
-		mapInfo := c.T.maps[t]
+		mapInfo := c.T.Maps[t]
 		mapPtr := c.Alloc(s, s.Scalar(uint64(1)), mapInfo.Type)
 		mapPtr.Index(0, MapRefCount).Store(s.Scalar(uint32(1)))
 		mapPtr.Index(0, MapArena).Store(s.Arena)

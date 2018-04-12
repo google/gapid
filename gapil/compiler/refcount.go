@@ -204,7 +204,7 @@ func (c *C) buildRefRels() {
 					},
 					func(s *S, mapPtr *codegen.Value) {
 						s.Arena = mapPtr.Index(0, MapArena).Load().SetName("arena")
-						s.Call(c.T.maps[apiTy].Clear, mapPtr)
+						s.Call(c.T.Maps[apiTy].Clear, mapPtr)
 						c.Free(s, mapPtr)
 					})
 

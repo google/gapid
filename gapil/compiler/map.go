@@ -66,7 +66,6 @@ import (
 //     If we end up with lots of insertions/deletions, this will prevent linear search
 
 func (c *C) defineMapType(t *semantic.Map) {
-
 	if ((minMapSize & (minMapSize - 1)) != 0) ||
 		((mapGrowMultiplier & (mapGrowMultiplier - 1)) != 0) {
 		fail("Map size must be a power of 2")
@@ -97,7 +96,7 @@ func (c *C) defineMapType(t *semantic.Map) {
 		c.Mangle(valTy),
 	}
 
-	c.T.maps[t] = &MapInfo{
+	c.T.Maps[t] = &MapInfo{
 		Type:     mapStrTy,
 		Elements: elTy,
 		Key:      keyTy,
@@ -211,7 +210,7 @@ func (c *C) hashValue(s *S, t semantic.Type, value *codegen.Value) *codegen.Valu
 }
 
 func (c *C) buildMapType(t *semantic.Map) {
-	mi, ok := c.T.maps[t]
+	mi, ok := c.T.Maps[t]
 	if !ok {
 		fail("Unknown map")
 	}
