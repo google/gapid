@@ -53,9 +53,9 @@ set /p VERSION=<version.txt
 REM Combine package contents.
 xcopy /e %BIN_DIR%\pkg\* gapid\
 copy "%~dp0\gapid.ico" gapid
-copy c:\tools\msys64\mingw64\bin\libgcc_s_seh-1.dll gapid
-copy c:\tools\msys64\mingw64\bin\libstdc++-6.dll gapid
-copy c:\tools\msys64\mingw64\bin\libwinpthread-1.dll gapid
+copy "c:\tools\msys64\mingw64\bin\libgcc_s_seh-1.dll" gapid
+copy "c:\tools\msys64\mingw64\bin\libstdc++-6.dll" gapid
+copy "c:\tools\msys64\mingw64\bin\libwinpthread-1.dll" gapid
 call "%~dp0\copy_jre.bat" "%cd%\gapid\jre"
 
 REM Package up the zip file.
