@@ -284,10 +284,8 @@ func (c *C) create(s *S, e *semantic.Create) *codegen.Value {
 func (c *C) clone(s *S, e *semantic.Clone) *codegen.Value {
 	src := c.expression(s, e.Slice)
 	size := src.Extract(SliceSize)
-	dstPtr := s.Local("dstPtr", c.T.Sli)
-	s.Call(c.callbacks.makeSlice, s.Ctx, size, dstPtr)
-	dst := dstPtr.Load()
-	c.doCopy(s, dst, src, e.Type.To)
+	dst := c.MakeSlice(s, size)
+	c.CopySlice(s, dst, src)
 	c.deferRelease(s, dst, e.Type)
 	return dst
 }
@@ -525,7 +523,7 @@ func (c *C) sliceRange(s *S, e *semantic.SliceRange) *codegen.Value {
 }
 
 func (c *C) stringValue(s *S, e semantic.StringValue) *codegen.Value {
-	str := s.Call(c.callbacks.makeString, s.Arena, s.Scalar(uint64(len(e))), s.GlobalString(string(e)))
+	str := c.MakeString(s, s.Scalar(uint64(len(e))), s.GlobalString(string(e)))
 	c.deferRelease(s, str, semantic.StringType)
 	return str
 }

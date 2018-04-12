@@ -257,6 +257,29 @@ func (c *C) Build(f codegen.Function, do func(*S)) {
 	}))
 }
 
+// MakeSlice creates a new slice of the given size in bytes.
+func (c *C) MakeSlice(s *S, size *codegen.Value) *codegen.Value {
+	dstPtr := s.Local("dstPtr", c.T.Sli)
+	c.MakeSliceAt(s, size, dstPtr)
+	return dstPtr.Load()
+}
+
+// MakeSliceAt creates a new slice of the given size in bytes at the given
+// slice pointer.
+func (c *C) MakeSliceAt(s *S, size, dstPtr *codegen.Value) {
+	s.Call(c.callbacks.makeSlice, s.Ctx, size, dstPtr)
+}
+
+// CopySlice copies the contents of slice src to dst.
+func (c *C) CopySlice(s *S, dst, src *codegen.Value) {
+	s.Call(c.callbacks.copySlice, s.Ctx, s.LocalInit("dstPtr", dst), s.LocalInit("srcPtr", src))
+}
+
+// MakeString creates a new string from the specified data and length in bytes.
+func (c *C) MakeString(s *S, length, data *codegen.Value) *codegen.Value {
+	return s.Call(c.callbacks.makeString, s.Arena, length, data)
+}
+
 // Alloc calls gapil_alloc to allocate a buffer big enough to hold count
 // elements of type ty.
 func (c *C) Alloc(s *S, count *codegen.Value, ty codegen.Type) *codegen.Value {
