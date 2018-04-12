@@ -238,7 +238,7 @@ func (c *C) expressionAddr(s *S, target semantic.Expression) *codegen.Value {
 			revPath()
 			m := c.expression(s, n.Map)
 			k := c.expression(s, n.Index)
-			v := s.Call(c.T.maps[n.Type].Index, m, k, s.Scalar(false)).SetName("map_get")
+			v := s.Call(c.T.Maps[n.Type].Index, m, k, s.Scalar(false)).SetName("map_get")
 			return v.Index(path...)
 		case *semantic.Unknown:
 			target = n.Inferred
@@ -313,7 +313,7 @@ func (c *C) mapAssign(s *S, n *semantic.MapAssign) {
 	m := c.expression(s, n.To.Map)
 	k := c.expression(s, n.To.Index)
 	v := c.expression(s, n.Value)
-	dst := s.Call(c.T.maps[ty].Index, m, k, s.Scalar(true))
+	dst := s.Call(c.T.Maps[ty].Index, m, k, s.Scalar(true))
 	if ty := n.To.Type.ValueType; c.isRefCounted(ty) {
 		c.reference(s, v, ty)
 		c.release(s, dst.Load(), ty)
@@ -337,7 +337,7 @@ func (c *C) mapRemove(s *S, n *semantic.MapRemove) {
 	ty := n.Type
 	m := c.expression(s, n.Map)
 	k := c.expression(s, n.Key)
-	s.Call(c.T.maps[ty].Remove, m, k)
+	s.Call(c.T.Maps[ty].Remove, m, k)
 }
 
 func (c *C) read(s *S, n *semantic.Read) {

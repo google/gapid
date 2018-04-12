@@ -378,13 +378,13 @@ func (c *C) make(s *S, e *semantic.Make) *codegen.Value {
 func (c *C) mapContains(s *S, e *semantic.MapContains) *codegen.Value {
 	m := c.expression(s, e.Map)
 	k := c.expression(s, e.Key)
-	return s.Call(c.T.maps[e.Type].Contains, m, k).SetName("map_contains")
+	return s.Call(c.T.Maps[e.Type].Contains, m, k).SetName("map_contains")
 }
 
 func (c *C) mapIndex(s *S, e *semantic.MapIndex) *codegen.Value {
 	m := c.expression(s, e.Map)
 	k := c.expression(s, e.Index)
-	res := s.Call(c.T.maps[e.Type].Lookup, m, k).SetName("map_lookup")
+	res := s.Call(c.T.Maps[e.Type].Lookup, m, k).SetName("map_lookup")
 	c.deferRelease(s, res, e.Type.ValueType)
 	return res
 }

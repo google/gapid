@@ -159,7 +159,7 @@ func (c *C) program(s Settings) (*Program, error) {
 	}
 
 	maps := make(map[string]*MapInfo)
-	for m, mi := range c.T.maps {
+	for m, mi := range c.T.Maps {
 		maps[m.Name()] = mi
 	}
 
