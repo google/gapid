@@ -92,6 +92,11 @@ typedef struct ref_t {
 	/* T */             // referenced object immediately follows.
 } ref;
 
+typedef uint8_t GAPIL_BOOL;
+
+#define GAPIL_FALSE 0
+#define GAPIL_TRUE  1
+
 ////////////////////////////////////////////////////////////////////////////////
 // Functions to be implemented by the user of the runtime                     //
 ////////////////////////////////////////////////////////////////////////////////
