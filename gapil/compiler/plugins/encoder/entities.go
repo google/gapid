@@ -382,10 +382,6 @@ func (e *entities) buildState(c *compiler.C) {
 // buildFunctions must be called after all entities are declared.
 func (e *entities) buildFunctions(c *compiler.C) {
 	for _, f := range c.API.Functions {
-		if f.Subroutine || f.Extern {
-			continue
-		}
-
 		{ // Parameters
 			fields := []*descriptor.FieldDescriptorProto{
 				e.ty(semantic.Uint64Type).protoDescField("thread", serialization.CmdThread),
