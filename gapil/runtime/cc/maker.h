@@ -46,13 +46,26 @@ struct Maker<T, false> {
     static inline void inplace_new(T* ptr, core::Arena* a, ARGS&&... args) { new(ptr) T(std::forward<ARGS>(args)...); }
 };
 
+// Special case for void* that can incorrectly convert the arena* to the target
+// type.
+template<> struct Maker<void*, true> {
+    static inline void* make(core::Arena* a) { return nullptr; }
+    static inline void inplace_new(void** ptr, core::Arena* a) { *ptr = nullptr; }
+};
+template<> struct Maker<const void*, true> {
+    static inline void* make(core::Arena* a) { return nullptr; }
+    static inline void inplace_new(void** ptr, core::Arena* a) { *ptr = nullptr; }
+};
+
 // make returns a T constructed by the list of args.
 // If T has a core::Arena* as the first constructor parameter then a is
 // prepended to the list of arguments.
 template<typename T, typename ...ARGS>
 inline T make(core::Arena* a, ARGS&&... args) {
-    return Maker<T, std::is_constructible<T, core::Arena*, ARGS...>::value>::
-            make(a, std::forward<ARGS>(args)...);
+    return Maker<
+                typename std::remove_cv<T>::type,
+                std::is_constructible<T, core::Arena*, ARGS...>::value
+            >::make(a, std::forward<ARGS>(args)...);
 }
 
 // inplace_new constructs a T at ptr using the list of args.
@@ -60,8 +73,10 @@ inline T make(core::Arena* a, ARGS&&... args) {
 // prepended to the list of arguments.
 template<typename T, typename ...ARGS>
 inline void inplace_new(T* ptr, core::Arena* a, ARGS&&... args) {
-    Maker<T, std::is_constructible<T, core::Arena*, ARGS...>::value>::
-            inplace_new(ptr, a, std::forward<ARGS>(args)...);
+    Maker<
+            typename std::remove_cv<T>::type,
+            std::is_constructible<T, core::Arena*, ARGS...>::value
+        >::inplace_new(ptr, a, std::forward<ARGS>(args)...);
 }
 
 } // namespace std
