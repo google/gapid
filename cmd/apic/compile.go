@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/gapil/compiler"
 	"github.com/google/gapid/gapil/compiler/mangling/c"
 	"github.com/google/gapid/gapil/compiler/mangling/ia64"
+	"github.com/google/gapid/gapil/compiler/plugins/cloner"
 	"github.com/google/gapid/gapil/compiler/plugins/encoder"
 )
 
@@ -67,6 +68,7 @@ type compileVerb struct {
 	Emit   struct {
 		Exec   bool `help:"Emit executor logic"`
 		Encode bool `help:"Emit encoder logic"`
+		Clone  bool `help:"Emit clone methods"`
 	}
 	Namespace string        `help:"Dot-delimited root namespace(s)"`
 	Symbols   symbols       `help:"Symbol generation method"`
@@ -115,6 +117,9 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	if v.Emit.Encode {
 		settings.Plugins = append(settings.Plugins, encoder.Plugin())
+	}
+	if v.Emit.Clone {
+		settings.Plugins = append(settings.Plugins, cloner.Plugin())
 	}
 
 	switch v.Symbols {
