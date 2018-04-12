@@ -34,3 +34,7 @@ inline void VulkanSpy::vkErrUnrecognizedExtension(CallObserver*, std::string nam
 inline void VulkanSpy::vkErrExpectNVDedicatedlyAllocatedHandle(CallObserver*, std::string handleType, uint64_t handle) {
     GAPID_WARNING("Error: Expected handle that was allocated with a dedicated allocation: %s: %llu", handleType.c_str(), handle)
 }
+
+inline void VulkanSpy::vkErrInvalidDescriptorArrayElement(CallObserver*, uint64_t set, uint32_t binding, uint32_t array_index) {
+  GAPID_WARNING("Error: Invalid descriptor array element specified by descriptor set: %llu, binding: %lu, array index: %lu", set, binding, array_index);
+}

@@ -343,3 +343,10 @@ func (e externs) vkErrExpectNVDedicatedlyAllocatedHandle(handleType string, hand
 	issue.Severity = service.Severity_WarningLevel
 	issue.Error = fmt.Errorf("%v: %v is not created with VK_NV_dedicated_allocation extension structure, but is bound to a dedicatedly allocated handle", handleType, handle)
 }
+
+func (e externs) vkErrInvalidDescriptorArrayElement(set uint64, binding, arrayIndex uint32) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_WarningLevel
+	issue.Error = fmt.Errorf("Invalid descriptor array element specified by descriptor set: %v, binding: %v array index: %v", set, binding, arrayIndex)
+}

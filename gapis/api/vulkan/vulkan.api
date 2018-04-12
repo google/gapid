@@ -5872,11 +5872,10 @@ cmd VkResult vkFreeDescriptorSets(
   return ?
 }
 
-@internal class ProcessedDescriptorSet {
+@internal class DescriptorUpdateRecord {
   u32 Binding
   u32 ArrayIndex
-  u32 BindingElementCount
-  u32 BindingIndex
+  u32 WriteOrCopyDescriptorIndex
 }
 
 @internal class DescriptorSetWrite {
@@ -5897,44 +5896,48 @@ cmd VkResult vkFreeDescriptorSets(
 sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
     (u32                         descriptorWriteCount,
      const VkWriteDescriptorSet* pDescriptorWrites) {
-  descriptor_set := ProcessedDescriptorSet(0, 0, 0)
   descriptor_writes := pDescriptorWrites[0:descriptorWriteCount]
   ret_val := WriteReturnMap()
   for i in (0 .. descriptorWriteCount) {
     write := descriptor_writes[i]
     count := write.descriptorCount
     set := DescriptorSets[write.dstSet]
-    descriptor_set.Binding = write.dstBinding
-    descriptor_set.ArrayIndex = write.dstArrayElement
-    descriptor_set.BindingIndex = 0
+    updating := DescriptorUpdateRecord(
+      Binding: write.dstBinding,
+      ArrayIndex: write.dstArrayElement,
+      WriteOrCopyDescriptorIndex: 0,
+    )
+
     for j in (0 .. count) {
-      // Only one of the 3 should actually exist
-      descriptor_set.BindingElementCount =
-      len(set.Bindings[descriptor_set.Binding].ImageBinding) +
-      len(set.Bindings[descriptor_set.Binding].BufferViewBindings) +
-      len(set.Bindings[descriptor_set.Binding].BufferBinding)
-      base_binding := descriptor_set.Binding
-      for k in (base_binding .. len(set.Bindings)) {
-        if (descriptor_set.ArrayIndex > descriptor_set.BindingElementCount - 1) {
-          descriptor_set.ArrayIndex = 0
-          descriptor_set.Binding = descriptor_set.Binding + 1
-          descriptor_set.BindingElementCount =
-          len(set.Bindings[descriptor_set.Binding].ImageBinding) +
-          len(set.Bindings[descriptor_set.Binding].BufferViewBindings) +
-          len(set.Bindings[descriptor_set.Binding].BufferBinding)
+      // Find the right descriptor binding/array index for j descriptor
+      found := MutableBool(false)
+      for k in (updating.Binding .. set.Layout.MaximumBinding + 1) {
+        if !found.b {
+          if k in set.Layout.Bindings {
+            if updating.ArrayIndex < set.Layout.Bindings[k].Count {
+              updating.Binding = k
+              found.b = true
+            } else {
+              updating.ArrayIndex -= set.Layout.Bindings[k].Count
+            }
+          }
         }
       }
+      if !found.b {
+        vkErrInvalidDescriptorArrayElement(as!u64(write.dstSet), write.dstBinding, write.dstArrayElement+j)
+      }
+
       switch (write.descriptorType) {
         case VK_DESCRIPTOR_TYPE_SAMPLER,
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
-          imageInfos := write.pImageInfo[0:descriptor_set.BindingIndex + 1]
-          imageInfo := imageInfos[descriptor_set.BindingIndex]
+          imageInfos := write.pImageInfo[0:updating.WriteOrCopyDescriptorIndex+1]
+          imageInfo := imageInfos[updating.WriteOrCopyDescriptorIndex]
           ret_val.Map[len(ret_val.Map)] = DescriptorSetWrite(
-            Binding:            descriptor_set.Binding,
-            BindingArrayIndex:  descriptor_set.ArrayIndex,
+            Binding:            updating.Binding,
+            BindingArrayIndex:  updating.ArrayIndex,
             DstSet:             write.dstSet,
             Type:               write.descriptorType,
             ImageInfo:          new!VkDescriptorImageInfo(
@@ -5946,13 +5949,13 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
         }
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
             VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-          bufferViews := write.pTexelBufferView[0:descriptor_set.BindingIndex + 1]
-          bufferView := bufferViews[descriptor_set.BindingIndex]
+          bufferViews := write.pTexelBufferView[0:updating.WriteOrCopyDescriptorIndex+ 1]
+          bufferView := bufferViews[updating.WriteOrCopyDescriptorIndex]
           ret_val.Map[len(ret_val.Map)] = DescriptorSetWrite(
-            Binding:            descriptor_set.Binding,
+            Binding:            updating.Binding,
             Type:               write.descriptorType,
             DstSet:             write.dstSet,
-            BindingArrayIndex:  descriptor_set.ArrayIndex,
+            BindingArrayIndex:  updating.ArrayIndex,
             BufferView:         bufferView
           )
         }
@@ -5960,13 +5963,13 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-          bufferInfos := write.pBufferInfo[0:descriptor_set.BindingIndex + 1]
-          bufferInfo := bufferInfos[descriptor_set.BindingIndex]
+          bufferInfos := write.pBufferInfo[0:updating.WriteOrCopyDescriptorIndex + 1]
+          bufferInfo := bufferInfos[updating.WriteOrCopyDescriptorIndex]
           ret_val.Map[len(ret_val.Map)] = DescriptorSetWrite(
-            Binding:            descriptor_set.Binding,
+            Binding:            updating.Binding,
             Type:               write.descriptorType,
             DstSet:             write.dstSet,
-            BindingArrayIndex:  descriptor_set.ArrayIndex,
+            BindingArrayIndex:  updating.ArrayIndex,
             BufferInfo:         new!VkDescriptorBufferInfo(
               Buffer:  bufferInfo.Buffer,
               Offset:  bufferInfo.Offset,
@@ -5978,9 +5981,8 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
           // Do nothing, we should also never get here
         }
       }
-      descriptor_set.BindingIndex =
-      descriptor_set.BindingIndex + 1
-      descriptor_set.ArrayIndex = descriptor_set.ArrayIndex + 1
+      updating.ArrayIndex += 1
+      updating.WriteOrCopyDescriptorIndex += 1
     }
   }
   return ret_val.Map
@@ -6003,8 +6005,6 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
 sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
     (u32                        descriptorCopyCount,
      const VkCopyDescriptorSet* pDescriptorCopies) {
-  srcDescriptorSet := ProcessedDescriptorSet(0, 0, 0)
-  dstDescriptorSet := ProcessedDescriptorSet(0, 0, 0)
   descriptorCopies := pDescriptorCopies[0:descriptorCopyCount]
   ret_val := CopyReturnMap()
   for i in (0 .. descriptorCopyCount) {
@@ -6013,63 +6013,66 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
     srcSet := DescriptorSets[copy.srcSet]
     dstSet := DescriptorSets[copy.dstSet]
 
-    srcDescriptorSet.Binding = copy.srcBinding
-    srcDescriptorSet.ArrayIndex = copy.srcArrayElement
-    srcDescriptorSet.BindingIndex = 0
+    srcRecord := DescriptorUpdateRecord(
+      Binding: copy.srcBinding,
+      ArrayIndex: copy.srcArrayElement,
+      WriteOrCopyDescriptorIndex: 0,
+    )
+    dstRecord := DescriptorUpdateRecord(
+      Binding: copy.dstBinding,
+      ArrayIndex: copy.dstArrayElement,
+      WriteOrCopyDescriptorIndex: 0,
+    )
 
-    dstDescriptorSet.Binding = copy.dstBinding
-    dstDescriptorSet.ArrayIndex = copy.dstArrayElement
-    dstDescriptorSet.BindingIndex = 0
     for j in (0 .. count) {
-      // Only one of the 3 should actually exist
-      srcDescriptorSet.BindingElementCount =
-      len(srcSet.Bindings[srcDescriptorSet.Binding].ImageBinding) +
-      len(srcSet.Bindings[srcDescriptorSet.Binding].BufferViewBindings) +
-      len(srcSet.Bindings[srcDescriptorSet.Binding].BufferBinding)
-      dstDescriptorSet.BindingElementCount =
-      len(dstSet.Bindings[dstDescriptorSet.Binding].ImageBinding) +
-      len(dstSet.Bindings[dstDescriptorSet.Binding].BufferViewBindings) +
-      len(dstSet.Bindings[dstDescriptorSet.Binding].BufferBinding)
-      srcBaseBinding := srcDescriptorSet.Binding
-      dstBaseBinding := dstDescriptorSet.Binding
-
-      for k in (srcBaseBinding .. len(srcSet.Bindings)) {
-        if (srcDescriptorSet.ArrayIndex > srcDescriptorSet.BindingElementCount - 1) {
-          srcDescriptorSet.ArrayIndex = 0
-          srcDescriptorSet.Binding = srcDescriptorSet.Binding + 1
-          srcDescriptorSet.BindingElementCount =
-          len(srcSet.Bindings[srcDescriptorSet.Binding].ImageBinding) +
-          len(srcSet.Bindings[srcDescriptorSet.Binding].BufferViewBindings) +
-          len(srcSet.Bindings[srcDescriptorSet.Binding].BufferBinding)
+      // Find the exact binding/array index pair for src descriptor
+      srcFound := MutableBool(false)
+      for k in (srcRecord.Binding .. srcSet.Layout.MaximumBinding + 1) {
+        if !srcFound.b {
+          if k in srcSet.Layout.Bindings {
+            if srcRecord.ArrayIndex < srcSet.Layout.Bindings[k].Count {
+              srcRecord.Binding = k
+              srcFound.b = true
+            } else {
+              srcRecord.ArrayIndex -= srcSet.Layout.Bindings[k].Count
+            }
+          }
         }
       }
-
-      for k in (dstBaseBinding .. len(dstSet.Bindings)) {
-        if (dstDescriptorSet.ArrayIndex > dstDescriptorSet.BindingElementCount - 1) {
-          dstDescriptorSet.ArrayIndex = 0
-          dstDescriptorSet.Binding = dstDescriptorSet.Binding + 1
-          dstDescriptorSet.BindingElementCount =
-          len(dstSet.Bindings[dstDescriptorSet.Binding].ImageBinding) +
-          len(dstSet.Bindings[dstDescriptorSet.Binding].BufferViewBindings) +
-          len(dstSet.Bindings[dstDescriptorSet.Binding].BufferBinding)
-        }
+      if !srcFound.b {
+        vkErrInvalidDescriptorArrayElement(as!u64(copy.srcSet), copy.srcBinding, copy.srcArrayElement+j)
       }
 
+      // Find the exact binding/array index pair for dst descriptor
+      dstFound := MutableBool(false)
+      for k in (dstRecord.Binding .. dstSet.Layout.MaximumBinding + 1) {
+        if !dstFound.b {
+          if k in dstSet.Layout.Bindings {
+            if dstRecord.ArrayIndex < srcSet.Layout.Bindings[k].Count {
+              dstRecord.Binding = k
+              dstFound.b = true
+            } else {
+              dstRecord.ArrayIndex -= dstSet.Layout.Bindings[k].Count
+            }
+          }
+        }
+      }
+      if !dstFound.b {
+        vkErrInvalidDescriptorArrayElement(as!u64(copy.dstSet), copy.dstBinding, copy.dstArrayElement+j)
+      }
 
       ret_val.Map[len(ret_val.Map)] = DescriptorSetCopy(
-        SrcBinding:     srcDescriptorSet.Binding,
-        DstBinding:     dstDescriptorSet.Binding,
-        SrcArrayIndex:  srcDescriptorSet.ArrayIndex,
-        DstArrayIndex:  dstDescriptorSet.ArrayIndex,
-        SrcSet:         copy.srcSet,
-        DstSet:         copy.dstSet)
-
-      srcDescriptorSet.BindingIndex =
-      srcDescriptorSet.BindingIndex + 1
-      srcDescriptorSet.ArrayIndex = srcDescriptorSet.ArrayIndex + 1
-      dstDescriptorSet.BindingIndex =
-      dstDescriptorSet.BindingIndex + 1
-      dstDescriptorSet.ArrayIndex = dstDescriptorSet.ArrayIndex + 1
+        SrcBinding: srcRecord.Binding,
+        DstBinding: dstRecord.Binding,
+        SrcArrayIndex: srcRecord.ArrayIndex,
+        DstArrayIndex: dstRecord.ArrayIndex,
+        SrcSet: copy.srcSet,
+        DstSet: copy.dstSet,
+      )
+      srcRecord.WriteOrCopyDescriptorIndex += 1
+      srcRecord.ArrayIndex += 1
+      dstRecord.WriteOrCopyDescriptorIndex += 1
+      dstRecord.ArrayIndex += 1
     }
   }
   return ret_val.Map
