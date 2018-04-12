@@ -215,12 +215,15 @@ string* gapil_make_string(arena* a, uint64_t length, void* data) {
         memset(str->data, 0, length + 1);
     }
 
+    DEBUG_PRINT("gapil_make_string(arena: %p, length: %" PRIu64 ", data: '%s') -> %p",
+            a, length, data, str);
+
     return str;
 }
 
 void gapil_free_string(string* str) {
-    DEBUG_PRINT("gapil_free_string(ref_count: %" PRIu32 ", len: %" PRIu64 ", str: '%s' (%p))",
-            str->ref_count, str->length, str->data, str->data);
+    DEBUG_PRINT("gapil_free_string(str: %p, ref_count: %" PRIu32 ", len: %" PRIu64 ", str: '%s' (%p))",
+            str, str->ref_count, str->length, str->data, str->data);
 
     Arena* arena = reinterpret_cast<Arena*>(str->arena);
     arena->free(str);
