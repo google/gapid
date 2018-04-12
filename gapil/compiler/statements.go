@@ -265,11 +265,7 @@ func (c *C) branch(s *S, n *semantic.Branch) {
 func (c *C) copy(s *S, n *semantic.Copy) {
 	src := c.expression(s, n.Src)
 	dst := c.expression(s, n.Dst)
-	c.doCopy(s, dst, src, n.Src.ExpressionType().(*semantic.Slice).To)
-}
-
-func (c *C) doCopy(s *S, dst, src *codegen.Value, elTy semantic.Type) {
-	s.Call(c.callbacks.copySlice, s.Ctx, s.LocalInit("dstPtr", dst), s.LocalInit("srcPtr", src))
+	c.CopySlice(s, dst, src)
 }
 
 func (c *C) declareLocal(s *S, n *semantic.DeclareLocal) {
