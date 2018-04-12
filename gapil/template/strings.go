@@ -175,6 +175,11 @@ func (Functions) HasPrefix(s string, prefix string) bool {
 	return strings.HasPrefix(s, prefix)
 }
 
+// HasSuffix tests whether the string s ends with suffix.
+func (Functions) HasSuffix(s string, suffix string) bool {
+	return strings.HasSuffix(s, suffix)
+}
+
 // Replace any occurance of old with new in the string segments.
 func (Functions) Replace(old string, new string, v ...interface{}) stringList {
 	l := stringify(v...)
