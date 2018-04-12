@@ -37,6 +37,7 @@ func stringify(v ...interface{}) stringList {
 	out := stringList{}
 	for _, v := range v {
 		switch v := v.(type) {
+		case nil:
 		case string:
 			out = append(out, v)
 		case []string:
