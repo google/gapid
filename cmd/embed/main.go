@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -120,13 +121,25 @@ func run(ctx context.Context) error {
 		}
 	}
 	var err error
+	usedNames := map[string]bool{}
 	for _, entry := range entries {
 		filename := filepath.Base(entry.path)
 		if entry.filename == "" {
 			// filename will be empty if path was not relative to root, so just use basename
 			entry.filename = filename
 		}
-		entry.name = nameReplacer.Replace(filename)
+		name := nameReplacer.Replace(filename)
+		if _, found := usedNames[name]; found {
+			for i := 2; ; i++ {
+				tmp := name + strconv.Itoa(i)
+				if _, found := usedNames[tmp]; !found {
+					name = tmp
+					break
+				}
+			}
+		}
+		usedNames[name] = true
+		entry.name = name
 		if web {
 			entry.filename = strings.Replace(entry.filename, "\\", "/", -1)
 		}
