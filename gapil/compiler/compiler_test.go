@@ -1823,24 +1823,25 @@ type cmd struct {
 	name   string
 	data   []byte
 	extras *extras
+	thread uint64
 }
 
-var _ api.Cmd = cmd{}
+var _ api.Cmd = &cmd{}
 
-func (c cmd) API() api.API                                                       { return nil }
-func (c cmd) Caller() api.CmdID                                                  { return 0 }
-func (c cmd) SetCaller(api.CmdID)                                                {}
-func (c cmd) Thread() uint64                                                     { return 0 }
-func (c cmd) SetThread(uint64)                                                   {}
-func (c cmd) CmdName() string                                                    { return c.name }
-func (c cmd) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
-func (c cmd) Extras() *api.CmdExtras {
+func (c *cmd) API() api.API                                                       { return nil }
+func (c *cmd) Caller() api.CmdID                                                  { return 0 }
+func (c *cmd) SetCaller(api.CmdID)                                                {}
+func (c *cmd) Thread() uint64                                                     { return c.thread }
+func (c *cmd) SetThread(thread uint64)                                            { c.thread = thread }
+func (c *cmd) CmdName() string                                                    { return c.name }
+func (c *cmd) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
+func (c *cmd) Extras() *api.CmdExtras {
 	if c.extras == nil {
 		return &api.CmdExtras{}
 	}
 	return c.extras.e
 }
-func (c cmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error { return nil }
+func (c *cmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error { return nil }
 
 type extras struct {
 	e *api.CmdExtras
@@ -1873,7 +1874,9 @@ func write(base uint64, size uint64, id id.ID) *extras {
 }
 
 func (c cmd) Encode(out []byte) bool {
-	copy(out, c.data)
+	w := endian.Writer(bytes.NewBuffer(out), device.LittleEndian)
+	w.Uint64(c.thread)
+	copy(out[8:], c.data)
 	return true
 }
 
@@ -1966,7 +1969,7 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 			externCalls = append(externCalls, externB{s})
 			return s == "meow"
 		}
-		err = env.Execute(ctx, cmd)
+		err = env.Execute(ctx, &cmd)
 		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.name).ThatError(err).Equals(t.expected.err) {
 			return false
 		}

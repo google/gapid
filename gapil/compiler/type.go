@@ -30,19 +30,20 @@ import "C"
 // Types augments the codegen.Types structure.
 type Types struct {
 	codegen.Types
-	Ctx             codegen.Type    // context_t
-	CtxPtr          codegen.Type    // context_t*
-	Pool            codegen.Type    // pool_t
-	PoolPtr         codegen.Type    // pool_t*
-	Sli             codegen.Type    // slice_t
-	Str             *codegen.Struct // string_t
-	StrPtr          codegen.Type    // string_t*
-	Arena           *codegen.Struct // arena_t
-	ArenaPtr        codegen.Type    // arena_t*
-	Uint8Ptr        codegen.Type    // uint8_t*
-	VoidPtr         codegen.Type    // void* (aliased of uint8_t*)
-	Globals         *codegen.Struct // API global variables structure.
-	GlobalsPtr      codegen.Type    // Pointer to Globals.
+	Ctx             codegen.Type                        // context_t
+	CtxPtr          codegen.Type                        // context_t*
+	Pool            codegen.Type                        // pool_t
+	PoolPtr         codegen.Type                        // pool_t*
+	Sli             codegen.Type                        // slice_t
+	Str             *codegen.Struct                     // string_t
+	StrPtr          codegen.Type                        // string_t*
+	Arena           *codegen.Struct                     // arena_t
+	ArenaPtr        codegen.Type                        // arena_t*
+	Uint8Ptr        codegen.Type                        // uint8_t*
+	VoidPtr         codegen.Type                        // void* (aliased of uint8_t*)
+	Globals         *codegen.Struct                     // API global variables structure.
+	GlobalsPtr      codegen.Type                        // Pointer to Globals.
+	CmdParams       map[*semantic.Function]codegen.Type // struct holding all command parameters and return value.
 	Maps            map[*semantic.Map]*MapInfo
 	target          map[semantic.Type]codegen.Type
 	storage         map[semantic.Type]codegen.Type
@@ -116,6 +117,7 @@ func (c *C) declareTypes() {
 	c.T.Ctx = c.T.TypeOf(C.context{})
 	c.T.CtxPtr = c.T.Pointer(c.T.Ctx)
 	c.T.Maps = map[*semantic.Map]*MapInfo{}
+	c.T.CmdParams = map[*semantic.Function]codegen.Type{}
 	c.T.target = map[semantic.Type]codegen.Type{}
 	c.T.storage = map[semantic.Type]codegen.Type{}
 	c.T.targetToStorage = map[semantic.Type]codegen.Function{}
@@ -159,9 +161,20 @@ func (c *C) declareTypes() {
 		c.T.target[t] = c.T.Sli
 	}
 
+	// Declare all the command parameter structs.
+	for _, f := range c.API.Functions {
+		fields := make([]codegen.Field, 0, len(f.FullParameters)+1)
+		fields = append(fields, codegen.Field{Name: semantic.BuiltinThreadGlobal.Name(), Type: c.T.Uint64})
+		for _, p := range f.FullParameters {
+			fields = append(fields, codegen.Field{Name: p.Name(), Type: c.T.Target(p.Type)})
+		}
+		c.T.CmdParams[f] = c.T.Struct(f.Name()+"Params", fields...)
+	}
+
 	c.declareStorageTypes()
 
 	c.declareRefRels()
+
 }
 
 func (c *C) buildTypes() {
