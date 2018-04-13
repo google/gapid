@@ -1081,7 +1081,6 @@ func (sb *stateBuilder) createBuffer(buffer *BufferObject) {
 				data := sb.s.DeviceMemories.Get(bind.Memory).Data.Slice(
 					uint64(bind.MemoryOffset),
 					uint64(bind.MemoryOffset+size),
-					sb.oldState.MemoryLayout,
 				).MustRead(sb.ctx, nil, sb.oldState, nil)
 				contents = append(contents, data...)
 				copies = append(copies, VkBufferCopy{
@@ -1109,7 +1108,6 @@ func (sb *stateBuilder) createBuffer(buffer *BufferObject) {
 		data := buffer.Memory.Data.Slice(
 			uint64(buffer.MemoryOffset),
 			uint64(buffer.MemoryOffset+size),
-			sb.oldState.MemoryLayout,
 		).MustRead(sb.ctx, nil, sb.oldState, nil)
 		contents = append(contents, data...)
 		copies = append(copies, VkBufferCopy{

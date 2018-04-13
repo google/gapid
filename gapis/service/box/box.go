@@ -117,6 +117,7 @@ func (b *boxer) val(v reflect.Value) *Value {
 		return &Value{0, &Value_Slice{&Slice{
 			Type:  elTy,
 			Base:  &Pointer{s.Base(), uint32(s.Pool())},
+			Size:  s.Size(),
 			Count: s.Count(),
 			Root:  s.Root(),
 		}}}
@@ -276,6 +277,7 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 		p := memory.NewSlice(
 			v.Slice.Root,
 			v.Slice.Base.Address,
+			v.Slice.Size,
 			v.Slice.Count,
 			memory.PoolID(v.Slice.Base.Pool),
 			v.Slice.Type.Get(),

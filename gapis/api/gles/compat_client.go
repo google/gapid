@@ -131,7 +131,7 @@ func compatDrawElements(
 		end := u64.Min(start+uint64(indexSize)*uint64(cmd.indicesCount()), data.count) // Clamp
 		limits, ok := cmd.indexLimits()
 		if !ok {
-			limits = e.calcIndexLimits(data.Slice(start, end, s.MemoryLayout), indexSize)
+			limits = e.calcIndexLimits(data.Slice(start, end), indexSize)
 		}
 		moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, id, cmd, s, c, out)
 	}

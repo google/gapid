@@ -344,7 +344,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
   for (auto &mem : mState.DeviceMemories) {
     auto &memory = mem.second;
     memory->mData = gapil::Slice<uint8_t>::create(
-        create_virtual_pool(memory->mAllocationSize));
+        create_virtual_pool(memory->mAllocationSize), false);
     gpu_pools->insert(memory->mData.pool_id());
     if (memory->mMappedLocation != nullptr) {
       if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
@@ -587,7 +587,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
               level_size(image_info.mExtent, image_info.mFormat, lev.first,
                          a.first);
           level->mData = gapil::Slice<uint8_t>::create(
-              create_virtual_pool(e.level_size));
+              create_virtual_pool(e.level_size), false);
           gpu_pools->insert(level->mData.pool_id());
         }
       }

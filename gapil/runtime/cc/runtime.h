@@ -59,10 +59,11 @@ typedef struct pool_t {
 
 // slice is the data of a gapil slice type (elty foo[]).
 typedef struct slice_t {
-	pool*    pool; // the underlying pool. nullptr represents the application pool.
-	void*    root; // original pointer this slice derives from.
-	void*    base; // address of first element.
-	uint64_t size; // size in bytes of the slice.
+	pool*    pool;  // the underlying pool. nullptr represents the application pool.
+	void*    root;  // original pointer this slice derives from.
+	void*    base;  // address of first element.
+	uint64_t size;  // size in bytes of the slice.
+	uint64_t count; // total number of elements in the slice.
 } slice;
 
 // string is the shared data of a gapil string type.
@@ -143,15 +144,12 @@ DECL_GAPIL_CB(void, gapil_free, arena*, void* ptr);
 // allocates a new slice and underlying pool with the given size.
 DECL_GAPIL_CB(pool*, gapil_make_pool, context* ctx, uint64_t size);
 
-// allocates a new slice and underlying pool with the given size.
-DECL_GAPIL_CB(void, gapil_make_slice, context* ctx, uint64_t size, slice* out);
-
 // allocates a new slice and underlying pool filled with data from the given
 // base pointer, offset and size.
-DECL_GAPIL_CB(void, gapil_pointer_to_slice, context* ctx, uintptr_t ptr, uint64_t offset, uint64_t size, slice* out);
+DECL_GAPIL_CB(void, gapil_pointer_to_slice, context* ctx, uintptr_t ptr, uint64_t offset, uint64_t size, uint64_t count, slice* out);
 
-// frees a pool previously allocated with gapil_make_pool, gapil_make_slice,
-// gapil_string_to_slice or gapil_pointer_to_slice.
+// frees a pool previously allocated with gapil_make_pool, gapil_string_to_slice
+// or gapil_pointer_to_slice.
 DECL_GAPIL_CB(void, gapil_free_pool, pool*);
 
 // copies N bytes of data from src to dst, where N is min(dst.size, src.size).

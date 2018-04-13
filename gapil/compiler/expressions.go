@@ -283,8 +283,11 @@ func (c *C) create(s *S, e *semantic.Create) *codegen.Value {
 
 func (c *C) clone(s *S, e *semantic.Clone) *codegen.Value {
 	src := c.expression(s, e.Slice)
-	size := src.Extract(SliceSize)
-	dst := c.MakeSlice(s, size)
+	srcSize := src.Extract(SliceSize)
+	elSize := s.SizeOf(c.T.Storage(e.Type.To))
+	dstCount := s.Div(srcSize, elSize)
+	dstSize := s.Mul(dstCount, elSize)
+	dst := c.MakeSlice(s, dstSize, dstCount)
 	c.CopySlice(s, dst, src)
 	c.deferRelease(s, dst, e.Type)
 	return dst
@@ -334,8 +337,7 @@ func (c *C) length(s *S, e *semantic.Length) *codegen.Value {
 	var l *codegen.Value
 	switch ty := semantic.Underlying(e.Object.ExpressionType()).(type) {
 	case *semantic.Slice:
-		size := o.Extract(SliceSize)
-		l = s.Div(size, s.SizeOf(c.T.Storage(ty.To)))
+		l = o.Extract(SliceCount)
 	case *semantic.Map:
 		l = o.Index(0, MapCount).Load()
 	case *semantic.Builtin:
@@ -366,9 +368,7 @@ func (c *C) make(s *S, e *semantic.Make) *codegen.Value {
 	elTy := c.T.Storage(e.Type.To)
 	count := c.expression(s, e.Size).Cast(c.T.Uint64)
 	size := s.Mul(count, s.SizeOf(elTy))
-	slicePtr := s.Local("slicePtr", c.T.Sli)
-	s.Call(c.callbacks.makeSlice, s.Ctx, size, slicePtr)
-	slice := slicePtr.Load()
+	slice := c.MakeSlice(s, size, count)
 	c.deferRelease(s, slice, e.Type)
 	return slice
 }
@@ -434,7 +434,7 @@ func (c *C) pointerRange(s *S, e *semantic.PointerRange) *codegen.Value {
 	count := s.Sub(end, start).SetName("count")
 	size := s.Mul(count, s.SizeOf(elTy)).Cast(c.T.Uint64).SetName("size")
 	slicePtr := s.Local("slicePtr", c.T.Sli)
-	s.Call(c.callbacks.pointerToSlice, s.Ctx, p, offset, size, slicePtr)
+	s.Call(c.callbacks.pointerToSlice, s.Ctx, p, offset, size, count, slicePtr)
 	slice := slicePtr.Load()
 	c.deferRelease(s, slice, e.Type)
 	return slice
@@ -516,6 +516,7 @@ func (c *C) sliceRange(s *S, e *semantic.SliceRange) *codegen.Value {
 	end := base.Index(to).SetName("slice_end")                                        // T*
 	size := s.Sub(end.Cast(c.T.Uint64), start.Cast(c.T.Uint64)).SetName("slice_size") // u64
 
+	slice = slice.Insert(SliceCount, s.Sub(to, from))
 	slice = slice.Insert(SliceSize, size)
 	slice = slice.Insert(SliceBase, start.Cast(c.T.Uint8Ptr))
 	// TODO: Check sub-slice is within original slice bounds.

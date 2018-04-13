@@ -490,8 +490,8 @@
   {{else if IsNull             $}}{{Template "Go.Null" $.Type}}
   {{else if IsNew              $}}new {{Template "Go.Type" $.Type}}
   {{else if IsSliceContains    $}}{{Template "Go.Read" $.Slice  }}.Contains(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
-  {{else if IsSliceIndex       $}}{{Template "Go.Read" $.Slice  }}.Index({{Template "Go.Read" $.Index}}, ϟl).{{Macro "Go.MemoryRead"}}
-  {{else if IsSliceRange       $}}{{Template "Go.Read" $.Slice  }}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}}, ϟl)
+  {{else if IsSliceIndex       $}}{{Template "Go.Read" $.Slice  }}.Index({{Template "Go.Read" $.Index}}).{{Macro "Go.MemoryRead"}}
+  {{else if IsSliceRange       $}}{{Template "Go.Read" $.Slice  }}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}})
   {{else if IsPointerRange     $}}{{Template "Go.Read" $.Pointer}}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}}, ϟl)
   {{else if IsClone            $}}{{Template "Go.Read" $.Slice  }}.Clone(ϟctx, ϟa, ϟs, ϟb)
   {{else if IsMake             $}}Make{{Template "Go.Type" $.Type}}({{Template "Go.Read" $.Size}}, ϟs)
@@ -580,7 +580,7 @@
   {{/* A[] -> B[] */}}{{else if and (IsSlice $src_ty) (IsSlice $dst_ty)}}
     As{{Template "Go.Type" $.Type}}({{$src}}, ϟl)
   {{/* T[] -> T* */}}{{else if and (IsSlice $src_ty) (IsPointer $dst_ty)}}
-    {{Template "Go.Type" $.Type}}({{$src}}.Index(0, ϟl))
+    {{Template "Go.Type" $.Type}}({{$src}}.Index(0))
   {{/* char* -> string */}}{{else if and (IsPointer $src_ty) (IsString $dst_ty)}}
     strings.TrimRight(string(ϟmem.CharToBytes({{$src}}.StringSlice(ϟctx, ϟs).{{Macro "Go.MemoryRead"}})), "\x00")
   {{/* char[] -> string */}}{{else if and (IsSlice $src_ty) (IsString $dst_ty)}}

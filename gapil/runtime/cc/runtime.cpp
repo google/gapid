@@ -156,15 +156,6 @@ void gapil_free_pool(pool* pool) {
     arena->destroy(pool);
 }
 
-// TODO: Change this to gapil_make_pool for symetry?
-void gapil_make_slice(context* ctx, uint64_t size, slice* out) {
-    DEBUG_PRINT("gapil_make_slice(size: 0x%" PRIx64 ")", size);
-
-    auto pool = gapil_make_pool(ctx, size);
-
-    *out = slice{pool, pool->buffer, pool->buffer, size};
-}
-
 void gapil_copy_slice(context* ctx, slice* dst, slice* src) {
     DEBUG_PRINT("gapil_copy_slice(ctx: %p,\n"
                 "                 dst: [pool: %p, root: %p, base: %p, size: 0x%" PRIx64 "],\n"
@@ -177,9 +168,9 @@ void gapil_copy_slice(context* ctx, slice* dst, slice* src) {
     memcpy(dst->base, src->base, size);
 }
 
-void gapil_pointer_to_slice(context* ctx, uintptr_t ptr, uint64_t offset, uint64_t size, slice* out) {
-    DEBUG_PRINT("gapil_pointer_to_slice(ptr: 0x%" PRIx64 ", offset: 0x%" PRIx64 ", size: 0x%" PRIx64 ")",
-            ptr, offset, size);
+void gapil_pointer_to_slice(context* ctx, uintptr_t ptr, uint64_t offset, uint64_t size, uint64_t count, slice* out) {
+    DEBUG_PRINT("gapil_pointer_to_slice(ptr: 0x%" PRIx64 ", offset: 0x%" PRIx64 ", size: 0x%" PRIx64 ", count: 0x%" PRIx64 ")",
+            ptr, offset, size, count);
 
     auto end = ptr + offset + size;
     auto root = reinterpret_cast<uint8_t*>(pointer_remapper(ctx, ptr, end - ptr));
@@ -189,6 +180,7 @@ void gapil_pointer_to_slice(context* ctx, uintptr_t ptr, uint64_t offset, uint64
     out->root = root;
     out->base = base;
     out->size = size;
+    out->count = count;
 }
 
 string* gapil_pointer_to_string(context* ctx, uintptr_t ptr) {
@@ -239,8 +231,15 @@ string* gapil_slice_to_string(context* ctx, slice* slice) {
 void gapil_string_to_slice(context* ctx, string* str, slice* out) {
     DEBUG_PRINT("gapil_string_to_slice(str: '%s')", str->data);
 
-    gapil_make_slice(ctx, str->length, out);
-    memcpy(out->base, str->data, str->length);
+    auto pool = gapil_make_pool(ctx, str->length);
+
+    memcpy(pool->buffer, str->data, str->length);
+
+    out->pool = pool;
+    out->base = pool->buffer;
+    out->root = pool->buffer;
+    out->size = str->length;
+    out->count = str->length;
 }
 
 string* gapil_string_concat(string* a, string* b) {

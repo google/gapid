@@ -217,28 +217,30 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 
 	case box.IsMemorySlice(t):
 		slice := box.AsMemorySlice(v)
-		if size := slice.Count(); needsSubgrouping(tree.groupLimit, size) {
-			for i, c := uint64(0), subgroupCount(tree.groupLimit, size); i < c; i++ {
-				s, e := subgroupRange(tree.groupLimit, size, i)
+		count := slice.Count()
+		if needsSubgrouping(tree.groupLimit, count) {
+			for i, c := uint64(0), subgroupCount(tree.groupLimit, count); i < c; i++ {
+				s, e := subgroupRange(tree.groupLimit, count, i)
 				children = append(children, &stn{
 					name:           fmt.Sprintf("[%d - %d]", n.subgroupOffset+s, n.subgroupOffset+e-1),
-					value:          reflect.ValueOf(slice.ISlice(s, e, tree.globalState.MemoryLayout)),
+					value:          reflect.ValueOf(slice.ISlice(s, e)),
 					path:           path.NewSlice(s, e-1, n.path),
 					isSubgroup:     true,
 					subgroupOffset: n.subgroupOffset + s,
 				})
 			}
 		} else {
-			for i, c := uint64(0), slice.Count(); i < c; i++ {
-				ptr := slice.IIndex(i, tree.globalState.MemoryLayout)
-				el, err := memory.LoadPointer(ctx, ptr, tree.globalState.Memory, tree.globalState.MemoryLayout)
-				if err != nil {
-					panic(err)
-				}
-				v = reflect.ValueOf(el)
+			slice := slice.ISlice(0, count)
+			els, err := memory.LoadSlice(ctx, slice, tree.globalState.Memory, tree.globalState.MemoryLayout)
+			if err != nil {
+				panic(err)
+			}
+			arr := reflect.ValueOf(els)
+			for i := uint64(0); i < count; i++ {
+				el := arr.Index(int(i))
 				children = append(children, &stn{
 					name:  fmt.Sprint(n.subgroupOffset + i),
-					value: reflect.ValueOf(el),
+					value: el,
 					path:  path.NewArrayIndex(i, n.path),
 				})
 			}

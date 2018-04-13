@@ -26,7 +26,7 @@ import (
 // LoadSlice loads the slice elements from s into a go-slice of the slice type.
 func LoadSlice(ctx context.Context, s Slice, pools Pools, l *device.MemoryLayout) (interface{}, error) {
 	pool := pools.MustGet(s.Pool())
-	rng := s.Range(l)
+	rng := Range{s.Base(), s.Size()}
 	ioR := pool.Slice(rng).NewReader(ctx)
 	binR := endian.Reader(ioR, l.GetEndian())
 	d := NewDecoder(binR, l)

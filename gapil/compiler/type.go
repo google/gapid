@@ -518,11 +518,11 @@ func (c *C) initialValue(s *S, t semantic.Type) *codegen.Value {
 	}
 }
 
-func (c *C) buildSlice(s *S, root, base, size, pool *codegen.Value) *codegen.Value {
-	slice := s.Undef(c.T.Sli)
-	slice = slice.Insert(SliceRoot, root)
-	slice = slice.Insert(SliceBase, base)
-	slice = slice.Insert(SliceSize, size)
-	slice = slice.Insert(SlicePool, pool)
-	return slice
+func (c *C) buildSlice(s *S, root, base, size, count, pool *codegen.Value) *codegen.Value {
+	return s.Undef(c.T.Sli).
+		Insert(SliceRoot, root).
+		Insert(SliceBase, base).
+		Insert(SliceSize, size).
+		Insert(SliceCount, count).
+		Insert(SlicePool, pool)
 }

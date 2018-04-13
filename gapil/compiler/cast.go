@@ -50,7 +50,7 @@ func (c *C) doCast(s *S, dstTy, srcTy semantic.Type, v *codegen.Value) *codegen.
 		pool := v.Extract(SlicePool)
 		count := s.Div(size, s.SizeOf(c.T.Storage(srcSliceTy.To)))
 		size = s.Mul(count, s.SizeOf(c.T.Storage(dstSliceTy.To)))
-		return c.buildSlice(s, root, base, size, pool)
+		return c.buildSlice(s, root, base, size, count, pool)
 	default:
 		return v.Cast(c.T.Target(dstTy)) // TODO: storage vs memory.
 	}

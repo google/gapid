@@ -164,7 +164,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 				if err != nil {
 					return nil, err
 				}
-				data := pool.Slice(l.Data.Range(s.MemoryLayout))
+				data := pool.Slice(l.Data.Range())
 				buf := make([]byte, data.Size())
 				if err := data.Get(ctx, 0, buf); err != nil {
 					return nil, err

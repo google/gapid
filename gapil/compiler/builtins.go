@@ -52,10 +52,11 @@ const (
 
 // Field names for the slice_t runtime type.
 const (
-	SlicePool = "pool"
-	SliceRoot = "root"
-	SliceBase = "base"
-	SliceSize = "size"
+	SlicePool  = "pool"
+	SliceRoot  = "root"
+	SliceBase  = "base"
+	SliceSize  = "size"
+	SliceCount = "count"
 )
 
 // Field names for the pool_t runtime type.
