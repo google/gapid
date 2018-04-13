@@ -16,14 +16,11 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"time"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -117,49 +114,11 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 	// if we aren't debuggable regardless.
 	var m *flock.Mutex
 	if o.APIs&VulkanAPI != uint32(0) {
-		m, err := reserveVulkanDevice(ctx, d)
+		m, err = reserveVulkanDevice(ctx, d)
 		if err != nil {
 			d.RemoveForward(ctx, port)
 			return nil, log.Err(ctx, err, "Setting up for tracing Vulkan")
 		}
-		// Make a thread to listen to the signal for unsetting Vulkan implicit
-		// layers property.
-		// TODO: This mechanism will be dropped once the whole communication
-		// with GAPII being migrated to gRPC.
-		crash.Go(func() {
-			port, err := adb.LocalFreeTCPPort()
-			if err != nil {
-				log.Err(ctx, err, "Finding free port for listening to debug.vulkan.layers unset signal.")
-				return
-			}
-			if err = d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket("unset-debug-vulkan-layers")); err != nil {
-				log.Err(ctx, err, "Setting up port forwarding for listening to debug.vulkan.layers unset signal.")
-				return
-			}
-			defer d.RemoveForward(ctx, port)
-			// Try to connect to the unset signal port, if the port is open
-			// and messages can be received, unset the Vulkan implicit layers
-			// property.
-			log.I(ctx, "Waiting for signal to unset %s on localhost:%d", vkImplicitLayersProp, port)
-			task.Retry(ctx, 0, time.Second, func(ctx context.Context) (bool, error) {
-				conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", port))
-				if err != nil {
-					return false, err
-				}
-				conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-				var n int
-				// No need to read the whole message
-				n, err = conn.Read(make([]byte, 1))
-				if err != nil || n == 0 {
-					return false, err
-				}
-				log.I(ctx, "VkGraphcsSpy loaded, unset %s now.", vkImplicitLayersProp)
-				if err = releaseVulkanDevice(ctx, d, m); err != nil {
-					log.Errf(ctx, err, "Unsetting %s", vkImplicitLayersProp)
-				}
-				return true, nil
-			})
-		})
 	}
 
 	app.AddCleanup(ctx, func() {
