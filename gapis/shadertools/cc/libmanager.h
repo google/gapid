@@ -76,6 +76,7 @@ typedef struct convert_options_t {
   bool disassemble;
   bool relaxed;
   bool strip_optimizations;
+  int  target_glsl_version;
 } convert_options_t;
 
 typedef struct compile_options_t {

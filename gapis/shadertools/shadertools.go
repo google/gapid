@@ -117,6 +117,8 @@ func (t ShaderType) String() string {
 type ConvertOptions struct {
 	// The type of shader.
 	ShaderType ShaderType
+	// The target GLSL version (default 330).
+	TargetGLSLVersion int
 	// Shader source preamble.
 	Preamble string
 	// Whether to add prefix to all non-builtin symbols.
@@ -175,6 +177,7 @@ func ConvertGlsl(source string, o *ConvertOptions) (CodeWithDebugInfo, error) {
 		disassemble:            C.bool(o.Disassemble),
 		relaxed:                C.bool(o.Relaxed),
 		strip_optimizations:    C.bool(o.StripOptimizations),
+		target_glsl_version:    C.int(o.TargetGLSLVersion),
 	}
 	result := C.convertGlsl(cstr(source), C.size_t(len(source)), &opts)
 	defer C.deleteGlslCodeWithDebug(result)

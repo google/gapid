@@ -292,7 +292,8 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length, const conv
     strcpy(result->disassembly_string, tmp.c_str());
   }
 
-  std::string source = spirv2glsl(std::move(spirv_new), options->strip_optimizations);
+  std::string source = spirv2glsl(std::move(spirv_new),
+      options->target_glsl_version, options->strip_optimizations);
 
   result->source_code = new char[source.length() + 1];
   strcpy(result->source_code, source.c_str());

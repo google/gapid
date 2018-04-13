@@ -59,6 +59,7 @@ void main()
 				ShaderType:         shadertools.TypeFragment,
 				CheckAfterChanges:  true,
 				StripOptimizations: true,
+				TargetGLSLVersion:  330,
 			},
 			`#version 310 es
 layout(early_fragment_tests) in;

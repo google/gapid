@@ -170,6 +170,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			ShaderType:        st,
 			CheckAfterChanges: true,
 			Disassemble:       true,
+			TargetGLSLVersion: 430,
 		}
 
 		if _, err := shadertools.ConvertGlsl(shader.Source, &opts); err != nil {
