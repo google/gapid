@@ -47,7 +47,7 @@ Click the `Capture Trace...` text in the welcome screen, or click the `File` &ra
 
 1. If you wish to automatically stop tracing after N frames, then use a non-zero number for `Stop After`.
 
-1. If you wish to start tracing as soon as the application is launched, enable the `Trace From Beginning` option. If option is set, then in the tracing dialog, you must press `Start` to start the capture.
+1. If you wish to start tracing as soon as the application is launched, enable the `Trace From Beginning` option. If the option is not set, then in the tracing dialog, you must press `Start` to start the capture.
 <span class="info">Tracing OpenGL ES calls currently requires recording form the very start of the application. If the part of the application you want to debug is takes significant time to reach from application startup, consider creating a separate Activity that launches straight into the part of the application you care about.</span>
 
 1. If you would like to erase the package cache before taking the trace, enable the `Clear package cache` option.
