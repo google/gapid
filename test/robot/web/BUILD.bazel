@@ -35,6 +35,7 @@ go_library(
         "build.go",
         "doc.go",
         "entity.go",
+        "grid.go",
         "job.go",
         "master.go",
         "requests.go",
