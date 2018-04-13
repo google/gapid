@@ -28,10 +28,10 @@ namespace swapchain {
 // Sets the key of the dispatch tables used in lower layers of the parent
 // dispatchable handle to the new child dispatchable handle. This is necessary
 // as lower layers may use that key to find the dispatch table, and a child
-// handles should share the same dispatch table key. E.g. VkCommandBuffer is a
+// handle should share the same dispatch table key. E.g. VkCommandBuffer is a
 // child dispatchable handle of VkDevice, all the VkCommandBuffer dispatching
 // functions are actually device functions (resolved by VkGetDeviceProcAddress).
-// ref: https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects,
+// Ref: https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects,
 static inline void set_dispatch_from_parent(void* child, void* parent) {
   *((const void**)child) = *((const void**)parent);
 }

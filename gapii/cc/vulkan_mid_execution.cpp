@@ -229,6 +229,12 @@ class StagingCommandBuffer {
 
     device_functions_.vkAllocateCommandBuffers(device, &allocate_info,
                                                &command_buffer_);
+    // Set the key of the dispatch tables used in lower layers of the parent
+    // dispatchable handle to the new child dispatchable handle. This is
+    // necessary as lower layers may use that key to find the dispatch table,
+    // and a child handle should share the same dispatch table key.
+    // Ref: https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects
+    *((const void**)command_buffer_) = *((const void**)device_);
 
     VkCommandBufferBeginInfo begin_info = {
         VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,  // sType
