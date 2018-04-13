@@ -66,6 +66,7 @@ func Create(ctx context.Context, config Config) (*Server, error) {
 		http.Handle("/", http.FileServer(http.Dir(path)))
 	}
 	http.HandleFunc("/tracks/", server.handleTracks)
+	http.HandleFunc("/packageChain/", server.handlePackageChain)
 	http.HandleFunc("/packages/", server.handlePackages)
 	http.HandleFunc("/artifacts/", server.handleArtifacts)
 	http.HandleFunc("/subjects/", server.handleSubjects)

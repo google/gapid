@@ -17,9 +17,12 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/google/gapid/test/robot/build"
+	q "github.com/google/gapid/test/robot/search/query"
 )
 
 func (s *Server) handleArtifacts(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +55,38 @@ func (s *Server) handlePackages(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(result)
 	}
+}
+
+func (s *Server) handlePackageChain(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	head := r.FormValue("head")
+	if head == "" {
+		writeError(w, 404, errors.New("The head parameter is required"))
+		return
+	}
+
+	pkgs := map[string]*build.Package{}
+	if err := s.Build.SearchPackages(ctx, q.Bool(true).Query(), func(ctx context.Context, entry *build.Package) error {
+		pkgs[entry.Id] = entry
+		return nil
+	}); err != nil {
+		writeError(w, 500, err)
+		return
+	}
+
+	pkg, ok := pkgs[head]
+	if !ok {
+		writeError(w, 404, fmt.Errorf("Package '%s' not found", head))
+		return
+	}
+
+	result := []*build.Package(nil)
+	for ; pkg != nil; pkg = pkgs[pkg.Parent] {
+		result = append(result, pkg)
+	}
+
+	json.NewEncoder(w).Encode(result)
 }
 
 func (s *Server) handleTracks(w http.ResponseWriter, r *http.Request) {
