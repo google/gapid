@@ -51,6 +51,37 @@ func (v Version) AtLeastGL(major, minor int) bool {
 	return !v.IsES && v.AtLeast(major, minor)
 }
 
+// MaxGLSL returns the highest supported GLSL version for the given GL version.
+func (v Version) MaxGLSL() Version {
+	major, minor, isES := v.Major, v.Minor, v.IsES
+	switch {
+	case major == 2 && isES:
+		return Version{Major: 1, Minor: 0}
+	case major == 3 && isES:
+		return Version{Major: 3, Minor: 0}
+
+	case major == 2 && minor == 0 && !isES:
+		return Version{Major: 1, Minor: 1}
+	case major == 2 && minor == 1 && !isES:
+		return Version{Major: 1, Minor: 2}
+	case major == 3 && minor == 0 && !isES:
+		return Version{Major: 1, Minor: 3}
+	case major == 3 && minor == 1 && !isES:
+		return Version{Major: 1, Minor: 4}
+	case major == 3 && minor == 2 && !isES:
+		return Version{Major: 1, Minor: 5}
+
+	default:
+		return Version{Major: major, Minor: minor}
+	}
+}
+
+// AsInt returns the version in the form Mmm, where M is the major version and
+// m is the minor version.
+func (v Version) AsInt() int {
+	return v.Major*100 + v.Minor*10
+}
+
 var versionRe = regexp.MustCompile(`^(OpenGL ES.*? )?(\d+)\.(\d+).*`)
 
 // ParseVersion parses the GL version major, minor and flavour from the output of glGetString(GL_VERSION).
@@ -62,33 +93,4 @@ func ParseVersion(str string) (*Version, error) {
 		return &Version{IsES: isES, Major: major, Minor: minor}, nil
 	}
 	return nil, fmt.Errorf("Unknown GL_VERSION format: %s", str)
-}
-
-// GLSLVersion returns the highest supported GLSL version for the given GL version.
-func GLSLVersion(glVersion string) (Version, error) {
-	v, err := ParseVersion(glVersion)
-	if err != nil {
-		return Version{}, err
-	}
-	major, minor, isES := v.Major, v.Minor, v.IsES
-	switch {
-	case major == 2 && isES:
-		return Version{Major: 1, Minor: 0}, nil
-	case major == 3 && isES:
-		return Version{Major: 3, Minor: 0}, nil
-
-	case major == 2 && minor == 0 && !isES:
-		return Version{Major: 1, Minor: 1}, nil
-	case major == 2 && minor == 1 && !isES:
-		return Version{Major: 1, Minor: 2}, nil
-	case major == 3 && minor == 0 && !isES:
-		return Version{Major: 1, Minor: 3}, nil
-	case major == 3 && minor == 1 && !isES:
-		return Version{Major: 1, Minor: 4}, nil
-	case major == 3 && minor == 2 && !isES:
-		return Version{Major: 1, Minor: 5}, nil
-
-	default:
-		return Version{Major: major, Minor: minor}, nil
-	}
 }

@@ -415,6 +415,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				ShaderType:         st,
 				Relaxed:            true, // find_issues will still report bad GLSL.
 				StripOptimizations: true,
+				TargetGLSLVersion:  version.MaxGLSL().AsInt(),
 			}
 
 			// Trim any prefix whitespace / newlines.
