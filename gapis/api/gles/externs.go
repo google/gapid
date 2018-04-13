@@ -46,7 +46,7 @@ func (e externs) mapMemory(slice memory.Slice) {
 		switch e.cmd.(type) {
 		case *GlMapBufferRange, *GlMapBufferRangeEXT, *GlMapBufferOES, *GlMapBuffer:
 			// Base address is on the stack.
-			b.MapMemory(slice.Range(e.s.MemoryLayout))
+			b.MapMemory(memory.Range{Base: slice.Base(), Size: slice.Size()})
 
 		default:
 			log.E(ctx, "mapBuffer extern called for unsupported command: %v", e.cmd)
@@ -56,7 +56,7 @@ func (e externs) mapMemory(slice memory.Slice) {
 
 func (e externs) unmapMemory(slice memory.Slice) {
 	if b := e.b; b != nil {
-		b.UnmapMemory(slice.Range(e.s.MemoryLayout))
+		b.UnmapMemory(memory.Range{Base: slice.Base(), Size: slice.Size()})
 	}
 }
 

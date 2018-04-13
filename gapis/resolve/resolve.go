@@ -128,16 +128,11 @@ func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
 	a := reflect.ValueOf(obj)
 	switch {
 	case box.IsMemorySlice(a.Type()):
-		ml, err := memoryLayout(ctx, p)
-		if err != nil {
-			return nil, err
-		}
-
 		slice := box.AsMemorySlice(a)
 		if count := slice.Count(); p.Index >= count {
 			return nil, errPathOOB(p.Index, "Index", 0, count-1, p)
 		}
-		return slice.IIndex(p.Index, ml), nil
+		return slice.ISlice(p.Index, p.Index+1), nil
 
 	default:
 		switch a.Kind() {
@@ -165,16 +160,11 @@ func Slice(ctx context.Context, p *path.Slice) (interface{}, error) {
 	a := reflect.ValueOf(obj)
 	switch {
 	case box.IsMemorySlice(a.Type()):
-		ml, err := memoryLayout(ctx, p)
-		if err != nil {
-			return nil, err
-		}
-
 		slice := box.AsMemorySlice(a)
-		if p.Start >= slice.Count() || p.End > slice.Count() {
-			return nil, errPathSliceOOB(p.Start, p.End, slice.Count(), p)
+		if count := slice.Count(); p.Start >= count || p.End > count {
+			return nil, errPathSliceOOB(p.Start, p.End, count, p)
 		}
-		return slice.ISlice(p.Start, p.End, ml), nil
+		return slice.ISlice(p.Start, p.End), nil
 
 	default:
 		switch a.Kind() {

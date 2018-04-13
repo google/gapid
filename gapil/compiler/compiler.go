@@ -77,8 +77,8 @@ type C struct {
 		applyReads      codegen.Function
 		applyWrites     codegen.Function
 		freePool        codegen.Function
-		makeSlice       codegen.Function
 		copySlice       codegen.Function
+		makePool        codegen.Function
 		pointerToSlice  codegen.Function
 		pointerToString codegen.Function
 		sliceToString   codegen.Function
@@ -194,8 +194,8 @@ func (c *C) compile() {
 	c.callbacks.applyReads = c.M.ParseFunctionSignature(C.GoString(C.gapil_apply_reads_sig))
 	c.callbacks.applyWrites = c.M.ParseFunctionSignature(C.GoString(C.gapil_apply_writes_sig))
 	c.callbacks.freePool = c.M.ParseFunctionSignature(C.GoString(C.gapil_free_pool_sig))
-	c.callbacks.makeSlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_make_slice_sig))
 	c.callbacks.copySlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_copy_slice_sig))
+	c.callbacks.makePool = c.M.ParseFunctionSignature(C.GoString(C.gapil_make_pool_sig))
 	c.callbacks.pointerToSlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_pointer_to_slice_sig))
 	c.callbacks.pointerToString = c.M.ParseFunctionSignature(C.GoString(C.gapil_pointer_to_string_sig))
 	c.callbacks.sliceToString = c.M.ParseFunctionSignature(C.GoString(C.gapil_slice_to_string_sig))
@@ -258,16 +258,22 @@ func (c *C) Build(f codegen.Function, do func(*S)) {
 }
 
 // MakeSlice creates a new slice of the given size in bytes.
-func (c *C) MakeSlice(s *S, size *codegen.Value) *codegen.Value {
+func (c *C) MakeSlice(s *S, size, count *codegen.Value) *codegen.Value {
 	dstPtr := s.Local("dstPtr", c.T.Sli)
-	c.MakeSliceAt(s, size, dstPtr)
+	c.MakeSliceAt(s, size, count, dstPtr)
 	return dstPtr.Load()
 }
 
 // MakeSliceAt creates a new slice of the given size in bytes at the given
 // slice pointer.
-func (c *C) MakeSliceAt(s *S, size, dstPtr *codegen.Value) {
-	s.Call(c.callbacks.makeSlice, s.Ctx, size, dstPtr)
+func (c *C) MakeSliceAt(s *S, size, count, dstPtr *codegen.Value) {
+	pool := s.Call(c.callbacks.makePool, s.Ctx, size)
+	buf := pool.Index(0, PoolBuffer).Load()
+	dstPtr.Index(0, SlicePool).Store(pool)
+	dstPtr.Index(0, SliceRoot).Store(buf)
+	dstPtr.Index(0, SliceBase).Store(buf)
+	dstPtr.Index(0, SliceSize).Store(size)
+	dstPtr.Index(0, SliceCount).Store(count)
 }
 
 // CopySlice copies the contents of slice src to dst.

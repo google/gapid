@@ -73,7 +73,7 @@ func getIndices(
 		offset += ptr.addr
 		start := u64.Min(offset, indexBuffer.Data.count)
 		end := u64.Min(offset+size, indexBuffer.Data.count)
-		reader = indexBuffer.Data.Slice(start, end, s.MemoryLayout).Reader(ctx, s)
+		reader = indexBuffer.Data.Slice(start, end).Reader(ctx, s)
 	}
 
 	indices, err := decodeIndices(reader, ty)

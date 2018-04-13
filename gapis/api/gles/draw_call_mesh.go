@@ -177,7 +177,7 @@ func vertexStreamData(
 
 	// Only read as much data as we actually have.
 	size := u64.Min(uint64(compactSize+ /* total size of gaps */ gap*(vectorCount-1)), slice.count-base)
-	data, err := slice.Slice(base, base+size, s.MemoryLayout).Read(ctx, nil, s, nil)
+	data, err := slice.Slice(base, base+size).Read(ctx, nil, s, nil)
 	if err != nil {
 		return nil, err
 	}

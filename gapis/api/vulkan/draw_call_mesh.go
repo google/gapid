@@ -182,11 +182,11 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, boundIndexBuffer *B
 			log.E(ctx, "Shadow memory of index buffer is not big enough")
 			return []uint32{}, nil
 		}
-		indicesSlice := backingMem.Data.Slice(start, end, s.MemoryLayout)
+		indicesSlice := backingMem.Data.Slice(start, end)
 		for i := uint64(0); (i < size) && (i+sizeOfIndex-1 < size); i += sizeOfIndex {
 			index := int32(0)
 			for j := uint64(0); j < sizeOfIndex; j++ {
-				oneByte, err := indicesSlice.Index(i+j, s.MemoryLayout).Read(ctx, nil, s, nil)
+				oneByte, err := indicesSlice.Index(i+j).Read(ctx, nil, s, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -292,7 +292,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	backingMemoryData := boundVertexBuffer.Buffer.Memory.Data
 	sliceOffset := uint64(boundVertexBuffer.Offset + boundVertexBuffer.Buffer.MemoryOffset)
 	sliceSize := uint64(boundVertexBuffer.Range)
-	vertexSlice := backingMemoryData.Slice(sliceOffset, sliceOffset+sliceSize, s.MemoryLayout)
+	vertexSlice := backingMemoryData.Slice(sliceOffset, sliceOffset+sliceSize)
 
 	formatElementAndTexelBlockSize, err :=
 		subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, attribute.Format)
@@ -313,7 +313,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 		// our zero-initialized buffer.
 		return out, fmt.Errorf("Vertex data is out of range")
 	}
-	data, err := vertexSlice.Slice(offset, offset+fullSize, s.MemoryLayout).Read(ctx, nil, s, nil)
+	data, err := vertexSlice.Slice(offset, offset+fullSize).Read(ctx, nil, s, nil)
 	if err != nil {
 		return nil, err
 	}

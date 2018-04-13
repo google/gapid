@@ -299,10 +299,11 @@
       «} ()
     {{else if IsPointer $truetype}}{{$target}}({{$.Value}}.addr)
     {{else if IsSlice $truetype}}&{{$target}}{»¶
-      Root: {{$.Value}}.root,¶
-      Base: {{$.Value}}.base,¶
+      Root:  {{$.Value}}.root,¶
+      Base:  {{$.Value}}.base,¶
+      Size:  {{$.Value}}.size,¶
       Count: {{$.Value}}.count,¶
-      Pool: uint32({{$.Value}}.pool),¶
+      Pool:  uint32({{$.Value}}.pool),¶
     «}
     {{else if IsBool $truetype}}func(v bool) {{$target}}  { if v { return 1 } else { return 0 } } ({{$.Value}})
     {{else if eq $source $target}}{{$.Value}}
@@ -332,6 +333,7 @@
     {{else if IsSlice $truetype}}{{$target}}{»¶
       root:  {{$.Value}}.Root,¶
       base:  {{$.Value}}.Base,¶
+      size:  {{$.Value}}.Size,¶
       count: {{$.Value}}.Count,¶
       pool:  memory.PoolID({{$.Value}}.Pool),¶
     «}

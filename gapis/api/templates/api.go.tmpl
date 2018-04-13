@@ -311,7 +311,15 @@
     if start > end {
       panic(fmt.Errorf("Slice start (%d) is greater than the end (%d)", start, end))
     }
-    return {{$slice_ty}}{root: p.addr, base: p.addr + start * p.ElementSize(ϟl), count: end-start, pool: p.pool}
+    elSize := p.ElementSize(ϟl)
+    count := end-start
+    return {{$slice_ty}}{
+      root:  p.addr,
+      base:  p.addr + start * elSize,
+      size:  count * elSize,
+      count: count,
+      pool:  p.pool,
+    }
   }
 
   // ISlice returns a new Slice from the pointer using start and end indices.
@@ -361,7 +369,7 @@
     s.ReserveMemory(ϟctx, ϟa, ϟs, ϟb)
     // Write out the entire structure, then over-write
     // any pointer fields.
-    ϟb.Write(s.Range(ϟs.MemoryLayout), s.ResourceID(ϟctx, ϟs))
+    ϟb.Write(s.Range(), s.ResourceID(ϟctx, ϟs))
     d := s.Decoder(ϟctx, ϟs)
     for i := uint64(0); i < s.count; i++ {
       {{Template "ReadStructFieldsWithRemapping" $}}
@@ -430,6 +438,7 @@
   type {{$slice_ty}} struct {
     root  uint64        // Original pointer this slice derives from.
     base  uint64        // Address of first element.
+    size  uint64        // Total size of the slice in bytes.
     count uint64        // Number of elements in the slice.
     pool  ϟmem.PoolID // The pool identifier.
   }
@@ -440,7 +449,11 @@
     func Make{{$slice_ty}}FromString(str string, ϟs *api.GlobalState) {{$slice_ty}} {
       id, pool := ϟs.Memory.New()
       pool.Write(0, ϟmem.Blob([]byte(str)))
-      return {{$slice_ty}}{ count: uint64(len(str)), pool: id }
+      return {{$slice_ty}}{
+        size:  uint64(len(str)),
+        count: uint64(len(str)),
+        pool:  id,
+      }
     }
   {{end}}
 
@@ -455,16 +468,25 @@
 
   // Make{{$slice_ty}} returns a {{$slice_ty}} backed by a new memory pool.
   func Make{{$slice_ty}}(count uint64, ϟs *api.GlobalState) {{$slice_ty}} {
+    ϟl := ϟs.MemoryLayout; _ = ϟl
     id, _ := ϟs.Memory.New()
-    return {{$slice_ty}}{ count: count, pool: id }
+    return {{$slice_ty}}{
+      size:  count * {{Template "Go.SizeOf" $s.To}},
+      count: count,
+      pool:  id,
+    }
   }
 
   // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
   func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
     s.OnRead(ϟctx, ϟa, ϟs, ϟb)
     id, dst := ϟs.Memory.New()
-    dst.Write(0, ϟs.Memory.MustGet(s.pool).Slice(s.Range(ϟs.MemoryLayout)))
-    return {{$slice_ty}}{ count: s.count, pool: id }
+    dst.Write(0, ϟs.Memory.MustGet(s.pool).Slice(s.Range()))
+    return {{$slice_ty}}{
+      size:  s.size,
+      count: s.count,
+      pool: id,
+    }
   }
 
   // Root returns the original pointer this slice derives from.
@@ -475,6 +497,9 @@
 
   // Count returns the number of elements in the slice.
   func (s {{$slice_ty}}) Count() uint64 { return s.count }
+
+  // Size returns the size of the slice in bytes.
+  func (s {{$slice_ty}}) Size() uint64 { return s.size }
 
   // Pool returns the the pool identifier.
   func (s {{$slice_ty}}) Pool() ϟmem.PoolID { return s.pool }
@@ -489,16 +514,15 @@
   func (s {{$slice_ty}}) ElementSize(ϟl *device.MemoryLayout) uint64 {
     return {{Template "Go.SizeOf" $s.To}}
   }
-
   // Range returns the memory range this slice represents in the underlying pool.
-  func (s {{$slice_ty}}) Range(ϟl *device.MemoryLayout) ϟmem.Range {
-    return ϟmem.Range{Base: s.base, Size: s.count * s.ElementSize(ϟl) }
+  func (s {{$slice_ty}}) Range() ϟmem.Range {
+    return ϟmem.Range{Base: s.base, Size: s.size }
   }
 
   // ResourceID returns an identifier to a resource representing the data of
   // this slice.
   func (s {{$slice_ty}}) ResourceID(ϟctx context.Context, ϟs *api.GlobalState) id.ID {
-    id, err := ϟs.Memory.MustGet(s.pool).Slice(s.Range(ϟs.MemoryLayout)).ResourceID(ϟctx)
+    id, err := ϟs.Memory.MustGet(s.pool).Slice(s.Range()).ResourceID(ϟctx)
     if err != nil {
       panic(err)
     }
@@ -507,22 +531,22 @@
 
   // Reader returns a binary reader for the slice.
   func (s {{$slice_ty}}) Reader(ϟctx context.Context, ϟs *api.GlobalState) binary.Reader {
-    return ϟs.MemoryReader(ϟctx, ϟs.Memory.MustGet(s.pool).Slice(s.Range(ϟs.MemoryLayout)))
+    return ϟs.MemoryReader(ϟctx, ϟs.Memory.MustGet(s.pool).Slice(s.Range()))
   }
 
   // Writer returns a binary writer for the slice.
   func (s {{$slice_ty}}) Writer(ϟs *api.GlobalState) binary.Writer {
-    return ϟs.MemoryWriter(s.pool, s.Range(ϟs.MemoryLayout))
+    return ϟs.MemoryWriter(s.pool, s.Range())
   }
 
   // Decoder returns a memory decoder for the slice.
   func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟs *api.GlobalState) *ϟmem.Decoder {
-    return ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(s.pool).Slice(s.Range(ϟs.MemoryLayout)))
+    return ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(s.pool).Slice(s.Range()))
   }
 
   // Encoder returns a memory encoder for the slice.
   func (s {{$slice_ty}}) Encoder(ϟs *api.GlobalState) *ϟmem.Encoder {
-    return ϟs.MemoryEncoder(s.pool, s.Range(ϟs.MemoryLayout))
+    return ϟs.MemoryEncoder(s.pool, s.Range())
   }
 
   {{if not $el_is_void}}
@@ -530,13 +554,16 @@
     // The returned slice length will be calculated so that the returned slice is
     // no longer (in bytes) than s.
     func As{{$slice_ty}}(s ϟmem.Slice, ϟl *device.MemoryLayout) {{$slice_ty}} {
-      out := {{$slice_ty}}{
-        root: s.Root(),
-        base: s.Base(),
-        pool: s.Pool(),
+      elSize := {{Template "Go.SizeOf" $s.To}}
+      newCount := s.Size() / elSize
+      newSize := newCount * elSize
+      return {{$slice_ty}}{
+        root:  s.Root(),
+        base:  s.Base(),
+        pool:  s.Pool(),
+        size:  newSize,
+        count: newCount,
       }
-      out.count = (s.Count() * s.ElementSize(ϟl)) / out.ElementSize(ϟl)
-      return out
     }
 
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
@@ -562,7 +589,7 @@
     // which is the minimum of s.count and len(src).
     func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) (uint64, error) {
       count := u64.Min(s.count, uint64(len(src)))
-      e := s.Slice(0, count, ϟs.MemoryLayout).Encoder(ϟs)
+      e := s.Slice(0, count).Encoder(ϟs)
       ϟmem.Write(e, src[:count])
       s.OnWrite(ϟctx, ϟa, ϟs, ϟb)
       if err := e.Error(); err != nil {
@@ -583,14 +610,14 @@
     // The slices of this and dst to the copied elements is returned.
     func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
       count := u64.Min(dst.count, src.count)
-      dst, src = dst.Slice(0, count, ϟs.MemoryLayout), src.Slice(0, count, ϟs.MemoryLayout)
+      dst, src = dst.Slice(0, count), src.Slice(0, count)
     {{if $el_is_ptr}}
       if (dst.pool == ϟmem.ApplicationPool) != (src.pool == ϟmem.ApplicationPool) {
         dst.MustWrite(ϟctx, src.MustRead(ϟctx, ϟa, ϟs, ϟb), ϟa, ϟs, ϟb) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
       } else {
     {{end}}
       src.OnRead(ϟctx, ϟa, ϟs, ϟb)
-      ϟs.Memory.MustGet(dst.pool).Write(dst.base, ϟs.Memory.MustGet(src.pool).Slice(src.Range(ϟs.MemoryLayout)))
+      ϟs.Memory.MustGet(dst.pool).Write(dst.base, ϟs.Memory.MustGet(src.pool).Slice(src.Range()))
       dst.OnWrite(ϟctx, ϟa, ϟs, ϟb)
     {{if $el_is_ptr}} } {{end}}
       return dst, src
@@ -610,10 +637,10 @@
 
   // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
-    ϟl := ϟs.MemoryLayout
+    ϟl := ϟs.MemoryLayout; _ = ϟl
     if pool, err := ϟs.Memory.Get(s.pool); err == nil {
       if f := pool.OnRead; f != nil {
-        f(s.Range(ϟl))
+        f(s.Range())
       }
     }
     if ϟb != nil && s.pool == ϟmem.ApplicationPool {
@@ -650,7 +677,7 @@
           }
           panicOnError(d.Error())
         {{else}}
-          ϟb.Write(s.Range(ϟl), s.ResourceID(ϟctx, ϟs))
+          ϟb.Write(s.Range(), s.ResourceID(ϟctx, ϟs))
         {{end}}
       {{end}}
     }
@@ -659,14 +686,14 @@
 
   // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
-    ϟl := ϟs.MemoryLayout
+    ϟl := ϟs.MemoryLayout; _ = ϟl
     if pool, err := ϟs.Memory.Get(s.pool); err == nil {
       if f := pool.OnWrite; f != nil {
-        f(s.Range(ϟl))
+        f(s.Range())
       }
     }
     if ϟb != nil && s.pool == ϟmem.ApplicationPool {
-      ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(s.Range(ϟl).End() - s.root)})
+      ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(s.Range().End() - s.root)})
       {{if (GetAnnotation $s.To "replay_remap")}}
         {{/* Element type has explicitly stated it needs custom remapping */}}
         size := s.ElementSize(ϟl)
@@ -692,36 +719,45 @@
 
   func (s {{$slice_ty}}) ReserveMemory(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
     if ϟb != nil && s.pool == ϟmem.ApplicationPool {
-      rng := s.Range(ϟs.MemoryLayout)
+      rng := s.Range()
       ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(rng.End() - s.root)})
     }
     return s
   }
 
   // Index returns a {{$ptr_ty}} to the i'th element in this {{$slice_ty}}.
-  func (s {{$slice_ty}}) Index(i uint64, ϟl *device.MemoryLayout) {{$ptr_ty}} {
-    return {{$ptr_ty}}{ s.base + i * s.ElementSize(ϟl), s.pool }
+  func (s {{$slice_ty}}) Index(i uint64) {{$ptr_ty}} {
+    elSize := s.size / s.count
+    return {{$ptr_ty}}{ s.base + i * elSize, s.pool }
   }
 
   // IIndex returns a pointer to the i'th element in the slice.
-  func (s {{$slice_ty}}) IIndex(i uint64, ϟl *device.MemoryLayout) ϟmem.Pointer {
-    return s.Index(i, ϟl)
+  func (s {{$slice_ty}}) IIndex(i uint64) ϟmem.Pointer {
+    return s.Index(i)
   }
 
   // Slice returns a sub-slice from the {{$slice_ty}} using start and end indices.
-  func (s {{$slice_ty}}) Slice(start, end uint64, ϟl *device.MemoryLayout) {{$slice_ty}} {
+  func (s {{$slice_ty}}) Slice(start, end uint64) {{$slice_ty}} {
     if start > end {
       panic(fmt.Errorf("%v.Slice start (%d) is greater than the end (%d)", s, start, end))
     }
     if end > s.count {
       panic(fmt.Errorf("%v.Slice(%d, %d) - out of bounds", s, start, end))
     }
-    return {{$slice_ty}}{root: s.root, base: s.base + start * s.ElementSize(ϟl), count: end-start, pool: s.pool}
+    newCount := end-start
+    elSize := s.size / s.count
+    return {{$slice_ty}}{
+      root:  s.root,
+      base:  s.base + start * elSize,
+      size:  newCount * elSize,
+      count: newCount,
+      pool:  s.pool,
+    }
   }
 
   // ISlice returns a sub-slice from this slice using start and end indices.
-  func (s {{$slice_ty}}) ISlice(start, end uint64, ϟl *device.MemoryLayout) ϟmem.Slice {
-    return s.Slice(start, end, ϟl)
+  func (s {{$slice_ty}}) ISlice(start, end uint64) ϟmem.Slice {
+    return s.Slice(start, end)
   }
 
   // String returns a string description of the {{$slice_ty}} slice.

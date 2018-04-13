@@ -274,18 +274,21 @@ func TestSliceTypes(t *testing.T) {
 		A: &memory_pb.Slice{
 			Root:  0x1000,
 			Base:  0x2000,
+			Size:  0x10,
 			Count: 0x10,
 			Pool:  0,
 		},
 		B: &memory_pb.Slice{
 			Root:  0x2000,
 			Base:  0x3000,
+			Size:  0x80,
 			Count: 0x20,
 			Pool:  0,
 		},
 		C: &memory_pb.Slice{
 			Root:  0x3000,
 			Base:  0x4000,
+			Size:  0xc0,
 			Count: 0x30,
 			Pool:  0,
 		},
@@ -293,9 +296,9 @@ func TestSliceTypes(t *testing.T) {
 	checkCallbacks(ctx, "slice_types", encodeSliceTypes(&class, false), callbacks{
 		expectedType(&pb.SliceTypes{}),
 		expectedType(&memory_pb.Slice{}),
-		cbSliceEncoded{Size: 0x10},
-		cbSliceEncoded{Size: 0x20 * 4},
-		cbSliceEncoded{Size: 0x30 * 16},
+		cbSliceEncoded{int(class.A.Size)},
+		cbSliceEncoded{int(class.B.Size)},
+		cbSliceEncoded{int(class.C.Size)},
 		cbEncodeObject{Type: 1, IsGroup: false, Data: encodeProto(&class)},
 	})
 }

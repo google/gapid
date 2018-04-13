@@ -42,8 +42,8 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 		return false
 	}
 	l := e.s.MemoryLayout
-	dynamic_state_info := info.Slice(uint64(0), uint64(1), l).Index(uint64(0), l).MustRead(e.ctx, e.cmd, e.s, e.b)
-	states := dynamic_state_info.PDynamicStates.Slice(uint64(uint32(0)), uint64(dynamic_state_info.DynamicStateCount), l).MustRead(e.ctx, e.cmd, e.s, e.b)
+	dynamic_state_info := info.Slice(0, 1, l).Index(0).MustRead(e.ctx, e.cmd, e.s, e.b)
+	states := dynamic_state_info.PDynamicStates.Slice(0, uint64(dynamic_state_info.DynamicStateCount), l).MustRead(e.ctx, e.cmd, e.s, e.b)
 	for _, s := range states {
 		if s == state {
 			return true
@@ -58,7 +58,7 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 		switch e.cmd.(type) {
 		case *VkMapMemory:
 			b.Load(protocol.Type_AbsolutePointer, value.value(e.b, e.cmd, e.s))
-			b.MapMemory(slice.Range(e.s.MemoryLayout))
+			b.MapMemory(memory.Range{Base: slice.Base(), Size: slice.Size()})
 		default:
 			log.E(ctx, "mapBuffer extern called for unsupported command: %v", e.cmd)
 		}
@@ -165,7 +165,7 @@ func (e externs) postBindSparse(binds *QueuedSparseBinds) {
 
 func (e externs) unmapMemory(slice memory.Slice) {
 	if b := e.b; b != nil {
-		b.UnmapMemory(slice.Range(e.s.MemoryLayout))
+		b.UnmapMemory(memory.Range{Base: slice.Base(), Size: slice.Size()})
 	}
 }
 
@@ -182,7 +182,7 @@ func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_i
 
 	writeRngList := e.s.Memory.ApplicationPool().Slice(absSrcMemRng).ValidRanges()
 	for _, r := range writeRngList {
-		mem.Data.Slice(dstStart+r.Base, dstStart+r.Base+r.Size, l).Copy(
+		mem.Data.Slice(dstStart+r.Base, dstStart+r.Base+r.Size).Copy(
 			e.ctx, U8ᵖ(mem.MappedLocation).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b)
 	}
 }
@@ -193,7 +193,7 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 	counter := uint32(0)
 	for (pNext) != (Voidᶜᵖ{}) {
 		counter++
-		pNext = Voidᶜᵖᵖ(pNext).Slice(uint64(0), uint64(2), l).Index(uint64(1), l).MustRead(e.ctx, e.cmd, e.s, e.b)
+		pNext = Voidᶜᵖᵖ(pNext).Slice(0, 2, l).Index(1).MustRead(e.ctx, e.cmd, e.s, e.b)
 	}
 	return counter
 }

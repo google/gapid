@@ -33,11 +33,13 @@ message Observation {
 // Slice is the common data between all slice types.
 message Slice {
     // Original pointer this slice derives from.
-    uint64 Root = 1;
+    uint64 root = 1;
     // Address of first element.
-    uint64 Base = 2;
-    // Number of elements in the slice.
-    uint64 Count= 3;
+    uint64 base = 2;
+    // The size of the slice in bytes.
+    uint64 size = 3;
+    // The number of elements in the slice.
+    uint64 count = 4;
     // The pool identifier.
-    uint32 Pool = 4;
+    uint32 pool = 5;
 }

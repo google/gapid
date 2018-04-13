@@ -54,9 +54,11 @@ message Slice {
   Pointer base = 2;
   // the number of elements in the slice.
   uint64 count = 3;
+  // the total size of the slice in bytes.
+  uint64 size = 4;
   // the original pointer this slice derives from.
   // Is constant even after sub-slicing.
-  uint64 root = 4;
+  uint64 root = 5;
 }
 
 message Reference {

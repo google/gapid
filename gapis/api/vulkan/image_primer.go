@@ -452,9 +452,10 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue *QueueObject) error {
 		job.opaqueBlockExtent,
 		job.storeTarget.Info.Format,
 		0, job.aspect).levelSize)
-	data := job.storeTarget.Aspects.Get(job.aspect).Layers.Get(job.layer).Levels.Get(
-		job.level).Data.Slice(opaqueDataOffset, opaqueDataSizeInBytes,
-		h.sb.oldState.MemoryLayout).MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+	data := job.storeTarget.Aspects.
+		Get(job.aspect).Layers.Get(job.layer).Levels.Get(job.level).Data.
+		Slice(opaqueDataOffset, opaqueDataSizeInBytes).
+		MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
 
 	srcVkFmt := job.storeTarget.Info.Format
 	if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
@@ -2110,7 +2111,9 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg *ImageObject, dstAspect VkIm
 		srcImg.Info.Format,
 		0, srcAspect).levelSize)
 
-	data := srcImg.Aspects.Get(srcAspect).Layers.Get(layer).Levels.Get(level).Data.Slice(srcImgDataOffset, srcImgDataOffset+srcImgDataSizeInBytes, h.sb.oldState.MemoryLayout).MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+	data := srcImg.Aspects.Get(srcAspect).Layers.Get(layer).Levels.Get(level).
+		Data.Slice(srcImgDataOffset, srcImgDataOffset+srcImgDataSizeInBytes).
+		MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
 
 	unpacked := data
 	if dstImg.Info.Format != srcImg.Info.Format {

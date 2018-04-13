@@ -229,10 +229,11 @@ func (e *entities) declSlices(c *compiler.C) {
 		desc: &descriptor.DescriptorProto{
 			Name: proto.String("Slice"),
 			Field: []*descriptor.FieldDescriptorProto{
-				u64.protoDescField("Root", 1),
-				u64.protoDescField("Base", 2),
-				u64.protoDescField("Count", 3),
-				u32.protoDescField("Pool", 4),
+				u64.protoDescField("root", 1),
+				u64.protoDescField("base", 2),
+				u64.protoDescField("size", 3),
+				u64.protoDescField("count", 4),
+				u32.protoDescField("pool", 5),
 			},
 		},
 		protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,

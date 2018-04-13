@@ -30,6 +30,9 @@ type Slice interface {
 	// Base returns the address of first element.
 	Base() uint64
 
+	// Size returns the size of the slice in bytes.
+	Size() uint64
+
 	// Count returns the number of elements in the slice.
 	Count() uint64
 
@@ -39,54 +42,55 @@ type Slice interface {
 	// ElementType returns the reflect.Type of the elements in the slice.
 	ElementType() reflect.Type
 
-	// ElementSize returns the size in bytes of a single element in the slice.
-	ElementSize(*device.MemoryLayout) uint64
-
-	// Range returns the memory range this slice represents in the underlying pool.
-	Range(*device.MemoryLayout) Range
-
 	// ISlice returns a sub-slice from this slice using start and end indices.
-	ISlice(start, end uint64, m *device.MemoryLayout) Slice
-
-	// IIndex returns a pointer to the i'th element in the slice.
-	IIndex(i uint64, m *device.MemoryLayout) Pointer
+	ISlice(start, end uint64) Slice
 }
 
 // NewSlice returns a new Slice.
-func NewSlice(root, base, count uint64, pool PoolID, elTy reflect.Type) Slice {
-	return &sli{root, base, count, pool, elTy}
+func NewSlice(root, base, size, count uint64, pool PoolID, elTy reflect.Type) Slice {
+	return &sli{root, base, size, count, pool, elTy}
 }
 
 // sli is a slice of a basic type.
 type sli struct {
 	root  uint64
 	base  uint64
+	size  uint64
 	count uint64
 	pool  PoolID
 	elTy  reflect.Type
 }
 
-func (s sli) Root() uint64                              { return s.root }
-func (s sli) Base() uint64                              { return s.base }
-func (s sli) Count() uint64                             { return s.count }
-func (s sli) Pool() PoolID                              { return s.pool }
-func (s sli) ElementType() reflect.Type                 { return s.elTy }
-func (s sli) ElementSize(m *device.MemoryLayout) uint64 { return SizeOf(s.elTy, m) }
-func (s sli) Range(m *device.MemoryLayout) Range {
-	return Range{s.base, s.ElementSize(m) * s.count}
-}
-func (s sli) ISlice(start, end uint64, m *device.MemoryLayout) Slice {
+func (s sli) Root() uint64              { return s.root }
+func (s sli) Base() uint64              { return s.base }
+func (s sli) Size() uint64              { return s.size }
+func (s sli) Count() uint64             { return s.count }
+func (s sli) Pool() PoolID              { return s.pool }
+func (s sli) ElementSize() uint64       { return s.Size() / s.Count() }
+func (s sli) ElementType() reflect.Type { return s.elTy }
+func (s sli) ISlice(start, end uint64) Slice {
 	if start > end {
 		panic(fmt.Errorf("%v.ISlice start (%d) is greater than the end (%d)", s, start, end))
 	}
-	if end > s.count {
+	if end > s.Count() {
 		panic(fmt.Errorf("%v.ISlice(%d, %d) - out of bounds", s, start, end))
 	}
-	return sli{s.root, s.base + start*s.ElementSize(m), end - start, s.pool, s.elTy}
-}
-func (s sli) IIndex(i uint64, m *device.MemoryLayout) Pointer {
-	if i >= s.count {
-		panic(fmt.Errorf("%v.IIndex(%d) is out of bounds [0 - %d]", s, i, s.count-1))
+	count := end - start
+	elSize := s.ElementSize()
+	return sli{
+		root:  s.root,
+		base:  s.base + start*elSize,
+		size:  count * elSize,
+		count: count,
+		pool:  s.pool,
+		elTy:  s.elTy,
 	}
-	return ptr{s.base + i*s.ElementSize(m), s.pool, s.elTy}
+}
+
+func (s sli) IIndex(i uint64, m *device.MemoryLayout) Pointer {
+	if count := s.Count(); i >= count {
+		panic(fmt.Errorf("%v.IIndex(%d) is out of bounds [0 - %d]", s, i, count-1))
+	}
+	elSize := s.ElementSize()
+	return ptr{s.base + i*elSize, s.pool, s.elTy}
 }

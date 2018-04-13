@@ -314,19 +314,20 @@ func encodeRefTypes(refs *pb.RefTypes, isGroup bool) callbacks {
 	})
 }
 
-func convSlice(in *memory_pb.Slice, out *C.slice, elSize uintptr) {
-	out.pool = nil
+func convSlice(in *memory_pb.Slice, out *C.slice) {
 	out.root = (unsafe.Pointer)(uintptr(in.Root))
 	out.base = (unsafe.Pointer)(uintptr(in.Base))
-	out.size = (C.uint64_t)(in.Count * uint64(elSize))
+	out.size = (C.uint64_t)(in.Size)
+	out.count = (C.uint64_t)(in.Count)
+	out.pool = nil
 }
 
 func encodeSliceTypes(slices *pb.SliceTypes, isGroup bool) callbacks {
 	s := C.slice_types{}
 
-	convSlice(slices.A, &s.a, 1 /* uint8_t */)
-	convSlice(slices.B, &s.b, 4 /* float */)
-	convSlice(slices.C, &s.c, C.INT_TYPES_SIZE /* int_types */)
+	convSlice(slices.A, &s.a)
+	convSlice(slices.B, &s.b)
+	convSlice(slices.C, &s.c)
 
 	return withEncoder(func(ctx *C.context) {
 		C.slice_types__encode(&s, ctx, toUint8(isGroup))

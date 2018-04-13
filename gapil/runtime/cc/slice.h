@@ -41,8 +41,12 @@ public:
     // Constructs a new slice and pool sized to the given number of elements.
     inline Slice(T* base, uint64_t count);
 
+    // Constructs a new slice given the full explicit parameters.
+    inline Slice(pool_t* pool, void* root, void* base, uint64_t size, uint64_t count, bool add_ref = true);
+
     // Creates and returns a new slice wrapping the given pool.
-    inline static Slice create(pool_t* pool);
+    // If add_ref is true then the pool's reference count will be incremented.
+    inline static Slice create(pool_t* pool, bool add_ref);
 
     // Creates and returns a new slice and pool sized to the given number of
     // elements.
@@ -96,6 +100,8 @@ public:
     inline T* end() const;
 
 private:
+    void init(pool_t* pool, void* root, void* base, uint64_t size, uint64_t count, bool add_ref = true);
+
     void reference() const;
     void release();
 

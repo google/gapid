@@ -360,7 +360,7 @@ func TestBoxMemoryType(t *testing.T) {
 func TestBoxUnboxMemory(t *testing.T) {
 	val := Memory{
 		P: memory.BytePtr(1234, 555),
-		S: memory.NewSlice(1234, 1256, 42, 333, reflect.TypeOf(byte(0))),
+		S: memory.NewSlice(1234, 1256, 42, 42, 333, reflect.TypeOf(byte(0))),
 	}
 	boxed := box.NewValue(val)
 	var unboxed Memory

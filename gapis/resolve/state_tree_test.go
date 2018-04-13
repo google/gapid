@@ -32,6 +32,10 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+var intType = reflect.TypeOf(memory.Int(0))
+
+const intSize = 8
+
 type TestStruct struct {
 	/* 0 */ Bool bool
 	/* 1 */ Int int
@@ -68,7 +72,7 @@ var testState = TestState{
 		Reference: nil,
 		Map:       map[int]string{1: "one", 5: "five", 9: "nine"},
 		Array:     []int{0, 10, 20, 30, 40},
-		Slice:     memory.NewSlice(0x1000, 0x1000, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0))),
+		Slice:     memory.NewSlice(0x1000, 0x1000, 5*intSize, 5, memory.ApplicationPool, intType),
 		Pointer:   memory.NewPtr(0x1010, memory.ApplicationPool, reflect.TypeOf(memory.Size(0))),
 		Interface: &TestStruct{},
 	},
@@ -86,7 +90,7 @@ var testState = TestState{
 			20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
 			30, 31, 32, 33,
 		},
-		Slice: memory.NewSlice(0x1000, 0x1000, 1005, memory.ApplicationPool, reflect.TypeOf(memory.Int(0))),
+		Slice: memory.NewSlice(0x1000, 0x1000, 1005*intSize, 1005, memory.ApplicationPool, intType),
 	},
 	ReferenceC: nil,
 }
@@ -347,7 +351,7 @@ func TestStateTreeNode(t *testing.T) {
 				NumChildren:    5,
 				Name:           "Slice",
 				ValuePath:      rootPath.Field("ReferenceA").Field("Slice").Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 5*intSize, 5, memory.ApplicationPool, intType)),
 				PreviewIsValue: true,
 			},
 		}, {
@@ -383,7 +387,7 @@ func TestStateTreeNode(t *testing.T) {
 				NumChildren:    0,
 				Name:           "Pointer",
 				ValuePath:      rootPath.Field("ReferenceA").Field("Pointer").Path(),
-				Preview:        box.NewValue(memory.NewPtr(0x1010, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewPtr(0x1010, memory.ApplicationPool, intType)),
 				PreviewIsValue: true,
 			},
 		}, {
@@ -497,7 +501,7 @@ func TestStateTreeNode(t *testing.T) {
 				NumChildren:    2,
 				Name:           "Slice",
 				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1005, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1005*intSize, 1005, memory.ApplicationPool, intType)),
 				PreviewIsValue: true,
 			},
 		}, {
@@ -506,7 +510,7 @@ func TestStateTreeNode(t *testing.T) {
 				NumChildren:    10,
 				Name:           "[0 - 999]",
 				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(0, 999).Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1000, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1000, 1000*intSize, 1000, memory.ApplicationPool, intType)),
 				PreviewIsValue: true,
 			},
 		}, {
@@ -515,7 +519,7 @@ func TestStateTreeNode(t *testing.T) {
 				NumChildren:    10,
 				Name:           "[400 - 499]",
 				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(0, 999).Slice(400, 499).Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1C80, 100, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1C80, 100*intSize, 100, memory.ApplicationPool, intType)),
 				PreviewIsValue: true,
 			},
 		}, {
@@ -524,7 +528,7 @@ func TestStateTreeNode(t *testing.T) {
 				NumChildren:    10,
 				Name:           "[430 - 439]",
 				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(0, 999).Slice(400, 499).Slice(30, 39).Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1D70, 10, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x1D70, 10*intSize, 10, memory.ApplicationPool, intType)),
 				PreviewIsValue: true,
 			},
 		}, {
@@ -542,7 +546,7 @@ func TestStateTreeNode(t *testing.T) {
 				NumChildren:    5,
 				Name:           "[1000 - 1004]",
 				ValuePath:      rootPath.Field("ReferenceB").Field("Slice").Slice(1000, 1004).Path(),
-				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x2F40, 5, memory.ApplicationPool, reflect.TypeOf(memory.Int(0)))),
+				Preview:        box.NewValue(memory.NewSlice(0x1000, 0x2F40, 5*intSize, 5, memory.ApplicationPool, intType)),
 				PreviewIsValue: true,
 			},
 		}, {

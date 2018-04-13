@@ -94,7 +94,14 @@ func (p ptr) ISlice(start, end uint64, m *device.MemoryLayout) Slice {
 	if start > end {
 		panic(fmt.Errorf("%v.Slice start (%d) is greater than the end (%d)", p, start, end))
 	}
-	return sli{root: p.addr, base: p.addr + start*p.ElementSize(m), count: end - start, pool: p.pool, elTy: p.elTy}
+	elSize := p.ElementSize(m)
+	return sli{
+		root: p.addr,
+		base: p.addr + start*elSize,
+		size: (end - start) * elSize,
+		pool: p.pool,
+		elTy: p.elTy,
+	}
 }
 
 var _ data.Assignable = &ptr{}

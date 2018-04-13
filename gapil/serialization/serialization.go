@@ -39,8 +39,9 @@ const (
 	RefVal          = ProtoFieldID(2)
 	SliceRoot       = ProtoFieldID(1)
 	SliceBase       = ProtoFieldID(2)
-	SliceCount      = ProtoFieldID(3)
-	SlicePool       = ProtoFieldID(4)
+	SliceSize       = ProtoFieldID(3)
+	SliceCount      = ProtoFieldID(4)
+	SlicePool       = ProtoFieldID(5)
 )
 
 // IsEncodable returns true if the node is encodable.
