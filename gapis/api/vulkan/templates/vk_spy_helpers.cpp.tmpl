@@ -32,10 +32,6 @@
 #include "gapii/cc/vulkan_imports.h"
 #include "gapii/cc/vulkan_spy.h"
 ¶
-#if TARGET_OS == GAPID_OS_ANDROID
-#include "gapii/cc/connection_stream.h"
-#endif
-¶
 #include "core/os/device/deviceinfo/cc/query.h"
 ¶
 extern "C" {«
@@ -314,21 +310,6 @@ uint32_t VulkanSpy::SpyOverride_vkCreateInstance(
             {{end}}
         {{end}}
     }
-    // On Android once the loader finishes loadinging layers, unset the system
-    // property: debug.vulkan.layers, to minimize the potential possibility to
-    // affect other processes.
-#if TARGET_OS == GAPID_OS_ANDROID
-    if (m_should_unset_debug_vulkan_layers) {
-        const char* unset_pipe = "unset-debug-vulkan-layers";
-        GAPID_INFO("Waiting for connection from host on %s", unset_pipe);
-        auto connForUnset = ConnectionStream::listenPipe(unset_pipe, true);
-        const char* msg = "Drop VkGraphicsSpy";
-        GAPID_INFO("Sending message: \"%s\" to host", msg);
-        connForUnset->write(msg, sizeof(msg));
-        connForUnset->close();
-        m_should_unset_debug_vulkan_layers = false;
-    }
-#endif // TARGET_OS == GAPID_OS_ANDROID
     return result;
 }
 
