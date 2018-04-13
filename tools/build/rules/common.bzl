@@ -59,7 +59,7 @@ def _copy_to_impl(ctx):
                 filtered += [src]
     outs = depset()
     for src in filtered:
-        dstname = ctx.attr.rename.get(key = src.basename, default = src.basename)
+        dstname = ctx.attr.rename.get(src.basename, default = src.basename)
         dst = ctx.new_file(ctx.bin_dir, ctx.attr.to + "/" + dstname)
         outs += [dst]
         _copy(ctx, src, dst)
