@@ -431,10 +431,11 @@ void Spy::onPostDrawCall(CallObserver* observer, uint8_t api) {
 }
 
 void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
-    if (is_suspended()) {
+    GAPID_ASSERT(mNestedFrameEnd < 2048);
+    if (++mNestedFrameStart > 1) {
         return;
     }
-    if (++mNestedFrameStart > 1) {
+    if (is_suspended()) {
         return;
     }
     if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
@@ -533,10 +534,11 @@ void Spy::onPostStartOfFrame() {
 }
 
 void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
-    if (is_suspended()) {
+    GAPID_ASSERT(mNestedFrameEnd < 2048);
+    if (++mNestedFrameEnd > 1) {
         return;
     }
-    if (++mNestedFrameEnd > 1) {
+    if (is_suspended()) {
         return;
     }
     if (mObserveFrameFrequency != 0 && (mNumFrames % mObserveFrameFrequency == 0)) {
