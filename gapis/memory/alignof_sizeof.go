@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/core/os/device"
 )
 
@@ -57,23 +56,16 @@ func AlignOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 		return AlignOf(t.Elem(), m)
 	case reflect.String:
 		return 1
-	case reflect.Struct:
-		if t.Implements(tyPointer) {
-			return uint64(m.GetPointer().GetAlignment())
-		}
-		alignment := uint64(1)
-		for i, c := 0, t.NumField(); i < c; i++ {
-			if a := AlignOf(t.Field(i).Type, m); alignment < a {
-				alignment = a
-			}
-		}
-		return alignment
-	default:
-		if t.Implements(tyPointer) {
-			return uint64(m.GetPointer().GetAlignment())
-		}
-		panic(fmt.Errorf("MemoryLayout.AlignOf not implemented for type %v (%v)", t, t.Kind()))
 	}
+
+	switch {
+	case t.Implements(tyPointer):
+		return uint64(m.GetPointer().GetAlignment())
+	case t.Implements(tyAlignedTy):
+		return reflect.New(t).Interface().(AlignedTy).TypeAlignment(m)
+	}
+
+	panic(fmt.Errorf("MemoryLayout.AlignOf not implemented for type %v (%v)", t, t.Kind()))
 }
 
 // SizeOf returns the byte size of the type t.
@@ -111,24 +103,14 @@ func SizeOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 		return SizeOf(t.Elem(), m) * uint64(t.Len())
 	case reflect.String:
 		return 1
-	case reflect.Struct:
-		if t.Implements(tyPointer) {
-			return uint64(m.GetPointer().GetSize())
-		}
-		var size, align uint64
-		for i, c := 0, t.NumField(); i < c; i++ {
-			f := t.Field(i)
-			a := AlignOf(f.Type, m)
-			size = u64.AlignUp(size, a)
-			size += SizeOf(f.Type, m)
-			align = u64.Max(align, a)
-		}
-		size = u64.AlignUp(size, align)
-		return size
-	default:
-		if t.Implements(tyPointer) {
-			return uint64(m.GetPointer().GetSize())
-		}
-		panic(fmt.Errorf("MemoryLayout.SizeOf not implemented for type %v (%v)", t, t.Kind()))
 	}
+
+	switch {
+	case t.Implements(tyPointer):
+		return uint64(m.GetPointer().GetSize())
+	case t.Implements(tySizedTy):
+		return reflect.New(t).Interface().(SizedTy).TypeSize(m)
+	}
+
+	panic(fmt.Errorf("MemoryLayout.SizeOf not implemented for type %v (%v)", t, t.Kind()))
 }
