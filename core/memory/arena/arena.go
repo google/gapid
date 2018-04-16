@@ -90,6 +90,26 @@ func (a Arena) assertNotNil() {
 	}
 }
 
+type arenaKeyTy string
+
+const arenaKey = arenaKeyTy("arena")
+
+// Get returns the Arena attached to the given context.
+func Get(ctx context.Context) Arena {
+	if val := ctx.Value(arenaKey); val != nil {
+		return val.(Arena)
+	}
+	panic("arena missing from context")
+}
+
+// Put amends a Context by attaching a Arena reference to it.
+func Put(ctx context.Context, d Arena) context.Context {
+	if val := ctx.Value(arenaKey); val != nil {
+		panic("Context already holds an arena")
+	}
+	return keys.WithValue(ctx, arenaKey, d)
+}
+
 // Offsetable is used as an anonymous field of types that require a current
 // offset value.
 type Offsetable struct{ Offset int }
