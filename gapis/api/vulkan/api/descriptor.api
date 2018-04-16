@@ -618,6 +618,7 @@ vkCmdBindDescriptorSetsArgs {
 }
 
 sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
+   _ = PipelineLayouts[args.Layout]
   dynamic_offset_index := MutableU32(0)
 
   computeInfo := lastComputeInfo()
