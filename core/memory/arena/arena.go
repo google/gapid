@@ -15,7 +15,12 @@
 // Package arena implements a memory arena.
 package arena
 
-import "unsafe"
+import (
+	"context"
+	"unsafe"
+
+	"github.com/google/gapid/core/context/keys"
+)
 
 // #cgo LDFLAGS: -lcc-core -lcc-arena -lstdc++
 //
@@ -40,24 +45,28 @@ func New() Arena {
 
 // Dispose destructs and frees the arena and all arena-owned allocations.
 func (a Arena) Dispose() {
+	a.assertNotNil()
 	C.arena_destroy((*C.arena)(a.Pointer))
 }
 
 // Allocate returns a pointer to a new arena-owned, contiguous block of memory
 // of the specified size and alignment.
 func (a Arena) Allocate(size, alignment int) unsafe.Pointer {
+	a.assertNotNil()
 	return C.arena_alloc((*C.arena)(a.Pointer), C.uint32_t(size), C.uint32_t(alignment))
 }
 
 // Reallocate reallocates the memory at ptr to the new size and alignment.
 // ptr must have been allocated from this arena.
 func (a Arena) Reallocate(ptr unsafe.Pointer, size, alignment int) unsafe.Pointer {
+	a.assertNotNil()
 	return C.arena_realloc((*C.arena)(a.Pointer), ptr, C.uint32_t(size), C.uint32_t(alignment))
 }
 
 // Free releases the memory at ptr, which must have been previously allocated by
 // this arena.
 func (a Arena) Free(ptr unsafe.Pointer) {
+	a.assertNotNil()
 	C.arena_free((*C.arena)(a.Pointer), ptr)
 }
 
@@ -70,8 +79,15 @@ type Stats struct {
 // Stats returns statistics of the current state of the Arena.
 func (a Arena) Stats() Stats {
 	var numAllocs, numBytes C.size_t
+	a.assertNotNil()
 	C.arena_stats((*C.arena)(a.Pointer), &numAllocs, &numBytes)
 	return Stats{int(numAllocs), int(numBytes)}
+}
+
+func (a Arena) assertNotNil() {
+	if a.Pointer == nil {
+		panic("nil arena")
+	}
 }
 
 // Offsetable is used as an anonymous field of types that require a current
