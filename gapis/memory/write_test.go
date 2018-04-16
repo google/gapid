@@ -60,14 +60,25 @@ func TestWriteOn32bitArch(t *testing.T) {
 	}
 }
 
+type encodableStruct struct {
+	X uint8
+	Y Pointer
+	Z int16
+	W uint64
+}
+
+var _ Encodable = encodableStruct{}
+
+func (s encodableStruct) Encode(e *Encoder) {
+	e.U8(s.X)
+	e.Pointer(s.Y.Address())
+	e.I16(s.Z)
+	e.U64(s.W)
+}
+
 func TestWriteStructOn32bitArch(t *testing.T) {
 	arch := device.Big32
-	values := struct {
-		X uint8
-		Y Pointer
-		Z int16
-		W uint64
-	}{0x12, BytePtr(0xdeadbeef), 0x3456, 0x8888888899999999}
+	values := encodableStruct{0x12, BytePtr(0xdeadbeef), 0x3456, 0x8888888899999999}
 
 	buf := &bytes.Buffer{}
 	e := NewEncoder(endian.Writer(buf, arch.GetEndian()), arch)
@@ -129,12 +140,7 @@ func TestWriteOn64bitArch(t *testing.T) {
 
 func TestWriteStructOn64bitArch(t *testing.T) {
 	arch := device.Big64
-	values := struct {
-		X uint8
-		Y Pointer
-		Z int16
-		W uint64
-	}{0x12, BytePtr(0xbeefdeaddeadbeef), 0x3456, 0x8888888899999999}
+	values := encodableStruct{0x12, BytePtr(0xbeefdeaddeadbeef), 0x3456, 0x8888888899999999}
 
 	buf := &bytes.Buffer{}
 	e := NewEncoder(endian.Writer(buf, arch.GetEndian()), arch)

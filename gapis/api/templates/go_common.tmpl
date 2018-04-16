@@ -122,31 +122,68 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits the logic to encode the specified value to the encoder ϟe.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Go.Encode"}}
+  {{AssertType $.Type "Type"}}
+
+  {{     if IsPseudonym   $.Type}}{{Template "Go.Encode" "Type" $.Type.To "Value" (print (Macro "Go.Type" $.Type.To) "(" $.Value ")")}}
+  {{else if IsVoid        $.Type}}ϟe.I8({{$.Value}})
+  {{else if IsBool        $.Type}}ϟe.Bool({{$.Value}})
+  {{else if IsChar        $.Type}}ϟe.Char({{$.Value}})
+  {{else if IsU8          $.Type}}ϟe.U8({{$.Value}})
+  {{else if IsS8          $.Type}}ϟe.I8({{$.Value}})
+  {{else if IsU16         $.Type}}ϟe.U16({{$.Value}})
+  {{else if IsS16         $.Type}}ϟe.I16({{$.Value}})
+  {{else if IsF32         $.Type}}ϟe.F32({{$.Value}})
+  {{else if IsU32         $.Type}}ϟe.U32({{$.Value}})
+  {{else if IsS32         $.Type}}ϟe.I32({{$.Value}})
+  {{else if IsF64         $.Type}}ϟe.F64({{$.Value}})
+  {{else if IsU64         $.Type}}ϟe.U64({{$.Value}})
+  {{else if IsS64         $.Type}}ϟe.I64({{$.Value}})
+  {{else if IsEnum        $.Type}}{{Template "Go.Encode" "Type" $.Type.NumberType "Value" (print (Macro "Go.Type" $.Type.NumberType) "(" $.Value ")")}}
+  {{else if IsString      $.Type}}ϟe.String({{$.Value}})
+  {{else if IsPointer     $.Type}}ϟe.Pointer({{$.Value}}.Address())
+  {{else if IsInt         $.Type}}ϟe.Int({{$.Value}})
+  {{else if IsUint        $.Type}}ϟe.Uint({{$.Value}})
+  {{else if IsSize        $.Type}}ϟe.Size({{$.Value}})
+  {{else if IsStaticArray $.Type}}{{$.Value}}.Encode(ϟe)
+  {{else if IsClass       $.Type}}{{$.Value}}.Encode(ϟe)
+  {{else                        }}{{Error "macro Go.Encode called with unsupported type: %v" $.Type}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits the logic to decode the specified type from the decoder d.
 -------------------------------------------------------------------------------
 */}}
 {{define "Go.Decode"}}
   {{AssertType $ "Type"}}
 
-  {{     if IsStaticArray $}}Decode{{Macro "Go.Type" $ | Title}}(d)
-  {{else if IsPseudonym   $}}Decode{{Macro "Go.Type" $ | Title}}(d)
-  {{else if IsEnum        $}}Decode{{Macro "Go.Type" $ | Title}}(d)
-  {{else if IsBool        $}}d.Bool()
-  {{else if IsU8          $}}d.U8()
-  {{else if IsS8          $}}d.I8()
-  {{else if IsU16         $}}d.U16()
-  {{else if IsS16         $}}d.I16()
-  {{else if IsF32         $}}d.F32()
-  {{else if IsU32         $}}d.U32()
-  {{else if IsS32         $}}d.I32()
-  {{else if IsF64         $}}d.F64()
-  {{else if IsU64         $}}d.U64()
-  {{else if IsS64         $}}d.I64()
-  {{else if IsString      $}}d.String()
-  {{else if IsChar        $}}d.Char()
-  {{else if IsInt         $}}d.Int()
-  {{else if IsUint        $}}d.Uint()
-  {{else if IsSize        $}}d.Size()
+  {{     if IsStaticArray $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
+  {{else if IsPseudonym   $}}{{Template "Go.Type" $}}({{Template "Go.Decode" ($ | Underlying)}})
+  {{else if IsEnum        $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
+  {{else if IsClass       $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
+  {{else if IsBool        $}}ϟd.Bool()
+  {{else if IsU8          $}}ϟd.U8()
+  {{else if IsS8          $}}ϟd.I8()
+  {{else if IsU16         $}}ϟd.U16()
+  {{else if IsS16         $}}ϟd.I16()
+  {{else if IsF32         $}}ϟd.F32()
+  {{else if IsU32         $}}ϟd.U32()
+  {{else if IsS32         $}}ϟd.I32()
+  {{else if IsF64         $}}ϟd.F64()
+  {{else if IsU64         $}}ϟd.U64()
+  {{else if IsS64         $}}ϟd.I64()
+  {{else if IsString      $}}ϟd.String()
+  {{else if IsPointer     $}}{{Template "Go.Type" $}}(ϟd.Pointer())
+  {{else if IsChar        $}}ϟd.Char()
+  {{else if IsInt         $}}ϟd.Int()
+  {{else if IsUint        $}}ϟd.Uint()
+  {{else if IsSize        $}}ϟd.Size()
   {{else}}{{Error "macro Go.Decode called with unsupported type: %v" $}}
   {{end}}
 {{end}}
@@ -181,7 +218,7 @@
   {{else if IsUint        $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsSize        $}}uint64(ϟl.GetSize().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.SizeOf" $.ValueType}}*{{$.Size}}
-  {{else if IsClass       $}}ϟmem.SizeOf(reflect.TypeOf({{Template "Go.Type" $}}{}), ϟl)
+  {{else if IsClass       $}}{{Template "Go.Type" $}}Size(ϟl)
   {{else                   }}{{Error "macro Go.SizeOf called with unsupported type: %v" $}}
   {{end}}
 {{end}}
@@ -216,7 +253,7 @@
   {{else if IsUint        $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsSize        $}}uint64(ϟl.GetSize().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.AlignOf" $.ValueType}}
-  {{else if IsClass       $}}ϟmem.AlignOf(reflect.TypeOf({{$.Name}}{}), ϟl)
+  {{else if IsClass       $}}{{Template "Go.Type" $}}Alignment(ϟl)
   {{else                   }}{{Error "macro Go.AlignOf called with unsupported type: %v" $}}
   {{end}}
 {{end}}

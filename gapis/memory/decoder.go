@@ -40,6 +40,11 @@ func (d *Decoder) alignAndOffset(l *device.DataTypeLayout) {
 	d.o += uint64(l.GetSize())
 }
 
+// MemoryLayout returns the MemoryLayout used by the decoder.
+func (d *Decoder) MemoryLayout() *device.MemoryLayout {
+	return d.m
+}
+
 // Offset returns the byte offset of the reader from the initial Decoder
 // creation.
 func (d *Decoder) Offset() uint64 {

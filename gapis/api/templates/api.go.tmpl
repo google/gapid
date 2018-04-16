@@ -146,7 +146,7 @@
       // Dummy function to make {{$name}} implement UintTy interface
       func ({{$name}}) IsUint() {}
     {{end}}
-    func Decode{{$name}}(d *ϟmem.Decoder) {{$name}} {
+    func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
       return {{$name}}({{Template "Go.Decode" $u}})
     }
   {{end}}
@@ -173,9 +173,17 @@
     }
   {{end}}
 
-  func Decode{{$ty | Title}}(d *ϟmem.Decoder) {{$ty}} {
+  // Encode encodes this static array to the encoder.
+  func (a {{$ty}}) Encode(ϟe *ϟmem.Encoder) {
+    for i, c := 0, {{$.Size}}; i < c; i++ {
+      {{Template "Go.Encode" "Type" $.ValueType "Value" "a[i]"}}
+    }
+  }
+
+  // Decode decodes this static array from the decoder.
+  func Decode{{$ty | Title}}(ϟd *ϟmem.Decoder) {{$ty}} {
     out := {{$ty}}{}
-    ϟmem.Read(d, &out)
+    ϟmem.Read(ϟd, &out)
     return out
   }
 {{end}}
@@ -281,16 +289,15 @@
     // StringSlice returns a slice starting at p and ending at the first 0 byte null-terminator.
     func (p {{$ptr_ty}}) StringSlice(ϟctx context.Context, ϟs *api.GlobalState) Charˢ {
       numBytes := uint64(2^6)
-      i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(ϟmem.ApplicationPool).TempSlice(ϟmem.Range{Base: uint64(p), Size: uint64(p) + numBytes}))
+      i, ϟd := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(ϟmem.ApplicationPool).TempSlice(ϟmem.Range{Base: uint64(p), Size: numBytes}))
 
       for {
         if i >= numBytes {
-          numBytes <<= 1
-          d = ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(ϟmem.ApplicationPool).TempSlice(ϟmem.Range{Base: uint64(p) + i, Size: numBytes - i}))
+          ϟd = ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(ϟmem.ApplicationPool).TempSlice(ϟmem.Range{Base: uint64(p) + i, Size: numBytes}))
         }
 
         i++
-        if b := d.U8(); b == 0 {
+        if b := ϟd.U8(); b == 0 {
           return Charˢ(p.Slice(0, i, ϟs.MemoryLayout))
         }
       }
@@ -358,11 +365,11 @@
     // Write out the entire structure, then over-write
     // any pointer fields.
     ϟb.Write(s.Range(), s.ResourceID(ϟctx, ϟs))
-    d := s.Decoder(ϟctx, ϟs)
+    ϟd := s.Decoder(ϟctx, ϟs)
     for i := uint64(0); i < s.count; i++ {
       {{Template "ReadStructFieldsWithRemapping" $}}
     }
-    panicOnError(d.Error())
+    panicOnError(ϟd.Error())
   {{end}}
 {{end}}
 
@@ -377,19 +384,19 @@
     {{$name := $f.Name | GoPublicName}}
     {{if IsPointer ($f.Type | Underlying)}}
       { // {{$.Name}}.{{$name}}
-        d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
-        addr := value.ObservedPointer(s.base + d.Offset())
-        ϟb.Push({{Macro "Go.Type" $f}}(d.Pointer()).value(ϟb, ϟa, ϟs))
+        ϟd.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+        addr := value.ObservedPointer(s.base + ϟd.Offset())
+        ϟb.Push({{Macro "Go.Type" $f}}(ϟd.Pointer()).value(ϟb, ϟa, ϟs))
         ϟb.Store(addr)
       }
     {{else if IsClass ($f.Type | Underlying)}}
-      d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+      ϟd.Align({{Template "Go.AlignOf" (TypeOf $f)}})
       {{Template "ReadStructFieldsWithRemapping" $f.Type}}
     {{else}}
       {{if GetAnnotation $f.Type "replay_remap"}}
         {
-          d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
-          addr := value.ObservedPointer(s.base + d.Offset())
+          ϟd.Align({{Template "Go.AlignOf" (TypeOf $f)}})
+          addr := value.ObservedPointer(s.base + ϟd.Offset())
           v := {{Template "Go.Decode" $f.Type}}
           if key, remap := v.remap(ϟa, ϟs); remap {
             loadRemap(ϟb, key, {{Template "Go.Replay.Type" $f.Type}}, {{Template "Go.Replay.Value" "Type" $f.Type "Name" "v"}})
@@ -397,7 +404,7 @@
           }
         }
       {{else}}
-        {{Template "Go.Decode" $f.Type}} // {{$.Name}}.{{$name}}
+        _ = {{Template "Go.Decode" $f.Type}} // {{$.Name}}.{{$name}}
       {{end}}
     {{end}}
   {{end}}
@@ -558,9 +565,9 @@
     func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, ϟb *builder.Builder) ([]{{$el_ty}}, error) {
       s.OnRead(ϟctx, ϟa, ϟs, ϟb)
       res := make([]{{$el_ty}}, s.count)
-      d := s.Decoder(ϟctx, ϟs)
-      ϟmem.Read(d, &res)
-      if err := d.Error(); err != nil {
+      ϟd := s.Decoder(ϟctx, ϟs)
+      ϟmem.Read(ϟd, &res)
+      if err := ϟd.Error(); err != nil {
         return nil, err
       }
       return res, nil
@@ -638,20 +645,20 @@
              To handle this, we store pointers in a separate table and refer to
              these using pointer indices.
         */}}
-        d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.base / uint64(ϟl.GetPointer().GetSize()))
+        ϟd, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.base / uint64(ϟl.GetPointer().GetSize()))
         for i := uint64(0); i < s.count; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
-          ϟb.StorePointer(dst, {{$el_ty}}(d.Pointer()).value(ϟb, ϟa, ϟs))
+          ϟb.StorePointer(dst, {{$el_ty}}(ϟd.Pointer()).value(ϟb, ϟa, ϟs))
           dst++
         }
-        panicOnError(d.Error())
+        panicOnError(ϟd.Error())
       {{else if IsClass ($s.To | Underlying)}}
         {{Template "ReadStructWithRemapping" $s.To}}
       {{else}}
         s.ReserveMemory(ϟctx, ϟa, ϟs, ϟb)
         {{if (GetAnnotation $s.To "replay_remap")}}
           {{/* Element type has explicitly stated it needs custom remapping */}}
-          ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟs)
+          ptr, step, ϟd := value.ObservedPointer(s.base), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟs)
           for i := uint64(0); i < s.count; i++ {
             v := {{Template "Go.Decode" $s.To}}
             if key, remap := v.remap(ϟa, ϟs); remap {
@@ -662,7 +669,7 @@
             ϟb.Store(ptr)
             ptr += step
           }
-          panicOnError(d.Error())
+          panicOnError(ϟd.Error())
         {{else}}
           ϟb.Write(s.Range(), s.ResourceID(ϟctx, ϟs))
         {{end}}
@@ -684,7 +691,7 @@
       {{if (GetAnnotation $s.To "replay_remap")}}
         {{/* Element type has explicitly stated it needs custom remapping */}}
         size := s.ElementSize(ϟl)
-        ptr, step, d := value.ObservedPointer(s.base), value.ObservedPointer(size), s.Decoder(ϟctx, ϟs)
+        ptr, step, ϟd := value.ObservedPointer(s.base), value.ObservedPointer(size), s.Decoder(ϟctx, ϟs)
         for i := uint64(0); i < s.count; i++ {
           v := {{Template "Go.Decode" $s.To}}
           if key, remap := v.remap(ϟa, ϟs); remap {
@@ -698,7 +705,7 @@
           }
           ptr += step
         }
-        panicOnError(d.Error())
+        panicOnError(ϟd.Error())
       {{end}}
     }
     return s
@@ -1086,6 +1093,59 @@
       return c
     }
   {{end}}
+
+  {{if IsStorageType $}}
+    // {{$name}}Size returns the size of the class in bytes.
+    func {{$name}}Size(ϟl *device.MemoryLayout) uint64 {
+      var size, align uint64
+      {{range $f := $.Fields}}
+        {{$a := print $f.Name "Alignment"}}
+        {{$a}} := {{Template "Go.AlignOf" $f.Type}}
+        size = u64.AlignUp(size, {{$a}})
+        size += {{Template "Go.SizeOf" $f.Type}}
+        align = u64.Max(align, {{$a}})
+      {{end}}
+      return u64.AlignUp(size, align)
+    }
+
+    // TypeSize returns the size of the class in bytes.
+    func ({{$name}}) TypeSize(ϟl *device.MemoryLayout) uint64 { return {{$name}}Size(ϟl) }
+
+    // {{$name}}Alignment returns the alignment of the class in bytes.
+    func {{$name}}Alignment(ϟl *device.MemoryLayout) uint64 {
+      alignment := uint64(1)
+      {{range $f := $.Fields}}
+        alignment = u64.Max(alignment, {{Template "Go.AlignOf" $f.Type}})
+      {{end}}
+      return alignment
+    }
+
+    // TypeAlignment returns the alignment of the class in bytes.
+    func ({{$name}}) TypeAlignment(ϟl *device.MemoryLayout) uint64 { return {{$name}}Alignment(ϟl) }
+
+    // Encode encodes this class to the encoder.
+    func (c {{$name}}) Encode(ϟe *ϟmem.Encoder) {
+      alignment := {{$name}}Alignment(ϟe.MemoryLayout())
+      ϟe.Align(alignment)
+      {{range $f := $.Fields}}
+        {{Template "Go.Encode" "Type" $f.Type "Value" (print "c." ($f.Name | GoPublicName))}}
+      {{end}}
+      ϟe.Align(alignment)
+    }
+
+    // Decode decodes this class from the decoder.
+    func (c *{{$name}}) Decode(ϟd *ϟmem.Decoder) {
+      ϟd.Align({{$name}}Alignment(ϟd.MemoryLayout()))
+      {{range $f := $.Fields}}
+        {{if IsClass $f.Type}}
+          c.{{$f.Name | GoPublicName}}.Decode(ϟd)
+        {{else}}
+          c.{{$f.Name | GoPublicName}} = {{Template "Go.Decode" $f.Type}}
+        {{end}}
+      {{end}}
+      ϟd.Align({{$name}}Size(ϟd.MemoryLayout()))
+    }
+  {{end}}
 {{end}}
 
 
@@ -1155,8 +1215,8 @@
     return fmt.Sprintf("{{$.Name}}(%d)", e)
   }
 
-  func Decode{{$.Name | Title}}(d *ϟmem.Decoder) {{$.Name}} {
-    return {{$.Name}}(d.U32())
+  func Decode{{$.Name | Title}}(ϟd *ϟmem.Decoder) {{$.Name}} {
+    return {{$.Name}}(ϟd.U32())
   }
 {{end}}
 

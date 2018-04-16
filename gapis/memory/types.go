@@ -16,6 +16,8 @@ package memory
 
 import (
 	"reflect"
+
+	"github.com/google/gapid/core/os/device"
 )
 
 var (
@@ -24,6 +26,8 @@ var (
 	tyIntTy     = reflect.TypeOf((*IntTy)(nil)).Elem()
 	tyUintTy    = reflect.TypeOf((*UintTy)(nil)).Elem()
 	tySizeTy    = reflect.TypeOf((*SizeTy)(nil)).Elem()
+	tySizedTy   = reflect.TypeOf((*SizedTy)(nil)).Elem()
+	tyAlignedTy = reflect.TypeOf((*AlignedTy)(nil)).Elem()
 	tyEncodable = reflect.TypeOf((*Encodable)(nil)).Elem()
 	tyDecodable = reflect.TypeOf((*Decodable)(nil)).Elem()
 )
@@ -85,6 +89,18 @@ func (Size) IsMemorySize() {}
 func IsSize(v interface{}) bool {
 	_, ok := v.(SizeTy)
 	return ok
+}
+
+// SizedTy is the interface implemented by types that can calculate their size.
+type SizedTy interface {
+	// Size returns the size of the type in bytes.
+	TypeSize(*device.MemoryLayout) uint64
+}
+
+// AlignedTy is the interface implemented by types that can calculate their size.
+type AlignedTy interface {
+	// Alignment returns the alignment of the type in bytes.
+	TypeAlignment(*device.MemoryLayout) uint64
 }
 
 // Encodable is the interface implemented by types that can encode themselves to

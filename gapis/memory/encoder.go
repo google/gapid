@@ -38,6 +38,11 @@ func (e *Encoder) alignAndOffset(d *device.DataTypeLayout) {
 	e.o += uint64(d.GetSize())
 }
 
+// MemoryLayout returns the MemoryLayout used by the encoder.
+func (e *Encoder) MemoryLayout() *device.MemoryLayout {
+	return e.m
+}
+
 // Align writes zero bytes until the write position is a multiple of to.
 func (e *Encoder) Align(to uint64) {
 	alignment := u64.AlignUp(e.o, to)
