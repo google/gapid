@@ -102,7 +102,7 @@ func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 			return
 		}
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Format, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
+		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Fmt, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
 	})
 }
 
@@ -145,7 +145,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				res(nil, fmt.Errorf("Invalid attachment %v in the framebuffer, the attachment VkImage might have been destroyed", bufferIdx))
 				return
 			}
-			w, h, form := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height, imageView.Format
+			w, h, form := lastDrawInfo.Framebuffer.Width, lastDrawInfo.Framebuffer.Height, imageView.Fmt
 			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		} else {
 			imageObject := GetState(s).LastPresentInfo.PresentImages.Get(bufferIdx)
@@ -153,7 +153,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				res(nil, fmt.Errorf("Could not find imageObject %v, %v", id, bufferIdx))
 				return
 			}
-			w, h, form := imageObject.Info.Extent.Width, imageObject.Info.Extent.Height, imageObject.Info.Format
+			w, h, form := imageObject.Info.Extent.Width, imageObject.Info.Extent.Height, imageObject.Info.Fmt
 			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
 		}
 	})
@@ -313,7 +313,7 @@ func postImageData(ctx context.Context,
 		PNext:     NewVoidᶜᵖ(memory.Nullptr),
 		Flags:     VkImageCreateFlags(0),
 		ImageType: VkImageType_VK_IMAGE_TYPE_2D,
-		Format:    vkFormat,
+		Fmt:       vkFormat,
 		Extent: VkExtent3D{
 			Width:  reqWidth,
 			Height: reqHeight,
@@ -346,7 +346,7 @@ func postImageData(ctx context.Context,
 		PNext:     NewVoidᶜᵖ(memory.Nullptr),
 		Flags:     VkImageCreateFlags(0),
 		ImageType: VkImageType_VK_IMAGE_TYPE_2D,
-		Format:    vkFormat,
+		Fmt:       vkFormat,
 		Extent: VkExtent3D{
 			Width:  imgWidth,  // same width as the attachment image, not the request
 			Height: imgHeight, // same height as the attachment image, not the request

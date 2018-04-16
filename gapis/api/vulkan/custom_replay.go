@@ -436,7 +436,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	imageObject := c.Images.Get(a.Image)
 	imageWidth := imageObject.Info.Extent.Width
 	imageHeight := imageObject.Info.Extent.Height
-	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info.Format)
+	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info.Fmt)
 	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight), 1))
 	memoryObject := &DeviceMemoryObject{
 		Device:          a.Device,

@@ -54,7 +54,7 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 		attachment_index := uint32(attachment - api.FramebufferAttachment_Color0)
 		if att_ref, ok := subpass_desc.ColorAttachments.Lookup(attachment_index); ok {
 			if ca, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(att_ref.Attachment); ok {
-				return ca.Image.Info.Extent.Width, ca.Image.Info.Extent.Height, ca.Image.Info.Format, att_ref.Attachment, nil
+				return ca.Image.Info.Extent.Width, ca.Image.Info.Extent.Height, ca.Image.Info.Fmt, att_ref.Attachment, nil
 			}
 
 		}
@@ -63,7 +63,7 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 			att_ref := subpass_desc.DepthStencilAttachment
 			if attachment, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(att_ref.Attachment); ok {
 				depth_img := attachment.Image
-				return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Format, att_ref.Attachment, nil
+				return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Fmt, att_ref.Attachment, nil
 			}
 		}
 	case api.FramebufferAttachment_Stencil:
@@ -91,7 +91,7 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 		}
 		color_img := st.LastPresentInfo.PresentImages.Get(image_idx)
 		if color_img != nil {
-			return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Format, image_idx, nil
+			return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Fmt, image_idx, nil
 		}
 	case api.FramebufferAttachment_Depth:
 		fallthrough

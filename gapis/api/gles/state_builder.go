@@ -588,7 +588,7 @@ func (sb *stateBuilder) imageUnit(ctx context.Context, i *ImageUnit) {
 	write, cb, id := sb.write, sb.cb, i.GetID()
 
 	if i.Texture != nil {
-		write(cb.GlBindImageTexture(id, i.Texture.GetID(), i.Level, i.Layered, i.Layer, i.Access, i.Format)) // GLES31
+		write(cb.GlBindImageTexture(id, i.Texture.GetID(), i.Level, i.Layered, i.Layer, i.Access, i.Fmt)) // GLES31
 	}
 }
 
