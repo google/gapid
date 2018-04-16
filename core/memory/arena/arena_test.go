@@ -26,6 +26,8 @@ func TestArenaStats(t *testing.T) {
 	ctx := log.Testing(t)
 
 	a := arena.New()
+	defer a.Dispose()
+
 	assert.For(ctx, "empty arena").That(a.Stats()).Equals(arena.Stats{})
 
 	a.Allocate(10, 4)

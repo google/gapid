@@ -22,6 +22,9 @@ go_library(
     clinkopts = [],  # keep
     importpath = "github.com/google/gapid/core/memory/arena",
     visibility = ["//visibility:public"],
+    deps = [
+        "//core/context/keys:go_default_library",
+    ],
 )
 
 go_test(
