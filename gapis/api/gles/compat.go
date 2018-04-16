@@ -609,7 +609,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			{
 				cmd := *cmd
 				internalformat := GLenum(cmd.Internalformat)
-				textureCompat.convertFormat(ctx, cmd.Target, &internalformat, &cmd.Format, &cmd.Type, out, id, &cmd)
+				textureCompat.convertFormat(ctx, cmd.Target, &internalformat, &cmd.Fmt, &cmd.Type, out, id, &cmd)
 				cmd.Internalformat = GLint(internalformat)
 				out.MutateAndWrite(ctx, id, &cmd)
 				return
@@ -618,7 +618,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			{
 				cmd := *cmd
 				internalformat := GLenum(cmd.Internalformat)
-				textureCompat.convertFormat(ctx, cmd.Target, &internalformat, &cmd.Format, &cmd.Type, out, id, &cmd)
+				textureCompat.convertFormat(ctx, cmd.Target, &internalformat, &cmd.Fmt, &cmd.Type, out, id, &cmd)
 				cmd.Internalformat = GLint(internalformat)
 				out.MutateAndWrite(ctx, id, &cmd)
 				return
@@ -626,10 +626,10 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlTexImage3DOES:
 			{
 				cmd := *cmd
-				textureCompat.convertFormat(ctx, cmd.Target, &cmd.Internalformat, &cmd.Format, &cmd.Type, out, id, &cmd)
+				textureCompat.convertFormat(ctx, cmd.Target, &cmd.Internalformat, &cmd.Fmt, &cmd.Type, out, id, &cmd)
 				if !version.IsES { // Strip suffix on desktop.
 					extras := cmd.extras
-					cmd := cb.GlTexImage3D(cmd.Target, cmd.Level, GLint(cmd.Internalformat), cmd.Width, cmd.Height, cmd.Depth, cmd.Border, cmd.Format, cmd.Type, memory.Pointer(cmd.Pixels))
+					cmd := cb.GlTexImage3D(cmd.Target, cmd.Level, GLint(cmd.Internalformat), cmd.Width, cmd.Height, cmd.Depth, cmd.Border, cmd.Fmt, cmd.Type, memory.Pointer(cmd.Pixels))
 					cmd.extras = extras
 					out.MutateAndWrite(ctx, id, cmd)
 					return
@@ -640,24 +640,24 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlTexSubImage2D:
 			{
 				cmd := *cmd
-				textureCompat.convertFormat(ctx, cmd.Target, nil, &cmd.Format, &cmd.Type, out, id, &cmd)
+				textureCompat.convertFormat(ctx, cmd.Target, nil, &cmd.Fmt, &cmd.Type, out, id, &cmd)
 				out.MutateAndWrite(ctx, id, &cmd)
 				return
 			}
 		case *GlTexSubImage3D:
 			{
 				cmd := *cmd
-				textureCompat.convertFormat(ctx, cmd.Target, nil, &cmd.Format, &cmd.Type, out, id, &cmd)
+				textureCompat.convertFormat(ctx, cmd.Target, nil, &cmd.Fmt, &cmd.Type, out, id, &cmd)
 				out.MutateAndWrite(ctx, id, &cmd)
 				return
 			}
 		case *GlTexSubImage3DOES:
 			{
 				cmd := *cmd
-				textureCompat.convertFormat(ctx, cmd.Target, nil, &cmd.Format, &cmd.Type, out, id, &cmd)
+				textureCompat.convertFormat(ctx, cmd.Target, nil, &cmd.Fmt, &cmd.Type, out, id, &cmd)
 				if !version.IsES { // Strip suffix on desktop.
 					extras := cmd.extras
-					cmd := cb.GlTexSubImage3D(cmd.Target, cmd.Level, cmd.Xoffset, cmd.Yoffset, cmd.Zoffset, cmd.Width, cmd.Height, cmd.Depth, cmd.Format, cmd.Type, memory.Pointer(cmd.Pixels))
+					cmd := cb.GlTexSubImage3D(cmd.Target, cmd.Level, cmd.Xoffset, cmd.Yoffset, cmd.Zoffset, cmd.Width, cmd.Height, cmd.Depth, cmd.Fmt, cmd.Type, memory.Pointer(cmd.Pixels))
 					cmd.extras = extras
 					out.MutateAndWrite(ctx, id, cmd)
 					return

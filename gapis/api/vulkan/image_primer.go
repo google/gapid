@@ -181,7 +181,7 @@ func (p *imagePrimer) allocStagingImages(img *ImageObject, aspect VkImageAspectF
 	stagingImgs := []*ImageObject{}
 	stagingMems := []*DeviceMemoryObject{}
 
-	srcElementAndTexelInfo, err := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, img.Info.Format)
+	srcElementAndTexelInfo, err := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, img.Info.Fmt)
 	if err != nil {
 		return []*ImageObject{}, []*DeviceMemoryObject{}, fmt.Errorf("[Getting element size and texel block info] %v", err)
 	}
@@ -191,7 +191,7 @@ func (p *imagePrimer) allocStagingImages(img *ImageObject, aspect VkImageAspectF
 	}
 	srcElementSize := srcElementAndTexelInfo.ElementSize
 	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
-		srcElementSize, err = subGetDepthElementSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, img.Info.Format, false)
+		srcElementSize, err = subGetDepthElementSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, img.Info.Fmt, false)
 		if err != nil {
 			return []*ImageObject{}, []*DeviceMemoryObject{}, fmt.Errorf("[Getting element size for depth aspect] %v", err)
 		}
@@ -215,7 +215,7 @@ func (p *imagePrimer) allocStagingImages(img *ImageObject, aspect VkImageAspectF
 
 	stagingInfo := img.Info
 	stagingInfo.DedicatedAllocationNV = nil
-	stagingInfo.Format = stagingImgFormat
+	stagingInfo.Fmt = stagingImgFormat
 	stagingInfo.Usage = VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT)
 
 	dev := p.sb.s.Devices.Get(img.Device)
@@ -433,7 +433,7 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue *QueueObject) error {
 
 	compShaderInfo := ipStoreShaderInfo{
 		dev:     dev,
-		fmt:     job.storeTarget.Info.Format,
+		fmt:     job.storeTarget.Info.Fmt,
 		aspect:  job.aspect,
 		imgType: job.storeTarget.Info.ImageType,
 	}
@@ -447,17 +447,17 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue *QueueObject) error {
 		uint32(job.opaqueBlockOffset.X),
 		uint32(job.opaqueBlockOffset.Y),
 		uint32(job.opaqueBlockOffset.Z),
-	}, job.storeTarget.Info.Format, 0, job.aspect).levelSize)
+	}, job.storeTarget.Info.Fmt, 0, job.aspect).levelSize)
 	opaqueDataSizeInBytes := uint64(h.sb.levelSize(
 		job.opaqueBlockExtent,
-		job.storeTarget.Info.Format,
+		job.storeTarget.Info.Fmt,
 		0, job.aspect).levelSize)
 	data := job.storeTarget.Aspects.
 		Get(job.aspect).Layers.Get(job.layer).Levels.Get(job.level).Data.
 		Slice(opaqueDataOffset, opaqueDataSizeInBytes).
 		MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
 
-	srcVkFmt := job.storeTarget.Info.Format
+	srcVkFmt := job.storeTarget.Info.Fmt
 	if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 		data, srcVkFmt, err = ebgrDataToRGB32SFloat(data, job.opaqueBlockExtent)
 		if err != nil {
@@ -576,7 +576,7 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue *Queu
 				VkImageViewCreateFlags(0),
 				info.job.storeTarget.VulkanHandle,
 				imgViewType,
-				info.job.storeTarget.Info.Format,
+				info.job.storeTarget.Info.Fmt,
 				VkComponentMapping{
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY,
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -868,7 +868,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 		outputBarrierAspect = VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT)
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		switch job.renderTarget.Info.Format {
+		switch job.renderTarget.Info.Fmt {
 		case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT,
 			VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
 			VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
@@ -975,10 +975,10 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 	renderPassInfo := ipRenderPassInfo{
 		dev:                         dev,
 		numInputAttachments:         len(job.inputAttachmentImages),
-		inputAttachmentImageFormat:  job.inputAttachmentImages[0].Info.Format,
+		inputAttachmentImageFormat:  job.inputAttachmentImages[0].Info.Fmt,
 		inputAttachmentImageSamples: job.inputAttachmentImages[0].Info.Samples,
 		targetAspect:                job.aspect,
-		targetFormat:                job.renderTarget.Info.Format,
+		targetFormat:                job.renderTarget.Info.Fmt,
 		targetSamples:               job.renderTarget.Info.Samples,
 	}
 	renderPass := h.createRenderPass(renderPassInfo, job.finalLayout)
@@ -994,7 +994,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 	}
 	allViews = append(allViews, outputView.VulkanHandle)
 
-	targetLevelSize := h.sb.levelSize(job.renderTarget.Info.Extent, job.renderTarget.Info.Format, job.level, job.aspect)
+	targetLevelSize := h.sb.levelSize(job.renderTarget.Info.Extent, job.renderTarget.Info.Fmt, job.level, job.aspect)
 
 	framebuffer := h.createFramebuffer(dev, renderPass.VulkanHandle, allViews,
 		uint32(targetLevelSize.width), uint32(targetLevelSize.height))
@@ -1013,7 +1013,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue *QueueObject) error {
 		fragShaderInfo: ipRenderShaderInfo{
 			dev:      dev,
 			isVertex: false,
-			format:   job.renderTarget.Info.Format,
+			format:   job.renderTarget.Info.Fmt,
 			aspect:   job.aspect,
 		},
 		pipelineLayout: pipelineLayout.VulkanHandle,
@@ -1439,7 +1439,7 @@ func (h *ipRenderHandler) createImageView(dev VkDevice, img *ImageObject, aspect
 				VkImageViewCreateFlags(0),
 				img.VulkanHandle,
 				VkImageViewType_VK_IMAGE_VIEW_TYPE_2D,
-				img.Info.Format,
+				img.Info.Fmt,
 				VkComponentMapping{
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY,
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -2105,10 +2105,10 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg *ImageObject, dstAspect VkIm
 		uint32(opaqueBlockOffset.X),
 		uint32(opaqueBlockOffset.Y),
 		uint32(opaqueBlockOffset.Z),
-	}, srcImg.Info.Format, 0, srcAspect).levelSize)
+	}, srcImg.Info.Fmt, 0, srcAspect).levelSize)
 	srcImgDataSizeInBytes := uint64(h.sb.levelSize(
 		opaqueBlockExtent,
-		srcImg.Info.Format,
+		srcImg.Info.Fmt,
 		0, srcAspect).levelSize)
 
 	data := srcImg.Aspects.Get(srcAspect).Layers.Get(layer).Levels.Get(level).
@@ -2116,11 +2116,11 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg *ImageObject, dstAspect VkIm
 		MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
 
 	unpacked := data
-	if dstImg.Info.Format != srcImg.Info.Format {
+	if dstImg.Info.Fmt != srcImg.Info.Fmt {
 		// dstImg format is different with the srcImage format, the dst image
 		// should be a staging image.
-		srcVkFmt := srcImg.Info.Format
-		if srcImg.Info.Format == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
+		srcVkFmt := srcImg.Info.Fmt
+		if srcImg.Info.Fmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 			data, srcVkFmt, err = ebgrDataToRGB32SFloat(data, opaqueBlockExtent)
 			if err != nil {
 				return []uint8{}, bufImgCopy, fmt.Errorf("[Converting data in VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 to VK_FORMAT_R32G32B32_SFLOAT] %v", err)
@@ -2134,20 +2134,20 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg *ImageObject, dstAspect VkIm
 	} else if srcAspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
 		// srcImg format is the same to the dstImage format, the data is ready to
 		// be used directly, except when the src image is a dpeth 24 UNORM one.
-		if (srcImg.Info.Format == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) ||
-			(srcImg.Info.Format == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32) {
-			unpacked, _, err = unpackDataForPriming(data, srcImg.Info.Format, srcAspect)
+		if (srcImg.Info.Fmt == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) ||
+			(srcImg.Info.Fmt == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32) {
+			unpacked, _, err = unpackDataForPriming(data, srcImg.Info.Fmt, srcAspect)
 			if err != nil {
-				return []uint8{}, bufImgCopy, fmt.Errorf("[Unpacking data from format: %v aspect: %v] %v", srcImg.Info.Format, srcAspect, err)
+				return []uint8{}, bufImgCopy, fmt.Errorf("[Unpacking data from format: %v aspect: %v] %v", srcImg.Info.Fmt, srcAspect, err)
 			}
 		}
 	}
 
 	extendToMultipleOf8(&unpacked)
 
-	dstLevelSize := h.sb.levelSize(opaqueBlockExtent, dstImg.Info.Format, 0, dstAspect)
+	dstLevelSize := h.sb.levelSize(opaqueBlockExtent, dstImg.Info.Fmt, 0, dstAspect)
 	if uint64(len(unpacked)) != dstLevelSize.alignedLevelSizeInBuf {
-		return []uint8{}, bufImgCopy, fmt.Errorf("size of unpacked data does not match expectation, actual: %v, expected: %v, srcFmt: %v, dstFmt: %v", len(unpacked), dstLevelSize.alignedLevelSizeInBuf, srcImg.Info.Format, dstImg.Info.Format)
+		return []uint8{}, bufImgCopy, fmt.Errorf("size of unpacked data does not match expectation, actual: %v, expected: %v, srcFmt: %v, dstFmt: %v", len(unpacked), dstLevelSize.alignedLevelSizeInBuf, srcImg.Info.Fmt, dstImg.Info.Fmt)
 	}
 
 	return unpacked, bufImgCopy, nil
@@ -2308,7 +2308,7 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 				pNext,
 				info.Flags,
 				info.ImageType,
-				info.Format,
+				info.Fmt,
 				info.Extent,
 				info.MipLevels,
 				info.ArrayLayers,
@@ -2465,7 +2465,7 @@ func walkImageSubresourceRange(sb *stateBuilder, img *ImageObject, rng VkImageSu
 	for _, aspect := range sb.imageAspectFlagBits(rng.AspectMask) {
 		for i := uint32(0); i < rng.LevelCount; i++ {
 			level := rng.BaseMipLevel + i
-			levelSize := sb.levelSize(img.Info.Extent, img.Info.Format, level, aspect)
+			levelSize := sb.levelSize(img.Info.Extent, img.Info.Fmt, level, aspect)
 			for j := uint32(0); j < rng.LayerCount; j++ {
 				layer := rng.BaseArrayLayer + j
 				f(aspect, layer, level, levelSize)

@@ -45,7 +45,12 @@ var (
 		resolver.TypeRune:    'T',
 	}
 	goKeywords = map[string]string{
-		"type": "ty",
+		"type":    "type_",
+		"func":    "func_",
+		"range":   "range_",
+		"map":     "map_",
+		"default": "default_",
+		"Format":  "Fmt", // Collides with the Format() printer function.
 	}
 	cppKeywords = map[string]string{
 		"default": "default_",
@@ -80,7 +85,7 @@ func (Functions) GoPublicName(obj interface{}) string {
 	}.convert(nameOf(obj))
 }
 
-// GoPrivateName converts an api name to the public go form.
+// GoPrivateName converts an api name to the private go form.
 func (Functions) GoPrivateName(obj interface{}) string {
 	return nameOptions{
 		UntitleFirst:      true,
@@ -101,15 +106,21 @@ func (Functions) ProtoGoName(obj interface{}) string {
 		TitleFirst:        true,
 		TitleAfterNumber:  true,
 		UnderscoreToTitle: true,
-		Remap:             goKeywords,
 	}.convert(nameOf(obj))
 }
 
-// ProtoGoName converts an api name to the cpp name produced by the proto compiler.
+// ProtoCppName converts an api name to the cpp name produced by the proto compiler.
 func (Functions) ProtoCppName(obj interface{}) string {
 	return nameOptions{
 		Remap: cppKeywords,
 	}.convert(nameOf(obj))
+}
+
+// CFieldName converts an api name to a c field name.
+func (Functions) CFieldName(obj interface{}) string {
+	// Use goKeywords here as cgo seems to get confused when using go keywords
+	// in C code. :(
+	return nameOptions{Remap: goKeywords}.convert(nameOf(obj))
 }
 
 type named interface {

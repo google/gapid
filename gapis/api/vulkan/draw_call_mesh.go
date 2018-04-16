@@ -253,7 +253,7 @@ func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 			return nil, err
 		}
 		if vertexData != nil {
-			translatedFormat, err := translateVertexFormat(attribute.Format)
+			translatedFormat, err := translateVertexFormat(attribute.Fmt)
 			if err != nil {
 				// TODO(qining): This is an error, should emit error message here
 				continue
@@ -295,7 +295,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	vertexSlice := backingMemoryData.Slice(sliceOffset, sliceOffset+sliceSize)
 
 	formatElementAndTexelBlockSize, err :=
-		subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, attribute.Format)
+		subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, attribute.Fmt)
 	if err != nil {
 		return nil, err
 	}

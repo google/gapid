@@ -530,7 +530,7 @@ func (t *ImageObject) imageInfo(ctx context.Context, s *api.GlobalState, format 
 		var dStep, sStep int
 		// Stencil data is always 1 byte wide
 		sStep = 1
-		switch t.Info.Format {
+		switch t.Info.Fmt {
 		case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
 			dStep = 2
 		case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
@@ -538,7 +538,7 @@ func (t *ImageObject) imageInfo(ctx context.Context, s *api.GlobalState, format 
 		case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
 			dStep = 4
 		default:
-			log.E(ctx, "[Mergeing depth and stencil data] unsupported depth+stencil format: %v", t.Info.Format)
+			log.E(ctx, "[Mergeing depth and stencil data] unsupported depth+stencil format: %v", t.Info.Fmt)
 			return nil
 		}
 
@@ -577,7 +577,7 @@ func (t *ImageObject) imageInfo(ctx context.Context, s *api.GlobalState, format 
 // ResourceData returns the resource data given the current state.
 func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
-	vkFmt := t.Info.Format
+	vkFmt := t.Info.Fmt
 	format, err := getImageFormatFromVulkanFormat(vkFmt)
 	if err != nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
