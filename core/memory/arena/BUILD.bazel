@@ -17,7 +17,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = ["arena.go"],
-    cdeps = ["//core/memory/arena/cc:tracking_arena"],
+    cdeps = ["//core/memory/arena/cc"],
     cgo = True,
     clinkopts = [],  # keep
     importpath = "github.com/google/gapid/core/memory/arena",

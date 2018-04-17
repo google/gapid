@@ -23,7 +23,7 @@ go_library(
         "executor.go",
     ],
     cdeps = [
-        "//gapil/runtime/cc:tracking_arena",
+        "//gapil/runtime/cc:arena",
     ],
     cgo = True,
     clinkopts = [],  # keep

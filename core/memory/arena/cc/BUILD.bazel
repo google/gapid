@@ -16,7 +16,12 @@ load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "cc",
-    srcs = glob(["*.cpp"]),
+    srcs = glob(
+        ["*.cpp"],
+        exclude = [
+            "*_test.cpp",
+        ],
+    ),
     hdrs = glob(["*.h"]),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
@@ -25,15 +30,15 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "tracking_arena",
-    srcs = glob(
-        ["*.cpp"],
-    ),
-    hdrs = glob(["*.h"]),
-    copts = cc_copts() + ["-DTRACK_ALLOCATIONS"],
-    visibility = ["//visibility:public"],
+cc_test(
+    name = "tests",
+    size = "small",
+    srcs = [
+        "arena_test.cpp",
+    ],
+    copts = cc_copts(),
     deps = [
-        "//core/cc",
+        ":cc",
+        "@com_google_googletest//:gtest_main",
     ],
 )
