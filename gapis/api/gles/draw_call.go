@@ -70,7 +70,7 @@ func getIndices(
 		reader = ptr.Slice(offset, size, s.MemoryLayout).Reader(ctx, s)
 	} else {
 		// Get the index buffer data from buffer, offset by the 'indices' pointer.
-		offset += ptr.addr
+		offset += uint64(ptr)
 		start := u64.Min(offset, indexBuffer.Data.count)
 		end := u64.Min(offset+size, indexBuffer.Data.count)
 		reader = indexBuffer.Data.Slice(start, end).Reader(ctx, s)

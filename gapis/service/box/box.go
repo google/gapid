@@ -107,7 +107,7 @@ func (b *boxer) val(v reflect.Value) *Value {
 	switch {
 	case IsMemoryPointer(t):
 		p := AsMemoryPointer(v)
-		return &Value{0, &Value_Pointer{&Pointer{p.Address(), uint32(p.Pool())}}}
+		return &Value{0, &Value_Pointer{&Pointer{p.Address()}}}
 	case IsMemorySlice(t):
 		s := v.Interface().(memory.Slice)
 		elTy, ok := pod.TypeOf(s.ElementType())
@@ -116,7 +116,8 @@ func (b *boxer) val(v reflect.Value) *Value {
 		}
 		return &Value{0, &Value_Slice{&Slice{
 			Type:  elTy,
-			Base:  &Pointer{s.Base(), uint32(s.Pool())},
+			Pool:  uint64(s.Pool()),
+			Base:  &Pointer{s.Base()},
 			Size:  s.Size(),
 			Count: s.Count(),
 			Root:  s.Root(),
@@ -271,7 +272,7 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 		}
 		panic(fmt.Errorf("Unsupported POD Value %+v", v))
 	case *Value_Pointer:
-		p := memory.BytePtr(v.Pointer.Address, memory.PoolID(v.Pointer.Pool))
+		p := memory.BytePtr(v.Pointer.Address)
 		return reflect.ValueOf(p)
 	case *Value_Slice:
 		p := memory.NewSlice(
@@ -279,7 +280,7 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 			v.Slice.Base.Address,
 			v.Slice.Size,
 			v.Slice.Count,
-			memory.PoolID(v.Slice.Base.Pool),
+			memory.PoolID(v.Slice.Pool),
 			v.Slice.Type.Get(),
 		)
 		return reflect.ValueOf(p)

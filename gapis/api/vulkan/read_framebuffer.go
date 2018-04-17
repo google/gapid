@@ -443,7 +443,7 @@ func postImageData(ctx context.Context,
 	if err != nil {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Device Memory -> Host mapping failed")})
 	}
-	mappedPointer := MustAllocData(ctx, s, Voidᶜᵖ{at, memory.ApplicationPool})
+	mappedPointer := MustAllocData(ctx, s, Voidᶜᵖ(at))
 
 	// Barrier data for layout transitions of staging image
 	stagingImageToDstBarrier := VkImageMemoryBarrier{

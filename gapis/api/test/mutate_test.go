@@ -1207,11 +1207,11 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 	a := device.Little32
 	aRng, aID := memory.Store(
 		ctx, a, p(0x100000),
-		PointerStruct{F2: 0x23, F1: 0x01, Pointer: U32ᵖ{0x200000, 0}})
+		PointerStruct{F2: 0x23, F1: 0x01, Pointer: U32ᵖ(0x200000)})
 	bRng, bID := memory.Store(ctx, a, p(0x200000), uint32(0x45))
 	cRng, cID := memory.Store(
 		ctx, a, p(0x300000),
-		PointerStruct{F2: 0x89, F1: 0x67, Pointer: U32ᵖ{0x200000, 0}})
+		PointerStruct{F2: 0x89, F1: 0x67, Pointer: U32ᵖ(0x200000)})
 
 	test{
 		cmds: []api.Cmd{
@@ -1292,13 +1292,13 @@ func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 	a := device.Little32
 	nestedRng, nestedID := memory.Store(
 		ctx, a, p(0x100000),
-		NestedStruct{RS: RemappedStructᵖ{0x200000, 0}, PS: PointerStructᵖ{0x300000, 0}})
+		NestedStruct{RS: RemappedStructᵖ(0x200000), PS: PointerStructᵖ(0x300000)})
 	rsRng, rsID := memory.Store(
 		ctx, a, p(0x200000),
 		RemappedStruct{F1: 0x01, Handle: 0x23, F3: 0x45})
 	psRng, psID := memory.Store(
 		ctx, a, p(0x300000),
-		PointerStruct{F1: 0x67, F2: 0x89, Pointer: U32ᵖ{0x400000, 0}})
+		PointerStruct{F1: 0x67, F2: 0x89, Pointer: U32ᵖ(0x400000)})
 	pRng, pID := memory.Store(ctx, a, p(0x400000), uint32(0xab))
 
 	test{
@@ -1415,7 +1415,7 @@ func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 	})
 
 	ssRng, ssID := memory.Store(ctx, a, p(0x500000),
-		StringStruct{Count: 5, Strings: Charᵖᵖ{0x400000, 0}})
+		StringStruct{Count: 5, Strings: Charᵖᵖ(0x400000)})
 
 	test{
 		cmds: []api.Cmd{

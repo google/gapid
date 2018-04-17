@@ -72,10 +72,10 @@ func TestDeadCommandRemoval(t *testing.T) {
 		},
 	}
 
-	ctxHandle1 := memory.BytePtr(1, memory.ApplicationPool)
-	ctxHandle2 := memory.BytePtr(2, memory.ApplicationPool)
-	displayHandle := memory.BytePtr(3, memory.ApplicationPool)
-	surfaceHandle := memory.BytePtr(4, memory.ApplicationPool)
+	ctxHandle1 := memory.BytePtr(1)
+	ctxHandle2 := memory.BytePtr(2)
+	displayHandle := memory.BytePtr(3)
+	surfaceHandle := memory.BytePtr(4)
 	cb := gles.CommandBuilder{Thread: 0}
 	prologue := []api.Cmd{
 		cb.EglCreateContext(displayHandle, surfaceHandle, surfaceHandle, memory.Nullptr, ctxHandle1),

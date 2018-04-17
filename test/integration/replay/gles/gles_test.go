@@ -165,7 +165,7 @@ type Fixture struct {
 func (f *Fixture) p(ctx context.Context) memory.Pointer {
 	base, err := f.s.Allocator.Alloc(8, 8)
 	assert.With(ctx).ThatError(err).Succeeded()
-	return memory.BytePtr(base, memory.ApplicationPool)
+	return memory.BytePtr(base)
 }
 
 func newFixture(ctx context.Context) (context.Context, *Fixture) {
@@ -199,7 +199,7 @@ func TestMain(m *testing.M) {
 }
 
 func p(addr uint64) memory.Pointer {
-	return memory.BytePtr(addr, memory.ApplicationPool)
+	return memory.BytePtr(addr)
 }
 
 func checkImage(ctx context.Context, name string, got *image.Data, threshold float64) {

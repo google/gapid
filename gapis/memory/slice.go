@@ -17,8 +17,6 @@ package memory
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/google/gapid/core/os/device"
 )
 
 // Slice is the interface implemented by types that represent a slice on
@@ -85,12 +83,4 @@ func (s sli) ISlice(start, end uint64) Slice {
 		pool:  s.pool,
 		elTy:  s.elTy,
 	}
-}
-
-func (s sli) IIndex(i uint64, m *device.MemoryLayout) Pointer {
-	if count := s.Count(); i >= count {
-		panic(fmt.Errorf("%v.IIndex(%d) is out of bounds [0 - %d]", s, i, count-1))
-	}
-	elSize := s.ElementSize()
-	return ptr{s.base + i*elSize, s.pool, s.elTy}
 }

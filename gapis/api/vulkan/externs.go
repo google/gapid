@@ -38,12 +38,12 @@ type externs struct {
 
 func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 	state VkDynamicState) bool {
-	if (info) == (VkPipelineDynamicStateCreateInfoᶜᵖ{}) {
+	if info == 0 {
 		return false
 	}
 	l := e.s.MemoryLayout
-	dynamic_state_info := info.Slice(0, 1, l).Index(0).MustRead(e.ctx, e.cmd, e.s, e.b)
-	states := dynamic_state_info.PDynamicStates.Slice(0, uint64(dynamic_state_info.DynamicStateCount), l).MustRead(e.ctx, e.cmd, e.s, e.b)
+	dynamicStateInfo := info.Slice(0, 1, l).MustRead(e.ctx, e.cmd, e.s, e.b)[0]
+	states := dynamicStateInfo.PDynamicStates.Slice(0, uint64(dynamicStateInfo.DynamicStateCount), l).MustRead(e.ctx, e.cmd, e.s, e.b)
 	for _, s := range states {
 		if s == state {
 			return true
@@ -124,7 +124,7 @@ func (e externs) leaveSubcontext() {
 
 func (e externs) nextSubcontext() {
 	o := GetState(e.s)
-	o.SubCmdIdx[len(o.SubCmdIdx)-1] += 1
+	o.SubCmdIdx[len(o.SubCmdIdx)-1]++
 }
 
 func (e externs) onPreSubcommand(ref *CommandReference) {
@@ -170,15 +170,15 @@ func (e externs) unmapMemory(slice memory.Slice) {
 }
 
 func (e externs) trackMappedCoherentMemory(start uint64, size memory.Size) {}
-func (e externs) readMappedCoherentMemory(memory_handle VkDeviceMemory, offset_in_mapped uint64, read_size memory.Size) {
+func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInMapped uint64, readSize memory.Size) {
 	l := e.s.MemoryLayout
-	mem := GetState(e.s).DeviceMemories.Get(memory_handle)
-	mapped_offset := uint64(mem.MappedOffset)
-	dstStart := mapped_offset + offset_in_mapped
-	srcStart := offset_in_mapped
+	mem := GetState(e.s).DeviceMemories.Get(memoryHandle)
+	mappedOffset := uint64(mem.MappedOffset)
+	dstStart := mappedOffset + offsetInMapped
+	srcStart := offsetInMapped
 
-	absSrcStart := mem.MappedLocation.Address() + offset_in_mapped
-	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(read_size)}
+	absSrcStart := mem.MappedLocation.Address() + offsetInMapped
+	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(readSize)}
 
 	writeRngList := e.s.Memory.ApplicationPool().Slice(absSrcMemRng).ValidRanges()
 	for _, r := range writeRngList {
@@ -191,9 +191,9 @@ func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
 func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 	l := e.s.MemoryLayout
 	counter := uint32(0)
-	for (pNext) != (Voidᶜᵖ{}) {
+	for pNext != 0 {
 		counter++
-		pNext = Voidᶜᵖᵖ(pNext).Slice(0, 2, l).Index(1).MustRead(e.ctx, e.cmd, e.s, e.b)
+		pNext = Voidᶜᵖᵖ(pNext).Slice(1, 2, l).MustRead(e.ctx, e.cmd, e.s, e.b)[0]
 	}
 	return counter
 }

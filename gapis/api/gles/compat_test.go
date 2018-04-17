@@ -33,9 +33,7 @@ var compat = gles.VisibleForTestingCompat
 
 const OpenGL_3_0 = "3.0"
 
-func p(addr uint64) memory.Pointer {
-	return memory.BytePtr(addr, memory.ApplicationPool)
-}
+var p = memory.BytePtr
 
 func newState(ctx context.Context) *api.GlobalState {
 	s, err := capture.NewState(ctx)
@@ -76,9 +74,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 	indices := []uint16{0, 1, 2, 1, 2, 3}
 	mw := &testcmd.Writer{S: newState(ctx)}
-	ctxHandle := memory.BytePtr(1, memory.ApplicationPool)
-	displayHandle := memory.BytePtr(2, memory.ApplicationPool)
-	surfaceHandle := memory.BytePtr(3, memory.ApplicationPool)
+	ctxHandle, displayHandle, surfaceHandle := p(1), p(2), p(3)
 	cb := gles.CommandBuilder{Thread: 0}
 	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextStateForTest(), gles.NewDynamicContextStateForTest(64, 64, true))

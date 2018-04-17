@@ -1092,7 +1092,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 						out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 							eglImage.Context = eglContextHandle[c]
 							eglImage.Target = EGLenum_EGL_GL_TEXTURE_2D
-							eglImage.Buffer = EGLClientBuffer{uint64(texID), memory.ApplicationPool}
+							eglImage.Buffer = EGLClientBuffer(texID)
 							return nil
 						}))
 						t.revert(ctx)

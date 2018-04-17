@@ -91,7 +91,7 @@
 */}}
 {{define "Go.Null"}}
   {{AssertType $ "Type"}}
-  {{     if IsPointer       $}}{{Template "Go.Type" $}}{}
+  {{     if IsPointer       $}}{{Template "Go.Type" $}}(0)
   {{else if IsSlice         $}}{{Template "Go.Type" $}}{}
   {{else if IsReference     $}}{{Template "Go.Type" $}}(nil)
   {{else if IsMap           $}}New{{Template "Go.Type" $}}()
@@ -490,7 +490,7 @@
   {{else if IsNull             $}}{{Template "Go.Null" $.Type}}
   {{else if IsNew              $}}new {{Template "Go.Type" $.Type}}
   {{else if IsSliceContains    $}}{{Template "Go.Read" $.Slice  }}.Contains(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
-  {{else if IsSliceIndex       $}}{{Template "Go.Read" $.Slice  }}.Index({{Template "Go.Read" $.Index}}).{{Macro "Go.MemoryRead"}}
+  {{else if IsSliceIndex       $}}{{Template "Go.Read" $.Slice  }}.Index({{Template "Go.Read" $.Index}}).{{Macro "Go.MemoryRead"}}[0]
   {{else if IsSliceRange       $}}{{Template "Go.Read" $.Slice  }}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}})
   {{else if IsPointerRange     $}}{{Template "Go.Read" $.Pointer}}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}}, ϟl)
   {{else if IsClone            $}}{{Template "Go.Read" $.Slice  }}.Clone(ϟctx, ϟa, ϟs, ϟb)
@@ -576,7 +576,7 @@
   {{$src    := Macro "Go.Read" $.Object}}
 
   {{/* T* -> number */}}{{if and (IsPointer $src_ty) (IsNumericType $dst_ty)}}
-    {{Template "Go.Type" $.Type}}({{$src}}.addr)
+    {{Template "Go.Type" $.Type}}({{$src}})
   {{/* A[] -> B[] */}}{{else if and (IsSlice $src_ty) (IsSlice $dst_ty)}}
     As{{Template "Go.Type" $.Type}}({{$src}}, ϟl)
   {{/* T[] -> T* */}}{{else if and (IsSlice $src_ty) (IsPointer $dst_ty)}}

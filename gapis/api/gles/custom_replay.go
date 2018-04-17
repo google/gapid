@@ -141,7 +141,7 @@ func (i GLsync) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap b
 }
 
 func (i GLsync) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
-	return value.AbsolutePointer(i.addr)
+	return value.AbsolutePointer(i)
 }
 
 func (i SamplerId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
@@ -186,11 +186,11 @@ func (i UniformLocation) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}
 func (i SrcImageId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	switch cmd := cmd.(type) {
 	case *GlCopyImageSubData:
-		return remapImageId(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
+		return remapImageID(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
 	case *GlCopyImageSubDataEXT:
-		return remapImageId(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
+		return remapImageID(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
 	case *GlCopyImageSubDataOES:
-		return remapImageId(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
+		return remapImageID(cmd, s, GLuint(cmd.SrcName), cmd.SrcTarget)
 	default:
 		panic(fmt.Errorf("Remap of SrcImageId for unhandled command: %v", cmd))
 	}
@@ -199,17 +199,17 @@ func (i SrcImageId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, rem
 func (i DstImageId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	switch cmd := cmd.(type) {
 	case *GlCopyImageSubData:
-		return remapImageId(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
+		return remapImageID(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
 	case *GlCopyImageSubDataEXT:
-		return remapImageId(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
+		return remapImageID(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
 	case *GlCopyImageSubDataOES:
-		return remapImageId(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
+		return remapImageID(cmd, s, GLuint(cmd.DstName), cmd.DstTarget)
 	default:
 		panic(fmt.Errorf("Remap of DstImageId for unhandled command: %v", cmd))
 	}
 }
 
-func remapImageId(cmd api.Cmd, s *api.GlobalState, name GLuint, target GLenum) (key interface{}, remap bool) {
+func remapImageID(cmd api.Cmd, s *api.GlobalState, name GLuint, target GLenum) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if ctx != nil && name != 0 {
 		if target == GLenum_GL_RENDERBUFFER {
@@ -224,39 +224,35 @@ func remapImageId(cmd api.Cmd, s *api.GlobalState, name GLuint, target GLenum) (
 func (i IndicesPointer) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
 	c := GetContext(s, cmd.Thread())
 	if c.Bound.VertexArray.ElementArrayBuffer != nil {
-		return value.AbsolutePointer(i.addr)
-	} else {
-		return value.ObservedPointer(i.addr)
+		return value.AbsolutePointer(i)
 	}
+	return value.ObservedPointer(i)
 }
 
 func (i VertexPointer) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
 	c := GetContext(s, cmd.Thread())
 	if c.Bound.ArrayBuffer != nil {
-		return value.AbsolutePointer(i.addr)
-	} else {
-		return value.ObservedPointer(i.addr)
+		return value.AbsolutePointer(i)
 	}
+	return value.ObservedPointer(i)
 }
 
 func (i TexturePointer) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
-	if i.addr == 0 || GetContext(s, cmd.Thread()).Bound.PixelUnpackBuffer != nil {
-		return value.AbsolutePointer(i.addr)
-	} else {
-		return value.ObservedPointer(i.addr)
+	if i == 0 || GetContext(s, cmd.Thread()).Bound.PixelUnpackBuffer != nil {
+		return value.AbsolutePointer(i)
 	}
+	return value.ObservedPointer(i)
 }
 
 func (i BufferDataPointer) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
-	if i.addr == 0 {
-		return value.AbsolutePointer(i.addr)
-	} else {
-		return value.ObservedPointer(i.addr)
+	if i == 0 {
+		return value.AbsolutePointer(i)
 	}
+	return value.ObservedPointer(i)
 }
 
 func (i GLeglImageOES) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
-	return value.AbsolutePointer(i.addr)
+	return value.AbsolutePointer(i)
 }
 
 func (ω *EglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
@@ -277,7 +273,7 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 		return err
 	}
 	cb := CommandBuilder{Thread: ω.Thread()}
-	if ω.Context.addr == 0 {
+	if ω.Context == 0 {
 		if prevContext == nil {
 			return nil
 		}
@@ -336,7 +332,7 @@ func (ω *WglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 	if b == nil || err != nil {
 		return err
 	}
-	if ω.Hglrc.addr == 0 {
+	if ω.Hglrc == 0 {
 		return nil
 	}
 	ctxID := uint32(GetState(s).WGLContexts.Get(ω.Hglrc).Identifier)
@@ -359,7 +355,7 @@ func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, id api.CmdID, s *api
 	if b == nil || err != nil {
 		return err
 	}
-	if ω.Ctx.addr == 0 {
+	if ω.Ctx == 0 {
 		return nil
 	}
 	ctxID := uint32(GetState(s).CGLContexts.Get(ω.Ctx).Identifier)
@@ -392,7 +388,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, id api.CmdID, s *ap
 	if b == nil || err != nil {
 		return err
 	}
-	if ω.Ctx.addr == 0 {
+	if ω.Ctx == 0 {
 		return nil
 	}
 	ctxID := uint32(GetState(s).GLXContexts.Get(ω.Ctx).Identifier)
@@ -451,10 +447,7 @@ func (cmd *GlProgramBinaryOES) Mutate(ctx context.Context, id api.CmdID, s *api.
 	if err := cmd.mutate(ctx, id, s, b); err != nil {
 		return err
 	}
-	if err := bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program); err != nil {
-		return err
-	}
-	return nil
+	return bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program)
 }
 
 func (cmd *GlLinkProgram) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
@@ -464,10 +457,7 @@ func (cmd *GlLinkProgram) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 	if err := cmd.mutate(ctx, id, s, b); err != nil {
 		return err
 	}
-	if err := bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program); err != nil {
-		return err
-	}
-	return nil
+	return bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program)
 }
 
 func (cmd *GlProgramBinary) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
@@ -477,8 +467,5 @@ func (cmd *GlProgramBinary) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 	if err := cmd.mutate(ctx, id, s, b); err != nil {
 		return err
 	}
-	if err := bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program); err != nil {
-		return err
-	}
-	return nil
+	return bindUniformBlocks(ctx, cmd, id, s, b, cmd.Program)
 }

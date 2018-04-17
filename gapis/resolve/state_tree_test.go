@@ -73,7 +73,7 @@ var testState = TestState{
 		Map:       map[int]string{1: "one", 5: "five", 9: "nine"},
 		Array:     []int{0, 10, 20, 30, 40},
 		Slice:     memory.NewSlice(0x1000, 0x1000, 5*intSize, 5, memory.ApplicationPool, intType),
-		Pointer:   memory.NewPtr(0x1010, memory.ApplicationPool, reflect.TypeOf(memory.Size(0))),
+		Pointer:   memory.NewPtr(0x1010, reflect.TypeOf(memory.Size(0))),
 		Interface: &TestStruct{},
 	},
 	ReferenceB: &TestStruct{
@@ -387,7 +387,7 @@ func TestStateTreeNode(t *testing.T) {
 				NumChildren:    0,
 				Name:           "Pointer",
 				ValuePath:      rootPath.Field("ReferenceA").Field("Pointer").Path(),
-				Preview:        box.NewValue(memory.NewPtr(0x1010, memory.ApplicationPool, intType)),
+				Preview:        box.NewValue(memory.NewPtr(0x1010, intType)),
 				PreviewIsValue: true,
 			},
 		}, {

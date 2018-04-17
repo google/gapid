@@ -14,14 +14,18 @@
 
 package memory
 
-import "reflect"
+import (
+	"reflect"
+)
 
 var (
-	tyPointer = reflect.TypeOf((*ReflectPointer)(nil)).Elem()
-	tyCharTy  = reflect.TypeOf((*CharTy)(nil)).Elem()
-	tyIntTy   = reflect.TypeOf((*IntTy)(nil)).Elem()
-	tyUintTy  = reflect.TypeOf((*UintTy)(nil)).Elem()
-	tySizeTy  = reflect.TypeOf((*SizeTy)(nil)).Elem()
+	tyPointer   = reflect.TypeOf((*ReflectPointer)(nil)).Elem()
+	tyCharTy    = reflect.TypeOf((*CharTy)(nil)).Elem()
+	tyIntTy     = reflect.TypeOf((*IntTy)(nil)).Elem()
+	tyUintTy    = reflect.TypeOf((*UintTy)(nil)).Elem()
+	tySizeTy    = reflect.TypeOf((*SizeTy)(nil)).Elem()
+	tyEncodable = reflect.TypeOf((*Encodable)(nil)).Elem()
+	tyDecodable = reflect.TypeOf((*Decodable)(nil)).Elem()
 )
 
 // Int is a signed integer type.
@@ -32,7 +36,7 @@ type IntTy interface {
 	IsInt()
 }
 
-// Dummy function to make Int implement IntTy interface
+// IsInt is a dummy function to make Int implement IntTy interface
 func (Int) IsInt() {}
 
 // Uint is an unsigned integer type.
@@ -43,7 +47,7 @@ type UintTy interface {
 	IsUint()
 }
 
-// Dummy function to make Uint implement UintTy interface
+// IsUint is a dummy function to make Uint implement UintTy interface
 func (Uint) IsUint() {}
 
 // Char is the possibly signed but maybe unsigned C/C++ char.
@@ -54,7 +58,7 @@ type CharTy interface {
 	IsChar()
 }
 
-// Dummy function to make Char implement CharTy interface
+// IsChar is a dummy function to make Char implement CharTy interface
 func (Char) IsChar() {}
 
 // CharToBytes changes the Char values to their byte[] representation.
@@ -74,11 +78,25 @@ type SizeTy interface {
 	IsMemorySize()
 }
 
-// Dummy function to make Size implement SizeTy interface
+// IsMemorySize is a dummy function to make Size implement SizeTy interface
 func (Size) IsMemorySize() {}
 
 // IsSize returns true if v is a Size or alias to a Size.
 func IsSize(v interface{}) bool {
 	_, ok := v.(SizeTy)
 	return ok
+}
+
+// Encodable is the interface implemented by types that can encode themselves to
+// an encoder.
+type Encodable interface {
+	// Encode encodes this object to the encoder.
+	Encode(*Encoder)
+}
+
+// Decodable is the interface implemented by types that can decode themselves
+// from an encoder.
+type Decodable interface {
+	// Decode decodes this object from the decoder.
+	Decode(*Decoder)
 }

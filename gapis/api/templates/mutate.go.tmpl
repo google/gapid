@@ -592,7 +592,7 @@
   {{AssertType $ "SliceAssign"}}
 
   {{if ne $.Operator "="}}{{Error "Compound assignments to pointers are not supported (%s)" $.Operator}}{{end}}
-  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}).MustWrite(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
+  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}).MustWrite(ϟctx, []{{Template "Go.Type" $.To}}{ {{Template "Go.Read" $.Value}} }, ϟa, ϟs, ϟb)
 {{end}}
 
 
