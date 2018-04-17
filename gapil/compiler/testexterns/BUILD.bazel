@@ -18,7 +18,7 @@ go_library(
     name = "go_default_library",
     srcs = ["testexterns.go"],
     cdeps = [
-        "//gapil/runtime/cc:tracking_arena",
+        "//gapil/runtime/cc:arena",
     ],
     cgo = True,
     clinkopts = [],  # keep
