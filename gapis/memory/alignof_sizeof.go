@@ -24,13 +24,6 @@ import (
 
 // AlignOf returns the byte alignment of the type t.
 func AlignOf(t reflect.Type, m *device.MemoryLayout) uint64 {
-	handlePointer := func() (uint64, bool) {
-		if t.Implements(tyPointer) {
-			return uint64(m.GetPointer().GetAlignment()), true
-		}
-		return 0, false
-	}
-
 	switch t.Kind() {
 	case reflect.Uint8:
 		if t.Implements(tyCharTy) {
@@ -48,13 +41,16 @@ func AlignOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 	case reflect.Float64:
 		return uint64(m.GetF64().GetAlignment())
 	case reflect.Int64, reflect.Uint64:
-		if t.Implements(tyIntTy) || t.Implements(tyUintTy) {
+		switch {
+		case t.Implements(tyPointer):
+			return uint64(m.GetPointer().GetAlignment())
+		case t.Implements(tyIntTy) || t.Implements(tyUintTy):
 			return uint64(m.GetInteger().GetAlignment())
-		}
-		if t.Implements(tySizeTy) {
+		case t.Implements(tySizeTy):
 			return uint64(m.GetSize().GetAlignment())
+		default:
+			return uint64(m.GetI64().GetAlignment())
 		}
-		return uint64(m.GetI64().GetAlignment())
 	case reflect.Int, reflect.Uint:
 		return uint64(m.GetInteger().GetAlignment())
 	case reflect.Array, reflect.Slice:
@@ -62,8 +58,8 @@ func AlignOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 	case reflect.String:
 		return 1
 	case reflect.Struct:
-		if size, ok := handlePointer(); ok {
-			return size
+		if t.Implements(tyPointer) {
+			return uint64(m.GetPointer().GetAlignment())
 		}
 		alignment := uint64(1)
 		for i, c := 0, t.NumField(); i < c; i++ {
@@ -73,8 +69,8 @@ func AlignOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 		}
 		return alignment
 	default:
-		if size, ok := handlePointer(); ok {
-			return size
+		if t.Implements(tyPointer) {
+			return uint64(m.GetPointer().GetAlignment())
 		}
 		panic(fmt.Errorf("MemoryLayout.AlignOf not implemented for type %v (%v)", t, t.Kind()))
 	}
@@ -82,14 +78,6 @@ func AlignOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 
 // SizeOf returns the byte size of the type t.
 func SizeOf(t reflect.Type, m *device.MemoryLayout) uint64 {
-
-	handlePointer := func() (uint64, bool) {
-		if t.Implements(tyPointer) {
-			return uint64(m.GetPointer().GetSize()), true
-		}
-		return 0, false
-	}
-
 	switch t.Kind() {
 	case reflect.Uint8:
 		if t.Implements(tyCharTy) {
@@ -107,13 +95,16 @@ func SizeOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 	case reflect.Float64:
 		return uint64(m.GetF64().GetSize())
 	case reflect.Int64, reflect.Uint64:
-		if t.Implements(tyIntTy) || t.Implements(tyUintTy) {
+		switch {
+		case t.Implements(tyPointer):
+			return uint64(m.GetPointer().GetSize())
+		case t.Implements(tyIntTy) || t.Implements(tyUintTy):
 			return uint64(m.GetInteger().GetSize())
-		}
-		if t.Implements(tySizeTy) {
+		case t.Implements(tySizeTy):
 			return uint64(m.GetSize().GetSize())
+		default:
+			return uint64(m.GetI64().GetSize())
 		}
-		return uint64(m.GetI64().GetSize())
 	case reflect.Int, reflect.Uint:
 		return uint64(m.GetInteger().GetSize())
 	case reflect.Array:
@@ -121,8 +112,8 @@ func SizeOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 	case reflect.String:
 		return 1
 	case reflect.Struct:
-		if size, ok := handlePointer(); ok {
-			return size
+		if t.Implements(tyPointer) {
+			return uint64(m.GetPointer().GetSize())
 		}
 		var size, align uint64
 		for i, c := 0, t.NumField(); i < c; i++ {
@@ -135,8 +126,8 @@ func SizeOf(t reflect.Type, m *device.MemoryLayout) uint64 {
 		size = u64.AlignUp(size, align)
 		return size
 	default:
-		if size, ok := handlePointer(); ok {
-			return size
+		if t.Implements(tyPointer) {
+			return uint64(m.GetPointer().GetSize())
 		}
 		panic(fmt.Errorf("MemoryLayout.SizeOf not implemented for type %v (%v)", t, t.Kind()))
 	}

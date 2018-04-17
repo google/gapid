@@ -28,12 +28,10 @@ func Write(e *Encoder, v interface{}) {
 
 func encode(e *Encoder, v reflect.Value) {
 	t := v.Type()
-	handlePointer := func() bool {
-		if t.Implements(tyPointer) {
-			e.Pointer(v.Interface().(Pointer).Address())
-			return true
-		}
-		return false
+
+	if t.Implements(tyEncodable) {
+		v.Interface().(Encodable).Encode(e)
+		return
 	}
 
 	switch t.Kind() {
@@ -64,11 +62,14 @@ func encode(e *Encoder, v reflect.Value) {
 	case reflect.Uint32:
 		e.U32(uint32(v.Uint()))
 	case reflect.Uint64:
-		if t.Implements(tySizeTy) {
+		switch {
+		case t.Implements(tyPointer):
+			e.Pointer(v.Uint())
+		case t.Implements(tySizeTy):
 			e.Size(Size(v.Uint()))
-		} else if t.Implements(tyUintTy) {
+		case t.Implements(tyUintTy):
 			e.Uint(Uint(v.Uint()))
-		} else {
+		default:
 			e.U64(v.Uint())
 		}
 	case reflect.Int:
@@ -80,25 +81,27 @@ func encode(e *Encoder, v reflect.Value) {
 			encode(e, v.Index(i))
 		}
 	case reflect.Struct:
-		if !handlePointer() {
-			e.Align(AlignOf(v.Type(), e.m))
-			base := e.o
-			for i, c := 0, v.NumField(); i < c; i++ {
-				encode(e, v.Field(i))
-			}
-			written := e.o - base
-			padding := SizeOf(v.Type(), e.m) - written
-			e.Pad(padding)
+		e.Align(AlignOf(v.Type(), e.m))
+		base := e.o
+		for i, c := 0, v.NumField(); i < c; i++ {
+			encode(e, v.Field(i))
 		}
+		written := e.o - base
+		padding := SizeOf(v.Type(), e.m) - written
+		e.Pad(padding)
 	case reflect.String:
 		e.String(v.String())
 	case reflect.Bool:
 		e.Bool(v.Bool())
 	case reflect.Interface, reflect.Ptr:
-		if !handlePointer() {
-			encode(e, v.Elem())
-		}
+		encode(e, v.Elem())
 	default:
-		panic(fmt.Errorf("Cannot write type: %v", t))
+		switch {
+		case t.Implements(tyPointer):
+			e.Pointer(v.Interface().(Pointer).Address())
+		default:
+			panic(fmt.Errorf("Cannot write type: %v", t))
+		}
 	}
+
 }

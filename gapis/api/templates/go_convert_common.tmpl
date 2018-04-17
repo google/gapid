@@ -297,7 +297,7 @@
         «}¶
         return ϟobj¶
       «} ()
-    {{else if IsPointer $truetype}}{{$target}}({{$.Value}}.addr)
+    {{else if IsPointer $truetype}}{{$target}}({{$.Value}})
     {{else if IsSlice $truetype}}&{{$target}}{»¶
       Root:  {{$.Value}}.root,¶
       Base:  {{$.Value}}.base,¶
@@ -329,7 +329,7 @@
         ϟobj := &{{Template "Convert.LiveType" $.Type.To}}{}¶
         return ϟobj, func() { *ϟobj ={{Template "Convert.FromProto" "Type" $.Type.To "Value" $value}} }¶
       «}).({{$target}})
-    {{else if IsPointer $truetype}}{{$target}}{addr: uint64({{$.Value}}), pool: memory.ApplicationPool}
+    {{else if IsPointer $truetype}}{{$target}}({{$.Value}})
     {{else if IsSlice $truetype}}{{$target}}{»¶
       root:  {{$.Value}}.Root,¶
       base:  {{$.Value}}.Base,¶

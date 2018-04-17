@@ -67,10 +67,7 @@ func (*B) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder)
 }
 
 type (
-	Pointer struct {
-		addr uint64
-		pool memory.PoolID
-	}
+	Pointer uint64
 
 	StringːString struct{ M map[string]string }
 
@@ -159,13 +156,15 @@ func (m *IntːStructPtr) Assign(v interface{}) bool {
 }
 
 // Interface compliance checks
-var _ memory.Pointer = &Pointer{}
+var (
+	_ memory.Pointer  = Pointer(0)
+	_ data.Assignable = (*Pointer)(nil)
+)
 
 func (p Pointer) String() string                            { return memory.PointerToString(p) }
-func (p Pointer) IsNullptr() bool                           { return p.addr == 0 && p.pool == memory.ApplicationPool }
+func (p Pointer) IsNullptr() bool                           { return p == 0 }
 func (p Pointer) APointer()                                 { return }
-func (p Pointer) Address() uint64                           { return p.addr }
-func (p Pointer) Pool() memory.PoolID                       { return p.pool }
+func (p Pointer) Address() uint64                           { return uint64(p) }
 func (p Pointer) Offset(n uint64) memory.Pointer            { panic("not implemented") }
 func (p Pointer) ElementSize(m *device.MemoryLayout) uint64 { return 1 }
 func (p Pointer) ElementType() reflect.Type                 { return reflect.TypeOf(byte(0)) }
@@ -173,11 +172,9 @@ func (p Pointer) ISlice(start, end uint64, m *device.MemoryLayout) memory.Slice 
 	panic("not implemented")
 }
 
-var _ data.Assignable = &Pointer{}
-
 func (p *Pointer) Assign(o interface{}) bool {
 	if o, ok := o.(memory.Pointer); ok {
-		*p = Pointer{o.Address(), o.Pool()}
+		*p = Pointer(o.Address())
 		return true
 	}
 	return false
@@ -236,7 +233,7 @@ var (
 		Str:  "aaa",
 		Sli:  []bool{true, false, true},
 		Ref:  &Struct{Str: "ccc", Ref: &Struct{Str: "ddd"}},
-		Ptr:  Pointer{0x123, 0x456},
+		Ptr:  Pointer(0x123),
 		Map:  StringːString{map[string]string{"cat": "meow", "dog": "woof"}},
 		PMap: IntːStructPtr{map[int]*Struct{}},
 		RMap: map[string]string{"eyes": "see", "nose": "smells"},
@@ -245,7 +242,7 @@ var (
 	Q = &X{
 		Str: "xyz",
 		Sli: []bool{false, true, false},
-		Ptr: Pointer{0x321, 0x654},
+		Ptr: Pointer(0x321),
 		Map: StringːString{map[string]string{"bird": "tweet", "fox": "?"}},
 		PMap: IntːStructPtr{map[int]*Struct{
 			100: &Struct{Str: "baldrick"},

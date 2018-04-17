@@ -17,8 +17,6 @@ package memory
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/google/gapid/core/data"
 )
 
 // Read reads the value pointed at p from the decoder d using C alignment rules.
@@ -32,29 +30,12 @@ func Read(d *Decoder, p interface{}) {
 	decode(d, v)
 }
 
-func deref(v reflect.Value) reflect.Value {
-	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	return v
-}
-
 func decode(d *Decoder, v reflect.Value) {
 	t := v.Type()
 
-	handlePointer := func() bool {
-		if t.Implements(tyPointer) {
-			ptr := v.Addr().Interface()
-			if a, ok := ptr.(data.Assignable); ok {
-				if ok := a.Assign(BytePtr(d.Pointer(), ApplicationPool)); !ok {
-					panic(fmt.Errorf("Could not assign to %T", ptr))
-				}
-			} else {
-				panic(fmt.Errorf("Pointer type %T does not implement data.Assignable", ptr))
-			}
-			return true
-		}
-		return false
+	if t.Implements(tyDecodable) {
+		v.Interface().(Decodable).Decode(d)
+		return
 	}
 
 	switch t.Kind() {
@@ -85,11 +66,14 @@ func decode(d *Decoder, v reflect.Value) {
 	case reflect.Uint32:
 		v.SetUint(uint64(d.U32()))
 	case reflect.Uint64:
-		if t.Implements(tySizeTy) {
+		switch {
+		case t.Implements(tyPointer):
+			v.SetUint(uint64(d.Pointer()))
+		case t.Implements(tySizeTy):
 			v.SetUint(uint64(d.Size()))
-		} else if t.Implements(tyUintTy) {
+		case t.Implements(tyUintTy):
 			v.SetUint(uint64(d.Uint()))
-		} else {
+		default:
 			v.SetUint(d.U64())
 		}
 	case reflect.Int:
@@ -101,24 +85,20 @@ func decode(d *Decoder, v reflect.Value) {
 			decode(d, v.Index(i))
 		}
 	case reflect.Struct:
-		if !handlePointer() {
-			d.Align(AlignOf(v.Type(), d.m))
-			base := d.o
-			for i, c := 0, v.NumField(); i < c; i++ {
-				decode(d, v.Field(i))
-			}
-			read := d.o - base
-			padding := SizeOf(v.Type(), d.m) - read
-			d.Skip(padding)
+		d.Align(AlignOf(v.Type(), d.m))
+		base := d.o
+		for i, c := 0, v.NumField(); i < c; i++ {
+			decode(d, v.Field(i))
 		}
+		read := d.o - base
+		padding := SizeOf(v.Type(), d.m) - read
+		d.Skip(padding)
 	case reflect.String:
 		v.SetString(d.String())
 	case reflect.Bool:
 		v.SetBool(d.Bool())
 	case reflect.Interface, reflect.Ptr:
-		if !handlePointer() {
-			decode(d, v.Elem())
-		}
+		decode(d, v.Elem())
 	default:
 		panic(fmt.Errorf("Cannot write type: %v", t))
 	}

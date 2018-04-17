@@ -278,7 +278,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		//   https://github.com/google/gapid/issues/1766
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		t.NumPhysicalDevicesLeft = uint32(e.PPhysicalDeviceCount.Slice(0, 1, l).Index(0).MustRead(ctx, cmd, s, nil))
+		t.NumPhysicalDevicesLeft = uint32(e.PPhysicalDeviceCount.Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0])
 		// Do not mutate the second call to vkEnumeratePhysicalDevices, all the following vkGetPhysicalDeviceProperties belong to this
 		// physical device enumeration.
 		t.InPhysicalDeviceEnumerate = true

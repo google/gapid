@@ -217,10 +217,10 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 	dID := i.Derived()
 	c := GetContext(s, a.thread)
 	cb := CommandBuilder{Thread: a.thread}
-	data := a.Data
+	data := AsU8ˢ(a.Data.Slice(0, uint64(a.ImageSize), s.MemoryLayout), s.MemoryLayout)
 	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
-		base := a.Data.addr
-		data = NewTexturePointer(pb.Data.Index(base))
+		offset := a.Data.Address()
+		data = pb.Data.Slice(offset, offset+uint64(a.ImageSize))
 		out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
 		defer out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID))
 	} else {
@@ -233,7 +233,7 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 	}
 
 	src := image.Info{
-		Bytes:  image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
+		Bytes:  image.NewID(data.ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
 		Depth:  1,
@@ -270,10 +270,10 @@ func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTe
 	dID := i.Derived()
 	c := GetContext(s, a.thread)
 	cb := CommandBuilder{Thread: a.thread}
-	data := a.Data
+	data := AsU8ˢ(a.Data.Slice(0, uint64(a.ImageSize), s.MemoryLayout), s.MemoryLayout)
 	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
-		base := a.Data.addr
-		data = TexturePointer(pb.Data.Index(base))
+		offset := a.Data.Address()
+		data = pb.Data.Slice(offset, offset+uint64(a.ImageSize))
 		out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
 		defer out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID))
 	} else {
@@ -286,7 +286,7 @@ func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTe
 	}
 
 	src := image.Info{
-		Bytes:  image.NewID(data.Slice(0, uint64(a.ImageSize), s.MemoryLayout).ResourceID(ctx, s)),
+		Bytes:  image.NewID(data.ResourceID(ctx, s)),
 		Width:  uint32(a.Width),
 		Height: uint32(a.Height),
 		Depth:  1,

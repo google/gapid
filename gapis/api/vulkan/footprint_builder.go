@@ -1808,7 +1808,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	case *VkGetSwapchainImagesKHR:
 		read(ctx, bh, vkHandle(cmd.Swapchain))
-		if (cmd.PSwapchainImages == VkImageᵖ{}) {
+		if cmd.PSwapchainImages == 0 {
 			modify(ctx, bh, vkHandle(cmd.Swapchain))
 		} else {
 			count := uint64(cmd.PSwapchainImageCount.MustRead(ctx, cmd, s, nil))
@@ -1861,7 +1861,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		imgIds := info.PImageIndices.Slice(0, swCount, l)
 		for swi, vkSw := range info.PSwapchains.Slice(0, swCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(vkSw))
-			imgID := imgIds.Index(uint64(swi)).MustRead(ctx, cmd, s, nil)
+			imgID := imgIds.Index(uint64(swi)).MustRead(ctx, cmd, s, nil)[0]
 			vkImg := GetState(s).Swapchains.Get(vkSw).SwapchainImages.Get(imgID).VulkanHandle
 			imgLayout, imgData := vb.getImageLayoutAndData(ctx, bh, vkImg)
 			read(ctx, bh, imgLayout)
@@ -1924,7 +1924,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		setCount := uint64(info.DescriptorSetCount)
 		vkLayouts := info.PSetLayouts.Slice(0, setCount, l)
 		for i, vkSet := range cmd.PDescriptorSets.Slice(0, setCount, l).MustRead(ctx, cmd, s, nil) {
-			vkLayout := vkLayouts.Index(uint64(i)).MustRead(ctx, cmd, s, nil)
+			vkLayout := vkLayouts.Index(uint64(i)).MustRead(ctx, cmd, s, nil)[0]
 			read(ctx, bh, vkHandle(vkLayout))
 			layoutObj := GetState(s).DescriptorSetLayouts.Get(vkLayout)
 			write(ctx, bh, vkHandle(vkSet))

@@ -25,9 +25,7 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-func p(addr uint64) memory.Pointer {
-	return memory.BytePtr(addr, memory.ApplicationPool)
-}
+var p = memory.BytePtr
 
 func TestClone(t *testing.T) {
 	ctx := log.Testing(t)
@@ -115,8 +113,8 @@ func TestSliceCasts(t *testing.T) {
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdSliceCasts(p(0x1234), 10),
 	)
-	assert.For(ctx, "U16[] -> U8[]").That(GetState(s).U8s).Equals(U8ᵖ{0x1234, 0}.Slice(0, 20, l))
-	assert.For(ctx, "U16[] -> U16[]").That(GetState(s).U16s).Equals(U16ᵖ{0x1234, 0}.Slice(0, 10, l))
-	assert.For(ctx, "U16[] -> U32[]").That(GetState(s).U32s).Equals(U32ᵖ{0x1234, 0}.Slice(0, 5, l))
-	assert.For(ctx, "U16[] -> int[]").That(GetState(s).Ints).Equals(Intᵖ{0x1234, 0}.Slice(0, 3, l))
+	assert.For(ctx, "U16[] -> U8[]").That(GetState(s).U8s).Equals(U8ᵖ(0x1234).Slice(0, 20, l))
+	assert.For(ctx, "U16[] -> U16[]").That(GetState(s).U16s).Equals(U16ᵖ(0x1234).Slice(0, 10, l))
+	assert.For(ctx, "U16[] -> U32[]").That(GetState(s).U32s).Equals(U32ᵖ(0x1234).Slice(0, 5, l))
+	assert.For(ctx, "U16[] -> int[]").That(GetState(s).Ints).Equals(Intᵖ(0x1234).Slice(0, 3, l))
 }

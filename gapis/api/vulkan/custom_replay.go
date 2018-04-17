@@ -382,11 +382,11 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	// Apply the write observation before having the replay device calling the vkAcquireNextImageKHR() command.
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	o.ApplyWrites(s.Memory.ApplicationPool())
-	_ = a.PImageIndex.Slice(0, 1, l).Index(0).MustRead(ctx, a, s, b)
+	_ = a.PImageIndex.Slice(0, 1, l).MustRead(ctx, a, s, b)
 	if b != nil {
 		a.Call(ctx, s, b)
 	}
-	a.PImageIndex.Slice(0, 1, l).Index(0).Write(ctx, a.PImageIndex.Slice(0, 1, l).Index(0).MustRead(ctx, a, s, nil), a, s, b)
+	a.PImageIndex.Slice(0, 1, l).Write(ctx, a.PImageIndex.Slice(0, 1, l).MustRead(ctx, a, s, nil), a, s, b)
 	_ = a.Result
 	if a.Semaphore != VkSemaphore(0) {
 		GetState(s).Semaphores.Get(a.Semaphore).Signaled = true
@@ -432,7 +432,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	}
 	l := s.MemoryLayout
 	c := GetState(s)
-	memory := a.PMemory.Slice(0, 1, l).Index(0).MustRead(ctx, a, s, nil)
+	memory := a.PMemory.Slice(0, 1, l).MustRead(ctx, a, s, nil)[0]
 	imageObject := c.Images.Get(a.Image)
 	imageWidth := imageObject.Info.Extent.Width
 	imageHeight := imageObject.Info.Extent.Height
@@ -443,12 +443,12 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 		VulkanHandle:    memory,
 		AllocationSize:  imageSize,
 		BoundObjects:    NewU64ːVkDeviceSizeᵐ(),
-		MappedOffset:    VkDeviceSize(uint64(0)),
-		MappedSize:      VkDeviceSize(uint64(0)),
-		MappedLocation:  Voidᵖ{},
+		MappedOffset:    0,
+		MappedSize:      0,
+		MappedLocation:  0,
 		MemoryTypeIndex: 0,
 		Data:            MakeU8ˢ(uint64(imageSize), s)}
 	c.DeviceMemories.Set(memory, memoryObject)
-	a.PMemory.Slice(0, 1, l).Index(0).Write(ctx, memory, a, s, b)
+	a.PMemory.Slice(0, 1, l).Write(ctx, []VkDeviceMemory{memory}, a, s, b)
 	return err
 }

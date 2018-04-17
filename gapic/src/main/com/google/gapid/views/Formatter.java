@@ -336,14 +336,7 @@ public class Formatter {
   }
 
   private static void format(Box.Pointer pointer, StylingString string, Style style) {
-    if (Memory.PoolNames.Application_VALUE != pointer.getPool()) {
-      string.append("*", string.structureStyle());
-      if (pointer.getAddress() != 0) {
-        string.append(toPointerString(pointer.getAddress()) + " ", style);
-      }
-      string.append("Pool: ", style);
-      string.append(uint32ToString(pointer.getPool()), style);
-    } else if (pointer.getAddress() == 0) {
+    if (pointer.getAddress() == 0) {
       string.append("(nil)", string.structureStyle());
     } else {
       string.append("*", string.structureStyle());
@@ -366,7 +359,7 @@ public class Formatter {
     string.append(String.valueOf(slice.getCount()), style);
     string.append("]", string.structureStyle());
 
-    if (slice.getBase().getPool() != Memory.PoolNames.Application_VALUE ||
+    if (slice.getPool() != Memory.PoolNames.Application_VALUE ||
         slice.getBase().getAddress() != 0) {
       string.append(" (", string.structureStyle());
       format(slice.getBase(), string, style);

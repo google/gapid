@@ -43,7 +43,7 @@ type drawElements interface {
 
 func (d *GlDrawElements) withIndicesNull() drawElements {
 	out := *d
-	out.Indices.addr = 0
+	out.Indices = 0
 	return &out
 }
 func (d *GlDrawElements) indexLimits() (resolve.IndexRange, bool) { return resolve.IndexRange{}, false }
@@ -54,7 +54,7 @@ func (d *GlDrawElements) indices() IndicesPointer                 { return d.Ind
 
 func (d *GlDrawRangeElements) withIndicesNull() drawElements {
 	out := *d
-	out.Indices.addr = 0
+	out.Indices = 0
 	return &out
 }
 func (d *GlDrawRangeElements) indexLimits() (resolve.IndexRange, bool) {
@@ -127,7 +127,7 @@ func compatDrawElements(
 		// pooled buffer.
 		data := ib.Data
 		indexSize := DataTypeSize(cmd.indicesType())
-		start := u64.Min(cmd.indices().addr, data.count)                               // Clamp
+		start := u64.Min(uint64(cmd.indices()), data.count)                            // Clamp
 		end := u64.Min(start+uint64(indexSize)*uint64(cmd.indicesCount()), data.count) // Clamp
 		limits, ok := cmd.indexLimits()
 		if !ok {
@@ -189,7 +189,7 @@ func moveClientVBsToVAs(
 					stride = size
 				}
 				rng := memory.Range{
-					Base: cmd.Data.addr, // Always start from the 0'th vertex to simplify logic.
+					Base: uint64(cmd.Data), // Always start from the 0'th vertex to simplify logic.
 					Size: uint64(int(first+count-1)*stride + size),
 				}
 				interval.Merge(&rngs, rng.Span(), true)
@@ -217,7 +217,7 @@ func moveClientVBsToVAs(
 
 	// Fill the array-buffers with the observed memory data.
 	for i, rng := range rngs {
-		base := memory.BytePtr(rng.First, memory.ApplicationPool)
+		base := memory.BytePtr(rng.First)
 		size := GLsizeiptr(rng.Count)
 		t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
 		out.MutateAndWrite(ctx, dID, cb.GlBufferData(GLenum_GL_ARRAY_BUFFER, size, base, GLenum_GL_STATIC_DRAW))
@@ -229,13 +229,13 @@ func moveClientVBsToVAs(
 		if arr.Enabled == GLboolean_GL_TRUE {
 			if glVAP, ok := clientVAs[arr]; ok {
 				glVAP := *glVAP // Copy
-				i := interval.IndexOf(&rngs, glVAP.Data.addr)
+				i := interval.IndexOf(&rngs, uint64(glVAP.Data))
 				t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
 				// The glVertexAttribPointer call may have come from a different thread
 				// and there's no guarantees that the thread still has the context bound.
 				// Use the draw call's thread instead.
 				glVAP.SetThread(cmd.Thread())
-				glVAP.Data = VertexPointer{glVAP.Data.addr - rngs[i].First, memory.ApplicationPool} // Offset
+				glVAP.Data = VertexPointer(uint64(glVAP.Data) - rngs[i].First) // Offset
 				out.MutateAndWrite(ctx, dID, &glVAP)
 			}
 		}

@@ -219,14 +219,14 @@ func (r AllocResult) Range() memory.Range {
 	return r.rng
 }
 
-// Ptr returns the beginning of the range as an application pool pointer.
+// Ptr returns a pointer to the beginning of the range.
 func (r AllocResult) Ptr() memory.Pointer {
-	return memory.BytePtr(r.rng.Base, memory.ApplicationPool)
+	return memory.BytePtr(r.rng.Base)
 }
 
 // Offset returns a pointer n bytes to the right of the associated range.
 func (r AllocResult) Offset(n uint64) memory.Pointer {
-	return memory.BytePtr(r.rng.Base+n, memory.ApplicationPool)
+	return memory.BytePtr(r.rng.Base + n)
 }
 
 // Address returns the beginning of the range.

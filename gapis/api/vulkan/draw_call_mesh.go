@@ -190,7 +190,7 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, boundIndexBuffer *B
 				if err != nil {
 					return nil, err
 				}
-				index += int32(oneByte) << (8 * j)
+				index += int32(oneByte[0]) << (8 * j)
 			}
 			index += vertexOffset
 			if index < 0 {

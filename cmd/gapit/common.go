@@ -295,16 +295,16 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 		m := boxedMemory.(*service.Memory)
 		for _, read := range m.Reads {
 			fmt.Printf("   R: [%v - %v]\n",
-				memory.BytePtr(read.Base, 0),
-				memory.BytePtr(read.Base+read.Size-1, 0))
+				memory.BytePtr(read.Base),
+				memory.BytePtr(read.Base+read.Size-1))
 			if of.Data {
 				printMemoryData(ctx, client, p, read)
 			}
 		}
 		for _, write := range m.Writes {
 			fmt.Printf("   W: [%v - %v]\n",
-				memory.BytePtr(write.Base, 0),
-				memory.BytePtr(write.Base+write.Size-1, 0))
+				memory.BytePtr(write.Base),
+				memory.BytePtr(write.Base+write.Size-1))
 			if of.Data {
 				printMemoryData(ctx, client, p, write)
 			}

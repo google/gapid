@@ -40,25 +40,25 @@ message Value {
   }
 }
 
+
 message Pointer {
   // base address of the pointer.
   uint64 address = 1;
-  // the pool identifier.
-  uint32 pool = 2;
 }
-
 message Slice {
   // the type of the slice data.
   pod.Type type = 1;
+  // the pool identifier of the slice.
+  uint64 pool = 2;
   // the base address of the slice.
-  Pointer base = 2;
+  Pointer base = 3;
   // the number of elements in the slice.
-  uint64 count = 3;
+  uint64 count = 4;
   // the total size of the slice in bytes.
-  uint64 size = 4;
+  uint64 size = 5;
   // the original pointer this slice derives from.
   // Is constant even after sub-slicing.
-  uint64 root = 5;
+  uint64 root = 6;
 }
 
 message Reference {

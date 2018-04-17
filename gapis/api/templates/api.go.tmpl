@@ -198,32 +198,26 @@
   {{$el_is_char := IsChar    ($p.To | Underlying | Unpack) }}
   {{$el_is_ptr  := IsPointer ($p.To | Underlying | Unpack) }}
 
-  var _ = ϟmem.Pointer({{$ptr_ty}}{})
-  var _ data.Assignable = &{{$ptr_ty}}{}
+  var (
+    _ ϟmem.Pointer = {{$ptr_ty}}(0)
+    _ path.Linker = {{$ptr_ty}}(0)
+    _ data.Assignable = (*{{$ptr_ty}})(nil)
+  )
 
   // {{$ptr_ty}} is a pointer to a {{$el_ty}} element.
-  {{if $el_is_ptr}}
-  // Note: Pointers are stored differently between the application pool and internal pools.
-  //  * The application pool stores pointers as an address of an architecture-dependant size.
-  //  * Internal pools store pointers as an 64-bit unsigned address and a 32-bit unsigned
-  //    pool identifier.
-  {{end}}
-  type {{$ptr_ty}} struct {
-    addr uint64
-    pool ϟmem.PoolID
-  }
+  type {{$ptr_ty}} uint64
 
   // New{{$ptr_ty}} returns a {{$ptr_ty}} that points to addr in the application pool.
   func New{{$ptr_ty}}(p ϟmem.Pointer) {{$ptr_ty}} {
     if p == nil {
-      return {{$ptr_ty}}{ 0, ϟmem.ApplicationPool }
+      return {{$ptr_ty}}(0)
     }
-    return {{$ptr_ty}}{ p.Address(), p.Pool() }
+    return {{$ptr_ty}}(p.Address())
   }
 
   func (p *{{$ptr_ty}}) Assign(o interface{}) bool {
     if o, ok := o.(ϟmem.Pointer); ok {
-      *p = {{$ptr_ty}}{o.Address(), o.Pool()}
+      *p = {{$ptr_ty}}(o.Address())
       return true
     }
     return false
@@ -231,20 +225,17 @@
 
   func (p {{$ptr_ty}}) String() string { return ϟmem.PointerToString(p) }
 
-  // IsNullptr returns true if the address is 0 and the pool is ϟmem.ApplicationPool.
-  func (p {{$ptr_ty}}) IsNullptr() bool { return p.addr == 0 && p.pool == ϟmem.ApplicationPool }
+  // IsNullptr returns true if the pointer address is 0.
+  func (p {{$ptr_ty}}) IsNullptr() bool { return p == 0 }
 
   // APointer implements the ReflectPointer interface
   func (p {{$ptr_ty}}) APointer() { return }
 
   // Address returns the pointer's memory address.
-  func (p {{$ptr_ty}}) Address() uint64 { return p.addr }
-
-  // Pool returns the memory pool.
-  func (p {{$ptr_ty}}) Pool() ϟmem.PoolID { return p.pool }
+  func (p {{$ptr_ty}}) Address() uint64 { return uint64(p) }
 
   // Offset returns the pointer offset by n bytes.
-  func (p {{$ptr_ty}}) Offset(n uint64) ϟmem.Pointer { return {{$ptr_ty}}{ p.addr + n, p.pool } }
+  func (p {{$ptr_ty}}) Offset(n uint64) ϟmem.Pointer { return {{$ptr_ty}}(uint64(p) + n) }
 
   // ElementType returns the reflect.Type of the element that {{$ptr_ty}} points to.
   func (p {{$ptr_ty}}) ElementType() reflect.Type {
@@ -290,12 +281,12 @@
     // StringSlice returns a slice starting at p and ending at the first 0 byte null-terminator.
     func (p {{$ptr_ty}}) StringSlice(ϟctx context.Context, ϟs *api.GlobalState) Charˢ {
       numBytes := uint64(2^6)
-      i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(p.pool).TempSlice(ϟmem.Range{Base: p.addr, Size: p.addr + numBytes}))
+      i, d := uint64(0), ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(ϟmem.ApplicationPool).TempSlice(ϟmem.Range{Base: uint64(p), Size: uint64(p) + numBytes}))
 
       for {
         if i >= numBytes {
           numBytes <<= 1
-          d = ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(p.pool).TempSlice(ϟmem.Range{Base: p.addr + i, Size: p.addr + i + numBytes}))
+          d = ϟs.MemoryDecoder(ϟctx, ϟs.Memory.MustGet(ϟmem.ApplicationPool).TempSlice(ϟmem.Range{Base: uint64(p) + i, Size: numBytes - i}))
         }
 
         i++
@@ -314,19 +305,16 @@
     elSize := p.ElementSize(ϟl)
     count := end-start
     return {{$slice_ty}}{
-      root:  p.addr,
-      base:  p.addr + start * elSize,
+      root:  uint64(p),
+      base:  uint64(p) + start * elSize,
       size:  count * elSize,
       count: count,
-      pool:  p.pool,
+      pool:  ϟmem.ApplicationPool,
     }
   }
 
   // ISlice returns a new Slice from the pointer using start and end indices.
   func (p {{$ptr_ty}}) ISlice(start, end uint64, ϟl *device.MemoryLayout) ϟmem.Slice { return p.Slice(start, end, ϟl) }
-
-  // Check interface conformance
-  var _ path.Linker = {{$ptr_ty}}{}
 
   // Link returns a path to the object that this is a link to, or error
   // if you can not follow this path. Typically the incoming path ϟp
@@ -335,18 +323,18 @@
   // of the value of the instance after the command has executed.
   func (p {{$ptr_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
-      return cmd.MemoryAfter(uint32(p.pool), p.addr, 0), nil
+      return cmd.MemoryAfter(uint32(ϟmem.ApplicationPool), uint64(p), 0), nil
     }
     return nil, nil
   }
 
   {{if not (GetAnnotation $ "replay_custom_value")}}
     func (p {{$ptr_ty}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.GlobalState) value.Pointer {
-      if p.addr != 0 {
+      if p != 0 {
         {{if $el_is_ptr}}
-          return value.PointerIndex(p.addr / uint64(ϟs.MemoryLayout.GetPointer().GetSize()))
+          return value.PointerIndex(uint64(p) / uint64(ϟs.MemoryLayout.GetPointer().GetSize()))
         {{else}}
-          return value.ObservedPointer(p.addr)
+          return value.ObservedPointer(uint64(p))
         {{end}}
       } else {
         return value.AbsolutePointer(0)
@@ -391,7 +379,7 @@
       { // {{$.Name}}.{{$name}}
         d.Align({{Template "Go.AlignOf" (TypeOf $f)}})
         addr := value.ObservedPointer(s.base + d.Offset())
-        ϟb.Push({{Macro "Go.Type" $f}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs))
+        ϟb.Push({{Macro "Go.Type" $f}}(d.Pointer()).value(ϟb, ϟa, ϟs))
         ϟb.Store(addr)
       }
     {{else if IsClass ($f.Type | Underlying)}}
@@ -653,8 +641,7 @@
         d, dst := s.Decoder(ϟctx, ϟs), value.PointerIndex(s.base / uint64(ϟl.GetPointer().GetSize()))
         for i := uint64(0); i < s.count; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
-          ptr := {{$el_ty}}{d.Pointer(), ϟmem.ApplicationPool}.value(ϟb, ϟa, ϟs)
-          ϟb.StorePointer(dst, ptr)
+          ϟb.StorePointer(dst, {{$el_ty}}(d.Pointer()).value(ϟb, ϟa, ϟs))
           dst++
         }
         panicOnError(d.Error())
@@ -725,15 +712,9 @@
     return s
   }
 
-  // Index returns a {{$ptr_ty}} to the i'th element in this {{$slice_ty}}.
-  func (s {{$slice_ty}}) Index(i uint64) {{$ptr_ty}} {
-    elSize := s.size / s.count
-    return {{$ptr_ty}}{ s.base + i * elSize, s.pool }
-  }
-
-  // IIndex returns a pointer to the i'th element in the slice.
-  func (s {{$slice_ty}}) IIndex(i uint64) ϟmem.Pointer {
-    return s.Index(i)
+  // Index returns a sub-slice to the i'th element in this {{$slice_ty}}.
+  func (s {{$slice_ty}}) Index(i uint64) {{$slice_ty}} {
+    return s.Slice(i, i+1)
   }
 
   // Slice returns a sub-slice from the {{$slice_ty}} using start and end indices.
@@ -762,7 +743,7 @@
 
   // String returns a string description of the {{$slice_ty}} slice.
   func (s {{$slice_ty}}) String() string {
-    return fmt.Sprintf("{{$el_ty}}(%v@%v)[%d]", s.base, s.pool, s.count)
+    return fmt.Sprintf("{{$el_ty}}(0x%x@%v)[%d]", s.base, s.pool, s.count)
   }
 
   // Check interface conformance
