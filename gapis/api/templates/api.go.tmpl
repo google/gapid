@@ -14,12 +14,15 @@
  * limitations under the License.
  */}}
 
-{{Global "module" ""}}
+{{/* ---- Includes ---- */}}
 {{Include "go_common.tmpl"}}
+{{Include "c_common.tmpl"}}
+
 {{$ | Macro "api.go" | GoFmt | Write "api.go"}}
 {{$ | Macro "enum.go" | GoFmt | Write "enum.go"}}
 
 {{define "api.go"}}
+  {{AssertType $ "API"}}
   {{template "Go.GeneratedHeader" (Global "OutputDir")}}
 
   import (
@@ -45,46 +48,46 @@
     ϟmem "github.com/google/gapid/gapis/memory"
   )
 
-  // Avoid unused errors.
-  var (
+  var ( // Don't error if these packages aren't used.
     _ = dictionary.Entry{}
     _ = protocol.OpCall
     _ = sort.IntSlice(nil)
   )
 
-  {{range $p := $.Pseudonyms}}
-    {{template "Pseudonym" $p}}
+¶
+  {{template "Go.CommentHeader" "StaticArrays"}}
+  {{ForEach $.StaticArrays "DeclareStaticArray" | JoinWith "\n"}}
+¶
+  {{template "Go.CommentHeader" "Maps"}}
+  {{ForEach $.Maps "DeclareMap" | JoinWith "\n"}}
+¶
+  {{template "Go.CommentHeader" "Slices"}}
+  {{ForEach $.Slices "DeclareSlice" | JoinWith "\n"}}
+¶
+  {{template "Go.CommentHeader" "Pointers"}}
+  {{ForEach $.Pointers "DeclarePointer" | JoinWith "\n"}}
+¶
+  {{template "Go.CommentHeader" "Pseudonyms"}}
+  {{ForEach $.Pseudonyms "DeclarePseudonym" | JoinWith "\n"}}
+¶
+  {{template "Go.CommentHeader" "Classes"}}
+  {{ForEach $.Classes "DeclareClass" | JoinWith "\n"}}
+¶
+  {{template "Go.CommentHeader" "Commands"}}
+  {{range $c := AllCommands $}}
+    {{if not (GetAnnotation $c "pfn")}} {{/* TODO remove the @pfn nastiness */}}
+      {{Template "DeclareCommand" $c}}¶
+    {{end}}
   {{end}}
-
-  {{range $p := $.Pointers}}
-    {{template "Pointer" $p}}
-  {{end}}
-
-  {{range $s := $.StaticArrays}}
-    {{template "Array" $s}}
-  {{end}}
-
-  {{range $s := $.Slices}}
-    {{template "Slice" $s}}
-  {{end}}
-
-  {{range $m := $.Maps}}
-    {{template "Map" $m}}
-  {{end}}
-
-  {{range $i, $c := AllCommands $}}
-    {{Template "Command" "Command" $c "Index" $i}}
-  {{end}}
-
-  {{range $c := $.Classes}}
-    {{template "Class" $c}}
-  {{end}}
-
-  {{template "State" $}}
-
-  {{template "CommandBuilder" $}}
-
-  {{template "API" $}}
+¶
+  {{template "Go.CommentHeader" "CommandBuilder"}}
+  {{Template "DeclareCommandBuilder" $}}
+¶
+  {{template "Go.CommentHeader" "State"}}
+  {{Template "DeclareState" $}}¶
+¶
+  {{template "Go.CommentHeader" "API"}}
+  {{Template "DeclareAPI" $}}¶
 
   func init() {
     api.Register(API{})
@@ -119,12 +122,12 @@
   Emits a type declaration for the specified pseudonym.
 -------------------------------------------------------------------------------
 */}}
-{{define "Pseudonym"}}
+{{define "DeclarePseudonym"}}
   {{AssertType $ "Pseudonym"}}
 
   {{$u := $ | Underlying}}
-  {{     if IsPointer  $u}}{{Template "Pointer" $}}
-  {{else if IsSlice    $u}}{{Template "Slice"   $}}
+  {{     if IsPointer  $u}}{{Template "DeclarePointer" $}}
+  {{else if IsSlice    $u}}{{Template "DeclareSlice"   $}}
   {{else if IsVoid     $u}}
   {{else}}
     {{$name := Macro "Go.Type" $}}
@@ -158,7 +161,7 @@
   Emits a type declaration for the static-array type.
 -------------------------------------------------------------------------------
 */}}
-{{define "Array"}}
+{{define "DeclareStaticArray"}}
   {{AssertType $ "StaticArray"}}
 
   {{$ty := Macro "Go.Type" $}}
@@ -195,7 +198,7 @@
   type (Pseudonym) to Pointer.
 -------------------------------------------------------------------------------
 */}}
-{{define "Pointer"}}
+{{define "DeclarePointer"}}
   {{AssertType $ "Pointer" "Pseudonym"}}
 
   {{$p          := $ | Underlying | Unpack                 }}
@@ -416,7 +419,7 @@
   type (Pseudonym) to Slice.
 -------------------------------------------------------------------------------
 */}}
-{{define "Slice"}}
+{{define "DeclareSlice"}}
   {{AssertType $ "Slice" "Pseudonym"}}
 
   {{$s          := $ | Underlying | Unpack                 }}
@@ -807,7 +810,7 @@
   Emits a type declaration and implementation for the specified map.
 -------------------------------------------------------------------------------
 */}}
-{{define "Map"}}
+{{define "DeclareMap"}}
   {{AssertType $ "Map"}}
   {{$name  := $.Name}}
   {{$key   := Macro "Go.Type" $.KeyType}}
@@ -937,84 +940,82 @@
   Emits a type declaration and implementation for the specified command.
 -------------------------------------------------------------------------------
 */}}
-{{define "Command"}}
-  {{AssertType $.Command "Function"}}
-  {{$name       := $.Command | GoCommandName}}
-  {{$ret        := not (IsVoid $.Command.Return.Type)}}
-  {{$isDrawCall := GetAnnotation $.Command "draw_call"}}
-  {{$isPFN      := GetAnnotation $.Command "pfn"}}
-  {{if not $isPFN}}
-    {{template "Go.CommentHeader" $name}}
+{{define "DeclareCommand"}}
+  {{AssertType $ "Function"}}
+  {{$name       := $ | GoCommandName}}
+  {{$ret        := not (IsVoid $.Return.Type)}}
+  {{$isDrawCall := GetAnnotation $ "draw_call"}}
+  {{$isPFN      := GetAnnotation $ "pfn"}}
+  {{template "Go.CommentHeader" $name}}
 
-    type {{$name}} struct {
-      extras api.CmdExtras
-      caller api.CmdID
-      thread uint64
-      {{range $p := $.Command.FullParameters}}
-        {{$p | GoPublicName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
+  type {{$name}} struct {
+    extras api.CmdExtras
+    caller api.CmdID
+    thread uint64
+    {{range $p := $.FullParameters}}
+      {{$p | GoPublicName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
+    {{end}}
+  }
+
+  func (ϟa *{{$name}}) Thread() uint64 { return ϟa.thread }
+
+  func (ϟa *{{$name}}) SetThread(v uint64) { ϟa.thread = v }
+
+  func (ϟa *{{$name}}) Caller() api.CmdID { return ϟa.caller }
+
+  func (ϟa *{{$name}}) SetCaller(c api.CmdID) { ϟa.caller = c }
+
+  func (ϟa *{{$name}}) CmdName() string { return "{{$ | CommandName}}" }
+
+  func (ϟa *{{$name}}) String() string {
+    return fmt.Sprintf("{{$ | CommandName}}(§
+      {{range $i, $p := $.CallParameters}}
+        {{if $i}}, §{{end}}
+        {{$p.Name}}: %v§
       {{end}}
-    }
+      ){{if $ret}} → %v{{end}}",§
+      {{range $i, $p := $.CallParameters}}
+        {{Template "Go.Parameter" $p}}, §
+      {{end}}
+      {{if $ret}}ϟa.Result§{{end}}
+    )
+  }
 
-    func (ϟa *{{$name}}) Thread() uint64 { return ϟa.thread }
+  // AddRead appends a new read observation to the command of the range rng
+  // with the data id.
+  // The {{$name}} pointer is returned so that calls can be chained.
+  func (ϟa *{{$name}}) AddRead(rng ϟmem.Range, id id.ID) *{{$name}} {
+    ϟa.extras.GetOrAppendObservations().AddRead(rng, id)
+    return ϟa
+  }
 
-    func (ϟa *{{$name}}) SetThread(v uint64) { ϟa.thread = v }
+  // AddWrite appends a new write observation to the command of the range rng
+  // with the data id.
+  // The {{$name}} pointer is returned so that calls can be chained.
+  func (ϟa *{{$name}}) AddWrite(rng ϟmem.Range, id id.ID) *{{$name}} {
+    ϟa.extras.GetOrAppendObservations().AddWrite(rng, id)
+    return ϟa
+  }
 
-    func (ϟa *{{$name}}) Caller() api.CmdID { return ϟa.caller }
+  func (ϟa *{{$name}}) API() api.API { return API{} }
+  func (ϟa *{{$name}}) CmdFlags(ϟctx context.Context, ϟi api.CmdID, ϟs *api.GlobalState) api.CmdFlags {
+    {{$names := Strings "draw_call" "transform_feedback" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker"}}
+    {{$flags := Strings "DrawCall"  "TransformFeedback"  "Clear" "StartOfFrame" "EndOfFrame" "UserMarker"  "PushUserMarker"   "PopUserMarker"}}
 
-    func (ϟa *{{$name}}) SetCaller(c api.CmdID) { ϟa.caller = c }
-
-    func (ϟa *{{$name}}) CmdName() string { return "{{$.Command | CommandName}}" }
-
-    func (ϟa *{{$name}}) String() string {
-      return fmt.Sprintf("{{$.Command | CommandName}}(§
-        {{range $i, $p := $.Command.CallParameters}}
-          {{if $i}}, §{{end}}
-          {{$p.Name}}: %v§
-        {{end}}
-        ){{if $ret}} → %v{{end}}",§
-        {{range $i, $p := $.Command.CallParameters}}
-          {{Template "Go.Parameter" $p}}, §
-        {{end}}
-        {{if $ret}}ϟa.Result§{{end}}
-      )
-    }
-
-    // AddRead appends a new read observation to the command of the range rng
-    // with the data id.
-    // The {{$name}} pointer is returned so that calls can be chained.
-    func (ϟa *{{$name}}) AddRead(rng ϟmem.Range, id id.ID) *{{$name}} {
-      ϟa.extras.GetOrAppendObservations().AddRead(rng, id)
-      return ϟa
-    }
-
-    // AddWrite appends a new write observation to the command of the range rng
-    // with the data id.
-    // The {{$name}} pointer is returned so that calls can be chained.
-    func (ϟa *{{$name}}) AddWrite(rng ϟmem.Range, id id.ID) *{{$name}} {
-      ϟa.extras.GetOrAppendObservations().AddWrite(rng, id)
-      return ϟa
-    }
-
-    func (ϟa *{{$name}}) API() api.API { return API{} }
-    func (ϟa *{{$name}}) CmdFlags(ϟctx context.Context, ϟi api.CmdID, ϟs *api.GlobalState) api.CmdFlags {
-      {{$names := Strings "draw_call" "transform_feedback" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker"}}
-      {{$flags := Strings "DrawCall"  "TransformFeedback"  "Clear" "StartOfFrame" "EndOfFrame" "UserMarker"  "PushUserMarker"   "PopUserMarker"}}
-
-      var out api.CmdFlags
-      {{range $i, $name := $names}}
-        {{$flag := index $flags $i}}
-        {{if $a := GetAnnotation $.Command $name}}
-          {{if $expr := Macro "FlagExpr" "Annotation" $a "Flag" $flag}}
-            {{$expr}}
-          {{else}}
-            out = out | api.{{$flag}}
-          {{end}}
+    var out api.CmdFlags
+    {{range $i, $name := $names}}
+      {{$flag := index $flags $i}}
+      {{if $a := GetAnnotation $ $name}}
+        {{if $expr := Macro "FlagExpr" "Annotation" $a "Flag" $flag}}
+          {{$expr}}
+        {{else}}
+          out = out | api.{{$flag}}
         {{end}}
       {{end}}
-      return out
-    }
-    func (ϟa *{{$name}}) Extras() *api.CmdExtras { return &ϟa.extras }
-  {{end}}
+    {{end}}
+    return out
+  }
+  func (ϟa *{{$name}}) Extras() *api.CmdExtras { return &ϟa.extras }
 {{end}}
 
 
@@ -1067,7 +1068,7 @@
   Emits a type declaration and implementation for the specified class.
 -------------------------------------------------------------------------------
 */}}
-{{define "Class"}}
+{{define "DeclareClass"}}
   {{AssertType $ "Class"}}
   {{$name := $.Name | GoPublicName}}
   {{template "Go.CommentHeader" print "class " $name}}
@@ -1242,7 +1243,7 @@
   Emits a type declaration for holding the state.
 -------------------------------------------------------------------------------
 */}}
-{{define "State"}}
+{{define "DeclareState"}}
   {{template "Go.CommentHeader" "State"}}
   type State struct {
     {{range $g := $.Globals}}
@@ -1269,9 +1270,7 @@
   Emits a top-level type declaration for the specified API.
 -------------------------------------------------------------------------------
 */}}
-{{define "API"}}
-
-  {{template "Go.CommentHeader" "API"}}
+{{define "DeclareAPI"}}
   var ID = api.ID(id.OfString("{{Global "API"}}"))
 
   type API struct {}
@@ -1368,7 +1367,7 @@
   Emits a Command constructor for each command.
 -------------------------------------------------------------------------------
 */}}
-{{define "CommandBuilder"}}
+{{define "DeclareCommandBuilder"}}
   {{AssertType $ "API"}}
 
   // CommandBuilder is used to construct new {{$.Name}} commands.
