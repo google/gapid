@@ -96,17 +96,16 @@
 
   func {{Template "Go.Subroutine" $}}(§
       ϟctx context.Context, §
-      ϟa api.Cmd, §
+      ϟc api.Cmd, §
       ϟi api.CmdID, §
       ϟo *api.CmdObservations, §
-      ϟs *api.GlobalState, §
-      ϟc *State, §
+      ϟg *api.GlobalState, §
+      ϟs *State, §
       ϟt uint64, §
       ϟb *builder.Builder, §
       {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
     ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
-    ϟl := ϟs.MemoryLayout
-    _ = ϟl
+    ϟl := ϟg.MemoryLayout; _ = ϟl
     {{Global "CurrentFunction" $}}
     {{Template "Block" $.Block}}
   }
@@ -140,32 +139,32 @@
     var _ = api.Cmd(&{{$name}}{}) // interface compliance check
 
     {{if GetAnnotation $ "custom"}}
-      func (ϟa *{{$name}}) mutate(§
+      func (ϟc *{{$name}}) mutate(§
     {{else}}
       // Mutate performs the necessary state-mutation and memory observations for {{$.Name}}.
       // If ϟb is not nil, Mutate also emits the replay instructions to call {{$.Name}}().
       {{if not (IsVoid $.Return.Type)}}
         // Upon returning the {{$.Name}}() return value will be stored on the stack.
       {{end}}
-      func (ϟa *{{$name}}) Mutate(§
+      func (ϟc *{{$name}}) Mutate(§
     {{end}}
-        ϟctx context.Context, ϟi api.CmdID, ϟs *api.GlobalState, ϟb *builder.Builder) error {
+        ϟctx context.Context, ϟi api.CmdID, ϟg *api.GlobalState, ϟb *builder.Builder) error {
 
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
-      ϟc, ϟt := GetState(ϟs), ϟa.thread
-      ϟl := ϟs.MemoryLayout
-      ϟo := ϟa.Extras().Observations()
+      ϟs, ϟt := GetState(ϟg), ϟc.Thread()
+      ϟl := ϟg.MemoryLayout; _ = ϟl
+      ϟo := ϟc.Extras().Observations()
       _, _ = ϟl, ϟt
 
-      if err := ϟc.preMutate(ϟctx, ϟs, ϟa); err != nil {
+      if err := ϟs.preMutate(ϟctx, ϟg, ϟc); err != nil {
         return err
       }
 
       {{Global "CurrentFunction" $}}
 
       {{/* simulate the call */}}
-      ϟo.ApplyReads(ϟs.Memory.ApplicationPool())
+      ϟo.ApplyReads(ϟg.Memory.ApplicationPool())
       {{Template "Block" $.Block}}
 
       return task.StopReason(ϟctx)
@@ -173,11 +172,10 @@
 
     {{if $r}}
       // Call builds the replay instructions to push the arguments to the stack and invoke {{$.Name}}().
-      // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟs.{{if not (IsVoid $.Return.Type)}}
+      // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟg.{{if not (IsVoid $.Return.Type)}}
       // The {{$.Name}}() return value will be stored on the stack.{{end}}
-      func (ϟa *{{$name}}) Call(ϟctx context.Context, ϟs *api.GlobalState, ϟb *builder.Builder) {
-        ϟl := ϟs.MemoryLayout
-        _ = ϟl
+      func (ϟc *{{$name}}) Call(ϟctx context.Context, ϟg *api.GlobalState, ϟb *builder.Builder) {
+        ϟl := ϟg.MemoryLayout; _ = ϟl
 
         {{/* Push all the parameters on the stack */}}
         {{range $p := $.CallParameters}}
@@ -192,7 +190,7 @@
         {{/* Store the return value into a remapping table, if required */}}
         {{$rty := TypeOf $.Return}}
         {{if (GetAnnotation $rty "replay_remap")}}
-          if key, remap := ϟa.Result.remap(ϟa, ϟs); remap {
+          if key, remap := ϟc.Result.remap(ϟc, ϟg); remap {
           ptr, found := ϟb.Remappings[key]
           if !found {
             ptr = ϟb.AllocateMemory({{Template "Go.SizeOf" $rty}})
@@ -218,14 +216,14 @@
   {{AssertType $.Name "string"}}
 
   {{if (GetAnnotation $.Type "replay_remap")}}
-    if key, remap := {{$.Name}}.remap(ϟa, ϟs); remap {
+    if key, remap := {{$.Name}}.remap(ϟc, ϟg); remap {
       loadRemap(ϟb, key, {{Template "Go.Replay.Type" $.Type}}, {{Template "Go.Replay.Value" "Type" $.Type "Name" $.Name}})
     } else {
       ϟb.Push({{Template "Go.Replay.Value" "Type" $.Type "Name" $.Name}})
     }
   {{else if IsSize $.Type}}
     {
-      size_size := ϟs.MemoryLayout.GetSize().GetSize() * 8
+      size_size := ϟg.MemoryLayout.GetSize().GetSize() * 8
       if size_size == 32 {
         ϟb.Push(value.U32({{$.Name}}))
       } else if size_size == 64 {
@@ -251,9 +249,9 @@
   {{$u := $ | TypeOf | Underlying}}
   {{if IsNumericType $u}}
     {{if not (GetAnnotation $ "replay_custom_value")}}
-      func (c {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.GlobalState) value.Value {
+      func (c {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟc api.Cmd, ϟg *api.GlobalState) value.Value {
         {{if IsSize $.To}}
-          if ϟs.MemoryLayout.GetPointer().GetSize() == 4 {
+          if ϟg.MemoryLayout.GetPointer().GetSize() == 4 {
             return value.U32(uint32(c))
           } else {
             return value.U64(uint64(c))
@@ -277,7 +275,7 @@
   {{AssertType $ "Array" "StaticArray"}}
 
   {{if not (or (Macro "IsInternal" $.ValueType) (IsAny $.ValueType))}}
-    func (arr {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟa api.Cmd, ϟs *api.GlobalState) value.Pointer {
+    func (arr {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟc api.Cmd, ϟg *api.GlobalState) value.Pointer {
       if len(arr) > 0 {
         for _, e := range arr {
           {{Template "PushInput" "Type" $.ValueType "Name" "e"}}
@@ -364,8 +362,8 @@
   {{else if IsIteration    $}}{{Template "Iteration" $}}
   {{else if IsMapIteration $}}{{Template "MapIteration" $}}
   {{else if IsCall         $}}{{Template "Go.Call" $}}
-  {{else if IsRead         $}}{{Template "Go.Read" $.Slice}}.OnRead(ϟctx, ϟa, ϟs, ϟb)
-  {{else if IsWrite        $}}{{Template "Go.Read" $.Slice}}.OnWrite(ϟctx, ϟa, ϟs, ϟb)
+  {{else if IsRead         $}}{{Template "Go.Read" $.Slice}}.OnRead(ϟctx, ϟc, ϟg, ϟb)
+  {{else if IsWrite        $}}{{Template "Go.Read" $.Slice}}.OnWrite(ϟctx, ϟc, ϟg, ϟb)
   {{else if IsFence        $}}{{Template "Fence" $}}
   {{else if IsBranch       $}}{{Template "Branch" $}}
   {{else if IsSwitch       $}}{{Template "Switch" $}}
@@ -454,7 +452,7 @@
 {{define "Copy"}}
   {{AssertType $ "Copy"}}
 
-  {{Template "Go.Read" $.Dst}}.Copy(ϟctx, {{Template "Go.Read" $.Src}}, ϟa, ϟs, ϟb)
+  {{Template "Go.Read" $.Dst}}.Copy(ϟctx, {{Template "Go.Read" $.Src}}, ϟc, ϟg, ϟb)
 {{end}}
 
 
@@ -515,7 +513,7 @@
     {{if $call.Target.Function.Subroutine}}
       {{/* Transform: v := sub() -> v, err := sub() */}}
       {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
-      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟa, ϟi, ϟo, ϟs, ϟc, ϟt, ϟb, {{$args}})
+      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟc, ϟi, ϟo, ϟg, ϟs, ϟt, ϟb, {{$args}})
       if ϟerr != nil {
         {{Template "Go.ReturnErr" "ϟerr"}}
       }
@@ -551,7 +549,11 @@
 {{define "ArrayAssign"}}
   {{AssertType $ "ArrayAssign"}}
 
-  {{Template "Go.Read" $.To.Array}}[{{Template "Go.Read" $.To.Index}}] {{$.Operator}} {{Template "Go.Read" $.Value}}
+  {{if eq $.Operator "="}}
+    {{Template "Go.Read" $.To.Array}}[{{Template "Go.Read" $.To.Index}}] {{$.Operator}} {{Template "Go.Read" $.Value}}
+  {{else}}
+    {{Error "Unsupported ArrayAssign operator %s" $.Operator}}
+  {{end}}
 {{end}}
 
 
@@ -592,7 +594,7 @@
   {{AssertType $ "SliceAssign"}}
 
   {{if ne $.Operator "="}}{{Error "Compound assignments to pointers are not supported (%s)" $.Operator}}{{end}}
-  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}).MustWrite(ϟctx, []{{Template "Go.Type" $.To}}{ {{Template "Go.Read" $.Value}} }, ϟa, ϟs, ϟb)
+  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}).MustWrite(ϟctx, []{{Template "Go.Type" $.To}}{ {{Template "Go.Read" $.Value}} }, ϟc, ϟg, ϟb)
 {{end}}
 
 
@@ -622,18 +624,18 @@
       {{if IsCopy $.Statement}}
         {{/* Apply the fenced-copy read */}}
         {{/* TODO: Unlike Slice.Copy, this does not optimise for non-pointer copies. */}}
-        ϟdst, ϟsrc := {{Template "Go.Read" $.Statement.Dst}}, {{Template "Go.Read" $.Statement.Src}}
-        ϟcount := u64.Min(ϟdst.Count(), ϟsrc.Count())
-        ϟdst, ϟsrc = ϟdst.Slice(0, ϟcount), ϟsrc.Slice(0, ϟcount)
-        ϟsrcElems := ϟsrc.MustRead(ϟctx, ϟa, ϟs, ϟb)
+        ϟdst, ϟgsrc := {{Template "Go.Read" $.Statement.Dst}}, {{Template "Go.Read" $.Statement.Src}}
+        ϟcount := u64.Min(ϟdst.Count(), ϟgsrc.Count())
+        ϟdst, ϟgsrc = ϟdst.Slice(0, ϟcount), ϟgsrc.Slice(0, ϟcount)
+        ϟgsrcElems := ϟgsrc.MustRead(ϟctx, ϟc, ϟg, ϟb)
       {{end}}
 
       {{/* Perform the call */}}
-      ϟa{{if $f.Subroutine}}.(callable){{end}}.Call(ϟctx, ϟs, ϟb);
+      ϟc{{if $f.Subroutine}}.(callable){{end}}.Call(ϟctx, ϟg, ϟb);
 
       {{if IsCopy $.Statement}}
         {{/* Apply the fenced-copy write */}}
-        ϟdst.MustWrite(ϟctx, ϟsrcElems, ϟa, ϟs, ϟb)
+        ϟdst.MustWrite(ϟctx, ϟgsrcElems, ϟc, ϟg, ϟb)
       {{end}}
     }
     {{if IsCopy $.Statement}}
@@ -653,7 +655,7 @@
   {{end}}
 
   {{/* Merge the observed writes into the application pool */}}
-  ϟo.ApplyWrites(ϟs.Memory.ApplicationPool())
+  ϟo.ApplyWrites(ϟg.Memory.ApplicationPool())
 {{end}}
 
 

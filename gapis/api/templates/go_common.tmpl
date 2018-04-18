@@ -23,7 +23,6 @@
 -------------------------------------------------------------------------------
 */}}
 {{define "Go.Type"}}
-
   {{if not (IsType $)}}{{Template "Go.Type" (TypeOf $)}}
   {{else if IsAny           $}}interface{}
   {{else if IsPseudonym     $}}{{$.Name | GoPublicName}}
@@ -52,34 +51,7 @@
   {{else if IsString        $}}string
   {{else if IsMessage       $}}*stringtable.Msg
   {{else if IsVoid          $}}void
-  {{else}}{{Error "macro Type called with unsupported type: %s" $.Name}}
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits the appropriate Schema method type for the provided POD type.
--------------------------------------------------------------------------------
-*/}}
-{{define "Go.SchemaMethod"}}
-  {{if IsBool               $}}schema.Bool
-  {{else if IsInt           $}}schema.Int64
-  {{else if IsUint          $}}schema.Uint64
-  {{else if IsSize          $}}schema.Uint64
-  {{else if IsChar          $}}schema.Char
-  {{else if IsU8            $}}schema.Uint8
-  {{else if IsS8            $}}schema.Int8
-  {{else if IsU16           $}}schema.Uint16
-  {{else if IsS16           $}}schema.Int16
-  {{else if IsF32           $}}schema.Float32
-  {{else if IsU32           $}}schema.Uint32
-  {{else if IsS32           $}}schema.Int32
-  {{else if IsF64           $}}schema.Float64
-  {{else if IsU64           $}}schema.Uint64
-  {{else if IsS64           $}}schema.Int64
-  {{else if IsString        $}}schema.String
-  {{else}}{{Error "macro SchemaMethod called with unsupported type: %s" $.Name}}
+  {{else}}{{Error "macro Go.Type called with unsupported type: %s" $.Name}}
   {{end}}
 {{end}}
 
@@ -268,7 +240,7 @@
   {{AssertType $.Type "Type"}}
   {{AssertType $.Name "string"}}
 
-  {{if (GetAnnotation $.Type "replay_custom_value")}}{{$.Name}}.value(ϟb, ϟa, ϟs)
+  {{if (GetAnnotation $.Type "replay_custom_value")}}{{$.Name}}.value(ϟb, ϟc, ϟg)
   {{else if IsBool        $.Type}}value.Bool({{$.Name}})
   {{else if IsS8          $.Type}}value.S8({{$.Name}})
   {{else if IsU8          $.Type}}value.U8({{$.Name}})
@@ -284,11 +256,11 @@
   {{else if IsInt         $.Type}}value.S64({{$.Name}})
   {{else if IsUint        $.Type}}value.U64({{$.Name}})
   {{else if IsString      $.Type}}ϟb.String({{$.Name}})
-  {{else if IsPointer     $.Type}}{{$.Name}}.value(ϟb, ϟa, ϟs)
+  {{else if IsPointer     $.Type}}{{$.Name}}.value(ϟb, ϟc, ϟg)
   {{else if IsEnum        $.Type}}{{Template "Go.Replay.Value" "Type" $.Type.NumberType "Name" $.Name}}
-  {{else if IsStaticArray $.Type}}{{$.Name}}.value(ϟb, ϟa, ϟs)
-  {{else if IsPseudonym   $.Type}}{{$.Name}}.value(ϟb, ϟa, ϟs)
-  {{else if IsClass       $.Type}}{{$.Name}}.value(ϟb, ϟa, ϟs)
+  {{else if IsStaticArray $.Type}}{{$.Name}}.value(ϟb, ϟc, ϟg)
+  {{else if IsPseudonym   $.Type}}{{$.Name}}.value(ϟb, ϟc, ϟg)
+  {{else if IsClass       $.Type}}{{$.Name}}.value(ϟb, ϟc, ϟg)
   {{else                        }}{{Error "macro Go.Replay.Value '%v' called with unsupported type: %s" $.Name $.Type.Name}}
   {{end}}
 {{end}}
@@ -441,7 +413,7 @@
   {{if $.Function.Subroutine}}
     {{$ | GoPrivateName}}
   {{else}}
-    ϟa.{{$ | GoPublicName}}
+    ϟc.{{$ | GoPublicName}}
   {{end}}
 {{end}}
 
@@ -526,12 +498,12 @@
   {{else if IsLength           $}}{{Template "Go.Type" $.Type}}({{Template "Go.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}})
   {{else if IsNull             $}}{{Template "Go.Null" $.Type}}
   {{else if IsNew              $}}new {{Template "Go.Type" $.Type}}
-  {{else if IsSliceContains    $}}{{Template "Go.Read" $.Slice  }}.Contains(ϟctx, {{Template "Go.Read" $.Value}}, ϟa, ϟs, ϟb)
+  {{else if IsSliceContains    $}}{{Template "Go.Read" $.Slice  }}.Contains(ϟctx, {{Template "Go.Read" $.Value}}, ϟc, ϟg, ϟb)
   {{else if IsSliceIndex       $}}{{Template "Go.Read" $.Slice  }}.Index({{Template "Go.Read" $.Index}}).{{Macro "Go.MemoryRead"}}[0]
   {{else if IsSliceRange       $}}{{Template "Go.Read" $.Slice  }}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}})
   {{else if IsPointerRange     $}}{{Template "Go.Read" $.Pointer}}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}}, ϟl)
-  {{else if IsClone            $}}{{Template "Go.Read" $.Slice  }}.Clone(ϟctx, ϟa, ϟs, ϟb)
-  {{else if IsMake             $}}Make{{Template "Go.Type" $.Type}}({{Template "Go.Read" $.Size}}, ϟs)
+  {{else if IsClone            $}}{{Template "Go.Read" $.Slice  }}.Clone(ϟctx, ϟc, ϟg, ϟb)
+  {{else if IsMake             $}}Make{{Template "Go.Type" $.Type}}({{Template "Go.Read" $.Size}}, ϟg)
   {{else if IsSelect           $}}{{Template "Go.Select" $}}
   {{else if IsArrayInitializer $}}{{Template "Go.ArrayInitializer" $}}
   {{else if IsClassInitializer $}}{{Template "Go.ClassInitializer" $}}
@@ -570,9 +542,9 @@
       observed memory which is undesirable, so instead just perform regular
       (non-replay-builder) read logic.
     */}}
-    MustRead(ϟctx, ϟa, ϟs, nil)
+    MustRead(ϟctx, ϟc, ϟg, nil)
   {{else}}
-    MustRead(ϟctx, ϟa, ϟs, ϟb)
+    MustRead(ϟctx, ϟc, ϟg, ϟb)
   {{end}}
 {{end}}
 
@@ -589,9 +561,9 @@
   {{if $.Target.Object}}
     {{Template "Go.Read" $.Target.Object}}.{{$.Target.Function.Name}}(ϟctx, {{$args}})
   {{else if $.Target.Function.Extern}}
-    (externs{ϟctx, ϟa, ϟi, ϟs, ϟb}.{{$.Target.Function.Name}}({{$args}}))
+    (externs{ϟctx, ϟc, ϟi, ϟg, ϟb}.{{$.Target.Function.Name}}({{$args}}))
   {{else if $.Target.Function.Subroutine}}
-    if ϟerr := {{Template "Go.Subroutine" $.Target.Function}}(ϟctx, ϟa, ϟi, ϟo, ϟs, ϟc, ϟt, ϟb, {{$args}}); ϟerr != nil {
+    if ϟerr := {{Template "Go.Subroutine" $.Target.Function}}(ϟctx, ϟc, ϟi, ϟo, ϟg, ϟs, ϟt, ϟb, {{$args}}); ϟerr != nil {
       {{Template "Go.ReturnErr" "ϟerr"}}
     }
   {{else}}
@@ -619,11 +591,11 @@
   {{/* T[] -> T* */}}{{else if and (IsSlice $src_ty) (IsPointer $dst_ty)}}
     {{Template "Go.Type" $.Type}}({{$src}}.Index(0))
   {{/* char* -> string */}}{{else if and (IsPointer $src_ty) (IsString $dst_ty)}}
-    strings.TrimRight(string(ϟmem.CharToBytes({{$src}}.StringSlice(ϟctx, ϟs).{{Macro "Go.MemoryRead"}})), "\x00")
+    strings.TrimRight(string(ϟmem.CharToBytes({{$src}}.StringSlice(ϟctx, ϟg).{{Macro "Go.MemoryRead"}})), "\x00")
   {{/* char[] -> string */}}{{else if and (IsSlice $src_ty) (IsString $dst_ty)}}
     string(ϟmem.CharToBytes({{$src}}.{{Macro "Go.MemoryRead"}}))
   {{/* string[] -> char[] */}}{{else if and (IsString $src_ty) (IsSlice $dst_ty)}}
-    Make{{Template "Go.Type" $.Type}}FromString({{$src}}, ϟs)
+    Make{{Template "Go.Type" $.Type}}FromString({{$src}}, ϟg)
   {{/* bool -> number */}}{{else if and (IsBool $src_ty) (IsNumericType $dst_ty)}}
     func() {{Template "Go.Type" $.Type}} {
       if {{$src}} {
@@ -679,14 +651,14 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the logic to return a pointer to a new instance of a class.
+  Emits the logic to return a reference to a new instance of a class.
 -------------------------------------------------------------------------------
 */}}
 {{define "Go.Create"}}
   {{AssertType $ "Create"}}
 
   {{if GetAnnotation $.Initializer.Class "resource"}}
-    (&{{Template "Go.ClassInitializer" $.Initializer}}).OnCreate(ϟs)
+    (&{{Template "Go.ClassInitializer" $.Initializer}}).OnCreate(ϟg)
   {{else}}
     &{{Template "Go.ClassInitializer" $.Initializer}}
   {{end}}
@@ -703,7 +675,7 @@
 
   {{$ty := $.Object | TypeOf | Unpack}}
   {{Template "Go.Read" $.Object}}§
-  {{if IsReference $ty}}{{if GetAnnotation $ty.To "resource"}}.OnAccess(ϟs)§{{end}}{{end}}
+  {{if IsReference $ty}}{{if GetAnnotation $ty.To "resource"}}.OnAccess(ϟg)§{{end}}{{end}}
   .{{$.Field | GoPublicName}}
 {{end}}
 
@@ -717,7 +689,7 @@
   {{AssertType $ "Global"}}
 
   {{if eq $.Name "$Thread"}}ϟt
-  {{else                  }}ϟc.{{Title $.Name}}
+  {{else                  }}ϟs.{{$.Name | GoPublicName}}
   {{end}}
 {{end}}
 
@@ -762,7 +734,7 @@
         return {{Template "Go.Read" $.Default}}
       {{else}}
         // TODO: better unmatched handling
-        panic(fmt.Errorf("Unmatched switch(%v) in command %T", {{Template "Go.Read" $.Value}}, ϟa))
+        panic(fmt.Errorf("Unmatched switch(%v) in command %T", {{Template "Go.Read" $.Value}}, ϟc))
         return result
       {{end}}
     }
