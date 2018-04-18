@@ -24,10 +24,7 @@ filegroup(
 api_template(
     name = "api",
     includes = [":templates"],
-    outputs = [
-        "api.go",
-        "enum.go",
-    ],
+    outputs = ["api.go"],
     template = "api.go.tmpl",
     deps = [
         "//core/data:go_default_library",
