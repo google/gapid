@@ -107,6 +107,9 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 }
 
 func getDevice(ctx context.Context, client client.Client, capture *path.Capture, flags GapirFlags) (*path.Device, error) {
+	if flags.Device == "none" {
+		return nil, nil
+	}
 	ctx = log.V{"device": flags.Device}.Bind(ctx)
 	paths, err := client.GetDevicesForReplay(ctx, capture)
 	if err != nil {
