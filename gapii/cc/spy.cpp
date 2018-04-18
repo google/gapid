@@ -359,35 +359,34 @@ gapil::Ref<DynamicContextState> GlesSpy::GetEGLDynamicContextState(CallObserver*
     uint32_t backbufferColorFmt = GL_RGBA8;
     uint32_t backbufferDepthFmt = GL_DEPTH24_STENCIL8;
     uint32_t backbufferStencilFmt = GL_DEPTH24_STENCIL8;
-    bool usingDefaults = true;
 
     EGLint configId = 0;
     EGLint r = 0, g = 0, b = 0, a = 0, d = 0, s = 0;
     if (GlesSpy::mImports.eglQueryContext(display, context, EGL_CONFIG_ID, &configId) == EGL_TRUE) {
-        GAPID_INFO("Active context ID: %d", configId);
-        EGLint attribs[] = { EGL_CONFIG_ID, configId, EGL_NONE };
-        EGLConfig config;
-        EGLint count = 0;
-        if (GlesSpy::mImports.eglChooseConfig(display, attribs, &config, 1, &count) == EGL_TRUE) {
-            EGL_GET_CONFIG_ATTRIB(EGL_RED_SIZE, &r);
-            EGL_GET_CONFIG_ATTRIB(EGL_GREEN_SIZE, &g);
-            EGL_GET_CONFIG_ATTRIB(EGL_BLUE_SIZE, &b);
-            EGL_GET_CONFIG_ATTRIB(EGL_ALPHA_SIZE, &a);
-            EGL_GET_CONFIG_ATTRIB(EGL_DEPTH_SIZE, &d);
-            EGL_GET_CONFIG_ATTRIB(EGL_STENCIL_SIZE, &s);
-            GAPID_INFO("Framebuffer config: R%d G%d B%d A%d D%d S%d", r, g, b, a, d, s);
+        if (configId != 0) { // EGL_NO_CONFIG_KHR. See EGL_KHR_no_config_context
+            EGLint attribs[] = { EGL_CONFIG_ID, configId, EGL_NONE };
+            EGLConfig config;
+            EGLint count = 0;
+            if (GlesSpy::mImports.eglChooseConfig(display, attribs, &config, 1, &count) == EGL_TRUE) {
+                EGL_GET_CONFIG_ATTRIB(EGL_RED_SIZE, &r);
+                EGL_GET_CONFIG_ATTRIB(EGL_GREEN_SIZE, &g);
+                EGL_GET_CONFIG_ATTRIB(EGL_BLUE_SIZE, &b);
+                EGL_GET_CONFIG_ATTRIB(EGL_ALPHA_SIZE, &a);
+                EGL_GET_CONFIG_ATTRIB(EGL_DEPTH_SIZE, &d);
+                EGL_GET_CONFIG_ATTRIB(EGL_STENCIL_SIZE, &s);
+                GAPID_INFO("Framebuffer config: R%d G%d B%d A%d D%d S%d", r, g, b, a, d, s);
 
-            // Get the formats from the bit depths.
-            if (!core::gl::getColorFormat(r, g, b, a, backbufferColorFmt)) {
-                GAPID_WARNING("getColorFormat(%d, %d, %d, %d) failed", r, g, b, a);
+                // Get the formats from the bit depths.
+                if (!core::gl::getColorFormat(r, g, b, a, backbufferColorFmt)) {
+                    GAPID_WARNING("getColorFormat(%d, %d, %d, %d) failed", r, g, b, a);
+                }
+                if (!core::gl::getDepthStencilFormat(d, s, backbufferDepthFmt, backbufferStencilFmt)) {
+                    GAPID_WARNING("getDepthStencilFormat(%d, %d) failed", d, s);
+                }
+            } else {
+                GAPID_WARNING("eglChooseConfig() failed for config ID %d. Assuming defaults.", configId);
             }
-            if (!core::gl::getDepthStencilFormat(d, s, backbufferDepthFmt, backbufferStencilFmt)) {
-                GAPID_WARNING("getDepthStencilFormat(%d, %d) failed", d, s);
-            }
-            usingDefaults = false;
-        } else {
-            GAPID_WARNING("eglChooseConfig() failed for config ID %d. Assuming defaults.", configId);
-        }
+        } // TODO: Try getting dynamic context state for EGL_NO_CONFIG_KHR?
     } else {
         GAPID_WARNING("eglQueryContext(0x%p, 0x%p, EGL_CONFIG_ID, &configId) failed. "
                 "Assuming defaults.", display, context);
