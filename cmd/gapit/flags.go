@@ -76,7 +76,7 @@ type (
 		Data   bool `help:"if true then display the bytes read and written by each command. Implies Ranges."`
 	}
 	DeviceFlags struct {
-		Device string `help:"Device to spawn on. One of: 'host', 'android' or <device-serial>"`
+		Device string `help:"Device to spawn on. One of: 'none', 'host', 'android' or <device-serial>"`
 	}
 	DevicesFlags struct {
 		Gapis GapisFlags
