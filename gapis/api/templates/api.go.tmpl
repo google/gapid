@@ -19,7 +19,6 @@
 {{Include "c_common.tmpl"}}
 
 {{$ | Macro "api.go" | GoFmt | Write "api.go"}}
-{{$ | Macro "enum.go" | GoFmt | Write "enum.go"}}
 
 {{define "api.go"}}
   {{AssertType $ "API"}}
@@ -54,6 +53,9 @@
     _ = sort.IntSlice(nil)
   )
 
+¶
+  {{template "Go.CommentHeader" "Enums"}}
+  {{ForEach $.Enums "DeclareEnum" | JoinWith "\n"}}
 ¶
   {{template "Go.CommentHeader" "StaticArrays"}}
   {{ForEach $.StaticArrays "DeclareStaticArray" | JoinWith "\n"}}
@@ -101,19 +103,38 @@
 {{end}}
 
 
-{{define "enum.go"}}
-  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+{{/*
+-------------------------------------------------------------------------------
+  Emits the Go declaration of the Enum type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareEnum"}}
+  {{AssertType $ "Enum"}}
 
-  {{if $.Enums}}
-    import (
-      "fmt"
+  {{$name := Macro "Go.Type" $}}
 
-      ϟmem "github.com/google/gapid/gapis/memory"
-    )
-    {{range $e := $.Enums}}
-      {{template "Enum" $e}}
-    {{end}}
+  type {{$name}} {{Template "Go.Type" $.NumberType}}
+
+  {{if len $.Entries}}
+    const(»
+      {{range $entry := $.Entries}}
+        {{$name}}_{{$entry.Name}} = {{$name}}({{$entry.Value}})
+      {{end}}
+    «)
   {{end}}
+
+  func (e {{$name}}) String() string {
+    switch e {
+      {{range $e := UniqueEnumKeys $}}
+        case {{$name}}_{{$e.Name}}: return "{{$e.Name}}"
+      {{end}}
+    }
+    return fmt.Sprintf("{{$.Name}}(%d)", e)
+  }
+
+  func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
+    return {{$name}}({{Template "Go.Decode" $.NumberType}})
+  }
 {{end}}
 
 
@@ -1192,33 +1213,6 @@
   {{else if IsCast         $}}{{Template "Default" $.Object}}
   {{else}}{{Error "macro Default called with unsupported type: %T" $}}
   {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a type declaration and implementation for the specified enum.
--------------------------------------------------------------------------------
-*/}}
-{{define "Enum"}}
-  {{AssertType $ "Enum"}}
-  {{template "Go.CommentHeader" print "enum " $.Name }}
-  type {{$.Name}} uint32
-
-  {{Template "EnumConstants" "Enum" $ "Name" $.Name}}
-
-  func (e {{$.Name}}) String() string {
-    switch e {
-      {{range $e := UniqueEnumKeys $}}
-        case {{$.Name}}_{{$e.Name}}: return "{{$e.Name}}"
-      {{end}}
-    }
-    return fmt.Sprintf("{{$.Name}}(%d)", e)
-  }
-
-  func Decode{{$.Name | Title}}(ϟd *ϟmem.Decoder) {{$.Name}} {
-    return {{$.Name}}(ϟd.U32())
-  }
 {{end}}
 
 
