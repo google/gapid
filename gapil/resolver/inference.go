@@ -118,6 +118,12 @@ func lhsToObserved(rv *resolver, lhs semantic.Node) semantic.Expression {
 			return nil
 		}
 		return &semantic.MapIndex{Map: o, Index: lhs.Index, Type: lhs.Type}
+	case *semantic.Cast:
+		o := lhsToObserved(rv, lhs.Object)
+		if o == nil {
+			return nil
+		}
+		return &semantic.Cast{Object: lhs.Object, Type: lhs.Type}
 	case *semantic.Parameter:
 		if f := rv.scope.function; f != nil && f.Subroutine && lhs == f.Return {
 			rv.errorf(lhs, "unknowns cannot be used to infer return values in subroutines")
