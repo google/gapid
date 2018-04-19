@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@gapid//:version.bzl", "version_define_copts")
+load("@gapid//tools/build/rules:common.bzl", "copy_exec")
 
 _ANDROID_COPTS = [
     "-fdata-sections",
@@ -139,6 +140,8 @@ def cc_stripped_binary(name, **kwargs):
 
     parts = name.rpartition(".")
     unstripped = name + "_unstripped" if parts[1] == "" else parts[0] + "_unstripped." + parts[2]
+    stripped = name + "_stripped" if parts[1] == "" else parts[0] + "_stripped." + parts[2]
+
     native.cc_binary(
         name = unstripped,
         **kwargs
@@ -150,7 +153,15 @@ def cc_stripped_binary(name, **kwargs):
     )
 
     strip(
-        name = name,
+        name = stripped,
         srcs = [unstripped],
+    )
+
+    copy_exec(
+        name = name,
+        srcs = select({
+            "@gapid//tools/build:debug": [unstripped],
+            "//conditions:default": [stripped],
+        }),
         visibility = visibility,
     )
