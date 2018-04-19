@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("//tools/build/rules:cc.bzl", "strip")
+load("//tools/build/rules:common.bzl", "copy_exec")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Macro to replace go_binary rules. Creates the following targets:
@@ -26,7 +27,16 @@ def go_stripped_binary(name, **kwargs):
         **kwargs
     )
     strip(
-        name = name,
+        name = name + "_stripped",
         srcs = [name + "_unstripped"],
+        visibility = visibility,
+    )
+
+    copy_exec(
+        name = name,
+        srcs = select({
+            "@gapid//tools/build:debug": [name + "_unstripped"],
+            "//conditions:default": [name + "_stripped"],
+        }),
         visibility = visibility,
     )

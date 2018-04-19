@@ -131,3 +131,40 @@ filter = rule(
         "suffix": attr.string_list(),
     },
 )
+
+# Implementation of the copy_exec rule.
+def _copy_exec_impl(ctx):
+    if len(ctx.files.srcs) != 1:
+        fail("copy_exec rule with multiple inputs")
+
+    src = ctx.files.srcs[0]
+    extension = src.extension
+    if not extension == "":
+        extension = "." + extension
+    if ctx.label.name.endswith(extension):
+        extension = ""
+    out = ctx.new_file(ctx.label.name + extension)
+
+    _copy(ctx, src, out)
+
+    return struct(
+        files = depset([out]),
+        runfiles = ctx.runfiles(collect_data = True),
+        executable = out,
+    )
+
+# A copy rule that can be used on an executable. Propagates the extension and
+# runfiles to the output.
+copy_exec = rule(
+    _copy_exec_impl,
+    attrs = {
+        # Needs to be a list and called srcs, so collect_data above will work.
+        # If more than one file is given, the rule will fail.
+        "srcs": attr.label_list(
+            allow_files = True,
+            mandatory = True,
+            allow_empty = False,
+        ),
+    },
+    executable = True,
+)
