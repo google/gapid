@@ -3191,8 +3191,17 @@ cmd void vkGetImageMemoryRequirements2KHR(
     VkMemoryRequirements2KHR*                pMemoryRequirements) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   info := pInfo[0]
-  // TODO: handle pNext for 'info'
+  memReqs := pMemoryRequirements[0]
+  if memReqs.pNext != null {
+    nPNext := numberOfPNext(as!const void*(memReqs.pNext))
+    next := MutableVoidPtr(as!void*(memReqs.pNext))
+    for i in (0 .. nPNext) {
+      _ = as!const VkStructureType*(next.Ptr)[0]
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+    }
+  }
 
+  // TODO: handle pNext for 'info'
   fence
 
   if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements2KHR") }
@@ -3208,17 +3217,18 @@ cmd void vkGetImageMemoryRequirements2KHR(
     numPNext := numberOfPNext(as!const void*(memReq.pNext))
     next := MutableVoidPtr(as!void*(memReq.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR: {
-          ext := as!VkMemoryDedicatedRequirementsKHR*(next.Ptr)[0:1][0]
+          ext := as!VkMemoryDedicatedRequirementsKHR(?)
           Images[info.image].DedicatedRequirementsKHR = new!DedicatedRequirementsKHR(
             PrefersDedicatedAllocation:   ext.prefersDedicatedAllocation,
             RequiresDedicatedAllocation:  ext.requiresDedicatedAllocation,
           )
+          as!VkMemoryDedicatedRequirementsKHR*(next.Ptr)[0] = ext
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 }
@@ -3232,6 +3242,16 @@ cmd void vkGetBufferMemoryRequirements2KHR(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   info := pInfo[0]
   // TODO: handle pNext
+
+  memReqs := pMemoryRequirements[0]
+  if memReqs.pNext != null {
+    nPNext := numberOfPNext(as!const void*(memReqs.pNext))
+    next := MutableVoidPtr(as!void*(memReqs.pNext))
+    for i in (0 .. nPNext) {
+      _ = as!const VkStructureType*(next.Ptr)[0]
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+    }
+  }
 
   fence
 
@@ -3248,17 +3268,18 @@ cmd void vkGetBufferMemoryRequirements2KHR(
     numPNext := numberOfPNext(as!const void*(memReq.pNext))
     next := MutableVoidPtr(as!void*(memReq.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR: {
-          ext := as!VkMemoryDedicatedRequirementsKHR*(next.Ptr)[0:1][0]
+          ext := as!VkMemoryDedicatedRequirementsKHR(?)
           Buffers[info.buffer].DedicatedRequirementsKHR = new!DedicatedRequirementsKHR(
             PrefersDedicatedAllocation:   ext.prefersDedicatedAllocation,
             RequiresDedicatedAllocation:  ext.requiresDedicatedAllocation,
           )
+          as!VkMemoryDedicatedRequirementsKHR*(next.Ptr)[0] = ext
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 }
