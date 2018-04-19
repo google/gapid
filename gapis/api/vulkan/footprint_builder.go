@@ -1744,6 +1744,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		// drop the 'modify' on the image handle, replace it with another proper
 		// representation of the cached data.
 		modify(ctx, bh, vkHandle(cmd.Image))
+	case *VkGetImageMemoryRequirements2KHR:
+		info := cmd.PInfo.MustRead(ctx, cmd, s, nil)
+		modify(ctx, bh, vkHandle(info.Image))
 
 	case *VkBindImageMemory:
 		read(ctx, bh, vkHandle(cmd.Image))
@@ -1782,6 +1785,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		// drop the 'modify' on the buffer handle, replace it with another proper
 		// representation of the cached data.
 		modify(ctx, bh, vkHandle(cmd.Buffer))
+	case *VkGetBufferMemoryRequirements2KHR:
+		info := cmd.PInfo.MustRead(ctx, cmd, s, nil)
+		modify(ctx, bh, vkHandle(info.Buffer))
 
 	case *VkBindBufferMemory:
 		read(ctx, bh, vkHandle(cmd.Buffer))
