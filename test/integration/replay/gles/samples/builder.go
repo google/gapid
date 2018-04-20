@@ -30,9 +30,10 @@ type builder struct {
 	lastID uint
 }
 
-func newBuilder(ctx context.Context, ml *device.MemoryLayout) *builder {
+func newBuilder(ctx context.Context, cb gles.CommandBuilder, ml *device.MemoryLayout) *builder {
 	return &builder{
-		state: api.NewStateWithEmptyAllocator(ml),
+		CommandBuilder: cb,
+		state:          api.NewStateWithEmptyAllocator(ml),
 	}
 }
 

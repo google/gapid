@@ -48,7 +48,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
 	h := &capture.Header{Abi: device.AndroidARMv7a}
-	a := h.Abi.MemoryLayout
+	ml := h.Abi.MemoryLayout
 	capturePath, err := capture.New(ctx, "test", h, []api.Cmd{})
 	if err != nil {
 		panic(err)
@@ -63,9 +63,11 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		},
 	}}
 
-	transform, err := compat(ctx, dev, func(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, err error) {
-		t.Error(err)
-	})
+	onCompatError := func(ctx context.Context, id api.CmdID, cmd api.Cmd, err error) {
+		log.E(ctx, "%v %v: %v", id, cmd, err)
+	}
+
+	transform, err := compat(ctx, dev, onCompatError)
 	if err != nil {
 		log.E(ctx, "Error creating compatability transform: %v", err)
 		return
@@ -83,9 +85,9 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		eglMakeCurrent,
 		cb.GlEnableVertexAttribArray(0),
 		cb.GlVertexAttribPointer(0, 2, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 8, p(0x100000)).
-			AddRead(memory.Store(ctx, a, p(0x100000), positions)),
+			AddRead(memory.Store(ctx, ml, p(0x100000), positions)),
 		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
-			AddRead(memory.Store(ctx, a, p(0x200000), indices)),
+			AddRead(memory.Store(ctx, ml, p(0x200000), indices)),
 	}, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		transform.Transform(ctx, api.CmdNoID, cmd, mw)
 		return nil
@@ -101,10 +103,10 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 		if _, ok := cmd.(*gles.GlDrawElements); ok {
 			ctx := gles.GetContext(s, cmd.Thread())
-			vao := ctx.Bound.VertexArray
-			array := vao.VertexAttributeArrays.Get(0)
-			binding := array.Binding
-			if binding.Buffer != nil && array.Pointer.Address() == 0 {
+			vao := ctx.Bound().VertexArray()
+			array := vao.VertexAttributeArrays().Get(0)
+			binding := array.Binding()
+			if !binding.Buffer().IsNil() && array.Pointer() == 0 {
 				found = true
 				return api.Break // Success
 			} else {

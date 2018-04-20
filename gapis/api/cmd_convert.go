@@ -15,6 +15,8 @@
 package api
 
 import (
+	"context"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -23,18 +25,18 @@ import (
 type CmdWithResult interface {
 	Cmd
 
-	// GetResult returns the result value for this command.
-	GetResult() proto.Message
+	// CallResult returns the result value for this command.
+	CallResult() proto.Message
 
-	// SetResult changes the result value. Returns an error if the result proto
-	// type does not match this command.
-	SetResult(proto.Message) error
+	// SetCallResult changes the result value. Returns an error if the result
+	// proto type does not match this command.
+	SetCallResult(context.Context, proto.Message) error
 }
 
 // CmdCallFor returns the proto message type for the call result of cmd.
 func CmdCallFor(cmd Cmd) proto.Message {
 	if cmd, ok := cmd.(CmdWithResult); ok {
-		return cmd.GetResult()
+		return cmd.CallResult()
 	}
 	return &CmdCall{}
 }

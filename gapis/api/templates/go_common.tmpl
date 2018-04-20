@@ -25,14 +25,14 @@
 {{define "Go.Type"}}
   {{if not (IsType $)}}{{Template "Go.Type" (TypeOf $)}}
   {{else if IsAny           $}}interface{}
-  {{else if IsPseudonym     $}}{{$.Name | GoPublicName}}
-  {{else if IsStaticArray   $}}{{$.Name | GoPublicName}}
-  {{else if IsMap           $}}{{$.Name | GoPublicName}}
-  {{else if IsClass         $}}{{$.Name | GoPublicName}}
-  {{else if IsEnum          $}}{{$.Name | GoPublicName}}
-  {{else if IsPointer       $}}{{$.Name | GoPublicName}}
-  {{else if IsSlice         $}}{{$.Name | GoPublicName}}
-  {{else if IsReference     $}}(*{{Template "Go.Type" $.To}})
+  {{else if IsPseudonym     $}}{{Template "Go.TypeName" $}}
+  {{else if IsStaticArray   $}}{{Template "Go.TypeName" $}}
+  {{else if IsMap           $}}{{Template "Go.TypeName" $}}
+  {{else if IsClass         $}}{{Template "Go.TypeName" $}}
+  {{else if IsEnum          $}}{{Template "Go.TypeName" $}}
+  {{else if IsPointer       $}}{{Template "Go.TypeName" $}}
+  {{else if IsSlice         $}}{{Template "Go.TypeName" $}}
+  {{else if IsReference     $}}{{Template "Go.TypeName" $}}
   {{else if IsBool          $}}bool
   {{else if IsInt           $}}ϟmem.Int
   {{else if IsUint          $}}ϟmem.Uint
@@ -58,6 +58,26 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits a typename for the given type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Go.TypeName"}}
+  {{if not (IsType $)}}{{Template "Go.TypeName" (TypeOf $)}}
+  {{else if IsPseudonym     $}}{{$.Name | GoPublicName}}
+  {{else if IsStaticArray   $}}{{$.Name | GoPublicName}}
+  {{else if IsMap           $}}{{$.Name | GoPublicName}}
+  {{else if IsClass         $}}{{$.Name | GoPublicName}}
+  {{else if IsEnum          $}}{{$.Name | GoPublicName}}
+  {{else if IsPointer       $}}{{$.Name | GoPublicName}}
+  {{else if IsSlice         $}}{{$.Name | GoPublicName}}
+  {{else if IsReference     $}}{{$.Name | GoPublicName}}
+  {{else}}{{Error "macro Go.TypeName called with unsupported type: %s" $.Name}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits the go default value for the provided AST type.
 -------------------------------------------------------------------------------
 */}}
@@ -65,10 +85,10 @@
   {{AssertType $ "Type"}}
   {{     if IsPointer       $}}{{Template "Go.Type" $}}(0)
   {{else if IsSlice         $}}{{Template "Go.Type" $}}{}
-  {{else if IsReference     $}}{{Template "Go.Type" $}}(nil)
+  {{else if IsReference     $}}Nil{{Template "Go.Type" $}}
   {{else if IsMap           $}}New{{Template "Go.Type" $}}()
-  {{else if IsClass         $}}{{Template "Go.Type" $}}{}
-  {{else if IsStaticArray   $}}{{Template "Go.Type" $}}{}
+  {{else if IsClass         $}}Make{{Template "Go.Type" $}}()
+  {{else if IsStaticArray   $}}New{{Template "Go.Type" $}}()
   {{else if IsBool          $}}false
   {{else if IsChar          $}}ϟmem.Char(0)
   {{else if IsInt           $}}ϟmem.Int(0)
@@ -413,7 +433,7 @@
   {{if $.Function.Subroutine}}
     {{$ | GoPrivateName}}
   {{else}}
-    ϟc.{{$ | GoPublicName}}
+    ϟc.{{$ | GoPublicName}}()
   {{end}}
 {{end}}
 
@@ -464,7 +484,7 @@
     New{{Template "Go.Type" $}}()
   {{else if IsClass $}}
     {{if $fields := Macro "Go.DefaultClassFields" $}}
-      New{{Template "Go.Type" $}}()
+      Make{{Template "Go.Type" $}}()
     {{end}}
   {{end}}
 {{end}}
@@ -492,7 +512,7 @@
   {{else if IsMember           $}}{{Template "Go.Member" $}}
   {{else if IsGlobal           $}}{{Template "Go.Global" $}}
   {{else if IsParameter        $}}{{Template "Go.Parameter" $}}
-  {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}[{{Template "Go.Read" $.Index}}]
+  {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}.Get(int({{Template "Go.Read" $.Index}}))
   {{else if IsMapIndex         $}}{{Template "Go.Read" $.Map}}.Get({{Template "Go.Read" $.Index}})
   {{else if IsMapContains      $}}{{Template "Go.Read" $.Map}}.Contains({{Template "Go.Read" $.Key}})
   {{else if IsLength           $}}{{Template "Go.Type" $.Type}}({{Template "Go.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}})
@@ -506,7 +526,7 @@
   {{else if IsMake             $}}Make{{Template "Go.Type" $.Type}}({{Template "Go.Read" $.Size}}, ϟg)
   {{else if IsSelect           $}}{{Template "Go.Select" $}}
   {{else if IsArrayInitializer $}}{{Template "Go.ArrayInitializer" $}}
-  {{else if IsClassInitializer $}}{{Template "Go.ClassInitializer" $}}
+  {{else if IsClassInitializer $}}New{{Template "Go.Type" $.Class}}{{Template "Go.ClassInitializer" $}}
   {{else if IsFieldInitializer $}}{{Template "Go.Read" $.Value}}
   {{else if IsCreate           $}}{{Template "Go.Create" $}}
   {{else if IsCallable         $}}{{Template "Go.Subroutine" $.Function}}
@@ -621,7 +641,7 @@
   {{AssertType $ "ArrayInitializer"}}
 
   {{$a := $.Array | Underlying | Unpack}}
-  {{Template "Go.Type" $}}{ {{ForEach $.Values "Go.Read" | JoinWith ", "}} }
+  New{{Template "Go.Type" $}}({{ForEach $.Values "Go.Read" | JoinWith ", "}})
 {{end}}
 
 
@@ -633,19 +653,16 @@
 {{define "Go.ClassInitializer"}}
   {{AssertType $ "ClassInitializer"}}
 
-  {{Template "Go.Type" $}}{ §
+  (§
     {{range $i, $v := $.InitialValues}}
       {{$f := index $.Class.Fields $i}}
-      {{$name := $f.Name | GoPublicName}}
       {{if IsNil $v}}
-        {{if $init := Macro "Go.DefaultInitialValue" $f.Type}}
-          {{$name}}: {{$init}}, §
-        {{end}}
+        {{Template "Go.Null" $f.Type}}, §
       {{else}}
-        {{$name}}: {{Template "Go.Read" $v}}, §
+        {{Template "Go.Read" $v}}, §
       {{end}}
     {{end}}
-  }
+  )
 {{end}}
 
 
@@ -658,9 +675,9 @@
   {{AssertType $ "Create"}}
 
   {{if GetAnnotation $.Initializer.Class "resource"}}
-    (&{{Template "Go.ClassInitializer" $.Initializer}}).OnCreate(ϟg)
+    New{{Template "Go.Type" $.Type}}{{Template "Go.ClassInitializer" $.Initializer}}.OnCreate(ϟg)
   {{else}}
-    &{{Template "Go.ClassInitializer" $.Initializer}}
+    New{{Template "Go.Type" $.Type}}{{Template "Go.ClassInitializer" $.Initializer}}
   {{end}}
 {{end}}
 
@@ -676,7 +693,7 @@
   {{$ty := $.Object | TypeOf | Unpack}}
   {{Template "Go.Read" $.Object}}§
   {{if IsReference $ty}}{{if GetAnnotation $ty.To "resource"}}.OnAccess(ϟg)§{{end}}{{end}}
-  .{{$.Field | GoPublicName}}
+  .{{$.Field | GoPublicName}}()
 {{end}}
 
 
@@ -689,7 +706,7 @@
   {{AssertType $ "Global"}}
 
   {{if eq $.Name "$Thread"}}ϟt
-  {{else                  }}ϟs.{{$.Name | GoPublicName}}
+  {{else                  }}ϟs.{{$.Name | GoPublicName}}()
   {{end}}
 {{end}}
 
@@ -739,6 +756,23 @@
       {{end}}
     }
   }()
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to test whether the two values are equal.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Go.Equal"}}
+  {{AssertType $.Type "Type"}}
+
+  {{$ty := $.Type | Unpack | Underlying}}
+
+  {{     if IsClass       $ty}}{{$.LHS}}.Equals({{$.RHS}})
+  {{else if IsStaticArray $ty}}{{$.LHS}}.Equals({{$.RHS}})
+  {{else                     }}{{$.LHS}} == {{$.RHS}}
+  {{end}}
 {{end}}
 
 

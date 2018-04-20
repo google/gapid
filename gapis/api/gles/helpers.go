@@ -94,135 +94,142 @@ func GetAttribLocation(ctx context.Context, s *api.GlobalState, cb CommandBuilde
 // DefaultConstants30 returns a Constants structure filled with default
 // values for a vaild OpenGL ES 3.0 context.
 func DefaultConstants30() Constants {
-	return Constants{
-		SubpixelBits:                              4,
-		MaxElementIndex:                           0xFFFFFF,
-		Max3dTextureSize:                          256,
-		MaxTextureSize:                            2048,
-		MaxArrayTextureLayers:                     256,
-		MaxTextureLodBias:                         2.0,
-		MaxCubeMapTextureSize:                     2048,
-		MaxRenderbufferSize:                       2048,
-		MaxDrawBuffers:                            4,
-		MaxFramebufferWidth:                       2048,
-		MaxFramebufferHeight:                      2048,
-		MaxFramebufferLayers:                      256,
-		MaxFramebufferSamples:                     4,
-		MaxColorAttachments:                       4,
-		MinFragmentInterpolationOffset:            -0.5,
-		MaxFragmentInterpolationOffset:            +0.5,
-		FragmentInterpolationOffsetBits:           4,
-		MaxSampleMaskWords:                        1,
-		MaxColorTextureSamples:                    1,
-		MaxDepthTextureSamples:                    1,
-		MaxIntegerSamples:                         1,
-		MaxVertexAttribRelativeOffset:             2047,
-		MaxVertexAttribBindings:                   16,
-		MaxVertexAttribStride:                     2048,
-		MaxTextureBufferSize:                      65536,
-		ShaderCompiler:                            GLboolean_GL_TRUE,
-		TextureBufferOffsetAlignment:              256,
-		MajorVersion:                              3,
-		Version:                                   "OpenGL ES 3.0",
-		MaxVertexAttribs:                          16,
-		MaxVertexUniformComponents:                1024,
-		MaxVertexUniformVectors:                   256,
-		MaxVertexUniformBlocks:                    12,
-		MaxVertexOutputComponents:                 64,
-		MaxVertexTextureImageUnits:                16,
-		MaxTessGenLevel:                           64,
-		MaxPatchVertices:                          32,
-		MaxTessControlUniformComponents:           1024,
-		MaxTessControlTextureImageUnits:           16,
-		MaxTessControlOutputComponents:            64,
-		MaxTessPatchComponents:                    120,
-		MaxTessControlTotalOutputComponents:       4096,
-		MaxTessControlInputComponents:             64,
-		MaxTessControlUniformBlocks:               12,
-		MaxTessEvaluationUniformComponents:        1024,
-		MaxTessEvaluationTextureImageUnits:        16,
-		MaxTessEvaluationOutputComponents:         64,
-		MaxTessEvaluationInputComponents:          64,
-		MaxTessEvaluationUniformBlocks:            12,
-		MaxGeometryUniformComponents:              1024,
-		MaxGeometryUniformBlocks:                  12,
-		MaxGeometryInputComponents:                64,
-		MaxGeometryOutputComponents:               64,
-		MaxGeometryOutputVertices:                 256,
-		MaxGeometryTotalOutputComponents:          1024,
-		MaxGeometryTextureImageUnits:              16,
-		MaxGeometryShaderInvocations:              32,
-		MaxFragmentUniformComponents:              1024,
-		MaxFragmentUniformVectors:                 256,
-		MaxFragmentUniformBlocks:                  12,
-		MaxFragmentInputComponents:                60,
-		MaxTextureImageUnits:                      16,
-		MaxFragmentAtomicCounterBuffers:           1,
-		MaxFragmentAtomicCounters:                 8,
-		MaxFragmentShaderStorageBlocks:            4,
-		MinProgramTexelOffset:                     -8,
-		MaxProgramTexelOffset:                     7,
-		MaxComputeWorkGroupInvocations:            128,
-		MaxComputeUniformBlocks:                   12,
-		MaxComputeTextureImageUnits:               16,
-		MaxComputeSharedMemorySize:                16384,
-		MaxComputeUniformComponents:               1024,
-		MaxComputeAtomicCounterBuffers:            1,
-		MaxComputeAtomicCounters:                  8,
-		MaxComputeShaderStorageBlocks:             4,
-		MaxUniformBufferBindings:                  72,
-		MaxUniformBlockSize:                       16384,
-		UniformBufferOffsetAlignment:              256,
-		MaxCombinedUniformBlocks:                  60,
-		MaxVaryingComponents:                      60,
-		MaxVaryingVectors:                         15,
-		MaxCombinedTextureImageUnits:              96,
-		MaxCombinedShaderOutputResources:          4,
-		MaxUniformLocations:                       1024,
-		MaxAtomicCounterBufferBindings:            1,
-		MaxAtomicCounterBufferSize:                32,
-		MaxCombinedAtomicCounterBuffers:           1,
-		MaxCombinedAtomicCounters:                 8,
-		MaxImageUnits:                             4,
-		MaxFragmentImageUniforms:                  4,
-		MaxComputeImageUniforms:                   4,
-		MaxCombinedImageUniforms:                  4,
-		MaxShaderStorageBufferBindings:            4,
-		MaxShaderStorageBlockSize:                 0x8000000,
-		MaxCombinedShaderStorageBlocks:            4,
-		ShaderStorageBufferOffsetAlignment:        256,
-		MaxDebugMessageLength:                     1,
-		MaxDebugLoggedMessages:                    1,
-		MaxDebugGroupStackDepth:                   64,
-		MaxLabelLength:                            256,
-		MaxTransformFeedbackInterleavedComponents: 64,
-		MaxTransformFeedbackSeparateAttribs:       4,
-		MaxTransformFeedbackSeparateComponents:    4,
-		MaxTextureMaxAnisotropyExt:                2.0,
-		MaxViewsExt:                               2,
-		CompressedTextureFormats:                  NewU32ːGLenumᵐ(),
-		ProgramBinaryFormats:                      NewU32ːGLenumᵐ(),
-		ShaderBinaryFormats:                       NewU32ːGLenumᵐ(),
-		Extensions:                                NewU32ːstringᵐ(),
-	}
+	out := MakeConstants()
+	out.SetSubpixelBits(4)
+	out.SetMaxElementIndex(0xFFFFFF)
+	out.SetMax3dTextureSize(256)
+	out.SetMaxTextureSize(2048)
+	out.SetMaxArrayTextureLayers(256)
+	out.SetMaxTextureLodBias(2.0)
+	out.SetMaxCubeMapTextureSize(2048)
+	out.SetMaxRenderbufferSize(2048)
+	out.SetMaxDrawBuffers(4)
+	out.SetMaxFramebufferWidth(2048)
+	out.SetMaxFramebufferHeight(2048)
+	out.SetMaxFramebufferLayers(256)
+	out.SetMaxFramebufferSamples(4)
+	out.SetMaxColorAttachments(4)
+	out.SetMinFragmentInterpolationOffset(-0.5)
+	out.SetMaxFragmentInterpolationOffset(+0.5)
+	out.SetFragmentInterpolationOffsetBits(4)
+	out.SetMaxSampleMaskWords(1)
+	out.SetMaxColorTextureSamples(1)
+	out.SetMaxDepthTextureSamples(1)
+	out.SetMaxIntegerSamples(1)
+	out.SetMaxVertexAttribRelativeOffset(2047)
+	out.SetMaxVertexAttribBindings(16)
+	out.SetMaxVertexAttribStride(2048)
+	out.SetMaxTextureBufferSize(65536)
+	out.SetShaderCompiler(GLboolean_GL_TRUE)
+	out.SetTextureBufferOffsetAlignment(256)
+	out.SetMajorVersion(3)
+	out.SetVersion("OpenGL ES 3.0")
+	out.SetMaxVertexAttribs(16)
+	out.SetMaxVertexUniformComponents(1024)
+	out.SetMaxVertexUniformVectors(256)
+	out.SetMaxVertexUniformBlocks(12)
+	out.SetMaxVertexOutputComponents(64)
+	out.SetMaxVertexTextureImageUnits(16)
+	out.SetMaxTessGenLevel(64)
+	out.SetMaxPatchVertices(32)
+	out.SetMaxTessControlUniformComponents(1024)
+	out.SetMaxTessControlTextureImageUnits(16)
+	out.SetMaxTessControlOutputComponents(64)
+	out.SetMaxTessPatchComponents(120)
+	out.SetMaxTessControlTotalOutputComponents(4096)
+	out.SetMaxTessControlInputComponents(64)
+	out.SetMaxTessControlUniformBlocks(12)
+	out.SetMaxTessEvaluationUniformComponents(1024)
+	out.SetMaxTessEvaluationTextureImageUnits(16)
+	out.SetMaxTessEvaluationOutputComponents(64)
+	out.SetMaxTessEvaluationInputComponents(64)
+	out.SetMaxTessEvaluationUniformBlocks(12)
+	out.SetMaxGeometryUniformComponents(1024)
+	out.SetMaxGeometryUniformBlocks(12)
+	out.SetMaxGeometryInputComponents(64)
+	out.SetMaxGeometryOutputComponents(64)
+	out.SetMaxGeometryOutputVertices(256)
+	out.SetMaxGeometryTotalOutputComponents(1024)
+	out.SetMaxGeometryTextureImageUnits(16)
+	out.SetMaxGeometryShaderInvocations(32)
+	out.SetMaxFragmentUniformComponents(1024)
+	out.SetMaxFragmentUniformVectors(256)
+	out.SetMaxFragmentUniformBlocks(12)
+	out.SetMaxFragmentInputComponents(60)
+	out.SetMaxTextureImageUnits(16)
+	out.SetMaxFragmentAtomicCounterBuffers(1)
+	out.SetMaxFragmentAtomicCounters(8)
+	out.SetMaxFragmentShaderStorageBlocks(4)
+	out.SetMinProgramTexelOffset(-8)
+	out.SetMaxProgramTexelOffset(7)
+	out.SetMaxComputeWorkGroupInvocations(128)
+	out.SetMaxComputeUniformBlocks(12)
+	out.SetMaxComputeTextureImageUnits(16)
+	out.SetMaxComputeSharedMemorySize(16384)
+	out.SetMaxComputeUniformComponents(1024)
+	out.SetMaxComputeAtomicCounterBuffers(1)
+	out.SetMaxComputeAtomicCounters(8)
+	out.SetMaxComputeShaderStorageBlocks(4)
+	out.SetMaxUniformBufferBindings(72)
+	out.SetMaxUniformBlockSize(16384)
+	out.SetUniformBufferOffsetAlignment(256)
+	out.SetMaxCombinedUniformBlocks(60)
+	out.SetMaxVaryingComponents(60)
+	out.SetMaxVaryingVectors(15)
+	out.SetMaxCombinedTextureImageUnits(96)
+	out.SetMaxCombinedShaderOutputResources(4)
+	out.SetMaxUniformLocations(1024)
+	out.SetMaxAtomicCounterBufferBindings(1)
+	out.SetMaxAtomicCounterBufferSize(32)
+	out.SetMaxCombinedAtomicCounterBuffers(1)
+	out.SetMaxCombinedAtomicCounters(8)
+	out.SetMaxImageUnits(4)
+	out.SetMaxFragmentImageUniforms(4)
+	out.SetMaxComputeImageUniforms(4)
+	out.SetMaxCombinedImageUniforms(4)
+	out.SetMaxShaderStorageBufferBindings(4)
+	out.SetMaxShaderStorageBlockSize(0x8000000)
+	out.SetMaxCombinedShaderStorageBlocks(4)
+	out.SetShaderStorageBufferOffsetAlignment(256)
+	out.SetMaxDebugMessageLength(1)
+	out.SetMaxDebugLoggedMessages(1)
+	out.SetMaxDebugGroupStackDepth(64)
+	out.SetMaxLabelLength(256)
+	out.SetMaxTransformFeedbackInterleavedComponents(64)
+	out.SetMaxTransformFeedbackSeparateAttribs(4)
+	out.SetMaxTransformFeedbackSeparateComponents(4)
+	out.SetMaxTextureMaxAnisotropyExt(2.0)
+	out.SetMaxViewsExt(2)
+	out.SetCompressedTextureFormats(NewU32ːGLenumᵐ())
+	out.SetProgramBinaryFormats(NewU32ːGLenumᵐ())
+	out.SetShaderBinaryFormats(NewU32ːGLenumᵐ())
+	out.SetExtensions(NewU32ːstringᵐ())
+	return out
 }
 
-func NewStaticContextStateForTest() *StaticContextState {
+func NewStaticContextStateForTest() StaticContextState {
 	constants := DefaultConstants30()
-	constants.Version = "OpenGL ES 2.0"
-	return &StaticContextState{
-		Constants: constants,
-	}
+	constants.SetVersion("OpenGL ES 2.0")
+	return NewStaticContextState(
+		constants, // Constants
+		"",        // ThreadName
+	)
 }
 
-func NewDynamicContextStateForTest(width, height int, preserveBuffersOnSwap bool) *DynamicContextState {
-	return &DynamicContextState{
-		BackbufferWidth:       GLsizei(width),
-		BackbufferHeight:      GLsizei(height),
-		BackbufferColorFmt:    GLenum_GL_RGB565,
-		BackbufferDepthFmt:    GLenum_GL_DEPTH_COMPONENT16,
-		BackbufferStencilFmt:  GLenum_GL_STENCIL_INDEX8,
-		ResetViewportScissor:  true,
-		PreserveBuffersOnSwap: preserveBuffersOnSwap,
-	}
+func NewDynamicContextStateForTest(width, height int, preserveBuffersOnSwap bool) DynamicContextState {
+	return NewDynamicContextState(
+		GLsizei(width),              //  BackbufferWidth
+		GLsizei(height),             //  BackbufferHeight
+		GLenum_GL_RGB565,            //   BackbufferColorFmt
+		GLenum_GL_DEPTH_COMPONENT16, //   BackbufferDepthFmt
+		GLenum_GL_STENCIL_INDEX8,    //   BackbufferStencilFmt
+		true, //     ResetViewportScissor
+		preserveBuffersOnSwap, //     PreserveBuffersOnSwap
+		0, // RedSize
+		0, // GreenSize
+		0, // BlueSize
+		0, // AlphaSize
+		0, // DepthSize
+		0, // StencilSize
+	)
 }

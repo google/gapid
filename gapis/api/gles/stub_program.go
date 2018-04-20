@@ -31,18 +31,18 @@ var (
 )
 
 func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *api.GlobalState, programID ProgramId) []api.Cmd {
-	programInfo := FindLinkProgramExtra(e)
+	programInfo := FindLinkProgramExtra(e).Clone()
 	vss, fss, err := stubShaderSource(programInfo)
 	if err != nil {
 		log.E(ctx, "Unable to build stub shader: %v", err)
 	}
 	c := GetContext(s, thread)
 	vertexShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		ok := c.Objects.Buffers.Contains(BufferId(x))
+		ok := c.Objects().Buffers().Contains(BufferId(x))
 		return ok
 	}))
 	fragmentShaderID := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		ok := c.Objects.Buffers.Contains(BufferId(x))
+		ok := c.Objects().Buffers().Contains(BufferId(x))
 		return ok || x == uint32(vertexShaderID)
 	}))
 	cb := CommandBuilder{Thread: thread}
@@ -54,35 +54,35 @@ func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *a
 	)
 }
 
-func stubShaderSource(pi *LinkProgramExtra) (vertexShaderSource, fragmentShaderSource string, err error) {
+func stubShaderSource(pi LinkProgramExtraʳ) (vertexShaderSource, fragmentShaderSource string, err error) {
 	vsDecls, fsDecls := []string{}, []string{}
 	vsTickles, fsTickles := []string{}, []string{}
-	if pi != nil && pi.ActiveResources != nil {
-		for _, u := range pi.ActiveResources.DefaultUniformBlock.Range() {
+	if !pi.IsNil() && !pi.ActiveResources().IsNil() {
+		for _, u := range pi.ActiveResources().DefaultUniformBlock().Range() {
 			var decls, tickles *[]string
-			if isSampler(u.Type) {
+			if isSampler(u.Type()) {
 				decls, tickles = &fsDecls, &fsTickles
 			} else {
 				decls, tickles = &vsDecls, &vsTickles
 			}
 
-			ty, err := glslTypeFor(u.Type)
+			ty, err := glslTypeFor(u.Type())
 			if err != nil {
 				return "", "", err
 			}
-			if u.ArraySize > 1 {
-				name := strings.TrimRight(u.Name, "[0]")
-				*decls = append(*decls, fmt.Sprintf("uniform %s %s[%d];\n", ty, name, u.ArraySize))
-				for i := GLint(0); i < u.ArraySize; i++ {
-					tkl, err := glslTickle(u.Type, fmt.Sprintf("%s[%d]", name, i))
+			if u.ArraySize() > 1 {
+				name := strings.TrimRight(u.Name(), "[0]")
+				*decls = append(*decls, fmt.Sprintf("uniform %s %s[%d];\n", ty, name, u.ArraySize()))
+				for i := GLint(0); i < u.ArraySize(); i++ {
+					tkl, err := glslTickle(u.Type(), fmt.Sprintf("%s[%d]", name, i))
 					if err != nil {
 						return "", "", err
 					}
 					*tickles = append(*tickles, fmt.Sprintf("no_strip += %s;\n    ", tkl))
 				}
 			} else {
-				*decls = append(*decls, fmt.Sprintf("uniform %s %s;\n", ty, u.Name))
-				tkl, err := glslTickle(u.Type, u.Name)
+				*decls = append(*decls, fmt.Sprintf("uniform %s %s;\n", ty, u.Name()))
+				tkl, err := glslTickle(u.Type(), u.Name())
 				if err != nil {
 					return "", "", err
 				}

@@ -43,11 +43,7 @@ type ToProtoContext struct {
 }
 
 // GetReferenceID returns unique identifier for the given object.
-// nilValue is the default-initialized instance which will be mapped to ID 0.
-func (ctx *ToProtoContext) GetReferenceID(value interface{}, nilValue interface{}) (id int64, isNew bool) {
-	if value == nilValue {
-		return 0, false
-	}
+func (ctx *ToProtoContext) GetReferenceID(value interface{}) (id int64, isNew bool) {
 	if ctx.refs == nil {
 		ctx.refs = map[interface{}]int64{}
 	}

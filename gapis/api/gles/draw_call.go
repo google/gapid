@@ -32,61 +32,62 @@ type drawCallIndices struct {
 // drawCall is the interface implemented by all GLES draw call atoms.
 type drawCall interface {
 	api.Cmd
-	getIndices(ctx context.Context, c *Context, s *api.GlobalState) (drawCallIndices, error)
+	getIndices(ctx context.Context, c Contextʳ, s *api.GlobalState) (drawCallIndices, error)
 	getDrawMode() GLenum
 }
 
-func (a *GlDrawArrays) getIndices(ctx context.Context, c *Context, s *api.GlobalState) (drawCallIndices, error) {
-	indices := make([]uint32, a.IndicesCount)
+func (a *GlDrawArrays) getIndices(ctx context.Context, c Contextʳ, s *api.GlobalState) (drawCallIndices, error) {
+	indices := make([]uint32, a.IndicesCount())
 	for i := range indices {
-		indices[i] = uint32(a.FirstIndex) + uint32(i)
+		indices[i] = uint32(a.FirstIndex()) + uint32(i)
 	}
-	return drawCallIndices{indices, a.DrawMode, false}, nil
+	return drawCallIndices{indices, a.DrawMode(), false}, nil
 }
 
 func (a *GlDrawArrays) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (a *GlDrawElements) getIndices(ctx context.Context, c *Context, s *api.GlobalState) (drawCallIndices, error) {
-	return getIndices(ctx, c, s, a.IndicesType, a.DrawMode, 0, a.IndicesCount, a.Indices)
+func (a *GlDrawElements) getIndices(ctx context.Context, c Contextʳ, s *api.GlobalState) (drawCallIndices, error) {
+	return getIndices(ctx, c, s, a.IndicesType(), a.DrawMode(), 0, a.IndicesCount(), a.Indices())
 }
 
 func (a *GlDrawElements) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (a *GlDrawRangeElements) getIndices(ctx context.Context, c *Context, s *api.GlobalState) (drawCallIndices, error) {
-	return getIndices(ctx, c, s, a.IndicesType, a.DrawMode, 0, a.IndicesCount, a.Indices)
+func (a *GlDrawRangeElements) getIndices(ctx context.Context, c Contextʳ, s *api.GlobalState) (drawCallIndices, error) {
+	return getIndices(ctx, c, s, a.IndicesType(), a.DrawMode(), 0, a.IndicesCount(), a.Indices())
 }
 
 func (a *GlDrawRangeElements) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
 func getIndices(
 	ctx context.Context,
-	c *Context,
+	c Contextʳ,
 	s *api.GlobalState,
 	ty, drawMode GLenum,
 	first, count GLsizei,
 	ptr IndicesPointer) (drawCallIndices, error) {
 
 	indexSize := uint64(DataTypeSize(ty))
-	indexBuffer := c.Bound.VertexArray.ElementArrayBuffer
+	indexBuffer := c.Bound().VertexArray().ElementArrayBuffer()
 	size := uint64(count) * indexSize
 	offset := uint64(first) * indexSize
 
 	var reader binary.Reader
-	if indexBuffer == nil {
+	if indexBuffer.IsNil() {
 		// Get the index buffer data from pointer
 		reader = ptr.Slice(offset, size, s.MemoryLayout).Reader(ctx, s)
 	} else {
 		// Get the index buffer data from buffer, offset by the 'indices' pointer.
-		offset += uint64(ptr)
-		start := u64.Min(offset, indexBuffer.Data.count)
-		end := u64.Min(offset+size, indexBuffer.Data.count)
-		reader = indexBuffer.Data.Slice(start, end).Reader(ctx, s)
+		offset += ptr.Address()
+		count := indexBuffer.Data().Count()
+		start := u64.Min(offset, count)
+		end := u64.Min(offset+size, count)
+		reader = indexBuffer.Data().Slice(start, end).Reader(ctx, s)
 	}
 
 	indices, err := decodeIndices(reader, ty)
@@ -133,226 +134,226 @@ func decodeIndices(r binary.Reader, indicesType GLenum) ([]uint32, error) {
 }
 
 // The draw calls below are stubbed.
-func (GlDrawArraysIndirect) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawArraysIndirect) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawArraysIndirect.getIndices() not implemented")
 }
 func (a *GlDrawArraysIndirect) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (GlDrawArraysInstanced) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawArraysInstanced) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawArraysInstanced.getIndices() not implemented")
 }
 func (a *GlDrawArraysInstanced) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (GlDrawArraysInstancedANGLE) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawArraysInstancedANGLE) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawArraysInstancedANGLE.getIndices() not implemented")
 }
 func (a *GlDrawArraysInstancedANGLE) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawArraysInstancedBaseInstanceEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawArraysInstancedBaseInstanceEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawArraysInstancedBaseInstanceEXT.getIndices() not implemented")
 }
 func (a *GlDrawArraysInstancedBaseInstanceEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawArraysInstancedEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawArraysInstancedEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawArraysInstancedEXT.getIndices() not implemented")
 }
 func (a *GlDrawArraysInstancedEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawArraysInstancedNV) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawArraysInstancedNV) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawArraysInstancedNV.getIndices() not implemented")
 }
 func (a *GlDrawArraysInstancedNV) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsBaseVertex) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsBaseVertex) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsBaseVertex.getIndices() not implemented")
 }
 func (a *GlDrawElementsBaseVertex) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (GlDrawElementsBaseVertexEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsBaseVertexEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsBaseVertexEXT.getIndices() not implemented")
 }
 func (a *GlDrawElementsBaseVertexEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsBaseVertexOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsBaseVertexOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsBaseVertexOES.getIndices() not implemented")
 }
 func (a *GlDrawElementsBaseVertexOES) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsIndirect) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsIndirect) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsIndirect.getIndices() not implemented")
 }
 func (a *GlDrawElementsIndirect) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (GlDrawElementsInstanced) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstanced) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstanced.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstanced) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (GlDrawElementsInstancedANGLE) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstancedANGLE) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstancedANGLE.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstancedANGLE) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsInstancedBaseInstanceEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstancedBaseInstanceEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstancedBaseInstanceEXT.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstancedBaseInstanceEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsInstancedBaseVertex) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstancedBaseVertex) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstancedBaseVertex.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstancedBaseVertex) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (GlDrawElementsInstancedBaseVertexBaseInstanceEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstancedBaseVertexBaseInstanceEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstancedBaseVertexBaseInstanceEXT.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstancedBaseVertexBaseInstanceEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsInstancedBaseVertexEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstancedBaseVertexEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstancedBaseVertexEXT.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstancedBaseVertexEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsInstancedBaseVertexOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstancedBaseVertexOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstancedBaseVertexOES.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstancedBaseVertexOES) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsInstancedEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstancedEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstancedEXT.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstancedEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawElementsInstancedNV) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawElementsInstancedNV) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawElementsInstancedNV.getIndices() not implemented")
 }
 func (a *GlDrawElementsInstancedNV) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawRangeElementsBaseVertex) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawRangeElementsBaseVertex) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawRangeElementsBaseVertex.getIndices() not implemented")
 }
 func (a *GlDrawRangeElementsBaseVertex) getDrawMode() GLenum {
-	return a.DrawMode
+	return a.DrawMode()
 }
 
-func (GlDrawRangeElementsBaseVertexEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawRangeElementsBaseVertexEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawRangeElementsBaseVertexEXT.getIndices() not implemented")
 }
 func (a *GlDrawRangeElementsBaseVertexEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawRangeElementsBaseVertexOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawRangeElementsBaseVertexOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawRangeElementsBaseVertexOES.getIndices() not implemented")
 }
 func (a *GlDrawRangeElementsBaseVertexOES) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawTexfOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTexfOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTexfOES.getIndices() not implemented")
 }
 func (a *GlDrawTexfOES) getDrawMode() GLenum {
 	return GLenum_GL_TRIANGLES
 }
 
-func (GlDrawTexfvOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTexfvOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTexfvOES.getIndices() not implemented")
 }
 func (a *GlDrawTexfvOES) getDrawMode() GLenum {
 	return GLenum_GL_TRIANGLES
 }
 
-func (GlDrawTexiOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTexiOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTexiOES.getIndices() not implemented")
 }
 func (a *GlDrawTexiOES) getDrawMode() GLenum {
 	return GLenum_GL_TRIANGLES
 }
 
-func (GlDrawTexivOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTexivOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTexivOES.getIndices() not implemented")
 }
 func (a *GlDrawTexivOES) getDrawMode() GLenum {
 	return GLenum_GL_TRIANGLES
 }
 
-func (GlDrawTexsOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTexsOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTexsOES.getIndices() not implemented")
 }
 func (a *GlDrawTexsOES) getDrawMode() GLenum {
 	return GLenum_GL_TRIANGLES
 }
 
-func (GlDrawTexsvOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTexsvOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTexsvOES.getIndices() not implemented")
 }
 func (a *GlDrawTexsvOES) getDrawMode() GLenum {
 	return GLenum_GL_TRIANGLES
 }
 
-func (GlDrawTexxOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTexxOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTexxOES.getIndices() not implemented")
 }
 func (a *GlDrawTexxOES) getDrawMode() GLenum {
 	return GLenum_GL_TRIANGLES
 }
 
-func (GlDrawTexxvOES) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTexxvOES) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTexxvOES.getIndices() not implemented")
 }
 func (a *GlDrawTexxvOES) getDrawMode() GLenum {
 	return GLenum_GL_TRIANGLES
 }
 
-func (GlDrawTransformFeedbackEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTransformFeedbackEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTransformFeedbackEXT.getIndices() not implemented")
 }
 func (a *GlDrawTransformFeedbackEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }
 
-func (GlDrawTransformFeedbackInstancedEXT) getIndices(context.Context, *Context, *api.GlobalState) (drawCallIndices, error) {
+func (GlDrawTransformFeedbackInstancedEXT) getIndices(context.Context, Contextʳ, *api.GlobalState) (drawCallIndices, error) {
 	return drawCallIndices{}, fmt.Errorf("GlDrawTransformFeedbackInstancedEXT.getIndices() not implemented")
 }
 func (a *GlDrawTransformFeedbackInstancedEXT) getDrawMode() GLenum {
-	return a.Mode
+	return a.Mode()
 }

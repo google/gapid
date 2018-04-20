@@ -303,6 +303,8 @@ enum LastSubmissionType {
 @serialize PresentInfo                                  LastPresentInfo
 @serialize LastSubmissionType                           LastSubmission
 
+@hidden bool IsRebuilding
+
 sub ref!DrawInfo lastDrawInfo() {
   if LastBoundQueue != null {
     if !(LastBoundQueue.VulkanHandle in LastDrawInfos) {

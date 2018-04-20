@@ -177,7 +177,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		case *path.Parameter:
 			// TODO: Deal with parameters belonging to sub-commands.
 			cmd := obj.Interface().(api.Cmd)
-			err := api.SetParameter(ctx, cmd, p.Name, val)
+			err := api.SetParameter(cmd, p.Name, val)
 			switch err {
 			case nil:
 			case api.ErrParameterNotFound:
@@ -198,7 +198,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		case *path.Result:
 			// TODO: Deal with parameters belonging to sub-commands.
 			cmd := obj.Interface().(api.Cmd)
-			err := api.SetResult(ctx, cmd, val)
+			err := api.SetResult(cmd, val)
 			switch err {
 			case nil:
 			case api.ErrResultNotFound:

@@ -20,10 +20,19 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/memory"
 )
 
 func TestCallReflectedCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	CallReflectedCommand(ctx, &VkCreateBuffer{}, 10, s, nil, subDovkCmdDispatch, &VkCmdDispatchArgs{})
+	cb := CommandBuilder{}
+	cmd := cb.VkCreateBuffer(
+		VkDevice(0),
+		memory.Nullptr,
+		memory.Nullptr,
+		memory.Nullptr,
+		VkResult_VK_SUCCESS,
+	)
+	CallReflectedCommand(ctx, cmd, 10, s, nil, subDovkCmdDispatch, MakeVkCmdDispatchArgsʳ())
 }

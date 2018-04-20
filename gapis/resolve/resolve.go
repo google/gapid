@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -91,6 +92,11 @@ func Field(ctx context.Context, p *path.Field) (interface{}, error) {
 
 func field(ctx context.Context, s reflect.Value, name string, p path.Node) (reflect.Value, error) {
 	for {
+		if pp, ok := s.Interface().(api.PropertyProvider); ok {
+			if p := pp.Properties().Find(name); p != nil {
+				return reflect.ValueOf(p.Get()), nil
+			}
+		}
 		switch s.Kind() {
 		case reflect.Struct:
 			f := s.FieldByName(name)

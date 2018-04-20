@@ -47,15 +47,15 @@ func attachmentToEnum(a api.FramebufferAttachment) (GLenum, error) {
 	}
 }
 
-func (f *Framebuffer) getAttachment(a GLenum) (FramebufferAttachment, error) {
+func (f Framebufferʳ) getAttachment(a GLenum) (FramebufferAttachment, error) {
 	switch a {
 	case GLenum_GL_DEPTH_ATTACHMENT, GLenum_GL_DEPTH_STENCIL_ATTACHMENT:
-		return f.DepthAttachment, nil
+		return f.DepthAttachment(), nil
 	case GLenum_GL_STENCIL_ATTACHMENT:
-		return f.StencilAttachment, nil
+		return f.StencilAttachment(), nil
 	default:
 		if a >= GLenum_GL_COLOR_ATTACHMENT0 && a < GLenum_GL_COLOR_ATTACHMENT0+64 {
-			return f.ColorAttachments.Get(GLint(a - GLenum_GL_COLOR_ATTACHMENT0)), nil
+			return f.ColorAttachments().Get(GLint(a - GLenum_GL_COLOR_ATTACHMENT0)), nil
 		}
 		return FramebufferAttachment{}, fmt.Errorf("Unhandled attachment: %v", a)
 	}
@@ -65,14 +65,14 @@ func (f *Framebuffer) getAttachment(a GLenum) (FramebufferAttachment, error) {
 // to the gles.api file.
 func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, att GLenum) (fbai, error) {
 	c := s.GetContext(thread)
-	if c == nil {
+	if c.IsNil() {
 		return fbai{}, fmt.Errorf("No context bound")
 	}
-	if !c.Other.Initialized {
+	if !c.Other().Initialized() {
 		return fbai{}, fmt.Errorf("Context not initialized")
 	}
 
-	framebuffer, ok := c.Objects.Framebuffers.Lookup(fb)
+	framebuffer, ok := c.Objects().Framebuffers().Lookup(fb)
 	if !ok {
 		return fbai{}, fmt.Errorf("Invalid framebuffer %v", fb)
 	}
@@ -82,27 +82,27 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, at
 		return fbai{}, err
 	}
 
-	switch a.Type {
+	switch a.Type() {
 	case GLenum_GL_NONE:
 		return fbai{}, fmt.Errorf("%s is not bound", att)
 	case GLenum_GL_TEXTURE:
-		t := a.Texture
-		l := t.Levels.Get(a.TextureLevel).Layers.Get(a.TextureLayer)
-		if l == nil {
+		t := a.Texture()
+		l := t.Levels().Get(a.TextureLevel()).Layers().Get(a.TextureLayer())
+		if l.IsNil() {
 			return fbai{}, fmt.Errorf("Texture %v does not have Level[%v].Layer[%v]",
-				t.ID, a.TextureLevel, a.TextureLayer)
+				t.ID(), a.TextureLevel(), a.TextureLayer())
 		}
-		multisampled := l.Samples > 0
-		return fbai{uint32(l.Width), uint32(l.Height), l.SizedFormat, multisampled}, nil
+		multisampled := l.Samples() > 0
+		return fbai{uint32(l.Width()), uint32(l.Height()), l.SizedFormat(), multisampled}, nil
 	case GLenum_GL_RENDERBUFFER:
-		r := a.Renderbuffer
-		l := r.Image
-		if l == nil {
+		r := a.Renderbuffer()
+		l := r.Image()
+		if l.IsNil() {
 			return fbai{}, fmt.Errorf("Renderbuffer %v does not have any image date", r.ID)
 		}
-		multisampled := l.Samples > 0
-		return fbai{uint32(l.Width), uint32(l.Height), l.SizedFormat, multisampled}, nil
+		multisampled := l.Samples() > 0
+		return fbai{uint32(l.Width()), uint32(l.Height()), l.SizedFormat(), multisampled}, nil
 	default:
-		return fbai{}, fmt.Errorf("Unknown framebuffer attachment type %T", a.Type)
+		return fbai{}, fmt.Errorf("Unknown framebuffer attachment type %T", a.Type())
 	}
 }

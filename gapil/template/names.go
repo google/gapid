@@ -45,12 +45,13 @@ var (
 		resolver.TypeRune:    'T',
 	}
 	goKeywords = map[string]string{
-		"type":    "type_",
-		"func":    "func_",
-		"range":   "range_",
-		"map":     "map_",
-		"default": "default_",
-		"Format":  "Fmt", // Collides with the Format() printer function.
+		"type":       "type_",
+		"func":       "func_",
+		"range":      "range_",
+		"map":        "map_",
+		"default":    "default_",
+		"Properties": "Props", // Collides with the api.PropertyProvider interface.
+		"Format":     "Fmt",   // Collides with the Format() printer function.
 	}
 	cppKeywords = map[string]string{
 		"default": "default_",

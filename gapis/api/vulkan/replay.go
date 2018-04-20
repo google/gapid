@@ -95,11 +95,11 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 // makeAttachementReadable is a transformation marking all color/depth/stencil attachment
 // images created via vkCreateImage atoms as readable (by patching the transfer src bit).
 type makeAttachementReadable struct {
-	Instance                  VkInstance
-	EnumeratedPhysicalDevices []VkPhysicalDevice
-	Properties                []VkPhysicalDeviceProperties
-	InPhysicalDeviceEnumerate bool
-	NumPhysicalDevicesLeft    uint32
+	instance                  VkInstance
+	enumeratedPhysicalDevices []VkPhysicalDevice
+	properties                []VkPhysicalDeviceProperties
+	inPhysicalDeviceEnumerate bool
+	numPhysicalDevicesLeft    uint32
 }
 
 // drawConfig is a replay.Config used by colorBufferRequest and
@@ -157,16 +157,16 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 
 	if image, ok := cmd.(*VkCreateImage); ok {
-		pinfo := image.PCreateInfo
+		pinfo := image.PCreateInfo()
 		info := pinfo.MustRead(ctx, image, s, nil)
 
-		if newUsage, changed := patchImageUsage(info.Usage); changed {
-			device := image.Device
-			palloc := memory.Pointer(image.PAllocator)
-			pimage := memory.Pointer(image.PImage)
-			result := image.Result
+		if newUsage, changed := patchImageUsage(info.Usage()); changed {
+			device := image.Device()
+			palloc := memory.Pointer(image.PAllocator())
+			pimage := memory.Pointer(image.PImage())
+			result := image.Result()
 
-			info.Usage = newUsage
+			info.SetUsage(newUsage)
 			newInfo := s.AllocDataOrPanic(ctx, info)
 			newCmd := cb.VkCreateImage(device, newInfo.Ptr(), palloc, pimage, result)
 			// Carry all non-observation extras through.
@@ -193,16 +193,16 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			return
 		}
 	} else if swapchain, ok := cmd.(*VkCreateSwapchainKHR); ok {
-		pinfo := swapchain.PCreateInfo
+		pinfo := swapchain.PCreateInfo()
 		info := pinfo.MustRead(ctx, swapchain, s, nil)
 
-		if newUsage, changed := patchImageUsage(info.ImageUsage); changed {
-			device := swapchain.Device
-			palloc := memory.Pointer(swapchain.PAllocator)
-			pswapchain := memory.Pointer(swapchain.PSwapchain)
-			result := swapchain.Result
+		if newUsage, changed := patchImageUsage(info.ImageUsage()); changed {
+			device := swapchain.Device()
+			palloc := memory.Pointer(swapchain.PAllocator())
+			pswapchain := memory.Pointer(swapchain.PSwapchain())
+			result := swapchain.Result()
 
-			info.ImageUsage = newUsage
+			info.SetImageUsage(newUsage)
 			newInfo := s.AllocDataOrPanic(ctx, info)
 			newCmd := cb.VkCreateSwapchainKHR(device, newInfo.Ptr(), palloc, pswapchain, result)
 			for _, e := range swapchain.Extras().All() {
@@ -224,15 +224,15 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			return
 		}
 	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok {
-		pInfo := createRenderPass.PCreateInfo
+		pInfo := createRenderPass.PCreateInfo()
 		info := pInfo.MustRead(ctx, createRenderPass, s, nil)
-		pAttachments := info.PAttachments
-		attachments := pAttachments.Slice(uint64(0), uint64(info.AttachmentCount), l).MustRead(ctx, createRenderPass, s, nil)
+		pAttachments := info.PAttachments()
+		attachments := pAttachments.Slice(0, uint64(info.AttachmentCount()), l).MustRead(ctx, createRenderPass, s, nil)
 		changed := false
 		for i := range attachments {
-			if attachments[i].StoreOp == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
+			if attachments[i].StoreOp() == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
 				changed = true
-				attachments[i].StoreOp = VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE
+				attachments[i].SetStoreOp(VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE)
 			}
 		}
 		// Returns if no attachment description needs to be changed
@@ -242,13 +242,13 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		// Build new attachments data, new create info and new command
 		newAttachments := s.AllocDataOrPanic(ctx, attachments)
-		info.PAttachments = NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr())
+		info.SetPAttachments(NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr()))
 		newInfo := s.AllocDataOrPanic(ctx, info)
-		newCmd := cb.VkCreateRenderPass(createRenderPass.Device,
+		newCmd := cb.VkCreateRenderPass(createRenderPass.Device(),
 			newInfo.Ptr(),
-			memory.Pointer(createRenderPass.PAllocator),
-			memory.Pointer(createRenderPass.PRenderPass),
-			createRenderPass.Result)
+			memory.Pointer(createRenderPass.PAllocator()),
+			memory.Pointer(createRenderPass.PRenderPass()),
+			createRenderPass.Result())
 		// Add back the extras and read/write observations
 		for _, e := range createRenderPass.Extras().All() {
 			if _, ok := e.(*api.CmdObservations); !ok {
@@ -265,7 +265,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		out.MutateAndWrite(ctx, id, newCmd)
 		return
 	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok {
-		if e.PPhysicalDevices == NewVkPhysicalDeviceᵖ(nil) {
+		if e.PPhysicalDevices() == 0 {
 			// Querying for the number of devices.
 			// No changes needed here.
 			out.MutateAndWrite(ctx, id, cmd)
@@ -278,32 +278,31 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		//   https://github.com/google/gapid/issues/1766
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		t.NumPhysicalDevicesLeft = uint32(e.PPhysicalDeviceCount.Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0])
+		t.numPhysicalDevicesLeft = uint32(e.PPhysicalDeviceCount().Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0])
 		// Do not mutate the second call to vkEnumeratePhysicalDevices, all the following vkGetPhysicalDeviceProperties belong to this
 		// physical device enumeration.
-		t.InPhysicalDeviceEnumerate = true
-		t.Properties = make([]VkPhysicalDeviceProperties, 0)
-		t.EnumeratedPhysicalDevices = make([]VkPhysicalDevice, 0)
-		t.Instance = e.Instance
+		t.inPhysicalDeviceEnumerate = true
+		t.properties = make([]VkPhysicalDeviceProperties, 0)
+		t.enumeratedPhysicalDevices = make([]VkPhysicalDevice, 0)
+		t.instance = e.Instance()
 	} else if g, ok := cmd.(*VkGetPhysicalDeviceProperties); ok {
-		if t.InPhysicalDeviceEnumerate {
+		if t.inPhysicalDeviceEnumerate {
 			cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-			prop := g.PProperties.MustRead(ctx, cmd, s, nil)
-			t.Properties = append(t.Properties, prop)
-			t.EnumeratedPhysicalDevices = append(t.EnumeratedPhysicalDevices, g.PhysicalDevice)
-			if t.NumPhysicalDevicesLeft > 0 {
-				t.NumPhysicalDevicesLeft--
+			prop := g.PProperties().MustRead(ctx, cmd, s, nil)
+			t.properties = append(t.properties, prop)
+			t.enumeratedPhysicalDevices = append(t.enumeratedPhysicalDevices, g.PhysicalDevice())
+			if t.numPhysicalDevicesLeft > 0 {
+				t.numPhysicalDevicesLeft--
 			}
-			if t.NumPhysicalDevicesLeft == 0 {
-				newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, t.Instance, uint32(len(t.EnumeratedPhysicalDevices)), t.EnumeratedPhysicalDevices, t.Properties)
+			if t.numPhysicalDevicesLeft == 0 {
+				newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, t.instance, uint32(len(t.enumeratedPhysicalDevices)), t.enumeratedPhysicalDevices, t.properties)
 				out.MutateAndWrite(ctx, id, newEnumerate)
-				t.InPhysicalDeviceEnumerate = false
+				t.inPhysicalDeviceEnumerate = false
 			}
-			return
-		} else {
-			out.MutateAndWrite(ctx, id, g)
 			return
 		}
+		out.MutateAndWrite(ctx, id, g)
+		return
 	}
 	out.MutateAndWrite(ctx, id, cmd)
 }
@@ -319,14 +318,14 @@ func buildReplayEnumeratePhysicalDevices(
 	dids := make([]uint64, 0)
 	for i := uint32(0); i < count; i++ {
 		dids = append(dids, uint64(
-			propertiesInOrder[i].VendorID)<<32|
-			uint64(propertiesInOrder[i].DeviceID))
+			propertiesInOrder[i].VendorID())<<32|
+			uint64(propertiesInOrder[i].DeviceID()))
 	}
-	devIdData := s.AllocDataOrPanic(ctx, dids)
+	devIDData := s.AllocDataOrPanic(ctx, dids)
 	return cb.ReplayEnumeratePhysicalDevices(
-		instance, numDevData.Ptr(), phyDevData.Ptr(), devIdData.Ptr(),
+		instance, numDevData.Ptr(), phyDevData.Ptr(), devIDData.Ptr(),
 		VkResult_VK_SUCCESS).AddRead(
-		numDevData.Data()).AddRead(phyDevData.Data()).AddRead(devIdData.Data())
+		numDevData.Data()).AddRead(phyDevData.Data()).AddRead(devIDData.Data())
 }
 
 // destroyResourceAtEOS is a transformation that destroys all active
@@ -347,111 +346,111 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	p := memory.Nullptr
 
 	// Wait all queues in all devices to finish their jobs first.
-	for handle := range so.Devices.Range() {
+	for handle := range so.Devices().Range() {
 		out.MutateAndWrite(ctx, id, cb.VkDeviceWaitIdle(handle, VkResult_VK_SUCCESS))
 	}
 
 	// Synchronization primitives.
-	for handle, object := range so.Events.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyEvent(object.Device, handle, p))
+	for handle, object := range so.Events().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyEvent(object.Device(), handle, p))
 	}
-	for handle, object := range so.Fences.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyFence(object.Device, handle, p))
+	for handle, object := range so.Fences().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyFence(object.Device(), handle, p))
 	}
-	for handle, object := range so.Semaphores.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySemaphore(object.Device, handle, p))
+	for handle, object := range so.Semaphores().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroySemaphore(object.Device(), handle, p))
 	}
 
 	// Framebuffers, samplers.
-	for handle, object := range so.Framebuffers.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyFramebuffer(object.Device, handle, p))
+	for handle, object := range so.Framebuffers().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyFramebuffer(object.Device(), handle, p))
 	}
-	for handle, object := range so.Samplers.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySampler(object.Device, handle, p))
+	for handle, object := range so.Samplers().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroySampler(object.Device(), handle, p))
 	}
 
-	for handle, object := range so.ImageViews.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device, handle, p))
+	for handle, object := range so.ImageViews().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device(), handle, p))
 	}
 
 	// Buffers.
-	for handle, object := range so.BufferViews.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyBufferView(object.Device, handle, p))
+	for handle, object := range so.BufferViews().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyBufferView(object.Device(), handle, p))
 	}
-	for handle, object := range so.Buffers.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyBuffer(object.Device, handle, p))
+	for handle, object := range so.Buffers().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyBuffer(object.Device(), handle, p))
 	}
 
 	// Descriptor sets.
-	for handle, object := range so.DescriptorPools.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device, handle, p))
+	for handle, object := range so.DescriptorPools().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device(), handle, p))
 	}
-	for handle, object := range so.DescriptorSetLayouts.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device, handle, p))
+	for handle, object := range so.DescriptorSetLayouts().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device(), handle, p))
 	}
 
 	// Shader modules.
-	for handle, object := range so.ShaderModules.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyShaderModule(object.Device, handle, p))
+	for handle, object := range so.ShaderModules().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyShaderModule(object.Device(), handle, p))
 	}
 
 	// Pipelines.
-	for handle, object := range so.GraphicsPipelines.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device, handle, p))
+	for handle, object := range so.GraphicsPipelines().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p))
 	}
-	for handle, object := range so.ComputePipelines.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device, handle, p))
+	for handle, object := range so.ComputePipelines().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p))
 	}
-	for handle, object := range so.PipelineLayouts.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineLayout(object.Device, handle, p))
+	for handle, object := range so.PipelineLayouts().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineLayout(object.Device(), handle, p))
 	}
-	for handle, object := range so.PipelineCaches.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineCache(object.Device, handle, p))
+	for handle, object := range so.PipelineCaches().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineCache(object.Device(), handle, p))
 	}
 
 	// Render passes.
-	for handle, object := range so.RenderPasses.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyRenderPass(object.Device, handle, p))
+	for handle, object := range so.RenderPasses().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyRenderPass(object.Device(), handle, p))
 	}
 
-	for handle, object := range so.QueryPools.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyQueryPool(object.Device, handle, p))
+	for handle, object := range so.QueryPools().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyQueryPool(object.Device(), handle, p))
 	}
 
 	// Command buffers.
-	for handle, object := range so.CommandPools.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyCommandPool(object.Device, handle, p))
+	for handle, object := range so.CommandPools().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyCommandPool(object.Device(), handle, p))
 	}
 
 	// Swapchains.
-	for handle, object := range so.Swapchains.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySwapchainKHR(object.Device, handle, p))
+	for handle, object := range so.Swapchains().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroySwapchainKHR(object.Device(), handle, p))
 	}
 
 	// Memories.
-	for handle, object := range so.DeviceMemories.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkFreeMemory(object.Device, handle, p))
+	for handle, object := range so.DeviceMemories().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkFreeMemory(object.Device(), handle, p))
 	}
 
 	// Note: so.Images also contains Swapchain images. We do not want
 	// to delete those, as that must be handled by VkDestroySwapchainKHR
-	for handle, object := range so.Images.Range() {
-		if !object.IsSwapchainImage {
-			out.MutateAndWrite(ctx, id, cb.VkDestroyImage(object.Device, handle, p))
+	for handle, object := range so.Images().Range() {
+		if !object.IsSwapchainImage() {
+			out.MutateAndWrite(ctx, id, cb.VkDestroyImage(object.Device(), handle, p))
 		}
 	}
 	// Devices.
-	for handle := range so.Devices.Range() {
+	for handle := range so.Devices().Range() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyDevice(handle, p))
 	}
 
 	// Surfaces.
-	for handle, object := range so.Surfaces.Range() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySurfaceKHR(object.Instance, handle, p))
+	for handle, object := range so.Surfaces().Range() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroySurfaceKHR(object.Instance(), handle, p))
 	}
 
 	// Instances.
-	for handle := range so.Instances.Range() {
+	for handle := range so.Instances().Range() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyInstance(handle, p))
 	}
 }

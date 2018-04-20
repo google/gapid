@@ -185,6 +185,7 @@ func newFixture(ctx context.Context) (context.Context, *Fixture) {
 		device:       dev,
 		memoryLayout: memoryLayout,
 		s:            s,
+		cb:           gles.CommandBuilder{},
 	}
 }
 
@@ -447,30 +448,32 @@ func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, 
 		gles.BuildProgram(ctx, s, f.cb, vs, fs, prog, textureVSSource, textureFSSource)...,
 	)
 
+	uniformTex := gles.MakeProgramResourceʳ()
+	uniformTex.SetType(gles.GLenum_GL_SAMPLER_2D)
+	uniformTex.SetName("tex")
+	uniformTex.SetArraySize(1)
+	uniformTex.Locations().Add(0, gles.GLint(texLoc))
+
+	positionIn := gles.MakeProgramResourceʳ()
+	positionIn.SetType(gles.GLenum_GL_FLOAT_VEC3)
+	positionIn.SetName("position")
+	positionIn.SetArraySize(1)
+	positionIn.Locations().Add(0, gles.GLint(pos))
+
+	resources := gles.MakeActiveProgramResourcesʳ()
+	resources.DefaultUniformBlock().Add(0, uniformTex)
+	resources.ProgramInputs().Add(0, positionIn)
+
+	lpe := gles.MakeLinkProgramExtra()
+	lpe.SetLinkStatus(gles.GLboolean_GL_TRUE)
+	lpe.SetActiveResources(resources)
+
 	cmds = append(cmds,
 		f.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
 		f.cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
 		f.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_2X_BIT_ATI),
 
-		api.WithExtras(
-			f.cb.GlLinkProgram(prog),
-			&gles.LinkProgramExtra{
-				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveResources: &gles.ActiveProgramResources{
-					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-						Type:      gles.GLenum_GL_SAMPLER_2D,
-						Name:      "tex",
-						ArraySize: 1,
-						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(texLoc)),
-					}),
-					ProgramInputs: gles.NewU32ːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-						Type:      gles.GLenum_GL_FLOAT_VEC3,
-						Name:      "position",
-						ArraySize: 1,
-						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(pos)),
-					}),
-				},
-			}),
+		api.WithExtras(f.cb.GlLinkProgram(prog), lpe),
 		f.cb.GlUseProgram(missingProg),
 		f.cb.GlLabelObjectEXT(gles.GLenum_GL_TEXTURE, 123, gles.GLsizei(someString.Range().Size), someString.Ptr()).AddRead(someString.Data()),
 		f.cb.GlGetError(0),
@@ -531,26 +534,28 @@ func (f Fixture) generateDrawTriangleCaptureEx(ctx context.Context, br, bg, bb, 
 
 	triangleVerticesR := f.s.AllocDataOrPanic(ctx, triangleVertices)
 
+	uniformAngle := gles.MakeProgramResourceʳ()
+	uniformAngle.SetType(gles.GLenum_GL_FLOAT)
+	uniformAngle.SetName("angle")
+	uniformAngle.SetArraySize(1)
+	uniformAngle.Locations().Add(0, gles.GLint(angleLoc))
+
+	positionIn := gles.MakeProgramResourceʳ()
+	positionIn.SetType(gles.GLenum_GL_FLOAT_VEC3)
+	positionIn.SetName("position")
+	positionIn.SetArraySize(1)
+	positionIn.Locations().Add(0, gles.GLint(pos))
+
+	resources := gles.MakeActiveProgramResourcesʳ()
+	resources.DefaultUniformBlock().Add(0, uniformAngle)
+	resources.ProgramInputs().Add(0, positionIn)
+
+	lpe := gles.MakeLinkProgramExtra()
+	lpe.SetLinkStatus(gles.GLboolean_GL_TRUE)
+	lpe.SetActiveResources(resources)
+
 	cmds = append(cmds,
-		api.WithExtras(
-			f.cb.GlLinkProgram(prog),
-			&gles.LinkProgramExtra{
-				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveResources: &gles.ActiveProgramResources{
-					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-						Type:      gles.GLenum_GL_FLOAT,
-						Name:      "angle",
-						ArraySize: 1,
-						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(angleLoc)),
-					}),
-					ProgramInputs: gles.NewU32ːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-						Type:      gles.GLenum_GL_FLOAT_VEC3,
-						Name:      "position",
-						ArraySize: 1,
-						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(pos)),
-					}),
-				},
-			}),
+		api.WithExtras(f.cb.GlLinkProgram(prog), lpe),
 		f.cb.GlUseProgram(prog),
 		gles.GetUniformLocation(ctx, f.s, f.cb, prog, "angle", angleLoc),
 		f.cb.GlUniform1f(angleLoc, gles.GLfloat(0)),
@@ -658,20 +663,22 @@ func TestResizeRenderer(t *testing.T) {
 	cmds = append(cmds,
 		gles.BuildProgram(ctx, f.s, f.cb, vs, fs, prog, simpleVSSource, simpleFSSource(1.0, 0.0, 0.0))...,
 	)
+
+	positionIn := gles.MakeProgramResourceʳ()
+	positionIn.SetType(gles.GLenum_GL_FLOAT_VEC3)
+	positionIn.SetName("position")
+	positionIn.SetArraySize(1)
+	positionIn.Locations().Add(0, gles.GLint(pos))
+
+	resources := gles.MakeActiveProgramResourcesʳ()
+	resources.ProgramInputs().Add(0, positionIn)
+
+	lpe := gles.MakeLinkProgramExtra()
+	lpe.SetLinkStatus(gles.GLboolean_GL_TRUE)
+	lpe.SetActiveResources(resources)
+
 	cmds = append(cmds,
-		api.WithExtras(
-			f.cb.GlLinkProgram(prog),
-			&gles.LinkProgramExtra{
-				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveResources: &gles.ActiveProgramResources{
-					ProgramInputs: gles.NewU32ːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-						Type:      gles.GLenum_GL_FLOAT_VEC3,
-						Name:      "position",
-						ArraySize: 1,
-						Locations: gles.NewU32ːGLintᵐ().Add(0, gles.GLint(pos)),
-					}),
-				},
-			}),
+		api.WithExtras(f.cb.GlLinkProgram(prog), lpe),
 		f.cb.GlUseProgram(prog),
 		gles.GetAttribLocation(ctx, f.s, f.cb, prog, "position", pos),
 		f.cb.GlEnableVertexAttribArray(pos),

@@ -16,6 +16,7 @@ package gles
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/math/u64"
@@ -33,47 +34,34 @@ var _ = []drawElements{
 
 type drawElements interface {
 	api.Cmd
-	withIndicesNull() drawElements
 	indexLimits() (resolve.IndexRange, bool)
-	drawMode() GLenum
-	indicesCount() GLsizei
-	indicesType() GLenum
-	indices() IndicesPointer
+	DrawMode() GLenum
+	IndicesCount() GLsizei
+	IndicesType() GLenum
+	Indices() IndicesPointer
+	SetIndices(IndicesPointer)
 }
 
-func (d *GlDrawElements) withIndicesNull() drawElements {
-	out := *d
-	out.Indices = 0
-	return &out
-}
 func (d *GlDrawElements) indexLimits() (resolve.IndexRange, bool) { return resolve.IndexRange{}, false }
-func (d *GlDrawElements) drawMode() GLenum                        { return d.DrawMode }
-func (d *GlDrawElements) indicesCount() GLsizei                   { return d.IndicesCount }
-func (d *GlDrawElements) indicesType() GLenum                     { return d.IndicesType }
-func (d *GlDrawElements) indices() IndicesPointer                 { return d.Indices }
 
-func (d *GlDrawRangeElements) withIndicesNull() drawElements {
-	out := *d
-	out.Indices = 0
-	return &out
-}
 func (d *GlDrawRangeElements) indexLimits() (resolve.IndexRange, bool) {
 	return resolve.IndexRange{
-		First: uint32(d.Start),
-		Count: uint32(d.End-d.Start) + 1,
+		First: uint32(d.Start()),
+		Count: uint32(d.End()-d.Start()) + 1,
 	}, true
 }
-func (d *GlDrawRangeElements) drawMode() GLenum        { return d.DrawMode }
-func (d *GlDrawRangeElements) indicesCount() GLsizei   { return d.IndicesCount }
-func (d *GlDrawRangeElements) indicesType() GLenum     { return d.IndicesType }
-func (d *GlDrawRangeElements) indices() IndicesPointer { return d.Indices }
+
+func cloneCmd(cmd api.Cmd) api.Cmd {
+	vc := reflect.ValueOf(cmd)
+	return vc.MethodByName("Clone").Call([]reflect.Value{})[0].Interface().(api.Cmd)
+}
 
 // compatDrawElements performs compatibility logic to translate a draw elements
 // call, moving all client-side pointers to buffers.
 func compatDrawElements(
 	ctx context.Context,
 	t *tweaker,
-	clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer,
+	clientVAs map[VertexAttributeArrayʳ]*GlVertexAttribPointer,
 	id api.CmdID,
 	cmd drawElements,
 	s *api.GlobalState,
@@ -82,8 +70,8 @@ func compatDrawElements(
 	c := GetContext(s, cmd.Thread())
 	e := externs{ctx: ctx, cmd: cmd, s: s}
 
-	ib := c.Bound.VertexArray.ElementArrayBuffer
-	clientIB := ib == nil
+	ib := c.Bound().VertexArray().ElementArrayBuffer()
+	clientIB := ib.IsNil()
 	clientVB := clientVAsBound(c, clientVAs)
 
 	if clientIB {
@@ -95,7 +83,7 @@ func compatDrawElements(
 		t.GlBindBuffer_ElementArrayBuffer(ctx, bufID)
 
 		// By moving the draw call's observations earlier, populate the element array buffer.
-		size, base := DataTypeSize(cmd.indicesType())*int(cmd.indicesCount()), memory.Pointer(cmd.indices())
+		size, base := DataTypeSize(cmd.IndicesType())*int(cmd.IndicesCount()), memory.Pointer(cmd.Indices())
 		glBufferData := t.cb.GlBufferData(GLenum_GL_ELEMENT_ARRAY_BUFFER, GLsizeiptr(size), memory.Pointer(base), GLenum_GL_STATIC_DRAW)
 		glBufferData.extras = *cmd.Extras()
 		out.MutateAndWrite(ctx, t.dID, glBufferData)
@@ -107,8 +95,8 @@ func compatDrawElements(
 			// command's reads now so that the indices can be read from the
 			// application pool.
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			indexSize := DataTypeSize(cmd.indicesType())
-			data := U8ᵖ(cmd.indices()).Slice(0, uint64(indexSize*int(cmd.indicesCount())), s.MemoryLayout)
+			indexSize := DataTypeSize(cmd.IndicesType())
+			data := U8ᵖ(cmd.Indices()).Slice(0, uint64(indexSize*int(cmd.IndicesCount())), s.MemoryLayout)
 			limits, ok := cmd.indexLimits()
 			if !ok {
 				limits = e.calcIndexLimits(data, indexSize)
@@ -116,7 +104,8 @@ func compatDrawElements(
 			moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, id, cmd, s, c, out)
 		}
 
-		cmd := cmd.withIndicesNull()
+		cmd := cloneCmd(cmd).(drawElements)
+		cmd.SetIndices(0)
 		compatMultiviewDraw(ctx, id, cmd, out)
 		return
 
@@ -125,10 +114,11 @@ func compatDrawElements(
 		// client memory and we need to move this into temporary buffer(s).
 		// The indices are server-side, so can just be read from the internal
 		// pooled buffer.
-		data := ib.Data
-		indexSize := DataTypeSize(cmd.indicesType())
-		start := u64.Min(uint64(cmd.indices()), data.count)                            // Clamp
-		end := u64.Min(start+uint64(indexSize)*uint64(cmd.indicesCount()), data.count) // Clamp
+		data := ib.Data()
+		indexSize := DataTypeSize(cmd.IndicesType())
+		count := data.Count()
+		start := u64.Min(cmd.Indices().Address(), count)                          // Clamp
+		end := u64.Min(start+uint64(indexSize)*uint64(cmd.IndicesCount()), count) // Clamp
 		limits, ok := cmd.indexLimits()
 		if !ok {
 			limits = e.calcIndexLimits(data.Slice(start, end), indexSize)
@@ -140,9 +130,9 @@ func compatDrawElements(
 
 // clientVAsBound returns true if there are any vertex attribute arrays enabled
 // with pointers to client-side memory.
-func clientVAsBound(c *Context, clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer) bool {
-	for _, arr := range c.Bound.VertexArray.VertexAttributeArrays.Range() {
-		if arr.Enabled == GLboolean_GL_TRUE {
+func clientVAsBound(c Contextʳ, clientVAs map[VertexAttributeArrayʳ]*GlVertexAttribPointer) bool {
+	for _, arr := range c.Bound().VertexArray().VertexAttributeArrays().Range() {
+		if arr.Enabled() == GLboolean_GL_TRUE {
 			if _, ok := clientVAs[arr]; ok {
 				return true
 			}
@@ -157,12 +147,12 @@ func clientVAsBound(c *Context, clientVAs map[*VertexAttributeArray]*GlVertexAtt
 func moveClientVBsToVAs(
 	ctx context.Context,
 	t *tweaker,
-	clientVAs map[*VertexAttributeArray]*GlVertexAttribPointer,
+	clientVAs map[VertexAttributeArrayʳ]*GlVertexAttribPointer,
 	first, count uint32, // vertex indices
 	id api.CmdID,
 	cmd api.Cmd,
 	s *api.GlobalState,
-	c *Context,
+	c Contextʳ,
 	out transform.Writer) {
 
 	if count == 0 {
@@ -173,23 +163,23 @@ func moveClientVBsToVAs(
 	rngs := interval.U64RangeList{}
 	// Gather together all the client-buffers in use by the vertex-attribs.
 	// Merge together all the memory intervals that these use.
-	va := c.Bound.VertexArray
-	for _, arr := range va.VertexAttributeArrays.Range() {
-		if arr.Enabled == GLboolean_GL_TRUE {
-			vb := arr.Binding
+	va := c.Bound().VertexArray()
+	for _, arr := range va.VertexAttributeArrays().Range() {
+		if arr.Enabled() == GLboolean_GL_TRUE {
+			vb := arr.Binding()
 			if cmd, ok := clientVAs[arr]; ok {
 				// TODO: We're currently ignoring the Offset and Stride fields of the VBB.
 				// TODO: We're currently ignoring the RelativeOffset field of the VA.
 				// TODO: Merge logic with ReadVertexArrays macro in vertex_arrays.api.
-				if vb.Divisor != 0 {
+				if vb.Divisor() != 0 {
 					panic("Instanced draw calls not currently supported by the compatibility layer")
 				}
-				stride, size := int(cmd.Stride), DataTypeSize(cmd.Type)*int(cmd.Size)
+				stride, size := int(cmd.Stride()), DataTypeSize(cmd.Type())*int(cmd.Size())
 				if stride == 0 {
 					stride = size
 				}
 				rng := memory.Range{
-					Base: uint64(cmd.Data), // Always start from the 0'th vertex to simplify logic.
+					Base: cmd.Data().Address(), // Always start from the 0'th vertex to simplify logic.
 					Size: uint64(int(first+count-1)*stride + size),
 				}
 				interval.Merge(&rngs, rng.Span(), true)
@@ -224,18 +214,18 @@ func moveClientVBsToVAs(
 	}
 
 	// Redirect all the vertex attrib arrays to point to the array-buffer data.
-	for _, l := range va.VertexAttributeArrays.Keys() {
-		arr := va.VertexAttributeArrays.Get(l)
-		if arr.Enabled == GLboolean_GL_TRUE {
+	for _, l := range va.VertexAttributeArrays().Keys() {
+		arr := va.VertexAttributeArrays().Get(l)
+		if arr.Enabled() == GLboolean_GL_TRUE {
 			if glVAP, ok := clientVAs[arr]; ok {
 				glVAP := *glVAP // Copy
-				i := interval.IndexOf(&rngs, uint64(glVAP.Data))
+				i := interval.IndexOf(&rngs, glVAP.Data().Address())
 				t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
 				// The glVertexAttribPointer call may have come from a different thread
 				// and there's no guarantees that the thread still has the context bound.
 				// Use the draw call's thread instead.
 				glVAP.SetThread(cmd.Thread())
-				glVAP.Data = VertexPointer(uint64(glVAP.Data) - rngs[i].First) // Offset
+				glVAP.SetData(glVAP.Data() - VertexPointer(rngs[i].First)) // Offset
 				out.MutateAndWrite(ctx, dID, &glVAP)
 			}
 		}

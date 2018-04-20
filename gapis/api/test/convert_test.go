@@ -17,7 +17,6 @@ package test
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
@@ -27,64 +26,80 @@ import (
 func TestReferences(t *testing.T) {
 	ctx := log.Testing(t)
 	assert := assert.To(t)
-	o := &TestObject{Value: 42}
+	o := NewTestObjectʳ(42)
 	m := NewU32ːTestObjectᵐ().
-		Add(4, TestObject{Value: 40}).
-		Add(5, TestObject{Value: 50})
-	cycle := &TestList{
-		Value: 1,
-		Next: &TestList{
-			Value: 2,
-		},
-	}
-	cycle.Next.Next = cycle
-	oldExtra := &TestExtra{
-		Data: U8ˢ{
-			root:  0x1000,
-			base:  0x1000,
-			count: 42,
-			pool:  memory.PoolID(1),
-		},
-		Object: TestObject{Value: 10},
-		ObjectArray: TestObjectː2ᵃ{
-			TestObject{Value: 20},
-			TestObject{Value: 30},
-		},
-		RefObject:      o,
-		RefObjectAlias: o,
-		NilRefObject:   nil,
-		Entries:        m,
-		EntriesAlias:   m,
-		NilMap:         U32ːTestObjectᵐ{}, // Nil map is bad practice, but handle it correctly.
-		RefEntries: NewU32ːTestObjectʳᵐ().
-			Add(0, o).
-			Add(6, &TestObject{Value: 60}).
-			Add(7, &TestObject{Value: 70}).
-			Add(9, nil),
-		Strings: NewStringːu32ᵐ().
-			Add("one", 1).
-			Add("two", 2).
-			Add("three", 3),
-		BoolMap: NewU32ːboolᵐ().
-			Add(0, false).
-			Add(1, true),
-		LinkedList: &TestList{
-			Value: 1,
-			Next: &TestList{
-				Value: 2,
-				Next:  nil,
-			},
-		},
-		Cycle: cycle,
+		Add(4, NewTestObject(40)).
+		Add(5, NewTestObject(50))
+	cycle := NewTestListʳ(
+		1, // value
+		NewTestListʳ( // next
+			2,            // value
+			NilTestListʳ, // next
+		),
+	)
+	cycle.Next().SetNext(cycle)
+	extra := NewTestExtra(
+		NewU8ˢ( // Data
+			0x1000,           // root
+			0x1000,           // base
+			42,               // size
+			42,               // count
+			memory.PoolID(1), // pool
+		),
+		NewTestObject(10), // Object
+		NewTestObjectː2ᵃ( // ObjectArray
+			NewTestObject(20),
+			NewTestObject(30),
+		),
+		o,              // RefObject
+		o,              // RefObjectAlias
+		NilTestObjectʳ, // NilRefObject
+		m,              // Entries
+		m,              // EntriesAlias
+		NewU32ːTestObjectᵐ(), // NilMap
+		NewU32ːTestObjectʳᵐ(). // RefEntries
+					Add(0, o).
+					Add(6, NewTestObjectʳ(60)).
+					Add(7, NewTestObjectʳ(70)).
+					Add(9, NilTestObjectʳ),
+		NewStringːu32ᵐ(). // Strings
+					Add("one", 1).
+					Add("two", 2).
+					Add("three", 3),
+		NewU32ːboolᵐ(). // BoolMap
+				Add(0, false).
+				Add(1, true),
+		NewTestListʳ( // LinkedList
+			1, // value
+			NewTestListʳ( // next
+				2,            // value
+				NilTestListʳ, // next
+			),
+		),
+		cycle, // Cycle
+	)
+
+	// extra -> protoA -> decoded -> protoB
+
+	protoA, err := protoconv.ToProto(ctx, extra)
+	if !assert.For("ToProtoA").ThatError(err).Succeeded() {
+		return
 	}
 
-	msg, err := protoconv.ToProto(ctx, oldExtra)
-	assert.For("ToProto").ThatError(err).Succeeded()
-	log.I(ctx, "ProtoMessage: %v", proto.MarshalTextString(msg))
-	e, err := protoconv.ToObject(ctx, msg)
-	assert.For("ToObject").ThatError(err).Succeeded()
-	newExtra := e.(*TestExtra)
-	assert.For("Deserialized").TestDeepEqual(newExtra, oldExtra)
-	assert.For("Object ref").That(newExtra.RefObject).Equals(newExtra.RefObjectAlias)
-	assert.For("Map ref").That(newExtra.Entries).Equals(newExtra.EntriesAlias)
+	decodedObj, err := protoconv.ToObject(ctx, protoA)
+	if !assert.For("ToObject").ThatError(err).Succeeded() {
+		return
+	}
+
+	decoded := decodedObj.(TestExtra)
+
+	assert.For("Object ref").That(decoded.RefObject()).Equals(decoded.RefObjectAlias())
+	assert.For("Map ref").That(decoded.Entries()).Equals(decoded.EntriesAlias())
+
+	protoB, err := protoconv.ToProto(ctx, decoded)
+	if !assert.For("ToProtoB").ThatError(err).Succeeded() {
+		return
+	}
+
+	assert.For("Protos").TestDeepEqual(protoA, protoB)
 }

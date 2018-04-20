@@ -235,7 +235,7 @@ func (i VkDebugReportCallbackEXT) remap(api.Cmd, *api.GlobalState) (key interfac
 }
 
 func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: a.Thread()}
 	// Hijack VkCreateInstance's Mutate() method entirely with our ReplayCreateVkInstance's Mutate().
 
 	// As long as we guarantee that the synthetic replayCreateVkInstance API function has the same
@@ -244,7 +244,7 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 	// in vulkan_gfx_api_extras.cpp, which modifies VkInstanceCreateInfo to enable virtual swapchain
 	// layer before delegating the real work back to the normal flow.
 
-	hijack := cb.ReplayCreateVkInstance(a.PCreateInfo, a.PAllocator, a.PInstance, a.Result)
+	hijack := cb.ReplayCreateVkInstance(a.PCreateInfo(), a.PAllocator(), a.PInstance(), a.Result())
 	hijack.Extras().MustClone(a.Extras().All()...)
 	err := hijack.Mutate(ctx, id, s, b)
 
@@ -253,24 +253,24 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 	}
 
 	// Call the replayRegisterVkInstance() synthetic API function.
-	instance := a.PInstance.MustRead(ctx, a, s, b)
+	instance := a.PInstance().MustRead(ctx, a, s, b)
 	return cb.ReplayRegisterVkInstance(instance).Mutate(ctx, id, s, b)
 }
 
 func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: a.Thread()}
 	// Call the underlying vkDestroyInstance() and do the observation.
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
 	}
 	// Call the replayUnregisterVkInstance() synthetic API function.
-	return cb.ReplayUnregisterVkInstance(a.Instance).Mutate(ctx, id, s, b)
+	return cb.ReplayUnregisterVkInstance(a.Instance()).Mutate(ctx, id, s, b)
 }
 
 func EnterRecreate(ctx context.Context, s *api.GlobalState) func() {
-	GetState(s).IsRebuilding = true
-	return func() { GetState(s).IsRebuilding = false }
+	GetState(s).SetIsRebuilding(true)
+	return func() { GetState(s).SetIsRebuilding(false) }
 }
 
 func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
@@ -279,19 +279,19 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	// above.
 	// And we need to strip off the VK_EXT_debug_marker extension name when
 	// building instructions for replay.
-	createInfoPtr := a.PCreateInfo
+	createInfoPtr := a.PCreateInfo()
 	allocated := []*api.AllocResult{}
 	if b != nil {
 		a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-		createInfo := a.PCreateInfo.MustRead(ctx, a, s, nil)
+		createInfo := a.PCreateInfo().MustRead(ctx, a, s, nil)
 		defer func() {
 			for _, d := range allocated {
 				d.Free()
 			}
 		}()
-		extensionCount := uint64(createInfo.EnabledExtensionCount)
+		extensionCount := uint64(createInfo.EnabledExtensionCount())
 		newExtensionNames := []memory.Pointer{}
-		for _, e := range createInfo.PpEnabledExtensionNames.Slice(0, extensionCount, s.MemoryLayout).MustRead(ctx, a, s, nil) {
+		for _, e := range createInfo.PpEnabledExtensionNames().Slice(0, extensionCount, s.MemoryLayout).MustRead(ctx, a, s, nil) {
 			extensionName := string(memory.CharToBytes(e.StringSlice(ctx, s).MustRead(ctx, a, s, nil)))
 			if !strings.Contains(extensionName, "VK_EXT_debug_marker") {
 				nameSliceData := s.AllocDataOrPanic(ctx, extensionName)
@@ -299,17 +299,17 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 				newExtensionNames = append(newExtensionNames, nameSliceData.Ptr())
 			}
 		}
-		new_extensionNamesData := s.AllocDataOrPanic(ctx, newExtensionNames)
-		allocated = append(allocated, &new_extensionNamesData)
-		createInfo.EnabledExtensionCount = uint32(len(newExtensionNames))
-		createInfo.PpEnabledExtensionNames = NewCharᶜᵖᶜᵖ(new_extensionNamesData.Ptr())
+		newExtensionNamesData := s.AllocDataOrPanic(ctx, newExtensionNames)
+		allocated = append(allocated, &newExtensionNamesData)
+		createInfo.SetEnabledExtensionCount(uint32(len(newExtensionNames)))
+		createInfo.SetPpEnabledExtensionNames(NewCharᶜᵖᶜᵖ(newExtensionNamesData.Ptr()))
 
 		newCreateInfoData := s.AllocDataOrPanic(ctx, createInfo)
 		allocated = append(allocated, &newCreateInfoData)
 		createInfoPtr = NewVkDeviceCreateInfoᶜᵖ(newCreateInfoData.Ptr())
 
-		cb := CommandBuilder{Thread: a.thread}
-		hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice, createInfoPtr, a.PAllocator, a.PDevice, a.Result)
+		cb := CommandBuilder{Thread: a.Thread()}
+		hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice(), createInfoPtr, a.PAllocator(), a.PDevice(), a.Result())
 		hijack.Extras().MustClone(a.Extras().All()...)
 
 		for _, d := range allocated {
@@ -321,8 +321,8 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 			return err
 		}
 		// Call the replayRegisterVkDevice() synthetic API function.
-		device := a.PDevice.MustRead(ctx, a, s, b)
-		return cb.ReplayRegisterVkDevice(a.PhysicalDevice, device, a.PCreateInfo).Mutate(ctx, id, s, b)
+		device := a.PDevice().MustRead(ctx, a, s, b)
+		return cb.ReplayRegisterVkDevice(a.PhysicalDevice(), device, a.PCreateInfo()).Mutate(ctx, id, s, b)
 	}
 
 	return a.mutate(ctx, id, s, b)
@@ -330,37 +330,37 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 
 func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkDestroyDevice() and do the observation.
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: a.Thread()}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
 	}
 	// Call the replayUnregisterVkDevice() synthetic API function.
-	return cb.ReplayUnregisterVkDevice(a.Device).Mutate(ctx, id, s, b)
+	return cb.ReplayUnregisterVkDevice(a.Device()).Mutate(ctx, id, s, b)
 }
 
 func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkAllocateCommandBuffers() and do the observation.
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: a.Thread()}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
 	}
 	// Call the replayRegisterVkCommandBuffers() synthetic API function to link these command buffers to the device.
-	count := a.PAllocateInfo.MustRead(ctx, a, s, b).CommandBufferCount
-	return cb.ReplayRegisterVkCommandBuffers(a.Device, count, a.PCommandBuffers).Mutate(ctx, id, s, b)
+	count := a.PAllocateInfo().MustRead(ctx, a, s, b).CommandBufferCount()
+	return cb.ReplayRegisterVkCommandBuffers(a.Device(), count, a.PCommandBuffers()).Mutate(ctx, id, s, b)
 }
 
 func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkFreeCommandBuffers() and do the observation.
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: a.Thread()}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
 	}
 	// Call the replayUnregisterVkCommandBuffers() synthetic API function to discard the link of these command buffers.
-	count := a.CommandBufferCount
-	return cb.ReplayUnregisterVkCommandBuffers(count, a.PCommandBuffers).Mutate(ctx, id, s, b)
+	count := a.CommandBufferCount()
+	return cb.ReplayUnregisterVkCommandBuffers(count, a.PCommandBuffers()).Mutate(ctx, id, s, b)
 }
 
 func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
@@ -368,8 +368,8 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 		return a.mutate(ctx, id, s, b)
 	}
 
-	cb := CommandBuilder{Thread: a.thread}
-	hijack := cb.ReplayCreateSwapchain(a.Device, a.PCreateInfo, a.PAllocator, a.PSwapchain, a.Result)
+	cb := CommandBuilder{Thread: a.Thread()}
+	hijack := cb.ReplayCreateSwapchain(a.Device(), a.PCreateInfo(), a.PAllocator(), a.PSwapchain(), a.Result())
 	hijack.Extras().MustClone(a.Extras().All()...)
 	err := hijack.Mutate(ctx, id, s, b)
 
@@ -383,48 +383,48 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	// Apply the write observation before having the replay device calling the vkAcquireNextImageKHR() command.
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	o.ApplyWrites(s.Memory.ApplicationPool())
-	_ = a.PImageIndex.Slice(0, 1, l).MustRead(ctx, a, s, b)
+	_ = a.PImageIndex().Slice(0, 1, l).MustRead(ctx, a, s, b)
 	if b != nil {
 		a.Call(ctx, s, b)
 	}
-	a.PImageIndex.Slice(0, 1, l).Write(ctx, a.PImageIndex.Slice(0, 1, l).MustRead(ctx, a, s, nil), a, s, b)
-	_ = a.Result
-	if a.Semaphore != VkSemaphore(0) {
-		GetState(s).Semaphores.Get(a.Semaphore).Signaled = true
+	a.PImageIndex().Slice(0, 1, l).Write(ctx, a.PImageIndex().Slice(0, 1, l).MustRead(ctx, a, s, nil), a, s, b)
+	_ = a.Result()
+	if a.Semaphore() != VkSemaphore(0) {
+		GetState(s).Semaphores().Get(a.Semaphore()).SetSignaled(true)
 	}
-	if a.Fence != VkFence(0) {
-		GetState(s).Fences.Get(a.Fence).Signaled = true
+	if a.Fence() != VkFence(0) {
+		GetState(s).Fences().Get(a.Fence()).SetSignaled(true)
 	}
 	return nil
 }
 
 func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: a.Thread()}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
 	}
 
-	return cb.ReplayGetFenceStatus(a.Device, a.Fence, a.Result, a.Result).Mutate(ctx, id, s, b)
+	return cb.ReplayGetFenceStatus(a.Device(), a.Fence(), a.Result(), a.Result()).Mutate(ctx, id, s, b)
 }
 
 func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	cb := CommandBuilder{Thread: a.thread}
+	cb := CommandBuilder{Thread: a.Thread()}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
 	}
 	var wait bool
-	switch a.Result {
+	switch a.Result() {
 	case VkResult_VK_EVENT_SET:
-		wait = GetState(s).Events.Get(a.Event).Signaled == true
+		wait = GetState(s).Events().Get(a.Event()).Signaled() == true
 	case VkResult_VK_EVENT_RESET:
-		wait = GetState(s).Events.Get(a.Event).Signaled == false
+		wait = GetState(s).Events().Get(a.Event()).Signaled() == false
 	default:
 		wait = false
 	}
 
-	return cb.ReplayGetEventStatus(a.Device, a.Event, a.Result, wait, a.Result).Mutate(ctx, id, s, b)
+	return cb.ReplayGetEventStatus(a.Device(), a.Event(), a.Result(), wait, a.Result()).Mutate(ctx, id, s, b)
 }
 
 func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
@@ -433,24 +433,29 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	}
 	l := s.MemoryLayout
 	c := GetState(s)
-	memory := a.PMemory.Slice(0, 1, l).MustRead(ctx, a, s, nil)[0]
-	imageObject := c.Images.Get(a.Image)
-	imageWidth := imageObject.Info.Extent.Width
-	imageHeight := imageObject.Info.Extent.Height
-	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info.Fmt)
+	memory := a.PMemory().Slice(0, 1, l).MustRead(ctx, a, s, nil)[0]
+	imageObject := c.Images().Get(a.Image())
+	imageWidth := imageObject.Info().Extent().Width()
+	imageHeight := imageObject.Info().Extent().Height()
+	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info().Fmt())
 	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight), 1))
-	memoryObject := &DeviceMemoryObject{
-		Device:          a.Device,
-		VulkanHandle:    memory,
-		AllocationSize:  imageSize,
-		BoundObjects:    NewU64ːVkDeviceSizeᵐ(),
-		MappedOffset:    0,
-		MappedSize:      0,
-		MappedLocation:  0,
-		MemoryTypeIndex: 0,
-		Data:            MakeU8ˢ(uint64(imageSize), s)}
-	c.DeviceMemories.Set(memory, memoryObject)
-	a.PMemory.Slice(0, 1, l).Write(ctx, []VkDeviceMemory{memory}, a, s, b)
+	memoryObject := NewDeviceMemoryObjectʳ(
+		a.Device(),             // Device
+		memory,                 // VulkanHandle
+		imageSize,              // AllocationSize
+		NewU64ːVkDeviceSizeᵐ(), // BoundObjects
+		0, // MappedOffset
+		0, // MappedSize
+		0, // MappedLocation
+		0, // MemoryTypeIndex
+		MakeU8ˢ(uint64(imageSize), s),     // Data
+		NilVulkanDebugMarkerInfoʳ,         // DebugInfo
+		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationNV
+		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationKHR
+	)
+
+	c.DeviceMemories().Add(memory, memoryObject)
+	a.PMemory().Slice(0, 1, l).Write(ctx, []VkDeviceMemory{memory}, a, s, b)
 	return err
 }
 

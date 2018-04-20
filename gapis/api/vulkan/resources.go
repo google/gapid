@@ -32,39 +32,41 @@ import (
 	"github.com/google/gapid/gapis/shadertools"
 )
 
-func (t *ImageObject) IsResource() bool {
+var _ api.Resource = ImageObjectʳ{}
+
+func (t ImageObjectʳ) IsResource() bool {
 	// Since there are no good differentiating features for what is a "texture" and what
 	// image is used for other things, we treat only images that can be used as SAMPLED
 	// or STORAGE as resources. This may change in the future when we start doing
 	// replays to get back gpu-generated image data.
-	is_texture := 0 != (uint32(t.Info.Usage) & uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT|
+	isTexture := 0 != (uint32(t.Info().Usage()) & uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT|
 		VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT))
-	return t.VulkanHandle != 0 && is_texture
+	return t.VulkanHandle() != 0 && isTexture
 }
 
 // ResourceHandle returns the UI identity for the resource.
-func (t *ImageObject) ResourceHandle() string {
-	return fmt.Sprintf("Image<%d>", t.VulkanHandle)
+func (t ImageObjectʳ) ResourceHandle() string {
+	return fmt.Sprintf("Image<%d>", t.VulkanHandle())
 }
 
 // ResourceLabel returns an optional debug label for the resource.
-func (t *ImageObject) ResourceLabel() string {
-	if t.DebugInfo != nil {
-		if t.DebugInfo.ObjectName != "" {
-			return t.DebugInfo.ObjectName
-		}
-		return fmt.Sprintf("<%d:%v>", t.DebugInfo.TagName, t.DebugInfo.Tag)
+func (t ImageObjectʳ) ResourceLabel() string {
+	if t.DebugInfo().IsNil() {
+		return ""
 	}
-	return ""
+	if t.DebugInfo().ObjectName() != "" {
+		return t.DebugInfo().ObjectName()
+	}
+	return fmt.Sprintf("<%d:%v>", t.DebugInfo().TagName(), t.DebugInfo().Tag())
 }
 
 // Order returns an integer used to sort the resources for presentation.
-func (t *ImageObject) Order() uint64 {
-	return uint64(t.VulkanHandle)
+func (t ImageObjectʳ) Order() uint64 {
+	return uint64(t.VulkanHandle())
 }
 
 // ResourceType returns the type of this resource.
-func (t *ImageObject) ResourceType(ctx context.Context) api.ResourceType {
+func (t ImageObjectʳ) ResourceType(ctx context.Context) api.ResourceType {
 	return api.ResourceType_TextureResource
 }
 
@@ -500,37 +502,37 @@ func setCubemapFace(img *image.Info, cubeMap *api.CubemapLevel, layerIndex uint3
 	return true
 }
 
-func (t *ImageObject) imageInfo(ctx context.Context, s *api.GlobalState, format *image.Format, layer, level uint32) *image.Info {
-	if t.Info.ArrayLayers <= layer || t.Info.MipLevels <= level {
+func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, format *image.Format, layer, level uint32) *image.Info {
+	if t.Info().ArrayLayers() <= layer || t.Info().MipLevels() <= level {
 		return nil
 	}
-	switch VkImageAspectFlagBits(t.ImageAspect) {
+	switch VkImageAspectFlagBits(t.ImageAspect()) {
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		l := t.Aspects.Get(VkImageAspectFlagBits(t.ImageAspect)).Layers.Get(layer).Levels.Get(level)
-		if l.Data.Count() == 0 {
+		l := t.Aspects().Get(VkImageAspectFlagBits(t.ImageAspect())).Layers().Get(layer).Levels().Get(level)
+		if l.Data().Size() == 0 {
 			return nil
 		}
 		return &image.Info{
 			Format: format,
-			Width:  l.Width,
-			Height: l.Height,
-			Depth:  l.Depth,
-			Bytes:  image.NewID(l.Data.ResourceID(ctx, s)),
+			Width:  l.Width(),
+			Height: l.Height(),
+			Depth:  l.Depth(),
+			Bytes:  image.NewID(l.Data().ResourceID(ctx, s)),
 		}
 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT | VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		depthLevel := t.Aspects.Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers.Get(layer).Levels.Get(level)
-		depthData := depthLevel.Data.MustRead(ctx, nil, s, nil)
-		stencilLevel := t.Aspects.Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).Layers.Get(layer).Levels.Get(level)
-		stencilData := stencilLevel.Data.MustRead(ctx, nil, s, nil)
+		depthLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers().Get(layer).Levels().Get(level)
+		depthData := depthLevel.Data().MustRead(ctx, nil, s, nil)
+		stencilLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).Layers().Get(layer).Levels().Get(level)
+		stencilData := stencilLevel.Data().MustRead(ctx, nil, s, nil)
 		dsData := make([]uint8, len(depthData)+len(stencilData))
 
 		var dStep, sStep int
 		// Stencil data is always 1 byte wide
 		sStep = 1
-		switch t.Info.Fmt {
+		switch t.Info().Fmt() {
 		case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
 			dStep = 2
 		case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
@@ -538,7 +540,7 @@ func (t *ImageObject) imageInfo(ctx context.Context, s *api.GlobalState, format 
 		case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
 			dStep = 4
 		default:
-			log.E(ctx, "[Mergeing depth and stencil data] unsupported depth+stencil format: %v", t.Info.Fmt)
+			log.E(ctx, "[Mergeing depth and stencil data] unsupported depth+stencil format: %v", t.Info().Fmt())
 			return nil
 		}
 
@@ -559,9 +561,9 @@ func (t *ImageObject) imageInfo(ctx context.Context, s *api.GlobalState, format 
 
 		imgData := &image.Data{
 			Format: format,
-			Width:  depthLevel.Width,
-			Height: depthLevel.Height,
-			Depth:  depthLevel.Depth,
+			Width:  depthLevel.Width(),
+			Height: depthLevel.Height(),
+			Depth:  depthLevel.Depth(),
 			Bytes:  dsData[:],
 		}
 		info, err := imgData.NewInfo(ctx)
@@ -575,25 +577,25 @@ func (t *ImageObject) imageInfo(ctx context.Context, s *api.GlobalState, format 
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
-	vkFmt := t.Info.Fmt
+	vkFmt := t.Info().Fmt()
 	format, err := getImageFormatFromVulkanFormat(vkFmt)
 	if err != nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 	}
-	switch t.Info.ImageType {
+	switch t.Info().ImageType() {
 	case VkImageType_VK_IMAGE_TYPE_2D:
 		// If this image has VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT set, it should have six layers to
 		// represent a cubemap, and the image type must not be VK_IMAGE_TYPE_3D
-		if uint32(t.Info.Flags)&uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0 {
+		if uint32(t.Info().Flags())&uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) != 0 {
 			// Cubemap
-			cubeMapLevels := make([]*api.CubemapLevel, t.Info.MipLevels)
+			cubeMapLevels := make([]*api.CubemapLevel, t.Info().MipLevels())
 			for l := range cubeMapLevels {
 				cubeMapLevels[l] = &api.CubemapLevel{}
 			}
-			for layer := uint32(0); layer < t.Info.ArrayLayers; layer++ {
-				for level := uint32(0); level < t.Info.MipLevels; level++ {
+			for layer := uint32(0); layer < t.Info().ArrayLayers(); layer++ {
+				for level := uint32(0); level < t.Info().MipLevels(); level++ {
 					info := t.imageInfo(ctx, s, format, layer, level)
 					if info == nil {
 						continue
@@ -606,13 +608,13 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 			return api.NewResourceData(api.NewTexture(&api.Cubemap{Levels: cubeMapLevels})), nil
 		}
 
-		if t.Info.ArrayLayers > uint32(1) {
+		if t.Info().ArrayLayers() > 1 {
 			// 2D texture array
-			layers := make([]*api.Texture2D, int(t.Info.ArrayLayers))
+			layers := make([]*api.Texture2D, int(t.Info().ArrayLayers()))
 
-			for layer := uint32(0); layer < t.Info.ArrayLayers; layer++ {
-				levels := make([]*image.Info, t.Info.MipLevels)
-				for level := uint32(0); level < t.Info.MipLevels; level++ {
+			for layer := uint32(0); layer < t.Info().ArrayLayers(); layer++ {
+				levels := make([]*image.Info, t.Info().MipLevels())
+				for level := uint32(0); level < t.Info().MipLevels(); level++ {
 					info := t.imageInfo(ctx, s, format, layer, level)
 					if info == nil {
 						continue
@@ -625,8 +627,8 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		}
 
 		// Single layer 2D texture
-		levels := make([]*image.Info, t.Info.MipLevels)
-		for level := uint32(0); level < t.Info.MipLevels; level++ {
+		levels := make([]*image.Info, t.Info().MipLevels())
+		for level := uint32(0); level < t.Info().MipLevels(); level++ {
 			info := t.imageInfo(ctx, s, format, 0, level)
 			if info == nil {
 				continue
@@ -637,8 +639,8 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 
 	case VkImageType_VK_IMAGE_TYPE_3D:
 		// 3D images can have only one layer
-		levels := make([]*image.Info, t.Info.MipLevels)
-		for level := uint32(0); level < t.Info.MipLevels; level++ {
+		levels := make([]*image.Info, t.Info().MipLevels())
+		for level := uint32(0); level < t.Info().MipLevels(); level++ {
 			info := t.imageInfo(ctx, s, format, 0, level)
 			if info == nil {
 				continue
@@ -648,12 +650,12 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 		return api.NewResourceData(api.NewTexture(&api.Texture3D{Levels: levels})), nil
 
 	case VkImageType_VK_IMAGE_TYPE_1D:
-		if t.Info.ArrayLayers > uint32(1) {
+		if t.Info().ArrayLayers() > uint32(1) {
 			// 1D texture array
-			layers := make([]*api.Texture1D, int(t.Info.ArrayLayers))
-			for layer := uint32(0); layer < t.Info.ArrayLayers; layer++ {
-				levels := make([]*image.Info, t.Info.MipLevels)
-				for level := uint32(0); level < t.Info.MipLevels; level++ {
+			layers := make([]*api.Texture1D, int(t.Info().ArrayLayers()))
+			for layer := uint32(0); layer < t.Info().ArrayLayers(); layer++ {
+				levels := make([]*image.Info, t.Info().MipLevels())
+				for level := uint32(0); level < t.Info().MipLevels(); level++ {
 					info := t.imageInfo(ctx, s, format, layer, level)
 					if info == nil {
 						continue
@@ -665,8 +667,8 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 			return api.NewResourceData(api.NewTexture(&api.Texture1DArray{Layers: layers})), nil
 		}
 		// Single layer 1D texture
-		levels := make([]*image.Info, t.Info.MipLevels)
-		for level := uint32(0); level < t.Info.MipLevels; level++ {
+		levels := make([]*image.Info, t.Info().MipLevels())
+		for level := uint32(0); level < t.Info().MipLevels(); level++ {
 			info := t.imageInfo(ctx, s, format, 0, level)
 			if info == nil {
 				continue
@@ -680,51 +682,51 @@ func (t *ImageObject) ResourceData(ctx context.Context, s *api.GlobalState) (*ap
 	}
 }
 
-func (t *ImageObject) SetResourceData(ctx context.Context, at *path.Command,
+func (t ImageObjectʳ) SetResourceData(ctx context.Context, at *path.Command,
 	data *api.ResourceData, resources api.ResourceMap, edits api.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for ImageObject")
 }
 
 // IsResource returns true if this instance should be considered as a resource.
-func (s *ShaderModuleObject) IsResource() bool {
+func (s ShaderModuleObjectʳ) IsResource() bool {
 	return true
 }
 
 // ResourceHandle returns the UI identity for the resource.
-func (s *ShaderModuleObject) ResourceHandle() string {
+func (s ShaderModuleObjectʳ) ResourceHandle() string {
 	return fmt.Sprintf("Shader<0x%x>", s.VulkanHandle)
 }
 
 // ResourceLabel returns an optional debug label for the resource.
-func (s *ShaderModuleObject) ResourceLabel() string {
-	if s.DebugInfo != nil {
-		if s.DebugInfo.ObjectName != "" {
-			return s.DebugInfo.ObjectName
-		}
-		return fmt.Sprintf("<%d:%v>", s.DebugInfo.TagName, s.DebugInfo.Tag)
+func (s ShaderModuleObjectʳ) ResourceLabel() string {
+	if s.DebugInfo().IsNil() {
+		return ""
 	}
-	return ""
+	if s.DebugInfo().ObjectName() != "" {
+		return s.DebugInfo().ObjectName()
+	}
+	return fmt.Sprintf("<%d:%v>", s.DebugInfo().TagName(), s.DebugInfo().Tag())
 }
 
 // Order returns an integer used to sort the resources for presentation.
-func (s *ShaderModuleObject) Order() uint64 {
-	return uint64(s.VulkanHandle)
+func (s ShaderModuleObjectʳ) Order() uint64 {
+	return uint64(s.VulkanHandle())
 }
 
 // ResourceType returns the type of this resource.
-func (s *ShaderModuleObject) ResourceType(ctx context.Context) api.ResourceType {
+func (s ShaderModuleObjectʳ) ResourceType(ctx context.Context) api.ResourceType {
 	return api.ResourceType_ShaderResource
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *ShaderModuleObject) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
+func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceData()")
-	words := s.Words.MustRead(ctx, nil, t, nil)
+	words := s.Words().MustRead(ctx, nil, t, nil)
 	source := shadertools.DisassembleSpirvBinary(words)
 	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source}), nil
 }
 
-func (shader *ShaderModuleObject) SetResourceData(
+func (shader ShaderModuleObjectʳ) SetResourceData(
 	ctx context.Context,
 	at *path.Command,
 	data *api.ResourceData,
@@ -768,7 +770,7 @@ func (shader *ShaderModuleObject) SetResourceData(
 
 func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
-	cb := CommandBuilder{Thread: cmd.thread}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	state := c.NewState(ctx)
 	cmd.Mutate(ctx, api.CmdNoID, state, nil)
 
@@ -793,14 +795,14 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	}
 
 	code := state.AllocDataOrPanic(ctx, codeSlice)
-	device := cmd.Device
-	pAlloc := memory.Pointer(cmd.PAllocator)
-	pShaderModule := memory.Pointer(cmd.PShaderModule)
-	result := cmd.Result
-	createInfo := cmd.PCreateInfo.MustRead(ctx, cmd, state, nil)
+	device := cmd.Device()
+	pAlloc := memory.Pointer(cmd.PAllocator())
+	pShaderModule := memory.Pointer(cmd.PShaderModule())
+	result := cmd.Result()
+	createInfo := cmd.PCreateInfo().MustRead(ctx, cmd, state, nil)
 
-	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
-	createInfo.CodeSize = memory.Size(codeSize)
+	createInfo.SetPCode(NewU32ᶜᵖ(code.Ptr()))
+	createInfo.SetCodeSize(memory.Size(codeSize))
 	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
 	newCmd := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 

@@ -30,12 +30,12 @@ import (
 
 type CustomState struct{}
 
-func GetContext(s *api.GlobalState, thread uint64) *Context {
+func GetContext(s *api.GlobalState, thread uint64) Contextʳ {
 	return GetState(s).GetContext(thread)
 }
 
-func (s *State) GetContext(thread uint64) *Context {
-	return s.Contexts.Get(thread)
+func (s *State) GetContext(thread uint64) Contextʳ {
+	return s.Contexts().Get(thread)
 }
 
 // Root returns the path to the root of the state to display. It can vary based
@@ -49,7 +49,7 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	for thread, context := range s.Contexts.Range() {
+	for thread, context := range s.Contexts().Range() {
 		if c.ID == context.ID() {
 			return s.contextRoot(p.After, thread), nil
 		}
@@ -57,17 +57,19 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	return nil, nil
 }
 
-func (s *State) SetupInitialState(ctx context.Context) {
-	s.Contexts = NewU64ːContextʳᵐ().Add(0, nil)
-	s.GLXContexts = NewGLXContextːContextʳᵐ()
-	s.WGLContexts = NewHGLRCːContextʳᵐ()
-	s.CGLContexts = NewCGLContextObjːContextʳᵐ()
-	for _, c := range s.EGLContexts.Range() {
-		if t := c.Other.BoundOnThread; t != 0 {
-			s.Contexts.Set(t, c) // Current thread bindings.
+func (s *State) SetupInitialState(ctx context.Context, g *api.GlobalState) {
+	contexts := NewU64ːContextʳᵐ()
+	contexts.Add(0, NilContextʳ)
+	s.SetContexts(contexts)
+	s.SetGLXContexts(NewGLXContextːContextʳᵐ())
+	s.SetWGLContexts(NewHGLRCːContextʳᵐ())
+	s.SetCGLContexts(NewCGLContextObjːContextʳᵐ())
+	for _, c := range s.EGLContexts().Range() {
+		if t := c.Other().BoundOnThread(); t != 0 {
+			s.Contexts().Add(t, c) // Current thread bindings.
 		}
-		if id := c.Identifier; id >= s.NextContextID {
-			s.NextContextID = id + 1
+		if id := c.Identifier(); id >= s.NextContextID() {
+			s.SetNextContextID(id + 1)
 		}
 	}
 }
@@ -83,104 +85,104 @@ func (s *State) objectsRoot(p *path.Command, thread uint64) *path.Field {
 }
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
-	c.CurrentContext = c.GetContext(cmd.Thread())
+	c.SetCurrentContext(c.GetContext(cmd.Thread()))
 	// TODO: Find better way to separate GL and EGL commands.
-	if c.CurrentContext == nil && strings.HasPrefix(cmd.CmdName(), "gl") {
+	if c.CurrentContext().IsNil() && strings.HasPrefix(cmd.CmdName(), "gl") {
 		if f := s.NewMessage; f != nil {
 			f(log.Error, messages.ErrNoContextBound(cmd.Thread()))
 		}
 		return &api.ErrCmdAborted{Reason: "No context bound"}
 	}
-	if c.CurrentContext != nil {
-		c.Version = c.CurrentContext.Other.SupportedVersions
-		c.Extension = c.CurrentContext.Other.SupportedExtensions
+	if !c.CurrentContext().IsNil() {
+		c.SetVersion(c.CurrentContext().Other().SupportedVersions())
+		c.SetExtension(c.CurrentContext().Other().SupportedExtensions())
 	} else {
-		c.Version = nil
-		c.Extension = nil
+		c.SetVersion(NilSupportedVersionsʳ)
+		c.SetExtension(NilSupportedExtensionsʳ)
 	}
 	return nil
 }
 
-func (b *Buffer) GetID() BufferId {
-	if b != nil {
-		return b.ID
+func (b Bufferʳ) GetID() BufferId {
+	if !b.IsNil() {
+		return b.ID()
 	}
 	return 0
 }
 
-func (b *Framebuffer) GetID() FramebufferId {
-	if b != nil {
-		return b.ID
+func (b Framebufferʳ) GetID() FramebufferId {
+	if !b.IsNil() {
+		return b.ID()
 	}
 	return 0
 }
 
-func (b *Renderbuffer) GetID() RenderbufferId {
-	if b != nil {
-		return b.ID
+func (b Renderbufferʳ) GetID() RenderbufferId {
+	if !b.IsNil() {
+		return b.ID()
 	}
 	return 0
 }
 
-func (b *Program) GetID() ProgramId {
-	if b != nil {
-		return b.ID
+func (b Programʳ) GetID() ProgramId {
+	if !b.IsNil() {
+		return b.ID()
 	}
 	return 0
 }
 
-func (o *Shader) GetID() ShaderId {
-	if o != nil {
-		return o.ID
+func (o Shaderʳ) GetID() ShaderId {
+	if !o.IsNil() {
+		return o.ID()
 	}
 	return 0
 }
 
-func (b *VertexArray) GetID() VertexArrayId {
-	if b != nil {
-		return b.ID
+func (b VertexArrayʳ) GetID() VertexArrayId {
+	if !b.IsNil() {
+		return b.ID()
 	}
 	return 0
 }
 
-func (b *Texture) GetID() TextureId {
-	if b != nil {
-		return b.ID
+func (b Textureʳ) GetID() TextureId {
+	if !b.IsNil() {
+		return b.ID()
 	}
 	return 0
 }
 
-func (b *ImageUnit) GetID() ImageUnitId {
-	if b != nil {
-		return b.ID
+func (b ImageUnitʳ) GetID() ImageUnitId {
+	if !b.IsNil() {
+		return b.ID()
 	}
 	return 0
 }
 
-func (o *Sampler) GetID() SamplerId {
-	if o != nil {
-		return o.ID
+func (o Samplerʳ) GetID() SamplerId {
+	if !o.IsNil() {
+		return o.ID()
 	}
 	return 0
 }
 
-func (o *Query) GetID() QueryId {
-	if o != nil {
-		return o.ID
+func (o Queryʳ) GetID() QueryId {
+	if !o.IsNil() {
+		return o.ID()
 	}
 	return 0
 }
 
-func (o *Pipeline) GetID() PipelineId {
-	if o != nil {
-		return o.ID
+func (o Pipelineʳ) GetID() PipelineId {
+	if !o.IsNil() {
+		return o.ID()
 	}
 	return 0
 }
 
-func (o *TransformFeedback) GetID() TransformFeedbackId {
-	if o != nil {
-		return o.ID
+func (o TransformFeedbackʳ) GetID() TransformFeedbackId {
+	if !o.IsNil() {
+		return o.ID()
 	}
 	return 0
 }
@@ -210,13 +212,13 @@ func GetFramebufferAttachmentInfoByID(
 
 	if fb == 0 {
 		c := s.GetContext(thread)
-		if c == nil {
+		if c.IsNil() {
 			return api.FramebufferAttachmentInfo{}, fmt.Errorf("No context bound")
 		}
-		if !c.Other.Initialized {
+		if !c.Other().Initialized() {
 			return api.FramebufferAttachmentInfo{}, fmt.Errorf("Context not initialized")
 		}
-		fb = c.Bound.DrawFramebuffer.GetID()
+		fb = c.Bound().DrawFramebuffer().GetID()
 	}
 
 	glAtt, err := attachmentToEnum(attachment)
@@ -247,7 +249,7 @@ func GetFramebufferAttachmentInfoByID(
 
 // Context returns the active context for the given state and thread.
 func (API) Context(s *api.GlobalState, thread uint64) api.Context {
-	if c := GetContext(s, thread); c != nil {
+	if c := GetContext(s, thread); !c.IsNil() {
 		return c
 	}
 	return nil

@@ -40,13 +40,13 @@ func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 
 func getBoundFramebufferID(thread uint64, s *api.GlobalState) (FramebufferId, error) {
 	c := GetContext(s, thread)
-	if c == nil {
+	if c.IsNil() {
 		return 0, fmt.Errorf("No OpenGL ES context")
 	}
-	if c.Bound.DrawFramebuffer == nil {
+	if c.Bound().DrawFramebuffer().IsNil() {
 		return 0, fmt.Errorf("No framebuffer bound")
 	}
-	return c.Bound.DrawFramebuffer.GetID(), nil
+	return c.Bound().DrawFramebuffer().GetID(), nil
 }
 
 func (t *readFramebuffer) depth(
@@ -183,7 +183,7 @@ func postFBData(ctx context.Context,
 		// TODO: These glReadBuffer calls need to be changed for on-device
 		//       replay. Note that glReadBuffer was only introduced in
 		//       OpenGL ES 3.0, and that GL_FRONT is not a legal enum value.
-		if c.Bound.DrawFramebuffer == c.Objects.Default.Framebuffer {
+		if c.Bound().DrawFramebuffer() == c.Objects().Default().Framebuffer() {
 			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we
@@ -229,7 +229,14 @@ func postFBData(ctx context.Context,
 		t.glBindFramebuffer_Read(ctx, framebufferID)
 	}
 
-	t.setPackStorage(ctx, PixelStorageState{Alignment: 1}, 0)
+	t.setPackStorage(ctx, NewPixelStorageState(
+		0, // ImageHeight
+		0, // SkipImages
+		0, // RowLength
+		0, // SkipRows
+		0, // SkipPixels
+		1, // Alignment
+	), 0)
 
 	imageSize := imgFmt.Size(int(outW), int(outH), 1)
 	tmp := s.AllocOrPanic(ctx, uint64(imageSize))

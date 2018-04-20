@@ -36,27 +36,60 @@ var intType = reflect.TypeOf(memory.Int(0))
 
 const intSize = 8
 
+var _ api.PropertyProvider = TestStruct{}
+
 type TestStruct struct {
-	/* 0 */ Bool bool
-	/* 1 */ Int int
-	/* 2 */ Float float32
-	/* 3 */ String string
-	/* 4 */ Reference *TestStruct
-	/* 5 */ Map map[int]string
-	/* 6 */ Array []int
-	/* 7 */ Slice memory.Slice
-	/* 8 */ Pointer memory.Pointer
-	/* 9 */ Interface interface{}
+	Bool      bool
+	Int       int
+	Float     float32
+	String    string
+	Reference *TestStruct
+	Map       map[int]string
+	Array     []int
+	Slice     memory.Slice
+	Pointer   memory.Pointer
+	Interface interface{}
 }
 
+// Properties returns the field properties for the struct.
+func (s TestStruct) Properties() api.Properties {
+	return api.Properties{
+		/* 0 */ api.NewProperty("Bool", func() bool { return s.Bool }, nil),
+		/* 1 */ api.NewProperty("Int", func() int { return s.Int }, nil),
+		/* 2 */ api.NewProperty("Float", func() float32 { return s.Float }, nil),
+		/* 3 */ api.NewProperty("String", func() string { return s.String }, nil),
+		/* 4 */ api.NewProperty("Reference", func() *TestStruct { return s.Reference }, nil),
+		/* 5 */ api.NewProperty("Map", func() map[int]string { return s.Map }, nil),
+		/* 6 */ api.NewProperty("Array", func() []int { return s.Array }, nil),
+		/* 7 */ api.NewProperty("Slice", func() memory.Slice { return s.Slice }, nil),
+		/* 8 */ api.NewProperty("Pointer", func() memory.Pointer { return s.Pointer }, nil),
+		/* 9 */ api.NewProperty("Interface", func() interface{} { return s.Interface }, nil),
+	}
+}
+
+var _ api.PropertyProvider = TestState{}
+
 type TestState struct {
-	/* 0 */ Bool bool
-	/* 1 */ Int int
-	/* 2 */ Float float32
-	/* 3 */ String string
-	/* 4 */ ReferenceA *TestStruct
-	/* 5 */ ReferenceB *TestStruct
-	/* 6 */ ReferenceC *TestStruct
+	Bool       bool
+	Int        int
+	Float      float32
+	String     string
+	ReferenceA *TestStruct
+	ReferenceB *TestStruct
+	ReferenceC *TestStruct
+}
+
+// Properties returns the field properties for the state.
+func (s TestState) Properties() api.Properties {
+	return api.Properties{
+		/* 0 */ api.NewProperty("Bool", func() bool { return s.Bool }, nil),
+		/* 1 */ api.NewProperty("Int", func() int { return s.Int }, nil),
+		/* 2 */ api.NewProperty("Float", func() float32 { return s.Float }, nil),
+		/* 3 */ api.NewProperty("String", func() string { return s.String }, nil),
+		/* 4 */ api.NewProperty("ReferenceA", func() *TestStruct { return s.ReferenceA }, nil),
+		/* 5 */ api.NewProperty("ReferenceB", func() *TestStruct { return s.ReferenceB }, nil),
+		/* 6 */ api.NewProperty("ReferenceC", func() *TestStruct { return s.ReferenceC }, nil),
+	}
 }
 
 var testState = TestState{

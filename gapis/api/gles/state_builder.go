@@ -55,23 +55,23 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID())
 
 	// Create EGL contexts (possibly shared)
-	representative := map[*ShareList]EGLContext{}
-	for i := ContextID(0); i < s.NextContextID; i++ {
-		for handle, c := range s.EGLContexts.Range() {
+	representative := map[ShareListʳ]EGLContext{}
+	for i := ContextID(0); i < s.NextContextID(); i++ {
+		for handle, c := range s.EGLContexts().Range() {
 			// TODO: We need to restore contexts in order without gaps, but this is messy.
-			if c.Identifier == i {
+			if c.Identifier() == i {
 				sb.contextObject(ctx, handle, c, representative)
 			}
 		}
 	}
 
 	// Create EGL images (may depend on texture from any context)
-	for _, img := range s.EGLImages.Range() {
+	for _, img := range s.EGLImages().Range() {
 		sb.eglImage(ctx, img)
 	}
 
 	// Second pass over context which sets everything that may depend on EGLimage.
-	for handle, c := range s.EGLContexts.Range() {
+	for handle, c := range s.EGLContexts().Range() {
 		sb.contextObjectPostEGLImage(ctx, handle, c)
 	}
 
@@ -121,7 +121,7 @@ func (sb *stateBuilder) readsData(ctx context.Context, v interface{}) memory.Poi
 }
 
 func (sb *stateBuilder) readsSlice(ctx context.Context, v U8ˢ) memory.Pointer {
-	tmp := sb.newState.AllocOrPanic(ctx, v.Count())
+	tmp := sb.newState.AllocOrPanic(ctx, v.Size())
 	rng := tmp.Range()
 	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
 	id := v.ResourceID(ctx, sb.oldState)
@@ -181,151 +181,151 @@ func (sb *stateBuilder) once(key interface{}) (res bool) {
 	return
 }
 
-func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c *Context, representative map[*ShareList]EGLContext) {
+func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c Contextʳ, representative map[ShareListʳ]EGLContext) {
 	write, cb := sb.write, sb.cb
 
 	// Check if we have already created any other context within this share-list.
-	shared_contex := representative[c.Other.ShareList] // Returns nullptr if we are the first.
-	representative[c.Other.ShareList] = handle         // Further contexts will reference us.
+	sharedCtx := representative[c.Other().ShareList()] // Returns nullptr if we are the first.
+	representative[c.Other().ShareList()] = handle     // Further contexts will reference us.
 
 	// TODO: Record the arguments in state.
-	write(cb.EglCreateContext(memory.Nullptr, memory.Nullptr, shared_contex, memory.Nullptr, handle))
+	write(cb.EglCreateContext(memory.Nullptr, memory.Nullptr, sharedCtx, memory.Nullptr, handle))
 	write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
-		c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
+		c.Other().StaticStateExtra(), c.Other().DynamicStateExtra()))
 
-	if !c.Other.Initialized {
+	if !c.Other().Initialized() {
 		return
 	}
 
 	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
 
-	if names := c.Objects.GeneratedNames.Buffers; sb.once(names) {
+	if names := c.Objects().GeneratedNames().Buffers(); sb.once(names) {
 		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenBuffers(1, sb.writesData(ctx, id)))
-				if o := c.Objects.Buffers.Get(id); o != nil {
+				if o := c.Objects().Buffers().Get(id); !o.IsNil() {
 					sb.bufferObject(ctx, o)
 				}
 			}
 		}
 	}
-	if names := c.Objects.GeneratedNames.Renderbuffers; sb.once(names) {
+	if names := c.Objects().GeneratedNames().Renderbuffers(); sb.once(names) {
 		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenRenderbuffers(1, sb.writesData(ctx, id)))
-				if o := c.Objects.Renderbuffers.Get(id); o != nil {
+				if o := c.Objects().Renderbuffers().Get(id); !o.IsNil() {
 					sb.renderbufferObject(ctx, o)
 				}
 			}
 		}
 	}
-	for _, defaultTexture := range []*Texture{
-		c.Objects.Default.Texture2d,
-		c.Objects.Default.Texture2dArray,
-		c.Objects.Default.Texture2dMultisample,
-		c.Objects.Default.Texture2dMultisampleArray,
-		c.Objects.Default.Texture3d,
-		c.Objects.Default.TextureBuffer,
-		c.Objects.Default.TextureCubeMap,
-		c.Objects.Default.TextureCubeMapArray,
-		c.Objects.Default.TextureExternalOes,
+	for _, defaultTexture := range []Textureʳ{
+		c.Objects().Default().Texture2d(),
+		c.Objects().Default().Texture2dArray(),
+		c.Objects().Default().Texture2dMultisample(),
+		c.Objects().Default().Texture2dMultisampleArray(),
+		c.Objects().Default().Texture3d(),
+		c.Objects().Default().TextureBuffer(),
+		c.Objects().Default().TextureCubeMap(),
+		c.Objects().Default().TextureCubeMapArray(),
+		c.Objects().Default().TextureExternalOes(),
 	} {
 		sb.textureObject(ctx, defaultTexture)
 	}
-	if names := c.Objects.GeneratedNames.Textures; sb.once(names) {
+	if names := c.Objects().GeneratedNames().Textures(); sb.once(names) {
 		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenTextures(1, sb.writesData(ctx, id)))
-				if o := c.Objects.Textures.Get(id); o != nil {
+				if o := c.Objects().Textures().Get(id); !o.IsNil() {
 					sb.textureObject(ctx, o)
 				}
 			}
 		}
 	}
-	if objs := c.Objects.ImageUnits; sb.once(objs) {
+	if objs := c.Objects().ImageUnits(); sb.once(objs) {
 		for _, id := range objs.Keys() {
-			if o := c.Objects.ImageUnits.Get(id); o != nil {
+			if o := c.Objects().ImageUnits().Get(id); !o.IsNil() {
 				sb.imageUnit(ctx, o)
 			}
 		}
 	}
-	if objs := c.Objects.Shaders; sb.once(objs) {
+	if objs := c.Objects().Shaders(); sb.once(objs) {
 		for _, id := range objs.Keys() {
-			if o := c.Objects.Shaders.Get(id); o != nil {
+			if o := c.Objects().Shaders().Get(id); !o.IsNil() {
 				sb.shaderObject(ctx, o)
 			}
 		}
 	}
-	if objs := c.Objects.Programs; sb.once(objs) {
+	if objs := c.Objects().Programs(); sb.once(objs) {
 		for _, id := range objs.Keys() {
-			if o := c.Objects.Programs.Get(id); o != nil {
+			if o := c.Objects().Programs().Get(id); !o.IsNil() {
 				sb.programObject(ctx, o)
 			}
 		}
 	}
-	if names := c.Objects.GeneratedNames.Pipelines; sb.once(names) {
+	if names := c.Objects().GeneratedNames().Pipelines(); sb.once(names) {
 		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenProgramPipelines(1, sb.writesData(ctx, id)))
-				if o := c.Objects.Pipelines.Get(id); o != nil {
+				if o := c.Objects().Pipelines().Get(id); !o.IsNil() {
 					sb.pipelineObject(ctx, o)
 				}
 			}
 		}
 	}
-	if names := c.Objects.GeneratedNames.Samplers; sb.once(names) {
+	if names := c.Objects().GeneratedNames().Samplers(); sb.once(names) {
 		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenSamplers(1, sb.writesData(ctx, id)))
-				if o := c.Objects.Samplers.Get(id); o != nil {
+				if o := c.Objects().Samplers().Get(id); !o.IsNil() {
 					sb.samplerObject(ctx, o)
 				}
 			}
 		}
 	}
-	if names := c.Objects.GeneratedNames.Queries; sb.once(names) {
+	if names := c.Objects().GeneratedNames().Queries(); sb.once(names) {
 		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenQueries(1, sb.writesData(ctx, id)))
-				if o := c.Objects.Queries.Get(id); o != nil {
+				if o := c.Objects().Queries().Get(id); !o.IsNil() {
 					sb.queryObject(ctx, o)
 				}
 			}
 		}
 	}
-	if objs := c.Objects.SyncObjects; sb.once(objs) {
+	if objs := c.Objects().SyncObjects(); sb.once(objs) {
 		for _, id := range objs.Keys() {
-			if o := c.Objects.SyncObjects.Get(id); o != nil {
+			if o := c.Objects().SyncObjects().Get(id); !o.IsNil() {
 				sb.syncObject(ctx, o)
 			}
 		}
 	}
-	sb.transformFeedbackObject(ctx, c.Objects.Default.TransformFeedback)
-	if names := c.Objects.GeneratedNames.TransformFeedbacks; sb.once(names) {
+	sb.transformFeedbackObject(ctx, c.Objects().Default().TransformFeedback())
+	if names := c.Objects().GeneratedNames().TransformFeedbacks(); sb.once(names) {
 		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenTransformFeedbacks(1, sb.writesData(ctx, id)))
-				if o := c.Objects.TransformFeedbacks.Get(id); o != nil {
+				if o := c.Objects().TransformFeedbacks().Get(id); !o.IsNil() {
 					sb.transformFeedbackObject(ctx, o)
 				}
 			}
 		}
 	}
-	sb.vertexArrayObject(ctx, c.Objects.Default.VertexArray)
-	if names := c.Objects.GeneratedNames.VertexArrays; sb.once(names) {
+	sb.vertexArrayObject(ctx, c.Objects().Default().VertexArray())
+	if names := c.Objects().GeneratedNames().VertexArrays(); sb.once(names) {
 		for _, id := range names.Keys() {
 			if id != 0 && names.Get(id) {
 				write(cb.GlGenVertexArrays(1, sb.writesData(ctx, id)))
-				if o := c.Objects.VertexArrays.Get(id); o != nil {
+				if o := c.Objects().VertexArrays().Get(id); !o.IsNil() {
 					sb.vertexArrayObject(ctx, o)
 				}
 			}
 		}
 	}
-	sb.vertexState(ctx, &c.Vertex)
-	sb.reasterizationState(ctx, &c.Rasterization)
-	sb.pixelState(ctx, &c.Pixel)
-	sb.otherState(ctx, &c.Other)
+	sb.vertexState(ctx, c.Vertex())
+	sb.reasterizationState(ctx, c.Rasterization())
+	sb.pixelState(ctx, c.Pixel())
+	sb.otherState(ctx, c.Other())
 	sb.debugLabels(ctx, c)
 	sb.bindings(ctx, c)
 	sb.deleteMarkedObjects(ctx, c)
@@ -336,52 +336,52 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 // eglImage creates an EGLImage object.
 // It may reference a texture object in different context,
 // so it must be called after all contexts have been created.
-func (sb *stateBuilder) eglImage(ctx context.Context, img *EGLImage) {
+func (sb *stateBuilder) eglImage(ctx context.Context, img EGLImageʳ) {
 	write, cb := sb.write, sb.cb
 
 	// TODO: This might not work if the target texture object has been deleted.
-	attribs := img.AttribList.MustRead(ctx, nil, sb.oldState, nil)
-	cmd := cb.EglCreateImageKHR(img.Display, img.Context, img.Target, img.Buffer, sb.readsData(ctx, attribs), img.ID)
-	if img.Extra != nil {
-		cmd.Extras().Add(img.Extra)
+	attribs := img.AttribList().MustRead(ctx, nil, sb.oldState, nil)
+	cmd := cb.EglCreateImageKHR(img.Display(), img.Context(), img.Target(), img.Buffer(), sb.readsData(ctx, attribs), img.ID())
+	if extra := img.Extra(); extra.IsNil() {
+		cmd.Extras().Add(extra)
 	}
 	write(cmd)
 }
 
-func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EGLContext, c *Context) {
+func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EGLContext, c Contextʳ) {
 	write, cb := sb.write, sb.cb
 
-	if c.Other.Initialized {
+	if c.Other().Initialized() {
 		write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
-			c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
+			c.Other().StaticStateExtra(), c.Other().DynamicStateExtra()))
 
-		for _, t := range c.Objects.Textures.Range() {
-			target := t.Kind
-			if i := t.EGLImage; i != nil {
+		for _, t := range c.Objects().Textures().Range() {
+			target := t.Kind()
+			if i := t.EGLImage(); !i.IsNil() {
 				write(cb.GlBindTexture(target, t.GetID()))
 				if target != GLenum_GL_TEXTURE_2D && target != GLenum_GL_TEXTURE_EXTERNAL_OES {
 					panic(fmt.Errorf("Unknown EGLImage target: %v", target))
 				}
-				img := t.Image
+				img := t.Image()
 				extra := &EGLImageData{
-					ID:     img.Data.ResourceID(ctx, sb.oldState),
-					Size:   img.Data.Count(),
-					Width:  img.Width,
-					Height: img.Height,
-					Format: img.DataFormat,
-					Type:   img.DataType,
+					ID:     img.Data().ResourceID(ctx, sb.oldState),
+					Size:   img.Data().Size(),
+					Width:  img.Width(),
+					Height: img.Height(),
+					Format: img.DataFormat(),
+					Type:   img.DataType(),
 				}
-				write(api.WithExtras(cb.GlEGLImageTargetTexture2DOES(target, i.ID), extra))
+				write(api.WithExtras(cb.GlEGLImageTargetTexture2DOES(target, i.ID()), extra))
 			}
 		}
 
 		// Create framebuffers
-		sb.framebufferObject(ctx, c, c.Objects.Default.Framebuffer)
-		if names := c.Objects.GeneratedNames.Framebuffers; sb.once(names) {
+		sb.framebufferObject(ctx, c, c.Objects().Default().Framebuffer())
+		if names := c.Objects().GeneratedNames().Framebuffers(); sb.once(names) {
 			for _, id := range names.Keys() {
 				if id != 0 && names.Get(id) {
 					write(cb.GlGenFramebuffers(1, sb.writesData(ctx, id)))
-					if o := c.Objects.Framebuffers.Get(id); o != nil {
+					if o := c.Objects().Framebuffers().Get(id); !o.IsNil() {
 						sb.framebufferObject(ctx, c, o)
 					}
 				}
@@ -389,29 +389,29 @@ func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EG
 		}
 
 		// Framebuffer bindings
-		write(cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, c.Bound.ReadFramebuffer.GetID()))
-		write(cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, c.Bound.DrawFramebuffer.GetID()))
-		write(cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, c.Bound.Renderbuffer.GetID()))
+		write(cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, c.Bound().ReadFramebuffer().GetID()))
+		write(cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, c.Bound().DrawFramebuffer().GetID()))
+		write(cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, c.Bound().Renderbuffer().GetID()))
 
 		// Texture unit bindings
-		for unit, tu := range c.Objects.TextureUnits.Range() {
-			bind := func(target GLenum, tex *Texture) {
+		for unit, tu := range c.Objects().TextureUnits().Range() {
+			bind := func(target GLenum, tex Textureʳ) {
 				if t := tex.GetID(); t != 0 || unit == 0 {
 					write(cb.GlActiveTexture(GLenum_GL_TEXTURE0 + GLenum(unit)))
 					write(cb.GlBindTexture(target, t))
 				}
 			}
-			bind(GLenum_GL_TEXTURE_2D, tu.Binding2d)
-			bind(GLenum_GL_TEXTURE_2D_ARRAY, tu.Binding2dArray)
-			bind(GLenum_GL_TEXTURE_2D_MULTISAMPLE, tu.Binding2dMultisample)
-			bind(GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY, tu.Binding2dMultisampleArray)
-			bind(GLenum_GL_TEXTURE_3D, tu.Binding3d)
-			bind(GLenum_GL_TEXTURE_BUFFER, tu.BindingBuffer)
-			bind(GLenum_GL_TEXTURE_CUBE_MAP, tu.BindingCubeMap)
-			bind(GLenum_GL_TEXTURE_CUBE_MAP_ARRAY, tu.BindingCubeMapArray)
-			bind(GLenum_GL_TEXTURE_EXTERNAL_OES, tu.BindingExternalOes)
+			bind(GLenum_GL_TEXTURE_2D, tu.Binding2d())
+			bind(GLenum_GL_TEXTURE_2D_ARRAY, tu.Binding2dArray())
+			bind(GLenum_GL_TEXTURE_2D_MULTISAMPLE, tu.Binding2dMultisample())
+			bind(GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY, tu.Binding2dMultisampleArray())
+			bind(GLenum_GL_TEXTURE_3D, tu.Binding3d())
+			bind(GLenum_GL_TEXTURE_BUFFER, tu.BindingBuffer())
+			bind(GLenum_GL_TEXTURE_CUBE_MAP, tu.BindingCubeMap())
+			bind(GLenum_GL_TEXTURE_CUBE_MAP_ARRAY, tu.BindingCubeMapArray())
+			bind(GLenum_GL_TEXTURE_EXTERNAL_OES, tu.BindingExternalOes())
 		}
-		write(cb.GlActiveTexture(GLenum_GL_TEXTURE0 + GLenum(c.Bound.TextureUnit.ID)))
+		write(cb.GlActiveTexture(GLenum_GL_TEXTURE0 + GLenum(c.Bound().TextureUnit().ID())))
 
 		write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
 	}
@@ -422,40 +422,40 @@ func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EG
 func (sb *stateBuilder) bindContexts(ctx context.Context, s *State) {
 	write, cb := sb.write, sb.cb
 
-	for handle, c := range s.EGLContexts.Range() {
-		if thread := c.Other.BoundOnThread; thread != 0 {
+	for handle, c := range s.EGLContexts().Range() {
+		if thread := c.Other().BoundOnThread(); thread != 0 {
 			cb := CommandBuilder{Thread: thread}
 			write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
-				c.Other.StaticStateExtra, c.Other.DynamicStateExtra))
+				c.Other().StaticStateExtra(), c.Other().DynamicStateExtra()))
 		}
 	}
 	write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
 }
 
-func (sb *stateBuilder) bufferObject(ctx context.Context, b *Buffer) {
+func (sb *stateBuilder) bufferObject(ctx context.Context, b Bufferʳ) {
 	write, cb, id := sb.write, sb.cb, b.GetID()
 	target := GLenum_GL_ARRAY_BUFFER // Any binding point will do.
 
 	write(cb.GlBindBuffer(target, id))
-	write(cb.GlBufferData(target, GLsizeiptr(b.Data.Count()), sb.readsSlice(ctx, b.Data), b.Usage))
-	if b.Mapped == GLboolean_GL_TRUE {
-		write(cb.GlMapBufferRange(target, b.MapOffset, b.MapLength, b.AccessFlags, b.MapPointer)) // GLES30
+	write(cb.GlBufferData(target, GLsizeiptr(b.Data().Size()), sb.readsSlice(ctx, b.Data()), b.Usage()))
+	if b.Mapped() == GLboolean_GL_TRUE {
+		write(cb.GlMapBufferRange(target, b.MapOffset(), b.MapLength(), b.AccessFlags(), b.MapPointer())) // GLES30
 	}
 }
 
 // Just to be on the safe side, this should be done before textures and framebuffers,
 // since we generate some of them as temporary objects (to avoid ID collisions).
-func (sb *stateBuilder) renderbufferObject(ctx context.Context, rb *Renderbuffer) {
+func (sb *stateBuilder) renderbufferObject(ctx context.Context, rb Renderbufferʳ) {
 	write, cb, id := sb.write, sb.cb, rb.GetID()
 
 	write(cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, id))
 
-	if img := rb.Image; img != nil {
-		fmt, w, h := img.SizedFormat, img.Width, img.Height
-		write(cb.GlRenderbufferStorageMultisample(GLenum_GL_RENDERBUFFER, img.Samples, fmt, w, h)) // GLES30
+	if img := rb.Image(); !img.IsNil() {
+		fmt, w, h := img.SizedFormat(), img.Width(), img.Height()
+		write(cb.GlRenderbufferStorageMultisample(GLenum_GL_RENDERBUFFER, img.Samples(), fmt, w, h)) // GLES30
 
 		// Fill the renderbuffer with data using a framebuffer blit
-		if img.Data.Count() != 0 {
+		if img.Data().Size() != 0 {
 			// Create temporary objects
 			tex := TextureId(0x10000001)
 			write(cb.GlGenTextures(1, sb.writesData(ctx, tex)))
@@ -469,7 +469,7 @@ func (sb *stateBuilder) renderbufferObject(ctx context.Context, rb *Renderbuffer
 
 			// Upload data and blit it to our renderbuffer
 			att := GLenum_GL_COLOR_ATTACHMENT0 // TODO: Consider depth
-			write(cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(fmt), w, h, 0, img.DataFormat, img.DataType, sb.readsSlice(ctx, img.Data)))
+			write(cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(fmt), w, h, 0, img.DataFormat(), img.DataType(), sb.readsSlice(ctx, img.Data())))
 			write(cb.GlFramebufferTexture2D(GLenum_GL_READ_FRAMEBUFFER, att, GLenum_GL_TEXTURE_2D, tex, 0))
 			write(cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, att, GLenum_GL_RENDERBUFFER, id))
 			write(cb.GlScissor(0, 0, w, h))
@@ -514,41 +514,41 @@ func getTextureTargetInfo(target GLenum) (isMultisample, isArray, is3D bool) {
 }
 
 // must be after renderbuffers and textures
-func (sb *stateBuilder) framebufferObject(ctx context.Context, c *Context, fb *Framebuffer) {
+func (sb *stateBuilder) framebufferObject(ctx context.Context, c Contextʳ, fb Framebufferʳ) {
 	write, cb, id := sb.write, sb.cb, fb.GetID()
 
 	target := GLenum_GL_FRAMEBUFFER
 	write(cb.GlBindFramebuffer(target, id))
 
 	if id == 0 {
-		if drawBuffer := fb.DrawBuffer.Get(0); drawBuffer != GLenum_GL_BACK {
+		if drawBuffer := fb.DrawBuffer().Get(0); drawBuffer != GLenum_GL_BACK {
 			write(cb.GlDrawBuffers(1, sb.readsData(ctx, drawBuffer)))
 		}
-		if fb.ReadBuffer != GLenum_GL_BACK {
-			write(cb.GlReadBuffer(fb.ReadBuffer))
+		if fb.ReadBuffer() != GLenum_GL_BACK {
+			write(cb.GlReadBuffer(fb.ReadBuffer()))
 		}
 	} else {
 		// Attachments
 		attach := func(name GLenum, a FramebufferAttachment) {
-			switch a.Type {
+			switch a.Type() {
 			case GLenum_GL_RENDERBUFFER:
-				write(cb.GlFramebufferRenderbuffer(target, name, a.Type, a.Renderbuffer.GetID()))
+				write(cb.GlFramebufferRenderbuffer(target, name, a.Type(), a.Renderbuffer().GetID()))
 			case GLenum_GL_TEXTURE:
-				ty, id, level, layer := a.Texture.Kind, a.Texture.GetID(), a.TextureLevel, a.TextureLayer
+				ty, id, level, layer := a.Texture().Kind(), a.Texture().GetID(), a.TextureLevel(), a.TextureLayer()
 				_, isArray, is3D := getTextureTargetInfo(ty)
-				if a.NumViews > 1 {
-					write(cb.GlFramebufferTextureMultiviewOVR(target, name, id, level, layer, a.NumViews))
+				if a.NumViews() > 1 {
+					write(cb.GlFramebufferTextureMultiviewOVR(target, name, id, level, layer, a.NumViews()))
 				} else if ty == GLenum_GL_TEXTURE_CUBE_MAP {
-					if a.Layered == GLboolean_GL_TRUE {
+					if a.Layered() == GLboolean_GL_TRUE {
 						write(cb.GlFramebufferTexture(target, name, id, level)) // GLES32
 					} else {
-						ty = GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X + GLenum(a.TextureLayer%6)
+						ty = GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X + GLenum(a.TextureLayer()%6)
 						write(cb.GlFramebufferTexture2D(target, name, ty, id, level))
 					}
 				} else if isArray || is3D {
-					if a.Layered == GLboolean_GL_TRUE {
+					if a.Layered() == GLboolean_GL_TRUE {
 						write(cb.GlFramebufferTexture(target, name, id, level)) // GLES32
-					} else if a.NumViews == 1 {
+					} else if a.NumViews() == 1 {
 						write(cb.GlFramebufferTextureLayer(target, name, id, level, layer)) // GLES30
 					}
 				} else {
@@ -556,100 +556,100 @@ func (sb *stateBuilder) framebufferObject(ctx context.Context, c *Context, fb *F
 				}
 			}
 		}
-		for i, a := range fb.ColorAttachments.Range() {
+		for i, a := range fb.ColorAttachments().Range() {
 			attach(GLenum_GL_COLOR_ATTACHMENT0+GLenum(i), a)
 		}
-		attach(GLenum_GL_DEPTH_ATTACHMENT, fb.DepthAttachment)
-		attach(GLenum_GL_STENCIL_ATTACHMENT, fb.StencilAttachment)
+		attach(GLenum_GL_DEPTH_ATTACHMENT, fb.DepthAttachment())
+		attach(GLenum_GL_STENCIL_ATTACHMENT, fb.StencilAttachment())
 
 		// Active attachments
 		drawBuffers := []GLenum{}
-		for i := 0; i < fb.DrawBuffer.Len(); i++ {
-			drawBuffers = append(drawBuffers, fb.DrawBuffer.Get(GLint(i)))
+		for i := 0; i < fb.DrawBuffer().Len(); i++ {
+			drawBuffers = append(drawBuffers, fb.DrawBuffer().Get(GLint(i)))
 		}
 		write(cb.GlDrawBuffers(GLsizei(len(drawBuffers)), sb.readsData(ctx, drawBuffers)))
-		write(cb.GlReadBuffer(fb.ReadBuffer))
+		write(cb.GlReadBuffer(fb.ReadBuffer()))
 
 		// Parameters
 		param := func(name GLenum, value GLint) {
 			write(cb.GlFramebufferParameteri(target, name, value))
 		}
-		param(GLenum_GL_FRAMEBUFFER_DEFAULT_WIDTH, fb.DefaultWidth)     // GLES31
-		param(GLenum_GL_FRAMEBUFFER_DEFAULT_HEIGHT, fb.DefaultHeight)   // GLES31
-		param(GLenum_GL_FRAMEBUFFER_DEFAULT_LAYERS, fb.DefaultLayers)   // GLES32
-		param(GLenum_GL_FRAMEBUFFER_DEFAULT_SAMPLES, fb.DefaultSamples) // GLES31
-		if fb.DefaultFixedSampleLocations == GLboolean_GL_TRUE {
+		param(GLenum_GL_FRAMEBUFFER_DEFAULT_WIDTH, fb.DefaultWidth())     // GLES31
+		param(GLenum_GL_FRAMEBUFFER_DEFAULT_HEIGHT, fb.DefaultHeight())   // GLES31
+		param(GLenum_GL_FRAMEBUFFER_DEFAULT_LAYERS, fb.DefaultLayers())   // GLES32
+		param(GLenum_GL_FRAMEBUFFER_DEFAULT_SAMPLES, fb.DefaultSamples()) // GLES31
+		if fb.DefaultFixedSampleLocations() == GLboolean_GL_TRUE {
 			param(GLenum_GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS, 1) // GLES31
 		}
 	}
 }
 
-func (sb *stateBuilder) imageUnit(ctx context.Context, i *ImageUnit) {
+func (sb *stateBuilder) imageUnit(ctx context.Context, i ImageUnitʳ) {
 	write, cb, id := sb.write, sb.cb, i.GetID()
 
 	if i.Texture != nil {
-		write(cb.GlBindImageTexture(id, i.Texture.GetID(), i.Level, i.Layered, i.Layer, i.Access, i.Fmt)) // GLES31
+		write(cb.GlBindImageTexture(id, i.Texture().GetID(), i.Level(), i.Layered(), i.Layer(), i.Access(), i.Fmt())) // GLES31
 	}
 }
 
-func (sb *stateBuilder) shaderObject(ctx context.Context, s *Shader) {
+func (sb *stateBuilder) shaderObject(ctx context.Context, s Shaderʳ) {
 	write, cb, id := sb.write, sb.cb, s.GetID()
 
-	write(cb.GlCreateShader(s.Type, id))
-	if e := s.CompileExtra; e != nil {
+	write(cb.GlCreateShader(s.Type(), id))
+	if e := s.CompileExtra(); !e.IsNil() {
 		if e.Binary != nil {
 			sb.E(ctx, "Precompiled shaders not suppored yet") // TODO
 		}
-		write(cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, e.Source)), memory.Nullptr))
+		write(cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, e.Source())), memory.Nullptr))
 		write(api.WithExtras(cb.GlCompileShader(id), e))
 	}
-	write(cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, s.Source)), memory.Nullptr))
+	write(cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, s.Source())), memory.Nullptr))
 }
 
-func (sb *stateBuilder) programObject(ctx context.Context, p *Program) {
+func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 	write, cb, id := sb.write, sb.cb, p.GetID()
 
 	write(cb.GlCreateProgram(id))
-	for _, s := range p.Shaders.Range() {
+	for _, s := range p.Shaders().Range() {
 		if s := s.GetID(); s != 0 {
 			write(cb.GlAttachShader(id, s))
 		}
 	}
-	for name, location := range p.AttributeBindings.Range() {
+	for name, location := range p.AttributeBindings().Range() {
 		write(cb.GlBindAttribLocation(id, location, sb.readsData(ctx, name)))
 	}
-	if count := p.TransformFeedbackVaryings.Len(); count > 0 {
+	if count := p.TransformFeedbackVaryings().Len(); count > 0 {
 		varyings := make([]memory.Pointer, count)
-		for i, varying := range p.TransformFeedbackVaryings.Range() {
+		for i, varying := range p.TransformFeedbackVaryings().Range() {
 			varyings[i] = sb.readsData(ctx, varying)
 		}
-		mode := p.TransformFeedbackBufferMode
+		mode := p.TransformFeedbackBufferMode()
 		write(cb.GlTransformFeedbackVaryings(id, GLsizei(len(varyings)), sb.readsData(ctx, varyings), mode))
 	}
-	if v := p.Separable; v {
+	if p.Separable() {
 		write(cb.GlProgramParameteri(id, GLenum_GL_PROGRAM_SEPARABLE, 1))
 	}
-	if v := p.BinaryRetrievableHint; v {
+	if p.BinaryRetrievableHint() {
 		write(cb.GlProgramParameteri(id, GLenum_GL_PROGRAM_BINARY_RETRIEVABLE_HINT, 1))
 	}
-	if p.LinkExtra != nil {
-		if p.SuccessfulLinkExtra != p.LinkExtra {
+	if !p.LinkExtra().IsNil() {
+		if p.SuccessfulLinkExtra() != p.LinkExtra() {
 			sb.E(ctx, "Stale program executable not suppored yet") // TODO
 		}
-		if p.LinkExtra.Binary != nil {
+		if !p.LinkExtra().Binary().IsNil() {
 			sb.E(ctx, "Precompiled programs not suppored yet") // TODO
 		}
-		write(api.WithExtras(cb.GlLinkProgram(id), p.LinkExtra))
+		write(api.WithExtras(cb.GlLinkProgram(id), p.LinkExtra()))
 		write(cb.GlUseProgram(id))
-		for _, u := range p.ActiveResources.DefaultUniformBlock.Range() {
-			if loc, ok := u.Locations.Lookup(0); ok {
-				sb.uniform(ctx, u.Type, UniformLocation(loc), GLsizei(u.ArraySize), sb.readsSlice(ctx, u.Value))
+		for _, u := range p.ActiveResources().DefaultUniformBlock().Range() {
+			if loc, ok := u.Locations().Lookup(0); ok {
+				sb.uniform(ctx, u.Type(), UniformLocation(loc), GLsizei(u.ArraySize()), sb.readsSlice(ctx, u.Value()))
 			}
 		}
 		write(cb.GlUseProgram(0))
 	}
 	if p.ValidateExtra != nil {
-		write(api.WithExtras(cb.GlValidateProgram(id), p.ValidateExtra))
+		write(api.WithExtras(cb.GlValidateProgram(id), p.ValidateExtra()))
 	}
 }
 
@@ -708,45 +708,45 @@ func (sb *stateBuilder) uniform(ctx context.Context, ty GLenum, loc UniformLocat
 	}
 }
 
-func (sb *stateBuilder) pipelineObject(ctx context.Context, pipe *Pipeline) {
+func (sb *stateBuilder) pipelineObject(ctx context.Context, pipe Pipelineʳ) {
 	write, cb, id := sb.write, sb.cb, pipe.GetID()
 
 	write(cb.GlBindProgramPipeline(id))
-	write(cb.GlActiveShaderProgram(id, pipe.ActiveProgram.GetID()))
-	write(cb.GlUseProgramStages(id, GLbitfield_GL_COMPUTE_SHADER_BIT, pipe.ComputeShader.GetID()))
-	write(cb.GlUseProgramStages(id, GLbitfield_GL_FRAGMENT_SHADER_BIT, pipe.FragmentShader.GetID()))
-	write(cb.GlUseProgramStages(id, GLbitfield_GL_VERTEX_SHADER_BIT, pipe.VertexShader.GetID()))
-	write(cb.GlUseProgramStages(id, GLbitfield_GL_TESS_CONTROL_SHADER_BIT, pipe.TessControlShader.GetID()))
-	write(cb.GlUseProgramStages(id, GLbitfield_GL_TESS_EVALUATION_SHADER_BIT, pipe.TessEvaluationShader.GetID()))
-	write(cb.GlUseProgramStages(id, GLbitfield_GL_GEOMETRY_SHADER_BIT, pipe.GeometryShader.GetID()))
-	if pipe.ValidateExtra != nil {
-		write(api.WithExtras(cb.GlValidateProgramPipeline(id), pipe.ValidateExtra))
+	write(cb.GlActiveShaderProgram(id, pipe.ActiveProgram().GetID()))
+	write(cb.GlUseProgramStages(id, GLbitfield_GL_COMPUTE_SHADER_BIT, pipe.ComputeShader().GetID()))
+	write(cb.GlUseProgramStages(id, GLbitfield_GL_FRAGMENT_SHADER_BIT, pipe.FragmentShader().GetID()))
+	write(cb.GlUseProgramStages(id, GLbitfield_GL_VERTEX_SHADER_BIT, pipe.VertexShader().GetID()))
+	write(cb.GlUseProgramStages(id, GLbitfield_GL_TESS_CONTROL_SHADER_BIT, pipe.TessControlShader().GetID()))
+	write(cb.GlUseProgramStages(id, GLbitfield_GL_TESS_EVALUATION_SHADER_BIT, pipe.TessEvaluationShader().GetID()))
+	write(cb.GlUseProgramStages(id, GLbitfield_GL_GEOMETRY_SHADER_BIT, pipe.GeometryShader().GetID()))
+	if !pipe.ValidateExtra().IsNil() {
+		write(api.WithExtras(cb.GlValidateProgramPipeline(id), pipe.ValidateExtra()))
 	}
 	write(cb.GlBindProgramPipeline(0))
 }
 
-func (sb *stateBuilder) textureObject(ctx context.Context, t *Texture) {
+func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 	write, cb, id := sb.write, sb.cb, t.GetID()
 
-	target := t.Kind
+	target := t.Kind()
 	isMultisample, isArray, is3D := getTextureTargetInfo(target)
-	isCompressed := func(img *Image) bool {
-		return GetSizedFormatInfoOrPanic(img.SizedFormat).Compression != CompressionAlgorithm_Uncompressed
+	isCompressed := func(img Imageʳ) bool {
+		return GetSizedFormatInfoOrPanic(img.SizedFormat()).Compression() != CompressionAlgorithm_Uncompressed
 	}
 
 	write(cb.GlBindTexture(target, id))
 
 	// Allocate space for texture data
 	if target == GLenum_GL_TEXTURE_BUFFER {
-		b := t.Buffer
-		write(cb.GlTexBufferRange(target, b.InternalFormat, b.Binding.GetID(), b.Offset, b.Size))
+		b := t.Buffer()
+		write(cb.GlTexBufferRange(target, b.InternalFormat(), b.Binding().GetID(), b.Offset(), b.Size()))
 	} else if target == GLenum_GL_TEXTURE_EXTERNAL_OES {
 		// The dimensions are fully specified by the EGLimage
-	} else if t.ImmutableFormat == GLboolean_GL_TRUE {
-		img := t.Levels.Get(0).Layers.Get(0) // Must exist
-		lvl, fmt := GLsizei(t.Levels.Len()), img.SizedFormat
-		w, h, d := img.Width, img.Height, GLsizei(t.Levels.Get(0).Layers.Len())
-		samples, fixed := img.Samples, img.FixedSampleLocations
+	} else if t.ImmutableFormat() == GLboolean_GL_TRUE {
+		img := t.Levels().Get(0).Layers().Get(0) // Must exist
+		lvl, fmt := GLsizei(t.Levels().Len()), img.SizedFormat()
+		w, h, d := img.Width(), img.Height(), GLsizei(t.Levels().Get(0).Layers().Len())
+		samples, fixed := img.Samples(), img.FixedSampleLocations()
 
 		if isMultisample {
 			if isArray || is3D {
@@ -762,29 +762,29 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t *Texture) {
 			}
 		}
 	} else if isArray || is3D {
-		for lvl, levelObject := range t.Levels.Range() {
-			img := levelObject.Layers.Get(0) // Must exist, all layers must be consistent.
-			fmt, w, h, d := img.SizedFormat, img.Width, img.Height, GLsizei(levelObject.Layers.Len())
+		for lvl, levelObject := range t.Levels().Range() {
+			img := levelObject.Layers().Get(0) // Must exist, all layers must be consistent.
+			fmt, w, h, d := img.SizedFormat(), img.Width(), img.Height(), GLsizei(levelObject.Layers().Len())
 			dataFormat, dataType := img.getUnsizedFormatAndType()
 			if isCompressed(img) {
-				dataSize := GLsizei(img.Data.Count()) * d
+				dataSize := GLsizei(img.Data().Size()) * d
 				write(cb.GlCompressedTexImage3D(target, lvl, fmt, w, h, d, 0, dataSize, memory.Nullptr))
 			} else {
 				write(cb.GlTexImage3D(target, lvl, GLint(fmt), w, h, d, 0, dataFormat, dataType, memory.Nullptr))
 			}
 		}
 	} else {
-		for lvl, levelObject := range t.Levels.Range() {
-			for layer, img := range levelObject.Layers.Range() {
+		for lvl, levelObject := range t.Levels().Range() {
+			for layer, img := range levelObject.Layers().Range() {
 				// NB: Each face of cubemap faces can technically have different format and size.
-				fmt, w, h := img.SizedFormat, img.Width, img.Height
+				fmt, w, h := img.SizedFormat(), img.Width(), img.Height()
 				dataFormat, dataType := img.getUnsizedFormatAndType()
 				target := target
 				if target == GLenum_GL_TEXTURE_CUBE_MAP {
 					target = GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X + GLenum(layer%6)
 				}
 				if isCompressed(img) {
-					write(cb.GlCompressedTexImage2D(target, lvl, fmt, w, h, 0, GLsizei(img.Data.Count()), memory.Nullptr))
+					write(cb.GlCompressedTexImage2D(target, lvl, fmt, w, h, 0, GLsizei(img.Data().Size()), memory.Nullptr))
 				} else {
 					write(cb.GlTexImage2D(target, lvl, GLint(fmt), w, h, 0, dataFormat, dataType, memory.Nullptr))
 				}
@@ -793,13 +793,13 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t *Texture) {
 	}
 
 	// Upload the layers one by one
-	for lvl, levelObject := range t.Levels.Range() {
-		for layer, img := range levelObject.Layers.Range() {
-			fmt, w, h, d := img.SizedFormat, img.Width, img.Height, GLsizei(1)
+	for lvl, levelObject := range t.Levels().Range() {
+		for layer, img := range levelObject.Layers().Range() {
+			fmt, w, h, d := img.SizedFormat(), img.Width(), img.Height(), GLsizei(1)
 			dataFormat, dataType := img.getUnsizedFormatAndType()
-			dataSize, data := GLsizei(img.Data.Count()), sb.readsSlice(ctx, img.Data)
+			dataSize, data := GLsizei(img.Data().Size()), sb.readsSlice(ctx, img.Data())
 
-			if img.Data.Count() == 0 {
+			if dataSize == 0 {
 				continue // The texture layer was not initialized.
 			} else if target == GLenum_GL_TEXTURE_BUFFER {
 				continue // There should be no images or layers.
@@ -825,152 +825,152 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t *Texture) {
 		}
 	}
 
-	defaults := NewTexture()
+	defaults := MakeTexture()
 	parami := func(name GLenum, value GLint, defaultValue GLint) {
 		if value != defaultValue || target == GLenum_GL_TEXTURE_EXTERNAL_OES {
 			write(cb.GlTexParameteri(target, name, value))
 		}
 	}
-	parami(GLenum_GL_TEXTURE_MAG_FILTER, GLint(t.MagFilter), GLint(defaults.MagFilter))
-	parami(GLenum_GL_TEXTURE_MIN_FILTER, GLint(t.MinFilter), GLint(defaults.MinFilter))
-	parami(GLenum_GL_TEXTURE_WRAP_S, GLint(t.WrapS), GLint(defaults.WrapS))
-	parami(GLenum_GL_TEXTURE_WRAP_T, GLint(t.WrapT), GLint(defaults.WrapT))
-	parami(GLenum_GL_TEXTURE_WRAP_R, GLint(t.WrapR), GLint(defaults.WrapR))
-	parami(GLenum_GL_TEXTURE_COMPARE_FUNC, GLint(t.CompareFunc), GLint(defaults.CompareFunc))
-	parami(GLenum_GL_TEXTURE_COMPARE_MODE, GLint(t.CompareMode), GLint(defaults.CompareMode))
-	parami(GLenum_GL_TEXTURE_BASE_LEVEL, t.BaseLevel, defaults.BaseLevel)
-	parami(GLenum_GL_TEXTURE_MAX_LEVEL, t.MaxLevel, defaults.MaxLevel)
-	parami(GLenum_GL_TEXTURE_SWIZZLE_A, GLint(t.SwizzleA), GLint(defaults.SwizzleA))
-	parami(GLenum_GL_TEXTURE_SWIZZLE_B, GLint(t.SwizzleB), GLint(defaults.SwizzleB))
-	parami(GLenum_GL_TEXTURE_SWIZZLE_G, GLint(t.SwizzleG), GLint(defaults.SwizzleG))
-	parami(GLenum_GL_TEXTURE_SWIZZLE_R, GLint(t.SwizzleR), GLint(defaults.SwizzleR))
-	parami(GLenum_GL_DEPTH_STENCIL_TEXTURE_MODE, GLint(t.DepthStencilTextureMode), GLint(defaults.DepthStencilTextureMode))
-	if t.MaxLod != defaults.MaxLod {
-		write(cb.GlTexParameterf(target, GLenum_GL_TEXTURE_MAX_LOD, t.MaxLod))
+	parami(GLenum_GL_TEXTURE_MAG_FILTER, GLint(t.MagFilter()), GLint(defaults.MagFilter()))
+	parami(GLenum_GL_TEXTURE_MIN_FILTER, GLint(t.MinFilter()), GLint(defaults.MinFilter()))
+	parami(GLenum_GL_TEXTURE_WRAP_S, GLint(t.WrapS()), GLint(defaults.WrapS()))
+	parami(GLenum_GL_TEXTURE_WRAP_T, GLint(t.WrapT()), GLint(defaults.WrapT()))
+	parami(GLenum_GL_TEXTURE_WRAP_R, GLint(t.WrapR()), GLint(defaults.WrapR()))
+	parami(GLenum_GL_TEXTURE_COMPARE_FUNC, GLint(t.CompareFunc()), GLint(defaults.CompareFunc()))
+	parami(GLenum_GL_TEXTURE_COMPARE_MODE, GLint(t.CompareMode()), GLint(defaults.CompareMode()))
+	parami(GLenum_GL_TEXTURE_BASE_LEVEL, t.BaseLevel(), defaults.BaseLevel())
+	parami(GLenum_GL_TEXTURE_MAX_LEVEL, t.MaxLevel(), defaults.MaxLevel())
+	parami(GLenum_GL_TEXTURE_SWIZZLE_A, GLint(t.SwizzleA()), GLint(defaults.SwizzleA()))
+	parami(GLenum_GL_TEXTURE_SWIZZLE_B, GLint(t.SwizzleB()), GLint(defaults.SwizzleB()))
+	parami(GLenum_GL_TEXTURE_SWIZZLE_G, GLint(t.SwizzleG()), GLint(defaults.SwizzleG()))
+	parami(GLenum_GL_TEXTURE_SWIZZLE_R, GLint(t.SwizzleR()), GLint(defaults.SwizzleR()))
+	parami(GLenum_GL_DEPTH_STENCIL_TEXTURE_MODE, GLint(t.DepthStencilTextureMode()), GLint(defaults.DepthStencilTextureMode()))
+	if t.MaxLod() != defaults.MaxLod() {
+		write(cb.GlTexParameterf(target, GLenum_GL_TEXTURE_MAX_LOD, t.MaxLod()))
 	}
-	if t.MinLod != defaults.MinLod {
-		write(cb.GlTexParameterf(target, GLenum_GL_TEXTURE_MIN_LOD, t.MinLod))
+	if t.MinLod() != defaults.MinLod() {
+		write(cb.GlTexParameterf(target, GLenum_GL_TEXTURE_MIN_LOD, t.MinLod()))
 	}
-	if (t.BorderColor != Vec4f{}) {
-		write(cb.GlTexParameterfv(target, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, t.BorderColor)))
-	} else if (t.BorderColorI != Vec4i{}) {
-		write(cb.GlTexParameteriv(target, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, t.BorderColorI)))
+	if !t.BorderColor().EqualTo(0, 0, 0, 0) {
+		write(cb.GlTexParameterfv(target, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, t.BorderColor())))
+	} else if !t.BorderColorI().EqualTo(0, 0, 0, 0) {
+		write(cb.GlTexParameteriv(target, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, t.BorderColorI())))
 	}
-	if t.MaxAnisotropy != 1.0 {
-		write(cb.GlTexParameterf(target, GLenum_GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(t.MaxAnisotropy)))
+	if t.MaxAnisotropy() != 1.0 {
+		write(cb.GlTexParameterf(target, GLenum_GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(t.MaxAnisotropy())))
 	}
 }
 
-func (sb *stateBuilder) samplerObject(ctx context.Context, s *Sampler) {
+func (sb *stateBuilder) samplerObject(ctx context.Context, s Samplerʳ) {
 	write, cb, id := sb.write, sb.cb, s.GetID()
 
-	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_COMPARE_FUNC, GLint(s.CompareFunc)))
-	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_COMPARE_MODE, GLint(s.CompareMode)))
-	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_MIN_FILTER, GLint(s.MinFilter)))
-	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_MAG_FILTER, GLint(s.MagFilter)))
-	write(cb.GlSamplerParameterf(id, GLenum_GL_TEXTURE_MIN_LOD, GLfloat(s.MinLod)))
-	write(cb.GlSamplerParameterf(id, GLenum_GL_TEXTURE_MAX_LOD, GLfloat(s.MaxLod)))
-	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_WRAP_R, GLint(s.WrapR)))
-	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_WRAP_S, GLint(s.WrapS)))
-	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_WRAP_T, GLint(s.WrapT)))
-	write(cb.GlSamplerParameterf(id, GLenum_GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(s.MaxAnisotropy)))
-	if (s.BorderColor != Vec4f{}) {
-		write(cb.GlSamplerParameterfv(id, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, s.BorderColor))) // GLES32
-	} else if (s.BorderColorI != Vec4i{}) {
-		write(cb.GlSamplerParameterIiv(id, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, s.BorderColorI))) // GLES32
+	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_COMPARE_FUNC, GLint(s.CompareFunc())))
+	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_COMPARE_MODE, GLint(s.CompareMode())))
+	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_MIN_FILTER, GLint(s.MinFilter())))
+	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_MAG_FILTER, GLint(s.MagFilter())))
+	write(cb.GlSamplerParameterf(id, GLenum_GL_TEXTURE_MIN_LOD, GLfloat(s.MinLod())))
+	write(cb.GlSamplerParameterf(id, GLenum_GL_TEXTURE_MAX_LOD, GLfloat(s.MaxLod())))
+	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_WRAP_R, GLint(s.WrapR())))
+	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_WRAP_S, GLint(s.WrapS())))
+	write(cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_WRAP_T, GLint(s.WrapT())))
+	write(cb.GlSamplerParameterf(id, GLenum_GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(s.MaxAnisotropy())))
+	if !s.BorderColor().EqualTo(0, 0, 0, 0) {
+		write(cb.GlSamplerParameterfv(id, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, s.BorderColor()))) // GLES32
+	} else if !s.BorderColorI().EqualTo(0, 0, 0, 0) {
+		write(cb.GlSamplerParameterIiv(id, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, s.BorderColorI()))) // GLES32
 	}
 }
 
-func (sb *stateBuilder) queryObject(ctx context.Context, q *Query) {
+func (sb *stateBuilder) queryObject(ctx context.Context, q Queryʳ) {
 	write, cb, id := sb.write, sb.cb, q.GetID()
 
-	target := q.Type
+	target := q.Type()
 	write(cb.GlBeginQuery(target, id))
-	if !q.Active {
+	if !q.Active() {
 		write(cb.GlEndQuery(target))
 	}
 }
 
-func (sb *stateBuilder) syncObject(ctx context.Context, s *SyncObject) {
+func (sb *stateBuilder) syncObject(ctx context.Context, s SyncObjectʳ) {
 	write, cb := sb.write, sb.cb
 
-	write(cb.GlFenceSync(GLenum_GL_SYNC_GPU_COMMANDS_COMPLETE, 0, s.ID))
+	write(cb.GlFenceSync(GLenum_GL_SYNC_GPU_COMMANDS_COMPLETE, 0, s.ID()))
 }
 
-func (sb *stateBuilder) transformFeedbackObject(ctx context.Context, tf *TransformFeedback) {
+func (sb *stateBuilder) transformFeedbackObject(ctx context.Context, tf TransformFeedbackʳ) {
 	write, cb, id := sb.write, sb.cb, tf.GetID()
 
 	write(cb.GlBindTransformFeedback(GLenum_GL_TRANSFORM_FEEDBACK, id))
-	if tf.Active == GLboolean_GL_TRUE {
+	if tf.Active() == GLboolean_GL_TRUE {
 		sb.E(ctx, "Transform feedback data was not restored") // TODO
-		write(cb.GlBeginTransformFeedback(tf.PrimitiveMode))
+		write(cb.GlBeginTransformFeedback(tf.PrimitiveMode()))
 		write(cb.GlPauseTransformFeedback())
 	}
 	write(cb.GlBindTransformFeedback(GLenum_GL_TRANSFORM_FEEDBACK, 0))
 }
 
-func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao *VertexArray) {
+func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ) {
 	write, cb, id := sb.write, sb.cb, vao.GetID()
 
 	write(cb.GlBindVertexArray(id))
 	if id > 0 {
-		for loc, vaa := range vao.VertexAttributeArrays.Range() {
-			defaultArray := NewVertexAttributeArray()
-			defaultArray.Binding = vao.VertexBufferBindings.Get(VertexBufferBindingIndex(loc))
-			if *vaa == defaultArray {
+		for loc, vaa := range vao.VertexAttributeArrays().Range() {
+			defaultArray := MakeVertexAttributeArray()
+			defaultArray.SetBinding(vao.VertexBufferBindings().Get(VertexBufferBindingIndex(loc)))
+			if vaa.Get().Equals(defaultArray) {
 				continue // Default
 			}
-			if vaa.Enabled == GLboolean_GL_TRUE {
+			if vaa.Enabled() == GLboolean_GL_TRUE {
 				write(cb.GlEnableVertexAttribArray(loc))
 			}
-			if vaa.Stride != 0 || vaa.Pointer != memory.Nullptr {
+			if vaa.Stride() != 0 || vaa.Pointer() != memory.Nullptr {
 				// Same as glVertexAttribFormat for our purposes here, with the difference that
 				// it sets the obsolete and unused properties 'stride' and 'pointer'.
-				write(cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, vaa.Binding.Buffer.GetID()))
-				if vaa.Integer == GLboolean_GL_TRUE {
-					write(cb.GlVertexAttribIPointer(loc, vaa.Size, vaa.Type, vaa.Stride, vaa.Pointer))
+				write(cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, vaa.Binding().Buffer().GetID()))
+				if vaa.Integer() == GLboolean_GL_TRUE {
+					write(cb.GlVertexAttribIPointer(loc, vaa.Size(), vaa.Type(), vaa.Stride(), vaa.Pointer()))
 				} else {
-					write(cb.GlVertexAttribPointer(loc, vaa.Size, vaa.Type, vaa.Normalized, vaa.Stride, vaa.Pointer))
+					write(cb.GlVertexAttribPointer(loc, vaa.Size(), vaa.Type(), vaa.Normalized(), vaa.Stride(), vaa.Pointer()))
 				}
 			} else {
-				if vaa.Integer == GLboolean_GL_TRUE {
-					write(cb.GlVertexAttribIFormat(loc, vaa.Size, vaa.Type, vaa.RelativeOffset))
+				if vaa.Integer() == GLboolean_GL_TRUE {
+					write(cb.GlVertexAttribIFormat(loc, vaa.Size(), vaa.Type(), vaa.RelativeOffset()))
 				} else {
-					write(cb.GlVertexAttribFormat(loc, vaa.Size, vaa.Type, vaa.Normalized, vaa.RelativeOffset))
+					write(cb.GlVertexAttribFormat(loc, vaa.Size(), vaa.Type(), vaa.Normalized(), vaa.RelativeOffset()))
 				}
 			}
-			if VertexBufferBindingIndex(loc) != vaa.Binding.Id {
-				write(cb.GlVertexAttribBinding(loc, vaa.Binding.Id))
+			if VertexBufferBindingIndex(loc) != vaa.Binding().Id() {
+				write(cb.GlVertexAttribBinding(loc, vaa.Binding().Id()))
 			}
 		}
-		for i, b := range vao.VertexBufferBindings.Range() {
-			defaultBinding := NewVertexBufferBinding()
-			defaultBinding.Id = VertexBufferBindingIndex(i)
-			if *b == defaultBinding {
+		for i, b := range vao.VertexBufferBindings().Range() {
+			defaultBinding := MakeVertexBufferBinding()
+			defaultBinding.SetId(VertexBufferBindingIndex(i))
+			if b.Get().Equals(defaultBinding) {
 				continue
 			}
-			write(cb.GlBindVertexBuffer(i, b.Buffer.GetID(), b.Offset, b.Stride))
-			if divisor := b.Divisor; divisor != 0 {
+			write(cb.GlBindVertexBuffer(i, b.Buffer().GetID(), b.Offset(), b.Stride()))
+			if divisor := b.Divisor(); divisor != 0 {
 				write(cb.GlVertexBindingDivisor(i, divisor))
 			}
 		}
 	} else {
-		for loc, vaa := range vao.VertexAttributeArrays.Range() {
-			defaultArray := NewVertexAttributeArray()
-			defaultArray.Binding = vao.VertexBufferBindings.Get(VertexBufferBindingIndex(loc))
-			if *vaa == defaultArray {
+		for loc, vaa := range vao.VertexAttributeArrays().Range() {
+			defaultArray := MakeVertexAttributeArray()
+			defaultArray.SetBinding(vao.VertexBufferBindings().Get(VertexBufferBindingIndex(loc)))
+			if vaa.Get().Equals(defaultArray) {
 				continue // Default
 			}
-			if vaa.Enabled == GLboolean_GL_TRUE {
+			if vaa.Enabled() == GLboolean_GL_TRUE {
 				write(cb.GlEnableVertexAttribArray(loc))
 			}
-			write(cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, vaa.Binding.Buffer.GetID()))
-			if vaa.Integer == GLboolean_GL_TRUE {
-				write(cb.GlVertexAttribIPointer(loc, vaa.Size, vaa.Type, vaa.Stride, vaa.Pointer))
+			write(cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, vaa.Binding().Buffer().GetID()))
+			if vaa.Integer() == GLboolean_GL_TRUE {
+				write(cb.GlVertexAttribIPointer(loc, vaa.Size(), vaa.Type(), vaa.Stride(), vaa.Pointer()))
 			} else {
-				write(cb.GlVertexAttribPointer(loc, vaa.Size, vaa.Type, vaa.Normalized, vaa.Stride, vaa.Pointer))
+				write(cb.GlVertexAttribPointer(loc, vaa.Size(), vaa.Type(), vaa.Normalized(), vaa.Stride(), vaa.Pointer()))
 			}
-			if divisor := vaa.Binding.Divisor; divisor != 0 {
+			if divisor := vaa.Binding().Divisor(); divisor != 0 {
 				write(cb.GlVertexAttribDivisor(loc, divisor))
 			}
 		}
@@ -979,124 +979,127 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao *VertexArray)
 	write(cb.GlBindVertexArray(0))
 }
 
-func (sb *stateBuilder) vertexState(ctx context.Context, vs *VertexState) {
+func (sb *stateBuilder) vertexState(ctx context.Context, vs VertexState) {
 	write, cb := sb.write, sb.cb
 
-	for loc, att := range vs.Attributes.Range() {
-		switch att.Type {
+	for loc, att := range vs.Attributes().Range() {
+		switch att.Type() {
 		case GLenum_GL_FLOAT_VEC4:
-			write(cb.GlVertexAttrib4fv(loc, sb.readsSlice(ctx, att.Value)))
+			write(cb.GlVertexAttrib4fv(loc, sb.readsSlice(ctx, att.Value())))
 		case GLenum_GL_INT_VEC4:
-			write(cb.GlVertexAttribI4iv(loc, sb.readsSlice(ctx, att.Value)))
+			write(cb.GlVertexAttribI4iv(loc, sb.readsSlice(ctx, att.Value())))
 		case GLenum_GL_UNSIGNED_INT_VEC4:
-			write(cb.GlVertexAttribI4uiv(loc, sb.readsSlice(ctx, att.Value)))
+			write(cb.GlVertexAttribI4uiv(loc, sb.readsSlice(ctx, att.Value())))
 		}
 	}
 
-	write(cb.GlPatchParameteri(GLenum_GL_PATCH_VERTICES, vs.PatchVertices))
+	write(cb.GlPatchParameteri(GLenum_GL_PATCH_VERTICES, vs.PatchVertices()))
 
-	sb.enable(GLenum_GL_PRIMITIVE_RESTART_FIXED_INDEX, vs.PrimitiveRestartFixedIndex)
+	sb.enable(GLenum_GL_PRIMITIVE_RESTART_FIXED_INDEX, vs.PrimitiveRestartFixedIndex())
 }
 
-func (sb *stateBuilder) reasterizationState(ctx context.Context, rs *RasterizationState) {
+func (sb *stateBuilder) reasterizationState(ctx context.Context, rs RasterizationState) {
 	write, cb := sb.write, sb.cb
 
-	write(cb.GlViewport(rs.Viewport.X, rs.Viewport.Y, rs.Viewport.Width, rs.Viewport.Height))
-	write(cb.GlDepthRangef(rs.DepthRange[0], rs.DepthRange[1]))
-	if rs.PrimitiveBoundingBox != NewBoundingBox() {
-		min, max := rs.PrimitiveBoundingBox.Min, rs.PrimitiveBoundingBox.Max
-		write(cb.GlPrimitiveBoundingBox(min[0], min[1], min[2], min[3], max[0], max[1], max[2], max[3]))
+	write(cb.GlViewport(rs.Viewport().X(), rs.Viewport().Y(), rs.Viewport().Width(), rs.Viewport().Height()))
+	write(cb.GlDepthRangef(rs.DepthRange().Get(0), rs.DepthRange().Get(1)))
+	if !rs.PrimitiveBoundingBox().IsUnit() {
+		min, max := rs.PrimitiveBoundingBox().Min(), rs.PrimitiveBoundingBox().Max()
+		write(cb.GlPrimitiveBoundingBox(
+			min.Get(0), min.Get(1), min.Get(2), min.Get(3),
+			max.Get(0), max.Get(1), max.Get(2), max.Get(3)),
+		)
 	}
 
 	//  Rasterization
-	sb.enable(GLenum_GL_RASTERIZER_DISCARD, rs.RasterizerDiscard)
-	write(cb.GlLineWidth(rs.LineWidth))
-	sb.enable(GLenum_GL_CULL_FACE, rs.CullFace)
-	write(cb.GlCullFace(rs.CullFaceMode))
-	write(cb.GlFrontFace(rs.FrontFace))
-	write(cb.GlPolygonOffset(rs.PolygonOffsetFactor, rs.PolygonOffsetUnits))
-	sb.enable(GLenum_GL_POLYGON_OFFSET_FILL, rs.PolygonOffsetFill)
+	sb.enable(GLenum_GL_RASTERIZER_DISCARD, rs.RasterizerDiscard())
+	write(cb.GlLineWidth(rs.LineWidth()))
+	sb.enable(GLenum_GL_CULL_FACE, rs.CullFace())
+	write(cb.GlCullFace(rs.CullFaceMode()))
+	write(cb.GlFrontFace(rs.FrontFace()))
+	write(cb.GlPolygonOffset(rs.PolygonOffsetFactor(), rs.PolygonOffsetUnits()))
+	sb.enable(GLenum_GL_POLYGON_OFFSET_FILL, rs.PolygonOffsetFill())
 
 	// Multisampling
-	sb.enable(GLenum_GL_SAMPLE_ALPHA_TO_COVERAGE, rs.SampleAlphaToCoverage)
-	sb.enable(GLenum_GL_SAMPLE_COVERAGE, rs.SampleCoverage)
-	write(cb.GlSampleCoverage(rs.SampleCoverageValue, rs.SampleCoverageInvert))
-	sb.enable(GLenum_GL_SAMPLE_SHADING, rs.SampleShading)
-	write(cb.GlMinSampleShading(rs.MinSampleShadingValue))
-	sb.enable(GLenum_GL_SAMPLE_MASK, rs.SampleMask)
-	for i, mask := range rs.SampleMaskValue.Range() {
+	sb.enable(GLenum_GL_SAMPLE_ALPHA_TO_COVERAGE, rs.SampleAlphaToCoverage())
+	sb.enable(GLenum_GL_SAMPLE_COVERAGE, rs.SampleCoverage())
+	write(cb.GlSampleCoverage(rs.SampleCoverageValue(), rs.SampleCoverageInvert()))
+	sb.enable(GLenum_GL_SAMPLE_SHADING, rs.SampleShading())
+	write(cb.GlMinSampleShading(rs.MinSampleShadingValue()))
+	sb.enable(GLenum_GL_SAMPLE_MASK, rs.SampleMask())
+	for i, mask := range rs.SampleMaskValue().Range() {
 		write(cb.GlSampleMaski(i, mask)) // GLES31
 	}
 }
 
-func (sb *stateBuilder) pixelState(ctx context.Context, ps *PixelState) {
+func (sb *stateBuilder) pixelState(ctx context.Context, ps PixelState) {
 	write, cb := sb.write, sb.cb
 
 	// Scissor
-	sb.enable(GLenum_GL_SCISSOR_TEST, ps.Scissor.Test)
-	write(cb.GlScissor(ps.Scissor.Box.X, ps.Scissor.Box.Y, ps.Scissor.Box.Width, ps.Scissor.Box.Height))
+	sb.enable(GLenum_GL_SCISSOR_TEST, ps.Scissor().Test())
+	write(cb.GlScissor(ps.Scissor().Box().X(), ps.Scissor().Box().Y(), ps.Scissor().Box().Width(), ps.Scissor().Box().Height()))
 
 	// Stencil
-	st := ps.Stencil
-	sb.enable(GLenum_GL_STENCIL_TEST, st.Test)
-	write(cb.GlStencilFuncSeparate(GLenum_GL_FRONT, st.Func, st.Ref, st.ValueMask))
-	write(cb.GlStencilOpSeparate(GLenum_GL_FRONT, st.Fail, st.PassDepthFail, st.PassDepthPass))
-	write(cb.GlStencilFuncSeparate(GLenum_GL_BACK, st.BackFunc, st.BackRef, st.BackValueMask))
-	write(cb.GlStencilOpSeparate(GLenum_GL_BACK, st.BackFail, st.BackPassDepthFail, st.BackPassDepthPass))
+	st := ps.Stencil()
+	sb.enable(GLenum_GL_STENCIL_TEST, st.Test())
+	write(cb.GlStencilFuncSeparate(GLenum_GL_FRONT, st.Func(), st.Ref(), st.ValueMask()))
+	write(cb.GlStencilOpSeparate(GLenum_GL_FRONT, st.Fail(), st.PassDepthFail(), st.PassDepthPass()))
+	write(cb.GlStencilFuncSeparate(GLenum_GL_BACK, st.BackFunc(), st.BackRef(), st.BackValueMask()))
+	write(cb.GlStencilOpSeparate(GLenum_GL_BACK, st.BackFail(), st.BackPassDepthFail(), st.BackPassDepthPass()))
 
 	// Blend
-	write(cb.GlBlendColor(ps.BlendColor.Red, ps.BlendColor.Green, ps.BlendColor.Blue, ps.BlendColor.Alpha))
-	for i, bs := range ps.Blend.Range() {
-		write(cb.GlBlendEquationSeparatei(i, bs.EquationRgb, bs.EquationAlpha))           // GLES32
-		write(cb.GlBlendFuncSeparatei(i, bs.SrcRgb, bs.DstRgb, bs.SrcAlpha, bs.DstAlpha)) // GLES32
-		sb.enablei(GLenum_GL_BLEND, GLuint(i), bs.Enabled)                                // GLES32?
+	write(cb.GlBlendColor(ps.BlendColor().Red(), ps.BlendColor().Green(), ps.BlendColor().Blue(), ps.BlendColor().Alpha()))
+	for i, bs := range ps.Blend().Range() {
+		write(cb.GlBlendEquationSeparatei(i, bs.EquationRgb(), bs.EquationAlpha()))               // GLES32
+		write(cb.GlBlendFuncSeparatei(i, bs.SrcRgb(), bs.DstRgb(), bs.SrcAlpha(), bs.DstAlpha())) // GLES32
+		sb.enablei(GLenum_GL_BLEND, GLuint(i), bs.Enabled())                                      // GLES32?
 	}
 
 	// Depth
-	sb.enable(GLenum_GL_DEPTH_TEST, ps.Depth.Test)
-	write(cb.GlDepthFunc(ps.Depth.Func))
+	sb.enable(GLenum_GL_DEPTH_TEST, ps.Depth().Test())
+	write(cb.GlDepthFunc(ps.Depth().Func()))
 
-	sb.enable(GLenum_GL_DITHER, ps.Dither)
-	sb.enable(GLenum_GL_FRAMEBUFFER_SRGB_EXT, ps.FramebufferSrgb)
+	sb.enable(GLenum_GL_DITHER, ps.Dither())
+	sb.enable(GLenum_GL_FRAMEBUFFER_SRGB_EXT, ps.FramebufferSrgb())
 
 	// Framebuffer control
-	for i, mask := range ps.ColorWritemask.Range() {
-		write(cb.GlColorMaski(i, mask.R, mask.G, mask.B, mask.A)) // GLES32
+	for i, mask := range ps.ColorWritemask().Range() {
+		write(cb.GlColorMaski(i, mask.R(), mask.G(), mask.B(), mask.A())) // GLES32
 	}
-	write(cb.GlDepthMask(ps.DepthWritemask))
-	write(cb.GlStencilMaskSeparate(GLenum_GL_FRONT, ps.StencilWritemask))
-	write(cb.GlStencilMaskSeparate(GLenum_GL_BACK, ps.StencilBackWritemask))
-	clearColor := ps.ColorClearValue
-	write(cb.GlClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]))
-	write(cb.GlClearDepthf(ps.DepthClearValue))
-	write(cb.GlClearStencil(ps.StencilClearValue))
+	write(cb.GlDepthMask(ps.DepthWritemask()))
+	write(cb.GlStencilMaskSeparate(GLenum_GL_FRONT, ps.StencilWritemask()))
+	write(cb.GlStencilMaskSeparate(GLenum_GL_BACK, ps.StencilBackWritemask()))
+	clearColor := ps.ColorClearValue()
+	write(cb.GlClearColor(clearColor.Get(0), clearColor.Get(1), clearColor.Get(2), clearColor.Get(3)))
+	write(cb.GlClearDepthf(ps.DepthClearValue()))
+	write(cb.GlClearStencil(ps.StencilClearValue()))
 }
 
 // must be done after all data uploads (because it sets unpack state)
-func (sb *stateBuilder) otherState(ctx context.Context, os *OtherState) {
+func (sb *stateBuilder) otherState(ctx context.Context, os OtherState) {
 	write, cb := sb.write, sb.cb
 
 	// glPixelStorei
-	write(cb.GlPixelStorei(GLenum_GL_PACK_ALIGNMENT, os.Pack.Alignment))
-	write(cb.GlPixelStorei(GLenum_GL_PACK_IMAGE_HEIGHT, os.Pack.ImageHeight))
-	write(cb.GlPixelStorei(GLenum_GL_PACK_ROW_LENGTH, os.Pack.RowLength))
-	write(cb.GlPixelStorei(GLenum_GL_PACK_SKIP_IMAGES, os.Pack.SkipImages))
-	write(cb.GlPixelStorei(GLenum_GL_PACK_SKIP_PIXELS, os.Pack.SkipPixels))
-	write(cb.GlPixelStorei(GLenum_GL_PACK_SKIP_ROWS, os.Pack.SkipRows))
-	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, os.Unpack.Alignment))
-	write(cb.GlPixelStorei(GLenum_GL_UNPACK_IMAGE_HEIGHT, os.Unpack.ImageHeight))
-	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ROW_LENGTH, os.Unpack.RowLength))
-	write(cb.GlPixelStorei(GLenum_GL_UNPACK_SKIP_IMAGES, os.Unpack.SkipImages))
-	write(cb.GlPixelStorei(GLenum_GL_UNPACK_SKIP_PIXELS, os.Unpack.SkipPixels))
-	write(cb.GlPixelStorei(GLenum_GL_UNPACK_SKIP_ROWS, os.Unpack.SkipRows))
+	write(cb.GlPixelStorei(GLenum_GL_PACK_ALIGNMENT, os.Pack().Alignment()))
+	write(cb.GlPixelStorei(GLenum_GL_PACK_IMAGE_HEIGHT, os.Pack().ImageHeight()))
+	write(cb.GlPixelStorei(GLenum_GL_PACK_ROW_LENGTH, os.Pack().RowLength()))
+	write(cb.GlPixelStorei(GLenum_GL_PACK_SKIP_IMAGES, os.Pack().SkipImages()))
+	write(cb.GlPixelStorei(GLenum_GL_PACK_SKIP_PIXELS, os.Pack().SkipPixels()))
+	write(cb.GlPixelStorei(GLenum_GL_PACK_SKIP_ROWS, os.Pack().SkipRows()))
+	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, os.Unpack().Alignment()))
+	write(cb.GlPixelStorei(GLenum_GL_UNPACK_IMAGE_HEIGHT, os.Unpack().ImageHeight()))
+	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ROW_LENGTH, os.Unpack().RowLength()))
+	write(cb.GlPixelStorei(GLenum_GL_UNPACK_SKIP_IMAGES, os.Unpack().SkipImages()))
+	write(cb.GlPixelStorei(GLenum_GL_UNPACK_SKIP_PIXELS, os.Unpack().SkipPixels()))
+	write(cb.GlPixelStorei(GLenum_GL_UNPACK_SKIP_ROWS, os.Unpack().SkipRows()))
 
 	// Debug state
-	write(cb.GlDebugMessageCallback(os.Debug.CallbackFunction, os.Debug.CallbackUserParam))
-	sb.enable(GLenum_GL_DEBUG_OUTPUT, os.Debug.Output)
-	sb.enable(GLenum_GL_DEBUG_OUTPUT_SYNCHRONOUS, os.Debug.OutputSynchronous)
+	write(cb.GlDebugMessageCallback(os.Debug().CallbackFunction(), os.Debug().CallbackUserParam()))
+	sb.enable(GLenum_GL_DEBUG_OUTPUT, os.Debug().Output())
+	sb.enable(GLenum_GL_DEBUG_OUTPUT_SYNCHRONOUS, os.Debug().OutputSynchronous())
 }
 
-func (sb *stateBuilder) debugLabels(ctx context.Context, c *Context) {
+func (sb *stateBuilder) debugLabels(ctx context.Context, c Contextʳ) {
 	write, cb := sb.write, sb.cb
 
 	label := func(target GLenum, id GLuint, text string) {
@@ -1104,43 +1107,43 @@ func (sb *stateBuilder) debugLabels(ctx context.Context, c *Context) {
 			write(cb.GlObjectLabel(target, id, GLsizei(len(text)), sb.readsData(ctx, text)))
 		}
 	}
-	for id, obj := range c.Objects.Textures.Range() {
-		label(GLenum_GL_TEXTURE, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Textures().Range() {
+		label(GLenum_GL_TEXTURE, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.Framebuffers.Range() {
-		label(GLenum_GL_FRAMEBUFFER, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Framebuffers().Range() {
+		label(GLenum_GL_FRAMEBUFFER, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.Renderbuffers.Range() {
-		label(GLenum_GL_RENDERBUFFER, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Renderbuffers().Range() {
+		label(GLenum_GL_RENDERBUFFER, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.Buffers.Range() {
-		label(GLenum_GL_BUFFER, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Buffers().Range() {
+		label(GLenum_GL_BUFFER, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.Shaders.Range() {
-		label(GLenum_GL_SHADER, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Shaders().Range() {
+		label(GLenum_GL_SHADER, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.Programs.Range() {
-		label(GLenum_GL_PROGRAM, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Programs().Range() {
+		label(GLenum_GL_PROGRAM, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.VertexArrays.Range() {
-		label(GLenum_GL_VERTEX_ARRAY, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().VertexArrays().Range() {
+		label(GLenum_GL_VERTEX_ARRAY, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.Queries.Range() {
-		label(GLenum_GL_QUERY, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Queries().Range() {
+		label(GLenum_GL_QUERY, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.Samplers.Range() {
-		label(GLenum_GL_SAMPLER, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Samplers().Range() {
+		label(GLenum_GL_SAMPLER, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.TransformFeedbacks.Range() {
-		label(GLenum_GL_TRANSFORM_FEEDBACK, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().TransformFeedbacks().Range() {
+		label(GLenum_GL_TRANSFORM_FEEDBACK, GLuint(id), obj.Label())
 	}
-	for id, obj := range c.Objects.Pipelines.Range() {
-		label(GLenum_GL_PROGRAM_PIPELINE, GLuint(id), obj.Label)
+	for id, obj := range c.Objects().Pipelines().Range() {
+		label(GLenum_GL_PROGRAM_PIPELINE, GLuint(id), obj.Label())
 	}
 }
 
 // bindings must be done at the end, since other stages overwrite them.
-func (sb *stateBuilder) bindings(ctx context.Context, c *Context) {
+func (sb *stateBuilder) bindings(ctx context.Context, c Contextʳ) {
 	write, cb := sb.write, sb.cb
 
 	// Most of this method assumes binding points are initialized to 0.
@@ -1155,83 +1158,83 @@ func (sb *stateBuilder) bindings(ctx context.Context, c *Context) {
 	{
 		bind := func(target GLenum, bindings GLuintːBufferBindingᵐ) {
 			for index, b := range bindings.Range() {
-				if id := b.Binding.GetID(); id != 0 {
-					write(cb.GlBindBufferRange(target, index, id, b.Start, b.Size))
+				if id := b.Binding().GetID(); id != 0 {
+					write(cb.GlBindBufferRange(target, index, id, b.Start(), b.Size()))
 				}
 			}
 		}
-		bind(GLenum_GL_UNIFORM_BUFFER, c.Bound.UniformBuffers)              //GLES30
-		bind(GLenum_GL_ATOMIC_COUNTER_BUFFER, c.Bound.AtomicCounterBuffers) //GLES31
-		bind(GLenum_GL_SHADER_STORAGE_BUFFER, c.Bound.ShaderStorageBuffers) //GLES31
-		for _, tf := range c.Objects.TransformFeedbacks.Range() {
+		bind(GLenum_GL_UNIFORM_BUFFER, c.Bound().UniformBuffers())              //GLES30
+		bind(GLenum_GL_ATOMIC_COUNTER_BUFFER, c.Bound().AtomicCounterBuffers()) //GLES31
+		bind(GLenum_GL_SHADER_STORAGE_BUFFER, c.Bound().ShaderStorageBuffers()) //GLES31
+		for _, tf := range c.Objects().TransformFeedbacks().Range() {
 			write(cb.GlBindTransformFeedback(GLenum_GL_TRANSFORM_FEEDBACK, tf.GetID()))
-			bind(GLenum_GL_TRANSFORM_FEEDBACK_BUFFER, tf.Buffers) //GLES30
+			bind(GLenum_GL_TRANSFORM_FEEDBACK_BUFFER, tf.Buffers()) //GLES30
 		}
 	}
 
 	// Non-indexed buffers (must be after indexed due to generic binding points)
 	{
-		bind := func(target GLenum, b *Buffer) {
+		bind := func(target GLenum, b Bufferʳ) {
 			if id := b.GetID(); id != 0 {
 				write(cb.GlBindBuffer(target, id))
 			}
 		}
-		bind(GLenum_GL_ARRAY_BUFFER, c.Bound.ArrayBuffer)                            //GLES20
-		bind(GLenum_GL_ELEMENT_ARRAY_BUFFER, c.Bound.VertexArray.ElementArrayBuffer) //GLES20
-		bind(GLenum_GL_COPY_READ_BUFFER, c.Bound.CopyReadBuffer)                     //GLES30
-		bind(GLenum_GL_COPY_WRITE_BUFFER, c.Bound.CopyWriteBuffer)                   //GLES30
-		bind(GLenum_GL_PIXEL_PACK_BUFFER, c.Bound.PixelPackBuffer)                   //GLES30
-		bind(GLenum_GL_PIXEL_UNPACK_BUFFER, c.Bound.PixelUnpackBuffer)               //GLES30
-		bind(GLenum_GL_UNIFORM_BUFFER, c.Bound.UniformBuffer)                        //GLES30
-		bind(GLenum_GL_ATOMIC_COUNTER_BUFFER, c.Bound.AtomicCounterBuffer)           //GLES31
-		bind(GLenum_GL_DISPATCH_INDIRECT_BUFFER, c.Bound.DispatchIndirectBuffer)     //GLES31
-		bind(GLenum_GL_DRAW_INDIRECT_BUFFER, c.Bound.DrawIndirectBuffer)             //GLES31
-		bind(GLenum_GL_SHADER_STORAGE_BUFFER, c.Bound.ShaderStorageBuffer)           //GLES31
-		bind(GLenum_GL_TEXTURE_BUFFER, c.Bound.TextureBuffer)                        //GLES32
-		for _, tf := range c.Objects.TransformFeedbacks.Range() {
+		bind(GLenum_GL_ARRAY_BUFFER, c.Bound().ArrayBuffer())                              //GLES20
+		bind(GLenum_GL_ELEMENT_ARRAY_BUFFER, c.Bound().VertexArray().ElementArrayBuffer()) //GLES20
+		bind(GLenum_GL_COPY_READ_BUFFER, c.Bound().CopyReadBuffer())                       //GLES30
+		bind(GLenum_GL_COPY_WRITE_BUFFER, c.Bound().CopyWriteBuffer())                     //GLES30
+		bind(GLenum_GL_PIXEL_PACK_BUFFER, c.Bound().PixelPackBuffer())                     //GLES30
+		bind(GLenum_GL_PIXEL_UNPACK_BUFFER, c.Bound().PixelUnpackBuffer())                 //GLES30
+		bind(GLenum_GL_UNIFORM_BUFFER, c.Bound().UniformBuffer())                          //GLES30
+		bind(GLenum_GL_ATOMIC_COUNTER_BUFFER, c.Bound().AtomicCounterBuffer())             //GLES31
+		bind(GLenum_GL_DISPATCH_INDIRECT_BUFFER, c.Bound().DispatchIndirectBuffer())       //GLES31
+		bind(GLenum_GL_DRAW_INDIRECT_BUFFER, c.Bound().DrawIndirectBuffer())               //GLES31
+		bind(GLenum_GL_SHADER_STORAGE_BUFFER, c.Bound().ShaderStorageBuffer())             //GLES31
+		bind(GLenum_GL_TEXTURE_BUFFER, c.Bound().TextureBuffer())                          //GLES32
+		for _, tf := range c.Objects().TransformFeedbacks().Range() {
 			write(cb.GlBindTransformFeedback(GLenum_GL_TRANSFORM_FEEDBACK, tf.GetID()))
-			bind(GLenum_GL_TRANSFORM_FEEDBACK_BUFFER, tf.Buffer) //GLES30
+			bind(GLenum_GL_TRANSFORM_FEEDBACK_BUFFER, tf.Buffer()) //GLES30
 		}
 	}
 
 	// Samplers
-	for unit, tu := range c.Objects.TextureUnits.Range() {
-		if sampler := tu.SamplerBinding.GetID(); sampler != 0 {
+	for unit, tu := range c.Objects().TextureUnits().Range() {
+		if sampler := tu.SamplerBinding().GetID(); sampler != 0 {
 			write(cb.GlBindSampler(GLuint(unit), sampler))
 		}
 	}
 
 	// Programs
-	write(cb.GlUseProgram(c.Bound.Program.GetID()))
-	if id := c.Bound.Pipeline.GetID(); id != 0 {
+	write(cb.GlUseProgram(c.Bound().Program().GetID()))
+	if id := c.Bound().Pipeline().GetID(); id != 0 {
 		write(cb.GlBindProgramPipeline(id))
 	}
 
 	// Transform feedback
-	write(cb.GlBindTransformFeedback(GLenum_GL_TRANSFORM_FEEDBACK, c.Bound.TransformFeedback.GetID()))
-	if c.Bound.TransformFeedback.Active == GLboolean_GL_TRUE &&
-		c.Bound.TransformFeedback.Paused == GLboolean_GL_FALSE {
+	write(cb.GlBindTransformFeedback(GLenum_GL_TRANSFORM_FEEDBACK, c.Bound().TransformFeedback().GetID()))
+	if c.Bound().TransformFeedback().Active() == GLboolean_GL_TRUE &&
+		c.Bound().TransformFeedback().Paused() == GLboolean_GL_FALSE {
 		// Active and unpaused transform feedback is very limiting on possible state modifications.
 		// So create it in paused state and resume it fairly late (only one can be active&resumed).
 		write(cb.GlResumeTransformFeedback())
 	}
 
 	// Vertex Array
-	write(cb.GlBindVertexArray(c.Bound.VertexArray.GetID()))
+	write(cb.GlBindVertexArray(c.Bound().VertexArray().GetID()))
 }
 
 // deleteMarkedObjects will delete objects if they are marked for deletion.
 // This must be done after bindings since bindings are still keeping them alive.
-func (sb *stateBuilder) deleteMarkedObjects(ctx context.Context, c *Context) {
+func (sb *stateBuilder) deleteMarkedObjects(ctx context.Context, c Contextʳ) {
 	write, cb := sb.write, sb.cb
 
-	for id, s := range c.Objects.Shaders.Range() {
-		if s.DeleteStatus {
+	for id, s := range c.Objects().Shaders().Range() {
+		if s.DeleteStatus() {
 			write(cb.GlDeleteShader(id))
 		}
 	}
-	for id, p := range c.Objects.Programs.Range() {
-		if p.DeleteStatus {
+	for id, p := range c.Objects().Programs().Range() {
+		if p.DeleteStatus() {
 			write(cb.GlDeleteProgram(id))
 		}
 	}

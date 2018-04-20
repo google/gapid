@@ -42,7 +42,7 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 	return nil, nil
 }
 
-func (*State) SetupInitialState(ctx context.Context) {}
+func (*State) SetupInitialState(ctx context.Context, s *api.GlobalState) {}
 
 func (s *State) InitializeCustomState() {}
 

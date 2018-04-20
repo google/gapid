@@ -46,31 +46,29 @@ func TestDeadCommandRemoval(t *testing.T) {
 	isDead := map[api.Cmd]bool{}
 	dead := func(cmd api.Cmd) api.Cmd { isDead[cmd] = true; return cmd }
 
-	programInfoA := &gles.LinkProgramExtra{
-		LinkStatus: gles.GLboolean_GL_TRUE,
-		ActiveResources: &gles.ActiveProgramResources{
-			DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-				Name: "uniforms",
-				Type: gles.GLenum_GL_FLOAT_VEC4,
-				Locations: gles.NewU32ːGLintᵐ().
-					Add(0, 0).Add(1, 1).Add(2, 2).Add(3, 3).Add(4, 4).
-					Add(5, 5).Add(6, 6).Add(7, 7).Add(8, 8).Add(9, 9),
-				ArraySize: 10,
-			}),
-		},
-	}
+	programUniformsA := gles.MakeProgramResourceʳ()
+	programUniformsA.SetName("uniforms")
+	programUniformsA.SetType(gles.GLenum_GL_FLOAT_VEC4)
+	programUniformsA.SetArraySize(10)
+	programUniformsA.SetLocations(gles.NewU32ːGLintᵐ().
+		Add(0, 0).Add(1, 1).Add(2, 2).Add(3, 3).Add(4, 4).
+		Add(5, 5).Add(6, 6).Add(7, 7).Add(8, 8).Add(9, 9))
+	programResourcesA := gles.MakeActiveProgramResourcesʳ()
+	programResourcesA.SetDefaultUniformBlock(gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, programUniformsA))
+	programInfoA := gles.MakeLinkProgramExtra()
+	programInfoA.SetLinkStatus(gles.GLboolean_GL_TRUE)
+	programInfoA.SetActiveResources(programResourcesA)
 
-	programInfoB := &gles.LinkProgramExtra{
-		LinkStatus: gles.GLboolean_GL_TRUE,
-		ActiveResources: &gles.ActiveProgramResources{
-			DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-				Name:      "sampler",
-				Type:      gles.GLenum_GL_SAMPLER_CUBE,
-				Locations: gles.NewU32ːGLintᵐ().Add(0, 0),
-				ArraySize: 1,
-			}),
-		},
-	}
+	programSamplerB := gles.MakeProgramResourceʳ()
+	programSamplerB.SetName("sampler")
+	programSamplerB.SetType(gles.GLenum_GL_SAMPLER_CUBE)
+	programSamplerB.SetLocations(gles.NewU32ːGLintᵐ().Add(0, 0))
+	programSamplerB.SetArraySize(1)
+	programResourcesB := gles.MakeActiveProgramResourcesʳ()
+	programResourcesB.SetDefaultUniformBlock(gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, programSamplerB))
+	programInfoB := gles.MakeLinkProgramExtra()
+	programInfoB.SetLinkStatus(gles.GLboolean_GL_TRUE)
+	programInfoB.SetActiveResources(programResourcesB)
 
 	ctxHandle1 := memory.BytePtr(1)
 	ctxHandle2 := memory.BytePtr(2)

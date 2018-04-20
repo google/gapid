@@ -67,6 +67,7 @@ go_library(
         "issue_whitelist.go",
         "links.go",
         "markers.go",
+        "math.go",
         "read_framebuffer.go",
         "read_texture.go",
         "replay.go",
@@ -142,7 +143,6 @@ go_test(
         "compat_test.go",
         "dead_code_elimination_test.go",
         "markers_test.go",
-        "resources_test.go",
         "stub_program_test.go",
     ],
     deps = [

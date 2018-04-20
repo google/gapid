@@ -16,9 +16,7 @@ package api
 
 import (
 	"context"
-	"reflect"
 
-	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/gapis/replay/builder"
 )
@@ -44,10 +42,17 @@ type Cmd interface {
 	// CmdName returns the name of the command.
 	CmdName() string
 
+	// CmdParams returns the command's parameters.
+	CmdParams() Properties
+
+	// CmdResult returns the command's result value, or nil if there is no
+	// result value.
+	CmdResult() *Property
+
 	// CmdFlags returns the flags of the command.
 	CmdFlags(context.Context, CmdID, *GlobalState) CmdFlags
 
-	// Extras returns all the Extras associated with the dynamic command.
+	// Extras returns all the Extras associated with the command.
 	Extras() *CmdExtras
 
 	// Mutate mutates the State using the command. If the builder argument is
@@ -62,76 +67,38 @@ const (
 	// ErrResultNotFound is the error returned by GetResult() and SetResult()
 	// when the command does not have a result value.
 	ErrResultNotFound = fault.Const("Result not found")
-
-	paramTag    = "param"
-	resultTag   = "result"
-	constsetTag = "constset"
 )
 
 // GetParameter returns the parameter value with the specified name.
-func GetParameter(ctx context.Context, c Cmd, name string) (interface{}, error) {
-	v := reflect.ValueOf(c)
-	for v.Kind() != reflect.Struct {
-		v = v.Elem()
-	}
-	t := v.Type()
-	for i, count := 0, t.NumField(); i < count; i++ {
-		f, t := v.Field(i), t.Field(i)
-		if n, ok := t.Tag.Lookup(paramTag); ok {
-			if name == n {
-				return f.Interface(), nil
-			}
-		}
+func GetParameter(c Cmd, name string) (interface{}, error) {
+	if p := c.CmdParams().Find(name); p != nil {
+		return p.Get(), nil
 	}
 	return nil, ErrParameterNotFound
 }
 
 // SetParameter sets the parameter with the specified name with val.
-func SetParameter(ctx context.Context, c Cmd, name string, val interface{}) error {
-	v := reflect.ValueOf(c)
-	for v.Kind() != reflect.Struct {
-		v = v.Elem()
-	}
-	t := v.Type()
-	for i, count := 0, t.NumField(); i < count; i++ {
-		f, t := v.Field(i), t.Field(i)
-		if n, ok := t.Tag.Lookup(paramTag); ok {
-			if name == n {
-				return deep.Copy(f.Addr().Interface(), val)
-			}
-		}
+func SetParameter(c Cmd, name string, val interface{}) error {
+	if p := c.CmdParams().Find(name); p != nil {
+		p.Set(val)
+		return nil
 	}
 	return ErrParameterNotFound
 }
 
 // GetResult returns the command's result value.
-func GetResult(ctx context.Context, c Cmd) (interface{}, error) {
-	v := reflect.ValueOf(c)
-	for v.Kind() != reflect.Struct {
-		v = v.Elem()
-	}
-	t := v.Type()
-	for i, count := 0, t.NumField(); i < count; i++ {
-		f, t := v.Field(i), t.Field(i)
-		if _, ok := t.Tag.Lookup(resultTag); ok {
-			return f.Interface(), nil
-		}
+func GetResult(c Cmd) (interface{}, error) {
+	if p := c.CmdResult(); p != nil {
+		return p.Get(), nil
 	}
 	return nil, ErrResultNotFound
 }
 
 // SetResult sets the commands result value to val.
-func SetResult(ctx context.Context, c Cmd, val interface{}) error {
-	v := reflect.ValueOf(c)
-	for v.Kind() != reflect.Struct {
-		v = v.Elem()
-	}
-	t := v.Type()
-	for i, count := 0, t.NumField(); i < count; i++ {
-		f, t := v.Field(i), t.Field(i)
-		if _, ok := t.Tag.Lookup(resultTag); ok {
-			return deep.Copy(f.Addr().Interface(), val)
-		}
+func SetResult(c Cmd, val interface{}) error {
+	if p := c.CmdResult(); p != nil {
+		p.Set(val)
+		return nil
 	}
 	return ErrResultNotFound
 }
