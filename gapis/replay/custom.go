@@ -45,5 +45,7 @@ func (cmd Custom) Thread() uint64                                               
 func (cmd Custom) SetThread(t uint64)                                             { cmd.T = t }
 func (Custom) CmdName() string                                                    { return "<Custom>" }
 func (Custom) API() api.API                                                       { return nil }
+func (Custom) CmdParams() api.Properties                                          { return nil }
+func (Custom) CmdResult() *api.Property                                           { return nil }
 func (Custom) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
 func (Custom) Extras() *api.CmdExtras                                             { return nil }

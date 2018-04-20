@@ -22,16 +22,16 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-func readString(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, at memory.Pointer, length GLsizei) string {
+func readString(ctx context.Context, c api.Cmd, s *api.GlobalState, at memory.Pointer, length GLsizei) string {
 	ptr := NewCharᵖ(at)
 	if length > 0 {
-		chars, err := ptr.Slice(0, uint64(length), ϟs.MemoryLayout).Read(ϟctx, ϟa, ϟs, nil)
+		chars, err := ptr.Slice(0, uint64(length), s.MemoryLayout).Read(ctx, c, s, nil)
 		if err != nil {
 			return ""
 		}
 		return string(memory.CharToBytes(chars))
 	}
-	chars, err := ptr.StringSlice(ϟctx, ϟs).Read(ϟctx, ϟa, ϟs, nil)
+	chars, err := ptr.StringSlice(ctx, s).Read(ctx, c, s, nil)
 	if err != nil {
 		return ""
 	}
@@ -39,35 +39,35 @@ func readString(ϟctx context.Context, ϟa api.Cmd, ϟs *api.GlobalState, at mem
 }
 
 // Label returns the user maker name.
-func (ϟa *GlPushGroupMarkerEXT) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
-	return readString(ϟctx, ϟa, ϟs, ϟa.Marker, ϟa.Length)
+func (c *GlPushGroupMarkerEXT) Label(ctx context.Context, s *api.GlobalState) string {
+	return readString(ctx, c, s, c.Marker(), c.Length())
 }
 
 // Label returns the user maker name.
-func (ϟa *GlInsertEventMarkerEXT) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
-	return readString(ϟctx, ϟa, ϟs, ϟa.Marker, ϟa.Length)
+func (c *GlInsertEventMarkerEXT) Label(ctx context.Context, s *api.GlobalState) string {
+	return readString(ctx, c, s, c.Marker(), c.Length())
 }
 
 // Label returns the user maker name.
-func (ϟa *GlPushDebugGroup) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
+func (c *GlPushDebugGroup) Label(ctx context.Context, s *api.GlobalState) string {
 	// This is incorrect, fudging for a bug in Unity which has been fixed but not
 	// rolled out.
 	// See https://github.com/google/gapid/issues/459 for reference.
 	//
-	// ϟa.Length should only be treated as null-terminated if ϟa.Length is < 0.
+	// c.Length() should only be treated as null-terminated if c.Length() is < 0.
 	//
 	// TODO: Consider removing once the fixed version is mainstream.
-	return readString(ϟctx, ϟa, ϟs, ϟa.Message, ϟa.Length)
+	return readString(ctx, c, s, c.Message(), c.Length())
 }
 
 // Label returns the user maker name.
-func (ϟa *GlPushDebugGroupKHR) Label(ϟctx context.Context, ϟs *api.GlobalState) string {
+func (c *GlPushDebugGroupKHR) Label(ctx context.Context, s *api.GlobalState) string {
 	// This is incorrect, fudging for a bug in Unity which has been fixed but not
 	// rolled out.
 	// See https://github.com/google/gapid/issues/459 for reference.
 	//
-	// ϟa.Length should only be treated as null-terminated if ϟa.Length is < 0.
+	// c.Length() should only be treated as null-terminated if c.Length() is < 0.
 	//
 	// TODO: Consider removing once the fixed version is mainstream.
-	return readString(ϟctx, ϟa, ϟs, ϟa.Message, ϟa.Length)
+	return readString(ctx, c, s, c.Message(), c.Length())
 }

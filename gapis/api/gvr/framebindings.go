@@ -80,19 +80,19 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 			// just so it can be nullified before returning. To avoid another
 			// state mutation just to get the pointer, cache them here.
 			cmd.extras.Observations().ApplyReads(s.Memory.ApplicationPool())
-			frame, err := cmd.Frame.Read(ctx, cmd, s, nil)
+			frame, err := cmd.Frame().Read(ctx, cmd, s, nil)
 			if err != nil {
 				return err
 			}
 			out.submitBuffer[id] = frameToBuffer[frame]
 		case *Gvr_frame_get_framebuffer_object:
-			frameToBuffer[GvrFrameᵖ(cmd.Frame)] = gles.FramebufferId(cmd.Result)
+			frameToBuffer[GvrFrameᵖ(cmd.Frame())] = gles.FramebufferId(cmd.Result())
 		case *gles.GlBindFramebuffer:
 			if callerID := cmd.Caller(); callerID != api.CmdNoID {
 				switch caller := cmds[callerID].(type) {
 				case *Gvr_frame_bind_buffer:
-					if caller.Index == 0 { // Only consider the 0'th frame index.
-						frameToBuffer[caller.Frame] = cmd.Framebuffer
+					if caller.Index() == 0 { // Only consider the 0'th frame index.
+						frameToBuffer[caller.Frame()] = cmd.Framebuffer()
 					}
 				}
 			}

@@ -65,25 +65,25 @@ type textureCompat struct {
 
 	// Original user-defined swizzle which would be used without compatibility layer.
 	// (GL_TEXTURE_SWIZZLE_{R,G,B,A}, Texture) -> GL_{RED,GREEN,BLUE,ALPHA,ONE,ZERO}
-	origSwizzle map[GLenum]map[*Texture]GLenum
+	origSwizzle map[GLenum]map[Textureʳ]GLenum
 
 	// Compatibility component remapping needed to support luminance/alpha formats.
 	// Texture -> (GL_{RED,GREEN,BLUE,ALPHA} -> GL_{RED,GREEN,ONE,ZERO})
-	compatSwizzle map[*Texture]map[GLenum]GLenum
+	compatSwizzle map[Textureʳ]map[GLenum]GLenum
 }
 
 // getSwizzle returns the original user-defined swizzle and the current swizzle from state.
-func (tc *textureCompat) getSwizzle(t *Texture, parameter GLenum) (orig, curr GLenum) {
+func (tc *textureCompat) getSwizzle(t Textureʳ, parameter GLenum) (orig, curr GLenum) {
 	var init GLenum
 	switch parameter {
 	case GLenum_GL_TEXTURE_SWIZZLE_R:
-		init, curr = GLenum_GL_RED, t.SwizzleR
+		init, curr = GLenum_GL_RED, t.SwizzleR()
 	case GLenum_GL_TEXTURE_SWIZZLE_G:
-		init, curr = GLenum_GL_GREEN, t.SwizzleG
+		init, curr = GLenum_GL_GREEN, t.SwizzleG()
 	case GLenum_GL_TEXTURE_SWIZZLE_B:
-		init, curr = GLenum_GL_BLUE, t.SwizzleB
+		init, curr = GLenum_GL_BLUE, t.SwizzleB()
 	case GLenum_GL_TEXTURE_SWIZZLE_A:
-		init, curr = GLenum_GL_ALPHA, t.SwizzleA
+		init, curr = GLenum_GL_ALPHA, t.SwizzleA()
 	}
 	if orig, ok := tc.origSwizzle[parameter][t]; ok {
 		return orig, curr
@@ -91,8 +91,8 @@ func (tc *textureCompat) getSwizzle(t *Texture, parameter GLenum) (orig, curr GL
 	return init, curr
 }
 
-func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, cb CommandBuilder, t *Texture, parameter GLenum, out transform.Writer, id api.CmdID) {
-	target := t.Kind
+func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, cb CommandBuilder, t Textureʳ, parameter GLenum, out transform.Writer, id api.CmdID) {
+	target := t.Kind()
 	orig, curr := tc.getSwizzle(t, parameter)
 	compat := orig
 	if compatSwizzle, ok := tc.compatSwizzle[t]; ok {
@@ -105,12 +105,17 @@ func (tc *textureCompat) writeCompatSwizzle(ctx context.Context, cb CommandBuild
 	}
 }
 
+type glenumProperty struct {
+	get func() GLenum
+	set func(GLenum)
+}
+
 // Common handler for all glTex* methods.
 // Arguments may be null if the given method does not use them.
 func (tc *textureCompat) convertFormat(
 	ctx context.Context,
 	target GLenum,
-	internalformat, format, componentType *GLenum,
+	internalformat, format, componentType *glenumProperty,
 	out transform.Writer,
 	id api.CmdID,
 	cmd api.Cmd) {
@@ -121,8 +126,8 @@ func (tc *textureCompat) convertFormat(
 
 	// ES and desktop disagree how unsized internal formats are represented
 	// (floats in particular), so always explicitly use one of the sized formats.
-	if internalformat != nil && format != nil && componentType != nil && *internalformat == *format {
-		*internalformat = getSizedFormatFromTuple(*internalformat, *componentType)
+	if internalformat != nil && format != nil && componentType != nil && internalformat.get() == format.get() {
+		internalformat.set(getSizedFormatFromTuple(internalformat.get(), componentType.get()))
 	}
 
 	if internalformat != nil {
@@ -137,8 +142,8 @@ func (tc *textureCompat) convertFormat(
 
 		// Luminance/Alpha is not supported on desktop so convert it to R/G.
 		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, target); err == nil {
-			if laCompat, ok := luminanceAlphaCompat[*internalformat]; ok {
-				*internalformat = laCompat.rgFormat
+			if laCompat, ok := luminanceAlphaCompat[internalformat.get()]; ok {
+				internalformat.set(laCompat.rgFormat)
 				tc.compatSwizzle[t] = laCompat.compatSwizzle
 			} else {
 				// Remove the compat mapping and reset swizzles to the original values below.
@@ -151,40 +156,40 @@ func (tc *textureCompat) convertFormat(
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_A, out, id)
 		}
 
-		switch *internalformat {
+		switch internalformat.get() {
 		case GLenum_GL_BGRA8_EXT: // Not supported in GL 3.2
 			// The GPU order of channels is transparent to us, so we can just use RGBA instead.
-			*internalformat = GLenum_GL_RGBA8
+			internalformat.set(GLenum_GL_RGBA8)
 		case GLenum_GL_RGB565: // Not supported in GL 3.2
-			*internalformat = GLenum_GL_RGB8
+			internalformat.set(GLenum_GL_RGB8)
 		case GLenum_GL_RGB10_A2UI: // Not supported in GL 3.2
-			*internalformat = GLenum_GL_RGBA16UI
+			internalformat.set(GLenum_GL_RGBA16UI)
 		case GLenum_GL_STENCIL_INDEX8: // TODO: not supported on desktop.
 		}
 
 		// Compressed formats are replaced by RGBA8
 		// TODO: What about SRGB?
-		if isCompressedFormat(*internalformat) {
-			if _, supported := tc.f.compressedTextureFormats[*internalformat]; !supported {
-				*internalformat = GLenum_GL_RGBA8
+		if isCompressedFormat(internalformat.get()) {
+			if _, supported := tc.f.compressedTextureFormats[internalformat.get()]; !supported {
+				internalformat.set(GLenum_GL_RGBA8)
 			}
 		}
 	}
 
 	if format != nil {
 		// Luminance/Alpha is not supported on desktop so convert it to R/G.
-		switch *format {
+		switch format.get() {
 		case GLenum_GL_LUMINANCE, GLenum_GL_ALPHA:
-			*format = GLenum_GL_RED
+			format.set(GLenum_GL_RED)
 		case GLenum_GL_LUMINANCE_ALPHA:
-			*format = GLenum_GL_RG
+			format.set(GLenum_GL_RG)
 		}
 	}
 
 	if componentType != nil {
 		// Half-float is a core feature on desktop (with different enum value)
-		if *componentType == GLenum_GL_HALF_FLOAT_OES {
-			*componentType = GLenum_GL_HALF_FLOAT
+		if componentType.get() == GLenum_GL_HALF_FLOAT_OES {
+			componentType.set(GLenum_GL_HALF_FLOAT)
 		}
 	}
 }
@@ -215,27 +220,27 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexImage2D, s *api.GlobalState, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexImage2D")
 	dID := i.Derived()
-	c := GetContext(s, a.thread)
-	cb := CommandBuilder{Thread: a.thread}
-	data := AsU8ˢ(a.Data.Slice(0, uint64(a.ImageSize), s.MemoryLayout), s.MemoryLayout)
-	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
-		offset := a.Data.Address()
-		data = pb.Data.Slice(offset, offset+uint64(a.ImageSize))
+	c := GetContext(s, a.Thread())
+	cb := CommandBuilder{Thread: a.Thread()}
+	data := AsU8ˢ(a.Data().Slice(0, uint64(a.ImageSize()), s.MemoryLayout), s.MemoryLayout)
+	if pb := c.Bound().PixelUnpackBuffer(); !pb.IsNil() {
+		offset := a.Data().Address()
+		data = pb.Data().Slice(offset, offset+uint64(a.ImageSize()))
 		out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
-		defer out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID))
+		defer out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID()))
 	} else {
 		a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 	}
 
-	format, err := getCompressedImageFormat(a.Internalformat)
+	format, err := getCompressedImageFormat(a.Internalformat())
 	if err != nil {
 		return err
 	}
 
 	src := image.Info{
 		Bytes:  image.NewID(data.ResourceID(ctx, s)),
-		Width:  uint32(a.Width),
-		Height: uint32(a.Height),
+		Width:  uint32(a.Width()),
+		Height: uint32(a.Height()),
 		Depth:  1,
 		Format: format,
 	}
@@ -244,16 +249,16 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 		return err
 	}
 
-	dstSize := a.Width * a.Height * 4
+	dstSize := a.Width() * a.Height() * 4
 
 	tmp := s.AllocOrPanic(ctx, uint64(dstSize))
 	out.MutateAndWrite(ctx, i, cb.GlTexImage2D(
-		a.Target,
-		a.Level,
+		a.Target(),
+		a.Level(),
 		GLint(GLenum_GL_RGBA8),
-		a.Width,
-		a.Height,
-		a.Border,
+		a.Width(),
+		a.Height(),
+		a.Border(),
 		GLenum_GL_RGBA,
 		GLenum_GL_UNSIGNED_BYTE,
 		tmp.Ptr(),
@@ -268,27 +273,27 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexSubImage2D, s *api.GlobalState, out transform.Writer) error {
 	ctx = log.Enter(ctx, "decompressTexSubImage2D")
 	dID := i.Derived()
-	c := GetContext(s, a.thread)
-	cb := CommandBuilder{Thread: a.thread}
-	data := AsU8ˢ(a.Data.Slice(0, uint64(a.ImageSize), s.MemoryLayout), s.MemoryLayout)
-	if pb := c.Bound.PixelUnpackBuffer; pb != nil {
-		offset := a.Data.Address()
-		data = pb.Data.Slice(offset, offset+uint64(a.ImageSize))
+	c := GetContext(s, a.Thread())
+	cb := CommandBuilder{Thread: a.Thread()}
+	data := AsU8ˢ(a.Data().Slice(0, uint64(a.ImageSize()), s.MemoryLayout), s.MemoryLayout)
+	if pb := c.Bound().PixelUnpackBuffer(); !pb.IsNil() {
+		offset := a.Data().Address()
+		data = pb.Data().Slice(offset, offset+uint64(a.ImageSize()))
 		out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, 0))
-		defer out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID))
+		defer out.MutateAndWrite(ctx, dID, cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, pb.ID()))
 	} else {
 		a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 	}
 
-	format, err := getCompressedImageFormat(a.Internalformat)
+	format, err := getCompressedImageFormat(a.Internalformat())
 	if err != nil {
 		return err
 	}
 
 	src := image.Info{
 		Bytes:  image.NewID(data.ResourceID(ctx, s)),
-		Width:  uint32(a.Width),
-		Height: uint32(a.Height),
+		Width:  uint32(a.Width()),
+		Height: uint32(a.Height()),
 		Depth:  1,
 		Format: format,
 	}
@@ -297,16 +302,16 @@ func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTe
 		return err
 	}
 
-	dstSize := a.Width * a.Height * 4
+	dstSize := a.Width() * a.Height() * 4
 
 	tmp := s.AllocOrPanic(ctx, uint64(dstSize))
 	out.MutateAndWrite(ctx, i, cb.GlTexSubImage2D(
-		a.Target,
-		a.Level,
-		a.Xoffset,
-		a.Yoffset,
-		a.Width,
-		a.Height,
+		a.Target(),
+		a.Level(),
+		a.Xoffset(),
+		a.Yoffset(),
+		a.Width(),
+		a.Height(),
 		GLenum_GL_RGBA,
 		GLenum_GL_UNSIGNED_BYTE,
 		tmp.Ptr(),

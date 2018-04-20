@@ -102,7 +102,7 @@ func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
 		// is the child the result?
 		if res, ok := child.(proto.Message); ok {
 			if cmd, ok := parent.cmd.(api.CmdWithResult); ok {
-				if cmd.SetResult(res) == nil {
+				if cmd.SetCallResult(ctx, res) == nil {
 					parent.invoked = true
 					return nil
 				}

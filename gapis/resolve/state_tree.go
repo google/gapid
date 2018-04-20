@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strconv"
 	"sync"
 
 	"github.com/google/gapid/core/data/dictionary"
@@ -248,25 +247,6 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 
 	default:
 		switch v.Kind() {
-		case reflect.Struct:
-			for i, c := 0, v.NumField(); i < c; i++ {
-				f := t.Field(i)
-				if !isFieldVisible(f) {
-					continue
-				}
-				var consts *path.ConstantSet
-				if cs, ok := f.Tag.Lookup("constset"); ok {
-					if idx, _ := strconv.Atoi(cs); idx > 0 {
-						consts = tree.api.ConstantSet(idx)
-					}
-				}
-				children = append(children, &stn{
-					name:   f.Name,
-					value:  deref(v.Field(i)),
-					path:   path.NewField(f.Name, n.path),
-					consts: consts,
-				})
-			}
 		case reflect.Slice, reflect.Array:
 			size := uint64(v.Len())
 			if needsSubgrouping(tree.groupLimit, size) {
@@ -289,10 +269,46 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 					})
 				}
 			}
+		default:
+			if isNil(v) {
+				break
+			}
+			pp, ok := v.Interface().(api.PropertyProvider)
+			if !ok {
+				break
+			}
+			for _, p := range pp.Properties() {
+				var consts *path.ConstantSet
+				if p.Constants >= 0 {
+					consts = tree.api.ConstantSet(p.Constants)
+				}
+				children = append(children, &stn{
+					name:   p.Name,
+					value:  deref(reflect.ValueOf(p.Get())),
+					path:   path.NewField(p.Name, n.path),
+					consts: consts,
+				})
+			}
 		}
 	}
 
 	n.children = children
+}
+
+// isNil returns true if v is a nil pointer or interface, or is a type that
+// implements the method:
+//   IsNil() bool
+// which returns true when called.
+func isNil(v reflect.Value) bool {
+	if (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && v.IsNil() {
+		return true
+	}
+	if i, ok := v.Interface().(interface {
+		IsNil() bool
+	}); ok {
+		return i.IsNil()
+	}
+	return false
 }
 
 func (n *stn) service(ctx context.Context, tree *stateTree) *service.StateTreeNode {
@@ -339,7 +355,7 @@ func stateValuePreview(v reflect.Value) (*box.Value, bool) {
 		}
 		return box.NewValue(v.Interface()), true
 	case reflect.Interface, reflect.Ptr:
-		if v.IsNil() {
+		if isNil(v) {
 			return box.NewValue(v.Interface()), true
 		}
 		return stateValuePreview(v.Elem())

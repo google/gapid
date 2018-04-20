@@ -21,45 +21,44 @@ func (c Color) String() string {
 }
 
 func (v Vec2f) String() string {
-	return fmt.Sprintf("(% 6f, % 6f)", v[0], v[1])
+	return fmt.Sprintf("(% 6f, % 6f)", v.Get(0), v.Get(1))
 }
 
 func (v Vec3f) String() string {
-	return fmt.Sprintf("(% 6f, % 6f, % 6f)", v[0], v[1], v[2])
+	return fmt.Sprintf("(% 6f, % 6f, % 6f)", v.Get(0), v.Get(1), v.Get(2))
 }
 
 func (v Vec4f) String() string {
-	return fmt.Sprintf("(% 6f, % 6f, % 6f, % 6f)", v[0], v[1], v[2], v[3])
+	return fmt.Sprintf("(% 6f, % 6f, % 6f, % 6f)", v.Get(0), v.Get(1), v.Get(2), v.Get(3))
 }
 
 func (v Vec2i) String() string {
-	return fmt.Sprintf("(% 6d, % 6d)", v[0], v[1])
+	return fmt.Sprintf("(% 6d, % 6d)", v.Get(0), v.Get(1))
 }
 
 func (v Vec3i) String() string {
-	return fmt.Sprintf("(% 6d, % 6d, % 6d)", v[0], v[1], v[2])
+	return fmt.Sprintf("(% 6d, % 6d, % 6d)", v.Get(0), v.Get(1), v.Get(2))
 }
 
 func (v Vec4i) String() string {
-	return fmt.Sprintf("(% 6d, % 6d, % 6d, % 6d)", v[0], v[1], v[2], v[3])
+	return fmt.Sprintf("(% 6d, % 6d, % 6d, % 6d)", v.Get(0), v.Get(1), v.Get(2), v.Get(3))
 }
 
 func (m Mat2f) String() string {
-	return fmt.Sprintf("[%v, %v]", m[0], m[1])
+	return fmt.Sprintf(".Get(%), %v]", m.Get(0), m.Get(1))
 }
 
 func (m Mat3f) String() string {
-	return fmt.Sprintf("[%v, %v, %v]", m[0], m[1], m[2])
+	return fmt.Sprintf(".Get(%), %v, %v]", m.Get(0), m.Get(1), m.Get(2))
 }
 
 func (m Mat4f) String() string {
-	return fmt.Sprintf("[%v, %v, %v, %v]", m[0], m[1], m[2], m[3])
+	return fmt.Sprintf(".Get(%), %v, %v, %v]", m.Get(0), m.Get(1), m.Get(2), m.Get(3))
 }
 
 func (a VertexAttributeArray) String() string {
-	if a.Enabled == GLboolean_GL_TRUE {
-		return fmt.Sprintf("%d x %v", int(a.Size), a.Type)
-	} else {
-		return "disabled"
+	if a.Enabled() == GLboolean_GL_TRUE {
+		return fmt.Sprintf("%d x %v", int(a.Size()), a.Type())
 	}
+	return "disabled"
 }

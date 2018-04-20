@@ -64,10 +64,13 @@ type GlobalState struct {
 	AddTag func(msgID uint32, msg *stringtable.Msg)
 }
 
-// State represents the graphics state for a single context.
+// State represents the graphics state for a single API.
 type State interface {
 	// All states belong to an API
 	APIObject
+
+	// Clone returns a deep copy of the state object.
+	Clone() State
 
 	// Root returns the path to the root of the state to display. It can vary
 	// based on filtering mode. Returning nil, nil indicates there is no state
@@ -77,7 +80,7 @@ type State interface {
 	// SetupInitialState sanitizes deserialized state to make it valid.
 	// It can fill in any derived data which we choose not to serialize,
 	// or it can apply backward-compatibility fixes for older traces.
-	SetupInitialState(ctx context.Context)
+	SetupInitialState(ctx context.Context, g *GlobalState)
 
 	// RebuildState returns a set of commands which, if executed
 	// on a clean new state, will reproduce the current state.

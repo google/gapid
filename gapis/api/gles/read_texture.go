@@ -38,7 +38,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		s := out.State()
 		c := GetContext(s, r.Thread)
 
-		if c == nil {
+		if c.IsNil() {
 			err := fmt.Errorf("Attempting to read from texture %v when context does not exist.\n"+
 				"Resolvable: %+v", r.Texture, r)
 			log.W(ctx, "%v", err)
@@ -49,7 +49,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		dID := id.Derived()
 		cb := CommandBuilder{Thread: r.Thread}
 
-		tex, ok := c.Objects.Textures.Lookup(TextureId(r.Texture))
+		tex, ok := c.Objects().Textures().Lookup(TextureId(r.Texture))
 		if !ok {
 			err := fmt.Errorf("Attempting to read from texture %v that does not exist.\n"+
 				"Resolvable: %+v\nTexture: %+v", r.Texture, r, tex)
@@ -57,13 +57,13 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			res(nil, err)
 			return
 		}
-		lvl := tex.Levels.Get(GLint(r.Level))
-		layer := lvl.Layers.Get(GLint(r.Layer))
-		if layer == nil {
+		lvl := tex.Levels().Get(GLint(r.Level))
+		layer := lvl.Layers().Get(GLint(r.Layer))
+		if layer.IsNil() {
 			err := fmt.Errorf("Attempting to read from texture %v (Level: %v/%v, Layer: %v/%v) that does not exist.\n"+
 				"Resolvable: %+v\n"+
 				"Texture: %+v",
-				r.Texture, r.Level, tex.Levels.Len(), r.Layer, lvl.Layers.Len(), r, tex)
+				r.Texture, r.Level, tex.Levels().Len(), r.Layer, lvl.Layers().Len(), r, tex)
 			log.W(ctx, "%v", err)
 			res(nil, err)
 			return
@@ -75,7 +75,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		framebufferID := t.glGenFramebuffer(ctx)
 		t.glBindFramebuffer_Draw(ctx, framebufferID)
 
-		streamFmt, err := getUncompressedStreamFormat(getUnsizedFormatAndType(layer.SizedFormat))
+		streamFmt, err := getUncompressedStreamFormat(getUnsizedFormatAndType(layer.SizedFormat()))
 		if err != nil {
 			res(nil, err)
 			return
@@ -97,21 +97,21 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			return
 		}
 
-		switch tex.Kind {
+		switch tex.Kind() {
 		case GLenum_GL_TEXTURE_3D,
 			GLenum_GL_IMAGE_CUBE_MAP_ARRAY,
 			GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
 			GLenum_GL_TEXTURE_2D_ARRAY,
 			GLenum_GL_TEXTURE_1D_ARRAY:
 
-			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID, GLint(r.Level), GLint(r.Layer)))
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTextureLayer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID(), GLint(r.Level), GLint(r.Layer)))
 
 		case GLenum_GL_TEXTURE_CUBE_MAP:
 			face := GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X + GLenum(r.Layer)
-			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture2D(GLenum_GL_DRAW_FRAMEBUFFER, attachment, face, tex.ID, GLint(r.Level)))
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture2D(GLenum_GL_DRAW_FRAMEBUFFER, attachment, face, tex.ID(), GLint(r.Level)))
 
 		default:
-			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID, GLint(r.Level)))
+			out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture(GLenum_GL_DRAW_FRAMEBUFFER, attachment, tex.ID(), GLint(r.Level)))
 		}
 
 		// Compat may have altered the texture format.
@@ -126,7 +126,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			return in.(*image.Data).Convert(f)
 		})
 
-		postFBData(ctx, dID, r.Thread, uint32(layer.Width), uint32(layer.Height), framebufferID, attachment, out, res)
+		postFBData(ctx, dID, r.Thread, uint32(layer.Width()), uint32(layer.Height()), framebufferID, attachment, out, res)
 	})
 }
 

@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/app/analytics"
-	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -143,10 +142,10 @@ func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
 		}
 		for k, v := range c.InitialState.APIs {
-			s.APIs[k.ID()] = deep.MustClone(v).(api.State)
+			s.APIs[k.ID()] = v.Clone()
 		}
 		for _, v := range s.APIs {
-			v.SetupInitialState(ctx)
+			v.SetupInitialState(ctx, s)
 		}
 	}
 	return s

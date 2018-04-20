@@ -108,7 +108,7 @@ func TestOperationsOpCall_NoIn_NoOut(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoid(),
@@ -119,15 +119,15 @@ func TestOperationsOpCall_NoIn_NoOut(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoid.ApiIndex, FunctionID: funcInfoCmdVoid.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_Clone(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
-	rng, rID := memory.Store(ctx, a, p(0x100000), []uint8{5, 6, 7, 8, 9})
+	ml := device.Little32
+	rng, rID := memory.Store(ctx, ml, p(0x100000), []uint8{5, 6, 7, 8, 9})
 
 	test{
 		cmds: []api.Cmd{
@@ -144,14 +144,14 @@ func TestOperationsOpCall_Clone(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdClone.ApiIndex, FunctionID: funcInfoCmdClone.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_Make(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
 			cb.CmdMake(5),
@@ -163,15 +163,15 @@ func TestOperationsOpCall_Make(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdMake.ApiIndex, FunctionID: funcInfoCmdMake.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_Copy(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
-	rng, rID := memory.Store(ctx, a, p(0x100000), []uint8{5, 6, 7, 8, 9})
+	ml := device.Little32
+	rng, rID := memory.Store(ctx, ml, p(0x100000), []uint8{5, 6, 7, 8, 9})
 
 	test{
 		cmds: []api.Cmd{
@@ -188,15 +188,15 @@ func TestOperationsOpCall_Copy(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdCopy.ApiIndex, FunctionID: funcInfoCmdCopy.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_CharSliceToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
-	rng, rID := memory.Store(ctx, a, p(0x100000), []uint8{5, 6, 0, 8, 9})
+	ml := device.Little32
+	rng, rID := memory.Store(ctx, ml, p(0x100000), []uint8{5, 6, 0, 8, 9})
 
 	test{
 		cmds: []api.Cmd{
@@ -213,20 +213,20 @@ func TestOperationsOpCall_CharSliceToString(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdCharsliceToString.ApiIndex, FunctionID: funcInfoCmdCharsliceToString.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_CharPtrToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
-	_, rID := memory.Store(ctx, a, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0})
+	ml := device.Little32
+	_, rID := memory.Store(ctx, ml, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0})
 
 	test{
 		cmds: []api.Cmd{
 			cb.CmdCharptrToString(p(0x100000)).
-				AddRead(memory.Store(ctx, a, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0, 'd', 'a', 'y'})),
+				AddRead(memory.Store(ctx, ml, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0, 'd', 'a', 'y'})),
 		},
 		expected: expected{
 			resources: []id.ID{rID},
@@ -238,14 +238,14 @@ func TestOperationsOpCall_CharPtrToString(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdCharptrToString.ApiIndex, FunctionID: funcInfoCmdCharptrToString.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_Unknowns(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := &device.MemoryLayout{
+	ml := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 4},
 		Integer: &device.DataTypeLayout{Size: 8, Alignment: 4},
@@ -264,11 +264,11 @@ func TestOperationsOpCall_Unknowns(t *testing.T) {
 		cmds: []api.Cmd{
 			cb.CmdUnknownRet(10),
 			cb.CmdUnknownWritePtr(p(0x200000)).
-				AddRead(memory.Store(ctx, a, p(0x200000), int(100))).
-				AddWrite(memory.Store(ctx, a, p(0x200000), int(200))),
+				AddRead(memory.Store(ctx, ml, p(0x200000), int(100))).
+				AddWrite(memory.Store(ctx, ml, p(0x200000), int(200))),
 			cb.CmdUnknownWriteSlice(p(0x100000)).
-				AddRead(memory.Store(ctx, a, p(0x100000), []int{0, 1, 2, 3, 4})).
-				AddWrite(memory.Store(ctx, a, p(0x100000), []int{5, 6, 7, 8, 9})),
+				AddRead(memory.Store(ctx, ml, p(0x100000), []int{0, 1, 2, 3, 4})).
+				AddWrite(memory.Store(ctx, ml, p(0x100000), []int{5, 6, 7, 8, 9})),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -284,14 +284,14 @@ func TestOperationsOpCall_Unknowns(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdUnknownWriteSlice.ApiIndex, FunctionID: funcInfoCmdUnknownWriteSlice.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoidU8(20),
@@ -359,14 +359,14 @@ func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 			},
 			constants: []byte{'h', 'e', 'l', 'l', 'o', 0},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_3_Strings(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoid3Strings("hello", "world", "hello"),
@@ -384,22 +384,22 @@ func TestOperationsOpCall_3_Strings(t *testing.T) {
 				/* 0x08 */ 'w', 'o', 'r', 'l', 'd', 0x00,
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little64
+	ml := device.Little64
 
-	aRng, aID := memory.Store(ctx, a, p(0x40000+5* /* sizeof(u8)  */ 1), []uint8{
+	aRng, aID := memory.Store(ctx, ml, p(0x40000+5* /* sizeof(u8)  */ 1), []uint8{
 		5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
 	})
-	bRng, bID := memory.Store(ctx, a, p(0x50000+5* /* sizeof(u32) */ 4), []uint32{
+	bRng, bID := memory.Store(ctx, ml, p(0x50000+5* /* sizeof(u32) */ 4), []uint32{
 		5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
 	})
-	cRng, cID := memory.Store(ctx, a, p(0x60000+5* /* sizeof(int) */ 8), []int{
+	cRng, cID := memory.Store(ctx, ml, p(0x60000+5* /* sizeof(int) */ 8), []int{
 		5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
 	})
 
@@ -435,20 +435,20 @@ func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 				opcode.Call{PushReturn: false, ApiIndex: funcInfoCmdVoid3InArrays.ApiIndex, FunctionID: funcInfoCmdVoid3InArrays.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 
-	aRng, aID := memory.Store(ctx, a, p(0x100000), "array")
-	bRng, bID := memory.Store(ctx, a, p(0x200000), "of")
-	cRng, cID := memory.Store(ctx, a, p(0x300000), "strings")
+	aRng, aID := memory.Store(ctx, ml, p(0x100000), "array")
+	bRng, bID := memory.Store(ctx, ml, p(0x200000), "of")
+	cRng, cID := memory.Store(ctx, ml, p(0x300000), "strings")
 
-	pRng, pID := memory.Store(ctx, a, p(0x500000), []memory.Pointer{
+	pRng, pID := memory.Store(ctx, ml, p(0x500000), []memory.Pointer{
 		p(0x300000), p(0x200000), p(0x100000), p(0x200000), p(0x300000),
 	})
 
@@ -514,7 +514,7 @@ func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoidInArrayOfStrings.ApiIndex, FunctionID: funcInfoCmdVoidInArrayOfStrings.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_InArrayOfStrings_32bitTo64Bit(t *testing.T) {
@@ -601,18 +601,18 @@ func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	p := memory.Pointer(p(0x100000))
-	rng1, id1 := memory.Store(ctx, a, p, []byte{
+	rng1, id1 := memory.Store(ctx, ml, p, []byte{
 		0x01,
 	})
-	rng2, id2 := memory.Store(ctx, a, p, []byte{
+	rng2, id2 := memory.Store(ctx, ml, p, []byte{
 		0x01, 0x23,
 	})
-	rng4, id4 := memory.Store(ctx, a, p, []byte{
+	rng4, id4 := memory.Store(ctx, ml, p, []byte{
 		0x01, 0x23, 0x45, 0x67,
 	})
-	rng8, id8 := memory.Store(ctx, a, p, []byte{
+	rng8, id8 := memory.Store(ctx, ml, p, []byte{
 		0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
 	})
 	test{
@@ -714,14 +714,14 @@ func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoidReadBool.ApiIndex, FunctionID: funcInfoCmdVoidReadBool.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := &device.MemoryLayout{
+	ml := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 16},
 		Integer: &device.DataTypeLayout{Size: 4, Alignment: 4},
@@ -736,9 +736,9 @@ func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 		F16:     &device.DataTypeLayout{Size: 2, Alignment: 2},
 	}
 
-	aRng, aID := memory.Store(ctx, a, p(0x100000), float32(10))
-	bRng, bID := memory.Store(ctx, a, p(0x200000), uint16(20))
-	cRng, cID := memory.Store(ctx, a, p(0x300000), false)
+	aRng, aID := memory.Store(ctx, ml, p(0x100000), float32(10))
+	bRng, bID := memory.Store(ctx, ml, p(0x200000), uint16(20))
+	cRng, cID := memory.Store(ctx, ml, p(0x300000), false)
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoidReadPtrs(p(0x100000), p(0x200000), p(0x300000)).
@@ -762,38 +762,38 @@ func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoidReadPtrs.ApiIndex, FunctionID: funcInfoCmdVoidReadPtrs.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_SinglePointerElementWrite(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoidWriteU8(p(0x100000)).
-				AddWrite(memory.Store(ctx, a, p(0x100000), uint8(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x100000), uint8(1))),
 			cb.CmdVoidWriteS8(p(0x200000)).
-				AddWrite(memory.Store(ctx, a, p(0x200000), int8(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x200000), int8(1))),
 			cb.CmdVoidWriteU16(p(0x300000)).
-				AddWrite(memory.Store(ctx, a, p(0x300000), uint16(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x300000), uint16(1))),
 			cb.CmdVoidWriteS16(p(0x400000)).
-				AddWrite(memory.Store(ctx, a, p(0x400000), int16(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x400000), int16(1))),
 			cb.CmdVoidWriteF32(p(0x500000)).
-				AddWrite(memory.Store(ctx, a, p(0x500000), float32(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x500000), float32(1))),
 			cb.CmdVoidWriteU32(p(0x600000)).
-				AddWrite(memory.Store(ctx, a, p(0x600000), uint32(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x600000), uint32(1))),
 			cb.CmdVoidWriteS32(p(0x700000)).
-				AddWrite(memory.Store(ctx, a, p(0x700000), int32(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x700000), int32(1))),
 			cb.CmdVoidWriteF64(p(0x800000)).
-				AddWrite(memory.Store(ctx, a, p(0x800000), float64(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x800000), float64(1))),
 			cb.CmdVoidWriteU64(p(0x900000)).
-				AddWrite(memory.Store(ctx, a, p(0x900000), uint64(1))),
+				AddWrite(memory.Store(ctx, ml, p(0x900000), uint64(1))),
 			cb.CmdVoidWriteS64(p(0xa00000)).
-				AddWrite(memory.Store(ctx, a, p(0xa00000), int64(1))),
+				AddWrite(memory.Store(ctx, ml, p(0xa00000), int64(1))),
 			cb.CmdVoidWriteBool(p(0xb00000)).
-				AddWrite(memory.Store(ctx, a, p(0xb00000), bool(true))),
+				AddWrite(memory.Store(ctx, ml, p(0xb00000), bool(true))),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -832,14 +832,14 @@ func TestOperationsOpCall_SinglePointerElementWrite(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoidWriteBool.ApiIndex, FunctionID: funcInfoCmdVoidWriteBool.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := &device.MemoryLayout{
+	ml := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 16},
 		Integer: &device.DataTypeLayout{Size: 4, Alignment: 4},
@@ -866,14 +866,14 @@ func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoidWritePtrs.ApiIndex, FunctionID: funcInfoCmdVoidWritePtrs.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_ReturnValue(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
 			cb.CmdU8(20),
@@ -920,14 +920,14 @@ func TestOperationsOpCall_ReturnValue(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdPointer.ApiIndex, FunctionID: funcInfoCmdPointer.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_3Remapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoid3Remapped(0x10, 0x20, 0x10),
@@ -950,15 +950,15 @@ func TestOperationsOpCall_3Remapped(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoid3Remapped.ApiIndex, FunctionID: funcInfoCmdVoid3Remapped.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
-	rng, id := memory.Store(ctx, a, p(0x100000), []Remapped{10, 20, 10, 30, 20})
+	ml := device.Little32
+	rng, id := memory.Store(ctx, ml, p(0x100000), []Remapped{10, 20, 10, 30, 20})
 
 	pbase := uint32(4 * 3) // parameter array base address
 	tbase := uint32(0)     // remap table base address
@@ -1002,21 +1002,21 @@ func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoidInArrayOfRemapped.ApiIndex, FunctionID: funcInfoCmdVoidInArrayOfRemapped.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_OutArrayOfRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	pbase := uint32(4 * 3) // parameter array base address
 	tbase := uint32(0)     // remap table base address
 
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoidOutArrayOfRemapped(p(0x100000)).
-				AddWrite(memory.Store(ctx, a, p(0x100000), []Remapped{10, 20, 10, 30, 20})),
+				AddWrite(memory.Store(ctx, ml, p(0x100000), []Remapped{10, 20, 10, 30, 20})),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -1046,21 +1046,21 @@ func TestOperationsOpCall_OutArrayOfRemapped(t *testing.T) {
 				opcode.StoreV{Address: tbase + 4*1},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_OutArrayOfUnknownRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	pbase := uint32(4 * 3) // parameter array base address
 	tbase := uint32(0)     // remap table base address
 
 	test{
 		cmds: []api.Cmd{
 			cb.CmdVoidOutArrayOfUnknownRemapped(p(0x100000)).
-				AddWrite(memory.Store(ctx, a, p(0x100000), []Remapped{10, 20, 10, 30, 20})),
+				AddWrite(memory.Store(ctx, ml, p(0x100000), []Remapped{10, 20, 10, 30, 20})),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -1090,14 +1090,14 @@ func TestOperationsOpCall_OutArrayOfUnknownRemapped(t *testing.T) {
 				opcode.StoreV{Address: tbase + 4*1},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_Remapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
 			cb.CmdRemapped(200),
@@ -1124,16 +1124,17 @@ func TestOperationsOpCall_Remapped(t *testing.T) {
 				opcode.Call{ApiIndex: funcInfoCmdVoid3Remapped.ApiIndex, FunctionID: funcInfoCmdVoid3Remapped.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_ReadRemappedStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
-	aRng, aID := memory.Store(ctx, a, p(0x100000), RemappedStruct{F1: 10, Handle: 20, F3: 30})
-	bRng, bID := memory.Store(ctx, a, p(0x200000), RemappedStruct{F1: 40, Handle: 20, F3: 50})
+	ml := device.Little32
+
+	aRng, aID := memory.Store(ctx, ml, p(0x100000), NewRemappedStruct(10, 20, 30))
+	bRng, bID := memory.Store(ctx, ml, p(0x200000), NewRemappedStruct(40, 20, 50))
 
 	test{
 		cmds: []api.Cmd{
@@ -1197,21 +1198,22 @@ func TestOperationsOpCall_ReadRemappedStruct(t *testing.T) {
 					FunctionID: funcInfoCmdVoidReadRemappedStruct.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
+
 	aRng, aID := memory.Store(
-		ctx, a, p(0x100000),
-		PointerStruct{F2: 0x23, F1: 0x01, Pointer: U32ᵖ(0x200000)})
-	bRng, bID := memory.Store(ctx, a, p(0x200000), uint32(0x45))
+		ctx, ml, p(0x100000),
+		NewPointerStruct(0x23, 0x01, 0x200000))
+	bRng, bID := memory.Store(ctx, ml, p(0x200000), uint32(0x45))
 	cRng, cID := memory.Store(
-		ctx, a, p(0x300000),
-		PointerStruct{F2: 0x89, F1: 0x67, Pointer: U32ᵖ(0x200000)})
+		ctx, ml, p(0x300000),
+		NewPointerStruct(0x89, 0x67, 0x200000))
 
 	test{
 		cmds: []api.Cmd{
@@ -1282,24 +1284,25 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 					FunctionID: funcInfoCmdVoidReadPointerStruct.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
+	ml := device.Little32
+
 	nestedRng, nestedID := memory.Store(
-		ctx, a, p(0x100000),
-		NestedStruct{RS: RemappedStructᵖ(0x200000), PS: PointerStructᵖ(0x300000)})
+		ctx, ml, p(0x100000),
+		NewNestedStruct(0x200000, 0x300000))
 	rsRng, rsID := memory.Store(
-		ctx, a, p(0x200000),
-		RemappedStruct{F1: 0x01, Handle: 0x23, F3: 0x45})
+		ctx, ml, p(0x200000),
+		NewRemappedStruct(0x01, 0x23, 0x45))
 	psRng, psID := memory.Store(
-		ctx, a, p(0x300000),
-		PointerStruct{F1: 0x67, F2: 0x89, Pointer: U32ᵖ(0x400000)})
-	pRng, pID := memory.Store(ctx, a, p(0x400000), uint32(0xab))
+		ctx, ml, p(0x300000),
+		NewPointerStruct(0x67, 0x89, 0x400000))
+	pRng, pID := memory.Store(ctx, ml, p(0x400000), uint32(0xab))
 
 	test{
 		cmds: []api.Cmd{
@@ -1398,24 +1401,25 @@ func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 					FunctionID: funcInfoCmdVoidReadPointerStruct.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
-	aRng, aID := memory.Store(ctx, a, p(0x100000), "array")
-	bRng, bID := memory.Store(ctx, a, p(0x200000), "of")
-	cRng, cID := memory.Store(ctx, a, p(0x300000), "strings")
+	ml := device.Little32
 
-	pRng, pID := memory.Store(ctx, a, p(0x400000), []memory.Pointer{
+	aRng, aID := memory.Store(ctx, ml, p(0x100000), "array")
+	bRng, bID := memory.Store(ctx, ml, p(0x200000), "of")
+	cRng, cID := memory.Store(ctx, ml, p(0x300000), "strings")
+
+	pRng, pID := memory.Store(ctx, ml, p(0x400000), []memory.Pointer{
 		p(0x300000), p(0x200000), p(0x100000), p(0x200000), p(0x300000),
 	})
 
-	ssRng, ssID := memory.Store(ctx, a, p(0x500000),
-		StringStruct{Count: 5, Strings: Charᵖᵖ(0x400000)})
+	ssRng, ssID := memory.Store(ctx, ml, p(0x500000),
+		NewStringStruct(5 /* size */, 0x400000 /* strings */))
 
 	test{
 		cmds: []api.Cmd{
@@ -1484,20 +1488,20 @@ func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 					FunctionID: funcInfoCmdVoidReadStringStruct.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }
 
 func TestOperationsOpCall_ReadAndConditionalWrite(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := CommandBuilder{Thread: 0}
-	a := device.Little32
-	rRng, rID := memory.Store(ctx, a, p(0x100000), uint32(3))                  // read for all cases
-	awcRng, awcID := memory.Store(ctx, a, p(0x100000), uint32(2))              // write to count for Case 1
-	bwcRng, bwcID := memory.Store(ctx, a, p(0x100000), uint32(3))              // write to count for Case 2
-	bwhRng, bwhID := memory.Store(ctx, a, p(0x200000), []Remapped{10, 20, 30}) // write to handles for Case 2
-	cwcRng, cwcID := memory.Store(ctx, a, p(0x100000), uint32(1))              // write to count for Case 3
-	cwhRng, cwhID := memory.Store(ctx, a, p(0x300000), []Remapped{40})         // write to handles for Case 3
+	ml := device.Little32
+	rRng, rID := memory.Store(ctx, ml, p(0x100000), uint32(3))                  // read for all cases
+	awcRng, awcID := memory.Store(ctx, ml, p(0x100000), uint32(2))              // write to count for Case 1
+	bwcRng, bwcID := memory.Store(ctx, ml, p(0x100000), uint32(3))              // write to count for Case 2
+	bwhRng, bwhID := memory.Store(ctx, ml, p(0x200000), []Remapped{10, 20, 30}) // write to handles for Case 2
+	cwcRng, cwcID := memory.Store(ctx, ml, p(0x100000), uint32(1))              // write to count for Case 3
+	cwhRng, cwhID := memory.Store(ctx, ml, p(0x300000), []Remapped{40})         // write to handles for Case 3
 
 	test{
 		cmds: []api.Cmd{
@@ -1588,5 +1592,5 @@ func TestOperationsOpCall_ReadAndConditionalWrite(t *testing.T) {
 					FunctionID: funcInfoCmdVoid3Remapped.ID},
 			},
 		},
-	}.check(ctx, a, a)
+	}.check(ctx, ml, ml)
 }

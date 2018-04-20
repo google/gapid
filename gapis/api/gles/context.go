@@ -22,23 +22,23 @@ import (
 )
 
 // Name returns the display-name of the context.
-func (c *Context) Name() string {
-	name := fmt.Sprintf("OpenGL ES context %d", int(c.Identifier))
-	if c.Other.ThreadName != "" {
-		name += fmt.Sprintf(" - \"%s\"", c.Other.ThreadName)
+func (c Contextʳ) Name() string {
+	name := fmt.Sprintf("OpenGL ES context %d", int(c.Identifier()))
+	if name := c.Other().ThreadName(); name != "" {
+		name += fmt.Sprintf(" - \"%s\"", name)
 	}
 	return name
 }
 
 // ID returns the context's unique identifier.
-func (c *Context) ID() api.ContextID {
-	if c == nil {
+func (c Contextʳ) ID() api.ContextID {
+	if c.IsNil() {
 		return api.ContextID{}
 	}
-	return api.ContextID(id.OfString(fmt.Sprintf("GLES Context %v", c.Identifier)))
+	return api.ContextID(id.OfString(fmt.Sprintf("GLES Context %v", c.Identifier())))
 }
 
 // API returns the GLES API.
-func (c *Context) API() api.API {
+func (c Contextʳ) API() api.API {
 	return API{}
 }

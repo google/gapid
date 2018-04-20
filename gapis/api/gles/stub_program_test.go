@@ -21,25 +21,41 @@ import (
 )
 
 func TestStubShaderSource(t *testing.T) {
+	type uniform struct {
+		ty   gles.GLenum
+		name string
+		size gles.GLint
+	}
+
+	newLPE := func(uniforms ...uniform) gles.LinkProgramExtraʳ {
+		m := gles.NewUniformIndexːProgramResourceʳᵐ()
+		for i, u := range uniforms {
+			res := gles.MakeProgramResourceʳ()
+			res.SetType(u.ty)
+			res.SetName(u.name)
+			res.SetArraySize(u.size)
+			m.Add(gles.UniformIndex(i), res)
+		}
+		resources := gles.MakeActiveProgramResourcesʳ()
+		resources.SetDefaultUniformBlock(m)
+
+		out := gles.MakeLinkProgramExtraʳ()
+		out.SetLinkStatus(gles.GLboolean_GL_TRUE)
+		out.SetActiveResources(resources)
+		return out
+	}
+
 	for _, test := range []struct {
 		name   string
-		pi     *gles.LinkProgramExtra
+		pi     gles.LinkProgramExtraʳ
 		vs, fs string
 	}{
 		{
 			name: "Simple",
-			pi: &gles.LinkProgramExtra{
-				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveResources: &gles.ActiveProgramResources{
-					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-						Type: gles.GLenum_GL_FLOAT_VEC4,
-						Name: "foo",
-					}).Add(1, &gles.ProgramResource{
-						Type: gles.GLenum_GL_SAMPLER_2D,
-						Name: "bar",
-					}),
-				},
-			},
+			pi: newLPE(
+				uniform{ty: gles.GLenum_GL_FLOAT_VEC4, name: "foo"},
+				uniform{ty: gles.GLenum_GL_SAMPLER_2D, name: "bar"},
+			),
 			vs: `#version 150
 
 /////////////////////////////////////////////
@@ -68,20 +84,10 @@ void main() {
 }`,
 		}, {
 			name: "Array",
-			pi: &gles.LinkProgramExtra{
-				LinkStatus: gles.GLboolean_GL_TRUE,
-				ActiveResources: &gles.ActiveProgramResources{
-					DefaultUniformBlock: gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, &gles.ProgramResource{
-						Type:      gles.GLenum_GL_FLOAT_VEC4,
-						Name:      "foo",
-						ArraySize: 3,
-					}).Add(1, &gles.ProgramResource{
-						Type:      gles.GLenum_GL_FLOAT_VEC4,
-						Name:      "bar[0]",
-						ArraySize: 3,
-					}),
-				},
-			},
+			pi: newLPE(
+				uniform{ty: gles.GLenum_GL_FLOAT_VEC4, name: "foo", size: 3},
+				uniform{ty: gles.GLenum_GL_FLOAT_VEC4, name: "bar[0]", size: 3},
+			),
 			vs: `#version 150
 
 /////////////////////////////////////////////

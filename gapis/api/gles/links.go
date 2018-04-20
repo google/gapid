@@ -23,26 +23,26 @@ import (
 
 // objects returns the path to the Objects field of the currently bound
 // context, and the context at p.
-func objects(ctx context.Context, p path.Node) (*path.Field, *Context, error) {
+func objects(ctx context.Context, p path.Node) (*path.Field, Contextʳ, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
 		cmd, err := resolve.Cmd(ctx, cmdPath)
 		if err != nil {
-			return nil, nil, err
+			return nil, NilContextʳ, err
 		}
 		thread := cmd.Thread()
 
 		stateObj, err := resolve.State(ctx, cmdPath.StateAfter())
 		if err != nil {
-			return nil, nil, err
+			return nil, NilContextʳ, err
 		}
 		state := stateObj.(*State)
-		context, ok := state.Contexts.Lookup(thread)
+		context, ok := state.Contexts().Lookup(thread)
 		if !ok {
-			return nil, nil, nil
+			return nil, NilContextʳ, nil
 		}
 		return state.objectsRoot(cmdPath, thread), context, nil
 	}
-	return nil, nil, nil
+	return nil, NilContextʳ, nil
 }
 
 // Link returns the link to the attribute vertex array in the state block.
@@ -52,12 +52,12 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 	if i == nil {
 		return nil, err
 	}
-	if !c.Bound.VertexArray.VertexAttributeArrays.Contains(o) {
+	if !c.Bound().VertexArray().VertexAttributeArrays().Contains(o) {
 		return nil, nil
 	}
 	return i.
 		Field("VertexArrays").
-		MapIndex(c.Bound.VertexArray.GetID()).
+		MapIndex(c.Bound().VertexArray().GetID()).
 		Field("VertexAttributeArrays").
 		MapIndex(o), nil
 }
@@ -66,7 +66,7 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 // If nil, nil is returned then the path cannot be followed.
 func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.Buffers.Contains(o) {
+	if i == nil || !c.Objects().Buffers().Contains(o) {
 		return nil, err
 	}
 	return i.Field("Buffers").MapIndex(o), nil
@@ -76,7 +76,7 @@ func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.Framebuffers.Contains(o) {
+	if i == nil || !c.Objects().Framebuffers().Contains(o) {
 		return nil, err
 	}
 	return i.Field("Framebuffers").MapIndex(o), nil
@@ -86,7 +86,7 @@ func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error)
 // If nil, nil is returned then the path cannot be followed.
 func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.Programs.Contains(o) {
+	if i == nil || !c.Objects().Programs().Contains(o) {
 		return nil, err
 	}
 	return i.Field("Programs").MapIndex(o), nil
@@ -96,7 +96,7 @@ func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.Queries.Contains(o) {
+	if i == nil || !c.Objects().Queries().Contains(o) {
 		return nil, err
 	}
 	return i.Field("Queries").MapIndex(o), nil
@@ -106,7 +106,7 @@ func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.Renderbuffers.Contains(o) {
+	if i == nil || !c.Objects().Renderbuffers().Contains(o) {
 		return nil, err
 	}
 	return i.Field("Renderbuffers").MapIndex(o), nil
@@ -116,7 +116,7 @@ func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error
 // If nil, nil is returned then the path cannot be followed.
 func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.Shaders.Contains(o) {
+	if i == nil || !c.Objects().Shaders().Contains(o) {
 		return nil, err
 	}
 	return i.Field("Shaders").MapIndex(o), nil
@@ -126,7 +126,7 @@ func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 // If nil, nil is returned then the path cannot be followed.
 func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.Textures.Contains(o) {
+	if i == nil || !c.Objects().Textures().Contains(o) {
 		return nil, err
 	}
 	return i.Field("Textures").MapIndex(o), nil
@@ -148,15 +148,15 @@ func (o UniformIndex) Link(ctx context.Context, p path.Node) (path.Node, error) 
 	var program ProgramId
 	switch cmd := cmd.(type) {
 	case *GlGetActiveUniform:
-		program = cmd.Program
+		program = cmd.Program()
 	case *GlGetActiveUniformsiv:
-		program = cmd.Program
+		program = cmd.Program()
 	default:
-		program = c.Bound.Program.GetID()
+		program = c.Bound().Program().GetID()
 	}
 
-	prog, ok := c.Objects.Programs.Lookup(program)
-	if !ok || prog.ActiveResources == nil || !prog.ActiveResources.Uniforms.Contains(uint32(o)) {
+	prog, ok := c.Objects().Programs().Lookup(program)
+	if !ok || prog.ActiveResources().IsNil() || !prog.ActiveResources().Uniforms().Contains(uint32(o)) {
 		return nil, nil
 	}
 
@@ -184,15 +184,15 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 	var program ProgramId
 	switch cmd := cmd.(type) {
 	case *GlGetActiveUniform:
-		program = cmd.Program
+		program = cmd.Program()
 	case *GlGetUniformLocation:
-		program = cmd.Program
+		program = cmd.Program()
 	default:
-		program = c.Bound.Program.GetID()
+		program = c.Bound().Program().GetID()
 	}
 
-	prog, ok := c.Objects.Programs.Lookup(program)
-	if !ok || !prog.UniformLocations.Contains(o) {
+	prog, ok := c.Objects().Programs().Lookup(program)
+	if !ok || !prog.UniformLocations().Contains(o) {
 		return nil, nil
 	}
 
@@ -207,7 +207,7 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 // If nil, nil is returned then the path cannot be followed.
 func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.VertexArrays.Contains(o) {
+	if i == nil || !c.Objects().VertexArrays().Contains(o) {
 		return nil, err
 	}
 	return i.Field("VertexArrays").MapIndex(o), nil
@@ -217,7 +217,7 @@ func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error)
 // If nil, nil is returned then the path cannot be followed.
 func (o TransformFeedbackId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 	i, c, err := objects(ctx, p)
-	if i == nil || !c.Objects.TransformFeedbacks.Contains(o) {
+	if i == nil || !c.Objects().TransformFeedbacks().Contains(o) {
 		return nil, err
 	}
 	return i.Field("TransformFeedbacks").MapIndex(o), nil

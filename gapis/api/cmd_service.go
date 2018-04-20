@@ -16,8 +16,6 @@ package api
 
 import (
 	"fmt"
-	"reflect"
-	"strconv"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/gapis/service/box"
@@ -35,34 +33,24 @@ func CmdToService(c Cmd) (*Command, error) {
 		out.Api = &path.API{Id: path.NewID(id.ID(api.ID()))}
 	}
 
-	v := reflect.ValueOf(c)
-	for v.Kind() != reflect.Struct {
-		v = v.Elem()
-	}
-	t := v.Type()
-	for i, count := 0, t.NumField(); i < count; i++ {
-		v, t := v.Field(i), t.Field(i)
-		if name, ok := t.Tag.Lookup(paramTag); ok {
-			param := &Parameter{
-				Name:  name,
-				Value: box.NewValue(v.Interface()),
-			}
-
-			if cs, ok := t.Tag.Lookup(constsetTag); ok {
-				if idx, _ := strconv.Atoi(cs); idx > 0 {
-					param.Constants = out.Api.ConstantSet(idx)
-				}
-			}
-
-			out.Parameters = append(out.Parameters, param)
+	for _, p := range c.CmdParams() {
+		param := &Parameter{
+			Name:  p.Name,
+			Value: box.NewValue(p.Get()),
 		}
-		if _, ok := t.Tag.Lookup(resultTag); ok {
-			out.Result = &Parameter{Value: box.NewValue(v.Interface())}
-			if cs, ok := t.Tag.Lookup(constsetTag); ok {
-				if idx, _ := strconv.Atoi(cs); idx > 0 {
-					out.Result.Constants = out.Api.ConstantSet(idx)
-				}
-			}
+		if p.Constants > 0 {
+			param.Constants = out.Api.ConstantSet(p.Constants)
+		}
+		out.Parameters = append(out.Parameters, param)
+	}
+
+	if p := c.CmdResult(); p != nil {
+		out.Result = &Parameter{
+			Name:  p.Name,
+			Value: box.NewValue(p.Get()),
+		}
+		if p.Constants >= 0 {
+			out.Result.Constants = out.Api.ConstantSet(p.Constants)
 		}
 	}
 
@@ -79,45 +67,16 @@ func ServiceToCmd(c *Command) (Cmd, error) {
 	if a == nil {
 		return nil, fmt.Errorf("Unknown command '%v.%v'", api.Name(), c.Name)
 	}
+
 	a.SetThread(c.Thread)
 
-	v := reflect.ValueOf(a)
-	for v.Kind() != reflect.Struct {
-		v = v.Elem()
+	for _, s := range c.Parameters {
+		SetParameter(a, s.Name, s.Value.Get())
 	}
-	t := v.Type()
-	for i, count := 0, t.NumField(); i < count; i++ {
-		f, t := v.Field(i), t.Field(i)
-		if n, ok := t.Tag.Lookup(paramTag); ok {
-			p := c.FindParameter(n)
-			if p == nil {
-				continue
-			}
-			if err := p.Value.AssignTo(f.Addr().Interface()); err != nil {
-				return nil, err
-			}
-		}
-		if _, ok := t.Tag.Lookup(resultTag); ok {
-			p := c.Result
-			if p == nil {
-				continue
-			}
-			if err := p.Value.AssignTo(f.Addr().Interface()); err != nil {
-				return nil, err
-			}
-		}
+
+	if p := a.CmdResult(); p != nil && c.Result != nil {
+		a.CmdResult().Set(c.Result.Value.Get())
 	}
 
 	return a, nil
-}
-
-// FindParameter returns the parameter with the given name, or nil if no
-// parameter is found.
-func (c *Command) FindParameter(name string) *Parameter {
-	for _, p := range c.Parameters {
-		if p.Name == name {
-			return p
-		}
-	}
-	return nil
 }

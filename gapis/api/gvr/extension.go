@@ -107,13 +107,13 @@ func newReprojectionGroupers(ctx context.Context, p *path.CommandTree) []cmdgrou
 	glFenceSync := func(cond gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlFenceSync)
-			return ok && c.Condition == cond
+			return ok && c.Condition() == cond
 		}
 	}
 	glEndTilingQCOM := func(cond gles.GLbitfield) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlEndTilingQCOM)
-			return ok && c.PreserveMask == cond
+			return ok && c.PreserveMask() == cond
 		}
 	}
 	eglDestroySyncKHR := func() func(cmd, prev api.Cmd) bool {
@@ -225,7 +225,7 @@ func eventFilter(ctx context.Context, p *path.Events) extensions.EventFilter {
 	return func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 		_, isSwapBuffers := cmd.(*gles.EglSwapBuffers)
 		if isSwapBuffers {
-			if context := gles.GetContext(s, cmd.Thread()); context != nil {
+			if context := gles.GetContext(s, cmd.Thread()); !context.IsNil() {
 				ctxID := context.ID()
 				if ctxID == *renderCtxID {
 					// Strip out eglSwapBuffers from the render context.

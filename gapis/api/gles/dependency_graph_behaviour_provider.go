@@ -23,7 +23,7 @@ import (
 )
 
 type uniformKey struct {
-	program  *Program
+	program  Programʳ
 	location UniformLocation
 	count    GLsizei
 }
@@ -31,13 +31,13 @@ type uniformKey struct {
 func (k uniformKey) Parent() dependencygraph.StateKey { return uniformGroupKey{k.program} }
 
 type uniformGroupKey struct {
-	program *Program
+	program Programʳ
 }
 
 func (k uniformGroupKey) Parent() dependencygraph.StateKey { return nil }
 
 type vertexAttribKey struct {
-	vertexArray *VertexArray
+	vertexArray VertexArrayʳ
 	location    AttributeLocation
 }
 
@@ -46,20 +46,21 @@ func (k vertexAttribKey) Parent() dependencygraph.StateKey {
 }
 
 type vertexAttribGroupKey struct {
-	vertexArray *VertexArray
+	vertexArray VertexArrayʳ
 }
 
 func (k vertexAttribGroupKey) Parent() dependencygraph.StateKey { return nil }
 
 type renderbufferDataKey struct {
-	renderbuffer *Renderbuffer
+	renderbuffer Renderbufferʳ
 }
 
 func (k renderbufferDataKey) Parent() dependencygraph.StateKey { return nil }
 
 type renderbufferSubDataKey struct {
-	renderbuffer *Renderbuffer
-	region       Rect
+	renderbuffer     Renderbufferʳ
+	regionX, regionY GLint
+	regionW, regionH GLsizei
 }
 
 func (k renderbufferSubDataKey) Parent() dependencygraph.StateKey {
@@ -67,7 +68,7 @@ func (k renderbufferSubDataKey) Parent() dependencygraph.StateKey {
 }
 
 type textureDataKey struct {
-	texture *Texture
+	texture Textureʳ
 	id      TextureId // For debugging, as 0 is not unique identifier.
 	level   GLint
 	layer   GLint
@@ -79,14 +80,14 @@ func (k textureDataKey) Parent() dependencygraph.StateKey {
 
 // represents data for all levels and layers in texture
 type textureDataGroupKey struct {
-	texture *Texture
+	texture Textureʳ
 	id      TextureId // For debugging, as 0 is not unique identifier.
 }
 
 func (k textureDataGroupKey) Parent() dependencygraph.StateKey { return nil }
 
 type textureSizeKey struct {
-	texture *Texture
+	texture Textureʳ
 	id      TextureId // For debugging, as 0 is not unique identifier.
 	layer   GLint
 	level   GLint
@@ -95,19 +96,18 @@ type textureSizeKey struct {
 func (k textureSizeKey) Parent() dependencygraph.StateKey { return nil }
 
 type eglImageDataKey struct {
-	image *EGLImage
+	image EGLImageʳ
 }
 
 func (k eglImageDataKey) Parent() dependencygraph.StateKey { return nil }
 
 type eglImageSizeKey struct {
-	image *EGLImage
+	image EGLImageʳ
 }
 
 func (k eglImageSizeKey) Parent() dependencygraph.StateKey { return nil }
 
-type GlesDependencyGraphBehaviourProvider struct {
-}
+type GlesDependencyGraphBehaviourProvider struct{}
 
 func newGlesDependencyGraphBehaviourProvider() *GlesDependencyGraphBehaviourProvider {
 	return &GlesDependencyGraphBehaviourProvider{}
@@ -134,7 +134,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		log.W(ctx, "Command %v %v: %v", id, cmd, err)
 		return dependencygraph.AtomBehaviour{Aborted: true}
 	}
-	if c != nil && c.Other.Initialized {
+	if !c.IsNil() && c.Other().Initialized() {
 		_, isEglSwapBuffers := cmd.(*EglSwapBuffers)
 		// TODO: We should also be considering eglSwapBuffersWithDamageKHR here
 		// too, but this is nearly exculsively used by the Android framework,
@@ -147,22 +147,22 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		// BUG: https://github.com/google/gapid/issues/846.
 		if isEglSwapBuffers {
 			// Get default renderbuffers
-			fb := c.Objects.Framebuffers.Get(0)
-			color := fb.ColorAttachments.Get(0).Renderbuffer
-			depth := fb.DepthAttachment.Renderbuffer
-			stencil := fb.StencilAttachment.Renderbuffer
-			if !c.Other.PreserveBuffersOnSwap {
+			fb := c.Objects().Framebuffers().Get(0)
+			color := fb.ColorAttachments().Get(0).Renderbuffer()
+			depth := fb.DepthAttachment().Renderbuffer()
+			stencil := fb.StencilAttachment().Renderbuffer()
+			if !c.Other().PreserveBuffersOnSwap() {
 				b.Write(g, renderbufferDataKey{color})
 			}
 			b.Write(g, renderbufferDataKey{depth})
 			b.Write(g, renderbufferDataKey{stencil})
 		} else if cmd.CmdFlags(ctx, id, s).IsDrawCall() {
-			b.Read(g, uniformGroupKey{c.Bound.Program})
-			b.Read(g, vertexAttribGroupKey{c.Bound.VertexArray})
+			b.Read(g, uniformGroupKey{c.Bound().Program()})
+			b.Read(g, vertexAttribGroupKey{c.Bound().VertexArray()})
 			for _, stateKey := range getAllUsedTextureData(ctx, cmd, id, s, c) {
 				b.Read(g, stateKey)
 			}
-			c.Bound.DrawFramebuffer.ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
+			c.Bound().DrawFramebuffer().ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
 				data, size := att.dataAndSize(g, c)
 				b.Read(g, size)
 				b.Modify(g, data)
@@ -171,23 +171,23 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 		} else if cmd.CmdFlags(ctx, id, s).IsClear() {
 			switch cmd := cmd.(type) {
 			case *GlClearBufferfi:
-				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
+				clearBuffer(g, &b, cmd.Buffer(), cmd.Drawbuffer(), c)
 			case *GlClearBufferfv:
-				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
+				clearBuffer(g, &b, cmd.Buffer(), cmd.Drawbuffer(), c)
 			case *GlClearBufferiv:
-				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
+				clearBuffer(g, &b, cmd.Buffer(), cmd.Drawbuffer(), c)
 			case *GlClearBufferuiv:
-				clearBuffer(g, &b, cmd.Buffer, cmd.Drawbuffer, c)
+				clearBuffer(g, &b, cmd.Buffer(), cmd.Drawbuffer(), c)
 			case *GlClear:
-				if (cmd.Mask & GLbitfield_GL_COLOR_BUFFER_BIT) != 0 {
-					for i, _ := range c.Bound.DrawFramebuffer.ColorAttachments.Range() {
+				if (cmd.Mask() & GLbitfield_GL_COLOR_BUFFER_BIT) != 0 {
+					for i := range c.Bound().DrawFramebuffer().ColorAttachments().Range() {
 						clearBuffer(g, &b, GLenum_GL_COLOR, i, c)
 					}
 				}
-				if (cmd.Mask & GLbitfield_GL_DEPTH_BUFFER_BIT) != 0 {
+				if (cmd.Mask() & GLbitfield_GL_DEPTH_BUFFER_BIT) != 0 {
 					clearBuffer(g, &b, GLenum_GL_DEPTH, 0, c)
 				}
-				if (cmd.Mask & GLbitfield_GL_STENCIL_BUFFER_BIT) != 0 {
+				if (cmd.Mask() & GLbitfield_GL_STENCIL_BUFFER_BIT) != 0 {
 					clearBuffer(g, &b, GLenum_GL_STENCIL, 0, c)
 				}
 			default:
@@ -198,45 +198,45 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			case *GlCopyImageSubData:
 				// TODO: This assumes whole-image copy.  Handle sub-range copies.
 				// TODO: This does not handle multiple layers well.
-				if cmd.SrcTarget == GLenum_GL_RENDERBUFFER {
-					b.Read(g, renderbufferDataKey{c.Objects.Renderbuffers.Get(RenderbufferId(cmd.SrcName))})
+				if cmd.SrcTarget() == GLenum_GL_RENDERBUFFER {
+					b.Read(g, renderbufferDataKey{c.Objects().Renderbuffers().Get(RenderbufferId(cmd.SrcName()))})
 				} else {
-					data, size := c.Objects.Textures.Get(TextureId(cmd.SrcName)).dataAndSize(cmd.SrcLevel, 0)
+					data, size := c.Objects().Textures().Get(TextureId(cmd.SrcName())).dataAndSize(cmd.SrcLevel(), 0)
 					b.Read(g, data)
 					b.Read(g, size)
 				}
-				if cmd.DstTarget == GLenum_GL_RENDERBUFFER {
+				if cmd.DstTarget() == GLenum_GL_RENDERBUFFER {
 					b.Write(g,
-						renderbufferDataKey{c.Objects.Renderbuffers.Get(RenderbufferId(cmd.DstName))})
+						renderbufferDataKey{c.Objects().Renderbuffers().Get(RenderbufferId(cmd.DstName()))})
 				} else {
-					data, size := c.Objects.Textures.Get(TextureId(cmd.DstName)).dataAndSize(cmd.DstLevel, 0)
+					data, size := c.Objects().Textures().Get(TextureId(cmd.DstName())).dataAndSize(cmd.DstLevel(), 0)
 					b.Write(g, data)
 					b.Write(g, size)
 				}
 			case *GlFramebufferTexture2D:
-				b.Read(g, textureSizeKey{c.Objects.Textures.Get(cmd.Texture), cmd.Texture, cmd.Level, 0})
+				b.Read(g, textureSizeKey{c.Objects().Textures().Get(cmd.Texture()), cmd.Texture(), cmd.Level(), 0})
 				b.KeepAlive = true // Changes untracked state
 			case *GlCompressedTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
+				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound().TextureUnit(), cmd.Target(), cmd.Level())
 				b.Modify(g, texData)
 				b.Write(g, texSize)
 			case *GlCompressedTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
+				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound().TextureUnit(), cmd.Target(), cmd.Level())
 				b.Modify(g, texData)
 			case *GlTexImage2D:
-				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
+				texData, texSize := getTextureDataAndSize(ctx, cmd, id, s, c.Bound().TextureUnit(), cmd.Target(), cmd.Level())
 				b.Modify(g, texData)
 				b.Write(g, texSize)
 			case *GlTexSubImage2D:
-				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound.TextureUnit, cmd.Target, cmd.Level)
+				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound().TextureUnit(), cmd.Target(), cmd.Level())
 				b.Modify(g, texData)
 			case *GlGenerateMipmap:
-				tex, err := subGetBoundTextureOrErrorInvalidEnum(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target)
+				tex, err := subGetBoundTextureOrErrorInvalidEnum(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target())
 				if err != nil {
-					log.E(ctx, "Can not find bound texture %v", cmd.Target)
+					log.E(ctx, "Can not find bound texture %v", cmd.Target())
 				}
-				if baseLevel, ok := tex.Levels.Lookup(0); ok {
-					for layerIndex := range baseLevel.Layers.Range() {
+				if baseLevel, ok := tex.Levels().Lookup(0); ok {
+					for layerIndex := range baseLevel.Layers().Range() {
 						data, size := tex.dataAndSize(0, layerIndex)
 						b.Read(g, data)
 						b.Read(g, size)
@@ -249,17 +249,17 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 					}
 				}
 			case *GlUniform1fv:
-				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
+				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
 			case *GlUniform2fv:
-				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
+				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
 			case *GlUniform3fv:
-				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
+				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
 			case *GlUniform4fv:
-				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
+				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
 			case *GlUniformMatrix4fv:
-				b.Write(g, uniformKey{c.Bound.Program, cmd.Location, cmd.Count})
+				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
 			case *GlVertexAttribPointer:
-				b.Write(g, vertexAttribKey{c.Bound.VertexArray, cmd.Location})
+				b.Write(g, vertexAttribKey{c.Bound().VertexArray(), cmd.Location()})
 			default:
 				// Force all unhandled atoms to be kept alive.
 				b.KeepAlive = true
@@ -271,47 +271,47 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	return b
 }
 
-func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBehaviour, buffer GLenum, index GLint, c *Context) {
+func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBehaviour, buffer GLenum, index GLint, c Contextʳ) {
 	var data, size dependencygraph.StateKey
 	switch buffer {
 	case GLenum_GL_COLOR:
-		data, size = c.Bound.DrawFramebuffer.ColorAttachments.Get(index).dataAndSize(g, c)
+		data, size = c.Bound().DrawFramebuffer().ColorAttachments().Get(index).dataAndSize(g, c)
 	case GLenum_GL_DEPTH:
-		data, size = c.Bound.DrawFramebuffer.DepthAttachment.dataAndSize(g, c)
+		data, size = c.Bound().DrawFramebuffer().DepthAttachment().dataAndSize(g, c)
 	case GLenum_GL_STENCIL:
-		data, size = c.Bound.DrawFramebuffer.StencilAttachment.dataAndSize(g, c)
+		data, size = c.Bound().DrawFramebuffer().StencilAttachment().dataAndSize(g, c)
 	case GLenum_GL_DEPTH_STENCIL:
-		data, size = c.Bound.DrawFramebuffer.DepthAttachment.dataAndSize(g, c)
+		data, size = c.Bound().DrawFramebuffer().DepthAttachment().dataAndSize(g, c)
 		b.Read(g, size)
 		b.Write(g, data)
-		data, size = c.Bound.DrawFramebuffer.StencilAttachment.dataAndSize(g, c)
+		data, size = c.Bound().DrawFramebuffer().StencilAttachment().dataAndSize(g, c)
 	}
 	b.Read(g, size)
 	b.Write(g, data)
 }
 
-func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, c *Context) (stateKeys []dependencygraph.StateKey) {
+func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, c Contextʳ) (stateKeys []dependencygraph.StateKey) {
 	// Look for samplers used by the current program.
-	if c.Bound.Program == nil {
+	if c.Bound().Program().IsNil() {
 		return
 	}
-	for _, uniform := range c.Bound.Program.UniformLocations.Range() {
-		if uniform.Type == GLenum_GL_FLOAT_VEC4 || uniform.Type == GLenum_GL_FLOAT_MAT4 {
+	for _, uniform := range c.Bound().Program().UniformLocations().Range() {
+		if uniform.Type() == GLenum_GL_FLOAT_VEC4 || uniform.Type() == GLenum_GL_FLOAT_MAT4 {
 			continue // Optimization - skip the two most common types which we know are not samplers.
 		}
-		target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, uniform.Type)
+		target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, uniform.Type())
 		if target == GLenum_GL_NONE {
 			continue // Not a sampler type
 		}
-		units := AsU32ˢ(uniform.Values, s.MemoryLayout).MustRead(ctx, cmd, s, nil)
+		units := AsU32ˢ(uniform.Values(), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
 		for _, unit := range units {
-			if tu := c.Objects.TextureUnits.Get(TextureUnitId(unit)); tu != nil {
+			if tu := c.Objects().TextureUnits().Get(TextureUnitId(unit)); !tu.IsNil() {
 				tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, tu, target)
-				if tex != nil && err == nil {
-					if tex.EGLImage != nil {
-						stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage})
+				if !tex.IsNil() && err == nil {
+					if !tex.EGLImage().IsNil() {
+						stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage()})
 					} else {
-						stateKeys = append(stateKeys, textureDataGroupKey{tex, tex.ID})
+						stateKeys = append(stateKeys, textureDataGroupKey{tex, tex.ID()})
 					}
 				}
 			}
@@ -325,12 +325,12 @@ func getTextureDataAndSize(
 	cmd api.Cmd,
 	id api.CmdID,
 	s *api.GlobalState,
-	unit *TextureUnit,
+	unit TextureUnitʳ,
 	target GLenum,
 	level GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {
 
 	tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, unit, target)
-	if tex == nil || err != nil {
+	if tex.IsNil() || err != nil {
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil
 	}
@@ -338,32 +338,32 @@ func getTextureDataAndSize(
 	return tex.dataAndSize(level, layer)
 }
 
-func (tex *Texture) dataAndSize(level, layer GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {
-	if tex.EGLImage != nil {
-		return eglImageDataKey{tex.EGLImage}, eglImageSizeKey{tex.EGLImage}
-	} else {
-		return textureDataKey{tex, tex.ID, level, layer}, textureSizeKey{tex, tex.ID, layer, level}
+func (tex Textureʳ) dataAndSize(level, layer GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {
+	if !tex.EGLImage().IsNil() {
+		return eglImageDataKey{tex.EGLImage()}, eglImageSizeKey{tex.EGLImage()}
 	}
+	return textureDataKey{tex, tex.ID(), level, layer}, textureSizeKey{tex, tex.ID(), layer, level}
 }
 
-func (att FramebufferAttachment) dataAndSize(g *dependencygraph.DependencyGraph, c *Context) (dataKey dependencygraph.StateKey, sizeKey dependencygraph.StateKey) {
-	if att.Type == GLenum_GL_RENDERBUFFER {
-		rb := att.Renderbuffer
-		if rb != nil && rb.Image != nil && rb.Image.SizedFormat != GLenum_GL_NONE {
-			scissor := c.Pixel.Scissor
-			fullBox := Rect{Width: rb.Image.Width, Height: rb.Image.Height}
-			if scissor.Test == GLboolean_GL_TRUE && scissor.Box != fullBox {
-				dataKey, sizeKey = renderbufferSubDataKey{rb, scissor.Box}, nil
+func (att FramebufferAttachment) dataAndSize(g *dependencygraph.DependencyGraph, c Contextʳ) (dataKey dependencygraph.StateKey, sizeKey dependencygraph.StateKey) {
+	if att.Type() == GLenum_GL_RENDERBUFFER {
+		rb := att.Renderbuffer()
+		if !rb.IsNil() && !rb.Image().IsNil() && rb.Image().SizedFormat() != GLenum_GL_NONE {
+			scissor := c.Pixel().Scissor()
+			box := scissor.Box()
+			if scissor.Test() == GLboolean_GL_TRUE && !box.EqualTo(0, 0, rb.Image().Width(), rb.Image().Height()) {
+				box := scissor.Box()
+				x, y, w, h := box.X(), box.Y(), box.Width(), box.Height()
+				dataKey, sizeKey = renderbufferSubDataKey{rb, x, y, w, h}, nil
 			} else {
 				dataKey, sizeKey = renderbufferDataKey{rb}, nil
 			}
 		}
 	}
-	if att.Type == GLenum_GL_TEXTURE {
-		tex := att.Texture
-		if tex != nil {
+	if att.Type() == GLenum_GL_TEXTURE {
+		if tex := att.Texture(); !tex.IsNil() {
 			// TODO: We should handle scissor here as well.
-			dataKey, sizeKey = tex.dataAndSize(att.TextureLevel, att.TextureLayer)
+			dataKey, sizeKey = tex.dataAndSize(att.TextureLevel(), att.TextureLayer())
 		}
 	}
 	if dataKey != nil {

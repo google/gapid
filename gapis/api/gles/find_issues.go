@@ -120,7 +120,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	dID := id.Derived()
 	s := GetState(t.state)
 	c := s.GetContext(cmd.Thread())
-	if c == nil {
+	if c.IsNil() {
 		return
 	}
 
@@ -160,8 +160,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 	switch cmd := cmd.(type) {
 	case *GlCompileShader:
-		shader := c.Objects.Shaders.Get(cmd.Shader)
-		st, err := shader.Type.ShaderType()
+		shader := c.Objects().Shaders().Get(cmd.Shader())
+		st, err := shader.Type().ShaderType()
 		if err != nil {
 			t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
 			return
@@ -173,7 +173,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			TargetGLSLVersion: 430,
 		}
 
-		if _, err := shadertools.ConvertGlsl(shader.Source, &opts); err != nil {
+		if _, err := shadertools.ConvertGlsl(shader.Source(), &opts); err != nil {
 			t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
 		}
 
@@ -181,7 +181,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		tmp := t.state.AllocOrPanic(ctx, buflen)
 
 		infoLog := make([]byte, buflen)
-		out.MutateAndWrite(ctx, dID, cb.GlGetShaderInfoLog(cmd.Shader, buflen, memory.Nullptr, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderInfoLog(cmd.Shader(), buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
@@ -195,7 +195,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		}))
 
 		source := make([]byte, buflen)
-		out.MutateAndWrite(ctx, dID, cb.GlGetShaderSource(cmd.Shader, buflen, memory.Nullptr, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderSource(cmd.Shader(), buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
@@ -208,7 +208,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			return nil
 		}))
 
-		out.MutateAndWrite(ctx, dID, cb.GlGetShaderiv(cmd.Shader, GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetShaderiv(cmd.Shader(), GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r binary.Reader, err error) error {
@@ -217,11 +217,11 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 				}
 				if r.Uint32() != uint32(GLboolean_GL_TRUE) {
 					originalSource := "<unknown>"
-					if shader := c.Objects.Shaders.Get(cmd.Shader); shader != nil {
-						originalSource = shader.Source
+					if shader := c.Objects().Shaders().Get(cmd.Shader()); !shader.IsNil() {
+						originalSource = shader.Source()
 					}
 					t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Shader %d failed to compile. Error:\n%v\nOriginal source:\n%s\nTranslated source:\n%s",
-						cmd.Shader, ntbs(infoLog), text.LineNumber(originalSource), text.LineNumber(ntbs(source))))
+						cmd.Shader(), ntbs(infoLog), text.LineNumber(originalSource), text.LineNumber(ntbs(source))))
 				}
 				return r.Error()
 			})
@@ -232,8 +232,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	case *GlLinkProgram:
 		const buflen = 2048
 		tmp := t.state.AllocOrPanic(ctx, 4+buflen)
-		out.MutateAndWrite(ctx, dID, cb.GlGetProgramiv(cmd.Program, GLenum_GL_LINK_STATUS, tmp.Ptr()))
-		out.MutateAndWrite(ctx, dID, cb.GlGetProgramInfoLog(cmd.Program, buflen, memory.Nullptr, tmp.Offset(4)))
+		out.MutateAndWrite(ctx, dID, cb.GlGetProgramiv(cmd.Program(), GLenum_GL_LINK_STATUS, tmp.Ptr()))
+		out.MutateAndWrite(ctx, dID, cb.GlGetProgramInfoLog(cmd.Program(), buflen, memory.Nullptr, tmp.Offset(4)))
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r binary.Reader, err error) error {
@@ -245,21 +245,21 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 				r.Data(msg)
 				if res != uint32(GLboolean_GL_TRUE) {
 					vss, fss := "<unknown>", "<unknown>"
-					if program := c.Objects.Programs.Get(cmd.Program); program != nil {
-						if shader := program.Shaders.Get(GLenum_GL_VERTEX_SHADER); shader != nil {
-							vss = shader.Source
+					if program := c.Objects().Programs().Get(cmd.Program()); !program.IsNil() {
+						if shader := program.Shaders().Get(GLenum_GL_VERTEX_SHADER); !shader.IsNil() {
+							vss = shader.Source()
 						}
-						if shader := program.Shaders.Get(GLenum_GL_FRAGMENT_SHADER); shader != nil {
-							fss = shader.Source
+						if shader := program.Shaders().Get(GLenum_GL_FRAGMENT_SHADER); !shader.IsNil() {
+							fss = shader.Source()
 						}
 					}
 					logLevel := service.Severity_ErrorLevel
-					if pi := FindLinkProgramExtra(cmd.Extras()); pi != nil && pi.LinkStatus == GLboolean_GL_TRUE {
+					if pi := FindLinkProgramExtra(cmd.Extras()); !pi.IsNil() && pi.LinkStatus() == GLboolean_GL_TRUE {
 						// Increase severity if the program linked successfully during trace.
 						logLevel = service.Severity_FatalLevel
 					}
 					t.onIssue(cmd, id, logLevel, fmt.Errorf("Program %d failed to link. Error:\n%v\n"+
-						"Vertex shader source:\n%sFragment shader source:\n%s", cmd.Program, ntbs(msg),
+						"Vertex shader source:\n%sFragment shader source:\n%s", cmd.Program(), ntbs(msg),
 						text.LineNumber(vss), text.LineNumber(fss)))
 				}
 				return r.Error()
@@ -272,7 +272,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		glDev := t.device.Configuration.Drivers.OpenGL
 		if !canUsePrecompiledShader(c, glDev) {
 			t.onIssue(cmd, id, service.Severity_WarningLevel, fmt.Errorf("Pre-compiled binaries cannot be used across on different devices. Capture: %s-%s, Replay: %s-%s",
-				c.Constants.Vendor, c.Constants.Version, glDev.Vendor, glDev.Version))
+				c.Constants().Vendor(), c.Constants().Version(), glDev.Vendor, glDev.Version))
 		}
 	}
 }

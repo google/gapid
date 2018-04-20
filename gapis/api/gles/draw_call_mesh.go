@@ -80,23 +80,23 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshHasNoVertices()}
 	}
 
-	program := c.Bound.Program
-	if program == nil {
+	program := c.Bound().Program()
+	if program.IsNil() {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoProgramBound()}
 	}
 
-	if program.ActiveResources == nil {
+	if program.ActiveResources().IsNil() {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrProgramNotLinked()}
 	}
 
 	vb := &vertex.Buffer{}
-	va := c.Bound.VertexArray
-	for _, attr := range program.ActiveResources.ProgramInputs.Range() {
-		vaa := va.VertexAttributeArrays.Get(AttributeLocation(attr.Locations.Get(0)))
-		if vaa == nil || vaa.Enabled == GLboolean_GL_FALSE {
+	va := c.Bound().VertexArray()
+	for _, attr := range program.ActiveResources().ProgramInputs().Range() {
+		vaa := va.VertexAttributeArrays().Get(AttributeLocation(attr.Locations().Get(0)))
+		if vaa.IsNil() || vaa.Enabled() == GLboolean_GL_FALSE {
 			continue
 		}
-		vbb := vaa.Binding
+		vbb := vaa.Binding()
 
 		format, err := translateVertexFormat(vaa)
 		if err != nil {
@@ -106,11 +106,11 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		var data []byte
 		if !noData {
 			var slice U8ˢ
-			if vbb.Buffer == nil {
+			if vbb.Buffer().IsNil() {
 				// upper bound doesn't really matter here, so long as it's big.
-				slice = U8ˢ(vaa.Pointer.Slice(0, 1<<30, s.MemoryLayout))
+				slice = U8ˢ(vaa.Pointer().Slice(0, 1<<30, s.MemoryLayout))
 			} else {
-				slice = vbb.Buffer.Data
+				slice = vbb.Buffer().Data()
 			}
 			data, err = vertexStreamData(ctx, vaa, vbb, count, slice, s)
 			if err != nil {
@@ -120,7 +120,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 		vb.Streams = append(vb.Streams,
 			&vertex.Stream{
-				Name:     attr.Name,
+				Name:     attr.Name(),
 				Data:     data,
 				Format:   format,
 				Semantic: &vertex.Semantic{},
@@ -154,19 +154,19 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 func vertexStreamData(
 	ctx context.Context,
-	vaa *VertexAttributeArray,
-	vbb *VertexBufferBinding,
+	vaa VertexAttributeArrayʳ,
+	vbb VertexBufferBindingʳ,
 	vectorCount int,
 	slice U8ˢ,
 	s *api.GlobalState) ([]byte, error) {
 
-	if vbb.Divisor != 0 {
+	if vbb.Divisor() != 0 {
 		return nil, fmt.Errorf("Instanced draw calls not currently supported")
 	}
 
-	elementsPerVector := int(vaa.Size)
-	vectorSize := elementsPerVector * DataTypeSize(vaa.Type)
-	vectorStride := int(vaa.Stride)
+	elementsPerVector := int(vaa.Size())
+	vectorSize := elementsPerVector * DataTypeSize(vaa.Type())
+	vectorStride := int(vaa.Stride())
 	if vectorStride == 0 {
 		vectorStride = vectorSize
 	}
@@ -175,8 +175,8 @@ func vertexStreamData(
 	compactSize := vectorSize * vectorCount
 	out := make([]byte, compactSize)
 
-	base := uint64(vaa.RelativeOffset) + uint64(vbb.Offset)
-	if base >= slice.count {
+	base := uint64(vaa.RelativeOffset()) + uint64(vbb.Offset())
+	if base >= slice.Size() {
 		// First vertex sits beyond the end of the buffer.
 		// Instead of erroring just return a 0-initialized buffer so other
 		// streams can be visualized. The report should display an error to
@@ -186,7 +186,7 @@ func vertexStreamData(
 	}
 
 	// Only read as much data as we actually have.
-	size := u64.Min(uint64(compactSize+ /* total size of gaps */ gap*(vectorCount-1)), slice.count-base)
+	size := u64.Min(uint64(compactSize+ /* total size of gaps */ gap*(vectorCount-1)), slice.Size()-base)
 	data, err := slice.Slice(base, base+size).Read(ctx, nil, s, nil)
 	if err != nil {
 		return nil, err
@@ -227,8 +227,8 @@ func translateDrawPrimitive(e GLenum) (api.DrawPrimitive, error) {
 	}
 }
 
-func translateVertexFormat(vaa *VertexAttributeArray) (*stream.Format, error) {
-	switch vaa.Type {
+func translateVertexFormat(vaa VertexAttributeArrayʳ) (*stream.Format, error) {
+	switch vaa.Type() {
 	case GLenum_GL_INT_2_10_10_10_REV:
 		return fmts.XYZW_S10S10S10S2, nil
 	case GLenum_GL_UNSIGNED_INT_2_10_10_10_REV:
@@ -236,7 +236,7 @@ func translateVertexFormat(vaa *VertexAttributeArray) (*stream.Format, error) {
 	}
 
 	var dt stream.DataType
-	switch vaa.Type {
+	switch vaa.Type() {
 	case GLenum_GL_BYTE:
 		dt = stream.S8
 	case GLenum_GL_UNSIGNED_BYTE:
@@ -260,12 +260,12 @@ func translateVertexFormat(vaa *VertexAttributeArray) (*stream.Format, error) {
 	}
 
 	sampling := stream.Linear
-	if vaa.Normalized != 0 {
+	if vaa.Normalized() != 0 {
 		sampling = stream.LinearNormalized
 	}
 
 	fmt := &stream.Format{
-		Components: make([]*stream.Component, vaa.Size),
+		Components: make([]*stream.Component, vaa.Size()),
 	}
 
 	xyzw := stream.Channels{

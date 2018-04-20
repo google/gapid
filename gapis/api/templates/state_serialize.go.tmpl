@@ -48,32 +48,37 @@
       «},¶
       func(ctx context.Context, in *{{$p}}) (*State, error) {»¶
         ϟrefs := &protoconv.FromProtoContext{}¶
-        return StateFrom(in, ϟrefs), nil¶
+        return StateFrom(ctx, in, ϟrefs), nil¶
       «},¶
     «)¶
   «}¶
   ¶
 
   // ToProto returns the storage form of the State.¶
-  func (ϟa *State) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$p}} {»¶
+  func (ϟc *State) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$p}} {»¶
     to := &{{$p}}{}¶
     {{range $g := $.Globals}}
       {{if (GetAnnotation $g "serialize")}}
-        {{Template "Convert.To" "Field" $g "Outer" "State"}}
+        {{Template "Convert.To" "Field" $g}}
       {{end}}
     {{end}}
     return to¶
   «}¶
   ¶
   // StateFrom builds a State from the storage form.¶
-  func StateFrom(from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *State {»¶
-    ϟa := &State{}¶
+  func StateFrom(ctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *State {»¶
+    ϟc := &State{}¶
     {{range $g := $.Globals}}
+      {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}
+        ϟc.Set{{$g.Name | GoPublicName}}({{$init}})¶
+      {{else}}
+        ϟc.Set{{$g.Name | GoPublicName}}({{Template "Go.Null" $g.Type}})¶
+      {{end}}
       {{if (GetAnnotation $g "serialize")}}
-        {{Template "Convert.From" "Field" $g "Outer" "State"}}
+        {{Template "Convert.From" "Field" $g}}
       {{end}}
     {{end}}
-    return ϟa¶
+    return ϟc¶
   «}¶
 
 {{end}}

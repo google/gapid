@@ -29,7 +29,7 @@ type tweaker struct {
 	cb   CommandBuilder
 	dID  api.CmdID // Derived ID to use for generated atoms. Can be NoID.
 	s    *api.GlobalState
-	c    *Context
+	c    Contextʳ
 	undo []func(context.Context)
 }
 
@@ -66,7 +66,7 @@ func (t *tweaker) getCapability(ctx context.Context, name GLenum) bool {
 	o := a.Extras().Observations()
 	s := t.out.State()
 	i := GLuint(0) // capability index.
-	res, err := subGetCapability(ctx, a, t.dID, o, s, GetState(s), a.thread, nil, name, i)
+	res, err := subGetCapability(ctx, a, t.dID, o, s, GetState(s), a.Thread(), nil, name, i)
 	if err != nil {
 		return false
 	}
@@ -92,8 +92,8 @@ func (t *tweaker) glDisable(ctx context.Context, name GLenum) {
 }
 
 func (t *tweaker) glDisableVertexAttribArray(ctx context.Context, l AttributeLocation) {
-	arr := t.c.Bound.VertexArray.VertexAttributeArrays.Get(l)
-	if arr != nil && arr.Enabled == GLboolean_GL_TRUE {
+	arr := t.c.Bound().VertexArray().VertexAttributeArrays().Get(l)
+	if !arr.IsNil() && arr.Enabled() == GLboolean_GL_TRUE {
 		t.doAndUndo(ctx,
 			t.cb.GlDisableVertexAttribArray(l),
 			t.cb.GlEnableVertexAttribArray(l))
@@ -101,7 +101,7 @@ func (t *tweaker) glDisableVertexAttribArray(ctx context.Context, l AttributeLoc
 }
 
 func (t *tweaker) glDepthMask(ctx context.Context, v GLboolean) {
-	if o := t.c.Pixel.DepthWritemask; o != v {
+	if o := t.c.Pixel().DepthWritemask(); o != v {
 		t.doAndUndo(ctx,
 			t.cb.GlDepthMask(v),
 			t.cb.GlDepthMask(o))
@@ -109,7 +109,7 @@ func (t *tweaker) glDepthMask(ctx context.Context, v GLboolean) {
 }
 
 func (t *tweaker) glDepthFunc(ctx context.Context, v GLenum) {
-	if o := t.c.Pixel.Depth.Func; o != v {
+	if o := t.c.Pixel().Depth().Func(); o != v {
 		t.doAndUndo(ctx,
 			t.cb.GlDepthFunc(v),
 			t.cb.GlDepthFunc(o))
@@ -117,11 +117,10 @@ func (t *tweaker) glDepthFunc(ctx context.Context, v GLenum) {
 }
 
 func (t *tweaker) glBlendColor(ctx context.Context, r, g, b, a GLfloat) {
-	n := Color{Red: r, Green: g, Blue: b, Alpha: a}
-	if o := t.c.Pixel.BlendColor; o != n {
+	if o := t.c.Pixel().BlendColor(); !o.EqualTo(r, g, b, a) {
 		t.doAndUndo(ctx,
 			t.cb.GlBlendColor(r, g, b, a),
-			t.cb.GlBlendColor(o.Red, o.Green, o.Blue, o.Alpha))
+			t.cb.GlBlendColor(o.Red(), o.Green(), o.Blue(), o.Alpha()))
 	}
 }
 
@@ -131,27 +130,30 @@ func (t *tweaker) glBlendFunc(ctx context.Context, src, dst GLenum) {
 
 func (t *tweaker) glBlendFuncSeparate(ctx context.Context, srcRGB, dstRGB, srcA, dstA GLenum) {
 	// TODO: This does not correctly handle indexed state.
-	o := t.c.Pixel.Blend.Get(0)
+	o := t.c.Pixel().Blend().Get(0)
 	n := o
-	n.SrcRgb, n.DstRgb, n.SrcAlpha, n.DstAlpha = srcRGB, dstRGB, srcA, dstA
+	n.SetSrcRgb(srcRGB)
+	n.SetDstRgb(dstRGB)
+	n.SetSrcAlpha(srcA)
+	n.SetDstAlpha(dstA)
 	if o != n {
 		t.doAndUndo(ctx,
 			t.cb.GlBlendFuncSeparate(srcRGB, dstRGB, srcA, dstA),
-			t.cb.GlBlendFuncSeparate(o.SrcRgb, o.DstRgb, o.SrcAlpha, o.DstAlpha))
+			t.cb.GlBlendFuncSeparate(o.SrcRgb(), o.DstRgb(), o.SrcAlpha(), o.DstAlpha()))
 	}
 }
 
 // glPolygonOffset adjusts the offset depth factor and units. Unlike the original glPolygonOffset,
 // this function adds the given values to the current values rather than setting them.
 func (t *tweaker) glPolygonOffset(ctx context.Context, factor, units GLfloat) {
-	origFactor, origUnits := t.c.Rasterization.PolygonOffsetFactor, t.c.Rasterization.PolygonOffsetUnits
+	origFactor, origUnits := t.c.Rasterization().PolygonOffsetFactor(), t.c.Rasterization().PolygonOffsetUnits()
 	t.doAndUndo(ctx,
 		t.cb.GlPolygonOffset(origFactor+factor, origUnits+units),
 		t.cb.GlPolygonOffset(origFactor, origUnits))
 }
 
 func (t *tweaker) glLineWidth(ctx context.Context, width GLfloat) {
-	if o := t.c.Rasterization.LineWidth; o != width {
+	if o := t.c.Rasterization().LineWidth(); o != width {
 		t.doAndUndo(ctx,
 			t.cb.GlLineWidth(width),
 			t.cb.GlLineWidth(o))
@@ -160,7 +162,7 @@ func (t *tweaker) glLineWidth(ctx context.Context, width GLfloat) {
 
 // This will either bind new VAO (GLES 3.x) or save state of the default one (GLES 2.0).
 func (t *tweaker) makeVertexArray(ctx context.Context, enabledLocations ...AttributeLocation) {
-	if t.c.Constants.MajorVersion >= 3 {
+	if t.c.Constants().MajorVersion() >= 3 {
 		// GLES 3.0 and 3.1 introduce a lot of new state which would be hard to restore.
 		// It is much easier to just create a fresh Vertex Array Object to work with.
 		vertexArrayID := t.glGenVertexArray(ctx)
@@ -170,27 +172,29 @@ func (t *tweaker) makeVertexArray(ctx context.Context, enabledLocations ...Attri
 		}
 	} else {
 		// GLES 2.0 does not have Vertex Array Objects, but the state is fairly simple.
-		vao := t.c.Bound.VertexArray
+		vao := t.c.Bound().VertexArray()
 		// Disable all vertex attribute arrays
-		for location, origVertexAttrib := range vao.VertexAttributeArrays.Range() {
-			if origVertexAttrib.Enabled == GLboolean_GL_TRUE {
+		for location, origVertexAttrib := range vao.VertexAttributeArrays().Range() {
+			if origVertexAttrib.Enabled() == GLboolean_GL_TRUE {
 				t.doAndUndo(ctx,
 					t.cb.GlDisableVertexAttribArray(location),
 					t.cb.GlEnableVertexAttribArray(location))
 			}
 		}
 		// Enable and save state for the attribute arrays that we will use
-		origArrayBufferID := t.c.Bound.ArrayBuffer.GetID()
+		origArrayBufferID := t.c.Bound().ArrayBuffer().GetID()
 		for _, location := range enabledLocations {
 			location := location
 			t.doAndUndo(ctx,
 				t.cb.GlEnableVertexAttribArray(location),
 				t.cb.GlDisableVertexAttribArray(location))
-			origVertexAttrib := *(vao.VertexAttributeArrays.Get(location))
-			origVertexBinding := *(vao.VertexBufferBindings.Get(VertexBufferBindingIndex(location)))
+
+			vaa := vao.VertexAttributeArrays().Get(location)
+			size, ty, norm, stride, ptr := vaa.Size(), vaa.Type(), vaa.Normalized(), vaa.Stride(), vaa.Pointer()
+			bufID := vao.VertexBufferBindings().Get(VertexBufferBindingIndex(location)).Buffer().GetID()
 			t.undo = append(t.undo, func(ctx context.Context) {
-				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, origVertexBinding.Buffer.GetID()))
-				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlVertexAttribPointer(location, origVertexAttrib.Size, origVertexAttrib.Type, origVertexAttrib.Normalized, origVertexAttrib.Stride, memory.Pointer(origVertexAttrib.Pointer)))
+				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, bufID))
+				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlVertexAttribPointer(location, size, ty, norm, stride, memory.Pointer(ptr)))
 				t.out.MutateAndWrite(ctx, t.dID, t.cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, origArrayBufferID))
 			})
 		}
@@ -198,7 +202,7 @@ func (t *tweaker) makeVertexArray(ctx context.Context, enabledLocations ...Attri
 }
 
 func (t *tweaker) glGenBuffer(ctx context.Context) BufferId {
-	id := BufferId(newUnusedID(ctx, 'B', func(x uint32) bool { return t.c.Objects.Buffers.Get(BufferId(x)) != nil }))
+	id := BufferId(newUnusedID(ctx, 'B', func(x uint32) bool { return !t.c.Objects().Buffers().Get(BufferId(x)).IsNil() }))
 	tmp := t.AllocData(ctx, id)
 	t.doAndUndo(ctx,
 		t.cb.GlGenBuffers(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -207,7 +211,7 @@ func (t *tweaker) glGenBuffer(ctx context.Context) BufferId {
 }
 
 func (t *tweaker) glGenRenderbuffer(ctx context.Context) RenderbufferId {
-	id := RenderbufferId(newUnusedID(ctx, 'R', func(x uint32) bool { return t.c.Objects.Renderbuffers.Get(RenderbufferId(x)) != nil }))
+	id := RenderbufferId(newUnusedID(ctx, 'R', func(x uint32) bool { return !t.c.Objects().Renderbuffers().Get(RenderbufferId(x)).IsNil() }))
 	tmp := t.AllocData(ctx, id)
 	t.doAndUndo(ctx,
 		t.cb.GlGenRenderbuffers(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -216,7 +220,7 @@ func (t *tweaker) glGenRenderbuffer(ctx context.Context) RenderbufferId {
 }
 
 func (t *tweaker) glGenFramebuffer(ctx context.Context) FramebufferId {
-	id := FramebufferId(newUnusedID(ctx, 'F', func(x uint32) bool { return t.c.Objects.Framebuffers.Get(FramebufferId(x)) != nil }))
+	id := FramebufferId(newUnusedID(ctx, 'F', func(x uint32) bool { return !t.c.Objects().Framebuffers().Get(FramebufferId(x)).IsNil() }))
 	tmp := t.AllocData(ctx, id)
 	t.doAndUndo(ctx,
 		t.cb.GlGenFramebuffers(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -225,7 +229,7 @@ func (t *tweaker) glGenFramebuffer(ctx context.Context) FramebufferId {
 }
 
 func (t *tweaker) glGenTexture(ctx context.Context) TextureId {
-	id := TextureId(newUnusedID(ctx, 'T', func(x uint32) bool { return t.c.Objects.Textures.Get(TextureId(x)) != nil }))
+	id := TextureId(newUnusedID(ctx, 'T', func(x uint32) bool { return !t.c.Objects().Textures().Get(TextureId(x)).IsNil() }))
 	tmp := t.AllocData(ctx, id)
 	t.doAndUndo(ctx,
 		t.cb.GlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -234,7 +238,7 @@ func (t *tweaker) glGenTexture(ctx context.Context) TextureId {
 }
 
 func (t *tweaker) glGenVertexArray(ctx context.Context) VertexArrayId {
-	id := VertexArrayId(newUnusedID(ctx, 'V', func(x uint32) bool { return t.c.Objects.VertexArrays.Get(VertexArrayId(x)) != nil }))
+	id := VertexArrayId(newUnusedID(ctx, 'V', func(x uint32) bool { return !t.c.Objects().VertexArrays().Get(VertexArrayId(x)).IsNil() }))
 	tmp := t.AllocData(ctx, id)
 	t.doAndUndo(ctx,
 		t.cb.GlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data()),
@@ -244,7 +248,7 @@ func (t *tweaker) glGenVertexArray(ctx context.Context) VertexArrayId {
 
 func (t *tweaker) glCreateProgram(ctx context.Context) ProgramId {
 	id := ProgramId(newUnusedID(ctx, 'P', func(x uint32) bool {
-		return t.c.Objects.Programs.Get(ProgramId(x)) != nil || t.c.Objects.Shaders.Get(ShaderId(x)) != nil
+		return !t.c.Objects().Programs().Get(ProgramId(x)).IsNil() || !t.c.Objects().Shaders().Get(ShaderId(x)).IsNil()
 	}))
 	t.doAndUndo(ctx,
 		t.cb.GlCreateProgram(id),
@@ -267,7 +271,7 @@ func (t *tweaker) makeProgram(ctx context.Context, vertexShaderSource, fragmentS
 
 func (t *tweaker) glCreateShader(ctx context.Context, shaderType GLenum) ShaderId {
 	id := ShaderId(newUnusedID(ctx, 'S', func(x uint32) bool {
-		return t.c.Objects.Programs.Get(ProgramId(x)) != nil || t.c.Objects.Shaders.Get(ShaderId(x)) != nil
+		return !t.c.Objects().Programs().Get(ProgramId(x)).IsNil() || !t.c.Objects().Shaders().Get(ShaderId(x)).IsNil()
 	}))
 	// We need to mutate the state, as otherwise two consecutive calls can return the same ShaderId.
 	t.doAndUndo(ctx,
@@ -288,16 +292,15 @@ func (t *tweaker) glShaderSource(ctx context.Context, shaderID ShaderId, shaderS
 }
 
 func (t *tweaker) glScissor(ctx context.Context, x, y GLint, w, h GLsizei) {
-	v := Rect{X: x, Y: y, Width: w, Height: h}
-	if o := t.c.Pixel.Scissor.Box; o != v {
+	if o := t.c.Pixel().Scissor().Box(); !o.EqualTo(x, y, w, h) {
 		t.doAndUndo(ctx,
 			t.cb.GlScissor(x, y, w, h),
-			t.cb.GlScissor(o.X, o.Y, o.Width, o.Height))
+			t.cb.GlScissor(o.X(), o.Y(), o.Width(), o.Height()))
 	}
 }
 
 func (t *tweaker) GlBindBuffer_ArrayBuffer(ctx context.Context, id BufferId) {
-	if o := t.c.Bound.ArrayBuffer.GetID(); o != id {
+	if o := t.c.Bound().ArrayBuffer().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, id),
 			t.cb.GlBindBuffer(GLenum_GL_ARRAY_BUFFER, o))
@@ -305,8 +308,8 @@ func (t *tweaker) GlBindBuffer_ArrayBuffer(ctx context.Context, id BufferId) {
 }
 
 func (t *tweaker) GlBindBuffer_ElementArrayBuffer(ctx context.Context, id BufferId) {
-	vao := t.c.Bound.VertexArray
-	if o := vao.ElementArrayBuffer.GetID(); o != id {
+	vao := t.c.Bound().VertexArray()
+	if o := vao.ElementArrayBuffer().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, id),
 			t.cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, o))
@@ -314,7 +317,7 @@ func (t *tweaker) GlBindBuffer_ElementArrayBuffer(ctx context.Context, id Buffer
 }
 
 func (t *tweaker) glBindFramebuffer_Draw(ctx context.Context, id FramebufferId) {
-	if o := t.c.Bound.DrawFramebuffer.GetID(); o != id {
+	if o := t.c.Bound().DrawFramebuffer().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, id),
 			t.cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, o))
@@ -322,7 +325,7 @@ func (t *tweaker) glBindFramebuffer_Draw(ctx context.Context, id FramebufferId) 
 }
 
 func (t *tweaker) glBindFramebuffer_Read(ctx context.Context, id FramebufferId) {
-	if o := t.c.Bound.ReadFramebuffer.GetID(); o != id {
+	if o := t.c.Bound().ReadFramebuffer().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, id),
 			t.cb.GlBindFramebuffer(GLenum_GL_READ_FRAMEBUFFER, o))
@@ -330,8 +333,8 @@ func (t *tweaker) glBindFramebuffer_Read(ctx context.Context, id FramebufferId) 
 }
 
 func (t *tweaker) glReadBuffer(ctx context.Context, id GLenum) {
-	fb := t.c.Bound.ReadFramebuffer
-	if o := fb.ReadBuffer; o != id {
+	fb := t.c.Bound().ReadFramebuffer()
+	if o := fb.ReadBuffer(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlReadBuffer(id),
 			t.cb.GlReadBuffer(o))
@@ -339,7 +342,7 @@ func (t *tweaker) glReadBuffer(ctx context.Context, id GLenum) {
 }
 
 func (t *tweaker) glBindRenderbuffer(ctx context.Context, id RenderbufferId) {
-	if o := t.c.Bound.Renderbuffer.GetID(); o != id {
+	if o := t.c.Bound().Renderbuffer().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, id),
 			t.cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, o))
@@ -348,36 +351,36 @@ func (t *tweaker) glBindRenderbuffer(ctx context.Context, id RenderbufferId) {
 
 func (t *tweaker) glBindTexture(ctx context.Context, tex *Texture) {
 	var old TextureId
-	switch tex.Kind {
+	switch tex.Kind() {
 	case GLenum_GL_TEXTURE_2D:
-		old = t.c.Bound.TextureUnit.Binding2d.GetID()
+		old = t.c.Bound().TextureUnit().Binding2d().GetID()
 	case GLenum_GL_TEXTURE_3D:
-		old = t.c.Bound.TextureUnit.Binding3d.GetID()
+		old = t.c.Bound().TextureUnit().Binding3d().GetID()
 	case GLenum_GL_TEXTURE_2D_ARRAY:
-		old = t.c.Bound.TextureUnit.Binding2dArray.GetID()
+		old = t.c.Bound().TextureUnit().Binding2dArray().GetID()
 	case GLenum_GL_TEXTURE_CUBE_MAP:
-		old = t.c.Bound.TextureUnit.BindingCubeMap.GetID()
+		old = t.c.Bound().TextureUnit().BindingCubeMap().GetID()
 	case GLenum_GL_TEXTURE_CUBE_MAP_ARRAY:
-		old = t.c.Bound.TextureUnit.BindingCubeMapArray.GetID()
+		old = t.c.Bound().TextureUnit().BindingCubeMapArray().GetID()
 	case GLenum_GL_TEXTURE_2D_MULTISAMPLE:
-		old = t.c.Bound.TextureUnit.Binding2dMultisample.GetID()
+		old = t.c.Bound().TextureUnit().Binding2dMultisample().GetID()
 	case GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
-		old = t.c.Bound.TextureUnit.Binding2dMultisampleArray.GetID()
+		old = t.c.Bound().TextureUnit().Binding2dMultisampleArray().GetID()
 	case GLenum_GL_TEXTURE_EXTERNAL_OES:
-		old = t.c.Bound.TextureUnit.BindingExternalOes.GetID()
+		old = t.c.Bound().TextureUnit().BindingExternalOes().GetID()
 	default:
-		panic(fmt.Errorf("%v is not a texture kind", tex.Kind))
+		panic(fmt.Errorf("%v is not a texture kind", tex.Kind()))
 	}
 
-	if old != tex.ID {
+	if old != tex.ID() {
 		t.doAndUndo(ctx,
-			t.cb.GlBindTexture(tex.Kind, tex.ID),
-			t.cb.GlBindTexture(tex.Kind, old))
+			t.cb.GlBindTexture(tex.Kind(), tex.ID()),
+			t.cb.GlBindTexture(tex.Kind(), old))
 	}
 }
 
 func (t *tweaker) glBindTexture_2D(ctx context.Context, id TextureId) {
-	if o := t.c.Bound.TextureUnit.Binding2d.GetID(); o != id {
+	if o := t.c.Bound().TextureUnit().Binding2d().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlBindTexture(GLenum_GL_TEXTURE_2D, id),
 			t.cb.GlBindTexture(GLenum_GL_TEXTURE_2D, o))
@@ -385,7 +388,7 @@ func (t *tweaker) glBindTexture_2D(ctx context.Context, id TextureId) {
 }
 
 func (t *tweaker) glBindTexture_2DArray(ctx context.Context, id TextureId) {
-	if o := t.c.Bound.TextureUnit.Binding2dArray.GetID(); o != id {
+	if o := t.c.Bound().TextureUnit().Binding2dArray().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlBindTexture(GLenum_GL_TEXTURE_2D_ARRAY, id),
 			t.cb.GlBindTexture(GLenum_GL_TEXTURE_2D_ARRAY, o))
@@ -393,7 +396,7 @@ func (t *tweaker) glBindTexture_2DArray(ctx context.Context, id TextureId) {
 }
 
 func (t *tweaker) glBindVertexArray(ctx context.Context, id VertexArrayId) {
-	if o := t.c.Bound.VertexArray.GetID(); o != id {
+	if o := t.c.Bound().VertexArray().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlBindVertexArray(id),
 			t.cb.GlBindVertexArray(o))
@@ -401,7 +404,7 @@ func (t *tweaker) glBindVertexArray(ctx context.Context, id VertexArrayId) {
 }
 
 func (t *tweaker) glUseProgram(ctx context.Context, id ProgramId) {
-	if o := t.c.Bound.Program.GetID(); o != id {
+	if o := t.c.Bound().Program().GetID(); o != id {
 		t.doAndUndo(ctx,
 			t.cb.GlUseProgram(id),
 			t.cb.GlUseProgram(o))
@@ -409,7 +412,7 @@ func (t *tweaker) glUseProgram(ctx context.Context, id ProgramId) {
 }
 
 func (t *tweaker) glActiveTexture(ctx context.Context, unit GLenum) {
-	if o := GLenum(t.c.Bound.TextureUnit.ID) + GLenum_GL_TEXTURE0; o != unit {
+	if o := GLenum(t.c.Bound().TextureUnit().ID()) + GLenum_GL_TEXTURE0; o != unit {
 		t.doAndUndo(ctx,
 			t.cb.GlActiveTexture(unit),
 			t.cb.GlActiveTexture(o))
@@ -418,7 +421,7 @@ func (t *tweaker) glActiveTexture(ctx context.Context, unit GLenum) {
 
 func (t *tweaker) setPackStorage(ctx context.Context, state PixelStorageState, bufferId BufferId) {
 	origState := map[GLenum]GLint{}
-	forEachPackStorageState(t.c.Other.Pack, func(n GLenum, v GLint) { origState[n] = v })
+	forEachPackStorageState(t.c.Other().Pack(), func(n GLenum, v GLint) { origState[n] = v })
 	forEachPackStorageState(state, func(name GLenum, value GLint) {
 		if o := origState[name]; o != value {
 			t.doAndUndo(ctx,
@@ -426,7 +429,7 @@ func (t *tweaker) setPackStorage(ctx context.Context, state PixelStorageState, b
 				t.cb.GlPixelStorei(name, o))
 		}
 	})
-	if o := t.c.Bound.PixelPackBuffer.GetID(); o != bufferId {
+	if o := t.c.Bound().PixelPackBuffer().GetID(); o != bufferId {
 		t.doAndUndo(ctx,
 			t.cb.GlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, bufferId),
 			t.cb.GlBindBuffer(GLenum_GL_PIXEL_PACK_BUFFER, o))
@@ -434,17 +437,17 @@ func (t *tweaker) setPackStorage(ctx context.Context, state PixelStorageState, b
 }
 
 func forEachPackStorageState(state PixelStorageState, action func(n GLenum, v GLint)) {
-	action(GLenum_GL_PACK_ALIGNMENT, state.Alignment)
-	action(GLenum_GL_PACK_IMAGE_HEIGHT, state.ImageHeight)
-	action(GLenum_GL_PACK_ROW_LENGTH, state.RowLength)
-	action(GLenum_GL_PACK_SKIP_IMAGES, state.SkipImages)
-	action(GLenum_GL_PACK_SKIP_PIXELS, state.SkipPixels)
-	action(GLenum_GL_PACK_SKIP_ROWS, state.SkipRows)
+	action(GLenum_GL_PACK_ALIGNMENT, state.Alignment())
+	action(GLenum_GL_PACK_IMAGE_HEIGHT, state.ImageHeight())
+	action(GLenum_GL_PACK_ROW_LENGTH, state.RowLength())
+	action(GLenum_GL_PACK_SKIP_IMAGES, state.SkipImages())
+	action(GLenum_GL_PACK_SKIP_PIXELS, state.SkipPixels())
+	action(GLenum_GL_PACK_SKIP_ROWS, state.SkipRows())
 }
 
 func (t *tweaker) setUnpackStorage(ctx context.Context, state PixelStorageState, bufferId BufferId) {
 	origState := map[GLenum]GLint{}
-	forEachUnpackStorageState(t.c.Other.Unpack, func(n GLenum, v GLint) { origState[n] = v })
+	forEachUnpackStorageState(t.c.Other().Unpack(), func(n GLenum, v GLint) { origState[n] = v })
 	forEachUnpackStorageState(state, func(name GLenum, value GLint) {
 		if o := origState[name]; o != value {
 			t.doAndUndo(ctx,
@@ -452,7 +455,7 @@ func (t *tweaker) setUnpackStorage(ctx context.Context, state PixelStorageState,
 				t.cb.GlPixelStorei(name, o))
 		}
 	})
-	if o := t.c.Bound.PixelUnpackBuffer.GetID(); o != bufferId {
+	if o := t.c.Bound().PixelUnpackBuffer().GetID(); o != bufferId {
 		t.doAndUndo(ctx,
 			t.cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, bufferId),
 			t.cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, o))
@@ -460,10 +463,10 @@ func (t *tweaker) setUnpackStorage(ctx context.Context, state PixelStorageState,
 }
 
 func forEachUnpackStorageState(state PixelStorageState, action func(n GLenum, v GLint)) {
-	action(GLenum_GL_UNPACK_ALIGNMENT, state.Alignment)
-	action(GLenum_GL_UNPACK_IMAGE_HEIGHT, state.ImageHeight)
-	action(GLenum_GL_UNPACK_ROW_LENGTH, state.RowLength)
-	action(GLenum_GL_UNPACK_SKIP_IMAGES, state.SkipImages)
-	action(GLenum_GL_UNPACK_SKIP_PIXELS, state.SkipPixels)
-	action(GLenum_GL_UNPACK_SKIP_ROWS, state.SkipRows)
+	action(GLenum_GL_UNPACK_ALIGNMENT, state.Alignment())
+	action(GLenum_GL_UNPACK_IMAGE_HEIGHT, state.ImageHeight())
+	action(GLenum_GL_UNPACK_ROW_LENGTH, state.RowLength())
+	action(GLenum_GL_UNPACK_SKIP_IMAGES, state.SkipImages())
+	action(GLenum_GL_UNPACK_SKIP_PIXELS, state.SkipPixels())
+	action(GLenum_GL_UNPACK_SKIP_ROWS, state.SkipRows())
 }

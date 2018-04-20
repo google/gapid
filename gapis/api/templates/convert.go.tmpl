@@ -33,19 +33,18 @@
     "github.com/google/gapid/core/data/protoconv"¶
     "github.com/google/gapid/gapis/api/{{Global "OutputDir"}}/{{Global "Store"}}"¶
     "github.com/google/gapid/gapis/api"¶
-    "github.com/google/gapid/gapis/memory"¶
     "github.com/google/gapid/gapis/memory/memory_pb"¶
+    ϟmem "github.com/google/gapid/gapis/memory"¶
   «)¶
   ¶
   // Just in case it is not used¶
-  var _ memory.PoolID¶
+  var _ ϟmem.PoolID¶
   var _ memory_pb.Slice¶
   ¶
   func init() {»¶
     {{range $c := AllCommands $}}
       {{if not (GetAnnotation $c "pfn")}}
-        {{$proto := $c.Name | ProtoGoName}}
-        {{$p := print (Global "Store") "." $proto}}
+        {{$p := print (Global "Store") "." ($c.Name | ProtoGoName)}}
         {{$o := $c.Name | GoCommandName}}
         protoconv.Register(»¶
           func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) {»¶
@@ -54,24 +53,41 @@
           «},¶
           func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) {»¶
             ϟrefs := &protoconv.FromProtoContext{}¶
-            return {{$o}}From(in, ϟrefs), nil¶
+            return {{$o}}From(ctx, in, ϟrefs), nil¶
           «},¶
         «)¶
       {{end}}
     {{end}}
     {{range $c := $.Classes}}
       {{if not (GetAnnotation $c "noserialize")}}
-        {{$proto := $c.Name | ProtoGoName}}
-        {{$p := print (Global "Store") "." $proto}}
+        {{$p := print (Global "Store") "." (Macro "Convert.StorageTypeName" $c)}}
         {{$o := Macro "Go.Type" $c}}
         protoconv.Register(»¶
-          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) {»¶
+          func(ctx context.Context, in {{$o}}) (*{{$p}}, error) {»¶
             ϟrefs := &protoconv.ToProtoContext{}¶
             return in.ToProto(ϟrefs), nil¶
           «},¶
-          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) {»¶
+          func(ctx context.Context, in *{{$p}}) ({{$o}}, error) {»¶
             ϟrefs := &protoconv.FromProtoContext{}¶
-            v := {{$o}}From(in, ϟrefs); return &v, nil
+            v := {{$o}}From(ctx, in, ϟrefs);¶
+            return v, nil¶
+          «},¶
+        «)¶
+      {{end}}
+    {{end}}
+    {{range $r := $.References}}
+      {{if not (GetAnnotation $r "noserialize")}}
+        {{$p := print (Global "Store") "." (Macro "Convert.StorageTypeName" $r)}}
+        {{$o := Macro "Go.Type" $r}}
+        protoconv.Register(»¶
+          func(ctx context.Context, in {{$o}}) (*{{$p}}, error) {»¶
+            ϟrefs := &protoconv.ToProtoContext{}¶
+            return in.ToProto(ϟrefs), nil¶
+          «},¶
+          func(ctx context.Context, in *{{$p}}) ({{$o}}, error) {»¶
+            ϟrefs := &protoconv.FromProtoContext{}¶
+            v := {{$o}}From(ctx, in, ϟrefs);¶
+            return v, nil¶
           «},¶
         «)¶
       {{end}}
@@ -90,9 +106,206 @@
     {{end}}
   {{end}}
 
+  {{range $c := $.References}}
+    {{if not (GetAnnotation $c "noserialize")}}
+      {{Template "ReferenceEntry" $c}}
+    {{end}}
+  {{end}}
+
   {{range $m := $.Maps}}
     {{if not (GetAnnotation $m "noserialize")}}
       {{Template "MapEntry" $m}}
     {{end}}
   {{end}}
 {{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CommandEntry"}}
+  {{AssertType $ "Function"}}
+  {{$name := $.Name | GoCommandName}}
+  {{$proto := $.Name | ProtoGoName}}
+  {{$p := print (Global "Store") "." $proto}}
+  ¶
+  // ToProto returns the primary storage proto of the {{$name}} command.¶
+  func (ϟc {{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$p}} {»¶
+    to := &{{$p}}{Thread: int64(ϟc.Thread())}¶
+    {{range $v := $.CallParameters}}
+      {{Template "Convert.To" "Field" $v}}
+    {{end}}
+    return to¶
+  «}¶
+  ¶
+  // {{$name}}From builds a {{$name}} from the storage form.¶
+  func {{$name}}From(ctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *{{$name}} {»¶
+    cb := CommandBuilder{uint64(from.GetThread())}¶
+    {{range $p := $.CallParameters}}
+      {{$proto := $p.Name | ProtoGoName}}
+      {{$underlying := Underlying $p.Type}}
+      {{if IsStaticArray $underlying}}
+        pϟ{{$p.Name}} := New{{Template "Go.Type" $p}}()¶
+        for ϟi, ϟc := 0, {{$underlying.Size}}; ϟi < ϟc; ϟi++ {»¶
+          {{$value := print "from." $proto "[ϟi]"}}
+          pϟ{{$p.Name}}.Set(ϟi, {{Template "Convert.FromProto" "Type" $underlying.ValueType "Value" $value}})¶
+        «}¶
+      {{else}}
+        {{$value := printf "from.%s" $proto}}
+        pϟ{{$p.Name}} := {{Template "Convert.FromProto" "Type" $p.Type "Value" $value}}¶
+      {{end}}
+    {{end}}
+    {{if IsVoid $.Return.Type}}
+      return cb.{{$name}}({{range $p := $.CallParameters}}pϟ{{$p.Name}}, {{end}})¶
+    {{else}}
+      result := {{Template "Go.Null" $.Return.Type}}¶
+      return cb.{{$name}}({{range $p := $.CallParameters}}pϟ{{$p.Name}}, {{end}}result)¶
+    {{end}}
+  «}¶
+¶
+  {{if not (IsVoid $.Return.Type)}}
+    var _ api.CmdWithResult = (*{{$name}})(nil)¶
+¶
+    // CallResult returns the result value for this command.¶
+    func (ϟc *{{$name}}) CallResult() proto.Message {»¶
+      ϟrefs := &protoconv.ToProtoContext{}¶
+      _ = ϟrefs¶
+      to := &{{Global "OutputDir"}}_pb.{{$proto}}Call{}¶
+      {{Template "Convert.To" "Field" $.Return}}
+      return to¶
+    «}¶
+¶
+    // SetCallResult changes the result value.¶
+    func (ϟc *{{$name}}) SetCallResult(ctx context.Context, v proto.Message) error {»¶
+      ϟrefs := &protoconv.FromProtoContext{}¶
+      _ = ϟrefs¶
+      from, ok := v.(*{{Global "OutputDir"}}_pb.{{$proto}}Call)¶
+      if !ok {»¶
+        return fmt.Errorf("Expected result type *{{$proto}}Call, got %T", v)¶
+      «}¶
+      ϟc.SetResult({{Template "Convert.FromProto" "Type" $.Return.Type "Value" (print "from." (ProtoGoName $.Return.Name))}})¶
+      return nil¶
+    «}¶
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits conversion logic for the given class type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ClassEntry"}}
+  {{$name := Macro "Go.Type" $}}
+  {{$proto := print (Global "Store") "." (Macro "Convert.StorageTypeName" $)}}
+  ¶
+  // ToProto returns the storage form of the {{$name}}.¶
+  func (ϟc {{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
+    to := &{{$proto}}{}¶
+    {{range $v := $.Fields}}
+      {{Template "Convert.To" "Field" $v}}
+    {{end}}
+    return to¶
+  «}¶
+  ¶
+  // {{$name}}From builds a {{$name}} from the storage form.¶
+  func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
+    ϟc := Make{{$name}}()¶
+    {{range $v := $.Fields}}
+      {{Template "Convert.From" "Field" $v}}
+    {{end}}
+    return ϟc¶
+  «}¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits conversion logic for the given reference type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "ReferenceEntry"}}
+  {{$name  := Macro "Go.Type" $}}
+  {{$proto := print (Global "Store") "." (Macro "Convert.StorageTypeName" $)}}
+
+   // ToProto returns the storage form of the {{$name}}.¶
+  func (ϟc {{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
+    ϟobj := &{{$proto}}{}¶
+    if ϟc.IsNil() {¶
+      return ϟobj¶
+    }¶
+    referenceID, isNew := ϟrefs.GetReferenceID(ϟc)¶
+    ϟobj.ReferenceID = referenceID¶
+    if isNew {¶»
+      ϟobj.Value = {{Template "Convert.ToProto" "Type" $.To "Value" "ϟc.Get()"}}¶
+    «}¶
+    return ϟobj¶
+  «}¶
+  ¶
+  // {{$name}}From builds a {{$name}} from the storage form.¶
+  func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
+    return ϟrefs.GetReferencedObject(from.GetReferenceID(), Nil{{$name}}, func() (interface{}, func()) {»¶
+      ϟobj := Make{{$name}}()¶
+      return ϟobj, func() {
+        ϟobj.Set({{Template "Convert.FromProto" "Type" $.To "Value" "from.Value"}})¶
+      }¶
+    «}).({{$name}})
+  «}¶
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a type declaration and implementation for the specified map.
+-------------------------------------------------------------------------------
+*/}}
+{{define "MapEntry"}}
+  ¶
+  {{$name := Macro "Go.Type" $}}
+  {{$key   := Macro "Go.Type" $.KeyType}}
+  {{$value := Macro "Go.Type" $.ValueType}}
+  {{$proto := print (Global "Store") "." (Macro "Convert.StorageTypeName" $)}}
+
+  // ToProto returns the storage form of the {{$name}}.¶
+  func (ϟc {{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
+    if ϟc.Len() == 0 {¶
+      return &{{$proto}}{}¶
+    }¶
+    referenceID, isNew := ϟrefs.GetReferenceID(ϟc)¶
+    if isNew {»¶
+      out := &{{$proto}}{ReferenceID: referenceID}¶
+      keys := ϟc.Keys()¶
+      for _, ϟk := range keys {»¶
+        v := ϟc.Get(ϟk)¶
+        out.Keys = append(out.Keys, {{Template "Convert.ToProto" "Type" $.KeyType "Value" "ϟk"}})¶
+        out.Values = append(out.Values, {{Template "Convert.ToProto" "Type" $.ValueType "Value" "v"}})¶
+      «}¶
+      return out
+    «}¶
+    return &{{$proto}}{ReferenceID: referenceID}¶
+  «}¶
+  ¶
+  // {{$name}}From builds a {{$name}} from the storage form.¶
+  func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
+    ϟobj := New{{$name}}()¶
+    if from.GetReferenceID() == 0 {»¶
+      return ϟobj¶
+    «}¶
+    return ϟrefs.GetReferencedObject(from.GetReferenceID(), ϟobj, func() (interface{}, func()) {»¶
+      return ϟobj, func() {»¶
+        {{$keytype := Macro "Convert.StorageType" $.KeyType}}
+        {{$numeric := or (eq $keytype "int32") (eq $keytype "int64")}}
+        var ϟk {{$keytype}}¶
+        for ϟi, ϟv := range from.Values {»¶
+          {{if $numeric}}if ϟi < len(from.Keys){{end}} { ϟk = from.Keys[ϟi] }¶
+          ϟobj.Add({{Template "Convert.FromProto" "Type" $.KeyType "Value" "ϟk"}},
+                   {{Template "Convert.FromProto" "Type" $.ValueType "Value" "ϟv"}})¶
+          {{if $numeric}}ϟk++ // Increment if keys are trimmed ¶{{end}}
+        «}¶
+      «}¶
+    «}).({{$name}})¶
+  «}¶
+{{end}}
+

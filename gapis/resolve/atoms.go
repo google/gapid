@@ -109,7 +109,7 @@ func Parameter(ctx context.Context, p *path.Parameter) (interface{}, error) {
 		return nil, err
 	}
 	cmd := obj.(api.Cmd)
-	param, err := api.GetParameter(ctx, cmd, p.Name)
+	param, err := api.GetParameter(cmd, p.Name)
 	switch err {
 	case nil:
 		return param, nil
@@ -130,7 +130,7 @@ func Result(ctx context.Context, p *path.Result) (interface{}, error) {
 		return nil, err
 	}
 	cmd := obj.(api.Cmd)
-	param, err := api.GetResult(ctx, cmd)
+	param, err := api.GetResult(cmd)
 	switch err {
 	case nil:
 		return param, nil

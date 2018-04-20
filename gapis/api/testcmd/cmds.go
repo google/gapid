@@ -36,12 +36,18 @@ type A struct {
 	Flags api.CmdFlags
 }
 
-func (a *A) Caller() api.CmdID                                                  { return api.CmdNoID }
-func (a *A) SetCaller(api.CmdID)                                                {}
-func (a *A) Thread() uint64                                                     { return 1 }
-func (a *A) SetThread(uint64)                                                   {}
-func (a *A) CmdName() string                                                    { return "A" }
-func (a *A) API() api.API                                                       { return nil }
+func (a *A) Caller() api.CmdID   { return api.CmdNoID }
+func (a *A) SetCaller(api.CmdID) {}
+func (a *A) Thread() uint64      { return 1 }
+func (a *A) SetThread(uint64)    {}
+func (a *A) CmdName() string     { return "A" }
+func (a *A) API() api.API        { return nil }
+func (a *A) CmdParams() api.Properties {
+	return api.Properties{
+		api.NewProperty("ID", func() api.CmdID { return a.ID }, func(v api.CmdID) { a.ID = v }),
+	}
+}
+func (a *A) CmdResult() *api.Property                                           { return nil }
 func (a *A) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return a.Flags }
 func (a *A) Extras() *api.CmdExtras                                             { return nil }
 func (a *A) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error {
@@ -53,12 +59,19 @@ type B struct {
 	Bool bool
 }
 
-func (*B) Caller() api.CmdID                                                  { return api.CmdNoID }
-func (*B) SetCaller(api.CmdID)                                                {}
-func (*B) Thread() uint64                                                     { return 1 }
-func (*B) SetThread(uint64)                                                   {}
-func (*B) CmdName() string                                                    { return "B" }
-func (*B) API() api.API                                                       { return nil }
+func (*B) Caller() api.CmdID   { return api.CmdNoID }
+func (*B) SetCaller(api.CmdID) {}
+func (*B) Thread() uint64      { return 1 }
+func (*B) SetThread(uint64)    {}
+func (*B) CmdName() string     { return "B" }
+func (*B) API() api.API        { return nil }
+func (b *B) CmdParams() api.Properties {
+	return api.Properties{
+		api.NewProperty("ID", func() api.CmdID { return b.ID }, func(v api.CmdID) { b.ID = v }),
+		api.NewProperty("Bool", func() bool { return b.Bool }, func(v bool) { b.Bool = v }),
+	}
+}
+func (*B) CmdResult() *api.Property                                           { return nil }
 func (*B) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
 func (*B) Extras() *api.CmdExtras                                             { return nil }
 func (*B) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error {
@@ -189,12 +202,24 @@ type X struct {
 	RMap RawIntːStructPtr `param:"RMap"`
 }
 
-func (X) Caller() api.CmdID                                                  { return api.CmdNoID }
-func (X) SetCaller(api.CmdID)                                                {}
-func (X) Thread() uint64                                                     { return 1 }
-func (X) SetThread(uint64)                                                   {}
-func (X) CmdName() string                                                    { return "X" }
-func (X) API() api.API                                                       { return api.Find(APIID) }
+func (X) Caller() api.CmdID   { return api.CmdNoID }
+func (X) SetCaller(api.CmdID) {}
+func (X) Thread() uint64      { return 1 }
+func (X) SetThread(uint64)    {}
+func (X) CmdName() string     { return "X" }
+func (X) API() api.API        { return api.Find(APIID) }
+func (x *X) CmdParams() api.Properties {
+	return api.Properties{
+		api.NewProperty("Str", func() string { return x.Str }, func(v string) { x.Str = v }),
+		api.NewProperty("Sli", func() []bool { return x.Sli }, func(v []bool) { x.Sli = v }),
+		api.NewProperty("Ref", func() *Struct { return x.Ref }, func(v *Struct) { x.Ref = v }),
+		api.NewProperty("Ptr", func() Pointer { return x.Ptr }, func(v Pointer) { x.Ptr = v }),
+		api.NewProperty("Map", func() StringːString { return x.Map }, func(v StringːString) { x.Map = v }),
+		api.NewProperty("PMap", func() IntːStructPtr { return x.PMap }, func(v IntːStructPtr) { x.PMap = v }),
+		api.NewProperty("RMap", func() RawIntːStructPtr { return x.RMap }, func(v RawIntːStructPtr) { x.RMap = v }),
+	}
+}
+func (X) CmdResult() *api.Property                                           { return nil }
 func (X) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
 func (X) Extras() *api.CmdExtras                                             { return nil }
 func (X) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error {

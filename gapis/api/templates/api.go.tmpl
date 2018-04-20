@@ -44,7 +44,7 @@ import (
 
     ϟapi "github.com/google/gapid/gapis/api"
     ϟmem "github.com/google/gapid/gapis/memory"
-  )
+)
 
   var ( // Don't error if these packages aren't used.
     _ = dictionary.Entry{}
@@ -61,6 +61,9 @@ import (
 ¶
   {{template "Go.CommentHeader" "Maps"}}
   {{ForEach $.Maps "DeclareMap" | JoinWith "\n"}}
+¶
+  {{template "Go.CommentHeader" "References"}}
+  {{ForEach $.References "DeclareReference" | JoinWith "\n"}}
 ¶
   {{template "Go.CommentHeader" "Slices"}}
   {{ForEach $.Slices "DeclareSlice" | JoinWith "\n"}}
@@ -89,6 +92,10 @@ import (
 ¶
   {{template "Go.CommentHeader" "API"}}
   {{Template "DeclareAPI" $}}¶
+¶
+  // uncompareable is a dummy function used in types that must not be used for
+  // go equality or as map keys.
+  type uncompareable func()
 ¶
   func init() {
     ϟapi.Register(API{})
@@ -139,35 +146,81 @@ import (
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the Go declaration of the StaticArray type.
+  Emits the Go declaration of the StaticArray type (or StaticArray pseudonym).
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclareStaticArray"}}
-  {{AssertType $ "StaticArray"}}
+  {{AssertType $ "StaticArray" "Pseudonym"}}
 
-  {{$ty := Macro "Go.Type" $}}
-  type {{$ty}} [{{$.Size}}]{{Template "Go.Type" $.ValueType}}
+  {{$name := Macro "Go.TypeName" $}}
+  {{$ty := $ | Underlying}}
+  {{$el := Macro "Go.Type" $ty.ValueType}}
 
-  {{if IsNumericType $.ValueType}}
-    func (a {{$ty}}) value(ϟb *builder.Builder, ϟa ϟapi.Cmd, ϟg *ϟapi.GlobalState) value.Pointer {
-      for _, v := range a {
-        ϟb.Push({{Template "Go.Replay.Value" "Type" $.ValueType "Name" "v"}})
+  type {{$name}} struct {
+    data *[{{$ty.Size}}]{{$el}}
+    uncompareable
+  }
+
+  // Nil{{$name}} is a {{$name}} with default values in all fields.
+  var Nil{{$name}} = New{{$name}}()
+
+  func New{{$name}}(els... {{$el}}) {{$name}} {
+    out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
+    for i := 0; i < {{$ty.Size}}; i++ {
+      if i < len(els) {
+        out.Set(i, els[i])
+      } else {
+        out.Set(i, {{Template "Go.Null" $ty.ValueType}})
       }
-      return ϟb.Buffer({{$.Size}})
     }
-  {{end}}
+    return out
+  }
+
+  func (a {{$name}}) Get(i int) {{$el}} { return a.data[i] }
+
+  func (a {{$name}}) Set(i int, v {{$el}}) { a.data[i] = v }
+
+  // Equals returns true if the array is equal to o.
+  func (a {{$name}}) Equals(o {{$name}}) bool {
+    for i, c := 0, {{$ty.Size}}; i < c; i++ {
+      if !({{Template "Go.Equal" "Type" $ty.ValueType "LHS" "a.Get(i)" "RHS" "o.Get(i)"}}) {
+        return false
+      }
+    }
+    return true
+  }
 
   // Encode encodes this static array to the encoder.
-  func (a {{$ty}}) Encode(ϟe *ϟmem.Encoder) {
-    for i, c := 0, {{$.Size}}; i < c; i++ {
-      {{Template "Go.Encode" "Type" $.ValueType "Value" "a[i]"}}
+  func (a {{$name}}) Encode(ϟe *ϟmem.Encoder) {
+    for i, c := 0, {{$ty.Size}}; i < c; i++ {
+      {{Template "Go.Encode" "Type" $ty.ValueType "Value" "a.Get(i)"}}
     }
   }
 
   // Decode decodes this static array from the decoder.
-  func Decode{{$ty | Title}}(ϟd *ϟmem.Decoder) {{$ty}} {
-    out := {{$ty}}{}
-    ϟmem.Read(ϟd, &out)
+  func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
+    out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
+    for i, c := 0, {{$ty.Size}}; i < c; i++ {
+      out.Set(i, {{Template "Go.Decode" $ty.ValueType}})
+    }
+    return out
+  }
+
+  {{if IsNumericType $ty.ValueType}}
+    func (a {{$name}}) value(ϟb *builder.Builder, ϟc ϟapi.Cmd, ϟs *ϟapi.GlobalState) value.Pointer {
+      for i := 0; i < {{$ty.Size}}; i++ {
+        ϟb.Push({{Template "Go.Replay.Value" "Type" $ty.ValueType "Name" "a.Get(i)"}})
+      }
+      return ϟb.Buffer({{$ty.Size}})
+    }
+  {{end}}
+
+  // Clone makes a deep copy of this static array.
+  func (m {{$name}}) Clone() {{$name}} {
+    out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
+    for i := 0; i < {{$ty.Size}}; i++ {
+      out.Set(i, {{Template "Clone" "Type" $ty.ValueType "Src" "m.Get(i)"}})
+    }
     return out
   }
 {{end}}
@@ -192,22 +245,18 @@ import (
   }
 
   func (m {{$name}}) Get(key {{$key}}) {{$value}} {
-    {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
-      v, ok := (*m.Map)[key]
-      if !ok {
-        v = {{$init}}
-      }
-      return v
-    {{else}}
-      return (*m.Map)[key]
-    {{end}}
+    v, ok := (*m.Map)[key]
+    if !ok {
+      v = {{Template "Go.Null" $.ValueType}}
+    }
+    return v
   }
 
   func (m {{$name}}) Lookup(key {{$key}}) (v {{$value}}, ok bool) {
     if m.Map != nil {
       v, ok = (*m.Map)[key]
     }
-    {{if $init := Macro "Go.DefaultInitialValue" $.ValueType}}
+    {{if $init := Macro "Go.Null" $.ValueType}}
       if !ok {
         v = {{$init}}
       }
@@ -278,16 +327,140 @@ import (
     sort.Sort(s)
     return s
   }
+
+  // Clone makes a deep copy of this map.
+  func (m {{$name}}) Clone() {{$name}} {
+    out := make(map[{{$key}}]{{$value}}, len(*m.Map))
+    for k, v := range *m.Map {
+      out[{{Template "Clone" "Type" $.KeyType "Src" "k"}}] = {{Template "Clone" "Type" $.ValueType "Src" "v"}}
+    }
+    return {{$name}}{Map: &out}
+  }
 {{end}}
 
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the Go declaration of the Slice type (or slice pseudonym).
+  Emits the Go declaration of the Reference type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareReference"}}
+  {{AssertType $ "Reference"}}
+
+  {{$name := Macro "Go.TypeName" $}}
+  {{$to   := Macro "Go.TypeName" $.To}}
+  {{$data := print (GoPrivateName $to) "Data"}}
+
+  type {{$name}} struct {
+    data *{{$data}}
+  }
+
+  // Nil{{$name}} is a nil-pointer reference.
+  var Nil{{$name}} = {{$name}}{}
+
+  // Properties returns all the properties of the reference.
+  func (c {{$name}}) Properties() ϟapi.Properties {
+    return ϟapi.Properties{
+      {{range $f := $.To.Fields}}
+        {{$get := GoPublicName $f.Name}}
+        {{$set := printf "Set%v" $get}}
+        {{$cs  := ConstantSetIndex $f}}
+        ϟapi.NewProperty("{{$f.Name}}", c.{{$get}}, c.{{$set}})§
+        {{if ge $cs 0}}.SetConstants({{$cs}}){{end}},
+      {{end}}
+    }
+  }
+
+  // Format implements fmt.Formatter to print the reference.
+  func (c {{$name}}) Format(f fmt.State, r rune) {
+    fmt.Fprintf(f, "{{$name}}<%p>", c.data)
+  }
+
+  // IsNil returns true if the {{$name}} is a nil pointer.
+  func (c {{$name}}) IsNil() bool { return c.data == nil }
+
+  // SetNil nullifies this reference.
+  func (c {{$name}}) SetNil() { c.data = nil }
+
+  // Clone makes a deep copy of this reference.
+  func (c {{$name}}) Clone() {{$name}} {
+    if c.IsNil() { return Nil{{$name}} }
+    return {{$name}}{
+      data: &{{$data}}{
+        {{range $f := $.To.Fields}}
+          {{$name := $f.Name | GoPrivateName}}
+          {{$name}}: c.data.{{Template "Clone" "Type" $f.Type "Src" $name}},
+        {{end}}
+      },
+    }
+  }
+
+  {{if GetAnnotation $.To "resource"}}
+    // OnCreate should be called immediately after the {{$name}} resource is created.
+    func (c {{$name}}) OnCreate(ϟg *ϟapi.GlobalState) {{$name}} {
+      if f := ϟg.OnResourceCreated; c.IsResource() && f != nil { f(c) }
+      return c
+    }
+
+    // OnAccess should be called each time the {{$name}} resource is used.
+    func (c {{$name}}) OnAccess(ϟg *ϟapi.GlobalState) {{$name}} {
+      if f := ϟg.OnResourceAccessed; c.IsResource() && f != nil { f(c) }
+      return c
+    }
+  {{end}}
+
+  {{$to := Macro "Go.Type" $.To}}
+  func (c {{$name}}) Get() {{$to}} {
+    d := *c.data
+    return {{$to}}{data: &d}
+  }
+
+  func (c {{$name}}) Set(v {{$to}}) {{$name}} {
+    *c.data = *v.data
+    return c
+  }
+
+  {{range $f := $.To.Fields}}
+    {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type}}
+  {{end}}
+
+  // New{{$name}} returns a new {{$name}} reference with the given fields.
+  func New{{$name}}(
+    {{range $f := $.To.Fields}}
+      {{$f.Name | GoPrivateName}} {{Template "Go.Type" $f}},
+    {{end}}
+  ) {{$name}} {
+    return {{$name}}{
+      data: &{{$data}}{
+        {{range $f := $.To.Fields}}
+          {{$f.Name | GoPrivateName}}: {{$f.Name | GoPrivateName}},
+        {{end}}
+      },
+    }
+  }
+
+  // Make{{$name}} returns a new {{$name}} reference with the default field values.
+  func Make{{$name}}() {{$name}} {
+    return New{{$name}}(
+      {{range $i, $f := $.To.Fields}}
+        {{if IsNil $f.Default}}
+          {{Template "Go.Null" $f.Type}},
+        {{else}}
+          {{Template "Go.Read" $f.Default}},
+        {{end}}
+      {{end}}
+    )
+  }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the Go declaration of the Slice type.
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclareSlice"}}
-  {{AssertType $ "Slice" "Pseudonym"}}
+  {{AssertType $ "Slice"}}
 
   {{$s          := $ | Underlying | Unpack                 }}
   {{$slice_ty   := Macro "Go.Type"   $                     }}
@@ -301,10 +474,10 @@ import (
 
   // {{$slice_ty}} is a slice of {{$el_ty}}.
   type {{$slice_ty}} struct {
-    root  uint64        // Original pointer this slice derives from.
-    base  uint64        // Address of first element.
-    size  uint64        // Total size of the slice in bytes.
-    count uint64        // Number of elements in the slice.
+    root  uint64      // Original pointer this slice derives from.
+    base  uint64      // Address of first element.
+    size  uint64      // Total size of the slice in bytes.
+    count uint64      // Number of elements in the slice.
     pool  ϟmem.PoolID // The pool identifier.
   }
 
@@ -329,6 +502,18 @@ import (
       return true
     }
     return false
+  }
+
+  // New{{$slice_ty}} returns a {{$slice_ty}} with the given arguments.
+  // TODO: This is a temporary function while migrating to apic compile.
+  func New{{$slice_ty}}(root, base, size, count uint64, pool ϟmem.PoolID) {{$slice_ty}} {
+    return {{$slice_ty}}{
+      root:  root,
+      base:  base,
+      size:  size,
+      count: count,
+      pool:  pool,
+    }
   }
 
   // Make{{$slice_ty}} returns a {{$slice_ty}} backed by a new memory pool.
@@ -434,9 +619,11 @@ import (
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
     func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) ([]{{$el_ty}}, error) {
       s.OnRead(ϟctx, ϟc, ϟg, ϟb)
-      res := make([]{{$el_ty}}, s.count)
       ϟd := s.Decoder(ϟctx, ϟg)
-      ϟmem.Read(ϟd, &res)
+      res := make([]{{$el_ty}}, s.count)
+      for i := range res {
+        res[i] = {{Template "Go.Decode" $s.To}}
+      }
       if err := ϟd.Error(); err != nil {
         return nil, err
       }
@@ -491,7 +678,7 @@ import (
     // Contains returns true if the slice contains the specified value.
     func (s {{$slice_ty}}) Contains(ϟctx context.Context, val {{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) bool {
       for _, e := range s.MustRead(ϟctx, ϟc, ϟg, ϟb) {
-        if e == val {
+        if {{Template "Go.Equal" "Type" $s.To "LHS" "e" "RHS" "val"}} {
           return true
         }
       }
@@ -643,7 +830,7 @@ import (
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the Go declaration of the Pointer type (or pointer pseudonym).
+  Emits the Go declaration of the Pointer type
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclarePointer"}}
@@ -811,9 +998,10 @@ import (
   {{AssertType $ "Pseudonym"}}
 
   {{$u := $ | Underlying}}
-  {{     if IsPointer  $u}}{{Template "DeclarePointer" $}}
-  {{else if IsSlice    $u}}{{Template "DeclareSlice"   $}}
-  {{else if IsVoid     $u}}
+  {{     if IsPointer     $u}}{{Template "DeclarePointer" $}}
+  {{else if IsSlice       $u}}{{Template "DeclareSlice"   $}}
+  {{else if IsVoid        $u}}
+  {{else if IsStaticArray $u}}{{Template "DeclareStaticArray" $}}
   {{else}}
     {{$name := Macro "Go.Type" $}}
     {{$to := Macro "Go.Type" $.To}}
@@ -834,7 +1022,7 @@ import (
     func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
       return {{$name}}({{Template "Go.Decode" $u}})
     }
-  {{end}}
+{{end}}
 {{end}}
 
 
@@ -845,30 +1033,75 @@ import (
 */}}
 {{define "DeclareClass"}}
   {{AssertType $ "Class"}}
-  {{$name := $.Name | GoPublicName}}
-  {{template "Go.CommentHeader" print "class " $name}}
+  {{$name := Macro "Go.TypeName" $}}
+  {{$data := print (GoPrivateName $name) "Data"}}
 
   type {{$name}} struct {
+    data *{{$data}}
+    uncompareable
+  }
+
+  type {{$data}} struct {
     {{Template "ClassFields" $}}
   }
 
-  func New{{$name}}() {{$name}} {
-    return {{$name}} { {{Template "Go.DefaultClassFields" $}} }
+  {{range $f := $.Fields}}
+    {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type}}
+  {{end}}
+
+  // New{{$name}} returns a new {{$name}} class with the given fields.
+  func New{{$name}}(
+    {{range $f := $.Fields}}
+      {{$f.Name | GoPrivateName}} {{Template "Go.Type" $f}},
+    {{end}}
+  ) {{$name}} {
+    return {{$name}}{
+      data: &{{$data}} {
+        {{range $f := $.Fields}}
+          {{$f.Name | GoPrivateName}}: {{$f.Name | GoPrivateName}}, §
+        {{end}}
+      },
+    }
   }
 
-  {{if GetAnnotation $ "resource"}}
-    // OnCreate should be called immediately after the {{$name}} resource is created.
-    func (c *{{$name}}) OnCreate(ϟg *ϟapi.GlobalState) *{{$name}} {
-      if f := ϟg.OnResourceCreated; c.IsResource() && f != nil { f(c) }
-      return c
+  // Make{{$name}} returns a new {{$name}} class with the default field values.
+  func Make{{$name}}() {{$name}} {
+    return {{$name}} {
+      data: &{{$data}} {
+        {{range $f := $.Fields}}
+          {{$name := $f | GoPrivateName}}
+          {{if IsNil $f.Default}}
+            {{$name}}: {{Template "Go.Null" $f.Type}}, §
+          {{else}}
+            {{$name}}: {{Template "Go.Read" $f.Default}}, §
+          {{end}}
+        {{end}}
+      },
     }
+  }
 
-    // OnAccess should be called each time the {{$name}} resource is used.
-    func (c *{{$name}}) OnAccess(ϟg *ϟapi.GlobalState) *{{$name}} {
-      if f := ϟg.OnResourceAccessed; c.IsResource() && f != nil { f(c) }
-      return c
+  // Properties returns all the properties of the class.
+  func (c {{$name}}) Properties() ϟapi.Properties {
+    return ϟapi.Properties{
+      {{range $f := $.Fields}}
+        {{$get := GoPublicName $f.Name}}
+        {{$set := printf "Set%v" $get}}
+        {{$cs  := ConstantSetIndex $f}}
+        ϟapi.NewProperty("{{$f.Name}}", c.{{$get}}, c.{{$set}})§
+        {{if ge $cs 0}}.SetConstants({{$cs}}){{end}},
+      {{end}}
     }
-  {{end}}
+  }
+
+  // Equals returns true if the class fields are equal to those of o.
+  func (c {{$name}}) Equals(o {{$name}}) bool {
+    return true
+    {{range $f := $.Fields}}
+      {{$lhs := print "c.data." ($f.Name | GoPrivateName)}}
+      {{$rhs := print "o.data." ($f.Name | GoPrivateName)}}
+      § && {{Template "Go.Equal" "Type" $f.Type "LHS" $lhs "RHS" $rhs}}
+    {{end}}
+  }
 
   {{if IsStorageType $}}
     // {{$name}}Size returns the size of the class in bytes.
@@ -905,27 +1138,46 @@ import (
       ϟe.Align(alignment)
       base := ϟe.Offset();
       {{range $f := $.Fields}}
-        {{Template "Go.Encode" "Type" $f.Type "Value" (print "c." ($f.Name | GoPublicName))}}
+        {{Template "Go.Encode" "Type" $f.Type "Value" (print "c." ($f.Name | GoPublicName) "()")}}
       {{end}}
       bytes := ϟe.Offset() - base
       ϟe.Pad({{$name}}Size(ϟe.MemoryLayout()) - bytes)
     }
 
     // Decode decodes this class from the decoder.
-    func (c *{{$name}}) Decode(ϟd *ϟmem.Decoder) {
+    func (c {{$name}}) Decode(ϟd *ϟmem.Decoder) {
       ϟd.Align({{$name}}Alignment(ϟd.MemoryLayout()))
       base := ϟd.Offset();
       {{range $f := $.Fields}}
         {{if IsClass $f.Type}}
-          c.{{$f.Name | GoPublicName}}.Decode(ϟd)
+          c.{{$f.Name | GoPublicName}}().Decode(ϟd)
         {{else}}
-          c.{{$f.Name | GoPublicName}} = {{Template "Go.Decode" $f.Type}}
+          c.Set{{$f.Name | GoPublicName}}({{Template "Go.Decode" $f.Type}})
         {{end}}
       {{end}}
       bytes := ϟd.Offset() - base
       ϟd.Skip({{$name}}Size(ϟd.MemoryLayout()) - bytes)
     }
+
+    // Decode decodes a new class from the decoder.
+    func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
+      out := Make{{$name}}()
+      out.Decode(ϟd)
+      return out
+    }
   {{end}}
+
+  // Clone makes a deep copy of this class.
+  func (c {{$name}}) Clone() {{$name}} {
+    return {{$name}}{
+      data: &{{$data}}{
+        {{range $f := $.Fields}}
+          {{$name := $f.Name | GoPrivateName}}
+          {{$name}}: c.data.{{Template "Clone" "Type" $f.Type "Src" $name}},
+        {{end}}
+      },
+    }
+  }
 {{end}}
 
 
@@ -947,7 +1199,7 @@ import (
     caller ϟapi.CmdID
     thread uint64
     {{range $p := $.FullParameters}}
-      {{$p | GoPublicName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
+      {{$p | GoPrivateName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
     {{end}}
   }
 
@@ -959,10 +1211,10 @@ import (
 
   func (ϟc *{{$name}}) SetCaller(id ϟapi.CmdID) { ϟc.caller = id }
 
-  func (ϟc *{{$name}}) CmdName() string { return "{{$ | CommandName}}" }
+  func (ϟc *{{$name}}) CmdName() string { return "{{$.Name}}" }
 
   func (ϟc *{{$name}}) String() string {
-    return fmt.Sprintf("{{$ | CommandName}}(§
+    return fmt.Sprintf("{{$.Name}}(§
       {{range $i, $p := $.CallParameters}}
         {{if $i}}, §{{end}}
         {{$p.Name}}: %v§
@@ -971,11 +1223,33 @@ import (
       {{range $i, $p := $.CallParameters}}
         {{Template "Go.Parameter" $p}}, §
       {{end}}
-      {{if $ret}}ϟc.Result§{{end}}
+      {{if $ret}}ϟc.Result()§{{end}}
     )
   }
 
   func (ϟc *{{$name}}) API() ϟapi.API { return API{} }
+
+  func (ϟc *{{$name}}) CmdParams() ϟapi.Properties {
+    return ϟapi.Properties{
+      {{range $p := $.CallParameters}}
+        {{$get := GoPublicName $p.Name}}
+        {{$set := printf "Set%v" $get}}
+        {{$cs  := ConstantSetIndex $p}}
+        ϟapi.NewProperty("{{$p.Name}}", ϟc.{{$get}}, ϟc.{{$set}})§
+        {{if ge $cs 0}}.SetConstants({{$cs}}){{end}},
+      {{end}}
+    }
+  }
+
+  func (ϟc *{{$name}}) CmdResult() *ϟapi.Property {
+    {{if $ret}}
+      {{$cs := ConstantSetIndex $.Return}}
+      return ϟapi.NewProperty("result", ϟc.Result, ϟc.SetResult)
+      {{if ge $cs 0}}§.SetConstants({{$cs}}){{end}}
+    {{else}}
+      return nil
+    {{end}}
+  }
 
   func (ϟc *{{$name}}) CmdFlags(ϟctx context.Context, ϟi ϟapi.CmdID, ϟg *ϟapi.GlobalState) ϟapi.CmdFlags {
     {{$names := Strings "draw_call" "transform_feedback" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker"}}
@@ -1012,6 +1286,25 @@ import (
     ϟc.extras.GetOrAppendObservations().AddWrite(rng, id)
     return ϟc
   }
+
+  {{range $p := $.FullParameters}}
+    {{$pname := Macro "Go.Parameter" $p}}
+    {{Template "DeclareGetterSetter" "Struct" $name "Name" $p.Name "Type" $p.Type "PtrMethod" "true"}}¶
+  {{end}}
+
+  // Clone makes a copy of this command.
+  func (ϟc *{{$name}}) Clone() *{{$name}} {
+    out := &{{$name}}{
+      extras: ϟc.extras,
+      caller: ϟc.caller,
+      thread: ϟc.thread,
+    }
+    {{range $p := $.FullParameters}}
+      out.{{$p | GoPrivateName}} = {{Template "Clone" "Type" $p.Type "Src" (print "ϟc." ($p | GoPrivateName))}}
+    {{end}}
+    return out
+  }
+
 {{end}}
 
 
@@ -1044,17 +1337,18 @@ import (
             {{end}}
           {{end}}
         ) *{{$name}} {
-        return &{{$name}} {§
+        out := &{{$name}} {§
           caller: ϟapi.CmdNoID,
           thread: cb.Thread,
+        }
         {{range $p := $c.FullParameters}}
           {{if $p | TypeOf | Underlying | IsPointer}}
-            {{$p | GoPublicName}}: New{{Template "Go.Type" $p}}({{$p.Name | GoPrivateName}}),§
+            out.Set{{GoPublicName $p.Name}}({{Template "Go.Type" $p}}({{$p.Name | GoPrivateName}}.Address()))
           {{else}}
-            {{$p | GoPublicName}}: {{$p.Name | GoPrivateName}},§
+            out.Set{{GoPublicName $p.Name}}({{$p.Name | GoPrivateName}})
           {{end}}
         {{end}}
-        }
+        return out
       }
     {{end}}
   {{end}}
@@ -1063,7 +1357,7 @@ import (
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits a type declaration for holding the state.
+  Emits the Go declaration of the State
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclareState"}}
@@ -1071,27 +1365,56 @@ import (
 
   type State struct {
     {{range $g := $.Globals}}
-      {{Title $g.Name}} {{Template "Go.Type" $g}}
+      {{GoPrivateName $g.Name}} {{Template "Go.Type" $g}}
     {{end}}
     CustomState `hidden:"true" nobox:"true"`
   }
 
+  {{range $g := $.Globals}}
+    {{Template "DeclareGetterSetter" "Struct" "State" "Name" $g.Name "Type" $g.Type "PtrMethod" "true"}}¶
+  {{end}}
+
   func (g *State) API() ϟapi.API { return API{} }
 
+  // Init intializes the state object.
   func (g *State) Init() {
     {{range $g := $.Globals}}
       {{if IsNil $g.Default}}
         {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}
-          g.{{$g.Name | GoPublicName}} = {{$init}}
+          g.Set{{$g.Name | GoPublicName}}({{$init}})
         {{else}}
-          g.{{$g.Name | GoPublicName}} = {{Template "Go.Null" $g.Type}}
+          g.Set{{$g.Name | GoPublicName}}({{Template "Go.Null" $g.Type}})
         {{end}}
       {{else}}
-        g.{{$g.Name | GoPublicName}} = {{Template "Go.Read" $g.Default}}
+        g.Set{{$g.Name | GoPublicName}}({{Template "Go.Read" $g.Default}})
       {{end}}
     {{end}}
     g.InitializeCustomState()
   }
+
+  // Properties returns all the properties of the state.
+  func (g State) Properties() ϟapi.Properties {
+    return ϟapi.Properties{
+      {{range $g := $.Globals}}
+        {{$get := GoPublicName $g.Name}}
+        {{$set := printf "Set%v" $get}}
+        {{$cs  := ConstantSetIndex $g}}
+        ϟapi.NewProperty("{{$g.Name}}", g.{{$get}}, nil)§
+        {{if ge $cs 0}}.SetConstants({{$cs}}){{end}},
+      {{end}}
+    }
+  }
+
+	// Clone returns a deep copy of this state object.
+  func (g *State) Clone() ϟapi.State {
+    out := &State{CustomState: g.CustomState}
+    {{range $g := $.Globals}}
+      {{$name := $g.Name | GoPublicName}}
+      out.Set{{$name}}({{Template "Clone" "Type" $g.Type "Src" (print "g." $name "()")}})
+    {{end}}
+    return out
+  }
+
 {{end}}
 
 
@@ -1156,6 +1479,7 @@ import (
     panicOnError(ϟd.Error())
   {{end}}
 {{end}}
+
 
 {{/*
 -------------------------------------------------------------------------------
@@ -1294,31 +1618,72 @@ import (
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits a list of fields of the specified class.
+  Emits the a getter and setter function for the given class field.
 -------------------------------------------------------------------------------
 */}}
-{{define "ClassFields"}}
-  {{AssertType $ "Class"}}
-  {{range $v := $.Fields}}
-    {{$name := $v.Name | GoPublicName}}
-    {{$tags := Macro "ClassFieldTags" $v}}
-    {{$name}} {{Template "Go.Type" $v}} {{if $tags}}`{{$tags}}`{{end}}
+{{define "DeclareGetterSetter"}}
+  {{$g   := Macro "Go.Type" $.Type}}
+  {{$get := GoPublicName $.Name}}
+  {{$set := printf "Set%v" $get}}
+  {{$field  := print ((Strings "c" $.Prefix) | JoinWith ".") "." (GoPrivateName $.Name) }}
+
+  {{$ty := Underlying $.Type}}
+  {{if $.PtrMethod}}
+    func (c *{{$.Struct}}) {{$get}}() {{$g}} { return {{$field}} }
+    func (c *{{$.Struct}}) {{$set}}(v {{$g}}) { {{$field}} = v }
+  {{else}}
+    func (c {{$.Struct}}) {{$get}}() {{$g}} { return {{$field}} }
+    func (c {{$.Struct}}) {{$set}}(v {{$g}}) { {{$field}} = v }
   {{end}}
 {{end}}
 
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits a list of tags for the given class field.
+  Emits a list of fields of the specified class.
 -------------------------------------------------------------------------------
 */}}
-{{define "ClassFieldTags"}}
-  {{AssertType $ "Field"}}
-  {{$cs := ConstantSetIndex $}}
-  {{if ge $cs 0}}constset:"{{$cs}}" §{{end}}
-  {{if GetAnnotation $ "hidden"}}hidden:"true" §{{end}}
-  {{if GetAnnotation $ "nobox"}}nobox:"true" §{{end}}
+{{define "ClassFields"}}
+  {{AssertType $ "Class"}}
+  {{range $v := $.Fields}}
+    {{$name := $v.Name | GoPrivateName}}
+    {{$name}} {{Template "Go.Type" $v}}
+  {{end}}
 {{end}}
 
 
+{{/*
+-------------------------------------------------------------------------------
+  Clone returns a deep-clone of the given value.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Clone"}}
+  {{AssertType $.Type "Type"}}
 
+  {{     if IsPseudonym     $.Type}}{{Template "Clone" "Type" $.Type.To "Src" $.Src}}
+  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone()
+  {{else if IsMap           $.Type}}{{$.Src}}.Clone()
+  {{else if IsClass         $.Type}}{{$.Src}}.Clone()
+  {{else if IsEnum          $.Type}}{{$.Src}}
+  {{else if IsPointer       $.Type}}{{$.Src}}
+  {{else if IsSlice         $.Type}}{{$.Src}}
+  {{else if IsReference     $.Type}}{{$.Src}}.Clone()
+  {{else if IsBool          $.Type}}{{$.Src}}
+  {{else if IsInt           $.Type}}{{$.Src}}
+  {{else if IsUint          $.Type}}{{$.Src}}
+  {{else if IsSize          $.Type}}{{$.Src}}
+  {{else if IsChar          $.Type}}{{$.Src}}
+  {{else if IsU8            $.Type}}{{$.Src}}
+  {{else if IsS8            $.Type}}{{$.Src}}
+  {{else if IsU16           $.Type}}{{$.Src}}
+  {{else if IsS16           $.Type}}{{$.Src}}
+  {{else if IsF32           $.Type}}{{$.Src}}
+  {{else if IsU32           $.Type}}{{$.Src}}
+  {{else if IsS32           $.Type}}{{$.Src}}
+  {{else if IsF64           $.Type}}{{$.Src}}
+  {{else if IsU64           $.Type}}{{$.Src}}
+  {{else if IsS64           $.Type}}{{$.Src}}
+  {{else if IsString        $.Type}}{{$.Src}}
+  {{else}}{{Error "macro Clone called with unsupported type: %s" $.Name}}
+  {{end}}
+{{end}}

@@ -31,52 +31,54 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+var _ api.Resource = Textureʳ{}
+
 // IsResource returns true if this instance should be considered as a resource.
-func (t *Texture) IsResource() bool {
-	return t.ID != 0
+func (t Textureʳ) IsResource() bool {
+	return t.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
-func (t *Texture) ResourceHandle() string {
-	return fmt.Sprintf("Texture<%d>", t.ID)
+func (t Textureʳ) ResourceHandle() string {
+	return fmt.Sprintf("Texture<%d>", t.ID())
 }
 
 // ResourceLabel returns an optional debug label for the resource.
-func (t *Texture) ResourceLabel() string {
-	return t.Label
+func (t Textureʳ) ResourceLabel() string {
+	return t.Label()
 }
 
 // Order returns an integer used to sort the resources for presentation.
-func (t *Texture) Order() uint64 {
-	return uint64(t.ID)
+func (t Textureʳ) Order() uint64 {
+	return uint64(t.ID())
 }
 
 // ResourceType returns the type of this resource.
-func (t *Texture) ResourceType(ctx context.Context) api.ResourceType {
+func (t Textureʳ) ResourceType(ctx context.Context) api.ResourceType {
 	return api.ResourceType_TextureResource
 }
 
 // ResourceData returns the resource data given the current state.
-func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Texture.ResourceData()")
-	switch t.Kind {
+	switch t.Kind() {
 	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_2D_MULTISAMPLE:
 		count := GLint(0)
-		for i := range t.Levels.Range() {
+		for i := range t.Levels().Range() {
 			if i >= count {
 				count = i + 1
 			}
 		}
 
 		levels := make([]*image.Info, count)
-		for i, level := range t.Levels.Range() {
-			img, err := level.Layers.Get(0).ImageInfo(ctx, s)
+		for i, level := range t.Levels().Range() {
+			img, err := level.Layers().Get(0).ImageInfo(ctx, s)
 			if err != nil {
 				return nil, err
 			}
 			levels[i] = img
 		}
-		switch t.Kind {
+		switch t.Kind() {
 		case GLenum_GL_TEXTURE_1D:
 			return api.NewResourceData(api.NewTexture(&api.Texture1D{Levels: levels})), nil
 		case GLenum_GL_TEXTURE_2D:
@@ -88,12 +90,12 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		}
 
 	case GLenum_GL_TEXTURE_EXTERNAL_OES:
-		ei := t.EGLImage
-		if ei == nil {
+		ei := t.EGLImage()
+		if ei.IsNil() {
 			return api.NewResourceData(api.NewTexture(&api.Texture2D{})), nil
 		}
-		levels := make([]*image.Info, ei.Images.Len())
-		for i, img := range ei.Images.Range() {
+		levels := make([]*image.Info, ei.Images().Len())
+		for i, img := range ei.Images().Range() {
 			ii, err := img.ImageInfo(ctx, s)
 			if err != nil {
 				return nil, err
@@ -106,9 +108,9 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		numLayers := t.LayerCount()
 		layers := make([]*api.Texture1D, numLayers)
 		for layer := range layers {
-			levels := make([]*image.Info, t.Levels.Len())
+			levels := make([]*image.Info, t.Levels().Len())
 			for level := range levels {
-				img, err := t.Levels.Get(GLint(level)).Layers.Get(GLint(layer)).ImageInfo(ctx, s)
+				img, err := t.Levels().Get(GLint(level)).Layers().Get(GLint(layer)).ImageInfo(ctx, s)
 				if err != nil {
 					return nil, err
 				}
@@ -122,9 +124,9 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		numLayers := t.LayerCount()
 		layers := make([]*api.Texture2D, numLayers)
 		for layer := range layers {
-			levels := make([]*image.Info, t.Levels.Len())
+			levels := make([]*image.Info, t.Levels().Len())
 			for level := range levels {
-				img, err := t.Levels.Get(GLint(level)).Layers.Get(GLint(layer)).ImageInfo(ctx, s)
+				img, err := t.Levels().Get(GLint(level)).Layers().Get(GLint(layer)).ImageInfo(ctx, s)
 				if err != nil {
 					return nil, err
 				}
@@ -132,7 +134,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 			}
 			layers[layer] = &api.Texture2D{Levels: levels}
 		}
-		switch t.Kind {
+		switch t.Kind() {
 		case GLenum_GL_TEXTURE_2D_ARRAY:
 			return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers})), nil
 		case GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
@@ -142,29 +144,29 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		}
 
 	case GLenum_GL_TEXTURE_3D:
-		levels := make([]*image.Info, t.Levels.Len())
-		for i, level := range t.Levels.Range() {
-			img := level.Layers.Get(0)
+		levels := make([]*image.Info, t.Levels().Len())
+		for i, level := range t.Levels().Range() {
+			img := level.Layers().Get(0)
 			l := &image.Info{
-				Width:  uint32(img.Width),
-				Height: uint32(img.Height),
-				Depth:  uint32(level.Layers.Len()),
+				Width:  uint32(img.Width()),
+				Height: uint32(img.Height()),
+				Depth:  uint32(level.Layers().Len()),
 			}
 			levels[i] = l
-			if img.Data.count == 0 {
+			if img.Data().Size() == 0 {
 				continue
 			}
 			bytes := []byte{}
-			for i, c := 0, level.Layers.Len(); i < c; i++ {
-				l := level.Layers.Get(GLint(i))
-				if l == nil {
+			for i, c := 0, level.Layers().Len(); i < c; i++ {
+				l := level.Layers().Get(GLint(i))
+				if l.IsNil() {
 					continue
 				}
-				pool, err := s.Memory.Get(l.Data.Pool())
+				pool, err := s.Memory.Get(l.Data().Pool())
 				if err != nil {
 					return nil, err
 				}
-				data := pool.Slice(l.Data.Range())
+				data := pool.Slice(l.Data().Range())
 				buf := make([]byte, data.Size())
 				if err := data.Get(ctx, 0, buf); err != nil {
 					return nil, err
@@ -175,7 +177,7 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 			if err != nil {
 				return nil, err
 			}
-			format, err := getImageFormat(img.DataFormat, img.DataType)
+			format, err := getImageFormat(img.DataFormat(), img.DataType())
 			if err != nil {
 				return nil, err
 			}
@@ -185,10 +187,10 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		return api.NewResourceData(api.NewTexture(&api.Texture3D{Levels: levels})), nil
 
 	case GLenum_GL_TEXTURE_CUBE_MAP:
-		levels := make([]*api.CubemapLevel, t.Levels.Len())
-		for i, level := range t.Levels.Range() {
+		levels := make([]*api.CubemapLevel, t.Levels().Len())
+		for i, level := range t.Levels().Range() {
 			levels[i] = &api.CubemapLevel{}
-			for j, face := range level.Layers.Range() {
+			for j, face := range level.Layers().Range() {
 				img, err := face.ImageInfo(ctx, s)
 				if err != nil {
 					return nil, err
@@ -214,19 +216,19 @@ func (t *Texture) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 	return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 }
 
-func (t *Texture) SetResourceData(ctx context.Context, at *path.Command,
+func (t Textureʳ) SetResourceData(ctx context.Context, at *path.Command,
 	data *api.ResourceData, resources api.ResourceMap, edits api.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for Texture")
 }
 
 // ImageInfo returns the Image as a image.Info.
-func (i *Image) ImageInfo(ctx context.Context, s *api.GlobalState) (*image.Info, error) {
+func (i Imageʳ) ImageInfo(ctx context.Context, s *api.GlobalState) (*image.Info, error) {
 	out := &image.Info{
-		Width:  uint32(i.Width),
-		Height: uint32(i.Height),
+		Width:  uint32(i.Width()),
+		Height: uint32(i.Height()),
 		Depth:  1,
 	}
-	if i.Data.count == 0 {
+	if i.Data().Size() == 0 {
 		return out, nil
 	}
 	dataFormat, dataType := i.getUnsizedFormatAndType()
@@ -235,51 +237,53 @@ func (i *Image) ImageInfo(ctx context.Context, s *api.GlobalState) (*image.Info,
 		return nil, err
 	}
 	out.Format = format
-	out.Bytes = image.NewID(i.Data.ResourceID(ctx, s))
+	out.Bytes = image.NewID(i.Data().ResourceID(ctx, s))
 	return out, nil
 }
 
 // LayerCount returns the maximum number of layers across all levels.
-func (t *Texture) LayerCount() int {
+func (t Textureʳ) LayerCount() int {
 	max := 0
-	for _, l := range t.Levels.Range() {
-		if l.Layers.Len() > max {
-			max = l.Layers.Len()
+	for _, l := range t.Levels().Range() {
+		if l.Layers().Len() > max {
+			max = l.Layers().Len()
 		}
 	}
 	return max
 }
 
+var _ api.Resource = Shaderʳ{}
+
 // IsResource returns true if this instance should be considered as a resource.
-func (s *Shader) IsResource() bool {
-	return s.ID != 0
+func (s Shaderʳ) IsResource() bool {
+	return s.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
-func (s *Shader) ResourceHandle() string {
-	return fmt.Sprintf("Shader<%d>", s.ID)
+func (s Shaderʳ) ResourceHandle() string {
+	return fmt.Sprintf("Shader<%d>", s.ID())
 }
 
 // ResourceLabel returns an optional debug label for the resource.
-func (s *Shader) ResourceLabel() string {
-	return s.Label
+func (s Shaderʳ) ResourceLabel() string {
+	return s.Label()
 }
 
 // Order returns an integer used to sort the resources for presentation.
-func (s *Shader) Order() uint64 {
-	return uint64(s.ID)
+func (s Shaderʳ) Order() uint64 {
+	return uint64(s.ID())
 }
 
 // ResourceType returns the type of this resource.
-func (s *Shader) ResourceType(ctx context.Context) api.ResourceType {
+func (s Shaderʳ) ResourceType(ctx context.Context) api.ResourceType {
 	return api.ResourceType_ShaderResource
 }
 
 // ResourceData returns the resource data given the current state.
-func (s *Shader) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
+func (s Shaderʳ) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Shader.ResourceData()")
 	var ty api.ShaderType
-	switch s.Type {
+	switch s.Type() {
 	case GLenum_GL_VERTEX_SHADER:
 		ty = api.ShaderType_Vertex
 	case GLenum_GL_GEOMETRY_SHADER:
@@ -294,10 +298,10 @@ func (s *Shader) ResourceData(ctx context.Context, t *api.GlobalState) (*api.Res
 		ty = api.ShaderType_Compute
 	}
 
-	return api.NewResourceData(&api.Shader{Type: ty, Source: s.Source}), nil
+	return api.NewResourceData(&api.Shader{Type: ty, Source: s.Source()}), nil
 }
 
-func (shader *Shader) SetResourceData(
+func (s Shaderʳ) SetResourceData(
 	ctx context.Context,
 	at *path.Command,
 	data *api.ResourceData,
@@ -315,10 +319,10 @@ func (shader *Shader) SetResourceData(
 	if err != nil {
 		return err
 	}
-	resourceID := resourceIDs[shader]
+	resourceID := resourceIDs[s]
 
-	resource := resources.Find(shader.ResourceType(ctx), resourceID)
-	if resource == nil {
+	resource := resources.Find(s.ResourceType(ctx), resourceID)
+	if resource != nil {
 		return fmt.Errorf("Couldn't find resource")
 	}
 
@@ -348,44 +352,46 @@ func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *
 	src := state.AllocDataOrPanic(ctx, source)
 	srcLen := state.AllocDataOrPanic(ctx, GLint(len(source)))
 	srcPtr := state.AllocDataOrPanic(ctx, src.Ptr())
-	cb := CommandBuilder{Thread: a.thread}
-	return cb.GlShaderSource(a.Shader, 1, srcPtr.Ptr(), srcLen.Ptr()).
+	cb := CommandBuilder{Thread: a.Thread()}
+	return cb.GlShaderSource(a.Shader(), 1, srcPtr.Ptr(), srcLen.Ptr()).
 		AddRead(srcPtr.Data()).
 		AddRead(srcLen.Data()).
 		AddRead(src.Data())
 }
 
+var _ api.Resource = Programʳ{}
+
 // IsResource returns true if this instance should be considered as a resource.
-func (p *Program) IsResource() bool {
-	return p.ID != 0
+func (p Programʳ) IsResource() bool {
+	return p.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
-func (p *Program) ResourceHandle() string {
-	return fmt.Sprintf("Program<%d>", p.ID)
+func (p Programʳ) ResourceHandle() string {
+	return fmt.Sprintf("Program<%d>", p.ID())
 }
 
 // ResourceLabel returns an optional debug label for the resource.
-func (p *Program) ResourceLabel() string {
-	return p.Label
+func (p Programʳ) ResourceLabel() string {
+	return p.Label()
 }
 
 // Order returns an integer used to sort the resources for presentation.
-func (p *Program) Order() uint64 {
-	return uint64(p.ID)
+func (p Programʳ) Order() uint64 {
+	return uint64(p.ID())
 }
 
 // ResourceType returns the type of this resource.
-func (p *Program) ResourceType(ctx context.Context) api.ResourceType {
+func (p Programʳ) ResourceType(ctx context.Context) api.ResourceType {
 	return api.ResourceType_ProgramResource
 }
 
 // ResourceData returns the resource data given the current state.
-func (p *Program) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (p Programʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Program.ResourceData()")
 
-	shaders := make([]*api.Shader, 0, p.Shaders.Len())
-	for shaderType, shader := range p.Shaders.Range() {
+	shaders := make([]*api.Shader, 0, p.Shaders().Len())
+	for shaderType, shader := range p.Shaders().Range() {
 		var ty api.ShaderType
 		switch shaderType {
 		case GLenum_GL_VERTEX_SHADER:
@@ -403,17 +409,17 @@ func (p *Program) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 		}
 		shaders = append(shaders, &api.Shader{
 			Type:   ty,
-			Source: shader.Source,
+			Source: shader.Source(),
 		})
 	}
 
 	uniforms := []*api.Uniform{}
-	if res := p.ActiveResources; res != nil {
-		for _, activeUniform := range res.DefaultUniformBlock.Range() {
+	if res := p.ActiveResources(); !res.IsNil() {
+		for _, activeUniform := range res.DefaultUniformBlock().Range() {
 			var uniformFormat api.UniformFormat
 			var uniformType api.UniformType
 
-			switch activeUniform.Type {
+			switch activeUniform.Type() {
 			case GLenum_GL_FLOAT:
 				uniformFormat = api.UniformFormat_Scalar
 				uniformType = api.UniformType_Float
@@ -540,11 +546,11 @@ func (p *Program) ResourceData(ctx context.Context, s *api.GlobalState) (*api.Re
 			}
 
 			uniforms = append(uniforms, &api.Uniform{
-				UniformLocation: uint32(activeUniform.Locations.Get(0)),
-				Name:            activeUniform.Name,
+				UniformLocation: uint32(activeUniform.Locations().Get(0)),
+				Name:            activeUniform.Name(),
 				Format:          uniformFormat,
 				Type:            uniformType,
-				Value:           box.NewValue(uniformValue(ctx, s, uniformType, activeUniform.Value)),
+				Value:           box.NewValue(uniformValue(ctx, s, uniformType, activeUniform.Value())),
 			})
 		}
 	}
@@ -559,31 +565,31 @@ func uniformValue(ctx context.Context, s *api.GlobalState, kind api.UniformType,
 
 	switch kind {
 	case api.UniformType_Int32:
-		a := make([]int32, data.count/4)
+		a := make([]int32, data.Size()/4)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Int32()
 		}
 		return a
 	case api.UniformType_Uint32:
-		a := make([]uint32, data.count/4)
+		a := make([]uint32, data.Size()/4)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Uint32()
 		}
 		return a
 	case api.UniformType_Bool:
-		a := make([]bool, data.count/4)
+		a := make([]bool, data.Size()/4)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Int32() != 0
 		}
 		return a
 	case api.UniformType_Float:
-		a := make([]float32, data.count/4)
+		a := make([]float32, data.Size()/4)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Float32()
 		}
 		return a
 	case api.UniformType_Double:
-		a := make([]float64, data.count/8)
+		a := make([]float64, data.Size()/8)
 		for i := 0; i < len(a); i++ {
 			a[i] = r.Float64()
 		}
@@ -593,7 +599,7 @@ func uniformValue(ctx context.Context, s *api.GlobalState, kind api.UniformType,
 	}
 }
 
-func (program *Program) SetResourceData(ctx context.Context, at *path.Command,
+func (p Programʳ) SetResourceData(ctx context.Context, at *path.Command,
 	data *api.ResourceData, resources api.ResourceMap, edits api.ReplaceCallback) error {
 	return fmt.Errorf("SetResourceData is not supported for Program")
 }

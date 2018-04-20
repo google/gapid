@@ -36,13 +36,13 @@ func wireframe(ctx context.Context, framebuffer FramebufferId) transform.Transfo
 			s := out.State()
 			c := GetContext(s, cmd.Thread())
 
-			fb := c.Bound.DrawFramebuffer
-			if fb == nil {
+			fb := c.Bound().DrawFramebuffer()
+			if fb.IsNil() {
 				out.MutateAndWrite(ctx, id, cmd)
 				return
 			}
 
-			if fb.ID != framebuffer {
+			if fb.ID() != framebuffer {
 				out.MutateAndWrite(ctx, id, cmd)
 				return
 			}
@@ -124,7 +124,7 @@ func drawWireframe(ctx context.Context, i api.CmdID, dc drawCall, s *api.GlobalS
 
 	// Unbind the index buffer
 	tmp := s.AllocOrPanic(ctx, uint64(len(wireframeData)))
-	oldIndexBuffer := c.Bound.VertexArray.ElementArrayBuffer
+	oldIndexBuffer := c.Bound().VertexArray().ElementArrayBuffer()
 	out.MutateAndWrite(ctx, dID,
 		cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, 0).
 			AddRead(tmp.Range(), resID))

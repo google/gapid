@@ -190,7 +190,7 @@
         {{/* Store the return value into a remapping table, if required */}}
         {{$rty := TypeOf $.Return}}
         {{if (GetAnnotation $rty "replay_remap")}}
-          if key, remap := ϟc.Result.remap(ϟc, ϟg); remap {
+          if key, remap := ϟc.Result().remap(ϟc, ϟg); remap {
           ptr, found := ϟb.Remappings[key]
           if !found {
             ptr = ϟb.AllocateMemory({{Template "Go.SizeOf" $rty}})
@@ -536,7 +536,16 @@
     {{if ne $.Operator "="}}{{Error "Compound assignments to '_' are not supported (%s)" $.Operator}}{{end}}
     _ = {{Template "Go.Read" $.RHS}}
   {{else}}
-    {{Template "Go.Read" $.LHS}} {{$.Operator}} {{Template "Go.Read" $.RHS}}
+    {{     if IsMember $.LHS}}{{Template "Go.Read" $.LHS.Object}}.Set{{$.LHS.Field | GoPublicName}}§
+    {{else if IsGlobal $.LHS}}ϟs.Set{{$.LHS.Name | GoPublicName}}§
+    {{else                  }}{{Error "Unhandled assign to %v" $.LHS}}
+    {{end}}
+
+    {{if eq $.Operator "="}}
+      ({{Template "Go.Read" $.RHS}})
+    {{else}}
+      ({{Template "Go.Read" $.LHS}} {{$.Operator | TrimRight "="}} {{Template "Go.Read" $.RHS}})
+    {{end}}
   {{end}}
 {{end}}
 
@@ -550,7 +559,7 @@
   {{AssertType $ "ArrayAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Array}}[{{Template "Go.Read" $.To.Index}}] {{$.Operator}} {{Template "Go.Read" $.Value}}
+    {{Template "Go.Read" $.To.Array}}.Set(int({{Template "Go.Read" $.To.Index}}), {{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported ArrayAssign operator %s" $.Operator}}
   {{end}}

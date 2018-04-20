@@ -30,112 +30,112 @@ func newStateResetGrouper() cmdgrouper.Grouper {
 	glDisable := func(capability gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlDisable)
-			return ok && c.Capability == capability
+			return ok && c.Capability() == capability
 		}
 	}
 	glEnable := func(capability gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlEnable)
-			return ok && c.Capability == capability
+			return ok && c.Capability() == capability
 		}
 	}
 	glFrontFace := func(orientation gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlFrontFace)
-			return ok && c.Orientation == orientation
+			return ok && c.Orientation() == orientation
 		}
 	}
 	glDepthFunc := func(function gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlDepthFunc)
-			return ok && c.Function == function
+			return ok && c.Function() == function
 		}
 	}
 	glColorMask := func(r, g, b, a gles.GLboolean) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlColorMask)
-			return ok && c.Red == r && c.Green == g && c.Blue == b && c.Alpha == a
+			return ok && c.Red() == r && c.Green() == g && c.Blue() == b && c.Alpha() == a
 		}
 	}
 	glBlendFuncSeparate := func(srcFactorRGB, dstFactorRGB, srcFactorA, dstFactorA gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlBlendFuncSeparate)
 			return ok &&
-				c.SrcFactorRgb == srcFactorRGB &&
-				c.DstFactorRgb == dstFactorRGB &&
-				c.SrcFactorAlpha == srcFactorA &&
-				c.DstFactorAlpha == dstFactorA
+				c.SrcFactorRgb() == srcFactorRGB &&
+				c.DstFactorRgb() == dstFactorRGB &&
+				c.SrcFactorAlpha() == srcFactorA &&
+				c.DstFactorAlpha() == dstFactorA
 		}
 	}
 	glBlendEquationSeparate := func(rgb, alpha gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlBlendEquationSeparate)
-			return ok && c.Rgb == rgb && c.Alpha == alpha
+			return ok && c.Rgb() == rgb && c.Alpha() == alpha
 		}
 	}
 	glStencilFuncSeparate := func(face, function gles.GLenum, referenceValue gles.GLint, mask gles.GLuint) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlStencilFuncSeparate)
 			return ok &&
-				c.Face == face &&
-				c.Function == function &&
-				c.ReferenceValue == referenceValue &&
-				c.Mask == mask
+				c.Face() == face &&
+				c.Function() == function &&
+				c.ReferenceValue() == referenceValue &&
+				c.Mask() == mask
 		}
 	}
 	glStencilOpSeparate := func(face, stencilFail, stencilPassDepthFail, stencilPassDepthPass gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlStencilOpSeparate)
 			return ok &&
-				c.Face == face &&
-				c.StencilFail == stencilFail &&
-				c.StencilPassDepthFail == stencilPassDepthFail &&
-				c.StencilPassDepthPass == stencilPassDepthPass
+				c.Face() == face &&
+				c.StencilFail() == stencilFail &&
+				c.StencilPassDepthFail() == stencilPassDepthFail &&
+				c.StencilPassDepthPass() == stencilPassDepthPass
 		}
 	}
 	glStencilMask := func(mask gles.GLuint) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlStencilMask)
-			return ok && c.Mask == mask
+			return ok && c.Mask() == mask
 		}
 	}
 	glCullFace := func(mode gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlCullFace)
-			return ok && c.Mode == mode
+			return ok && c.Mode() == mode
 		}
 	}
 	glDepthMask := func(enabled gles.GLboolean) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlDepthMask)
-			return ok && c.Enabled == enabled
+			return ok && c.Enabled() == enabled
 		}
 	}
 	glBindSampler := func() func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlBindSampler)
 			p, _ := prev.(*gles.GlBindSampler)
-			return ok && c.Sampler == 0 && (p == nil || c.Index == p.Index+1)
+			return ok && c.Sampler() == 0 && (p == nil || c.Index() == p.Index()+1)
 		}
 	}
 	glBindBuffer := func(target gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlBindBuffer)
-			return ok && c.Buffer == 0 && c.Target == target
+			return ok && c.Buffer() == 0 && c.Target() == target
 		}
 	}
 	glBindBufferBase := func(target gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlBindBufferBase)
 			p, _ := prev.(*gles.GlBindBufferBase)
-			return ok && c.Buffer == 0 && c.Target == target &&
-				(p == nil || c.Target != p.Target || c.Index == p.Index+1)
+			return ok && c.Buffer() == 0 && c.Target() == target &&
+				(p == nil || c.Target() != p.Target() || c.Index() == p.Index()+1)
 		}
 	}
 	glUseProgram := func() func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlUseProgram)
-			return ok && c.Program == 0
+			return ok && c.Program() == 0
 		}
 	}
 	glActiveTextureOrBindTexture := func() func(cmd, prev api.Cmd) bool {
@@ -143,7 +143,7 @@ func newStateResetGrouper() cmdgrouper.Grouper {
 			if _, ok := cmd.(*gles.GlActiveTexture); ok {
 				return true
 			}
-			if cmd, ok := cmd.(*gles.GlBindTexture); ok && cmd.Texture == 0 {
+			if cmd, ok := cmd.(*gles.GlBindTexture); ok && cmd.Texture() == 0 {
 				return true
 			}
 			return false
@@ -152,13 +152,13 @@ func newStateResetGrouper() cmdgrouper.Grouper {
 	glPixelStorei := func(param gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlPixelStorei)
-			return ok && c.Parameter == param
+			return ok && c.Parameter() == param
 		}
 	}
 	glBindFramebuffer := func(target gles.GLenum) func(cmd, prev api.Cmd) bool {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlBindFramebuffer)
-			return ok && c.Target == target
+			return ok && c.Target() == target
 		}
 	}
 	glIsVertexArrayRuleOrGenVertexArrays := func() func(cmd, prev api.Cmd) bool {
@@ -182,7 +182,7 @@ func newStateResetGrouper() cmdgrouper.Grouper {
 		return func(cmd, prev api.Cmd) bool {
 			c, ok := cmd.(*gles.GlDisableVertexAttribArray)
 			p, _ := prev.(*gles.GlDisableVertexAttribArray)
-			return ok && ((p == nil && c.Location == 0) || (p != nil && c.Location == p.Location+1))
+			return ok && ((p == nil && c.Location() == 0) || (p != nil && c.Location() == p.Location()+1))
 		}
 	}
 

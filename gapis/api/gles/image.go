@@ -26,11 +26,11 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
-func (i *Image) getUnsizedFormatAndType() (unsizedFormat, ty GLenum) {
-	if i.DataFormat == 0 && i.DataType == 0 {
-		return getUnsizedFormatAndType(i.SizedFormat)
+func (i Imageʳ) getUnsizedFormatAndType() (unsizedFormat, ty GLenum) {
+	if i.DataFormat() == 0 && i.DataType() == 0 {
+		return getUnsizedFormatAndType(i.SizedFormat())
 	}
-	return i.DataFormat, i.DataType
+	return i.DataFormat(), i.DataType()
 }
 
 func cubemapFaceToLayer(target GLenum) GLint {
@@ -50,19 +50,19 @@ func getSizedFormatFromTuple(unsizedFormat, ty GLenum) (sizedFormat GLenum) {
 // getUnsizedFormatAndType returns unsized format and component type from sized format.
 func getUnsizedFormatAndType(sizedFormat GLenum) (unsizedFormat, ty GLenum) {
 	info := GetSizedFormatInfoOrPanic(sizedFormat)
-	return info.UnsizedFormat, info.DataType
+	return info.UnsizedFormat(), info.DataType()
 }
 
 // GetSizedFormatInfoOrPanic is wrapper for the 'GetSizedFormatInfo' api subroutine.
 func GetSizedFormatInfoOrPanic(sizedFormat GLenum) SizedFormatInfo {
 	info, _ := subGetSizedFormatInfo(nil, nil, api.CmdNoID, nil, &api.GlobalState{}, nil, 0, nil, sizedFormat)
-	if info.SizedFormat == GLenum_GL_NONE {
+	if info.SizedFormat() == GLenum_GL_NONE {
 		panic(fmt.Errorf("Unknown sized format: %v", sizedFormat))
 	}
 	return info
 }
 
-// getImageFormat returns the *image.Format for the given format-type tuple.
+// getImageFormat returns the image.Format for the given format-type tuple.
 // The tuple must be in one of the following two forms:
 //   (unsizedFormat, ty) - Uncompressed data.
 //   (sizedFormat, NONE) - Compressed data.
@@ -123,11 +123,11 @@ var glChannelToStreamChannel = map[GLenum]stream.Channel{
 // getUncompressedStreamFormat returns the decoding format which can be used to read single pixel.
 func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Format, err error) {
 	info, _ := subGetUnsizedFormatInfo(nil, nil, api.CmdNoID, nil, &api.GlobalState{}, nil, 0, nil, unsizedFormat)
-	if info.Count == 0 {
+	if info.Count() == 0 {
 		return nil, fmt.Errorf("Unknown unsized format: %v", unsizedFormat)
 	}
-	glChannels := []GLenum{info.Channel0, info.Channel1, info.Channel2, info.Channel3}
-	channels := make(stream.Channels, info.Count)
+	glChannels := []GLenum{info.Channel0(), info.Channel1(), info.Channel2(), info.Channel3()}
+	channels := make(stream.Channels, info.Count())
 	for i := range channels {
 		channel, ok := glChannelToStreamChannel[glChannels[i]]
 		if !ok {
@@ -150,7 +150,7 @@ func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Forma
 		} else if channel == stream.Channel_Stencil {
 			sampleAsFloat = false
 		} else /* colour */ {
-			sampleAsFloat = !info.Integer
+			sampleAsFloat = !info.Integer()
 		}
 		if datatype.IsInteger() && sampleAsFloat {
 			sampling = stream.LinearNormalized // Convert int to float
@@ -231,7 +231,8 @@ func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Forma
 	return format, nil
 }
 
-// getCompressedImageFormat returns *image.Format for the given compressed format.
+// getCompressedImageFormat returns a pointer to an image.Format for the given
+// compressed format.
 func getCompressedImageFormat(format GLenum) (*image.Format, error) {
 	switch format {
 	// ETC1

@@ -1834,6 +1834,8 @@ func (c *cmd) SetCaller(api.CmdID)                                              
 func (c *cmd) Thread() uint64                                                     { return c.thread }
 func (c *cmd) SetThread(thread uint64)                                            { c.thread = thread }
 func (c *cmd) CmdName() string                                                    { return c.name }
+func (c *cmd) CmdParams() api.Properties                                          { return nil }
+func (c *cmd) CmdResult() *api.Property                                           { return nil }
 func (c *cmd) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
 func (c *cmd) Extras() *api.CmdExtras {
 	if c.extras == nil {

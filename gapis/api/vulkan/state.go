@@ -25,45 +25,48 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 		return 0, 0, VkFormat_VK_FORMAT_UNDEFINED, 0, true, fmt.Errorf(format_str, e...)
 	}
 
-	lastQueue := st.LastBoundQueue
-	if lastQueue == nil {
+	lastQueue := st.LastBoundQueue()
+	if lastQueue.IsNil() {
 		return returnError("No previous queue submission")
 	}
 
-	lastDrawInfo, ok := st.LastDrawInfos.Lookup(lastQueue.VulkanHandle)
+	lastDrawInfo, ok := st.LastDrawInfos().Lookup(lastQueue.VulkanHandle())
 	if !ok {
 		return returnError("There have been no previous draws")
 	}
 
-	if lastDrawInfo.Framebuffer == nil || !st.Framebuffers.Contains(lastDrawInfo.Framebuffer.VulkanHandle) {
+	if lastDrawInfo.Framebuffer().IsNil() || !st.Framebuffers().Contains(lastDrawInfo.Framebuffer().VulkanHandle()) {
 		return returnError("%s is not bound", attachment)
 	}
 
-	if lastDrawInfo.Framebuffer.RenderPass == nil {
+	if lastDrawInfo.Framebuffer().RenderPass().IsNil() {
 		return returnError("%s is not bound to any renderpass", attachment)
 	}
 
-	lastSubpass := lastDrawInfo.LastSubpass
+	lastSubpass := lastDrawInfo.LastSubpass()
 
-	subpass_desc := lastDrawInfo.Framebuffer.RenderPass.SubpassDescriptions.Get(lastSubpass)
+	subpassDesc := lastDrawInfo.Framebuffer().RenderPass().SubpassDescriptions().Get(lastSubpass)
 	switch attachment {
 	case api.FramebufferAttachment_Color0,
 		api.FramebufferAttachment_Color1,
 		api.FramebufferAttachment_Color2,
 		api.FramebufferAttachment_Color3:
-		attachment_index := uint32(attachment - api.FramebufferAttachment_Color0)
-		if att_ref, ok := subpass_desc.ColorAttachments.Lookup(attachment_index); ok {
-			if ca, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(att_ref.Attachment); ok {
-				return ca.Image.Info.Extent.Width, ca.Image.Info.Extent.Height, ca.Image.Info.Fmt, att_ref.Attachment, true, nil
+		attachmentIndex := uint32(attachment - api.FramebufferAttachment_Color0)
+		if attRef, ok := subpassDesc.ColorAttachments().Lookup(attachmentIndex); ok {
+			if ca, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attRef.Attachment()); ok {
+				return ca.Image().Info().Extent().Width(),
+					ca.Image().Info().Extent().Height(),
+					ca.Image().Info().Fmt(),
+					attRef.Attachment(), true, nil
 			}
 
 		}
 	case api.FramebufferAttachment_Depth:
-		if subpass_desc.DepthStencilAttachment != nil && lastDrawInfo.Framebuffer != nil {
-			att_ref := subpass_desc.DepthStencilAttachment
-			if attachment, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(att_ref.Attachment); ok {
-				depth_img := attachment.Image
-				return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Fmt, att_ref.Attachment, true, nil
+		if !subpassDesc.DepthStencilAttachment().IsNil() && !lastDrawInfo.Framebuffer().IsNil() {
+			attRef := subpassDesc.DepthStencilAttachment()
+			if attachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attRef.Attachment()); ok {
+				depthImg := attachment.Image()
+				return depthImg.Info().Extent().Width(), depthImg.Info().Extent().Height(), depthImg.Info().Fmt(), attRef.Attachment(), true, nil
 			}
 		}
 	case api.FramebufferAttachment_Stencil:
@@ -85,22 +88,22 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 		api.FramebufferAttachment_Color1,
 		api.FramebufferAttachment_Color2,
 		api.FramebufferAttachment_Color3:
-		image_idx := uint32(attachment - api.FramebufferAttachment_Color0)
-		if st.LastPresentInfo.PresentImageCount <= image_idx {
+		imageIdx := uint32(attachment - api.FramebufferAttachment_Color0)
+		if st.LastPresentInfo().PresentImageCount() <= imageIdx {
 			return returnError("Swapchain does not contain image %v", attachment)
 		}
-		color_img := st.LastPresentInfo.PresentImages.Get(image_idx)
-		if color_img != nil {
-			queue := color_img.LastBoundQueue
-			vkDevice := queue.Device
-			device := st.Devices.Get(vkDevice)
-			vkPhysicalDevice := device.PhysicalDevice
-			physicalDevice := st.PhysicalDevices.Get(vkPhysicalDevice)
-			if properties, ok := physicalDevice.QueueFamilyProperties.Lookup(queue.Family); ok {
-				if properties.QueueFlags&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) != 0 {
-					return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Fmt, image_idx, true, nil
+		colorImg := st.LastPresentInfo().PresentImages().Get(imageIdx)
+		if !colorImg.IsNil() {
+			queue := colorImg.LastBoundQueue()
+			vkDevice := queue.Device()
+			device := st.Devices().Get(vkDevice)
+			vkPhysicalDevice := device.PhysicalDevice()
+			physicalDevice := st.PhysicalDevices().Get(vkPhysicalDevice)
+			if properties, ok := physicalDevice.QueueFamilyProperties().Lookup(queue.Family()); ok {
+				if properties.QueueFlags()&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) != 0 {
+					return colorImg.Info().Extent().Width(), colorImg.Info().Extent().Height(), colorImg.Info().Fmt(), imageIdx, true, nil
 				}
-				return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Fmt, image_idx, false, nil
+				return colorImg.Info().Extent().Width(), colorImg.Info().Extent().Height(), colorImg.Info().Fmt(), imageIdx, false, nil
 			}
 
 			return returnError("Last present queue does not exist", attachment)
@@ -116,9 +119,8 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 }
 
 func (st *State) getFramebufferAttachmentInfo(attachment api.FramebufferAttachment) (uint32, uint32, VkFormat, uint32, bool, error) {
-	if st.LastSubmission == LastSubmissionType_SUBMIT {
+	if st.LastSubmission() == LastSubmissionType_SUBMIT {
 		return st.getSubmitAttachmentInfo(attachment)
-	} else {
-		return st.getPresentAttachmentInfo(attachment)
 	}
+	return st.getPresentAttachmentInfo(attachment)
 }
