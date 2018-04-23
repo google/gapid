@@ -87,7 +87,7 @@ func NewModule(name string, target *device.ABI) *Module {
 	// llvm.memcpy.p0i8.p0i8.i32(i8 * <dest>, i8 * <src>, i32 <len>, i32 <align>, i1 <isvolatile>)
 	voidPtr := m.Types.Pointer(m.Types.Void)
 	m.memcpy = m.Function(m.Types.Void, "llvm.memcpy.p0i8.p0i8.i32",
-		voidPtr, voidPtr, m.Types.Uint32, m.Types.Uint32, m.Types.Bool)
+		voidPtr, voidPtr, m.Types.Uint32, m.Types.Bool)
 
 	m.Types.m = m
 	return m
