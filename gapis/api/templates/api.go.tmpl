@@ -1074,7 +1074,11 @@ import (
   func (g *State) Init() {
     {{range $g := $.Globals}}
       {{if IsNil $g.Default}}
-        g.{{$g.Name | GoPublicName}} = {{Template "Go.Null" $g.Type}}
+        {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}
+          g.{{$g.Name | GoPublicName}} = {{$init}}
+        {{else}}
+          g.{{$g.Name | GoPublicName}} = {{Template "Go.Null" $g.Type}}
+        {{end}}
       {{else}}
         g.{{$g.Name | GoPublicName}} = {{Template "Go.Read" $g.Default}}
       {{end}}
