@@ -24,10 +24,10 @@ curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.z
 mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
 echo y | ./android/tools/bin/sdkmanager build-tools\;26.0.1 platforms\;android-21
-curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r15c-darwin-x86_64.zip
-unzip -q android-ndk-r15c-darwin-x86_64.zip -d android
+curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r16b-darwin-x86_64.zip
+unzip -q android-ndk-r16b-darwin-x86_64.zip -d android
 export ANDROID_HOME=$PWD/android
-export ANDROID_NDK_HOME=$PWD/android/android-ndk-r15c
+export ANDROID_NDK_HOME=$PWD/android/android-ndk-r16b
 
 # Get bazel.
 curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.12.0/bazel-0.12.0-without-jdk-installer-darwin-x86_64.sh
