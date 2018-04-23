@@ -1,6 +1,6 @@
 # Building GAPID
 
-GAPID uses the [Bazel build system](https://bazel.build/).
+GAPID uses the [Bazel build system](https://bazel.build/). The current minimum required version of bazel is 0.12.0.
 
 Bazel is able to fetch most of the dependencies required to build GAPID, but currently the Android SDK and NDK both need to be downloaded and installed by hand.
 
@@ -43,7 +43,7 @@ Using the msys64 shell at `C:\tools\msys64\mingw64`:
 
 A JRE is required by the Android SDK tools. If you do not already have a JRE installed, please [install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
 
-### Install Android SDK
+### Install Android SDK and NDK
 
 Unzip the [Android SDK](https://dl.google.com/android/repository/sdk-tools-windows-3859397.zip) to a directory of your choosing.
 
@@ -51,18 +51,16 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools\bin\sdkmanager platforms;android-21 build-tools;26.0.1
+tools\bin\sdkmanager platforms;android-21 build-tools;26.0.1 ndk-bundle
 ```
+
+Note: this will install the latest NDK in `<sdk-path>\ndk-bundle`. The minimum required version of the NDK is r16b.
 
 If you do not have adb installed you can do so with:
 ```
 cd <sdk-path>
 tools\bin\sdkmanager platform-tools
 ```
-
-### Install the Android NDK
-
-Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-windows-x86_64.zip) to a directory of your choosing.
 
 ### Configure the environment
 
@@ -101,7 +99,7 @@ Follow the [MacOS Bazel Install](https://docs.bazel.build/versions/master/instal
 
 A JRE is required by the Android SDK tools. If you do not already have a JRE installed, please [install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
 
-### Install Android SDK
+### Install Android SDK and NDK
 
 Unzip the [Android SDK](https://dl.google.com/android/repository/sdk-tools-darwin-3859397.zip) to a directory of your choosing.
 
@@ -109,18 +107,16 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1"
+tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1" ndk-bundle
 ```
+
+Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The minimum required version of the NDK is r16b.
 
 If you do not have adb installed you can do so with:
 ```
 cd <sdk-path>
 tools/bin/sdkmanager platform-tools
 ```
-
-### Install Android NDK
-
-Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-darwin-x86_64.zip) to a directory of your choosing.
 
 ### Install the XCode command line tools
 
@@ -164,7 +160,7 @@ Follow the [Ubuntu Bazel Install](https://docs.bazel.build/versions/master/insta
 
 Alternatively, bazel can be downloaded from its [GitHub Releases Page](https://github.com/bazelbuild/bazel/releases).
 
-### Install Android SDK
+### Install Android SDK and NDK
 
 Unzip the [Android SDK](https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip) to a directory of your choosing.
 
@@ -172,18 +168,16 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1"
+tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1" ndk-bundle
 ```
+
+Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The minimum required version of the NDK is r16b.
 
 If you do not have adb installed you can do so with:
 ```
 cd <sdk-path>
 tools/bin/sdkmanager platform-tools
 ```
-
-### Install Android NDK
-
-Unzip the [Android NDK](https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip) to a directory of your choosing.
 
 ### Install other libraries
 
