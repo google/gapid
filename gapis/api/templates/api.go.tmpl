@@ -603,7 +603,10 @@ import (
       panic(fmt.Errorf("%v.Slice(%d, %d) - out of bounds", s, start, end))
     }
     newCount := end-start
-    elSize := s.size / s.count
+    elSize := uint64(0)
+    if s.count > 0 {
+      elSize = s.size / s.count
+    }
     return {{$slice_ty}}{
       root:  s.root,
       base:  s.base + start * elSize,
