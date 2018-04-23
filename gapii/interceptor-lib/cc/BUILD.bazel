@@ -52,7 +52,6 @@ cc_library(
             "-lm",
             "-llog",
             "-lz",
-            "-lstdc++",
         ],
     }),
     strip_include_prefix = "include",
