@@ -5,7 +5,7 @@
 #include "llvm/Config/llvm-config.h"
 
 /* Bug report URL. */
-#define BUG_REPORT_URL "http://llvm.org/bugs/"
+#define BUG_REPORT_URL "https://bugs.llvm.org/"
 
 /* Define to 1 to enable backtraces, and to 0 otherwise. */
 #define ENABLE_BACKTRACES 1
@@ -15,6 +15,8 @@
 
 /* Define to 1 if you have the `backtrace' function. */
 /* #undef HAVE_BACKTRACE */
+
+#define BACKTRACE_HEADER <execinfo.h>
 
 /* Define to 1 if you have the <CrashReporterClient.h> header file. */
 /* #undef HAVE_CRASHREPORTERCLIENT_H */
@@ -41,21 +43,17 @@
 /* Define to 1 if you have the DIA SDK installed, and to 0 if you don't. */
 #define LLVM_ENABLE_DIA_SDK 0
 
-/* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
-   */
-#define HAVE_DIRENT_H 1
-
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
 
 /* Define if dlopen() is available on this platform. */
 #define HAVE_DLOPEN 1
 
+/* Define if dladdr() is available on this platform. */
+#define HAVE_DLADDR 1
+
 /* Define to 1 if you have the <errno.h> header file. */
 #define HAVE_ERRNO_H 1
-
-/* Define to 1 if you have the <execinfo.h> header file. */
-/* #undef HAVE_EXECINFO_H */
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
@@ -78,9 +76,6 @@
 /* Define to 1 if you have the `futimes' function. */
 /* #undef HAVE_FUTIMES */
 
-/* Define to 1 if you have the `getcwd' function. */
-#define HAVE_GETCWD 1
-
 /* Define to 1 if you have the `getpagesize' function. */
 #define HAVE_GETPAGESIZE 1
 
@@ -90,20 +85,14 @@
 /* Define to 1 if you have the `getrusage' function. */
 #define HAVE_GETRUSAGE 1
 
-/* Define to 1 if you have the `gettimeofday' function. */
-#define HAVE_GETTIMEOFDAY 1
-
-/* Define to 1 if the system has the type `int64_t'. */
-#define HAVE_INT64_T 1
-
-/* Define to 1 if you have the <inttypes.h> header file. */
-#define HAVE_INTTYPES_H 1
-
 /* Define to 1 if you have the `isatty' function. */
 #define HAVE_ISATTY 1
 
 /* Define to 1 if you have the `edit' library (-ledit). */
 /* #undef HAVE_LIBEDIT */
+
+/* Define to 1 if you have the `pfm' library (-lpfm). */
+/* #undef HAVE_LIBPFM */
 
 /* Define to 1 if you have the `psapi' library (-lpsapi). */
 /* #undef HAVE_LIBPSAPI */
@@ -111,8 +100,11 @@
 /* Define to 1 if you have the `pthread' library (-lpthread). */
 /* #undef HAVE_LIBPTHREAD */
 
-/* Define to 1 if you have the `shell32' library (-lshell32). */
-/* #undef HAVE_LIBSHELL32 */
+/* Define to 1 if you have the `pthread_getname_np' function. */
+/* #undef HAVE_PTHREAD_GETNAME_NP */
+
+/* Define to 1 if you have the `pthread_setname_np' function. */
+#define HAVE_PTHREAD_SETNAME_NP 1
 
 /* Define to 1 if you have the `z' library (-lz). */
 #define HAVE_LIBZ 1
@@ -140,18 +132,6 @@
 
 /* Define to 1 if you have the `malloc_zone_statistics' function. */
 /* #undef HAVE_MALLOC_ZONE_STATISTICS */
-
-/* Define to 1 if you have the `mkdtemp' function. */
-#define HAVE_MKDTEMP 1
-
-/* Define to 1 if you have the `mkstemp' function. */
-#define HAVE_MKSTEMP 1
-
-/* Define to 1 if you have the `mktemp' function. */
-#define HAVE_MKTEMP 1
-
-/* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
-/* #undef HAVE_NDIR_H */
 
 /* Define to 1 if you have the `posix_fallocate' function. */
 #define HAVE_POSIX_FALLOCATE 1
@@ -183,6 +163,12 @@
 /* Define to 1 if you have the `setenv' function. */
 #define HAVE_SETENV 1
 
+/* Define to 1 if you have the `sched_getaffinity' function. */
+/* #undef HAVE_SCHED_GETAFFINITY */
+
+/* Define to 1 if you have the `CPU_COUNT' macro. */
+/* #undef HAVE_CPU_COUNT */
+
 /* Define to 1 if you have the `setrlimit' function. */
 #define HAVE_SETRLIMIT 1
 
@@ -192,34 +178,20 @@
 /* Define to 1 if you have the <signal.h> header file. */
 #define HAVE_SIGNAL_H 1
 
-/* Define to 1 if you have the <stdint.h> header file. */
-#define HAVE_STDINT_H 1
-
 /* Define to 1 if you have the `strerror' function. */
 #define HAVE_STRERROR 1
 
 /* Define to 1 if you have the `strerror_r' function. */
 #define HAVE_STRERROR_R 1
 
-/* Define to 1 if you have the `strtoll' function. */
-#define HAVE_STRTOLL 1
-
 /* Define to 1 if you have the `sysconf' function. */
 #define HAVE_SYSCONF 1
-
-/* Define to 1 if you have the <sys/dir.h> header file, and it defines `DIR'.
-   */
-/* #undef HAVE_SYS_DIR_H */
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #define HAVE_SYS_IOCTL_H 1
 
 /* Define to 1 if you have the <sys/mman.h> header file. */
 #define HAVE_SYS_MMAN_H 1
-
-/* Define to 1 if you have the <sys/ndir.h> header file, and it defines `DIR'.
-   */
-/* #undef HAVE_SYS_NDIR_H */
 
 /* Define to 1 if you have the <sys/param.h> header file. */
 #define HAVE_SYS_PARAM_H 1
@@ -236,9 +208,6 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
 
-/* Define to 1 if you have the <sys/uio.h> header file. */
-#define HAVE_SYS_UIO_H 1
-
 /* Define if the setupterm() function is supported this platform. */
 /* #undef HAVE_TERMINFO */
 
@@ -248,20 +217,11 @@
 /* Define to 1 if you have the <termios.h> header file. */
 #define HAVE_TERMIOS_H 1
 
-/* Define to 1 if the system has the type `uint64_t'. */
-#define HAVE_UINT64_T 1
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 
-/* Define to 1 if the system has the type `u_int64_t'. */
-#define HAVE_U_INT64_T 1
-
 /* Define to 1 if you have the <valgrind/valgrind.h> header file. */
 /* #undef HAVE_VALGRIND_VALGRIND_H */
-
-/* Define to 1 if you have the `writev' function. */
-#define HAVE_WRITEV 1
 
 /* Define to 1 if you have the <zlib.h> header file. */
 #define HAVE_ZLIB_H 1
@@ -348,35 +308,14 @@
 /* Host triple LLVM will be executed on */
 #define LLVM_HOST_TRIPLE "i386-unknown-linux-android"
 
-/* LLVM architecture name for the native architecture, if available */
-#define LLVM_NATIVE_ARCH X86
-
-/* LLVM name for the native AsmParser init function, if available */
-#define LLVM_NATIVE_ASMPARSER LLVMInitializeX86AsmParser
-
-/* LLVM name for the native AsmPrinter init function, if available */
-#define LLVM_NATIVE_ASMPRINTER LLVMInitializeX86AsmPrinter
-
-/* LLVM name for the native Disassembler init function, if available */
-#define LLVM_NATIVE_DISASSEMBLER LLVMInitializeX86Disassembler
-
-/* LLVM name for the native Target init function, if available */
-#define LLVM_NATIVE_TARGET LLVMInitializeX86Target
-
-/* LLVM name for the native TargetInfo init function, if available */
-#define LLVM_NATIVE_TARGETINFO LLVMInitializeX86TargetInfo
-
-/* LLVM name for the native target MC init function, if available */
-#define LLVM_NATIVE_TARGETMC LLVMInitializeX86TargetMC
-
 /* Define if this is Unixish platform */
 #define LLVM_ON_UNIX 1
 
 /* Define if this is Win32ish platform */
 /* #undef LLVM_ON_WIN32 */
 
-/* Installation prefix directory */
-#define LLVM_PREFIX "/usr/local"
+/* Define if overriding target triple is enabled */
+/* #undef LLVM_TARGET_TRIPLE_ENV */
 
 /* Define if we have the Intel JIT API runtime support library */
 #define LLVM_USE_INTEL_JITEVENTS 0
@@ -387,8 +326,11 @@
 /* LLVM version information */
 /* #undef LLVM_VERSION_INFO */
 
+/* Whether tools show host and target info when invoked with --version */
+#define LLVM_VERSION_PRINTER_SHOW_HOST_TARGET_INFO 1
+
 /* Major version of the LLVM API */
-#define LLVM_VERSION_MAJOR 4
+#define LLVM_VERSION_MAJOR 7
 
 /* Minor version of the LLVM API */
 #define LLVM_VERSION_MINOR 0
@@ -397,25 +339,25 @@
 #define LLVM_VERSION_PATCH 0
 
 /* LLVM version string */
-#define LLVM_VERSION_STRING "4.0.0"
+#define LLVM_VERSION_STRING "7.0.0svn"
+
+/* Define if libxml2 is supported on this platform. */
+/* #undef LLVM_LIBXML2_ENABLED */
 
 /* Define to the extension used for shared libraries, say, ".so". */
 #define LTDL_SHLIB_EXT ".so"
 
 /* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "http://llvm.org/bugs/"
+#define PACKAGE_BUGREPORT "https://bugs.llvm.org/"
 
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "LLVM"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "LLVM 4.0.0"
-
-/* Define to the one symbol short name of this package. */
-#undef PACKAGE_TARNAME
+#define PACKAGE_STRING "LLVM 7.0.0svn"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.0.0"
+#define PACKAGE_VERSION "7.0.0svn"
 
 /* Define to the vendor of this package. */
 /* #undef PACKAGE_VENDOR */
@@ -423,16 +365,16 @@
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
 
-/* Define to a function replacing strtoll */
-/* #undef strtoll */
-
-/* Define to a function implementing strtoull */
-/* #undef strtoull */
-
 /* Define to a function implementing stricmp */
 /* #undef stricmp */
 
 /* Define to a function implementing strdup */
 /* #undef strdup */
+
+/* Whether GlobalISel rule coverage is being collected */
+#define LLVM_GISEL_COV_ENABLED 0
+
+/* Define to the default GlobalISel coverage file prefix */
+/* #undef LLVM_GISEL_COV_PREFIX */
 
 #endif

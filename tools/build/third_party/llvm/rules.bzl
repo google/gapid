@@ -39,7 +39,8 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
         exclude += excludes[name]
     native.cc_library(
         name = name,
-        srcs =  llvm_sources(path, exclude=exclude),
+        srcs = llvm_sources(path, exclude=exclude),
+        hdrs = native.glob([path + "/*.def"]),
         deps = deps,
         copts = cc_copts() + [
             # LLVM is used to build parts of GAPID. We're not so interested in
@@ -51,7 +52,7 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
         ] + select({
             "@gapid//tools/build:linux": [],
             "@gapid//tools/build:darwin": [],
-            "@gapid//tools/build:windows": [],
+            "@gapid//tools/build:windows": ["-D__STDC_FORMAT_MACROS"],
             # Android
             "//conditions:default": [
                 "-fno-rtti",
