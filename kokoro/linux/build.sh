@@ -25,7 +25,7 @@ mkdir bazel
 bash bazel-0.12.0-without-jdk-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
 # Setup environment.
-export ANDROID_NDK_HOME=/opt/android-ndk-r15c
+export ANDROID_NDK_HOME=/opt/android-ndk-r16b
 
 cd $SRC
 
