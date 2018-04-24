@@ -132,6 +132,14 @@ tablegen(
             "lib/Target/AArch64/AArch64GenSystemOperands.inc",
             "-gen-searchable-tables",
         ],
+        [
+            "lib/Target/AArch64/AArch64GenRegisterBank.inc",
+            "-gen-register-bank",
+        ],
+        [
+            "lib/Target/AArch64/AArch64GenGlobalISel.inc",
+            "-gen-global-isel",
+        ],
     ],
     strip_include_prefix = "lib/Target/AArch64",
     table = "lib/Target/AArch64/AArch64.td",
@@ -192,6 +200,18 @@ tablegen(
             "lib/Target/ARM/ARMGenDisassemblerTables.inc",
             "-gen-disassembler",
         ],
+        [
+            "lib/Target/ARM/ARMGenSystemRegister.inc",
+            "-gen-searchable-tables",
+        ],
+        [
+            "lib/Target/ARM/ARMGenRegisterBank.inc",
+            "-gen-register-bank",
+        ],
+        [
+            "lib/Target/ARM/ARMGenGlobalISel.inc",
+            "-gen-global-isel",
+        ]
     ],
     strip_include_prefix = "lib/Target/ARM",
     table = "lib/Target/ARM/ARM.td",
@@ -205,11 +225,16 @@ cc_library(
     deps = [":tables-ARM"],
 )
 
-
 cc_library(
     name = "headers-RuntimeDyld",
     hdrs = glob(["lib/ExecutionEngine/RuntimeDyld/*.h"]),
     strip_include_prefix = "lib/ExecutionEngine/RuntimeDyld",
+)
+
+cc_library(
+    name = "headers-SupportWindows",
+    hdrs = glob(["lib/Support/Windows/*.h"]),
+    strip_include_prefix = "lib/Support",
 )
 
 # RuntimeDyldELFMips is referenced by RuntimeDyldELF.cpp whether we're building
@@ -220,6 +245,10 @@ cc_library(
         "lib/ExecutionEngine/RuntimeDyld/Targets/RuntimeDyldELFMips.cpp",
         "lib/ExecutionEngine/RuntimeDyld/**/*.h",
     ]),
+    copts = cc_copts() + select({
+        "@gapid//tools/build:windows": ["-D__STDC_FORMAT_MACROS"],
+        "//conditions:default": [],
+    }),
     strip_include_prefix = "lib/ExecutionEngine/RuntimeDyld/Targets",
     deps = [":headers"],
 )
@@ -268,6 +297,18 @@ tablegen(
             "lib/Target/X86/X86GenSubtargetInfo.inc",
             "-gen-subtarget",
         ],
+        [
+            "lib/Target/X86/X86GenRegisterBank.inc",
+            "-gen-register-bank",
+        ],
+        [
+            "lib/Target/X86/X86GenEVEX2VEXTables.inc",
+            "-gen-x86-EVEX2VEX-tables",
+        ],
+        [
+            "lib/Target/X86/X86GenGlobalISel.inc",
+            "-gen-global-isel",
+        ]
     ],
     strip_include_prefix = "lib/Target/X86",
     table = "lib/Target/X86/X86.td",
@@ -290,43 +331,35 @@ cc_library(
     ],
 )
 
-# The following are all excluded because they depend on LLVM_BUILD_GLOBAL_ISEL
-ISEL_EXCLUDES = [
-    "**/*CallLowering.cpp",
-    "**/*InstructionSelector.cpp",
-    "**/*LegalizerInfo.cpp",
-    "**/*RegisterBankInfo.cpp",
-]
 
 llvm_auto_libs(
     # The table below is the source files that should be excluded from the globs
     excludes = {
-        "AArch64CodeGen": ISEL_EXCLUDES,
-        "ARMCodeGen": ISEL_EXCLUDES,
-        "X86CodeGen": ISEL_EXCLUDES,
     },
     # The table below is the extra dependancies not declared in the LLVMBuild.txt files
     # They are added to the dependancies declared in the generated llvm/rules.bzl file
     extras = {
-        "Demangle": [":headers"],
         "Core": [
             ":Intrinsics",
             ":Attributes",
             ":AttributesCompatFunc",
         ],
+        "Demangle": [":headers"],
         "AArch64Utils": [":headers-AArch64"],
         "AArchInfo": [":headers-AArch64"],
-        "ARMDesc": [":headers-ARM"],
         "ARMAsmPrinter": [":headers-ARM"],
+        "ARMDesc": [":headers-ARM"],
         "ARMInfo": [":headers-ARM"],
-        "RuntimeDyld": [":headers-RuntimeDyld", ":RuntimeDyldELFMips"],
-        "X86Utils": [":headers-X86"],
-        "X86Info": [":headers-X86"],
+        "ARMUtils": [":headers-ARM"],
         "LibDriver": [":LibDriver/Options"],
         "MC": [
             ":Intrinsics",
             ":Attributes",
         ],
+        "RuntimeDyld": [":headers-RuntimeDyld", ":RuntimeDyldELFMips"],
+        "Support": [":headers-SupportWindows"],
+        "X86Info": [":headers-X86"],
+        "X86Utils": [":headers-X86"],
     },
 )
 
@@ -408,7 +441,7 @@ cc_library(
     linkopts = select({
         "@gapid//tools/build:linux": ["-ldl", "-lpthread", "-lcurses", "-lz", "-lm"],
         "@gapid//tools/build:darwin": ["-framework Cocoa", "-lcurses", "-lz", "-lm"],
-        "@gapid//tools/build:windows": ["-luuid", "-lole32"],
+        "@gapid//tools/build:windows": ["-luuid", "-lole32", "-lpsapi"],
     }),
     visibility = ["//visibility:public"],
 )

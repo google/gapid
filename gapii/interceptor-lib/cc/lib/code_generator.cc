@@ -63,7 +63,7 @@ bool CodeGenerator::Initialize() {
   if (!mii_) return false;
 
   llvm::MCTargetOptions options;
-  asmb_.reset(target->createMCAsmBackend(*mri_, triple_.str(), "", options));
+  asmb_.reset(target->createMCAsmBackend(*sti_, *mri_, options));
   if (!asmb_) return false;
 
   ctx_.reset(new llvm::MCContext(nullptr, mri_.get(), nullptr));
@@ -77,6 +77,12 @@ bool CodeGenerator::Initialize() {
     ipr_.reset(target->createMCInstPrinter(llvm::Triple(triple_), 0, *asmi_,
                                            *mii_, *mri_));
   }
+
+  writer_ = asmb_->createObjectWriter(code_stream_);
+  if (!writer_) return false;
+
+  asm_.reset(new llvm::MCAssembler(*ctx_, *asmb_, *codegen_, *writer_));
+  if (!asm_) return false;
 
   return true;
 }
@@ -110,7 +116,8 @@ Error CodeGenerator::LinkCode(uintptr_t location) {
       value -= location;
     }
 
-    asmb_->applyFixup(fixup, code_.data(), code_.size(), value, pc_rel);
+    asmb_->applyFixup(*asm_, fixup, mc_value,
+        llvm::makeMutableArrayRef(code_.data(), code_.size()), value, pc_rel);
   }
 
   if (start_alignment_ != 0)

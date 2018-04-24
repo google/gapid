@@ -141,9 +141,9 @@ func (e *encoder) buildBufferFuncs() {
 			e.debug(s, "buffer grow(data: %p -> %p, capacity: %d -> %d)", bufData, newData, bufCap, newCap)
 			bufPtr.Index(0, "capacity").Store(newCap)
 			bufPtr.Index(0, "data").Store(newData)
-			s.Memcpy(newData.Index(bufOff), data, size, nil)
+			s.Memcpy(newData.Index(bufOff), data, size)
 		}, func() {
-			s.Memcpy(bufData.Index(bufOff), data, size, nil)
+			s.Memcpy(bufData.Index(bufOff), data, size)
 		})
 	})
 

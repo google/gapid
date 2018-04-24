@@ -23,6 +23,7 @@
 
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCAssembler.h"
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"
@@ -30,6 +31,7 @@
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstPrinter.h"
 #include "llvm/MC/MCInstrInfo.h"
+#include "llvm/MC/MCObjectWriter.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/TargetRegistry.h"
@@ -78,6 +80,8 @@ class CodeGenerator {
   std::unique_ptr<llvm::MCAsmInfo> asmi_;
   std::unique_ptr<llvm::MCContext> ctx_;
   std::unique_ptr<llvm::MCCodeEmitter> codegen_;
+  std::unique_ptr<llvm::MCObjectWriter> writer_;
+  std::unique_ptr<llvm::MCAssembler> asm_;
 
   std::vector<llvm::MCInst> instructions_;
   std::vector<const ConstantPoolDataExpr *> const_pool_exprs_;

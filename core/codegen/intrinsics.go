@@ -19,10 +19,7 @@ package codegen
 // size is the copy size in bytes. size must be of type uint32.
 // align is the minimum pointer alignment of dst and src. align must of type
 // uint32, or nil to represent no guaranteed alignment.
-func (b *Builder) Memcpy(dst, src, size, align *Value) {
-	if align == nil {
-		align = b.Scalar(uint32(0))
-	}
+func (b *Builder) Memcpy(dst, src, size *Value) {
 	isVolatile := b.Scalar(false)
-	b.Call(b.m.memcpy, dst, src, size, align, isVolatile)
+	b.Call(b.m.memcpy, dst, src, size, isVolatile)
 }

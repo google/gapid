@@ -25,9 +25,9 @@ set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_144
 REM Install the Android SDK components and NDK.
 set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
 echo y | %ANDROID_HOME%\tools\bin\sdkmanager build-tools;26.0.1 platforms;android-21
-wget -q https://dl.google.com/android/repository/android-ndk-r15c-windows-x86_64.zip
-unzip -q android-ndk-r15c-windows-x86_64.zip
-set ANDROID_NDK_HOME=%CD%\android-ndk-r15c
+wget -q https://dl.google.com/android/repository/android-ndk-r16b-windows-x86_64.zip
+unzip -q android-ndk-r16b-windows-x86_64.zip
+set ANDROID_NDK_HOME=%CD%\android-ndk-r16b
 
 REM Install WiX Toolset.
 wget -q https://github.com/wixtoolset/wix3/releases/download/wix311rtm/wix311-binaries.zip
@@ -45,9 +45,9 @@ REM set Platform="X64"
 REM set PreferredToolArchitecture="x64"
 REM call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
-REM Install Bazel 0.10.0
-wget -q https://github.com/bazelbuild/bazel/releases/download/0.10.0/bazel-0.10.0-without-jdk-windows-x86_64.zip
-unzip -q bazel-0.10.0-without-jdk-windows-x86_64.zip
+REM Install Bazel.
+wget -q https://github.com/bazelbuild/bazel/releases/download/0.12.0/bazel-0.12.0-without-jdk-windows-x86_64.zip
+unzip -q bazel-0.12.0-without-jdk-windows-x86_64.zip
 set PATH=C:\python27;%PATH%
 
 cd %SRC%

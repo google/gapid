@@ -17,6 +17,7 @@
 #ifndef CORE_LOG_H
 #define CORE_LOG_H
 
+#include <string>
 #include <vector>
 
 // General logging functions. All logging should be done through these macros.

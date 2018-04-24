@@ -112,9 +112,9 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
     _maybe(github_repository,
         name = "llvm",
         locals = locals,
-        organization = "ben-clayton",
+        organization = "llvm-mirror",
         project = "llvm",
-        commit = "4c7186401413dad4dc7d6923b69b05554e762cff",
+        commit = "aeb3e4fcbba63c2750aa27cfe75c4374a8b23550",
         build_file = "@gapid//tools/build/third_party:llvm.BUILD",
     )
 
@@ -179,6 +179,12 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         _maybe(android_native_app_glue,
             name = "android_native_app_glue",
             locals = locals,
+        )
+
+        # Use the LLVM libc++ Android toolchain.
+        native.bind(
+            name = "android/crosstool",
+            actual = "@androidndk//:toolchain-libcpp",
         )
 
     if mingw:
