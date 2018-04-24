@@ -219,17 +219,27 @@ func postImageData(ctx context.Context,
 	device := GetState(s).Devices.Get(vkDevice)
 	vkPhysicalDevice := device.PhysicalDevice
 	physicalDevice := GetState(s).PhysicalDevices.Get(vkPhysicalDevice)
-	// Rendered image should always has a graphics-capable queue bound, if none
-	// of such a queue found for this image or the bound queue does not have
-	// graphics capability, throw error messages and return.
+
+	requestWidth := reqWidth
+	requestHeight := reqHeight
+
 	if queue == nil {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
 		return
 	}
 	if properties, ok := physicalDevice.QueueFamilyProperties.Lookup(queue.Family); ok {
 		if properties.QueueFlags&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) == 0 {
-			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The bound vkQueue does not have VK_QUEUE_GRAPHICS_BIT capability")})
-			return
+			if imageObject.Info.Samples == VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT &&
+				aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
+				// If this is on the compute queue, we cannot do a blit operation,
+				// We can however do it on the CPU afterwards, or let the
+				// client deal with it
+				requestWidth = imgWidth
+				requestHeight = imgHeight
+			} else {
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Unhandled: Reading a multisampled or depth image on the compute queue")})
+				return
+			}
 		}
 	} else {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Not found the properties information of the bound vkQueue")})
@@ -273,13 +283,13 @@ func postImageData(ctx context.Context,
 		}
 	}
 
-	bufferSize := uint64(formatOfImgRes.Size(int(reqWidth), int(reqHeight), 1))
+	bufferSize := uint64(formatOfImgRes.Size(int(requestWidth), int(requestHeight), 1))
 	// For the depth aspect of VK_FORMAT_X8_D24_UNORM_PACK32 and
 	// VK_FORMAT_D24_UNORM_S8_UINT format, each depth element requires 4 bytes in
 	// the buffer when used in buffer image copy.
 	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT && (vkFormat == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32 || vkFormat == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) {
 		r32Fmt, _ := getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_R32_UINT)
-		bufferSize = uint64(r32Fmt.Size(int(reqWidth), int(reqHeight), 1))
+		bufferSize = uint64(r32Fmt.Size(int(requestWidth), int(requestHeight), 1))
 	}
 
 	// Data and info for destination buffer creation
@@ -315,8 +325,8 @@ func postImageData(ctx context.Context,
 		ImageType: VkImageType_VK_IMAGE_TYPE_2D,
 		Fmt:       vkFormat,
 		Extent: VkExtent3D{
-			Width:  reqWidth,
-			Height: reqHeight,
+			Width:  requestWidth,
+			Height: requestHeight,
 			Depth:  1,
 		},
 		MipLevels:   1,
@@ -413,7 +423,7 @@ func postImageData(ctx context.Context,
 			LayerCount:     1,
 		},
 		ImageOffset: VkOffset3D{X: 0, Y: 0, Z: 0},
-		ImageExtent: VkExtent3D{Width: reqWidth, Height: reqHeight, Depth: 1},
+		ImageExtent: VkExtent3D{Width: requestWidth, Height: requestHeight, Depth: 1},
 	}
 	bufferImageCopyData := MustAllocData(ctx, s, bufferImageCopy)
 
@@ -629,8 +639,8 @@ func postImageData(ctx context.Context,
 				Z: 0,
 			},
 			{
-				X: int32(reqWidth),
-				Y: int32(reqHeight),
+				X: int32(requestWidth),
+				Y: int32(requestHeight),
 				Z: 1,
 			},
 		},
@@ -906,36 +916,60 @@ func postImageData(ctx context.Context,
 	if aspect != VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
 		filter = VkFilter_VK_FILTER_NEAREST
 	}
+
+	doBlit := true
+	copySrc := stagingImageId
+
+	if requestWidth == imgWidth && requestHeight == imgHeight {
+		doBlit = false
+		copySrc = blitSrcImage
+	}
+
+	if doBlit {
+		writeEach(ctx, out,
+			cb.VkCmdBlitImage(
+				commandBufferId,
+				blitSrcImage,
+				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				stagingImageId,
+				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				1,
+				imageBlitData.Ptr(),
+				filter,
+			).AddRead(imageBlitData.Data()),
+			// Set the blit image to transfer src
+			cb.VkCmdPipelineBarrier(
+				commandBufferId,
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkDependencyFlags(0),
+				0,
+				memory.Nullptr,
+				0,
+				memory.Nullptr,
+				1,
+				stagingImageToSrcBarrierData.Ptr(),
+			).AddRead(
+				stagingImageToSrcBarrierData.Data(),
+			),
+		)
+	}
+
 	writeEach(ctx, out,
-		cb.VkCmdBlitImage(
+		cb.VkCmdCopyImageToBuffer(
 			commandBufferId,
-			blitSrcImage,
+			copySrc,
 			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			stagingImageId,
-			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			bufferId,
 			1,
-			imageBlitData.Ptr(),
-			filter,
-		).AddRead(imageBlitData.Data()),
+			bufferImageCopyData.Ptr(),
+		).AddRead(
+			bufferImageCopyData.Data(),
+		),
 	)
 
-	// Change the layout of staging image and attachment image, copy staging image to buffer,
-	// end command buffer
 	writeEach(ctx, out,
-		cb.VkCmdPipelineBarrier(
-			commandBufferId,
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkDependencyFlags(0),
-			0,
-			memory.Nullptr,
-			0,
-			memory.Nullptr,
-			1,
-			stagingImageToSrcBarrierData.Ptr(),
-		).AddRead(
-			stagingImageToSrcBarrierData.Data(),
-		),
+		// Reset the image, and end the command buffer.
 		cb.VkCmdPipelineBarrier(
 			commandBufferId,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -950,20 +984,11 @@ func postImageData(ctx context.Context,
 		).AddRead(
 			attachmentImageResetLayoutBarrierData.Data(),
 		),
-		cb.VkCmdCopyImageToBuffer(
-			commandBufferId,
-			stagingImageId,
-			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			bufferId,
-			1,
-			bufferImageCopyData.Ptr(),
-		).AddRead(
-			bufferImageCopyData.Data(),
-		),
 		cb.VkEndCommandBuffer(
 			commandBufferId,
 			VkResult_VK_SUCCESS,
-		))
+		),
+	)
 
 	// Submit all the commands above, wait until finish.
 	writeEach(ctx, out,
@@ -1036,7 +1061,7 @@ func postImageData(ctx context.Context,
 					}
 
 					// Flip the image in Y axis
-					rowSizeInBytes := uint64(formatOfImgRes.Size(int(reqWidth), 1, 1))
+					rowSizeInBytes := uint64(formatOfImgRes.Size(int(requestWidth), 1, 1))
 					top := uint64(0)
 					bottom := bufferSize - rowSizeInBytes
 					var temp = make([]byte, rowSizeInBytes)
@@ -1055,8 +1080,8 @@ func postImageData(ctx context.Context,
 
 				img := &image.Data{
 					Bytes:  bytes,
-					Width:  uint32(reqWidth),
-					Height: uint32(reqHeight),
+					Width:  uint32(requestWidth),
+					Height: uint32(requestHeight),
 					Depth:  1,
 					Format: formatOfImgRes,
 				}

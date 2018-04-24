@@ -91,11 +91,11 @@ func (API) GetFramebufferAttachmentInfo(
 	after []uint64,
 	state *api.GlobalState,
 	thread uint64,
-	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
+	attachment api.FramebufferAttachment) (inf api.FramebufferAttachmentInfo, err error) {
 
 	fb, err := getFramebuffer(ctx, api.CmdID(after[0]))
 	if err != nil {
-		return 0, 0, 0, nil, err
+		return api.FramebufferAttachmentInfo{}, err
 	}
 	return gles.GetFramebufferAttachmentInfoByID(state, thread, attachment, fb)
 }

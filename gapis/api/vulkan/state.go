@@ -20,9 +20,9 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
-func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
-	returnError := func(format_str string, e ...interface{}) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
-		return 0, 0, VkFormat_VK_FORMAT_UNDEFINED, 0, fmt.Errorf(format_str, e...)
+func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, canResize bool, err error) {
+	returnError := func(format_str string, e ...interface{}) (w, h uint32, f VkFormat, attachmentIndex uint32, canResize bool, err error) {
+		return 0, 0, VkFormat_VK_FORMAT_UNDEFINED, 0, true, fmt.Errorf(format_str, e...)
 	}
 
 	lastQueue := st.LastBoundQueue
@@ -54,7 +54,7 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 		attachment_index := uint32(attachment - api.FramebufferAttachment_Color0)
 		if att_ref, ok := subpass_desc.ColorAttachments.Lookup(attachment_index); ok {
 			if ca, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(att_ref.Attachment); ok {
-				return ca.Image.Info.Extent.Width, ca.Image.Info.Extent.Height, ca.Image.Info.Fmt, att_ref.Attachment, nil
+				return ca.Image.Info.Extent.Width, ca.Image.Info.Extent.Height, ca.Image.Info.Fmt, att_ref.Attachment, true, nil
 			}
 
 		}
@@ -63,7 +63,7 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 			att_ref := subpass_desc.DepthStencilAttachment
 			if attachment, ok := lastDrawInfo.Framebuffer.ImageAttachments.Lookup(att_ref.Attachment); ok {
 				depth_img := attachment.Image
-				return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Fmt, att_ref.Attachment, nil
+				return depth_img.Info.Extent.Width, depth_img.Info.Extent.Height, depth_img.Info.Fmt, att_ref.Attachment, true, nil
 			}
 		}
 	case api.FramebufferAttachment_Stencil:
@@ -75,9 +75,9 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 	return returnError("%s is not bound", attachment)
 }
 
-func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
-	returnError := func(format_str string, e ...interface{}) (w, h uint32, f VkFormat, attachmentIndex uint32, err error) {
-		return 0, 0, VkFormat_VK_FORMAT_UNDEFINED, 0, fmt.Errorf(format_str, e...)
+func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) (w, h uint32, f VkFormat, attachmentIndex uint32, canResize bool, err error) {
+	returnError := func(format_str string, e ...interface{}) (w, h uint32, f VkFormat, attachmentIndex uint32, canResize bool, err error) {
+		return 0, 0, VkFormat_VK_FORMAT_UNDEFINED, 0, false, fmt.Errorf(format_str, e...)
 	}
 
 	switch attachment {
@@ -91,7 +91,19 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 		}
 		color_img := st.LastPresentInfo.PresentImages.Get(image_idx)
 		if color_img != nil {
-			return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Fmt, image_idx, nil
+			queue := color_img.LastBoundQueue
+			vkDevice := queue.Device
+			device := st.Devices.Get(vkDevice)
+			vkPhysicalDevice := device.PhysicalDevice
+			physicalDevice := st.PhysicalDevices.Get(vkPhysicalDevice)
+			if properties, ok := physicalDevice.QueueFamilyProperties.Lookup(queue.Family); ok {
+				if properties.QueueFlags&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) != 0 {
+					return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Fmt, image_idx, true, nil
+				}
+				return color_img.Info.Extent.Width, color_img.Info.Extent.Height, color_img.Info.Fmt, image_idx, false, nil
+			}
+
+			return returnError("Last present queue does not exist", attachment)
 		}
 	case api.FramebufferAttachment_Depth:
 		fallthrough
@@ -103,7 +115,7 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 	return returnError("Swapchain attachment %v does not exist", attachment)
 }
 
-func (st *State) getFramebufferAttachmentInfo(attachment api.FramebufferAttachment) (uint32, uint32, VkFormat, uint32, error) {
+func (st *State) getFramebufferAttachmentInfo(attachment api.FramebufferAttachment) (uint32, uint32, VkFormat, uint32, bool, error) {
 	if st.LastSubmission == LastSubmissionType_SUBMIT {
 		return st.getSubmitAttachmentInfo(attachment)
 	} else {

@@ -213,8 +213,8 @@ func (API) GetFramebufferAttachmentInfo(
 	after []uint64,
 	state *api.GlobalState,
 	thread uint64,
-	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
-	return 0, 0, 0, nil, nil
+	attachment api.FramebufferAttachment) (api.FramebufferAttachmentInfo, err error) {
+	return api.FramebufferAttachmentInfo{}, nil
 }
 func (API) Context(*api.GlobalState, uint64) api.Context { return nil }
 func (API) CreateCmd(name string) api.Cmd {

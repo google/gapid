@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
@@ -96,24 +95,24 @@ func (API) GetFramebufferAttachmentInfo(
 	after []uint64,
 	state *api.GlobalState,
 	thread uint64,
-	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
+	attachment api.FramebufferAttachment) (info api.FramebufferAttachmentInfo, err error) {
 
-	w, h, form, i, err := GetState(state).getFramebufferAttachmentInfo(attachment)
+	w, h, form, i, r, err := GetState(state).getFramebufferAttachmentInfo(attachment)
 	switch attachment {
 	case api.FramebufferAttachment_Stencil:
-		return 0, 0, 0, nil, fmt.Errorf("Unsupported Stencil")
+		return api.FramebufferAttachmentInfo{}, fmt.Errorf("Unsupported Stencil")
 	case api.FramebufferAttachment_Depth:
 		format, err := getDepthImageFormatFromVulkanFormat(form)
 		if err != nil {
-			return 0, 0, 0, nil, fmt.Errorf("Unknown format for Depth attachment: %v", form)
+			return api.FramebufferAttachmentInfo{}, fmt.Errorf("Unknown format for Depth attachment: %v", form)
 		}
-		return w, h, i, format, err
+		return api.FramebufferAttachmentInfo{w, h, i, format, r}, err
 	default:
 		format, err := getImageFormatFromVulkanFormat(form)
 		if err != nil {
-			return 0, 0, 0, nil, fmt.Errorf("Unknown format for Color attachment: %v", form)
+			return api.FramebufferAttachmentInfo{}, fmt.Errorf("Unknown format for Color attachment: %v", form)
 		}
-		return w, h, i, format, err
+		return api.FramebufferAttachmentInfo{w, h, i, format, r}, err
 	}
 }
 

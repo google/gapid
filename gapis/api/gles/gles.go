@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/gapis/api"
@@ -193,7 +192,7 @@ func (API) GetFramebufferAttachmentInfo(
 	after []uint64,
 	state *api.GlobalState,
 	thread uint64,
-	attachment api.FramebufferAttachment) (width, height, index uint32, format *image.Format, err error) {
+	attachment api.FramebufferAttachment) (inf api.FramebufferAttachmentInfo, err error) {
 
 	return GetFramebufferAttachmentInfoByID(state, thread, attachment, 0)
 }
@@ -205,37 +204,37 @@ func GetFramebufferAttachmentInfoByID(
 	state *api.GlobalState,
 	thread uint64,
 	attachment api.FramebufferAttachment,
-	fb FramebufferId) (width, height, index uint32, format *image.Format, err error) {
+	fb FramebufferId) (inf api.FramebufferAttachmentInfo, err error) {
 
 	s := GetState(state)
 
 	if fb == 0 {
 		c := s.GetContext(thread)
 		if c == nil {
-			return 0, 0, 0, nil, fmt.Errorf("No context bound")
+			return api.FramebufferAttachmentInfo{}, fmt.Errorf("No context bound")
 		}
 		if !c.Other.Initialized {
-			return 0, 0, 0, nil, fmt.Errorf("Context not initialized")
+			return api.FramebufferAttachmentInfo{}, fmt.Errorf("Context not initialized")
 		}
 		fb = c.Bound.DrawFramebuffer.GetID()
 	}
 
 	glAtt, err := attachmentToEnum(attachment)
 	if err != nil {
-		return 0, 0, 0, nil, err
+		return api.FramebufferAttachmentInfo{}, err
 	}
 
 	fbai, err := s.getFramebufferAttachmentInfo(thread, fb, glAtt)
 	if fbai.format == 0 {
-		return 0, 0, 0, nil, fmt.Errorf("No format set")
+		return api.FramebufferAttachmentInfo{}, fmt.Errorf("No format set")
 	}
 	if err != nil {
-		return 0, 0, 0, nil, err
+		return api.FramebufferAttachmentInfo{}, err
 	}
 	fmt, ty := getUnsizedFormatAndType(fbai.format)
 	f, err := getImageFormat(fmt, ty)
 	if err != nil {
-		return 0, 0, 0, nil, err
+		return api.FramebufferAttachmentInfo{}, err
 	}
 	switch {
 	case attachment.IsDepth():
@@ -243,7 +242,7 @@ func GetFramebufferAttachmentInfoByID(
 	case attachment.IsStencil():
 		f = filterUncompressedImageFormat(f, stream.Channel.IsStencil)
 	}
-	return fbai.width, fbai.height, 0, f, nil
+	return api.FramebufferAttachmentInfo{fbai.width, fbai.height, 0, f, true}, nil
 }
 
 // Context returns the active context for the given state and thread.
