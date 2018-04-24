@@ -1922,6 +1922,16 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	// descriptor set
 	case *VkCreateDescriptorSetLayout:
 		write(ctx, bh, vkHandle(cmd.PSetLayout.MustRead(ctx, cmd, s, nil)))
+		info := cmd.PCreateInfo.MustRead(ctx, cmd, s, nil)
+		bindings := info.PBindings.Slice(0, uint64(info.BindingCount), l).MustRead(ctx, cmd, s, nil)
+		for _, b := range bindings {
+			if b.PImmutableSamplers != memory.Nullptr {
+				samplers := b.PImmutableSamplers.Slice(0, uint64(b.DescriptorCount), l).MustRead(ctx, cmd, s, nil)
+				for _, sam := range samplers {
+					read(ctx, bh, vkHandle(sam))
+				}
+			}
+		}
 	case *VkDestroyDescriptorSetLayout:
 		read(ctx, bh, vkHandle(cmd.DescriptorSetLayout))
 		bh.Alive = true
