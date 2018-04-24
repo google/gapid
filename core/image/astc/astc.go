@@ -18,7 +18,7 @@
 // slow builds.
 package astc
 
-// #cgo LDFLAGS: -lastc-encoder -lstdc++
+// #cgo LDFLAGS: -lastc-encoder
 // #include "astc.h"
 import "C"
 
