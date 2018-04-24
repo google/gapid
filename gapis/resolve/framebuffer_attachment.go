@@ -83,6 +83,9 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 	}
 
 	width, height := uniformScale(fbInfo.Width, fbInfo.Height, r.Settings.MaxWidth, r.Settings.MaxHeight)
+	if !fbInfo.CanResize {
+		width, height = fbInfo.Width, fbInfo.Height
+	}
 
 	id, err := database.Store(ctx, &FramebufferAttachmentBytesResolvable{
 		ReplaySettings:   r.ReplaySettings,
@@ -139,6 +142,9 @@ type FramebufferAttachmentInfo struct {
 	// Height of the framebuffer attachment in pixels.
 	Height uint32
 
+	// Can this image be resized in the server
+	CanResize bool
+
 	// Index of the api-specific attachment.
 	Index uint32
 
@@ -156,7 +162,7 @@ func (f FramebufferAttachmentInfo) equal(o FramebufferAttachmentInfo) bool {
 		return false
 	}
 	if f.Err == nil {
-		return fe && f.Width == o.Width && f.Height == o.Height && f.Index == o.Index
+		return fe && f.Width == o.Width && f.Height == o.Height && f.Index == o.Index && f.CanResize == o.CanResize
 	}
 	return f.Err.Error() == o.Err.Error()
 }

@@ -46,13 +46,27 @@ type API interface {
 		after []uint64,
 		state *GlobalState,
 		thread uint64,
-		attachment FramebufferAttachment) (width, height, index uint32, format *image.Format, err error)
+		attachment FramebufferAttachment) (info FramebufferAttachmentInfo, err error)
 
 	// Context returns the active context for the given state.
 	Context(state *GlobalState, thread uint64) Context
 
 	// CreateCmd constructs and returns a new command with the specified name.
 	CreateCmd(name string) Cmd
+}
+
+// FramebufferAttachmentInfo describes a framebuffer at a given point in the trace
+type FramebufferAttachmentInfo struct {
+	// Width in texels of the framebuffer
+	Width uint32
+	// Height in texels of the framebuffer
+	Height uint32
+	// Framebuffer index
+	Index uint32
+	// Format of the image
+	Format *image.Format
+	// CanResize is true if this can be efficiently resized during replay.
+	CanResize bool
 }
 
 // ID is an API identifier
