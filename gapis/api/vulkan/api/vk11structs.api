@@ -1,0 +1,524 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+// Structs added in Vulkan 1.1 spec
+
+class VkBindBufferMemoryDeviceGroupInfo {
+  VkStructureType sType
+  const void*     pNext
+  u32             deviceIndexCount
+  const u32*      pDeviceIndices
+}
+
+class VkBindBufferMemoryInfo {
+  VkStructureType sType
+  const void*     pNext
+  VkBuffer        buffer
+  VkDeviceMemory  memory
+  VkDeviceSize    memoryOffset
+}
+
+class VkBindImageMemoryDeviceGroupInfo {
+  VkStructureType sType
+  const void*     pNext
+  u32             deviceIndexCount
+  const u32*      pDeviceIndices
+  u32             splitInstanceBindRegionCount
+  const VkRect2D* pSplitInstanceBindRegions
+}
+
+class VkBindImageMemoryInfo {
+  VkStructureType sType
+  const void*     pNext
+  VkImage         image
+  VkDeviceMemory  memory
+  VkDeviceSize    memoryOffset
+}
+
+class VkBindImagePlaneMemoryInfo {
+  VkStructureType       sType
+  const void*           pNext
+  VkImageAspectFlagBits planeAspect
+}
+
+class VkBufferMemoryRequirementsInfo2 {
+  VkStructureType sType
+  const void*     pNext
+  VkBuffer        buffer
+}
+
+class VkDescriptorSetLayoutSupport {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        supported
+}
+
+class VkDescriptorUpdateTemplateCreateInfo {
+  VkStructureType                        sType
+  void*                                  pNext
+  VkDescriptorUpdateTemplateCreateFlags  flags
+  u32                                    descriptorUpdateEntryCount
+  const VkDescriptorUpdateTemplateEntry* pDescriptorUpdateEntries
+  VkDescriptorUpdateTemplateType         templateType
+  VkDescriptorSetLayout                  descriptorSetLayout
+  VkPipelineBindPoint                    pipelineBindPoint
+  VkPipelineLayout                       pipelineLayout
+  u32                                    set
+}
+
+class VkDescriptorUpdateTemplateEntry {
+  u32              dstBinding
+  u32              dstArrayElement
+  u32              descriptorCount
+  VkDescriptorType descriptorType
+  size             offset
+  size             stride
+}
+
+class VkDeviceGroupBindSparseInfo {
+  VkStructureType sType
+  const void*     pNext
+  u32             resourceDeviceIndex
+  u32             memoryDeviceIndex
+}
+
+class VkDeviceGroupCommandBufferBeginInfo {
+  VkStructureType sType
+  const void*     pNext
+  u32             deviceMask
+}
+
+class VkDeviceGroupDeviceCreateInfo {
+  VkStructureType         sType
+  const void*             pNext
+  u32                     physicalDeviceCount
+  const VkPhysicalDevice* pPhysicalDevices
+}
+
+class VkDeviceGroupRenderPassBeginInfo {
+  VkStructureType sType
+  const void*     pNext
+  u32             deviceMask
+  u32             deviceRenderAreaCount
+  const VkRect2D* pDeviceRenderAreas
+}
+
+class VkDeviceGroupSubmitInfo {
+  VkStructureType sType
+  const void*     pNext
+  u32             waitSemaphoreCount
+  const u32*      pWaitSemaphoreDeviceIndices
+  u32             commandBufferCount
+  const u32*      pCommandBufferDeviceMasks
+  u32             signalSemaphoreCount
+  const u32*      pSignalSemaphoreDeviceIndices
+}
+
+class VkDeviceQueueInfo2 {
+  VkStructureType          sType
+  const void*              pNext
+  VkDeviceQueueCreateFlags flags
+  u32                      queueFamilyIndex
+  u32                      queueIndex
+}
+
+class VkExportFenceCreateInfo {
+  VkStructureType                sType
+  const void*                    pNext
+  VkExternalFenceHandleTypeFlags handleTypes
+}
+
+class VkExportMemoryAllocateInfo {
+  VkStructureType                 sType
+  const void*                     pNext
+  VkExternalMemoryHandleTypeFlags handleTypes
+}
+
+class VkExportSemaphoreCreateInfo {
+  VkStructureType                    sType
+  const void*                        pNext
+  VkExternalSemaphoreHandleTypeFlags handleTypes
+}
+
+class VkExternalBufferProperties {
+  VkStructureType            sType
+  void*                      pNext
+  VkExternalMemoryProperties externalMemoryProperties
+}
+
+class VkExternalFenceProperties {
+  VkStructureType                sType
+  void*                          pNext
+  VkExternalFenceHandleTypeFlags exportFromImportedHandleTypes
+  VkExternalFenceHandleTypeFlags compatibleHandleTypes
+  VkExternalFenceFeatureFlags    externalFenceFeatures
+}
+
+class VkExternalImageFormatProperties {
+  VkStructureType            sType
+  void*                      pNext
+  VkExternalMemoryProperties externalMemoryProperties
+}
+
+class VkExternalMemoryBufferCreateInfo {
+  VkStructureType                 sType
+  const void*                     pNext
+  VkExternalMemoryHandleTypeFlags handleTypes
+}
+
+class VkExternalMemoryImageCreateInfo {
+  VkStructureType                 sType
+  const void*                     pNext
+  VkExternalMemoryHandleTypeFlags handleTypes
+}
+
+class VkExternalMemoryProperties {
+  VkExternalMemoryFeatureFlags    externalMemoryFeatures
+  VkExternalMemoryHandleTypeFlags exportFromImportedHandleTypes
+  VkExternalMemoryHandleTypeFlags compatibleHandleTypes
+}
+
+class VkExternalSemaphoreProperties {
+  VkStructureType                    sType
+  void*                              pNext
+  VkExternalSemaphoreHandleTypeFlags exportFromImportedHandleTypes
+  VkExternalSemaphoreHandleTypeFlags compatibleHandleTypes
+  VkExternalSemaphoreFeatureFlags    externalSemaphoreFeatures
+}
+
+class VkFormatProperties2 {
+  VkStructureType    sType
+  void*              pNext
+  VkFormatProperties formatProperties
+}
+
+class VkImageFormatProperties2 {
+  VkStructureType         sType
+  void*                   pNext
+  VkImageFormatProperties imageFormatProperties
+}
+
+class VkImageMemoryRequirementsInfo2 {
+  VkStructureType sType
+  const void*     pNext
+  VkImage         image
+}
+
+class VkImagePlaneMemoryRequirementsInfo {
+  VkStructureType       sType
+  const void*           pNext
+  VkImageAspectFlagBits planeAspect
+}
+
+class VkImageSparseMemoryRequirementsInfo2 {
+  VkStructureType sType
+  const void*     pNext
+  VkImage         image
+}
+
+class VkImageViewUsageCreateInfo {
+  VkStructureType   sType
+  const void*       pNext
+  VkImageUsageFlags usage
+}
+
+class VkInputAttachmentAspectReference {
+  u32                subpass
+  u32                inputAttachmentIndex
+  VkImageAspectFlags aspectMask
+}
+
+class VkMemoryAllocateFlagsInfo {
+  VkStructureType       sType
+  const void*           pNext
+  VkMemoryAllocateFlags flags
+  u32                   deviceMask
+}
+
+class VkMemoryDedicatedAllocateInfo {
+  VkStructureType sType
+  const void*     pNext
+  VkImage         image
+  VkBuffer        buffer
+}
+
+class VkMemoryDedicatedRequirements {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        prefersDedicatedAllocation
+  VkBool32        requiresDedicatedAllocation
+}
+
+class VkMemoryRequirements2 {
+  VkStructureType      sType
+  void*                pNext
+  VkMemoryRequirements memoryRequirements
+}
+
+class VkPhysicalDevice16BitStorageFeatures {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        storageBuffer16BitAccess
+  VkBool32        uniformAndStorageBuffer16BitAccess
+  VkBool32        storagePushConstant16
+  VkBool32        storageInputOutput16
+}
+
+class VkPhysicalDeviceExternalBufferInfo {
+  VkStructureType                    sType
+  const void*                        pNext
+  VkBufferCreateFlags                flags
+  VkBufferUsageFlags                 usage
+  VkExternalMemoryHandleTypeFlagBits handleType
+}
+
+class VkPhysicalDeviceExternalFenceInfo {
+  VkStructureType                   sType
+  const void*                       pNext
+  VkExternalFenceHandleTypeFlagBits handleType
+}
+
+class VkPhysicalDeviceExternalImageFormatInfo {
+  VkStructureType                    sType
+  const void*                        pNext
+  VkExternalMemoryHandleTypeFlagBits handleType
+}
+
+class VkPhysicalDeviceExternalSemaphoreInfo {
+  VkStructureType                       sType
+  const void*                           pNext
+  VkExternalSemaphoreHandleTypeFlagBits handleType
+}
+
+class VkPhysicalDeviceFeatures2 {
+  VkStructureType          sType
+  void*                    pNext
+  VkPhysicalDeviceFeatures features
+}
+
+class VkPhysicalDeviceGroupProperties {
+  VkStructureType                            sType
+  void*                                      pNext
+  u32                                        physicalDeviceCount
+  VkPhysicalDevice[VK_MAX_DEVICE_GROUP_SIZE] physicalDevices
+  VkBool32                                   subsetAllocation
+}
+
+class VkPhysicalDeviceIDProperties {
+  VkStructureType  sType
+  void*            pNext
+  u8[VK_UUID_SIZE] deviceUUID
+  u8[VK_UUID_SIZE] driverUUID
+  u8[VK_LUID_SIZE] deviceLUID
+  u32              deviceNodeMask
+  VkBool32         deviceLUIDValid
+}
+
+class VkPhysicalDeviceImageFormatInfo2 {
+  VkStructureType    sType
+  const void*        pNext
+  VkFormat           format
+  VkImageType        type
+  VkImageTiling      tiling
+  VkImageUsageFlags  usage
+  VkImageCreateFlags flags
+}
+
+class VkPhysicalDeviceMaintenance3Properties {
+  VkStructureType sType
+  void*           pNext
+  u32             maxPerSetDescriptors
+  VkDeviceSize    maxMemoryAllocationSize
+}
+
+class VkPhysicalDeviceMemoryProperties2 {
+  VkStructureType                  sType
+  void*                            pNext
+  VkPhysicalDeviceMemoryProperties memoryProperties
+}
+
+class VkPhysicalDeviceMultiviewFeatures {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        multiview
+  VkBool32        multiviewGeometryShader
+  VkBool32        multiviewTessellationShader
+}
+
+class VkPhysicalDeviceMultiviewProperties {
+  VkStructureType sType
+  void*           pNext
+  u32             maxMultiviewViewCount
+  u32             maxMultiviewInstanceIndex
+}
+
+class VkPhysicalDevicePointClippingProperties {
+  VkStructureType         sType
+  void*                   pNext
+  VkPointClippingBehavior pointClippingBehavior
+}
+
+class VkPhysicalDeviceProperties2 {
+  VkStructureType            sType
+  void*                      pNext
+  VkPhysicalDeviceProperties properties
+}
+
+class VkPhysicalDeviceProtectedMemoryFeatures {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        protectedMemory
+}
+
+class VkPhysicalDeviceProtectedMemoryProperties {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        protectedNoFault
+}
+
+class VkPhysicalDeviceSamplerYcbcrConversionFeatures {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        samplerYcbcrConversion
+}
+
+class VkPhysicalDeviceShaderDrawParameterFeatures {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        shaderDrawParameters
+}
+
+class VkPhysicalDeviceSparseImageFormatInfo2 {
+  VkStructureType       sType
+  const void*           pNext
+  VkFormat              format
+  VkImageType           type
+  VkSampleCountFlagBits samples
+  VkImageUsageFlags     usage
+  VkImageTiling         tiling
+}
+
+
+class VkPhysicalDeviceSubgroupProperties {
+  VkStructureType        sType
+  void*                  pNext
+  u32                    subgroupSize
+  VkShaderStageFlags     supportedStages
+  VkSubgroupFeatureFlags supportedOperations
+  VkBool32               quadOperationsInAllStages
+}
+
+class VkPhysicalDeviceVariablePointerFeatures {
+  VkStructureType sType
+  void*           pNext
+  VkBool32        variablePointersStorageBuffer
+  VkBool32        variablePointers
+}
+
+class VkPipelineTessellationDomainOriginStateCreateInfo {
+  VkStructureType            sType
+  const void*                pNext
+  VkTessellationDomainOrigin domainOrigin
+}
+
+class VkProtectedSubmitInfo {
+  VkStructureType sType
+  const void*     pNext
+  VkBool32        protectedSubmit
+}
+
+class VkQueueFamilyProperties2 {
+  VkStructureType         sType
+  void*                   pNext
+  VkQueueFamilyProperties queueFamilyProperties
+}
+
+class VkRenderPassInputAttachmentAspectCreateInfo {
+  VkStructureType                         sType
+  const void*                             pNext
+  u32                                     aspectReferenceCount
+  const VkInputAttachmentAspectReference* pAspectReferences
+}
+
+class VkRenderPassMultiviewCreateInfo {
+  VkStructureType sType
+  const void*     pNext
+  u32             subpassCount
+  const u32*      pViewMasks
+  u32             dependencyCount
+  const s32*      pViewOffsets
+  u32             correlationMaskCount
+  const u32*      pCorrelationMasks
+}
+
+class VkSamplerYcbcrConversionCreateInfo {
+  VkStructureType               sType
+  const void*                   pNext
+  VkFormat                      format
+  VkSamplerYcbcrModelConversion ycbcrModel
+  VkSamplerYcbcrRange           ycbcrRange
+  VkComponentMapping            components
+  VkChromaLocation              xChromaOffset
+  VkChromaLocation              yChromaOffset
+  VkFilter                      chromaFilter
+  VkBool32                      forceExplicitReconstruction
+}
+
+class VkSamplerYcbcrConversionImageFormatProperties {
+  VkStructureType sType
+  void*           pNext
+  u32             combinedImageSamplerDescriptorCount
+}
+
+class VkSamplerYcbcrConversionInfo {
+  VkStructureType          sType
+  const void*              pNext
+  VkSamplerYcbcrConversion conversion
+}
+
+class VkSparseImageFormatProperties2 {
+  VkStructureType               sType
+  void*                         pNext
+  VkSparseImageFormatProperties properties
+}
+
+class VkSparseImageMemoryRequirements2 {
+  VkStructureType                 sType
+  void*                           pNext
+  VkSparseImageMemoryRequirements memoryRequirements
+}

@@ -1,0 +1,1146 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+// Structs defined in  Vulkan 1.0 Core spec
+
+class VkApplicationInfo {
+  VkStructureType sType              /// Type of structure. Should be VK_STRUCTURE_TYPE_APPLICATION_INFO
+  const void*     pNext              /// Next structure in chain
+  const char*     pApplicationName
+  u32             applicationVersion
+  const char*     pEngineName
+  u32             engineVersion
+  u32             apiVersion
+}
+
+class VkInstanceCreateInfo {
+  VkStructureType          sType                   /// Should be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
+  const void*              pNext                   /// Pointer to next structure
+  VkInstanceCreateFlags    flags
+  const VkApplicationInfo* pApplicationInfo
+  u32                      enabledLayerCount
+  const char* const*       ppEnabledLayerNames     /// Ordered list of layer names to be enabled
+  u32                      enabledExtensionCount
+  const char* const*       ppEnabledExtensionNames /// Extension names to be enabled
+}
+
+class VkAllocationCallbacks {
+  void*                                pUserData
+  PFN_vkAllocationFunction             pfnAllocation
+  PFN_vkReallocationFunction           pfnReallocation
+  PFN_vkFreeFunction                   pfnFree
+  PFN_vkInternalAllocationNotification pfnInternalAllocation
+  PFN_vkInternalFreeNotification       pfnInternalFree
+}
+
+class VkPhysicalDeviceFeatures {
+  VkBool32 robustBufferAccess                      /// out of bounds buffer accesses are well defined
+  VkBool32 fullDrawIndexUint32                     /// full 32-bit range of indices for indexed draw calls
+  VkBool32 imageCubeArray                          /// image views which are arrays of cube maps
+  VkBool32 independentBlend                        /// blending operations are controlled per-attachment
+  VkBool32 geometryShader                          /// geometry stage
+  VkBool32 tessellationShader                      /// tessellation control and evaluation stage
+  VkBool32 sampleRateShading                       /// per-sample shading and interpolation
+  VkBool32 dualSrcBlend                            /// blend operations which take two sources
+  VkBool32 logicOp                                 /// logic operations
+  VkBool32 multiDrawIndirect                       /// multi draw indirect
+  VkBool32 drawIndirectFirstInstance
+  VkBool32 depthClamp                              /// depth clamping
+  VkBool32 depthBiasClamp                          /// depth bias clamping
+  VkBool32 fillModeNonSolid                        /// point and wireframe fill modes
+  VkBool32 depthBounds                             /// depth bounds test
+  VkBool32 wideLines                               /// lines with width greater than 1
+  VkBool32 largePoints                             /// points with size greater than 1
+  VkBool32 alphaToOne                              /// The fragment alpha channel can be forced to maximum representable alpha value
+  VkBool32 multiViewport
+  VkBool32 samplerAnisotropy
+  VkBool32 textureCompressionETC2                  /// ETC texture compression formats
+  VkBool32 textureCompressionASTC_LDR              /// ASTC LDR texture compression formats
+  VkBool32 textureCompressionBC                    /// BC1-7 texture compressed formats
+  VkBool32 occlusionQueryPrecise
+  VkBool32 pipelineStatisticsQuery                 /// pipeline statistics query
+  VkBool32 vertexPipelineStoresAndAtomics
+  VkBool32 fragmentStoresAndAtomics
+  VkBool32 shaderTessellationAndGeometryPointSize
+  VkBool32 shaderImageGatherExtended               /// texture gather with run-time values and independent offsets
+  VkBool32 shaderStorageImageExtendedFormats       /// the extended set of formats can be used for storage images
+  VkBool32 shaderStorageImageMultisample           /// multisample images can be used for storage images
+  VkBool32 shaderStorageImageReadWithoutFormat
+  VkBool32 shaderStorageImageWriteWithoutFormat
+  VkBool32 shaderUniformBufferArrayDynamicIndexing /// arrays of uniform buffers can be accessed with dynamically uniform indices
+  VkBool32 shaderSampledImageArrayDynamicIndexing  /// arrays of sampled images can be accessed with dynamically uniform indices
+  VkBool32 shaderStorageBufferArrayDynamicIndexing /// arrays of storage buffers can be accessed with dynamically uniform indices
+  VkBool32 shaderStorageImageArrayDynamicIndexing  /// arrays of storage images can be accessed with dynamically uniform indices
+  VkBool32 shaderClipDistance                      /// clip distance in shaders
+  VkBool32 shaderCullDistance                      /// cull distance in shaders
+  VkBool32 shaderFloat64                           /// 64-bit floats (doubles) in shaders
+  VkBool32 shaderInt64                             /// 64-bit integers in shaders
+  VkBool32 shaderInt16                             /// 16-bit integers in shaders
+  VkBool32 shaderResourceResidency                 /// shader can use texture operations that return resource residency information (requires sparseNonResident support)
+  VkBool32 shaderResourceMinLod                    /// shader can use texture operations that specify minimum resource LOD
+  VkBool32 sparseBinding                           /// Sparse resources support: Resource memory can be managed at opaque page level rather than object level
+  VkBool32 sparseResidencyBuffer                   /// Sparse resources support: GPU can access partially resident buffers
+  VkBool32 sparseResidencyImage2D                  /// Sparse resources support: GPU can access partially resident 2D (non-MSAA non-DepthStencil) images
+  VkBool32 sparseResidencyImage3D                  /// Sparse resources support: GPU can access partially resident 3D images
+  VkBool32 sparseResidency2Samples                 /// Sparse resources support: GPU can access partially resident MSAA 2D images with 2 samples
+  VkBool32 sparseResidency4Samples                 /// Sparse resources support: GPU can access partially resident MSAA 2D images with 4 samples
+  VkBool32 sparseResidency8Samples                 /// Sparse resources support: GPU can access partially resident MSAA 2D images with 8 samples
+  VkBool32 sparseResidency16Samples                /// Sparse resources support: GPU can access partially resident MSAA 2D images with 16 samples
+  VkBool32 sparseResidencyAliased                  /// Sparse resources support: GPU can correctly access data aliased into multiple locations (opt-in)
+  VkBool32 variableMultisampleRate
+  VkBool32 inheritedQueries
+}
+
+class VkFormatProperties {
+  VkFormatFeatureFlags linearTilingFeatures  /// Format features in case of linear tiling
+  VkFormatFeatureFlags optimalTilingFeatures /// Format features in case of optimal tiling
+  VkFormatFeatureFlags bufferFeatures        /// Format features supported by buffers
+}
+
+class VkExtent3D {
+  u32 Width
+  u32 Height
+  u32 Depth
+}
+
+class VkImageFormatProperties {
+  VkExtent3D         maxExtent       /// max image dimensions for this resource type
+  u32                maxMipLevels    /// max number of mipmap levels for this resource type
+  u32                maxArrayLayers  /// max array layers for this resource type
+  VkSampleCountFlags sampleCounts    /// supported sample counts for this resource type
+  VkDeviceSize       maxResourceSize /// max size (in bytes) of this resource type
+}
+
+class VkPhysicalDeviceLimits {
+  /// resource maximum sizes
+  u32 maxImageDimension1D    /// max 1D image dimension
+  u32 maxImageDimension2D    /// max 2D image dimension
+  u32 maxImageDimension3D    /// max 3D image dimension
+  u32 maxImageDimensionCube  /// max cubemap image dimension
+  u32 maxImageArrayLayers    /// max layers for image arrays
+  u32 maxTexelBufferElements
+  u32 maxUniformBufferRange  /// max uniform buffer size (bytes)
+  u32 maxStorageBufferRange  /// max storage buffer size (bytes)
+  u32 maxPushConstantsSize   /// max size of the push constants pool (bytes)
+  /// memory limits
+  u32          maxMemoryAllocationCount  /// max number of device memory allocations supported
+  u32          maxSamplerAllocationCount
+  VkDeviceSize bufferImageGranularity    /// Granularity (in bytes) at which buffers and images can be bound to adjacent memory for simultaneous usage
+  VkDeviceSize sparseAddressSpaceSize    /// Total address space available for sparse allocations (bytes)
+  /// descriptor set limits
+  u32 maxBoundDescriptorSets                /// max number of descriptors sets that can be bound to a pipeline
+  u32 maxPerStageDescriptorSamplers         /// max num of samplers allowed per-stage in a descriptor set
+  u32 maxPerStageDescriptorUniformBuffers   /// max num of uniform buffers allowed per-stage in a descriptor set
+  u32 maxPerStageDescriptorStorageBuffers   /// max num of storage buffers allowed per-stage in a descriptor set
+  u32 maxPerStageDescriptorSampledImages    /// max num of sampled images allowed per-stage in a descriptor set
+  u32 maxPerStageDescriptorStorageImages    /// max num of storage images allowed per-stage in a descriptor set
+  u32 maxPerStageDescriptorInputAttachments
+  u32 maxPerStageResources
+  u32 maxDescriptorSetSamplers              /// max num of samplers allowed in all stages in a descriptor set
+  u32 maxDescriptorSetUniformBuffers        /// max num of uniform buffers allowed in all stages in a descriptor set
+  u32 maxDescriptorSetUniformBuffersDynamic /// max num of dynamic uniform buffers allowed in all stages in a descriptor set
+  u32 maxDescriptorSetStorageBuffers        /// max num of storage buffers allowed in all stages in a descriptor set
+  u32 maxDescriptorSetStorageBuffersDynamic /// max num of dynamic storage buffers allowed in all stages in a descriptor set
+  u32 maxDescriptorSetSampledImages         /// max num of sampled images allowed in all stages in a descriptor set
+  u32 maxDescriptorSetStorageImages         /// max num of storage images allowed in all stages in a descriptor set
+  u32 maxDescriptorSetInputAttachments
+  /// vertex stage limits
+  u32 maxVertexInputAttributes      /// max num of vertex input attribute slots
+  u32 maxVertexInputBindings        /// max num of vertex input binding slots
+  u32 maxVertexInputAttributeOffset /// max vertex input attribute offset added to vertex buffer offset
+  u32 maxVertexInputBindingStride   /// max vertex input binding stride
+  u32 maxVertexOutputComponents     /// max num of output components written by vertex shader
+  /// tessellation control stage limits
+  u32 maxTessellationGenerationLevel                  /// max level supported by tess primitive generator
+  u32 maxTessellationPatchSize                        /// max patch size (vertices)
+  u32 maxTessellationControlPerVertexInputComponents  /// max num of input components per-vertex in TCS
+  u32 maxTessellationControlPerVertexOutputComponents /// max num of output components per-vertex in TCS
+  u32 maxTessellationControlPerPatchOutputComponents  /// max num of output components per-patch in TCS
+  u32 maxTessellationControlTotalOutputComponents     /// max total num of per-vertex and per-patch output components in TCS
+  u32 maxTessellationEvaluationInputComponents        /// max num of input components per vertex in TES
+  u32 maxTessellationEvaluationOutputComponents       /// max num of output components per vertex in TES
+  /// geometry stage limits
+  u32 maxGeometryShaderInvocations     /// max invocation count supported in geometry shader
+  u32 maxGeometryInputComponents       /// max num of input components read in geometry stage
+  u32 maxGeometryOutputComponents      /// max num of output components written in geometry stage
+  u32 maxGeometryOutputVertices        /// max num of vertices that can be emitted in geometry stage
+  u32 maxGeometryTotalOutputComponents /// max total num of components (all vertices) written in geometry stage
+  /// fragment stage limits
+  u32 maxFragmentInputComponents         /// max num of input compontents read in fragment stage
+  u32 maxFragmentOutputAttachments       /// max num of output attachments written in fragment stage
+  u32 maxFragmentDualSrcAttachments      /// max num of output attachments written when using dual source blending
+  u32 maxFragmentCombinedOutputResources /// max total num of storage buffers, storage images and output buffers
+  /// compute stage limits
+  u32    maxComputeSharedMemorySize     /// max total storage size of work group local storage (bytes)
+  u32[3] maxComputeWorkGroupCount       /// max num of compute work groups that may be dispatched by a single command (x,y,z)
+  u32    maxComputeWorkGroupInvocations /// max total compute invocations in a single local work group
+  u32[3] maxComputeWorkGroupSize        /// max local size of a compute work group (x,y,z)
+
+  u32 subPixelPrecisionBits /// num bits of subpixel precision in screen x and y
+  u32 subTexelPrecisionBits /// num bits of subtexel precision
+  u32 mipmapPrecisionBits   /// num bits of mipmap precision
+
+  u32 maxDrawIndexedIndexValue /// max index value for indexed draw calls (for 32-bit indices)
+  u32 maxDrawIndirectCount
+
+  f32 maxSamplerLodBias    /// max absolute sampler level of detail bias
+  f32 maxSamplerAnisotropy /// max degree of sampler anisotropy
+
+  u32    maxViewports          /// max number of active viewports
+  u32[2] maxViewportDimensions /// max viewport dimensions (x,y)
+  f32[2] viewportBoundsRange   /// viewport bounds range (min,max)
+  u32    viewportSubPixelBits  /// num bits of subpixel precision for viewport
+
+  size         minMemoryMapAlignment           /// min required alignment of pointers returned by MapMemory (bytes)
+  VkDeviceSize minTexelBufferOffsetAlignment   /// min required alignment for texel buffer offsets (bytes)
+  VkDeviceSize minUniformBufferOffsetAlignment /// min required alignment for uniform buffer sizes and offsets (bytes)
+  VkDeviceSize minStorageBufferOffsetAlignment /// min required alignment for storage buffer offsets (bytes)
+
+  s32 minTexelOffset                  /// min texel offset for OpTextureSampleOffset
+  u32 maxTexelOffset                  /// max texel offset for OpTextureSampleOffset
+  s32 minTexelGatherOffset            /// min texel offset for OpTextureGatherOffset
+  u32 maxTexelGatherOffset            /// max texel offset for OpTextureGatherOffset
+  f32 minInterpolationOffset          /// furthest negative offset for interpolateAtOffset
+  f32 maxInterpolationOffset          /// furthest positive offset for interpolateAtOffset
+  u32 subPixelInterpolationOffsetBits /// num of subpixel bits for interpolateAtOffset
+
+  u32                maxFramebufferWidth                 /// max width for a framebuffer
+  u32                maxFramebufferHeight                /// max height for a framebuffer
+  u32                maxFramebufferLayers                /// max layer count for a layered framebuffer
+  VkSampleCountFlags framebufferColorSampleCounts
+  VkSampleCountFlags framebufferDepthSampleCounts
+  VkSampleCountFlags framebufferStencilSampleCounts
+  VkSampleCountFlags framebufferNoAttachmentSampleCounts
+  u32                maxColorAttachments                 /// max num of framebuffer color attachments
+
+  VkSampleCountFlags sampledImageColorSampleCounts
+  VkSampleCountFlags sampledImageIntegerSampleCounts
+  VkSampleCountFlags sampledImageDepthSampleCounts
+  VkSampleCountFlags sampledImageStencilSampleCounts
+  VkSampleCountFlags storageImageSampleCounts
+  u32                maxSampleMaskWords              /// max num of sample mask words
+  VkBool32           timestampComputeAndGraphics
+
+  f32 timestampPeriod
+
+  u32 maxClipDistances                /// max number of clip distances
+  u32 maxCullDistances                /// max number of cull distances
+  u32 maxCombinedClipAndCullDistances /// max combined number of user clipping
+
+  u32 discreteQueuePriorities
+
+  f32[2]   pointSizeRange          /// range (min,max) of supported point sizes
+  f32[2]   lineWidthRange          /// range (min,max) of supported line widths
+  f32      pointSizeGranularity    /// granularity of supported point sizes
+  f32      lineWidthGranularity    /// granularity of supported line widths
+  VkBool32 strictLines
+  VkBool32 standardSampleLocations
+
+  VkDeviceSize optimalBufferCopyOffsetAlignment
+  VkDeviceSize optimalBufferCopyRowPitchAlignment
+  VkDeviceSize nonCoherentAtomSize
+}
+
+class VkPhysicalDeviceSparseProperties {
+  VkBool32 residencyStandard2DBlockShape            /// Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard block shapes (based on pixel format)
+  VkBool32 residencyStandard2DMultisampleBlockShape /// Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard block shapes (based on pixel format)
+  VkBool32 residencyStandard3DBlockShape            /// Sparse resources support: GPU will access all 3D sparse resources using the standard block shapes (based on pixel format)
+  VkBool32 residencyAlignedMipSize                  /// Sparse resources support: Images with mip-level dimensions that are NOT a multiple of the block size will be placed in the mip tail
+  VkBool32 residencyNonResidentStrict               /// Sparse resources support: GPU can safely access non-resident regions of a resource, all reads return as if data is 0, writes are discarded
+}
+
+class VkPhysicalDeviceProperties {
+  u32                                    apiVersion
+  u32                                    driverVersion
+  u32                                    vendorID
+  u32                                    deviceID
+  VkPhysicalDeviceType                   deviceType
+  char[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE] deviceName
+  u8[VK_UUID_SIZE]                       pipelineCacheUUID
+  VkPhysicalDeviceLimits                 limits
+  VkPhysicalDeviceSparseProperties       sparseProperties
+}
+
+class VkQueueFamilyProperties {
+  VkQueueFlags queueFlags                  /// Queue flags
+  u32          queueCount
+  u32          timestampValidBits
+  VkExtent3D   minImageTransferGranularity
+}
+
+class VkMemoryType {
+  VkMemoryPropertyFlags propertyFlags /// Memory properties of this memory type
+  u32                   heapIndex     /// Index of the memory heap allocations of this memory type are taken from
+}
+
+class VkMemoryHeap {
+  VkDeviceSize      size  /// Available memory in the heap
+  VkMemoryHeapFlags flags /// Flags for the heap
+}
+
+class VkPhysicalDeviceMemoryProperties {
+  u32                               memoryTypeCount
+  VkMemoryType[VK_MAX_MEMORY_TYPES] memoryTypes
+  u32                               memoryHeapCount
+  VkMemoryHeap[VK_MAX_MEMORY_HEAPS] memoryHeaps
+}
+
+class VkDeviceQueueCreateInfo {
+  VkStructureType          sType            /// Should be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
+  const void*              pNext            /// Pointer to next structure
+  VkDeviceQueueCreateFlags flags
+  u32                      queueFamilyIndex
+  u32                      queueCount
+  const f32*               pQueuePriorities
+}
+
+class VkDeviceCreateInfo {
+  VkStructureType                 sType                   /// Should be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
+  const void*                     pNext                   /// Pointer to next structure
+  VkDeviceCreateFlags             flags
+  u32                             queueCreateInfoCount
+  const VkDeviceQueueCreateInfo*  pQueueCreateInfos
+  u32                             enabledLayerCount
+  const char* const*              ppEnabledLayerNames     /// Ordered list of layer names to be enabled
+  u32                             enabledExtensionCount
+  const char* const*              ppEnabledExtensionNames
+  const VkPhysicalDeviceFeatures* pEnabledFeatures
+}
+
+class VkExtensionProperties {
+  char[VK_MAX_EXTENSION_NAME_SIZE] extensionName /// extension name
+  u32                              specVersion   /// version of the extension specification implemented
+}
+
+class VkLayerProperties {
+  char[VK_MAX_EXTENSION_NAME_SIZE] layerName             /// layer name
+  u32                              specVersion           /// version of the layer specification implemented
+  u32                              implementationVersion /// build or release version of the layer's library
+  char[VK_MAX_DESCRIPTION_SIZE]    description           /// Free-form description of the layer
+}
+
+class VkSubmitInfo {
+  VkStructureType             sType                /// Type of structure. Should be VK_STRUCTURE_TYPE_SUBMIT_INFO
+  const void*                 pNext                /// Next structure in chain
+  u32                         waitSemaphoreCount
+  const VkSemaphore*          pWaitSemaphores
+  const VkPipelineStageFlags* pWaitDstStageMask
+  u32                         commandBufferCount
+  const VkCommandBuffer*      pCommandBuffers
+  u32                         signalSemaphoreCount
+  const VkSemaphore*          pSignalSemaphores
+}
+
+class VkMemoryAllocateInfo {
+  VkStructureType sType           /// Must be VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
+  const void*     pNext           /// Pointer to next structure
+  VkDeviceSize    allocationSize  /// Size of memory allocation
+  u32             memoryTypeIndex /// Index of the of the memory type to allocate from
+}
+
+class VkMappedMemoryRange {
+  VkStructureType sType  /// Must be VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE
+  const void*     pNext  /// Pointer to next structure
+  VkDeviceMemory  memory /// Mapped memory object
+  VkDeviceSize    offset /// Offset within the mapped memory the range starts from
+  VkDeviceSize    size   /// Size of the range within the mapped memory
+}
+
+class VkMemoryRequirements {
+  VkDeviceSize size           /// Specified in bytes
+  VkDeviceSize alignment      /// Specified in bytes
+  u32          memoryTypeBits /// Bitfield of the allowed memory type indices into memoryTypes[] for this object
+}
+
+class VkSparseImageFormatProperties {
+  VkImageAspectFlags       aspectMask
+  VkExtent3D               imageGranularity
+  VkSparseImageFormatFlags flags
+}
+
+class VkSparseImageMemoryRequirements {
+  VkSparseImageFormatProperties formatProperties
+  u32                           imageMipTailFirstLod
+  VkDeviceSize                  imageMipTailSize     /// Specified in bytes, must be a multiple of image block size / alignment
+  VkDeviceSize                  imageMipTailOffset   /// Specified in bytes, must be a multiple of image block size / alignment
+  VkDeviceSize                  imageMipTailStride   /// Specified in bytes, must be a multiple of image block size / alignment
+}
+
+class VkSparseMemoryBind {
+  VkDeviceSize            resourceOffset /// Specified in bytes
+  VkDeviceSize            size           /// Specified in bytes
+  VkDeviceMemory          memory
+  VkDeviceSize            memoryOffset   /// Specified in bytes
+  VkSparseMemoryBindFlags flags
+}
+
+class VkSparseBufferMemoryBindInfo {
+  VkBuffer                  buffer
+  u32                       bindCount
+  const VkSparseMemoryBind* pBinds
+}
+
+class VkSparseImageOpaqueMemoryBindInfo {
+  VkImage                   image
+  u32                       bindCount
+  const VkSparseMemoryBind* pBinds
+}
+
+class VkImageSubresource {
+  VkImageAspectFlags aspectMask
+  u32                mipLevel
+  u32                arrayLayer
+}
+
+class VkOffset3D {
+  s32 x
+  s32 y
+  s32 z
+}
+
+class VkSparseImageMemoryBind {
+  VkImageSubresource      subresource
+  VkOffset3D              offset
+  VkExtent3D              extent
+  VkDeviceMemory          memory
+  VkDeviceSize            memoryOffset /// Specified in bytes
+  VkSparseMemoryBindFlags flags
+}
+
+class VkSparseImageMemoryBindInfo {
+  VkImage                        image
+  u32                            bindCount
+  const VkSparseImageMemoryBind* pBinds
+}
+
+class VkBindSparseInfo {
+  VkStructureType                          sType                /// Must be VK_STRUCTURE_TYPE_BIND_SPARSE_INFO
+  const void*                              pNext
+  u32                                      waitSemaphoreCount
+  const VkSemaphore*                       pWaitSemaphores
+  u32                                      bufferBindCount
+  const VkSparseBufferMemoryBindInfo*      pBufferBinds
+  u32                                      imageOpaqueBindCount
+  const VkSparseImageOpaqueMemoryBindInfo* pImageOpaqueBinds
+  u32                                      imageBindCount
+  const VkSparseImageMemoryBindInfo*       pImageBinds
+  u32                                      signalSemaphoreCount
+  const VkSemaphore*                       pSignalSemaphores
+}
+
+class VkFenceCreateInfo {
+  VkStructureType    sType /// Must be VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
+  const void*        pNext /// Pointer to next structure
+  VkFenceCreateFlags flags /// Fence creation flags
+}
+
+class VkSemaphoreCreateInfo {
+  VkStructureType        sType /// Must be VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+  const void*            pNext /// Pointer to next structure
+  VkSemaphoreCreateFlags flags /// Semaphore creation flags
+}
+
+class VkEventCreateInfo {
+  VkStructureType    sType /// Must be VK_STRUCTURE_TYPE_EVENT_CREATE_INFO
+  const void*        pNext /// Pointer to next structure
+  VkEventCreateFlags flags /// Event creation flags
+}
+
+class VkQueryPoolCreateInfo {
+  VkStructureType               sType              /// Must be VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO
+  const void*                   pNext              /// Pointer to next structure
+  VkQueryPoolCreateFlags        flags
+  VkQueryType                   queryType
+  u32                           queryCount
+  VkQueryPipelineStatisticFlags pipelineStatistics /// Optional
+}
+
+class VkBufferCreateInfo {
+  VkStructureType     sType                 /// Must be VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
+  const void*         pNext                 /// Pointer to next structure.
+  VkBufferCreateFlags flags                 /// Buffer creation flags
+  VkDeviceSize        size                  /// Specified in bytes
+  VkBufferUsageFlags  usage                 /// Buffer usage flags
+  VkSharingMode       sharingMode
+  u32                 queueFamilyIndexCount
+  const u32*          pQueueFamilyIndices
+}
+
+class VkBufferViewCreateInfo {
+  VkStructureType         sType  /// Must be VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO
+  const void*             pNext  /// Pointer to next structure.
+  VkBufferViewCreateFlags flags
+  VkBuffer                buffer
+  VkFormat                format /// Optionally specifies format of elements
+  VkDeviceSize            offset /// Specified in bytes
+  VkDeviceSize            range  /// View size specified in bytes
+}
+
+class VkImageCreateInfo {
+  VkStructureType       sType                 /// Must be VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
+  const void*           pNext                 /// Pointer to next structure.
+  VkImageCreateFlags    flags                 /// Image creation flags
+  VkImageType           imageType
+  VkFormat              format
+  VkExtent3D            extent
+  u32                   mipLevels
+  u32                   arrayLayers
+  VkSampleCountFlagBits samples
+  VkImageTiling         tiling
+  VkImageUsageFlags     usage                 /// Image usage flags
+  VkSharingMode         sharingMode           /// Cross-queue-family sharing mode
+  u32                   queueFamilyIndexCount /// Number of queue families to share across
+  const u32*            pQueueFamilyIndices   /// Array of queue family indices to share across
+  VkImageLayout         initialLayout         /// Initial image layout for all subresources
+}
+
+class VkSubresourceLayout {
+  VkDeviceSize offset     /// Specified in bytes
+  VkDeviceSize size       /// Specified in bytes
+  VkDeviceSize rowPitch   /// Specified in bytes
+  VkDeviceSize arrayPitch /// Specified in bytes
+  VkDeviceSize depthPitch /// Specified in bytes
+}
+
+class VkComponentMapping {
+  VkComponentSwizzle r
+  VkComponentSwizzle g
+  VkComponentSwizzle b
+  VkComponentSwizzle a
+}
+
+class VkImageSubresourceRange {
+  VkImageAspectFlags aspectMask
+  u32                baseMipLevel
+  u32                levelCount
+  u32                baseArrayLayer
+  u32                layerCount
+}
+
+class VkImageViewCreateInfo {
+  VkStructureType         sType            /// Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
+  const void*             pNext            /// Pointer to next structure
+  VkImageViewCreateFlags  flags
+  VkImage                 image
+  VkImageViewType         viewType
+  VkFormat                format
+  VkComponentMapping      components
+  VkImageSubresourceRange subresourceRange
+}
+
+class VkShaderModuleCreateInfo {
+  VkStructureType           sType    /// Must be VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
+  const void*               pNext    /// Pointer to next structure
+  VkShaderModuleCreateFlags flags    /// Reserved
+  size                      codeSize /// Specified in bytes
+  const u32*                pCode    /// Binary code of size codeSize
+}
+
+class VkPipelineCacheCreateInfo {
+  VkStructureType            sType           /// Must be VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
+  const void*                pNext           /// Pointer to next structure
+  VkPipelineCacheCreateFlags flags
+  size                       initialDataSize /// Size of initial data to populate cache, in bytes
+  const void*                pInitialData    /// Initial data to populate cache
+}
+
+class VkSpecializationMapEntry {
+  u32  constantID /// The SpecConstant ID specified in the BIL
+  u32  offset     /// Offset of the value in the data block
+  size size       /// Size in bytes of the SpecConstant
+}
+
+class VkSpecializationInfo {
+  u32                             mapEntryCount /// Number of entries in the map
+  const VkSpecializationMapEntry* pMapEntries   /// Array of map entries
+  size                            dataSize      /// Size in bytes of pData
+  const void*                     pData         /// Pointer to SpecConstant data
+}
+
+class VkPipelineShaderStageCreateInfo {
+  VkStructureType                  sType               /// Must be VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
+  const void*                      pNext               /// Pointer to next structure
+  VkPipelineShaderStageCreateFlags flags
+  VkShaderStageFlagBits            stage
+  VkShaderModule                   module
+  const char*                      pName
+  const VkSpecializationInfo*      pSpecializationInfo
+}
+
+class VkVertexInputBindingDescription {
+  u32               binding   /// Vertex buffer binding id
+  u32               stride    /// Distance between vertices in bytes (0 = no advancement)
+  VkVertexInputRate inputRate /// Rate at which binding is incremented
+}
+
+class VkVertexInputAttributeDescription {
+  u32      location /// location of the shader vertex attrib
+  u32      binding  /// Vertex buffer binding id
+  VkFormat format   /// format of source data
+  u32      offset   /// Offset of first element in bytes from base of vertex
+}
+
+class VkPipelineVertexInputStateCreateInfo {
+  VkStructureType                          sType                           /// Should be VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
+  const void*                              pNext                           /// Pointer to next structure
+  VkPipelineVertexInputStateCreateFlags    flags
+  u32                                      vertexBindingDescriptionCount   /// number of bindings
+  const VkVertexInputBindingDescription*   pVertexBindingDescriptions
+  u32                                      vertexAttributeDescriptionCount /// number of attributes
+  const VkVertexInputAttributeDescription* pVertexAttributeDescriptions
+}
+
+class VkPipelineInputAssemblyStateCreateInfo {
+  VkStructureType                         sType                  /// Must be VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
+  const void*                             pNext                  /// Pointer to next structure
+  VkPipelineInputAssemblyStateCreateFlags flags
+  VkPrimitiveTopology                     topology
+  VkBool32                                primitiveRestartEnable
+}
+
+class VkPipelineTessellationStateCreateInfo {
+  VkStructureType                        sType              /// Must be VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
+  const void*                            pNext              /// Pointer to next structure
+  VkPipelineTessellationStateCreateFlags flags
+  u32                                    patchControlPoints
+}
+
+class VkViewport {
+  f32 x
+  f32 y
+  f32 width
+  f32 height
+  f32 minDepth
+  f32 maxDepth
+}
+
+class VkOffset2D {
+  s32 x
+  s32 y
+}
+
+class VkExtent2D {
+  u32 Width
+  u32 Height
+}
+
+class VkRect2D {
+  VkOffset2D offset
+  VkExtent2D extent
+}
+
+class VkPipelineViewportStateCreateInfo {
+  VkStructureType                    sType         /// Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
+  const void*                        pNext         /// Pointer to next structure
+  VkPipelineViewportStateCreateFlags flags
+  u32                                viewportCount
+  const VkViewport*                  pViewports
+  u32                                scissorCount
+  const VkRect2D*                    pScissors
+}
+
+class VkPipelineRasterizationStateCreateInfo {
+  VkStructureType                         sType                   /// Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
+  const void*                             pNext                   /// Pointer to next structure
+  VkPipelineRasterizationStateCreateFlags flags
+  VkBool32                                depthClampEnable
+  VkBool32                                rasterizerDiscardEnable
+  VkPolygonMode                           polygonMode             /// optional (GL45)
+  VkCullModeFlags                         cullMode
+  VkFrontFace                             frontFace
+  VkBool32                                depthBiasEnable
+  f32                                     depthBiasConstantFactor
+  f32                                     depthBiasClamp
+  f32                                     depthBiasSlopeFactor
+  f32                                     lineWidth
+}
+
+class VkPipelineMultisampleStateCreateInfo {
+  VkStructureType                       sType                 /// Must be VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
+  const void*                           pNext                 /// Pointer to next structure
+  VkPipelineMultisampleStateCreateFlags flags
+  VkSampleCountFlagBits                 rasterizationSamples  /// Number of samples used for rasterization
+  VkBool32                              sampleShadingEnable   /// optional (GL45)
+  f32                                   minSampleShading      /// optional (GL45)
+  const VkSampleMask*                   pSampleMask
+  VkBool32                              alphaToCoverageEnable
+  VkBool32                              alphaToOneEnable
+}
+
+class VkStencilOpState {
+  VkStencilOp failOp
+  VkStencilOp passOp
+  VkStencilOp depthFailOp
+  VkCompareOp compareOp
+  u32         compareMask
+  u32         writeMask
+  u32         reference
+}
+
+class VkPipelineDepthStencilStateCreateInfo {
+  VkStructureType                        sType                 /// Must be VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
+  const void*                            pNext                 /// Pointer to next structure
+  VkPipelineDepthStencilStateCreateFlags flags
+  VkBool32                               depthTestEnable
+  VkBool32                               depthWriteEnable
+  VkCompareOp                            depthCompareOp
+  VkBool32                               depthBoundsTestEnable /// optional (depth_bounds_test)
+  VkBool32                               stencilTestEnable
+  VkStencilOpState                       front
+  VkStencilOpState                       back
+  f32                                    minDepthBounds
+  f32                                    maxDepthBounds
+}
+
+class VkPipelineColorBlendAttachmentState {
+  VkBool32              blendEnable
+  VkBlendFactor         srcColorBlendFactor
+  VkBlendFactor         dstColorBlendFactor
+  VkBlendOp             colorBlendOp
+  VkBlendFactor         srcAlphaBlendFactor
+  VkBlendFactor         dstAlphaBlendFactor
+  VkBlendOp             alphaBlendOp
+  VkColorComponentFlags colorWriteMask
+}
+
+class VkPipelineColorBlendStateCreateInfo {
+  VkStructureType                            sType           /// Must be VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
+  const void*                                pNext           /// Pointer to next structure
+  VkPipelineColorBlendStateCreateFlags       flags
+  VkBool32                                   logicOpEnable
+  VkLogicOp                                  logicOp
+  u32                                        attachmentCount /// # of pAttachments
+  const VkPipelineColorBlendAttachmentState* pAttachments
+  f32[4]                                     blendConstants
+}
+
+class VkPipelineDynamicStateCreateInfo {
+  VkStructureType                   sType             /// Must be VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
+  const void*                       pNext             /// Pointer to next structure
+  VkPipelineDynamicStateCreateFlags flags
+  u32                               dynamicStateCount
+  const VkDynamicState*             pDynamicStates
+}
+
+class VkGraphicsPipelineCreateInfo {
+  VkStructureType                               sType               /// Must be VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
+  const void*                                   pNext               /// Pointer to next structure
+  VkPipelineCreateFlags                         flags               /// Pipeline creation flags
+  u32                                           stageCount
+  const VkPipelineShaderStageCreateInfo*        pStages             /// One entry for each active shader stage
+  const VkPipelineVertexInputStateCreateInfo*   pVertexInputState
+  const VkPipelineInputAssemblyStateCreateInfo* pInputAssemblyState
+  const VkPipelineTessellationStateCreateInfo*  pTessellationState
+  const VkPipelineViewportStateCreateInfo*      pViewportState
+  const VkPipelineRasterizationStateCreateInfo* pRasterizationState
+  const VkPipelineMultisampleStateCreateInfo*   pMultisampleState
+  const VkPipelineDepthStencilStateCreateInfo*  pDepthStencilState
+  const VkPipelineColorBlendStateCreateInfo*    pColorBlendState
+  const VkPipelineDynamicStateCreateInfo*       pDynamicState
+  VkPipelineLayout                              layout              /// Interface layout of the pipeline
+  VkRenderPass                                  renderPass
+  u32                                           subpass
+  VkPipeline                                    basePipelineHandle  /// If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is nonzero, it specifies the handle of the base pipeline this is a derivative of
+  s32                                           basePipelineIndex   /// If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is not -1, it specifies an index into pCreateInfos of the base pipeline this is a derivative of
+}
+
+class VkComputePipelineCreateInfo {
+  VkStructureType                 sType              /// Must be VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO
+  const void*                     pNext              /// Pointer to next structure
+  VkPipelineCreateFlags           flags              /// Pipeline creation flags
+  VkPipelineShaderStageCreateInfo stage
+  VkPipelineLayout                layout             /// Interface layout of the pipeline
+  VkPipeline                      basePipelineHandle /// If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is nonzero, it specifies the handle of the base pipeline this is a derivative of
+  s32                             basePipelineIndex  /// If VK_PIPELINE_CREATE_DERIVATIVE_BIT is set and this value is not -1, it specifies an index into pCreateInfos of the base pipeline this is a derivative of
+}
+
+class VkPushConstantRange {
+  VkShaderStageFlags stageFlags /// Which stages use the range
+  u32                offset     /// Start of the range, in bytes
+  u32                size       /// Length of the range, in bytes
+}
+
+class VkPipelineLayoutCreateInfo {
+  VkStructureType              sType                  /// Must be VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
+  const void*                  pNext                  /// Pointer to next structure
+  VkPipelineLayoutCreateFlags  flags
+  u32                          setLayoutCount         /// Number of descriptor sets interfaced by the pipeline
+  const VkDescriptorSetLayout* pSetLayouts            /// Array of <setCount> number of descriptor set layout objects defining the layout of the
+  u32                          pushConstantRangeCount /// Number of push-constant ranges used by the pipeline
+  const VkPushConstantRange*   pPushConstantRanges    /// Array of pushConstantRangeCount number of ranges used by various shader stages
+}
+
+class VkSamplerCreateInfo {
+  VkStructureType      sType                   /// Must be VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
+  const void*          pNext                   /// Pointer to next structure
+  VkSamplerCreateFlags flags
+  VkFilter             magFilter               /// Filter mode for magnification
+  VkFilter             minFilter               /// Filter mode for minifiation
+  VkSamplerMipmapMode  mipmapMode              /// Mipmap selection mode
+  VkSamplerAddressMode addressModeU
+  VkSamplerAddressMode addressModeV
+  VkSamplerAddressMode addressModeW
+  f32                  mipLodBias
+  VkBool32             anisotropyEnable
+  f32                  maxAnisotropy
+  VkBool32             compareEnable
+  VkCompareOp          compareOp
+  f32                  minLod
+  f32                  maxLod
+  VkBorderColor        borderColor
+  VkBool32             unnormalizedCoordinates
+}
+
+class VkDescriptorSetLayoutBinding {
+  u32                binding
+  VkDescriptorType   descriptorType     /// Type of the descriptors in this binding
+  u32                descriptorCount    /// Number of descriptors in this binding
+  VkShaderStageFlags stageFlags         /// Shader stages this binding is visible to
+  const VkSampler*   pImmutableSamplers /// Immutable samplers (used if descriptor type is SAMPLER or COMBINED_IMAGE_SAMPLER, is either NULL or contains <count> number of elements)
+}
+
+class VkDescriptorSetLayoutCreateInfo {
+  VkStructureType                     sType        /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
+  const void*                         pNext        /// Pointer to next structure
+  VkDescriptorSetLayoutCreateFlags    flags
+  u32                                 bindingCount /// Number of bindings in the descriptor set layout
+  const VkDescriptorSetLayoutBinding* pBindings    /// Array of descriptor set layout bindings
+}
+
+class VkDescriptorPoolSize {
+  VkDescriptorType type
+  u32              descriptorCount
+}
+
+class VkDescriptorPoolCreateInfo {
+  VkStructureType             sType         /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
+  const void*                 pNext         /// Pointer to next structure
+  VkDescriptorPoolCreateFlags flags
+  u32                         maxSets
+  u32                         poolSizeCount
+  const VkDescriptorPoolSize* pPoolSizes
+}
+
+class VkDescriptorSetAllocateInfo {
+  VkStructureType              sType              /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
+  const void*                  pNext              /// Pointer to next structure
+  VkDescriptorPool             descriptorPool
+  u32                          descriptorSetCount
+  const VkDescriptorSetLayout* pSetLayouts
+}
+
+class VkDescriptorImageInfo {
+  VkSampler     Sampler
+  VkImageView   ImageView
+  VkImageLayout ImageLayout
+}
+
+class VkDescriptorBufferInfo {
+  VkBuffer     Buffer /// Buffer used for this descriptor when the descriptor is UNIFORM_BUFFER[_DYNAMIC]
+  VkDeviceSize Offset /// Base offset from buffer start in bytes to update in the descriptor set.
+  VkDeviceSize Range  /// Size in bytes of the buffer resource for this descriptor update.
+}
+
+class VkWriteDescriptorSet {
+  VkStructureType               sType            /// Must be VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
+  const void*                   pNext            /// Pointer to next structure
+  VkDescriptorSet               dstSet           /// Destination descriptor set
+  u32                           dstBinding       /// Binding within the destination descriptor set to write
+  u32                           dstArrayElement  /// Array element within the destination binding to write
+  u32                           descriptorCount  /// Number of descriptors to write (determines the size of the array pointed by <pDescriptors>)
+  VkDescriptorType              descriptorType   /// Descriptor type to write (determines which fields of the array pointed by <pDescriptors> are going to be used)
+  const VkDescriptorImageInfo*  pImageInfo
+  const VkDescriptorBufferInfo* pBufferInfo
+  const VkBufferView*           pTexelBufferView
+}
+
+class VkCopyDescriptorSet {
+  VkStructureType sType           /// Must be VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET
+  const void*     pNext           /// Pointer to next structure
+  VkDescriptorSet srcSet          /// Source descriptor set
+  u32             srcBinding      /// Binding within the source descriptor set to copy from
+  u32             srcArrayElement /// Array element within the source binding to copy from
+  VkDescriptorSet dstSet          /// Destination descriptor set
+  u32             dstBinding      /// Binding within the destination descriptor set to copy to
+  u32             dstArrayElement /// Array element within the destination binding to copy to
+  u32             descriptorCount /// Number of descriptors to copy
+}
+
+class VkFramebufferCreateInfo {
+  VkStructureType          sType           /// Must be VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO
+  const void*              pNext           /// Pointer to next structure
+  VkFramebufferCreateFlags flags
+  VkRenderPass             renderPass
+  u32                      attachmentCount
+  const VkImageView*       pAttachments
+  u32                      width
+  u32                      height
+  u32                      layers
+}
+
+class VkAttachmentDescription {
+  VkAttachmentDescriptionFlags flags
+  VkFormat                     format
+  VkSampleCountFlagBits        samples
+  VkAttachmentLoadOp           loadOp         /// Load op for color or depth data
+  VkAttachmentStoreOp          storeOp        /// Store op for color or depth data
+  VkAttachmentLoadOp           stencilLoadOp  /// Load op for stencil data
+  VkAttachmentStoreOp          stencilStoreOp /// Store op for stencil data
+  VkImageLayout                initialLayout
+  VkImageLayout                finalLayout
+}
+
+class VkAttachmentReference {
+  u32           Attachment // We have capitalized these so we can manipulate
+  VkImageLayout Layout     // them in Go
+}
+
+class VkSubpassDescription {
+  VkSubpassDescriptionFlags    flags
+  VkPipelineBindPoint          pipelineBindPoint       /// Must be VK_PIPELINE_BIND_POINT_GRAPHICS for now
+  u32                          inputAttachmentCount
+  const VkAttachmentReference* pInputAttachments
+  u32                          colorAttachmentCount
+  const VkAttachmentReference* pColorAttachments
+  const VkAttachmentReference* pResolveAttachments
+  const VkAttachmentReference* pDepthStencilAttachment
+  u32                          preserveAttachmentCount
+  const u32*                   pPreserveAttachments
+}
+
+class VkSubpassDependency {
+  u32                  srcSubpass
+  u32                  dstSubpass
+  VkPipelineStageFlags srcStageMask
+  VkPipelineStageFlags dstStageMask
+  VkAccessFlags        srcAccessMask
+  VkAccessFlags        dstAccessMask
+  VkDependencyFlags    dependencyFlags
+}
+
+class VkRenderPassCreateInfo {
+  VkStructureType                sType           /// Must be VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO
+  const void*                    pNext           /// Pointer to next structure
+  VkRenderPassCreateFlags        flags
+  u32                            attachmentCount
+  const VkAttachmentDescription* pAttachments
+  u32                            subpassCount
+  const VkSubpassDescription*    pSubpasses
+  u32                            dependencyCount
+  const VkSubpassDependency*     pDependencies
+}
+
+class VkCommandPoolCreateInfo {
+  VkStructureType          sType            /// Must be VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
+  const void*              pNext            /// Pointer to next structure
+  VkCommandPoolCreateFlags flags            /// Command pool creation flags
+  u32                      queueFamilyIndex
+}
+
+class VkCommandBufferAllocateInfo {
+  VkStructureType      sType              /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
+  const void*          pNext              /// Pointer to next structure
+  VkCommandPool        commandPool
+  VkCommandBufferLevel level
+  u32                  commandBufferCount
+}
+
+class VkCommandBufferInheritanceInfo {
+  VkStructureType               sType                /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
+  const void*                   pNext                /// Pointer to next structure
+  VkRenderPass                  renderPass           /// Render pass for secondary command buffers
+  u32                           subpass
+  VkFramebuffer                 framebuffer          /// Framebuffer for secondary command buffers
+  VkBool32                      occlusionQueryEnable
+  VkQueryControlFlags           queryFlags
+  VkQueryPipelineStatisticFlags pipelineStatistics
+}
+
+class VkCommandBufferBeginInfo {
+  VkStructureType                       sType            /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
+  const void*                           pNext            /// Pointer to next structure
+  VkCommandBufferUsageFlags             flags            /// Command buffer usage flags
+  const VkCommandBufferInheritanceInfo* pInheritanceInfo
+}
+
+class VkBufferCopy {
+  VkDeviceSize srcOffset /// Specified in bytes
+  VkDeviceSize dstOffset /// Specified in bytes
+  VkDeviceSize size      /// Specified in bytes
+}
+
+class VkImageSubresourceLayers {
+  VkImageAspectFlags aspectMask
+  u32                mipLevel
+  u32                baseArrayLayer
+  u32                layerCount
+}
+
+class VkImageCopy {
+  VkImageSubresourceLayers srcSubresource
+  VkOffset3D               srcOffset      /// Specified in pixels for both compressed and uncompressed images
+  VkImageSubresourceLayers dstSubresource
+  VkOffset3D               dstOffset      /// Specified in pixels for both compressed and uncompressed images
+  VkExtent3D               extent         /// Specified in pixels for both compressed and uncompressed images
+}
+
+class VkImageBlit {
+  VkImageSubresourceLayers srcSubresource
+  VkOffset3D[2]            srcOffsets
+  VkImageSubresourceLayers dstSubresource
+  VkOffset3D[2]            dstOffsets
+}
+
+class VkBufferImageCopy {
+  VkDeviceSize             bufferOffset      /// Specified in bytes
+  u32                      bufferRowLength   /// Specified in texels
+  u32                      bufferImageHeight
+  VkImageSubresourceLayers imageSubresource
+  VkOffset3D               imageOffset       /// Specified in pixels for both compressed and uncompressed images
+  VkExtent3D               imageExtent       /// Specified in pixels for both compressed and uncompressed images
+}
+
+// TODO: We can't use unions of StaticArrays - it has a copy-constructor
+// bclayton: Instead of this, I'd recommend using a void* and casting to
+//           the wanted type in the cmd.
+// @union
+/// Union allowing specification of floating point, integer, or unsigned integer color data. Actual value selected is based on image/attachment being cleared.
+class VkClearColorValue {
+  //f32[4]                                      float32
+  //s32[4]                                      int32
+  u32[4] uint32
+}
+
+class VkClearDepthStencilValue {
+  f32 depth
+  u32 stencil
+}
+
+// TODO: We can't use unions of StaticArrays - it has a copy-constructor
+// bclayton: Instead of this, I'd recommend using a void* and casting to
+//           the wanted type in the cmd.
+// @union
+/// Union allowing specification of color, depth, and stencil color values. Actual value selected is based on attachment being cleared.
+class VkClearValue {
+  VkClearColorValue color
+//    VkClearDepthStencilValue                    depthStencil
+}
+
+class VkClearAttachment {
+  VkImageAspectFlags aspectMask
+  u32                colorAttachment
+  VkClearValue       clearValue
+}
+
+class VkClearRect {
+  VkRect2D rect
+  u32      baseArrayLayer
+  u32      layerCount
+}
+
+class VkImageResolve {
+  VkImageSubresourceLayers srcSubresource
+  VkOffset3D               srcOffset
+  VkImageSubresourceLayers dstSubresource
+  VkOffset3D               dstOffset
+  VkExtent3D               extent
+}
+
+class VkMemoryBarrier {
+  VkStructureType sType         /// Must be VK_STRUCTURE_TYPE_MEMORY_BARRIER
+  const void*     pNext         /// Pointer to next structure.
+  VkAccessFlags   srcAccessMask
+  VkAccessFlags   dstAccessMask
+}
+
+class VkBufferMemoryBarrier {
+  VkStructureType sType               /// Must be VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER
+  const void*     pNext               /// Pointer to next structure.
+  VkAccessFlags   srcAccessMask
+  VkAccessFlags   dstAccessMask
+  u32             srcQueueFamilyIndex /// Queue family to transition ownership from
+  u32             dstQueueFamilyIndex /// Queue family to transition ownership to
+  VkBuffer        buffer              /// Buffer to sync
+  VkDeviceSize    offset              /// Offset within the buffer to sync
+  VkDeviceSize    size                /// Amount of bytes to sync
+}
+
+class VkImageMemoryBarrier {
+  VkStructureType         sType               /// Must be VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER
+  const void*             pNext               /// Pointer to next structure.
+  VkAccessFlags           srcAccessMask
+  VkAccessFlags           dstAccessMask
+  VkImageLayout           oldLayout           /// Current layout of the image
+  VkImageLayout           newLayout           /// New layout to transition the image to
+  u32                     srcQueueFamilyIndex /// Queue family to transition ownership from
+  u32                     dstQueueFamilyIndex /// Queue family to transition ownership to
+  VkImage                 image               /// Image to sync
+  VkImageSubresourceRange subresourceRange    /// Subresource range to sync
+}
+
+class VkRenderPassBeginInfo {
+  VkStructureType     sType           /// Must be VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO
+  const void*         pNext           /// Pointer to next structure
+  VkRenderPass        renderPass
+  VkFramebuffer       framebuffer
+  VkRect2D            renderArea
+  u32                 clearValueCount
+  const VkClearValue* pClearValues
+}
+
+class VkDispatchIndirectCommand {
+  u32 x
+  u32 y
+  u32 z
+}
+
+class VkDrawIndexedIndirectCommand {
+  u32 indexCount
+  u32 instanceCount
+  u32 firstIndex
+  s32 vertexOffset
+  u32 firstInstance
+}
+
+class VkDrawIndirectCommand {
+  u32 vertexCount
+  u32 instanceCount
+  u32 firstVertex
+  u32 firstInstance
+}
+

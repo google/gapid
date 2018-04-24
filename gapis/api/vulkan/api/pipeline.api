@@ -1,0 +1,930 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+/////////////////////
+// Pipeline Layout //
+/////////////////////
+
+@internal class PipelineLayoutObject {
+  @unused VkDevice                                 Device
+  @unused VkPipelineLayout                         VulkanHandle
+  @unused map!(u32, ref!DescriptorSetLayoutObject) SetLayouts
+  @unused map!(u32, VkPushConstantRange)           PushConstantRanges
+  @unused ref!VulkanDebugMarkerInfo                DebugInfo
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreatePipelineLayout(
+    VkDevice                          device,
+    const VkPipelineLayoutCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*      pAllocator,
+    VkPipelineLayout*                 pPipelineLayout) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkPipelineLayoutCreateInfo") }
+  info := pCreateInfo[0]
+  pipelineLayout := new!PipelineLayoutObject(Device: device)
+  // TODO: info.pNext
+  // TODO: pAllocator
+
+  layoutCount := info.setLayoutCount
+  layouts := info.pSetLayouts[0:layoutCount]
+  for i in (0 .. layoutCount) {
+    pipelineLayout.SetLayouts[i] = DescriptorSetLayouts[layouts[i]]
+  }
+  pushConstantCount := info.pushConstantRangeCount
+  pushConstants := info.pPushConstantRanges[0:pushConstantCount]
+  for i in (0 .. pushConstantCount) {
+    pipelineLayout.PushConstantRanges[i] = pushConstants[i]
+  }
+
+  handle := ?
+  if pPipelineLayout == null { vkErrorNullPointer("VkPipelineLayout") }
+  pPipelineLayout[0] = handle
+  pipelineLayout.VulkanHandle = handle
+  PipelineLayouts[handle] = pipelineLayout
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroyPipelineLayout(
+    VkDevice                     device,
+    VkPipelineLayout             pipelineLayout,
+    const VkAllocationCallbacks* pAllocator) {
+
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  // TODO: pAllocator
+  delete(PipelineLayouts, pipelineLayout)
+}
+
+//////////////
+// Pipeline //
+//////////////
+
+@internal class SpecializationInfo {
+  map!(u32, VkSpecializationMapEntry) Specializations
+  u8[]                                Data
+}
+
+@internal class StageData {
+  @unused VkShaderStageFlagBits  Stage
+  @unused ref!ShaderModuleObject Module
+  @unused string                 EntryPoint
+  @unused ref!SpecializationInfo Specialization
+}
+
+@internal class VertexData {
+  @unused map!(u32, VkVertexInputBindingDescription)   BindingDescriptions
+  @unused map!(u32, VkVertexInputAttributeDescription) AttributeDescriptions
+}
+
+@internal class InputAssemblyData {
+  @unused VkPrimitiveTopology Topology
+  @unused VkBool32            PrimitiveRestartEnable
+}
+
+@internal class TessellationStateData {
+  @unused u32 PatchControlPoints
+}
+
+@internal class ViewportData {
+  @unused u32                   ViewportCount
+  @unused map!(u32, VkViewport) Viewports
+  @unused u32                   ScissorCount
+  @unused map!(u32, VkRect2D)   Scissors
+}
+
+@internal class RasterizationData {
+  @unused VkBool32        DepthClampEnable
+  @unused VkBool32        RasterizerDiscardEnable
+  @unused VkPolygonMode   PolygonMode
+  @unused VkCullModeFlags CullMode
+  @unused VkFrontFace     FrontFace
+  @unused VkBool32        DepthBiasEnable
+  @unused f32             DepthBiasConstantFactor
+  @unused f32             DepthBiasClamp
+  @unused f32             DepthBiasSlopeFactor
+  @unused f32             LineWidth
+}
+
+@internal class MultisampleData {
+  @unused VkSampleCountFlagBits   RasterizationSamples
+  @unused VkBool32                SampleShadingEnable
+  @unused f32                     MinSampleShading
+  @unused map!(u32, VkSampleMask) SampleMask
+  @unused VkBool32                AlphaToCoverageEnable
+  @unused VkBool32                AlphaToOneEnable
+}
+
+@internal class DepthData {
+  @unused VkBool32         DepthTestEnable
+  @unused VkBool32         DepthWriteEnable
+  @unused VkCompareOp      DepthCompareOp
+  @unused VkBool32         DepthBoundsTestEnable
+  @unused VkBool32         StencilTestEnable
+  @unused VkStencilOpState Front
+  @unused VkStencilOpState Back
+  @unused f32              MinDepthBounds
+  @unused f32              MaxDepthBounds
+}
+
+@internal class ColorBlendData {
+  @unused VkBool32                                       LogicOpEnable
+  @unused VkLogicOp                                      LogicOp
+  @unused map!(u32, VkPipelineColorBlendAttachmentState) Attachments
+  @unused f32[4]                                         BlendConstants
+}
+
+@internal class DynamicData {
+  @unused map!(u32, VkDynamicState) DynamicStates
+}
+
+@internal class GraphicsPipelineObject {
+  @unused VkDevice                  Device
+  @unused ref!PipelineCacheObject   PipelineCache
+  @unused VkPipelineCreateFlags     Flags
+  @unused VkPipeline                VulkanHandle
+  @unused map!(u32, StageData)      Stages
+  @unused VertexData                VertexInputState
+  @unused InputAssemblyData         InputAssemblyState
+  @unused ref!TessellationStateData TessellationState
+  @unused ref!ViewportData          ViewportState
+  @unused RasterizationData         RasterizationState
+  @unused ref!MultisampleData       MultisampleState
+  @unused ref!DepthData             DepthState
+  @unused ref!ColorBlendData        ColorBlendState
+  @unused ref!DynamicData           DynamicState
+  @unused ref!PipelineLayoutObject  Layout
+  @unused ref!RenderPassObject      RenderPass
+  @unused u32                       Subpass
+  @unused VkPipeline                BasePipeline
+  // Note: When doing MEC, use BasePipeline instead of BasePipelineIndex
+  //       It will have been set for you correctly
+  @unused s32                       BasePipelineIndex
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}
+
+@internal class ComputePipelineObject {
+  @unused VkDevice                 Device
+  @unused VkPipeline               VulkanHandle
+  @unused ref!PipelineCacheObject  PipelineCache
+  @unused VkPipelineCreateFlags    Flags
+  @unused StageData                Stage
+  @unused ref!PipelineLayoutObject PipelineLayout
+  @unused VkPipeline               BasePipeline
+  // Note: When doing MEC, use BasePipeline instead of BasePipelineIndex
+  //       It will have been set for you correctly
+  @unused s32                       BasePipelineIndex
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}
+
+@internal
+class CreatedGraphicsPipelines {
+  map!(u32, ref!GraphicsPipelineObject) Objects
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreateGraphicsPipelines(
+    VkDevice                            device,
+    VkPipelineCache                     pipelineCache,
+    u32                                 createInfoCount,
+    const VkGraphicsPipelineCreateInfo* pCreateInfos,
+    const VkAllocationCallbacks*        pAllocator,
+    VkPipeline*                         pPipelines) {
+
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pipelineCache != as!VkPipelineCache(0) {
+    if !(pipelineCache in PipelineCaches) { vkErrorInvalidPipelineCache(pipelineCache) }
+  }
+  // TODO(awoloszyn): Figure out what fields we want to store off
+  //    in the state block.
+  infos := pCreateInfos[0:createInfoCount]
+  pipelines := pPipelines[0:createInfoCount]
+
+  createdPipelines := CreatedGraphicsPipelines()
+
+  for i in (0 .. createInfoCount) {
+    obj := new!GraphicsPipelineObject(
+      PipelineCache: PipelineCaches[pipelineCache]
+    )
+    obj.Device = device
+    create_info := infos[i]
+    // TODO: create_info.pNext
+    obj.Flags = create_info.flags
+
+    pipeline_shader_stage_create_infos :=
+    create_info.pStages[0:create_info.stageCount]
+    for j in (0 .. create_info.stageCount) {
+      stage_create_info := pipeline_shader_stage_create_infos[j]
+      if !(stage_create_info.module in ShaderModules) { vkErrorInvalidShaderModule(stage_create_info.module) }
+      stage_data := StageData(
+        Stage:       stage_create_info.stage,
+        Module:      ShaderModules[stage_create_info.module],
+        EntryPoint:  as!string(stage_create_info.pName),
+      )
+      if (stage_create_info.pSpecializationInfo != null) {
+        spec_info := stage_create_info.pSpecializationInfo[0]
+        spec_data := new!SpecializationInfo()
+        spec_map := spec_info.pMapEntries[0:spec_info.mapEntryCount]
+        for k in (0 .. spec_info.mapEntryCount) {
+          spec_data.Specializations[k] = spec_map[k]
+        }
+        spec_data.Data = clone(as!u8*(spec_info.pData)[0:spec_info.dataSize])
+        stage_data.Specialization = spec_data
+      }
+      obj.Stages[j] = stage_data
+    }
+
+    vertex_input_state := create_info.pVertexInputState[0]
+    vertex_descriptions := vertex_input_state.pVertexBindingDescriptions[0:
+    vertex_input_state.vertexBindingDescriptionCount]
+    // TODO: vertex_input_state.pNext
+    for b in (0 .. vertex_input_state.vertexBindingDescriptionCount) {
+      vertex_binding := vertex_descriptions[b]
+      obj.VertexInputState.BindingDescriptions[vertex_binding.binding] = vertex_binding
+    }
+
+    vertex_attributes := vertex_input_state.pVertexAttributeDescriptions[0:
+    vertex_input_state.vertexAttributeDescriptionCount]
+
+    for b in (0 .. vertex_input_state.vertexAttributeDescriptionCount) {
+      attribute := vertex_attributes[b]
+      obj.VertexInputState.AttributeDescriptions[b] = attribute
+    }
+
+    input_assembly_state := create_info.pInputAssemblyState[0]
+    obj.InputAssemblyState.Topology = input_assembly_state.topology
+    obj.InputAssemblyState.PrimitiveRestartEnable = input_assembly_state.primitiveRestartEnable
+
+    // TODO: pInputAssemblypNext
+    if (create_info.pTessellationState != null) {
+      tessellation_state := create_info.pTessellationState[0]
+      obj.TessellationState = new!TessellationStateData(
+        PatchControlPoints: tessellation_state.patchControlPoints
+      )
+    }
+    if (create_info.pViewportState != null) {
+
+      // TODO: pViewportpNext
+      pipeline_viewport_state_create_info := create_info.pViewportState[0]
+
+      viewport_data := new!ViewportData()
+
+      // Even if the viewports and scissors are set dynamically, the number of
+      // viewports and scissors must match with the viewportCount and
+      // sicssorCount set in this VkPipelineViewportStateCreateInfo struct.
+      viewport_data.ViewportCount = pipeline_viewport_state_create_info.viewportCount
+      viewport_data.ScissorCount = pipeline_viewport_state_create_info.scissorCount
+
+      if (!hasDynamicProperty(
+            create_info.pDynamicState,
+            VK_DYNAMIC_STATE_VIEWPORT)) {
+        viewports := pipeline_viewport_state_create_info.pViewports[0:viewport_data.ViewportCount]
+        for k in (0 .. viewport_data.ViewportCount) {
+          viewport_data.Viewports[k] = viewports[k]
+        }
+      }
+
+      if (!hasDynamicProperty(
+            create_info.pDynamicState,
+            VK_DYNAMIC_STATE_SCISSOR)) {
+        scissors := pipeline_viewport_state_create_info.pScissors[0:viewport_data.ScissorCount]
+        for k in (0 .. viewport_data.ScissorCount) {
+          viewport_data.Scissors[k] = scissors[k]
+        }
+      }
+
+      obj.ViewportState = viewport_data
+    }
+    rasterization_state := create_info.pRasterizationState[0]
+
+    obj.RasterizationState.DepthClampEnable = rasterization_state.depthClampEnable
+    obj.RasterizationState.RasterizerDiscardEnable = rasterization_state.rasterizerDiscardEnable
+    obj.RasterizationState.PolygonMode = rasterization_state.polygonMode
+    obj.RasterizationState.CullMode = rasterization_state.cullMode
+    obj.RasterizationState.FrontFace = rasterization_state.frontFace
+    obj.RasterizationState.DepthBiasEnable = rasterization_state.depthBiasEnable
+    obj.RasterizationState.DepthBiasConstantFactor = rasterization_state.depthBiasConstantFactor
+    obj.RasterizationState.DepthBiasClamp = rasterization_state.depthBiasClamp
+    obj.RasterizationState.DepthBiasSlopeFactor = rasterization_state.depthBiasSlopeFactor
+    obj.RasterizationState.LineWidth = rasterization_state.lineWidth
+
+    // TODO _.pNext
+
+    if (create_info.pMultisampleState != null) {
+      multisample_state := create_info.pMultisampleState[0]
+      multisample_data := new!MultisampleData(
+        RasterizationSamples:   multisample_state.rasterizationSamples,
+        SampleShadingEnable:    multisample_state.sampleShadingEnable,
+        MinSampleShading:       multisample_state.minSampleShading,
+        AlphaToCoverageEnable:  multisample_state.alphaToCoverageEnable,
+        AlphaToOneEnable:       multisample_state.alphaToOneEnable
+      )
+      // TODO: multisample_state.pNext
+      if (multisample_state.pSampleMask != null) {
+        num_samples := as!u32(multisample_state.rasterizationSamples)
+        sizeof_samplemask := (num_samples + 31) / 32
+        sample_masks := multisample_state.pSampleMask[0:sizeof_samplemask]
+        for k in (0 .. sizeof_samplemask) {
+          multisample_data.SampleMask[k] = sample_masks[k]
+        }
+      }
+      obj.MultisampleState = multisample_data
+    }
+
+    if (create_info.pDepthStencilState != null) {
+      // TODO: pDepthStencilpNext
+      depth_stencil_state := create_info.pDepthStencilState[0]
+      obj.DepthState = new!DepthData(
+        DepthTestEnable:        depth_stencil_state.depthTestEnable,
+        DepthWriteEnable:       depth_stencil_state.depthWriteEnable,
+        DepthCompareOp:         depth_stencil_state.depthCompareOp,
+        DepthBoundsTestEnable:  depth_stencil_state.depthBoundsTestEnable,
+        StencilTestEnable:      depth_stencil_state.stencilTestEnable,
+        Front:                  depth_stencil_state.front,
+        Back:                   depth_stencil_state.back,
+        MinDepthBounds:         depth_stencil_state.minDepthBounds,
+        MaxDepthBounds:         depth_stencil_state.maxDepthBounds)
+    }
+    if (create_info.pColorBlendState != null) {
+      color_blend_state := create_info.pColorBlendState[0]
+      color_blend_data := new!ColorBlendData(
+        LogicOpEnable:   color_blend_state.logicOpEnable,
+        LogicOp:         color_blend_state.logicOp,
+        BlendConstants:  color_blend_state.blendConstants
+      )
+      // TODO: color_blend_state.pNext
+      attachments := color_blend_state.pAttachments[0:
+      color_blend_state.attachmentCount]
+      for k in (0 .. color_blend_state.attachmentCount) {
+        color_blend_data.Attachments[k] = attachments[k]
+      }
+      obj.ColorBlendState = color_blend_data
+    }
+    if (create_info.pDynamicState != null) {
+      dynamic_state_info := create_info.pDynamicState[0]
+      dynamic_data := new!DynamicData()
+      // TODO: dynamic_state_info.pNext
+      states := dynamic_state_info.pDynamicStates[0:
+      dynamic_state_info.dynamicStateCount]
+      for k in (0 .. dynamic_state_info.dynamicStateCount) {
+        dynamic_data.DynamicStates[k] = states[k]
+      }
+      obj.DynamicState = dynamic_data
+    }
+    obj.Layout = PipelineLayouts[create_info.layout]
+    obj.RenderPass = RenderPasses[create_info.renderPass]
+    obj.Subpass = create_info.subpass
+    if ((as!u32(create_info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
+      if (create_info.basePipelineIndex != -1) {
+        obj.BasePipelineIndex = create_info.basePipelineIndex
+      } else {
+        obj.BasePipeline = create_info.basePipelineHandle
+      }
+    } else {
+      obj.BasePipelineIndex = 0
+      obj.BasePipeline = as!VkPipeline(0)
+    }
+    createdPipelines.Objects[i] = obj
+  }
+
+  fence
+
+  for i in (0 .. createInfoCount) {
+    pipeline := ?
+    pipelines[i] = pipeline
+    createdPipelines.Objects[i].VulkanHandle = pipeline
+    if (createdPipelines.Objects[i].BasePipelineIndex != -1) {
+      createdPipelines.Objects[i].BasePipeline = pipelines[createdPipelines.Objects[i].BasePipelineIndex]
+    }
+    GraphicsPipelines[pipeline] = createdPipelines.Objects[i]
+  }
+
+  return ?
+}
+
+@internal
+class CreatedComputePipelines {
+  map!(u32, ref!ComputePipelineObject) Objects
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreateComputePipelines(
+    VkDevice                           device,
+    VkPipelineCache                    pipelineCache,
+    u32                                createInfoCount,
+    const VkComputePipelineCreateInfo* pCreateInfos,
+    const VkAllocationCallbacks*       pAllocator,
+    VkPipeline*                        pPipelines) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pipelineCache != as!VkPipelineCache(0) {
+    if !(pipelineCache in PipelineCaches) { vkErrorInvalidPipelineCache(pipelineCache) }
+  }
+  created_pipelines := CreatedComputePipelines()
+  infos := pCreateInfos[0:createInfoCount]
+  for i in (0 .. createInfoCount) {
+    info := infos[i]
+    obj := new!ComputePipelineObject(
+      PipelineCache:   PipelineCaches[pipelineCache],
+      Device:          device,
+      Flags:           info.flags,
+      PipelineLayout:  PipelineLayouts[info.layout]
+    )
+    stage_create_info := infos[i].stage
+    stage_data := StageData(
+      Stage:       stage_create_info.stage,
+      Module:      ShaderModules[stage_create_info.module],
+      EntryPoint:  as!string(stage_create_info.pName),
+    )
+    if (stage_create_info.pSpecializationInfo != null) {
+      spec_info := stage_create_info.pSpecializationInfo[0]
+      spec_data := new!SpecializationInfo()
+      spec_map := spec_info.pMapEntries[0:spec_info.mapEntryCount]
+      for k in (0 .. spec_info.mapEntryCount) {
+        spec_data.Specializations[k] = spec_map[k]
+      }
+      spec_data.Data = clone(as!u8*(spec_info.pData)[0:spec_info.dataSize])
+      stage_data.Specialization = spec_data
+    }
+    obj.Stage = stage_data
+    if ((as!u32(info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
+      if (info.basePipelineIndex != -1) {
+        obj.BasePipelineIndex = info.basePipelineIndex
+      } else {
+        obj.BasePipeline = info.basePipelineHandle
+      }
+    } else {
+      obj.BasePipelineIndex = 0
+      obj.BasePipeline = as!VkPipeline(0)
+    }
+    created_pipelines.Objects[i] = obj
+  }
+  // TODO: pAllocator
+
+  pipelines := pPipelines[0:createInfoCount]
+  for i in (0 .. createInfoCount) {
+    pipeline := ?
+    pipelines[i] = pipeline
+    created_pipelines.Objects[i].VulkanHandle = pipeline
+    if (created_pipelines.Objects[i].BasePipelineIndex != -1) {
+      created_pipelines.Objects[i].BasePipeline = pipelines[created_pipelines.Objects[i].BasePipelineIndex]
+    }
+    ComputePipelines[pipeline] = created_pipelines.Objects[i]
+  }
+
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroyPipeline(
+    VkDevice                     device,
+    VkPipeline                   pipeline,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pipeline in GraphicsPipelines {
+    delete(GraphicsPipelines, pipeline)
+  }
+  if pipeline in ComputePipelines {
+    delete(ComputePipelines, pipeline)
+  }
+}
+
+////////////////////
+// Shader modules //
+////////////////////
+
+@resource
+@internal class ShaderModuleObject {
+  @unused VkDevice                  Device
+  @unused u32[]                     Words
+  @unused VkShaderModule            VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreateShaderModule(
+    VkDevice                        device,
+    const VkShaderModuleCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*    pAllocator,
+    VkShaderModule*                 pShaderModule) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkShaderModuleCreateInfo") }
+  create_info := pCreateInfo[0]
+
+  num_words := as!u64(create_info.codeSize) / 4
+  object := new!ShaderModuleObject(device, clone(create_info.pCode[0:num_words]))
+
+  handle := ?
+  if pShaderModule == null { vkErrorNullPointer("VkShaderModule") }
+  pShaderModule[0] = handle
+  object.VulkanHandle = handle
+  ShaderModules[handle] = object
+
+  return ?
+}
+
+@indirect("VkDevice")
+cmd void vkDestroyShaderModule(
+    VkDevice                     device,
+    VkShaderModule               shaderModule,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  delete(ShaderModules, shaderModule)
+}
+
+////////////////////
+// Pipeline cache //
+////////////////////
+
+@internal class PipelineCacheObject {
+  @unused VkDevice                  Device
+  @unused VkPipelineCache           VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreatePipelineCache(
+    VkDevice                         device,
+    const VkPipelineCacheCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*     pAllocator,
+    VkPipelineCache*                 pPipelineCache) {
+  //TODO(awoloszyn): Add Allocator support
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkPipelineCacheCreateInfo") }
+  create_info := pCreateInfo[0]
+  read(as!u8*(create_info.pInitialData)[0:create_info.initialDataSize])
+  handle := ?
+  if pPipelineCache == null { vkErrorNullPointer("VkPipelineCache") }
+  pPipelineCache[0] = handle
+  PipelineCaches[handle] = new!PipelineCacheObject(device, handle)
+  return ?
+}
+
+@indirect("VkDevice")
+cmd void vkDestroyPipelineCache(
+    VkDevice                     device,
+    VkPipelineCache              pipelineCache,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  delete(PipelineCaches, pipelineCache)
+}
+
+@indirect("VkDevice")
+cmd VkResult vkGetPipelineCacheData(
+    VkDevice        device,
+    VkPipelineCache pipelineCache,
+    size*           pDataSize,
+    void*           pData) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(pipelineCache in PipelineCaches) { vkErrorInvalidPipelineCache(pipelineCache) }
+  if pDataSize == null { vkErrorNullPointer("size_t") }
+  _ = pDataSize[0]
+
+  writeDataSize := ?
+  pDataSize[0] = writeDataSize
+  if pData != null {
+    write(as!u8*(pData)[0:writeDataSize])
+  }
+  return ?
+}
+
+@indirect("VkDevice")
+cmd VkResult vkMergePipelineCaches(
+    VkDevice               device,
+    VkPipelineCache        dstCache,
+    u32                    srcCacheCount,
+    const VkPipelineCache* pSrcCaches) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(dstCache in PipelineCaches) { vkErrorInvalidPipelineCache(dstCache) }
+  srcCaches := pSrcCaches[0:srcCacheCount]
+  for i in (0 .. srcCacheCount) {
+    if !(srcCaches[i] in PipelineCaches) { vkErrorInvalidPipelineCache(srcCaches[i]) }
+    _ = srcCaches[i]
+  }
+  return ?
+}
+
+/////////////////////////////
+// Command buffer commands //
+/////////////////////////////
+
+@internal class vkCmdBindPipelineArgs {
+  VkPipelineBindPoint PipelineBindPoint
+  VkPipeline          Pipeline
+}
+
+sub void dovkCmdBindPipeline(ref!vkCmdBindPipelineArgs args) {
+  switch args.PipelineBindPoint {
+    case VK_PIPELINE_BIND_POINT_COMPUTE:
+      CurrentComputePipeline = ComputePipelines[args.Pipeline]
+    case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      lastDrawInfo().GraphicsPipeline = GraphicsPipelines[args.Pipeline]
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdBindPipeline(
+    VkCommandBuffer     commandBuffer,
+    VkPipelineBindPoint pipelineBindPoint,
+    VkPipeline          pipeline) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindPipeline))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindPipeline[mapPos] =
+  new!vkCmdBindPipelineArgs(
+    PipelineBindPoint: pipelineBindPoint,
+    Pipeline:          pipeline)
+
+  AddCommand(commandBuffer, cmd_vkCmdBindPipeline, mapPos)
+}
+
+@internal class vkCmdSetViewportArgs {
+  u32                   FirstViewport
+  map!(u32, VkViewport) Viewports
+}
+
+sub void dovkCmdSetViewport(ref!vkCmdSetViewportArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetViewport(
+    VkCommandBuffer   commandBuffer,
+    u32               firstViewport,
+    u32               viewportCount,
+    const VkViewport* pViewports) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if pViewports == null { vkErrorNullPointer("VkViewport") }
+  viewports := pViewports[0:viewportCount]
+  args := new!vkCmdSetViewportArgs(
+    firstViewport
+  )
+  for i in (0 .. viewportCount) {
+    args.Viewports[i] = viewports[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetViewport))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetViewport[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetViewport, mapPos)
+}
+
+@internal class vkCmdSetScissorArgs {
+  u32                 FirstScissor
+  map!(u32, VkRect2D) Scissors
+}
+
+sub void dovkCmdSetScissor(ref!vkCmdSetScissorArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetScissor(
+    VkCommandBuffer commandBuffer,
+    u32             firstScissor,
+    u32             scissorCount,
+    const VkRect2D* pScissors) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if pScissors == null { vkErrorNullPointer("VkRect2D") }
+  scissors := pScissors[0:scissorCount]
+  args := new!vkCmdSetScissorArgs(
+    firstScissor
+  )
+  for i in (0 .. scissorCount) {
+    args.Scissors[i] = scissors[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetScissor))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetScissor[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetScissor, mapPos)
+}
+
+@internal class vkCmdSetLineWidthArgs {
+  f32 LineWidth
+}
+
+sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetLineWidth(
+    VkCommandBuffer commandBuffer,
+    f32             lineWidth) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdSetLineWidthArgs(lineWidth)
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetLineWidth))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetLineWidth[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetLineWidth, mapPos)
+}
+
+@internal class vkCmdSetDepthBiasArgs {
+  f32 DepthBiasConstantFactor
+  f32 DepthBiasClamp
+  f32 DepthBiasSlopeFactor
+}
+
+sub void dovkCmdSetDepthBias(ref!vkCmdSetDepthBiasArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetDepthBias(
+    VkCommandBuffer commandBuffer,
+    f32             depthBiasConstantFactor,
+    f32             depthBiasClamp,
+    f32             depthBiasSlopeFactor) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdSetDepthBiasArgs(
+    depthBiasConstantFactor,
+    depthBiasClamp,
+    depthBiasSlopeFactor
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetDepthBias))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetDepthBias[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetDepthBias, mapPos)
+}
+
+@internal class vkCmdSetBlendConstantsArgs {
+  f32 R
+  f32 G
+  f32 B
+  f32 A
+}
+
+sub void dovkCmdSetBlendConstants(ref!vkCmdSetBlendConstantsArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetBlendConstants(
+              VkCommandBuffer commandBuffer,
+    @readonly f32[4]          blendConstants) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdSetBlendConstantsArgs(
+    blendConstants[0],
+    blendConstants[1],
+    blendConstants[2],
+    blendConstants[3])
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetBlendConstants))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetBlendConstants[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetBlendConstants, mapPos)
+}
+
+@internal class vkCmdSetDepthBoundsArgs {
+  f32 MinDepthBounds
+  f32 MaxDepthBounds
+}
+
+sub void dovkCmdSetDepthBounds(ref!vkCmdSetDepthBoundsArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetDepthBounds(
+    VkCommandBuffer commandBuffer,
+    f32             minDepthBounds,
+    f32             maxDepthBounds) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdSetDepthBoundsArgs(
+    minDepthBounds,
+    maxDepthBounds)
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetDepthBounds))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetDepthBounds[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetDepthBounds, mapPos)
+}
+
+@internal class vkCmdSetStencilCompareMaskArgs {
+  VkStencilFaceFlags FaceMask
+  u32                CompareMask
+}
+
+sub void dovkCmdSetStencilCompareMask(ref!vkCmdSetStencilCompareMaskArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetStencilCompareMask(
+    VkCommandBuffer    commandBuffer,
+    VkStencilFaceFlags faceMask,
+    u32                compareMask) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdSetStencilCompareMaskArgs(
+    faceMask,
+    compareMask
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilCompareMask))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilCompareMask[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetStencilCompareMask, mapPos)
+}
+
+@internal class vkCmdSetStencilWriteMaskArgs {
+  VkStencilFaceFlags FaceMask
+  u32                WriteMask
+}
+
+sub void dovkCmdSetStencilWriteMask(ref!vkCmdSetStencilWriteMaskArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetStencilWriteMask(
+    VkCommandBuffer    commandBuffer,
+    VkStencilFaceFlags faceMask,
+    u32                writeMask) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdSetStencilWriteMaskArgs(
+    faceMask,
+    writeMask
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilWriteMask))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilWriteMask[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetStencilWriteMask, mapPos)
+}
+
+@internal class vkCmdSetStencilReferenceArgs {
+  VkStencilFaceFlags FaceMask
+  u32                Reference
+}
+
+sub void dovkCmdSetStencilReference(ref!vkCmdSetStencilReferenceArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetStencilReference(
+    VkCommandBuffer    commandBuffer,
+    VkStencilFaceFlags faceMask,
+    u32                reference) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdSetStencilReferenceArgs(
+    faceMask,
+    reference
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilReference))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetStencilReference[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetStencilReference, mapPos)
+}
+

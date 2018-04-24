@@ -1,0 +1,315 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_KHR_display") define VK_KHR_DISPLAY_SPEC_VERSION   21
+@extension("VK_KHR_display") define VK_KHR_DISPLAY_EXTENSION_NAME "VK_KHR_display"
+
+///////////
+// Types //
+///////////
+
+@extension("VK_KHR_display") @replay_remap @nonDispatchHandle type u64 VkDisplayKHR
+@extension("VK_KHR_display") @replay_remap @nonDispatchHandle type u64 VkDisplayModeKHR
+
+///////////////
+// Bitfields //
+///////////////
+
+@extension("VK_KHR_display")
+bitfield VkDisplayPlaneAlphaFlagBitsKHR {
+  VK_DISPLAY_PLANE_ALPHA_OPAQUE_BIT_KHR                  = 0x00000001,
+  VK_DISPLAY_PLANE_ALPHA_GLOBAL_BIT_KHR                  = 0x00000002,
+  VK_DISPLAY_PLANE_ALPHA_PER_PIXEL_BIT_KHR               = 0x00000004,
+  VK_DISPLAY_PLANE_ALPHA_PER_PIXEL_PREMULTIPLIED_BIT_KHR = 0x00000008,
+}
+@extension("VK_KHR_display")
+type VkFlags VkDisplayPlaneAlphaFlagsKHR
+
+@extension("VK_KHR_display")
+@reserved_flags
+type VkFlags VkDisplayModeCreateFlagsKHR
+
+@extension("VK_KHR_display")
+@reserved_flags
+type VkFlags VkDisplaySurfaceCreateFlagsKHR
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_KHR_display")
+class VkDisplayPropertiesKHR {
+  VkDisplayKHR               display
+  char*                      displayName
+  VkExtent2D                 physicalDimensions
+  VkExtent2D                 physicalResolution
+  VkSurfaceTransformFlagsKHR supportedTransforms
+  VkBool32                   planeReorderPossible
+  VkBool32                   persistentContent
+}
+
+@extension("VK_KHR_display")
+class VkDisplayModeParametersKHR {
+  VkExtent2D visibleRegion
+  u32        refreshRate
+}
+
+@extension("VK_KHR_display")
+class VkDisplayModePropertiesKHR {
+  VkDisplayModeKHR           displayMode
+  VkDisplayModeParametersKHR parameters
+}
+
+@extension("VK_KHR_display")
+class VkDisplayModeCreateInfoKHR {
+  VkStructureType             sType
+  const void*                 pNext
+  VkDisplayModeCreateFlagsKHR flags
+  VkDisplayModeParametersKHR  parameters
+}
+
+@extension("VK_KHR_display")
+class VkDisplayPlaneCapabilitiesKHR {
+  VkDisplayPlaneAlphaFlagsKHR supportedAlpha
+  VkOffset2D                  minSrcPosition
+  VkOffset2D                  maxSrcPosition
+  VkExtent2D                  minSrcExtent
+  VkExtent2D                  maxSrcExtent
+  VkOffset2D                  minDstPosition
+  VkOffset2D                  maxDstPosition
+  VkExtent2D                  minDstExtent
+  VkExtent2D                  maxDstExtent
+}
+
+@extension("VK_KHR_display")
+class VkDisplayPlanePropertiesKHR {
+  VkDisplayKHR currentDisplay
+  u32          currentStackIndex
+}
+
+@extension("VK_KHR_display")
+class VkDisplaySurfaceCreateInfoKHR {
+  VkStructureType                sType
+  const void*                    pNext
+  VkDisplaySurfaceCreateFlagsKHR flags
+  VkDisplayModeKHR               displayMode
+  u32                            planeIndex
+  u32                            planeStackIndex
+  VkSurfaceTransformFlagBitsKHR  transform
+  f32                            globalAlpha
+  VkDisplayPlaneAlphaFlagBitsKHR alphaMode
+  VkExtent2D                     imageExtent
+}
+
+//////////////
+// Commands //
+//////////////
+
+@extension("VK_KHR_display")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDeviceDisplayPropertiesKHR(
+    VkPhysicalDevice        physicalDevice,
+    u32*                    pPropertyCount,
+    VkDisplayPropertiesKHR* pProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pPropertyCount == null { vkErrorNullPointer("uint32_t") }
+  _ = pPropertyCount[0]
+
+  if pProperties == null {
+    pPropertyCount[0] = ?
+  } else {
+    count := as!u32(?)
+    properties := pProperties[0:count]
+    for i in (0 .. count) {
+      properties[i] = ?
+      // TODO: also need to observe VkDisplayPropertiesKHR.displayName
+    }
+    pPropertyCount[0] = count
+  }
+
+  return ?
+}
+
+@extension("VK_KHR_display")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDeviceDisplayPlanePropertiesKHR(
+    VkPhysicalDevice             physicalDevice,
+    u32*                         pPropertyCount,
+    VkDisplayPlanePropertiesKHR* pProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pPropertyCount == null { vkErrorNullPointer("uint32_t") }
+  _ = pPropertyCount[0]
+
+  if pProperties == null {
+    pPropertyCount[0] = ?
+  } else {
+    count := as!u32(?)
+    properties := pProperties[0:count]
+    for i in (0 .. count) {
+      properties[i] = ?
+    }
+    pPropertyCount[0] = count
+  }
+
+  return ?
+}
+
+@extension("VK_KHR_display")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetDisplayPlaneSupportedDisplaysKHR(
+    VkPhysicalDevice physicalDevice,
+    u32              planeIndex,
+    u32*             pDisplayCount,
+    VkDisplayKHR*    pDisplays) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pDisplayCount == null { vkErrorNullPointer("uint32_t") }
+  _ = pDisplayCount[0]
+
+  if pDisplays == null {
+    pDisplayCount[0] = ?
+  } else {
+    count := as!u32(?)
+    displays := pDisplays[0:count]
+    for i in (0 .. count) {
+      displays[i] = ?
+    }
+    pDisplayCount[0] = count
+  }
+
+  return ?
+}
+
+@extension("VK_KHR_display")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetDisplayModePropertiesKHR(
+    VkPhysicalDevice            physicalDevice,
+    VkDisplayKHR                display,
+    u32*                        pPropertyCount,
+    VkDisplayModePropertiesKHR* pProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pPropertyCount == null { vkErrorNullPointer("uint32_t") }
+  _ = pPropertyCount[0]
+
+  if pProperties == null {
+    pPropertyCount[0] = ?
+  } else {
+    count := as!u32(?)
+    properties := pProperties[0:count]
+    for i in (0 .. count) {
+      properties[i] = ?
+    }
+    pPropertyCount[0] = count
+  }
+
+  return ?
+}
+
+@extension("VK_KHR_display")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkCreateDisplayModeKHR(
+    VkPhysicalDevice                  physicalDevice,
+    VkDisplayKHR                      display,
+    const VkDisplayModeCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*      pAllocator,
+    VkDisplayModeKHR*                 pMode) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pCreateInfo == null { vkErrorNullPointer("VkDisplayModeCreateInfo") }
+  _ = pCreateInfo[0]
+  // TODO: pAllocator
+
+  handle := ?
+  if pMode == null { vkErrorNullPointer("VkDisplayModeKHR") }
+  pMode[0] = handle
+  modeObject := new!DisplayModeObject(PhysicalDevice: physicalDevice,
+    Display:                          display,
+    VulkanHandle:                     handle)
+  DisplayModes[handle] = modeObject
+
+  return ?
+}
+
+@extension("VK_KHR_display")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetDisplayPlaneCapabilitiesKHR(
+    VkPhysicalDevice               physicalDevice,
+    VkDisplayModeKHR               mode,
+    u32                            planeIndex,
+    VkDisplayPlaneCapabilitiesKHR* pCapabilities) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if !(mode in DisplayModes) { vkErrorInvalidDisplayMode(mode) }
+  if pCapabilities == null { vkErrorNullPointer("VkDisplayPlaneCapabilitiesKHR") }
+  pCapabilities[0] = ?
+  return ?
+}
+
+@extension("VK_KHR_display")
+@indirect("VkInstance")
+cmd VkResult vkCreateDisplayPlaneSurfaceKHR(
+    VkInstance                           instance,
+    const VkDisplaySurfaceCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*         pAllocator,
+    VkSurfaceKHR*                        pSurface) {
+  if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+  if pCreateInfo == null { vkErrorNullPointer("VkDisplaySurfaceCreateInfoKHR") }
+  _ = pCreateInfo[0]
+  // TODO: pAllocator
+
+  handle := ?
+  if pSurface == null { vkErrorNullPointer("VkSurfaceKHR") }
+  pSurface[0] = handle
+  surfaceObject := new!SurfaceObject(Instance: instance,
+    VulkanHandle:           handle)
+  Surfaces[handle] = surfaceObject
+
+  return ?
+}
+
+////////////////////
+// State tracking //
+////////////////////
+
+@internal class DisplayModeObject {
+  @unused VkPhysicalDevice          PhysicalDevice
+  @unused VkDisplayKHR              Display
+  @unused VkDisplayModeKHR          VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}

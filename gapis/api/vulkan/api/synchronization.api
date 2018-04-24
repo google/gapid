@@ -1,0 +1,461 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////
+// Fence //
+///////////
+
+@internal class FenceObject {
+  @unused VkDevice                  Device
+  @unused VkFence                   VulkanHandle
+  @unused bool                      Signaled
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreateFence(
+    VkDevice                     device,
+    const VkFenceCreateInfo*     pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkFence*                     pFence) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkFenceCreateInfo") }
+  f := new!FenceObject()
+  create_info := pCreateInfo[0]
+  f.Device = device
+
+  if ((as!u32(create_info.flags) & as!u32(VK_FENCE_CREATE_SIGNALED_BIT)) != 0) {
+    f.Signaled = true
+  } else {
+    f.Signaled = false
+  }
+  handle := ?
+  if pFence == null { vkErrorNullPointer("VkFence") }
+  pFence[0] = handle
+  f.VulkanHandle = handle
+  Fences[handle] = f
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroyFence(
+    VkDevice                     device,
+    VkFence                      fence,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  delete(Fences, fence)
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkResetFences(
+    VkDevice       device,
+    u32            fenceCount,
+    const VkFence* pFences) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  read(pFences[0:fenceCount])
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+@custom
+cmd VkResult vkGetFenceStatus(
+    VkDevice device,
+    VkFence  fence) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(fence in Fences) { vkErrorInvalidFence(fence) }
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+@blocking
+cmd VkResult vkWaitForFences(
+    VkDevice       device,
+    u32            fenceCount,
+    const VkFence* pFences,
+    VkBool32       waitAll,
+    u64            timeout) { /// timeout in nanoseconds
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  fences := pFences[0:fenceCount]
+  for i in (0 .. fenceCount) {
+    if !(fences[i] in Fences) { vkErrorInvalidFence(fences[i]) }
+    _ = fences[i]
+  }
+  return ?
+}
+
+///////////////
+// Semaphore //
+///////////////
+
+@internal class SemaphoreObject {
+  @unused VkDevice                  Device
+  @unused VkSemaphore               VulkanHandle
+  @unused VkQueue                   LastQueue
+  @unused bool                      Signaled
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+  @unused VkQueue                   WaitingQueue
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreateSemaphore(
+    VkDevice                     device,
+    const VkSemaphoreCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkSemaphore*                 pSemaphore) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkSemaphoreCreateInfo") }
+  _ = pCreateInfo[0]
+  // TODO: pAllocator
+
+  handle := ?
+  semaphoreObject := new!SemaphoreObject(Device: device,
+    VulkanHandle:           handle)
+  if pSemaphore == null { vkErrorNullPointer("VkSemaphore") }
+  pSemaphore[0] = handle
+  Semaphores[handle] = semaphoreObject
+
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroySemaphore(
+    VkDevice                     device,
+    VkSemaphore                  semaphore,
+    const VkAllocationCallbacks* pAllocator) {
+  // TODO: pAllocator
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  delete(Semaphores, semaphore)
+}
+
+///////////
+// Event //
+///////////
+
+@internal class EventObject {
+  @unused VkDevice                  Device
+  @unused VkEvent                   VulkanHandle
+  @unused bool                      Signaled
+  @unused VkQueue                   SubmitQueue
+  @unused ref!VulkanDebugMarkerInfo DebugInfo
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreateEvent(
+    VkDevice                     device,
+    const VkEventCreateInfo*     pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkEvent*                     pEvent) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkEventCreateInfo") }
+  read(pCreateInfo[0:1])
+  event := new!EventObject()
+  event.Device = device
+  event.Signaled = false
+  event.SubmitQueue = as!VkQueue(0)
+  handle := ?
+  if pEvent == null { vkErrorNullPointer("VkEvent") }
+  pEvent[0] = handle
+  event.VulkanHandle = handle
+  Events[handle] = event
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroyEvent(
+    VkDevice                     device,
+    VkEvent                      event,
+    const VkAllocationCallbacks* pAllocator) {
+  delete(Events, event)
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+@custom
+cmd VkResult vkGetEventStatus(
+    VkDevice device,
+    VkEvent  event) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(event in Events) { vkErrorInvalidEvent(event) }
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkSetEvent(
+    VkDevice device,
+    VkEvent  event) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(event in Events) { vkErrorInvalidEvent(event) }
+  e := Events[event]
+  e.Signaled = true
+  queue := e.SubmitQueue
+  if queue != as!VkQueue(0) {
+    q := Queues[queue]
+    if e.VulkanHandle in q.PendingEvents {
+      delete(q.PendingEvents, e.VulkanHandle)
+    }
+    // If all pending events are signaled, so all removed from the pending
+    // event list in the queue object, we should roll out the pending commands
+    if len(q.PendingEvents) == 0 {
+      LastBoundQueue = Queues[queue]
+      execPendingCommands(queue)
+    }
+  }
+  fence
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkResetEvent(
+    VkDevice device,
+    VkEvent  event) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(event in Events) { vkErrorInvalidEvent(event) }
+  Events[event].Signaled = false
+  return ?
+}
+
+///////////////////////////////////
+// Event command buffer commands //
+///////////////////////////////////
+
+@internal class vkCmdSetEventArgs {
+  VkEvent              Event
+  VkPipelineStageFlags StageMask
+}
+
+sub void dovkCmdSetEvent(ref!vkCmdSetEventArgs event) {
+  Events[event.Event].Signaled = true
+  Events[event.Event].SubmitQueue = LastBoundQueue.VulkanHandle
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdSetEvent(
+    VkCommandBuffer      commandBuffer,
+    VkEvent              event,
+    VkPipelineStageFlags stageMask) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(event in Events) { vkErrorInvalidEvent(event) }
+  args := new!vkCmdSetEventArgs(
+    Event:      event,
+    StageMask:  stageMask
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdSetEvent, mapPos)
+}
+
+@internal class vkCmdResetEventArgs {
+  VkEvent              Event
+  VkPipelineStageFlags StageMask
+}
+
+sub void dovkCmdResetEvent(ref!vkCmdResetEventArgs event) {
+  Events[event.Event].Signaled = false
+  Events[event.Event].SubmitQueue = LastBoundQueue.VulkanHandle
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdResetEvent(
+    VkCommandBuffer      commandBuffer,
+    VkEvent              event,
+    VkPipelineStageFlags stageMask) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(event in Events) { vkErrorInvalidEvent(event) }
+  args := new!vkCmdResetEventArgs(
+    Event:      event,
+    StageMask:  stageMask,
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdResetEvent, mapPos)
+}
+
+@internal class vkCmdWaitEventsArgs {
+  map!(u32, VkEvent)               Events
+  VkPipelineStageFlags             SrcStageMask
+  VkPipelineStageFlags             DstStageMask
+  map!(u32, VkMemoryBarrier)       MemoryBarriers
+  map!(u32, VkBufferMemoryBarrier) BufferMemoryBarriers
+  map!(u32, VkImageMemoryBarrier)  ImageMemoryBarriers
+}
+
+
+sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
+  for _ , _ , e in args.Events {
+    if !(e in Events) { vkErrorInvalidEvent(e) }
+    event := Events[e]
+    event.SubmitQueue = LastBoundQueue.VulkanHandle
+    if event.Signaled != true {
+      LastBoundQueue.PendingEvents[e] = event
+    }
+  }
+  if len(LastBoundQueue.PendingEvents) == 0 {
+    for _ , _ , b in args.ImageMemoryBarriers {
+      if !(b.image in Images) { vkErrorInvalidImage(b.image) }
+      image := Images[b.image]
+      image.Info.Layout = b.newLayout
+      image.LastBoundQueue = LastBoundQueue
+    }
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdWaitEvents(
+    VkCommandBuffer              commandBuffer,
+    u32                          eventCount,
+    const VkEvent*               pEvents,
+    VkPipelineStageFlags         srcStageMask,
+    VkPipelineStageFlags         dstStageMask,
+    u32                          memoryBarrierCount,
+    const VkMemoryBarrier*       pMemoryBarriers,
+    u32                          bufferMemoryBarrierCount,
+    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+    u32                          imageMemoryBarrierCount,
+    const VkImageMemoryBarrier*  pImageMemoryBarriers) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdWaitEventsArgs(
+    SrcStageMask:  srcStageMask,
+    DstStageMask:  dstStageMask,
+  )
+  events := pEvents[0:eventCount]
+  memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
+  bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
+  imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
+  for i in (0 .. eventCount) {
+    if !(events[i] in Events) { vkErrorInvalidEvent(events[i]) }
+    args.Events[i] = events[i]
+  }
+  for i in (0 .. memoryBarrierCount) {
+    args.MemoryBarriers[i] = memoryBarriers[i]
+  }
+  for i in (0 .. bufferMemoryBarrierCount) {
+    args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
+  }
+  for i in (0 .. imageMemoryBarrierCount) {
+    args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdWaitEvents, mapPos)
+}
+
+//////////////////////
+// Pipeline barrier //
+//////////////////////
+
+@internal class vkCmdPipelineBarrierArgs {
+  VkPipelineStageFlags             SrcStageMask        ,
+  VkPipelineStageFlags             DstStageMask        ,
+  VkDependencyFlags                DependencyFlags     ,
+  map!(u32, VkMemoryBarrier)       MemoryBarriers      ,
+  map!(u32, VkBufferMemoryBarrier) BufferMemoryBarriers,
+  map!(u32, VkImageMemoryBarrier)  ImageMemoryBarriers
+}
+
+sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
+  for _ , _ , v in args.ImageMemoryBarriers {
+    if !(v.image in Images) { vkErrorInvalidImage(v.image) }
+    image := Images[v.image]
+    image.Info.Layout = v.newLayout
+    image.LastBoundQueue = LastBoundQueue
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdPipelineBarrier(
+    VkCommandBuffer              commandBuffer,
+    VkPipelineStageFlags         srcStageMask,
+    VkPipelineStageFlags         dstStageMask,
+    VkDependencyFlags            dependencyFlags,
+    u32                          memoryBarrierCount,
+    const VkMemoryBarrier*       pMemoryBarriers,
+    u32                          bufferMemoryBarrierCount,
+    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+    u32                          imageMemoryBarrierCount,
+    const VkImageMemoryBarrier*  pImageMemoryBarriers) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdPipelineBarrierArgs(
+    SrcStageMask:     srcStageMask,
+    DstStageMask:     dstStageMask,
+    DependencyFlags:  dependencyFlags
+  )
+  memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
+  for i in (0 .. memoryBarrierCount) {
+    args.MemoryBarriers[i] = memoryBarriers[i]
+  }
+
+  bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
+  for i in (0 .. bufferMemoryBarrierCount) {
+    args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
+  }
+
+  imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
+  for i in (0 .. imageMemoryBarrierCount) {
+    args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
+  }
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdPipelineBarrier, mapPos)
+}

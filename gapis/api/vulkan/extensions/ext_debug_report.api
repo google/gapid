@@ -1,0 +1,187 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_EXT_debug_report") define VK_EXT_DEBUG_REPORT_SPEC_VERSION   1
+@extension("VK_EXT_debug_report") define VK_EXT_DEBUG_REPORT_EXTENSION_NAME "VK_EXT_debug_report"
+
+///////////
+// Types //
+///////////
+
+@extension("VK_EXT_debug_report") @replay_remap @nonDispatchHandle type u64 VkDebugReportCallbackEXT
+@extension("VK_EXT_debug_report") @external type void* PFN_vkDebugReportCallbackEXT
+
+///////////
+// Enums //
+///////////
+
+@extension("VK_EXT_debug_report")
+enum VkDebugReportObjectTypeEXT {
+  VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT               = 0,
+  VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT              = 1,
+  VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT       = 2,
+  VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT                = 3,
+  VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT                 = 4,
+  VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT             = 5,
+  VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT        = 6,
+  VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT                 = 7,
+  VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT         = 8,
+  VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT                = 9,
+  VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT                 = 10,
+  VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT                 = 11,
+  VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT            = 12,
+  VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT           = 13,
+  VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT            = 14,
+  VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT         = 15,
+  VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT        = 16,
+  VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT       = 17,
+  VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT           = 18,
+  VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT              = 19,
+  VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT = 20,
+  VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT               = 21,
+  VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT       = 22,
+  VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT        = 23,
+  VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT           = 24,
+  VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT          = 25,
+  VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT           = 26,
+  VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT         = 27,
+  VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT          = 28,
+}
+
+@extension("VK_EXT_debug_report")
+@unused
+enum VkDebugReportErrorEXT {
+  VK_DEBUG_REPORT_ERROR_NONE_EXT         = 0,
+  VK_DEBUG_REPORT_ERROR_CALLBACK_REF_EXT = 1,
+}
+
+///////////////
+// Bitfields //
+///////////////
+
+@extension("VK_EXT_debug_report")
+@unused
+bitfield VkDebugReportFlagBitsEXT {
+  VK_DEBUG_REPORT_INFORMATION_BIT_EXT         = 0x00000001,
+  VK_DEBUG_REPORT_WARNING_BIT_EXT             = 0x00000002,
+  VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT = 0x00000004,
+  VK_DEBUG_REPORT_ERROR_BIT_EXT               = 0x00000008,
+  VK_DEBUG_REPORT_DEBUG_BIT_EXT               = 0x00000010,
+}
+@extension("VK_EXT_debug_report")
+type VkFlags VkDebugReportFlagsEXT
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_EXT_debug_report")
+class VkDebugReportCallbackCreateInfoEXT {
+  VkStructureType              sType
+  const void*                  pNext
+  VkDebugReportFlagsEXT        flags
+  PFN_vkDebugReportCallbackEXT pfnCallback
+  void*                        pUserData
+}
+
+//////////////
+// Commands //
+//////////////
+
+@extension("VK_EXT_debug_report")
+@pfn cmd VkBool32 vkDebugReportCallbackEXT(
+    VkDebugReportFlagsEXT      flags,
+    VkDebugReportObjectTypeEXT objectType,
+    u64                        object,
+    size                       location,
+    s32                        messageCode,
+    const char*                pLayerPrefix,
+    const char*                pMessage,
+    void*                      pUserData) {
+
+  _ = as!string(pLayerPrefix)
+  _ = as!string(pMessage)
+  return ?
+}
+
+
+
+@extension("VK_EXT_debug_report")
+@indirect("VkInstance")
+@no_replay
+cmd VkResult vkCreateDebugReportCallbackEXT(
+    VkInstance                                instance,
+    const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+    const VkAllocationCallbacks*              pAllocator,
+    VkDebugReportCallbackEXT*                 pCallback) {
+  if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+  return ?
+}
+
+@extension("VK_EXT_debug_report")
+@indirect("VkInstance")
+@no_replay
+cmd void vkDestroyDebugReportCallbackEXT(
+    VkInstance                   instance,
+    VkDebugReportCallbackEXT     callback,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+}
+
+@extension("VK_EXT_debug_report")
+@indirect("VkInstance")
+@no_replay
+cmd void vkDebugReportMessageEXT(
+    VkInstance                 instance,
+    VkDebugReportFlagsEXT      flags,
+    VkDebugReportObjectTypeEXT objectType,
+    u64                        object,
+    size                       location,
+    s32                        messageCode,
+    const char*                pLayerPrefix,
+    const char*                pMessage) {
+
+  _ = as!string(pLayerPrefix)
+  _ = as!string(pMessage)
+  if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+}
+

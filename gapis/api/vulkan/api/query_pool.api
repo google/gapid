@@ -1,0 +1,293 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+//////////////////////////
+// Query pool and query //
+//////////////////////////
+
+enum QueryStatus {
+  QUERY_STATUS_INACTIVE = 0
+  QUERY_STATUS_ACTIVE   = 1
+  QUERY_STATUS_COMPLETE = 2
+}
+
+@internal class QueryPoolObject {
+  @unused VkDevice                      Device
+  @unused VkQueryPool                   VulkanHandle
+  @unused VkQueryType                   QueryType
+  @unused u32                           QueryCount
+  @unused VkQueryPipelineStatisticFlags PipelineStatistics
+  @unused map!(u32, QueryStatus)        Status
+  @unused ref!VulkanDebugMarkerInfo     DebugInfo
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreateQueryPool(
+    VkDevice                     device,
+    const VkQueryPoolCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkQueryPool*                 pQueryPool) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkQueuePoolCreateInfo") }
+  info := pCreateInfo[0]
+
+  handle := ?
+  pool := new!QueryPoolObject(
+    Device:              device,
+    VulkanHandle:        handle,
+    QueryType:           info.queryType,
+    QueryCount:          info.queryCount,
+    PipelineStatistics:  info.pipelineStatistics)
+  for i in (0 .. info.queryCount) {
+    pool.Status[i] = QUERY_STATUS_INACTIVE
+  }
+
+  QueryPools[handle] = pool
+  if pQueryPool == null { vkErrorNullPointer("VkQueuePool") }
+  pQueryPool[0] = handle
+
+  return ?
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroyQueryPool(
+    VkDevice                     device,
+    VkQueryPool                  queryPool,
+    const VkAllocationCallbacks* pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  delete(QueryPools, queryPool)
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+@blocking
+@no_replay
+// GetQueryPoolResults has no semantic impact
+// on replay, so avoid replaying it. It can cause
+// hangs depending on the state of the query pool
+// TODO(awoloszyn): Work out all of the cases where this
+// may cause hangs, and fix it for replay.
+cmd VkResult vkGetQueryPoolResults(
+    VkDevice           device,
+    VkQueryPool        queryPool,
+    u32                firstQuery,
+    u32                queryCount,
+    size               dataSize,
+    void*              pData,
+    VkDeviceSize       stride,
+    VkQueryResultFlags flags) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(queryPool in QueryPools) { vkErrorInvalidQueryPool(queryPool) }
+  write(as!u8*(pData)[0:dataSize])
+  return ?
+}
+
+/////////////////////////////
+// Command buffer commands //
+/////////////////////////////
+
+@internal class vkCmdBeginQueryArgs {
+  VkQueryPool         QueryPool
+  u32                 Query
+  VkQueryControlFlags Flags
+}
+
+sub void dovkCmdBeginQuery(ref!vkCmdBeginQueryArgs args) {
+  pool := QueryPools[args.QueryPool]
+  pool.Status[args.Query] = QUERY_STATUS_ACTIVE
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdBeginQuery(
+    VkCommandBuffer     commandBuffer,
+    VkQueryPool         queryPool,
+    u32                 query,
+    VkQueryControlFlags flags) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(queryPool in QueryPools) { vkErrorInvalidQueryPool(queryPool) }
+  args := new!vkCmdBeginQueryArgs(
+    queryPool,          query, flags
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginQuery))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginQuery[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdBeginQuery, mapPos)
+}
+
+@internal class
+vkCmdEndQueryArgs {
+  VkQueryPool QueryPool
+  u32         Query
+}
+
+sub void dovkCmdEndQuery(ref!vkCmdEndQueryArgs args) {
+  pool := QueryPools[args.QueryPool]
+  pool.Status[args.Query] = QUERY_STATUS_COMPLETE
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdEndQuery(
+    VkCommandBuffer commandBuffer,
+    VkQueryPool     queryPool,
+    u32             query) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(queryPool in QueryPools) { vkErrorInvalidQueryPool(queryPool) }
+  args := new!vkCmdEndQueryArgs(
+    queryPool,        query
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndQuery))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdEndQuery[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdEndQuery, mapPos)
+}
+
+@internal class
+vkCmdResetQueryPoolArgs {
+  VkQueryPool QueryPool
+  u32         FirstQuery
+  u32         QueryCount
+}
+
+sub void dovkCmdResetQueryPool(ref!vkCmdResetQueryPoolArgs args) {
+  pool := QueryPools[args.QueryPool]
+  for i in (0 .. args.QueryCount) {
+    pool.Status[args.FirstQuery + i] = QUERY_STATUS_INACTIVE
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdResetQueryPool(
+    VkCommandBuffer commandBuffer,
+    VkQueryPool     queryPool,
+    u32             firstQuery,
+    u32             queryCount) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(queryPool in QueryPools) { vkErrorInvalidQueryPool(queryPool) }
+  args := new!vkCmdResetQueryPoolArgs(
+    queryPool,              firstQuery, queryCount
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResetQueryPool))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdResetQueryPool[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdResetQueryPool, mapPos)
+}
+
+@internal class vkCmdWriteTimestampArgs {
+  VkPipelineStageFlagBits PipelineStage,
+  VkQueryPool             QueryPool    ,
+  u32                     Query
+}
+
+sub void dovkCmdWriteTimestamp(ref!vkCmdWriteTimestampArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdWriteTimestamp(
+    VkCommandBuffer         commandBuffer,
+    VkPipelineStageFlagBits pipelineStage,
+    VkQueryPool             queryPool,
+    u32                     query) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(queryPool in QueryPools) { vkErrorInvalidQueryPool(queryPool) }
+  args := new!vkCmdWriteTimestampArgs(
+    pipelineStage,          queryPool, query
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWriteTimestamp))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdWriteTimestamp[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdWriteTimestamp, mapPos)
+}
+
+@internal
+class vkCmdCopyQueryPoolResultsArgs {
+  VkQueryPool        QueryPool
+  u32                FirstQuery
+  u32                QueryCount
+  VkBuffer           DstBuffer
+  VkDeviceSize       DstOffset
+  VkDeviceSize       Stride
+  VkQueryResultFlags Flags
+}
+
+sub void dovkCmdCopyQueryPoolResults(ref!vkCmdCopyQueryPoolResultsArgs args) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdCopyQueryPoolResults(
+    VkCommandBuffer    commandBuffer,
+    VkQueryPool        queryPool,
+    u32                firstQuery,
+    u32                queryCount,
+    VkBuffer           dstBuffer,
+    VkDeviceSize       dstOffset,
+    VkDeviceSize       stride,
+    VkQueryResultFlags flags) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  if !(queryPool in QueryPools) { vkErrorInvalidQueryPool(queryPool) }
+  if !(dstBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
+  args := new!vkCmdCopyQueryPoolResultsArgs(
+    QueryPool:   queryPool,
+    FirstQuery:  firstQuery,
+    QueryCount:  queryCount,
+    DstBuffer:   dstBuffer,
+    DstOffset:   dstOffset,
+    Stride:      stride,
+    Flags:       flags
+  )
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyQueryPoolResults))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyQueryPoolResults[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdCopyQueryPoolResults, mapPos)
+}

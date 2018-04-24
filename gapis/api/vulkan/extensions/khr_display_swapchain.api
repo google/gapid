@@ -1,0 +1,113 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_KHR_display_swapchain") define VK_KHR_DISPLAY_SWAPCHAIN_SPEC_VERSION   9
+@extension("VK_KHR_display_swapchain") define VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME "VK_KHR_display_swapchain"
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_KHR_display_swapchain")
+class VkDisplayPresentInfoKHR {
+  VkStructureType sType
+  const void*     pNext
+  VkRect2D        srcRect
+  VkRect2D        dstRect
+  VkBool32        persistent
+}
+
+//////////////
+// Commands //
+//////////////
+
+@extension("VK_KHR_display_swapchain")
+@indirect("VkDevice")
+cmd VkResult vkCreateSharedSwapchainsKHR(
+    VkDevice                        device,
+    u32                             swapchainCount,
+    const VkSwapchainCreateInfoKHR* pCreateInfos,
+    const VkAllocationCallbacks*    pAllocator,
+    VkSwapchainKHR*                 pSwapchains) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  create_infos := pCreateInfos[0:swapchainCount]
+  fence
+  if pSwapchains == null { vkErrorNullPointer("VkSwapchainKHR") }
+  swapchains := pSwapchains[0:swapchainCount]
+  for i in (0 .. swapchainCount) {
+    create_info := create_infos[i]
+    queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
+    // TODO: pAllocator
+
+    swapchainObject := new!SwapchainObject(Device: device,
+      Info:                 ImageInfo(
+        ImageType:    VK_IMAGE_TYPE_2D,
+        Format:       create_info.imageFormat,
+        Extent:       VkExtent3D(create_info.imageExtent.Width, create_info.imageExtent.Height, 1),
+        MipLevels:    1,
+        ArrayLayers:  create_info.imageArrayLayers,
+        Samples:      VK_SAMPLE_COUNT_1_BIT,
+        Tiling:       VK_IMAGE_TILING_OPTIMAL,
+        Usage:        create_info.imageUsage,
+        SharingMode:  create_info.imageSharingMode,
+        Layout:       VK_IMAGE_LAYOUT_UNDEFINED
+      ),
+      Surface:         Surfaces[create_info.surface],
+      ColorSpace:      create_info.imageColorSpace,
+      PreTransform:    create_info.preTransform,
+      CompositeAlpha:  create_info.compositeAlpha,
+      PresentMode:     create_info.presentMode,
+      Clipped:         create_info.clipped
+    )
+
+    for j in (0 .. create_info.queueFamilyIndexCount) {
+      swapchainObject.Info.QueueFamilyIndices[j] =
+      queueFamilyIndices[j]
+    }
+
+    handle := ?
+    swapchains[i] = handle
+    swapchainObject.VulkanHandle = handle
+    Swapchains[handle] = swapchainObject
+  }
+  return ?
+}

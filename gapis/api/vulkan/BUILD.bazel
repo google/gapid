@@ -22,6 +22,8 @@ api_library(
     apiname = "vulkan",
     includes = native.glob([
         "*.api",
+        "api/*.api",
+        "extensions/*.api",
         "linux/*.api",
         "windows/*.api",
         "android/*.api",

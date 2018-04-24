@@ -1,0 +1,315 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_KHR_swapchain") define VK_KHR_SWAPCHAIN_SPEC_VERSION   67
+@extension("VK_KHR_swapchain") define VK_KHR_SWAPCHAIN_EXTENSION_NAME "VK_KHR_swapchain"
+
+///////////
+// Types //
+///////////
+
+@extension("VK_KHR_swapchain") @replay_remap @nonDispatchHandle type u64 VkSwapchainKHR
+
+///////////////
+// Bitfields //
+///////////////
+
+@extension("VK_KHR_swapchain")
+@reserved_flags
+type VkFlags VkSwapchainCreateFlagsKHR
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_KHR_swapchain")
+class VkSwapchainCreateInfoKHR {
+  VkStructureType               sType
+  const void*                   pNext
+  VkSwapchainCreateFlagsKHR     flags
+  VkSurfaceKHR                  surface
+  u32                           minImageCount
+  VkFormat                      imageFormat
+  VkColorSpaceKHR               imageColorSpace
+  VkExtent2D                    imageExtent
+  u32                           imageArrayLayers
+  VkImageUsageFlags             imageUsage
+  VkSharingMode                 imageSharingMode
+  u32                           queueFamilyIndexCount
+  const u32*                    pQueueFamilyIndices
+  VkSurfaceTransformFlagBitsKHR preTransform
+  VkCompositeAlphaFlagBitsKHR   compositeAlpha
+  VkPresentModeKHR              presentMode
+  VkBool32                      clipped
+  VkSwapchainKHR                oldSwapchain
+}
+
+@extension("VK_KHR_swapchain")
+class VkPresentInfoKHR {
+  VkStructureType       sType
+  const void*           pNext
+  u32                   waitSemaphoreCount
+  const VkSemaphore*    pWaitSemaphores
+  u32                   swapchainCount
+  const VkSwapchainKHR* pSwapchains
+  const u32*            pImageIndices
+  VkResult*             pResults
+}
+
+//////////////
+// Commands //
+//////////////
+
+@custom
+@extension("VK_KHR_swapchain")
+@indirect("VkDevice")
+@override
+cmd VkResult vkCreateSwapchainKHR(
+    VkDevice                        device,
+    const VkSwapchainCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*    pAllocator,
+    VkSwapchainKHR*                 pSwapchain) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pCreateInfo == null { vkErrorNullPointer("VkSwapchainCreateInfoKHR") }
+  create_info := pCreateInfo[0]
+  queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
+  // TODO: pAllocator
+
+  swapchainObject := new!SwapchainObject(Device: device,
+    Info:                   ImageInfo(
+      ImageType:    VK_IMAGE_TYPE_2D,
+      Format:       create_info.imageFormat,
+      Extent:       VkExtent3D(create_info.imageExtent.Width, create_info.imageExtent.Height, 1),
+      MipLevels:    1,
+      ArrayLayers:  create_info.imageArrayLayers,
+      Samples:      VK_SAMPLE_COUNT_1_BIT,
+      Tiling:       VK_IMAGE_TILING_OPTIMAL,
+      Usage:        create_info.imageUsage,
+      SharingMode:  create_info.imageSharingMode,
+      Layout:       VK_IMAGE_LAYOUT_UNDEFINED
+    ),
+    Surface:         Surfaces[create_info.surface],
+    ColorSpace:      create_info.imageColorSpace,
+    PreTransform:    create_info.preTransform,
+    CompositeAlpha:  create_info.compositeAlpha,
+    PresentMode:     create_info.presentMode,
+    Clipped:         create_info.clipped
+  )
+
+  for i in (0 .. create_info.queueFamilyIndexCount) {
+    swapchainObject.Info.QueueFamilyIndices[i] =
+    queueFamilyIndices[i]
+  }
+
+  handle := ?
+  if pSwapchain == null { vkErrorNullPointer("VkSwapchain") }
+  pSwapchain[0] = handle
+  swapchainObject.VulkanHandle = handle
+  Swapchains[handle] = swapchainObject
+
+  return ?
+}
+
+@extension("VK_KHR_swapchain")
+@indirect("VkDevice")
+cmd void vkDestroySwapchainKHR(
+    VkDevice                     device,
+    VkSwapchainKHR               swapchain,
+    const VkAllocationCallbacks* pAllocator) {
+  // TODO: pAllocator
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  swapObject := Swapchains[swapchain]
+  if swapObject != null {
+    for _ , _ , v in swapObject.SwapchainImages {
+      delete(Images, v.VulkanHandle)
+    }
+    delete(Swapchains, swapchain)
+  }
+}
+
+@extension("VK_KHR_swapchain")
+@indirect("VkDevice")
+cmd VkResult vkGetSwapchainImagesKHR(
+    VkDevice       device,
+    VkSwapchainKHR swapchain,
+    u32*           pSwapchainImageCount,
+    VkImage*       pSwapchainImages) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }
+
+  swapchainObject := Swapchains[swapchain]
+  // Need to do a read observation of the image count as the number of images
+  // requested from users might be different from the number offered by the
+  // swapchain. Besides, the virtual swapchain creates swapchain images
+  // depends on this number.
+  if pSwapchainImages != null {
+    _ = pSwapchainImageCount[0]
+  }
+  fence
+  if pSwapchainImages == null {
+    pSwapchainImageCount[0] = ?
+  } else {
+    count := pSwapchainImageCount[0]
+    images := pSwapchainImages[0:count]
+    for i in (0 .. count) {
+      images[i] = ?
+      if !(images[i] in Images) {
+        object := new!ImageObject(BoundMemory:  null,
+          Device:             device,
+          VulkanHandle:       images[i],
+          BoundMemoryOffset:  0,
+          Info:               swapchainObject.Info,
+          ImageAspect:        as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
+        )
+        object.IsSwapchainImage = true
+        width := swapchainObject.Info.Extent.Width
+        height := swapchainObject.Info.Extent.Height
+        format := swapchainObject.Info.Format
+        layer := new!ImageLayer()
+        level := new!ImageLevel(Width: width,Height:  height,Depth:  1)
+        elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
+        // Roundup the width and height in the number of blocks.
+        widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
+        heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
+        size := widthInBlocks * heightInBlocks * elementAndTexelBlockSize.ElementSize
+        level.Data = make!u8(size)
+        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT] = new!ImageAspect()
+        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0] = layer
+        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0].Levels[0] = level
+        Images[images[i]] = object
+      }
+      swapchainObject.SwapchainImages[i] = Images[images[i]]
+    }
+    pSwapchainImageCount[0] = count
+  }
+
+  return ?
+}
+
+@extension("VK_KHR_swapchain")
+@indirect("VkDevice")
+@custom
+@blocking
+cmd VkResult vkAcquireNextImageKHR(
+    VkDevice       device,
+    VkSwapchainKHR swapchain,
+    u64            timeout,
+    VkSemaphore    semaphore,
+    VkFence        fence,
+    u32*           pImageIndex) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }
+  if pImageIndex == null { vkErrorNullPointer("uint32_t") }
+  _ = pImageIndex[0]
+  pImageIndex[0] = ?
+  if (semaphore != as!VkSemaphore(0)) {
+    Semaphores[semaphore].Signaled = true
+  }
+  return ?
+}
+
+@extension("VK_KHR_swapchain")
+@indirect("VkQueue", "VkDevice")
+@frame_end
+cmd VkResult vkQueuePresentKHR(
+    VkQueue                 queue,
+    const VkPresentInfoKHR* pPresentInfo) {
+  if !(queue in Queues) { vkErrorInvalidQueue(queue) }
+  LastSubmission = PRESENT
+  LastBoundQueue = Queues[queue]
+  for i in (0 .. LastPresentInfo.PresentImageCount) {
+    delete(LastPresentInfo.PresentImages, i)
+  }
+  LastPresentInfo.PresentImageCount = 0
+
+
+  info := pPresentInfo[0]
+  // TODO: handle pNext
+
+  if (info.pWaitSemaphores != null) {
+    wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
+    for i in (0 .. info.waitSemaphoreCount) {
+      Semaphores[wait_semaphores[i]].Signaled = false
+    }
+  }
+  swapchains := info.pSwapchains[0:info.swapchainCount]
+  imageIndices := info.pImageIndices[0:info.swapchainCount]
+  for i in (0 .. info.swapchainCount) {
+    if !(swapchains[i] in Swapchains) { vkErrorInvalidSwapchain(swapchains[i]) }
+    swapchain := Swapchains[swapchains[i]]
+    image := swapchain.SwapchainImages[imageIndices[i]]
+    LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
+    image
+    LastPresentInfo.PresentImageCount = LastPresentInfo.PresentImageCount + 1
+    image.LastBoundQueue = Queues[queue]
+  }
+  fence
+  if (info.pResults != null) {
+    // TODO(qining): Remove the use of fence once the inference can be done
+    // correctly for arrays specified as struct members.
+    read(info.pResults[0:info.swapchainCount])
+    /*results := info.pResults[0:info.swapchainCount]
+        for i in (0 .. info.swapchainCount) {
+            result := as!VkResult(?)
+            results[i] = result
+        }*/
+  }
+  return ?
+}
+
+////////////////////
+// State tracking //
+////////////////////
+
+@internal class SwapchainObject {
+  @unused VkDevice                      Device
+  @unused VkSwapchainKHR                VulkanHandle
+  @unused ImageInfo                     Info
+  @unused ref!SurfaceObject             Surface
+  @unused VkColorSpaceKHR               ColorSpace
+  @unused VkSurfaceTransformFlagBitsKHR PreTransform
+  @unused VkCompositeAlphaFlagBitsKHR   CompositeAlpha
+  @unused VkPresentModeKHR              PresentMode
+  @unused VkBool32                      Clipped
+  map!(u32, ref!ImageObject)            SwapchainImages
+  @unused ref!VulkanDebugMarkerInfo     DebugInfo
+}
