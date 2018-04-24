@@ -3953,6 +3953,9 @@ cmd VkResult vkQueueSubmit(
   LastSubmission = SUBMIT
   submitInfo := pSubmits[0:submitCount]
   LastBoundQueue = Queues[queue]
+  if (LastBoundQueue.VulkanHandle in LastDrawInfos) {
+    LastDrawInfos[LastBoundQueue.VulkanHandle] = new!DrawInfo()
+  }
 
   enterSubcontext()
   for i in (0 .. submitCount) {
