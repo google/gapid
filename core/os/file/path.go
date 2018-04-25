@@ -267,3 +267,13 @@ func (p *Path) UnmarshalJSON(data []byte) error {
 	*p = Abs(v)
 	return nil
 }
+
+// SanitizePath returns the path p with illegal file path characters replaced with '-'.
+func SanitizePath(p string) string {
+	return strings.Map(func(r rune) rune {
+		if strings.ContainsRune(illegalPathChars, r) {
+			return '-'
+		}
+		return r
+	}, p)
+}

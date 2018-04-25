@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 )
@@ -92,8 +93,8 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 				}
 
 				shaderSource := resourceData.(*api.ResourceData).GetShader().GetSource()
-
-				f, err := os.Create(v.GetHandle())
+				filename := file.SanitizePath(v.GetHandle())
+				f, err := os.Create(filename)
 				if err != nil {
 					log.E(ctx, "Could open file to write %s %v", v.GetHandle(), err)
 					continue
