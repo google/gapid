@@ -70,14 +70,13 @@ cmd PFN_vkVoidFunction vkGetDeviceProcAddr(
 cmd VkResult vkCreateDevice(
     VkPhysicalDevice             physicalDevice,
     const VkDeviceCreateInfo*    pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkDevice*                    pDevice) {
   // NOTE: The logic for this function should be identical to the one of
   // replayCreateVkDevice() in synthetic.api. Change both together.
   device := createDeviceObject(pCreateInfo)
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   device.PhysicalDevice = physicalDevice
-  // TODO: pAllocator
 
   handle := ?
   if pDevice == null { vkErrorNullPointer("VkDevice*") }
@@ -94,7 +93,7 @@ cmd VkResult vkCreateDevice(
 @custom
 cmd void vkDestroyDevice(
     VkDevice                     device,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if (device in Devices) {
     dev := Devices[device]
     for _ , _ , v in dev.QueueObjects {
@@ -112,7 +111,6 @@ cmd void vkDestroyDevice(
     }
   }
 
-  // TODO: pAllocator
   delete(Devices, device)
 }
 

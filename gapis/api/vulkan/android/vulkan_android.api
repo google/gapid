@@ -47,12 +47,11 @@ class VkAndroidSurfaceCreateInfoKHR {
 cmd VkResult vkCreateAndroidSurfaceKHR(
         VkInstance                              instance,
         const VkAndroidSurfaceCreateInfoKHR*    pCreateInfo,
-        const VkAllocationCallbacks*            pAllocator,
+        AllocationCallbacks                     pAllocator,
         VkSurfaceKHR*                           pSurface) {
     surface := createAndroidSurfaceObject(pCreateInfo)
     surface.Instance = instance
     surface.Type = SURFACE_TYPE_ANDROID
-    // TODO: pAllocator
 
     handle := ?
     pSurface[0] = handle

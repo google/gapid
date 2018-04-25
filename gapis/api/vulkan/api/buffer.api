@@ -67,7 +67,7 @@
 cmd VkResult vkCreateBuffer(
     VkDevice                     device,
     const VkBufferCreateInfo*    pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkBuffer*                    pBuffer) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkBufferCreateInfo") }
@@ -122,7 +122,7 @@ cmd VkResult vkCreateBuffer(
 cmd void vkDestroyBuffer(
     VkDevice                     device,
     VkBuffer                     buffer,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if (buffer != as!VkBuffer(0)) {
     bufferObject := Buffers[buffer]
@@ -155,12 +155,11 @@ cmd void vkDestroyBuffer(
 cmd VkResult vkCreateBufferView(
     VkDevice                      device,
     const VkBufferViewCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks*  pAllocator,
+    AllocationCallbacks           pAllocator,
     VkBufferView*                 pView) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkBufferViewCreateInfo") }
   buffer_view_create_info := pCreateInfo[0]
-  // TODO: pAllocator
 
   handle := ?
   bufferViewObject := new!BufferViewObject(
@@ -182,8 +181,7 @@ cmd VkResult vkCreateBufferView(
 cmd void vkDestroyBufferView(
     VkDevice                     device,
     VkBufferView                 bufferView,
-    const VkAllocationCallbacks* pAllocator) {
-  // TODO: pAllocator
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(BufferViews, bufferView)
 }

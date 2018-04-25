@@ -61,7 +61,7 @@ enum QueryStatus {
 cmd VkResult vkCreateQueryPool(
     VkDevice                     device,
     const VkQueryPoolCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkQueryPool*                 pQueryPool) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkQueuePoolCreateInfo") }
@@ -90,7 +90,7 @@ cmd VkResult vkCreateQueryPool(
 cmd void vkDestroyQueryPool(
     VkDevice                     device,
     VkQueryPool                  queryPool,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(QueryPools, queryPool)
 }

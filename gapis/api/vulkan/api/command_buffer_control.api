@@ -53,12 +53,11 @@
 cmd VkResult vkCreateCommandPool(
     VkDevice                       device,
     const VkCommandPoolCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks*   pAllocator,
+    AllocationCallbacks            pAllocator,
     VkCommandPool*                 pCommandPool) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkCommandPoolCreateInfo") }
   create_info := pCreateInfo[0]
-  // TODO: pAllocator
 
   handle := ?
   if pCommandPool == null { vkErrorNullPointer("VkCommandPool") }
@@ -76,7 +75,7 @@ cmd VkResult vkCreateCommandPool(
 cmd void vkDestroyCommandPool(
     VkDevice                     device,
     VkCommandPool                commandPool,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if (commandPool != as!VkCommandPool(0)) {
     if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }

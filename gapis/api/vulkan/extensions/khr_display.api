@@ -249,12 +249,11 @@ cmd VkResult vkCreateDisplayModeKHR(
     VkPhysicalDevice                  physicalDevice,
     VkDisplayKHR                      display,
     const VkDisplayModeCreateInfoKHR* pCreateInfo,
-    const VkAllocationCallbacks*      pAllocator,
+    AllocationCallbacks               pAllocator,
     VkDisplayModeKHR*                 pMode) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pCreateInfo == null { vkErrorNullPointer("VkDisplayModeCreateInfo") }
   _ = pCreateInfo[0]
-  // TODO: pAllocator
 
   handle := ?
   if pMode == null { vkErrorNullPointer("VkDisplayModeKHR") }
@@ -286,12 +285,11 @@ cmd VkResult vkGetDisplayPlaneCapabilitiesKHR(
 cmd VkResult vkCreateDisplayPlaneSurfaceKHR(
     VkInstance                           instance,
     const VkDisplaySurfaceCreateInfoKHR* pCreateInfo,
-    const VkAllocationCallbacks*         pAllocator,
+    AllocationCallbacks                  pAllocator,
     VkSurfaceKHR*                        pSurface) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
   if pCreateInfo == null { vkErrorNullPointer("VkDisplaySurfaceCreateInfoKHR") }
   _ = pCreateInfo[0]
-  // TODO: pAllocator
 
   handle := ?
   if pSurface == null { vkErrorNullPointer("VkSurfaceKHR") }

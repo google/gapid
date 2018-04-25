@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
+	"github.com/google/gapid/gapis/replay/value"
 )
 
 func (i VkInstance) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
@@ -451,4 +452,11 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	c.DeviceMemories.Set(memory, memoryObject)
 	a.PMemory.Slice(0, 1, l).Write(ctx, []VkDeviceMemory{memory}, a, s, b)
 	return err
+}
+
+func (i AllocationCallbacks) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
+	// Return 0 (nullptr) here. We don't have an allocator set up for replay. Since we cannot use the
+	// application's allocator. If we pass in null for all allocator calls, then it will use the default
+	// allocator.
+	return value.AbsolutePointer(0)
 }

@@ -67,7 +67,7 @@
 cmd VkResult vkAllocateMemory(
     VkDevice                     device,
     const VkMemoryAllocateInfo*  pAllocateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkDeviceMemory*              pMemory) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pAllocateInfo == null { vkErrorNullPointer("VkMemoryAllocateInfo") }
@@ -124,7 +124,7 @@ cmd VkResult vkAllocateMemory(
 cmd void vkFreeMemory(
     VkDevice                     device,
     VkDeviceMemory               memory,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if (memory != as!VkDeviceMemory(0)) {
     memoryObject := DeviceMemories[memory]

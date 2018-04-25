@@ -41,7 +41,7 @@ class VkWin32SurfaceCreateInfoKHR {
 cmd VkResult vkCreateWin32SurfaceKHR(
         VkInstance                              instance,
         const VkWin32SurfaceCreateInfoKHR*      pCreateInfo,
-        const VkAllocationCallbacks*            pAllocator,
+        AllocationCallbacks                     pAllocator,
         VkSurfaceKHR*                           pSurface) {
     surface := createWin32SurfaceObject(pCreateInfo)
 
