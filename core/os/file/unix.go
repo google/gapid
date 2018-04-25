@@ -26,3 +26,7 @@ func IsJunction(path Path) bool {
 func Junction(link, target Path) error {
 	return Symlink(link, target)
 }
+
+// Illegal characters in unix file paths.
+// Excluding slashes here as we're considering paths, not filenames.
+var illegalPathChars = "\x00"
