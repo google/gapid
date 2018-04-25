@@ -50,13 +50,12 @@
 @override
 cmd VkResult vkCreateInstance(
     const VkInstanceCreateInfo*  pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkInstance*                  pInstance) {
   // NOTE: The logic for this function should be identical to the one of
   // replayCreateVkInstance() in synthetic.api. Change both together.
 
   instance := createInstanceObject(pCreateInfo)
-  // TODO: pAllocator
   handle := ?
   if pInstance == null { vkErrorNullPointer("VkInstance") }
   pInstance[0] = handle
@@ -71,8 +70,7 @@ cmd VkResult vkCreateInstance(
 @custom
 cmd void vkDestroyInstance(
     VkInstance                   instance,
-    const VkAllocationCallbacks* pAllocator) {
-  // TODO: pAllocator
+    AllocationCallbacks          pAllocator) {
   delete(Instances, instance)
 }
 

@@ -151,7 +151,7 @@ class VkDebugReportCallbackCreateInfoEXT {
 cmd VkResult vkCreateDebugReportCallbackEXT(
     VkInstance                                instance,
     const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-    const VkAllocationCallbacks*              pAllocator,
+    AllocationCallbacks                       pAllocator,
     VkDebugReportCallbackEXT*                 pCallback) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
   return ?
@@ -163,7 +163,7 @@ cmd VkResult vkCreateDebugReportCallbackEXT(
 cmd void vkDestroyDebugReportCallbackEXT(
     VkInstance                   instance,
     VkDebugReportCallbackEXT     callback,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
 }
 

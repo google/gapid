@@ -61,7 +61,7 @@
 cmd VkResult vkCreateDescriptorSetLayout(
     VkDevice                               device,
     const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks*           pAllocator,
+    AllocationCallbacks                    pAllocator,
     VkDescriptorSetLayout*                 pSetLayout) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkDescriptorSetLayoutCreateInfo") }
@@ -94,8 +94,6 @@ cmd VkResult vkCreateDescriptorSetLayout(
   }
   descriptorSetLayout.MaximumBinding = largestBinding.Val
 
-  // TODO: pAllocator
-
   handle := ?
   if pSetLayout == null { vkErrorNullPointer("VkDescriptorSetLayout") }
   pSetLayout[0] = handle
@@ -110,8 +108,7 @@ cmd VkResult vkCreateDescriptorSetLayout(
 cmd void vkDestroyDescriptorSetLayout(
     VkDevice                     device,
     VkDescriptorSetLayout        descriptorSetLayout,
-    const VkAllocationCallbacks* pAllocator) {
-  // TODO: pAllocator
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(DescriptorSetLayouts, descriptorSetLayout)
 }
@@ -135,7 +132,7 @@ cmd void vkDestroyDescriptorSetLayout(
 cmd VkResult vkCreateDescriptorPool(
     VkDevice                          device,
     const VkDescriptorPoolCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks*      pAllocator,
+    AllocationCallbacks               pAllocator,
     VkDescriptorPool*                 pDescriptorPool) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkDescriptorPoolCreateInfo") }
@@ -151,8 +148,6 @@ cmd VkResult vkCreateDescriptorPool(
   }
   // TODO: info.pNext
 
-  // TODO: pAllocator
-
   handle := ?
   if pDescriptorPool == null { vkErrorNullPointer("VkDescriptorPool") }
   pDescriptorPool[0] = handle
@@ -167,7 +162,7 @@ cmd VkResult vkCreateDescriptorPool(
 cmd void vkDestroyDescriptorPool(
     VkDevice                     device,
     VkDescriptorPool             descriptorPool,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if (descriptorPool != as!VkDescriptorPool(0)) {
     if !(descriptorPool in DescriptorPools) { vkErrorInvalidDescriptorPool(descriptorPool) }

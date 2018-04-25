@@ -52,13 +52,12 @@ class VkXlibSurfaceCreateInfoKHR {
 cmd VkResult vkCreateXlibSurfaceKHR(
     VkInstance                        instance,
     const VkXlibSurfaceCreateInfoKHR* pCreateInfo,
-    const VkAllocationCallbacks*      pAllocator,
+    AllocationCallbacks               pAllocator,
     VkSurfaceKHR*                     pSurface) {
   _ = pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_XLIB
-  // TODO: pAllocator
 
   handle := ?
   pSurface[0] = handle
@@ -104,13 +103,12 @@ class VkXcbSurfaceCreateInfoKHR {
 cmd VkResult vkCreateXcbSurfaceKHR(
     VkInstance                       instance,
     const VkXcbSurfaceCreateInfoKHR* pCreateInfo,
-    const VkAllocationCallbacks*     pAllocator,
+    AllocationCallbacks              pAllocator,
     VkSurfaceKHR*                    pSurface) {
   read(pCreateInfo[0:1])
   surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_XCB
-  // TODO: pAllocator
 
   handle := ?
   pSurface[0] = handle
@@ -155,13 +153,12 @@ class VkWaylandSurfaceCreateInfoKHR {
 cmd VkResult vkCreateWaylandSurfaceKHR(
     VkInstance                           instance,
     const VkWaylandSurfaceCreateInfoKHR* pCreateInfo,
-    const VkAllocationCallbacks*         pAllocator,
+    AllocationCallbacks                  pAllocator,
     VkSurfaceKHR*                        pSurface) {
   _ = pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_WAYLAND
-  // TODO: pAllocator
 
   handle := ?
   pSurface[0] = handle
@@ -205,13 +202,12 @@ class VkMirSurfaceCreateInfoKHR {
 cmd VkResult vkCreateMirSurfaceKHR(
     VkInstance                       instance,
     const VkMirSurfaceCreateInfoKHR* pCreateInfo,
-    const VkAllocationCallbacks*     pAllocator,
+    AllocationCallbacks              pAllocator,
     VkSurfaceKHR*                    pSurface) {
   _ = pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_MIR
-  // TODO: pAllocator
 
   handle := ?
   pSurface[0] = handle

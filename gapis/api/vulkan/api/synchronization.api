@@ -52,7 +52,7 @@
 cmd VkResult vkCreateFence(
     VkDevice                     device,
     const VkFenceCreateInfo*     pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkFence*                     pFence) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkFenceCreateInfo") }
@@ -78,7 +78,7 @@ cmd VkResult vkCreateFence(
 cmd void vkDestroyFence(
     VkDevice                     device,
     VkFence                      fence,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(Fences, fence)
 }
@@ -141,12 +141,11 @@ cmd VkResult vkWaitForFences(
 cmd VkResult vkCreateSemaphore(
     VkDevice                     device,
     const VkSemaphoreCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkSemaphore*                 pSemaphore) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSemaphoreCreateInfo") }
   _ = pCreateInfo[0]
-  // TODO: pAllocator
 
   handle := ?
   semaphoreObject := new!SemaphoreObject(Device: device,
@@ -163,8 +162,7 @@ cmd VkResult vkCreateSemaphore(
 cmd void vkDestroySemaphore(
     VkDevice                     device,
     VkSemaphore                  semaphore,
-    const VkAllocationCallbacks* pAllocator) {
-  // TODO: pAllocator
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(Semaphores, semaphore)
 }
@@ -186,7 +184,7 @@ cmd void vkDestroySemaphore(
 cmd VkResult vkCreateEvent(
     VkDevice                     device,
     const VkEventCreateInfo*     pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkEvent*                     pEvent) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkEventCreateInfo") }
@@ -208,7 +206,7 @@ cmd VkResult vkCreateEvent(
 cmd void vkDestroyEvent(
     VkDevice                     device,
     VkEvent                      event,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   delete(Events, event)
 }
 

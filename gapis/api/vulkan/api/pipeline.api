@@ -53,14 +53,13 @@
 cmd VkResult vkCreatePipelineLayout(
     VkDevice                          device,
     const VkPipelineLayoutCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks*      pAllocator,
+    AllocationCallbacks               pAllocator,
     VkPipelineLayout*                 pPipelineLayout) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkPipelineLayoutCreateInfo") }
   info := pCreateInfo[0]
   pipelineLayout := new!PipelineLayoutObject(Device: device)
   // TODO: info.pNext
-  // TODO: pAllocator
 
   layoutCount := info.setLayoutCount
   layouts := info.pSetLayouts[0:layoutCount]
@@ -86,10 +85,9 @@ cmd VkResult vkCreatePipelineLayout(
 cmd void vkDestroyPipelineLayout(
     VkDevice                     device,
     VkPipelineLayout             pipelineLayout,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
 
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  // TODO: pAllocator
   delete(PipelineLayouts, pipelineLayout)
 }
 
@@ -225,7 +223,7 @@ cmd VkResult vkCreateGraphicsPipelines(
     VkPipelineCache                     pipelineCache,
     u32                                 createInfoCount,
     const VkGraphicsPipelineCreateInfo* pCreateInfos,
-    const VkAllocationCallbacks*        pAllocator,
+    AllocationCallbacks                 pAllocator,
     VkPipeline*                         pPipelines) {
 
   if !(device in Devices) { vkErrorInvalidDevice(device) }
@@ -450,7 +448,7 @@ cmd VkResult vkCreateComputePipelines(
     VkPipelineCache                    pipelineCache,
     u32                                createInfoCount,
     const VkComputePipelineCreateInfo* pCreateInfos,
-    const VkAllocationCallbacks*       pAllocator,
+    AllocationCallbacks                pAllocator,
     VkPipeline*                        pPipelines) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pipelineCache != as!VkPipelineCache(0) {
@@ -495,7 +493,6 @@ cmd VkResult vkCreateComputePipelines(
     }
     created_pipelines.Objects[i] = obj
   }
-  // TODO: pAllocator
 
   pipelines := pPipelines[0:createInfoCount]
   for i in (0 .. createInfoCount) {
@@ -516,7 +513,7 @@ cmd VkResult vkCreateComputePipelines(
 cmd void vkDestroyPipeline(
     VkDevice                     device,
     VkPipeline                   pipeline,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pipeline in GraphicsPipelines {
     delete(GraphicsPipelines, pipeline)
@@ -542,7 +539,7 @@ cmd void vkDestroyPipeline(
 cmd VkResult vkCreateShaderModule(
     VkDevice                        device,
     const VkShaderModuleCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks*    pAllocator,
+    AllocationCallbacks             pAllocator,
     VkShaderModule*                 pShaderModule) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkShaderModuleCreateInfo") }
@@ -564,7 +561,7 @@ cmd VkResult vkCreateShaderModule(
 cmd void vkDestroyShaderModule(
     VkDevice                     device,
     VkShaderModule               shaderModule,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(ShaderModules, shaderModule)
 }
@@ -583,7 +580,7 @@ cmd void vkDestroyShaderModule(
 cmd VkResult vkCreatePipelineCache(
     VkDevice                         device,
     const VkPipelineCacheCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks*     pAllocator,
+    AllocationCallbacks              pAllocator,
     VkPipelineCache*                 pPipelineCache) {
   //TODO(awoloszyn): Add Allocator support
   if !(device in Devices) { vkErrorInvalidDevice(device) }
@@ -601,7 +598,7 @@ cmd VkResult vkCreatePipelineCache(
 cmd void vkDestroyPipelineCache(
     VkDevice                     device,
     VkPipelineCache              pipelineCache,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(PipelineCaches, pipelineCache)
 }

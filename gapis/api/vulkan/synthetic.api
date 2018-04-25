@@ -15,13 +15,13 @@
 @synthetic
 cmd VkResult replayCreateVkInstance(
     const VkInstanceCreateInfo*  pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkInstance*                  pInstance) {
   // NOTE: The logic for this function should be identical to the one of
   // vkCreateInstance() in vulkan.api. Change both together.
 
   instance := createInstanceObject(pCreateInfo)
-  // TODO: pAllocator
+
   handle := ?
   if pInstance == null {vkErrorNullPointer("VkInstance")}
   pInstance[0] = handle
@@ -34,14 +34,13 @@ cmd VkResult replayCreateVkInstance(
 cmd VkResult ReplayCreateVkDevice(
     VkPhysicalDevice             physicalDevice,
     const VkDeviceCreateInfo*    pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkDevice*                    pDevice) {
   // NOTE: The logic for this function should be identical to the one of
   // vkCreateDevice() in vulkan.api. Change both together.
 
   device := createDeviceObject(pCreateInfo)
   device.PhysicalDevice = physicalDevice
-  // TODO: pAllocator
 
   handle := ?
   if pDevice == null {vkErrorNullPointer("VkDevice")}
@@ -153,13 +152,12 @@ cmd VkResult replayEnumeratePhysicalDevices(
 cmd VkResult ReplayCreateSwapchain(
     VkDevice                        device,
     const VkSwapchainCreateInfoKHR* pCreateInfo,
-    const VkAllocationCallbacks*    pAllocator,
+    AllocationCallbacks             pAllocator,
     VkSwapchainKHR*                 pSwapchain) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSwapchainCreateInfoKHR") }
   create_info := pCreateInfo[0]
   queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
-  // TODO: pAllocator
 
   swapchainObject := new!SwapchainObject(Device: device,
     Info:                   ImageInfo(

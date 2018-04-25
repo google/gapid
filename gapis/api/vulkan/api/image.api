@@ -121,11 +121,10 @@
 cmd VkResult vkCreateImage(
     VkDevice                     device,
     const VkImageCreateInfo*     pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkImage*                     pImage) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkImageCreateInfo") }
-  // TODO: pAllocator
   info := pCreateInfo[0]
   queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
 
@@ -238,8 +237,7 @@ cmd VkResult vkCreateImage(
 cmd void vkDestroyImage(
     VkDevice                     device,
     VkImage                      image,
-    const VkAllocationCallbacks* pAllocator) {
-  // TODO: pAllocator
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if (image != as!VkImage(0)) {
     imageObject := Images[image]
@@ -319,12 +317,11 @@ cmd VkResult vkBindImageMemory(
 cmd VkResult vkCreateImageView(
     VkDevice                     device,
     const VkImageViewCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkImageView*                 pView) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkImageViewCreateInfo") }
   image_view_create_info := pCreateInfo[0]
-  // TODO: pAllocator
 
   handle := ?
   if !(image_view_create_info.image in Images) { vkErrorInvalidImage(image_view_create_info.image) }
@@ -348,8 +345,7 @@ cmd VkResult vkCreateImageView(
 cmd void vkDestroyImageView(
     VkDevice                     device,
     VkImageView                  imageView,
-    const VkAllocationCallbacks* pAllocator) {
-  // TODO: pAllocator
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(ImageViews, imageView)
   for _ , _ , drawInfo in LastDrawInfos {
@@ -402,7 +398,7 @@ cmd void vkDestroyImageView(
 cmd VkResult vkCreateSampler(
     VkDevice                     device,
     const VkSamplerCreateInfo*   pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
+    AllocationCallbacks          pAllocator,
     VkSampler*                   pSampler) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSamplerCreateInfo") }
@@ -438,9 +434,8 @@ cmd VkResult vkCreateSampler(
 cmd void vkDestroySampler(
     VkDevice                     device,
     VkSampler                    sampler,
-    const VkAllocationCallbacks* pAllocator) {
+    AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  // TODO: pAllocator
   delete(Samplers, sampler)
 }
 

@@ -128,8 +128,7 @@ class VkSurfaceFormatKHR {
 cmd void vkDestroySurfaceKHR(
     VkInstance                   instance,
     VkSurfaceKHR                 surface,
-    const VkAllocationCallbacks* pAllocator) {
-  // TODO: pAllocator
+    AllocationCallbacks          pAllocator) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
   delete(Surfaces, surface)
 }

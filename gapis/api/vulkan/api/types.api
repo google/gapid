@@ -70,6 +70,9 @@ type u32 VkSampleMask
 @replay_remap @nonDispatchHandle type u64 VkFramebuffer
 @replay_remap @nonDispatchHandle type u64 VkCommandPool
 
+// Custom replay values
+@replay_custom_value type const VkAllocationCallbacks* AllocationCallbacks
+
 // Vulkan 1.1 core
 @replay_remap @nonDispatchHandle type u64 VkDescriptorUpdateTemplate
 @replay_remap @nonDispatchHandle type u64 VkSamplerYcbcrConversion
