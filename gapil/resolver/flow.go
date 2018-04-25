@@ -120,11 +120,17 @@ func (t *fenceTracker) analyse(n semantic.Node) semantic.LogicalOrder {
 		t.explicit = true
 		o = semantic.Pre | semantic.Post
 	case *semantic.Read:
-		o = semantic.Pre | t.analyse(n.Slice)
+		o = t.analyse(n.Slice)
+		if !t.isInternal(n.Slice) {
+			o |= semantic.Pre
+		}
 	case *semantic.Unknown:
 		o = semantic.Post
 	case *semantic.Write:
-		o = semantic.Post | t.analyse(n.Slice)
+		o = t.analyse(n.Slice)
+		if !t.isInternal(n.Slice) {
+			o |= semantic.Post
+		}
 	case *semantic.Assign:
 		if t.isInternal(n.LHS) && !t.isInternal(n.RHS) {
 			t.resolver.errorf(n, "Assigning from a non-internal to an internal")
