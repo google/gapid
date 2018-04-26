@@ -217,19 +217,14 @@ func dumpDefault(fl *flag.Flag) string {
 func (s *Set) Usage(verbose bool) string {
 	result := ""
 	s.Raw.VisitAll(func(fl *flag.Flag) {
-		if result != "" {
-			result += "\n"
-		}
-		result += fmt.Sprintf("  -%s", fl.Name)
 		name, usage, hidden := getFlagUsage(fl, verbose)
 		if hidden {
 			return
 		}
-		result += " " + name
-		if len(result) > 4 {
-			result += "\n    "
+		if result != "" {
+			result += "\n"
 		}
-		result += "\t"
+		result += fmt.Sprintf("  -%s %s\n\t", fl.Name, name)
 		result += usage
 		result += dumpDefault(fl)
 	})
