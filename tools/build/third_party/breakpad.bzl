@@ -21,7 +21,7 @@ def _breakpad_impl(repository_ctx):
         url = _BASE + "/+archive/" + repository_ctx.attr.commit + ".tar.gz",
         output = ".",
     )
-    repository_ctx.symlink(Label("@gapid//tools/build/third_party/breakpad:breakpad.BUILD"), "BUILD")
+    repository_ctx.symlink(repository_ctx.attr.build_file, "BUILD")
 
     if repository_ctx.os.name.startswith("windows"):
       # Patch up breakpad on windows and add the dump_syms src.
@@ -38,5 +38,10 @@ breakpad = repository_rule(
     implementation = _breakpad_impl,
     attrs = {
         "commit": attr.string(mandatory = True),
+        "build_file": attr.label(
+            mandatory = True,
+            allow_files = True,
+            single_file = True,
+        ),
     },
 )
