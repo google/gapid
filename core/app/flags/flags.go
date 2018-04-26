@@ -23,6 +23,11 @@ import (
 	"time"
 )
 
+const (
+	// FullHelpFlag is the name of the flag used to show the full help.
+	FullHelpFlag = "fullhelp"
+)
+
 type (
 	Set struct {
 		// Raw is the underlying flag set
@@ -155,15 +160,6 @@ func (s *Set) Bind(name string, value interface{}, help string) {
 	}
 }
 
-// HasFlags returns true if the set has bound flags.
-func (s *Set) HasFlags() bool {
-	result := false
-	s.Raw.VisitAll(func(*flag.Flag) {
-		result = true
-	})
-	return result
-}
-
 // HasVisibleFlags returns true if the set has bound flags for the specified verbosity.
 func (s *Set) HasVisibleFlags(verbose bool) bool {
 	result := false
@@ -177,10 +173,11 @@ func (s *Set) HasVisibleFlags(verbose bool) bool {
 
 func getFlagUsage(f *flag.Flag, verbose bool) (string, string, bool) {
 	name, usage := flag.UnquoteUsage(f)
+	forceHide := f.Name == FullHelpFlag
 	if !strings.HasPrefix(usage, "_") {
-		return name, usage, false
+		return name, usage, forceHide
 	}
-	return name, usage[1:], !verbose
+	return name, usage[1:], forceHide || !verbose
 }
 
 func dumpDefault(fl *flag.Flag) string {
@@ -213,7 +210,7 @@ func dumpDefault(fl *flag.Flag) string {
 	return fmt.Sprintf(" (default %v)", fl.DefValue)
 }
 
-// Returns the usage string for the flags
+// Usage returns the usage string for the flags.
 func (s *Set) Usage(verbose bool) string {
 	result := ""
 	s.Raw.VisitAll(func(fl *flag.Flag) {
@@ -233,7 +230,10 @@ func (s *Set) Usage(verbose bool) string {
 
 // Parse processes the args to fill in the flags.
 // see flag.Parse for more details.
-func (s *Set) Parse(args ...string) {
+func (s *Set) Parse(fullHelp *bool, args ...string) {
+	if fullHelp != nil && s.Raw.Lookup(FullHelpFlag) == nil {
+		s.Raw.BoolVar(fullHelp, FullHelpFlag, *fullHelp, "")
+	}
 	s.Raw.Usage = flag.CommandLine.Usage
 	s.Raw.Parse(args)
 }

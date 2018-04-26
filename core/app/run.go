@@ -133,12 +133,17 @@ func Run(main task.Task) {
 	// parse the command line
 	flag.CommandLine.Usage = func() { Usage(rootCtx, "") }
 	verbMainPrepare(&Flags)
-	globalVerbs.flags.Parse(os.Args[1:]...)
+	globalVerbs.flags.Parse(nil, os.Args[1:]...)
 
 	// Force the global verb's flags back into the default location for
 	// main programs that still look in flag.Args()
 	// TODO: We need to stop doing this
 	globalVerbs.flags.ForceCommandLine()
+
+	if Flags.FullHelp {
+		Usage(rootCtx, "")
+		return
+	}
 
 	if Flags.DecodeStack != "" {
 		stack := decodeCrashCode(Flags.DecodeStack)

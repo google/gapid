@@ -84,14 +84,17 @@ func (v *Verb) Invoke(ctx context.Context, args []string) error {
 	switch len(matches) {
 	case 1:
 		v.selected = matches[0]
-		v.selected.flags.Parse(args[1:]...)
+		v.selected.flags.Parse(&Flags.FullHelp, args[1:]...)
+		if Flags.FullHelp {
+			Usage(ctx, "")
+		}
 		if v.selected.Action != nil {
 			return v.selected.Action.Run(ctx, v.selected.flags.Raw)
 		}
 		return v.selected.Invoke(ctx, v.selected.flags.Raw.Args())
 	case 0:
 		if verb == "help" {
-			autoHelp(ctx, args[1:]...)
+			Usage(ctx, "")
 		} else {
 			Usage(ctx, "Verb '%s' is unknown", verb)
 		}
