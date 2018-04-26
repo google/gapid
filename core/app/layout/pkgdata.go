@@ -29,7 +29,7 @@ import (
 var resolvedLayout FileLayout
 
 var (
-	runfiles = flag.String("runfiles", "", "Location of the runfiles manifest")
+	runfiles = flag.String("runfiles", "", "_Location of the runfiles manifest")
 )
 
 func layout(ctx context.Context) (out FileLayout) {
