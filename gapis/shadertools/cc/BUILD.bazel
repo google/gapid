@@ -25,8 +25,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@glslang",
-        "@spirv-cross//:spirv-cross",
-        "@spirv-tools//:spirv-tools",
+        "@spirv_cross//:spirv-cross",
+        "@spirv_tools//:spirv-tools",
     ],
 )
 

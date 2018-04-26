@@ -77,7 +77,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
     )
 
     _maybe(github_repository,
-        name = "astc-encoder",
+        name = "astc_encoder",
         locals = locals,
         organization = "ARM-software",
         project = "astc-encoder",
@@ -127,7 +127,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
     )
 
     _maybe(github_repository,
-        name = "spirv-headers",
+        name = "spirv_headers",
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Headers",
@@ -136,7 +136,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
     )
 
     _maybe(github_repository,
-        name = "spirv-cross",
+        name = "spirv_cross",
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Cross",
@@ -145,7 +145,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
     )
 
     _maybe(github_repository,
-        name = "spirv-tools",
+        name = "spirv_tools",
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Tools",

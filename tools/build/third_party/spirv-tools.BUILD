@@ -32,7 +32,7 @@ cc_library(
     visibility = ["//visibility:private"],
     deps = [
         "@gapid//tools/build/third_party:spirv-tools-generated",
-        "@spirv-headers//:spirv-headers",
+        "@spirv_headers//:spirv-headers",
     ],
 )
 
@@ -55,6 +55,6 @@ cc_library(
     deps = [
         ":spirv-include",
         ":spirv-source",
-        "@spirv-headers//:spirv-headers",
+        "@spirv_headers//:spirv-headers",
     ],
 )
