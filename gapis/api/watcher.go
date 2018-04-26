@@ -61,6 +61,11 @@ type StateWatcher interface {
 	// CloseForwardDependency is called to end a forward dependency.
 	// See `OpenForwardDependency` for an explanation of forward dependencies.
 	CloseForwardDependency(ctx context.Context, dependencyID interface{})
+
+	// DropForwardDependency is called to abandon a previously opened
+	// forward dependency, without actually adding the forward dependency.
+	// See `OpenForwardDependency` for an explanation of forward dependencies.
+	DropForwardDependency(ctx context.Context, dependencyID interface{})
 }
 
 // Fragment is an interface which marks types which identify pieces of API objects.

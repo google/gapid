@@ -440,6 +440,9 @@ void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start,
 
 void VulkanSpy::mapMemory(CallObserver*, void**, gapil::Slice<uint8_t>) {}
 void VulkanSpy::unmapMemory(CallObserver*, gapil::Slice<uint8_t>) {}
+void VulkanSpy::recordFenceSignal(CallObserver*, uint64_t) {}
+void VulkanSpy::recordFenceWait(CallObserver*, uint64_t) {}
+void VulkanSpy::recordFenceReset(CallObserver*, uint64_t) {}
 
 bool VulkanSpy::hasDynamicProperty(CallObserver* observer,
                                    const VkPipelineDynamicStateCreateInfo* info,

@@ -466,3 +466,23 @@ func (e externs) vkErrInvalidImageSubresource(img VkImage, subresourceType strin
 	issue.Error = fmt.Errorf("Accessing invalid image subresource at Image: %v, %v: %v", uint64(img), subresourceType, value)
 	e.onVkError(issue)
 }
+
+type fenceSignal uint64
+
+func (e externs) recordFenceSignal(fence VkFence) {
+	if e.w != nil {
+		e.w.OpenForwardDependency(e.ctx, fenceSignal(fence))
+	}
+}
+
+func (e externs) recordFenceWait(fence VkFence) {
+	if e.w != nil {
+		e.w.CloseForwardDependency(e.ctx, fenceSignal(fence))
+	}
+}
+
+func (e externs) recordFenceReset(fence VkFence) {
+	if e.w != nil {
+		e.w.DropForwardDependency(e.ctx, fenceSignal(fence))
+	}
+}
