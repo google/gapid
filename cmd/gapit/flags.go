@@ -82,14 +82,14 @@ type (
 		Gapis GapisFlags
 	}
 	GapisFlags struct {
-		Profile string `help:"produce a pprof file from gapis"`
+		Profile string `help:"_produce a pprof file from gapis"`
 		Port    int    `help:"gapis tcp port to connect to, 0 means start new instance."`
-		Args    string `help:"The arguments to be passed to gapis"`
-		Token   string `help:"The auth token to use when connecting to an existing server."`
+		Args    string `help:"_The arguments to be passed to gapis"`
+		Token   string `help:"_The auth token to use when connecting to an existing server."`
 	}
 	GapirFlags struct {
 		DeviceFlags
-		Args string `help:"The arguments to be passed to gapir"`
+		Args string `help:"_The arguments to be passed to gapir"`
 	}
 	GapiiFlags struct {
 		DeviceFlags
@@ -110,12 +110,12 @@ type (
 			Height int `help:"maximum video height"`
 		}
 		Type     VideoType `help:"type of output to produce"`
-		Text     string    `help:"summary prefix (use '║' for aligned columns, '¶' for new line)"`
+		Text     string    `help:"_summary prefix (use '║' for aligned columns, '¶' for new line)"`
 		Commands bool      `help:"Treat every command as its own frame"`
 		Frames   struct {
 			Start   int `help:"frame to start capture from"`
 			Count   int `help:"number of frames after Start to capture: -1 for all frames"`
-			Minimum int `help:"return error when less than this number of frames is found"`
+			Minimum int `help:"_return error when less than this number of frames is found"`
 		}
 		CommandFilterFlags
 	}
@@ -137,15 +137,15 @@ type (
 		Gapir                  GapirFlags
 		Raw                    bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
 		Name                   string `help:"Filter to commands and groups with the specified name."`
-		MaxChildren            int    `help:"Maximum children per tree node."`
+		MaxChildren            int    `help:"_Maximum children per tree node."`
 		GroupByAPI             bool   `help:"Group commands by api"`
 		GroupByContext         bool   `help:"Group commands by context"`
 		GroupByThread          bool   `help:"Group commands by thread"`
 		GroupByDrawCall        bool   `help:"Group commands by draw call"`
 		GroupByFrame           bool   `help:"Group commands by frame"`
 		GroupByUserMarkers     bool   `help:"Group commands by user markers"`
-		IncludeNoContextGroups bool   `help:"Include no context groups"`
-		AllowIncompleteFrame   bool   `help:"Make a group for incomplete frames"`
+		IncludeNoContextGroups bool   `help:"_Include no context groups"`
+		AllowIncompleteFrame   bool   `help:"_Make a group for incomplete frames"`
 		Observations           ObservationFlags
 		CommandFilterFlags
 	}
@@ -186,17 +186,17 @@ type (
 			PCS bool `help:"disable pre-compiled shaders"`
 		}
 		Record struct {
-			Errors bool `help:"record device error state"`
-			Inputs bool `help:"record the inputs to file"`
+			Errors bool `help:"_record device error state"`
+			Inputs bool `help:"_record the inputs to file"`
 		}
 		Clear struct {
 			Cache bool `help:"clear package data before running it"`
 		}
 		Input struct {
-			File string `help:"the file to use for recorded inputs"`
+			File string `help:"_the file to use for recorded inputs"`
 		}
 		Replay struct {
-			Inputs bool `help:"replay the inputs from file"`
+			Inputs bool `help:"_replay the inputs from file"`
 		}
 		Start struct {
 			Defer bool `help:"defers the start of the trace until <enter> is pressed. Only valid for Vulkan."`
@@ -216,7 +216,7 @@ type (
 	PackagesFlags struct {
 		DeviceFlags
 		Icons       bool           `help:"if true then package icons are also dumped."`
-		IconDensity float64        `help:"scale multiplier on icon density."`
+		IconDensity float64        `help:"_scale multiplier on icon density."`
 		Format      PackagesOutput `help:"output format"`
 		Out         string         `help:"output file, standard output if none"`
 		DataHeader  string         `help:"marker to write before package data"`
