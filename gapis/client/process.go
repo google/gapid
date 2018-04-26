@@ -49,7 +49,7 @@ func Connect(ctx context.Context, cfg Config) (Client, error) {
 		}
 	}
 
-	if cfg.Port == 0 || len(cfg.Args) > 0 {
+	if cfg.Port == 0 {
 		cfg.Args = append(cfg.Args,
 			"--log-level", logLevel(ctx).String(),
 			"--log-style", log.Brief.String(),
