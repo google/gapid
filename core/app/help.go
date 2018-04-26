@@ -19,12 +19,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/google/gapid/core/app/flags"
 )
 
 // Usage prints message with the formatting args to stderr, and then prints the command usage information and
 // terminates the program.
 func Usage(ctx context.Context, message string, args ...interface{}) {
-	usage(ctx, message, false, args...)
+	usage(ctx, message, Flags.FullHelp, args...)
 	panic(UsageExit)
 }
 
@@ -49,15 +51,11 @@ func usage(ctx context.Context, message string, verbose bool, args ...interface{
 	verbUsage(w, &globalVerbs, verbose)
 	verbHelp(w, &globalVerbs, verbose)
 	fmt.Fprintf(w, UsageFooter)
-}
 
-func autoHelp(ctx context.Context, args ...string) {
-	if len(args) == 0 {
-		usage(ctx, "", false)
-		panic(SuccessExit)
+	if !verbose {
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "Some less common flags have ben elided. Use -%s to see the full help.\n", flags.FullHelpFlag)
 	}
-	usage(ctx, "full help", true)
-	panic(UsageExit)
 }
 
 func verbShorthelp(raw io.Writer, v *Verb, verbose bool) {
