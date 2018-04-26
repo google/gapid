@@ -90,7 +90,12 @@ cmd VkResult vkResetFences(
     u32            fenceCount,
     const VkFence* pFences) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  read(pFences[0:fenceCount])
+  fences := pFences[0:fenceCount]
+  for i in (0 .. fenceCount) {
+    f := fences[i]
+    if !(f in Fences) { vkErrorInvalidFence(fences[i]) }
+    Fences[f].Signaled = false
+  }
   return ?
 }
 
