@@ -21,7 +21,7 @@ go_library(
         "astc.go",
         "astc.h",
     ],
-    cdeps = ["@astc-encoder//:astc-encoder"],
+    cdeps = ["@astc_encoder//:astc-encoder"],
     cgo = True,
     clinkopts = [],  # keep
     importpath = "github.com/google/gapid/core/image/astc",
