@@ -12,11 +12,117 @@
 
 <body>
     <!-- Pre-load the icons font -->
-    <div style="opacity:0; height:0; width:0; display:inline-block;">
+    <div class="icons-preload" style="opacity:0; height:0; width:0; display:inline-block;">
         <i class="material-icons">done</i>
     </div>
 
-    <script src="grid/grid.js"></script>
+    <script src="utils/geometry.js"></script>
+    <script src="models/robotModel.js"></script>
+    <script src="views/breadcrumbView.js"></script>
+    <script src="controllers/actionController.js"></script>
+    <script src="views/gridView.js"></script>
+    <script src="controllers/gridController.js"></script>
+    <script src="views/objectView.js"></script>
+    <script src="utils/decodeFilters.js"></script>
 </body>
+
+<script>
+    newRobotModel().then(function (model) {
+        var grid, actions, objectView;
+        var iconPreloadEl;
+        var commitState, decodeState;
+        var modelFmtGroup;
+
+        grid = newGridController(model);
+        // remove the font block, they should be loaded by now...
+        iconPreloadEl = document.body.getElementsByClassName("icons-preload");
+        document.body.removeChild(iconPreloadEl[0]);
+        commitState = function () {
+            grid.commitViewState();
+        }
+
+        actions = newActionController(commitState);
+
+        objectView = newObjectView();
+        modelFmtGroup = model.addTaskFormatters(objectView);
+
+        decodeState = function (filterStrings) {
+            grid.clear()
+            actions.popActions(actions.actionList.length, false);
+
+            var forcedHash = "";
+            var popAction = function (filterString) {
+                var action = decodeFilterStrings(filterString);
+                if (action != null) {
+                    delete grid.filters[action.property];
+                }
+            }
+            filterStrings.forEach(function (str) {
+                if (str == "") {
+                    return;
+                }
+                var action = decodeFilterStrings(str);
+                if (action == null) {
+                    return;
+                }
+
+                var newFilter;
+                if (action.operator == "==") {
+                    newFilter = function (dimension, key) { return function (task) { return dimension.keyOf(task) == key; }; }
+                } else {
+                    return;
+                }
+                model.dimensions.forEach(function (dimension) {
+                    if (dimension.name == action.property && dimension.keyExists(action.value)) {
+                        grid.filters[dimension.name] = newFilter(dimension, action.value);
+                    }
+                    return;
+                });
+
+                if (forcedHash == "") {
+                    forcedHash = "#" + str;
+                } else {
+                    forcedHash = forcedHash + "&" + str;
+                }
+                actions.pushAction(str, popAction, forcedHash);
+            });
+            grid.initialize()
+        };
+
+        document.body.appendChild(objectView.element);
+        document.body.appendChild(actions.view.element);
+        document.body.appendChild(grid.view.element);
+
+        window.addEventListener("hashchange", function () {
+            if (actions.changing) {
+                actions.changing = false;
+                return;
+            }
+            var filterStrings = window.location.hash.substring(1).split("&")
+            decodeState(filterStrings);
+
+        });
+        grid.onFilterChanged.push(function (dimension, operator, value) {
+            actions.pushAction(dimension + operator + value, function () {
+                delete grid.filters[dimension];
+            });
+        });
+        grid.onAxisChanged.push(function (axisName, oldAxisDim, newAxisDim) {
+            actions.actionList[actions.actionList.length - 1].popStack.push(function () {
+                grid.axes[axisName] = oldAxisDim;
+            });
+        })
+        grid.view.onCellClicked.push(function (cell) {
+            var task;
+            if (cell.tasks.length === 1) {
+                task = cell.tasks[0];
+                objectView.set(task.kind, task, modelFmtGroup);
+            }
+        });
+
+
+        model.fillRobotTasks().then(() => decodeState(window.location.hash.substring(1).split("&")));
+    });
+</script>
 
 </html>
