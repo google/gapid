@@ -67,6 +67,50 @@ sub void readCoherentMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOf
   }
 }
 
+sub void readCoherentMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings) {
+  for _, _, v in bufferBindings {
+    if v.Buffer != as!VkBuffer(0) {
+      if (v.Buffer in Buffers) {
+        readCoherentMemoryInBuffer(Buffers[v.Buffer], v.Offset, v.Range)
+      }
+    }
+  }
+}
+
+sub void readCoherentMemoryBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
+  for _, _, v in bufferViews {
+    if v in BufferViews {
+      view := BufferViews[v]
+      if (view.Buffer.VulkanHandle in Buffers) {
+        readCoherentMemoryInBuffer(view.Buffer, view.Offset, view.Range)
+      }
+    }
+  }
+}
+
+sub void readCoherentMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set) {
+  for _, _, v in descriptor_set.Bindings {
+    switch v.BindingType {
+      case
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+          readCoherentMemoryInBufferBindings(v.BufferBinding)
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+          readCoherentMemoryBufferViewBindings(v.BufferViewBindings)
+      default: {}
+    }
+  }
+}
+
+sub void readCoherentMemoryInBoundDescriptorSets() {
+  for _, _, s in lastDrawInfo().DescriptorSets {
+    readCoherentMemoryInDescriptorSet(s)
+  }
+}
+
 sub void readCoherentMemoryInImage(ref!ImageObject image) {
   mem := image.BoundMemory
   if mem != null {
