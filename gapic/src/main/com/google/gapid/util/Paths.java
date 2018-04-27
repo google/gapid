@@ -135,11 +135,26 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any meshAfter(AtomIndex atom, Path.MeshOptions options,
-      Vertex.BufferFormat format) {
+  public static final Path.MeshOptions NODATA_MESH_OPTIONS = Path.MeshOptions.newBuilder()
+      .setExcludeData(true)
+      .build();
+
+  public static Path.Any meshAfter(AtomIndex atom, Path.MeshOptions options) {
     return Path.Any.newBuilder()
-        .setAs(Path.As.newBuilder().setVertexBufferFormat(format)
-            .setMesh(Path.Mesh.newBuilder().setCommandTreeNode(atom.getNode()).setOptions(options)))
+        .setMesh(Path.Mesh.newBuilder()
+            .setCommandTreeNode(atom.getNode())
+            .setOptions(options))
+        .build();
+  }
+
+  public static Path.Any meshAfter(
+      AtomIndex atom, Path.MeshOptions options, Vertex.BufferFormat format) {
+    return Path.Any.newBuilder()
+        .setAs(Path.As.newBuilder()
+            .setMesh(Path.Mesh.newBuilder()
+                .setCommandTreeNode(atom.getNode())
+                .setOptions(options))
+            .setVertexBufferFormat(format))
         .build();
   }
 

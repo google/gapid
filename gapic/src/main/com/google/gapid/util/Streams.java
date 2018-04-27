@@ -15,7 +15,10 @@
  */
 package com.google.gapid.util;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.gapid.proto.stream.Stream;
+
+import java.util.Map;
 
 /**
  * Data {@link Stream} utilities.
@@ -24,8 +27,16 @@ public class Streams {
   // U8 represents a 8-bit unsigned, integer.
   public static final Stream.DataType U8 = newInt(false, 8);
 
+  // F10 represents a 10-bit unsigned floating-point number.
+  public static final Stream.DataType F10 = newFloat(false, 5, 5);
+  // F11 represents a 11-bit unsigned floating-point number.
+  public static final Stream.DataType F11 = newFloat(false, 5, 6);
+  // F16 represents a 16-bit signed, floating-point number.
+  public static final Stream.DataType F16 = newFloat(true, 5, 10);
   // F32 represents a 32-bit signed, floating-point number.
   public static final Stream.DataType F32 = newFloat(true, 7, 24);
+  // F64 represents a 64-bit signed, floating-point number.
+  public static final Stream.DataType F64 = newFloat(true, 10, 53);
 
   // LINEAR is a Sampling state using a linear curve.
   public static final Stream.Sampling LINEAR = Stream.Sampling.newBuilder()
@@ -129,6 +140,65 @@ public class Streams {
         ).build();
   }
 
+  private static final Map<Stream.DataType, String> FIXED_DATATYPE_NAMES =
+      ImmutableMap.<Stream.DataType, String>builder()
+          .put(F10, "float10")
+          .put(F11, "float11")
+          .put(F16, "float16")
+          .put(F32, "float32")
+          .put(F64, "float64")
+          .build();
+
   private Streams() {
+  }
+
+  public static String toString(Stream.Format format) {
+    StringBuilder sb = new StringBuilder();
+    int count = 0;
+    String lastType = null;
+    for (Stream.Component c : format.getComponentsList()) {
+      String type = toString(c.getDataType());
+      if (lastType == null || type.equals(lastType)) {
+        lastType = type;
+        count++;
+      } else {
+        append(sb, lastType, count).append(", ");
+        lastType = type;
+        count = 1;
+      }
+    }
+    if (lastType != null) {
+      append(sb, lastType, count);
+    }
+    return sb.toString();
+  }
+
+  private static StringBuilder append(StringBuilder sb, String type, int count) {
+    sb.append(type);
+    if (count > 1) {
+      sb.append(" vec").append(count);
+    }
+    return sb;
+  }
+
+  public static String toString(Stream.DataType type) {
+    String name = FIXED_DATATYPE_NAMES.get(type);
+    if (name != null) {
+      return name;
+    }
+
+    switch (type.getKindCase()) {
+      case FLOAT:
+        Stream.Float f = type.getFloat();
+        return "float" + (type.getSigned() ? "S" : "U") + f.getMantissaBits() + "E" + f.getExponentBits();
+      case FIXED:
+        Stream.Fixed x = type.getFixed();
+        return "fixed" + (type.getSigned() ? "S" : "U") + x.getIntegerBits() + "." + x.getFractionalBits();
+      case INTEGER:
+        Stream.Integer i = type.getInteger();
+        return (type.getSigned() ? "s" : "u") + "int" + i.getBits();
+      default:
+        return "unknown";
+    }
   }
 }
