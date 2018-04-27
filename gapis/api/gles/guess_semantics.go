@@ -50,14 +50,23 @@ var semanticFormats = []struct {
 // guessSemantics uses string and format matching to try and guess the semantic
 // usage of a vertex stream.
 // This is a big fat hack. See: https://github.com/google/gapid/issues/960
-func guessSemantics(vb *vertex.Buffer) {
+func guessSemantics(vb *vertex.Buffer, hints map[string]vertex.Semantic_Type) {
 	taken := map[vertex.Semantic_Type]bool{}
+	if len(hints) > 0 {
+		for _, s := range vb.Streams {
+			if semantic, ok := hints[s.Name]; ok && !taken[semantic] {
+				taken[semantic] = true
+				s.Semantic.Type = semantic
+			}
+		}
+	}
+
 	for _, p := range semanticPatterns {
 		if taken[p.semantic] {
 			continue
 		}
 		for _, s := range vb.Streams {
-			if strings.Contains(strings.ToLower(s.Name), p.pattern) {
+			if needsGuess(s) && strings.Contains(strings.ToLower(s.Name), p.pattern) {
 				s.Semantic.Type = p.semantic
 				taken[p.semantic] = true
 				break
@@ -69,11 +78,15 @@ func guessSemantics(vb *vertex.Buffer) {
 			continue
 		}
 		for _, s := range vb.Streams {
-			if s.Format.String() == p.format.String() {
+			if needsGuess(s) && s.Format.String() == p.format.String() {
 				s.Semantic.Type = p.semantic
 				taken[p.semantic] = true
 				break
 			}
 		}
 	}
+}
+
+func needsGuess(s *vertex.Stream) bool {
+	return s.Semantic.Type == vertex.Semantic_Unknown
 }

@@ -46,9 +46,16 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 	c := GetContext(s, dc.Thread())
 
-	dci, err := dc.getIndices(ctx, c, s)
-	if err != nil {
-		return nil, err
+	noData := p.GetOptions().GetExcludeData()
+
+	var dci drawCallIndices
+	if noData {
+		dci = drawCallIndices{nil, dc.getDrawMode(), false}
+	} else {
+		dci, err = dc.getIndices(ctx, c, s)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	drawPrimitive, err := translateDrawPrimitive(dci.drawMode)
@@ -69,7 +76,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		uniqueIndices[i] = true
 	}
 
-	if count == 0 {
+	if count == 0 && !noData {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshHasNoVertices()}
 	}
 
@@ -96,16 +103,19 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 			return nil, err
 		}
 
-		var slice U8ˢ
-		if vbb.Buffer == nil {
-			// upper bound doesn't really matter here, so long as it's big.
-			slice = U8ˢ(vaa.Pointer.Slice(0, 1<<30, s.MemoryLayout))
-		} else {
-			slice = vbb.Buffer.Data
-		}
-		data, err := vertexStreamData(ctx, vaa, vbb, count, slice, s)
-		if err != nil {
-			return nil, err
+		var data []byte
+		if !noData {
+			var slice U8ˢ
+			if vbb.Buffer == nil {
+				// upper bound doesn't really matter here, so long as it's big.
+				slice = U8ˢ(vaa.Pointer.Slice(0, 1<<30, s.MemoryLayout))
+			} else {
+				slice = vbb.Buffer.Data
+			}
+			data, err = vertexStreamData(ctx, vaa, vbb, count, slice, s)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		vb.Streams = append(vb.Streams,
@@ -118,7 +128,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 		)
 	}
 
-	guessSemantics(vb)
+	guessSemantics(vb, p.Options.Hints())
 
 	ib := &api.IndexBuffer{Indices: dci.indices}
 
