@@ -2,6 +2,7 @@
 build --verbose_failures
 test --test_output=errors
 query --nohost_deps --noimplicit_deps
+run --direct_run
 
 # Adding in c11 compiling, this really should be done in the android toolchains
 build --cxxopt="-std=c++11"
