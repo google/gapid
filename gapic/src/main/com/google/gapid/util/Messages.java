@@ -74,4 +74,6 @@ public interface Messages {
       "Extra details from the logs and the trace file would be extra helpful.\n\n";
   public static final String NO_OPENGL =
       "Failed to create an OpenGL context. OpenGL is required to use this application.";
+  public static final String GEO_SEMANTICS_TITLE = "Vertex Semantics";
+  public static final String GEO_SEMANTICS_HINT = "Manually configure the vertex stream semantics:";
 }

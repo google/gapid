@@ -67,6 +67,7 @@ public interface Theme {
   @Icon("point_cloud.png") public Image pointCloud();
   @Icon("refresh.png") public Image refresh();
   @Icon("save.png") public Image save();
+  @Icon("settings.png") public Image settings();
   @Icon("smile.png") public Image smile();
   @Icon("smooth.png") public Image smooth();
   @Icon("transparency.png") public Image transparency();
