@@ -54,7 +54,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 
 	// Get the draw primitive from the currente graphics pipeline
 	if lastDrawInfo.GraphicsPipeline == nil {
-		return nil, fmt.Errorf("Cannot found last used graphics pipeline")
+		return nil, fmt.Errorf("Cannot find last used graphics pipeline")
 	}
 	drawPrimitive := func() api.DrawPrimitive {
 		switch lastDrawInfo.GraphicsPipeline.InputAssemblyState.Topology {
@@ -81,20 +81,25 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 
 	stats := &api.Mesh_Stats{}
 
+	noData := p.GetOptions().GetExcludeData()
+
 	// In total there are four kinds of draw calls: vkCmdDraw, vkCmdDrawIndexed,
 	// vkCmdDrawIndirect, vkCmdDrawIndexedIndirect. Each is processed in one of
 	// the branches.
 	if p := lastDrawInfo.CommandParameters.Draw; p != nil {
 		// Last draw call is vkCmdDraw
 		// Generate an index buffer with value: 0, 1, 2, 3 ... vertexCount-1
-		indices := make([]uint32, p.VertexCount)
-		for i, _ := range indices {
-			indices[i] = uint32(i)
+		var indices []uint32
+		if !noData {
+			indices := make([]uint32, p.VertexCount)
+			for i, _ := range indices {
+				indices[i] = uint32(i)
+			}
 		}
-		ib = &api.IndexBuffer{Indices: []uint32(indices)}
+		ib = &api.IndexBuffer{Indices: indices}
 
 		// Get the current bound vertex buffers
-		vb, err = getVertexBuffers(ctx, s, dc.thread, p.VertexCount, p.FirstVertex)
+		vb, err = getVertexBuffers(ctx, s, dc.thread, p.VertexCount, p.FirstVertex, noData)
 		if err != nil {
 			return nil, err
 		}
@@ -104,11 +109,15 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		// Last draw call is vkCmdDrawIndexed
 		// Get the current bound index buffer
 		if lastDrawInfo.BoundIndexBuffer.BoundBuffer.Buffer == nil {
-			return nil, fmt.Errorf("Cannot found last used index buffer")
+			return nil, fmt.Errorf("Cannot find last used index buffer")
 		}
-		indices, err := getIndicesData(ctx, s, lastDrawInfo.BoundIndexBuffer, p.IndexCount, p.FirstIndex, p.VertexOffset)
-		if err != nil {
-			return nil, err
+
+		var indices []uint32
+		if !noData {
+			indices, err = getIndicesData(ctx, s, lastDrawInfo.BoundIndexBuffer, p.IndexCount, p.FirstIndex, p.VertexOffset)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Calculate the vertex count and the first vertex
@@ -126,7 +135,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 		}
 		vertexCount := maxIndex - minIndex + 1
 		// Get the current bound vertex buffers
-		vb, err = getVertexBuffers(ctx, s, dc.thread, vertexCount, minIndex)
+		vb, err = getVertexBuffers(ctx, s, dc.thread, vertexCount, minIndex, noData)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +148,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 			shiftedIndices[i] = index - minIndex
 		}
 		ib = &api.IndexBuffer{
-			Indices: []uint32(shiftedIndices),
+			Indices: shiftedIndices,
 		}
 		stats.Vertices = uint32(len(uniqueIndices))
 		stats.Indices = p.IndexCount
@@ -149,6 +158,8 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Me
 	} else if p := lastDrawInfo.CommandParameters.DrawIndexedIndirect; p != nil {
 		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndexedIndirect not implemented")
 	}
+
+	guessSemantics(vb, p.Options.Hints())
 
 	mesh := &api.Mesh{
 		DrawPrimitive: drawPrimitive,
@@ -213,10 +224,10 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, boundIndexBuffer *B
 }
 
 func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
-	vertexCount, firstVertex uint32) (*vertex.Buffer, error) {
+	vertexCount, firstVertex uint32, noData bool) (*vertex.Buffer, error) {
 
-	if vertexCount == 0 {
-		return nil, fmt.Errorf("Number of vertices must be greater than 0.")
+	if !noData && vertexCount == 0 {
+		return nil, fmt.Errorf("Number of vertices must be greater than 0")
 	}
 
 	c := getStateObject(s)
@@ -234,6 +245,7 @@ func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 	vb := &vertex.Buffer{}
 	attributes := lastDrawInfo.GraphicsPipeline.VertexInputState.AttributeDescriptions
 	bindings := lastDrawInfo.GraphicsPipeline.VertexInputState.BindingDescriptions
+	var err error
 	// For each attribute, get the vertex buffer data
 	for _, attributeIndex := range attributes.Keys() {
 		attribute := attributes.Get(attributeIndex)
@@ -246,13 +258,17 @@ func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 			// TODO(qining): This is an error, should emit error message here.
 			continue
 		}
-		boundVertexBuffer := lastDrawInfo.BoundVertexBuffers.Get(binding.Binding)
-		vertexData, err := getVerticesData(ctx, s, thread, boundVertexBuffer,
-			vertexCount, firstVertex, binding, attribute)
-		if err != nil {
-			return nil, err
+
+		var vertexData []byte
+		if !noData {
+			boundVertexBuffer := lastDrawInfo.BoundVertexBuffers.Get(binding.Binding)
+			vertexData, err = getVerticesData(ctx, s, thread, boundVertexBuffer,
+				vertexCount, firstVertex, binding, attribute)
+			if err != nil {
+				return nil, err
+			}
 		}
-		if vertexData != nil {
+		if noData || vertexData != nil {
 			translatedFormat, err := translateVertexFormat(attribute.Fmt)
 			if err != nil {
 				// TODO(qining): This is an error, should emit error message here
@@ -270,7 +286,6 @@ func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 				})
 		}
 	}
-	guessSemantics(vb)
 	return vb, nil
 }
 
@@ -280,7 +295,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	attribute VkVertexInputAttributeDescription) ([]byte, error) {
 
 	if vertexCount == 0 {
-		return nil, fmt.Errorf("Number of vertices must be greater than 0.")
+		return nil, fmt.Errorf("Number of vertices must be greater than 0")
 	}
 	if binding.InputRate == VkVertexInputRate_VK_VERTEX_INPUT_RATE_INSTANCE {
 		// Instanced draws are not supported, but the first instance's geometry
@@ -434,10 +449,9 @@ func translateVertexFormat(vkFormat VkFormat) (*stream.Format, error) {
 	default:
 		return nil, fmt.Errorf("Unsupported format as vertex format")
 	}
-	return nil, fmt.Errorf("Unsupported format as vertex format")
 }
 
-func guessSemantics(vb *vertex.Buffer) {
+func guessSemantics(vb *vertex.Buffer, hints map[string]vertex.Semantic_Type) {
 	// TODO: We may disassemble the shader to pull out the debug name to help
 	// this semantics guessing, if the shader has debug info.
 	numOfElementsToSemanticTypes := map[uint32][]vertex.Semantic_Type{
@@ -452,7 +466,20 @@ func guessSemantics(vb *vertex.Buffer) {
 	}
 
 	taken := map[vertex.Semantic_Type]bool{}
+	if len(hints) > 0 {
+		for _, s := range vb.Streams {
+			if t, ok := hints[s.Name]; ok && !taken[t] {
+				s.Semantic.Type = t
+				taken[t] = true
+			}
+		}
+	}
+
 	for _, s := range vb.Streams {
+		if !needsGuess(s) {
+			continue
+		}
+
 		numOfElements := uint32(len(s.Format.Components))
 		for _, t := range numOfElementsToSemanticTypes[numOfElements] {
 			if taken[t] {
@@ -463,4 +490,8 @@ func guessSemantics(vb *vertex.Buffer) {
 			break
 		}
 	}
+}
+
+func needsGuess(s *vertex.Stream) bool {
+	return s.Semantic.Type == vertex.Semantic_Unknown
 }

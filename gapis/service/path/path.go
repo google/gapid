@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/service/box"
+	"github.com/google/gapid/gapis/vertex"
 )
 
 // Node is the interface for types that represent a reference to a capture,
@@ -599,11 +600,31 @@ func (n *Command) FramebufferObservation() *FramebufferObservation {
 }
 
 // Mesh returns the path node to the mesh of this command.
-func (n *Command) Mesh(faceted bool) *Mesh {
+func (n *Command) Mesh(options *MeshOptions) *Mesh {
 	return &Mesh{
-		Options: &MeshOptions{faceted},
+		Options: options,
 		Object:  &Mesh_Command{n},
 	}
+}
+
+// NewMeshOptions returns a new MeshOptions object.
+func NewMeshOptions(faceted bool) *MeshOptions {
+	return &MeshOptions{
+		Faceted: faceted,
+	}
+}
+
+// Hints returns the vertex semantics hints from the mesh options.
+func (o *MeshOptions) Hints() map[string]vertex.Semantic_Type {
+	m := map[string]vertex.Semantic_Type{}
+	if o == nil {
+		return m
+	}
+
+	for _, hint := range o.VertexSemantics {
+		m[hint.Name] = hint.Type
+	}
+	return m
 }
 
 // GlobalStateAfter returns the path node to the state after this command.

@@ -63,7 +63,7 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error
 		if len(o.Commands.From) == 1 {
 			s, e := o.Commands.From[0], o.Commands.To[0]
 			for i := e; int64(i) >= int64(s); i-- {
-				p := o.Commands.Capture.Command(i).Mesh(p.Options.Faceted)
+				p := o.Commands.Capture.Command(i).Mesh(p.Options)
 				if mesh, err := meshFor(ctx, cmds[i], p); mesh != nil || err != nil {
 					return mesh, err
 				}
@@ -79,7 +79,7 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error
 			for i := o.Commands.To[lastSubcommand]; i >= o.Commands.From[lastSubcommand]; i-- {
 				cmd := append([]uint64{}, o.Commands.From[1:]...)
 				cmd[lastSubcommand-1] = i
-				p := o.Commands.Capture.Command(o.Commands.From[0], cmd...).Mesh(p.Options.Faceted)
+				p := o.Commands.Capture.Command(o.Commands.From[0], cmd...).Mesh(p.Options)
 				if mesh, err := meshFor(ctx, cmds[o.Commands.From[0]], p); mesh != nil || err != nil {
 					return mesh, err
 				}

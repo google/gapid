@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type stresstestVerb struct{ StressTestFlags }
@@ -97,7 +98,7 @@ func (verb *stresstestVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 					}
 
 				case getMesh:
-					boxedMesh, err := client.Get(ctx, c.Command(at).Mesh(true).Path())
+					boxedMesh, err := client.Get(ctx, c.Command(at).Mesh(path.NewMeshOptions(true)).Path())
 					if err == nil {
 						mesh := boxedMesh.(*api.Mesh)
 						_ = mesh

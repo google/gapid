@@ -330,7 +330,19 @@ message Mesh {
 
 // MeshOptions provides parameters for the mesh returned by a Mesh path resolve.
 message MeshOptions {
-    bool faceted = 1; // If true then normals are calculated from each face.
+    // If true then normals are calculated from each face.
+    bool faceted = 1;
+    // If true, the actual data will be missing from the vertex.Buffers. This
+    // can be used to fetch the metadata about the mesh and all its vertex
+    // buffers, without the overhead of fetching all the buffer data.
+    bool exclude_data = 2;
+    // Hints that override the semantic guessing. Maps vertex attribute names to
+    // their intentended semantic type.
+    message SemanticHint {
+        string name = 1;
+        vertex.Semantic.Type type = 2;
+    }
+    repeated SemanticHint vertex_semantics = 3;
 }
 
 // Report is a path to a list of report items for a capture.

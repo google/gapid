@@ -225,7 +225,7 @@ func TestGet(t *testing.T) {
 		// panic: reflect.nameFrom: name too long
 		// {capture.Command(swapAtomIndex).StateAfter(), any},
 		{capture.Command(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},
-		{capture.Command(drawAtomIndex).Mesh(false), T((*api.Mesh)(nil))},
+		{capture.Command(drawAtomIndex).Mesh(nil), T((*api.Mesh)(nil))},
 		{capture.CommandTree(nil), T((*service.CommandTree)(nil))},
 		{capture.Report(nil, nil), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},
