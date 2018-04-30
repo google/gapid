@@ -84,7 +84,7 @@ sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) buffer
   }
 }
 
-sub void readMemoryBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
+sub void readMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
   for _, _, v in bufferViews {
     if v in BufferViews {
       view := BufferViews[v]
@@ -118,7 +118,7 @@ sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set) {
           readMemoryInBufferBindings(v.BufferBinding)
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
         VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-          readMemoryBufferViewBindings(v.BufferViewBindings)
+          readMemoryInBufferViewBindings(v.BufferViewBindings)
       case
         VK_DESCRIPTOR_TYPE_SAMPLER,
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
