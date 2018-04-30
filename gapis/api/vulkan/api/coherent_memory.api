@@ -143,7 +143,85 @@ sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(
   }
 }
 
-sub void readMemoryInBoundDescriptorSets(
+sub void writeMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize offset, VkDeviceSize size) {
+  mem := buffer.Memory
+  if mem != null {
+    begin := buffer.MemoryOffset + offset
+    actualSize := switch as!u64(size) {
+      case 0xFFFFFFFFFFFFFFFF:
+        buffer.Info.Size - offset
+      default:
+        size
+    }
+    end := begin + actualSize
+    if len(mem.Data) != 0 {
+      write(mem.Data[begin : end])
+    }
+  }
+}
+
+sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
+  for i in (0 .. len(bufferBindings)) {
+    bufferBinding := bufferBindings[as!u32(i)]
+    if bufferBinding.Buffer != as!VkBuffer(0) {
+      if (bufferBinding.Buffer in Buffers) {
+        offset := switch as!u32(i) in bufferBindingOffsets {
+          case true:
+            bufferBindingOffsets[as!u32(i)]
+          case false:
+            bufferBinding.Offset
+        }
+        writeMemoryInBuffer(Buffers[bufferBinding.Buffer], offset, bufferBinding.Range)
+      }
+    }
+  }
+}
+
+sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
+  for _, _, v in bufferViews {
+    if v in BufferViews {
+      view := BufferViews[v]
+      if (view.Buffer.VulkanHandle in Buffers) {
+        writeMemoryInBuffer(view.Buffer, view.Offset, view.Range)
+      }
+    }
+  }
+}
+
+sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
+  for _, _, v in imageBindings {
+    _ = Samplers[v.Sampler]
+    if v.ImageView != as!VkImageView(0) {
+      imageViewObj := ImageViews[v.ImageView]
+      imageObj := imageViewObj.Image
+      rng := imageViewObj.SubresourceRange
+      writeImageSubresource(imageObj, rng, v.ImageLayout)
+    }
+  }
+}
+
+sub void writeMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets) {
+  for i in (0 .. len(descriptor_set.Bindings)) {
+    binding := descriptor_set.Bindings[as!u32(i)]
+    switch binding.BindingType {
+      case
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+          if as!u32(i) in bufferBindingOffsets {
+            writeMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets[as!u32(i)])
+          } else {
+            writeMemoryInBufferBindings(binding.BufferBinding, null)
+          }
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+          writeMemoryInBufferViewBindings(binding.BufferViewBindings)
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+        writeMemoryInImageBindings(binding.ImageBinding)
+      default: {}
+    }
+  }
+}
+
+sub void readWriteMemoryInBoundDescriptorSets(
     ref!PipelineLayoutObject pipelineLayout,
     map!(u32, ref!DescriptorSetObject) descriptorSets,
     map!(u32, map!(u32, map!(u32, VkDeviceSize))) bufferBindingOffsets) {
@@ -152,6 +230,7 @@ sub void readMemoryInBoundDescriptorSets(
     descriptorSet := descriptorSets[as!u32(i)]
     if descriptorSet != null {
       readMemoryInDescriptorSet(descriptorSet, bufferBindingOffsets[as!u32(i)])
+      writeMemoryInDescriptorSet(descriptorSet, bufferBindingOffsets[as!u32(i)])
     }
   }
 }
