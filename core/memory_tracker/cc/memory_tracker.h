@@ -115,11 +115,11 @@ inline bool IsInRanges(uintptr_t addr, std::map<uintptr_t, size_t>& ranges,
       }
     }
   }
-  // Check the previous range
-  auto pit = std::prev(it, 1);
-  if (pit == ranges.end()) {
+  if (it == ranges.begin()) {
     return false;
   }
+  // Check the previous range
+  auto pit = std::prev(it, 1);
   uintptr_t range_start =
       page_aligned_ranges ? get_aligned_addr(pit->first) : pit->first;
   uintptr_t range_size = page_aligned_ranges
