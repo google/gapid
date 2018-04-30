@@ -233,14 +233,19 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   ref!RenderPassObject RenderPass
   // Whether or not we are in an unclosed render pass
   @hidden bool InRenderPass
+  // BufferBindingOffsets[setNum][bindingNum][bufferBindingNum] :=
+  //    buffer offset for given descriptor set number, binding number, and index of buffer binding
+  map!(u32, map!(u32, map!(u32, VkDeviceSize))) BufferBindingOffsets
 }
 
 @internal class ComputeInfo {
   // A mapping from the descriptor set bound numbers to descriptor set objects
   map!(u32, ref!DescriptorSetObject) DescriptorSets
-
   // The compute pipeline used for the draw
   ref!ComputePipelineObject ComputePipeline
+  // BufferBindingOffsets[setNum][bindingNum][bufferBindingNum] :=
+  //    buffer offset for given descriptor set number, binding number, and index of buffer binding
+  map!(u32, map!(u32, map!(u32, VkDeviceSize))) BufferBindingOffsets
 }
 
 @internal class PresentInfo {
