@@ -630,6 +630,13 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
       drawInfo.DescriptorSets
   }
 
+  bufferBindingOffsets := switch args.PipelineBindPoint {
+    case VK_PIPELINE_BIND_POINT_COMPUTE:
+      computeInfo.BufferBindingOffsets
+    case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      drawInfo.BufferBindingOffsets
+  }
+
   for i in (0 .. len(args.DescriptorSets)) {
     if args.DescriptorSets[as!u32(i)] in DescriptorSets {
       set := args.DescriptorSets[as!u32(i)]
@@ -657,6 +664,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
               default:
                 dynamic_offset_index.Val
             }
+            bufferBindingOffsets[as!u32(i)][as!u32(j)][as!u32(k)] = binding_offset
             if (bufferBinding.Buffer in Buffers) {
               bufferObject := Buffers[bufferBinding.Buffer]
               readMemoryInBuffer(bufferObject, binding_offset, bufferBinding.Range)

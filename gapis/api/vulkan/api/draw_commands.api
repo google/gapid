@@ -361,11 +361,13 @@ cmd void vkCmdDispatchIndirect(
 sub void readMemoryInBoundGraphicsDescriptorSets() {
   readMemoryInBoundDescriptorSets(
     lastDrawInfo().GraphicsPipeline.Layout,
-    lastDrawInfo().DescriptorSets)
+    lastDrawInfo().DescriptorSets,
+    lastDrawInfo().BufferBindingOffsets)
 }
 
 sub void readMemoryInBoundComputeDescriptorSets() {
   readMemoryInBoundDescriptorSets(
     lastComputeInfo().ComputePipeline.PipelineLayout,
-    lastComputeInfo().DescriptorSets)
+    lastComputeInfo().DescriptorSets,
+    lastComputeInfo().BufferBindingOffsets)
 }
