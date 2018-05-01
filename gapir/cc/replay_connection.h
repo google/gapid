@@ -214,7 +214,9 @@ class ReplayConnection {
     return std::unique_ptr<ReplayConnection>(new ReplayConnection(stream));
   }
 
-  ~ReplayConnection() = default;
+  ~ReplayConnection() {
+    this->sendReplayFinished();
+  }
 
   ReplayConnection(const ReplayConnection&) = delete;
   ReplayConnection(ReplayConnection&&) = delete;

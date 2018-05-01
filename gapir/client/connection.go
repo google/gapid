@@ -182,6 +182,7 @@ func (c *Connection) HandleReplayCommunication(
 			if err := handleCrashDump(ctx, &CrashDump{*r.GetCrashDump()}, c); err != nil {
 				return fmt.Errorf("Failed to handle crash dump: %v", err)
 			}
+			c.Close()
 		case *service.ReplayResponse_PostData:
 			log.W(ctx, "handle post data")
 			if err := handlePostData(ctx, &PostData{*r.GetPostData()}, c); err != nil {

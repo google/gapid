@@ -33,7 +33,6 @@ go_proto_library(
 cc_grpc_library(
     name = "service_cc_proto",
     srcs = ["service.proto"],
-    # srcs = ["service_proto"],
     deps = [],
     proto_only = False,
     use_external = True,

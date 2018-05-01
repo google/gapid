@@ -75,7 +75,6 @@ func (e executor) execute(ctx context.Context, connection *gapir.Connection) err
 	go func() {
 		log.W(ctx, "In execute: in handle communication thread")
 		log.W(ctx, "replay ID: %v", id)
-		log.W(ctx, "payload: %v", e.payload)
 		defer connection.Close()
 		err := connection.HandleReplayCommunication(
 			ctx, id.String(), e.payload,
