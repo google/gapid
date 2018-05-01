@@ -15,40 +15,51 @@
  */
 
 #include "resource_requester.h"
-#include "server_connection.h"
 
+#include <memory>
 #include <vector>
+
+#include "replay_connection.h"
 
 namespace gapir {
 
 std::unique_ptr<ResourceRequester> ResourceRequester::create() {
-    return std::unique_ptr<ResourceRequester>(new ResourceRequester());
+  return std::unique_ptr<ResourceRequester>(new ResourceRequester());
 }
 
-bool ResourceRequester::get(const Resource*         resources,
-                            size_t                  count,
-                            const ServerConnection& server,
-                            void*                   target,
-                            size_t                  size) {
-    if (count == 0) {
-        return true;
-    }
-    size_t requestSize = 0;
-    auto ids = std::vector<ResourceId>(count);
-    for (size_t i = 0; i < count; i++) {
-        ids[i] = resources[i].id;
-        requestSize += resources[i].size;
-    }
-    if (requestSize > size) {
-        return false; // not enough space.
-    }
-    return server.getResources(ids.data(), count, target, requestSize);
+bool ResourceRequester::get(const Resource* resources, size_t count,
+                            ReplayConnection* conn, void* target, size_t size) {
+  if (count == 0) {
+    return true;
+  }
+  if (conn == nullptr) {
+    return false;  // no replay connection to get data.
+  }
+  size_t requestSize = 0;
+  std::unique_ptr<ReplayConnection::ResourceRequest> req =
+      ReplayConnection::ResourceRequest::create();
+  for (size_t i = 0; i < count; i++) {
+    req->append(resources[i].id, resources[i].size);
+    requestSize += resources[i].size;
+  }
+  if (requestSize > size) {
+    return false;  // not enough space.
+  }
+
+  std::unique_ptr<ReplayConnection::Resources> res =
+      conn->getResources(std::move(req));
+  if (res == nullptr) {
+    return false;
+  }
+  if (res->size() != requestSize) {
+    return false;  // unexpected resource size.
+  }
+  memcpy(target, res->data(), res->size());
+  return true;
 }
 
-void ResourceRequester::prefetch(const Resource*         resources,
-                                 size_t                  count,
-                                 const ServerConnection& server,
-                                 void*                   temp,
-                                 size_t                  tempSize) {}
+void ResourceRequester::prefetch(const Resource* resources, size_t count,
+                                 ReplayConnection* conn, void* temp,
+                                 size_t tempSize) {}
 
 }  // namespace gapir

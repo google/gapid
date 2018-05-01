@@ -18,14 +18,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"time"
 
-	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
-	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -37,15 +34,14 @@ import (
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapidapk"
-	"github.com/google/gapid/gapis/replay/protocol"
 )
 
 const sessionTimeout = time.Second * 10
 
 type session struct {
-	device   bind.Device
-	port     int
-	auth     auth.Token
+	device bind.Device
+	port   int
+	// auth     auth.Token
 	closeCBs []func()
 	inited   chan struct{}
 }
@@ -76,12 +72,12 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, laun
 
 // newHost spawns and returns a new GAPIR instance on the host machine.
 func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []string) error {
-	authTokenFile, authToken := auth.GenTokenFile()
-	defer os.Remove(authTokenFile)
+	// authTokenFile, authToken := auth.GenTokenFile()
+	// defer os.Remove(authTokenFile)
 
 	args := []string{
 		"--idle-timeout-ms", strconv.Itoa(int(sessionTimeout / time.Millisecond)),
-		"--auth-token-file", authTokenFile,
+		// "--auth-token-file", authTokenFile,
 	}
 	args = append(args, launchArgs...)
 
@@ -136,7 +132,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 	}
 
 	s.port = port
-	s.auth = authToken
+	// s.auth = authToken
 	return nil
 }
 
@@ -167,7 +163,8 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	if !ok {
 		return log.Errf(ctx, nil, "Unsupported architecture: %v", abi.Architecture)
 	}
-	if err := d.Forward(ctx, localPort, adb.NamedAbstractSocket(socket)); err != nil {
+	// if err := d.Forward(ctx, localPort, adb.NamedAbstractSocket(socket)); err != nil {
+	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket("/data/data/com.google.android.gapid.aarch64/"+socket)); err != nil {
 		return log.Err(ctx, err, "Forwarding port")
 	}
 	s.onClose(func() { d.RemoveForward(ctx, localPort) })
@@ -189,9 +186,10 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	return log.Err(ctx, nil, "Timeout waiting for connection")
 }
 
-func (s *session) connect(ctx context.Context) (io.ReadWriteCloser, error) {
+func (s *session) connect(ctx context.Context) (*Connection, error) {
 	<-s.inited
-	return process.Connect(s.port, s.auth)
+	// s.auth?
+	return NewConnection(fmt.Sprintf("localhost:%d", s.port))
 }
 
 func (s *session) onClose(f func()) {
@@ -206,19 +204,16 @@ func (s *session) close() {
 }
 
 func (s *session) ping(ctx context.Context) (time.Duration, error) {
-	connection, err := process.Connect(s.port, s.auth)
+	// s.auth?
+	conn, err := NewConnection(fmt.Sprintf("localhost:%d", s.port))
 	if err != nil {
 		return 0, err
 	}
-	defer connection.Close()
-	w := endian.Writer(connection, device.LittleEndian) // TODO: Endianness
-	r := endian.Reader(connection, device.LittleEndian) // TODO: Endianness
+	defer conn.Close()
 	start := time.Now()
-	if w.Uint8(uint8(protocol.ConnectionType_Ping)); w.Error() != nil {
-		return 0, w.Error()
-	}
-	if response := r.String(); w.Error() != nil || response != "PONG" {
-		return 0, fmt.Errorf("Expected 'PONG', got: '%v' (err: %v)", response, r.Error())
+	err = conn.Ping(ctx)
+	if err != nil {
+		return 0, err
 	}
 	return time.Since(start), nil
 }

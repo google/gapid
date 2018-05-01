@@ -17,10 +17,11 @@
 #ifndef GAPIR_RESOURCE_CACHE_H
 #define GAPIR_RESOURCE_CACHE_H
 
-#include "resource_provider.h"
-
 #include <memory>
 #include <vector>
+
+#include "resource_provider.h"
+#include "replay_connection.h"
 
 namespace gapir {
 
@@ -31,7 +32,7 @@ public:
 
     // Loads count resources from the provider and writes them, in-order, to target.
     // If the net size of all the resources exceeds size, then false is returned.
-    bool get(const Resource* resources, size_t count, const ServerConnection& server,
+    bool get(const Resource* resources, size_t count, ReplayConnection* conn,
              void* target, size_t size) override;
 
 protected:
@@ -57,7 +58,7 @@ protected:
         // The requested resources are added to the cache using putCache.
         // Once called, the batch must not be used again.
         // Returns true if all resources were fetched, otherwise false.
-        bool flush(ResourceCache& cache, const ServerConnection& server);
+        bool flush(ResourceCache& cache, ReplayConnection* conn);
     private:
         std::vector<Resource> mResources; // Batch of resources to request.
         uint8_t* mTarget;                 // Target address of resource data.

@@ -1,0 +1,99 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package service;
+
+option go_package = "github.com/google/gapid/gapir/service";
+
+message ResourceInfo {
+    string id = 1;
+    uint32 size = 2;
+}
+
+message Payload {
+    uint32 stack_size = 1;
+    uint32 volatile_memory_size = 2;
+    bytes constants = 3;
+    repeated ResourceInfo resources = 4;
+    bytes Opcodes = 5;
+}
+
+message Resources {
+    bytes data = 1;
+}
+
+message ReplayRequest {
+    oneof req {
+        string replay_id = 1;
+        Payload payload = 2;
+        Resources resources = 3;
+    }
+}
+
+message Finished {}
+
+message PayloadRequest {}
+
+message ResourceRequest {
+    uint64 expected_total_size = 1;
+    repeated string ids = 2;
+}
+
+message CrashDump {
+    string filepath = 1;
+    bytes crash_data = 2;
+}
+
+message PostData{
+    repeated bytes posts= 1;
+}
+
+message Notification {
+  uint64 id = 1;
+  // API index should be in uint8 type. Extend to uint32 as protobuf does not
+  // support uint8.
+  uint32 api_index = 2;
+  uint64 label = 3;
+  string msg = 5;
+  bytes data = 4;
+}
+
+message ReplayResponse {
+    oneof res {
+        Finished finished = 1;
+        PayloadRequest payload_request = 2;
+        ResourceRequest resource_request = 3;
+        CrashDump crash_dump = 4;
+        PostData post_data = 5;
+        Notification notification = 6;
+    }
+}
+
+message PingRequest {}
+
+message PingResponse {
+    string pong = 1;
+}
+
+message ShutdownRequest {}
+
+message ShutdownResponse {}
+
+service Gapir {
+    rpc Replay(stream ReplayRequest) returns (stream ReplayResponse) {}
+    rpc Ping(PingRequest) returns (PingResponse) {}
+    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
+}
