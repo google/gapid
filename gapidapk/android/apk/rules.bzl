@@ -87,7 +87,6 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
         },
         custom_package = "com.google.android.gapid",
         manifest = ":"+name+"_manifest",
-        manifest_merger = "android",
         deps = [
             "//gapidapk/android/app/src/main:gapid",
             ":" + name + "_native",
