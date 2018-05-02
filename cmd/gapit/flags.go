@@ -207,6 +207,9 @@ type (
 		Capture struct {
 			Frames int `help:"only capture the given number of frames. 0 for all"`
 		}
+		No struct {
+			Buffer bool `help:"Do not buffer the output, this helps if the application crashes"`
+		}
 		API string `help:"only capture the given API valid options are gles and vulkan"`
 		ADB string `help:"Path to the adb executable; leave empty to search the environment"`
 	}

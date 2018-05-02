@@ -183,7 +183,7 @@ Spy::Spy()
     GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
     GAPID_INFO("Disable precompiled shaders: %s", mDisablePrecompiledShaders ? "true" : "false");
 
-    mEncoder = gapii::PackEncoder::create(mConnection);
+    mEncoder = gapii::PackEncoder::create(mConnection, header.mFlags & ConnectionHeader::FLAG_NO_BUFFER);
 
     // writeHeader needs to come before the installer is created as the
     // deviceinfo queries want to call into EGL / GL commands which will be

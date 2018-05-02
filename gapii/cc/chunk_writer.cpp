@@ -29,7 +29,7 @@ constexpr size_t kBufferSize = 32*1024;
 
 class ChunkWriterImpl : public gapii::ChunkWriter {
 public:
-    ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer);
+    ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer, bool paranoid = false);
 
     ~ChunkWriterImpl();
 
@@ -43,11 +43,14 @@ private:
     std::shared_ptr<core::StreamWriter> mWriter;
 
     bool mStreamGood;
+
+    bool mNoBuffer;
 };
 
-ChunkWriterImpl::ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer)
+ChunkWriterImpl::ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer, bool no_buffer)
         : mWriter(writer)
-        , mStreamGood(true) {
+        , mStreamGood(true)
+        , mNoBuffer(no_buffer){
 }
 
 ChunkWriterImpl::~ChunkWriterImpl() {
@@ -60,7 +63,7 @@ bool ChunkWriterImpl::write(std::string& s) {
     if (mStreamGood) {
         mBuffer.append(s);
 
-        if(mBuffer.size() >= kBufferSize) {
+        if(mNoBuffer || (mBuffer.size() >= kBufferSize)) {
             flush();
         }
     }
@@ -79,8 +82,8 @@ void ChunkWriterImpl::flush() {
 namespace gapii {
 
 // create returns a shared pointer to a ChunkWriter that writes to stream_writer.
-ChunkWriter::SPtr ChunkWriter::create(const std::shared_ptr<core::StreamWriter>& stream_writer) {
-    return ChunkWriter::SPtr(new ChunkWriterImpl(stream_writer));
+ChunkWriter::SPtr ChunkWriter::create(const std::shared_ptr<core::StreamWriter>& stream_writer, bool no_buffer) {
+    return ChunkWriter::SPtr(new ChunkWriterImpl(stream_writer, no_buffer));
 }
 
 } // namespace gapii

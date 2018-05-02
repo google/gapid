@@ -81,6 +81,9 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if verb.Start.Defer {
 		options.Flags |= client.DeferStart
 	}
+	if verb.No.Buffer {
+		options.Flags |= client.NoBuffer
+	}
 
 	if verb.ADB != "" {
 		adb.ADB = file.Abs(verb.ADB)
