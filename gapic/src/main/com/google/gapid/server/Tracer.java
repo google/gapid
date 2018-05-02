@@ -122,7 +122,8 @@ public class Tracer {
     public final boolean midExecution;
     public final boolean disableBuffering;
 
-    public TraceRequest(Api api, File output, int frameCount, boolean midExecution, boolean disableBuffering) {
+    public TraceRequest(
+        Api api, File output, int frameCount, boolean midExecution, boolean disableBuffering) {
       this.api = api;
       this.output = output;
       this.frameCount = frameCount;
@@ -174,10 +175,10 @@ public class Tracer {
     public final String intentArgs;
     public final boolean clearCache;
     public final boolean disablePcs;
-    public final boolean disableBuffering;
 
     public AndroidTraceRequest(Api api, Device.Instance device, String action, String intentArgs,
-        File output, int frameCount, boolean midExecution, boolean disableBuffering, boolean clearCache, boolean disablePcs) {
+        File output, int frameCount, boolean midExecution, boolean disableBuffering,
+        boolean clearCache, boolean disablePcs) {
       this(api, device, null, null, action, intentArgs, output, frameCount, midExecution,
           disableBuffering, clearCache, disablePcs);
     }
@@ -193,7 +194,6 @@ public class Tracer {
       this.intentArgs = intentArgs;
       this.clearCache = clearCache;
       this.disablePcs = disablePcs;
-      this.disableBuffering = disableBuffering;
     }
 
     @Override
