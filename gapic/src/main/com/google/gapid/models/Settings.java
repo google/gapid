@@ -165,8 +165,12 @@ public class Settings {
   }
 
   public String[] getRecent() {
-    return stream(recentFiles).map(file -> new File(file)).filter(File::exists)
-        .filter(File::canRead).map(File::getAbsolutePath).toArray(l -> new String[l]);
+    return stream(recentFiles)
+        .map(file -> new File(file))
+        .filter(File::exists)
+        .filter(File::canRead)
+        .map(File::getAbsolutePath)
+        .toArray(String[]::new);
   }
 
   public boolean analyticsEnabled() {
@@ -313,7 +317,8 @@ public class Settings {
     }
 
     try {
-      return stream(Splitter.on(',').split(value).spliterator(), false).mapToInt(Integer::parseInt)
+      return stream(Splitter.on(',').split(value).spliterator(), false)
+          .mapToInt(Integer::parseInt)
           .toArray();
     } catch (NumberFormatException e) {
       return dflt;
@@ -328,7 +333,8 @@ public class Settings {
 
     try {
       return stream(Splitter.on(',').split(value).spliterator(), false)
-          .mapToDouble(Double::parseDouble).toArray();
+          .mapToDouble(Double::parseDouble)
+          .toArray();
     } catch (NumberFormatException e) {
       return dflt;
     }
@@ -341,7 +347,7 @@ public class Settings {
     }
     return stream(
         Splitter.on(',').trimResults().omitEmptyStrings().split(value).spliterator(), false)
-        .toArray(l -> new String[l]);
+        .toArray(String[]::new);
   }
 
   private static void setPoint(Properties properties, String name, Point point) {

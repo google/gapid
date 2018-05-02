@@ -264,7 +264,7 @@ public class TracerDialog {
       protected final Text file;
       protected final Spinner frameCount;
       protected final Button fromBeginning;
-      protected final Button traceWithoutBuffering;
+      protected final Button withoutBuffering;
       protected boolean userHasChangedOutputFile = false;
 
       public SharedTraceInput(Composite parent, Models models, Widgets widgets) {
@@ -306,7 +306,7 @@ public class TracerDialog {
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "");
-        traceWithoutBuffering = withLayoutData(
+        withoutBuffering = withLayoutData(
             createCheckbox(this, "Disable Buffering", models.settings.traceWithoutBuffering),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
@@ -351,15 +351,16 @@ public class TracerDialog {
         settings.traceOutDir = directory.getText();
         settings.traceFrameCount = frameCount.getSelection();
         settings.traceMidExecution = !fromBeginning.getSelection();
-        settings.traceWithoutBuffering = traceWithoutBuffering.getSelection();
+        settings.traceWithoutBuffering = withoutBuffering.getSelection();
 
         return getTraceRequest(settings, getSelectedApi(), getOutputFile(),
-            frameCount.getSelection(), !fromBeginning.getSelection(), traceWithoutBuffering.getSelection());
+            frameCount.getSelection(), !fromBeginning.getSelection(),
+            withoutBuffering.getSelection());
       }
 
       protected abstract TraceRequest getTraceRequest(
           Settings settings, Tracer.Api traceApi, File output, int frames, boolean midExecution,
-          boolean traceWithoutBuffering);
+          boolean disableBuffering);
 
       protected Tracer.Api getSelectedApi() {
         return (Tracer.Api)api.getStructuredSelection().getFirstElement();
@@ -557,7 +558,7 @@ public class TracerDialog {
 
       @Override
       protected TraceRequest getTraceRequest(Settings settings, Tracer.Api traceApi, File output,
-          int frames, boolean midExecution, boolean traceWithoutBuffering) {
+          int frames, boolean midExecution, boolean disableBuffering) {
         String target = traceTarget.getText();
         int actionSep = target.indexOf(":");
         int pkgSep = target.indexOf("/");
@@ -573,11 +574,12 @@ public class TracerDialog {
           String pkg = target.substring(actionSep + 1, pkgSep);
           String activity = target.substring(pkgSep + 1);
           return new AndroidTraceRequest(traceApi, getSelectedDevice(), pkg, activity, action,
-              arguments.getText(), output, frames, midExecution, traceWithoutBuffering, clearCache.getSelection(),
-              disablePcs.getSelection());
+              arguments.getText(), output, frames, midExecution, disableBuffering,
+              clearCache.getSelection(), disablePcs.getSelection());
         } else {
           return new AndroidTraceRequest(traceApi, getSelectedDevice(), target, arguments.getText(),
-              output, frames, midExecution, traceWithoutBuffering, clearCache.getSelection(), disablePcs.getSelection());
+              output, frames, midExecution, disableBuffering, clearCache.getSelection(),
+              disablePcs.getSelection());
         }
       }
 
@@ -677,7 +679,7 @@ public class TracerDialog {
 
       @Override
       protected TraceRequest getTraceRequest(Settings settings, Tracer.Api traceApi, File output,
-          int frames, boolean midExecution, boolean traceWithoutBuffering) {
+          int frames, boolean midExecution, boolean disableBuffering) {
         settings.traceExecutable = executable.getText();
         settings.traceArgs = arguments.getText();
         settings.traceCwd = cwd.getText();
@@ -685,7 +687,7 @@ public class TracerDialog {
         return new DesktopTraceRequest(
             new File(executable.getText()), arguments.getText(),
             cwd.getText().isEmpty() ? null : new File(cwd.getText()), output, frames,
-            midExecution, traceWithoutBuffering);
+            midExecution, disableBuffering);
       }
     }
   }
