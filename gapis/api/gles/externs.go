@@ -79,7 +79,7 @@ func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
 			for _, img := range ei.Images.Range() {
 				poolID, pool := e.s.Memory.New()
 				pool.Write(0, memory.Resource(d.ID, d.Size))
-				data := U8ˢ{pool: poolID, count: d.Size}
+				data := U8ˢ{pool: poolID, count: d.Size, size: d.Size}
 				img.Width = GLsizei(d.Width)
 				img.Height = GLsizei(d.Height)
 				img.Data = data
@@ -185,7 +185,7 @@ func (e externs) ReadGPUTextureData(texture *Texture, level, layer GLint) U8ˢ {
 	device := registry.DefaultDevice() // TODO: Device selection.
 	if device == nil {
 		log.W(e.ctx, "No device found for GPU texture read")
-		return U8ˢ{count: uint64(size), pool: poolID}
+		return U8ˢ{pool: poolID, count: uint64(size), size: uint64(size)}
 	}
 	dataID, err := database.Store(e.ctx, &ReadGPUTextureDataResolveable{
 		Capture:    path.NewCapture(capture.Get(e.ctx).Id.ID()),
@@ -203,5 +203,5 @@ func (e externs) ReadGPUTextureData(texture *Texture, level, layer GLint) U8ˢ {
 	}
 	data := memory.Resource(dataID, uint64(size))
 	dst.Write(0, data)
-	return U8ˢ{count: uint64(size), pool: poolID}
+	return U8ˢ{pool: poolID, count: uint64(size), size: uint64(size)}
 }
