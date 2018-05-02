@@ -67,6 +67,7 @@ type Builder struct {
 	resourceIDToIdx map[id.ID]uint32
 	threadIDToIdx   map[uint64]uint32
 	currentThreadID uint64
+	pendingThreadID uint64
 	resources       []protocol.ResourceInfo
 	reservedMemory  memory.RangeList // Reserved memory ranges for regular data.
 	pointerMemory   memory.RangeList // Reserved memory ranges for the pointer table.
@@ -227,7 +228,7 @@ func (b *Builder) BeginCommand(cmdID, threadID uint64) {
 	}
 
 	if b.currentThreadID != threadID {
-		b.currentThreadID = threadID
+		b.pendingThreadID = threadID
 		index, ok := b.threadIDToIdx[threadID]
 		if !ok {
 			index = uint32(len(b.threadIDToIdx)) + 1
@@ -245,6 +246,7 @@ func (b *Builder) CommitCommand() {
 		panic("CommitCommand called without a call to BeginCommand")
 	}
 	b.lastLabel, b.pendingLabel = b.pendingLabel, 0
+	b.currentThreadID = b.pendingThreadID
 	b.inCmd = false
 	b.temp.reset()
 	pop := uint32(len(b.stack))
@@ -286,6 +288,7 @@ func (b *Builder) RevertCommand(err error) {
 		panic("RevertCommand called without a call to BeginCommand")
 	}
 	b.pendingLabel = 0
+	b.pendingThreadID = b.currentThreadID
 	b.inCmd = false
 	// TODO: Revert calls to: AllocateMemory, Buffer, String, ReserveMemory, MapMemory, UnmapMemory, Write.
 	b.temp.reset()
