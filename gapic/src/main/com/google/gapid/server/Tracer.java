@@ -120,12 +120,14 @@ public class Tracer {
     public final File output;
     public final int frameCount;
     public final boolean midExecution;
+    public final boolean disableBuffering;
 
-    public TraceRequest(Api api, File output, int frameCount, boolean midExecution) {
+    public TraceRequest(Api api, File output, int frameCount, boolean midExecution, boolean disableBuffering) {
       this.api = api;
       this.output = output;
       this.frameCount = frameCount;
       this.midExecution = midExecution;
+      this.disableBuffering = disableBuffering;
     }
 
     public List<String> appendCommandLine(List<String> cmd) {
@@ -144,6 +146,10 @@ public class Tracer {
 
       if (midExecution) {
         cmd.add("-start-defer");
+      }
+
+      if (disableBuffering) {
+        cmd.add("-no-buffer");
       }
 
       return cmd;
@@ -168,17 +174,18 @@ public class Tracer {
     public final String intentArgs;
     public final boolean clearCache;
     public final boolean disablePcs;
+    public final boolean disableBuffering;
 
     public AndroidTraceRequest(Api api, Device.Instance device, String action, String intentArgs,
-        File output, int frameCount, boolean midExecution, boolean clearCache, boolean disablePcs) {
+        File output, int frameCount, boolean midExecution, boolean disableBuffering, boolean clearCache, boolean disablePcs) {
       this(api, device, null, null, action, intentArgs, output, frameCount, midExecution,
-          clearCache, disablePcs);
+          disableBuffering, clearCache, disablePcs);
     }
 
     public AndroidTraceRequest(Api api, Device.Instance device, String pkg, String activity,
         String action, String intentArgs, File output, int frameCount, boolean midExecution,
-        boolean clearCache, boolean disablePcs) {
-      super(api, output, frameCount, midExecution);
+        boolean disableBuffering, boolean clearCache, boolean disablePcs) {
+      super(api, output, frameCount, midExecution, disableBuffering);
       this.device = device;
       this.pkg = pkg;
       this.activity = activity;
@@ -186,6 +193,7 @@ public class Tracer {
       this.intentArgs = intentArgs;
       this.clearCache = clearCache;
       this.disablePcs = disablePcs;
+      this.disableBuffering = disableBuffering;
     }
 
     @Override
@@ -233,8 +241,8 @@ public class Tracer {
     public final File cwd;
 
     public DesktopTraceRequest(File executable, String args, File cwd, File output,
-        int frameCount, boolean midExecution) {
-      super(Api.Vulkan, output, frameCount, midExecution);
+        int frameCount, boolean midExecution, boolean disableBuffering) {
+      super(Api.Vulkan, output, frameCount, midExecution, disableBuffering);
       this.executable = executable;
       this.args = args;
       this.cwd = cwd;

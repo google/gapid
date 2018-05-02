@@ -45,6 +45,10 @@ const (
 	// DeferStart does not start tracing right away but waits for a signal
 	// from gapit
 	DeferStart Flags = 0x00000010
+	// NoBuffer causes the trace to not buffer any data. This will allow
+	// more data to be preserved if an application may crash.
+	NoBuffer Flags = 0x00000020
+
 	// GlesAPI is hard-coded bit mask for GLES API, it needs to be kept in sync
 	// with the api_index in the gles.api file.
 	GlesAPI = uint32(1 << 1)

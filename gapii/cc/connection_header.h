@@ -44,6 +44,8 @@ public:
     static const uint32_t FLAG_RECORD_ERROR_STATE          = 0x10000000;
     // Defers the start frame until a message is receieved over the network.
     static const uint32_t FLAG_DEFER_START                 = 0x00000010;
+    // Disables buffering of the output stream
+    static const uint32_t FLAG_NO_BUFFER                   = 0x00000020;
 
     // read reads the ConnectionHeader from the provided stream, returning true
     // on success or false on error.

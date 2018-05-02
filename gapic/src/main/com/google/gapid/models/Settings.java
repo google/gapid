@@ -76,6 +76,7 @@ public class Settings {
   public String traceArgs = "";
   public String traceCwd = "";
   public boolean traceMidExecution = false;
+  public boolean traceWithoutBuffering = false;
   public int traceFrameCount = 0;
   public String traceIntentArgs = "";
   public boolean skipWelcomeScreen = false;
@@ -164,12 +165,8 @@ public class Settings {
   }
 
   public String[] getRecent() {
-    return stream(recentFiles)
-        .map(file -> new File(file))
-        .filter(File::exists)
-        .filter(File::canRead)
-        .map(File::getAbsolutePath)
-        .toArray(l -> new String[l]);
+    return stream(recentFiles).map(file -> new File(file)).filter(File::exists)
+        .filter(File::canRead).map(File::getAbsolutePath).toArray(l -> new String[l]);
   }
 
   public boolean analyticsEnabled() {
@@ -211,8 +208,9 @@ public class Settings {
     traceDisablePcs = getBoolean(properties, "trace.disablePCS", traceDisablePcs);
     traceExecutable = properties.getProperty("trace.executable", traceExecutable);
     traceArgs = properties.getProperty("trace.args", traceArgs);
-    traceCwd  = properties.getProperty("trace.cwd", traceCwd);
+    traceCwd = properties.getProperty("trace.cwd", traceCwd);
     traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
+    traceWithoutBuffering = getBoolean(properties, "trace.withoutBuffering", traceWithoutBuffering);
     traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
     traceIntentArgs = properties.getProperty("trace.intentArgs", traceIntentArgs);
     skipWelcomeScreen = getBoolean(properties, "skip.welcome", skipWelcomeScreen);
@@ -315,8 +313,8 @@ public class Settings {
     }
 
     try {
-      return stream(Splitter.on(',').split(value).spliterator(), false)
-          .mapToInt(Integer::parseInt).toArray();
+      return stream(Splitter.on(',').split(value).spliterator(), false).mapToInt(Integer::parseInt)
+          .toArray();
     } catch (NumberFormatException e) {
       return dflt;
     }

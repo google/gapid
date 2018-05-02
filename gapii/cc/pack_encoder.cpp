@@ -323,9 +323,9 @@ gapii::PackEncoder::SPtr PackEncoderNoop::instance = gapii::PackEncoder::SPtr(ne
 namespace gapii {
 
 // create returns a PackEncoder::SPtr that writes to output.
-PackEncoder::SPtr PackEncoder::create(std::shared_ptr<core::StreamWriter> stream) {
+PackEncoder::SPtr PackEncoder::create(std::shared_ptr<core::StreamWriter> stream, bool no_buffer) {
     stream->write(header, sizeof(header));
-    auto writer = ChunkWriter::create(stream);
+    auto writer = ChunkWriter::create(stream, no_buffer);
     return PackEncoder::SPtr(new PackEncoderImpl(writer));
 }
 

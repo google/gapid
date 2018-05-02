@@ -73,7 +73,8 @@ public:
     virtual void flush() = 0;
 
     // create returns a PackEncoder::SPtr that writes to output.
-    static SPtr create(std::shared_ptr<core::StreamWriter> output);
+    // If no_buffer is true, thn the output will be flushed after every write.
+    static SPtr create(std::shared_ptr<core::StreamWriter> output, bool no_buffer);
 
     // noop returns a PackEncoder::SPtr that does nothing.
     static SPtr noop();
