@@ -72,6 +72,7 @@ func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
 
 	switch obj := obj.(type) {
 	case *cmdGroup:
+		obj.invoked = true
 		id := d.builder.addCmd(ctx, obj.cmd)
 		for _, c := range obj.children {
 			c.SetCaller(id)
@@ -183,4 +184,10 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 	}
 
 	return obj, nil
+}
+
+func (d *decoder) flush(ctx context.Context) {
+	for k := range d.groups {
+		d.EndGroup(ctx, k)
+	}
 }

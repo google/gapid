@@ -339,6 +339,7 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 		}
 		return nil, err
 	}
+	d.flush(ctx)
 	if d.header == nil {
 		return nil, log.Err(ctx, nil, "Capture was missing header chunk")
 	}
