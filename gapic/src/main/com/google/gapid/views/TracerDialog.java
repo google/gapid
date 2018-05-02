@@ -440,17 +440,6 @@ public class TracerDialog {
         traceTarget.addBoxListener(SWT.Modify, targetListener);
         targetListener.handleEvent(null);
 
-        Listener apiListener = e -> {
-          if (getSelectedApi() == Tracer.Api.Vulkan) {
-            fromBeginning.setEnabled(true);
-          } else {
-            fromBeginning.setEnabled(false);
-            fromBeginning.setSelection(true);
-          }
-        };
-        api.getCombo().addListener(SWT.Selection, apiListener);
-        apiListener.handleEvent(null);
-
         disablePcs.addListener(
             SWT.Selection, e -> pcsWarning.setVisible(!disablePcs.getSelection()));
       }
