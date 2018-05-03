@@ -75,6 +75,10 @@ void destroyContext() {
         return;
     }
 
+    if (!core::hasGLorGLES()) {
+        return;
+    }
+
     core::DlLoader libX("libX11.so");
     pfn_XFree fn_XFree = (pfn_XFree)libX.lookup("XFree");
     pfn_XCloseDisplay fn_XCloseDisplay = (pfn_XCloseDisplay)libX.lookup("XCloseDisplay");
@@ -101,6 +105,9 @@ void destroyContext() {
 }
 
 void createGlContext() {
+    if (!core::hasGLorGLES()) {
+        return;
+    }
     auto fn_glXChooseFBConfig= (pfn_glXChooseFBConfig)core::GetGlesProcAddress("glXChooseFBConfig", true);
     auto fn_glXCreateNewContext = (pfn_glXCreateNewContext)core::GetGlesProcAddress("glXCreateNewContext", true);
     auto fn_glXCreatePbuffer = (pfn_glXCreatePbuffer)core::GetGlesProcAddress("glXCreatePbuffer", true);
