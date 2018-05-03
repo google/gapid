@@ -181,7 +181,7 @@ func run(ctx context.Context) error {
 		fmt.Fprintf(b, "const %s_file = `%s`\n", entry.name, entry.filename)
 		fmt.Fprintf(b, "const %s_utf8 = %v\n", entry.name, validUTF8)
 		fmt.Fprintf(b, "const %s = `%s`\n", entry.name, encoded)
-		log.I(ctx, "Embed %s from %s\n", entry.name, entry.path)
+		log.D(ctx, "Embed %s from %s\n", entry.name, entry.path)
 	}
 	// reformat the output
 	result, err := imports.Process("", b.Bytes(), nil)
