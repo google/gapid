@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <memory>
+#include <utility>
 
 namespace core {
 
@@ -33,6 +34,9 @@ public:
     // connection object on successful open or a nullptr if opening the connection is unsuccessful
     static std::unique_ptr<Connection> createSocket(const char* hostname, const char* port);
 
+    static uint32_t getFreePort(const char* hostname);
+    static bool writePortToFile(uint32_t port);
+
     // Creates a new pipe connection listening on the specified UNIX pipename, without
     // pipe creation on the local file system if abstract is true. Returns a connection object
     // on successful open or a nullptr if opening the connection is unsuccessful
@@ -43,6 +47,7 @@ public:
     size_t recv(void* data, size_t size) override;
     const char* error() override;
     std::unique_ptr<Connection> accept(int timeoutMs = NO_TIMEOUT) override;
+
 
     void close() override;
 private:

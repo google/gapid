@@ -17,26 +17,26 @@
 #ifndef GAPIR_CRASH_REPORTER_H
 #define GAPIR_CRASH_REPORTER_H
 
-#include "core/cc/crash_handler.h"
-#include "gapir/cc/server_connection.h"
-
 #include <memory>
 #include <string>
 
+#include "core/cc/crash_handler.h"
+#include "gapir/cc/replay_connection.h"
+
 namespace gapir {
 
-// CrashUploader uploads crash minidumps from a CrashHandler to GAPIS via a ServerConnection.
+// CrashUploader uploads crash minidumps from a CrashHandler to GAPIS via a
+// ServerConnection.
 class CrashUploader {
-public:
-  CrashUploader(core::CrashHandler& crash_handler, const ServerConnection& conn);
+ public:
+  CrashUploader(core::CrashHandler& crash_handler, ReplayConnection* conn);
   ~CrashUploader();
 
-private:
-
+ private:
   core::CrashHandler::Unregister mUnregister;
-  const ServerConnection& mConnection;
+  ReplayConnection* mConnection;
 };
 
-} // namespace gapir
+}  // namespace gapir
 
-#endif // GAPIR_CRASH_REPORTER_H
+#endif  // GAPIR_CRASH_REPORTER_H

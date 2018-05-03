@@ -19,6 +19,7 @@ load("@gapid//tools/build:cc_toolchain.bzl", "cc_configure")
 load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue")
 load("@gapid//tools/build/rules:repository.bzl", "github_http_args", "github_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
+load("@gapid//tools/build/rules:grpc_c++.bzl", "grpc_deps")
 
 # Defines the repositories for GAPID's dependencies, excluding the
 # go dependencies, which require @io_bazel_rules_go to be setup.
@@ -62,8 +63,10 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "grpc",
         project = "grpc",
-        commit = "fa301e3674a1cc786eb4dd4253a0e677f2eb68e3",
+        commit = "d45132a2e9246b11ddd0b70c07160076d5cbbb12",
+        build_file = "@gapid//tools/build/third_party:grpc_c++.BUILD",
     )
+    grpc_deps()
 
     ###########################################
     # Now get all our other non-go dependencies

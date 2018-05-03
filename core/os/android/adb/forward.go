@@ -64,6 +64,12 @@ func (p NamedAbstractSocket) adbForwardString() string {
 	return fmt.Sprintf("localabstract:%s", p)
 }
 
+type NamedFileSystemSocket string
+
+func (p NamedFileSystemSocket) adbForwardString() string {
+	return fmt.Sprintf("localfilesystem:%s", p)
+}
+
 // Jdwp represents a Jdwp process on an Android device. The value is the same as
 // the PID of the process. Jdwp implements the Port interface.
 type Jdwp int

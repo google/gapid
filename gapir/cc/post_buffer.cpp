@@ -19,11 +19,13 @@
 #include <cstring>
 #include <new>
 
+#include "replay_connection.h"
+
 namespace gapir {
 
 PostBuffer::PostBuffer(uint32_t desiredCapacity, PostBufferCallback callback) :
-        mBuffer(new (std::nothrow) uint8_t[desiredCapacity]),
-        mCapacity(mBuffer ? desiredCapacity : 0), mCallback(callback), mOffset(0) {
+        mPosts(ReplayConnection::Posts::create()),
+        mCapacity(mPosts ? desiredCapacity : 0), mCallback(callback), mOffset(0) {
 }
 
 PostBuffer::~PostBuffer() {
@@ -36,12 +38,15 @@ bool PostBuffer::push(const void* address, uint32_t count) {
         // Write it out immediately instead of buffering to reduce time spent copying
         // large buffers around. This also handles the case where the count is larger
         // than the buffer capacity.
-        return mCallback(address, count);
+        auto onePost = ReplayConnection::Posts::create();
+        onePost->append(address, count);
+        return mCallback(std::move(onePost));
     }
 
     if (mOffset + count <= mCapacity) {
         // Fits in the buffer. Copy.
-        memcpy(mBuffer.get() + mOffset, address, count);
+        // memcpy(mBuffer.get() + mOffset, address, count);
+        mPosts->append(address, count);
         mOffset += count;
         return true;
     } else {
@@ -54,7 +59,8 @@ bool PostBuffer::flush() {
     bool ok = true;
 
     if (mOffset > 0) {
-        ok = mCallback(mBuffer.get(), mOffset);
+        ok = mCallback(std::move(mPosts));
+        mPosts = ReplayConnection::Posts::create();
         mOffset = 0;
     }
     return ok;

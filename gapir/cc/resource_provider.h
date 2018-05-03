@@ -17,27 +17,30 @@
 #ifndef GAPIR_RESOURCE_PROVIDER_H
 #define GAPIR_RESOURCE_PROVIDER_H
 
-#include "resource.h"
-
 #include <stdint.h>
+
+#include "resource.h"
 
 namespace gapir {
 
-class ServerConnection;
+class ReplayConnection;
 
 class ResourceProvider {
-public:
-    virtual ~ResourceProvider() {}
+ public:
+  virtual ~ResourceProvider() {}
 
-    // Loads count resources from the provider and writes them, in-order, to target.
-    // If the net size of all the resources exceeds size, then false is returned.
-    virtual bool get(const Resource* resources, size_t count, const ServerConnection& server,
-                     void* target, size_t targetSize) = 0;
+  // Loads count resources from the provider and writes them, in-order, to
+  // target. If the net size of all the resources exceeds size, then false is
+  // returned.
+  virtual bool get(const Resource* resources, size_t count,
+                   ReplayConnection* conn, void* target, size_t targetSize) = 0;
 
-    // Prefetches the resources for resource providers where prefetching is available.
-    // temp is a temporary buffer of size tempSize that can be used by prefetch.
-    virtual void prefetch(const Resource* resources, size_t count, const ServerConnection& server,
-    											void* temp, size_t tempSize) = 0;
+  // Prefetches the resources for resource providers where prefetching is
+  // available. temp is a temporary buffer of size tempSize that can be used by
+  // prefetch.
+  virtual void prefetch(const Resource* resources, size_t count,
+                        ReplayConnection* conn, void* temp,
+                        size_t tempSize) = 0;
 };
 
 }  // namespace gapir

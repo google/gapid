@@ -25,3 +25,14 @@ load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 go_rules_dependencies()
 go_register_toolchains()
 gazelle_dependencies()
+
+load("@com_github_grpc_grpc//:bazel/grpc_deps.bzl", "grpc_deps")
+grpc_deps()
+bind(
+    name = "grpc_cpp_plugin",
+    actual = "@com_github_grpc_grpc//:grpc_cpp_plugin",
+)
+bind(
+    name = "grpc++_codegen_proto",
+    actual = "@com_github_grpc_grpc//:grpc++_codegen_proto",
+)

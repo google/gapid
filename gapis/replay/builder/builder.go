@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
@@ -28,6 +27,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
+	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -49,7 +49,12 @@ type marker struct {
 // ResponseDecoder decodes all postback responses from the replay virtual machine.
 // If err is nil, then r is the Reader to the sequential postback data. If r is nil,
 // then the postback data was absent or corrupted and err holds the error.
-type ResponseDecoder func(r io.Reader, err error)
+type ResponseDecoder func(p *gapir.PostData)
+
+type postBackDecoder struct {
+	expectedSize int
+	decode       Postback
+}
 
 // Postback decodes a single commands's postback, returning and carrying over errors.
 // The Postback must decode all the data that was issued in the Post call before
@@ -67,12 +72,12 @@ type Builder struct {
 	resourceIDToIdx map[id.ID]uint32
 	threadIDToIdx   map[uint64]uint32
 	currentThreadID uint64
-	resources       []protocol.ResourceInfo
+	resources       gapir.ResourceInfoList
 	reservedMemory  memory.RangeList // Reserved memory ranges for regular data.
 	pointerMemory   memory.RangeList // Reserved memory ranges for the pointer table.
 	mappedMemory    mappedMemoryRangeList
 	instructions    []asm.Instruction
-	decoders        []Postback
+	decoders        []postBackDecoder
 	stack           []stackItem
 	memoryLayout    *device.MemoryLayout
 	inCmd           bool   // true if between BeginCommand and CommitCommand/RevertCommand
@@ -98,7 +103,7 @@ func New(memoryLayout *device.MemoryLayout) *Builder {
 		temp:            allocator{alignment: ptrAlignment},
 		resourceIDToIdx: map[id.ID]uint32{},
 		threadIDToIdx:   map[uint64]uint32{},
-		resources:       []protocol.ResourceInfo{},
+		resources:       gapir.ResourceInfoList{},
 		reservedMemory:  memory.RangeList{},
 		pointerMemory:   memory.RangeList{},
 		mappedMemory:    mappedMemoryRangeList{},
@@ -295,7 +300,7 @@ func (b *Builder) RevertCommand(err error) {
 			switch b.instructions[i].(type) {
 			case asm.Post:
 				idx := len(b.decoders) - 1
-				b.decoders[idx](nil, err)
+				b.decoders[idx].decode(nil, err)
 				b.decoders = b.decoders[:idx]
 			}
 		}
@@ -462,7 +467,10 @@ func (b *Builder) Post(addr value.Pointer, size uint64, p Postback) {
 		Source: b.remap(addr),
 		Size:   size,
 	})
-	b.decoders = append(b.decoders, p)
+	b.decoders = append(b.decoders, postBackDecoder{
+		expectedSize: int(size),
+		decode:       p,
+	})
 }
 
 // Push pushes val to the top of the stack.
@@ -543,10 +551,7 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 		if !found {
 			idx = uint32(len(b.resources))
 			b.resourceIDToIdx[resourceID] = idx
-			b.resources = append(b.resources, protocol.ResourceInfo{
-				ID:   resourceID.String(),
-				Size: uint32(rng.Size),
-			})
+			b.resources.Append(resourceID.String(), uint32(rng.Size))
 		}
 		b.instructions = append(b.instructions, asm.Resource{
 			Index:       idx,
@@ -559,7 +564,7 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 // Build compiles the replay instructions, returning a Payload that can be
 // sent to the replay virtual-machine and a ResponseDecoder for interpreting
 // the responses.
-func (b *Builder) Build(ctx context.Context) (protocol.Payload, ResponseDecoder, error) {
+func (b *Builder) Build(ctx context.Context) (gapir.Payload, ResponseDecoder, error) {
 	ctx = log.Enter(ctx, "Build")
 	if config.DebugReplayBuilder {
 		log.I(ctx, "Instruction count: %d", len(b.instructions))
@@ -580,17 +585,25 @@ func (b *Builder) Build(ctx context.Context) (protocol.Payload, ResponseDecoder,
 		}
 		if err := i.Encode(vml, w); err != nil {
 			err = fmt.Errorf("Encode %T failed for command with id %v: %v", i, id, err)
-			return protocol.Payload{}, nil, err
+			return gapir.Payload{}, nil, err
 		}
 	}
 
-	payload := protocol.Payload{
-		StackSize:          uint32(512), // TODO: Calculate stack size
-		VolatileMemorySize: uint32(vml.size),
-		Constants:          b.constantMemory.data,
-		Resources:          b.resources,
-		Opcodes:            opcodes.Bytes(),
-	}
+	// payload := gapir.Payload{
+	// 	StackSize:          uint32(512), // TODO: Calculate stack size
+	// 	VolatileMemorySize: uint32(vml.size),
+	// 	Constants:          b.constantMemory.data,
+	// 	Resources:          b.resources,
+	// 	Opcodes:            opcodes.Bytes(),
+	// 	// StackSize:          uint32(512), // TODO: Calculate stack size
+	// 	// VolatileMemorySize: uint32(vml.size),
+	// 	// Constants:          b.constantMemory.data,
+	// 	// Resources:          b.resources,
+	// 	// Opcodes:            opcodes.Bytes(),
+	// }
+	// TODO: This does not looks good
+	payload := *gapir.NewPayload(
+		uint32(512), uint32(vml.size), b.constantMemory.data, b.resources, opcodes.Bytes())
 
 	if config.DebugReplayBuilder {
 		log.I(ctx, "Stack size:           0x%x", payload.StackSize)
@@ -599,19 +612,29 @@ func (b *Builder) Build(ctx context.Context) (protocol.Payload, ResponseDecoder,
 		log.I(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
 		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
+	log.W(ctx, "Stack size:           0x%x", payload.StackSize)
+	log.W(ctx, "Volatile memory size: 0x%x", payload.VolatileMemorySize)
+	log.W(ctx, "Constant memory size: 0x%x", len(payload.Constants))
+	log.W(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
+	log.W(ctx, "Resource count:         %d", len(payload.Resources))
 
 	// TODO: check that each Postback consumes its expected number of bytes.
-	responseDecoder := func(r io.Reader, err error) {
-		var d binary.Reader
-		if r != nil {
-			d = endian.Reader(r, byteOrder)
+	responseDecoder := func(pd *gapir.PostData) {
+		// TODO: should we skip it instead of return error?
+		if pd == nil {
+			log.E(ctx, "Nil Posts")
 		}
 		go func() {
-			for _, p := range b.decoders {
-				err = p(d, err)
-				if err != nil {
-					d = nil
+			for id, p := range pd.GetPosts() {
+				if id >= len(b.decoders) {
+					log.E(ctx, "no valid decoder found for %v'th post data", id)
 				}
+				var err error
+				if len(p) != b.decoders[id].expectedSize {
+					err = fmt.Errorf("post data size mismatch, actual size: %d, expected size: %d", len(p), b.decoders[id].expectedSize)
+				}
+				r := endian.Reader(bytes.NewReader(p), byteOrder)
+				b.decoders[id].decode(r, err)
 			}
 		}()
 	}
@@ -622,8 +645,8 @@ const ErrInvalidResource = fault.Const("Invaid resource")
 
 func (b *Builder) assertResourceSizesAreAsExpected(ctx context.Context) {
 	for _, r := range b.resources {
-		ctx := log.V{"resource-id": r.ID}.Bind(ctx)
-		id, err := id.Parse(r.ID)
+		ctx := log.V{"resource-id": r.Id}.Bind(ctx)
+		id, err := id.Parse(r.Id)
 		if err != nil {
 			panic(log.Err(ctx, ErrInvalidResource, "Couldn't parse identifier"))
 		}
