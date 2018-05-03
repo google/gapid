@@ -44,6 +44,9 @@ namespace gapii {
   }
 ¶
   void {{$name}}::resolve() {
+    if (!core::hasGLorGLES()) {
+      return;
+    }
     using namespace core;
     {{range $c := AllCommands $}}
       {{if not (GetAnnotation $c "synthetic")}}
