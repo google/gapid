@@ -17,7 +17,6 @@ package test
 import (
 	"context"
 
-	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service/path"
@@ -30,7 +29,7 @@ func (API) GetFramebufferAttachmentInfo(
 	after []uint64,
 	state *api.GlobalState,
 	thread uint64,
-	attachment api.FramebufferAttachment) (api.FramebufferAttachmentInfo, err error) {
+	attachment api.FramebufferAttachment) (api.FramebufferAttachmentInfo, error) {
 	return api.FramebufferAttachmentInfo{}, nil
 }
 

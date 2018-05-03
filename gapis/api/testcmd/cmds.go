@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/protoconv"
-	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/api"
@@ -213,7 +212,7 @@ func (API) GetFramebufferAttachmentInfo(
 	after []uint64,
 	state *api.GlobalState,
 	thread uint64,
-	attachment api.FramebufferAttachment) (api.FramebufferAttachmentInfo, err error) {
+	attachment api.FramebufferAttachment) (api.FramebufferAttachmentInfo, error) {
 	return api.FramebufferAttachmentInfo{}, nil
 }
 func (API) Context(*api.GlobalState, uint64) api.Context { return nil }
