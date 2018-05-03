@@ -693,6 +693,22 @@ func TestResizeRenderer(t *testing.T) {
 	maybeExportCapture(ctx, "resize_renderer", capture)
 }
 
+// TestNewContextUndefined checks that a new context is filled with the
+// undefined framebuffer pattern.
+func TestNewContextUndefined(t *testing.T) {
+	ctx, f := newFixture(log.Testing(t))
+
+	cmds, _, _ := f.initContext(ctx, 64, 64, true)
+	makeCurrent := api.CmdID(len(cmds) - 1)
+
+	intent := replay.Intent{
+		Capture: f.storeCapture(ctx, cmds),
+		Device:  path.NewDevice(f.device.Instance().Id.ID()),
+	}
+
+	checkColorBuffer(ctx, intent, f.mgr, 64, 64, 0.0, "undef-fb", makeCurrent, nil)
+}
+
 // TestPreserveBuffersOnSwap checks that when the preserveBuffersOnSwap flag is
 // set, the backbuffer is preserved between calls to eglSwapBuffers().
 func TestPreserveBuffersOnSwap(t *testing.T) {
