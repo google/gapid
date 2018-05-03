@@ -45,5 +45,6 @@ go_library(
         "//gapir/service:service_go_proto",
         "//gapis/replay/protocol:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//metadata:go_default_library",
     ],
 )

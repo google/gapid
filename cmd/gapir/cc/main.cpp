@@ -17,8 +17,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string>
 #include <memory>
+#include <string>
 #include <thread>
 
 #include "gapir/cc/context.h"
@@ -31,15 +31,15 @@
 #include "gapir/cc/server.h"
 
 #include "core/cc/crash_handler.h"
-#include "core/cc/socket_connection.h"
 #include "core/cc/debugger.h"
 #include "core/cc/log.h"
+#include "core/cc/socket_connection.h"
 #include "core/cc/supported_abis.h"
 #include "core/cc/target.h"
 
 #if TARGET_OS == GAPID_OS_ANDROID
-#include "android_native_app_glue.h"
 #include "android/native_activity.h"
+#include "android_native_app_glue.h"
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
 using namespace core;
@@ -66,32 +66,36 @@ std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
         ResourceDiskCache::create(ResourceRequester::create(), cachePath),
         memoryManager->getBaseAddress()));
   } else {
+    GAPID_INFO("only memory cache");
+    GAPID_INFO("getBaseAddress: %p", memoryManager->getBaseAddress());
     return std::unique_ptr<ResourceInMemoryCache>(ResourceInMemoryCache::create(
         ResourceRequester::create(), memoryManager->getBaseAddress()));
   }
 }
 
-std::unique_ptr<Server> Setup(std::string uri, const char* authToken,
+std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
                               const char* cachePath, int idleTimeoutMs,
-                              core::CrashHandler& crashHandler, MemoryManager* memMgr) {
+                              core::CrashHandler* crashHandler,
+                              MemoryManager* memMgr) {
   // Return a replay server with the following replay ID handler.
   return Server::createAndStart(
-      uri, [&](ReplayConnection* replayConn, const std::string& replayId) {
-
-
-        GAPID_INFO("before create resourceProvider: cachePath: %s", cachePath);
+      uri, authToken,
+      [cachePath, memMgr, crashHandler](ReplayConnection* replayConn,
+                                         const std::string& replayId) {
+        GAPID_INFO("before create resourceProvider: cachePath: %p", cachePath);
+        // GAPID_INFO("before create resourceProvider: cachePath length: %d",
+        // strlen(cachePath));
         std::unique_ptr<ResourceInMemoryCache> resourceProvider(
             createResourceProvider(cachePath, memMgr));
 
         GAPID_INFO("before create crash uploader");
         std::unique_ptr<CrashUploader> crash_uploader =
             std::unique_ptr<CrashUploader>(
-                new CrashUploader(crashHandler, replayConn));
+                new CrashUploader(*crashHandler, replayConn));
 
         GAPID_INFO("before create context");
-        std::unique_ptr<Context> context =
-            Context::create(replayConn, crashHandler,
-                            resourceProvider.get(), memMgr);
+        std::unique_ptr<Context> context = Context::create(
+            replayConn, *crashHandler, resourceProvider.get(), memMgr);
 
         if (context == nullptr) {
           GAPID_WARNING("Loading Context failed!");
@@ -140,8 +144,8 @@ void android_main(struct android_app* app) {
                       "Supported ABIs: %s\n",
                       uri.c_str(), core::supportedABIs());
 
-  std::unique_ptr<Server> server = Setup(uri, nullptr, nullptr,
-                                         0 /*no timeout?*/, crashHandler, &memoryManager);
+  std::unique_ptr<Server> server = Setup(
+      uri.c_str(), nullptr, nullptr, 0 /*no timeout?*/, &crashHandler, &memoryManager);
   std::thread waiting_thread([&]() { server.get()->wait(); });
 
   while (true) {
@@ -190,6 +194,7 @@ int main(int argc, const char* argv[]) {
       if (i + 1 >= argc) {
         GAPID_FATAL("Usage: --cache <cache-directory>");
       }
+      GAPID_INFO("cachePath assigned");
       cachePath = argv[++i];
     } else if (strcmp(argv[i], "--port") == 0) {
       if (i + 1 >= argc) {
@@ -251,6 +256,27 @@ int main(int argc, const char* argv[]) {
 
   GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
 
+  // Read the auth-token.
+  // Note: This must come before the socket is created as the auth token
+  // file is deleted by GAPIS as soon as the port is written to stdout.
+  std::vector<char> authToken;
+  if (authTokenFile != nullptr) {
+    FILE* file = fopen(authTokenFile, "rb");
+    if (file == nullptr) {
+      GAPID_FATAL("Unable to open auth-token file: %s", authTokenFile);
+    }
+    if (fseek(file, 0, SEEK_END) != 0) {
+      GAPID_FATAL("Unable to get length of auth-token file: %s", authTokenFile);
+    }
+    size_t size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    authToken.resize(size + 1, 0);
+    if (fread(&authToken[0], 1, size, file) != size) {
+      GAPID_FATAL("Unable to read auth-token file: %s", authTokenFile);
+    }
+    fclose(file);
+  }
+
   MemoryManager memoryManager(memorySizes);
   // auto conn = SocketConnection::createSocket("127.0.0.1", portArgStr);
   // if (conn == nullptr) {
@@ -264,8 +290,10 @@ int main(int argc, const char* argv[]) {
   }
   std::string uri = std::string("127.0.0.1:") + std::string(portStr);
 
+  GAPID_INFO("before calling setup, cachePath: %p", cachePath);
   std::unique_ptr<Server> server =
-      Setup(uri, nullptr, cachePath, 0 /*idleTimeoutMs*/, crashHandler, &memoryManager);
+      Setup(uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr, cachePath,
+            0 /*idleTimeoutMs*/, &crashHandler, &memoryManager);
   // The following message is parsed by launchers to detect the selected port.
   // DO NOT CHANGE!
   printf("Bound on port '%s'\n", portStr.c_str());

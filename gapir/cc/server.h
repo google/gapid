@@ -53,16 +53,19 @@ class GapirServiceImpl final : public service::Gapir::Service {
                         service::ShutdownResponse*) override;
 
  private:
-  GapirServiceImpl(ReplayHandler handle_replay)
-      : mHandleReplay(handle_replay) {}
+  GapirServiceImpl(const char* authToken, ReplayHandler handle_replay)
+      : mHandleReplay(handle_replay), mGrpcServer(nullptr), mAuthToken(authToken == nullptr ? "" : authToken) {}
 
   ReplayHandler mHandleReplay;
   grpc::Server* mGrpcServer;
+  std::string mAuthToken;
+
+  static const char kAuthTokenMetaDataName[];
 };
 
 class Server {
  public:
-  static std::unique_ptr<Server> createAndStart(std::string, ReplayHandler);
+  static std::unique_ptr<Server> createAndStart(const char* uri, const char* authToken, ReplayHandler handleReplay);
 
   ~Server() = default;
 
@@ -76,11 +79,10 @@ class Server {
   void shutdown() { mGrpcServer->Shutdown(); }
 
  private:
-  Server(std::string uri, ReplayHandler handle_replay);
+  Server(const char* authToken, ReplayHandler handle_replay);
 
   std::unique_ptr<grpc::Server> mGrpcServer;
   std::unique_ptr<GapirServiceImpl> mServiceImpl;
-  std::string mUri;
 };
 
 }  // namespace gapir

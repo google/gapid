@@ -38,7 +38,9 @@ ResourceInMemoryCache::ResourceInMemoryCache(
     : ResourceCache(std::move(fallbackProvider)),
       mHead(new Block(0, 0)),
       mBuffer(static_cast<uint8_t*>(buffer)),
-      mBufferSize(0) {}
+      mBufferSize(0) {
+        GAPID_INFO("in ResourceInMemoryCache ctor");
+      }
 
 ResourceInMemoryCache::~ResourceInMemoryCache() {
   while (mHead->next != mHead) {

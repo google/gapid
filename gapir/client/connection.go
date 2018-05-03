@@ -19,9 +19,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/gapid/core/app/auth"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir/service"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+)
+
+const (
+	maxConnectionAttempts = 10
+	connectionRetryDelay  = time.Second
 )
 
 type ResourceInfoList []*service.ResourceInfo
@@ -73,25 +81,32 @@ type Connection struct {
 	conn       *grpc.ClientConn
 	servClient service.GapirClient
 	stream     service.Gapir_ReplayClient
+	authToken  auth.Token
 }
 
-func NewConnection(addr string, cb func()) (*Connection, error) {
+func newConnection(ctx context.Context, addr string, authToken auth.Token, setFileSocketPermission func() error) (*Connection, error) {
 	var conn *grpc.ClientConn
 	var err error
-	for {
-		cb()
-		conn, err = grpc.Dial(addr, grpc.WithInsecure())
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Second)
+	err = task.Retry(ctx, maxConnectionAttempts, connectionRetryDelay,
+		func(ctx context.Context) (retry bool, err error) {
+			retry = true
+			if setFileSocketPermission != nil {
+				if err = setFileSocketPermission(); err != nil {
+					return
+				}
+			}
+			conn, err = grpc.Dial(addr, grpc.WithInsecure())
+			if err != nil {
+				return
+			}
+			retry = false
+			return
+		})
+	if err != nil {
+		return nil, err
 	}
-	// conn, err := grpc.Dial(addr, grpc.WithInsecure())
-	// if err != nil {
-	// 	return nil, err
-	// }
 	s := service.NewGapirClient(conn)
-	return &Connection{conn: conn, servClient: s}, nil
+	return &Connection{conn: conn, servClient: s, authToken: authToken}, nil
 }
 
 func (c *Connection) Close() {
@@ -177,6 +192,9 @@ func (c *Connection) HandleReplayCommunication(
 	}
 	log.W(ctx, "begin replay returns successfully")
 	for {
+		if c.stream == nil {
+			return fmt.Errorf("Not connected")
+		}
 		r, err := c.stream.Recv()
 		if err != nil {
 			return err
@@ -218,6 +236,10 @@ func (c *Connection) beginReplay(ctx context.Context, id string, payload Payload
 	}
 	ctx = log.Enter(ctx, "Requesting replay on gapir device")
 	log.W(ctx, "trying to begin replay")
+	if len(c.authToken) != 0 {
+		ctx = metadata.NewContext(ctx,
+			metadata.Pairs("gapir-auth-token", string(c.authToken)))
+	}
 	replayStream, err := c.servClient.Replay(ctx)
 	if err != nil {
 		return log.Err(ctx, err, "Gettting replay stream client")

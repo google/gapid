@@ -18,9 +18,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
@@ -39,13 +42,14 @@ import (
 const sessionTimeout = time.Second * 10
 
 type session struct {
-	device bind.Device
-	port   int
-	// auth     auth.Token
+	device   bind.Device
+	port     int
+	auth     auth.Token
 	closeCBs []func()
 	inited   chan struct{}
 	conn     *Connection
-	perm     func()
+	// Only used for android
+	setFileSocketPermission func() error
 }
 
 func newSession(d bind.Device) *session {
@@ -74,12 +78,12 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, laun
 
 // newHost spawns and returns a new GAPIR instance on the host machine.
 func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []string) error {
-	// authTokenFile, authToken := auth.GenTokenFile()
-	// defer os.Remove(authTokenFile)
+	authTokenFile, authToken := auth.GenTokenFile()
+	defer os.Remove(authTokenFile)
 
 	args := []string{
 		"--idle-timeout-ms", strconv.Itoa(int(sessionTimeout / time.Millisecond)),
-		// "--auth-token-file", authTokenFile,
+		"--auth-token-file", authTokenFile,
 	}
 	args = append(args, launchArgs...)
 
@@ -134,7 +138,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 	}
 
 	s.port = port
-	// s.auth = authToken
+	s.auth = authToken
 	return nil
 }
 
@@ -165,19 +169,15 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	if !ok {
 		return log.Errf(ctx, nil, "Unsupported architecture: %v", abi.Architecture)
 	}
-	// if err := d.Forward(ctx, localPort, adb.NamedAbstractSocket(socket)); err != nil {
-	log.W(ctx, "apk name is: %v", apk.Name)
-	cwd, err := apk.FileDir(ctx)
+	apkDir, err := apk.FileDir(ctx)
 	if err != nil {
-		log.E(ctx, "error get apk directory: %v", err)
+		return log.Errf(ctx, err, "Getting gapid.apk files directory")
 	}
-	log.W(ctx, "apk working directory: %v", cwd)
-	log.W(ctx, "forward port: %v", cwd+"/"+socket)
-	// apk.Device.Shell("run-as", apk.Name, "/system/bin/chmod", "a+x", "-R", "pwd")
-	s.perm = func() { d.Shell("run-as", apk.Name, "/system/bin/chmod", "777", "-R", cwd+"/gapir-arm").Run(ctx) }
-	s.perm()
-	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(cwd+"/"+socket)); err != nil {
-		// if err := d.Forward(ctx, localPort, ("tcp:12345")); err != nil {
+	socketFile := strings.Join([]string{apkDir, socket}, "/")
+	s.setFileSocketPermission = func() error {
+		return d.Shell("run-as", apk.Name, "/system/bin/chmod", "a+u", socketFile).Run(ctx)
+	}
+	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(socketFile)); err != nil {
 		return log.Err(ctx, err, "Forwarding port")
 	}
 	s.onClose(func() { d.RemoveForward(ctx, localPort) })
@@ -201,20 +201,8 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 
 func (s *session) connect(ctx context.Context) (*Connection, error) {
 	<-s.inited
-	// s.auth?
-	return NewConnection(fmt.Sprintf("localhost:%d", s.port), s.perm)
-	// if s.conn == nil {
-	// 	var err error
-	// 	for {
-	// 		s.conn, err = NewConnection(fmt.Sprintf("localhost:%d", s.port), s.perm)
-	// 		if err == nil {
-	// 			break
-	// 		}
-	// 		time.Sleep(time.Second)
-	// 	}
-	// 	s.onClose(func() { s.conn.Close() })
-	// }
-	// return s.conn, nil
+	return newConnection(ctx, fmt.Sprintf("localhost:%d", s.port), s.auth,
+		s.setFileSocketPermission)
 }
 
 func (s *session) onClose(f func()) {
@@ -229,8 +217,7 @@ func (s *session) close() {
 }
 
 func (s *session) ping(ctx context.Context) (time.Duration, error) {
-	// s.auth?
-	conn, err := NewConnection(fmt.Sprintf("localhost:%d", s.port), s.perm)
+	conn, err := newConnection(ctx, fmt.Sprintf("localhost:%d", s.port), s.auth, s.setFileSocketPermission)
 	if err != nil {
 		return 0, err
 	}

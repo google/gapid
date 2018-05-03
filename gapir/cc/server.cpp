@@ -16,6 +16,7 @@
 
 #include "gapir/cc/server.h"
 
+#include <string.h>
 #include <functional>
 #include <limits>
 #include <vector>
@@ -34,8 +35,25 @@ using grpc::Status;
 using ReplayStream =
     grpc::ServerReaderWriter<service::ReplayResponse, service::ReplayRequest>;
 
+// This is common knowledge shared with GAPIS.
+const char GapirServiceImpl::kAuthTokenMetaDataName[] = "gapir-auth-token";
+
 Status GapirServiceImpl::Replay(ServerContext* context, ReplayStream* stream) {
   GAPID_INFO("In GapirServiceImpl::Replay");
+  // sort of authentication?
+  // if (mAuthToken.length() > 0) {
+  //   // need to check the metadata
+  //   auto auth_md = context->client_metadata().find(kAuthTokenMetaDataName);
+  //   if (auth_md == context->client_metadata().end()) {
+  //     return Status(grpc::StatusCode::UNAUTHENTICATED, grpc::string("No auth token"));
+  //   }
+  //   if (strncmp(auth_md->second.data(), mAuthToken.data(), mAuthToken.size())) {
+  //     return Status(
+  //         grpc::StatusCode::UNAUTHENTICATED,
+  //         grpc::string("Invalid auth token: ") +
+  //             grpc::string(auth_md->second.data(), auth_md->second.length()));
+  //   }
+  // }
   service::ReplayRequest req;
   while (stream->Read(&req)) {
     GAPID_INFO("In GapirServiceImpl::Replay while loop");
@@ -70,21 +88,20 @@ Status GapirServiceImpl::Shutdown(ServerContext* context,
   return Status::OK;
 }
 
-Server::Server(std::string uri, ReplayHandler handle_replay)
+Server::Server(const char* authToken, ReplayHandler handle_replay)
     : mGrpcServer(nullptr),
       mServiceImpl(std::unique_ptr<GapirServiceImpl>(
-          new GapirServiceImpl(handle_replay))),
-      mUri(uri) {}
+          new GapirServiceImpl(authToken, handle_replay))) {}
 
-std::unique_ptr<Server> Server::createAndStart(std::string uri,
+std::unique_ptr<Server> Server::createAndStart(const char* uri, const char* authToken,
                                                ReplayHandler handle_replay) {
-  std::unique_ptr<Server> server(new Server(uri, handle_replay));
+  std::unique_ptr<Server> server(new Server(authToken, handle_replay));
   GAPID_INFO("server pointer created");
   ServerBuilder builder;
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
-  builder.AddListeningPort(server->mUri, grpc::InsecureServerCredentials());
-  GAPID_INFO("listening port added on: %s", server->mUri.c_str());
+  builder.AddListeningPort(std::string(uri), grpc::InsecureServerCredentials());
+  GAPID_INFO("listening port added on: %s", uri);
   builder.RegisterService(server->mServiceImpl.get());
   GAPID_INFO("service registered");
   // server->mGrpcServer = builder.BuildAndStart();
