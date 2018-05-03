@@ -63,8 +63,11 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, device *device.Instance, s *api.GlobalState, c *Context, out transform.Writer) error {
 	const (
 		aScreenCoordsLocation AttributeLocation = 0
+		aScreenCoords                           = "aScreenCoords"
 
 		vertexShaderSource string = `
+					#version 100
+
 					precision highp float;
 					attribute vec2 aScreenCoords;
 					varying vec2 uv;
@@ -74,6 +77,8 @@ func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, de
 						gl_Position = vec4(aScreenCoords.xy, 0., 1.);
 					}`
 		fragmentShaderSource string = `
+					#version 100
+
 					precision highp float;
 					varying vec2 uv;
 
@@ -102,13 +107,20 @@ func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, de
 
 	programID := t.makeProgram(ctx, vertexShaderSource, fragmentShaderSource)
 
-	tmp0 := t.AllocData(ctx, "aScreenCoords")
+	tmp0 := t.AllocData(ctx, aScreenCoords)
 	out.MutateAndWrite(ctx, dID, cb.GlBindAttribLocation(programID, aScreenCoordsLocation, tmp0.Ptr()).
 		AddRead(tmp0.Data()))
 	tmp0.Free()
 	out.MutateAndWrite(ctx, dID, api.WithExtras(cb.GlLinkProgram(programID), &LinkProgramExtra{
-		LinkStatus:      GLboolean_GL_TRUE,
-		ActiveResources: &ActiveProgramResources{},
+		LinkStatus: GLboolean_GL_TRUE,
+		ActiveResources: &ActiveProgramResources{
+			ProgramInputs: NewU32ːProgramResourceʳᵐ().Add(0, &ProgramResource{
+				Type:      GLenum_GL_FLOAT_VEC2,
+				Name:      aScreenCoords,
+				ArraySize: 1,
+				Locations: NewU32ːGLintᵐ().Add(0, 0),
+			}),
+		},
 	}))
 	t.glUseProgram(ctx, programID)
 
