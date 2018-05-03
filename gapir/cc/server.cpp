@@ -87,7 +87,13 @@ std::unique_ptr<Server> Server::createAndStart(std::string uri,
   GAPID_INFO("listening port added on: %s", server->mUri.c_str());
   builder.RegisterService(server->mServiceImpl.get());
   GAPID_INFO("service registered");
-  server->mGrpcServer = builder.BuildAndStart();
+  // server->mGrpcServer = builder.BuildAndStart();
+  auto grpcServer = builder.BuildAndStart();
+  if (grpcServer == nullptr) {
+    GAPID_ERROR("grpcServer is nullptr");
+    return nullptr;
+  }
+  server->mGrpcServer = std::move(grpcServer);
   GAPID_INFO("grpc server built and started: %p", server->mGrpcServer.get());
   server->mServiceImpl->mGrpcServer = server->mGrpcServer.get();
   GAPID_INFO("grpc server assigned to service impl");

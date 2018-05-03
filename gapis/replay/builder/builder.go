@@ -72,18 +72,18 @@ type Builder struct {
 	resourceIDToIdx map[id.ID]uint32
 	threadIDToIdx   map[uint64]uint32
 	currentThreadID uint64
-	resources      gapir.ResourceInfoList
-	reservedMemory memory.RangeList // Reserved memory ranges for regular data.
-	pointerMemory  memory.RangeList // Reserved memory ranges for the pointer table.
-	mappedMemory   mappedMemoryRangeList
-	instructions   []asm.Instruction
-	decoders     []postBackDecoder
-	stack        []stackItem
-	memoryLayout *device.MemoryLayout
-	inCmd        bool   // true if between BeginCommand and CommitCommand/RevertCommand
-	cmdStart     int    // index of current commands's first instruction
-	pendingLabel uint64 // label passed to BeginCommand written
-	lastLabel    uint64 // label of last CommitCommand written
+	resources       gapir.ResourceInfoList
+	reservedMemory  memory.RangeList // Reserved memory ranges for regular data.
+	pointerMemory   memory.RangeList // Reserved memory ranges for the pointer table.
+	mappedMemory    mappedMemoryRangeList
+	instructions    []asm.Instruction
+	decoders        []postBackDecoder
+	stack           []stackItem
+	memoryLayout    *device.MemoryLayout
+	inCmd           bool   // true if between BeginCommand and CommitCommand/RevertCommand
+	cmdStart        int    // index of current commands's first instruction
+	pendingLabel    uint64 // label passed to BeginCommand written
+	lastLabel       uint64 // label of last CommitCommand written
 
 	// Remappings is a map of a arbitrary keys to pointers. Typically, this is
 	// used as a map of observed values to values that are only known at replay
@@ -103,14 +103,14 @@ func New(memoryLayout *device.MemoryLayout) *Builder {
 		temp:            allocator{alignment: ptrAlignment},
 		resourceIDToIdx: map[id.ID]uint32{},
 		threadIDToIdx:   map[uint64]uint32{},
-		resources:      gapir.ResourceInfoList{},
-		reservedMemory: memory.RangeList{},
-		pointerMemory:  memory.RangeList{},
-		mappedMemory:   mappedMemoryRangeList{},
-		instructions:   []asm.Instruction{},
-		memoryLayout:   memoryLayout,
-		lastLabel:      ^uint64(0),
-		Remappings:     make(map[interface{}]value.Pointer),
+		resources:       gapir.ResourceInfoList{},
+		reservedMemory:  memory.RangeList{},
+		pointerMemory:   memory.RangeList{},
+		mappedMemory:    mappedMemoryRangeList{},
+		instructions:    []asm.Instruction{},
+		memoryLayout:    memoryLayout,
+		lastLabel:       ^uint64(0),
+		Remappings:      make(map[interface{}]value.Pointer),
 	}
 }
 
@@ -612,6 +612,11 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, ResponseDecoder, er
 		log.I(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
 		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
+	log.W(ctx, "Stack size:           0x%x", payload.StackSize)
+	log.W(ctx, "Volatile memory size: 0x%x", payload.VolatileMemorySize)
+	log.W(ctx, "Constant memory size: 0x%x", len(payload.Constants))
+	log.W(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
+	log.W(ctx, "Resource count:         %d", len(payload.Resources))
 
 	// TODO: check that each Postback consumes its expected number of bytes.
 	responseDecoder := func(pd *gapir.PostData) {

@@ -73,23 +73,25 @@ std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
 
 std::unique_ptr<Server> Setup(std::string uri, const char* authToken,
                               const char* cachePath, int idleTimeoutMs,
-                              core::CrashHandler& crashHandler) {
+                              core::CrashHandler& crashHandler, MemoryManager* memMgr) {
   // Return a replay server with the following replay ID handler.
   return Server::createAndStart(
       uri, [&](ReplayConnection* replayConn, const std::string& replayId) {
 
-        MemoryManager memoryManager(memorySizes);
 
+        GAPID_INFO("before create resourceProvider: cachePath: %s", cachePath);
         std::unique_ptr<ResourceInMemoryCache> resourceProvider(
-            createResourceProvider(cachePath, &memoryManager));
+            createResourceProvider(cachePath, memMgr));
 
+        GAPID_INFO("before create crash uploader");
         std::unique_ptr<CrashUploader> crash_uploader =
             std::unique_ptr<CrashUploader>(
                 new CrashUploader(crashHandler, replayConn));
 
+        GAPID_INFO("before create context");
         std::unique_ptr<Context> context =
             Context::create(replayConn, crashHandler,
-                            resourceProvider.get(), &memoryManager);
+                            resourceProvider.get(), memMgr);
 
         if (context == nullptr) {
           GAPID_WARNING("Loading Context failed!");
@@ -124,64 +126,22 @@ const char* pipeName() {
 // Main function for android
 void android_main(struct android_app* app) {
   app_dummy();
-  // MemoryManager memoryManager(memorySizes);
+  MemoryManager memoryManager(memorySizes);
   CrashHandler crashHandler;
 
-  // JNIEnv* env = app->activity->env;
-  JNIEnv* env;
-  app->activity->vm->AttachCurrentThread(&env, NULL);
-
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Before Find NativeActivity, env: %p\n", env);
-  usleep(30000);
-  jclass cls_Env = env->FindClass("android/app/NativeActivity");
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Find NativeActivity\n");
-  usleep(30000);
-  jmethodID mid_getExtStorage = env->GetMethodID(cls_Env, "getFilesDir", "()Ljava/io/File;");
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Get getFilesDir\n");
-  usleep(30000);
-  jobject obj_File = env->CallObjectMethod(app->activity->clazz, mid_getExtStorage);
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "call getFilesDir\n");
-  usleep(30000);
-  jclass cls_File = env->FindClass("java/io/File");
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Find File\n");
-  usleep(30000);
-  jmethodID mid_getPath = env->GetMethodID(cls_File, "getPath", "()Ljava/lang/String;");
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Get getPath\n");
-  usleep(30000);
-  jstring obj_Path = (jstring) env->CallObjectMethod(obj_File, mid_getPath);
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Call getPath\n");
-  usleep(30000);
-  const char* c_path = env->GetStringUTFChars(obj_Path, nullptr);
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "GetStringUTFChars\n");
-  usleep(30000);
-  std::string cur_dir = std::string(c_path);
-  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "cur_dir: %s\n", cur_dir.c_str());
-  usleep(30000);
-
-
   const char* pipe = pipeName();
-  // char p[FILENAME_MAX];
-  // char* x = getcwd(p, 100);
-  // realpath(".", abs_path);
-  // std::string external_data_path = std::string(app->activity->externalDataPath);
-  // std::string uri = std::string("unix://") + std::string(x) + "/" + std::string(pipe);
+  std::string internal_data_path = std::string(app->activity->internalDataPath);
   std::string uri =
-      std::string("unix://") +
-      // std::string("/data/data/com.google.android.gapid.armeabi/files") + "/" +
-      cur_dir + "/" +
-      std::string(pipe);
-  // std::string uri = "127.0.0.1:12345";
+      std::string("unix://") + internal_data_path + "/" + std::string(pipe);
 
-  for (size_t i = 0; i < 20; i++) {
   __android_log_print(ANDROID_LOG_INFO, "GAPIR",
                       "Started Graphics API Replay daemon.\n"
                       "Listening on localfilesystem unix socket '%s'\n"
                       "Supported ABIs: %s\n",
                       uri.c_str(), core::supportedABIs());
-  }
 
   std::unique_ptr<Server> server = Setup(uri, nullptr, nullptr,
-                                         0 /*no timeout?*/, crashHandler);
+                                         0 /*no timeout?*/, crashHandler, &memoryManager);
   std::thread waiting_thread([&]() { server.get()->wait(); });
 
   while (true) {
@@ -291,7 +251,7 @@ int main(int argc, const char* argv[]) {
 
   GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
 
-  // MemoryManager memoryManager(memorySizes);
+  MemoryManager memoryManager(memorySizes);
   // auto conn = SocketConnection::createSocket("127.0.0.1", portArgStr);
   // if (conn == nullptr) {
   // GAPID_FATAL("Failed to create listening socket on port: %s", portArgStr);
@@ -305,7 +265,7 @@ int main(int argc, const char* argv[]) {
   std::string uri = std::string("127.0.0.1:") + std::string(portStr);
 
   std::unique_ptr<Server> server =
-      Setup(uri, nullptr, cachePath, 0 /*idleTimeoutMs*/, crashHandler);
+      Setup(uri, nullptr, cachePath, 0 /*idleTimeoutMs*/, crashHandler, &memoryManager);
   // The following message is parsed by launchers to detect the selected port.
   // DO NOT CHANGE!
   printf("Bound on port '%s'\n", portStr.c_str());
