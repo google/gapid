@@ -75,11 +75,21 @@ type Connection struct {
 	stream     service.Gapir_ReplayClient
 }
 
-func NewConnection(addr string) (*Connection, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
+func NewConnection(addr string, cb func()) (*Connection, error) {
+	var conn *grpc.ClientConn
+	var err error
+	for {
+		cb()
+		conn, err = grpc.Dial(addr, grpc.WithInsecure())
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
 	}
+	// conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	// if err != nil {
+	// 	return nil, err
+	// }
 	s := service.NewGapirClient(conn)
 	return &Connection{conn: conn, servClient: s}, nil
 }

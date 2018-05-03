@@ -44,6 +44,8 @@ type session struct {
 	// auth     auth.Token
 	closeCBs []func()
 	inited   chan struct{}
+	conn     *Connection
+	perm     func()
 }
 
 func newSession(d bind.Device) *session {
@@ -164,7 +166,18 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 		return log.Errf(ctx, nil, "Unsupported architecture: %v", abi.Architecture)
 	}
 	// if err := d.Forward(ctx, localPort, adb.NamedAbstractSocket(socket)); err != nil {
-	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket("/data/data/com.google.android.gapid.aarch64/"+socket)); err != nil {
+	log.W(ctx, "apk name is: %v", apk.Name)
+	cwd, err := apk.FileDir(ctx)
+	if err != nil {
+		log.E(ctx, "error get apk directory: %v", err)
+	}
+	log.W(ctx, "apk working directory: %v", cwd)
+	log.W(ctx, "forward port: %v", cwd+"/"+socket)
+	// apk.Device.Shell("run-as", apk.Name, "/system/bin/chmod", "a+x", "-R", "pwd")
+	s.perm = func() { d.Shell("run-as", apk.Name, "/system/bin/chmod", "777", "-R", cwd+"/gapir-arm").Run(ctx) }
+	s.perm()
+	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(cwd+"/"+socket)); err != nil {
+		// if err := d.Forward(ctx, localPort, ("tcp:12345")); err != nil {
 		return log.Err(ctx, err, "Forwarding port")
 	}
 	s.onClose(func() { d.RemoveForward(ctx, localPort) })
@@ -189,7 +202,19 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 func (s *session) connect(ctx context.Context) (*Connection, error) {
 	<-s.inited
 	// s.auth?
-	return NewConnection(fmt.Sprintf("localhost:%d", s.port))
+	return NewConnection(fmt.Sprintf("localhost:%d", s.port), s.perm)
+	// if s.conn == nil {
+	// 	var err error
+	// 	for {
+	// 		s.conn, err = NewConnection(fmt.Sprintf("localhost:%d", s.port), s.perm)
+	// 		if err == nil {
+	// 			break
+	// 		}
+	// 		time.Sleep(time.Second)
+	// 	}
+	// 	s.onClose(func() { s.conn.Close() })
+	// }
+	// return s.conn, nil
 }
 
 func (s *session) onClose(f func()) {
@@ -205,7 +230,7 @@ func (s *session) close() {
 
 func (s *session) ping(ctx context.Context) (time.Duration, error) {
 	// s.auth?
-	conn, err := NewConnection(fmt.Sprintf("localhost:%d", s.port))
+	conn, err := NewConnection(fmt.Sprintf("localhost:%d", s.port), s.perm)
 	if err != nil {
 		return 0, err
 	}

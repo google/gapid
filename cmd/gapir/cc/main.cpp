@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string>
 #include <memory>
 #include <thread>
@@ -38,6 +39,7 @@
 
 #if TARGET_OS == GAPID_OS_ANDROID
 #include "android_native_app_glue.h"
+#include "android/native_activity.h"
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
 using namespace core;
@@ -125,15 +127,60 @@ void android_main(struct android_app* app) {
   // MemoryManager memoryManager(memorySizes);
   CrashHandler crashHandler;
 
+  // JNIEnv* env = app->activity->env;
+  JNIEnv* env;
+  app->activity->vm->AttachCurrentThread(&env, NULL);
+
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Before Find NativeActivity, env: %p\n", env);
+  usleep(30000);
+  jclass cls_Env = env->FindClass("android/app/NativeActivity");
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Find NativeActivity\n");
+  usleep(30000);
+  jmethodID mid_getExtStorage = env->GetMethodID(cls_Env, "getFilesDir", "()Ljava/io/File;");
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Get getFilesDir\n");
+  usleep(30000);
+  jobject obj_File = env->CallObjectMethod(app->activity->clazz, mid_getExtStorage);
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "call getFilesDir\n");
+  usleep(30000);
+  jclass cls_File = env->FindClass("java/io/File");
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Find File\n");
+  usleep(30000);
+  jmethodID mid_getPath = env->GetMethodID(cls_File, "getPath", "()Ljava/lang/String;");
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Get getPath\n");
+  usleep(30000);
+  jstring obj_Path = (jstring) env->CallObjectMethod(obj_File, mid_getPath);
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "Call getPath\n");
+  usleep(30000);
+  const char* c_path = env->GetStringUTFChars(obj_Path, nullptr);
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "GetStringUTFChars\n");
+  usleep(30000);
+  std::string cur_dir = std::string(c_path);
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR", "cur_dir: %s\n", cur_dir.c_str());
+  usleep(30000);
+
+
   const char* pipe = pipeName();
+  // char p[FILENAME_MAX];
+  // char* x = getcwd(p, 100);
+  // realpath(".", abs_path);
+  // std::string external_data_path = std::string(app->activity->externalDataPath);
+  // std::string uri = std::string("unix://") + std::string(x) + "/" + std::string(pipe);
+  std::string uri =
+      std::string("unix://") +
+      // std::string("/data/data/com.google.android.gapid.armeabi/files") + "/" +
+      cur_dir + "/" +
+      std::string(pipe);
+  // std::string uri = "127.0.0.1:12345";
 
-  __android_log_print(ANDROID_LOG_DEBUG, "GAPIR",
+  for (size_t i = 0; i < 20; i++) {
+  __android_log_print(ANDROID_LOG_INFO, "GAPIR",
                       "Started Graphics API Replay daemon.\n"
-                      "Listening on localfilesystem port '%s'\n"
+                      "Listening on localfilesystem unix socket '%s'\n"
                       "Supported ABIs: %s\n",
-                      pipe, core::supportedABIs());
+                      uri.c_str(), core::supportedABIs());
+  }
 
-  std::unique_ptr<Server> server = Setup(std::string(pipe), nullptr, nullptr,
+  std::unique_ptr<Server> server = Setup(uri, nullptr, nullptr,
                                          0 /*no timeout?*/, crashHandler);
   std::thread waiting_thread([&]() { server.get()->wait(); });
 
