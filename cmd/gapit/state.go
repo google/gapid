@@ -35,7 +35,8 @@ type stateVerb struct{ StateFlags }
 func init() {
 	verb := &stateVerb{
 		StateFlags{
-			At: flags.U64Slice{},
+			At:    flags.U64Slice{},
+			Depth: -1,
 		},
 	}
 
@@ -84,7 +85,7 @@ func (verb *stateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	tree := boxedTree.(*service.StateTree)
 
-	return traverseStateTree(ctx, client, tree.Root, func(n *service.StateTreeNode, prefix string) error {
+	return traverseStateTree(ctx, client, tree.Root, verb.Depth, func(n *service.StateTreeNode, prefix string) error {
 		name := n.Name + ":"
 		if n.Preview != nil {
 			v := n.Preview.Get()
@@ -107,6 +108,7 @@ func traverseStateTree(
 	ctx context.Context,
 	c client.Client,
 	p *path.StateTreeNode,
+	depth int,
 	f func(n *service.StateTreeNode, prefix string) error,
 	prefix string,
 	last bool) error {
@@ -140,10 +142,12 @@ func traverseStateTree(
 	} else {
 		prefix += "│   "
 	}
-	for i := uint64(0); i < n.NumChildren; i++ {
-		err := traverseStateTree(ctx, c, p.Index(i), f, prefix, i == n.NumChildren-1)
-		if err != nil {
-			return err
+	if depth != 0 {
+		for i := uint64(0); i < n.NumChildren; i++ {
+			err := traverseStateTree(ctx, c, p.Index(i), depth-1, f, prefix, i == n.NumChildren-1)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
