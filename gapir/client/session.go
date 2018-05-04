@@ -192,21 +192,21 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	if err != nil {
 		return log.Errf(ctx, err, "Getting gapid.apk files directory")
 	}
-	// Wait for the socket file to be created
+	// Wait for the socket to be opened
 	socketFile := strings.Join([]string{apkDir, socket}, "/")
 	err = task.Retry(ctx, maxCheckSocketFileAttempts, checkSocketFileRetryDelay,
 		func(ctx context.Context) (bool, error) {
-			str, err := d.Shell("run-as", apk.Name, "ls", socketFile).Call(ctx)
+			str, err := d.Shell("run-as", apk.Name, "cat", "/proc/net/unix", "|", "grep", socket).Call(ctx)
 			if err != nil {
 				return false, err
 			}
-			if strings.HasSuffix(str, "No such file or directory") {
-				return false, fmt.Errorf("Socket file: '%v' does not exist", socketFile)
+			if len(str) == 0 {
+				return false, log.Errf(ctx, nil, "Gapir socket '%v' not opened yet", socketFile)
 			}
 			return true, nil
 		})
 	if err != nil {
-		return log.Errf(ctx, err, "Checking socket file: %v", socketFile)
+		return log.Errf(ctx, err, "Checking socket: %v", socketFile)
 	}
 
 	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(socketFile)); err != nil {
