@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/resolve/initialcmds"
 )
 
 // The following are the imports that generated source files pull in when present
@@ -162,14 +163,14 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 	cmds := c.Commands
 	behaviourProviders := map[api.API]BehaviourProvider{}
 
-	// If the capture contains initial state, prepend the commands to build the state.
-	initialCmds, ranges := c.GetInitialCommands(ctx)
-	if len(initialCmds) > 0 {
-		cmds = append(initialCmds, cmds...)
+	initCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)
+
+	if len(initCmds) > 0 {
+		cmds = append(initCmds, cmds...)
 	}
 
 	g := &DependencyGraph{
-		NumInitialCommands: len(initialCmds),
+		NumInitialCommands: len(initCmds),
 		Commands:           cmds,
 		Behaviours:         make([]AtomBehaviour, len(cmds)),
 		Roots:              map[StateAddress]bool{},
