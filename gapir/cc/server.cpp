@@ -39,25 +39,26 @@ using ReplayStream =
 const char GapirServiceImpl::kAuthTokenMetaDataName[] = "gapir-auth-token";
 
 namespace {
-  bool CheckAuthToken(ServerContext* context, const std::string& expected) {
-    if (expected.length() > 0) {
-      auto auth_md = context->client_metadata().find(GapirServiceImpl::kAuthTokenMetaDataName);
-      if (auth_md == context->client_metadata().end()) {
-        return false;
-      }
-      if (strncmp(auth_md->second.data(), expected.data(), expected.size())) {
-        return false;
-      }
+bool CheckAuthToken(ServerContext* context, const std::string& expected) {
+  if (expected.length() > 0) {
+    auto auth_md = context->client_metadata().find(
+        GapirServiceImpl::kAuthTokenMetaDataName);
+    if (auth_md == context->client_metadata().end()) {
+      return false;
     }
-    return true;
+    if (strncmp(auth_md->second.data(), expected.data(), expected.size())) {
+      return false;
+    }
   }
+  return true;
 }
+}  // namespace
 
 Status GapirServiceImpl::Replay(ServerContext* context, ReplayStream* stream) {
   // Check the metadata for the authentication token
   if (!CheckAuthToken(context, mAuthToken)) {
-      return Status(grpc::StatusCode::UNAUTHENTICATED,
-                    grpc::string("Invalid auth token"));
+    return Status(grpc::StatusCode::UNAUTHENTICATED,
+                  grpc::string("Invalid auth token"));
   }
   service::ReplayRequest req;
   while (stream->Read(&req)) {
@@ -76,9 +77,10 @@ Status GapirServiceImpl::Ping(ServerContext* context,
                               const service::PingRequest*,
                               service::PingResponse* res) {
   if (!CheckAuthToken(context, mAuthToken)) {
-      return Status(grpc::StatusCode::UNAUTHENTICATED,
-                    grpc::string("Invalid auth token"));
+    return Status(grpc::StatusCode::UNAUTHENTICATED,
+                  grpc::string("Invalid auth token"));
   }
+  mFeedWatchDog();
   return Status::OK;
 }
 
@@ -86,8 +88,8 @@ Status GapirServiceImpl::Shutdown(ServerContext* context,
                                   const service::ShutdownRequest*,
                                   service::ShutdownResponse*) {
   if (!CheckAuthToken(context, mAuthToken)) {
-      return Status(grpc::StatusCode::UNAUTHENTICATED,
-                    grpc::string("Invalid auth token"));
+    return Status(grpc::StatusCode::UNAUTHENTICATED,
+                  grpc::string("Invalid auth token"));
   }
   if (mGrpcServer != nullptr) {
     mGrpcServer->Shutdown();
@@ -95,15 +97,30 @@ Status GapirServiceImpl::Shutdown(ServerContext* context,
   return Status::OK;
 }
 
-Server::Server(const char* authToken, ReplayHandler handle_replay)
-    : mGrpcServer(nullptr),
-      mServiceImpl(std::unique_ptr<GapirServiceImpl>(
-          new GapirServiceImpl(authToken, handle_replay))) {}
+Server::Server(const char* authToken, int idleTimeoutSec,
+               ReplayHandler handle_replay)
+    : mIdleTimeoutSec(idleTimeoutSec),
+      mSecCounter(0),
+      mShuttingDown(false),
+      mGrpcServer(nullptr),
+      mServiceImpl(
+          new GapirServiceImpl(authToken, handle_replay,
+                               [this]() { this->mSecCounter.store(0); })),
+      mIdleTimeoutCloser(
+          idleTimeoutSec > 0 ? new std::thread([idleTimeoutSec, this] {
+            while (idleTimeoutSec > this->mSecCounter.fetch_add(1) &&
+                   !this->mShuttingDown.load()) {
+              std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            this->shutdown();
+          })
+                             : nullptr) {}
 
 std::unique_ptr<Server> Server::createAndStart(const char* uri,
                                                const char* authToken,
+                                               int idleTimeoutSec,
                                                ReplayHandler handle_replay) {
-  std::unique_ptr<Server> server(new Server(authToken, handle_replay));
+  std::unique_ptr<Server> server(new Server(authToken, idleTimeoutSec, handle_replay));
   ServerBuilder builder;
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());

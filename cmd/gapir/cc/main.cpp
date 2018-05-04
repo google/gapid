@@ -73,12 +73,12 @@ std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
 }
 
 std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
-                              const char* cachePath, int idleTimeoutMs,
+                              const char* cachePath, int idleTimeoutSec,
                               core::CrashHandler* crashHandler,
                               MemoryManager* memMgr) {
   // Return a replay server with the following replay ID handler.
   return Server::createAndStart(
-      uri, authToken,
+      uri, authToken, idleTimeoutSec,
       [cachePath, memMgr, crashHandler](ReplayConnection* replayConn,
                                          const std::string& replayId) {
         std::unique_ptr<ResourceInMemoryCache> resourceProvider(
@@ -177,7 +177,7 @@ int main(int argc, const char* argv[]) {
   const char* portArgStr = "0";
   const char* authTokenFile = nullptr;
   // int idleTimeoutMs = Connection::NO_TIMEOUT;
-  int idleTimeoutMs = 0;
+  int idleTimeoutSec = 0;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--auth-token-file") == 0) {
@@ -226,11 +226,11 @@ int main(int argc, const char* argv[]) {
         GAPID_FATAL("Usage: --log <log-file-path>");
       }
       logPath = argv[++i];
-    } else if (strcmp(argv[i], "--idle-timeout-ms") == 0) {
+    } else if (strcmp(argv[i], "--idle-timeout-sec") == 0) {
       if (i + 1 >= argc) {
-        GAPID_FATAL("Usage: --idle-timeout-ms <timeout in milliseconds>");
+        GAPID_FATAL("Usage: --idle-timeout-sec <timeout in seconds>");
       }
-      idleTimeoutMs = atoi(argv[++i]);
+      idleTimeoutSec = atoi(argv[++i]);
     } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
       wait_for_debugger = true;
     } else if (strcmp(argv[i], "--version") == 0) {
@@ -285,7 +285,7 @@ int main(int argc, const char* argv[]) {
 
   std::unique_ptr<Server> server =
       Setup(uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr, cachePath,
-            0 /*idleTimeoutMs*/, &crashHandler, &memoryManager);
+            idleTimeoutSec, &crashHandler, &memoryManager);
   // The following message is parsed by launchers to detect the selected port.
   // DO NOT CHANGE!
   printf("Bound on port '%s'\n", portStr.c_str());

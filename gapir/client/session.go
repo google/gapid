@@ -86,7 +86,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 	defer os.Remove(authTokenFile)
 
 	args := []string{
-		"--idle-timeout-ms", strconv.Itoa(int(sessionTimeout / time.Millisecond)),
+		"--idle-timeout-sec", strconv.Itoa(int(sessionTimeout / time.Second)),
 		"--auth-token-file", authTokenFile,
 	}
 	args = append(args, launchArgs...)

@@ -17,10 +17,12 @@
 #ifndef GAPID_SERVER_CONNECTION_H
 #define GAPID_SERVER_CONNECTION_H
 
-#include <grpc++/grpc++.h>
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
+#include <thread>
+#include <grpc++/grpc++.h>
 
 #include "core/cc/log.h"
 #include "gapir/service/service.grpc.pb.h"
@@ -30,11 +32,13 @@ namespace gapir {
 
 using ReplayHandler =
     std::function<void(ReplayConnection*, const std::string& replay_id)>;
+using WatchDogFeeder = std::function<void()>;
 
 class Server;
 
 class GapirServiceImpl final : public service::Gapir::Service {
   friend Server;
+
  public:
   static const char kAuthTokenMetaDataName[];
 
@@ -51,23 +55,36 @@ class GapirServiceImpl final : public service::Gapir::Service {
           stream) override;
   grpc::Status Ping(grpc::ServerContext* context, const service::PingRequest*,
                     service::PingResponse* res) override;
-  grpc::Status Shutdown(grpc::ServerContext* context, const service::ShutdownRequest*,
+  grpc::Status Shutdown(grpc::ServerContext* context,
+                        const service::ShutdownRequest*,
                         service::ShutdownResponse*) override;
 
  private:
-  GapirServiceImpl(const char* authToken, ReplayHandler handle_replay)
-      : mHandleReplay(handle_replay), mGrpcServer(nullptr), mAuthToken(authToken == nullptr ? "" : authToken) {}
+  GapirServiceImpl(const char* authToken, ReplayHandler handle_replay,
+                   WatchDogFeeder feed_watchdog)
+      : mHandleReplay(handle_replay),
+        mFeedWatchDog(feed_watchdog),
+        mGrpcServer(nullptr),
+        mAuthToken(authToken == nullptr ? "" : authToken) {}
 
   ReplayHandler mHandleReplay;
+  WatchDogFeeder mFeedWatchDog;
   grpc::Server* mGrpcServer;
   std::string mAuthToken;
 };
 
 class Server {
  public:
-  static std::unique_ptr<Server> createAndStart(const char* uri, const char* authToken, ReplayHandler handleReplay);
+  static std::unique_ptr<Server> createAndStart(const char* uri,
+                                                const char* authToken,
+                                                int idleTimeoutSec,
+                                                ReplayHandler handleReplay);
 
-  ~Server() = default;
+  ~Server() {
+    if (mIdleTimeoutCloser != nullptr) {
+      mIdleTimeoutCloser->join();
+    }
+  };
 
   Server(const Server&) = delete;
   Server(Server&&) = delete;
@@ -76,13 +93,18 @@ class Server {
 
   void wait() { mGrpcServer->Wait(); }
 
-  void shutdown() { mGrpcServer->Shutdown(); }
+  void shutdown() { mShuttingDown.store(true); mGrpcServer->Shutdown(); }
 
  private:
-  Server(const char* authToken, ReplayHandler handle_replay);
+  Server(const char* authToken, int idleTimeoutSec,
+         ReplayHandler handle_replay);
 
+  int mIdleTimeoutSec;
+  std::atomic<int> mSecCounter;
+  std::atomic<bool> mShuttingDown;
   std::unique_ptr<grpc::Server> mGrpcServer;
   std::unique_ptr<GapirServiceImpl> mServiceImpl;
+  std::unique_ptr<std::thread> mIdleTimeoutCloser;
 };
 
 }  // namespace gapir
