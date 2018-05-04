@@ -39,7 +39,12 @@ import (
 	"github.com/google/gapid/gapidapk"
 )
 
-const sessionTimeout = time.Second * 10
+const (
+	sessionTimeout           = time.Second * 10
+	maxSetPermissionAttempts = 10
+	setPermissionRetryDelay  = time.Second
+	connectTimeout           = time.Second * 10
+)
 
 type session struct {
 	device   bind.Device
@@ -47,9 +52,8 @@ type session struct {
 	auth     auth.Token
 	closeCBs []func()
 	inited   chan struct{}
-	conn     *Connection
-	// Only used for android
-	setFileSocketPermission func() error
+	// The connection for heartbeat
+	conn *Connection
 }
 
 func newSession(d bind.Device) *session {
@@ -137,6 +141,16 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 		return nil
 	}
 
+	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", port), authToken, connectTimeout)
+	if err != nil {
+		return log.Err(ctx, err, "Timeout waiting for connection")
+	}
+	s.onClose(func() {
+		if s.conn != nil {
+			s.conn.Close()
+		}
+	})
+
 	s.port = port
 	s.auth = authToken
 	return nil
@@ -158,6 +172,11 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 		return err
 	}
 
+	log.I(ctx, "Launching GAPIR...")
+	if err := d.StartActivity(ctx, *apk.ActivityActions[0]); err != nil {
+		return err
+	}
+
 	log.I(ctx, "Setting up port forwarding...")
 	localPort, err := adb.LocalFreeTCPPort()
 	if err != nil {
@@ -174,35 +193,42 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 		return log.Errf(ctx, err, "Getting gapid.apk files directory")
 	}
 	socketFile := strings.Join([]string{apkDir, socket}, "/")
-	s.setFileSocketPermission = func() error {
-		return d.Shell("run-as", apk.Name, "/system/bin/chmod", "a+u", socketFile).Run(ctx)
+	err = task.Retry(ctx, maxSetPermissionAttempts, setPermissionRetryDelay,
+		func(ctx context.Context) (bool, error) {
+			str, err := d.Shell("run-as", apk.Name, "/system/bin/chmod", "a+rwx", socketFile).Call(ctx)
+			if err != nil {
+				return false, err
+			}
+			if len(str) != 0 {
+				return false, fmt.Errorf("Set permission for '%v' failed", socketFile)
+			}
+			return true, nil
+		})
+	if err != nil {
+		return log.Errf(ctx, err, "Setting permission for socket file: %v", socketFile)
 	}
+
 	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(socketFile)); err != nil {
 		return log.Err(ctx, err, "Forwarding port")
 	}
 	s.onClose(func() { d.RemoveForward(ctx, localPort) })
 
-	log.I(ctx, "Launching GAPIR...")
-	if err := d.StartActivity(ctx, *apk.ActivityActions[0]); err != nil {
-		return err
-	}
-
 	log.I(ctx, "Waiting for connection to GAPIR...")
-	for i := 0; i < 10; i++ {
-		if _, err := s.ping(ctx); err == nil {
-			log.I(ctx, "Connected to GAPIR")
-			return nil
-		}
-		time.Sleep(time.Second)
+	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", localPort), s.auth, connectTimeout)
+	if err != nil {
+		return log.Err(ctx, err, "Timeout waiting for connection")
 	}
-
-	return log.Err(ctx, nil, "Timeout waiting for connection")
+	s.onClose(func() {
+		if s.conn != nil {
+			s.conn.Close()
+		}
+	})
+	return nil
 }
 
 func (s *session) connect(ctx context.Context) (*Connection, error) {
 	<-s.inited
-	return newConnection(ctx, fmt.Sprintf("localhost:%d", s.port), s.auth,
-		s.setFileSocketPermission)
+	return newConnection(fmt.Sprintf("localhost:%d", s.port), s.auth, connectTimeout)
 }
 
 func (s *session) onClose(f func()) {
@@ -217,13 +243,11 @@ func (s *session) close() {
 }
 
 func (s *session) ping(ctx context.Context) (time.Duration, error) {
-	conn, err := newConnection(ctx, fmt.Sprintf("localhost:%d", s.port), s.auth, s.setFileSocketPermission)
-	if err != nil {
-		return 0, err
+	if s.conn == nil {
+		return time.Duration(0), log.Errf(ctx, nil, "cannot ping without gapir connection")
 	}
-	defer conn.Close()
 	start := time.Now()
-	err = conn.Ping(ctx)
+	err := s.conn.Ping(ctx)
 	if err != nil {
 		return 0, err
 	}

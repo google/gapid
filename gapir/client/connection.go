@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
-	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir/service"
 	"google.golang.org/grpc"
@@ -28,8 +27,7 @@ import (
 )
 
 const (
-	maxConnectionAttempts = 10
-	connectionRetryDelay  = time.Second
+	gapirAuthTokenMetaDataName = "gapir-auth-token"
 )
 
 type ResourceInfoList []*service.ResourceInfo
@@ -84,24 +82,9 @@ type Connection struct {
 	authToken  auth.Token
 }
 
-func newConnection(ctx context.Context, addr string, authToken auth.Token, setFileSocketPermission func() error) (*Connection, error) {
-	var conn *grpc.ClientConn
-	var err error
-	err = task.Retry(ctx, maxConnectionAttempts, connectionRetryDelay,
-		func(ctx context.Context) (retry bool, err error) {
-			retry = true
-			if setFileSocketPermission != nil {
-				if err = setFileSocketPermission(); err != nil {
-					return
-				}
-			}
-			conn, err = grpc.Dial(addr, grpc.WithInsecure())
-			if err != nil {
-				return
-			}
-			retry = false
-			return
-		})
+func newConnection(addr string, authToken auth.Token, timeout time.Duration) (*Connection, error) {
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(),
+		grpc.WithTimeout(timeout))
 	if err != nil {
 		return nil, err
 	}
@@ -172,79 +155,72 @@ func (c *Connection) HandleReplayCommunication(
 	handleCrashDump func(context.Context, *CrashDump, *Connection) error,
 	handlePostData func(context.Context, *PostData, *Connection) error,
 	handleNotification func(context.Context, *Notification, *Connection) error) error {
+	ctx = log.Enter(ctx, "HandleReplayCommunication")
 	if c.conn == nil || c.servClient == nil {
-		return fmt.Errorf("Not connected")
+		return log.Errf(ctx, nil, "Gapir not connected")
 	}
+	// Drop the unfinished replay with on connection.
 	if c.stream != nil {
 		c.stream.CloseSend()
 		c.stream = nil
 	}
-	log.W(ctx, "in HandleReplayCommunication")
-	for count := 0; count < 10; count++ {
-		if err := c.beginReplay(ctx, replayID, payload); err != nil {
-			if count == 10 {
-				return err
-			}
-			time.Sleep(time.Second)
-		} else {
-			break
-		}
+	if err := c.beginReplay(ctx, replayID, payload); err != nil {
+		return err
 	}
-	log.W(ctx, "begin replay returns successfully")
 	for {
 		if c.stream == nil {
-			return fmt.Errorf("Not connected")
+			return log.Errf(ctx, nil, "Replay stream connection lost")
 		}
 		r, err := c.stream.Recv()
 		if err != nil {
-			return err
+			return log.Errf(ctx, err, "Recv")
 		}
 		switch r.Res.(type) {
 		case *service.ReplayResponse_ResourceRequest:
-			log.W(ctx, "handle resource request")
 			if err := handleResourceRequest(ctx, &ResourceRequest{*r.GetResourceRequest()}, c); err != nil {
-				return fmt.Errorf("Failed to handle resource request :%v", err)
+				return log.Errf(ctx, err, "Handling replay resource request")
 			}
 		case *service.ReplayResponse_CrashDump:
-			log.W(ctx, "handle crash dump")
 			if err := handleCrashDump(ctx, &CrashDump{*r.GetCrashDump()}, c); err != nil {
-				return fmt.Errorf("Failed to handle crash dump: %v", err)
+				return log.Errf(ctx, err, "Handling replay crash dump")
 			}
-			c.Close()
-		case *service.ReplayResponse_PostData:
-			log.W(ctx, "handle post data")
-			if err := handlePostData(ctx, &PostData{*r.GetPostData()}, c); err != nil {
-				return fmt.Errorf("Failed to handle post data: %v", err)
-			}
-		case *service.ReplayResponse_Notification:
-			log.W(ctx, "handle notification")
-			if err := handleNotification(ctx, &Notification{*r.GetNotification()}, c); err != nil {
-				return fmt.Errorf("Failed to handle notification: %v", err)
-			}
-		case *service.ReplayResponse_Finished:
-			log.W(ctx, "handle finished")
+			// No valid replay response after crash dump.
 			c.stream.CloseSend()
 			c.stream = nil
 			return nil
+		case *service.ReplayResponse_PostData:
+			if err := handlePostData(ctx, &PostData{*r.GetPostData()}, c); err != nil {
+				return log.Errf(ctx, err, "Handing post data")
+			}
+		case *service.ReplayResponse_Notification:
+			if err := handleNotification(ctx, &Notification{*r.GetNotification()}, c); err != nil {
+				return log.Errf(ctx, err, "Handling notification")
+			}
+		case *service.ReplayResponse_Finished:
+			log.D(ctx, "Replay Finished Response received")
+			c.stream.CloseSend()
+			c.stream = nil
+			return nil
+		default:
+			return log.Errf(ctx, nil, "Unhandled ReplayResponse type")
 		}
 	}
 }
 
 func (c *Connection) beginReplay(ctx context.Context, id string, payload Payload) error {
+	ctx = log.Enter(ctx, "Starting replay on gapir device")
 	if c.servClient == nil || c.conn == nil {
-		return fmt.Errorf("Not connected")
+		return log.Errf(ctx, nil, "Gapir not connected")
 	}
-	ctx = log.Enter(ctx, "Requesting replay on gapir device")
-	log.W(ctx, "trying to begin replay")
+	// If there is an authentication token, attach it in the metadata
 	if len(c.authToken) != 0 {
 		ctx = metadata.NewContext(ctx,
-			metadata.Pairs("gapir-auth-token", string(c.authToken)))
+			metadata.Pairs(gapirAuthTokenMetaDataName, string(c.authToken)))
 	}
 	replayStream, err := c.servClient.Replay(ctx)
 	if err != nil {
 		return log.Err(ctx, err, "Gettting replay stream client")
 	}
-	log.W(ctx, "Replay stream opened")
 	idReq := service.ReplayRequest{
 		Req: &service.ReplayRequest_ReplayId{ReplayId: id},
 	}
@@ -252,15 +228,15 @@ func (c *Connection) beginReplay(ctx context.Context, id string, payload Payload
 	if err != nil {
 		return log.Err(ctx, err, "Sending replay id")
 	}
-	log.W(ctx, "Replay id sent")
+	c.stream = replayStream
+
 	res, err := replayStream.Recv()
 	if err != nil {
 		return log.Err(ctx, err, "Expecting payload request")
 	}
 	if res.GetPayloadRequest() == nil {
-		return fmt.Errorf("Expected payload request, actual got: '%T'", res.Res)
+		return log.Errf(ctx, nil, "Expecting payload request, actually got: '%T'", res.Res)
 	}
-	log.W(ctx, "payload request received")
 	payloadReq := service.ReplayRequest{
 		Req: &service.ReplayRequest_Payload{
 			Payload: (*service.Payload)(&payload),
@@ -270,7 +246,5 @@ func (c *Connection) beginReplay(ctx context.Context, id string, payload Payload
 	if err != nil {
 		return log.Err(ctx, err, "Sending replay payload")
 	}
-	log.W(ctx, "payload sent")
-	c.stream = replayStream
 	return nil
 }

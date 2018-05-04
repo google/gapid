@@ -61,35 +61,27 @@ func Execute(
 }
 
 func (e executor) execute(ctx context.Context, connection *gapir.Connection) error {
-	log.W(ctx, "executor execute")
 	pp := e.payload.ToProto()
 	id, err := database.Store(ctx, &pp)
 	if err != nil {
-		log.E(ctx, "Store error: %v", err)
-		return err
+		return log.Errf(ctx, err, "Storing replay payload")
 	}
-	log.W(ctx, "before initiating the communication thread")
 
 	// Kick the communication handler
 	comErr := make(chan error)
 	go func() {
-		log.W(ctx, "In execute: in handle communication thread")
-		log.W(ctx, "replay ID: %v", id)
-		defer connection.Close()
 		err := connection.HandleReplayCommunication(
 			ctx, id.String(), e.payload,
 			e.handleResourceRequest,
 			e.handleCrashDump,
 			e.handlePostData,
 			e.handleNotification)
-		if err != nil {
-			log.W(ctx, "Replay communication failed: %v", err)
-		}
 		comErr <- err
 	}()
 
 	err = <-comErr
 	if err != nil {
+		log.E(ctx, "Error communication with gapir: %v", err)
 		return log.Err(ctx, err, "Communicating with gapir")
 	}
 	return nil
@@ -128,7 +120,7 @@ func (e executor) handleCrashDump(ctx context.Context, dump *gapir.CrashDump, co
 func (e executor) handleResourceRequest(ctx context.Context, req *gapir.ResourceRequest, conn *gapir.Connection) error {
 	ctx = log.Enter(ctx, "handleResourceRequest")
 	if req == nil {
-		return fmt.Errorf("Nil resource request")
+		return log.Err(ctx, nil, "Cannot handle nil resource request")
 	}
 	ids := req.GetIds()
 	totalExpectedSize := req.GetExpectedTotalSize()

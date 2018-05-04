@@ -74,7 +74,7 @@ class Server {
   Server& operator=(const Server&) = delete;
   Server& operator=(Server&&) = delete;
 
-  void wait() { GAPID_INFO("calling grpc server wait"); mGrpcServer->Wait(); }
+  void wait() { mGrpcServer->Wait(); }
 
   void shutdown() { mGrpcServer->Shutdown(); }
 

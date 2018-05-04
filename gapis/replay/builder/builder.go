@@ -589,18 +589,6 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, ResponseDecoder, er
 		}
 	}
 
-	// payload := gapir.Payload{
-	// 	StackSize:          uint32(512), // TODO: Calculate stack size
-	// 	VolatileMemorySize: uint32(vml.size),
-	// 	Constants:          b.constantMemory.data,
-	// 	Resources:          b.resources,
-	// 	Opcodes:            opcodes.Bytes(),
-	// 	// StackSize:          uint32(512), // TODO: Calculate stack size
-	// 	// VolatileMemorySize: uint32(vml.size),
-	// 	// Constants:          b.constantMemory.data,
-	// 	// Resources:          b.resources,
-	// 	// Opcodes:            opcodes.Bytes(),
-	// }
 	// TODO: This does not looks good
 	payload := *gapir.NewPayload(
 		uint32(512), uint32(vml.size), b.constantMemory.data, b.resources, opcodes.Bytes())
@@ -612,26 +600,22 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, ResponseDecoder, er
 		log.I(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
 		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
-	log.W(ctx, "Stack size:           0x%x", payload.StackSize)
-	log.W(ctx, "Volatile memory size: 0x%x", payload.VolatileMemorySize)
-	log.W(ctx, "Constant memory size: 0x%x", len(payload.Constants))
-	log.W(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
-	log.W(ctx, "Resource count:         %d", len(payload.Resources))
 
-	// TODO: check that each Postback consumes its expected number of bytes.
 	responseDecoder := func(pd *gapir.PostData) {
 		// TODO: should we skip it instead of return error?
+		ctx = log.Enter(ctx, "responseDecoder")
 		if pd == nil {
-			log.E(ctx, "Nil Posts")
+			log.E(ctx, "Cannot handle nil PostData")
 		}
 		go func() {
 			for id, p := range pd.GetPosts() {
 				if id >= len(b.decoders) {
-					log.E(ctx, "no valid decoder found for %v'th post data", id)
+					log.E(ctx, "No valid decoder found for %v'th post data", id)
 				}
+				// Check that each Postback consumes its expected number of bytes.
 				var err error
 				if len(p) != b.decoders[id].expectedSize {
-					err = fmt.Errorf("post data size mismatch, actual size: %d, expected size: %d", len(p), b.decoders[id].expectedSize)
+					err = fmt.Errorf("%d'th post size mismatch, actual size: %d, expected size: %d", id, len(p), b.decoders[id].expectedSize)
 				}
 				r := endian.Reader(bytes.NewReader(p), byteOrder)
 				b.decoders[id].decode(r, err)

@@ -175,7 +175,6 @@ func (m *Manager) execute(
 		return log.Err(ctx, err, "Failed to connect to device")
 	}
 	defer connection.Close()
-	log.W(ctx, "Got replay connection: %v", connection)
 
 	if config.DebugReplay {
 		log.I(ctx, "Sending payload")

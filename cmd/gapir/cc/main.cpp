@@ -66,8 +66,6 @@ std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
         ResourceDiskCache::create(ResourceRequester::create(), cachePath),
         memoryManager->getBaseAddress()));
   } else {
-    GAPID_INFO("only memory cache");
-    GAPID_INFO("getBaseAddress: %p", memoryManager->getBaseAddress());
     return std::unique_ptr<ResourceInMemoryCache>(ResourceInMemoryCache::create(
         ResourceRequester::create(), memoryManager->getBaseAddress()));
   }
@@ -82,18 +80,13 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
       uri, authToken,
       [cachePath, memMgr, crashHandler](ReplayConnection* replayConn,
                                          const std::string& replayId) {
-        GAPID_INFO("before create resourceProvider: cachePath: %p", cachePath);
-        // GAPID_INFO("before create resourceProvider: cachePath length: %d",
-        // strlen(cachePath));
         std::unique_ptr<ResourceInMemoryCache> resourceProvider(
             createResourceProvider(cachePath, memMgr));
 
-        GAPID_INFO("before create crash uploader");
         std::unique_ptr<CrashUploader> crash_uploader =
             std::unique_ptr<CrashUploader>(
                 new CrashUploader(*crashHandler, replayConn));
 
-        GAPID_INFO("before create context");
         std::unique_ptr<Context> context = Context::create(
             replayConn, *crashHandler, resourceProvider.get(), memMgr);
 
@@ -140,7 +133,7 @@ void android_main(struct android_app* app) {
 
   __android_log_print(ANDROID_LOG_INFO, "GAPIR",
                       "Started Graphics API Replay daemon.\n"
-                      "Listening on localfilesystem unix socket '%s'\n"
+                      "Listening on unix socket '%s'\n"
                       "Supported ABIs: %s\n",
                       uri.c_str(), core::supportedABIs());
 
@@ -160,13 +153,11 @@ void android_main(struct android_app* app) {
         source->process(app, source);
       }
       if (app->destroyRequested) {
-        // conn->close();
         server->shutdown();
         break;
       }
     }
   }
-  // listening_thread.join();
   waiting_thread.join();
 }
 
@@ -194,7 +185,6 @@ int main(int argc, const char* argv[]) {
       if (i + 1 >= argc) {
         GAPID_FATAL("Usage: --cache <cache-directory>");
       }
-      GAPID_INFO("cachePath assigned");
       cachePath = argv[++i];
     } else if (strcmp(argv[i], "--port") == 0) {
       if (i + 1 >= argc) {
@@ -285,20 +275,18 @@ int main(int argc, const char* argv[]) {
 
   std::string portStr(portArgStr);
   if (portStr == "0") {
-    GAPID_INFO("Need to find a free port");
     portStr = std::to_string(SocketConnection::getFreePort("127.0.0.1"));
   }
   std::string uri = std::string("127.0.0.1:") + std::string(portStr);
 
-  GAPID_INFO("before calling setup, cachePath: %p", cachePath);
   std::unique_ptr<Server> server =
       Setup(uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr, cachePath,
             0 /*idleTimeoutMs*/, &crashHandler, &memoryManager);
   // The following message is parsed by launchers to detect the selected port.
   // DO NOT CHANGE!
   printf("Bound on port '%s'\n", portStr.c_str());
+  fflush(stdout);
 
-  GAPID_INFO("Server setup done, start to wait");
   server->wait();
   return EXIT_SUCCESS;
 }
