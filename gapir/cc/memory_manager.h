@@ -43,23 +43,21 @@ public:
 
     // Sets the size of the replay data. Returns true if the given size fits in the memory and false
     // otherwise
-    bool setReplayDataSize(uint32_t size);
+    bool setReplayDataSize(uint32_t constantMemorySize, uint32_t opcodeMemorySize);
 
     // Sets the size of the volatile memory. Returns true if the given size fits in the memory and
     // false otherwise
     bool setVolatileMemory(uint32_t size);
 
-    // Sets the size and the base address of the constant memory. The given memory range have to be
-    // inside the range of the volatile memory that is accessible with the getVolatileBaseAddress()
-    // and the getVloatileSize() function calls
-    void setConstantMemory(const std::pair<const void*, uint32_t>& constantMemory);
-
     // Returns the size and the base address of the different memory regions managed by the memory
     // manager
     void* getBaseAddress() const { return mMemory.get(); }
     void* getReplayAddress() const { return mReplayData.base; }
+    void* getOpcodeAddress() const { return mOpcodeMemory.base; }
+    void* getConstantAddress() const {return mConstantMemory.base;}
     void* getVolatileAddress() const { return mVolatileMemory.base; }
     uint32_t getSize() const { return mSize; }
+    uint32_t getOpcodeSize()   const { return mOpcodeMemory.size; }
     uint32_t getConstantSize() const { return mConstantMemory.size; }
     uint32_t getVolatileSize() const { return mVolatileMemory.size; }
 
@@ -131,6 +129,11 @@ private:
     // The size and base address of the replay data. The memory range specified by these values have
     // to specify a subset of the memory managed by the memory manager.
     MemoryRange mReplayData;
+
+    // The size and base address of the opcode memory. The opcode memory is located in side the replay
+    // data, so the memory range specified by these values have to be the subset of the memory range
+    // specified by the replay data variables (size and pointer).
+    MemoryRange mOpcodeMemory;
 
     // The size and base address of the constant memory. The constant memory is located inside the
     // replay data, so the memory range specified by these values have to be the subset of the

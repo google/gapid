@@ -16,7 +16,7 @@
 
 #include "resource_disk_cache.h"
 #include "resource_provider.h"
-#include "server_connection.h"
+#include "replay_connection.h"
 
 #include "core/cc/log.h"
 
@@ -85,17 +85,17 @@ ResourceDiskCache::ResourceDiskCache(std::unique_ptr<ResourceProvider> fallbackP
 
 void ResourceDiskCache::prefetch(const Resource*         resources,
                                  size_t                  count,
-                                 const ServerConnection& server,
+                                 ReplayConnection*       conn,
                                  void*                   temp,
                                  size_t                  tempSize) {
     Batch batch(temp, tempSize);
     for (size_t i = 0; i < count; i++) {
         if (!batch.append(resources[i])) {
-            batch.flush(*this, server);
+            batch.flush(*this, conn);
             batch = Batch(temp, tempSize);
         }
     }
-    batch.flush(*this, server);
+    batch.flush(*this, conn);
 }
 
 void ResourceDiskCache::putCache(const Resource& resource, const void* data) {

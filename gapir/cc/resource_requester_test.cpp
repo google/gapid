@@ -16,10 +16,9 @@
 
 #include "resource_provider.h"
 #include "resource_requester.h"
-#include "server_connection.h"
 #include "test_utilities.h"
-
-#include "core/cc/mock_connection.h"
+#include "replay_connection.h"
+#include "mock_replay_connection.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -27,6 +26,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "gapir/replay_service/service.pb.h"
 
 using namespace ::testing;
 
@@ -40,13 +41,11 @@ const Resource B("B", 5);
 class ResourceRequesterTest : public Test {
 protected:
     virtual void SetUp() {
-        mConnection = new core::test::MockConnection();
-        mServer = createServerConnection(mConnection, "", 0);
         mResourceProvider = ResourceRequester::create();
+        mConn.reset(new MockReplayConnection());
     }
 
-    core::test::MockConnection* mConnection;
-    std::unique_ptr<ServerConnection> mServer;
+    std::unique_ptr<MockReplayConnection> mConn;
     std::unique_ptr<ResourceProvider> mResourceProvider;
     std::vector<uint8_t> mBuffer;
 };
@@ -56,37 +55,43 @@ protected:
 TEST_F(ResourceRequesterTest, SingleGet) {
     std::vector<uint8_t> payload = {'X', 'Y', 'Z'};
     mBuffer.resize(payload.size());
-    std::vector<uint8_t> expected;
-    pushUint8(&expected, ServerConnection::MESSAGE_TYPE_GET);
-    pushUint32(&expected, 1);
-    pushUint32(&expected, 3);
-    pushUint32(&expected, 0);
-    pushString(&expected, "A");
 
-    pushBytes(&mConnection->in, payload);
-
-    EXPECT_TRUE(mResourceProvider->get(&A, 1, *mServer, mBuffer.data(), 3));
+    auto res = createResources(payload);
+    EXPECT_CALL(*mConn, mockedGetResources(NotNull()))
+        .WillOnce(Invoke([&res](ReplayConnection::ResourceRequest* req)
+                             -> std::unique_ptr<ReplayConnection::Resources> {
+          auto p = std::unique_ptr<replay_service::ResourceRequest>(
+              req->release_to_proto());
+          EXPECT_EQ(p->expected_total_size(), A.size);
+          EXPECT_EQ(p->ids_size(), 1);
+          EXPECT_EQ(p->ids(0), A.id);
+          return std::move(res);
+        }));
+    EXPECT_TRUE(mResourceProvider->get(&A, 1, mConn.get(), mBuffer.data(), 3));
     EXPECT_THAT(mBuffer, ElementsAreArray(payload));
-    EXPECT_EQ(mConnection->out, expected);
+
 }
 
 TEST_F(ResourceRequesterTest, MultiGet) {
     std::vector<uint8_t> payload = {'X', 'Y', 'Z', '1', '2', '3', '4', '5'};
     mBuffer.resize(payload.size());
-    std::vector<uint8_t> expected;
-    pushUint8(&expected, ServerConnection::MESSAGE_TYPE_GET);
-    pushUint32(&expected, 2);
-    pushUint32(&expected, 8);
-    pushUint32(&expected, 0);
-    pushString(&expected, "A");
-    pushString(&expected, "B");
 
-    pushBytes(&mConnection->in, payload);
+    auto res = createResources(payload);
+    EXPECT_CALL(*mConn, mockedGetResources(NotNull()))
+        .WillOnce(Invoke([&res](ReplayConnection::ResourceRequest* req)
+                             -> std::unique_ptr<ReplayConnection::Resources> {
+          auto p = std::unique_ptr<replay_service::ResourceRequest>(
+              req->release_to_proto());
+          EXPECT_EQ(p->expected_total_size(), A.size + B.size);
+          EXPECT_EQ(p->ids_size(), 2);
+          EXPECT_EQ(p->ids(0), A.id);
+          EXPECT_EQ(p->ids(1), B.id);
+          return std::move(res);
+        }));
 
-    Resource res[] = {A, B};
-    EXPECT_TRUE(mResourceProvider->get(res, 2, *mServer, mBuffer.data(), mBuffer.size()));
+    Resource resReq[] = {A, B};
+    EXPECT_TRUE(mResourceProvider->get(resReq, 2, mConn.get(), mBuffer.data(), mBuffer.size()));
     EXPECT_THAT(mBuffer, ElementsAreArray(payload));
-    EXPECT_EQ(mConnection->out, expected);
 }
 }  // namespace gapir
 }  // namespace test

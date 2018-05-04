@@ -33,8 +33,10 @@ toolchain {
 
   cxx_flag: "-std=gnu++0x"
   cxx_flag: "-DNTDDI_VERSION=NTDDI_VISTA"
-  cxx_flag: "-D_WIN32_WINNT=_WIN32_WINNT_VISTA"
+  # _WIN32_WINNT_VISTA: 0x0600
+  cxx_flag: "-D_WIN32_WINNT=0x0600"
 
+  linker_flag: "-static"
   #linker_flag: "-LC:/tools/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.3.0"
   #linker_flag: "-l:libgcc.a"
   #linker_flag: "-l:libgcc_eh.a"

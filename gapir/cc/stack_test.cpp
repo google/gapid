@@ -38,7 +38,7 @@ protected:
         std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
         mMemoryManager.reset(new MemoryManager(memorySizes));
         mStack.reset(new Stack(STACK_CAPACITY, mMemoryManager.get()));
-        mMemoryManager->setConstantMemory(std::make_pair(&CONSTANT_MEMORY, CONSTANT_SIZE));
+        mMemoryManager->setReplayDataSize(CONSTANT_SIZE, 0);
     }
 
     std::unique_ptr<MemoryManager> mMemoryManager;

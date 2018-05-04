@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	"github.com/google/gapid/core/app"
@@ -50,7 +49,7 @@ type deviceArch struct {
 }
 
 // Connect opens a connection to the replay device.
-func (c *Client) Connect(ctx context.Context, d bind.Device, abi *device.ABI) (io.ReadWriteCloser, error) {
+func (c *Client) Connect(ctx context.Context, d bind.Device, abi *device.ABI) (*Connection, error) {
 	s, isNew, err := c.getOrCreateSession(ctx, d, abi)
 	if err != nil {
 		return nil, err

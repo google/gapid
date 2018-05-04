@@ -28,6 +28,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/file:go_default_library",
+        "//gapir/client:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/replay/builder:go_default_library",
         "//gapis/replay/protocol:go_default_library",

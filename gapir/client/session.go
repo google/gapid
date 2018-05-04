@@ -20,12 +20,12 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
-	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -37,10 +37,14 @@ import (
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapidapk"
-	"github.com/google/gapid/gapis/replay/protocol"
 )
 
-const sessionTimeout = time.Second * 10
+const (
+	sessionTimeout             = time.Second * 10
+	maxCheckSocketFileAttempts = 10
+	checkSocketFileRetryDelay  = time.Second
+	connectTimeout             = time.Second * 10
+)
 
 type session struct {
 	device   bind.Device
@@ -48,6 +52,8 @@ type session struct {
 	auth     auth.Token
 	closeCBs []func()
 	inited   chan struct{}
+	// The connection for heartbeat
+	conn *Connection
 }
 
 func newSession(d bind.Device) *session {
@@ -80,7 +86,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 	defer os.Remove(authTokenFile)
 
 	args := []string{
-		"--idle-timeout-ms", strconv.Itoa(int(sessionTimeout / time.Millisecond)),
+		"--idle-timeout-sec", strconv.Itoa(int(sessionTimeout / time.Second)),
 		"--auth-token-file", authTokenFile,
 	}
 	args = append(args, launchArgs...)
@@ -135,6 +141,17 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 		return nil
 	}
 
+	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", port), authToken, connectTimeout)
+	if err != nil {
+		return log.Err(ctx, err, "Timeout waiting for connection")
+	}
+	s.onClose(func() {
+		if s.conn != nil {
+			s.conn.Close()
+		}
+	})
+	log.I(ctx, "Heartbeat connection setup done")
+
 	s.port = port
 	s.auth = authToken
 	return nil
@@ -156,6 +173,11 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 		return err
 	}
 
+	log.I(ctx, "Launching GAPIR...")
+	if err := d.StartActivity(ctx, *apk.ActivityActions[0]); err != nil {
+		return err
+	}
+
 	log.I(ctx, "Setting up port forwarding...")
 	localPort, err := adb.LocalFreeTCPPort()
 	if err != nil {
@@ -167,31 +189,50 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	if !ok {
 		return log.Errf(ctx, nil, "Unsupported architecture: %v", abi.Architecture)
 	}
-	if err := d.Forward(ctx, localPort, adb.NamedAbstractSocket(socket)); err != nil {
+	apkDir, err := apk.FileDir(ctx)
+	if err != nil {
+		return log.Errf(ctx, err, "Getting gapid.apk files directory")
+	}
+	// Wait for the socket file to be created
+	socketPath := strings.Join([]string{apkDir, socket}, "/")
+	err = task.Retry(ctx, maxCheckSocketFileAttempts, checkSocketFileRetryDelay,
+		func(ctx context.Context) (bool, error) {
+			str, err := d.Shell("run-as", apk.Name, "ls", socketPath).Call(ctx)
+			if err != nil {
+				return false, err
+			}
+			if strings.HasSuffix(str, "No such file or directory") {
+				return false, log.Errf(ctx, nil, "Gapir socket '%v' not created yet", socketPath)
+			}
+			return true, nil
+		})
+	if err != nil {
+		return log.Errf(ctx, err, "Checking socket: %v", socketPath)
+	}
+	log.I(ctx, "Gapir socket: '%v' is opened now", socketPath)
+
+	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(socketPath)); err != nil {
 		return log.Err(ctx, err, "Forwarding port")
 	}
 	s.onClose(func() { d.RemoveForward(ctx, localPort) })
 
-	log.I(ctx, "Launching GAPIR...")
-	if err := d.StartActivity(ctx, *apk.ActivityActions[0]); err != nil {
-		return err
-	}
-
 	log.I(ctx, "Waiting for connection to GAPIR...")
-	for i := 0; i < 10; i++ {
-		if _, err := s.ping(ctx); err == nil {
-			log.I(ctx, "Connected to GAPIR")
-			return nil
-		}
-		time.Sleep(time.Second)
+	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", localPort), s.auth, connectTimeout)
+	if err != nil {
+		return log.Err(ctx, err, "Timeout waiting for connection")
 	}
-
-	return log.Err(ctx, nil, "Timeout waiting for connection")
+	s.onClose(func() {
+		if s.conn != nil {
+			s.conn.Close()
+		}
+	})
+	log.I(ctx, "Heartbeat connection setup done")
+	return nil
 }
 
-func (s *session) connect(ctx context.Context) (io.ReadWriteCloser, error) {
+func (s *session) connect(ctx context.Context) (*Connection, error) {
 	<-s.inited
-	return process.Connect(s.port, s.auth)
+	return newConnection(fmt.Sprintf("localhost:%d", s.port), s.auth, connectTimeout)
 }
 
 func (s *session) onClose(f func()) {
@@ -206,19 +247,13 @@ func (s *session) close() {
 }
 
 func (s *session) ping(ctx context.Context) (time.Duration, error) {
-	connection, err := process.Connect(s.port, s.auth)
+	if s.conn == nil {
+		return time.Duration(0), log.Errf(ctx, nil, "cannot ping without gapir connection")
+	}
+	start := time.Now()
+	err := s.conn.Ping(ctx)
 	if err != nil {
 		return 0, err
-	}
-	defer connection.Close()
-	w := endian.Writer(connection, device.LittleEndian) // TODO: Endianness
-	r := endian.Reader(connection, device.LittleEndian) // TODO: Endianness
-	start := time.Now()
-	if w.Uint8(uint8(protocol.ConnectionType_Ping)); w.Error() != nil {
-		return 0, w.Error()
-	}
-	if response := r.String(); w.Error() != nil || response != "PONG" {
-		return 0, fmt.Errorf("Expected 'PONG', got: '%v' (err: %v)", response, r.Error())
 	}
 	return time.Since(start), nil
 }

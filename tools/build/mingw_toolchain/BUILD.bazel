@@ -36,6 +36,12 @@ cc_toolchain(
     supports_param_files = 1,
 )
 
+toolchain(
+    name = "cc-toolchain-mingw",
+    toolchain = ":cc-compiler-mingw",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
 filegroup(
     name = "empty",
     srcs = [],

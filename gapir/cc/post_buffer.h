@@ -21,13 +21,15 @@
 #include <functional>
 #include <memory>
 
+#include "replay_connection.h"
+
 namespace gapir {
 
 // PostBuffer provides a delayed-send buffer for pushing data to the server.
 // This serves as an optimisation to batch many small postbacks into fewer, larger batches.
 class PostBuffer {
 public:
-    typedef std::function<bool(const void*, uint32_t)> PostBufferCallback;
+    typedef std::function<bool(std::unique_ptr<ReplayConnection::Posts>)> PostBufferCallback;
 
     // Constructs a PostBuffer with the specified maximum capacity and function to invoke when
     // the PostBuffer wants to flush the buffer to the server.
@@ -44,7 +46,10 @@ public:
 
 private:
     // The PostBuffer's internal buffer.
-    const std::unique_ptr<uint8_t[]> mBuffer;
+    std::unique_ptr<ReplayConnection::Posts> mPosts;
+
+    // The total number of posts ever processed by this post buffer.
+    uint64_t mTotalPostCount;
 
     // The maximum capacity of the internal buffer.
     const uint32_t mCapacity;

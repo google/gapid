@@ -120,6 +120,7 @@ func (b *binding) StartActivity(ctx context.Context, a android.ActivityAction, e
 	args := append([]string{
 		"start",
 		"-S", // Force-stop the target app before starting the activity
+		"-W", // Wait until the launch finishes
 		"-a", a.Name,
 		"-n", a.Component(),
 	}, extrasFlags(extras)...)
@@ -131,6 +132,7 @@ func (b *binding) StartActivityForDebug(ctx context.Context, a android.ActivityA
 	args := append([]string{
 		"start",
 		"-S", // Force-stop the target app before starting the activity
+		"-W", // Wait until the launch finishes
 		"-D", // Debug mode
 		"-a", a.Name,
 		"-n", a.Component(),

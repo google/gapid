@@ -38,10 +38,14 @@ protected:
 
     void setupPostBuffer(uint32_t bufferSize, bool callbackShouldSucceed) {
         mPostBuffer.reset(new PostBuffer(bufferSize,
-                [&, callbackShouldSucceed](const void* ptr, uint32_t size) {
+                [&, callbackShouldSucceed](std::unique_ptr<ReplayConnection::Posts> posts) {
                 mPostsCounter++;
-                mOutput.resize(mOutput.size()+size);
-                memcpy(&mOutput[mOutput.size()-size], ptr, size);
+                size_t piece_count = posts->piece_count();
+                for (uint32_t i = 0; i < piece_count; i++) {
+                    size_t piece_size = posts->piece_size(i);
+                    mOutput.resize(mOutput.size() + piece_size);
+                    memcpy(&mOutput[mOutput.size() - piece_size], posts->piece_data(i), piece_size);
+                }
                 return callbackShouldSucceed;
             }));
     }

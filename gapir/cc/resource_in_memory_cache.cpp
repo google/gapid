@@ -15,6 +15,7 @@
  */
 
 #include "resource_in_memory_cache.h"
+#include "replay_connection.h"
 
 #include "core/cc/assert.h"
 
@@ -50,7 +51,7 @@ ResourceInMemoryCache::~ResourceInMemoryCache() {
 
 void ResourceInMemoryCache::prefetch(const Resource*         resources,
                                      size_t                  count,
-                                     const ServerConnection& server,
+                                     ReplayConnection*       conn,
                                      void*                   temp,
                                      size_t                  tempSize) {
     if (temp == nullptr) {
@@ -69,11 +70,11 @@ void ResourceInMemoryCache::prefetch(const Resource*         resources,
             continue;
         }
         if (!batch.append(resource)) {
-            batch.flush(*this, server);
+            batch.flush(*this, conn);
             batch = Batch(temp, tempSize);
         }
     }
-    batch.flush(*this, server);
+    batch.flush(*this, conn);
 }
 
 void ResourceInMemoryCache::clear() {

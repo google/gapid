@@ -107,6 +107,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/cc",
+        "//gapir/replay_service:service_cc_proto",
+        "@com_github_grpc_grpc//:grpc++",
     ] + select({
         "//tools/build:darwin": [":darwin_renderer"],
         "//conditions:default": [],
@@ -124,8 +126,6 @@ cc_test(
         "replay_request_test.cpp",
         "resource_in_memory_cache_test.cpp",
         "resource_requester_test.cpp",
-        "server_connection_test.cpp",
-        "server_listener_test.cpp",
         "stack_test.cpp",
         "test_utilities_test.cpp",
     ],
