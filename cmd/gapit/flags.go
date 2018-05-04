@@ -153,6 +153,7 @@ type (
 		Gapis GapisFlags
 		Gapir GapirFlags
 		At    flags.U64Slice `help:"command/subcommand index to get the state after. Empty for last"`
+		Depth int            `help: "How many nodes deep should the state tree be displayed. -1 for all"`
 	}
 	StressTestFlags struct {
 		Gapis GapisFlags
