@@ -37,7 +37,8 @@ type screenshotVerb struct{ ScreenshotFlags }
 func init() {
 	verb := &screenshotVerb{
 		ScreenshotFlags{
-			At: flags.U64Slice{},
+			At:    flags.U64Slice{},
+			NoOpt: false,
 		},
 	}
 
@@ -77,7 +78,7 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	command := capture.Command(verb.At[0], verb.At[1:]...)
 
-	if frame, err := getSingleFrame(ctx, command, device, client); err == nil {
+	if frame, err := getSingleFrame(ctx, command, device, client, verb.NoOpt); err == nil {
 		return verb.writeSingleFrame(flipImg(frame), "screenshot.png")
 	} else {
 		return err
@@ -94,12 +95,13 @@ func (verb *screenshotVerb) writeSingleFrame(frame image.Image, fn string) error
 	return png.Encode(out, frame)
 }
 
-func getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
+func getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device, client service.Service, noOpt bool) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(0xFFFFFFFF), MaxHeight: uint32(0xFFFFFFFF)}
 	iip, err := client.GetFramebufferAttachment(ctx,
 		&service.ReplaySettings{
 			Device: device,
+			DisableReplayOptimization: noOpt,
 		},
 		cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
