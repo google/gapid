@@ -64,6 +64,26 @@ func (i *U64Slice) Set(v string) error {
 	return nil
 }
 
+type StringSlice []string
+
+func (i *StringSlice) String() string {
+	return fmt.Sprintf("%v", *i)
+}
+
+func (i *StringSlice) Set(v string) error {
+	*i = make(StringSlice, 0)
+	if v[0] != '[' || v[len(v)-1] != ']' {
+		*i = append(*i, v)
+		return nil
+	}
+	x := strings.Split(v[1:len(v)-1], ",")
+
+	for _, val := range x {
+		*i = append(*i, strings.TrimSpace(val))
+	}
+	return nil
+}
+
 func bindName(prefix string, name string, partial string, full string) string {
 	if partial != "" {
 		name = partial
