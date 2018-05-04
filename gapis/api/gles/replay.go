@@ -72,14 +72,22 @@ type framebufferRequest struct {
 
 // GetReplayPriority returns a uint32 representing the preference for
 // replaying this trace on the given device.
-// A lower number represents a higher priority, and Zero represents
+// A lower number represents a higher priority, and zero represents
 // an inability for the trace to be replayed on the given device.
 func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *capture.Header) uint32 {
-	if i.GetConfiguration().GetOS().GetKind() != device.Android {
-		return 1
+	v, err := ParseVersion(i.GetConfiguration().GetDrivers().GetOpenGL().GetVersion())
+	if err != nil {
+		return 0 // Can't figure out what we're dealing with.
 	}
 
-	return 2
+	switch {
+	case v.AtLeastES(3, 0):
+		return 1 // GLES 3.0+ devices are preferred for replay.
+	case v.IsES:
+		return 0 // Can't replay on this version of an ES device.
+	default:
+		return 2 // Desktop GL can be used with heavy use of compat.
+	}
 }
 
 func (a API) Replay(
@@ -138,7 +146,7 @@ func (a API) Replay(
 
 		case textureRequest:
 			if rt == nil {
-				rt = &readTexture{}
+				rt = newReadTexture(ctx, device)
 			}
 			after := api.CmdID(req.data.After)
 			deadCodeElimination.Request(after)
@@ -146,7 +154,7 @@ func (a API) Replay(
 
 		case framebufferRequest:
 			if rf == nil {
-				rf = &readFramebuffer{}
+				rf = newReadFramebuffer(ctx, device)
 			}
 			deadCodeElimination.Request(req.after)
 
