@@ -150,6 +150,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 			s.conn.Close()
 		}
 	})
+	log.I(ctx, "Heartbeat connection setup done")
 
 	s.port = port
 	s.auth = authToken
@@ -193,7 +194,7 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 		return log.Errf(ctx, err, "Getting gapid.apk files directory")
 	}
 	// Wait for the socket to be opened
-	socketFile := strings.Join([]string{apkDir, socket}, "/")
+	socketPath := strings.Join([]string{apkDir, socket}, "/")
 	err = task.Retry(ctx, maxCheckSocketFileAttempts, checkSocketFileRetryDelay,
 		func(ctx context.Context) (bool, error) {
 			str, err := d.Shell("run-as", apk.Name, "cat", "/proc/net/unix", "|", "grep", socket).Call(ctx)
@@ -201,15 +202,16 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 				return false, err
 			}
 			if len(str) == 0 {
-				return false, log.Errf(ctx, nil, "Gapir socket '%v' not opened yet", socketFile)
+				return false, log.Errf(ctx, nil, "Gapir socket '%v' not opened yet", socketPath)
 			}
 			return true, nil
 		})
 	if err != nil {
-		return log.Errf(ctx, err, "Checking socket: %v", socketFile)
+		return log.Errf(ctx, err, "Checking socket: %v", socketPath)
 	}
+	log.I(ctx, "Gapir socket: '%v' is opened now", socketPath)
 
-	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(socketFile)); err != nil {
+	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(socketPath)); err != nil {
 		return log.Err(ctx, err, "Forwarding port")
 	}
 	s.onClose(func() { d.RemoveForward(ctx, localPort) })
@@ -224,6 +226,7 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 			s.conn.Close()
 		}
 	})
+	log.I(ctx, "Heartbeat connection setup done")
 	return nil
 }
 
