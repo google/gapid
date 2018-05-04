@@ -210,39 +210,18 @@ vkCmdBeginRenderPassArgs {
 }
 
 sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
-  VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   lastDrawInfo().Framebuffer = Framebuffers[args.Framebuffer]
   lastDrawInfo().LastSubpass = 0
   lastDrawInfo().RenderPass = RenderPasses[args.RenderPass]
   lastDrawInfo().InRenderPass = true
-  for _ , _ , v in lastDrawInfo().Framebuffer.ImageAttachments {
+  attachments := lastDrawInfo().Framebuffer.ImageAttachments
+  for i in (0 .. len(attachments)) {
+    v := attachments[as!u32(i)]
+    loadImageAttachment(as!u32(i))
     if (v.Image != null) {
       v.Image.LastBoundQueue = LastBoundQueue
     }
   }
-  subpass := lastDrawInfo().RenderPass.SubpassDescriptions[0]
-  for _ , _ , a in subpass.InputAttachments {
-    if a.Attachment != VK_ATTACHMENT_UNUSED {
-      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
-    }
-  }
-  for _ , _ , a in subpass.ColorAttachments {
-    if a.Attachment != VK_ATTACHMENT_UNUSED {
-      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
-    }
-  }
-  for _ , _ , a in subpass.ResolveAttachments {
-    if a.Attachment != VK_ATTACHMENT_UNUSED {
-      lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment].Image.Info.Layout = a.Layout
-    }
-  }
-  if subpass.DepthStencilAttachment != null {
-    dsRef := subpass.DepthStencilAttachment
-    if dsRef.Attachment != VK_ATTACHMENT_UNUSED {
-      lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment].Image.Info.Layout = dsRef.Layout
-    }
-  }
-
   pushRenderPassMarker(args.RenderPass)
 }
 
@@ -325,8 +304,9 @@ vkCmdEndRenderPassArgs {
 }
 
 sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
-  for _ , i , a in lastDrawInfo().RenderPass.AttachmentDescriptions {
-    lastDrawInfo().Framebuffer.ImageAttachments[i].Image.Info.Layout = a.finalLayout
+  attachmentDescriptions := lastDrawInfo().RenderPass.AttachmentDescriptions
+  for i in (0 .. len(attachmentDescriptions)) {
+    storeImageAttachment(as!u32(i))
   }
   lastDrawInfo().InRenderPass = false
   popRenderPassMarker()
@@ -347,4 +327,37 @@ cmd void vkCmdEndRenderPass(
   args
 
   AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
+}
+
+sub void loadImageAttachment(u32 attachmentID) {
+  VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
+  if attachmentID != VK_ATTACHMENT_UNUSED {
+    attachment := lastDrawInfo().Framebuffer.ImageAttachments[attachmentID]
+    desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
+    switch desc.loadOp {
+      case VK_ATTACHMENT_LOAD_OP_LOAD:
+        readImageSubresource(attachment.Image, attachment.SubresourceRange, desc.initialLayout)
+      default:
+        // write to the attachment image, to prevent any dependencies on previous writes
+        writeImageSubresource(attachment.Image, attachment.SubresourceRange, desc.initialLayout)
+    }
+  }
+}
+
+sub void storeImageAttachment(u32 attachmentID) {
+  VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
+  if attachmentID != VK_ATTACHMENT_UNUSED {
+    attachment := lastDrawInfo().Framebuffer.ImageAttachments[attachmentID]
+    desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
+    if desc.initialLayout != desc.finalLayout {
+      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)
+    }
+    switch desc.storeOp {
+      case VK_ATTACHMENT_STORE_OP_STORE:
+        writeImageSubresource(attachment.Image, attachment.SubresourceRange, desc.finalLayout)
+      default: {
+        // do nothing
+      }
+    }
+  }
 }
