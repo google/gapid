@@ -117,6 +117,7 @@ type (
 			Count   int `help:"number of frames after Start to capture: -1 for all frames"`
 			Minimum int `help:"_return error when less than this number of frames is found"`
 		}
+		NoOpt bool `help:"disables optimization of the replay stream"`
 		CommandFilterFlags
 	}
 	DumpShadersFlags struct {
@@ -228,6 +229,7 @@ type (
 		Gapis GapisFlags
 		Gapir GapirFlags
 		At    flags.U64Slice `help:"command/subcommand index for the screenshot. Empty for last"`
+		NoOpt bool           `help:"disables optimization of the replay stream"`
 	}
 	UnpackFlags struct {
 		Verbose bool `help:"if true, then output will not be truncated"`

@@ -171,7 +171,7 @@ func (verb *videoVerb) sxsVideoSource(
 				Stride: int(v.fbo.Width) * 4,
 				Rect:   image.Rect(0, 0, int(v.fbo.Width), int(v.fbo.Height)),
 			}
-			if frame, err := getFrame(ctx, verb.Max.Width, verb.Max.Height, v.command, device, client); err == nil {
+			if frame, err := getFrame(ctx, verb.Max.Width, verb.Max.Height, v.command, device, client, verb.NoOpt); err == nil {
 				v.rendered = frame
 			} else {
 				v.renderError = err
