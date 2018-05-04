@@ -138,7 +138,7 @@ func (a API) Replay(
 
 		case textureRequest:
 			if rt == nil {
-				rt = &readTexture{}
+				rt = newReadTexture(ctx, device)
 			}
 			after := api.CmdID(req.data.After)
 			deadCodeElimination.Request(after)
@@ -146,7 +146,7 @@ func (a API) Replay(
 
 		case framebufferRequest:
 			if rf == nil {
-				rf = &readFramebuffer{}
+				rf = newReadFramebuffer(ctx, device)
 			}
 			deadCodeElimination.Request(req.after)
 

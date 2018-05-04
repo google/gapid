@@ -404,6 +404,10 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			return
 
 		case *GlShaderSource:
+			if version.IsES { // No compat required.
+				out.MutateAndWrite(ctx, id, cmd)
+				return
+			}
 			// Apply the state mutation of the unmodified glShaderSource
 			// command.
 			// This is so we can grab the source string from the Shader object.
@@ -412,6 +416,10 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			return
 
 		case *GlCompileShader:
+			if version.IsES { // No compat required.
+				out.MutateAndWrite(ctx, id, cmd)
+				return
+			}
 			shader := c.Objects().Shaders().Get(cmd.Shader())
 			src := ""
 

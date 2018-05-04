@@ -39,17 +39,20 @@ import (
 // the slice out. Once the last issue is sent (if any) all the chans in out are
 // closed.
 type findIssues struct {
-	state       *api.GlobalState
-	device      *device.Instance
-	issues      []replay.Issue
-	res         []replay.Result
-	lastGlError GLenum
+	state         *api.GlobalState
+	device        *device.Instance
+	targetVersion *Version
+	issues        []replay.Issue
+	res           []replay.Result
+	lastGlError   GLenum
 }
 
 func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Instance) *findIssues {
+	targetVersion, _ := ParseVersion(device.Configuration.Drivers.OpenGL.Version)
 	transform := &findIssues{
-		state:  c.NewState(ctx),
-		device: device,
+		state:         c.NewState(ctx),
+		device:        device,
+		targetVersion: targetVersion,
 	}
 	transform.state.OnError = func(err interface{}) {
 		if glenum, ok := err.(GLenum); ok {
@@ -166,15 +169,19 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
 			return
 		}
-		opts := shadertools.ConvertOptions{
-			ShaderType:        st,
-			CheckAfterChanges: true,
-			Disassemble:       true,
-			TargetGLSLVersion: 430,
-		}
 
-		if _, err := shadertools.ConvertGlsl(shader.Source(), &opts); err != nil {
-			t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
+		if t.targetVersion.IsES {
+			// Check we are able to convert this GLES shader to desktop GL.
+			opts := shadertools.ConvertOptions{
+				ShaderType:        st,
+				CheckAfterChanges: true,
+				Disassemble:       true,
+				TargetGLSLVersion: 430,
+			}
+
+			if _, err := shadertools.ConvertGlsl(shader.Source(), &opts); err != nil {
+				t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
+			}
 		}
 
 		const buflen = 8192

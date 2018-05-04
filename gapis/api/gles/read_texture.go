@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/replay"
@@ -30,7 +31,15 @@ type textureRequest struct {
 	data *ReadGPUTextureDataResolveable
 }
 
-type readTexture struct{ transform.Tasks }
+type readTexture struct {
+	transform.Tasks
+	targetVersion *Version
+}
+
+func newReadTexture(ctx context.Context, device *device.Instance) *readTexture {
+	targetVersion, _ := ParseVersion(device.Configuration.Drivers.OpenGL.Version)
+	return &readTexture{targetVersion: targetVersion}
+}
 
 func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable, res replay.Result) {
 	id := api.CmdID(r.After)
@@ -69,11 +78,11 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			return
 		}
 
-		t := newTweaker(out, dID, cb)
-		defer t.revert(ctx)
+		tw := newTweaker(out, dID, cb)
+		defer tw.revert(ctx)
 
-		framebufferID := t.glGenFramebuffer(ctx)
-		t.glBindFramebuffer_Draw(ctx, framebufferID)
+		framebufferID := tw.glGenFramebuffer(ctx)
+		tw.glBindFramebuffer_Draw(ctx, framebufferID)
 
 		streamFmt, err := getUncompressedStreamFormat(getUnsizedFormatAndType(layer.SizedFormat()))
 		if err != nil {
@@ -126,7 +135,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 			return in.(*image.Data).Convert(f)
 		})
 
-		postFBData(ctx, dID, r.Thread, uint32(layer.Width()), uint32(layer.Height()), framebufferID, attachment, out, res)
+		postFBData(ctx, dID, r.Thread, uint32(layer.Width()), uint32(layer.Height()), framebufferID, attachment, t.targetVersion, out, res)
 	})
 }
 
