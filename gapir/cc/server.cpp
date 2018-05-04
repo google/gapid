@@ -38,21 +38,26 @@ using ReplayStream =
 // This is common knowledge shared with GAPIS.
 const char GapirServiceImpl::kAuthTokenMetaDataName[] = "gapir-auth-token";
 
+namespace {
+  bool CheckAuthToken(ServerContext* context, const std::string& expected) {
+    if (expected.length() > 0) {
+      auto auth_md = context->client_metadata().find(GapirServiceImpl::kAuthTokenMetaDataName);
+      if (auth_md == context->client_metadata().end()) {
+        return false;
+      }
+      if (strncmp(auth_md->second.data(), expected.data(), expected.size())) {
+        return false;
+      }
+    }
+    return true;
+  }
+}
+
 Status GapirServiceImpl::Replay(ServerContext* context, ReplayStream* stream) {
   // Check the metadata for the authentication token
-  if (mAuthToken.length() > 0) {
-    // need to check the metadata
-    auto auth_md = context->client_metadata().find(kAuthTokenMetaDataName);
-    if (auth_md == context->client_metadata().end()) {
+  if (!CheckAuthToken(context, mAuthToken)) {
       return Status(grpc::StatusCode::UNAUTHENTICATED,
-                    grpc::string("No auth token"));
-    }
-    if (strncmp(auth_md->second.data(), mAuthToken.data(), mAuthToken.size())) {
-      return Status(
-          grpc::StatusCode::UNAUTHENTICATED,
-          grpc::string("Invalid auth token: ") +
-              grpc::string(auth_md->second.data(), auth_md->second.length()));
-    }
+                    grpc::string("Invalid auth token"));
   }
   service::ReplayRequest req;
   while (stream->Read(&req)) {
@@ -70,13 +75,20 @@ Status GapirServiceImpl::Replay(ServerContext* context, ReplayStream* stream) {
 Status GapirServiceImpl::Ping(ServerContext* context,
                               const service::PingRequest*,
                               service::PingResponse* res) {
-  res->set_pong("PONG");
+  if (!CheckAuthToken(context, mAuthToken)) {
+      return Status(grpc::StatusCode::UNAUTHENTICATED,
+                    grpc::string("Invalid auth token"));
+  }
   return Status::OK;
 }
 
 Status GapirServiceImpl::Shutdown(ServerContext* context,
                                   const service::ShutdownRequest*,
                                   service::ShutdownResponse*) {
+  if (!CheckAuthToken(context, mAuthToken)) {
+      return Status(grpc::StatusCode::UNAUTHENTICATED,
+                    grpc::string("Invalid auth token"));
+  }
   if (mGrpcServer != nullptr) {
     mGrpcServer->Shutdown();
   }

@@ -36,6 +36,8 @@ class Server;
 class GapirServiceImpl final : public service::Gapir::Service {
   friend Server;
  public:
+  static const char kAuthTokenMetaDataName[];
+
   ~GapirServiceImpl() = default;
 
   GapirServiceImpl(const GapirServiceImpl&) = delete;
@@ -59,8 +61,6 @@ class GapirServiceImpl final : public service::Gapir::Service {
   ReplayHandler mHandleReplay;
   grpc::Server* mGrpcServer;
   std::string mAuthToken;
-
-  static const char kAuthTokenMetaDataName[];
 };
 
 class Server {

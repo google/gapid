@@ -40,10 +40,10 @@ import (
 )
 
 const (
-	sessionTimeout           = time.Second * 10
-	maxSetPermissionAttempts = 10
-	setPermissionRetryDelay  = time.Second
-	connectTimeout           = time.Second * 10
+	sessionTimeout             = time.Second * 10
+	maxCheckSocketFileAttempts = 10
+	checkSocketFileRetryDelay  = time.Second
+	connectTimeout             = time.Second * 10
 )
 
 type session struct {
@@ -192,20 +192,21 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	if err != nil {
 		return log.Errf(ctx, err, "Getting gapid.apk files directory")
 	}
+	// Wait for the socket file to be created
 	socketFile := strings.Join([]string{apkDir, socket}, "/")
-	err = task.Retry(ctx, maxSetPermissionAttempts, setPermissionRetryDelay,
+	err = task.Retry(ctx, maxCheckSocketFileAttempts, checkSocketFileRetryDelay,
 		func(ctx context.Context) (bool, error) {
-			str, err := d.Shell("run-as", apk.Name, "/system/bin/chmod", "a+rwx", socketFile).Call(ctx)
+			str, err := d.Shell("run-as", apk.Name, "ls", socketFile).Call(ctx)
 			if err != nil {
 				return false, err
 			}
-			if len(str) != 0 {
-				return false, fmt.Errorf("Set permission for '%v' failed", socketFile)
+			if strings.HasSuffix(str, "No such file or directory") {
+				return false, fmt.Errorf("Socket file: '%v' does not exist", socketFile)
 			}
 			return true, nil
 		})
 	if err != nil {
-		return log.Errf(ctx, err, "Setting permission for socket file: %v", socketFile)
+		return log.Errf(ctx, err, "Checking socket file: %v", socketFile)
 	}
 
 	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(socketFile)); err != nil {

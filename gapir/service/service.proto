@@ -84,9 +84,7 @@ message ReplayResponse {
 
 message PingRequest {}
 
-message PingResponse {
-    string pong = 1;
-}
+message PingResponse {}
 
 message ShutdownRequest {}
 

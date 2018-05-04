@@ -38,7 +38,8 @@
 #include "core/cc/target.h"
 
 #if TARGET_OS == GAPID_OS_ANDROID
-#include "android/native_activity.h"
+#include <sys/stat.h>
+// #include "android/native_activity.h"
 #include "android_native_app_glue.h"
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
@@ -128,8 +129,8 @@ void android_main(struct android_app* app) {
 
   const char* pipe = pipeName();
   std::string internal_data_path = std::string(app->activity->internalDataPath);
-  std::string uri =
-      std::string("unix://") + internal_data_path + "/" + std::string(pipe);
+  std::string socket_file_path = internal_data_path + "/" + std::string(pipe);
+  std::string uri = std::string("unix://") + socket_file_path;
 
   __android_log_print(ANDROID_LOG_INFO, "GAPIR",
                       "Started Graphics API Replay daemon.\n"
@@ -140,6 +141,9 @@ void android_main(struct android_app* app) {
   std::unique_ptr<Server> server = Setup(
       uri.c_str(), nullptr, nullptr, 0 /*no timeout?*/, &crashHandler, &memoryManager);
   std::thread waiting_thread([&]() { server.get()->wait(); });
+  if (chmod(socket_file_path.c_str(), S_IRUSR|S_IWUSR|S_IXUSR|S_IROTH|S_IWOTH|S_IXOTH)) {
+    GAPID_ERROR("Chmod failed!");
+  }
 
   while (true) {
     int ident;

@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
@@ -106,21 +105,31 @@ func (c *Connection) Close() {
 
 func (c *Connection) Ping(ctx context.Context) error {
 	if c.servClient == nil {
-		return fmt.Errorf("Not connected")
+		return log.Err(ctx, nil, "Gapir not connected")
+	}
+	// If there is an authentication token, attach it in the metadata
+	if len(c.authToken) != 0 {
+		ctx = metadata.NewContext(ctx,
+			metadata.Pairs(gapirAuthTokenMetaDataName, string(c.authToken)))
 	}
 	r, err := c.servClient.Ping(ctx, &service.PingRequest{})
 	if err != nil {
-		return log.Err(ctx, err, "Sending ping request")
+		return log.Err(ctx, err, "Sending ping")
 	}
-	if r.GetPong() != "PONG" {
-		return fmt.Errorf("Expected: 'PONG', got: '%v'", r.GetPong())
+	if r == nil {
+		return log.Err(ctx, nil, "No response for ping")
 	}
 	return nil
 }
 
 func (c *Connection) Shutdown(ctx context.Context) error {
 	if c.servClient == nil {
-		return fmt.Errorf("Not connected")
+		return log.Err(ctx, nil, "Gapir not connected")
+	}
+	// If there is an authentication token, attach it in the metadata
+	if len(c.authToken) != 0 {
+		ctx = metadata.NewContext(ctx,
+			metadata.Pairs(gapirAuthTokenMetaDataName, string(c.authToken)))
 	}
 	_, err := c.servClient.Shutdown(ctx, &service.ShutdownRequest{})
 	if err != nil {
@@ -131,10 +140,10 @@ func (c *Connection) Shutdown(ctx context.Context) error {
 
 func (c *Connection) SendResources(ctx context.Context, resources []byte) error {
 	if c.conn == nil || c.servClient == nil {
-		return fmt.Errorf("Not connected")
+		return log.Err(ctx, nil, "Gapir not connected")
 	}
 	if c.stream == nil {
-		return fmt.Errorf("Replay stream not opened")
+		return log.Err(ctx, nil, "Replay stream connection not opened")
 	}
 	resReq := service.ReplayRequest{
 		Req: &service.ReplayRequest_Resources{
