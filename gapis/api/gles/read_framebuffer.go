@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -32,10 +33,14 @@ import (
 	"github.com/google/gapid/gapis/service"
 )
 
-type readFramebuffer struct{ transform.Tasks }
+type readFramebuffer struct {
+	transform.Tasks
+	targetVersion *Version
+}
 
-func newReadFramebuffer(ctx context.Context) *readFramebuffer {
-	return &readFramebuffer{}
+func newReadFramebuffer(ctx context.Context, device *device.Instance) *readFramebuffer {
+	targetVersion, _ := ParseVersion(device.Configuration.Drivers.OpenGL.Version)
+	return &readFramebuffer{targetVersion: targetVersion}
 }
 
 func getBoundFramebufferID(thread uint64, s *api.GlobalState) (FramebufferId, error) {
@@ -56,7 +61,7 @@ func (t *readFramebuffer) depth(
 	res replay.Result) {
 
 	t.Add(id, func(ctx context.Context, out transform.Writer) {
-		postFBData(ctx, id, thread, 0, 0, fb, GLenum_GL_DEPTH_ATTACHMENT, out, res)
+		postFBData(ctx, id, thread, 0, 0, fb, GLenum_GL_DEPTH_ATTACHMENT, t.targetVersion, out, res)
 	})
 }
 
@@ -70,7 +75,7 @@ func (t *readFramebuffer) color(
 
 	t.Add(id, func(ctx context.Context, out transform.Writer) {
 		attachment := GLenum_GL_COLOR_ATTACHMENT0 + GLenum(bufferIdx)
-		postFBData(ctx, id, thread, width, height, fb, attachment, out, res)
+		postFBData(ctx, id, thread, width, height, fb, attachment, t.targetVersion, out, res)
 	})
 }
 
@@ -80,6 +85,7 @@ func postFBData(ctx context.Context,
 	width, height uint32,
 	fb FramebufferId,
 	attachment GLenum,
+	version *Version,
 	out transform.Writer,
 	res replay.Result) {
 
@@ -180,15 +186,18 @@ func postFBData(ctx context.Context,
 	}
 
 	if hasColor {
-		// TODO: These glReadBuffer calls need to be changed for on-device
-		//       replay. Note that glReadBuffer was only introduced in
-		//       OpenGL ES 3.0, and that GL_FRONT is not a legal enum value.
 		if c.Bound().DrawFramebuffer() == c.Objects().Default().Framebuffer() {
 			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we
 				//       need to decide whether to read from GL_FRONT or GL_BACK.
-				cb.GlReadBuffer(GLenum_GL_FRONT).Call(ctx, s, b)
+				buf := GLenum_GL_BACK
+				if !version.IsES {
+					// OpenGL expects GL_FRONT for single-buffered
+					// configurations. Note this is not a legal value for GLES.
+					buf = GLenum_GL_FRONT
+				}
+				cb.GlReadBuffer(buf).Call(ctx, s, b)
 				return nil
 			}))
 		} else {
@@ -227,6 +236,21 @@ func postFBData(ctx context.Context,
 			cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), bufferBits, GLenum_GL_LINEAR),
 		)
 		t.glBindFramebuffer_Read(ctx, framebufferID)
+	}
+
+	if u, t := getReadPixelsFormat(version, unsizedFormat, ty); unsizedFormat != u || ty != t {
+		// glReadPixels() cannot be called with the natural unsized-format and
+		// type of the framebuffer. Instead, fetch the framebuffer in a format
+		// that can be read, and then convert the result to the expected format.
+		f, err := getImageFormat(u, t)
+		if err != nil {
+			res(nil, err)
+			return
+		}
+		res = res.Transform(func(in interface{}) (interface{}, error) {
+			return in.(*image.Data).Convert(imgFmt)
+		})
+		imgFmt, unsizedFormat, ty = f, u, t
 	}
 
 	t.setPackStorage(ctx, NewPixelStorageState(s.Arena,
@@ -277,6 +301,38 @@ func postFBData(ctx context.Context,
 	}))
 
 	out.MutateAndWrite(ctx, dID, cb.GlGetError(0)) // Check for errors.
+}
+
+// getReadPixelsFormat returns a unsized-format and type that is compatible with
+// glReadPixels() for the given framebuffer unsized-format and type.
+// See the GLES spec: 4.3.2 Reading Pixels
+func getReadPixelsFormat(version *Version, uf GLenum, ty GLenum) (GLenum, GLenum) {
+	if version.IsES {
+		switch uf {
+		case GLenum_GL_RED_INTEGER, GLenum_GL_RG_INTEGER, GLenum_GL_RGB_INTEGER, GLenum_GL_RGBA_INTEGER:
+			uf = GLenum_GL_RGBA_INTEGER
+		default:
+			uf = GLenum_GL_RGBA
+		}
+		switch ty {
+		case GLenum_GL_UNSIGNED_BYTE,
+			GLenum_GL_UNSIGNED_SHORT_4_4_4_4,
+			GLenum_GL_UNSIGNED_SHORT_5_5_5_1,
+			GLenum_GL_UNSIGNED_SHORT_5_6_5:
+			ty = GLenum_GL_UNSIGNED_BYTE
+		case GLenum_GL_UNSIGNED_INT,
+			GLenum_GL_UNSIGNED_INT_10F_11F_11F_REV,
+			GLenum_GL_UNSIGNED_INT_2_10_10_10_REV,
+			GLenum_GL_UNSIGNED_INT_5_9_9_9_REV,
+			GLenum_GL_UNSIGNED_SHORT:
+			ty = GLenum_GL_UNSIGNED_INT
+		case GLenum_GL_BYTE, GLenum_GL_INT, GLenum_GL_SHORT:
+			ty = GLenum_GL_INT
+		default:
+			ty = GLenum_GL_FLOAT
+		}
+	}
+	return uf, ty
 }
 
 func mutateAndWriteEach(ctx context.Context, out transform.Writer, id api.CmdID, cmds ...api.Cmd) {
