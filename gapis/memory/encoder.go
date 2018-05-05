@@ -43,6 +43,12 @@ func (e *Encoder) MemoryLayout() *device.MemoryLayout {
 	return e.m
 }
 
+// Offset returns the byte offset of the writer from the initial Encoder
+// creation.
+func (e *Encoder) Offset() uint64 {
+	return e.o
+}
+
 // Align writes zero bytes until the write position is a multiple of to.
 func (e *Encoder) Align(to uint64) {
 	alignment := u64.AlignUp(e.o, to)
