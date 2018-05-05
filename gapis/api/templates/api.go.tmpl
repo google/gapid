@@ -903,15 +903,18 @@ import (
     func (c {{$name}}) Encode(ϟe *ϟmem.Encoder) {
       alignment := {{$name}}Alignment(ϟe.MemoryLayout())
       ϟe.Align(alignment)
+      base := ϟe.Offset();
       {{range $f := $.Fields}}
         {{Template "Go.Encode" "Type" $f.Type "Value" (print "c." ($f.Name | GoPublicName))}}
       {{end}}
-      ϟe.Align(alignment)
+      bytes := ϟe.Offset() - base
+      ϟe.Pad({{$name}}Size(ϟe.MemoryLayout()) - bytes)
     }
 
     // Decode decodes this class from the decoder.
     func (c *{{$name}}) Decode(ϟd *ϟmem.Decoder) {
       ϟd.Align({{$name}}Alignment(ϟd.MemoryLayout()))
+      base := ϟd.Offset();
       {{range $f := $.Fields}}
         {{if IsClass $f.Type}}
           c.{{$f.Name | GoPublicName}}.Decode(ϟd)
@@ -919,7 +922,8 @@ import (
           c.{{$f.Name | GoPublicName}} = {{Template "Go.Decode" $f.Type}}
         {{end}}
       {{end}}
-      ϟd.Align({{$name}}Size(ϟd.MemoryLayout()))
+      bytes := ϟd.Offset() - base
+      ϟd.Skip({{$name}}Size(ϟd.MemoryLayout()) - bytes)
     }
   {{end}}
 {{end}}
