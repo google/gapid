@@ -55,7 +55,7 @@ var (
 	anyTy = reflect.TypeOf(Any{})
 )
 
-// Match is the result of Implements.
+// Match is the result of Implements and CheckSigs.
 type Match struct {
 	// Errors found matching the interface to the implementation.
 	Errors []error
@@ -67,17 +67,25 @@ type Match struct {
 // Ok returns true if the type implemented the generic interface.
 func (m Match) Ok() bool { return len(m.Errors) == 0 }
 
+func newSubs(generics ...reflect.Type) map[reflect.Type]reflect.Type {
+	subs := map[reflect.Type]reflect.Type{}
+	subs[T1Ty] = nil
+	subs[T2Ty] = nil
+	subs[T3Ty] = nil
+	subs[T4Ty] = nil
+	for _, g := range generics {
+		subs[g] = nil
+	}
+	return subs
+}
+
 // Implements checks that ty implements the generic interface iface.
 // Implements returns a Match which lists any generic type inconsistencies, and
 // lists the mappings of generic types to implementation types.
 // generics is a list of open types used by the generic interface iface.
 func Implements(ty, iface reflect.Type, generics ...reflect.Type) Match {
 	var errs []error
-
-	subs := map[reflect.Type]reflect.Type{}
-	for _, g := range generics {
-		subs[g] = nil
-	}
+	subs := newSubs(generics...)
 
 	for i, c := 0, iface.NumMethod(); i < c; i++ {
 		iM := iface.Method(i)
@@ -88,7 +96,7 @@ func Implements(ty, iface reflect.Type, generics ...reflect.Type) Match {
 			continue
 		}
 
-		if err := checkMethod(oM, iM, subs); err != nil {
+		if err := checkMethod(oM, iM, subs, true); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -96,15 +104,56 @@ func Implements(ty, iface reflect.Type, generics ...reflect.Type) Match {
 	return Match{errs, subs}
 }
 
-func checkMethod(oM, iM reflect.Method, subs map[reflect.Type]reflect.Type) error {
+// Sig is a pair of functions used for validation by CheckSigs.
+type Sig struct {
+	// Name of the function.
+	Name string
+	// The signature the function must match.
+	Interface interface{}
+	// The provided function being checked.
+	Function interface{}
+}
+
+// CheckSigs checks that each function signature implements the generic
+// interface signature.
+// CheckSigs returns a Match which lists any generic type inconsistencies, and
+// lists the mappings of generic types to implementation types.
+func CheckSigs(sigs ...Sig) Match {
+	var errs []error
+	subs := newSubs()
+	for i, s := range sigs {
+		fun := reflect.TypeOf(s.Function)
+		if fun.Kind() != reflect.Func {
+			panic(fmt.Errorf("Signature for '%v' requires a function for Function", s.Name))
+		}
+		iface := reflect.TypeOf(s.Interface)
+		if iface.Kind() != reflect.Func {
+			panic(fmt.Errorf("Signature for '%v' requires a function for Interface", s.Name))
+		}
+
+		oM := reflect.Method{Name: s.Name, Type: fun, Index: i}
+		iM := reflect.Method{Name: s.Name, Type: iface, Index: i}
+		if err := checkMethod(oM, iM, subs, false); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return Match{errs, subs}
+}
+
+func checkMethod(oM, iM reflect.Method, subs map[reflect.Type]reflect.Type, hasReceiver bool) error {
 	fail := func(err error) error {
 		return fmt.Errorf("%v\nInterface:   %v\nImplementor: %v",
 			err, printFunc(iM.Type, 0), printFunc(oM.Type, 1))
 	}
 
-	if oC, iC := oM.Type.NumIn()-1, iM.Type.NumIn(); oC == iC { // -1 to skip the this.
+	numReceivers := 0
+	if hasReceiver {
+		numReceivers = 1
+	}
+
+	if oC, iC := oM.Type.NumIn()-numReceivers, iM.Type.NumIn(); oC == iC {
 		for i, c := 0, iM.Type.NumIn(); i < c; i++ {
-			iTy, oTy := iM.Type.In(i), oM.Type.In(i+1)
+			iTy, oTy := iM.Type.In(i), oM.Type.In(i+numReceivers)
 			if err := checkType(oTy, iTy, subs); err != nil {
 				return fail(err)
 			}
