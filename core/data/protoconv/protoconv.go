@@ -17,14 +17,13 @@
 package protoconv
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"reflect"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/data/generic"
 	"github.com/google/gapid/core/log"
 )
 
@@ -103,39 +102,29 @@ func (e ErrNoConverterRegistered) Error() string {
 //   func(context.Context, P) (O, error)
 // Where P is the proto message type and O is the object type.
 func Register(toProto, toObject interface{}) {
-	toP, toO := reflect.TypeOf(toProto), reflect.TypeOf(toObject)
-	if toP.Kind() != reflect.Func {
-		panic("toProto must be a function")
+	type (
+		O = generic.T1
+		P = generic.T2
+	)
+	var (
+		OTy = generic.T1Ty
+		PTy = generic.T2Ty
+	)
+
+	sigs := []generic.Sig{
+		generic.Sig{Name: "toProto", Interface: func(context.Context, O) (P, error) {return P{}, nil}, Function: toProto},
+		generic.Sig{Name: "toObject", Interface: func(context.Context, P) (O, error) {return O{}, nil}, Function: toObject},
 	}
-	if toO.Kind() != reflect.Func {
-		panic("toObject must be a function")
+	m := generic.CheckSigs(sigs...)
+	if !m.Ok() {
+		panic(m.Errors)
 	}
-	if err := checkToFunc(toP); err != nil {
-		panic(fmt.Errorf(`toProto does not match signature:
-  func(context.Context, O) (P, error)
-Got:   %v
-Error: %v`, printFunc(toP), err))
-	}
-	if err := checkToFunc(toO); err != nil {
-		panic(fmt.Errorf(`toObject does not match signature:
-  func(context.Context, P) (O, error)
-Got:   %v
-Error: %v`, printFunc(toO), err))
-	}
-	if toP.In(1) != toO.Out(0) {
-		panic(fmt.Errorf(`Object type is different between toProto and toObject
-toProto:  %v
-toObject: %v`, printFunc(toP), printFunc(toO)))
-	}
-	if toO.In(1) != toP.Out(0) {
-		panic(fmt.Errorf(`Proto type is different between toProto and toObject
-toProto:  %v
-toObject: %v`, printFunc(toP), printFunc(toO)))
-	}
-	objTy, protoTy := toP.In(1), toO.In(1)
+
+	objTy, protoTy := m.Bindings[OTy], m.Bindings[PTy]
 	if !protoTy.Implements(tyMessage) {
 		panic(fmt.Errorf("Proto type %v does not implement proto.Message", protoTy))
 	}
+
 	mutex.Lock()
 	defer mutex.Unlock()
 	protoToObject[protoTy] = reflect.ValueOf(toObject)
@@ -174,54 +163,4 @@ func ToObject(ctx context.Context, msg proto.Message) (interface{}, error) {
 			msg, f.Type().Out(0))
 	}
 	return out[0].Interface(), nil
-}
-
-func printFunc(f reflect.Type) string {
-	if f.Kind() != reflect.Func {
-		return "Not a function"
-	}
-	b := bytes.Buffer{}
-	b.WriteString("func(")
-	for i := 0; i < f.NumIn(); i++ {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		b.WriteString(f.In(i).String())
-	}
-	b.WriteString(")")
-	switch f.NumOut() {
-	case 0:
-	case 1:
-		b.WriteString(" ")
-		b.WriteString(f.Out(0).String())
-	default:
-		b.WriteString(" (")
-		for i := 0; i < f.NumOut(); i++ {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			b.WriteString(f.Out(i).String())
-		}
-		b.WriteString(")")
-	}
-	return b.String()
-}
-
-func checkToFunc(got reflect.Type) error {
-	if got.Kind() != reflect.Func {
-		return fault.Const("Not a function")
-	}
-	if got.NumIn() != 2 {
-		return fault.Const("Incorrect number of parameters")
-	}
-	if got.NumOut() != 2 {
-		return fault.Const("Incorrect number of results")
-	}
-	if got.In(0) != tyContext {
-		return fault.Const("Parameter 0 is not context.Context")
-	}
-	if got.Out(1) != tyError {
-		return fault.Const("Output 1 is not error")
-	}
-	return nil
 }
