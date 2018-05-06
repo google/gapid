@@ -133,7 +133,44 @@ func TestImplements(t *testing.T) {
 				"mixed use of generic type 'generic.T2'. First used as 'string', now used as 'int'\nInterface:   func() (generic.T2, generic.T2)\nImplementor: func() (string, int)"),
 		},
 	} {
-		got := generic.Implements(reflect.TypeOf(O{}), test.iface, reflect.TypeOf(T1{}), reflect.TypeOf(T2{}))
+		got := generic.Implements(reflect.TypeOf(O{}), test.iface)
+		assert.For(ctx, test.name).ThatSlice(got.Errors).DeepEquals(test.expected)
+	}
+}
+
+func TestCheckSigs(t *testing.T) {
+	ctx := log.Testing(t)
+
+	E := func(s ...string) []error {
+		out := make([]error, len(s))
+		for i, m := range s {
+			out[i] = fmt.Errorf("%v", m)
+		}
+		return out
+	}
+
+	for _, test := range []struct {
+		name     string
+		sigs     []generic.Sig
+		expected []error
+	}{
+		{"empty", []generic.Sig{}, E()},
+		{"func()", []generic.Sig{{"func()", func() {}, func() {}}}, E()},
+		{"func(int)int", []generic.Sig{{"func(int)int", func(int) int { return 0 }, func(int) int { return 0 }}}, E()},
+		{"func(T1)T1", []generic.Sig{{"func(T1)T1", func(T1) T1 { return T1{} }, func(int) int { return 0 }}}, E()},
+		{"func(T1)T2", []generic.Sig{{"func(T1)T2", func(T1) T2 { return T2{} }, func(int) int { return 0 }}}, E()},
+		{"func(T1)T1 fail", []generic.Sig{{"func(T1)T1", func(T1) T1 { return T1{} }, func(int) bool { return false }}},
+			E("mixed use of generic type 'generic.T1'. First used as 'int', now used as 'bool'\nInterface:   func(generic.T1) generic.T1\nImplementor: func() bool")},
+		{"func(T1)T2, func(T2)T1", []generic.Sig{
+			{"func(T1)T2", func(T1) T2 { return T2{} }, func(int) bool { return false }},
+			{"func(T2)T1", func(T2) T1 { return T1{} }, func(bool) int { return 0 }},
+		}, E()},
+		{"func(T1)T2, func(T2)T1 fail", []generic.Sig{
+			{"func(T1)T2", func(T1) T2 { return T2{} }, func(int) bool { return false }},
+			{"func(T2)T1", func(T2) T1 { return T1{} }, func(bool) bool { return false }},
+		}, E("mixed use of generic type 'generic.T1'. First used as 'int', now used as 'bool'\nInterface:   func(generic.T2) generic.T1\nImplementor: func() bool")},
+	} {
+		got := generic.CheckSigs(test.sigs...)
 		assert.For(ctx, test.name).ThatSlice(got.Errors).DeepEquals(test.expected)
 	}
 }
