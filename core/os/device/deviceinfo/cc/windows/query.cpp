@@ -26,16 +26,19 @@ namespace {
 
 static const char* wndClassName = TEXT("opengl-dummy-window");
 
-WNDCLASS registerWindowClass() {
-    WNDCLASS wc;
+WNDCLASSEX registerWindowClass() {
+    WNDCLASSEX wc;
     memset(&wc, 0, sizeof(wc));
-    wc.style         = 0;
+    wc.cbSize        = sizeof(wc);
+// We must use CS_OWNDC here if we are to use this window with GL.
+// https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)#The_Window_Itself
+    wc.style         = CS_OWNDC;
     wc.lpfnWndProc   = DefWindowProc;
     wc.hInstance     = GetModuleHandle(0);
     wc.hCursor       = LoadCursor(0, IDC_ARROW);
     wc.lpszMenuName  = TEXT("");
     wc.lpszClassName = wndClassName;
-    RegisterClass(&wc);
+    RegisterClassEx(&wc);
     return wc;
 }
 
@@ -91,7 +94,7 @@ void createGlContext() {
         return;
     }
 
-    WNDCLASS wc = registerWindowClass();
+    WNDCLASSEX wc = registerWindowClass();
     gContext.mWnd = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0, 8, 8, 0, 0, GetModuleHandle(0), 0);
     if (gContext.mWnd == nullptr) {
         return;
