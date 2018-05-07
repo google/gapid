@@ -552,8 +552,6 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue *Queu
 	))
 	defer h.sb.write(h.sb.cb.VkDestroyBufferView(info.dev, dataBufView, memory.Nullptr))
 
-	log.W(h.sb.ctx, "texelbuffer data: %v, len: %v", info.data[0:17], len(info.data))
-
 	// image view
 	imgView := VkImageView(newUnusedID(true, func(x uint64) bool {
 		return GetState(h.sb.newState).ImageViews.Contains(VkImageView(x))
@@ -635,8 +633,6 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue *Queu
 		VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
 	defer h.sb.freeScratchBuffer(h.sb.s.Devices.Get(info.dev), metadataBuf, metadataMem)
 
-	log.W(h.sb.ctx, "metadata: %v", metadata)
-
 	writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreStorageImageBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, []VkDescriptorImageInfo{
 		VkDescriptorImageInfo{
 			VkSampler(0),
@@ -674,8 +670,6 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue *Queu
 		0, NewU32ᶜᵖ(memory.Nullptr),
 	))
 	groupCount := uint32(roundUp(uint64(texelCount), specMaxComputeLocalGroupSizeX))
-	log.W(h.sb.ctx, "texelCount: %v", texelCount)
-	log.W(h.sb.ctx, "x group: %v", groupCount)
 	h.sb.write(h.sb.cb.VkCmdDispatch(commandBuffer, groupCount, 1, 1))
 	h.sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
 
@@ -753,7 +747,6 @@ func (h *ipStoreHandler) getOrCreateComputePipeline(info ipStoreShaderInfo) (*Co
 		VkResult_VK_SUCCESS,
 	))
 	h.pipelines[info] = GetState(h.sb.newState).ComputePipelines.Get(handle)
-	log.W(h.sb.ctx, "compute pipeline: %v, layout: %v", h.pipelines[info], h.pipelines[info].PipelineLayout)
 	return h.pipelines[info], nil
 }
 
