@@ -160,7 +160,18 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
   instance->set_allocated_configuration(configuration);
   deviceInstanceID(instance);
 
-  query::destroyContext();
+  // Blacklist of OS/Hardware version that means we cannot safely
+  // destroy the context.
+  // https://github.com/google/gapid/issues/1867
+  bool blacklist = false;
+  if (std::string(gpuName).find("Vega") != std::string::npos &&
+      std::string(query::osName()).find("Windows 10") != std::string::npos) {
+      blacklist = true;
+  }
+
+  if (!blacklist) {
+     query::destroyContext();
+  }
 
   *out = instance;
 }
