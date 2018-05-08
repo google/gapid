@@ -38,14 +38,14 @@ import (
 )
 
 var (
-	root     = flag.String("root", "", "Path to the root GAPID source directory")
-	verbose  = flag.Bool("verbose", false, "Verbose logging")
-	incBuild = flag.Bool("inc", true, "Time incremental builds")
-	optimize = flag.Bool("optimize", false, "Build using '-c opt'")
-	pkg      = flag.String("pkg", "", "Partial name of a package name to capture")
-	output   = flag.String("out", "", "The results output file. Empty writes to stdout")
-	atSHA    = flag.String("at", "", "The SHA or branch of the first changelist to profile")
-	count    = flag.Int("count", 2, "The number of changelists to profile since HEAD")
+	root      = flag.String("root", "", "Path to the root GAPID source directory")
+	verbose   = flag.Bool("verbose", false, "Verbose logging")
+	incBuild  = flag.Bool("inc", true, "Time incremental builds")
+	optimize  = flag.Bool("optimize", false, "Build using '-c opt'")
+	pkg       = flag.String("pkg", "", "Partial name of a package name to capture")
+	atSHA     = flag.String("at", "", "The SHA or branch of the first changelist to profile")
+	count     = flag.Int("count", 2, "The number of changelists to profile since HEAD")
+	tracePath = flag.String("trace", "", "Path to a .gfxtrace used for report timing")
 )
 
 func main() {
@@ -71,6 +71,9 @@ type stats struct {
 		Frames   int `name:"frames"`
 		Draws    int `name:"draws"`
 		Commands int `name:"commands"`
+	}
+	ReportStats struct {
+		Time float64 `name:"report-time"` // in seconds
 	}
 }
 
@@ -166,6 +169,15 @@ func run(ctx context.Context) error {
 			r.CaptureStats.Frames = frames
 			r.CaptureStats.Draws = draws
 			r.CaptureStats.Commands = cmds
+			*tracePath = file
+		}
+
+		if *tracePath != "" {
+			start := time.Now()
+			if err := report(ctx, *tracePath); err != nil {
+				return err
+			}
+			r.ReportStats.Time = time.Since(start).Seconds()
 		}
 
 		// Gather incremental build stats
@@ -302,6 +314,16 @@ func trace(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return file, err
+}
+
+func report(ctx context.Context, trace string) error {
+	cmd := shell.Cmd{
+		Name:      gapitPath(),
+		Args:      []string{"--log-style", "raw", "report", trace},
+		Verbosity: *verbose,
+	}
+	_, err := cmd.Call(ctx)
+	return err
 }
 
 func captureStats(ctx context.Context, file string) (numFrames, numDraws, numCmds int, err error) {
