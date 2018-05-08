@@ -235,6 +235,13 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   @hidden bool InRenderPass
 }
 
+@internal class ComputeInfo {
+  // A mapping from the descriptor set bound numbers to descriptor set objects
+  map!(u32, ref!DescriptorSetObject) DescriptorSets
+
+  // The compute pipeline used for the draw
+  ref!ComputePipelineObject ComputePipeline
+}
 
 @internal class PresentInfo {
   // The number of images presented last present
@@ -286,8 +293,8 @@ enum LastSubmissionType {
 // Other state Tracking
 @hidden @serialize map!(VkDevice, VkMemoryRequirements) TransferBufferMemoryRequirements
 @serialize ref!QueueObject                              LastBoundQueue
-@serialize ref!ComputePipelineObject                    CurrentComputePipeline
 @serialize map!(VkQueue, ref!DrawInfo)                  LastDrawInfos
+@serialize map!(VkQueue, ref!ComputeInfo)               LastComputeInfos
 @serialize PresentInfo                                  LastPresentInfo
 @serialize LastSubmissionType                           LastSubmission
 
@@ -320,4 +327,20 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   lastDrawInfo().CommandParameters.DrawIndexed = null
   lastDrawInfo().CommandParameters.DrawIndirect = null
   lastDrawInfo().CommandParameters.DrawIndexedIndirect = null
+}
+
+sub ref!ComputeInfo lastComputeInfo() {
+  if LastBoundQueue != null {
+    if !(LastBoundQueue.VulkanHandle in LastComputeInfos) {
+      LastComputeInfos[LastBoundQueue.VulkanHandle] = new!ComputeInfo()
+    }
+  }
+
+  lci := switch (LastBoundQueue == null) {
+    case false:
+      LastComputeInfos[LastBoundQueue.VulkanHandle]
+    case true:
+      new!ComputeInfo()
+  }
+  return lci
 }

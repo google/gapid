@@ -620,20 +620,28 @@ vkCmdBindDescriptorSetsArgs {
 sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
   dynamic_offset_index := MutableU32(0)
 
-  for i , _ , set in args.DescriptorSets {
-    lastDrawInfo().DescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
+  computeInfo := lastComputeInfo()
+  drawInfo := lastDrawInfo()
+
+  currentDescriptorSets := switch args.PipelineBindPoint {
+    case VK_PIPELINE_BIND_POINT_COMPUTE:
+      computeInfo.DescriptorSets
+    case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      drawInfo.DescriptorSets
   }
 
   for i in (0 .. len(args.DescriptorSets)) {
     if args.DescriptorSets[as!u32(i)] in DescriptorSets {
-      set := DescriptorSets[args.DescriptorSets[as!u32(i)]]
+      set := args.DescriptorSets[as!u32(i)]
+      setObj := DescriptorSets[set]
+      currentDescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
 
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
       // of the Bindings in order of the binding number.
-      for j in (0 .. set.Layout.MaximumBinding + 1) {
-        if j in set.Bindings {
-          binding := set.Bindings[j]
+      for j in (0 .. setObj.Layout.MaximumBinding + 1) {
+        if j in setObj.Bindings {
+          binding := setObj.Bindings[j]
           for k in (0 .. len(binding.BufferBinding)) {
             bufferBinding := binding.BufferBinding[as!u32(k)]
 
