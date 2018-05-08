@@ -48,7 +48,7 @@ func (r *InitialCmdsResolvable) Resolve(ctx context.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	cmds, ranges := c.GetInitialCommands(ctx)
+	cmds, ranges := c.BuildInitialCommands(ctx)
 	return &initialCommandData{
 		cmds, ranges}, nil
 }

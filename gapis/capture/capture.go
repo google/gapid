@@ -152,8 +152,8 @@ func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 	return s
 }
 
-// GetInitialCommands returns a set of commands which will setup the initial state.
-func (c *Capture) GetInitialCommands(ctx context.Context) ([]api.Cmd, interval.U64RangeList) {
+// BuildInitialCommands returns a set of commands which will setup the initial state.
+func (c *Capture) BuildInitialCommands(ctx context.Context) ([]api.Cmd, interval.U64RangeList) {
 	ranges := interval.U64RangeList{}
 	cmds := []api.Cmd{}
 	// TODO: This can be easily cached for the given capture.
