@@ -20,7 +20,7 @@
 inline void VulkanSpy::notifyPendingCommandAdded(CallObserver*, VkQueue) {}
 
 inline void VulkanSpy::vkErrInvalidHandle(CallObserver*, std::string handleType, uint64_t handle){
-    GAPID_WARNING("Error: Invalid %s: %llu", handleType.c_str(), handle)
+    GAPID_WARNING("Error: Invalid %s: %" PRIu64, handleType.c_str(), handle)
 }
 
 inline void VulkanSpy::vkErrNullPointer(CallObserver*, std::string pointerType) {
@@ -32,11 +32,11 @@ inline void VulkanSpy::vkErrUnrecognizedExtension(CallObserver*, std::string nam
 }
 
 inline void VulkanSpy::vkErrExpectNVDedicatedlyAllocatedHandle(CallObserver*, std::string handleType, uint64_t handle) {
-    GAPID_WARNING("Error: Expected handle that was allocated with a dedicated allocation: %s: %llu", handleType.c_str(), handle)
+    GAPID_WARNING("Error: Expected handle that was allocated with a dedicated allocation: %s: %" PRIu64, handleType.c_str(), handle)
 }
 
 inline void VulkanSpy::vkErrInvalidDescriptorArrayElement(CallObserver*, uint64_t set, uint32_t binding, uint32_t array_index) {
-  GAPID_WARNING("Error: Invalid descriptor array element specified by descriptor set: %llu, binding: %lu, array index: %lu", set, binding, array_index);
+  GAPID_WARNING("Error: Invalid descriptor array element specified by descriptor set: %" PRIu64 ", binding: %" PRIu32 ", array index: %" PRIu32, set, binding, array_index);
 }
 
 inline void VulkanSpy::vkErrCommandBufferIncomplete(CallObserver*, VkCommandBuffer cmdbuf) {
