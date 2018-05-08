@@ -449,19 +449,26 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
 void Spy::saveInitialState() {
     GAPID_INFO("Saving initial state");
 
+    saveInitialStateForApi<GlesSpy>("gles-initial-state");
+    saveInitialStateForApi<VulkanSpy>("vulkan-initial-state");
+}
+
+template<typename T>
+void Spy::saveInitialStateForApi(const char* name) {
     capture::GlobalState global;
 
-    if (should_trace(GlesSpy::kApiIndex)) {
-        auto observer = enter("gles-initial-state", GlesSpy::kApiIndex);
+    if (should_trace(T::kApiIndex)) {
+        auto observer = enter(name, T::kApiIndex);
         observer->enter(&global);
 
-        std::unordered_set<uint32_t> pools;
+        std::unordered_set<uint32_t> seen_pools;
+        T::serializeGPUBuffers(observer, observer->encoder().get(), &seen_pools);
         observer->on_slice_encoded([&] (slice_t* slice) {
             auto p = slice->pool;
-            if (p != nullptr && pools.count(p->id) == 0) {
-                pools.insert(p->id);
+            if (p != nullptr && seen_pools.count(p->id) == 0) {
+                seen_pools.insert(p->id);
 
-                auto resIndex = sendResource(GlesSpy::kApiIndex, p->buffer, p->size);
+                auto resIndex = sendResource(T::kApiIndex, p->buffer, p->size);
                 memory::Observation observation;
                 observation.set_base(0);
                 observation.set_size(p->size);
@@ -470,37 +477,8 @@ void Spy::saveInitialState() {
                 observer->encode(&observation);
             }
         });
-        observer->encode(this->GlesSpy::mState);
+        observer->encode(T::mState);
         observer->on_slice_encoded(nullptr);
-        exit();
-    }
-    if (should_trace(VulkanSpy::kApiIndex)) {
-        auto observer = enter("vulkan-initial-state", VulkanSpy::kApiIndex);
-        observer->enter(&global);
-
-        std::unordered_set<uint32_t> gpu_pools;
-        VulkanSpy::prepareGPUBuffers(observer, observer->encoder().get(), &gpu_pools);
-        std::unordered_set<uint32_t> pools;
-        observer->on_slice_encoded([&] (slice_t* slice) {
-            auto p = slice->pool;
-            if (p != nullptr &&
-                    gpu_pools.count(p->id) == 0 &&
-                    pools.count(p->id) == 0) {
-
-                pools.insert(p->id);
-
-                auto resIndex = sendResource(VulkanSpy::kApiIndex, p->buffer, p->size);
-                memory::Observation observation;
-                observation.set_base(0);
-                observation.set_size(p->size);
-                observation.set_resindex(resIndex);
-                observation.set_pool(p->id);
-                observer->encode(&observation);
-            }
-        });
-        observer->encode(this->VulkanSpy::mState);
-        observer->on_slice_encoded(nullptr);
-
         exit();
     }
 }

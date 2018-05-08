@@ -93,7 +93,7 @@ void SpyOverride_cacheImageSparseMemoryRequirements(
     VkDevice device, VkImage image, uint32_t count,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements);
 
-void prepareGPUBuffers(
+void serializeGPUBuffers(
     CallObserver* observer, PackEncoder* group,
     std::unordered_set<uint32_t>* gpu_pools);
 
