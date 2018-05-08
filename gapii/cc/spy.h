@@ -103,6 +103,9 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   // saveInitialState serializes the current global state.
   void saveInitialState();
 
+  template<typename T>
+  void saveInitialStateForApi(const char* name);
+
   // onPostFrameBoundary is called from onPost{Start,End}OfFrame().
   void onPostFrameBoundary(bool isStartOfFrame);
 

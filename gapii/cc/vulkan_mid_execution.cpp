@@ -278,8 +278,8 @@ class StagingCommandBuffer {
   VkCommandBuffer command_buffer_;
 };
 
-void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
-                                  std::unordered_set<uint32_t> *gpu_pools) {
+void VulkanSpy::serializeGPUBuffers(CallObserver *observer, PackEncoder *group,
+                                    std::unordered_set<uint32_t> *gpu_pools) {
   char empty = 0;
   auto empty_index = sendResource(VulkanSpy::kApiIndex, &empty, 0);
 

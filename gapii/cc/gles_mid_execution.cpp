@@ -14,20 +14,13 @@
  * limitations under the License.
  */
 
-// Note this file is included in context in gles_spy.h:
-//
-// namespace gapii {
-//
-// class GlesSpy {
-// public:
+#include "gapii/cc/gles_spy.h"
 
-// Declared in gles_context.cpp.
-void getContextConstants(Constants&);
+namespace gapii {
 
-bool getFramebufferAttachmentSize(CallObserver* observer, uint32_t* width, uint32_t* height);
+void GlesSpy::serializeGPUBuffers(CallObserver* observer, PackEncoder* group,
+                                  std::unordered_set<uint32_t>* gpu_pools) {
+  // TODO
+}
 
-bool getFramebufferAttachmentSize(CallObserver* observer, Framebuffer* framebuffer, uint32_t* width, uint32_t* height);
-
-void serializeGPUBuffers(
-    CallObserver* observer, PackEncoder* group,
-    std::unordered_set<uint32_t>* gpu_pools);
+}  // namespace gapii
