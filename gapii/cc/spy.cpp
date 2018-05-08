@@ -290,7 +290,6 @@ EGLContext Spy::eglCreateContext(CallObserver* observer, EGLDisplay display, EGL
 
 static void STDCALL DebugCallback(uint32_t source, uint32_t type, uint32_t id, uint32_t severity,
                                   uint32_t length, const char* message, void* user_param) {
-    Spy* spy = reinterpret_cast<Spy*>(user_param);
     if (type == GL_DEBUG_TYPE_PUSH_GROUP || type == GL_DEBUG_TYPE_POP_GROUP) {
         return; // Ignore
     } else if (type == GL_DEBUG_TYPE_ERROR || severity == GL_DEBUG_SEVERITY_HIGH) {
@@ -520,7 +519,7 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
             exit();
             set_suspended(false);
             saveInitialState();
-            auto spy_ctx = enter("RecreateState", 2);
+            enter("RecreateState", 2);
         }
     }
 }
