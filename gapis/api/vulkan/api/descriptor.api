@@ -630,48 +630,46 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
 
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
-      // of the BoundBuffers in order of the binding number.
+      // of the Bindings in order of the binding number.
+      for j in (0 .. set.Layout.MaximumBinding + 1) {
+        if j in set.Bindings {
+          binding := set.Bindings[j]
+          for k in (0 .. len(binding.BufferBinding)) {
+            bufferBinding := binding.BufferBinding[as!u32(k)]
 
-      // Since `for _, k, v in set.BoundBuffers` loops over in an
-      // arbitrary order, instead we loop over all bindings for the layout
-      // and see if it is a buffer.
-      for j in (0 .. len(set.Bindings)) {
-        binding := set.Bindings[as!u32(j)]
-        for k in (0 .. len(binding.BufferBinding)) {
-          bufferBinding := binding.BufferBinding[as!u32(k)]
-
-          binding_offset := switch binding.BindingType {
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-              as!VkDeviceSize(args.DynamicOffsets[dynamic_offset_index.Val]) + bufferBinding.Offset
-            default:
-              bufferBinding.Offset
+            binding_offset := switch binding.BindingType {
+              case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+                as!VkDeviceSize(args.DynamicOffsets[dynamic_offset_index.Val]) + bufferBinding.Offset
+              default:
+                bufferBinding.Offset
+            }
+            dynamic_offset_index.Val = switch binding.BindingType {
+              case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+                dynamic_offset_index.Val + 1
+              default:
+                dynamic_offset_index.Val
+            }
+            if (bufferBinding.Buffer in Buffers) {
+              bufferObject := Buffers[bufferBinding.Buffer]
+              readMemoryInBuffer(bufferObject, binding_offset, bufferBinding.Range)
+            }
           }
-          dynamic_offset_index.Val = switch binding.BindingType {
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-              dynamic_offset_index.Val + 1
-            default:
-              dynamic_offset_index.Val
+          for k in (0 .. len(binding.BufferViewBindings)) {
+            buffer_view := binding.BufferViewBindings[as!u32(k)]
+            if (buffer_view != as!VkBufferView(0)) {
+              buffer_view_object := BufferViews[buffer_view]
+              readMemoryInBuffer(buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
+            }
           }
-          if (bufferBinding.Buffer in Buffers) {
-            bufferObject := Buffers[bufferBinding.Buffer]
-            readMemoryInBuffer(bufferObject, binding_offset, bufferBinding.Range)
-          }
-        }
-        for k in (0 .. len(binding.BufferViewBindings)) {
-          buffer_view := binding.BufferViewBindings[as!u32(k)]
-          if (buffer_view != as!VkBufferView(0)) {
-            buffer_view_object := BufferViews[buffer_view]
-            readMemoryInBuffer(buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
-          }
-        }
-        for k in (0 .. len(binding.ImageBinding)) {
-          imageBinding := binding.ImageBinding[as!u32(k)]
-          _ = Samplers[imageBinding.Sampler]
-          if (imageBinding.ImageView != as!VkImageView(0)) {
-            imageViewObj := ImageViews[imageBinding.ImageView]
-            imageObj := imageViewObj.Image
-            rng := imageViewObj.SubresourceRange
-            readImageSubresource(imageObj, rng, imageBinding.ImageLayout)
+          for k in (0 .. len(binding.ImageBinding)) {
+            imageBinding := binding.ImageBinding[as!u32(k)]
+            _ = Samplers[imageBinding.Sampler]
+            if (imageBinding.ImageView != as!VkImageView(0)) {
+              imageViewObj := ImageViews[imageBinding.ImageView]
+              imageObj := imageViewObj.Image
+              rng := imageViewObj.SubresourceRange
+              readImageSubresource(imageObj, rng, imageBinding.ImageLayout)
+            }
           }
         }
       }
