@@ -112,9 +112,15 @@ sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set) {
   }
 }
 
-sub void readMemoryInBoundDescriptorSets() {
-  for _, _, s in lastDrawInfo().DescriptorSets {
-    readMemoryInDescriptorSet(s)
+sub void readMemoryInBoundDescriptorSets(
+    ref!PipelineLayoutObject pipelineLayout,
+    map!(u32, ref!DescriptorSetObject) descriptorSets) {
+  layerCount := len(pipelineLayout.SetLayouts)
+  for i in (0 .. layerCount) {
+    descriptorSet := descriptorSets[as!u32(i)]
+    if descriptorSet != null {
+      readMemoryInDescriptorSet(descriptorSet)
+    }
   }
 }
 

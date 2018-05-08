@@ -650,7 +650,7 @@ cmd VkResult vkMergePipelineCaches(
 sub void dovkCmdBindPipeline(ref!vkCmdBindPipelineArgs args) {
   switch args.PipelineBindPoint {
     case VK_PIPELINE_BIND_POINT_COMPUTE:
-      CurrentComputePipeline = ComputePipelines[args.Pipeline]
+      lastComputeInfo().ComputePipeline = ComputePipelines[args.Pipeline]
     case VK_PIPELINE_BIND_POINT_GRAPHICS:
       lastDrawInfo().GraphicsPipeline = GraphicsPipelines[args.Pipeline]
   }

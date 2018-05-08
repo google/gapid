@@ -138,7 +138,7 @@ cmd void vkCmdBindVertexBuffers(
 
 
 sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
-  readMemoryInBoundDescriptorSets()
+  readMemoryInBoundGraphicsDescriptorSets()
   readMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
   lastDrawInfo().CommandParameters.Draw = draw
@@ -190,7 +190,7 @@ sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
   readMemoryInBuffer(indexBuffer, startOffset, numBytes)
   // Read the whole vertex buffer.
   readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
-  readMemoryInBoundDescriptorSets()
+  readMemoryInBoundGraphicsDescriptorSets()
   clearLastDrawInfoDrawCommandParameters()
   lastDrawInfo().CommandParameters.DrawIndexed = draw
 }
@@ -229,7 +229,7 @@ cmd void vkCmdDrawIndexed(
 
 sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
   if draw.DrawCount > 0 {
-    readMemoryInBoundDescriptorSets()
+    readMemoryInBoundGraphicsDescriptorSets()
     command_size := as!VkDeviceSize(16)
     indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
     readMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
@@ -268,7 +268,7 @@ cmd void vkCmdDrawIndirect(
 
 sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
   if draw.DrawCount > 0 {
-    readMemoryInBoundDescriptorSets()
+    readMemoryInBoundGraphicsDescriptorSets()
     command_size := as!VkDeviceSize(16)
     indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
     readMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
@@ -308,7 +308,7 @@ cmd void vkCmdDrawIndexedIndirect(
 }
 
 sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
-  readMemoryInBoundDescriptorSets()
+  readMemoryInBoundComputeDescriptorSets()
 }
 
 @threadSafety("app")
@@ -338,7 +338,7 @@ class vkCmdDispatchIndirectArgs {
 sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
   command_size := as!VkDeviceSize(12)
   readMemoryInBuffer(Buffers[dispatch.Buffer], dispatch.Offset, command_size)
-  readMemoryInBoundDescriptorSets()
+  readMemoryInBoundComputeDescriptorSets()
 }
 
 @threadSafety("app")
@@ -358,3 +358,14 @@ cmd void vkCmdDispatchIndirect(
   AddCommand(commandBuffer, cmd_vkCmdDispatchIndirect, mapPos)
 }
 
+sub void readMemoryInBoundGraphicsDescriptorSets() {
+  readMemoryInBoundDescriptorSets(
+    lastDrawInfo().GraphicsPipeline.Layout,
+    lastDrawInfo().DescriptorSets)
+}
+
+sub void readMemoryInBoundComputeDescriptorSets() {
+  readMemoryInBoundDescriptorSets(
+    lastComputeInfo().ComputePipeline.PipelineLayout,
+    lastComputeInfo().DescriptorSets)
+}
