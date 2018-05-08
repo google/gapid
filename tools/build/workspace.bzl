@@ -141,7 +141,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Cross",
-        commit = "29315f3b3fd6dcafab0075e1a3d898c3ff995fed",
+        commit = "d3b966322d04efbc27c70e2ea8da36eb9c29eb1b",
         build_file = "@gapid//tools/build/third_party:spirv-cross.BUILD",
     )
 
