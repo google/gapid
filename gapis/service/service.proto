@@ -252,6 +252,14 @@ message LoadCaptureResponse {
   }
 }
 
+message SaveCaptureRequest {
+  path.Capture capture = 1;
+  string path = 2;
+}
+message SaveCaptureResponse {
+  Error error = 1;
+}
+
 message GetDevicesRequest {}
 message GetDevicesResponse {
   oneof res {
@@ -451,6 +459,9 @@ service Gapid {
   // LoadCapture imports capture data from a local file, returning the new
   // capture identifier.
   rpc LoadCapture(LoadCaptureRequest) returns (LoadCaptureResponse) {}
+
+  // SaveCapture saves capture to a file.
+  rpc SaveCapture(SaveCaptureRequest) returns (SaveCaptureResponse) {}
 
   // GetDevices returns the full list of replay devices avaliable to the server.
   // These include local replay devices and any connected Android devices.

@@ -275,6 +275,15 @@ func (s *grpcServer) LoadCapture(ctx xctx.Context, req *service.LoadCaptureReque
 	return &service.LoadCaptureResponse{Res: &service.LoadCaptureResponse_Capture{Capture: capture}}, nil
 }
 
+func (s *grpcServer) SaveCapture(ctx xctx.Context, req *service.SaveCaptureRequest) (*service.SaveCaptureResponse, error) {
+	defer s.inRPC()()
+	err := s.handler.SaveCapture(s.bindCtx(ctx), req.Capture, req.Path)
+	if err := service.NewError(err); err != nil {
+		return &service.SaveCaptureResponse{Error: err}, nil
+	}
+	return &service.SaveCaptureResponse{}, nil
+}
+
 func (s *grpcServer) GetDevices(ctx xctx.Context, req *service.GetDevicesRequest) (*service.GetDevicesResponse, error) {
 	defer s.inRPC()()
 	devices, err := s.handler.GetDevices(s.bindCtx(ctx))

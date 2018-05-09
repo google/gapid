@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"runtime/pprof"
 	"time"
@@ -196,6 +197,19 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 		return nil, err
 	}
 	return p, nil
+}
+
+func (s *server) SaveCapture(ctx context.Context, c *path.Capture, path string) error {
+	ctx = log.Enter(ctx, "SaveCapture")
+	if !s.enableLocalFiles {
+		return fmt.Errorf("Server not configured to allow writing of local files")
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return capture.Export(ctx, c, f)
 }
 
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
