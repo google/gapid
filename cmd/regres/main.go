@@ -72,8 +72,9 @@ type stats struct {
 		Draws    int `name:"draws"`
 		Commands int `name:"commands"`
 	}
-	ReportStats struct {
-		Time float64 `name:"report-time"` // in seconds
+	ReplayStats struct {
+		ReportTime    float64 `name:"report-time"`    // in seconds
+		LinearizeTime float64 `name:"linearize-time"` // in seconds
 	}
 }
 
@@ -177,7 +178,13 @@ func run(ctx context.Context) error {
 			if err := report(ctx, *tracePath); err != nil {
 				return err
 			}
-			r.ReportStats.Time = time.Since(start).Seconds()
+			r.ReplayStats.ReportTime = time.Since(start).Seconds()
+
+			start = time.Now()
+			if err := linearize(ctx, *tracePath); err != nil {
+				return err
+			}
+			r.ReplayStats.LinearizeTime = time.Since(start).Seconds()
 		}
 
 		// Gather incremental build stats
@@ -263,6 +270,7 @@ func withTouchedGLES(ctx context.Context, r *rand.Rand, f func() error) error {
 }
 
 func build(ctx context.Context) (time.Duration, error) {
+	start := time.Now()
 	args := []string{"build"}
 	if *optimize {
 		args = append(args, "-c", "opt")
@@ -274,9 +282,10 @@ func build(ctx context.Context) (time.Duration, error) {
 		Verbosity: *verbose,
 		Dir:       *root,
 	}
-	start := time.Now()
-	_, err := cmd.Call(ctx)
-	return time.Since(start), err
+	if _, err := cmd.Call(ctx); err != nil {
+		return 0, err
+	}
+	return time.Since(start), nil
 }
 
 func dllExt(n string) string {
@@ -321,6 +330,24 @@ func report(ctx context.Context, trace string) error {
 		Name:      gapitPath(),
 		Args:      []string{"--log-style", "raw", "report", trace},
 		Verbosity: *verbose,
+	}
+	_, err := cmd.Call(ctx)
+	return err
+}
+
+func linearize(ctx context.Context, trace string) error {
+	args := []string{
+		"run", "cmd/linearize_trace",
+		"-c", "opt",
+		"--",
+		"--file", trace,
+	}
+	args = append(args, "pkg")
+	cmd := shell.Cmd{
+		Name:      "bazel",
+		Args:      args,
+		Verbosity: *verbose,
+		Dir:       *root,
 	}
 	_, err := cmd.Call(ctx)
 	return err
