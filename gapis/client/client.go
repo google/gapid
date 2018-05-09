@@ -226,6 +226,20 @@ func (c *client) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	return res.GetCapture(), nil
 }
 
+func (c *client) SaveCapture(ctx context.Context, capture *path.Capture, path string) error {
+	res, err := c.client.SaveCapture(ctx, &service.SaveCaptureRequest{
+		Capture: capture,
+		Path:    path,
+	})
+	if err != nil {
+		return err
+	}
+	if err := res.GetError(); err != nil {
+		return err.Get()
+	}
+	return nil
+}
+
 func (c *client) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	res, err := c.client.GetDevices(ctx, &service.GetDevicesRequest{})
 	if err != nil {
