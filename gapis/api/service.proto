@@ -90,6 +90,7 @@ enum ShaderType {
 	Fragment = 4;
 	Compute = 5;
 	Spirv = 6;
+	SpirvBinary = 7;
 }
 
 enum UniformFormat {

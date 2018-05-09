@@ -773,7 +773,20 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	cmd.Mutate(ctx, api.CmdNoID, state, nil)
 
 	shader := data.GetShader()
-	codeSlice := shadertools.AssembleSpirvText(shader.Source)
+	var codeSlice interface{}
+	var codeSize int
+	if shader.GetType() == api.ShaderType_Spirv {
+		assembledCode := shadertools.AssembleSpirvText(shader.Source)
+		codeSlice = assembledCode
+		codeSize = len(assembledCode) * 4
+	} else {
+		codeSize = len(shader.Source)
+		if codeSize%4 != 0 {
+			log.E(ctx, "Invalid SPIR-V, number of bytes is not a multiple of 4")
+		}
+		codeSlice = []byte(shader.Source)
+	}
+
 	if codeSlice == nil {
 		log.E(ctx, "Failed at assembling new SPIR-V shader code. Shader module unchanged.")
 		return cmd
@@ -787,7 +800,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	createInfo := cmd.PCreateInfo.MustRead(ctx, cmd, state, nil)
 
 	createInfo.PCode = NewU32ᶜᵖ(code.Ptr())
-	createInfo.CodeSize = memory.Size(len(codeSlice) * 4)
+	createInfo.CodeSize = memory.Size(codeSize)
 	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
 	newCmd := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 

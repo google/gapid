@@ -150,6 +150,14 @@ type (
 		Observations           ObservationFlags
 		CommandFilterFlags
 	}
+	ReplaceResourceFlags struct {
+		Gapis           GapisFlags
+		Gapir           GapirFlags
+		Handle          string `help:"required. handle of the resource to replace"`
+		ResourcePath    string `help:"required. file path for the new resource"`
+		At              int    `help:"command index to replace the resource at"`
+		OutputTraceFile string `help:"file name for the updated trace"`
+	}
 	StateFlags struct {
 		Gapis  GapisFlags
 		Gapir  GapirFlags
