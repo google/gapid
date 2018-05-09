@@ -27,6 +27,7 @@ go_library(
         "inputs.go",
         "main.go",
         "packages.go",
+        "replace_resource.go",
         "report.go",
         "screenshot.go",
         "state.go",
