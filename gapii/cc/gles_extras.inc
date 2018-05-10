@@ -28,6 +28,4 @@ bool getFramebufferAttachmentSize(CallObserver* observer, uint32_t* width, uint3
 
 bool getFramebufferAttachmentSize(CallObserver* observer, Framebuffer* framebuffer, uint32_t* width, uint32_t* height);
 
-void serializeGPUBuffers(
-    CallObserver* observer, PackEncoder* group,
-    std::unordered_set<uint32_t>* gpu_pools);
+void serializeGPUBuffers(StateSerializer* serializer);

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "gapii/cc/state_serializer.h"
 #include "gapii/cc/vulkan_exports.h"
 #include "gapii/cc/vulkan_spy.h"
 
@@ -278,29 +279,7 @@ class StagingCommandBuffer {
   VkCommandBuffer command_buffer_;
 };
 
-void VulkanSpy::serializeGPUBuffers(CallObserver *observer, PackEncoder *group,
-                                    std::unordered_set<uint32_t> *gpu_pools) {
-  char empty = 0;
-  auto empty_index = sendResource(VulkanSpy::kApiIndex, &empty, 0);
-
-  auto create_virtual_pool = [&](uint64_t pool_size) {
-    auto arena = this->arena();
-    auto pool = arena->create<pool_t>();
-    pool->arena = reinterpret_cast<arena_t *>(arena);
-    pool->id = (*observer->next_pool_id)++;
-    pool->size = pool_size;
-    pool->ref_count = 1;
-    pool->buffer = nullptr;
-
-    memory::Observation observation;
-    observation.set_base(0);
-    observation.set_size(0);
-    observation.set_resindex(empty_index);
-    observation.set_pool(pool->id);
-    group->object(&observation);
-    return pool;
-  };
-
+void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
   for (auto &device : mState.Devices) {
     auto &device_functions =
         mImports.mVkDeviceFunctions[device.second->mVulkanHandle];
@@ -343,9 +322,8 @@ void VulkanSpy::serializeGPUBuffers(CallObserver *observer, PackEncoder *group,
 
   for (auto &mem : mState.DeviceMemories) {
     auto &memory = mem.second;
-    memory->mData = gapil::Slice<uint8_t>::create(
-        create_virtual_pool(memory->mAllocationSize), false);
-    gpu_pools->insert(memory->mData.pool_id());
+    memory->mData = serializer->encodeBuffer<uint8_t>(
+        memory->mAllocationSize, nullptr);
     if (memory->mMappedLocation != nullptr) {
       if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
         trackMappedCoherentMemory(
@@ -446,14 +424,10 @@ void VulkanSpy::serializeGPUBuffers(CallObserver *observer, PackEncoder *group,
           GetQueue(mState.Queues, buf)->mVulkanHandle);
 
       void *pData = stage.GetMappedMemory();
-      auto resIndex = sendResource(VulkanSpy::kApiIndex, pData, bind.msize);
-
       memory::Observation observation;
       observation.set_base(bind.mmemoryOffset);
-      observation.set_size(bind.msize);
-      observation.set_resindex(resIndex);
       observation.set_pool(deviceMemory->mData.pool_id());
-      group->object(&observation);
+      serializer->sendData(&observation, true, pData, bind.msize);
     }
   }
 
@@ -586,9 +560,7 @@ void VulkanSpy::serializeGPUBuffers(CallObserver *observer, PackEncoder *group,
           byte_size_and_extent e =
               level_size(image_info.mExtent, image_info.mFormat, lev.first,
                          a.first);
-          level->mData = gapil::Slice<uint8_t>::create(
-              create_virtual_pool(e.level_size), false);
-          gpu_pools->insert(level->mData.pool_id());
+          level->mData = serializer->encodeBuffer<uint8_t>(e.level_size, nullptr);
         }
       }
     }
@@ -882,19 +854,16 @@ void VulkanSpy::serializeGPUBuffers(CallObserver *observer, PackEncoder *group,
           }
         }
 
-        auto resIndex = sendResource(VulkanSpy::kApiIndex, pData + new_offset,
-                                     e.level_size);
         memory::Observation observation;
         const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
         const uint32_t array_layer = copy.mimageSubresource.mbaseArrayLayer;
         observation.set_base(x + y + z);
-        observation.set_size(e.level_size);
-        observation.set_resindex(resIndex);
         observation.set_pool(img->mAspects[aspect_bit]
                                  ->mLayers[array_layer]
                                  ->mLevels[mip_level]
                                  ->mData.pool_id());
-        group->object(&observation);
+        serializer->sendData(
+            &observation, true, pData + new_offset, e.level_size);
         new_offset = next_offset;
       }
     }
