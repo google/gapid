@@ -220,6 +220,9 @@ private:
     // The current API that this call-observer is observing.
     uint8_t mApi;
 
+    // Whether or not we should be tracing with this call observer
+    bool mShouldTrace;
+
     // The current thread id.
     uint64_t mCurrentThread;
 

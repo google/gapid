@@ -61,6 +61,7 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
           [](uint8_t* buffer) { return releaseBuffer(buffer); }),
       mError(0 /*GL_NO_ERROR*/),
       mApi(api),
+      mShouldTrace(false),
       mCurrentThread(core::Thread::current().id()) {
 
     // context_t initialization.
@@ -69,9 +70,14 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
     this->context_t::next_pool_id = &spy->next_pool_id();
     this->context_t::globals = nullptr;
     this->context_t::arena = reinterpret_cast<arena_t*>(spy->arena());
+    mShouldTrace = mSpy->should_trace(mApi);
 
-    mEncoderStack.push((parent == nullptr) ?
-            mSpy->getEncoder(mApi) : parent->encoder());
+    if (parent) {
+        mEncoderStack.push(mShouldTrace? parent->encoder(): mSpy->nullEncoder());
+    } else {
+        mEncoderStack.push(mSpy->getEncoder(mApi));
+    }
+
     mPendingObservations.setMergeThreshold(MEMORY_MERGE_THRESHOLD);
 }
 
@@ -83,7 +89,7 @@ core::Arena* CallObserver::arena() const {
 }
 
 void CallObserver::read(const void* base, uint64_t size) {
-    if (!mSpy->should_trace(mApi)) return;
+    if (!mShouldTrace) return;
     if (size > 0) {
         uintptr_t start = reinterpret_cast<uintptr_t>(base);
         uintptr_t end = start + static_cast<uintptr_t>(size);
@@ -92,7 +98,7 @@ void CallObserver::read(const void* base, uint64_t size) {
 }
 
 void CallObserver::write(const void* base, uint64_t size) {
-    if (!mSpy->should_trace(mApi)) return;
+    if (!mShouldTrace) return;
     if (size > 0) {
         uintptr_t start = reinterpret_cast<uintptr_t>(base);
         uintptr_t end = start + static_cast<uintptr_t>(size);
@@ -101,7 +107,7 @@ void CallObserver::write(const void* base, uint64_t size) {
 }
 
 void CallObserver::observePending() {
-    if (!mSpy->should_trace(mApi)) {
+    if (!mShouldTrace) {
         return;
     }
     for (auto p : mPendingObservations) {
@@ -118,18 +124,31 @@ void CallObserver::observePending() {
 }
 
 void CallObserver::enter(const ::google::protobuf::Message* cmd) {
+    if (!mShouldTrace) {
+        return;
+    }
     mEncoderStack.push(encoder()->group(cmd));
 }
 
 void CallObserver::encode(const ::google::protobuf::Message* cmd) {
+    if (!mShouldTrace) {
+        return;
+    }
     encoder()->object(cmd);
 }
 
 void CallObserver::exit() {
+    if (!mShouldTrace) {
+        return;
+    }
     mEncoderStack.pop();
 }
 
 void CallObserver::encodeAndDelete(::google::protobuf::Message* cmd) {
+    if (!mShouldTrace) {
+        delete cmd;
+        return;
+    }
     encoder()->object(cmd);
     delete cmd;
 }
