@@ -455,30 +455,11 @@ void Spy::saveInitialState() {
 
 template<typename T>
 void Spy::saveInitialStateForApi(const char* name) {
-    capture::GlobalState global;
-
     if (should_trace(T::kApiIndex)) {
         auto observer = enter(name, T::kApiIndex);
-        observer->enter(&global);
+        StateSerializer serializer(this, T::kApiIndex, observer);
 
-        std::unordered_set<uint32_t> seen_pools;
-        T::serializeGPUBuffers(observer, observer->encoder().get(), &seen_pools);
-        observer->on_slice_encoded([&] (slice_t* slice) {
-            auto p = slice->pool;
-            if (p != nullptr && seen_pools.count(p->id) == 0) {
-                seen_pools.insert(p->id);
-
-                auto resIndex = sendResource(T::kApiIndex, p->buffer, p->size);
-                memory::Observation observation;
-                observation.set_base(0);
-                observation.set_size(p->size);
-                observation.set_resindex(resIndex);
-                observation.set_pool(p->id);
-                observer->encode(&observation);
-            }
-        });
-        observer->encode(T::mState);
-        observer->on_slice_encoded(nullptr);
+        serializer.encodeState(T::mState, [this](StateSerializer* s) { T::serializeGPUBuffers(s); });
         exit();
     }
 }
