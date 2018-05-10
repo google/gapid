@@ -87,6 +87,10 @@ public:
         return should_trace(api) ? mEncoder : mNullEncoder;
     }
 
+    std::shared_ptr<gapii::PackEncoder> nullEncoder() {
+        return mNullEncoder;
+    }
+
     // Returns true if we should observe application pool.
     bool shouldObserveApplicationPool() { return mObserveApplicationPool; }
 
