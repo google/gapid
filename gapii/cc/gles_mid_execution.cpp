@@ -15,11 +15,11 @@
  */
 
 #include "gapii/cc/gles_spy.h"
+#include "gapii/cc/state_serializer.h"
 
 namespace gapii {
 
-void GlesSpy::serializeGPUBuffers(CallObserver* observer, PackEncoder* group,
-                                  std::unordered_set<uint32_t>* gpu_pools) {
+void GlesSpy::serializeGPUBuffers(StateSerializer* serializer) {
   // TODO
 }
 

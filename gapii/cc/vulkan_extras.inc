@@ -93,9 +93,7 @@ void SpyOverride_cacheImageSparseMemoryRequirements(
     VkDevice device, VkImage image, uint32_t count,
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements);
 
-void serializeGPUBuffers(
-    CallObserver* observer, PackEncoder* group,
-    std::unordered_set<uint32_t>* gpu_pools);
+void serializeGPUBuffers(StateSerializer* serializer);
 
 void walkImageSubRng(
     gapil::Ref<ImageObject> img, VkImageSubresourceRange rng,
