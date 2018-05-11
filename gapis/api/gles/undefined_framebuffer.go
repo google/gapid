@@ -110,8 +110,7 @@ func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, de
 	tmp0 := t.AllocData(ctx, aScreenCoords)
 	out.MutateAndWrite(ctx, dID, cb.GlBindAttribLocation(programID, aScreenCoordsLocation, tmp0.Ptr()).
 		AddRead(tmp0.Data()))
-	tmp0.Free()
-
+		
 	attrib := MakeProgramResourceʳ(s.Arena)
 	attrib.SetType(GLenum_GL_FLOAT_VEC2)
 	attrib.SetName(aScreenCoords)

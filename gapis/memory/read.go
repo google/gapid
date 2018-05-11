@@ -93,6 +93,10 @@ func decode(d *Decoder, v reflect.Value) {
 			}
 		}
 	case reflect.Struct:
+		if t.Implements(tyDecodable) {
+			v.Interface().(Decodable).Decode(d)
+			return
+		}
 		d.Align(AlignOf(v.Type(), d.m))
 		base := d.o
 		for i, c := 0, v.NumField(); i < c; i++ {

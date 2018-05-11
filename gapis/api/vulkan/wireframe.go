@@ -31,7 +31,8 @@ func wireframe(ctx context.Context) transform.Transformer {
 		s := out.State()
 		l := s.MemoryLayout
 		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
-		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+		cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
+		
 		switch cmd := cmd.(type) {
 		case *VkCreateGraphicsPipelines:
 			count := uint64(cmd.CreateInfoCount())

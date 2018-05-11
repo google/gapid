@@ -89,14 +89,18 @@ func encode(e *Encoder, v reflect.Value) {
 			}
 		}
 	case reflect.Struct:
-		e.Align(AlignOf(v.Type(), e.m))
-		base := e.o
-		for i, c := 0, v.NumField(); i < c; i++ {
-			encode(e, v.Field(i))
+		if t.Implements(tyEncodable) {
+			v.Interface().(Encodable).Encode(e)
+		} else {
+			e.Align(AlignOf(v.Type(), e.m))
+			base := e.o
+			for i, c := 0, v.NumField(); i < c; i++ {
+				encode(e, v.Field(i))
+			}
+			written := e.o - base
+			padding := SizeOf(v.Type(), e.m) - written
+			e.Pad(padding)
 		}
-		written := e.o - base
-		padding := SizeOf(v.Type(), e.m) - written
-		e.Pad(padding)
 	case reflect.String:
 		e.String(v.String())
 	case reflect.Bool:

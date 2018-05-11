@@ -180,10 +180,11 @@ func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInM
 	absSrcStart := mem.MappedLocation().Address() + offsetInMapped
 	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(readSize)}
 
-	writeRngList := e.s.Memory.ApplicationPool().Slice(absSrcMemRng).ValidRanges()
+	writeRngList := e.s.Memory.ApplicationPool().ValidRanges(e.ctx, absSrcMemRng)
 	for _, r := range writeRngList {
-		mem.Data().Slice(dstStart+r.Base, dstStart+r.Base+r.Size).
-			Copy(e.ctx, U8ᵖ(mem.MappedLocation()).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b)
+		rangeBase := r.Base - absSrcMemRng.Base
+		mem.Data().Slice(dstStart+rangeBase, dstStart+rangeBase+r.Size).
+			Copy(e.ctx, U8ᵖ(mem.MappedLocation()).Slice(srcStart+rangeBase, srcStart+rangeBase+r.Size, l), e.cmd, e.s, e.b)
 	}
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}

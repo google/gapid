@@ -77,8 +77,8 @@ func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
 		if GetState(e.s).EGLImages().Contains(id) {
 			ei := GetState(e.s).EGLImages().Get(id)
 			for _, img := range ei.Images().All() {
-				poolID, pool := e.s.Memory.New()
-				pool.Write(0, memory.Resource(d.ID, d.Size))
+				poolID, pool := e.s.Memory.New(d.Size, e.s.Arena)
+				pool.Write(e.ctx, 0, memory.Resource(d.ID, d.Size))
 				data := NewU8ˢ(e.s.Arena, 0, 0, d.Size, d.Size, poolID)
 				img.SetWidth(GLsizei(d.Width))
 				img.SetHeight(GLsizei(d.Height))
@@ -172,7 +172,6 @@ func (e externs) addTag(msgID uint32, message *stringtable.Msg) {
 }
 
 func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ {
-	poolID, dst := e.s.Memory.New()
 	registry := bind.GetRegistry(e.ctx)
 	img := texture.Levels().Get(level).Layers().Get(layer)
 	dataFormat, dataType := img.getUnsizedFormatAndType()
@@ -181,6 +180,7 @@ func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ 
 		panic(err)
 	}
 	size := format.Size(int(img.Width()), int(img.Height()), 1)
+	poolID, dst := e.s.Memory.New(uint64(size), e.s.Arena)
 	device := registry.DefaultDevice() // TODO: Device selection.
 	if device == nil {
 		log.W(e.ctx, "No device found for GPU texture read")
@@ -201,6 +201,6 @@ func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ 
 		panic(err)
 	}
 	data := memory.Resource(dataID, uint64(size))
-	dst.Write(0, data)
+	dst.Write(e.ctx, 0, data)
 	return NewU8ˢ(e.s.Arena, 0, 0, uint64(size), uint64(size), poolID)
 }

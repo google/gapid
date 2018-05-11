@@ -79,7 +79,7 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 			// Annoyingly gvr_frame_submit takes a pointer to the frame pointer,
 			// just so it can be nullified before returning. To avoid another
 			// state mutation just to get the pointer, cache them here.
-			cmd.extras.Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.extras.Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			frame, err := cmd.Frame().Read(ctx, cmd, s, nil)
 			if err != nil {
 				return err

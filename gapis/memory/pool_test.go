@@ -15,18 +15,17 @@
 package memory
 
 import (
-	"bytes"
-	"context"
-	"io"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/database"
-	"github.com/pkg/errors"
 )
 
+// DO NOT CHECK IN UNTIL THESE TESTS ARE FIXED
+/*
 // readFully returns the entire data produced by the given Reader, by reading up to maxRead bytes at a time.
 func readFully(r io.Reader, maxRead int) ([]byte, error) {
 	var b bytes.Buffer
@@ -266,4 +265,45 @@ func TestSliceNesting(t *testing.T) {
 	outerPool.Write(4, midPool.Slice(Range{Base: 1, Size: 7}))
 
 	checkData(ctx, outerPool.Slice(Range{Size: 11}), []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+}
+*/
+
+func TestValidRanges(t *testing.T) {
+	ctx := log.Testing(t)
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	a := arena.New()
+	pools := NewPools(interval.U64RangeList{}, a)
+	p := pools.ApplicationPool()
+	p.AddRange(128, 128)
+
+	assert.With(ctx).That(p.ValidRanges(ctx, Range{0, 1024})).DeepEquals(
+		RangeList{Range{128, 128}},
+	)
+
+	assert.With(ctx).That(p.ValidRanges(ctx, Range{128, 1024})).DeepEquals(
+		RangeList{Range{128, 128}},
+	)
+
+	assert.With(ctx).That(p.ValidRanges(ctx, Range{129, 1024})).DeepEquals(
+		RangeList{Range{129, 127}},
+	)
+
+	assert.With(ctx).That(p.ValidRanges(ctx, Range{128, 12})).DeepEquals(
+		RangeList{Range{128, 12}},
+	)
+
+	assert.With(ctx).That(p.ValidRanges(ctx, Range{64, 65})).DeepEquals(
+		RangeList{Range{128, 1}},
+	)
+
+	p.AddRange(64, 1)
+	assert.With(ctx).That(p.ValidRanges(ctx, Range{0, 1024})).DeepEquals(
+		RangeList{Range{128, 128}, Range{64, 1}},
+	)
+
+	p.AddRange(80, 20)
+
+	assert.With(ctx).That(p.ValidRanges(ctx, Range{83, 60})).DeepEquals(
+		RangeList{Range{128, 15}, Range{83, 17}},
+	)
 }

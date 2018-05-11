@@ -117,6 +117,14 @@ func NewState(ctx context.Context) (*api.GlobalState, error) {
 	return c.NewState(ctx), nil
 }
 
+func (c* Capture) NewUninitializedStateWithAllocator(ctx context.Context, allocator memory.Allocator) *api.GlobalState {
+	s := api.NewStateWithAllocator(
+		allocator,
+		c.Header.Abi.MemoryLayout,
+	)
+	return s
+}
+
 // NewUninitializedState returns a new, uninitialized State object built for the capture.
 func (c *Capture) NewUninitializedState(ctx context.Context, rngs interval.U64RangeList) *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
@@ -136,12 +144,26 @@ func (c *Capture) NewUninitializedState(ctx context.Context, rngs interval.U64Ra
 func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 	s := c.NewUninitializedState(ctx, interval.U64RangeList{})
 	if c.InitialState != nil {
+		allPools := map[memory.PoolID]*memory.Range{}
+		for _, m := range c.InitialState.Memory {
+			high := m.Range.Base + m.Range.Size
+			id := memory.PoolID(m.Pool)
+			if _, ok := allPools[id]; !ok {
+				allPools[id] = &memory.Range{0, 0}
+			}
+			rng := allPools[id]
+			
+			if high > rng.Size {
+				rng.Size = high
+			}
+		}
+		for p, r := range allPools {
+			s.Memory.NewAt(p, r.Base+r.Size, s.Arena)
+		}
+
 		for _, m := range c.InitialState.Memory {
 			pool, _ := s.Memory.Get(memory.PoolID(m.Pool))
-			if pool == nil {
-				pool = s.Memory.NewAt(memory.PoolID(m.Pool))
-			}
-			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
+			pool.Write(ctx, m.Range.Base, memory.Resource(m.ID, m.Range.Size))
 		}
 		for k, v := range c.InitialState.APIs {
 			s.APIs[k.ID()] = v.Clone(s.Arena)
@@ -299,7 +321,7 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	d := newDecoder()
 
 	// Bind the arena used to for all allocations for this capture.
-	ctx = arena.Put(ctx, d.builder.arena)
+	ctx = arena.Put(ctx, &d.builder.arena)
 
 	// The decoder implements the ID Remapper interface,
 	// which protoconv functions need to handle resources.

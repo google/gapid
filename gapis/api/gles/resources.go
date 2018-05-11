@@ -166,7 +166,7 @@ func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 				if err != nil {
 					return nil, err
 				}
-				data := pool.Slice(l.Data().Range())
+				data := pool.Slice(ctx, l.Data().Range())
 				buf := make([]byte, data.Size())
 				if err := data.Get(ctx, 0, buf); err != nil {
 					return nil, err

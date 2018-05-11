@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -30,7 +29,9 @@ import (
 // GlobalState resolves the global *api.GlobalState at a requested point in a
 // capture.
 func GlobalState(ctx context.Context, p *path.GlobalState) (*api.GlobalState, error) {
-	obj, err := database.Build(ctx, &GlobalStateResolvable{p})
+// DO NOT CHECK THIS IN.
+// Implement a "proper" way to ge the database to not hold onto objects
+	obj, err := (&GlobalStateResolvable{p}).Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +40,7 @@ func GlobalState(ctx context.Context, p *path.GlobalState) (*api.GlobalState, er
 
 // State resolves the specific API state at a requested point in a capture.
 func State(ctx context.Context, p *path.State) (interface{}, error) {
-	return database.Build(ctx, &StateResolvable{p})
+	return (&StateResolvable{p}).Resolve(ctx)
 }
 
 // Resolve implements the database.Resolver interface.

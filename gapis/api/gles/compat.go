@@ -470,7 +470,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlDrawBuffers:
 			// Currently the default framebuffer for replay is single-buffered
 			// and so we need to transform any usage of GL_BACK to GL_FRONT.
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			bufs := cmd.Bufs().Slice(0, uint64(cmd.N()), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
 			for i, buf := range bufs {
 				if buf == GLenum_GL_BACK {
@@ -947,7 +947,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 		case *GlDeleteBuffers:
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			ids, err := cmd.Buffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Buffers()), s, out,
@@ -961,7 +961,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// (0). As we do compat for glBindFramebuffer(), scan the list of
 			// framebuffers that are being deleted, and forward them to a fake
 			// call to glBindFramebuffer(XXX, 0) if we find any.
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			fbs, err := cmd.Framebuffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				for _, fb := range fbs {
@@ -979,8 +979,9 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 		case *GlDeleteProgramPipelines:
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			ids, err := cmd.Pipelines().Slice(0, uint64(cmd.N()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Pipelines()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteProgramPipelines(cnt, buf) })
@@ -988,7 +989,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 		case *GlDeleteQueries:
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			ids, err := cmd.Queries().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Queries()), s, out,
@@ -997,7 +998,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 		case *GlDeleteRenderbuffers:
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			ids, err := cmd.Renderbuffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Renderbuffers()), s, out,
@@ -1006,7 +1007,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 		case *GlDeleteSamplers:
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			ids, err := cmd.Samplers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Samplers()), s, out,
@@ -1015,7 +1016,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 		case *GlDeleteTextures:
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			ids, err := cmd.Textures().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Textures()), s, out,
@@ -1024,7 +1025,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 		case *GlDeleteTransformFeedbacks:
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			ids, err := cmd.Ids().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().TransformFeedbacks()), s, out,
@@ -1033,7 +1034,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 		case *GlDeleteVertexArrays:
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			ids, err := cmd.Arrays().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().VertexArrays()), s, out,

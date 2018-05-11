@@ -48,13 +48,13 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 		oldState:        oldState,
 		newState:        newState,
 		cb:              CommandBuilder{Thread: 0, Arena: newState.Arena},
-		memoryIntervals: interval.U64RangeList{},
+		memoryIntervals: memory.InvertMemoryRanges(oldState.Allocator.FreeList()),
 		ta:              arena.New(),
 	}
 
 	defer sb.ta.Dispose()
 
-	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID())
+	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID(), 0, newState.Arena)
 
 	for _, k := range s.Instances().Keys() {
 		sb.createInstance(k, s.Instances().Get(k))
@@ -876,9 +876,21 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, data []
 		VkResult_VK_SUCCESS,
 	))
 
+	// These are allocated like this because we have to
+	// preserve dat over 2 commands. We cannot use the
+	// state builder helpers
 	dat := sb.newState.AllocDataOrPanic(sb.ctx, data)
 	at := NewVoidᵖ(dat.Ptr())
 	atdata := sb.newState.AllocDataOrPanic(sb.ctx, at)
+
+	// We still do have to track the ranges for these commands,
+	// otherwise when we go to set up the allocator in the future,
+	// they will be out of sync, and we will not be able to read/write the
+	// memory
+	datRng := dat.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{datRng.Base, datRng.Base + datRng.Size}, true)
+	atdataRng := atdata.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{atdataRng.Base, atdataRng.Base + atdataRng.Size}, true)
 
 	sb.write(sb.cb.VkMapMemory(
 		device.VulkanHandle(),
@@ -907,9 +919,6 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, data []
 		device.VulkanHandle(),
 		deviceMemory,
 	))
-
-	dat.Free()
-	atdata.Free()
 
 	return buffer, deviceMemory
 }

@@ -41,7 +41,8 @@ type Arena struct{ Pointer unsafe.Pointer }
 // You must call Dispose to free the arena object and any arena-owned
 // allocations.
 func New() Arena {
-	return Arena{Pointer: unsafe.Pointer(C.arena_create())}
+	a := Arena{Pointer: unsafe.Pointer(C.arena_create())}
+	return a
 }
 
 // Dispose destructs and frees the arena and all arena-owned allocations.
@@ -52,14 +53,14 @@ func (a Arena) Dispose() {
 
 // Allocate returns a pointer to a new arena-owned, contiguous block of memory
 // of the specified size and alignment.
-func (a Arena) Allocate(size, alignment int) unsafe.Pointer {
+func (a Arena) Allocate(size, alignment uint32) unsafe.Pointer {
 	a.assertNotNil()
 	return C.arena_alloc((*C.arena)(a.Pointer), C.uint32_t(size), C.uint32_t(alignment))
 }
 
 // Reallocate reallocates the memory at ptr to the new size and alignment.
 // ptr must have been allocated from this arena.
-func (a Arena) Reallocate(ptr unsafe.Pointer, size, alignment int) unsafe.Pointer {
+func (a Arena) Reallocate(ptr unsafe.Pointer, size, alignment uint32) unsafe.Pointer {
 	a.assertNotNil()
 	return C.arena_realloc((*C.arena)(a.Pointer), ptr, C.uint32_t(size), C.uint32_t(alignment))
 }
@@ -89,7 +90,7 @@ func (a Arena) Stats() Stats {
 	return Stats{int(numAllocs), int(numBytes)}
 }
 
-func (a Arena) assertNotNil() {
+func (a *Arena) assertNotNil() {
 	if a.Pointer == nil {
 		panic("nil arena")
 	}
@@ -100,15 +101,15 @@ type arenaKeyTy string
 const arenaKey = arenaKeyTy("arena")
 
 // Get returns the Arena attached to the given context.
-func Get(ctx context.Context) Arena {
+func Get(ctx context.Context) *Arena {
 	if val := ctx.Value(arenaKey); val != nil {
-		return val.(Arena)
+		return val.(*Arena)
 	}
 	panic("arena missing from context")
 }
 
 // Put amends a Context by attaching a Arena reference to it.
-func Put(ctx context.Context, d Arena) context.Context {
+func Put(ctx context.Context, d *Arena) context.Context {
 	if val := ctx.Value(arenaKey); val != nil {
 		panic("Context already holds an arena")
 	}
@@ -117,10 +118,10 @@ func Put(ctx context.Context, d Arena) context.Context {
 
 // Offsetable is used as an anonymous field of types that require a current
 // offset value.
-type Offsetable struct{ Offset int }
+type Offsetable struct{ Offset uint32 }
 
 // AlignUp rounds-up the current offset so that is is a multiple of n.
-func (o *Offsetable) AlignUp(n int) {
+func (o *Offsetable) AlignUp(n uint32) {
 	pad := n - o.Offset%n
 	if pad == n {
 		return
@@ -132,9 +133,9 @@ func (o *Offsetable) AlignUp(n int) {
 // data. Use Arena.Writer() to construct.
 type Writer struct {
 	Offsetable // The current write-offset in bytes.
-	arena      Arena
-	size       int
-	alignment  int
+	arena      *Arena
+	size       uint32
+	alignment  uint32
 	base       unsafe.Pointer
 	frozen     bool
 }
@@ -144,7 +145,7 @@ type Writer struct {
 // buffer. The buffer will always be of the specified alignment in memory.
 // The once the native buffer is no longer needed, the pointer returned by
 // Pointer() should be passed to Arena.Free().
-func (a Arena) NewWriter(size, alignment int) *Writer {
+func (a *Arena) NewWriter(size, alignment uint32) *Writer {
 	base := a.Allocate(size, alignment)
 	return &Writer{
 		arena:     a,
@@ -174,7 +175,7 @@ func (w *Writer) Pointer() unsafe.Pointer {
 // If there is not enough space in the buffer for the write, then the buffer
 // is grown via reallocation.
 // Upon returning, the write offset is incremented by size bytes.
-func (w *Writer) Write(src unsafe.Pointer, size int) {
+func (w *Writer) Write(src unsafe.Pointer, size uint32) {
 	if w.frozen {
 		panic("Cannot write to Writer after calling Pointer()")
 	}
@@ -187,7 +188,7 @@ func (w *Writer) Write(src unsafe.Pointer, size int) {
 		w.size = size
 	}
 	dst := uintptr(w.base) + uintptr(w.Offset)
-	for i := 0; i < size; i++ {
+	for i := uint32(0); i < size; i++ {
 		dst := (*byte)(unsafe.Pointer(dst + uintptr(i)))
 		src := (*byte)(unsafe.Pointer(uintptr(src) + uintptr(i)))
 		*dst = *src
@@ -209,9 +210,9 @@ func NewReader(ptr unsafe.Pointer) *Reader {
 
 // Read copies size bytes from the current read offset to dst.
 // Upon returning, the read offset is incremented by size bytes.
-func (r *Reader) Read(dst unsafe.Pointer, size int) {
+func (r *Reader) Read(dst unsafe.Pointer, size uint32) {
 	src := uintptr(r.base) + uintptr(r.Offset)
-	for i := 0; i < size; i++ {
+	for i := uint32(0); i < size; i++ {
 		src := (*byte)(unsafe.Pointer(src + uintptr(i)))
 		dst := (*byte)(unsafe.Pointer(uintptr(dst) + uintptr(i)))
 		*dst = *src

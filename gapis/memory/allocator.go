@@ -39,6 +39,9 @@ type Allocator interface {
 	// ReserveRanges reserves the given ranges in the free-list, meaning
 	// they cannot be allocated from
 	ReserveRanges(interval.U64RangeList)
+
+	// Adds an application pool from which to reserve memory ranges
+	AddApplicationPool(pool *Pool)
 }
 
 // BasicAllocator is a simple memory range allocator
@@ -46,6 +49,7 @@ type Allocator interface {
 type basicAllocator struct {
 	freeList    interval.U64RangeList
 	allocations map[uint64]uint64
+	pools       []*Pool
 }
 
 // Alloc implements Allocator.
@@ -59,6 +63,9 @@ func (c *basicAllocator) Alloc(count, align uint64) (uint64, error) {
 		if base+count <= chunk.First+chunk.Count {
 			interval.Remove(&c.freeList, interval.U64Span{Start: base, End: base + count})
 			c.allocations[base] = count
+			for _, p := range c.pools {
+				p.AddRange(base, count)
+			}
 			return base, nil
 		}
 	}
@@ -72,6 +79,10 @@ func (c *basicAllocator) Free(base uint64) error {
 		return fmt.Errorf("Attempted to free with an unknown offset %v", base)
 	}
 	delete(c.allocations, base)
+	for _, p := range c.pools {
+		p.RemoveRange(base)
+	}
+
 	interval.Merge(&c.freeList, interval.U64Span{Start: base, End: base + size}, true)
 	return nil
 }
@@ -104,6 +115,10 @@ func (c *basicAllocator) ReserveRanges(ranges interval.U64RangeList) {
 	}
 }
 
+func (c *basicAllocator) AddApplicationPool(pool *Pool) {
+	c.pools = append(c.pools, pool)
+}
+
 // NewBasicAllocator creates a new allocator which allocates
 // memory from the given list of free ranges. Memory is allocated
 // by finding the leftmost free block large enough to fit the
@@ -113,6 +128,7 @@ func NewBasicAllocator(freeList interval.U64RangeList) Allocator {
 	return &basicAllocator{
 		freeList:    freeList.Clone(),
 		allocations: make(map[uint64]uint64),
+		pools:       []*Pool{},
 	}
 }
 

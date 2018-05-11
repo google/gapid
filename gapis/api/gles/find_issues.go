@@ -46,9 +46,9 @@ type findIssues struct {
 	lastGlError GLenum
 }
 
-func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Instance) *findIssues {
+func newFindIssues(ctx context.Context, c *capture.Capture, oldState *api.GlobalState, device *device.Instance) *findIssues {
 	transform := &findIssues{
-		state:  c.NewState(ctx),
+		state: c.NewUninitializedStateWithAllocator(ctx, oldState.Allocator),
 		device: device,
 	}
 	transform.state.OnError = func(err interface{}) {

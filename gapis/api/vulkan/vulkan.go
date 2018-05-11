@@ -142,6 +142,7 @@ type markerInfo struct {
 
 func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Capture) error {
 	ctx = capture.Put(ctx, c)
+	
 	st, err := capture.NewState(ctx)
 	if err != nil {
 		return err

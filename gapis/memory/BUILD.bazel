@@ -50,8 +50,11 @@ go_library(
         "//core/data/endian:go_default_library",
         "//core/data/id:go_default_library",
         "//core/data/slice:go_default_library",
+# Remove this before checking in
+        "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
         "//core/math/u64:go_default_library",
+        "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/database:go_default_library",
         "@com_github_pkg_errors//:go_default_library",

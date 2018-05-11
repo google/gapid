@@ -129,7 +129,7 @@ func (a API) Replay(
 		case issuesRequest:
 			deadCodeElimination.KeepAllAlive = true
 			if issues == nil {
-				issues = newFindIssues(ctx, capture, device)
+				issues = newFindIssues(ctx, capture, out.State(), device)
 			}
 			issues.reportTo(rr.Result)
 			onCompatError = func(ctx context.Context, id api.CmdID, cmd api.Cmd, err error) {

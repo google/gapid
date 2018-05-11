@@ -143,7 +143,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *{{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
+    ϟa := *arena.Get(ctx)¶
     cb := CommandBuilder{uint64(from.GetThread()), ϟa}¶
     {{range $p := $.CallParameters}}
       {{$proto := $p.Name | ProtoGoName}}
@@ -214,7 +214,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
+    ϟa := *arena.Get(ctx)¶
     ϟc := Make{{$name}}(ϟa)¶
     {{range $v := $.Fields}}
       {{Template "Convert.From" "Field" $v}}
@@ -250,7 +250,7 @@
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
     return ϟrefs.GetReferencedObject(from.GetReferenceID(), Nil{{$name}}, func() (interface{}, func()) {»¶
-      ϟa := arena.Get(ctx)¶
+      ϟa := *arena.Get(ctx)¶
       ϟobj := Make{{$name}}(ϟa)¶
       return ϟobj, func() {
         ϟobj.Set({{Template "Convert.FromProto" "Type" $.To "Value" "from.Value"}})¶
@@ -293,7 +293,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
+    ϟa := *arena.Get(ctx)¶
     ϟobj := New{{$name}}(ϟa)¶
     if from.GetReferenceID() == 0 {»¶
       return ϟobj¶

@@ -90,20 +90,39 @@ func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrInvalidMemoryPool(p.Pool)}
 	}
 
-	slice := pool.Slice(r)
-
 	if !p.ExcludeObserved {
-		observed = slice.ValidRanges()
-	}
-
-	var data []byte
-	if !p.ExcludeData && slice.Size() > 0 {
-		data = make([]byte, slice.Size())
-		if err := slice.Get(ctx, 0, data); err != nil {
-			return nil, err
+		observed = pool.ValidRanges(ctx, r)
+		for i, _ := range observed {
+			observed[i].Base -= r.Base
 		}
 	}
 
+	var data []byte
+	if !p.ExcludeData {
+		if (r.Size > 0) {
+			ranges := pool.ValidRanges(ctx, r)
+			data = make([]byte, r.Size)
+			size := uint64(0)
+			if len(ranges) > 0 {
+				lastRange := ranges[len(ranges) - 1]
+				size = (lastRange.Base - r.Base) + lastRange.Size
+			}
+			if (size > 0) {
+
+				for _, rng := range ranges {
+					offset := rng.Base - r.Base
+					slice := pool.Slice(ctx, rng)
+					if (slice.Size() > 0) {
+						if err := slice.Get(ctx, 0, data[offset:offset + rng.Size]); err != nil {
+							return nil, err
+						}
+					}
+				}
+			}
+		}
+	}
+
+	
 	return &service.Memory{
 		Data:     data,
 		Reads:    service.NewMemoryRanges(reads),

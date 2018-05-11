@@ -69,7 +69,7 @@
   ¶
   // StateFrom builds a State from the storage form.¶
   func StateFrom(ctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *State {»¶
-    ϟc := NewState(arena.Get(ctx))¶
+    ϟc := NewState(*arena.Get(ctx))¶
     ϟa := ϟc.Arena(); _ = ϟa¶
     {{range $g := $.Globals}}
       {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}

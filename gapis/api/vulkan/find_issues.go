@@ -38,9 +38,9 @@ type findIssues struct {
 	res    []replay.Result
 }
 
-func newFindIssues(ctx context.Context, c *capture.Capture) *findIssues {
+func newFindIssues(ctx context.Context, c *capture.Capture, oldState *api.GlobalState) *findIssues {
 	t := &findIssues{
-		state: c.NewState(ctx),
+		state: c.NewUninitializedStateWithAllocator(ctx, oldState.Allocator),
 	}
 	t.state.OnError = func(err interface{}) {
 		if issue, ok := err.(replay.Issue); ok {

@@ -282,7 +282,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	createInfoPtr := a.PCreateInfo()
 	allocated := []*api.AllocResult{}
 	if b != nil {
-		a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+		a.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 		createInfo := a.PCreateInfo().MustRead(ctx, a, s, nil)
 		defer func() {
 			for _, d := range allocated {
@@ -379,10 +379,10 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	l := s.MemoryLayout
 	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory.ApplicationPool())
+	o.ApplyReads(ctx, s.Memory.ApplicationPool())
 	// Apply the write observation before having the replay device calling the vkAcquireNextImageKHR() command.
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
-	o.ApplyWrites(s.Memory.ApplicationPool())
+	o.ApplyWrites(ctx, s.Memory.ApplicationPool())
 	_ = a.PImageIndex().Slice(0, 1, l).MustRead(ctx, a, s, b)
 	if b != nil {
 		a.Call(ctx, s, b)

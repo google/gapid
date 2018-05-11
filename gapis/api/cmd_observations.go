@@ -49,20 +49,20 @@ func (o *CmdObservations) AddWrite(rng memory.Range, id id.ID) {
 
 // ApplyReads applies all the observed reads to memory pool p.
 // This is a no-op when called when o is nil.
-func (o *CmdObservations) ApplyReads(p *memory.Pool) {
+func (o *CmdObservations) ApplyReads(ctx context.Context, p *memory.Pool) {
 	if o != nil {
 		for _, r := range o.Reads {
-			p.Write(r.Range.Base, memory.Resource(r.ID, r.Range.Size))
+			p.Write(ctx, r.Range.Base, memory.Resource(r.ID, r.Range.Size))
 		}
 	}
 }
 
 // ApplyWrites applies all the observed writes to the memory pool p.
 // This is a no-op when called when o is nil.
-func (o *CmdObservations) ApplyWrites(p *memory.Pool) {
+func (o *CmdObservations) ApplyWrites(ctx context.Context, p *memory.Pool) {
 	if o != nil {
 		for _, w := range o.Writes {
-			p.Write(w.Range.Base, memory.Resource(w.ID, w.Range.Size))
+			p.Write(ctx, w.Range.Base, memory.Resource(w.ID, w.Range.Size))
 		}
 	}
 }

@@ -40,9 +40,6 @@ type GlobalState struct {
 	// used to create the capture.
 	MemoryLayout *device.MemoryLayout
 
-	// Arena is the memory arena used for state allocations.
-	Arena arena.Arena
-
 	// Memory holds the memory state of the application.
 	Memory memory.Pools
 
@@ -51,6 +48,9 @@ type GlobalState struct {
 
 	// Allocator keeps track of and reserves memory areas not used in the trace.
 	Allocator memory.Allocator
+
+	// Arena is the arena that should be used to house all actual allocations
+	Arena arena.Arena
 
 	// OnResourceCreated is called when a new resource is created.
 	OnResourceCreated func(Resource)
@@ -108,13 +108,16 @@ func NewStateWithEmptyAllocator(memoryLayout *device.MemoryLayout) *GlobalState 
 // NewStateWithAllocator returns a new, default-initialized State object,
 // that uses the given memory.Allocator instance.
 func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.MemoryLayout) *GlobalState {
-	return &GlobalState{
+	arena := arena.New()
+	gs := &GlobalState{
 		MemoryLayout: memoryLayout,
-		Arena:        arena.New(),
-		Memory:       memory.NewPools(),
+		Arena:        arena,
+		Memory:       memory.NewPools(memory.InvertMemoryRanges(allocator.FreeList()), arena),
 		APIs:         map[ID]State{},
 		Allocator:    allocator,
 	}
+	allocator.AddApplicationPool(gs.Memory.ApplicationPool())
+	return gs
 }
 
 func (s GlobalState) String() string {
@@ -134,8 +137,8 @@ func (s GlobalState) MemoryReader(ctx context.Context, d memory.Data) binary.Rea
 
 // MemoryWriter returns a binary writer using the state's memory endianness to
 // write data to the pool p, for the range rng.
-func (s GlobalState) MemoryWriter(p memory.PoolID, rng memory.Range) binary.Writer {
-	bw := memory.Writer(s.Memory.MustGet(p), rng)
+func (s GlobalState) MemoryWriter(ctx context.Context, p memory.PoolID, rng memory.Range) binary.Writer {
+	bw := memory.Writer(ctx, s.Memory.MustGet(p), rng)
 	return endian.Writer(bw, s.MemoryLayout.GetEndian())
 }
 
@@ -147,15 +150,24 @@ func (s GlobalState) MemoryDecoder(ctx context.Context, d memory.Data) *memory.D
 
 // MemoryEncoder returns a memory encoder using the state's memory layout
 // to encode to the pool p, for the range rng.
-func (s GlobalState) MemoryEncoder(p memory.PoolID, rng memory.Range) *memory.Encoder {
-	return memory.NewEncoder(s.MemoryWriter(p, rng), s.MemoryLayout)
+func (s GlobalState) MemoryEncoder(ctx context.Context, p memory.PoolID, rng memory.Range) *memory.Encoder {
+	return memory.NewEncoder(s.MemoryWriter(ctx, p, rng), s.MemoryLayout)
 }
 
 // Alloc allocates a memory range using the Allocator associated with
 // the given State, and returns a AllocResult that can be used to access the
 // pointer, and range.
 func (s *GlobalState) Alloc(ctx context.Context, size uint64) (AllocResult, error) {
-	at, err := s.Allocator.Alloc(size, 8)
+	// Force at least one byte to be allocated,
+	// otherwise we can end up at the same location, and this will cause
+	// frees to overlap
+	bufLength := size
+	if bufLength == 0 {
+		bufLength = 1
+	}
+
+	at, err := s.Allocator.Alloc(bufLength, 8)
+
 	if err != nil {
 		return AllocResult{}, err
 	}
@@ -176,11 +188,18 @@ func (s *GlobalState) AllocData(ctx context.Context, v ...interface{}) (AllocRes
 	}
 
 	bufLength := uint64(len(buf.Bytes()))
+	// Force at least one byte to be allocated,
+	// otherwise we can end up at the same location, and this will cause
+	// frees to overlap
+	if bufLength == 0 {
+		bufLength = 1
+	}
 
 	at, err := s.Allocator.Alloc(bufLength, 8)
 	if err != nil {
 		return AllocResult{}, err
 	}
+
 	return AllocResult{id: id, allocator: s.Allocator, rng: memory.Range{Base: at, Size: bufLength}}, nil
 }
 

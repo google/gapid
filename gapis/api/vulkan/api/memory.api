@@ -50,7 +50,7 @@
   void*                   MappedLocation
   u32                     MemoryTypeIndex
   @spy_disabled
-  @hidden @nobox @internal u8[]     Data
+  @nobox @internal u8[]     Data
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   ref!MemoryDedicatedAllocationInfo DedicatedAllocationNV
   ref!MemoryDedicatedAllocationInfo DedicatedAllocationKHR

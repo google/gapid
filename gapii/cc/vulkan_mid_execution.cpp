@@ -293,7 +293,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     pool->buffer = nullptr;
 
     memory::Observation observation;
-    observation.set_base(0);
+    observation.set_base(pool->size - 1);
     observation.set_size(0);
     observation.set_resindex(empty_index);
     observation.set_pool(pool->id);

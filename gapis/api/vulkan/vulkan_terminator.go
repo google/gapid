@@ -317,7 +317,7 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 	c := GetState(s)
 	l := s.MemoryLayout
 	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory.ApplicationPool())
+	o.ApplyReads(ctx, s.Memory.ApplicationPool())
 	submitInfo := a.PSubmits().Slice(0, uint64(a.SubmitCount()), l)
 	skipAll := len(idx) == 0
 

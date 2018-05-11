@@ -164,7 +164,7 @@
       {{Global "CurrentFunction" $}}
 
       {{/* simulate the call */}}
-      ϟo.ApplyReads(ϟg.Memory.ApplicationPool())
+      ϟo.ApplyReads(ϟctx, ϟg.Memory.ApplicationPool())
       {{Template "Block" $.Block}}
 
       return task.StopReason(ϟctx)
@@ -664,7 +664,7 @@
   {{end}}
 
   {{/* Merge the observed writes into the application pool */}}
-  ϟo.ApplyWrites(ϟg.Memory.ApplicationPool())
+  ϟo.ApplyWrites(ϟctx, ϟg.Memory.ApplicationPool())
 {{end}}
 
 

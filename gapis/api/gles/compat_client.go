@@ -96,7 +96,7 @@ func compatDrawElements(
 			// The indices are also in client memory, so we need to apply the
 			// command's reads now so that the indices can be read from the
 			// application pool.
-			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 			indexSize := DataTypeSize(cmd.IndicesType())
 			data := U8ᵖ(cmd.Indices()).Slice(0, uint64(indexSize*int(cmd.IndicesCount())), s.MemoryLayout)
 			limits, ok := cmd.indexLimits()
@@ -200,7 +200,7 @@ func moveClientVBsToVAs(
 	// We need to do this as the glBufferData calls below will require the data.
 	dID := id.Derived()
 	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+		cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 		return nil
 	}))
 

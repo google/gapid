@@ -15,15 +15,14 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"io"
 )
 
 // Writer returns a binary writer for the specified memory pool and range.
-func Writer(p *Pool, rng Range) io.Writer {
-	b := make([]byte, rng.Size)
-	p.Write(rng.Base, Blob(b))
-	w := writer(b)
+func Writer(ctx context.Context, p *Pool, rng Range) io.Writer {
+	w := writer(p.WriteableSlice(rng))
 	return &w
 }
 

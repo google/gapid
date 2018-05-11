@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -149,7 +150,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	s := out.State()
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
-	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+	cmd.Extras().Observations().ApplyReads(ctx, s.Memory.ApplicationPool())
 
 	if image, ok := cmd.(*VkCreateImage); ok {
 		pinfo := image.PCreateInfo()
@@ -267,7 +268,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			return
 		}
 		l := s.MemoryLayout
-		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
+		cmd.Extras().Observations().ApplyWrites(ctx, s.Memory.ApplicationPool())
 		numDev := e.PPhysicalDeviceCount().Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0]
 		devSlice := e.PPhysicalDevices().Slice(0, uint64(numDev), l)
 		devs := devSlice.MustRead(ctx, cmd, s, nil)
@@ -289,6 +290,7 @@ func buildReplayEnumeratePhysicalDevices(
 	ctx context.Context, s *api.GlobalState, cb CommandBuilder, instance VkInstance,
 	count uint32, devices []VkPhysicalDevice,
 	propertiesInOrder []VkPhysicalDeviceProperties) *ReplayEnumeratePhysicalDevices {
+
 	numDevData := s.AllocDataOrPanic(ctx, count)
 	phyDevData := s.AllocDataOrPanic(ctx, devices)
 	dids := make([]uint64, 0)
@@ -301,7 +303,7 @@ func buildReplayEnumeratePhysicalDevices(
 	return cb.ReplayEnumeratePhysicalDevices(
 		instance, numDevData.Ptr(), phyDevData.Ptr(), devIDData.Ptr(),
 		VkResult_VK_SUCCESS).AddRead(
-		numDevData.Data()).AddRead(phyDevData.Data()).AddRead(devIDData.Data())
+		numDevData.Data()).AddWrite(phyDevData.Data()).AddRead(devIDData.Data())
 }
 
 // destroyResourceAtEOS is a transformation that destroys all active
@@ -473,6 +475,8 @@ func (a API) Replay(
 	dceInfo := dCEInfo{}
 
 	expandedCmds := false
+	expandedRanges := interval.U64RangeList{}
+
 	numInitialCommands := 0
 	expandCommands := func() (int, error) {
 		if expandedCmds {
@@ -493,7 +497,9 @@ func (a API) Replay(
 		} else {
 			// If the capture contains initial state, prepend the commands to build the state.
 			initialCmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)
+			expandedRanges = im
 			out.State().Allocator.ReserveRanges(im)
+			out.State().Memory.ApplicationPool().ReserveRanges(im)
 			numInitialCommands = len(initialCmds)
 			if len(initialCmds) > 0 {
 				cmds = append(initialCmds, cmds...)
@@ -508,11 +514,15 @@ func (a API) Replay(
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case issuesRequest:
+			optimize = false
 			if issues == nil {
-				issues = newFindIssues(ctx, capture)
+				_, err := expandCommands()
+				if err != nil {
+					return err
+				}
+				issues = newFindIssues(ctx, capture, out.State())
 			}
 			issues.reportTo(rr.Result)
-			optimize = false
 
 		case framebufferRequest:
 

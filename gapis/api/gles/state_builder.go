@@ -57,7 +57,7 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	// Ensure that all pool IDs are distinct between the old state and new state.
 	// This helps with verification at the end by ensuring that diffing algorithm
 	// will not miss diffs just because the pool IDs happen to be same by chance.
-	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID())
+	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID(), 0, newState.Arena)
 
 	// Create EGL contexts (possibly shared)
 	representative := map[ShareListʳ]EGLContext{}

@@ -492,9 +492,9 @@ import (
   {{if $el_is_char}}
     // Make{{$slice_ty}}FromString returns a {{$slice_ty}} backed by a new
     // memory pool containing a copy of str.
-    func Make{{$slice_ty}}FromString(str string, ϟg *ϟapi.GlobalState) {{$slice_ty}} {
-      id, pool := ϟg.Memory.New()
-      pool.Write(0, ϟmem.Blob([]byte(str)))
+    func Make{{$slice_ty}}FromString(ϟctx context.Context, str string, ϟg *ϟapi.GlobalState) {{$slice_ty}} {
+      id, pool := ϟg.Memory.New(uint64(len(str)), ϟg.Arena)
+      pool.Write(ϟctx, 0, ϟmem.Blob([]byte(str)))
       return {{$slice_ty}}{
         size:  uint64(len(str)),
         count: uint64(len(str)),
@@ -527,7 +527,7 @@ import (
   // Make{{$slice_ty}} returns a {{$slice_ty}} backed by a new memory pool.
   func Make{{$slice_ty}}(count uint64, ϟg *ϟapi.GlobalState) {{$slice_ty}} {
     ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
-    id, _ := ϟg.Memory.New()
+    id, _ := ϟg.Memory.New({{Template "Go.SizeOf" $s.To}} * count, ϟg.Arena)
     return {{$slice_ty}}{
       size:  count * {{Template "Go.SizeOf" $s.To}},
       count: count,
@@ -537,9 +537,10 @@ import (
 
   // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
   func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
+    ϟl := ϟg.MemoryLayout; _ = ϟl
     s.OnRead(ϟctx, ϟc, ϟg, ϟb)
-    id, dst := ϟg.Memory.New()
-    dst.Write(0, ϟg.Memory.MustGet(s.pool).Slice(s.Range()))
+    id, dst := ϟg.Memory.New({{Template "Go.SizeOf" $s.To}} * s.count, ϟg.Arena)
+    dst.Write(ϟctx, 0, ϟg.Memory.MustGet(s.pool).Slice(ϟctx, s.Range()))
     return {{$slice_ty}}{
       size:  s.size,
       count: s.count,
@@ -580,7 +581,7 @@ import (
   // ResourceID returns an identifier to a resource representing the data of
   // this slice.
   func (s {{$slice_ty}}) ResourceID(ϟctx context.Context, ϟg *ϟapi.GlobalState) id.ID {
-    id, err := ϟg.Memory.MustGet(s.Pool()).Slice(s.Range()).ResourceID(ϟctx)
+    id, err := ϟg.Memory.MustGet(s.Pool()).Slice(ϟctx, s.Range()).ResourceID(ϟctx)
     if err != nil {
       panic(err)
     }
@@ -589,22 +590,22 @@ import (
 
   // Reader returns a binary reader for the slice.
   func (s {{$slice_ty}}) Reader(ϟctx context.Context, ϟg *ϟapi.GlobalState) binary.Reader {
-    return ϟg.MemoryReader(ϟctx, ϟg.Memory.MustGet(s.Pool()).Slice(s.Range()))
+    return ϟg.MemoryReader(ϟctx, ϟg.Memory.MustGet(s.Pool()).Slice(ϟctx, s.Range()))
   }
 
   // Writer returns a binary writer for the slice.
-  func (s {{$slice_ty}}) Writer(ϟg *ϟapi.GlobalState) binary.Writer {
-    return ϟg.MemoryWriter(s.Pool(), s.Range())
+  func (s {{$slice_ty}}) Writer(ϟctx context.Context, ϟg *ϟapi.GlobalState) binary.Writer {
+    return ϟg.MemoryWriter(ϟctx, s.Pool(), s.Range())
   }
 
   // Decoder returns a memory decoder for the slice.
   func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟg *ϟapi.GlobalState) *ϟmem.Decoder {
-    return ϟg.MemoryDecoder(ϟctx, ϟg.Memory.MustGet(s.Pool()).Slice(s.Range()))
+    return ϟg.MemoryDecoder(ϟctx, ϟg.Memory.MustGet(s.Pool()).Slice(ϟctx, s.Range()))
   }
 
   // Encoder returns a memory encoder for the slice.
-  func (s {{$slice_ty}}) Encoder(ϟg *ϟapi.GlobalState) *ϟmem.Encoder {
-    return ϟg.MemoryEncoder(s.Pool(), s.Range())
+  func (s {{$slice_ty}}) Encoder(ϟctx context.Context, ϟg *ϟapi.GlobalState) *ϟmem.Encoder {
+    return ϟg.MemoryEncoder(ϟctx, s.Pool(), s.Range())
   }
 
   {{if not $el_is_void}}
@@ -655,7 +656,7 @@ import (
     func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) (uint64, error) {
       ϟa := ϟg.Arena; _ = ϟa
       count := u64.Min(s.Count(), uint64(len(src)))
-      e := s.Slice(0, count).Encoder(ϟg)
+      e := s.Slice(0, count).Encoder(ϟctx, ϟg)
       ϟmem.Write(e, src[:count])
       s.OnWrite(ϟctx, ϟc, ϟg, ϟb)
       if err := e.Error(); err != nil {
@@ -683,7 +684,7 @@ import (
       } else {
     {{end}}
       src.OnRead(ϟctx, ϟc, ϟg, ϟb)
-      ϟg.Memory.MustGet(dst.Pool()).Write(dst.Base(), ϟg.Memory.MustGet(src.Pool()).Slice(src.Range()))
+      ϟg.Memory.MustGet(dst.Pool()).Write(ϟctx, dst.Base(), ϟg.Memory.MustGet(src.Pool()).Slice(ϟctx, src.Range()))
       dst.OnWrite(ϟctx, ϟc, ϟg, ϟb)
     {{if $el_is_ptr}} } {{end}}
       return dst, src
@@ -942,19 +943,8 @@ import (
   {{if $el_is_char}}
     // StringSlice returns a slice starting at p and ending at the first 0 byte null-terminator.
     func (p {{$ptr_ty}}) StringSlice(ϟctx context.Context, ϟg *ϟapi.GlobalState) Charˢ {
-      numBytes := uint64(2^6)
-      i, ϟd := uint64(0), ϟg.MemoryDecoder(ϟctx, ϟg.Memory.MustGet(ϟmem.ApplicationPool).TempSlice(ϟmem.Range{Base: uint64(p), Size: numBytes}))
-
-      for {
-        if i >= numBytes {
-          ϟd = ϟg.MemoryDecoder(ϟctx, ϟg.Memory.MustGet(ϟmem.ApplicationPool).TempSlice(ϟmem.Range{Base: uint64(p) + i, Size: numBytes}))
-        }
-
-        i++
-        if b := ϟd.U8(); b == 0 {
-          return Charˢ(p.Slice(0, i, ϟg.MemoryLayout))
-        }
-      }
+      strlen := uint64(ϟg.Memory.MustGet(ϟmem.ApplicationPool).StringSize(uint64(p)))
+      return Charˢ(p.Slice(0, strlen, ϟg.MemoryLayout))
     }
   {{end}}
 
