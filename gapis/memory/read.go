@@ -80,9 +80,17 @@ func decode(d *Decoder, v reflect.Value) {
 		v.SetInt(int64(d.Int()))
 	case reflect.Uint:
 		v.SetUint(uint64(d.Uint()))
-	case reflect.Array, reflect.Slice:
+	case reflect.Array:
 		for i, c := 0, v.Len(); i < c; i++ {
 			decode(d, v.Index(i))
+		}
+	case reflect.Slice:
+		if t.Elem().Kind() == reflect.Uint8 && !t.Elem().Implements(tyCharTy) {
+			d.Data(v.Interface().([]uint8))
+		} else {
+			for i, c := 0, v.Len(); i < c; i++ {
+				decode(d, v.Index(i))
+			}
 		}
 	case reflect.Struct:
 		d.Align(AlignOf(v.Type(), d.m))

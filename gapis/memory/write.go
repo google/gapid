@@ -76,9 +76,17 @@ func encode(e *Encoder, v reflect.Value) {
 		e.Int(Int(v.Int()))
 	case reflect.Uint:
 		e.Uint(Uint(v.Uint()))
-	case reflect.Array, reflect.Slice:
+	case reflect.Array:
 		for i, c := 0, v.Len(); i < c; i++ {
 			encode(e, v.Index(i))
+		}
+	case reflect.Slice:
+		if t.Elem().Kind() == reflect.Uint8 && !t.Elem().Implements(tyCharTy) {
+			e.Data(v.Interface().([]uint8))
+		} else {
+			for i, c := 0, v.Len(); i < c; i++ {
+				encode(e, v.Index(i))
+			}
 		}
 	case reflect.Struct:
 		e.Align(AlignOf(v.Type(), e.m))
