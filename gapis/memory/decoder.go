@@ -168,6 +168,11 @@ func (d *Decoder) Bool() bool {
 	return d.r.Uint8() != 0
 }
 
+// Data reads raw bytes into buf.
+func (d *Decoder) Data(buf []byte) {
+	d.r.Data(buf)
+}
+
 // Error returns the error state of the underlying reader.
 func (d *Decoder) Error() error {
 	return d.r.Error()

@@ -169,6 +169,11 @@ func (e *Encoder) Bool(v bool) {
 	e.o++
 }
 
+// Data writes raw bytes from buf.
+func (e *Encoder) Data(buf []byte) {
+	e.w.Data(buf)
+}
+
 // Error returns the error state of the underlying writer.
 func (e *Encoder) Error() error {
 	return e.w.Error()
