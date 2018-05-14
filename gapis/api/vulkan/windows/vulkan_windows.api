@@ -66,5 +66,6 @@ cmd VkResult vkCreateWin32SurfaceKHR(
 cmd VkBool32 vkGetPhysicalDeviceWin32PresentationSupportKHR(
     VkPhysicalDevice                            physicalDevice,
     u32                                         queueFamilyIndex) {
+    if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
     return ?
 }
