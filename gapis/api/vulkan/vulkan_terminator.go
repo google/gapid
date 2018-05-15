@@ -360,9 +360,10 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 	if !lrp.IsNil() {
 		numSubpasses := uint32(lrp.SubpassDescriptions().Len())
 		for i := 0; uint32(i) < numSubpasses-lsp-1; i++ {
-			extraCommands = append(extraCommands, &VkCmdNextSubpassArgs{})
+			extraCommands = append(extraCommands,
+				NewVkCmdNextSubpassArgsʳ(VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE))
 		}
-		extraCommands = append(extraCommands, &VkCmdEndRenderPassArgs{})
+		extraCommands = append(extraCommands, NewVkCmdEndRenderPassArgsʳ())
 	}
 
 	cmdBuffer := c.CommandBuffers().Get(newCommandBuffers[lastCommandBuffer])
