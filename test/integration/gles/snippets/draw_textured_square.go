@@ -17,15 +17,12 @@ package snippets
 import (
 	"context"
 
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/memory"
 )
 
-// DrawTexturedSquare returns the command list needed to create a context then
-// draw a textured square.
-func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedContext bool, ml *device.MemoryLayout) (cmds []api.Cmd, draw api.CmdID, swap api.CmdID) {
+// DrawTexturedSquare returns the command list needed draw a textured square.
+func (b *Builder) DrawTexturedSquare(ctx context.Context) (draw, swap api.CmdID) {
 	squareVertices := []float32{
 		-0.5, -0.5, 0.5,
 		-0.5, +0.5, 0.5,
@@ -54,9 +51,7 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 			gl_FragColor = texture2D(tex, texcoord);
 		}`
 
-	b := newBuilder(ctx, cb, ml)
 	vs, fs, prog, pos := b.newShaderID(), b.newShaderID(), b.newProgramID(), gles.AttributeLocation(0)
-	eglContext, eglSurface, eglDisplay := b.newEglContext(128, 128, memory.Nullptr, false)
 	texLoc := gles.UniformLocation(0)
 
 	textureNames := []gles.TextureId{1}
@@ -97,18 +92,18 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 	lpe.SetLinkStatus(gles.GLboolean_GL_TRUE)
 	lpe.SetActiveResources(resources)
 
-	b.cmds = append(b.cmds,
-		api.WithExtras(cb.GlLinkProgram(prog), lpe),
-		gles.GetUniformLocation(ctx, b.state, cb, prog, "tex", texLoc),
+	b.Add(
+		api.WithExtras(b.cb.GlLinkProgram(prog), lpe),
+		gles.GetUniformLocation(ctx, b.state, b.cb, prog, "tex", texLoc),
 	)
 
 	// Build the texture resource
-	b.cmds = append(b.cmds,
-		cb.GlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
-		cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
-		cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		cb.GlTexImage2D(
+	b.Add(
+		b.cb.GlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
+		b.cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		b.cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		b.cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		b.cb.GlTexImage2D(
 			gles.GLenum_GL_TEXTURE_2D,
 			0,
 			gles.GLint(gles.GLenum_GL_RGB),
@@ -121,32 +116,24 @@ func DrawTexturedSquare(ctx context.Context, cb gles.CommandBuilder, sharedConte
 		).AddRead(textureData.Data()),
 	)
 
-	// Switch to new context which shares resources with the first one
-	if sharedContext {
-		eglContext, eglSurface, eglDisplay = b.newEglContext(128, 128, eglContext, false)
-	}
-
 	// Render square using the build program and texture
-	b.cmds = append(b.cmds,
-		cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
-		cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
-		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
-		cb.GlUseProgram(prog),
-		cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
-		cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
-		cb.GlUniform1i(texLoc, 0),
-		gles.GetAttribLocation(ctx, b.state, cb, prog, "position", pos),
-		cb.GlEnableVertexAttribArray(pos),
-		cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
-		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
+	b.Add(
+		b.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
+		b.cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
+		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
+		b.cb.GlUseProgram(prog),
+		b.cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
+		b.cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		b.cb.GlUniform1i(texLoc, 0),
+		gles.GetAttribLocation(ctx, b.state, b.cb, prog, "position", pos),
+		b.cb.GlEnableVertexAttribArray(pos),
+		b.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
+		b.cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
 			AddRead(squareIndicesPtr.Data()).
 			AddRead(squareVerticesPtr.Data()),
 	)
-	draw = api.CmdID(len(b.cmds) - 1)
-	b.cmds = append(b.cmds,
-		cb.EglSwapBuffers(eglDisplay, eglSurface, gles.EGLBoolean(1)),
-	)
-	swap = api.CmdID(len(b.cmds) - 1)
+	draw = b.Last()
+	swap = b.SwapBuffers()
 
-	return b.cmds, draw, swap
+	return draw, swap
 }

@@ -17,36 +17,28 @@ package snippets
 import (
 	"context"
 
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/memory"
 )
 
-// ClearBackbuffer returns the command list needed to create a context then
-// clear, sequentially the backbuffer to red, green, blue and black.
-func ClearBackbuffer(ctx context.Context, cb gles.CommandBuilder, ml *device.MemoryLayout) (cmds []api.Cmd, red, green, blue, black api.CmdID) {
-	b := newBuilder(ctx, cb, ml)
-	b.newEglContext(64, 64, memory.Nullptr, false)
-	b.cmds = append(b.cmds,
-		cb.GlClearColor(1.0, 0.0, 0.0, 1.0),
-		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
-	)
-	red = api.CmdID(len(b.cmds) - 1)
-	b.cmds = append(b.cmds,
-		cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
-		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
-	)
-	green = api.CmdID(len(b.cmds) - 1)
-	b.cmds = append(b.cmds,
-		cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
-		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
-	)
-	blue = api.CmdID(len(b.cmds) - 1)
-	b.cmds = append(b.cmds,
-		cb.GlClearColor(0.0, 0.0, 0.0, 1.0),
-		cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
-	)
-	black = api.CmdID(len(b.cmds) - 1)
-	return b.cmds, red, green, blue, black
+// ClearBackbuffer returns the command list needed to sequentially clear the
+// backbuffer to red, green, blue and black.
+func (b *Builder) ClearBackbuffer(ctx context.Context) (red, green, blue, black api.CmdID) {
+	red = b.Add(
+		b.cb.GlClearColor(1.0, 0.0, 0.0, 1.0),
+		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+	) + 1
+	green = b.Add(
+		b.cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
+		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+	) + 1
+	blue = b.Add(
+		b.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
+		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+	) + 1
+	black = b.Add(
+		b.cb.GlClearColor(0.0, 0.0, 0.0, 1.0),
+		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+	) + 1
+	return red, green, blue, black
 }

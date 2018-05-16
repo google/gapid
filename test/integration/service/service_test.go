@@ -108,8 +108,8 @@ var (
 		StringTables: stringtables,
 	}
 	testCaptureData []byte
-	drawAtomIndex   uint64
-	swapAtomIndex   uint64
+	drawCmdIndex    uint64
+	swapCmdIndex    uint64
 )
 
 func init() {
@@ -127,12 +127,16 @@ func init() {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := gles.CommandBuilder{Thread: 0}
 	h := &capture.Header{Abi: device.WindowsX86_64}
-	cmds, draw, swap := snippets.DrawTexturedSquare(ctx, cb, false, h.Abi.MemoryLayout)
-	p, err := capture.New(ctx, "sample", h, cmds)
+
+	b := snippets.NewBuilder(ctx, cb, h.Abi.MemoryLayout)
+	b.CreateContext(128, 128, false, false)
+	draw, swap := b.DrawTexturedSquare(ctx)
+
+	p, err := capture.New(ctx, "sample", h, b.Cmds)
 	check(err)
 	buf := bytes.Buffer{}
 	check(capture.Export(ctx, p, &buf))
-	testCaptureData, drawAtomIndex, swapAtomIndex = buf.Bytes(), uint64(draw), uint64(swap)
+	testCaptureData, drawCmdIndex, swapCmdIndex = buf.Bytes(), uint64(draw), uint64(swap)
 }
 
 func TestGetServerInfo(t *testing.T) {
@@ -195,7 +199,7 @@ func TestGetFramebufferAttachment(t *testing.T) {
 	devices, err := server.GetDevices(ctx)
 	assert.With(ctx).ThatError(err).Succeeded()
 	assert.With(ctx).ThatSlice(devices).IsNotEmpty()
-	after := capture.Command(swapAtomIndex)
+	after := capture.Command(swapCmdIndex)
 	attachment := api.FramebufferAttachment_Color0
 	settings := &service.RenderSettings{}
 	renderSettings := &service.ReplaySettings{devices[0], false}
@@ -219,13 +223,13 @@ func TestGet(t *testing.T) {
 		{capture, T((*service.Capture)(nil))},
 		{capture.Contexts(), T((*service.Contexts)(nil))},
 		{capture.Commands(), T((*service.Commands)(nil))},
-		{capture.Command(swapAtomIndex), T((*api.Command)(nil))},
+		{capture.Command(swapCmdIndex), T((*api.Command)(nil))},
 		// TODO: box.go doesn't currently support serializing structs this big.
 		// See bug https://github.com/google/gapid/issues/1761
 		// panic: reflect.nameFrom: name too long
-		// {capture.Command(swapAtomIndex).StateAfter(), any},
-		{capture.Command(swapAtomIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},
-		{capture.Command(drawAtomIndex).Mesh(nil), T((*api.Mesh)(nil))},
+		// {capture.Command(swapCmdIndex).StateAfter(), any},
+		{capture.Command(swapCmdIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},
+		{capture.Command(drawCmdIndex).Mesh(nil), T((*api.Mesh)(nil))},
 		{capture.CommandTree(nil), T((*service.CommandTree)(nil))},
 		{capture.Report(nil, nil), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},
