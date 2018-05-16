@@ -34,5 +34,5 @@ func TestCallReflectedCommand(t *testing.T) {
 		memory.Nullptr,
 		VkResult_VK_SUCCESS,
 	)
-	CallReflectedCommand(ctx, cmd, 10, s, nil, subDovkCmdDispatch, MakeVkCmdDispatchArgsʳ())
+	CallReflectedCommand(ctx, cmd, 10, s, nil, subDovkCmdWriteTimestamp, NewVkCmdWriteTimestampArgsʳ(0, 0, 0))
 }
