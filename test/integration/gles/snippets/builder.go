@@ -66,12 +66,12 @@ func (b *Builder) Last() api.CmdID {
 
 // Capture encodes and writes the command list to the database, returning
 // an identifier to the newly constructed and stored Capture.
-func (b *Builder) Capture(ctx context.Context) *path.Capture {
+func (b *Builder) Capture(ctx context.Context, name string) *path.Capture {
 	h := &capture.Header{
 		Device: b.device,
 		Abi:    b.abi,
 	}
-	out, err := capture.New(ctx, "capture", h, b.Cmds)
+	out, err := capture.New(ctx, name, h, b.Cmds)
 	if err != nil {
 		panic(err)
 	}

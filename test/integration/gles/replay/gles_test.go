@@ -79,11 +79,19 @@ func setup(ctx context.Context) (context.Context, *device.Instance) {
 	return ctx, r.DefaultDevice().Instance()
 }
 
-func maybeExportCapture(ctx context.Context, name string, c *path.Capture) {
+func buildAndMaybeExportCapture(ctx context.Context, b *snippets.Builder, name string) *path.Capture {
+	c := b.Capture(ctx, name)
+	maybeExportCapture(ctx, c)
+	return c
+}
+
+func maybeExportCapture(ctx context.Context, c *path.Capture) {
 	if *exportCaptures == "" {
 		return
 	}
-	f, err := os.Create(filepath.Join(*exportCaptures, name+".gfxtrace"))
+	cap, err := capture.ResolveFromPath(ctx, c)
+	assert.With(ctx).ThatError(err).Succeeded()
+	f, err := os.Create(filepath.Join(*exportCaptures, cap.Name+".gfxtrace"))
 	assert.With(ctx).ThatError(err).Succeeded()
 	defer f.Close()
 	err = capture.Export(ctx, c, f)
@@ -140,88 +148,7 @@ func mergeCaptures(ctx context.Context, captures ...*path.Capture) *path.Capture
 			modFourCounter = (modFourCounter + 1) % 4
 		}
 	}
-	return merged.Capture(ctx)
-}
-
-func generateDrawTexturedSquareCapture(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
-	b := snippets.NewBuilder(ctx, d)
-	b.CreateContext(128, 128, false, false)
-	draw, _ := b.DrawTexturedSquare(ctx)
-
-	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
-		checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
-			checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
-		})
-	}
-
-	return b.Capture(ctx), verifyTrace
-}
-
-func generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
-	b := snippets.NewBuilder(ctx, d)
-	b.CreateContext(128, 128, true, false)
-	draw, _ := b.DrawTexturedSquare(ctx)
-
-	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
-		checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
-			checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
-		})
-	}
-
-	return b.Capture(ctx), verifyTrace
-}
-
-func generateCaptureWithIssues(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
-	b := snippets.NewBuilder(ctx, d)
-	b.CreateContext(64, 64, false, false)
-
-	missingProg := gles.ProgramId(1234)
-
-	textureNames := []gles.TextureId{1}
-	textureNamesR := b.Data(ctx, textureNames)
-
-	squareIndicesR := b.Data(ctx, squareIndices)
-	squareVerticesR := b.Data(ctx, squareVertices)
-
-	someString := b.Data(ctx, "hello world")
-
-	prog := b.CreateProgram(ctx, textureVSSource, textureFSSource)
-	texLoc := b.AddUniformSampler(ctx, prog, "tex")
-	posLoc := b.AddAttributeVec3(ctx, prog, "position")
-
-	b.Add(
-		b.CB.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
-		b.CB.GlClearColor(0.0, 1.0, 0.0, 1.0),
-		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_2X_BIT_ATI), // INVALID
-		b.CB.GlUseProgram(missingProg),                                                  // INVALID
-		b.CB.GlLabelObjectEXT(gles.GLenum_GL_TEXTURE, 123, gles.GLsizei(someString.Range().Size), someString.Ptr()).AddRead(someString.Data()), // INVALID
-		b.CB.GlGetError(0),
-		b.CB.GlUseProgram(prog),
-		b.CB.GlGenTextures(1, textureNamesR.Ptr()).AddWrite(textureNamesR.Data()),
-		b.CB.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
-		b.CB.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
-		b.CB.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		b.CB.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		b.CB.GlUniform1i(texLoc, 0),
-		b.CB.GlEnableVertexAttribArray(posLoc),
-		b.CB.GlVertexAttribPointer(posLoc, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesR.Ptr()),
-		b.CB.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesR.Ptr()).
-			AddRead(squareIndicesR.Data()).
-			AddRead(squareVerticesR.Data()),
-	)
-	b.SwapBuffers()
-
-	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
-		checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
-			checkReport(ctx, c, d, b.Cmds, []string{
-				"ErrorLevel@[18]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE_CHECK_EQ [constraint: 16385, value: 16384]>",
-				"ErrorLevel@[19]: glUseProgram(program: 1234): <ERR_INVALID_VALUE [value: 1234]>",
-				"ErrorLevel@[20]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: 4216): <ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST [id: 123]>",
-			}, nil)
-		})
-	}
-
-	return b.Capture(ctx), verifyTrace
+	return merged.Capture(ctx, "merged")
 }
 
 func generateDrawTriangleCapture(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
@@ -283,27 +210,43 @@ func generateDrawTriangleCaptureEx(ctx context.Context, d *device.Instance,
 		})
 	}
 
-	return b.Capture(ctx), verifyTrace
+	return b.Capture(ctx, "draw-triangle"), verifyTrace
 }
 
 func testTrace(t *testing.T, name string, tg traceGenerator) {
 	ctx, d := setup(log.Testing(t))
 	c, verifyTrace := tg(ctx, d)
-	maybeExportCapture(ctx, name, c)
 	verifyTrace(ctx, c, d)
 }
 
 func TestDrawTexturedSquare(t *testing.T) {
-	testTrace(t, "textured_square", generateDrawTexturedSquareCapture)
+	ctx, d := setup(log.Testing(t))
+
+	b := snippets.NewBuilder(ctx, d)
+	b.CreateContext(128, 128, false, false)
+	draw, _ := b.DrawTexturedSquare(ctx)
+	c := buildAndMaybeExportCapture(ctx, b, "textured-square")
+
+	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+		checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
+	})
 }
 
 func TestDrawTexturedSquareWithSharedContext(t *testing.T) {
-	testTrace(t, "textured_square_with_shared_context",
-		generateDrawTexturedSquareCaptureWithSharedContext)
+	ctx, d := setup(log.Testing(t))
+
+	b := snippets.NewBuilder(ctx, d)
+	b.CreateContext(128, 128, true, false)
+	draw, _ := b.DrawTexturedSquare(ctx)
+	c := buildAndMaybeExportCapture(ctx, b, "textured-square-shared-context")
+
+	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+		checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
+	})
 }
 
 func TestDrawTriangle(t *testing.T) {
-	testTrace(t, "draw_triangle", generateDrawTriangleCapture)
+	testTrace(t, "draw-triangle", generateDrawTriangleCapture)
 }
 
 func TestMultiContextCapture(t *testing.T) {
@@ -313,7 +256,7 @@ func TestMultiContextCapture(t *testing.T) {
 	t2, _ := generateDrawTriangleCaptureEx(ctx, d, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
 	t3, _ := generateDrawTriangleCaptureEx(ctx, d, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
 	capture := mergeCaptures(ctx, t1, t2, t3)
-	maybeExportCapture(ctx, "multi_context", capture)
+	maybeExportCapture(ctx, capture)
 
 	contexts, err := resolve.Contexts(ctx, capture.Contexts())
 	assert.With(ctx).ThatError(err).Succeeded()
@@ -321,7 +264,55 @@ func TestMultiContextCapture(t *testing.T) {
 }
 
 func TestTraceWithIssues(t *testing.T) {
-	testTrace(t, "with_issues", generateCaptureWithIssues)
+	ctx, d := setup(log.Testing(t))
+
+	b := snippets.NewBuilder(ctx, d)
+	b.CreateContext(64, 64, false, false)
+
+	missingProg := gles.ProgramId(1234)
+
+	textureNames := []gles.TextureId{1}
+	textureNamesR := b.Data(ctx, textureNames)
+
+	squareIndicesR := b.Data(ctx, squareIndices)
+	squareVerticesR := b.Data(ctx, squareVertices)
+
+	someString := b.Data(ctx, "hello world")
+
+	prog := b.CreateProgram(ctx, textureVSSource, textureFSSource)
+	texLoc := b.AddUniformSampler(ctx, prog, "tex")
+	posLoc := b.AddAttributeVec3(ctx, prog, "position")
+
+	b.Add(
+		b.CB.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
+		b.CB.GlClearColor(0.0, 1.0, 0.0, 1.0),
+		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_2X_BIT_ATI), // INVALID
+		b.CB.GlUseProgram(missingProg),                                                  // INVALID
+		b.CB.GlLabelObjectEXT(gles.GLenum_GL_TEXTURE, 123, gles.GLsizei(someString.Range().Size), someString.Ptr()).AddRead(someString.Data()), // INVALID
+		b.CB.GlGetError(0),
+		b.CB.GlUseProgram(prog),
+		b.CB.GlGenTextures(1, textureNamesR.Ptr()).AddWrite(textureNamesR.Data()),
+		b.CB.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
+		b.CB.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		b.CB.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		b.CB.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		b.CB.GlUniform1i(texLoc, 0),
+		b.CB.GlEnableVertexAttribArray(posLoc),
+		b.CB.GlVertexAttribPointer(posLoc, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesR.Ptr()),
+		b.CB.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesR.Ptr()).
+			AddRead(squareIndicesR.Data()).
+			AddRead(squareVerticesR.Data()),
+	)
+	b.SwapBuffers()
+
+	c := buildAndMaybeExportCapture(ctx, b, "with-issues")
+	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+		checkReport(ctx, c, d, b.Cmds, []string{
+			"ErrorLevel@[18]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE_CHECK_EQ [constraint: 16385, value: 16384]>",
+			"ErrorLevel@[19]: glUseProgram(program: 1234): <ERR_INVALID_VALUE [value: 1234]>",
+			"ErrorLevel@[20]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: 4216): <ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST [id: 123]>",
+		}, nil)
+	})
 }
 
 func TestExportAndImportCapture(t *testing.T) {
@@ -358,15 +349,13 @@ func TestResizeRenderer(t *testing.T) {
 	)
 
 	b.ResizeBackbuffer(64, 64)
-
 	b.ClearColor(0, 0, 1, 1)
-
 	triangle := b.Add(b.CB.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()))
+	c := buildAndMaybeExportCapture(ctx, b, "resize-renderer")
 
-	c := b.Capture(ctx)
-	checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle_2", triangle, nil)
-
-	maybeExportCapture(ctx, "resize_renderer", c)
+	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+		checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle_2", triangle, nil)
+	})
 }
 
 // TestNewContextUndefined checks that a new context is filled with the
@@ -377,9 +366,11 @@ func TestNewContextUndefined(t *testing.T) {
 	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(64, 64, false, false)
 	makeCurrent := b.Last()
-	c := b.Capture(ctx)
+	c := buildAndMaybeExportCapture(ctx, b, "new-context-undefined")
 
-	checkColorBuffer(ctx, c, d, 64, 64, 0.0, "undef-fb", makeCurrent, nil)
+	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+		checkColorBuffer(ctx, c, d, 64, 64, 0.0, "undef-fb", makeCurrent, nil)
+	})
 }
 
 // TestPreserveBuffersOnSwap checks that when the preserveBuffersOnSwap flag is
@@ -394,47 +385,33 @@ func TestPreserveBuffersOnSwap(t *testing.T) {
 	swapA := b.SwapBuffers()
 	swapB := b.SwapBuffers()
 	swapC := b.SwapBuffers()
-	c := b.Capture(ctx)
+	c := buildAndMaybeExportCapture(ctx, b, "preserve-buffers-on-swap")
 
-	done := &sync.WaitGroup{}
-	done.Add(4)
-	go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", clear, done)
-	go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapA, done)
-	go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapB, done)
-	go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapC, done)
-	done.Wait()
+	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+		done := &sync.WaitGroup{}
+		done.Add(4)
+		go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", clear, done)
+		go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapA, done)
+		go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapB, done)
+		go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapC, done)
+		done.Wait()
+	})
 }
 
-// TestIssues tests the QueryIssues replay command with various streams.
-func TestIssues(t *testing.T) {
+// TestNoIssues tests the QueryIssues replay command returns with no issues for
+// a clean capture.
+func TestNoIssues(t *testing.T) {
 	ctx, d := setup(log.Testing(t))
 
-	done := &sync.WaitGroup{}
-	cb := gles.CommandBuilder{}
+	b := snippets.NewBuilder(ctx, d)
+	b.CreateContext(64, 64, false, true)
+	b.Add(
+		b.CB.GlClearColor(0.0, 0.0, 1.0, 1.0),
+		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+	)
+	c := buildAndMaybeExportCapture(ctx, b, "issues")
 
-	for _, test := range []struct {
-		name     string
-		cmds     []api.Cmd
-		expected []replay.Issue
-	}{
-		{
-			"glClear - no errors",
-			[]api.Cmd{
-				cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
-				cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
-			},
-			[]replay.Issue{},
-		},
-	} {
-		b := snippets.NewBuilder(ctx, d)
-		b.CreateContext(64, 64, false, true)
-		b.Add(test.cmds...)
-		c := b.Capture(ctx)
-
-		done.Add(1)
-
-		go checkIssues(ctx, c, d, test.expected, done)
-	}
-
-	done.Wait()
+	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+		checkIssues(ctx, c, d, []replay.Issue{}, nil)
+	})
 }

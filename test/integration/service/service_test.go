@@ -131,7 +131,7 @@ func init() {
 	draw, swap := b.DrawTexturedSquare(ctx)
 
 	buf := bytes.Buffer{}
-	check(capture.Export(ctx, b.Capture(ctx), &buf))
+	check(capture.Export(ctx, b.Capture(ctx, "test-capture"), &buf))
 	testCaptureData, drawCmdIndex, swapCmdIndex = buf.Bytes(), uint64(draw), uint64(swap)
 }
 
