@@ -20,13 +20,18 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
+	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/service/path"
 )
 
-// Builder is used to build command snippets.
+// Builder is used to build OpenGL ES command snippets.
 type Builder struct {
-	cb               gles.CommandBuilder
-	Cmds             []api.Cmd
+	Cmds []api.Cmd
+	CB   gles.CommandBuilder
+
+	device           *device.Instance
+	abi              *device.ABI
 	state            *api.GlobalState
 	lastID           uint
 	programResources map[gles.ProgramId]gles.ActiveProgramResourcesʳ
@@ -36,10 +41,12 @@ type Builder struct {
 }
 
 // NewBuilder returns a new builder.
-func NewBuilder(ctx context.Context, cb gles.CommandBuilder, ml *device.MemoryLayout) *Builder {
+func NewBuilder(ctx context.Context, dev *device.Instance) *Builder {
+	abi := dev.Configuration.ABIs[0]
 	return &Builder{
-		cb:               cb,
-		state:            api.NewStateWithEmptyAllocator(ml),
+		device:           dev,
+		abi:              abi,
+		state:            api.NewStateWithEmptyAllocator(abi.MemoryLayout),
 		programResources: map[gles.ProgramId]gles.ActiveProgramResourcesʳ{},
 	}
 }
@@ -55,6 +62,20 @@ func (b *Builder) Add(cmds ...api.Cmd) api.CmdID {
 // Last returns the command identifier of the last added command.
 func (b *Builder) Last() api.CmdID {
 	return api.CmdID(len(b.Cmds) - 1)
+}
+
+// Capture encodes and writes the command list to the database, returning
+// an identifier to the newly constructed and stored Capture.
+func (b *Builder) Capture(ctx context.Context) *path.Capture {
+	h := &capture.Header{
+		Device: b.device,
+		Abi:    b.abi,
+	}
+	out, err := capture.New(ctx, "capture", h, b.Cmds)
+	if err != nil {
+		panic(err)
+	}
+	return out
 }
 
 func (b *Builder) newID() uint {

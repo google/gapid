@@ -25,20 +25,20 @@ import (
 // backbuffer to red, green, blue and black.
 func (b *Builder) ClearBackbuffer(ctx context.Context) (red, green, blue, black api.CmdID) {
 	red = b.Add(
-		b.cb.GlClearColor(1.0, 0.0, 0.0, 1.0),
-		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+		b.CB.GlClearColor(1.0, 0.0, 0.0, 1.0),
+		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	) + 1
 	green = b.Add(
-		b.cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
-		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+		b.CB.GlClearColor(0.0, 1.0, 0.0, 1.0),
+		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	) + 1
 	blue = b.Add(
-		b.cb.GlClearColor(0.0, 0.0, 1.0, 1.0),
-		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+		b.CB.GlClearColor(0.0, 0.0, 1.0, 1.0),
+		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	) + 1
 	black = b.Add(
-		b.cb.GlClearColor(0.0, 0.0, 0.0, 1.0),
-		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+		b.CB.GlClearColor(0.0, 0.0, 0.0, 1.0),
+		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	) + 1
 	return red, green, blue, black
 }

@@ -25,10 +25,9 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/capture"
 	gapis "github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/database"
@@ -125,17 +124,14 @@ func init() {
 	cfg.DeviceScanDone = deviceScanDone
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := gles.CommandBuilder{Thread: 0}
-	h := &capture.Header{Abi: device.WindowsX86_64}
+	dev := host.Instance(ctx)
 
-	b := snippets.NewBuilder(ctx, cb, h.Abi.MemoryLayout)
+	b := snippets.NewBuilder(ctx, dev)
 	b.CreateContext(128, 128, false, false)
 	draw, swap := b.DrawTexturedSquare(ctx)
 
-	p, err := capture.New(ctx, "sample", h, b.Cmds)
-	check(err)
 	buf := bytes.Buffer{}
-	check(capture.Export(ctx, p, &buf))
+	check(capture.Export(ctx, b.Capture(ctx), &buf))
 	testCaptureData, drawCmdIndex, swapCmdIndex = buf.Bytes(), uint64(draw), uint64(swap)
 }
 

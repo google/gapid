@@ -33,6 +33,7 @@ go_test(
         "//core/net/grpcutil:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
+        "//core/os/device/host:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/gles:go_default_library",
         "//gapis/capture:go_default_library",
