@@ -43,7 +43,7 @@ go_test(
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/stringtable:go_default_library",
-        "//test/integration/replay/gles/samples:go_default_library",
+        "//test/integration/gles/snippets:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
     ],
 )

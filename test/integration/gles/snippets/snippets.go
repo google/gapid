@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package gles contains the OpenGL ES integration tests with the replay system.
-package gles
+// Package snippets exposes functions for building simple GLES command streams.
+package snippets

@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package samples exposes functions for building simple GLES command streams.
-package samples
+// Package replay contains the OpenGL ES integration tests with the replay system.
+package replay

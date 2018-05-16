@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gles
+package replay
 
 import (
 	"bytes"
@@ -43,47 +43,10 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
-	"github.com/google/gapid/test/integration/replay/gles/samples"
+	"github.com/google/gapid/test/integration/gles/snippets"
 )
 
-const (
-	replayTimeout = time.Second * 5
-
-	simpleVSSource = `
-		precision mediump float;
-		attribute vec3 position;
-		uniform float angle;
-
-		void main() {
-			float c = cos(angle);
-			float s = sin(angle);
-		        mat3 rotation = mat3(vec3(c, -s, 0.0), vec3(s, c, 0.0), vec3(0.0, 0.0, 1.0));
-			gl_Position = vec4(rotation * position, 1.0);
-		}`
-
-	simpleFSSourceTemplate = `
-		precision mediump float;
-		void main() {
-			gl_FragColor = vec4(%f, %f, %f, 1.0);
-		}`
-
-	textureVSSource = `
-		precision mediump float;
-		attribute vec3 position;
-		varying vec2 texcoord;
-		void main() {
-			gl_Position = vec4(position, 1.0);
-			texcoord = position.xy + vec2(0.5, 0.5);
-		}`
-
-	textureFSSource = `
-		precision mediump float;
-		uniform sampler2D tex;
-		varying vec2 texcoord;
-		void main() {
-			gl_FragColor = texture2D(tex, texcoord);
-		}`
-)
+const replayTimeout = time.Second * 5
 
 var (
 	triangleVertices = []float32{
@@ -133,10 +96,6 @@ func (f *Fixture) storeCapture(ctx context.Context, cmds []api.Cmd) *path.Captur
 
 func (f *Fixture) newID() uint {
 	return uint(atomic.AddUint32(&f.nextID, 1))
-}
-
-func simpleFSSource(fr, fg, fb gles.GLfloat) string {
-	return fmt.Sprintf(simpleFSSourceTemplate, fr, fg, fb)
 }
 
 func maybeExportCapture(ctx context.Context, name string, c *path.Capture) {
@@ -328,31 +287,6 @@ func (f *Fixture) makeCurrent(eglSurface, eglContext memory.Pointer, width, heig
 	)
 }
 
-func TestClear(t *testing.T) {
-	ctx, f := newFixture(log.Testing(t))
-
-	atoms, red, green, blue, black := samples.ClearBackbuffer(ctx, f.cb, f.memoryLayout)
-
-	capture := f.storeCapture(ctx, atoms)
-
-	intent := replay.Intent{
-		Capture: capture,
-		Device:  path.NewDevice(f.device.Instance().Id.ID()),
-	}
-
-	defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
-
-	done := &sync.WaitGroup{}
-	done.Add(4)
-	go checkColorBuffer(ctx, intent, f.mgr, 64, 64, 0, "solid-red", red, done)
-	go checkColorBuffer(ctx, intent, f.mgr, 64, 64, 0, "solid-green", green, done)
-	go checkColorBuffer(ctx, intent, f.mgr, 64, 64, 0, "solid-blue", blue, done)
-	go checkColorBuffer(ctx, intent, f.mgr, 64, 64, 0, "solid-black", black, done)
-	done.Wait()
-
-	maybeExportCapture(ctx, "clear", capture)
-}
-
 type traceVerifier func(context.Context, *path.Capture, *replay.Manager, bind.Device)
 type traceGenerator func(Fixture, context.Context) (*path.Capture, traceVerifier)
 
@@ -397,7 +331,7 @@ func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) 
 }
 
 func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.Capture, traceVerifier) {
-	atoms, draw, _ := samples.DrawTexturedSquare(ctx, f.cb, false, f.memoryLayout)
+	atoms, draw, _ := snippets.DrawTexturedSquare(ctx, f.cb, false, f.memoryLayout)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -413,7 +347,7 @@ func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.C
 }
 
 func (f Fixture) generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context) (*path.Capture, traceVerifier) {
-	atoms, draw, _ := samples.DrawTexturedSquare(ctx, f.cb, true, f.memoryLayout)
+	atoms, draw, _ := snippets.DrawTexturedSquare(ctx, f.cb, true, f.memoryLayout)
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
