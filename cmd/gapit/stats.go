@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -71,6 +72,7 @@ func (verb *infoVerb) getEventsInRange(ctx context.Context, client service.Servi
 		AllCommands:             true,
 		DrawCalls:               true,
 		FirstInFrame:            true,
+		LastInFrame:             true,
 		FramebufferObservations: true,
 	})
 	if err != nil {
@@ -126,13 +128,27 @@ func (verb *infoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	counts := map[service.EventKind]int{}
-	for _, e := range events {
-		counts[e.Kind] = counts[e.Kind] + 1
+	cmdsPerFrame, frameIdx := sint.Histogram{}, 0
+	for i, e := range events {
+		counts[e.Kind]++
+		switch e.Kind {
+		case service.EventKind_AllCommands:
+			cmdsPerFrame.Add(frameIdx, 1)
+		case service.EventKind_FirstInFrame:
+			if i > 0 {
+				frameIdx++
+			}
+		}
 	}
+	callStats := cmdsPerFrame.Stats()
 
-	fmt.Println("Commands: ", counts[service.EventKind_AllCommands])
-	fmt.Println("Frames:   ", counts[service.EventKind_FirstInFrame])
-	fmt.Println("Draws:    ", counts[service.EventKind_DrawCall])
-	fmt.Println("FBO:      ", counts[service.EventKind_FramebufferObservation])
+	fmt.Println("Commands:                  ", counts[service.EventKind_AllCommands])
+	fmt.Println("Frames:                    ", counts[service.EventKind_FirstInFrame])
+	fmt.Println("Draws:                     ", counts[service.EventKind_DrawCall])
+	fmt.Println("FBO:                       ", counts[service.EventKind_FramebufferObservation])
+	fmt.Printf("Avg commands per frame:     %.2f\n", callStats.Average)
+	fmt.Printf("Stddev commands per frame:  %.2f\n", callStats.Stddev)
+	fmt.Println("Median commands per frame: ", callStats.Median)
+
 	return err
 }
