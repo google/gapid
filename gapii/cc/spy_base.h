@@ -26,8 +26,6 @@
 #include "core/cc/id.h"
 #include "core/cc/interval_list.h"
 #include "core/cc/null_encoder.h"
-#include "core/cc/scratch_allocator.h"
-#include "core/cc/thread_local.h"
 #include "core/cc/vector.h"
 
 #include "core/memory/arena/cc/arena.h"

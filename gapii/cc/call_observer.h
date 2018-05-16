@@ -25,7 +25,6 @@
 #include "gapil/runtime/cc/string.h"
 
 #include "core/cc/interval_list.h"
-#include "core/cc/scratch_allocator.h"
 #include "core/cc/vector.h"
 #include "core/memory/arena/cc/arena.h"
 
@@ -68,13 +67,6 @@ public:
     // Get or set the GL error code for this call.
     GLenum_Error getError() { return mError; }
     void setError(GLenum_Error err) { mError = err; }
-
-    // getScratch returns a scratch allocator which holds the temporary memory
-    // assigned to this observer. The memory assigned to this allocator will be
-    // released when CallObserver is destructed.
-    // TODO(qining): Implementation for a real thread-local allocator is
-    // required.
-    core::DefaultScratchAllocator* getScratch() { return &mScratch; }
 
     // getCurrentThread returns the current thread identifier.
     inline uint64_t getCurrentThread() { return mCurrentThread; }
@@ -207,9 +199,6 @@ private:
 
     // True if we should observe the application poool.
     bool mObserveApplicationPool;
-
-    // A pre-allocated memory allocator to store observation data.
-    core::DefaultScratchAllocator mScratch;
 
     // The list of pending reads or writes observations that are yet to be made.
     core::IntervalList<uintptr_t> mPendingObservations;

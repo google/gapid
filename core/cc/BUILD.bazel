@@ -67,8 +67,6 @@ cc_test(
         "crash_handler_test.cpp",
         "encoder_test.cpp",
         "interval_list_test.cpp",
-        "mru_cache_test.cpp",
-        "scratch_allocator_test.cpp",
     ],
     copts = cc_copts(),
     deps = [
