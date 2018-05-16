@@ -25,20 +25,22 @@ import (
 
 // Builder is used to build command snippets.
 type Builder struct {
-	cb         gles.CommandBuilder
-	Cmds       []api.Cmd
-	state      *api.GlobalState
-	lastID     uint
-	eglDisplay memory.Pointer
-	eglSurface memory.Pointer
-	eglContext memory.Pointer
+	cb               gles.CommandBuilder
+	Cmds             []api.Cmd
+	state            *api.GlobalState
+	lastID           uint
+	programResources map[gles.ProgramId]gles.ActiveProgramResourcesʳ
+	eglDisplay       memory.Pointer
+	eglSurface       memory.Pointer
+	eglContext       memory.Pointer
 }
 
 // NewBuilder returns a new builder.
 func NewBuilder(ctx context.Context, cb gles.CommandBuilder, ml *device.MemoryLayout) *Builder {
 	return &Builder{
-		cb:    cb,
-		state: api.NewStateWithEmptyAllocator(ml),
+		cb:               cb,
+		state:            api.NewStateWithEmptyAllocator(ml),
+		programResources: map[gles.ProgramId]gles.ActiveProgramResourcesʳ{},
 	}
 }
 
@@ -74,31 +76,7 @@ func (b *Builder) p() memory.Pointer {
 	return memory.BytePtr(base)
 }
 
-func (b *Builder) data(ctx context.Context, v ...interface{}) api.AllocResult {
+// Data allocates memory for the given values.
+func (b *Builder) Data(ctx context.Context, v ...interface{}) api.AllocResult {
 	return b.state.AllocDataOrPanic(ctx, v...)
-}
-
-func (b *Builder) makeCurrent(eglDisplay, eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) {
-	eglTrue := gles.EGLBoolean(1)
-	b.Cmds = append(b.Cmds, api.WithExtras(
-		b.cb.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
-		gles.NewStaticContextStateForTest(),
-		gles.NewDynamicContextStateForTest(width, height, preserveBuffersOnSwap),
-	))
-	b.eglDisplay = eglDisplay
-	b.eglSurface = eglSurface
-	b.eglContext = eglContext
-}
-
-func (b *Builder) program(ctx context.Context,
-	vertexShaderID, fragmentShaderID gles.ShaderId,
-	programID gles.ProgramId,
-	vertexShaderSource, fragmentShaderSource string) {
-
-	b.Cmds = append(b.Cmds,
-		gles.BuildProgram(ctx, b.state, b.cb,
-			vertexShaderID, fragmentShaderID,
-			programID,
-			vertexShaderSource, fragmentShaderSource)...,
-	)
 }

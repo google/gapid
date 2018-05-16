@@ -27,9 +27,9 @@ import (
 func TestClear(t *testing.T) {
 	ctx, f := newFixture(log.Testing(t))
 
-	atoms, red, green, blue, black := snippets.ClearBackbuffer(ctx, f.cb, f.memoryLayout)
+	cmds, red, green, blue, black := snippets.ClearBackbuffer(ctx, f.cb, f.memoryLayout)
 
-	capture := f.storeCapture(ctx, atoms)
+	capture := f.storeCapture(ctx, cmds)
 
 	intent := replay.Intent{
 		Capture: capture,
