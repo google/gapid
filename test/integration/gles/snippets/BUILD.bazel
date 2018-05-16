@@ -21,6 +21,7 @@ go_library(
         "context.go",
         "clear_backbuffer.go",
         "draw_textured_square.go",
+        "shaders.go",
         "snippets.go",
     ],
     importpath = "github.com/google/gapid/test/integration/gles/snippets",

@@ -51,11 +51,8 @@ func (b *Builder) DrawTexturedSquare(ctx context.Context) (draw, swap api.CmdID)
 			gl_FragColor = texture2D(tex, texcoord);
 		}`
 
-	vs, fs, prog, pos := b.newShaderID(), b.newShaderID(), b.newProgramID(), gles.AttributeLocation(0)
-	texLoc := gles.UniformLocation(0)
-
 	textureNames := []gles.TextureId{1}
-	textureNamesPtr := b.data(ctx, textureNames)
+	textureNamesPtr := b.Data(ctx, textureNames)
 	texData := make([]uint8, 3*64*64)
 	for y := 0; y < 64; y++ {
 		for x := 0; x < 64; x++ {
@@ -65,37 +62,15 @@ func (b *Builder) DrawTexturedSquare(ctx context.Context) (draw, swap api.CmdID)
 		}
 	}
 
-	textureData := b.data(ctx, texData)
-	squareIndicesPtr := b.data(ctx, squareIndices)
-	squareVerticesPtr := b.data(ctx, squareVertices)
+	textureData := b.Data(ctx, texData)
+	squareIndicesPtr := b.Data(ctx, squareIndices)
+	squareVerticesPtr := b.Data(ctx, squareVertices)
 
 	// Build the program resource
-	b.program(ctx, vs, fs, prog, textureVSSource, textureFSSource)
 
-	uniformTex := gles.MakeProgramResourceʳ()
-	uniformTex.SetType(gles.GLenum_GL_SAMPLER_2D)
-	uniformTex.SetName("tex")
-	uniformTex.SetArraySize(1)
-	uniformTex.Locations().Add(0, gles.GLint(texLoc))
-
-	positionIn := gles.MakeProgramResourceʳ()
-	positionIn.SetType(gles.GLenum_GL_FLOAT_VEC3)
-	positionIn.SetName("position")
-	positionIn.SetArraySize(1)
-	positionIn.Locations().Add(0, gles.GLint(pos))
-
-	resources := gles.MakeActiveProgramResourcesʳ()
-	resources.DefaultUniformBlock().Add(0, uniformTex)
-	resources.ProgramInputs().Add(0, positionIn)
-
-	lpe := gles.MakeLinkProgramExtra()
-	lpe.SetLinkStatus(gles.GLboolean_GL_TRUE)
-	lpe.SetActiveResources(resources)
-
-	b.Add(
-		api.WithExtras(b.cb.GlLinkProgram(prog), lpe),
-		gles.GetUniformLocation(ctx, b.state, b.cb, prog, "tex", texLoc),
-	)
+	prog := b.CreateProgram(ctx, textureVSSource, textureFSSource)
+	texLoc := b.AddUniformSampler(ctx, prog, "tex")
+	posLoc := b.AddAttributeVec3(ctx, prog, "position")
 
 	// Build the texture resource
 	b.Add(
@@ -125,9 +100,8 @@ func (b *Builder) DrawTexturedSquare(ctx context.Context) (draw, swap api.CmdID)
 		b.cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
 		b.cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
 		b.cb.GlUniform1i(texLoc, 0),
-		gles.GetAttribLocation(ctx, b.state, b.cb, prog, "position", pos),
-		b.cb.GlEnableVertexAttribArray(pos),
-		b.cb.GlVertexAttribPointer(pos, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
+		b.cb.GlEnableVertexAttribArray(posLoc),
+		b.cb.GlVertexAttribPointer(posLoc, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
 		b.cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
 			AddRead(squareIndicesPtr.Data()).
 			AddRead(squareVerticesPtr.Data()),
