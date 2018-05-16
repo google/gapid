@@ -44,7 +44,12 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["gles_test.go"],
+    srcs = [
+        "clear_test.go",
+        "draw_test.go",
+        "gles_test.go",
+        "issues_test.go",
+    ],
     data = [
         "//cmd/gapir/cc:gapir",
         "//core/vulkan/vk_virtual_swapchain/cc:json",

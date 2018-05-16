@@ -15,29 +15,38 @@
 package replay
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/test/integration/gles/snippets"
 )
 
-func TestClear(t *testing.T) {
+func TestDrawTexturedSquare(t *testing.T) {
 	ctx, d := setup(log.Testing(t))
 
 	b := snippets.NewBuilder(ctx, d)
-	b.CreateContext(64, 64, false, false)
-
-	red, green, blue, black := b.ClearBackbuffer(ctx)
-	c := buildAndMaybeExportCapture(ctx, b, "clear")
+	b.CreateContext(128, 128, false, false)
+	draw, _ := b.DrawTexturedSquare(ctx)
+	c := buildAndMaybeExportCapture(ctx, b, "textured-square")
 
 	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
-		done := &sync.WaitGroup{}
-		done.Add(4)
-		go checkColorBuffer(ctx, c, d, 64, 64, 0, "solid-red", red, done)
-		go checkColorBuffer(ctx, c, d, 64, 64, 0, "solid-green", green, done)
-		go checkColorBuffer(ctx, c, d, 64, 64, 0, "solid-blue", blue, done)
-		go checkColorBuffer(ctx, c, d, 64, 64, 0, "solid-black", black, done)
-		done.Wait()
+		checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
 	})
+}
+
+func TestDrawTexturedSquareWithSharedContext(t *testing.T) {
+	ctx, d := setup(log.Testing(t))
+
+	b := snippets.NewBuilder(ctx, d)
+	b.CreateContext(128, 128, true, false)
+	draw, _ := b.DrawTexturedSquare(ctx)
+	c := buildAndMaybeExportCapture(ctx, b, "textured-square-shared-context")
+
+	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+		checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
+	})
+}
+
+func TestDrawTriangle(t *testing.T) {
+	test(t, "draw-triangle", generateDrawTriangleCapture)
 }
