@@ -149,8 +149,9 @@ func generateDrawTexturedSquareCapture(ctx context.Context, d *device.Instance) 
 	draw, _ := b.DrawTexturedSquare(ctx)
 
 	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
-		defer checkReplay(ctx, c, d, 1)() // expect a single replay batch.
-		checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
+		checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+			checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
+		})
 	}
 
 	return b.Capture(ctx), verifyTrace
@@ -162,8 +163,9 @@ func generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context, d *
 	draw, _ := b.DrawTexturedSquare(ctx)
 
 	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
-		defer checkReplay(ctx, c, d, 1)() // expect a single replay batch.
-		checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
+		checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+			checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
+		})
 	}
 
 	return b.Capture(ctx), verifyTrace
@@ -210,12 +212,13 @@ func generateCaptureWithIssues(ctx context.Context, d *device.Instance) (*path.C
 	b.SwapBuffers()
 
 	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
-		defer checkReplay(ctx, c, d, 1)() // expect a single replay batch.
-		checkReport(ctx, c, d, b.Cmds, []string{
-			"ErrorLevel@[18]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE_CHECK_EQ [constraint: 16385, value: 16384]>",
-			"ErrorLevel@[19]: glUseProgram(program: 1234): <ERR_INVALID_VALUE [value: 1234]>",
-			"ErrorLevel@[20]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: 4216): <ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST [id: 123]>",
-		}, nil)
+		checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+			checkReport(ctx, c, d, b.Cmds, []string{
+				"ErrorLevel@[18]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE_CHECK_EQ [constraint: 16385, value: 16384]>",
+				"ErrorLevel@[19]: glUseProgram(program: 1234): <ERR_INVALID_VALUE [value: 1234]>",
+				"ErrorLevel@[20]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: 4216): <ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST [id: 123]>",
+			}, nil)
+		})
 	}
 
 	return b.Capture(ctx), verifyTrace
@@ -268,17 +271,16 @@ func generateDrawTriangleCaptureEx(ctx context.Context, d *device.Instance,
 	rotatedTriangle := b.Last()
 
 	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
-		defer checkReplay(ctx, c, d, 1)() // expect a single replay batch.
-
-		done := &sync.WaitGroup{}
-		done.Add(5)
-
-		go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-green", clear, done)
-		go checkDepthBuffer(ctx, c, d, 64, 64, 0.0, "one-depth", clear, done)
-		go checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle", triangle, done)
-		go checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle-180", rotatedTriangle, done)
-		go checkDepthBuffer(ctx, c, d, 64, 64, 0.01, "triangle-depth", triangle, done)
-		done.Wait()
+		checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
+			done := &sync.WaitGroup{}
+			done.Add(5)
+			go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-green", clear, done)
+			go checkDepthBuffer(ctx, c, d, 64, 64, 0.0, "one-depth", clear, done)
+			go checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle", triangle, done)
+			go checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle-180", rotatedTriangle, done)
+			go checkDepthBuffer(ctx, c, d, 64, 64, 0.01, "triangle-depth", triangle, done)
+			done.Wait()
+		})
 	}
 
 	return b.Capture(ctx), verifyTrace
