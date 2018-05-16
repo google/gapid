@@ -129,7 +129,7 @@ func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 	checkImage(ctx, name, img, threshold)
 }
 
-func checkReplay(ctx context.Context, c *path.Capture, d *device.Instance, expectedBatchCount int) func() {
+func checkReplay(ctx context.Context, c *path.Capture, d *device.Instance, expectedBatchCount int, doReplay func()) {
 	expectedIntent := replay.Intent{
 		Capture: c,
 		Device:  path.NewDevice(d.Id.ID()),
@@ -142,13 +142,14 @@ func checkReplay(ctx context.Context, c *path.Capture, d *device.Instance, expec
 		batchCount++
 		uniqueIntentConfigs[intentCfg{intent, config}] = struct{}{}
 	}
-	return func() {
-		replay.Events.OnReplay = nil // Avoid stale assertions in subsequent tests that don't use checkReplay.
-		if assert.For(ctx, "Batch count").That(batchCount).Equals(expectedBatchCount) {
-			log.I(ctx, "%d unique intent-config pairs:", len(uniqueIntentConfigs))
-			for cc := range uniqueIntentConfigs {
-				log.I(ctx, " • %v", cc)
-			}
+
+	doReplay()
+
+	replay.Events.OnReplay = nil // Avoid stale assertions in subsequent tests that don't use checkReplay.
+	if assert.For(ctx, "Batch count").That(batchCount).Equals(expectedBatchCount) {
+		log.I(ctx, "%d unique intent-config pairs:", len(uniqueIntentConfigs))
+		for cc := range uniqueIntentConfigs {
+			log.I(ctx, " • %v", cc)
 		}
 	}
 }
