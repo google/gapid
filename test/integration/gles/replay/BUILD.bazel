@@ -25,6 +25,7 @@ embed(
 go_library(
     name = "go_default_library",
     srcs = [
+        "check.go",
         "doc.go",
         "image.go",
         "shaders.go",

@@ -27,8 +27,6 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -124,78 +122,6 @@ func TestMain(m *testing.M) {
 
 func p(addr uint64) memory.Pointer { return memory.BytePtr(addr) }
 
-func checkImage(ctx context.Context, name string, got *image.Data, threshold float64) {
-	if *generateReferenceImages != "" {
-		storeReferenceImage(ctx, *generateReferenceImages, name, got)
-	} else {
-		quantized := quantizeImage(got)
-		expected := loadReferenceImage(ctx, name)
-		diff, err := image.Difference(quantized, expected)
-		assert.For(ctx, "CheckImage").ThatError(err).Succeeded()
-		assert.For(ctx, "CheckImage").ThatFloat(float64(diff)).IsAtMost(threshold)
-	}
-}
-
-func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager, expected []replay.Issue, done *sync.WaitGroup) {
-	if done != nil {
-		defer done.Done()
-	}
-	ctx, _ = task.WithTimeout(ctx, replayTimeout)
-	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, nil)
-	if assert.With(ctx).ThatError(err).Succeeded() {
-		assert.With(ctx).ThatSlice(issues).DeepEquals(expected)
-	}
-}
-
-func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager, cmds []api.Cmd, expected []string, done *sync.WaitGroup) {
-	if done != nil {
-		defer done.Done()
-	}
-
-	report, err := resolve.Report(ctx, intent.Capture.Report(intent.Device, nil))
-	assert.With(ctx).ThatError(err).Succeeded()
-
-	got := []string{}
-	for _, e := range report.Items {
-		if e.Command != nil {
-			got = append(got, fmt.Sprintf("%s@%d: %s: %v", e.Severity.String(), e.Command.Indices, cmds[e.Command.Indices[0]], report.Msg(e.Message).Text(nil)))
-		} else {
-			got = append(got, fmt.Sprintf("%s /%v", e.Severity.String(), report.Msg(e.Message).Text(nil)))
-		}
-	}
-	assert.With(ctx).ThatSlice(got).Equals(expected)
-}
-
-func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
-	ctx = log.Enter(ctx, "ColorBuffer")
-	ctx = log.V{"name": name, "after": after}.Bind(ctx)
-	if done != nil {
-		defer done.Done()
-	}
-	ctx, _ = task.WithTimeout(ctx, replayTimeout)
-	img, err := gles.API{}.QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, replay.WireframeMode_None, false, nil)
-	if !assert.With(ctx).ThatError(err).Succeeded() {
-		return
-	}
-	checkImage(ctx, name, img, threshold)
-}
-
-func checkDepthBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
-	ctx = log.Enter(ctx, "DepthBuffer")
-	ctx = log.V{"name": name, "after": after}.Bind(ctx)
-	if done != nil {
-		defer done.Done()
-	}
-	ctx, _ = task.WithTimeout(ctx, replayTimeout)
-	img, err := gles.API{}.QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, replay.WireframeMode_None, false, nil)
-	if !assert.With(ctx).ThatError(err).Succeeded() {
-		return
-	}
-	checkImage(ctx, name, img, threshold)
-}
-
 type intentCfg struct {
 	intent replay.Intent
 	config replay.Config
@@ -203,25 +129,6 @@ type intentCfg struct {
 
 func (c intentCfg) String() string {
 	return fmt.Sprintf("Context: %+v, Config: %+v", c.intent, c.config)
-}
-
-func checkReplay(ctx context.Context, expectedIntent replay.Intent, expectedBatchCount int) func() {
-	batchCount := 0
-	uniqueIntentConfigs := map[intentCfg]struct{}{}
-	replay.Events.OnReplay = func(device bind.Device, intent replay.Intent, config replay.Config) {
-		assert.For(ctx, "Replay intent").That(intent).DeepEquals(expectedIntent)
-		batchCount++
-		uniqueIntentConfigs[intentCfg{intent, config}] = struct{}{}
-	}
-	return func() {
-		replay.Events.OnReplay = nil // Avoid stale assertions in subsequent tests that don't use checkReplay.
-		if assert.For(ctx, "Batch count").That(batchCount).Equals(expectedBatchCount) {
-			log.I(ctx, "%d unique intent-config pairs:", len(uniqueIntentConfigs))
-			for cc := range uniqueIntentConfigs {
-				log.I(ctx, " • %v", cc)
-			}
-		}
-	}
 }
 
 type traceVerifier func(context.Context, *path.Capture, *replay.Manager, bind.Device)
