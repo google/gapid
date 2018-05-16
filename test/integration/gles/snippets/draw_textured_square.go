@@ -74,11 +74,11 @@ func (b *Builder) DrawTexturedSquare(ctx context.Context) (draw, swap api.CmdID)
 
 	// Build the texture resource
 	b.Add(
-		b.cb.GlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
-		b.cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
-		b.cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		b.cb.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
-		b.cb.GlTexImage2D(
+		b.CB.GlGenTextures(1, textureNamesPtr.Ptr()).AddWrite(textureNamesPtr.Data()),
+		b.CB.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		b.CB.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MIN_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		b.CB.GlTexParameteri(gles.GLenum_GL_TEXTURE_2D, gles.GLenum_GL_TEXTURE_MAG_FILTER, gles.GLint(gles.GLenum_GL_NEAREST)),
+		b.CB.GlTexImage2D(
 			gles.GLenum_GL_TEXTURE_2D,
 			0,
 			gles.GLint(gles.GLenum_GL_RGB),
@@ -93,16 +93,16 @@ func (b *Builder) DrawTexturedSquare(ctx context.Context) (draw, swap api.CmdID)
 
 	// Render square using the build program and texture
 	b.Add(
-		b.cb.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
-		b.cb.GlClearColor(0.0, 1.0, 0.0, 1.0),
-		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
-		b.cb.GlUseProgram(prog),
-		b.cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
-		b.cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
-		b.cb.GlUniform1i(texLoc, 0),
-		b.cb.GlEnableVertexAttribArray(posLoc),
-		b.cb.GlVertexAttribPointer(posLoc, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
-		b.cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
+		b.CB.GlEnable(gles.GLenum_GL_DEPTH_TEST), // Required for depth-writing
+		b.CB.GlClearColor(0.0, 1.0, 0.0, 1.0),
+		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT|gles.GLbitfield_GL_DEPTH_BUFFER_BIT),
+		b.CB.GlUseProgram(prog),
+		b.CB.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
+		b.CB.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, textureNames[0]),
+		b.CB.GlUniform1i(texLoc, 0),
+		b.CB.GlEnableVertexAttribArray(posLoc),
+		b.CB.GlVertexAttribPointer(posLoc, 3, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 0, squareVerticesPtr.Ptr()),
+		b.CB.GlDrawElements(gles.GLenum_GL_TRIANGLES, 6, gles.GLenum_GL_UNSIGNED_SHORT, squareIndicesPtr.Ptr()).
 			AddRead(squareIndicesPtr.Data()).
 			AddRead(squareVerticesPtr.Data()),
 	)

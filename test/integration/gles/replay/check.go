@@ -42,7 +42,8 @@ func checkImage(ctx context.Context, name string, got *image.Data, threshold flo
 	}
 }
 
-func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager, expected []replay.Issue, done *sync.WaitGroup) {
+func checkIssues(ctx context.Context, intent replay.Intent, expected []replay.Issue, done *sync.WaitGroup) {
+	mgr := replay.GetManager(ctx)
 	if done != nil {
 		defer done.Done()
 	}
@@ -53,7 +54,7 @@ func checkIssues(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 	}
 }
 
-func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager, cmds []api.Cmd, expected []string, done *sync.WaitGroup) {
+func checkReport(ctx context.Context, intent replay.Intent, cmds []api.Cmd, expected []string, done *sync.WaitGroup) {
 	if done != nil {
 		defer done.Done()
 	}
@@ -72,7 +73,8 @@ func checkReport(ctx context.Context, intent replay.Intent, mgr *replay.Manager,
 	assert.With(ctx).ThatSlice(got).Equals(expected)
 }
 
-func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
+func checkColorBuffer(ctx context.Context, intent replay.Intent, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
+	mgr := replay.GetManager(ctx)
 	ctx = log.Enter(ctx, "ColorBuffer")
 	ctx = log.V{"name": name, "after": after}.Bind(ctx)
 	if done != nil {
@@ -87,7 +89,8 @@ func checkColorBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Man
 	checkImage(ctx, name, img, threshold)
 }
 
-func checkDepthBuffer(ctx context.Context, intent replay.Intent, mgr *replay.Manager, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
+func checkDepthBuffer(ctx context.Context, intent replay.Intent, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
+	mgr := replay.GetManager(ctx)
 	ctx = log.Enter(ctx, "DepthBuffer")
 	ctx = log.V{"name": name, "after": after}.Bind(ctx)
 	if done != nil {

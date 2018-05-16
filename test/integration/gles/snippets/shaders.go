@@ -27,7 +27,7 @@ func (b *Builder) CreateProgram(ctx context.Context,
 
 	vs, fs, prog := b.newShaderID(), b.newShaderID(), b.newProgramID()
 
-	b.Add(gles.BuildProgram(ctx, b.state, b.cb, vs, fs, prog,
+	b.Add(gles.BuildProgram(ctx, b.state, b.CB, vs, fs, prog,
 		vertexShaderSource, fragmentShaderSource)...,
 	)
 
@@ -37,7 +37,7 @@ func (b *Builder) CreateProgram(ctx context.Context,
 	lpe.SetLinkStatus(gles.GLboolean_GL_TRUE)
 	lpe.SetActiveResources(resources)
 
-	cmd := api.WithExtras(b.cb.GlLinkProgram(prog), lpe)
+	cmd := api.WithExtras(b.CB.GlLinkProgram(prog), lpe)
 	b.programResources[prog] = resources
 	b.Add(cmd)
 
@@ -58,7 +58,7 @@ func (b *Builder) AddUniformSampler(ctx context.Context, prog gles.ProgramId, na
 	resources.DefaultUniformBlock().Add(gles.UniformIndex(index), uniform)
 
 	location := gles.UniformLocation(index)
-	b.Add(gles.GetUniformLocation(ctx, b.state, b.cb, prog, name, location))
+	b.Add(gles.GetUniformLocation(ctx, b.state, b.CB, prog, name, location))
 	return location
 }
 
@@ -76,6 +76,6 @@ func (b *Builder) AddAttributeVec3(ctx context.Context, prog gles.ProgramId, nam
 	resources.ProgramInputs().Add(uint32(index), attribute)
 
 	location := gles.AttributeLocation(index)
-	b.Add(gles.GetAttribLocation(ctx, b.state, b.cb, prog, name, location))
+	b.Add(gles.GetAttribLocation(ctx, b.state, b.CB, prog, name, location))
 	return location
 }

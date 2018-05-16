@@ -28,9 +28,9 @@ func (b *Builder) CreateContext(width, height int, shared, preserveBuffersOnSwap
 
 	// TODO: We don't observe attribute lists properly. We should.
 	b.Cmds = append(b.Cmds,
-		b.cb.EglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),
-		b.cb.EglInitialize(eglDisplay, memory.Nullptr, memory.Nullptr, gles.EGLBoolean(1)),
-		b.cb.EglCreateContext(eglDisplay, eglConfig, memory.Nullptr, b.p(), eglContext),
+		b.CB.EglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),
+		b.CB.EglInitialize(eglDisplay, memory.Nullptr, memory.Nullptr, gles.EGLBoolean(1)),
+		b.CB.EglCreateContext(eglDisplay, eglConfig, memory.Nullptr, b.p(), eglContext),
 	)
 
 	// Switch to new context which shares resources with the first one
@@ -38,7 +38,7 @@ func (b *Builder) CreateContext(width, height int, shared, preserveBuffersOnSwap
 		sharedContext := eglContext
 		eglContext = b.p()
 		b.Cmds = append(b.Cmds,
-			b.cb.EglCreateContext(eglDisplay, eglConfig, sharedContext, b.p(), eglContext),
+			b.CB.EglCreateContext(eglDisplay, eglConfig, sharedContext, b.p(), eglContext),
 		)
 	}
 
@@ -48,7 +48,7 @@ func (b *Builder) CreateContext(width, height int, shared, preserveBuffersOnSwap
 
 // SwapBuffers appends a call to eglSwapBuffers.
 func (b *Builder) SwapBuffers() api.CmdID {
-	return b.Add(b.cb.EglSwapBuffers(b.eglDisplay, b.eglSurface, gles.EGLBoolean(1)))
+	return b.Add(b.CB.EglSwapBuffers(b.eglDisplay, b.eglSurface, gles.EGLBoolean(1)))
 }
 
 // ResizeBackbuffer appends the commands to resize the backbuffer to the given
@@ -62,21 +62,21 @@ func (b *Builder) ResizeBackbuffer(width, height int) api.CmdID {
 // color.
 func (b *Builder) ClearColor(red, green, blue, alpha gles.GLfloat) api.CmdID {
 	b.Add(
-		b.cb.GlClearColor(red, green, blue, alpha),
-		b.cb.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
+		b.CB.GlClearColor(red, green, blue, alpha),
+		b.CB.GlClear(gles.GLbitfield_GL_COLOR_BUFFER_BIT),
 	)
 	return b.Last()
 }
 
 // ClearDepth appends a the commands to clear the backbuffer depth map.
 func (b *Builder) ClearDepth() api.CmdID {
-	return b.Add(b.cb.GlClear(gles.GLbitfield_GL_DEPTH_BUFFER_BIT))
+	return b.Add(b.CB.GlClear(gles.GLbitfield_GL_DEPTH_BUFFER_BIT))
 }
 
 func (b *Builder) makeCurrent(eglDisplay, eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) {
 	eglTrue := gles.EGLBoolean(1)
 	b.Cmds = append(b.Cmds, api.WithExtras(
-		b.cb.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
+		b.CB.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
 		gles.NewStaticContextStateForTest(),
 		gles.NewDynamicContextStateForTest(width, height, preserveBuffersOnSwap),
 	))
