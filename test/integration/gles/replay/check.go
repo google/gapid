@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/gapid/core/os/device"
+
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/image"
@@ -28,7 +30,17 @@ import (
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/service/path"
 )
+
+type intentCfg struct {
+	intent replay.Intent
+	config replay.Config
+}
+
+func (c intentCfg) String() string {
+	return fmt.Sprintf("Context: %+v, Config: %+v", c.intent, c.config)
+}
 
 func checkImage(ctx context.Context, name string, got *image.Data, threshold float64) {
 	if *generateReferenceImages != "" {
@@ -42,24 +54,28 @@ func checkImage(ctx context.Context, name string, got *image.Data, threshold flo
 	}
 }
 
-func checkIssues(ctx context.Context, intent replay.Intent, expected []replay.Issue, done *sync.WaitGroup) {
+func checkIssues(ctx context.Context, c *path.Capture, d *device.Instance, expected []replay.Issue, done *sync.WaitGroup) {
 	mgr := replay.GetManager(ctx)
 	if done != nil {
 		defer done.Done()
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
+	intent := replay.Intent{
+		Capture: c,
+		Device:  path.NewDevice(d.Id.ID()),
+	}
 	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, nil)
 	if assert.With(ctx).ThatError(err).Succeeded() {
 		assert.With(ctx).ThatSlice(issues).DeepEquals(expected)
 	}
 }
 
-func checkReport(ctx context.Context, intent replay.Intent, cmds []api.Cmd, expected []string, done *sync.WaitGroup) {
+func checkReport(ctx context.Context, c *path.Capture, d *device.Instance, cmds []api.Cmd, expected []string, done *sync.WaitGroup) {
 	if done != nil {
 		defer done.Done()
 	}
 
-	report, err := resolve.Report(ctx, intent.Capture.Report(intent.Device, nil))
+	report, err := resolve.Report(ctx, c.Report(path.NewDevice(d.Id.ID()), nil))
 	assert.With(ctx).ThatError(err).Succeeded()
 
 	got := []string{}
@@ -73,7 +89,7 @@ func checkReport(ctx context.Context, intent replay.Intent, cmds []api.Cmd, expe
 	assert.With(ctx).ThatSlice(got).Equals(expected)
 }
 
-func checkColorBuffer(ctx context.Context, intent replay.Intent, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
+func checkColorBuffer(ctx context.Context, c *path.Capture, d *device.Instance, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
 	mgr := replay.GetManager(ctx)
 	ctx = log.Enter(ctx, "ColorBuffer")
 	ctx = log.V{"name": name, "after": after}.Bind(ctx)
@@ -81,6 +97,10 @@ func checkColorBuffer(ctx context.Context, intent replay.Intent, w, h uint32, th
 		defer done.Done()
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
+	intent := replay.Intent{
+		Capture: c,
+		Device:  path.NewDevice(d.Id.ID()),
+	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
 		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, replay.WireframeMode_None, false, nil)
 	if !assert.With(ctx).ThatError(err).Succeeded() {
@@ -89,7 +109,7 @@ func checkColorBuffer(ctx context.Context, intent replay.Intent, w, h uint32, th
 	checkImage(ctx, name, img, threshold)
 }
 
-func checkDepthBuffer(ctx context.Context, intent replay.Intent, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
+func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
 	mgr := replay.GetManager(ctx)
 	ctx = log.Enter(ctx, "DepthBuffer")
 	ctx = log.V{"name": name, "after": after}.Bind(ctx)
@@ -97,6 +117,10 @@ func checkDepthBuffer(ctx context.Context, intent replay.Intent, w, h uint32, th
 		defer done.Done()
 	}
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
+	intent := replay.Intent{
+		Capture: c,
+		Device:  path.NewDevice(d.Id.ID()),
+	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
 		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, replay.WireframeMode_None, false, nil)
 	if !assert.With(ctx).ThatError(err).Succeeded() {
@@ -105,7 +129,12 @@ func checkDepthBuffer(ctx context.Context, intent replay.Intent, w, h uint32, th
 	checkImage(ctx, name, img, threshold)
 }
 
-func checkReplay(ctx context.Context, expectedIntent replay.Intent, expectedBatchCount int) func() {
+func checkReplay(ctx context.Context, c *path.Capture, d *device.Instance, expectedBatchCount int) func() {
+	expectedIntent := replay.Intent{
+		Capture: c,
+		Device:  path.NewDevice(d.Id.ID()),
+	}
+
 	batchCount := 0
 	uniqueIntentConfigs := map[intentCfg]struct{}{}
 	replay.Events.OnReplay = func(device bind.Device, intent replay.Intent, config replay.Config) {

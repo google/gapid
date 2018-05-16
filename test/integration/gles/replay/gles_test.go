@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"flag"
-	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -65,6 +64,21 @@ var (
 	exportCaptures          = flag.String("export-captures", "", "directory to export captures to, empty to disable")
 )
 
+func TestMain(m *testing.M) {
+	flag.Parse()
+	os.Exit(m.Run())
+}
+
+func setup(ctx context.Context) (context.Context, *device.Instance) {
+	r := bind.NewRegistry()
+	ctx = bind.PutRegistry(ctx, r)
+	m := replay.New(ctx)
+	ctx = replay.PutManager(ctx, m)
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	bind.GetRegistry(ctx).AddDevice(ctx, bind.Host(ctx))
+	return ctx, r.DefaultDevice().Instance()
+}
+
 func maybeExportCapture(ctx context.Context, name string, c *path.Capture) {
 	if *exportCaptures == "" {
 		return
@@ -76,51 +90,35 @@ func maybeExportCapture(ctx context.Context, name string, c *path.Capture) {
 	assert.With(ctx).ThatError(err).Succeeded()
 }
 
-func setup(ctx context.Context) (context.Context, bind.Device) {
-	r := bind.NewRegistry()
-	ctx = bind.PutRegistry(ctx, r)
-	m := replay.New(ctx)
-	ctx = replay.PutManager(ctx, m)
-	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	bind.GetRegistry(ctx).AddDevice(ctx, bind.Host(ctx))
-	return ctx, r.DefaultDevice()
-}
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Exit(m.Run())
-}
-
 func p(addr uint64) memory.Pointer { return memory.BytePtr(addr) }
 
-type intentCfg struct {
-	intent replay.Intent
-	config replay.Config
-}
-
-func (c intentCfg) String() string {
-	return fmt.Sprintf("Context: %+v, Config: %+v", c.intent, c.config)
-}
-
-type traceVerifier func(context.Context, *path.Capture, bind.Device)
+type traceVerifier func(context.Context, *path.Capture, *device.Instance)
 type traceGenerator func(context.Context, *device.Instance) (*path.Capture, traceVerifier)
 
-// mergeCaptures creates a capture from the cmds of several existing captures, by interleaving them
-// arbitrarily, on different threads.
-func mergeCaptures(ctx context.Context, dev *device.Instance, captures ...*path.Capture) *path.Capture {
+// mergeCaptures creates a capture from the cmds of several existing captures,
+// by interleaving them arbitrarily, on different threads.
+func mergeCaptures(ctx context.Context, captures ...*path.Capture) *path.Capture {
 	lists := [][]api.Cmd{}
 	threads := []uint64{}
 	remainingCmds := 0
 
+	if len(captures) == 0 {
+		panic("mergeCaptures requires at least one capture")
+	}
+
+	var d *device.Instance
 	for i, path := range captures {
 		c, err := capture.ResolveFromPath(ctx, path)
 		assert.With(ctx).ThatError(err).Succeeded()
 		lists = append(lists, c.Commands)
 		remainingCmds += len(c.Commands)
 		threads = append(threads, uint64(0x10000+i))
+		if i == 0 {
+			d = c.Header.Device
+		}
 	}
 
-	merged := snippets.NewBuilder(ctx, dev)
+	merged := snippets.NewBuilder(ctx, d)
 	threadIndex := 0
 	cmdsUntilSwitchThread, modFourCounter := 4, 3
 	for remainingCmds > 0 {
@@ -145,44 +143,34 @@ func mergeCaptures(ctx context.Context, dev *device.Instance, captures ...*path.
 	return merged.Capture(ctx)
 }
 
-func generateDrawTexturedSquareCapture(ctx context.Context, dev *device.Instance) (*path.Capture, traceVerifier) {
-	b := snippets.NewBuilder(ctx, dev)
+func generateDrawTexturedSquareCapture(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
+	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(128, 128, false, false)
 	draw, _ := b.DrawTexturedSquare(ctx)
 
-	verifyTrace := func(ctx context.Context, cap *path.Capture, dev bind.Device) {
-		intent := replay.Intent{
-			Capture: cap,
-			Device:  path.NewDevice(dev.Instance().Id.ID()),
-		}
-		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
-
-		checkColorBuffer(ctx, intent, 128, 128, 0.01, "textured-square", draw, nil)
+	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
+		defer checkReplay(ctx, c, d, 1)() // expect a single replay batch.
+		checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
 	}
 
 	return b.Capture(ctx), verifyTrace
 }
 
-func generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context, dev *device.Instance) (*path.Capture, traceVerifier) {
-	b := snippets.NewBuilder(ctx, dev)
+func generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
+	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(128, 128, true, false)
 	draw, _ := b.DrawTexturedSquare(ctx)
 
-	verifyTrace := func(ctx context.Context, cap *path.Capture, dev bind.Device) {
-		intent := replay.Intent{
-			Capture: cap,
-			Device:  path.NewDevice(dev.Instance().Id.ID()),
-		}
-		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
-
-		checkColorBuffer(ctx, intent, 128, 128, 0.01, "textured-square", draw, nil)
+	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
+		defer checkReplay(ctx, c, d, 1)() // expect a single replay batch.
+		checkColorBuffer(ctx, c, d, 128, 128, 0.01, "textured-square", draw, nil)
 	}
 
 	return b.Capture(ctx), verifyTrace
 }
 
-func generateCaptureWithIssues(ctx context.Context, dev *device.Instance) (*path.Capture, traceVerifier) {
-	b := snippets.NewBuilder(ctx, dev)
+func generateCaptureWithIssues(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
+	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(64, 64, false, false)
 
 	missingProg := gles.ProgramId(1234)
@@ -221,14 +209,9 @@ func generateCaptureWithIssues(ctx context.Context, dev *device.Instance) (*path
 	)
 	b.SwapBuffers()
 
-	verifyTrace := func(ctx context.Context, cap *path.Capture, dev bind.Device) {
-		intent := replay.Intent{
-			Capture: cap,
-			Device:  path.NewDevice(dev.Instance().Id.ID()),
-		}
-		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
-
-		checkReport(ctx, intent, b.Cmds, []string{
+	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
+		defer checkReplay(ctx, c, d, 1)() // expect a single replay batch.
+		checkReport(ctx, c, d, b.Cmds, []string{
 			"ErrorLevel@[18]: glClear(mask: GLbitfield(16385)): <ERR_INVALID_VALUE_CHECK_EQ [constraint: 16385, value: 16384]>",
 			"ErrorLevel@[19]: glUseProgram(program: 1234): <ERR_INVALID_VALUE [value: 1234]>",
 			"ErrorLevel@[20]: glLabelObjectEXT(type: GL_TEXTURE, object: 123, length: 12, label: 4216): <ERR_INVALID_OPERATION_OBJECT_DOES_NOT_EXIST [id: 123]>",
@@ -238,19 +221,19 @@ func generateCaptureWithIssues(ctx context.Context, dev *device.Instance) (*path
 	return b.Capture(ctx), verifyTrace
 }
 
-func generateDrawTriangleCapture(ctx context.Context, dev *device.Instance) (*path.Capture, traceVerifier) {
-	return generateDrawTriangleCaptureEx(ctx, dev,
+func generateDrawTriangleCapture(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
+	return generateDrawTriangleCaptureEx(ctx, d,
 		0.0, 1.0, 0.0,
 		1.0, 0.0, 0.0)
 }
 
 // generateDrawTriangleCaptureEx generates a capture with several frames containing
 // a rotating triangle of color RGB(fr, fg, fb) on a RGB(br, bg, bb) background.
-func generateDrawTriangleCaptureEx(ctx context.Context, dev *device.Instance,
+func generateDrawTriangleCaptureEx(ctx context.Context, d *device.Instance,
 	br, bg, bb gles.GLfloat,
 	fr, fg, fb gles.GLfloat) (*path.Capture, traceVerifier) {
 
-	b := snippets.NewBuilder(ctx, dev)
+	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(64, 64, false, false)
 
 	b.Add(b.CB.GlEnable(gles.GLenum_GL_DEPTH_TEST)) // Required for depth-writing
@@ -284,21 +267,17 @@ func generateDrawTriangleCaptureEx(ctx context.Context, dev *device.Instance,
 	}
 	rotatedTriangle := b.Last()
 
-	verifyTrace := func(ctx context.Context, cap *path.Capture, dev bind.Device) {
-		intent := replay.Intent{
-			Capture: cap,
-			Device:  path.NewDevice(dev.Instance().Id.ID()),
-		}
-		defer checkReplay(ctx, intent, 1)() // expect a single replay batch.
+	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
+		defer checkReplay(ctx, c, d, 1)() // expect a single replay batch.
 
 		done := &sync.WaitGroup{}
 		done.Add(5)
 
-		go checkColorBuffer(ctx, intent, 64, 64, 0.0, "solid-green", clear, done)
-		go checkDepthBuffer(ctx, intent, 64, 64, 0.0, "one-depth", clear, done)
-		go checkColorBuffer(ctx, intent, 64, 64, 0.01, "triangle", triangle, done)
-		go checkColorBuffer(ctx, intent, 64, 64, 0.01, "triangle-180", rotatedTriangle, done)
-		go checkDepthBuffer(ctx, intent, 64, 64, 0.01, "triangle-depth", triangle, done)
+		go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-green", clear, done)
+		go checkDepthBuffer(ctx, c, d, 64, 64, 0.0, "one-depth", clear, done)
+		go checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle", triangle, done)
+		go checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle-180", rotatedTriangle, done)
+		go checkDepthBuffer(ctx, c, d, 64, 64, 0.01, "triangle-depth", triangle, done)
 		done.Wait()
 	}
 
@@ -306,10 +285,10 @@ func generateDrawTriangleCaptureEx(ctx context.Context, dev *device.Instance,
 }
 
 func testTrace(t *testing.T, name string, tg traceGenerator) {
-	ctx, dev := setup(log.Testing(t))
-	capture, verifyTrace := tg(ctx, dev.Instance())
-	maybeExportCapture(ctx, name, capture)
-	verifyTrace(ctx, capture, dev)
+	ctx, d := setup(log.Testing(t))
+	c, verifyTrace := tg(ctx, d)
+	maybeExportCapture(ctx, name, c)
+	verifyTrace(ctx, c, d)
 }
 
 func TestDrawTexturedSquare(t *testing.T) {
@@ -326,12 +305,12 @@ func TestDrawTriangle(t *testing.T) {
 }
 
 func TestMultiContextCapture(t *testing.T) {
-	ctx, dev := setup(log.Testing(t))
+	ctx, d := setup(log.Testing(t))
 
-	t1, _ := generateDrawTriangleCaptureEx(ctx, dev.Instance(), 1.0, 0.0, 0.0, 1.0, 1.0, 0.0)
-	t2, _ := generateDrawTriangleCaptureEx(ctx, dev.Instance(), 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
-	t3, _ := generateDrawTriangleCaptureEx(ctx, dev.Instance(), 0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
-	capture := mergeCaptures(ctx, dev.Instance(), t1, t2, t3)
+	t1, _ := generateDrawTriangleCaptureEx(ctx, d, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0)
+	t2, _ := generateDrawTriangleCaptureEx(ctx, d, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+	t3, _ := generateDrawTriangleCaptureEx(ctx, d, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
+	capture := mergeCaptures(ctx, t1, t2, t3)
 	maybeExportCapture(ctx, "multi_context", capture)
 
 	contexts, err := resolve.Contexts(ctx, capture.Contexts())
@@ -344,25 +323,25 @@ func TestTraceWithIssues(t *testing.T) {
 }
 
 func TestExportAndImportCapture(t *testing.T) {
-	ctx, dev := setup(log.Testing(t))
-	c, verifyTrace := generateDrawTriangleCapture(ctx, dev.Instance())
+	ctx, d := setup(log.Testing(t))
+	c, verifyTrace := generateDrawTriangleCapture(ctx, d)
 
 	var exported bytes.Buffer
 	err := capture.Export(ctx, c, &exported)
 	assert.With(ctx).ThatError(err).Succeeded()
 
-	ctx, dev = setup(log.Testing(t))
+	ctx, d = setup(log.Testing(t))
 	recoveredCapture, err := capture.Import(ctx, "recovered", exported.Bytes())
 	assert.With(ctx).ThatError(err).Succeeded()
-	verifyTrace(ctx, recoveredCapture, dev)
+	verifyTrace(ctx, recoveredCapture, d)
 }
 
 // TestResizeRenderer checks that backbuffers can be resized without destroying
 // the current context.
 func TestResizeRenderer(t *testing.T) {
-	ctx, dev := setup(log.Testing(t))
+	ctx, d := setup(log.Testing(t))
 
-	b := snippets.NewBuilder(ctx, dev.Instance())
+	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(8, 8, false, false) // start with a small backbuffer
 
 	triangleVerticesR := b.Data(ctx, triangleVertices)
@@ -382,64 +361,51 @@ func TestResizeRenderer(t *testing.T) {
 
 	triangle := b.Add(b.CB.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()))
 
-	capture := b.Capture(ctx)
-	intent := replay.Intent{
-		Capture: capture,
-		Device:  path.NewDevice(dev.Instance().Id.ID()),
-	}
+	c := b.Capture(ctx)
+	checkColorBuffer(ctx, c, d, 64, 64, 0.01, "triangle_2", triangle, nil)
 
-	checkColorBuffer(ctx, intent, 64, 64, 0.01, "triangle_2", triangle, nil)
-
-	maybeExportCapture(ctx, "resize_renderer", capture)
+	maybeExportCapture(ctx, "resize_renderer", c)
 }
 
 // TestNewContextUndefined checks that a new context is filled with the
 // undefined framebuffer pattern.
 func TestNewContextUndefined(t *testing.T) {
-	ctx, dev := setup(log.Testing(t))
+	ctx, d := setup(log.Testing(t))
 
-	b := snippets.NewBuilder(ctx, dev.Instance())
+	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(64, 64, false, false)
 	makeCurrent := b.Last()
+	c := b.Capture(ctx)
 
-	intent := replay.Intent{
-		Capture: b.Capture(ctx),
-		Device:  path.NewDevice(dev.Instance().Id.ID()),
-	}
-
-	checkColorBuffer(ctx, intent, 64, 64, 0.0, "undef-fb", makeCurrent, nil)
+	checkColorBuffer(ctx, c, d, 64, 64, 0.0, "undef-fb", makeCurrent, nil)
 }
 
 // TestPreserveBuffersOnSwap checks that when the preserveBuffersOnSwap flag is
 // set, the backbuffer is preserved between calls to eglSwapBuffers().
 func TestPreserveBuffersOnSwap(t *testing.T) {
-	ctx, dev := setup(log.Testing(t))
+	ctx, d := setup(log.Testing(t))
 
-	b := snippets.NewBuilder(ctx, dev.Instance())
+	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(64, 64, false, true)
 
 	clear := b.ClearColor(0, 0, 1, 1)
 	swapA := b.SwapBuffers()
 	swapB := b.SwapBuffers()
 	swapC := b.SwapBuffers()
-
-	intent := replay.Intent{
-		Capture: b.Capture(ctx),
-		Device:  path.NewDevice(dev.Instance().Id.ID()),
-	}
+	c := b.Capture(ctx)
 
 	done := &sync.WaitGroup{}
 	done.Add(4)
-	go checkColorBuffer(ctx, intent, 64, 64, 0.0, "solid-blue", clear, done)
-	go checkColorBuffer(ctx, intent, 64, 64, 0.0, "solid-blue", swapA, done)
-	go checkColorBuffer(ctx, intent, 64, 64, 0.0, "solid-blue", swapB, done)
-	go checkColorBuffer(ctx, intent, 64, 64, 0.0, "solid-blue", swapC, done)
+	go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", clear, done)
+	go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapA, done)
+	go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapB, done)
+	go checkColorBuffer(ctx, c, d, 64, 64, 0.0, "solid-blue", swapC, done)
 	done.Wait()
 }
 
 // TestIssues tests the QueryIssues replay command with various streams.
 func TestIssues(t *testing.T) {
-	ctx, dev := setup(log.Testing(t))
+	ctx, d := setup(log.Testing(t))
 
 	done := &sync.WaitGroup{}
 	cb := gles.CommandBuilder{}
@@ -458,16 +424,14 @@ func TestIssues(t *testing.T) {
 			[]replay.Issue{},
 		},
 	} {
-		b := snippets.NewBuilder(ctx, dev.Instance())
+		b := snippets.NewBuilder(ctx, d)
 		b.CreateContext(64, 64, false, true)
 		b.Add(test.cmds...)
+		c := b.Capture(ctx)
 
-		intent := replay.Intent{
-			Capture: b.Capture(ctx),
-			Device:  path.NewDevice(dev.Instance().Id.ID()),
-		}
 		done.Add(1)
-		go checkIssues(ctx, intent, test.expected, done)
+
+		go checkIssues(ctx, c, d, test.expected, done)
 	}
 
 	done.Wait()
