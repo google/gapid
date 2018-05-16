@@ -23,32 +23,50 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-type builder struct {
-	gles.CommandBuilder
-	cmds   []api.Cmd
-	state  *api.GlobalState
-	lastID uint
+// Builder is used to build command snippets.
+type Builder struct {
+	cb         gles.CommandBuilder
+	Cmds       []api.Cmd
+	state      *api.GlobalState
+	lastID     uint
+	eglDisplay memory.Pointer
+	eglSurface memory.Pointer
+	eglContext memory.Pointer
 }
 
-func newBuilder(ctx context.Context, cb gles.CommandBuilder, ml *device.MemoryLayout) *builder {
-	return &builder{
-		CommandBuilder: cb,
-		state:          api.NewStateWithEmptyAllocator(ml),
+// NewBuilder returns a new builder.
+func NewBuilder(ctx context.Context, cb gles.CommandBuilder, ml *device.MemoryLayout) *Builder {
+	return &Builder{
+		cb:    cb,
+		state: api.NewStateWithEmptyAllocator(ml),
 	}
 }
 
-func (b *builder) newID() uint {
+// Add appends cmds to the command list, returning the command identifier of the
+// first added command.
+func (b *Builder) Add(cmds ...api.Cmd) api.CmdID {
+	start := api.CmdID(len(b.Cmds))
+	b.Cmds = append(b.Cmds, cmds...)
+	return start
+}
+
+// Last returns the command identifier of the last added command.
+func (b *Builder) Last() api.CmdID {
+	return api.CmdID(len(b.Cmds) - 1)
+}
+
+func (b *Builder) newID() uint {
 	b.lastID++
 	return b.lastID
 }
 
-func (b *builder) newShaderID() gles.ShaderId   { return gles.ShaderId(b.newID()) }
-func (b *builder) newProgramID() gles.ProgramId { return gles.ProgramId(b.newID()) }
+func (b *Builder) newShaderID() gles.ShaderId   { return gles.ShaderId(b.newID()) }
+func (b *Builder) newProgramID() gles.ProgramId { return gles.ProgramId(b.newID()) }
 
 // p returns a unique pointer. Meant to be used to generate
 // pointers representing driver-side data, so the allocation
 // itself is not relevant.
-func (b *builder) p() memory.Pointer {
+func (b *Builder) p() memory.Pointer {
 	base, err := b.state.Allocator.Alloc(8, 8)
 	if err != nil {
 		panic(err)
@@ -56,42 +74,29 @@ func (b *builder) p() memory.Pointer {
 	return memory.BytePtr(base)
 }
 
-func (b *builder) data(ctx context.Context, v ...interface{}) api.AllocResult {
+func (b *Builder) data(ctx context.Context, v ...interface{}) api.AllocResult {
 	return b.state.AllocDataOrPanic(ctx, v...)
 }
 
-func (b *builder) newEglContext(width, height int, eglShareContext memory.Pointer, preserveBuffersOnSwap bool) (eglContext, eglSurface, eglDisplay memory.Pointer) {
-	eglContext = b.p()
-	eglSurface = b.p()
-	eglDisplay = b.p()
-	eglConfig := b.p()
-
-	// TODO: We don't observe attribute lists properly. We should.
-	b.cmds = append(b.cmds,
-		b.EglGetDisplay(gles.EGLNativeDisplayType(0), eglDisplay),
-		b.EglInitialize(eglDisplay, memory.Nullptr, memory.Nullptr, gles.EGLBoolean(1)),
-		b.EglCreateContext(eglDisplay, eglConfig, eglShareContext, b.p(), eglContext),
-	)
-	b.makeCurrent(eglDisplay, eglSurface, eglContext, width, height, preserveBuffersOnSwap)
-	return eglContext, eglSurface, eglDisplay
-}
-
-func (b *builder) makeCurrent(eglDisplay, eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) {
+func (b *Builder) makeCurrent(eglDisplay, eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) {
 	eglTrue := gles.EGLBoolean(1)
-	b.cmds = append(b.cmds, api.WithExtras(
-		b.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
+	b.Cmds = append(b.Cmds, api.WithExtras(
+		b.cb.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
 		gles.NewStaticContextStateForTest(),
 		gles.NewDynamicContextStateForTest(width, height, preserveBuffersOnSwap),
 	))
+	b.eglDisplay = eglDisplay
+	b.eglSurface = eglSurface
+	b.eglContext = eglContext
 }
 
-func (b *builder) program(ctx context.Context,
+func (b *Builder) program(ctx context.Context,
 	vertexShaderID, fragmentShaderID gles.ShaderId,
 	programID gles.ProgramId,
 	vertexShaderSource, fragmentShaderSource string) {
 
-	b.cmds = append(b.cmds,
-		gles.BuildProgram(ctx, b.state, b.CommandBuilder,
+	b.Cmds = append(b.Cmds,
+		gles.BuildProgram(ctx, b.state, b.cb,
 			vertexShaderID, fragmentShaderID,
 			programID,
 			vertexShaderSource, fragmentShaderSource)...,

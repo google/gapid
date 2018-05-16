@@ -331,7 +331,10 @@ func (f *Fixture) mergeCaptures(ctx context.Context, captures ...*path.Capture) 
 }
 
 func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.Capture, traceVerifier) {
-	atoms, draw, _ := snippets.DrawTexturedSquare(ctx, f.cb, false, f.memoryLayout)
+	b := snippets.NewBuilder(ctx, f.cb, f.memoryLayout)
+	b.CreateContext(128, 128, false, false)
+	draw, _ := b.DrawTexturedSquare(ctx)
+	cmds := b.Cmds
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -343,11 +346,14 @@ func (f Fixture) generateDrawTexturedSquareCapture(ctx context.Context) (*path.C
 		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", draw, nil)
 	}
 
-	return f.storeCapture(ctx, atoms), verifyTrace
+	return f.storeCapture(ctx, cmds), verifyTrace
 }
 
 func (f Fixture) generateDrawTexturedSquareCaptureWithSharedContext(ctx context.Context) (*path.Capture, traceVerifier) {
-	atoms, draw, _ := snippets.DrawTexturedSquare(ctx, f.cb, true, f.memoryLayout)
+	b := snippets.NewBuilder(ctx, f.cb, f.memoryLayout)
+	b.CreateContext(128, 128, true, false)
+	draw, _ := b.DrawTexturedSquare(ctx)
+	cmds := b.Cmds
 
 	verifyTrace := func(ctx context.Context, cap *path.Capture, mgr *replay.Manager, dev bind.Device) {
 		intent := replay.Intent{
@@ -359,7 +365,7 @@ func (f Fixture) generateDrawTexturedSquareCaptureWithSharedContext(ctx context.
 		checkColorBuffer(ctx, intent, mgr, 128, 128, 0.01, "textured-square", draw, nil)
 	}
 
-	return f.storeCapture(ctx, atoms), verifyTrace
+	return f.storeCapture(ctx, cmds), verifyTrace
 }
 
 func (f Fixture) generateCaptureWithIssues(ctx context.Context) (*path.Capture, traceVerifier) {
