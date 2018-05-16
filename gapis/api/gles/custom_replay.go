@@ -401,9 +401,9 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.
 		for _, attr := range pi.ActiveResources().ProgramInputs().Range() {
 			if int32(attr.Locations().Get(0)) != -1 {
 				tmp := s.AllocDataOrPanic(ctx, attr.Name())
+				defer tmp.Free()
 				cmd := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Locations().Get(0)), tmp.Ptr()).
 					AddRead(tmp.Data())
-				tmp.Free()
 				if strings.HasPrefix(attr.Name(), "gl_") {
 					// Active built-in mush have location of -1
 					log.E(ctx, "Can not set location for built-in attribute: %v", cmd)
