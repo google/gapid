@@ -213,7 +213,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 	stagingElementInfo, _ := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, stagingImgFormat)
 	stagingElementSize := stagingElementInfo.ElementSize()
 
-	stagingInfo := img.Info()
+	stagingInfo := img.Info().Clone()
 	stagingInfo.SetDedicatedAllocationNV(NilDedicatedAllocationBufferImageCreateInfoNVʳ)
 	stagingInfo.SetFmt(stagingImgFormat)
 	stagingInfo.SetUsage(VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT))
