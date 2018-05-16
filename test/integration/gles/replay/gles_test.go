@@ -100,8 +100,8 @@ func maybeExportCapture(ctx context.Context, c *path.Capture) {
 
 func p(addr uint64) memory.Pointer { return memory.BytePtr(addr) }
 
-type traceVerifier func(context.Context, *path.Capture, *device.Instance)
-type traceGenerator func(context.Context, *device.Instance) (*path.Capture, traceVerifier)
+type verifier func(context.Context, *path.Capture, *device.Instance)
+type generator func(context.Context, *device.Instance) (*path.Capture, verifier)
 
 // mergeCaptures creates a capture from the cmds of several existing captures,
 // by interleaving them arbitrarily, on different threads.
@@ -151,7 +151,7 @@ func mergeCaptures(ctx context.Context, captures ...*path.Capture) *path.Capture
 	return merged.Capture(ctx, "merged")
 }
 
-func generateDrawTriangleCapture(ctx context.Context, d *device.Instance) (*path.Capture, traceVerifier) {
+func generateDrawTriangleCapture(ctx context.Context, d *device.Instance) (*path.Capture, verifier) {
 	return generateDrawTriangleCaptureEx(ctx, d,
 		0.0, 1.0, 0.0,
 		1.0, 0.0, 0.0)
@@ -161,7 +161,7 @@ func generateDrawTriangleCapture(ctx context.Context, d *device.Instance) (*path
 // a rotating triangle of color RGB(fr, fg, fb) on a RGB(br, bg, bb) background.
 func generateDrawTriangleCaptureEx(ctx context.Context, d *device.Instance,
 	br, bg, bb gles.GLfloat,
-	fr, fg, fb gles.GLfloat) (*path.Capture, traceVerifier) {
+	fr, fg, fb gles.GLfloat) (*path.Capture, verifier) {
 
 	b := snippets.NewBuilder(ctx, d)
 	b.CreateContext(64, 64, false, false)
@@ -197,7 +197,7 @@ func generateDrawTriangleCaptureEx(ctx context.Context, d *device.Instance,
 	}
 	rotatedTriangle := b.Last()
 
-	verifyTrace := func(ctx context.Context, c *path.Capture, d *device.Instance) {
+	verify := func(ctx context.Context, c *path.Capture, d *device.Instance) {
 		checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
 			done := &sync.WaitGroup{}
 			done.Add(5)
@@ -210,13 +210,13 @@ func generateDrawTriangleCaptureEx(ctx context.Context, d *device.Instance,
 		})
 	}
 
-	return b.Capture(ctx, "draw-triangle"), verifyTrace
+	return b.Capture(ctx, "draw-triangle"), verify
 }
 
-func testTrace(t *testing.T, name string, tg traceGenerator) {
+func test(t *testing.T, name string, tg generator) {
 	ctx, d := setup(log.Testing(t))
-	c, verifyTrace := tg(ctx, d)
-	verifyTrace(ctx, c, d)
+	c, verify := tg(ctx, d)
+	verify(ctx, c, d)
 }
 
 func TestDrawTexturedSquare(t *testing.T) {
@@ -246,7 +246,7 @@ func TestDrawTexturedSquareWithSharedContext(t *testing.T) {
 }
 
 func TestDrawTriangle(t *testing.T) {
-	testTrace(t, "draw-triangle", generateDrawTriangleCapture)
+	test(t, "draw-triangle", generateDrawTriangleCapture)
 }
 
 func TestMultiContextCapture(t *testing.T) {
@@ -263,7 +263,7 @@ func TestMultiContextCapture(t *testing.T) {
 	assert.With(ctx).That(len(contexts)).Equals(3)
 }
 
-func TestTraceWithIssues(t *testing.T) {
+func TestWithIssues(t *testing.T) {
 	ctx, d := setup(log.Testing(t))
 
 	b := snippets.NewBuilder(ctx, d)
@@ -317,7 +317,7 @@ func TestTraceWithIssues(t *testing.T) {
 
 func TestExportAndImportCapture(t *testing.T) {
 	ctx, d := setup(log.Testing(t))
-	c, verifyTrace := generateDrawTriangleCapture(ctx, d)
+	c, verify := generateDrawTriangleCapture(ctx, d)
 
 	var exported bytes.Buffer
 	err := capture.Export(ctx, c, &exported)
@@ -326,7 +326,7 @@ func TestExportAndImportCapture(t *testing.T) {
 	ctx, d = setup(log.Testing(t))
 	recoveredCapture, err := capture.Import(ctx, "recovered", exported.Bytes())
 	assert.With(ctx).ThatError(err).Succeeded()
-	verifyTrace(ctx, recoveredCapture, d)
+	verify(ctx, recoveredCapture, d)
 }
 
 // TestResizeRenderer checks that backbuffers can be resized without destroying
