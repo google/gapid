@@ -56,9 +56,6 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
       mSeenReferences{{ nullptr, 0 }},
       mCurrentCommandName(nullptr),
       mObserveApplicationPool(spy->shouldObserveApplicationPool()),
-      mScratch(
-          [](size_t size) { return createBuffer(size, SCRATCH_BUFFER_SIZE); },
-          [](uint8_t* buffer) { return releaseBuffer(buffer); }),
       mError(0 /*GL_NO_ERROR*/),
       mApi(api),
       mCurrentThread(core::Thread::current().id()) {
