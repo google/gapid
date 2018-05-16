@@ -160,6 +160,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		s := out.State()
 		id := nextTextureID
 		tmp := s.AllocDataOrPanic(ctx, id)
+		defer tmp.Free()
 		out.MutateAndWrite(ctx, i.Derived(), cb.GlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()))
 		nextTextureID--
 		return id
@@ -248,6 +249,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				// Satisfy the target by creating and binding a single VAO
 				// which we will use instead of the default VAO (id 0).
 				tmp := s.AllocDataOrPanic(ctx, VertexArrayId(DefaultVertexArrayId))
+				defer tmp.Free()
 				out.MutateAndWrite(ctx, dID, cb.GlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data()))
 				out.MutateAndWrite(ctx, dID, cb.GlBindVertexArray(DefaultVertexArrayId))
 			}
@@ -282,6 +284,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			} else if !c.Objects().GeneratedNames().Buffers().Get(cmd.Buffer()) {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
 				tmp := s.AllocDataOrPanic(ctx, cmd.Buffer())
+				defer tmp.Free()
 				out.MutateAndWrite(ctx, dID, cb.GlGenBuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
 			}
 
@@ -292,6 +295,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
 					tmp := s.AllocDataOrPanic(ctx, cmd.Texture())
 					out.MutateAndWrite(ctx, dID, cb.GlGenTextures(1, tmp.Ptr()).AddRead(tmp.Data()))
+					defer tmp.Free()
 				}
 
 				convertTexTarget(&cmd)
@@ -439,12 +443,12 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 			tmpSrc := s.AllocDataOrPanic(ctx, src)
 			tmpPtrToSrc := s.AllocDataOrPanic(ctx, tmpSrc.Ptr())
+			defer tmpSrc.Free()
+			defer tmpPtrToSrc.Free()
 			srcCmd := cb.GlShaderSource(cmd.Shader(), 1, tmpPtrToSrc.Ptr(), memory.Nullptr).
 				AddRead(tmpSrc.Data()).
 				AddRead(tmpPtrToSrc.Data())
 			out.MutateAndWrite(ctx, id, srcCmd)
-			tmpPtrToSrc.Free()
-			tmpSrc.Free()
 
 		// TODO: glVertexAttribIPointer
 		case *GlVertexAttribPointer:
@@ -474,8 +478,8 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				}
 			}
 			tmp := s.AllocDataOrPanic(ctx, bufs)
+			defer tmp.Free()
 			out.MutateAndWrite(ctx, id, cb.GlDrawBuffers(cmd.N(), tmp.Ptr()).AddRead(tmp.Data()))
-			tmp.Free()
 			return
 
 		case *GlDrawArrays:
@@ -1041,6 +1045,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if cmd.Framebuffer() != 0 && !c.Objects().GeneratedNames().Framebuffers().Get(cmd.Framebuffer()) {
 				// glGenFramebuffers() was not used to generate the buffer. Legal in GLES.
 				tmp := s.AllocDataOrPanic(ctx, cmd.Framebuffer())
+				defer tmp.Free()
 				out.MutateAndWrite(ctx, dID, cb.GlGenFramebuffers(1, tmp.Ptr()).AddRead(tmp.Data()))
 			}
 
@@ -1225,9 +1230,9 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 							}
 							loc := UniformLocation(uniform.Locations().Get(i))
 							tmp := s.AllocDataOrPanic(ctx, name)
+							defer tmp.Free()
 							cmd := cb.GlGetUniformLocation(cmd.Program(), tmp.Ptr(), loc).
 								AddRead(tmp.Data())
-							tmp.Free()
 							out.MutateAndWrite(ctx, dID, cmd)
 						}
 					}
@@ -1372,8 +1377,8 @@ func deleteCompat(
 	}
 
 	tmp := s.AllocDataOrPanic(ctx, ids)
+	defer tmp.Free()
 	cmd := create(GLsizei(count), tmp.Ptr())
 	cmd.Extras().GetOrAppendObservations().AddRead(tmp.Data())
 	out.MutateAndWrite(ctx, id, cmd)
-	tmp.Free()
 }
