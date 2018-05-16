@@ -245,4 +245,11 @@ type (
 	UnpackFlags struct {
 		Verbose bool `help:"if true, then output will not be truncated"`
 	}
+	StatsFlags struct {
+		Gapis  GapisFlags
+		Frames struct {
+			Start int `help:"frame to start stats from"`
+			Count int `help:"number of frames after Start to process: -1 for all frames"`
+		}
+	}
 )
