@@ -27,9 +27,10 @@ go_library(
     srcs = [
         "doc.go",
         "image.go",
+        "shaders.go",
         ":embed",  # keep
     ],
-    importpath = "github.com/google/gapid/test/integration/replay/gles",
+    importpath = "github.com/google/gapid/test/integration/gles/replay",
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/endian:go_default_library",
@@ -70,6 +71,6 @@ go_test(
         "//gapis/replay:go_default_library",
         "//gapis/resolve:go_default_library",
         "//gapis/service/path:go_default_library",
-        "//test/integration/replay/gles/samples:go_default_library",
+        "//test/integration/gles/snippets:go_default_library",
     ],
 )

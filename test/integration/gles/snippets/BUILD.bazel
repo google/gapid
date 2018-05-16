@@ -20,9 +20,9 @@ go_library(
         "builder.go",
         "clear_backbuffer.go",
         "draw_textured_square.go",
-        "samples.go",
+        "snippets.go",
     ],
-    importpath = "github.com/google/gapid/test/integration/replay/gles/samples",
+    importpath = "github.com/google/gapid/test/integration/gles/snippets",
     visibility = ["//visibility:public"],
     deps = [
         "//core/os/device:go_default_library",

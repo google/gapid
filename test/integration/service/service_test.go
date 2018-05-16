@@ -37,7 +37,7 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
-	"github.com/google/gapid/test/integration/replay/gles/samples"
+	"github.com/google/gapid/test/integration/gles/snippets"
 	"google.golang.org/grpc"
 )
 
@@ -127,7 +127,7 @@ func init() {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	cb := gles.CommandBuilder{Thread: 0}
 	h := &capture.Header{Abi: device.WindowsX86_64}
-	cmds, draw, swap := samples.DrawTexturedSquare(ctx, cb, false, h.Abi.MemoryLayout)
+	cmds, draw, swap := snippets.DrawTexturedSquare(ctx, cb, false, h.Abi.MemoryLayout)
 	p, err := capture.New(ctx, "sample", h, cmds)
 	check(err)
 	buf := bytes.Buffer{}

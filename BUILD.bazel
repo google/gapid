@@ -192,7 +192,7 @@ test_suite(
         "//gapis/stringtable/parser:go_default_test",
         "//gapis/vertex:go_default_xtest",
         "//test/integration/replay:go_default_test",
-        "//test/integration/replay/gles:go_default_test",
+        "//test/integration/gles/replay:go_default_test",
         "//test/integration/service:go_default_xtest",
         "//test/robot/stash/grpc:go_default_xtest",
     ],
