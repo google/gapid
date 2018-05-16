@@ -172,6 +172,7 @@ func (e *Encoder) Bool(v bool) {
 // Data writes raw bytes from buf.
 func (e *Encoder) Data(buf []byte) {
 	e.w.Data(buf)
+	e.o += uint64(len(buf))
 }
 
 // Error returns the error state of the underlying writer.

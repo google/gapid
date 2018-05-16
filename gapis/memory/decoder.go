@@ -171,6 +171,7 @@ func (d *Decoder) Bool() bool {
 // Data reads raw bytes into buf.
 func (d *Decoder) Data(buf []byte) {
 	d.r.Data(buf)
+	d.o += uint64(len(buf))
 }
 
 // Error returns the error state of the underlying reader.
