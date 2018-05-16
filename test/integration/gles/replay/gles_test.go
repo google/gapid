@@ -26,7 +26,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/image"
@@ -66,7 +65,6 @@ var (
 
 	generateReferenceImages = flag.String("generate", "", "directory in which to generate reference images, empty to disable")
 	exportCaptures          = flag.String("export-captures", "", "directory to export captures to, empty to disable")
-	rootCtx                 context.Context
 )
 
 // storeCapture encodes and writes the command list to the database, returning
@@ -121,12 +119,7 @@ func newFixture(ctx context.Context) (context.Context, *Fixture) {
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	var cancel task.CancelFunc
-	rootCtx, cancel = task.WithCancel(context.Background())
-	code := m.Run()
-	cancel()
-	app.WaitForCleanup(rootCtx)
-	os.Exit(code)
+	os.Exit(m.Run())
 }
 
 func p(addr uint64) memory.Pointer { return memory.BytePtr(addr) }
