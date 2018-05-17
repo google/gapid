@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <memory>
+#include <mutex>
 #include <stdlib.h>
 #include <string.h>
 #include <thread>
@@ -75,23 +76,21 @@ std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
 
 // Setup creates and starts a replay server at the given URI port. Returns the
 // created and started server.
-// Note the given memory manager, it will be used for multiple connections, and
-// this can result into wrong result or crash when there are more than one
-// client connected and requesting replay. The memory manager is kept here
-// to minimized the required modification to adopt gRPC, and this is good enough
-// when there is only one GAPIS talking to this GAPIR.
-// TODO: Make memory manager thread-safe, or create individual memory manager
-// for each connected client.
+// Note the given memory manager and the crash handler, they may be used for
+// multiple connections, so a mutex lock is passed in to make the accesses to
+// to them exclusive to one connected client. All other replay requests from
+// other clients will be blocked, until the current replay finishes.
 std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
                               const char* cachePath, int idleTimeoutSec,
                               core::CrashHandler* crashHandler,
-                              MemoryManager* memMgr) {
+                              MemoryManager* memMgr, std::mutex* lock) {
   // Return a replay server with the following replay ID handler. The first
   // package for a replay must be the ID of the replay.
   return Server::createAndStart(
       uri, authToken, idleTimeoutSec,
-      [cachePath, memMgr, crashHandler](ReplayConnection* replayConn,
-                                         const std::string& replayId) {
+      [cachePath, memMgr, crashHandler, lock](ReplayConnection* replayConn,
+                                              const std::string& replayId) {
+        std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
         std::unique_ptr<ResourceInMemoryCache> resourceProvider(
             createResourceProvider(cachePath, memMgr));
 
@@ -140,22 +139,26 @@ void android_main(struct android_app* app) {
 
     // Get the path of the file system socket.
     const char* pipe = pipeName();
-    std::string internal_data_path = std::string(app->activity->internalDataPath);
+    std::string internal_data_path =
+        std::string(app->activity->internalDataPath);
     std::string socket_file_path = internal_data_path + "/" + std::string(pipe);
     std::string uri = std::string("unix://") + socket_file_path;
 
     __android_log_print(ANDROID_LOG_DEBUG, "GAPIR",
-            "Started Graphics API Replay daemon.\n"
-            "Listening on unix socket '%s'\n"
-            "Supported ABIs: %s\n",
-            uri.c_str(), core::supportedABIs());
+                        "Started Graphics API Replay daemon.\n"
+                        "Listening on unix socket '%s'\n"
+                        "Supported ABIs: %s\n",
+                        uri.c_str(), core::supportedABIs());
 
     int idleTimeoutSec = 0; // No timeout
-    std::unique_ptr<Server> server = Setup(
-        uri.c_str(), nullptr, nullptr, idleTimeoutSec, &crashHandler, &memoryManager);
+    std::mutex lock;
+    std::unique_ptr<Server> server =
+        Setup(uri.c_str(), nullptr, nullptr, idleTimeoutSec, &crashHandler,
+              &memoryManager, &lock);
     std::thread waiting_thread([&]() { server.get()->wait(); });
-    if (chmod(socket_file_path.c_str(), S_IRUSR|S_IWUSR|S_IROTH|S_IWOTH)) {
-        GAPID_ERROR("Chmod failed!");
+    if (chmod(socket_file_path.c_str(),
+              S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH)) {
+      GAPID_ERROR("Chmod failed!");
     }
 
     bool alive = true;
@@ -288,9 +291,10 @@ int main(int argc, const char* argv[]) {
     }
     std::string uri = std::string(local_host_name) + std::string(":") + std::string(portStr);
 
+    std::mutex lock;
     std::unique_ptr<Server> server =
         Setup(uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr,
-              cachePath, idleTimeoutSec, &crashHandler, &memoryManager);
+              cachePath, idleTimeoutSec, &crashHandler, &memoryManager, &lock);
     // The following message is parsed by launchers to detect the selected port.
     // DO NOT CHANGE!
     printf("Bound on port '%s'\n", portStr.c_str());
