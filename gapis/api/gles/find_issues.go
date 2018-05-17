@@ -132,6 +132,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		b.Post(ptr, 4, builder.Postback(func(r binary.Reader, err error) {
 			if err != nil {
 				t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetError postback: %v", err))
+				return
 			}
 			v := GLenum(r.Uint32())
 			err = r.Error()
@@ -186,6 +187,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
 				if err != nil {
 					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderInfoLog postback: %v", err))
+					return
 				}
 				r.Data(infoLog)
 				if r.Error() != nil {
@@ -202,6 +204,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
 				if err != nil {
 					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderSource postback: %v", err))
+					return
 				}
 				r.Data(source)
 				if r.Error() != nil {
@@ -217,6 +220,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r binary.Reader, err error) {
 				if err != nil {
 					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderiv postback: %v", err))
+					return
 				}
 				if r.Uint32() != uint32(GLboolean_GL_TRUE) {
 					originalSource := "<unknown>"
@@ -244,6 +248,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r binary.Reader, err error) {
 				if err != nil {
 					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetProgramiv+glGetProgrameInfoLog postback: %v", err))
+					return
 				}
 				msg := make([]byte, buflen)
 				res := r.Uint32()

@@ -181,7 +181,6 @@ type ReplayResponseHandler interface {
 func (c *Connection) HandleReplayCommunication(
 	ctx context.Context,
 	replayID string,
-	// payload Payload,
 	handler ReplayResponseHandler) error {
 	ctx = log.Enter(ctx, "HandleReplayCommunication")
 	if c.conn == nil || c.servClient == nil {
@@ -243,6 +242,8 @@ func (c *Connection) HandleReplayCommunication(
 	}
 }
 
+// beginReplay begins a replay stream connection and attach the authentication,
+// if any, token in the metadata.
 func (c *Connection) beginReplay(ctx context.Context, id string) error {
 	ctx = log.Enter(ctx, "Starting replay on gapir device")
 	if c.servClient == nil || c.conn == nil {
