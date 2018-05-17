@@ -291,11 +291,22 @@ cmd GLenum glCheckFramebufferStatus(GLenum target) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClear.xhtml", Version.GLES32)
 cmd void glClear(GLbitfield mask) {
   supportsBits(mask, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
+
+  ctx := GetContext()
+  fb := ctx.Bound.DrawFramebuffer
+
   if (GL_COLOR_BUFFER_BIT in mask) {
+    for _, _, a in fb.ColorAttachments {
+      WriteGPUFramebufferAttachment(a)
+    }
   }
+
   if (GL_DEPTH_BUFFER_BIT in mask) {
+    WriteGPUFramebufferAttachment(fb.DepthAttachment)
   }
+
   if (GL_STENCIL_BUFFER_BIT in mask) {
+    WriteGPUFramebufferAttachment(fb.StencilAttachment)
   }
 
   // TODO: use(Clearing.ClearColor) when mask[GL_COLOR_BUFFER_BIT] == true
@@ -312,6 +323,7 @@ cmd void glClear(GLbitfield mask) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", Version.GLES32)
 cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil) {
+  // TODO: WriteGPUFramebufferAttachment
   switch (buffer) {
     case GL_DEPTH_STENCIL: {
       CheckEQ!GLint(drawbuffer, 0)
@@ -328,6 +340,7 @@ cmd void glClearBufferfi(GLenum buffer, GLint drawbuffer, GLfloat depth, GLint s
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", Version.GLES32)
 cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) {
+  // TODO: WriteGPUFramebufferAttachment
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
@@ -350,6 +363,7 @@ cmd void glClearBufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value) 
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", Version.GLES32)
 cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
+  // TODO: WriteGPUFramebufferAttachment
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
@@ -372,6 +386,7 @@ cmd void glClearBufferiv(GLenum buffer, GLint drawbuffer, const GLint* value) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearBuffer.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearBuffer.xhtml", Version.GLES32)
 cmd void glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint* value) {
+  // TODO: WriteGPUFramebufferAttachment
   switch (buffer) {
     case GL_COLOR: {
       ctx := GetContext()
@@ -390,7 +405,6 @@ cmd void glClearBufferuiv(GLenum buffer, GLint drawbuffer, const GLuint* value) 
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearColor.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearColor.xhtml", Version.GLES32)
 cmd void glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-
   ctx := GetContext()
   ctx.Pixel.ColorClearValue = Vec4f(r, g, b, a)
 }
@@ -401,7 +415,6 @@ cmd void glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearDepthf.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearDepthf.xhtml", Version.GLES32)
 cmd void glClearDepthf(GLfloat depth) {
-
   ctx := GetContext()
   ctx.Pixel.DepthClearValue = depth
 }
@@ -412,7 +425,6 @@ cmd void glClearDepthf(GLfloat depth) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glClearStencil.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glClearStencil.xhtml", Version.GLES32)
 cmd void glClearStencil(GLint stencil) {
-
   ctx := GetContext()
   ctx.Pixel.StencilClearValue = stencil
 }
