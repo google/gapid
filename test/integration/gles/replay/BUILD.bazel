@@ -48,6 +48,7 @@ go_test(
         "clear_test.go",
         "draw_test.go",
         "gles_test.go",
+        "fb_texture_test.go",
         "issues_test.go",
     ],
     data = [

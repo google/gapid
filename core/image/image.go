@@ -79,6 +79,21 @@ func (i *Info) Resize(ctx context.Context, w, h, d uint32) (*Info, error) {
 	}, nil
 }
 
+// Data loads the image from the database and returns a image Data.
+func (i *Info) Data(ctx context.Context) (*Data, error) {
+	boxedBytes, err := database.Resolve(ctx, i.Bytes.ID())
+	if err != nil {
+		return nil, err
+	}
+	return &Data{
+		Bytes:  boxedBytes.([]byte),
+		Width:  i.Width,
+		Height: i.Height,
+		Depth:  i.Depth,
+		Format: i.Format,
+	}, nil
+}
+
 // Convert returns the Data converted to the format to.
 func (b *Data) Convert(to *Format) (*Data, error) {
 	bytes, err := Convert(b.Bytes, int(b.Width), int(b.Height), int(b.Depth), b.Format, to)

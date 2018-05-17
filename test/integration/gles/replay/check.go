@@ -109,6 +109,55 @@ func checkColorBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 	checkImage(ctx, name, img, threshold)
 }
 
+func checkTextureBuffer(ctx context.Context, c *path.Capture, d *device.Instance, w, h uint32, threshold float64, name string, after api.CmdID, tex gles.TextureId, done *sync.WaitGroup) {
+	ctx = log.Enter(ctx, "TextureBuffer")
+	ctx = log.V{"name": name, "after": after}.Bind(ctx)
+	if done != nil {
+		defer done.Done()
+	}
+	ctx, _ = task.WithTimeout(ctx, replayTimeout)
+
+	cmdPath := c.Command(uint64(after))
+
+	cmd, err := resolve.Cmd(ctx, cmdPath)
+	if !assert.For(ctx, "resolve cmd").ThatError(err).Succeeded() {
+		return
+	}
+
+	thread := cmd.Thread()
+
+	globalState, err := resolve.GlobalState(ctx, cmdPath.GlobalStateAfter())
+	if !assert.For(ctx, "resolve global state").ThatError(err).Succeeded() {
+		return
+	}
+
+	state := gles.GetState(globalState)
+
+	context, ok := state.Contexts().Lookup(thread)
+	if !assert.For(ctx, "lookup context").That(ok).Equals(true) {
+		return
+	}
+
+	t := context.Objects().Textures().Get(tex)
+	if !assert.For(ctx, "texture found").That(!t.IsNil()).Equals(true) {
+		return
+	}
+
+	res, err := t.ResourceData(ctx, globalState)
+	if !assert.For(ctx, "resource data").ThatError(err).Succeeded() {
+		return
+	}
+
+	imginfo := res.GetTexture().GetTexture_2D().GetLevels()[0]
+
+	img, err := imginfo.Data(ctx)
+	if !assert.For(ctx, "image data").ThatError(err).Succeeded() {
+		return
+	}
+
+	checkImage(ctx, name, img, threshold)
+}
+
 func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
 	mgr := replay.GetManager(ctx)
 	ctx = log.Enter(ctx, "DepthBuffer")
