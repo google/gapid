@@ -27,3 +27,5 @@ void getContextConstants(Constants&);
 bool getFramebufferAttachmentSize(CallObserver* observer, uint32_t* width, uint32_t* height);
 
 bool getFramebufferAttachmentSize(CallObserver* observer, Framebuffer* framebuffer, uint32_t* width, uint32_t* height);
+
+void serializeGPUBuffers(StateSerializer* serializer);

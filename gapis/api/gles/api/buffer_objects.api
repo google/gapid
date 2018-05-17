@@ -16,7 +16,7 @@
 class Buffer {
   BufferId ID
 
-  @internal u8[] Data
+  @internal @spy_disabled u8[] Data
 
   // Table 21.5: Buffer Object State
   GLsizeiptr     Size        = 0
@@ -483,7 +483,7 @@ sub void MapBufferRange(GLenum target, GLintptr offset, GLsizeiptr size, GLbitfi
   mapMemory(ptr[0:size])
 
   if GL_MAP_READ_BIT in access {
-    copy(ptr[0:size], b.Data[offset:offset + as!GLintptr(size)])
+    write(ptr[0:size])
   }
 }
 

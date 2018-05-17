@@ -113,7 +113,7 @@ class Image {
   // This is unrelated to the format of the data passed to the API.
   @unused GLenum SizedFormat
 
-  @internal u8[] Data
+  @internal @spy_disabled u8[] Data
   // Tuple of (format, type) describing the Data field above.
   // This describes the format of the data the user passed in,
   // not the format of the data stored on the GPU (sizedFormat).
