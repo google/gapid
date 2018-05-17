@@ -27,9 +27,12 @@ struct destroyer {
     std::function<void(void)> destroy;
 };
 
+// Declared in api_spy.h.tmpl
 bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
     gapil::Ref<ImageObject> image;
+    uint32_t frame_buffer_img_level = 0;
+    uint32_t frame_buffer_img_layer = 0;
     if (mState.LastSubmission == LastSubmissionType::SUBMIT) {
         if (!mState.LastBoundQueue) {
             return false;
@@ -61,6 +64,12 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         image = imageView->mImage;
         *w = lastDrawInfo.mFramebuffer->mWidth;
         *h = lastDrawInfo.mFramebuffer->mHeight;
+        // If the image view is to be used as framebuffer attachment, it must
+        // contains only one level.
+        frame_buffer_img_level = imageView->mSubresourceRange.mbaseMipLevel;
+        // There might be more layers, but we only show the first layer.
+        // TODO: support multi-layer rendering.
+        frame_buffer_img_layer = imageView->mSubresourceRange.mbaseArrayLayer;
     } else {
         if (mState.LastPresentInfo.mPresentImageCount == 0) {
             return false;
@@ -68,6 +77,12 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
         image = mState.LastPresentInfo.mPresentImages[0];
         *w = image->mInfo.mExtent.mWidth;
         *h = image->mInfo.mExtent.mHeight;
+        // Swapchain images have only one miplevel.
+        frame_buffer_img_level = 0;
+        // There might be more than one array layers for swapchain images,
+        // currently we only show the data at layer 0
+        // TODO: support multi-layer swapchain images.
+        frame_buffer_img_layer = 0;
     }
 
     // TODO: Handle multisampled images. This is only a concern for
@@ -225,39 +240,44 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
     }
 
     VkImageMemoryBarrier barriers[2] = {{
-        VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-        nullptr,                                                 // pNext
-        (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1, // srcAccessMask
-        VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,           // dstAccessMask
-        image->mInfo.mLayout,                        // srcLayout
-        VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,     // dstLayout
-        0xFFFFFFFF,                                              // srcQueueFamily
-        0xFFFFFFFF,                                              // dstQueueFamily
-        image->mVulkanHandle,                        // image
-        {                                                        // subresourcerange
-            VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT,    // aspectMask
-            0,                                                   // baseMipLevel
-            1,                                                   // mipLevelCount
-            0,                                                   // baseArrayLayer
-            1,                                                   // layerCount
-        }
-    },{
-        VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-        nullptr,                                                 // pNext
-        (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1, // srcAccessMask
-        VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,          // dstAccessMask
-        VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED,                // srcLayout
-        VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,     // dstLayout
-        0xFFFFFFFF,                                              // srcQueueFamily
-        0xFFFFFFFF,                                              // dstQueueFamily
-        resolve_image,                                           // image
-        {                                                        // subresourcerange
-            VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT,    // aspectMask
-            0,                                                   // baseMipLevel
-            1,                                                   // mipLevelCount
-            0,                                                   // baseArrayLayer
-            1,                                                   // layerCount
-        }
+         VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,  // sType
+         nullptr,                                                  // pNext
+         (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,  // srcAccessMask
+         VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,            // dstAccessMask
+         image->mAspects[VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT]
+             ->mLayers[frame_buffer_img_layer]
+             ->mLevels[frame_buffer_img_level]
+             ->mLayout,                                            // srcLayout
+         VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,      // dstLayout
+         0xFFFFFFFF,                                               // srcQueueFamily
+         0xFFFFFFFF,                                               // dstQueueFamily
+         image->mVulkanHandle,                                     // image
+         {
+             // subresourcerange
+             VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT,     // aspectMask
+             0,                                                    // baseMipLevel
+             1,                                                    // mipLevelCount
+             0,                                                    // baseArrayLayer
+             1,                                                    // layerCount
+         }
+    }, {
+         VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,  // sType
+         nullptr,                                                  // pNext
+         (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,  // srcAccessMask
+         VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,           // dstAccessMask
+         VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED,                 // srcLayout
+         VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,      // dstLayout
+         0xFFFFFFFF,                                               // srcQueueFamily
+         0xFFFFFFFF,                                               // dstQueueFamily
+         resolve_image,                                            // image
+         {
+             // subresourcerange
+             VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT,     // aspectMask
+             0,                                                    // baseMipLevel
+             1,                                                    // mipLevelCount
+             0,  // baseArrayLayer
+             1,  // layerCount
+         }
     },
     };
 
@@ -281,7 +301,11 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
     barriers[0].msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
     barriers[0].mdstAccessMask = (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
     barriers[0].moldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barriers[0].mnewLayout = image->mInfo.mLayout;
+    barriers[0].mnewLayout =
+        image->mAspects[VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT]
+            ->mLayers[frame_buffer_img_layer]
+            ->mLevels[frame_buffer_img_level]
+            ->mLayout;
     barriers[1].msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT;
     barriers[1].mdstAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
     barriers[1].moldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -356,6 +380,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer,
     return true;
 }
 
+// API extern functions
 void VulkanSpy::enterSubcontext(CallObserver*) {}
 void VulkanSpy::leaveSubcontext(CallObserver*) {}
 void VulkanSpy::nextSubcontext(CallObserver*) {}
@@ -366,4 +391,34 @@ void VulkanSpy::onPostSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
 void VulkanSpy::onDeferSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
 void VulkanSpy::onCommandAdded(CallObserver*, VkCommandBuffer) {}
 void VulkanSpy::postBindSparse(CallObserver*, gapil::Ref<QueuedSparseBinds>) {}
+
+// Utility functions
+void VulkanSpy::walkImageSubRng(
+    gapil::Ref<ImageObject> img, VkImageSubresourceRange rng,
+    std::function<void(uint32_t aspect_bit, uint32_t layer, uint32_t level)>
+        f) {
+  auto aspect_map =
+      subUnpackImageAspectFlags(nullptr, nullptr, rng.maspectMask);
+  for (auto b : aspect_map->mBits) {
+    auto ai = img->mAspects.find(b.second);
+    if (ai == img->mAspects.end()) {
+      continue;
+    }
+    for (uint32_t layer = rng.mbaseArrayLayer;
+         layer < rng.mbaseArrayLayer + rng.mlayerCount; layer++) {
+      auto layi = ai->second->mLayers.find(layer);
+      if (layi == ai->second->mLayers.end()) {
+        continue;
+      }
+      for (uint32_t level = rng.mbaseMipLevel;
+           level < rng.mbaseMipLevel + rng.mlevelCount; level++) {
+        auto levi = layi->second->mLevels.find(level);
+        if (levi == layi->second->mLevels.end()) {
+          continue;
+        }
+        f(b.second, layer, level);
+      }
+    }
+  }
+}
 }

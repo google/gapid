@@ -109,3 +109,7 @@ void SpyOverride_cacheImageSparseMemoryRequirements(
 void prepareGPUBuffers(
     CallObserver* observer, PackEncoder* group,
     std::unordered_set<uint32_t>* gpu_pools);
+
+void walkImageSubRng(
+    gapil::Ref<ImageObject> img, VkImageSubresourceRange rng,
+    std::function<void(uint32_t aspect_bit, uint32_t layer, uint32_t level)> f);

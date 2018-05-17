@@ -124,7 +124,7 @@ cmd VkResult vkCreateSwapchainKHR(
       Tiling:       VK_IMAGE_TILING_OPTIMAL,
       Usage:        create_info.imageUsage,
       SharingMode:  create_info.imageSharingMode,
-      Layout:       VK_IMAGE_LAYOUT_UNDEFINED
+      InitialLayout:       VK_IMAGE_LAYOUT_UNDEFINED
     ),
     Surface:         Surfaces[create_info.surface],
     ColorSpace:      create_info.imageColorSpace,
@@ -151,9 +151,9 @@ cmd VkResult vkCreateSwapchainKHR(
 @extension("VK_KHR_swapchain")
 @indirect("VkDevice")
 cmd void vkDestroySwapchainKHR(
-    VkDevice                     device,
-    VkSwapchainKHR               swapchain,
-    AllocationCallbacks          pAllocator) {
+    VkDevice            device,
+    VkSwapchainKHR      swapchain,
+    AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   swapObject := Swapchains[swapchain]
   if swapObject != null {
@@ -203,7 +203,7 @@ cmd VkResult vkGetSwapchainImagesKHR(
         height := swapchainObject.Info.Extent.Height
         format := swapchainObject.Info.Format
         layer := new!ImageLayer()
-        level := new!ImageLevel(Width: width,Height:  height,Depth:  1)
+        level := new!ImageLevel(Width: width,Height:  height,Depth:  1,Layout:  VK_IMAGE_LAYOUT_UNDEFINED)
         elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
         // Roundup the width and height in the number of blocks.
         widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
@@ -281,11 +281,11 @@ cmd VkResult vkQueuePresentKHR(
     swapchain := Swapchains[swapchains[i]]
     image := swapchain.SwapchainImages[imageIndices[i]]
     readImageSubresource(image, VkImageSubresourceRange(
-      aspectMask: image.ImageAspect,
-      baseMipLevel: 0,
-      levelCount: image.Info.MipLevels,
-      baseArrayLayer: 0,
-      layerCount: image.Info.ArrayLayers), VK_IMAGE_LAYOUT_UNDEFINED)
+        aspectMask:      image.ImageAspect,
+        baseMipLevel:    0,
+        levelCount:      image.Info.MipLevels,
+        baseArrayLayer:  0,
+        layerCount:      image.Info.ArrayLayers), VK_IMAGE_LAYOUT_UNDEFINED)
     LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
     image
     LastPresentInfo.PresentImageCount = LastPresentInfo.PresentImageCount + 1

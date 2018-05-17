@@ -50,7 +50,7 @@ const (
 // interfaces to interact with state rebuilder
 
 func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue QueueObjectʳ, sparseBindingQueue QueueObjectʳ) error {
-	job := newImagePrimerBufCopyJob(img, img.Info().Layout())
+	job := newImagePrimerBufCopyJob(img, sameLayoutsOfImage(img))
 	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
 		job.addDst(aspect, aspect, img)
 	}
@@ -69,7 +69,7 @@ func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []V
 }
 
 func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue, sparseBindingQueue QueueObjectʳ) error {
-	copyJob := newImagePrimerBufCopyJob(img, VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	copyJob := newImagePrimerBufCopyJob(img, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
 	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
 		stagingImgs, stagingImgMems, err := p.allocStagingImages(img, aspect)
 		if err != nil {
@@ -107,7 +107,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 					aspect:                aspect,
 					layer:                 layer,
 					level:                 level,
-					finalLayout:           img.Info().Layout(),
+					finalLayout:           img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(),
 				})
 			}
 		}
@@ -157,7 +157,23 @@ func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []V
 			})
 	}
 
-	p.sb.transitionImage(img, GetState(p.sb.newState).Images().Get(img.VulkanHandle()).Info().Layout(), VkImageLayout_VK_IMAGE_LAYOUT_GENERAL, sparseBindingQueue, queue)
+	whole := p.sb.imageWholeSubresourceRange(img)
+	transitionInfo := []imgSubRngLayoutTransitionInfo{}
+	oldLayouts := []VkImageLayout{}
+	walkImageSubresourceRange(p.sb, img, whole, func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+		l := GetState(p.sb.newState).Images().Get(img.VulkanHandle()).Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
+		transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
+			aspectMask:     VkImageAspectFlags(aspect),
+			baseMipLevel:   level,
+			levelCount:     1,
+			baseArrayLayer: layer,
+			layerCount:     1,
+			oldLayout:      l.Layout(),
+			newLayout:      VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
+		})
+		oldLayouts = append(oldLayouts, l.Layout())
+	})
+	p.sb.transitionImageLayout(img, transitionInfo, sparseBindingQueue, queue)
 
 	for _, job := range storeJobs {
 		err := p.sh.store(job, queue)
@@ -166,7 +182,12 @@ func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []V
 		}
 	}
 
-	p.sb.transitionImage(img, VkImageLayout_VK_IMAGE_LAYOUT_GENERAL, img.Info().Layout(), queue, queue)
+	for i := range transitionInfo {
+		transitionInfo[i].oldLayout = VkImageLayout_VK_IMAGE_LAYOUT_GENERAL
+		transitionInfo[i].newLayout = oldLayouts[i]
+	}
+	p.sb.transitionImageLayout(img, transitionInfo, sparseBindingQueue, queue)
+
 	return nil
 }
 
@@ -258,6 +279,43 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 		covered += stagingElementSize
 	}
 	return stagingImgs, stagingMems, nil
+}
+
+type ipLayoutInfo interface {
+	layoutOf(aspect VkImageAspectFlagBits, layer, level uint32) VkImageLayout
+}
+
+type ipLayoutInfoFromImage struct {
+	img ImageObjectʳ
+}
+
+func (i *ipLayoutInfoFromImage) layoutOf(aspect VkImageAspectFlagBits, layer, level uint32) VkImageLayout {
+	if _, ok := i.img.Aspects().Lookup(aspect); !ok {
+		return VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED
+	}
+	if _, ok := i.img.Aspects().Get(aspect).Layers().Lookup(layer); !ok {
+		return VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED
+	}
+	if _, ok := i.img.Aspects().Get(aspect).Layers().Get(layer).Levels().Lookup(level); !ok {
+		return VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED
+	}
+	return i.img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout()
+}
+
+func sameLayoutsOfImage(img ImageObjectʳ) ipLayoutInfo {
+	return &ipLayoutInfoFromImage{img: img}
+}
+
+type ipLayoutInfoFromLayout struct {
+	layout VkImageLayout
+}
+
+func (i *ipLayoutInfoFromLayout) layoutOf(aspect VkImageAspectFlagBits, layer, level uint32) VkImageLayout {
+	return i.layout
+}
+
+func useSpecifiedLayout(layout VkImageLayout) ipLayoutInfo {
+	return &ipLayoutInfoFromLayout{layout: layout}
 }
 
 // In-shader image store handler
@@ -1049,13 +1107,14 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 
 	inputBarriers := []VkImageMemoryBarrier{}
 	for _, input := range job.inputAttachmentImages {
+		inputLevel := input.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT).Layers().Get(job.layer).Levels().Get(job.level)
 		inputBarriers = append(inputBarriers,
 			NewVkImageMemoryBarrier(
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 				0, // pNext
 				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
 				VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),                                        // dstAccessMask
-				input.Info().Layout(),                                                                                      // oldLayout
+				inputLevel.Layout(),                                                                                        // oldLayout
 				VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                                                     // newLayout
 				queue.Family(),                                                                                             // srcQueueFamilyIndex
 				queue.Family(),                                                                                             // dstQueueFamilyIndex
@@ -1073,8 +1132,9 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		0, // srcAccessMask
-		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT),                            // dstAccessMask
-		GetState(h.sb.newState).Images().Get(job.renderTarget.VulkanHandle()).Info().Layout(), // oldLayout
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+		GetState(h.sb.newState).Images().Get(job.renderTarget.VulkanHandle()).Aspects().Get(
+			job.aspect).Layers().Get(job.layer).Levels().Get(job.level).Layout(), // oldLayout
 		outputPreRenderLayout,           // newLayout
 		queue.Family(),                  // srcQueueFamilyIndex
 		queue.Family(),                  // dstQueueFamilyIndex
@@ -1911,19 +1971,18 @@ func (h *ipRenderHandler) getOrCreateDescriptorSetLayout(descSetInfo ipRenderDes
 // the VkImage handle, so such a copy does not modify the state of the src image
 type ipBufCopyJob struct {
 	srcAspectsToDsts map[VkImageAspectFlagBits]*ipBufCopyDst
-	finalLayout      VkImageLayout
 	srcImg           ImageObjectʳ
+	finalLayout      ipLayoutInfo
 }
 
 // ipBufCopyDst contains a list of dst images whose dst aspect will be written
 // by a serial of image copy operations.
 type ipBufCopyDst struct {
-	dstImgs     []ImageObjectʳ
-	dstAspect   VkImageAspectFlagBits
-	finalLayout VkImageLayout
+	dstImgs   []ImageObjectʳ
+	dstAspect VkImageAspectFlagBits
 }
 
-func newImagePrimerBufCopyJob(srcImg ImageObjectʳ, finalLayout VkImageLayout) *ipBufCopyJob {
+func newImagePrimerBufCopyJob(srcImg ImageObjectʳ, finalLayout ipLayoutInfo) *ipBufCopyJob {
 	return &ipBufCopyJob{
 		srcAspectsToDsts: map[VkImageAspectFlagBits]*ipBufCopyDst{},
 		finalLayout:      finalLayout,
@@ -2047,7 +2106,7 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, ds
 				0, // pNext
 				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
 				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-				GetState(h.sb.newState).Images().Get(dstImg.VulkanHandle()).Info().Layout(),                                // oldLayout
+				VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                                                                    // oldLayout
 				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                                                         // newLayout
 				oldQueueFamilyIndex,                                                                                        // srcQueueFamilyIndex
 				uint32(submissionQueue.Family()),                                                                           // dstQueueFamilyIndex
@@ -2101,12 +2160,30 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, ds
 		}
 	}
 
-	for i := range dstImgBarriers {
-		dstImgBarriers[i].SetOldLayout(VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-		dstImgBarriers[i].SetNewLayout(h.job.finalLayout)
-		dstImgBarriers[i].SetSrcQueueFamilyIndex(uint32(submissionQueue.Family()))
-		if !h.job.srcImg.LastBoundQueue().IsNil() {
-			dstImgBarriers[i].SetDstQueueFamilyIndex(uint32(h.job.srcImg.LastBoundQueue().Family()))
+	dstImgBarriers = nil
+	for _, dst := range h.job.srcAspectsToDsts {
+		for _, dstImg := range dst.dstImgs {
+			walkImageSubresourceRange(h.sb, dstImg, h.sb.imageWholeSubresourceRange(dstImg), func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+				barrier := NewVkImageMemoryBarrier(
+					VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+					0, // pNext
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+					VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                                                         // oldLayout
+					h.job.finalLayout.layoutOf(aspect, layer, level),                                                           // newLayout
+					oldQueueFamilyIndex,                                                                                        // srcQueueFamilyIndex
+					uint32(submissionQueue.Family()),                                                                           // dstQueueFamilyIndex
+					dstImg.VulkanHandle(),                                                                                      // image
+					NewVkImageSubresourceRange( // subresourceRange
+						VkImageAspectFlags(aspect), // aspectMask
+						level, // baseMipLevel
+						1,     // levelCount
+						layer, // baseArrayLayer
+						1,     // layerCount
+					),
+				)
+				dstImgBarriers = append(dstImgBarriers, barrier)
+			})
 		}
 	}
 

@@ -592,8 +592,18 @@ func (sb *stateBuilder) createQueue(q QueueObjectʳ) {
 	))
 }
 
-func (sb *stateBuilder) transitionImage(image ImageObjectʳ,
-	oldLayout, newLayout VkImageLayout,
+type imgSubRngLayoutTransitionInfo struct {
+	aspectMask     VkImageAspectFlags
+	baseMipLevel   uint32
+	levelCount     uint32
+	baseArrayLayer uint32
+	layerCount     uint32
+	oldLayout      VkImageLayout
+	newLayout      VkImageLayout
+}
+
+func (sb *stateBuilder) transitionImageLayout(image ImageObjectʳ,
+	transitionInfo []imgSubRngLayoutTransitionInfo,
 	oldQueue, newQueue QueueObjectʳ) {
 
 	if image.LastBoundQueue().IsNil() {
@@ -609,6 +619,28 @@ func (sb *stateBuilder) transitionImage(image ImageObjectʳ,
 		oldFamily = oldQueue.Family()
 	}
 
+	imgBarriers := []VkImageMemoryBarrier{}
+	for _, info := range transitionInfo {
+		imgBarriers = append(imgBarriers, NewVkImageMemoryBarrier(
+			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+			0, // pNext
+			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+			info.oldLayout,       // oldLayout
+			info.newLayout,       // newLayout
+			oldFamily,            // srcQueueFamilyIndex
+			newFamily,            // dstQueueFamilyIndex
+			image.VulkanHandle(), // image
+			NewVkImageSubresourceRange(
+				info.aspectMask,
+				info.baseMipLevel,
+				info.levelCount,
+				info.baseArrayLayer,
+				info.layerCount,
+			), // subresourceRange
+		))
+	}
+
 	sb.write(sb.cb.VkCmdPipelineBarrier(
 		commandBuffer,
 		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -618,25 +650,8 @@ func (sb *stateBuilder) transitionImage(image ImageObjectʳ,
 		memory.Nullptr,
 		0,
 		memory.Nullptr,
-		1,
-		sb.MustAllocReadData(NewVkImageMemoryBarrier(
-			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-			0, // pNext
-			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-			oldLayout,            // oldLayout
-			newLayout,            // newLayout
-			oldFamily,            // srcQueueFamilyIndex
-			newFamily,            // dstQueueFamilyIndex
-			image.VulkanHandle(), // image
-			NewVkImageSubresourceRange( // subresourceRange
-				image.ImageAspect(),
-				0,
-				image.Info().MipLevels(),
-				0,
-				image.Info().ArrayLayers(),
-			),
-		)).Ptr(),
+		uint32(len(imgBarriers)),
+		sb.MustAllocReadData(imgBarriers).Ptr(),
 	))
 
 	sb.endSubmitAndDestroyCommandBuffer(newQueue, commandBuffer, commandPool)
@@ -696,8 +711,21 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 	))
 	for _, v := range swp.SwapchainImages().All() {
 		q := sb.getQueueFor(v.LastBoundQueue(), v.Device(), v.Info().QueueFamilyIndices().All())
-		sb.transitionImage(v, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
-			v.Info().Layout(), NilQueueObjectʳ, q)
+		transitionInfo := []imgSubRngLayoutTransitionInfo{}
+		walkImageSubresourceRange(sb, v, sb.imageWholeSubresourceRange(v),
+			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+				l := v.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
+				transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
+					aspectMask:     VkImageAspectFlags(aspect),
+					baseMipLevel:   level,
+					levelCount:     1,
+					baseArrayLayer: layer,
+					layerCount:     1,
+					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
+					newLayout:      l.Layout(),
+				})
+			})
+		sb.transitionImageLayout(v, transitionInfo, NilQueueObjectʳ, q)
 	}
 }
 
@@ -1253,6 +1281,18 @@ func (sb *stateBuilder) imageAspectFlagBits(flag VkImageAspectFlags) []VkImageAs
 	return bits
 }
 
+// imageWholeSubresourceRange creates a VkImageSubresourceRange that covers the
+// whole given image.
+func (sb *stateBuilder) imageWholeSubresourceRange(img ImageObjectʳ) VkImageSubresourceRange {
+	return NewVkImageSubresourceRange(
+		img.ImageAspect(), // aspectMask
+		0,                 // baseMipLevel
+		img.Info().MipLevels(), // levelCount
+		0, // baseArrayLayer
+		img.Info().ArrayLayers(), // layerCount
+	)
+}
+
 // IsFullyBound returns true if the resource range from offset with size is
 // fully covered in the bindings.
 func IsFullyBound(offset VkDeviceSize, size VkDeviceSize,
@@ -1349,6 +1389,25 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	queue := sb.getQueueFor(img.LastBoundQueue(), img.Device(), img.Info().QueueFamilyIndices().All())
 	var sparseQueue QueueObjectʳ
 	opaqueRanges := []VkImageSubresourceRange{}
+	// appendImageLevelToOpaqueRanges is a helper function to collect image levels
+	// from the current processing source image that do not have an undefined
+	// layout. The unused byteSizeAndExtent is to meet the requirement of
+	// walkImageSubresourceRange()
+	appendImageLevelToOpaqueRanges := func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+		// No need to handle for undefined layout
+		if isUndef, _ := subCheckImageLevelLayout(sb.ctx, nil, api.CmdNoID, nil,
+			sb.oldState, nil, 0, nil, img, aspect, layer, level,
+			VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, false); isUndef {
+			return
+		}
+		opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(
+			VkImageAspectFlags(aspect), // aspectMask
+			level, // baseMipLevel
+			1,     // levelCount
+			layer, // baseArrayLayer
+			1,     // layerCount
+		))
+	}
 
 	if img.OpaqueSparseMemoryBindings().Len() > 0 || img.SparseImageMemoryBindings().Len() > 0 {
 		// If this img has sparse memory bindings, then we have to set them all
@@ -1443,39 +1502,35 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 						if !IsFullyBound(req.ImageMipTailOffset(), req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings()) {
 							continue
 						}
-						opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(
+						subRng := NewVkImageSubresourceRange(
 							img.ImageAspect(),                                 // aspectMask
 							req.ImageMipTailFirstLod(),                        // baseMipLevel
 							img.Info().MipLevels()-req.ImageMipTailFirstLod(), // levelCount
 							0, // baseArrayLayer
 							img.Info().ArrayLayers(), // layerCount
-						))
+						)
+						walkImageSubresourceRange(sb, img, subRng, appendImageLevelToOpaqueRanges)
 					} else {
 						for i := uint32(0); i < uint32(img.Info().ArrayLayers()); i++ {
 							offset := req.ImageMipTailOffset() + VkDeviceSize(i)*req.ImageMipTailStride()
 							if !IsFullyBound(offset, req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings()) {
 								continue
 							}
-							opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(
+							subRng := NewVkImageSubresourceRange(
 								img.ImageAspect(),                                 // aspectMask
 								req.ImageMipTailFirstLod(),                        // baseMipLevel
 								img.Info().MipLevels()-req.ImageMipTailFirstLod(), // levelCount
 								i, // baseArrayLayer
 								1, // layerCount
-							))
+							)
+							walkImageSubresourceRange(sb, img, subRng, appendImageLevelToOpaqueRanges)
 						}
 					}
 				}
 			}
 		} else {
 			if IsFullyBound(0, img.MemoryRequirements().Size(), img.OpaqueSparseMemoryBindings()) {
-				opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(
-					img.ImageAspect(), // aspectMask
-					0,                 // baseMipLevel
-					img.Info().MipLevels(), // levelCount
-					0, // baseArrayLayer
-					img.Info().ArrayLayers(), // layerCount
-				))
+				walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img), appendImageLevelToOpaqueRanges)
 			}
 		}
 	} else {
@@ -1483,30 +1538,43 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		if img.BoundMemory().IsNil() {
 			return
 		}
-
-		opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(
-			img.ImageAspect(), // aspectMask
-			0,                 // baseMipLevel
-			img.Info().MipLevels(), // levelCount
-			0, // baseArrayLayer
-			img.Info().ArrayLayers(), // layerCount
-		))
+		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img), appendImageLevelToOpaqueRanges)
 		vkBindImageMemory(sb, img.Device(), img.VulkanHandle(),
 			img.BoundMemory().VulkanHandle(), img.BoundMemoryOffset())
 	}
-
-	// We won't have to handle UNDEFINED.
-	if img.Info().Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
+	// opaqueRanges should contain all the bound image subresources by now.
+	if len(opaqueRanges) == 0 {
+		// There is no valid data in this image at all
 		return
 	}
+
 	// We don't currently prime the data in any of these formats.
 	if img.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
-		sb.transitionImage(img, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, img.Info().Layout(), sparseQueue, queue)
+		transitionInfo := []imgSubRngLayoutTransitionInfo{}
+		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img),
+			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+				// No need to handle for undefined layout
+				if isUndef, _ := subCheckImageLevelLayout(sb.ctx, nil, api.CmdNoID, nil, sb.oldState,
+					nil, 0, nil, img, aspect, layer, level, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, false); isUndef {
+					return
+				}
+				imgLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
+				transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
+					aspectMask:     VkImageAspectFlags(aspect),
+					baseMipLevel:   level,
+					levelCount:     1,
+					baseArrayLayer: layer,
+					layerCount:     1,
+					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
+					newLayout:      imgLevel.Layout(),
+				})
+			})
+		sb.transitionImageLayout(img, transitionInfo, sparseQueue, queue)
 		log.E(sb.ctx, "[Priming the data of image: %v] priming data for MS images not implemented", img.VulkanHandle())
 		return
 	}
 	if img.LastBoundQueue().IsNil() {
-		log.W(sb.ctx, "[Priming the data of image: %v] image has never been used on any queue, using arbitrary queue for the priming commands", img.VulkanHandle())
+		log.W(sb.ctx, "[Priming the data of image: %v] image has never been used on any queue, using an arbitrary queue for the priming commands", img.VulkanHandle())
 	}
 	// We have to handle the above cases at some point.
 	var err error

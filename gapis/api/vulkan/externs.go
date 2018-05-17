@@ -360,9 +360,16 @@ func (e externs) vkErrCommandBufferIncomplete(cmdbuf VkCommandBuffer) {
 	issue.Error = fmt.Errorf("Executing command buffer %v was not in the COMPLETED state", cmdbuf)
 }
 
-func (e externs) vkErrImageLayout(layout VkImageLayout, expectedLayout VkImageLayout) {
+func (e externs) vkErrInvalidImageLayout(img VkImage, aspect, layer, level uint32, layout VkImageLayout, expectedLayout VkImageLayout) {
 	var issue replay.Issue
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_WarningLevel
-	issue.Error = fmt.Errorf("Image was in layout %v, but was expected to be in layout %v", layout, expectedLayout)
+	issue.Error = fmt.Errorf("Image subsource at Image: %v AspectBit: %v, Layer: %v, Level: %v was in layout %v, but was expected to be in layout %v", uint64(img), aspect, layer, level, layout, expectedLayout)
+}
+
+func (e externs) vkErrInvalidImageSubresource(img VkImage, subresourceType string, value uint32) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_WarningLevel
+	issue.Error = fmt.Errorf("Accessing invalid image subresource at Image: %v, %v: %v", uint64(img), subresourceType, value)
 }

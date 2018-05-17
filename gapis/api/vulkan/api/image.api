@@ -52,7 +52,7 @@
   VkImageUsageFlags                              Usage
   VkSharingMode                                  SharingMode
   map!(u32, u32)                                 QueueFamilyIndices
-  VkImageLayout                                  Layout
+  VkImageLayout                                  InitialLayout
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
 }
 
@@ -91,7 +91,7 @@
   @unused u32 Depth
   @spy_disabled
   @hidden @nobox @internal u8[] Data
-  @unused u32                   Size
+  VkImageLayout                 Layout
 }
 
 @internal class SparseBoundImageAspectInfo {
@@ -119,10 +119,10 @@
 @indirect("VkDevice")
 @override
 cmd VkResult vkCreateImage(
-    VkDevice                     device,
-    const VkImageCreateInfo*     pCreateInfo,
-    AllocationCallbacks          pAllocator,
-    VkImage*                     pImage) {
+    VkDevice                 device,
+    const VkImageCreateInfo* pCreateInfo,
+    AllocationCallbacks      pAllocator,
+    VkImage*                 pImage) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkImageCreateInfo") }
   info := pCreateInfo[0]
@@ -139,7 +139,7 @@ cmd VkResult vkCreateImage(
     Tiling:       info.tiling,
     Usage:        info.usage,
     SharingMode:  info.sharingMode,
-    Layout:       info.initialLayout,
+    InitialLayout:       info.initialLayout,
   )
 
   for i in (0 .. info.queueFamilyIndexCount) {
@@ -205,7 +205,7 @@ cmd VkResult vkCreateImage(
         width := getMipSize(info.extent.Width, i)
         height := getMipSize(info.extent.Height, i)
         depth := getMipSize(info.extent.Depth, i)
-        level := new!ImageLevel(Width: width,Height:  height,Depth:  depth)
+        level := new!ImageLevel(Width: width,Height:  height,Depth:  depth,Layout:  info.initialLayout)
         aspect.Layers[j].Levels[i] = level
       }
     }
@@ -218,9 +218,9 @@ cmd VkResult vkCreateImage(
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyImage(
-    VkDevice                     device,
-    VkImage                      image,
-    AllocationCallbacks          pAllocator) {
+    VkDevice            device,
+    VkImage             image,
+    AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if (image != as!VkImage(0)) {
     imageObject := Images[image]
@@ -273,7 +273,7 @@ cmd VkResult vkBindImageMemory(
   imageObject.BoundMemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
 
-  for _, _, aspectBit in unpackImageAspectFlags(imageObject.ImageAspect).Bits {
+  for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect).Bits {
     aspect := imageObject.Aspects[aspectBit]
     for j in (0 .. imageObject.Info.ArrayLayers) {
       for i in (0 .. imageObject.Info.MipLevels) {
@@ -354,9 +354,9 @@ cmd VkResult vkCreateImageView(
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyImageView(
-    VkDevice                     device,
-    VkImageView                  imageView,
-    AllocationCallbacks          pAllocator) {
+    VkDevice            device,
+    VkImageView         imageView,
+    AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(ImageViews, imageView)
   for _ , _ , drawInfo in LastDrawInfos {
@@ -407,10 +407,10 @@ cmd void vkDestroyImageView(
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateSampler(
-    VkDevice                     device,
-    const VkSamplerCreateInfo*   pCreateInfo,
-    AllocationCallbacks          pAllocator,
-    VkSampler*                   pSampler) {
+    VkDevice                   device,
+    const VkSamplerCreateInfo* pCreateInfo,
+    AllocationCallbacks        pAllocator,
+    VkSampler*                 pSampler) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSamplerCreateInfo") }
   create_info := pCreateInfo[0]
@@ -443,18 +443,20 @@ cmd VkResult vkCreateSampler(
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroySampler(
-    VkDevice                     device,
-    VkSampler                    sampler,
-    AllocationCallbacks          pAllocator) {
+    VkDevice            device,
+    VkSampler           sampler,
+    AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   delete(Samplers, sampler)
 }
 
 sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout layout) {
-  if (image.Info.Layout != layout) { vkErrorImageLayout(image.Info.Layout, layout) }
+  if layout != VK_IMAGE_LAYOUT_UNDEFINED {
+    _ = checkImageSubresourceRangeLayout(image, rng, layout)
+  }
   VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
-  VK_REMAINING_MIP_LEVELS   := as!u32(0xFFFFFFFF)
-  for _, _, aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
+  VK_REMAINING_MIP_LEVELS := as!u32(0xFFFFFFFF)
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
     aspect := image.Aspects[aspectBit]
     layerEnd := switch (rng.layerCount == VK_REMAINING_ARRAY_LAYERS) {
       case true:
@@ -480,11 +482,11 @@ sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng
 
 sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout layout) {
   if layout != VK_IMAGE_LAYOUT_UNDEFINED {
-    if image.Info.Layout != layout { vkErrorImageLayout(image.Info.Layout, layout) }
+    _ = checkImageSubresourceRangeLayout(image, rng, layout)
   }
   VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
-  VK_REMAINING_MIP_LEVELS   := as!u32(0xFFFFFFFF)
-  for _, _, aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
+  VK_REMAINING_MIP_LEVELS := as!u32(0xFFFFFFFF)
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
     aspect := image.Aspects[aspectBit]
     layerEnd := switch (rng.layerCount == VK_REMAINING_ARRAY_LAYERS) {
       case true:
@@ -508,9 +510,78 @@ sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rn
   }
 }
 
-sub void transitionImageLayout(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout oldLayout, VkImageLayout newLayout) {
-  if ((oldLayout != VK_IMAGE_LAYOUT_UNDEFINED) && (oldLayout != image.Info.Layout)) {
-    vkErrorImageLayout(image.Info.Layout, oldLayout)
+sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng, VkImageLayout oldLayout, VkImageLayout newLayout) {
+  if oldLayout != VK_IMAGE_LAYOUT_UNDEFINED {
+    _ = checkImageSubresourceRangeLayout(img, rng, oldLayout)
   }
-  image.Info.Layout = newLayout
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
+    if (aspectBit in img.Aspects) {
+      for layer in (rng.baseArrayLayer .. rng.baseArrayLayer + rng.layerCount) {
+        if (layer in img.Aspects[aspectBit].Layers) {
+          for level in (rng.baseMipLevel .. rng.baseMipLevel + rng.levelCount) {
+            if (level in img.Aspects[aspectBit].Layers[layer].Levels) {
+              imgLevel := img.Aspects[aspectBit].Layers[layer].Levels[level]
+              imgLevel.Layout = newLayout
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+sub bool checkImageSubresourceRangeLayout(ref!ImageObject img, VkImageSubresourceRange rng, VkImageLayout expectedLayout) {
+  res := MutableBool(true)
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
+    for layer in (rng.baseArrayLayer .. rng.baseArrayLayer + rng.layerCount) {
+      for level in (rng.baseMipLevel .. rng.baseMipLevel + rng.levelCount) {
+        if !(checkImageLevelLayout(img, aspectBit, layer, level, expectedLayout, true)) {
+          res.b = false
+        }
+      }
+    }
+  }
+  return res.b
+}
+
+sub bool checkImageLevelLayout(ref!ImageObject img, VkImageAspectFlagBits aspect, u32 layer, u32 level, VkImageLayout expectedLayout, bool report) {
+  res := MutableBool(false)
+  if checkImageLevelExistence(img, aspect, layer, level, report) {
+    imgLevel := img.Aspects[aspect].Layers[layer].Levels[level]
+    if (imgLevel.Layout == expectedLayout) {
+      res.b = true
+    } else {
+      if report {
+        vkErrorInvalidImageLayout(img.VulkanHandle, aspect, layer, level, imgLevel.Layout, expectedLayout)
+      }
+    }
+  }
+  return res.b
+}
+
+sub bool checkImageLevelExistence(ref!ImageObject img, VkImageAspectFlagBits aspect, u32 layer, u32 level, bool report) {
+  exist := MutableBool(false)
+  if !(aspect in img.Aspects) {
+    if report {
+      vkErrorInvalidImageAspect(img.VulkanHandle, aspect)
+    }
+  }
+  else {
+    if !(layer in img.Aspects[aspect].Layers) {
+      if report {
+        vkErrorInvalidImageArrayLayer(img.VulkanHandle, layer)
+      }
+    }
+    else {
+      if !(level in img.Aspects[aspect].Layers[layer].Levels) {
+        if report {
+          vkErrorInvalidImageMipLevel(img.VulkanHandle, level)
+        }
+      }
+      else {
+        exist.b = true
+      }
+    }
+  }
+  return exist.b
 }
