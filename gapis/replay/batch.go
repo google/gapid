@@ -23,12 +23,12 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/executor"
-	"github.com/google/gapid/gapis/replay/protocol"
 	"github.com/google/gapid/gapis/replay/scheduler"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
@@ -163,7 +163,7 @@ func (m *Manager) execute(
 		log.I(ctx, "Building payload...")
 	}
 
-	var payload protocol.Payload
+	var payload gapir.Payload
 	var decoder builder.ResponseDecoder
 	builderBuildTimer.Time(func() { payload, decoder, err = b.Build(ctx) })
 	if err != nil {

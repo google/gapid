@@ -34,10 +34,10 @@
 //   ┃   mMemory   ┃          memory        ┃
 //   ┃             ┃                        ┃
 //   ┃             ┣━━━━━━━━━━━━┳━━━━━━━━━━━┨
-//   ┃             ┃            ┃           ┃
-//   ┃             ┃   replay   ┃           ┃
-//   ┃             ┃    data    ┣━━━━━━━━━━━┨
 //   ┃             ┃            ┃  constant ┃
+//   ┃             ┃   replay   ┃   memory  ┃
+//   ┃             ┃    data    ┣━━━━━━━━━━━┨
+//   ┃             ┃            ┃   opcode  ┃
 //   ┃             ┃            ┃   memory  ┃
 //   ┗━━━━━━━━━━━━━┻━━━━━━━━━━━━┻━━━━━━━━━━━┛
 //                 mMemory[mSize]
@@ -75,19 +75,36 @@ MemoryManager::MemoryManager(const std::vector<uint32_t>& sizeList) : mConstantM
     }
 
     GAPID_DEBUG("Base address: %p", mMemory.get());
-    setReplayDataSize(0);
+    setReplayDataSize(0, 0);
     setVolatileMemory(mSize);
 }
 
-bool MemoryManager::setReplayDataSize(uint32_t size) {
-    if (size > mSize) {
-        return false;
-    }
+bool MemoryManager::setReplayDataSize(uint32_t constantMemorySize,
+                                      uint32_t opcodeMemorySize) {
+  GAPID_DEBUG("MemoryManager::setReplayDataSize(%d, %d)", constantMemorySize, opcodeMemorySize);
+  if (opcodeMemorySize > mSize) {
+    GAPID_ERROR("Opcode memory size: %d larger than total memory size: %d", opcodeMemorySize, mSize);
+    return false;
+  }
+  mOpcodeMemory = {align(mMemory.get() + mSize - opcodeMemorySize),
+                   opcodeMemorySize};
+  GAPID_DEBUG("Opcode range: [%p,%p]", mOpcodeMemory.base,
+              mOpcodeMemory.base + mOpcodeMemory.size - 1);
 
-    mReplayData = {align(mMemory.get() + mSize - size), size};
-    GAPID_DEBUG("Replay range: [%p,%p]",
-        mReplayData.base, mReplayData.base + mReplayData.size - 1);
-    return true;
+  if (constantMemorySize > mSize - mOpcodeMemory.size) {
+    GAPID_ERROR("Constant memory size: %d larger than available memory size: %d", constantMemorySize, mSize-mOpcodeMemory.size);
+    return false;
+  }
+  mConstantMemory = {align(mOpcodeMemory.base - constantMemorySize),
+                     constantMemorySize};
+  GAPID_DEBUG("Constant range: [%p,%p]", mConstantMemory.base,
+              mConstantMemory.base + mConstantMemory.size - 1);
+
+  mReplayData = {mConstantMemory.base,
+                 mConstantMemory.size + mOpcodeMemory.size};
+  GAPID_DEBUG("Replay range: [%p,%p]", mReplayData.base,
+              mReplayData.base + mReplayData.size - 1);
+  return true;
 }
 
 bool MemoryManager::setVolatileMemory(uint32_t size) {
@@ -99,13 +116,6 @@ bool MemoryManager::setVolatileMemory(uint32_t size) {
     GAPID_DEBUG("Volatile range: [%p,%p]",
         mVolatileMemory.base, mVolatileMemory.base + mVolatileMemory.size - 1);
     return true;
-}
-
-void MemoryManager::setConstantMemory(const std::pair<const void*, uint32_t>& constantMemory) {
-    mConstantMemory.base = const_cast<uint8_t*>(static_cast<const uint8_t*>(constantMemory.first));
-    mConstantMemory.size = constantMemory.second;
-    GAPID_DEBUG("Constant range: [%p,%p]",
-        mConstantMemory.base, mConstantMemory.base + mConstantMemory.size - 1);
 }
 
 uint8_t* MemoryManager::align(uint8_t* addr) const {

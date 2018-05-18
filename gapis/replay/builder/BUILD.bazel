@@ -26,6 +26,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/replay/builder",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/crash:go_default_library",
         "//core/data/binary:go_default_library",
         "//core/data/endian:go_default_library",
         "//core/data/id:go_default_library",
@@ -33,6 +34,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
         "//core/os/device:go_default_library",
+        "//gapir/client:go_default_library",
         "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/memory:go_default_library",

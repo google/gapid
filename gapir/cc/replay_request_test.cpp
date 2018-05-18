@@ -17,11 +17,9 @@
 #include "memory_manager.h"
 #include "mock_resource_provider.h"
 #include "replay_request.h"
-#include "server_connection.h"
-#include "server_listener.h"
 #include "test_utilities.h"
-
-#include "core/cc/mock_connection.h"
+#include "mock_replay_connection.h"
+#include "replay_connection.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -49,28 +47,19 @@ TEST(ReplayRequestTestStatic, Create) {
     std::vector<Resource> resources{{"ZYX", 16}, {"1234", 32}};
     std::vector<uint32_t> instructionList{0, 1, 2};
 
-    auto replayData = createReplayData(stackSize, volatileMemorySize, constantMemory, resources,
-                                       instructionList);
+    auto payload = createPayload(stackSize, volatileMemorySize, constantMemory,
+                                 resources, instructionList);
 
-    auto connection = new core::test::MockConnection();
-    std::unique_ptr<StrictMock<MockResourceProvider>> resourceProvider(
-            new StrictMock<MockResourceProvider>());
-    pushString(&connection->in, replayId);
-    pushUint32(&connection->in, replayData.size());
+    auto mock_conn = std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
 
-    Resource res(replayId, replayData.size());
-    EXPECT_CALL(*resourceProvider, get(_, _, _, _, replayData.size()))
-            .With(Args<0, 1>(ElementsAre(res)))
-            .WillOnce(DoAll(WithArg<3>(SetVoidPointee(replayData)), Return(true)));
+    EXPECT_CALL(*mock_conn, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
 
     std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
     std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
 
-    auto gazerConnection = ServerConnection::create(std::unique_ptr<core::Connection>(connection));
     auto replayRequest =
-            ReplayRequest::create(*gazerConnection, resourceProvider.get(), memoryManager.get());
+            ReplayRequest::create(mock_conn.get(), memoryManager.get());
 
-    EXPECT_THAT(gazerConnection, NotNull());
     EXPECT_THAT(replayRequest, NotNull());
 
     EXPECT_EQ(stackSize, replayRequest->getStackSize());
@@ -84,27 +73,15 @@ TEST(ReplayRequestTestStatic, Create) {
 
 TEST(ReplayRequestTestStatic, CreateErrorGet) {
     uint32_t replayLength = 255;
-    auto connection = new core::test::MockConnection();
-    std::unique_ptr<StrictMock<MockResourceProvider>> resourceProvider(
-            new StrictMock<MockResourceProvider>());
-
-    pushString(&connection->in, replayId);
-    pushUint32(&connection->in, replayLength);
-
-    // Get replay request from resource provider fail
-    Resource res(replayId, replayLength);
-    EXPECT_CALL(*resourceProvider, get(_, _, _, _, replayLength))
-        .With(Args<0, 1>(ElementsAre(res)))
-        .WillOnce(Return(0));
+    auto mock_conn = std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
+    EXPECT_CALL(*mock_conn, getPayload()).WillOnce(Return(ByMove(nullptr)));
 
     std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
     std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
 
-    auto gazerConnection = ServerConnection::create(std::unique_ptr<core::Connection>(connection));
     auto replayRequest =
-            ReplayRequest::create(*gazerConnection, resourceProvider.get(), memoryManager.get());
+            ReplayRequest::create(mock_conn.get(), memoryManager.get());
 
-    EXPECT_THAT(gazerConnection, NotNull());
     EXPECT_EQ(nullptr, replayRequest);
 }
 

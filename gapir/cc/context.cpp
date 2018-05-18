@@ -20,10 +20,10 @@
 #include "interpreter.h"
 #include "memory_manager.h"
 #include "post_buffer.h"
+#include "replay_connection.h"
 #include "replay_request.h"
 #include "resource_provider.h"
 #include "resource_in_memory_cache.h"
-#include "server_connection.h"
 #include "stack.h"
 #include "gapir/cc/vulkan_gfx_api.h"
 #include "vulkan_renderer.h"
@@ -39,36 +39,41 @@
 namespace gapir {
 
 std::unique_ptr<Context> Context::create(
-        const ServerConnection& server,
+        ReplayConnection* conn,
         core::CrashHandler& crash_handler,
         ResourceProvider* resource_provider,
         MemoryManager* memory_manager) {
 
     std::unique_ptr<Context> context(new Context(
-        server, crash_handler, resource_provider, memory_manager));
+        conn, crash_handler, resource_provider, memory_manager));
 
     if (context->initialize()) {
+        GAPID_DEBUG("Replay context initialized successfully");
         return context;
     } else {
+        GAPID_ERROR("Replay context initialization failed");
         return nullptr;
     }
 }
 
 // TODO: Make the PostBuffer size dynamic? It currently holds 2MB of data.
 Context::Context(
-        const ServerConnection& server,
+        ReplayConnection* conn,
         core::CrashHandler& crash_handler,
         ResourceProvider* resource_provider,
         MemoryManager* memory_manager) :
 
-        mServer(server),
+        mConnection(conn),
         mCrashHandler(crash_handler),
         mResourceProvider(resource_provider),
         mMemoryManager(memory_manager),
         mVulkanRenderer(nullptr),
-        mPostBuffer(new PostBuffer(POST_BUFFER_SIZE, [this](const void* address, uint32_t count) {
-            return this->mServer.post(address, count);
-        })) {
+        mPostBuffer(new PostBuffer(POST_BUFFER_SIZE, [this](std::unique_ptr<ReplayConnection::Posts> posts) -> bool {
+            if (mConnection != nullptr) {
+                return mConnection->sendPostData(std::move(posts));
+            }
+            return false;
+          })) {
 }
 
 Context::~Context() {
@@ -79,19 +84,20 @@ Context::~Context() {
 }
 
 bool Context::initialize() {
-    mReplayRequest = ReplayRequest::create(mServer, mResourceProvider, mMemoryManager);
+    mReplayRequest = ReplayRequest::create(mConnection, mMemoryManager);
     if (mReplayRequest == nullptr) {
+        GAPID_ERROR("Replay request creation failed");
         return false;
     }
 
+    GAPID_DEBUG("ReplayRequest created successfully");
     if (!mMemoryManager->setVolatileMemory(mReplayRequest->getVolatileMemorySize())) {
         GAPID_WARNING("Setting the volatile memory size failed (size: %u)",
                      mReplayRequest->getVolatileMemorySize());
         return false;
     }
 
-    mMemoryManager->setConstantMemory(mReplayRequest->getConstantMemory());
-
+    // Constant memory already set with ReplayData
     return true;
 }
 
@@ -105,7 +111,7 @@ void Context::prefetch(ResourceInMemoryCache* cache) const {
     auto resources = mReplayRequest->getResources();
     if (resources.size() > 0) {
         GAPID_INFO("Prefetching %d resources...", resources.size());
-        mResourceProvider->prefetch(resources.data(), resources.size(), mServer,
+        mResourceProvider->prefetch(resources.data(), resources.size(), mConnection,
                                     mMemoryManager->getVolatileAddress(),
                                     mReplayRequest->getVolatileMemorySize());
     }
@@ -469,7 +475,7 @@ bool Context::loadResource(Stack* stack) {
 
     const auto& resource = mReplayRequest->getResources()[resourceId];
 
-    if (!mResourceProvider->get(&resource, 1, mServer, address, resource.size)) {
+    if (!mResourceProvider->get(&resource, 1, mConnection, address, resource.size)) {
         GAPID_WARNING("Can't fetch resource: %s", resource.id.c_str());
         return false;
     }

@@ -43,16 +43,12 @@ TEST_F(MemoryManagerTest, ConstantMemoryIsEmptyByDefault) {
 }
 
 TEST_F(MemoryManagerTest, ConstantSizeIsCorrect) {
-    mMemoryManager->setReplayDataSize(256);
-    uint8_t* constantBaseAddress = static_cast<uint8_t*>(mMemoryManager->getReplayAddress()) + 64;
-
-    std::vector<uint8_t> constantMemory;
-    for (uint8_t i = 0; i < 100; ++i) {
-        constantMemory.push_back(i);
-        memcpy(constantBaseAddress, &constantMemory.front(), i + 1);
-        mMemoryManager->setConstantMemory({constantBaseAddress, i + 1});
-        EXPECT_EQ(i + 1, mMemoryManager->getConstantSize());
-    }
+    // 64 bytes of opcodes, and 192 bytes of constants
+    mMemoryManager->setReplayDataSize(192, 64);
+    EXPECT_EQ(192, mMemoryManager->getConstantSize());
+    EXPECT_EQ(64, mMemoryManager->getOpcodeSize());
+    EXPECT_EQ((uint8_t*)mMemoryManager->getConstantAddress(),
+              (uint8_t*)mMemoryManager->getOpcodeAddress() - 192);
 }
 
 TEST_F(MemoryManagerTest, DefaultVolatileSizeIsMemorySize) {
@@ -60,9 +56,13 @@ TEST_F(MemoryManagerTest, DefaultVolatileSizeIsMemorySize) {
 }
 
 TEST_F(MemoryManagerTest, SetReplayDataSize) {
-    EXPECT_TRUE(mMemoryManager->setReplayDataSize(MEMORY_SIZE));
-    EXPECT_FALSE(mMemoryManager->setReplayDataSize(MEMORY_SIZE + 1));
-    EXPECT_TRUE(mMemoryManager->setReplayDataSize(MEMORY_SIZE));
+    EXPECT_TRUE(mMemoryManager->setReplayDataSize(MEMORY_SIZE, 0));
+    EXPECT_FALSE(mMemoryManager->setReplayDataSize(MEMORY_SIZE + 1, 0));
+    EXPECT_TRUE(mMemoryManager->setReplayDataSize(MEMORY_SIZE, 0));
+
+    EXPECT_TRUE(mMemoryManager->setReplayDataSize(0, MEMORY_SIZE));
+    EXPECT_FALSE(mMemoryManager->setReplayDataSize(0, MEMORY_SIZE + 1));
+    EXPECT_TRUE(mMemoryManager->setReplayDataSize(0, MEMORY_SIZE));
 }
 
 TEST_F(MemoryManagerTest, ExplicitVolatileSizeIsUpdated) {
@@ -74,7 +74,7 @@ TEST_F(MemoryManagerTest, ExplicitVolatileSizeIsUpdated) {
 }
 
 TEST_F(MemoryManagerTest, OutOfBoundsVolatileSizeFails) {
-    EXPECT_TRUE(mMemoryManager->setReplayDataSize(MEMORY_SIZE / 2));
+    EXPECT_TRUE(mMemoryManager->setReplayDataSize(MEMORY_SIZE / 2, 0));
 
     EXPECT_TRUE(mMemoryManager->setVolatileMemory(MEMORY_SIZE / 2));
     EXPECT_FALSE(mMemoryManager->setVolatileMemory(MEMORY_SIZE / 2 + 1));
@@ -85,10 +85,10 @@ TEST_F(MemoryManagerTest, IsConstantAddressWorks) {
     uint32_t constantMemorySize = 1024;
 
     std::vector<uint8_t> constantMemory(constantMemorySize, 0);
-    mMemoryManager->setReplayDataSize(constantMemorySize * 2);
-    uint8_t* constantBase = static_cast<uint8_t*>(mMemoryManager->getReplayAddress()) + 128;
+    mMemoryManager->setReplayDataSize(constantMemorySize, 128);
+    uint8_t* constantBase = static_cast<uint8_t*>(mMemoryManager->getReplayAddress());
+    EXPECT_EQ(mMemoryManager->getReplayAddress(), mMemoryManager->getConstantAddress());
     memcpy(constantBase, &constantMemory.front(), constantMemory.size());
-    mMemoryManager->setConstantMemory({constantBase, constantMemory.size()});
 
     EXPECT_TRUE(mMemoryManager->isConstantAddress(constantBase));
     EXPECT_TRUE(mMemoryManager->isConstantAddress(constantBase + constantMemorySize / 2));
@@ -100,7 +100,7 @@ TEST_F(MemoryManagerTest, IsConstantAddressWorks) {
 TEST_F(MemoryManagerTest, IsVolatileAddressWorks) {
     uint32_t volatileSize = 1024;
 
-    mMemoryManager->setReplayDataSize(512);
+    mMemoryManager->setReplayDataSize(512, 0);
     mMemoryManager->setVolatileMemory(volatileSize);
     uint8_t* volatileBase = static_cast<uint8_t*>(mMemoryManager->volatileToAbsolute(0));
 
@@ -122,11 +122,10 @@ TEST_F(MemoryManagerTest, AbsoluteToConstant) {
     uint32_t constantMemorySize = 1024;
 
     std::vector<uint8_t> constantMemory(constantMemorySize, 0);
-    mMemoryManager->setReplayDataSize(constantMemorySize * 2);
-    uint8_t* constantBase = static_cast<uint8_t*>(mMemoryManager->getReplayAddress()) + 128;
+    mMemoryManager->setReplayDataSize(constantMemorySize, 128);
+    uint8_t* constantBase = static_cast<uint8_t*>(mMemoryManager->getReplayAddress());
+    EXPECT_EQ(mMemoryManager->getReplayAddress(), mMemoryManager->getConstantAddress());
     memcpy(constantBase, &constantMemory.front(), constantMemory.size());
-    mMemoryManager->setConstantMemory({constantBase, constantMemory.size()});
-
     EXPECT_EQ(10, mMemoryManager->absoluteToConstant(
                           static_cast<const uint8_t*>(mMemoryManager->constantToAbsolute(0)) + 10));
 }

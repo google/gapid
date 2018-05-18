@@ -26,20 +26,18 @@
 #include <utility>
 #include <vector>
 
-namespace gapir {
+#include "memory_manager.h"
+#include "replay_connection.h"
 
-class MemoryManager;
-class ResourceProvider;
-class ServerConnection;
+namespace gapir {
 
 // Class for storing the information about a replay request that came from the server
 class ReplayRequest {
 public:
-    // Creates a new replay request and loads it content from the given gazer connection. Returns
+    // Creates a new replay request and loads it content from the given replay connection. Returns
     // the new replay request if loading it was successful or nullptr otherwise. The memory manager
     // is used to store the content of the replay request
-    static std::unique_ptr<ReplayRequest> create(const ServerConnection& gazer,
-                                                 ResourceProvider* resourceProvider,
+    static std::unique_ptr<ReplayRequest> create(ReplayConnection* conn,
                                                  MemoryManager* memoryManager);
 
     // Get the stack size required by the replay
@@ -60,27 +58,16 @@ public:
 private:
     ReplayRequest() = default;
 
-    // Parse the replay request from the given memory address and returns true if exactly size
-    // amount of bytes were used false otherwise
-    bool load(void* data, uint32_t size);
-
-    // Helper functions for loading the replay request from a raw byte buffer
-    const uint8_t* loadStackSize(const uint8_t* ptr);
-    const uint8_t* loadVolatileMemorySize(const uint8_t* ptr);
-    const uint8_t* loadConstantMemory(const uint8_t* ptr);
-    const uint8_t* loadResourceIds(const uint8_t* ptr);
-    const uint8_t* loadInstructionList(const uint8_t* ptr);
-
     // The size of the stack required by the replay
     uint32_t mStackSize;
 
     // The size of the volatile memory required by the replay
     uint32_t mVolatileMemorySize;
 
-    // The base address and the size of the constant memory
+    // The base address and the size in bytes of the constant memory
     std::pair<const void*, uint32_t> mConstantMemory;
 
-    // The base address and the size of the instruction list
+    // The base address and the number of the instructions
     std::pair<const uint32_t*, uint32_t> mInstructionList;
 
     // The list of resources (resource id, resource size) used by the replay

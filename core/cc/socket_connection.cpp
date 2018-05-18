@@ -271,7 +271,66 @@ std::unique_ptr<Connection> SocketConnection::createSocket(
     return std::unique_ptr<Connection>(new SocketConnection(sock));
 }
 
-std::unique_ptr<Connection> SocketConnection::createPipe(const char* pipename, bool abstract) {
+uint32_t SocketConnection::getFreePort(const char* hostname) {
+  // Network initializer to ensure that the network driver is initialized during the lifetime of
+  // the create function. If the connection created successfully then the new connection will
+  // hold a reference to a networkInitializer struct to ensure that the network is initialized
+  NetworkInitializer networkInitializer;
+
+  struct addrinfo* addr;
+  struct addrinfo hints {};
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+
+  const int getaddrinfoRes = core::getaddrinfo(hostname, "0", &hints, &addr);
+  if (0 != getaddrinfoRes) {
+    GAPID_WARNING("getaddrinfo() failed: %d - %s.", getaddrinfoRes,
+                  strerror(core::error()));
+    return 0;
+  }
+  auto addrDeleter = [](struct addrinfo* ptr) {
+    core::freeaddrinfo(ptr);
+  };  // deferred.
+  std::unique_ptr<struct addrinfo, decltype(addrDeleter)> addrScopeGuard(
+      addr, addrDeleter);
+
+  const int sock =
+      core::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+  if (-1 == sock) {
+    GAPID_WARNING("socket() failed: %s.", strerror(core::error()));
+    return 0;
+  }
+  auto socketCloser = [](const int* ptr) { core::close(*ptr); };  // deferred.
+  std::unique_ptr<const int, decltype(socketCloser)> sockScopeGuard(
+      &sock, socketCloser);
+
+  const int one = 1;
+  if (-1 == core::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&one,
+                             sizeof(int))) {
+    GAPID_WARNING("setsockopt() failed: %s", strerror(core::error()));
+    return 0;
+  }
+
+  if (-1 == core::bind(sock, addr->ai_addr, addr->ai_addrlen)) {
+    GAPID_WARNING("bind() failed: %s.", strerror(core::error()));
+    return 0;
+  }
+  struct sockaddr_in sin;
+  socklen_t len = sizeof(sin);
+  if (-1 == core::getsockname(sock, (struct sockaddr*)&sin, &len)) {
+    GAPID_WARNING("getsockname() failed: %s.", strerror(core::error()));
+    return 0;
+  }
+
+  if (-1 == core::listen(sock, 10)) {
+    GAPID_WARNING("listen() failed: %s.", strerror(core::error()));
+    return 0;
+  }
+  return ntohs(sin.sin_port);
+}
+
+std::unique_ptr<Connection> SocketConnection::createPipe(const char* pipename,
+                                                         bool abstract) {
 #if TARGET_OS == GAPID_OS_WINDOWS
     // AF_UNIX is not supported on Windows.
     return nullptr;

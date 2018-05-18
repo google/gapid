@@ -19,6 +19,7 @@ load("@gapid//tools/build:cc_toolchain.bzl", "cc_configure")
 load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue")
 load("@gapid//tools/build/rules:repository.bzl", "github_http_args", "github_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
+load("@gapid//tools/build/rules:grpc_c++.bzl", "grpc_deps")
 
 # Defines the repositories for GAPID's dependencies, excluding the
 # go dependencies, which require @io_bazel_rules_go to be setup.
@@ -52,7 +53,8 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "google",
         project = "protobuf",
-        commit = "f08e4dd9845c5ba121b402f8768f3d2617191bbe",
+        # Matches with GRPC
+        commit = "2761122b810fe8861004ae785cc3ab39f384d342",
         # Override with our own BUILD file, to make the compiler/config selection work.
         build_file = "@gapid//tools/build/third_party:protobuf.BUILD",
     )
@@ -62,8 +64,12 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "grpc",
         project = "grpc",
-        commit = "fa301e3674a1cc786eb4dd4253a0e677f2eb68e3",
+        # v1.11.0
+        commit = "bd44e485f69d70ca4095cea92decd98de3892aa6",
+        # Override with our own BUILD file, to make Android build work.
+        build_file = "@gapid//tools/build/third_party:grpc_c++.BUILD",
     )
+    grpc_deps()
 
     ###########################################
     # Now get all our other non-go dependencies

@@ -252,8 +252,8 @@ func postFBData(ctx context.Context,
 		cb.GlReadPixels(0, 0, GLsizei(outW), GLsizei(outH), unsizedFormat, ty, tmp.Ptr()).
 			Call(ctx, s, b)
 
-		b.Post(value.ObservedPointer(tmp.Address()), uint64(imageSize), func(r binary.Reader, err error) error {
-			return res.Do(func() (interface{}, error) {
+		b.Post(value.ObservedPointer(tmp.Address()), uint64(imageSize), func(r binary.Reader, err error) {
+			res.Do(func() (interface{}, error) {
 				if err != nil {
 					return nil, err
 				}

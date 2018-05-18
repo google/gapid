@@ -16,7 +16,6 @@ package vulkan
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
@@ -73,18 +72,19 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		// Post had occurred, which may not be anywhere near the end of the stream.
 		code := uint32(0xe11de11d)
 		b.Push(value.U32(code))
-		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) error {
+		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) {
 			if err != nil {
 				t.res = nil
-				return err
+				log.E(ctx, "Flush did not get expected EOS code: '%v'", err)
+				return
 			}
 			if r.Uint32() != code {
-				return fmt.Errorf("Flush did not get expected EOS code")
+				log.E(ctx, "Flush did not get expected EOS code")
+				return
 			}
 			for _, res := range t.res {
 				res(t.issues, nil)
 			}
-			return err
 		})
 		return nil
 	}))

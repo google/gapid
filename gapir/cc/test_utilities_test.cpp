@@ -16,10 +16,10 @@
 
 #include "base_type.h"
 #include "interpreter.h"
-#include "server_connection.h"
 #include "test_utilities.h"
+#include "replay_connection.h"
 
-#include "core/cc/mock_connection.h"
+#include "gapir/replay_service/service.pb.h"
 
 #include <gmock/gmock.h>
 
@@ -75,44 +75,31 @@ void pushString(std::vector<uint8_t>* buf, const char* str) {
   buf->push_back(0);
 }
 
-std::vector<uint8_t> createReplayData(uint32_t stackSize, uint32_t volatileMemorySize,
-                                      const std::vector<uint8_t>& constantMemory,
-                                      const std::vector<Resource>& resources,
-                                      const std::vector<uint32_t>& instructions) {
-    std::vector<uint8_t> replayData;
-    pushUint32(&replayData, stackSize);
-    pushUint32(&replayData, volatileMemorySize);
-    pushUint32(&replayData, constantMemory.size());
-    pushBytes(&replayData, constantMemory);
-    pushUint32(&replayData, resources.size());
-    for (auto& it : resources) {
-        pushString(&replayData, it.id);
-        pushUint32(&replayData, it.size);
-    }
-    pushUint32(&replayData, instructions.size() * sizeof(uint32_t));
-    for (auto it : instructions) {
-        pushUint32(&replayData, it);
-    }
-    return replayData;
+std::unique_ptr<ReplayConnection::Payload> createPayload(
+    uint32_t stackSize, uint32_t volatileMemorySize,
+    const std::vector<uint8_t>& constantMemory,
+    const std::vector<Resource>& resources,
+    const std::vector<uint32_t>& instructions) {
+  auto p = std::unique_ptr<replay_service::Payload>(new replay_service::Payload);
+  p->set_stack_size(stackSize);
+  p->set_volatile_memory_size(volatileMemorySize);
+  p->set_constants(constantMemory.data(), constantMemory.size());
+  p->set_opcodes(instructions.data(), instructions.size() * sizeof(uint32_t));
+  for (size_t i = 0; i < resources.size(); i++) {
+    auto* r = p->add_resources();
+    r->set_id(resources[i].id);
+    r->set_size(resources[i].size);
+  }
+  return std::unique_ptr<ReplayConnection::Payload>(
+      new ReplayConnection::Payload(std::move(p)));
 }
 
-std::unique_ptr<ServerConnection> createServerConnection(core::test::MockConnection* connection,
-                                                         const std::string& replayId,
-                                                         uint32_t replayLength) {
-    pushString(&connection->in, replayId);
-    pushUint32(&connection->in, replayLength);
-
-    std::unique_ptr<ServerConnection> server =
-        ServerConnection::create(std::unique_ptr<core::Connection>(connection));
-
-    EXPECT_THAT(server, NotNull());
-
-    return std::move(server);
-}
-
-std::unique_ptr<ServerConnection> createServerConnection(const std::string& replayId,
-                                                         uint32_t replayLength) {
-    return createServerConnection(new core::test::MockConnection(), replayId, replayLength);
+std::unique_ptr<ReplayConnection::Resources> createResources(
+    const std::vector<uint8_t>& data) {
+  auto p = std::unique_ptr<replay_service::Resources>(new replay_service::Resources);
+  p->set_data(data.data(), data.size());
+  return std::unique_ptr<ReplayConnection::Resources>(
+      new ReplayConnection::Resources(std::move(p)));
 }
 
 }  // namespace test

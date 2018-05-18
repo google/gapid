@@ -20,6 +20,7 @@
 #include "base_type.h"
 #include "interpreter.h"
 #include "resource_provider.h"
+#include "replay_connection.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -28,14 +29,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-namespace core {
-namespace test {
-
-class MockConnection;
-
-}  // namespace test
-}  // namespace gapir
 
 namespace gapir {
 
@@ -66,17 +59,14 @@ void pushUint32(std::vector<uint8_t>* buf, uint32_t v);
 void pushString(std::vector<uint8_t>* buf, const std::string& str);
 void pushString(std::vector<uint8_t>* buf, const char* str);
 
-std::vector<uint8_t> createReplayData(uint32_t stackSize, uint32_t volatileMemorySize,
-                                      const std::vector<uint8_t>& constantMemory,
-                                      const std::vector<Resource>& resources,
-                                      const std::vector<uint32_t>& instructions);
+std::unique_ptr<ReplayConnection::Payload> createPayload(
+    uint32_t stackSize, uint32_t volatileMemorySize,
+    const std::vector<uint8_t>& constantMemory,
+    const std::vector<Resource>& resources,
+    const std::vector<uint32_t>& instructions);
 
-std::unique_ptr<ServerConnection> createServerConnection(core::test::MockConnection* connection,
-                                                         const std::string& replayId,
-                                                         uint32_t replayLength);
-
-std::unique_ptr<ServerConnection> createServerConnection(const std::string& replayId,
-                                                         uint32_t replayLength);
+std::unique_ptr<ReplayConnection::Resources> createResources(
+    const std::vector<uint8_t>& data);
 
 }  // namespace test
 }  // namespace gapir

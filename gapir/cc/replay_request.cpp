@@ -17,7 +17,6 @@
 #include "memory_manager.h"
 #include "replay_request.h"
 #include "resource_provider.h"
-#include "server_connection.h"
 
 #include "core/cc/log.h"
 
@@ -29,25 +28,49 @@
 
 namespace gapir {
 
-std::unique_ptr<ReplayRequest> ReplayRequest::create(const ServerConnection& server,
-                                                     ResourceProvider* resourceProvider,
+std::unique_ptr<ReplayRequest> ReplayRequest::create(ReplayConnection* conn,
                                                      MemoryManager* memoryManager) {
-    memoryManager->setReplayDataSize(server.replayLength());
+  // Request the replay data from the server.
+  if (conn == nullptr) {
+    GAPID_ERROR("Failed to create ReplayRequest: null ReplayConnection");
+    return nullptr;  // no replay connection.
+  }
+  std::unique_ptr<ReplayConnection::Payload> payload = conn->getPayload();
+  if (payload == nullptr) {
+      GAPID_ERROR("Failed to create ReplayRequest: null Payload")
+    return nullptr;  // failed at getting payload.
+  }
+    // Reserve Replay data segments and load data into the memory manager.
+    if (!memoryManager->setReplayDataSize(payload->constants_size(),
+                                       payload->opcodes_size())) {
+    GAPID_ERROR("Failed to create ReplayRequest: failed to set replay data size (constant memory size or opcode memory size)")
+    return nullptr;
+  }
+  memcpy(memoryManager->getConstantAddress(), payload->constants_data(),
+         payload->constants_size());
+  memcpy(memoryManager->getOpcodeAddress(), payload->opcodes_data(),
+         payload->opcodes_size());
 
-    // Request the replay data from the server
-    void* address = memoryManager->getReplayAddress();
-    auto resource = Resource(server.replayId(), server.replayLength());
-    if (!resourceProvider->get(&resource, 1, server, address, resource.size)) {
-        GAPID_WARNING("Can't load replay request: %s", resource.id.c_str());
-        return nullptr;
-    }
-
-    std::unique_ptr<ReplayRequest> req(new ReplayRequest());
-    if (req->load(address, resource.size)) {
-        return req;
-    } else {
-        return nullptr;
-    }
+  // initialize this replay request.
+  std::unique_ptr<ReplayRequest> req(new ReplayRequest());
+  req->mStackSize = payload->stack_size();
+  GAPID_DEBUG("Stack size: %d", req->mStackSize);
+  req->mVolatileMemorySize = payload->volatile_memory_size();
+  GAPID_DEBUG("Volatile memory size: %d", req->mVolatileMemorySize);
+  req->mConstantMemory = {memoryManager->getConstantAddress(),
+                          payload->constants_size()};
+  GAPID_DEBUG("Constant memory size: %d", payload->constants_size());
+  req->mResources.reserve(payload->resource_info_count());
+  for (size_t i = 0; i < payload->resource_info_count(); i++) {
+    req->mResources.emplace_back(payload->resource_id(i),
+                                 payload->resource_size(i));
+  }
+  GAPID_DEBUG("Resources: %d", req->mResources.size());
+  const uint32_t instCount = payload->opcodes_size() / sizeof(uint32_t);
+  req->mInstructionList = {
+      static_cast<uint32_t*>(memoryManager->getOpcodeAddress()), instCount};
+  GAPID_DEBUG("Instruction count: %d", instCount);
+  return req;
 }
 
 uint32_t ReplayRequest::getStackSize() const {
@@ -68,76 +91,6 @@ const std::pair<const void*, uint32_t>& ReplayRequest::getConstantMemory() const
 
 const std::pair<const uint32_t*, uint32_t>& ReplayRequest::getInstructionList() const {
     return mInstructionList;
-}
-
-bool ReplayRequest::load(void* data, uint32_t size) {
-    // Parse the data fetched from the gazer connection
-    const uint8_t* ptr = static_cast<uint8_t*>(data);
-    ptr = loadStackSize(ptr);
-    ptr = loadVolatileMemorySize(ptr);
-    ptr = loadConstantMemory(ptr);
-    ptr = loadResourceIds(ptr);
-    ptr = loadInstructionList(ptr);
-
-    GAPID_INFO("Replay request loaded");
-
-    return ptr - size == data;
-}
-
-const uint8_t* ReplayRequest::loadVolatileMemorySize(const uint8_t* ptr) {
-    mVolatileMemorySize = *reinterpret_cast<const uint32_t*>(ptr);
-    ptr += sizeof(uint32_t);
-    GAPID_DEBUG("Volatile memory size: %d", mVolatileMemorySize);
-    return ptr;
-}
-
-const uint8_t* ReplayRequest::loadStackSize(const uint8_t* ptr) {
-    mStackSize = *reinterpret_cast<const uint32_t*>(ptr);
-    ptr += sizeof(uint32_t);
-    GAPID_DEBUG("Stack size: %d", mStackSize);
-    return ptr;
-}
-
-const uint8_t* ReplayRequest::loadConstantMemory(const uint8_t* ptr) {
-    uint32_t constantMemorySize = *reinterpret_cast<const uint32_t*>(ptr);
-    ptr += sizeof(uint32_t);
-
-    mConstantMemory = {ptr, constantMemorySize};
-    GAPID_DEBUG("Constant memory size: %d", constantMemorySize);
-    ptr += constantMemorySize;
-
-    return ptr;
-}
-
-const uint8_t* ReplayRequest::loadResourceIds(const uint8_t* ptr) {
-    uint32_t resourceCount = *reinterpret_cast<const uint32_t*>(ptr);
-    ptr += sizeof(uint32_t);
-
-    mResources.reserve(resourceCount);
-    for (uint32_t i = 0; i < resourceCount; ++i) {
-        std::string resourceName(reinterpret_cast<const char*>(ptr));
-        ptr += resourceName.length() + 1;
-
-        uint32_t resourceSize = *reinterpret_cast<const uint32_t*>(ptr);
-        ptr += sizeof(uint32_t);
-
-        mResources.emplace_back(std::move(resourceName), resourceSize);
-    }
-    GAPID_DEBUG("Resources: %d", resourceCount);
-
-    return ptr;
-}
-
-const uint8_t* ReplayRequest::loadInstructionList(const uint8_t* ptr) {
-    uint32_t instructionListSize = *reinterpret_cast<const uint32_t*>(ptr);
-    ptr += sizeof(uint32_t);
-
-    const uint32_t instructionCount = instructionListSize / sizeof(uint32_t);
-    mInstructionList = {reinterpret_cast<const uint32_t*>(ptr), instructionCount};
-    GAPID_DEBUG("Instruction count: %d", instructionCount);
-    ptr += instructionListSize;
-
-    return ptr;
 }
 
 }  // namespace gapir

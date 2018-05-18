@@ -18,6 +18,7 @@
 #define GAPIR_RESOURCE_IN_MEMORY_CACHE_H
 
 #include "resource_cache.h"
+#include "replay_connection.h"
 
 #include "core/cc/assert.h"
 
@@ -41,7 +42,7 @@ public:
     ~ResourceInMemoryCache();
 
     // Prefetches the specified resources, caching as many that fit in memory as possible.
-    void prefetch(const Resource* resources, size_t count, const ServerConnection& server,
+    void prefetch(const Resource* resources, size_t count, ReplayConnection* conn,
                   void* temp, size_t tempSize) override;
 
     // clears the cache.

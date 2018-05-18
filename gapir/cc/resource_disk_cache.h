@@ -18,6 +18,7 @@
 #define GAPIR_RESOURCE_DISK_CACHE_H
 
 #include "resource_cache.h"
+#include "replay_connection.h"
 
 #include "core/cc/archive.h"
 
@@ -34,9 +35,9 @@ public:
     static std::unique_ptr<ResourceProvider> create(
             std::unique_ptr<ResourceProvider> fallbackProvider, const std::string& path);
 
-    // Prefetches the specified resources, caching them to disk.
-    void prefetch(const Resource* resources, size_t count, const ServerConnection& server,
-                  void* temp, size_t tempSize) override;
+  // Prefetches the specified resources, caching them to disk.
+  void prefetch(const Resource* resources, size_t count, ReplayConnection* conn,
+                void* temp, size_t tempSize) override;
 
 protected:
     void putCache(const Resource& resource, const void* data) override;

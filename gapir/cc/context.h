@@ -22,6 +22,7 @@
 #include "core/cc/timer.h"
 
 #include "gapir/cc/renderer.h"
+#include "replay_connection.h"
 
 #include <memory>
 #include <string>
@@ -36,7 +37,6 @@ class PostBuffer;
 class ReplayRequest;
 class ResourceInMemoryCache;
 class ResourceProvider;
-class ServerConnection;
 class Stack;
 class VulkanRenderer;
 
@@ -47,7 +47,7 @@ public:
     // Creates a new Context object and initialize it with loading the replay request, setting up
     // the memory manager, setting up the caches and prefetching the resources
     static std::unique_ptr<Context> create(
-            const ServerConnection& server,
+            ReplayConnection* conn,
             core::CrashHandler& crash_handler,
             ResourceProvider* resource_provider,
             MemoryManager* memory_manager);
@@ -70,7 +70,7 @@ private:
         POST_BUFFER_SIZE = 2*1024*1024,
     };
 
-    Context(const ServerConnection& server,
+    Context(ReplayConnection* conn,
             core::CrashHandler& crash_handler,
             ResourceProvider* resource_provider,
             MemoryManager* memory_manager);
@@ -100,7 +100,7 @@ private:
     bool flushPostBuffer(Stack *stack);
 
     // Server connection object to fetch and post resources back to the server
-    const ServerConnection& mServer;
+    ReplayConnection* mConnection;
 
     // The crash handler used for catching and reporting crashes.
     core::CrashHandler& mCrashHandler;

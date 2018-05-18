@@ -1002,7 +1002,7 @@ func postImageData(ctx context.Context,
 	// Add post command
 	writeEach(ctx, out,
 		cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r binary.Reader, err error) error {
+			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r binary.Reader, err error) {
 				var bytes []byte
 				if err == nil {
 					bytes = make([]byte, bufferSize)
@@ -1050,7 +1050,6 @@ func postImageData(ctx context.Context,
 				}
 
 				res(img, err)
-				return err
 			})
 			return nil
 		}),

@@ -18,7 +18,6 @@
 #include "mock_resource_provider.h"
 #include "resource_in_memory_cache.h"
 #include "resource_provider.h"
-#include "server_connection.h"
 #include "test_utilities.h"
 
 #include <gmock/gmock.h>
@@ -61,7 +60,6 @@ protected:
                 mMemoryManager->getBaseAddress());
 
         mResourceInMemoryCache->resize(CACHE_SIZE);
-        mServer = createServerConnection("", 0);
     }
 
     inline void expectCacheHit(std::vector<Resource> resources) {
@@ -74,14 +72,14 @@ protected:
 
         // Test as a single request.
         EXPECT_TRUE(mResourceInMemoryCache->get(
-            resources.data(), resources.size(), *mServer, got.data(), size));
+            resources.data(), resources.size(), nullptr, got.data(), size));
 
         EXPECT_EQ(got, pattern);
 
         // Test individually
         size_t offset = 0;
         for (auto resource : resources) {
-            EXPECT_TRUE(mResourceInMemoryCache->get(&resource, 1, *mServer, &got[offset], resource.size));
+            EXPECT_TRUE(mResourceInMemoryCache->get(&resource, 1, nullptr, &got[offset], resource.size));
             offset += resource.size;
         }
 
@@ -105,7 +103,7 @@ protected:
             .WillOnce(Return(true))
             .RetiresOnSaturation();
         EXPECT_TRUE(mResourceInMemoryCache->get(
-            resources.data(), resources.size(), *mServer, got.data(), size));
+            resources.data(), resources.size(), nullptr, got.data(), size));
 
         auto pattern = PatternedResourceProvider::patternFor(resources);
         EXPECT_EQ(got, pattern);
@@ -117,7 +115,6 @@ protected:
 
     std::unique_ptr<MemoryManager> mMemoryManager;
     std::unique_ptr<ResourceInMemoryCache> mResourceInMemoryCache;
-    std::unique_ptr<ServerConnection> mServer;
     uint8_t mTemp[TEMP_SIZE];
 };
 
@@ -150,7 +147,7 @@ TEST_F(ResourceInMemoryCacheTest, Prefetch) {
         .WillOnce(Return(true));
 
     Resource resources[] = {A, B, C, D, E};
-    mResourceInMemoryCache->prefetch(resources, 5, *mServer, mTemp, TEMP_SIZE);
+    mResourceInMemoryCache->prefetch(resources, 5, nullptr, mTemp, TEMP_SIZE);
 
     // These should be cached.
     expectCacheHit({C, B});
@@ -169,7 +166,7 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchCacheHit) {
 // ┃ head           ┃                ┃                ┃                ┃
 // ┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┛
     Resource resources[] = {A, B, C, D};
-    mResourceInMemoryCache->prefetch(resources, 4, *mServer, mTemp, TEMP_SIZE);
+    mResourceInMemoryCache->prefetch(resources, 4, nullptr, mTemp, TEMP_SIZE);
 // ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
 // ┃ offset:      0 ┃ offset:     64 ┃ offset:    320 ┃ offset:    832 ┃
 // ┃ size:       64 ┃ size:      256 ┃ size:      512 ┃ size:     1024 ┃
@@ -195,7 +192,7 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHit) {
     EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, B.size + D.size))
         .With(Args<0, 1>(ElementsAre(B, D)))
         .WillOnce(Return(true));
-    mResourceInMemoryCache->prefetch(resources, 4, *mServer, mTemp, TEMP_SIZE);
+    mResourceInMemoryCache->prefetch(resources, 4, nullptr, mTemp, TEMP_SIZE);
 // ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
 // ┃ offset:      0 ┃ offset:     64 ┃ offset:    320 ┃ offset:    832 ┃
 // ┃ size:       64 ┃ size:      256 ┃ size:      512 ┃ size:     1024 ┃
@@ -220,7 +217,7 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHitWithWrapped) {
     EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, C.size))
         .With(Args<0, 1>(ElementsAre(C)))
         .WillOnce(Return(true));
-    mResourceInMemoryCache->prefetch(resources, 3, *mServer, mTemp, TEMP_SIZE);
+    mResourceInMemoryCache->prefetch(resources, 3, nullptr, mTemp, TEMP_SIZE);
 // ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
 // ┃ offset:  64 ┃ offset: 576 ┃ offset: 768 ┃ offset:  832 ┃
 // ┃ size:   512 ┃ size:   192 ┃ size:    64 ┃ size:   1024 ┃
@@ -348,7 +345,7 @@ TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
         EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, 1))
             .With(Args<0, 1>(ElementsAre(E1)))
             .WillOnce(Return(true));
-        mResourceInMemoryCache->prefetch(resources, 5, *mServer, mTemp, TEMP_SIZE);
+        mResourceInMemoryCache->prefetch(resources, 5, nullptr, mTemp, TEMP_SIZE);
         expectCacheHit({A1, B1, C1, D1, E1});
     }
 // ┏━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┓
@@ -373,7 +370,7 @@ TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
         EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, A1.size + D2.size))
             .With(Args<0, 1>(ElementsAre(A1, D2)))
             .WillOnce(Return(true));
-        mResourceInMemoryCache->prefetch(resources, 3, *mServer, mTemp, TEMP_SIZE);
+        mResourceInMemoryCache->prefetch(resources, 3, nullptr, mTemp, TEMP_SIZE);
     }
 // ┏━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┓
 // ┃ offset:  0 ┃ offset:  2 ┃ offset:  3 ┃ offset:  5 ┃ offset:  7 ┃
@@ -400,7 +397,7 @@ TEST_F(ResourceInMemoryCacheTest, PrefecthOverrun) {
     EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, 5))
         .With(Args<0, 1>(ElementsAre(A1, B1, C1, D1, E1)))
         .WillOnce(Return(true));
-    mResourceInMemoryCache->prefetch(resources1, 5, *mServer, mTemp, TEMP_SIZE);
+    mResourceInMemoryCache->prefetch(resources1, 5, nullptr, mTemp, TEMP_SIZE);
 
     // ┏━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┓
     // ┃  A1  ┃  B1  ┃  C1  ┃  D1  ┃  E1  ┃      ┃      ┃      ┃

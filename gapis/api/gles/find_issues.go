@@ -129,20 +129,20 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		ptr := b.AllocateTemporaryMemory(4)
 		b.Call(funcInfoGlGetError)
 		b.Store(ptr)
-		b.Post(ptr, 4, builder.Postback(func(r binary.Reader, err error) error {
+		b.Post(ptr, 4, builder.Postback(func(r binary.Reader, err error) {
 			if err != nil {
-				return err
+				t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetError postback: %v", err))
+				return
 			}
 			v := GLenum(r.Uint32())
 			err = r.Error()
 			if err != nil {
 				t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetError postback: %v", err))
-				return err
+				return
 			}
 			if v != GLenum_GL_NO_ERROR {
 				t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("%v in replay driver", v))
 			}
-			return nil
 		}))
 		return nil
 	}))
@@ -184,12 +184,15 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		out.MutateAndWrite(ctx, dID, cb.GlGetShaderInfoLog(cmd.Shader(), buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
+			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
 				if err != nil {
-					return err
+					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderInfoLog postback: %v", err))
+					return
 				}
 				r.Data(infoLog)
-				return r.Error()
+				if r.Error() != nil {
+					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderInfoLog postback: %v", r.Error()))
+				}
 			})
 			return nil
 		}))
@@ -198,12 +201,15 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		out.MutateAndWrite(ctx, dID, cb.GlGetShaderSource(cmd.Shader(), buflen, memory.Nullptr, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) error {
+			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
 				if err != nil {
-					return err
+					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderSource postback: %v", err))
+					return
 				}
 				r.Data(source)
-				return r.Error()
+				if r.Error() != nil {
+					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderSource postback: %v", r.Error()))
+				}
 			})
 			return nil
 		}))
@@ -211,9 +217,10 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		out.MutateAndWrite(ctx, dID, cb.GlGetShaderiv(cmd.Shader(), GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r binary.Reader, err error) error {
+			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r binary.Reader, err error) {
 				if err != nil {
-					return err
+					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderiv postback: %v", err))
+					return
 				}
 				if r.Uint32() != uint32(GLboolean_GL_TRUE) {
 					originalSource := "<unknown>"
@@ -223,7 +230,9 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 					t.onIssue(cmd, id, service.Severity_ErrorLevel, fmt.Errorf("Shader %d failed to compile. Error:\n%v\nOriginal source:\n%s\nTranslated source:\n%s",
 						cmd.Shader(), ntbs(infoLog), text.LineNumber(originalSource), text.LineNumber(ntbs(source))))
 				}
-				return r.Error()
+				if r.Error() != nil {
+					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetShaderiv postback: %v", r.Error()))
+				}
 			})
 			return nil
 		}))
@@ -236,9 +245,10 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		out.MutateAndWrite(ctx, dID, cb.GlGetProgramInfoLog(cmd.Program(), buflen, memory.Nullptr, tmp.Offset(4)))
 		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r binary.Reader, err error) error {
+			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r binary.Reader, err error) {
 				if err != nil {
-					return err
+					t.onIssue(cmd, id, service.Severity_FatalLevel, fmt.Errorf("Failed to decode glGetProgramiv+glGetProgrameInfoLog postback: %v", err))
+					return
 				}
 				msg := make([]byte, buflen)
 				res := r.Uint32()
@@ -262,7 +272,6 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 						"Vertex shader source:\n%sFragment shader source:\n%s", cmd.Program(), ntbs(msg),
 						text.LineNumber(vss), text.LineNumber(fss)))
 				}
-				return r.Error()
 			})
 			return nil
 		}))
@@ -286,18 +295,19 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		// Post had occurred, which may not be anywhere near the end of the stream.
 		code := uint32(0xbeefcace)
 		b.Push(value.U32(code))
-		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) error {
+		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) {
 			if err != nil {
 				t.res = nil
-				return err
+				log.E(ctx, "Flush did not get expected EOS code: '%v'", err)
+				return
 			}
 			if r.Uint32() != code {
-				return fmt.Errorf("Flush did not get expected EOS code")
+				log.E(ctx, "Flush did not get expected EOS code")
+				return
 			}
 			for _, res := range t.res {
 				res(t.issues, nil)
 			}
-			return err
 		})
 		return nil
 	}))

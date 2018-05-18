@@ -17,13 +17,12 @@
 #include "gapir/cc/context.h"
 #include "gapir/cc/crash_uploader.h"
 #include "gapir/cc/memory_manager.h"
+#include "gapir/cc/replay_connection.h"
 #include "gapir/cc/resource_disk_cache.h"
 #include "gapir/cc/resource_in_memory_cache.h"
 #include "gapir/cc/resource_requester.h"
-#include "gapir/cc/server_connection.h"
-#include "gapir/cc/server_listener.h"
+#include "gapir/cc/server.h"
 
-#include "core/cc/connection.h"
 #include "core/cc/crash_handler.h"
 #include "core/cc/debugger.h"
 #include "core/cc/log.h"
@@ -31,12 +30,16 @@
 #include "core/cc/supported_abis.h"
 #include "core/cc/target.h"
 
+#include <stdio.h>
 #include <memory>
+#include <mutex>
 #include <stdlib.h>
 #include <string.h>
 #include <thread>
+#include <unistd.h>
 
 #if TARGET_OS == GAPID_OS_ANDROID
+#include <sys/stat.h>
 #include "android_native_app_glue.h"
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
@@ -71,43 +74,46 @@ std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
     }
 }
 
-void listenConnections(Connection* conn,
-                       const char* authToken,
-                       const char* cachePath,
-                       int idleTimeoutMs,
-                       MemoryManager* memoryManager,
-                       core::CrashHandler& crashHandler) {
-    ServerListener listener(conn, memoryManager->getSize());
+// Setup creates and starts a replay server at the given URI port. Returns the
+// created and started server.
+// Note the given memory manager and the crash handler, they may be used for
+// multiple connections, so a mutex lock is passed in to make the accesses to
+// to them exclusive to one connected client. All other replay requests from
+// other clients will be blocked, until the current replay finishes.
+std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
+                              const char* cachePath, int idleTimeoutSec,
+                              core::CrashHandler* crashHandler,
+                              MemoryManager* memMgr, std::mutex* lock) {
+  // Return a replay server with the following replay ID handler. The first
+  // package for a replay must be the ID of the replay.
+  return Server::createAndStart(
+      uri, authToken, idleTimeoutSec,
+      [cachePath, memMgr, crashHandler, lock](ReplayConnection* replayConn,
+                                              const std::string& replayId) {
+        std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
+        std::unique_ptr<ResourceInMemoryCache> resourceProvider(
+            createResourceProvider(cachePath, memMgr));
 
-    std::unique_ptr<ResourceInMemoryCache> resourceProvider(
-            createResourceProvider(cachePath, memoryManager));
+        std::unique_ptr<CrashUploader> crash_uploader =
+            std::unique_ptr<CrashUploader>(
+                new CrashUploader(*crashHandler, replayConn));
 
-    while (true) {
-        std::unique_ptr<ServerConnection> acceptedConn(
-                listener.acceptConnection(idleTimeoutMs, authToken));
-        if (!acceptedConn) {
-            GAPID_INFO("Shutting down");
-            break;
-        }
-        std::unique_ptr<CrashUploader> crash_uploader = std::unique_ptr<CrashUploader>(new CrashUploader(crashHandler, *acceptedConn));
+        std::unique_ptr<Context> context = Context::create(
+            replayConn, *crashHandler, resourceProvider.get(), memMgr);
 
-        std::unique_ptr<Context> context =
-                Context::create(*acceptedConn, crashHandler, resourceProvider.get(), memoryManager);
         if (context == nullptr) {
-            GAPID_WARNING("Loading Context failed!");
-            continue;
+          GAPID_WARNING("Loading Context failed!");
+          return;
         }
-
         context->prefetch(resourceProvider.get());
 
         GAPID_INFO("Replay started");
         bool ok = context->interpret();
         GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
-    }
+      });
 }
 
 }  // anonymous namespace
-
 
 #if TARGET_OS == GAPID_OS_ANDROID
 
@@ -131,24 +137,30 @@ void android_main(struct android_app* app) {
     MemoryManager memoryManager(memorySizes);
     CrashHandler crashHandler;
 
+    // Get the path of the file system socket.
     const char* pipe = pipeName();
-    auto conn = SocketConnection::createPipe(pipe, "");
-    if (conn == nullptr) {
-        GAPID_FATAL("Failed to create abstract local port: %s", pipe);
-    }
+    std::string internal_data_path =
+        std::string(app->activity->internalDataPath);
+    std::string socket_file_path = internal_data_path + "/" + std::string(pipe);
+    std::string uri = std::string("unix://") + socket_file_path;
 
     __android_log_print(ANDROID_LOG_DEBUG, "GAPIR",
-            "Started Graphics API Replay daemon.\n"
-            "Listening on localabstract port '%s'\n"
-            "Supported ABIs: %s\n",
-            pipe, core::supportedABIs());
+                        "Started Graphics API Replay daemon.\n"
+                        "Listening on unix socket '%s'\n"
+                        "Supported ABIs: %s\n",
+                        uri.c_str(), core::supportedABIs());
 
-    // Note if you want to create a disk cache create it under:
-    // app->activity->internalDataPath
-    std::thread listening_thread([&]() {
-      listenConnections(conn.get(), nullptr, nullptr, Connection::NO_TIMEOUT,
-                        &memoryManager, crashHandler);
-    });
+    int idleTimeoutSec = 0; // No timeout
+    std::mutex lock;
+    std::unique_ptr<Server> server =
+        Setup(uri.c_str(), nullptr, nullptr, idleTimeoutSec, &crashHandler,
+              &memoryManager, &lock);
+    std::thread waiting_thread([&]() { server.get()->wait(); });
+    if (chmod(socket_file_path.c_str(),
+              S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH)) {
+      GAPID_ERROR("Chmod failed!");
+    }
+
     bool alive = true;
     while (alive) {
       int ident;
@@ -162,13 +174,14 @@ void android_main(struct android_app* app) {
           source->process(app, source);
         }
         if (app->destroyRequested) {
-          conn->close();
+          unlink(socket_file_path.c_str());
+          server->shutdown();
           alive = false;
           break;
         }
       }
     }
-    listening_thread.join();
+    waiting_thread.join();
 }
 
 #else  // TARGET_OS == GAPID_OS_ANDROID
@@ -180,9 +193,9 @@ int main(int argc, const char* argv[]) {
 
     bool wait_for_debugger = false;
     const char* cachePath = nullptr;
-    const char* portStr = "0";
+    const char* portArgStr = "0";
     const char* authTokenFile = nullptr;
-    int idleTimeoutMs = Connection::NO_TIMEOUT;
+    int idleTimeoutSec = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--auth-token-file") == 0) {
@@ -199,7 +212,7 @@ int main(int argc, const char* argv[]) {
             if (i + 1 >= argc) {
                 GAPID_FATAL("Usage: --port <port_num>");
             }
-            portStr = argv[++i];
+            portArgStr = argv[++i];
         } else if (strcmp(argv[i], "--log-level") == 0) {
             if (i + 1 >= argc) {
                 GAPID_FATAL("Usage: --log-level <F|E|W|I|D|V>");
@@ -219,11 +232,11 @@ int main(int argc, const char* argv[]) {
                 GAPID_FATAL("Usage: --log <log-file-path>");
             }
             logPath = argv[++i];
-        } else if (strcmp(argv[i], "--idle-timeout-ms") == 0) {
+        } else if (strcmp(argv[i], "--idle-timeout-sec") == 0) {
             if (i + 1 >= argc) {
-                GAPID_FATAL("Usage: --idle-timeout-ms <timeout in milliseconds>");
+                GAPID_FATAL("Usage: --idle-timeout-sec <timeout in seconds>");
             }
-            idleTimeoutMs = atoi(argv[++i]);
+            idleTimeoutSec = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
             wait_for_debugger = true;
         } else if (strcmp(argv[i], "--version") == 0) {
@@ -265,14 +278,29 @@ int main(int argc, const char* argv[]) {
     }
 
     MemoryManager memoryManager(memorySizes);
-    auto conn = SocketConnection::createSocket("127.0.0.1", portStr);
-    if (conn == nullptr) {
-        GAPID_FATAL("Failed to create listening socket on port: %s", portStr);
-    }
 
-    listenConnections(conn.get(),
-                      (authToken.size() > 0) ? authToken.data() : nullptr,
-                      cachePath, idleTimeoutMs, &memoryManager, crashHandler);
+    // If the user does not assign a port to use, get a free TCP port from OS.
+    const char local_host_name[] = "127.0.0.1";
+    std::string portStr(portArgStr);
+    if (portStr == "0") {
+      uint32_t port = SocketConnection::getFreePort(local_host_name);
+      if (port == 0) {
+          GAPID_FATAL("Failed to find a free port for hostname: '%s'", local_host_name);
+      }
+      portStr = std::to_string(port);
+    }
+    std::string uri = std::string(local_host_name) + std::string(":") + std::string(portStr);
+
+    std::mutex lock;
+    std::unique_ptr<Server> server =
+        Setup(uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr,
+              cachePath, idleTimeoutSec, &crashHandler, &memoryManager, &lock);
+    // The following message is parsed by launchers to detect the selected port.
+    // DO NOT CHANGE!
+    printf("Bound on port '%s'\n", portStr.c_str());
+    fflush(stdout);
+
+    server->wait();
     return EXIT_SUCCESS;
 }
 

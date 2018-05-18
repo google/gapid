@@ -33,6 +33,10 @@ public:
     // connection object on successful open or a nullptr if opening the connection is unsuccessful
     static std::unique_ptr<Connection> createSocket(const char* hostname, const char* port);
 
+    // Returns a free port to use with the given hostname. In case of error,
+    // returns 0
+    static uint32_t getFreePort(const char* hostname);
+
     // Creates a new pipe connection listening on the specified UNIX pipename, without
     // pipe creation on the local file system if abstract is true. Returns a connection object
     // on successful open or a nullptr if opening the connection is unsuccessful
