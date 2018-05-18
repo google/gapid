@@ -54,7 +54,7 @@ func usage(ctx context.Context, message string, verbose bool, args ...interface{
 
 	if !verbose {
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "Some less common flags have ben elided. Use -%s to see the full help.\n", flags.FullHelpFlag)
+		fmt.Fprintf(w, "Some less common flags have been elided. Use -%s to see the full help.\n", flags.FullHelpFlag)
 	}
 }
 
