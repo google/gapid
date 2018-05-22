@@ -42,6 +42,7 @@ go_library(
         "//core/fault/stacktrace/crunch:go_default_library",
         "//core/log:go_default_library",
         "//core/os/file:go_default_library",
+        "//core/text:go_default_library",
         "@com_github_pkg_errors//:go_default_library",
     ],
 )
