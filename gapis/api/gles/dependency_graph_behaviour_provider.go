@@ -180,7 +180,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 				clearBuffer(g, &b, cmd.Buffer(), cmd.Drawbuffer(), c)
 			case *GlClear:
 				if (cmd.Mask() & GLbitfield_GL_COLOR_BUFFER_BIT) != 0 {
-					for i := range c.Bound().DrawFramebuffer().ColorAttachments().Range() {
+					for i := range c.Bound().DrawFramebuffer().ColorAttachments().All() {
 						clearBuffer(g, &b, GLenum_GL_COLOR, i, c)
 					}
 				}
@@ -236,7 +236,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 					log.E(ctx, "Can not find bound texture %v", cmd.Target())
 				}
 				if baseLevel, ok := tex.Levels().Lookup(0); ok {
-					for layerIndex := range baseLevel.Layers().Range() {
+					for layerIndex := range baseLevel.Layers().All() {
 						data, size := tex.dataAndSize(0, layerIndex)
 						b.Read(g, data)
 						b.Read(g, size)
@@ -295,7 +295,7 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *ap
 	if c.Bound().Program().IsNil() {
 		return
 	}
-	for _, uniform := range c.Bound().Program().UniformLocations().Range() {
+	for _, uniform := range c.Bound().Program().UniformLocations().All() {
 		if uniform.Type() == GLenum_GL_FLOAT_VEC4 || uniform.Type() == GLenum_GL_FLOAT_MAT4 {
 			continue // Optimization - skip the two most common types which we know are not samplers.
 		}

@@ -91,7 +91,7 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh) (*api.Mesh, er
 
 	vb := &vertex.Buffer{}
 	va := c.Bound().VertexArray()
-	for _, attr := range program.ActiveResources().ProgramInputs().Range() {
+	for _, attr := range program.ActiveResources().ProgramInputs().All() {
 		vaa := va.VertexAttributeArrays().Get(AttributeLocation(attr.Locations().Get(0)))
 		if vaa.IsNil() || vaa.Enabled() == GLboolean_GL_FALSE {
 			continue

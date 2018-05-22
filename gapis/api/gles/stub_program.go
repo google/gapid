@@ -58,7 +58,7 @@ func stubShaderSource(pi LinkProgramExtraʳ) (vertexShaderSource, fragmentShader
 	vsDecls, fsDecls := []string{}, []string{}
 	vsTickles, fsTickles := []string{}, []string{}
 	if !pi.IsNil() && !pi.ActiveResources().IsNil() {
-		for _, u := range pi.ActiveResources().DefaultUniformBlock().Range() {
+		for _, u := range pi.ActiveResources().DefaultUniformBlock().All() {
 			var decls, tickles *[]string
 			if isSampler(u.Type()) {
 				decls, tickles = &fsDecls, &fsTickles

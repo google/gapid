@@ -62,7 +62,7 @@ func listToExtensions(list []string) extensions {
 
 func translateExtensions(in U32ːstringᵐ) extensions {
 	out := make(extensions, in.Len())
-	for _, s := range in.Range() {
+	for _, s := range in.All() {
 		out[s] = struct{}{}
 	}
 	return out
@@ -1308,7 +1308,7 @@ func compatMultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out tra
 }
 
 func (fb Framebufferʳ) ForEachAttachment(action func(GLenum, FramebufferAttachment)) {
-	for i, a := range fb.ColorAttachments().Range() {
+	for i, a := range fb.ColorAttachments().All() {
 		action(GLenum_GL_COLOR_ATTACHMENT0+GLenum(i), a)
 	}
 	action(GLenum_GL_DEPTH_ATTACHMENT, fb.DepthAttachment())
@@ -1333,15 +1333,15 @@ func disableUnusedAttribArrays(ctx context.Context, t *tweaker) {
 	}
 	inputs := p.ActiveResources().ProgramInputs()
 	used := make([]bool, t.c.Constants().MaxVertexAttribBindings())
-	for _, input := range inputs.Range() {
-		for _, l := range input.Locations().Range() {
+	for _, input := range inputs.All() {
+		for _, l := range input.Locations().All() {
 			if l >= 0 && l < GLint(len(used)) {
 				used[l] = true
 			}
 		}
 	}
 
-	for l, arr := range t.c.Bound().VertexArray().VertexAttributeArrays().Range() {
+	for l, arr := range t.c.Bound().VertexArray().VertexAttributeArrays().All() {
 		if arr.Enabled() == GLboolean_GL_TRUE && l < AttributeLocation(len(used)) && !used[l] {
 			t.glDisableVertexAttribArray(ctx, l)
 		}

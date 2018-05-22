@@ -293,8 +293,8 @@ import (
     return 0
   }
 
-  // Returns an object which can be used for interation in a range-based loop.
-  func (m {{$name}}) Range() map[{{$key}}]{{$value}} {
+  // All returns this {{$name}} as a Go map.
+  func (m {{$name}}) All() map[{{$key}}]{{$value}} {
     if m.Map != nil {
       return *m.Map
     }

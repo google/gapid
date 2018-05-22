@@ -2347,20 +2347,20 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 		dev, sb.MustAllocReadData(
 			NewVkImageCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
-				pNext,                                                                   // pNext
-				info.Flags(),                                                            // flags
-				info.ImageType(),                                                        // imageType
-				info.Fmt(),                                                              // format
-				info.Extent(),                                                           // extent
-				info.MipLevels(),                                                        // mipLevels
-				info.ArrayLayers(),                                                      // arrayLayers
-				info.Samples(),                                                          // samples
-				info.Tiling(),                                                           // tiling
-				info.Usage(),                                                            // usage
-				info.SharingMode(),                                                      // sharingMode
-				uint32(info.QueueFamilyIndices().Len()),                                 // queueFamilyIndexCount
-				NewU32ᶜᵖ(sb.MustUnpackReadMap(info.QueueFamilyIndices().Range()).Ptr()), // pQueueFamilyIndices
-				VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                                 // initialLayout
+				pNext,                                                                 // pNext
+				info.Flags(),                                                          // flags
+				info.ImageType(),                                                      // imageType
+				info.Fmt(),                                                            // format
+				info.Extent(),                                                         // extent
+				info.MipLevels(),                                                      // mipLevels
+				info.ArrayLayers(),                                                    // arrayLayers
+				info.Samples(),                                                        // samples
+				info.Tiling(),                                                         // tiling
+				info.Usage(),                                                          // usage
+				info.SharingMode(),                                                    // sharingMode
+				uint32(info.QueueFamilyIndices().Len()),                               // queueFamilyIndexCount
+				NewU32ᶜᵖ(sb.MustUnpackReadMap(info.QueueFamilyIndices().All()).Ptr()), // pQueueFamilyIndices
+				VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                               // initialLayout
 			)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(handle).Ptr(),
@@ -2517,10 +2517,10 @@ func walkImageSubresourceRange(sb *stateBuilder, img ImageObjectʳ, rng VkImageS
 }
 
 func walkSparseImageMemoryBindings(sb *stateBuilder, img ImageObjectʳ, f func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ)) {
-	for aspect, aspectData := range img.SparseImageMemoryBindings().Range() {
-		for layer, layerData := range aspectData.Layers().Range() {
-			for level, levelData := range layerData.Levels().Range() {
-				for _, blockData := range levelData.Blocks().Range() {
+	for aspect, aspectData := range img.SparseImageMemoryBindings().All() {
+		for layer, layerData := range aspectData.Layers().All() {
+			for level, levelData := range layerData.Levels().All() {
+				for _, blockData := range levelData.Blocks().All() {
 					f(VkImageAspectFlagBits(aspect), layer, level, blockData)
 				}
 			}

@@ -248,13 +248,13 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 		return (dividend + divisor - 1) / divisor
 	}
 	st := GetState(s)
-	for buffer, binds := range binds.BufferBinds().Range() {
+	for buffer, binds := range binds.BufferBinds().All() {
 		if !st.Buffers().Contains(buffer) {
 			subVkErrorInvalidBuffer(ctx, a, id, nil, s, nil, a.Thread(), nil, buffer)
 		}
 		bufObj := st.Buffers().Get(buffer)
 		blockSize := bufObj.MemoryRequirements().Alignment()
-		for _, bind := range binds.SparseMemoryBinds().Range() {
+		for _, bind := range binds.SparseMemoryBinds().All() {
 			// TODO: assert bind.Size and bind.MemoryOffset must be multiple times of
 			// block size.
 			numBlocks := roundUpTo(bind.Size(), blockSize)
@@ -275,13 +275,13 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 			}
 		}
 	}
-	for image, binds := range binds.OpaqueImageBinds().Range() {
+	for image, binds := range binds.OpaqueImageBinds().All() {
 		if !st.Images().Contains(image) {
 			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, image)
 		}
 		imgObj := st.Images().Get(image)
 		blockSize := imgObj.MemoryRequirements().Alignment()
-		for _, bind := range binds.SparseMemoryBinds().Range() {
+		for _, bind := range binds.SparseMemoryBinds().All() {
 			// TODO: assert bind.Size and bind.MemoryOffset must be multiple times of
 			// block size.
 			numBlocks := roundUpTo(bind.Size(), blockSize)
@@ -302,12 +302,12 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 			}
 		}
 	}
-	for image, binds := range binds.ImageBinds().Range() {
+	for image, binds := range binds.ImageBinds().All() {
 		if !st.Images().Contains(image) {
 			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, image)
 		}
 		imgObj := st.Images().Get(image)
-		for _, bind := range binds.SparseImageMemoryBinds().Range() {
+		for _, bind := range binds.SparseImageMemoryBinds().All() {
 			if !imgObj.IsNil() {
 				err := subAddSparseImageMemoryBinding(ctx, a, id, nil, s, nil, a.Thread(), nil, image, bind)
 				if err != nil {
