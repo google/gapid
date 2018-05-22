@@ -16,6 +16,7 @@
 package loader
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"os"
@@ -23,33 +24,119 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app/layout"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/device/remotessh"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 )
 
+// DeviceSetup handles getting files from/to the right location
+// for a particular Device
+type DeviceReplaySetup interface {
+	// MakeTempDir returns a path to a created temporary
+	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
+
+	// InitializeLibrary takes a library, and if necessary copies it
+	// into the given temporary directory. It returns the library
+	// location if necessary.
+	InitializeLibrary(ctx context.Context, tempdir string, library layout.LibraryType) (string, error)
+
+	// FinalizeJSON puts the given JSON content in the given file
+	FinalizeJSON(ctx context.Context, jsonName string, content string) (string, error)
+}
+
+type remoteSetup struct {
+	device remotessh.Device
+	abi    *device.ABI
+}
+
+func (r *remoteSetup) MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error) {
+	return r.device.MakeTempDir(ctx)
+}
+
+func (r *remoteSetup) InitializeLibrary(ctx context.Context, tempdir string, library layout.LibraryType) (string, error) {
+	lib, err := layout.Library(ctx, library, r.abi)
+	if err != nil {
+		return "", err
+	}
+	libName := layout.GetLibraryName(library, r.abi)
+	if err := r.device.PushFile(ctx, lib.System(), tempdir+"/"+libName); err != nil {
+		return "", err
+	}
+	return tempdir + "/" + libName, nil
+}
+
+func (r *remoteSetup) FinalizeJSON(ctx context.Context, jsonName string, content string) (string, error) {
+	if err := r.device.WriteFile(ctx, bytes.NewReader([]byte(content)), "0644", jsonName); err != nil {
+		return "", err
+	}
+	return jsonName, nil
+}
+
+type localSetup struct {
+	abi *device.ABI
+}
+
+func (*localSetup) MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error) {
+	tempdir, err := ioutil.TempDir("", "temp")
+	if err != nil {
+		return "", nil, err
+	}
+	return tempdir, func(ctx context.Context) {
+		os.RemoveAll(tempdir)
+	}, nil
+}
+
+func (l *localSetup) InitializeLibrary(ctx context.Context, tempdir string, library layout.LibraryType) (string, error) {
+	lib, err := layout.Library(ctx, library, l.abi)
+	if err != nil {
+		return "", err
+	}
+	return lib.System(), nil
+}
+
+func (*localSetup) FinalizeJSON(ctx context.Context, jsonName string, content string) (string, error) {
+	if err := ioutil.WriteFile(jsonName, []byte(content), 0644); err != nil {
+		return "", err
+	}
+	return jsonName, nil
+}
+
 // SetupTrace sets up the environment for tracing a local app. Returns a
 // clean-up function to be called after the trace completes, and a temporary
 // filename that can be used to find the port if stdout fails, or an error.
-func SetupTrace(ctx context.Context, env *shell.Env) (func(), string, error) {
-	lib, json, err := findLibraryAndJSON(ctx, layout.LibGraphicsSpy)
+func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (func(ctx context.Context), string, error) {
+	var setup DeviceReplaySetup
+	if dev, ok := d.(remotessh.Device); ok {
+		setup = &remoteSetup{dev, abi}
+	} else {
+		setup = &localSetup{abi}
+	}
+	tempdir, cleanup, err := setup.MakeTempDir(ctx)
+	if err != nil {
+		return func(ctx context.Context) {}, "", err
+	}
+
+	lib, json, err := findLibraryAndJSON(ctx, setup, tempdir, layout.LibGraphicsSpy)
 	var f string
 	if err != nil {
-		return func() {}, f, err
+		return func(ctx context.Context) {}, f, err
 	}
-	cleanup, err := setupJSON(lib, json, env)
+	err = setupJSON(ctx, lib, json, setup, tempdir, env)
 	if err == nil {
 		if fl, e := ioutil.TempFile("", "gapii_port"); e == nil {
 			err = e
 			f = fl.Name()
 			fl.Close()
 			o := cleanup
-			cleanup = func() {
-				o()
+			cleanup = func(ctx context.Context) {
+				o(ctx)
 				os.Remove(f)
 			}
 		}
 		if err == nil {
-			env.Set("LD_PRELOAD", lib.System()).
+			env.Set("LD_PRELOAD", lib).
 				AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
 				AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy").
 				Set("GAPII_PORT_FILE", f)
@@ -69,46 +156,51 @@ func SetupTrace(ctx context.Context, env *shell.Env) (func(), string, error) {
 
 // SetupReplay sets up the environment for local replay. Returns a clean-up
 // function to be called after replay completes, or an error.
-func SetupReplay(ctx context.Context, env *shell.Env) (func(), error) {
-	lib, json, err := findLibraryAndJSON(ctx, layout.LibVirtualSwapChain)
-	if err != nil {
-		return func() {}, err
+func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (func(ctx context.Context), error) {
+	var setup DeviceReplaySetup
+	if dev, ok := d.(remotessh.Device); ok {
+		setup = &remoteSetup{dev, abi}
+	} else {
+		setup = &localSetup{abi}
 	}
-	return setupJSON(lib, json, env)
+	tempdir, cleanup, err := setup.MakeTempDir(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	lib, json, err := findLibraryAndJSON(ctx, setup, tempdir, layout.LibVirtualSwapChain)
+	if err != nil {
+		return func(ctx context.Context) {}, err
+	}
+
+	err = setupJSON(ctx, lib, json, setup, tempdir, env)
+	return cleanup, err
 }
 
-func findLibraryAndJSON(ctx context.Context, libType layout.LibraryType) (file.Path, file.Path, error) {
-	lib, err := layout.Library(ctx, libType)
+func findLibraryAndJSON(ctx context.Context, rs DeviceReplaySetup, tempdir string, libType layout.LibraryType) (string, file.Path, error) {
+	lib, err := rs.InitializeLibrary(ctx, tempdir, libType)
 	if err != nil {
-		return file.Path{}, file.Path{}, err
+		return "", file.Path{}, err
 	}
 
 	json, err := layout.Json(ctx, libType)
 	if err != nil {
-		return file.Path{}, file.Path{}, err
+		return "", file.Path{}, err
 	}
 	return lib, json, nil
 }
 
-func setupJSON(library, json file.Path, env *shell.Env) (func(), error) {
-	cleanup := func() {}
-
+func setupJSON(ctx context.Context, library string, json file.Path, rs DeviceReplaySetup, tempdir string, env *shell.Env) error {
 	sourceContent, err := ioutil.ReadFile(json.System())
 	if err != nil {
-		return cleanup, err
-	}
-	tempdir, err := ioutil.TempDir("", "gapit_dir")
-	if err != nil {
-		return cleanup, err
-	}
-	cleanup = func() {
-		os.RemoveAll(tempdir)
+		return err
 	}
 
-	libName := strings.Replace(library.System(), "\\", "\\\\", -1)
+	libName := strings.Replace(library, "\\", "\\\\", -1)
 	fixedContent := strings.Replace(string(sourceContent[:]), "<library>", libName, 1)
-	ioutil.WriteFile(tempdir+"/"+json.Basename(), []byte(fixedContent), 0644)
+
+	rs.FinalizeJSON(ctx, tempdir+"/"+json.Basename(), fixedContent)
 	env.AddPathStart("VK_LAYER_PATH", tempdir)
 
-	return cleanup, nil
+	return nil
 }

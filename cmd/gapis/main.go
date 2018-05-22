@@ -17,6 +17,8 @@ package main
 import (
 	"context"
 	"flag"
+	"io"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -30,6 +32,7 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/core/os/device/remotessh"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapir/client"
@@ -55,6 +58,7 @@ var (
 	idleTimeout      = flag.Duration("idle-timeout", 0, "_Closes GAPIS if the server is not repeatedly pinged within this duration")
 	adbPath          = flag.String("adb", "", "Path to the adb executable; leave empty to search the environment")
 	enableLocalFiles = flag.Bool("enable-local-files", false, "Allow clients to access local .gfxtrace files by path")
+	remoteSSHConfig  = flag.String("ssh-config", "", "Path to an ssh config file for remote devices")
 )
 
 func main() {
@@ -101,12 +105,30 @@ func run(ctx context.Context) error {
 		r.SetDeviceProperty(ctx, host, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
 	}
 
-	deviceScanDone, onDeviceScanDone := task.NewSignal()
+	numAsyncScans := 0
+	scanDone := make(chan bool)
+
 	if *scanAndroidDevs {
-		crash.Go(func() { monitorAndroidDevices(ctx, r, onDeviceScanDone) })
-	} else {
-		onDeviceScanDone(ctx)
+		numAsyncScans++
+		crash.Go(func() { monitorAndroidDevices(ctx, r, scanDone) })
 	}
+
+	if *remoteSSHConfig != "" {
+		f, err := os.Open(*remoteSSHConfig)
+		if err != nil {
+			return err
+		}
+		numAsyncScans++
+		crash.Go(func() { getRemoteSSHDevices(ctx, r, f, scanDone) })
+	}
+
+	deviceScanDone, onDeviceScanDone := task.NewSignal()
+	go func() {
+		for i := 0; i < numAsyncScans; i++ {
+			<-scanDone
+		}
+		onDeviceScanDone(ctx)
+	}()
 
 	return server.Listen(ctx, *rpc, server.Config{
 		Info: &service.ServerInfo{
@@ -125,10 +147,10 @@ func run(ctx context.Context) error {
 	})
 }
 
-func monitorAndroidDevices(ctx context.Context, r *bind.Registry, onDeviceScanDone task.Task) {
+func monitorAndroidDevices(ctx context.Context, r *bind.Registry, scanDone chan bool) {
 	// Populate the registry with all the existing devices.
 	func() {
-		defer onDeviceScanDone(ctx) // Signal that we have a primed registry.
+		defer func() { scanDone <- true }() // Signal that we have a primed registry.
 
 		if devs, err := adb.Devices(ctx); err == nil {
 			for _, d := range devs {
@@ -140,6 +162,20 @@ func monitorAndroidDevices(ctx context.Context, r *bind.Registry, onDeviceScanDo
 	if err := adb.Monitor(ctx, r, time.Second*3); err != nil {
 		log.W(ctx, "Could not scan for local Android devices. Error: %v", err)
 	}
+}
+
+func getRemoteSSHDevices(ctx context.Context, r *bind.Registry, f io.Reader, scanDone chan bool) {
+	// Populate the registry with all the existing devices.
+	func() {
+		defer func() { scanDone <- true }() // Signal that we have a primed registry.
+
+		if devs, err := remotessh.Devices(ctx, f); err == nil {
+			for _, d := range devs {
+				r.AddDevice(ctx, d)
+				r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
+			}
+		}
+	}()
 }
 
 func loadStrings(ctx context.Context) []*stringtable.StringTable {

@@ -94,8 +94,8 @@ func GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error) {
 }
 
 // Gapir returns the path to the gapir binary.
-func Gapir(ctx context.Context) (file.Path, error) {
-	return layout(ctx).Gapir(ctx)
+func Gapir(ctx context.Context, abi *device.ABI) (file.Path, error) {
+	return layout(ctx).Gapir(ctx, abi)
 }
 
 // Gapit returns the path to the gapir binary.
@@ -104,8 +104,8 @@ func Gapit(ctx context.Context) (file.Path, error) {
 }
 
 // Library returns the path to the requested library.
-func Library(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return layout(ctx).Library(ctx, lib)
+func Library(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
+	return layout(ctx).Library(ctx, lib, abi)
 }
 
 // Json returns the path to the Vulkan layer JSON definition for the given library.
@@ -116,4 +116,9 @@ func Json(ctx context.Context, lib LibraryType) (file.Path, error) {
 // GoArgs returns additional arguments to pass to go binaries.
 func GoArgs(ctx context.Context) []string {
 	return layout(ctx).GoArgs(ctx)
+}
+
+// DeviceInfo returns the device info executable for the given ABI
+func DeviceInfo(ctx context.Context, os device.OSKind) (file.Path, error) {
+	return layout(ctx).DeviceInfo(ctx, os)
 }

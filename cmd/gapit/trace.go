@@ -103,7 +103,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	if !verb.Local.App.IsEmpty() {
 		cleanup, err := verb.startLocalApp(ctx)
-		defer func() { cleanup() }()
+		defer func() { cleanup(ctx) }()
 		if err != nil {
 			return err
 		}
@@ -139,12 +139,13 @@ func (verb *traceVerb) inputHandler(ctx context.Context, deferStart bool) (conte
 	return ctx, startSignal
 }
 
-func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
+func (verb *traceVerb) startLocalApp(ctx context.Context) (func(ctx context.Context), error) {
 	// Run the local application with VK_LAYER_PATH, VK_INSTANCE_LAYERS,
 	// VK_DEVICE_LAYERS and LD_PRELOAD set to correct values to load the spy
 	// layer.
 	env := shell.CloneEnv()
-	cleanup, portFile, err := loader.SetupTrace(ctx, env)
+	device := bind.Host(ctx)
+	cleanup, portFile, err := loader.SetupTrace(ctx, device, device.Instance().Configuration.ABIs[0], env)
 	if err != nil {
 		return cleanup, err
 	}
@@ -166,7 +167,7 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(), error) {
 	if verb.Local.Port == 0 {
 		verb.Local.Port = boundPort
 	}
-	return func() { cancel(); cleanup() }, nil
+	return func(ctx context.Context) { cancel(); cleanup(ctx) }, nil
 }
 
 type traceOptions struct {

@@ -32,6 +32,7 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/core/os/device/remotessh"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/text"
@@ -40,7 +41,7 @@ import (
 )
 
 const (
-	sessionTimeout             = time.Second * 10
+	sessionTimeout             = time.Second * 30
 	maxCheckSocketFileAttempts = 10
 	checkSocketFileRetryDelay  = time.Second
 	connectTimeout             = time.Second * 10
@@ -62,14 +63,16 @@ func newSession(d bind.Device) *session {
 
 func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) error {
 	defer close(s.inited)
-
 	var err error
+
 	if host.Instance(ctx).SameAs(d.Instance()) {
-		err = s.newHost(ctx, d, launchArgs)
-	} else if d, ok := d.(adb.Device); ok {
-		err = s.newADB(ctx, d, abi)
+		err = s.newHost(ctx, d, abi, launchArgs)
+	} else if adbd, ok := d.(adb.Device); ok {
+		err = s.newADB(ctx, adbd, abi)
+	} else if remoted, ok := d.(remotessh.Device); ok {
+		err = s.newRemote(ctx, remoted, abi, launchArgs)
 	} else {
-		err = log.Errf(ctx, nil, "Cannot connect to device type %v", d)
+		err = log.Errf(ctx, nil, "Cannot connect to device type %+v", d)
 	}
 	if err != nil {
 		s.close()
@@ -80,8 +83,106 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, laun
 	return nil
 }
 
+func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device.ABI, launchArgs []string) error {
+	authTokenFile, authToken := auth.GenTokenFile()
+	defer os.Remove(authTokenFile)
+
+	otherdir, cleanup, err := d.MakeTempDir(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup(ctx)
+
+	pf := otherdir + "/auth"
+	if err = d.PushFile(ctx, authTokenFile, pf); err != nil {
+		return err
+	}
+
+	args := []string{
+		"--idle-timeout-sec", strconv.Itoa(int(sessionTimeout / time.Second)),
+		"--auth-token-file", pf,
+	}
+	args = append(args, launchArgs...)
+
+	gapir, err := layout.Gapir(ctx, abi)
+	if err = d.PushFile(ctx, gapir.System(), otherdir+"/gapir"); err != nil {
+		return err
+	}
+
+	remoteGapir := otherdir + "/gapir"
+
+	env := shell.NewEnv()
+	sessionCleanup, err := loader.SetupReplay(ctx, d, abi, env)
+	if err != nil {
+		return err
+	}
+	s.onClose(func() { sessionCleanup(ctx) })
+
+	parser := func(severity log.Severity) io.WriteCloser {
+		h := log.GetHandler(ctx)
+		if h == nil {
+			return nil
+		}
+		ctx := log.PutProcess(ctx, "gapir")
+		ctx = log.PutFilter(ctx, nil)
+		return text.Writer(func(line string) error {
+			if m := parseHostLogMsg(line); m != nil {
+				h.Handle(m)
+				return nil
+			}
+			log.From(ctx).Log(severity, false, line)
+			return nil
+		})
+	}
+
+	stdout := parser(log.Info)
+	if stdout != nil {
+		defer stdout.Close()
+	}
+
+	stderr := parser(log.Error)
+	if stderr != nil {
+		defer stderr.Close()
+	}
+
+	log.I(ctx, "Starting gapir on remote: %v %v", remoteGapir, args)
+
+	port, err := process.StartOnDevice(ctx, d, remoteGapir, process.StartOptions{
+		Env:    env,
+		Args:   args,
+		Stdout: stdout,
+		Stderr: stderr,
+	})
+
+	if err != nil {
+		log.E(ctx, "Starting gapir. Error: %v", err)
+		return nil
+	}
+
+	localport, err := d.ForwardPort(ctx, port)
+	if err != nil {
+		return err
+	}
+
+	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", localport), authToken, connectTimeout)
+	if err != nil {
+		return log.Err(ctx, err, "Timeout waiting for connection")
+	}
+
+	s.onClose(func() {
+		if s.conn != nil {
+			s.conn.Close()
+		}
+	})
+	log.I(ctx, "Heartbeat connection setup done")
+
+	s.port = localport
+	s.auth = authToken
+	return nil
+}
+
 // newHost spawns and returns a new GAPIR instance on the host machine.
-func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []string) error {
+func (s *session) newHost(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) error {
 	authTokenFile, authToken := auth.GenTokenFile()
 	defer os.Remove(authTokenFile)
 
@@ -91,16 +192,18 @@ func (s *session) newHost(ctx context.Context, d bind.Device, launchArgs []strin
 	}
 	args = append(args, launchArgs...)
 
-	gapir, err := layout.Gapir(ctx)
+	gapir, err := layout.Gapir(ctx, abi)
 	if err != nil {
 		log.F(ctx, true, "Couldn't locate gapir executable: %v", err)
 		return nil
 	}
 
 	env := shell.CloneEnv()
-	if _, err := loader.SetupReplay(ctx, env); err != nil {
+	cleanup, err := loader.SetupReplay(ctx, d, abi, env)
+	if err != nil {
 		return err
 	}
+	s.onClose(func() { cleanup(ctx) })
 
 	parser := func(severity log.Severity) io.WriteCloser {
 		h := log.GetHandler(ctx)

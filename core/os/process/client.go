@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
 )
 
@@ -124,6 +125,43 @@ type StartOptions struct {
 
 	// If not "", the working directory for this command
 	WorkingDir string
+}
+
+// Start runs the application with the given path and options, waits for
+// the "Bound on port {port}" string to be printed to stdout, and then returns
+// the port number.
+func StartOnDevice(ctx context.Context, bind bind.Device, name string, opts StartOptions) (int, error) {
+	// Append extra environment variable values
+	errChan := make(chan error, 1)
+	portChan := make(chan string, 1)
+	stdout := &portWatcher{
+		portChan: portChan,
+		stdout:   opts.Stdout,
+		portFile: opts.PortFile,
+	}
+
+	c, cancel := task.WithCancel(ctx)
+	defer cancel()
+	crash.Go(func() {
+		stdout.waitForFile(c)
+	})
+	crash.Go(func() {
+		cmd := bind.Shell(name, opts.Args...).
+			In(opts.WorkingDir).
+			Env(opts.Env).
+			Capture(stdout, opts.Stderr)
+		if opts.Verbose {
+			cmd = cmd.Verbose()
+		}
+		errChan <- cmd.Run(ctx)
+	})
+
+	select {
+	case port := <-portChan:
+		return strconv.Atoi(port)
+	case err := <-errChan:
+		return 0, err
+	}
 }
 
 // Start runs the application with the given path and options, waits for

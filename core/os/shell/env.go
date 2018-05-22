@@ -73,6 +73,18 @@ func (e *Env) Vars() []string {
 	return out
 }
 
+// Keys returns all of the environment variable keys.
+func (e *Env) Keys() []string {
+	if e == nil {
+		return nil
+	}
+	out := make([]string, len(e.keys))
+	for k := range e.keys {
+		out = append(out, k)
+	}
+	return out
+}
+
 // Exists returns true if the environment variable with the specified key
 // exists.
 // The variable can be of the form 'key=value' or simply 'key'.
