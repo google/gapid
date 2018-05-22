@@ -75,6 +75,7 @@ go_test(
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//gapil/constset:go_default_library",  # keep
+        "//gapir/client:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/test/test_pb:go_default_library",  #keep
         "//gapis/database:go_default_library",

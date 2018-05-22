@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -75,13 +76,13 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 	assert.For(ctx, "Constants").ThatSlice(payload.Constants).Equals(test.expected.constants)
 }
 
-func checkResource(ctx context.Context, gotInfos []protocol.ResourceInfo, expectedIDs []id.ID) {
+func checkResource(ctx context.Context, gotInfos []*client.ResourceInfo, expectedIDs []id.ID) {
 	var err error
 
 	got := make([]interface{}, len(gotInfos))
 	for i, g := range gotInfos {
-		ctx := log.V{"id": g.ID}.Bind(ctx)
-		id, err := id.Parse(g.ID)
+		ctx := log.V{"id": g.Id}.Bind(ctx)
+		id, err := id.Parse(g.Id)
 		assert.For(ctx, "Parse resource ID").ThatError(err).Succeeded()
 		got[i], err = database.Resolve(ctx, id)
 		assert.For(ctx, "Get resource").ThatError(err).Succeeded()

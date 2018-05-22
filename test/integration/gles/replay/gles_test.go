@@ -287,7 +287,7 @@ func TestNewContextUndefined(t *testing.T) {
 	c := buildAndMaybeExportCapture(ctx, b, "new-context-undefined")
 
 	checkReplay(ctx, c, d, 1, func() { // expect a single replay batch.
-		checkColorBuffer(ctx, c, d, 64, 64, 0.0, "undef-fb", makeCurrent, nil)
+		checkColorBuffer(ctx, c, d, 64, 64, 0.01, "undef-fb", makeCurrent, nil)
 	})
 }
 
