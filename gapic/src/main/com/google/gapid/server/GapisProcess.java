@@ -135,6 +135,7 @@ public class GapisProcess extends ChildProcess<Integer> {
     }
 
     if (!gapisArgs.get().isEmpty()) {
+      args.add("--args");
       args.add(gapisArgs.get());
     }
 

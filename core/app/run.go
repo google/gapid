@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/core/text"
 	"github.com/pkg/errors"
 )
 
@@ -111,6 +112,33 @@ func init() {
 	Flags.Log = logDefaults()
 }
 
+// getArgs preprocesses the command line arguments to
+// split out any packed arguments passed in as a string.
+func getArgs() []string {
+	// parse the command line
+	args := os.Args[1:]
+	for {
+		expanded := false
+		newArgs := []string{}
+		for i := 0; i < len(args); i++ {
+			arg := args[i]
+			if (arg == "-args" ||
+				arg == "--args") &&
+				i != len(args)-1 {
+				newArgs = append(newArgs, text.SplitArgs(args[i+1])...)
+				i++
+				expanded = true
+			} else {
+				newArgs = append(newArgs, arg)
+			}
+		}
+		args = newArgs
+		if !expanded {
+			return args
+		}
+	}
+}
+
 // Run performs all the work needed to start up an application.
 // It parsers the main command line arguments, builds a primary context that will be cancelled on exit
 // runs the provided task, cancels the primary context and then waits for either the maximum shutdown delay
@@ -130,10 +158,11 @@ func Run(main task.Task) {
 	// install all the common application flags
 	rootCtx := prepareContext(&Flags.Log)
 
-	// parse the command line
+	args := getArgs()
+
 	flag.CommandLine.Usage = func() { Usage(rootCtx, "") }
 	verbMainPrepare(&Flags)
-	globalVerbs.flags.Parse(nil, os.Args[1:]...)
+	globalVerbs.flags.Parse(nil, args...)
 
 	// Force the global verb's flags back into the default location for
 	// main programs that still look in flag.Args()
