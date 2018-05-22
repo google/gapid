@@ -20,7 +20,6 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/google/gapid/core/app/layout"
@@ -127,31 +126,31 @@ func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.
 		return func(ctx context.Context) {}, f, err
 	}
 	err = setupJSON(ctx, lib, json, setup, tempdir, env)
-	if err == nil {
-		if fl, e := ioutil.TempFile("", "gapii_port"); e == nil {
-			err = e
-			f = fl.Name()
-			fl.Close()
-			o := cleanup
-			cleanup = func(ctx context.Context) {
-				o(ctx)
-				os.Remove(f)
-			}
-		}
+	if err != nil {
+		cleanup(ctx)
+		return nil, "", err
+	}
+	f, c, err := d.TempFile(ctx)
+	if err != nil {
+		cleanup(ctx)
+		return nil, "", err
+	}
+	o := cleanup
+	cleanup = func(ctx context.Context) {
+		o(ctx)
+		c(ctx)
+	}
+	env.Set("LD_PRELOAD", lib).
+		AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
+		AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy").
+		Set("GAPII_PORT_FILE", f)
+	if abi.OS == device.Windows {
+		// Adds the extra MSYS DLL dependencies onto the path.
+		// TODO: remove this hacky work-around.
+		// https://github.com/google/gapid/issues/17
+		gapit, err := layout.Gapit(ctx)
 		if err == nil {
-			env.Set("LD_PRELOAD", lib).
-				AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
-				AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy").
-				Set("GAPII_PORT_FILE", f)
-			if runtime.GOOS == "windows" {
-				// Adds the extra MSYS DLL dependencies onto the path.
-				// TODO: remove this hacky work-around.
-				// https://github.com/google/gapid/issues/17
-				gapit, err := layout.Gapit(ctx)
-				if err == nil {
-					env.AddPathStart("PATH", gapit.Parent().System())
-				}
-			}
+			env.AddPathStart("PATH", gapit.Parent().System())
 		}
 	}
 	return cleanup, f, err

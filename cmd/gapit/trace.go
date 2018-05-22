@@ -35,10 +35,8 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/android/apk"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
-	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapii/client"
 )
@@ -101,18 +99,22 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return fmt.Errorf("Unknown API %s", verb.API)
 	}
 
-	if !verb.Local.App.IsEmpty() {
-		cleanup, err := verb.startLocalApp(ctx)
-		defer func() { cleanup(ctx) }()
-		if err != nil {
-			return err
-		}
-	}
 
 	ctx, start := verb.inputHandler(ctx, options.Flags&client.DeferStart != 0)
 
-	if verb.Local.Port != 0 {
-		return verb.captureLocal(ctx, flags, verb.Local.Port, start, options)
+	if verb.Local.App != "" || verb.Local.Port != 0 {
+		device, err := getDesktopTraceDevice(ctx, verb.Gapii); 
+		if err != nil {
+			return err
+		}
+		if verb.Local.App != "" {
+			cleanup, err := verb.startLocalApp(ctx, device)
+			defer func() { cleanup(ctx) }()
+			if err != nil {
+				return err
+			}
+		}
+		return verb.captureLocal(ctx, device, verb.Local.Port, start, options)
 	}
 
 	return verb.captureADB(ctx, flags, start, options)
@@ -139,13 +141,15 @@ func (verb *traceVerb) inputHandler(ctx context.Context, deferStart bool) (conte
 	return ctx, startSignal
 }
 
-func (verb *traceVerb) startLocalApp(ctx context.Context) (func(ctx context.Context), error) {
+func (verb *traceVerb) startLocalApp(ctx context.Context, d bind.Device) (func(ctx context.Context), error) {
 	// Run the local application with VK_LAYER_PATH, VK_INSTANCE_LAYERS,
 	// VK_DEVICE_LAYERS and LD_PRELOAD set to correct values to load the spy
 	// layer.
-	env := shell.CloneEnv()
-	device := bind.Host(ctx)
-	cleanup, portFile, err := loader.SetupTrace(ctx, device, device.Instance().Configuration.ABIs[0], env)
+	env, err := d.GetEnv(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cleanup, portFile, err := loader.SetupTrace(ctx, d, d.Instance().Configuration.ABIs[0], env)
 	if err != nil {
 		return cleanup, err
 	}
@@ -153,11 +157,16 @@ func (verb *traceVerb) startLocalApp(ctx context.Context) (func(ctx context.Cont
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
 	args := r.FindAllString(verb.Local.Args, -1)
 	ctx, cancel := context.WithCancel(ctx)
-	boundPort, err := process.Start(ctx, verb.Local.App.System(), process.StartOptions{
+	for _, x := range verb.Gapii.Env {
+		env.Add(x)
+	}
+
+	boundPort, err := process.StartOnDevice(ctx, verb.Local.App, process.StartOptions{
 		Env:        env,
 		Args:       args,
 		PortFile:   portFile,
 		WorkingDir: verb.Local.WorkingDir,
+		Device: 	d,
 	})
 
 	if err != nil {
@@ -175,10 +184,9 @@ type traceOptions struct {
 	monitorLogcat bool
 }
 
-func (verb *traceVerb) captureLocal(ctx context.Context, flags flag.FlagSet, port int, start task.Signal, options traceOptions) error {
-	device := host.Instance(ctx)
+func (verb *traceVerb) captureLocal(ctx context.Context, device bind.Device, port int, start task.Signal, options traceOptions) error {
 	defer analytics.SendTiming("trace", "local")(
-		analytics.TargetDevice(device.GetConfiguration()),
+		analytics.TargetDevice(device.Instance().GetConfiguration()),
 	)
 
 	output := verb.Out

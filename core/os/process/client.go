@@ -16,16 +16,11 @@ package process
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"io/ioutil"
-	"net"
-	"os"
 	"regexp"
 	"strconv"
 	"time"
 
-	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/device/bind"
@@ -40,14 +35,15 @@ type portWatcher struct {
 	fragment string
 	done     bool
 	portFile string
+	device   bind.Device
 }
 
-func (w *portWatcher) getPortFromFile() (string, bool) {
-	if contents, err := ioutil.ReadFile(w.portFile); err == nil {
+func (w *portWatcher) getPortFromFile(ctx context.Context) (string, bool) {
+	if contents, err := w.device.FileContents(ctx, w.portFile); err == nil {
 		s := string(contents)
 		match := portPattern.FindStringSubmatch(s)
 		if match != nil {
-			os.Remove(w.portFile)
+			w.device.RemoveFile(ctx, w.portFile)
 			return match[1], true
 		}
 	}
@@ -59,14 +55,13 @@ func (w *portWatcher) waitForFile(ctx context.Context) {
 		return
 	}
 
-	os.Remove(w.portFile)
 	hb := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-hb.C:
-			if port, ok := w.getPortFromFile(); ok {
+			if port, ok := w.getPortFromFile(ctx); ok {
 				w.portChan <- port
 				close(w.portChan)
 				w.done = true
@@ -125,12 +120,15 @@ type StartOptions struct {
 
 	// If not "", the working directory for this command
 	WorkingDir string
+
+	// Device, which device should this be started on
+	Device bind.Device
 }
 
 // StartOnDevice runs the application on the given remote device,
 // with the given path and options, waits for the "Bound on port {port}" string
 // to be printed to stdout, and then returns the port number.
-func StartOnDevice(ctx context.Context, bind bind.Device, name string, opts StartOptions) (int, error) {
+func StartOnDevice(ctx context.Context, name string, opts StartOptions) (int, error) {
 	// Append extra environment variable values
 	errChan := make(chan error, 1)
 	portChan := make(chan string, 1)
@@ -138,6 +136,7 @@ func StartOnDevice(ctx context.Context, bind bind.Device, name string, opts Star
 		portChan: portChan,
 		stdout:   opts.Stdout,
 		portFile: opts.PortFile,
+		device:   opts.Device,
 	}
 
 	c, cancel := task.WithCancel(ctx)
@@ -146,7 +145,7 @@ func StartOnDevice(ctx context.Context, bind bind.Device, name string, opts Star
 		stdout.waitForFile(c)
 	})
 	crash.Go(func() {
-		cmd := bind.Shell(name, opts.Args...).
+		cmd := opts.Device.Shell(name, opts.Args...).
 			In(opts.WorkingDir).
 			Env(opts.Env).
 			Capture(stdout, opts.Stderr)
@@ -158,57 +157,12 @@ func StartOnDevice(ctx context.Context, bind bind.Device, name string, opts Star
 
 	select {
 	case port := <-portChan:
-		return strconv.Atoi(port)
-	case err := <-errChan:
-		return 0, err
-	}
-}
-
-// Start runs the application with the given path and options, waits for
-// the "Bound on port {port}" string to be printed to stdout, and then returns
-// the port number.
-func Start(ctx context.Context, name string, opts StartOptions) (int, error) {
-	// Append extra environment variable values
-	errChan := make(chan error, 1)
-	portChan := make(chan string, 1)
-	stdout := &portWatcher{
-		portChan: portChan,
-		stdout:   opts.Stdout,
-		portFile: opts.PortFile,
-	}
-
-	c, cancel := task.WithCancel(ctx)
-	defer cancel()
-	crash.Go(func() {
-		stdout.waitForFile(c)
-	})
-	crash.Go(func() {
-		cmd := shell.
-			Command(name, opts.Args...).
-			In(opts.WorkingDir).
-			Env(opts.Env).
-			Capture(stdout, opts.Stderr)
-		if opts.Verbose {
-			cmd = cmd.Verbose()
+		p, err := strconv.Atoi(port)
+		if err != nil {
+			return 0, err
 		}
-		errChan <- cmd.Run(ctx)
-	})
-
-	select {
-	case port := <-portChan:
-		return strconv.Atoi(port)
+		return opts.Device.SetupLocalPort(ctx, p)
 	case err := <-errChan:
 		return 0, err
 	}
-}
-
-func Connect(port int, authToken auth.Token) (net.Conn, error) {
-	conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", port))
-	if err != nil {
-		return nil, err
-	}
-	if err := auth.Write(conn, authToken); err != nil {
-		return nil, err
-	}
-	return conn, err
 }

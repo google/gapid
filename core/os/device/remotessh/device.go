@@ -45,9 +45,6 @@ type Device interface {
 	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
 	// WriteFile writes the given file into the given location on the remote device
 	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
-	// ForwardPort forwards the remote port. It automatically selects an open
-	// local port.
-	ForwardPort(ctx context.Context, remoteport int) (int, error)
 }
 
 // binding represents an attached SSH client.

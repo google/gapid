@@ -147,11 +147,12 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 
 	log.I(ctx, "Starting gapir on remote: %v %v", remoteGapir, args)
 
-	port, err := process.StartOnDevice(ctx, d, remoteGapir, process.StartOptions{
+	port, err := process.StartOnDevice(ctx, remoteGapir, process.StartOptions{
 		Env:    env,
 		Args:   args,
 		Stdout: stdout,
 		Stderr: stderr,
+		Device: d,
 	})
 
 	if err != nil {
@@ -159,12 +160,7 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 		return nil
 	}
 
-	localport, err := d.ForwardPort(ctx, port)
-	if err != nil {
-		return err
-	}
-
-	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", localport), authToken, connectTimeout)
+	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", port), authToken, connectTimeout)
 	if err != nil {
 		return log.Err(ctx, err, "Timeout waiting for connection")
 	}
@@ -176,7 +172,7 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 	})
 	log.I(ctx, "Heartbeat connection setup done")
 
-	s.port = localport
+	s.port = port
 	s.auth = authToken
 	return nil
 }
@@ -233,11 +229,12 @@ func (s *session) newHost(ctx context.Context, d bind.Device, abi *device.ABI, l
 	}
 
 	log.I(ctx, "Starting gapir on host: %v %v", gapir.System(), args)
-	port, err := process.Start(ctx, gapir.System(), process.StartOptions{
+	port, err := process.StartOnDevice(ctx, gapir.System(), process.StartOptions{
 		Env:    env,
 		Args:   args,
 		Stdout: stdout,
 		Stderr: stderr,
+		Device: d,
 	})
 	if err != nil {
 		log.E(ctx, "Starting gapir. Error: %v", err)

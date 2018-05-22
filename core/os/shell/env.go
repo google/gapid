@@ -104,6 +104,14 @@ func (e *Env) Get(key string) string {
 	return ""
 }
 
+
+// Add inserts a new environment variable that is of the form "key=value".
+// That is, it parses the environment variable if necessary
+func (e *Env) Add(key string) {
+	k, v := splitEnvVar(key)
+	e.Set(k, v)
+}
+
 // Unset removes an environment variable in the form 'key=value' or 'key'.
 func (e *Env) Unset(key string) *Env {
 	if idx, existing := e.keys[strings.ToUpper(key)]; existing {
