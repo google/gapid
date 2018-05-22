@@ -62,6 +62,7 @@ copy_to(
         "//cmd/gapis",
         "//cmd/gapit",
         "//tools/build:build.properties",
+        "//core/os/device/deviceinfo/cc/exe:device_info",
     ] + select({
         "//tools/build:no-android": [],
         "//conditions:default": [
