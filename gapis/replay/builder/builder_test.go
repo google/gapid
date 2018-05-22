@@ -212,10 +212,9 @@ func TestRevertPostbackCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	const expectedErr = fault.Const("Oh noes!")
 	postbackErr := error(nil)
-	postback := Postback(func(r binary.Reader, err error) error {
+	postback := Postback(func(r binary.Reader, err error) {
 		assert.For(ctx, "Postback reader").That(r).IsNil()
 		postbackErr = err
-		return nil
 	})
 
 	for _, test := range []struct {

@@ -142,5 +142,5 @@ func TestStartActivity(t_ *testing.T) {
 		Activity: "FooBarActivity",
 	}
 	err := d.StartActivity(ctx, a)
-	expectedCommand(ctx, adbPath.System()+` -s run_device shell am start -S -a android.intent.action.MAIN -n com.google.test.AnApp/.FooBarActivity`, err)
+	expectedCommand(ctx, adbPath.System()+` -s run_device shell am start -S -W -a android.intent.action.MAIN -n com.google.test.AnApp/.FooBarActivity`, err)
 }

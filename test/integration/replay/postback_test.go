@@ -86,23 +86,22 @@ func TestPostbackString(t *testing.T) {
 
 	if doReplay(t, func(b *builder.Builder) {
 		ptr := b.String(expected)
-		b.Post(ptr, uint64(len(expected)), func(r binary.Reader, err error) error {
+		b.Post(ptr, uint64(len(expected)), func(r binary.Reader, err error) {
 			defer close(done)
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
-				return err
+				return
 			}
 			data := make([]byte, len(expected))
 			r.Data(data)
 			err = r.Error()
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
-				return err
+				return
 			}
 			if expected != string(data) {
 				t.Errorf("Postback data was not as expected. Expected: %v. Got: %v", expected, data)
 			}
-			return err
 		})
 	}) == nil {
 		<-done
@@ -116,63 +115,60 @@ func TestMultiPostback(t *testing.T) {
 		ptr := b.AllocateTemporaryMemory(8)
 		b.Push(value.Bool(false))
 		b.Store(ptr)
-		b.Post(ptr, 1, func(r binary.Reader, err error) error {
+		b.Post(ptr, 1, func(r binary.Reader, err error) {
 			expected := false
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
-				return err
+				return
 			}
 			data := r.Bool()
 			err = r.Error()
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
-				return err
+				return
 			}
 			if !reflect.DeepEqual(expected, data) {
 				t.Errorf("Postback data was not as expected. Expected: %v. Got: %v", expected, data)
 			}
-			return err
 		})
 
 		b.Push(value.Bool(true))
 		b.Store(ptr)
-		b.Post(ptr, 1, func(r binary.Reader, err error) error {
+		b.Post(ptr, 1, func(r binary.Reader, err error) {
 			expected := true
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
-				return err
+				return
 			}
 			data := r.Bool()
 			err = r.Error()
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
-				return err
+				return
 			}
 			if !reflect.DeepEqual(expected, data) {
 				t.Errorf("Postback data was not as expected. Expected: %v. Got: %v", expected, data)
 			}
-			return err
 		})
 
 		b.Push(value.F64(123.456))
 		b.Store(ptr)
-		b.Post(ptr, 8, func(r binary.Reader, err error) error {
+		b.Post(ptr, 8, func(r binary.Reader, err error) {
 			expected := float64(123.456)
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
-				return err
+				return
 			}
 			data := r.Float64()
 			err = r.Error()
 			if err != nil {
 				t.Errorf("Postback returned error: %v", err)
-				return err
+				return
 			}
 			if !reflect.DeepEqual(expected, data) {
 				t.Errorf("Postback data was not as expected. Expected: %v. Got: %v", expected, data)
 			}
 			close(done)
-			return err
 		})
 	}) == nil {
 		<-done
