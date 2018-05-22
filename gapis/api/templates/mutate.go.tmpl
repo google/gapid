@@ -436,7 +436,7 @@
 
   {
     {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}} := int32(0){{end}}
-    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.Range() {
+    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.All() {
       {{Template "Block" $.Block}}
       {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}}++{{end}}
     }

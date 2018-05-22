@@ -64,14 +64,14 @@ func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 	switch t.Kind() {
 	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_2D_MULTISAMPLE:
 		count := GLint(0)
-		for i := range t.Levels().Range() {
+		for i := range t.Levels().All() {
 			if i >= count {
 				count = i + 1
 			}
 		}
 
 		levels := make([]*image.Info, count)
-		for i, level := range t.Levels().Range() {
+		for i, level := range t.Levels().All() {
 			img, err := level.Layers().Get(0).ImageInfo(ctx, s)
 			if err != nil {
 				return nil, err
@@ -95,7 +95,7 @@ func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 			return api.NewResourceData(api.NewTexture(&api.Texture2D{})), nil
 		}
 		levels := make([]*image.Info, ei.Images().Len())
-		for i, img := range ei.Images().Range() {
+		for i, img := range ei.Images().All() {
 			ii, err := img.ImageInfo(ctx, s)
 			if err != nil {
 				return nil, err
@@ -145,7 +145,7 @@ func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 
 	case GLenum_GL_TEXTURE_3D:
 		levels := make([]*image.Info, t.Levels().Len())
-		for i, level := range t.Levels().Range() {
+		for i, level := range t.Levels().All() {
 			img := level.Layers().Get(0)
 			l := &image.Info{
 				Width:  uint32(img.Width()),
@@ -188,9 +188,9 @@ func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 
 	case GLenum_GL_TEXTURE_CUBE_MAP:
 		levels := make([]*api.CubemapLevel, t.Levels().Len())
-		for i, level := range t.Levels().Range() {
+		for i, level := range t.Levels().All() {
 			levels[i] = &api.CubemapLevel{}
-			for j, face := range level.Layers().Range() {
+			for j, face := range level.Layers().All() {
 				img, err := face.ImageInfo(ctx, s)
 				if err != nil {
 					return nil, err
@@ -244,7 +244,7 @@ func (i Imageʳ) ImageInfo(ctx context.Context, s *api.GlobalState) (*image.Info
 // LayerCount returns the maximum number of layers across all levels.
 func (t Textureʳ) LayerCount() int {
 	max := 0
-	for _, l := range t.Levels().Range() {
+	for _, l := range t.Levels().All() {
 		if l.Layers().Len() > max {
 			max = l.Layers().Len()
 		}
@@ -391,7 +391,7 @@ func (p Programʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 	ctx = log.Enter(ctx, "Program.ResourceData()")
 
 	shaders := make([]*api.Shader, 0, p.Shaders().Len())
-	for shaderType, shader := range p.Shaders().Range() {
+	for shaderType, shader := range p.Shaders().All() {
 		var ty api.ShaderType
 		switch shaderType {
 		case GLenum_GL_VERTEX_SHADER:
@@ -415,7 +415,7 @@ func (p Programʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 
 	uniforms := []*api.Uniform{}
 	if res := p.ActiveResources(); !res.IsNil() {
-		for _, activeUniform := range res.DefaultUniformBlock().Range() {
+		for _, activeUniform := range res.DefaultUniformBlock().All() {
 			var uniformFormat api.UniformFormat
 			var uniformType api.UniformType
 

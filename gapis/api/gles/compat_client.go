@@ -131,7 +131,7 @@ func compatDrawElements(
 // clientVAsBound returns true if there are any vertex attribute arrays enabled
 // with pointers to client-side memory.
 func clientVAsBound(c Contextʳ, clientVAs map[VertexAttributeArrayʳ]*GlVertexAttribPointer) bool {
-	for _, arr := range c.Bound().VertexArray().VertexAttributeArrays().Range() {
+	for _, arr := range c.Bound().VertexArray().VertexAttributeArrays().All() {
 		if arr.Enabled() == GLboolean_GL_TRUE {
 			if _, ok := clientVAs[arr]; ok {
 				return true
@@ -164,7 +164,7 @@ func moveClientVBsToVAs(
 	// Gather together all the client-buffers in use by the vertex-attribs.
 	// Merge together all the memory intervals that these use.
 	va := c.Bound().VertexArray()
-	for _, arr := range va.VertexAttributeArrays().Range() {
+	for _, arr := range va.VertexAttributeArrays().All() {
 		if arr.Enabled() == GLboolean_GL_TRUE {
 			vb := arr.Binding()
 			if cmd, ok := clientVAs[arr]; ok {

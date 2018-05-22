@@ -91,7 +91,7 @@ func (m *bufferCompat) modifyBufferData(ctx context.Context, out transform.Write
 	}
 
 	rebind := []binding{}
-	for i, b := range c.Bound().UniformBuffers().Range() {
+	for i, b := range c.Bound().UniformBuffers().All() {
 		if b.Binding().IsNil() || m.unaligned[b.Binding().ID()] != unaligned {
 			continue
 		}

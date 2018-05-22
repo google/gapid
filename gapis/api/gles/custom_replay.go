@@ -398,7 +398,7 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.
 	pi := FindLinkProgramExtra(cmd.Extras())
 	if !pi.IsNil() && b != nil && !pi.ActiveResources().IsNil() {
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		for _, attr := range pi.ActiveResources().ProgramInputs().Range() {
+		for _, attr := range pi.ActiveResources().ProgramInputs().All() {
 			if int32(attr.Locations().Get(0)) != -1 {
 				tmp := s.AllocDataOrPanic(ctx, attr.Name())
 				cmd := cb.GlBindAttribLocation(pid, AttributeLocation(attr.Locations().Get(0)), tmp.Ptr()).
@@ -423,7 +423,7 @@ func bindUniformBlocks(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.Gl
 	pi := FindLinkProgramExtra(cmd.Extras())
 	if !pi.IsNil() && b != nil && !pi.ActiveResources().IsNil() {
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		for i, ub := range pi.ActiveResources().UniformBlocks().Range() {
+		for i, ub := range pi.ActiveResources().UniformBlocks().All() {
 			// Query replay-time uniform block index so that the remapping is established
 			tmp := s.AllocDataOrPanic(ctx, ub.Name())
 			defer tmp.Free()

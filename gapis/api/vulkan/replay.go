@@ -346,111 +346,111 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	p := memory.Nullptr
 
 	// Wait all queues in all devices to finish their jobs first.
-	for handle := range so.Devices().Range() {
+	for handle := range so.Devices().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDeviceWaitIdle(handle, VkResult_VK_SUCCESS))
 	}
 
 	// Synchronization primitives.
-	for handle, object := range so.Events().Range() {
+	for handle, object := range so.Events().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyEvent(object.Device(), handle, p))
 	}
-	for handle, object := range so.Fences().Range() {
+	for handle, object := range so.Fences().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyFence(object.Device(), handle, p))
 	}
-	for handle, object := range so.Semaphores().Range() {
+	for handle, object := range so.Semaphores().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroySemaphore(object.Device(), handle, p))
 	}
 
 	// Framebuffers, samplers.
-	for handle, object := range so.Framebuffers().Range() {
+	for handle, object := range so.Framebuffers().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyFramebuffer(object.Device(), handle, p))
 	}
-	for handle, object := range so.Samplers().Range() {
+	for handle, object := range so.Samplers().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroySampler(object.Device(), handle, p))
 	}
 
-	for handle, object := range so.ImageViews().Range() {
+	for handle, object := range so.ImageViews().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device(), handle, p))
 	}
 
 	// Buffers.
-	for handle, object := range so.BufferViews().Range() {
+	for handle, object := range so.BufferViews().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyBufferView(object.Device(), handle, p))
 	}
-	for handle, object := range so.Buffers().Range() {
+	for handle, object := range so.Buffers().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyBuffer(object.Device(), handle, p))
 	}
 
 	// Descriptor sets.
-	for handle, object := range so.DescriptorPools().Range() {
+	for handle, object := range so.DescriptorPools().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device(), handle, p))
 	}
-	for handle, object := range so.DescriptorSetLayouts().Range() {
+	for handle, object := range so.DescriptorSetLayouts().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device(), handle, p))
 	}
 
 	// Shader modules.
-	for handle, object := range so.ShaderModules().Range() {
+	for handle, object := range so.ShaderModules().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyShaderModule(object.Device(), handle, p))
 	}
 
 	// Pipelines.
-	for handle, object := range so.GraphicsPipelines().Range() {
+	for handle, object := range so.GraphicsPipelines().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p))
 	}
-	for handle, object := range so.ComputePipelines().Range() {
+	for handle, object := range so.ComputePipelines().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p))
 	}
-	for handle, object := range so.PipelineLayouts().Range() {
+	for handle, object := range so.PipelineLayouts().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineLayout(object.Device(), handle, p))
 	}
-	for handle, object := range so.PipelineCaches().Range() {
+	for handle, object := range so.PipelineCaches().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineCache(object.Device(), handle, p))
 	}
 
 	// Render passes.
-	for handle, object := range so.RenderPasses().Range() {
+	for handle, object := range so.RenderPasses().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyRenderPass(object.Device(), handle, p))
 	}
 
-	for handle, object := range so.QueryPools().Range() {
+	for handle, object := range so.QueryPools().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyQueryPool(object.Device(), handle, p))
 	}
 
 	// Command buffers.
-	for handle, object := range so.CommandPools().Range() {
+	for handle, object := range so.CommandPools().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyCommandPool(object.Device(), handle, p))
 	}
 
 	// Swapchains.
-	for handle, object := range so.Swapchains().Range() {
+	for handle, object := range so.Swapchains().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroySwapchainKHR(object.Device(), handle, p))
 	}
 
 	// Memories.
-	for handle, object := range so.DeviceMemories().Range() {
+	for handle, object := range so.DeviceMemories().All() {
 		out.MutateAndWrite(ctx, id, cb.VkFreeMemory(object.Device(), handle, p))
 	}
 
 	// Note: so.Images also contains Swapchain images. We do not want
 	// to delete those, as that must be handled by VkDestroySwapchainKHR
-	for handle, object := range so.Images().Range() {
+	for handle, object := range so.Images().All() {
 		if !object.IsSwapchainImage() {
 			out.MutateAndWrite(ctx, id, cb.VkDestroyImage(object.Device(), handle, p))
 		}
 	}
 	// Devices.
-	for handle := range so.Devices().Range() {
+	for handle := range so.Devices().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyDevice(handle, p))
 	}
 
 	// Surfaces.
-	for handle, object := range so.Surfaces().Range() {
+	for handle, object := range so.Surfaces().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroySurfaceKHR(object.Instance(), handle, p))
 	}
 
 	// Instances.
-	for handle := range so.Instances().Range() {
+	for handle := range so.Instances().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyInstance(handle, p))
 	}
 }
