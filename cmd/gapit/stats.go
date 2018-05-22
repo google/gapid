@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"sort"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
@@ -87,8 +88,11 @@ func (verb *infoVerb) getEventsInRange(ctx context.Context, client service.Servi
 		}
 	}
 
-	if verb.Frames.Start > len(fifIndices) {
-		return nil, log.Errf(ctx, nil, "Captured only %v frames, less than start frame %v", len(fifIndices), verb.Frames.Start)
+	if verb.Frames.Start < 0 {
+		return nil, log.Errf(ctx, nil, "Negative start frame %v is invalid", verb.Frames.Start)
+	}
+	if verb.Frames.Start >= len(fifIndices) {
+		return nil, log.Errf(ctx, nil, "Captured only %v frames, not greater than start frame %v", len(fifIndices), verb.Frames.Start)
 	}
 
 	startIndex := fifIndices[verb.Frames.Start]
@@ -99,15 +103,12 @@ func (verb *infoVerb) getEventsInRange(ctx context.Context, client service.Servi
 		endIndex = fifIndices[verb.Frames.Start+verb.Frames.Count]
 	}
 
-	begin, end := len(events), len(events)
-	for i, e := range events {
-		if i < begin && e.Command.Indices[0] >= startIndex {
-			begin = i
-		}
-		if i < end && e.Command.Indices[0] >= endIndex {
-			end = i
-		}
-	}
+	begin := sort.Search(len(events), func(i int) bool {
+		return events[i].Command.Indices[0] >= startIndex
+	})
+	end := sort.Search(len(events), func(i int) bool {
+		return events[i].Command.Indices[0] >= endIndex
+	})
 	return events[begin:end], nil
 }
 
@@ -118,7 +119,7 @@ func (verb *infoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	defer client.Close()
 
-	events, err := verb.GetEventsInRange(ctx, client, capture)
+	events, err := verb.getEventsInRange(ctx, client, capture)
 
 	if err != nil {
 		return log.Err(ctx, err, "Couldn't get events")
