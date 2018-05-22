@@ -15,6 +15,10 @@
 package bind
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
+
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
@@ -51,6 +55,46 @@ func (b *Simple) Shell(name string, args ...string) shell.Cmd {
 	return shell.Command(name, args...).On(simpleTarget{})
 }
 
+// TempFile creates a temporary file on the given Device. It returns the
+// path to the file, and a function that can be called to clean it up.
+func (b *Simple) TempFile(ctx context.Context) (string, func(ctx context.Context), error) {
+	fl, e := ioutil.TempFile("", "")
+	if e != nil {
+		return "", nil, e
+	}
+
+	f := fl.Name()
+	fl.Close()
+	return f, func(ctx context.Context) {
+		os.Remove(f)
+	}, nil
+}
+
+// FileContents returns the contents of a given file on the Device.
+func (b *Simple) FileContents(ctx context.Context, path string) (string, error) {
+	contents, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(contents), nil
+}
+
+// RemoveFile removes the given file from the device
+func (b* Simple) RemoveFile(ctx context.Context, path string) error {
+	return os.Remove(path)
+}
+
+// GetEnv returns the default environment for the Device.
+func (b *Simple) GetEnv(ctx context.Context) (*shell.Env, error) {
+	return shell.CloneEnv(), nil
+}
+
+// SetupLocalPort makes sure that the given port can be accessed on localhost
+// It returns a new port number to connect to on localhost
+func (b *Simple) SetupLocalPort(ctx context.Context, port int) (int, error) {
+	return port, nil
+}
+
 // ABI implements the Device interface returning the first ABI from the Information, or UnknownABI if it has none.
 func (b *Simple) ABI() *device.ABI {
 	if len(b.To.Configuration.ABIs) <= 0 {
@@ -62,5 +106,5 @@ func (b *Simple) ABI() *device.ABI {
 type simpleTarget struct{}
 
 func (t simpleTarget) Start(cmd shell.Cmd) (shell.Process, error) {
-	return nil, ErrShellNotSupported
+	return shell.LocalTarget.Start(cmd)
 }

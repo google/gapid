@@ -29,7 +29,9 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/core/os/device/remotessh"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/memory"
@@ -184,6 +186,31 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 	}
 
 	return nil, log.Err(ctx, nil, "No devices found")
+}
+
+func getDesktopTraceDevice(ctx context.Context, flags GapiiFlags) (bind.Device, error) {
+	if flags.Device == "none" {
+		return nil, nil
+	} else if flags.Device == "host" ||
+		flags.Device == "" {
+		return bind.Host(ctx), nil
+	} else {
+		f, err := os.Open(flags.Ssh.Config)
+		if err != nil {
+			return nil, err
+		}
+		
+		devices, err := remotessh.Devices(ctx, f)
+		if err != nil {
+			return nil, err
+		}
+		for _, d := range devices {
+			if d.Instance().Name == flags.Device {
+				return d, nil
+			}
+		}
+	}
+	return nil, log.Errf(ctx, nil, "Could not find compatible device %s", flags.Device)
 }
 
 func getADBDevice(ctx context.Context, pattern string) (adb.Device, error) {

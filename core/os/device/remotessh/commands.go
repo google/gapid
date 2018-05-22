@@ -15,6 +15,7 @@
 package remotessh
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -104,7 +105,11 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 
 	for _, e := range cmd.Environment.Keys() {
 		if e != "" {
-			prefix = prefix + e + "=" + cmd.Environment.Get(e) + " "
+			val := cmd.Environment.Get(e)
+			if strings.ContainsAny(val, " \t\n") {
+				val = "\"" + val + "\""
+			}
+			prefix = prefix + strings.TrimSpace(e) + "=" + val + " "
 		}
 	}
 
@@ -207,10 +212,11 @@ func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) e
 	return nil
 }
 
-// ForwardPort forwards a local TCP port to the remote machine on the remote port.
+// SetupLocalPort forwards a local TCP port to the remote machine on the remote port.
 // The local port that was opened is returned.
-func (b binding) ForwardPort(ctx context.Context, remotePort int) (int, error) {
+func (b binding) SetupLocalPort(ctx context.Context, remotePort int) (int, error) {
 	listener, err := net.Listen("tcp", ":0")
+	
 	if err != nil {
 		return 0, err
 	}
@@ -232,4 +238,41 @@ func (b binding) ForwardPort(ctx context.Context, remotePort int) (int, error) {
 	})
 
 	return listener.Addr().(*net.TCPAddr).Port, nil
+}
+
+// TempFile creates a temporary file on the given Device. It returns the
+// path to the file, and a function that can be called to clean it up.
+func (b binding) TempFile(ctx context.Context) (string, func(ctx context.Context), error) {
+	res, err := b.Shell("mktemp").Call(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	return res, func(ctx context.Context) {
+		b.Shell("rm", "-f", res).Call(ctx)
+	}, nil
+}
+
+// FileContents returns the contents of a given file on the Device.
+func (b binding) FileContents(ctx context.Context, path string) (string, error) {
+	return b.Shell("cat", path).Call(ctx)
+}
+
+// RemoveFile removes the given file from the device
+func (b binding) RemoveFile(ctx context.Context, path string) error {
+	_, err := b.Shell("rm", "-f", path).Call(ctx)
+	return err
+}
+
+// GetEnv returns the default environment for the Device.
+func (b binding) GetEnv(ctx context.Context) (*shell.Env, error) {
+	env, err := b.Shell("env").Call(ctx)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(strings.NewReader(env))
+	e := shell.NewEnv()
+	for scanner.Scan() {
+		e.Add(scanner.Text())
+	}
+	return e, nil
 }

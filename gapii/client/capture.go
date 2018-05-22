@@ -149,11 +149,11 @@ func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer) (size
 		stopTiming(analytics.Size(size))
 		if err != nil {
 			analytics.SendEvent("trace", "failed", "", analytics.Size(size),
-				analytics.TargetDevice(p.Device.GetConfiguration()))
+				analytics.TargetDevice(p.Device.Instance().GetConfiguration()))
 
 		} else {
 			analytics.SendEvent("trace", "succeeded", "", analytics.Size(size),
-				analytics.TargetDevice(p.Device.GetConfiguration()))
+				analytics.TargetDevice(p.Device.Instance().GetConfiguration()))
 		}
 	}()
 

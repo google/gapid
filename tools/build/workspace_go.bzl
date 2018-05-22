@@ -94,13 +94,6 @@ def gapid_go_dependencies():
         importpath = "golang.org/x/crypto",
     )
 
-    _maybe(_github_go_repository,
-        name = "org_golang_x_crypto_ssh_knownhosts",
-        organization = "golang",
-        project = "knownhosts",
-        commit = "1a580b3eff7814fc9b40602fd35256c63b50f491",
-        importpath = "golang.org/x/crypto/ssh/knownhosts",
-    )
 
 
 def _maybe(repo_rule, name, **kwargs):

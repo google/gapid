@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/flock"
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapidapk"
@@ -46,7 +47,7 @@ type Process struct {
 	Port int
 
 	// Information about the target device.
-	Device *device.Instance
+	Device bind.Device
 
 	// The options used for the capture.
 	Options Options
@@ -153,7 +154,7 @@ func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.
 
 	process := &Process{
 		Port:    int(port),
-		Device:  d.Instance(),
+		Device:  d,
 		Options: o,
 	}
 	if err := process.loadAndConnectViaJDWP(ctx, apk, pid, d); err != nil {

@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/process"
 	"google.golang.org/grpc"
@@ -58,9 +59,10 @@ func Connect(ctx context.Context, cfg Config) (Client, error) {
 			cfg.Args = append(cfg.Args, "--gapis-auth-token", string(cfg.Token))
 		}
 
-		cfg.Port, err = process.Start(ctx, cfg.Path.System(), process.StartOptions{
+		cfg.Port, err = process.StartOnDevice(ctx, cfg.Path.System(), process.StartOptions{
 			Args:    append(cfg.Args, layout.GoArgs(ctx)...),
 			Verbose: true,
+			Device: bind.Host(ctx),
 		})
 		if err != nil {
 			return nil, err

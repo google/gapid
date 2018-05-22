@@ -77,6 +77,10 @@ type (
 	}
 	DeviceFlags struct {
 		Device string `help:"Device to spawn on. One of: 'none', 'host', 'android' or <device-serial>"`
+		Env flags.StringSlice `help:"List of environment variables to set, X=Y"`
+		Ssh struct {
+			Config string `help: "The ssh config to use for finding remote devices"`
+		}
 	}
 	DevicesFlags struct {
 		Gapis GapisFlags
@@ -175,7 +179,7 @@ type (
 		Out   string        `help:"the file to generate"`
 		Local struct {
 			Port       int       `help:"capture a local program instead of using ADB"`
-			App        file.Path `help:"a local program to trace"`
+			App        string    `help:"a local program to trace"`
 			Args       string    `help:"arguments to pass to the traced program"`
 			WorkingDir string    `help:"working directory for the process"`
 		}
