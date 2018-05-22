@@ -58,7 +58,7 @@ var (
 	idleTimeout      = flag.Duration("idle-timeout", 0, "_Closes GAPIS if the server is not repeatedly pinged within this duration")
 	adbPath          = flag.String("adb", "", "Path to the adb executable; leave empty to search the environment")
 	enableLocalFiles = flag.Bool("enable-local-files", false, "Allow clients to access local .gfxtrace files by path")
-	remoteSSHConfig  = flag.String("ssh-config", "", "Path to an ssh config file for remote devices")
+	remoteSSHConfig  = flag.String("ssh-config", "", "_Path to an ssh config file for remote devices")
 )
 
 func main() {
