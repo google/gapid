@@ -31,9 +31,9 @@ import (
 	"github.com/google/gapid/core/os/shell"
 )
 
-// DeviceSetup handles getting files from/to the right location
+// deviceReplaySetup handles getting files from/to the right location
 // for a particular Device
-type DeviceReplaySetup interface {
+type deviceReplaySetup interface {
 	// MakeTempDir returns a path to a created temporary
 	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
 
@@ -46,6 +46,7 @@ type DeviceReplaySetup interface {
 	FinalizeJSON(ctx context.Context, jsonName string, content string) (string, error)
 }
 
+// remoteSetup describes moving files to a remote device.
 type remoteSetup struct {
 	device remotessh.Device
 	abi    *device.ABI
@@ -74,6 +75,7 @@ func (r *remoteSetup) FinalizeJSON(ctx context.Context, jsonName string, content
 	return jsonName, nil
 }
 
+// localSetup sets up the JSON for a local device.
 type localSetup struct {
 	abi *device.ABI
 }
@@ -107,7 +109,7 @@ func (*localSetup) FinalizeJSON(ctx context.Context, jsonName string, content st
 // clean-up function to be called after the trace completes, and a temporary
 // filename that can be used to find the port if stdout fails, or an error.
 func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (func(ctx context.Context), string, error) {
-	var setup DeviceReplaySetup
+	var setup deviceReplaySetup
 	if dev, ok := d.(remotessh.Device); ok {
 		setup = &remoteSetup{dev, abi}
 	} else {
@@ -154,10 +156,10 @@ func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.
 	return cleanup, f, err
 }
 
-// SetupReplay sets up the environment for local replay. Returns a clean-up
+// SetupReplay sets up the environment for a desktop. Returns a clean-up
 // function to be called after replay completes, or an error.
 func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (func(ctx context.Context), error) {
-	var setup DeviceReplaySetup
+	var setup deviceReplaySetup
 	if dev, ok := d.(remotessh.Device); ok {
 		setup = &remoteSetup{dev, abi}
 	} else {
@@ -177,7 +179,7 @@ func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell
 	return cleanup, err
 }
 
-func findLibraryAndJSON(ctx context.Context, rs DeviceReplaySetup, tempdir string, libType layout.LibraryType) (string, file.Path, error) {
+func findLibraryAndJSON(ctx context.Context, rs deviceReplaySetup, tempdir string, libType layout.LibraryType) (string, file.Path, error) {
 	lib, err := rs.InitializeLibrary(ctx, tempdir, libType)
 	if err != nil {
 		return "", file.Path{}, err
@@ -190,7 +192,7 @@ func findLibraryAndJSON(ctx context.Context, rs DeviceReplaySetup, tempdir strin
 	return lib, json, nil
 }
 
-func setupJSON(ctx context.Context, library string, json file.Path, rs DeviceReplaySetup, tempdir string, env *shell.Env) error {
+func setupJSON(ctx context.Context, library string, json file.Path, rs deviceReplaySetup, tempdir string, env *shell.Env) error {
 	sourceContent, err := ioutil.ReadFile(json.System())
 	if err != nil {
 		return err

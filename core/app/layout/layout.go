@@ -58,7 +58,7 @@ type FileLayout interface {
 	Json(ctx context.Context, lib LibraryType) (file.Path, error)
 	// GoArgs returns additional arguments to pass to go binaries.
 	GoArgs(ctx context.Context) []string
-	// DeviceInfo returns the device info executable for the given ABI
+	// DeviceInfo returns the device info executable for the given ABI.
 	DeviceInfo(ctx context.Context, os device.OSKind) (file.Path, error)
 }
 
@@ -90,6 +90,7 @@ func withLibraryPlatformSuffix(lib string, os device.OSKind) string {
 	}
 }
 
+// GetLibraryName returns the filename of the given Library.
 func GetLibraryName(lib LibraryType, abi *device.ABI) string {
 	return withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)
 }
@@ -394,6 +395,7 @@ func (l *ZipLayout) Json(ctx context.Context, lib LibraryType) (*zip.File, error
 	return l.file("lib/" + libTypeToJson[lib])
 }
 
+// DeviceInfo returns the device info executable for the given ABI.
 func (l *ZipLayout) DeviceInfo(ctx context.Context, os device.OSKind) (*zip.File, error) {
 	if l.os == os {
 		return l.file(withExecutablePlatformSuffix("device_info", os))

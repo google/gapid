@@ -41,10 +41,6 @@ type Device interface {
 	// PushFile will transfer the local file at sourcePath to the remote
 	// machine at destPath
 	PushFile(ctx context.Context, sourcePath, destPath string) error
-	// Forward will forward the local port to the remote port
-	Forward(ctx context.Context, local, device uint16) error
-	// RemoveForward removes a port forward from local
-	RemoveForward(ctx context.Context, local uint16) error
 	// MakeTempDir makes a temporary directory, and returns the
 	// path, as well as a function to call to clean it up.
 	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
@@ -68,14 +64,6 @@ type binding struct {
 
 var _ Device = &binding{}
 
-func (binding) Forward(ctx context.Context, local, device uint16) error {
-	return nil
-}
-
-func (binding) RemoveForward(ctx context.Context, local uint16) error {
-	return nil
-}
-
 // Devices returns the list of reachable SSH devices.
 func Devices(ctx context.Context, configuration io.Reader) ([]bind.Device, error) {
 	configurations, err := ReadConfiguration(configuration)
@@ -85,7 +73,7 @@ func Devices(ctx context.Context, configuration io.Reader) ([]bind.Device, error
 	devices := make([]bind.Device, 0, len(configurations))
 
 	for _, cfg := range configurations {
-		if device, err := GetConnectedDevice(ctx, cfg); err == nil {
+		if device, err := getConnectedDevice(ctx, cfg); err == nil {
 			devices = append(devices, device)
 		}
 	}
@@ -93,14 +81,17 @@ func Devices(ctx context.Context, configuration io.Reader) ([]bind.Device, error
 	return devices, nil
 }
 
-func GetSSHAgent() ssh.AuthMethod {
+// getSSHAgent returns a connection to a local SSH agent, if one exists.
+func getSSHAgent() ssh.AuthMethod {
 	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
 		return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
 	}
 	return nil
 }
 
-func GetPrivateKeyAuth(path string) (ssh.AuthMethod, error) {
+// This returns an SSH auth for the given private key.
+// It will fail if the private key was encrypted.
+func getPrivateKeyAuth(path string) (ssh.AuthMethod, error) {
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -113,15 +104,17 @@ func GetPrivateKeyAuth(path string) (ssh.AuthMethod, error) {
 	return ssh.PublicKeys(signer), nil
 }
 
-// GetConnectedDevice returns a device that has an option connection.
-func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
+// getConnectedDevice returns a device that matches the given configuration.
+func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	auths := []ssh.AuthMethod{}
-	if agent := GetSSHAgent(); agent != nil {
+	if agent := getSSHAgent(); agent != nil {
 		auths = append(auths, agent)
 	}
 
 	if c.Keyfile != "" {
-		if auth, err := GetPrivateKeyAuth(c.Keyfile); err == nil {
+		// This returns an SSH auth for the given private key.
+		// It will fail if the private key was encrypted.
+		if auth, err := getPrivateKeyAuth(c.Keyfile); err == nil {
 			auths = append(auths, auth)
 		}
 	}
