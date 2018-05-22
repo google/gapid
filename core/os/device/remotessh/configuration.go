@@ -42,6 +42,9 @@ type Configuration struct {
 	KnownHosts string
 }
 
+// UnmarshalJSON is used by json.Unmashall, this allows us to set
+// up a default configuration, so that unknown parameters have
+// sane defaults.
 func (c *Configuration) UnmarshalJSON(data []byte) error {
 	type configAlias Configuration
 	u, err := user.Current()
@@ -64,6 +67,8 @@ func (c *Configuration) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ReadConfiguration reads a set of configurations from then
+// given reader, and returns the configurations to the user.
 func ReadConfiguration(r io.Reader) ([]Configuration, error) {
 	cfg := []Configuration{}
 

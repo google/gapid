@@ -50,6 +50,7 @@ var _ shell.Process = (*remoteProcess)(nil)
 
 type sshShellTarget struct{ b *binding }
 
+// Start starts the given command in the remote shell.
 func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 	session, err := t.b.connection.NewSession()
 	if err != nil {
@@ -164,6 +165,8 @@ func (b binding) createWindowsTempDirectory(ctx context.Context) (string, func(c
 	return "", nil, fmt.Errorf("Not yet supported, windows remote targets")
 }
 
+// MakeTempDir creates a temporary directory on the remote machine. It returns the
+// full path, and a function that can be called to clean up the directory.
 func (b binding) MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error) {
 	switch b.os {
 	case device.Linux:
@@ -177,11 +180,15 @@ func (b binding) MakeTempDir(ctx context.Context) (string, func(ctx context.Cont
 	}
 }
 
+// WriteFile moves the contents of io.Reader into the given file on the remote machine.
+// The file is given the mode as described by the unix filemode string.
 func (b binding) WriteFile(ctx context.Context, contents io.Reader, mode string, destPath string) error {
 	_, err := b.Shell("cat", ">", destPath, "; chmod ", mode, " ", destPath).Read(contents).Call(ctx)
 	return err
 }
 
+// PushFile copies a file from a local path to the remote machine. Permissions are
+// maintained across.
 func (b binding) PushFile(ctx context.Context, source, dest string) error {
 	infile, err := os.Open(source)
 	if err != nil {
@@ -196,6 +203,7 @@ func (b binding) PushFile(ctx context.Context, source, dest string) error {
 	return b.WriteFile(ctx, infile, perm, dest)
 }
 
+// doTunnel tunnels a single connection through the SSH connection.
 func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) error {
 	remote, err := b.connection.Dial("tcp", fmt.Sprintf("localhost:%d", remotePort))
 	if err != nil {
@@ -226,6 +234,8 @@ func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) e
 	return nil
 }
 
+// ForwardPort forwards a local TCP port to the remote machine on the remote port.
+// The local port that was opened is returned.
 func (b binding) ForwardPort(ctx context.Context, remotePort int) (int, error) {
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {

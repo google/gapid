@@ -118,7 +118,7 @@ func GoArgs(ctx context.Context) []string {
 	return layout(ctx).GoArgs(ctx)
 }
 
-// DeviceInfo returns the device info executable for the given ABI
+// DeviceInfo returns the device info executable for the given ABI.
 func DeviceInfo(ctx context.Context, os device.OSKind) (file.Path, error) {
 	return layout(ctx).DeviceInfo(ctx, os)
 }

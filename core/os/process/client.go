@@ -127,9 +127,9 @@ type StartOptions struct {
 	WorkingDir string
 }
 
-// Start runs the application with the given path and options, waits for
-// the "Bound on port {port}" string to be printed to stdout, and then returns
-// the port number.
+// StartOnDevice runs the application on the given remote device,
+// with the given path and options, waits for the "Bound on port {port}" string
+// to be printed to stdout, and then returns the port number.
 func StartOnDevice(ctx context.Context, bind bind.Device, name string, opts StartOptions) (int, error) {
 	// Append extra environment variable values
 	errChan := make(chan error, 1)
