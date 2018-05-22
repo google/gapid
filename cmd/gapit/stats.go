@@ -108,7 +108,6 @@ func (verb *infoVerb) getEventsInRange(ctx context.Context, client service.Servi
 			end = i
 		}
 	}
-	fmt.Println(startIndex, endIndex, begin, end)
 	return events[begin:end], nil
 }
 
