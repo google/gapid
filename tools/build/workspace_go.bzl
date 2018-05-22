@@ -63,14 +63,6 @@ def gapid_go_dependencies():
     )
 
     _maybe(_github_go_repository,
-        name = "org_golang_x_crypto",
-        organization = "golang",
-        project = "crypto",
-        commit = "dc137beb6cce2043eb6b5f223ab8bf51c32459f4",
-        importpath = "golang.org/x/crypto",
-    )
-
-    _maybe(_github_go_repository,
         name = "org_golang_x_net",
         organization = "golang",
         project = "net",
@@ -93,6 +85,23 @@ def gapid_go_dependencies():
         commit = "3da34b1b520a543128e8441cd2ffffc383111d03",
         importpath = "golang.org/x/tools",
     )
+
+    _maybe(_github_go_repository,
+        name = "org_golang_x_crypto",
+        organization = "golang",
+        project = "crypto",
+        commit = "1a580b3eff7814fc9b40602fd35256c63b50f491",
+        importpath = "golang.org/x/crypto",
+    )
+
+    _maybe(_github_go_repository,
+        name = "org_golang_x_crypto_ssh_knownhosts",
+        organization = "golang",
+        project = "knownhosts",
+        commit = "1a580b3eff7814fc9b40602fd35256c63b50f491",
+        importpath = "golang.org/x/crypto/ssh/knownhosts",
+    )
+
 
 def _maybe(repo_rule, name, **kwargs):
     if name not in native.existing_rules():

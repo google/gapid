@@ -37,6 +37,7 @@ go_library(
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//core/os/device/host:go_default_library",
+        "//core/os/device/remotessh:go_default_library",
         "//core/os/process:go_default_library",
         "//core/os/shell:go_default_library",
         "//core/text:go_default_library",
