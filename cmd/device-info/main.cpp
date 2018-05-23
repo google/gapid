@@ -19,6 +19,11 @@
 #include <iostream>
 #include <string>
 
+#if _WIN32
+#include <stdio.h>
+#include <fcntl.h>
+#endif
+
 #include "core/os/device/deviceinfo/cc/instance.h"
 #include "core/os/device/device.pb.h"
 #include <google/protobuf/util/json_util.h>
