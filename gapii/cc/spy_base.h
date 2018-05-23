@@ -105,15 +105,13 @@ public:
     bool is_observing() const { return mIsObserving; }
 
 protected:
-    static const size_t kMaxExtras = 16; // Per atom
-
     // lock begins the interception of a single command. It must be called
     // before invoking any command on the spy. Blocks if any other thread
     // is has called lock and not yet called unlock.
     void lock(CallObserver* observer);
 
     // unlock must be called after invoking any command.
-    // resets the buffers reused between atoms.
+    // resets the buffers reused between commands.
     void unlock();
 
     // make constructs and returns a Slice backed by a new pool.
@@ -139,7 +137,7 @@ protected:
     template<typename T>
     inline gapil::Slice<T> slice(const gapil::Slice<T>& src, uint64_t s, uint64_t e) const;
 
-    // abort signals that the atom should stop execution immediately.
+    // abort signals that the command should stop execution immediately.
     void abort();
 
     // onPostDrawCall is after any command annotated with @draw_call
