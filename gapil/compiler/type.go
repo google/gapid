@@ -128,20 +128,12 @@ func (c *C) declareTypes() {
 	for _, t := range c.API.Classes {
 		cgTy := c.T.DeclareStruct("T_" + t.Name())
 		c.T.target[t] = cgTy
-		c.T.mangled[cgTy] = &mangling.Class{
-			Parent: c.Root,
-			Name:   t.Name(),
-		}
 	}
 
 	// Forward-declare all the reference types.
 	for _, t := range c.API.References {
 		cgTy := c.T.DeclareStruct(t.Name())
 		c.T.target[t] = c.T.Pointer(cgTy)
-		c.T.mangled[cgTy] = &mangling.Class{
-			Parent: c.Root,
-			Name:   "Ref",
-		}
 	}
 
 	// Forward-declare all the map types.
@@ -150,10 +142,6 @@ func (c *C) declareTypes() {
 		mapStrTy := cgTy
 		mapPtrTy := c.T.Pointer(mapStrTy)
 		c.T.target[t] = mapPtrTy
-		c.T.mangled[cgTy] = &mangling.Class{
-			Parent: c.Root,
-			Name:   "Map",
-		}
 	}
 
 	// Declare all the slice types.
@@ -173,8 +161,48 @@ func (c *C) declareTypes() {
 
 	c.declareStorageTypes()
 
-	c.declareRefRels()
+	c.declareMangling()
 
+	c.declareRefRels()
+}
+
+func (c *C) declareMangling() {
+	// Declare the mangled types
+	for _, t := range c.API.Classes {
+		c.T.mangled[c.T.Target(t)] = &mangling.Class{
+			Parent: c.Root,
+			Name:   t.Name(),
+		}
+	}
+	for _, t := range c.API.References {
+		refTy := c.T.Target(t).(codegen.Pointer).Element
+		c.T.mangled[refTy] = &mangling.Class{
+			Parent: c.Root,
+			Name:   "Ref",
+		}
+	}
+	for _, t := range c.API.Maps {
+		mapTy := c.T.Target(t).(codegen.Pointer).Element
+		c.T.mangled[mapTy] = &mangling.Class{
+			Parent: c.Root,
+			Name:   "Map",
+		}
+	}
+
+	// Add template parameters
+	for _, t := range c.API.References {
+		refTy := c.T.Target(t).(codegen.Pointer).Element
+		c.T.mangled[refTy].(*mangling.Class).TemplateArgs = []mangling.Type{
+			c.Mangle(c.T.Target(t.To)),
+		}
+	}
+	for _, t := range c.API.Maps {
+		mapTy := c.T.Target(t).(codegen.Pointer).Element
+		c.T.mangled[mapTy].(*mangling.Class).TemplateArgs = []mangling.Type{
+			c.Mangle(c.T.Target(t.KeyType)),
+			c.Mangle(c.T.Target(t.ValueType)),
+		}
+	}
 }
 
 func (c *C) buildTypes() {
@@ -203,10 +231,6 @@ func (c *C) buildTypes() {
 			codegen.Field{Name: RefArena, Type: c.T.ArenaPtr},
 			codegen.Field{Name: RefValue, Type: c.T.Target(t.To)},
 		)
-
-		c.T.mangled[str].(*mangling.Class).TemplateArgs = []mangling.Type{
-			c.Mangle(c.T.Target(t.To)),
-		}
 	}
 
 	// Build all the map types.

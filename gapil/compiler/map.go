@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/codegen"
-	"github.com/google/gapid/gapil/compiler/mangling"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -90,11 +89,6 @@ func (c *C) defineMapType(t *semantic.Map) {
 		codegen.Field{Name: MapElements, Type: c.T.Pointer(elTy)},
 	)
 	valPtrTy := c.T.Pointer(valTy)
-
-	c.T.mangled[mapStrTy].(*mangling.Class).TemplateArgs = []mangling.Type{
-		c.Mangle(keyTy),
-		c.Mangle(valTy),
-	}
 
 	c.T.Maps[t] = &MapInfo{
 		Type:     mapStrTy,
