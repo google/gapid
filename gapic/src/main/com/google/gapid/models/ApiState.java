@@ -25,7 +25,7 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.models.AtomStream.AtomIndex;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -56,13 +56,13 @@ public class ApiState
   private final ObjectStore<Path.Any> selection = ObjectStore.create();
 
   public ApiState(Shell shell, Analytics analytics, Client client, Follower follower,
-      AtomStream atoms, ApiContext contexts, ConstantSets constants) {
+      CommandStream commands, ApiContext contexts, ConstantSets constants) {
     super(LOG, shell, analytics, client, Listener.class);
     this.constants = constants;
 
-    atoms.addListener(new AtomStream.Listener() {
+    commands.addListener(new CommandStream.Listener() {
       @Override
-      public void onAtomsSelected(AtomIndex index) {
+      public void onCommandsSelected(CommandIndex index) {
         load(stateTree(index, contexts.getSelectedContext()), false);
       }
     });

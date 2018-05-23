@@ -38,10 +38,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
-import com.google.gapid.models.AtomStream.Observation;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.CommandStream.Observation;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
@@ -108,7 +108,7 @@ import java.util.logging.Logger;
  * View that displays the observed memory contents in an infinite scrolling panel.
  */
 public class MemoryView extends Composite
-    implements Tab, Capture.Listener, AtomStream.Listener, Follower.Listener {
+    implements Tab, Capture.Listener, CommandStream.Listener, Follower.Listener {
   protected static final Logger LOG = Logger.getLogger(MemoryView.class.getName());
 
   private final Client client;
@@ -158,11 +158,11 @@ public class MemoryView extends Composite
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.capture.addListener(this);
-    models.atoms.addListener(this);
+    models.commands.addListener(this);
     models.follower.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.atoms.removeListener(this);
+      models.commands.removeListener(this);
       models.follower.removeListener(this);
     });
     memoryPanel.registerMouseEvents(memoryScroll, models.analytics);
@@ -175,12 +175,12 @@ public class MemoryView extends Composite
 
   @Override
   public void reinitialize() {
-    if (!models.capture.isLoaded() || !models.atoms.isLoaded()) {
+    if (!models.capture.isLoaded() || !models.commands.isLoaded()) {
       onCaptureLoadingStart(false);
-    } else if (models.atoms.getSelectedAtoms() == null) {
-      onAtomsLoaded();
+    } else if (models.commands.getSelectedCommands() == null) {
+      onCommandsLoaded();
     } else {
-      onAtomsSelected(models.atoms.getSelectedAtoms());
+      onCommandsSelected(models.commands.getSelectedCommands());
     }
   }
 
@@ -197,13 +197,13 @@ public class MemoryView extends Composite
   }
 
   @Override
-  public void onAtomsLoaded() {
+  public void onCommandsLoaded() {
     loading.showMessage(Info, Messages.SELECT_MEMORY);
   }
 
   @Override
-  public void onAtomsSelected(AtomIndex range) {
-    rpcController.start().listen(models.atoms.getObservations(range),
+  public void onCommandsSelected(CommandIndex range) {
+    rpcController.start().listen(models.commands.getObservations(range),
         new UiCallback<Observation[], Observation[]>(this, LOG) {
       @Override
       protected Observation[] onRpcThread(Rpc.Result<Observation[]> result)
@@ -218,7 +218,7 @@ public class MemoryView extends Composite
     });
   }
 
-  protected void setObservations(AtomIndex range, Observation[] obs) {
+  protected void setObservations(CommandIndex range, Observation[] obs) {
     selections.setObservations(obs);
     if (obs.length > 0 && !uiState.isComplete()) {
       // If the memory view is not showing anything yet, show the first observation.
@@ -371,7 +371,7 @@ public class MemoryView extends Composite
    */
   private static class State {
     public DataType dataType = DataType.Byte;
-    public Path.Command atomPath;
+    public Path.Command commandPath;
     public int pool = -1;
     public long offset = -1;
     public long lastAddress;
@@ -384,13 +384,13 @@ public class MemoryView extends Composite
         pool = memoryPath.getPool();
         offset = Long.remainderUnsigned(memoryPath.getAddress(), FixedMemoryModel.BYTES_PER_ROW);
         lastAddress = UnsignedLong.MAX_VALUE.longValue(); // TODO
-        atomPath = memoryPath.getAfter();
+        commandPath = memoryPath.getAfter();
       }
     }
 
-    public void update(Path.Command newAtomPath) {
-      if (newAtomPath != null) {
-        atomPath = newAtomPath;
+    public void update(Path.Command newcommandPath) {
+      if (newcommandPath != null) {
+        commandPath = newcommandPath;
       }
     }
 
@@ -403,14 +403,14 @@ public class MemoryView extends Composite
     }
 
     public boolean isComplete() {
-      return atomPath != null && offset >= 0 && pool >= 0;
+      return commandPath != null && offset >= 0 && pool >= 0;
     }
 
     public MemoryDataModel createMemoryDataModel(Client client) {
-      final Path.Command curAtomPath = atomPath;
+      final Path.Command curcommandPath = commandPath;
       final int curPool = pool;
       PagedMemoryDataModel.MemoryFetcher fetcher = (address, count) ->
-          Futures.transform(client.get(Paths.memoryAfter(curAtomPath, curPool, address, count)),
+          Futures.transform(client.get(Paths.memoryAfter(curcommandPath, curPool, address, count)),
               value -> value.getMemory());
 
 

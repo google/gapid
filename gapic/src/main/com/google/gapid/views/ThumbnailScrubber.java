@@ -24,9 +24,9 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import com.google.common.collect.Lists;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
 import com.google.gapid.models.Timeline;
@@ -57,7 +57,7 @@ import java.util.List;
  * Scrubber view displaying thumbnails of the frames in the current capture.
  */
 public class ThumbnailScrubber extends Composite
-    implements Tab, Capture.Listener, AtomStream.Listener, ApiContext.Listener, Timeline.Listener {
+    implements Tab, Capture.Listener, CommandStream.Listener, ApiContext.Listener, Timeline.Listener {
   private final Models models;
   private final LoadablePanel<Carousel> loading;
   private final Carousel carousel;
@@ -75,7 +75,7 @@ public class ThumbnailScrubber extends Composite
     carousel.addContentListener(SWT.MouseDown, e -> {
       Data frame = carousel.selectFrame(carousel.getItemAt(e.x));
       if (frame != null) {
-        models.atoms.selectAtoms(frame.range, false);
+        models.commands.selectCommands(frame.range, false);
       }
     });
     carousel.setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
@@ -83,12 +83,12 @@ public class ThumbnailScrubber extends Composite
     models.capture.addListener(this);
     models.contexts.addListener(this);
     models.timeline.addListener(this);
-    models.atoms.addListener(this);
+    models.commands.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.contexts.removeListener(this);
       models.timeline.removeListener(this);
-      models.atoms.removeListener(this);
+      models.commands.removeListener(this);
       carousel.dispose();
     });
   }
@@ -147,7 +147,7 @@ public class ThumbnailScrubber extends Composite
   }
 
   @Override
-  public void onAtomsSelected(AtomIndex range) {
+  public void onCommandsSelected(CommandIndex range) {
     carousel.selectFrame(range);
   }
 
@@ -161,8 +161,8 @@ public class ThumbnailScrubber extends Composite
         loading.stopLoading();
         carousel.setData(datas);
 
-        if (models.atoms.getSelectedAtoms() != null) {
-          carousel.selectFrame(models.atoms.getSelectedAtoms());
+        if (models.commands.getSelectedCommands() != null) {
+          carousel.selectFrame(models.commands.getSelectedCommands());
         }
       }
     } else {
@@ -174,7 +174,7 @@ public class ThumbnailScrubber extends Composite
     List<Data> generatedList = Lists.newArrayList();
     int frameCount = 0;
     while (events.hasNext()) {
-      generatedList.add(new Data(AtomIndex.forGroup(events.next().getCommand()), ++frameCount));
+      generatedList.add(new Data(CommandIndex.forGroup(events.next().getCommand()), ++frameCount));
     }
     return generatedList;
   }
@@ -183,12 +183,12 @@ public class ThumbnailScrubber extends Composite
    * Metadata about a frame in the scrubber.
    */
   private static class Data {
-    public final AtomIndex range;
+    public final CommandIndex range;
     public final int frame;
 
     public LoadableImage image;
 
-    public Data(AtomIndex range, int frame) {
+    public Data(CommandIndex range, int frame) {
       this.range = range;
       this.frame = frame;
     }
@@ -288,7 +288,7 @@ public class ThumbnailScrubber extends Composite
       return datas.get(frame);
     }
 
-    public void selectFrame(AtomIndex range) {
+    public void selectFrame(CommandIndex range) {
       int index = Collections.<Data>binarySearch(datas, null,
           (x, ignored) -> x.range.compareTo(range));
       if (index < 0) {

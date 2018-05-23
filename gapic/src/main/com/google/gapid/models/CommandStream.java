@@ -48,18 +48,18 @@ import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 /**
- * Model containing the API commands (atoms) of the capture.
+ * Model containing the API commands of the capture.
  */
-public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStream.Listener>
+public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, CommandStream.Listener>
     implements ApiContext.Listener, Capture.Listener {
-  protected static final Logger LOG = Logger.getLogger(AtomStream.class.getName());
+  protected static final Logger LOG = Logger.getLogger(CommandStream.class.getName());
 
   private final Capture capture;
   private final ApiContext context;
   private final ConstantSets constants;
-  private AtomIndex selection;
+  private CommandIndex selection;
 
-  public AtomStream(Shell shell, Analytics analytics, Client client, Capture capture,
+  public CommandStream(Shell shell, Analytics analytics, Client client, Capture capture,
       ApiContext context, ConstantSets constants) {
     super(LOG, shell, analytics, client, Listener.class);
     this.capture = capture;
@@ -83,7 +83,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     if (error == null && selection != null) {
       selection = selection.withCapture(capture.getData());
       if (isLoaded()) {
-        resolve(selection.getCommand(), node -> selectAtoms(selection.withNode(node), true));
+        resolve(selection.getCommand(), node -> selectCommands(selection.withNode(node), true));
       }
     }
   }
@@ -148,22 +148,22 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
   @Override
   protected void fireLoadStartEvent() {
-    listeners.fire().onAtomsLoadingStart();
+    listeners.fire().onCommandsLoadingStart();
   }
 
   @Override
   protected void fireLoadedEvent() {
-    listeners.fire().onAtomsLoaded();
+    listeners.fire().onCommandsLoaded();
     if (selection != null) {
-      selectAtoms(selection, true);
+      selectCommands(selection, true);
     }
   }
 
-  public AtomIndex getSelectedAtoms() {
+  public CommandIndex getSelectedCommands() {
     return (selection != null && selection.getNode() != null) ? selection : null;
   }
 
-  public void selectAtoms(AtomIndex index, boolean force) {
+  public void selectCommands(CommandIndex index, boolean force) {
     if (!force && Objects.equal(selection, index)) {
       return;
     } else if (!isLoaded()) {
@@ -173,13 +173,13 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
 
     RootNode root = (RootNode)getData();
     if (index.getNode() == null) {
-      resolve(index.getCommand(), node -> selectAtoms(index.withNode(node), force));
+      resolve(index.getCommand(), node -> selectCommands(index.withNode(node), force));
     } else if (!index.getNode().getTree().equals(root.tree)) {
       // TODO
       throw new UnsupportedOperationException("This is not yet supported, needs API clarification");
     } else {
       selection = index;
-      listeners.fire().onAtomsSelected(selection);
+      listeners.fire().onCommandsSelected(selection);
     }
   }
 
@@ -201,7 +201,7 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     });
   }
 
-  public ListenableFuture<Observation[]> getObservations(AtomIndex index) {
+  public ListenableFuture<Observation[]> getObservations(CommandIndex index) {
     return Futures.transform(client.get(observationsAfter(index, Application_VALUE)), v -> {
       Service.Memory mem = v.getMemory();
       Observation[] obs = new Observation[mem.getReadsCount() + mem.getWritesCount()];
@@ -232,11 +232,11 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       }
     };
 
-    private final AtomIndex index;
+    private final CommandIndex index;
     private final boolean read;
     private final Service.MemoryRange range;
 
-    public Observation(AtomIndex index, boolean read, Service.MemoryRange range) {
+    public Observation(CommandIndex index, boolean read, Service.MemoryRange range) {
       this.index = index;
       this.read = read;
       this.range = range;
@@ -259,14 +259,14 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
   }
 
   /**
-   * An index into the atom stream, representing a specific "point in time" in the trace.
+   * An index into the command stream, representing a specific "point in time" in the trace.
    */
-  public static class AtomIndex implements Comparable<AtomIndex> {
+  public static class CommandIndex implements Comparable<CommandIndex> {
     private final Path.Command command;
     private final Path.CommandTreeNode node;
     private final boolean group;
 
-    private AtomIndex(Path.Command command, Path.CommandTreeNode node, boolean group) {
+    private CommandIndex(Path.Command command, Path.CommandTreeNode node, boolean group) {
       this.command = command;
       this.node = node;
       this.group = group;
@@ -275,32 +275,32 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     /**
      * Create an index pointing to the given command and node.
      */
-    public static AtomIndex forNode(Path.Command command, Path.CommandTreeNode node) {
-      return new AtomIndex(command, node, false);
+    public static CommandIndex forNode(Path.Command command, Path.CommandTreeNode node) {
+      return new CommandIndex(command, node, false);
     }
 
     /**
      * Create an index pointing to the given command, without knowing the tree node.
      * The tree nodes is then resolved when it is needed.
      */
-    public static AtomIndex forCommand(Path.Command command) {
-      return new AtomIndex(command, null, false);
+    public static CommandIndex forCommand(Path.Command command) {
+      return new CommandIndex(command, null, false);
     }
 
     /**
      * Same as {@link #forCommand}, except that group selection is to be preferred when
      * resolving to a tree node.
      */
-    public static AtomIndex forGroup(Path.Command command) {
-      return new AtomIndex(command, null, true);
+    public static CommandIndex forGroup(Path.Command command) {
+      return new CommandIndex(command, null, true);
     }
 
-    public AtomIndex withNode(Path.CommandTreeNode newNode) {
-      return new AtomIndex(command, newNode, group);
+    public CommandIndex withNode(Path.CommandTreeNode newNode) {
+      return new CommandIndex(command, newNode, group);
     }
 
-    public AtomIndex withCapture(Path.Capture capture) {
-      return new AtomIndex(command.toBuilder().setCapture(capture).build(), null, group);
+    public CommandIndex withCapture(Path.Capture capture) {
+      return new CommandIndex(command.toBuilder().setCapture(capture).build(), null, group);
     }
 
     public Path.Command getCommand() {
@@ -329,14 +329,14 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     public boolean equals(Object obj) {
       if (obj == this) {
         return true;
-      } else if (!(obj instanceof AtomIndex)) {
+      } else if (!(obj instanceof CommandIndex)) {
         return false;
       }
-      return command.getIndicesList().equals(((AtomIndex)obj).command.getIndicesList());
+      return command.getIndicesList().equals(((CommandIndex)obj).command.getIndicesList());
     }
 
     @Override
-    public int compareTo(AtomIndex o) {
+    public int compareTo(CommandIndex o) {
       return Paths.compare(command, o.command);
     }
   }
@@ -402,8 +402,8 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
       return parent.getPath(path).addIndices(index);
     }
 
-    public AtomIndex getIndex() {
-      return (data == null) ? null : AtomIndex.forNode(data.getRepresentation(),
+    public CommandIndex getIndex() {
+      return (data == null) ? null : CommandIndex.forNode(data.getRepresentation(),
           getPath(Path.CommandTreeNode.newBuilder()).build());
     }
 
@@ -495,17 +495,17 @@ public class AtomStream extends ModelBase.ForPath<AtomStream.Node, Void, AtomStr
     /**
      * Event indicating that the tree root has changed and is being loaded.
      */
-    public default void onAtomsLoadingStart() { /* emtpy */ }
+    public default void onCommandsLoadingStart() { /* emtpy */ }
 
     /**
      * Event indicating that the tree root has finished loading.
      */
-    public default void onAtomsLoaded() { /* empty */ }
+    public default void onCommandsLoaded() { /* empty */ }
 
     /**
      * Event indicating that the currently selected command range has changed.
      */
     @SuppressWarnings("unused")
-    public default void onAtomsSelected(AtomIndex selection) { /* empty */ }
+    public default void onCommandsSelected(CommandIndex selection) { /* empty */ }
   }
 }

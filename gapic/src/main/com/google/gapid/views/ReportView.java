@@ -24,8 +24,8 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
-import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Reports;
 import com.google.gapid.models.Strings;
@@ -100,7 +100,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
     viewer.getTree().addListener(SWT.MouseDown, e -> {
       Path.Command command = (Path.Command)labelProvider.getFollow(new Point(e.x, e.y));
       if (command != null) {
-        models.atoms.selectAtoms(AtomIndex.forCommand(command), true);
+        models.commands.selectCommands(CommandIndex.forCommand(command), true);
       }
     });
     viewer.getTree().addListener(SWT.Selection, e -> {
@@ -264,7 +264,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
       } else if (element instanceof Item) {
         Item item = (Item)element;
         string.startLink(item.item.getCommand());
-        string.append(Formatter.atomIndex(item.item.getCommand()), string.linkStyle());
+        string.append(Formatter.commandIndex(item.item.getCommand()), string.linkStyle());
         string.endLink();
         string.append(": ", string.structureStyle());
         switch (item.item.getSeverity()) {

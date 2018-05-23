@@ -26,7 +26,7 @@ public class Models {
   public final Follower follower;
   public final Capture capture;
   public final Devices devices;
-  public final AtomStream atoms;
+  public final CommandStream commands;
   public final ApiContext contexts;
   public final Timeline timeline;
   public final Resources resources;
@@ -36,7 +36,7 @@ public class Models {
   public final ConstantSets constants;
 
   public Models(Settings settings, Analytics analytics, Follower follower, Capture capture,
-      Devices devices, AtomStream atoms, ApiContext contexts, Timeline timeline,
+      Devices devices, CommandStream commands, ApiContext contexts, Timeline timeline,
       Resources resources, ApiState state, Reports reports, Thumbnails thumbs,
       ConstantSets constants) {
     this.settings = settings;
@@ -44,7 +44,7 @@ public class Models {
     this.follower = follower;
     this.capture = capture;
     this.devices = devices;
-    this.atoms = atoms;
+    this.commands = commands;
     this.contexts = contexts;
     this.timeline = timeline;
     this.resources = resources;
@@ -63,12 +63,12 @@ public class Models {
     Devices devices = new Devices(shell, analytics, client, capture);
     ApiContext contexts = new ApiContext(shell, analytics, client, capture);
     Timeline timeline = new Timeline(shell, analytics, client, capture, contexts);
-    AtomStream atoms = new AtomStream(shell, analytics, client, capture, contexts, constants);
+    CommandStream commands = new CommandStream(shell, analytics, client, capture, contexts, constants);
     Resources resources = new Resources(shell, analytics, client, capture);
-    ApiState state = new ApiState(shell, analytics, client, follower, atoms, contexts, constants);
+    ApiState state = new ApiState(shell, analytics, client, follower, commands, contexts, constants);
     Reports reports = new Reports(shell, analytics, client, capture, devices, contexts);
     Thumbnails thumbs = new Thumbnails(client, devices, capture, settings);
-    return new Models(settings, analytics, follower, capture, devices, atoms, contexts, timeline,
+    return new Models(settings, analytics, follower, capture, devices, commands, contexts, timeline,
         resources, state, reports, thumbs, constants);
   }
 

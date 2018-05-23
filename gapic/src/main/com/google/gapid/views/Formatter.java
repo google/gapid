@@ -49,16 +49,16 @@ public class Formatter {
   private Formatter() {
   }
 
-  public static void format(API.Command atom,
+  public static void format(API.Command command,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
       Function<String, Path.Any> followResolver,
       StylingString string, Style style) {
-    string.append(atom.getName(), string.labelStyle());
+    string.append(command.getName(), string.labelStyle());
     string.append("(", string.structureStyle());
     boolean needComma = false;
 
-    for (int i = 0; i < atom.getParametersCount(); ++i) {
-      API.Parameter field = atom.getParameters(i);
+    for (int i = 0; i < command.getParametersCount(); ++i) {
+      API.Parameter field = command.getParameters(i);
       if (needComma) {
         string.append(", ", string.structureStyle());
       }
@@ -73,20 +73,20 @@ public class Formatter {
     }
 
     string.append(")", string.structureStyle());
-    if (atom.hasResult()) {
+    if (command.hasResult()) {
       string.append("->", string.structureStyle());
       Path.Any follow = followResolver.apply(Follower.RESULT_NAME);
       string.startLink(follow);
-      format(atom.getResult(), constantResolver, string,
+      format(command.getResult(), constantResolver, string,
           (follow == null) ? style : string.linkStyle());
       string.endLink();
     }
   }
 
-  public static String toString(API.Command atom,
+  public static String toString(API.Command command,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver) {
     NoStyleStylingString string = new NoStyleStylingString();
-    format(atom, constantResolver, s -> null, string, null);
+    format(command, constantResolver, s -> null, string, null);
     return string.toString();
   }
 
@@ -459,7 +459,7 @@ public class Formatter {
     string.append("!!BUG!!" + ProtoDebugTextFormat.shortDebugString(proto), style);
   }
 
-  public static String atomIndex(Path.Command cmd) {
+  public static String commandIndex(Path.Command cmd) {
     return index(cmd.getIndicesList());
   }
 

@@ -20,8 +20,8 @@ import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
@@ -39,17 +39,17 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
 /**
- * Dialog for the goto command (atom) action.
+ * Dialog for the goto command action.
  */
-public class GotoAtom {
-  private GotoAtom() {
+public class GotoCommand {
+  private GotoCommand() {
   }
 
-  public static void showGotoAtomDialog(Shell shell, Models models) {
+  public static void showGotoCommandDialog(Shell shell, Models models) {
     models.analytics.postInteraction(View.GotoCommand, ClientAction.Show);
-    GotoDialog dialog = new GotoDialog(shell, models.atoms);
+    GotoDialog dialog = new GotoDialog(shell, models.commands);
     if (dialog.open() == Window.OK) {
-      models.atoms.selectAtoms(AtomIndex.forCommand(Path.Command.newBuilder()
+      models.commands.selectCommands(CommandIndex.forCommand(Path.Command.newBuilder()
           .addIndices(dialog.value)
           .setCapture(models.capture.getData())
           .build()), true);
@@ -60,14 +60,14 @@ public class GotoAtom {
    * Dialog asking the user for the ID of the command to jump to.
    */
   private static class GotoDialog extends MessageDialog {
-    private final AtomStream atoms;
+    private final CommandStream commands;
     private Spinner spinner;
     public int value;
 
-    public GotoDialog(Shell shell, AtomStream atoms) {
-      super(shell, Messages.GOTO, null, Messages.GOTO_ATOM, MessageDialog.CONFIRM, 0,
+    public GotoDialog(Shell shell, CommandStream commands) {
+      super(shell, Messages.GOTO, null, Messages.GOTO_COMMAND, MessageDialog.CONFIRM, 0,
           IDialogConstants.OK_LABEL, IDialogConstants.CANCEL_LABEL);
-      this.atoms = atoms;
+      this.commands = commands;
     }
 
     @Override
@@ -77,16 +77,16 @@ public class GotoAtom {
 
     @Override
     protected Control createCustomArea(Composite parent) {
-      // Although the atom ID is a long, we currently only actually support the int range, as
-      // the atoms are stored in an array. So, using an int spinner here is fine.
-      //TODO limit to max atoms
+      // Although the command ID is a long, we currently only actually support the int range, as
+      // the commands are stored in an array. So, using an int spinner here is fine.
+      //TODO limit to max commands
       int max = Integer.MAX_VALUE;
-      AtomIndex selection = atoms.getSelectedAtoms();
+      CommandIndex selection = commands.getSelectedCommands();
       int current = (selection == null) ? 0 : 0 /*TODO(int)last(selection)*/;
 
       Composite container = createComposite(parent, new GridLayout(2, false));
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-      createLabel(container, Messages.ATOM_ID + ":");
+      createLabel(container, Messages.COMMAND_ID + ":");
       spinner = createSpinner(container, current, 0, max);
       spinner.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 

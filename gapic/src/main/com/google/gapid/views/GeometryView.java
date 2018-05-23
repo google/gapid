@@ -42,9 +42,9 @@ import com.google.gapid.glviewer.camera.IsoSurfaceCameraModel;
 import com.google.gapid.glviewer.geo.Model;
 import com.google.gapid.glviewer.geo.ObjWriter;
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Strings;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -98,7 +98,7 @@ import java.util.logging.Logger;
 /**
  * View that displays the 3D geometry of the last draw call within the current selection.
  */
-public class GeometryView extends Composite implements Tab, Capture.Listener, AtomStream.Listener {
+public class GeometryView extends Composite implements Tab, Capture.Listener, CommandStream.Listener {
   private static final Logger LOG = Logger.getLogger(GeometryView.class.getName());
   private static final Vertex.Semantic POSITION_0 = Vertex.Semantic.newBuilder()
       .setType(Vertex.Semantic.Type.Position)
@@ -157,10 +157,10 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     statusBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 
     models.capture.addListener(this);
-    models.atoms.addListener(this);
+    models.commands.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.atoms.removeListener(this);
+      models.commands.removeListener(this);
     });
 
     originalModelItem.setEnabled(false);
@@ -286,27 +286,27 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   }
 
   @Override
-  public void onAtomsLoaded() {
+  public void onCommandsLoaded() {
     vertexSemantics = null;
     updateModels(false);
   }
 
   @Override
-  public void onAtomsSelected(AtomIndex range) {
+  public void onCommandsSelected(CommandIndex range) {
     vertexSemantics = null;
     updateModels(false);
   }
 
   private void updateModels(boolean assumeLoading) {
     statusBar.setText("");
-    if (!assumeLoading && models.atoms.isLoaded()) {
-      AtomIndex atom = models.atoms.getSelectedAtoms();
-      if (atom == null) {
+    if (!assumeLoading && models.commands.isLoaded()) {
+      CommandIndex command = models.commands.getSelectedCommands();
+      if (command == null) {
         checkOpenGLAndShowMessage(Info, Messages.SELECT_DRAW_CALL);
         configureItem.setEnabled(false);
         saveItem.setEnabled(false);
       } else {
-        fetchMeshes(atom);
+        fetchMeshes(command);
       }
     } else {
       checkOpenGLAndShowMessage(Info, Messages.LOADING_CAPTURE);
@@ -315,19 +315,19 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
     }
   }
 
-  private void fetchMeshes(AtomIndex atom) {
+  private void fetchMeshes(CommandIndex command) {
     if (!canvas.isOpenGL()) {
       return;
     }
 
     loading.startLoading();
 
-    rpcController.start().listen(Futures.transformAsync(fetchMeshMetadata(atom, vertexSemantics),
+    rpcController.start().listen(Futures.transformAsync(fetchMeshMetadata(command, vertexSemantics),
         semantics -> {
           ListenableFuture<Model> originalFuture = fetchModel(
-              meshAfter(atom, semantics.getOptions().build(), POS_NORM_XYZ_F32));
+              meshAfter(command, semantics.getOptions().build(), POS_NORM_XYZ_F32));
           ListenableFuture<Model> facetedFuture = fetchModel(meshAfter(
-              atom, semantics.getOptions().setFaceted(true).build(), POS_NORM_XYZ_F32));
+              command, semantics.getOptions().setFaceted(true).build(), POS_NORM_XYZ_F32));
           return Futures.transform(Futures.successfulAsList(originalFuture, facetedFuture),
               modelList -> new ModelLoadResult(semantics, modelList, originalFuture));
         }), new UiErrorCallback<ModelLoadResult, ModelLoadResult, String>(this, LOG) {
@@ -374,8 +374,8 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, At
   }
 
   private ListenableFuture<VertexSemantics> fetchMeshMetadata(
-      AtomIndex atom, VertexSemantics currentSemantics) {
-    return Futures.transform(client.get(meshAfter(atom, Paths.NODATA_MESH_OPTIONS)),
+      CommandIndex command, VertexSemantics currentSemantics) {
+    return Futures.transform(client.get(meshAfter(command, Paths.NODATA_MESH_OPTIONS)),
         value -> new VertexSemantics(value.getMesh(), currentSemantics));
   }
 

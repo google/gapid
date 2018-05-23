@@ -25,7 +25,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.OS;
-import com.google.gapid.views.AtomEditor;
+import com.google.gapid.views.CommandEditor;
 
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
@@ -92,9 +92,9 @@ public class Widgets {
   public final Theme theme;
   public final CopyPaste copypaste;
   public final LoadingIndicator loading;
-  public final AtomEditor editor;
+  public final CommandEditor editor;
 
-  public Widgets(Theme theme, CopyPaste copypaste, LoadingIndicator loading, AtomEditor editor) {
+  public Widgets(Theme theme, CopyPaste copypaste, LoadingIndicator loading, CommandEditor editor) {
     this.theme = theme;
     this.copypaste = copypaste;
     this.loading = loading;
@@ -105,7 +105,7 @@ public class Widgets {
     Theme theme = Theme.load(display);
     CopyPaste copypaste = new CopyPaste(display);
     LoadingIndicator loading = new LoadingIndicator(display, theme);
-    AtomEditor editor = new AtomEditor(client, models, theme);
+    CommandEditor editor = new CommandEditor(client, models, theme);
     return new Widgets(theme, copypaste, loading, editor);
   }
 
