@@ -567,31 +567,28 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
       };
     };
 
-    auto aspect_flag_bits =
-        [this](VkImageAspectFlags flags) -> std::vector<uint32_t> {
-      auto unpacked = subUnpackImageAspectFlags(nullptr, nullptr, flags);
-      std::vector<uint32_t> aspect_bits;
-      for (auto &b : unpacked->mBits) {
-        aspect_bits.push_back(b.second);
-      }
-      return aspect_bits;
+    VkImageSubresourceRange img_whole_rng = VkImageSubresourceRange{
+        img->mImageAspect,       // aspectMask
+        0,                       // baseMipLevel
+        img->mInfo.mMipLevels,   // levelCount
+        0,                       // baseArrayLayer
+        img->mInfo.mArrayLayers  // layerCount
     };
 
-    for (auto &a : img->mAspects) {
-      auto& aspect = a.second;
-      for (auto& l : aspect->mLayers) {
-        auto& layer = l.second;
-        for (auto& lev : layer->mLevels) {
-          auto& level = lev.second;
-          byte_size_and_extent e =
-              level_size(image_info.mExtent, image_info.mFormat, lev.first,
-                         a.first);
-          level->mData = gapil::Slice<uint8_t>::create(
-              create_virtual_pool(e.level_size), false);
-          gpu_pools->insert(level->mData.pool_id());
-        }
-      }
-    }
+    std::unordered_map<ImageLevel *, byte_size_and_extent> level_sizes;
+    walkImageSubRng(
+        img, img_whole_rng,
+        [&gpu_pools, &level_size, &img, &create_virtual_pool, &level_sizes](
+            uint32_t aspect, uint32_t layer, uint32_t level) {
+          auto img_level =
+              img->mAspects[aspect]->mLayers[layer]->mLevels[level];
+          level_sizes[img_level.get()] =
+              level_size(img->mInfo.mExtent, img->mInfo.mFormat, level, aspect);
+          img_level->mData = gapil::Slice<uint8_t>::create(
+              create_virtual_pool(level_sizes[img_level.get()].level_size),
+              false);
+          gpu_pools->insert(img_level->mData.pool_id());
+        });
 
     if (img->mIsSwapchainImage) {
       // Don't bind and fill swapchain images memory here
@@ -605,12 +602,6 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
     // Since we add TRANSFER_SRC_BIT to all the created images (except the
     // swapchain ones), we can copy directly from all such images. Note that
     // later this fact soon will be changed.
-
-    if (image_info.mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
-      // Don't capture images with undefined layout. The resulting data
-      // itself will be undefined.
-      continue;
-    }
 
     bool denseBound = img->mBoundMemory != nullptr;
     bool sparseBound = (img->mOpaqueSparseMemoryBindings.count() > 0) ||
@@ -656,15 +647,24 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
       }
     }
 
-    std::vector<VkImageSubresourceRange> opaque_ranges;
+    struct opaque_piece {
+      uint32_t aspect_bit;
+      uint32_t layer;
+      uint32_t level;
+    };
+    std::vector<opaque_piece> opaque_pieces;
+    auto append_image_level_to_opaque_pieces = [&img, &opaque_pieces](
+                                                   uint32_t aspect_bit,
+                                                   uint32_t layer,
+                                                   uint32_t level) {
+      auto& img_level = img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+      if (img_level->mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
+        return;
+      }
+      opaque_pieces.push_back(opaque_piece{aspect_bit, layer, level});
+    };
     if (denseBound || !sparseResidency) {
-      opaque_ranges.push_back(VkImageSubresourceRange{
-          img->mImageAspect,       // aspectMask
-          0,                       // baseMipLevel
-          image_info.mMipLevels,   // levelCount
-          0,                       // baseArrayLayer
-          image_info.mArrayLayers  // layerCount
-      });
+      walkImageSubRng(img, img_whole_rng, append_image_level_to_opaque_pieces);
     } else {
       for (const auto &req : img->mSparseMemoryRequirements) {
         const auto &prop = req.second.mformatProperties;
@@ -676,14 +676,15 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
                               img->mOpaqueSparseMemoryBindings)) {
               continue;
             }
-            opaque_ranges.push_back(VkImageSubresourceRange{
+            VkImageSubresourceRange bound_rng = VkImageSubresourceRange{
                 img->mImageAspect,                 // aspectMask
                 req.second.mimageMipTailFirstLod,  // baseMipLevel
                 image_info.mMipLevels -
                     req.second.mimageMipTailFirstLod,  // levelCount
                 0,                                     // baseArrayLayer
-                image_info.mArrayLayers                // layerCount
-            });
+                image_info.mArrayLayers,               // layerCount
+            };
+            walkImageSubRng(img, bound_rng, append_image_level_to_opaque_pieces);
           } else {
             for (uint32_t i = 0; i < uint32_t(image_info.mArrayLayers); i++) {
               VkDeviceSize offset = req.second.mimageMipTailOffset +
@@ -692,52 +693,53 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
                                 img->mOpaqueSparseMemoryBindings)) {
                 continue;
               }
-              opaque_ranges.push_back(VkImageSubresourceRange{
+              VkImageSubresourceRange bound_rng = VkImageSubresourceRange{
                   img->mImageAspect,
                   req.second.mimageMipTailFirstLod,
                   image_info.mMipLevels - req.second.mimageMipTailFirstLod,
                   i,
                   1,
-              });
+              };
+              walkImageSubRng(img, bound_rng, append_image_level_to_opaque_pieces);
             }
           }
         }
       }
     }
 
+    // Don't capture images with undefined layout for all its subresources.
+    // The resulting data itself will be undefined.
+    if (opaque_pieces.size() == 0) {
+      continue;
+    }
+
     {
       VkDeviceSize offset = 0;
       std::vector<VkBufferImageCopy> copies;
-      for (auto& range : opaque_ranges) {
-        auto aspect_bits = aspect_flag_bits(range.maspectMask);
-        for (auto aspect_bit : aspect_bits) {
-          for (size_t i = 0; i < range.mlevelCount; ++i) {
-            uint32_t mip_level = range.mbaseMipLevel + i;
-            byte_size_and_extent e =
-                level_size(image_info.mExtent, image_info.mFormat, mip_level,
-                           aspect_bit);
-            for (size_t j = 0; j < range.mlayerCount; j++) {
-              uint32_t layer = range.mbaseArrayLayer + j;
-              copies.push_back(VkBufferImageCopy{offset,  // bufferOffset,
-                                                 0,       // bufferRowLength,
-                                                 0,       // bufferImageHeight,
-                                                 {
-                                                     aspect_bit,  // aspectMask
-                                                     mip_level,
-                                                     layer,  // baseArrayLayer
-                                                     1       // layerCount
-                                                 },
-                                                 {0, 0, 0},
-                                                 {e.width, e.height, e.depth}});
-              offset += e.aligned_level_size_in_buf;
-            }
-          }
-        }
+      for (auto &piece : opaque_pieces) {
+        auto img_level = img->mAspects[piece.aspect_bit]
+                             ->mLayers[piece.layer]
+                             ->mLevels[piece.level];
+        copies.push_back(VkBufferImageCopy{
+            offset,  // bufferOffset
+            0,       // bufferRowLength
+            0,       // bufferImageHeight,
+            {
+                VkImageAspectFlags(piece.aspect_bit),  // aspectMask
+                piece.level,                           // level
+                piece.layer,                           // layer
+                1,                                     // layerCount
+            },
+            {0, 0, 0},
+            {level_sizes[img_level.get()].width,
+             level_sizes[img_level.get()].height,
+             level_sizes[img_level.get()].depth}});
+        offset += level_sizes[img_level.get()].aligned_level_size_in_buf;
       }
 
       if (sparseResidency) {
-        auto aspect_bits = aspect_flag_bits(img->mImageAspect);
-        for (auto aspect_bit : aspect_bits) {
+        for (auto& aspect_i : subUnpackImageAspectFlags(nullptr, nullptr,img->mImageAspect)->mBits) {
+          uint32_t aspect_bit = aspect_i.second;
           if (img->mSparseImageMemoryBindings.find(aspect_bit) !=
               img->mSparseImageMemoryBindings.end()) {
             for (const auto &layer_i :
@@ -775,38 +777,48 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
       StagingCommandBuffer commandBuffer(device_functions, img->mDevice,
                                          GetQueue(mState.Queues, img)->mFamily);
 
-      VkImageMemoryBarrier img_barrier{
-          VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-          nullptr,
-          (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
-          VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
-          image_info.mLayout,
-          VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-          0xFFFFFFFF,
-          0xFFFFFFFF,
-          img->mVulkanHandle,
-          {img->mImageAspect, 0, image_info.mMipLevels, 0,
-           image_info.mArrayLayers},
-      };
+      std::vector<VkImageMemoryBarrier> img_barriers;
+      std::vector<uint32_t> old_layouts;
+      walkImageSubRng(img, img_whole_rng,
+          [&img, &img_barriers, &old_layouts](uint32_t aspect_bit,
+                                              uint32_t layer, uint32_t level) {
+            auto &img_level =
+                img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+        img_barriers.push_back(VkImageMemoryBarrier{
+            VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            nullptr,
+            (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
+            VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
+            img_level->mLayout,
+            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            0xFFFFFFFF,
+            0xFFFFFFFF,
+            img->mVulkanHandle,
+            {VkImageAspectFlags(aspect_bit), level, 1, layer, 1},
+        });
+        old_layouts.push_back(img_level->mLayout);
+      });
 
       device_functions.vkCmdPipelineBarrier(
           commandBuffer.GetBuffer(),
           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
-          nullptr, 0, nullptr, 1, &img_barrier);
+          nullptr, 0, nullptr, img_barriers.size(), img_barriers.data());
 
       device_functions.vkCmdCopyImageToBuffer(
           commandBuffer.GetBuffer(), img->mVulkanHandle,
           VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
           stage.GetBuffer(), copies.size(), copies.data());
 
-      img_barrier.msrcAccessMask =
-          VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
-      img_barrier.mdstAccessMask =
-          (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
-      img_barrier.moldLayout =
-          VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-      img_barrier.mnewLayout = img->mInfo.mLayout;
+      for (size_t i = 0; i < img_barriers.size(); i++) {
+        img_barriers[i].msrcAccessMask =
+            VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
+        img_barriers[i].mdstAccessMask =
+            (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
+        img_barriers[i].moldLayout =
+            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        img_barriers[i].mnewLayout = old_layouts[i];
+      }
 
       VkBufferMemoryBarrier buf_barrier{
           VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -823,7 +835,7 @@ void VulkanSpy::prepareGPUBuffers(CallObserver *observer, PackEncoder *group,
           commandBuffer.GetBuffer(),
           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
           VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0,
-          nullptr, 1, &buf_barrier, 1, &img_barrier);
+          nullptr, 1, &buf_barrier, img_barriers.size(), img_barriers.data());
 
       commandBuffer.FinishAndSubmit(
           GetQueue(mState.Queues, img)->mVulkanHandle);

@@ -43,6 +43,10 @@ inline void VulkanSpy::vkErrCommandBufferIncomplete(CallObserver*, VkCommandBuff
     GAPID_WARNING("Error: Executing command buffer %llu was not in the COMPLETED state", cmdbuf)
 }
 
-inline void VulkanSpy::vkErrImageLayout(CallObserver*, uint32_t layout, uint32_t expectedLayout) {
-  GAPID_WARNING("Error: Image was in layout %lu, but was expected to be in layout %lu", layout, expectedLayout);
+inline void VulkanSpy::vkErrInvalidImageLayout(CallObserver*, VkImage img, uint32_t aspect, uint32_t layer, uint32_t level, uint32_t layout, uint32_t expectedLayout) {
+  GAPID_WARNING("Error: Image subresource at Image: %llu, AspectBit: %lu, Layer: %lu, Level: %lu was in layout %lu, but was expected to be in layout %lu", img, aspect, layer, level, layout, expectedLayout);
+}
+
+inline void VulkanSpy::vkErrInvalidImageSubresource(CallObserver*, VkImage img, std::string subresourceType, uint32_t value) {
+    GAPID_WARNING("Error: Accessing invalid image subresource at Image: %llu, %s: %llu", img, subresourceType.c_str(), value);
 }

@@ -102,7 +102,14 @@ func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 			return
 		}
 		cb := CommandBuilder{Thread: cmd.Thread()}
-		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Fmt(), VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, w, h, w, h, out, res)
+		// Imageviews that are used in framebuffer attachments must contains
+		// only one mip level.
+		level := imageViewDepth.SubresourceRange().BaseMipLevel()
+		// There might be multiple layers, currently we only support the
+		// first one.
+		// TODO: support multi-layer rendering.
+		layer := imageViewDepth.SubresourceRange().BaseArrayLayer()
+		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Fmt(), VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, layer, level, w, h, w, h, out, res)
 	})
 }
 
@@ -140,13 +147,20 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				res(nil, fmt.Errorf("Invalid attachment %v in the framebuffer, the attachment VkImageView might have been destroyed", bufferIdx))
 				return
 			}
+			// Imageviews that are used in framebuffer attachments must contains
+			// only one mip level.
+			level := imageView.SubresourceRange().BaseMipLevel()
+			// There might be multiple layers, currently we only support the
+			// first one.
+			// TODO: support multi-layer rendering.
+			layer := imageView.SubresourceRange().BaseArrayLayer()
 			imageObject := imageView.Image()
 			if imageObject.IsNil() {
 				res(nil, fmt.Errorf("Invalid attachment %v in the framebuffer, the attachment VkImage might have been destroyed", bufferIdx))
 				return
 			}
 			w, h, form := lastDrawInfo.Framebuffer().Width(), lastDrawInfo.Framebuffer().Height(), imageView.Fmt()
-			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
+			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, layer, level, w, h, width, height, out, res)
 		} else {
 			imageObject := GetState(s).LastPresentInfo().PresentImages().Get(bufferIdx)
 			if imageObject.IsNil() {
@@ -154,7 +168,10 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				return
 			}
 			w, h, form := imageObject.Info().Extent().Width(), imageObject.Info().Extent().Height(), imageObject.Info().Fmt()
-			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, w, h, width, height, out, res)
+			// There might be multiple layers for an image created by swapchain
+			// but currently we only support layer 0.
+			// TODO: support multi-layer swapchain images.
+			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, w, h, width, height, out, res)
 		}
 	})
 }
@@ -183,6 +200,8 @@ func postImageData(ctx context.Context,
 	imageObject ImageObjectʳ,
 	vkFormat VkFormat,
 	aspect VkImageAspectFlagBits,
+	layer,
+	level,
 	imgWidth,
 	imgHeight,
 	reqWidth,
@@ -465,11 +484,11 @@ func postImageData(ctx context.Context,
 			VkAccessFlagBits_VK_ACCESS_SHADER_WRITE_BIT|
 			VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // srcAccessMask
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // dstAccessMask
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,           // oldLayout
-		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                      // newLayout
-		0xFFFFFFFF,                                                   // srcQueueFamilyIndex
-		0xFFFFFFFF,                                                   // dstQueueFamilyIndex
-		stagingImageID,                                               // image
+		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                      // oldLayout
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,           // newLayout
+		0xFFFFFFFF,     // srcQueueFamilyIndex
+		0xFFFFFFFF,     // dstQueueFamilyIndex
+		stagingImageID, // image
 		NewVkImageSubresourceRange( // subresourceRange
 			VkImageAspectFlags(aspect), // aspectMask
 			0, // baseMipLevel
@@ -556,9 +575,9 @@ func postImageData(ctx context.Context,
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT,
 		),
-		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT), // dstAccessMask
-		imageObject.Info().Layout(),                                 // oldLayout
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,          // newLayout
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT),                        // dstAccessMask
+		imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(), // oldLayout
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                                 // newLayout
 		0xFFFFFFFF,                 // srcQueueFamilyIndex
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
@@ -582,11 +601,11 @@ func postImageData(ctx context.Context,
 				VkAccessFlagBits_VK_ACCESS_SHADER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT),
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // oldLayout
-		imageObject.Info().Layout(),                        // newLayout
-		0xFFFFFFFF,                                         // srcQueueFamilyIndex
-		0xFFFFFFFF,                                         // dstQueueFamilyIndex
-		imageObject.VulkanHandle(),                         // image
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                                 // oldLayout
+		imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(), // newLayout
+		0xFFFFFFFF,                 // srcQueueFamilyIndex
+		0xFFFFFFFF,                 // dstQueueFamilyIndex
+		imageObject.VulkanHandle(), // image
 		NewVkImageSubresourceRange( // subresourceRange
 			VkImageAspectFlags(aspect), // aspectMask
 			0, // baseMipLevel

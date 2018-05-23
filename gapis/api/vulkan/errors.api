@@ -44,7 +44,8 @@ extern void vkErrUnrecognizedExtension(string name)
 extern void vkErrExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle)
 extern void vkErrInvalidDescriptorArrayElement(u64 set, u32 binding, u32 arrayIndex)
 extern void vkErrCommandBufferIncomplete(VkCommandBuffer cmdbuf)
-extern void vkErrImageLayout(VkImageLayout layout, VkImageLayout expectedLayout)
+extern void vkErrInvalidImageLayout(VkImage img, u32 aspect, u32 layer, u32 level, VkImageLayout layout, VkImageLayout expectedLayout)
+extern void vkErrInvalidImageSubresource(VkImage img, string subresourceType, u32 value)
 
 sub void vkErrorInvalidInstance(VkInstance inst) {
   vkErrorInvalidHandle("VkInstance", as!u64(inst))
@@ -66,6 +67,11 @@ sub void vkErrorInvalidCommandBuffer(VkCommandBuffer cmdbuf) {
   vkErrorInvalidHandle("VkCommandBuffer", as!u64(cmdbuf))
 }
 
+sub void vkErrorCommandBufferIncomplete(VkCommandBuffer cmdbuf) {
+  vkErrCommandBufferIncomplete(cmdbuf)
+  abort
+}
+
 sub void vkErrorInvalidDeviceMemory(VkDeviceMemory mem) {
   vkErrorInvalidHandle("VkDeviceMemory", as!u64(mem))
 }
@@ -80,6 +86,26 @@ sub void vkErrorInvalidBufferView(VkBufferView view) {
 
 sub void vkErrorInvalidImage(VkImage img) {
   vkErrorInvalidHandle("VkImage", as!u64(img))
+}
+
+sub void vkErrorInvalidImageAspect(VkImage img, VkImageAspectFlagBits aspectBit) {
+  vkErrInvalidImageSubresource(img, "VkImageAspectFlagBits", as!u32(aspectBit))
+  // Continue the mutation as this may not cause problem.
+}
+
+sub void vkErrorInvalidImageArrayLayer(VkImage img, u32 layer) {
+  vkErrInvalidImageSubresource(img, "ArrayLayer", layer)
+  // Continue the mutation as this may not cause problem.
+}
+
+sub void vkErrorInvalidImageMipLevel(VkImage img, u32 level) {
+  vkErrInvalidImageSubresource(img, "MipLevel", level)
+  // Continue the mutation as this may not cause problem.
+}
+
+sub void vkErrorInvalidImageLayout(VkImage img, VkImageAspectFlagBits aspect, u32 layer, u32 level, VkImageLayout layout, VkImageLayout expectedLayout) {
+  vkErrInvalidImageLayout(img, as!u32(aspect), layer, level, layout, expectedLayout)
+  // Continue the mutation as this may not cause problem.
 }
 
 sub void vkErrorInvalidImageView(VkImageView view) {
@@ -176,15 +202,5 @@ sub void vkErrorUnrecognizedExtension(const char* name) {
 
 sub void vkErrorExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle) {
   vkErrExpectNVDedicatedlyAllocatedHandle(handleType, handle)
-  // Continue the mutation as this may not cause problem.
-}
-
-sub void vkErrorCommandBufferIncomplete(VkCommandBuffer cmdbuf) {
-  vkErrCommandBufferIncomplete(cmdbuf)
-  abort
-}
-
-sub void vkErrorImageLayout(VkImageLayout layout, VkImageLayout expectedLayout) {
-  vkErrImageLayout(layout, expectedLayout)
   // Continue the mutation as this may not cause problem.
 }

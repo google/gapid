@@ -170,7 +170,7 @@ cmd VkResult ReplayCreateSwapchain(
       Tiling:       VK_IMAGE_TILING_OPTIMAL,
       Usage:        create_info.imageUsage,
       SharingMode:  create_info.imageSharingMode,
-      Layout:       VK_IMAGE_LAYOUT_UNDEFINED
+      InitialLayout:       VK_IMAGE_LAYOUT_UNDEFINED
     ),
     Surface:         Surfaces[create_info.surface],
     ColorSpace:      create_info.imageColorSpace,
