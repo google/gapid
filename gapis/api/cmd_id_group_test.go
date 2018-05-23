@@ -31,24 +31,24 @@ func check(t *testing.T, name string, expected, got uint64) {
 }
 
 var tree = `Group 'root' [0..1099]
- ├─ [0..99] ───── Atoms [0..99]
+ ├─ [0..99] ───── Commands [0..99]
  ├─ [100] ─────── Group 'Sub-group 0' [100..199]
- │                └─ [0..99] ───── Atoms [100..199]
- ├─ [101..200] ── Atoms [200..299]
+ │                └─ [0..99] ───── Commands [100..199]
+ ├─ [101..200] ── Commands [200..299]
  ├─ [201] ─────── Group 'Sub-group 1' [300..399]
- │                ├─ [0..9] ────── Atoms [310..319]
+ │                ├─ [0..9] ────── Commands [310..319]
  │                ├─ [10] ──────── Group 'Sub-group 1.0' [340..359]
- │                │                └─ [0] ───────── Atoms [350..350]
+ │                │                └─ [0] ───────── Commands [350..350]
  │                ├─ [11] ──────── Group 'Sub-group 1.1' [360..369]
  │                │                ├─ [0] ───────── Group 'Sub-group 1.1.0' [360..361]
- │                │                │                └─ [0..1] ────── Atoms [360..361]
+ │                │                │                └─ [0..1] ────── Commands [360..361]
  │                │                └─ [1] ───────── Group 'Sub-group 1.1.1' [362..364]
- │                │                                 └─ [0..2] ────── Atoms [362..364]
- │                └─ [12..21] ──── Atoms [370..379]
- ├─ [202..301] ── Atoms [400..499]
+ │                │                                 └─ [0..2] ────── Commands [362..364]
+ │                └─ [12..21] ──── Commands [370..379]
+ ├─ [202..301] ── Commands [400..499]
  ├─ [302] ─────── Group 'Sub-group 2' [500..599]
- │                └─ [0..99] ───── Atoms [500..599]
- └─ [303..702] ── Atoms [600..999]`
+ │                └─ [0..99] ───── Commands [500..599]
+ └─ [303..702] ── Commands [600..999]`
 
 func buildTestGroup(end uint64) CmdIDGroup {
 	return CmdIDGroup{
@@ -409,7 +409,7 @@ func shuffle(r CmdIDRange) []CmdID {
 	return out
 }
 
-func addAtomsAndCluster(g *CmdIDGroup, maxChildren, maxNeighbours uint64, pred func(id CmdID) bool) {
+func addCommandsAndCluster(g *CmdIDGroup, maxChildren, maxNeighbours uint64, pred func(id CmdID) bool) {
 	for _, id := range shuffle(g.Bounds()) {
 		if pred(id) {
 			g.AddCommand(id)
@@ -417,16 +417,16 @@ func addAtomsAndCluster(g *CmdIDGroup, maxChildren, maxNeighbours uint64, pred f
 	}
 	for _, s := range g.Spans {
 		if s, ok := s.(*CmdIDGroup); ok {
-			addAtomsAndCluster(s, maxChildren, maxNeighbours, pred)
+			addCommandsAndCluster(s, maxChildren, maxNeighbours, pred)
 		}
 	}
 	g.Cluster(maxChildren, maxNeighbours)
 }
 
-func TestAddAtomsFill(t *testing.T) {
+func TestAddCommandsFill(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(1100)
-	addAtomsAndCluster(&got, 0, 0, func(CmdID) bool { return true })
+	addCommandsAndCluster(&got, 0, 0, func(CmdID) bool { return true })
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 1100}, Spans{
@@ -466,7 +466,7 @@ func TestAddAtomsFill(t *testing.T) {
 	}
 }
 
-func TestAddAtomsSparse(t *testing.T) {
+func TestAddCommandsSparse(t *testing.T) {
 	ctx := log.Testing(t)
 	got := CmdIDGroup{
 		"root", CmdIDRange{0, 1100}, Spans{
@@ -482,7 +482,7 @@ func TestAddAtomsSparse(t *testing.T) {
 		}, nil,
 	}
 
-	addAtomsAndCluster(&got, 0, 0, func(id CmdID) bool { return (id/50)&1 == 0 })
+	addCommandsAndCluster(&got, 0, 0, func(id CmdID) bool { return (id/50)&1 == 0 })
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 1100}, Spans{
@@ -520,11 +520,11 @@ func TestAddAtomsSparse(t *testing.T) {
 	}
 }
 
-func TestAddAtomsWithSplitting(t *testing.T) {
+func TestAddCommandsWithSplitting(t *testing.T) {
 	ctx := log.Testing(t)
 	got := buildTestGroup(700)
 
-	addAtomsAndCluster(&got, 45, 0, func(CmdID) bool { return true })
+	addCommandsAndCluster(&got, 45, 0, func(CmdID) bool { return true })
 
 	expected := CmdIDGroup{
 		"root", CmdIDRange{0, 700}, Spans{
@@ -581,7 +581,7 @@ func TestAddAtomsWithSplitting(t *testing.T) {
 	assert.With(ctx).That(got).DeepEquals(expected)
 }
 
-func TestAddAtomsWithNeighbours(t *testing.T) {
+func TestAddCommandsWithNeighbours(t *testing.T) {
 	ctx := log.Testing(t)
 	{
 		got := CmdIDGroup{
@@ -592,7 +592,7 @@ func TestAddAtomsWithNeighbours(t *testing.T) {
 			nil,
 		}
 
-		addAtomsAndCluster(&got, 0, 10, func(CmdID) bool { return true })
+		addCommandsAndCluster(&got, 0, 10, func(CmdID) bool { return true })
 
 		expected := CmdIDGroup{
 			"root", CmdIDRange{0, 52}, Spans{

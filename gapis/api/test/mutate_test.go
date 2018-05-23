@@ -1254,7 +1254,7 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 					ApiIndex:   funcInfoCmdVoidReadPointerStruct.ApiIndex,
 					FunctionID: funcInfoCmdVoidReadPointerStruct.ID},
 
-				// The second atom generates the same opcode stream.
+				// The second command generates the same opcode stream.
 				opcode.Label{Value: 1},
 				// TODO: Resource loads below are redundant
 				opcode.PushI{DataType: protocol.Type_VolatilePointer, Value: 0x00},

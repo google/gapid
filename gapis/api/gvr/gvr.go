@@ -113,7 +113,7 @@ func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, er
 var _ sync.SynchronizedAPI = API{}
 
 // GetTerminator returns a transform that will allow the given capture to be terminated
-// after a atom
+// after a command
 func (API) GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error) {
 	return nil, nil
 }

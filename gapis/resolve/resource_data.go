@@ -49,7 +49,7 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 }
 
 func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, error) {
-	atomIdx := p.Indices[0]
+	cmdIdx := p.Indices[0]
 
 	capture, err := capture.Resolve(ctx)
 	if err != nil {
@@ -66,7 +66,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	if err != nil {
 		return nil, err
 	}
-	cmds, err := sync.MutationCmdsFor(ctx, p.Capture, s, allCmds, api.CmdID(atomIdx), p.Indices[1:], false)
+	cmds, err := sync.MutationCmdsFor(ctx, p.Capture, s, allCmds, api.CmdID(cmdIdx), p.Indices[1:], false)
 	if err != nil {
 		return nil, err
 	}

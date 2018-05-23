@@ -39,7 +39,7 @@ type DependencyGraph struct {
 	NumInitialCommands int
 
 	Commands   []api.Cmd             // Command list which this graph was build for.
-	Behaviours []AtomBehaviour       // State reads/writes for each command (graph edges).
+	Behaviours []CmdBehaviour        // State reads/writes for each command (graph edges).
 	Roots      map[StateAddress]bool // State to mark live at requested commands.
 	addressMap addressMapping        // Remap state keys to integers for performance.
 }
@@ -64,7 +64,7 @@ func (g *DependencyGraph) SetRoot(key StateKey) {
 	g.Roots[g.GetStateAddressOf(key)] = true
 }
 
-func (g *DependencyGraph) Print(ctx context.Context, b *AtomBehaviour) {
+func (g *DependencyGraph) Print(ctx context.Context, b *CmdBehaviour) {
 	for _, read := range b.Reads {
 		key := g.addressMap.key[read]
 		log.I(ctx, " - read [%v]%T%+v", read, key, key)
@@ -94,7 +94,7 @@ type StateKey interface {
 	Parent() StateKey
 }
 
-type AtomBehaviour struct {
+type CmdBehaviour struct {
 	Reads     []StateAddress // States read by a command.
 	Modifies  []StateAddress // States read and written by a command.
 	Writes    []StateAddress // States written by a command.
@@ -120,19 +120,19 @@ func (m *addressMapping) addressOf(state StateKey) StateAddress {
 	return address
 }
 
-func (b *AtomBehaviour) Read(g *DependencyGraph, state StateKey) {
+func (b *CmdBehaviour) Read(g *DependencyGraph, state StateKey) {
 	if state != nil {
 		b.Reads = append(b.Reads, g.addressMap.addressOf(state))
 	}
 }
 
-func (b *AtomBehaviour) Modify(g *DependencyGraph, state StateKey) {
+func (b *CmdBehaviour) Modify(g *DependencyGraph, state StateKey) {
 	if state != nil {
 		b.Modifies = append(b.Modifies, g.addressMap.addressOf(state))
 	}
 }
 
-func (b *AtomBehaviour) Write(g *DependencyGraph, state StateKey) {
+func (b *CmdBehaviour) Write(g *DependencyGraph, state StateKey) {
 	if state != nil {
 		b.Writes = append(b.Writes, g.addressMap.addressOf(state))
 	}
@@ -143,7 +143,7 @@ type DependencyGraphBehaviourProvider interface {
 }
 
 type BehaviourProvider interface {
-	GetBehaviourForAtom(context.Context, *api.GlobalState, api.CmdID, api.Cmd, *DependencyGraph) AtomBehaviour
+	GetBehaviourForCommand(context.Context, *api.GlobalState, api.CmdID, api.Cmd, *DependencyGraph) CmdBehaviour
 }
 
 func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
@@ -172,7 +172,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 	g := &DependencyGraph{
 		NumInitialCommands: len(initCmds),
 		Commands:           cmds,
-		Behaviours:         make([]AtomBehaviour, len(cmds)),
+		Behaviours:         make([]CmdBehaviour, len(cmds)),
 		Roots:              map[StateAddress]bool{},
 		addressMap: addressMapping{
 			address: map[StateKey]StateAddress{nil: NullStateAddress},
@@ -205,7 +205,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 					return nil
 				}
 			}
-			g.Behaviours[index] = behaviourProviders[a].GetBehaviourForAtom(ctx, s, id, cmd, g)
+			g.Behaviours[index] = behaviourProviders[a].GetBehaviourForCommand(ctx, s, id, cmd, g)
 			return nil
 		})
 	})

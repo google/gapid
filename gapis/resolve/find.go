@@ -38,7 +38,7 @@ const (
 )
 
 func translateIDForDisplay(idx api.SubCmdIdx, data *sync.Data) (api.CmdID, bool) {
-	atomIdx := api.CmdID(0)
+	cmdIdx := api.CmdID(0)
 	sg, ok := data.SubcommandReferences[api.CmdID(idx[0])]
 	if !ok {
 		return 0, false
@@ -47,11 +47,11 @@ func translateIDForDisplay(idx api.SubCmdIdx, data *sync.Data) (api.CmdID, bool)
 	for _, v := range sg {
 		if v.Index.Equals(idx) {
 			found = true
-			atomIdx = v.GeneratingCmd
+			cmdIdx = v.GeneratingCmd
 			break
 		}
 	}
-	return atomIdx, found
+	return cmdIdx, found
 }
 
 // Find performs a search using req and calling handler for each result.

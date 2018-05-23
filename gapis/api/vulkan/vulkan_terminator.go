@@ -37,7 +37,7 @@ import (
 //      i.e. it will make sure to continue to mutate the trace until
 //      all pending events have been successfully completed.
 //      TODO(awoloszyn): Handle #2
-// This takes advantage of the fact that all atoms will be in order.
+// This takes advantage of the fact that all commands will be in order.
 type VulkanTerminator struct {
 	lastRequest     api.CmdID
 	requestSubIndex []uint64

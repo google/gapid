@@ -27,7 +27,8 @@ import (
 
 // objectKey is a map and object identifier pair used for a remapping key.
 // Ideally we'd just use the object or object pointer as the key, but we have
-// atoms that want to remap the identifier before the state object is created.
+// commands that want to remap the identifier before the state object is
+// created.
 // TODO: It maybe possible to rework the state-mutator and/or APIs to achieve
 // this.
 type objectKey struct {

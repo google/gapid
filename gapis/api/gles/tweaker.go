@@ -27,7 +27,7 @@ import (
 type tweaker struct {
 	out  transform.Writer
 	cb   CommandBuilder
-	dID  api.CmdID // Derived ID to use for generated atoms. Can be NoID.
+	dID  api.CmdID // Derived ID to use for generated commands. Can be NoID.
 	s    *api.GlobalState
 	c    Contextʳ
 	undo []func(context.Context)

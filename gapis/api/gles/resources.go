@@ -308,7 +308,7 @@ func (s Shaderʳ) SetResourceData(
 	resourceIDs api.ResourceMap,
 	edits api.ReplaceCallback) error {
 
-	atomIdx := at.Indices[0]
+	cmdIdx := at.Indices[0]
 	if len(at.Indices) > 1 {
 		return fmt.Errorf("Subcommands currently not supported for GLES resources") // TODO: Subcommands
 	}
@@ -332,7 +332,7 @@ func (s Shaderʳ) SetResourceData(
 	}
 
 	index := len(resource.Accesses) - 1
-	for resource.Accesses[index].Indices[0] > atomIdx && index >= 0 { // TODO: Subcommands
+	for resource.Accesses[index].Indices[0] > cmdIdx && index >= 0 { // TODO: Subcommands
 		index--
 	}
 	for j := index; j >= 0; j-- {

@@ -1345,7 +1345,7 @@ func GetCommandFunction(cr *CommandReference) interface{} {
 }
 
 // AddCommand recreates the command defined by recreateInfo and places it
-// into the given command buffer. It returns the atoms that it
+// into the given command buffer. It returns the commands that it
 // had to create in order to satisfy the command. It also returns a function
 // to clean up the data that was allocated during the creation.
 func AddCommand(ctx context.Context,

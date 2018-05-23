@@ -37,9 +37,9 @@ func TestFilterStack(t *testing.T) {
 ⇒ /usr/local/google/home/bobbobson/src/go-1.8.3/src/runtime/alg.go@154:
 ⇒ /usr/local/google/home/bobbobson/src/go-1.8.3/src/runtime/hashmap.go@380:
 ⇒ github.com/gapid/gapis/resolve/dependencygraph/dependency_graph.go@111:(*AddressMapping).addressOf
-⇒ github.com/gapid/gapis/resolve/dependencygraph/dependency_graph.go@123:(*AtomBehaviour).Read
-⇒ github.com/gapid/gapis/api/vulkan/mutate.go@12431:(*VkQueueSubmit).GetAtomBehaviour
-⇒ github.com/gapid/gapis/api/vulkan/replay.go@559:(*VulkanDependencyGraphBehaviourProvider).GetBehaviourForAtom
+⇒ github.com/gapid/gapis/resolve/dependencygraph/dependency_graph.go@123:(*CommandBehaviour).Read
+⇒ github.com/gapid/gapis/api/vulkan/mutate.go@12431:(*VkQueueSubmit).GetCommandBehaviour
+⇒ github.com/gapid/gapis/api/vulkan/replay.go@559:(*VulkanDependencyGraphBehaviourProvider).GetBehaviourForCommand
 ⇒ github.com/gapid/gapis/resolve/dependencygraph/dependency_graph.go@213:(*DependencyGraphResolvable).Resolve.func1.1
 ⇒ github.com/gapid/gapis/api/cmd_foreach.go@46:ForeachCmd
 ⇒ github.com/gapid/gapis/resolve/dependencygraph/dependency_graph.go@215:(*DependencyGraphResolvable).Resolve.func1
@@ -64,9 +64,9 @@ func TestFilterStack(t *testing.T) {
 ⇒ <RUNTIME>/alg.go@154:
 ⇒ <RUNTIME>/hashmap.go@380:
 ⇒ <GAPID>/gapis/resolve/dependencygraph/dependency_graph.go@111:(*AddressMapping).addressOf
-⇒ <GAPID>/gapis/resolve/dependencygraph/dependency_graph.go@123:(*AtomBehaviour).Read
-⇒ <GAPID>/gapis/api/vulkan/mutate.go@12431:(*VkQueueSubmit).GetAtomBehaviour
-⇒ <GAPID>/gapis/api/vulkan/replay.go@559:(*VulkanDependencyGraphBehaviourProvider).GetBehaviourForAtom
+⇒ <GAPID>/gapis/resolve/dependencygraph/dependency_graph.go@123:(*CommandBehaviour).Read
+⇒ <GAPID>/gapis/api/vulkan/mutate.go@12431:(*VkQueueSubmit).GetCommandBehaviour
+⇒ <GAPID>/gapis/api/vulkan/replay.go@559:(*VulkanDependencyGraphBehaviourProvider).GetBehaviourForCommand
 ⇒ <GAPID>/gapis/resolve/dependencygraph/dependency_graph.go@213:(*DependencyGraphResolvable).Resolve.func1.1
 ⇒ <GAPID>/gapis/api/cmd_foreach.go@46:ForeachCmd
 ⇒ <GAPID>/gapis/resolve/dependencygraph/dependency_graph.go@215:(*DependencyGraphResolvable).Resolve.func1

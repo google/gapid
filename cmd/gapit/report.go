@@ -93,7 +93,7 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	boxedCommands, err := client.Get(ctx, capturePath.Commands().Path())
 	if err != nil {
-		return log.Err(ctx, err, "Failed to acquire the capture's atoms")
+		return log.Err(ctx, err, "Failed to acquire the capture's commands")
 	}
 	commands := boxedCommands.(*service.Commands).List
 

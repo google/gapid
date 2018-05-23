@@ -75,7 +75,7 @@ func (t *DeadCodeElimination) Request(id api.CmdID) {
 }
 
 func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out Writer) {
-	panic(fmt.Errorf("This transform does not accept input atoms"))
+	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 
 func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {

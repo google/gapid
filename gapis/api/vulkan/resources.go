@@ -735,7 +735,7 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 
 	ctx = log.Enter(ctx, "ShaderModuleObject.SetResourceData()")
 
-	atomIdx := at.Indices[0]
+	cmdIdx := at.Indices[0]
 
 	// Dirty. TODO: Make separate type for getting info for a single resource.
 	resources, err := resolve.Resources(ctx, at.Capture)
@@ -755,7 +755,7 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 	}
 
 	index := len(resource.Accesses) - 1
-	for resource.Accesses[index].Indices[0] > atomIdx && index >= 0 { // TODO: Subcommands
+	for resource.Accesses[index].Indices[0] > cmdIdx && index >= 0 { // TODO: Subcommands
 		index--
 	}
 	for j := index; j >= 0; j-- {
