@@ -21,18 +21,19 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/core/app/crash"
 	"golang.org/x/crypto/ssh"
 )
 
-// Process is the interface to a running process, as started by a Target.
+// remoteProcess is the interface to a running process, as started by a Target.
 type remoteProcess struct {
 	session    *ssh.Session
-	stdoutDone chan error
-	stderrDone chan error
+	wg		   sync.WaitGroup
 }
 
 func (r *remoteProcess) Kill() error {
@@ -41,8 +42,7 @@ func (r *remoteProcess) Kill() error {
 
 func (r *remoteProcess) Wait(ctx context.Context) error {
 	ret := r.session.Wait()
-	<-r.stdoutDone
-	<-r.stderrDone
+	r.wg.Wait()
 	return ret
 }
 
@@ -58,8 +58,7 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 	}
 	p := &remoteProcess{
 		session:    session,
-		stdoutDone: make(chan error),
-		stderrDone: make(chan error),
+		wg:    sync.WaitGroup{},
 	}
 
 	if cmd.Stdin != nil {
@@ -78,23 +77,18 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		if err != nil {
 			return nil, err
 		}
-		go func() {
+		p.wg.Add(1)
+		crash.Go(func() {
 			b := make([]byte, 1024)
 			for {
 				n, err := stdout.Read(b)
 				cmd.Stdout.Write(b[:n])
 				if err != nil {
-					if err == io.EOF {
-						p.stdoutDone <- nil
-					} else {
-						p.stdoutDone <- err
-					}
+					p.wg.Done()
 					break
 				}
 			}
-		}()
-	} else {
-		p.stdoutDone <- nil
+		})
 	}
 
 	if cmd.Stderr != nil {
@@ -102,23 +96,18 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		if err != nil {
 			return nil, err
 		}
-		go func() {
+		p.wg.Add(1)
+		crash.Go(func() {
 			b := make([]byte, 1024)
 			for {
 				n, err := stderr.Read(b)
 				cmd.Stderr.Write(b[:n])
 				if err != nil {
-					if err == io.EOF {
-						p.stderrDone <- nil
-					} else {
-						p.stderrDone <- err
-					}
+					p.wg.Done()
 					break
 				}
 			}
-		}()
-	} else {
-		p.stderrDone <- nil
+		})
 	}
 
 	prefix := ""
@@ -176,7 +165,7 @@ func (b binding) MakeTempDir(ctx context.Context) (string, func(ctx context.Cont
 	case device.Windows:
 		return b.createWindowsTempDirectory(ctx)
 	default:
-		panic("We should never end up here")
+		panic(fmt.Errorf("Unsupported OS %v", b.os))
 	}
 }
 
@@ -211,26 +200,25 @@ func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) e
 		return err
 	}
 
-	closer := make(chan bool)
-
+	wg := sync.WaitGroup{}
+	
 	copy := func(writer io.Writer, reader io.Reader) {
 		_, err := io.Copy(writer, reader)
 		if err != nil {
 			log.E(ctx, "Copy Error %s", err)
 		}
-		closer <- true
+		wg.Done()
 	}
 
-	go copy(local, remote)
-	go copy(remote, local)
-	go func() {
+	wg.Add(2)
+	crash.Go( func() { copy(local, remote)} )
+	crash.Go( func() { copy(remote, local)} )
+	
+	crash.Go( func() {
 		defer local.Close()
 		defer remote.Close()
-		// When one direction of the communication has
-		// closed, close the entire connection
-		<-closer
-		<-closer
-	}()
+		wg.Wait()
+	})
 	return nil
 }
 
@@ -241,16 +229,16 @@ func (b binding) ForwardPort(ctx context.Context, remotePort int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	go func() {
+	crash.Go( func() {
 		defer listener.Close()
 		for {
 			local, err := listener.Accept()
 			if err != nil {
 				return
 			}
-			go b.doTunnel(ctx, local, remotePort)
+			b.doTunnel(ctx, local, remotePort)
 		}
-	}()
+	})
 
 	return listener.Addr().(*net.TCPAddr).Port, nil
 }

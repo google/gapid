@@ -28,6 +28,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/shell:go_default_library",
+        "//core/app/crash:go_default_library",
         "//core/app/layout:go_default_library",
         "@org_golang_x_crypto//ssh:go_default_library",
         "@org_golang_x_crypto//ssh/agent:go_default_library",

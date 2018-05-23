@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc/grpclog"
@@ -105,12 +106,11 @@ func run(ctx context.Context) error {
 		r.SetDeviceProperty(ctx, host, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
 	}
 
-	numAsyncScans := 0
-	scanDone := make(chan bool)
+	wg := sync.WaitGroup{}
 
 	if *scanAndroidDevs {
-		numAsyncScans++
-		crash.Go(func() { monitorAndroidDevices(ctx, r, scanDone) })
+		wg.Add(1)
+		crash.Go(func() { monitorAndroidDevices(ctx, r, wg.Done) })
 	}
 
 	if *remoteSSHConfig != "" {
@@ -118,17 +118,15 @@ func run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		numAsyncScans++
-		crash.Go(func() { getRemoteSSHDevices(ctx, r, f, scanDone) })
+		wg.Add(1)
+		crash.Go(func() { getRemoteSSHDevices(ctx, r, f, wg.Done) })
 	}
 
 	deviceScanDone, onDeviceScanDone := task.NewSignal()
-	go func() {
-		for i := 0; i < numAsyncScans; i++ {
-			<-scanDone
-		}
+	crash.Go(func() {
+		wg.Wait()
 		onDeviceScanDone(ctx)
-	}()
+	})
 
 	return server.Listen(ctx, *rpc, server.Config{
 		Info: &service.ServerInfo{
@@ -147,10 +145,10 @@ func run(ctx context.Context) error {
 	})
 }
 
-func monitorAndroidDevices(ctx context.Context, r *bind.Registry, scanDone chan bool) {
+func monitorAndroidDevices(ctx context.Context, r *bind.Registry, scanDone func()) {
 	// Populate the registry with all the existing devices.
 	func() {
-		defer func() { scanDone <- true }() // Signal that we have a primed registry.
+		defer scanDone() // Signal that we have a primed registry.
 
 		if devs, err := adb.Devices(ctx); err == nil {
 			for _, d := range devs {
@@ -164,10 +162,10 @@ func monitorAndroidDevices(ctx context.Context, r *bind.Registry, scanDone chan 
 	}
 }
 
-func getRemoteSSHDevices(ctx context.Context, r *bind.Registry, f io.Reader, scanDone chan bool) {
+func getRemoteSSHDevices(ctx context.Context, r *bind.Registry, f io.Reader, scanDone func()) {
 	// Populate the registry with all the existing devices.
 	func() {
-		defer func() { scanDone <- true }() // Signal that we have a primed registry.
+		defer scanDone() // Signal that we have a primed registry.
 
 		if devs, err := remotessh.Devices(ctx, f); err == nil {
 			for _, d := range devs {
@@ -175,6 +173,7 @@ func getRemoteSSHDevices(ctx context.Context, r *bind.Registry, f io.Reader, sca
 				r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
 			}
 		}
+		
 	}()
 }
 
