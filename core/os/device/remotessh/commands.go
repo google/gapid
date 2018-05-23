@@ -50,12 +50,6 @@ var _ shell.Process = (*remoteProcess)(nil)
 
 type sshShellTarget struct{ b *binding }
 
-type writerWrapper struct{ w io.Writer }
-
-func (w *writerWrapper) Write(p []byte) (n int, err error) {
-	return w.w.Write(p)
-}
-
 // Start starts the given command in the remote shell.
 func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 	session, err := t.b.connection.NewSession()
@@ -85,7 +79,7 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		}
 		p.wg.Add(1)
 		crash.Go(func() {
-			io.Copy(&writerWrapper{cmd.Stdout}, stdout)
+			io.Copy(cmd.Stdout, stdout)
 			p.wg.Done()
 		})
 	}
@@ -97,7 +91,7 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		}
 		p.wg.Add(1)
 		crash.Go(func() {
-			io.Copy(&writerWrapper{cmd.Stderr}, stderr)
+			io.Copy(cmd.Stderr, stderr)
 			p.wg.Done()
 		})
 	}
