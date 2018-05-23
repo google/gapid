@@ -27,9 +27,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.image.MultiLayerAndLevelImage;
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
@@ -65,7 +65,7 @@ import java.util.logging.Logger;
  * View that displays the framebuffer at the current selection in an {@link ImagePanel}.
  */
 public class FramebufferView extends Composite
-    implements Tab, Capture.Listener, Devices.Listener, AtomStream.Listener {
+    implements Tab, Capture.Listener, Devices.Listener, CommandStream.Listener {
   private static final Logger LOG = Logger.getLogger(FramebufferView.class.getName());
   private static final int MAX_SIZE = 0xffff;
   private static final Service.RenderSettings RENDER_SHADED = Service.RenderSettings.newBuilder()
@@ -111,11 +111,11 @@ public class FramebufferView extends Composite
 
     models.capture.addListener(this);
     models.devices.addListener(this);
-    models.atoms.addListener(this);
+    models.commands.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.devices.removeListener(this);
-      models.atoms.removeListener(this);
+      models.commands.removeListener(this);
     });
   }
 
@@ -197,12 +197,12 @@ public class FramebufferView extends Composite
   }
 
   @Override
-  public void onAtomsLoaded() {
+  public void onCommandsLoaded() {
     updateBuffer();
   }
 
   @Override
-  public void onAtomsSelected(AtomIndex range) {
+  public void onCommandsSelected(CommandIndex range) {
     updateBuffer();
   }
 
@@ -218,15 +218,15 @@ public class FramebufferView extends Composite
   }
 
   private void updateBuffer() {
-    AtomIndex atomPath = models.atoms.getSelectedAtoms();
-    if (atomPath == null) {
-      imagePanel.showMessage(Info, Messages.SELECT_ATOM);
+    CommandIndex commandPath = models.commands.getSelectedCommands();
+    if (commandPath == null) {
+      imagePanel.showMessage(Info, Messages.SELECT_COMMAND);
     } else if (!models.devices.hasReplayDevice()) {
       imagePanel.showMessage(Error, Messages.NO_REPLAY_DEVICE);
     } else {
       imagePanel.startLoading();
       rpcController.start().listen(
-          FetchedImage.load(client, getImageInfoPath(atomPath.getCommand())),
+          FetchedImage.load(client, getImageInfoPath(commandPath.getCommand())),
           new UiErrorCallback<FetchedImage, MultiLayerAndLevelImage, Loadable.Message>(this, LOG) {
         @Override
         protected ResultOrError<MultiLayerAndLevelImage, Loadable.Message> onRpcThread(
@@ -253,9 +253,9 @@ public class FramebufferView extends Composite
     }
   }
 
-  private ListenableFuture<Path.ImageInfo> getImageInfoPath(Path.Command atomPath) {
+  private ListenableFuture<Path.ImageInfo> getImageInfoPath(Path.Command commandPath) {
     return client.getFramebufferAttachment(
-        models.devices.getReplayDevice(), atomPath, target, renderSettings, HINTS,
+        models.devices.getReplayDevice(), commandPath, target, renderSettings, HINTS,
           models.settings.disableReplayOptimization);
   }
 }

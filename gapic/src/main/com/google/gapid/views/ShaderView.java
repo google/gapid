@@ -38,9 +38,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.core.pod.Pod;
@@ -95,7 +95,7 @@ import java.util.logging.Logger;
  * View allowing the inspection and editing of the shader resources.
  */
 public class ShaderView extends Composite
-    implements Tab, Capture.Listener, AtomStream.Listener, Resources.Listener {
+    implements Tab, Capture.Listener, CommandStream.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(ShaderView.class.getName());
 
   private final Client client;
@@ -119,11 +119,11 @@ public class ShaderView extends Composite
     updateUi(true);
 
     models.capture.addListener(this);
-    models.atoms.addListener(this);
+    models.commands.addListener(this);
     models.resources.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.atoms.removeListener(this);
+      models.commands.removeListener(this);
       models.resources.removeListener(this);
     });
   }
@@ -138,7 +138,7 @@ public class ShaderView extends Composite
                 .setShader(shader.toBuilder()
                     .setSource(src)))
             .build();
-        Rpc.listen(client.set(data.getPath(models.atoms), value),
+        Rpc.listen(client.set(data.getPath(models.commands), value),
             new UiCallback<Path.Any, Path.Capture>(this, LOG) {
           @Override
           protected Path.Capture onRpcThread(Rpc.Result<Path.Any> result)
@@ -181,7 +181,7 @@ public class ShaderView extends Composite
   }
 
   private void getShaderSource(Data data, Consumer<ShaderPanel.Source[]> callback) {
-    shaderRpcController.start().listen(client.get(data.getPath(models.atoms)),
+    shaderRpcController.start().listen(client.get(data.getPath(models.commands)),
         new UiCallback<Service.Value, ShaderPanel.Source>(this, LOG) {
       @Override
       protected ShaderPanel.Source onRpcThread(Rpc.Result<Service.Value> result)
@@ -200,7 +200,7 @@ public class ShaderView extends Composite
 
   private void getProgramSource(
       Data data, Consumer<API.Program> onProgramLoaded, Consumer<ShaderPanel.Source[]> callback) {
-    programRpcController.start().listen(client.get(data.getPath(models.atoms)),
+    programRpcController.start().listen(client.get(data.getPath(models.commands)),
         new UiCallback<Service.Value, ShaderPanel.Source[]>(this, LOG) {
       @Override
       protected ShaderPanel.Source[] onRpcThread(Rpc.Result<Service.Value> result)
@@ -243,8 +243,8 @@ public class ShaderView extends Composite
   }
 
   @Override
-  public void onAtomsLoaded() {
-    if (!models.atoms.isLoaded()) {
+  public void onCommandsLoaded() {
+    if (!models.commands.isLoaded()) {
       loading.showMessage(Info, Messages.CAPTURE_LOAD_FAILURE);
     } else {
       updateLoading();
@@ -252,7 +252,7 @@ public class ShaderView extends Composite
   }
 
   @Override
-  public void onAtomsSelected(AtomIndex path) {
+  public void onCommandsSelected(CommandIndex path) {
     updateLoading();
   }
 
@@ -267,9 +267,9 @@ public class ShaderView extends Composite
   }
 
   private void updateLoading() {
-    if (models.atoms.isLoaded() && models.resources.isLoaded()) {
-      if (models.atoms.getSelectedAtoms() == null) {
-        loading.showMessage(Info, Messages.SELECT_ATOM);
+    if (models.commands.isLoaded() && models.resources.isLoaded()) {
+      if (models.commands.getSelectedCommands() == null) {
+        loading.showMessage(Info, Messages.SELECT_COMMAND);
       } else {
         loading.stopLoading();
       }
@@ -308,7 +308,7 @@ public class ShaderView extends Composite
    * Panel displaying the source code of a shader or program.
    */
   private static class ShaderPanel extends Composite
-      implements Resources.Listener, AtomStream.Listener {
+      implements Resources.Listener, CommandStream.Listener {
     private final Models models;
     private final Theme theme;
     protected final Type type;
@@ -343,10 +343,10 @@ public class ShaderView extends Composite
         pushButton = null;
       }
 
-      models.atoms.addListener(this);
+      models.commands.addListener(this);
       models.resources.addListener(this);
       addListener(SWT.Dispose, e -> {
-        models.atoms.removeListener(this);
+        models.commands.removeListener(this);
         models.resources.removeListener(this);
       });
 
@@ -412,14 +412,14 @@ public class ShaderView extends Composite
     }
 
     @Override
-    public void onAtomsSelected(AtomIndex path) {
+    public void onCommandsSelected(CommandIndex path) {
       updateShaders();
     }
 
     private void updateShaders() {
-      if (models.resources.isLoaded() && models.atoms.getSelectedAtoms() != null) {
+      if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
         List<Data> newShaders = Lists.newArrayList();
-        AtomIndex range = models.atoms.getSelectedAtoms();
+        CommandIndex range = models.commands.getSelectedCommands();
         boolean skippedAnyShaders = false;
         for (Service.ResourcesByType bundle : models.resources.getResources()) {
           if (bundle.getType() == type.type) {
@@ -667,8 +667,8 @@ public class ShaderView extends Composite
       this.info = info;
     }
 
-    public Path.Any getPath(AtomStream atoms) {
-      return resourceAfter(atoms.getSelectedAtoms(), info.getId());
+    public Path.Any getPath(CommandStream commands) {
+      return resourceAfter(commands.getSelectedCommands(), info.getId());
     }
 
     @Override

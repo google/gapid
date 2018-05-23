@@ -31,10 +31,10 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
-import com.google.gapid.models.AtomStream.Node;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.CommandStream.Node;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Thumbnails;
@@ -80,20 +80,20 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
- * API command (atom) view displaying the commands with their hierarchy grouping in a tree.
+ * API command view displaying the commands with their hierarchy grouping in a tree.
  */
-public class AtomTree extends Composite implements Tab, Capture.Listener, AtomStream.Listener,
+public class CommandTree extends Composite implements Tab, Capture.Listener, CommandStream.Listener,
     ApiContext.Listener, Thumbnails.Listener {
-  protected static final Logger LOG = Logger.getLogger(AtomTree.class.getName());
+  protected static final Logger LOG = Logger.getLogger(CommandTree.class.getName());
 
   private final Client client;
   private final Models models;
-  private final LoadablePanel<CommandTree> loading;
-  protected final CommandTree tree;
+  private final LoadablePanel<Tree> loading;
+  protected final Tree tree;
   private final SelectionHandler<Control> selectionHandler;
   private final SingleInFlight searchController = new SingleInFlight();
 
-  public AtomTree(Composite parent, Client client, Models models, Widgets widgets) {
+  public CommandTree(Composite parent, Client client, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.client = client;
     this.models = models;
@@ -101,19 +101,19 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     setLayout(new GridLayout(1, false));
 
     SearchBox search = new SearchBox(this, false);
-    loading = LoadablePanel.create(this, widgets, p -> new CommandTree(p, models, widgets));
+    loading = LoadablePanel.create(this, widgets, p -> new Tree(p, models, widgets));
     tree = loading.getContents();
 
     search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.capture.addListener(this);
-    models.atoms.addListener(this);
+    models.commands.addListener(this);
     models.contexts.addListener(this);
     models.thumbs.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.atoms.removeListener(this);
+      models.commands.removeListener(this);
       models.contexts.removeListener(this);
       models.thumbs.removeListener(this);
     });
@@ -124,13 +124,13 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
       @Override
       protected void updateModel(Event e) {
         models.analytics.postInteraction(View.Commands, ClientAction.Select);
-        AtomStream.Node node = tree.getSelection();
+        CommandStream.Node node = tree.getSelection();
         if (node != null) {
-          AtomIndex index = node.getIndex();
+          CommandIndex index = node.getIndex();
           if (index == null) {
-            models.atoms.load(node, () -> models.atoms.selectAtoms(node.getIndex(), false));
+            models.commands.load(node, () -> models.commands.selectCommands(node.getIndex(), false));
           } else {
-            models.atoms.selectAtoms(index, false);
+            models.commands.selectCommands(index, false);
           }
         }
       }
@@ -138,7 +138,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     Menu popup = new Menu(tree.getControl());
     Widgets.createMenuItem(popup, "&Edit", SWT.MOD1 + 'E', e -> {
-      AtomStream.Node node = tree.getSelection();
+      CommandStream.Node node = tree.getSelection();
       if (node != null && node.getData() != null && node.getCommand() != null) {
         widgets.editor.showEditPopup(getShell(), lastCommand(node.getData().getCommands()),
             node.getCommand());
@@ -146,7 +146,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     });
     tree.setPopupMenu(popup, node ->
         node.getData() != null && node.getCommand() != null &&
-        AtomEditor.shouldShowEditPopup(node.getCommand()));
+        CommandEditor.shouldShowEditPopup(node.getCommand()));
 
     tree.registerAsCopySource(widgets.copypaste, node -> {
       models.analytics.postInteraction(View.Commands, ClientAction.Copy);
@@ -175,15 +175,15 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
   private void search(String text, boolean regex) {
     models.analytics.postInteraction(View.Commands, ClientAction.Search);
-    AtomStream.Node parent = models.atoms.getData();
+    CommandStream.Node parent = models.commands.getData();
     if (parent != null && !text.isEmpty()) {
-      AtomStream.Node selection = tree.getSelection();
+      CommandStream.Node selection = tree.getSelection();
       if (selection != null) {
         parent = selection;
       }
       searchController.start().listen(
           Futures.transformAsync(search(searchRequest(parent, text, regex)),
-              r -> getTreePath(models.atoms.getData(), Lists.newArrayList(),
+              r -> getTreePath(models.commands.getData(), Lists.newArrayList(),
                   r.getCommandTreeNode().getIndicesList().iterator())),
           new UiCallback<TreePath, TreePath>(tree, LOG) {
         @Override
@@ -201,7 +201,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   private static Service.FindRequest searchRequest(
-      AtomStream.Node parent, String text, boolean regex) {
+      CommandStream.Node parent, String text, boolean regex) {
     return Service.FindRequest.newBuilder()
         .setCommandTreeNode(parent.getPath(Path.CommandTreeNode.newBuilder()))
         .setText(text)
@@ -218,7 +218,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   protected void select(TreePath path) {
-    models.atoms.selectAtoms(((AtomStream.Node)path.getLastSegment()).getIndex(), true);
+    models.commands.selectCommands(((CommandStream.Node)path.getLastSegment()).getIndex(), true);
   }
 
   @Override
@@ -244,12 +244,12 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   @Override
-  public void onAtomsLoaded() {
+  public void onCommandsLoaded() {
     updateTree(false);
   }
 
   @Override
-  public void onAtomsSelected(AtomIndex index) {
+  public void onCommandsSelected(CommandIndex index) {
     selectionHandler.updateSelectionFromModel(() -> getTreePath(index).get(), tree::setSelection);
   }
 
@@ -269,28 +269,28 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   private void updateTree(boolean assumeLoading) {
-    if (assumeLoading || !models.atoms.isLoaded()) {
+    if (assumeLoading || !models.commands.isLoaded()) {
       loading.startLoading();
       tree.setInput(null);
       return;
     }
 
     loading.stopLoading();
-    tree.setInput(models.atoms.getData());
-    if (models.atoms.getSelectedAtoms() != null) {
-      onAtomsSelected(models.atoms.getSelectedAtoms());
+    tree.setInput(models.commands.getData());
+    if (models.commands.getSelectedCommands() != null) {
+      onCommandsSelected(models.commands.getSelectedCommands());
     }
   }
 
-  private ListenableFuture<TreePath> getTreePath(AtomIndex index) {
-    AtomStream.Node root = models.atoms.getData();
+  private ListenableFuture<TreePath> getTreePath(CommandIndex index) {
+    CommandStream.Node root = models.commands.getData();
     ListenableFuture<TreePath> result = getTreePath(root, Lists.newArrayList(root),
         index.getNode().getIndicesList().iterator());
     if (index.isGroup()) {
       // Find the deepest group/node in the path that is not the last child of its parent.
       result = Futures.transform(result, path -> {
         while (path.getSegmentCount() > 0) {
-          AtomStream.Node node = (AtomStream.Node)path.getLastSegment();
+          CommandStream.Node node = (CommandStream.Node)path.getLastSegment();
           if (!node.isLastChild()) {
             break;
           }
@@ -303,8 +303,8 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   private ListenableFuture<TreePath> getTreePath(
-      AtomStream.Node node, List<Object> path, Iterator<Long> indices) {
-    ListenableFuture<AtomStream.Node> load = models.atoms.load(node);
+      CommandStream.Node node, List<Object> path, Iterator<Long> indices) {
+    ListenableFuture<CommandStream.Node> load = models.commands.load(node);
     if (!indices.hasNext()) {
       TreePath result = new TreePath(path.toArray());
       // Ensure the last node in the path is loaded.
@@ -316,22 +316,22 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
   }
 
   private ListenableFuture<TreePath> getTreePathForLoadedNode(
-      AtomStream.Node node, List<Object> path, Iterator<Long> indices) {
+      CommandStream.Node node, List<Object> path, Iterator<Long> indices) {
     int index = indices.next().intValue();
 
-    AtomStream.Node child = node.getChild(index);
+    CommandStream.Node child = node.getChild(index);
     path.add(child);
     return getTreePath(child, path, indices);
   }
 
-  private static class CommandTree extends LinkifiedTreeWithImages<AtomStream.Node, String> {
+  private static class Tree extends LinkifiedTreeWithImages<CommandStream.Node, String> {
     private static final float COLOR_INTENSITY = 0.15f;
 
     protected final Models models;
     private final Widgets widgets;
     private final Map<Long, Color> threadBackgroundColors = Maps.newHashMap();
 
-    public CommandTree(Composite parent, Models models, Widgets widgets) {
+    public Tree(Composite parent, Models models, Widgets widgets) {
       super(parent, SWT.H_SCROLL | SWT.V_SCROLL | SWT.MULTI, widgets);
       this.models = models;
       this.widgets = widgets;
@@ -339,37 +339,37 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
 
     @Override
     protected ContentProvider<Node> createContentProvider() {
-      return new ContentProvider<AtomStream.Node>() {
+      return new ContentProvider<CommandStream.Node>() {
         @Override
-        protected boolean hasChildNodes(AtomStream.Node element) {
+        protected boolean hasChildNodes(CommandStream.Node element) {
           return element.getChildCount() > 0;
         }
 
         @Override
-        protected AtomStream.Node[] getChildNodes(AtomStream.Node node) {
+        protected CommandStream.Node[] getChildNodes(CommandStream.Node node) {
           return node.getChildren();
         }
 
         @Override
-        protected AtomStream.Node getParentNode(AtomStream.Node child) {
+        protected CommandStream.Node getParentNode(CommandStream.Node child) {
           return child.getParent();
         }
 
         @Override
-        protected boolean isLoaded(AtomStream.Node element) {
+        protected boolean isLoaded(CommandStream.Node element) {
           return element.getData() != null;
         }
 
         @Override
-        protected void load(AtomStream.Node node, Runnable callback) {
-          models.atoms.load(node, callback);
+        protected void load(CommandStream.Node node, Runnable callback) {
+          models.commands.load(node, callback);
         }
       };
     }
 
     @Override
     protected <S extends StylingString> S format(
-        AtomStream.Node element, S string, Follower.Prefetcher<String> follower) {
+        CommandStream.Node element, S string, Follower.Prefetcher<String> follower) {
       Service.CommandTreeNode data = element.getData();
       if (data == null) {
         string.append("Loading...", string.structureStyle());
@@ -395,7 +395,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     @Override
-    protected Color getBackgroundColor(AtomStream.Node node) {
+    protected Color getBackgroundColor(CommandStream.Node node) {
       API.Command cmd = node.getCommand();
       if (cmd == null) {
         return null;
@@ -423,19 +423,19 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     @Override
-    protected boolean shouldShowImage(AtomStream.Node node) {
+    protected boolean shouldShowImage(CommandStream.Node node) {
       return models.thumbs.isReady() &&
           node.getData() != null && !node.getData().getGroup().isEmpty();
     }
 
     @Override
-    protected ListenableFuture<ImageData> loadImage(AtomStream.Node node, int size) {
+    protected ListenableFuture<ImageData> loadImage(CommandStream.Node node, int size) {
       return noAlpha(models.thumbs.getThumbnail(
           node.getPath(Path.CommandTreeNode.newBuilder()).build(), size, i -> { /*noop*/ }));
     }
 
     @Override
-    protected void createImagePopupContents(Shell shell, AtomStream.Node node) {
+    protected void createImagePopupContents(Shell shell, CommandStream.Node node) {
       LoadableImageWidget.forImage(
           shell, LoadableImage.newBuilder(widgets.loading)
               .forImageData(loadImage(node, THUMB_SIZE))
@@ -460,7 +460,7 @@ public class AtomTree extends Composite implements Tab, Capture.Listener, AtomSt
     }
 
     @Override
-    protected Follower.Prefetcher<String> prepareFollower(AtomStream.Node node, Runnable cb) {
+    protected Follower.Prefetcher<String> prepareFollower(CommandStream.Node node, Runnable cb) {
       return (node.getData() == null || node.getCommand() == null) ? nullPrefetcher() :
           models.follower.prepare(lastCommand(node.getData().getCommands()), node.getCommand(), cb);
     }

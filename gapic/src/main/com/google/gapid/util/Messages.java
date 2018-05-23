@@ -22,7 +22,7 @@ public interface Messages {
   public static final String LOADING_CAPTURE = "Loading capture...";
   public static final String CAPTURE_LOAD_FAILURE = "Failed to load capture.";
   public static final String NO_FRAMES_IN_CONTEXT = "No frames in selected context.";
-  public static final String SELECT_ATOM = "Select a frame or command.";
+  public static final String SELECT_COMMAND = "Select a frame or command.";
   public static final String SELECT_DRAW_CALL = "Select a draw call.";
   public static final String SELECT_MEMORY =
       "Select a command and observation or a pointer in the command list.";
@@ -37,9 +37,9 @@ public interface Messages {
   public static final String ABOUT_TITLE = "About " + WINDOW_TITLE;
   public static final String ABOUT_COPY = "Copyright © 2017 Google Inc.";
   public static final String GOTO = "Goto...";
-  public static final String GOTO_ATOM = "Goto API Call";
+  public static final String GOTO_COMMAND = "Goto API Call";
   public static final String GOTO_MEMORY = "Goto Memory Location";
-  public static final String ATOM_ID = "API Call Number";
+  public static final String COMMAND_ID = "API Call Number";
   public static final String MEMORY_ADDRESS = "Memory Address";
   public static final String MEMORY_POOL = "Memory Pool";
   public static final String CAPTURE_TRACE = "Capture Graphics Trace";

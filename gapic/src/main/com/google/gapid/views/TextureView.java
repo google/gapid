@@ -37,9 +37,9 @@ import com.google.common.primitives.UnsignedLongs;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.image.Image;
@@ -96,7 +96,7 @@ import java.util.logging.Logger;
  * View that displays the texture resources of the current capture.
  */
 public class TextureView extends Composite
-    implements Tab, Capture.Listener, Resources.Listener, AtomStream.Listener {
+    implements Tab, Capture.Listener, Resources.Listener, CommandStream.Listener {
   protected static final Logger LOG = Logger.getLogger(TextureView.class.getName());
 
   private final Client client;
@@ -112,7 +112,7 @@ public class TextureView extends Composite
     this.client = client;
     this.models = models;
     this.gotoAction = new GotoAction(this, models, widgets.theme,
-        a -> models.atoms.selectAtoms(AtomIndex.forCommand(a), true));
+        a -> models.commands.selectCommands(CommandIndex.forCommand(a), true));
 
     setLayout(new FillLayout(SWT.VERTICAL));
     SashForm splitter = new SashForm(this, SWT.VERTICAL);
@@ -134,11 +134,11 @@ public class TextureView extends Composite
     gotoAction.createToolItem(toolBar);
 
     models.capture.addListener(this);
-    models.atoms.addListener(this);
+    models.commands.addListener(this);
     models.resources.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.atoms.removeListener(this);
+      models.commands.removeListener(this);
       models.resources.removeListener(this);
       gotoAction.dispose();
       imageProvider.reset();
@@ -207,12 +207,12 @@ public class TextureView extends Composite
   }
 
   @Override
-  public void onAtomsSelected(AtomIndex path) {
+  public void onCommandsSelected(CommandIndex path) {
     updateTextures(false);
   }
 
   private void updateTextures(boolean resourcesChanged) {
-    if (models.resources.isLoaded() && models.atoms.getSelectedAtoms() != null) {
+    if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
       imageProvider.reset();
       List<Data> textures = Lists.newArrayList();
       for (Service.ResourcesByType resources : models.resources.getResources()) {
@@ -237,7 +237,7 @@ public class TextureView extends Composite
       }
       updateSelection();
     } else {
-      imagePanel.showMessage(Info, Messages.SELECT_ATOM);
+      imagePanel.showMessage(Info, Messages.SELECT_COMMAND);
       clear();
     }
   }
@@ -280,7 +280,7 @@ public class TextureView extends Composite
           imagePanel.showMessage(Info, error);
         }
       });
-      gotoAction.setAtomIds(data.info.getAccessesList(), data.path.getResourceData().getAfter());
+      gotoAction.setCommandIds(data.info.getAccessesList(), data.path.getResourceData().getAfter());
     }
   }
 
@@ -294,7 +294,7 @@ public class TextureView extends Composite
       return;
     }
 
-    AtomIndex range = models.atoms.getSelectedAtoms();
+    CommandIndex range = models.commands.getSelectedCommands();
     Widgets.Refresher refresher = withAsyncRefresh(textureTable);
     for (Service.Resource info : resources.getResourcesList()) {
       if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
@@ -528,7 +528,7 @@ public class TextureView extends Composite
     private final Consumer<Path.Command> listener;
     private final Menu popupMenu;
     private ToolItem item;
-    private List<Path.Command> atomIds = Collections.emptyList();
+    private List<Path.Command> commandIds = Collections.emptyList();
 
     public GotoAction(
         Composite parent, Models models, Theme theme, Consumer<Path.Command> listener) {
@@ -545,7 +545,7 @@ public class TextureView extends Composite
         popupMenu.setVisible(true);
         loadAllCommands();
       }, "Jump to texture reference");
-      item.setEnabled(!atomIds.isEmpty());
+      item.setEnabled(!commandIds.isEmpty());
       return item;
     }
 
@@ -554,12 +554,12 @@ public class TextureView extends Composite
     }
 
     public void clear() {
-      atomIds = Collections.emptyList();
+      commandIds = Collections.emptyList();
       update(null);
     }
 
-    public void setAtomIds(List<Path.Command> ids, Path.Command selection) {
-      atomIds = ids;
+    public void setCommandIds(List<Path.Command> ids, Path.Command selection) {
+      commandIds = ids;
       update(selection);
     }
 
@@ -570,42 +570,42 @@ public class TextureView extends Composite
 
       // If we just have one additional item, simply go above the max, rather than adding the
       // "one more item not shown" message.
-      int count = (atomIds.size() <= MAX_ITEMS + 1) ? atomIds.size() : MAX_ITEMS;
+      int count = (commandIds.size() <= MAX_ITEMS + 1) ? commandIds.size() : MAX_ITEMS;
       for (int i = 0; i < count; i++) {
-        Path.Command id = atomIds.get(i);
+        Path.Command id = commandIds.get(i);
         MenuItem child = createMenuItem(
-            popupMenu, Formatter.atomIndex(id) + ": Loading...", 0, e -> {
+            popupMenu, Formatter.commandIndex(id) + ": Loading...", 0, e -> {
               models.analytics.postInteraction(View.Textures, ClientAction.GotoReference);
               listener.accept(id);
             });
         child.setData(id);
         if ((Paths.compare(id, selection) <= 0) &&
-            (i == atomIds.size() - 1 || (Paths.compare(atomIds.get(i + 1), selection) > 0))) {
+            (i == commandIds.size() - 1 || (Paths.compare(commandIds.get(i + 1), selection) > 0))) {
           child.setImage(theme.arrow());
         }
       }
 
-      if (count != atomIds.size()) {
+      if (count != commandIds.size()) {
         // TODO: Instead of using a popup menu, create a custom widget that can handle showing
         // all the references.
         MenuItem child = createMenuItem(
-            popupMenu, (atomIds.size() - count) + " more references", 0, e -> { /* do nothing */});
+            popupMenu, (commandIds.size() - count) + " more references", 0, e -> { /* do nothing */});
         child.setEnabled(false);
      }
 
-      item.setEnabled(!atomIds.isEmpty());
+      item.setEnabled(!commandIds.isEmpty());
     }
 
     private void loadAllCommands() {
       for (MenuItem child : popupMenu.getItems()) {
         if (child.getData() instanceof Path.Command) {
           Path.Command path = (Path.Command)child.getData();
-          Rpc.listen(models.atoms.loadCommand(path),
+          Rpc.listen(models.commands.loadCommand(path),
               new UiCallback<API.Command, String>(child, LOG) {
             @Override
             protected String onRpcThread(Rpc.Result<API.Command> result)
                 throws RpcException, ExecutionException {
-              return Formatter.atomIndex(path) + ": " +
+              return Formatter.commandIndex(path) + ": " +
                 Formatter.toString(result.get(), models.constants::getConstants);
             }
 

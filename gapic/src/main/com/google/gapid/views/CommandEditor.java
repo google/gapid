@@ -74,17 +74,17 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
- * Command (atom) editing dialog. Allows the user to change the parameters of a command in the
+ * Command editing dialog. Allows the user to change the parameters of a command in the
  * capture.
  */
-public class AtomEditor {
-  private static final Logger LOG = Logger.getLogger(AtomEditor.class.getName());
+public class CommandEditor {
+  private static final Logger LOG = Logger.getLogger(CommandEditor.class.getName());
 
   private final Client client;
   protected final Models models;
   private final Theme theme;
 
-  public AtomEditor(Client client, Models models, Theme theme) {
+  public CommandEditor(Client client, Models models, Theme theme) {
     this.client = client;
     this.models = models;
     this.theme = theme;
@@ -99,7 +99,7 @@ public class AtomEditor {
     EditDialog dialog = new EditDialog(parent, models, theme, command);
     if (dialog.open() == Window.OK) {
       models.analytics.postInteraction(View.Commands, ClientAction.Edit);
-      Rpc.listen(client.set(Paths.toAny(path), Values.value(dialog.newAtom)),
+      Rpc.listen(client.set(Paths.toAny(path), Values.value(dialog.newCommand)),
           new UiCallback<Path.Any, Path.Any>(parent, LOG) {
         @Override
         protected Path.Any onRpcThread(Rpc.Result<Path.Any> result)
@@ -120,19 +120,19 @@ public class AtomEditor {
    */
   private static class EditDialog extends DialogBase {
     private final Models models;
-    private final API.Command atom;
+    private final API.Command command;
     private final List<Editor<?>> editors = Lists.newArrayList();
-    public API.Command newAtom;
+    public API.Command newCommand;
 
-    public EditDialog(Shell parentShell, Models models, Theme theme, API.Command atom) {
+    public EditDialog(Shell parentShell, Models models, Theme theme, API.Command command) {
       super(parentShell, theme);
       this.models = models;
-      this.atom = atom;
+      this.command = command;
     }
 
     @Override
     public String getTitle() {
-      return "Edit " + atom.getName() + "...";
+      return "Edit " + command.getName() + "...";
     }
 
     @Override
@@ -142,7 +142,7 @@ public class AtomEditor {
       Composite container = Widgets.createComposite(area, new GridLayout(2, false));
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-      for (API.Parameter param : atom.getParametersList()) {
+      for (API.Parameter param : command.getParametersList()) {
         Service.ConstantSet constants = models.constants.getConstants(param.getConstants());
         String typeString = Editor.getTypeString(param);
         typeString = typeString.isEmpty() ? "" : " (" + typeString + ")";
@@ -157,11 +157,11 @@ public class AtomEditor {
 
     @Override
     protected void okPressed() {
-      API.Command.Builder builder = atom.toBuilder();
-      for (int i = atom.getParametersCount() - 1; i >= 0; i--) {
+      API.Command.Builder builder = command.toBuilder();
+      for (int i = command.getParametersCount() - 1; i >= 0; i--) {
         editors.get(i).update(builder.getParametersBuilder(i).getValueBuilder());
       }
-      newAtom = builder.build();
+      newCommand = builder.build();
 
       super.okPressed();
     }

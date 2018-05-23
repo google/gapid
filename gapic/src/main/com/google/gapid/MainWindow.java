@@ -18,7 +18,7 @@ package com.google.gapid;
 import static com.google.gapid.views.AboutDialog.showAbout;
 import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.AboutDialog.showLogDir;
-import static com.google.gapid.views.GotoAtom.showGotoAtomDialog;
+import static com.google.gapid.views.GotoCommand.showGotoCommandDialog;
 import static com.google.gapid.views.GotoMemory.showGotoMemoryDialog;
 import static com.google.gapid.views.Licenses.showLicensesDialog;
 import static com.google.gapid.views.SettingsDialog.showSettingsDialog;
@@ -32,9 +32,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -44,7 +44,7 @@ import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.UpdateWatcher;
-import com.google.gapid.views.AtomTree;
+import com.google.gapid.views.CommandTree;
 import com.google.gapid.views.ContextSelector;
 import com.google.gapid.views.FramebufferView;
 import com.google.gapid.views.GeometryView;
@@ -93,7 +93,7 @@ import java.util.function.Function;
 public class MainWindow extends ApplicationWindow {
   protected final Client client;
   protected final ModelsAndWidgets maw;
-  protected Action gotoAtom, gotoMemory;
+  protected Action gotoCommand, gotoMemory;
   protected Action viewScrubber, viewLeft, viewRight;
   protected final Map<MainTab.Type, Action> viewTabs = Maps.newHashMap();
   protected final Set<MainTab.Type> hiddenTabs = Sets.newHashSet();
@@ -158,19 +158,19 @@ public class MainWindow extends ApplicationWindow {
     models().capture.addListener(new Capture.Listener() {
       @Override
       public void onCaptureLoadingStart(boolean maintainState) {
-        gotoAtom.setEnabled(false);
+        gotoCommand.setEnabled(false);
         gotoMemory.setEnabled(false);
       }
     });
-    models().atoms.addListener(new AtomStream.Listener() {
+    models().commands.addListener(new CommandStream.Listener() {
       @Override
-      public void onAtomsLoaded() {
-        gotoAtom.setEnabled(models().atoms.isLoaded());
-        gotoMemory.setEnabled(models().atoms.getSelectedAtoms() != null);
+      public void onCommandsLoaded() {
+        gotoCommand.setEnabled(models().commands.isLoaded());
+        gotoMemory.setEnabled(models().commands.getSelectedCommands() != null);
       }
 
       @Override
-      public void onAtomsSelected(AtomIndex selection) {
+      public void onCommandsSelected(CommandIndex selection) {
         gotoMemory.setEnabled(selection != null);
       }
     });
@@ -356,13 +356,13 @@ public class MainWindow extends ApplicationWindow {
 
   private MenuManager createGotoMenu() {
     MenuManager manager = new MenuManager("&Goto");
-    gotoAtom = MenuItems.GotoAtom.create(() -> showGotoAtomDialog(getShell(), models()));
+    gotoCommand = MenuItems.GotoCommand.create(() -> showGotoCommandDialog(getShell(), models()));
     gotoMemory = MenuItems.GotoMemory.create(() -> showGotoMemoryDialog(getShell(), models()));
 
-    manager.add(gotoAtom);
+    manager.add(gotoCommand);
     manager.add(gotoMemory);
 
-    gotoAtom.setEnabled(false);
+    gotoCommand.setEnabled(false);
     gotoMemory.setEnabled(false);
 
     return manager;
@@ -562,7 +562,7 @@ public class MainWindow extends ApplicationWindow {
      * Information about the available tabs.
      */
     public static enum Type {
-      ApiCalls(Location.Left, View.Commands, "Commands", AtomTree::new),
+      ApiCalls(Location.Left, View.Commands, "Commands", CommandTree::new),
 
       Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", FramebufferView::new),
       Textures(Location.Center, View.Textures, "Textures", TextureView::new),
@@ -619,7 +619,7 @@ public class MainWindow extends ApplicationWindow {
     EditCopy("&Copy", 'C'),
     EditSettings("&Preferences", ','),
 
-    GotoAtom("&Command", 'G'),
+    GotoCommand("&Command", 'G'),
     GotoMemory("&Memory Location", 'M'),
 
     ViewThumbnails("Show Filmstrip"),

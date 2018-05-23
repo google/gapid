@@ -19,7 +19,7 @@ import com.google.common.collect.Lists;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.image.Images;
 import com.google.gapid.models.ApiContext.FilteringContext;
-import com.google.gapid.models.AtomStream.AtomIndex;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
@@ -82,15 +82,15 @@ public class Paths {
     return Path.State.newBuilder().setAfter(command).build();
   }
 
-  public static Path.Any stateTree(AtomIndex atom, FilteringContext context) {
-    if (atom == null) {
+  public static Path.Any stateTree(CommandIndex command, FilteringContext context) {
+    if (command == null) {
       return null;
     }
     return Path.Any.newBuilder()
         .setStateTree(
             context.stateTree(
                 Path.StateTree.newBuilder()
-                    .setState(stateAfter(atom.getCommand()))
+                    .setState(stateAfter(command.getCommand()))
                     .setArrayGroupSize(2000))).build();
   }
 
@@ -108,7 +108,7 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any memoryAfter(AtomIndex index, int pool, Service.MemoryRange range) {
+  public static Path.Any memoryAfter(CommandIndex index, int pool, Service.MemoryRange range) {
     if (index == null || range == null) {
       return null;
     }
@@ -116,7 +116,7 @@ public class Paths {
         .setPool(pool).setAddress(range.getBase()).setSize(range.getSize())).build();
   }
 
-  public static Path.Any observationsAfter(AtomIndex index, int pool) {
+  public static Path.Any observationsAfter(CommandIndex index, int pool) {
     if (index == null) {
       return null;
     }
@@ -126,12 +126,12 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any resourceAfter(AtomIndex atom, Path.ID id) {
-    if (atom == null || id == null) {
+  public static Path.Any resourceAfter(CommandIndex command, Path.ID id) {
+    if (command == null || id == null) {
       return null;
     }
     return Path.Any.newBuilder()
-        .setResourceData(Path.ResourceData.newBuilder().setAfter(atom.getCommand()).setId(id))
+        .setResourceData(Path.ResourceData.newBuilder().setAfter(command.getCommand()).setId(id))
         .build();
   }
 
@@ -139,38 +139,38 @@ public class Paths {
       .setExcludeData(true)
       .build();
 
-  public static Path.Any meshAfter(AtomIndex atom, Path.MeshOptions options) {
+  public static Path.Any meshAfter(CommandIndex command, Path.MeshOptions options) {
     return Path.Any.newBuilder()
         .setMesh(Path.Mesh.newBuilder()
-            .setCommandTreeNode(atom.getNode())
+            .setCommandTreeNode(command.getNode())
             .setOptions(options))
         .build();
   }
 
   public static Path.Any meshAfter(
-      AtomIndex atom, Path.MeshOptions options, Vertex.BufferFormat format) {
+      CommandIndex command, Path.MeshOptions options, Vertex.BufferFormat format) {
     return Path.Any.newBuilder()
         .setAs(Path.As.newBuilder()
             .setMesh(Path.Mesh.newBuilder()
-                .setCommandTreeNode(atom.getNode())
+                .setCommandTreeNode(command.getNode())
                 .setOptions(options))
             .setVertexBufferFormat(format))
         .build();
   }
 
-  public static Path.Any atomField(Path.Command atom, String field) {
-    if (atom == null || field == null) {
+  public static Path.Any commandField(Path.Command command, String field) {
+    if (command == null || field == null) {
       return null;
     }
     return Path.Any.newBuilder()
-        .setParameter(Path.Parameter.newBuilder().setCommand(atom).setName(field)).build();
+        .setParameter(Path.Parameter.newBuilder().setCommand(command).setName(field)).build();
   }
 
-  public static Path.Any atomResult(Path.Command atom) {
-    if (atom == null) {
+  public static Path.Any commandResult(Path.Command command) {
+    if (command == null) {
       return null;
     }
-    return Path.Any.newBuilder().setResult(Path.Result.newBuilder().setCommand(atom)).build();
+    return Path.Any.newBuilder().setResult(Path.Result.newBuilder().setCommand(command)).build();
   }
 
   public static Path.Any imageInfo(Path.ImageInfo image) {
@@ -1410,7 +1410,7 @@ public class Paths {
     public StringBuilder visit(Path.Command path, StringBuilder sb) {
       return visit(path.getCapture(), sb)
           .append(".command[")
-          .append(Formatter.atomIndex(path))
+          .append(Formatter.commandIndex(path))
           .append("]");
     }
 

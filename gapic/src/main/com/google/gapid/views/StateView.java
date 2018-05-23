@@ -28,9 +28,9 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiState;
 import com.google.gapid.models.ApiState.Node;
-import com.google.gapid.models.AtomStream;
-import com.google.gapid.models.AtomStream.AtomIndex;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
@@ -70,7 +70,7 @@ import java.util.logging.Logger;
  * View that displays the API state as a tree.
  */
 public class StateView extends Composite
-    implements Tab, Capture.Listener, AtomStream.Listener, ApiState.Listener {
+    implements Tab, Capture.Listener, CommandStream.Listener, ApiState.Listener {
   private static final Logger LOG = Logger.getLogger(StateView.class.getName());
 
   private final Models models;
@@ -90,11 +90,11 @@ public class StateView extends Composite
     tree = loading.getContents();
 
     models.capture.addListener(this);
-    models.atoms.addListener(this);
+    models.commands.addListener(this);
     models.state.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.atoms.removeListener(this);
+      models.commands.removeListener(this);
       models.state.removeListener(this);
     });
 
@@ -161,9 +161,9 @@ public class StateView extends Composite
   @Override
   public void reinitialize() {
     onCaptureLoadingStart(false);
-    if (models.capture.isLoaded() && models.atoms.isLoaded()) {
-      onAtomsLoaded();
-      if (models.atoms.getSelectedAtoms() != null) {
+    if (models.capture.isLoaded() && models.commands.isLoaded()) {
+      onCommandsLoaded();
+      if (models.commands.getSelectedCommands() != null) {
         onStateLoadingStart();
         if (models.state.isLoaded()) {
           onStateLoaded(null);
@@ -185,18 +185,18 @@ public class StateView extends Composite
   }
 
   @Override
-  public void onAtomsLoaded() {
-    if (!models.atoms.isLoaded()) {
+  public void onCommandsLoaded() {
+    if (!models.commands.isLoaded()) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
-    } else if (models.atoms.getSelectedAtoms() == null) {
-      loading.showMessage(Info, Messages.SELECT_ATOM);
+    } else if (models.commands.getSelectedCommands() == null) {
+      loading.showMessage(Info, Messages.SELECT_COMMAND);
     }
   }
 
   @Override
-  public void onAtomsSelected(AtomIndex path) {
+  public void onCommandsSelected(CommandIndex path) {
     if (path == null) {
-      loading.showMessage(Info, Messages.SELECT_ATOM);
+      loading.showMessage(Info, Messages.SELECT_COMMAND);
     }
   }
 
