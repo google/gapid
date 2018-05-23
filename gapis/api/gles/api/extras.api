@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// StaticContextState is an atom extra used to describe a context's non-changing state.
+// StaticContextState is an command extra used to describe a context's non-changing state.
 @internal
 class StaticContextState {
   Constants Constants
@@ -22,7 +22,7 @@ class StaticContextState {
 @post_fence
 extern ref!StaticContextState GetEGLStaticContextState(EGLDisplay display, EGLContext context)
 
-// DynamicContextState is an atom extra used to describe a context's potentially changing state.
+// DynamicContextState is an command extra used to describe a context's potentially changing state.
 @internal
 class DynamicContextState {
   GLsizei BackbufferWidth
