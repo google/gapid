@@ -73,7 +73,7 @@ cmd VkResult vkEnumeratePhysicalDevices(
     }
     pPhysicalDeviceCount[0] = count
     props := new!PhyDevProperties()
-    fetchPhysicalDeviceProperties(instance, pPhysicalDevices, count, props)
+    fetchPhysicalDeviceProperties(instance, devices, props)
     for i in (0 .. count) {
       if (PhysicalDevices[devices[i]] == null) {
         object := new!PhysicalDeviceObject()

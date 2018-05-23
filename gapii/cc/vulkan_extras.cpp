@@ -456,10 +456,9 @@ void VulkanSpy::popRenderPassMarker(CallObserver*) {}
 void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
 
 void VulkanSpy::fetchPhysicalDeviceProperties(
-    CallObserver* observer, VkInstance instance, VkPhysicalDevice* devs,
-    uint32_t count, gapil::Ref<PhyDevProperties> props) {
-  for (uint32_t i = 0; i < count; i++) {
-    VkPhysicalDevice dev = devs[i];
+    CallObserver* observer, VkInstance instance, gapil::Slice<VkPhysicalDevice> devs,
+    gapil::Ref<PhyDevProperties> props) {
+  for (VkPhysicalDevice dev : devs) {
     props->mPhyDevToProperties[dev] = VkPhysicalDeviceProperties(arena());
     mImports.mVkInstanceFunctions[instance].vkGetPhysicalDeviceProperties(
         dev, &props->mPhyDevToProperties[dev]);
