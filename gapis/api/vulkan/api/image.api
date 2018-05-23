@@ -115,6 +115,11 @@
   VkSparseMemoryBindFlags Flags
 }
 
+@internal class ImageMemoryRequirements {
+  VkMemoryRequirements MemoryRequirements
+  map!(u32, VkSparseImageMemoryRequirements) AspectBitsToSparseMemoryRequirements
+}
+
 @threadSafety("system")
 @indirect("VkDevice")
 @override
@@ -167,6 +172,8 @@ cmd VkResult vkCreateImage(
         VK_IMAGE_ASPECT_COLOR_BIT
     })
 
+  hasSparseBit := (as!u32(info.flags) & as!u32(VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) != 0
+
   // Handle pNext
   if info.pNext != null {
     numPNext := numberOfPNext(info.pNext)
@@ -210,6 +217,17 @@ cmd VkResult vkCreateImage(
       }
     }
   }
+
+  memRequirements := fetchImageMemoryRequirements(device, handle, hasSparseBit)
+  // If the vkCreateImage is inserted by GAPID (e.g. the staging image for
+  // reading framebuffer), NO memory requirements will be returned.
+  if memRequirements != null {
+    object.MemoryRequirements = memRequirements.MemoryRequirements
+    if (hasSparseBit) {
+      object.SparseMemoryRequirements = memRequirements.AspectBitsToSparseMemoryRequirements
+    }
+  }
+
   Images[handle] = object
 
   return ?

@@ -321,10 +321,38 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndProperties); ok {
-			return MakePhysicalDevicesAndPropertiesʳ().Set(p)
+			return MakePhysicalDevicesAndPropertiesʳ().Set(p).Clone()
 		}
 	}
 	return NilPhysicalDevicesAndPropertiesʳ
+}
+
+func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSparseBit bool) ImageMemoryRequirementsʳ {
+	// Only fetch memory requirements for application commands, skip any commands
+	// inserted by GAPID
+	if e.cmdID == api.CmdNoID {
+		return NilImageMemoryRequirementsʳ
+	}
+	for _, ee := range e.cmd.Extras().All() {
+		if r, ok := ee.(ImageMemoryRequirements); ok {
+			return MakeImageMemoryRequirementsʳ().Set(r).Clone()
+		}
+	}
+	return NilImageMemoryRequirementsʳ
+}
+
+func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMemoryRequirements {
+	// Only fetch memory requirements for application commands, skip any commands
+	// inserted by GAPID
+	if e.cmdID == api.CmdNoID {
+		return MakeVkMemoryRequirements()
+	}
+	for _, ee := range e.cmd.Extras().All() {
+		if r, ok := ee.(VkMemoryRequirements); ok {
+			return r.Clone()
+		}
+	}
+	return MakeVkMemoryRequirements()
 }
 
 func (e externs) vkErrInvalidHandle(handleType string, handle uint64) {

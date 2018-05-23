@@ -112,6 +112,11 @@ cmd VkResult vkCreateBuffer(
     VulkanHandle:  buffer,
     Info:          bufferInfo,
   )
+
+  // If the vkCreateBuffer is inserted by GAPID (e.g. the staging buffer for
+  // reading framebuffer), an empty memory requirement struct will be returned.
+  bufferObject.MemoryRequirements = fetchBufferMemoryRequirements(device, buffer)
+
   Buffers[buffer] = bufferObject
 
   return ?
