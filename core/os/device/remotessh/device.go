@@ -26,11 +26,11 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/gapid/core/app/layout"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/os/device/bind"
 )
 
 // Device extends the bind.Device interface with capabilities specific to
@@ -44,7 +44,7 @@ type Device interface {
 	// path, as well as a function to call to clean it up.
 	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
 	// WriteFile writes the given file into the given location on the remote device
-	WriteFile(ctx context.Context, contents io.Reader, mode string, destPath string) error
+	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
 	// ForwardPort forwards the remote port. It automatically selects an open
 	// local port.
 	ForwardPort(ctx context.Context, remoteport int) (int, error)
@@ -69,7 +69,7 @@ func Devices(ctx context.Context, configuration io.Reader) ([]bind.Device, error
 	if err != nil {
 		return nil, err
 	}
-	
+
 	devices := make([]bind.Device, 0, len(configurations))
 
 	for _, cfg := range configurations {
@@ -122,7 +122,7 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	if len(auths) == 0 {
 		return nil, fmt.Errorf("No valid authentication method for SSH connection %s", c.Name)
 	}
-	
+
 	hosts, err := knownhosts.New(c.KnownHosts)
 	if err != nil {
 		return nil, fmt.Errorf("Could not read known hosts %v", err)
@@ -133,7 +133,7 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		Auth:            auths,
 		HostKeyCallback: hosts,
 	}
-	
+
 	connection, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), sshConfig)
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	}
 
 	kind := device.UnknownOS
-	
+
 	// Try to get the OS string for Mac/Linux
 	if osName, err := b.Shell("uname", "-a").Call(ctx); err == nil {
 		if strings.Contains(osName, "Darwin") {
@@ -161,7 +161,7 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 			kind = device.Linux
 		}
 	}
-	
+
 	if kind == device.UnknownOS {
 		// Try to get the OS string for Windows
 		if osName, err := b.Shell("ver").Call(ctx); err == nil {

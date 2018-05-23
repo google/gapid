@@ -24,9 +24,10 @@ go_library(
     importpath = "github.com/google/gapid/core/os/device/remotessh",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/os/device/bind:go_default_library",
         "//core/log:go_default_library",
+        "//core/event/task:go_default_library",
         "//core/os/device:go_default_library",
+        "//core/os/device/bind:go_default_library",
         "//core/os/shell:go_default_library",
         "//core/app/crash:go_default_library",
         "//core/app/layout:go_default_library",

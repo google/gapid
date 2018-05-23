@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
@@ -137,16 +138,14 @@ func (b binding) createPosixTempDirectory(ctx context.Context) (string, func(con
 }
 
 func (b binding) createWindowsTempDirectory(ctx context.Context) (string, func(ctx context.Context), error) {
-	return "", nil, fmt.Errorf("Not yet supported, windows remote targets")
+	return "", nil, fmt.Errorf("Windows remote targets are not yet supported.")
 }
 
 // MakeTempDir creates a temporary directory on the remote machine. It returns the
 // full path, and a function that can be called to clean up the directory.
 func (b binding) MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error) {
 	switch b.os {
-	case device.Linux:
-		fallthrough
-	case device.OSX:
+	case device.Linux, device.OSX:
 		return b.createPosixTempDirectory(ctx)
 	case device.Windows:
 		return b.createWindowsTempDirectory(ctx)
@@ -157,8 +156,9 @@ func (b binding) MakeTempDir(ctx context.Context) (string, func(ctx context.Cont
 
 // WriteFile moves the contents of io.Reader into the given file on the remote machine.
 // The file is given the mode as described by the unix filemode string.
-func (b binding) WriteFile(ctx context.Context, contents io.Reader, mode string, destPath string) error {
-	_, err := b.Shell("cat", ">", destPath, "; chmod ", mode, " ", destPath).Read(contents).Call(ctx)
+func (b binding) WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error {
+	perm := fmt.Sprintf("%4o", mode.Perm())
+	_, err := b.Shell("cat", ">", destPath, "; chmod ", perm, " ", destPath).Read(contents).Call(ctx)
 	return err
 }
 
@@ -173,9 +173,8 @@ func (b binding) PushFile(ctx context.Context, source, dest string) error {
 	if err != nil {
 		return err
 	}
-	perm := fmt.Sprintf("%4o", permission.Mode().Perm())
 
-	return b.WriteFile(ctx, infile, perm, dest)
+	return b.WriteFile(ctx, infile, permission.Mode(), dest)
 }
 
 // doTunnel tunnels a single connection through the SSH connection.
@@ -216,13 +215,19 @@ func (b binding) ForwardPort(ctx context.Context, remotePort int) (int, error) {
 		return 0, err
 	}
 	crash.Go(func() {
+		<-task.ShouldStop(ctx)
+		listener.Close()
+	})
+	crash.Go(func() {
 		defer listener.Close()
 		for {
 			local, err := listener.Accept()
 			if err != nil {
 				return
 			}
-			b.doTunnel(ctx, local, remotePort)
+			if err = b.doTunnel(ctx, local, remotePort); err != nil {
+				break
+			}
 		}
 	})
 

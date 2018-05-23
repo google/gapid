@@ -90,8 +90,8 @@ func withLibraryPlatformSuffix(lib string, os device.OSKind) string {
 	}
 }
 
-// GetLibraryName returns the filename of the given Library.
-func GetLibraryName(lib LibraryType, abi *device.ABI) string {
+// LibraryName returns the filename of the given Library.
+func LibraryName(lib LibraryType, abi *device.ABI) string {
 	return withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)
 }
 
