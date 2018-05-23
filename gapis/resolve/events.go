@@ -75,6 +75,8 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 			return nil
 		}
 
+		// Pending is only used for FirstInFrame and so it's safe to
+		// add them all at the start of the command.
 		for _, kind := range pending {
 			events = append(events, &service.Event{
 				Kind:    kind,
@@ -83,13 +85,49 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		}
 		pending = nil
 
+		// For a given command, if the command has a FirstInFrame
+		// event, we want that to come before all other events for that
+		// command, and likewise for a LastInFrame event, it should be
+		// after all other events for that command (except
+		// FramebufferObservation as described below).
+		// Since extension.EventProvider's can provide any type of
+		// event, we split them up into FirstInFrame, LastInFrame, and
+		// rest, and then insert them into the event list in the right
+		// spot to ensure the ordering is maintained.
+		var epFirstInFrame, epNormal, epLastInFrame []*service.Event
+		for _, ep := range eps {
+			for _, event := range ep(ctx, id, cmd, s) {
+				switch event.Kind {
+				case service.EventKind_FirstInFrame:
+					epFirstInFrame = append(epFirstInFrame, event)
+				case service.EventKind_LastInFrame:
+					epLastInFrame = append(epFirstInFrame, event)
+				default:
+					epNormal = append(epNormal, event)
+				}
+			}
+		}
+
 		f := cmd.CmdFlags(ctx, id, s)
+		// Add all first in frame events
+		if p.FirstInFrame && (f.IsStartOfFrame() || id == 0) {
+			events = append(events, &service.Event{
+				Kind:    service.EventKind_FirstInFrame,
+				Command: p.Capture.Command(uint64(id)),
+			})
+		}
+		events = append(events, epFirstInFrame...)
+		if p.FirstInFrame && f.IsEndOfFrame() {
+			pending = append(pending, service.EventKind_FirstInFrame)
+		}
 		if p.Clears && f.IsClear() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_Clear,
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
+		// Add all non-special event types
+		events = append(events, epNormal...)
 		if p.DrawCalls && f.IsDrawCall() {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_DrawCall,
@@ -107,27 +145,6 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Kind:    service.EventKind_UserMarker,
 				Command: p.Capture.Command(uint64(id)),
 			})
-		}
-		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {
-			events = append(events, &service.Event{
-				Kind:    service.EventKind_LastInFrame,
-				Command: p.Capture.Command(uint64(lastCmd)),
-			})
-		}
-		if p.LastInFrame && f.IsEndOfFrame() && id > 0 {
-			events = append(events, &service.Event{
-				Kind:    service.EventKind_LastInFrame,
-				Command: p.Capture.Command(uint64(id)),
-			})
-		}
-		if p.FirstInFrame && (f.IsStartOfFrame() || id == 0) {
-			events = append(events, &service.Event{
-				Kind:    service.EventKind_FirstInFrame,
-				Command: p.Capture.Command(uint64(id)),
-			})
-		}
-		if p.FirstInFrame && f.IsEndOfFrame() {
-			pending = append(pending, service.EventKind_FirstInFrame)
 		}
 		if p.PushUserMarkers && f.IsPushUserMarker() {
 			events = append(events, &service.Event{
@@ -147,6 +164,20 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
+		// Add LastInFrame events after other events for a given command
+		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {
+			events = append(events, &service.Event{
+				Kind:    service.EventKind_LastInFrame,
+				Command: p.Capture.Command(uint64(lastCmd)),
+			})
+		}
+		if p.LastInFrame && f.IsEndOfFrame() && id > 0 {
+			events = append(events, &service.Event{
+				Kind:    service.EventKind_LastInFrame,
+				Command: p.Capture.Command(uint64(id)),
+			})
+		}
+		events = append(events, epLastInFrame...)
 		if p.FramebufferObservations {
 			// NOTE: gapit SxS video depends on FBO events coming after
 			// all other event types.
@@ -158,10 +189,6 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 					})
 				}
 			}
-		}
-
-		for _, ep := range eps {
-			events = append(events, ep(ctx, id, cmd, s)...)
 		}
 
 		lastCmd = id

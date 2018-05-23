@@ -783,6 +783,9 @@ enum EventKind {
     Unknown = 0;
     DrawCall = 1;
     TransformFeedback = 2;
+    // All command events should occur between FirstInFrame and LastInFrame
+    // (except FramebufferObservation, which comes last as gapit sxs_video
+    // depends on this).
     FirstInFrame = 3;
     LastInFrame = 4;
     Clear = 5;
