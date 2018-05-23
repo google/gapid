@@ -164,16 +164,14 @@ func monitorAndroidDevices(ctx context.Context, r *bind.Registry, scanDone func(
 
 func getRemoteSSHDevices(ctx context.Context, r *bind.Registry, f io.Reader, scanDone func()) {
 	// Populate the registry with all the existing devices.
-	func() {
-		defer scanDone() // Signal that we have a primed registry.
+	defer scanDone() // Signal that we have a primed registry.
 
-		if devs, err := remotessh.Devices(ctx, f); err == nil {
-			for _, d := range devs {
-				r.AddDevice(ctx, d)
-				r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
-			}
+	if devs, err := remotessh.Devices(ctx, f); err == nil {
+		for _, d := range devs {
+			r.AddDevice(ctx, d)
+			r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
 		}
-	}()
+	}
 }
 
 func loadStrings(ctx context.Context) []*stringtable.StringTable {
