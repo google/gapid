@@ -44,3 +44,9 @@ sub T max!T(T a, T b) {
     case false: b
   }
 }
+
+// A dummy class used to force the templates to generate types used by
+// hand-written code.
+class ForceGenerate {
+  u32* dummy
+}

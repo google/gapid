@@ -12,23 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// DEPRECATED - This synthetic is transformed into a ContextState extra
-// and appended on the preceeding eglCreateContext or glMakeCurrent atom.
-@synthetic @deprecated
-cmd void contextInfo(u32     constant_count,
-                     GLenum* constant_names,
-                     u32*    constant_offsets,
-                     u32*    constant_sizes,
-                     u8*     constant_data,
-                     GLsizei backbuffer_width,
-                     GLsizei backbuffer_height,
-                     GLenum  backbuffer_color_fmt,
-                     GLenum  backbuffer_depth_fmt,
-                     GLenum  backbuffer_stencil_fmt,
-                     bool    reset_viewport_scissor,
-                     bool    preserve_buffers_on_swap) {
-}
-
 // replayCreateRenderer constructs a GLES renderer for replay without making it active.
 @synthetic
 cmd void replayCreateRenderer(u32 rendererID) { }
