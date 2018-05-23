@@ -128,9 +128,8 @@ var osToDir = map[device.OSKind]string{
 func (l pkgLayout) Gapir(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	if hostOS(ctx) == abi.OS {
 		return l.root.Join(withExecutablePlatformSuffix("gapir", hostOS(ctx))), nil
-	} else {
-		return l.root.Join(osToDir[abi.OS], withExecutablePlatformSuffix("gapir", abi.OS)), nil
 	}
+	return l.root.Join(osToDir[abi.OS], withExecutablePlatformSuffix("gapir", abi.OS)), nil
 }
 
 func (l pkgLayout) Gapis(ctx context.Context) (file.Path, error) {
@@ -144,9 +143,8 @@ func (l pkgLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, er
 func (l pkgLayout) Library(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
 	if hostOS(ctx) == abi.OS {
 		return l.root.Join("lib", withLibraryPlatformSuffix(libTypeToName[lib], hostOS(ctx))), nil
-	} else {
-		return l.root.Join(osToDir[abi.OS], "lib", withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)), nil
 	}
+	return l.root.Join(osToDir[abi.OS], "lib", withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)), nil
 }
 
 func (l pkgLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
@@ -159,10 +157,9 @@ func (l pkgLayout) GoArgs(ctx context.Context) []string {
 
 func (l pkgLayout) DeviceInfo(ctx context.Context, os device.OSKind) (file.Path, error) {
 	if hostOS(ctx) == os {
-		return l.root.Join(withExecutablePlatformSuffix("device_info", os)), nil
-	} else {
-		return l.root.Join(osToDir[os], withExecutablePlatformSuffix("device_info", os)), nil
+		return l.root.Join(withExecutablePlatformSuffix("device-info", os)), nil
 	}
+	return l.root.Join(osToDir[os], withExecutablePlatformSuffix("device-info", os)), nil
 }
 
 // NewPkgLayout returns a FileLayout rooted at the given directory with the standard package layout.
@@ -277,7 +274,7 @@ func (l *runfilesLayout) GoArgs(ctx context.Context) []string {
 
 func (l *runfilesLayout) DeviceInfo(ctx context.Context, os device.OSKind) (file.Path, error) {
 	if hostOS(ctx) == os {
-		return l.find("core/os/device/deviceinfo/exe/" + withExecutablePlatformSuffix("device_info", os))
+		return l.find("core/os/device/deviceinfo/exe/" + withExecutablePlatformSuffix("device-info", os))
 	}
 	return file.Path{}, ErrCannotFindPackageFiles
 }
@@ -366,9 +363,8 @@ func (l *ZipLayout) Gapit(ctx context.Context) (*zip.File, error) {
 func (l *ZipLayout) Gapir(ctx context.Context, abi *device.ABI) (*zip.File, error) {
 	if l.os == abi.OS {
 		return l.file(withExecutablePlatformSuffix("gapir", l.os))
-	} else {
-		return l.file(osToDir[abi.OS] + "/" + withExecutablePlatformSuffix("gapir", abi.OS))
 	}
+	return l.file(osToDir[abi.OS] + "/" + withExecutablePlatformSuffix("gapir", abi.OS))
 }
 
 // Gapis returns the path to the gapis binary in this layout.
@@ -385,9 +381,8 @@ func (l *ZipLayout) GapidApk(ctx context.Context, abi *device.ABI) (*zip.File, e
 func (l *ZipLayout) Library(ctx context.Context, lib LibraryType, abi *device.ABI) (*zip.File, error) {
 	if l.os == abi.OS {
 		return l.file("lib/" + withLibraryPlatformSuffix(libTypeToName[lib], l.os))
-	} else {
-		return l.file(osToDir[abi.OS] + "lib/" + withLibraryPlatformSuffix(libTypeToName[lib], abi.OS))
 	}
+	return l.file(osToDir[abi.OS] + "lib/" + withLibraryPlatformSuffix(libTypeToName[lib], abi.OS))
 }
 
 // Json returns the path to the Vulkan layer JSON definition for the given library.
@@ -398,8 +393,7 @@ func (l *ZipLayout) Json(ctx context.Context, lib LibraryType) (*zip.File, error
 // DeviceInfo returns the device info executable for the given ABI.
 func (l *ZipLayout) DeviceInfo(ctx context.Context, os device.OSKind) (*zip.File, error) {
 	if l.os == os {
-		return l.file(withExecutablePlatformSuffix("device_info", os))
-	} else {
-		return l.file(osToDir[os] + "/" + withExecutablePlatformSuffix("device_info", os))
+		return l.file(withExecutablePlatformSuffix("device-info", os))
 	}
+	return l.file(osToDir[os] + "/" + withExecutablePlatformSuffix("device-info", os))
 }

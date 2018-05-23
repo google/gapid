@@ -34,7 +34,8 @@ import (
 // deviceReplaySetup handles getting files from/to the right location
 // for a particular Device
 type deviceReplaySetup interface {
-	// MakeTempDir returns a path to a created temporary
+	// MakeTempDir returns a path to a created temporary. The returned function
+	// can be called to clean up the temporary directory.
 	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
 
 	// InitializeLibrary takes a library, and if necessary copies it
@@ -172,11 +173,16 @@ func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell
 
 	lib, json, err := findLibraryAndJSON(ctx, setup, tempdir, layout.LibVirtualSwapChain)
 	if err != nil {
-		return func(ctx context.Context) {}, err
+		cleanup(ctx)
+		return nil, err
 	}
 
 	err = setupJSON(ctx, lib, json, setup, tempdir, env)
-	return cleanup, err
+	if err != nil {
+		cleanup(ctx)
+		return nil, err
+	}
+	return cleanup, nil
 }
 
 func findLibraryAndJSON(ctx context.Context, rs deviceReplaySetup, tempdir string, libType layout.LibraryType) (string, file.Path, error) {

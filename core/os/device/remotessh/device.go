@@ -29,7 +29,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
-
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 )
@@ -70,6 +69,7 @@ func Devices(ctx context.Context, configuration io.Reader) ([]bind.Device, error
 	if err != nil {
 		return nil, err
 	}
+	
 	devices := make([]bind.Device, 0, len(configurations))
 
 	for _, cfg := range configurations {
@@ -122,7 +122,7 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	if len(auths) == 0 {
 		return nil, fmt.Errorf("No valid authentication method for SSH connection %s", c.Name)
 	}
-
+	
 	hosts, err := knownhosts.New(c.KnownHosts)
 	if err != nil {
 		return nil, fmt.Errorf("Could not read known hosts %v", err)
@@ -133,7 +133,7 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		Auth:            auths,
 		HostKeyCallback: hosts,
 	}
-
+	
 	connection, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), sshConfig)
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	}
 
 	kind := device.UnknownOS
-
+	
 	// Try to get the OS string for Mac/Linux
 	if osName, err := b.Shell("uname", "-a").Call(ctx); err == nil {
 		if strings.Contains(osName, "Darwin") {
@@ -161,7 +161,7 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 			kind = device.Linux
 		}
 	}
-
+	
 	if kind == device.UnknownOS {
 		// Try to get the OS string for Windows
 		if osName, err := b.Shell("ver").Call(ctx); err == nil {
@@ -175,7 +175,6 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		return nil, fmt.Errorf("Could not determine unix type")
 	}
 	b.os = kind
-
 	dir, cleanup, err := b.MakeTempDir(ctx)
 	if err != nil {
 		return nil, err
@@ -187,11 +186,11 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		return nil, err
 	}
 
-	if err = b.PushFile(ctx, localDeviceInfo.System(), dir+"/device_info"); err != nil {
+	if err = b.PushFile(ctx, localDeviceInfo.System(), dir+"/device-info"); err != nil {
 		return nil, err
 	}
 
-	devInfo, err := b.Shell("./device_info").In(dir).Call(ctx)
+	devInfo, err := b.Shell("./device-info").In(dir).Call(ctx)
 
 	if err != nil {
 		return nil, err
