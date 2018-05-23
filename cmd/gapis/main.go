@@ -173,7 +173,6 @@ func getRemoteSSHDevices(ctx context.Context, r *bind.Registry, f io.Reader, sca
 				r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
 			}
 		}
-		
 	}()
 }
 
