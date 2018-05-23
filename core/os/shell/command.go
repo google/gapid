@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/google/gapid/core/log"
 )
@@ -149,13 +150,24 @@ func (cmd Cmd) Run(ctx context.Context) error {
 	return nil
 }
 
+type muxedBuffer struct {
+	buf   bytes.Buffer
+	mutex sync.Mutex
+}
+
+func (m *muxedBuffer) Write(b []byte) (int, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.buf.Write(b)
+}
+
 // Call executes the command, capturing its output.
 // This is a helper for the common case where you want to run a command, capture all its output into a string and
 // see if it succeeded.
 func (cmd Cmd) Call(ctx context.Context) (string, error) {
-	buf := &bytes.Buffer{}
+	buf := &muxedBuffer{}
 	err := cmd.Capture(buf, buf).Run(ctx)
-	output := strings.TrimSpace(buf.String())
+	output := strings.TrimSpace(buf.buf.String())
 	return output, err
 }
 
