@@ -44,7 +44,7 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 	}
 	l := e.s.MemoryLayout
 	dynamicStateInfo := info.Slice(0, 1, l).MustRead(e.ctx, e.cmd, e.s, e.b, e.w)[0]
-	states := dynamicStateInfo.PDynamicStates().Slice(0, uint64(dynamicStateInfo.DynamicStateCount()), l).MustRead(e.ctx, e.cmd, e.s, e.b, e.w)
+	states := dynamicStateInfo.PDynamicStatesʷ(e.ctx, e.w).Slice(0, uint64(dynamicStateInfo.DynamicStateCountʷ(e.ctx, e.w)), l).MustRead(e.ctx, e.cmd, e.s, e.b, e.w)
 	for _, s := range states {
 		if s == state {
 			return true
@@ -87,24 +87,24 @@ func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
 
 func (e externs) notifyPendingCommandAdded(queue VkQueue) {
 	s := GetState(e.s)
-	queueObject := s.Queues().Get(queue)
-	command := queueObject.PendingCommands().Get(uint32(queueObject.PendingCommands().Len() - 1))
-	s.SubCmdIdx[len(s.SubCmdIdx)-1] = uint64(command.CommandIndex())
+	queueObject := s.Queuesʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, queue)
+	command := queueObject.PendingCommandsʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, uint32(queueObject.PendingCommandsʷ(e.ctx, e.w).Lenʷ(e.ctx, e.w)-1))
+	s.SubCmdIdx[len(s.SubCmdIdx)-1] = uint64(command.CommandIndexʷ(e.ctx, e.w))
 	s.queuedCommands[command] = QueuedCommand{
 		submit:          e.cmd,
 		submissionIndex: append([]uint64(nil), s.SubCmdIdx...),
 	}
 
-	queueObject.PendingCommands().Add(uint32(queueObject.PendingCommands().Len()-1), command)
+	queueObject.PendingCommandsʷ(e.ctx, e.w).Addʷ(e.ctx, e.w, uint32(queueObject.PendingCommandsʷ(e.ctx, e.w).Lenʷ(e.ctx, e.w)-1), command)
 }
 
 func (e externs) onCommandAdded(buffer VkCommandBuffer) {
 	o := GetState(e.s)
 	o.initialCommands[buffer] =
 		append(o.initialCommands[buffer], e.cmd)
-	b := o.CommandBuffers().Get(buffer)
+	b := o.CommandBuffersʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, buffer)
 	if o.AddCommand != nil {
-		o.AddCommand(b.CommandReferences().Get(uint32(b.CommandReferences().Len() - 1)))
+		o.AddCommand(b.CommandReferencesʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, uint32(b.CommandReferencesʷ(e.ctx, e.w).Lenʷ(e.ctx, e.w)-1)))
 	}
 }
 
@@ -173,18 +173,19 @@ func (e externs) unmapMemory(slice memory.Slice) {
 func (e externs) trackMappedCoherentMemory(start uint64, size memory.Size) {}
 func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInMapped uint64, readSize memory.Size) {
 	l := e.s.MemoryLayout
-	mem := GetState(e.s).DeviceMemories().Get(memoryHandle)
-	mappedOffset := uint64(mem.MappedOffset())
+	mem := GetState(e.s).DeviceMemoriesʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, memoryHandle)
+	mappedOffset := uint64(mem.MappedOffsetʷ(e.ctx, e.w))
 	dstStart := mappedOffset + offsetInMapped
 	srcStart := offsetInMapped
 
-	absSrcStart := mem.MappedLocation().Address() + offsetInMapped
+	absSrcStart := mem.MappedLocationʷ(e.ctx, e.w).Address() + offsetInMapped
 	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(readSize)}
 
 	writeRngList := e.s.Memory.ApplicationPool().Slice(absSrcMemRng).ValidRanges()
 	for _, r := range writeRngList {
-		mem.Data().Slice(dstStart+r.Base, dstStart+r.Base+r.Size).
-			Copy(e.ctx, U8ᵖ(mem.MappedLocation()).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b, e.w)
+		dstSlice := mem.Dataʷ(e.ctx, e.w).Slice(dstStart+r.Base, dstStart+r.Base+r.Size)
+		srcSlice := U8ᵖ(mem.MappedLocationʷ(e.ctx, e.w)).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l)
+		dstSlice.Copy(e.ctx, srcSlice, e.cmd, e.s, e.b, e.w)
 	}
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
@@ -213,15 +214,15 @@ func (e externs) popDebugMarker() {
 
 func (e externs) pushRenderPassMarker(rp VkRenderPass) {
 	if GetState(e.s).pushMarkerGroup != nil {
-		rpObj := GetState(e.s).RenderPasses().Get(rp)
+		rpObj := GetState(e.s).RenderPassesʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, rp)
 		var name string
-		if !rpObj.DebugInfo().IsNil() && len(rpObj.DebugInfo().ObjectName()) > 0 {
-			name = rpObj.DebugInfo().ObjectName()
+		if !rpObj.DebugInfoʷ(e.ctx, e.w).IsNil() && len(rpObj.DebugInfoʷ(e.ctx, e.w).ObjectNameʷ(e.ctx, e.w)) > 0 {
+			name = rpObj.DebugInfoʷ(e.ctx, e.w).ObjectNameʷ(e.ctx, e.w)
 		} else {
 			name = fmt.Sprintf("RenderPass: %v", rp)
 		}
 		GetState(e.s).pushMarkerGroup(name, false, RenderPassMarker)
-		if rpObj.SubpassDescriptions().Len() > 1 {
+		if rpObj.SubpassDescriptionsʷ(e.ctx, e.w).Lenʷ(e.ctx, e.w) > 1 {
 			GetState(e.s).pushMarkerGroup("Subpass: 0", false, RenderPassMarker)
 		}
 	}
@@ -322,7 +323,7 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndProperties); ok {
-			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Cloneʷ(e.ctx, e.w, e.s.Arena, api.CloneContext{})
 		}
 	}
 	return NilPhysicalDevicesAndPropertiesʳ
@@ -354,7 +355,7 @@ func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSpar
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(ImageMemoryRequirements); ok {
-			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
+			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Cloneʷ(e.ctx, e.w, e.s.Arena, api.CloneContext{})
 		}
 	}
 	return NilImageMemoryRequirementsʳ
@@ -368,7 +369,7 @@ func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMem
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(VkMemoryRequirements); ok {
-			return r.Clone(e.s.Arena, api.CloneContext{})
+			return r.Cloneʷ(e.ctx, e.w, e.s.Arena, api.CloneContext{})
 		}
 	}
 	return MakeVkMemoryRequirements(e.s.Arena)
