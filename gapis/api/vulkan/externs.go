@@ -318,12 +318,13 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 	}
 }
 
-func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ, props PhyDevPropertiesʳ) {
+func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhyDevPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhyDevProperties); ok {
-			props.Set(p)
+			return MakePhyDevPropertiesʳ().Set(p)
 		}
 	}
+	return NilPhyDevPropertiesʳ
 }
 
 func (e externs) vkErrInvalidHandle(handleType string, handle uint64) {

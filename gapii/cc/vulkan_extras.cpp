@@ -455,15 +455,16 @@ void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}
 void VulkanSpy::popRenderPassMarker(CallObserver*) {}
 void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
 
-void VulkanSpy::fetchPhysicalDeviceProperties(
-    CallObserver* observer, VkInstance instance, gapil::Slice<VkPhysicalDevice> devs,
-    gapil::Ref<PhyDevProperties> props) {
+gapil::Ref<PhyDevProperties> VulkanSpy::fetchPhysicalDeviceProperties(
+    CallObserver* observer, VkInstance instance, gapil::Slice<VkPhysicalDevice> devs) {
+  auto props = gapil::Ref<PhyDevProperties>::create(arena());
   for (VkPhysicalDevice dev : devs) {
     props->mPhyDevToProperties[dev] = VkPhysicalDeviceProperties(arena());
     mImports.mVkInstanceFunctions[instance].vkGetPhysicalDeviceProperties(
         dev, &props->mPhyDevToProperties[dev]);
   }
   observer->encode(*props.get());
+  return props;
 }
 
 // Override API functions
