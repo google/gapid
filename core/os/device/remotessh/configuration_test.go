@@ -41,7 +41,9 @@ func TestReadConfiguration(t *testing.T) {
 		"Name": "FirstConnection",
 		"User": "me",
 		"Host": "example.com",
-		"Port": 443
+		"Port": 443,
+		"Keyfile": "~/.ssh/id_rsa",
+		"KnownHosts": "~/.ssh/known_hosts"
 	},
 	{
 		"Name": "Connection2",
@@ -53,7 +55,7 @@ func TestReadConfiguration(t *testing.T) {
 ]
 `
 	reader := bytes.NewReader([]byte(input))
-	configs, err := remotessh.ReadConfiguration(reader)
+	configs, err := remotessh.ReadConfigurations(reader)
 
 	assert.With(ctx).That(err).Equals(nil)
 

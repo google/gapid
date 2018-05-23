@@ -65,7 +65,7 @@ var _ Device = &binding{}
 
 // Devices returns the list of reachable SSH devices.
 func Devices(ctx context.Context, configuration io.Reader) ([]bind.Device, error) {
-	configurations, err := ReadConfiguration(configuration)
+	configurations, err := ReadConfigurations(configuration)
 	if err != nil {
 		return nil, err
 	}

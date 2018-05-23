@@ -226,7 +226,7 @@ func (b binding) ForwardPort(ctx context.Context, remotePort int) (int, error) {
 				return
 			}
 			if err = b.doTunnel(ctx, local, remotePort); err != nil {
-				break
+				return
 			}
 		}
 	})
