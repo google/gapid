@@ -56,4 +56,5 @@ Some graphics APIs permit simultaneous sharing of contexts by multiple threads.
 
 GAPII needs to support all of these cases.
 
-In the single threaded case, GAPII streams a chronological list of atoms (calls and their respective memory observations) out over the connected socket. The multi-threaded case is no different, except GAPII emits a special, synthetic switchThread atom whenever a call is made on a thread that differs from the last call. In order to know when a thread switch is made, GAPII uses the platform-abstracted `core::Thread` class to determine the currently running thread.
+Each encoded command holds an identifier of the thread that made the call.
+Commands from all threads are encoded into a single chronological stream.

@@ -16,21 +16,21 @@ Most of the code in these graphics API packages is generated from a correspondin
 
 * Describes the structure of the graphics library's State object. These are formed from the global fields in the API file.
 
-* Describes each of the commands declared in the API. Each command in the API file produces a Go struct that implements the Atom interface.
+* Describes each of the commands declared in the API. Each command in the API file produces a Go struct that implements the `api.Cmd` interface.
 
-* Implements the `Atom.Mutate()` method on each command, which performs the necessary mutations to the state object provided in the call.
+* Implements the `Cmd.Mutate()` method on each command, which performs the necessary mutations to the state object provided in the call.
 
 ## State mutation
 
-The generated `Atom.Mutate()` methods simulate the execution of the command by mutating the provided State object, and applying any memory Observations to the memory pools.
+The generated `Cmd.Mutate()` methods simulate the execution of the command by mutating the provided State object, and applying any memory Observations to the memory pools.
 
 This state mutation is essential for much of the GAPIS functionality - it performs the work to get a default-initialized state to a particular point in the capture.
 
-For example, the client can ask for a Report describing all the issues and warnings found in a capture by performing state mutation over the capture’s atom list. The `Mutate()` function will log any issues it finds, and the service function keeps track of the atom that raised the issue. The full collection of issues is handed back to the client in the Report structure.
+For example, the client can ask for a Report describing all the issues and warnings found in a capture by performing state mutation over the capture’s command list. The `Mutate()` function will log any issues it finds, and the service function keeps track of the command that raised the issue. The full collection of issues is handed back to the client in the Report structure.
 
-The client may also ask for the state object at a particular point in the stream to display to the user. Again, GAPIS uses a default initialized State object, then calls `Mutate()` on each of the atoms in turn to bring the State to the requested point in the stream, before encoding the State object and sending to the client.
+The client may also ask for the state object at a particular point in the stream to display to the user. Again, GAPIS uses a default initialized State object, then calls `Mutate()` on each of the commands in turn to bring the State to the requested point in the stream, before encoding the State object and sending to the client.
 
-Because the state mutation is so frequently used, and because captures typically contain hundreds of thousands of atoms, state mutation needs to be fast in order for GAPIS to be responsive.
+Because the state mutation is so frequently used, and because captures typically contain hundreds of thousands of commands, state mutation needs to be fast in order for GAPIS to be responsive.
 
 One of the ways GAPIS tries to reduce the amount of work needed to simulate a command is to store records of memory writes on buffers instead of allocating and copying real buffer data. Many of the commands found in a graphics API involve copying N bytes from one memory pool to another. We find that in most of the common uses of the state mutator, we may require a read of this data far less frequently than we perform copy operations.
 
@@ -41,7 +41,7 @@ In the rare cases we need to get at the actual binary data “written” to a pa
 
 Some of the most important (and complicated) work performed by GAPIS is the building of the replay opcode stream for a capture.
 
-Replay opcode generation also performed using the `Atom.Mutate()` method, being handed the state object and replay Builder object.
+Replay opcode generation also performed using the `Cmd.Mutate()` method, being handed the state object and replay Builder object.
 
 The `Builder` contains target device memory layout information and exposes a number of high-level functions that generate a stream of `asm.Instructions`.
 
@@ -49,7 +49,7 @@ Each `Instruction` may result in one or more `Opcodes`, which are packaged into 
 
 Stage |                     | Description
 ----- | ------------------- | -----------
-`1`   | `Replay()`          | `Replay()` is called on each atom in the final steam, which can make a number of builder method calls.
+`1`   | `Replay()`          | `Replay()` is called on each command in the final steam, which can make a number of builder method calls.
 `2`   | `Builder.foo()`     | Each builder method can produce a number of instructions.
 `3`   | Instructions        | After all instructions have been generated, each instruction is processed to create a number of opcodes.
 `4`   | Opcodes             | The opcodes are written directly to a byte stream in the payload.
@@ -64,7 +64,7 @@ The most challenging aspect of generating a replay opcode stream is dealing with
 
 Commands like `glGenTextures` generate texture "names". The OpenGL ES specification does not state how these identifiers should be generated, so the "names" returned cannot be predicted at opcode generation time. To deal with this, we need to generate instructions to store replay- generated identifiers into a table that can be fetched for later commands that use that identifier. We call this process “*id-remapping*” and is explicitly handled on specific types.
 
-For example, consider the following captured atoms:
+For example, consider the following captured commands:
 
 ```
 glCreateShader(GL_VERTEX_SHADER) ⇒ 5
@@ -87,7 +87,7 @@ CALL(glCompileShader)
 
 Application-allocated memory is often handed to the graphics driver. Commands like `glTexImage2D` has a pointer to an application-allocated buffer as the data parameter. In order to replay these commands correctly, the replay system needs to allocate chunks of memory big enough to hold the buffers, populate them with observed memory, and finally, hand allocation-relative pointers to the replay target’s driver.
 
-In order to reduce the number of small allocations required in a replay, a pass is performed over all the atoms, and all the overlapping observed memory ranges in the capture are merged into the fewest number of allocations required to encapsulate all observations. Replay pointers are then adjusted to be relative to the start address of the merged block.
+In order to reduce the number of small allocations required in a replay, a pass is performed over all the commands, and all the overlapping observed memory ranges in the capture are merged into the fewest number of allocations required to encapsulate all observations. Replay pointers are then adjusted to be relative to the start address of the merged block.
 
 ![Memory Observations](docs/observations.svg)
 
@@ -101,7 +101,7 @@ Some graphics API functions return pointers to graphics driver memory (for examp
 
 In this situation, the pointer returned by the function mapping the memory is stored to table, and when there are observations made within the “mapped” memory range, the replay logic performs a table load and then ADDs the relative offset.
 
-For example, consider the following captured atoms:
+For example, consider the following captured commands:
 
 ```
 glMapBufferRange(GL_ARRAY_BUFFER, 0, 0x1000, GL_MAP_WRITE_BIT) ⇒ 0x400000
@@ -217,13 +217,13 @@ A path can be used in the RPC `Set()` call to change a value or object. As a pat
 
 Example paths:
 
-To access the state after the 50th atom of the capture with ID 0x1234ABCD, we’d use the path:
+To access the state after the 50th command of the capture with ID 0x1234ABCD, we’d use the path:
 
-`Capture(0x1234ABCD).Atoms[50].State`
+`Capture(0x1234ABCD).Commands[50].State`
 
-To access the observed memory range 0x10000 to 0x20000 after the 30th atom in capture with ID 0x1234ABCD, we’d use the path:
+To access the observed memory range 0x10000 to 0x20000 after the 30th command in capture with ID 0x1234ABCD, we’d use the path:
 
-`Capture(0x1234ABCD).Atoms[30].MemoryRange<0x10000-0x20000>`
+`Capture(0x1234ABCD).Commands[30].MemoryRange<0x10000-0x20000>`
 
 
 ## Resource Identifiers
