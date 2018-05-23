@@ -173,7 +173,7 @@ func (g CmdIDGroup) Format(f fmt.State, r rune) {
 			buf.WriteRune(' ')
 			switch span.(type) {
 			case *CmdIDRange:
-				buf.WriteString("Atoms ")
+				buf.WriteString("Commands ")
 			}
 			buf.WriteString(strings.Replace(fmt.Sprintf("%+v", span), "\n", nl, -1))
 		}

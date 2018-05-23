@@ -195,9 +195,9 @@ The context {{id:u64}} was created before tracing begun. Context state is not kn
 
 The requested command range does not contain any draw calls.
 
-# TAG_ATOM_NAME
+# TAG_COMMAND_NAME
 
-{{atom}}
+{{command}}
 
 # ERR_PATH_WITHOUT_CAPTURE
 

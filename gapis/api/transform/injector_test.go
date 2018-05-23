@@ -58,7 +58,8 @@ func TestInjector(t *testing.T) {
 	CheckTransform(ctx, t, transform, inputs, expected)
 }
 
-// CheckTransform checks that transfomer emits the expected atoms given inputs.
+// CheckTransform checks that transfomer emits the expected commands given
+// inputs.
 func CheckTransform(ctx context.Context, t *testing.T, transformer Transformer, inputs, expected testcmd.CmdAndIDList) {
 	mw := &testcmd.Writer{}
 	for _, in := range inputs {

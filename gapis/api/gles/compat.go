@@ -203,10 +203,10 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		switch cmd := cmd.(type) {
 		case *EglMakeCurrent: // TODO: Check for GLX, CGL, WGL...
 			// The compatibility layer introduces calls to GL functions that are defined for desktop GL
-			// and for GLES 3.0+. If the trace originated on a GLES 2.0 device, these new atoms' mutate
+			// and for GLES 3.0+. If the trace originated on a GLES 2.0 device, these new commands' mutate
 			// functions will fail the minRequiredVersion checks (which look at the version coming from
 			// the original context from the trace).
-			// TODO(dsrbecky): This might make some atoms valid for replay which were invalid on trace.
+			// TODO(dsrbecky): This might make some commands valid for replay which were invalid on trace.
 			scs := FindStaticContextState(cmd.Extras())
 			if !scs.IsNil() && !version.IsES && scs.Constants().MajorVersion() < 3 {
 				clone := cb.EglMakeCurrent(cmd.Display(), cmd.Draw(), cmd.Read(), cmd.Context(), cmd.Result())

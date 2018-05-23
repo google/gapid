@@ -20,8 +20,8 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
-// BuildProgram returns the atoms to create a shader program with compiled vertex
-// and fragment shaders. The returned program is not linked.
+// BuildProgram returns the commands to create a shader program with compiled
+// vertex and fragment shaders. The returned program is not linked.
 func BuildProgram(ctx context.Context, s *api.GlobalState, cb CommandBuilder,
 	vertexShaderID, fragmentShaderID ShaderId, programID ProgramId,
 	vertexShaderSource, fragmentShaderSource string) []api.Cmd {
@@ -30,7 +30,7 @@ func BuildProgram(ctx context.Context, s *api.GlobalState, cb CommandBuilder,
 	)
 }
 
-// CompileProgram returns the atoms to compile and then attach vertex and
+// CompileProgram returns the commands to compile and then attach vertex and
 // fragment shaders to an existing shader program.
 // The returned program is not linked.
 func CompileProgram(ctx context.Context, s *api.GlobalState, cb CommandBuilder,

@@ -113,12 +113,13 @@ func newGlesDependencyGraphBehaviourProvider() *GlesDependencyGraphBehaviourProv
 	return &GlesDependencyGraphBehaviourProvider{}
 }
 
-// GetBehaviourForAtom returns state reads/writes that the given command
+// GetBehaviourForCommand returns state reads/writes that the given command
 // performs.
 //
-// Writes: Write dependencies keep atoms alive. Each atom must correctly report
-// all its writes or it must set the keep-alive flag. If a write is missing
-// then the liveness analysis will remove the atom since it seems unneeded.
+// Writes: Write dependencies keep commands alive. Each command must correctly
+// report all its writes or it must set the keep-alive flag. If a write is
+// missing then the liveness analysis will remove the command since it seems
+// unneeded.
 // It is fine to omit related/overloaded commands that write to the same state
 // as long as they are marked as keep-alive.
 //
@@ -126,13 +127,13 @@ func newGlesDependencyGraphBehaviourProvider() *GlesDependencyGraphBehaviourProv
 // implemented. This makes it more difficult to do only partial implementations.
 // It is fine to overestimate reads, or to read parent state (i.e. superset).
 //
-func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
-	ctx context.Context, s *api.GlobalState, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.AtomBehaviour {
-	b := dependencygraph.AtomBehaviour{}
+func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForCommand(
+	ctx context.Context, s *api.GlobalState, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.CmdBehaviour {
+	b := dependencygraph.CmdBehaviour{}
 	c := GetContext(s, cmd.Thread())
 	if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
 		log.W(ctx, "Command %v %v: %v", id, cmd, err)
-		return dependencygraph.AtomBehaviour{Aborted: true}
+		return dependencygraph.CmdBehaviour{Aborted: true}
 	}
 	if !c.IsNil() && c.Other().Initialized() {
 		_, isEglSwapBuffers := cmd.(*EglSwapBuffers)
@@ -261,7 +262,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 			case *GlVertexAttribPointer:
 				b.Write(g, vertexAttribKey{c.Bound().VertexArray(), cmd.Location()})
 			default:
-				// Force all unhandled atoms to be kept alive.
+				// Force all unhandled commands to be kept alive.
 				b.KeepAlive = true
 			}
 		}
@@ -271,7 +272,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForAtom(
 	return b
 }
 
-func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.AtomBehaviour, buffer GLenum, index GLint, c Contextʳ) {
+func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.CmdBehaviour, buffer GLenum, index GLint, c Contextʳ) {
 	var data, size dependencygraph.StateKey
 	switch buffer {
 	case GLenum_GL_COLOR:

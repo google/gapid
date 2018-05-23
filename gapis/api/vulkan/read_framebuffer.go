@@ -642,7 +642,7 @@ func postImageData(ctx context.Context,
 	)
 	imageResolveData := MustAllocData(ctx, s, imageResolve)
 
-	// Write atoms to writer
+	// Write commands to writer
 	// Create staging image, allocate and bind memory
 	writeEach(ctx, out,
 		cb.VkCreateImage(

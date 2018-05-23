@@ -72,11 +72,11 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 	builder := service.NewReportBuilder()
 
-	var currentAtom uint64
+	var currentCmd uint64
 	items := []*service.ReportItemRaw{}
 	state := c.NewState(ctx)
 	state.NewMessage = func(s log.Severity, m *stringtable.Msg) uint32 {
-		items = append(items, r.newReportItem(s, currentAtom, m))
+		items = append(items, r.newReportItem(s, currentCmd, m))
 		return uint32(len(items) - 1)
 	}
 	state.AddTag = func(i uint32, t *stringtable.Msg) {
@@ -120,7 +120,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		items, currentAtom = items[:0], uint64(id)
+		items, currentCmd = items[:0], uint64(id)
 
 		if as := cmd.Extras().Aborted(); as != nil && as.IsAssert {
 			items = append(items, r.newReportItem(log.Fatal, uint64(id),
@@ -136,14 +136,14 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 		if filter(id, cmd, state) {
 			for _, item := range items {
-				item.Tags = append(item.Tags, getAtomNameTag(cmd))
+				item.Tags = append(item.Tags, getCommandNameTag(cmd))
 				builder.Add(ctx, item)
 			}
 			for _, issue := range issues[id] {
 				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Command),
 					messages.ErrReplayDriver(issue.Error.Error()))
 				if int(issue.Command) < len(c.Commands) {
-					item.Tags = append(item.Tags, getAtomNameTag(c.Commands[issue.Command]))
+					item.Tags = append(item.Tags, getCommandNameTag(c.Commands[issue.Command]))
 				}
 				builder.Add(ctx, item)
 			}
@@ -154,6 +154,6 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	return builder.Build(), nil
 }
 
-func getAtomNameTag(cmd api.Cmd) *stringtable.Msg {
-	return messages.TagAtomName(cmd.CmdName())
+func getCommandNameTag(cmd api.Cmd) *stringtable.Msg {
+	return messages.TagCommandName(cmd.CmdName())
 }

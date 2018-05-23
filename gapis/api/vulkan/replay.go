@@ -92,8 +92,9 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 	return 0
 }
 
-// makeAttachementReadable is a transformation marking all color/depth/stencil attachment
-// images created via vkCreateImage atoms as readable (by patching the transfer src bit).
+// makeAttachementReadable is a transformation marking all color/depth/stencil
+// attachment images created via vkCreateImage commands as readable (by patching
+// the transfer src bit).
 type makeAttachementReadable struct {
 	instance                  VkInstance
 	enumeratedPhysicalDevices []VkPhysicalDevice

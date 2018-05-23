@@ -20,8 +20,8 @@ const (
 	DebugReplayBuilder         = false
 	DisableDeadCodeElimination = false
 	DebugDeadCodeElimination   = false
-	LogExtrasInTransforms      = false // Logs all atoms' extras together with transforms
-	LogMemoryInExtras          = false // Logs all atoms' read/write memory observation together with extras
+	LogExtrasInTransforms      = false // Logs all commands' extras together with transforms
+	LogMemoryInExtras          = false // Logs all commands' read/write memory observation together with extras
 	LogTransformsToFile        = false
 	SeparateMutateStates       = false
 )

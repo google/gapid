@@ -98,7 +98,7 @@ func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
 // any input.
 func (t *DCE) Transform(ctx context.Context, id api.CmdID, c api.Cmd,
 	out Writer) {
-	panic(fmt.Errorf("This transform does not accept input atoms"))
+	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 
 // Flush is to comform the interface of Transformer. Flush starts the back

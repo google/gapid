@@ -19,7 +19,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "as.go",
-        "atoms.go",
         "command_tree.go",
         "commands.go",
         "constant_set.go",

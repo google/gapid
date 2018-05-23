@@ -29,7 +29,7 @@ type drawCallIndices struct {
 	indexed  bool
 }
 
-// drawCall is the interface implemented by all GLES draw call atoms.
+// drawCall is the interface implemented by all GLES draw call commands.
 type drawCall interface {
 	api.Cmd
 	getIndices(ctx context.Context, c Contextʳ, s *api.GlobalState) (drawCallIndices, error)

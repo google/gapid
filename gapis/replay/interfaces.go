@@ -36,7 +36,7 @@ type Support interface {
 
 // QueryIssues is the interface implemented by types that can verify the replay
 // performs as expected and without errors.
-// If the capture includes FramebufferObservation atoms, this also includes
+// If the capture includes FramebufferObservation commands, this also includes
 // checking the replayed framebuffer matches (within reasonable error) the
 // framebuffer observed at capture time.
 type QueryIssues interface {
