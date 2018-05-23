@@ -47,7 +47,7 @@
   @unused VkPhysicalDeviceProperties         PhysicalDeviceProperties
 }
 
-@internal class PhyDevProperties{
+@internal class PhysicalDevicesAndProperties{
   map!(VkPhysicalDevice, VkPhysicalDeviceProperties) PhyDevToProperties
 }
 
