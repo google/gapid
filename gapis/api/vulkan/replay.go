@@ -95,13 +95,7 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 // makeAttachementReadable is a transformation marking all color/depth/stencil
 // attachment images created via vkCreateImage commands as readable (by patching
 // the transfer src bit).
-type makeAttachementReadable struct {
-	instance                  VkInstance
-	enumeratedPhysicalDevices []VkPhysicalDevice
-	properties                []VkPhysicalDeviceProperties
-	inPhysicalDeviceEnumerate bool
-	numPhysicalDevicesLeft    uint32
-}
+type makeAttachementReadable struct{}
 
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
@@ -462,13 +456,7 @@ func (a API) Replay(
 	cmds := capture.Commands
 
 	transforms := transform.Transforms{}
-	transforms.Add(&makeAttachementReadable{
-		VkInstance(0),
-		make([]VkPhysicalDevice, 0),
-		make([]VkPhysicalDeviceProperties, 0),
-		false,
-		0,
-	})
+	transforms.Add(&makeAttachementReadable{})
 
 	readFramebuffer := newReadFramebuffer(ctx)
 	injector := &transform.Injector{}
