@@ -17,7 +17,6 @@ package remotessh
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os/user"
 )
 
@@ -42,41 +41,35 @@ type Configuration struct {
 	KnownHosts string
 }
 
-// UnmarshalJSON is used by json.Unmashall, this allows us to set
-// up a default configuration, so that unknown parameters have
-// sane defaults.
-func (c *Configuration) UnmarshalJSON(data []byte) error {
-	type configAlias Configuration
-	u, err := user.Current()
-	if err != nil {
-		return err
-	}
-	newC := &configAlias{
-		Name:       "",
-		Host:       "",
-		User:       u.Username,
-		Port:       22,
-		Keyfile:    u.HomeDir + "/.ssh/id_rsa",
-		KnownHosts: u.HomeDir + "/.ssh/known_hosts",
-	}
-	if err := json.Unmarshal(data, newC); err != nil {
-		return err
-	}
-
-	*c = Configuration(*newC)
-	return nil
-}
-
-// ReadConfiguration reads a set of configurations from then
+// ReadConfigurations reads a set of configurations from then
 // given reader, and returns the configurations to the user.
-func ReadConfiguration(r io.Reader) ([]Configuration, error) {
-	cfg := []Configuration{}
-
-	bytes, err := ioutil.ReadAll(r)
+func ReadConfigurations(r io.Reader) ([]Configuration, error) {
+	u, err := user.Current()
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(bytes, &cfg)
-	return cfg, err
+	cfgs := []Configuration{}
+	d := json.NewDecoder(r)
+	if _, err := d.Token(); err != nil {
+		return nil, err
+	}
+	for d.More() {
+		cfg := Configuration{
+			Name:       "",
+			Host:       "",
+			User:       u.Username,
+			Port:       22,
+			Keyfile:    u.HomeDir + "/.ssh/id_rsa",
+			KnownHosts: u.HomeDir + "/.ssh/known_hosts",
+		}
+		if err := d.Decode(&cfg); err != nil {
+			return nil, err
+		}
+		cfgs = append(cfgs, cfg)
+	}
+	if _, err := d.Token(); err != nil {
+		return nil, err
+	}
+	return cfgs, nil
 }
