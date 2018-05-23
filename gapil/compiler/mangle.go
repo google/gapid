@@ -56,6 +56,8 @@ func (c *C) Mangle(ty codegen.Type) mangling.Type {
 	switch ty {
 	case c.T.Str:
 		return &mangling.Class{Parent: c.Root, Name: "string"}
+	case c.T.Sli:
+		return &mangling.Class{Parent: c.Root, Name: "slice"}
 	case c.T.Bool:
 		return mangling.Bool
 	case c.T.Uint8:
