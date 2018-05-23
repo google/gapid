@@ -23,17 +23,17 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
-	"github.com/google/gapid/core/app/crash"
 	"golang.org/x/crypto/ssh"
 )
 
 // remoteProcess is the interface to a running process, as started by a Target.
 type remoteProcess struct {
-	session    *ssh.Session
-	wg		   sync.WaitGroup
+	session *ssh.Session
+	wg      sync.WaitGroup
 }
 
 func (r *remoteProcess) Kill() error {
@@ -50,6 +50,12 @@ var _ shell.Process = (*remoteProcess)(nil)
 
 type sshShellTarget struct{ b *binding }
 
+type writerWrapper struct{ w io.Writer }
+
+func (w *writerWrapper) Write(p []byte) (n int, err error) {
+	return w.w.Write(p)
+}
+
 // Start starts the given command in the remote shell.
 func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 	session, err := t.b.connection.NewSession()
@@ -57,8 +63,8 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		return nil, err
 	}
 	p := &remoteProcess{
-		session:    session,
-		wg:    sync.WaitGroup{},
+		session: session,
+		wg:      sync.WaitGroup{},
 	}
 
 	if cmd.Stdin != nil {
@@ -66,10 +72,10 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		if err != nil {
 			return nil, err
 		}
-		go func() {
+		crash.Go(func() {
 			defer stdin.Close()
 			io.Copy(stdin, cmd.Stdin)
-		}()
+		})
 	}
 
 	if cmd.Stdout != nil {
@@ -79,15 +85,8 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		}
 		p.wg.Add(1)
 		crash.Go(func() {
-			b := make([]byte, 1024)
-			for {
-				n, err := stdout.Read(b)
-				cmd.Stdout.Write(b[:n])
-				if err != nil {
-					p.wg.Done()
-					break
-				}
-			}
+			io.Copy(&writerWrapper{cmd.Stdout}, stdout)
+			p.wg.Done()
 		})
 	}
 
@@ -98,15 +97,8 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		}
 		p.wg.Add(1)
 		crash.Go(func() {
-			b := make([]byte, 1024)
-			for {
-				n, err := stderr.Read(b)
-				cmd.Stderr.Write(b[:n])
-				if err != nil {
-					p.wg.Done()
-					break
-				}
-			}
+			io.Copy(&writerWrapper{cmd.Stderr}, stderr)
+			p.wg.Done()
 		})
 	}
 
@@ -201,7 +193,7 @@ func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) e
 	}
 
 	wg := sync.WaitGroup{}
-	
+
 	copy := func(writer io.Writer, reader io.Reader) {
 		_, err := io.Copy(writer, reader)
 		if err != nil {
@@ -211,10 +203,10 @@ func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) e
 	}
 
 	wg.Add(2)
-	crash.Go( func() { copy(local, remote)} )
-	crash.Go( func() { copy(remote, local)} )
-	
-	crash.Go( func() {
+	crash.Go(func() { copy(local, remote) })
+	crash.Go(func() { copy(remote, local) })
+
+	crash.Go(func() {
 		defer local.Close()
 		defer remote.Close()
 		wg.Wait()
@@ -229,7 +221,7 @@ func (b binding) ForwardPort(ctx context.Context, remotePort int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	crash.Go( func() {
+	crash.Go(func() {
 		defer listener.Close()
 		for {
 			local, err := listener.Accept()
