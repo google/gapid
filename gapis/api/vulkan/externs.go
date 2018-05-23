@@ -318,6 +318,14 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 	}
 }
 
+func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceᵖ, count uint32, props PhyDevPropertiesʳ) {
+	for _, ee := range e.cmd.Extras().All() {
+		if p, ok := ee.(PhyDevProperties); ok {
+			props.Set(p)
+		}
+	}
+}
+
 func (e externs) vkErrInvalidHandle(handleType string, handle uint64) {
 	var issue replay.Issue
 	issue.Command = e.cmdID

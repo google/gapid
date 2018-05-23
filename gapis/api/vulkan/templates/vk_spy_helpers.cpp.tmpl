@@ -87,11 +87,7 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetInstanceProcAddr(VkInstance insta
         {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance")}}
             {{$name := Macro "CmdName" $c}}
             if(!strcmp(pName, "{{$name}}"))
-            {{if eq $name "vkEnumeratePhysicalDevices"}}
-              return reinterpret_cast<PFN_vkVoidFunction>(VulkanSpy::EnumeratePhysicalDevicesAndCacheProperties);
-            {{else}}
               return reinterpret_cast<PFN_vkVoidFunction>(gapii::{{$name}});
-            {{end}}
         {{end}}
     {{end}}
 

@@ -47,6 +47,10 @@
   @unused VkPhysicalDeviceProperties         PhysicalDeviceProperties
 }
 
+@internal class PhyDevProperties{
+  map!(VkPhysicalDevice, VkPhysicalDeviceProperties) PhyDevToProperties
+}
+
 @threadSafety("system")
 @indirect("VkInstance")
 cmd VkResult vkEnumeratePhysicalDevices(
@@ -68,13 +72,15 @@ cmd VkResult vkEnumeratePhysicalDevices(
       devices[i] = device
     }
     pPhysicalDeviceCount[0] = count
-
+    props := new!PhyDevProperties()
+    fetchPhysicalDeviceProperties(instance, pPhysicalDevices, count, props)
     for i in (0 .. count) {
       if (PhysicalDevices[devices[i]] == null) {
         object := new!PhysicalDeviceObject()
         object.Instance = instance
         object.Index = i
         object.VulkanHandle = devices[i]
+        object.PhysicalDeviceProperties = props.PhyDevToProperties[devices[i]]
         PhysicalDevices[devices[i]] = object
       }
     }
