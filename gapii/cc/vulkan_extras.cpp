@@ -455,8 +455,10 @@ void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}
 void VulkanSpy::popRenderPassMarker(CallObserver*) {}
 void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
 
-gapil::Ref<PhysicalDevicesAndProperties> VulkanSpy::fetchPhysicalDeviceProperties(
-    CallObserver* observer, VkInstance instance, gapil::Slice<VkPhysicalDevice> devs) {
+gapil::Ref<PhysicalDevicesAndProperties>
+VulkanSpy::fetchPhysicalDeviceProperties(CallObserver* observer,
+                                         VkInstance instance,
+                                         gapil::Slice<VkPhysicalDevice> devs) {
   auto props = gapil::Ref<PhysicalDevicesAndProperties>::create(arena());
   for (VkPhysicalDevice dev : devs) {
     props->mPhyDevToProperties[dev] = VkPhysicalDeviceProperties(arena());
@@ -465,6 +467,41 @@ gapil::Ref<PhysicalDevicesAndProperties> VulkanSpy::fetchPhysicalDevicePropertie
   }
   observer->encode(*props.get());
   return props;
+}
+
+gapil::Ref<ImageMemoryRequirements> VulkanSpy::fetchImageMemoryRequirements(
+    CallObserver* observer, VkDevice device, VkImage image, bool hasSparseBit) {
+  auto reqs = gapil::Ref<ImageMemoryRequirements>::create(arena());
+  mImports.mVkDeviceFunctions[device].vkGetImageMemoryRequirements(
+      device, image, &reqs->mMemoryRequirements);
+  if (hasSparseBit) {
+    uint32_t sparse_mem_req_count = 0;
+    mImports.mVkDeviceFunctions[device].vkGetImageSparseMemoryRequirements(
+        device, image, &sparse_mem_req_count, nullptr);
+    core::Arena arena;
+    std::vector<VkSparseImageMemoryRequirements> sparse_mem_reqs(
+        sparse_mem_req_count, VkSparseImageMemoryRequirements(&arena));
+    mImports.mVkDeviceFunctions[device].vkGetImageSparseMemoryRequirements(
+        device, image, &sparse_mem_req_count, sparse_mem_reqs.data());
+    for (VkSparseImageMemoryRequirements& req : sparse_mem_reqs) {
+      auto aspect_map = subUnpackImageAspectFlags(
+          nullptr, nullptr, req.mformatProperties.maspectMask);
+      for (auto aspect : aspect_map->mBits) {
+        reqs->mAspectBitsToSparseMemoryRequirements[aspect.second] = req;
+      }
+    }
+  }
+  observer->encode(*reqs.get());
+  return reqs;
+}
+
+VkMemoryRequirements VulkanSpy::fetchBufferMemoryRequirements(
+    CallObserver* observer, VkDevice device, VkBuffer buffer) {
+  auto reqs = VkMemoryRequirements(arena());
+  mImports.mVkDeviceFunctions[device].vkGetBufferMemoryRequirements(
+      device, buffer, &reqs);
+  observer->encode(reqs);
+  return reqs;
 }
 
 // Override API functions
@@ -664,49 +701,6 @@ uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(
         mImports.mVkDeviceFunctions[device].vkUnmapMemory(device, *pMemory);
     }
     return r;
-}
-
-// Synthetic functions at tracing time
-uint32_t VulkanSpy::CreateImageAndGetMemoryRequirements(
-    VkDevice                     device,
-    const VkImageCreateInfo*     pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
-    VkImage*                     pImage) {
-
-  core::Arena arena;
-  uint32_t result =
-      gapii::vkCreateImage(device, pCreateInfo, pAllocator, pImage);
-  if (result == gapii::VkResult::VK_SUCCESS) {
-    gapii::VkMemoryRequirements mem_req{&arena};
-    gapii::vkGetImageMemoryRequirements(device, *pImage, &mem_req);
-    if ((pCreateInfo->mflags &
-         VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_BINDING_BIT) != 0) {
-      uint32_t sparse_mem_req_count = 0;
-      gapii::vkGetImageSparseMemoryRequirements(device, *pImage,
-                                                &sparse_mem_req_count, nullptr);
-      std::vector<VkSparseImageMemoryRequirements> sparse_mem_reqs(
-          sparse_mem_req_count, VkSparseImageMemoryRequirements{&arena});
-      gapii::vkGetImageSparseMemoryRequirements(
-          device, *pImage, &sparse_mem_req_count, sparse_mem_reqs.data());
-    }
-  }
-  return result;
-}
-
-uint32_t VulkanSpy::CreateBufferAndGetMemoryRequirements(
-    VkDevice                     device,
-    const VkBufferCreateInfo*    pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
-    VkBuffer*                    pBuffer) {
-
-  core::Arena arena;
-  uint32_t result =
-      gapii::vkCreateBuffer(device, pCreateInfo, pAllocator, pBuffer);
-  if (result == gapii::VkResult::VK_SUCCESS) {
-    gapii::VkMemoryRequirements mem_req{&arena};
-    gapii::vkGetBufferMemoryRequirements(device, *pBuffer, &mem_req);
-  }
-  return result;
 }
 
 // Utility functions

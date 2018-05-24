@@ -354,7 +354,9 @@ class unpackedImageAspectFlagBits {
 
 sub ref!unpackedImageAspectFlagBits unpackImageAspectFlags(VkImageAspectFlags flag) {
   u := new!unpackedImageAspectFlagBits()
-  for i in (0 .. 32) {
+  // Till Vulkan 1.1, seven bits are used for image aspects.
+  // Update this accordingly if more image aspect flag bits are added to the spec
+  for i in (0 .. 7) {
     if (as!u32(1 << as!u32(i)) & as!u32(flag)) != as!u32(0) {
       u.Bits[len(u.Bits)] = as!VkImageAspectFlagBits(1 << as!u32(i))
     }

@@ -87,15 +87,6 @@ void SpyOverride_vkCmdDebugMarkerEndEXT(VkCommandBuffer commandBuffer) {}
 void SpyOverride_vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
 
-static uint32_t CreateImageAndGetMemoryRequirements(VkDevice,
-                                                    const VkImageCreateInfo*,
-                                                    const VkAllocationCallbacks*,
-                                                    VkImage*);
-static uint32_t CreateBufferAndGetMemoryRequirements(VkDevice,
-                                                     const VkBufferCreateInfo*,
-                                                     const VkAllocationCallbacks*,
-                                                     VkBuffer*);
-
 bool m_coherent_memory_tracking_enabled = false;
 
 void SpyOverride_cacheImageSparseMemoryRequirements(

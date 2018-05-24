@@ -105,13 +105,7 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(VkDevice device, c
         {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice")}}
             {{$name := Macro "CmdName" $c}}
             if(!strcmp(pName, "{{$name}}"))
-            {{if eq $name "vkCreateImage"}}
-              return reinterpret_cast<PFN_vkVoidFunction>(VulkanSpy::CreateImageAndGetMemoryRequirements);
-            {{else if eq $name "vkCreateBuffer"}}
-              return reinterpret_cast<PFN_vkVoidFunction>(VulkanSpy::CreateBufferAndGetMemoryRequirements);
-            {{else}}
               return reinterpret_cast<PFN_vkVoidFunction>(gapii::{{$name}});
-            {{end}}
         {{end}}
     {{end}}
     // This is not strictly correct, but some applications incorrectly
