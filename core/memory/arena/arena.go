@@ -17,6 +17,7 @@ package arena
 
 import (
 	"context"
+	"fmt"
 	"unsafe"
 
 	"github.com/google/gapid/core/context/keys"
@@ -74,6 +75,10 @@ func (a Arena) Free(ptr unsafe.Pointer) {
 type Stats struct {
 	NumAllocations    int
 	NumBytesAllocated int
+}
+
+func (s Stats) String() string {
+	return fmt.Sprintf("{allocs: %v, bytes: %v}", s.NumAllocations, s.NumBytesAllocated)
 }
 
 // Stats returns statistics of the current state of the Arena.
