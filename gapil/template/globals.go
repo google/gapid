@@ -26,7 +26,11 @@ func initGlobals(f *Functions, globalList []string) {
 	apiBase := filepath.Base(f.apiFile)
 	f.globals["API"] = strings.TrimSuffix(apiBase, filepath.Ext(apiBase))
 	f.globals["OutputDir"] = filepath.Base(f.basePath)
-	f.globals["OutputPath"] = f.basePath
+	if i := strings.LastIndex(f.basePath, "genfiles"+string(filepath.Separator)); i > 0 {
+		// GeneratedPath is the bazel genfiles relative path of the current
+		// template. Assumes the build system is bazel.
+		f.globals["GeneratedPath"] = f.basePath[i+9:]
+	}
 	for _, g := range globalList {
 		v := strings.SplitN(g, "=", 2)
 		f.globals[v[0]] = v[1]
