@@ -99,22 +99,21 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return fmt.Errorf("Unknown API %s", verb.API)
 	}
 
-
 	ctx, start := verb.inputHandler(ctx, options.Flags&client.DeferStart != 0)
 
-	if verb.Local.App != "" || verb.Local.Port != 0 {
-		device, err := getDesktopTraceDevice(ctx, verb.Gapii); 
+	if verb.Desktop.App != "" || verb.Desktop.Port != 0 {
+		device, err := getDesktopTraceDevice(ctx, verb.Gapii)
 		if err != nil {
 			return err
 		}
-		if verb.Local.App != "" {
+		if verb.Desktop.App != "" {
 			cleanup, err := verb.startLocalApp(ctx, device)
 			defer func() { cleanup(ctx) }()
 			if err != nil {
 				return err
 			}
 		}
-		return verb.captureLocal(ctx, device, verb.Local.Port, start, options)
+		return verb.captureLocal(ctx, device, verb.Desktop.Port, start, options)
 	}
 
 	return verb.captureADB(ctx, flags, start, options)
@@ -155,26 +154,26 @@ func (verb *traceVerb) startLocalApp(ctx context.Context, d bind.Device) (func(c
 	}
 
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
-	args := r.FindAllString(verb.Local.Args, -1)
+	args := r.FindAllString(verb.Desktop.Args, -1)
 	ctx, cancel := context.WithCancel(ctx)
 	for _, x := range verb.Gapii.Env {
 		env.Add(x)
 	}
 
-	boundPort, err := process.StartOnDevice(ctx, verb.Local.App, process.StartOptions{
+	boundPort, err := process.StartOnDevice(ctx, verb.Desktop.App, process.StartOptions{
 		Env:        env,
 		Args:       args,
 		PortFile:   portFile,
-		WorkingDir: verb.Local.WorkingDir,
-		Device: 	d,
+		WorkingDir: verb.Desktop.WorkingDir,
+		Device:     d,
 	})
 
 	if err != nil {
 		cancel()
 		return cleanup, err
 	}
-	if verb.Local.Port == 0 {
-		verb.Local.Port = boundPort
+	if verb.Desktop.Port == 0 {
+		verb.Desktop.Port = boundPort
 	}
 	return func(ctx context.Context) { cancel(); cleanup(ctx) }, nil
 }
