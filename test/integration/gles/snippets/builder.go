@@ -43,10 +43,12 @@ type Builder struct {
 // NewBuilder returns a new builder.
 func NewBuilder(ctx context.Context, dev *device.Instance) *Builder {
 	abi := dev.Configuration.ABIs[0]
+	state := api.NewStateWithEmptyAllocator(abi.MemoryLayout)
 	return &Builder{
+		CB:               gles.CommandBuilder{Arena: state.Arena},
 		device:           dev,
 		abi:              abi,
-		state:            api.NewStateWithEmptyAllocator(abi.MemoryLayout),
+		state:            state,
 		programResources: map[gles.ProgramId]gles.ActiveProgramResourcesʳ{},
 	}
 }

@@ -45,7 +45,7 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 		s:               s,
 		oldState:        oldState,
 		newState:        newState,
-		cb:              CommandBuilder{Thread: 0},
+		cb:              CommandBuilder{Thread: 0, Arena: newState.Arena},
 		memoryIntervals: interval.U64RangeList{},
 	}
 

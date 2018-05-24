@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/api"
@@ -108,7 +109,9 @@ func max(a, b int) int {
 func TestOperationsOpCall_NoIn_NoOut(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
@@ -126,7 +129,9 @@ func TestOperationsOpCall_NoIn_NoOut(t *testing.T) {
 func TestOperationsOpCall_Clone(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	rng, rID := memory.Store(ctx, ml, p(0x100000), []uint8{5, 6, 7, 8, 9})
 
@@ -151,7 +156,9 @@ func TestOperationsOpCall_Clone(t *testing.T) {
 func TestOperationsOpCall_Make(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
@@ -170,7 +177,9 @@ func TestOperationsOpCall_Make(t *testing.T) {
 func TestOperationsOpCall_Copy(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	rng, rID := memory.Store(ctx, ml, p(0x100000), []uint8{5, 6, 7, 8, 9})
 
@@ -195,7 +204,9 @@ func TestOperationsOpCall_Copy(t *testing.T) {
 func TestOperationsOpCall_CharSliceToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	rng, rID := memory.Store(ctx, ml, p(0x100000), []uint8{5, 6, 0, 8, 9})
 
@@ -220,7 +231,9 @@ func TestOperationsOpCall_CharSliceToString(t *testing.T) {
 func TestOperationsOpCall_CharPtrToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	_, rID := memory.Store(ctx, ml, p(0x100000), []uint8{'g', 'o', 'o', 'd', 0})
 
@@ -245,7 +258,9 @@ func TestOperationsOpCall_CharPtrToString(t *testing.T) {
 func TestOperationsOpCall_Unknowns(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 4},
@@ -291,7 +306,9 @@ func TestOperationsOpCall_Unknowns(t *testing.T) {
 func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
@@ -366,7 +383,9 @@ func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 func TestOperationsOpCall_3_Strings(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
@@ -391,7 +410,9 @@ func TestOperationsOpCall_3_Strings(t *testing.T) {
 func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little64
 
 	aRng, aID := memory.Store(ctx, ml, p(0x40000+5* /* sizeof(u8)  */ 1), []uint8{
@@ -442,7 +463,9 @@ func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 
 	aRng, aID := memory.Store(ctx, ml, p(0x100000), "array")
@@ -521,7 +544,9 @@ func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 func TestOperationsOpCall_InArrayOfStrings_32bitTo64Bit(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ca := device.Little32
 	ra := device.Little64
 
@@ -601,7 +626,9 @@ func TestOperationsOpCall_InArrayOfStrings_32bitTo64Bit(t *testing.T) {
 func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	p := memory.Pointer(p(0x100000))
 	rng1, id1 := memory.Store(ctx, ml, p, []byte{
@@ -721,7 +748,9 @@ func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 16},
@@ -769,7 +798,9 @@ func TestOperationsOpCall_MultiplePointerElementReads(t *testing.T) {
 func TestOperationsOpCall_SinglePointerElementWrite(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
@@ -839,7 +870,9 @@ func TestOperationsOpCall_SinglePointerElementWrite(t *testing.T) {
 func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := &device.MemoryLayout{
 		Endian:  device.LittleEndian,
 		Pointer: &device.DataTypeLayout{Size: 4, Alignment: 16},
@@ -873,7 +906,9 @@ func TestOperationsOpCall_MultiplePointerElementWrites(t *testing.T) {
 func TestOperationsOpCall_ReturnValue(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
@@ -927,7 +962,9 @@ func TestOperationsOpCall_ReturnValue(t *testing.T) {
 func TestOperationsOpCall_3Remapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
@@ -957,7 +994,9 @@ func TestOperationsOpCall_3Remapped(t *testing.T) {
 func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	rng, id := memory.Store(ctx, ml, p(0x100000), []Remapped{10, 20, 10, 30, 20})
 
@@ -1009,7 +1048,9 @@ func TestOperationsOpCall_InArrayOfRemapped(t *testing.T) {
 func TestOperationsOpCall_OutArrayOfRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	pbase := uint32(4 * 3) // parameter array base address
 	tbase := uint32(0)     // remap table base address
@@ -1053,7 +1094,9 @@ func TestOperationsOpCall_OutArrayOfRemapped(t *testing.T) {
 func TestOperationsOpCall_OutArrayOfUnknownRemapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	pbase := uint32(4 * 3) // parameter array base address
 	tbase := uint32(0)     // remap table base address
@@ -1097,7 +1140,9 @@ func TestOperationsOpCall_OutArrayOfUnknownRemapped(t *testing.T) {
 func TestOperationsOpCall_Remapped(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	test{
 		cmds: []api.Cmd{
@@ -1131,7 +1176,9 @@ func TestOperationsOpCall_Remapped(t *testing.T) {
 func TestOperationsOpCall_ReadRemappedStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 
 	aRng, aID := memory.Store(ctx, ml, p(0x100000), NewRemappedStruct(10, 20, 30))
@@ -1205,7 +1252,9 @@ func TestOperationsOpCall_ReadRemappedStruct(t *testing.T) {
 func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 
 	aRng, aID := memory.Store(
@@ -1291,7 +1340,9 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 
 	nestedRng, nestedID := memory.Store(
@@ -1408,7 +1459,9 @@ func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 
 	aRng, aID := memory.Store(ctx, ml, p(0x100000), "array")
@@ -1495,7 +1548,9 @@ func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 func TestOperationsOpCall_ReadAndConditionalWrite(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	cb := CommandBuilder{Thread: 0}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 	rRng, rID := memory.Store(ctx, ml, p(0x100000), uint32(3))                  // read for all cases
 	awcRng, awcID := memory.Store(ctx, ml, p(0x100000), uint32(2))              // write to count for Case 1

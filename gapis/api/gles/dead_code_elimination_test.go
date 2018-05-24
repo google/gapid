@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
@@ -37,6 +38,9 @@ func TestDeadCommandRemoval(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = bind.PutRegistry(ctx, bind.NewRegistry())
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+
+	a := arena.New()
+	defer a.Dispose()
 
 	// Keep the given command alive in the optimization.
 	isLive := map[api.Cmd]bool{}
@@ -74,7 +78,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 	ctxHandle2 := memory.BytePtr(2)
 	displayHandle := memory.BytePtr(3)
 	surfaceHandle := memory.BytePtr(4)
-	cb := gles.CommandBuilder{Thread: 0}
+	cb := gles.CommandBuilder{Thread: 0, Arena: a}
 	prologue := []api.Cmd{
 		cb.EglCreateContext(displayHandle, surfaceHandle, surfaceHandle, memory.Nullptr, ctxHandle1),
 		api.WithExtras(

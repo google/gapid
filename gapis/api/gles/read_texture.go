@@ -47,7 +47,7 @@ func (t *readTexture) add(ctx context.Context, r *ReadGPUTextureDataResolveable,
 		}
 
 		dID := id.Derived()
-		cb := CommandBuilder{Thread: r.Thread}
+		cb := CommandBuilder{Thread: r.Thread, Arena: s.Arena}
 
 		tex, ok := c.Objects().Textures().Lookup(TextureId(r.Texture))
 		if !ok {

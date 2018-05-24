@@ -31,7 +31,7 @@ func TestClone(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdClone(p(0x1234), 10).
@@ -47,7 +47,7 @@ func TestMake(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	idOfFirstPool, _ := s.Memory.New()
 	assert.For(ctx, "initial NextPoolID").That(idOfFirstPool).Equals(memory.PoolID(1))
 	api.MutateCmds(ctx, s, nil,
@@ -63,7 +63,7 @@ func TestCopy(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdMake(10),
@@ -80,7 +80,7 @@ func TestCharsliceToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	expected := "ħęľĺő ŵōřŀď"
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdCharsliceToString(p(0x1234), uint32(len(expected))).
@@ -93,7 +93,7 @@ func TestCharptrToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	expected := "ħęľĺő ŵōřŀď"
 	api.MutateCmds(ctx, s, nil,
 		cb.CmdCharptrToString(p(0x1234)).
@@ -106,7 +106,7 @@ func TestSliceCasts(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	l := s.MemoryLayout.Clone()
 	l.Integer.Size = 6 // non-multiple of u16
 	s.MemoryLayout = l

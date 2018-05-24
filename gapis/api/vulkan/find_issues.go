@@ -64,7 +64,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: 0, Arena: t.state.Arena}
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,
 		// we need to actually write some data here. r.Uint32() is what actually waits for the replay target to have

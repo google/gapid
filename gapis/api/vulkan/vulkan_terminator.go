@@ -311,7 +311,7 @@ func rebuildCommandBuffer(ctx context.Context,
 func cutCommandBuffer(ctx context.Context, id api.CmdID,
 	a *VkQueueSubmit, idx api.SubCmdIdx, out transform.Writer) {
 	s := out.State()
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	c := GetState(s)
 	l := s.MemoryLayout
 	o := a.Extras().Observations()

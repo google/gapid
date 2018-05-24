@@ -44,7 +44,7 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 		ctx:             ctx,
 		oldState:        oldState,
 		newState:        newState,
-		cb:              CommandBuilder{Thread: 0},
+		cb:              CommandBuilder{Thread: 0, Arena: newState.Arena},
 		seen:            map[interface{}]bool{},
 		memoryIntervals: interval.U64RangeList{},
 	}
@@ -424,7 +424,7 @@ func (sb *stateBuilder) bindContexts(ctx context.Context, s *State) {
 
 	for handle, c := range s.EGLContexts().All() {
 		if thread := c.Other().BoundOnThread(); thread != 0 {
-			cb := CommandBuilder{Thread: thread}
+			cb := CommandBuilder{Thread: thread, Arena: sb.cb.Arena}
 			write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
 				c.Other().StaticStateExtra(), c.Other().DynamicStateExtra()))
 		}

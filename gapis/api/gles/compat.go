@@ -199,7 +199,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 	t = transform.Transform("compat", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		dID := id.Derived()
 		s := out.State()
-		cb := CommandBuilder{Thread: cmd.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 		switch cmd := cmd.(type) {
 		case *EglMakeCurrent: // TODO: Check for GLX, CGL, WGL...
 			// The compatibility layer introduces calls to GL functions that are defined for desktop GL
@@ -1273,7 +1273,7 @@ func compatMultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out tra
 	s := out.State()
 	c := GetContext(s, cmd.Thread())
 	dID := id.Derived()
-	cb := CommandBuilder{Thread: cmd.Thread()}
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 	numViews := uint32(1)
 	c.Bound().DrawFramebuffer().ForEachAttachment(func(name GLenum, att FramebufferAttachment) {
 		numViews = u32.Max(numViews, uint32(att.NumViews()))

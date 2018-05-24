@@ -122,7 +122,7 @@ func postFBData(ctx context.Context,
 	}
 
 	dID := id.Derived()
-	cb := CommandBuilder{Thread: thread}
+	cb := CommandBuilder{Thread: thread, Arena: s.Arena}
 	t := newTweaker(out, dID, cb)
 	defer t.revert(ctx)
 	t.glBindFramebuffer_Read(ctx, fb)

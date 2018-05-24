@@ -30,7 +30,7 @@ func wireframe(ctx context.Context) transform.Transformer {
 		id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
 		l := s.MemoryLayout
-		cb := CommandBuilder{Thread: cmd.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		switch cmd := cmd.(type) {
 		case *VkCreateGraphicsPipelines:

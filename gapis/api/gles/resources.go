@@ -352,7 +352,7 @@ func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *
 	src := state.AllocDataOrPanic(ctx, source)
 	srcLen := state.AllocDataOrPanic(ctx, GLint(len(source)))
 	srcPtr := state.AllocDataOrPanic(ctx, src.Ptr())
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: state.Arena}
 	return cb.GlShaderSource(a.Shader(), 1, srcPtr.Ptr(), srcLen.Ptr()).
 		AddRead(srcPtr.Data()).
 		AddRead(srcLen.Data()).

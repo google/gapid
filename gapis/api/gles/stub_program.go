@@ -45,7 +45,7 @@ func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *a
 		ok := c.Objects().Buffers().Contains(BufferId(x))
 		return ok || x == uint32(vertexShaderID)
 	}))
-	cb := CommandBuilder{Thread: thread}
+	cb := CommandBuilder{Thread: thread, Arena: s.Arena}
 	glLinkProgram := cb.GlLinkProgram(programID)
 	glLinkProgram.Extras().Add(programInfo)
 	return append(

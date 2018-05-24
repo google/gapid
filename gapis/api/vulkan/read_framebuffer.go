@@ -101,7 +101,7 @@ func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 			res(nil, fmt.Errorf("Invalid depth attachment in the framebuffer, the attachment VkImage might have been destroyed"))
 			return
 		}
-		cb := CommandBuilder{Thread: cmd.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 		// Imageviews that are used in framebuffer attachments must contains
 		// only one mip level.
 		level := imageViewDepth.SubresourceRange().BaseMipLevel()
@@ -118,7 +118,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 		s := out.State()
 		c := GetState(s)
 
-		cb := CommandBuilder{Thread: cmd.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 
 		// TODO: Figure out a better way to select the framebuffer here.
 		if GetState(s).LastSubmission() == LastSubmissionType_SUBMIT {
