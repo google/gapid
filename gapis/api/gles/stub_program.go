@@ -31,7 +31,7 @@ var (
 )
 
 func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *api.GlobalState, programID ProgramId) []api.Cmd {
-	programInfo := FindLinkProgramExtra(e).Clone()
+	programInfo := FindLinkProgramExtra(s.Arena, e).Clone(s.Arena)
 	vss, fss, err := stubShaderSource(programInfo)
 	if err != nil {
 		log.E(ctx, "Unable to build stub shader: %v", err)

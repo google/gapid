@@ -55,6 +55,8 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 	modelCmdBuf VkCommandBuffer,
 	s *api.GlobalState) (VkCommandBuffer, []api.Cmd, []func()) {
 
+	a := s.Arena // TODO: Should this be a seperate temporary arena?
+
 	x := make([]api.Cmd, 0)
 	cleanup := make([]func(), 0)
 	// DestroyResourcesAtEndOfFrame will handle this actually removing the
@@ -66,7 +68,7 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 		newUnusedID(true, func(x uint64) bool {
 			return GetState(s).CommandBuffers().Contains(VkCommandBuffer(x))
 		}))
-	allocate := NewVkCommandBufferAllocateInfo(
+	allocate := NewVkCommandBufferAllocateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 		0, // pNext
 		modelCmdBufObj.Pool(),  // commandPool
@@ -84,14 +86,14 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 			allocateData.Ptr(), newCmdBufData.Ptr(), VkResult_VK_SUCCESS,
 		).AddRead(allocateData.Data()).AddWrite(newCmdBufData.Data()))
 
-	beginInfo := NewVkCommandBufferBeginInfo(
+	beginInfo := NewVkCommandBufferBeginInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 		NewVoidᶜᵖ(memory.Nullptr),
 		VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT),
 		NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr),
 	)
 	if bi := modelCmdBufObj.BeginInfo(); bi.Inherited() {
-		inheritanceInfo := NewVkCommandBufferInheritanceInfo(
+		inheritanceInfo := NewVkCommandBufferInheritanceInfo(a,
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
 			NewVoidᶜᵖ(memory.Nullptr),
 			bi.InheritedRenderPass(),
@@ -120,6 +122,8 @@ func rebuildVkCmdBeginRenderPass(
 	s *api.GlobalState,
 	d VkCmdBeginRenderPassArgsʳ) (func(), api.Cmd, error) {
 
+	a := s.Arena // TODO: Should this be a seperate temporary arena?
+
 	if !GetState(s).RenderPasses().Contains(d.RenderPass()) {
 		return nil, nil, fmt.Errorf("Cannot find Renderpass %v", d.RenderPass())
 	}
@@ -134,7 +138,7 @@ func rebuildVkCmdBeginRenderPass(
 
 	clearValuesData := s.AllocDataOrPanic(ctx, clearValues)
 
-	begin := NewVkRenderPassBeginInfo(
+	begin := NewVkRenderPassBeginInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // sType
 		0,                                        // pNext
 		d.RenderPass(),                           // renderPass
@@ -1072,14 +1076,17 @@ func rebuildVkCmdDebugMarkerBeginEXT(
 	s *api.GlobalState,
 	d VkCmdDebugMarkerBeginEXTArgsʳ) (func(), api.Cmd, error) {
 
+	a := s.Arena // TODO: Should this be a seperate temporary arena?
+
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName())
-	color := NewF32ː4ᵃ()
-	color.Set(0, d.Color().Get(0))
-	color.Set(1, d.Color().Get(1))
-	color.Set(2, d.Color().Get(2))
-	color.Set(3, d.Color().Get(3))
+	color := NewF32ː4ᵃ(a,
+		d.Color().Get(0),
+		d.Color().Get(1),
+		d.Color().Get(2),
+		d.Color().Get(3),
+	)
 	markerInfoData := s.AllocDataOrPanic(ctx,
-		NewVkDebugMarkerMarkerInfoEXT(
+		NewVkDebugMarkerMarkerInfoEXT(a,
 			VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
 			NewVoidᶜᵖ(memory.Nullptr),
 			NewCharᶜᵖ(markerNameData.Ptr()),
@@ -1110,6 +1117,8 @@ func rebuildVkCmdDebugMarkerInsertEXT(
 	s *api.GlobalState,
 	d VkCmdDebugMarkerInsertEXTArgsʳ) (func(), api.Cmd, error) {
 
+	a := s.Arena // TODO: Should this be a seperate temporary arena?
+
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
 	var color F32ː4ᵃ
 	color.Set(0, d.Color().Get(0))
@@ -1117,7 +1126,7 @@ func rebuildVkCmdDebugMarkerInsertEXT(
 	color.Set(2, d.Color().Get(2))
 	color.Set(3, d.Color().Get(3))
 	markerInfoData := s.AllocDataOrPanic(ctx,
-		NewVkDebugMarkerMarkerInfoEXT(
+		NewVkDebugMarkerMarkerInfoEXT(a,
 			VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
 			NewVoidᶜᵖ(memory.Nullptr),
 			NewCharᶜᵖ(markerNameData.Ptr()),

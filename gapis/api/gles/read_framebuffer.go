@@ -229,7 +229,7 @@ func postFBData(ctx context.Context,
 		t.glBindFramebuffer_Read(ctx, framebufferID)
 	}
 
-	t.setPackStorage(ctx, NewPixelStorageState(
+	t.setPackStorage(ctx, NewPixelStorageState(s.Arena,
 		0, // ImageHeight
 		0, // SkipImages
 		0, // RowLength

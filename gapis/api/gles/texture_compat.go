@@ -222,7 +222,7 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 	dID := i.Derived()
 	c := GetContext(s, a.Thread())
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
-	data := AsU8ˢ(a.Data().Slice(0, uint64(a.ImageSize()), s.MemoryLayout), s.MemoryLayout)
+	data := AsU8ˢ(s.Arena, a.Data().Slice(0, uint64(a.ImageSize()), s.MemoryLayout), s.MemoryLayout)
 	if pb := c.Bound().PixelUnpackBuffer(); !pb.IsNil() {
 		offset := a.Data().Address()
 		data = pb.Data().Slice(offset, offset+uint64(a.ImageSize()))
@@ -275,7 +275,7 @@ func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTe
 	dID := i.Derived()
 	c := GetContext(s, a.Thread())
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
-	data := AsU8ˢ(a.Data().Slice(0, uint64(a.ImageSize()), s.MemoryLayout), s.MemoryLayout)
+	data := AsU8ˢ(s.Arena, a.Data().Slice(0, uint64(a.ImageSize()), s.MemoryLayout), s.MemoryLayout)
 	if pb := c.Bound().PixelUnpackBuffer(); !pb.IsNil() {
 		offset := a.Data().Address()
 		data = pb.Data().Slice(offset, offset+uint64(a.ImageSize()))

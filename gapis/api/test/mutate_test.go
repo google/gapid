@@ -1181,8 +1181,8 @@ func TestOperationsOpCall_ReadRemappedStruct(t *testing.T) {
 	cb := CommandBuilder{Thread: 0, Arena: a}
 	ml := device.Little32
 
-	aRng, aID := memory.Store(ctx, ml, p(0x100000), NewRemappedStruct(10, 20, 30))
-	bRng, bID := memory.Store(ctx, ml, p(0x200000), NewRemappedStruct(40, 20, 50))
+	aRng, aID := memory.Store(ctx, ml, p(0x100000), NewRemappedStruct(a, 10, 20, 30))
+	bRng, bID := memory.Store(ctx, ml, p(0x200000), NewRemappedStruct(a, 40, 20, 50))
 
 	test{
 		cmds: []api.Cmd{
@@ -1259,11 +1259,11 @@ func TestOperationsOpCall_ReadPointerStruct(t *testing.T) {
 
 	aRng, aID := memory.Store(
 		ctx, ml, p(0x100000),
-		NewPointerStruct(0x23, 0x01, 0x200000))
+		NewPointerStruct(a, 0x23, 0x01, 0x200000))
 	bRng, bID := memory.Store(ctx, ml, p(0x200000), uint32(0x45))
 	cRng, cID := memory.Store(
 		ctx, ml, p(0x300000),
-		NewPointerStruct(0x89, 0x67, 0x200000))
+		NewPointerStruct(a, 0x89, 0x67, 0x200000))
 
 	test{
 		cmds: []api.Cmd{
@@ -1347,13 +1347,13 @@ func TestOperationsOpCall_ReadNestedStruct(t *testing.T) {
 
 	nestedRng, nestedID := memory.Store(
 		ctx, ml, p(0x100000),
-		NewNestedStruct(0x200000, 0x300000))
+		NewNestedStruct(a, 0x200000, 0x300000))
 	rsRng, rsID := memory.Store(
 		ctx, ml, p(0x200000),
-		NewRemappedStruct(0x01, 0x23, 0x45))
+		NewRemappedStruct(a, 0x01, 0x23, 0x45))
 	psRng, psID := memory.Store(
 		ctx, ml, p(0x300000),
-		NewPointerStruct(0x67, 0x89, 0x400000))
+		NewPointerStruct(a, 0x67, 0x89, 0x400000))
 	pRng, pID := memory.Store(ctx, ml, p(0x400000), uint32(0xab))
 
 	test{
@@ -1473,7 +1473,7 @@ func TestOperationsOpCall_ReadStringStruct(t *testing.T) {
 	})
 
 	ssRng, ssID := memory.Store(ctx, ml, p(0x500000),
-		NewStringStruct(5 /* size */, 0x400000 /* strings */))
+		NewStringStruct(a, 5 /* size */, 0x400000 /* strings */))
 
 	test{
 		cmds: []api.Cmd{

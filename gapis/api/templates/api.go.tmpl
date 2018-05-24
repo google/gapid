@@ -98,6 +98,9 @@ import (
   // go equality or as map keys.
   type uncompareable func()
 ¶
+  // constantArena is an arena used for globally persisted immutable values.
+  var constantArena = arena.New()
+¶
   func init() {
     ϟapi.Register(API{})
   }
@@ -163,9 +166,9 @@ import (
   }
 
   // Nil{{$name}} is a {{$name}} with default values in all fields.
-  var Nil{{$name}} = New{{$name}}()
+  var Nil{{$name}} = New{{$name}}(constantArena)
 
-  func New{{$name}}(els... {{$el}}) {{$name}} {
+  func New{{$name}}(ϟa arena.Arena, els... {{$el}}) {{$name}} {
     out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
     for i := 0; i < {{$ty.Size}}; i++ {
       if i < len(els) {
@@ -199,8 +202,8 @@ import (
   }
 
   // Decode decodes this static array from the decoder.
-  func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
-    out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
+  func Decode{{$name}}(ϟd *ϟmem.Decoder, ϟa arena.Arena) {{$name}} {
+    out := New{{$name}}(ϟa)
     for i, c := 0, {{$ty.Size}}; i < c; i++ {
       out.Set(i, {{Template "Go.Decode" $ty.ValueType}})
     }
@@ -216,8 +219,8 @@ import (
     }
   {{end}}
 
-  // Clone makes a deep copy of this static array.
-  func (m {{$name}}) Clone() {{$name}} {
+  // Clone makes a deep copy of this static array, using ϟa for allocations.
+  func (m {{$name}}) Clone(ϟa arena.Arena) {{$name}} {
     out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
     for i := 0; i < {{$ty.Size}}; i++ {
       out.Set(i, {{Template "Clone" "Type" $ty.ValueType "Src" "m.Get(i)"}})
@@ -239,13 +242,20 @@ import (
   {{$key   := Macro "Go.Type" $.KeyType}}
   {{$value := Macro "Go.Type" $.ValueType}}
 
-  type {{$name}} struct { Map *map[{{$key}}]{{$value}} }
-
-  func New{{$name}}() {{$name}} {
-    return {{$name}} { &map[{{$key}}]{{$value}}{} }
+  type {{$name}} struct {
+    Map *map[{{$key}}]{{$value}}
+    a   arena.Arena
   }
 
+  func New{{$name}}(ϟa arena.Arena) {{$name}} {
+    return {{$name}} { &map[{{$key}}]{{$value}}{}, ϟa }
+  }
+
+  // Arena returns the memory arena used to allocate this map.
+  func (m {{$name}}) Arena() arena.Arena { return m.a }
+
   func (m {{$name}}) Get(key {{$key}}) {{$value}} {
+    ϟa := m.a; _ = ϟa
     v, ok := (*m.Map)[key]
     if !ok {
       v = {{Template "Go.Null" $.ValueType}}
@@ -254,6 +264,7 @@ import (
   }
 
   func (m {{$name}}) Lookup(key {{$key}}) (v {{$value}}, ok bool) {
+    ϟa := m.a; _ = ϟa
     if m.Map != nil {
       v, ok = (*m.Map)[key]
     }
@@ -326,7 +337,7 @@ import (
   }
 
   // Clone makes a deep copy of this map.
-  func (m {{$name}}) Clone() {{$name}} {
+  func (m {{$name}}) Clone(ϟa arena.Arena) {{$name}} {
     out := make(map[{{$key}}]{{$value}}, len(*m.Map))
     for k, v := range *m.Map {
       out[{{Template "Clone" "Type" $.KeyType "Src" "k"}}] = {{Template "Clone" "Type" $.ValueType "Src" "v"}}
@@ -380,7 +391,7 @@ import (
   func (c {{$name}}) SetNil() { c.data = nil }
 
   // Clone makes a deep copy of this reference.
-  func (c {{$name}}) Clone() {{$name}} {
+  func (c {{$name}}) Clone(ϟa arena.Arena) {{$name}} {
     if c.IsNil() { return Nil{{$name}} }
     return {{$name}}{
       data: &{{$data}}{
@@ -422,9 +433,9 @@ import (
   {{end}}
 
   // New{{$name}} returns a new {{$name}} reference with the given fields.
-  func New{{$name}}(
+  func New{{$name}}(ϟa arena.Arena§
     {{range $f := $.To.Fields}}
-      {{$f.Name | GoPrivateName}} {{Template "Go.Type" $f}},
+      , {{$f.Name | GoPrivateName}} {{Template "Go.Type" $f}}§
     {{end}}
   ) {{$name}} {
     return {{$name}}{
@@ -437,8 +448,8 @@ import (
   }
 
   // Make{{$name}} returns a new {{$name}} reference with the default field values.
-  func Make{{$name}}() {{$name}} {
-    return New{{$name}}(
+  func Make{{$name}}(ϟa arena.Arena) {{$name}} {
+    return New{{$name}}(ϟa,
       {{range $i, $f := $.To.Fields}}
         {{if IsNil $f.Default}}
           {{Template "Go.Null" $f.Type}},
@@ -503,7 +514,7 @@ import (
 
   // New{{$slice_ty}} returns a {{$slice_ty}} with the given arguments.
   // TODO: This is a temporary function while migrating to apic compile.
-  func New{{$slice_ty}}(root, base, size, count uint64, pool ϟmem.PoolID) {{$slice_ty}} {
+  func New{{$slice_ty}}(a arena.Arena, root, base, size, count uint64, pool ϟmem.PoolID) {{$slice_ty}} {
     return {{$slice_ty}}{
       root:  root,
       base:  base,
@@ -515,7 +526,7 @@ import (
 
   // Make{{$slice_ty}} returns a {{$slice_ty}} backed by a new memory pool.
   func Make{{$slice_ty}}(count uint64, ϟg *ϟapi.GlobalState) {{$slice_ty}} {
-    ϟl := ϟg.MemoryLayout; _ = ϟl
+    ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
     id, _ := ϟg.Memory.New()
     return {{$slice_ty}}{
       size:  count * {{Template "Go.SizeOf" $s.To}},
@@ -600,7 +611,7 @@ import (
     // As{{$slice_ty}} returns s cast to a {{$slice_ty}}.
     // The returned slice length will be calculated so that the returned slice is
     // no longer (in bytes) than s.
-    func As{{$slice_ty}}(s ϟmem.Slice, ϟl *device.MemoryLayout) {{$slice_ty}} {
+    func As{{$slice_ty}}(a arena.Arena, s ϟmem.Slice, ϟl *device.MemoryLayout) {{$slice_ty}} {
       elSize := {{Template "Go.SizeOf" $s.To}}
       newCount := s.Size() / elSize
       newSize := newCount * elSize
@@ -615,16 +626,17 @@ import (
 
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
     func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) ([]{{$el_ty}}, error) {
+      ϟa := ϟg.Arena; _ = ϟa
       s.OnRead(ϟctx, ϟc, ϟg, ϟb)
       ϟd := s.Decoder(ϟctx, ϟg)
-      res := make([]{{$el_ty}}, s.count)
-      for i := range res {
-        res[i] = {{Template "Go.Decode" $s.To}}
+      out := make([]{{$el_ty}}, s.count)
+      for i := range out {
+        out[i] = {{Template "Go.Decode" $s.To}}
       }
       if err := ϟd.Error(); err != nil {
         return nil, err
       }
-      return res, nil
+      return out, nil
     }
 
     // MustRead calls and returns Read, panicing if there was an error.
@@ -637,6 +649,7 @@ import (
     // Write copies elements from src to this slice. The number of elements copied is returned
     // which is the minimum of s.count and len(src).
     func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) (uint64, error) {
+      ϟa := ϟg.Arena; _ = ϟa
       count := u64.Min(s.count, uint64(len(src)))
       e := s.Slice(0, count).Encoder(ϟg)
       ϟmem.Write(e, src[:count])
@@ -686,7 +699,7 @@ import (
 
   // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
-    ϟl := ϟg.MemoryLayout; _ = ϟl
+    ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
     if pool, err := ϟg.Memory.Get(s.pool); err == nil {
       if f := pool.OnRead; f != nil {
         f(s.Range())
@@ -734,7 +747,7 @@ import (
 
   // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
-    ϟl := ϟg.MemoryLayout; _ = ϟl
+    ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
     if pool, err := ϟg.Memory.Get(s.pool); err == nil {
       if f := pool.OnWrite; f != nil {
         f(s.Range())
@@ -894,6 +907,7 @@ import (
   {{if not $el_is_void}}
     // Read reads and returns the {{$el_ty}} element at the pointer.
     func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) ({{$el_ty}}, error) {
+      ϟa := ϟg.Arena; _ = ϟa
       vals, err := p.Slice(0, 1, ϟg.MemoryLayout).Read(ϟctx, ϟc, ϟg, ϟb)
       if err != nil {
         return {{Template "Go.Null" (TypeOf $p.To)}}, err
@@ -1016,10 +1030,10 @@ import (
       // Dummy function to make {{$name}} implement UintTy interface
       func ({{$name}}) IsUint() {}
     {{end}}
-    func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
+    func Decode{{$name}}(ϟd *ϟmem.Decoder, ϟa arena.Arena) {{$name}} {
       return {{$name}}({{Template "Go.Decode" $u}})
     }
-{{end}}
+  {{end}}
 {{end}}
 
 
@@ -1035,6 +1049,7 @@ import (
 
   type {{$name}} struct {
     data *{{$data}}
+    a    arena.Arena
     uncompareable
   }
 
@@ -1042,14 +1057,21 @@ import (
     {{Template "ClassFields" $}}
   }
 
+  // Nil{{$name}} is a {{$name}} with default values in all fields.
+  var Nil{{$name}} = Make{{$name}}(constantArena)
+
   {{range $f := $.Fields}}
     {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type}}
   {{end}}
 
+  // Arena returns the memory arena used to allocate this class.
+  func (c {{$name}}) Arena() arena.Arena { return c.a }
+
   // New{{$name}} returns a new {{$name}} class with the given fields.
-  func New{{$name}}(
+  func New{{$name}}(§
+    ϟa arena.Arena§
     {{range $f := $.Fields}}
-      {{$f.Name | GoPrivateName}} {{Template "Go.Type" $f}},
+      , {{$f.Name | GoPrivateName}} {{Template "Go.Type" $f}}§
     {{end}}
   ) {{$name}} {
     return {{$name}}{
@@ -1062,19 +1084,16 @@ import (
   }
 
   // Make{{$name}} returns a new {{$name}} class with the default field values.
-  func Make{{$name}}() {{$name}} {
-    return {{$name}} {
-      data: &{{$data}} {
-        {{range $f := $.Fields}}
-          {{$name := $f | GoPrivateName}}
-          {{if IsNil $f.Default}}
-            {{$name}}: {{Template "Go.Null" $f.Type}}, §
-          {{else}}
-            {{$name}}: {{Template "Go.Read" $f.Default}}, §
-          {{end}}
+  func Make{{$name}}(ϟa arena.Arena) {{$name}} {
+    return New{{$name}}(ϟa, §
+      {{range $i, $f := $.Fields}}
+        {{if IsNil $f.Default}}
+          {{Template "Go.Null" $f.Type}}, §
+        {{else}}
+          {{Template "Go.Read" $f.Default}}, §
         {{end}}
-      },
-    }
+      {{end}}
+    )
   }
 
   // Properties returns all the properties of the class.
@@ -1143,6 +1162,7 @@ import (
 
     // Decode decodes this class from the decoder.
     func (c {{$name}}) Decode(ϟd *ϟmem.Decoder) {
+      ϟa := c.Arena(); _ = ϟa
       ϟd.Align({{$name}}Alignment(ϟd.MemoryLayout()))
       base := ϟd.Offset();
       {{range $f := $.Fields}}
@@ -1157,15 +1177,15 @@ import (
     }
 
     // Decode decodes a new class from the decoder.
-    func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
-      out := Make{{$name}}()
+    func Decode{{$name}}(ϟd *ϟmem.Decoder, ϟa arena.Arena) {{$name}} {
+      out := Make{{$name}}(ϟa)
       out.Decode(ϟd)
       return out
     }
   {{end}}
 
   // Clone makes a deep copy of this class.
-  func (c {{$name}}) Clone() {{$name}} {
+  func (c {{$name}}) Clone(ϟa arena.Arena) {{$name}} {
     return {{$name}}{
       data: &{{$data}}{
         {{range $f := $.Fields}}
@@ -1198,7 +1218,11 @@ import (
     {{range $p := $.FullParameters}}
       {{$p | GoPrivateName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
     {{end}}
+    arena arena.Arena
   }
+
+  // Arena returns the memory arena used to allocate this command.
+  func (ϟc *{{$name}}) Arena() arena.Arena { return ϟc.arena }
 
   func (ϟc *{{$name}}) Thread() uint64 { return ϟc.thread }
 
@@ -1301,7 +1325,6 @@ import (
     {{end}}
     return out
   }
-
 {{end}}
 
 
@@ -1338,6 +1361,7 @@ import (
         out := &{{$name}} {§
           caller: ϟapi.CmdNoID,
           thread: cb.Thread,
+          arena:  cb.Arena,
         }
         {{range $p := $c.FullParameters}}
           {{if $p | TypeOf | Underlying | IsPointer}}
@@ -1365,6 +1389,7 @@ import (
     {{range $g := $.Globals}}
       {{GoPrivateName $g.Name}} {{Template "Go.Type" $g}}
     {{end}}
+    a arena.Arena
     CustomState `hidden:"true" nobox:"true"`
   }
 
@@ -1372,10 +1397,19 @@ import (
     {{Template "DeclareGetterSetter" "Struct" "State" "Name" $g.Name "Type" $g.Type "PtrMethod" "true"}}¶
   {{end}}
 
+  // Arena returns the memory arena used to allocate the state.
+  func (g *State) Arena() arena.Arena { return g.a }
+
   func (g *State) API() ϟapi.API { return API{} }
 
-  // Init intializes the state object.
+  // NewState returns a new, uninitialized state.
+  func NewState(ϟa arena.Arena) *State {
+    return &State{a: ϟa}
+  }
+
+  // Init initializes the state.
   func (g *State) Init() {
+    ϟa := g.a; _ = ϟa
     {{range $g := $.Globals}}
       {{if IsNil $g.Default}}
         {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}
@@ -1403,7 +1437,7 @@ import (
     }
   }
 
-  // Clone returns a deep copy of this state object.
+	// Clone returns a deep copy of this state object.
   func (g *State) Clone(ϟa arena.Arena) ϟapi.State {
     out := &State{CustomState: g.CustomState}
     {{range $g := $.Globals}}
@@ -1659,13 +1693,13 @@ import (
   {{AssertType $.Type "Type"}}
 
   {{     if IsPseudonym     $.Type}}{{Template "Clone" "Type" $.Type.To "Src" $.Src}}
-  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone()
-  {{else if IsMap           $.Type}}{{$.Src}}.Clone()
-  {{else if IsClass         $.Type}}{{$.Src}}.Clone()
+  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone(ϟa)
+  {{else if IsMap           $.Type}}{{$.Src}}.Clone(ϟa)
+  {{else if IsClass         $.Type}}{{$.Src}}.Clone(ϟa)
   {{else if IsEnum          $.Type}}{{$.Src}}
   {{else if IsPointer       $.Type}}{{$.Src}}
   {{else if IsSlice         $.Type}}{{$.Src}}
-  {{else if IsReference     $.Type}}{{$.Src}}.Clone()
+  {{else if IsReference     $.Type}}{{$.Src}}.Clone(ϟa)
   {{else if IsBool          $.Type}}{{$.Src}}
   {{else if IsInt           $.Type}}{{$.Src}}
   {{else if IsUint          $.Type}}{{$.Src}}

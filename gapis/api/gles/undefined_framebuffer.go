@@ -112,16 +112,16 @@ func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, de
 		AddRead(tmp0.Data()))
 	tmp0.Free()
 
-	attrib := MakeProgramResourceʳ()
+	attrib := MakeProgramResourceʳ(s.Arena)
 	attrib.SetType(GLenum_GL_FLOAT_VEC2)
 	attrib.SetName(aScreenCoords)
 	attrib.SetArraySize(1)
-	attrib.SetLocations(NewU32ːGLintᵐ().Add(0, 0))
+	attrib.SetLocations(NewU32ːGLintᵐ(s.Arena).Add(0, 0))
 
-	resources := MakeActiveProgramResourcesʳ()
-	resources.SetProgramInputs(NewU32ːProgramResourceʳᵐ().Add(0, attrib))
+	resources := MakeActiveProgramResourcesʳ(s.Arena)
+	resources.SetProgramInputs(NewU32ːProgramResourceʳᵐ(s.Arena).Add(0, attrib))
 
-	extra := MakeLinkProgramExtra()
+	extra := MakeLinkProgramExtra(s.Arena)
 	extra.SetLinkStatus(GLboolean_GL_TRUE)
 	extra.SetActiveResources(resources)
 	out.MutateAndWrite(ctx, dID, api.WithExtras(cb.GlLinkProgram(programID), extra))

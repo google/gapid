@@ -74,11 +74,12 @@ func (b *Builder) ClearDepth() api.CmdID {
 }
 
 func (b *Builder) makeCurrent(eglDisplay, eglSurface, eglContext memory.Pointer, width, height int, preserveBuffersOnSwap bool) {
+	a := b.state.Arena
 	eglTrue := gles.EGLBoolean(1)
 	b.Cmds = append(b.Cmds, api.WithExtras(
 		b.CB.EglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext, eglTrue),
-		gles.NewStaticContextStateForTest(),
-		gles.NewDynamicContextStateForTest(width, height, preserveBuffersOnSwap),
+		gles.NewStaticContextStateForTest(a),
+		gles.NewDynamicContextStateForTest(a, width, height, preserveBuffersOnSwap),
 	))
 	b.eglDisplay = eglDisplay
 	b.eglSurface = eglSurface

@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/data/compare"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
@@ -34,6 +35,7 @@ type stateBuilder struct {
 	cmds            []api.Cmd        // The commands which recreate the initial state
 	cb              CommandBuilder   // Default command builder for thread 0
 	preCmd          []func(api.Cmd)  // Actions to be done on the next written command
+	tmpArena        arena.Arena      // The arena to use for temporary allocations
 	seen            map[interface{}]bool
 	memoryIntervals interval.U64RangeList
 }
@@ -45,9 +47,12 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 		oldState:        oldState,
 		newState:        newState,
 		cb:              CommandBuilder{Thread: 0, Arena: newState.Arena},
+		tmpArena:        arena.New(),
 		seen:            map[interface{}]bool{},
 		memoryIntervals: interval.U64RangeList{},
 	}
+
+	defer sb.tmpArena.Dispose()
 
 	// Ensure that all pool IDs are distinct between the old state and new state.
 	// This helps with verification at the end by ensuring that diffing algorithm
@@ -85,8 +90,8 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 			if val, ok := last.Value.(compare.Hidden); ok {
 				if oldSlice, ok := ref.Value.(memory.Slice); ok {
 					if newSlice, ok := val.Value.(memory.Slice); ok {
-						old := AsU8ˢ(oldSlice, sb.oldState.MemoryLayout)
-						new := AsU8ˢ(newSlice, sb.newState.MemoryLayout)
+						old := AsU8ˢ(sb.tmpArena, oldSlice, sb.oldState.MemoryLayout)
+						new := AsU8ˢ(sb.tmpArena, newSlice, sb.newState.MemoryLayout)
 						if old.ResourceID(ctx, sb.oldState) == new.ResourceID(ctx, sb.newState) {
 							return // The pool IDs are different, but the resource IDs match exactly.
 						}
@@ -825,7 +830,7 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 		}
 	}
 
-	defaults := MakeTexture()
+	defaults := MakeTexture(sb.tmpArena)
 	parami := func(name GLenum, value GLint, defaultValue GLint) {
 		if value != defaultValue || target == GLenum_GL_TEXTURE_EXTERNAL_OES {
 			write(cb.GlTexParameteri(target, name, value))
@@ -915,7 +920,7 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ
 	write(cb.GlBindVertexArray(id))
 	if id > 0 {
 		for loc, vaa := range vao.VertexAttributeArrays().All() {
-			defaultArray := MakeVertexAttributeArray()
+			defaultArray := MakeVertexAttributeArray(sb.tmpArena)
 			defaultArray.SetBinding(vao.VertexBufferBindings().Get(VertexBufferBindingIndex(loc)))
 			if vaa.Get().Equals(defaultArray) {
 				continue // Default
@@ -944,7 +949,7 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ
 			}
 		}
 		for i, b := range vao.VertexBufferBindings().All() {
-			defaultBinding := MakeVertexBufferBinding()
+			defaultBinding := MakeVertexBufferBinding(sb.tmpArena)
 			defaultBinding.SetId(VertexBufferBindingIndex(i))
 			if b.Get().Equals(defaultBinding) {
 				continue
@@ -956,7 +961,7 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ
 		}
 	} else {
 		for loc, vaa := range vao.VertexAttributeArrays().All() {
-			defaultArray := MakeVertexAttributeArray()
+			defaultArray := MakeVertexAttributeArray(sb.tmpArena)
 			defaultArray.SetBinding(vao.VertexBufferBindings().Get(VertexBufferBindingIndex(loc)))
 			if vaa.Get().Equals(defaultArray) {
 				continue // Default

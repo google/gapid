@@ -25,15 +25,17 @@ import (
 func (b *Builder) CreateProgram(ctx context.Context,
 	vertexShaderSource, fragmentShaderSource string) gles.ProgramId {
 
+	a := b.state.Arena
+
 	vs, fs, prog := b.newShaderID(), b.newShaderID(), b.newProgramID()
 
 	b.Add(gles.BuildProgram(ctx, b.state, b.CB, vs, fs, prog,
 		vertexShaderSource, fragmentShaderSource)...,
 	)
 
-	resources := gles.MakeActiveProgramResourcesʳ()
+	resources := gles.MakeActiveProgramResourcesʳ(a)
 
-	lpe := gles.MakeLinkProgramExtra()
+	lpe := gles.MakeLinkProgramExtra(a)
 	lpe.SetLinkStatus(gles.GLboolean_GL_TRUE)
 	lpe.SetActiveResources(resources)
 
@@ -46,10 +48,12 @@ func (b *Builder) CreateProgram(ctx context.Context,
 
 // AddUniformSampler adds a sampler 2D uniform to the given program.
 func (b *Builder) AddUniformSampler(ctx context.Context, prog gles.ProgramId, name string) gles.UniformLocation {
+	a := b.state.Arena
+
 	resources := b.programResources[prog]
 	index := resources.DefaultUniformBlock().Len()
 
-	uniform := gles.MakeProgramResourceʳ()
+	uniform := gles.MakeProgramResourceʳ(a)
 	uniform.SetType(gles.GLenum_GL_SAMPLER_2D)
 	uniform.SetName(name)
 	uniform.SetArraySize(1)
@@ -64,10 +68,12 @@ func (b *Builder) AddUniformSampler(ctx context.Context, prog gles.ProgramId, na
 
 // AddAttributeVec3 adds a vec3 attribute to the given program.
 func (b *Builder) AddAttributeVec3(ctx context.Context, prog gles.ProgramId, name string) gles.AttributeLocation {
+	a := b.state.Arena
+
 	resources := b.programResources[prog]
 	index := resources.ProgramInputs().Len()
 
-	attribute := gles.MakeProgramResourceʳ()
+	attribute := gles.MakeProgramResourceʳ(a)
 	attribute.SetType(gles.GLenum_GL_FLOAT_VEC3)
 	attribute.SetName(name)
 	attribute.SetArraySize(1)

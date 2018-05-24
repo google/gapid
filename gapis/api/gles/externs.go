@@ -61,15 +61,15 @@ func (e externs) unmapMemory(slice memory.Slice) {
 }
 
 func (e externs) GetEGLStaticContextState(EGLDisplay, EGLContext) StaticContextStateʳ {
-	return FindStaticContextState(e.cmd.Extras()).Clone()
+	return FindStaticContextState(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
 }
 
 func (e externs) GetEGLDynamicContextState(EGLDisplay, EGLSurface, EGLContext) DynamicContextStateʳ {
-	return FindDynamicContextState(e.cmd.Extras()).Clone()
+	return FindDynamicContextState(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
 }
 
 func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) AndroidNativeBufferExtraʳ {
-	return FindAndroidNativeBufferExtra(e.cmd.Extras()).Clone()
+	return FindAndroidNativeBufferExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
 }
 
 func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
@@ -79,7 +79,7 @@ func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
 			for _, img := range ei.Images().All() {
 				poolID, pool := e.s.Memory.New()
 				pool.Write(0, memory.Resource(d.ID, d.Size))
-				data := NewU8ˢ(0, 0, d.Size, d.Size, poolID)
+				data := NewU8ˢ(e.s.Arena, 0, 0, d.Size, d.Size, poolID)
 				img.SetWidth(GLsizei(d.Width))
 				img.SetHeight(GLsizei(d.Height))
 				img.SetData(data)
@@ -108,7 +108,7 @@ func (e externs) calcIndexLimits(data U8ˢ, indexSize int) resolve.IndexRange {
 
 func (e externs) IndexLimits(data U8ˢ, indexSize int32) U32Limits {
 	limits := e.calcIndexLimits(data, int(indexSize))
-	return NewU32Limits(limits.First, limits.Count)
+	return NewU32Limits(e.s.Arena, limits.First, limits.Count)
 }
 
 func (e externs) substr(str string, start, end int32) string {
@@ -116,19 +116,19 @@ func (e externs) substr(str string, start, end int32) string {
 }
 
 func (e externs) GetCompileShaderExtra(ctx Contextʳ, obj Shaderʳ, bin BinaryExtraʳ) CompileShaderExtraʳ {
-	return FindCompileShaderExtra(e.cmd.Extras(), obj).Clone()
+	return FindCompileShaderExtra(e.s.Arena, e.cmd.Extras(), obj).Clone(e.s.Arena)
 }
 
 func (e externs) GetLinkProgramExtra(ctx Contextʳ, obj Programʳ, bin BinaryExtraʳ) LinkProgramExtraʳ {
-	return FindLinkProgramExtra(e.cmd.Extras()).Clone()
+	return FindLinkProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
 }
 
 func (e externs) GetValidateProgramExtra(ctx Contextʳ, obj Programʳ) ValidateProgramExtraʳ {
-	return FindValidateProgramExtra(e.cmd.Extras()).Clone()
+	return FindValidateProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
 }
 
 func (e externs) GetValidateProgramPipelineExtra(ctx Contextʳ, obj Pipelineʳ) ValidateProgramPipelineExtraʳ {
-	return FindValidateProgramPipelineExtra(e.cmd.Extras()).Clone()
+	return FindValidateProgramPipelineExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
 }
 
 func (e externs) onGlError(err GLenum) {
@@ -184,7 +184,7 @@ func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ 
 	device := registry.DefaultDevice() // TODO: Device selection.
 	if device == nil {
 		log.W(e.ctx, "No device found for GPU texture read")
-		return NewU8ˢ(0, 0, uint64(size), uint64(size), poolID)
+		return NewU8ˢ(e.s.Arena, 0, 0, uint64(size), uint64(size), poolID)
 	}
 	dataID, err := database.Store(e.ctx, &ReadGPUTextureDataResolveable{
 		Capture:    path.NewCapture(capture.Get(e.ctx).Id.ID()),
@@ -202,5 +202,5 @@ func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ 
 	}
 	data := memory.Resource(dataID, uint64(size))
 	dst.Write(0, data)
-	return NewU8ˢ(0, 0, uint64(size), uint64(size), poolID)
+	return NewU8ˢ(e.s.Arena, 0, 0, uint64(size), uint64(size), poolID)
 }

@@ -17,10 +17,14 @@ package gles_test
 import (
 	"testing"
 
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api/gles"
 )
 
 func TestStubShaderSource(t *testing.T) {
+	a := arena.New()
+	defer a.Dispose()
+
 	type uniform struct {
 		ty   gles.GLenum
 		name string
@@ -28,18 +32,18 @@ func TestStubShaderSource(t *testing.T) {
 	}
 
 	newLPE := func(uniforms ...uniform) gles.LinkProgramExtraʳ {
-		m := gles.NewUniformIndexːProgramResourceʳᵐ()
+		m := gles.NewUniformIndexːProgramResourceʳᵐ(a)
 		for i, u := range uniforms {
-			res := gles.MakeProgramResourceʳ()
+			res := gles.MakeProgramResourceʳ(a)
 			res.SetType(u.ty)
 			res.SetName(u.name)
 			res.SetArraySize(u.size)
 			m.Add(gles.UniformIndex(i), res)
 		}
-		resources := gles.MakeActiveProgramResourcesʳ()
+		resources := gles.MakeActiveProgramResourcesʳ(a)
 		resources.SetDefaultUniformBlock(m)
 
-		out := gles.MakeLinkProgramExtraʳ()
+		out := gles.MakeLinkProgramExtraʳ(a)
 		out.SetLinkStatus(gles.GLboolean_GL_TRUE)
 		out.SetActiveResources(resources)
 		return out

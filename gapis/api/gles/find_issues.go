@@ -264,7 +264,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 						}
 					}
 					logLevel := service.Severity_ErrorLevel
-					if pi := FindLinkProgramExtra(cmd.Extras()); !pi.IsNil() && pi.LinkStatus() == GLboolean_GL_TRUE {
+					if pi := FindLinkProgramExtra(s.Arena, cmd.Extras()); !pi.IsNil() && pi.LinkStatus() == GLboolean_GL_TRUE {
 						// Increase severity if the program linked successfully during trace.
 						logLevel = service.Severity_FatalLevel
 					}

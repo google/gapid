@@ -17,6 +17,7 @@ package gles
 import (
 	"context"
 
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 )
 
@@ -93,8 +94,8 @@ func GetAttribLocation(ctx context.Context, s *api.GlobalState, cb CommandBuilde
 
 // DefaultConstants30 returns a Constants structure filled with default
 // values for a vaild OpenGL ES 3.0 context.
-func DefaultConstants30() Constants {
-	out := MakeConstants()
+func DefaultConstants30(a arena.Arena) Constants {
+	out := MakeConstants(a)
 	out.SetSubpixelBits(4)
 	out.SetMaxElementIndex(0xFFFFFF)
 	out.SetMax3dTextureSize(256)
@@ -200,24 +201,24 @@ func DefaultConstants30() Constants {
 	out.SetMaxTransformFeedbackSeparateComponents(4)
 	out.SetMaxTextureMaxAnisotropyExt(2.0)
 	out.SetMaxViewsExt(2)
-	out.SetCompressedTextureFormats(NewU32ːGLenumᵐ())
-	out.SetProgramBinaryFormats(NewU32ːGLenumᵐ())
-	out.SetShaderBinaryFormats(NewU32ːGLenumᵐ())
-	out.SetExtensions(NewU32ːstringᵐ())
+	out.SetCompressedTextureFormats(NewU32ːGLenumᵐ(a))
+	out.SetProgramBinaryFormats(NewU32ːGLenumᵐ(a))
+	out.SetShaderBinaryFormats(NewU32ːGLenumᵐ(a))
+	out.SetExtensions(NewU32ːstringᵐ(a))
 	return out
 }
 
-func NewStaticContextStateForTest() StaticContextState {
-	constants := DefaultConstants30()
+func NewStaticContextStateForTest(a arena.Arena) StaticContextState {
+	constants := DefaultConstants30(a)
 	constants.SetVersion("OpenGL ES 2.0")
-	return NewStaticContextState(
+	return NewStaticContextState(a,
 		constants, // Constants
 		"",        // ThreadName
 	)
 }
 
-func NewDynamicContextStateForTest(width, height int, preserveBuffersOnSwap bool) DynamicContextState {
-	return NewDynamicContextState(
+func NewDynamicContextStateForTest(a arena.Arena, width, height int, preserveBuffersOnSwap bool) DynamicContextState {
+	return NewDynamicContextState(a,
 		GLsizei(width),              //  BackbufferWidth
 		GLsizei(height),             //  BackbufferHeight
 		GLenum_GL_RGB565,            //   BackbufferColorFmt

@@ -216,6 +216,8 @@ func rebuildCommandBuffer(ctx context.Context,
 	idx api.SubCmdIdx,
 	additionalCommands []interface{}) (VkCommandBuffer, []api.Cmd, []func()) {
 
+	a := s.Arena // TODO: Use a temporary arena?
+
 	// DestroyResourcesAtEndOfFrame will handle this actually removing the
 	// command buffer. We have no way to handle WHEN this will be done
 	commandBufferID, x, cleanup := allocateNewCmdBufFromExistingOneAndBegin(ctx, cb, commandBuffer.VulkanHandle(), s)
@@ -251,8 +253,8 @@ func rebuildCommandBuffer(ctx context.Context,
 	}
 
 	if numSecondaryCommandsToCopy != 0 || numSecondaryCmdBuffersToCopy != 0 {
-		newCmdExecuteCommandsData := NewVkCmdExecuteCommandsArgs(
-			NewU32ːVkCommandBufferᵐ(), // CommandBuffers
+		newCmdExecuteCommandsData := NewVkCmdExecuteCommandsArgs(a,
+			NewU32ːVkCommandBufferᵐ(a), // CommandBuffers
 		)
 		pcmd := commandBuffer.CommandReferences().Get(uint32(idx[0]))
 		execCmdData, ok := GetCommandArgs(ctx, pcmd, GetState(s)).(VkCmdExecuteCommandsArgs)
@@ -361,9 +363,9 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 		numSubpasses := uint32(lrp.SubpassDescriptions().Len())
 		for i := 0; uint32(i) < numSubpasses-lsp-1; i++ {
 			extraCommands = append(extraCommands,
-				NewVkCmdNextSubpassArgsʳ(VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE))
+				NewVkCmdNextSubpassArgsʳ(s.Arena, VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE))
 		}
-		extraCommands = append(extraCommands, NewVkCmdEndRenderPassArgsʳ())
+		extraCommands = append(extraCommands, NewVkCmdEndRenderPassArgsʳ(s.Arena))
 	}
 
 	cmdBuffer := c.CommandBuffers().Get(newCommandBuffers[lastCommandBuffer])
