@@ -28,7 +28,7 @@
     (TARGET_OS == GAPID_OS_OSX)
 #include <sys/mman.h>
 #include <unistd.h>  // getpagesize
-#elif TARGET_OS == GAPID_OS_WINDOWS 
+#elif TARGET_OS == GAPID_OS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
@@ -127,7 +127,7 @@ Arena::~Arena() {
   }
   for (auto chunk : chunks_) {
     free_aligned(chunk);
-    }
+  }
 }
 
 void* Arena::allocate(uint32_t size, uint32_t align) {
