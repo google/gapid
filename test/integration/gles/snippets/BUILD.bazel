@@ -18,8 +18,8 @@ go_library(
     name = "go_default_library",
     srcs = [
         "builder.go",
-        "context.go",
         "clear_backbuffer.go",
+        "context.go",
         "draw_textured_square.go",
         "shaders.go",
         "snippets.go",

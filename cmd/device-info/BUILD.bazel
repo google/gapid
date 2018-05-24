@@ -20,8 +20,8 @@ cc_stripped_binary(
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [
-        "//core/os/device/deviceinfo/cc:cc",
-        "@com_google_protobuf//:protobuf",
         "//core/os/device:device_cc_proto",
+        "//core/os/device/deviceinfo/cc",
+        "@com_google_protobuf//:protobuf",
     ],
 )

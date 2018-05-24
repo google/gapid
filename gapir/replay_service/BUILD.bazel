@@ -16,28 +16,34 @@ load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
 
-proto_library(
-  name = "service_proto",
-  srcs = ["service.proto"],
-  visibility = ["//visibility:public"],
-)
-
 go_proto_library(
-  name = "service_go_proto",
-  compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-  importpath = "github.com/google/gapid/gapir/replay_service",
-  proto = ":service_proto",
-  visibility = ["//visibility:public"],
+    name = "service_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "github.com/google/gapid/gapir/replay_service",
+    proto = ":replay_service_proto",
+    visibility = ["//visibility:public"],
 )
 
 cc_grpc_library(
     name = "service_cc_proto",
     srcs = ["service.proto"],
-    deps = [],
+    generate_mocks = False,
     proto_only = False,
     use_external = True,
+    visibility = ["//visibility:public"],
     well_known_protos = [],
-    generate_mocks = False,
+    deps = [],
+)
+
+proto_library(
+    name = "replay_service_proto",
+    srcs = ["service.proto"],
     visibility = ["//visibility:public"],
 )
 
+go_library(
+    name = "go_default_library",
+    embed = [":service_go_proto"],
+    importpath = "github.com/google/gapid/gapir/replay_service",
+    visibility = ["//visibility:public"],
+)

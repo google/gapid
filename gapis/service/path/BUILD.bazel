@@ -34,6 +34,7 @@ go_library(
         "//core/data/slice:go_default_library",
         "//core/image:go_default_library",
         "//gapis/service/box:go_default_library",
+        "//gapis/vertex:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )

@@ -25,9 +25,7 @@ go_library(
     deps = [
         "//core/data:go_default_library",
         "//core/data/deep:go_default_library",
-        "//core/data/dictionary:go_default_library",
         "//core/data/protoconv:go_default_library",
-        "//core/image:go_default_library",
         "//core/os/device:go_default_library",
         "//gapil/constset:go_default_library",
         "//gapis/api:go_default_library",

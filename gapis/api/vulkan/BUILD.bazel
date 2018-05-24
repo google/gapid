@@ -133,8 +133,8 @@ go_test(
     srcs = [
         "externs_test.go",
         "footprint_builder_test.go",
-        "image_primer_test.go",
         "image_primer_shaders_test.go",
+        "image_primer_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
@@ -144,5 +144,6 @@ go_test(
         "//core/math/interval:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
+        "//gapis/memory:go_default_library",
     ],
 )

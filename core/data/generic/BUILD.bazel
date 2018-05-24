@@ -19,7 +19,6 @@ go_library(
     srcs = ["generic.go"],
     importpath = "github.com/google/gapid/core/data/generic",
     visibility = ["//visibility:public"],
-    deps = [],
 )
 
 go_test(

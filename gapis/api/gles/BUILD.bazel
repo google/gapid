@@ -93,7 +93,6 @@ go_library(
         "//core/context/keys:go_default_library",
         "//core/data/binary:go_default_library",
         "//core/data/compare:go_default_library",
-        "//core/data/deep:go_default_library",
         "//core/data/dictionary:go_default_library",
         "//core/data/endian:go_default_library",
         "//core/data/id:go_default_library",

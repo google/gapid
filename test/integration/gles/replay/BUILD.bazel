@@ -34,11 +34,19 @@ go_library(
     importpath = "github.com/google/gapid/test/integration/gles/replay",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/assert:go_default_library",
         "//core/data/endian:go_default_library",
+        "//core/event/task:go_default_library",
         "//core/image:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
+        "//core/os/device/bind:go_default_library",
         "//core/stream:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/api/gles:go_default_library",
+        "//gapis/replay:go_default_library",
+        "//gapis/resolve:go_default_library",
+        "//gapis/service/path:go_default_library",
     ],
 )
 
@@ -47,8 +55,8 @@ go_test(
     srcs = [
         "clear_test.go",
         "draw_test.go",
-        "gles_test.go",
         "fb_texture_test.go",
+        "gles_test.go",
         "issues_test.go",
     ],
     data = [
@@ -62,11 +70,7 @@ go_test(
         "manual",
     ],
     deps = [
-        "//core/app:go_default_library",
         "//core/assert:go_default_library",
-        "//core/data/id:go_default_library",
-        "//core/event/task:go_default_library",
-        "//core/image:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
