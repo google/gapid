@@ -142,7 +142,7 @@ func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
 		}
 		for k, v := range c.InitialState.APIs {
-			s.APIs[k.ID()] = v.Clone()
+			s.APIs[k.ID()] = v.Clone(s.Arena)
 		}
 		for _, v := range s.APIs {
 			v.SetupInitialState(ctx, s)

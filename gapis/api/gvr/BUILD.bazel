@@ -76,6 +76,7 @@ go_library(
         "//core/event/task:go_default_library",  # keep
         "//core/image:go_default_library",
         "//core/math/interval:go_default_library",
+        "//core/memory/arena:go_default_library",  # keep
         "//gapil/constset:go_default_library",  # keep
         "//gapis/api:go_default_library",
         "//gapis/api/gles:go_default_library",

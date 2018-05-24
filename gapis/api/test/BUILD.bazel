@@ -73,6 +73,7 @@ go_test(
         "//core/data/protoconv:go_default_library",
         "//core/event/task:go_default_library",  # keep
         "//core/log:go_default_library",
+        "//core/memory/arena:go_default_library",  # keep
         "//core/os/device:go_default_library",
         "//gapil/constset:go_default_library",  # keep
         "//gapir/client:go_default_library",
