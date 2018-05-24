@@ -203,7 +203,7 @@ func UnionOf(vals ...Value) Value {
 }
 
 // unknownOf returns the unbounded value for the given type.
-func (s *scope) unknownOf(ty semantic.Type) (out Value) {
+func (s *scope) unknownOf(ty semantic.Type) Value {
 	if ty == nil { // sanity check.
 		panic("unknownOf passed nil type")
 	}
@@ -211,67 +211,80 @@ func (s *scope) unknownOf(ty semantic.Type) (out Value) {
 	if v, ok := s.shared.unknowns[ty]; ok {
 		return v.Clone() // Clone a pre-cached copy of this value type.
 	}
-	defer func() { s.shared.unknowns[ty] = out.Clone() }()
+
+	var out Value
+	// setOut assigns v to out and stores v into the shared unknowns cache.
+	// Call this as soon as the output value has been built, and before any
+	// additional calls to unknownOf to prevent infinite recursion in this
+	// function.
+	setOut := func(v Value) {
+		out = v
+		s.shared.unknowns[ty] = v
+	}
 
 	switch ty := ty.(type) {
 	case *semantic.Pseudonym:
-		return s.unknownOf(ty.To)
+		setOut(s.unknownOf(ty.To))
 
 	case *semantic.Class:
-		out := &ClassValue{Class: ty, Fields: map[string]Value{}}
+		class := &ClassValue{Class: ty, Fields: map[string]Value{}}
+		setOut(class)
 		for _, f := range ty.Fields {
-			out.Fields[f.Name()] = s.unknownOf(f.Type)
+			class.Fields[f.Name()] = s.unknownOf(f.Type)
 		}
-		return out
 
 	case *semantic.Map:
-		return &MapValue{
+		setOut(&MapValue{
 			Map:        ty,
 			KeyToValue: map[Value]Value{},
 			ValueToKey: map[Value]Value{},
-		}
+		})
 
 	case *semantic.Enum:
-		return &EnumValue{
+		setOut(&EnumValue{
 			Ty:      ty,
 			Numbers: s.unknownOf(semantic.Uint64Type).(*UintValue),
 			Labels:  Labels{},
-		}
+		})
 
 	case *semantic.Reference:
 		// Fake a semantic create node for this unknown reference.
 		create := &semantic.Create{Type: ty}
 		s.instances[create] = s.unknownOf(ty.To)
-		return &ReferenceValue{
-			Ty:      ty.To,
-			Unknown: s.unknownOf(ty.To),
+		ref := &ReferenceValue{
+			Ty: ty.To,
 			Assignments: map[*semantic.Create]struct{}{
 				create: {},
 			},
 		}
+		setOut(ref)
+		ref.Unknown = s.unknownOf(ty.To)
 
 	case *semantic.Builtin:
 		switch ty {
 		case semantic.BoolType:
-			return &BoolValue{Maybe}
+			setOut(&BoolValue{Maybe})
 
 		case semantic.Int8Type, semantic.Uint8Type, semantic.CharType:
-			return newUintRange(ty, 0, 0xff)
+			setOut(newUintRange(ty, 0, 0xff))
 
 		case semantic.Int16Type, semantic.Uint16Type:
-			return newUintRange(ty, 0, 0xffff)
+			setOut(newUintRange(ty, 0, 0xffff))
 
 		case semantic.Int32Type, semantic.Uint32Type:
-			return newUintRange(ty, 0, 0xffffffff)
+			setOut(newUintRange(ty, 0, 0xffffffff))
 
 		case semantic.Int64Type, semantic.Uint64Type,
 			semantic.IntType, semantic.UintType,
 			semantic.SizeType:
 			// TODO: Fix interval package to allow for entire range!
-			return newUintRange(ty, 0, 0xfffffffffffffffe)
+			setOut(newUintRange(ty, 0, 0xfffffffffffffffe))
 		}
 	}
-	return &UntrackedValue{ty}
+	if out == nil {
+		setOut(&UntrackedValue{ty})
+	}
+	return out.Clone()
 }
 
 // defaultOf returns the default value for the given type.
