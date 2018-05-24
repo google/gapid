@@ -1293,8 +1293,8 @@ import (
     {{Template "DeclareGetterSetter" "Struct" $name "Name" $p.Name "Type" $p.Type "PtrMethod" "true"}}¶
   {{end}}
 
-  // Clone makes a copy of this command.
-  func (ϟc *{{$name}}) Clone() *{{$name}} {
+  // Clone returns a shallow clone of the command. Extras are shared.
+  func (ϟc *{{$name}}) Clone(ϟa arena.Arena) *{{$name}} {
     out := &{{$name}}{
       extras: ϟc.extras,
       caller: ϟc.caller,

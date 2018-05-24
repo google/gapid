@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/math/u64"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
@@ -51,9 +52,10 @@ func (d *GlDrawRangeElements) indexLimits() (resolve.IndexRange, bool) {
 	}, true
 }
 
-func cloneCmd(cmd api.Cmd) api.Cmd {
+func cloneCmd(cmd api.Cmd, a arena.Arena) api.Cmd {
 	vc := reflect.ValueOf(cmd)
-	return vc.MethodByName("Clone").Call([]reflect.Value{})[0].Interface().(api.Cmd)
+	va := reflect.ValueOf(a)
+	return vc.MethodByName("Clone").Call([]reflect.Value{va})[0].Interface().(api.Cmd)
 }
 
 // compatDrawElements performs compatibility logic to translate a draw elements
@@ -104,7 +106,7 @@ func compatDrawElements(
 			moveClientVBsToVAs(ctx, t, clientVAs, limits.First, limits.Count, id, cmd, s, c, out)
 		}
 
-		cmd := cloneCmd(cmd).(drawElements)
+		cmd := cloneCmd(cmd, s.Arena).(drawElements)
 		cmd.SetIndices(0)
 		compatMultiviewDraw(ctx, id, cmd, out)
 		return
@@ -218,7 +220,7 @@ func moveClientVBsToVAs(
 		arr := va.VertexAttributeArrays().Get(l)
 		if arr.Enabled() == GLboolean_GL_TRUE {
 			if glVAP, ok := clientVAs[arr]; ok {
-				glVAP := *glVAP // Copy
+				glVAP := glVAP.Clone(s.Arena)
 				i := interval.IndexOf(&rngs, glVAP.Data().Address())
 				t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
 				// The glVertexAttribPointer call may have come from a different thread
@@ -226,7 +228,7 @@ func moveClientVBsToVAs(
 				// Use the draw call's thread instead.
 				glVAP.SetThread(cmd.Thread())
 				glVAP.SetData(glVAP.Data() - VertexPointer(rngs[i].First)) // Offset
-				out.MutateAndWrite(ctx, dID, &glVAP)
+				out.MutateAndWrite(ctx, dID, glVAP)
 			}
 		}
 	}
