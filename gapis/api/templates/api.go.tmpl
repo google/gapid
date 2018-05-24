@@ -264,10 +264,6 @@ import (
     return
   }
 
-  func (m {{$name}}) Set(key {{$key}}, val {{$value}}) {
-    (*m.Map)[key] = val
-  }
-
   func (m {{$name}}) Add(key {{$key}}, val {{$value}}) {{$name}} {
     (*m.Map)[key] = val
     return m

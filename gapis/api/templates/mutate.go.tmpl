@@ -575,7 +575,7 @@
   {{AssertType $ "MapAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Map}}.Set({{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
+    {{Template "Go.Read" $.To.Map}}.Add({{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported MapAssign operator %s" $.Operator}}
   {{end}}
