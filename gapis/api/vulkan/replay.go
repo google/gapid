@@ -95,13 +95,7 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 // makeAttachementReadable is a transformation marking all color/depth/stencil
 // attachment images created via vkCreateImage commands as readable (by patching
 // the transfer src bit).
-type makeAttachementReadable struct {
-	instance                  VkInstance
-	enumeratedPhysicalDevices []VkPhysicalDevice
-	properties                []VkPhysicalDeviceProperties
-	inPhysicalDeviceEnumerate bool
-	numPhysicalDevicesLeft    uint32
-}
+type makeAttachementReadable struct{}
 
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
@@ -272,37 +266,18 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
-		// Actually querying the physical devices.
-		// We have inserted e.PPhysicalDeviceCount calls to VkGetPhysicalDeviceProperties
-		// after this command. Use those to get the physical device info.
-		// This is temporary, we need to switch this to use Extras.
-		//   https://github.com/google/gapid/issues/1766
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		t.numPhysicalDevicesLeft = uint32(e.PPhysicalDeviceCount().Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0])
-		// Do not mutate the second call to vkEnumeratePhysicalDevices, all the following vkGetPhysicalDeviceProperties belong to this
-		// physical device enumeration.
-		t.inPhysicalDeviceEnumerate = true
-		t.properties = make([]VkPhysicalDeviceProperties, 0)
-		t.enumeratedPhysicalDevices = make([]VkPhysicalDevice, 0)
-		t.instance = e.Instance()
-	} else if g, ok := cmd.(*VkGetPhysicalDeviceProperties); ok {
-		if t.inPhysicalDeviceEnumerate {
-			cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-			prop := g.PProperties().MustRead(ctx, cmd, s, nil)
-			t.properties = append(t.properties, prop)
-			t.enumeratedPhysicalDevices = append(t.enumeratedPhysicalDevices, g.PhysicalDevice())
-			if t.numPhysicalDevicesLeft > 0 {
-				t.numPhysicalDevicesLeft--
-			}
-			if t.numPhysicalDevicesLeft == 0 {
-				newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, t.instance, uint32(len(t.enumeratedPhysicalDevices)), t.enumeratedPhysicalDevices, t.properties)
-				out.MutateAndWrite(ctx, id, newEnumerate)
-				t.inPhysicalDeviceEnumerate = false
-			}
-			return
+		numDev := e.PPhysicalDeviceCount().Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0]
+		devSlice := e.PPhysicalDevices().Slice(0, uint64(numDev), l)
+		devs := devSlice.MustRead(ctx, cmd, s, nil)
+		allProps := externs{ctx, cmd, id, s, nil}.fetchPhysicalDeviceProperties(e.Instance(), devSlice)
+		propList := []VkPhysicalDeviceProperties{}
+		for _, dev := range devs {
+			propList = append(propList, allProps.PhyDevToProperties().Get(dev).Clone())
 		}
-		out.MutateAndWrite(ctx, id, g)
+		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance(), numDev, devs, propList)
+		out.MutateAndWrite(ctx, id, newEnumerate)
 		return
 	}
 	out.MutateAndWrite(ctx, id, cmd)
@@ -481,13 +456,7 @@ func (a API) Replay(
 	cmds := capture.Commands
 
 	transforms := transform.Transforms{}
-	transforms.Add(&makeAttachementReadable{
-		VkInstance(0),
-		make([]VkPhysicalDevice, 0),
-		make([]VkPhysicalDeviceProperties, 0),
-		false,
-		0,
-	})
+	transforms.Add(&makeAttachementReadable{})
 
 	readFramebuffer := newReadFramebuffer(ctx)
 	injector := &transform.Injector{}

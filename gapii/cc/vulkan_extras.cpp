@@ -455,6 +455,18 @@ void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}
 void VulkanSpy::popRenderPassMarker(CallObserver*) {}
 void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
 
+gapil::Ref<PhysicalDevicesAndProperties> VulkanSpy::fetchPhysicalDeviceProperties(
+    CallObserver* observer, VkInstance instance, gapil::Slice<VkPhysicalDevice> devs) {
+  auto props = gapil::Ref<PhysicalDevicesAndProperties>::create(arena());
+  for (VkPhysicalDevice dev : devs) {
+    props->mPhyDevToProperties[dev] = VkPhysicalDeviceProperties(arena());
+    mImports.mVkInstanceFunctions[instance].vkGetPhysicalDeviceProperties(
+        dev, &props->mPhyDevToProperties[dev]);
+  }
+  observer->encode(*props.get());
+  return props;
+}
+
 // Override API functions
 // SpyOverride_vkGetInstanceProcAddr(), SpyOverride_vkGetDeviceProcAddr(),
 // SpyOverride_vkCreateInstance() and SpyOverride_vkCreateDevice() require
@@ -693,33 +705,6 @@ uint32_t VulkanSpy::CreateBufferAndGetMemoryRequirements(
   if (result == gapii::VkResult::VK_SUCCESS) {
     gapii::VkMemoryRequirements mem_req{&arena};
     gapii::vkGetBufferMemoryRequirements(device, *pBuffer, &mem_req);
-  }
-  return result;
-}
-
-uint32_t VulkanSpy::EnumeratePhysicalDevicesAndCacheProperties(
-    VkInstance instance, uint32_t* pPhysicalDeviceCount,
-    VkPhysicalDevice* pPhysicalDevices) {
-
-  core::Arena arena;
-  uint32_t result = gapii::vkEnumeratePhysicalDevices(
-      instance, pPhysicalDeviceCount, pPhysicalDevices);
-  if ((result == gapii::VkResult::VK_SUCCESS) &&
-      (pPhysicalDevices != nullptr)) {
-    uint32_t dev_count = *pPhysicalDeviceCount;
-    std::vector<VkPhysicalDevice> devs(pPhysicalDevices,
-                                       pPhysicalDevices + dev_count);
-    for (VkPhysicalDevice dev : devs) {
-      gapii::VkPhysicalDeviceProperties dev_prop{&arena};
-      gapii::vkGetPhysicalDeviceProperties(dev, &dev_prop);
-      uint32_t queue_family_count = 0;
-      gapii::vkGetPhysicalDeviceQueueFamilyProperties(dev, &queue_family_count,
-                                                      nullptr);
-      std::vector<VkQueueFamilyProperties> queue_family_props(
-          queue_family_count, VkQueueFamilyProperties{&arena});
-      gapii::vkGetPhysicalDeviceQueueFamilyProperties(
-          dev, &queue_family_count, queue_family_props.data());
-    }
   }
   return result;
 }

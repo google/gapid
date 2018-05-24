@@ -96,10 +96,6 @@ static uint32_t CreateBufferAndGetMemoryRequirements(VkDevice,
                                                      const VkAllocationCallbacks*,
                                                      VkBuffer*);
 
-static uint32_t EnumeratePhysicalDevicesAndCacheProperties(
-    VkInstance, uint32_t* pPhysicalDeviceCount,
-    VkPhysicalDevice* pPhysicalDevices);
-
 bool m_coherent_memory_tracking_enabled = false;
 
 void SpyOverride_cacheImageSparseMemoryRequirements(

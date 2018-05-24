@@ -111,6 +111,7 @@ extern void onDeferSubcommand(ref!CommandReference ref)
 extern void onCommandAdded(VkCommandBuffer buffer)
 extern void resetCmd(VkCommandBuffer buffer)
 extern void validate(string layerName, bool condition, string message)
+extern ref!PhysicalDevicesAndProperties fetchPhysicalDeviceProperties(VkInstance instance, VkPhysicalDevice[] devs)
 
 ///////////////////////
 // Function pointers //
