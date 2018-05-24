@@ -35,6 +35,7 @@ import (
     "github.com/google/gapid/core/data/dictionary"
     "github.com/google/gapid/core/data/id"
     "github.com/google/gapid/core/math/u64"
+    "github.com/google/gapid/core/memory/arena"
 	  "github.com/google/gapid/core/os/device"
     "github.com/google/gapid/gapis/replay"
     "github.com/google/gapid/gapis/replay/builder"
@@ -1401,8 +1402,8 @@ import (
     }
   }
 
-	// Clone returns a deep copy of this state object.
-  func (g *State) Clone() ϟapi.State {
+  // Clone returns a deep copy of this state object.
+  func (g *State) Clone(ϟa arena.Arena) ϟapi.State {
     out := &State{CustomState: g.CustomState}
     {{range $g := $.Globals}}
       {{$name := $g.Name | GoPublicName}}
