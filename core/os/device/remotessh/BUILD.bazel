@@ -31,6 +31,7 @@ go_library(
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//core/os/shell:go_default_library",
+        "//core/text:go_default_library",
         "@com_github_golang_protobuf//jsonpb:go_default_library",
         "@org_golang_x_crypto//ssh:go_default_library",
         "@org_golang_x_crypto//ssh/agent:go_default_library",
