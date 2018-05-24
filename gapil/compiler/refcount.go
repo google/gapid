@@ -17,6 +17,7 @@ package compiler
 import (
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/compiler/mangling"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -28,9 +29,9 @@ type refRel struct {
 	release   codegen.Function // void T_release(T)
 }
 
-func (f *refRel) declare(c *C, name string, ty codegen.Type) {
-	f.reference = c.M.Function(c.T.Void, name+"_reference", ty).LinkOnceODR().Inline()
-	f.release = c.M.Function(c.T.Void, name+"_release", ty).LinkOnceODR().Inline()
+func (f *refRel) declare(c *C, name, ref, rel string, ty codegen.Type) {
+	f.reference = c.M.Function(c.T.Void, ref, ty).LinkOnceODR().Inline()
+	f.release = c.M.Function(c.T.Void, rel, ty).LinkOnceODR().Inline()
 	f.name = name
 }
 
@@ -52,7 +53,7 @@ func (f *refRel) build(
 		})
 		newCount := s.Add(oldCount, s.Scalar(uint32(1)))
 		if debugLogRefCounts {
-			c.Log(s, log.Info, f.name+" ref_count: %d -> %d", oldCount, newCount)
+			c.Log(s, log.Info, f.name+" %p ref_count: %d -> %d", refPtr, oldCount, newCount)
 		}
 		refPtr.Store(newCount)
 	})
@@ -69,7 +70,7 @@ func (f *refRel) build(
 		})
 		newCount := s.Sub(oldCount, s.Scalar(uint32(1)))
 		if debugLogRefCounts {
-			c.Log(s, log.Info, f.name+" ref_count: %d -> %d", oldCount, newCount)
+			c.Log(s, log.Info, f.name+" %p ref_count: %d -> %d", refPtr, oldCount, newCount)
 		}
 		refPtr.Store(newCount)
 		s.If(s.Equal(newCount, s.Scalar(uint32(0))), func() {
@@ -89,11 +90,11 @@ func (c *C) declareRefRels() {
 	c.refRels = r
 
 	sli := refRel{}
-	sli.declare(c, "slice", c.T.Sli)
+	sli.declare(c, "slice", "gapil_slice_reference", "gapil_slice_release", c.T.Sli)
 	r[slicePrototype] = sli
 
 	str := refRel{}
-	str.declare(c, "string", c.T.StrPtr)
+	str.declare(c, "string", "gapil_string_reference", "gapil_string_release", c.T.StrPtr)
 	r[semantic.StringType] = str
 
 	var isRefTy func(ty semantic.Type) bool
@@ -130,7 +131,18 @@ func (c *C) declareRefRels() {
 			default:
 				if isRefTy(apiTy) {
 					funcs := refRel{}
-					funcs.declare(c, apiTy.Name(), cgTy)
+					m := c.Mangle(cgTy)
+					ref := c.Mangler(&mangling.Function{
+						Name:       "reference",
+						Parent:     m.(mangling.Scope),
+						Parameters: []mangling.Type{m},
+					})
+					rel := c.Mangler(&mangling.Function{
+						Name:       "release",
+						Parent:     m.(mangling.Scope),
+						Parameters: []mangling.Type{m},
+					})
+					funcs.declare(c, apiTy.Name(), ref, rel, cgTy)
 					r[apiTy] = funcs
 				}
 			}

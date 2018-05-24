@@ -110,6 +110,16 @@ typedef void* gapil_pointer_remapper(context* ctx, uintptr_t pointer, uint64_t l
 typedef void gapil_get_code_location(context* ctx, char** file, uint32_t* line);
 
 ////////////////////////////////////////////////////////////////////////////////
+// Runtime API implemented by the compiler                                    //
+////////////////////////////////////////////////////////////////////////////////
+
+void gapil_string_reference(string*);
+void gapil_string_release(string*);
+
+void gapil_slice_reference(slice);
+void gapil_slice_release(slice);
+
+////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -126,6 +136,7 @@ void gapil_set_pointer_remapper(gapil_pointer_remapper*);
 // sets the callback used to fetch the file and line location for the current
 // source location within the .api file.
 void gapil_set_code_locator(gapil_get_code_location*);
+
 
 #ifndef DECL_GAPIL_CB
 #define DECL_GAPIL_CB(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
