@@ -76,9 +76,9 @@ type (
 		Data   bool `help:"if true then display the bytes read and written by each command. Implies Ranges."`
 	}
 	DeviceFlags struct {
-		Device string `help:"Device to spawn on. One of: 'none', 'host', 'android' or <device-serial>"`
-		Env flags.StringSlice `help:"List of environment variables to set, X=Y"`
-		Ssh struct {
+		Device string            `help:"Device to spawn on. One of: 'none', 'host', 'android' or <device-serial>"`
+		Env    flags.StringSlice `help:"List of environment variables to set, X=Y"`
+		Ssh    struct {
 			Config string `help: "The ssh config to use for finding remote devices"`
 		}
 	}
@@ -174,14 +174,14 @@ type (
 		Gapir GapirFlags
 	}
 	TraceFlags struct {
-		Gapii GapiiFlags
-		For   time.Duration `help:"duration to trace for"`
-		Out   string        `help:"the file to generate"`
-		Local struct {
-			Port       int       `help:"capture a local program instead of using ADB"`
-			App        string    `help:"a local program to trace"`
-			Args       string    `help:"arguments to pass to the traced program"`
-			WorkingDir string    `help:"working directory for the process"`
+		Gapii   GapiiFlags
+		For     time.Duration `help:"duration to trace for"`
+		Out     string        `help:"the file to generate"`
+		Desktop struct {
+			Port       int    `help:"capture a desktop program instead of using ADB"`
+			App        string `help:"a desktop program to trace"`
+			Args       string `help:"arguments to pass to the traced program"`
+			WorkingDir string `help:"working directory for the process"`
 		}
 		Android struct {
 			Package        string `help:"the full package name"`

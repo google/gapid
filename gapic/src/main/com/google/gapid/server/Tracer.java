@@ -252,16 +252,16 @@ public class Tracer {
     public List<String> appendCommandLine(List<String> cmd) {
       super.appendCommandLine(cmd);
 
-      cmd.add("-local-app");
+      cmd.add("-destkop-app");
       cmd.add(executable.getAbsolutePath());
 
       if (!args.isEmpty()) {
-        cmd.add("-local-args");
+        cmd.add("-desktop-args");
         cmd.add(args);
       }
 
       if (cwd != null && cwd.exists() && cwd.isDirectory()) {
-        cmd.add("--local-workingdir");
+        cmd.add("--desktop-workingdir");
         cmd.add(cwd.getAbsolutePath());
       }
 
