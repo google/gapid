@@ -231,7 +231,7 @@ func (v *Value) Extract(at IndexOrName) *Value {
 	case *Array:
 		idx, ok := at.(int)
 		if !ok {
-			fail("Insert parameter at must be int for arrays values. Got %T", at)
+			fail("Extract parameter at must be int for arrays values. Got %T", at)
 		}
 		return v.b.val(ty.Element, v.b.llvm.CreateExtractValue(v.llvm, idx, fmt.Sprintf("%v[%d]", v.name, idx)))
 	default:
