@@ -20,6 +20,7 @@ go_library(
     srcs = [
         "doc.go",
         "opcode.go",
+        "payload.go",
         "type.go",
     ],
     embed = [":protocol_go_proto"],

@@ -26,7 +26,7 @@ go_library(
         "//core/app/auth:go_default_library",
         "//core/app/crash:go_default_library",
         "//core/event/task:go_default_library",
-        "//core/os/shell:go_default_library",
         "//core/os/device/bind:go_default_library",
+        "//core/os/shell:go_default_library",
     ],
 )

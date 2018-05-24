@@ -41,7 +41,6 @@ go_test(
         "//core/assert:go_default_library",
         "//core/data:go_default_library",
         "//core/data/deep:go_default_library",
-        "//core/data/dictionary:go_default_library",
         "//gapis/memory:go_default_library",
     ],
 )

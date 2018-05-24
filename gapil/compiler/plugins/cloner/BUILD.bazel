@@ -30,14 +30,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/codegen:go_default_library",
-        "//core/data:go_default_library",
-        "//core/log:go_default_library",
-        "//core/text/cases:go_default_library",
         "//gapil/compiler:go_default_library",
-        "//gapil/compiler/mangling:go_default_library",
         "//gapil/semantic:go_default_library",
-        "//gapil/serialization:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
-        "@com_github_golang_protobuf//protoc-gen-go/descriptor:go_default_library",
     ],
 )

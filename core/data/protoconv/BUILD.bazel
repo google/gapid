@@ -21,7 +21,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/generic:go_default_library",
-        "//core/fault:go_default_library",
         "//core/log:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],

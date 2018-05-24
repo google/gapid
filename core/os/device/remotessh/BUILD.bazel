@@ -17,39 +17,34 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "device.go",
-        "configuration.go",
         "commands.go",
+        "configuration.go",
+        "device.go",
     ],
     importpath = "github.com/google/gapid/core/os/device/remotessh",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/log:go_default_library",
+        "//core/app/crash:go_default_library",
+        "//core/app/layout:go_default_library",
         "//core/event/task:go_default_library",
+        "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//core/os/shell:go_default_library",
-        "//core/app/crash:go_default_library",
-        "//core/app/layout:go_default_library",
+        "@com_github_golang_protobuf//jsonpb:go_default_library",
         "@org_golang_x_crypto//ssh:go_default_library",
         "@org_golang_x_crypto//ssh/agent:go_default_library",
         "@org_golang_x_crypto//ssh/knownhosts:go_default_library",
-        "@com_github_golang_protobuf//proto:go_default_library",
-        "@com_github_golang_protobuf//jsonpb:go_default_library",
-
     ],
 )
 
 go_test(
     name = "go_default_xtest",
     size = "small",
-    srcs = [
-        "configuration_test.go",
-    ],
+    srcs = ["configuration_test.go"],
     deps = [
         ":go_default_library",
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
-        "//core/os/device/host:go_default_library",
     ],
 )

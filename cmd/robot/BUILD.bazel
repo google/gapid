@@ -35,7 +35,6 @@ go_library(
     deps = [
         "//core/app:go_default_library",
         "//core/app/crash:go_default_library",
-        "//core/app/layout:go_default_library",
         "//core/git:go_default_library",
         "//core/log:go_default_library",
         "//core/net/grpcutil:go_default_library",
@@ -66,7 +65,6 @@ go_library(
 
 go_binary(
     name = "robot",
-    embed = [":go_default_library"],
     data = select({
         "//tools/build:no-android": [],
         "//conditions:default": [
@@ -75,5 +73,6 @@ go_binary(
             "//gapidapk/android/apk:x86.apk",
         ],
     }),
+    embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )
