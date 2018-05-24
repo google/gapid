@@ -116,10 +116,9 @@ func (c *cloner) implementClones() {
 					clone.Index(0, compiler.MapCapacity).Store(s.Scalar(uint64(0)))
 					clone.Index(0, compiler.MapElements).Store(s.Zero(c.T.Pointer(mapInfo.Elements)))
 					c.IterateMap(s, this, semantic.Uint64Type, func(i, k, v *codegen.Value) {
-						if f, ok := c.cloneTracker[ty.KeyType]; ok {
-							k = s.Call(f, k, s.Arena, tracker) // clone key
-						}
-						dstV, srcV := s.Call(mapInfo.Index, clone, k.Load(), s.Scalar(true)), v.Load()
+						dstK, srcK := s.Local("key", mapInfo.Key), k.Load()
+						c.cloneTo(s, ty.KeyType, dstK, srcK, tracker)
+						dstV, srcV := s.Call(mapInfo.Index, clone, dstK.Load(), s.Scalar(true)), v.Load()
 						c.cloneTo(s, ty.ValueType, dstV, srcV, tracker)
 					})
 					s.Return(clone)
