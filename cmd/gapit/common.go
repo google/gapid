@@ -189,17 +189,17 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 }
 
 func getDesktopTraceDevice(ctx context.Context, flags GapiiFlags) (bind.Device, error) {
-	if flags.Device == "none" {
+	switch flags.Device {
+	case "none":
 		return nil, nil
-	} else if flags.Device == "host" ||
-		flags.Device == "" {
+	case "host", "":
 		return bind.Host(ctx), nil
-	} else {
+	default:
 		f, err := os.Open(flags.Ssh.Config)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		devices, err := remotessh.Devices(ctx, f)
 		if err != nil {
 			return nil, err

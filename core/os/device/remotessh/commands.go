@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/core/text"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -105,10 +106,7 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 
 	for _, e := range cmd.Environment.Keys() {
 		if e != "" {
-			val := cmd.Environment.Get(e)
-			if strings.ContainsAny(val, " \t\n") {
-				val = "\"" + val + "\""
-			}
+			val := text.Quote([]string{cmd.Environment.Get(e)})[0]
 			prefix = prefix + strings.TrimSpace(e) + "=" + val + " "
 		}
 	}
@@ -216,7 +214,7 @@ func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) e
 // The local port that was opened is returned.
 func (b binding) SetupLocalPort(ctx context.Context, remotePort int) (int, error) {
 	listener, err := net.Listen("tcp", ":0")
-	
+
 	if err != nil {
 		return 0, err
 	}
