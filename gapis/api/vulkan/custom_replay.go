@@ -433,17 +433,18 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	}
 	l := s.MemoryLayout
 	c := GetState(s)
+	arena := s.Arena // TODO: Should this be a seperate temporary arena?
 	memory := a.PMemory().Slice(0, 1, l).MustRead(ctx, a, s, nil)[0]
 	imageObject := c.Images().Get(a.Image())
 	imageWidth := imageObject.Info().Extent().Width()
 	imageHeight := imageObject.Info().Extent().Height()
 	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info().Fmt())
 	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight), 1))
-	memoryObject := NewDeviceMemoryObjectʳ(
-		a.Device(),             // Device
-		memory,                 // VulkanHandle
-		imageSize,              // AllocationSize
-		NewU64ːVkDeviceSizeᵐ(), // BoundObjects
+	memoryObject := NewDeviceMemoryObjectʳ(arena,
+		a.Device(),                  // Device
+		memory,                      // VulkanHandle
+		imageSize,                   // AllocationSize
+		NewU64ːVkDeviceSizeᵐ(arena), // BoundObjects
 		0, // MappedOffset
 		0, // MappedSize
 		0, // MappedLocation

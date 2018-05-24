@@ -50,27 +50,27 @@ func TestDeadCommandRemoval(t *testing.T) {
 	isDead := map[api.Cmd]bool{}
 	dead := func(cmd api.Cmd) api.Cmd { isDead[cmd] = true; return cmd }
 
-	programUniformsA := gles.MakeProgramResourceʳ()
+	programUniformsA := gles.MakeProgramResourceʳ(a)
 	programUniformsA.SetName("uniforms")
 	programUniformsA.SetType(gles.GLenum_GL_FLOAT_VEC4)
 	programUniformsA.SetArraySize(10)
-	programUniformsA.SetLocations(gles.NewU32ːGLintᵐ().
+	programUniformsA.SetLocations(gles.NewU32ːGLintᵐ(a).
 		Add(0, 0).Add(1, 1).Add(2, 2).Add(3, 3).Add(4, 4).
 		Add(5, 5).Add(6, 6).Add(7, 7).Add(8, 8).Add(9, 9))
-	programResourcesA := gles.MakeActiveProgramResourcesʳ()
-	programResourcesA.SetDefaultUniformBlock(gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, programUniformsA))
-	programInfoA := gles.MakeLinkProgramExtra()
+	programResourcesA := gles.MakeActiveProgramResourcesʳ(a)
+	programResourcesA.SetDefaultUniformBlock(gles.NewUniformIndexːProgramResourceʳᵐ(a).Add(0, programUniformsA))
+	programInfoA := gles.MakeLinkProgramExtra(a)
 	programInfoA.SetLinkStatus(gles.GLboolean_GL_TRUE)
 	programInfoA.SetActiveResources(programResourcesA)
 
-	programSamplerB := gles.MakeProgramResourceʳ()
+	programSamplerB := gles.MakeProgramResourceʳ(a)
 	programSamplerB.SetName("sampler")
 	programSamplerB.SetType(gles.GLenum_GL_SAMPLER_CUBE)
-	programSamplerB.SetLocations(gles.NewU32ːGLintᵐ().Add(0, 0))
+	programSamplerB.SetLocations(gles.NewU32ːGLintᵐ(a).Add(0, 0))
 	programSamplerB.SetArraySize(1)
-	programResourcesB := gles.MakeActiveProgramResourcesʳ()
-	programResourcesB.SetDefaultUniformBlock(gles.NewUniformIndexːProgramResourceʳᵐ().Add(0, programSamplerB))
-	programInfoB := gles.MakeLinkProgramExtra()
+	programResourcesB := gles.MakeActiveProgramResourcesʳ(a)
+	programResourcesB.SetDefaultUniformBlock(gles.NewUniformIndexːProgramResourceʳᵐ(a).Add(0, programSamplerB))
+	programInfoB := gles.MakeLinkProgramExtra(a)
 	programInfoB.SetLinkStatus(gles.GLboolean_GL_TRUE)
 	programInfoB.SetActiveResources(programResourcesB)
 
@@ -83,7 +83,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 		cb.EglCreateContext(displayHandle, surfaceHandle, surfaceHandle, memory.Nullptr, ctxHandle1),
 		api.WithExtras(
 			cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle1, 0),
-			gles.NewStaticContextStateForTest(), gles.NewDynamicContextStateForTest(64, 64, false)),
+			gles.NewStaticContextStateForTest(a), gles.NewDynamicContextStateForTest(a, 64, 64, false)),
 		cb.GlCreateProgram(1),
 		cb.GlCreateProgram(2),
 		cb.GlCreateProgram(3),
@@ -167,7 +167,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 			// Draw in context 2
 			cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle2),
 			api.WithExtras(
-				cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle2, 0), gles.NewStaticContextStateForTest(), gles.NewDynamicContextStateForTest(64, 64, false)),
+				cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle2, 0), gles.NewStaticContextStateForTest(a), gles.NewDynamicContextStateForTest(a, 64, 64, false)),
 			cb.GlCreateProgram(1),
 			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
 			cb.GlUseProgram(1),

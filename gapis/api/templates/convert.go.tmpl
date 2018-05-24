@@ -149,7 +149,7 @@
       {{$proto := $p.Name | ProtoGoName}}
       {{$underlying := Underlying $p.Type}}
       {{if IsStaticArray $underlying}}
-        pϟ{{$p.Name}} := New{{Template "Go.Type" $p}}()¶
+        pϟ{{$p.Name}} := New{{Template "Go.Type" $p}}(ϟa)¶
         for ϟi, ϟc := 0, {{$underlying.Size}}; ϟi < ϟc; ϟi++ {»¶
           {{$value := print "from." $proto "[ϟi]"}}
           pϟ{{$p.Name}}.Set(ϟi, {{Template "Convert.FromProto" "Type" $underlying.ValueType "Value" $value}})¶
@@ -214,7 +214,8 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    ϟc := Make{{$name}}()¶
+    ϟa := arena.Get(ctx)¶
+    ϟc := Make{{$name}}(ϟa)¶
     {{range $v := $.Fields}}
       {{Template "Convert.From" "Field" $v}}
     {{end}}
@@ -249,7 +250,8 @@
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
     return ϟrefs.GetReferencedObject(from.GetReferenceID(), Nil{{$name}}, func() (interface{}, func()) {»¶
-      ϟobj := Make{{$name}}()¶
+      ϟa := arena.Get(ctx)¶
+      ϟobj := Make{{$name}}(ϟa)¶
       return ϟobj, func() {
         ϟobj.Set({{Template "Convert.FromProto" "Type" $.To "Value" "from.Value"}})¶
       }¶
@@ -291,7 +293,8 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    ϟobj := New{{$name}}()¶
+    ϟa := arena.Get(ctx)¶
+    ϟobj := New{{$name}}(ϟa)¶
     if from.GetReferenceID() == 0 {»¶
       return ϟobj¶
     «}¶

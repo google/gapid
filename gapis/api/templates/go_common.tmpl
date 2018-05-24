@@ -86,9 +86,9 @@
   {{     if IsPointer       $}}{{Template "Go.Type" $}}(0)
   {{else if IsSlice         $}}{{Template "Go.Type" $}}{}
   {{else if IsReference     $}}Nil{{Template "Go.Type" $}}
-  {{else if IsMap           $}}New{{Template "Go.Type" $}}()
-  {{else if IsClass         $}}Make{{Template "Go.Type" $}}()
-  {{else if IsStaticArray   $}}New{{Template "Go.Type" $}}()
+  {{else if IsMap           $}}New{{Template "Go.Type" $}}(ϟa)
+  {{else if IsClass         $}}Make{{Template "Go.Type" $}}(ϟa)
+  {{else if IsStaticArray   $}}New{{Template "Go.Type" $}}(ϟa)
   {{else if IsBool          $}}false
   {{else if IsChar          $}}ϟmem.Char(0)
   {{else if IsInt           $}}ϟmem.Int(0)
@@ -106,7 +106,11 @@
   {{else if IsF64           $}}float64(0)
   {{else if IsEnum          $}}{{$.Name}}(0)
   {{else if IsString        $}}""
-  {{else if IsPseudonym     $}}{{Template "Go.Type" $}}({{Template "Go.Null" $.To}})
+  {{else if IsPseudonym     $}}
+    {{$u := $ | Underlying}}
+    {{if IsStaticArray $u}}New{{Template "Go.Type" $}}(ϟa)
+    {{else               }}{{Template "Go.Type" $}}({{Template "Go.Null" $.To}})
+    {{end}}
   {{else}}{{Error "macro Go.Null called with unsupported type: %s (%T)" $.Name $}}
   {{end}}
 {{end}}
@@ -149,16 +153,16 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Emits the logic to decode the specified type from the decoder d.
+  Emits the logic to decode the specified type from the decoder ϟd.
 -------------------------------------------------------------------------------
 */}}
 {{define "Go.Decode"}}
   {{AssertType $ "Type"}}
 
-  {{     if IsStaticArray $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
+  {{     if IsStaticArray $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd, ϟa)
   {{else if IsPseudonym   $}}{{Template "Go.Type" $}}({{Template "Go.Decode" ($ | Underlying)}})
   {{else if IsEnum        $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
-  {{else if IsClass       $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
+  {{else if IsClass       $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd, ϟa)
   {{else if IsBool        $}}ϟd.Bool()
   {{else if IsU8          $}}ϟd.U8()
   {{else if IsS8          $}}ϟd.I8()
@@ -206,9 +210,12 @@
   {{else if IsEnum        $}}uint64(4)
   {{else if IsString      $}}uint64(ϟl.GetPointer().GetSize())
   {{else if IsPointer     $}}uint64(ϟl.GetPointer().GetSize())
+  {{else if IsReference   $}}uint64(ϟl.GetPointer().GetSize())
+  {{else if IsMap         $}}uint64(ϟl.GetPointer().GetSize())
   {{else if IsInt         $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsUint        $}}uint64(ϟl.GetInteger().GetSize())
   {{else if IsSize        $}}uint64(ϟl.GetSize().GetSize())
+  {{else if IsSlice       $}}uint64(ϟl.GetI64().GetSize())
   {{else if IsStaticArray $}}{{Template "Go.SizeOf" $.ValueType}}*{{$.Size}}
   {{else if IsClass       $}}{{Template "Go.Type" $}}Size(ϟl)
   {{else                   }}{{Error "macro Go.SizeOf called with unsupported type: %v" $}}
@@ -481,10 +488,10 @@
   {{AssertType $ "Type"}}
 
   {{if IsMap $}}
-    New{{Template "Go.Type" $}}()
+    New{{Template "Go.Type" $}}(ϟa)
   {{else if IsClass $}}
     {{if $fields := Macro "Go.DefaultClassFields" $}}
-      Make{{Template "Go.Type" $}}()
+      Make{{Template "Go.Type" $}}(ϟa)
     {{end}}
   {{end}}
 {{end}}
@@ -607,7 +614,7 @@
   {{/* T* -> number */}}{{if and (IsPointer $src_ty) (IsNumericType $dst_ty)}}
     {{Template "Go.Type" $.Type}}({{$src}})
   {{/* A[] -> B[] */}}{{else if and (IsSlice $src_ty) (IsSlice $dst_ty)}}
-    As{{Template "Go.Type" $.Type}}({{$src}}, ϟl)
+    As{{Template "Go.Type" $.Type}}(ϟa, {{$src}}, ϟl)
   {{/* T[] -> T* */}}{{else if and (IsSlice $src_ty) (IsPointer $dst_ty)}}
     {{Template "Go.Type" $.Type}}({{$src}}.Index(0))
   {{/* char* -> string */}}{{else if and (IsPointer $src_ty) (IsString $dst_ty)}}
@@ -641,7 +648,7 @@
   {{AssertType $ "ArrayInitializer"}}
 
   {{$a := $.Array | Underlying | Unpack}}
-  New{{Template "Go.Type" $}}({{ForEach $.Values "Go.Read" | JoinWith ", "}})
+  New{{Template "Go.Type" $}}(ϟa, {{ForEach $.Values "Go.Read" | JoinWith ", "}})
 {{end}}
 
 
@@ -653,7 +660,7 @@
 {{define "Go.ClassInitializer"}}
   {{AssertType $ "ClassInitializer"}}
 
-  (§
+  (ϟa, §
     {{range $i, $v := $.InitialValues}}
       {{$f := index $.Class.Fields $i}}
       {{if IsNil $v}}

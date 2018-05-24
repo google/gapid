@@ -58,12 +58,13 @@ func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
 }
 
 func (s *State) SetupInitialState(ctx context.Context, g *api.GlobalState) {
-	contexts := NewU64ːContextʳᵐ()
+	a := s.Arena()
+	contexts := NewU64ːContextʳᵐ(a)
 	contexts.Add(0, NilContextʳ)
 	s.SetContexts(contexts)
-	s.SetGLXContexts(NewGLXContextːContextʳᵐ())
-	s.SetWGLContexts(NewHGLRCːContextʳᵐ())
-	s.SetCGLContexts(NewCGLContextObjːContextʳᵐ())
+	s.SetGLXContexts(NewGLXContextːContextʳᵐ(a))
+	s.SetWGLContexts(NewHGLRCːContextʳᵐ(a))
+	s.SetCGLContexts(NewCGLContextObjːContextʳᵐ(a))
 	for _, c := range s.EGLContexts().All() {
 		if t := c.Other().BoundOnThread(); t != 0 {
 			s.Contexts().Add(t, c) // Current thread bindings.

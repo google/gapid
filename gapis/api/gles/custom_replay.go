@@ -288,7 +288,7 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 	if err := cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b); err != nil {
 		return err
 	}
-	if cs := FindDynamicContextState(ω.Extras()); !cs.IsNil() {
+	if cs := FindDynamicContextState(s.Arena, ω.Extras()); !cs.IsNil() {
 		cmd := cb.ReplayChangeBackbuffer(
 			ctxID,
 			cs.BackbufferWidth(),
@@ -396,7 +396,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, id api.CmdID, s *ap
 
 // Force all attributes to use the capture-observed locations during replay.
 func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder, pid ProgramId) error {
-	pi := FindLinkProgramExtra(cmd.Extras())
+	pi := FindLinkProgramExtra(s.Arena, cmd.Extras())
 	if !pi.IsNil() && b != nil && !pi.ActiveResources().IsNil() {
 		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 		for _, attr := range pi.ActiveResources().ProgramInputs().All() {
@@ -421,7 +421,7 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.
 
 // Remap uniform block indices
 func bindUniformBlocks(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder, pid ProgramId) error {
-	pi := FindLinkProgramExtra(cmd.Extras())
+	pi := FindLinkProgramExtra(s.Arena, cmd.Extras())
 	if !pi.IsNil() && b != nil && !pi.ActiveResources().IsNil() {
 		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 		for i, ub := range pi.ActiveResources().UniformBlocks().All() {

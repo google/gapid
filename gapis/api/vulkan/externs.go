@@ -263,7 +263,7 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 			for i := VkDeviceSize(0); i < numBlocks; i++ {
 				bufObj.SparseMemoryBindings().Add(
 					uint64(resOffset),
-					NewVkSparseMemoryBind(
+					NewVkSparseMemoryBind(s.Arena, // TODO: Use scratch arena?
 						resOffset,     // resourceOffset
 						blockSize,     // size
 						bind.Memory(), // memory
@@ -290,7 +290,7 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 			for i := VkDeviceSize(0); i < numBlocks; i++ {
 				imgObj.OpaqueSparseMemoryBindings().Add(
 					uint64(resOffset),
-					NewVkSparseMemoryBind(
+					NewVkSparseMemoryBind(s.Arena, // TODO: Use scratch arena?
 						resOffset,     // resourceOffset
 						blockSize,     // size
 						bind.Memory(), // memory
@@ -321,7 +321,7 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndProperties); ok {
-			return MakePhysicalDevicesAndPropertiesʳ().Set(p).Clone()
+			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena)
 		}
 	}
 	return NilPhysicalDevicesAndPropertiesʳ
@@ -335,7 +335,7 @@ func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSpar
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(ImageMemoryRequirements); ok {
-			return MakeImageMemoryRequirementsʳ().Set(r).Clone()
+			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena)
 		}
 	}
 	return NilImageMemoryRequirementsʳ
@@ -345,14 +345,14 @@ func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMem
 	// Only fetch memory requirements for application commands, skip any commands
 	// inserted by GAPID
 	if e.cmdID == api.CmdNoID {
-		return MakeVkMemoryRequirements()
+		return MakeVkMemoryRequirements(e.s.Arena)
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(VkMemoryRequirements); ok {
-			return r.Clone()
+			return r.Clone(e.s.Arena)
 		}
 	}
-	return MakeVkMemoryRequirements()
+	return MakeVkMemoryRequirements(e.s.Arena)
 }
 
 func (e externs) vkErrInvalidHandle(handleType string, handle uint64) {

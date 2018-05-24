@@ -20,58 +20,65 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/memory"
 )
 
 func TestReferences(t *testing.T) {
 	ctx := log.Testing(t)
 	assert := assert.To(t)
-	o := NewTestObjectʳ(42)
-	m := NewU32ːTestObjectᵐ().
-		Add(4, NewTestObject(40)).
-		Add(5, NewTestObject(50))
-	cycle := NewTestListʳ(
+
+	a := arena.New()
+	defer a.Dispose()
+
+	ctx = arena.Put(ctx, a)
+
+	o := NewTestObjectʳ(a, 42)
+	m := NewU32ːTestObjectᵐ(a).
+		Add(4, NewTestObject(a, 40)).
+		Add(5, NewTestObject(a, 50))
+	cycle := NewTestListʳ(a,
 		1, // value
-		NewTestListʳ( // next
+		NewTestListʳ(a, // next
 			2,            // value
 			NilTestListʳ, // next
 		),
 	)
 	cycle.Next().SetNext(cycle)
-	extra := NewTestExtra(
-		NewU8ˢ( // Data
+	extra := NewTestExtra(a,
+		NewU8ˢ(a, // Data
 			0x1000,           // root
 			0x1000,           // base
 			42,               // size
 			42,               // count
 			memory.PoolID(1), // pool
 		),
-		NewTestObject(10), // Object
-		NewTestObjectː2ᵃ( // ObjectArray
-			NewTestObject(20),
-			NewTestObject(30),
+		NewTestObject(a, 10), // Object
+		NewTestObjectː2ᵃ(a, // ObjectArray
+			NewTestObject(a, 20),
+			NewTestObject(a, 30),
 		),
 		o,              // RefObject
 		o,              // RefObjectAlias
 		NilTestObjectʳ, // NilRefObject
 		m,              // Entries
 		m,              // EntriesAlias
-		NewU32ːTestObjectᵐ(), // NilMap
-		NewU32ːTestObjectʳᵐ(). // RefEntries
+		NewU32ːTestObjectᵐ(a), // NilMap
+		NewU32ːTestObjectʳᵐ(a). // RefEntries
 					Add(0, o).
-					Add(6, NewTestObjectʳ(60)).
-					Add(7, NewTestObjectʳ(70)).
+					Add(6, NewTestObjectʳ(a, 60)).
+					Add(7, NewTestObjectʳ(a, 70)).
 					Add(9, NilTestObjectʳ),
-		NewStringːu32ᵐ(). // Strings
+		NewStringːu32ᵐ(a). // Strings
 					Add("one", 1).
 					Add("two", 2).
 					Add("three", 3),
-		NewU32ːboolᵐ(). // BoolMap
-				Add(0, false).
-				Add(1, true),
-		NewTestListʳ( // LinkedList
+		NewU32ːboolᵐ(a). // BoolMap
+					Add(0, false).
+					Add(1, true),
+		NewTestListʳ(a, // LinkedList
 			1, // value
-			NewTestListʳ( // next
+			NewTestListʳ(a, // next
 				2,            // value
 				NilTestListʳ, // next
 			),

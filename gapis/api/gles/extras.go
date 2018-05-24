@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoconv"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles/gles_pb"
 )
@@ -109,12 +110,12 @@ func FindEGLImageData(extras *api.CmdExtras) *EGLImageData {
 
 // FindCompileShaderExtra searches for the CompileShaderExtra in the extras,
 // returning the CompileShaderExtra if found, otherwise nil.
-func FindCompileShaderExtra(extras *api.CmdExtras, forShader Shaderʳ) CompileShaderExtraʳ {
+func FindCompileShaderExtra(a arena.Arena, extras *api.CmdExtras, forShader Shaderʳ) CompileShaderExtraʳ {
 	for _, e := range extras.All() {
 		if pi, ok := e.(CompileShaderExtra); ok {
 			// There can be several of those extras - pick the right one.
 			if pi.ID() == forShader.ID() {
-				return MakeCompileShaderExtraʳ().Set(pi)
+				return MakeCompileShaderExtraʳ(a).Set(pi)
 			}
 		}
 	}
@@ -123,10 +124,10 @@ func FindCompileShaderExtra(extras *api.CmdExtras, forShader Shaderʳ) CompileSh
 
 // FindLinkProgramExtra searches for the LinkProgramExtra in the extras,
 // returning the LinkProgramExtra if found, otherwise nil.
-func FindLinkProgramExtra(extras *api.CmdExtras) LinkProgramExtraʳ {
+func FindLinkProgramExtra(a arena.Arena, extras *api.CmdExtras) LinkProgramExtraʳ {
 	for _, e := range extras.All() {
 		if pi, ok := e.(LinkProgramExtra); ok {
-			return MakeLinkProgramExtraʳ().Set(pi)
+			return MakeLinkProgramExtraʳ(a).Set(pi)
 		}
 	}
 	return NilLinkProgramExtraʳ
@@ -134,10 +135,10 @@ func FindLinkProgramExtra(extras *api.CmdExtras) LinkProgramExtraʳ {
 
 // FindValidateProgramExtra searches for the ValidateProgramExtra in the extras,
 // returning the ValidateProgramExtra if found, otherwise nil.
-func FindValidateProgramExtra(extras *api.CmdExtras) ValidateProgramExtraʳ {
+func FindValidateProgramExtra(a arena.Arena, extras *api.CmdExtras) ValidateProgramExtraʳ {
 	for _, e := range extras.All() {
 		if pi, ok := e.(ValidateProgramExtra); ok {
-			return MakeValidateProgramExtraʳ().Set(pi)
+			return MakeValidateProgramExtraʳ(a).Set(pi)
 		}
 	}
 	return NilValidateProgramExtraʳ
@@ -145,10 +146,10 @@ func FindValidateProgramExtra(extras *api.CmdExtras) ValidateProgramExtraʳ {
 
 // FindValidateProgramPipelineExtra searches for the ValidateProgramPipelineExtra in the extras,
 // returning the ValidateProgramPipelineExtra if found, otherwise nil.
-func FindValidateProgramPipelineExtra(extras *api.CmdExtras) ValidateProgramPipelineExtraʳ {
+func FindValidateProgramPipelineExtra(a arena.Arena, extras *api.CmdExtras) ValidateProgramPipelineExtraʳ {
 	for _, e := range extras.All() {
 		if pi, ok := e.(ValidateProgramPipelineExtra); ok {
-			return MakeValidateProgramPipelineExtraʳ().Set(pi)
+			return MakeValidateProgramPipelineExtraʳ(a).Set(pi)
 		}
 	}
 	return NilValidateProgramPipelineExtraʳ
@@ -156,10 +157,10 @@ func FindValidateProgramPipelineExtra(extras *api.CmdExtras) ValidateProgramPipe
 
 // FindStaticContextState searches for the StaticContextState in the extras,
 // returning the StaticContextState if found, otherwise nil.
-func FindStaticContextState(extras *api.CmdExtras) StaticContextStateʳ {
+func FindStaticContextState(a arena.Arena, extras *api.CmdExtras) StaticContextStateʳ {
 	for _, e := range extras.All() {
 		if cs, ok := e.(StaticContextState); ok {
-			return MakeStaticContextStateʳ().Set(cs)
+			return MakeStaticContextStateʳ(a).Set(cs)
 		}
 	}
 	return NilStaticContextStateʳ
@@ -167,10 +168,10 @@ func FindStaticContextState(extras *api.CmdExtras) StaticContextStateʳ {
 
 // FindDynamicContextState searches for the DynamicContextState in the extras,
 // returning the DynamicContextState if found, otherwise nil.
-func FindDynamicContextState(extras *api.CmdExtras) DynamicContextStateʳ {
+func FindDynamicContextState(a arena.Arena, extras *api.CmdExtras) DynamicContextStateʳ {
 	for _, e := range extras.All() {
 		if cs, ok := e.(DynamicContextState); ok {
-			return MakeDynamicContextStateʳ().Set(cs)
+			return MakeDynamicContextStateʳ(a).Set(cs)
 		}
 	}
 	return NilDynamicContextStateʳ
@@ -178,10 +179,10 @@ func FindDynamicContextState(extras *api.CmdExtras) DynamicContextStateʳ {
 
 // FindAndroidNativeBufferExtra searches for the AndroidNativeBufferExtra in the extras,
 // returning the AndroidNativeBufferExtra if found, otherwise nil.
-func FindAndroidNativeBufferExtra(extras *api.CmdExtras) AndroidNativeBufferExtraʳ {
+func FindAndroidNativeBufferExtra(a arena.Arena, extras *api.CmdExtras) AndroidNativeBufferExtraʳ {
 	for _, e := range extras.All() {
 		if di, ok := e.(AndroidNativeBufferExtra); ok {
-			return MakeAndroidNativeBufferExtraʳ().Set(di)
+			return MakeAndroidNativeBufferExtraʳ(a).Set(di)
 		}
 	}
 	return NilAndroidNativeBufferExtraʳ

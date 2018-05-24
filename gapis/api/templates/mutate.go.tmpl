@@ -57,7 +57,7 @@
     if state, ok := s.APIs[ID].(*State); ok {
       return state
     } else {
-      state = &State{}
+      state = NewState(s.Arena)
       state.Init()
       s.APIs[ID] = state
       return state
@@ -105,7 +105,7 @@
       ϟb *builder.Builder, §
       {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
     ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
-    ϟl := ϟg.MemoryLayout; _ = ϟl
+    ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
     {{Global "CurrentFunction" $}}
     {{Template "Block" $.Block}}
   }
@@ -153,7 +153,7 @@
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
       ϟs, ϟt := GetState(ϟg), ϟc.Thread()
-      ϟl := ϟg.MemoryLayout; _ = ϟl
+      ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
       ϟo := ϟc.Extras().Observations()
       _, _ = ϟl, ϟt
 
@@ -175,7 +175,7 @@
       // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟg.{{if not (IsVoid $.Return.Type)}}
       // The {{$.Name}}() return value will be stored on the stack.{{end}}
       func (ϟc *{{$name}}) Call(ϟctx context.Context, ϟg *api.GlobalState, ϟb *builder.Builder) {
-        ϟl := ϟg.MemoryLayout; _ = ϟl
+        ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
 
         {{/* Push all the parameters on the stack */}}
         {{range $p := $.CallParameters}}

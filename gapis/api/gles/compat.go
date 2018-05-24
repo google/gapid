@@ -207,7 +207,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// functions will fail the minRequiredVersion checks (which look at the version coming from
 			// the original context from the trace).
 			// TODO(dsrbecky): This might make some commands valid for replay which were invalid on trace.
-			scs := FindStaticContextState(cmd.Extras())
+			scs := FindStaticContextState(s.Arena, cmd.Extras())
 			if !scs.IsNil() && !version.IsES && scs.Constants().MajorVersion() < 3 {
 				clone := cmd.Clone(s.Arena)
 				clone.Extras().MustClone(cmd.Extras().All()...)
@@ -1153,7 +1153,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				if e := FindEGLImageData(cmd.Extras()); e != nil {
 					t := newTweaker(out, dID, cb)
 					defer t.revert(ctx)
-					t.setUnpackStorage(ctx, NewPixelStorageState(
+					t.setUnpackStorage(ctx, NewPixelStorageState(s.Arena,
 						0, // ImageHeight
 						0, // SkipImages
 						0, // RowLength

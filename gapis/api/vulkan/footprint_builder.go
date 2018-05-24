@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
@@ -3131,9 +3132,12 @@ func subresourceRangeFullyCoverImage(img ImageObjectʳ, rng VkImageSubresourceRa
 func blitFullyCoverImage(img ImageObjectʳ, layers VkImageSubresourceLayers,
 	offset1 VkOffset3D, offset2 VkOffset3D) bool {
 
+	tmpArena := arena.New()
+	defer tmpArena.Dispose()
+
 	if offset1.X() == 0 && offset1.Y() == 0 && offset1.Z() == 0 {
 		offset := offset1
-		extent := NewVkExtent3D(
+		extent := NewVkExtent3D(tmpArena,
 			uint32(offset2.X()-offset1.X()),
 			uint32(offset2.Y()-offset1.Y()),
 			uint32(offset2.Z()-offset1.Z()),
@@ -3141,7 +3145,7 @@ func blitFullyCoverImage(img ImageObjectʳ, layers VkImageSubresourceLayers,
 		return subresourceLayersFullyCoverImage(img, layers, offset, extent)
 	} else if offset2.X() == 0 && offset2.Y() == 0 && offset2.Z() == 0 {
 		offset := offset2
-		extent := NewVkExtent3D(
+		extent := NewVkExtent3D(tmpArena,
 			uint32(offset1.X()-offset2.X()),
 			uint32(offset1.Y()-offset2.Y()),
 			uint32(offset1.Z()-offset2.Z()),
