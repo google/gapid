@@ -79,7 +79,10 @@ cmd VkResult vkEnumeratePhysicalDevices(
         object.Instance = instance
         object.Index = i
         object.VulkanHandle = devices[i]
-        object.PhysicalDeviceProperties = props.PhyDevToProperties[devices[i]]
+        if props != null {
+          // TODO: Failed to prefetch physical device properties, report issue.
+          object.PhysicalDeviceProperties = props.PhyDevToProperties[devices[i]]
+        }
         PhysicalDevices[devices[i]] = object
       }
     }
