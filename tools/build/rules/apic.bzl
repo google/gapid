@@ -142,7 +142,7 @@ apic_compile = rule(
         "optimize": attr.bool(default = False),
         "dump": attr.bool(default = False),
         "emit": attr.string_list(
-            allow_empty = False,
+            allow_empty = True,
             mandatory = True,
         ),
         "namespace": attr.string(
