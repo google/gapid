@@ -304,12 +304,12 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		if c.IsNil() {
 			continue
 		}
-		cb := CommandBuilder{Thread: t}
+		cb := CommandBuilder{Thread: t, Arena: s.Arena}
 		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
 	}
 
 	// Now using a single thread, bind each context and delete all objects.
-	cb := CommandBuilder{Thread: 0}
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	for i, c := range GetState(s).EGLContexts().All() {
 		if !c.Other().Initialized() {
 			// This context was never bound. Skip it.

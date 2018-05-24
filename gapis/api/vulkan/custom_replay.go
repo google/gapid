@@ -235,7 +235,7 @@ func (i VkDebugReportCallbackEXT) remap(api.Cmd, *api.GlobalState) (key interfac
 }
 
 func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	// Hijack VkCreateInstance's Mutate() method entirely with our ReplayCreateVkInstance's Mutate().
 
 	// As long as we guarantee that the synthetic replayCreateVkInstance API function has the same
@@ -258,7 +258,7 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 }
 
 func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	// Call the underlying vkDestroyInstance() and do the observation.
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
@@ -308,7 +308,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 		allocated = append(allocated, &newCreateInfoData)
 		createInfoPtr = NewVkDeviceCreateInfoᶜᵖ(newCreateInfoData.Ptr())
 
-		cb := CommandBuilder{Thread: a.Thread()}
+		cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 		hijack := cb.ReplayCreateVkDevice(a.PhysicalDevice(), createInfoPtr, a.PAllocator(), a.PDevice(), a.Result())
 		hijack.Extras().MustClone(a.Extras().All()...)
 
@@ -330,7 +330,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 
 func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkDestroyDevice() and do the observation.
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
@@ -341,7 +341,7 @@ func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 
 func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkAllocateCommandBuffers() and do the observation.
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
@@ -353,7 +353,7 @@ func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *
 
 func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
 	// Call the underlying vkFreeCommandBuffers() and do the observation.
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
@@ -368,7 +368,7 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 		return a.mutate(ctx, id, s, b)
 	}
 
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	hijack := cb.ReplayCreateSwapchain(a.Device(), a.PCreateInfo(), a.PAllocator(), a.PSwapchain(), a.Result())
 	hijack.Extras().MustClone(a.Extras().All()...)
 	err := hijack.Mutate(ctx, id, s, b)
@@ -399,7 +399,7 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 }
 
 func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err
@@ -409,7 +409,7 @@ func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 }
 
 func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b)
 	if b == nil || err != nil {
 		return err

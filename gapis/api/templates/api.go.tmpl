@@ -1320,6 +1320,7 @@ import (
   // CommandBuilder is used to construct new {{$.Name}} commands.
   type CommandBuilder struct {
     Thread uint64
+    Arena  arena.Arena
   }
   ¶
   func (cb CommandBuilder) Custom(f func(context.Context, *ϟapi.GlobalState, *builder.Builder) error) *replay.Custom {

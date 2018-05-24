@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
@@ -46,6 +47,9 @@ func newState(ctx context.Context) *api.GlobalState {
 func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+
+	a := arena.New()
+	defer a.Dispose()
 
 	h := &capture.Header{Abi: device.AndroidARMv7a}
 	ml := h.Abi.MemoryLayout
@@ -77,7 +81,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	indices := []uint16{0, 1, 2, 1, 2, 3}
 	mw := &testcmd.Writer{S: newState(ctx)}
 	ctxHandle, displayHandle, surfaceHandle := p(1), p(2), p(3)
-	cb := gles.CommandBuilder{Thread: 0}
+	cb := gles.CommandBuilder{Thread: 0, Arena: a}
 	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextStateForTest(), gles.NewDynamicContextStateForTest(64, 64, true))
 	api.ForeachCmd(ctx, []api.Cmd{

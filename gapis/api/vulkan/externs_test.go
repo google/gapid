@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
@@ -26,7 +27,9 @@ import (
 func TestCallReflectedCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{}
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Arena: a}
 	cmd := cb.VkCreateBuffer(
 		VkDevice(0),
 		memory.Nullptr,

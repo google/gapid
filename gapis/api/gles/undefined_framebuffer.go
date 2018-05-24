@@ -94,7 +94,7 @@ func drawUndefinedFramebuffer(ctx context.Context, id api.CmdID, cmd api.Cmd, de
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 
 	dID := id.Derived()
-	cb := CommandBuilder{Thread: cmd.Thread()}
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 	t := newTweaker(out, id, cb)
 
 	// Temporarily change rasterizing/blending state and enable VAP 0.

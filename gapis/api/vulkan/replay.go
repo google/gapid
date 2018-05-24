@@ -148,7 +148,7 @@ func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	s := out.State()
 	l := s.MemoryLayout
-	cb := CommandBuilder{Thread: cmd.Thread()}
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 
 	if image, ok := cmd.(*VkCreateImage); ok {
@@ -317,7 +317,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	s := out.State()
 	so := getStateObject(s)
 	id := api.CmdNoID
-	cb := CommandBuilder{Thread: 0} // TODO: Check that using any old thread is okay.
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena} // TODO: Check that using any old thread is okay.
 	// TODO: use the correct pAllocator once we handle it.
 	p := memory.Nullptr
 

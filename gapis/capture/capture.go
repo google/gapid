@@ -27,6 +27,7 @@ import (
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -63,6 +64,7 @@ type Capture struct {
 	APIs         []api.API
 	Observed     interval.U64RangeList
 	InitialState *InitialState
+	Arena        arena.Arena
 }
 
 type InitialState struct {
@@ -296,6 +298,9 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 
 	d := newDecoder()
 
+	// Bind the arena used to for all allocations for this capture.
+	ctx = arena.Put(ctx, d.builder.arena)
+
 	// The decoder implements the ID Remapper interface,
 	// which protoconv functions need to handle resources.
 	ctx = id.PutRemapper(ctx, d)
@@ -352,6 +357,7 @@ type builder struct {
 	cmds         []api.Cmd
 	resIDs       []id.ID
 	initialState *InitialState
+	arena        arena.Arena
 }
 
 func newBuilder() *builder {
@@ -361,6 +367,7 @@ func newBuilder() *builder {
 		observed: interval.U64RangeList{},
 		cmds:     []api.Cmd{},
 		resIDs:   []id.ID{id.ID{}},
+		arena:    arena.New(),
 	}
 }
 
@@ -426,6 +433,7 @@ func (b *builder) build(name string, header *Header) *Capture {
 	for _, api := range b.apis {
 		analytics.SendEvent("capture", "uses-api", api.Name())
 	}
+	// TODO: Mark the arena as read-only.
 	return &Capture{
 		Name:         name,
 		Header:       header,
@@ -433,5 +441,6 @@ func (b *builder) build(name string, header *Header) *Capture {
 		Observed:     b.observed,
 		APIs:         b.apis,
 		InitialState: b.initialState,
+		Arena:        b.arena,
 	}
 }

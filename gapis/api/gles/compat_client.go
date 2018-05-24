@@ -159,7 +159,7 @@ func moveClientVBsToVAs(
 		return
 	}
 
-	cb := CommandBuilder{Thread: cmd.Thread()}
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 	rngs := interval.U64RangeList{}
 	// Gather together all the client-buffers in use by the vertex-attribs.
 	// Merge together all the memory intervals that these use.

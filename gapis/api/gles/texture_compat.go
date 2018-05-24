@@ -149,7 +149,7 @@ func (tc *textureCompat) convertFormat(
 				// Remove the compat mapping and reset swizzles to the original values below.
 				delete(tc.compatSwizzle, t)
 			}
-			cb := CommandBuilder{Thread: cmd.Thread()}
+			cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_R, out, id)
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_G, out, id)
 			tc.writeCompatSwizzle(ctx, cb, t, GLenum_GL_TEXTURE_SWIZZLE_B, out, id)
@@ -207,7 +207,7 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 			// The tex parameter was recently mutated, so set the original swizzle from current state.
 			tc.origSwizzle[parameter][t] = curr
 			// Combine the original and compat swizzles and write out the commands to set it.
-			cb := CommandBuilder{Thread: cmd.Thread()}
+			cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 			tc.writeCompatSwizzle(ctx, cb, t, parameter, out, id)
 		}
 	case GLenum_GL_TEXTURE_SWIZZLE_RGBA:
@@ -221,7 +221,7 @@ func decompressTexImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTexIm
 	ctx = log.Enter(ctx, "decompressTexImage2D")
 	dID := i.Derived()
 	c := GetContext(s, a.Thread())
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	data := AsU8ˢ(a.Data().Slice(0, uint64(a.ImageSize()), s.MemoryLayout), s.MemoryLayout)
 	if pb := c.Bound().PixelUnpackBuffer(); !pb.IsNil() {
 		offset := a.Data().Address()
@@ -274,7 +274,7 @@ func decompressTexSubImage2D(ctx context.Context, i api.CmdID, a *GlCompressedTe
 	ctx = log.Enter(ctx, "decompressTexSubImage2D")
 	dID := i.Derived()
 	c := GetContext(s, a.Thread())
-	cb := CommandBuilder{Thread: a.Thread()}
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	data := AsU8ˢ(a.Data().Slice(0, uint64(a.ImageSize()), s.MemoryLayout), s.MemoryLayout)
 	if pb := c.Bound().PixelUnpackBuffer(); !pb.IsNil() {
 		offset := a.Data().Address()

@@ -259,7 +259,7 @@ func (ω *EglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 		return err
 	}
 	ctxID := uint32(GetState(s).EGLContexts().Get(ω.Result()).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -270,7 +270,7 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 	if b == nil || err != nil {
 		return err
 	}
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	if ω.Context() == 0 {
 		if prevContext.IsNil() {
 			return nil
@@ -311,7 +311,7 @@ func (ω *WglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 		return err
 	}
 	ctxID := uint32(GetState(s).WGLContexts().Get(ω.Result()).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -321,7 +321,7 @@ func (ω *WglCreateContextAttribsARB) Mutate(ctx context.Context, id api.CmdID, 
 		return err
 	}
 	ctxID := uint32(GetState(s).WGLContexts().Get(ω.Result()).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -334,7 +334,7 @@ func (ω *WglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 		return nil
 	}
 	ctxID := uint32(GetState(s).WGLContexts().Get(ω.Hglrc()).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -344,7 +344,7 @@ func (ω *CGLCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 		return err
 	}
 	ctxID := uint32(GetState(s).CGLContexts().Get(ω.Ctx().MustRead(ctx, ω, s, b)).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -357,7 +357,7 @@ func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, id api.CmdID, s *api
 		return nil
 	}
 	ctxID := uint32(GetState(s).CGLContexts().Get(ω.Ctx()).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -367,7 +367,7 @@ func (ω *GlXCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.Glo
 		return err
 	}
 	ctxID := uint32(GetState(s).GLXContexts().Get(ω.Result()).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -377,7 +377,7 @@ func (ω *GlXCreateNewContext) Mutate(ctx context.Context, id api.CmdID, s *api.
 		return err
 	}
 	ctxID := uint32(GetState(s).GLXContexts().Get(ω.Result()).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayCreateRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -390,7 +390,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, id api.CmdID, s *ap
 		return nil
 	}
 	ctxID := uint32(GetState(s).GLXContexts().Get(ω.Ctx()).Identifier())
-	cb := CommandBuilder{Thread: ω.Thread()}
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
 	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
 }
 
@@ -398,7 +398,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, id api.CmdID, s *ap
 func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder, pid ProgramId) error {
 	pi := FindLinkProgramExtra(cmd.Extras())
 	if !pi.IsNil() && b != nil && !pi.ActiveResources().IsNil() {
-		cb := CommandBuilder{Thread: cmd.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 		for _, attr := range pi.ActiveResources().ProgramInputs().All() {
 			if int32(attr.Locations().Get(0)) != -1 {
 				tmp := s.AllocDataOrPanic(ctx, attr.Name())
@@ -423,7 +423,7 @@ func bindAttribLocations(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.
 func bindUniformBlocks(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *builder.Builder, pid ProgramId) error {
 	pi := FindLinkProgramExtra(cmd.Extras())
 	if !pi.IsNil() && b != nil && !pi.ActiveResources().IsNil() {
-		cb := CommandBuilder{Thread: cmd.Thread()}
+		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 		for i, ub := range pi.ActiveResources().UniformBlocks().All() {
 			// Query replay-time uniform block index so that the remapping is established
 			tmp := s.AllocDataOrPanic(ctx, ub.Name())
