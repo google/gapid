@@ -193,3 +193,33 @@ cmd VkResult ReplayCreateSwapchain(
 
   return ?
 }
+
+@synthetic
+cmd bool ReplayCreateVkDebugReportCallback(
+  VkInstance instance,
+  const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+  VkDebugReportCallbackEXT* pCallback) {
+  if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+  if pCreateInfo == null { vkErrorNullPointer("VkDebugReportCallbackCreateInfoEXT") }
+  info := pCreateInfo[0]
+  handle := ?
+  if pCallback == null { vkErrorNullPointer("VkDebugReportCallbackEXT") }
+  pCallback[0] = handle
+  object := new!DebugReportCallbackObject(
+    Instance:     instance,
+    Flags:        info.flags,
+    VulkanHandle: handle,
+  )
+  DebugReportCallbacks[handle] = object
+  return ?
+}
+
+@synthetic
+cmd void ReplayDestroyVkDebugReportCallback(
+  VkInstance instance,
+  VkDebugReportCallbackEXT callback) {
+  if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+  if (callback != as!VkDebugReportCallbackEXT(0)) {
+    delete(DebugReportCallbacks, callback)
+  }
+}

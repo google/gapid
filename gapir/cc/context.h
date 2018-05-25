@@ -22,7 +22,7 @@
 #include "core/cc/timer.h"
 
 #include "gapir/cc/renderer.h"
-#include "replay_connection.h"
+#include "gapir/cc/replay_connection.h"
 
 #include <memory>
 #include <string>
@@ -62,7 +62,7 @@ public:
 
 private:
     // Renderer::Listener compliance
-    virtual void onDebugMessage(int severity, const char* msg) override;
+    virtual void onDebugMessage(int severity, uint8_t api_index, const char* msg) override;
 
 
     enum {
@@ -134,6 +134,9 @@ private:
     // The currently running interpreter.
     // Only valid for the duration of interpret()
     std::unique_ptr<Interpreter> mInterpreter;
+
+    // total number of notifications issued by this context
+    uint64_t mNumNotifications;
 };
 
 }  // namespace gapir

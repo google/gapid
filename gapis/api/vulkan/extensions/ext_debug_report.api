@@ -154,6 +154,17 @@ cmd VkResult vkCreateDebugReportCallbackEXT(
     AllocationCallbacks                       pAllocator,
     VkDebugReportCallbackEXT*                 pCallback) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+  if pCreateInfo == null { vkErrorNullPointer("VkDebugReportCallbackCreateInfoEXT") }
+  info := pCreateInfo[0]
+  handle := ?
+  if pCallback == null { vkErrorNullPointer("VkDebugReportCallbackEXT") }
+  pCallback[0] = handle
+  object := new!DebugReportCallbackObject(
+    Instance:     instance,
+    Flags:        info.flags,
+    VulkanHandle: handle,
+  )
+  DebugReportCallbacks[handle] = object
   return ?
 }
 
@@ -165,6 +176,9 @@ cmd void vkDestroyDebugReportCallbackEXT(
     VkDebugReportCallbackEXT     callback,
     AllocationCallbacks          pAllocator) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+  if (callback != as!VkDebugReportCallbackEXT(0)) {
+    delete(DebugReportCallbacks, callback)
+  }
 }
 
 @extension("VK_EXT_debug_report")
@@ -183,5 +197,15 @@ cmd void vkDebugReportMessageEXT(
   _ = as!string(pLayerPrefix)
   _ = as!string(pMessage)
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
+}
+
+////////////////////
+// State tracking //
+////////////////////
+
+@internal class DebugReportCallbackObject {
+  @unused VkInstance               Instance
+  @unused VkDebugReportFlagsEXT    Flags
+  @unused VkDebugReportCallbackEXT VulkanHandle
 }
 

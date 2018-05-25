@@ -47,10 +47,16 @@ type marker struct {
 	cmd         uint64 // the command identifier
 }
 
-// ResponseDecoder decodes all postback responses from the replay virtual machine.
-// If err is nil, then r is the Reader to the sequential postback data. If r is nil,
-// then the postback data was absent or corrupted and err holds the error.
-type ResponseDecoder func(p *gapir.PostData)
+// NotificationResponsor takes a Notification message from the replay virtual
+// machine.
+type NotificationResponsor func(p *gapir.Notification)
+
+type ReadNotification func(p gapir.Notification)
+
+// PostDataResponsor response to a given PostData message, which may contains
+// multiple pieces of post back data issued by multiple POST instructions, from
+// the replay virual machine.
+type PostDataResponsor func(p *gapir.PostData)
 
 type postBackDecoder struct {
 	expectedSize int
@@ -66,24 +72,25 @@ type Postback func(d binary.Reader, err error)
 // The builder has a number of methods for mutating the virtual machine stack,
 // invoking functions and posting back data.
 type Builder struct {
-	constantMemory  *constantEncoder
-	heap, temp      allocator
-	resourceIDToIdx map[id.ID]uint32
-	threadIDToIdx   map[uint64]uint32
-	currentThreadID uint64
-	pendingThreadID uint64
-	resources       []*gapir.ResourceInfo
-	reservedMemory  memory.RangeList // Reserved memory ranges for regular data.
-	pointerMemory   memory.RangeList // Reserved memory ranges for the pointer table.
-	mappedMemory    mappedMemoryRangeList
-	instructions    []asm.Instruction
-	decoders        []postBackDecoder
-	stack           []stackItem
-	memoryLayout    *device.MemoryLayout
-	inCmd           bool   // true if between BeginCommand and CommitCommand/RevertCommand
-	cmdStart        int    // index of current commands's first instruction
-	pendingLabel    uint64 // label passed to BeginCommand written
-	lastLabel       uint64 // label of last CommitCommand written
+	constantMemory      *constantEncoder
+	heap, temp          allocator
+	resourceIDToIdx     map[id.ID]uint32
+	threadIDToIdx       map[uint64]uint32
+	currentThreadID     uint64
+	pendingThreadID     uint64
+	resources           []*gapir.ResourceInfo
+	reservedMemory      memory.RangeList // Reserved memory ranges for regular data.
+	pointerMemory       memory.RangeList // Reserved memory ranges for the pointer table.
+	mappedMemory        mappedMemoryRangeList
+	instructions        []asm.Instruction
+	decoders            []postBackDecoder
+	notificationReaders []ReadNotification
+	stack               []stackItem
+	memoryLayout        *device.MemoryLayout
+	inCmd               bool   // true if between BeginCommand and CommitCommand/RevertCommand
+	cmdStart            int    // index of current commands's first instruction
+	pendingLabel        uint64 // label passed to BeginCommand written
+	lastLabel           uint64 // label of last CommitCommand written
 
 	// Remappings is a map of a arbitrary keys to pointers. Typically, this is
 	// used as a map of observed values to values that are only known at replay
@@ -566,10 +573,14 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 	b.ReserveMemory(rng)
 }
 
+func (b *Builder) RegisterNotificationReader(reader ReadNotification) {
+	b.notificationReaders = append(b.notificationReaders, reader)
+}
+
 // Build compiles the replay instructions, returning a Payload that can be
-// sent to the replay virtual-machine and a ResponseDecoder for interpreting
+// sent to the replay virtual-machine and a PostDataResponsor for interpreting
 // the responses.
-func (b *Builder) Build(ctx context.Context) (gapir.Payload, ResponseDecoder, error) {
+func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataResponsor, NotificationResponsor, error) {
 	ctx = log.Enter(ctx, "Build")
 	if config.DebugReplayBuilder {
 		log.I(ctx, "Instruction count: %d", len(b.instructions))
@@ -590,7 +601,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, ResponseDecoder, er
 		}
 		if err := i.Encode(vml, w); err != nil {
 			err = fmt.Errorf("Encode %T failed for command with id %v: %v", i, id, err)
-			return gapir.Payload{}, nil, err
+			return gapir.Payload{}, nil, nil, err
 		}
 	}
 
@@ -610,9 +621,9 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, ResponseDecoder, er
 		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
 
-	responseDecoder := func(pd *gapir.PostData) {
+	postResp := func(pd *gapir.PostData) {
 		// TODO: should we skip it instead of return error?
-		ctx = log.Enter(ctx, "responseDecoder")
+		ctx = log.Enter(ctx, "PostDataResponsor")
 		if pd == nil {
 			log.E(ctx, "Cannot handle nil PostData")
 		}
@@ -633,7 +644,21 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, ResponseDecoder, er
 			}
 		})
 	}
-	return payload, responseDecoder, nil
+
+	notiResp := func(n *gapir.Notification) {
+		ctx = log.Enter(ctx, "NotificationResponsor")
+		if n == nil {
+			log.E(ctx, "Cannot handle nil Notification")
+			return
+		}
+		crash.Go(func() {
+			for _, r := range b.notificationReaders {
+				r(*n)
+			}
+		})
+	}
+
+	return payload, postResp, notiResp, nil
 }
 
 const ErrInvalidResource = fault.Const("Invaid resource")

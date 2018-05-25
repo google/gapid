@@ -37,6 +37,7 @@ go_library(
         "//gapis/memory:go_default_library",
         "//gapis/service/box:go_default_library",
         "//gapis/service/path:go_default_library",
+        "//gapis/service/severity:go_default_library",
         "//gapis/stringtable:go_default_library",
     ],
 )
@@ -52,6 +53,7 @@ proto_library(
         "//gapis/api:api_proto",
         "//gapis/service/box:box_proto",
         "//gapis/service/path:path_proto",
+        "//gapis/service/severity:severity_proto",
         "//gapis/stringtable:stringtable_proto",
     ],
 )

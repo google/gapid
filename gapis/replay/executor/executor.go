@@ -31,10 +31,11 @@ import (
 )
 
 type executor struct {
-	payload      gapir.Payload
-	decoder      builder.ResponseDecoder
-	memoryLayout *device.MemoryLayout
-	OS           *device.OS
+	payload            gapir.Payload
+	handlePost         builder.PostDataResponsor
+	handleNotification builder.NotificationResponsor
+	memoryLayout       *device.MemoryLayout
+	OS                 *device.OS
 }
 
 // Execute sends the replay payload for execution on the target replay device
@@ -45,7 +46,8 @@ type executor struct {
 func Execute(
 	ctx context.Context,
 	payload gapir.Payload,
-	decoder builder.ResponseDecoder,
+	handlePost builder.PostDataResponsor,
+	handleNotification builder.NotificationResponsor,
 	connection *gapir.Connection,
 	memoryLayout *device.MemoryLayout,
 	os *device.OS) error {
@@ -53,10 +55,11 @@ func Execute(
 	// The memoryLayout is specific to the ABI of the requested capture,
 	// while the OS is not. Thus a device.Configuration is not applicable here.
 	return executor{
-		payload:      payload,
-		decoder:      decoder,
-		memoryLayout: memoryLayout,
-		OS:           os,
+		payload:            payload,
+		handlePost:         handlePost,
+		handleNotification: handleNotification,
+		memoryLayout:       memoryLayout,
+		OS:                 os,
 	}.execute(ctx, connection)
 }
 
@@ -83,13 +86,13 @@ func (e executor) HandlePayloadRequest(ctx context.Context, conn *gapir.Connecti
 
 // HandlePostData implements gapir.ReplayResponseHandler interface.
 func (e executor) HandlePostData(ctx context.Context, postData *gapir.PostData, conn *gapir.Connection) error {
-	e.decoder(postData)
+	e.handlePost(postData)
 	return nil
 }
 
 // HandleNotification implements gapir.ReplayResponseHandler interface.
 func (e executor) HandleNotification(ctx context.Context, notification *gapir.Notification, conn *gapir.Connection) error {
-	// TODO: Implement handler for notifications
+	e.handleNotification(notification)
 	return nil
 }
 

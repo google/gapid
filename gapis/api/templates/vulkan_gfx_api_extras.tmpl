@@ -33,10 +33,14 @@
 ¶
   #include "gapir/cc/interpreter.h"
   #include "gapir/cc/stack.h"
+  #include "gapir/cc/renderer.h"
 ¶
   #include "core/cc/get_vulkan_proc_address.h"
   #include "core/cc/log.h"
 ¶
+  #include <algorithm>
+  #include <iterator>
+  #include <sstream>
   #include <vector>
   #ifdef _WIN32
   #define alloca _alloca
@@ -50,6 +54,19 @@
   namespace gapir {«
 ¶
   namespace {«
+¶
+  const char kVirtualSwapchainLayerName[] = "VirtualSwapchain";
+  const char kVkGraphicsSpyLayerName[] = "VkGraphicsSpy";
+  const char kValidationMetaLayerName[] = "VK_LAYER_LUNARG_standard_validation";
+  const char* kValidationLayerNames[] = {
+    "VK_LAYER_GOOGLE_threading",
+    "VK_LAYER_LUNARG_parameter_validation",
+    "VK_LAYER_LUNARG_object_tracker",
+    "VK_LAYER_LUNARG_core_validation",
+    "VK_LAYER_GOOGLE_unique_objects",
+  };
+  const char kDebugReportExtensionName[] = "VK_EXT_debug_report";
+
 ¶
   std::vector<Vulkan::VkPhysicalDevice> getVkPhysicalDevices(§
       Vulkan::PFNVKENUMERATEPHYSICALDEVICES vkEnumeratePhysicalDevices, Vulkan::VkInstance instance) {
@@ -76,67 +93,109 @@
 ¶
   »}  // anonymous namespace
 ¶
-  bool Vulkan::replayCreateVkInstance(Stack* stack, bool pushReturn) {
-    auto pInstance = stack->pop<VkInstance*>();
-    auto pAllocator = stack->pop<VkAllocationCallbacks*>();
-    auto pCreateInfo = stack->pop<VkInstanceCreateInfo*>();
-
-    // Inject "VirtualSwapchain" into the enabled layer name list by
-    // substituting "VkGraphicsSpy" used for capturing.
-    char virtualSwapchainName[] = "VirtualSwapchain";
-
-    const auto count = pCreateInfo->enabledLayerCount;
-
-    const char** layers = static_cast<const char**>(alloca((count + 2) * sizeof(char*)));
-
-    bool has_spy = false;
-    for (size_t i = 0; i < count; ++i) {
-        if (strcmp("VkGraphicsSpy", pCreateInfo->ppEnabledLayerNames[i]) == 0) {
-            layers[i] = virtualSwapchainName;
-            has_spy = true;
-        } else {
-            layers[i] = pCreateInfo->ppEnabledLayerNames[i];
-        }
-    }
-
-    if (!has_spy) {
-      layers[count] = virtualSwapchainName;
-      pCreateInfo->enabledLayerCount = count + 1;
-    }
-    pCreateInfo->ppEnabledLayerNames = layers;
-
-    // We recorded pNext during capturing since we turned on VkGraphicsSpy layer.
-    // On the replay side, since there are no extensions that can use pNext yet,
-    // null it out.
-    pCreateInfo->pNext = nullptr;
-
-    // Push back to the stack, so the acutal function for calling
-    // vkCreateInstance can use it.
-    stack->push(pCreateInfo);
-    stack->push(pAllocator);
-    stack->push(pInstance);
-
-    return callVkCreateInstance(~0, stack, pushReturn);
+bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
+                                        const VkInstanceCreateInfo* pCreateInfo,
+                                        VkAllocationCallbacks* pAllocator,
+                                        VkInstance* pInstance,
+                                        bool dropValidationLayersAndDebugReport,
+                                        uint32_t* result) {
+  std::vector<const char*> layers(
+      pCreateInfo->ppEnabledLayerNames,
+      pCreateInfo->ppEnabledLayerNames + pCreateInfo->enabledLayerCount);
+  layers.reserve(pCreateInfo->enabledLayerCount + 1);
+  std::vector<const char*> extensions(pCreateInfo->ppEnabledExtensionNames,
+                                      pCreateInfo->ppEnabledExtensionNames +
+                                          pCreateInfo->enabledExtensionCount);
+  extensions.reserve(pCreateInfo->enabledExtensionCount + 1);
+  // Drop the VkGraphicsSpy layer and validation layers if requested.
+  layers.erase(
+      std::remove_if(
+          layers.begin(), layers.end(),
+          [dropValidationLayersAndDebugReport](const char* layer) -> bool {
+            if (strcmp(kVkGraphicsSpyLayerName, layer) == 0) {
+              return true;
+            }
+            if (dropValidationLayersAndDebugReport) {
+              if (strcmp(kValidationMetaLayerName, layer) == 0) {
+                return true;
+              }
+              return std::any_of(std::begin(kValidationLayerNames),
+                                 std::end(kValidationLayerNames),
+                                 [layer](const char* val) -> bool {
+                                   return strcmp(layer, val) == 0;
+                                 });
+            }
+            return false;
+          }),
+      layers.end());
+  // Add VirtualSwapchain layer
+  layers.push_back(kVirtualSwapchainLayerName);
+  // Drop the debug report extension if requested.
+  if (dropValidationLayersAndDebugReport) {
+    extensions.erase(std::remove_if(extensions.begin(), extensions.end(),
+                                    [](const char* e) -> bool {
+                                      return strcmp(kDebugReportExtensionName,
+                                                    e) == 0;
+                                    }),
+                     extensions.end());
   }
+  VkInstanceCreateInfo new_info = *pCreateInfo;
+  new_info.pNext = nullptr;
+  new_info.ppEnabledLayerNames = layers.data();
+  new_info.enabledLayerCount = layers.size();
+  new_info.ppEnabledExtensionNames = extensions.data();
+  new_info.enabledExtensionCount = extensions.size();
+  stack->push(&new_info);
+  stack->push(pAllocator);
+  stack->push(pInstance);
+  if (callVkCreateInstance(~0, stack, true)) {
+    *result = stack->pop<uint32_t>();
+    return true;
+  }
+  *result = VkResult::VK_ERROR_INITIALIZATION_FAILED;
+  return false;
+}
 ¶
-  bool Vulkan::replayCreateVkDevice(Stack* stack, bool pushReturn) {
-    auto pDevice = stack->pop<VkDevice*>();
-    auto pAllocator = stack->pop<VkAllocationCallbacks*>();
-    auto pCreateInfo = stack->pop<VkDeviceCreateInfo*>();
-
-    // We recorded pNext during capturing since we turned on VkGraphicsSpy layer.
-    // On the replay side, since there are no extensions that can use pNext yet,
-    // null it out.
-    pCreateInfo->pNext = nullptr;
-
-    // Push back to the stack, so the acutal function for calling
-    // vkCreateDevice can use it.
-    stack->push(pCreateInfo);
-    stack->push(pAllocator);
-    stack->push(pDevice);
-
-    return callVkCreateDevice(~0, stack, pushReturn);
+bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
+                                      const VkDeviceCreateInfo* pCreateInfo,
+                                      VkAllocationCallbacks* pAllocator,
+                                      VkDevice* pDevice, bool dropValidationLayers,
+                                      uint32_t* result) {
+  std::vector<const char*> layers(
+      pCreateInfo->ppEnabledLayerNames,
+      pCreateInfo->ppEnabledLayerNames + pCreateInfo->enabledLayerCount);
+  // Drop the validation layers if requested
+  layers.erase(
+      std::remove_if(layers.begin(), layers.end(),
+                     [dropValidationLayers](const char* layer) -> bool {
+                       if (dropValidationLayers) {
+                         if (strcmp(kValidationMetaLayerName, layer) == 0) {
+                           return true;
+                         }
+                         return std::any_of(std::begin(kValidationLayerNames),
+                                            std::end(kValidationLayerNames),
+                                            [layer](const char* val) -> bool {
+                                              return strcmp(layer, val) == 0;
+                                            });
+                       }
+                       return false;
+                     }),
+      layers.end());
+  VkDeviceCreateInfo new_info = *pCreateInfo;
+  new_info.pNext = nullptr;
+  new_info.ppEnabledLayerNames = layers.data();
+  new_info.enabledLayerCount = layers.size();
+  stack->push(physicalDevice);
+  stack->push(&new_info);
+  stack->push(pAllocator);
+  stack->push(pDevice);
+  if (callVkCreateDevice(~0, stack, true)) {
+    *result = stack->pop<uint32_t>();
+    return true;
   }
+  *result = VkResult::VK_ERROR_INITIALIZATION_FAILED;
+  return false;
+}
 ¶
   bool Vulkan::replayRegisterVkInstance(Stack* stack) {
     auto instance = static_cast<VkInstance>(stack->pop<size_val>());
@@ -476,6 +535,107 @@ bool Vulkan::replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn) {
         GAPID_WARNING("Error during calling function replayEnumeratePhysicalDevices");
         return false;
     }
+}
+¶
+bool Vulkan::replayCreateVkDebugReportCallback(Stack* stack, bool pushReturn) {
+    uint32_t cmdLabel = ~0;
+    auto pCallback = stack->pop<VkDebugReportCallbackEXT*>();
+    auto pCreateInfo = stack->pop<VkDebugReportCallbackCreateInfoEXT const*>();
+    auto instance = static_cast<size_val>(stack->pop<size_val>());
+    if (stack->isValid()) {
+        GAPID_DEBUG("[%u]vkCreateDebugReportCallbackEXT(%" PRIsize ", %p, %p, %p)" , cmdLabel, instance, pCreateInfo, nullptr, pCallback);
+        if (mVkInstanceFunctionStubs.find(instance) != mVkInstanceFunctionStubs.end() &&
+        mVkInstanceFunctionStubs[instance].vkCreateDebugReportCallbackEXT) {
+            uint32_t return_value = mVkInstanceFunctionStubs[instance].vkCreateDebugReportCallbackEXT(instance, pCreateInfo, nullptr, pCallback);
+            GAPID_DEBUG("[%u]vkCreateDebugReportCallbackEXT returned 0x%X", cmdLabel, return_value);
+            if (pushReturn) {
+                stack->push<uint32_t>(return_value);
+            }
+        } else {
+            GAPID_INFO("Attempted to call unsupported function vkCreateDebugReportCallbackEXT, VK_EXT_debug_report extension may be not supported");
+            if (pushReturn) {
+                stack->push<uint32_t>(VkResult::VK_ERROR_EXTENSION_NOT_PRESENT);
+            }
+        }
+        return true;
+    } else {
+        GAPID_ERROR("Error during calling function vkCreateDebugReportCallbackEXT");
+        return false;
+    }
+}
+¶
+bool Vulkan::replayDestroyVkDebugReportCallback(Stack* stack) {
+    uint32_t cmdLabel = ~0;
+    auto callback = stack->pop<uint64_t>();
+    auto instance = static_cast<size_val>(stack->pop<size_val>());
+    if (stack->isValid()) {
+        GAPID_DEBUG("[%u]vkDestroyDebugReportCallbackEXT(%" PRIsize ", %" PRIu64 ", %p)" , cmdLabel, instance, callback, nullptr);
+        if (mVkInstanceFunctionStubs.find(instance) != mVkInstanceFunctionStubs.end() &&
+        mVkInstanceFunctionStubs[instance].vkDestroyDebugReportCallbackEXT) {
+            mVkInstanceFunctionStubs[instance].vkDestroyDebugReportCallbackEXT(instance, callback, nullptr);
+        } else {
+            GAPID_INFO("Attempted to call unsupported function vkDestroyDebugReportCallbackEXT, VK_EXT_debug_report extension may be not supported");
+        }
+        return true;
+    } else {
+        GAPID_ERROR("Error during calling function vkDestroyDebugReportCallbackEXT");
+        return false;
+    }
+}
+¶
+bool Vulkan::replayDebugReportCallback(uint32_t flags, uint32_t objectType,
+                                       uint64_t object, size_t location,
+                                       int32_t messageCode,
+                                       const char* pLayerPrefix,
+                                       const char* pMessage, void* pUserData) {
+  auto* ctx = static_cast<Renderer::Listener*>(pUserData);
+  // Use the severest bit in the flags to report.
+  int sev = LOG_LEVEL_DEBUG;
+  if (flags & Vulkan::VkDebugReportFlagBitsEXT::VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+    sev = LOG_LEVEL_ERROR;
+  } else if (flags & Vulkan::VkDebugReportFlagBitsEXT::
+                         VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+    sev = LOG_LEVEL_WARNING;
+  } else if (flags & Vulkan::VkDebugReportFlagBitsEXT::
+                         VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+    sev = LOG_LEVEL_INFO;
+  } else {
+    // Skip messages with weaker severity.
+    return false;
+  }
+
+  // Skip the benign error due to validation layers does not recognize the
+  // virtual swapchain layer
+  if (strstr(pMessage,
+             "vkCreateSwapchainKHR: pCreateInfo->pNext chain includes a "
+             "structure with unknown VkStructureType (-86);") != nullptr) {
+    return false;
+  }
+
+
+  std::ostringstream ss;
+  ss << "Flags: " << uint32_t(flags) << ", ObjectType: " << objectType
+     << ", Object: " << object << ", LayerPrefix: " << pLayerPrefix
+     << ", Layer Mesage Code: " << messageCode << ", Message: " << pMessage;
+  ctx->onDebugMessage(sev, Vulkan::INDEX, ss.str().c_str());
+  return false;
+}
+¶
+bool Vulkan::hasValidationLayers(const char* const* layers, uint32_t count) {
+  return std::any_of(layers, layers + count, [](const char* layer) -> bool {
+    return std::any_of(
+      std::begin(kValidationLayerNames), std::end(kValidationLayerNames),
+      [layer](const char* val) -> bool {
+        return strcmp(layer, val) == 0;
+      }) || strcmp(layer, kValidationMetaLayerName) == 0;
+  });
+}
+¶
+bool Vulkan::hasDebugReportExtension(const char* const* extensions, uint32_t count) {
+  return std::any_of(
+    extensions, extensions + count, [](const char* ext) -> bool {
+      return strcmp(ext, kDebugReportExtensionName) == 0;
+    });
 }
 ¶
   »}  // namespace gapir

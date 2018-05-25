@@ -27,7 +27,19 @@ import (
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/service/severity"
 	"github.com/google/gapid/gapis/stringtable"
+)
+
+type Severity = severity.Severity
+
+const (
+	Severity_VerboseLevel Severity = 0
+	Severity_DebugLevel   Severity = 1
+	Severity_InfoLevel    Severity = 2
+	Severity_WarningLevel Severity = 3
+	Severity_ErrorLevel   Severity = 4
+	Severity_FatalLevel   Severity = 5
 )
 
 type Service interface {

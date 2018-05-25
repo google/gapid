@@ -369,11 +369,18 @@ func (e externs) fetchLinearImageSubresourceLayouts(dev VkDevice, img ImageObjec
 	return NilLinearImageLayoutsʳ
 }
 
+func (e externs) onVkError(issue replay.Issue) {
+	if f := e.s.OnError; f != nil {
+		f(issue)
+	}
+}
+
 func (e externs) vkErrInvalidHandle(handleType string, handle uint64) {
 	var issue replay.Issue
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_ErrorLevel
 	issue.Error = fmt.Errorf("Invalid %s: %v", handleType, handle)
+	e.onVkError(issue)
 }
 
 func (e externs) vkErrNullPointer(pointerType string) {
@@ -381,6 +388,7 @@ func (e externs) vkErrNullPointer(pointerType string) {
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_ErrorLevel
 	issue.Error = fmt.Errorf("Null pointer of %s", pointerType)
+	e.onVkError(issue)
 }
 
 func (e externs) vkErrUnrecognizedExtension(name string) {
@@ -388,6 +396,7 @@ func (e externs) vkErrUnrecognizedExtension(name string) {
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_WarningLevel
 	issue.Error = fmt.Errorf("Unsupported extension: %s", name)
+	e.onVkError(issue)
 }
 
 func (e externs) vkErrExpectNVDedicatedlyAllocatedHandle(handleType string, handle uint64) {
@@ -395,6 +404,7 @@ func (e externs) vkErrExpectNVDedicatedlyAllocatedHandle(handleType string, hand
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_WarningLevel
 	issue.Error = fmt.Errorf("%v: %v is not created with VK_NV_dedicated_allocation extension structure, but is bound to a dedicatedly allocated handle", handleType, handle)
+	e.onVkError(issue)
 }
 
 func (e externs) vkErrInvalidDescriptorArrayElement(set uint64, binding, arrayIndex uint32) {
@@ -402,6 +412,7 @@ func (e externs) vkErrInvalidDescriptorArrayElement(set uint64, binding, arrayIn
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_WarningLevel
 	issue.Error = fmt.Errorf("Invalid descriptor array element specified by descriptor set: %v, binding: %v array index: %v", set, binding, arrayIndex)
+	e.onVkError(issue)
 }
 
 func (e externs) vkErrCommandBufferIncomplete(cmdbuf VkCommandBuffer) {
@@ -409,6 +420,7 @@ func (e externs) vkErrCommandBufferIncomplete(cmdbuf VkCommandBuffer) {
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_ErrorLevel
 	issue.Error = fmt.Errorf("Executing command buffer %v was not in the COMPLETED state", cmdbuf)
+	e.onVkError(issue)
 }
 
 func (e externs) vkErrInvalidImageLayout(img VkImage, aspect, layer, level uint32, layout VkImageLayout, expectedLayout VkImageLayout) {
@@ -416,6 +428,7 @@ func (e externs) vkErrInvalidImageLayout(img VkImage, aspect, layer, level uint3
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_WarningLevel
 	issue.Error = fmt.Errorf("Image subsource at Image: %v AspectBit: %v, Layer: %v, Level: %v was in layout %v, but was expected to be in layout %v", uint64(img), aspect, layer, level, layout, expectedLayout)
+	e.onVkError(issue)
 }
 
 func (e externs) vkErrInvalidImageSubresource(img VkImage, subresourceType string, value uint32) {
@@ -423,4 +436,5 @@ func (e externs) vkErrInvalidImageSubresource(img VkImage, subresourceType strin
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_WarningLevel
 	issue.Error = fmt.Errorf("Accessing invalid image subresource at Image: %v, %v: %v", uint64(img), subresourceType, value)
+	e.onVkError(issue)
 }

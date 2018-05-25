@@ -16,9 +16,11 @@ package vulkan
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
+	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -27,20 +29,48 @@ import (
 	"github.com/google/gapid/gapis/replay/value"
 )
 
+var validationLayers = [...]string{
+	"VK_LAYER_GOOGLE_threading",
+	"VK_LAYER_LUNARG_parameter_validation",
+	"VK_LAYER_LUNARG_object_tracker",
+	"VK_LAYER_LUNARG_core_validation",
+	"VK_LAYER_GOOGLE_unique_objects",
+}
+
+const (
+	validationMetaLayer  = "VK_LAYER_LUNARG_standard_validation"
+	debugReportExtension = "VK_EXT_debug_report"
+)
+
+func isValidationLayer(n string) bool {
+	if n == validationMetaLayer {
+		return true
+	}
+	for _, v := range validationLayers {
+		if n == v {
+			return true
+		}
+	}
+	return false
+}
+
 // findIssues is a command transform that detects issues when replaying the
 // stream of commands. Any issues that are found are written to all the chans in
 // the slice out. Once the last issue is sent (if any) all the chans in out are
 // closed.
 // NOTE: right now this transform is just used to close chans passed in requests.
 type findIssues struct {
-	state  *api.GlobalState
-	issues []replay.Issue
-	res    []replay.Result
+	state           *api.GlobalState
+	numInitialCmds  int
+	issues          []replay.Issue
+	res             []replay.Result
+	reportCallbacks map[VkInstance]VkDebugReportCallbackEXT
 }
 
-func newFindIssues(ctx context.Context, c *capture.Capture) *findIssues {
+func newFindIssues(ctx context.Context, c *capture.Capture, numInitialCmds int) *findIssues {
 	t := &findIssues{
-		state: c.NewState(ctx),
+		state:          c.NewState(ctx),
+		numInitialCmds: numInitialCmds,
 	}
 	t.state.OnError = func(err interface{}) {
 		if issue, ok := err.(replay.Issue); ok {
@@ -55,17 +85,190 @@ func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
 func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: t.state.Arena}
+
 	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */)
 	if mutateErr != nil {
 		// Ignore since downstream transform layers can only consume valid commands
 		return
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+
+	s := out.State()
+	l := s.MemoryLayout
+
+	// Before an instance is to be destroyed, check if it has debug report callback
+	// created by us, if so, destory the call back handle.
+	if di, ok := cmd.(*VkDestroyInstance); ok {
+		inst := di.Instance()
+		if ch, ok := t.reportCallbacks[inst]; ok {
+			out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayDestroyVkDebugReportCallback(inst, ch))
+		}
+	}
+
+	switch cmd := cmd.(type) {
+	// Modify the vkCreateInstance to remove any validation layers first, and
+	// insert the individual validation layers in order. This is because Android
+	// does not support the meta layer, and the order does matter.Also enable the
+	// VK_EXT_debug_report extension.
+	case *VkCreateInstance:
+		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
+		layerCount := info.EnabledLayerCount()
+		layers := []Charᶜᵖ{}
+		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil) {
+			if !isValidationLayer(l.String()) {
+				layers = append(layers, l)
+			}
+		}
+
+		validationLayersData := []api.AllocResult{}
+		for _, v := range validationLayers {
+			d := s.AllocDataOrPanic(ctx, v)
+			validationLayersData = append(validationLayersData, d)
+			layers = append(layers, NewCharᶜᵖ(d.Ptr()))
+		}
+		layersData := s.AllocDataOrPanic(ctx, layers)
+
+		extCount := info.EnabledExtensionCount()
+		exts := info.PpEnabledExtensionNames().Slice(0, uint64(extCount), l).MustRead(ctx, cmd, s, nil)
+		var debugReportExtNameData api.AllocResult
+		hasDebugReport := false
+		for _, e := range exts {
+			if e.String() == debugReportExtension {
+				hasDebugReport = true
+			}
+		}
+		if !hasDebugReport {
+			debugReportExtNameData = s.AllocDataOrPanic(ctx, debugReportExtension)
+			exts = append(exts, NewCharᶜᵖ(debugReportExtNameData.Ptr()))
+		}
+		extsData := s.AllocDataOrPanic(ctx, exts)
+
+		info.SetEnabledLayerCount(uint32(len(layers)))
+		info.SetPpEnabledLayerNames(NewCharᶜᵖᶜᵖ(layersData.Ptr()))
+		info.SetEnabledExtensionCount(uint32(len(exts)))
+		info.SetPpEnabledExtensionNames(NewCharᶜᵖᶜᵖ(extsData.Ptr()))
+		infoData := s.AllocDataOrPanic(ctx, info)
+
+		newCmd := cb.VkCreateInstance(infoData.Ptr(), cmd.PAllocator(), cmd.PInstance(), cmd.Result())
+		for _, d := range validationLayersData {
+			newCmd.AddRead(d.Data())
+		}
+		newCmd.AddRead(debugReportExtNameData.Data())
+		newCmd.AddRead(infoData.Data())
+		newCmd.AddRead(layersData.Data())
+		newCmd.AddRead(extsData.Data())
+		// Also add back all the other read/write observations of the origianl vkCreateInstance
+		for _, r := range cmd.Extras().Observations().Reads {
+			newCmd.AddRead(r.Range, r.ID)
+		}
+		for _, w := range cmd.Extras().Observations().Writes {
+			newCmd.AddWrite(w.Range, w.ID)
+		}
+		out.MutateAndWrite(ctx, id, newCmd)
+
+	// Modify the vkCreateDevice to remove any validation layers and add individual
+	// layers back later. Same reason as vkCreateInstance
+	case *VkCreateDevice:
+		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
+		layerCount := info.EnabledLayerCount()
+		layers := []Charᶜᵖ{}
+		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil) {
+			if !isValidationLayer(l.String()) {
+				layers = append(layers, l)
+			}
+		}
+
+		validationLayersData := []api.AllocResult{}
+		for _, v := range validationLayers {
+			d := s.AllocDataOrPanic(ctx, v)
+			validationLayersData = append(validationLayersData, d)
+			layers = append(layers, NewCharᶜᵖ(d.Ptr()))
+		}
+		layersData := s.AllocDataOrPanic(ctx, layers)
+		info.SetEnabledLayerCount(uint32(len(layers)))
+		info.SetPpEnabledLayerNames(NewCharᶜᵖᶜᵖ(layersData.Ptr()))
+		infoData := s.AllocDataOrPanic(ctx, info)
+
+		newCmd := cb.VkCreateDevice(cmd.PhysicalDevice(), infoData.Ptr(), cmd.PAllocator(), cmd.PDevice(), cmd.Result())
+		for _, d := range validationLayersData {
+			newCmd.AddRead(d.Data())
+		}
+		newCmd.AddRead(infoData.Data()).AddRead(layersData.Data())
+		// Also add back the read/write observations of the original vkCreateDevice
+		for _, r := range cmd.Extras().Observations().Reads {
+			newCmd.AddRead(r.Range, r.ID)
+		}
+		for _, w := range cmd.Extras().Observations().Writes {
+			newCmd.AddWrite(w.Range, w.ID)
+		}
+		out.MutateAndWrite(ctx, id, newCmd)
+
+	default:
+		out.MutateAndWrite(ctx, id, cmd)
+
+	}
+
+	// After an instance is created, try to create a debug report call back handle
+	// for it. The create info is not completed, the device side code should complete
+	// the create info before calling the underlying Vulkan command.
+	if ci, ok := cmd.(*VkCreateInstance); ok {
+		inst := ci.PInstance().MustRead(ctx, cmd, s, nil)
+		callbackHandle := VkDebugReportCallbackEXT(newUnusedID(true, func(x uint64) bool {
+			for _, cb := range t.reportCallbacks {
+				if uint64(cb) == x {
+					return true
+				}
+			}
+			return false
+		}))
+		callbackHandleData := s.AllocDataOrPanic(ctx, callbackHandle)
+		callbackCreateInfo := s.AllocDataOrPanic(
+			ctx, NewVkDebugReportCallbackCreateInfoEXT(
+				s.Arena,
+				VkStructureType_VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT, // sType
+				0, // pNext
+				VkDebugReportFlagsEXT((VkDebugReportFlagBitsEXT_VK_DEBUG_REPORT_DEBUG_BIT_EXT<<1)-1), // flags
+				0, // pfnCallback
+				0, // pUserData
+			))
+		out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayCreateVkDebugReportCallback(
+			inst,
+			callbackCreateInfo.Ptr(),
+			callbackHandleData.Ptr(),
+			true,
+		).AddRead(
+			callbackCreateInfo.Data(),
+		).AddWrite(
+			callbackHandleData.Data(),
+		))
+	}
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 	cb := CommandBuilder{Thread: 0, Arena: t.state.Arena}
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		b.RegisterNotificationReader(func(n gapir.Notification) {
+			vkApi := API{}
+			if uint8(n.GetApiIndex()) != vkApi.Index() {
+				return
+			}
+			var issue replay.Issue
+			msg := n.GetMsg()
+			label := n.GetLabel()
+			if int(label) < t.numInitialCmds {
+				// The debug report is issued for state rebuilding command
+				issue.Command = api.CmdID(0)
+				issue.Error = fmt.Errorf("[State rebuilding command, linearized ID: %d]: %s", label, msg)
+			} else {
+				// The debug report is issued for a trace command
+				issue.Command = api.CmdID(label - uint64(t.numInitialCmds))
+				issue.Error = fmt.Errorf("%s", msg)
+			}
+			issue.Severity = n.GetSeverity()
+			t.issues = append(t.issues, issue)
+		})
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,
 		// we need to actually write some data here. r.Uint32() is what actually waits for the replay target to have
 		// posted the data in question. If we did not do this, we would shut-down the replay as soon as the second-to-last

@@ -250,9 +250,9 @@ static void DebugCallback(uint32_t source, uint32_t type, Gles::GLuint id, uint3
     auto listener = renderer->getListener();
     if (listener != nullptr) {
         if (type == Gles::GLenum::GL_DEBUG_TYPE_ERROR || severity == Gles::GLenum::GL_DEBUG_SEVERITY_HIGH) {
-            listener->onDebugMessage(LOG_LEVEL_ERROR, message);
+            listener->onDebugMessage(LOG_LEVEL_ERROR, Gles::INDEX, message);
         } else {
-            listener->onDebugMessage(LOG_LEVEL_DEBUG, message);
+            listener->onDebugMessage(LOG_LEVEL_DEBUG, Gles::INDEX, message);
         }
     }
 }

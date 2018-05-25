@@ -36,11 +36,17 @@ IndirectMaps mIndirectMaps;
 
 // Function for wrapping around the normal vkCreateInstance to inject
 // virtual swapchain as an additional enabled layer.
-bool replayCreateVkInstance(Stack* stack, bool pushReturn);
+bool replayCreateVkInstanceImpl(
+    Stack* stack, const VkInstanceCreateInfo* pCreateInfo,
+    VkAllocationCallbacks* pAllocator, VkInstance* pInstance,
+    bool dropValidationLayersAndDebugReport, uint32_t* result);
 
 // Function for wrapping around the normal vkCreateDevice to null the
 // pNext field in VkDeviceCreateInfo.
-bool replayCreateVkDevice(Stack* stack, bool pushReturn);
+bool replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
+    const VkDeviceCreateInfo* pCreateInfo,
+    VkAllocationCallbacks* pAllocator, VkDevice* pDevice,
+    bool dropValidationLayers, uint32_t* result);
 
 // Builtin function for registering instance-level function pointers and
 // binding all physical devices associated with the given instance.
@@ -108,3 +114,17 @@ bool replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn);
 // Builtin function for turning on the automatic swapchain index generation,
 // during swapchain creation.
 bool replayCreateSwapchain(Stack* stack, bool pushReturn);
+
+bool replayCreateVkDebugReportCallback(Stack* stack, bool pushReturn);
+
+bool replayDestroyVkDebugReportCallback(Stack* stack);
+
+static bool replayDebugReportCallback(uint32_t flags, uint32_t objectType,
+                                      uint64_t object, size_t location,
+                                      int32_t messageCode,
+                                      const char* pLayerPrefix,
+                                      const char* pMessage, void* pUserData);
+
+static bool hasValidationLayers(const char* const* layers, uint32_t count);
+
+static bool hasDebugReportExtension(const char* const* extensions, uint32_t count);

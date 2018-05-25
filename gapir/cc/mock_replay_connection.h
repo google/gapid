@@ -41,6 +41,9 @@ class MockReplayConnection : public ReplayConnection {
     return mockedSendPostData(posts.get());
   }
   // TODO: mock sendNotification and test it once it is used.
+  MOCK_METHOD7(sendNotification,
+               bool(uint64_t, int, uint32_t, uint64_t, const std::string&,
+                    const void*, uint32_t));
 };
 }  // namespace test
 }  // namespace gapir

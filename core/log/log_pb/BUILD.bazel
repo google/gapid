@@ -51,3 +51,9 @@ java_proto_library(
     visibility = ["//visibility:public"],
     deps = [":log_pb_proto"],
 )
+
+cc_proto_library(
+    name =  "log_pb_cc_proto",
+    visibility = ["//visibility:public"],
+    deps = [":log_pb_proto"],
+)

@@ -107,7 +107,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/cc",
-        "//gapir/replay_service:service_cc_proto",
+        "//gapir/replay_service:replay_service_cc",
         "@com_github_grpc_grpc//:grpc++",
     ] + select({
         "//tools/build:darwin": [":darwin_renderer"],

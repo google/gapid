@@ -20,6 +20,7 @@ import "core/os/device/device.proto";
 import "gapis/api/service.proto";
 import "gapis/service/box/box.proto";
 import "gapis/service/path/path.proto";
+import "gapis/service/severity/severity.proto";
 import "gapis/stringtable/stringtable.proto";
 
 package service;
@@ -37,23 +38,6 @@ enum WireframeMode {
   Overlay = 1;
   // All indicates that all draw calls should be displayed in wireframe.
   All = 2;
-}
-
-// Severity defines the severity of a logging message.
-// The values must be identical to values in core/log/severity.go
-enum Severity {
-	// Verbose indicates extremely verbose level messages.
-	VerboseLevel = 0;
-	// Debug indicates debug-level messages.
-	DebugLevel = 1;
-	// Info indicates minor informational messages that should generally be ignored.
-	InfoLevel = 2;
-	// Warning indicates issues that might affect performance or compatibility, but could be ignored.
-	WarningLevel = 3;
-	// Error indicates non terminal failure conditions that may have an effect on results.
-	ErrorLevel = 4;
-	// Fatal indicates a fatal error and the process should be terminated.
-	FatalLevel = 5;
 }
 
 message ServerInfo {
@@ -610,7 +594,7 @@ message Report {
 // ReportItem represents an entry in a report.
 message ReportItem {
   // The severity of the report item.
-  Severity severity = 1;
+  severity.Severity severity = 1;
   // The message for the item.
   MsgRef message = 2;
   // The path to the command that reported the issue.

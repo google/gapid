@@ -14,6 +14,8 @@
 
 syntax = "proto3";
 
+import "gapis/service/severity/severity.proto";
+
 package replay_service;
 
 option go_package = "github.com/google/gapid/gapir/replay_service";
@@ -86,12 +88,16 @@ message PostData {
 // build time of the replay instruction.
 message Notification {
   uint64 id = 1;
+  // Serverity defines the severity of a notification message.
+  // The values are identical to values in core/log/serverity.go and
+  // gapis/service/service.proto
+  severity.Severity severity = 2;
   // API index should be in uint8 type. Extend to uint32 as protobuf does not
   // support uint8.
-  uint32 api_index = 2;
-  uint64 label = 3;
+  uint32 api_index = 3;
+  uint64 label = 4;
   string msg = 5;
-  bytes data = 4;
+  bytes data = 6;
 }
 
 message ReplayResponse {

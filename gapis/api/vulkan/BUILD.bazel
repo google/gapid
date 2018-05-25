@@ -91,6 +91,7 @@ go_library(
         "//core/stream:go_default_library",
         "//core/stream/fmts:go_default_library",
         "//gapil/constset:go_default_library",  # keep
+        "//gapir/client:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/sync:go_default_library",
         "//gapis/api/transform:go_default_library",
