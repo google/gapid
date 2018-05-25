@@ -2419,7 +2419,8 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 			),
 		).Ptr())
 	}
-	sb.write(sb.cb.VkCreateImage(
+
+	create := sb.cb.VkCreateImage(
 		dev, sb.MustAllocReadData(
 			NewVkImageCreateInfo(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
@@ -2441,7 +2442,19 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 		memory.Nullptr,
 		sb.MustAllocWriteData(handle).Ptr(),
 		VkResult_VK_SUCCESS,
-	))
+	)
+
+	if sb.s.Images().Contains(handle) {
+		obj := sb.s.Images().Get(handle)
+		imgMemReq := MakeImageMemoryRequirements(sb.newState.Arena)
+		imgMemReq.SetMemoryRequirements(obj.MemoryRequirements())
+		for bit, req := range obj.SparseMemoryRequirements().All() {
+			imgMemReq.AspectBitsToSparseMemoryRequirements().Add(bit, req)
+		}
+		create.Extras().Add(imgMemReq)
+	}
+
+	sb.write(create)
 }
 
 func vkGetImageMemoryRequirements(sb *stateBuilder, dev VkDevice, handle VkImage, memReq VkMemoryRequirements) {
