@@ -1061,6 +1061,15 @@ import (
   // Nil{{$name}} is a {{$name}} with default values in all fields.
   var Nil{{$name}} = Make{{$name}}(constantArena)
 
+  // Format implements fmt.Formatter to print the class.
+  func (c {{$name}}) Format(f fmt.State, r rune) {
+    fmt.Fprintln(f, "{{$name}}{")«
+    {{range $f := $.Fields}}
+      fmt.Fprintf(f, "  {{$f}}: %v\n", c.{{$f.Name | GoPublicName}}())
+    {{end}}
+    fmt.Fprintln(f, "}")
+  }
+
   {{range $f := $.Fields}}
     {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type}}
   {{end}}
