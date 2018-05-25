@@ -574,13 +574,13 @@ import (
   }
   // Range returns the memory range this slice represents in the underlying pool.
   func (s {{$slice_ty}}) Range() ϟmem.Range {
-    return ϟmem.Range{Base: s.base, Size: s.size}
+    return ϟmem.Range{Base: s.Base(), Size: s.Size()}
   }
 
   // ResourceID returns an identifier to a resource representing the data of
   // this slice.
   func (s {{$slice_ty}}) ResourceID(ϟctx context.Context, ϟg *ϟapi.GlobalState) id.ID {
-    id, err := ϟg.Memory.MustGet(s.pool).Slice(s.Range()).ResourceID(ϟctx)
+    id, err := ϟg.Memory.MustGet(s.Pool()).Slice(s.Range()).ResourceID(ϟctx)
     if err != nil {
       panic(err)
     }
@@ -589,22 +589,22 @@ import (
 
   // Reader returns a binary reader for the slice.
   func (s {{$slice_ty}}) Reader(ϟctx context.Context, ϟg *ϟapi.GlobalState) binary.Reader {
-    return ϟg.MemoryReader(ϟctx, ϟg.Memory.MustGet(s.pool).Slice(s.Range()))
+    return ϟg.MemoryReader(ϟctx, ϟg.Memory.MustGet(s.Pool()).Slice(s.Range()))
   }
 
   // Writer returns a binary writer for the slice.
   func (s {{$slice_ty}}) Writer(ϟg *ϟapi.GlobalState) binary.Writer {
-    return ϟg.MemoryWriter(s.pool, s.Range())
+    return ϟg.MemoryWriter(s.Pool(), s.Range())
   }
 
   // Decoder returns a memory decoder for the slice.
   func (s {{$slice_ty}}) Decoder(ϟctx context.Context, ϟg *ϟapi.GlobalState) *ϟmem.Decoder {
-    return ϟg.MemoryDecoder(ϟctx, ϟg.Memory.MustGet(s.pool).Slice(s.Range()))
+    return ϟg.MemoryDecoder(ϟctx, ϟg.Memory.MustGet(s.Pool()).Slice(s.Range()))
   }
 
   // Encoder returns a memory encoder for the slice.
   func (s {{$slice_ty}}) Encoder(ϟg *ϟapi.GlobalState) *ϟmem.Encoder {
-    return ϟg.MemoryEncoder(s.pool, s.Range())
+    return ϟg.MemoryEncoder(s.Pool(), s.Range())
   }
 
   {{if not $el_is_void}}
@@ -629,7 +629,7 @@ import (
       ϟa := ϟg.Arena; _ = ϟa
       s.OnRead(ϟctx, ϟc, ϟg, ϟb)
       ϟd := s.Decoder(ϟctx, ϟg)
-      out := make([]{{$el_ty}}, s.count)
+      out := make([]{{$el_ty}}, s.Count())
       for i := range out {
         out[i] = {{Template "Go.Decode" $s.To}}
       }
@@ -650,7 +650,7 @@ import (
     // which is the minimum of s.count and len(src).
     func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) (uint64, error) {
       ϟa := ϟg.Arena; _ = ϟa
-      count := u64.Min(s.count, uint64(len(src)))
+      count := u64.Min(s.Count(), uint64(len(src)))
       e := s.Slice(0, count).Encoder(ϟg)
       ϟmem.Write(e, src[:count])
       s.OnWrite(ϟctx, ϟc, ϟg, ϟb)
@@ -671,15 +671,15 @@ import (
     // The number of elements copied is the minimum of dst.Count and src.Count.
     // The slices of this and dst to the copied elements is returned.
     func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
-      count := u64.Min(dst.count, src.count)
+      count := u64.Min(dst.Count(), src.Count())
       dst, src = dst.Slice(0, count), src.Slice(0, count)
     {{if $el_is_ptr}}
-      if (dst.pool == ϟmem.ApplicationPool) != (src.pool == ϟmem.ApplicationPool) {
+      if (dst.Pool() == ϟmem.ApplicationPool) != (src.Pool() == ϟmem.ApplicationPool) {
         dst.MustWrite(ϟctx, src.MustRead(ϟctx, ϟc, ϟg, ϟb), ϟc, ϟg, ϟb) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
       } else {
     {{end}}
       src.OnRead(ϟctx, ϟc, ϟg, ϟb)
-      ϟg.Memory.MustGet(dst.pool).Write(dst.base, ϟg.Memory.MustGet(src.pool).Slice(src.Range()))
+      ϟg.Memory.MustGet(dst.Pool()).Write(dst.Base(), ϟg.Memory.MustGet(src.Pool()).Slice(src.Range()))
       dst.OnWrite(ϟctx, ϟc, ϟg, ϟb)
     {{if $el_is_ptr}} } {{end}}
       return dst, src
@@ -700,22 +700,23 @@ import (
   // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
     ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
-    if pool, err := ϟg.Memory.Get(s.pool); err == nil {
+    if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnRead; f != nil {
         f(s.Range())
       }
     }
-    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
+    if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {
       {{if IsPointer ($s.To | Underlying)}}
         {{/* Pointers need remapping to replay addresses.
              Pointer sizes may vary between capture and replay.
              To handle this, we store pointers in a separate table and refer to
              these using pointer indices.
         */}}
-        ϟd, dst := s.Decoder(ϟctx, ϟg), value.PointerIndex(s.base / uint64(ϟl.GetPointer().GetSize()))
-        for i, c := uint64(0), s.count; i < c; i++ {
+        ϟd, dst := s.Decoder(ϟctx, ϟg), value.PointerIndex(s.Base() / uint64(ϟl.GetPointer().GetSize()))
+        for i, c := uint64(0), s.Count(); i < c; i++ {
           {{if (GetAnnotation $s.To "replay_remap")}}{{Error "Remappings of pointers not implemented"}}{{end}}
-          ϟb.StorePointer(dst, {{$el_ty}}(ϟd.Pointer()).value(ϟb, ϟc, ϟg))
+          ptr := {{$el_ty}}(ϟd.Pointer()).value(ϟb, ϟc, ϟg)
+          ϟb.StorePointer(dst, ptr)
           dst++
         }
         panicOnError(ϟd.Error())
@@ -725,8 +726,8 @@ import (
         s.ReserveMemory(ϟctx, ϟc, ϟg, ϟb)
         {{if (GetAnnotation $s.To "replay_remap")}}
           {{/* Element type has explicitly stated it needs custom remapping */}}
-          ptr, step, ϟd := value.ObservedPointer(s.base), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟg)
-          for i, c := uint64(0), s.count; i < c; i++ {
+          ptr, step, ϟd := value.ObservedPointer(s.Base()), value.ObservedPointer(s.ElementSize(ϟl)), s.Decoder(ϟctx, ϟg)
+          for i, c := uint64(0), s.Count(); i < c; i++ {
             v := {{Template "Go.Decode" $s.To}}
             if key, remap := v.remap(ϟc, ϟg); remap {
               loadRemap(ϟb, key, {{Template "Go.Replay.Type" $s.To}}, {{Template "Go.Replay.Value" "Type" $s.To "Name" "v"}})
@@ -748,18 +749,18 @@ import (
   // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
   func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
     ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
-    if pool, err := ϟg.Memory.Get(s.pool); err == nil {
+    if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnWrite; f != nil {
         f(s.Range())
       }
     }
-    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
-      ϟb.ReserveMemory(ϟmem.Range{Base: s.root, Size: uint64(s.Range().End() - s.root)})
+    if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {
+      ϟb.ReserveMemory(ϟmem.Range{Base: s.Root(), Size: uint64(s.Range().End() - s.Root())})
       {{if (GetAnnotation $s.To "replay_remap")}}
         {{/* Element type has explicitly stated it needs custom remapping */}}
         size := s.ElementSize(ϟl)
-        ptr, step, ϟd := value.ObservedPointer(s.base), value.ObservedPointer(size), s.Decoder(ϟctx, ϟg)
-        for i, c := uint64(0), s.count; i < c; i++ {
+        ptr, step, ϟd := value.ObservedPointer(s.Base()), value.ObservedPointer(size), s.Decoder(ϟctx, ϟg)
+        for i, c := uint64(0), s.Count(); i < c; i++ {
           v := {{Template "Go.Decode" $s.To}}
           if key, remap := v.remap(ϟc, ϟg); remap {
             dst, found := ϟb.Remappings[key]
@@ -779,9 +780,9 @@ import (
   }
 
   func (s {{$slice_ty}}) ReserveMemory(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
-    if ϟb != nil && s.pool == ϟmem.ApplicationPool {
+    if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {
       rng := s.Range()
-      ϟb.ReserveMemory(ϟmem.Range{Base: s.Root(), Size: uint64(rng.End() - s.root)})
+      ϟb.ReserveMemory(ϟmem.Range{Base: s.Root(), Size: uint64(rng.End() - s.Root())})
     }
     return s
   }
@@ -796,13 +797,13 @@ import (
     if start > end {
       panic(fmt.Errorf("%v.Slice start (%d) is greater than the end (%d)", s, start, end))
     }
-    if end > s.count {
+    if end > s.Count() {
       panic(fmt.Errorf("%v.Slice(%d, %d) - out of bounds", s, start, end))
     }
     newCount := end-start
     elSize := uint64(0)
-    if s.count > 0 {
-      elSize = s.size / s.count
+    if s.Count() > 0 {
+      elSize = s.Size() / s.Count()
     }
     return {{$slice_ty}}{
       root:  s.root,
@@ -820,7 +821,7 @@ import (
 
   // String returns a string description of the {{$slice_ty}} slice.
   func (s {{$slice_ty}}) String() string {
-    return fmt.Sprintf("{{$el_ty}}(0x%x@%v)[%d]", s.base, s.pool, s.count)
+    return fmt.Sprintf("{{$el_ty}}(0x%x@%v)[%d]", s.Base(), s.Pool(), s.Size())
   }
 
   // Check interface conformance
@@ -831,7 +832,7 @@ import (
   // If nil, nil is returned then the path cannot be followed.
   func (s {{$slice_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
-      return cmd.MemoryAfter(uint32(s.pool), s.Base(), s.Size()), nil
+      return cmd.MemoryAfter(uint32(s.Pool()), s.Base(), s.Size()), nil
     }
     return nil, nil
   }
@@ -1505,7 +1506,7 @@ import (
     // any pointer fields.
     ϟb.Write(s.Range(), s.ResourceID(ϟctx, ϟg))
     ϟd := s.Decoder(ϟctx, ϟg)
-    for i, c := uint64(0), s.count; i < c; i++ {
+    for i, c := uint64(0), s.Count(); i < c; i++ {
       {{Template "ReadStructFieldsWithRemapping" $}}
     }
     panicOnError(ϟd.Error())
@@ -1525,7 +1526,7 @@ import (
     {{if IsPointer ($f.Type | Underlying)}}
       { // {{$.Name}}.{{$name}}
         ϟd.Align({{Template "Go.AlignOf" (TypeOf $f)}})
-        addr := value.ObservedPointer(s.base + ϟd.Offset())
+        addr := value.ObservedPointer(s.Base() + ϟd.Offset())
         ϟb.Push({{Macro "Go.Type" $f}}(ϟd.Pointer()).value(ϟb, ϟc, ϟg))
         ϟb.Store(addr)
       }
@@ -1536,7 +1537,7 @@ import (
       {{if GetAnnotation $f.Type "replay_remap"}}
         {
           ϟd.Align({{Template "Go.AlignOf" (TypeOf $f)}})
-          addr := value.ObservedPointer(s.base + ϟd.Offset())
+          addr := value.ObservedPointer(s.Base() + ϟd.Offset())
           v := {{Template "Go.Decode" $f.Type}}
           if key, remap := v.remap(ϟc, ϟg); remap {
             loadRemap(ϟb, key, {{Template "Go.Replay.Type" $f.Type}}, {{Template "Go.Replay.Value" "Type" $f.Type "Name" "v"}})
