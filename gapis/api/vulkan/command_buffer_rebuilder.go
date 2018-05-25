@@ -463,7 +463,7 @@ func rebuildVkCmdClearColorImage(
 		return nil, nil, fmt.Errorf("Cannot find Image %v", d.Image())
 	}
 
-	colorData := s.AllocDataOrPanic(ctx, d.Color)
+	colorData := s.AllocDataOrPanic(ctx, d.Color()))
 
 	rangeData, rangeCount := unpackMap(ctx, s, d.Ranges())
 
