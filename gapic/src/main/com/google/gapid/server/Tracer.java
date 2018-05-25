@@ -252,7 +252,7 @@ public class Tracer {
     public List<String> appendCommandLine(List<String> cmd) {
       super.appendCommandLine(cmd);
 
-      cmd.add("-destkop-app");
+      cmd.add("-desktop-app");
       cmd.add(executable.getAbsolutePath());
 
       if (!args.isEmpty()) {
