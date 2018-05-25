@@ -1,0 +1,178 @@
+{{/*
+ * Copyright (C) 2018 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a comment stating that the file is automatically generated.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C.GeneratedHeader"}}⋖{{Copyright "generated" "apic"}}⋗{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the copyright header.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C.Copyright"}}⋖{{Copyright "generated_c" "apic"}}⋗{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C type for the specified AST type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C.Type"}}
+  {{if not (IsType $)}}{{Template "C.Type" (TypeOf $)}}
+  {{else if IsVoid        $}}void_t
+  {{else if IsBool        $}}bool
+  {{else if IsInt         $}}int
+  {{else if IsUint        $}}unsigned int
+  {{else if IsSize        $}}size_t
+  {{else if IsChar        $}}char
+  {{else if IsU8          $}}uint8_t
+  {{else if IsS8          $}}int8_t
+  {{else if IsU16         $}}uint16_t
+  {{else if IsS16         $}}int16_t
+  {{else if IsF32         $}}float
+  {{else if IsU32         $}}uint32_t
+  {{else if IsS32         $}}int32_t
+  {{else if IsF64         $}}double
+  {{else if IsU64         $}}uint64_t
+  {{else if IsS64         $}}int64_t
+  {{else if IsEnum        $}}{{$.Name}}
+  {{else if IsString      $}}string*
+  {{else if IsPointer     $}}uintptr_t
+  {{else if IsStaticArray $}}{{Template "C.TypeName" $}}
+  {{else if IsSlice       $}}slice
+  {{else if IsReference   $}}{{Template "C.TypeName" $}}*
+  {{else if IsMap         $}}{{Template "C.TypeName" $}}*
+  {{else if IsPseudonym   $}}{{Template "C.TypeName" $}}
+  {{else}}{{Template "C.TypeName" $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a typename that can be used for string concatenation for the given type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C.TypeName"}}
+  {{if not (IsType $)}}{{Template "C.TypeName" (TypeOf $)}}
+  {{else if IsPseudonym   $}}{{$.Name}}
+  {{else if IsClass       $}}{{$.Name}}
+  {{else if IsEnum        $}}{{$.Name}}
+  {{else if IsMap         $}}{{Template "C.TypeName" $.KeyType}}To{{Template "C.TypeName" $.ValueType}}
+  {{else if IsVoid        $}}Void
+  {{else if IsBool        $}}Bool
+  {{else if IsInt         $}}Int
+  {{else if IsUint        $}}Uint
+  {{else if IsSize        $}}SizeT
+  {{else if IsChar        $}}Char
+  {{else if IsU8          $}}U8
+  {{else if IsS8          $}}S8
+  {{else if IsU16         $}}U16
+  {{else if IsS16         $}}S16
+  {{else if IsF32         $}}F32
+  {{else if IsU32         $}}U32
+  {{else if IsS32         $}}S32
+  {{else if IsF64         $}}F64
+  {{else if IsU64         $}}U64
+  {{else if IsS64         $}}S64
+  {{else if IsString      $}}String
+  {{else if IsMessage     $}}const char*
+  {{else if IsSlice       $}}slice
+  {{else if IsStaticArray $}}{{Template "C.TypeName" $.ValueType}}__{{$.Size}}__A
+  {{else if IsReference   $}}{{Template "C.TypeName" $.To}}__R
+  {{else if IsPointer     $}}{{Template "C.TypeName" $.To}}__{{if $.Const}}C{{end}}P
+  {{else}}{{Error "C.TypeName passed unsupported type (%T): %s" $ $.Name}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C type for the specified Enum.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C.EnumType"}}
+  {{AssertType $ "Enum"}}
+
+  {{Template "C.Type" $.NumberType}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the mangled name for the given type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C.Mangle"}}
+  {{if not (IsType $)}}{{Template "C.Mangle" (TypeOf $)}}
+  {{else if IsPseudonym   $}}{{Template "C.Mangle" ($ | Underlying)}}
+  {{else if IsClass       $}}{{$.Name}}
+  {{else if IsEnum        $}}{{Template "C.Mangle" ($.NumberType)}}
+  {{else if IsMap         $}}Map_{{Template "C.Mangle" $.KeyType}}_{{Template "C.Mangle" $.ValueType}}
+  {{else if IsVoid        $}}void
+  {{else if IsBool        $}}bool
+  {{else if IsInt         $}}int
+  {{else if IsUint        $}}uint
+  {{else if IsSize        $}}uint
+  {{else if IsChar        $}}char
+  {{else if IsU8          $}}uchar
+  {{else if IsS8          $}}schar
+  {{else if IsU16         $}}ushort
+  {{else if IsS16         $}}short
+  {{else if IsF32         $}}float
+  {{else if IsU32         $}}uint
+  {{else if IsS32         $}}int
+  {{else if IsF64         $}}double
+  {{else if IsU64         $}}ulong
+  {{else if IsS64         $}}long
+  {{else if IsString      $}}string
+  {{else if IsStaticArray $}}{{Template "C.Mangle" $.ValueType}}__{{$.Size}}__A
+  {{else if IsReference   $}}Ref_{{Template "C.Mangle" $.To}}
+  {{else if IsPointer     $}}uint
+  {{else}}{{Error "C.Mangle passed unsupported type (%T): %s" $ $.Name}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C type that matches the condensed types expected by a C mangled
+  function. This macro makes assumptions that the target ABI is X64.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C.SimplifiedType"}}
+  {{if not (IsType $)}}{{Template "C.SimplifiedType" (TypeOf $)}}
+  {{else if IsPseudonym   $}}{{Template "C.SimplifiedType" ($ | Underlying)}}
+  {{else if IsClass       $}}{{$.Name}}
+  {{else if IsEnum        $}}{{Template "C.SimplifiedType" ($.NumberType)}}
+  {{else if IsMap         $}}void*
+  {{else if IsReference   $}}void*
+  {{else if IsChar        $}}char
+  {{else if IsSize        $}}uint64_t
+  {{else if IsU32         $}}uint64_t
+  {{else if IsS32         $}}int64_t
+  {{else if IsU64         $}}uint64_t
+  {{else if IsS64         $}}int64_t
+  {{else if IsPointer     $}}uint64_t
+  {{else}}{{Template "C.Type" $}}
+  {{end}}
+{{end}}
