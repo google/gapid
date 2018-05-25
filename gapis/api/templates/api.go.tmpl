@@ -1009,30 +1009,30 @@ import (
 {{define "DeclarePseudonym"}}
   {{AssertType $ "Pseudonym"}}
 
-  {{$u := $ | Underlying}}
-  {{     if IsPointer     $u}}{{Template "DeclarePointer" $}}
-  {{else if IsSlice       $u}}{{Template "DeclareSlice"   $}}
-  {{else if IsVoid        $u}}
-  {{else if IsStaticArray $u}}{{Template "DeclareStaticArray" $}}
-  {{else}}
-    {{$name := Macro "Go.Type" $}}
+  {{$ty := $.To | Underlying}}
+  {{     if IsVoid        $ty}}
+  {{else if IsPointer     $ty}}{{Template "DeclarePointer" $}}
+  {{else if IsSlice       $ty}}{{Template "DeclareSlice" $}}
+  {{else if IsStaticArray $ty}}{{Template "DeclareStaticArray" $}}
+  {{else                     }}
+    {{$name := Macro "Go.TypeName" $}}
     {{$to := Macro "Go.Type" $.To}}
     type {{$name}} {{$to}}
-    {{if IsSize $u}}
+    {{if IsSize $ty}}
       // Dummy function to make {{$name}} implement SizeTy interface
       func ({{$name}}) IsMemorySize() {}
-    {{else if IsChar $u}}
+    {{else if IsChar $ty}}
       // Dummy function to make {{$name}} implement CharTy interface
       func ({{$name}}) IsChar() {}
-    {{else if IsInt $u}}
+    {{else if IsInt $ty}}
       // Dummy function to make {{$name}} implement IntTy interface
       func ({{$name}}) IsInt() {}
-    {{else if IsUint $u}}
+    {{else if IsUint $ty}}
       // Dummy function to make {{$name}} implement UintTy interface
       func ({{$name}}) IsUint() {}
     {{end}}
     func Decode{{$name}}(ϟd *ϟmem.Decoder, ϟa arena.Arena) {{$name}} {
-      return {{$name}}({{Template "Go.Decode" $u}})
+      return {{$name}}({{Template "Go.Decode" $ty}})
     }
   {{end}}
 {{end}}
