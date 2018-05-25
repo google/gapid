@@ -220,6 +220,9 @@ void* Arena::reallocate(void* ptr, uint32_t size, uint32_t align) {
 }
 
 void Arena::free(void* ptr) {
+  if (!ptr) {
+    return;
+  }
   bool dedicated = false;
   lock();
   dedicated = dedicated_allocations_.erase(static_cast<uint8_t*>(ptr));
