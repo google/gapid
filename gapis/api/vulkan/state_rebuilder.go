@@ -406,12 +406,19 @@ func (sb *stateBuilder) createPhysicalDevices(Map VkPhysicalDeviceːPhysicalDevi
 			NewVkPhysicalDeviceᵖ(memory.Nullptr),
 			VkResult_VK_SUCCESS,
 		))
-		sb.write(sb.cb.VkEnumeratePhysicalDevices(
+		props := MakePhysicalDevicesAndProperties(sb.newState.Arena)
+		for _, dev := range devs {
+			v := Map.Get(dev)
+			props.PhyDevToProperties().Add(dev, v.PhysicalDeviceProperties())
+		}
+		enumerateWithProps := sb.cb.VkEnumeratePhysicalDevices(
 			i,
 			NewU32ᶜᵖ(sb.MustAllocReadData(len(devs)).Ptr()),
 			NewVkPhysicalDeviceᵖ(sb.MustAllocReadData(devs).Ptr()),
 			VkResult_VK_SUCCESS,
-		))
+		)
+		enumerateWithProps.Extras().Add(props)
+		sb.write(enumerateWithProps)
 
 		for _, device := range devs {
 			pd := Map.Get(device)
@@ -1001,7 +1008,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 			(uint64(buffer.Info().CreateFlags())&
 				uint64(VkBufferCreateFlagBits_VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT)) != 0
 
-	sb.write(sb.cb.VkCreateBuffer(
+	memReq := buffer.MemoryRequirements()
+	createWithMemReq := sb.cb.VkCreateBuffer(
 		buffer.Device(),
 		sb.MustAllocReadData(
 			NewVkBufferCreateInfo(sb.ta,
@@ -1017,7 +1025,9 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		memory.Nullptr,
 		sb.MustAllocWriteData(buffer.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
-	))
+	)
+	createWithMemReq.Extras().Add(memReq)
+	sb.write(createWithMemReq)
 
 	sb.write(sb.cb.VkGetBufferMemoryRequirements(
 		buffer.Device(),
