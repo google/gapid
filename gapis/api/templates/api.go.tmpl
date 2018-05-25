@@ -628,11 +628,15 @@ import (
     func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) ([]{{$el_ty}}, error) {
       ϟa := ϟg.Arena; _ = ϟa
       s.OnRead(ϟctx, ϟc, ϟg, ϟb)
-      ϟd := s.Decoder(ϟctx, ϟg)
       out := make([]{{$el_ty}}, s.Count())
-      for i := range out {
-        out[i] = {{Template "Go.Decode" $s.To}}
-      }
+      ϟd := s.Decoder(ϟctx, ϟg)
+      {{if IsU8 $s.To}}
+        ϟd.Data(out)
+      {{else}}
+        for i := range out {
+          out[i] = {{Template "Go.Decode" $s.To}}
+        }
+      {{end}}
       if err := ϟd.Error(); err != nil {
         return nil, err
       }
