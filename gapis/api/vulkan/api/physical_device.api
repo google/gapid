@@ -51,6 +51,10 @@
   map!(VkPhysicalDevice, VkPhysicalDeviceProperties) PhyDevToProperties
 }
 
+@internal class PhysicalDevicesMemoryProperties{
+  map!(VkPhysicalDevice, VkPhysicalDeviceMemoryProperties) PhyDevToMemoryProperties
+}
+
 @threadSafety("system")
 @indirect("VkInstance")
 cmd VkResult vkEnumeratePhysicalDevices(
@@ -73,11 +77,15 @@ cmd VkResult vkEnumeratePhysicalDevices(
     }
     pPhysicalDeviceCount[0] = count
     props := fetchPhysicalDeviceProperties(instance, devices)
+    memProps := fetchPhysicalDeviceMemoryProperties(instance, devices)
     for i in (0 .. count) {
       if (PhysicalDevices[devices[i]] == null) {
         object := new!PhysicalDeviceObject()
         object.Instance = instance
         object.Index = i
+        if memProps != null {
+          object.MemoryProperties = memProps.PhyDevToMemoryProperties[devices[i]]
+        }
         object.VulkanHandle = devices[i]
         if props != null {
           // TODO: Failed to prefetch physical device properties, report issue.
