@@ -37,6 +37,7 @@ go_library(
         "memory_breakdown.go",
         "mesh.go",
         "property.go",
+        "reference.go",
         "resource.go",
         "service.go",
         "state.go",
