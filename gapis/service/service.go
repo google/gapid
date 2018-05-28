@@ -233,6 +233,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{&Value_Command{v}}
 	case *api.Mesh:
 		return &Value{&Value_Mesh{v}}
+	case *api.Metrics:
+		return &Value{&Value_Metrics{v}}
 	case *api.ResourceData:
 		return &Value{&Value_ResourceData{v}}
 	case *image.Info:

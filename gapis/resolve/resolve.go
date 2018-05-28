@@ -294,6 +294,8 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 		return MapIndex(ctx, p)
 	case *path.Memory:
 		return Memory(ctx, p)
+	case *path.Metrics:
+		return Metrics(ctx, p)
 	case *path.Mesh:
 		return Mesh(ctx, p)
 	case *path.Parameter:

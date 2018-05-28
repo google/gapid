@@ -79,6 +79,7 @@ func (n *ImageInfo) Path() *Any                 { return &Any{&Any_ImageInfo{n}}
 func (n *MapIndex) Path() *Any                  { return &Any{&Any_MapIndex{n}} }
 func (n *Memory) Path() *Any                    { return &Any{&Any_Memory{n}} }
 func (n *Mesh) Path() *Any                      { return &Any{&Any_Mesh{n}} }
+func (n *Metrics) Path() *Any                   { return &Any{&Any_Metrics{n}} }
 func (n *Parameter) Path() *Any                 { return &Any{&Any_Parameter{n}} }
 func (n *Report) Path() *Any                    { return &Any{&Any_Report{n}} }
 func (n *ResourceData) Path() *Any              { return &Any{&Any_ResourceData{n}} }
@@ -113,6 +114,7 @@ func (n ImageInfo) Parent() Node                 { return nil }
 func (n MapIndex) Parent() Node                  { return oneOfNode(n.Map) }
 func (n Memory) Parent() Node                    { return n.After }
 func (n Mesh) Parent() Node                      { return oneOfNode(n.Object) }
+func (n Metrics) Parent() Node                   { return n.Command }
 func (n Parameter) Parent() Node                 { return n.Command }
 func (n Report) Parent() Node                    { return n.Capture }
 func (n ResourceData) Parent() Node              { return n.After }
@@ -142,6 +144,7 @@ func (n *FramebufferObservation) SetParent(p Node)    { n.Command, _ = p.(*Comma
 func (n *GlobalState) SetParent(p Node)               { n.After, _ = p.(*Command) }
 func (n *ImageInfo) SetParent(p Node)                 {}
 func (n *Memory) SetParent(p Node)                    { n.After, _ = p.(*Command) }
+func (n *Metrics) SetParent(p Node)                   { n.Command, _ = p.(*Command) }
 func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
 func (n *Report) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command) }

@@ -35,6 +35,7 @@ go_library(
         "doc.go",
         "labeled.go",
         "mesh.go",
+        "memory_breakdown.go",
         "property.go",
         "resource.go",
         "service.go",

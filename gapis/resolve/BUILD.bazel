@@ -37,6 +37,7 @@ go_library(
         "index_limits.go",
         "memory.go",
         "mesh.go",
+        "metrics.go",
         "report.go",
         "resolve.go",
         "resource_data.go",
