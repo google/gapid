@@ -256,4 +256,8 @@ type (
 			Count int `help:"number of frames after Start to process: -1 for all frames"`
 		}
 	}
+	MemoryFlags struct {
+		Gapis GapisFlags
+		At    flags.U64Slice `help:"command/subcommand index to get the memory after. Empty for last"`
+	}
 )
