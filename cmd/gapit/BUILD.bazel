@@ -26,6 +26,7 @@ go_library(
         "flags.go",
         "inputs.go",
         "main.go",
+        "memory.go",
         "packages.go",
         "replace_resource.go",
         "report.go",
