@@ -220,7 +220,7 @@ func moveClientVBsToVAs(
 		arr := va.VertexAttributeArrays().Get(l)
 		if arr.Enabled() == GLboolean_GL_TRUE {
 			if glVAP, ok := clientVAs[arr]; ok {
-				glVAP := glVAP.Clone(s.Arena)
+				glVAP := glVAP.Clone(s.Arena).(*GlVertexAttribPointer)
 				i := interval.IndexOf(&rngs, glVAP.Data().Address())
 				t.GlBindBuffer_ArrayBuffer(ctx, ids[i])
 				// The glVertexAttribPointer call may have come from a different thread

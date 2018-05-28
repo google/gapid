@@ -1616,7 +1616,7 @@ import (
   {{end}}
 
   // Clone returns a shallow clone of the command. Extras are shared.
-  func (ϟc *{{$name}}) Clone(ϟa arena.Arena) *{{$name}} {
+  func (ϟc *{{$name}}) Clone(ϟa arena.Arena) ϟapi.Cmd {
     out := &{{$name}}{
       extras: ϟc.extras,
       caller: ϟc.caller,

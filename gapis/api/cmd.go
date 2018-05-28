@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
@@ -61,6 +62,9 @@ type Cmd interface {
 	// If the StateWatcher argument is not nil, then the StateWatcher
 	// methods will be called at the appropriate points during execution.
 	Mutate(context.Context, CmdID, *GlobalState, *builder.Builder, StateWatcher) error
+
+	// Clone makes a shallow copy of this command.
+	Clone(arena.Arena) Cmd
 }
 
 const (
