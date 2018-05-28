@@ -327,6 +327,15 @@ func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalD
 	return NilPhysicalDevicesAndPropertiesʳ
 }
 
+func (e externs) fetchPhysicalDeviceMemoryProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesMemoryPropertiesʳ {
+	for _, ee := range e.cmd.Extras().All() {
+		if p, ok := ee.(PhysicalDevicesMemoryProperties); ok {
+			return MakePhysicalDevicesMemoryPropertiesʳ(e.s.Arena).Set(p)
+		}
+	}
+	return NilPhysicalDevicesMemoryPropertiesʳ
+}
+
 func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSparseBit bool) ImageMemoryRequirementsʳ {
 	// Only fetch memory requirements for application commands, skip any commands
 	// inserted by GAPID
