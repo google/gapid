@@ -61,6 +61,7 @@ go_library(
         "image_primer.go",
         "image_primer_shaders.go",
         "mem_binding_list.go",
+        "memory_breakdown.go",
         "read_framebuffer.go",
         "replay.go",
         "resources.go",
@@ -79,6 +80,7 @@ go_library(
     deps = [
         "//core/data/binary:go_default_library",
         "//core/data/dictionary:go_default_library",
+        "//core/data/id:go_default_library",
         #TODO: remove protoconv when it's supplied by deps
         "//core/data/protoconv:go_default_library",  # keep
         "//core/event/task:go_default_library",  # keep
