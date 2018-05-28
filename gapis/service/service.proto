@@ -100,6 +100,7 @@ message Value {
     api.Command command = 30;
     api.ResourceData resource_data = 31;
     api.Mesh mesh = 32;
+    api.Metrics metrics = 33;
 
     image.Info image_info = 40;
 

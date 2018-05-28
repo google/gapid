@@ -48,17 +48,18 @@ message Any {
     MapIndex map_index = 20;
     Memory memory = 21;
     Mesh mesh = 22;
-    Parameter parameter = 23;
-    Report report = 24;
-    ResourceData resource_data = 25;
-    Resources resources = 26;
-    Result result = 27;
-    Slice slice = 28;
-    State state = 29;
-    StateTree state_tree = 30;
-    StateTreeNode state_tree_node = 31;
-    StateTreeNodeForPath state_tree_node_for_path = 32;
-    Thumbnail thumbnail = 33;
+    Metrics metrics = 23;
+    Parameter parameter = 24;
+    Report report = 25;
+    ResourceData resource_data = 26;
+    Resources resources = 27;
+    Result result = 28;
+    Slice slice = 29;
+    State state = 30;
+    StateTree state_tree = 31;
+    StateTreeNode state_tree_node = 32;
+    StateTreeNodeForPath state_tree_node_for_path = 33;
+    Thumbnail thumbnail = 34;
   }
 }
 
@@ -343,6 +344,18 @@ message MeshOptions {
         vertex.Semantic.Type type = 2;
     }
     repeated SemanticHint vertex_semantics = 3;
+}
+
+// Metrics requests metrics for a given command.  Resolves to service.Metrics
+message Metrics {
+  // The command to get the metrics from
+  Command command = 1;
+
+  enum Type {
+    MEMORY_BREAKDOWN = 0;
+  }
+  // The type of metrics to report
+  Type type = 2;
 }
 
 // Report is a path to a list of report items for a capture.

@@ -224,6 +224,11 @@ func (n *Mesh) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *Metrics) Validate() error {
+	return checkNotNilAndValidate(n, n.Command, "command")
+}
+
+// Validate checks the path is valid.
 func (n *Parameter) Validate() error {
 	return anyErr(
 		checkNotNilAndValidate(n, protoutil.OneOf(n.Command), "command"),
