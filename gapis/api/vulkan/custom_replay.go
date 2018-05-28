@@ -379,37 +379,17 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 }
 
 func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	l := s.MemoryLayout
-	o := a.Extras().Observations()
-	o.ApplyReads(s.Memory.ApplicationPool())
-	// Apply the write observation before having the replay device calling the
-	// vkAcquireNextImageKHR() command. This is to pass the returned image index
-	// value captured in the trace, into the replay device to acquire for the
-	// specific image.
+	// Do the mutation, including applying memory write observations, before having the replay device call the vkAcquireNextImageKHR() command.
+	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	// Note that this is only necessary for building replay instructions
+	err := a.mutate(ctx, id, s, nil)
 	if b != nil {
-		o.ApplyWrites(s.Memory.ApplicationPool())
-	}
-	_ = a.PImageIndex().Slice(0, 1, l).MustRead(ctx, a, s, b)
-
-	if b != nil {
+		l := s.MemoryLayout
+		// Ensure that the builder reads pImageIndex (which points to the correct image index at this point).
+		a.PImageIndex().Slice(0, 1, l).OnRead(ctx, a, s, b)
 		a.Call(ctx, s, b)
 	}
-
-	// When not building for replay instructions, apply write observations after
-	// the call
-	if b == nil {
-		o.ApplyWrites(s.Memory.ApplicationPool())
-	}
-	a.PImageIndex().Slice(0, 1, l).Write(ctx, a.PImageIndex().Slice(0, 1, l).MustRead(ctx, a, s, nil), a, s, b)
-	_ = a.Result()
-	if a.Semaphore() != VkSemaphore(0) {
-		GetState(s).Semaphores().Get(a.Semaphore()).SetSignaled(true)
-	}
-	if a.Fence() != VkFence(0) {
-		GetState(s).Fences().Get(a.Fence()).SetSignaled(true)
-	}
-	return nil
+	return err
 }
 
 type structWithPNext interface {
