@@ -110,7 +110,7 @@ func TestDCE(t *testing.T) {
 
 	dce := NewDCE(ctx, ft)
 	expectedLiveness := func(alivedCommands *commandIndicesSet, fci api.SubCmdIdx, expected bool) {
-		assert.To(t).For("Liveness of command with full command index: %v should be %v",
+		assert.For(ctx, "Liveness of command with full command index: %v should be %v",
 			fci, expected).That(alivedCommands.contains(fci)).Equals(expected)
 	}
 

@@ -22,18 +22,19 @@ import (
 )
 
 func TestSubCmdIdxTrie(t *testing.T) {
+	assert := assert.To(t)
 	trie := &SubCmdIdxTrie{}
 
 	expectValue := func(indices SubCmdIdx, expectedValue int) {
 		v := trie.Value(indices)
-		assert.To(t).For("Expect Value(%v) value: %v", indices, expectedValue).That(v).Equals(expectedValue)
+		assert.For("Expect Value(%v) value: %v", indices, expectedValue).That(v).Equals(expectedValue)
 	}
 	expectNonValue := func(indices SubCmdIdx) {
 		v := trie.Value(indices)
-		assert.To(t).For("Expect Value(%v) value: %v", indices, v).That(v).Equals(nil)
+		assert.For("Expect Value(%v) value: %v", indices, v).That(v).Equals(nil)
 	}
 	expectRemoveValue := func(indices SubCmdIdx, expectedReturn bool) {
-		assert.To(t).For("Expect RemoveValue(%v) returns: %v", indices, expectedReturn).That(trie.RemoveValue(indices)).Equals(expectedReturn)
+		assert.For("Expect RemoveValue(%v) returns: %v", indices, expectedReturn).That(trie.RemoveValue(indices)).Equals(expectedReturn)
 	}
 
 	expectNonValue(SubCmdIdx{})
@@ -83,9 +84,10 @@ func TestSubCmdIdxTrie(t *testing.T) {
 }
 
 func TestSubCmdIdxTriePostOrderSortedKeys(t *testing.T) {
+	assert := assert.To(t)
 	expectKeys := func(trie *SubCmdIdxTrie, expectedKeys []SubCmdIdx) {
 		keys := trie.PostOrderSortedKeys()
-		assert.To(t).For("Expected returned keys: %v", expectedKeys).That(
+		assert.For("Expected returned keys: %v", expectedKeys).That(
 			reflect.DeepEqual(keys, expectedKeys)).Equals(true)
 	}
 
