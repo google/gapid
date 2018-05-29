@@ -39,16 +39,28 @@ type (
 		out Output
 	}
 
-	logOutput struct{ ctx context.Context }
+	ctxOutput struct{ ctx context.Context }
 	stdOutput struct{}
 )
 
-// To creates an assertion manager for the given output.
-func To(out Output) Manager {
-	if out == nil {
-		out = stdOutput{}
+// To creates an assertion manager using the target t for logging.
+// t can be a context.Context, Output or nil to log to stdout.
+func To(t interface{}) Manager {
+	switch t := t.(type) {
+	case nil:
+		return Manager{stdOutput{}}
+	case context.Context:
+		return Manager{ctxOutput{t}}
+	case Output:
+		return Manager{t}
+	default:
+		panic(fmt.Errorf("Unsupported assertion target type %T", t))
 	}
-	return Manager{out: out}
+}
+
+// For is shorthand for assert.To(t).For(msg, args...).
+func For(t interface{}, msg string, args ...interface{}) *Assertion {
+	return To(t).For(msg, args...)
 }
 
 // For starts a new assertion with the supplied title.
@@ -63,15 +75,15 @@ func (ctx Manager) For(msg string, args ...interface{}) *Assertion {
 	return a
 }
 
-func (o logOutput) Fatal(args ...interface{}) {
+func (o ctxOutput) Fatal(args ...interface{}) {
 	log.F(o.ctx, true, fmt.Sprint(args...))
 }
 
-func (o logOutput) Error(args ...interface{}) {
+func (o ctxOutput) Error(args ...interface{}) {
 	log.E(o.ctx, fmt.Sprint(args...))
 }
 
-func (o logOutput) Log(args ...interface{}) {
+func (o ctxOutput) Log(args ...interface{}) {
 	log.I(o.ctx, fmt.Sprint(args...))
 }
 
