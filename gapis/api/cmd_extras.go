@@ -37,6 +37,19 @@ func (e *CmdExtras) Add(es ...CmdExtra) {
 	}
 }
 
+// Replace replaces the `old` CmdExtra with the `new` CmdExtra.
+// If `old` is not found, this does nothing.
+func (e *CmdExtras) Replace(old, new CmdExtra) {
+	if e != nil {
+		for i, x := range *e {
+			if x == old {
+				(*e)[i] = new
+				return
+			}
+		}
+	}
+}
+
 // MustClone clones all of es, adding them to e.
 // if there was an error, a panic is raised
 func (e *CmdExtras) MustClone(es ...CmdExtra) {
