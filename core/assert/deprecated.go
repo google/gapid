@@ -16,7 +16,6 @@ package assert
 
 import (
 	"context"
-	"fmt"
 )
 
 // *************************************************************
@@ -39,11 +38,4 @@ func For(t interface{}, msg string, args ...interface{}) *Assertion {
 	default:
 		panic("Not a valid assertion manager source")
 	}
-}
-
-// Deprecated: Print is deprecated, use Log instead.
-func (m Manager) Print(args ...interface{}) {
-	a := m.For(fmt.Sprint(args...))
-	a.level = Log
-	a.Commit()
 }
