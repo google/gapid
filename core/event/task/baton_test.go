@@ -63,20 +63,20 @@ func TestBatonRelay(t *testing.T) {
 }
 
 func TestBatonTryRelease(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	baton := task.NewBaton()
 	go baton.Acquire()
 	assert.For(ctx, "Baton TryRelease").That(baton.TryRelease(nil, ExpectNonBlocking)).Equals(true)
 }
 
 func TestBatonTryReleaseBlocks(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	baton := task.NewBaton()
 	assert.For(ctx, "Baton TryRelease").That(baton.TryRelease(nil, ExpectNonBlocking)).Equals(false)
 }
 
 func TestBatonTryAcquire(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	baton := task.NewBaton()
 	expect := 1
 	go baton.Release(expect)
@@ -86,7 +86,7 @@ func TestBatonTryAcquire(t *testing.T) {
 }
 
 func TestBatonTryAcquireBlocks(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	baton := task.NewBaton()
 	_, ok := baton.TryAcquire(ExpectBlocking)
 	assert.For(ctx, "Baton TryAcquire").That(ok).Equals(false)

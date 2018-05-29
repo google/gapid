@@ -23,7 +23,7 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	B := func(c ...node.Node) node.Node { return &node.Block{Children: c} }
 	T := func(s string) node.Node { return &node.Text{Text: s} }

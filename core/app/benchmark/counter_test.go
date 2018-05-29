@@ -23,7 +23,7 @@ import (
 )
 
 func TestCounterCollectionAndIntegerCounter(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	m := benchmark.NewCounters()
 
@@ -45,7 +45,7 @@ func TestCounterCollectionAndIntegerCounter(t *testing.T) {
 }
 
 func TestDurationCounter(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	m := benchmark.NewCounters()
 
@@ -85,5 +85,5 @@ func TestIntegerCounterAtomicIncrement(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		<-done
 	}
-	assert.For(assert.Context(t), "cnt").That(cnt.Get()).Equals(int64(16384))
+	assert.For(assert.To(t), "cnt").That(cnt.Get()).Equals(int64(16384))
 }

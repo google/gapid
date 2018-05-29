@@ -29,11 +29,6 @@ const (
 	unmatched = "Got: %+v¶%s: %+v"
 )
 
-// Deprecated: Context is deprecated, To instead.
-func Context(out Output) Manager {
-	return To(out)
-}
-
 // Deprecated: For(m) is deprecated, use assert.To() instead.
 func For(t interface{}, msg string, args ...interface{}) *Assertion {
 	switch t := t.(type) {

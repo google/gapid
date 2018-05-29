@@ -30,7 +30,7 @@ import (
 
 func TestPipeListener(t *testing.T) {
 	ctx := log.Testing(t)
-	assert := assert.Context(t)
+	assert := assert.To(t)
 	data := []byte(strings.Repeat("TestPipeListener data", 100))
 	listener := func(addr string) {
 		l := grpcutil.NewPipeListener(addr)
@@ -65,7 +65,7 @@ func TestPipeListener(t *testing.T) {
 }
 
 func TestPipeListener_Close(t *testing.T) {
-	assert := assert.Context(t)
+	assert := assert.To(t)
 	l := grpcutil.NewPipeListener("pipe:3")
 
 	// Close while an Accept is being executed.
@@ -98,7 +98,7 @@ func TestPipeListener_Close(t *testing.T) {
 
 func TestDialPipeCtxTimeout(t *testing.T) {
 	ctx := log.Testing(t)
-	assert := assert.Context(t)
+	assert := assert.To(t)
 	ctxt, _ := task.WithTimeout(ctx, 1*time.Nanosecond)
 	_, err := grpcutil.DialPipeCtx(ctxt, "pipe:5")
 	assert.For("dial").ThatError(err).Failed()
@@ -106,7 +106,7 @@ func TestDialPipeCtxTimeout(t *testing.T) {
 
 func TestDialPipeCtxCancel(t *testing.T) {
 	ctx := log.Testing(t)
-	assert := assert.Context(t)
+	assert := assert.To(t)
 	ctxt, cancel := task.WithCancel(ctx)
 	go func() {
 		cancel()

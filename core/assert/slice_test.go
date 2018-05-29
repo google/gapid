@@ -18,7 +18,7 @@ import "github.com/google/gapid/core/assert"
 
 // An example of testing for slice lengths
 func ExampleSliceLength() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	var nilSlice []string
 	emptySlice := []string{}
 	nonEmptySlice := []string{"one"}
@@ -57,7 +57,7 @@ func ExampleSliceLength() {
 
 // An example of testing for slice equality
 func ExampleSliceEquals() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	slice := []string{"a1", "a2"}
 	theSame := []string{"a1", "a2"}
 	longer := []string{"a1", "a2", "a3"}
@@ -83,7 +83,7 @@ func ExampleSliceEquals() {
 // An example of testing for slice equality
 func ExampleSliceDeepEquals() {
 	// TODO: slices of a more complext type
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	slice := []string{"a1", "a2"}
 	theSame := []string{"a1", "a2"}
 	longer := []string{"a1", "a2", "a3"}

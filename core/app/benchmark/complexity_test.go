@@ -22,7 +22,7 @@ import (
 )
 
 func TestConstantTime(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		samples benchmark.Samples
 		fit     benchmark.Fit

@@ -81,7 +81,7 @@ func (v Villain) String() string {
 }
 
 func TestChoiceParsing(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	for _, cs := range []struct {
 		args []string

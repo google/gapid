@@ -22,7 +22,7 @@ import (
 )
 
 func TestAndroidOS(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	const point int32 = 2
 	for _, test := range []struct {
 		major int32

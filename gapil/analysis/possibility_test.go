@@ -29,7 +29,7 @@ var (
 )
 
 func TestPossibilityEquals(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	for _, test := range []struct {
 		a, b     analysis.Possibility
@@ -51,7 +51,7 @@ func TestPossibilityEquals(t *testing.T) {
 }
 
 func TestPossibilityBinaryOps(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	for _, test := range []struct {
 		a, b     analysis.Possibility
@@ -84,7 +84,7 @@ func TestPossibilityBinaryOps(t *testing.T) {
 }
 
 func TestBoolUnion(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	for _, test := range []struct {
 		a, b     analysis.Possibility
@@ -106,7 +106,7 @@ func TestBoolUnion(t *testing.T) {
 }
 
 func TestBoolIntersect(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	for _, test := range []struct {
 		a, b     analysis.Possibility
@@ -128,7 +128,7 @@ func TestBoolIntersect(t *testing.T) {
 }
 
 func TestBoolDifference(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	for _, test := range []struct {
 		a, b     analysis.Possibility

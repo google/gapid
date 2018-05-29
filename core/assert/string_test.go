@@ -18,7 +18,7 @@ import "github.com/google/gapid/core/assert"
 
 // An example of testing string equality
 func ExampleStringEquals() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, `"a" Equals "a"`).ThatString("a").Equals("a")
 	assert.For(ctx, `"a" Equals "b"`).ThatString("a").Equals("b")
 	assert.For(ctx, `"a" NotEquals "a"`).ThatString("a").NotEquals("a")
@@ -35,7 +35,7 @@ func ExampleStringEquals() {
 
 // An example of testing partial string equality
 func ExampleStringFragments() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, `"abc" Contains "b"`).ThatString("abc").Contains("b")
 	assert.For(ctx, `"abc" Contains "d"`).ThatString("abc").Contains("d")
 	assert.For(ctx, `"abc" HasPrefix "a"`).ThatString("abc").HasPrefix("a")
@@ -56,7 +56,7 @@ func ExampleStringFragments() {
 
 // An example of testing non strings as strings
 func ExampleStringTypes() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, `"abc" Equals "a"`).ThatString([]byte{'a', 'b', 'c'}).Equals("a")
 	assert.For(ctx, `10 Equals "10"`).ThatString(10).Equals("10")
 	// Output:

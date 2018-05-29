@@ -77,7 +77,7 @@ func uploadRandomDataToStash(ctx context.Context, assert assert.Manager, r *rand
 }
 
 func TestMemoryAndGrpcStash(t *testing.T) {
-	assert := assert.Context(t)
+	assert := assert.To(t)
 	ctx := log.Testing(t)
 	r := rand.New(rand.NewSource(12345))
 
@@ -118,7 +118,7 @@ func randomBytes(r *rand.Rand, length int) []byte {
 }
 
 func TestReadInRandomOrder(t *testing.T) {
-	assert := assert.Context(t)
+	assert := assert.To(t)
 	r := rand.New(rand.NewSource(12345))
 
 	for _, c := range []struct {

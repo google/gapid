@@ -22,7 +22,7 @@ import (
 )
 
 func TestV4DSqrMagnitude(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec4
 		r float32
@@ -39,7 +39,7 @@ func TestV4DSqrMagnitude(t *testing.T) {
 }
 
 func TestV4DMagnitude(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec4
 		r float32
@@ -56,7 +56,7 @@ func TestV4DMagnitude(t *testing.T) {
 }
 
 func TestV4DScale(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec4
 		s float32
@@ -73,7 +73,7 @@ func TestV4DScale(t *testing.T) {
 }
 
 func TestV4DNormalize(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec4
 		r f32.Vec4
@@ -89,7 +89,7 @@ func TestV4DNormalize(t *testing.T) {
 }
 
 func TestV4DXYZ(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec4
 		r f32.Vec3
@@ -102,7 +102,7 @@ func TestV4DXYZ(t *testing.T) {
 }
 
 func TestAdd4D(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		a f32.Vec4
 		b f32.Vec4
@@ -119,7 +119,7 @@ func TestAdd4D(t *testing.T) {
 }
 
 func TestSub4D(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		a f32.Vec4
 		b f32.Vec4

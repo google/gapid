@@ -76,7 +76,7 @@ var conn *jdwp.Connection
 var thread jdwp.ThreadID
 
 func TestInvokeStringFormat(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	err := jdbg.Do(conn, thread, func(j *jdbg.JDbg) error {
 		res := j.Class("java/lang/String").Call("format", "%s says '%s' %d times",
 			[]interface{}{"bob", "hello world", 5}).Get()
@@ -87,7 +87,7 @@ func TestInvokeStringFormat(t *testing.T) {
 }
 
 func TestInvokeStaticMethod(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	err := jdbg.Do(conn, thread, func(j *jdbg.JDbg) error {
 		res := j.Class("Calculator").Call("Add", 3, 7).Get()
 		assert.For(ctx, "res").That(res).Equals(10)
@@ -97,7 +97,7 @@ func TestInvokeStaticMethod(t *testing.T) {
 }
 
 func TestInvokeMethod(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	err := jdbg.Do(conn, thread, func(j *jdbg.JDbg) error {
 		calcTy := j.Class("Calculator")
 
