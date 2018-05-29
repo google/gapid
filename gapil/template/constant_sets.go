@@ -158,8 +158,8 @@ func (nl *nodeLabeler) traverse(n semantic.Node, v analysis.Value) {
 		}
 	case *analysis.MapValue:
 		for k, v := range v.KeyToValue {
-			nl.traverse(nil, k)
-			nl.traverse(nil, v)
+			nl.traverse(n, k)
+			nl.traverse(n, v)
 		}
 	}
 }
