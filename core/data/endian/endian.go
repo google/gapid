@@ -279,14 +279,6 @@ func (w *writer) String(v string) {
 	w.Uint8(0)
 }
 
-func (r *reader) Simple(o binary.Readable) {
-	o.ReadSimple(r)
-}
-
-func (w *writer) Simple(o binary.Writable) {
-	o.WriteSimple(w)
-}
-
 func (r *reader) Count() uint32 {
 	return r.Uint32()
 }
