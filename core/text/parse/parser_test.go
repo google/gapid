@@ -153,7 +153,7 @@ func TestErrorLimit(t *testing.T) {
 			}
 		}
 	}, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)
-	assert.With(ctx).ThatSlice(errs).IsLength(parse.ParseErrorLimit)
+	assert.For(ctx, "errs").ThatSlice(errs).IsLength(parse.ParseErrorLimit)
 }
 
 func TestCursor(t *testing.T) {
@@ -182,7 +182,7 @@ func TestCustomPanic(t *testing.T) {
 	ctx := log.Testing(t)
 	const custom = fault.Const("custom")
 	defer func() {
-		assert.With(ctx).That(recover()).Equals(custom)
+		assert.For(ctx, "recover").That(recover()).Equals(custom)
 	}()
 	parse.Parse(func(p *parse.Parser, _ *parse.Branch) { panic(custom) }, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)
 }

@@ -46,11 +46,6 @@ func For(t interface{}, msg string, args ...interface{}) *Assertion {
 	}
 }
 
-// Deprecated: With is deprecated, use For with a message.
-func With(t interface{}) *Assertion {
-	return For(t, "")
-}
-
 // Deprecated: Print is deprecated, use Log instead.
 func (m Manager) Print(args ...interface{}) {
 	a := m.For(fmt.Sprint(args...))

@@ -24,89 +24,89 @@ import (
 )
 
 var (
-	sampleId = id.ID{
+	sampleID = id.ID{
 		0x00, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x00,
 		0x00, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x00,
 	}
-	sampleIdString = "000123456789abcdef00" + "000123456789abcdef00"
-	quotedSampleID = `"` + sampleIdString + `"`
+	sampleIDString = "000123456789abcdef00" + "000123456789abcdef00"
+	quotedSampleID = `"` + sampleIDString + `"`
 )
 
 func TestIDToString(t *testing.T) {
 	ctx := assert.Context(t)
-	str := sampleId.String()
-	assert.With(ctx).That(str).Equals(sampleIdString)
+	str := sampleID.String()
+	assert.For(ctx, "str").That(str).Equals(sampleIDString)
 }
 
 func TestIDFormat(t *testing.T) {
 	ctx := assert.Context(t)
-	str := fmt.Sprint(sampleId)
-	assert.With(ctx).That(str).Equals(sampleIdString)
+	str := fmt.Sprint(sampleID)
+	assert.For(ctx, "id").That(str).Equals(sampleIDString)
 }
 
 func TestParseID(t *testing.T) {
 	ctx := assert.Context(t)
-	id, err := id.Parse(sampleIdString)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(id).Equals(sampleId)
+	id, err := id.Parse(sampleIDString)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "id").That(id).Equals(sampleID)
 }
 
 func TestParseTooLongID(t *testing.T) {
 	ctx := assert.Context(t)
-	_, err := id.Parse(sampleIdString + "00")
-	assert.With(ctx).ThatError(err).Failed()
+	_, err := id.Parse(sampleIDString + "00")
+	assert.For(ctx, "err").ThatError(err).Failed()
 }
 
 func TestParseTruncatedID(t *testing.T) {
 	ctx := assert.Context(t)
-	_, err := id.Parse(sampleIdString[:len(sampleIdString)-2])
-	assert.With(ctx).ThatError(err).Failed()
+	_, err := id.Parse(sampleIDString[:len(sampleIDString)-2])
+	assert.For(ctx, "err").ThatError(err).Failed()
 }
 
 func TestParseInvalidID(t *testing.T) {
 	ctx := assert.Context(t)
 	_, err := id.Parse("abcdefghijklmnopqrs")
-	assert.With(ctx).ThatError(err).Failed()
+	assert.For(ctx, "err").ThatError(err).Failed()
 }
 
 func TestValid(t *testing.T) {
 	ctx := assert.Context(t)
-	assert.With(ctx).That(id.ID{}.IsValid()).Equals(false)
-	assert.With(ctx).That(sampleId.IsValid()).Equals(true)
+	assert.For(ctx, "ID{}").That(id.ID{}.IsValid()).Equals(false)
+	assert.For(ctx, "sampleID").That(sampleID.IsValid()).Equals(true)
 }
 
 func TestOfBytes(t *testing.T) {
 	ctx := assert.Context(t)
 	id := id.OfBytes([]byte{0x00, 0x01, 0x02, 0x03})
-	assert.With(ctx).ThatString(id).Equals("a02a05b025b928c039cf1ae7e8ee04e7c190c0db")
+	assert.For(ctx, "id").ThatString(id).Equals("a02a05b025b928c039cf1ae7e8ee04e7c190c0db")
 }
 
 func TestOfString(t *testing.T) {
 	ctx := assert.Context(t)
 	id := id.OfString("Test\n")
-	assert.With(ctx).ThatString(id).Equals("1c68ea370b40c06fcaf7f26c8b1dba9d9caf5dea")
+	assert.For(ctx, "id").ThatString(id).Equals("1c68ea370b40c06fcaf7f26c8b1dba9d9caf5dea")
 }
 
 func TestMarshalJSON(t *testing.T) {
 	ctx := assert.Context(t)
-	data, err := json.Marshal(sampleId)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatString(data).Equals(quotedSampleID)
+	data, err := json.Marshal(sampleID)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "data").ThatString(data).Equals(quotedSampleID)
 }
 
 func TestUnarshalJSON(t *testing.T) {
 	ctx := assert.Context(t)
 	id := id.ID{}
 	err := json.Unmarshal([]byte(quotedSampleID), &id)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(id).Equals(sampleId)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "id").That(id).Equals(sampleID)
 }
 
 func TestInvalidUnarshalJSON(t *testing.T) {
 	ctx := assert.Context(t)
 	id := id.ID{}
 	err := json.Unmarshal([]byte("0"), &id)
-	assert.With(ctx).ThatError(err).Failed()
+	assert.For(ctx, "err").ThatError(err).Failed()
 }
 
 func TestUnique(t *testing.T) {
@@ -115,5 +115,5 @@ func TestUnique(t *testing.T) {
 	id2 := id.Unique()
 	assert.For(ctx, "id1").That(id1.IsValid()).Equals(true)
 	assert.For(ctx, "id2").That(id2.IsValid()).Equals(true)
-	assert.With(ctx).That(id1).DeepNotEquals(id2)
+	assert.For(ctx, "not-eq").That(id1).DeepNotEquals(id2)
 }

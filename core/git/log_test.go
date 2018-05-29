@@ -58,6 +58,6 @@ func TestParseLog(t *testing.T) {
 		},
 	}
 	cls, err := parseLog(str)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatSlice(cls).Equals(expected)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "cls").ThatSlice(cls).Equals(expected)
 }

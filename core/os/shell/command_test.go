@@ -30,27 +30,27 @@ import (
 func TestCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	err := shell.Command("echo", "test").Run(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 }
 
 func TestCommandFailed(t *testing.T) {
 	ctx := log.Testing(t)
 	err := shell.Command("false").Run(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(`Process returned error
+	assert.For(ctx, "err").ThatError(err).HasMessage(`Process returned error
    Cause: exit status 1`)
 }
 
 func TestCommandBadProgram(t *testing.T) {
 	ctx := log.Testing(t)
 	err := shell.Command("not#a#program", "test").Run(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(`Failed to start process
+	assert.For(ctx, "err").ThatError(err).HasMessage(`Failed to start process
    Cause: exec: "not#a#program": executable file not found in $PATH`)
 }
 
 func TestCommandBadDir(t *testing.T) {
 	ctx := log.Testing(t)
 	err := shell.Command("echo", "test").In("not#a#dir").Run(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(`Failed to start process
+	assert.For(ctx, "err").ThatError(err).HasMessage(`Failed to start process
    Cause: chdir not#a#dir: no such file or directory`)
 }
 
@@ -59,7 +59,7 @@ func TestCommandCancel(t *testing.T) {
 	child, cancel := task.WithCancel(ctx)
 	cancel()
 	err := shell.Command("sleep", "1").Run(child)
-	assert.With(ctx).ThatError(err).HasMessage(`Process returned error
+	assert.For(ctx, "err").ThatError(err).HasMessage(`Process returned error
    Cause: context canceled`)
 }
 
@@ -68,8 +68,8 @@ func TestCommandCaptureStdout(t *testing.T) {
 	ctx := log.Testing(t)
 	buf := &bytes.Buffer{}
 	err := shell.Command("echo", "echo to stdout").Capture(buf, nil).Run(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatString(buf).Equals(expect)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "buf").ThatString(buf).Equals(expect)
 }
 
 func TestCommandCaptureStderr(t *testing.T) {
@@ -77,7 +77,7 @@ func TestCommandCaptureStderr(t *testing.T) {
 	ctx := log.Testing(t)
 	buf := &bytes.Buffer{}
 	shell.Command("awk", `END {print "print to stderr" > "/dev/stderr"}`).Capture(nil, buf).Run(ctx)
-	assert.With(ctx).ThatString(buf).Equals(expect)
+	assert.For(ctx, "buf").ThatString(buf).Equals(expect)
 }
 
 func TestCommandStdin(t *testing.T) {
@@ -85,15 +85,15 @@ func TestCommandStdin(t *testing.T) {
 	ctx := log.Testing(t)
 	stdin := bytes.NewBufferString("1 Hello to you\n2 Goodbye from me\n")
 	output, _ := shell.Command("awk", `{ print $2 " " $4 }`).Read(stdin).Call(ctx)
-	assert.With(ctx).ThatString(output).Equals(expect)
+	assert.For(ctx, "output").ThatString(output).Equals(expect)
 }
 
 func TestCommandCall(t *testing.T) {
 	const expect = "echo to stdout"
 	ctx := log.Testing(t)
 	output, err := shell.Command("echo", "echo to stdout").Call(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatString(output).Equals(expect)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "output").ThatString(output).Equals(expect)
 }
 
 func TestCommandEnvironment(t *testing.T) {
@@ -105,8 +105,8 @@ func TestCommandEnvironment(t *testing.T) {
 		Capture(buf, nil).
 		Env(env).
 		Run(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatString(buf).Equals(expect)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "buf").ThatString(buf).Equals(expect)
 }
 
 type errorTarget struct{}
@@ -118,6 +118,6 @@ func (t errorTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 func TestCommandOn(t *testing.T) {
 	ctx := log.Testing(t)
 	_, err := shell.Command("echo", "echo to stdout").On(errorTarget{}).Call(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(`Failed to start process
+	assert.For(ctx, "err").ThatError(err).HasMessage(`Failed to start process
    Cause: AlwaysFail`)
 }

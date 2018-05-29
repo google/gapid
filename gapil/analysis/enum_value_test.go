@@ -63,7 +63,7 @@ func TestEnumGlobalAnalysis(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		values := res.Globals[api.Globals[0]].(*analysis.EnumValue)
 		assert.For(ctx, "numbers").That(values.Numbers).DeepEquals(test.expected.Numbers)
@@ -117,7 +117,7 @@ func TestEnumParameterAnalysis(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		values := res.Parameters[api.Functions[0].FullParameters[0]].(*analysis.EnumValue)
 		assert.For(ctx, "numbers").That(values.Numbers).DeepEquals(test.expected.Numbers)
@@ -174,7 +174,7 @@ func TestBitfieldGlobalAnalysis(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		values := res.Globals[api.Globals[0]].(*analysis.EnumValue)
 		assert.For(ctx, "numbers").That(values.Numbers).DeepEquals(test.expected.Numbers)
@@ -212,7 +212,7 @@ func TestBitfieldParameterAnalysis(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		values := res.Parameters[api.Functions[0].FullParameters[0]].(*analysis.EnumValue)
 		assert.For(ctx, "numbers").That(values.Numbers).DeepEquals(test.expected.Numbers)

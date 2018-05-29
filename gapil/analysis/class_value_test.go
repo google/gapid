@@ -65,9 +65,9 @@ func TestClassGlobalAnalysis(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		got := res.Globals[api.Globals[0]].(*analysis.ClassValue)
-		assert.With(ctx).ThatString(got.Print(res)).Equals(test.expected.Print(res))
+		assert.For(ctx, "res").ThatString(got.Print(res)).Equals(test.expected.Print(res))
 	}
 }

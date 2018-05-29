@@ -108,36 +108,36 @@ func (v *testEnum) UnmarshalJSON(bytes []byte) error {
 func ExampleEnum() {
 	ctx := assert.Context(nil)
 	for _, test := range enumTests {
-		assert.With(ctx).ThatEnum(&test.value).HasName(test.name)
+		assert.For(ctx, test.name).ThatEnum(&test.value).HasName(test.name)
 	}
 	var enum testEnum
-	assert.With(ctx).ThatEnum(&enum).CannotUnmarshal(`"A"`)
-	assert.With(ctx).ThatEnum(&enum).CannotUnmarshal(`0`)
+	assert.For(ctx, `"A"`).ThatEnum(&enum).CannotUnmarshal(`"A"`)
+	assert.For(ctx, "0").ThatEnum(&enum).CannotUnmarshal(`0`)
 
 	// Output:
-	// Error:
+	// Error:BadParse
 	//     For enum   BadParse
 	//     Bad Parse  UNKNOWN
-	// Error:
+	// Error:FailedParse
 	//     For enum                FailedParse
 	//     Unexpected parse error  `badparse not in testEnum`
-	// Error:
+	// Error:BadJsonMarshal
 	//     For enum  BadJsonMarshal
 	//     Bad JSON  "badjson"
 	//     Expect    "BadJsonMarshal"
-	// Error:
+	// Error:FailedJsonMarshal
 	//     For enum            FailedJsonMarshal
 	//     JSON marshal error  `json: error calling MarshalJSON for type *assert_test.testEnum: FailedJsonMarshal`
-	// Error:
+	// Error:BadJsonUnmarshal
 	//     For enum            BadJsonUnmarshal
 	//     Bad JSON Unmarshal  UNKNOWN
-	// Error:
+	// Error:FailedJsonUnmarshal
 	//     For enum              FailedJsonUnmarshal
 	//     JSON unmarshal error  `FailedJsonUnmarshal`
-	// Error:
+	// Error:B
 	//     For enum       A
 	//     Expected name  `B`
-	// Error:
+	// Error:"A"
 	//     For     "A"
 	//     Got     A
 	//     Expect  Unmarshal to fail

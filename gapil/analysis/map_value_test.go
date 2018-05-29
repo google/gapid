@@ -54,11 +54,11 @@ func TestU32ToU32MapGlobalAnalysis(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		got := res.Globals[api.Globals[0]].(*analysis.MapValue)
 		s := strings.Join(strings.Fields(got.Print(res)), " ")
-		assert.With(ctx).ThatString(s).Equals(test.expected)
+		assert.For(ctx, "s").ThatString(s).Equals(test.expected)
 	}
 }
 
@@ -78,11 +78,11 @@ func TestU32ToU32MapGlobalAnalysis2(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		got := res.Globals[api.Globals[1]].(*analysis.UintValue)
 		s := strings.Join(strings.Fields(got.Print(res)), " ")
-		assert.With(ctx).ThatString(s).Equals(test.expected)
+		assert.For(ctx, "s").ThatString(s).Equals(test.expected)
 	}
 }
 func TestPointerToRefStructMapGlobalAnalysis(t *testing.T) {
@@ -115,10 +115,10 @@ func TestPointerToRefStructMapGlobalAnalysis(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		got := res.Globals[api.Globals[0]].(*analysis.MapValue)
 		s := strings.Join(strings.Fields(got.Print(res)), " ")
-		assert.With(ctx).ThatString(s).Equals(test.expected)
+		assert.For(ctx, "s").ThatString(s).Equals(test.expected)
 	}
 }

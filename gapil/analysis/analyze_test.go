@@ -167,9 +167,9 @@ func TestU32GlobalAnalysis(t *testing.T) {
 	} {
 		ctx := log.V{"source": test.source}.Bind(ctx)
 		api, mappings, err := compile(ctx, common+" "+test.source)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		res := analysis.Analyze(api, mappings)
 		values := res.Globals[api.Globals[0]]
-		assert.With(ctx).That(values).DeepEquals(test.expected)
+		assert.For(ctx, "vals").That(values).DeepEquals(test.expected)
 	}
 }

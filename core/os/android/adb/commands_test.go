@@ -27,35 +27,35 @@ func TestRootProduction(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "production_device")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).Equals(adb.ErrDeviceNotRooted)
+	assert.For(ctx, "err").ThatError(err).Equals(adb.ErrDeviceNotRooted)
 }
 
 func TestRootDebug(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "debug_device")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 }
 
 func TestRootDebug2(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "debug_device2")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 }
 
 func TestRootRooted(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "rooted_device")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 }
 
 func TestRootInvalid(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "invalid_device")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(`adb root gave output:
+	assert.For(ctx, "err").ThatError(err).HasMessage(`adb root gave output:
 #0: not a normal response
 #1: not a normal response
 #2: not a normal response
@@ -68,7 +68,7 @@ func TestRootFailed(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "error_device")
 	err := d.Root(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(`Process returned error
+	assert.For(ctx, "err").ThatError(err).HasMessage(`Process returned error
    Cause: not a normal response`)
 }
 
@@ -97,7 +97,7 @@ func TestSELinuxEnforcing(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "production_device")
 	got, err := d.SELinuxEnforcing(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	assert.For(ctx, "Device enforcing state").That(got).Equals(true)
 }
 
@@ -105,7 +105,7 @@ func TestSELinuxNotEnforcing(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "debug_device")
 	got, err := d.SELinuxEnforcing(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	assert.For(ctx, "Device enforcing state").That(got).Equals(false)
 }
 
@@ -113,7 +113,7 @@ func TestSELinuxFailedEnforcing(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "error_device")
 	_, err := d.SELinuxEnforcing(ctx)
-	assert.With(ctx).ThatError(err).HasMessage(`Process returned error
+	assert.For(ctx, "err").ThatError(err).HasMessage(`Process returned error
    Cause: not a normal response`)
 }
 

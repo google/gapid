@@ -221,7 +221,7 @@ func TestReplace(t *testing.T) {
 	} {
 		ctx := log.Enter(ctx, test.name)
 		Replace(&test.list, test.with)
-		assert.With(ctx).ThatSlice(test.list).Equals(test.expected)
+		assert.For(ctx, "list").ThatSlice(test.list).Equals(test.expected)
 	}
 }
 
@@ -276,7 +276,7 @@ func TestRemove(t *testing.T) {
 	} {
 		ctx := log.Enter(ctx, test.name)
 		Remove(&test.list, test.with)
-		assert.With(ctx).ThatSlice(test.list).Equals(test.expected)
+		assert.For(ctx, "list").ThatSlice(test.list).Equals(test.expected)
 	}
 }
 
@@ -356,7 +356,7 @@ func TestU64SpanListIndexOf(t *testing.T) {
 	} {
 		ctx := log.V{"Value": test.value}.Bind(ctx)
 		got := IndexOf(&l, test.value)
-		assert.With(ctx).That(got).Equals(test.index)
+		assert.For(ctx, "got").That(got).Equals(test.index)
 	}
 }
 

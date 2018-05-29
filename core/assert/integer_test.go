@@ -19,31 +19,31 @@ import "github.com/google/gapid/core/assert"
 // An example of testing integer values
 func ExampleInteger() {
 	ctx := assert.Context(nil)
-	assert.With(ctx).ThatInteger(1).Equals(2)
-	assert.With(ctx).ThatInteger(1).NotEquals(2)
-	assert.With(ctx).ThatInteger(1).IsAtLeast(2)
-	assert.With(ctx).ThatInteger(3).IsAtMost(4)
-	assert.With(ctx).ThatInteger(6).IsAtLeast(5)
-	assert.With(ctx).ThatInteger(8).IsAtMost(7)
-	assert.With(ctx).ThatInteger(3).IsBetween(2, 4)
-	assert.With(ctx).ThatInteger(3).IsBetween(3, 4)
-	assert.With(ctx).ThatInteger(3).IsBetween(2, 3)
-	assert.With(ctx).ThatInteger(3).IsBetween(4, 5)
-	assert.With(ctx).ThatInteger(3).IsBetween(1, 2)
+	assert.For(ctx, "1 Equals 2").ThatInteger(1).Equals(2)
+	assert.For(ctx, "1 NotEquals 2").ThatInteger(1).NotEquals(2)
+	assert.For(ctx, "1 IsAtLeast 2").ThatInteger(1).IsAtLeast(2)
+	assert.For(ctx, "3 IsAtMost 4").ThatInteger(3).IsAtMost(4)
+	assert.For(ctx, "6 IsAtLeast 5").ThatInteger(6).IsAtLeast(5)
+	assert.For(ctx, "8 IsAtMost 7").ThatInteger(8).IsAtMost(7)
+	assert.For(ctx, "3 IsBetween [2, 4]").ThatInteger(3).IsBetween(2, 4)
+	assert.For(ctx, "3 IsBetween [3, 4]").ThatInteger(3).IsBetween(3, 4)
+	assert.For(ctx, "3 IsBetween [2, 3]").ThatInteger(3).IsBetween(2, 3)
+	assert.For(ctx, "3 IsBetween [4, 5]").ThatInteger(3).IsBetween(4, 5)
+	assert.For(ctx, "3 IsBetween [1, 2]").ThatInteger(3).IsBetween(1, 2)
 	// Output:
-	// Error:
+	// Error:1 Equals 2
 	//     Got       1
 	//     Expect == 2
-	// Error:
+	// Error:1 IsAtLeast 2
 	//     Got       1
 	//     Expect >= 2
-	// Error:
+	// Error:8 IsAtMost 7
 	//     Got       8
 	//     Expect <= 7
-	// Error:
+	// Error:3 IsBetween [4, 5]
 	//     Got       3
 	//     Expect in 4 to 5
-	// Error:
+	// Error:3 IsBetween [1, 2]
 	//     Got       3
 	//     Expect in 1 to 2
 }

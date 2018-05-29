@@ -259,7 +259,7 @@ func TestAddGroupTopDown(t *testing.T) {
 		UserData: nil,
 	}
 
-	assert.With(ctx).That(got).DeepEquals(expected)
+	assert.For(ctx, "got").That(got).DeepEquals(expected)
 }
 
 func TestAddGroupBottomUp(t *testing.T) {
@@ -352,7 +352,7 @@ func TestAddGroupBottomUp(t *testing.T) {
 		UserData: nil,
 	}
 
-	assert.With(ctx).That(got).DeepEquals(expected)
+	assert.For(ctx, "got").That(got).DeepEquals(expected)
 }
 
 func TestAddGroupMixed(t *testing.T) {
@@ -390,7 +390,7 @@ func TestAddGroupMixed(t *testing.T) {
 		UserData: nil,
 	}
 
-	assert.With(ctx).That(got).DeepEquals(expected)
+	assert.For(ctx, "got").That(got).DeepEquals(expected)
 }
 
 func shuffle(r CmdIDRange) []CmdID {
@@ -459,7 +459,7 @@ func TestAddCommandsFill(t *testing.T) {
 		},
 		nil}
 
-	if !assert.With(ctx).That(got).DeepEquals(expected) {
+	if !assert.For(ctx, "got").That(got).DeepEquals(expected) {
 		fmt.Printf("Got: %+v\n", got)
 		fmt.Println()
 		fmt.Printf("Want: %+v\n", expected)
@@ -513,7 +513,7 @@ func TestAddCommandsSparse(t *testing.T) {
 		},
 		nil}
 
-	if !assert.With(ctx).That(got).DeepEquals(expected) {
+	if !assert.For(ctx, "got").That(got).DeepEquals(expected) {
 		fmt.Printf("Got: %+v\n", got)
 		fmt.Println()
 		fmt.Printf("Want: %+v\n", expected)
@@ -578,7 +578,7 @@ func TestAddCommandsWithSplitting(t *testing.T) {
 		},
 		nil}
 
-	assert.With(ctx).That(got).DeepEquals(expected)
+	assert.For(ctx, "got").That(got).DeepEquals(expected)
 }
 
 func TestAddCommandsWithNeighbours(t *testing.T) {
@@ -605,7 +605,7 @@ func TestAddCommandsWithNeighbours(t *testing.T) {
 			nil,
 		}
 
-		assert.With(ctx).That(got).DeepEquals(expected)
+		assert.For(ctx, "got").That(got).DeepEquals(expected)
 	}
 }
 
@@ -655,7 +655,7 @@ func TestSpansSplit(t *testing.T) {
 		},
 		nil}
 
-	assert.With(ctx).That(got).DeepEquals(expected)
+	assert.For(ctx, "got").That(got).DeepEquals(expected)
 }
 
 type idxAndGroupOrID struct {

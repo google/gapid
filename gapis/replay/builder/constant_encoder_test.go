@@ -28,7 +28,7 @@ func TestConstantEncoderCache(t *testing.T) {
 
 	addr1 := c.writeValues(value.U32(0x1234), value.S16(-1))
 	addr2 := c.writeValues(value.U32(0x1234), value.S16(-1))
-	assert.With(ctx).That(addr1).Equals(addr2)
+	assert.For(ctx, "addr").That(addr1).Equals(addr2)
 }
 
 func TestConstantEncoderAlignment(t *testing.T) {
@@ -57,5 +57,5 @@ func TestConstantEncoderAlignment(t *testing.T) {
 		0xff, 0xff,
 	}
 
-	assert.With(ctx).That(c.data).DeepEquals(expected)
+	assert.For(ctx, "data").That(c.data).DeepEquals(expected)
 }

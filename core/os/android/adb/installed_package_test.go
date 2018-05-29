@@ -72,8 +72,8 @@ func TestParsePackages(t_ *testing.T) {
 
 	expected := android.InstalledPackages{p0, p1}
 	packages, err := d.InstalledPackages(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(packages).DeepEquals(expected)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "pkgs").That(packages).DeepEquals(expected)
 }
 
 func TestPid(t_ *testing.T) {
@@ -85,19 +85,19 @@ func TestPid(t_ *testing.T) {
 	}
 
 	_, err := get("no_pgrep_no_ps_device", "com.google.bar")
-	assert.With(ctx).ThatError(err).Failed()
+	assert.For(ctx, "err").ThatError(err).Failed()
 
 	pid, err := get("no_pgrep_ok_ps_device", "com.google.bar")
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(pid).Equals(2778)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "pid").That(pid).Equals(2778)
 
 	pid, err = get("ok_pgrep_no_ps_device", "com.google.bar")
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(pid).Equals(2778)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "pid").That(pid).Equals(2778)
 
 	pid, err = get("ok_pgrep_ok_ps_device", "com.google.foo")
-	assert.With(ctx).ThatError(err).Equals(android.ErrProcessNotFound)
+	assert.For(ctx, "err").ThatError(err).Equals(android.ErrProcessNotFound)
 
 	pid, err = get("no_pgrep_ok_ps_device", "com.google.foo")
-	assert.With(ctx).ThatError(err).Equals(android.ErrProcessNotFound)
+	assert.For(ctx, "err").ThatError(err).Equals(android.ErrProcessNotFound)
 }
