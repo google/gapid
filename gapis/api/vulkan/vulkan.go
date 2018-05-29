@@ -84,6 +84,11 @@ func (c *State) SetupInitialState(ctx context.Context, s *api.GlobalState) {
 func (c *State) InitializeCustomState() {
 	c.queuedCommands = make(map[CommandReferenceʳ]QueuedCommand)
 	c.initialCommands = make(map[VkCommandBuffer][]api.Cmd)
+
+	for b, cb := range c.CommandBuffers().All() {
+		existingCommands := cb.CommandReferences().Len()
+		c.initialCommands[b] = make([]api.Cmd, existingCommands)
+	}
 }
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
@@ -293,7 +298,9 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		id := api.CmdNoID
 
 		if initialCommands, ok := s.initialCommands[data.Buffer()]; ok {
-			id = commandMap[initialCommands[data.CommandIndex()]]
+			if initialCommands[data.CommandIndex()] != nil {
+				id = commandMap[initialCommands[data.CommandIndex()]]
+			}
 		}
 
 		if v, ok := d.SubcommandReferences[k]; ok {
