@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package testexterns implements some extern functions used for compiler tests.
-package testexterns
+package testutils
 
 import (
 	"unsafe"
@@ -25,7 +24,12 @@ import (
 import "C"
 
 var (
+	// ExternA will be called whenever the test_extern_a extern function is
+	// called.
 	ExternA func(*executor.Env, uint64, float32, bool) uint64
+
+	// ExternB will be called whenever the test_extern_b extern function is
+	// called.
 	ExternB func(*executor.Env, string) bool
 )
 

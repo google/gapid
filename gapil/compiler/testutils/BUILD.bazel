@@ -16,15 +16,27 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["testexterns.go"],
+    srcs = [
+        "cmd.go",
+        "data.go",
+        "doc.go",
+        "externs.go",
+    ],
     cdeps = [
         "//gapil/runtime/cc:arena",
     ],
     cgo = True,
     clinkopts = [],  # keep
-    importpath = "github.com/google/gapid/gapil/compiler/testexterns",
+    importpath = "github.com/google/gapid/gapil/compiler/testutils",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/data/binary:go_default_library",
+        "//core/data/endian:go_default_library",
+        "//core/data/id:go_default_library",
+        "//core/os/device:go_default_library",
         "//gapil/executor:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/memory:go_default_library",
+        "//gapis/replay/builder:go_default_library",
     ],
 )

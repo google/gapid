@@ -15,28 +15,33 @@
 package compiler_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/data/binary"
-	"github.com/google/gapid/core/data/endian"
-	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/compiler"
-	"github.com/google/gapid/gapil/compiler/testexterns"
+	"github.com/google/gapid/gapil/compiler/testutils"
 	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
-	"github.com/google/gapid/gapis/replay/builder"
+)
+
+// Aliases
+type cmd = testutils.Cmd
+
+var (
+	D = testutils.Encode
+	P = testutils.Pad
+	R = testutils.R
+	W = testutils.W
 )
 
 func TestExecutor(t *testing.T) {
@@ -116,14 +121,14 @@ bool k = true
 					uint64(0x4000000000000004),
 					uint32(0x30000003),
 					uint16(0x2002),
-					uint8(0x11), pad(1),
+					uint8(0x11), P(1),
 					int64(-0x4000000000000004),
 					int32(-0x30000003),
 					int16(-0x2002),
-					int8(-0x11), pad(1),
+					int8(-0x11), P(1),
 					float64(1),
 					float32(1),
-					true, pad(3),
+					true, P(3),
 				),
 			},
 		}, { ///////////////////////////////////////////////////
@@ -185,7 +190,7 @@ cmd void Add() {
 	i = i + 1
 	f = f + 0.5
 }`,
-			cmds:     []cmd{{name: "Add"}},
+			cmds:     []cmd{{N: "Add"}},
 			expected: expected{data: D(uint32(9), float32(8.5))},
 		}, { ///////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.Subtract",
@@ -196,7 +201,7 @@ cmd void Subtract() {
 	i = i - 1
 	f = f - 0.5
 }`,
-			cmds:     []cmd{{name: "Subtract"}},
+			cmds:     []cmd{{N: "Subtract"}},
 			expected: expected{data: D(uint32(7), float32(7.5))},
 		}, { ///////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.Multiply",
@@ -207,7 +212,7 @@ cmd void Multiply() {
 	i = i * 2
 	f = f * 1.5
 }`,
-			cmds:     []cmd{{name: "Multiply"}},
+			cmds:     []cmd{{N: "Multiply"}},
 			expected: expected{data: D(uint32(16), float32(12))},
 		}, { ///////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.Divide",
@@ -218,7 +223,7 @@ cmd void Divide() {
 	i = i / 2
 	f = f / 0.5
 }`,
-			cmds:     []cmd{{name: "Divide"}},
+			cmds:     []cmd{{N: "Divide"}},
 			expected: expected{data: D(uint32(4), float32(16))},
 		}, { ///////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.Equal",
@@ -234,9 +239,9 @@ cmd void Equal(u32 x, f32 y, char* z) {
 	r[5] = s == "Goodbye World"
 }`,
 			cmds: []cmd{{
-				name:   "Equal",
-				data:   D(uint32(2), float32(3), ptrA),
-				extras: read(ptrA, 12, resHelloWorld),
+				N: "Equal",
+				D: D(uint32(2), float32(3), ptrA),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{data: D([]bool{false, true, true, false, true, false})},
 		}, { ///////////////////////////////////////////////////
@@ -253,9 +258,9 @@ cmd void NotEqual(u32 x, f32 y, char* z) {
 	r[5] = s != "Goodbye World"
 }`,
 			cmds: []cmd{{
-				name:   "NotEqual",
-				data:   D(uint32(2), float32(3), ptrA),
-				extras: read(ptrA, 12, resHelloWorld),
+				N: "NotEqual",
+				D: D(uint32(2), float32(3), ptrA),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{data: D([]bool{true, false, false, true, false, true})},
 		}, { ///////////////////////////////////////////////////
@@ -277,9 +282,9 @@ cmd void LessThan(u32 x, f32 y, char* z) {
 	r[10] = s < "Hello Zorilla"
 }`,
 			cmds: []cmd{{
-				name:   "LessThan",
-				data:   D(uint32(1), float32(3), ptrA),
-				extras: read(ptrA, 12, resHelloWorld),
+				N: "LessThan",
+				D: D(uint32(1), float32(3), ptrA),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{data: D([]bool{
 				false /* x < 1 */, true, /* x < 2 */
@@ -311,9 +316,9 @@ cmd void LessEqual(u32 x, f32 y, char* z) {
 	r[10] = s <= "Hello Zorilla"
 }`,
 			cmds: []cmd{{
-				name:   "LessEqual",
-				data:   D(uint32(2), float32(4), ptrA),
-				extras: read(ptrA, 12, resHelloWorld),
+				N: "LessEqual",
+				D: D(uint32(2), float32(4), ptrA),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{data: D([]bool{
 				false /* x <= 1 */, true, /* x <= 2 */
@@ -345,9 +350,9 @@ cmd void GreaterThan(u32 x, f32 y, char* z) {
 	r[10] = s > "Hello Zorilla"
 }`,
 			cmds: []cmd{{
-				name:   "GreaterThan",
-				data:   D(uint32(2), float32(4), ptrA),
-				extras: read(ptrA, 12, resHelloWorld),
+				N: "GreaterThan",
+				D: D(uint32(2), float32(4), ptrA),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{data: D([]bool{
 				true /* x > 1 */, false, /* x > 2 */
@@ -379,9 +384,9 @@ cmd void GreaterEqual(u32 x, f32 y, char* z) {
 	r[10] = s >= "Hello Zorilla"
 }`,
 			cmds: []cmd{{
-				name:   "GreaterEqual",
-				data:   D(uint32(1), float32(3), ptrA),
-				extras: read(ptrA, 12, resHelloWorld),
+				N: "GreaterEqual",
+				D: D(uint32(1), float32(3), ptrA),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{data: D([]bool{
 				true /* x >= 1 */, false, /* x >= 2 */
@@ -399,35 +404,35 @@ cmd void GreaterEqual(u32 x, f32 y, char* z) {
 			src: `
 u32 i = 2
 cmd void ShiftLeft() {	i = i << 2 }`,
-			cmds:     []cmd{{name: "ShiftLeft"}},
+			cmds:     []cmd{{N: "ShiftLeft"}},
 			expected: expected{data: D(uint32(8))},
 		}, { ///////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.ShiftRight",
 			src: `
 u32 i = 8
 cmd void ShiftRight() { i = i >> 2 }`,
-			cmds:     []cmd{{name: "ShiftRight"}},
+			cmds:     []cmd{{N: "ShiftRight"}},
 			expected: expected{data: D(uint32(2))},
 		}, { ///////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.BitwiseOr",
 			src: `
 u32 i = 8
 cmd void BitwiseOr() { i = i | 2 }`,
-			cmds:     []cmd{{name: "BitwiseOr"}},
+			cmds:     []cmd{{N: "BitwiseOr"}},
 			expected: expected{data: D(uint32(10))},
 		}, { ///////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.BitwiseAnd",
 			src: `
 u32 i = 7
 cmd void BitwiseAnd() { i = i & 6 }`,
-			cmds:     []cmd{{name: "BitwiseAnd"}},
+			cmds:     []cmd{{N: "BitwiseAnd"}},
 			expected: expected{data: D(uint32(6))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.StringConcat",
 			src: `
 u32 i
 cmd void StringConcat() { i = len(" 3 " + "four") }`,
-			cmds:     []cmd{{name: "StringConcat"}},
+			cmds:     []cmd{{N: "StringConcat"}},
 			expected: expected{data: D(uint32(7))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.BitTest",
@@ -446,7 +451,7 @@ cmd void BitTest() {
 	hasY = Y in b
 	hasZ = Z in b
 }`,
-			cmds:     []cmd{{name: "BitTest"}},
+			cmds:     []cmd{{N: "BitTest"}},
 			expected: expected{data: D(true, false, true)},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Call.Extern",
@@ -459,9 +464,9 @@ cmd void CallExterns(u64 a, f32 b, bool c) {
 	p = test_extern_a(as!u64(10), 20.0, true)
 	q = test_extern_b("meow")
 }`,
-			cmds: []cmd{{name: "CallExterns"}},
+			cmds: []cmd{{N: "CallExterns"}},
 			expected: expected{
-				data: D(30, true, pad(7)),
+				data: D(30, true, P(7)),
 				externCalls: []interface{}{
 					externA{10, 20.0, true},
 					externB{"meow"},
@@ -473,7 +478,7 @@ cmd void CallExterns(u64 a, f32 b, bool c) {
 u32 i = 2
 sub u32 doAdd(u32 a, u32 b) { return a + b }
 cmd void CallSubroutine(u32 a, u32 b) { i = doAdd(a, b) }`,
-			cmds:     []cmd{{name: "CallSubroutine", data: D(uint32(3), uint32(4))}},
+			cmds:     []cmd{{N: "CallSubroutine", D: D(uint32(3), uint32(4))}},
 			expected: expected{data: D(uint32(7))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Cast",
@@ -487,7 +492,7 @@ cmd void Cast(f32* ptr) {
 	f = as!f32(v)
 	p = as!u8*(ptr)
 }`,
-			cmds: []cmd{{name: "Cast", data: D(uint64(0x12345678))}},
+			cmds: []cmd{{N: "Cast", D: D(uint64(0x12345678))}},
 			expected: expected{data: D(
 				uint32(1234),
 				float32(1234.5678),
@@ -501,9 +506,9 @@ cmd void PointerToString(char* str) {
 	i = len(as!string(str))
 }`,
 			cmds: []cmd{{
-				name:   "PointerToString",
-				data:   D(ptrA),
-				extras: read(ptrA, 12, resHelloWorld),
+				N: "PointerToString",
+				D: D(ptrA),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{data: D(uint32(11))},
 		}, { /////////////////////////////////////////////////////
@@ -519,7 +524,7 @@ cmd void ClassInitializerClass() {
 	c = C(a: 3, c: 5.0)
 }
 `,
-			cmds:     []cmd{{name: "ClassInitializerClass"}},
+			cmds:     []cmd{{N: "ClassInitializerClass"}},
 			expected: expected{data: D(uint32(3), uint32(0), float32(5.0))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.ClassInitializer.Reference",
@@ -537,7 +542,7 @@ cmd void ClassInitializerReference() {
 	c.c = r.c
 }
 `,
-			cmds:     []cmd{{name: "ClassInitializerReference"}},
+			cmds:     []cmd{{N: "ClassInitializerReference"}},
 			expected: expected{data: D(uint32(3), uint32(0), float32(5.0))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Clone",
@@ -550,9 +555,9 @@ cmd void clone_slice(u8* ptr) {
 }
 `,
 			cmds: []cmd{{
-				name:   "clone_slice",
-				data:   D(ptrA),
-				extras: read(ptrA, 20, resHelloWorld),
+				N: "clone_slice",
+				D: D(ptrA),
+				E: R(ptrA, 20, resHelloWorld),
 			}},
 			expected: expected{data: D(byte('r'))},
 		}, { /////////////////////////////////////////////////////
@@ -569,7 +574,7 @@ cmd void create_class() {
 	i = r.i
 	f = r.f
 }`,
-			cmds:     []cmd{{name: "create_class"}},
+			cmds:     []cmd{{N: "create_class"}},
 			expected: expected{data: D(uint32(2), float32(3))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.EnumEntry",
@@ -584,7 +589,7 @@ cmd void enum_entry() {
 	e = X | Y | Z
 }
 `,
-			cmds:     []cmd{{name: "enum_entry"}},
+			cmds:     []cmd{{N: "enum_entry"}},
 			expected: expected{data: D(uint32(7))},
 		}, { /////////////////////////////////////////////////////
 			name:     "Expressions.Float32Value",
@@ -601,12 +606,12 @@ u32 a = 10
 u32 b
 cmd void global() { b = a }
 `,
-			cmds:     []cmd{{name: "global"}},
+			cmds:     []cmd{{N: "global"}},
 			expected: expected{data: D(uint32(10), uint32(10))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Ignore",
 			src:  `cmd void ignore() { _ = 20 }`,
-			cmds: []cmd{{name: "ignore"}},
+			cmds: []cmd{{N: "ignore"}},
 		}, { /////////////////////////////////////////////////////
 			name:     "Expressions.Int64Value",
 			src:      `s64 i = -9223372036854775808`,
@@ -635,7 +640,7 @@ cmd void map_length() {
 	c.m[1] = 30
 	i = len(c.m)
 }`,
-			cmds:     []cmd{{name: "map_length"}},
+			cmds:     []cmd{{N: "map_length"}},
 			expected: expected{data: D(uint32(2))},
 		}, { /////////////////////////////////////////////////////
 			name:     "Expressions.Length.String",
@@ -649,7 +654,7 @@ cmd void local() {
 	l := 123
 	i = l
 }`,
-			cmds:     []cmd{{name: "local"}},
+			cmds:     []cmd{{N: "local"}},
 			expected: expected{data: D(int32(123))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Make",
@@ -668,7 +673,7 @@ cmd void create_slice() {
 	v1 = a[1] + b[1] + c[1]
 	v2 = a[2] + b[2] + c[2]
 }`,
-			cmds:     []cmd{{name: "create_slice"}},
+			cmds:     []cmd{{N: "create_slice"}},
 			expected: expected{data: D(uint32(30), uint32(10), uint32(20))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.MapContains",
@@ -683,7 +688,7 @@ cmd void map_contains() {
 	v[1] = 2 in c.m
 	v[2] = 3 in c.m
 }`,
-			cmds:     []cmd{{name: "map_contains"}},
+			cmds:     []cmd{{N: "map_contains"}},
 			expected: expected{data: D(true, false, true)},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.MapIndex.U32",
@@ -698,7 +703,7 @@ cmd void map_index() {
 	v[1] = c.m[2]
 	v[2] = c.m[3]
 }`,
-			cmds:     []cmd{{name: "map_index"}},
+			cmds:     []cmd{{N: "map_index"}},
 			expected: expected{data: D([]uint32{1, 0, 3})},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.MapIndex.Class",
@@ -714,7 +719,7 @@ cmd void map_index() {
 	v[1] = c.m[2].i
 	v[2] = c.m[3].i
 }`,
-			cmds:     []cmd{{name: "map_index"}},
+			cmds:     []cmd{{N: "map_index"}},
 			expected: expected{data: D([]uint32{1, 0, 3})},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Member",
@@ -745,7 +750,7 @@ cmd void member() {
 	i = x.b.b.a + as!u64(x.b.c)
 }
 `,
-			cmds:     []cmd{{name: "member"}},
+			cmds:     []cmd{{N: "member"}},
 			expected: expected{data: D(uint64(8))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Null",
@@ -769,7 +774,7 @@ cmd void null_vals(u8* ptr) {
 	i = null
 	f = null
 }`,
-			cmds:     []cmd{{name: "null_vals", data: D(ptrA)}},
+			cmds:     []cmd{{N: "null_vals", D: D(ptrA)}},
 			expected: expected{data: D(uintptr(0), uintptr(0), uintptr(0), uint32(0), float32(0))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Observed/Unknown",
@@ -780,21 +785,21 @@ cmd u32 observed() {
 	i = x
 	return x
 }`,
-			cmds:     []cmd{{name: "observed", data: D(uint32(32))}},
+			cmds:     []cmd{{N: "observed", D: D(uint32(32))}},
 			expected: expected{data: D(uint32(32))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Parameter",
 			src: `
 u32 i = 2
 cmd void add(u32 a, u32 b) { i = a + b }`,
-			cmds:     []cmd{{name: "add", data: D(uint32(3), uint32(4))}},
+			cmds:     []cmd{{N: "add", D: D(uint32(3), uint32(4))}},
 			expected: expected{data: D(uint32(7))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Parameter",
 			src: `
 u32 i = 2
 cmd void add(u32 a, u32 b) { i = a + b }`,
-			cmds:     []cmd{{name: "add", data: D(uint32(3), uint32(4))}},
+			cmds:     []cmd{{N: "add", D: D(uint32(3), uint32(4))}},
 			expected: expected{data: D(uint32(7))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.PointerSlice",
@@ -808,9 +813,9 @@ cmd void pointer_slice(u32* ptr) {
 	c = ptr[400:402][2]
 }`,
 			cmds: []cmd{{
-				name:   "pointer_slice",
-				data:   D(ptrA),
-				extras: read(ptrA, uint64(len(u32Data))*4, resU32Data),
+				N: "pointer_slice",
+				D: D(ptrA),
+				E: R(ptrA, uint64(len(u32Data))*4, resU32Data),
 			}},
 			expected: expected{data: D(uint32(0), uint32(400), uint32(402))},
 		}, { /////////////////////////////////////////////////////
@@ -824,7 +829,7 @@ cmd void select_expr(u32 v) {
 		case 1: 3
 	}
 }`,
-			cmds:     []cmd{{name: "select_expr", data: D(uint32(2))}},
+			cmds:     []cmd{{N: "select_expr", D: D(uint32(2))}},
 			expected: expected{data: D(uint32(1))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Select.WithDefault",
@@ -839,8 +844,8 @@ cmd void select_expr(u32 v) {
 	}
 }`,
 			cmds: []cmd{
-				{name: "select_expr", data: D(uint32(2))},
-				{name: "select_expr", data: D(uint32(7))},
+				{N: "select_expr", D: D(uint32(2))},
+				{N: "select_expr", D: D(uint32(7))},
 			},
 			expected: expected{data: D(uint32(5))},
 		}, { /////////////////////////////////////////////////////
@@ -856,9 +861,9 @@ cmd void slice_index(u32* ptr) {
 	c = slice[99]
 }`,
 			cmds: []cmd{{
-				name:   "slice_index",
-				data:   D(ptrA),
-				extras: read(ptrA, uint64(len(u32Data))*4, resU32Data),
+				N: "slice_index",
+				D: D(ptrA),
+				E: R(ptrA, uint64(len(u32Data))*4, resU32Data),
 			}},
 			expected: expected{data: D(uint32(105), uint32(110), uint32(199))},
 		}, { /////////////////////////////////////////////////////
@@ -876,9 +881,9 @@ cmd void slice_range(u32* ptr) {
 	c = sliceC[2]
 }`,
 			cmds: []cmd{{
-				name:   "slice_range",
-				data:   D(ptrA),
-				extras: read(ptrA, uint64(len(u32Data))*4, resU32Data),
+				N: "slice_range",
+				D: D(ptrA),
+				E: R(ptrA, uint64(len(u32Data))*4, resU32Data),
 			}},
 			expected: expected{data: D(uint32(150), uint32(151), uint32(152))},
 		}, { /////////////////////////////////////////////////////
@@ -907,7 +912,7 @@ cmd void slice_range(u32* ptr) {
 bool b
 cmd void not(bool v) { b = !v }
 `,
-			cmds:     []cmd{{name: "not", data: D(false)}},
+			cmds:     []cmd{{N: "not", D: D(false)}},
 			expected: expected{data: D(true)},
 		},
 		////////////////////////////////////////////////////////
@@ -922,7 +927,7 @@ cmd void AbortInCmd() {
 	abort
 	i = 9
 }`,
-			cmds: []cmd{{name: "AbortInCmd"}},
+			cmds: []cmd{{N: "AbortInCmd"}},
 			expected: expected{
 				data: D(uint32(5)),
 				err:  api.ErrCmdAborted{},
@@ -937,7 +942,7 @@ cmd void AbortInSub() {
 	call_abort()
 	i = 9
 }`,
-			cmds: []cmd{{name: "AbortInSub"}},
+			cmds: []cmd{{N: "AbortInSub"}},
 			expected: expected{
 				data: D(uint32(5)),
 				err:  api.ErrCmdAborted{},
@@ -950,7 +955,7 @@ cmd void ArrayAssign() {
 	i[2] = 4
 	i[4] = 7
 }`,
-			cmds:     []cmd{{name: "ArrayAssign"}},
+			cmds:     []cmd{{N: "ArrayAssign"}},
 			expected: expected{data: D([]uint32{0, 0, 4, 0, 7})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Assign.Global",
@@ -972,7 +977,7 @@ cmd void AssignGlobal() {
 	s.b += 10
 	s.c -= 10
 }`,
-			cmds:     []cmd{{name: "AssignGlobal"}},
+			cmds:     []cmd{{N: "AssignGlobal"}},
 			expected: expected{data: D([]uint32{5, 15, 5}, []float32{123, 30, 20})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Branch",
@@ -991,7 +996,7 @@ cmd void Branch(bool c) {
 		b = 4
 	}
 }`,
-			cmds:     []cmd{{name: "Branch", data: D(true)}},
+			cmds:     []cmd{{N: "Branch", D: D(true)}},
 			expected: expected{data: D([]uint32{1, 4})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Call.Sub",
@@ -1003,7 +1008,7 @@ sub T add!T(T a, T b) {
 cmd void CallSub(u32 a, u32 b) {
 	i = add!u32(a, b)
 }`,
-			cmds:     []cmd{{name: "CallSub", data: D([]uint32{7, 9})}},
+			cmds:     []cmd{{N: "CallSub", D: D([]uint32{7, 9})}},
 			expected: expected{data: D(uint32(16))},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Copy",
@@ -1017,7 +1022,7 @@ cmd void Copy() {
 	a[1] = 2
 	i = b[1]
 }`,
-			cmds:     []cmd{{name: "Copy"}},
+			cmds:     []cmd{{N: "Copy"}},
 			expected: expected{data: D(uint32(1))},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.DeclareLocal",
@@ -1029,7 +1034,7 @@ cmd void DeclareLocal() {
 	c := b
 	i = a
 }`,
-			cmds:     []cmd{{name: "DeclareLocal"}},
+			cmds:     []cmd{{N: "DeclareLocal"}},
 			expected: expected{data: D(int32(1))},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Fence",
@@ -1042,9 +1047,9 @@ cmd void Fence(u16* ptr) {
 	b = ptr[0]
 }`,
 			cmds: []cmd{{
-				name:   "Fence",
-				data:   D(ptrA),
-				extras: read(ptrA, 2, res0x1234).write(ptrA, 2, res0x6789),
+				N: "Fence",
+				D: D(ptrA),
+				E: R(ptrA, 2, res0x1234).W(ptrA, 2, res0x6789),
 			}},
 			expected: expected{data: D([]uint16{0x1234, 0x6789})},
 		}, { /////////////////////////////////////////////////////
@@ -1056,7 +1061,7 @@ cmd void IterationRange() {
 		v[i] = i
 	}
 }`,
-			cmds:     []cmd{{name: "IterationRange"}},
+			cmds:     []cmd{{N: "IterationRange"}},
 			expected: expected{data: D([]int32{0, 1, 2, 3, 4})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Iteration.Map",
@@ -1076,7 +1081,7 @@ cmd void IterationMap() {
 		i_[i] = as!u32(i)
 	}
 }`,
-			cmds:     []cmd{{name: "IterationMap"}},
+			cmds:     []cmd{{N: "IterationMap"}},
 			expected: expected{data: D([]uint32{0, 1, 2, 0, 0, 40, 70, 90, 0, 0, 0, 1, 2, 0, 0})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Iteration.MapAssign",
@@ -1094,7 +1099,7 @@ cmd void MapAssign() {
 	v[3] = m[42]
 	v[4] = m[3]
 }`,
-			cmds:     []cmd{{name: "MapAssign"}},
+			cmds:     []cmd{{N: "MapAssign"}},
 			expected: expected{data: D([]uint32{71, 0, 12, 0, 23})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Iteration.MapRemove",
@@ -1127,7 +1132,7 @@ cmd void MapRemove() {
 	v[9] = m[14]
 	count = len(m)
 }`,
-			cmds:     []cmd{{name: "MapRemove"}},
+			cmds:     []cmd{{N: "MapRemove"}},
 			expected: expected{data: D([]uint32{42, 0, 0, 0, 52, 90, 12, 92, 13, 31, 9})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Iteration.MapRehash",
@@ -1161,7 +1166,7 @@ cmd void MapRehash() {
 		_v[k] = v
 	}
 }`,
-			cmds:     []cmd{{name: "MapRehash"}},
+			cmds:     []cmd{{N: "MapRehash"}},
 			expected: expected{data: D([]uint32{17, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Read",
@@ -1169,7 +1174,7 @@ cmd void MapRehash() {
 cmd void Read(u32* ptr) {
 	read(ptr[0:5])
 }`, // TODO: test read callbacks
-			cmds: []cmd{{name: "Read"}},
+			cmds: []cmd{{N: "Read"}},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Return",
 			src: `
@@ -1180,7 +1185,7 @@ sub u32 double(u32 v) {
 cmd void Return() {
 	i = double(10)
 }`,
-			cmds:     []cmd{{name: "Return"}},
+			cmds:     []cmd{{N: "Return"}},
 			expected: expected{data: D(int32(20))},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.SliceAssign.AppPool.WritesEnabled",
@@ -1191,9 +1196,9 @@ cmd void SliceAssignAppPoolWritesEnabled(u16* ptr) {
 	i = ptr[0]
 }`,
 			cmds: []cmd{{
-				name:   "SliceAssignAppPoolWritesEnabled",
-				data:   D(ptrA),
-				extras: read(ptrA, 4, res0x1234),
+				N: "SliceAssignAppPoolWritesEnabled",
+				D: D(ptrA),
+				E: R(ptrA, 4, res0x1234),
 			}},
 			expected: expected{data: D(uint16(10))},
 			settings: compiler.Settings{WriteToApplicationPool: true},
@@ -1206,9 +1211,9 @@ cmd void SliceAssignAppPoolWritesDisabled(u16* ptr) {
 	i = ptr[0]
 }`,
 			cmds: []cmd{{
-				name:   "SliceAssignAppPoolWritesDisabled",
-				data:   D(ptrA),
-				extras: read(ptrA, 4, res0x1234),
+				N: "SliceAssignAppPoolWritesDisabled",
+				D: D(ptrA),
+				E: R(ptrA, 4, res0x1234),
 			}},
 			expected: expected{data: D(uint16(0x1234))},
 			settings: compiler.Settings{WriteToApplicationPool: false},
@@ -1221,7 +1226,7 @@ cmd void SliceAssignNewPoolWritesEnabled() {
 	s[0] = 10
 	i = s[0]
 }`,
-			cmds:     []cmd{{name: "SliceAssignNewPoolWritesEnabled"}},
+			cmds:     []cmd{{N: "SliceAssignNewPoolWritesEnabled"}},
 			expected: expected{data: D(uint16(10))},
 			settings: compiler.Settings{WriteToApplicationPool: true},
 		}, { /////////////////////////////////////////////////////
@@ -1233,7 +1238,7 @@ cmd void SliceAssignNewPoolWritesDisabled() {
 	s[0] = 10
 	i = s[0]
 }`,
-			cmds:     []cmd{{name: "SliceAssignNewPoolWritesDisabled"}},
+			cmds:     []cmd{{N: "SliceAssignNewPoolWritesDisabled"}},
 			expected: expected{data: D(uint16(10))},
 			settings: compiler.Settings{WriteToApplicationPool: false},
 		}, { /////////////////////////////////////////////////////
@@ -1247,7 +1252,7 @@ cmd void SwitchNoDefaultMatch(u32 v) {
 	case 3:	i = 30
 	}
 }`,
-			cmds:     []cmd{{name: "SwitchNoDefaultMatch", data: D(uint32(1))}},
+			cmds:     []cmd{{N: "SwitchNoDefaultMatch", D: D(uint32(1))}},
 			expected: expected{data: D(int32(10))},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Switch.NoDefault.NoMatch",
@@ -1260,7 +1265,7 @@ cmd void SwitchNoDefaultNoMatch(u32 v) {
 	case 3:	i = 30
 	}
 }`,
-			cmds:     []cmd{{name: "SwitchNoDefaultNoMatch", data: D(uint32(6))}},
+			cmds:     []cmd{{N: "SwitchNoDefaultNoMatch", D: D(uint32(6))}},
 			expected: expected{data: D(int32(0))},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Switch.WithDefault.Match",
@@ -1274,7 +1279,7 @@ cmd void SwitchWithDefaultMatch(u32 v) {
 	default: i = 50
 	}
 }`,
-			cmds:     []cmd{{name: "SwitchWithDefaultMatch", data: D(uint32(1))}},
+			cmds:     []cmd{{N: "SwitchWithDefaultMatch", D: D(uint32(1))}},
 			expected: expected{data: D(int32(10))},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Switch.WithDefault.NoMatch",
@@ -1288,7 +1293,7 @@ cmd void SwitchWithDefaultNoMatch(u32 v) {
 	default: i = 50
 	}
 }`,
-			cmds:     []cmd{{name: "SwitchWithDefaultNoMatch", data: D(uint32(8))}},
+			cmds:     []cmd{{N: "SwitchWithDefaultNoMatch", D: D(uint32(8))}},
 			expected: expected{data: D(int32(50))},
 		},
 		////////////////////////////////////////////////////////
@@ -1303,7 +1308,7 @@ cmd void EmptyString() {
 	s := S()
 	i = len(s.str)
 }`,
-			cmds:     []cmd{{name: "EmptyString"}},
+			cmds:     []cmd{{N: "EmptyString"}},
 			expected: expected{data: D(uint32(0))},
 		},
 		////////////////////////////////////////////////////////
@@ -1319,9 +1324,9 @@ cmd void StringInState(char* str) {
 	s = "and another"
 }`,
 			cmds: []cmd{{
-				name:   "StringInState",
-				data:   D(ptrA),
-				extras: read(ptrA, 12, resHelloWorld),
+				N: "StringInState",
+				D: D(ptrA),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{numAllocs: 1},
 		}, { /////////////////////////////////////////////////////
@@ -1330,7 +1335,7 @@ cmd void StringInState(char* str) {
 sub string ReturnAString() { return "A string" }
 cmd void StringFromSubroutine() { x := ReturnAString() }
 `,
-			cmds: []cmd{{name: "StringFromSubroutine"}},
+			cmds: []cmd{{N: "StringFromSubroutine"}},
 		}, { /////////////////////////////////////////////////////
 			name: "RefCount.StringInClass",
 			src: `
@@ -1338,7 +1343,7 @@ class C { string s }
 C c
 cmd void StringInClass() { c = C("purr") }
 `,
-			cmds:     []cmd{{name: "StringInClass"}},
+			cmds:     []cmd{{N: "StringInClass"}},
 			expected: expected{numAllocs: 1},
 		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ReleaseStringInClass",
@@ -1348,7 +1353,7 @@ C c
 cmd void Assign() { c = C("purr") }
 cmd void Clear() { c = null }
 `,
-			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
+			cmds:     []cmd{{N: "Assign"}, {N: "Clear"}},
 			expected: expected{numAllocs: 0},
 		}, { /////////////////////////////////////////////////////
 			name: "RefCount.StringInRef",
@@ -1357,7 +1362,7 @@ class C { string s }
 ref!C c
 cmd void StringInRef() { c = new!C("purr") }
 `,
-			cmds:     []cmd{{name: "StringInRef"}},
+			cmds:     []cmd{{N: "StringInRef"}},
 			expected: expected{numAllocs: 2},
 		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ReleaseStringInRef",
@@ -1367,7 +1372,7 @@ ref!C c
 cmd void Assign() { c = new!C("purr") }
 cmd void Clear() { c = null }
 `,
-			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
+			cmds:     []cmd{{N: "Assign"}, {N: "Clear"}},
 			expected: expected{numAllocs: 0},
 		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ReleaseStringKeyInMap",
@@ -1384,7 +1389,7 @@ cmd void Clear() {
 	delete(m, "two")
 }
 `,
-			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
+			cmds:     []cmd{{N: "Assign"}, {N: "Clear"}},
 			expected: expected{numAllocs: 2}, // map + map's elements
 		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ReleaseStringValueInMap",
@@ -1401,7 +1406,7 @@ cmd void Clear() {
 	delete(m, 2)
 }
 `,
-			cmds:     []cmd{{name: "Assign"}, {name: "Clear"}},
+			cmds:     []cmd{{N: "Assign"}, {N: "Clear"}},
 			expected: expected{numAllocs: 2}, // map + map's elements
 		}, { /////////////////////////////////////////////////////
 			name: "RefCount.ClearMapOnFree",
@@ -1413,7 +1418,7 @@ cmd void ClearMapOnFree() {
 	c.m["two"] = "II"
 }
 `,
-			cmds:     []cmd{{name: "ClearMapOnFree"}},
+			cmds:     []cmd{{N: "ClearMapOnFree"}},
 			expected: expected{numAllocs: 0},
 		}, { /////////////////////////////////////////////////////
 			// Stress-test reference count releasing on variables declared
@@ -1447,8 +1452,8 @@ cmd void ReleaseInNestedScopes(u32 i) {
 	x := CrazyNestedLogic(i)
 }`,
 			cmds: []cmd{{
-				name: "ReleaseInNestedScopes",
-				data: D(uint32(4)),
+				N: "ReleaseInNestedScopes",
+				D: D(uint32(4)),
 			}},
 		},
 		////////////////////////////////////////////////////////
@@ -1470,7 +1475,7 @@ C s = C(a: 1, b: 2, c: 3, d: 4)
 					uint64(1),
 					uint32(2),
 					uint16(3),
-					uint8(4), pad(1),
+					uint8(4), P(1),
 				),
 			},
 		},
@@ -1493,17 +1498,17 @@ cmd void Read(PodStruct* input) {
 }
 `,
 			cmds: []cmd{{
-				name:   "Read",
-				data:   D(ptrA),
-				extras: read(ptrA, 28, resArmPodStruct),
+				N: "Read",
+				D: D(ptrA),
+				E: R(ptrA, 28, resArmPodStruct),
 			}},
 			expected: expected{
 				data: D(
 					uint32(0x00010203),
-					pad(4),
+					P(4),
 					uint64(0x00000000deadbeef),
 					uint16(0x0a0b),
-					pad(6),
+					P(6),
 					uint64(0xbadf00dbadf00d00),
 					uint64(0x0000000031323334),
 				),
@@ -1531,24 +1536,24 @@ cmd void Read(PodStruct* input) {
 }
 `,
 			cmds: []cmd{{
-				name:   "Read",
-				data:   D(ptrA),
-				extras: read(ptrA, 28, resArmPodStruct).read(ptrA+32, 28, resArmPodStruct),
+				N: "Read",
+				D: D(ptrA),
+				E: R(ptrA, 28, resArmPodStruct).R(ptrA+32, 28, resArmPodStruct),
 			}},
 			expected: expected{
 				data: D(
 					uint32(0x00010203),
-					pad(4),
+					P(4),
 					uint64(0x00000000deadbeef),
 					uint16(0x0a0b),
-					pad(6),
+					P(6),
 					uint64(0xbadf00dbadf00d00),
 					uint64(0x0000000031323334),
 					uint32(0x00010203),
-					pad(4),
+					P(4),
 					uint64(0x00000000deadbeef),
 					uint16(0x0a0b),
-					pad(6),
+					P(6),
 					uint64(0xbadf00dbadf00d00),
 					uint64(0x0000000031323334),
 				),
@@ -1575,20 +1580,20 @@ cmd void Read(StructInStruct* input) {
 	s = input[0]
 }`,
 			cmds: []cmd{{
-				name:   "Read",
-				data:   D(ptrA),
-				extras: read(ptrA, 26, resArmStructInStruct),
+				N: "Read",
+				D: D(ptrA),
+				E: R(ptrA, 26, resArmStructInStruct),
 			}},
 			expected: expected{
 				data: D(
 					uint64(0x00000000aabbccdd),
 					uint16(0xfefe),
-					pad(6),
+					P(6),
 					uint64(0xdadadadadabcdabc),
 					uint16(0xaabb),
-					pad(6),
+					P(6),
 					uint16(0x4253),
-					pad(6),
+					P(6),
 				),
 			},
 			settings: compiler.Settings{
@@ -1616,28 +1621,28 @@ cmd void Read(StructInStruct* input) {
 	s2 = mys[1]
 }`,
 			cmds: []cmd{{
-				name:   "Read",
-				data:   D(ptrA),
-				extras: read(ptrA, 26, resArmStructInStruct).read(ptrA+32, 26, resArmStructInStruct),
+				N: "Read",
+				D: D(ptrA),
+				E: R(ptrA, 26, resArmStructInStruct).R(ptrA+32, 26, resArmStructInStruct),
 			}},
 			expected: expected{
 				data: D(
 					uint64(0x00000000aabbccdd),
 					uint16(0xfefe),
-					pad(6),
+					P(6),
 					uint64(0xdadadadadabcdabc),
 					uint16(0xaabb),
-					pad(6),
+					P(6),
 					uint16(0x4253),
-					pad(6),
+					P(6),
 					uint64(0x00000000aabbccdd),
 					uint16(0xfefe),
-					pad(6),
+					P(6),
 					uint64(0xdadadadadabcdabc),
 					uint16(0xaabb),
-					pad(6),
+					P(6),
 					uint16(0x4253),
-					pad(6),
+					P(6),
 				),
 			},
 			settings: compiler.Settings{
@@ -1661,8 +1666,8 @@ cmd void Write(PodStruct* input, void* ptr) {
 }
 `,
 			cmds: []cmd{{
-				name: "Write",
-				data: D(ptrA, uint64(0xdeadbeef)),
+				N: "Write",
+				D: D(ptrA, uint64(0xdeadbeef)),
 			}},
 			expected: expected{
 				buffers: buffers{
@@ -1693,8 +1698,8 @@ cmd void Write(PodStruct* input, void* ptr) {
 }
 `,
 			cmds: []cmd{{
-				name: "Write",
-				data: D(ptrA, uint64(0xdeadbeef)),
+				N: "Write",
+				D: D(ptrA, uint64(0xdeadbeef)),
 			}},
 			expected: expected{
 				buffers: buffers{
@@ -1727,8 +1732,8 @@ cmd void Read(StructInStruct* input) {
 	input[0] = s
 }`,
 			cmds: []cmd{{
-				name: "Read",
-				data: D(ptrA),
+				N: "Read",
+				D: D(ptrA),
 			}},
 			expected: expected{
 				buffers: buffers{
@@ -1761,8 +1766,8 @@ cmd void Read(StructInStruct* input) {
 	i[1] = StructInStruct(as!size(0x3abbccdd), 0xfefe, SizeStruct(0xdadadadadabcdabc, 0xaabb), 0x4253)
 }`,
 			cmds: []cmd{{
-				name: "Read",
-				data: D(ptrA),
+				N: "Read",
+				D: D(ptrA),
 			}},
 			expected: expected{
 				buffers: buffers{
@@ -1795,15 +1800,15 @@ cmd void Read(StructInStruct* input) {
 	s = myS.s[0]
 }`,
 			cmds: []cmd{{
-				name:   "Read",
-				data:   D(ptrA),
-				extras: read(ptrA, 32, resPointerTo500).read(ptrA+500, 10, resPointee),
+				N: "Read",
+				D: D(ptrA),
+				E: R(ptrA, 32, resPointerTo500).R(ptrA+500, 10, resPointee),
 			}},
 			expected: expected{
 				data: D(
 					uint64(0xdeadbeefdeadbeef),
 					uint16(0xffee),
-					pad(6),
+					P(6),
 				),
 			},
 			settings: compiler.Settings{
@@ -1818,80 +1823,6 @@ cmd void Read(StructInStruct* input) {
 		})
 	}
 }
-
-type cmd struct {
-	name   string
-	data   []byte
-	extras *extras
-	thread uint64
-}
-
-var _ api.Cmd = &cmd{}
-
-func (c *cmd) API() api.API                                                       { return nil }
-func (c *cmd) Caller() api.CmdID                                                  { return 0 }
-func (c *cmd) SetCaller(api.CmdID)                                                {}
-func (c *cmd) Thread() uint64                                                     { return c.thread }
-func (c *cmd) SetThread(thread uint64)                                            { c.thread = thread }
-func (c *cmd) CmdName() string                                                    { return c.name }
-func (c *cmd) CmdParams() api.Properties                                          { return nil }
-func (c *cmd) CmdResult() *api.Property                                           { return nil }
-func (c *cmd) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
-func (c *cmd) Extras() *api.CmdExtras {
-	if c.extras == nil {
-		return &api.CmdExtras{}
-	}
-	return c.extras.e
-}
-func (c *cmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error { return nil }
-
-type extras struct {
-	e *api.CmdExtras
-}
-
-func (e *extras) read(base uint64, size uint64, id id.ID) *extras {
-	if e.e == nil {
-		e.e = &api.CmdExtras{}
-	}
-	e.e.GetOrAppendObservations().AddRead(memory.Range{Base: base, Size: size}, id)
-	return e
-}
-
-func (e *extras) write(base uint64, size uint64, id id.ID) *extras {
-	if e.e == nil {
-		e.e = &api.CmdExtras{}
-	}
-	e.e.GetOrAppendObservations().AddWrite(memory.Range{Base: base, Size: size}, id)
-	return e
-}
-
-func read(base uint64, size uint64, id id.ID) *extras {
-	e := &extras{}
-	return e.read(base, size, id)
-}
-
-func write(base uint64, size uint64, id id.ID) *extras {
-	e := &extras{}
-	return e.write(base, size, id)
-}
-
-func (c cmd) Encode(out []byte) bool {
-	w := endian.Writer(bytes.NewBuffer(out), device.LittleEndian)
-	w.Uint64(c.thread)
-	copy(out[8:], c.data)
-	return true
-}
-
-func D(vals ...interface{}) []byte {
-	buf := &bytes.Buffer{}
-	w := endian.Writer(buf, device.LittleEndian)
-	for _, d := range vals {
-		binary.Write(w, d)
-	}
-	return buf.Bytes()
-}
-
-func pad(bytes int) []byte { return make([]byte, bytes) }
 
 type externA struct {
 	I uint64
@@ -1962,17 +1893,17 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 	externCalls := []interface{}{}
 
 	for i, cmd := range t.cmds {
-		fmt.Printf("    > %s\n", cmd.name)
-		testexterns.ExternA = func(env *executor.Env, i uint64, f float32, b bool) uint64 {
+		fmt.Printf("    > %s\n", cmd.N)
+		testutils.ExternA = func(env *executor.Env, i uint64, f float32, b bool) uint64 {
 			externCalls = append(externCalls, externA{i, f, b})
 			return i + uint64(f)
 		}
-		testexterns.ExternB = func(env *executor.Env, s string) bool {
+		testutils.ExternB = func(env *executor.Env, s string) bool {
 			externCalls = append(externCalls, externB{s})
 			return s == "meow"
 		}
 		err = env.Execute(ctx, &cmd)
-		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.name).ThatError(err).Equals(t.expected.err) {
+		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.N).ThatError(err).Equals(t.expected.err) {
 			return false
 		}
 	}
