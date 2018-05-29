@@ -57,7 +57,7 @@ func TestReadConfiguration(t *testing.T) {
 	reader := bytes.NewReader([]byte(input))
 	configs, err := remotessh.ReadConfigurations(reader)
 
-	assert.With(ctx).That(err).Equals(nil)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	for i, test := range []remotessh.Configuration{
 		remotessh.Configuration{
@@ -85,6 +85,6 @@ func TestReadConfiguration(t *testing.T) {
 			KnownHosts: "someFile",
 		},
 	} {
-		assert.With(ctx).That(configs[i]).Equals(test)
+		assert.For(ctx, "configs[%v]", i).That(configs[i]).Equals(test)
 	}
 }

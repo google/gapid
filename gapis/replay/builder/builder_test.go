@@ -235,7 +235,7 @@ func TestRevertPostbackCommand(t *testing.T) {
 		ctx := log.Enter(ctx, test.name)
 		b := New(device.Little32)
 		test.f(b)
-		assert.With(ctx).ThatSlice(b.instructions).Equals(test.expected)
+		assert.For(ctx, "inst").ThatSlice(b.instructions).Equals(test.expected)
 	}
 	assert.For(ctx, "Postback was not informed of RevertCommand").ThatError(postbackErr).Equals(expectedErr)
 }
@@ -319,6 +319,6 @@ func TestMapMemory(t *testing.T) {
 		ctx := log.Enter(ctx, test.name)
 		b := New(device.Little32)
 		test.f(b)
-		assert.With(ctx).ThatSlice(b.instructions).Equals(test.expected)
+		assert.For(ctx, "inst").ThatSlice(b.instructions).Equals(test.expected)
 	}
 }

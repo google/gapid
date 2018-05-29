@@ -67,5 +67,5 @@ func CheckTransform(ctx context.Context, t *testing.T, transformer Transformer, 
 	}
 	transformer.Flush(ctx, mw)
 
-	assert.With(ctx).ThatSlice(mw.CmdsAndIDs).DeepEquals(expected)
+	assert.For(ctx, "CmdsAndIDs").ThatSlice(mw.CmdsAndIDs).DeepEquals(expected)
 }

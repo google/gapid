@@ -60,7 +60,7 @@ const xml = `<manifest xmlns:android="http://schemas.android.com/apk/res/android
 func TestParseManifest(_t *testing.T) {
 	ctx := log.Testing(_t)
 	got, err := manifest.Parse(ctx, xml)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	expected := manifest.Manifest{
 		Package:     "com.bobgames.bobsgame",
 		VersionCode: 11,
@@ -105,5 +105,5 @@ func TestParseManifest(_t *testing.T) {
 			{Name: "android.permission.NFC"},
 		},
 	}
-	assert.With(ctx).That(got).DeepEquals(expected)
+	assert.For(ctx, "got").That(got).DeepEquals(expected)
 }

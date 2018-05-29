@@ -46,7 +46,7 @@ func TestPossibilityEquals(t *testing.T) {
 		{M, M, M},
 	} {
 		got := test.a.Equals(test.b)
-		assert.With(ctx).That(got).Equals(test.expected)
+		assert.For(ctx, "got").That(got).Equals(test.expected)
 	}
 }
 
@@ -79,7 +79,7 @@ func TestPossibilityBinaryOps(t *testing.T) {
 		{M, M, analysis.Possibility.Or, M},
 	} {
 		got := test.f(test.a, test.b)
-		assert.With(ctx).That(got).Equals(test.expected)
+		assert.For(ctx, "got").That(got).Equals(test.expected)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestBoolUnion(t *testing.T) {
 		{M, M, M},
 	} {
 		got := test.a.Union(test.b)
-		assert.With(ctx).That(got).Equals(test.expected)
+		assert.For(ctx, "got").That(got).Equals(test.expected)
 	}
 }
 
@@ -123,7 +123,7 @@ func TestBoolIntersect(t *testing.T) {
 		{M, M, M},
 	} {
 		got := test.a.Intersect(test.b)
-		assert.With(ctx).That(got).Equals(test.expected)
+		assert.For(ctx, "got").That(got).Equals(test.expected)
 	}
 }
 
@@ -145,6 +145,6 @@ func TestBoolDifference(t *testing.T) {
 		{M, M, M},
 	} {
 		got := test.a.Difference(test.b)
-		assert.With(ctx).That(got).Equals(test.expected)
+		assert.For(ctx, "got").That(got).Equals(test.expected)
 	}
 }

@@ -105,11 +105,11 @@ func TestChoiceParsing(t *testing.T) {
 		flags.Bind("", verb, "")
 		err := flags.Raw.Parse(cs.args)
 		if cs.ok {
-			assert.With(ctx).ThatError(err).Succeeded()
-			assert.With(ctx).ThatString(verb.Str).Equals(cs.s)
-			assert.With(ctx).That(verb.Hero).Equals(cs.h)
+			assert.For(ctx, "err").ThatError(err).Succeeded()
+			assert.For(ctx, "str").ThatString(verb.Str).Equals(cs.s)
+			assert.For(ctx, "hero").That(verb.Hero).Equals(cs.h)
 		} else {
-			assert.With(ctx).ThatError(err).Failed()
+			assert.For(ctx, "err").ThatError(err).Failed()
 		}
 	}
 }

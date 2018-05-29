@@ -294,11 +294,11 @@ no_unreachables_test.api:6:21 Unreachable block
 	} {
 		api, mappings, err := compile(ctx, test.source)
 		ok := true
-		ok = assert.With(ctx).ThatError(err).Succeeded() && ok
-		ok = assert.With(ctx).Critical().That(api).IsNotNil() && ok
+		ok = assert.For(ctx, "err").ThatError(err).Succeeded() && ok
+		ok = assert.For(ctx, "api").Critical().That(api).IsNotNil() && ok
 		got := fmt.Sprint(validate.Inspect(api, mappings))
 		expected := strings.TrimSpace(test.expected)
-		ok = assert.With(ctx).ThatString(got).Equals(expected) && ok
+		ok = assert.For(ctx, "got").ThatString(got).Equals(expected) && ok
 		if !ok {
 			log.E(ctx, "test failed.\n  source: %v\n  got:  %v", test.source, got)
 		}

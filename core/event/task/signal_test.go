@@ -49,7 +49,7 @@ func TestSignalTryWait(t *testing.T) {
 	ctx := log.Testing(t)
 	signal, fire := task.NewSignal()
 	fire(ctx)
-	assert.With(ctx).That(signal.TryWait(ctx, ExpectBlocking)).Equals(true)
+	assert.For(ctx, "sig").That(signal.TryWait(ctx, ExpectBlocking)).Equals(true)
 }
 
 func TestSignalTryWaitTimeout(t *testing.T) {

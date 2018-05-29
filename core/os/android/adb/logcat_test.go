@@ -32,7 +32,7 @@ func TestLogcat(t_ *testing.T) {
 	go func() {
 		defer close(done)
 		err := d.Logcat(ctx, msgs)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 	}()
 	year, loc := time.Now().Year(), time.Local
 	expected := []android.LogcatMessage{
@@ -86,8 +86,8 @@ func TestLogcat(t_ *testing.T) {
 		},
 	}
 	for _, msg := range expected {
-		assert.With(ctx).That(<-msgs).Equals(msg)
+		assert.For(ctx, "msg").That(<-msgs).Equals(msg)
 	}
-	assert.With(ctx).That(<-msgs).Equals(android.LogcatMessage{})
+	assert.For(ctx, "msg").That(<-msgs).Equals(android.LogcatMessage{})
 	<-done
 }

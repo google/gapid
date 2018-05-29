@@ -105,10 +105,10 @@ func ExampleNotNil() {
 // An example of using value Equals
 func ExampleValueEquals() {
 	ctx := assert.Context(nil)
-	assert.With(ctx).That(1).Equals(1)
-	assert.With(ctx).That(2).Equals(3)
+	assert.For(ctx, "1 Equals 1").That(1).Equals(1)
+	assert.For(ctx, "2 Equals 3").That(2).Equals(3)
 	// Output:
-	// Error:
+	// Error:2 Equals 3
 	//     Got       2
 	//     Expect == 3
 }
@@ -116,10 +116,10 @@ func ExampleValueEquals() {
 // An example of using value NotEquals
 func ExampleValueNotEquals() {
 	ctx := assert.Context(nil)
-	assert.With(ctx).That(1).NotEquals(1)
-	assert.With(ctx).That(2).NotEquals(3)
+	assert.For(ctx, "1 NotEquals 1").That(1).NotEquals(1)
+	assert.For(ctx, "2 NotEquals 3").That(2).NotEquals(3)
 	// Output:
-	// Error:
+	// Error:1 NotEquals 1
 	//     Got       1
 	//     Expect != 1
 }

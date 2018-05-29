@@ -19,15 +19,15 @@ import "github.com/google/gapid/core/assert"
 // An example of testing float values
 func ExampleFloat() {
 	ctx := assert.Context(nil)
-	assert.With(ctx).ThatFloat(1.1).IsAtLeast(2.1)
-	assert.With(ctx).ThatFloat(3.1).IsAtMost(4.1)
-	assert.With(ctx).ThatFloat(6.1).IsAtLeast(5.1)
-	assert.With(ctx).ThatFloat(8.1).IsAtMost(7.1)
+	assert.For(ctx, "1.1 IsAtLeast 2.1").ThatFloat(1.1).IsAtLeast(2.1)
+	assert.For(ctx, "3.1 IsAtMost 4.1").ThatFloat(3.1).IsAtMost(4.1)
+	assert.For(ctx, "6.1 IsAtLeast 5.1").ThatFloat(6.1).IsAtLeast(5.1)
+	assert.For(ctx, "8.1 IsAtMost 7.1").ThatFloat(8.1).IsAtMost(7.1)
 	// Output:
-	// Error:
+	// Error:1.1 IsAtLeast 2.1
 	//     Got       1.1
 	//     Expect >= 2.1
-	// Error:
+	// Error:8.1 IsAtMost 7.1
 	//     Got       8.1
 	//     Expect <= 7.1
 }

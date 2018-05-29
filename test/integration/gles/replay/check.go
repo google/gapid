@@ -65,8 +65,8 @@ func checkIssues(ctx context.Context, c *path.Capture, d *device.Instance, expec
 		Device:  path.NewDevice(d.Id.ID()),
 	}
 	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, nil)
-	if assert.With(ctx).ThatError(err).Succeeded() {
-		assert.With(ctx).ThatSlice(issues).DeepEquals(expected)
+	if assert.For(ctx, "err").ThatError(err).Succeeded() {
+		assert.For(ctx, "issues").ThatSlice(issues).DeepEquals(expected)
 	}
 }
 
@@ -76,7 +76,7 @@ func checkReport(ctx context.Context, c *path.Capture, d *device.Instance, cmds 
 	}
 
 	report, err := resolve.Report(ctx, c.Report(path.NewDevice(d.Id.ID()), nil))
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	got := []string{}
 	for _, e := range report.Items {
@@ -86,7 +86,7 @@ func checkReport(ctx context.Context, c *path.Capture, d *device.Instance, cmds 
 			got = append(got, fmt.Sprintf("%s /%v", e.Severity.String(), report.Msg(e.Message).Text(nil)))
 		}
 	}
-	assert.With(ctx).ThatSlice(got).Equals(expected)
+	assert.For(ctx, "got").ThatSlice(got).Equals(expected)
 }
 
 func checkColorBuffer(ctx context.Context, c *path.Capture, d *device.Instance, w, h uint32, threshold float64, name string, after api.CmdID, done *sync.WaitGroup) {
@@ -103,7 +103,7 @@ func checkColorBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
 		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, replay.WireframeMode_None, false, nil)
-	if !assert.With(ctx).ThatError(err).Succeeded() {
+	if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 		return
 	}
 	checkImage(ctx, name, img, threshold)
@@ -172,7 +172,7 @@ func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
 		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, replay.WireframeMode_None, false, nil)
-	if !assert.With(ctx).ThatError(err).Succeeded() {
+	if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 		return
 	}
 	checkImage(ctx, name, img, threshold)

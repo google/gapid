@@ -84,7 +84,7 @@ func TestInvertMemoryRanges(t *testing.T) {
 			after:  interval.U64RangeList{},
 		},
 	} {
-		assert.With(ctx).ThatSlice(InvertMemoryRanges(testCase.before)).Equals(testCase.after)
+		assert.For(ctx, "InvertMemoryRanges").ThatSlice(InvertMemoryRanges(testCase.before)).Equals(testCase.after)
 	}
 }
 
@@ -106,10 +106,10 @@ func TestBasicAllocator(t *testing.T) {
 		result, err := al.Alloc(count, align)
 		return allocExpectation{expect: func(addr uint64, ok bool) {
 			if ok {
-				assert.With(ctx).ThatError(err).Succeeded()
-				assert.With(ctx).That(result).Equals(addr)
+				assert.For(ctx, "err").ThatError(err).Succeeded()
+				assert.For(ctx, "res").That(result).Equals(addr)
 			} else {
-				assert.With(ctx).ThatError(err).Failed()
+				assert.For(ctx, "err").ThatError(err).Failed()
 			}
 		}}
 	}
@@ -118,9 +118,9 @@ func TestBasicAllocator(t *testing.T) {
 		err := al.Free(base)
 		return freeExpectation{expect: func(ok bool) {
 			if ok {
-				assert.With(ctx).ThatError(err).Succeeded()
+				assert.For(ctx, "err").ThatError(err).Succeeded()
 			} else {
-				assert.With(ctx).ThatError(err).Failed()
+				assert.For(ctx, "err").ThatError(err).Failed()
 			}
 		}}
 	}
@@ -128,12 +128,12 @@ func TestBasicAllocator(t *testing.T) {
 	alloc(10, 1).expect(0, false) // No contiguous block of size 10.
 
 	alloc(5, 1).expect(2, true)
-	assert.With(ctx).ThatSlice(al.FreeList()).Equals(interval.U64RangeList{
+	assert.For(ctx, "FreeList").ThatSlice(al.FreeList()).Equals(interval.U64RangeList{
 		interval.U64Range{First: 7, Count: 1},
 		interval.U64Range{First: 9, Count: 9},
 		interval.U64Range{First: 19, Count: 2},
 	})
-	assert.With(ctx).ThatSlice(al.AllocList()).Equals(interval.U64RangeList{
+	assert.For(ctx, "AllocList").ThatSlice(al.AllocList()).Equals(interval.U64RangeList{
 		interval.U64Range{First: 2, Count: 5},
 	})
 
@@ -146,13 +146,13 @@ func TestBasicAllocator(t *testing.T) {
 
 	// Entire heap is full now.
 	alloc(1, 1).expect(0, false)
-	assert.With(ctx).ThatSlice(al.AllocList()).Equals(interval.U64RangeList{
+	assert.For(ctx, "AllocList").ThatSlice(al.AllocList()).Equals(interval.U64RangeList{
 		interval.U64Range{First: 2, Count: 5},
 		interval.U64Range{First: 7, Count: 1},
 		interval.U64Range{First: 9, Count: 9},
 		interval.U64Range{First: 19, Count: 2},
 	})
-	assert.With(ctx).ThatSlice(al.FreeList()).Equals(interval.U64RangeList{})
+	assert.For(ctx, "FreeList").ThatSlice(al.FreeList()).Equals(interval.U64RangeList{})
 
 	free(4).expect(false)
 	free(7).expect(true)
@@ -163,7 +163,7 @@ func TestBasicAllocator(t *testing.T) {
 
 	// Test alignment
 	alloc(6, 4).expect(12, true)
-	assert.With(ctx).ThatSlice(al.FreeList()).Equals(interval.U64RangeList{
+	assert.For(ctx, "FreeList").ThatSlice(al.FreeList()).Equals(interval.U64RangeList{
 		interval.U64Range{First: 2, Count: 6},
 		interval.U64Range{First: 9, Count: 3},
 		interval.U64Range{First: 19, Count: 2},
@@ -175,6 +175,6 @@ func TestBasicAllocator(t *testing.T) {
 	free(16).expect(true)
 
 	// Make sure we've gone back to the initial state of the allocator.
-	assert.With(ctx).ThatSlice(al.AllocList()).Equals(interval.U64RangeList{})
-	assert.With(ctx).ThatSlice(al.FreeList()).Equals(initialFreeList)
+	assert.For(ctx, "AllocList").ThatSlice(al.AllocList()).Equals(interval.U64RangeList{})
+	assert.For(ctx, "FreeList").ThatSlice(al.FreeList()).Equals(initialFreeList)
 }

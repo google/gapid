@@ -19,16 +19,16 @@ import "github.com/google/gapid/core/assert"
 // An example of testing string equality
 func ExampleStringEquals() {
 	ctx := assert.Context(nil)
-	assert.With(ctx).ThatString("a").Equals("a")
-	assert.With(ctx).ThatString("a").Equals("b")
-	assert.With(ctx).ThatString("a").NotEquals("a")
-	assert.With(ctx).ThatString("a").NotEquals("b")
+	assert.For(ctx, `"a" Equals "a"`).ThatString("a").Equals("a")
+	assert.For(ctx, `"a" Equals "b"`).ThatString("a").Equals("b")
+	assert.For(ctx, `"a" NotEquals "a"`).ThatString("a").NotEquals("a")
+	assert.For(ctx, `"a" NotEquals "b"`).ThatString("a").NotEquals("b")
 	// Output:
-	// Error:
+	// Error:"a" Equals "b"
 	//     Got          `a`
 	//     Expect  ==   `b`
 	//     Differs from `a`
-	// Error:
+	// Error:"a" NotEquals "a"
 	//     Got       `a`
 	//     Expect != `a`
 }
@@ -36,20 +36,20 @@ func ExampleStringEquals() {
 // An example of testing partial string equality
 func ExampleStringFragments() {
 	ctx := assert.Context(nil)
-	assert.With(ctx).ThatString("abc").Contains("b")
-	assert.With(ctx).ThatString("abc").Contains("d")
-	assert.With(ctx).ThatString("abc").HasPrefix("a")
-	assert.With(ctx).ThatString("abc").HasPrefix("b")
-	assert.With(ctx).ThatString("abc").HasSuffix("c")
-	assert.With(ctx).ThatString("abc").HasSuffix("b")
+	assert.For(ctx, `"abc" Contains "b"`).ThatString("abc").Contains("b")
+	assert.For(ctx, `"abc" Contains "d"`).ThatString("abc").Contains("d")
+	assert.For(ctx, `"abc" HasPrefix "a"`).ThatString("abc").HasPrefix("a")
+	assert.For(ctx, `"abc" HasPrefix "b"`).ThatString("abc").HasPrefix("b")
+	assert.For(ctx, `"abc" HasSuffix "c"`).ThatString("abc").HasSuffix("c")
+	assert.For(ctx, `"abc" HasSuffix "b"`).ThatString("abc").HasSuffix("b")
 	// Output:
-	// Error:
+	// Error:"abc" Contains "d"
 	//     Got             `abc`
 	//     Expect contains `d`
-	// Error:
+	// Error:"abc" HasPrefix "b"
 	//     Got                `abc`
 	//     Expect starts with `b`
-	// Error:
+	// Error:"abc" HasSuffix "b"
 	//     Got              `abc`
 	//     Expect ends with `b`
 }
@@ -57,10 +57,10 @@ func ExampleStringFragments() {
 // An example of testing non strings as strings
 func ExampleStringTypes() {
 	ctx := assert.Context(nil)
-	assert.With(ctx).ThatString([]byte{'a', 'b', 'c'}).Equals("a")
-	assert.With(ctx).ThatString(10).Equals("10")
+	assert.For(ctx, `"abc" Equals "a"`).ThatString([]byte{'a', 'b', 'c'}).Equals("a")
+	assert.For(ctx, `10 Equals "10"`).ThatString(10).Equals("10")
 	// Output:
-	// Error:
+	// Error:"abc" Equals "a"
 	//     Got       `abc`
 	//     Expect == `a`
 	//     Longer by `bc`

@@ -152,14 +152,14 @@ func TestReadWrite(t *testing.T) {
 		for i := 0; i < s.Len(); i++ {
 			w.Call([]reflect.Value{s.Index(i)})
 		}
-		assert.With(ctx).ThatSlice(b.Bytes()).Equals(t.data)
+		assert.For(ctx, "bytes").ThatSlice(b.Bytes()).Equals(t.data)
 		for i := 0; i < s.Len(); i++ {
 			ctx := log.V{"index": i}.Bind(ctx)
 			expected := s.Index(i)
 			result := r.Call(nil)
 			got := result[0]
-			assert.With(ctx).ThatError(reader.Error()).Succeeded()
-			assert.With(ctx).That(got.Interface()).Equals(expected.Interface())
+			assert.For(ctx, "err").ThatError(reader.Error()).Succeeded()
+			assert.For(ctx, "val").That(got.Interface()).Equals(expected.Interface())
 		}
 	}
 }
@@ -193,9 +193,9 @@ func TestCount(t *testing.T) {
 		writer.Uint32(v)
 	}
 	assert.For(ctx, "bytes").ThatSlice(b.Bytes()).Equals(raw)
-	for _, expect := range values {
+	for i, expect := range values {
 		got := reader.Count()
-		assert.With(ctx).That(got).Equals(expect)
+		assert.For(ctx, "count at %v", i).That(got).Equals(expect)
 	}
 }
 
@@ -210,26 +210,26 @@ func TestSetErrors(t *testing.T) {
 		s := reflect.ValueOf(t.values)
 		writer.SetError(writeErr)
 		w.Call([]reflect.Value{s.Index(0)})
-		assert.With(ctx).ThatError(writer.Error()).Equals(writeErr)
+		assert.For(ctx, "err a").ThatError(writer.Error()).Equals(writeErr)
 		writer.SetError(secondErr)
 		w.Call([]reflect.Value{s.Index(0)})
-		assert.With(ctx).ThatError(writer.Error()).Equals(writeErr)
+		assert.For(ctx, "err b").ThatError(writer.Error()).Equals(writeErr)
 		reader.SetError(readErr)
 		r.Call(nil)
-		assert.With(ctx).ThatError(reader.Error()).Equals(readErr)
+		assert.For(ctx, "err c").ThatError(reader.Error()).Equals(readErr)
 		reader.SetError(secondErr)
 		r.Call(nil)
-		assert.With(ctx).ThatError(reader.Error()).Equals(readErr)
+		assert.For(ctx, "err d").ThatError(reader.Error()).Equals(readErr)
 	}
 	b := &bytes.Buffer{}
 	data := []byte{1}
 	reader, writer := factory(b, b)
 	writer.SetError(writeErr)
 	writer.Data(data)
-	assert.With(ctx).ThatError(writer.Error()).Equals(writeErr)
+	assert.For(ctx, "err e").ThatError(writer.Error()).Equals(writeErr)
 	reader.SetError(readErr)
 	reader.Data(data)
-	assert.With(ctx).ThatError(reader.Error()).Equals(readErr)
+	assert.For(ctx, "err f").ThatError(reader.Error()).Equals(readErr)
 }
 
 func TestIOErrors(t *testing.T) {
@@ -242,18 +242,18 @@ func TestIOErrors(t *testing.T) {
 		s := reflect.ValueOf(t.values)
 		// Write twice, first time errors, second time compounds the error
 		w.Call([]reflect.Value{s.Index(0)})
-		assert.With(ctx).ThatError(writer.Error()).Equals(writeErr)
+		assert.For(ctx, "err a").ThatError(writer.Error()).Equals(writeErr)
 		// Read twice, first time errors, second time compounds the error
 		r.Call(nil)
-		assert.With(ctx).ThatError(reader.Error()).Equals(readErr)
+		assert.For(ctx, "err b").ThatError(reader.Error()).Equals(readErr)
 	}
 	buf := []byte{1}
 	data := []byte{1, 2}
 	reader, writer := factory(&bytesReader{buf}, &limitedWriter{Limit: 1})
 	writer.Data(data)
-	assert.With(ctx).ThatError(writer.Error()).Equals(io.ErrShortWrite)
+	assert.For(ctx, "err c").ThatError(writer.Error()).Equals(io.ErrShortWrite)
 	reader.Data(data)
-	assert.With(ctx).ThatError(reader.Error()).Equals(readErr)
+	assert.For(ctx, "err d").ThatError(reader.Error()).Equals(readErr)
 }
 
 type bytesReader struct {

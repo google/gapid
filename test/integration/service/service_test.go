@@ -74,7 +74,7 @@ func setup(t *testing.T) (context.Context, server.Server, func()) {
 	r.AddDevice(ctx, bind.Host(ctx))
 
 	client, err, shutdown := startServerAndGetGrpcClient(ctx, cfg)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	return ctx, client, shutdown
 }
@@ -139,77 +139,77 @@ func TestGetServerInfo(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	got, err := server.GetServerInfo(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(got).DeepEquals(cfg.Info)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "got").That(got).DeepEquals(cfg.Info)
 }
 
 func TestGetAvailableStringTables(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	got, err := server.GetAvailableStringTables(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(got).DeepEquals([]*stringtable.Info{stringtables[0].Info})
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "got").That(got).DeepEquals([]*stringtable.Info{stringtables[0].Info})
 }
 
 func TestGetStringTable(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	got, err := server.GetStringTable(ctx, stringtables[0].Info)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(got).DeepEquals(stringtables[0])
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "got").That(got).DeepEquals(stringtables[0])
 }
 
 func TestImportCapture(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	got, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(got).IsNotNil()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "got").That(got).IsNotNil()
 }
 
 func TestGetDevices(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	got, err := server.GetDevices(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatSlice(got).IsNotEmpty()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "got").ThatSlice(got).IsNotEmpty()
 }
 
 func TestGetDevicesForReplay(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	capture, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(capture).IsNotNil()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "capture").That(capture).IsNotNil()
 	got, err := server.GetDevicesForReplay(ctx, capture)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatSlice(got).IsNotEmpty()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "got").ThatSlice(got).IsNotEmpty()
 }
 
 func TestGetFramebufferAttachment(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	capture, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(capture).IsNotNil()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "capture").That(capture).IsNotNil()
 	devices, err := server.GetDevices(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatSlice(devices).IsNotEmpty()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "devices").ThatSlice(devices).IsNotEmpty()
 	after := capture.Command(swapCmdIndex)
 	attachment := api.FramebufferAttachment_Color0
 	settings := &service.RenderSettings{}
 	renderSettings := &service.ReplaySettings{devices[0], false}
 	got, err := server.GetFramebufferAttachment(ctx, renderSettings, after, attachment, settings, nil)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(got).IsNotNil()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "got").That(got).IsNotNil()
 }
 
 func TestGet(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	capture, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(capture).IsNotNil()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "capture").That(capture).IsNotNil()
 	T, any := reflect.TypeOf, reflect.TypeOf(struct{}{})
 
 	for _, test := range []struct {
@@ -232,11 +232,11 @@ func TestGet(t *testing.T) {
 	} {
 		ctx = log.V{"path": test.path}.Bind(ctx)
 		got, err := server.Get(ctx, test.path.Path())
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		if test.ty.Kind() == reflect.Interface {
-			assert.With(ctx).That(got).Implements(test.ty)
+			assert.For(ctx, "got").That(got).Implements(test.ty)
 		} else if test.ty != any {
-			assert.With(ctx).That(reflect.TypeOf(got)).Equals(test.ty)
+			assert.For(ctx, "ty").That(reflect.TypeOf(got)).Equals(test.ty)
 		}
 	}
 }
@@ -253,16 +253,16 @@ func TestCPUProfile(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	err := server.BeginCPUProfile(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	data, err := server.EndCPUProfile(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(data).IsNotNil()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "data").That(data).IsNotNil()
 }
 
 func TestGetPerformanceCounters(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
 	data, err := server.GetPerformanceCounters(ctx)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(data).IsNotNil()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "data").That(data).IsNotNil()
 }

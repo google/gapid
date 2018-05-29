@@ -43,19 +43,19 @@ func readFully(r io.Reader, maxRead int) ([]byte, error) {
 }
 
 func checkData(ctx context.Context, s Data, expected []byte) {
-	assert.With(ctx).That(s.Size()).Equals(uint64(len(expected)))
+	assert.For(ctx, "size").That(s.Size()).Equals(uint64(len(expected)))
 
 	for _, offset := range []uint64{0, 1, s.Size() - 1, s.Size()} {
 		got := make([]byte, len(expected)-int(offset))
 		err := s.Get(ctx, offset, got)
-		assert.With(ctx).ThatError(err).Succeeded()
-		assert.With(ctx).ThatSlice(got).Equals(expected[offset:])
+		assert.For(ctx, "err").ThatError(err).Succeeded()
+		assert.For(ctx, "got").ThatSlice(got).Equals(expected[offset:])
 	}
 
 	for _, maxReadSize := range []int{1, 2, 3, 512} {
 		got, err := readFully(s.NewReader(ctx), maxReadSize)
-		assert.With(ctx).ThatError(err).Succeeded()
-		assert.With(ctx).ThatSlice(got).Equals(expected)
+		assert.For(ctx, "err").ThatError(err).Succeeded()
+		assert.For(ctx, "got").ThatSlice(got).Equals(expected)
 	}
 }
 
@@ -201,10 +201,10 @@ func TestMemoryResourceWriteReadScattered(t *testing.T) {
 		checkData(ctx, slice, test.expected)
 
 		gotID, err := slice.ResourceID(ctx)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 
 		expectedID, _ := database.Store(ctx, test.expected)
-		assert.With(ctx).That(gotID).Equals(expectedID)
+		assert.For(ctx, "id").That(gotID).Equals(expectedID)
 	}
 }
 
@@ -215,8 +215,8 @@ func TestPoolSliceReaderErrorPropagation(t *testing.T) {
 	p.Write(2, Resource(id.ID{}, 5))
 
 	got, err := readFully(p.Slice(Range{Base: 0, Size: 10}).NewReader(ctx), 512)
-	assert.With(ctx).That(len(got)).Equals(2)
-	assert.With(ctx).ThatError(err).Failed()
+	assert.For(ctx, "len").That(len(got)).Equals(2)
+	assert.For(ctx, "err").ThatError(err).Failed()
 }
 
 // Write layout:

@@ -52,7 +52,7 @@ func TestArchitectureByName(t *testing.T) {
 	for _, test := range architectureTestData {
 		ctx := log.Enter(ctx, test.name)
 		architecture := device.ArchitectureByName(test.name)
-		assert.With(ctx).That(architecture).Equals(test.architecture)
+		assert.For(ctx, "arch").That(architecture).Equals(test.architecture)
 	}
 }
 
@@ -69,6 +69,6 @@ func TestArchitectureGOARCH(t *testing.T) {
 	} {
 		ctx := log.Enter(ctx, test.name)
 		architecture := device.ArchitectureByName(test.name)
-		assert.With(ctx).That(architecture).Equals(test.architecture)
+		assert.For(ctx, "arch").That(architecture).Equals(test.architecture)
 	}
 }

@@ -48,11 +48,11 @@ func test(ctx context.Context, Instructions []Instruction, expected ...interface
 			"instruction": instruction,
 			"type":        fmt.Sprintf("%T", instruction),
 		}.Bind(ctx)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 	}
 	got, err := opcode.Disassemble(buf, device.LittleEndian)
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).ThatSlice(got).Equals(expected)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "got").ThatSlice(got).Equals(expected)
 }
 
 func TestCall(t *testing.T) {

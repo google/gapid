@@ -90,12 +90,12 @@ func maybeExportCapture(ctx context.Context, c *path.Capture) {
 		return
 	}
 	cap, err := capture.ResolveFromPath(ctx, c)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	f, err := os.Create(filepath.Join(*exportCaptures, cap.Name+".gfxtrace"))
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	defer f.Close()
 	err = capture.Export(ctx, c, f)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 }
 
 func p(addr uint64) memory.Pointer { return memory.BytePtr(addr) }
@@ -117,7 +117,7 @@ func mergeCaptures(ctx context.Context, captures ...*path.Capture) *path.Capture
 	var d *device.Instance
 	for i, path := range captures {
 		c, err := capture.ResolveFromPath(ctx, path)
-		assert.With(ctx).ThatError(err).Succeeded()
+		assert.For(ctx, "err").ThatError(err).Succeeded()
 		lists = append(lists, c.Commands)
 		remainingCmds += len(c.Commands)
 		threads = append(threads, uint64(0x10000+i))
@@ -229,8 +229,8 @@ func TestMultiContextCapture(t *testing.T) {
 	maybeExportCapture(ctx, c)
 
 	contexts, err := resolve.Contexts(ctx, c.Contexts())
-	assert.With(ctx).ThatError(err).Succeeded()
-	assert.With(ctx).That(len(contexts)).Equals(3)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	assert.For(ctx, "len").That(len(contexts)).Equals(3)
 }
 
 func TestExportAndImportCapture(t *testing.T) {
@@ -239,11 +239,11 @@ func TestExportAndImportCapture(t *testing.T) {
 
 	var exported bytes.Buffer
 	err := capture.Export(ctx, c, &exported)
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	ctx, d = setup(log.Testing(t))
 	recoveredCapture, err := capture.Import(ctx, "recovered", exported.Bytes())
-	assert.With(ctx).ThatError(err).Succeeded()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	verify(ctx, recoveredCapture, d)
 }
 

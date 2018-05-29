@@ -344,7 +344,7 @@ func TestVertexConvert(t *testing.T) {
 		}
 		ctx := log.V{"fmt": test.fmt}.Bind(ctx)
 		conv, err := buffer.ConvertTo(ctx, format)
-		if assert.With(ctx).ThatError(err).Succeeded() {
+		if assert.For(ctx, "err").ThatError(err).Succeeded() {
 			data := conv.Streams[0].Data
 			for i, e := range test.expected {
 				ctx := log.V{"i": i}.Bind(ctx)
@@ -358,7 +358,7 @@ func TestVertexConvert(t *testing.T) {
 					(uint64(data[7]) << 56)
 				data = data[8:]
 				got := math.Float64frombits(word)
-				assert.With(ctx).ThatFloat(got).Equals(e, 0.001)
+				assert.For(ctx, "got").ThatFloat(got).Equals(e, 0.001)
 			}
 		}
 	}

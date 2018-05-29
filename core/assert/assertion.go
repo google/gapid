@@ -29,7 +29,7 @@ type (
 	level int
 
 	// Assertion is the type for the start of an assertion line.
-	// You construct an assertion from an Output using either assert.With or assert.For.
+	// You construct an assertion from an Output using assert.For.
 	Assertion struct {
 		level level
 		out   *bytes.Buffer
