@@ -523,8 +523,8 @@
   {{else if IsGlobal           $}}{{Template "Go.Global" $}}
   {{else if IsParameter        $}}{{Template "Go.Parameter" $}}
   {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}.Getʷ(ϟctx, ϟw, int({{Template "Go.Read" $.Index}}))
-  {{else if IsMapIndex         $}}{{Template "Go.Read" $.Map}}.Getʷ(ϟctx, ϟw, {{Template "Go.Read" $.Index}})
-  {{else if IsMapContains      $}}{{Template "Go.Read" $.Map}}.Containsʷ(ϟctx, ϟw, {{Template "Go.Read" $.Key}})
+  {{else if IsMapIndex         $}}{{Template "Go.MapIndex" $}}
+  {{else if IsMapContains      $}}{{Template "Go.MapContains" $}}
   {{else if IsLength           $}}{{Template "Go.Type" $.Type}}({{Template "Go.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}})
   {{else if IsNull             $}}{{Template "Go.Null" $.Type}}
   {{else if IsNew              $}}new {{Template "Go.Type" $.Type}}
@@ -704,7 +704,10 @@
   {{$ty := $.Object | TypeOf | Unpack}}
   {{Template "Go.Read" $.Object}}§
   {{if IsReference $ty}}{{if GetAnnotation $ty.To "resource"}}.OnAccess(ϟg)§{{end}}{{end}}
-  .{{$.Field | GoPublicName}}ʷ(ϟctx, ϟw)
+  .{{$.Field | GoPublicName}}§
+  {{if GetAnnotation $.Field "untracked"}}()
+  {{else}}ʷ(ϟctx, ϟw)
+  {{end}}
 {{end}}
 
 
@@ -716,8 +719,41 @@
 {{define "Go.Global"}}
   {{AssertType $ "Global"}}
 
-  {{if eq $.Name "$Thread"}}ϟt
-  {{else                  }}ϟs.{{$.Name | GoPublicName}}ʷ(ϟctx, ϟw)
+  {{if eq $.Name "$Thread"             }}ϟt
+  {{else if GetAnnotation $ "untracked"}}ϟs.{{$.Name | GoPublicName}}()
+  {{else                               }}ϟs.{{$.Name | GoPublicName}}ʷ(ϟctx, ϟw)
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a map index expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Go.MapIndex"}}
+  {{AssertType $ "MapIndex"}}
+
+  {{if GetAnnotation $.Map "untrackedMap"}}
+    {{Template "Go.Read" $.Map}}.Get({{Template "Go.Read" $.Index}})
+  {{else}}
+    {{Template "Go.Read" $.Map}}.Getʷ(ϟctx, ϟw, {{Template "Go.Read" $.Index}})
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a map containment expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Go.MapContains"}}
+  {{AssertType $ "MapContains"}}
+
+  {{if GetAnnotation $.Map "untrackedMap"}}
+    {{Template "Go.Read" $.Map}}.Contains({{Template "Go.Read" $.Key}})
+  {{else}}
+    {{Template "Go.Read" $.Map}}.Containsʷ(ϟctx, ϟw, {{Template "Go.Read" $.Key}})
   {{end}}
 {{end}}
 
@@ -735,7 +771,12 @@
   {{     if IsPseudonym   $ty}}{{Template "Go.ReadLength" "Type" $ty.To "Value" $.Value}}
   {{else if IsSlice       $ty}}{{Template "Go.Read" $.Value}}.Count()
   {{else if IsString      $ty}}len({{Template "Go.Read" $.Value}})
-  {{else if IsMap         $ty}}{{Template "Go.Read" $.Value}}.Lenʷ(ϟctx, ϟw)
+  {{else if IsMap         $ty}}
+    {{if GetAnnotation $.Map "untrackedMap"}}
+      {{Template "Go.Read" $.Value}}.Len()
+    {{else}}
+      {{Template "Go.Read" $.Value}}.Lenʷ(ϟctx, ϟw)
+    {{end}}
   {{else                     }}{{Error "macro Go.ReadLength called with unsupported type: %v" $.Type}}
   {{end}}
 {{end}}
