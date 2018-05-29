@@ -70,7 +70,7 @@ go_test(
         "//core/os/device:go_default_library",
         "//core/text/parse:go_default_library",
         "//gapil:go_default_library",
-        "//gapil/compiler/testexterns:go_default_library",
+        "//gapil/compiler/testutils:go_default_library",
         "//gapil/executor:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/capture:go_default_library",
