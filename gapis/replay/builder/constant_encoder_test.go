@@ -23,7 +23,7 @@ import (
 )
 
 func TestConstantEncoderCache(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	c := newConstantEncoder(device.Little32)
 
 	addr1 := c.writeValues(value.U32(0x1234), value.S16(-1))
@@ -32,7 +32,7 @@ func TestConstantEncoderCache(t *testing.T) {
 }
 
 func TestConstantEncoderAlignment(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	c := newConstantEncoder(&device.MemoryLayout{
 		Endian:  device.LittleEndian,

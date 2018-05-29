@@ -18,7 +18,7 @@ import "github.com/google/gapid/core/assert"
 
 // An example of testing integer values
 func ExampleInteger() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "1 Equals 2").ThatInteger(1).Equals(2)
 	assert.For(ctx, "1 NotEquals 2").ThatInteger(1).NotEquals(2)
 	assert.For(ctx, "1 IsAtLeast 2").ThatInteger(1).IsAtLeast(2)

@@ -23,7 +23,7 @@ import (
 )
 
 func TestSettingDebuggableFlag(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, fn := range []string{
 		"testdata/manifest1.binxml",
 		"testdata/manifest2.binxml",

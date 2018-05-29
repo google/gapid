@@ -23,7 +23,7 @@ import (
 
 // An example that shows the simplest of value equality tests with a message
 func ExampleAssertMessage() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "A message").That(false).Equals(true)
 	fmt.Fprintf(os.Stdout, "Test complete")
 	// Output:
@@ -36,7 +36,7 @@ func ExampleAssertMessage() {
 // An example that shows a critical error
 func ExampleAssertCritical() {
 	defer func() { recover() }() // Consume the critical level panic
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "A message").Critical().That(false).Equals(true)
 	fmt.Fprintf(os.Stdout, "Test complete")
 	// Output:
@@ -47,7 +47,7 @@ func ExampleAssertCritical() {
 
 // An example of testing untyped nil values
 func ExampleNil() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "nil equals nil").That(nil).Equals(nil)
 	assert.For(ctx, "nil does not equal nil").That(nil).NotEquals(nil)
 	assert.For(ctx, "nil deep equals nil").That(nil).DeepEquals(nil)
@@ -65,7 +65,7 @@ func ExampleNil() {
 // An example of testing typed nil values
 func ExampleTypedNil() {
 	var typedNil *int
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "typed_nil equals nil").That(typedNil).Equals(nil)
 	assert.For(ctx, "typed_nil does not equal nil").That(typedNil).NotEquals(nil)
 	assert.For(ctx, "typed_nil deep equals nil").That(typedNil).DeepEquals(nil)
@@ -85,7 +85,7 @@ func ExampleTypedNil() {
 // An example of testing non nil values
 func ExampleNotNil() {
 	notNil := &struct{ s string }{"not_nil"}
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "not_nil equals nil").That(notNil).Equals(nil)
 	assert.For(ctx, "not_nil does not equal nil").That(notNil).NotEquals(nil)
 	assert.For(ctx, "not_nil deep equals nil").That(notNil).DeepEquals(nil)
@@ -104,7 +104,7 @@ func ExampleNotNil() {
 
 // An example of using value Equals
 func ExampleValueEquals() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "1 Equals 1").That(1).Equals(1)
 	assert.For(ctx, "2 Equals 3").That(2).Equals(3)
 	// Output:
@@ -115,7 +115,7 @@ func ExampleValueEquals() {
 
 // An example of using value NotEquals
 func ExampleValueNotEquals() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "1 NotEquals 1").That(1).NotEquals(1)
 	assert.For(ctx, "2 NotEquals 3").That(2).NotEquals(3)
 	// Output:
@@ -128,7 +128,7 @@ func ExampleValueNotEquals() {
 func ExampleValueDeepEquals() {
 	a := []string{"1", "2"}
 	values := []struct{ V []string }{{a}, {a}, {[]string{"1", "2"}}, {[]string{"1", "3"}}, {[]string{"2", "4"}}}
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "deep equals same object").That(values[0]).DeepEquals(values[1])
 	assert.For(ctx, "deep equals same value").That(values[0]).DeepEquals(values[2])
 	assert.For(ctx, "deep equals different value").That(values[0]).DeepEquals(values[3])
@@ -145,7 +145,7 @@ func ExampleValueDeepEquals() {
 func ExampleValueDeepNotEquals() {
 	a := []string{"1", "2"}
 	values := []struct{ V []string }{{a}, {a}, {[]string{"1", "2"}}, {[]string{"1", "3"}}, {[]string{"2", "4"}}}
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	assert.For(ctx, "deep equals same object").That(values[0]).DeepNotEquals(values[1])
 	assert.For(ctx, "deep equals same value").That(values[0]).DeepNotEquals(values[2])
 	assert.For(ctx, "deep equals different value").That(values[0]).DeepNotEquals(values[3])

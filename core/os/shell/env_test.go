@@ -22,12 +22,12 @@ import (
 )
 
 func TestEmptyEnv(t *testing.T) {
-	ctx, env := assert.Context(t), shell.NewEnv()
+	ctx, env := assert.To(t), shell.NewEnv()
 	assert.For(ctx, "Vars").ThatSlice(env.Vars()).Equals([]string{})
 }
 
 func TestEnvSet(t *testing.T) {
-	ctx, env := assert.Context(t), shell.NewEnv()
+	ctx, env := assert.To(t), shell.NewEnv()
 	env.Set("cat", "meow").
 		Set("dog", "woof").
 		Set("fox", "").
@@ -41,7 +41,7 @@ func TestEnvSet(t *testing.T) {
 }
 
 func TestEnvGet(t *testing.T) {
-	ctx, env := assert.Context(t), shell.NewEnv()
+	ctx, env := assert.To(t), shell.NewEnv()
 	env.Set("cat", "meow").
 		Set("dog", "woof").
 		Set("fox", "").
@@ -53,7 +53,7 @@ func TestEnvGet(t *testing.T) {
 }
 
 func TestEnvExists(t *testing.T) {
-	ctx, env := assert.Context(t), shell.NewEnv()
+	ctx, env := assert.To(t), shell.NewEnv()
 	env.Set("cat", "meow").
 		Set("dog", "woof").
 		Set("fox", "").
@@ -66,7 +66,7 @@ func TestEnvExists(t *testing.T) {
 }
 
 func TestEnvAddPathStart(t *testing.T) {
-	ctx, env := assert.Context(t), shell.NewEnv()
+	ctx, env := assert.To(t), shell.NewEnv()
 	env.PathListSeparator = ':'
 	env.Set("aaa", "xxx").
 		Set("bbb", "").
@@ -86,7 +86,7 @@ func TestEnvAddPathStart(t *testing.T) {
 }
 
 func TestEnvAddPathEnd(t *testing.T) {
-	ctx, env := assert.Context(t), shell.NewEnv()
+	ctx, env := assert.To(t), shell.NewEnv()
 	env.PathListSeparator = ':'
 	env.Set("aaa", "xxx").
 		Set("bbb", "").

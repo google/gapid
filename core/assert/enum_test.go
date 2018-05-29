@@ -106,7 +106,7 @@ func (v *testEnum) UnmarshalJSON(bytes []byte) error {
 
 // An example of testing enum values
 func ExampleEnum() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	for _, test := range enumTests {
 		assert.For(ctx, test.name).ThatEnum(&test.value).HasName(test.name)
 	}

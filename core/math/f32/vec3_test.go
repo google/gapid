@@ -22,7 +22,7 @@ import (
 )
 
 func TestV3DSqrMagnitude(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		r float32
@@ -38,7 +38,7 @@ func TestV3DSqrMagnitude(t *testing.T) {
 }
 
 func TestV3DMagnitude(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		r float32
@@ -54,7 +54,7 @@ func TestV3DMagnitude(t *testing.T) {
 }
 
 func TestV3DScale(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		s float32
@@ -70,7 +70,7 @@ func TestV3DScale(t *testing.T) {
 }
 
 func TestV3DNormalize(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		r f32.Vec3
@@ -85,7 +85,7 @@ func TestV3DNormalize(t *testing.T) {
 }
 
 func TestV3DW(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		s float32
@@ -99,7 +99,7 @@ func TestV3DW(t *testing.T) {
 }
 
 func TestAdd3D(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		a f32.Vec3
 		b f32.Vec3
@@ -116,7 +116,7 @@ func TestAdd3D(t *testing.T) {
 }
 
 func TestSub3D(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		a f32.Vec3
 		b f32.Vec3
@@ -133,7 +133,7 @@ func TestSub3D(t *testing.T) {
 }
 
 func TestCross3D(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, test := range []struct {
 		a f32.Vec3
 		b f32.Vec3

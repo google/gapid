@@ -23,7 +23,7 @@ import (
 )
 
 func TestBinaryXmlDecodingAndEncoding(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, fn := range []string{
 		"testdata/manifest1.binxml",
 		"testdata/manifest2.binxml",
@@ -43,7 +43,7 @@ func TestBinaryXmlDecodingAndEncoding(t *testing.T) {
 }
 
 func TestDimension(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	for _, fn := range []string{
 		"testdata/manifest7.binxml",
 	} {

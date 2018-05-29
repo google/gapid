@@ -28,7 +28,7 @@ var source = `# This is a H1 heading`
 type tok struct{ Text, Kind string }
 
 func TestScanner(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 
 	B := func() tok { return tok{"*", "token.Bullet"} }
 	H := func(t string) tok { return tok{t, "token.Heading"} }

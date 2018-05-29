@@ -22,7 +22,7 @@ import (
 
 // An example of testing errors
 func ExampleErrors() {
-	ctx := assert.Context(nil)
+	ctx := assert.To(nil)
 	err := errors.New("failure")
 	otherErr := errors.New("other failure")
 	assert.For(ctx, "nil succeeded").ThatError(nil).Succeeded()

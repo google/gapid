@@ -21,7 +21,7 @@ import (
 )
 
 func TestParseLog(t *testing.T) {
-	ctx := assert.Context(t)
+	ctx := assert.To(t)
 	str := `ǁa5eaebbe90d60b560e08a6750958755a58e6f999ǀBen Clayton <bclayton@google.com>ǀMerge pull request #157 from google/fix_freetypeǀUpdate freetype path and fix for breaking changes.
   ǁf3cdfb4d9b662e0d66b5779d02370115e136a008ǀBen ClaytonǀUpdate freetype path and fix for breaking changes.ǀ
   ǁ92ee22e53df7b361224670cf0f5ce4b12cdbc040ǀBen Clayton <bclayton@google.com>ǀMerge pull request #154 from google/recreate_ctrlsǀAdd recreateControls flag to the OnDataChanged list/tree event.
