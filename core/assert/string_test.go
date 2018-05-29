@@ -18,11 +18,11 @@ import "github.com/google/gapid/core/assert"
 
 // An example of testing string equality
 func ExampleStringEquals() {
-	ctx := assert.To(nil)
-	assert.For(ctx, `"a" Equals "a"`).ThatString("a").Equals("a")
-	assert.For(ctx, `"a" Equals "b"`).ThatString("a").Equals("b")
-	assert.For(ctx, `"a" NotEquals "a"`).ThatString("a").NotEquals("a")
-	assert.For(ctx, `"a" NotEquals "b"`).ThatString("a").NotEquals("b")
+	assert := assert.To(nil)
+	assert.For(`"a" Equals "a"`).ThatString("a").Equals("a")
+	assert.For(`"a" Equals "b"`).ThatString("a").Equals("b")
+	assert.For(`"a" NotEquals "a"`).ThatString("a").NotEquals("a")
+	assert.For(`"a" NotEquals "b"`).ThatString("a").NotEquals("b")
 	// Output:
 	// Error:"a" Equals "b"
 	//     Got          `a`
@@ -35,13 +35,13 @@ func ExampleStringEquals() {
 
 // An example of testing partial string equality
 func ExampleStringFragments() {
-	ctx := assert.To(nil)
-	assert.For(ctx, `"abc" Contains "b"`).ThatString("abc").Contains("b")
-	assert.For(ctx, `"abc" Contains "d"`).ThatString("abc").Contains("d")
-	assert.For(ctx, `"abc" HasPrefix "a"`).ThatString("abc").HasPrefix("a")
-	assert.For(ctx, `"abc" HasPrefix "b"`).ThatString("abc").HasPrefix("b")
-	assert.For(ctx, `"abc" HasSuffix "c"`).ThatString("abc").HasSuffix("c")
-	assert.For(ctx, `"abc" HasSuffix "b"`).ThatString("abc").HasSuffix("b")
+	assert := assert.To(nil)
+	assert.For(`"abc" Contains "b"`).ThatString("abc").Contains("b")
+	assert.For(`"abc" Contains "d"`).ThatString("abc").Contains("d")
+	assert.For(`"abc" HasPrefix "a"`).ThatString("abc").HasPrefix("a")
+	assert.For(`"abc" HasPrefix "b"`).ThatString("abc").HasPrefix("b")
+	assert.For(`"abc" HasSuffix "c"`).ThatString("abc").HasSuffix("c")
+	assert.For(`"abc" HasSuffix "b"`).ThatString("abc").HasSuffix("b")
 	// Output:
 	// Error:"abc" Contains "d"
 	//     Got             `abc`
@@ -56,9 +56,9 @@ func ExampleStringFragments() {
 
 // An example of testing non strings as strings
 func ExampleStringTypes() {
-	ctx := assert.To(nil)
-	assert.For(ctx, `"abc" Equals "a"`).ThatString([]byte{'a', 'b', 'c'}).Equals("a")
-	assert.For(ctx, `10 Equals "10"`).ThatString(10).Equals("10")
+	assert := assert.To(nil)
+	assert.For(`"abc" Equals "a"`).ThatString([]byte{'a', 'b', 'c'}).Equals("a")
+	assert.For(`10 Equals "10"`).ThatString(10).Equals("10")
 	// Output:
 	// Error:"abc" Equals "a"
 	//     Got       `abc`

@@ -22,7 +22,7 @@ import (
 )
 
 func TestV4DSqrMagnitude(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f64.Vec4
 		r float64
@@ -34,12 +34,12 @@ func TestV4DSqrMagnitude(t *testing.T) {
 		{f64.Vec4{0, 0, 0, -4}, 16},
 		{f64.Vec4{1, 1, 1, 1}, 4},
 	} {
-		assert.For(ctx, "%v.SqrMagnitude", test.v).That(test.v.SqrMagnitude()).Equals(test.r)
+		assert.For("%v.SqrMagnitude", test.v).That(test.v.SqrMagnitude()).Equals(test.r)
 	}
 }
 
 func TestV4DMagnitude(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f64.Vec4
 		r float64
@@ -51,12 +51,12 @@ func TestV4DMagnitude(t *testing.T) {
 		{f64.Vec4{0, 0, 0, -4}, 4},
 		{f64.Vec4{1, 1, 1, 1}, 2},
 	} {
-		assert.For(ctx, "%v.Magnitude", test.v).That(test.v.Magnitude()).Equals(test.r)
+		assert.For("%v.Magnitude", test.v).That(test.v.Magnitude()).Equals(test.r)
 	}
 }
 
 func TestV4DScale(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f64.Vec4
 		s float64
@@ -68,12 +68,12 @@ func TestV4DScale(t *testing.T) {
 		{f64.Vec4{0, 0, 0, 4}, -4, f64.Vec4{0, 0, 0, -16}},
 		{f64.Vec4{1, 1, 1, 1}, 0, f64.Vec4{0, 0, 0, 0}},
 	} {
-		assert.For(ctx, "%v.Scale", test.v).That(test.v.Scale(test.s)).Equals(test.r)
+		assert.For("%v.Scale", test.v).That(test.v.Scale(test.s)).Equals(test.r)
 	}
 }
 
 func TestV4DNormalize(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f64.Vec4
 		r f64.Vec4
@@ -84,12 +84,12 @@ func TestV4DNormalize(t *testing.T) {
 		{f64.Vec4{0, 0, 0, -4}, f64.Vec4{0, 0, 0, -1}},
 		{f64.Vec4{1, 2, -2, 4}, f64.Vec4{1. / 5, 2. / 5, -2. / 5, 4. / 5}},
 	} {
-		assert.For(ctx, "%v.Normalize", test.v).That(test.v.Normalize()).Equals(test.r)
+		assert.For("%v.Normalize", test.v).That(test.v.Normalize()).Equals(test.r)
 	}
 }
 
 func TestV4DXYZ(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f64.Vec4
 		r f64.Vec3
@@ -97,12 +97,12 @@ func TestV4DXYZ(t *testing.T) {
 		{f64.Vec4{0, 0, 0, 0}, f64.Vec3{0, 0, 0}},
 		{f64.Vec4{1, 2, 3, 4}, f64.Vec3{1, 2, 3}},
 	} {
-		assert.For(ctx, "%v.V3D", test.v).That(test.v.XYZ()).Equals(test.r)
+		assert.For("%v.V3D", test.v).That(test.v.XYZ()).Equals(test.r)
 	}
 }
 
 func TestAdd4D(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		a f64.Vec4
 		b f64.Vec4
@@ -113,13 +113,13 @@ func TestAdd4D(t *testing.T) {
 		{f64.Vec4{0, 0, 0, 0}, f64.Vec4{4, 3, 2, 1}, f64.Vec4{4, 3, 2, 1}},
 		{f64.Vec4{1, 2, 3, 4}, f64.Vec4{-1, -2, -3, -4}, f64.Vec4{0, 0, 0, 0}},
 	} {
-		assert.For(ctx, "Add4D(%v, %v)", test.a, test.b).
+		assert.For("Add4D(%v, %v)", test.a, test.b).
 			That(f64.Add4D(test.a, test.b)).Equals(test.r)
 	}
 }
 
 func TestSub4D(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		a f64.Vec4
 		b f64.Vec4
@@ -130,7 +130,7 @@ func TestSub4D(t *testing.T) {
 		{f64.Vec4{0, 0, 0, 0}, f64.Vec4{4, 3, 2, 1}, f64.Vec4{-4, -3, -2, -1}},
 		{f64.Vec4{1, 2, 3, 4}, f64.Vec4{-1, -2, -3, -4}, f64.Vec4{2, 4, 6, 8}},
 	} {
-		assert.For(ctx, "Sub4D(%v, %v)", test.a, test.b).
+		assert.For("Sub4D(%v, %v)", test.a, test.b).
 			That(f64.Sub4D(test.a, test.b)).Equals(test.r)
 	}
 }

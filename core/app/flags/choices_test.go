@@ -81,7 +81,7 @@ func (v Villain) String() string {
 }
 
 func TestChoiceParsing(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 
 	for _, cs := range []struct {
 		args []string
@@ -105,11 +105,11 @@ func TestChoiceParsing(t *testing.T) {
 		flags.Bind("", verb, "")
 		err := flags.Raw.Parse(cs.args)
 		if cs.ok {
-			assert.For(ctx, "err").ThatError(err).Succeeded()
-			assert.For(ctx, "str").ThatString(verb.Str).Equals(cs.s)
-			assert.For(ctx, "hero").That(verb.Hero).Equals(cs.h)
+			assert.For("err").ThatError(err).Succeeded()
+			assert.For("str").ThatString(verb.Str).Equals(cs.s)
+			assert.For("hero").That(verb.Hero).Equals(cs.h)
 		} else {
-			assert.For(ctx, "err").ThatError(err).Failed()
+			assert.For("err").ThatError(err).Failed()
 		}
 	}
 }

@@ -22,7 +22,7 @@ import (
 )
 
 func TestV3DSqrMagnitude(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		r float32
@@ -33,12 +33,12 @@ func TestV3DSqrMagnitude(t *testing.T) {
 		{f32.Vec3{0, 0, -3}, 9},
 		{f32.Vec3{1, 1, 1}, 3},
 	} {
-		assert.For(ctx, "%v.SqrMagnitude", test.v).That(test.v.SqrMagnitude()).Equals(test.r)
+		assert.For("%v.SqrMagnitude", test.v).That(test.v.SqrMagnitude()).Equals(test.r)
 	}
 }
 
 func TestV3DMagnitude(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		r float32
@@ -49,12 +49,12 @@ func TestV3DMagnitude(t *testing.T) {
 		{f32.Vec3{0, 0, -3}, 3},
 		{f32.Vec3{1, 1, 1}, f32.Sqrt(3)},
 	} {
-		assert.For(ctx, "%v.Magnitude", test.v).That(test.v.Magnitude()).Equals(test.r)
+		assert.For("%v.Magnitude", test.v).That(test.v.Magnitude()).Equals(test.r)
 	}
 }
 
 func TestV3DScale(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		s float32
@@ -65,12 +65,12 @@ func TestV3DScale(t *testing.T) {
 		{f32.Vec3{0, 0, 3}, -3, f32.Vec3{0, 0, -9}},
 		{f32.Vec3{1, 1, 1}, 0, f32.Vec3{0, 0, 0}},
 	} {
-		assert.For(ctx, "%v.Scale", test.v).That(test.v.Scale(test.s)).Equals(test.r)
+		assert.For("%v.Scale", test.v).That(test.v.Scale(test.s)).Equals(test.r)
 	}
 }
 
 func TestV3DNormalize(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		r f32.Vec3
@@ -80,12 +80,12 @@ func TestV3DNormalize(t *testing.T) {
 		{f32.Vec3{0, 0, 3}, f32.Vec3{0, 0, 1}},
 		{f32.Vec3{1, 2, -2}, f32.Vec3{1. / 3, 2. / 3, -2. / 3}},
 	} {
-		assert.For(ctx, "%v.Normalize", test.v).That(test.v.Normalize()).Equals(test.r)
+		assert.For("%v.Normalize", test.v).That(test.v.Normalize()).Equals(test.r)
 	}
 }
 
 func TestV3DW(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		v f32.Vec3
 		s float32
@@ -94,12 +94,12 @@ func TestV3DW(t *testing.T) {
 		{f32.Vec3{0, 0, 0}, -4, f32.Vec4{0, 0, 0, -4}},
 		{f32.Vec3{1, 2, 3}, 4, f32.Vec4{1, 2, 3, 4}},
 	} {
-		assert.For(ctx, "%v.W", test.v).That(test.v.W(test.s)).Equals(test.r)
+		assert.For("%v.W", test.v).That(test.v.W(test.s)).Equals(test.r)
 	}
 }
 
 func TestAdd3D(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		a f32.Vec3
 		b f32.Vec3
@@ -110,13 +110,13 @@ func TestAdd3D(t *testing.T) {
 		{f32.Vec3{0, 0, 0}, f32.Vec3{3, 2, 1}, f32.Vec3{3, 2, 1}},
 		{f32.Vec3{1, 2, 3}, f32.Vec3{-1, -2, -3}, f32.Vec3{0, 0, 0}},
 	} {
-		assert.For(ctx, "Add3D(%v, %v)", test.a, test.b).
+		assert.For("Add3D(%v, %v)", test.a, test.b).
 			That(f32.Add3D(test.a, test.b)).Equals(test.r)
 	}
 }
 
 func TestSub3D(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		a f32.Vec3
 		b f32.Vec3
@@ -127,13 +127,13 @@ func TestSub3D(t *testing.T) {
 		{f32.Vec3{0, 0, 0}, f32.Vec3{3, 2, 1}, f32.Vec3{-3, -2, -1}},
 		{f32.Vec3{1, 2, 3}, f32.Vec3{-1, -2, -3}, f32.Vec3{2, 4, 6}},
 	} {
-		assert.For(ctx, "Sub3D(%v, %v)", test.a, test.b).
+		assert.For("Sub3D(%v, %v)", test.a, test.b).
 			That(f32.Sub3D(test.a, test.b)).Equals(test.r)
 	}
 }
 
 func TestCross3D(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		a f32.Vec3
 		b f32.Vec3
@@ -144,7 +144,7 @@ func TestCross3D(t *testing.T) {
 		{f32.Vec3{0, 2, 0}, f32.Vec3{0, 0, 5}, f32.Vec3{10, 0, 0}},
 		{f32.Vec3{0, 0, 3}, f32.Vec3{6, 0, 0}, f32.Vec3{0, 18, 0}},
 	} {
-		assert.For(ctx, "Cross3D(%v, %v)", test.a, test.b).
+		assert.For("Cross3D(%v, %v)", test.a, test.b).
 			That(f32.Cross3D(test.a, test.b)).Equals(test.r)
 	}
 }

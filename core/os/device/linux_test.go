@@ -22,7 +22,7 @@ import (
 )
 
 func TestLinuxOS(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, test := range []struct {
 		major int32
 		minor int32
@@ -31,11 +31,11 @@ func TestLinuxOS(t *testing.T) {
 		{major: 1, minor: 3, name: "Ubuntu"},
 	} {
 		os := device.LinuxOS(test.name, test.major, test.minor)
-		assert.For(ctx, "OS Kind").That(os.Kind).Equals(device.Linux)
-		assert.For(ctx, "OS Name").That(os.Name).Equals(test.name)
-		assert.For(ctx, "OS Build").That(os.Build).Equals("")
-		assert.For(ctx, "OS Major").That(os.Major).Equals(test.major)
-		assert.For(ctx, "OS Minor").That(os.Minor).Equals(test.minor)
-		assert.For(ctx, "OS Point").That(os.Point).Equals(int32(0))
+		assert.For("OS Kind").That(os.Kind).Equals(device.Linux)
+		assert.For("OS Name").That(os.Name).Equals(test.name)
+		assert.For("OS Build").That(os.Build).Equals("")
+		assert.For("OS Major").That(os.Major).Equals(test.major)
+		assert.For("OS Minor").That(os.Minor).Equals(test.minor)
+		assert.For("OS Point").That(os.Point).Equals(int32(0))
 	}
 }

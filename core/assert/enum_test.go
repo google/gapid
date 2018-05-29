@@ -106,13 +106,13 @@ func (v *testEnum) UnmarshalJSON(bytes []byte) error {
 
 // An example of testing enum values
 func ExampleEnum() {
-	ctx := assert.To(nil)
+	assert := assert.To(nil)
 	for _, test := range enumTests {
-		assert.For(ctx, test.name).ThatEnum(&test.value).HasName(test.name)
+		assert.For(test.name).ThatEnum(&test.value).HasName(test.name)
 	}
 	var enum testEnum
-	assert.For(ctx, `"A"`).ThatEnum(&enum).CannotUnmarshal(`"A"`)
-	assert.For(ctx, "0").ThatEnum(&enum).CannotUnmarshal(`0`)
+	assert.For(`"A"`).ThatEnum(&enum).CannotUnmarshal(`"A"`)
+	assert.For("0").ThatEnum(&enum).CannotUnmarshal(`0`)
 
 	// Output:
 	// Error:BadParse
