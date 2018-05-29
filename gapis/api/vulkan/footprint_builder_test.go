@@ -45,11 +45,11 @@ func TestSubBinding(t *testing.T) {
 	labelBase := newResBinding(ctx, nil, 0, resSize, newLabel())
 
 	invalidSubBoundData := func(offset, size uint64, base *resBinding) {
-		assert.To(t).For("Invalid range Offset: %v, size: %v on base: %v, expect return nil",
+		assert.For(ctx, "Invalid range Offset: %v, size: %v on base: %v, expect return nil",
 			offset, size, base).That(newSubBindingForTest(ctx, base, offset, size) == nil).Equals(true)
 	}
 	validSubBoundData := func(offset, size uint64, base, expected *resBinding) {
-		assert.To(t).For("Offset: %v, size: %v, on base: %v, expect valid subBoundData",
+		assert.For(ctx, "Offset: %v, size: %v, on base: %v, expect valid subBoundData",
 			offset, size, base).That(reflect.DeepEqual(*expected, *(newSubBindingForTest(ctx,
 			base, offset, size)))).Equals(true)
 	}

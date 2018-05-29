@@ -21,31 +21,32 @@ import (
 )
 
 func TestMutex(t *testing.T) {
+	assert := assert.To(t)
 	ReleaseAllLocks()
 	defer ReleaseAllLocks()
 	done := make(chan bool)
 
 	expectLocked := func(m *Mutex, expectResult bool) {
 		locked := m.Locked()
-		assert.To(t).For("Mutex.Locked(), expect result: %v, actual result: %v", expectResult, locked).That(locked).Equals(expectResult)
+		assert.For("Mutex.Locked(), expect result: %v, actual result: %v", expectResult, locked).That(locked).Equals(expectResult)
 	}
 	expectTryLockInMutex := func(m *Mutex, expectResult bool) {
 		locked := m.TryLock()
-		assert.To(t).For("Mutex.TryLock(), file: %s, expect result: %v, actual result: %v", m.fm.p, expectResult, locked).That(locked).Equals(expectResult)
+		assert.For("Mutex.TryLock(), file: %s, expect result: %v, actual result: %v", m.fm.p, expectResult, locked).That(locked).Equals(expectResult)
 	}
 	expectUnlock := func(m *Mutex, expectResult bool) {
 		unlocked := m.Unlock()
-		assert.To(t).For("Mutex.Unlock(), file: %s, expect result: %v, actual result: %v", m.fm.p, expectResult, unlocked).That(unlocked).Equals(expectResult)
+		assert.For("Mutex.Unlock(), file: %s, expect result: %v, actual result: %v", m.fm.p, expectResult, unlocked).That(unlocked).Equals(expectResult)
 	}
 	expectTryLock := func(n string, expectLocked bool) *Mutex {
 		m := TryLock(n)
 		locked := m.Locked()
-		assert.To(t).For("TryLock(%s), file: %v, expectLocked: %v, actual locked: %v", n, m.fm.p, expectLocked, locked).That(locked).Equals(expectLocked)
+		assert.For("TryLock(%s), file: %v, expectLocked: %v, actual locked: %v", n, m.fm.p, expectLocked, locked).That(locked).Equals(expectLocked)
 		return m
 	}
 	mustLock := func(n string) *Mutex {
 		m := Lock(n)
-		assert.To(t).For("Lock(%s), expect locked, actual locked: %v", m.Locked()).That(m.Locked()).Equals(true)
+		assert.For("Lock(%s), expect locked, actual locked: %v", m.Locked()).That(m.Locked()).Equals(true)
 		return m
 	}
 
@@ -104,5 +105,5 @@ func TestMutex(t *testing.T) {
 	expectUnlock(dflB, true)
 	expectUnlock(dflC, true)
 	err := ReleaseAllLocks()
-	assert.To(t).For("ReleaseAllLocks should succeed").That(err).IsNil()
+	assert.For("ReleaseAllLocks should succeed").That(err).IsNil()
 }

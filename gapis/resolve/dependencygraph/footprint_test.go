@@ -48,10 +48,10 @@ func TestFootprintAddAndGetBehavior(t *testing.T) {
 	for bi, b := range behaviors {
 		i := ft.BehaviorIndex(ctx, b.Owner)
 		if bi == 4 {
-			assert.To(t).For("Behavior Index should be %v", 13).That(
+			assert.For(ctx, "Behavior Index should be %v", 13).That(
 				i).Equals(uint64(13))
 		} else {
-			assert.To(t).For("Behavior Index should be %v", bi).That(
+			assert.For(ctx, "Behavior Index should be %v", bi).That(
 				i).Equals(uint64(bi))
 		}
 	}

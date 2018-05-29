@@ -22,6 +22,8 @@ import (
 )
 
 func TestUnpackData(t *testing.T) {
+	assert := assert.To(t)
+
 	// Expect valid unpacked data with a 2x2x1 image
 	valid := func(src []uint8, srcFmt, dstFmt VkFormat, aspect VkImageAspectFlagBits, expected []uint8) {
 		var sf *image.Format
@@ -36,8 +38,8 @@ func TestUnpackData(t *testing.T) {
 		df, _ := getImageFormatFromVulkanFormat(dstFmt)
 		r, err := unpackData(src, sf, df)
 
-		if assert.To(t).For("srcFmt %v dstFmt %v", srcFmt, dstFmt).ThatError(err).Succeeded() {
-			assert.To(t).For("srcFmt %v dstFmt %v", srcFmt, dstFmt).ThatSlice(r).Equals(expected)
+		if assert.For("srcFmt %v dstFmt %v", srcFmt, dstFmt).ThatError(err).Succeeded() {
+			assert.For("srcFmt %v dstFmt %v", srcFmt, dstFmt).ThatSlice(r).Equals(expected)
 		}
 	}
 

@@ -25,6 +25,7 @@ import (
 )
 
 func TestFromBits(t *testing.T) {
+	assert := assert.To(t)
 	var checks = map[string]float64{
 		"0 00000 000000":     0.0,
 		"0 00000 0000000000": 0.0,
@@ -82,12 +83,12 @@ func TestFromBits(t *testing.T) {
 	for bits, expected := range checks {
 		// Parse the string value and check it is in the expected format.
 		v, err := strconv.ParseUint(strings.Replace(bits, " ", "", -1), 2, 64)
-		assert.To(t).For("err").ThatError(err).Succeeded()
+		assert.For("err").ThatError(err).Succeeded()
 		parts := strings.Split(bits, " ")
-		assert.To(t).For("split").That(len(parts)).Equals(3)
+		assert.For("split").That(len(parts)).Equals(3)
 		signBits, expBits, manBits := len(parts[0]), uint32(len(parts[1])), uint32(len(parts[2]))
-		assert.To(t).For("signBits").That(signBits).Equals(1)
+		assert.For("signBits").That(signBits).Equals(1)
 
-		assert.To(t).For("Expand %v", bits).That(f64.FromBits(v, expBits, manBits)).Equals(expected)
+		assert.For("Expand %v", bits).That(f64.FromBits(v, expBits, manBits)).Equals(expected)
 	}
 }

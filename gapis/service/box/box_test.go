@@ -236,7 +236,7 @@ func TestBoxSimpleTypes(t *testing.T) {
     }
   }
 }`
-	assert.To(t).For("NewType(structA)").ThatString(got).Equals(expect)
+	assert.For(t, "NewType(structA)").ThatString(got).Equals(expect)
 }
 
 func TestBoxUnboxStructB(t *testing.T) {
@@ -246,7 +246,7 @@ func TestBoxUnboxStructB(t *testing.T) {
 	unboxed := boxed.Get()
 	var got StructB
 	reflect.ValueOf(&got).Elem().Set(reflect.ValueOf(unboxed))
-	assert.To(t).For("unboxed").That(got).DeepEquals(val)
+	assert.For(t, "unboxed").That(got).DeepEquals(val)
 }
 
 func TestBoxUnboxStructA(t *testing.T) {
@@ -266,8 +266,8 @@ func TestBoxUnboxStructA(t *testing.T) {
 	boxed := box.NewValue(val)
 	var unboxed StructA
 	err := boxed.AssignTo(&unboxed)
-	if assert.To(t).For("AssignTo").ThatError(err).Succeeded() {
-		assert.To(t).For("unboxed").That(unboxed).DeepEquals(val)
+	if assert.For(t, "AssignTo").ThatError(err).Succeeded() {
+		assert.For(t, "unboxed").That(unboxed).DeepEquals(val)
 	}
 }
 
@@ -305,7 +305,7 @@ func TestBoxCyclicType(t *testing.T) {
     }
   }
 }`
-	assert.To(t).For("NewType(Struct)").ThatString(got).Equals(expect)
+	assert.For(t, "NewType(Struct)").ThatString(got).Equals(expect)
 }
 
 func TestBoxUnboxCyclic(t *testing.T) {
@@ -321,8 +321,8 @@ func TestBoxUnboxCyclic(t *testing.T) {
 	boxed := box.NewValue(val)
 	var unboxed Cyclic
 	err := boxed.AssignTo(&unboxed)
-	if assert.To(t).For("AssignTo").ThatError(err).Succeeded() {
-		assert.To(t).For("unboxed").That(unboxed).DeepEquals(val)
+	if assert.For(t, "AssignTo").ThatError(err).Succeeded() {
+		assert.For(t, "unboxed").That(unboxed).DeepEquals(val)
 	}
 }
 
@@ -354,7 +354,7 @@ func TestBoxMemoryType(t *testing.T) {
     }
   }
 }`
-	assert.To(t).For("NewType(Struct)").ThatString(got).Equals(expect)
+	assert.For(t, "NewType(Struct)").ThatString(got).Equals(expect)
 }
 
 func TestBoxUnboxMemory(t *testing.T) {
@@ -365,8 +365,8 @@ func TestBoxUnboxMemory(t *testing.T) {
 	boxed := box.NewValue(val)
 	var unboxed Memory
 	err := boxed.AssignTo(&unboxed)
-	if assert.To(t).For("AssignTo").ThatError(err).Succeeded() {
-		assert.To(t).For("unboxed").That(unboxed).DeepEquals(val)
+	if assert.For(t, "AssignTo").ThatError(err).Succeeded() {
+		assert.For(t, "unboxed").That(unboxed).DeepEquals(val)
 	}
 }
 
@@ -391,7 +391,7 @@ func TestBoxUnboxDictionaryInContainer(t *testing.T) {
 	boxed := box.NewValue(val)
 	var unboxed DictInContainer
 	err := boxed.AssignTo(&unboxed)
-	if assert.To(t).For("AssignTo").ThatError(err).Succeeded() {
-		assert.To(t).For("unboxed").That(unboxed).DeepEquals(val)
+	if assert.For(t, "AssignTo").ThatError(err).Succeeded() {
+		assert.For(t, "unboxed").That(unboxed).DeepEquals(val)
 	}
 }
