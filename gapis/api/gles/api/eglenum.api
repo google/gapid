@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@analyze_usage
 enum EGLenum {
   EGL_ALPHA_FORMAT                               = 0x3088,
   EGL_ALPHA_FORMAT_NONPRE                        = 0x308B,

@@ -508,6 +508,7 @@ bitfield VkExternalSemaphoreHandleTypeFlagBits {
 type VkFlags VkExternalSemaphoreHandleTypeFlags
 
 @unused
+@analyze_usage
 bitfield VkFenceImportFlagBits {
   VK_FENCE_IMPORT_TEMPORARY_BIT     = 0x00000001,
   VK_FENCE_IMPORT_TEMPORARY_BIT_KHR = 0x000000001, // VK_FENCE_IMPORT_TEMPORARY_BIT,
@@ -530,6 +531,7 @@ bitfield VkPeerMemoryFeatureFlagBits {
 type VkFlags VkPeerMemoryFeatureFlags
 
 @unused
+@analyze_usage
 bitfield VkSemaphoreImportFlagBits {
   VK_SEMAPHORE_IMPORT_TEMPORARY_BIT     = 0x00000001,
   VK_SEMAPHORE_IMPORT_TEMPORARY_BIT_KHR = 0x00000001, // VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,

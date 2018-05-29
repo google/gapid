@@ -38,6 +38,7 @@ enum AndroidGraphicsBufferFormat {
   HAL_PIXEL_FORMAT_YCrCb_420_SP = 0x11, // NV21
 }
 
+@analyze_usage
 enum AndroidGraphicsBufferUsage {
   USAGE_SW_READ_NEVER   = 0x00000000,
   USAGE_SW_READ_RARELY  = 0x00000002,

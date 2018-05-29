@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@analyze_usage
 bitfield GLbitfield {
   GL_CURRENT_BIT                             = 0x00000001,
   GL_POINT_BIT                               = 0x00000002,

@@ -175,6 +175,41 @@ func buildConstantSets(api *semantic.API, mappings *resolver.Mappings) *Constant
 
 	constsets := map[semantic.Node]*int{}
 
+	for _, e := range api.Enums {
+		if e.Annotations.GetAnnotation("analyze_usage") == nil {
+			labels := analysis.Labels{}
+			for _, entry := range e.Entries {
+				value := uint64(0)
+				switch v := entry.Value.(type) {
+				case semantic.Int8Value:
+					value = uint64(v)
+				case semantic.Uint8Value:
+					value = uint64(v)
+				case semantic.Int16Value:
+					value = uint64(v)
+				case semantic.Uint16Value:
+					value = uint64(v)
+				case semantic.Int32Value:
+					value = uint64(v)
+				case semantic.Uint32Value:
+					value = uint64(v)
+				case semantic.Int64Value:
+					value = uint64(v)
+				case semantic.Uint64Value:
+					value = uint64(v)
+				default:
+					panic(fmt.Sprintf("Unsupported enum number type: %v", e.NumberType))
+				}
+				if l, ok := labels[value]; ok {
+					panic(fmt.Sprintf("Enum %v has multiple labels for value %v: %v, %v",
+						e.Named, value, l, entry.Named))
+				}
+				labels[value] = string(entry.Named)
+			}
+			constsets[e] = b.addLabels(labels, e.IsBitfield)
+		}
+	}
+
 	for _, f := range api.Functions {
 		for _, p := range f.FullParameters {
 			v, ok := a.Parameters[p]
@@ -185,10 +220,15 @@ func buildConstantSets(api *semantic.API, mappings *resolver.Mappings) *Constant
 			if !ok || len(ev.Labels) == 0 {
 				continue // Parameter wasn't an enum, or had no labels.
 			}
-			constsets[p] = b.addLabels(ev.Labels, ev.Ty.IsBitfield)
+			// Check if we already created a constset for this parameter type
+			if idx, ok := constsets[ev.Ty]; ok {
+				constsets[p] = idx
+			} else {
+				// This type has been annotated with "analyze_usage"
+				constsets[p] = b.addLabels(ev.Labels, ev.Ty.IsBitfield)
+			}
 		}
 	}
-
 	nl := nodeLabeler{
 		nodes: map[semantic.Node]analysis.Labels{},
 		seen:  map[analysis.Value]bool{},
@@ -203,12 +243,19 @@ func buildConstantSets(api *semantic.API, mappings *resolver.Mappings) *Constant
 	// Create constant sets for all the nodes.
 	for n, l := range nl.nodes {
 		isBitfield := false
+		var idx *int
 		if ty, err := semantic.TypeOf(n); err == nil {
 			if enum, ok := ty.(*semantic.Enum); ok {
+				if i, ok := constsets[enum]; ok {
+					idx = i
+				}
 				isBitfield = enum.IsBitfield
 			}
 		}
-		constsets[n] = b.addLabels(l, isBitfield)
+		if idx == nil {
+			idx = b.addLabels(l, isBitfield)
+		}
+		constsets[n] = idx
 	}
 
 	return &ConstantSets{
