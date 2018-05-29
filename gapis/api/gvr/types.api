@@ -236,6 +236,7 @@ enum gvr_arm_model_behavior {
 class gvr_user_prefs {}
 
 // Anonymous enum for miscellaneous integer constants.
+@analyze_usage
 enum gvr_enum {
   GVR_EXTERNAL_SURFACE_ID_NONE = 0xffffffff,
   GVR_BUFFER_INDEX_EXTERNAL_SURFACE = 0xffffffff,

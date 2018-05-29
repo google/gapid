@@ -145,6 +145,10 @@ import (
   func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
     return {{$name}}({{Template "Go.Decode" $.NumberType}})
   }
+
+  func {{$name}}Constants() int {
+    return {{ConstantSetIndex $}}
+  }
 {{end}}
 
 

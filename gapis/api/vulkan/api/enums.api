@@ -91,6 +91,7 @@ enum VkResult {
 }
 
 /// Structure type enumerant
+@analyze_usage
 enum VkStructureType {
   VK_STRUCTURE_TYPE_APPLICATION_INFO                          = 0,
   VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO                      = 1,
@@ -282,6 +283,7 @@ enum VkStructureType {
   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES        = 1000063000,
 }
 
+@analyze_usage
 enum VkObjectType {
   VK_OBJECT_TYPE_UNKNOWN                        = 0,
   VK_OBJECT_TYPE_INSTANCE                       = 1,

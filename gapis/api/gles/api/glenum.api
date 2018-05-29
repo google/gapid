@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+@analyze_usage
 enum GLenum {
   GL_TERMINATE_SEQUENCE_COMMAND_NV                              = 0x00000000,
   GL_NOP_COMMAND_NV                                             = 0x00000001,
