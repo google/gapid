@@ -23,11 +23,6 @@ import (
 // ** once all existing tests are converted
 // *************************************************************
 
-const (
-	expected  = "Got:      %+v¶Expected: %+v"
-	unmatched = "Got: %+v¶%s: %+v"
-)
-
 // Deprecated: For(m) is deprecated, use assert.To() instead.
 func For(t interface{}, msg string, args ...interface{}) *Assertion {
 	switch t := t.(type) {
