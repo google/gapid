@@ -52,8 +52,6 @@ type Reader interface {
 	Float64() float64
 	// String decodes and returns a string from the Reader.
 	String() string
-	// Simple decodes a Readable type from the Writer.
-	Simple(Readable)
 	// Decode a collection count from the stream.
 	Count() uint32
 	// If there is an error reading any input, all further reading returns the

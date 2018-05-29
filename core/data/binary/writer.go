@@ -51,8 +51,6 @@ type Writer interface {
 	Float64(float64)
 	// String encodes a string to the Writer.
 	String(string)
-	// Simple encodes a Writable type to the Writer.
-	Simple(Writable)
 	// If there is an error writing any output, all further writing becomes
 	// a no-op. Error() returns the error which stopped writing to the stream.
 	// If writing has not stopped it returns nil.
