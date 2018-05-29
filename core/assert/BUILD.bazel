@@ -18,7 +18,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "assertion.go",
-        "deprecated.go",
         "enum.go",
         "error.go",
         "float.go",
