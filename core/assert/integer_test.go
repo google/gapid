@@ -18,18 +18,18 @@ import "github.com/google/gapid/core/assert"
 
 // An example of testing integer values
 func ExampleInteger() {
-	ctx := assert.To(nil)
-	assert.For(ctx, "1 Equals 2").ThatInteger(1).Equals(2)
-	assert.For(ctx, "1 NotEquals 2").ThatInteger(1).NotEquals(2)
-	assert.For(ctx, "1 IsAtLeast 2").ThatInteger(1).IsAtLeast(2)
-	assert.For(ctx, "3 IsAtMost 4").ThatInteger(3).IsAtMost(4)
-	assert.For(ctx, "6 IsAtLeast 5").ThatInteger(6).IsAtLeast(5)
-	assert.For(ctx, "8 IsAtMost 7").ThatInteger(8).IsAtMost(7)
-	assert.For(ctx, "3 IsBetween [2, 4]").ThatInteger(3).IsBetween(2, 4)
-	assert.For(ctx, "3 IsBetween [3, 4]").ThatInteger(3).IsBetween(3, 4)
-	assert.For(ctx, "3 IsBetween [2, 3]").ThatInteger(3).IsBetween(2, 3)
-	assert.For(ctx, "3 IsBetween [4, 5]").ThatInteger(3).IsBetween(4, 5)
-	assert.For(ctx, "3 IsBetween [1, 2]").ThatInteger(3).IsBetween(1, 2)
+	assert := assert.To(nil)
+	assert.For("1 Equals 2").ThatInteger(1).Equals(2)
+	assert.For("1 NotEquals 2").ThatInteger(1).NotEquals(2)
+	assert.For("1 IsAtLeast 2").ThatInteger(1).IsAtLeast(2)
+	assert.For("3 IsAtMost 4").ThatInteger(3).IsAtMost(4)
+	assert.For("6 IsAtLeast 5").ThatInteger(6).IsAtLeast(5)
+	assert.For("8 IsAtMost 7").ThatInteger(8).IsAtMost(7)
+	assert.For("3 IsBetween [2, 4]").ThatInteger(3).IsBetween(2, 4)
+	assert.For("3 IsBetween [3, 4]").ThatInteger(3).IsBetween(3, 4)
+	assert.For("3 IsBetween [2, 3]").ThatInteger(3).IsBetween(2, 3)
+	assert.For("3 IsBetween [4, 5]").ThatInteger(3).IsBetween(4, 5)
+	assert.For("3 IsBetween [1, 2]").ThatInteger(3).IsBetween(1, 2)
 	// Output:
 	// Error:1 Equals 2
 	//     Got       1

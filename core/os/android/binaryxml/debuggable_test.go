@@ -23,7 +23,7 @@ import (
 )
 
 func TestSettingDebuggableFlag(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	for _, fn := range []string{
 		"testdata/manifest1.binxml",
 		"testdata/manifest2.binxml",
@@ -31,19 +31,19 @@ func TestSettingDebuggableFlag(t *testing.T) {
 		"testdata/manifest6.binxml",
 	} {
 		originalData, err := ioutil.ReadFile(fn)
-		assert.For(ctx, "err").ThatError(err).Succeeded()
+		assert.For("err").ThatError(err).Succeeded()
 
 		tree, err := decodeXmlTree(bytes.NewReader(originalData))
-		assert.For(ctx, "err").ThatError(err).Succeeded()
+		assert.For("err").ThatError(err).Succeeded()
 
-		assert.For(ctx, "xml").ThatString(tree.toXmlString()).DoesNotContain(`android:debuggable="true"`)
+		assert.For("xml").ThatString(tree.toXmlString()).DoesNotContain(`android:debuggable="true"`)
 		setManifestApplicationDebuggableAttributeToTrue(tree)
 
 		xmlString := tree.toXmlString()
-		assert.For(ctx, "xml").ThatString(xmlString).Contains(`android:debuggable="true"`)
+		assert.For("xml").ThatString(xmlString).Contains(`android:debuggable="true"`)
 
 		// Make sure we haven't broken the binary representation and that it still parses after the change.
 		_, err = decodeXmlTree(bytes.NewReader(tree.encode()))
-		assert.For(ctx, "err").ThatError(err).Succeeded()
+		assert.For("err").ThatError(err).Succeeded()
 	}
 }

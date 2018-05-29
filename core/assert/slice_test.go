@@ -18,22 +18,22 @@ import "github.com/google/gapid/core/assert"
 
 // An example of testing for slice lengths
 func ExampleSliceLength() {
-	ctx := assert.To(nil)
+	assert := assert.To(nil)
 	var nilSlice []string
 	emptySlice := []string{}
 	nonEmptySlice := []string{"one"}
-	assert.For(ctx, "nil is empty").ThatSlice(nilSlice).IsEmpty()
-	assert.For(ctx, "nil is not empty").ThatSlice(nilSlice).IsNotEmpty()
-	assert.For(ctx, "nil is length 0").ThatSlice(nilSlice).IsLength(0)
-	assert.For(ctx, "nil is length 1").ThatSlice(nilSlice).IsLength(1)
-	assert.For(ctx, "{} is empty").ThatSlice(emptySlice).IsEmpty()
-	assert.For(ctx, "{} is not empty").ThatSlice(emptySlice).IsNotEmpty()
-	assert.For(ctx, "{} is length 0").ThatSlice(emptySlice).IsLength(0)
-	assert.For(ctx, "{} is length 1").ThatSlice(emptySlice).IsLength(1)
-	assert.For(ctx, "values is empty").ThatSlice(nonEmptySlice).IsEmpty()
-	assert.For(ctx, "values is not empty").ThatSlice(nonEmptySlice).IsNotEmpty()
-	assert.For(ctx, "values is length 0").ThatSlice(nonEmptySlice).IsLength(0)
-	assert.For(ctx, "values is length 1").ThatSlice(nonEmptySlice).IsLength(1)
+	assert.For("nil is empty").ThatSlice(nilSlice).IsEmpty()
+	assert.For("nil is not empty").ThatSlice(nilSlice).IsNotEmpty()
+	assert.For("nil is length 0").ThatSlice(nilSlice).IsLength(0)
+	assert.For("nil is length 1").ThatSlice(nilSlice).IsLength(1)
+	assert.For("{} is empty").ThatSlice(emptySlice).IsEmpty()
+	assert.For("{} is not empty").ThatSlice(emptySlice).IsNotEmpty()
+	assert.For("{} is length 0").ThatSlice(emptySlice).IsLength(0)
+	assert.For("{} is length 1").ThatSlice(emptySlice).IsLength(1)
+	assert.For("values is empty").ThatSlice(nonEmptySlice).IsEmpty()
+	assert.For("values is not empty").ThatSlice(nonEmptySlice).IsNotEmpty()
+	assert.For("values is length 0").ThatSlice(nonEmptySlice).IsLength(0)
+	assert.For("values is length 1").ThatSlice(nonEmptySlice).IsLength(1)
 	// Output:
 	// Error:nil is not empty
 	//     Got             0
@@ -57,15 +57,15 @@ func ExampleSliceLength() {
 
 // An example of testing for slice equality
 func ExampleSliceEquals() {
-	ctx := assert.To(nil)
+	assert := assert.To(nil)
 	slice := []string{"a1", "a2"}
 	theSame := []string{"a1", "a2"}
 	longer := []string{"a1", "a2", "a3"}
 	different := []string{"a1", "a3"}
-	assert.For(ctx, "the same").ThatSlice(slice).Equals(theSame)
-	assert.For(ctx, "longer").ThatSlice(slice).Equals(longer)
-	assert.For(ctx, "shorter").ThatSlice(longer).Equals(slice)
-	assert.For(ctx, "different").ThatSlice(slice).Equals(different)
+	assert.For("the same").ThatSlice(slice).Equals(theSame)
+	assert.For("longer").ThatSlice(slice).Equals(longer)
+	assert.For("shorter").ThatSlice(longer).Equals(slice)
+	assert.For("different").ThatSlice(slice).Equals(different)
 	// Output:
 	// Error:longer
 	//       0 string `a1` ;
@@ -83,14 +83,14 @@ func ExampleSliceEquals() {
 // An example of testing for slice equality
 func ExampleSliceDeepEquals() {
 	// TODO: slices of a more complext type
-	ctx := assert.To(nil)
+	assert := assert.To(nil)
 	slice := []string{"a1", "a2"}
 	theSame := []string{"a1", "a2"}
 	longer := []string{"a1", "a2", "a3"}
 	different := []string{"a1", "a3"}
-	assert.For(ctx, "the same").ThatSlice(slice).DeepEquals(theSame)
-	assert.For(ctx, "longer").ThatSlice(slice).DeepEquals(longer)
-	assert.For(ctx, "different").ThatSlice(slice).DeepEquals(different)
+	assert.For("the same").ThatSlice(slice).DeepEquals(theSame)
+	assert.For("longer").ThatSlice(slice).DeepEquals(longer)
+	assert.For("different").ThatSlice(slice).DeepEquals(different)
 	// Output:
 	// Error:longer
 	//       0 string `a1` ;

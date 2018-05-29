@@ -63,31 +63,31 @@ func TestBatonRelay(t *testing.T) {
 }
 
 func TestBatonTryRelease(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	baton := task.NewBaton()
 	go baton.Acquire()
-	assert.For(ctx, "Baton TryRelease").That(baton.TryRelease(nil, ExpectNonBlocking)).Equals(true)
+	assert.For("Baton TryRelease").That(baton.TryRelease(nil, ExpectNonBlocking)).Equals(true)
 }
 
 func TestBatonTryReleaseBlocks(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	baton := task.NewBaton()
-	assert.For(ctx, "Baton TryRelease").That(baton.TryRelease(nil, ExpectNonBlocking)).Equals(false)
+	assert.For("Baton TryRelease").That(baton.TryRelease(nil, ExpectNonBlocking)).Equals(false)
 }
 
 func TestBatonTryAcquire(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	baton := task.NewBaton()
 	expect := 1
 	go baton.Release(expect)
 	got, ok := baton.TryAcquire(ExpectNonBlocking)
-	assert.For(ctx, "Baton TryAcquire").That(ok).Equals(true)
-	assert.For(ctx, "Baton value").That(got).Equals(expect)
+	assert.For("Baton TryAcquire").That(ok).Equals(true)
+	assert.For("Baton value").That(got).Equals(expect)
 }
 
 func TestBatonTryAcquireBlocks(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	baton := task.NewBaton()
 	_, ok := baton.TryAcquire(ExpectBlocking)
-	assert.For(ctx, "Baton TryAcquire").That(ok).Equals(false)
+	assert.For("Baton TryAcquire").That(ok).Equals(false)
 }

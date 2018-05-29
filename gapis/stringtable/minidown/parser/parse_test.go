@@ -23,7 +23,7 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 
 	B := func(c ...node.Node) node.Node { return &node.Block{Children: c} }
 	T := func(s string) node.Node { return &node.Text{Text: s} }
@@ -132,7 +132,7 @@ func TestParser(t *testing.T) {
 			B(T("This is an"), WS(), L(T("unclosed link"), nil), T("(target."))},
 	} {
 		got, errs := parser.Parse("test", test.source)
-		assert.For(ctx, test.source).ThatSlice(errs).IsEmpty()
-		assert.For(ctx, test.source).That(got).DeepEquals(test.expected)
+		assert.For(test.source).ThatSlice(errs).IsEmpty()
+		assert.For(test.source).That(got).DeepEquals(test.expected)
 	}
 }

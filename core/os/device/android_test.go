@@ -22,7 +22,7 @@ import (
 )
 
 func TestAndroidOS(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	const point int32 = 2
 	for _, test := range []struct {
 		major int32
@@ -48,11 +48,11 @@ func TestAndroidOS(t *testing.T) {
 		{major: 1, minor: 0, name: "Cupcake"},
 	} {
 		os := device.AndroidOS(test.major, test.minor, point)
-		assert.For(ctx, "OS Kind").That(os.Kind).Equals(device.Android)
-		assert.For(ctx, "OS Name").That(os.Name).Equals(test.name)
-		assert.For(ctx, "OS Build").That(os.Build).Equals("")
-		assert.For(ctx, "OS Major").That(os.Major).Equals(test.major)
-		assert.For(ctx, "OS Minor").That(os.Minor).Equals(test.minor)
-		assert.For(ctx, "OS Point").That(os.Point).Equals(point)
+		assert.For("OS Kind").That(os.Kind).Equals(device.Android)
+		assert.For("OS Name").That(os.Name).Equals(test.name)
+		assert.For("OS Build").That(os.Build).Equals("")
+		assert.For("OS Major").That(os.Major).Equals(test.major)
+		assert.For("OS Minor").That(os.Minor).Equals(test.minor)
+		assert.For("OS Point").That(os.Point).Equals(point)
 	}
 }

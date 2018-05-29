@@ -76,28 +76,28 @@ var conn *jdwp.Connection
 var thread jdwp.ThreadID
 
 func TestInvokeStringFormat(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	err := jdbg.Do(conn, thread, func(j *jdbg.JDbg) error {
 		res := j.Class("java/lang/String").Call("format", "%s says '%s' %d times",
 			[]interface{}{"bob", "hello world", 5}).Get()
-		assert.For(ctx, "res").That(res).Equals("bob says 'hello world' 5 times")
+		assert.For("res").That(res).Equals("bob says 'hello world' 5 times")
 		return nil
 	})
-	assert.For(ctx, "err").That(err).Equals(nil)
+	assert.For("err").That(err).Equals(nil)
 }
 
 func TestInvokeStaticMethod(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	err := jdbg.Do(conn, thread, func(j *jdbg.JDbg) error {
 		res := j.Class("Calculator").Call("Add", 3, 7).Get()
-		assert.For(ctx, "res").That(res).Equals(10)
+		assert.For("res").That(res).Equals(10)
 		return nil
 	})
-	assert.For(ctx, "err").That(err).Equals(nil)
+	assert.For("err").That(err).Equals(nil)
 }
 
 func TestInvokeMethod(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 	err := jdbg.Do(conn, thread, func(j *jdbg.JDbg) error {
 		calcTy := j.Class("Calculator")
 
@@ -107,9 +107,9 @@ func TestInvokeMethod(t *testing.T) {
 		}
 
 		res := calc.Call("Result").Get()
-		assert.For(ctx, "res").That(res).Equals(3 + 6 + 8)
+		assert.For("res").That(res).Equals(3 + 6 + 8)
 		return nil
 	})
-	assert.For(ctx, "err").That(err).Equals(nil)
+	assert.For("err").That(err).Equals(nil)
 
 }

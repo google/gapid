@@ -28,7 +28,7 @@ var source = `# This is a H1 heading`
 type tok struct{ Text, Kind string }
 
 func TestScanner(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 
 	B := func() tok { return tok{"*", "token.Bullet"} }
 	H := func(t string) tok { return tok{t, "token.Heading"} }
@@ -85,7 +85,7 @@ func TestScanner(t *testing.T) {
 		}},
 	} {
 		tokens, errs := scanner.Scan("test", test.source)
-		assert.For(ctx, test.source).ThatSlice(errs).IsEmpty()
+		assert.For(test.source).ThatSlice(errs).IsEmpty()
 
 		got := make([]tok, len(tokens))
 		for i, t := range tokens {
@@ -96,6 +96,6 @@ func TestScanner(t *testing.T) {
 				got[i] = tok{t.CST().Token().String(), fmt.Sprintf("%T", t)}
 			}
 		}
-		assert.For(ctx, test.source).That(got).DeepEquals(test.expected)
+		assert.For(test.source).That(got).DeepEquals(test.expected)
 	}
 }

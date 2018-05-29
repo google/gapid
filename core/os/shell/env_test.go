@@ -22,17 +22,17 @@ import (
 )
 
 func TestEmptyEnv(t *testing.T) {
-	ctx, env := assert.To(t), shell.NewEnv()
-	assert.For(ctx, "Vars").ThatSlice(env.Vars()).Equals([]string{})
+	assert, env := assert.To(t), shell.NewEnv()
+	assert.For("Vars").ThatSlice(env.Vars()).Equals([]string{})
 }
 
 func TestEnvSet(t *testing.T) {
-	ctx, env := assert.To(t), shell.NewEnv()
+	assert, env := assert.To(t), shell.NewEnv()
 	env.Set("cat", "meow").
 		Set("dog", "woof").
 		Set("fox", "").
 		Set("bird", "tweet")
-	assert.For(ctx, "Vars").ThatSlice(env.Vars()).Equals([]string{
+	assert.For("Vars").ThatSlice(env.Vars()).Equals([]string{
 		"cat=meow",
 		"dog=woof",
 		"fox",
@@ -41,32 +41,32 @@ func TestEnvSet(t *testing.T) {
 }
 
 func TestEnvGet(t *testing.T) {
-	ctx, env := assert.To(t), shell.NewEnv()
+	assert, env := assert.To(t), shell.NewEnv()
 	env.Set("cat", "meow").
 		Set("dog", "woof").
 		Set("fox", "").
 		Set("bird", "tweet")
-	assert.For(ctx, "Vars").ThatString(env.Get("cat")).Equals("meow")
-	assert.For(ctx, "Vars").ThatString(env.Get("dog")).Equals("woof")
-	assert.For(ctx, "Vars").ThatString(env.Get("bird")).Equals("tweet")
-	assert.For(ctx, "Vars").ThatString(env.Get("fox")).Equals("")
+	assert.For("Vars").ThatString(env.Get("cat")).Equals("meow")
+	assert.For("Vars").ThatString(env.Get("dog")).Equals("woof")
+	assert.For("Vars").ThatString(env.Get("bird")).Equals("tweet")
+	assert.For("Vars").ThatString(env.Get("fox")).Equals("")
 }
 
 func TestEnvExists(t *testing.T) {
-	ctx, env := assert.To(t), shell.NewEnv()
+	assert, env := assert.To(t), shell.NewEnv()
 	env.Set("cat", "meow").
 		Set("dog", "woof").
 		Set("fox", "").
 		Set("bird", "tweet")
-	assert.For(ctx, "Vars").That(env.Exists("cat")).Equals(true)
-	assert.For(ctx, "Vars").That(env.Exists("dog")).Equals(true)
-	assert.For(ctx, "Vars").That(env.Exists("fox")).Equals(true)
-	assert.For(ctx, "Vars").That(env.Exists("bird")).Equals(true)
-	assert.For(ctx, "Vars").That(env.Exists("fish")).Equals(false)
+	assert.For("Vars").That(env.Exists("cat")).Equals(true)
+	assert.For("Vars").That(env.Exists("dog")).Equals(true)
+	assert.For("Vars").That(env.Exists("fox")).Equals(true)
+	assert.For("Vars").That(env.Exists("bird")).Equals(true)
+	assert.For("Vars").That(env.Exists("fish")).Equals(false)
 }
 
 func TestEnvAddPathStart(t *testing.T) {
-	ctx, env := assert.To(t), shell.NewEnv()
+	assert, env := assert.To(t), shell.NewEnv()
 	env.PathListSeparator = ':'
 	env.Set("aaa", "xxx").
 		Set("bbb", "").
@@ -77,7 +77,7 @@ func TestEnvAddPathStart(t *testing.T) {
 		AddPathStart("ccc", "/blah", "/halb").
 		AddPathStart("ddd", "/blah", "/halb")
 
-	assert.For(ctx, "Vars").ThatSlice(env.Vars()).Equals([]string{
+	assert.For("Vars").ThatSlice(env.Vars()).Equals([]string{
 		"aaa=/blah:/halb:xxx",
 		"bbb=/blah:/halb",
 		"ccc=/blah:/halb:yyy",
@@ -86,7 +86,7 @@ func TestEnvAddPathStart(t *testing.T) {
 }
 
 func TestEnvAddPathEnd(t *testing.T) {
-	ctx, env := assert.To(t), shell.NewEnv()
+	assert, env := assert.To(t), shell.NewEnv()
 	env.PathListSeparator = ':'
 	env.Set("aaa", "xxx").
 		Set("bbb", "").
@@ -97,7 +97,7 @@ func TestEnvAddPathEnd(t *testing.T) {
 		AddPathEnd("ccc", "/blah", "/halb").
 		AddPathEnd("ddd", "/blah", "/halb")
 
-	assert.For(ctx, "Vars").ThatSlice(env.Vars()).Equals([]string{
+	assert.For("Vars").ThatSlice(env.Vars()).Equals([]string{
 		"aaa=xxx:/blah:/halb",
 		"bbb=/blah:/halb",
 		"ccc=yyy:/blah:/halb",

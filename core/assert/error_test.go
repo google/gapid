@@ -22,19 +22,19 @@ import (
 
 // An example of testing errors
 func ExampleErrors() {
-	ctx := assert.To(nil)
+	assert := assert.To(nil)
 	err := errors.New("failure")
 	otherErr := errors.New("other failure")
-	assert.For(ctx, "nil succeeded").ThatError(nil).Succeeded()
-	assert.For(ctx, "nil failed").ThatError(nil).Failed()
-	assert.For(ctx, "err succeeded").ThatError(err).Succeeded()
-	assert.For(ctx, "err failed").ThatError(err).Failed()
-	assert.For(ctx, "err equals").ThatError(err).Equals(err)
-	assert.For(ctx, "err not equals").ThatError(err).Equals(otherErr)
-	assert.For(ctx, "err deep equals").ThatError(err).DeepEquals(err)
-	assert.For(ctx, "err deep not equals").ThatError(err).DeepEquals(otherErr)
-	assert.For(ctx, "message").ThatError(err).HasMessage(err.Error())
-	assert.For(ctx, "wrong message").ThatError(err).HasMessage(otherErr.Error())
+	assert.For("nil succeeded").ThatError(nil).Succeeded()
+	assert.For("nil failed").ThatError(nil).Failed()
+	assert.For("err succeeded").ThatError(err).Succeeded()
+	assert.For("err failed").ThatError(err).Failed()
+	assert.For("err equals").ThatError(err).Equals(err)
+	assert.For("err not equals").ThatError(err).Equals(otherErr)
+	assert.For("err deep equals").ThatError(err).DeepEquals(err)
+	assert.For("err deep not equals").ThatError(err).DeepEquals(otherErr)
+	assert.For("message").ThatError(err).HasMessage(err.Error())
+	assert.For("wrong message").ThatError(err).HasMessage(otherErr.Error())
 	// Output:
 	// Error:nil failed
 	//     Expect  failure

@@ -22,11 +22,11 @@ import (
 
 // An example of testing time durations
 func ExampleTime() {
-	ctx := assert.To(nil)
-	assert.For(ctx, "1s IsAtLeast 2s").ThatDuration(time.Second * 1).IsAtLeast(time.Second * 2)
-	assert.For(ctx, "3s IsAtMost 4s").ThatDuration(time.Second * 3).IsAtMost(time.Second * 4)
-	assert.For(ctx, "6s IsAtLeast 5s").ThatDuration(time.Second * 6).IsAtLeast(time.Second * 5)
-	assert.For(ctx, "8s IsAtMost 7s").ThatDuration(time.Second * 8).IsAtMost(time.Second * 7)
+	assert := assert.To(nil)
+	assert.For("1s IsAtLeast 2s").ThatDuration(time.Second * 1).IsAtLeast(time.Second * 2)
+	assert.For("3s IsAtMost 4s").ThatDuration(time.Second * 3).IsAtMost(time.Second * 4)
+	assert.For("6s IsAtLeast 5s").ThatDuration(time.Second * 6).IsAtLeast(time.Second * 5)
+	assert.For("8s IsAtMost 7s").ThatDuration(time.Second * 8).IsAtMost(time.Second * 7)
 	// Output:
 	// Error:1s IsAtLeast 2s
 	//     Got       1s

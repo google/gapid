@@ -23,7 +23,7 @@ import (
 )
 
 func TestCounterCollectionAndIntegerCounter(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 
 	m := benchmark.NewCounters()
 
@@ -36,16 +36,16 @@ func TestCounterCollectionAndIntegerCounter(t *testing.T) {
 	i2.Add(20)
 	i1.Add(3)
 	i2.Add(30)
-	assert.For(ctx, "i1").That(i1.Get()).Equals(int64(6))
-	assert.For(ctx, "i2").That(i2.Get()).Equals(int64(60))
-	assert.For(ctx, "int.two").That(m.Integer("int.two").Get()).Equals(int64(60))
-	assert.For(ctx, "int.one").That(m.Integer("int.one").Get()).Equals(int64(6))
+	assert.For("i1").That(i1.Get()).Equals(int64(6))
+	assert.For("i2").That(i2.Get()).Equals(int64(60))
+	assert.For("int.two").That(m.Integer("int.two").Get()).Equals(int64(60))
+	assert.For("int.one").That(m.Integer("int.one").Get()).Equals(int64(6))
 	i1.Reset()
-	assert.For(ctx, "i1 (reset)").That(i1.Get()).Equals(int64(0))
+	assert.For("i1 (reset)").That(i1.Get()).Equals(int64(0))
 }
 
 func TestDurationCounter(t *testing.T) {
-	ctx := assert.To(t)
+	assert := assert.To(t)
 
 	m := benchmark.NewCounters()
 
@@ -53,9 +53,9 @@ func TestDurationCounter(t *testing.T) {
 	d.Add(60 * time.Second)
 	d.Add(2 * time.Minute)
 
-	assert.For(ctx, "d").That(d.Get()).Equals(3 * time.Minute)
+	assert.For("d").That(d.Get()).Equals(3 * time.Minute)
 	d.Reset()
-	assert.For(ctx, "d (reset)").That(d.Get()).Equals(time.Duration(0))
+	assert.For("d (reset)").That(d.Get()).Equals(time.Duration(0))
 }
 
 func TestCounterMismatchPanics(t *testing.T) {
@@ -85,5 +85,5 @@ func TestIntegerCounterAtomicIncrement(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		<-done
 	}
-	assert.For(assert.To(t), "cnt").That(cnt.Get()).Equals(int64(16384))
+	assert.For(t, "cnt").That(cnt.Get()).Equals(int64(16384))
 }
