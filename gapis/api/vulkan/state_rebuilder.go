@@ -2211,7 +2211,8 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 }
 
 func (sb *stateBuilder) createImageView(iv ImageViewObjectʳ) {
-	if !GetState(sb.newState).Images().Contains(iv.Image().VulkanHandle()) {
+	if iv.Image().IsNil() ||
+		!GetState(sb.newState).Images().Contains(iv.Image().VulkanHandle()) {
 		// If the image that this image view points to has been deleted,
 		// then don't even re-create the image view
 		return
