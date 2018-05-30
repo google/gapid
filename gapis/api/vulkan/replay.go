@@ -30,6 +30,7 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
+	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
 )
@@ -128,8 +129,9 @@ type deadCodeEliminationInfo struct {
 }
 
 type dCEInfo struct {
-	ft  *dependencygraph.Footprint
-	dce *transform.DCE
+	ft     *dependencygraph.Footprint
+	dce    *transform.DCE
+	newDce *dependencygraph2.DCEBuilder
 }
 
 // color/depth/stencil attachment bit.
@@ -454,15 +456,15 @@ func (a API) Replay(
 	cfg replay.Config,
 	rrs []replay.RequestAndResult,
 	device *device.Instance,
-	capture *capture.Capture,
+	c *capture.Capture,
 	out transform.Writer) error {
-	if a.GetReplayPriority(ctx, device, capture.Header) == 0 {
+	if a.GetReplayPriority(ctx, device, c.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
 
 	optimize := !config.DisableDeadCodeElimination
 
-	cmds := capture.Commands
+	cmds := c.Commands
 
 	transforms := transform.Transforms{}
 	transforms.Add(&makeAttachementReadable{})
@@ -493,19 +495,35 @@ func (a API) Replay(
 			return numInitialCmdWithoutOpt, nil
 		}
 		if opt {
-			// If we have not set up the dependency graph, do it now.
-			if dceInfo.ft == nil {
-				ft, err := dependencygraph.GetFootprint(ctx)
-				if err != nil {
-					return 0, err
+			if config.NewDeadCodeElimination {
+				if dceInfo.newDce == nil {
+					cfg := dependencygraph2.DependencyGraphConfig{
+						MergeSubCmdNodes:       true,
+						IncludeInitialCommands: true,
+					}
+					graph, err := dependencygraph2.GetDependencyGraph(ctx, capture.Get(ctx), cfg)
+					if err != nil {
+						return 0, fmt.Errorf("Could not build dependency graph for DCE: %v", err)
+					}
+					dceInfo.newDce = dependencygraph2.NewDCEBuilder(graph)
 				}
-				dceInfo.ft = ft
-				dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
+				cmds = []api.Cmd{}
+				return 0, nil
+			} else {
+				// If we have not set up the dependency graph, do it now.
+				if dceInfo.ft == nil {
+					ft, err := dependencygraph.GetFootprint(ctx)
+					if err != nil {
+						return 0, err
+					}
+					dceInfo.ft = ft
+					dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
+				}
+				cmds = []api.Cmd{}
+				numInitialCmdWithOpt = dceInfo.ft.NumInitialCommands
+				initCmdExpandedWithOpt = true
+				return numInitialCmdWithOpt, nil
 			}
-			cmds = []api.Cmd{}
-			numInitialCmdWithOpt = dceInfo.ft.NumInitialCommands
-			initCmdExpandedWithOpt = true
-			return numInitialCmdWithOpt, nil
 		}
 		// If the capture contains initial state, prepend the commands to build the state.
 		initialCmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)
@@ -529,7 +547,7 @@ func (a API) Replay(
 				if err != nil {
 					return err
 				}
-				issues = newFindIssues(ctx, capture, n)
+				issues = newFindIssues(ctx, c, n)
 			}
 			issues.reportTo(rr.Result)
 			optimize = false
@@ -559,7 +577,11 @@ func (a API) Replay(
 			}
 
 			if optimize {
-				dceInfo.dce.Request(ctx, api.SubCmdIdx{cmdid})
+				if config.NewDeadCodeElimination {
+					dceInfo.newDce.Request(ctx, api.SubCmdIdx{cmdid})
+				} else {
+					dceInfo.dce.Request(ctx, api.SubCmdIdx{cmdid})
+				}
 			}
 
 			switch cfg.drawMode {
@@ -594,7 +616,11 @@ func (a API) Replay(
 
 	// Use the dead code elimination pass
 	if optimize {
-		transforms.Prepend(dceInfo.dce)
+		if config.NewDeadCodeElimination {
+			transforms.Prepend(dceInfo.newDce)
+		} else {
+			transforms.Prepend(dceInfo.dce)
+		}
 	}
 
 	if wire {
@@ -639,7 +665,7 @@ func (a API) Replay(
 		transforms = newTransforms
 	}
 	if config.LogTransformsToCapture {
-		transforms.Add(transform.NewCaptureLog(ctx, capture, "replay_log.gfxtrace"))
+		transforms.Add(transform.NewCaptureLog(ctx, c, "replay_log.gfxtrace"))
 	}
 	if config.LogMappingsToFile {
 		transforms.Add(replay.NewMappingPrinter(ctx, "mappings.txt"))
