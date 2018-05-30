@@ -1409,12 +1409,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	// layout. The unused byteSizeAndExtent is to meet the requirement of
 	// walkImageSubresourceRange()
 	appendImageLevelToOpaqueRanges := func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
-		// No need to handle for undefined layout
-		if isUndef, _ := subCheckImageLevelLayout(sb.ctx, nil, api.CmdNoID, nil,
-			sb.oldState, nil, 0, nil, img, aspect, layer, level,
-			VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, false); isUndef {
-			return
-		}
+		// TODO: Re-enable the code to prevent copying to an
+		// 		 undefined layout.
 		opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(sb.ta,
 			VkImageAspectFlags(aspect), // aspectMask
 			level, // baseMipLevel
