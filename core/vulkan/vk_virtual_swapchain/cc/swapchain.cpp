@@ -396,6 +396,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateRenderPass(
   VkRenderPassCreateInfo intercepted = *pCreateInfo;
   std::vector<VkAttachmentDescription> attachments(
       pCreateInfo->attachmentCount);
+  intercepted.pAttachments = attachments.data();
 
   for (size_t i = 0; i < pCreateInfo->attachmentCount; ++i) {
     attachments[i] = pCreateInfo->pAttachments[i];
