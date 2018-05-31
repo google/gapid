@@ -89,3 +89,24 @@ def github_repository(name, path="", **kwargs):
     native.local_repository(name = name, path = path)
   else:
     _github_repository(name=name, **kwargs)
+
+def maybe_repository(repo_rule, name, locals, **kwargs):
+    if name in native.existing_rules():
+        return
+
+    if name not in locals:
+        repo_rule(name = name, **kwargs)
+        return
+
+    build_file = kwargs.get("build_file")
+    if build_file == None:
+        native.local_repository(
+            name = name,
+            path = locals.get(name)
+        )
+    else:
+        native.new_local_repository(
+            name = name,
+            path = locals.get(name),
+            build_file = build_file
+        )
