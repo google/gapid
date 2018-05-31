@@ -38,6 +38,7 @@
 # Each rule listed must be re-written for Google's internal build system, and
 # each change must be ported from one to the other.
 #
+load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
 
 # The set of pollers to test against if a test exercises polling
 
@@ -111,7 +112,7 @@ def grpc_cc_library(name, srcs = [], public_hdrs = [], hdrs = [],
 
 """Load dependencies needed to compile and test the grpc library as a 3rd-party consumer."""
 
-def grpc_deps():
+def grpc_deps(locals = {}):
     """Loads dependencies need to compile and test the grpc library."""
     native.bind(
         name = "libssl",
@@ -185,66 +186,70 @@ def grpc_deps():
             url = "https://boringssl.googlesource.com/boringssl/+archive/6ae5a54bedae2c29e5b67382667871c527e68326.tar.gz",
         )
 
-    if "com_github_madler_zlib" not in native.existing_rules():
-        native.new_http_archive(
-            name = "com_github_madler_zlib",
-            build_file = "@com_github_grpc_grpc//third_party:zlib.BUILD",
-            strip_prefix = "zlib-cacf7f1d4e3d44d871b605da3b647f07d718623f",
-            url = "https://github.com/madler/zlib/archive/cacf7f1d4e3d44d871b605da3b647f07d718623f.tar.gz",
-        )
+    maybe_repository(github_repository,
+        name = "com_github_madler_zlib",
+        locals = locals,
+        organization = "madler",
+        project = "zlib",
+        commit = "cacf7f1d4e3d44d871b605da3b647f07d718623f",
+        build_file = "@com_github_grpc_grpc//third_party:zlib.BUILD",
+    )
 
-    if "com_google_protobuf" not in native.existing_rules():
-        native.http_archive(
-            name = "com_google_protobuf",
-            strip_prefix = "protobuf-2761122b810fe8861004ae785cc3ab39f384d342",
-            url = "https://github.com/google/protobuf/archive/2761122b810fe8861004ae785cc3ab39f384d342.tar.gz",
-        )
+    maybe_repository(github_repository,
+        name = "com_google_protobuf",
+        locals = locals,
+        organization = "google",
+        project = "protobuf",
+        commit = "2761122b810fe8861004ae785cc3ab39f384d342",
+    )
 
-    if "com_github_google_googletest" not in native.existing_rules():
-        native.new_http_archive(
-            name = "com_github_google_googletest",
-            build_file = "@com_github_grpc_grpc//third_party:gtest.BUILD",
-            strip_prefix = "googletest-ec44c6c1675c25b9827aacd08c02433cccde7780",
-            url = "https://github.com/google/googletest/archive/ec44c6c1675c25b9827aacd08c02433cccde7780.tar.gz",
-        )
+    maybe_repository(github_repository,
+        name = "com_github_google_googletest",
+        locals = locals,
+        organization = "google",
+        project = "googletest",
+        commit = "ec44c6c1675c25b9827aacd08c02433cccde7780",
+        build_file = "@com_github_grpc_grpc//third_party:gtest.BUILD",
+    )
 
-    if "com_github_gflags_gflags" not in native.existing_rules():
-        native.http_archive(
-            name = "com_github_gflags_gflags",
-            strip_prefix = "gflags-30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e",
-            url = "https://github.com/gflags/gflags/archive/30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e.tar.gz",
-        )
+    maybe_repository(github_repository,
+        name = "com_github_gflags_gflags",
+        locals = locals,
+        organization = "gflags",
+        project = "gflags",
+        commit = "30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e",
+    )
 
-    if "com_github_google_benchmark" not in native.existing_rules():
-        native.new_http_archive(
-            name = "com_github_google_benchmark",
-            build_file = "@com_github_grpc_grpc//third_party:benchmark.BUILD",
-            strip_prefix = "benchmark-5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8",
-            url = "https://github.com/google/benchmark/archive/5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8.tar.gz",
-        )
+    maybe_repository(github_repository,
+        name = "com_github_google_benchmark",
+        locals = locals,
+        organization = "google",
+        project = "benchmark",
+        commit = "5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8",
+        build_file = "@com_github_grpc_grpc//third_party:benchmark.BUILD",
+    )
 
-    if "com_github_cares_cares" not in native.existing_rules():
-        native.new_http_archive(
-            name = "com_github_cares_cares",
-            build_file = "@com_github_grpc_grpc//third_party:cares/cares.BUILD",
-            strip_prefix = "c-ares-3be1924221e1326df520f8498d704a5c4c8d0cce",
-            url = "https://github.com/c-ares/c-ares/archive/3be1924221e1326df520f8498d704a5c4c8d0cce.tar.gz",
-        )
+    maybe_repository(github_repository,
+        name = "com_github_cares_cares",
+        locals = locals,
+        organization = "c-ares",
+        project = "c-ares",
+        commit = "3be1924221e1326df520f8498d704a5c4c8d0cce",
+        build_file = "@com_github_grpc_grpc//third_party:cares/cares.BUILD",
+    )
 
-    if "com_google_absl" not in native.existing_rules():
-        native.http_archive(
-            name = "com_google_absl",
-            strip_prefix = "abseil-cpp-cc4bed2d74f7c8717e31f9579214ab52a9c9c610",
-            url = "https://github.com/abseil/abseil-cpp/archive/cc4bed2d74f7c8717e31f9579214ab52a9c9c610.tar.gz",
-        )
+    maybe_repository(github_repository,
+        name = "com_google_absl",
+        locals = locals,
+        organization = "abseil",
+        project = "abseil-cpp",
+        commit = "cc4bed2d74f7c8717e31f9579214ab52a9c9c610",
+    )
 
-    if "com_github_bazelbuild_bazeltoolchains" not in native.existing_rules():
-        native.http_archive(
-            name = "com_github_bazelbuild_bazeltoolchains",
-            strip_prefix = "bazel-toolchains-b850ccdf53fed1ccab7670f52d6b297d74348d1b",
-            urls = [
-                "https://mirror.bazel.build/github.com/bazelbuild/bazel-toolchains/archive/b850ccdf53fed1ccab7670f52d6b297d74348d1b.tar.gz",
-                "https://github.com/bazelbuild/bazel-toolchains/archive/b850ccdf53fed1ccab7670f52d6b297d74348d1b.tar.gz",
-            ],
-            sha256 = "d84d6b2fe88ef99963febf91ddce33503eed14c155ace922e2122271b483be64",
-        )
+    maybe_repository(github_repository,
+        name = "com_github_bazelbuild_bazeltoolchains",
+        locals = locals,
+        organization = "bazelbuild",
+        project = "bazel-toolchains",
+        commit = "b850ccdf53fed1ccab7670f52d6b297d74348d1b",
+    )

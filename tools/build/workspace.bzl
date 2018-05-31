@@ -17,7 +17,7 @@
 
 load("@gapid//tools/build:cc_toolchain.bzl", "cc_configure")
 load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue")
-load("@gapid//tools/build/rules:repository.bzl", "github_http_args", "github_repository")
+load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
 load("@gapid//tools/build/rules:grpc_c++.bzl", "grpc_deps")
 
@@ -32,7 +32,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
     #####################################################
     # Get repositories with workspace rules we need first
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "io_bazel_rules_go",
         locals = locals,
         organization = "bazelbuild",
@@ -40,7 +40,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         commit = "2d3336269eab48bac7adcaff03e7232e14463619",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "bazel_gazelle",
         locals = locals,
         organization = "bazelbuild",
@@ -48,7 +48,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         commit = "f4ae892927eeabd060c59693c38e82303f41558d",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "com_google_protobuf",
         locals = locals,
         organization = "google",
@@ -59,7 +59,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:protobuf.BUILD",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "com_github_grpc_grpc",
         locals = locals,
         organization = "grpc",
@@ -69,12 +69,12 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         # Override with our own BUILD file, to make Android build work.
         build_file = "@gapid//tools/build/third_party:grpc_c++.BUILD",
     )
-    grpc_deps()
+    grpc_deps(locals)
 
     ###########################################
     # Now get all our other non-go dependencies
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "com_google_googletest",
         locals = locals,
         organization = "google",
@@ -82,7 +82,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         commit = "62dbaa2947f7d058ea7e16703faea69b1134b024",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "astc_encoder",
         locals = locals,
         organization = "ARM-software",
@@ -91,14 +91,14 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:astc-encoder.BUILD",
     )
 
-    _maybe(breakpad,
+    maybe_repository(breakpad,
         name = "breakpad",
         locals = locals,
         commit = "a61afe7a3e865f1da7ff7185184fe23977c2adca",
         build_file = "@gapid//tools/build/third_party/breakpad:breakpad.BUILD",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "cityhash",
         locals = locals,
         organization = "google",
@@ -107,7 +107,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:cityhash.BUILD",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "glslang",
         locals = locals,
         organization = "KhronosGroup",
@@ -116,7 +116,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:glslang.BUILD",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "llvm",
         locals = locals,
         organization = "llvm-mirror",
@@ -125,7 +125,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:llvm.BUILD",
     )
 
-    _maybe(native.new_git_repository,
+    maybe_repository(native.new_git_repository,
         name = "lss",
         locals = locals,
         remote = "https://chromium.googlesource.com/linux-syscall-support",
@@ -133,7 +133,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:lss.BUILD",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "spirv_headers",
         locals = locals,
         organization = "KhronosGroup",
@@ -142,7 +142,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:spirv-headers.BUILD",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "spirv_cross",
         locals = locals,
         organization = "KhronosGroup",
@@ -151,7 +151,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:spirv-cross.BUILD",
     )
 
-    _maybe(github_repository,
+    maybe_repository(github_repository,
         name = "spirv_tools",
         locals = locals,
         organization = "KhronosGroup",
@@ -161,7 +161,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
     )
 
     if java_client:
-        _maybe(github_repository,
+        maybe_repository(github_repository,
             name = "com_github_grpc_java",
             locals = locals,
             organization = "grpc",
@@ -171,19 +171,19 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         )
 
     if android:
-        _maybe(native.android_sdk_repository,
+        maybe_repository(native.android_sdk_repository,
             name = "androidsdk",
             locals = locals,
             api_level = 21,
         )
 
-        _maybe(native.android_ndk_repository,
+        maybe_repository(native.android_ndk_repository,
             name = "androidndk",
             locals = locals,
             api_level = 21,
         )
 
-        _maybe(android_native_app_glue,
+        maybe_repository(android_native_app_glue,
             name = "android_native_app_glue",
             locals = locals,
         )
@@ -196,24 +196,3 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
 
     if mingw:
         cc_configure()
-
-def _maybe(repo_rule, name, locals, **kwargs):
-    if name in native.existing_rules():
-        return
-
-    if name not in locals:
-        repo_rule(name = name, **kwargs)
-        return
-
-    build_file = kwargs.get("build_file")
-    if build_file == None:
-        native.local_repository(
-            name = name,
-            path = locals.get(name)
-        )
-    else:
-        native.new_local_repository(
-            name = name,
-            path = locals.get(name),
-            build_file = build_file
-        )
