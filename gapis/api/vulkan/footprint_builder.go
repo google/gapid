@@ -1686,6 +1686,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		if _, mappedCoherent := vb.mappedCoherentMemories[cmd.Memory()]; mappedCoherent {
 			delete(vb.mappedCoherentMemories, cmd.Memory())
 		}
+		bh.Alive = true
 	case *VkFlushMappedMemoryRanges:
 		coherentMemDone := false
 		count := uint64(cmd.MemoryRangeCount())
