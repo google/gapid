@@ -1136,7 +1136,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 						t.revert(ctx)
 					}
 				default:
-					onError(ctx, id, cmd, fmt.Errorf("Unknown EGLImage target: %v", eglImage.Target))
+					onError(ctx, id, cmd, fmt.Errorf("Unknown EGLImage target: %v", eglImage.Target()))
 				}
 
 				cmd := cmd.Clone(s.Arena)
@@ -1283,7 +1283,7 @@ func compatMultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out tra
 			// Set the magic uniform which shaders use to fetch view-dependent attributes.
 			// It is missing from the observed extras, so normal mutation would fail.
 			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-				if c.Bound().Program != nil {
+				if !c.Bound().Program().IsNil() {
 					viewIDLocation := UniformLocation(0x7FFF0000)
 					tmp := s.AllocDataOrPanic(ctx, "gapid_gl_ViewID_OVR")
 					defer tmp.Free()

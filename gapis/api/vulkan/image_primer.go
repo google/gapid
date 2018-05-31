@@ -178,7 +178,7 @@ func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []V
 	for _, job := range storeJobs {
 		err := p.sh.store(job, queue)
 		if err != nil {
-			log.E(p.sb.ctx, "[Priming image: %v aspect: %v, layer: %v, level: %v, offset: %v, extent: %v data by imageStore] %v", job.storeTarget.VulkanHandle, job.aspect, job.layer, job.level, job.opaqueBlockOffset, job.opaqueBlockExtent, err)
+			log.E(p.sb.ctx, "[Priming image: %v aspect: %v, layer: %v, level: %v, offset: %v, extent: %v data by imageStore] %v", job.storeTarget.VulkanHandle(), job.aspect, job.layer, job.level, job.opaqueBlockOffset, job.opaqueBlockExtent, err)
 		}
 	}
 
@@ -2047,7 +2047,7 @@ func (h *ipBufferCopySession) collectCopiesFromSubresourceRange(srcRng VkImageSu
 					h.job.srcImg, aspect, layer, level, MakeVkOffset3D(h.sb.ta),
 					extent, offset)
 				if err != nil {
-					log.E(h.sb.ctx, "[Getting VkBufferImageCopy and raw data for priming data at image: %v, aspect: %v, layer: %v, level: %v] %v", h.job.srcImg.VulkanHandle, aspect, layer, level, err)
+					log.E(h.sb.ctx, "[Getting VkBufferImageCopy and raw data for priming data at image: %v, aspect: %v, layer: %v, level: %v] %v", h.job.srcImg.VulkanHandle(), aspect, layer, level, err)
 					continue
 				}
 				h.copies[dstImg] = append(h.copies[dstImg], bufImgCopy)
@@ -2070,7 +2070,7 @@ func (h *ipBufferCopySession) collectCopiesFromSparseImageBindings() {
 					h.job.srcImg, aspect, layer, level, blockData.Offset(),
 					blockData.Extent(), offset)
 				if err != nil {
-					log.E(h.sb.ctx, "[Getting VkBufferImageCopy and raw data from sparse image binding at image: %v, aspect: %v, layer: %v, level: %v, offset: %v, extent: %v] %v", h.job.srcImg.VulkanHandle, aspect, layer, level, blockData.Offset, blockData.Extent, err)
+					log.E(h.sb.ctx, "[Getting VkBufferImageCopy and raw data from sparse image binding at image: %v, aspect: %v, layer: %v, level: %v, offset: %v, extent: %v] %v", h.job.srcImg.VulkanHandle(), aspect, layer, level, blockData.Offset(), blockData.Extent(), err)
 					continue
 				}
 				h.copies[dstImg] = append(h.copies[dstImg], bufImgCopy)
