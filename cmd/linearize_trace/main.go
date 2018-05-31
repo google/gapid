@@ -35,8 +35,9 @@ import (
 )
 
 var (
-	path   = flag.String("file", "capture.gfxtrace", "The capture file to linearize")
-	output = flag.String("out", "capture.linear.gfxtrace", "The output file")
+	path      = flag.String("file", "capture.gfxtrace", "The capture file to linearize")
+	output    = flag.String("out", "capture.linear.gfxtrace", "The output file")
+	nCommands = flag.Int("num_commands", -1, "How many commands from the original trace should be included. -1 for all.")
 )
 
 func main() {
@@ -72,7 +73,11 @@ func run(ctx context.Context) error {
 
 	log.I(ctx, "Generated %v initial commands", len(initialCmds))
 
-	capt.Commands = append(initialCmds, capt.Commands...)
+	if *nCommands == -1 {
+		capt.Commands = append(initialCmds, capt.Commands...)
+	} else {
+		capt.Commands = append(initialCmds, capt.Commands[0:*nCommands]...)
+	}
 	capt.InitialState = nil
 
 	f, err := os.OpenFile(*output, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
