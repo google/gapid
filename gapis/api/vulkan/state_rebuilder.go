@@ -1597,7 +1597,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		err = imgPrimer.primeByImageStore(img, opaqueRanges, queue, sparseQueue)
 	}
 	if err != nil {
-		log.E(sb.ctx, "[Priming the data of image: %v] %v", img.VulkanHandle, err)
+		log.E(sb.ctx, "[Priming the data of image: %v] %v", img.VulkanHandle(), err)
 	}
 	return
 }

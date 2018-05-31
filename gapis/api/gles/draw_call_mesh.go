@@ -256,7 +256,7 @@ func translateVertexFormat(vaa VertexAttributeArrayʳ) (*stream.Format, error) {
 	case GLenum_GL_FIXED:
 		dt = stream.S16_16
 	default:
-		return nil, fmt.Errorf("Unsupported vertex type: %v", vaa.Type)
+		return nil, fmt.Errorf("Unsupported vertex type: %v", vaa.Type())
 	}
 
 	sampling := stream.Linear

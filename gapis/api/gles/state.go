@@ -98,7 +98,7 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, at
 		r := a.Renderbuffer()
 		l := r.Image()
 		if l.IsNil() {
-			return fbai{}, fmt.Errorf("Renderbuffer %v does not have any image date", r.ID)
+			return fbai{}, fmt.Errorf("Renderbuffer %v does not have any image date", r.ID())
 		}
 		multisampled := l.Samples() > 0
 		return fbai{uint32(l.Width()), uint32(l.Height()), l.SizedFormat(), multisampled}, nil

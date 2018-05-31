@@ -694,7 +694,7 @@ func (s ShaderModuleObjectʳ) IsResource() bool {
 
 // ResourceHandle returns the UI identity for the resource.
 func (s ShaderModuleObjectʳ) ResourceHandle() string {
-	return fmt.Sprintf("Shader<0x%x>", s.VulkanHandle)
+	return fmt.Sprintf("Shader<0x%x>", s.VulkanHandle())
 }
 
 // ResourceLabel returns an optional debug label for the resource.

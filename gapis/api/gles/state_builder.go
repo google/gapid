@@ -592,7 +592,7 @@ func (sb *stateBuilder) framebufferObject(ctx context.Context, c Contextʳ, fb F
 func (sb *stateBuilder) imageUnit(ctx context.Context, i ImageUnitʳ) {
 	write, cb, id := sb.write, sb.cb, i.GetID()
 
-	if i.Texture != nil {
+	if !i.Texture().IsNil() {
 		write(cb.GlBindImageTexture(id, i.Texture().GetID(), i.Level(), i.Layered(), i.Layer(), i.Access(), i.Fmt())) // GLES31
 	}
 }
@@ -602,7 +602,7 @@ func (sb *stateBuilder) shaderObject(ctx context.Context, s Shaderʳ) {
 
 	write(cb.GlCreateShader(s.Type(), id))
 	if e := s.CompileExtra(); !e.IsNil() {
-		if e.Binary != nil {
+		if !e.Binary().IsNil() {
 			sb.E(ctx, "Precompiled shaders not suppored yet") // TODO
 		}
 		write(cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, e.Source())), memory.Nullptr))
@@ -653,7 +653,7 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 		}
 		write(cb.GlUseProgram(0))
 	}
-	if p.ValidateExtra != nil {
+	if !p.ValidateExtra().IsNil() {
 		write(api.WithExtras(cb.GlValidateProgram(id), p.ValidateExtra()))
 	}
 }

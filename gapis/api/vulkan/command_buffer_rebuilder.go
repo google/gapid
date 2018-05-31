@@ -661,7 +661,7 @@ func rebuildVkCmdDispatchIndirect(
 	d VkCmdDispatchIndirectArgsʳ) (func(), api.Cmd, error) {
 
 	if !GetState(s).Buffers().Contains(d.Buffer()) {
-		return nil, nil, fmt.Errorf("Cannot find Buffer %v", d.Buffer)
+		return nil, nil, fmt.Errorf("Cannot find Buffer %v", d.Buffer())
 	}
 	return func() {}, cb.VkCmdDispatchIndirect(commandBuffer,
 		d.Buffer(),
@@ -1119,7 +1119,7 @@ func rebuildVkCmdDebugMarkerInsertEXT(
 
 	a := s.Arena // TODO: Should this be a seperate temporary arena?
 
-	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName)
+	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName())
 	var color F32ː4ᵃ
 	color.Set(0, d.Color().Get(0))
 	color.Set(1, d.Color().Get(1))

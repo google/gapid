@@ -86,7 +86,7 @@ func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 		case GLenum_GL_TEXTURE_2D_MULTISAMPLE:
 			return api.NewResourceData(api.NewTexture(&api.Texture2D{Levels: levels, Multisampled: true})), nil
 		default:
-			panic(fmt.Errorf("Unhandled texture kind %v", t.Kind))
+			panic(fmt.Errorf("Unhandled texture kind %v", t.Kind()))
 		}
 
 	case GLenum_GL_TEXTURE_EXTERNAL_OES:
@@ -140,7 +140,7 @@ func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 		case GLenum_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
 			return api.NewResourceData(api.NewTexture(&api.Texture2DArray{Layers: layers, Multisampled: true})), nil
 		default:
-			panic(fmt.Errorf("Unhandled texture kind %v", t.Kind))
+			panic(fmt.Errorf("Unhandled texture kind %v", t.Kind()))
 		}
 
 	case GLenum_GL_TEXTURE_3D:

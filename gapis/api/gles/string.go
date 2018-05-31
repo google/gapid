@@ -17,7 +17,7 @@ package gles
 import "fmt"
 
 func (c Color) String() string {
-	return fmt.Sprintf("R:% 6f, G:% 6f, B:% 6f, A:% 6f", c.Red, c.Green, c.Blue, c.Alpha)
+	return fmt.Sprintf("R:% 6f, G:% 6f, B:% 6f, A:% 6f", c.Red(), c.Green(), c.Blue(), c.Alpha())
 }
 
 func (v Vec2f) String() string {
