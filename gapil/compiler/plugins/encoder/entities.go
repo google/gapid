@@ -507,7 +507,7 @@ func (e *entities) buildEncodeTypeFuncs(c *compiler.C, encodeType codegen.Functi
 			newType := s.GreaterOrEqualTo(signedTypeID, s.Scalar(int64(0)))
 			typeID := s.Select(newType, signedTypeID, s.Negate(signedTypeID))
 
-			s.If(newType, func() {
+			s.If(newType, func(s *compiler.S) {
 				// Encode dependent types.
 				deps := []*entity{}
 				seen := map[*entity]bool{}
