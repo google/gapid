@@ -347,7 +347,7 @@ func (sb *stateBuilder) eglImage(ctx context.Context, img EGLImageʳ) {
 	// TODO: This might not work if the target texture object has been deleted.
 	attribs := img.AttribList().MustRead(ctx, nil, sb.oldState, nil)
 	cmd := cb.EglCreateImageKHR(img.Display(), img.Context(), img.Target(), img.Buffer(), sb.readsData(ctx, attribs), img.ID())
-	if extra := img.Extra(); extra.IsNil() {
+	if extra := img.Extra(); !extra.IsNil() {
 		cmd.Extras().Add(extra)
 	}
 	write(cmd)
