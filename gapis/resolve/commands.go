@@ -121,7 +121,7 @@ func Cmd(ctx context.Context, p *path.Command) (api.Cmd, error) {
 			}
 		}
 		if !found {
-			return nil, log.Errf(ctx, nil, "Could not find subcommand %v", p.Indices)
+			return nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Not a valid subcommand")}
 		}
 	}
 	cmds, err := NCmds(ctx, p.Capture, cmdIdx+1)

@@ -23,8 +23,10 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -127,7 +129,7 @@ func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, er
 	case *VkQueueSubmit:
 		return drawCallMesh(ctx, dc, p)
 	}
-	return nil, fmt.Errorf("Cannot get the mesh data from %v", o)
+	return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshNotAvailable()}
 }
 
 type MarkerType int

@@ -80,25 +80,25 @@ func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 		c := GetState(s)
 		lastQueue := c.LastBoundQueue()
 		if lastQueue.IsNil() {
-			res(nil, fmt.Errorf("No previous queue submission"))
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("No previous queue submission")})
 			return
 		}
 
 		lastDrawInfo, ok := c.LastDrawInfos().Lookup(lastQueue.VulkanHandle())
 		if !ok {
-			res(nil, fmt.Errorf("There have been no previous draws"))
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("There have been no previous draws")})
 			return
 		}
 		w, h := lastDrawInfo.Framebuffer().Width(), lastDrawInfo.Framebuffer().Height()
 
 		imageViewDepth := lastDrawInfo.Framebuffer().ImageAttachments().Get(idx)
 		if imageViewDepth.IsNil() {
-			res(nil, fmt.Errorf("Invalid depth attachment in the framebuffer, the attachment VkImageView might have been destroyed"))
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid depth attachment in the framebuffer, the attachment VkImageView might have been destroyed")})
 			return
 		}
 		depthImageObject := imageViewDepth.Image()
 		if depthImageObject.IsNil() {
-			res(nil, fmt.Errorf("Invalid depth attachment in the framebuffer, the attachment VkImage might have been destroyed"))
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid depth attachment in the framebuffer, the attachment VkImage might have been destroyed")})
 			return
 		}
 		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
@@ -124,27 +124,27 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 		if GetState(s).LastSubmission() == LastSubmissionType_SUBMIT {
 			lastQueue := c.LastBoundQueue()
 			if lastQueue.IsNil() {
-				res(nil, fmt.Errorf("No previous queue submission"))
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("No previous queue submission")})
 				return
 			}
 
 			lastDrawInfo, ok := c.LastDrawInfos().Lookup(lastQueue.VulkanHandle())
 			if !ok {
-				res(nil, fmt.Errorf("There have been no previous draws"))
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("There have been no previous draws")})
 				return
 			}
 			if lastDrawInfo.Framebuffer().IsNil() {
-				res(nil, fmt.Errorf("There has been no framebuffer"))
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("There has been no framebuffer")})
 				return
 			}
 
 			imageView, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(bufferIdx)
 			if !ok {
-				res(nil, fmt.Errorf("There has been no attchment %v in the framebuffer", bufferIdx))
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("There has been no attchment in the framebuffer")})
 				return
 			}
 			if imageView.IsNil() {
-				res(nil, fmt.Errorf("Invalid attachment %v in the framebuffer, the attachment VkImageView might have been destroyed", bufferIdx))
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid attachment in the framebuffer, the attachment VkImageView might have been destroyed")})
 				return
 			}
 			// Imageviews that are used in framebuffer attachments must contains
@@ -156,7 +156,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 			layer := imageView.SubresourceRange().BaseArrayLayer()
 			imageObject := imageView.Image()
 			if imageObject.IsNil() {
-				res(nil, fmt.Errorf("Invalid attachment %v in the framebuffer, the attachment VkImage might have been destroyed", bufferIdx))
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid attachment in the framebuffer, the attachment VkImage might have been destroyed")})
 				return
 			}
 			w, h, form := lastDrawInfo.Framebuffer().Width(), lastDrawInfo.Framebuffer().Height(), imageView.Fmt()
@@ -164,7 +164,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 		} else {
 			imageObject := GetState(s).LastPresentInfo().PresentImages().Get(bufferIdx)
 			if imageObject.IsNil() {
-				res(nil, fmt.Errorf("Could not find imageObject %v, %v", id, bufferIdx))
+				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Could not find imageObject")})
 				return
 			}
 			w, h, form := imageObject.Info().Extent().Width(), imageObject.Info().Extent().Height(), imageObject.Info().Fmt()
