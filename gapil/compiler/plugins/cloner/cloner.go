@@ -24,8 +24,6 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
-import "C"
-
 // cloner is the compiler plugin that adds cloning functionality.
 type cloner struct {
 	*compiler.C
@@ -77,18 +75,18 @@ func (c *cloner) implementClones() {
 			refPtrTy := this.Type().(codegen.Pointer)
 			refTy := refPtrTy.Element
 
-			s.IfElse(this.IsNull(), func() {
+			s.IfElse(this.IsNull(), func(s *compiler.S) {
 				s.Return(s.Zero(refPtrTy))
-			}, func() {
+			}, func(s *compiler.S) {
 				existing := s.Call(c.callbacks.cloneTrackerLookup, tracker, this.Cast(c.T.VoidPtr)).Cast(refPtrTy)
-				s.IfElse(existing.IsNull(), func() {
+				s.IfElse(existing.IsNull(), func(s *compiler.S) {
 					clone := c.Alloc(s, s.Scalar(uint64(1)), refTy)
 					s.Call(c.callbacks.cloneTrackerTrack, tracker, this.Cast(c.T.VoidPtr), clone.Cast(c.T.VoidPtr))
 					clone.Index(0, compiler.RefRefCount).Store(s.Scalar(uint32(1)))
 					clone.Index(0, compiler.RefArena).Store(s.Arena)
 					c.cloneTo(s, ty.To, clone.Index(0, compiler.RefValue), this.Index(0, compiler.RefValue).Load(), tracker)
 					s.Return(clone)
-				}, func() {
+				}, func(s *compiler.S) {
 					s.Return(existing)
 				})
 			})
@@ -102,11 +100,11 @@ func (c *cloner) implementClones() {
 
 			mapPtrTy := this.Type().(codegen.Pointer)
 
-			s.IfElse(this.IsNull(), func() {
+			s.IfElse(this.IsNull(), func(s *compiler.S) {
 				s.Return(s.Zero(mapPtrTy))
-			}, func() {
+			}, func(s *compiler.S) {
 				existing := s.Call(c.callbacks.cloneTrackerLookup, tracker, this.Cast(c.T.VoidPtr)).Cast(mapPtrTy)
-				s.IfElse(existing.IsNull(), func() {
+				s.IfElse(existing.IsNull(), func(s *compiler.S) {
 					mapInfo := c.T.Maps[ty]
 					clone := c.Alloc(s, s.Scalar(uint64(1)), mapInfo.Type)
 					s.Call(c.callbacks.cloneTrackerTrack, tracker, this.Cast(c.T.VoidPtr), clone.Cast(c.T.VoidPtr))
@@ -122,7 +120,7 @@ func (c *cloner) implementClones() {
 						c.cloneTo(s, ty.ValueType, dstV, srcV, tracker)
 					})
 					s.Return(clone)
-				}, func() {
+				}, func(s *compiler.S) {
 					s.Return(existing)
 				})
 			})
@@ -193,13 +191,13 @@ func (c *cloner) cloneTo(s *compiler.S, ty semantic.Type, dst, src, tracker *cod
 
 		case semantic.StringType:
 			existing := s.Call(c.callbacks.cloneTrackerLookup, tracker, src.Cast(c.T.VoidPtr)).Cast(c.T.StrPtr)
-			s.IfElse(existing.IsNull(), func() {
+			s.IfElse(existing.IsNull(), func(s *compiler.S) {
 				l := src.Index(0, compiler.StringLength).Load()
 				d := src.Index(0, compiler.StringData, 0)
 				clone := c.MakeString(s, l, d)
 				s.Call(c.callbacks.cloneTrackerTrack, tracker, src.Cast(c.T.VoidPtr), clone.Cast(c.T.VoidPtr))
 				dst.Store(clone)
-			}, func() {
+			}, func(s *compiler.S) {
 				dst.Store(existing)
 			})
 

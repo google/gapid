@@ -134,7 +134,7 @@ func (c *C) hashVariableValue(s *S, pointer *codegen.Value, numBytes *codegen.Va
 	numBytes = numBytes.Load().Cast(u64Type)
 	v := s.Local("_hash", u64Type)
 	v.Store(s.Scalar(uint64(0)))
-	s.ForN(numBytes, func(it *codegen.Value) *codegen.Value {
+	s.ForN(numBytes, func(s *S, it *codegen.Value) *codegen.Value {
 		tv := v.Load()
 		l6 := s.ShiftLeft(tv, s.Scalar(uint64(6)))
 		l16 := s.ShiftLeft(tv, s.Scalar(uint64(16)))
@@ -218,16 +218,16 @@ func (c *C) buildMapType(t *semantic.Map) {
 		h := c.hashValue(s, t.KeyType, k)
 		capacity := m.Index(0, MapCapacity).Load()
 		elements := m.Index(0, MapElements).Load()
-		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
+		s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
 			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(uint64(1))))
 			valid := elements.Index(check, "used").Load()
-			s.If(c.equal(s, valid, s.Scalar(mapElementEmpty)), func() {
+			s.If(c.equal(s, valid, s.Scalar(mapElementEmpty)), func(s *S) {
 				s.Return(s.Scalar(false))
 			})
-			s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func() {
+			s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
 				key := elements.Index(check, "k")
 				found := c.equal(s, key.Load(), k)
-				s.If(found, func() { s.Return(s.Scalar(true)) })
+				s.If(found, func(s *S) { s.Return(s.Scalar(true)) })
 			})
 			return nil
 		})
@@ -250,12 +250,12 @@ func (c *C) buildMapType(t *semantic.Map) {
 
 		h := c.hashValue(s, t.KeyType, k)
 		// Search for existing
-		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
+		s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
 			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(uint64(1))))
 			valid := elements.Index(check, "used").Load()
-			s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func() {
+			s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
 				found := c.equal(s, elements.Index(check, "k").Load(), k)
-				s.If(found, func() {
+				s.If(found, func(s *S) {
 					s.Return(elements.Index(check, "v"))
 				})
 			})
@@ -263,16 +263,16 @@ func (c *C) buildMapType(t *semantic.Map) {
 			return s.Not(c.equal(s, valid, s.Scalar(mapElementEmpty)))
 		})
 
-		s.If(addIfNotFound, func() {
+		s.If(addIfNotFound, func(s *S) {
 			resize := s.LocalInit("resize", elements.IsNull())
-			s.If(s.Not(resize.Load()), func() {
+			s.If(s.Not(resize.Load()), func(s *S) {
 				used := s.Div(count.Cast(f32Type), capacity.Cast(f32Type))
 				resize.Store(s.GreaterThan(used, s.Scalar(float32(mapMaxCapacity))))
 			})
 
 			getStorageBucket := func(h, table, tablesize *codegen.Value) *codegen.Value {
 				newBucket := s.Local("newBucket", u64Type)
-				s.ForN(tablesize, func(it *codegen.Value) *codegen.Value {
+				s.ForN(tablesize, func(s *S, it *codegen.Value) *codegen.Value {
 					check := s.And(s.Add(h, it), s.Sub(tablesize, s.Scalar(uint64(1)))).SetName("hash_bucket")
 					newBucket.Store(check)
 					valid := table.Index(check, "used").Load()
@@ -282,29 +282,29 @@ func (c *C) buildMapType(t *semantic.Map) {
 				return newBucket.Load()
 			}
 
-			s.If(resize.Load(), func() {
+			s.If(resize.Load(), func(s *S) {
 				// Grow
-				s.IfElse(elements.IsNull(), func() {
+				s.IfElse(elements.IsNull(), func(s *S) {
 					capacity := s.Scalar(uint64(minMapSize))
 					capacityPtr.Store(capacity)
 					elements := c.Alloc(s, capacity, elTy)
 					elementsPtr.Store(elements)
-					s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
+					s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
 						elements.Index(it, "used").Store(s.Scalar(mapElementEmpty))
 						return nil
 					})
-				}, /* else */ func() {
+				}, /* else */ func(s *S) {
 					newCapacity := s.MulS(capacity, uint64(mapGrowMultiplier))
 					capacityPtr.Store(newCapacity)
 					newElements := c.Alloc(s, newCapacity, elTy)
-					s.ForN(newCapacity, func(it *codegen.Value) *codegen.Value {
+					s.ForN(newCapacity, func(s *S, it *codegen.Value) *codegen.Value {
 						newElements.Index(it, "used").Store(s.Scalar(mapElementEmpty))
 						return nil
 					})
 
-					s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
+					s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
 						valid := elements.Index(it, "used").Load()
-						s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func() {
+						s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
 							k := elements.Index(it, "k").Load()
 							v := elements.Index(it, "v").Load()
 							h := c.hashValue(s, t.KeyType, k)
@@ -345,7 +345,7 @@ func (c *C) buildMapType(t *semantic.Map) {
 		s.Arena = m.Index(0, MapArena).Load().SetName("arena")
 
 		ptr := s.Call(mi.Index, m, k, s.Scalar(false))
-		s.If(ptr.IsNull(), func() {
+		s.If(ptr.IsNull(), func(s *S) {
 			s.Return(c.initialValue(s, t.ValueType))
 		})
 		v := ptr.Load()
@@ -363,12 +363,12 @@ func (c *C) buildMapType(t *semantic.Map) {
 		h := c.hashValue(s, t.KeyType, k)
 		elements := m.Index(0, MapElements).Load()
 		// Search for existing
-		s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
+		s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
 			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(uint64(1))))
 			valid := elements.Index(check, "used").Load()
-			s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func() {
+			s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
 				found := c.equal(s, elements.Index(check, "k").Load(), k)
-				s.If(found, func() {
+				s.If(found, func(s *S) {
 					elPtr := elements.Index(check)
 					// Release references to el
 					if c.isRefCounted(t.KeyType) {
@@ -398,9 +398,9 @@ func (c *C) buildMapType(t *semantic.Map) {
 		capacity := m.Index(0, MapCapacity).Load()
 		elements := m.Index(0, MapElements).Load()
 		if c.isRefCounted(t.KeyType) || c.isRefCounted(t.ValueType) {
-			s.ForN(capacity, func(it *codegen.Value) *codegen.Value {
+			s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
 				valid := elements.Index(it, "used").Load()
-				s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func() {
+				s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
 					if c.isRefCounted(t.KeyType) {
 						c.release(s, elements.Index(it, "k").Load(), t.KeyType)
 					}
@@ -428,9 +428,9 @@ func (c *C) IterateMap(s *S, mapPtr *codegen.Value, idxTy semantic.Type, cb func
 	elPtr := mapPtr.Index(0, MapElements).Load()
 	iTy := c.T.Target(idxTy)
 	i := s.LocalInit("i", s.Scalar(0).Cast(iTy))
-	s.ForN(capacity.Cast(iTy), func(it *codegen.Value) *codegen.Value {
+	s.ForN(capacity.Cast(iTy), func(s *S, it *codegen.Value) *codegen.Value {
 		used := elPtr.Index(it, "used").Load()
-		s.If(s.Equal(used, s.Scalar(mapElementFull)), func() {
+		s.If(s.Equal(used, s.Scalar(mapElementFull)), func(s *S) {
 			k := elPtr.Index(it, "k")
 			v := elPtr.Index(it, "v")
 			cb(i, k, v)

@@ -66,6 +66,69 @@ func (s *S) enter(f func(*S)) {
 	child.exit()
 }
 
+// Return overrides codegen.Builder.Return to ensure all the scopes are
+// popped before emitting the terminating instruction.
+func (s *S) Return(val *codegen.Value) {
+	for s := s; s != nil; s = s.parent {
+		s.exit()
+	}
+	s.Builder.Return(val)
+}
+
+// If overrides codegen.Builder.If to ensure all the scopes are popped after
+// onTrue reaches its last instruction.
+func (s *S) If(cond *codegen.Value, onTrue func(s *S)) {
+	s.Builder.If(cond, func() { s.enter(onTrue) })
+}
+
+// IfElse overrides codegen.Builder.IfElse to ensure all the scopes are
+// popped after onTrue and onFalse reach their last instruction.
+func (s *S) IfElse(cond *codegen.Value, onTrue, onFalse func(s *S)) {
+	s.Builder.IfElse(cond,
+		func() { s.enter(onTrue) },
+		func() { s.enter(onFalse) },
+	)
+}
+
+// ForN overrides codegen.Builder.ForN to ensure all the scopes are popped after
+// cb reaches its last instruction.
+func (s *S) ForN(n *codegen.Value, cb func(s *S, iterator *codegen.Value) (cont *codegen.Value)) {
+	s.Builder.ForN(n, func(iterator *codegen.Value) *codegen.Value {
+		var cont *codegen.Value
+		s.enter(func(s *S) { cont = cb(s, iterator) })
+		return cont
+	})
+}
+
+// SwitchCase is a single condition and block used as a case statement in a
+// switch.
+type SwitchCase struct {
+	Conditions func(*S) []*codegen.Value
+	Block      func(*S)
+}
+
+// Switch overrides codegen.Builder.Switch to ensure all the scopes are
+// popped after each condition and block reach their last instruction.
+func (s *S) Switch(cases []SwitchCase, defaultCase func(s *S)) {
+	cs := make([]codegen.SwitchCase, len(cases))
+	for i, c := range cases {
+		i, c := i, c
+		cs[i] = codegen.SwitchCase{
+			Conditions: func() []*codegen.Value {
+				var out []*codegen.Value
+				s.enter(func(s *S) { out = c.Conditions(s) })
+				return out
+			},
+			Block: func() { s.enter(c.Block) },
+		}
+	}
+	var dc func()
+	if defaultCase != nil {
+		dc = func() { s.enter(defaultCase) }
+	}
+	s.Builder.Switch(cs, dc)
+}
+
 func (s *S) onExit(f func()) {
 	s.onExitLogic = append(s.onExitLogic, f)
 }

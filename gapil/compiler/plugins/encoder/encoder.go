@@ -135,14 +135,14 @@ func (e *encoder) buildBufferFuncs() {
 		bufOff := bufPtr.Index(0, "offset").Load()
 		newOff := s.Add(size, bufOff)
 		bufPtr.Index(0, "offset").Store(newOff)
-		s.IfElse(s.GreaterThan(newOff, bufCap), func() {
+		s.IfElse(s.GreaterThan(newOff, bufCap), func(s *compiler.S) {
 			newCap := s.Mul(newOff, s.Scalar(uint32(2)))
 			newData := e.Realloc(s, bufData, newCap.Cast(e.T.Uint64))
 			e.debug(s, "buffer grow(data: %p -> %p, capacity: %d -> %d)", bufData, newData, bufCap, newCap)
 			bufPtr.Index(0, "capacity").Store(newCap)
 			bufPtr.Index(0, "data").Store(newData)
 			s.Memcpy(newData.Index(bufOff), data, size)
-		}, func() {
+		}, func(s *compiler.S) {
 			s.Memcpy(bufData.Index(bufOff), data, size)
 		})
 	})
@@ -401,7 +401,7 @@ func (e *encoder) encodeField(s *compiler.S, ptr, buf *codegen.Value, id seriali
 	e.debug(s, "encoding field at %p: '%s' id: %d, ty: %s", ptr, ptr.Name(), id, ty.Name())
 
 	ent := e.ent(ty)
-	doEncode := func() {
+	doEncode := func(s *compiler.S) {
 		switch ty := semantic.Underlying(ty).(type) {
 		case *semantic.StaticArray:
 			if ent := e.ent(ty.ValueType); ent.isPacked() {
@@ -426,7 +426,7 @@ func (e *encoder) encodeField(s *compiler.S, ptr, buf *codegen.Value, id seriali
 	if cond := e.shouldEncode(s, ptr, ty); cond != nil {
 		s.If(cond, doEncode)
 	} else {
-		doEncode()
+		doEncode(s)
 	}
 }
 
@@ -523,7 +523,7 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 		return
 	case *semantic.Reference:
 		refPtr := ptr.Load()
-		s.If(s.NotEqual(refPtr, s.Zero(refPtr.Type())), func() {
+		s.If(s.NotEqual(refPtr, s.Zero(refPtr.Type())), func(s *compiler.S) {
 			signedRefID := s.Call(e.callbacks.encodeBackref, s.Ctx, refPtr.Cast(e.T.VoidPtr))
 			newRef := s.GreaterOrEqualTo(signedRefID, s.Scalar(int64(0)))
 			refID := s.Select(newRef, signedRefID, s.Negate(signedRefID))
@@ -532,7 +532,7 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 				e.writeWireAndTag(s, buf, proto.WireVarint, serialization.RefRef)
 				e.writeZigzag(s, buf, refID)
 
-				s.If(newRef, func() {
+				s.If(newRef, func(s *compiler.S) {
 					e.writeWireAndTag(s, buf, proto.WireBytes, serialization.RefVal)
 					e.encodeValue(s, refPtr.Index(0, compiler.RefValue), buf, ty.To)
 				})
@@ -549,13 +549,13 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 			e.writeWireAndTag(s, buf, proto.WireVarint, serialization.MapRef)
 			e.writeZigzag(s, buf, refID)
 
-			s.If(newRef, func() {
+			s.If(newRef, func(s *compiler.S) {
 				count := mapPtr.Index(0, compiler.MapCount).Load()
 				e.debug(s, "encoding map at %p: cnt: %d, cap: %d, refcount: %d",
 					mapPtr, count,
 					mapPtr.Index(0, compiler.MapCapacity).Load(),
 					mapPtr.Index(0, compiler.MapRefCount).Load())
-				s.If(s.NotEqual(count, s.Zero(count.Type())), func() {
+				s.If(s.NotEqual(count, s.Zero(count.Type())), func(s *compiler.S) {
 					writer := func(ty semantic.Type, id serialization.ProtoFieldID) (write func(*codegen.Value), flush func()) {
 						ent := e.ent(ty)
 						if ent.isPacked() {
@@ -600,7 +600,7 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 			count := ptr.Index(0, compiler.SliceCount).Load()
 			pool := ptr.Index(0, compiler.SlicePool).Load()
 
-			s.If(s.Not(pool.IsNull()), func() {
+			s.If(s.Not(pool.IsNull()), func(s *compiler.S) {
 				// Adjust root and base to be relative to the pool base
 				offset := pool.Index(0, compiler.PoolBuffer).Load().Cast(e.T.Size)
 				root.Store(s.Sub(root.Load(), offset))
@@ -610,27 +610,27 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 			root = root.Load()
 			base = base.Load()
 
-			s.If(s.NotEqual(root, s.Zero(root.Type())), func() {
+			s.If(s.NotEqual(root, s.Zero(root.Type())), func(s *compiler.S) {
 				e.writeWireAndTag(s, buf, proto.WireVarint, serialization.SliceRoot)
 				e.writeVarint(s, buf, root.Cast(e.T.Uint64))
 			})
 
-			s.If(s.NotEqual(base, s.Zero(base.Type())), func() {
+			s.If(s.NotEqual(base, s.Zero(base.Type())), func(s *compiler.S) {
 				e.writeWireAndTag(s, buf, proto.WireVarint, serialization.SliceBase)
 				e.writeVarint(s, buf, base.Cast(e.T.Uint64))
 			})
 
-			s.If(s.NotEqual(size, s.Zero(size.Type())), func() {
+			s.If(s.NotEqual(size, s.Zero(size.Type())), func(s *compiler.S) {
 				e.writeWireAndTag(s, buf, proto.WireVarint, serialization.SliceSize)
 				e.writeVarint(s, buf, size)
 			})
 
-			s.If(s.NotEqual(count, s.Zero(size.Type())), func() {
+			s.If(s.NotEqual(count, s.Zero(size.Type())), func(s *compiler.S) {
 				e.writeWireAndTag(s, buf, proto.WireVarint, serialization.SliceCount)
 				e.writeVarint(s, buf, count)
 			})
 
-			s.If(s.Not(pool.IsNull()), func() {
+			s.If(s.Not(pool.IsNull()), func(s *compiler.S) {
 				id := pool.Index(0, compiler.PoolID).Load()
 				e.writeWireAndTag(s, buf, proto.WireVarint, serialization.SlicePool)
 				e.writeVarint(s, buf, id)

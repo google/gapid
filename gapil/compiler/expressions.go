@@ -228,7 +228,7 @@ func (c *C) call(s *S, e *semantic.Call) *codegen.Value {
 		// Subroutines return a <error, value> pair.
 		// Check the error.
 		err := res.Extract(retError)
-		s.If(s.NotEqual(err, s.Scalar(ErrSuccess)), func() {
+		s.If(s.NotEqual(err, s.Scalar(ErrSuccess)), func(s *S) {
 			retTy := c.returnType(c.currentFunc)
 			s.Return(s.Zero(retTy).Insert(retError, err))
 		})
@@ -443,40 +443,32 @@ func (c *C) pointerRange(s *S, e *semantic.PointerRange) *codegen.Value {
 func (c *C) select_(s *S, e *semantic.Select) *codegen.Value {
 	val := c.expression(s, e.Value)
 
-	cases := make([]codegen.SwitchCase, len(e.Choices))
+	cases := make([]SwitchCase, len(e.Choices))
 	res := s.Local("select_result", c.T.Target(e.Type))
 	for i, choice := range e.Choices {
 		i, choice := i, choice
-		cases[i] = codegen.SwitchCase{
-			Conditions: func() []*codegen.Value {
+		cases[i] = SwitchCase{
+			Conditions: func(s *S) []*codegen.Value {
 				conds := make([]*codegen.Value, len(choice.Conditions))
-				s.enter(func(s *S) {
-					// Ensure all condition variables are done in this block as
-					// the condition expressions may require releasing.
-					for i, cond := range choice.Conditions {
-						conds[i] = c.equal(s, val, c.expression(s, cond))
-					}
-				})
+				for i, cond := range choice.Conditions {
+					conds[i] = c.equal(s, val, c.expression(s, cond))
+				}
 				return conds
 			},
-			Block: func() {
-				s.enter(func(s *S) {
-					val := c.expression(s, choice.Expression)
-					c.reference(s, val, e.Type)
-					res.Store(val)
-				})
+			Block: func(s *S) {
+				val := c.expression(s, choice.Expression)
+				c.reference(s, val, e.Type)
+				res.Store(val)
 			},
 		}
 	}
 
-	var def func()
+	var def func(s *S)
 	if e.Default != nil {
-		def = func() {
-			s.enter(func(s *S) {
-				val := c.expression(s, e.Default)
-				c.reference(s, val, e.Type)
-				res.Store(val)
-			})
+		def = func(s *S) {
+			val := c.expression(s, e.Default)
+			c.reference(s, val, e.Type)
+			res.Store(val)
 		}
 	}
 

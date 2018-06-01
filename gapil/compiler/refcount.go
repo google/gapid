@@ -43,12 +43,12 @@ func (f *refRel) build(
 ) {
 	c.Build(f.reference, func(s *S) {
 		val := s.Parameter(0)
-		s.If(isNull(s, val), func() {
+		s.If(isNull(s, val), func(s *S) {
 			s.Return(nil)
 		})
 		refPtr := getRefPtr(s, val)
 		oldCount := refPtr.Load()
-		s.If(s.Equal(oldCount, s.Scalar(uint32(0))), func() {
+		s.If(s.Equal(oldCount, s.Scalar(uint32(0))), func(s *S) {
 			c.Log(s, log.Fatal, "Attempting to reference released "+f.name)
 		})
 		newCount := s.Add(oldCount, s.Scalar(uint32(1)))
@@ -60,12 +60,12 @@ func (f *refRel) build(
 
 	c.Build(f.release, func(s *S) {
 		val := s.Parameter(0)
-		s.If(isNull(s, val), func() {
+		s.If(isNull(s, val), func(s *S) {
 			s.Return(nil)
 		})
 		refPtr := getRefPtr(s, val)
 		oldCount := refPtr.Load()
-		s.If(s.Equal(oldCount, s.Scalar(uint32(0))), func() {
+		s.If(s.Equal(oldCount, s.Scalar(uint32(0))), func(s *S) {
 			c.Log(s, log.Fatal, "Attempting to release "+f.name+" with no remaining references!")
 		})
 		newCount := s.Sub(oldCount, s.Scalar(uint32(1)))
@@ -73,7 +73,7 @@ func (f *refRel) build(
 			c.Log(s, log.Info, f.name+" %p ref_count: %d -> %d", refPtr, oldCount, newCount)
 		}
 		refPtr.Store(newCount)
-		s.If(s.Equal(newCount, s.Scalar(uint32(0))), func() {
+		s.If(s.Equal(newCount, s.Scalar(uint32(0))), func(s *S) {
 			del(s, val)
 		})
 	})
@@ -265,7 +265,7 @@ func (c *C) deferRelease(s *S, val *codegen.Value, ty semantic.Type) {
 			// The last instruction written to the current block was a
 			// terminator instruction. This should only happen if we've emitted
 			// a return statement and the scopes around this statement are
-			// closing. The løogic in compiler.return_ will have already exited
+			// closing. The logic in Scope.Return() will have already exited
 			// all the contexts, so we can safely return here.
 			//
 			// TODO: This is really icky - more time should be spent thinking

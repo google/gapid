@@ -145,7 +145,7 @@ func (c *C) statement(s *S, n semantic.Node) bool {
 
 func (c *C) abort(s *S, n *semantic.Abort) {
 	retTy := c.returnType(c.currentFunc)
-	c.doReturn(s, s.Zero(retTy).Insert(retError, s.Scalar(ErrAborted)))
+	s.Return(s.Zero(retTy).Insert(retError, s.Scalar(ErrAborted)))
 }
 
 func (c *C) applyReads(s *S) {
@@ -166,7 +166,7 @@ func (c *C) arrayAssign(s *S, n *semantic.ArrayAssign) {
 
 func (c *C) assert(s *S, e *semantic.Assert) {
 	cond := c.expression(s, e.Condition).SetName("assert_cond")
-	s.If(cond, func() {
+	s.If(cond, func(s *S) {
 		c.Log(s, log.Fatal, "assert: "+fmt.Sprint(e.AST.Arguments[0]))
 	})
 }
@@ -248,8 +248,8 @@ func (c *C) expressionAddr(s *S, target semantic.Expression) *codegen.Value {
 
 func (c *C) branch(s *S, n *semantic.Branch) {
 	cond := c.expression(s, n.Condition)
-	onTrue := func() { c.block(s, n.True) }
-	onFalse := func() { c.block(s, n.False) }
+	onTrue := func(s *S) { c.block(s, n.True) }
+	onFalse := func(s *S) { c.block(s, n.False) }
 	if n.False == nil {
 		onFalse = nil
 	}
@@ -344,20 +344,13 @@ func (c *C) return_(s *S, n *semantic.Return) {
 		val = c.initialValue(s, c.currentFunc.Signature.Return)
 		ty = c.currentFunc.Signature.Return
 	} else {
-		c.doReturn(s, nil)
+		s.Return(nil)
 		return
 	}
 	c.reference(s, val, ty)
 	retTy := c.returnType(c.currentFunc) // <error, value>
 	ret := s.Zero(retTy).Insert(retValue, val)
-	c.doReturn(s, ret)
-}
-
-func (c *C) doReturn(s *S, val *codegen.Value) {
-	for s := s; s != nil; s = s.parent {
-		s.exit()
-	}
-	s.Return(val)
+	s.Return(ret)
 }
 
 func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
@@ -384,7 +377,7 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 		write = func(el *codegen.Value) {
 			pool := slice.Extract(SlicePool)
 			appPool := s.Zero(c.T.PoolPtr)
-			s.If(s.NotEqual(pool, appPool), func() {
+			s.If(s.NotEqual(pool, appPool), func(s *S) {
 				actuallyWrite(el)
 			})
 		}
@@ -401,30 +394,22 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 func (c *C) switch_(s *S, n *semantic.Switch) {
 	val := c.expression(s, n.Value)
 
-	cases := make([]codegen.SwitchCase, len(n.Cases))
+	cases := make([]SwitchCase, len(n.Cases))
 	for i, kase := range n.Cases {
 		i, kase := i, kase
-		cases[i] = codegen.SwitchCase{
-			Conditions: func() []*codegen.Value {
+		cases[i] = SwitchCase{
+			Conditions: func(s *S) []*codegen.Value {
 				conds := make([]*codegen.Value, len(kase.Conditions))
-				s.enter(func(s *S) {
-					// Ensure all condition variables are done in this block as
-					// the condition expressions may require releasing.
-					for i, cond := range kase.Conditions {
-						conds[i] = c.equal(s, val, c.expression(s, cond))
-					}
-				})
+				for i, cond := range kase.Conditions {
+					conds[i] = c.equal(s, val, c.expression(s, cond))
+				}
 				return conds
 			},
-			Block: func() {
-				s.enter(func(s *S) {
-					c.block(s, kase.Block)
-				})
-			},
+			Block: func(s *S) { c.block(s, kase.Block) },
 		}
 	}
 	if n.Default != nil {
-		s.Switch(cases, func() { c.block(s, n.Default) })
+		s.Switch(cases, func(s *S) { c.block(s, n.Default) })
 	} else {
 		s.Switch(cases, nil)
 	}
