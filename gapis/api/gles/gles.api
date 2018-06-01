@@ -550,6 +550,7 @@ class OtherState {
   string        ThreadName
   @unused bool  PreserveBuffersOnSwap
   ref!ShareList ShareList
+  bool          Destroyed
 
   DebugState              Debug
   map!(GLenum, ref!Query) ActiveQueries
