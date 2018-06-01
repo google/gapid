@@ -65,6 +65,9 @@ type Cmd interface {
 
 	// Clone makes a shallow copy of this command.
 	Clone(arena.Arena) Cmd
+
+	// Alive returns true if this command should be marked alive for DCE
+	Alive() bool
 }
 
 const (

@@ -187,6 +187,7 @@ cmd VkResult vkQueueSubmit(
 @threadSafety("system")
 @indirect("VkQueue", "VkDevice")
 @blocking
+@alive
 cmd VkResult vkQueueWaitIdle(
     VkQueue queue) {
   if !(queue in Queues) { vkErrorInvalidQueue(queue) }
