@@ -1409,8 +1409,10 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	// layout. The unused byteSizeAndExtent is to meet the requirement of
 	// walkImageSubresourceRange()
 	appendImageLevelToOpaqueRanges := func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
-		// TODO: Re-enable the code to prevent copying to an
-		// 		 undefined layout.
+		imgLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
+		if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
+			return
+		}
 		opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(sb.ta,
 			VkImageAspectFlags(aspect), // aspectMask
 			level, // baseMipLevel
@@ -1565,11 +1567,10 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img),
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 				// No need to handle for undefined layout
-				if isUndef, _ := subCheckImageLevelLayout(sb.ctx, nil, api.CmdNoID, nil, sb.oldState,
-					nil, 0, nil, img, aspect, layer, level, VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, false); isUndef {
+				imgLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
+				if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
 					return
 				}
-				imgLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
 				transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
 					aspectMask:     VkImageAspectFlags(aspect),
 					baseMipLevel:   level,

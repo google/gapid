@@ -2593,11 +2593,13 @@ func writeDescriptorSet(sb *stateBuilder, dev VkDevice, descSet VkDescriptorSet,
 }
 
 func walkImageSubresourceRange(sb *stateBuilder, img ImageObjectʳ, rng VkImageSubresourceRange, f func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent)) {
+	layerCount, _ := subImageSubresourceLayerCount(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, img, rng)
+	levelCount, _ := subImageSubresourceLevelCount(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, img, rng)
 	for _, aspect := range sb.imageAspectFlagBits(rng.AspectMask()) {
-		for i := uint32(0); i < rng.LevelCount(); i++ {
+		for i := uint32(0); i < levelCount; i++ {
 			level := rng.BaseMipLevel() + i
 			levelSize := sb.levelSize(img.Info().Extent(), img.Info().Fmt(), level, aspect)
-			for j := uint32(0); j < rng.LayerCount(); j++ {
+			for j := uint32(0); j < layerCount; j++ {
 				layer := rng.BaseArrayLayer() + j
 				f(aspect, layer, level, levelSize)
 			}

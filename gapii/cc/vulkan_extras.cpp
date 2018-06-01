@@ -717,6 +717,10 @@ void VulkanSpy::walkImageSubRng(
     gapil::Ref<ImageObject> img, VkImageSubresourceRange rng,
     std::function<void(uint32_t aspect_bit, uint32_t layer, uint32_t level)>
         f) {
+  uint32_t layer_count =
+      subImageSubresourceLayerCount(nullptr, nullptr, img, rng);
+  uint32_t level_count =
+      subImageSubresourceLevelCount(nullptr, nullptr, img, rng);
   auto aspect_map =
       subUnpackImageAspectFlags(nullptr, nullptr, rng.maspectMask);
   for (auto b : aspect_map->mBits) {
@@ -725,13 +729,13 @@ void VulkanSpy::walkImageSubRng(
       continue;
     }
     for (uint32_t layer = rng.mbaseArrayLayer;
-         layer < rng.mbaseArrayLayer + rng.mlayerCount; layer++) {
+         layer < rng.mbaseArrayLayer + layer_count; layer++) {
       auto layi = ai->second->mLayers.find(layer);
       if (layi == ai->second->mLayers.end()) {
         continue;
       }
       for (uint32_t level = rng.mbaseMipLevel;
-           level < rng.mbaseMipLevel + rng.mlevelCount; level++) {
+           level < rng.mbaseMipLevel + level_count; level++) {
         auto levi = layi->second->mLevels.find(level);
         if (levi == layi->second->mLevels.end()) {
           continue;
