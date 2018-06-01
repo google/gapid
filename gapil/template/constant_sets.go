@@ -175,31 +175,14 @@ func buildConstantSets(api *semantic.API, mappings *resolver.Mappings) *Constant
 
 	constsets := map[semantic.Node]*int{}
 
+	// Create a constant set for all the API's enums that didn't opt out
 	for _, e := range api.Enums {
+		// "analyze_usage" opts out of the default constant set generation,
+		// uses analysis to determine which constants should go together
 		if e.Annotations.GetAnnotation("analyze_usage") == nil {
 			labels := analysis.Labels{}
 			for _, entry := range e.Entries {
-				value := uint64(0)
-				switch v := entry.Value.(type) {
-				case semantic.Int8Value:
-					value = uint64(v)
-				case semantic.Uint8Value:
-					value = uint64(v)
-				case semantic.Int16Value:
-					value = uint64(v)
-				case semantic.Uint16Value:
-					value = uint64(v)
-				case semantic.Int32Value:
-					value = uint64(v)
-				case semantic.Uint32Value:
-					value = uint64(v)
-				case semantic.Int64Value:
-					value = uint64(v)
-				case semantic.Uint64Value:
-					value = uint64(v)
-				default:
-					panic(fmt.Sprintf("Unsupported enum number type: %v", e.NumberType))
-				}
+				value := semantic.AsUint64(entry.Value)
 				if l, ok := labels[value]; ok {
 					panic(fmt.Sprintf("Enum %v has multiple labels for value %v: %v, %v",
 						e.Named, value, l, entry.Named))

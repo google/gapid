@@ -512,6 +512,30 @@ func UnsignedInteger(size int32) Type {
 	}
 }
 
+// AsUint64 converts a sized integer value to a uint64.
+func AsUint64(val Expression) uint64 {
+	switch v := val.(type) {
+	case Int8Value:
+		return uint64(v)
+	case Uint8Value:
+		return uint64(v)
+	case Int16Value:
+		return uint64(v)
+	case Uint16Value:
+		return uint64(v)
+	case Int32Value:
+		return uint64(v)
+	case Uint32Value:
+		return uint64(v)
+	case Int64Value:
+		return uint64(v)
+	case Uint64Value:
+		return uint64(v)
+	default:
+		panic(fmt.Sprintf("Attempted to convert %v to uint64", val.ExpressionType()))
+	}
+}
+
 // Underlying returns the underlying type for ty by recursively traversing the
 // pseudonym chain until reaching and returning the first non-pseudoym type.
 // If ty is not a pseudonym then it is simply returned.
