@@ -75,16 +75,6 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 			return nil
 		}
 
-		// Pending is only used for FirstInFrame and so it's safe to
-		// add them all at the start of the command.
-		for _, kind := range pending {
-			events = append(events, &service.Event{
-				Kind:    kind,
-				Command: p.Capture.Command(uint64(id)),
-			})
-		}
-		pending = nil
-
 		// For a given command, if the command has a FirstInFrame
 		// event, we want that to come before all other events for that
 		// command, and likewise for a LastInFrame event, it should be
@@ -109,6 +99,24 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		}
 
 		f := cmd.CmdFlags(ctx, id, s)
+
+		// Add LastInFrame event of a previous command first.
+		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {
+			events = append(events, &service.Event{
+				Kind:    service.EventKind_LastInFrame,
+				Command: p.Capture.Command(uint64(lastCmd)),
+			})
+		}
+
+		// Add any pending events (currently only FirstInFrame events).
+		for _, kind := range pending {
+			events = append(events, &service.Event{
+				Kind:    kind,
+				Command: p.Capture.Command(uint64(id)),
+			})
+		}
+		pending = nil
+
 		// Add all first in frame events
 		if p.FirstInFrame && (f.IsStartOfFrame() || id == 0) {
 			events = append(events, &service.Event{
@@ -116,7 +124,9 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
-		events = append(events, epFirstInFrame...)
+		if p.FirstInFrame {
+			events = append(events, epFirstInFrame...)
+		}
 		if p.FirstInFrame && f.IsEndOfFrame() {
 			pending = append(pending, service.EventKind_FirstInFrame)
 		}
@@ -165,19 +175,15 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 			})
 		}
 		// Add LastInFrame events after other events for a given command
-		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {
-			events = append(events, &service.Event{
-				Kind:    service.EventKind_LastInFrame,
-				Command: p.Capture.Command(uint64(lastCmd)),
-			})
-		}
 		if p.LastInFrame && f.IsEndOfFrame() && id > 0 {
 			events = append(events, &service.Event{
 				Kind:    service.EventKind_LastInFrame,
 				Command: p.Capture.Command(uint64(id)),
 			})
 		}
-		events = append(events, epLastInFrame...)
+		if p.LastInFrame {
+			events = append(events, epLastInFrame...)
+		}
 		if p.FramebufferObservations {
 			// NOTE: gapit SxS video depends on FBO events coming after
 			// all other event types.
