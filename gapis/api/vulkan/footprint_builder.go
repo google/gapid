@@ -32,6 +32,8 @@ var emptyDefUseVars = []dependencygraph.DefUseVariable{}
 const vkWholeSize = uint64(0xFFFFFFFFFFFFFFFF)
 const vkAttachmentUnused = uint32(0xFFFFFFFF)
 const vkNullHandle = vkHandle(0x0)
+const vkRemainingArrayLayers = uint32(0xFFFFFFFF)
+const vkRemainingMipLevels = uint32(0xFFFFFFFF)
 
 // Assume the value of a Vulkan handle is always unique
 type vkHandle uint64
@@ -608,11 +610,13 @@ func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 		case VkImageViewType_VK_IMAGE_VIEW_TYPE_2D,
 			VkImageViewType_VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 			if viewObj.SubresourceRange().BaseArrayLayer() == uint32(0) &&
-				imgObj.Info().ArrayLayers() == viewObj.SubresourceRange().LayerCount() &&
+				(imgObj.Info().ArrayLayers() == viewObj.SubresourceRange().LayerCount() ||
+					viewObj.SubresourceRange().LayerCount() == vkRemainingArrayLayers) &&
 				imgObj.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_2D &&
 				imgObj.Info().Extent().Width() == fb.Width() &&
 				imgObj.Info().Extent().Height() == fb.Height() &&
-				fb.Layers() == imgObj.Info().ArrayLayers() {
+				(fb.Layers() == imgObj.Info().ArrayLayers() ||
+					fb.Layers() == vkRemainingArrayLayers) {
 				fullImageData = true
 			}
 		}
@@ -696,11 +700,13 @@ func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 				case VkImageViewType_VK_IMAGE_VIEW_TYPE_2D,
 					VkImageViewType_VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 					if viewObj.SubresourceRange().BaseArrayLayer() == uint32(0) &&
-						imgObj.Info().ArrayLayers() == viewObj.SubresourceRange().LayerCount() &&
+						(imgObj.Info().ArrayLayers() == viewObj.SubresourceRange().LayerCount() ||
+							viewObj.SubresourceRange().LayerCount() == vkRemainingMipLevels) &&
 						imgObj.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_2D &&
 						imgObj.Info().Extent().Width() == fb.Width() &&
 						imgObj.Info().Extent().Height() == fb.Height() &&
-						fb.Layers() == imgObj.Info().ArrayLayers() {
+						(fb.Layers() == imgObj.Info().ArrayLayers() ||
+							fb.Layers() == vkRemainingArrayLayers) {
 						fullImageData = true
 					}
 				}
@@ -3093,7 +3099,7 @@ func subresourceLayersFullyCoverImage(img ImageObjectʳ, layers VkImageSubresour
 	if layers.BaseArrayLayer() != uint32(0) {
 		return false
 	}
-	if layers.LayerCount() != img.Info().ArrayLayers() {
+	if layers.LayerCount() != img.Info().ArrayLayers() && layers.LayerCount() != vkRemainingArrayLayers {
 		return false
 	}
 	// Be conservative, only returns true if both the depth and the stencil
@@ -3115,7 +3121,8 @@ func subresourceRangeFullyCoverImage(img ImageObjectʳ, rng VkImageSubresourceRa
 	if rng.BaseArrayLayer() != 0 || rng.BaseMipLevel() != 0 {
 		return false
 	}
-	if rng.LayerCount() != img.Info().ArrayLayers() || rng.LevelCount() != img.Info().MipLevels() {
+	if (rng.LayerCount() != img.Info().ArrayLayers() && rng.LayerCount() != vkRemainingArrayLayers) ||
+		(rng.LevelCount() != img.Info().MipLevels() && rng.LevelCount() != vkRemainingMipLevels) {
 		return false
 	}
 	// Be conservative, only returns true if both the depth and the stencil bits
