@@ -559,7 +559,7 @@ bool Vulkan::replayCreateVkDebugReportCallback(Stack* stack, bool pushReturn) {
         }
         return true;
     } else {
-        GAPID_ERROR("Error during calling function vkCreateDebugReportCallbackEXT");
+        GAPID_ERROR("Invalid Stack during calling function vkCreateDebugReportCallbackEXT");
         return false;
     }
 }

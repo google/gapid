@@ -89,8 +89,6 @@ message PostData {
 message Notification {
   uint64 id = 1;
   // Serverity defines the severity of a notification message.
-  // The values are identical to values in core/log/serverity.go and
-  // gapis/service/service.proto
   severity.Severity severity = 2;
   // API index should be in uint8 type. Extend to uint32 as protobuf does not
   // support uint8.

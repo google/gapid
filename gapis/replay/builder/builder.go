@@ -47,16 +47,18 @@ type marker struct {
 	cmd         uint64 // the command identifier
 }
 
-// NotificationResponsor takes a Notification message from the replay virtual
-// machine.
-type NotificationResponsor func(p *gapir.Notification)
+// NotificationReader reads a given copy of notification message received from
+// the replay virtual machine.
+type NotificationReader func(p gapir.Notification)
 
-type ReadNotification func(p gapir.Notification)
+// NotificationHandler handles the original Notification messages from the
+// replay virtual machine.
+type NotificationHandler func(p *gapir.Notification)
 
-// PostDataResponsor response to a given PostData message, which may contains
+// PostDataHandler handles the original PostData messages, which may contains
 // multiple pieces of post back data issued by multiple POST instructions, from
 // the replay virual machine.
-type PostDataResponsor func(p *gapir.PostData)
+type PostDataHandler func(p *gapir.PostData)
 
 type postBackDecoder struct {
 	expectedSize int
@@ -84,7 +86,7 @@ type Builder struct {
 	mappedMemory        mappedMemoryRangeList
 	instructions        []asm.Instruction
 	decoders            []postBackDecoder
-	notificationReaders []ReadNotification
+	notificationReaders []NotificationReader
 	stack               []stackItem
 	memoryLayout        *device.MemoryLayout
 	inCmd               bool   // true if between BeginCommand and CommitCommand/RevertCommand
@@ -573,14 +575,14 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 	b.ReserveMemory(rng)
 }
 
-func (b *Builder) RegisterNotificationReader(reader ReadNotification) {
+func (b *Builder) RegisterNotificationReader(reader NotificationReader) {
 	b.notificationReaders = append(b.notificationReaders, reader)
 }
 
 // Build compiles the replay instructions, returning a Payload that can be
-// sent to the replay virtual-machine and a PostDataResponsor for interpreting
+// sent to the replay virtual-machine and a PostDataHandler for interpreting
 // the responses.
-func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataResponsor, NotificationResponsor, error) {
+func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, NotificationHandler, error) {
 	ctx = log.Enter(ctx, "Build")
 	if config.DebugReplayBuilder {
 		log.I(ctx, "Instruction count: %d", len(b.instructions))
@@ -621,9 +623,9 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataResponsor, 
 		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
 
-	postResp := func(pd *gapir.PostData) {
+	handlePost := func(pd *gapir.PostData) {
 		// TODO: should we skip it instead of return error?
-		ctx = log.Enter(ctx, "PostDataResponsor")
+		ctx = log.Enter(ctx, "PostDataHandler")
 		if pd == nil {
 			log.E(ctx, "Cannot handle nil PostData")
 		}
@@ -645,8 +647,8 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataResponsor, 
 		})
 	}
 
-	notiResp := func(n *gapir.Notification) {
-		ctx = log.Enter(ctx, "NotificationResponsor")
+	handleNotification := func(n *gapir.Notification) {
+		ctx = log.Enter(ctx, "NotificationHandler")
 		if n == nil {
 			log.E(ctx, "Cannot handle nil Notification")
 			return
@@ -658,7 +660,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataResponsor, 
 		})
 	}
 
-	return payload, postResp, notiResp, nil
+	return payload, handlePost, handleNotification, nil
 }
 
 const ErrInvalidResource = fault.Const("Invaid resource")

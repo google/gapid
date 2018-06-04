@@ -167,8 +167,8 @@ void Context::onDebugMessage(int severity, uint8_t api_index, const char* msg) {
       GAPID_DEBUG("[%d]renderer: %s", label, msg);
       break;
   }
-  mConnection->sendNotification(mNumNotifications++, severity, api_index, label,
-                                str_msg, nullptr, 0);
+  mConnection->sendNotification(mNumSentDebugMessages++, severity, api_index,
+                                label, str_msg, nullptr, 0);
 }
 
 void Context::registerCallbacks(Interpreter* interpreter) {

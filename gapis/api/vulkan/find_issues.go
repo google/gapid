@@ -43,6 +43,8 @@ const (
 	debugReportExtension = "VK_EXT_debug_report"
 )
 
+// isValidationLayer returns true if any of the given string matches with any
+// validation layer names. Otherwise returns false.
 func isValidationLayer(n string) bool {
 	if n == validationMetaLayer {
 		return true

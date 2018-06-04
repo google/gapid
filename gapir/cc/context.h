@@ -135,8 +135,8 @@ private:
     // Only valid for the duration of interpret()
     std::unique_ptr<Interpreter> mInterpreter;
 
-    // total number of notifications issued by this context
-    uint64_t mNumNotifications;
+    // The total number of debug messages sent to GAPIS.
+    uint64_t mNumSentDebugMessages;
 };
 
 }  // namespace gapir

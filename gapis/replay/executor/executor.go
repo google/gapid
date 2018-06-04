@@ -32,8 +32,8 @@ import (
 
 type executor struct {
 	payload            gapir.Payload
-	handlePost         builder.PostDataResponsor
-	handleNotification builder.NotificationResponsor
+	handlePost         builder.PostDataHandler
+	handleNotification builder.NotificationHandler
 	memoryLayout       *device.MemoryLayout
 	OS                 *device.OS
 }
@@ -46,8 +46,8 @@ type executor struct {
 func Execute(
 	ctx context.Context,
 	payload gapir.Payload,
-	handlePost builder.PostDataResponsor,
-	handleNotification builder.NotificationResponsor,
+	handlePost builder.PostDataHandler,
+	handleNotification builder.NotificationHandler,
 	connection *gapir.Connection,
 	memoryLayout *device.MemoryLayout,
 	os *device.OS) error {
