@@ -513,26 +513,26 @@ func UnsignedInteger(size int32) Type {
 }
 
 // AsUint64 converts a sized integer value to a uint64.
-func AsUint64(val Expression) uint64 {
+func AsUint64(val Expression) (uint64, bool) {
 	switch v := val.(type) {
 	case Int8Value:
-		return uint64(v)
+		return uint64(v), true
 	case Uint8Value:
-		return uint64(v)
+		return uint64(v), true
 	case Int16Value:
-		return uint64(v)
+		return uint64(v), true
 	case Uint16Value:
-		return uint64(v)
+		return uint64(v), true
 	case Int32Value:
-		return uint64(v)
+		return uint64(v), true
 	case Uint32Value:
-		return uint64(v)
+		return uint64(v), true
 	case Int64Value:
-		return uint64(v)
+		return uint64(v), true
 	case Uint64Value:
-		return uint64(v)
+		return uint64(v), true
 	default:
-		panic(fmt.Sprintf("Attempted to convert %v to uint64", val.ExpressionType()))
+		return uint64(0), false
 	}
 }
 

@@ -409,7 +409,10 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 
 	case *semantic.EnumEntry:
 		v, _ := s.valueOf(n.Value)
-		i := semantic.AsUint64(n.Value)
+		i, ok := semantic.AsUint64(n.Value)
+		if !ok {
+			panic(fmt.Errorf("EnumEntry value was of type %v", n.Value))
+		}
 		return &EnumValue{
 			Ty:      n.Owner().(*semantic.Enum),
 			Numbers: v.(*UintValue),

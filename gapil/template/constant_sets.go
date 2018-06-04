@@ -182,7 +182,10 @@ func buildConstantSets(api *semantic.API, mappings *resolver.Mappings) *Constant
 		if e.Annotations.GetAnnotation("analyze_usage") == nil {
 			labels := analysis.Labels{}
 			for _, entry := range e.Entries {
-				value := semantic.AsUint64(entry.Value)
+				value, ok := semantic.AsUint64(entry.Value)
+				if !ok {
+					panic(fmt.Sprintf("Unsupported enum number type: %v", e.NumberType))
+				}
 				if l, ok := labels[value]; ok {
 					panic(fmt.Sprintf("Enum %v has multiple labels for value %v: %v, %v",
 						e.Named, value, l, entry.Named))
