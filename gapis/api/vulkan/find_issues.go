@@ -27,6 +27,7 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
+	"github.com/google/gapid/gapis/service"
 )
 
 var validationLayers = [...]string{
@@ -259,14 +260,17 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 			label := n.GetLabel()
 			if int(label) < t.numInitialCmds {
 				// The debug report is issued for state rebuilding command
+				// TODO: Fix all the errors reported for initial commands.
 				issue.Command = api.CmdID(0)
 				issue.Error = fmt.Errorf("[State rebuilding command, linearized ID: %d]: %s", label, msg)
+				// For now hide such errors from the report view so users won't get confused.
+				return
 			} else {
 				// The debug report is issued for a trace command
 				issue.Command = api.CmdID(label - uint64(t.numInitialCmds))
 				issue.Error = fmt.Errorf("%s", msg)
 			}
-			issue.Severity = n.GetSeverity()
+			issue.Severity = service.Severity(uint32(n.GetSeverity()))
 			t.issues = append(t.issues, issue)
 		})
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,

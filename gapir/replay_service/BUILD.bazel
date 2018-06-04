@@ -37,9 +37,7 @@ go_library(
     embed = [":replay_service_go_proto"],
     importpath = "github.com/google/gapid/gapir/replay_service",
     visibility = ["//visibility:public"],
-    deps = [
-        # "//gapis/service/severity:go_default_library",
-    ],
+    deps = [],
 )
 
 cc_grpc_library(
