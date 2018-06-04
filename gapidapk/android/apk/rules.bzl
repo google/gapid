@@ -72,12 +72,19 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
         srcs = fatapks + ["//gapidapk/android/app/src/main:source"],
         visibility = ["//visibility:public"],
     )
+    native.filegroup(
+        name = name + "_libs",
+        srcs = select({
+            "//tools/build:debug": [l + "_unstripped" for l in natives],
+            "//conditions:default" : natives,
+        })
+    )
     native.cc_library(
-        name = name+"_native",
+        name = name + "_native",
         linkstatic = 1,
         srcs = select({
-            "//tools/build:android-" + name: natives,
-            "//conditions:default" : [],
+            "//tools/build:android-" + name: [name + "_libs"],
+            "//conditions:default": [],
         })
     )
     native.android_binary(
@@ -86,7 +93,7 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
             "name": pkg,
         },
         custom_package = "com.google.android.gapid",
-        manifest = ":"+name+"_manifest",
+        manifest = ":" + name + "_manifest",
         deps = [
             "//gapidapk/android/app/src/main:gapid",
             ":" + name + "_native",
