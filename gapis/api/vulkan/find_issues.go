@@ -98,6 +98,17 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 	s := out.State()
 	l := s.MemoryLayout
+	allocated := []api.AllocResult{}
+	defer func() {
+		for _, d := range allocated {
+			d.Free()
+		}
+	}()
+	mustAlloc := func(ctx context.Context, v ...interface{}) api.AllocResult {
+		res := s.AllocDataOrPanic(ctx, v...)
+		allocated = append(allocated, res)
+		return res
+	}
 
 	// Before an instance is to be destroyed, check if it has debug report callback
 	// created by us, if so, destory the call back handle.
@@ -126,11 +137,11 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 		validationLayersData := []api.AllocResult{}
 		for _, v := range validationLayers {
-			d := s.AllocDataOrPanic(ctx, v)
+			d := mustAlloc(ctx, v)
 			validationLayersData = append(validationLayersData, d)
 			layers = append(layers, NewCharᶜᵖ(d.Ptr()))
 		}
-		layersData := s.AllocDataOrPanic(ctx, layers)
+		layersData := mustAlloc(ctx, layers)
 
 		extCount := info.EnabledExtensionCount()
 		exts := info.PpEnabledExtensionNames().Slice(0, uint64(extCount), l).MustRead(ctx, cmd, s, nil)
@@ -142,25 +153,30 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			}
 		}
 		if !hasDebugReport {
-			debugReportExtNameData = s.AllocDataOrPanic(ctx, debugReportExtension)
+			debugReportExtNameData = mustAlloc(ctx, debugReportExtension)
 			exts = append(exts, NewCharᶜᵖ(debugReportExtNameData.Ptr()))
 		}
-		extsData := s.AllocDataOrPanic(ctx, exts)
+		extsData := mustAlloc(ctx, exts)
 
 		info.SetEnabledLayerCount(uint32(len(layers)))
 		info.SetPpEnabledLayerNames(NewCharᶜᵖᶜᵖ(layersData.Ptr()))
 		info.SetEnabledExtensionCount(uint32(len(exts)))
 		info.SetPpEnabledExtensionNames(NewCharᶜᵖᶜᵖ(extsData.Ptr()))
-		infoData := s.AllocDataOrPanic(ctx, info)
+		infoData := mustAlloc(ctx, info)
 
 		newCmd := cb.VkCreateInstance(infoData.Ptr(), cmd.PAllocator(), cmd.PInstance(), cmd.Result())
 		for _, d := range validationLayersData {
 			newCmd.AddRead(d.Data())
 		}
-		newCmd.AddRead(debugReportExtNameData.Data())
-		newCmd.AddRead(infoData.Data())
-		newCmd.AddRead(layersData.Data())
-		newCmd.AddRead(extsData.Data())
+		newCmd.AddRead(
+			debugReportExtNameData.Data(),
+		).AddRead(
+			infoData.Data(),
+		).AddRead(
+			layersData.Data(),
+		).AddRead(
+			extsData.Data(),
+		)
 		// Also add back all the other read/write observations of the origianl vkCreateInstance
 		for _, r := range cmd.Extras().Observations().Reads {
 			newCmd.AddRead(r.Range, r.ID)
@@ -185,14 +201,14 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 		validationLayersData := []api.AllocResult{}
 		for _, v := range validationLayers {
-			d := s.AllocDataOrPanic(ctx, v)
+			d := mustAlloc(ctx, v)
 			validationLayersData = append(validationLayersData, d)
 			layers = append(layers, NewCharᶜᵖ(d.Ptr()))
 		}
-		layersData := s.AllocDataOrPanic(ctx, layers)
+		layersData := mustAlloc(ctx, layers)
 		info.SetEnabledLayerCount(uint32(len(layers)))
 		info.SetPpEnabledLayerNames(NewCharᶜᵖᶜᵖ(layersData.Ptr()))
-		infoData := s.AllocDataOrPanic(ctx, info)
+		infoData := mustAlloc(ctx, info)
 
 		newCmd := cb.VkCreateDevice(cmd.PhysicalDevice(), infoData.Ptr(), cmd.PAllocator(), cmd.PDevice(), cmd.Result())
 		for _, d := range validationLayersData {
@@ -226,8 +242,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			}
 			return false
 		}))
-		callbackHandleData := s.AllocDataOrPanic(ctx, callbackHandle)
-		callbackCreateInfo := s.AllocDataOrPanic(
+		callbackHandleData := mustAlloc(ctx, callbackHandle)
+		callbackCreateInfo := mustAlloc(
 			ctx, NewVkDebugReportCallbackCreateInfoEXT(
 				s.Arena,
 				VkStructureType_VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT, // sType
