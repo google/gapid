@@ -1360,7 +1360,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
 
-	primeByBufCopy := (img.Info().Usage() & transDstBit) != 0
+	isDepth := (img.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
+    primeByBufCopy := (img.Info().Usage()&transDstBit) != 0 && (!isDepth)
 	primeByRendering := (!primeByBufCopy) && ((img.Info().Usage() & attBits) != 0)
 	primeByImageStore := (!primeByBufCopy) && (!primeByRendering) && ((img.Info().Usage() & storageBit) != 0)
 
