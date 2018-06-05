@@ -64,7 +64,7 @@
   VkDeviceSize            BoundMemoryOffset
   // mapping from the resource offsets to the sparse bindings in the unit of sparse blocks
   map!(u64, VkSparseMemoryBind) OpaqueSparseMemoryBindings
-  // mapping from image aspect flags to binding info
+  // mapping from image aspect flag bits to binding info
   map!(u32, ref!SparseBoundImageAspectInfo)    SparseImageMemoryBindings
   @unused bool                                 IsSwapchainImage
   VkImage                                      VulkanHandle
@@ -92,6 +92,7 @@
   @spy_disabled
   @hidden @nobox @internal u8[] Data
   VkImageLayout                 Layout
+  ref!VkSubresourceLayout       LinearLayout
 }
 
 @internal class SparseBoundImageAspectInfo {
@@ -118,6 +119,18 @@
 @internal class ImageMemoryRequirements {
   VkMemoryRequirements MemoryRequirements
   map!(u32, VkSparseImageMemoryRequirements) AspectBitsToSparseMemoryRequirements
+}
+
+@internal class LinearImageLayouts {
+  map!(u32, ref!LinearImageAspectLayouts) AspectLayouts
+}
+
+@internal class LinearImageAspectLayouts {
+  map!(u32, ref!LinearImageLayerLayouts) LayerLayouts
+}
+
+@internal class LinearImageLayerLayouts {
+  map!(u32, ref!VkSubresourceLayout) LevelLayouts
 }
 
 @threadSafety("system")
@@ -228,6 +241,29 @@ cmd VkResult vkCreateImage(
     }
   }
 
+  // If the image tiling is LINEAR, get the VkSubresourceLayout for each linear image level
+  if (info.tiling == VK_IMAGE_TILING_LINEAR) {
+    linearLayouts := fetchLinearImageSubresourceLayouts(device, object,
+      VkImageSubresourceRange(
+        aspectMask:     imageAspect,
+        baseMipLevel:   0,
+        levelCount:     imageInfo.MipLevels,
+        baseArrayLayer: 0,
+        layerCount:     imageInfo.ArrayLayers,
+      ))
+    if (linearLayouts != null) {
+      for _, aspectBit, al in linearLayouts.AspectLayouts {
+        for _, layer, layl in al.LayerLayouts {
+          for _, level, levl in layl.LevelLayouts {
+            if levl != null {
+              object.Aspects[as!VkImageAspectFlagBits(aspectBit)].Layers[layer].Levels[level].LinearLayout = levl
+            }
+          }
+        }
+      }
+    }
+  }
+
   Images[handle] = object
 
   return ?
@@ -310,9 +346,24 @@ cmd VkResult vkBindImageMemory(
             // stencil element is always 1 byte wide
             as!u32(1)
         }
-        // Align to the next multiple times of 8
         size := widthInBlocks * heightInBlocks * level.Depth * elementSize
-        level.Data = make!u8(size)
+
+        // If the image has LINEAR tiling and the image level has layout
+        // PREINITIALIZED, link the data back to the bound device memory.
+        // Otherwise creates its own shadow memory pool.
+        // TODO: If the image as a whole requires more memory than we
+        // calculated, we should link the data back to the bound device memory
+        // no matter whether the tiling is LINEAR or OPTIMAL. But we need to
+        // come up with a 'linear layout' used in GAPID.
+        if (imageObject.Info.Tiling == VK_IMAGE_TILING_LINEAR) &&
+           (level.Layout == VK_IMAGE_LAYOUT_PREINITIALIZED) && 
+           (level.LinearLayout != null) {
+             loffset := as!u64(memoryOffset + level.LinearLayout.offset)
+             lsize := as!u64(level.LinearLayout.size)
+             level.Data = imageObject.BoundMemory.Data[loffset:lsize]
+        } else {
+          level.Data = make!u8(size)
+        }
       }
     }
   }

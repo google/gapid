@@ -504,6 +504,39 @@ VkMemoryRequirements VulkanSpy::fetchBufferMemoryRequirements(
   return reqs;
 }
 
+gapil::Ref<LinearImageLayouts> VulkanSpy::fetchLinearImageSubresourceLayouts(
+    CallObserver* observer, VkDevice device, gapil::Ref<ImageObject> image,
+    VkImageSubresourceRange rng) {
+  auto layouts = gapil::Ref<LinearImageLayouts>::create(arena());
+  walkImageSubRng(
+      image, rng,
+      [&layouts, device, &image, this](uint32_t aspect_bit, uint32_t layer, uint32_t level) {
+        VkImageSubresource subres(VkImageAspectFlags(aspect_bit),  // aspectMask
+                                  level,                           // mipLevel
+                                  layer                            // arrayLayer
+        );
+        auto aspect_i = layouts->mAspectLayouts.find(aspect_bit);
+        if (aspect_i == layouts->mAspectLayouts.end()) {
+          layouts->mAspectLayouts[aspect_bit] =
+              gapil::Ref<LinearImageAspectLayouts>::create(arena());
+          aspect_i = layouts->mAspectLayouts.find(aspect_bit);
+        }
+        auto layer_i = aspect_i->second->mLayerLayouts.find(layer);
+        if (layer_i == aspect_i->second->mLayerLayouts.end()) {
+          aspect_i->second->mLayerLayouts[layer] =
+              gapil::Ref<LinearImageLayerLayouts>::create(arena());
+          layer_i = aspect_i->second->mLayerLayouts.find(layer);
+        }
+        layer_i->second->mLevelLayouts[level] =
+            gapil::Ref<VkSubresourceLayout>::create(arena());
+        mImports.mVkDeviceFunctions[device].vkGetImageSubresourceLayout(
+            device, image->mVulkanHandle, &subres,
+            &*layer_i->second->mLevelLayouts[level]);
+      });
+  observer->encode(*layouts.get());
+  return layouts;
+}
+
 // Override API functions
 // SpyOverride_vkGetInstanceProcAddr(), SpyOverride_vkGetDeviceProcAddr(),
 // SpyOverride_vkCreateInstance() and SpyOverride_vkCreateDevice() require

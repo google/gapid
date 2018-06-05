@@ -114,6 +114,7 @@ extern void validate(string layerName, bool condition, string message)
 extern ref!PhysicalDevicesAndProperties fetchPhysicalDeviceProperties(VkInstance instance, VkPhysicalDevice[] devs)
 extern ref!ImageMemoryRequirements fetchImageMemoryRequirements(VkDevice device, VkImage image, bool hasSparseBit)
 extern VkMemoryRequirements fetchBufferMemoryRequirements(VkDevice device, VkBuffer buffer)
+extern ref!LinearImageLayouts fetchLinearImageSubresourceLayouts(VkDevice device, ref!ImageObject image, VkImageSubresourceRange rng)
 
 ///////////////////////
 // Function pointers //
