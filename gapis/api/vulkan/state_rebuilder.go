@@ -1361,7 +1361,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
 
 	isDepth := (img.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
-    primeByBufCopy := (img.Info().Usage()&transDstBit) != 0 && (!isDepth)
+	primeByBufCopy := (img.Info().Usage()&transDstBit) != 0 && (!isDepth)
 	primeByRendering := (!primeByBufCopy) && ((img.Info().Usage() & attBits) != 0)
 	primeByImageStore := (!primeByBufCopy) && (!primeByRendering) && ((img.Info().Usage() & storageBit) != 0)
 
@@ -2277,6 +2277,13 @@ func (sb *stateBuilder) createDescriptorPool(dp DescriptorPoolObjectʳ) {
 
 func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 	var temporaryRenderPass RenderPassObjectʳ
+	for _, v := range fb.ImageAttachments().All() {
+		if !GetState(sb.oldState).ImageViews().Contains(v.VulkanHandle()) {
+			log.W(sb.ctx, "Image View %v is invalid, framebuffer %v will not be created", v.VulkanHandle(), fb.VulkanHandle())
+			return
+		}
+	}
+
 	if !GetState(sb.newState).RenderPasses().Contains(fb.RenderPass().VulkanHandle()) {
 		sb.createRenderPass(fb.RenderPass())
 		temporaryRenderPass = GetState(sb.newState).RenderPasses().Get(fb.RenderPass().VulkanHandle())
@@ -2516,6 +2523,12 @@ func (sb *stateBuilder) createCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 		0, // pInheritanceInfo
 	)
 	if cb.BeginInfo().Inherited() {
+		if cb.BeginInfo().InheritedFramebuffer() != VkFramebuffer(0) &&
+			!GetState(sb.newState).Framebuffers().Contains(cb.BeginInfo().InheritedFramebuffer()) {
+			log.W(sb.ctx, "Command Buffer %v is invalid, it will not be recorded: - Inherited framebuffer does not exist", cb.VulkanHandle())
+			return
+		}
+
 		inheritanceInfo := sb.MustAllocReadData(NewVkCommandBufferInheritanceInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO, // sType
 			0, // pNext
