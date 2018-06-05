@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
@@ -74,7 +75,7 @@ type State interface {
 	APIObject
 
 	// Clone returns a deep copy of the state object.
-	Clone(arena.Arena) State
+	Clone(arena.Arena, *data.Cloner) State
 
 	// Root returns the path to the root of the state to display. It can vary
 	// based on filtering mode. Returning nil, nil indicates there is no state

@@ -84,6 +84,7 @@ func TestReferences(t *testing.T) {
 			),
 		),
 		cycle, // Cycle
+		NewU32ːNestedRefʳᵐ(a),
 	)
 
 	// extra -> protoA -> decoded -> protoB

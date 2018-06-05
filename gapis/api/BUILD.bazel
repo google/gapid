@@ -49,6 +49,7 @@ go_library(
     deps = [
         "//core/context/keys:go_default_library",
         "//core/data/binary:go_default_library",
+        "//core/data:go_default_library",
         "//core/data/deep:go_default_library",
         "//core/data/endian:go_default_library",
         "//core/data/generic:go_default_library",

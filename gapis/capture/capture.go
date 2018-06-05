@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/app/analytics"
+	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -135,6 +136,7 @@ func (c *Capture) NewUninitializedState(ctx context.Context, rngs interval.U64Ra
 // capture.
 func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 	s := c.NewUninitializedState(ctx, interval.U64RangeList{})
+	cloner := data.NewCloner()
 	if c.InitialState != nil {
 		for _, m := range c.InitialState.Memory {
 			pool, _ := s.Memory.Get(memory.PoolID(m.Pool))
@@ -144,7 +146,7 @@ func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
 		}
 		for k, v := range c.InitialState.APIs {
-			s.APIs[k.ID()] = v.Clone(s.Arena)
+			s.APIs[k.ID()] = v.Clone(s.Arena, cloner)
 		}
 		for _, v := range s.APIs {
 			v.SetupInitialState(ctx, s)

@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 )
@@ -31,7 +32,7 @@ var (
 )
 
 func buildStubProgram(ctx context.Context, thread uint64, e *api.CmdExtras, s *api.GlobalState, programID ProgramId) []api.Cmd {
-	programInfo := FindLinkProgramExtra(s.Arena, e).Clone(s.Arena)
+	programInfo := FindLinkProgramExtra(s.Arena, e).Clone(s.Arena, data.NewCloner())
 	vss, fss, err := stubShaderSource(programInfo)
 	if err != nil {
 		log.E(ctx, "Unable to build stub shader: %v", err)

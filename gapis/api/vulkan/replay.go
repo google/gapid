@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -273,8 +274,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		devs := devSlice.MustRead(ctx, cmd, s, nil)
 		allProps := externs{ctx, cmd, id, s, nil}.fetchPhysicalDeviceProperties(e.Instance(), devSlice)
 		propList := []VkPhysicalDeviceProperties{}
+		cloner := data.NewCloner()
 		for _, dev := range devs {
-			propList = append(propList, allProps.PhyDevToProperties().Get(dev).Clone(s.Arena))
+			propList = append(propList, allProps.PhyDevToProperties().Get(dev).Clone(s.Arena, cloner))
 		}
 		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance(), numDev, devs, propList)
 		out.MutateAndWrite(ctx, id, newEnumerate)
