@@ -117,7 +117,7 @@
 }
 
 @internal class ImageMemoryRequirements {
-  VkMemoryRequirements MemoryRequirements
+  VkMemoryRequirements                       MemoryRequirements
   map!(u32, VkSparseImageMemoryRequirements) AspectBitsToSparseMemoryRequirements
 }
 
@@ -147,17 +147,17 @@ cmd VkResult vkCreateImage(
   queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
 
   imageInfo := ImageInfo(
-    Flags:        info.flags,
-    ImageType:    info.imageType,
-    Format:       info.format,
-    Extent:       info.extent,
-    MipLevels:    info.mipLevels,
-    ArrayLayers:  info.arrayLayers,
-    Samples:      info.samples,
-    Tiling:       info.tiling,
-    Usage:        info.usage,
-    SharingMode:  info.sharingMode,
-    InitialLayout:       info.initialLayout,
+    Flags:          info.flags,
+    ImageType:      info.imageType,
+    Format:         info.format,
+    Extent:         info.extent,
+    MipLevels:      info.mipLevels,
+    ArrayLayers:    info.arrayLayers,
+    Samples:        info.samples,
+    Tiling:         info.tiling,
+    Usage:          info.usage,
+    SharingMode:    info.sharingMode,
+    InitialLayout:  info.initialLayout,
   )
 
   for i in (0 .. info.queueFamilyIndexCount) {
@@ -245,16 +245,16 @@ cmd VkResult vkCreateImage(
   if (info.tiling == VK_IMAGE_TILING_LINEAR) {
     linearLayouts := fetchLinearImageSubresourceLayouts(device, object,
       VkImageSubresourceRange(
-        aspectMask:     imageAspect,
-        baseMipLevel:   0,
-        levelCount:     imageInfo.MipLevels,
-        baseArrayLayer: 0,
-        layerCount:     imageInfo.ArrayLayers,
+        aspectMask:      imageAspect,
+        baseMipLevel:    0,
+        levelCount:      imageInfo.MipLevels,
+        baseArrayLayer:  0,
+        layerCount:      imageInfo.ArrayLayers,
       ))
     if (linearLayouts != null) {
-      for _, aspectBit, al in linearLayouts.AspectLayouts {
-        for _, layer, layl in al.LayerLayouts {
-          for _, level, levl in layl.LevelLayouts {
+      for _ , aspectBit , al in linearLayouts.AspectLayouts {
+        for _ , layer , layl in al.LayerLayouts {
+          for _ , level , levl in layl.LevelLayouts {
             if levl != null {
               object.Aspects[as!VkImageAspectFlagBits(aspectBit)].Layers[layer].Levels[level].LinearLayout = levl
             }
@@ -356,11 +356,11 @@ cmd VkResult vkBindImageMemory(
         // no matter whether the tiling is LINEAR or OPTIMAL. But we need to
         // come up with a 'linear layout' used in GAPID.
         if (imageObject.Info.Tiling == VK_IMAGE_TILING_LINEAR) &&
-           (level.Layout == VK_IMAGE_LAYOUT_PREINITIALIZED) && 
-           (level.LinearLayout != null) {
-             loffset := as!u64(memoryOffset + level.LinearLayout.offset)
-             lsize := as!u64(level.LinearLayout.size)
-             level.Data = imageObject.BoundMemory.Data[loffset:lsize]
+            (level.Layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
+            (level.LinearLayout != null) {
+          loffset := as!u64(memoryOffset + level.LinearLayout.offset)
+          lsize := as!u64(level.LinearLayout.size)
+          level.Data = imageObject.BoundMemory.Data[loffset:lsize]
         } else {
           level.Data = make!u8(size)
         }
