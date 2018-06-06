@@ -1364,6 +1364,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	primeByBufCopy := (img.Info().Usage()&transDstBit) != 0 && (!isDepth)
 	primeByRendering := (!primeByBufCopy) && ((img.Info().Usage() & attBits) != 0)
 	primeByImageStore := (!primeByBufCopy) && (!primeByRendering) && ((img.Info().Usage() & storageBit) != 0)
+	primeByPreinitialization := (!primeByBufCopy) && (!primeByRendering) && (!primeByImageStore) && (img.Info().Tiling() == VkImageTiling_VK_IMAGE_TILING_LINEAR) && (img.Info().InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED)
 
 	vkCreateImage(sb, img.Device(), img.Info(), img.VulkanHandle())
 	vkGetImageMemoryRequirements(sb, img.Device(), img.VulkanHandle(), img.MemoryRequirements())
@@ -1597,6 +1598,10 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		err = imgPrimer.primeByRendering(img, opaqueRanges, queue, sparseQueue)
 	} else if primeByImageStore {
 		err = imgPrimer.primeByImageStore(img, opaqueRanges, queue, sparseQueue)
+	} else if primeByPreinitialization {
+		err = imgPrimer.primeByPreinitialization(img, opaqueRanges, queue, sparseQueue)
+	} else {
+		err = log.Errf(sb.ctx, nil, "There is no valid way to prim data into image: %v", img.VulkanHandle())
 	}
 	if err != nil {
 		log.E(sb.ctx, "[Priming the data of image: %v] %v", img.VulkanHandle(), err)

@@ -355,6 +355,20 @@ func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMem
 	return MakeVkMemoryRequirements(e.s.Arena)
 }
 
+func (e externs) fetchLinearImageSubresourceLayouts(dev VkDevice, img ImageObjectʳ, rng VkImageSubresourceRange) LinearImageLayoutsʳ {
+	// Only fetch linear image layouts for application commands, skip any commands
+	// inserted by GAPID
+	if e.cmdID == api.CmdNoID {
+		return NilLinearImageLayoutsʳ
+	}
+	for _, ee := range e.cmd.Extras().All() {
+		if r, ok := ee.(LinearImageLayouts); ok {
+			return MakeLinearImageLayoutsʳ(e.s.Arena).Set(r).Clone(e.s.Arena)
+		}
+	}
+	return NilLinearImageLayoutsʳ
+}
+
 func (e externs) vkErrInvalidHandle(handleType string, handle uint64) {
 	var issue replay.Issue
 	issue.Command = e.cmdID

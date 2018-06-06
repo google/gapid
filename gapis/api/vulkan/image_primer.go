@@ -16,8 +16,8 @@ package vulkan
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
-	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/image"
@@ -52,7 +52,7 @@ const (
 func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue QueueObjectʳ, sparseBindingQueue QueueObjectʳ) error {
 	job := newImagePrimerBufCopyJob(img, sameLayoutsOfImage(img))
 	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
-		job.addDst(aspect, aspect, img)
+		job.addDst(p.sb.ctx, aspect, aspect, img)
 	}
 	bcs := newImagePrimerBufferCopySession(p.sb, job)
 	for _, rng := range opaqueBoundRanges {
@@ -63,7 +63,7 @@ func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []V
 	}
 	err := bcs.rolloutBufCopies(queue, sparseBindingQueue)
 	if err != nil {
-		return fmt.Errorf("[Priming image data by buffer->image copy] %v", err)
+		return log.Errf(p.sb.ctx, err, "[Priming image data by buffer->image copy]")
 	}
 	return nil
 }
@@ -73,7 +73,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
 		stagingImgs, stagingImgMems, err := p.allocStagingImages(img, aspect)
 		if err != nil {
-			return fmt.Errorf("[Creating staging image for priming image data by rendering] %v", err)
+			return log.Errf(p.sb.ctx, err, "[Creating staging image for priming image data by rendering]")
 		}
 		defer func() {
 			for _, img := range stagingImgs {
@@ -83,7 +83,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 				p.sb.write(p.sb.cb.VkFreeMemory(mem.Device(), mem.VulkanHandle(), memory.Nullptr))
 			}
 		}()
-		copyJob.addDst(aspect, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, stagingImgs...)
+		copyJob.addDst(p.sb.ctx, aspect, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, stagingImgs...)
 	}
 	bcs := newImagePrimerBufferCopySession(p.sb, copyJob)
 	for _, rng := range opaqueBoundRanges {
@@ -94,7 +94,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	}
 	err := bcs.rolloutBufCopies(queue, sparseBindingQueue)
 	if err != nil {
-		return fmt.Errorf("[Copying data to staging images for priming image: %v data by rendering] %v", img.VulkanHandle(), err)
+		return log.Errf(p.sb.ctx, err, "[Copying data to staging images for priming image: %v data by rendering]")
 	}
 
 	renderJobs := []*ipRenderJob{}
@@ -191,6 +191,73 @@ func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []V
 	return nil
 }
 
+func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue, sparseBindingQueue QueueObjectʳ) error {
+	newImg := GetState(p.sb.newState).Images().Get(img.VulkanHandle())
+	newMem := newImg.BoundMemory()
+	boundOffset := img.BoundMemoryOffset()
+	boundSize := img.MemoryRequirements().Size()
+	newData := make([]uint8, boundSize)
+	transitionInfo := []imgSubRngLayoutTransitionInfo{}
+
+	for _, rng := range opaqueBoundRanges {
+		walkImageSubresourceRange(p.sb, img, rng,
+			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+				origLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
+				origData := origLevel.Data().MustRead(p.sb.ctx, nil, p.sb.oldState, nil)
+				linearLayout := origLevel.LinearLayout()
+				start := uint64(linearLayout.Offset())
+				end := start + uint64(linearLayout.Size())
+				copy(newData[start:end], origData[:])
+				transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
+					aspectMask:     VkImageAspectFlags(aspect),
+					baseMipLevel:   level,
+					levelCount:     1,
+					baseArrayLayer: layer,
+					layerCount:     1,
+					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED,
+					newLayout:      origLevel.Layout(),
+				})
+			})
+	}
+
+	dat := p.sb.newState.AllocDataOrPanic(p.sb.ctx, newData)
+	defer dat.Free()
+	at := NewVoidᵖ(dat.Ptr())
+	atdata := p.sb.newState.AllocDataOrPanic(p.sb.ctx, at)
+	defer atdata.Free()
+	p.sb.write(p.sb.cb.VkMapMemory(
+		newMem.Device(),
+		newMem.VulkanHandle(),
+		boundOffset,
+		boundSize,
+		VkMemoryMapFlags(0),
+		atdata.Ptr(),
+		VkResult_VK_SUCCESS,
+	).AddRead(atdata.Data()).AddWrite(atdata.Data()))
+
+	p.sb.write(p.sb.cb.VkFlushMappedMemoryRanges(
+		newMem.Device(),
+		1,
+		p.sb.MustAllocReadData(NewVkMappedMemoryRange(p.sb.ta,
+			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
+			0, // pNext
+			newMem.VulkanHandle(), // memory
+			0,         // offset
+			boundSize, // size
+		)).Ptr(),
+		VkResult_VK_SUCCESS,
+	).AddRead(dat.Data()))
+
+	p.sb.write(p.sb.cb.VkUnmapMemory(
+		newMem.Device(),
+		newMem.VulkanHandle(),
+	))
+
+	p.sb.transitionImageLayout(img, transitionInfo, sparseBindingQueue, queue)
+
+	return nil
+}
+
 func (p *imagePrimer) free() {
 	p.rh.free()
 	p.sh.free()
@@ -204,17 +271,17 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 
 	srcElementAndTexelInfo, err := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, img.Info().Fmt())
 	if err != nil {
-		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, fmt.Errorf("[Getting element size and texel block info] %v", err)
+		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting element size and texel block info]")
 	}
 	if srcElementAndTexelInfo.TexelBlockSize().Width() != 1 || srcElementAndTexelInfo.TexelBlockSize().Height() != 1 {
 		// compressed formats are not supported
-		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, fmt.Errorf("allocating staging images for compressed format images is not supported")
+		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "allocating staging images for compressed format images is not supported")
 	}
 	srcElementSize := srcElementAndTexelInfo.ElementSize()
 	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
 		srcElementSize, err = subGetDepthElementSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, img.Info().Fmt(), false)
 		if err != nil {
-			return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, fmt.Errorf("[Getting element size for depth aspect] %v", err)
+			return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting element size for depth aspect] %v", err)
 		}
 	} else if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 		srcElementSize = 1
@@ -229,7 +296,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 		stagingImgFormat = stagingDepthStencilImageBufferFormat
 	}
 	if stagingImgFormat == VkFormat_VK_FORMAT_UNDEFINED {
-		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, fmt.Errorf("unsupported aspect: %v", aspect)
+		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, nil, "unsupported aspect: %v", aspect)
 	}
 	stagingElementInfo, _ := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, stagingImgFormat)
 	stagingElementSize := stagingElementInfo.ElementSize()
@@ -248,7 +315,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 		memIndex = memoryTypeIndexFor(memTypeBits, phyDevMemProps, VkMemoryPropertyFlags(0))
 	}
 	if memIndex < 0 {
-		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, fmt.Errorf("can't find an appropriate memory type index")
+		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, nil, "can't find an appropriate memory type index")
 	}
 
 	covered := uint32(0)
@@ -263,7 +330,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 
 		stagingImgSize, err := subInferImageSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, stagingImg)
 		if err != nil {
-			return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, fmt.Errorf("[Getting staging image size] %v", err)
+			return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting staging image size]")
 		}
 		memHandle := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
 			return GetState(p.sb.newState).DeviceMemories().Contains(VkDeviceMemory(x))
@@ -497,7 +564,7 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue QueueObjectʳ) error {
 	}
 	pipeline, err := h.getOrCreateComputePipeline(compShaderInfo)
 	if err != nil {
-		return fmt.Errorf("[Getting compute pipeline] %v", err)
+		return log.Errf(h.sb.ctx, err, "[Getting compute pipeline]")
 	}
 
 	// Prepare the raw image data
@@ -519,13 +586,13 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue QueueObjectʳ) error {
 	if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 		data, srcVkFmt, err = ebgrDataToRGB32SFloat(data, job.opaqueBlockExtent)
 		if err != nil {
-			return fmt.Errorf("[Converting data in VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 to VK_FORMAT_R32G32B32_SFLOAT] %v", err)
+			return log.Errf(h.sb.ctx, err, "[Converting data in VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 to VK_FORMAT_R32G32B32_SFLOAT]")
 		}
 	}
 	var unpackedFmt VkFormat
-	unpacked, unpackedFmt, err := unpackDataForPriming(data, srcVkFmt, job.aspect)
+	unpacked, unpackedFmt, err := unpackDataForPriming(h.sb.ctx, data, srcVkFmt, job.aspect)
 	if err != nil {
-		return fmt.Errorf("[Unpacking data from format: %v aspect: %v] %v", srcVkFmt, job.aspect, err)
+		return log.Errf(h.sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcVkFmt, job.aspect)
 	}
 
 	unpackedElementAndTexelBlockSize, _ := subGetElementAndTexelBlockSize(
@@ -577,12 +644,12 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue Queue
 
 	// check the number of texel
 	if uint32(len(info.data))%info.dataElementSize != 0 {
-		return fmt.Errorf("len(data): %v is not multiple times of the element size: %v", len(info.data), info.dataElementSize)
+		return log.Errf(h.sb.ctx, nil, "len(data): %v is not multiple times of the element size: %v", len(info.data), info.dataElementSize)
 	}
 	maxDispatchTexelCount := uint64(specMaxComputeGlobalGroupCountX * specMaxComputeLocalGroupSizeX)
 	texelCount := uint64(uint32(len(info.data)) / info.dataElementSize)
 	if texelCount > maxDispatchTexelCount {
-		return fmt.Errorf("number of texels: %v exceeds the limit: %v", uint32(len(info.data))/info.dataElementSize, maxDispatchTexelCount)
+		return log.Errf(h.sb.ctx, nil, "number of texels: %v exceeds the limit: %v", uint32(len(info.data))/info.dataElementSize, maxDispatchTexelCount)
 	}
 
 	// data buffer and buffer view
@@ -776,11 +843,11 @@ func (h *ipStoreHandler) getOrCreateComputePipeline(info ipStoreShaderInfo) (Com
 	compShader, err := h.getOrCreateShaderModule(info)
 	// TODO: report to report view if the image is a depth/stencil image.
 	if err != nil {
-		return NilComputePipelineObjectʳ, fmt.Errorf("[Getting compute shader module] %v", err)
+		return NilComputePipelineObjectʳ, log.Errf(h.sb.ctx, err, "[Getting compute shader module]")
 	}
 
 	if _, ok := h.pipelineLayouts[info.dev]; !ok {
-		return NilComputePipelineObjectʳ, fmt.Errorf("pipeline layout not found")
+		return NilComputePipelineObjectʳ, log.Errf(h.sb.ctx, nil, "pipeline layout not found")
 	}
 
 	handle := VkPipeline(newUnusedID(true, func(x uint64) bool {
@@ -823,10 +890,10 @@ func (h *ipStoreHandler) getOrCreateShaderModule(info ipStoreShaderInfo) (Shader
 	}))
 	code, err := ipComputeShaderSpirv(info.fmt, info.aspect, info.imgType)
 	if err != nil {
-		return NilShaderModuleObjectʳ, fmt.Errorf("[Generating SPIR-V for: %v] %v", info, err)
+		return NilShaderModuleObjectʳ, log.Errf(h.sb.ctx, err, "[Generating SPIR-V for: %v]", info)
 	}
 	if len(code) == 0 {
-		return NilShaderModuleObjectʳ, fmt.Errorf("no SPIR-V code generated")
+		return NilShaderModuleObjectʳ, log.Errf(h.sb.ctx, nil, "no SPIR-V code generated")
 	}
 	vkCreateShaderModule(h.sb, info.dev, code, handle)
 	h.shaders[info] = GetState(h.sb.newState).ShaderModules().Get(handle)
@@ -936,7 +1003,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 			outputBarrierAspect = VkImageAspectFlags(job.aspect)
 		}
 	default:
-		return fmt.Errorf("unsupported aspect: %v", job.aspect)
+		return log.Errf(h.sb.ctx, nil, "unsupported aspect: %v", job.aspect)
 	}
 
 	var outputPreRenderLayout VkImageLayout
@@ -947,7 +1014,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		outputPreRenderLayout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 	default:
-		return fmt.Errorf("unsupported aspect: %v", job.aspect)
+		return log.Errf(h.sb.ctx, nil, "unsupported aspect: %v", job.aspect)
 	}
 
 	dev := job.renderTarget.Device()
@@ -965,7 +1032,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	if !descPool.IsNil() {
 		defer h.sb.write(h.sb.cb.VkDestroyDescriptorPool(dev, descPool.VulkanHandle(), memory.Nullptr))
 	} else {
-		return fmt.Errorf("failed to create descriptor pool for %v input attachments", len(job.inputAttachmentImages))
+		return log.Errf(h.sb.ctx, nil, "failed to create descriptor pool for %v input attachments", len(job.inputAttachmentImages))
 	}
 	descSetLayout := h.getOrCreateDescriptorSetLayout(descSetInfo)
 	descSet := h.allocDescriptorSet(dev, descPool.VulkanHandle(), descSetLayout.VulkanHandle())
@@ -976,32 +1043,32 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 					h.sb.MustAllocReadData(descSet.VulkanHandle()).Ptr()), VkResult_VK_SUCCESS))
 		}()
 	} else {
-		return fmt.Errorf("failed to allocate descriptorset with %v input attachments", len(job.inputAttachmentImages))
+		return log.Errf(h.sb.ctx, nil, "failed to allocate descriptorset with %v input attachments", len(job.inputAttachmentImages))
 	}
 
 	inputViews := []ImageViewObjectʳ{}
 	for _, input := range job.inputAttachmentImages {
 		// TODO: support rendering to 3D images if maintenance1 is enabled.
 		if input.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_3D {
-			return fmt.Errorf("rendering to 3D images are not supported yet")
+			return log.Errf(h.sb.ctx, nil, "rendering to 3D images are not supported yet")
 		}
 		view := h.createImageView(dev, input, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, job.layer, job.level)
 		inputViews = append(inputViews, view)
 		if !view.IsNil() {
 			defer h.sb.write(h.sb.cb.VkDestroyImageView(dev, view.VulkanHandle(), memory.Nullptr))
 		} else {
-			return fmt.Errorf("failed to create image view for input attachment image: %v", input.VulkanHandle())
+			return log.Errf(h.sb.ctx, nil, "failed to create image view for input attachment image: %v", input.VulkanHandle())
 		}
 	}
 	// TODO: support rendering to 3D images if maintenance1 is enabled.
 	if job.renderTarget.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_3D {
-		return fmt.Errorf("rendering to 3D images are not supported yet")
+		return log.Errf(h.sb.ctx, nil, "rendering to 3D images are not supported yet")
 	}
 	outputView := h.createImageView(dev, job.renderTarget, job.aspect, job.layer, job.level)
 	if !outputView.IsNil() {
 		defer h.sb.write(h.sb.cb.VkDestroyImageView(dev, outputView.VulkanHandle(), memory.Nullptr))
 	} else {
-		return fmt.Errorf("failed to create image view for rendering target image: %v", job.renderTarget.VulkanHandle())
+		return log.Errf(h.sb.ctx, nil, "failed to create image view for rendering target image: %v", job.renderTarget.VulkanHandle())
 	}
 
 	imgInfoList := []VkDescriptorImageInfo{}
@@ -1049,7 +1116,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	if !renderPass.IsNil() {
 		defer h.sb.write(h.sb.cb.VkDestroyRenderPass(dev, renderPass.VulkanHandle(), memory.Nullptr))
 	} else {
-		return fmt.Errorf("failed to create renderpass for rendering")
+		return log.Errf(h.sb.ctx, nil, "failed to create renderpass for rendering")
 	}
 
 	allViews := []VkImageView{}
@@ -1065,12 +1132,12 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	if !framebuffer.IsNil() {
 		defer h.sb.write(h.sb.cb.VkDestroyFramebuffer(dev, framebuffer.VulkanHandle(), memory.Nullptr))
 	} else {
-		return fmt.Errorf("failed to create framebuffer for rendering")
+		return log.Errf(h.sb.ctx, nil, "failed to create framebuffer for rendering")
 	}
 
 	pipelineLayout := h.getOrCreatePipelineLayout(descSetInfo)
 	if pipelineLayout.IsNil() {
-		return fmt.Errorf("failed to get pipeline layout for the rendering")
+		return log.Errf(h.sb.ctx, nil, "failed to get pipeline layout for the rendering")
 	}
 
 	pipelineInfo := ipGfxPipelineInfo{
@@ -1085,7 +1152,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	}
 	pipeline, err := h.getOrCreateGraphicsPipeline(pipelineInfo, renderPass.VulkanHandle())
 	if err != nil {
-		return fmt.Errorf("[Getting graphics pipeline] %v", err)
+		return log.Errf(h.sb.ctx, err, "[Getting graphics pipeline]")
 	}
 
 	var vc bytes.Buffer
@@ -1330,7 +1397,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 				)}).Ptr(),
 		))
 	default:
-		return fmt.Errorf("invalid aspect: %v to render", job.aspect)
+		return log.Errf(h.sb.ctx, nil, "invalid aspect: %v to render", job.aspect)
 	}
 
 	h.sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
@@ -1682,10 +1749,10 @@ func (h *ipRenderHandler) getOrCreateShaderModule(info ipRenderShaderInfo) (Shad
 		code, err = ipFragmentShaderSpirv(info.format, info.aspect)
 	}
 	if err != nil {
-		return NilShaderModuleObjectʳ, fmt.Errorf("[Generating shader SPIR-V for: %v] %v", info, err)
+		return NilShaderModuleObjectʳ, log.Errf(h.sb.ctx, err, "[Generating shader SPIR-V for: %v]", info)
 	}
 	if len(code) == 0 {
-		return NilShaderModuleObjectʳ, fmt.Errorf("no SPIR-V code generated")
+		return NilShaderModuleObjectʳ, log.Errf(h.sb.ctx, nil, "no SPIR-V code generated")
 	}
 	vkCreateShaderModule(h.sb, info.dev, code, handle)
 	h.shaders[info] = GetState(h.sb.newState).ShaderModules().Get(handle)
@@ -1701,11 +1768,11 @@ func (h *ipRenderHandler) getOrCreateGraphicsPipeline(info ipGfxPipelineInfo, re
 	vertInfo := ipRenderShaderInfo{dev: info.renderPassInfo.dev, isVertex: true}
 	vertShader, err := h.getOrCreateShaderModule(vertInfo)
 	if err != nil {
-		return NilGraphicsPipelineObjectʳ, fmt.Errorf("[Getting vertex shader module] %v", err)
+		return NilGraphicsPipelineObjectʳ, log.Errf(h.sb.ctx, err, "[Getting vertex shader module]")
 	}
 	fragShader, err := h.getOrCreateShaderModule(info.fragShaderInfo)
 	if err != nil {
-		return NilGraphicsPipelineObjectʳ, fmt.Errorf("[Getting fragment shader module] %v", err)
+		return NilGraphicsPipelineObjectʳ, log.Errf(h.sb.ctx, err, "[Getting fragment shader module]")
 	}
 
 	depthTestEnable := VkBool32(0)
@@ -1990,7 +2057,7 @@ func newImagePrimerBufCopyJob(srcImg ImageObjectʳ, finalLayout ipLayoutInfo) *i
 	}
 }
 
-func (s *ipBufCopyJob) addDst(srcAspect, dstAspect VkImageAspectFlagBits, dstImgs ...ImageObjectʳ) error {
+func (s *ipBufCopyJob) addDst(ctx context.Context, srcAspect, dstAspect VkImageAspectFlagBits, dstImgs ...ImageObjectʳ) error {
 	if s.srcAspectsToDsts[srcAspect] == nil {
 		s.srcAspectsToDsts[srcAspect] = &ipBufCopyDst{
 			dstImgs:   []ImageObjectʳ{},
@@ -1998,7 +2065,7 @@ func (s *ipBufCopyJob) addDst(srcAspect, dstAspect VkImageAspectFlagBits, dstImg
 		}
 	}
 	if s.srcAspectsToDsts[srcAspect].dstAspect != dstAspect {
-		return fmt.Errorf("new dstAspect:%v does not match with the existing one: %v", dstAspect, s.srcAspectsToDsts[srcAspect].dstAspect)
+		return log.Errf(ctx, nil, "new dstAspect:%v does not match with the existing one: %v", dstAspect, s.srcAspectsToDsts[srcAspect].dstAspect)
 	}
 	s.srcAspectsToDsts[srcAspect].dstImgs = append(s.srcAspectsToDsts[srcAspect].dstImgs, dstImgs...)
 	return nil
@@ -2082,9 +2149,8 @@ func (h *ipBufferCopySession) collectCopiesFromSparseImageBindings() {
 
 func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, dstImgsOldQueue QueueObjectʳ) error {
 
-	errMsg := "[Submit buf -> img copy commands]"
 	if len(h.content) == 0 {
-		return fmt.Errorf("%s no valid data to copy", errMsg)
+		return log.Errf(h.sb.ctx, nil, "[Submit buf -> img copy commands] no valid data to copy")
 	}
 
 	scratchBuffer, scratchMemory := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(h.job.srcImg.Device()), h.content, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
@@ -2242,21 +2308,21 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkI
 		if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 			data, srcVkFmt, err = ebgrDataToRGB32SFloat(data, opaqueBlockExtent)
 			if err != nil {
-				return []uint8{}, bufImgCopy, fmt.Errorf("[Converting data in VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 to VK_FORMAT_R32G32B32_SFLOAT] %v", err)
+				return []uint8{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Converting data in VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 to VK_FORMAT_R32G32B32_SFLOAT]")
 			}
 		}
-		unpacked, _, err = unpackDataForPriming(data, srcVkFmt, srcAspect)
+		unpacked, _, err = unpackDataForPriming(h.sb.ctx, data, srcVkFmt, srcAspect)
 		if err != nil {
-			return []uint8{}, bufImgCopy, fmt.Errorf("[Unpacking data from format: %v aspect: %v] %v", srcVkFmt, srcAspect, err)
+			return []uint8{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcVkFmt, srcAspect)
 		}
 	} else if srcAspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
 		// srcImg format is the same to the dstImage format, the data is ready to
 		// be used directly, except when the src image is a dpeth 24 UNORM one.
 		if (srcImg.Info().Fmt() == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) ||
 			(srcImg.Info().Fmt() == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32) {
-			unpacked, _, err = unpackDataForPriming(data, srcImg.Info().Fmt(), srcAspect)
+			unpacked, _, err = unpackDataForPriming(h.sb.ctx, data, srcImg.Info().Fmt(), srcAspect)
 			if err != nil {
-				return []uint8{}, bufImgCopy, fmt.Errorf("[Unpacking data from format: %v aspect: %v] %v", srcImg.Info().Fmt(), srcAspect, err)
+				return []uint8{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcImg.Info().Fmt(), srcAspect)
 			}
 		}
 	}
@@ -2265,7 +2331,7 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkI
 
 	dstLevelSize := h.sb.levelSize(opaqueBlockExtent, dstImg.Info().Fmt(), 0, dstAspect)
 	if uint64(len(unpacked)) != dstLevelSize.alignedLevelSizeInBuf {
-		return []uint8{}, bufImgCopy, fmt.Errorf("size of unpacked data does not match expectation, actual: %v, expected: %v, srcFmt: %v, dstFmt: %v", len(unpacked), dstLevelSize.alignedLevelSizeInBuf, srcImg.Info().Fmt(), dstImg.Info().Fmt())
+		return []uint8{}, bufImgCopy, log.Errf(h.sb.ctx, nil, "size of unpacked data does not match expectation, actual: %v, expected: %v, srcFmt: %v, dstFmt: %v", len(unpacked), dstLevelSize.alignedLevelSizeInBuf, srcImg.Info().Fmt(), dstImg.Info().Fmt())
 	}
 
 	return unpacked, bufImgCopy, nil
@@ -2280,7 +2346,8 @@ func extendToMultipleOf8(dataPtr *[]uint8) {
 	*dataPtr = append(*dataPtr, zeros...)
 }
 
-func unpackDataForPriming(data []uint8, srcFmt VkFormat, aspect VkImageAspectFlagBits) ([]uint8, VkFormat, error) {
+func unpackDataForPriming(ctx context.Context, data []uint8, srcFmt VkFormat, aspect VkImageAspectFlagBits) ([]uint8, VkFormat, error) {
+	ctx = log.Enter(ctx, "unpackDataForPriming")
 	var sf *image.Format
 	var err error
 	var dstFmt VkFormat
@@ -2288,46 +2355,47 @@ func unpackDataForPriming(data []uint8, srcFmt VkFormat, aspect VkImageAspectFla
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
 		sf, err = getImageFormatFromVulkanFormat(srcFmt)
 		if err != nil {
-			return []uint8{}, dstFmt, fmt.Errorf("[Getting image.Format for VkFormat: %v, aspect: %v] %v", srcFmt, aspect, err)
+			return []uint8{}, dstFmt, log.Errf(ctx, err, "[Getting image.Format for VkFormat: %v, aspect: %v]", srcFmt, aspect)
 		}
 		dstFmt = stagingColorImageBufferFormat
 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
 		sf, err = getDepthImageFormatFromVulkanFormat(srcFmt)
 		if err != nil {
-			return []uint8{}, dstFmt, fmt.Errorf("[Getting image.Format for VkFormat: %v, aspect: %v] %v", srcFmt, aspect, err)
+			return []uint8{}, dstFmt, log.Errf(ctx, err, "[Getting image.Format for VkFormat: %v, aspect: %v]", srcFmt, aspect)
 		}
 		dstFmt = stagingDepthStencilImageBufferFormat
 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		sf, err = getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_S8_UINT)
 		if err != nil {
-			return []uint8{}, dstFmt, fmt.Errorf("[Getting image.Format for VkFormat: %v, aspect: %v] %v", srcFmt, aspect, err)
+			return []uint8{}, dstFmt, log.Errf(ctx, err, "[Getting image.Format for VkFormat: %v, aspect: %v]", srcFmt, aspect)
 		}
 		dstFmt = stagingDepthStencilImageBufferFormat
 
 	default:
-		return []uint8{}, dstFmt, fmt.Errorf("unsupported aspect: %v", aspect)
+		return []uint8{}, dstFmt, log.Errf(ctx, nil, "unsupported aspect: %v", aspect)
 	}
 
 	df, err := getImageFormatFromVulkanFormat(dstFmt)
 	if err != nil {
-		return []uint8{}, dstFmt, fmt.Errorf("[Getting image.Format for VkFormat %v] %v", dstFmt, err)
+		return []uint8{}, dstFmt, log.Errf(ctx, err, "[Getting image.Format for VkFormat %v]", dstFmt)
 	}
-	unpacked, err := unpackData(data, sf, df)
+	unpacked, err := unpackData(ctx, data, sf, df)
 	if err != nil {
 		return []uint8{}, dstFmt, err
 	}
 	return unpacked, dstFmt, nil
 }
 
-func unpackData(data []uint8, srcFmt, dstFmt *image.Format) ([]uint8, error) {
+func unpackData(ctx context.Context, data []uint8, srcFmt, dstFmt *image.Format) ([]uint8, error) {
+	ctx = log.Enter(ctx, "unpackData")
 	var err error
 	if srcFmt.GetUncompressed() == nil {
-		return []uint8{}, fmt.Errorf("compressed format: %v is not supported", srcFmt)
+		return []uint8{}, log.Errf(ctx, nil, "compressed format: %v is not supported", srcFmt)
 	}
 	if dstFmt.GetUncompressed() == nil {
-		return []uint8{}, fmt.Errorf("compressed format: %v is not supported", dstFmt)
+		return []uint8{}, log.Errf(ctx, nil, "compressed format: %v is not supported", dstFmt)
 	}
 	sf := proto.Clone(srcFmt).(*image.Format).GetUncompressed().GetFormat()
 	df := proto.Clone(dstFmt).(*image.Format).GetUncompressed().GetFormat()
@@ -2354,7 +2422,7 @@ func unpackData(data []uint8, srcFmt, dstFmt *image.Format) ([]uint8, error) {
 		}
 		dc, _ := df.Component(sc.Channel)
 		if dc == nil {
-			return []uint8{}, fmt.Errorf("[Building src format: %v] unsuppored channel in source data format: %v", sf, sc.Channel)
+			return []uint8{}, log.Errf(ctx, nil, "[Building src format: %v] unsuppored channel in source data format: %v", sf, sc.Channel)
 		}
 		sc.Sampling = stream.Linear
 		if sc.GetDataType().GetInteger() != nil {
@@ -2367,13 +2435,13 @@ func unpackData(data []uint8, srcFmt, dstFmt *image.Format) ([]uint8, error) {
 			dc.DataType = &stream.F32
 			dc.Sampling = stream.Linear
 		} else {
-			return []uint8{}, fmt.Errorf("[Building dst format for: %v] %s", sf, "DataType other than stream.Integer and stream.Float are not handled.")
+			return []uint8{}, log.Errf(ctx, nil, "[Building dst format for: %v] %s", sf, "DataType other than stream.Integer and stream.Float are not handled.")
 		}
 	}
 
 	converted, err := stream.Convert(df, sf, data)
 	if err != nil {
-		return []uint8{}, fmt.Errorf("[Converting data from %v to %v] %v", sf, df, err)
+		return []uint8{}, log.Errf(ctx, err, "[Converting data from %v to %v]", sf, df)
 	}
 	return converted, nil
 }
@@ -2437,7 +2505,7 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 				info.SharingMode(),                                                    // sharingMode
 				uint32(info.QueueFamilyIndices().Len()),                               // queueFamilyIndexCount
 				NewU32ᶜᵖ(sb.MustUnpackReadMap(info.QueueFamilyIndices().All()).Ptr()), // pQueueFamilyIndices
-				VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                               // initialLayout
+				info.InitialLayout(),                                                  // initialLayout
 			)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(handle).Ptr(),
