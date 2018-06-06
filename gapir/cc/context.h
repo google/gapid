@@ -60,11 +60,10 @@ public:
     // interpretation was successful false otherwise
     bool interpret();
 
-private:
     // Renderer::Listener compliance
-    virtual void onDebugMessage(int severity, uint8_t api_index, const char* msg) override;
+    virtual void onDebugMessage(uint32_t severity, uint8_t api_index, const char* msg) override;
 
-
+private:
     enum {
         MAX_TIMERS       = 256,
         POST_BUFFER_SIZE = 2*1024*1024,

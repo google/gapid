@@ -144,7 +144,7 @@ bool Context::interpret() {
 }
 
 // onDebugMessage implements the Renderer::Listener interface.
-void Context::onDebugMessage(int severity, uint8_t api_index, const char* msg) {
+void Context::onDebugMessage(uint32_t severity, uint8_t api_index, const char* msg) {
   auto label = mInterpreter->getLabel();
   // Remove tailing new-line from the message (if any)
   std::string str_msg;

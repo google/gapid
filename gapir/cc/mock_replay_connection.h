@@ -40,9 +40,8 @@ class MockReplayConnection : public ReplayConnection {
   bool sendPostData(std::unique_ptr<ReplayConnection::Posts> posts) override {
     return mockedSendPostData(posts.get());
   }
-  // TODO: mock sendNotification and test it once it is used.
   MOCK_METHOD7(sendNotification,
-               bool(uint64_t, int, uint32_t, uint64_t, const std::string&,
+               bool(uint64_t, uint32_t, uint32_t, uint64_t, const std::string&,
                     const void*, uint32_t));
 };
 }  // namespace test

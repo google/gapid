@@ -226,7 +226,7 @@ class ReplayConnection {
   // Sends post data. Returns true if succeeded, otherwise returns false.
   virtual bool sendPostData(std::unique_ptr<Posts> posts);
   // Sends notification. Returns true if succeeded, otherwise returns false.
-  virtual bool sendNotification(uint64_t id, int severity, uint32_t api_index,
+  virtual bool sendNotification(uint64_t id, uint32_t severity, uint32_t api_index,
                                 uint64_t label, const std::string& msg,
                                 const void* data, uint32_t data_size);
 
