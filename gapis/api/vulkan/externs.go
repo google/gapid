@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
@@ -319,9 +320,10 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 }
 
 func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndPropertiesʳ {
+	cloner := data.NewCloner()
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndProperties); ok {
-			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena)
+			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, cloner)
 		}
 	}
 	return NilPhysicalDevicesAndPropertiesʳ
@@ -330,18 +332,20 @@ func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalD
 func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSparseBit bool) ImageMemoryRequirementsʳ {
 	// Only fetch memory requirements for application commands, skip any commands
 	// inserted by GAPID
+	cloner := data.NewCloner()
 	if e.cmdID == api.CmdNoID {
 		return NilImageMemoryRequirementsʳ
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(ImageMemoryRequirements); ok {
-			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena)
+			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, cloner)
 		}
 	}
 	return NilImageMemoryRequirementsʳ
 }
 
 func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMemoryRequirements {
+	cloner := data.NewCloner()
 	// Only fetch memory requirements for application commands, skip any commands
 	// inserted by GAPID
 	if e.cmdID == api.CmdNoID {
@@ -349,7 +353,7 @@ func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMem
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(VkMemoryRequirements); ok {
-			return r.Clone(e.s.Arena)
+			return r.Clone(e.s.Arena, cloner)
 		}
 	}
 	return MakeVkMemoryRequirements(e.s.Arena)
