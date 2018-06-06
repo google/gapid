@@ -45,6 +45,7 @@ const (
 	maxCheckSocketFileAttempts = 10
 	checkSocketFileRetryDelay  = time.Second
 	connectTimeout             = time.Second * 10
+	heartbeatInterval          = time.Millisecond * 500
 )
 
 type session struct {
@@ -79,7 +80,7 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, laun
 		return err
 	}
 
-	crash.Go(func() { s.heartbeat(ctx, sessionTimeout/2) })
+	crash.Go(func() { s.heartbeat(ctx, heartbeatInterval) })
 	return nil
 }
 
