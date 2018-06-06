@@ -19,9 +19,11 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/log"
 )
 
 func TestUnpackData(t *testing.T) {
+	ctx := log.Testing(t)
 	assert := assert.To(t)
 
 	// Expect valid unpacked data with a 2x2x1 image
@@ -36,7 +38,7 @@ func TestUnpackData(t *testing.T) {
 			sf, _ = getImageFormatFromVulkanFormat(VkFormat_VK_FORMAT_S8_UINT)
 		}
 		df, _ := getImageFormatFromVulkanFormat(dstFmt)
-		r, err := unpackData(src, sf, df)
+		r, err := unpackData(ctx, src, sf, df)
 
 		if assert.For("srcFmt %v dstFmt %v", srcFmt, dstFmt).ThatError(err).Succeeded() {
 			assert.For("srcFmt %v dstFmt %v", srcFmt, dstFmt).ThatSlice(r).Equals(expected)
