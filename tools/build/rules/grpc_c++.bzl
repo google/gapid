@@ -117,7 +117,7 @@ This is an internal rule used by cc_grpc_library, and shouldn't be used
 directly.
 """
 
-def generate_cc_impl(ctx):
+def _generate_cc_impl(ctx):
   """Implementation of the generate_cc rule."""
   protos = [f for src in ctx.attr.srcs for f in src.proto.direct_sources]
   # protos = [f for src in ctx.attr.srcs for f in src.proto.transitive_sources]
@@ -224,14 +224,8 @@ _generate_cc = rule(
     },
     # We generate .h files, so we need to output to genfiles.
     output_to_genfiles = True,
-    implementation = generate_cc_impl,
+    implementation = _generate_cc_impl,
 )
-
-def generate_cc(well_known_protos, **kwargs):
-  if well_known_protos:
-    _generate_cc(well_known_protos="@com_google_protobuf//:well_known_protos", **kwargs)
-  else:
-    _generate_cc(**kwargs)
 
 def cc_grpc_library(name, proto, dep_cc_proto_libs, **kwargs):
   pb_target = "_" + name + "_pb_only"
@@ -243,11 +237,11 @@ def cc_grpc_library(name, proto, dep_cc_proto_libs, **kwargs):
   )
 
   plugin = "//external:grpc_cpp_plugin"
-  generate_cc(
+  _generate_cc(
     name = grpc_target,
     srcs = proto,
     plugin = plugin,
-    well_known_protos = True,
+    well_known_protos = "@com_google_protobuf//:well_known_protos",
     **kwargs
   )
   grpc_deps = ["//external:grpc++_codegen_proto",
