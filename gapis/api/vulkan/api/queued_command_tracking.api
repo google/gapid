@@ -108,12 +108,75 @@ sub void execPendingCommands(VkQueue queue) {
                   bind.flags)
               }
             }
+            // Creates the shadow image data memory here if has not been done so.
+            // This is exactly the same to vkBindImageMemory except for linear
+            // and preinitialized images, we also create individual pool here.
+            // TODO: Redirect to bound memories for the data of linear preinitialized
+            // images.
+            for _, _, aspectBit in unpackImageAspectFlags(image.ImageAspect).Bits {
+              aspect := image.Aspects[aspectBit]
+              for lay in (0 .. image.Info.ArrayLayers) {
+                for lev in (0 .. image.Info.MipLevels) {
+                  level := aspect.Layers[lay].Levels[lev]
+                  if len(level.Data) == 0 {
+                    elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
+                    depthElementSize := getDepthElementSize(image.Info.Format, false)
+                    // Roundup the width and height in the number of blocks.
+                    widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+                    heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+                    elementSize := switch (aspectBit) {
+                      case VK_IMAGE_ASPECT_COLOR_BIT:
+                        elementAndTexelBlockSize.ElementSize
+                      case VK_IMAGE_ASPECT_DEPTH_BIT:
+                        depthElementSize
+                      case VK_IMAGE_ASPECT_STENCIL_BIT:
+                        // stencil element is always 1 byte wide
+                        as!u32(1)
+                    }
+                    size := widthInBlocks * heightInBlocks * level.Depth * elementSize
+                    level.Data = make!u8(size)
+                  }
+                }
+              }
+            }
           }
 
           for _ , img , binds in cmd.SparseBinds.ImageBinds {
             if (!img in Images) { vkErrorInvalidImage(img) }
             for _ , _ , bind in binds.SparseImageMemoryBinds {
               addSparseImageMemoryBinding(img, bind)
+            }
+            image := Images[img]
+            // Creates the shadow image data memory here if has not been done so.
+            // This is exactly the same to vkBindImageMemory except for linear
+            // and preinitialized images, we also create individual pool here.
+            // TODO: Redirect to bound memories for the data of linear preinitialized
+            // images.
+            for _, _, aspectBit in unpackImageAspectFlags(image.ImageAspect).Bits {
+              aspect := image.Aspects[aspectBit]
+              for lay in (0 .. image.Info.ArrayLayers) {
+                for lev in (0 .. image.Info.MipLevels) {
+                  level := aspect.Layers[lay].Levels[lev]
+                  if len(level.Data) == 0 {
+                    elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
+                    depthElementSize := getDepthElementSize(image.Info.Format, false)
+                    // Roundup the width and height in the number of blocks.
+                    widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+                    heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+                    elementSize := switch (aspectBit) {
+                      case VK_IMAGE_ASPECT_COLOR_BIT:
+                        elementAndTexelBlockSize.ElementSize
+                      case VK_IMAGE_ASPECT_DEPTH_BIT:
+                        depthElementSize
+                      case VK_IMAGE_ASPECT_STENCIL_BIT:
+                        // stencil element is always 1 byte wide
+                        as!u32(1)
+                    }
+                    size := widthInBlocks * heightInBlocks * level.Depth * elementSize
+                    level.Data = make!u8(size)
+                  }
+                }
+              }
             }
           }
 
