@@ -345,8 +345,12 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		out.MutateAndWrite(ctx, id, cb.VkDestroySampler(object.Device(), handle, p))
 	}
 
-	for handle, object := range so.ImageViews().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device(), handle, p))
+	// Descriptor sets.
+	for handle, object := range so.DescriptorPools().All() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device(), handle, p))
+	}
+	for handle, object := range so.DescriptorSetLayouts().All() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device(), handle, p))
 	}
 
 	// Buffers.
@@ -355,14 +359,6 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 	for handle, object := range so.Buffers().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyBuffer(object.Device(), handle, p))
-	}
-
-	// Descriptor sets.
-	for handle, object := range so.DescriptorPools().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device(), handle, p))
-	}
-	for handle, object := range so.DescriptorSetLayouts().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device(), handle, p))
 	}
 
 	// Shader modules.
@@ -408,6 +404,10 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		out.MutateAndWrite(ctx, id, cb.VkFreeMemory(object.Device(), handle, p))
 	}
 
+	// Images
+	for handle, object := range so.ImageViews().All() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device(), handle, p))
+	}
 	// Note: so.Images also contains Swapchain images. We do not want
 	// to delete those, as that must be handled by VkDestroySwapchainKHR
 	for handle, object := range so.Images().All() {
@@ -415,6 +415,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 			out.MutateAndWrite(ctx, id, cb.VkDestroyImage(object.Device(), handle, p))
 		}
 	}
+
 	// Devices.
 	for handle := range so.Devices().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyDevice(handle, p))

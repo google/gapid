@@ -542,16 +542,39 @@ cmd void vkUpdateDescriptorSets(
           VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
           VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
-        imageBinding := setBinding.ImageBinding
-        imageBinding[arrayIndex] = w.ImageInfo
-        setBinding.ImageBinding = imageBinding
-      }
+            imageBinding := setBinding.ImageBinding
+            imageBinding[arrayIndex] = w.ImageInfo
+            setBinding.ImageBinding = imageBinding
+            if w.ImageInfo.Sampler in Samplers {
+              samObj := Samplers[w.ImageInfo.Sampler]
+              if samObj != null {
+                samObj.DescriptorUsers[w.DstSet][binding][
+                  as!u32(len(samObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+              }
+            }
+            if w.ImageInfo.ImageView in ImageViews {
+              viewObj := ImageViews[w.ImageInfo.ImageView]
+              if viewObj != null {
+                viewObj.DescriptorUsers[w.DstSet][binding][
+                  as!u32(len(viewObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+              }
+            }
+          }
+
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-        viewBindings := setBinding.BufferViewBindings
-        viewBindings[arrayIndex] = w.BufferView
-        setBinding.BufferViewBindings = viewBindings
-      }
+            viewBindings := setBinding.BufferViewBindings
+            viewBindings[arrayIndex] = w.BufferView
+            setBinding.BufferViewBindings = viewBindings
+            if w.BufferView in BufferViews {
+              viewObj := BufferViews[w.BufferView]
+              if viewObj != null {
+                viewObj.DescriptorUsers[w.DstSet][binding][
+                  as!u32(len(viewObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+              }
+            }
+          }
+      
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
@@ -582,14 +605,42 @@ cmd void vkUpdateDescriptorSets(
         imageBinding[c.DstArrayIndex] =
         srcBinding.ImageBinding[c.SrcArrayIndex]
         dstBinding.ImageBinding = imageBinding
+
+        vkSam := srcBinding.ImageBinding[c.SrcArrayIndex].Sampler
+        if vkSam in Samplers {
+          samObj := Samplers[vkSam]
+          if samObj != null {
+            samObj.DescriptorUsers[c.DstSet][c.DstBinding][
+              as!u32(len(samObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+          }
+        }
+        vkView := srcBinding.ImageBinding[c.SrcArrayIndex].ImageView
+        if vkView in ImageViews {
+          viewObj := ImageViews[vkView]
+          if viewObj != null {
+            viewObj.DescriptorUsers[c.DstSet][c.DstBinding][
+              as!u32(len(viewObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+          }
+        }
       }
+
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
         bufferViews := dstBinding.BufferViewBindings
         bufferViews[c.DstArrayIndex] =
         srcBinding.BufferViewBindings[c.SrcArrayIndex]
         dstBinding.BufferViewBindings = bufferViews
+
+        vkView := srcBinding.BufferViewBindings[c.SrcArrayIndex]
+        if vkView in BufferViews {
+          viewObj := BufferViews[vkView]
+          if viewObj != null {
+            viewObj.DescriptorUsers[c.DstSet][c.DstBinding][
+              as!u32(len(viewObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+          }
+        }
       }
+
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
