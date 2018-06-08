@@ -311,7 +311,6 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
       // When multiple layers are specified in the buffer image copy region,
       // Vulkan assumes the data of all the layers are placed continuously in
       // the source buffer memory.
-      // TODO: (qining) Handle aspect mask
       for j in (0 .. region.imageSubresource.layerCount) {
         layerIndex := region.imageSubresource.baseArrayLayer + j
         bufferLayerOffset := (as!u64(j) * layerSize) + as!u64(region.bufferOffset)

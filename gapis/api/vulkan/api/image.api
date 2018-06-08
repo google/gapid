@@ -104,6 +104,7 @@
 }
 
 @internal class SparseBoundImageLevelInfo {
+  // mapping from memory offset to sparse block info
   map!(u64, ref!SparseBoundImageBlockInfo) Blocks
 }
 

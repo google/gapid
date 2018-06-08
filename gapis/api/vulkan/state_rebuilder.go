@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"sort"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -1085,6 +1086,11 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 			}
 		}
 
+		bufSparseBindings := make([]VkSparseMemoryBind, 0, buffer.SparseMemoryBindings().Len())
+		for _, bd := range buffer.SparseMemoryBindings().All() {
+			bufSparseBindings = append(bufSparseBindings, bd)
+		}
+
 		sb.write(sb.cb.VkQueueBindSparse(
 			sparseQueue.VulkanHandle(),
 			1,
@@ -1100,7 +1106,7 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 							buffer.VulkanHandle(),                       // buffer
 							uint32(buffer.SparseMemoryBindings().Len()), // bindCount
 							NewVkSparseMemoryBindᶜᵖ( // pBinds
-								sb.MustUnpackReadMap(buffer.SparseMemoryBindings().All()).Ptr(),
+								sb.MustAllocReadData(bufSparseBindings).Ptr(),
 							),
 						)).Ptr()),
 					0, // imageOpaqueBindCount
@@ -1309,46 +1315,64 @@ func (sb *stateBuilder) imageWholeSubresourceRange(img ImageObjectʳ) VkImageSub
 }
 
 // IsFullyBound returns true if the resource range from offset with size is
-// fully covered in the bindings.
+// fully covered in the bindings. If the size ofd the resource range is 0,
+// returns false.
 func IsFullyBound(offset VkDeviceSize, size VkDeviceSize,
 	bindings U64ːVkSparseMemoryBindᵐ) bool {
-	resourceOffsets := bindings.Keys()
-
-	oneAfterReqRange := -1
-	for i := range resourceOffsets {
-		if resourceOffsets[i] > uint64(offset+size) {
-			oneAfterReqRange = i
-			break
-		}
-	}
-	if oneAfterReqRange == -1 || oneAfterReqRange == 0 {
+	if size == VkDeviceSize(0) {
 		return false
 	}
-	i := oneAfterReqRange - 1
-
-	end := offset + size
-	for i > 0 && end > offset {
-		resOffset := resourceOffsets[i]
-		if resOffset+uint64(bindings.Get(resOffset).Size()) >= uint64(end) {
-			end = VkDeviceSize(resOffset)
-			i--
+	resourceOffsets := bindings.Keys()
+	coveredCounter := 0
+	addAtBoundaries := map[uint64]int{}
+	boundaries := make([]uint64, 0, len(resourceOffsets)*2)
+	for o, b := range bindings.All() {
+		// Skip the zero sized binds (they are actually invalid)
+		bindSize := uint64(b.Size())
+		bindBegin := uint64(o)
+		bindEnd := bindBegin + bindSize
+		if bindSize == uint64(0) {
 			continue
 		}
+		// Get the number of binds that cover the start of the requested range.
+		if bindBegin <= uint64(offset) && bindEnd > uint64(offset) {
+			coveredCounter++
+		}
+		// Count the number of bind begin boundaries in the requested range.
+		if bindBegin > uint64(offset) && bindBegin < uint64(offset+size) {
+			boundaries = append(boundaries, bindBegin)
+			if _, ok := addAtBoundaries[bindBegin]; !ok {
+				addAtBoundaries[bindBegin] = 0
+			}
+			addAtBoundaries[bindBegin]++
+		}
+		// Count the number of bind end boundaries in the reqested range
+		if bindEnd < uint64(offset+size) && bindEnd > uint64(offset) {
+			boundaries = append(boundaries, bindEnd)
+			if _, ok := addAtBoundaries[bindEnd]; !ok {
+				addAtBoundaries[bindEnd] = 0
+			}
+			addAtBoundaries[bindEnd]--
+		}
+	}
+	sort.Slice(boundaries, func(i, j int) bool {
+		return boundaries[i] < boundaries[j]
+	})
+
+	// No bind covers the begin of the requested range.
+	if coveredCounter == 0 {
 		return false
 	}
 
-	if end <= offset {
-		return true
-	}
-
-	if i == 0 {
-		resOffset := resourceOffsets[0]
-		if resOffset <= uint64(offset) &&
-			resOffset+uint64(bindings.Get(resOffset).Size()) >= uint64(end) {
-			return true
+	// Scan through all the boundaries in the requested range. If the coveredCounter
+	// drops to 0, it means a hole in the requested range.
+	for _, b := range boundaries {
+		coveredCounter += addAtBoundaries[b]
+		if coveredCounter == 0 {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
@@ -1463,6 +1487,11 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 			}
 		}
 
+		opaqueSparseBindings := make([]VkSparseMemoryBind, 0, img.OpaqueSparseMemoryBindings().Len())
+		for _, obd := range img.OpaqueSparseMemoryBindings().All() {
+			opaqueSparseBindings = append(opaqueSparseBindings, obd)
+		}
+
 		sb.write(sb.cb.VkQueueBindSparse(
 			sparseQueue.VulkanHandle(),
 			1,
@@ -1480,7 +1509,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 							img.VulkanHandle(),                             // image
 							uint32(img.OpaqueSparseMemoryBindings().Len()), // bindCount
 							NewVkSparseMemoryBindᶜᵖ( // pBinds
-								sb.MustUnpackReadMap(img.OpaqueSparseMemoryBindings().All()).Ptr(),
+								sb.MustAllocReadData(opaqueSparseBindings).Ptr(),
 							),
 						)).Ptr()),
 					0, // imageBindCount
