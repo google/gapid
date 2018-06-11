@@ -93,6 +93,14 @@ typedef struct ref_t {
 	/* T */             // referenced object immediately follows.
 } ref;
 
+// buffer is a structure used to hold a variable size byte array.
+// buffer is used internally by the compiler to write out variable length data.
+typedef struct buffer_t {
+	uint8_t* data;      // buffer data.
+	uint32_t capacity;  // total capacity of the buffer.
+	uint32_t size;      // current size of the buffer.
+} buffer;
+
 typedef uint8_t GAPIL_BOOL;
 
 #define GAPIL_FALSE 0

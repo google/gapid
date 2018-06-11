@@ -58,10 +58,15 @@ type C struct {
 	// This excludes gapil runtime symbols which have the prefix 'gapil_'.
 	Root mangling.Scope
 
-	settings      Settings
-	plugins       plugins
-	functions     map[*semantic.Function]codegen.Function
-	stateInit     codegen.Function
+	settings  Settings
+	plugins   plugins
+	functions map[*semantic.Function]codegen.Function
+	stateInit codegen.Function
+	buf       struct { // Functions that operate on buffers
+		init   codegen.Function
+		term   codegen.Function
+		append codegen.Function
+	}
 	emptyString   codegen.Global
 	mappings      *resolver.Mappings
 	locationIndex map[Location]int
@@ -228,6 +233,8 @@ func (c *C) compile() {
 		}
 		c.buildStateInit()
 	}
+
+	c.buildBufferFuncs()
 
 	c.plugins.foreach(func(p Plugin) { p.Build(c) })
 }

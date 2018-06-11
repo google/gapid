@@ -90,3 +90,10 @@ const (
 	RefArena    = "arena"
 	RefValue    = "value"
 )
+
+// Field names for the buffer_t runtime type.
+const (
+	BufData = "data"
+	BufCap  = "capacity"
+	BufSize = "size"
+)
