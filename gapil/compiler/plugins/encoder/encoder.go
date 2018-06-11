@@ -36,12 +36,6 @@ const (
 type encoder struct {
 	*compiler.C
 
-	// bufTy is a structure used to hold a variable size byte buffer.
-	bufTy *codegen.Struct // struct buffer { void* data; u32 capacity; u32 offset; }
-
-	// bufPtrTy is a pointer to a buffer.
-	bufPtrTy codegen.Pointer // buffer*
-
 	// Generated functions.
 	funcs funcs
 
@@ -54,9 +48,6 @@ type encoder struct {
 
 // encoder generated functions.
 type funcs struct {
-	initBuf     codegen.Function                     // void init_buf(buffer*)
-	termBuf     codegen.Function                     // void term_buf(buffer*)
-	appendBuf   codegen.Function                     // void append_buf(buffer*, u32 size, void* data)
 	writeVarint codegen.Function                     // void write_varint(buffer*, u64 val)
 	writeZigzag codegen.Function                     // void write_zigzag(buffer*, u64 val)
 	encodeToBuf map[*semantic.Class]codegen.Function // void(context*, buffer*)
@@ -64,12 +55,6 @@ type funcs struct {
 
 // Build implements the compiler.Plugin interface.
 func (e *encoder) Build(c *compiler.C) {
-	bufTy := c.T.Struct("buffer",
-		codegen.Field{Name: "data", Type: c.T.VoidPtr},
-		codegen.Field{Name: "capacity", Type: c.T.Uint32},
-		codegen.Field{Name: "offset", Type: c.T.Uint32},
-	)
-
 	*e = encoder{
 		C: c,
 		funcs: funcs{
@@ -80,74 +65,18 @@ func (e *encoder) Build(c *compiler.C) {
 			funcParams: map[*semantic.Function]*entity{},
 			funcCalls:  map[*semantic.Function]*entity{},
 		},
-		bufTy:    bufTy,
-		bufPtrTy: c.T.Pointer(bufTy),
 	}
 
 	e.parseCallbacks()
 
 	e.entities.build(e)
 
-	e.buildBufferFuncs()
+	e.buildWriteFuncs()
 	e.buildEncoderFuncs()
 }
 
-// buildBufferFuncs builds the buffer functions:
-//   init_buf() - creates a new buffer with an initial size.
-//   term_buf() - frees a buffer created with init_buf
-//   append_buf() - appends bytes to the buffer, growing if necessary.
-//   write_varint() - appends a protobuf variable length integer to the buffer,
-//                    growing if necessary.
-func (e *encoder) buildBufferFuncs() {
-	e.funcs.initBuf = e.M.Function(e.T.Void, "init_buf", e.T.CtxPtr, e.bufPtrTy).
-		Inline().
-		LinkOnceODR()
-	e.C.Build(e.funcs.initBuf, func(s *compiler.S) {
-		bufPtr := s.Parameter(1)
-
-		capacity := s.Scalar(uint32(initialBufferCapacity))
-		offset := s.Scalar(uint32(0))
-		data := e.Alloc(s, capacity, e.T.Uint8)
-		bufPtr.Index(0, "data").Store(data)
-		bufPtr.Index(0, "capacity").Store(capacity)
-		bufPtr.Index(0, "offset").Store(offset)
-	})
-
-	e.funcs.termBuf = e.M.Function(e.T.Void, "term_buf", e.T.CtxPtr, e.bufPtrTy).
-		Inline().
-		LinkOnceODR()
-	e.C.Build(e.funcs.termBuf, func(s *compiler.S) {
-		bufPtr := s.Parameter(1)
-
-		bufData := bufPtr.Index(0, "data").Load()
-		e.Free(s, bufData)
-	})
-
-	e.funcs.appendBuf = e.M.Function(e.T.Void, "append_buf", e.T.CtxPtr, e.bufPtrTy, e.T.Uint32, e.T.VoidPtr).
-		Inline().
-		LinkOnceODR()
-	e.C.Build(e.funcs.appendBuf, func(s *compiler.S) {
-		bufPtr, size, data := s.Parameter(1), s.Parameter(2), s.Parameter(3)
-
-		e.debug(s, "appendBuf(buf: %p, size: %d, data: %p)", bufPtr, size, data)
-		bufData := bufPtr.Index(0, "data").Load()
-		bufCap := bufPtr.Index(0, "capacity").Load()
-		bufOff := bufPtr.Index(0, "offset").Load()
-		newOff := s.Add(size, bufOff)
-		bufPtr.Index(0, "offset").Store(newOff)
-		s.IfElse(s.GreaterThan(newOff, bufCap), func(s *compiler.S) {
-			newCap := s.Mul(newOff, s.Scalar(uint32(2)))
-			newData := e.Realloc(s, bufData, newCap.Cast(e.T.Uint64))
-			e.debug(s, "buffer grow(data: %p -> %p, capacity: %d -> %d)", bufData, newData, bufCap, newCap)
-			bufPtr.Index(0, "capacity").Store(newCap)
-			bufPtr.Index(0, "data").Store(newData)
-			s.Memcpy(newData.Index(bufOff), data, size)
-		}, func(s *compiler.S) {
-			s.Memcpy(bufData.Index(bufOff), data, size)
-		})
-	})
-
-	e.funcs.writeVarint = e.M.Function(e.T.Void, "write_varint", e.T.CtxPtr, e.bufPtrTy, e.T.Uint64).
+func (e *encoder) buildWriteFuncs() {
+	e.funcs.writeVarint = e.M.Function(e.T.Void, "write_varint", e.T.CtxPtr, e.T.BufPtr, e.T.Uint64).
 		LinkOnceODR()
 	e.C.Build(e.funcs.writeVarint, func(s *compiler.S) {
 		buf, val := s.Parameter(1), s.Parameter(2)
@@ -169,10 +98,10 @@ func (e *encoder) buildBufferFuncs() {
 			length.Store(s.Add(idx, s.Scalar(uint32(1))))
 		})
 		bytes.Index(0, length.Load()).Store(i.Load().Cast(e.T.Uint8))
-		s.Call(e.funcs.appendBuf, s.Ctx, buf, s.Add(length.Load(), s.Scalar(uint32(1))), bytes.Index(0, 0))
+		e.AppendBuffer(s, buf, s.Add(length.Load(), s.Scalar(uint32(1))), bytes.Index(0, 0))
 	})
 
-	e.funcs.writeZigzag = e.M.Function(e.T.Void, "write_zigzag", e.T.CtxPtr, e.bufPtrTy, e.T.Uint64).
+	e.funcs.writeZigzag = e.M.Function(e.T.Void, "write_zigzag", e.T.CtxPtr, e.T.BufPtr, e.T.Uint64).
 		LinkOnceODR()
 	e.C.Build(e.funcs.writeZigzag, func(s *compiler.S) {
 		buf, val := s.Parameter(1), s.Parameter(2)
@@ -216,7 +145,7 @@ func (e *encoder) buildEncoderFuncs() {
 // encode_to_buf() encode the class message to a buffer.
 func (e *encoder) buildClassEncodeToBufFuncs() {
 	for _, ty := range e.API.Classes {
-		e.funcs.encodeToBuf[ty] = e.Method(false, e.T.Target(ty), e.T.Void, "encode_to_buf", e.T.CtxPtr, e.bufPtrTy).
+		e.funcs.encodeToBuf[ty] = e.Method(false, e.T.Target(ty), e.T.Void, "encode_to_buf", e.T.CtxPtr, e.T.BufPtr).
 			LinkPrivate()
 	}
 	for _, class := range e.API.Classes {
@@ -246,8 +175,8 @@ func (e *encoder) buildClassEncodeFuncs() {
 
 			s.Call(e.funcs.encodeToBuf[class], this, s.Ctx, buf)
 
-			bufOffset := buf.Index(0, "offset").Load()
-			bufData := buf.Index(0, "data").Load()
+			bufOffset := buf.Index(0, compiler.BufSize).Load()
+			bufData := buf.Index(0, compiler.BufData).Load()
 
 			out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
 
@@ -285,8 +214,8 @@ func (e *encoder) buildStateEncodeFunc() {
 			e.encodeField(s, ptr, buf, serialization.StateStart+serialization.ProtoFieldID(i), g.Type)
 		}
 
-		bufOffset := buf.Index(0, "offset").Load()
-		bufData := buf.Index(0, "data").Load()
+		bufOffset := buf.Index(0, compiler.BufSize).Load()
+		bufData := buf.Index(0, compiler.BufData).Load()
 		out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
 
 		delBuf()
@@ -334,8 +263,8 @@ func (e *encoder) buildCommandEncodeFuncs() {
 				e.encodeField(s, ptr, buf, serialization.CmdFieldStart+serialization.ProtoFieldID(i), p.Type)
 			}
 
-			bufOffset := buf.Index(0, "offset").Load()
-			bufData := buf.Index(0, "data").Load()
+			bufOffset := buf.Index(0, compiler.BufSize).Load()
+			bufData := buf.Index(0, compiler.BufData).Load()
 			out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
 
 			delBuf()
@@ -377,8 +306,8 @@ func (e *encoder) buildCommandCallEncodeFuncs() {
 			resultPtr := this.Index(0, "result")
 			e.encodeField(s, resultPtr, buf, serialization.CmdResult, cmd.Return.Type)
 
-			bufOffset := buf.Index(0, "offset").Load()
-			bufData := buf.Index(0, "data").Load()
+			bufOffset := buf.Index(0, compiler.BufSize).Load()
+			bufData := buf.Index(0, compiler.BufData).Load()
 			out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
 
 			delBuf()
@@ -388,12 +317,12 @@ func (e *encoder) buildCommandCallEncodeFuncs() {
 	}
 }
 
-// newBuf calls init_buf() to create a new buffer and returns a pointer to the
-// new buffer along with a function that will delete the buffer.
+// newBuf creates and returns a pointer to a new buffer stored on the stack
+// along with a function that will release the buffer's data.
 func (e *encoder) newBuf(s *compiler.S) (ptr *codegen.Value, del func()) {
-	buf := s.Local("buffer", e.bufTy)
-	s.Call(e.funcs.initBuf, s.Ctx, buf)
-	return buf, func() { s.Call(e.funcs.termBuf, s.Ctx, buf) }
+	buf := s.Local("buffer", e.T.Buf)
+	e.InitBuffer(s, buf, s.Scalar(uint32(initialBufferCapacity)))
+	return buf, func() { e.TermBuffer(s, buf) }
 }
 
 // encodeField encodes a single proto field to buf.
@@ -655,13 +584,13 @@ func (e *encoder) writeWireAndTag(s *compiler.S, buf *codegen.Value, wire uint64
 // writeFixed32 writes a fixed size, 32-bit number to buf.
 func (e *encoder) writeFixed32(s *compiler.S, buf, val *codegen.Value) {
 	i := s.LocalInit("i", val.Bitcast(e.T.Uint32))
-	s.Call(e.funcs.appendBuf, s.Ctx, buf, s.Scalar(uint32(4)), i.Cast(e.T.VoidPtr))
+	e.AppendBuffer(s, buf, s.Scalar(uint32(4)), i.Cast(e.T.VoidPtr))
 }
 
 // writeFixed64 writes a fixed size, 64-bit number to buf.
 func (e *encoder) writeFixed64(s *compiler.S, buf, val *codegen.Value) {
 	i := s.LocalInit("i", val.Bitcast(e.T.Uint64))
-	s.Call(e.funcs.appendBuf, s.Ctx, buf, s.Scalar(uint32(8)), i.Cast(e.T.VoidPtr))
+	e.AppendBuffer(s, buf, s.Scalar(uint32(8)), i.Cast(e.T.VoidPtr))
 }
 
 // writeZigzag writes a variable length integer to buf.
@@ -688,15 +617,15 @@ func (e *encoder) writeBlob(s *compiler.S, buf *codegen.Value, inner func(*codeg
 // writeBuffer writes the size of buffer src to dst as a varint to dst, and
 // then writes the src buffer data to dst.
 func (e *encoder) writeBuffer(s *compiler.S, dst, src *codegen.Value) {
-	size := src.Index(0, "offset").Load()
-	bytes := src.Index(0, "data").Load()
+	size := src.Index(0, compiler.BufSize).Load()
+	bytes := src.Index(0, compiler.BufData).Load()
 	e.writeBytes(s, dst, size, bytes)
 }
 
 // writeBytes writes size as a varint to buf, and then writes size bytes to buf.
 func (e *encoder) writeBytes(s *compiler.S, buf, size, bytes *codegen.Value) {
 	e.writeVarint(s, buf, size)
-	s.Call(e.funcs.appendBuf, s.Ctx, buf, size, bytes)
+	e.AppendBuffer(s, buf, size, bytes)
 }
 
 // encodeableGlobals returns the list API globals that are encodable.

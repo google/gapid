@@ -43,6 +43,8 @@ type Types struct {
 	VoidPtr         codegen.Type                        // void* (aliased of uint8_t*)
 	Globals         *codegen.Struct                     // API global variables structure.
 	GlobalsPtr      codegen.Type                        // Pointer to Globals.
+	Buf             codegen.Type                        // buffer_t
+	BufPtr          codegen.Type                        // buffer_t*
 	CmdParams       map[*semantic.Function]codegen.Type // struct holding all command parameters and return value.
 	Maps            map[*semantic.Map]*MapInfo
 	target          map[semantic.Type]codegen.Type
@@ -116,6 +118,8 @@ func (c *C) declareTypes() {
 	c.T.VoidPtr = c.T.Pointer(c.T.Void)
 	c.T.Ctx = c.T.TypeOf(C.context{})
 	c.T.CtxPtr = c.T.Pointer(c.T.Ctx)
+	c.T.Buf = c.T.TypeOf(C.buffer{})
+	c.T.BufPtr = c.T.Pointer(c.T.Buf)
 	c.T.Maps = map[*semantic.Map]*MapInfo{}
 	c.T.CmdParams = map[*semantic.Function]codegen.Type{}
 	c.T.target = map[semantic.Type]codegen.Type{}
