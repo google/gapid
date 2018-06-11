@@ -17,9 +17,24 @@ package codegen
 // Memcpy performs an intrinsic memory copy of size bytes from src to dst.
 // dst and src must be a void pointer (alias of u8*).
 // size is the copy size in bytes. size must be of type uint32.
-// align is the minimum pointer alignment of dst and src. align must of type
-// uint32, or nil to represent no guaranteed alignment.
 func (b *Builder) Memcpy(dst, src, size *Value) {
 	isVolatile := b.Scalar(false)
 	b.Call(b.m.memcpy, dst, src, size, isVolatile)
+}
+
+// Memset performs an intrinsic memory set to the given value.
+// dst must be a void pointer (alias of u8*).
+// val is value that is to be repeated size times into dst. val must be of type
+// uint8.
+// size is the copy size in bytes. size must be of type uint32.
+func (b *Builder) Memset(dst, val, size *Value) {
+	isVolatile := b.Scalar(false)
+	b.Call(b.m.memset, dst, val, size, isVolatile)
+}
+
+// Memzero performs an intrinsic memory clear to 0.
+// dst must be a void pointer (alias of u8*).
+// size is the copy size in bytes. size must be of type uint32.
+func (b *Builder) Memzero(dst, size *Value) {
+	b.Memset(dst, b.Scalar(uint8(0)), size)
 }

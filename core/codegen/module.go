@@ -37,6 +37,7 @@ type Module struct {
 	funcTys map[string]FunctionType
 	llvmDbg *llvm.DIBuilder
 	memcpy  Function
+	memset  Function
 }
 
 // NewModule returns a new module with the specified name.
@@ -84,10 +85,13 @@ func NewModule(name string, target *device.ABI) *Module {
 		funcTys: map[string]FunctionType{},
 	}
 
-	// llvm.memcpy.p0i8.p0i8.i32(i8 * <dest>, i8 * <src>, i32 <len>, i32 <align>, i1 <isvolatile>)
 	voidPtr := m.Types.Pointer(m.Types.Void)
+	// void llvm.memcpy.p0i8.p0i8.i32(i8 * <dest>, i8 * <src>, i32 <len>, i32 <align>, i1 <isvolatile>)
 	m.memcpy = m.Function(m.Types.Void, "llvm.memcpy.p0i8.p0i8.i32",
 		voidPtr, voidPtr, m.Types.Uint32, m.Types.Bool)
+	// void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>, i32 <len>, i1 <isvolatile>)
+	m.memset = m.Function(m.Types.Void, "llvm.memset.p0i8.i32",
+		voidPtr, m.Types.Uint8, m.Types.Uint32, m.Types.Bool)
 
 	m.Types.m = m
 	return m
