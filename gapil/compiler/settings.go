@@ -34,8 +34,12 @@ type Settings struct {
 	// Prefix for mangler
 	Namespaces []string
 
+	// EmitContext is true if the compiler should generate context creation and
+	// destruction functions.
+	EmitContext bool
+
 	// EmitExec is true if the compiler should generate execution functions for
-	// each API command.
+	// each API command. Implies EmitContext.
 	EmitExec bool
 
 	// CodeLocations is true if the compiler should emit writes to the context's

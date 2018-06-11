@@ -25,10 +25,12 @@ import (
 // Executor is used to create execution environments for a compiled program.
 // Use New() to create Executors, do not create directly.
 type Executor struct {
-	program      *compiler.Program
-	exec         *codegen.Executor
-	initFunction unsafe.Pointer
-	cmdFunctions map[string]unsafe.Pointer
+	program        *compiler.Program
+	exec           *codegen.Executor
+	createContext  unsafe.Pointer
+	destroyContext unsafe.Pointer
+	globalsSize    uint64
+	cmdFunctions   map[string]unsafe.Pointer
 }
 
 // New returns a new and initialized Executor for the given program.
@@ -38,11 +40,17 @@ func New(prog *compiler.Program, optimize bool) *Executor {
 		panic(err)
 	}
 
+	if prog.CreateContext.IsNull() || prog.DestroyContext.IsNull() {
+		panic("Program has no context functions. Was EmitContext not set to true?")
+	}
+
 	exec := &Executor{
-		program:      prog,
-		exec:         e,
-		initFunction: e.FunctionAddress(prog.Initializer),
-		cmdFunctions: map[string]unsafe.Pointer{},
+		program:        prog,
+		exec:           e,
+		createContext:  e.FunctionAddress(prog.CreateContext),
+		destroyContext: e.FunctionAddress(prog.DestroyContext),
+		globalsSize:    uint64(e.SizeOf(prog.Globals.Type)),
+		cmdFunctions:   map[string]unsafe.Pointer{},
 	}
 
 	for name, info := range prog.Commands {

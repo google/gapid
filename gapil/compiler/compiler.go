@@ -61,8 +61,11 @@ type C struct {
 	settings  Settings
 	plugins   plugins
 	functions map[*semantic.Function]codegen.Function
-	stateInit codegen.Function
-	buf       struct { // Functions that operate on buffers
+	ctx       struct { // Functions that operate on contexts
+		create  codegen.Function
+		destroy codegen.Function
+	}
+	buf struct { // Functions that operate on buffers
 		init   codegen.Function
 		term   codegen.Function
 		append codegen.Function
@@ -109,6 +112,9 @@ func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Progr
 	}
 	if s.Mangler == nil {
 		s.Mangler = c.Mangle
+	}
+	if s.EmitExec {
+		s.EmitContext = true
 	}
 
 	c := &C{
@@ -169,14 +175,15 @@ func (c *C) program(s Settings) (*Program, error) {
 	}
 
 	return &Program{
-		Settings:    c.settings,
-		Commands:    commands,
-		Structs:     structs,
-		Globals:     globals,
-		Maps:        maps,
-		Locations:   c.locations,
-		Module:      c.M,
-		Initializer: c.stateInit,
+		Settings:       c.settings,
+		Commands:       commands,
+		Structs:        structs,
+		Globals:        globals,
+		Maps:           maps,
+		Locations:      c.locations,
+		Module:         c.M,
+		CreateContext:  c.ctx.create,
+		DestroyContext: c.ctx.destroy,
 	}, nil
 }
 
@@ -231,9 +238,9 @@ func (c *C) compile() {
 		for _, f := range c.API.Functions {
 			c.command(f)
 		}
-		c.buildStateInit()
 	}
 
+	c.buildContextFuncs()
 	c.buildBufferFuncs()
 
 	c.plugins.foreach(func(p Plugin) { p.Build(c) })
@@ -352,22 +359,6 @@ func (c *C) Log(s *S, severity log.Severity, msg string, args ...interface{}) {
 // Fail is used to immediately terminate compilation due to an internal
 // compiler error.
 func (c *C) Fail(msg string, args ...interface{}) { fail(msg, args...) }
-
-func (c *C) buildStateInit() {
-	c.stateInit = c.M.Function(c.T.Void, "init", c.T.Pointer(c.T.Ctx))
-	c.Build(c.stateInit, func(s *S) {
-		for _, g := range c.API.Globals {
-			var val *codegen.Value
-			if g.Default != nil {
-				val = c.expression(s, g.Default)
-			} else {
-				val = c.initialValue(s, g.Type)
-			}
-			c.reference(s, val, g.Type)
-			s.Globals.Index(0, g.Name()).Store(val)
-		}
-	})
-}
 
 func (c *C) setCodeLocation(s *S, t parse.Token) {
 	_, file := filepath.Split(t.Source.Filename)

@@ -66,9 +66,10 @@ type compileVerb struct {
 	Target string `help:"The target device ABI"`
 	Output string `help:"The output file path"`
 	Emit   struct {
-		Exec   bool `help:"Emit executor logic"`
-		Encode bool `help:"Emit encoder logic"`
-		Clone  bool `help:"Emit clone methods"`
+		Clone   bool `help:"Emit clone methods"`
+		Encode  bool `help:"Emit encoder logic"`
+		Exec    bool `help:"Emit executor logic. Implies --emit-context"`
+		Context bool `help:"Emit context constructor / destructor"`
 	}
 	Namespace string        `help:"Dot-delimited root namespace(s)"`
 	Symbols   symbols       `help:"Symbol generation method"`
@@ -109,10 +110,11 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	settings := compiler.Settings{
-		TargetABI:  abi,
-		StorageABI: abi,
-		Namespaces: namespaces,
-		EmitExec:   v.Emit.Exec,
+		TargetABI:   abi,
+		StorageABI:  abi,
+		Namespaces:  namespaces,
+		EmitExec:    v.Emit.Exec,
+		EmitContext: v.Emit.Context,
 	}
 
 	if v.Emit.Encode {
