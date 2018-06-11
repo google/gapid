@@ -187,8 +187,7 @@ cmd EGLSurface eglCreateWindowSurface(EGLDisplay          display,
 
 @no_replay
 cmd EGLBoolean eglDestroyContext(EGLDisplay display, EGLContext context) {
-  if (context == null) {
-  } else if context in EGLContexts {
+  if (context != null) && context in EGLContexts {
     ctx := EGLContexts[context]
     ctx.Other.Destroyed = true
   }
