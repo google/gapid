@@ -110,9 +110,12 @@ type cbBackref struct {
 }
 
 func withEncoder(f func(ctx *C.context)) callbacks {
-	ctx := &C.context{}
-	C.gapil_init_context(ctx)
-	defer C.gapil_term_context(ctx)
+	a := arena.New()
+	ctx := C.gapil_create_context((*C.arena)(a.Pointer))
+	defer func() {
+		C.gapil_destroy_context(ctx)
+		a.Dispose()
+	}()
 
 	e := encoder{
 		types:    map[unsafe.Pointer]int64{nil: 0},

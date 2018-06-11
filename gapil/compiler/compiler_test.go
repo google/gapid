@@ -1909,7 +1909,7 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 	}
 
 	if t.expected.data != nil {
-		if !assert.For(ctx, "Globals").ThatSlice(env.Globals).Equals(t.expected.data) {
+		if !assert.For(ctx, "Globals").ThatSlice(env.Globals()).Equals(t.expected.data) {
 			return false
 		}
 	}
@@ -1930,10 +1930,11 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 	}
 
 	stats := env.Arena.Stats()
-	numContextAllocs := 1               // next_pool_id allocated in init_context
+	numContextAllocs := 3               // gapil_create_context: context, next_pool_id, globals
 	numMemBlocks := c.Observed.Length() // observation allocations
 	numOtherAllocs := numMemBlocks + numContextAllocs
 	if !assert.For(ctx, "Allocations").That(stats.NumAllocations - numOtherAllocs).Equals(t.expected.numAllocs) {
+		log.I(ctx, "Allocations: %v\n", stats)
 		return false
 	}
 	return true

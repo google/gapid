@@ -30,12 +30,12 @@ import (
 
 // #include "gapil/runtime/cc/runtime.h"
 //
-// typedef void     (TInit) (void* ctx);
+// typedef context* (TCreateContext) (arena*);
+// typedef void     (TDestroyContext) (context*);
 // typedef uint32_t (TFunc) (void* ctx, void* args);
 //
-// static context* alloc_context() { return (context*) malloc(sizeof(context)); }
-// static void free_context(context* ctx) { free(ctx); }
-// static void init_context(context* ctx, TInit* func) { func(ctx); }
+// static context* create_context(TCreateContext* func, arena* a) { return func(a); }
+// static void destroy_context(TDestroyContext* func, context* ctx) { func(ctx); }
 // static uint32_t call(context* ctx, void* args, TFunc* func) { return func(ctx, args); }
 //
 // // Implemented below.
@@ -86,9 +86,6 @@ func (l buffers) remap(rng memory.Range) unsafe.Pointer {
 
 // Env is the go execution environment.
 type Env struct {
-	// Globals is the buffer holding all the global fields.
-	Globals []byte
-
 	// Arena is the memory arena used by this execution environment.
 	Arena arena.Arena
 
@@ -103,8 +100,8 @@ type Env struct {
 // Dispose releases the memory used by the environment.
 // Call after the env is no longer needed to avoid leaking memory.
 func (e *Env) Dispose() {
-	C.gapil_term_context(e.cCtx) // also frees the arena
-	C.free_context(e.cCtx)
+	C.destroy_context((*C.TDestroyContext)(e.exec.destroyContext), e.cCtx)
+	e.Arena.Dispose()
 }
 
 type envID uint32
@@ -145,26 +142,17 @@ func (e *Executor) NewEnv(ctx context.Context, capture *capture.Capture) *Env {
 		nextEnvID++
 
 		env = &Env{
-			Globals: make([]byte, e.exec.SizeOf(e.program.Globals.Type)),
-			id:      envID(id),
-			exec:    e,
+			id:   envID(id),
+			exec: e,
 		}
 		envs[id] = env
 	}()
 
-	var globals unsafe.Pointer
-	if len(env.Globals) > 0 {
-		globals = (unsafe.Pointer)(&env.Globals[0])
-	}
-
 	// Create the context and initialize the globals.
+	env.Arena = arena.New()
 	env.goCtx = ctx
-	env.cCtx = C.alloc_context()
-	C.gapil_init_context(env.cCtx)
+	env.cCtx = C.create_context((*C.TCreateContext)(e.createContext), (*C.arena)(env.Arena.Pointer))
 	env.cCtx.id = (C.uint32_t)(id)
-	env.cCtx.globals = (*C.globals)(globals)
-	env.Arena = arena.Arena{Pointer: unsafe.Pointer(env.cCtx.arena)}
-	C.init_context(env.cCtx, (*C.TInit)(e.initFunction))
 	env.goCtx = nil
 
 	// Allocate buffers for all the observed memory ranges.
@@ -193,6 +181,11 @@ func (e *Env) Execute(ctx context.Context, cmd api.Cmd) error {
 	e.cmd = nil
 
 	return res
+}
+
+// Globals returns the memory of the global state.
+func (e *Env) Globals() []byte {
+	return byteSlice((unsafe.Pointer)(e.cCtx.globals), e.exec.globalsSize)
 }
 
 // GetBytes returns the bytes that are in the given memory range.

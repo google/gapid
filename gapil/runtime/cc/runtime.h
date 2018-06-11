@@ -41,11 +41,12 @@ typedef struct string_t  string;
 // context contains information about the environment in which a function is
 // executing.
 typedef struct context_t {
-	uint32_t    id;           // the context identifier. Can be treated as user-data.
-	uint32_t    location;     // the API source location.
-	uint32_t*   next_pool_id; // the identifier of the next pool to be created.
-	globals*    globals;      // a pointer to the global state.
-	arena*      arena;        // the memory arena used for allocations.
+	uint32_t    id;            // the context identifier. Can be treated as user-data.
+	uint32_t    location;      // the API source location.
+	uint32_t*   next_pool_id;  // the identifier of the next pool to be created.
+	globals*    globals;       // a pointer to the global state.
+	arena*      arena;         // the memory arena used for allocations.
+	// additional data used by compiler plugins goes here.
 } context;
 
 // pool describes the underlying buffer that may be used by one or more slices.
@@ -121,6 +122,12 @@ typedef void gapil_get_code_location(context* ctx, char** file, uint32_t* line);
 // Runtime API implemented by the compiler                                    //
 ////////////////////////////////////////////////////////////////////////////////
 
+// creates an initializes a new context with the given arena.
+context* gapil_create_context(arena* arena);
+
+// destroys the context created by gapil_create_context.
+void gapil_destroy_context(context* ctx);
+
 void gapil_string_reference(string*);
 void gapil_string_release(string*);
 
@@ -130,12 +137,6 @@ void gapil_slice_release(slice);
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
-
-// initializes the context.
-void gapil_init_context(context* ctx);
-
-// termintates the context.
-void gapil_term_context(context* ctx);
 
 // sets the pointer remapper callback used to remap serialized pointers to a
 // pointer in an allocated buffer.

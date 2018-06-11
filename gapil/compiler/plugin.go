@@ -14,6 +14,8 @@
 
 package compiler
 
+import "github.com/google/gapid/core/codegen"
+
 // Plugin is a extension for the compiler.
 type Plugin interface {
 	Build(*C)
@@ -25,4 +27,19 @@ func (l plugins) foreach(f func(p Plugin)) {
 	for _, p := range l {
 		f(p)
 	}
+}
+
+// ContextField represents a single additional context field added by a
+// ContextDataPlugin.
+type ContextField struct {
+	Name string                       // Name of the field
+	Type codegen.Type                 // Type of the field
+	Init func(s *S) *codegen.Value    // Optional initializer
+	Term func(s *S, v *codegen.Value) // Optional terminator
+}
+
+// ContextDataPlugin is the interface implemented by plugins that require
+// additional data to be stored in the runtime context.
+type ContextDataPlugin interface {
+	ContextData(*C) []ContextField
 }

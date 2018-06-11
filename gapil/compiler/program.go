@@ -47,9 +47,15 @@ type Program struct {
 	// Module is the generated code module.
 	Module *codegen.Module
 
-	// Initializer is a function that initializes the globals with defaults.
-	// The function has the signature: void (ctx* ctx)
-	Initializer codegen.Function
+	// CreateContext is the function that creates and returns a new initialized
+	// context. It has the function signature:
+	//   context* gapil_create_context(arena*)
+	CreateContext codegen.Function
+
+	// DestroyContext is the function that destroys a context created by
+	// CreateContext. It has the function signature:
+	//   void gapil_destroy_context(context*)
+	DestroyContext codegen.Function
 }
 
 // CommandInfo holds the generated execute function for a given command.

@@ -55,22 +55,6 @@ static gapil_get_code_location* code_locator = &default_code_locator;
 
 extern "C" {
 
-void gapil_init_context(context* ctx) {
-    auto arena = new Arena;
-    ctx->id = 0;
-    ctx->location = 0xffffffff;
-    ctx->globals = nullptr;
-    ctx->arena = reinterpret_cast<arena_t*>(arena);
-    ctx->next_pool_id = arena->create<uint32_t>(1);
-}
-
-void gapil_term_context(context* ctx) {
-    Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
-    arena->free(ctx->next_pool_id);
-    delete arena;
-    ctx->arena = nullptr;
-}
-
 // sets the pointer remapper callback used to remap serialized pointers to a
 // pointer in an allocated buffer.
 void gapil_set_pointer_remapper(gapil_pointer_remapper* cb) {

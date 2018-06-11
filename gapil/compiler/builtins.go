@@ -45,9 +45,10 @@ const (
 
 // Field names for the context_t runtime type.
 const (
-	ContextLocation = "location"
-	ContextGlobals  = "globals"
-	ContextArena    = "arena"
+	ContextLocation   = "location"
+	ContextGlobals    = "globals"
+	ContextArena      = "arena"
+	ContextNextPoolID = "next_pool_id"
 )
 
 // Field names for the slice_t runtime type.

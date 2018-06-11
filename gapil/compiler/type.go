@@ -47,6 +47,7 @@ type Types struct {
 	BufPtr          codegen.Type                        // buffer_t*
 	CmdParams       map[*semantic.Function]codegen.Type // struct holding all command parameters and return value.
 	Maps            map[*semantic.Map]*MapInfo
+	customCtxFields []ContextField
 	target          map[semantic.Type]codegen.Type
 	storage         map[semantic.Type]codegen.Type
 	targetToStorage map[semantic.Type]codegen.Function
@@ -116,8 +117,6 @@ func (c *C) declareTypes() {
 	c.T.Arena = c.T.DeclareStruct("arena")
 	c.T.ArenaPtr = c.T.Pointer(c.T.Arena)
 	c.T.VoidPtr = c.T.Pointer(c.T.Void)
-	c.T.Ctx = c.T.TypeOf(C.context{})
-	c.T.CtxPtr = c.T.Pointer(c.T.Ctx)
 	c.T.Buf = c.T.TypeOf(C.buffer{})
 	c.T.BufPtr = c.T.Pointer(c.T.Buf)
 	c.T.Maps = map[*semantic.Map]*MapInfo{}
@@ -168,6 +167,8 @@ func (c *C) declareTypes() {
 	c.declareMangling()
 
 	c.declareRefRels()
+
+	c.declareContextType()
 }
 
 func (c *C) declareMangling() {
