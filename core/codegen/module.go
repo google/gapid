@@ -99,11 +99,18 @@ func NewModule(name string, target *device.ABI) *Module {
 
 // Verify checks correctness of the module.
 func (m *Module) Verify() error {
-	err := llvm.VerifyModule(m.llvm, llvm.ReturnStatusAction)
-	if err != nil {
-		err = fmt.Errorf("JIT module verification failed:\n%v\n%v", err, m.String())
+	for f := m.llvm.FirstFunction(); !f.IsNil(); f = llvm.NextFunction(f) {
+		if err := llvm.VerifyFunction(f, llvm.ReturnStatusAction); err != nil {
+			f.Dump()
+			return fmt.Errorf("Function '%s' verification failed:\n%v", f.Name(), err)
+		}
 	}
-	return err
+
+	if err := llvm.VerifyModule(m.llvm, llvm.ReturnStatusAction); err != nil {
+		return fmt.Errorf("Module verification failed:\n%v\n%v", err, m.String())
+	}
+
+	return nil
 }
 
 func hex(r rune) byte {
