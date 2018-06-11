@@ -46,12 +46,132 @@ sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
   sourceBuffer := Buffers[buffer.SrcBuffer]
   destBuffer := Buffers[buffer.DstBuffer]
   for _ , _ , region in buffer.CopyRegions {
-    srcMemoryOffset := sourceBuffer.MemoryOffset + region.srcOffset
-    dstMemoryOffset := destBuffer.MemoryOffset + region.dstOffset
     readMemoryInBuffer(sourceBuffer, region.srcOffset, region.size)
-    copy(destBuffer.Memory.Data[dstMemoryOffset:dstMemoryOffset + region.size],
-      sourceBuffer.Memory.Data[srcMemoryOffset:srcMemoryOffset + region.size])
+    copyBufferToBuffer(destBuffer, region.dstOffset, sourceBuffer, region.srcOffset, region.size)
   }
+}
+
+@internal class OpaqueResourceMemoryBoundPiece {
+  VkDeviceSize ResourceOffset
+  VkDeviceSize Size
+  ref!DeviceMemoryObject DeviceMemory
+  VkDeviceSize MemoryOffset
+}
+
+@internal class OpaqueResourceMemoryBoundPieceReturnMap {
+  map!(VkDeviceSize, OpaqueResourceMemoryBoundPiece) Map
+}
+
+// getBufferBoundMemoryPiecesInRange returns all the memory-bound ranges that
+// overlaps with the buffer range given with offset and size. The returned
+// memory-bound ranges are guaranteed to be valid to access, and so as a whole
+// may be a subset of the given range. For each returned memory-bound range, it
+// is guaranteed to be a subset of the buffer's total resource range, the
+// corresponding sparse memory bind (if any), and the underlying device memory
+// allocation range.
+sub map!(VkDeviceSize, OpaqueResourceMemoryBoundPiece) getBufferBoundMemoryPiecesInRange(
+  ref!BufferObject buf, VkDeviceSize offset, VkDeviceSize size) {
+  ret_val := OpaqueResourceMemoryBoundPieceReturnMap()
+
+  noOverflowEnd := switch (size == 0xFFFFFFFFFFFFFFFF) ||
+                    ((size+offset) < size) {
+    case true:
+      // size value is VK_WHOLE_SIZE or can overflow
+      buf.Info.Size
+    case false:
+      size+offset
+  }
+  end := min!VkDeviceSize(noOverflowEnd, buf.Info.Size)
+  if offset < end {
+    if buf.Memory != null {
+      memOffset := offset+buf.MemoryOffset
+      memEnd := min!VkDeviceSize(end+buf.MemoryOffset, buf.Memory.AllocationSize)
+      if memOffset < memEnd {
+        ret_val.Map[offset] = OpaqueResourceMemoryBoundPiece(
+          ResourceOffset: offset,
+          Size: memEnd - memOffset,
+          DeviceMemory: buf.Memory,
+          MemoryOffset: memOffset,
+        )
+      }
+
+    } else {
+      // sparsely bound
+      for _, blkOffset, bind in buf.SparseMemoryBindings {
+        resStart := max!VkDeviceSize(as!VkDeviceSize(blkOffset), offset)
+        resEnd := min!VkDeviceSize(as!VkDeviceSize(blkOffset)+bind.size, end)
+        if (resStart < resEnd) && (DeviceMemories[bind.memory] != null) {
+          mem := DeviceMemories[bind.memory]
+          memStart := resStart-bind.resourceOffset+bind.memoryOffset
+          memEnd := min!VkDeviceSize(resEnd-bind.resourceOffset+bind.memoryOffset, mem.AllocationSize)
+          if memStart < memEnd {
+            ret_val.Map[resStart] = OpaqueResourceMemoryBoundPiece(
+              ResourceOffset: resStart,
+              Size: memEnd - memStart,
+              DeviceMemory: mem,
+              MemoryOffset: memStart,
+            )
+          }
+        }
+      }
+    }
+  }
+  return ret_val.Map
+}
+
+sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref!BufferObject srcBuf, VkDeviceSize srcOffset, VkDeviceSize size) {
+  if (dstBuf.Memory != null) && (srcBuf.Memory != null) {
+    // No sparse binding in either dst and src
+    srcMemOffset := srcBuf.MemoryOffset + srcOffset
+    dstMemOffset := dstBuf.MemoryOffset + dstOffset
+    srcMemEnd := min!VkDeviceSize(srcMemOffset+size, srcBuf.Memory.AllocationSize)
+    dstMemEnd := min!VkDeviceSize(dstMemOffset+size, dstBuf.Memory.AllocationSize)
+    if (srcMemOffset < srcMemEnd) && (dstMemOffset < dstMemEnd) {
+      copy(dstBuf.Memory.Data[dstMemOffset:dstMemEnd], srcBuf.Memory.Data[srcMemOffset:srcMemEnd])
+    }
+
+  } else if (dstBuf.Memory != null) && (len(srcBuf.SparseMemoryBindings) != 0) {
+    // Sparse binding in src
+    srcMemPieces := getBufferBoundMemoryPiecesInRange(srcBuf, srcOffset, size)
+    for _, _, smp in srcMemPieces {
+      srcMemOffset := as!u64(smp.MemoryOffset)
+      dstMemOffset := as!u64(smp.ResourceOffset - srcOffset + dstOffset)
+      if dstMemOffset < as!u64(dstBuf.Memory.AllocationSize) {
+        memSize := min!u64(as!u64(smp.Size), as!u64(dstBuf.Memory.AllocationSize) - dstMemOffset)
+        copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset+memSize],
+             srcBuf.Memory.Data[srcMemOffset:srcMemOffset+memSize])
+      }
+    }
+
+  } else if (len(dstBuf.SparseMemoryBindings) != 0) && (srcBuf.Memory != null) {
+    // Sparse binding in dst
+    dstMemPieces := getBufferBoundMemoryPiecesInRange(dstBuf, dstOffset, size)
+    for _, _, dmp in dstMemPieces {
+      dstMemOffset := dmp.MemoryOffset
+      srcMemOffset := dmp.ResourceOffset - dstOffset + srcOffset
+      if srcMemOffset < as!VkDeviceSize(srcBuf.Memory.AllocationSize) {
+        memSize := min!VkDeviceSize(dmp.Size, as!VkDeviceSize(srcBuf.Memory.AllocationSize) - srcMemOffset)
+        copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset+memSize],
+             srcBuf.Memory.Data[srcMemOffset:srcMemOffset+memSize])
+      }
+    }
+
+  } else if (len(dstBuf.SparseMemoryBindings) != 0) && (len(srcBuf.SparseMemoryBindings) != 0) {
+    // Sparse binding in src and dst
+    dstMemPieces := getBufferBoundMemoryPiecesInRange(dstBuf, dstOffset, size)
+    for _, _, dmp in dstMemPieces {
+      tmpSrcOffset := dmp.ResourceOffset - dstOffset + srcOffset
+      tmpSize := dmp.Size
+      srcMemPieces := getBufferBoundMemoryPiecesInRange(srcBuf, tmpSrcOffset, tmpSize)
+      for _, _, smp in srcMemPieces {
+        srcMemOffset := as!u64(smp.MemoryOffset)
+        dstMemOffset := as!u64(smp.ResourceOffset - tmpSrcOffset + dmp.ResourceOffset)
+        memSize := as!u64(smp.Size)
+        copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset+memSize],
+             srcBuf.Memory.Data[srcMemOffset:srcMemOffset+memSize])
+      }
+    }
+  } 
 }
 
 @threadSafety("app")
@@ -327,21 +447,34 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
             if ((format == VK_FORMAT_D24_UNORM_S8_UINT) || (format == VK_FORMAT_X8_D24_UNORM_PACK32)) && (aspectBit == VK_IMAGE_ASPECT_DEPTH_BIT) {
               elementSizeInImage := as!u64(getDepthElementSize(format, false))
               for x in (xStart .. xEnd) {
-                dstStart := (rowStartBlock + x) * elementSizeInImage
+                dstStart := as!VkDeviceSize((rowStartBlock + x) * elementSizeInImage)
                 rowStartInExtent := (rowStartBlockInExtent + x) * elementSize
-                srcStart := as!u64(bufferObject.MemoryOffset) + bufferLayerOffset + rowStartInExtent
-                readCoherentMemory(bufferObject.Memory, as!VkDeviceSize(srcStart), as!VkDeviceSize(elementSize))
-                copy(imageLevel.Data[dstStart:dstStart + elementSizeInImage], bufferObject.Memory.Data[srcStart:srcStart + elementSize])
+                bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
+                readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSize))
+                // Discard the 4th byte in the buffer for current pixel.
+                bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(elementSizeInImage))
+                for _, _, piece in bufMemPieces {
+                  srcStart := piece.MemoryOffset
+                  srcEnd := srcStart + piece.Size
+                  dstPieceStart := piece.ResourceOffset - bufStart + dstStart
+                  dstPieceEnd := dstPieceStart + piece.Size
+                  copy(imageLevel.Data[dstPieceStart:dstPieceEnd], piece.DeviceMemory.Data[srcStart:srcEnd])
+                }
               }
             } else {
-              copySize := (xEnd - xStart) * elementSize
+              copySize := as!VkDeviceSize((xEnd - xStart) * elementSize)
               dstStart := (rowStartBlock + xStart) * elementSize
-              dstEnd := dstStart + copySize
               rowStartInExtent := rowStartBlockInExtent * elementSize
-              srcStart := as!u64(bufferObject.MemoryOffset) + bufferLayerOffset + rowStartInExtent
-              srcEnd := srcStart + copySize
-              readMemoryInBuffer(bufferObject, as!VkDeviceSize(bufferLayerOffset + rowStartInExtent), as!VkDeviceSize(copySize))
-              copy(imageLevel.Data[dstStart:dstEnd], bufferObject.Memory.Data[srcStart:srcEnd])
+              bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
+              readMemoryInBuffer(bufferObject, bufStart, copySize)
+              bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, copySize)
+              for _, _, piece in bufMemPieces {
+                srcStart := piece.MemoryOffset
+                srcEnd := srcStart + piece.Size
+                dstPieceStart := as!u64(piece.ResourceOffset - bufStart) + dstStart
+                dstPieceEnd := dstPieceStart + as!u64(piece.Size)
+                copy(imageLevel.Data[dstPieceStart:dstPieceEnd], piece.DeviceMemory.Data[srcStart:srcEnd])
+              }
             }
           }
         }
@@ -426,9 +559,12 @@ cmd void vkCmdCopyImageToBuffer(
 sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
   Buffers[args.DstBuffer].LastBoundQueue = LastBoundQueue
   buff := Buffers[args.DstBuffer]
-  start := buff.MemoryOffset + args.DstOffset
-  copy(buff.Memory.Data[start:start + args.DataSize],
-    args.Data[0:args.DataSize])
+  bufPieces := getBufferBoundMemoryPiecesInRange(buff, args.DstOffset, args.DataSize)
+  for _, _, p in bufPieces {
+    srcOffset := p.ResourceOffset - args.DstOffset
+    size := min!VkDeviceSize(p.Size, as!VkDeviceSize(len(args.Data))-srcOffset)
+    copy(buff.Memory.Data[p.MemoryOffset:p.MemoryOffset+size], args.Data[srcOffset:srcOffset+size])
+  }
 }
 
 @threadSafety("app")
@@ -464,7 +600,25 @@ class vkCmdFillBufferArgs {
 }
 
 sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
-  // DO NOT CHECK IN: IMPLEMENT THIS
+  buf := Buffers[args.Buffer]
+  bufPieces := getBufferBoundMemoryPiecesInRange(buf, args.DstOffset, args.Size)
+  for _, _, p in bufPieces {
+    if as!VkDeviceSize(len(p.DeviceMemory.Data)) >= (p.MemoryOffset + p.Size) {
+      for i in (0 .. p.Size) {
+        offset := as!VkDeviceSize(p.ResourceOffset + i)
+        p.DeviceMemory.Data[p.MemoryOffset + i] = switch (offset-((offset/4)*4)) {
+          case as!VkDeviceSize(0):
+            as!u8(args.Data & 0xFF)
+          case as!VkDeviceSize(1):
+            as!u8((args.Data >> 8) & 0xFF)
+          case as!VkDeviceSize(2):
+            as!u8((args.Data >> 16) & 0xFF)
+          case as!VkDeviceSize(3):
+            as!u8((args.Data >> 24) & 0xFF)
+        }
+      }
+    }
+  }
 }
 
 @threadSafety("app")

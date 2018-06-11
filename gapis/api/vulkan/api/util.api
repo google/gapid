@@ -402,3 +402,20 @@ class VulkanStructHeader {
   VkStructureType SType
   void*           PNext
 }
+
+// Following utility subroutines are exact copies from GLES.
+// TODO: Apic should support one api file to be imported in multiple dependee
+// api files. Once this is done, use a single definiton shared with GLES.
+sub T max!T(T a, T b) {
+  return switch a > b {
+    case true:  a
+    case false: b
+  }
+}
+
+sub T min!T(T a, T b) {
+  return switch (a < b) {
+    case true:  a
+    case false: b
+  }
+}
