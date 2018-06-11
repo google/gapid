@@ -1818,8 +1818,7 @@ cmd void Read(StructInStruct* input) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			ctx := log.PutHandler(ctx, log.TestHandler(t, log.Normal))
-			test.run(ctx, c)
+			test.run(log.SubTest(ctx, t), c)
 		})
 	}
 }
