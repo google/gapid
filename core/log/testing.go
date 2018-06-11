@@ -18,7 +18,21 @@ import "context"
 
 // Testing returns a default context with a TestHandler installed.
 func Testing(t delegate) context.Context {
-	ctx := context.Background()
+	return SubTest(context.Background(), t)
+}
+
+// SubTest returns the context with the TestHandler replaced with t.
+// This is intended to be used for sub-tests. For example:
+//
+//   func TestExample(t *testing.T) {
+//     ctx := log.Testing(t)
+//     for _, test := range tests {
+//       t.Run(test.name, func(t *testing.T) {
+//         test.run(log.SubTest(ctx, t))
+//       }
+//     }
+//   }
+func SubTest(ctx context.Context, t delegate) context.Context {
 	return PutHandler(ctx, TestHandler(t, Normal))
 }
 
