@@ -333,6 +333,7 @@ type Field struct {
 // struct_ creates a new struct populated with the given fields.
 // If packed is true then fields will be stored back-to-back.
 func (t *Types) struct_(name string, packed bool, fields []Field) *Struct {
+	name = sanitizeStructName(name)
 	if s, ok := t.structs[name]; ok {
 		if fields != nil {
 			if !reflect.DeepEqual(fields, s.Fields) {
@@ -391,7 +392,7 @@ func (t *Types) PackedStruct(name string, fields ...Field) *Struct {
 	return t.struct_(name, true, fields)
 }
 
-// TypeOf returns the corresponding JIT type for the type of value v.
+// TypeOf returns the corresponding codegen type for the type of value v.
 // TypeOf may also accept a reflect.Type.
 func (t *Types) TypeOf(v interface{}) Type {
 	ty, ok := v.(reflect.Type)
@@ -438,37 +439,56 @@ func (t *Types) TypeOf(v interface{}) Type {
 	case reflect.String:
 		return t.Pointer(t.Uint8)
 	case reflect.Struct:
-		name := ty.Name()
-		if strings.HasPrefix(name, "_Ctype") {
-			name = strings.TrimPrefix(name, "_Ctype_struct_") // Remove Cgo prefix...
-			name = strings.TrimSuffix(name, "_t")             // ... and '_t'
-		}
+		name := sanitizeStructName(ty.Name())
 		if s, ok := t.structs[name]; ok {
 			return s // avoid stack overflow if type references itself.
 		}
 		s := t.DeclareStruct(name)
-		c := ty.NumField()
-		fields := make([]Field, 0, c)
-		for i := 0; i < c; i++ {
-			f := ty.Field(i)
-			if f.Name == "_" {
-				continue // Cgo padding struct. No thanks.
-			}
-			ty := t.TypeOf(f.Type)
-			if f.Type == reflect.TypeOf(unsafe.Pointer(nil)) {
-				if name, ok := f.Tag.Lookup("ptr"); ok {
-					s, ok := t.structs[name]
-					if !ok {
-						panic(fmt.Errorf("Unknown pointer type '%v'", name))
-					}
-					ty = t.Pointer(s)
-				}
-			}
-			fields = append(fields, Field{Name: f.Name, Type: ty})
-		}
+		fields := t.FieldsOf(ty)
 		s.SetBody(false, fields...)
 		return s
 	default:
 		panic(fmt.Errorf("Unsupported kind %v", ty.Kind()))
 	}
+}
+
+// FieldsOf returns the codegen fields of the given struct type.
+// FieldsOf may also accept a reflect.Type.
+func (t *Types) FieldsOf(v interface{}) []Field {
+	ty, ok := v.(reflect.Type)
+	if !ok {
+		ty = reflect.TypeOf(v)
+	}
+	if ty.Kind() != reflect.Struct {
+		panic(fmt.Errorf("FieldsOf must be passed a struct type. Got %v", ty))
+	}
+	c := ty.NumField()
+	fields := make([]Field, 0, c)
+	for i := 0; i < c; i++ {
+		f := ty.Field(i)
+		if f.Name == "_" {
+			continue // Cgo padding struct. No thanks.
+		}
+		ty := t.TypeOf(f.Type)
+		if f.Type == reflect.TypeOf(unsafe.Pointer(nil)) {
+			if name, ok := f.Tag.Lookup("ptr"); ok {
+				s, ok := t.structs[name]
+				if !ok {
+					panic(fmt.Errorf("Unknown pointer type '%v'", name))
+				}
+				ty = t.Pointer(s)
+			}
+		}
+		fields = append(fields, Field{Name: f.Name, Type: ty})
+	}
+	return fields
+}
+
+// sanitizeStructName removes cgo mangling from the struct name.
+func sanitizeStructName(name string) string {
+	if strings.HasPrefix(name, "_Ctype") {
+		name = strings.TrimPrefix(name, "_Ctype_struct_") // Remove Cgo prefix...
+		name = strings.TrimSuffix(name, "_t")             // ... and '_t'
+	}
+	return name
 }

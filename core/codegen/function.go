@@ -34,6 +34,11 @@ func (f Function) String() string {
 	return fmt.Sprintf("%v %v(%v)", f.Type.Signature.Result, f.Name, f.Type.Signature.Parameters)
 }
 
+// IsNull returns true if the function is null.
+func (f Function) IsNull() bool {
+	return f.llvm.IsNull()
+}
+
 // Inline makes this function prefer inlining
 func (f Function) Inline() Function {
 	kind := llvm.AttributeKindID("alwaysinline")

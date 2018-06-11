@@ -197,6 +197,8 @@ func (b *Builder) ForN(n *Value, cb func(iterator *Value) (cont *Value)) {
 	b.llvm.SetInsertPointAtEnd(exit)
 }
 
+// SwitchCase is a single condition and block used as a case statement in a
+// switch.
 type SwitchCase struct {
 	Conditions func() []*Value
 	Block      func()
