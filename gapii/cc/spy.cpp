@@ -467,8 +467,10 @@ void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
 void Spy::saveInitialState() {
   GAPID_INFO("Saving initial state");
 
+  set_recording_state(true);
   saveInitialStateForApi<GlesSpy>("gles-initial-state");
   saveInitialStateForApi<VulkanSpy>("vulkan-initial-state");
+  set_recording_state(false);
 }
 
 template <typename T>
@@ -665,6 +667,14 @@ uint32_t Spy::glGetError(CallObserver* observer) {
     }
   }
   return GlesSpy::glGetError(observer);
+}
+
+EGLint Spy::eglGetError(CallObserver* observer) {
+  // Ignore any (probably nested) eglGetError calls when recording state.
+  if (is_recording_state()) {
+    return GlesSpy::mImports.eglGetError();
+  }
+  return GlesSpy::eglGetError(observer);
 }
 
 #if 0  // NON-EGL CONTEXTS ARE CURRENTLY NOT SUPPORTED

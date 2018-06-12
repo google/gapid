@@ -106,6 +106,9 @@ class SpyBase {
   void set_observing(bool observing) { mIsObserving = observing; }
   bool is_observing() const { return mIsObserving; }
 
+  bool is_recording_state() const { return mIsRecordingState; }
+  void set_recording_state(bool recording) { mIsRecordingState = recording; }
+
  protected:
   // lock begins the interception of a single command. It must be called
   // before invoking any command on the spy. Blocks if any other thread
@@ -222,6 +225,11 @@ class SpyBase {
   // For some API's this will require that we modify some of the
   // image creation parameters
   bool mIsObserving;
+
+  // This is true when all commands are used to record state. This means
+  // the commands should still be recorded, but the underlying functions
+  // should not be called.
+  bool mIsRecordingState;
 };
 
 template <class T>
