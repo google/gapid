@@ -72,7 +72,12 @@ sub void execPendingCommands(VkQueue queue) {
           } else {
             Semaphores[cmd.Semaphore].Signaled = false
           }
+      } else if (cmd.SignalFence != as!VkFence(0)) {
+        fenceObj := Fences[cmd.SignalFence]
+        if fenceObj != null {
+          fenceObj.Signaled = true
         }
+      }
       if processSubcommand.b {
         // Handle sparse buffer/image binding.
         if (cmd.SparseBinds != null) {

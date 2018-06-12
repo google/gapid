@@ -100,7 +100,7 @@ cmd VkResult vkQueueSubmit(
     for j in (0 .. info.waitSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
       = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Unsignal,    wait_semaphores[j],    null)
+        Unsignal,    wait_semaphores[j],    null, as!VkFence(0))
     }
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
 
@@ -124,6 +124,7 @@ cmd VkResult vkQueueSubmit(
           ref.SemaphoreUpdate,
           ref.Semaphore,
           ref.SparseBinds,
+          ref.SignalFence,
         )
         notifyPendingCommandAdded(queue)
         if ref.Type == cmd_vkCmdExecuteCommands {
@@ -146,6 +147,7 @@ cmd VkResult vkQueueSubmit(
                 sref.SemaphoreUpdate,
                 sref.Semaphore,
                 sref.SparseBinds,
+                sref.SignalFence,
               )
               notifyPendingCommandAdded(queue)
             }
@@ -164,17 +166,25 @@ cmd VkResult vkQueueSubmit(
     for j in (0 .. info.signalSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
       = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Signal,      signal_semaphores[j],  null)
+        Signal,      signal_semaphores[j],  null, as!VkFence(0))
     }
     nextSubcontext()
   }
   leaveSubcontext()
+  if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword below
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
+    LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+    = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
+      as!VkSemaphore(0), null, fence)
+  }
+
   execPendingCommands(queue)
   fence // 'fence' keyword, marking the point where observed memory writes become visible
-  if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword above
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
-    Fences[fence].Signaled = true
-  }
+
+  //if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword above
+  //  if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
+  //  Fences[fence].Signaled = true
+  //}
   return ?
 }
 
@@ -321,6 +331,14 @@ cmd VkResult vkQueueBindSparse(
     }
   }
   leaveSubcontext()
+
+  if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword below
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
+    LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+    = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
+      as!VkSemaphore(0), null, fence)
+  }
+
   execPendingCommands(queue)
   fence
   return ?
