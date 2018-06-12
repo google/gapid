@@ -286,6 +286,10 @@ class TestList {
   ref!TestList next
 }
 
+class NestedRef {
+  ref!TestObject ref
+}
+
 class TestExtra {
   u8[]                     Data
 
@@ -305,4 +309,5 @@ class TestExtra {
 
   ref!TestList             LinkedList
   ref!TestList             Cycle
+  map!(u32, ref!NestedRef) NestedRefs
 }
