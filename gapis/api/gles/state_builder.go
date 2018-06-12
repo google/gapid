@@ -63,6 +63,11 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	representative := map[ShareListʳ]EGLContext{}
 	for i := ContextID(0); i < s.NextContextID(); i++ {
 		for handle, c := range s.EGLContexts().All() {
+			// Don't recreate destroyed or uninitialized contexts.
+			if c.Other().Destroyed() || !c.Other().Initialized() {
+				continue
+			}
+
 			// TODO: We need to restore contexts in order without gaps, but this is messy.
 			if c.Identifier() == i {
 				sb.contextObject(ctx, handle, c, representative)
@@ -197,10 +202,6 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 	write(cb.EglCreateContext(memory.Nullptr, memory.Nullptr, sharedCtx, memory.Nullptr, handle))
 	write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
 		c.Other().StaticStateExtra(), c.Other().DynamicStateExtra()))
-
-	if !c.Other().Initialized() {
-		return
-	}
 
 	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
 
