@@ -321,6 +321,7 @@
   {{     if IsReturn $}}{{Template "Return" $}}
   {{else if IsFence  $}}{{Template "Fence" $}}
   {{else if IsCopy   $}}{{Template "Copy" $}}
+  {{else if IsRead   $}}{{Template "Read" $}}
   {{else if IsAssign $}}{{Template "Assign" $}}
   {{else              }}{{Template "C++.Statement.Default" $}}
   {{end}}
@@ -384,6 +385,23 @@
     {{Error "Attempting to copy from a @spy_disabled slice"}}
   {{else if GetAnnotation ($.Dst | TargetField) "spy_disabled"}}
     observer->read({{Template "C++.Read" $.Src}}); // @spy_disabled
+  {{else}}
+    {{Template "C++.Statement.Default" $}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  An override for the "C++.Read" macro.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Read"}}
+  {{AssertType $ "Read"}}
+  {{if (GetAnnotation ($.Slice | TargetField) "spy_disabled")}}
+    // @spy_disabled
+  {{else if GetAnnotation ($.Slice | TargetField) "spy_disabled"}}
+    {{Error "Attempting to read from a @spy_disabled slice"}}
   {{else}}
     {{Template "C++.Statement.Default" $}}
   {{end}}

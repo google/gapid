@@ -60,12 +60,7 @@ sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, Vk
   memPieces := getBufferBoundMemoryPiecesInRange(buffer, readOffset, readSize)
   for _, _, mp in memPieces {
     readCoherentMemory(mp.DeviceMemory, mp.MemoryOffset, mp.Size)
-    // On the trace side, 'Data' pool won't actually be created, so its length
-    // will be zero. But on the server side, the pool will be created and the
-    // state block should contains the data in the buffer memory.
-    if len(mp.DeviceMemory.Data) != 0 {
-      read(mp.DeviceMemory.Data[mp.MemoryOffset:mp.MemoryOffset+mp.Size])
-    }
+    read(mp.DeviceMemory.Data[mp.MemoryOffset:mp.MemoryOffset+mp.Size])
   }
 }
 

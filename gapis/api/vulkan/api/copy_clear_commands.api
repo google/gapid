@@ -772,12 +772,18 @@ cmd void vkCmdClearAttachments(
 
 sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
   for _ , _ , r in args.ResolveRegions {
-    srcRange := VkImageSubresourceRange(               r.srcSubresource.aspectMask,
-      r.srcSubresource.mipLevel,       1,
-      r.srcSubresource.baseArrayLayer, r.srcSubresource.layerCount)
-    dstRange := VkImageSubresourceRange(               r.dstSubresource.aspectMask,
-      r.dstSubresource.mipLevel,       1,
-      r.dstSubresource.baseArrayLayer, r.dstSubresource.layerCount)
+    srcRange := VkImageSubresourceRange(
+      r.srcSubresource.aspectMask,
+      r.srcSubresource.mipLevel,
+      1,
+      r.srcSubresource.baseArrayLayer,
+      r.srcSubresource.layerCount)
+    dstRange := VkImageSubresourceRange(
+      r.dstSubresource.aspectMask,
+      r.dstSubresource.mipLevel,
+      1,
+      r.dstSubresource.baseArrayLayer,
+      r.dstSubresource.layerCount)
     readImageSubresource(Images[args.SrcImage], srcRange, args.SrcImageLayout)
     writeImageSubresource(Images[args.DstImage], dstRange, args.DstImageLayout)
   }
