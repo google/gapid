@@ -78,6 +78,11 @@ cmd VkResult vkCreateFramebuffer(
   framebufferObject.VulkanHandle = handle
   Framebuffers[handle] = framebufferObject
 
+  for _, i, viewObj in framebufferObject.ImageAttachments {
+    viewObj.FramebufferUsers[handle][
+      as!u32(len(viewObj.FramebufferUsers[handle]))] = i
+  }
+
   return ?
 }
 

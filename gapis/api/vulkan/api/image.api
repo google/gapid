@@ -382,6 +382,7 @@ cmd VkResult vkBindImageMemory(
 // Image view //
 ////////////////
 
+
 @internal class ImageViewObject {
   @unused VkDevice                  Device
   @unused VkImageView               VulkanHandle
@@ -391,6 +392,9 @@ cmd VkResult vkBindImageMemory(
   @unused VkImageSubresourceRange   SubresourceRange
   ref!ImageObject                   Image
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  // Do not track dependency for the following back-references.
+  map!(VkDescriptorSet, map!(u32, map!(u32, u32))) DescriptorUsers
+  map!(VkFramebuffer, map!(u32, u32)) FramebufferUsers
 }
 
 @threadSafety("system")
@@ -428,24 +432,46 @@ cmd void vkDestroyImageView(
     VkImageView         imageView,
     AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  delete(ImageViews, imageView)
-  for _ , _ , drawInfo in LastDrawInfos {
-    if (drawInfo.Framebuffer != null) {
-      for _ , i , v in drawInfo.Framebuffer.ImageAttachments {
-        if (v != null) && (v.VulkanHandle == imageView) {
-          drawInfo.Framebuffer.ImageAttachments[i] = null
+
+  if imageView in ImageViews {
+    viewObj := ImageViews[imageView]
+
+    // Release the binding with descriptor sets
+    for _, vkDesSet, bindingAndIndices in viewObj.DescriptorUsers {
+      if vkDesSet in DescriptorSets {
+        desSetObj := DescriptorSets[vkDesSet]
+        for _, binding, indices in bindingAndIndices {
+          switch desSetObj.Bindings[binding].BindingType {
+            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+              for _, _, index in indices {
+                desSetObj.Bindings[binding].ImageBinding[index].ImageView = as!VkImageView(0)
+              }
+          }
         }
       }
     }
-  }
-  for _ , _ , descSet in DescriptorSets {
-    for _ , _ , binding in descSet.Bindings {
-      for _ , _ , imgBinding in binding.ImageBinding {
-        if imgBinding.ImageView == imageView {
-          imgBinding.ImageView = as!VkImageView(0)
+
+    // Releae the binding with framebuffers
+    for _, vkFmBuf, attachmentIndices in viewObj.FramebufferUsers {
+      if vkFmBuf in Framebuffers {
+        fmBufObj := Framebuffers[vkFmBuf]
+        if fmBufObj != null {
+          for _, _, index in attachmentIndices {
+            if index in fmBufObj.ImageAttachments {
+              v := fmBufObj.ImageAttachments[index]
+              if (v != null) && (v == viewObj) {
+                fmBufObj.ImageAttachments[index] = null
+              }
+            }
+          }
         }
       }
     }
+
+    delete(ImageViews, imageView)
   }
 }
 
@@ -472,6 +498,8 @@ cmd void vkDestroyImageView(
   @unused VkBorderColor             BorderColor
   @unsued VkBool32                  UnnormalizedCoordinates
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  // Do not track dependency for the following back-references.
+  map!(VkDescriptorSet, map!(u32, map!(u32, u32))) DescriptorUsers
 }
 
 @threadSafety("system")
@@ -517,7 +545,26 @@ cmd void vkDestroySampler(
     VkSampler           sampler,
     AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  delete(Samplers, sampler)
+  if sampler in Samplers {
+    obj := Samplers[sampler] 
+    if obj != null {
+      for _, vkDesSet, bindingAndIndices in obj.DescriptorUsers {
+        if vkDesSet in DescriptorSets {
+          desSetObj := DescriptorSets[vkDesSet]
+          for _, binding, indices in bindingAndIndices {
+            switch desSetObj.Bindings[binding].BindingType {
+              case VK_DESCRIPTOR_TYPE_SAMPLER,
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+              for _, _, index in indices {
+                desSetObj.Bindings[binding].ImageBinding[index].Sampler = as!VkSampler(0)
+              }
+            }
+          }
+        }
+      }
+    }
+    delete(Samplers, sampler)
+  }
 }
 
 sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout layout) {
