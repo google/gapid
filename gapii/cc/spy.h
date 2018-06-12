@@ -91,6 +91,7 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
 
   void setFakeGlError(CallObserver* observer, GLenum_Error error);
   uint32_t glGetError(CallObserver* observer);
+  EGLint eglGetError(CallObserver* observer);
 
  private:
   Spy();
