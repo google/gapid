@@ -113,7 +113,7 @@ class Image {
   // This is unrelated to the format of the data passed to the API.
   @unused GLenum SizedFormat
 
-  @internal u8[] Data
+  @internal @spy_disabled u8[] Data
   // Tuple of (format, type) describing the Data field above.
   // This describes the format of the data the user passed in,
   // not the format of the data stored on the GPU (sizedFormat).
@@ -459,7 +459,8 @@ sub void TexImage(TexImageFlags  flags,
       } else if isCompressedTexImageCmd {
         if (ctx.Bound.PixelUnpackBuffer == null) && (data != null) {
           // TODO: Implement sub-range updates
-          img.Data = clone(as!u8*(data)[0:data_size])
+          img.Data = make!u8(data_size)
+          copy(img.Data, as!u8*(data)[0:data_size])
           img.DataFormat = data_format
         } else {
           // TODO: Implement copy from unpack buffer
