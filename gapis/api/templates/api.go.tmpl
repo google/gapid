@@ -346,7 +346,7 @@ import (
     for k, v := range *m.Map {
       out[{{Template "Clone" "Type" $.KeyType "Src" "k"}}] = {{Template "Clone" "Type" $.ValueType "Src" "v"}}
     }
-    return {{$name}}{Map: &out}
+    return {{$name}}{Map: &out, a: ϟa}
   }
 {{end}}
 
@@ -1098,6 +1098,7 @@ import (
           {{$f.Name | GoPrivateName}}: {{$f.Name | GoPrivateName}}, §
         {{end}}
       },
+      a: ϟa,
     }
   }
 
@@ -1211,6 +1212,7 @@ import (
           {{$name}}: c.data.{{Template "Clone" "Type" $f.Type "Src" $name}},
         {{end}}
       },
+      a: ϟa,
     }
   }
 {{end}}
