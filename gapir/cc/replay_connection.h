@@ -35,6 +35,7 @@ namespace replay_service {
   class ResourceRequest;
   class PostData;
   class ReplayResponse;
+  class Notification;
 }
 
 namespace gapir {
@@ -225,9 +226,9 @@ class ReplayConnection {
   // Sends post data. Returns true if succeeded, otherwise returns false.
   virtual bool sendPostData(std::unique_ptr<Posts> posts);
   // Sends notification. Returns true if succeeded, otherwise returns false.
-  virtual bool sendNotification(uint64_t id, uint32_t api_index, uint64_t label,
-                                const std::string& msg, const void* data,
-                                uint32_t data_size);
+  virtual bool sendNotification(uint64_t id, uint32_t severity, uint32_t api_index,
+                                uint64_t label, const std::string& msg,
+                                const void* data, uint32_t data_size);
 
  protected:
   ReplayConnection(ReplayGrpcStream* stream) : mGrpcStream(stream) {}

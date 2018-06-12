@@ -188,5 +188,30 @@ TEST_F(ContextTest, PostDataErrorPost) {
     EXPECT_FALSE(context->interpret());
 }
 
+TEST_F(ContextTest, Notification) {
+    const uint8_t api_index = 0xAB;
+    const int severity = LOG_LEVEL_ERROR;
+    const std::string msg = "notification test";
+    // Invoke onDebugMessage() during interpreting POST instruction.
+    auto payload = createPayload(
+            128, 1024, {0, 1, 2, 3, 4, 5, 6, 7}, {},
+            {instruction(Interpreter::InstructionCode::PUSH_I, BaseType::ConstantPointer, 1),
+             instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 6),
+             instruction(Interpreter::InstructionCode::POST)});
+
+    EXPECT_CALL(*mConn, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
+    core::CrashHandler crash_handler;
+    auto context = Context::create(mConn.get(), crash_handler, mResourceProvider.get(), mMemoryManager.get());
+    EXPECT_THAT(context, NotNull());
+
+    EXPECT_CALL(*mConn, mockedSendPostData(NotNull())).WillOnce(Invoke([&context, &msg, severity, api_index](ReplayConnection::Posts* posts) -> bool {
+        context->onDebugMessage(severity, api_index, msg.c_str());
+        return true;
+    }));
+    EXPECT_CALL(*mConn, sendNotification(0, severity, api_index, 0, msg, IsNull(), 0)).WillOnce(Return(true));
+
+    EXPECT_TRUE(context->interpret());
+}
+
 }  // namespace test
 }  // namespace gapir

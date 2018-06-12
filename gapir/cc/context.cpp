@@ -124,6 +124,7 @@ bool Context::interpret() {
                 // There is only one vulkan "renderer" so we create it when requested.
                 mVulkanRenderer = VulkanRenderer::create();
                 if (mVulkanRenderer->isValid()) {
+                    mVulkanRenderer->setListener(this);
                     Api* api = mVulkanRenderer->api();
                     interpreter->setRendererFunctions(api->index(), &api->mFunctions);
                     GAPID_INFO("Bound Vulkan renderer");
@@ -142,28 +143,32 @@ bool Context::interpret() {
     return res;
 }
 
-void Context::onDebugMessage(int severity, const char* msg) {
-    auto label = mInterpreter->getLabel();
-    // Remove tailing new-line from the message (if any)
-    std::string tmp;
-    if (msg != nullptr) {
-      auto len = strlen(msg);
-      if (len >= 1 && msg[len-1] == '\n') {
-        tmp = std::string(msg, len-1);
-        msg = tmp.data();
-      }
+// onDebugMessage implements the Renderer::Listener interface.
+void Context::onDebugMessage(uint32_t severity, uint8_t api_index, const char* msg) {
+  auto label = mInterpreter->getLabel();
+  // Remove tailing new-line from the message (if any)
+  std::string str_msg;
+  if (msg != nullptr) {
+    auto len = strlen(msg);
+    while (len >= 1 && msg[len - 1] == '\n') {
+      len--;
     }
-    switch (severity) {
+    str_msg = std::string(msg, len);
+    msg = str_msg.data();
+  }
+  switch (severity) {
     case LOG_LEVEL_ERROR:
-        GAPID_ERROR("[%d]renderer: %s", label, msg);
-        break;
+      GAPID_ERROR("[%d]renderer: %s", label, msg);
+      break;
     case LOG_LEVEL_WARNING:
-        GAPID_WARNING("[%d]renderer: %s", label, msg);
-        break;
+      GAPID_WARNING("[%d]renderer: %s", label, msg);
+      break;
     default:
-        GAPID_DEBUG("[%d]renderer: %s", label, msg);
-        break;
-    }
+      GAPID_DEBUG("[%d]renderer: %s", label, msg);
+      break;
+  }
+  mConnection->sendNotification(mNumSentDebugMessages++, severity, api_index,
+                                label, str_msg, nullptr, 0);
 }
 
 void Context::registerCallbacks(Interpreter* interpreter) {
@@ -307,10 +312,52 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
         if (mVulkanRenderer != nullptr || interpreter->registerApi(Vulkan::INDEX)) {
             auto* api = mVulkanRenderer->getApi<Vulkan>();
-            return api->replayCreateVkInstance(stack, pushReturn);
-        } else {
-            GAPID_WARNING("[%u]replayCreateVkInstance called without a bound Vulkan renderer", label);
+            auto* pInstance = stack->pop<Vulkan::VkInstance*>();
+            auto* pAllocator = stack->pop<Vulkan::VkAllocationCallbacks*>();
+            auto* pCreateInfo = stack->pop<Vulkan::VkInstanceCreateInfo*>();
+            if (!stack->isValid()) {
+                GAPID_ERROR("Error during calling funtion ReplayCreateVkInstance");
+                return false;
+            }
+            uint32_t result = Vulkan::VkResult::VK_SUCCESS;
+
+            if (api->replayCreateVkInstanceImpl(stack, pCreateInfo, pAllocator,
+                                                pInstance, false, &result)) {
+              if (result == Vulkan::VkResult::VK_SUCCESS) {
+                if (pushReturn) {
+                  stack->push(result);
+                }
+                return true;
+              }
+            }
+            // If validation layers and debug report extension are enabled,
+            // drop them and try to create VkInstance again.
+            if (Vulkan::hasValidationLayers(pCreateInfo->ppEnabledLayerNames,
+                                            pCreateInfo->enabledLayerCount) ||
+                Vulkan::hasDebugReportExtension(
+                    pCreateInfo->ppEnabledExtensionNames,
+                    pCreateInfo->enabledExtensionCount)) {
+              onDebugMessage(
+                  LOG_LEVEL_WARNING, Vulkan::INDEX,
+                  "Failed to create VkInstance with validation layers and "
+                  "debug report extension, drop them and try again");
+              if (api->replayCreateVkInstanceImpl(stack, pCreateInfo,
+                                                  pAllocator, pInstance, true,
+                                                  &result)) {
+                if (pushReturn) {
+                  stack->push(result);
+                }
+                return true;
+              }
+            }
+            onDebugMessage(LOG_LEVEL_FATAL, Vulkan::INDEX, "Failed to create 'VkInstance'");
             return false;
+        } else {
+          GAPID_WARNING(
+              "[%u]replayCreateVkInstance called without a bound Vulkan "
+              "renderer",
+              label);
+          return false;
         }
     });
 
@@ -319,10 +366,50 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         GAPID_DEBUG("[%u]replayCreateVkDevice()", label);
         if (mVulkanRenderer != nullptr) {
             auto* api = mVulkanRenderer->getApi<Vulkan>();
-            return api->replayCreateVkDevice(stack, pushReturn);
-        } else {
-            GAPID_WARNING("[%u]replayCreateVkDevice called without a bound Vulkan renderer", label);
+            auto pDevice = stack->pop<Vulkan::VkDevice*>();
+            auto pAllocator = stack->pop<Vulkan::VkAllocationCallbacks*>();
+            auto pCreateInfo = stack->pop<Vulkan::VkDeviceCreateInfo*>();
+            auto physicalDevice = static_cast<size_val>(stack->pop<size_val>());
+            if (!stack->isValid()) {
+                GAPID_ERROR("Error during calling funtion ReplayCreateVkDevice");
+                return false;
+            }
+            uint32_t result = Vulkan::VkResult::VK_SUCCESS;
+
+            if (api->replayCreateVkDeviceImpl(stack, physicalDevice,
+                                              pCreateInfo, pAllocator, pDevice,
+                                              false, &result)) {
+              if (result == Vulkan::VkResult::VK_SUCCESS) {
+                if (pushReturn) {
+                  stack->push(result);
+                }
+                return true;
+              }
+            }
+            // If validation layers are enabled, drop them and try to create
+            // VkInstance again.
+            if (Vulkan::hasValidationLayers(pCreateInfo->ppEnabledLayerNames,
+                                            pCreateInfo->enabledLayerCount)) {
+              onDebugMessage(
+                  LOG_LEVEL_WARNING, Vulkan::INDEX,
+                  "Failed to create VkDevice with validation layers, "
+                  "drop them and try again");
+              if (api->replayCreateVkDeviceImpl(stack, physicalDevice,
+                                                pCreateInfo, pAllocator,
+                                                pDevice, true, &result)) {
+                if (pushReturn) {
+                  stack->push(result);
+                }
+                return true;
+              }
+            }
+            onDebugMessage(LOG_LEVEL_FATAL, Vulkan::INDEX, "Failed to create 'VkDevice'");
             return false;
+        } else {
+          GAPID_WARNING(
+              "[%u]replayCreateVkDevice called without a bound Vulkan renderer",
+              label);
+          return false;
         }
     });
 
@@ -462,6 +549,64 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             return false;
         }
     });
+
+    interpreter->registerBuiltin(
+        Vulkan::INDEX, Builtins::ReplayCreateVkDebugReportCallback,
+        [this, interpreter](uint32_t label, Stack* stack, bool push_return) {
+          if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
+            auto* handle = stack->pop<Vulkan::VkDebugReportCallbackEXT*>();
+            auto* create_info =
+                stack->pop<Vulkan::VkDebugReportCallbackCreateInfoEXT*>();
+            if (!stack->isValid()) {
+                GAPID_ERROR("Error during calling funtion ReplayCreateVkDebugReportCallback");
+                return false;
+            }
+
+            // Populate the create info
+            create_info->pfnCallback =
+                reinterpret_cast<void*>(Vulkan::replayDebugReportCallback);
+            create_info->pUserData = this;
+
+            stack->push(create_info);
+            stack->push(handle);
+            if(api->replayCreateVkDebugReportCallback(stack, true)) {
+                uint32_t result = stack->pop<uint32_t>();
+                if (result == Vulkan::VkResult::VK_SUCCESS) {
+                    GAPID_INFO("GAPID Debug report callback created");
+                } else {
+                  onDebugMessage(LOG_LEVEL_WARNING, Vulkan::INDEX,
+                      "Failed to create debug report callback, "
+                      "VK_EXT_debug_report extenion may be not supported on "
+                      "this replay device");
+                }
+                if (push_return) {
+                    stack->push(result);
+                }
+            }
+            return true;
+          } else {
+            GAPID_WARNING(
+                "ReplayCreateVkDebugReportCallback called without a bound "
+                "Vulkan renderer");
+            return false;
+          }
+        });
+
+    interpreter->registerBuiltin(
+        Vulkan::INDEX, Builtins::ReplayDestroyVkDebugReportCallback,
+        [this, interpreter](uint32_t label, Stack* stack, bool) {
+          GAPID_DEBUG("[%u]ReplayDestroyVkDebugReportCallback()", label);
+          if (mVulkanRenderer != nullptr) {
+            auto* api = mVulkanRenderer->getApi<Vulkan>();
+            return api->replayDestroyVkDebugReportCallback(stack);
+          } else {
+            GAPID_WARNING(
+                "ReplayDestroyVkDebugReportCallback called without a bound "
+                "Vulkan renderer");
+            return false;
+          }
+        });
 }
 
 bool Context::loadResource(Stack* stack) {

@@ -115,7 +115,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
   // TODO(awoloszyn): Handle all of the composite types.
 
   pSurfaceCapabilities->supportedUsageFlags =
-      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   // TODO(awoloszyn): Find a good set of formats that we can use
   // for rendering.
 
@@ -409,7 +409,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateRenderPass(
   }
   PFN_vkCreateRenderPass func =
       GetGlobalContext().GetDeviceData(device)->vkCreateRenderPass;
-
   return func(device, &intercepted, pAllocator, pRenderPass);
 }
 } // swapchain

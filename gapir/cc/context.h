@@ -22,7 +22,7 @@
 #include "core/cc/timer.h"
 
 #include "gapir/cc/renderer.h"
-#include "replay_connection.h"
+#include "gapir/cc/replay_connection.h"
 
 #include <memory>
 #include <string>
@@ -60,11 +60,10 @@ public:
     // interpretation was successful false otherwise
     bool interpret();
 
-private:
     // Renderer::Listener compliance
-    virtual void onDebugMessage(int severity, const char* msg) override;
+    virtual void onDebugMessage(uint32_t severity, uint8_t api_index, const char* msg) override;
 
-
+private:
     enum {
         MAX_TIMERS       = 256,
         POST_BUFFER_SIZE = 2*1024*1024,
@@ -134,6 +133,9 @@ private:
     // The currently running interpreter.
     // Only valid for the duration of interpret()
     std::unique_ptr<Interpreter> mInterpreter;
+
+    // The total number of debug messages sent to GAPIS.
+    uint64_t mNumSentDebugMessages;
 };
 
 }  // namespace gapir

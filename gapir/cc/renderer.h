@@ -27,7 +27,8 @@ class Renderer {
 public:
     class Listener {
     public:
-        virtual void onDebugMessage(int severity, const char* msg) = 0;
+     virtual void onDebugMessage(uint32_t severity, uint8_t api_index,
+                                 const char* msg) = 0;
     };
 
     inline Renderer();

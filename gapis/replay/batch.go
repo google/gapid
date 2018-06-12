@@ -164,8 +164,9 @@ func (m *Manager) execute(
 	}
 
 	var payload gapir.Payload
-	var decoder builder.ResponseDecoder
-	builderBuildTimer.Time(func() { payload, decoder, err = b.Build(ctx) })
+	var handlePost builder.PostDataHandler
+	var handleNotification builder.NotificationHandler
+	builderBuildTimer.Time(func() { payload, handlePost, handleNotification, err = b.Build(ctx) })
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build replay payload")
 	}
@@ -188,7 +189,8 @@ func (m *Manager) execute(
 		err = executor.Execute(
 			ctx,
 			payload,
-			decoder,
+			handlePost,
+			handleNotification,
 			connection,
 			replayABI.MemoryLayout,
 			d.Instance().GetConfiguration().GetOS(),

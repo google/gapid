@@ -353,7 +353,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		i = id
 		if err := cmd.Mutate(ctx, id, st, nil); err != nil {
-			panic(err)
+			return err
 		}
 		return nil
 	})

@@ -425,6 +425,11 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		out.MutateAndWrite(ctx, id, cb.VkDestroySurfaceKHR(object.Instance(), handle, p))
 	}
 
+	// Debug report callbacks
+	for handle, object := range so.DebugReportCallbacks().All() {
+		out.MutateAndWrite(ctx, id, cb.ReplayDestroyVkDebugReportCallback(object.Instance(), handle))
+	}
+
 	// Instances.
 	for handle := range so.Instances().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyInstance(handle, p))
@@ -472,13 +477,18 @@ func (a API) Replay(
 	// we will need it.
 	dceInfo := dCEInfo{}
 
-	expandedCmds := false
-	numInitialCommands := 0
-	expandCommands := func() (int, error) {
-		if expandedCmds {
-			return numInitialCommands, nil
+	initCmdExpandedWithOpt := false
+	numInitialCmdWithOpt := 0
+	initCmdExpandedWithoutOpt := false
+	numInitialCmdWithoutOpt := 0
+	expandCommands := func(opt bool) (int, error) {
+		if opt && initCmdExpandedWithOpt {
+			return numInitialCmdWithOpt, nil
 		}
-		if optimize {
+		if !opt && initCmdExpandedWithoutOpt {
+			return numInitialCmdWithoutOpt, nil
+		}
+		if opt {
 			// If we have not set up the dependency graph, do it now.
 			if dceInfo.ft == nil {
 				ft, err := dependencygraph.GetFootprint(ctx)
@@ -489,18 +499,19 @@ func (a API) Replay(
 				dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
 			}
 			cmds = []api.Cmd{}
-			numInitialCommands = dceInfo.ft.NumInitialCommands
-		} else {
-			// If the capture contains initial state, prepend the commands to build the state.
-			initialCmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)
-			out.State().Allocator.ReserveRanges(im)
-			numInitialCommands = len(initialCmds)
-			if len(initialCmds) > 0 {
-				cmds = append(initialCmds, cmds...)
-			}
+			numInitialCmdWithOpt = dceInfo.ft.NumInitialCommands
+			initCmdExpandedWithOpt = true
+			return numInitialCmdWithOpt, nil
 		}
-		expandedCmds = true
-		return numInitialCommands, nil
+		// If the capture contains initial state, prepend the commands to build the state.
+		initialCmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)
+		out.State().Allocator.ReserveRanges(im)
+		numInitialCmdWithoutOpt = len(initialCmds)
+		if len(initialCmds) > 0 {
+			cmds = append(initialCmds, cmds...)
+		}
+		initCmdExpandedWithoutOpt = true
+		return numInitialCmdWithoutOpt, nil
 	}
 
 	wire := false
@@ -509,7 +520,11 @@ func (a API) Replay(
 		switch req := rr.Request.(type) {
 		case issuesRequest:
 			if issues == nil {
-				issues = newFindIssues(ctx, capture)
+				n, err := expandCommands(false)
+				if err != nil {
+					return err
+				}
+				issues = newFindIssues(ctx, capture, n)
 			}
 			issues.reportTo(rr.Result)
 			optimize = false
@@ -520,7 +535,7 @@ func (a API) Replay(
 			if cfg.disableReplayOptimization {
 				optimize = false
 			}
-			extraCommands, err := expandCommands()
+			extraCommands, err := expandCommands(optimize)
 			if err != nil {
 				return err
 			}
@@ -560,7 +575,7 @@ func (a API) Replay(
 		}
 	}
 
-	_, err = expandCommands()
+	_, err = expandCommands(optimize)
 	if err != nil {
 		return err
 	}

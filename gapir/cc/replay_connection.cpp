@@ -19,7 +19,9 @@
 #include <grpc++/grpc++.h>
 #include <memory>
 
+#include "gapis/service/severity/severity.pb.h"
 #include "gapir/replay_service/service.grpc.pb.h"
+#include "core/cc/log.h"
 
 namespace gapir {
 
@@ -228,12 +230,28 @@ bool ReplayConnection::sendPostData(std::unique_ptr<Posts> posts) {
   return mGrpcStream->Write(res);
 }
 
-bool ReplayConnection::sendNotification(uint64_t id, uint32_t api_index,
-                                        uint64_t label, const std::string& msg,
+bool ReplayConnection::sendNotification(uint64_t id, uint32_t severity,
+                                        uint32_t api_index, uint64_t label,
+                                        const std::string& msg,
                                         const void* data, uint32_t data_size) {
+  using severity::Severity;
+  const Severity log_levels[] = {
+    Severity::FatalLevel,
+    Severity::ErrorLevel,
+    Severity::WarningLevel,
+    Severity::InfoLevel,
+    Severity::DebugLevel,
+    Severity::VerboseLevel,
+  };
+  Severity sev = Severity::DebugLevel;
+  if (severity <= LOG_LEVEL_DEBUG) {
+    sev = log_levels[severity];
+  }
+
   replay_service::ReplayResponse res;
   auto* notification = res.mutable_notification();
   notification->set_id(id);
+  notification->set_severity(sev);
   notification->set_api_index(api_index);
   notification->set_label(label);
   notification->set_msg(msg);

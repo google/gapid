@@ -34,13 +34,22 @@ typedef struct {
 
 IndirectMaps mIndirectMaps;
 
-// Function for wrapping around the normal vkCreateInstance to inject
-// virtual swapchain as an additional enabled layer.
-bool replayCreateVkInstance(Stack* stack, bool pushReturn);
+// Function for wrapping around the normal vkCreateInstance to:
+//  1) inject virtual swapchain as an additional enabled layer;
+//  2) drop validation layers and debug report extension if requested;
+//  3) null the pNext filed in VkInstanceCreateInfo.
+bool replayCreateVkInstanceImpl(
+    Stack* stack, const VkInstanceCreateInfo* pCreateInfo,
+    VkAllocationCallbacks* pAllocator, VkInstance* pInstance,
+    bool dropValidationLayersAndDebugReport, uint32_t* result);
 
-// Function for wrapping around the normal vkCreateDevice to null the
-// pNext field in VkDeviceCreateInfo.
-bool replayCreateVkDevice(Stack* stack, bool pushReturn);
+// Function for wrapping around the normal vkCreateDevice to:
+//  1) null the pNext field in VkDeviceCreateInfo;
+//  2) drop validation layers if requested;
+bool replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
+    const VkDeviceCreateInfo* pCreateInfo,
+    VkAllocationCallbacks* pAllocator, VkDevice* pDevice,
+    bool dropValidationLayers, uint32_t* result);
 
 // Builtin function for registering instance-level function pointers and
 // binding all physical devices associated with the given instance.
@@ -108,3 +117,33 @@ bool replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn);
 // Builtin function for turning on the automatic swapchain index generation,
 // during swapchain creation.
 bool replayCreateSwapchain(Stack* stack, bool pushReturn);
+
+// Builtin function for creating a debug report call back handle for pulling
+// back the validation layer output from the replay device. It calls
+// vkCreateDebugReportCallbackEXT function if the debug report extension is
+// enabled. And it is benign if the function is not found as the extension
+// might not be enabled.
+bool replayCreateVkDebugReportCallback(Stack* stack, bool pushReturn);
+
+// Builtin function for destroying a debug report call back handle. It calls
+// vkDestroyDebugReportCallbackEXT function if the debug report extension is
+// enabled. And it is benign if the function is not found, as the extension
+// might not be enabled.
+bool replayDestroyVkDebugReportCallback(Stack* stack);
+
+// The callback function for VkDebugReportCallbackEXT. It pipes the debug
+// report captured by validation layers to the Renderer::Listener passed in by
+// the pUserData.
+static bool replayDebugReportCallback(uint32_t flags, uint32_t objectType,
+                                      uint64_t object, size_t location,
+                                      int32_t messageCode,
+                                      const char* pLayerPrefix,
+                                      const char* pMessage, void* pUserData);
+
+// Returns true if any of the layers specified by the given layer names are
+// validtion layers, otherwise returns false.
+static bool hasValidationLayers(const char* const* layers, uint32_t count);
+
+// Returns true if any of the extensions specified by the given extension names
+// is debug report extension, other wise returns false.
+static bool hasDebugReportExtension(const char* const* extensions, uint32_t count);

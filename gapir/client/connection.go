@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/log"
 	replaysrv "github.com/google/gapid/gapir/replay_service"
+	"github.com/google/gapid/gapis/service/severity"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -49,6 +50,8 @@ type (
 	PostData = replaysrv.PostData
 	// Notification contains an Id, the ApiIndex, Label, Msg in string and arbitary Data in bytes.
 	Notification = replaysrv.Notification
+	// Severity represents the severity level of notification messages. It uses the same enum as gapis
+	Severity = severity.Severity
 )
 
 // Connection represents a connection between GAPIS and GAPIR. It wraps the
