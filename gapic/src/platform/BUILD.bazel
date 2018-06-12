@@ -24,4 +24,32 @@ java_library(
         "//gapic/third_party:lwjgl",
         "//gapic/third_party:swt",
     ],
+    resources = select({
+        "//tools/build:linux": [":liblinux_glcanvas.so"],
+        "//conditions:default": [],
+    }),
+    resource_strip_prefix = "gapic/src/platform/",
+)
+
+cc_binary(
+    name = "liblinux_glcanvas.so",
+    srcs = ["linux/glcanvas.cc"],
+    deps = [
+        ":jni.h",
+        ":jni_md.h"
+    ],
+    linkopts = ["-lGL", "-lX11"],
+    linkshared = 1,
+)
+
+cc_library(
+    name = "jni.h",
+    hdrs = ["@local_jdk//:jni_header"],
+    strip_include_prefix = "/external/local_jdk/include",
+)
+
+cc_library(
+    name = "jni_md.h",
+    hdrs = ["@local_jdk//:jni_md_header-linux"],
+    strip_include_prefix = "/external/local_jdk/include/linux",
 )
