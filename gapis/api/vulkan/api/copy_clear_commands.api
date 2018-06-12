@@ -52,10 +52,10 @@ sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
 }
 
 @internal class OpaqueResourceMemoryBoundPiece {
-  VkDeviceSize ResourceOffset
-  VkDeviceSize Size
+  VkDeviceSize           ResourceOffset
+  VkDeviceSize           Size
   ref!DeviceMemoryObject DeviceMemory
-  VkDeviceSize MemoryOffset
+  VkDeviceSize           MemoryOffset
 }
 
 @internal class OpaqueResourceMemoryBoundPieceReturnMap {
@@ -70,46 +70,46 @@ sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
 // corresponding sparse memory bind (if any), and the underlying device memory
 // allocation range.
 sub map!(VkDeviceSize, OpaqueResourceMemoryBoundPiece) getBufferBoundMemoryPiecesInRange(
-  ref!BufferObject buf, VkDeviceSize offset, VkDeviceSize size) {
+    ref!BufferObject buf, VkDeviceSize offset, VkDeviceSize size) {
   ret_val := OpaqueResourceMemoryBoundPieceReturnMap()
 
   noOverflowEnd := switch (size == 0xFFFFFFFFFFFFFFFF) ||
-                    ((size+offset) < size) {
+  ((size + offset) < size) {
     case true:
       // size value is VK_WHOLE_SIZE or can overflow
       buf.Info.Size
     case false:
-      size+offset
+      size + offset
   }
   end := min!VkDeviceSize(noOverflowEnd, buf.Info.Size)
   if offset < end {
     if buf.Memory != null {
-      memOffset := offset+buf.MemoryOffset
-      memEnd := min!VkDeviceSize(end+buf.MemoryOffset, buf.Memory.AllocationSize)
+      memOffset := offset + buf.MemoryOffset
+      memEnd := min!VkDeviceSize(end + buf.MemoryOffset, buf.Memory.AllocationSize)
       if memOffset < memEnd {
         ret_val.Map[offset] = OpaqueResourceMemoryBoundPiece(
           ResourceOffset: offset,
-          Size: memEnd - memOffset,
-          DeviceMemory: buf.Memory,
-          MemoryOffset: memOffset,
+          Size:           memEnd - memOffset,
+          DeviceMemory:   buf.Memory,
+          MemoryOffset:   memOffset,
         )
       }
 
     } else {
       // sparsely bound
-      for _, blkOffset, bind in buf.SparseMemoryBindings {
+      for _ , blkOffset , bind in buf.SparseMemoryBindings {
         resStart := max!VkDeviceSize(as!VkDeviceSize(blkOffset), offset)
-        resEnd := min!VkDeviceSize(as!VkDeviceSize(blkOffset)+bind.size, end)
+        resEnd := min!VkDeviceSize(as!VkDeviceSize(blkOffset) + bind.size, end)
         if (resStart < resEnd) && (DeviceMemories[bind.memory] != null) {
           mem := DeviceMemories[bind.memory]
-          memStart := resStart-bind.resourceOffset+bind.memoryOffset
-          memEnd := min!VkDeviceSize(resEnd-bind.resourceOffset+bind.memoryOffset, mem.AllocationSize)
+          memStart := resStart - bind.resourceOffset + bind.memoryOffset
+          memEnd := min!VkDeviceSize(resEnd - bind.resourceOffset + bind.memoryOffset, mem.AllocationSize)
           if memStart < memEnd {
             ret_val.Map[resStart] = OpaqueResourceMemoryBoundPiece(
               ResourceOffset: resStart,
-              Size: memEnd - memStart,
-              DeviceMemory: mem,
-              MemoryOffset: memStart,
+              Size:           memEnd - memStart,
+              DeviceMemory:   mem,
+              MemoryOffset:   memStart,
             )
           }
         }
@@ -124,54 +124,54 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
     // No sparse binding in either dst and src
     srcMemOffset := srcBuf.MemoryOffset + srcOffset
     dstMemOffset := dstBuf.MemoryOffset + dstOffset
-    srcMemEnd := min!VkDeviceSize(srcMemOffset+size, srcBuf.Memory.AllocationSize)
-    dstMemEnd := min!VkDeviceSize(dstMemOffset+size, dstBuf.Memory.AllocationSize)
+    srcMemEnd := min!VkDeviceSize(srcMemOffset + size, srcBuf.Memory.AllocationSize)
+    dstMemEnd := min!VkDeviceSize(dstMemOffset + size, dstBuf.Memory.AllocationSize)
     if (srcMemOffset < srcMemEnd) && (dstMemOffset < dstMemEnd) {
       copy(dstBuf.Memory.Data[dstMemOffset:dstMemEnd], srcBuf.Memory.Data[srcMemOffset:srcMemEnd])
     }
 
   } else if (dstBuf.Memory != null) && (len(srcBuf.SparseMemoryBindings) != 0) {
-    // Sparse binding in src
-    srcMemPieces := getBufferBoundMemoryPiecesInRange(srcBuf, srcOffset, size)
-    for _, _, smp in srcMemPieces {
-      srcMemOffset := as!u64(smp.MemoryOffset)
-      dstMemOffset := as!u64(smp.ResourceOffset - srcOffset + dstOffset)
-      if dstMemOffset < as!u64(dstBuf.Memory.AllocationSize) {
-        memSize := min!u64(as!u64(smp.Size), as!u64(dstBuf.Memory.AllocationSize) - dstMemOffset)
-        copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset+memSize],
-             srcBuf.Memory.Data[srcMemOffset:srcMemOffset+memSize])
-      }
-    }
-
-  } else if (len(dstBuf.SparseMemoryBindings) != 0) && (srcBuf.Memory != null) {
-    // Sparse binding in dst
-    dstMemPieces := getBufferBoundMemoryPiecesInRange(dstBuf, dstOffset, size)
-    for _, _, dmp in dstMemPieces {
-      dstMemOffset := dmp.MemoryOffset
-      srcMemOffset := dmp.ResourceOffset - dstOffset + srcOffset
-      if srcMemOffset < as!VkDeviceSize(srcBuf.Memory.AllocationSize) {
-        memSize := min!VkDeviceSize(dmp.Size, as!VkDeviceSize(srcBuf.Memory.AllocationSize) - srcMemOffset)
-        copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset+memSize],
-             srcBuf.Memory.Data[srcMemOffset:srcMemOffset+memSize])
-      }
-    }
-
-  } else if (len(dstBuf.SparseMemoryBindings) != 0) && (len(srcBuf.SparseMemoryBindings) != 0) {
-    // Sparse binding in src and dst
-    dstMemPieces := getBufferBoundMemoryPiecesInRange(dstBuf, dstOffset, size)
-    for _, _, dmp in dstMemPieces {
-      tmpSrcOffset := dmp.ResourceOffset - dstOffset + srcOffset
-      tmpSize := dmp.Size
-      srcMemPieces := getBufferBoundMemoryPiecesInRange(srcBuf, tmpSrcOffset, tmpSize)
-      for _, _, smp in srcMemPieces {
+      // Sparse binding in src
+      srcMemPieces := getBufferBoundMemoryPiecesInRange(srcBuf, srcOffset, size)
+      for _ , _ , smp in srcMemPieces {
         srcMemOffset := as!u64(smp.MemoryOffset)
-        dstMemOffset := as!u64(smp.ResourceOffset - tmpSrcOffset + dmp.ResourceOffset)
-        memSize := as!u64(smp.Size)
-        copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset+memSize],
-             srcBuf.Memory.Data[srcMemOffset:srcMemOffset+memSize])
+        dstMemOffset := as!u64(smp.ResourceOffset - srcOffset + dstOffset)
+        if dstMemOffset < as!u64(dstBuf.Memory.AllocationSize) {
+          memSize := min!u64(as!u64(smp.Size), as!u64(dstBuf.Memory.AllocationSize) - dstMemOffset)
+          copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
+            srcBuf.Memory.Data[srcMemOffset:srcMemOffset + memSize])
+        }
       }
-    }
-  } 
+
+    } else if (len(dstBuf.SparseMemoryBindings) != 0) && (srcBuf.Memory != null) {
+        // Sparse binding in dst
+        dstMemPieces := getBufferBoundMemoryPiecesInRange(dstBuf, dstOffset, size)
+        for _ , _ , dmp in dstMemPieces {
+          dstMemOffset := dmp.MemoryOffset
+          srcMemOffset := dmp.ResourceOffset - dstOffset + srcOffset
+          if srcMemOffset < as!VkDeviceSize(srcBuf.Memory.AllocationSize) {
+            memSize := min!VkDeviceSize(dmp.Size, as!VkDeviceSize(srcBuf.Memory.AllocationSize) - srcMemOffset)
+            copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
+              srcBuf.Memory.Data[srcMemOffset:srcMemOffset + memSize])
+          }
+        }
+
+      } else if (len(dstBuf.SparseMemoryBindings) != 0) && (len(srcBuf.SparseMemoryBindings) != 0) {
+          // Sparse binding in src and dst
+          dstMemPieces := getBufferBoundMemoryPiecesInRange(dstBuf, dstOffset, size)
+          for _ , _ , dmp in dstMemPieces {
+            tmpSrcOffset := dmp.ResourceOffset - dstOffset + srcOffset
+            tmpSize := dmp.Size
+            srcMemPieces := getBufferBoundMemoryPiecesInRange(srcBuf, tmpSrcOffset, tmpSize)
+            for _ , _ , smp in srcMemPieces {
+              srcMemOffset := as!u64(smp.MemoryOffset)
+              dstMemOffset := as!u64(smp.ResourceOffset - tmpSrcOffset + dmp.ResourceOffset)
+              memSize := as!u64(smp.Size)
+              copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
+                srcBuf.Memory.Data[srcMemOffset:srcMemOffset + memSize])
+            }
+          }
+        }
 }
 
 @threadSafety("app")
@@ -453,7 +453,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
                 readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSize))
                 // Discard the 4th byte in the buffer for current pixel.
                 bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(elementSizeInImage))
-                for _, _, piece in bufMemPieces {
+                for _ , _ , piece in bufMemPieces {
                   srcStart := piece.MemoryOffset
                   srcEnd := srcStart + piece.Size
                   dstPieceStart := piece.ResourceOffset - bufStart + dstStart
@@ -468,7 +468,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
               bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
               readMemoryInBuffer(bufferObject, bufStart, copySize)
               bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, copySize)
-              for _, _, piece in bufMemPieces {
+              for _ , _ , piece in bufMemPieces {
                 srcStart := piece.MemoryOffset
                 srcEnd := srcStart + piece.Size
                 dstPieceStart := as!u64(piece.ResourceOffset - bufStart) + dstStart
@@ -560,10 +560,10 @@ sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
   Buffers[args.DstBuffer].LastBoundQueue = LastBoundQueue
   buff := Buffers[args.DstBuffer]
   bufPieces := getBufferBoundMemoryPiecesInRange(buff, args.DstOffset, args.DataSize)
-  for _, _, p in bufPieces {
+  for _ , _ , p in bufPieces {
     srcOffset := p.ResourceOffset - args.DstOffset
-    size := min!VkDeviceSize(p.Size, as!VkDeviceSize(len(args.Data))-srcOffset)
-    copy(buff.Memory.Data[p.MemoryOffset:p.MemoryOffset+size], args.Data[srcOffset:srcOffset+size])
+    size := min!VkDeviceSize(p.Size, as!VkDeviceSize(len(args.Data)) - srcOffset)
+    copy(buff.Memory.Data[p.MemoryOffset:p.MemoryOffset + size], args.Data[srcOffset:srcOffset + size])
   }
 }
 
@@ -602,11 +602,11 @@ class vkCmdFillBufferArgs {
 sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
   buf := Buffers[args.Buffer]
   bufPieces := getBufferBoundMemoryPiecesInRange(buf, args.DstOffset, args.Size)
-  for _, _, p in bufPieces {
+  for _ , _ , p in bufPieces {
     if as!VkDeviceSize(len(p.DeviceMemory.Data)) >= (p.MemoryOffset + p.Size) {
       for i in (0 .. p.Size) {
         offset := as!VkDeviceSize(p.ResourceOffset + i)
-        p.DeviceMemory.Data[p.MemoryOffset + i] = switch (offset-((offset/4)*4)) {
+        p.DeviceMemory.Data[p.MemoryOffset + i] = switch (offset - ((offset / 4) * 4)) {
           case as!VkDeviceSize(0):
             as!u8(args.Data & 0xFF)
           case as!VkDeviceSize(1):
@@ -772,12 +772,12 @@ cmd void vkCmdClearAttachments(
 
 sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
   for _ , _ , r in args.ResolveRegions {
-    srcRange := VkImageSubresourceRange(r.srcSubresource.aspectMask,
-                                        r.srcSubresource.mipLevel, 1,
-                                        r.srcSubresource.baseArrayLayer, r.srcSubresource.layerCount)
-    dstRange := VkImageSubresourceRange(r.dstSubresource.aspectMask,
-                                        r.dstSubresource.mipLevel, 1,
-                                        r.dstSubresource.baseArrayLayer, r.dstSubresource.layerCount)
+    srcRange := VkImageSubresourceRange(               r.srcSubresource.aspectMask,
+      r.srcSubresource.mipLevel,       1,
+      r.srcSubresource.baseArrayLayer, r.srcSubresource.layerCount)
+    dstRange := VkImageSubresourceRange(               r.dstSubresource.aspectMask,
+      r.dstSubresource.mipLevel,       1,
+      r.dstSubresource.baseArrayLayer, r.dstSubresource.layerCount)
     readImageSubresource(Images[args.SrcImage], srcRange, args.SrcImageLayout)
     writeImageSubresource(Images[args.DstImage], dstRange, args.DstImageLayout)
   }
