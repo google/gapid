@@ -38,6 +38,7 @@
 	<classpathentry kind="lib" path="bazel-bin/gapis/memory/libmemory_proto-speed.jar" sourcepath="bazel-genfiles/gapis/memory/memory_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/service/box/libbox_proto-speed.jar" sourcepath="bazel-genfiles/gapis/service/box/box_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/service/path/libpath_proto-speed.jar" sourcepath="bazel-genfiles/gapis/service/path/path_proto-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/gapis/service/severity/libseverity_proto-speed.jar" sourcepath="bazel-genfiles/gapis/service/severity/severity_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/service/libservice_proto-speed.jar" sourcepath="bazel-genfiles/gapis/service/service_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/stringtable/libstringtable_proto-speed.jar" sourcepath="bazel-genfiles/gapis/stringtable/stringtable_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/vertex/libvertex_proto-speed.jar" sourcepath="bazel-genfiles/gapis/vertex/vertex_proto-speed-src.jar"/>
