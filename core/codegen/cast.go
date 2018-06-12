@@ -52,9 +52,9 @@ func (v *Value) Cast(ty Type) *Value {
 		return v.b.val(ty, v.b.llvm.CreateZExt(v.llvm, ty.llvmTy(), ""))
 	case IsInteger(srcElTy) && IsBool(dstElTy):
 		return v.b.NotEqual(v, v.b.Zero(srcElTy))
-	case IsInteger(srcElTy) && IsUnsignedInteger(dstElTy) && grow:
+	case IsInteger(srcElTy) && IsUnsignedInteger(srcElTy) && grow:
 		return v.b.val(ty, v.b.llvm.CreateZExt(v.llvm, ty.llvmTy(), ""))
-	case IsInteger(srcElTy) && IsSignedInteger(dstElTy) && grow:
+	case IsInteger(srcElTy) && IsSignedInteger(srcElTy) && grow:
 		return v.b.val(ty, v.b.llvm.CreateSExt(v.llvm, ty.llvmTy(), ""))
 	case IsInteger(srcElTy) && IsInteger(dstElTy) && shink:
 		return v.b.val(ty, v.b.llvm.CreateTrunc(v.llvm, ty.llvmTy(), ""))
