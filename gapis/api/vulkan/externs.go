@@ -321,7 +321,7 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndProperties); ok {
-			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena)
+			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
 		}
 	}
 	return NilPhysicalDevicesAndPropertiesʳ
@@ -344,7 +344,7 @@ func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSpar
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(ImageMemoryRequirements); ok {
-			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena)
+			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
 		}
 	}
 	return NilImageMemoryRequirementsʳ
@@ -358,7 +358,7 @@ func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMem
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(VkMemoryRequirements); ok {
-			return r.Clone(e.s.Arena)
+			return r.Clone(e.s.Arena, api.CloneContext{})
 		}
 	}
 	return MakeVkMemoryRequirements(e.s.Arena)
@@ -372,7 +372,7 @@ func (e externs) fetchLinearImageSubresourceLayouts(dev VkDevice, img ImageObjec
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(LinearImageLayouts); ok {
-			return MakeLinearImageLayoutsʳ(e.s.Arena).Set(r).Clone(e.s.Arena)
+			return MakeLinearImageLayoutsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
 		}
 	}
 	return NilLinearImageLayoutsʳ

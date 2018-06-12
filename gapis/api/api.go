@@ -106,3 +106,6 @@ func Register(api API) {
 func Find(id ID) API {
 	return apis[id]
 }
+
+// CloneContext is used to keep track of references when cloning API objects.
+type CloneContext map[interface{}]interface{}

@@ -61,15 +61,15 @@ func (e externs) unmapMemory(slice memory.Slice) {
 }
 
 func (e externs) GetEGLStaticContextState(EGLDisplay, EGLContext) StaticContextStateʳ {
-	return FindStaticContextState(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
+	return FindStaticContextState(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
 }
 
 func (e externs) GetEGLDynamicContextState(EGLDisplay, EGLSurface, EGLContext) DynamicContextStateʳ {
-	return FindDynamicContextState(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
+	return FindDynamicContextState(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
 }
 
 func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) AndroidNativeBufferExtraʳ {
-	return FindAndroidNativeBufferExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
+	return FindAndroidNativeBufferExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
 }
 
 func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
@@ -116,19 +116,19 @@ func (e externs) substr(str string, start, end int32) string {
 }
 
 func (e externs) GetCompileShaderExtra(ctx Contextʳ, obj Shaderʳ, bin BinaryExtraʳ) CompileShaderExtraʳ {
-	return FindCompileShaderExtra(e.s.Arena, e.cmd.Extras(), obj).Clone(e.s.Arena)
+	return FindCompileShaderExtra(e.s.Arena, e.cmd.Extras(), obj).Clone(e.s.Arena, api.CloneContext{})
 }
 
 func (e externs) GetLinkProgramExtra(ctx Contextʳ, obj Programʳ, bin BinaryExtraʳ) LinkProgramExtraʳ {
-	return FindLinkProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
+	return FindLinkProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
 }
 
 func (e externs) GetValidateProgramExtra(ctx Contextʳ, obj Programʳ) ValidateProgramExtraʳ {
-	return FindValidateProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
+	return FindValidateProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
 }
 
 func (e externs) GetValidateProgramPipelineExtra(ctx Contextʳ, obj Pipelineʳ) ValidateProgramPipelineExtraʳ {
-	return FindValidateProgramPipelineExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena)
+	return FindValidateProgramPipelineExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
 }
 
 func (e externs) onGlError(err GLenum) {

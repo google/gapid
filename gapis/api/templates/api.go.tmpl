@@ -224,7 +224,7 @@ import (
   {{end}}
 
   // Clone makes a deep copy of this static array, using ϟa for allocations.
-  func (m {{$name}}) Clone(ϟa arena.Arena) {{$name}} {
+  func (m {{$name}}) Clone(ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
     out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
     for i := 0; i < {{$ty.Size}}; i++ {
       out.Set(i, {{Template "Clone" "Type" $ty.ValueType "Src" "m.Get(i)"}})
@@ -341,8 +341,12 @@ import (
   }
 
   // Clone makes a deep copy of this map.
-  func (m {{$name}}) Clone(ϟa arena.Arena) {{$name}} {
+  func (m {{$name}}) Clone(ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
+    if existing, ok := ϟseen[m.Map]; ok {
+      return {{$name}}{Map: existing.(*map[{{$key}}]{{$value}}), a: ϟa}
+    }
     out := make(map[{{$key}}]{{$value}}, len(*m.Map))
+    ϟseen[m.Map] = &out
     for k, v := range *m.Map {
       out[{{Template "Clone" "Type" $.KeyType "Src" "k"}}] = {{Template "Clone" "Type" $.ValueType "Src" "v"}}
     }
@@ -395,16 +399,18 @@ import (
   func (c {{$name}}) SetNil() { c.data = nil }
 
   // Clone makes a deep copy of this reference.
-  func (c {{$name}}) Clone(ϟa arena.Arena) {{$name}} {
+  func (c {{$name}}) Clone(ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
     if c.IsNil() { return Nil{{$name}} }
-    return {{$name}}{
-      data: &{{$data}}{
-        {{range $f := $.To.Fields}}
-          {{$name := $f.Name | GoPrivateName}}
-          {{$name}}: c.data.{{Template "Clone" "Type" $f.Type "Src" $name}},
-        {{end}}
-      },
+    if existing, ok := ϟseen[c.data]; ok {
+      return {{$name}}{data: existing.(*{{$data}})}
     }
+    d := &{{$data}}{}
+    ϟseen[c.data] = d
+    {{range $f := $.To.Fields}}
+      {{$name := $f.Name | GoPrivateName}}
+      d.{{$name}} = c.data.{{Template "Clone" "Type" $f.Type "Src" $name}}
+    {{end}}
+    return {{$name}}{data: d}
   }
 
   {{if GetAnnotation $.To "resource"}}
@@ -1204,7 +1210,7 @@ import (
   {{end}}
 
   // Clone makes a deep copy of this class.
-  func (c {{$name}}) Clone(ϟa arena.Arena) {{$name}} {
+  func (c {{$name}}) Clone(ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
     return {{$name}}{
       data: &{{$data}}{
         {{range $f := $.Fields}}
@@ -1339,9 +1345,14 @@ import (
       extras: ϟc.extras,
       caller: ϟc.caller,
       thread: ϟc.thread,
+      arena: ϟa,
     }
-    {{range $p := $.FullParameters}}
-      out.{{$p | GoPrivateName}} = {{Template "Clone" "Type" $p.Type "Src" (print "ϟc." ($p | GoPrivateName))}}
+    {{if len $.FullParameters}}
+      ϟseen := ϟapi.CloneContext{}
+      _ = ϟseen
+      {{range $p := $.FullParameters}}
+        out.{{$p | GoPrivateName}} = {{Template "Clone" "Type" $p.Type "Src" (print "ϟc." ($p | GoPrivateName))}}
+      {{end}}
     {{end}}
     return out
   }
@@ -1460,13 +1471,16 @@ import (
 	// Clone returns a deep copy of this state object.
   func (g *State) Clone(ϟa arena.Arena) ϟapi.State {
     out := &State{CustomState: g.CustomState}
-    {{range $g := $.Globals}}
-      {{$name := $g.Name | GoPublicName}}
-      out.Set{{$name}}({{Template "Clone" "Type" $g.Type "Src" (print "g." $name "()")}})
+    {{if len $.Globals}}
+      ϟseen := ϟapi.CloneContext{}
+      _ = ϟseen
+      {{range $g := $.Globals}}
+        {{$name := $g.Name | GoPublicName}}
+        out.Set{{$name}}({{Template "Clone" "Type" $g.Type "Src" (print "g." $name "()")}})
+      {{end}}
     {{end}}
     return out
   }
-
 {{end}}
 
 
@@ -1713,13 +1727,13 @@ import (
   {{AssertType $.Type "Type"}}
 
   {{     if IsPseudonym     $.Type}}{{Template "Clone" "Type" $.Type.To "Src" $.Src}}
-  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone(ϟa)
-  {{else if IsMap           $.Type}}{{$.Src}}.Clone(ϟa)
-  {{else if IsClass         $.Type}}{{$.Src}}.Clone(ϟa)
+  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
+  {{else if IsMap           $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
+  {{else if IsClass         $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
   {{else if IsEnum          $.Type}}{{$.Src}}
   {{else if IsPointer       $.Type}}{{$.Src}}
   {{else if IsSlice         $.Type}}{{$.Src}}
-  {{else if IsReference     $.Type}}{{$.Src}}.Clone(ϟa)
+  {{else if IsReference     $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
   {{else if IsBool          $.Type}}{{$.Src}}
   {{else if IsInt           $.Type}}{{$.Src}}
   {{else if IsUint          $.Type}}{{$.Src}}
