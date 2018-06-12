@@ -64,13 +64,13 @@ func doReplay(t *testing.T, f func(*builder.Builder)) error {
 
 	f(b)
 
-	payload, decoder, err := b.Build(ctx)
+	payload, decoder, notification, err := b.Build(ctx)
 	if err != nil {
 		t.Errorf("Build failed with error: %v", err)
 		return err
 	}
 
-	err = executor.Execute(ctx, payload, decoder, connection, abi.MemoryLayout, os)
+	err = executor.Execute(ctx, payload, decoder, notification, connection, abi.MemoryLayout, os)
 	if err != nil {
 		t.Errorf("Executor failed with error: %v", err)
 		return err

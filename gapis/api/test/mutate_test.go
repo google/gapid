@@ -66,7 +66,7 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 		return nil
 	})
 
-	payload, _, err := b.Build(ctx)
+	payload, _, _, err := b.Build(ctx)
 	assert.For(ctx, "Build opcodes").ThatError(err).Succeeded()
 
 	ops := bytes.NewBuffer(payload.Opcodes)
