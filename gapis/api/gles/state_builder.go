@@ -38,6 +38,7 @@ type stateBuilder struct {
 	tmpArena        arena.Arena      // The arena to use for temporary allocations
 	seen            map[interface{}]bool
 	memoryIntervals interval.U64RangeList
+	cloneCtx        api.CloneContext
 }
 
 func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
@@ -50,6 +51,7 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 		tmpArena:        arena.New(),
 		seen:            map[interface{}]bool{},
 		memoryIntervals: interval.U64RangeList{},
+		cloneCtx:        api.CloneContext{},
 	}
 
 	defer sb.tmpArena.Dispose()
@@ -191,6 +193,17 @@ func (sb *stateBuilder) once(key interface{}) (res bool) {
 	return
 }
 
+func (sb *stateBuilder) contextExtras(c Contextʳ) []api.CmdExtra {
+	r := []api.CmdExtra{}
+	if se := c.Other().StaticStateExtra(); !se.IsNil() {
+		r = append(r, se.Get().Clone(sb.cb.Arena, sb.cloneCtx))
+	}
+	if de := c.Other().DynamicStateExtra(); !de.IsNil() {
+		r = append(r, de.Get().Clone(sb.cb.Arena, sb.cloneCtx))
+	}
+	return r
+}
+
 func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c Contextʳ, representative map[ShareListʳ]EGLContext) {
 	write, cb := sb.write, sb.cb
 
@@ -201,7 +214,7 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 	// TODO: Record the arguments in state.
 	write(cb.EglCreateContext(memory.Nullptr, memory.Nullptr, sharedCtx, memory.Nullptr, handle))
 	write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
-		c.Other().StaticStateExtra(), c.Other().DynamicStateExtra()))
+		sb.contextExtras(c)...))
 
 	write(cb.GlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
 
@@ -359,7 +372,7 @@ func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EG
 
 	if c.Other().Initialized() {
 		write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
-			c.Other().StaticStateExtra(), c.Other().DynamicStateExtra()))
+			sb.contextExtras(c)...))
 
 		for _, t := range c.Objects().Textures().All() {
 			target := t.Kind()
@@ -432,7 +445,7 @@ func (sb *stateBuilder) bindContexts(ctx context.Context, s *State) {
 		if thread := c.Other().BoundOnThread(); thread != 0 {
 			cb := CommandBuilder{Thread: thread, Arena: sb.cb.Arena}
 			write(api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
-				c.Other().StaticStateExtra(), c.Other().DynamicStateExtra()))
+				sb.contextExtras(c)...))
 		}
 	}
 	write(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
@@ -607,7 +620,7 @@ func (sb *stateBuilder) shaderObject(ctx context.Context, s Shaderʳ) {
 			sb.E(ctx, "Precompiled shaders not suppored yet") // TODO
 		}
 		write(cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, e.Source())), memory.Nullptr))
-		write(api.WithExtras(cb.GlCompileShader(id), e))
+		write(api.WithExtras(cb.GlCompileShader(id), e.Get().Clone(cb.Arena, sb.cloneCtx)))
 	}
 	write(cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, s.Source())), memory.Nullptr))
 }
@@ -645,7 +658,7 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 		if !p.LinkExtra().Binary().IsNil() {
 			sb.E(ctx, "Precompiled programs not suppored yet") // TODO
 		}
-		write(api.WithExtras(cb.GlLinkProgram(id), p.LinkExtra()))
+		write(api.WithExtras(cb.GlLinkProgram(id), p.LinkExtra().Get().Clone(cb.Arena, sb.cloneCtx)))
 		write(cb.GlUseProgram(id))
 		for _, u := range p.ActiveResources().DefaultUniformBlock().All() {
 			if loc, ok := u.Locations().Lookup(0); ok {
@@ -655,7 +668,7 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 		write(cb.GlUseProgram(0))
 	}
 	if !p.ValidateExtra().IsNil() {
-		write(api.WithExtras(cb.GlValidateProgram(id), p.ValidateExtra()))
+		write(api.WithExtras(cb.GlValidateProgram(id), p.ValidateExtra().Get().Clone(cb.Arena, sb.cloneCtx)))
 	}
 }
 
@@ -726,7 +739,7 @@ func (sb *stateBuilder) pipelineObject(ctx context.Context, pipe Pipelineʳ) {
 	write(cb.GlUseProgramStages(id, GLbitfield_GL_TESS_EVALUATION_SHADER_BIT, pipe.TessEvaluationShader().GetID()))
 	write(cb.GlUseProgramStages(id, GLbitfield_GL_GEOMETRY_SHADER_BIT, pipe.GeometryShader().GetID()))
 	if !pipe.ValidateExtra().IsNil() {
-		write(api.WithExtras(cb.GlValidateProgramPipeline(id), pipe.ValidateExtra()))
+		write(api.WithExtras(cb.GlValidateProgramPipeline(id), pipe.ValidateExtra().Get().Clone(cb.Arena, sb.cloneCtx)))
 	}
 	write(cb.GlBindProgramPipeline(0))
 }
