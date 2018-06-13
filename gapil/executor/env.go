@@ -166,7 +166,7 @@ func (e *Executor) NewEnv(ctx context.Context, capture *capture.Capture) *Env {
 }
 
 // Execute executes the command cmd.
-func (e *Env) Execute(ctx context.Context, cmd api.Cmd) error {
+func (e *Env) Execute(ctx context.Context, cmd api.Cmd, id api.CmdID) error {
 	name := cmd.CmdName()
 	fptr, ok := e.exec.cmdFunctions[name]
 	if !ok {
@@ -177,6 +177,7 @@ func (e *Env) Execute(ctx context.Context, cmd api.Cmd) error {
 	encodeCommand(cmd, buf[:])
 
 	e.cmd = cmd
+	e.cCtx.cmd_id = (C.uint64_t)(id)
 	res := e.call(ctx, fptr, (unsafe.Pointer)(&buf[0]))
 	e.cmd = nil
 

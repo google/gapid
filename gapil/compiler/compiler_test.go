@@ -1863,14 +1863,14 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 
 	processor := gapil.NewProcessor()
 	processor.Loader = gapil.NewDataLoader([]byte(t.src))
-	api, errs := processor.Resolve(t.name + ".api")
+	a, errs := processor.Resolve(t.name + ".api")
 	if !assert.For(ctx, "Resolve").ThatSlice(errs).Equals(parse.ErrorList{}) {
 		return false
 	}
 
 	t.settings.EmitExec = true
 
-	program, err := compiler.Compile(api, processor.Mappings, t.settings)
+	program, err := compiler.Compile(a, processor.Mappings, t.settings)
 	if !assert.For(ctx, "Compile").ThatError(err).Succeeded() {
 		return false
 	}
@@ -1901,7 +1901,7 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 			externCalls = append(externCalls, externB{s})
 			return s == "meow"
 		}
-		err = env.Execute(ctx, &cmd)
+		err = env.Execute(ctx, &cmd, api.CmdID(0x1000+i))
 		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.N).ThatError(err).Equals(t.expected.err) {
 			return false
 		}

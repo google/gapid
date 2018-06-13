@@ -48,6 +48,7 @@ const (
 	ContextLocation   = "location"
 	ContextGlobals    = "globals"
 	ContextArena      = "arena"
+	ContextCmdID      = "cmd_id"
 	ContextNextPoolID = "next_pool_id"
 	ContextArguments  = "arguments"
 )
