@@ -187,6 +187,11 @@ func (e *Env) Execute(ctx context.Context, cmd api.Cmd, id api.CmdID) error {
 	return res
 }
 
+// CContext returns the pointer to the c context.
+func (e *Env) CContext() unsafe.Pointer {
+	return (unsafe.Pointer)(e.cCtx)
+}
+
 // Globals returns the memory of the global state.
 func (e *Env) Globals() []byte {
 	return slice.Bytes((unsafe.Pointer)(e.cCtx.globals), e.Executor.globalsSize)
