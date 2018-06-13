@@ -69,6 +69,7 @@ type Types struct {
 	pointers      map[Type]Pointer // T -> T*
 	arrays        map[typeInt]*Array
 	structs       map[string]*Struct
+	funcs         map[string]*FunctionType
 }
 
 type typeInt struct {
@@ -491,4 +492,27 @@ func sanitizeStructName(name string) string {
 		name = strings.TrimSuffix(name, "_t")             // ... and '_t'
 	}
 	return name
+}
+
+// Function returns a type representing the given function signature.
+func (t *Types) Function(resTy Type, paramTys ...Type) *FunctionType {
+	if resTy == nil {
+		resTy = t.Void
+	}
+	params, variadic := TypeList(paramTys), false
+	if len(params) > 0 && params[len(params)-1] == Variadic {
+		params, variadic = params[:len(params)-1], true
+	}
+	sig := Signature{params, resTy, variadic}
+	key := sig.key()
+	ty, ok := t.funcs[key]
+	if ok {
+		return ty
+	}
+	ty = &FunctionType{
+		sig,
+		llvm.FunctionType(resTy.llvmTy(), params.llvm(), variadic),
+	}
+	t.funcs[key] = ty
+	return ty
 }

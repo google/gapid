@@ -25,7 +25,7 @@ import (
 // Function represents a callable function.
 type Function struct {
 	Name string
-	Type FunctionType
+	Type *FunctionType
 	llvm llvm.Value
 	m    *Module
 }

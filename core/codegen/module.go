@@ -34,7 +34,6 @@ type Module struct {
 	target  *device.ABI
 	triple  triple
 	name    string
-	funcTys map[string]FunctionType
 	llvmDbg *llvm.DIBuilder
 	memcpy  Function
 	memset  Function
@@ -76,13 +75,13 @@ func NewModule(name string, target *device.ABI) *Module {
 			pointers:      map[Type]Pointer{},
 			arrays:        map[typeInt]*Array{},
 			structs:       map[string]*Struct{},
+			funcs:         map[string]*FunctionType{},
 		},
-		llvm:    module,
-		ctx:     ctx,
-		target:  target,
-		triple:  triple,
-		name:    name,
-		funcTys: map[string]FunctionType{},
+		llvm:   module,
+		ctx:    ctx,
+		target: target,
+		triple: triple,
+		name:   name,
 	}
 
 	voidPtr := m.Types.Pointer(m.Types.Void)
@@ -145,20 +144,6 @@ func slashHexToRune(ir string) string {
 
 func (m *Module) String() string {
 	return slashHexToRune(m.llvm.String())
-}
-
-func (m *Module) funcType(sig Signature) FunctionType {
-	key := sig.key()
-	ty, ok := m.funcTys[key]
-	if ok {
-		return ty
-	}
-	ty = FunctionType{
-		sig,
-		llvm.FunctionType(sig.Result.llvmTy(), sig.Parameters.llvm(), sig.Variadic),
-	}
-	m.funcTys[key] = ty
-	return ty
 }
 
 var parseFuncRE = regexp.MustCompile(`(\w+\s*\**)\s*(\w+)\((.*)\)`)
@@ -248,14 +233,7 @@ func (m *Module) parseTypeName(name string) Type {
 
 // Function creates a new function with the given name, result type and parameters.
 func (m *Module) Function(resTy Type, name string, paramTys ...Type) Function {
-	if resTy == nil {
-		resTy = m.Types.Void
-	}
-	params, variadic := TypeList(paramTys), false
-	if len(params) > 0 && params[len(params)-1] == Variadic {
-		params, variadic = params[:len(params)-1], true
-	}
-	ty := m.funcType(Signature{params, resTy, variadic})
+	ty := m.Types.Function(resTy, paramTys...)
 	f := llvm.AddFunction(m.llvm, name, ty.llvm)
 	return Function{name, ty, f, m}
 }
