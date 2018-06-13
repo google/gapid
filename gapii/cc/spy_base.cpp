@@ -38,8 +38,7 @@ SpyBase::SpyBase() :
     mCurrentABI(nullptr),
     mResources{{core::Id{{0}}, 0}},
     mObserveApplicationPool(true),
-    mWatchedApis(0xFFFFFFFF),
-    mIsRecordingState(false)
+    mWatchedApis(0xFFFFFFFF)
 {
 }
 

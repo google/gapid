@@ -71,8 +71,6 @@ namespace {
 
 typedef uint32_t EGLint;
 
-const EGLint EGL_NO_SURFACE                = 0x0000;
-const EGLint EGL_FALSE                     = 0x0000;
 const EGLint EGL_TRUE                      = 0x0001;
 const EGLint EGL_ALPHA_SIZE                = 0x3021;
 const EGLint EGL_BLUE_SIZE                 = 0x3022;
@@ -84,8 +82,6 @@ const EGLint EGL_CONFIG_ID                 = 0x3028;
 const EGLint EGL_NONE                      = 0x3038;
 const EGLint EGL_HEIGHT                    = 0x3056;
 const EGLint EGL_WIDTH                     = 0x3057;
-const EGLint EGL_DRAW                      = 0x3059;
-const EGLint EGL_READ                      = 0x305A;
 const EGLint EGL_SWAP_BEHAVIOR             = 0x3093;
 const EGLint EGL_BUFFER_PRESERVED          = 0x3094;
 
@@ -95,13 +91,8 @@ const EGLint EGL_CONTEXT_FLAGS_KHR               = 0x30FC;
 const EGLint EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR    = 0x0001;
 const EGLint EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR = 0x30FD;
 
-const uint32_t GLX_WIDTH  = 0x801D;
-const uint32_t GLX_HEIGHT = 0x801E;
-
 const uint32_t kMaxFramebufferObservationWidth = 1920 / 2;
 const uint32_t kMaxFramebufferObservationHeight = 1280 / 2;
-
-const uint32_t kCGLCPSurfaceBackingSize = 304;
 
 const uint32_t kStartMidExecutionCapture =  0xdeadbeef;
 

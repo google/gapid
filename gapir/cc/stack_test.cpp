@@ -30,8 +30,6 @@ const uint32_t MEMORY_SIZE = 4096;
 const uint32_t STACK_CAPACITY = 128;
 const uint32_t CONSTANT_SIZE = 128;
 
-static const uint8_t CONSTANT_MEMORY[CONSTANT_SIZE] = {};
-
 class StackTest : public ::testing::Test {
 protected:
     virtual void SetUp() {
@@ -256,7 +254,6 @@ TEST_F(StackTest, PopConstantPointer) {
 }
 
 TEST_F(StackTest, PopAbsolutePointer) {
-    uint32_t a = 0;
     mStack->push<void*>(nullptr);
     EXPECT_TRUE(mStack->isValid());
     EXPECT_EQ(nullptr, mStack->pop<void*>());

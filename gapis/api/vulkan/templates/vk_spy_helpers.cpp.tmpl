@@ -271,10 +271,8 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
       return result;
     }
 
-    gapii::VulkanImports::PFNVKDESTROYDEVICE destroy_device = reinterpret_cast<gapii::VulkanImports::PFNVKDESTROYDEVICE>(
-        get_device_proc_addr(*pDevice, "vkDestroyDevice"));
-
     VkDevice device = *pDevice;
+    (void)device; // Use is conditional of preprocessor defines.
     VulkanImports::VkDeviceFunctions* functions = nullptr;
 
     // Add this device, along with the vkGetDeviceProcAddr to our map.

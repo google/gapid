@@ -448,6 +448,7 @@ void SpvManager::collectInstWithoutResult(SpvOp_ op,
 uint32_t SpvManager::collectCompositeConstruct(
     std::initializer_list<std::initializer_list<uint32_t>> data, uint32_t type_id) {
   const spvtools::opt::analysis::Vector* vec = IdToType(type_id)->AsVector();
+  (void)vec; // Not referenced in release builds.
   assert((vec != nullptr && vec->element_count() == data.begin()->size()) &&
          "collectCompositeConstruct: wrong data size to construct vector");
 

@@ -101,8 +101,7 @@ Status GapirServiceImpl::Shutdown(ServerContext* context,
 
 Server::Server(const char* authToken, int idleTimeoutSec,
                ReplayHandler handle_replay)
-    : mIdleTimeoutSec(idleTimeoutSec),
-      mSecCounter(0),
+    : mSecCounter(0),
       mShuttingDown(false),
       mGrpcServer(nullptr),
       mServiceImpl(

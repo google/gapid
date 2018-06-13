@@ -37,7 +37,7 @@ TEST(CrashHandlerTest, HandleCrash) {
         }
     });
 
-    EXPECT_DEATH({ int i = *((volatile int*)(0)); }, "crash handled.");
+    EXPECT_DEATH({ (void)*((volatile int*)(0)); }, "crash handled.");
 }
 #endif // TARGET_OS != GAPID_OS_OSX
 
