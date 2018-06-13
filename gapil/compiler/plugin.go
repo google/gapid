@@ -18,6 +18,7 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/codegen"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 // Plugin is a extension for the compiler.
@@ -45,10 +46,10 @@ func (l plugins) foreach(cb interface{}) {
 // ContextField represents a single additional context field added by a
 // ContextDataPlugin.
 type ContextField struct {
-	Name string                       // Name of the field
-	Type codegen.Type                 // Type of the field
-	Init func(s *S) *codegen.Value    // Optional initializer
-	Term func(s *S, v *codegen.Value) // Optional terminator
+	Name string                              // Name of the field
+	Type codegen.Type                        // Type of the field
+	Init func(s *S, fieldPtr *codegen.Value) // Optional initializer
+	Term func(s *S, fieldPtr *codegen.Value) // Optional terminator
 }
 
 // ContextDataPlugin is the interface implemented by plugins that require
