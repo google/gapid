@@ -163,14 +163,21 @@ func (c *C) program(s Settings) (*Program, error) {
 
 	globals := &StructInfo{Type: c.T.Globals}
 
-	structs := make(map[string]*StructInfo)
+	functions := map[string]codegen.Function{}
+	c.plugins.foreach(func(p FunctionExposerPlugin) {
+		for n, f := range p.Functions() {
+			functions[n] = f
+		}
+	})
+
+	structs := map[string]*StructInfo{}
 	for _, t := range c.T.target {
 		if s, ok := t.(*codegen.Struct); ok {
 			structs[s.Name] = &StructInfo{Type: s}
 		}
 	}
 
-	maps := make(map[string]*MapInfo)
+	maps := map[string]*MapInfo{}
 	for m, mi := range c.T.Maps {
 		maps[m.Name()] = mi
 	}
@@ -180,6 +187,7 @@ func (c *C) program(s Settings) (*Program, error) {
 		Commands:       commands,
 		Structs:        structs,
 		Globals:        globals,
+		Functions:      functions,
 		Maps:           maps,
 		Locations:      c.locations,
 		Module:         c.M,

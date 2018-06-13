@@ -59,3 +59,13 @@ func New(prog *compiler.Program, optimize bool) *Executor {
 
 	return exec
 }
+
+// FunctionAddress returns the function address of the function with the given
+// name or nil if the function was not found.
+func (e *Executor) FunctionAddress(name string) unsafe.Pointer {
+	f, ok := e.program.Functions[name]
+	if !ok {
+		return nil
+	}
+	return e.exec.FunctionAddress(f)
+}
