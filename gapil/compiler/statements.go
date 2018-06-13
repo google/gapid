@@ -370,7 +370,7 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 		base.Index(index).Store(el)
 	}
 
-	if !c.settings.WriteToApplicationPool {
+	if !c.Settings.WriteToApplicationPool {
 		// Writes to the application pool are disabled by default.
 		// This can be overridden with the WriteToApplicationPool setting.
 		actuallyWrite := write

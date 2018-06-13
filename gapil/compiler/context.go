@@ -24,14 +24,14 @@ func (c *C) declareContextType() {
 
 	// Append all the plugin context fields.
 	c.plugins.foreach(func(p ContextDataPlugin) {
-			customFields := p.ContextData(c)
-			for _, f := range customFields {
-				fields = append(fields, codegen.Field{
-					Name: f.Name,
-					Type: f.Type,
-				})
-			}
-			c.T.customCtxFields = append(c.T.customCtxFields, customFields...)
+		customFields := p.ContextData(c)
+		for _, f := range customFields {
+			fields = append(fields, codegen.Field{
+				Name: f.Name,
+				Type: f.Type,
+			})
+		}
+		c.T.customCtxFields = append(c.T.customCtxFields, customFields...)
 	})
 
 	c.T.Ctx = c.T.Struct("context", fields...)
@@ -39,7 +39,7 @@ func (c *C) declareContextType() {
 }
 
 func (c *C) buildContextFuncs() {
-	if !c.settings.EmitContext {
+	if !c.Settings.EmitContext {
 		return
 	}
 
@@ -67,7 +67,7 @@ func (c *C) buildContextFuncs() {
 		}
 
 		// State init
-		if c.settings.EmitExec {
+		if c.Settings.EmitExec {
 			globals := c.Alloc(s, s.Scalar(1), c.T.Globals).SetName("globals")
 			// Start by zeroing out the entire state block's memory.
 			// While this might seem redundant (as we're about to initialize
@@ -105,7 +105,7 @@ func (c *C) buildContextFuncs() {
 		}
 
 		c.Free(s, ctx.Index(0, ContextNextPoolID).Load())
-		if c.settings.EmitExec {
+		if c.Settings.EmitExec {
 			c.Free(s, ctx.Index(0, ContextGlobals).Load())
 		}
 		c.Free(s, ctx)
