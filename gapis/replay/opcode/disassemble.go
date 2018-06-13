@@ -23,9 +23,9 @@ import (
 
 // Disassemble disassembles and returns the stream of encoded Opcodes from r,
 // stopping once an EOF is reached.
-func Disassemble(r io.Reader, byteOrder device.Endian) ([]interface{}, error) {
+func Disassemble(r io.Reader, byteOrder device.Endian) ([]Opcode, error) {
 	d := endian.Reader(r, byteOrder)
-	opcodes := []interface{}{}
+	opcodes := []Opcode{}
 	for {
 		opcode, err := Decode(d)
 		switch err {

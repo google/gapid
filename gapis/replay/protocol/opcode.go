@@ -20,23 +20,23 @@ import "fmt"
 type Opcode int
 
 const (
-	OpCall         = 0
-	OpPushI        = 1
-	OpLoadC        = 2
-	OpLoadV        = 3
-	OpLoad         = 4
-	OpPop          = 5
-	OpStoreV       = 6
-	OpStore        = 7
-	OpResource     = 8
-	OpPost         = 9
-	OpCopy         = 10
-	OpClone        = 11
-	OpStrcpy       = 12
-	OpExtend       = 13
-	OpAdd          = 14
-	OpLabel        = 15
-	OpSwitchThread = 16
+	OpCall         = Opcode(0)
+	OpPushI        = Opcode(1)
+	OpLoadC        = Opcode(2)
+	OpLoadV        = Opcode(3)
+	OpLoad         = Opcode(4)
+	OpPop          = Opcode(5)
+	OpStoreV       = Opcode(6)
+	OpStore        = Opcode(7)
+	OpResource     = Opcode(8)
+	OpPost         = Opcode(9)
+	OpCopy         = Opcode(10)
+	OpClone        = Opcode(11)
+	OpStrcpy       = Opcode(12)
+	OpExtend       = Opcode(13)
+	OpAdd          = Opcode(14)
+	OpLabel        = Opcode(15)
+	OpSwitchThread = Opcode(16)
 )
 
 // String returns the human-readable name of the opcode.
