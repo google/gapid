@@ -49,6 +49,7 @@ const (
 	ContextGlobals    = "globals"
 	ContextArena      = "arena"
 	ContextNextPoolID = "next_pool_id"
+	ContextArguments  = "arguments"
 )
 
 // Field names for the slice_t runtime type.
