@@ -42,9 +42,9 @@ public:
     bool handleMinidump(const std::string& minidumpPath, bool succeeded);
 
 private:
+    unsigned int mNextHandlerID;
     std::unordered_map<unsigned int, Handler> mHandlers;
     std::unique_ptr<google_breakpad::ExceptionHandler> mExceptionHandler;
-    unsigned int mNextHandlerID;
 
     static Handler defaultHandler;
 };

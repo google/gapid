@@ -29,17 +29,17 @@ using core::Interval;
 
 namespace gapii {
 
-SpyBase::SpyBase()
-    : mObserveApplicationPool(true)
-    , mNullEncoder(PackEncoder::noop())
-    , mDeviceInstance(nullptr)
-    , mCurrentABI(nullptr)
-    , mResources{{core::Id{{0}}, 0}}
-    , mWatchedApis(0xFFFFFFFF)
+SpyBase::SpyBase() :
 #if COHERENT_TRACKING_ENABLED
-    , mMemoryTracker()
+    mMemoryTracker(),
 #endif // TARGET_OS
-    , mIsRecordingState(false)
+    mNullEncoder(PackEncoder::noop()),
+    mDeviceInstance(nullptr),
+    mCurrentABI(nullptr),
+    mResources{{core::Id{{0}}, 0}},
+    mObserveApplicationPool(true),
+    mWatchedApis(0xFFFFFFFF),
+    mIsRecordingState(false)
 {
 }
 
