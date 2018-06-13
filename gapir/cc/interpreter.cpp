@@ -20,6 +20,9 @@
 #include "core/cc/log.h"
 #include "core/cc/crash_handler.h"
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #if !defined(_MSC_VER) || defined(__GNUC__)
 // If compiling with MSVC, (rather than MSYS)
 // unistd does not exist.
@@ -170,7 +173,7 @@ Interpreter::Result Interpreter::call(uint32_t opcode) {
 Interpreter::Result Interpreter::pushI(uint32_t opcode) {
     BaseType type = extractType(opcode);
     if (!isValid(type)) {
-        GAPID_WARNING("Error: pushI basic type invalid %u", type);
+        GAPID_WARNING("Error: pushI basic type invalid %d", (int)type);
         return ERROR;
     }
     Stack::BaseValue data = extract20bitData(opcode);
@@ -199,7 +202,7 @@ Interpreter::Result Interpreter::pushI(uint32_t opcode) {
 Interpreter::Result Interpreter::loadC(uint32_t opcode) {
     BaseType type = extractType(opcode);
     if (!isValid(type)) {
-      GAPID_WARNING("Error: loadC basic type invalid %u", type);
+      GAPID_WARNING("Error: loadC basic type invalid %u", (unsigned int)type);
       return ERROR;
     }
     const void* address = mMemoryManager->constantToAbsolute(extract20bitData(opcode));
@@ -214,7 +217,7 @@ Interpreter::Result Interpreter::loadC(uint32_t opcode) {
 Interpreter::Result Interpreter::loadV(uint32_t opcode) {
     BaseType type = extractType(opcode);
     if (!isValid(type)) {
-      GAPID_WARNING("Error: loadV basic type invalid %u", type);
+      GAPID_WARNING("Error: loadV basic type invalid %u", (unsigned int)type);
       return ERROR;
     }
     const void* address = mMemoryManager->volatileToAbsolute(extract20bitData(opcode));
@@ -229,7 +232,7 @@ Interpreter::Result Interpreter::loadV(uint32_t opcode) {
 Interpreter::Result Interpreter::load(uint32_t opcode) {
     BaseType type = extractType(opcode);
     if (!isValid(type)) {
-      GAPID_WARNING("Error: load basic type invalid %u", type);
+      GAPID_WARNING("Error: load basic type invalid %u", (unsigned int)type);
       return ERROR;
     }
     const void* address = mStack.pop<const void*>();
@@ -281,11 +284,11 @@ Interpreter::Result Interpreter::copy(uint32_t opcode) {
     void* target = mStack.pop<void*>();
     const void* source = mStack.pop<const void*>();
     if (!isWriteAddress(target)) {
-        GAPID_WARNING("Error: copy target is invalid %p %d", target, count);
+        GAPID_WARNING("Error: copy target is invalid %p %" PRIu32, target, count);
         return ERROR;
     }
     if (!isReadAddress(source)) {
-        GAPID_WARNING("Error: copy source is invalid %p %d", target, count);
+        GAPID_WARNING("Error: copy source is invalid %p %" PRIu32, target, count);
         return ERROR;
     }
     if (source == nullptr) {

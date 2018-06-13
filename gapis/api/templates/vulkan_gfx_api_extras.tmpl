@@ -200,7 +200,7 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
   bool Vulkan::replayRegisterVkInstance(Stack* stack) {
     auto instance = static_cast<VkInstance>(stack->pop<size_val>());
     if (stack->isValid()) {
-      GAPID_DEBUG("replayRegisterVkInstance(%" PRIu64 ")", instance);
+      GAPID_DEBUG("replayRegisterVkInstance(%zu)", instance);
       if (mVkInstanceFunctionStubs.count(instance) > 0) {
         // TODO(antiagainst): The same instance handle returned from the driver. Is this possible?
         return false;
@@ -227,7 +227,7 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
   bool Vulkan::replayUnregisterVkInstance(Stack* stack) {
     auto instance = static_cast<VkInstance>(stack->pop<size_val>());
     if (stack->isValid()) {
-      GAPID_DEBUG("replayUnregisterVkInstance(%" PRIu64 ")", instance);
+      GAPID_DEBUG("replayUnregisterVkInstance(%zu)", instance);
       mVkInstanceFunctionStubs.erase(instance);
       auto& pdevMap = mIndirectMaps.VkPhysicalDevicesToVkInstances;
       for (auto it = pdevMap.begin(); it != pdevMap.end();) {
@@ -249,7 +249,7 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
     auto device = static_cast<VkDevice>(stack->pop<size_val>());
     auto physical_device = static_cast<VkPhysicalDevice>(stack->pop<size_val>());
     if (stack->isValid()) {
-      GAPID_DEBUG("replayRegisterVkDevice(%" PRIu64 ", %" PRIu64 ", %p)", physical_device, device, createInfo);
+      GAPID_DEBUG("replayRegisterVkDevice(%zu, %zu, %p)", physical_device, device, createInfo);
       if (mVkDeviceFunctionStubs.count(device) > 0) {
         // TODO(antiagainst): The same device handle returned from the driver. Is this possible?
         return false;
@@ -278,7 +278,7 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
   bool Vulkan::replayUnregisterVkDevice(Stack* stack) {
     auto device = static_cast<VkDevice>(stack->pop<size_val>());
     if (stack->isValid()) {
-      GAPID_DEBUG("replayUnregisterVkDevice(%" PRIu64 ")", device);
+      GAPID_DEBUG("replayUnregisterVkDevice(%zu)", device);
       mVkDeviceFunctionStubs.erase(device);
       mIndirectMaps.VkDevicesToVkPhysicalDevices.erase(device);
       auto& queueMap = mIndirectMaps.VkQueuesToVkDevices;
@@ -309,7 +309,7 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
     auto count = stack->pop<uint32_t>();
     auto device = static_cast<VkDevice>(stack->pop<size_val>());
     if (stack->isValid()) {
-      GAPID_DEBUG("replayRegisterVkCommandBuffers(%" PRIu64 ", %" PRIu32 ", %p)", device, count, commandBuffers);
+      GAPID_DEBUG("replayRegisterVkCommandBuffers(%zu, %" PRIu32 ", %p)", device, count, commandBuffers);
       for (uint32_t i = 0; i < count; ++i) {
         mIndirectMaps.VkCommandBuffersToVkDevices[commandBuffers[i]] = device;
       }
@@ -382,7 +382,7 @@ uint32_t getMemoryTypeIndex(
     auto pPhysicalDeviceMemoryProperties = stack->pop<VkPhysicalDeviceMemoryProperties*>();
     auto device = stack->pop<VkDevice>();
     if (stack->isValid()) {
-      GAPID_DEBUG("replayAllocateImageMemory(%" PRIsize ", %" PRIsize ", %p", device, image, pMemory);
+      GAPID_DEBUG("replayAllocateImageMemory(%zu, %" PRIu64 ", %p", device, image, pMemory);
 
       VkMemoryRequirements image_mem_reqs;
       auto GetImageMemReqFuncPtr = mVkDeviceFunctionStubs[device].vkGetImageMemoryRequirements;
@@ -415,7 +415,7 @@ bool Vulkan::replayGetFenceStatus(Stack* stack, bool pushReturn) {
     auto fence = stack->pop<uint64_t>();
     auto device = static_cast<size_val>(stack->pop<size_val>());
     if (stack->isValid()) {
-        GAPID_DEBUG("vkGetFenceStatus(%" PRIsize ", %" PRIu64 ")", device, fence);
+        GAPID_DEBUG("vkGetFenceStatus(%zu, %" PRIu64 ")", device, fence);
         if (mVkDeviceFunctionStubs.find(device) != mVkDeviceFunctionStubs.end() &&
         mVkDeviceFunctionStubs[device].vkGetFenceStatus) {
             uint32_t return_value;
@@ -451,7 +451,7 @@ bool Vulkan::replayGetEventStatus(Stack* stack, bool pushReturn) {
     auto event = stack->pop<uint64_t>();
     auto device = static_cast<size_val>(stack->pop<size_val>());
     if (stack->isValid()) {
-        GAPID_DEBUG("vkGetEventStatus(%" PRIsize ", %" PRIu64 ")", device, event);
+        GAPID_DEBUG("vkGetEventStatus(%zu, %" PRIu64 ")", device, event);
         if (mVkDeviceFunctionStubs.find(device) != mVkDeviceFunctionStubs.end() &&
         mVkDeviceFunctionStubs[device].vkGetEventStatus) {
             uint32_t return_value;
@@ -514,12 +514,13 @@ bool Vulkan::replayEnumeratePhysicalDevices(Stack* stack, bool pushReturn) {
                 }
               }
               if (j == count) {
-                GAPID_WARNING("Could not find device with deviceID %d, and vendorID %d", (device_id >> 32) & 0xFFFFFFFF,
+                GAPID_WARNING("Could not find device with deviceID %" PRIu64 ", and vendorID %" PRIu64,
+                    (device_id >> 32) & 0xFFFFFFFF,
                     device_id & 0xFFFFFFFF);
                 j = count - 1;
               }
               if (j != i) {
-                GAPID_WARNING("Remapping physical device on replay: %d -> %d", j, i);
+                GAPID_WARNING("Remapping physical device on replay: %zu -> %zu", j, i);
               }
               physicalDevices[i] = devices[j];
             }
