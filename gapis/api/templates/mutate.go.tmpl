@@ -300,11 +300,11 @@
   {{$functions  := $.Functions | WithoutAnnotation "synthetic"}}
   {{$synthetics := $.Functions | WithAnnotation    "synthetic"}}
 
-  {{range $i, $f := $functions}}
+  {{range $f := $functions}}
     {{if not (GetAnnotation $f "no_replay")}}
       var {{Template "BuilderFunctionInfo" $f}} = builder.FunctionInfo{§
         ApiIndex:   {{$.Index}},§
-        ID:         {{$i}},§
+        ID:         {{$.CommandIndex $f}},§
         ReturnType: {{Template "Go.Replay.ReturnType" $f.Return.Type}},§
         Parameters: {{len $f.CallParameters}},§
       }
