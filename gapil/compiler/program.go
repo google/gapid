@@ -44,6 +44,9 @@ type Program struct {
 	// Only generated if Settings.CodeLocations is true.
 	Locations []Location
 
+	// Functions is a map of function name to plugin implemented functions.
+	Functions map[string]codegen.Function
+
 	// Module is the generated code module.
 	Module *codegen.Module
 

@@ -18,7 +18,6 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/codegen"
-	"github.com/google/gapid/gapil/semantic"
 )
 
 // Plugin is a extension for the compiler.
@@ -58,3 +57,8 @@ type ContextDataPlugin interface {
 	ContextData(*C) []ContextField
 }
 
+// FunctionExposerPlugin is the interface implemented by plugins that build
+// public functions. These functions will be exposed on the output Program.
+type FunctionExposerPlugin interface {
+	Functions() map[string]codegen.Function
+}
