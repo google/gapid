@@ -228,6 +228,10 @@ func (c *C) compile() {
 	)
 
 	c.buildTypes()
+	c.buildBufferFuncs()
+	c.buildContextFuncs()
+
+	c.plugins.foreach(func(p Plugin) { p.Build(c) })
 
 	if c.Settings.EmitExec {
 		for _, f := range c.API.Externs {
@@ -240,11 +244,6 @@ func (c *C) compile() {
 			c.command(f)
 		}
 	}
-
-	c.buildContextFuncs()
-	c.buildBufferFuncs()
-
-	c.plugins.foreach(func(p Plugin) { p.Build(c) })
 }
 
 // Build implements the function f by creating a new scope and calling do to
