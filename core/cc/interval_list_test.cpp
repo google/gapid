@@ -353,8 +353,8 @@ TEST_F(IntervalListTest, rangeFirstLast) {
         test{"j", j, 1, 2},
         test{"k", k, 0, 2},
     }) {
-        size_t s = rangeFirst(t.interval.start(), 0);
-        size_t e = rangeLast(t.interval.end(), 0);
+        int s = rangeFirst(t.interval.start(), 0);
+        int e = rangeLast(t.interval.end(), 0);
         if (t.start != s) {
             ADD_FAILURE() << t.name << ": l.rangeFirst(" << t.interval << ") "
                     "returned " << s << ", expected " << t.start;

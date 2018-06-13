@@ -65,7 +65,7 @@
 ¶
   {{$api}}::{{$api}}() {
     using namespace std::placeholders;
-    for (int i = 0; i < NELEM(functions); i++) {
+    for (size_t i = 0; i < NELEM(functions); i++) {
       if (functions[i] != nullptr) {
         mFunctions.insert(i, std::bind(functions[i], this, _1, _2, _3));
       }

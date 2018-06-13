@@ -69,7 +69,7 @@ const core::Id kProgramHashesForNoError[] = {
 };
 
 bool shouldErrorForProgram(const core::Id& id) {
-    for (int i = 0; i < NELEM(kProgramHashesForNoError); i++) {
+    for (size_t i = 0; i < NELEM(kProgramHashesForNoError); i++) {
          if (id == kProgramHashesForNoError[i]) {
             GAPID_WARNING("Not setting error for program with ID (blacklisted): %s", id.string().c_str());
             return false;
@@ -209,7 +209,7 @@ const GLubyte* Spy::glGetString(CallObserver* observer, uint32_t name) {
     if (mDisablePrecompiledShaders && name == GL_EXTENSIONS) {
         if (auto exts = reinterpret_cast<const char*>(GlesSpy::mImports.glGetString(name))) {
             std::string list = reinterpret_cast<const char*>(exts);
-            for (int i = 0; i < NELEM(kProgramBinaryExtensions); i++) {
+            for (size_t i = 0; i < NELEM(kProgramBinaryExtensions); i++) {
                 size_t start = list.find(kProgramBinaryExtensions[i]);
                 if (start != std::string::npos) {
                     static std::string copy = list;
@@ -227,7 +227,7 @@ const GLubyte* Spy::glGetString(CallObserver* observer, uint32_t name) {
 const GLubyte* Spy::glGetStringi(CallObserver* observer, uint32_t name, GLuint index) {
     if (mDisablePrecompiledShaders && (name == GL_EXTENSIONS)) {
         const char* extension = reinterpret_cast<const char*>(GlesSpy::mImports.glGetStringi(name, index));
-            for (int i = 0; i < NELEM(kProgramBinaryExtensions); i++) {
+            for (size_t i = 0; i < NELEM(kProgramBinaryExtensions); i++) {
                 if (strcmp(extension, kProgramBinaryExtensions[i]) == 0) {
                     // TODO: write command.
                     return reinterpret_cast<GLubyte*>(const_cast<char*>(

@@ -834,7 +834,7 @@ bool SpvManager::isArgStoreInst(BasicBlock::iterator bb_curr, BasicBlock::iterat
 
     if (bb_curr != bb_end)
       if (bb_curr->opcode() == SpvOpFunctionCall && bb_curr->NumOperands() >= 4)
-        for (auto i = 3; i < bb_curr->NumOperands(); i++)
+        for (uint32_t i = 3; i < bb_curr->NumOperands(); i++)
           if (dest_id == bb_curr->GetSingleWordOperand(i)) return true;
   }
 
@@ -949,7 +949,7 @@ void SpvManager::appendDebugInstruction(std::vector<instruction_t>* debugs, Inst
 
     // copy operands words
     i.words = new uint32_t[inst->NumOperands()];
-    for (int op = 0; op < inst->NumOperands(); op++) {
+    for (uint32_t op = 0; op < inst->NumOperands(); op++) {
       switch (inst->GetOperand(op).type) {
         case SPV_OPERAND_TYPE_RESULT_ID:
         case SPV_OPERAND_TYPE_LITERAL_STRING:
