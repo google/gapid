@@ -46,6 +46,7 @@ typedef struct context_t {
 	uint32_t*   next_pool_id;  // the identifier of the next pool to be created.
 	globals*    globals;       // a pointer to the global state.
 	arena*      arena;         // the memory arena used for allocations.
+	void*       arguments;     // the arguments to the currently executing command.
 	// additional data used by compiler plugins goes here.
 } context;
 

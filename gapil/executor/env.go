@@ -32,11 +32,11 @@ import (
 //
 // typedef context* (TCreateContext) (arena*);
 // typedef void     (TDestroyContext) (context*);
-// typedef uint32_t (TFunc) (void* ctx, void* args);
+// typedef uint32_t (TFunc) (void* ctx);
 //
 // static context* create_context(TCreateContext* func, arena* a) { return func(a); }
 // static void destroy_context(TDestroyContext* func, context* ctx) { func(ctx); }
-// static uint32_t call(context* ctx, void* args, TFunc* func) { return func(ctx, args); }
+// static uint32_t call(context* ctx, TFunc* func) { return func(ctx); }
 //
 // // Implemented below.
 // void* remap_pointer(context* ctx, uintptr_t pointer, uint64_t length);
@@ -202,7 +202,8 @@ func byteSlice(ptr unsafe.Pointer, size uint64) []byte {
 
 func (e *Env) call(ctx context.Context, fptr, args unsafe.Pointer) error {
 	e.goCtx = ctx
-	err := compiler.ErrorCode(C.call(e.cCtx, args, (*C.TFunc)(fptr)))
+	e.cCtx.arguments = args
+	err := compiler.ErrorCode(C.call(e.cCtx, (*C.TFunc)(fptr)))
 	e.goCtx = nil
 
 	return err.Err()
