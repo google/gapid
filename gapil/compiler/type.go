@@ -102,8 +102,8 @@ func (c *C) buildStorageTypes() {
 }
 
 func (c *C) declareTypes() {
-	c.T.storageABI = c.settings.StorageABI
-	c.T.targetABI = c.settings.TargetABI
+	c.T.storageABI = c.Settings.StorageABI
+	c.T.targetABI = c.Settings.TargetABI
 
 	c.T.Types = c.M.Types
 	c.T.Globals = c.T.DeclareStruct("globals")
@@ -250,7 +250,7 @@ func (c *C) buildTypes() {
 		globalsFields[i] = codegen.Field{Name: g.Name(), Type: c.T.Target(g.Type)}
 	}
 	c.T.Globals.SetBody(false, globalsFields...)
-	if c.settings.StorageABI != c.T.targetABI {
+	if c.Settings.StorageABI != c.T.targetABI {
 		for _, t := range c.API.Classes {
 			if semantic.IsStorageType(t) {
 				storageTypePtr := c.T.Pointer(c.T.Storage(t))

@@ -58,7 +58,9 @@ type C struct {
 	// This excludes gapil runtime symbols which have the prefix 'gapil_'.
 	Root mangling.Scope
 
-	settings  Settings
+	// Settings are the configuration values used for this compile.
+	Settings Settings
+
 	plugins   plugins
 	functions map[*semantic.Function]codegen.Function
 	ctx       struct { // Functions that operate on contexts
@@ -118,12 +120,12 @@ func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Progr
 	}
 
 	c := &C{
-		M:       codegen.NewModule("api.executor", s.TargetABI),
-		API:     api,
-		Mangler: s.Mangler,
+		M:        codegen.NewModule("api.executor", s.TargetABI),
+		API:      api,
+		Mangler:  s.Mangler,
+		Settings: s,
 
 		plugins:       s.Plugins,
-		settings:      s,
 		functions:     map[*semantic.Function]codegen.Function{},
 		mappings:      mappings,
 		locationIndex: map[Location]int{},
@@ -175,7 +177,7 @@ func (c *C) program(s Settings) (*Program, error) {
 	}
 
 	return &Program{
-		Settings:       c.settings,
+		Settings:       c.Settings,
 		Commands:       commands,
 		Structs:        structs,
 		Globals:        globals,
@@ -228,7 +230,7 @@ func (c *C) compile() {
 
 	c.buildTypes()
 
-	if c.settings.EmitExec {
+	if c.Settings.EmitExec {
 		for _, f := range c.API.Externs {
 			c.extern(f)
 		}
@@ -376,7 +378,7 @@ func (c *C) setCodeLocation(s *S, t parse.Token) {
 }
 
 func (c *C) updateCodeLocation(s *S) {
-	if c.settings.CodeLocations && s.Location != nil {
+	if c.Settings.CodeLocations && s.Location != nil {
 		s.Location.Store(s.Scalar(uint32(s.locationIdx)))
 	}
 }
