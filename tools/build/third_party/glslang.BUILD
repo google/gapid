@@ -41,7 +41,10 @@ cc_library(
         "glslang/MachineIndependent/*.h",
         "SPIRV/*.h",
     ]),
-    copts = cc_copts() + ["-DNV_EXTENSIONS"],
+    copts = cc_copts() + [
+        "-DNV_EXTENSIONS",
+        "-Wno-unused-variable",
+    ],
     linkopts = select({
         "@gapid//tools/build:windows": [],
         "//conditions:default": ["-lpthread"],
