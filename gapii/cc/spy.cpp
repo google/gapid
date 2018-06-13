@@ -24,7 +24,6 @@
 #include "gapii/cc/gles_exports.h"
 #include "gapii/cc/spy.h"
 
-#include "core/cc/encoder.h"
 #include "core/cc/gl/formats.h"
 #include "core/cc/lock.h"
 #include "core/cc/log.h"
