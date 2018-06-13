@@ -37,8 +37,10 @@ type S struct {
 	// Arena is a pointer to the current memory arena (arena*).
 	Arena *codegen.Value
 
+	// Parameters is the current function's parameters.
+	Parameters map[*semantic.Parameter]*codegen.Value
+
 	parent      *S
-	parameters  map[*semantic.Parameter]*codegen.Value
 	locals      map[*semantic.Local]*codegen.Value
 	locationIdx int
 	onExitLogic []func()
@@ -52,8 +54,8 @@ func (s *S) enter(f func(*S)) {
 
 	child := &S{
 		Builder:    s.Builder,
+		Parameters: s.Parameters,
 		parent:     s,
-		parameters: s.parameters,
 		locals:     locals,
 		Ctx:        s.Ctx,
 		Location:   s.Location,

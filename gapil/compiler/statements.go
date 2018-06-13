@@ -50,7 +50,7 @@ func (c *C) command(f *semantic.Function) {
 		for _, p := range f.FullParameters {
 			v := params.Index(0, p.Name()).Load()
 			v.SetName(p.Name())
-			s.parameters[p] = v
+			s.Parameters[p] = v
 		}
 
 		c.applyReads(s)
@@ -78,7 +78,7 @@ func (c *C) subroutine(f *semantic.Function) {
 	c.functions[f] = out
 	c.Build(out, func(s *S) {
 		for i, p := range params {
-			s.parameters[p] = s.Parameter(i + 1).SetName(p.Name())
+			s.Parameters[p] = s.Parameter(i + 1).SetName(p.Name())
 		}
 		c.block(s, f.Block)
 	})

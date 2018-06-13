@@ -84,7 +84,7 @@ func (c *C) expression(s *S, e semantic.Expression) *codegen.Value {
 	case *semantic.Observed:
 		out = c.observed(s, e)
 	case *semantic.Parameter:
-		out = c.parameter(s, e)
+		out = c.Parameter(s, e)
 	case *semantic.PointerRange:
 		out = c.pointerRange(s, e)
 	case *semantic.Select:
@@ -409,18 +409,20 @@ func (c *C) null(s *S, e semantic.Null) *codegen.Value {
 }
 
 func (c *C) observed(s *S, e *semantic.Observed) *codegen.Value {
-	return c.parameter(s, e.Parameter)
+	return c.Parameter(s, e.Parameter)
 }
 
-func (c *C) parameter(s *S, e *semantic.Parameter) *codegen.Value {
-	p, ok := s.parameters[e]
+// Parameter returns the loaded parameter value, failing if the parameter cannot
+// be found.
+func (c *C) Parameter(s *S, e *semantic.Parameter) *codegen.Value {
+	p, ok := s.Parameters[e]
 	if !ok {
-		params := make([]string, 0, len(s.parameters))
-		for p := range s.parameters {
+		params := make([]string, 0, len(s.Parameters))
+		for p := range s.Parameters {
 			params = append(params, fmt.Sprintf(" • %v", p.Name()))
 		}
-		panic(fmt.Errorf("Couldn't locate parameter '%v'. Have parameters:\n%v",
-			e.Name(), strings.Join(params, "\n")))
+		c.Fail("Couldn't locate parameter '%v'. Have parameters:\n%v",
+			e.Name(), strings.Join(params, "\n"))
 	}
 	return p
 }

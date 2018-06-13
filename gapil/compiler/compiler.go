@@ -155,10 +155,9 @@ func (c *C) program(s Settings) (*Program, error) {
 		if a.Subroutine || a.Extern {
 			continue
 		}
-		params := f.Type.Signature.Parameters[1].(codegen.Pointer).Element.(*codegen.Struct)
 		commands[f.Name] = &CommandInfo{
 			Execute:    f,
-			Parameters: params,
+			Parameters: c.T.CmdParams[a].(*codegen.Struct),
 		}
 	}
 
@@ -256,8 +255,8 @@ func (c *C) Build(f codegen.Function, do func(*S)) {
 	err(f.Build(func(jb *codegen.Builder) {
 		s := &S{
 			Builder:    jb,
+			Parameters: map[*semantic.Parameter]*codegen.Value{},
 			locals:     map[*semantic.Local]*codegen.Value{},
-			parameters: map[*semantic.Parameter]*codegen.Value{},
 		}
 		for i, p := range f.Type.Signature.Parameters {
 			if p == c.T.CtxPtr {
