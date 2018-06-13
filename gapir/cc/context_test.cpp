@@ -181,6 +181,7 @@ TEST_F(ContextTest, PostDataErrorPost) {
              instruction(Interpreter::InstructionCode::POST)});
 
     EXPECT_CALL(*mConn, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
+    EXPECT_CALL(*mConn, mockedSendPostData(NotNull())).WillOnce(Return(false));
 
     core::CrashHandler crash_handler;
     auto context = Context::create(mConn.get(), crash_handler, mResourceProvider.get(), mMemoryManager.get());
