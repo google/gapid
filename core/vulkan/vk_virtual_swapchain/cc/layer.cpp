@@ -390,9 +390,9 @@ VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceExtensionProperties(
       physicalDevice, pLayerName, pPropertyCount, pProperties);
 }
 
-void vkFreeCommandBuffers(VkDevice device, VkCommandPool commandPool,
-                          uint32_t commandBufferCount,
-                          const VkCommandBuffer *pCommandBuffers) {
+VKAPI_ATTR void VKAPI_CALL vkFreeCommandBuffers(
+    VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount,
+    const VkCommandBuffer *pCommandBuffers) {
   auto command_buffer_map = GetGlobalContext().GetCommandBufferMap();
   for (size_t i = 0; i < commandBufferCount; ++i) {
     command_buffer_map->erase(pCommandBuffers[i]);
