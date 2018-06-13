@@ -34,8 +34,7 @@ func (c *C) declareContextType() {
 		c.T.customCtxFields = append(c.T.customCtxFields, customFields...)
 	})
 
-	c.T.Ctx = c.T.Struct("context", fields...)
-	c.T.CtxPtr = c.T.Pointer(c.T.Ctx)
+	c.T.Ctx.SetBody(false, fields...)
 }
 
 func (c *C) buildContextFuncs() {
