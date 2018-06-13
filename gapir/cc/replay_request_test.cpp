@@ -72,7 +72,6 @@ TEST(ReplayRequestTestStatic, Create) {
 }
 
 TEST(ReplayRequestTestStatic, CreateErrorGet) {
-    uint32_t replayLength = 255;
     auto mock_conn = std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
     EXPECT_CALL(*mock_conn, getPayload()).WillOnce(Return(ByMove(nullptr)));
 

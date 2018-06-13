@@ -217,11 +217,6 @@ private:
     // For some API's this will require that we modify some of the
     // image creation parameters
     bool mIsObserving;
-
-    // This is true when all commands are used to record state. This means
-    // the commands should still be recorded, but the underlying functions
-    // should not be called.
-    bool mIsRecordingState;
 };
 
 template <class T>

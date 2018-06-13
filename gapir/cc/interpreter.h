@@ -217,7 +217,6 @@ inline bool Interpreter::isConstantAddressForType(const void *address, BaseType 
 }
 
 inline bool Interpreter::isVolatileAddressForType(const void *address, BaseType type) const {
-    size_t size = isPointerType(type) ? sizeof(void*) : baseTypeSize(type);
     return mMemoryManager->isVolatileAddressWithSize(address, baseTypeSize(type));
 }
 

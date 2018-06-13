@@ -30,21 +30,6 @@ namespace {
 // Minimum byte gap between memory observations before globbing together.
 const size_t MEMORY_MERGE_THRESHOLD = 256;
 
-// Size of the temporary heap buffer to use when the scratch stack buffer is
-// filled.
-const size_t SCRATCH_BUFFER_SIZE = 512*1024;
-
-// Buffer creating function for scratch allocator.
-std::tuple<uint8_t*, size_t> createBuffer(size_t request_size,
-                                                 size_t min_buffer_size) {
-    size_t size =
-        request_size > min_buffer_size ? request_size : min_buffer_size;
-    return std::make_tuple(new uint8_t[size], size);
-}
-
-// Buffer releasing function for scratch allocator.
-void releaseBuffer(uint8_t* buffer) { delete[] buffer; }
-
 }  // anonymous namespace
 
 namespace gapii {

@@ -178,7 +178,6 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchCacheHit) {
 
 TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHit) {
     InSequence x;
-    uint8_t* cache = reinterpret_cast<uint8_t*>(mMemoryManager->getBaseAddress());
 
     mResourceInMemoryCache->resize(A.size + B.size + C.size + D.size);
     expectCacheMiss({A, C});
@@ -272,7 +271,6 @@ TEST_F(ResourceInMemoryCacheTest, Resize) {
 
 TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
     InSequence x;
-    uint8_t* cache = reinterpret_cast<uint8_t*>(mMemoryManager->getBaseAddress());
 
     Resource A1("A1", 1), B1("B1", 1), C1("C1", 1), D1("D1", 1);
     Resource E1("E1", 1), F1("F1", 1), G1("G1", 1), H1("H1", 1);

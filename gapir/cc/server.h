@@ -120,8 +120,6 @@ class Server {
   Server(const char* authToken, int idleTimeoutSec,
          ReplayHandler handle_replay);
 
-  // Seconds to kept the server alive since the last Ping request.
-  int mIdleTimeoutSec;
   // Seconds since the last ping request.
   std::atomic<int> mSecCounter;
   // A flag to specify the server is to be shut down.

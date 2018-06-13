@@ -257,7 +257,6 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
     const bool po = (interface == GL_PROGRAM_OUTPUT);
     const bool u = (interface == GL_UNIFORM);
     const bool bv = (interface == GL_BUFFER_VARIABLE);
-    const bool tfv = (interface == GL_TRANSFORM_FEEDBACK_VARYING);
 
     U32ToProgramResource__R resources(spy->arena());
     GLint count = getInterfaceiv(interface, GL_ACTIVE_RESOURCES);

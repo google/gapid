@@ -66,7 +66,7 @@ VirtualSwapchain::VirtualSwapchain(
       queue_(queue),
       functions_(functions),
       pending_image_timeout_in_milliseconds_(
-                                 pending_image_timeout_in_milliseconds),
+          pending_image_timeout_in_milliseconds),
       always_get_acquired_image_(always_get_acquired_image) {
   VkPhysicalDeviceMemoryProperties properties = *memory_properties;
   build_swapchain_image_data_ = [this, properties, pAllocator]() {
@@ -321,6 +321,7 @@ void VirtualSwapchain::CopyThreadFunc() {
 
     VkResult ret = functions_->vkWaitForFences(
         device_, 1, &image_data_[pending_image].fence_, false, UINT64_MAX);
+    (void)ret; // TODO: Check this?
     functions_->vkResetFences(device_, 1, &image_data_[pending_image].fence_);
 
     void *mapped_value;

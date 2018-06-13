@@ -254,7 +254,8 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             GAPID_DEBUG("[%u]replayUnbindRenderer(%" PRIu32 ")", label, id);
             auto renderer = mGlesRenderers[id];
             renderer->unbind();
-            Api* api = renderer->api();
+            // TODO: Unbind renderer functions with the interpreter?
+            // Api* api = renderer->api();
             // interpreter->setRendererFunctions(api->index(), nullptr);
             GAPID_DEBUG("[%u]Unbound renderer %" PRIu32, label, id);
             return true;
