@@ -17,6 +17,7 @@
 #ifndef CORE_ID_H
 #define CORE_ID_H
 
+#include <cstring>
 #include <functional>
 #include <stdint.h>
 
@@ -51,7 +52,9 @@ namespace std {
 
 template <> struct hash<core::Id> {
     inline size_t operator()(const core::Id& id) const {
-        return *reinterpret_cast<const size_t*>(id.data);
+        size_t hash;
+        memcpy(&hash, id.data, sizeof(hash));
+        return hash;
     }
 };
 
