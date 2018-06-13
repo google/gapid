@@ -18,6 +18,7 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/codegen"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 // Plugin is a extension for the compiler.
@@ -61,4 +62,22 @@ type ContextDataPlugin interface {
 // public functions. These functions will be exposed on the output Program.
 type FunctionExposerPlugin interface {
 	Functions() map[string]codegen.Function
+}
+
+// OnBeginCommandListener is the interface implemented by plugins that generate
+// custom logic at the start of the command.
+type OnBeginCommandListener interface {
+	OnBeginCommand(cmd *semantic.Function, s *S)
+}
+
+// OnFenceListener is the interface implemented by plugins that generate
+// custom logic at the fence of the command.
+type OnFenceListener interface {
+	OnFence(s *S)
+}
+
+// OnEndCommandListener is the interface implemented by plugins that generate
+// custom logic at the end of the command.
+type OnEndCommandListener interface {
+	OnEndCommand(cmd *semantic.Function, s *S)
 }
