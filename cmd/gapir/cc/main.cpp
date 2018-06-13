@@ -133,7 +133,6 @@ const char* pipeName() {
 
 // Main function for android
 void android_main(struct android_app* app) {
-    app_dummy();
     MemoryManager memoryManager(memorySizes);
     CrashHandler crashHandler;
 
