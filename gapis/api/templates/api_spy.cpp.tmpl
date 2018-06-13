@@ -400,8 +400,6 @@
   {{AssertType $ "Read"}}
   {{if (GetAnnotation ($.Slice | TargetField) "spy_disabled")}}
     // @spy_disabled
-  {{else if GetAnnotation ($.Slice | TargetField) "spy_disabled"}}
-    {{Error "Attempting to read from a @spy_disabled slice"}}
   {{else}}
     {{Template "C++.Statement.Default" $}}
   {{end}}
