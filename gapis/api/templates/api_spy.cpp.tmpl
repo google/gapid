@@ -101,6 +101,13 @@
 ¶
   #include <memory>
   #include <string>
+¶
+  // Silence warnings
+  #pragma GCC diagnostic ignored "-Wpragmas" // Not all warnings are understood by all compilers!
+  #pragma GCC diagnostic ignored "-Wswitch-bool" // switch condition has boolean value
+  #pragma GCC diagnostic ignored "-Wunused-variable"
+  #pragma GCC diagnostic ignored "-Wunused-lambda-capture"
+  #pragma GCC diagnostic ignored "-Wpessimizing-move"
 {{end}}
 
 
