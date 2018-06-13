@@ -57,20 +57,10 @@ sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffs
 }
 
 sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize) {
-  mem := buffer.Memory
-  if mem != null {
-    readBegin := buffer.MemoryOffset + readOffset
-    actualReadSize := switch as!u64(readSize) {
-      case 0xFFFFFFFFFFFFFFFF:
-        buffer.Info.Size - readOffset
-      default:
-        readSize
-    }
-    readEnd := readBegin + actualReadSize
-    readCoherentMemory(mem, readBegin, actualReadSize)
-    if len(mem.Data) != 0 {
-      read(mem.Data[readBegin : readEnd])
-    }
+  memPieces := getBufferBoundMemoryPiecesInRange(buffer, readOffset, readSize)
+  for _, _, mp in memPieces {
+    readCoherentMemory(mp.DeviceMemory, mp.MemoryOffset, mp.Size)
+    read(mp.DeviceMemory.Data[mp.MemoryOffset:mp.MemoryOffset+mp.Size])
   }
 }
 

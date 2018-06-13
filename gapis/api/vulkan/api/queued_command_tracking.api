@@ -74,7 +74,7 @@ sub void execPendingCommands(VkQueue queue) {
           }
         }
       if processSubcommand.b {
-        // Handle sparse image binding.
+        // Handle sparse buffer/image binding.
         if (cmd.SparseBinds != null) {
           for _ , buf , binds in cmd.SparseBinds.BufferBinds {
             if !(buf in Buffers) { vkErrorInvalidBuffer(buf) }
