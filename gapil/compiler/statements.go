@@ -64,9 +64,13 @@ func (c *C) command(f *semantic.Function) {
 	c.Build(out, func(s *S) {
 		c.LoadParameters(s, f)
 
+		c.plugins.foreach(func(p OnBeginCommandListener) { p.OnBeginCommand(f, s) })
+
 		c.applyReads(s)
 
 		c.block(s, f.Block)
+
+		c.plugins.foreach(func(p OnEndCommandListener) { p.OnEndCommand(f, s) })
 	})
 	c.functions[f] = out
 	c.setCurrentFunction(old)
@@ -287,6 +291,7 @@ func (c *C) declareLocal(s *S, n *semantic.DeclareLocal) {
 }
 
 func (c *C) fence(s *S, n *semantic.Fence) {
+	c.plugins.foreach(func(p OnFenceListener) { p.OnFence(s) })
 	c.applyWrites(s)
 	if n.Statement != nil {
 		c.statement(s, n.Statement)
