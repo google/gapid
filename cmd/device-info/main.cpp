@@ -34,10 +34,9 @@ void print_help() {
     std::cout << " --binary         Output a binary protobuf instead of json" << std::endl;
 }
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
     bool output_binary = false;
-    for (size_t i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--help") == 0 ||
             strcmp(argv[i], "-help") == 0 ||
             strcmp(argv[i], "-h") == 0) {

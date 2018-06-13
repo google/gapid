@@ -67,7 +67,7 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
   };
 
   int32_t activeUniforms = getProgramiv(GL_ACTIVE_UNIFORMS);
-  for (uint32_t i = 0; i < activeUniforms; i++) {
+  for (int32_t i = 0; i < activeUniforms; i++) {
     auto res = gapil::Ref<ProgramResource>::create(spy->arena());
 
     int32_t nameLength = 0;
@@ -183,7 +183,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 
   // Helper method to get name of program resource
   auto getResourceName = [&](uint32_t interface, GLuint i) {
-    GAPID_ASSERT(getResourceiv(interface, i, GL_NAME_LENGTH) <= buffer.size());
+    GAPID_ASSERT(getResourceiv(interface, i, GL_NAME_LENGTH) <= (int32_t)buffer.size());
     GLsizei length = 0;
     imports.glGetProgramResourceName(program, interface, i, buffer.size(), &length, buffer.data());
     return gapil::String(spy->arena(), buffer.data(), length);
