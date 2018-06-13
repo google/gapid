@@ -47,21 +47,21 @@ func (c *C) buildContextFuncs() {
 
 	c.Build(c.ctx.create, func(s *S) {
 		s.Arena = s.Parameter(0)
+		s.Ctx = c.Alloc(s, s.Scalar(1), c.T.Ctx).SetName("ctx")
 
-		ctx := c.Alloc(s, s.Scalar(1), c.T.Ctx).SetName("ctx")
-		s.Memzero(ctx.Cast(c.T.VoidPtr), s.SizeOf(c.T.Ctx).Cast(c.T.Uint32))
+		s.Memzero(s.Ctx.Cast(c.T.VoidPtr), s.SizeOf(c.T.Ctx).Cast(c.T.Uint32))
 
 		nextPoolID := c.Alloc(s, s.Scalar(1), c.T.Uint32).SetName("next_pool_id")
 		nextPoolID.Store(s.Scalar(uint32(1)))
 
-		ctx.Index(0, ContextLocation).Store(s.Scalar(uint32(0xffffffff)))
-		ctx.Index(0, ContextArena).Store(s.Arena)
-		ctx.Index(0, ContextNextPoolID).Store(nextPoolID)
+		s.Ctx.Index(0, ContextLocation).Store(s.Scalar(uint32(0xffffffff)))
+		s.Ctx.Index(0, ContextArena).Store(s.Arena)
+		s.Ctx.Index(0, ContextNextPoolID).Store(nextPoolID)
 
 		// Initialize custom plugin context fields
 		for _, f := range c.T.customCtxFields {
 			if f.Init != nil {
-				ctx.Index(0, f.Name).Store(f.Init(s))
+				f.Init(s)
 			}
 		}
 
@@ -74,7 +74,7 @@ func (c *C) buildContextFuncs() {
 			// structures that hold non-deterministic values. These will cause
 			// issues with tests.
 			s.Memzero(globals.Cast(c.T.VoidPtr), s.SizeOf(c.T.Globals).Cast(c.T.Uint32))
-			ctx.Index(0, ContextGlobals).Store(globals)
+			s.Ctx.Index(0, ContextGlobals).Store(globals)
 
 			for _, g := range c.API.Globals {
 				var val *codegen.Value
@@ -89,24 +89,24 @@ func (c *C) buildContextFuncs() {
 			}
 		}
 
-		s.Return(ctx)
+		s.Return(s.Ctx)
 	})
 
 	c.Build(c.ctx.destroy, func(s *S) {
-		ctx := s.Parameter(0)
-		s.Arena = ctx.Index(0, ContextArena).Load()
+		s.Ctx = s.Parameter(0)
+		s.Arena = s.Ctx.Index(0, ContextArena).Load()
 
 		// Terminate custom plugin context fields
 		for _, f := range c.T.customCtxFields {
 			if f.Term != nil {
-				f.Term(s, ctx.Index(0, f.Name).Load())
+				f.Term(s, s.Ctx.Index(0, f.Name))
 			}
 		}
 
-		c.Free(s, ctx.Index(0, ContextNextPoolID).Load())
+		c.Free(s, s.Ctx.Index(0, ContextNextPoolID).Load())
 		if c.Settings.EmitExec {
-			c.Free(s, ctx.Index(0, ContextGlobals).Load())
+			c.Free(s, s.Ctx.Index(0, ContextGlobals).Load())
 		}
-		c.Free(s, ctx)
+		c.Free(s, s.Ctx)
 	})
 }
