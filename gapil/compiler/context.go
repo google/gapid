@@ -61,7 +61,7 @@ func (c *C) buildContextFuncs() {
 		// Initialize custom plugin context fields
 		for _, f := range c.T.customCtxFields {
 			if f.Init != nil {
-				f.Init(s)
+				f.Init(s, s.Ctx.Index(0, f.Name))
 			}
 		}
 
