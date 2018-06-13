@@ -73,7 +73,8 @@ Context::Context(
                 return mConnection->sendPostData(std::move(posts));
             }
             return false;
-          })) {
+          })),
+        mNumSentDebugMessages(0) {
 }
 
 Context::~Context() {
