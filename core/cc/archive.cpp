@@ -15,6 +15,7 @@
  */
 
 #include "archive.h"
+#include "assert.h"
 #include "log.h"
 #include "target.h" // ftruncate
 
@@ -27,6 +28,16 @@
 #else // not MSVC
 #   include <unistd.h>
 #endif
+
+namespace {
+
+void must_truncate(int fd, off_t length) {
+    if (!ftruncate(fd, length)) {
+        GAPID_ASSERT("Unable to truncate the achive file");
+    }
+}
+
+}  // anonymous namespace
 
 namespace core {
 
@@ -92,7 +103,7 @@ bool Archive::write(const std::string& id, const void* buffer, uint32_t size) {
     const uint64_t dataOffset = ftell(mDataFile);
     if (!fwrite(buffer, size, 1, mDataFile)) {
         GAPID_WARNING("Couldn't write '%s' to the archive data file, dropping it.", id.c_str());
-        ftruncate(fileno(mDataFile), dataOffset);
+        must_truncate(fileno(mDataFile), dataOffset);
         return false;
     }
 
@@ -104,8 +115,8 @@ bool Archive::write(const std::string& id, const void* buffer, uint32_t size) {
         !fwrite(&dataOffset, sizeof(dataOffset), 1, mIndexFile) ||
         !fwrite(&size, sizeof(size), 1, mIndexFile)) {
         GAPID_WARNING("Couldn't write '%s' to the archive index file, dropping it.", id.c_str());
-        ftruncate(fileno(mDataFile), dataOffset);
-        ftruncate(fileno(mIndexFile), indexOffset);
+        must_truncate(fileno(mDataFile), dataOffset);
+        must_truncate(fileno(mIndexFile), indexOffset);
         fseek(mIndexFile, 0, SEEK_END);
         return false;
     }
