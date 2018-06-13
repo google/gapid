@@ -21,6 +21,11 @@ import (
 	"github.com/google/gapid/gapis/replay/protocol"
 )
 
+// Opcode represents a single opcode used by GAPIR.
+type Opcode interface {
+	isOpcode()
+}
+
 func bit(bits, idx uint32) bool {
 	if bits&(1<<idx) != 0 {
 		return true
@@ -43,11 +48,11 @@ func setBit(bits, idx uint32, v bool) uint32 {
 // ┡━━┿━━┿━━┿━━┿━━┿━━╇━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┩
 // │₃₁│₃₀│₂₉│₂₈│₂₇│₂₆│₂₅│₂₄│₂₃│₂₂│₂₁│₂₀│₁₉│₁₈│₁₇│₁₆│₁₅│₁₄│₁₃│₁₂│₁₁│₁₀│ ₉│ ₈│ ₇│ ₆│ ₅│ ₄│ ₃│ ₂│ ₁│ ₀│
 // └──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┘
-func packC(c uint32) uint32 {
+func packC(c protocol.Opcode) uint32 {
 	if c >= 0x3f {
 		panic(fmt.Errorf("c exceeds 6 bits (0x%x)", c))
 	}
-	return c << 26
+	return uint32(c << 26)
 }
 
 // ┏━━┯━━┯━━┯━━┯━━┯━━┳━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┯━━┓
@@ -56,7 +61,7 @@ func packC(c uint32) uint32 {
 // ┡━━┿━━┿━━┿━━┿━━┿━━╇━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┩
 // │₃₁│₃₀│₂₉│₂₈│₂₇│₂₆│₂₅│₂₄│₂₃│₂₂│₂₁│₂₀│₁₉│₁₈│₁₇│₁₆│₁₅│₁₄│₁₃│₁₂│₁₁│₁₀│ ₉│ ₈│ ₇│ ₆│ ₅│ ₄│ ₃│ ₂│ ₁│ ₀│
 // └──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┘
-func packCX(c uint32, x uint32) uint32 {
+func packCX(c protocol.Opcode, x uint32) uint32 {
 	if x > 0x3ffffff {
 		panic(fmt.Errorf("x exceeds 26 bits (0x%x)", x))
 	}
@@ -69,7 +74,7 @@ func packCX(c uint32, x uint32) uint32 {
 // ┡━━┿━━┿━━┿━━┿━━┿━━╇━━┿━━┿━━┿━━┿━━┿━━╇━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┿━━┩
 // │₃₁│₃₀│₂₉│₂₈│₂₇│₂₆│₂₅│₂₄│₂₃│₂₂│₂₁│₂₀│₁₉│₁₈│₁₇│₁₆│₁₅│₁₄│₁₃│₁₂│₁₁│₁₀│ ₉│ ₈│ ₇│ ₆│ ₅│ ₄│ ₃│ ₂│ ₁│ ₀│
 // └──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┴──┘
-func packCYZ(c uint32, y uint32, z uint32) uint32 {
+func packCYZ(c protocol.Opcode, y uint32, z uint32) uint32 {
 	if y > 0x3f {
 		panic(fmt.Errorf("y exceeds 6 bits (0x%x)", y))
 	}
@@ -79,12 +84,12 @@ func packCYZ(c uint32, y uint32, z uint32) uint32 {
 	return packC(c) | (y << 20) | z
 }
 
-// Bundle the API index and the function ID together.
-func packApiIndexFunctionID(index uint8, id uint16) uint32 {
+// PackAPIIndexFunctionID packs the API index and the function ID together.
+func PackAPIIndexFunctionID(index uint8, id uint16) uint32 {
 	return (uint32(index&0xf) << 16) | uint32(id)
 }
 
-func unpackC(i uint32) uint32          { return i >> 26 }
+func unpackC(i uint32) protocol.Opcode { return protocol.Opcode(i >> 26) }
 func unpackX(i uint32) uint32          { return i & 0x3ffffff }
 func unpackY(i uint32) uint32          { return (i >> 20) & 0x3f }
 func unpackZ(i uint32) uint32          { return i & 0xfffff }
@@ -99,7 +104,7 @@ type Call struct {
 }
 
 func (c Call) Encode(w binary.Writer) error {
-	apiFunction := packApiIndexFunctionID(c.ApiIndex, c.FunctionID)
+	apiFunction := PackAPIIndexFunctionID(c.ApiIndex, c.FunctionID)
 	w.Uint32(packCX(protocol.OpCall, setBit(apiFunction, 24, c.PushReturn)))
 	return w.Error()
 }
@@ -264,7 +269,7 @@ func (c SwitchThread) Encode(w binary.Writer) error {
 }
 
 // Decode returns the opcode decoded from decoder d.
-func Decode(r binary.Reader) (interface{}, error) {
+func Decode(r binary.Reader) (Opcode, error) {
 	i := r.Uint32()
 	if r.Error() != nil {
 		return nil, r.Error()
@@ -309,3 +314,21 @@ func Decode(r binary.Reader) (interface{}, error) {
 		return nil, fmt.Errorf("Unknown opcode with code %v", code)
 	}
 }
+
+func (Call) isOpcode()         {}
+func (PushI) isOpcode()        {}
+func (LoadC) isOpcode()        {}
+func (LoadV) isOpcode()        {}
+func (Load) isOpcode()         {}
+func (Pop) isOpcode()          {}
+func (StoreV) isOpcode()       {}
+func (Store) isOpcode()        {}
+func (Resource) isOpcode()     {}
+func (Post) isOpcode()         {}
+func (Copy) isOpcode()         {}
+func (Clone) isOpcode()        {}
+func (Strcpy) isOpcode()       {}
+func (Extend) isOpcode()       {}
+func (Add) isOpcode()          {}
+func (Label) isOpcode()        {}
+func (SwitchThread) isOpcode() {}
