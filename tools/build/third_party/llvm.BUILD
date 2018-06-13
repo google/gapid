@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@gapid//tools/build/third_party:llvm/rules.bzl", "llvm_sources", "tablegen")
+load("@gapid//tools/build/third_party:llvm/rules.bzl", "llvm_cc_copts", "llvm_sources", "tablegen")
 load("@gapid//tools/build/third_party:llvm/libs.bzl", "llvm_auto_libs")
 load("@gapid//tools/build/rules:cc.bzl", "cc_copts")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
@@ -245,7 +245,7 @@ cc_library(
         "lib/ExecutionEngine/RuntimeDyld/Targets/RuntimeDyldELFMips.cpp",
         "lib/ExecutionEngine/RuntimeDyld/**/*.h",
     ]),
-    copts = cc_copts() + select({
+    copts = llvm_cc_copts() + select({
         "@gapid//tools/build:windows": ["-D__STDC_FORMAT_MACROS"],
         "//conditions:default": [],
     }),
@@ -366,7 +366,7 @@ llvm_auto_libs(
 cc_binary(
     name = "llvm-tblgen",
     srcs = llvm_sources("utils/TableGen") + glob(["lib/Target/**/*.h"]),
-    copts = cc_copts(),
+    copts = llvm_cc_copts(),
     linkopts = select({
         "@gapid//tools/build:linux": [
             "-ldl",
