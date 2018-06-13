@@ -22,10 +22,8 @@
 #include "pack_encoder.h"
 
 #include "core/cc/assert.h"
-#include "core/cc/encoder.h"
 #include "core/cc/id.h"
 #include "core/cc/interval_list.h"
-#include "core/cc/null_encoder.h"
 #include "core/cc/vector.h"
 
 #include "core/memory/arena/cc/arena.h"

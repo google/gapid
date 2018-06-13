@@ -65,7 +65,6 @@ cc_test(
     srcs = [
         "connection_test.cpp",
         "crash_handler_test.cpp",
-        "encoder_test.cpp",
         "interval_list_test.cpp",
     ],
     copts = cc_copts(),
