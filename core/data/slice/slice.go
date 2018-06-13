@@ -18,6 +18,7 @@ package slice
 import (
 	"fmt"
 	"reflect"
+	"unsafe"
 )
 
 // New returns a new addressable slice value of type ty.
@@ -99,6 +100,12 @@ func Reverse(s interface{}) {
 		a.Set(b)
 		b.Set(tmp)
 	}
+}
+
+// Bytes returns a byte-slice from the given unsafe pointer of the given
+// size in bytes.
+func Bytes(ptr unsafe.Pointer, size uint64) []byte {
+	return ((*[1 << 30]byte)(ptr))[:size]
 }
 
 func replace(ptr, old reflect.Value, first, count int, with interface{}) {
