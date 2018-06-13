@@ -30,7 +30,7 @@ import "C"
 // Types augments the codegen.Types structure.
 type Types struct {
 	codegen.Types
-	Ctx             codegen.Type                        // context_t
+	Ctx             *codegen.Struct                     // context_t
 	CtxPtr          codegen.Type                        // context_t*
 	Pool            codegen.Type                        // pool_t
 	PoolPtr         codegen.Type                        // pool_t*
@@ -106,6 +106,8 @@ func (c *C) declareTypes() {
 	c.T.targetABI = c.Settings.TargetABI
 
 	c.T.Types = c.M.Types
+	c.T.Ctx = c.T.DeclareStruct("context")
+	c.T.CtxPtr = c.T.Pointer(c.T.Ctx)
 	c.T.Globals = c.T.DeclareStruct("globals")
 	c.T.GlobalsPtr = c.T.Pointer(c.T.Globals)
 	c.T.Pool = c.T.TypeOf(C.pool{})
