@@ -49,15 +49,20 @@ class VkXlibSurfaceCreateInfoKHR {
 
 @extension("VK_KHR_xlib_surface")
 @indirect("VkInstance")
+@custom
 cmd VkResult vkCreateXlibSurfaceKHR(
     VkInstance                        instance,
     const VkXlibSurfaceCreateInfoKHR* pCreateInfo,
     AllocationCallbacks               pAllocator,
     VkSurfaceKHR*                     pSurface) {
-  _ = pCreateInfo[0]
+  info := pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_XLIB
+
+  if info.pNext != null {
+    vkErrorNotNullPointer("const void* (pNext)")
+  }
 
   handle := ?
   pSurface[0] = handle
@@ -100,15 +105,20 @@ class VkXcbSurfaceCreateInfoKHR {
 
 @extension("VK_KHR_xcb_surface")
 @indirect("VkInstance")
+@custom
 cmd VkResult vkCreateXcbSurfaceKHR(
     VkInstance                       instance,
     const VkXcbSurfaceCreateInfoKHR* pCreateInfo,
     AllocationCallbacks              pAllocator,
     VkSurfaceKHR*                    pSurface) {
-  read(pCreateInfo[0:1])
+  info := pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_XCB
+
+  if info.pNext != null {
+    vkErrorNotNullPointer("const void* (pNext)")
+  }
 
   handle := ?
   pSurface[0] = handle
@@ -150,15 +160,20 @@ class VkWaylandSurfaceCreateInfoKHR {
 
 @extension("VK_KHR_wayland_surface")
 @indirect("VkInstance")
+@custom
 cmd VkResult vkCreateWaylandSurfaceKHR(
     VkInstance                           instance,
     const VkWaylandSurfaceCreateInfoKHR* pCreateInfo,
     AllocationCallbacks                  pAllocator,
     VkSurfaceKHR*                        pSurface) {
-  _ = pCreateInfo[0]
+  info := pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_WAYLAND
+
+  if info.pNext != null {
+    vkErrorNotNullPointer("const void* (pNext)")
+  }
 
   handle := ?
   pSurface[0] = handle
@@ -199,15 +214,20 @@ class VkMirSurfaceCreateInfoKHR {
 
 @extension("VK_KHR_mir_surface")
 @indirect("VkInstance")
+@custom
 cmd VkResult vkCreateMirSurfaceKHR(
     VkInstance                       instance,
     const VkMirSurfaceCreateInfoKHR* pCreateInfo,
     AllocationCallbacks              pAllocator,
     VkSurfaceKHR*                    pSurface) {
-  _ = pCreateInfo[0]
+  info := pCreateInfo[0]
   surface := new!SurfaceObject()
   surface.Instance = instance
   surface.Type = SURFACE_TYPE_MIR
+
+  if info.pNext != null {
+    vkErrorNotNullPointer("const void* (pNext)")
+  }
 
   handle := ?
   pSurface[0] = handle

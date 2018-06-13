@@ -611,6 +611,10 @@ bool Vulkan::replayDebugReportCallback(uint32_t flags, uint32_t objectType,
              "structure with unknown VkStructureType (-86);") != nullptr) {
     return false;
   }
+  if (strstr(pMessage,
+             "vkCreateXcbSurfaceKHR: value of pCreateInfo->pNext must be NULL") != nullptr) {
+    return false;
+  }
 
 
   std::ostringstream ss;

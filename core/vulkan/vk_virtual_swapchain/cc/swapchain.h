@@ -34,7 +34,7 @@ struct CreateNext {
 // with the same names. vkCreateVirtualSurface can be used interchangeably
 // with any vkCreate*Surface, since it ignores its pCreateInfo parameter.
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateVirtualSurface(
-    VkInstance instance, const void * /*pCreateInfo*/,
+    VkInstance instance, const CreateNext* pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkSurfaceKHR *pSurface);
 
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceSupportKHR(

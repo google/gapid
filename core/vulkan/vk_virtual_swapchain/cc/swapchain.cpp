@@ -41,15 +41,28 @@ void RegisterInstance(VkInstance instance, const InstanceData &data) {
   }
 }
 
-// For now VirtualSurface is empty. Once we start tracking more
-// information from the host, then we can start expanding
-// what we are able to expose here.
-struct VirtualSurface {};
+// The VirtualSurface is the surface we return to the application for all
+// vkCreateXXXSurface calls.
+struct VirtualSurface {
+  bool always_return_given_surface_formats_and_present_modes;
+};
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateVirtualSurface(
-    VkInstance instance, const void * /*pCreateInfo*/,
+    VkInstance instance, const CreateNext* pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkSurfaceKHR *pSurface) {
-  *pSurface = reinterpret_cast<VkSurfaceKHR>(new VirtualSurface());
+  auto* surf = new VirtualSurface();
+  surf->always_return_given_surface_formats_and_present_modes = false;
+  if (pCreateInfo != nullptr) {
+    for (const CreateNext *pNext =
+             static_cast<const CreateNext *>(pCreateInfo->pNext);
+         pNext != nullptr;
+         pNext = static_cast<const CreateNext *>(pNext->pNext)) {
+      if (pNext->sType == VIRTUAL_SWAPCHAIN_CREATE_PNEXT) {
+        surf->always_return_given_surface_formats_and_present_modes = true;
+      }
+    }
+  }
+  *pSurface = reinterpret_cast<VkSurfaceKHR>(surf);
   return VK_SUCCESS;
 }
 
@@ -125,7 +138,10 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
     uint32_t *pSurfaceFormatCount, VkSurfaceFormatKHR *pSurfaceFormats) {
-
+  VirtualSurface *suf = reinterpret_cast<VirtualSurface*>(surface);
+  if (suf->always_return_given_surface_formats_and_present_modes) {
+    return VK_SUCCESS;
+  }
   if (!pSurfaceFormats) {
     *pSurfaceFormatCount = 1;
     return VK_SUCCESS;
@@ -144,7 +160,10 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormatsKHR(
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
     uint32_t *pPresentModeCount, VkPresentModeKHR *pPresentModes) {
-
+  VirtualSurface *suf = reinterpret_cast<VirtualSurface*>(surface);
+  if (suf->always_return_given_surface_formats_and_present_modes) {
+    return VK_SUCCESS;
+  }
   if (!pPresentModes) {
     *pPresentModeCount = 1;
     return VK_SUCCESS;
@@ -187,7 +206,10 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
       device, queue, &pdd.physical_device_properties_, &pdd.memory_properties_,
       &dev_dat, pCreateInfo, pAllocator);
 
-  for (const CreateNext* pNext = static_cast<const CreateNext*>(pCreateInfo->pNext); pNext != nullptr; pNext = static_cast<const CreateNext*>(pNext->pNext)) {
+  for (const CreateNext *pNext =
+           static_cast<const CreateNext *>(pCreateInfo->pNext);
+       pNext != nullptr;
+       pNext = static_cast<const CreateNext *>(pNext->pNext)) {
     if (pNext->sType == VIRTUAL_SWAPCHAIN_CREATE_PNEXT) {
       swp->SetAlwaysGetAcquiredImage(true);
     }
@@ -207,7 +229,10 @@ vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain,
 
 VKAPI_ATTR void VKAPI_CALL
 vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface,
-                    const VkAllocationCallbacks *pAllocator) {}
+                    const VkAllocationCallbacks *pAllocator) {
+  VirtualSurface *suf = reinterpret_cast<VirtualSurface*>(surface);
+  delete suf;
+}
 
 VKAPI_ATTR VkResult VKAPI_CALL vkGetSwapchainImagesKHR(
     VkDevice device, VkSwapchainKHR swapchain, uint32_t *pSwapchainImageCount,

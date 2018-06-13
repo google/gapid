@@ -380,12 +380,24 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	l := s.MemoryLayout
 	o := a.Extras().Observations()
 	o.ApplyReads(s.Memory.ApplicationPool())
-	// Apply the write observation before having the replay device calling the vkAcquireNextImageKHR() command.
-	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
-	o.ApplyWrites(s.Memory.ApplicationPool())
+	// Apply the write observation before having the replay device calling the
+	// vkAcquireNextImageKHR() command. This is to pass the returned image index
+	// value captured in the trace, into the replay device to acquire for the
+	// specific image.
+	// Note that this is only necessary for building replay instructions
+	if b != nil {
+		o.ApplyWrites(s.Memory.ApplicationPool())
+	}
 	_ = a.PImageIndex().Slice(0, 1, l).MustRead(ctx, a, s, b)
+
 	if b != nil {
 		a.Call(ctx, s, b)
+	}
+
+	// When not building for replay instructions, apply write observations after
+	// the call
+	if b == nil {
+		o.ApplyWrites(s.Memory.ApplicationPool())
 	}
 	a.PImageIndex().Slice(0, 1, l).Write(ctx, a.PImageIndex().Slice(0, 1, l).MustRead(ctx, a, s, nil), a, s, b)
 	_ = a.Result()
@@ -394,6 +406,375 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	}
 	if a.Fence() != VkFence(0) {
 		GetState(s).Fences().Get(a.Fence()).SetSignaled(true)
+	}
+	return nil
+}
+
+type structWithPNext interface {
+	PNext() Voidᶜᵖ
+	SetPNext(v Voidᶜᵖ)
+}
+
+func insertVirtualSwapchainPNext(ctx context.Context, cmd api.Cmd, id api.CmdID,
+	info structWithPNext, g *api.GlobalState) (api.AllocResult, api.AllocResult) {
+	pNextData := g.AllocDataOrPanic(ctx, NewVulkanStructHeader(
+		g.Arena,
+		VkStructureType_VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN, // sType
+		0, // pNext
+	))
+	if info.PNext().IsNullptr() {
+		info.SetPNext(NewVoidᶜᵖ(pNextData.Ptr()))
+	} else {
+		pNext := NewVoidᵖ(info.PNext())
+		for !pNext.IsNullptr() {
+			structHeader := NewVulkanStructHeaderᵖ(pNext).MustRead(ctx, cmd, g, nil)
+			if !structHeader.PNext().IsNullptr() {
+				structHeader.SetPNext(NewVoidᵖ(pNextData.Ptr()))
+				break
+			}
+			pNext = structHeader.PNext()
+		}
+	}
+	newInfoData := g.AllocDataOrPanic(ctx, info)
+	return newInfoData, pNextData
+}
+
+func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b)
+	}
+	// When building replay instructions, insert a pNext struct to enable the
+	// virtual surface on the replay device.
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	newInfoData, pNextData := insertVirtualSwapchainPNext(ctx, c, id, c.PCreateInfo().MustRead(ctx, c, g, nil), g)
+	defer newInfoData.Free()
+	defer pNextData.Free()
+	cb := CommandBuilder{Thread: c.Thread(), Arena: g.Arena}
+	hijack := cb.VkCreateXlibSurfaceKHR(
+		c.Instance(), newInfoData.Ptr(), c.PAllocator(), c.PSurface(), c.Result(),
+	).AddRead(newInfoData.Data()).AddRead(pNextData.Data())
+	for _, r := range c.Extras().Observations().Reads {
+		hijack.AddRead(r.Range, r.ID)
+	}
+	for _, w := range c.Extras().Observations().Writes {
+		hijack.AddWrite(w.Range, w.ID)
+	}
+	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
+	if (info.PNext()) != (Voidᶜᵖ(0)) {
+		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
+		for i := uint32(0); i < numPNext; i++ {
+			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
+			next.SetPtr(VulkanStructHeaderᵖ(next.Ptr()).MustRead(ctx, hijack, g, b).PNext())
+		}
+	}
+	surface := NewSurfaceObjectʳ(
+		g.Arena, VkInstance(0), VkSurfaceKHR(0), SurfaceType(0),
+		NilVulkanDebugMarkerInfoʳ, NewVkPhysicalDeviceːQueueFamilySupportsʳᵐ(g.Arena))
+	surface.SetInstance(hijack.Instance())
+	surface.SetType(SurfaceType_SURFACE_TYPE_XLIB)
+
+	hijack.Call(ctx, g, b)
+
+	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
+	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	surface.SetVulkanHandle(handle)
+	GetState(g).Surfaces().Add(handle, surface)
+	hijack.Result()
+	return nil
+}
+
+func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b)
+	}
+	// When building replay instructions, insert a pNext struct to enable the
+	// virtual surface on the replay device.
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	newInfoData, pNextData := insertVirtualSwapchainPNext(ctx, c, id, c.PCreateInfo().MustRead(ctx, c, g, nil), g)
+	defer newInfoData.Free()
+	defer pNextData.Free()
+	cb := CommandBuilder{Thread: c.Thread(), Arena: g.Arena}
+	hijack := cb.VkCreateXcbSurfaceKHR(
+		c.Instance(), newInfoData.Ptr(), c.PAllocator(), c.PSurface(), c.Result(),
+	).AddRead(newInfoData.Data()).AddRead(pNextData.Data())
+	for _, r := range c.Extras().Observations().Reads {
+		hijack.AddRead(r.Range, r.ID)
+	}
+	for _, w := range c.Extras().Observations().Writes {
+		hijack.AddWrite(w.Range, w.ID)
+	}
+
+	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
+	if (info.PNext()) != (Voidᶜᵖ(0)) {
+		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
+		for i := uint32(0); i < numPNext; i++ {
+			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
+			next.SetPtr(VulkanStructHeaderᵖ(next.Ptr()).MustRead(ctx, hijack, g, b).PNext())
+		}
+	}
+	surface := NewSurfaceObjectʳ(
+		g.Arena, VkInstance(0), VkSurfaceKHR(0), SurfaceType(0),
+		NilVulkanDebugMarkerInfoʳ, NewVkPhysicalDeviceːQueueFamilySupportsʳᵐ(g.Arena))
+	surface.SetInstance(hijack.Instance())
+	surface.SetType(SurfaceType_SURFACE_TYPE_XCB)
+
+	hijack.Call(ctx, g, b)
+
+	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
+	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	surface.SetVulkanHandle(handle)
+	GetState(g).Surfaces().Add(handle, surface)
+	hijack.Result()
+	return nil
+}
+
+func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b)
+	}
+	// When building replay instructions, insert a pNext struct to enable the
+	// virtual surface on the replay device.
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	newInfoData, pNextData := insertVirtualSwapchainPNext(ctx, c, id, c.PCreateInfo().MustRead(ctx, c, g, nil), g)
+	defer newInfoData.Free()
+	defer pNextData.Free()
+	cb := CommandBuilder{Thread: c.Thread(), Arena: g.Arena}
+	hijack := cb.VkCreateWaylandSurfaceKHR(
+		c.Instance(), newInfoData.Ptr(), c.PAllocator(), c.PSurface(), c.Result(),
+	).AddRead(newInfoData.Data()).AddRead(pNextData.Data())
+	for _, r := range c.Extras().Observations().Reads {
+		hijack.AddRead(r.Range, r.ID)
+	}
+	for _, w := range c.Extras().Observations().Writes {
+		hijack.AddWrite(w.Range, w.ID)
+	}
+	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
+	if (info.PNext()) != (Voidᶜᵖ(0)) {
+		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
+		for i := uint32(0); i < numPNext; i++ {
+			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
+			next.SetPtr(VulkanStructHeaderᵖ(next.Ptr()).MustRead(ctx, hijack, g, b).PNext())
+		}
+	}
+	surface := NewSurfaceObjectʳ(
+		g.Arena, VkInstance(0), VkSurfaceKHR(0), SurfaceType(0),
+		NilVulkanDebugMarkerInfoʳ, NewVkPhysicalDeviceːQueueFamilySupportsʳᵐ(g.Arena))
+	surface.SetInstance(hijack.Instance())
+	surface.SetType(SurfaceType_SURFACE_TYPE_WAYLAND)
+
+	hijack.Call(ctx, g, b)
+
+	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
+	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	surface.SetVulkanHandle(handle)
+	GetState(g).Surfaces().Add(handle, surface)
+	hijack.Result()
+	return nil
+}
+
+func (c *VkCreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b)
+	}
+	// When building replay instructions, insert a pNext struct to enable the
+	// virtual surface on the replay device.
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	newInfoData, pNextData := insertVirtualSwapchainPNext(ctx, c, id, c.PCreateInfo().MustRead(ctx, c, g, nil), g)
+	defer newInfoData.Free()
+	defer pNextData.Free()
+	cb := CommandBuilder{Thread: c.Thread(), Arena: g.Arena}
+	hijack := cb.VkCreateMirSurfaceKHR(
+		c.Instance(), newInfoData.Ptr(), c.PAllocator(), c.PSurface(), c.Result(),
+	).AddRead(newInfoData.Data()).AddRead(pNextData.Data())
+	for _, r := range c.Extras().Observations().Reads {
+		hijack.AddRead(r.Range, r.ID)
+	}
+	for _, w := range c.Extras().Observations().Writes {
+		hijack.AddWrite(w.Range, w.ID)
+	}
+	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
+	if (info.PNext()) != (Voidᶜᵖ(0)) {
+		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
+		for i := uint32(0); i < numPNext; i++ {
+			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
+			next.SetPtr(VulkanStructHeaderᵖ(next.Ptr()).MustRead(ctx, hijack, g, b).PNext())
+		}
+	}
+	surface := NewSurfaceObjectʳ(
+		g.Arena, VkInstance(0), VkSurfaceKHR(0), SurfaceType(0),
+		NilVulkanDebugMarkerInfoʳ, NewVkPhysicalDeviceːQueueFamilySupportsʳᵐ(g.Arena))
+	surface.SetInstance(hijack.Instance())
+	surface.SetType(SurfaceType_SURFACE_TYPE_MIR)
+
+	hijack.Call(ctx, g, b)
+
+	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
+	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	surface.SetVulkanHandle(handle)
+	GetState(g).Surfaces().Add(handle, surface)
+	hijack.Result()
+	return nil
+}
+
+func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b)
+	}
+	// When building replay instructions, insert a pNext struct to enable the
+	// virtual surface on the replay device.
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	newInfoData, pNextData := insertVirtualSwapchainPNext(ctx, c, id, c.PCreateInfo().MustRead(ctx, c, g, nil), g)
+	defer newInfoData.Free()
+	defer pNextData.Free()
+	cb := CommandBuilder{Thread: c.Thread(), Arena: g.Arena}
+	hijack := cb.VkCreateWin32SurfaceKHR(
+		c.Instance(), newInfoData.Ptr(), c.PAllocator(), c.PSurface(), c.Result(),
+	).AddRead(newInfoData.Data()).AddRead(pNextData.Data())
+	for _, r := range c.Extras().Observations().Reads {
+		hijack.AddRead(r.Range, r.ID)
+	}
+	for _, w := range c.Extras().Observations().Writes {
+		hijack.AddWrite(w.Range, w.ID)
+	}
+	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
+	if (info.PNext()) != (Voidᶜᵖ(0)) {
+		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
+		for i := uint32(0); i < numPNext; i++ {
+			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
+			next.SetPtr(VulkanStructHeaderᵖ(next.Ptr()).MustRead(ctx, hijack, g, b).PNext())
+		}
+	}
+	surface := NewSurfaceObjectʳ(
+		g.Arena, VkInstance(0), VkSurfaceKHR(0), SurfaceType(0),
+		NilVulkanDebugMarkerInfoʳ, NewVkPhysicalDeviceːQueueFamilySupportsʳᵐ(g.Arena))
+	surface.SetInstance(hijack.Instance())
+	surface.SetType(SurfaceType_SURFACE_TYPE_WIN32)
+
+	hijack.Call(ctx, g, b)
+
+	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
+	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	surface.SetVulkanHandle(handle)
+	GetState(g).Surfaces().Add(handle, surface)
+	hijack.Result()
+	return nil
+}
+
+func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b)
+	}
+	// When building replay instructions, insert a pNext struct to enable the
+	// virtual surface on the replay device.
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	newInfoData, pNextData := insertVirtualSwapchainPNext(ctx, c, id, c.PCreateInfo().MustRead(ctx, c, g, nil), g)
+	defer newInfoData.Free()
+	defer pNextData.Free()
+	cb := CommandBuilder{Thread: c.Thread(), Arena: g.Arena}
+	hijack := cb.VkCreateAndroidSurfaceKHR(
+		c.Instance(), newInfoData.Ptr(), c.PAllocator(), c.PSurface(), c.Result(),
+	).AddRead(newInfoData.Data()).AddRead(pNextData.Data())
+	for _, r := range c.Extras().Observations().Reads {
+		hijack.AddRead(r.Range, r.ID)
+	}
+	for _, w := range c.Extras().Observations().Writes {
+		hijack.AddWrite(w.Range, w.ID)
+	}
+	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
+	if (info.PNext()) != (Voidᶜᵖ(0)) {
+		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
+		for i := uint32(0); i < numPNext; i++ {
+			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
+			next.SetPtr(VulkanStructHeaderᵖ(next.Ptr()).MustRead(ctx, hijack, g, b).PNext())
+		}
+	}
+	surface := NewSurfaceObjectʳ(
+		g.Arena, VkInstance(0), VkSurfaceKHR(0), SurfaceType(0),
+		NilVulkanDebugMarkerInfoʳ, NewVkPhysicalDeviceːQueueFamilySupportsʳᵐ(g.Arena))
+	surface.SetInstance(hijack.Instance())
+	surface.SetType(SurfaceType_SURFACE_TYPE_ANDROID)
+
+	hijack.Call(ctx, g, b)
+
+	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
+	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	surface.SetVulkanHandle(handle)
+	GetState(g).Surfaces().Add(handle, surface)
+	hijack.Result()
+	return nil
+}
+
+func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b)
+	}
+	// When building replay instructions, apply the write observations so that
+	// the returned surface format count and formats, which are captured in
+	// the trace, will be passed to the virtual swapchain. This is to cheat
+	// the validation layers, as the returned surface formats will always match
+	// with the format used in the trace.
+	l := g.MemoryLayout
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	c.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	givenCount := c.PSurfaceFormatCount().MustRead(ctx, c, g, b)
+	if (c.PSurfaceFormats()) != (VkSurfaceFormatKHRᵖ(0)) {
+		c.PSurfaceFormats().Slice(0, uint64(givenCount), l).OnRead(ctx, c, g, b)
+	}
+	c.Call(ctx, g, b)
+	c.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	if (c.PSurfaceFormats()) == (VkSurfaceFormatKHRᵖ(0)) {
+		c.PSurfaceFormatCount().MustWrite(ctx, c.PSurfaceFormatCount().MustRead(ctx, c, g, nil), c, g, b)
+	} else {
+		count := c.PSurfaceFormatCount().MustRead(ctx, c, g, nil)
+		formats := c.PSurfaceFormats().Slice(0, uint64(count), l)
+		for i := uint32(0); i < count; i++ {
+			formats.Index(uint64(i)).MustWrite(ctx, []VkSurfaceFormatKHR{c.PSurfaceFormats().Slice(uint64(uint32(0)), uint64(count), l).Index(uint64(i)).MustRead(ctx, c, g, nil)[0]}, c, g, b)
+		}
+		c.PSurfaceFormatCount().MustWrite(ctx, count, c, g, b)
+	}
+	return nil
+}
+
+func (c *VkGetPhysicalDeviceSurfacePresentModesKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b)
+	}
+	l := g.MemoryLayout
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	c.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	givenCount := c.PPresentModeCount().MustRead(ctx, c, g, b)
+	if (c.PPresentModes()) != (VkPresentModeKHRᵖ(0)) {
+		c.PPresentModes().Slice(0, uint64(givenCount), l).OnRead(ctx, c, g, b)
+	}
+	c.Call(ctx, g, b)
+	c.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	if (c.PPresentModes()) == (VkPresentModeKHRᵖ(0)) {
+		c.PPresentModeCount().MustWrite(ctx, c.PPresentModeCount().MustRead(ctx, c, g, nil), c, g, b)
+	} else {
+		count := c.PPresentModeCount().MustRead(ctx, c, g, nil)
+		modes := c.PPresentModes().Slice(0, uint64(count), l)
+		for i := uint32(0); i < count; i++ {
+			modes.Index(uint64(i)).MustWrite(ctx, []VkPresentModeKHR{c.PPresentModes().Slice(0, uint64(count), l).Index(uint64(i)).MustRead(ctx, c, g, nil)[0]}, c, g, b)
+		}
+		c.PPresentModeCount().MustWrite(ctx, count, c, g, b)
 	}
 	return nil
 }

@@ -38,15 +38,20 @@ class VkWin32SurfaceCreateInfoKHR {
 
 @extension("VK_KHR_win32_surface")
 @indirect("VkInstance")
+@custom
 cmd VkResult vkCreateWin32SurfaceKHR(
         VkInstance                              instance,
         const VkWin32SurfaceCreateInfoKHR*      pCreateInfo,
         AllocationCallbacks                     pAllocator,
         VkSurfaceKHR*                           pSurface) {
-    surface := createWin32SurfaceObject(pCreateInfo)
-
+    info := pCreateInfo[0]
+    surface := new!SurfaceObject()
     surface.Instance = instance
     surface.Type = SURFACE_TYPE_WIN32
+
+    if info.pNext != null {
+      vkErrorNotNullPointer("const void* (pNext)")
+    }
 
     handle := ?
     pSurface[0] = handle
@@ -62,14 +67,4 @@ cmd VkBool32 vkGetPhysicalDeviceWin32PresentationSupportKHR(
     VkPhysicalDevice                            physicalDevice,
     u32                                         queueFamilyIndex) {
     return ?
-}
-
-sub ref!SurfaceObject createWin32SurfaceObject(const VkWin32SurfaceCreateInfoKHR* data) {
-    object := new!SurfaceObject()
-    _ = data[0]
-
-    // TODO: pNext
-    // TODO: window?
-
-    return object
 }
