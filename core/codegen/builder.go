@@ -50,13 +50,28 @@ func fail(msg string, args ...interface{}) {
 
 // Call invokes the function f with the specified arguments
 func (b *Builder) Call(f Function, args ...*Value) *Value {
-	sig := f.Type.Signature
+	return b.call(f.llvm, f.Type.Signature, f.Name, args)
+}
+
+// CallIndirect invokes the function pointer f with the specified arguments
+func (b *Builder) CallIndirect(f *Value, args ...*Value) *Value {
+	var fty *FunctionType
+	if ptrTy, ok := f.Type().(Pointer); ok {
+		fty, _ = ptrTy.Element.(*FunctionType)
+	}
+	if fty == nil {
+		fail("CallIndirect() can only be called with function pointers. Got %v", f.Type())
+	}
+	return b.call(f.llvm, fty.Signature, f.name, args)
+}
+
+func (b *Builder) call(v llvm.Value, sig Signature, name string, args []*Value) *Value {
 	if sig.Variadic {
 		if g, e := len(args), len(sig.Parameters); g < e {
-			fail("Got %d arguments, but needed %d to call %v", g, e, f)
+			fail("Got %d arguments, but needed %d to call %v", g, e, sig)
 		}
 	} else if g, e := len(args), len(sig.Parameters); g != e {
-		fail("Got %d arguments, but needed %d to call %v", g, e, f)
+		fail("Got %d arguments, but needed %d to call %v", g, e, sig)
 	}
 	l := make([]llvm.Value, len(args))
 	for i, a := range args {
@@ -64,15 +79,14 @@ func (b *Builder) Call(f Function, args ...*Value) *Value {
 		if i < len(sig.Parameters) {
 			if g, e := a.ty, sig.Parameters[i]; g != e {
 				fail("Incorrect argument type for parameter %d when calling %v: Got %v, expected %v",
-					i, f, g.TypeName(), e.TypeName())
+					i, sig, g.TypeName(), e.TypeName())
 			}
 		}
 	}
-	name := f.Name
-	if f.Type.Signature.Result == b.m.Types.Void {
+	if sig.Result == b.m.Types.Void {
 		name = ""
 	}
-	return b.val(f.Type.Signature.Result, b.llvm.CreateCall(f.llvm, l, name))
+	return b.val(sig.Result, b.llvm.CreateCall(v, l, name))
 }
 
 // Parameter returns i'th function parameter
@@ -269,6 +283,11 @@ func (b *Builder) IsBlockTerminated() bool {
 func (b *Builder) GlobalString(s string) *Value {
 	tys := b.m.Types
 	return b.val(tys.Pointer(tys.Uint8), b.llvm.CreateGlobalStringPtr(s, "str"))
+}
+
+// FuncAddr returns the pointer to the given function.
+func (b *Builder) FuncAddr(f Function) *Value {
+	return b.val(b.m.Types.Pointer(f.Type), f.llvm)
 }
 
 // block calls f to appends instructions to the specified block.
