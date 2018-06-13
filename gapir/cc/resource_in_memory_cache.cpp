@@ -37,9 +37,9 @@ std::unique_ptr<ResourceInMemoryCache> ResourceInMemoryCache::create(
 ResourceInMemoryCache::ResourceInMemoryCache(std::unique_ptr<ResourceProvider> fallbackProvider,
                                              void* buffer)
         : ResourceCache(std::move(fallbackProvider))
+        , mHead(new Block(0, 0))
         , mBuffer(static_cast<uint8_t*>(buffer))
-        , mBufferSize(0)
-        , mHead(new Block(0, 0)) {
+        , mBufferSize(0) {
 }
 
 ResourceInMemoryCache::~ResourceInMemoryCache() {

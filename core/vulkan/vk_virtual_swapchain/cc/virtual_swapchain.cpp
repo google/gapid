@@ -57,14 +57,17 @@ VirtualSwapchain::VirtualSwapchain(
       num_images_(_swapchain_info->minImageCount == 0
                       ? 1
                       : _swapchain_info->minImageCount),
-      image_data_(num_images_), should_close_(false),
-      device_(device), queue_(queue),
-      functions_(functions), pending_image_timeout_in_milliseconds_(
+      width_(_swapchain_info->imageExtent.width),
+      height_(_swapchain_info->imageExtent.height),
+      image_data_(num_images_),
+      device_(device),
+      should_close_(false),
+      callback_(null_callback),
+      queue_(queue),
+      functions_(functions),
+      pending_image_timeout_in_milliseconds_(
                                  pending_image_timeout_in_milliseconds),
       always_get_acquired_image_(always_get_acquired_image) {
-  callback_ = null_callback;
-  width_ = _swapchain_info->imageExtent.width;
-  height_ = _swapchain_info->imageExtent.height;
   VkPhysicalDeviceMemoryProperties properties = *memory_properties;
   build_swapchain_image_data_ = [this, properties, pAllocator]() {
       SwapchainImageData image_data;

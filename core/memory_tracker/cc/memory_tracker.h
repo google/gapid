@@ -314,10 +314,6 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
         l_(),
         ranges_(),
         dirty_pages_(),
-#define CONSTRUCT_LOCKED(function) \
-  function(this, &MemoryTrackerImpl::function##Impl, &l_)
-        CONSTRUCT_LOCKED(HandleSegfault),
-#undef CONSTRUCT_LOCKED
 #define CONSTRUCT_SIGNAL_SAFE(function) \
   function(this, &MemoryTrackerImpl::function##Impl, &l_, SIGSEGV)
         CONSTRUCT_SIGNAL_SAFE(AddTrackingRange),
@@ -328,8 +324,12 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
         CONSTRUCT_SIGNAL_SAFE(GetAndResetDirtyPagesInRange),
         CONSTRUCT_SIGNAL_SAFE(ClearTrackingRanges),
         CONSTRUCT_SIGNAL_SAFE(EnableMemoryTracker),
-        CONSTRUCT_SIGNAL_SAFE(DisableMemoryTracker)
+        CONSTRUCT_SIGNAL_SAFE(DisableMemoryTracker),
 #undef CONSTRUCT_SIGNAL_SAFE
+#define CONSTRUCT_LOCKED(function) \
+  function(this, &MemoryTrackerImpl::function##Impl, &l_)
+        CONSTRUCT_LOCKED(HandleSegfault)
+#undef CONSTRUCT_LOCKED
   {
   }
   // Not copyable, not movable.
