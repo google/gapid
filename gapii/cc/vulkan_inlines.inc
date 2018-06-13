@@ -40,13 +40,14 @@ inline void VulkanSpy::vkErrInvalidDescriptorArrayElement(CallObserver*, uint64_
 }
 
 inline void VulkanSpy::vkErrCommandBufferIncomplete(CallObserver*, VkCommandBuffer cmdbuf) {
-    GAPID_WARNING("Error: Executing command buffer %llu was not in the COMPLETED state", cmdbuf)
+    GAPID_WARNING("Error: Executing command buffer %zu was not in the COMPLETED state", cmdbuf)
 }
 
 inline void VulkanSpy::vkErrInvalidImageLayout(CallObserver*, VkImage img, uint32_t aspect, uint32_t layer, uint32_t level, uint32_t layout, uint32_t expectedLayout) {
-  GAPID_WARNING("Error: Image subresource at Image: %llu, AspectBit: %lu, Layer: %lu, Level: %lu was in layout %lu, but was expected to be in layout %lu", img, aspect, layer, level, layout, expectedLayout);
+    GAPID_WARNING("Error: Image subresource at Image: %" PRIu64 ", AspectBit: %" PRIu32 ", Layer: %" PRIu32 ", Level: %" PRIu32 " was in layout %" PRIu32 ", but was expected to be in layout %" PRIu32,
+        img, aspect, layer, level, layout, expectedLayout);
 }
 
 inline void VulkanSpy::vkErrInvalidImageSubresource(CallObserver*, VkImage img, std::string subresourceType, uint32_t value) {
-    GAPID_WARNING("Error: Accessing invalid image subresource at Image: %llu, %s: %llu", img, subresourceType.c_str(), value);
+    GAPID_WARNING("Error: Accessing invalid image subresource at Image: %" PRIu64 ", %s: %" PRIu32, img, subresourceType.c_str(), value);
 }

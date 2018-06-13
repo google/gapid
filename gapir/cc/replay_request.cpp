@@ -20,6 +20,9 @@
 
 #include "core/cc/log.h"
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #include <string.h>
 
 #include <string>
@@ -59,17 +62,17 @@ std::unique_ptr<ReplayRequest> ReplayRequest::create(ReplayConnection* conn,
   GAPID_DEBUG("Volatile memory size: %d", req->mVolatileMemorySize);
   req->mConstantMemory = {memoryManager->getConstantAddress(),
                           payload->constants_size()};
-  GAPID_DEBUG("Constant memory size: %d", payload->constants_size());
+  GAPID_DEBUG("Constant memory size: %zu", payload->constants_size());
   req->mResources.reserve(payload->resource_info_count());
   for (size_t i = 0; i < payload->resource_info_count(); i++) {
     req->mResources.emplace_back(payload->resource_id(i),
                                  payload->resource_size(i));
   }
-  GAPID_DEBUG("Resources: %d", req->mResources.size());
+  GAPID_DEBUG("Resources: %zu", req->mResources.size());
   const uint32_t instCount = payload->opcodes_size() / sizeof(uint32_t);
   req->mInstructionList = {
       static_cast<uint32_t*>(memoryManager->getOpcodeAddress()), instCount};
-  GAPID_DEBUG("Instruction count: %d", instCount);
+  GAPID_DEBUG("Instruction count: %" PRIu32, instCount);
   return req;
 }
 

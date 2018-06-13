@@ -57,7 +57,7 @@ void ResourceInMemoryCache::prefetch(const Resource*         resources,
     if (temp == nullptr) {
         return;
     }
-    GAPID_DEBUG("ResourceInMemoryCache::prefetch(count: %d, mBufferSize: %d, tempSize: %d)", count, mBufferSize, tempSize);
+    GAPID_DEBUG("ResourceInMemoryCache::prefetch(count: %zu, mBufferSize: %zu, tempSize: %zu)", count, mBufferSize, tempSize);
     Batch batch(temp, tempSize);
     size_t space = mBufferSize;
     for (size_t i = 0; i < count; i++) {
@@ -87,7 +87,7 @@ void ResourceInMemoryCache::clear() {
 }
 
 void ResourceInMemoryCache::resize(size_t newSize) {
-    GAPID_DEBUG("Cache resizing: %d -> %d", mBufferSize, newSize);
+    GAPID_DEBUG("Cache resizing: %zu -> %zu", mBufferSize, newSize);
     if (newSize == mBufferSize) {
         return; // No change.
     }

@@ -32,6 +32,9 @@
 #include "core/cc/target.h"
 #include "core/cc/gl/formats.h"
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #include <cstdlib>
 #include <sstream>
 #include <string>
@@ -111,7 +114,7 @@ void Context::prefetch(ResourceInMemoryCache* cache) const {
 
     auto resources = mReplayRequest->getResources();
     if (resources.size() > 0) {
-        GAPID_INFO("Prefetching %d resources...", resources.size());
+        GAPID_INFO("Prefetching %zu resources...", resources.size());
         mResourceProvider->prefetch(resources.data(), resources.size(), mConnection,
                                     mMemoryManager->getVolatileAddress(),
                                     mReplayRequest->getVolatileMemorySize());
@@ -248,12 +251,12 @@ void Context::registerCallbacks(Interpreter* interpreter) {
     interpreter->registerBuiltin(Gles::INDEX, Builtins::ReplayUnbindRenderer, [this, interpreter](uint32_t label, Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
-            GAPID_DEBUG("[%u]replayUnbindRenderer(%u)", label, id);
+            GAPID_DEBUG("[%u]replayUnbindRenderer(%" PRIu32 ")", label, id);
             auto renderer = mGlesRenderers[id];
             renderer->unbind();
             Api* api = renderer->api();
             // interpreter->setRendererFunctions(api->index(), nullptr);
-            GAPID_DEBUG("[%u]Unbound renderer %u", label);
+            GAPID_DEBUG("[%u]Unbound renderer %" PRIu32, label, id);
             return true;
         }
         else {
@@ -279,7 +282,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
 
         if (stack->isValid()) {
-            GAPID_DEBUG("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x)",
+            GAPID_DEBUG("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x, %s)",
                     label,
                     backbuffer.width,
                     backbuffer.height,
@@ -289,7 +292,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                     resetViewportScissor ? "true" : "false");
             auto renderer = mGlesRenderers[id];
             if (renderer == nullptr) {
-                GAPID_WARNING("[%u]replayChangeBackbuffer called with unknown renderer %d", label, renderer);
+                GAPID_WARNING("[%u]replayChangeBackbuffer called with unknown renderer %" PRIu32, label, id);
                 return false;
             }
             renderer->setBackbuffer(backbuffer);
@@ -654,11 +657,11 @@ bool Context::startTimer(Stack* stack) {
     size_t index = static_cast<size_t>(stack->pop<uint8_t>());
     if (stack->isValid()) {
         if (index < MAX_TIMERS) {
-            GAPID_INFO("startTimer(%d)", index);
+            GAPID_INFO("startTimer(%zu)", index);
             mTimers[index].Start();
             return true;
         } else {
-            GAPID_WARNING("StartTimer called with invalid index %d", index);
+            GAPID_WARNING("StartTimer called with invalid index %zu", index);
         }
     } else {
         GAPID_WARNING("Error while calling function StartTimer");
@@ -670,14 +673,14 @@ bool Context::stopTimer(Stack* stack, bool pushReturn) {
     size_t index = static_cast<size_t>(stack->pop<uint8_t>());
     if (stack->isValid()) {
         if (index < MAX_TIMERS) {
-            GAPID_INFO("stopTimer(%d)", index);
+            GAPID_INFO("stopTimer(%zu)", index);
             uint64_t ns = mTimers[index].Stop();
             if (pushReturn) {
                 stack->push(ns);
             }
             return true;
         } else {
-            GAPID_WARNING("StopTimer called with invalid index %d", index);
+            GAPID_WARNING("StopTimer called with invalid index %zu", index);
         }
     } else {
         GAPID_WARNING("Error while calling function StopTimer");

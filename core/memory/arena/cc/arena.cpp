@@ -24,6 +24,9 @@
 #include <cstdlib>
 #include <cstring>
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID) || \
     (TARGET_OS == GAPID_OS_OSX)
 #include <sys/mman.h>
@@ -282,21 +285,21 @@ void Arena::dump_allocator_stats() const {
   }
 
   GAPID_ERROR("----------------- ARENA STATS -----------------");
-  GAPID_ERROR("Num Chunks: %35d", chunks_.size());
-  GAPID_ERROR("Num Dedicated Allocations: %20d", dedicated_allocations_.size());
-  GAPID_ERROR("Total Memory Reserved: %24d",
+  GAPID_ERROR("Num Chunks: %35zu", chunks_.size());
+  GAPID_ERROR("Num Dedicated Allocations: %20zu", dedicated_allocations_.size());
+  GAPID_ERROR("Total Memory Reserved: %24" PRIu32,
               total_chunk_memory + total_dedicated_memory);
-  GAPID_ERROR("Total Memory Reserved [Chunks]: %15d", total_chunk_memory);
-  GAPID_ERROR("Total Memory Reserved [Dedicated]: %12d",
+  GAPID_ERROR("Total Memory Reserved [Chunks]: %15" PRIu32, total_chunk_memory);
+  GAPID_ERROR("Total Memory Reserved [Dedicated]: %12" PRIu32,
               total_dedicated_memory);
-  GAPID_ERROR("Total Memory Used [Chunks]: %19d", total_used_chunk_memory);
-  GAPID_ERROR("Total Memory Used [Dedicated]: %16d",
+  GAPID_ERROR("Total Memory Used [Chunks]: %19" PRIu32, total_used_chunk_memory);
+  GAPID_ERROR("Total Memory Used [Dedicated]: %16" PRIu32,
               total_used_dedicated_memory);
-  GAPID_ERROR("Memory Overhead [Headers]: %20d", total_header_memory);
+  GAPID_ERROR("Memory Overhead [Headers]: %20" PRIu32, total_header_memory);
   GAPID_ERROR(
-      "Memory Overhead [Unused]: %21d",
+      "Memory Overhead [Unused]: %21" PRIu32,
       total_chunk_memory - total_header_memory - total_used_chunk_memory);
-  GAPID_ERROR("Memory Overhead [Dedicated]: %18d",
+  GAPID_ERROR("Memory Overhead [Dedicated]: %18" PRIu32,
               total_dedicated_memory - total_used_dedicated_memory);
   GAPID_ERROR("Memory Efficiency [Chunks] %20f",
               (float)total_used_chunk_memory / (float)total_chunk_memory);
@@ -312,7 +315,7 @@ void Arena::dump_allocator_stats() const {
          node = node->next) {
       freelist_count += 1;
     }
-    GAPID_ERROR("Freelist [%6d]: %28d", 1 << (kMinBlockSizePower + i),
+    GAPID_ERROR("Freelist [%6" PRIu32 "]: %28" PRIu32, 1 << (kMinBlockSizePower + i),
                 freelist_count);
     i++;
   }

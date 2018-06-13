@@ -185,7 +185,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateInstance(
 
     mImports.vkEnumerateInstanceExtensionProperties =
         reinterpret_cast<VulkanImports::PFNVKENUMERATEINSTANCEEXTENSIONPROPERTIES>(get_instance_proc_addr(*pInstance, "vkEnumerateInstanceExtensionProperties"));
-    GAPID_DEBUG("Registering instance functions for %p", *pInstance);
+    GAPID_DEBUG("Registering instance functions for %p", pInstance);
 
     // Add this instance, along with the vkGetInstanceProcAddr to our
     // map. This way when someone calls vkGetInstanceProcAddr, we can forward
