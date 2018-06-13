@@ -40,7 +40,7 @@ using namespace gapii;
 ¶
 const uint8_t GvrAPI = {{$.Index}};
 ¶
-extern "C" {«
+namespace gapii {«
 ¶
   {{range $c := AllCommands $}}
     {{$name := Macro "CmdName" $c}}
@@ -57,5 +57,6 @@ extern "C" {«
     }
   {{end}}
 ¶
-  »} // extern "C"
+»} // namespace gapii
+¶
 {{end}}

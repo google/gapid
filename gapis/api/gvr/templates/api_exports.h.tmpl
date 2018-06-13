@@ -30,8 +30,6 @@
 ¶
 namespace gapii {«
 ¶
-extern "C" {«
-¶
 {{range $c := AllCommands $}}
   {{$name := Macro "CmdName" $c}}
   EXPORT {{Template "C++.ReturnType" $c}} STDCALL {{$name}}({{Template "C++.CallParameters" $c}});
@@ -39,5 +37,4 @@ extern "C" {«
 ¶
 »} // namespace gapii
 ¶
-»} // extern "C"
 {{end}}
