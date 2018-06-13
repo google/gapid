@@ -23,8 +23,7 @@ func (c *C) declareContextType() {
 	fields := c.T.FieldsOf(C.context{})
 
 	// Append all the plugin context fields.
-	for _, p := range c.plugins {
-		if p, ok := p.(ContextDataPlugin); ok {
+	c.plugins.foreach(func(p ContextDataPlugin) {
 			customFields := p.ContextData(c)
 			for _, f := range customFields {
 				fields = append(fields, codegen.Field{
@@ -33,8 +32,7 @@ func (c *C) declareContextType() {
 				})
 			}
 			c.T.customCtxFields = append(c.T.customCtxFields, customFields...)
-		}
-	}
+	})
 
 	c.T.Ctx = c.T.Struct("context", fields...)
 	c.T.CtxPtr = c.T.Pointer(c.T.Ctx)

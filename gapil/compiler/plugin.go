@@ -14,7 +14,11 @@
 
 package compiler
 
-import "github.com/google/gapid/core/codegen"
+import (
+	"reflect"
+
+	"github.com/google/gapid/core/codegen"
+)
 
 // Plugin is a extension for the compiler.
 type Plugin interface {
@@ -23,9 +27,18 @@ type Plugin interface {
 
 type plugins []Plugin
 
-func (l plugins) foreach(f func(p Plugin)) {
+func (l plugins) foreach(cb interface{}) {
+	cbV := reflect.ValueOf(cb)
+	cbT := cbV.Type()
+	if cbT.Kind() != reflect.Func || cbT.NumIn() != 1 {
+		panic("foreach() requires a function of the signature func(T)")
+	}
+	ty := cbT.In(0)
 	for _, p := range l {
-		f(p)
+		pV := reflect.ValueOf(p)
+		if pV.Type().Implements(ty) {
+			cbV.Call([]reflect.Value{pV})
+		}
 	}
 }
 
@@ -43,3 +56,4 @@ type ContextField struct {
 type ContextDataPlugin interface {
 	ContextData(*C) []ContextField
 }
+
