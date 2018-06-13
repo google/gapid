@@ -1225,6 +1225,9 @@ func (vb *FootprintBuilder) getImageData(ctx context.Context,
 			return []dependencygraph.DefUseVariable{}
 		}
 	}
+	if vb.images[vkImg] == nil {
+		return []dependencygraph.DefUseVariable{}
+	}
 	data := vb.images[vkImg].opaqueData.getBoundData(ctx, bh, 0, vkWholeSize)
 	for _, aspecti := range vb.images[vkImg].sparseData {
 		for _, layeri := range aspecti {
