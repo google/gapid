@@ -20,6 +20,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapil/compiler"
 	"github.com/google/gapid/gapis/api"
@@ -188,19 +189,13 @@ func (e *Env) Execute(ctx context.Context, cmd api.Cmd, id api.CmdID) error {
 
 // Globals returns the memory of the global state.
 func (e *Env) Globals() []byte {
-	return byteSlice((unsafe.Pointer)(e.cCtx.globals), e.Executor.globalsSize)
+	return slice.Bytes((unsafe.Pointer)(e.cCtx.globals), e.Executor.globalsSize)
 }
 
 // GetBytes returns the bytes that are in the given memory range.
 func (e *Env) GetBytes(rng memory.Range) []byte {
 	basePtr := e.buffers.remap(rng)
-	return byteSlice(basePtr, rng.Size)
-}
-
-// byteSlice returns a byte-slice from the given unsafe pointer of the given
-// size in bytes.
-func byteSlice(ptr unsafe.Pointer, size uint64) []byte {
-	return ((*[1 << 30]byte)(ptr))[:size]
+	return slice.Bytes(basePtr, rng.Size)
 }
 
 func (e *Env) call(ctx context.Context, fptr, args unsafe.Pointer) error {
@@ -220,7 +215,7 @@ func (e *Env) applyObservations(l []api.CmdObservation) {
 		}
 		data := obj.([]byte)
 		ptr := e.buffers.remap(o.Range)
-		dst := byteSlice(ptr, o.Range.Size)
+		dst := slice.Bytes(ptr, o.Range.Size)
 		copy(dst, data)
 	}
 }
