@@ -71,6 +71,12 @@ func (c *C) buildContextFuncs() {
 		// State init
 		if c.settings.EmitExec {
 			globals := c.Alloc(s, s.Scalar(1), c.T.Globals).SetName("globals")
+			// Start by zeroing out the entire state block's memory.
+			// While this might seem redundant (as we're about to initialize
+			// everything below), there might be alignment and padding in the
+			// structures that hold non-deterministic values. These will cause
+			// issues with tests.
+			s.Memzero(globals.Cast(c.T.VoidPtr), s.SizeOf(c.T.Globals).Cast(c.T.Uint32))
 			ctx.Index(0, ContextGlobals).Store(globals)
 
 			for _, g := range c.API.Globals {
