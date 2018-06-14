@@ -112,7 +112,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "KhronosGroup",
         project = "glslang",
-        commit = "56e8056582c92e0226d87418171d06f4e74ff29b",
+        commit = "97e35420a62e112de57a31b265e020662883ef8f",
         build_file = "@gapid//tools/build/third_party:glslang.BUILD",
     )
 
