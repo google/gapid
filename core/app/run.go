@@ -155,6 +155,11 @@ func Run(main task.Task) {
 		}
 	}()
 
+	// If run via 'bazel run', use the shell's CWD, not bazel's.
+	if cwd := os.Getenv("BUILD_WORKING_DIRECTORY"); cwd != "" {
+		os.Chdir(cwd)
+	}
+
 	// install all the common application flags
 	rootCtx := prepareContext(&Flags.Log)
 

@@ -99,6 +99,11 @@ func run() int {
 		cmd.Env = append(cmd.Env, "SWT_GTK3=0", "LIBOVERLAY_SCROLLBAR=0")
 	}
 
+	// If run via 'bazel run', use the shell's CWD, not bazel's.
+	if cwd := os.Getenv("BUILD_WORKING_DIRECTORY"); cwd != "" {
+		cmd.Dir = cwd
+	}
+
 	if err := cmd.Run(); err != nil {
 		if _, ok := err.(*exec.ExitError); !ok {
 			fmt.Println("Failed to start GAPIC:", err)
@@ -247,6 +252,9 @@ func (c *config) locateGAPIC() error {
 	gapic := c.gapic
 	if gapic == "" {
 		gapic = filepath.Join(c.cwd, "lib", "gapic.jar")
+	}
+	if abs, err := filepath.Abs(gapic); err == nil {
+		gapic = abs
 	}
 	if _, err := os.Stat(gapic); !os.IsNotExist(err) {
 		c.gapic = gapic
