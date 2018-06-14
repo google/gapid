@@ -112,26 +112,6 @@ copy_tree = rule(
     },
 )
 
-def filter_impl(ctx):
-    return [
-        DefaultInfo(
-            files=depset([
-                src for src in ctx.files.srcs
-                if any([
-                    src.basename.endswith(ext) for ext in ctx.attr.suffix
-                ])
-            ]),
-        ),
-    ]
-
-filter = rule(
-    filter_impl,
-    attrs = {
-        "srcs": attr.label_list(allow_files = True, mandatory = True),
-        "suffix": attr.string_list(),
-    },
-)
-
 # Implementation of the copy_exec rule.
 def _copy_exec_impl(ctx):
     if len(ctx.files.srcs) != 1:

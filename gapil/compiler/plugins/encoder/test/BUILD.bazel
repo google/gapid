@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//tools/build:rules.bzl", "api_library", "apic_compile", "apic_template", "cc_copts", "filter")
+load("//tools/build:rules.bzl", "api_library", "apic_compile", "apic_template", "cc_copts")
 
 api_library(
     name = "api",

@@ -14,7 +14,7 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
-load("//tools/build:rules.bzl", "api_library", "apic_template", "filter")
+load("//tools/build:rules.bzl", "api_library", "apic_template")
 
 proto_library(
     name = "gvr_proto",
