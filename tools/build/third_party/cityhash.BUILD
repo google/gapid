@@ -36,6 +36,9 @@ cc_library(
         ":config",
         "src/city.h",
     ],
+    copts = [
+        "-Wno-parentheses", # warning: suggest parentheses around '+' in operand of '&'
+    ],
     strip_include_prefix = "src/",
     visibility = ["//visibility:public"],
 )
