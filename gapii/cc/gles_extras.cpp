@@ -208,7 +208,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
         locations[j] = imports.glGetProgramResourceLocation(program, interface, buffer.data());
       }
     }
-    return std::move(locations);
+    return locations;
   };
 
   // Helper method to get all referenced-by properties
@@ -226,7 +226,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
     }
     usedBy->mFragmentShader = getResourceiv(interface, i, GL_REFERENCED_BY_FRAGMENT_SHADER) != 0;
     usedBy->mComputeShader  = getResourceiv(interface, i, GL_REFERENCED_BY_COMPUTE_SHADER ) != 0;
-    return std::move(usedBy);
+    return usedBy;
   };
 
   // Helper method to get all resource blocks of given type
@@ -246,7 +246,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
       block->mReferencedBy = getResourceUses(interface, i);
       blocks[i] = std::move(block);
     }
-    return std::move(blocks);
+    return blocks;
   };
 
   // Helper method to get all resources of given type
@@ -303,7 +303,7 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 
       resources[i] = std::move(resource);
     }
-    return std::move(resources);
+    return resources;
   };
 
   ///////////////////////////////////////////////////////////////////
@@ -441,7 +441,7 @@ gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer
   extra->mBinaryRetrievableHint       = p->mBinaryRetrievableHint;
 
   observer->encode(*extra.get());
-  return std::move(extra);
+  return extra;
 }
 
 // GetCompileShaderExtra is called by glCompileShader and glShaderBinary
@@ -466,7 +466,7 @@ gapil::Ref<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(CallObserver* obse
   extra->mBinary = binary;
 
   observer->encode(*extra.get());
-  return std::move(extra);
+  return extra;
 }
 
 // GetValidateProgramExtra is called by glValidateProgram
@@ -487,7 +487,7 @@ gapil::Ref<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(CallObserver* 
   extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
   observer->encode(*extra.get());
-  return std::move(extra);
+  return extra;
 }
 
 // GetValidateProgramPipelineExtra is called by glValidateProgramPipeline
@@ -509,7 +509,7 @@ gapil::Ref<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelineExtr
 
   observer->encode(*extra.get());
 
-  return std::move(extra);
+  return extra;
 }
 
 gapil::Ref<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(CallObserver* observer, void* ptr) {

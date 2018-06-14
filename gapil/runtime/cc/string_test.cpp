@@ -44,9 +44,10 @@ TEST(StringTest, constructors) {
         EXPECT_STREQ(strB.c_str(), abc123);
     }
     {
-        gapil::String str(std::move(gapil::String(&arena, abc123)));
-        EXPECT_EQ(str.length(), 6);
-        EXPECT_STREQ(str.c_str(), abc123);
+        gapil::String strA(&arena, abc123);
+        gapil::String strB(std::move(strA));
+        EXPECT_EQ(strB.length(), 6);
+        EXPECT_STREQ(strB.c_str(), abc123);
     }
     {
         gapil::String str(&arena, abc123);
