@@ -15,7 +15,7 @@ load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 # limitations under the License.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "api_library", "apic_compile", "apic_template", "cc_copts")
+load("//tools/build:rules.bzl", "apic_template")
 
 apic_template(
     name = "api_proto",
