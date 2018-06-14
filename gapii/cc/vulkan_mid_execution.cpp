@@ -27,12 +27,6 @@
 #include <unordered_set>
 #include <vector>
 
-#ifdef _WIN32
-#define alloca _alloca
-#else
-#include <alloca.h>
-#endif
-
 namespace gapii {
 
 template <typename T>
