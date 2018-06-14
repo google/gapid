@@ -56,7 +56,7 @@ protected:
 
 TEST_F(ContextTest, Create) {
     auto payload = createPayload(0, 0, {}, {}, {});
-    
+
     EXPECT_CALL(*mConn, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
     core::CrashHandler crash_handler;
     auto context = Context::create(mConn.get(), crash_handler, mResourceProvider.get(), mMemoryManager.get());
@@ -205,7 +205,7 @@ TEST_F(ContextTest, Notification) {
     auto context = Context::create(mConn.get(), crash_handler, mResourceProvider.get(), mMemoryManager.get());
     EXPECT_THAT(context, NotNull());
 
-    EXPECT_CALL(*mConn, mockedSendPostData(NotNull())).WillOnce(Invoke([&context, &msg, severity, api_index](ReplayConnection::Posts* posts) -> bool {
+    EXPECT_CALL(*mConn, mockedSendPostData(NotNull())).WillOnce(Invoke([&context, &msg](ReplayConnection::Posts* posts) -> bool {
         context->onDebugMessage(severity, api_index, msg.c_str());
         return true;
     }));
