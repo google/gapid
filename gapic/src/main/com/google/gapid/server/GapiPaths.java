@@ -155,7 +155,7 @@ public final class GapiPaths {
                 gapit = new File(tokens[1]);
                 break;
               case "gapid/gapis/messages/en-us.stb":
-                strings = new File(tokens[1]);
+                strings = new File(tokens[1]).getParentFile();
                 break;
             }
           }
