@@ -689,7 +689,9 @@ namespace {
 class AlignedMemory {
  public:
   AlignedMemory(size_t alignment, size_t size) : mem_(nullptr) {
-    posix_memalign(&mem_, alignment, size);
+    if (auto err = posix_memalign(&mem_, alignment, size) != 0) {
+      std::cerr << "posix_memalign failed with " << err;
+    }
   }
   ~AlignedMemory() { free(mem_); }
   void* mem() const { return mem_; }
