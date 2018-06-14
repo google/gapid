@@ -56,7 +56,7 @@ void NameManager::setIfName(id_offset id, std::string new_name) {
 
   if (it != id_to_inst.end()) {
     uint32_t string_pos = getStringPosition(it->second->opcode());
-    it->second->SetInOperand(string_pos, std::move(makeVector(new_name.c_str())));
+    it->second->SetInOperand(string_pos, makeVector(new_name.c_str()));
   }
 }
 

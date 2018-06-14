@@ -237,11 +237,11 @@ std::vector<spvtools::ir::Operand> SpvManager::makeOperands(
 
       case SPV_OPERAND_TYPE_LITERAL_STRING: {
         assert(literal_string && "makeOperands: SPV_OPERAND_TYPE_LITERAL_STRING is missing.");
-        operands.emplace_back(operand_type, std::move(makeVector(literal_string)));
+        operands.emplace_back(operand_type, makeVector(literal_string));
         break;
       }
       case SPV_OPERAND_TYPE_OPTIONAL_LITERAL_STRING: {
-        if (literal_string) operands.emplace_back(operand_type, std::move(makeVector(literal_string)));
+        if (literal_string) operands.emplace_back(operand_type, makeVector(literal_string));
         break;
       }
       default: {
@@ -250,7 +250,7 @@ std::vector<spvtools::ir::Operand> SpvManager::makeOperands(
                "makeOperands: too few operands to make vector of operands.");
 
         if (it != words.end()) {
-          operands.emplace_back(operand_type, std::move(makeVector(*it)));
+          operands.emplace_back(operand_type, makeVector(*it));
           it++;
         }
         break;
@@ -395,19 +395,19 @@ uint32_t SpvManager::addFunction(const char* name, uint32_t result_type_id, uint
         collectInstWithResult(SpvOpISub, {{load_id}, {getConstId(1)}}, globals.curr_step.type_id);
     collectInstWithoutResult(SpvOpStore, {{globals.curr_step.ref_id}, {sub_id}});
     collectCondition(true_label_id, false_label_id);
-    fun->AddBasicBlock(std::move(makeBasicBlock(getUnique(), fun.get(), std::move(curr_block_insts))));
+    fun->AddBasicBlock(makeBasicBlock(getUnique(), fun.get(), std::move(curr_block_insts)));
     curr_block_insts.clear();
 
     // true block
     load_id = collectInstWithResult(SpvOpLoad, {{param.first}}, globals.result.type_id);
     collectInstWithoutResult(SpvOpStore, {{globals.result.ref_id}, {load_id}});
     collectInstWithoutResult(SpvOpBranch, {{false_label_id}});
-    fun->AddBasicBlock(std::move(makeBasicBlock(true_label_id, fun.get(), std::move(curr_block_insts))));
+    fun->AddBasicBlock(makeBasicBlock(true_label_id, fun.get(), std::move(curr_block_insts)));
     curr_block_insts.clear();
 
     // after-if-statement block
     collectInstWithoutResult(SpvOpReturn);
-    fun->AddBasicBlock(std::move(makeBasicBlock(false_label_id, fun.get(), std::move(curr_block_insts))));
+    fun->AddBasicBlock(makeBasicBlock(false_label_id, fun.get(), std::move(curr_block_insts)));
     curr_block_insts.clear();
 
   } else {
@@ -416,7 +416,7 @@ uint32_t SpvManager::addFunction(const char* name, uint32_t result_type_id, uint
     uint32_t type_to_convert = getTypeToConvert(arg_type);
     collectPrintCall(param, type_to_convert);
     collectInstWithoutResult(SpvOpReturn);
-    fun->AddBasicBlock(std::move(makeBasicBlock(getUnique(), fun.get(), std::move(curr_block_insts))));
+    fun->AddBasicBlock(makeBasicBlock(getUnique(), fun.get(), std::move(curr_block_insts)));
     curr_block_insts.clear();
   }
 
