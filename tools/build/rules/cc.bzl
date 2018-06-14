@@ -25,7 +25,7 @@ _ANDROID_COPTS = [
 
 # This should probably all be done by fixing the toolchains...
 def cc_copts():
-    return version_define_copts() + select({
+    return version_define_copts() + ["-Werror"] + select({
         "@gapid//tools/build:linux": ["-DTARGET_OS_LINUX"],
         "@gapid//tools/build:darwin": ["-DTARGET_OS_OSX"],
         "@gapid//tools/build:windows": ["-DTARGET_OS_WINDOWS"],
