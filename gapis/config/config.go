@@ -23,5 +23,6 @@ const (
 	LogExtrasInTransforms      = false // Logs all commands' extras together with transforms
 	LogMemoryInExtras          = false // Logs all commands' read/write memory observation together with extras
 	LogTransformsToFile        = false
+	LogTransformsToCapture     = false
 	SeparateMutateStates       = false
 )
