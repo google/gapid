@@ -462,7 +462,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
     };
 
     // block pitch is calculated with the in-image element size.
-    auto block_pitch = [this, &get_element_size, &next_multiple_of_8](
+    auto block_pitch = [this, &get_element_size](
                            const VkExtent3D &extent, uint32_t format,
                            uint32_t mip_level, uint32_t aspect_bit) -> pitch {
       auto elementAndTexelBlockSize =
