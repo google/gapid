@@ -87,11 +87,12 @@ cc_library(
     }),
     hdrs = glob(["src/**/*.h"]),
     copts = cc_copts() + select({
-        "@gapid//tools/build:linux": [],
+        "@gapid//tools/build:linux": ["-Wno-maybe-uninitialized"],
         "@gapid//tools/build:darwin": [],
         "@gapid//tools/build:windows": [
             "-D_UNICODE",
             "-DUNICODE",
+            "-Wno-conversion-null",
         ],
         # Android.
         "//conditions:default": ["-D__STDC_FORMAT_MACROS"],
@@ -137,7 +138,7 @@ mm_library(
         "src/client/mac/**/*.h",
         "src/google_breakpad/**/*.h",
     ]),
-    copts = cc_copts(),
+    copts = cc_copts() + ["-Wno-deprecated-declarations"],
     strip_include_prefix = "src",
     deps = [":breakpad_darwin_defines"],
 )
@@ -225,6 +226,7 @@ cc_library(
         "-DN_UNDF=0x0",
     ] + select({
         "@gapid//tools/build:windows": ["-DNO_STABS_SUPPORT"],
+        "@gapid//tools/build:linux": ["-Wno-maybe-uninitialized"],
         "//conditions:default": [],
     }),
     deps = select({
