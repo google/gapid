@@ -21,24 +21,24 @@ stringgen(
     visibility = ["//visibility:public"],
 )
 
-filter(
+filegroup(
     name = "messages_api",
     srcs = [":messages"],
-    suffix = [".api"],
+    output_group = "api",
     visibility = ["//visibility:private"],
 )
 
-filter(
+filegroup(
     name = "stb",
     srcs = [":messages"],
-    suffix = [".stb"],
+    output_group = "table",
     visibility = ["//visibility:public"],
 )
 
-filter(
+filegroup(
     name = "messages_go",
     srcs = [":messages"],
-    suffix = [".go"],
+    output_group = "go",
     visibility = ["//visibility:private"],
 )
 

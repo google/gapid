@@ -29,7 +29,14 @@ def _stringgen_impl(ctx):
         ],
         use_default_shell_env = True,
     )
-    return [DefaultInfo(files=depset([go, api, table]))]
+    return [
+        DefaultInfo(files = depset([go, api, table])),
+        OutputGroupInfo(
+            go = depset([go]),
+            api = depset([api]),
+            table = depset([table]),
+        )
+    ]
 
 """Builds a stringgen source converter rule"""
 stringgen = rule(
