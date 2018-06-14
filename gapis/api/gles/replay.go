@@ -226,6 +226,9 @@ func (a API) Replay(
 		}
 		transforms = newTransforms
 	}
+	if config.LogTransformsToCapture {
+		transforms.Add(transform.NewCaptureLog(ctx, capture, "replay_log.gfxtrace"))
+	}
 
 	cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
 	transforms.Transform(ctx, cmds, out)

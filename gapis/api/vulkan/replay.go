@@ -623,6 +623,9 @@ func (a API) Replay(
 		}
 		transforms = newTransforms
 	}
+	if config.LogTransformsToCapture {
+		transforms.Add(transform.NewCaptureLog(ctx, capture, "replay_log.gfxtrace"))
+	}
 
 	transforms.Transform(ctx, cmds, out)
 	return nil
