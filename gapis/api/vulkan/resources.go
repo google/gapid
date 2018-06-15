@@ -479,6 +479,27 @@ func getDepthImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) 
 	}
 }
 
+// Returns the corresponding stencil format for the given Vulkan format. If the given Vulkan
+// format contains a depth field, returns a format which matches only with the tightly
+// packed stencil field of the given Vulkan format.
+func getStencilImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
+	switch vkfmt {
+	case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+		// Only the stencil field is considered, and assume the data is tightly packed.
+		return image.NewUncompressed("VK_FORMAT_D32_SFLOAT_S8_UINT", fmts.S_U8), nil
+	case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
+		// Only the stencil field is considered, and assume the data is tightly packed.
+		return image.NewUncompressed("VK_FORMAT_D16_UNORM_S8_UINT", fmts.S_U8), nil
+	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
+		// Only the stencil field is considered, and assume the data is tightly packed.
+		return image.NewUncompressed("VK_FORMAT_D24_UNORM_S8_UINT", fmts.S_U8), nil
+	case VkFormat_VK_FORMAT_S8_UINT:
+		return image.NewUncompressed("VK_FORMAT_S8_UINT", fmts.S_U8), nil
+	default:
+		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+	}
+}
+
 func setCubemapFace(img *image.Info, cubeMap *api.CubemapLevel, layerIndex uint32) (success bool) {
 	if cubeMap == nil || img == nil {
 		return false

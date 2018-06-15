@@ -225,6 +225,10 @@ func postImageData(ctx context.Context,
 		// because we need to strip the stencil data if the source attachment image
 		// contains both depth and stencil data.
 		formatOfImgRes, err = getDepthImageFormatFromVulkanFormat(vkFormat)
+	} else if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+		// Similarly to above, we may need to strip the depth data if the
+		// source attachment image contains both depth and stencil data.
+		formatOfImgRes, err = getStencilImageFormatFromVulkanFormat(vkFormat)
 	} else {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 		return

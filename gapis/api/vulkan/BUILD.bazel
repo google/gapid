@@ -62,6 +62,7 @@ go_library(
         "image_primer_shaders.go",
         "mem_binding_list.go",
         "memory_breakdown.go",
+        "overdraw.go",
         "read_framebuffer.go",
         "replay.go",
         "resources.go",
