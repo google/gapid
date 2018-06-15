@@ -37,6 +37,55 @@ class Api {
   FunctionTable mFunctions;
 };
 
+// LazyResolved is for resolving indirect commands only when the commands are
+// going to be called. It takes a resolver callback, which will be used for
+// command resolving for the first time the command is to be called. And caches
+// the resolved pointer.
+template <typename FuncPtr>
+class LazyResolved {
+ public:
+  LazyResolved() : resolve_(nullptr), ptr_(nullptr) {}
+  LazyResolved(nullptr_t) : LazyResolved() {}
+  explicit LazyResolved(std::function<void*()> resolver)
+      : resolve_(resolver), ptr_(nullptr) {}
+  // Pass forward the arguments to the command, if the function has never been
+  // resolved before, resolve it first.
+  template <typename... Args>
+  typename std::result_of<FuncPtr(Args...)>::type operator()(Args&&... args) {
+    if (!ptr_) {
+      ptr_ = reinterpret_cast<FuncPtr>(resolve_());
+    }
+    return ptr_(std::forward<Args>(args)...);
+  }
+  // Overloaded not-equal nullptr comparison. Returns true if the underlying
+  // function can be resolved and is not nullptr.
+  bool operator!=(nullptr_t) {
+    if (!resolve_) {
+      return true;
+    }
+    if (!ptr_) {
+      ptr_ = reinterpret_cast<FuncPtr>(resolve_());
+    }
+    return ptr_ != nullptr;
+  }
+  // Overloaded boolean comparison. Returns true if the underlying function can
+  // be resolved and is not nullptr.
+  operator bool() {
+    if (!resolve_) {
+      return false;
+    }
+    if (!ptr_) {
+      ptr_ = reinterpret_cast<FuncPtr>(resolve_());
+    }
+    return ptr_ != nullptr;
+  }
+ private:
+  // The function resolving callback.
+  std::function<void*()> resolve_;
+  // The cached function pointer to the underlying function.
+  FuncPtr ptr_;
+};
+
 }  // namespace gapir
 
 #endif  // GAPIR_GFX_API_H

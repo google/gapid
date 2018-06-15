@@ -40,6 +40,7 @@
 #include "core/cc/{{Global "API"}}_ptr_types.h"
 ¶
 #include <stdint.h>
+#include <functional>
 #include <string>
 ¶
 {{/* Forward declare structs used by the graphics API in the global namespace. */}}
@@ -88,7 +89,11 @@ class {{Title (Global "API")}} : public Api {
     struct {{$table}}FunctionStubs {
       {{range $f := $p}}
         {{if and (not (GetAnnotation $f "synthetic")) (not (GetAnnotation $f "pfn"))}}
-          {{Template "C++.FunctionPtrDecl" $f}} = nullptr;
+          {{if not (GetAnnotation $f "indirect")}}
+            {{Template "C++.FunctionPtrDecl" $f}} = nullptr;
+          {{else}}
+            {{Template "C++.LazyResolvedFunctionDecl" $f}} = nullptr;
+          {{end}}
         {{end}}
       {{end}}
     };
