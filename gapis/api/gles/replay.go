@@ -178,6 +178,8 @@ func (a API) Replay(
 				wire = wireframe(ctx, cfg.wireframeFramebufferID)
 			case replay.DrawMode_WIREFRAME_OVERLAY:
 				wire = wireframeOverlay(ctx, req.after)
+			case replay.DrawMode_OVERDRAW:
+				return fmt.Errorf("Overdraw is not currently supported")
 			}
 		}
 	}

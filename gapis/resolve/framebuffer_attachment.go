@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -87,6 +88,11 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		width, height = fbInfo.Width, fbInfo.Height
 	}
 
+	format := fbInfo.Format
+	if r.Settings.DrawMode == service.DrawMode_OVERDRAW {
+		format = image.NewUncompressed("S8_UINT", fmts.S_U8)
+	}
+
 	id, err := database.Store(ctx, &FramebufferAttachmentBytesResolvable{
 		ReplaySettings:   r.ReplaySettings,
 		After:            r.After,
@@ -96,7 +102,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		FramebufferIndex: fbInfo.Index,
 		DrawMode:         r.Settings.DrawMode,
 		Hints:            r.Hints,
-		ImageFormat:      fbInfo.Format,
+		ImageFormat:      format,
 	})
 	if err != nil {
 		return nil, err
@@ -106,7 +112,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		Width:  width,
 		Height: height,
 		Depth:  1,
-		Format: fbInfo.Format,
+		Format: format,
 		Bytes:  image.NewID(id),
 	}, nil
 }

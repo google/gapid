@@ -69,6 +69,7 @@ go_library(
         "//core/math/u64:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
+        "//core/stream/fmts:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/sync:go_default_library",
         "//gapis/capture:go_default_library",
