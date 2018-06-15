@@ -24,6 +24,8 @@ import (
 	"github.com/google/gapid/gapis/replay/value"
 )
 
+const virtualSwapchainStruct = 0xFFFFFFAA
+
 func (i VkInstance) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
 	if i != 0 {
 		key, remap = i, true
@@ -419,7 +421,7 @@ func insertVirtualSwapchainPNext(ctx context.Context, cmd api.Cmd, id api.CmdID,
 	info structWithPNext, g *api.GlobalState) (api.AllocResult, api.AllocResult) {
 	pNextData := g.AllocDataOrPanic(ctx, NewVulkanStructHeader(
 		g.Arena,
-		VkStructureType_VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN, // sType
+		virtualSwapchainStruct, // sType
 		0, // pNext
 	))
 	if info.PNext().IsNullptr() {
