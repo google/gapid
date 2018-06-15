@@ -239,10 +239,10 @@ message CubemapLevel {
 	image.Info positive_z = 6;
 }
 
+// Metrics about the state at some point in a trace
 message Metrics {
-  oneof metrics {
-    MemoryBreakdown memory_breakdown = 1;
-  }
+  // The brekadown of memory allocations and bindings.
+  MemoryBreakdown memory_breakdown = 1;
 }
 
 // The description of the memory layout of the API state
@@ -251,8 +251,9 @@ message MemoryBreakdown {
   path.API api = 1;
   // The memory allocations that are currently in use.
   repeated MemoryAllocation allocations = 2;
-  // The index to get the constants names for MemoryAllocation `flags`.
-  // A value of -1 indicates no flag names should be fetched.
+  // The index to get the constants names for `MemoryAllocation.flags`, to be
+  // fetched with the path.ConstantSet endpoint.  A value of -1 indicates no
+  // flag names should be fetched.
   int32 allocation_flags_index = 3;
 }
 
@@ -263,20 +264,20 @@ message MemoryAllocation {
   // The memory type this allocation is from
   uint32 memory_type = 2;
   // Flags describing properties of the allocation, e.g. whether it's device
-  // local, whether it's host visible, etc.
+  // local, whether it's host visible, etc.  The names for the flags can be
+  // fetched from path.ConstantSet with the index in
+  // `MemoryBreakdown.allocation_flags_index`.
   uint32 flags = 3;
-  // Constant index for looking up the flag values with the path.ConstantSet endpoint
-  uint32 constant_set = 4;
   // The API specific ID for this allocation
-  uint64 handle = 5;
+  uint64 handle = 4;
   // The user-readable name for this allocation
-  string name = 6;
+  string name = 5;
   // This size of the memory allocated
-  uint64 size = 7;
+  uint64 size = 6;
   // The regions of host memory this allocation has been mapped into
-  MemoryMapping mapping = 8;
+  MemoryMapping mapping = 7;
   // All buffers/images bound to this memory allocation
-  repeated MemoryBinding bindings = 9;
+  repeated MemoryBinding bindings = 8;
 }
 
 // A mapping from part of a memory allocation into host memory

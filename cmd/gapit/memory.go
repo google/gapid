@@ -18,9 +18,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
@@ -70,14 +72,17 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	boxedVal, err := client.Get(ctx, (&path.Metrics{
-		Command: capture.Command(verb.At[0], verb.At[1:]...),
-		Type:    path.Metrics_MEMORY_BREAKDOWN,
+		Command:         capture.Command(verb.At[0], verb.At[1:]...),
+		MemoryBreakdown: true,
 	}).Path())
 	if err != nil {
 		return log.Errf(ctx, err, "Failed to load metrics")
 	}
 
-	mem := boxedVal.(*api.Metrics).Metrics.(*api.Metrics_MemoryBreakdown).MemoryBreakdown
+	mem := boxedVal.(*api.Metrics).MemoryBreakdown
+	if mem == nil {
+		return log.Errf(ctx, err, "Loaded metrics do not have memory breakdown")
+	}
 
 	allocationFlags := []*service.Constant{}
 	if mem.AllocationFlagsIndex != -1 {
@@ -95,35 +100,37 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 	}
 
-	fmt.Printf("%v memory allocations\n", len(mem.Allocations))
+	w := tabwriter.NewWriter(os.Stdout, 4, 4, 0, ' ', 0)
+	fmt.Fprintf(w, "%v memory allocations\n", len(mem.Allocations))
 	sort.Slice(mem.Allocations, func(i, j int) bool {
 		return mem.Allocations[i].Handle < mem.Allocations[j].Handle
 	})
+
 	for _, alloc := range mem.Allocations {
-		fmt.Println("Name:", alloc.Name)
-		fmt.Println("\tDevice:      ", alloc.Device)
-		fmt.Println("\tMemory Type: ", alloc.MemoryType)
-		fmt.Println("\tSize:        ", alloc.Size)
+		fmt.Fprintln(w, "Name:", alloc.Name)
+		fmt.Fprintln(w, "\tDevice:      ", alloc.Device)
+		fmt.Fprintln(w, "\tMemory Type: ", alloc.MemoryType)
+		fmt.Fprintln(w, "\tSize:        ", alloc.Size)
 
 		if alloc.Flags != 0 && len(allocationFlags) != 0 {
-			fmt.Println("\tFlags:")
+			fmt.Fprintln(w, "\tFlags:")
 			for _, f := range allocationFlags {
 				if (alloc.Flags & uint32(f.Value)) != 0 {
-					fmt.Printf("\t\t%v\n", f.Name)
+					fmt.Fprintf(w, "\t\t%v\n", f.Name)
 				}
 			}
 		}
 
 		if alloc.Mapping.Size != 0 {
-			fmt.Printf("\tMapped into host memory at 0x%x\n",
+			fmt.Fprintf(w, "\tMapped into host memory at 0x%x\n",
 				alloc.Mapping.MappedAddress)
-			fmt.Println("\t\tOffset:", alloc.Mapping.Offset)
-			fmt.Println("\t\tSize:  ", alloc.Mapping.Size)
+			fmt.Fprintln(w, "\t\tOffset:", alloc.Mapping.Offset)
+			fmt.Fprintln(w, "\t\tSize:  ", alloc.Mapping.Size)
 		}
 
 		bindings := bindingSlice(alloc.Bindings)
 		sort.Slice(bindings, bindings.bindingLess)
-		fmt.Printf("\t%v bindings:\n", len(bindings))
+		fmt.Fprintf(w, "\t%v bindings:\n", len(bindings))
 		for _, binding := range bindings {
 			var typ string
 			switch binding.Type.(type) {
@@ -142,79 +149,79 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			case *api.MemoryBinding_SparseBufferBlock:
 				typ = "Sparse Buffer Block"
 			}
-			fmt.Printf("\t%v: %v\n", typ, binding.Name)
+			fmt.Fprintf(w, "\t%v: %v\n", typ, binding.Name)
 
-			fmt.Println("\t\tOffset:", binding.Offset)
-			fmt.Println("\t\tSize:  ", binding.Size)
+			fmt.Fprintln(w, "\t\tOffset:", binding.Offset)
+			fmt.Fprintln(w, "\t\tSize:  ", binding.Size)
 
-			stringifyAspects := func(aspects []api.AspectType) string {
-				if len(aspects) == 0 {
-					return ""
-				}
-				strs := make([]string, len(aspects))
-				for i, asp := range aspects {
-					var typ string
-					switch asp {
-					case api.AspectType_COLOR:
-						typ = "Color"
-					case api.AspectType_DEPTH:
-						typ = "Depth"
-					case api.AspectType_STENCIL:
-						typ = "Stencil"
-					}
-					strs[i] = typ
-				}
-				return strings.Join(strs, ", ")
-			}
 			switch val := binding.Type.(type) {
 			case *api.MemoryBinding_SparseImageBlock:
 				info := val.SparseImageBlock
-				fmt.Printf("\t\tBlock Offset: (%v, %v)\n",
+				fmt.Fprintf(w, "\t\tBlock Offset: (%v, %v)\n",
 					info.XOffset, info.YOffset)
-				fmt.Printf("\t\tBlock Extent: (%v, %v)\n",
+				fmt.Fprintf(w, "\t\tBlock Extent: (%v, %v)\n",
 					info.Width, info.Height)
-				fmt.Printf("\t\tMip Level:    %v\n", info.MipLevel)
-				fmt.Printf("\t\tArray Layer:  %v\n", info.ArrayLayer)
-				if asp := stringifyAspects(info.Aspects); len(asp) > 0 {
-					fmt.Printf("\t\tAspects:      %v\n", asp)
-				}
+				fmt.Fprintf(w, "\t\tMip Level:    %v\n", info.MipLevel)
+				fmt.Fprintf(w, "\t\tArray Layer:  %v\n", info.ArrayLayer)
+				fmt.Fprintf(w, "\t\tAspects:      %v\n", aspectList(info.Aspects))
 			case *api.MemoryBinding_SparseImageMetadata:
 				info := val.SparseImageMetadata
-				fmt.Printf("\t\tArray Layer:     %v\n", info.ArrayLayer)
-				fmt.Printf("\t\tMip Tail Offset: %v\n", info.Offset)
+				fmt.Fprintf(w, "\t\tArray Layer:     %v\n", info.ArrayLayer)
+				fmt.Fprintf(w, "\t\tMip Tail Offset: %v\n", info.Offset)
 			case *api.MemoryBinding_SparseImageMipTail:
 				info := val.SparseImageMipTail
-				fmt.Printf("\t\tArray Layer:     %v\n", info.ArrayLayer)
-				fmt.Printf("\t\tMip Tail Offset: %v\n", info.Offset)
-				if asp := stringifyAspects(info.Aspects); len(asp) > 0 {
-					fmt.Printf("\t\tAspects:      %v\n", asp)
-				}
+				fmt.Fprintf(w, "\t\tArray Layer:     %v\n", info.ArrayLayer)
+				fmt.Fprintf(w, "\t\tMip Tail Offset: %v\n", info.Offset)
+				fmt.Fprintf(w, "\t\tAspects:         %v\n", aspectList(info.Aspects))
 			case *api.MemoryBinding_SparseOpaqueImageBlock:
-				fmt.Printf("\t\tImage Memory Offset: %v\n",
+				fmt.Fprintf(w, "\t\tImage Memory Offset: %v\n",
 					val.SparseOpaqueImageBlock.Offset)
 			case *api.MemoryBinding_SparseBufferBlock:
-				fmt.Printf("\t\tBuffer Memory Offset: %v\n",
+				fmt.Fprintf(w, "\t\tBuffer Memory Offset: %v\n",
 					val.SparseBufferBlock.Offset)
 			}
 		}
 
 		aliases := bindings.computeAliasing()
 		if len(aliases) == 0 {
-			fmt.Println("\tNo aliased regions")
+			fmt.Fprintln(w, "\tNo aliased regions")
 		} else {
-			fmt.Printf("\t%v aliased regions:\n", len(aliases))
+			fmt.Fprintf(w, "\t%v aliased regions:\n", len(aliases))
 			for i, a := range aliases {
-				fmt.Printf("\t%v:\n", i)
-				fmt.Println("\t\tOffset: ", a.offset)
-				fmt.Println("\t\tSize:   ", a.size)
-				fmt.Println("\t\tShared by:")
+				fmt.Fprintf(w, "\t%v:\n", i)
+				fmt.Fprintln(w, "\t\tOffset: ", a.offset)
+				fmt.Fprintln(w, "\t\tSize:   ", a.size)
+				fmt.Fprintln(w, "\t\tShared by:")
 				for _, s := range a.sharers {
-					fmt.Printf("\t\t\t%v\n", s)
+					fmt.Fprintf(w, "\t\t\t%v\n", s)
 				}
 			}
 		}
 	}
+	w.Flush()
 	return nil
+}
+
+type aspectList []api.AspectType
+
+func (a aspectList) Format(f fmt.State, c rune) {
+	if len(a) == 0 {
+		return
+	}
+	strs := make([]string, len(a))
+	for i, asp := range a {
+		var typ string
+		switch asp {
+		case api.AspectType_COLOR:
+			typ = "Color"
+		case api.AspectType_DEPTH:
+			typ = "Depth"
+		case api.AspectType_STENCIL:
+			typ = "Stencil"
+		}
+		strs[i] = typ
+	}
+	fmt.Fprintf(f, strings.Join(strs, ", "))
 }
 
 type bindingSlice []*api.MemoryBinding

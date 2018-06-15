@@ -346,16 +346,14 @@ message MeshOptions {
     repeated SemanticHint vertex_semantics = 3;
 }
 
-// Metrics requests metrics for a given command.  Resolves to service.Metrics
+// Metrics requests a set of metrics for a given command.  Resolves to
+// service.Metrics.
 message Metrics {
-  // The command to get the metrics from
+  // The command after which to get the metrics from.
   Command command = 1;
 
-  enum Type {
-    MEMORY_BREAKDOWN = 0;
-  }
-  // The type of metrics to report
-  Type type = 2;
+  // Whether to get the memory breakdown metrics.
+  bool memory_breakdown = 2;
 }
 
 // Report is a path to a list of report items for a capture.

@@ -26,17 +26,19 @@ import (
 )
 
 func Metrics(ctx context.Context, p *path.Metrics) (*api.Metrics, error) {
-	switch p.Type {
-	case path.Metrics_MEMORY_BREAKDOWN:
-		return memoryBreakdown(ctx, p)
-	default:
-		return nil, fmt.Errorf("Metrics type %v not implemented", p.Type)
+	res := api.Metrics{}
+	if p.MemoryBreakdown {
+		breakdown, err := memoryBreakdown(ctx, p.Command)
+		if err != nil {
+			return nil, log.Errf(ctx, err, "Failed to get memory breakdown")
+		}
+		res.MemoryBreakdown = breakdown
 	}
-
+	return &res, nil
 }
 
-func memoryBreakdown(ctx context.Context, p *path.Metrics) (*api.Metrics, error) {
-	cmd, err := Cmd(ctx, p.Command)
+func memoryBreakdown(ctx context.Context, c *path.Command) (*api.MemoryBreakdown, error) {
+	cmd, err := Cmd(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -45,16 +47,12 @@ func memoryBreakdown(ctx context.Context, p *path.Metrics) (*api.Metrics, error)
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
 
-	state, err := GlobalState(ctx, p.Command.GlobalStateAfter())
+	state, err := GlobalState(ctx, c.GlobalStateAfter())
 	if err != nil {
 		return nil, err
 	}
 	if ml, ok := a.(api.MemoryBreakdownProvider); ok {
-		val, err := ml.MemoryBreakdown(state)
-		if err != nil {
-			return nil, log.Errf(ctx, err, "Failed to get memory layout")
-		}
-		return &api.Metrics{&api.Metrics_MemoryBreakdown{val}}, nil
+		return ml.MemoryBreakdown(state)
 	} else {
 		return nil, fmt.Errorf("Memory breakdown not supported for API %v", a.Name())
 	}
