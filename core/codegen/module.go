@@ -34,6 +34,7 @@ type Module struct {
 	target  *device.ABI
 	triple  triple
 	name    string
+	funcs   map[string]*Function
 	llvmDbg *llvm.DIBuilder
 	memcpy  *Function
 	memset  *Function
@@ -82,6 +83,7 @@ func NewModule(name string, target *device.ABI) *Module {
 		target: target,
 		triple: triple,
 		name:   name,
+		funcs:  map[string]*Function{},
 	}
 
 	voidPtr := m.Types.Pointer(m.Types.Void)
@@ -236,7 +238,14 @@ func (m *Module) parseTypeName(name string) Type {
 func (m *Module) Function(resTy Type, name string, paramTys ...Type) *Function {
 	ty := m.Types.Function(resTy, paramTys...)
 	f := llvm.AddFunction(m.llvm, name, ty.llvm)
-	return &Function{Name: name, Type: ty, llvm: f, m: m}
+	out := &Function{Name: name, Type: ty, llvm: f, m: m}
+	if name != "" {
+		if _, existing := m.funcs[name]; existing {
+			fail("Duplicate function with name: '%s'", name)
+		}
+		m.funcs[name] = out
+	}
+	return out
 }
 
 // Global is a global value.
