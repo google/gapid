@@ -31,7 +31,7 @@ type Function struct {
 }
 
 func (f Function) String() string {
-	return fmt.Sprintf("%v %v(%v)", f.Type.Signature.Result, f.Name, f.Type.Signature.Parameters)
+	return f.Type.Signature.string(f.Name)
 }
 
 // IsNull returns true if the function is null.

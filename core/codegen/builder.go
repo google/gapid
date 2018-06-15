@@ -68,10 +68,10 @@ func (b *Builder) CallIndirect(f *Value, args ...*Value) *Value {
 func (b *Builder) call(v llvm.Value, sig Signature, name string, args []*Value) *Value {
 	if sig.Variadic {
 		if g, e := len(args), len(sig.Parameters); g < e {
-			fail("Got %d arguments, but needed %d to call %v", g, e, sig)
+			fail("Got %d arguments, but needed %d to call %v", g, e, sig.string(name))
 		}
 	} else if g, e := len(args), len(sig.Parameters); g != e {
-		fail("Got %d arguments, but needed %d to call %v", g, e, sig)
+		fail("Got %d arguments, but needed %d to call %v", g, e, sig.string(name))
 	}
 	l := make([]llvm.Value, len(args))
 	for i, a := range args {
@@ -79,7 +79,7 @@ func (b *Builder) call(v llvm.Value, sig Signature, name string, args []*Value) 
 		if i < len(sig.Parameters) {
 			if g, e := a.ty, sig.Parameters[i]; g != e {
 				fail("Incorrect argument type for parameter %d when calling %v: Got %v, expected %v",
-					i, sig, g.TypeName(), e.TypeName())
+					i, sig.string(name), g.TypeName(), e.TypeName())
 			}
 		}
 	}
