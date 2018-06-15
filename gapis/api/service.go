@@ -14,6 +14,8 @@
 
 package api
 
+import "fmt"
+
 // IsColor returns true if a is a color attachment.
 func (a FramebufferAttachment) IsColor() bool {
 	switch a {
@@ -35,4 +37,17 @@ func (a FramebufferAttachment) IsDepth() bool {
 // IsStencil returns true if a is a stencil attachment.
 func (a FramebufferAttachment) IsStencil() bool {
 	return a == FramebufferAttachment_Stencil
+}
+
+func (a AspectType) Format(f fmt.State, c rune) {
+	switch a {
+	case AspectType_COLOR:
+		fmt.Fprint(f, "Color")
+	case AspectType_DEPTH:
+		fmt.Fprint(f, "Depth")
+	case AspectType_STENCIL:
+		fmt.Fprint(f, "Stencil")
+	default:
+		fmt.Fprintf(f, "Unknown AspectType %d", int(a))
+	}
 }

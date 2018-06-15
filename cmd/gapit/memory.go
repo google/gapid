@@ -108,9 +108,9 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	for _, alloc := range mem.Allocations {
 		fmt.Fprintln(w, "Name:", alloc.Name)
-		fmt.Fprintln(w, "\tDevice:      ", alloc.Device)
-		fmt.Fprintln(w, "\tMemory Type: ", alloc.MemoryType)
-		fmt.Fprintln(w, "\tSize:        ", alloc.Size)
+		fmt.Fprintf(w, "\tDevice: \t%v\n", alloc.Device)
+		fmt.Fprintf(w, "\tMemory Type: \t%v\n", alloc.MemoryType)
+		fmt.Fprintf(w, "\tSize: \t%v\n", alloc.Size)
 
 		if alloc.Flags != 0 && len(allocationFlags) != 0 {
 			fmt.Fprintln(w, "\tFlags:")
@@ -124,8 +124,8 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		if alloc.Mapping.Size != 0 {
 			fmt.Fprintf(w, "\tMapped into host memory at 0x%x\n",
 				alloc.Mapping.MappedAddress)
-			fmt.Fprintln(w, "\t\tOffset:", alloc.Mapping.Offset)
-			fmt.Fprintln(w, "\t\tSize:  ", alloc.Mapping.Size)
+			fmt.Fprintf(w, "\t\tOffset: \t%v\n", alloc.Mapping.Offset)
+			fmt.Fprintf(w, "\t\tSize: \t%v\n", alloc.Mapping.Size)
 		}
 
 		bindings := bindingSlice(alloc.Bindings)
@@ -151,33 +151,33 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			}
 			fmt.Fprintf(w, "\t%v: %v\n", typ, binding.Name)
 
-			fmt.Fprintln(w, "\t\tOffset:", binding.Offset)
-			fmt.Fprintln(w, "\t\tSize:  ", binding.Size)
+			fmt.Fprintf(w, "\t\tOffset: \t%v\n", binding.Offset)
+			fmt.Fprintf(w, "\t\tSize: \t%v\n", binding.Size)
 
 			switch val := binding.Type.(type) {
 			case *api.MemoryBinding_SparseImageBlock:
 				info := val.SparseImageBlock
-				fmt.Fprintf(w, "\t\tBlock Offset: (%v, %v)\n",
+				fmt.Fprintf(w, "\t\tBlock Offset: \t(%v, %v)\n",
 					info.XOffset, info.YOffset)
-				fmt.Fprintf(w, "\t\tBlock Extent: (%v, %v)\n",
+				fmt.Fprintf(w, "\t\tBlock Extent: \t(%v, %v)\n",
 					info.Width, info.Height)
-				fmt.Fprintf(w, "\t\tMip Level:    %v\n", info.MipLevel)
-				fmt.Fprintf(w, "\t\tArray Layer:  %v\n", info.ArrayLayer)
-				fmt.Fprintf(w, "\t\tAspects:      %v\n", aspectList(info.Aspects))
+				fmt.Fprintf(w, "\t\tMip Level: \t%v\n", info.MipLevel)
+				fmt.Fprintf(w, "\t\tArray Layer: \t%v\n", info.ArrayLayer)
+				fmt.Fprintf(w, "\t\tAspects: \t%v\n", strings.Trim(fmt.Sprint(info.Aspects), "[]"))
 			case *api.MemoryBinding_SparseImageMetadata:
 				info := val.SparseImageMetadata
-				fmt.Fprintf(w, "\t\tArray Layer:     %v\n", info.ArrayLayer)
-				fmt.Fprintf(w, "\t\tMip Tail Offset: %v\n", info.Offset)
+				fmt.Fprintf(w, "\t\tArray Layer: \t%v\n", info.ArrayLayer)
+				fmt.Fprintf(w, "\t\tMip Tail Offset: \t%v\n", info.Offset)
 			case *api.MemoryBinding_SparseImageMipTail:
 				info := val.SparseImageMipTail
-				fmt.Fprintf(w, "\t\tArray Layer:     %v\n", info.ArrayLayer)
-				fmt.Fprintf(w, "\t\tMip Tail Offset: %v\n", info.Offset)
-				fmt.Fprintf(w, "\t\tAspects:         %v\n", aspectList(info.Aspects))
+				fmt.Fprintf(w, "\t\tArray Layer: \t%v\n", info.ArrayLayer)
+				fmt.Fprintf(w, "\t\tMip Tail Offset: \t%v\n", info.Offset)
+				fmt.Fprintf(w, "\t\tAspects: \t%v\n", strings.Trim(fmt.Sprint(info.Aspects), "[]"))
 			case *api.MemoryBinding_SparseOpaqueImageBlock:
-				fmt.Fprintf(w, "\t\tImage Memory Offset: %v\n",
+				fmt.Fprintf(w, "\t\tImage Memory Offset: \t%v\n",
 					val.SparseOpaqueImageBlock.Offset)
 			case *api.MemoryBinding_SparseBufferBlock:
-				fmt.Fprintf(w, "\t\tBuffer Memory Offset: %v\n",
+				fmt.Fprintf(w, "\t\tBuffer Memory Offset: \t%v\n",
 					val.SparseBufferBlock.Offset)
 			}
 		}
@@ -189,9 +189,9 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			fmt.Fprintf(w, "\t%v aliased regions:\n", len(aliases))
 			for i, a := range aliases {
 				fmt.Fprintf(w, "\t%v:\n", i)
-				fmt.Fprintln(w, "\t\tOffset: ", a.offset)
-				fmt.Fprintln(w, "\t\tSize:   ", a.size)
-				fmt.Fprintln(w, "\t\tShared by:")
+				fmt.Fprintf(w, "\t\tOffset: \t%v\n", a.offset)
+				fmt.Fprintf(w, "\t\tSize: \t%v\n", a.size)
+				fmt.Fprintf(w, "\t\tShared by:\n")
 				for _, s := range a.sharers {
 					fmt.Fprintf(w, "\t\t\t%v\n", s)
 				}
@@ -200,28 +200,6 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	w.Flush()
 	return nil
-}
-
-type aspectList []api.AspectType
-
-func (a aspectList) Format(f fmt.State, c rune) {
-	if len(a) == 0 {
-		return
-	}
-	strs := make([]string, len(a))
-	for i, asp := range a {
-		var typ string
-		switch asp {
-		case api.AspectType_COLOR:
-			typ = "Color"
-		case api.AspectType_DEPTH:
-			typ = "Depth"
-		case api.AspectType_STENCIL:
-			typ = "Stencil"
-		}
-		strs[i] = typ
-	}
-	fmt.Fprintf(f, strings.Join(strs, ", "))
 }
 
 type bindingSlice []*api.MemoryBinding
