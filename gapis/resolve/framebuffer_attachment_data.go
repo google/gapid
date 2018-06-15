@@ -52,15 +52,15 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 
-	wireframeMode := replay.WireframeMode_None
-	switch r.WireframeMode {
-	case service.WireframeMode_None:
-	case service.WireframeMode_All:
-		wireframeMode = replay.WireframeMode_All
-	case service.WireframeMode_Overlay:
-		wireframeMode = replay.WireframeMode_Overlay
+	drawMode := replay.DrawMode_NORMAL
+	switch r.DrawMode {
+	case service.DrawMode_NORMAL:
+	case service.DrawMode_WIREFRAME_ALL:
+		drawMode = replay.DrawMode_WIREFRAME_ALL
+	case service.DrawMode_WIREFRAME_OVERLAY:
+		drawMode = replay.DrawMode_WIREFRAME_OVERLAY
 	default:
-		return nil, &service.ErrInvalidArgument{Reason: messages.ErrInvalidEnum(wireframeMode)}
+		return nil, &service.ErrInvalidArgument{Reason: messages.ErrInvalidEnum(drawMode)}
 	}
 
 	mgr := replay.GetManager(ctx)
@@ -74,7 +74,7 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		r.Height,
 		r.Attachment,
 		r.FramebufferIndex,
-		wireframeMode,
+		drawMode,
 		r.ReplaySettings.DisableReplayOptimization,
 		r.Hints,
 	)

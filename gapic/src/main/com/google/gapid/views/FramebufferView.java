@@ -70,15 +70,15 @@ public class FramebufferView extends Composite
   private static final int MAX_SIZE = 0xffff;
   private static final Service.RenderSettings RENDER_SHADED = Service.RenderSettings.newBuilder()
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
-      .setWireframeMode(Service.WireframeMode.None)
+      .setDrawMode(Service.DrawMode.NORMAL)
       .build();
   private static final Service.RenderSettings RENDER_OVERLAY = Service.RenderSettings.newBuilder()
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
-      .setWireframeMode(Service.WireframeMode.Overlay)
+      .setDrawMode(Service.DrawMode.WIREFRAME_OVERLAY)
       .build();
   private static final Service.RenderSettings RENDER_WIREFRAME = Service.RenderSettings.newBuilder()
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
-      .setWireframeMode(Service.WireframeMode.All)
+      .setDrawMode(Service.DrawMode.WIREFRAME_ALL)
       .build();
   private static final Service.UsageHints HINTS = Service.UsageHints.newBuilder()
       .setPrimary(true)
