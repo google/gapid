@@ -43,6 +43,13 @@ const (
 	mapMaxCapacity    = (float32)(C.GAPIL_MAP_MAX_CAPACITY)
 )
 
+func init() {
+	if ((minMapSize & (minMapSize - 1)) != 0) ||
+		((mapGrowMultiplier & (mapGrowMultiplier - 1)) != 0) {
+		panic("Map size must be a power of 2")
+	}
+}
+
 // Field names for the context_t runtime type.
 const (
 	ContextLocation   = "location"

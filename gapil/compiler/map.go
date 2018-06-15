@@ -21,6 +21,14 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
+// mapImpl holds information about the types used in a map implementation.
+// Maps of different semantic types may reduce down to the same single
+// implementation.
+type mapImpl struct {
+	k, v semantic.Type
+	i    *MapInfo
+}
+
 // This is a basic linear-probing hash map
 // It works out to the following implementation
 // enum used {
@@ -64,42 +72,74 @@ import (
 // TODO: Investigate rehashing once #full + #previously_full > 80%
 //     If we end up with lots of insertions/deletions, this will prevent linear search
 
-func (c *C) defineMapType(t *semantic.Map) {
-	if ((minMapSize & (minMapSize - 1)) != 0) ||
-		((mapGrowMultiplier & (mapGrowMultiplier - 1)) != 0) {
-		fail("Map size must be a power of 2")
-	}
+func (c *C) defineMapTypes() {
+	// impls is a map of type mangled name to the public MapInfo structure.
+	// This is used to deduplicate maps that have the same underlying key and
+	// value LLVM types when lowered.
+	impls := map[string]*MapInfo{}
 
-	mapPtrTy := c.T.target[t].(codegen.Pointer)
-	mapStrTy := mapPtrTy.Element.(*codegen.Struct)
-	keyTy := c.T.Target(t.KeyType)
-	valTy := c.T.Target(t.ValueType)
-	elTy := c.T.Struct(fmt.Sprintf("%v…%v", keyTy.TypeName(), valTy.TypeName()),
-		// Used: 0 == empty, 1 == has a key, 2 == doesn't have a key, but
-		//    can't assume your searched key doesn't exist
-		codegen.Field{Name: "used", Type: c.T.Target(semantic.Uint64Type)},
-		codegen.Field{Name: "k", Type: keyTy},
-		codegen.Field{Name: "v", Type: valTy},
-	)
-	mapStrTy.SetBody(false,
-		codegen.Field{Name: MapRefCount, Type: c.T.Uint32},
-		codegen.Field{Name: MapArena, Type: c.T.ArenaPtr},
-		codegen.Field{Name: MapCount, Type: c.T.Uint64},
-		codegen.Field{Name: MapCapacity, Type: c.T.Uint64},
-		codegen.Field{Name: MapElements, Type: c.T.Pointer(elTy)},
-	)
-	valPtrTy := c.T.Pointer(valTy)
+	for _, t := range c.API.Maps {
+		mi := &MapInfo{
+			Key:  c.T.Target(t.KeyType),
+			Val:  c.T.Target(t.ValueType),
+			Type: c.T.target[t].(codegen.Pointer).Element.(*codegen.Struct),
+		}
 
-	c.T.Maps[t] = &MapInfo{
-		Type:     mapStrTy,
-		Elements: elTy,
-		Key:      keyTy,
-		Val:      valTy,
-		Contains: c.Method(true, mapStrTy, c.T.Bool, "contains", keyTy).LinkOnceODR().Inline(),
-		Index:    c.Method(false, mapStrTy, valPtrTy, "index", keyTy, c.T.Bool).LinkOnceODR().Inline(),
-		Lookup:   c.Method(true, mapStrTy, valTy, "lookup", keyTy).LinkOnceODR().Inline(),
-		Remove:   c.Method(false, mapStrTy, c.T.Void, "remove", keyTy).LinkOnceODR().Inline(),
-		Clear:    c.Method(false, mapStrTy, nil, "clear").LinkOnceODR().Inline(),
+		mi.Elements = c.T.Struct(fmt.Sprintf("%v…%v", mi.Key.TypeName(), mi.Val.TypeName()),
+			// Used: 0 == empty, 1 == has a key, 2 == doesn't have a key, but
+			//    can't assume your searched key doesn't exist
+			codegen.Field{Name: "used", Type: c.T.Target(semantic.Uint64Type)},
+			codegen.Field{Name: "k", Type: mi.Key},
+			codegen.Field{Name: "v", Type: mi.Val},
+		)
+
+		mi.Type.SetBody(false,
+			codegen.Field{Name: MapRefCount, Type: c.T.Uint32},
+			codegen.Field{Name: MapArena, Type: c.T.ArenaPtr},
+			codegen.Field{Name: MapCount, Type: c.T.Uint64},
+			codegen.Field{Name: MapCapacity, Type: c.T.Uint64},
+			codegen.Field{Name: MapElements, Type: c.T.Pointer(mi.Elements)},
+		)
+
+		valPtrTy := c.T.Pointer(mi.Val)
+
+		name := t.Name()
+		mi.MapMethods = MapMethods{
+			Contains: c.M.Function(c.T.Bool, name+"_contains", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
+			Index:    c.M.Function(valPtrTy, name+"_index", c.T.Pointer(mi.Type), mi.Key, c.T.Bool).LinkPrivate().Inline(),
+			Lookup:   c.M.Function(mi.Val, name+"_lookup", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
+			Remove:   c.M.Function(c.T.Void, name+"_remove", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
+			Clear:    c.M.Function(c.T.Void, name+"_clear", c.T.Pointer(mi.Type)).LinkPrivate().Inline(),
+		}
+
+		// Use the mangled name of the map to determine whether the map has
+		// already been declared for the lowered map type.
+		mangled := c.Mangler(c.Mangle(mi.Type))
+		impl, seen := impls[mangled]
+
+		if !seen {
+			// First instance of this lowered map type. Define it.
+			copy := *mi
+			impl = &copy
+			impls[mangled] = impl
+			impl.MapMethods = MapMethods{
+				Contains: c.Method(true, mi.Type, c.T.Bool, "contains", mi.Key).LinkOnceODR(),
+				Index:    c.Method(false, mi.Type, valPtrTy, "index", mi.Key, c.T.Bool).LinkOnceODR(),
+				Lookup:   c.Method(true, mi.Type, mi.Val, "lookup", mi.Key).LinkOnceODR(),
+				Remove:   c.Method(false, mi.Type, c.T.Void, "remove", mi.Key).LinkOnceODR(),
+				Clear:    c.Method(false, mi.Type, c.T.Void, "clear").LinkOnceODR(),
+			}
+			c.T.mapImpls = append(c.T.mapImpls, mapImpl{t.KeyType, t.ValueType, impl})
+		}
+
+		// Delegate the methods of this map on to the common implmentation.
+		c.delegate(mi.Contains, impl.Contains)
+		c.delegate(mi.Index, impl.Index)
+		c.delegate(mi.Lookup, impl.Lookup)
+		c.delegate(mi.Remove, impl.Remove)
+		c.delegate(mi.Clear, impl.Clear)
+
+		c.T.Maps[t] = mi
 	}
 }
 
@@ -203,19 +243,20 @@ func (c *C) hashValue(s *S, t semantic.Type, value *codegen.Value) *codegen.Valu
 	}
 }
 
-func (c *C) buildMapType(t *semantic.Map) {
-	mi, ok := c.T.Maps[t]
-	if !ok {
-		fail("Unknown map")
+func (c *C) buildMapTypes() {
+	for _, m := range c.T.mapImpls {
+		c.buildMap(m.k, m.v, m.i)
 	}
+}
 
+func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 	elTy := mi.Elements
 	u64Type := c.T.Target(semantic.Uint64Type)
 
 	c.Build(mi.Contains, func(s *S) {
 		m := s.Parameter(0).SetName("map")
 		k := s.Parameter(1).SetName("key")
-		h := c.hashValue(s, t.KeyType, k)
+		h := c.hashValue(s, keyTy, k)
 		capacity := m.Index(0, MapCapacity).Load()
 		elements := m.Index(0, MapElements).Load()
 		s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
@@ -248,7 +289,7 @@ func (c *C) buildMapType(t *semantic.Map) {
 		capacity := capacityPtr.Load()
 		elements := elementsPtr.Load()
 
-		h := c.hashValue(s, t.KeyType, k)
+		h := c.hashValue(s, keyTy, k)
 		// Search for existing
 		s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
 			check := s.And(s.Add(h, it), s.Sub(capacity, s.Scalar(uint64(1))))
@@ -307,7 +348,7 @@ func (c *C) buildMapType(t *semantic.Map) {
 						s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
 							k := elements.Index(it, "k").Load()
 							v := elements.Index(it, "v").Load()
-							h := c.hashValue(s, t.KeyType, k)
+							h := c.hashValue(s, keyTy, k)
 							bucket := getStorageBucket(h, newElements, newCapacity)
 							newElements.Index(bucket, "k").Store(k)
 							newElements.Index(bucket, "v").Store(v)
@@ -327,12 +368,12 @@ func (c *C) buildMapType(t *semantic.Map) {
 			elements.Index(bucket, "k").Store(k)
 			elements.Index(bucket, "used").Store(s.Scalar(mapElementFull))
 			valPtr := elements.Index(bucket, "v")
-			v := c.initialValue(s, t.ValueType)
+			v := c.initialValue(s, valTy)
 			valPtr.Store(v)
 			countPtr.Store(s.AddS(count, uint64(1)))
 
-			c.reference(s, v, t.ValueType)
-			c.reference(s, k, t.KeyType)
+			c.reference(s, v, valTy)
+			c.reference(s, k, keyTy)
 
 			s.Return(valPtr)
 		})
@@ -346,10 +387,10 @@ func (c *C) buildMapType(t *semantic.Map) {
 
 		ptr := s.Call(mi.Index, m, k, s.Scalar(false))
 		s.If(ptr.IsNull(), func(s *S) {
-			s.Return(c.initialValue(s, t.ValueType))
+			s.Return(c.initialValue(s, valTy))
 		})
 		v := ptr.Load()
-		c.reference(s, v, t.ValueType)
+		c.reference(s, v, valTy)
 		s.Return(v)
 	})
 
@@ -360,7 +401,7 @@ func (c *C) buildMapType(t *semantic.Map) {
 
 		countPtr := m.Index(0, MapCount)
 		capacity := m.Index(0, MapCapacity).Load()
-		h := c.hashValue(s, t.KeyType, k)
+		h := c.hashValue(s, keyTy, k)
 		elements := m.Index(0, MapElements).Load()
 		// Search for existing
 		s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
@@ -371,11 +412,11 @@ func (c *C) buildMapType(t *semantic.Map) {
 				s.If(found, func(s *S) {
 					elPtr := elements.Index(check)
 					// Release references to el
-					if c.isRefCounted(t.KeyType) {
-						c.release(s, elPtr.Index(0, "k").Load(), t.KeyType)
+					if c.isRefCounted(keyTy) {
+						c.release(s, elPtr.Index(0, "k").Load(), keyTy)
 					}
-					if c.isRefCounted(t.ValueType) {
-						c.release(s, elPtr.Index(0, "v").Load(), t.ValueType)
+					if c.isRefCounted(valTy) {
+						c.release(s, elPtr.Index(0, "v").Load(), valTy)
 					}
 					// Replace element with last
 					elPtr.Index(0, "used").Store(s.Scalar(mapElementUsed))
@@ -397,15 +438,15 @@ func (c *C) buildMapType(t *semantic.Map) {
 
 		capacity := m.Index(0, MapCapacity).Load()
 		elements := m.Index(0, MapElements).Load()
-		if c.isRefCounted(t.KeyType) || c.isRefCounted(t.ValueType) {
+		if c.isRefCounted(keyTy) || c.isRefCounted(valTy) {
 			s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
 				valid := elements.Index(it, "used").Load()
 				s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
-					if c.isRefCounted(t.KeyType) {
-						c.release(s, elements.Index(it, "k").Load(), t.KeyType)
+					if c.isRefCounted(keyTy) {
+						c.release(s, elements.Index(it, "k").Load(), keyTy)
 					}
-					if c.isRefCounted(t.ValueType) {
-						c.release(s, elements.Index(it, "v").Load(), t.ValueType)
+					if c.isRefCounted(valTy) {
+						c.release(s, elements.Index(it, "v").Load(), valTy)
 					}
 				})
 				return nil

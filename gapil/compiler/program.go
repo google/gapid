@@ -83,6 +83,11 @@ type MapInfo struct {
 	Key      codegen.Type
 	Val      codegen.Type
 	Element  codegen.Type
+	MapMethods
+}
+
+// MapMethods are the functions that operate on a map.
+type MapMethods struct {
 	Contains *codegen.Function // bool(M*, ctx*, K)
 	Index    *codegen.Function //   V*(M*, ctx*, K, addIfNotFound)
 	Lookup   *codegen.Function //   V(M*, ctx*, K)

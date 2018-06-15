@@ -35,6 +35,11 @@ func (f *refRel) declare(c *C, name, ref, rel string, ty codegen.Type) {
 	f.name = name
 }
 
+func (f *refRel) delegate(c *C, to refRel) {
+	c.delegate(f.reference, to.reference)
+	c.delegate(f.release, to.release)
+}
+
 func (f *refRel) build(
 	c *C,
 	isNull func(s *S, val *codegen.Value) *codegen.Value,
@@ -79,23 +84,30 @@ func (f *refRel) build(
 	})
 }
 
-type refRels map[semantic.Type]refRel
+type refRels struct {
+	tys   map[semantic.Type]refRel // Delegate on to impls
+	impls map[semantic.Type]refRel // Implementations of lowered map types
+}
 
 var slicePrototype = &semantic.Slice{}
 
 // declareRefRels declares all the reference type's reference() and release()
 // functions.
 func (c *C) declareRefRels() {
-	r := map[semantic.Type]refRel{}
-	c.refRels = r
+	c.refRels = refRels{
+		tys:   map[semantic.Type]refRel{},
+		impls: map[semantic.Type]refRel{},
+	}
 
 	sli := refRel{}
 	sli.declare(c, "slice", "gapil_slice_reference", "gapil_slice_release", c.T.Sli)
-	r[slicePrototype] = sli
+	c.refRels.tys[slicePrototype] = sli
+	c.refRels.impls[slicePrototype] = sli
 
 	str := refRel{}
 	str.declare(c, "string", "gapil_string_reference", "gapil_string_release", c.T.StrPtr)
-	r[semantic.StringType] = str
+	c.refRels.tys[semantic.StringType] = str
+	c.refRels.impls[semantic.StringType] = str
 
 	var isRefTy func(ty semantic.Type) bool
 	isRefTy = func(ty semantic.Type) bool {
@@ -117,6 +129,13 @@ func (c *C) declareRefRels() {
 	}
 
 	// Forward declare all the reference types.
+
+	// impls is a map of type mangled type name to the public reference and
+	// release functions.
+	// This is used to deduplicate types that have the same underlying key and
+	// value LLVM types when lowered.
+	impls := map[string]refRel{}
+
 	for apiTy, cgTy := range c.T.target {
 		apiTy = semantic.Underlying(apiTy)
 		switch apiTy {
@@ -126,24 +145,41 @@ func (c *C) declareRefRels() {
 		default:
 			switch apiTy := apiTy.(type) {
 			case *semantic.Slice:
-				r[apiTy] = sli
+				c.refRels.tys[apiTy] = sli
 
 			default:
 				if isRefTy(apiTy) {
-					funcs := refRel{}
+					name := apiTy.Name()
+
+					// Use the mangled name of the type to determine whether
+					// the reference and release functions have already been
+					// declared for the lowered type.
 					m := c.Mangle(cgTy)
-					ref := c.Mangler(&mangling.Function{
-						Name:       "reference",
-						Parent:     m.(mangling.Scope),
-						Parameters: []mangling.Type{m},
-					})
-					rel := c.Mangler(&mangling.Function{
-						Name:       "release",
-						Parent:     m.(mangling.Scope),
-						Parameters: []mangling.Type{m},
-					})
-					funcs.declare(c, apiTy.Name(), ref, rel, cgTy)
-					r[apiTy] = funcs
+					mangled := c.Mangler(m)
+					impl, seen := impls[mangled]
+					if !seen {
+						// First instance of this lowered type. Declare it.
+						ref := c.Mangler(&mangling.Function{
+							Name:       "reference",
+							Parent:     m.(mangling.Scope),
+							Parameters: []mangling.Type{m},
+						})
+						rel := c.Mangler(&mangling.Function{
+							Name:       "release",
+							Parent:     m.(mangling.Scope),
+							Parameters: []mangling.Type{m},
+						})
+						impl.declare(c, name, ref, rel, cgTy)
+						impls[mangled] = impl
+						c.refRels.impls[apiTy] = impl
+					}
+
+					// Delegate the reference and release functions of this type
+					// on to the common implmentation.
+					funcs := refRel{}
+					funcs.declare(c, name, name+"_reference", name+"_release", cgTy)
+					funcs.delegate(c, impl)
+					c.refRels.tys[apiTy] = funcs
 				}
 			}
 		}
@@ -153,7 +189,7 @@ func (c *C) declareRefRels() {
 // buildRefRels implements all the reference type's reference() and release()
 // functions.
 func (c *C) buildRefRels() {
-	r := c.refRels
+	r := c.refRels.impls
 
 	sli := r[slicePrototype]
 	sli.build(c,
@@ -248,13 +284,13 @@ func (c *C) buildRefRels() {
 }
 
 func (c *C) reference(s *S, val *codegen.Value, ty semantic.Type) {
-	if f, ok := c.refRels[semantic.Underlying(ty)]; ok {
+	if f, ok := c.refRels.tys[semantic.Underlying(ty)]; ok {
 		s.Call(f.reference, val)
 	}
 }
 
 func (c *C) release(s *S, val *codegen.Value, ty semantic.Type) {
-	if f, ok := c.refRels[semantic.Underlying(ty)]; ok {
+	if f, ok := c.refRels.tys[semantic.Underlying(ty)]; ok {
 		s.Call(f.release, val)
 	}
 }
@@ -277,6 +313,6 @@ func (c *C) deferRelease(s *S, val *codegen.Value, ty semantic.Type) {
 }
 
 func (c *C) isRefCounted(ty semantic.Type) bool {
-	_, ok := c.refRels[ty]
+	_, ok := c.refRels.tys[ty]
 	return ok
 }

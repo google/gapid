@@ -47,6 +47,7 @@ type Types struct {
 	BufPtr          codegen.Type                        // buffer_t*
 	CmdParams       map[*semantic.Function]codegen.Type // struct holding all command parameters and return value.
 	Maps            map[*semantic.Map]*MapInfo
+	mapImpls        []mapImpl
 	customCtxFields []ContextField
 	target          map[semantic.Type]codegen.Type
 	storage         map[semantic.Type]codegen.Type
@@ -241,9 +242,7 @@ func (c *C) buildTypes() {
 	}
 
 	// Build all the map types.
-	for _, t := range c.API.Maps {
-		c.defineMapType(t)
-	}
+	c.defineMapTypes()
 
 	c.buildRefRels()
 
@@ -290,9 +289,7 @@ func (c *C) buildTypes() {
 	}
 
 	// Build all the map types.
-	for _, t := range c.API.Maps {
-		c.buildMapType(t)
-	}
+	c.buildMapTypes()
 }
 
 // Target returns the codegen type used to represent ty in the target-preferred
