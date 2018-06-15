@@ -62,15 +62,15 @@ type C struct {
 	Settings Settings
 
 	plugins   plugins
-	functions map[*semantic.Function]codegen.Function
+	functions map[*semantic.Function]*codegen.Function
 	ctx       struct { // Functions that operate on contexts
-		create  codegen.Function
-		destroy codegen.Function
+		create  *codegen.Function
+		destroy *codegen.Function
 	}
 	buf struct { // Functions that operate on buffers
-		init   codegen.Function
-		term   codegen.Function
-		append codegen.Function
+		init   *codegen.Function
+		term   *codegen.Function
+		append *codegen.Function
 	}
 	emptyString   codegen.Global
 	mappings      *resolver.Mappings
@@ -81,24 +81,24 @@ type C struct {
 	currentStmt   semantic.Node
 	currentExpr   semantic.Expression
 	callbacks     struct {
-		alloc           codegen.Function
-		realloc         codegen.Function
-		free            codegen.Function
-		applyReads      codegen.Function
-		applyWrites     codegen.Function
-		freePool        codegen.Function
-		copySlice       codegen.Function
-		makePool        codegen.Function
-		pointerToSlice  codegen.Function
-		pointerToString codegen.Function
-		sliceToString   codegen.Function
-		makeString      codegen.Function
-		freeString      codegen.Function
-		stringToSlice   codegen.Function
-		stringConcat    codegen.Function
-		stringCompare   codegen.Function
-		callExtern      codegen.Function
-		logf            codegen.Function
+		alloc           *codegen.Function
+		realloc         *codegen.Function
+		free            *codegen.Function
+		applyReads      *codegen.Function
+		applyWrites     *codegen.Function
+		freePool        *codegen.Function
+		copySlice       *codegen.Function
+		makePool        *codegen.Function
+		pointerToSlice  *codegen.Function
+		pointerToString *codegen.Function
+		sliceToString   *codegen.Function
+		makeString      *codegen.Function
+		freeString      *codegen.Function
+		stringToSlice   *codegen.Function
+		stringConcat    *codegen.Function
+		stringCompare   *codegen.Function
+		callExtern      *codegen.Function
+		logf            *codegen.Function
 	}
 }
 
@@ -126,7 +126,7 @@ func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Progr
 		Settings: s,
 
 		plugins:       s.Plugins,
-		functions:     map[*semantic.Function]codegen.Function{},
+		functions:     map[*semantic.Function]*codegen.Function{},
 		mappings:      mappings,
 		locationIndex: map[Location]int{},
 		locations:     []Location{},
@@ -163,7 +163,7 @@ func (c *C) program(s Settings) (*Program, error) {
 
 	globals := &StructInfo{Type: c.T.Globals}
 
-	functions := map[string]codegen.Function{}
+	functions := map[string]*codegen.Function{}
 	c.plugins.foreach(func(p FunctionExposerPlugin) {
 		for n, f := range p.Functions() {
 			functions[n] = f
@@ -258,7 +258,7 @@ func (c *C) compile() {
 // emit the function body.
 // If the function has a parameter of type context_t* then the Ctx, Location,
 // Globals and Arena scope fields are automatically assigned.
-func (c *C) Build(f codegen.Function, do func(*S)) {
+func (c *C) Build(f *codegen.Function, do func(*S)) {
 	err(f.Build(func(jb *codegen.Builder) {
 		s := &S{
 			Builder:    jb,

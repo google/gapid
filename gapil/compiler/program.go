@@ -45,7 +45,7 @@ type Program struct {
 	Locations []Location
 
 	// Functions is a map of function name to plugin implemented functions.
-	Functions map[string]codegen.Function
+	Functions map[string]*codegen.Function
 
 	// Module is the generated code module.
 	Module *codegen.Module
@@ -53,19 +53,19 @@ type Program struct {
 	// CreateContext is the function that creates and returns a new initialized
 	// context. It has the function signature:
 	//   context* gapil_create_context(arena*)
-	CreateContext codegen.Function
+	CreateContext *codegen.Function
 
 	// DestroyContext is the function that destroys a context created by
 	// CreateContext. It has the function signature:
 	//   void gapil_destroy_context(context*)
-	DestroyContext codegen.Function
+	DestroyContext *codegen.Function
 }
 
 // CommandInfo holds the generated execute function for a given command.
 type CommandInfo struct {
 	// The execute function for the given command.
 	// The function has the signature: void (ctx*, Params*)
-	Execute codegen.Function
+	Execute *codegen.Function
 
 	// The Params structure that is passed to Execute.
 	Parameters *codegen.Struct
@@ -83,11 +83,11 @@ type MapInfo struct {
 	Key      codegen.Type
 	Val      codegen.Type
 	Element  codegen.Type
-	Contains codegen.Function // bool(ctx*, M*, K)
-	Index    codegen.Function //   V*(ctx*, M*, K, addIfNotFound)
-	Lookup   codegen.Function //   V(ctx*, M*, K)
-	Remove   codegen.Function // void(ctx*, M*, K)
-	Clear    codegen.Function // void(ctx*, M*)
+	Contains *codegen.Function // bool(M*, ctx*, K)
+	Index    *codegen.Function //   V*(M*, ctx*, K, addIfNotFound)
+	Lookup   *codegen.Function //   V(M*, ctx*, K)
+	Remove   *codegen.Function // void(M*, ctx*, K)
+	Clear    *codegen.Function // void(M*, ctx*)
 }
 
 // Location defines a single .api source location.

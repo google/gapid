@@ -35,8 +35,8 @@ type Module struct {
 	triple  triple
 	name    string
 	llvmDbg *llvm.DIBuilder
-	memcpy  Function
-	memset  Function
+	memcpy  *Function
+	memset  *Function
 }
 
 // NewModule returns a new module with the specified name.
@@ -151,7 +151,7 @@ var parseFuncRE = regexp.MustCompile(`(\w+\s*\**)\s*(\w+)\((.*)\)`)
 // ParseFunctionSignature returns a function parsed from a C-style signature.
 // Example:
 //   "void* Foo(uint8_t i, bool b)"
-func (m *Module) ParseFunctionSignature(sig string) Function {
+func (m *Module) ParseFunctionSignature(sig string) *Function {
 	parts := parseFuncRE.FindStringSubmatch(sig)
 	if len(parts) != 4 {
 		panic(fmt.Errorf("'%v' is not a valid function signature", sig))
@@ -232,10 +232,10 @@ func (m *Module) parseTypeName(name string) Type {
 }
 
 // Function creates a new function with the given name, result type and parameters.
-func (m *Module) Function(resTy Type, name string, paramTys ...Type) Function {
+func (m *Module) Function(resTy Type, name string, paramTys ...Type) *Function {
 	ty := m.Types.Function(resTy, paramTys...)
 	f := llvm.AddFunction(m.llvm, name, ty.llvm)
-	return Function{name, ty, f, m}
+	return &Function{Name: name, Type: ty, llvm: f, m: m}
 }
 
 // Global is a global value.

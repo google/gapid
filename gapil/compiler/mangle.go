@@ -101,7 +101,7 @@ func (c *C) Method(
 	owner codegen.Type,
 	retTy codegen.Type,
 	name string,
-	params ...codegen.Type) codegen.Function {
+	params ...codegen.Type) *codegen.Function {
 
 	name = c.Mangler(&mangling.Function{
 		Name:   name,

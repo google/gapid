@@ -146,7 +146,7 @@ func (m *Module) Executor(optimize bool) (*Executor, error) {
 	}, nil
 }
 
-func (e *Executor) FunctionAddress(f Function) unsafe.Pointer {
+func (e *Executor) FunctionAddress(f *Function) unsafe.Pointer {
 	ptr, ok := e.funcPtrs[f.Name]
 	if !ok {
 		ptr = e.llvm.PointerToGlobal(f.llvm)

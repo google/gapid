@@ -34,13 +34,8 @@ func (f Function) String() string {
 	return f.Type.Signature.string(f.Name)
 }
 
-// IsNull returns true if the function is null.
-func (f Function) IsNull() bool {
-	return f.llvm.IsNull()
-}
-
 // Inline makes this function prefer inlining
-func (f Function) Inline() Function {
+func (f *Function) Inline() *Function {
 	kind := llvm.AttributeKindID("alwaysinline")
 	attr := f.m.ctx.CreateEnumAttribute(kind, 0)
 	f.llvm.AddFunctionAttr(attr)
@@ -51,7 +46,7 @@ func (f Function) Inline() Function {
 // function be merged with other global symbols with the same name, with the
 // assumption their implementation is identical. Unlike "linkonce" this
 // also preserves inlining.
-func (f Function) LinkOnceODR() Function {
+func (f *Function) LinkOnceODR() *Function {
 	if f.m.target.OS == device.Windows {
 		c := f.m.llvm.Comdat(f.Name)
 		c.SetSelectionKind(llvm.AnyComdatSelectionKind)
@@ -62,20 +57,20 @@ func (f Function) LinkOnceODR() Function {
 }
 
 // LinkPrivate makes this function use private linkage.
-func (f Function) LinkPrivate() Function {
+func (f *Function) LinkPrivate() *Function {
 	f.llvm.SetLinkage(llvm.PrivateLinkage)
 	return f
 }
 
 // Build calls cb with a Builder that can construct the function body.
-func (f Function) Build(cb func(*Builder)) (err error) {
+func (f *Function) Build(cb func(*Builder)) (err error) {
 	lb := f.m.ctx.NewBuilder()
 	defer lb.Dispose()
 
 	entryBlock := f.m.ctx.AddBasicBlock(f.llvm, "entry")
 	firstExitBlock := f.m.ctx.AddBasicBlock(f.llvm, "exit")
 	b := &Builder{
-		function: &f,
+		function: f,
 		params:   make([]*Value, len(f.Type.Signature.Parameters)),
 		entry:    entryBlock,
 		exit:     firstExitBlock, // Note: Builder.exit may be updated with chained blocks.
