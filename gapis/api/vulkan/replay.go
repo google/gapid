@@ -519,6 +519,7 @@ func (a API) Replay(
 	}
 
 	wire := false
+	overdraw := newStencilOverdraw(ctx, intent.Capture)
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
@@ -566,15 +567,19 @@ func (a API) Replay(
 				wire = true
 			case replay.DrawMode_WIREFRAME_OVERLAY:
 				return fmt.Errorf("Overlay wireframe view is not currently supported")
+			case replay.DrawMode_OVERDRAW:
+				overdraw.add(ctx, req.after, intent.Capture, rr.Result)
 			}
 
-			switch req.attachment {
-			case api.FramebufferAttachment_Depth:
-				readFramebuffer.Depth(after, req.framebufferIndex, rr.Result)
-			case api.FramebufferAttachment_Stencil:
-				return fmt.Errorf("Stencil attachments are not currently supported")
-			default:
-				readFramebuffer.Color(after, req.width, req.height, req.framebufferIndex, rr.Result)
+			if cfg.drawMode != replay.DrawMode_OVERDRAW {
+				switch req.attachment {
+				case api.FramebufferAttachment_Depth:
+					readFramebuffer.Depth(after, req.framebufferIndex, rr.Result)
+				case api.FramebufferAttachment_Stencil:
+					return fmt.Errorf("Stencil attachments are not currently supported")
+				default:
+					readFramebuffer.Color(after, req.width, req.height, req.framebufferIndex, rr.Result)
+				}
 			}
 		}
 	}
@@ -598,6 +603,8 @@ func (a API) Replay(
 	} else {
 		transforms.Add(earlyTerminator)
 	}
+
+	transforms.Add(overdraw)
 
 	// Cleanup
 	transforms.Add(readFramebuffer, injector)

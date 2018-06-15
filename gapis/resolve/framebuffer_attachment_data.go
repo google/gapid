@@ -59,6 +59,8 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		drawMode = replay.DrawMode_WIREFRAME_ALL
 	case service.DrawMode_WIREFRAME_OVERLAY:
 		drawMode = replay.DrawMode_WIREFRAME_OVERLAY
+	case service.DrawMode_OVERDRAW:
+		drawMode = replay.DrawMode_OVERDRAW
 	default:
 		return nil, &service.ErrInvalidArgument{Reason: messages.ErrInvalidEnum(drawMode)}
 	}

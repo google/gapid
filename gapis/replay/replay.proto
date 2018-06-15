@@ -27,4 +27,7 @@ enum DrawMode {
   // WIREFRAME_ALL indicates that all draw calls should be displayed in
   // wireframe.
   WIREFRAME_ALL = 2;
+  // OVERDRAW indicates that the draw calls should render their overdraw counts
+  // instead of colours.
+  OVERDRAW = 3;
 }
