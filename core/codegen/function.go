@@ -24,10 +24,11 @@ import (
 
 // Function represents a callable function.
 type Function struct {
-	Name string
-	Type *FunctionType
-	llvm llvm.Value
-	m    *Module
+	Name  string
+	Type  *FunctionType
+	llvm  llvm.Value
+	m     *Module
+	built bool
 }
 
 func (f Function) String() string {
@@ -64,6 +65,11 @@ func (f *Function) LinkPrivate() *Function {
 
 // Build calls cb with a Builder that can construct the function body.
 func (f *Function) Build(cb func(*Builder)) (err error) {
+	if f.built {
+		fail("Function '%v' already built", f.Name)
+	}
+	f.built = true
+
 	lb := f.m.ctx.NewBuilder()
 	defer lb.Dispose()
 
