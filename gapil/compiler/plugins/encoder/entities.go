@@ -482,17 +482,38 @@ func (e *entities) createDescriptors(c *compiler.C, l []*entity) (codegen.Global
 // entity types.
 func (e *entities) buildEncodeTypeFuncs(c *compiler.C, encodeType *codegen.Function) {
 	l := e.allWithDescriptor()
-	for _, ent := range l {
-		ent.encodeType = c.M.Function(
-			c.T.Uint32,
-			fmt.Sprintf("encode_type_%s", ent.fqn),
-			c.T.CtxPtr,
-		).LinkPrivate()
-	}
 
 	descs, descSlices := e.createDescriptors(c, l)
 
+	// impls is a map of type mangled name to the public implementation of the
+	// encode_type function.
+	// This is used to deduplicate types that have the same underlying type when
+	// lowered.
+	impls := map[string]*entity{}
 	for _, ent := range l {
+		// Arrays share an entity with the element. Seperate the function names.
+		ext := ""
+		if ent.label == descriptor.FieldDescriptorProto_LABEL_REPEATED {
+			ext = "_array"
+		}
+		name := fmt.Sprintf("encode_type_%s%s", ent.fqn, ext)
+
+		// Check whether this is the first time we've seen this lowered type.
+		if impl, seen := impls[name]; seen {
+			ent.encodeType = impl.encodeType // Reuse the encodeType impl.
+		} else {
+			// First time we've seen this lowered type. Declare the encode_type
+			// function.
+			f := c.M.Function(c.T.Uint32, name, c.T.CtxPtr).LinkPrivate()
+			ent.encodeType = f
+			impls[name] = ent
+		}
+	}
+
+	// Note: This is intentionally split into two passes to allow cyclic
+	// encodes.
+
+	for _, ent := range impls {
 		c.Build(ent.encodeType, func(s *compiler.S) {
 			encoder := s.Parameter(0)
 

@@ -368,6 +368,24 @@ func (c *C) Log(s *S, severity log.Severity, msg string, args ...interface{}) {
 // compiler error.
 func (c *C) Fail(msg string, args ...interface{}) { fail(msg, args...) }
 
+// delegate builds the function from with a simple body that calls to, with
+// implicit casts for each of the parameters. If the function to returns a
+// value, this is cast to the from return type and returned.
+// delegate can be used to produce stub functions that have equivalent
+// signatures when lowered to LLVM types.
+func (c *C) delegate(from, to *codegen.Function) {
+	c.Build(from, func(s *S) {
+		args := make([]*codegen.Value, len(from.Type.Signature.Parameters))
+		for i := range args {
+			args[i] = s.Parameter(i).Cast(to.Type.Signature.Parameters[i])
+		}
+		res := s.Call(to, args...)
+		if ty := from.Type.Signature.Result; ty != c.T.Void {
+			s.Return(res.Cast(ty))
+		}
+	})
+}
+
 func (c *C) setCodeLocation(s *S, t parse.Token) {
 	_, file := filepath.Split(t.Source.Filename)
 	line, col := t.Cursor()
