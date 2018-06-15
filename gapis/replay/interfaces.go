@@ -59,7 +59,7 @@ type QueryFramebufferAttachment interface {
 		width, height uint32,
 		attachment api.FramebufferAttachment,
 		framebufferIndex uint32,
-		wireframeMode WireframeMode,
+		drawMode DrawMode,
 		disableReplayOptimization bool,
 		hints *service.UsageHints) (*image.Data, error)
 }

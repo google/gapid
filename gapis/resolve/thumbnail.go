@@ -50,9 +50,9 @@ func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt b
 		p,
 		api.FramebufferAttachment_Color0,
 		&service.RenderSettings{
-			MaxWidth:      w,
-			MaxHeight:     h,
-			WireframeMode: service.WireframeMode_None,
+			MaxWidth:  w,
+			MaxHeight: h,
+			DrawMode:  service.DrawMode_NORMAL,
 		},
 		&service.UsageHints{
 			Preview: true,

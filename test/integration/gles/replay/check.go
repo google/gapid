@@ -102,7 +102,7 @@ func checkColorBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 		Device:  path.NewDevice(d.ID.ID()),
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, replay.WireframeMode_None, false, nil)
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, replay.DrawMode_NORMAL, false, nil)
 	if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 		return
 	}
@@ -171,7 +171,7 @@ func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 		Device:  path.NewDevice(d.ID.ID()),
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, replay.WireframeMode_None, false, nil)
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, replay.DrawMode_NORMAL, false, nil)
 	if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 		return
 	}

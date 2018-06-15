@@ -103,7 +103,7 @@ type drawConfig struct {
 	startScope                api.CmdID
 	endScope                  api.CmdID
 	subindices                string // drawConfig needs to be comparable, so we cannot use a slice
-	wireframeMode             replay.WireframeMode
+	drawMode                  replay.DrawMode
 	disableReplayOptimization bool
 }
 
@@ -561,10 +561,10 @@ func (a API) Replay(
 				dceInfo.dce.Request(ctx, api.SubCmdIdx{cmdid})
 			}
 
-			switch cfg.wireframeMode {
-			case replay.WireframeMode_All:
+			switch cfg.drawMode {
+			case replay.DrawMode_WIREFRAME_ALL:
 				wire = true
-			case replay.WireframeMode_Overlay:
+			case replay.DrawMode_WIREFRAME_OVERLAY:
 				return fmt.Errorf("Overlay wireframe view is not currently supported")
 			}
 
@@ -645,7 +645,7 @@ func (a API) QueryFramebufferAttachment(
 	width, height uint32,
 	attachment api.FramebufferAttachment,
 	framebufferIndex uint32,
-	wireframeMode replay.WireframeMode,
+	drawMode replay.DrawMode,
 	disableReplayOptimization bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
@@ -681,7 +681,7 @@ func (a API) QueryFramebufferAttachment(
 		}
 	}
 
-	c := drawConfig{beginIndex, endIndex, subcommand, wireframeMode, disableReplayOptimization}
+	c := drawConfig{beginIndex, endIndex, subcommand, drawMode, disableReplayOptimization}
 	out := make(chan imgRes, 1)
 	r := framebufferRequest{after: after, width: width, height: height, framebufferIndex: framebufferIndex, attachment: attachment, out: out}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)

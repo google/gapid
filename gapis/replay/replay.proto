@@ -17,13 +17,14 @@ syntax = "proto3";
 package replay;
 option go_package = "github.com/google/gapid/gapis/replay";
 
-// WireframeMode is an enumerator of wireframe modes used by QueryColorBuffer.
-enum WireframeMode {
-  // None indicates that nothing should be drawn in wireframe.
-  None = 0;
-  // Overlay indicates that the single draw call should be overlayed
+// DrawMode is an enumerator of draw modes that can be used by QueryColorBuffer.
+enum DrawMode {
+  // NORMAL indicates that the draw calls should be rendered as usual
+  NORMAL = 0;
+  // WIREFRAME_OVERLAY indicates that the single draw call should be overlayed
   // with the wireframe of the mesh.
-  Overlay = 1;
-  // All indicates that all draw calls should be displayed in wireframe.
-  All = 2;
+  WIREFRAME_OVERLAY = 1;
+  // WIREFRAME_ALL indicates that all draw calls should be displayed in
+  // wireframe.
+  WIREFRAME_ALL = 2;
 }

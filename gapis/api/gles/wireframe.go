@@ -70,8 +70,8 @@ func wireframe(ctx context.Context, framebuffer FramebufferId) transform.Transfo
 // wireframeOverlay returns a command transform that renders the wireframe of
 // the mesh over of the specified draw call.
 func wireframeOverlay(ctx context.Context, i api.CmdID) transform.Transformer {
-	ctx = log.Enter(ctx, "WireframeMode_Overlay")
-	return transform.Transform("WireframeMode_Overlay", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	ctx = log.Enter(ctx, "DrawMode_WIREFRAME_OVERLAY")
+	return transform.Transform("DrawMode_WIREFRAME_OVERLAY", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		if i == id {
 			if dc, ok := cmd.(drawCall); ok {
 				s := out.State()

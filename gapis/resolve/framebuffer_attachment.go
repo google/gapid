@@ -94,7 +94,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 		Height:           height,
 		Attachment:       r.Attachment,
 		FramebufferIndex: fbInfo.Index,
-		WireframeMode:    r.Settings.WireframeMode,
+		DrawMode:         r.Settings.DrawMode,
 		Hints:            r.Hints,
 		ImageFormat:      fbInfo.Format,
 	})
