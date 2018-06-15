@@ -261,6 +261,10 @@ type Signature struct {
 	Variadic   bool
 }
 
+func (s Signature) string(name string) string {
+	return fmt.Sprintf("%v %v(%v)", s.Result, name, s.Parameters)
+}
+
 func (s Signature) key() string {
 	parts := make([]string, len(s.Parameters))
 	for i, p := range s.Parameters {
