@@ -25,8 +25,8 @@ const debugLogRefCounts = false
 
 type refRel struct {
 	name      string
-	reference codegen.Function // void T_reference(T)
-	release   codegen.Function // void T_release(T)
+	reference *codegen.Function // void T_reference(T)
+	release   *codegen.Function // void T_release(T)
 }
 
 func (f *refRel) declare(c *C, name, ref, rel string, ty codegen.Type) {

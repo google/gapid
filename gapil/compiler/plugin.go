@@ -61,7 +61,7 @@ type ContextDataPlugin interface {
 // FunctionExposerPlugin is the interface implemented by plugins that build
 // public functions. These functions will be exposed on the output Program.
 type FunctionExposerPlugin interface {
-	Functions() map[string]codegen.Function
+	Functions() map[string]*codegen.Function
 }
 
 // OnBeginCommandListener is the interface implemented by plugins that generate

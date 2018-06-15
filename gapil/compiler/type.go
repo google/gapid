@@ -50,8 +50,8 @@ type Types struct {
 	customCtxFields []ContextField
 	target          map[semantic.Type]codegen.Type
 	storage         map[semantic.Type]codegen.Type
-	targetToStorage map[semantic.Type]codegen.Function
-	storageToTarget map[semantic.Type]codegen.Function
+	targetToStorage map[semantic.Type]*codegen.Function
+	storageToTarget map[semantic.Type]*codegen.Function
 	mangled         map[codegen.Type]mangling.Type
 	targetABI       *device.ABI
 	storageABI      *device.ABI
@@ -125,8 +125,8 @@ func (c *C) declareTypes() {
 	c.T.CmdParams = map[*semantic.Function]codegen.Type{}
 	c.T.target = map[semantic.Type]codegen.Type{}
 	c.T.storage = map[semantic.Type]codegen.Type{}
-	c.T.targetToStorage = map[semantic.Type]codegen.Function{}
-	c.T.storageToTarget = map[semantic.Type]codegen.Function{}
+	c.T.targetToStorage = map[semantic.Type]*codegen.Function{}
+	c.T.storageToTarget = map[semantic.Type]*codegen.Function{}
 	c.T.mangled = map[codegen.Type]mangling.Type{}
 
 	// Forward-declare all the class types.

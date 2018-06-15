@@ -51,7 +51,7 @@ type entity struct {
 
 	// encode is the function used to encode this entitiy.
 	// Only set for message types.
-	encodeType codegen.Function // u32(encoder*)
+	encodeType *codegen.Function // u32(encoder*)
 }
 
 // entities holds all the entities for the API.
@@ -480,7 +480,7 @@ func (e *entities) createDescriptors(c *compiler.C, l []*entity) (codegen.Global
 // buildEncodeTypeFuncs declares all the functions used to encode entity types.
 // The encode function will declare the entity's type and all transitive
 // entity types.
-func (e *entities) buildEncodeTypeFuncs(c *compiler.C, encodeType codegen.Function) {
+func (e *entities) buildEncodeTypeFuncs(c *compiler.C, encodeType *codegen.Function) {
 	l := e.allWithDescriptor()
 	for _, ent := range l {
 		ent.encodeType = c.M.Function(

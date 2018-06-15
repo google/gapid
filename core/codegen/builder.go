@@ -49,7 +49,7 @@ func fail(msg string, args ...interface{}) {
 }
 
 // Call invokes the function f with the specified arguments
-func (b *Builder) Call(f Function, args ...*Value) *Value {
+func (b *Builder) Call(f *Function, args ...*Value) *Value {
 	return b.call(f.llvm, f.Type.Signature, f.Name, args)
 }
 
@@ -286,7 +286,7 @@ func (b *Builder) GlobalString(s string) *Value {
 }
 
 // FuncAddr returns the pointer to the given function.
-func (b *Builder) FuncAddr(f Function) *Value {
+func (b *Builder) FuncAddr(f *Function) *Value {
 	return b.val(b.m.Types.Pointer(f.Type), f.llvm)
 }
 

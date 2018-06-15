@@ -70,8 +70,8 @@ func (r *replayer) ContextData(c *compiler.C) []compiler.ContextField {
 	}
 }
 
-func (r *replayer) Functions() map[string]codegen.Function {
-	return map[string]codegen.Function{
+func (r *replayer) Functions() map[string]*codegen.Function {
+	return map[string]*codegen.Function{
 		GetReplayOpcodes: r.getOpcodes,
 	}
 }

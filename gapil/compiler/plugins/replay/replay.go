@@ -32,7 +32,7 @@ type replayer struct {
 	*compiler.C
 	replayABI  *device.ABI
 	callFPtrTy codegen.Type
-	getOpcodes codegen.Function
+	getOpcodes *codegen.Function
 }
 
 func (r *replayer) Build(c *compiler.C) {
@@ -51,7 +51,7 @@ func (r *replayer) emitLabel(s *compiler.S) {
 	r.write(s, r.packCX(s, protocol.OpLabel, cmdID))
 }
 
-func (r *replayer) buildCall(cmd *semantic.Function) codegen.Function {
+func (r *replayer) buildCall(cmd *semantic.Function) *codegen.Function {
 	callFunc := r.M.Function(r.T.Void, "call_"+cmd.Name(), r.T.CtxPtr)
 
 	r.C.Build(callFunc, func(s *compiler.S) {

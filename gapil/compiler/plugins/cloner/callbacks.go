@@ -24,10 +24,10 @@ import "C"
 
 // callbacks are the runtime functions used to do the cloing.
 type callbacks struct {
-	createCloneTracker  codegen.Function
-	destroyCloneTracker codegen.Function
-	cloneTrackerLookup  codegen.Function
-	cloneTrackerTrack   codegen.Function
+	createCloneTracker  *codegen.Function
+	destroyCloneTracker *codegen.Function
+	cloneTrackerLookup  *codegen.Function
+	cloneTrackerTrack   *codegen.Function
 }
 
 func (c *cloner) parseCallbacks() {

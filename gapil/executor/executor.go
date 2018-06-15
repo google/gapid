@@ -40,7 +40,7 @@ func New(prog *compiler.Program, optimize bool) *Executor {
 		panic(err)
 	}
 
-	if prog.CreateContext.IsNull() || prog.DestroyContext.IsNull() {
+	if prog.CreateContext == nil || prog.DestroyContext == nil {
 		panic("Program has no context functions. Was EmitContext not set to true?")
 	}
 

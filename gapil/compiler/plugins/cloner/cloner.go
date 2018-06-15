@@ -28,7 +28,7 @@ import (
 type cloner struct {
 	*compiler.C
 	clonableTys  []semantic.Type
-	cloneTracker map[semantic.Type]codegen.Function
+	cloneTracker map[semantic.Type]*codegen.Function
 	callbacks    callbacks
 }
 
@@ -36,7 +36,7 @@ type cloner struct {
 func (c *cloner) Build(compiler *compiler.C) {
 	*c = cloner{
 		C:            compiler,
-		cloneTracker: map[semantic.Type]codegen.Function{},
+		cloneTracker: map[semantic.Type]*codegen.Function{},
 	}
 
 	for _, ty := range c.API.References {

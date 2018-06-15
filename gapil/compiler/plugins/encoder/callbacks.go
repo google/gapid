@@ -24,10 +24,10 @@ import "C"
 
 // callbacks are the runtime functions used to do the encoding.
 type callbacks struct {
-	encodeType    codegen.Function
-	encodeObject  codegen.Function
-	encodeBackref codegen.Function
-	sliceEncoded  codegen.Function
+	encodeType    *codegen.Function
+	encodeObject  *codegen.Function
+	encodeBackref *codegen.Function
+	sliceEncoded  *codegen.Function
 }
 
 func (e *encoder) parseCallbacks() {
