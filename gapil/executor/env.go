@@ -40,8 +40,8 @@ import (
 // static uint32_t call(context* ctx, TFunc* func) { return func(ctx); }
 //
 // // Implemented below.
-// void* remap_pointer(context* ctx, uintptr_t pointer, uint64_t length);
-// void  get_code_location(context* ctx, char** file, uint32_t* line);
+// extern void* remap_pointer(context* ctx, uintptr_t pointer, uint64_t length);
+// extern void  get_code_location(context* ctx, char** file, uint32_t* line);
 //
 // static void set_callbacks() {
 //   gapil_set_pointer_remapper(&remap_pointer);
