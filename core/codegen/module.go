@@ -154,7 +154,7 @@ var parseFuncRE = regexp.MustCompile(`(\w+\s*\**)\s*(\w+)\((.*)\)`)
 func (m *Module) ParseFunctionSignature(sig string) *Function {
 	parts := parseFuncRE.FindStringSubmatch(sig)
 	if len(parts) != 4 {
-		panic(fmt.Errorf("'%v' is not a valid function signature", sig))
+		fail("'%v' is not a valid function signature", sig)
 	}
 	ret := m.parseType(parts[1])
 	name := parts[2]
@@ -175,7 +175,7 @@ var parseTypeRE = regexp.MustCompile(`^\s*(\w+|\.\.\.)\s*([\*\s]*)`)
 func (m *Module) parseType(s string) Type {
 	parts := parseTypeRE.FindStringSubmatch(s)
 	if len(parts) != 3 {
-		panic(fmt.Errorf("'%v' is not a valid type", s))
+		fail("'%v' is not a valid type", s)
 	}
 	name := parts[1]
 	ptrs := parts[2]
@@ -227,7 +227,8 @@ func (m *Module) parseTypeName(name string) Type {
 		if s, ok := m.Types.structs[name]; ok {
 			return s
 		}
-		panic(fmt.Errorf("'%v' is not a valid type name", name))
+		fail("'%v' is not a valid type name", name)
+		return nil
 	}
 }
 
