@@ -24,71 +24,75 @@ option java_outer_classname = "Log";
 option go_package = "github.com/google/gapid/core/log/log_pb";
 
 message Message {
-    // The message text.
-    string text = 1;
+  // The message text.
+  string text = 1;
 
-    // The time the message was logged.
-    google.protobuf.Timestamp time = 2;
+  // The time the message was logged.
+  google.protobuf.Timestamp time = 2;
 
-    // The severity of the message.
-    Severity severity = 3;
+  // The severity of the message.
+  Severity severity = 3;
 
-    // The tag associated with the log record.
-    string tag = 4;
+  // The tag associated with the log record.
+  string tag = 4;
 
-    // The name of the process that created the record.
-    string process = 5;
+  // The name of the process that created the record.
+  string process = 5;
 
-    // The callstack at the time the message was logged.
-    repeated SourceLocation callstack = 6;
+  // The callstack at the time the message was logged.
+  repeated SourceLocation callstack = 6;
 
-    // The stack of enter() calls at the time the message was logged.
-    repeated string trace = 7;
+  // The stack of enter() calls at the time the message was logged.
+  repeated string trace = 7;
 
-    // The key-value pairs of extra data.
-    repeated Value values = 8;
+  // The key-value pairs of extra data.
+  repeated Value values = 8;
 
-    // The error cause passed along with the log message (e.g. a Java exception).
-    repeated Cause cause = 9;
+  // The error cause passed along with the log message (e.g. a Java exception).
+  repeated Cause cause = 9;
 }
 
 message Cause {
-    string message = 1;
-    repeated SourceLocation callstack = 2;
+  string message = 1;
+  repeated SourceLocation callstack = 2;
 }
 
 message SourceLocation {
-    string file = 1;
+  string file = 1;
 
-    // 1-based line number
-    int32 line = 2;
+  // 1-based line number
+  int32 line = 2;
 
-    // The continaing type and function name (class.method, or struct.function name).
-    string method = 3;
+  // The continaing type and function name (class.method, or struct.function
+  // name).
+  string method = 3;
 }
 
 message Value {
-    string name = 1;
-    pod.Value value = 2;
+  string name = 1;
+  pod.Value value = 2;
 }
 
 // Severity defines the severity of a logging message.
 enum Severity {
-    // Verbose indicates extremely verbose level messages.
-    Verbose = 0;
+  // Verbose indicates extremely verbose level messages.
+  Verbose = 0;
 
-    // Debug indicates debug-level messages.
-    Debug = 1;
+  // Debug indicates debug-level messages.
+  Debug = 1;
 
-    // Info indicates minor informational messages that should generally be ignored.
-    Info = 2;
+  // Info indicates minor informational messages that should generally be
+  // ignored.
+  Info = 2;
 
-    // Warning indicates issues that might affect performance or compatibility, but could be ignored.
-    Warning = 3;
+  // Warning indicates issues that might affect performance or compatibility,
+  // but could be ignored.
+  Warning = 3;
 
-    // Error indicates non terminal failure conditions that may have an effect on results.
-    Error = 4;
+  // Error indicates non terminal failure conditions that may have an effect on
+  // results.
+  Error = 4;
 
-    // Fatal indicates a fatal error and the process should be terminated.
-    Fatal = 5;
+  // Fatal indicates a fatal error and the process should be terminated.
+  Fatal = 5;
 }

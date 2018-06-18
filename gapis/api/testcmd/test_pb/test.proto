@@ -20,7 +20,8 @@ option go_package = "github.com/google/gapid/gapis/api/testcmd/test_pb";
 import "gapis/service/box/box.proto";
 
 message X {
-	box.Value data = 1;
+  box.Value data = 1;
 }
 
-message XCall {}
+message XCall {
+}

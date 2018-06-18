@@ -23,61 +23,61 @@ option go_package = "github.com/google/gapid/gapis/vertex";
 
 // Buffer represents a collection of vertex streams.
 message Buffer {
-	repeated Stream streams = 1;
+  repeated Stream streams = 1;
 }
 
 // Semantic describes the intended use of a vertex stream.
 message Semantic {
-    // For example semantic information could be used to disambiguate components
-    // of positions and normals when both contain X, Y and Z channels.
-    enum Type {
-        // Unknown is used when the intended use of a stream is unknown.
-        Unknown = 0;
-        // Position represents a position stream.
-        Position = 1;
-        // Color represents a color stream.
-        Color = 2;
-        // Texcoord represents a texture coordinate stream.
-        Texcoord = 3;
-        // Normal represents a normal stream.
-        Normal = 4;
-        // Tangent represents a tangent stream.
-        Tangent = 5;
-        // Bitangent represents a bitangent stream.
-        Bitangent = 6;
-    }
-    // The indended stream usage type.
-    Type type = 4;
-    // The intended stream usage index.
-	// Typically used to identify the i'th vertex stream.
-    uint32 index = 5;
+  // For example semantic information could be used to disambiguate components
+  // of positions and normals when both contain X, Y and Z channels.
+  enum Type {
+    // Unknown is used when the intended use of a stream is unknown.
+    Unknown = 0;
+    // Position represents a position stream.
+    Position = 1;
+    // Color represents a color stream.
+    Color = 2;
+    // Texcoord represents a texture coordinate stream.
+    Texcoord = 3;
+    // Normal represents a normal stream.
+    Normal = 4;
+    // Tangent represents a tangent stream.
+    Tangent = 5;
+    // Bitangent represents a bitangent stream.
+    Bitangent = 6;
+  }
+  // The indended stream usage type.
+  Type type = 4;
+  // The intended stream usage index.
+  // Typically used to identify the i'th vertex stream.
+  uint32 index = 5;
 }
 
 // Stream represents a collection of vertex streams.
 message Stream {
-	// The name of the stream.
-	string name = 1;
-	// The stream data.
-	bytes data = 2;
-	// The format of the vertex stream.
-	stream.Format format = 3;
-    // The vertex stream semantics.
-    Semantic semantic = 4;
+  // The name of the stream.
+  string name = 1;
+  // The stream data.
+  bytes data = 2;
+  // The format of the vertex stream.
+  stream.Format format = 3;
+  // The vertex stream semantics.
+  Semantic semantic = 4;
 }
 
 // BufferFormat describes the stream formats of a vertex buffer.
 // BufferFormat can be used to request a vertex buffer to be converted to the
 // specifed format.
 message BufferFormat {
-	repeated StreamFormat streams = 1;
+  repeated StreamFormat streams = 1;
 }
 
 // StreamFormat describes a vertex stream format.
 // StreamFormat can be used to request a vertex stream converted to the
 // specifed format.
 message StreamFormat {
-    // The vertex stream semantics.
-    Semantic semantic = 2;
-	// The format of the vertex stream.
-	stream.Format format = 1;
+  // The vertex stream semantics.
+  Semantic semantic = 2;
+  // The format of the vertex stream.
+  stream.Format format = 1;
 }

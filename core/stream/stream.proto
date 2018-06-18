@@ -21,115 +21,115 @@ option go_package = "github.com/google/gapid/core/stream";
 
 // Integer describes a signed or unsigned integer data type.
 message Integer {
-    // Number of bits (excluding sign).
-    uint32 bits = 1;
+  // Number of bits (excluding sign).
+  uint32 bits = 1;
 }
 
 // Float describes a signed or unsigned floating point data type.
 message Float {
-    // Number of exponent bits (excluding sign).
-    uint32 exponent_bits = 1;
-    // Number of mantissa bits.
-    uint32 mantissa_bits = 2;
+  // Number of exponent bits (excluding sign).
+  uint32 exponent_bits = 1;
+  // Number of mantissa bits.
+  uint32 mantissa_bits = 2;
 }
 
 // Fixed describes a fixed point data type.
 message Fixed {
-    // Number of integer bits (excluding sign).
-    uint32 integer_bits = 1;
-    // Number of fractional bits.
-    uint32 fractional_bits = 2;
+  // Number of integer bits (excluding sign).
+  uint32 integer_bits = 1;
+  // Number of fractional bits.
+  uint32 fractional_bits = 2;
 }
 
 // DataType describes an signed integer, unsigned integer, fixed point or
 // floating point number.
 message DataType {
-    // If true then the data type contains an extra bit for sign.
-    bool signed = 1;
-    oneof kind {
-        Integer integer = 2;
-        Float float = 3;
-        Fixed fixed = 4;
-    }
+  // If true then the data type contains an extra bit for sign.
+  bool signed = 1;
+  oneof kind {
+    Integer integer = 2;
+    Float float = 3;
+    Fixed fixed = 4;
+  }
 }
 
 // Curve describes the transfer function applied to the stored number when
 // sampling.
 enum Curve {
-    // No curve adjustment.
-    Linear = 0;
-    // Values are stored in sRGB color-space.
-    sRGB = 1;
+  // No curve adjustment.
+  Linear = 0;
+  // Values are stored in sRGB color-space.
+  sRGB = 1;
 }
 
 // Sampling describes the way in which a sample should be read.
 message Sampling {
-    // If true, the value ranges should be rescaled down to [0, 1] range for
-    // unsigned data types or [-1, 1] for signed data types when read.
-    // Only applies to integer data types.
-    bool normalized = 1;
-    // If true, colors are considered pre-multiplied by alpha.
-    bool premultiplied = 2;
-    // The curve adjustments applied after reading.
-    Curve curve = 3;
+  // If true, the value ranges should be rescaled down to [0, 1] range for
+  // unsigned data types or [-1, 1] for signed data types when read.
+  // Only applies to integer data types.
+  bool normalized = 1;
+  // If true, colors are considered pre-multiplied by alpha.
+  bool premultiplied = 2;
+  // The curve adjustments applied after reading.
+  Curve curve = 3;
 }
 
 // Channel is an enumerator of component 'channels' used to describe the
 // intended use of a stream component. Channels include vector dimensions, color
 // primaries and other typical GPU channel usages.
 enum Channel {
-    // No channel specified.
-    Undefined = 0;
-    // Red color channel.
-    Red = 1;
-    // Green color channel.
-    Green = 2;
-    // Blue color channel.
-    Blue = 3;
-    // Transparency channel.
-    Alpha = 4;
-    // Luminance channel.
-    Luminance = 5;
-    // Depth channel.
-    Depth = 6;
-    // Stencil channel.
-    Stencil = 7;
-    // U chroma channel.
-    ChromaU = 8;
-    // V chroma channel.
-    ChromaV = 9;
-    // Grayscale color channel.
-    Gray = 10;
-    // U vector channel.
-    U = 11;
-    // V vector channel.
-    V = 12;
-    // W vector channel.
-    W = 13;
-    // X vector channel.
-    X = 14;
-    // Y vector channel.
-    Y = 15;
-    // Z vector channel.
-    Z = 16;
-    // Shared-exponent channel. All other channels are scaled by this.
-    SharedExponent = 17;
+  // No channel specified.
+  Undefined = 0;
+  // Red color channel.
+  Red = 1;
+  // Green color channel.
+  Green = 2;
+  // Blue color channel.
+  Blue = 3;
+  // Transparency channel.
+  Alpha = 4;
+  // Luminance channel.
+  Luminance = 5;
+  // Depth channel.
+  Depth = 6;
+  // Stencil channel.
+  Stencil = 7;
+  // U chroma channel.
+  ChromaU = 8;
+  // V chroma channel.
+  ChromaV = 9;
+  // Grayscale color channel.
+  Gray = 10;
+  // U vector channel.
+  U = 11;
+  // V vector channel.
+  V = 12;
+  // W vector channel.
+  W = 13;
+  // X vector channel.
+  X = 14;
+  // Y vector channel.
+  Y = 15;
+  // Z vector channel.
+  Z = 16;
+  // Shared-exponent channel. All other channels are scaled by this.
+  SharedExponent = 17;
 }
 
 // Component describes a single repeating element in a stream.
 message Component {
-    // The data type of the component.
-    DataType data_type = 1;
-    // How the element should be read.
-    Sampling sampling = 2;
-    // The channel identifier of the component.
-    Channel channel = 3;
+  // The data type of the component.
+  DataType data_type = 1;
+  // How the element should be read.
+  Sampling sampling = 2;
+  // The channel identifier of the component.
+  Channel channel = 3;
 }
 
 // Format describes the components that define a stream element.
 message Format {
-    // The list of components that make up a stream.
-    // While components are sequential in their data layout, each element is
-    // aligned to the next byte.
-    repeated Component components = 1;
+  // The list of components that make up a stream.
+  // While components are sequential in their data layout, each element is
+  // aligned to the next byte.
+  repeated Component components = 1;
 }

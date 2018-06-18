@@ -22,36 +22,38 @@ import "test/robot/search/search.proto";
 
 // Operation represents the type of action being performed.
 enum Operation {
-    // UnknownOperation is the default (invalid) operation.
-    UnknownOperation = 0;
-    // Host indicates host operations (running gapit and gapis).
-    Host = 1;
-    // Trace indicates tracing operations (gapii).
-    Trace = 2;
-    // Report indicates report generation operations (gapis gapir).
-    Report = 3;
-    // Replay indicates replay operations (gapir).
-    Replay = 4;
+  // UnknownOperation is the default (invalid) operation.
+  UnknownOperation = 0;
+  // Host indicates host operations (running gapit and gapis).
+  Host = 1;
+  // Trace indicates tracing operations (gapii).
+  Trace = 2;
+  // Report indicates report generation operations (gapis gapir).
+  Report = 3;
+  // Replay indicates replay operations (gapir).
+  Replay = 4;
 }
 
 // Status represents the status of an action being performed.
 enum Status {
-    // UnknownStatus is the default not started status.
-    UnknownStatus = 0;
-    // Running indicates a worker has picked up and started the action.
-    Running = 1;
-    // Succeeded means the action finished correctly, and it's output may be interesting.
-    Succeeded = 2;
-    // Failed indicates the action has been abnormally terminated, and it's results should be ignored.
-    Failed = 3;
+  // UnknownStatus is the default not started status.
+  UnknownStatus = 0;
+  // Running indicates a worker has picked up and started the action.
+  Running = 1;
+  // Succeeded means the action finished correctly, and it's output may be
+  // interesting.
+  Succeeded = 2;
+  // Failed indicates the action has been abnormally terminated, and it's
+  // results should be ignored.
+  Failed = 3;
 }
 
 // Device is the information we know about a given robot worker device.
 message Device {
-    // Id is the unique id of the device.
-    string id = 1;
-    // Information is the device instance information.
-    device.Instance information = 2;
+  // Id is the unique id of the device.
+  string id = 1;
+  // Information is the device instance information.
+  device.Instance information = 2;
 }
 
 // Worker is the information about a consumer of tasks.
@@ -67,12 +69,16 @@ message Worker {
 // Service is the api to the robot job manager.
 service Service {
   // Search is used to find devices that match the given query.
-  rpc SearchDevices(search.Query) returns(stream Device) {};
+  rpc SearchDevices(search.Query) returns (stream Device) {
+  };
   // Search is used to find workers that match the given query.
-  rpc SearchWorkers(search.Query) returns(stream Worker) {};
+  rpc SearchWorkers(search.Query) returns (stream Worker) {
+  };
   // Get finds or adds a worker.
-  // The returned worker may support a superset of the operations in the request.
-  rpc GetWorker(GetWorkerRequest) returns(GetWorkerResponse) {};
+  // The returned worker may support a superset of the operations in the
+  // request.
+  rpc GetWorker(GetWorkerRequest) returns (GetWorkerResponse) {
+  };
 }
 
 message GetWorkerRequest {

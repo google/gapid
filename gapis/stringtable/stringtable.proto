@@ -24,121 +24,122 @@ option go_package = "github.com/google/gapid/gapis/stringtable";
 
 // StringTable is the container for an entire string table.
 message StringTable {
-    Info info = 1;
-    map<string, Node> entries = 2;
+  Info info = 1;
+  map<string, Node> entries = 2;
 }
 
 // Info contains a description of the string table.
 message Info {
-    string culture_code = 1; // en, en-us, de, etc.
+  string culture_code = 1;  // en, en-us, de, etc.
 }
 
 // Msg is a single stringtable message entry.
 message Msg {
-    // String table entry identifier.
-    string identifier = 1;
-    // Argument list.
-    map<string, Value> arguments = 2;
+  // String table entry identifier.
+  string identifier = 1;
+  // Argument list.
+  map<string, Value> arguments = 2;
 }
 
 // Value is a single value that can be used as a message argument.
 message Value {
-    oneof value {
-        box.Value box = 1;
-        path.Any path = 2;
-    }
+  oneof value {
+    box.Value box = 1;
+    path.Any path = 2;
+  }
 }
 
 // Node is a node in the stringtable message tree.
 message Node {
-    oneof node {
-        Block block = 1;
-        Text text = 2;
-        LineBreak line_break = 3;
-        Whitespace whitespace = 4;
-        Parameter parameter = 5;
-        Link link = 6;
-        Bold bold = 7;
-        Italic italic = 8;
-        Underlined underlined = 9;
-        Heading heading = 10;
-        Code code = 11;
-        List list = 12;
-        Formatter formatter = 13;
-    }
+  oneof node {
+    Block block = 1;
+    Text text = 2;
+    LineBreak line_break = 3;
+    Whitespace whitespace = 4;
+    Parameter parameter = 5;
+    Link link = 6;
+    Bold bold = 7;
+    Italic italic = 8;
+    Underlined underlined = 9;
+    Heading heading = 10;
+    Code code = 11;
+    List list = 12;
+    Formatter formatter = 13;
+  }
 }
 
 // Block is a node that holds a sequential list of sub-nodes.
 message Block {
-    repeated Node children = 1;
+  repeated Node children = 1;
 }
 
 // Text is a node that holds a sequence of localized text.
 message Text {
-    // The text string.
-    string text = 1;
+  // The text string.
+  string text = 1;
 }
 
 // LineBreak is a node that represents a vertical gap in layout.
 // This is typically authored as a number of new lines (\n).
 message LineBreak {
-    // Size of the spacing in multiples of the regular-font glyph height.
-    uint32 lines = 1;
+  // Size of the spacing in multiples of the regular-font glyph height.
+  uint32 lines = 1;
 }
 
 // Whitespace is a node that represents a horizontal gap in text layout.
 // This is typically authored as ' '.
-message Whitespace {}
+message Whitespace {
+}
 
 // Parameter is a node representing a dynamic value parameter.
 message Parameter {
-    // Optional custom formatter.
-    Formatter formatter = 1;
-    // Parameter key.
-    string key = 2;
+  // Optional custom formatter.
+  Formatter formatter = 1;
+  // Parameter key.
+  string key = 2;
 }
 
 // Link is a node representing a dynamic value parameter hyper-link.
 message Link {
-    // If nil, just display Target.
-    Node body = 1;
-    // Parameter or Text
-    Node target = 2;
+  // If nil, just display Target.
+  Node body = 1;
+  // Parameter or Text
+  Node target = 2;
 }
 
 // Bold is a node representing a section in bold.
 message Bold {
-    Node body = 1;
+  Node body = 1;
 }
 
 // Italic is a node representing a section in italic.
 message Italic {
-    Node body = 1;
+  Node body = 1;
 }
 
 // Underlined is a node representing a section that's underlined.
 message Underlined {
-    Node body = 1;
+  Node body = 1;
 }
 
 // Heading is a node representing a heading.
 message Heading {
-    Node body = 1;
-    uint32 scale = 2;
+  Node body = 1;
+  uint32 scale = 2;
 }
 
 // Code is a node representing a block of code.
 message Code {
-    Node body = 1;
-    string language = 2;
+  Node body = 1;
+  string language = 2;
 }
 
 // List is a node representing an unordered list.
 message List {
-    repeated Node items = 1;
+  repeated Node items = 1;
 }
 
 // Formatter is used to format a parameter value to a string.
 message Formatter {
-    // TODO
+  // TODO
 }

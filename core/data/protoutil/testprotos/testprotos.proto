@@ -18,22 +18,22 @@ package testprotos;
 option go_package = "github.com/google/gapid/core/data/protoutil/testprotos";
 
 message MsgA {
-    float  f32 = 1;
-    uint32 u32 = 2;
-    int32  s32 = 3;
-    string str = 4;
+  float f32 = 1;
+  uint32 u32 = 2;
+  int32 s32 = 3;
+  string str = 4;
 }
 
 message MsgB {
-    double f64 = 1;
-    uint64 u64 = 2;
-    int64  s64 = 3;
-    bool   bool = 4;
+  double f64 = 1;
+  uint64 u64 = 2;
+  int64 s64 = 3;
+  bool bool = 4;
 }
 
 message MsgC {
-    message Entry {
-        int32 value = 1;
-    }
-    repeated Entry entries = 1;
+  message Entry {
+    int32 value = 1;
+  }
+  repeated Entry entries = 1;
 }

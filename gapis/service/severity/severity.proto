@@ -22,16 +22,19 @@ option go_package = "github.com/google/gapid/gapis/service/severity";
 // Severity defines the severity of a logging message.
 // The values must be identical to values in core/log/severity.go
 enum Severity {
-	// Verbose indicates extremely verbose level messages.
-	VerboseLevel = 0;
-	// Debug indicates debug-level messages.
-	DebugLevel = 1;
-	// Info indicates minor informational messages that should generally be ignored.
-	InfoLevel = 2;
-	// Warning indicates issues that might affect performance or compatibility, but could be ignored.
-	WarningLevel = 3;
-	// Error indicates non terminal failure conditions that may have an effect on results.
-	ErrorLevel = 4;
-	// Fatal indicates a fatal error and the process should be terminated.
-	FatalLevel = 5;
+  // Verbose indicates extremely verbose level messages.
+  VerboseLevel = 0;
+  // Debug indicates debug-level messages.
+  DebugLevel = 1;
+  // Info indicates minor informational messages that should generally be
+  // ignored.
+  InfoLevel = 2;
+  // Warning indicates issues that might affect performance or compatibility,
+  // but could be ignored.
+  WarningLevel = 3;
+  // Error indicates non terminal failure conditions that may have an effect on
+  // results.
+  ErrorLevel = 4;
+  // Fatal indicates a fatal error and the process should be terminated.
+  FatalLevel = 5;
 }

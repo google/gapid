@@ -20,39 +20,40 @@ option go_package = "github.com/google/gapid/gapis/replay/protocol";
 // ConnectionType is sent from the server to the replay system to define the
 // type of connection.
 enum ConnectionType {
-    // Replay is the type of connection used to issue a replay.
-    Replay = 0;
-    // Shutdown is used to request a shutdown of gapir.
-    Shutdown = 1;
-    // Ping is used to request a "PONG" string response.
-    Ping = 2;
+  // Replay is the type of connection used to issue a replay.
+  Replay = 0;
+  // Shutdown is used to request a shutdown of gapir.
+  Shutdown = 1;
+  // Ping is used to request a "PONG" string response.
+  Ping = 2;
 }
 
-// MessageType defines the packet type sent from the replay system to the server.
+// MessageType defines the packet type sent from the replay system to the
+// server.
 enum MessageType {
-    // Get is sent for a packet that requests a resource.
-    Get = 0;
-    // Post is sent for a packet containing postback data.
-    Post = 1;
-    // Crash is sent for a packet containing a breakpad minidump.
-    Crash = 2;
+  // Get is sent for a packet that requests a resource.
+  Get = 0;
+  // Post is sent for a packet containing postback data.
+  Post = 1;
+  // Crash is sent for a packet containing a breakpad minidump.
+  Crash = 2;
 }
 
 // Type is one of the primitive types supported by the replay virtual machine.
 enum Type {
-    Bool = 0; // A boolean type.
-    Int8 = 1; // A signed 8-bit integer type.
-    Int16 = 2; // A signed 16-bit integer type.
-    Int32 = 3; // A signed 32-bit integer type.
-    Int64 = 4; // A signed 64-bit integer type.
-    Uint8 = 5; // An unsigned 8-bit integer type.
-    Uint16 = 6; // An unsigned 16-bit integer type.
-    Uint32 = 7; // An unsigned 32-bit integer type.
-    Uint64 = 8; // An unsigned 64-bit integer type.
-    Float = 9; // A 32-bit floating-point number type.
-    Double = 10; // A 64-bit floating-point number type.
-    AbsolutePointer = 11; // A pointer type that is not remapped by the protocol.
-    ConstantPointer = 12; // A pointer into the constant buffer space.
-    VolatilePointer = 13; // A pointer into the volatile buffer space.
-    Void = 0x7fffffff; // A non-existant type. Not handled by the protocol.
+  Bool = 0;              // A boolean type.
+  Int8 = 1;              // A signed 8-bit integer type.
+  Int16 = 2;             // A signed 16-bit integer type.
+  Int32 = 3;             // A signed 32-bit integer type.
+  Int64 = 4;             // A signed 64-bit integer type.
+  Uint8 = 5;             // An unsigned 8-bit integer type.
+  Uint16 = 6;            // An unsigned 16-bit integer type.
+  Uint32 = 7;            // An unsigned 32-bit integer type.
+  Uint64 = 8;            // An unsigned 64-bit integer type.
+  Float = 9;             // A 32-bit floating-point number type.
+  Double = 10;           // A 64-bit floating-point number type.
+  AbsolutePointer = 11;  // A pointer type that is not remapped by the protocol.
+  ConstantPointer = 12;  // A pointer into the constant buffer space.
+  VolatilePointer = 13;  // A pointer into the volatile buffer space.
+  Void = 0x7fffffff;     // A non-existant type. Not handled by the protocol.
 }

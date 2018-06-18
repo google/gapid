@@ -22,18 +22,18 @@ option go_package = "github.com/google/gapid/gapis/memory";
 
 // PoolNames is the set of well known PoolID values.
 enum PoolNames {
-    // Application is the PoolID of Pool representing the application's memory
-    // address space.
-    Application = 0;
+  // Application is the PoolID of Pool representing the application's memory
+  // address space.
+  Application = 0;
 }
 
 message ID {
-    bytes data = 1;
+  bytes data = 1;
 }
 
 // Internal to GAPIS.
 message SubsliceResolvable {
-	ID slice = 1;
-	uint64 first = 2;
-	uint64 count = 3;
+  ID slice = 1;
+  uint64 first = 2;
+  uint64 count = 3;
 }

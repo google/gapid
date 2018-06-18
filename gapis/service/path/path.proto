@@ -65,209 +65,209 @@ message Any {
 
 // ID is a 20-byte identifier.
 message ID {
-    bytes data = 1;
+  bytes data = 1;
 }
 
 // ArrayIndex is path to a element in an array or slice.
 message ArrayIndex {
-    uint64 index = 1;
-    oneof array {
-        Field field = 2;
-        Slice slice = 3;
-        ArrayIndex array_index = 4;
-        MapIndex map_index = 5;
-        Report report = 6;
-        Parameter parameter = 7;
-    }
+  uint64 index = 1;
+  oneof array {
+    Field field = 2;
+    Slice slice = 3;
+    ArrayIndex array_index = 4;
+    MapIndex map_index = 5;
+    Report report = 6;
+    Parameter parameter = 7;
+  }
 }
 
 // API is a path to an API.
 message API {
-    ID ID = 1;
+  ID ID = 1;
 }
 
 // As casts or transforms the object to the requested type.
 message As {
-    oneof to {
-        image.Format image_format = 1;
-        vertex.BufferFormat vertex_buffer_format = 2;
-    }
-    oneof from {
-       Field field = 3;
-       Slice slice = 4;
-       ArrayIndex array_index = 5;
-       MapIndex map_index = 6;
-       ImageInfo image_info = 7;
-       ResourceData resource_data = 8;
-       Mesh mesh = 9;
-    }
+  oneof to {
+    image.Format image_format = 1;
+    vertex.BufferFormat vertex_buffer_format = 2;
+  }
+  oneof from {
+    Field field = 3;
+    Slice slice = 4;
+    ArrayIndex array_index = 5;
+    MapIndex map_index = 6;
+    ImageInfo image_info = 7;
+    ResourceData resource_data = 8;
+    Mesh mesh = 9;
+  }
 }
 
 // Blob is a path to a blob of data.
 message Blob {
-    // id is the identifier of the data.
-    ID ID = 1;
+  // id is the identifier of the data.
+  ID ID = 1;
 }
 
 // Capture is a path to a capture.
 // Resolves to a service.Capture.
 message Capture {
-    ID ID = 1;
+  ID ID = 1;
 }
 
 // Command is the path to a command in the capture.
 // Resolves to a service.Command.
 message Command {
-    Capture capture = 1;
-    // Indices of this command in the capture.
-    // If there is more than one index, then the index refers to a sub-command.
-    repeated uint64 indices = 2;
+  Capture capture = 1;
+  // Indices of this command in the capture.
+  // If there is more than one index, then the index refers to a sub-command.
+  repeated uint64 indices = 2;
 }
 
 // Commands is a path to a list of commands in a capture.
 // Resolves to a service.Commands.
 message Commands {
-    Capture capture = 1;
-    // The index of the first command in the interval.
-    // If there is more than one index, then the index refers to a sub-command.
-    repeated uint64 from = 2;
-    // The index of the last command in the interval.
-    // If there is more than one index, then the index refers to a sub-command.
-    repeated uint64 to = 4;
+  Capture capture = 1;
+  // The index of the first command in the interval.
+  // If there is more than one index, then the index refers to a sub-command.
+  repeated uint64 from = 2;
+  // The index of the last command in the interval.
+  // If there is more than one index, then the index refers to a sub-command.
+  repeated uint64 to = 4;
 }
 
 // ConstantSet is a path to an enumerator of constants.
 // Resolves to a service.ConstantSet.
 message ConstantSet {
-    API API = 1;
-    uint32 index = 2;
+  API API = 1;
+  uint32 index = 2;
 }
 
 // Events is a path to a list of events in a capture.
 // Resolves to a service.Events.
 message Events {
-    Capture capture = 1;
-    CommandFilter filter = 2;
-    bool draw_calls = 3;
-    bool transform_feedbacks = 4;
-    bool first_in_frame = 5;
-    bool last_in_frame = 6;
-    bool clears = 7;
-    bool user_markers = 8;
-    bool push_user_markers = 9;
-    bool pop_user_markers = 10;
-    bool framebuffer_observations = 11;
-    bool all_commands = 12;
+  Capture capture = 1;
+  CommandFilter filter = 2;
+  bool draw_calls = 3;
+  bool transform_feedbacks = 4;
+  bool first_in_frame = 5;
+  bool last_in_frame = 6;
+  bool clears = 7;
+  bool user_markers = 8;
+  bool push_user_markers = 9;
+  bool pop_user_markers = 10;
+  bool framebuffer_observations = 11;
+  bool all_commands = 12;
 }
 
 // Parameter is the path to a single parameter on a command.
 message Parameter {
-    string name = 1;
-    Command command = 2;
+  string name = 1;
+  Command command = 2;
 }
 
 // Result is the path to the result value of a command.
 message Result {
-    Command command = 1;
+  Command command = 1;
 }
 
 // Threads is path to a list of threads in a capture.
 message Threads {
-    Capture capture = 1;
+  Capture capture = 1;
 }
 
 // Thread is a path to a single thread in a capture.
 message Thread {
-    Capture capture = 1;
-    uint64 ID = 2;
+  Capture capture = 1;
+  uint64 ID = 2;
 }
 
 // Contexts is path to a list of contexts in a capture.
 message Contexts {
-    Capture capture = 1;
+  Capture capture = 1;
 }
 
 // Context is a path to a single context in a capture.
 message Context {
-    Capture capture = 1;
-    ID ID = 2;
+  Capture capture = 1;
+  ID ID = 2;
 }
 
 // Device is a path to a device used for replay.
 message Device {
-    ID ID = 1;
+  ID ID = 1;
 }
 
 // FramebufferObservation is a path to a framebuffer observation image at the
 // specified command. It resolves to an image.Info.
 message FramebufferObservation {
-    Command command = 1;
+  Command command = 1;
 }
 
 // Field is a path to a field in a struct.
 message Field {
-    string name = 1;
-    oneof struct {
-        Field field = 2;
-        Slice slice = 3;
-        ArrayIndex array_index = 4;
-        MapIndex map_index = 5;
-        State state = 6;
-        GlobalState global_state = 7;
-        Parameter parameter = 8;
-    }
+  string name = 1;
+  oneof struct {
+    Field field = 2;
+    Slice slice = 3;
+    ArrayIndex array_index = 4;
+    MapIndex map_index = 5;
+    State state = 6;
+    GlobalState global_state = 7;
+    Parameter parameter = 8;
+  }
 }
 
 // CommandFilter are the optional filters applied to CommandTrees and Events.
 message CommandFilter {
-    // context filters the commands to the specified context.
-    ID context = 1;
-    // thread filters the commands to those with the specified threads.
-    repeated uint64 threads = 2;
+  // context filters the commands to the specified context.
+  ID context = 1;
+  // thread filters the commands to those with the specified threads.
+  repeated uint64 threads = 2;
 }
 
 // CommandTree is a path to a hierarchy of command tree nodes.
 // Resolves to a service.CommandTree.
 message CommandTree {
-    // The capture to get the tree for.
-    Capture capture = 1;
-    // The command filter used to create the tree.
-    CommandFilter filter = 2;
-    // If true then commands will be grouped by API.
-    bool group_by_api = 3;
-    // If true then commands will be grouped by context.
-    bool group_by_context = 4;
-    // If true then commands will be grouped by thread.
-    bool group_by_thread = 5;
-    // If true then commands will be grouped by draw calls.
-    bool group_by_draw_call = 6;
-    // If true then commands will be grouped by transform feedback calls.
-    bool group_by_transform_feedback = 7;
-    // If true then commands will be grouped by frame.
-    bool group_by_frame = 8;
-    // If true then commands will be grouped by user markers.
-    bool group_by_user_markers = 9;
-    // If true and grouping by context, 'no context' groups will be created.
-    bool include_no_context_groups = 10;
-    // If true and grouping by frames, commands after the last frame will be
-    // grouped into an 'incomplete frame' group. Only if there is at least one
-    // complete frame.
-    bool allow_incomplete_frame = 11;
-    // If positive, synthetic sub-nodes are created for nodes with more than
-    // this many children.
-    int32 max_children = 12;
-    // If positive, synthetic sub-nodes are created for long spans of commands
-    // between groups. This ensures the groups do not get lost in the noise.
-    int32 max_neighbours = 13;
+  // The capture to get the tree for.
+  Capture capture = 1;
+  // The command filter used to create the tree.
+  CommandFilter filter = 2;
+  // If true then commands will be grouped by API.
+  bool group_by_api = 3;
+  // If true then commands will be grouped by context.
+  bool group_by_context = 4;
+  // If true then commands will be grouped by thread.
+  bool group_by_thread = 5;
+  // If true then commands will be grouped by draw calls.
+  bool group_by_draw_call = 6;
+  // If true then commands will be grouped by transform feedback calls.
+  bool group_by_transform_feedback = 7;
+  // If true then commands will be grouped by frame.
+  bool group_by_frame = 8;
+  // If true then commands will be grouped by user markers.
+  bool group_by_user_markers = 9;
+  // If true and grouping by context, 'no context' groups will be created.
+  bool include_no_context_groups = 10;
+  // If true and grouping by frames, commands after the last frame will be
+  // grouped into an 'incomplete frame' group. Only if there is at least one
+  // complete frame.
+  bool allow_incomplete_frame = 11;
+  // If positive, synthetic sub-nodes are created for nodes with more than
+  // this many children.
+  int32 max_children = 12;
+  // If positive, synthetic sub-nodes are created for long spans of commands
+  // between groups. This ensures the groups do not get lost in the noise.
+  int32 max_neighbours = 13;
 }
 
 // CommandTreeNode is a path to a command tree node.
 // Resolves to a service.CommandTreeNode.
 message CommandTreeNode {
-    // Unique identifier of the command tree.
-    ID tree = 1;
-    // Descending child indices starting from the root CommandTreeNode.
-    repeated uint64 indices = 2;
+  // Unique identifier of the command tree.
+  ID tree = 1;
+  // Descending child indices starting from the root CommandTreeNode.
+  repeated uint64 indices = 2;
 }
 
 // CommandTreeNodeForCommand is a path to a command tree node, resolved from a
@@ -275,75 +275,75 @@ message CommandTreeNode {
 // CommandTreeNode for a given command.
 // Resolves to a path.CommandTreeNode.
 message CommandTreeNodeForCommand {
-    // Unique identifier of the command tree.
-    ID tree = 1;
-    // The command path.
-    Command command = 2;
+  // Unique identifier of the command tree.
+  ID tree = 1;
+  // The command path.
+  Command command = 2;
 }
 
 // ImageInfo is a path that refers to a image.Info.
 message ImageInfo {
-    image.ID ID = 1; // The ImageInfo's unique identifier.
+  image.ID ID = 1;  // The ImageInfo's unique identifier.
 }
 
 // MapIndex is a path to a value held inside a map.
 message MapIndex {
-    oneof key {
-        box.Value box = 1;
-    }
-    oneof map {
-        Field field = 2;
-        Slice slice = 3;
-        ArrayIndex array_index = 4;
-        MapIndex map_index = 5;
-        State state = 6;
-        Parameter parameter = 7;
-    }
+  oneof key {
+    box.Value box = 1;
+  }
+  oneof map {
+    Field field = 2;
+    Slice slice = 3;
+    ArrayIndex array_index = 4;
+    MapIndex map_index = 5;
+    State state = 6;
+    Parameter parameter = 7;
+  }
 }
 
 // Memory is a path to a region of memory.
 // Resolves to a service.Memory.
 message Memory {
-    // Base address of the region of memory.
-    uint64 address = 1;
-    // Size in bytes of the region of memory.
-    uint64 size = 2;
-    // The pool identifier.
-    uint32 pool = 3;
-    // The memory follows this command.
-    Command after = 4;
-    // If true then the actual memory bytes will be missing from in the
-    // service.Memory. Useful for discovering memory ranges touched.
-    bool exclude_data = 5;
-    // If true, only the observations at the given command are included.
-    // I.e, the returned service.Memory.observed will be empty.
-    bool exclude_observed = 6;
+  // Base address of the region of memory.
+  uint64 address = 1;
+  // Size in bytes of the region of memory.
+  uint64 size = 2;
+  // The pool identifier.
+  uint32 pool = 3;
+  // The memory follows this command.
+  Command after = 4;
+  // If true then the actual memory bytes will be missing from in the
+  // service.Memory. Useful for discovering memory ranges touched.
+  bool exclude_data = 5;
+  // If true, only the observations at the given command are included.
+  // I.e, the returned service.Memory.observed will be empty.
+  bool exclude_observed = 6;
 }
 
 // Mesh is a path to a mesh representation of an object.
 message Mesh {
-    MeshOptions options = 1;
-    oneof object {
-        Command command = 2;
-        CommandTreeNode command_tree_node = 3;
-    }
+  MeshOptions options = 1;
+  oneof object {
+    Command command = 2;
+    CommandTreeNode command_tree_node = 3;
+  }
 }
 
 // MeshOptions provides parameters for the mesh returned by a Mesh path resolve.
 message MeshOptions {
-    // If true then normals are calculated from each face.
-    bool faceted = 1;
-    // If true, the actual data will be missing from the vertex.Buffers. This
-    // can be used to fetch the metadata about the mesh and all its vertex
-    // buffers, without the overhead of fetching all the buffer data.
-    bool exclude_data = 2;
-    // Hints that override the semantic guessing. Maps vertex attribute names to
-    // their intentended semantic type.
-    message SemanticHint {
-        string name = 1;
-        vertex.Semantic.Type type = 2;
-    }
-    repeated SemanticHint vertex_semantics = 3;
+  // If true then normals are calculated from each face.
+  bool faceted = 1;
+  // If true, the actual data will be missing from the vertex.Buffers. This
+  // can be used to fetch the metadata about the mesh and all its vertex
+  // buffers, without the overhead of fetching all the buffer data.
+  bool exclude_data = 2;
+  // Hints that override the semantic guessing. Maps vertex attribute names to
+  // their intentended semantic type.
+  message SemanticHint {
+    string name = 1;
+    vertex.Semantic.Type type = 2;
+  }
+  repeated SemanticHint vertex_semantics = 3;
 }
 
 // Metrics requests a set of metrics for a given command.  Resolves to
@@ -358,71 +358,71 @@ message Metrics {
 
 // Report is a path to a list of report items for a capture.
 message Report {
-    Capture capture = 1;
-    // The optional path the the device used to generate replay information.
-    Device device = 2;
-    // The optional filter to apply to the report items.
-    CommandFilter filter = 3;
+  Capture capture = 1;
+  // The optional path the the device used to generate replay information.
+  Device device = 2;
+  // The optional filter to apply to the report items.
+  CommandFilter filter = 3;
 }
 
 // Resources is a path to a list of resources used in a capture.
 message Resources {
-    Capture capture = 1;
+  Capture capture = 1;
 }
 
 // ResourceData is a path to a single resource snapshot at a given point in an
 // command stream.
 message ResourceData {
-    ID ID = 1;
-    Command after = 2;
+  ID ID = 1;
+  Command after = 2;
 }
 
 // Slice is a path to a subslice of a slice or array.
 message Slice {
-    uint64 start = 1;
-    uint64 end = 2;
-    oneof array {
-        Field field = 3;
-        Slice slice = 4;
-        ArrayIndex array_index = 5;
-        MapIndex map_index = 6;
-        Parameter parameter = 7;
-    }
+  uint64 start = 1;
+  uint64 end = 2;
+  oneof array {
+    Field field = 3;
+    Slice slice = 4;
+    ArrayIndex array_index = 5;
+    MapIndex map_index = 6;
+    Parameter parameter = 7;
+  }
 }
 
 // State is a path to a subset of the GlobalState at a point in a capture.
 message State {
-    Command after = 1;
-    // If non-nil, then the state is filtered to the specified context.
-    ID context = 2;
+  Command after = 1;
+  // If non-nil, then the state is filtered to the specified context.
+  ID context = 2;
 }
 
 // GlobalState is an path node to the absolute global state after a specfied
 // command. GlobalStates are used where stable paths are required, such as
 // locating state tree nodes.
 message GlobalState {
-    path.Command after = 1;
+  path.Command after = 1;
 }
 
 // StateTree is a path to a hierarchy of state tree nodes.
 // Resolves to a service.StateTree.
 message StateTree {
-    State state = 1;
-    // If positive, expanded arrays/slices with more elements than this limit
-    // will be restructured to have up to two extra levels of tree nodes, each
-    // with at most this many children. If the array has more elements than this
-    // number cubed, the array root node will contain more than this many child
-    // nodes.
-    int32 array_group_size = 2;
+  State state = 1;
+  // If positive, expanded arrays/slices with more elements than this limit
+  // will be restructured to have up to two extra levels of tree nodes, each
+  // with at most this many children. If the array has more elements than this
+  // number cubed, the array root node will contain more than this many child
+  // nodes.
+  int32 array_group_size = 2;
 }
 
 // StateTreeNode is a path to a state tree node.
 // Resolves to a service.StateTreeNode.
 message StateTreeNode {
-    // Unique identifier of the state tree.
-    ID tree = 1;
-    // Descending child indices starting from the root StateTreeNode.
-    repeated uint64 indices = 2;
+  // Unique identifier of the state tree.
+  ID tree = 1;
+  // Descending child indices starting from the root StateTreeNode.
+  repeated uint64 indices = 2;
 }
 
 // StateTreeNodeForPath is a path to a state tree node, resolved from another
@@ -430,28 +430,28 @@ message StateTreeNode {
 // member variable.
 // Resolves to a path.StateTreeNode.
 message StateTreeNodeForPath {
-    // Unique identifier of the state tree.
-    ID tree = 1;
-    // The path to the state member to look for.
-    Any member = 2;
+  // Unique identifier of the state tree.
+  ID tree = 1;
+  // The path to the state member to look for.
+  Any member = 2;
 }
 
 // Thumbnail is a path to a thumbnail image representing the object.
 message Thumbnail {
-    // The desired maximum width of the thumbnail image.
-    // If DesiredMaxWidth <= 0, then no limits will be placed on the width.
-    uint32 desired_max_width = 1;
-    // The desired maximum height of the thumbnail image.
-    // If DesiredMaxHeight <= 0, then no limits will be placed on the height.
-    uint32 desired_max_height = 2;
-    // If requested thumbnail format. If nil, then return the native format.
-    image.Format desired_format = 3;
+  // The desired maximum width of the thumbnail image.
+  // If DesiredMaxWidth <= 0, then no limits will be placed on the width.
+  uint32 desired_max_width = 1;
+  // The desired maximum height of the thumbnail image.
+  // If DesiredMaxHeight <= 0, then no limits will be placed on the height.
+  uint32 desired_max_height = 2;
+  // If requested thumbnail format. If nil, then return the native format.
+  image.Format desired_format = 3;
 
-    oneof object {
-        ResourceData resource = 4;
-        Command command = 5;
-        CommandTreeNode command_tree_node = 6;
-    }
+  oneof object {
+    ResourceData resource = 4;
+    Command command = 5;
+    CommandTreeNode command_tree_node = 6;
+  }
 
-    bool disable_optimization = 7;
+  bool disable_optimization = 7;
 }
