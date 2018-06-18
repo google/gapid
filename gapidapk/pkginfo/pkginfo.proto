@@ -30,7 +30,7 @@ message Package {
     // Activities represents the list of activities in this package.
     repeated Activity activities = 4;
     // Abi, if present, represents the ABI of this package.
-    string abi = 5;
+    string ABI = 5;
 }
 
 // Activity describes an activity within an Android package.
@@ -48,7 +48,7 @@ message Action {
     // Name is the action name.
     string name = 1;
     // IsLaunch is true is this is a launcher action.
-    bool isLaunch = 2;
+    bool is_launch = 2;
 }
 
 // PackageList describes installed packages on a device.
@@ -58,5 +58,5 @@ message PackageList {
     // Icons is an array of base64-encoded icons.
     repeated bytes icons = 2;
     // OnlyDebuggable is true if we only requested debuggable APKs.
-    bool onlyDebuggable = 3;
+    bool only_debuggable = 3;
 }
