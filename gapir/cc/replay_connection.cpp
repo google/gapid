@@ -19,9 +19,9 @@
 #include <grpc++/grpc++.h>
 #include <memory>
 
-#include "gapis/service/severity/severity.pb.h"
-#include "gapir/replay_service/service.grpc.pb.h"
 #include "core/cc/log.h"
+#include "gapir/replay_service/service.grpc.pb.h"
+#include "gapis/service/severity/severity.pb.h"
 
 namespace gapir {
 
@@ -87,13 +87,15 @@ uint64_t ReplayConnection::Posts::piece_id(int index) const {
   return mProtoPostData->post_data_pieces(index).id();
 }
 
-ReplayConnection::Posts::Posts() : mProtoPostData(new replay_service::PostData()) {}
+ReplayConnection::Posts::Posts()
+    : mProtoPostData(new replay_service::PostData()) {}
 
 // Payload member methods
 
 std::unique_ptr<ReplayConnection::Payload> ReplayConnection::Payload::get(
     ReplayGrpcStream* stream) {
-  std::unique_ptr<replay_service::ReplayRequest> req(new replay_service::ReplayRequest());
+  std::unique_ptr<replay_service::ReplayRequest> req(
+      new replay_service::ReplayRequest());
   if (!stream->Read(req.get())) {
     return nullptr;
   }
@@ -147,14 +149,16 @@ const void* ReplayConnection::Payload::opcodes_data() const {
   return mProtoReplayRequest->payload().opcodes().data();
 }
 
-ReplayConnection::Payload::Payload(std::unique_ptr<replay_service::ReplayRequest> req)
+ReplayConnection::Payload::Payload(
+    std::unique_ptr<replay_service::ReplayRequest> req)
     : mProtoReplayRequest(std::move(req)) {}
 
 // Resources member methods
 
 std::unique_ptr<ReplayConnection::Resources> ReplayConnection::Resources::get(
     ReplayGrpcStream* stream) {
-  std::unique_ptr<replay_service::ReplayRequest> req(new replay_service::ReplayRequest());
+  std::unique_ptr<replay_service::ReplayRequest> req(
+      new replay_service::ReplayRequest());
   if (!stream->Read(req.get())) {
     return nullptr;
   }
@@ -236,12 +240,8 @@ bool ReplayConnection::sendNotification(uint64_t id, uint32_t severity,
                                         const void* data, uint32_t data_size) {
   using severity::Severity;
   const Severity log_levels[] = {
-    Severity::FatalLevel,
-    Severity::ErrorLevel,
-    Severity::WarningLevel,
-    Severity::InfoLevel,
-    Severity::DebugLevel,
-    Severity::VerboseLevel,
+      Severity::FatalLevel, Severity::ErrorLevel, Severity::WarningLevel,
+      Severity::InfoLevel,  Severity::DebugLevel, Severity::VerboseLevel,
   };
   Severity sev = Severity::DebugLevel;
   if (severity <= LOG_LEVEL_DEBUG) {

@@ -17,8 +17,8 @@
 #ifndef GAPIR_RESOURCE_DISK_CACHE_H
 #define GAPIR_RESOURCE_DISK_CACHE_H
 
-#include "resource_cache.h"
 #include "replay_connection.h"
+#include "resource_cache.h"
 
 #include "core/cc/archive.h"
 
@@ -29,25 +29,27 @@ namespace gapir {
 
 // Unlimited size disk cache for resources
 class ResourceDiskCache : public ResourceCache {
-public:
-    // Creates new disk cache with the specified base path. If the base path is not readable or it
-    // can't be created then returns the fall back provider.
-    static std::unique_ptr<ResourceProvider> create(
-            std::unique_ptr<ResourceProvider> fallbackProvider, const std::string& path);
+ public:
+  // Creates new disk cache with the specified base path. If the base path is
+  // not readable or it can't be created then returns the fall back provider.
+  static std::unique_ptr<ResourceProvider> create(
+      std::unique_ptr<ResourceProvider> fallbackProvider,
+      const std::string& path);
 
   // Prefetches the specified resources, caching them to disk.
   void prefetch(const Resource* resources, size_t count, ReplayConnection* conn,
                 void* temp, size_t tempSize) override;
 
-protected:
-    void putCache(const Resource& resource, const void* data) override;
-    bool getCache(const Resource& resource, void* data) override;
+ protected:
+  void putCache(const Resource& resource, const void* data) override;
+  bool getCache(const Resource& resource, void* data) override;
 
-private:
-    ResourceDiskCache(std::unique_ptr<ResourceProvider> fallbackProvider, const std::string& path);
+ private:
+  ResourceDiskCache(std::unique_ptr<ResourceProvider> fallbackProvider,
+                    const std::string& path);
 
-    // Disk-backed archive holding the cached resources.
-    core::Archive mArchive;
+  // Disk-backed archive holding the cached resources.
+  core::Archive mArchive;
 };
 
 }  // namespace gapir

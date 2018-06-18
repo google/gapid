@@ -21,45 +21,48 @@
 
 namespace gapir {
 
-// Renderer is an interface to an off-screen rendering context. Constructing a renderer will perform
-// any necessary hidden window construction and minimal event handling for the target platform.
+// Renderer is an interface to an off-screen rendering context. Constructing a
+// renderer will perform any necessary hidden window construction and minimal
+// event handling for the target platform.
 class Renderer {
-public:
-    class Listener {
-    public:
-     virtual void onDebugMessage(uint32_t severity, uint8_t api_index,
-                                 const char* msg) = 0;
-    };
+ public:
+  class Listener {
+   public:
+    virtual void onDebugMessage(uint32_t severity, uint8_t api_index,
+                                const char* msg) = 0;
+  };
 
-    inline Renderer();
+  inline Renderer();
 
-    // Destroys the renderer and any associated off-screen windows.
-    virtual ~Renderer() {}
+  // Destroys the renderer and any associated off-screen windows.
+  virtual ~Renderer() {}
 
-    // Returns the renderer's API.
-    virtual Api* api() = 0;
+  // Returns the renderer's API.
+  virtual Api* api() = 0;
 
-    template <typename T> inline T* getApi();
+  template <typename T>
+  inline T* getApi();
 
-    inline void setListener(Listener* listener);
-    inline Listener* getListener() const;
+  inline void setListener(Listener* listener);
+  inline Listener* getListener() const;
 
-    virtual bool isValid() = 0;
-private:
-    Listener* mListener;
+  virtual bool isValid() = 0;
+
+ private:
+  Listener* mListener;
 };
 
 inline Renderer::Renderer() : mListener(nullptr) {}
 
 template <typename T>
 inline T* Renderer::getApi() {
-    if (Api* api = this->api()) {
-        // Raw-pointer comparison is safe as the ID is static.
-        if (api->id() == T::ID) {
-            return static_cast<T*>(api);
-        }
+  if (Api* api = this->api()) {
+    // Raw-pointer comparison is safe as the ID is static.
+    if (api->id() == T::ID) {
+      return static_cast<T*>(api);
     }
-    return nullptr;
+  }
+  return nullptr;
 }
 
 inline void Renderer::setListener(Listener* listener) { mListener = listener; }
@@ -68,4 +71,3 @@ inline Renderer::Listener* Renderer::getListener() const { return mListener; }
 }  // namespace gapir
 
 #endif  // GAPIR_RENDERER_H
-

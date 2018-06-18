@@ -15,9 +15,9 @@
  */
 
 #include "swapchain.h"
-#include "virtual_swapchain.h"
 #include <cassert>
 #include <vector>
+#include "virtual_swapchain.h"
 
 namespace swapchain {
 
@@ -99,7 +99,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceSupportKHR(
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
     VkSurfaceCapabilitiesKHR *pSurfaceCapabilities) {
-
   // It would be illegal for the program to call VkDestroyInstance here.
   // We do not need to lock the map for the whole time, just
   // long enough to get the data out. unordered_map guarantees that
@@ -128,7 +127,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
   // TODO(awoloszyn): Handle all of the composite types.
 
   pSurfaceCapabilities->supportedUsageFlags =
-      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   // TODO(awoloszyn): Find a good set of formats that we can use
   // for rendering.
 
@@ -180,7 +179,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfacePresentModesKHR(
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
     VkDevice device, const VkSwapchainCreateInfoKHR *pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkSwapchainKHR *pSwapchain) {
-
   DeviceData &dev_dat = *GetGlobalContext().GetDeviceData(device);
   PhysicalDeviceData &pdd =
       *GetGlobalContext().GetPhysicalDeviceData(dev_dat.physicalDevice);
@@ -196,8 +194,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
 
   size_t queue = 0;
   for (; queue < queue_properties.size(); ++queue) {
-    if (queue_properties[queue].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-      break;
+    if (queue_properties[queue].queueFlags & VK_QUEUE_GRAPHICS_BIT) break;
   }
 
   assert(queue < queue_properties.size());
@@ -292,17 +289,16 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
 
   bool has_semaphore = semaphore != VK_NULL_HANDLE;
 
-  VkSubmitInfo info{VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
-                    nullptr,                       // pNext
-                    0,                             // waitSemaphoreCount
-                    nullptr,                       // waitSemaphores
-                    nullptr,                       // waitDstStageMask
-                    0,                             // commandBufferCount
-                    nullptr,                       // pCommandBuffers
-                    (has_semaphore ? 1u : 0u),     // semaphoreCount
-                    (has_semaphore ? &semaphore : nullptr)}; // pSemaphores
+  VkSubmitInfo info{VK_STRUCTURE_TYPE_SUBMIT_INFO,  // sType
+                    nullptr,                        // pNext
+                    0,                              // waitSemaphoreCount
+                    nullptr,                        // waitSemaphores
+                    nullptr,                        // waitDstStageMask
+                    0,                              // commandBufferCount
+                    nullptr,                        // pCommandBuffers
+                    (has_semaphore ? 1u : 0u),      // semaphoreCount
+                    (has_semaphore ? &semaphore : nullptr)};  // pSemaphores
   return swapchain::vkQueueSubmit(q, 1, &info, fence);
-
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -319,15 +315,15 @@ vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
         reinterpret_cast<VirtualSwapchain *>(pPresentInfo->pSwapchains[i]);
 
     VkSubmitInfo submitInfo{
-        VK_STRUCTURE_TYPE_SUBMIT_INFO,                    // sType
-        nullptr,                                          // nullptr
-        i == 0 ? pPresentInfo->waitSemaphoreCount : 0,    // waitSemaphoreCount
-        i == 0 ? pPresentInfo->pWaitSemaphores : nullptr, // pWaitSemaphores
-        i == 0 ? pipeline_stages.data() : nullptr,        // pWaitDstStageMask
-        1,                                                // commandBufferCount
-        &swp->GetCommandBuffer(image_index),              // pCommandBuffers
-        0,                                                // semaphoreCount
-        nullptr                                           // pSemaphores
+        VK_STRUCTURE_TYPE_SUBMIT_INFO,                     // sType
+        nullptr,                                           // nullptr
+        i == 0 ? pPresentInfo->waitSemaphoreCount : 0,     // waitSemaphoreCount
+        i == 0 ? pPresentInfo->pWaitSemaphores : nullptr,  // pWaitSemaphores
+        i == 0 ? pipeline_stages.data() : nullptr,         // pWaitDstStageMask
+        1,                                                 // commandBufferCount
+        &swp->GetCommandBuffer(image_index),               // pCommandBuffers
+        0,                                                 // semaphoreCount
+        nullptr                                            // pSemaphores
     };
 
     res |= GetGlobalContext().GetQueueData(queue)->vkQueueSubmit(
@@ -344,8 +340,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkQueueSubmit(VkQueue queue,
                                              VkFence fence) {
   // We actually DO have to lock here, we may share this queue with
   // vkAcquireNextImageKHR, which is not externally synchronized on Queue.
-  return GetGlobalContext().GetQueueData(queue)->vkQueueSubmit(queue, submitCount,
-                                                        pSubmits, fence);
+  return GetGlobalContext().GetQueueData(queue)->vkQueueSubmit(
+      queue, submitCount, pSubmits, fence);
 }
 
 // The following 3 functions are special. We would normally not have to
@@ -363,7 +359,6 @@ VKAPI_ATTR void VKAPI_CALL vkCmdPipelineBarrier(
     const VkBufferMemoryBarrier *pBufferMemoryBarriers,
     uint32_t imageMemoryBarrierCount,
     const VkImageMemoryBarrier *pImageMemoryBarriers) {
-
   std::vector<VkImageMemoryBarrier> imageBarriers(imageMemoryBarrierCount);
   for (size_t i = 0; i < imageMemoryBarrierCount; ++i) {
     imageBarriers[i] = pImageMemoryBarriers[i];
@@ -394,7 +389,6 @@ VKAPI_ATTR void VKAPI_CALL vkCmdWaitEvents(
     const VkBufferMemoryBarrier *pBufferMemoryBarriers,
     uint32_t imageMemoryBarrierCount,
     const VkImageMemoryBarrier *pImageMemoryBarriers) {
-
   std::vector<VkImageMemoryBarrier> imageBarriers(imageMemoryBarrierCount);
   for (size_t i = 0; i < imageMemoryBarrierCount; ++i) {
     imageBarriers[i] = pImageMemoryBarriers[i];
@@ -436,4 +430,4 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateRenderPass(
       GetGlobalContext().GetDeviceData(device)->vkCreateRenderPass;
   return func(device, &intercepted, pAllocator, pRenderPass);
 }
-} // swapchain
+}  // namespace swapchain

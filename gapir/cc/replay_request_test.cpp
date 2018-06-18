@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "memory_manager.h"
-#include "mock_resource_provider.h"
 #include "replay_request.h"
-#include "test_utilities.h"
+#include "memory_manager.h"
 #include "mock_replay_connection.h"
+#include "mock_resource_provider.h"
 #include "replay_connection.h"
+#include "test_utilities.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -40,48 +40,54 @@ const std::string replayId = "ABCDE";
 }  // anonymous namespace
 
 TEST(ReplayRequestTestStatic, Create) {
-    uint32_t stackSize = 128;
-    uint32_t volatileMemorySize = 1024;
-    std::vector<uint8_t> constantMemory =
-        {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'};
-    std::vector<Resource> resources{{"ZYX", 16}, {"1234", 32}};
-    std::vector<uint32_t> instructionList{0, 1, 2};
+  uint32_t stackSize = 128;
+  uint32_t volatileMemorySize = 1024;
+  std::vector<uint8_t> constantMemory = {'A', 'B', 'C', 'D',
+                                         'E', 'F', 'G', 'H'};
+  std::vector<Resource> resources{{"ZYX", 16}, {"1234", 32}};
+  std::vector<uint32_t> instructionList{0, 1, 2};
 
-    auto payload = createPayload(stackSize, volatileMemorySize, constantMemory,
-                                 resources, instructionList);
+  auto payload = createPayload(stackSize, volatileMemorySize, constantMemory,
+                               resources, instructionList);
 
-    auto mock_conn = std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
+  auto mock_conn =
+      std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
 
-    EXPECT_CALL(*mock_conn, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mock_conn, getPayload())
+      .WillOnce(Return(ByMove(std::move(payload))));
 
-    std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
-    std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
+  std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
+  std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
 
-    auto replayRequest =
-            ReplayRequest::create(mock_conn.get(), memoryManager.get());
+  auto replayRequest =
+      ReplayRequest::create(mock_conn.get(), memoryManager.get());
 
-    EXPECT_THAT(replayRequest, NotNull());
+  EXPECT_THAT(replayRequest, NotNull());
 
-    EXPECT_EQ(stackSize, replayRequest->getStackSize());
-    EXPECT_EQ(volatileMemorySize, replayRequest->getVolatileMemorySize());
-    EXPECT_EQ(resources, replayRequest->getResources());
-    EXPECT_THAT(constantMemory,
-        ElementsAreArray((uint8_t*)(replayRequest->getConstantMemory().first), replayRequest->getConstantMemory().second));
-    EXPECT_THAT(instructionList,
-        ElementsAreArray(replayRequest->getInstructionList().first, replayRequest->getInstructionList().second));
+  EXPECT_EQ(stackSize, replayRequest->getStackSize());
+  EXPECT_EQ(volatileMemorySize, replayRequest->getVolatileMemorySize());
+  EXPECT_EQ(resources, replayRequest->getResources());
+  EXPECT_THAT(
+      constantMemory,
+      ElementsAreArray((uint8_t*)(replayRequest->getConstantMemory().first),
+                       replayRequest->getConstantMemory().second));
+  EXPECT_THAT(instructionList,
+              ElementsAreArray(replayRequest->getInstructionList().first,
+                               replayRequest->getInstructionList().second));
 }
 
 TEST(ReplayRequestTestStatic, CreateErrorGet) {
-    auto mock_conn = std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
-    EXPECT_CALL(*mock_conn, getPayload()).WillOnce(Return(ByMove(nullptr)));
+  auto mock_conn =
+      std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
+  EXPECT_CALL(*mock_conn, getPayload()).WillOnce(Return(ByMove(nullptr)));
 
-    std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
-    std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
+  std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
+  std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
 
-    auto replayRequest =
-            ReplayRequest::create(mock_conn.get(), memoryManager.get());
+  auto replayRequest =
+      ReplayRequest::create(mock_conn.get(), memoryManager.get());
 
-    EXPECT_EQ(nullptr, replayRequest);
+  EXPECT_EQ(nullptr, replayRequest);
 }
 
 }  // namespace test

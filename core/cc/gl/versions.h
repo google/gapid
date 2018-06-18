@@ -22,10 +22,9 @@ namespace gl {
 
 // Version represents a single major.minor version of an OpenGL context.
 struct Version {
-    int major;
-    int minor;
+  int major;
+  int minor;
 };
-
 
 // sVersionSearchOrder is an preference-ordered list of OpenGL context versions
 // that should be searched in order to pick the most recent version of OpenGL.
@@ -33,6 +32,7 @@ struct Version {
 // implementations will return the precise version requested, so if we request
 // 3.2, we would get 3.2 even if a new version is available.
 static const Version sVersionSearchOrder[] = {
+    // clang-format off
     {4, 5}, // Compatible with OpenGL ES 3.1
     {4, 4},
     {4, 3}, // Compatible with OpenGL ES 3.0
@@ -41,6 +41,7 @@ static const Version sVersionSearchOrder[] = {
     {4, 0},
     {3, 3},
     {3, 2}, // Introduces core profile
+    // clang-format on
 };
 
 }  // namespace gl

@@ -23,25 +23,26 @@ namespace core {
 
 // StreamReader is a pure-virtual interface used to read from data streams.
 class StreamReader {
-public:
-    // read attempts to read max_size bytes to the pointer data, blocking until
-    // the data is available. Returns the number of bytes successfully read,
-    // which may be less than size if the stream was closed or there was an
-    // error.
-    virtual uint64_t read(void* data, uint64_t max_size) = 0;
+ public:
+  // read attempts to read max_size bytes to the pointer data, blocking until
+  // the data is available. Returns the number of bytes successfully read,
+  // which may be less than size if the stream was closed or there was an
+  // error.
+  virtual uint64_t read(void* data, uint64_t max_size) = 0;
 
-    // read attempts to read the s from the stream, returning true on success or
-    // false if the read was partial or a complete failure.
-    // Note: T must be a plain-old-data type.
-    template <typename T> inline bool read(T& s);
+  // read attempts to read the s from the stream, returning true on success or
+  // false if the read was partial or a complete failure.
+  // Note: T must be a plain-old-data type.
+  template <typename T>
+  inline bool read(T& s);
 
-protected:
-    virtual ~StreamReader() {}
+ protected:
+  virtual ~StreamReader() {}
 };
 
 template <typename T>
 inline bool StreamReader::read(T& s) {
-    return read(&s, sizeof(s)) == sizeof(s);
+  return read(&s, sizeof(s)) == sizeof(s);
 }
 
 }  // namespace core

@@ -29,43 +29,43 @@ class Stack;
 
 // FunctionTable provides a mapping of function id to a VM function.
 class FunctionTable {
-public:
-    // General signature for functions callable by the interpreter with a function call
-    // instruction. The first argument is a pointer to the stack of the Virtual Machine and the
-    // second argument is true if the caller expect the return value of the function to be pushed
-    // to the stack. The function should return true if the function call was successful, false
-    // otherwise.
-    typedef std::function<bool(uint32_t, Stack*, bool)> Function;
+ public:
+  // General signature for functions callable by the interpreter with a function
+  // call instruction. The first argument is a pointer to the stack of the
+  // Virtual Machine and the second argument is true if the caller expect the
+  // return value of the function to be pushed to the stack. The function should
+  // return true if the function call was successful, false otherwise.
+  typedef std::function<bool(uint32_t, Stack*, bool)> Function;
 
-    // The function identifier. These are part of the protocol between the server and the replay
-    // system, and so must remain consistent.
-    typedef uint16_t Id;
+  // The function identifier. These are part of the protocol between the server
+  // and the replay system, and so must remain consistent.
+  typedef uint16_t Id;
 
-    // Inserts a function into the table.
-    inline void insert(Id id, Function func);
+  // Inserts a function into the table.
+  inline void insert(Id id, Function func);
 
-    // Returns a function from the table, or nullptr if there is no function with the specified
-    // identifier.
-    inline Function* lookup(Id id);
+  // Returns a function from the table, or nullptr if there is no function with
+  // the specified identifier.
+  inline Function* lookup(Id id);
 
-private:
-    // Map of the supported function ids to the actual function implementations
-    std::unordered_map<Id, Function> mFunctions;
+ private:
+  // Map of the supported function ids to the actual function implementations
+  std::unordered_map<Id, Function> mFunctions;
 };
 
 inline FunctionTable::Function* FunctionTable::lookup(Id id) {
-    auto func = mFunctions.find(id);
-    if (func == mFunctions.end()) {
-        return nullptr;
-    }
-    return &func->second;
+  auto func = mFunctions.find(id);
+  if (func == mFunctions.end()) {
+    return nullptr;
+  }
+  return &func->second;
 }
 
 inline void FunctionTable::insert(Id id, Function func) {
-    if (mFunctions.count(id) != 0) {
-        GAPID_FATAL("Duplicate functions inserted into table");
-    }
-    mFunctions[id] = func;
+  if (mFunctions.count(id) != 0) {
+    GAPID_FATAL("Duplicate functions inserted into table");
+  }
+  mFunctions[id] = func;
 }
 
 }  // namespace gapir

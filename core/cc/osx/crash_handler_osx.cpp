@@ -27,43 +27,43 @@
 
 namespace {
 
-static bool handleCrash(const char* minidumpDir, const char* minidumpId, void* crashHandlerPtr, bool succeeded) {
-    core::CrashHandler* crashHandler = reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
-    std::string minidumpPath(minidumpDir);
-    minidumpPath.append(minidumpId);
-    minidumpPath.append(".dmp");
-    return crashHandler->handleMinidump(minidumpPath, succeeded);
+static bool handleCrash(const char* minidumpDir, const char* minidumpId,
+                        void* crashHandlerPtr, bool succeeded) {
+  core::CrashHandler* crashHandler =
+      reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
+  std::string minidumpPath(minidumpDir);
+  minidumpPath.append(minidumpId);
+  minidumpPath.append(".dmp");
+  return crashHandler->handleMinidump(minidumpPath, succeeded);
 }
 
-}
+}  // namespace
 
 namespace core {
 
 namespace {
 const char* GetTempDir() {
-    const char* tmpdir = getenv("TMPDIR");
-    if (!tmpdir) {
-        tmpdir = "/tmp/";
-    }
-    return tmpdir;
+  const char* tmpdir = getenv("TMPDIR");
+  if (!tmpdir) {
+    tmpdir = "/tmp/";
+  }
+  return tmpdir;
 }
-} // namespace
+}  // namespace
 
-CrashHandler::CrashHandler() :
-    mNextHandlerID(0),
-    mExceptionHandler(nullptr) {
-
-    if (!Debugger::isAttached()) {
-        mExceptionHandler = std::unique_ptr<google_breakpad::ExceptionHandler>(
-            new google_breakpad::ExceptionHandler(
-                GetTempDir(), nullptr, ::handleCrash,
-                reinterpret_cast<void*>(this), true, nullptr));
-    }
-    registerHandler(defaultHandler);
+CrashHandler::CrashHandler() : mNextHandlerID(0), mExceptionHandler(nullptr) {
+  if (!Debugger::isAttached()) {
+    mExceptionHandler = std::unique_ptr<google_breakpad::ExceptionHandler>(
+        new google_breakpad::ExceptionHandler(
+            GetTempDir(), nullptr, ::handleCrash, reinterpret_cast<void*>(this),
+            true, nullptr));
+  }
+  registerHandler(defaultHandler);
 }
 
-// this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.
-// The incomplete type is the previously forward declared google_breakpad::ExceptionHandler.
+// this prevents unique_ptr<CrashHandler> from causing an incomplete type error
+// from inlining the destructor. The incomplete type is the previously forward
+// declared google_breakpad::ExceptionHandler.
 CrashHandler::~CrashHandler() = default;
 
-} // namespace core
+}  // namespace core

@@ -17,12 +17,12 @@
 #ifndef GAPID_SERVER_CONNECTION_H
 #define GAPID_SERVER_CONNECTION_H
 
+#include <grpc++/grpc++.h>
 #include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
 #include <thread>
-#include <grpc++/grpc++.h>
 
 #include "core/cc/log.h"
 #include "gapir/replay_service/service.grpc.pb.h"
@@ -52,9 +52,10 @@ class GapirServiceImpl final : public replay_service::Gapir::Service {
 
   grpc::Status Replay(
       grpc::ServerContext* context,
-      grpc::ServerReaderWriter<replay_service::ReplayResponse, replay_service::ReplayRequest>*
-          stream) override;
-  grpc::Status Ping(grpc::ServerContext* context, const replay_service::PingRequest*,
+      grpc::ServerReaderWriter<replay_service::ReplayResponse,
+                               replay_service::ReplayRequest>* stream) override;
+  grpc::Status Ping(grpc::ServerContext* context,
+                    const replay_service::PingRequest*,
                     replay_service::PingResponse* res) override;
   grpc::Status Shutdown(grpc::ServerContext* context,
                         const replay_service::ShutdownRequest*,
@@ -114,7 +115,10 @@ class Server {
   void wait() { mGrpcServer->Wait(); }
 
   // Shuts down the server, it waits for all RPC processing to finish.
-  void shutdown() { mShuttingDown.store(true); mGrpcServer->Shutdown(); }
+  void shutdown() {
+    mShuttingDown.store(true);
+    mGrpcServer->Shutdown();
+  }
 
  private:
   Server(const char* authToken, int idleTimeoutSec,

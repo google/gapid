@@ -22,10 +22,10 @@
 namespace core {
 
 class TraceScope {
-public:
-    TraceScope(const char* name);
+ public:
+  TraceScope(const char* name);
 
-    ~TraceScope();
+  ~TraceScope();
 };
 
 void TraceInt(const char* name, std::int32_t value);

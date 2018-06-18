@@ -27,20 +27,22 @@ typedef std::string ResourceId;
 
 // Resource represent a requestable blob of data from the server.
 class Resource {
-public:
-    inline Resource();
-    inline Resource(const Resource& other);
-    inline Resource(ResourceId id, uint32_t size);
-    inline bool operator == (const Resource& other) const;
+ public:
+  inline Resource();
+  inline Resource(const Resource& other);
+  inline Resource(ResourceId id, uint32_t size);
+  inline bool operator==(const Resource& other) const;
 
-    ResourceId id; // The resource identifier.
-    uint32_t size; // The resource size in bytes.
+  ResourceId id;  // The resource identifier.
+  uint32_t size;  // The resource size in bytes.
 };
 
 inline Resource::Resource() {}
-inline Resource::Resource(const Resource& other) : id(other.id), size(other.size) {}
-inline Resource::Resource(ResourceId id_, uint32_t size_) : id(id_), size(size_) {}
-inline bool Resource::operator == (const Resource& other) const {
+inline Resource::Resource(const Resource& other)
+    : id(other.id), size(other.size) {}
+inline Resource::Resource(ResourceId id_, uint32_t size_)
+    : id(id_), size(size_) {}
+inline bool Resource::operator==(const Resource& other) const {
   return id == other.id && size == other.size;
 }
 

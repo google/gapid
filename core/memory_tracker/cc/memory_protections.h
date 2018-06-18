@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-
 #ifndef GAPII_MEMORY_PROTECTIONS_H
 #define GAPII_MEMORY_PROTECTIONS_H
-
 
 namespace gapii {
 namespace track_memory {
@@ -29,7 +27,7 @@ enum class PageProtections {
   kReadWrite = 0x1 | 0x2
 };
 
-} // namespace track_memory
-} // namespace gapii
+}  // namespace track_memory
+}  // namespace gapii
 
-#endif // GAPII_MEMORY_PROTECTIONS_H
+#endif  // GAPII_MEMORY_PROTECTIONS_H

@@ -32,41 +32,40 @@ namespace core {
 namespace test {
 
 class MockConnection : public Connection {
-public:
-    MockConnection() : read_pos(0), out_limit(-1) {}
-    virtual size_t send(const void* data, size_t size) override {
-        if ((out_limit >= 0)  && (size > out_limit - out.size())) {
-            size = out_limit - out.size();
-        }
-        out.insert(out.end(), (char*)data, (char*)data + size);
-        return size;
+ public:
+  MockConnection() : read_pos(0), out_limit(-1) {}
+  virtual size_t send(const void* data, size_t size) override {
+    if ((out_limit >= 0) && (size > out_limit - out.size())) {
+      size = out_limit - out.size();
     }
-    virtual size_t recv(void* data, size_t size) override {
-        if (size > in.size() - read_pos) {
-            size = in.size() - read_pos;
-        }
-        memcpy(data, &in[read_pos], size);
-        read_pos += size;
-        return size;
+    out.insert(out.end(), (char*)data, (char*)data + size);
+    return size;
+  }
+  virtual size_t recv(void* data, size_t size) override {
+    if (size > in.size() - read_pos) {
+      size = in.size() - read_pos;
     }
+    memcpy(data, &in[read_pos], size);
+    read_pos += size;
+    return size;
+  }
 
-    const char* error() override { return ""; }
-    std::unique_ptr<Connection> accept(int timeoutMs) override {
-        if (connections.size() == 0) {
-            return nullptr;
-        }
-        auto conn = connections.front();
-        connections.pop();
-        return std::unique_ptr<Connection>(conn);
+  const char* error() override { return ""; }
+  std::unique_ptr<Connection> accept(int timeoutMs) override {
+    if (connections.size() == 0) {
+      return nullptr;
     }
-    void close() override {
-    }
+    auto conn = connections.front();
+    connections.pop();
+    return std::unique_ptr<Connection>(conn);
+  }
+  void close() override {}
 
-    std::queue<Connection*> connections;
-    std::vector<uint8_t> in;
-    int read_pos;
-    std::vector<uint8_t> out;
-    int out_limit;
+  std::queue<Connection*> connections;
+  std::vector<uint8_t> in;
+  int read_pos;
+  std::vector<uint8_t> out;
+  int out_limit;
 };
 
 }  // namespace test

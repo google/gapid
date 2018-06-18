@@ -17,44 +17,44 @@
 #ifndef CORE_SEMAPHORE_H
 #define CORE_SEMAPHORE_H
 
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
 
 namespace core {
 
 class Semaphore {
-public:
-    inline Semaphore(unsigned int count = 0);
+ public:
+  inline Semaphore(unsigned int count = 0);
 
-    // acquire takes a counter from the semaphore, blocking until one is 
-    // available.
-    inline void acquire();
+  // acquire takes a counter from the semaphore, blocking until one is
+  // available.
+  inline void acquire();
 
-    // release returns a counter to the semaphore, possibly unblocking a call
-    // to acquire().
-    inline void release();
+  // release returns a counter to the semaphore, possibly unblocking a call
+  // to acquire().
+  inline void release();
 
-private:
-    Semaphore(const Semaphore&) = delete;
-    Semaphore& operator = (const Semaphore&) = delete;
+ private:
+  Semaphore(const Semaphore&) = delete;
+  Semaphore& operator=(const Semaphore&) = delete;
 
-    std::mutex mMutex;
-    std::condition_variable mSignal;
-    int mCount;
+  std::mutex mMutex;
+  std::condition_variable mSignal;
+  int mCount;
 };
 
 Semaphore::Semaphore(unsigned int count /* = 0 */) : mCount(count) {}
 
 inline void Semaphore::acquire() {
-    std::unique_lock<std::mutex> lock(mMutex);
-    mSignal.wait(lock, [this]{ return this->mCount > 0; });
-    --mCount;
+  std::unique_lock<std::mutex> lock(mMutex);
+  mSignal.wait(lock, [this] { return this->mCount > 0; });
+  --mCount;
 }
 
 inline void Semaphore::release() {
-    std::unique_lock<std::mutex> lock(mMutex);
-    ++mCount;
-    mSignal.notify_one();
+  std::unique_lock<std::mutex> lock(mMutex);
+  ++mCount;
+  mSignal.notify_one();
 }
 
 }  // namespace core

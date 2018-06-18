@@ -26,46 +26,51 @@ namespace core {
 
 // Connection object using a native socket
 class SocketConnection : public Connection {
-public:
-    ~SocketConnection();
+ public:
+  ~SocketConnection();
 
-    // Creates a new socket connection listening on the specified hostname and port. Returns a
-    // connection object on successful open or a nullptr if opening the connection is unsuccessful
-    static std::unique_ptr<Connection> createSocket(const char* hostname, const char* port);
+  // Creates a new socket connection listening on the specified hostname and
+  // port. Returns a connection object on successful open or a nullptr if
+  // opening the connection is unsuccessful
+  static std::unique_ptr<Connection> createSocket(const char* hostname,
+                                                  const char* port);
 
-    // Returns a free port to use with the given hostname. In case of error,
-    // returns 0
-    static uint32_t getFreePort(const char* hostname);
+  // Returns a free port to use with the given hostname. In case of error,
+  // returns 0
+  static uint32_t getFreePort(const char* hostname);
 
-    // Creates a new pipe connection listening on the specified UNIX pipename, without
-    // pipe creation on the local file system if abstract is true. Returns a connection object
-    // on successful open or a nullptr if opening the connection is unsuccessful
-    static std::unique_ptr<Connection> createPipe(const char* pipename, bool abstract);
+  // Creates a new pipe connection listening on the specified UNIX pipename,
+  // without pipe creation on the local file system if abstract is true. Returns
+  // a connection object on successful open or a nullptr if opening the
+  // connection is unsuccessful
+  static std::unique_ptr<Connection> createPipe(const char* pipename,
+                                                bool abstract);
 
-    // Implementation of the Connection interface
-    size_t send(const void* data, size_t size) override;
-    size_t recv(void* data, size_t size) override;
-    const char* error() override;
-    std::unique_ptr<Connection> accept(int timeoutMs = NO_TIMEOUT) override;
+  // Implementation of the Connection interface
+  size_t send(const void* data, size_t size) override;
+  size_t recv(void* data, size_t size) override;
+  const char* error() override;
+  std::unique_ptr<Connection> accept(int timeoutMs = NO_TIMEOUT) override;
 
-    void close() override;
-private:
-    // Private constructor used only by the static create function
-    explicit SocketConnection(int socket);
+  void close() override;
 
-    // Network initializer class to handle the initialization of the network driver. A socket
-    // function can be called only if there is at least one active network initializer is in
-    // the system
-    struct NetworkInitializer {
-        NetworkInitializer();
-        ~NetworkInitializer();
-    };
+ private:
+  // Private constructor used only by the static create function
+  explicit SocketConnection(int socket);
 
-    // The underlying socket for the connection
-    int mSocket;
+  // Network initializer class to handle the initialization of the network
+  // driver. A socket function can be called only if there is at least one
+  // active network initializer is in the system
+  struct NetworkInitializer {
+    NetworkInitializer();
+    ~NetworkInitializer();
+  };
 
-    // Network initializer instance lasts for the lifetime of the connection
-    NetworkInitializer mNetworkInitializer;
+  // The underlying socket for the connection
+  int mSocket;
+
+  // Network initializer instance lasts for the lifetime of the connection
+  NetworkInitializer mNetworkInitializer;
 };
 
 }  // namespace core

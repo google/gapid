@@ -26,60 +26,62 @@
 
 namespace google {
 namespace protobuf {
-    class Descriptor;
-    class Message;
-} // namespace protobuf
-} // namespace google
+class Descriptor;
+class Message;
+}  // namespace protobuf
+}  // namespace google
 
 namespace core {
-    class StreamWriter;
-} // namespace core
+class StreamWriter;
+}  // namespace core
 
 namespace gapii {
 
 // PackEncoder provides methods for encoding protobuf messages to the provided
 // StreamWriter using the pack-stream format.
 class PackEncoder {
-public:
-    typedef std::shared_ptr<PackEncoder> SPtr;
+ public:
+  typedef std::shared_ptr<PackEncoder> SPtr;
 
-    typedef uint32_t TypeID;
-    typedef std::pair<TypeID, bool> TypeIDAndIsNew;
+  typedef uint32_t TypeID;
+  typedef std::pair<TypeID, bool> TypeIDAndIsNew;
 
-    virtual ~PackEncoder() = default;
+  virtual ~PackEncoder() = default;
 
-    // type encodes the given type descriptor if it hasn't been already,
-    // returning the type identifier and a boolean indicating whether the type
-    // was encoded this call.
-    // type assumes the data pointer is stable between calls of the same type.
-    virtual TypeIDAndIsNew type(const char* name, size_t size, const void* data) = 0;
+  // type encodes the given type descriptor if it hasn't been already,
+  // returning the type identifier and a boolean indicating whether the type
+  // was encoded this call.
+  // type assumes the data pointer is stable between calls of the same type.
+  virtual TypeIDAndIsNew type(const char* name, size_t size,
+                              const void* data) = 0;
 
-    // object encodes the leaf protobuf message.
-    virtual void object(const ::google::protobuf::Message* msg) = 0;
+  // object encodes the leaf protobuf message.
+  virtual void object(const ::google::protobuf::Message* msg) = 0;
 
-    // object encodes the leaf object from an already encoded protobuf message.
-    virtual void object(TypeID type, size_t size, const void* data) = 0;
+  // object encodes the leaf object from an already encoded protobuf message.
+  virtual void object(TypeID type, size_t size, const void* data) = 0;
 
-    // group encodes the protobuf message as a group that can contain other
-    // objects and groups.
-    virtual SPtr group(const ::google::protobuf::Message* msg) = 0;
+  // group encodes the protobuf message as a group that can contain other
+  // objects and groups.
+  virtual SPtr group(const ::google::protobuf::Message* msg) = 0;
 
-    // object encodes the group object from an already encoded protobuf message.
-    // The returned PackEncoder can be used to encode objects into this group,
-    // and must be deleted by the caller.
-    virtual PackEncoder* group(TypeID type, size_t size, const void* data) = 0;
+  // object encodes the group object from an already encoded protobuf message.
+  // The returned PackEncoder can be used to encode objects into this group,
+  // and must be deleted by the caller.
+  virtual PackEncoder* group(TypeID type, size_t size, const void* data) = 0;
 
-    // flush flushes out all of the pending in the encoder
-    virtual void flush() = 0;
+  // flush flushes out all of the pending in the encoder
+  virtual void flush() = 0;
 
-    // create returns a PackEncoder::SPtr that writes to output.
-    // If no_buffer is true, thn the output will be flushed after every write.
-    static SPtr create(std::shared_ptr<core::StreamWriter> output, bool no_buffer);
+  // create returns a PackEncoder::SPtr that writes to output.
+  // If no_buffer is true, thn the output will be flushed after every write.
+  static SPtr create(std::shared_ptr<core::StreamWriter> output,
+                     bool no_buffer);
 
-    // noop returns a PackEncoder::SPtr that does nothing.
-    static SPtr noop();
+  // noop returns a PackEncoder::SPtr that does nothing.
+  static SPtr noop();
 };
 
-} // namespace gapii
+}  // namespace gapii
 
-#endif // GAPII_PACK_ENCODER_H
+#endif  // GAPII_PACK_ENCODER_H

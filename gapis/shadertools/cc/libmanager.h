@@ -76,7 +76,7 @@ typedef struct convert_options_t {
   bool disassemble;
   bool relaxed;
   bool strip_optimizations;
-  int  target_glsl_version;
+  int target_glsl_version;
 } convert_options_t;
 
 typedef struct compile_options_t {
@@ -86,8 +86,8 @@ typedef struct compile_options_t {
 } compile_options_t;
 
 typedef struct spirv_binary_t {
-    uint32_t* words;
-    size_t words_num;
+  uint32_t* words;
+  size_t words_num;
 } spirv_binary_t;
 
 typedef struct glsl_compile_result_t {
@@ -96,7 +96,8 @@ typedef struct glsl_compile_result_t {
   spirv_binary_t binary;
 } glsl_compile_result_t;
 
-code_with_debug_info_t* convertGlsl(const char*, size_t, const convert_options_t*);
+code_with_debug_info_t* convertGlsl(const char*, size_t,
+                                    const convert_options_t*);
 
 void deleteGlslCodeWithDebug(code_with_debug_info_t*);
 

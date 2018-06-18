@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "gapii/cc/gles_spy.h"
 #include "gapii/cc/gles_exports.h"
+#include "gapii/cc/gles_spy.h"
 #include "gapii/cc/gles_types.h"
 
 #include "gapis/api/gles/gles_pb/extras.pb.h"
@@ -25,24 +25,28 @@
 #endif  // __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-#define ANDROID_NATIVE_MAKE_CONSTANT(a,b,c,d) \
-    (((unsigned)(a)<<24)|((unsigned)(b)<<16)|((unsigned)(c)<<8)|(unsigned)(d))
+#define ANDROID_NATIVE_MAKE_CONSTANT(a, b, c, d)                          \
+  (((unsigned)(a) << 24) | ((unsigned)(b) << 16) | ((unsigned)(c) << 8) | \
+   (unsigned)(d))
 
 #define ANDROID_NATIVE_WINDOW_MAGIC \
-    ANDROID_NATIVE_MAKE_CONSTANT('_','w','n','d')
+  ANDROID_NATIVE_MAKE_CONSTANT('_', 'w', 'n', 'd')
 
 #define ANDROID_NATIVE_BUFFER_MAGIC \
-    ANDROID_NATIVE_MAKE_CONSTANT('_','b','f','r')
+  ANDROID_NATIVE_MAKE_CONSTANT('_', 'b', 'f', 'r')
 
 namespace gapii {
 
 // Handles GLES 2.0 and GLES 3.0 (the old reflection API)
-static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extra, Program* p) {
+static void GetProgramReflectionInfo_GLES20(GlesSpy* spy,
+                                            LinkProgramExtra* extra,
+                                            Program* p) {
   using namespace GLenum;
   auto resources = gapil::Ref<ActiveProgramResources>::create(spy->arena());
 
   const GLuint program = extra->mID;
-  const bool gles30 = spy->mState.Version != nullptr && spy->mState.Version->mGLES30;
+  const bool gles30 =
+      spy->mState.Version != nullptr && spy->mState.Version->mGLES30;
   const auto& imports = spy->imports();
 
   // Helper method to get property of program
@@ -56,8 +60,9 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
   int32_t maxLength = 0;
   maxLength = std::max(maxLength, getProgramiv(GL_ACTIVE_ATTRIBUTE_MAX_LENGTH));
   maxLength = std::max(maxLength, getProgramiv(GL_ACTIVE_UNIFORM_MAX_LENGTH));
-  maxLength = std::max(maxLength, getProgramiv(GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH));
-  maxLength += 16; // extra space for appending of array suffix
+  maxLength = std::max(maxLength,
+                       getProgramiv(GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH));
+  maxLength += 16;  // extra space for appending of array suffix
   std::vector<char> buffer(maxLength);
 
   auto getActiveUniformsiv = [&](GLuint i, uint32_t pname) {
@@ -71,7 +76,8 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
     auto res = gapil::Ref<ProgramResource>::create(spy->arena());
 
     int32_t nameLength = 0;
-    imports.glGetActiveUniform(program, i, buffer.size(), &nameLength, &res->mArraySize, &res->mType, buffer.data());
+    imports.glGetActiveUniform(program, i, buffer.size(), &nameLength,
+                               &res->mArraySize, &res->mType, buffer.data());
     res->mName = gapil::String(spy->arena(), buffer.data(), nameLength);
 
     if (gles30) {
@@ -82,12 +88,14 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
 
     if (res->mBlockIndex == -1) {
       res->mLocations[0] = imports.glGetUniformLocation(program, buffer.data());
-      if (nameLength >= 3 && strcmp(buffer.data() + nameLength - 3, "[0]") == 0) {
-        nameLength -= 3; // Remove the "[0]" suffix of array
+      if (nameLength >= 3 &&
+          strcmp(buffer.data() + nameLength - 3, "[0]") == 0) {
+        nameLength -= 3;  // Remove the "[0]" suffix of array
       }
       for (int32_t j = 1; j < res->mArraySize; j++) {
-        sprintf(buffer.data() + nameLength, "[%i]", j); // Append array suffix
-        res->mLocations[j] = imports.glGetUniformLocation(program, buffer.data());
+        sprintf(buffer.data() + nameLength, "[%i]", j);  // Append array suffix
+        res->mLocations[j] =
+            imports.glGetUniformLocation(program, buffer.data());
       }
     } else {
       auto layout = gapil::Ref<ProgramResourceLayout>::create(spy->arena());
@@ -107,7 +115,8 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
     auto res = gapil::Ref<ProgramResource>::create(spy->arena());
 
     int32_t nameLength = 0;
-    imports.glGetActiveAttrib(program, i, buffer.size(), &nameLength, &res->mArraySize, &res->mType, buffer.data());
+    imports.glGetActiveAttrib(program, i, buffer.size(), &nameLength,
+                              &res->mArraySize, &res->mType, buffer.data());
     res->mName = gapil::String(spy->arena(), buffer.data(), nameLength);
     res->mLocations[0] = imports.glGetAttribLocation(program, buffer.data());
 
@@ -127,15 +136,18 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
       auto block = gapil::Ref<ProgramResourceBlock>::create(spy->arena());
 
       int32_t nameLength = 0;
-      imports.glGetActiveUniformBlockName(program, i, buffer.size(), &nameLength, buffer.data());
+      imports.glGetActiveUniformBlockName(program, i, buffer.size(),
+                                          &nameLength, buffer.data());
       block->mName = gapil::String(spy->arena(), buffer.data(), nameLength);
 
       block->mBinding = getUniformBlockiv(i, GL_UNIFORM_BLOCK_BINDING);
       block->mDataSize = getUniformBlockiv(i, GL_UNIFORM_BLOCK_DATA_SIZE);
 
       auto usedBy = gapil::Ref<ProgramResourceUses>::create(spy->arena());
-      usedBy->mVertexShader = getUniformBlockiv(i, GL_UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER);
-      usedBy->mFragmentShader = getUniformBlockiv(i, GL_UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
+      usedBy->mVertexShader =
+          getUniformBlockiv(i, GL_UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER);
+      usedBy->mFragmentShader =
+          getUniformBlockiv(i, GL_UNIFORM_BLOCK_REFERENCED_BY_FRAGMENT_SHADER);
       block->mReferencedBy = std::move(usedBy);
 
       resources->mUniformBlocks[i] = std::move(block);
@@ -146,19 +158,24 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy, LinkProgramExtra* extr
 }
 
 // Handles GLES 3.1 and GLES 3.2 (the new reflection API)
-static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extra, Program* p) {
+static void GetProgramReflectionInfo_GLES31(GlesSpy* spy,
+                                            LinkProgramExtra* extra,
+                                            Program* p) {
   using namespace GLenum;
 
   const GLuint program = extra->mID;
   const auto& imports = spy->imports();
 
-  const bool hasGeometryShader       = p->mShaders.contains(GL_GEOMETRY_SHADER);
-  const bool hasTessControlShader    = p->mShaders.contains(GL_TESS_CONTROL_SHADER);
-  const bool hasTessEvaluationShader = p->mShaders.contains(GL_TESS_EVALUATION_SHADER);
-  const bool hasComputeShader        = p->mShaders.contains(GL_COMPUTE_SHADER);
+  const bool hasGeometryShader = p->mShaders.contains(GL_GEOMETRY_SHADER);
+  const bool hasTessControlShader =
+      p->mShaders.contains(GL_TESS_CONTROL_SHADER);
+  const bool hasTessEvaluationShader =
+      p->mShaders.contains(GL_TESS_EVALUATION_SHADER);
+  const bool hasComputeShader = p->mShaders.contains(GL_COMPUTE_SHADER);
 
   std::vector<char> buffer;  // Temporary buffer for getting string.
-  const int bufferSuffixSize = 16;  // Allocate a bit more extra space so we can append integer to name.
+  const int bufferSuffixSize =
+      16;  // Allocate a bit more extra space so we can append integer to name.
 
   // Helper method to get property of program
   auto getProgramiv = [&](uint32_t pname) {
@@ -177,35 +194,43 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
   // Helper method to get property of program resource
   auto getResourceiv = [&](uint32_t interface, GLuint i, uint32_t pname) {
     GLint value = 0;
-    imports.glGetProgramResourceiv(program, interface, i, 1, &pname, 1, nullptr, &value);
+    imports.glGetProgramResourceiv(program, interface, i, 1, &pname, 1, nullptr,
+                                   &value);
     return value;
   };
 
   // Helper method to get name of program resource
   auto getResourceName = [&](uint32_t interface, GLuint i) {
-    GAPID_ASSERT(getResourceiv(interface, i, GL_NAME_LENGTH) <= (int32_t)buffer.size());
+    GAPID_ASSERT(getResourceiv(interface, i, GL_NAME_LENGTH) <=
+                 (int32_t)buffer.size());
     GLsizei length = 0;
-    imports.glGetProgramResourceName(program, interface, i, buffer.size(), &length, buffer.data());
+    imports.glGetProgramResourceName(program, interface, i, buffer.size(),
+                                     &length, buffer.data());
     return gapil::String(spy->arena(), buffer.data(), length);
   };
 
   // Helper method to get all locations of program resource
-  auto getResourceLocations = [&](uint32_t interface, const gapil::String& name, GLint arraySize) {
+  auto getResourceLocations = [&](uint32_t interface, const gapil::String& name,
+                                  GLint arraySize) {
     U32ToGLint locations(spy->arena());
-    locations[0] = imports.glGetProgramResourceLocation(program, interface,
-        reinterpret_cast<const GLchar*>(name.c_str()));
+    locations[0] = imports.glGetProgramResourceLocation(
+        program, interface, reinterpret_cast<const GLchar*>(name.c_str()));
     if (arraySize > 1) {
-      // Copy the array base name (without the [0] suffix) to the temporary buffer
+      // Copy the array base name (without the [0] suffix) to the temporary
+      // buffer
       size_t baseLength = name.length();
-      if (baseLength >= 3 && strcmp(name.c_str() + baseLength - 3, "[0]") == 0) {
-        baseLength -= 3; // Remove the "[0]" suffix of array
+      if (baseLength >= 3 &&
+          strcmp(name.c_str() + baseLength - 3, "[0]") == 0) {
+        baseLength -= 3;  // Remove the "[0]" suffix of array
       }
       GAPID_ASSERT(baseLength + bufferSuffixSize <= buffer.size());
       memcpy(buffer.data(), name.c_str(), baseLength);
       // Get location for each array element.
       for (int32_t j = 1; j < arraySize; j++) {
-        snprintf(buffer.data() + baseLength, buffer.size(), "[%i]", j);  // Append array suffix
-        locations[j] = imports.glGetProgramResourceLocation(program, interface, buffer.data());
+        snprintf(buffer.data() + baseLength, buffer.size(), "[%i]",
+                 j);  // Append array suffix
+        locations[j] = imports.glGetProgramResourceLocation(program, interface,
+                                                            buffer.data());
       }
     }
     return locations;
@@ -214,18 +239,26 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
   // Helper method to get all referenced-by properties
   auto getResourceUses = [&](uint32_t interface, GLuint i) {
     auto usedBy = gapil::Ref<ProgramResourceUses>::create(spy->arena());
-    usedBy->mVertexShader = getResourceiv(interface, i, GL_REFERENCED_BY_VERTEX_SHADER) != 0;
+    usedBy->mVertexShader =
+        getResourceiv(interface, i, GL_REFERENCED_BY_VERTEX_SHADER) != 0;
     if (hasTessControlShader) {
-      usedBy->mTessControlShader = getResourceiv(interface, i, GL_REFERENCED_BY_TESS_CONTROL_SHADER) != 0;
+      usedBy->mTessControlShader =
+          getResourceiv(interface, i, GL_REFERENCED_BY_TESS_CONTROL_SHADER) !=
+          0;
     }
     if (hasTessEvaluationShader) {
-      usedBy->mTessEvaluationShader = getResourceiv(interface, i, GL_REFERENCED_BY_TESS_EVALUATION_SHADER) != 0;
+      usedBy->mTessEvaluationShader =
+          getResourceiv(interface, i,
+                        GL_REFERENCED_BY_TESS_EVALUATION_SHADER) != 0;
     }
     if (hasGeometryShader) {
-      usedBy->mGeometryShader = getResourceiv(interface, i, GL_REFERENCED_BY_GEOMETRY_SHADER) != 0;
+      usedBy->mGeometryShader =
+          getResourceiv(interface, i, GL_REFERENCED_BY_GEOMETRY_SHADER) != 0;
     }
-    usedBy->mFragmentShader = getResourceiv(interface, i, GL_REFERENCED_BY_FRAGMENT_SHADER) != 0;
-    usedBy->mComputeShader  = getResourceiv(interface, i, GL_REFERENCED_BY_COMPUTE_SHADER ) != 0;
+    usedBy->mFragmentShader =
+        getResourceiv(interface, i, GL_REFERENCED_BY_FRAGMENT_SHADER) != 0;
+    usedBy->mComputeShader =
+        getResourceiv(interface, i, GL_REFERENCED_BY_COMPUTE_SHADER) != 0;
     return usedBy;
   };
 
@@ -234,7 +267,8 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
     U32ToProgramResourceBlock__R blocks(spy->arena());
     GLint count = getInterfaceiv(interface, GL_ACTIVE_RESOURCES);
     if (interface != GL_ATOMIC_COUNTER_BUFFER) {
-      buffer.resize(getInterfaceiv(interface, GL_MAX_NAME_LENGTH) + bufferSuffixSize);
+      buffer.resize(getInterfaceiv(interface, GL_MAX_NAME_LENGTH) +
+                    bufferSuffixSize);
     }
     for (int i = 0; i < count; i++) {
       auto block = gapil::Ref<ProgramResourceBlock>::create(spy->arena());
@@ -260,7 +294,8 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 
     U32ToProgramResource__R resources(spy->arena());
     GLint count = getInterfaceiv(interface, GL_ACTIVE_RESOURCES);
-    buffer.resize(getInterfaceiv(interface, GL_MAX_NAME_LENGTH) + bufferSuffixSize);
+    buffer.resize(getInterfaceiv(interface, GL_MAX_NAME_LENGTH) +
+                  bufferSuffixSize);
     for (int i = 0; i < count; i++) {
       auto resource = gapil::Ref<ProgramResource>::create(spy->arena());
       resource->mName = getResourceName(interface, i);
@@ -273,8 +308,9 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
         backedByBufferObject |= (resource->mBlockIndex != -1);
       }
       if (u) {
-        resource->mAtomicCounterBufferIndex = getResourceiv(interface, i, GL_ATOMIC_COUNTER_BUFFER_INDEX);
-        backedByBufferObject |= (resource->mAtomicCounterBufferIndex  != -1);
+        resource->mAtomicCounterBufferIndex =
+            getResourceiv(interface, i, GL_ATOMIC_COUNTER_BUFFER_INDEX);
+        backedByBufferObject |= (resource->mAtomicCounterBufferIndex != -1);
       }
       if (bv || pi || po || u) {
         resource->mReferencedBy = getResourceUses(interface, i);
@@ -288,13 +324,16 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
           layout->mIsRowMajor = getResourceiv(interface, i, GL_IS_ROW_MAJOR);
         }
         if (bv) {
-          layout->mTopLevelArraySize = getResourceiv(interface, i, GL_TOP_LEVEL_ARRAY_SIZE);
-          layout->mTopLevelArrayStride = getResourceiv(interface, i, GL_TOP_LEVEL_ARRAY_STRIDE);
+          layout->mTopLevelArraySize =
+              getResourceiv(interface, i, GL_TOP_LEVEL_ARRAY_SIZE);
+          layout->mTopLevelArrayStride =
+              getResourceiv(interface, i, GL_TOP_LEVEL_ARRAY_STRIDE);
         }
         resource->mLayout = std::move(layout);
       } else {
         if (pi || po || u) {
-          resource->mLocations = getResourceLocations(interface, resource->mName, resource->mArraySize);
+          resource->mLocations = getResourceLocations(
+              interface, resource->mName, resource->mArraySize);
         }
       }
       if ((pi || po) && (hasTessControlShader || hasTessEvaluationShader)) {
@@ -313,14 +352,17 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
   // Get all active resources.
   {
     auto resources = gapil::Ref<ActiveProgramResources>::create(spy->arena());
-    resources->mProgramInputs             = getResources(GL_PROGRAM_INPUT);
-    resources->mProgramOutputs            = getResources(GL_PROGRAM_OUTPUT);
-    resources->mUniforms                  = getResources(GL_UNIFORM);
-    resources->mUniformBlocks             = getResourceBlocks(GL_UNIFORM_BLOCK);
-    resources->mAtomicCounterBuffers      = getResourceBlocks(GL_ATOMIC_COUNTER_BUFFER);
-    resources->mBufferVariables           = getResources(GL_BUFFER_VARIABLE);
-    resources->mShaderStorageBlocks       = getResourceBlocks(GL_SHADER_STORAGE_BLOCK);
-    resources->mTransformFeedbackVaryings = getResources(GL_TRANSFORM_FEEDBACK_VARYING);
+    resources->mProgramInputs = getResources(GL_PROGRAM_INPUT);
+    resources->mProgramOutputs = getResources(GL_PROGRAM_OUTPUT);
+    resources->mUniforms = getResources(GL_UNIFORM);
+    resources->mUniformBlocks = getResourceBlocks(GL_UNIFORM_BLOCK);
+    resources->mAtomicCounterBuffers =
+        getResourceBlocks(GL_ATOMIC_COUNTER_BUFFER);
+    resources->mBufferVariables = getResources(GL_BUFFER_VARIABLE);
+    resources->mShaderStorageBlocks =
+        getResourceBlocks(GL_SHADER_STORAGE_BLOCK);
+    resources->mTransformFeedbackVaryings =
+        getResources(GL_TRANSFORM_FEEDBACK_VARYING);
     extra->mActiveResources = std::move(resources);
   }
 
@@ -332,10 +374,12 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
       layout->mGeometryVerticesOut = getProgramiv(GL_GEOMETRY_VERTICES_OUT);
       layout->mGeometryInputType = getProgramiv(GL_GEOMETRY_INPUT_TYPE);
       layout->mGeometryOutputType = getProgramiv(GL_GEOMETRY_OUTPUT_TYPE);
-      layout->mGeometryShaderInvocations = getProgramiv(GL_GEOMETRY_SHADER_INVOCATIONS);
+      layout->mGeometryShaderInvocations =
+          getProgramiv(GL_GEOMETRY_SHADER_INVOCATIONS);
     }
     if (hasTessControlShader) {
-      layout->mTessControlOutputVertices = getProgramiv(GL_TESS_CONTROL_OUTPUT_VERTICES);
+      layout->mTessControlOutputVertices =
+          getProgramiv(GL_TESS_CONTROL_OUTPUT_VERTICES);
     }
     if (hasTessEvaluationShader) {
       layout->mTessGenMode = getProgramiv(GL_TESS_GEN_MODE);
@@ -345,7 +389,8 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
     }
     if (hasComputeShader) {
       GLint computeWorkGroupSize[3];
-      imports.glGetProgramiv(program, GL_COMPUTE_WORK_GROUP_SIZE, computeWorkGroupSize);
+      imports.glGetProgramiv(program, GL_COMPUTE_WORK_GROUP_SIZE,
+                             computeWorkGroupSize);
       layout->mComputeWorkGroupSize[0] = computeWorkGroupSize[0];
       layout->mComputeWorkGroupSize[1] = computeWorkGroupSize[1];
       layout->mComputeWorkGroupSize[2] = computeWorkGroupSize[2];
@@ -356,11 +401,14 @@ static void GetProgramReflectionInfo_GLES31(GlesSpy* spy, LinkProgramExtra* extr
 }
 
 // GetLinkProgramExtra is called by glLinkProgram and glProgramBinary
-gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Program> p, gapil::Ref<BinaryExtra> binary) {
+gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(
+    CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Program> p,
+    gapil::Ref<BinaryExtra> binary) {
   using namespace GLenum;
 
-  // TODO: It is kind of evil to call glGetError, as it modifies the driver state.
-  GlesSpy::mImports.glGetError(); // Clear error.
+  // TODO: It is kind of evil to call glGetError, as it modifies the driver
+  // state.
+  GlesSpy::mImports.glGetError();  // Clear error.
 
   const GLuint program = p->mID;
   const bool gles31 = mState.Version != nullptr && mState.Version->mGLES31;
@@ -378,9 +426,12 @@ gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer
 
   // Get info log string
   std::vector<char> buffer;  // Temporary buffer for getting string.
-  buffer.resize(getProgramiv(GL_INFO_LOG_LENGTH)); // Returned length includes null-terminator.
-  GLint infoLogLength = 0; // Returned length by the command below excludes null-terminator.
-  mImports.glGetProgramInfoLog(program, buffer.size(), &infoLogLength, buffer.data());
+  buffer.resize(getProgramiv(
+      GL_INFO_LOG_LENGTH));  // Returned length includes null-terminator.
+  GLint infoLogLength =
+      0;  // Returned length by the command below excludes null-terminator.
+  mImports.glGetProgramInfoLog(program, buffer.size(), &infoLogLength,
+                               buffer.data());
   extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
   // Get meta-data about the active resources generated by the compiler.
@@ -404,8 +455,10 @@ gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer
         resources->mDefaultUniformBlock[id] = u;
       }
       if (u->mAtomicCounterBufferIndex != -1) {
-        GAPID_ASSERT(resources->mAtomicCounterBuffers.contains(u->mAtomicCounterBufferIndex));
-        resources->mAtomicCounterBuffers[u->mAtomicCounterBufferIndex]->mResources[id] = u;
+        GAPID_ASSERT(resources->mAtomicCounterBuffers.contains(
+            u->mAtomicCounterBufferIndex));
+        resources->mAtomicCounterBuffers[u->mAtomicCounterBufferIndex]
+            ->mResources[id] = u;
       }
     }
     for (auto& kvp : resources->mBufferVariables) {
@@ -418,13 +471,16 @@ gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer
     }
   }
 
-  // TODO: It is kind of evil to call glGetError, as it modifies the driver state.
-  //       But if we omit it, and cause an error, it would be even more confusing.
-  //       The ideal solution is probably to create shared context sibling, and
-  //       query all the state from there (maybe even in parallel on other thread).
+  // TODO: It is kind of evil to call glGetError, as it modifies the driver
+  // state.
+  //       But if we omit it, and cause an error, it would be even more
+  //       confusing. The ideal solution is probably to create shared context
+  //       sibling, and query all the state from there (maybe even in parallel
+  //       on other thread).
   auto err = GlesSpy::mImports.glGetError();
   if (err) {
-    GAPID_ERROR("Failed to get reflection data for program %i: Error 0x%x", program, err);
+    GAPID_ERROR("Failed to get reflection data for program %i: Error 0x%x",
+                program, err);
   }
 
   // Include snapshot of the current state (i.e. the inputs of the operation)
@@ -434,18 +490,20 @@ gapil::Ref<LinkProgramExtra> GlesSpy::GetLinkProgramExtra(CallObserver* observer
     }
   }
   extra->mBinary = binary;
-  extra->mAttributeBindings           = p->mAttributeBindings.clone();
-  extra->mTransformFeedbackVaryings   = p->mTransformFeedbackVaryings.clone();
+  extra->mAttributeBindings = p->mAttributeBindings.clone();
+  extra->mTransformFeedbackVaryings = p->mTransformFeedbackVaryings.clone();
   extra->mTransformFeedbackBufferMode = p->mTransformFeedbackBufferMode;
-  extra->mSeparable                   = p->mSeparable;
-  extra->mBinaryRetrievableHint       = p->mBinaryRetrievableHint;
+  extra->mSeparable = p->mSeparable;
+  extra->mBinaryRetrievableHint = p->mBinaryRetrievableHint;
 
   observer->encode(*extra.get());
   return extra;
 }
 
 // GetCompileShaderExtra is called by glCompileShader and glShaderBinary
-gapil::Ref<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Shader> p, gapil::Ref<BinaryExtra> binary) {
+gapil::Ref<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(
+    CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Shader> p,
+    gapil::Ref<BinaryExtra> binary) {
   using namespace GLenum;
   auto extra = gapil::Ref<CompileShaderExtra>::create(arena());
   GLuint shader = p->mID;
@@ -470,7 +528,8 @@ gapil::Ref<CompileShaderExtra> GlesSpy::GetCompileShaderExtra(CallObserver* obse
 }
 
 // GetValidateProgramExtra is called by glValidateProgram
-gapil::Ref<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Program> p) {
+gapil::Ref<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(
+    CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Program> p) {
   using namespace GLenum;
   auto extra = gapil::Ref<ValidateProgramExtra>::create(arena());
   GLuint program = p->mID;
@@ -483,7 +542,8 @@ gapil::Ref<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(CallObserver* 
   GLint infoLogLength = 0;
   mImports.glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
   std::vector<char> buffer(infoLogLength + 1);
-  mImports.glGetProgramInfoLog(program, buffer.size(), &infoLogLength, buffer.data());
+  mImports.glGetProgramInfoLog(program, buffer.size(), &infoLogLength,
+                               buffer.data());
   extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
   observer->encode(*extra.get());
@@ -491,7 +551,10 @@ gapil::Ref<ValidateProgramExtra> GlesSpy::GetValidateProgramExtra(CallObserver* 
 }
 
 // GetValidateProgramPipelineExtra is called by glValidateProgramPipeline
-gapil::Ref<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelineExtra(CallObserver* observer, gapil::Ref<Context> ctx, gapil::Ref<Pipeline> p) {
+gapil::Ref<ValidateProgramPipelineExtra>
+GlesSpy::GetValidateProgramPipelineExtra(CallObserver* observer,
+                                         gapil::Ref<Context> ctx,
+                                         gapil::Ref<Pipeline> p) {
   using namespace GLenum;
   auto extra = gapil::Ref<ValidateProgramPipelineExtra>::create(arena());
   GLuint pipe = p->mID;
@@ -504,7 +567,8 @@ gapil::Ref<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelineExtr
   GLint infoLogLength = 0;
   mImports.glGetProgramPipelineiv(pipe, GL_INFO_LOG_LENGTH, &infoLogLength);
   std::vector<char> buffer(infoLogLength + 1);
-  mImports.glGetProgramPipelineInfoLog(pipe, buffer.size(), &infoLogLength, buffer.data());
+  mImports.glGetProgramPipelineInfoLog(pipe, buffer.size(), &infoLogLength,
+                                       buffer.data());
   extra->mInfoLog = gapil::String(arena(), buffer.data(), infoLogLength);
 
   observer->encode(*extra.get());
@@ -512,303 +576,322 @@ gapil::Ref<ValidateProgramPipelineExtra> GlesSpy::GetValidateProgramPipelineExtr
   return extra;
 }
 
-gapil::Ref<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(CallObserver* observer, void* ptr) {
+gapil::Ref<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(
+    CallObserver* observer, void* ptr) {
 #if TARGET_OS == GAPID_OS_ANDROID
-    struct android_native_base_t {
-        int magic;
-        int version;
-        void* reserved[4];
-        void (*incRef)(android_native_base_t* base);
-        void (*decRef)(android_native_base_t* base);
-    };
+  struct android_native_base_t {
+    int magic;
+    int version;
+    void* reserved[4];
+    void (*incRef)(android_native_base_t* base);
+    void (*decRef)(android_native_base_t* base);
+  };
 
-    struct ANativeWindowBuffer {
-        android_native_base_t common;
-        int width;
-        int height;
-        int stride;
-        int format;
-        int usage;
-        uintptr_t layer_count;
-        void* reserved;
-        void* handle;
-        void* reserved_proc[8];
-    };
+  struct ANativeWindowBuffer {
+    android_native_base_t common;
+    int width;
+    int height;
+    int stride;
+    int format;
+    int usage;
+    uintptr_t layer_count;
+    void* reserved;
+    void* handle;
+    void* reserved_proc[8];
+  };
 
-    auto buffer = reinterpret_cast<ANativeWindowBuffer*>(ptr);
+  auto buffer = reinterpret_cast<ANativeWindowBuffer*>(ptr);
 
-    if (buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC) {
-        GAPID_WARNING("Unknown EGLClientBuffer with magic: 0x%x", buffer->common.magic);
-        return nullptr;
-    }
-
-    auto android_version_major = device_instance()->configuration().os().major();
-
-    bool use_layer_count = android_version_major >= 8; // Android O
-
-    auto extra = gapil::Ref<AndroidNativeBufferExtra>::create(arena(),
-        buffer->width,
-        buffer->height,
-        buffer->stride,
-        buffer->format,
-        buffer->usage,
-        use_layer_count ? buffer->layer_count : 0
-    );
-
-    GAPID_INFO("Created AndroidNativeBufferExtra: os_version:%i, width=%i, height=%i, layers=%" PRIx64,
-        (int)android_version_major, buffer->width, buffer->height, (uint64_t)buffer->layer_count);
-
-    observer->encode(*extra.get());
-    return extra;
-#else
+  if (buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC) {
+    GAPID_WARNING("Unknown EGLClientBuffer with magic: 0x%x",
+                  buffer->common.magic);
     return nullptr;
+  }
+
+  auto android_version_major = device_instance()->configuration().os().major();
+
+  bool use_layer_count = android_version_major >= 8;  // Android O
+
+  auto extra = gapil::Ref<AndroidNativeBufferExtra>::create(
+      arena(), buffer->width, buffer->height, buffer->stride, buffer->format,
+      buffer->usage, use_layer_count ? buffer->layer_count : 0);
+
+  GAPID_INFO(
+      "Created AndroidNativeBufferExtra: os_version:%i, width=%i, height=%i, "
+      "layers=%" PRIx64,
+      (int)android_version_major, buffer->width, buffer->height,
+      (uint64_t)buffer->layer_count);
+
+  observer->encode(*extra.get());
+  return extra;
+#else
+  return nullptr;
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 }
 
-// TODO: When gfx api macros produce functions instead of inlining, move this logic
-// to the gles.api file.
-bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer, uint32_t* width, uint32_t* height) {
-    gapil::Ref<Context> ctx = mState.Contexts[observer->getCurrentThread()];
-    if (ctx == nullptr) {
-      return false;
-    }
-
-    auto framebuffer = ctx->mBound.mReadFramebuffer;
-    if (framebuffer == nullptr) {
-        return false;
-    }
-
-    return getFramebufferAttachmentSize(observer, framebuffer.get(), width, height);
-}
-
-bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer, Framebuffer* framebuffer, uint32_t* width, uint32_t* height) {
-    auto attachment = framebuffer->mColorAttachments.find(0);
-    if (attachment == framebuffer->mColorAttachments.end()) {
-        return false;
-    }
-
-    switch (attachment->second.mType) {
-        case GLenum::GL_TEXTURE: {
-            auto t = attachment->second.mTexture;
-            auto level = t->mLevels.find(attachment->second.mTextureLevel);
-            if (level == t->mLevels.end()) {
-                return false;
-            }
-            auto layer = level->second.mLayers.find(attachment->second.mTextureLayer);
-            if (layer == level->second.mLayers.end()) {
-                return false;
-            }
-            auto image = layer->second;
-            if (image == nullptr) {
-                return false;
-            }
-            *width = uint32_t(image->mWidth);
-            *height = uint32_t(image->mHeight);
-            return true;
-        }
-        case GLenum::GL_RENDERBUFFER: {
-            auto image = attachment->second.mRenderbuffer->mImage;
-            if (image == nullptr) {
-                return false;
-            }
-            *width = uint32_t(image->mWidth);
-            *height = uint32_t(image->mHeight);
-            return true;
-        }
-    }
+// TODO: When gfx api macros produce functions instead of inlining, move this
+// logic to the gles.api file.
+bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer,
+                                           uint32_t* width, uint32_t* height) {
+  gapil::Ref<Context> ctx = mState.Contexts[observer->getCurrentThread()];
+  if (ctx == nullptr) {
     return false;
+  }
+
+  auto framebuffer = ctx->mBound.mReadFramebuffer;
+  if (framebuffer == nullptr) {
+    return false;
+  }
+
+  return getFramebufferAttachmentSize(observer, framebuffer.get(), width,
+                                      height);
 }
 
-static bool ReadExternalPixels(GlesImports& imports, EGLImageKHR img, GLsizei width, GLsizei height, std::vector<uint8_t>* data) {
-    using namespace GLenum;
+bool GlesSpy::getFramebufferAttachmentSize(CallObserver* observer,
+                                           Framebuffer* framebuffer,
+                                           uint32_t* width, uint32_t* height) {
+  auto attachment = framebuffer->mColorAttachments.find(0);
+  if (attachment == framebuffer->mColorAttachments.end()) {
+    return false;
+  }
 
-    const char* vsSource =
-        "precision highp float;\n"
-        "attribute vec2 position;\n"
-        "varying vec2 texcoord;\n"
-        "void main() {\n"
-        "  gl_Position = vec4(position, 0.5, 1.0);\n"
-        "  texcoord = position * vec2(0.5) + vec2(0.5);\n"
-        "}\n";
-
-    const char* fsSource =
-        "#extension GL_OES_EGL_image_external : require\n"
-        "precision highp float;\n"
-        "uniform samplerExternalOES tex;\n"
-        "varying vec2 texcoord;\n"
-        "void main() {\n"
-        "  gl_FragColor = texture2D(tex, texcoord);\n"
-        "}\n";
-
-    GLint err;
-    auto prog = imports.glCreateProgram();
-
-    auto vs = imports.glCreateShader(GL_VERTEX_SHADER);
-    imports.glShaderSource(vs, 1, &vsSource, nullptr);
-    imports.glCompileShader(vs);
-    imports.glAttachShader(prog, vs);
-
-    auto fs = imports.glCreateShader(GL_FRAGMENT_SHADER);
-    imports.glShaderSource(fs, 1, &fsSource, nullptr);
-    imports.glCompileShader(fs);
-    imports.glAttachShader(prog, fs);
-
-    imports.glBindAttribLocation(prog, 0, "position");
-    imports.glLinkProgram(prog);
-
-    if ((err = imports.glGetError()) != 0) {
-        GAPID_ERROR("ReadExternalPixels: Failed to create program: 0x%X", err);
+  switch (attachment->second.mType) {
+    case GLenum::GL_TEXTURE: {
+      auto t = attachment->second.mTexture;
+      auto level = t->mLevels.find(attachment->second.mTextureLevel);
+      if (level == t->mLevels.end()) {
         return false;
-    }
-
-    GLint linkStatus = 0;
-    imports.glGetProgramiv(prog, GL_LINK_STATUS, &linkStatus);
-    if (linkStatus == 0) {
-        char log[1024];
-        imports.glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
-        GAPID_ERROR("ReadExternalPixels: Failed to compile program:\n%s", log);
+      }
+      auto layer = level->second.mLayers.find(attachment->second.mTextureLayer);
+      if (layer == level->second.mLayers.end()) {
         return false;
-    }
-
-    GLuint srcTex = 0;
-    imports.glGenTextures(1, &srcTex);
-    imports.glBindTexture(GL_TEXTURE_EXTERNAL_OES, srcTex);
-    imports.glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, img);
-    imports.glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    imports.glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    GLuint dstTex = 0;
-    imports.glGenTextures(1, &dstTex);
-    imports.glBindTexture(GL_TEXTURE_2D, dstTex);
-    imports.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-    if ((err = imports.glGetError()) != 0) {
-        GAPID_ERROR("ReadExternalPixels: Failed to create texture: 0x%X", err);
+      }
+      auto image = layer->second;
+      if (image == nullptr) {
         return false;
+      }
+      *width = uint32_t(image->mWidth);
+      *height = uint32_t(image->mHeight);
+      return true;
     }
-
-    GLuint fb = 0;
-    imports.glGenFramebuffers(1, &fb);
-    imports.glBindFramebuffer(GL_FRAMEBUFFER, fb);
-    imports.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, dstTex, 0);
-
-    if ((err = imports.glGetError()) != 0) {
-        GAPID_ERROR("ReadExternalPixels: Failed to create framebuffer: 0x%X", err);
+    case GLenum::GL_RENDERBUFFER: {
+      auto image = attachment->second.mRenderbuffer->mImage;
+      if (image == nullptr) {
         return false;
+      }
+      *width = uint32_t(image->mWidth);
+      *height = uint32_t(image->mHeight);
+      return true;
     }
-    if ((err = imports.glCheckFramebufferStatus(GL_FRAMEBUFFER)) != GL_FRAMEBUFFER_COMPLETE) {
-        GAPID_ERROR("ReadExternalPixels: Framebuffer incomplete: 0x%X", err);
-        return false;
-    }
-
-    imports.glDisable(GL_CULL_FACE);
-    imports.glDisable(GL_DEPTH_TEST);
-    imports.glViewport(0, 0, width, height);
-    imports.glClearColor(0.0, 0.0, 0.0, 0.0);
-    imports.glClear(GLbitfield::GL_COLOR_BUFFER_BIT);
-    imports.glUseProgram(prog);
-    GLfloat vb[] = {
-        -1.0f, +1.0f,  // 2--4
-        -1.0f, -1.0f,  // |\ |
-        +1.0f, +1.0f,  // | \|
-        +1.0f, -1.0f,  // 1--3
-    };
-    imports.glEnableVertexAttribArray(0);
-    imports.glVertexAttribPointer(0, 2, GL_FLOAT, 0, 0, vb);
-    imports.glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    if ((err = imports.glGetError()) != 0) {
-        GAPID_ERROR("ReadExternalPixels: Failed to draw quad: 0x%X", err);
-        return false;
-    }
-
-    data->resize(width * height * 4);
-    imports.glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data->data());
-    if ((err = imports.glGetError()) != 0) {
-        GAPID_ERROR("ReadExternalPixels: Failed to read pixels: 0x%X", err);
-        return false;
-    }
-
-    return true;
+  }
+  return false;
 }
 
-void GlesSpy::GetEGLImageData(CallObserver* observer, EGLImageKHR img, GLsizei width, GLsizei height) {
-    using namespace EGLenum;
+static bool ReadExternalPixels(GlesImports& imports, EGLImageKHR img,
+                               GLsizei width, GLsizei height,
+                               std::vector<uint8_t>* data) {
+  using namespace GLenum;
 
-    if (!should_trace(kApiIndex)) {
-        return;
-    }
+  const char* vsSource =
+      "precision highp float;\n"
+      "attribute vec2 position;\n"
+      "varying vec2 texcoord;\n"
+      "void main() {\n"
+      "  gl_Position = vec4(position, 0.5, 1.0);\n"
+      "  texcoord = position * vec2(0.5) + vec2(0.5);\n"
+      "}\n";
 
-    GAPID_DEBUG("Get EGLImage data: 0x%p x%xx%x", img, width, height);
+  const char* fsSource =
+      "#extension GL_OES_EGL_image_external : require\n"
+      "precision highp float;\n"
+      "uniform samplerExternalOES tex;\n"
+      "varying vec2 texcoord;\n"
+      "void main() {\n"
+      "  gl_FragColor = texture2D(tex, texcoord);\n"
+      "}\n";
 
-    // Save old state.
-    auto display = mImports.eglGetCurrentDisplay();
-    auto draw = mImports.eglGetCurrentSurface(EGL_DRAW);
-    auto read = mImports.eglGetCurrentSurface(EGL_READ);
-    auto oldCtx = mImports.eglGetCurrentContext();
+  GLint err;
+  auto prog = imports.glCreateProgram();
 
-    // Find an EGL config.
-    EGLConfig cfg;
-    EGLint cfgAttribs[] = { EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_NONE };
-    int one = 1;
-    if (mImports.eglChooseConfig(display, cfgAttribs, &cfg, 1, &one) == EGL_FALSE || one != 1) {
-        GAPID_ERROR("Failed to choose EGL config");
-        return;
-    }
+  auto vs = imports.glCreateShader(GL_VERTEX_SHADER);
+  imports.glShaderSource(vs, 1, &vsSource, nullptr);
+  imports.glCompileShader(vs);
+  imports.glAttachShader(prog, vs);
 
-    // Create an EGL context.
-    EGLContext ctx;
-    EGLint ctxAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
-    if ((ctx = mImports.eglCreateContext(display, cfg, nullptr, ctxAttribs)) == nullptr) {
-        GAPID_ERROR("Failed to create EGL context");
-        return;
-    }
+  auto fs = imports.glCreateShader(GL_FRAGMENT_SHADER);
+  imports.glShaderSource(fs, 1, &fsSource, nullptr);
+  imports.glCompileShader(fs);
+  imports.glAttachShader(prog, fs);
 
-    // Create an EGL surface.
-    EGLSurface surface;
-    EGLint surfaceAttribs[] = { EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE };
-    if ((surface = mImports.eglCreatePbufferSurface(display, cfg, surfaceAttribs)) == nullptr) {
-        GAPID_ERROR("Failed to create EGL surface");
-        return;
-    }
+  imports.glBindAttribLocation(prog, 0, "position");
+  imports.glLinkProgram(prog);
 
-    // Bind the EGL context.
-    if (mImports.eglMakeCurrent(display, surface, surface, ctx) == EGL_FALSE) {
-        GAPID_ERROR("Failed to bind new EGL context");
-        return;
-    }
+  if ((err = imports.glGetError()) != 0) {
+    GAPID_ERROR("ReadExternalPixels: Failed to create program: 0x%X", err);
+    return false;
+  }
 
-    std::vector<uint8_t> data;
-    if (ReadExternalPixels(mImports, img, width, height, &data)) {
-        auto resIndex = sendResource(kApiIndex, data.data(), data.size());
-        auto extra = new gles_pb::EGLImageData();
-        extra->set_resindex(resIndex);
-        extra->set_size(data.size());
-        extra->set_width(width);
-        extra->set_height(height);
-        extra->set_format(GLenum::GL_RGBA);
-        extra->set_type(GLenum::GL_UNSIGNED_BYTE);
-        observer->encodeAndDelete(extra);
-    }
+  GLint linkStatus = 0;
+  imports.glGetProgramiv(prog, GL_LINK_STATUS, &linkStatus);
+  if (linkStatus == 0) {
+    char log[1024];
+    imports.glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
+    GAPID_ERROR("ReadExternalPixels: Failed to compile program:\n%s", log);
+    return false;
+  }
 
-    if (mImports.eglMakeCurrent(display, draw, read, oldCtx) == EGL_FALSE) {
-        GAPID_FATAL("Failed to restore old EGL context");
-    }
+  GLuint srcTex = 0;
+  imports.glGenTextures(1, &srcTex);
+  imports.glBindTexture(GL_TEXTURE_EXTERNAL_OES, srcTex);
+  imports.glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, img);
+  imports.glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER,
+                          GL_NEAREST);
+  imports.glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER,
+                          GL_NEAREST);
 
-    mImports.eglDestroySurface(display, surface);
-    mImports.eglDestroyContext(display, ctx);
+  GLuint dstTex = 0;
+  imports.glGenTextures(1, &dstTex);
+  imports.glBindTexture(GL_TEXTURE_2D, dstTex);
+  imports.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+                       GL_UNSIGNED_BYTE, nullptr);
+
+  if ((err = imports.glGetError()) != 0) {
+    GAPID_ERROR("ReadExternalPixels: Failed to create texture: 0x%X", err);
+    return false;
+  }
+
+  GLuint fb = 0;
+  imports.glGenFramebuffers(1, &fb);
+  imports.glBindFramebuffer(GL_FRAMEBUFFER, fb);
+  imports.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                 GL_TEXTURE_2D, dstTex, 0);
+
+  if ((err = imports.glGetError()) != 0) {
+    GAPID_ERROR("ReadExternalPixels: Failed to create framebuffer: 0x%X", err);
+    return false;
+  }
+  if ((err = imports.glCheckFramebufferStatus(GL_FRAMEBUFFER)) !=
+      GL_FRAMEBUFFER_COMPLETE) {
+    GAPID_ERROR("ReadExternalPixels: Framebuffer incomplete: 0x%X", err);
+    return false;
+  }
+
+  imports.glDisable(GL_CULL_FACE);
+  imports.glDisable(GL_DEPTH_TEST);
+  imports.glViewport(0, 0, width, height);
+  imports.glClearColor(0.0, 0.0, 0.0, 0.0);
+  imports.glClear(GLbitfield::GL_COLOR_BUFFER_BIT);
+  imports.glUseProgram(prog);
+  GLfloat vb[] = {
+      -1.0f, +1.0f,  // 2--4
+      -1.0f, -1.0f,  // |\ |
+      +1.0f, +1.0f,  // | \|
+      +1.0f, -1.0f,  // 1--3
+  };
+  imports.glEnableVertexAttribArray(0);
+  imports.glVertexAttribPointer(0, 2, GL_FLOAT, 0, 0, vb);
+  imports.glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  if ((err = imports.glGetError()) != 0) {
+    GAPID_ERROR("ReadExternalPixels: Failed to draw quad: 0x%X", err);
+    return false;
+  }
+
+  data->resize(width * height * 4);
+  imports.glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE,
+                       data->data());
+  if ((err = imports.glGetError()) != 0) {
+    GAPID_ERROR("ReadExternalPixels: Failed to read pixels: 0x%X", err);
+    return false;
+  }
+
+  return true;
 }
 
-bool GlesSpy::observeFramebuffer(CallObserver* observer, uint32_t* w, uint32_t* h, std::vector<uint8_t>* data) {
-    if (!getFramebufferAttachmentSize(observer, w, h)) {
-        return false; // Could not get the framebuffer size.
-    }
-    data->resize((*w) * (*h) * 4);
-    GlesSpy::mImports.glReadPixels(0, 0, int32_t(*w), int32_t(*h),
-            GLenum::GL_RGBA, GLenum::GL_UNSIGNED_BYTE, data->data());
-    return true;
+void GlesSpy::GetEGLImageData(CallObserver* observer, EGLImageKHR img,
+                              GLsizei width, GLsizei height) {
+  using namespace EGLenum;
+
+  if (!should_trace(kApiIndex)) {
+    return;
+  }
+
+  GAPID_DEBUG("Get EGLImage data: 0x%p x%xx%x", img, width, height);
+
+  // Save old state.
+  auto display = mImports.eglGetCurrentDisplay();
+  auto draw = mImports.eglGetCurrentSurface(EGL_DRAW);
+  auto read = mImports.eglGetCurrentSurface(EGL_READ);
+  auto oldCtx = mImports.eglGetCurrentContext();
+
+  // Find an EGL config.
+  EGLConfig cfg;
+  EGLint cfgAttribs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_NONE};
+  int one = 1;
+  if (mImports.eglChooseConfig(display, cfgAttribs, &cfg, 1, &one) ==
+          EGL_FALSE ||
+      one != 1) {
+    GAPID_ERROR("Failed to choose EGL config");
+    return;
+  }
+
+  // Create an EGL context.
+  EGLContext ctx;
+  EGLint ctxAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+  if ((ctx = mImports.eglCreateContext(display, cfg, nullptr, ctxAttribs)) ==
+      nullptr) {
+    GAPID_ERROR("Failed to create EGL context");
+    return;
+  }
+
+  // Create an EGL surface.
+  EGLSurface surface;
+  EGLint surfaceAttribs[] = {EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE};
+  if ((surface = mImports.eglCreatePbufferSurface(display, cfg,
+                                                  surfaceAttribs)) == nullptr) {
+    GAPID_ERROR("Failed to create EGL surface");
+    return;
+  }
+
+  // Bind the EGL context.
+  if (mImports.eglMakeCurrent(display, surface, surface, ctx) == EGL_FALSE) {
+    GAPID_ERROR("Failed to bind new EGL context");
+    return;
+  }
+
+  std::vector<uint8_t> data;
+  if (ReadExternalPixels(mImports, img, width, height, &data)) {
+    auto resIndex = sendResource(kApiIndex, data.data(), data.size());
+    auto extra = new gles_pb::EGLImageData();
+    extra->set_resindex(resIndex);
+    extra->set_size(data.size());
+    extra->set_width(width);
+    extra->set_height(height);
+    extra->set_format(GLenum::GL_RGBA);
+    extra->set_type(GLenum::GL_UNSIGNED_BYTE);
+    observer->encodeAndDelete(extra);
+  }
+
+  if (mImports.eglMakeCurrent(display, draw, read, oldCtx) == EGL_FALSE) {
+    GAPID_FATAL("Failed to restore old EGL context");
+  }
+
+  mImports.eglDestroySurface(display, surface);
+  mImports.eglDestroyContext(display, ctx);
 }
 
+bool GlesSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
+                                 uint32_t* h, std::vector<uint8_t>* data) {
+  if (!getFramebufferAttachmentSize(observer, w, h)) {
+    return false;  // Could not get the framebuffer size.
+  }
+  data->resize((*w) * (*h) * 4);
+  GlesSpy::mImports.glReadPixels(0, 0, int32_t(*w), int32_t(*h),
+                                 GLenum::GL_RGBA, GLenum::GL_UNSIGNED_BYTE,
+                                 data->data());
+  return true;
 }
+
+}  // namespace gapii
 
 #undef ANDROID_NATIVE_MAKE_CONSTANT
 #undef ANDROID_NATIVE_WINDOW_MAGIC

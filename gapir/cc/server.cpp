@@ -32,8 +32,8 @@ using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::ServerReaderWriter;
 using grpc::Status;
-using ReplayStream =
-    grpc::ServerReaderWriter<replay_service::ReplayResponse, replay_service::ReplayRequest>;
+using ReplayStream = grpc::ServerReaderWriter<replay_service::ReplayResponse,
+                                              replay_service::ReplayRequest>;
 
 // The key of the metadata value that contains authentication token. This is
 // common knowledge shared between GAPIR client (which is GAPIS) and GAPIR
@@ -104,9 +104,8 @@ Server::Server(const char* authToken, int idleTimeoutSec,
     : mSecCounter(0),
       mShuttingDown(false),
       mGrpcServer(nullptr),
-      mServiceImpl(
-          new GapirServiceImpl(authToken, handle_replay,
-                               [this]() { this->mSecCounter.store(0); })),
+      mServiceImpl(new GapirServiceImpl(
+          authToken, handle_replay, [this]() { this->mSecCounter.store(0); })),
       mIdleTimeoutCloser(
           idleTimeoutSec > 0 ? new std::thread([idleTimeoutSec, this] {
             while (idleTimeoutSec > this->mSecCounter.fetch_add(1) &&
@@ -121,7 +120,8 @@ std::unique_ptr<Server> Server::createAndStart(const char* uri,
                                                const char* authToken,
                                                int idleTimeoutSec,
                                                ReplayHandler handle_replay) {
-  std::unique_ptr<Server> server(new Server(authToken, idleTimeoutSec, handle_replay));
+  std::unique_ptr<Server> server(
+      new Server(authToken, idleTimeoutSec, handle_replay));
   ServerBuilder builder;
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());

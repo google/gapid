@@ -24,8 +24,9 @@ class FileCollector {
 
   // Type of params files expected.
   enum ParamsType {
-    GCC, // params files only contain inputs and support \\?\ paths.
-    AR,  // first file parameter is output and params file does not support \\?\ paths.
+    GCC,  // params files only contain inputs and support \\?\ paths.
+    AR,  // first file parameter is output and params file does not support \\?\
+         // paths.
   };
 
   // Processes the @ param file specified by path and returns the path
@@ -50,7 +51,8 @@ class FileCollector {
   // Handles a line/path read from a @ params file. p should contain the
   // index of the last '/' in path. If isOutput is true, the path is
   // processed as an output of the wrapped binary, otherwhise as an input.
-  std::string HandleParam(const std::string& path, std::string::size_type p, bool isOutput);
+  std::string HandleParam(const std::string& path, std::string::size_type p,
+                          bool isOutput);
 
   struct Output {
     std::string final_;
@@ -86,6 +88,6 @@ class ArgumentCollector {
   // only if the return code is 0.
   int Execute(const std::string exe, FileCollector* fc);
 
-private:
+ private:
   std::vector<std::string> arguments_;
 };

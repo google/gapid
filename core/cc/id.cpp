@@ -21,43 +21,42 @@
 #include <string.h>
 
 #include <iomanip>
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace {
 
 void hash(const void* ptr, uint64_t size, core::Id& out) {
-    auto buf = reinterpret_cast<const char*>(ptr);
-    auto len = static_cast<size_t>(size);
-    auto hash128 = CityHash128(buf, len);
-    auto hash32 = CityHash32(buf, len);
-    memcpy(&out.data[0], &hash128, 16);
-    memcpy(&out.data[16], &hash32, 4);
+  auto buf = reinterpret_cast<const char*>(ptr);
+  auto len = static_cast<size_t>(size);
+  auto hash128 = CityHash128(buf, len);
+  auto hash32 = CityHash32(buf, len);
+  memcpy(&out.data[0], &hash128, 16);
+  memcpy(&out.data[16], &hash32, 4);
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 namespace core {
 
 Id Id::Hash(const void* ptr, uint64_t size) {
-    Id id;
-    hash(ptr, size, id);
-    return id;
+  Id id;
+  hash(ptr, size, id);
+  return id;
 }
 
-bool Id::operator == (const Id& rhs) const {
-    return memcmp(data, rhs.data, sizeof(data)) == 0;
+bool Id::operator==(const Id& rhs) const {
+  return memcmp(data, rhs.data, sizeof(data)) == 0;
 }
 
 std::string Id::string() const {
-    std::stringstream ss;
-    ss << "0x";
-    ss << std::setfill('0') << std::hex;
-    for(int i = 0; i < 20; ++i) {
-        ss << std::setw(2) << (unsigned int)data[i];
-    }
-    return ss.str();
+  std::stringstream ss;
+  ss << "0x";
+  ss << std::setfill('0') << std::hex;
+  for (int i = 0; i < 20; ++i) {
+    ss << std::setw(2) << (unsigned int)data[i];
+  }
+  return ss.str();
 }
-
 
 }  // namespace core

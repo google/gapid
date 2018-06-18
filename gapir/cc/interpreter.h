@@ -34,205 +34,207 @@ namespace gapir {
 
 class MemoryManager;
 
-// Implementation of a (fix sized) stack based virtual machine to interpret the instructions in the
-// given opcode stream.
+// Implementation of a (fix sized) stack based virtual machine to interpret the
+// instructions in the given opcode stream.
 class Interpreter {
-public:
-    // The type of the callback function for requesting to register an api's renderer functions to
-    // this interpreter. Taking in the pointer for the interpreter and the api index, the callback
-    // is expected to populate the renderer function for the given api index in the interpreter.
-    // It should return true if the request is fulfilled.
-    using ApiRequestCallback = std::function<bool(Interpreter*, uint8_t)>;
+ public:
+  // The type of the callback function for requesting to register an api's
+  // renderer functions to this interpreter. Taking in the pointer for the
+  // interpreter and the api index, the callback is expected to populate the
+  // renderer function for the given api index in the interpreter. It should
+  // return true if the request is fulfilled.
+  using ApiRequestCallback = std::function<bool(Interpreter*, uint8_t)>;
 
-    enum : uint32_t {
-        // The API index to use for global builtin functions.
-        GLOBAL_INDEX = 0,
-    };
+  enum : uint32_t {
+    // The API index to use for global builtin functions.
+    GLOBAL_INDEX = 0,
+  };
 
-    // Function ids for implementation specific functions and special debugging functions. These
-    // functions shouldn't be called by the opcode stream
-    enum FunctionIds : uint16_t {
-        // Custom function Ids
-        POST_FUNCTION_ID        = 0xff00,
-        RESOURCE_FUNCTION_ID    = 0xff01,
-        // Debug function Ids
-        PRINT_STACK_FUNCTION_ID = 0xff80,
-        // 0xff81..0xffff reserved for synthetic functions
-    };
+  // Function ids for implementation specific functions and special debugging
+  // functions. These functions shouldn't be called by the opcode stream
+  enum FunctionIds : uint16_t {
+    // Custom function Ids
+    POST_FUNCTION_ID = 0xff00,
+    RESOURCE_FUNCTION_ID = 0xff01,
+    // Debug function Ids
+    PRINT_STACK_FUNCTION_ID = 0xff80,
+    // 0xff81..0xffff reserved for synthetic functions
+  };
 
-    // Instruction codes for the different instructions. The codes have to be consistent with the
-    // codes on the server side.
-    enum class InstructionCode : uint8_t {
-        CALL          = 0,
-        PUSH_I        = 1,
-        LOAD_C        = 2,
-        LOAD_V        = 3,
-        LOAD          = 4,
-        POP           = 5,
-        STORE_V       = 6,
-        STORE         = 7,
-        RESOURCE      = 8,
-        POST          = 9,
-        COPY          = 10,
-        CLONE         = 11,
-        STRCPY        = 12,
-        EXTEND        = 13,
-        ADD           = 14,
-        LABEL         = 15,
-        SWITCH_THREAD = 16,
-    };
+  // Instruction codes for the different instructions. The codes have to be
+  // consistent with the codes on the server side.
+  enum class InstructionCode : uint8_t {
+    CALL = 0,
+    PUSH_I = 1,
+    LOAD_C = 2,
+    LOAD_V = 3,
+    LOAD = 4,
+    POP = 5,
+    STORE_V = 6,
+    STORE = 7,
+    RESOURCE = 8,
+    POST = 9,
+    COPY = 10,
+    CLONE = 11,
+    STRCPY = 12,
+    EXTEND = 13,
+    ADD = 14,
+    LABEL = 15,
+    SWITCH_THREAD = 16,
+  };
 
-    // Creates a new interpreter with the specified memory manager (for resolving memory addresses)
-    // and with the specified maximum stack size
-    Interpreter(
-            core::CrashHandler& crash_handler,
-            const MemoryManager* memory_manager,
-            uint32_t stack_depth,
-            ApiRequestCallback callback);
+  // Creates a new interpreter with the specified memory manager (for resolving
+  // memory addresses) and with the specified maximum stack size
+  Interpreter(core::CrashHandler& crash_handler,
+              const MemoryManager* memory_manager, uint32_t stack_depth,
+              ApiRequestCallback callback);
 
-    // Registers a builtin function to the builtin function table.
-    void registerBuiltin(uint8_t api, FunctionTable::Id, FunctionTable::Function);
+  // Registers a builtin function to the builtin function table.
+  void registerBuiltin(uint8_t api, FunctionTable::Id, FunctionTable::Function);
 
-    // Assigns the function table as the renderer functions to use for the given api.
-    void setRendererFunctions(uint8_t api, FunctionTable* functionTable);
+  // Assigns the function table as the renderer functions to use for the given
+  // api.
+  void setRendererFunctions(uint8_t api, FunctionTable* functionTable);
 
-    // Runs the interpreter on the instruction list specified by the pointer and by its size.
-    bool run(const uint32_t* instructions, uint32_t count);
+  // Runs the interpreter on the instruction list specified by the pointer and
+  // by its size.
+  bool run(const uint32_t* instructions, uint32_t count);
 
-    // Registers an API instance if it has not already been done.
-    bool registerApi(uint8_t api);
+  // Registers an API instance if it has not already been done.
+  bool registerApi(uint8_t api);
 
-    // Returns the last reached label value.
-    inline uint32_t getLabel() const;
+  // Returns the last reached label value.
+  inline uint32_t getLabel() const;
 
-private:
-    void exec();
+ private:
+  void exec();
 
-    enum : uint32_t {
-        TYPE_MASK        = 0x03f00000U,
-        FUNCTION_ID_MASK = 0x0000ffffU,
-        API_INDEX_MASK   = 0x000f0000U,
-        PUSH_RETURN_MASK = 0x01000000U,
-        DATA_MASK20      = 0x000fffffU,
-        DATA_MASK26      = 0x03ffffffU,
-        API_BIT_SHIFT    = 16,
-        TYPE_BIT_SHIFT   = 20,
-        OPCODE_BIT_SHIFT = 26,
-    };
+  enum : uint32_t {
+    TYPE_MASK = 0x03f00000U,
+    FUNCTION_ID_MASK = 0x0000ffffU,
+    API_INDEX_MASK = 0x000f0000U,
+    PUSH_RETURN_MASK = 0x01000000U,
+    DATA_MASK20 = 0x000fffffU,
+    DATA_MASK26 = 0x03ffffffU,
+    API_BIT_SHIFT = 16,
+    TYPE_BIT_SHIFT = 20,
+    OPCODE_BIT_SHIFT = 26,
+  };
 
-    enum Result {
-        SUCCESS,
-        ERROR,
-        CHANGE_THREAD,
-    };
+  enum Result {
+    SUCCESS,
+    ERROR,
+    CHANGE_THREAD,
+  };
 
-    // Get type information out from an opcode. The type is always stored in the 7th to 13th MSB
-    // (both inclusive) of the opcode
-    BaseType extractType(uint32_t opcode) const;
+  // Get type information out from an opcode. The type is always stored in the
+  // 7th to 13th MSB (both inclusive) of the opcode
+  BaseType extractType(uint32_t opcode) const;
 
-    // Get 20 bit data out from an opcode located in the 20 LSB of the opcode.
-    uint32_t extract20bitData(uint32_t opcode) const;
+  // Get 20 bit data out from an opcode located in the 20 LSB of the opcode.
+  uint32_t extract20bitData(uint32_t opcode) const;
 
-    // Get 26 bit data out from an opcode located in the 26 LSB of the opcode.
-    uint32_t extract26bitData(uint32_t opcode) const;
+  // Get 26 bit data out from an opcode located in the 26 LSB of the opcode.
+  uint32_t extract26bitData(uint32_t opcode) const;
 
-    // Implementation of the opcodes supported by the interpreter.
-    Result call(uint32_t opcode);
-    Result pushI(uint32_t opcode);
-    Result loadC(uint32_t opcode);
-    Result loadV(uint32_t opcode);
-    Result load(uint32_t opcode);
-    Result pop(uint32_t opcode);
-    Result storeV(uint32_t opcode);
-    Result store();
-    Result resource(uint32_t);
-    Result post();
-    Result copy(uint32_t opcode);
-    Result clone(uint32_t opcode);
-    Result strcpy(uint32_t opcode);
-    Result extend(uint32_t opcode);
-    Result add(uint32_t opcode);
-    Result label(uint32_t opcode);
-    Result switchThread(uint32_t opcode);
+  // Implementation of the opcodes supported by the interpreter.
+  Result call(uint32_t opcode);
+  Result pushI(uint32_t opcode);
+  Result loadC(uint32_t opcode);
+  Result loadV(uint32_t opcode);
+  Result load(uint32_t opcode);
+  Result pop(uint32_t opcode);
+  Result storeV(uint32_t opcode);
+  Result store();
+  Result resource(uint32_t);
+  Result post();
+  Result copy(uint32_t opcode);
+  Result clone(uint32_t opcode);
+  Result strcpy(uint32_t opcode);
+  Result extend(uint32_t opcode);
+  Result add(uint32_t opcode);
+  Result label(uint32_t opcode);
+  Result switchThread(uint32_t opcode);
 
-    // Returns true, if address..address+size(type) is "constant" memory.
-    bool isConstantAddressForType(const void *address, BaseType type) const;
+  // Returns true, if address..address+size(type) is "constant" memory.
+  bool isConstantAddressForType(const void* address, BaseType type) const;
 
-    // Returns true, if address..address+size(type) is "volatile" memory.
-    bool isVolatileAddressForType(const void *address, BaseType type) const;
+  // Returns true, if address..address+size(type) is "volatile" memory.
+  bool isVolatileAddressForType(const void* address, BaseType type) const;
 
-    // Returns false, if address is known not safe to read from.
-    bool isReadAddress(const void * address) const;
+  // Returns false, if address is known not safe to read from.
+  bool isReadAddress(const void* address) const;
 
-    // Returns false, if address is known not safe to write to.
-    bool isWriteAddress(void* address) const;
+  // Returns false, if address is known not safe to write to.
+  bool isWriteAddress(void* address) const;
 
-    // Interpret one specific opcode.
-    Result interpret(uint32_t opcode);
+  // Interpret one specific opcode.
+  Result interpret(uint32_t opcode);
 
-    // The crash handler used for catching and reporting crashes.
-    core::CrashHandler& mCrashHandler;
+  // The crash handler used for catching and reporting crashes.
+  core::CrashHandler& mCrashHandler;
 
-    // Memory manager which managing the memory used during the interpretation
-    const MemoryManager* mMemoryManager;
+  // Memory manager which managing the memory used during the interpretation
+  const MemoryManager* mMemoryManager;
 
-    // The builtin functions.
-    std::unordered_map<uint8_t, FunctionTable> mBuiltins;
+  // The builtin functions.
+  std::unordered_map<uint8_t, FunctionTable> mBuiltins;
 
-    // The current renderer functions.
-    std::unordered_map<uint8_t, FunctionTable*> mRendererFunctions;
+  // The current renderer functions.
+  std::unordered_map<uint8_t, FunctionTable*> mRendererFunctions;
 
-    // Callback function for requesting renderer functions for an unknown api.
-    ApiRequestCallback apiRequestCallback;
+  // Callback function for requesting renderer functions for an unknown api.
+  ApiRequestCallback apiRequestCallback;
 
-    // The stack of the Virtual Machine.
-    Stack mStack;
+  // The stack of the Virtual Machine.
+  Stack mStack;
 
-    // The list of instructions.
-    const uint32_t* mInstructions;
+  // The list of instructions.
+  const uint32_t* mInstructions;
 
-    // The total number of instructions.
-    uint32_t mInstructionCount;
+  // The total number of instructions.
+  uint32_t mInstructionCount;
 
-    // The index of the current instruction.
-    uint32_t mCurrentInstruction;
+  // The index of the current instruction.
+  uint32_t mCurrentInstruction;
 
-    // The next thread execution should continue on.
-    uint32_t mNextThread;
+  // The next thread execution should continue on.
+  uint32_t mNextThread;
 
-    // The last reached label value.
-    uint32_t mLabel;
+  // The last reached label value.
+  uint32_t mLabel;
 
-    // The result of the thread-chained exec() calls.
-    std::promise<Result> mExecResult;
+  // The result of the thread-chained exec() calls.
+  std::promise<Result> mExecResult;
 
-    // The thread pool used to interpret on different threads.
-    ThreadPool mThreadPool;
+  // The thread pool used to interpret on different threads.
+  ThreadPool mThreadPool;
 };
 
-inline bool Interpreter::isConstantAddressForType(const void *address, BaseType type) const {
-    // Treat all pointer types as sizeof(void*)
-    size_t size = isPointerType(type) ? sizeof(void*) : baseTypeSize(type);
-    return mMemoryManager->isConstantAddressWithSize(address, size);
+inline bool Interpreter::isConstantAddressForType(const void* address,
+                                                  BaseType type) const {
+  // Treat all pointer types as sizeof(void*)
+  size_t size = isPointerType(type) ? sizeof(void*) : baseTypeSize(type);
+  return mMemoryManager->isConstantAddressWithSize(address, size);
 }
 
-inline bool Interpreter::isVolatileAddressForType(const void *address, BaseType type) const {
-    return mMemoryManager->isVolatileAddressWithSize(address, baseTypeSize(type));
+inline bool Interpreter::isVolatileAddressForType(const void* address,
+                                                  BaseType type) const {
+  return mMemoryManager->isVolatileAddressWithSize(address, baseTypeSize(type));
 }
 
-inline bool Interpreter::isReadAddress(const void * address) const {
-    return address != nullptr && !mMemoryManager->isNotObservedAbsoluteAddress(address);
+inline bool Interpreter::isReadAddress(const void* address) const {
+  return address != nullptr &&
+         !mMemoryManager->isNotObservedAbsoluteAddress(address);
 }
 
 inline bool Interpreter::isWriteAddress(void* address) const {
-    return address != nullptr &&
-            !mMemoryManager->isNotObservedAbsoluteAddress(address) &&
-            !mMemoryManager->isConstantAddress(address);
+  return address != nullptr &&
+         !mMemoryManager->isNotObservedAbsoluteAddress(address) &&
+         !mMemoryManager->isConstantAddress(address);
 }
 
-inline uint32_t Interpreter::getLabel() const {
-    return mLabel;
-}
+inline uint32_t Interpreter::getLabel() const { return mLabel; }
 
 }  // namespace gapir
 

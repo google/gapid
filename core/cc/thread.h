@@ -24,37 +24,35 @@ namespace core {
 
 // Thread represents a single thread of execution in the process.
 class Thread {
-public:
-    // current returns the Thread representing the current thread of execution.
-    static Thread current();
+ public:
+  // current returns the Thread representing the current thread of execution.
+  static Thread current();
 
-    // id returns the process-unique identifier for the Thread.
-    inline uint64_t id() const;
+  // id returns the process-unique identifier for the Thread.
+  inline uint64_t id() const;
 
-private:
-    inline Thread(uint64_t id);
+ private:
+  inline Thread(uint64_t id);
 
-    uint64_t mId;
+  uint64_t mId;
 };
 
 inline Thread::Thread(uint64_t id) : mId(id) {}
 
-inline uint64_t Thread::id() const {
-    return mId;
-}
+inline uint64_t Thread::id() const { return mId; }
 
 class AsyncJob {
-    public:
-        AsyncJob(const std::function<void()>& function);
-        ~AsyncJob(); // Waits on the thread to finish.
-    private:
-    static void* RunJob(void* _data) {
-        AsyncJob* job = reinterpret_cast<AsyncJob*>(_data);
-        job->mFunction();
-        return nullptr;
-    }
-    std::function<void()> mFunction;
-    void* _; // A pointer to the OS thread object.
+ public:
+  AsyncJob(const std::function<void()>& function);
+  ~AsyncJob();  // Waits on the thread to finish.
+ private:
+  static void* RunJob(void* _data) {
+    AsyncJob* job = reinterpret_cast<AsyncJob*>(_data);
+    job->mFunction();
+    return nullptr;
+  }
+  std::function<void()> mFunction;
+  void* _;  // A pointer to the OS thread object.
 };
 
 }  // namespace core

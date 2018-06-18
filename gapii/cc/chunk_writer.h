@@ -23,11 +23,12 @@ namespace gapii {
 
 // ChunkWriter is used to write chunk strings to a core::StreamWriter.
 class ChunkWriter : public core::StringWriter {
-public:
-    static SPtr create(const std::shared_ptr<core::StreamWriter>& stream_writer, bool no_buffer = false);
+ public:
+  static SPtr create(const std::shared_ptr<core::StreamWriter>& stream_writer,
+                     bool no_buffer = false);
 
-protected:
-    ~ChunkWriter() = default;
+ protected:
+  ~ChunkWriter() = default;
 };
 
 }  // namespace gapii

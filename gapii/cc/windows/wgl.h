@@ -23,16 +23,16 @@ namespace gapii {
 namespace wgl {
 
 struct FramebufferInfo {
-    int width;
-    int height;
-    uint32_t colorFormat;
-    uint32_t depthFormat;
-    uint32_t stencilFormat;
+  int width;
+  int height;
+  uint32_t colorFormat;
+  uint32_t depthFormat;
+  uint32_t stencilFormat;
 };
 
 void getFramebufferInfo(void* hdc, FramebufferInfo& info);
 
-} // namespace wgl
-} // namespace gapii
+}  // namespace wgl
+}  // namespace gapii
 
-#endif // GAPII_WGL_H
+#endif  // GAPII_WGL_H

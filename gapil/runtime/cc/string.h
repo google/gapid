@@ -29,82 +29,82 @@ namespace gapil {
 // the gapil compiler. Strings hold references to their data, and several
 // strings may share the same underlying data.
 class String {
-public:
-    // Constructs a zero length string.
-    String();
+ public:
+  // Constructs a zero length string.
+  String();
 
-    // Constructs a string which shares the data with other.
-    String(const String& other);
+  // Constructs a string which shares the data with other.
+  String(const String& other);
 
-    // Constructs a new string with the given data.
-    String(core::Arena* arena, const char*);
-    String(core::Arena* arena, std::initializer_list<char>);
-    String(core::Arena* arena, const char* start, const char* end);
-    String(core::Arena* arena, const char* start, size_t len);
+  // Constructs a new string with the given data.
+  String(core::Arena* arena, const char*);
+  String(core::Arena* arena, std::initializer_list<char>);
+  String(core::Arena* arena, const char* start, const char* end);
+  String(core::Arena* arena, const char* start, size_t len);
 
-    String(String&&);
-    ~String();
+  String(String&&);
+  ~String();
 
-    // Makes this string refer to the RHS string.
-    String& operator = (const String&);
+  // Makes this string refer to the RHS string.
+  String& operator=(const String&);
 
-    // Appends data to this string.
-    String& operator += (const String&);
+  // Appends data to this string.
+  String& operator+=(const String&);
 
-    // Comparison operators. Strings are compared using their underlying data.
-    bool operator == (const String& other) const;
-    bool operator != (const String& other) const;
-    bool operator < (const String& other) const;
-    bool operator <= (const String& other) const;
-    bool operator > (const String& other) const;
-    bool operator >= (const String& other) const;
+  // Comparison operators. Strings are compared using their underlying data.
+  bool operator==(const String& other) const;
+  bool operator!=(const String& other) const;
+  bool operator<(const String& other) const;
+  bool operator<=(const String& other) const;
+  bool operator>(const String& other) const;
+  bool operator>=(const String& other) const;
 
-    // Returns the length of the string in bytes.
-    size_t length() const;
+  // Returns the length of the string in bytes.
+  size_t length() const;
 
-    // Returns a c-style string.
-    const char* c_str() const;
+  // Returns a c-style string.
+  const char* c_str() const;
 
-    // Sets this string to a zero length string.
-    void clear();
+  // Sets this string to a zero length string.
+  void clear();
 
-    // Returns the arena that owns this string's underlying data.
-    inline core::Arena* arena() const;
+  // Returns the arena that owns this string's underlying data.
+  inline core::Arena* arena() const;
 
-private:
-    static string_t EMPTY;
+ private:
+  static string_t EMPTY;
 
-    String(string_t*);
+  String(string_t*);
 
-    void reference();
-    void release();
+  void reference();
+  void release();
 
-    string_t* ptr;
+  string_t* ptr;
 };
 
 inline core::Arena* String::arena() const {
-    return reinterpret_cast<core::Arena*>(ptr->arena);
+  return reinterpret_cast<core::Arena*>(ptr->arena);
 }
 
 }  // namespace gapil
 
-
 namespace std {
-template <> struct hash<gapil::String> {
-    typedef gapil::String argument_type;
-    typedef std::size_t result_type;
-    result_type operator()(const argument_type& s) const noexcept {
-        auto len = s.length();
-        result_type hash = 0x32980321;
-        if (auto p = s.c_str()) {
-            for (size_t i = 0; i < len; i++) {
-                hash = hash * 33 ^ p[i];
-            }
-        }
-        return hash;
+template <>
+struct hash<gapil::String> {
+  typedef gapil::String argument_type;
+  typedef std::size_t result_type;
+  result_type operator()(const argument_type& s) const noexcept {
+    auto len = s.length();
+    result_type hash = 0x32980321;
+    if (auto p = s.c_str()) {
+      for (size_t i = 0; i < len; i++) {
+        hash = hash * 33 ^ p[i];
+      }
     }
+    return hash;
+  }
 };
 
-} // namespace std
+}  // namespace std
 
 #endif  // __GAPIL_RUNTIME_STRING_H__

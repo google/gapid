@@ -27,7 +27,7 @@ void RegisterInstance(VkInstance instance, const InstanceData &data);
 static const uint32_t VIRTUAL_SWAPCHAIN_CREATE_PNEXT = 0xFFFFFFAA;
 struct CreateNext {
   uint32_t sType;
-  void* pNext;
+  void *pNext;
 };
 
 // All of the following functions are the same as the Vulkan functions
@@ -69,9 +69,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
     VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout,
     VkSemaphore semaphore, VkFence fence, uint32_t *pImageIndex);
 
-VKAPI_ATTR void VKAPI_CALL
-vkSetSwapchainCallback(VkSwapchainKHR swapchain,
-                       void callback(void *, uint8_t *, size_t), void *);
+VKAPI_ATTR void VKAPI_CALL vkSetSwapchainCallback(
+    VkSwapchainKHR swapchain, void callback(void *, uint8_t *, size_t), void *);
 
 VKAPI_ATTR VkResult VKAPI_CALL
 vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo);
@@ -108,5 +107,5 @@ VKAPI_ATTR void VKAPI_CALL vkCmdWaitEvents(
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateRenderPass(
     VkDevice device, const VkRenderPassCreateInfo *pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkRenderPass *pRenderPass);
-} // swapchain
-#endif // VK_VIRTUAL_SWAPCHAIN_SWAPCHAIN_H_
+}  // namespace swapchain
+#endif  // VK_VIRTUAL_SWAPCHAIN_SWAPCHAIN_H_

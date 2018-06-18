@@ -21,8 +21,8 @@
 namespace core {
 
 Thread Thread::current() {
-    auto thread = pthread_self();
-    return Thread(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(thread)));
+  auto thread = pthread_self();
+  return Thread(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(thread)));
 }
 
 }  // namespace core

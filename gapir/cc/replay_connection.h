@@ -24,24 +24,26 @@
 #include <vector>
 
 namespace grpc {
-  template<typename RES, typename REQ> class ServerReaderWriter;
+template <typename RES, typename REQ>
+class ServerReaderWriter;
 }
 
 namespace replay_service {
-  class Payload;
-  class Resources;
-  class ReplayRequest;
-  class PayloadRequest;
-  class ResourceRequest;
-  class PostData;
-  class ReplayResponse;
-  class Notification;
-}
+class Payload;
+class Resources;
+class ReplayRequest;
+class PayloadRequest;
+class ResourceRequest;
+class PostData;
+class ReplayResponse;
+class Notification;
+}  // namespace replay_service
 
 namespace gapir {
 
 using ReplayGrpcStream =
-    grpc::ServerReaderWriter<replay_service::ReplayResponse, replay_service::ReplayRequest>;
+    grpc::ServerReaderWriter<replay_service::ReplayResponse,
+                             replay_service::ReplayRequest>;
 using PayloadHandler = std::function<bool(const replay_service::Payload&)>;
 using ResourcesHandler = std::function<bool(const replay_service::Resources&)>;
 
@@ -50,8 +52,8 @@ using ResourcesHandler = std::function<bool(const replay_service::Resources&)>;
 // detailed code.
 class ReplayConnection {
  public:
-  // ResourceRequest is a wraper class of replay_service::ResourceRequest, it hides the
-  // new/delete operations of the proto object from the outer code.
+  // ResourceRequest is a wraper class of replay_service::ResourceRequest, it
+  // hides the new/delete operations of the proto object from the outer code.
   class ResourceRequest {
    public:
     // Returns a new created empty ResourceRequest.
@@ -79,8 +81,8 @@ class ReplayConnection {
     std::unique_ptr<replay_service::ResourceRequest> mProtoResourceRequest;
   };
 
-  // Posts is a wraper class of replay_service::PostData, it hides the new/delete
-  // operations of the proto object from the outer code.
+  // Posts is a wraper class of replay_service::PostData, it hides the
+  // new/delete operations of the proto object from the outer code.
   class Posts {
    public:
     // Returns a new created empty Posts
@@ -118,8 +120,8 @@ class ReplayConnection {
     std::unique_ptr<replay_service::PostData> mProtoPostData;
   };
 
-  // Payload is a wraper class of replay_service::Payload, it hides the new/delete
-  // operations of the proto object from outer code.
+  // Payload is a wraper class of replay_service::Payload, it hides the
+  // new/delete operations of the proto object from outer code.
   class Payload {
    public:
     // Gets a Payload from replay connection stream. Takes the ownership of
@@ -164,8 +166,8 @@ class ReplayConnection {
     std::unique_ptr<replay_service::ReplayRequest> mProtoReplayRequest;
   };
 
-  // Resources is a wraper class of replay_service::Resources, it hides the new/delete
-  // operations of the proto object from outer code.
+  // Resources is a wraper class of replay_service::Resources, it hides the
+  // new/delete operations of the proto object from outer code.
   class Resources {
    public:
     // Gets a Resources from the replay connection stream, takes the ownership
@@ -226,9 +228,10 @@ class ReplayConnection {
   // Sends post data. Returns true if succeeded, otherwise returns false.
   virtual bool sendPostData(std::unique_ptr<Posts> posts);
   // Sends notification. Returns true if succeeded, otherwise returns false.
-  virtual bool sendNotification(uint64_t id, uint32_t severity, uint32_t api_index,
-                                uint64_t label, const std::string& msg,
-                                const void* data, uint32_t data_size);
+  virtual bool sendNotification(uint64_t id, uint32_t severity,
+                                uint32_t api_index, uint64_t label,
+                                const std::string& msg, const void* data,
+                                uint32_t data_size);
 
  protected:
   ReplayConnection(ReplayGrpcStream* stream) : mGrpcStream(stream) {}

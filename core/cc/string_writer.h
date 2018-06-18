@@ -25,20 +25,20 @@ class StreamWriter;
 
 // StringWriter is a pure virtual class used to write strings to a StreamWriter.
 class StringWriter {
-public:
-    typedef std::shared_ptr<StringWriter> SPtr;
+ public:
+  typedef std::shared_ptr<StringWriter> SPtr;
 
-    // write attempts to write the string 'data' to the underlying stream,
-    // returning false upon failure.  'data' may be in an unknown state past
-    // this call, as implementations of this interface may use move semantics
-    // as a memory optimization.
-    virtual bool write(std::string& data) = 0;
+  // write attempts to write the string 'data' to the underlying stream,
+  // returning false upon failure.  'data' may be in an unknown state past
+  // this call, as implementations of this interface may use move semantics
+  // as a memory optimization.
+  virtual bool write(std::string& data) = 0;
 
-    // flush flushes out all of the pending in the steam
-    virtual void flush() = 0;
+  // flush flushes out all of the pending in the steam
+  virtual void flush() = 0;
 
-protected:
-    virtual ~StringWriter() {}
+ protected:
+  virtual ~StringWriter() {}
 };
 
 }  // namespace core

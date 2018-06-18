@@ -31,47 +31,50 @@
 
 namespace gapir {
 
-// Class for storing the information about a replay request that came from the server
+// Class for storing the information about a replay request that came from the
+// server
 class ReplayRequest {
-public:
-    // Creates a new replay request and loads it content from the given replay connection. Returns
-    // the new replay request if loading it was successful or nullptr otherwise. The memory manager
-    // is used to store the content of the replay request
-    static std::unique_ptr<ReplayRequest> create(ReplayConnection* conn,
-                                                 MemoryManager* memoryManager);
+ public:
+  // Creates a new replay request and loads it content from the given replay
+  // connection. Returns the new replay request if loading it was successful or
+  // nullptr otherwise. The memory manager is used to store the content of the
+  // replay request
+  static std::unique_ptr<ReplayRequest> create(ReplayConnection* conn,
+                                               MemoryManager* memoryManager);
 
-    // Get the stack size required by the replay
-    uint32_t getStackSize() const;
+  // Get the stack size required by the replay
+  uint32_t getStackSize() const;
 
-    // Get the volatile memory size required by the replay
-    uint32_t getVolatileMemorySize() const;
+  // Get the volatile memory size required by the replay
+  uint32_t getVolatileMemorySize() const;
 
-    // Get the base address and the size of the constant memory
-    const std::pair<const void*, uint32_t>& getConstantMemory() const;
+  // Get the base address and the size of the constant memory
+  const std::pair<const void*, uint32_t>& getConstantMemory() const;
 
-    // Get the list of the resources with their size required by this replay
-    const std::vector<Resource>& getResources() const;
+  // Get the list of the resources with their size required by this replay
+  const std::vector<Resource>& getResources() const;
 
-    // Get the base address and the size (count of instructions) of the instruction list
-    const std::pair<const uint32_t*, uint32_t>& getInstructionList() const;
+  // Get the base address and the size (count of instructions) of the
+  // instruction list
+  const std::pair<const uint32_t*, uint32_t>& getInstructionList() const;
 
-private:
-    ReplayRequest() = default;
+ private:
+  ReplayRequest() = default;
 
-    // The size of the stack required by the replay
-    uint32_t mStackSize;
+  // The size of the stack required by the replay
+  uint32_t mStackSize;
 
-    // The size of the volatile memory required by the replay
-    uint32_t mVolatileMemorySize;
+  // The size of the volatile memory required by the replay
+  uint32_t mVolatileMemorySize;
 
-    // The base address and the size in bytes of the constant memory
-    std::pair<const void*, uint32_t> mConstantMemory;
+  // The base address and the size in bytes of the constant memory
+  std::pair<const void*, uint32_t> mConstantMemory;
 
-    // The base address and the number of the instructions
-    std::pair<const uint32_t*, uint32_t> mInstructionList;
+  // The base address and the number of the instructions
+  std::pair<const uint32_t*, uint32_t> mInstructionList;
 
-    // The list of resources (resource id, resource size) used by the replay
-    std::vector<Resource> mResources;
+  // The list of resources (resource id, resource size) used by the replay
+  std::vector<Resource> mResources;
 };
 
 }  // namespace gapir

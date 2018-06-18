@@ -16,40 +16,39 @@
 
 #include "vulkan/vulkan.h"
 
-#if defined (_WIN32)
+#if defined(_WIN32)
 #define VK_LAYER_EXPORT __declspec(dllexport)
 #elif defined(__GNUC__)
 #define VK_LAYER_EXPORT __attribute__((visibility("default")))
 #else
-#define VK_LAYER_EXPORT 
+#define VK_LAYER_EXPORT
 #endif
 
 extern "C" {
 
-typedef void* (*eglGetProcAddress)(char const * procname);
+typedef void *(*eglGetProcAddress)(char const *procname);
 
 #ifdef _WIN32
 #include <windows.h>
 #include <cstdio>
-// On windows we do not have linker namespaces, we also don't have a 
+// On windows we do not have linker namespaces, we also don't have a
 // convenient way to have already loaded libgapii.dll. In this case
 // we can just LoadModule(libgapii.dll) and get the pointers from there.
-#define PROC(name) \
+#define PROC(name)                                          \
   static PFN_##name fn = (PFN_##name)getProcAddress(#name); \
-  if (fn != nullptr) \
-    return fn
+  if (fn != nullptr) return fn
 
 HMODULE LoadGAPIIDLL() {
-  char path[MAX_PATH] = { '\0' };
+  char path[MAX_PATH] = {'\0'};
   HMODULE this_module = GetModuleHandle("libVkLayer_GraphicsSpy.dll");
   const char libgapii[] = "libgapii.dll";
-  if(this_module == NULL) {
+  if (this_module == NULL) {
     fprintf(stderr, "Could not find libVkLayer_GraphicsSpy.dll\n");
     return 0;
   }
   SetLastError(0);
   DWORD num_characters = GetModuleFileName(this_module, path, MAX_PATH);
-  if(GetLastError() != 0) {
+  if (GetLastError() != 0) {
     fprintf(stderr, "Could not the path to libVkLayer_GraphicsSpy.dll\n");
     return 0;
   }
@@ -70,10 +69,10 @@ HMODULE LoadGAPIIDLL() {
   return LoadLibrary(path);
 }
 
-FARPROC getProcAddress(const char* name) {
+FARPROC getProcAddress(const char *name) {
   static HMODULE libgapii = LoadGAPIIDLL();
   if (libgapii != NULL) {
-    return GetProcAddress(libgapii, name); 
+    return GetProcAddress(libgapii, name);
   }
   return NULL;
 }
@@ -82,17 +81,17 @@ FARPROC getProcAddress(const char* name) {
 
 #include <dlfcn.h>
 
-#define PROC(name) \
+#define PROC(name)                                                       \
   static PFN_##name fn = (PFN_##name)(getProcAddress()("gapid_" #name)); \
-  if (fn != nullptr) \
-    return fn
+  if (fn != nullptr) return fn
 
 // On android due to linker namespaces we cannot open libgapii.so,
 // but since we already have it loaded, and libEGL.so hooked,
 // we can use eglGetProcAddress to find the functions.
 eglGetProcAddress getProcAddress() {
-  static void* libegl = dlopen("libEGL.so", RTLD_NOW);
-  static eglGetProcAddress pa = (eglGetProcAddress)dlsym(libegl, "eglGetProcAddress");
+  static void *libegl = dlopen("libEGL.so", RTLD_NOW);
+  static eglGetProcAddress pa =
+      (eglGetProcAddress)dlsym(libegl, "eglGetProcAddress");
   return pa;
 }
 #endif
@@ -128,7 +127,7 @@ vkEnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *pCount,
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
-    VkPhysicalDevice device, uint32_t *pCount, VkLayerProperties * pProperties) {
+    VkPhysicalDevice device, uint32_t *pCount, VkLayerProperties *pProperties) {
   PROC(vkEnumerateDeviceLayerProperties)(device, pCount, pProperties);
   *pCount = 0;
   return VK_SUCCESS;
@@ -140,9 +139,9 @@ VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateDeviceExtensionProperties(VkPhysicalDevice device,
                                      const char *pLayerName, uint32_t *pCount,
                                      VkExtensionProperties *pProperties) {
-  PROC(vkEnumerateDeviceExtensionProperties)(device, pLayerName, pCount,
-                                                      pProperties);
+  PROC(vkEnumerateDeviceExtensionProperties)
+  (device, pLayerName, pCount, pProperties);
   *pCount = 0;
   return VK_SUCCESS;
 }
-} // extern "C"
+}  // extern "C"

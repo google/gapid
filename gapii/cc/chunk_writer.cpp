@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "chunk_writer.h"
 
 #include "core/cc/stream_writer.h"
@@ -25,65 +24,65 @@ using ::google::protobuf::io::CodedOutputStream;
 
 namespace {
 
-constexpr size_t kBufferSize = 32*1024;
+constexpr size_t kBufferSize = 32 * 1024;
 
 class ChunkWriterImpl : public gapii::ChunkWriter {
-public:
-    ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer, bool paranoid = false);
+ public:
+  ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer,
+                  bool paranoid = false);
 
-    ~ChunkWriterImpl();
+  ~ChunkWriterImpl();
 
-    virtual bool write(std::string& s) override;
-    virtual void flush() override;
+  virtual bool write(std::string& s) override;
+  virtual void flush() override;
 
-private:
+ private:
+  std::string mBuffer;
 
-    std::string mBuffer;
+  std::shared_ptr<core::StreamWriter> mWriter;
 
-    std::shared_ptr<core::StreamWriter> mWriter;
+  bool mStreamGood;
 
-    bool mStreamGood;
-
-    bool mNoBuffer;
+  bool mNoBuffer;
 };
 
-ChunkWriterImpl::ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer, bool no_buffer)
-        : mWriter(writer)
-        , mStreamGood(true)
-        , mNoBuffer(no_buffer){
-}
+ChunkWriterImpl::ChunkWriterImpl(
+    const std::shared_ptr<core::StreamWriter>& writer, bool no_buffer)
+    : mWriter(writer), mStreamGood(true), mNoBuffer(no_buffer) {}
 
 ChunkWriterImpl::~ChunkWriterImpl() {
-    if (mBuffer.size() && mStreamGood) {
-        flush();
-    }
+  if (mBuffer.size() && mStreamGood) {
+    flush();
+  }
 }
 
 bool ChunkWriterImpl::write(std::string& s) {
-    if (mStreamGood) {
-        mBuffer.append(s);
+  if (mStreamGood) {
+    mBuffer.append(s);
 
-        if(mNoBuffer || (mBuffer.size() >= kBufferSize)) {
-            flush();
-        }
+    if (mNoBuffer || (mBuffer.size() >= kBufferSize)) {
+      flush();
     }
+  }
 
-    return mStreamGood;
+  return mStreamGood;
 }
 
 void ChunkWriterImpl::flush() {
-    size_t bufferSize = mBuffer.size();
-    mStreamGood = mWriter->write(mBuffer.data(), mBuffer.size()) == bufferSize;
-    mBuffer.clear();
+  size_t bufferSize = mBuffer.size();
+  mStreamGood = mWriter->write(mBuffer.data(), mBuffer.size()) == bufferSize;
+  mBuffer.clear();
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 namespace gapii {
 
-// create returns a shared pointer to a ChunkWriter that writes to stream_writer.
-ChunkWriter::SPtr ChunkWriter::create(const std::shared_ptr<core::StreamWriter>& stream_writer, bool no_buffer) {
-    return ChunkWriter::SPtr(new ChunkWriterImpl(stream_writer, no_buffer));
+// create returns a shared pointer to a ChunkWriter that writes to
+// stream_writer.
+ChunkWriter::SPtr ChunkWriter::create(
+    const std::shared_ptr<core::StreamWriter>& stream_writer, bool no_buffer) {
+  return ChunkWriter::SPtr(new ChunkWriterImpl(stream_writer, no_buffer));
 }
 
-} // namespace gapii
+}  // namespace gapii

@@ -19,8 +19,8 @@
 
 #include "base_type.h"
 #include "interpreter.h"
-#include "resource_provider.h"
 #include "replay_connection.h"
+#include "resource_provider.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -36,22 +36,23 @@ class ServerConnection;
 
 namespace test {
 
-
-// Action for setting the values pointed by a void pointer (arg0). Data should be an iterable
-// collection of uint8_t types and arg should be a void pointer.
+// Action for setting the values pointed by a void pointer (arg0). Data should
+// be an iterable collection of uint8_t types and arg should be a void pointer.
 ACTION_P(SetVoidPointee, data) {
-    uint32_t i = 0;
-    uint8_t* typedArg = static_cast<uint8_t*>(arg0);
-    for (uint8_t it : data) {
-        typedArg[i] = it;
-        ++i;
-    }
+  uint32_t i = 0;
+  uint8_t* typedArg = static_cast<uint8_t*>(arg0);
+  for (uint8_t it : data) {
+    typedArg[i] = it;
+    ++i;
+  }
 }
 
-// Create an instruction code from the given details that can be interpreted by the interpreter
+// Create an instruction code from the given details that can be interpreted by
+// the interpreter
 uint32_t instruction(Interpreter::InstructionCode code);
 uint32_t instruction(Interpreter::InstructionCode code, uint32_t data);
-uint32_t instruction(Interpreter::InstructionCode code, BaseType type, uint32_t data);
+uint32_t instruction(Interpreter::InstructionCode code, BaseType type,
+                     uint32_t data);
 
 void pushBytes(std::vector<uint8_t>* buf, const std::vector<uint8_t>& v);
 void pushUint8(std::vector<uint8_t>* buf, uint8_t v);

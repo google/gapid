@@ -72,6 +72,8 @@ std::string extractString(const std::vector<uint32_t>& words) {
       ret += c;
     }
   }
-  assert(false && "extractString: expected the vector to represent a null-terminated string");
+  assert(false &&
+         "extractString: expected the vector to represent a null-terminated "
+         "string");
   return ret;
 }

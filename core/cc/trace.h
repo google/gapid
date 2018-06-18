@@ -24,7 +24,6 @@
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 #endif  // GAPID_USE_TRACING
 
-
 #ifndef GAPID_TRACE_MACROS_DEFINED
 #define GAPID_TRACE_CALL()
 #define GAPID_TRACE_NAME(name)

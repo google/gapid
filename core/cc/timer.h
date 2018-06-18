@@ -21,17 +21,18 @@
 
 namespace core {
 
-// Timer provides a timer that measures monotonic time between calls to Start() and Stop().
+// Timer provides a timer that measures monotonic time between calls to Start()
+// and Stop().
 class Timer {
-public:
-    // Begin the timer.
-    void Start();
+ public:
+  // Begin the timer.
+  void Start();
 
-    // Stop the timer and report the time in nanoseconds since Start was called.
-    uint64_t Stop();
+  // Stop the timer and report the time in nanoseconds since Start was called.
+  uint64_t Stop();
 
-private:
-  uint64_t mStartTime; // Units dependent on platform.
+ private:
+  uint64_t mStartTime;  // Units dependent on platform.
 };
 
 }  // namespace core

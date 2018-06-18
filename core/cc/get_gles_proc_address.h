@@ -19,7 +19,7 @@
 
 namespace core {
 
-typedef void* (GetGlesProcAddressFunc)(const char* name, bool bypassLocal);
+typedef void*(GetGlesProcAddressFunc)(const char* name, bool bypassLocal);
 
 // GetGlesProcAddress returns the GLES function pointer to the function with
 // the given name, or nullptr if the function was not found. If bypassLocal

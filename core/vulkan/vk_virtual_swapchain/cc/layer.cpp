@@ -21,9 +21,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "swapchain.h"
 #include <vulkan/vk_layer.h>
 #include <vulkan/vulkan.h>
+#include "swapchain.h"
 
 #define LAYER_NAME "VirtualSwapchain"
 
@@ -41,7 +41,8 @@ Context &GetGlobalContext() {
 
 namespace {
 
-template <typename T> struct link_info_traits {
+template <typename T>
+struct link_info_traits {
   const static bool is_instance =
       std::is_same<T, const VkInstanceCreateInfo>::value;
   using layer_info_type =
@@ -57,8 +58,8 @@ template <typename T> struct link_info_traits {
 // VkLayerDeviceCreateInfo depending on the type of the pCreateInfo
 // passed in.
 template <typename T>
-typename link_info_traits<T>::layer_info_type *
-get_layer_link_info(T *pCreateInfo) {
+typename link_info_traits<T>::layer_info_type *get_layer_link_info(
+    T *pCreateInfo) {
   using layer_info_type = typename link_info_traits<T>::layer_info_type;
 
   auto layer_info = const_cast<layer_info_type *>(
@@ -74,14 +75,13 @@ get_layer_link_info(T *pCreateInfo) {
   }
   return layer_info;
 }
-}
+}  // namespace
 
 // Overload vkCreateInstance. It is all book-keeping
 // and passthrough to the next layer (or ICD) in the chain.
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
     const VkInstanceCreateInfo *pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
-
   VkLayerInstanceCreateInfo *layer_info = get_layer_link_info(pCreateInfo);
 
   // Grab the pointer to the next vkGetInstanceProcAddr in the chain.
@@ -103,8 +103,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
   VkResult result = create_instance(pCreateInfo, pAllocator, pInstance);
 
   // If it failed, then we don't need to track this instance.
-  if (result != VK_SUCCESS)
-    return result;
+  if (result != VK_SUCCESS) return result;
 
   PFN_vkEnumeratePhysicalDevices enumerate_physical_devices =
       reinterpret_cast<PFN_vkEnumeratePhysicalDevices>(
@@ -124,8 +123,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
 
   InstanceData data;
 
-#define GET_PROC(name)                                                         \
-  data.name =                                                                  \
+#define GET_PROC(name) \
+  data.name =          \
       reinterpret_cast<PFN_##name>(get_instance_proc_addr(*pInstance, #name))
   GET_PROC(vkGetInstanceProcAddr);
   GET_PROC(vkDestroyInstance);
@@ -205,8 +204,8 @@ vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo *pCreateInfo,
 
   DeviceData data{gpu};
 
-#define GET_PROC(name)                                                         \
-  data.name =                                                                  \
+#define GET_PROC(name) \
+  data.name =          \
       reinterpret_cast<PFN_##name>(get_device_proc_addr(*pDevice, #name));
 
   GET_PROC(vkGetDeviceProcAddr);
@@ -269,7 +268,9 @@ vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo *pCreateInfo,
       for (size_t j = 0; j < pCreateInfo->pQueueCreateInfos[i].queueCount;
            ++j) {
         VkQueue q;
-        data.vkGetDeviceQueue(*pDevice, pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex, j, &q);
+        data.vkGetDeviceQueue(
+            *pDevice, pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex, j,
+            &q);
         set_dispatch_from_parent(q, *pDevice);
         (*queue_map)[q] = {*pDevice, data.vkQueueSubmit};
       }
@@ -292,7 +293,9 @@ VKAPI_ATTR void vkDestroyDevice(VkDevice device,
 }
 
 static const VkLayerProperties global_layer_properties[] = {{
-    LAYER_NAME, VK_VERSION_MAJOR(1) | VK_VERSION_MINOR(0) | 5, 1,
+    LAYER_NAME,
+    VK_VERSION_MAJOR(1) | VK_VERSION_MINOR(0) | 5,
+    1,
     "Virtual Swapchain Layer",
 }};
 
@@ -346,8 +349,7 @@ vkEnumeratePhysicalDevices(VkInstance instance, uint32_t *pPhysicalDeviceCount,
 
   uint32_t count = instance_data->physical_devices_.size();
   if (pPhysicalDevices) {
-    if (*pPhysicalDeviceCount > count)
-      *pPhysicalDeviceCount = count;
+    if (*pPhysicalDeviceCount > count) *pPhysicalDeviceCount = count;
     memcpy(pPhysicalDevices, instance_data->physical_devices_.data(),
            *pPhysicalDeviceCount * sizeof(VkPhysicalDevice));
   } else {
@@ -415,8 +417,8 @@ vkEnumerateInstanceExtensionProperties(
 // Lastly it provides vkDestroyInstance for book-keeping purposes.
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
-#define INTERCEPT(func)                                                        \
-  if (!strcmp(funcName, #func))                                                \
+#define INTERCEPT(func)         \
+  if (!strcmp(funcName, #func)) \
   return reinterpret_cast<PFN_vkVoidFunction>(func)
 
   INTERCEPT(vkGetInstanceProcAddr);
@@ -454,8 +456,8 @@ vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
   INTERCEPT(vkSetSwapchainCallback);
 #undef INTERCEPT
 
-#define INTERCEPT_SURFACE(name)                                                \
-  if (!strcmp(funcName, #name))                                                \
+#define INTERCEPT_SURFACE(name) \
+  if (!strcmp(funcName, #name)) \
   return reinterpret_cast<PFN_vkVoidFunction>(vkCreateVirtualSurface)
 
   // Since we are faking our swapchains, we also have to fake the surface.
@@ -481,8 +483,8 @@ vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
 // The rest of the overloads are swapchain-specific.
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vkGetDeviceProcAddr(VkDevice dev, const char *funcName) {
-#define INTERCEPT(func)                                                        \
-  if (!strcmp(funcName, #func))                                                \
+#define INTERCEPT(func)         \
+  if (!strcmp(funcName, #func)) \
   return reinterpret_cast<PFN_vkVoidFunction>(func)
 
   INTERCEPT(vkGetDeviceProcAddr);
@@ -513,7 +515,7 @@ vkGetDeviceProcAddr(VkDevice dev, const char *funcName) {
       GetGlobalContext().GetDeviceData(dev)->vkGetDeviceProcAddr;
   return device_proc_addr(dev, funcName);
 }
-} // swapchain
+}  // namespace swapchain
 
 extern "C" {
 

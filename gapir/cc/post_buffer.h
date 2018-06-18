@@ -26,41 +26,43 @@
 namespace gapir {
 
 // PostBuffer provides a delayed-send buffer for pushing data to the server.
-// This serves as an optimisation to batch many small postbacks into fewer, larger batches.
+// This serves as an optimisation to batch many small postbacks into fewer,
+// larger batches.
 class PostBuffer {
-public:
-    typedef std::function<bool(std::unique_ptr<ReplayConnection::Posts>)> PostBufferCallback;
+ public:
+  typedef std::function<bool(std::unique_ptr<ReplayConnection::Posts>)>
+      PostBufferCallback;
 
-    // Constructs a PostBuffer with the specified maximum capacity and function to invoke when
-    // the PostBuffer wants to flush the buffer to the server.
-    PostBuffer(uint32_t desiredCapacity, PostBufferCallback callback);
-    ~PostBuffer();
+  // Constructs a PostBuffer with the specified maximum capacity and function to
+  // invoke when the PostBuffer wants to flush the buffer to the server.
+  PostBuffer(uint32_t desiredCapacity, PostBufferCallback callback);
+  ~PostBuffer();
 
-    // Push data to the buffer. If the buffer does not have enough space to buffer the data, then
-    // the contents of the PushBuffer will be flushed.
-    bool push(const void* address, uint32_t count);
+  // Push data to the buffer. If the buffer does not have enough space to buffer
+  // the data, then the contents of the PushBuffer will be flushed.
+  bool push(const void* address, uint32_t count);
 
-    // Forcefully flush the PostBuffer. If the PostBuffer is empty then calling this function does
-    // nothing.
-    bool flush();
+  // Forcefully flush the PostBuffer. If the PostBuffer is empty then calling
+  // this function does nothing.
+  bool flush();
 
-private:
-    // The PostBuffer's internal buffer.
-    std::unique_ptr<ReplayConnection::Posts> mPosts;
+ private:
+  // The PostBuffer's internal buffer.
+  std::unique_ptr<ReplayConnection::Posts> mPosts;
 
-    // The total number of posts ever processed by this post buffer.
-    uint64_t mTotalPostCount;
+  // The total number of posts ever processed by this post buffer.
+  uint64_t mTotalPostCount;
 
-    // The maximum capacity of the internal buffer.
-    const uint32_t mCapacity;
+  // The maximum capacity of the internal buffer.
+  const uint32_t mCapacity;
 
-    // The flush callback function.
-    const PostBufferCallback mCallback;
+  // The flush callback function.
+  const PostBufferCallback mCallback;
 
-    // The offset in mBuffer for the next write.
-    uint32_t mOffset;
+  // The offset in mBuffer for the next write.
+  uint32_t mOffset;
 };
 
 }  // namespace gapir
 
-#endif // GAPIR_POSTBUFFER_H
+#endif  // GAPIR_POSTBUFFER_H

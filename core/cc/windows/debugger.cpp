@@ -21,13 +21,11 @@
 namespace core {
 
 void Debugger::waitForAttach() {
-    while (!isAttached()) {}
-    DebugBreak();
+  while (!isAttached()) {
+  }
+  DebugBreak();
 }
 
-bool Debugger::isAttached() {
-    return IsDebuggerPresent();
-}
+bool Debugger::isAttached() { return IsDebuggerPresent(); }
 
 }  // namespace core
-

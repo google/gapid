@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+#include "test_utilities.h"
 #include "base_type.h"
 #include "interpreter.h"
-#include "test_utilities.h"
 #include "replay_connection.h"
 
 #include "gapir/replay_service/service.pb.h"
@@ -27,50 +27,49 @@
 #include <string>
 #include <vector>
 
-using ::testing::_;
 using ::testing::DoAll;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::ReturnArg;
 using ::testing::StrictMock;
 using ::testing::WithArg;
+using ::testing::_;
 
 namespace gapir {
 namespace test {
 
 uint32_t instruction(Interpreter::InstructionCode code) {
-    return static_cast<uint32_t>(code) << 26;
+  return static_cast<uint32_t>(code) << 26;
 }
 
 uint32_t instruction(Interpreter::InstructionCode code, uint32_t data) {
-    return (static_cast<uint32_t>(code) << 26) | (data & 0x03ffffffU);
+  return (static_cast<uint32_t>(code) << 26) | (data & 0x03ffffffU);
 }
 
-uint32_t instruction(Interpreter::InstructionCode code, BaseType type, uint32_t data) {
-    return (static_cast<uint32_t>(code) << 26) | (static_cast<uint32_t>(type) << 20) |
-           (data & 0x000fffff);
+uint32_t instruction(Interpreter::InstructionCode code, BaseType type,
+                     uint32_t data) {
+  return (static_cast<uint32_t>(code) << 26) |
+         (static_cast<uint32_t>(type) << 20) | (data & 0x000fffff);
 }
 
 void pushBytes(std::vector<uint8_t>* buf, const std::vector<uint8_t>& v) {
   buf->insert(buf->end(), v.begin(), v.end());
 }
-void pushUint8(std::vector<uint8_t>* buf, uint8_t v) {
-  buf->push_back(v);
-}
+void pushUint8(std::vector<uint8_t>* buf, uint8_t v) { buf->push_back(v); }
 void pushUint32(std::vector<uint8_t>* buf, uint32_t v) {
-    for (uint8_t i = 0; i < 32; i += 8) {
-      buf->push_back((v >> i) & 0xff);
+  for (uint8_t i = 0; i < 32; i += 8) {
+    buf->push_back((v >> i) & 0xff);
   }
 }
 void pushString(std::vector<uint8_t>* buf, const std::string& str) {
-  for(char c : str) {
-      buf->push_back(c);
+  for (char c : str) {
+    buf->push_back(c);
   }
   buf->push_back(0);
 }
 void pushString(std::vector<uint8_t>* buf, const char* str) {
-  for(char c = *str; c != 0; str++, c = *str) {
-      buf->push_back(c);
+  for (char c = *str; c != 0; str++, c = *str) {
+    buf->push_back(c);
   }
   buf->push_back(0);
 }
@@ -80,7 +79,8 @@ std::unique_ptr<ReplayConnection::Payload> createPayload(
     const std::vector<uint8_t>& constantMemory,
     const std::vector<Resource>& resources,
     const std::vector<uint32_t>& instructions) {
-  auto p = std::unique_ptr<replay_service::Payload>(new replay_service::Payload);
+  auto p =
+      std::unique_ptr<replay_service::Payload>(new replay_service::Payload);
   p->set_stack_size(stackSize);
   p->set_volatile_memory_size(volatileMemorySize);
   p->set_constants(constantMemory.data(), constantMemory.size());
@@ -96,7 +96,8 @@ std::unique_ptr<ReplayConnection::Payload> createPayload(
 
 std::unique_ptr<ReplayConnection::Resources> createResources(
     const std::vector<uint8_t>& data) {
-  auto p = std::unique_ptr<replay_service::Resources>(new replay_service::Resources);
+  auto p =
+      std::unique_ptr<replay_service::Resources>(new replay_service::Resources);
   p->set_data(data.data(), data.size());
   return std::unique_ptr<ReplayConnection::Resources>(
       new ReplayConnection::Resources(std::move(p)));

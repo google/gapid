@@ -66,7 +66,7 @@ std::vector<void*> DirtyPageTable::DumpAndClearAll() {
   return r;
 }
 
-template<>
+template <>
 bool MemoryTracker::AddTrackingRangeImpl(void* start, size_t size) {
   if (size == 0) return false;
   if (IsInRanges(reinterpret_cast<uintptr_t>(start), ranges_)) return false;
@@ -76,10 +76,11 @@ bool MemoryTracker::AddTrackingRangeImpl(void* start, size_t size) {
   dirty_pages_.Reserve(size_aligned / page_size_);
   ranges_[reinterpret_cast<uintptr_t>(start)] = size;
   return set_protection(start_page_addr, size_aligned,
-                  track_read_ ? PageProtections::kNone : PageProtections::kRead) == 0;
+                        track_read_ ? PageProtections::kNone
+                                    : PageProtections::kRead) == 0;
 }
 
-template<>
+template <>
 bool MemoryTracker::RemoveTrackingRangeImpl(void* start, size_t size) {
   if (size == 0) return false;
   auto it = ranges_.find(reinterpret_cast<uintptr_t>(start));
@@ -92,8 +93,8 @@ bool MemoryTracker::RemoveTrackingRangeImpl(void* start, size_t size) {
 
   bool result = true;
   for (uint8_t* p = reinterpret_cast<uint8_t*>(start_page_addr);
-      p < reinterpret_cast<uint8_t*>(start_page_addr)+size_aligned;
-      p = p + page_size_) {
+       p < reinterpret_cast<uint8_t*>(start_page_addr) + size_aligned;
+       p = p + page_size_) {
     if (!IsInRanges(reinterpret_cast<uintptr_t>(p), ranges_, true)) {
       result &= set_protection(p, page_size_, PageProtections::kReadWrite) == 0;
     }
@@ -101,7 +102,7 @@ bool MemoryTracker::RemoveTrackingRangeImpl(void* start, size_t size) {
   return result;
 }
 
-template<>
+template <>
 bool MemoryTracker::ClearTrackingRangesImpl() {
   if (std::any_of(ranges_.begin(), ranges_.end(),
                   [this](std::pair<uintptr_t, size_t> r) {
@@ -114,7 +115,7 @@ bool MemoryTracker::ClearTrackingRangesImpl() {
                     dirty_pages_.RecollectIfPossible(size_aligned / page_size_);
                     // TODO(qining): Add Windows support
                     return set_protection(start_page_addr, size_aligned,
-                                    PageProtections::kReadWrite) != 0;
+                                          PageProtections::kReadWrite) != 0;
                   })) {
     return false;
   }
@@ -122,7 +123,7 @@ bool MemoryTracker::ClearTrackingRangesImpl() {
   return true;
 }
 
-template<>
+template <>
 bool MemoryTracker::HandleSegfaultImpl(void* fault_addr) {
   if (!IsInRanges(reinterpret_cast<uintptr_t>(fault_addr), ranges_, true)) {
     return false;
@@ -151,4 +152,4 @@ bool MemoryTracker::HandleSegfaultImpl(void* fault_addr) {
 }  // namespace track_memory
 }  // namespace gapii
 
-#endif // COHERENT_TRACKING_ENABLED
+#endif  // COHERENT_TRACKING_ENABLED

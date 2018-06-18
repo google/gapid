@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// clang-format off
 
 #ifndef VULKAN_H_
 #define VULKAN_H_ 1

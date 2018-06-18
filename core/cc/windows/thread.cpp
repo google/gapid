@@ -21,22 +21,22 @@
 namespace core {
 
 Thread Thread::current() {
-    auto thread = GetCurrentThreadId();
-    return Thread(static_cast<uint64_t>(thread));
+  auto thread = GetCurrentThreadId();
+  return Thread(static_cast<uint64_t>(thread));
 }
 
-AsyncJob::AsyncJob(const std::function<void()>& function) : mFunction(function) {
-    LPTHREAD_START_ROUTINE start = [](void* _this) -> long unsigned int {
-        AsyncJob::RunJob(_this);
-        return 0;
-    };
-    _ = reinterpret_cast<void*>(CreateThread(nullptr,
-        0, start, this, 0, nullptr));
+AsyncJob::AsyncJob(const std::function<void()>& function)
+    : mFunction(function) {
+  LPTHREAD_START_ROUTINE start = [](void* _this) -> long unsigned int {
+    AsyncJob::RunJob(_this);
+    return 0;
+  };
+  _ = reinterpret_cast<void*>(
+      CreateThread(nullptr, 0, start, this, 0, nullptr));
 }
 
 AsyncJob::~AsyncJob() {
-    WaitForSingleObject(reinterpret_cast<HANDLE>(_), INFINITE);
+  WaitForSingleObject(reinterpret_cast<HANDLE>(_), INFINITE);
 }
-
 
 }  // namespace core

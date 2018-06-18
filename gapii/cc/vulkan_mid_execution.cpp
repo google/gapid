@@ -228,8 +228,9 @@ class StagingCommandBuffer {
     // dispatchable handle to the new child dispatchable handle. This is
     // necessary as lower layers may use that key to find the dispatch table,
     // and a child handle should share the same dispatch table key.
-    // Ref: https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects
-    *((const void**)command_buffer_) = *((const void**)device_);
+    // Ref:
+    // https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects
+    *((const void **)command_buffer_) = *((const void **)device_);
 
     VkCommandBufferBeginInfo begin_info = {
         VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,  // sType
@@ -273,7 +274,7 @@ class StagingCommandBuffer {
   VkCommandBuffer command_buffer_;
 };
 
-void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
+void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
   for (auto &device : mState.Devices) {
     auto &device_functions =
         mImports.mVkDeviceFunctions[device.second->mVulkanHandle];
@@ -316,8 +317,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
 
   for (auto &mem : mState.DeviceMemories) {
     auto &memory = mem.second;
-    memory->mData = serializer->encodeBuffer<uint8_t>(
-        memory->mAllocationSize, nullptr);
+    memory->mData =
+        serializer->encodeBuffer<uint8_t>(memory->mAllocationSize, nullptr);
     if (memory->mMappedLocation != nullptr) {
       if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
         trackMappedCoherentMemory(
@@ -434,7 +435,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
                                    bool in_buffer) -> uint32_t {
       switch (aspect_bit) {
         case VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT:
-          return subGetElementAndTexelBlockSize(nullptr, nullptr, format).mElementSize;
+          return subGetElementAndTexelBlockSize(nullptr, nullptr, format)
+              .mElementSize;
         case VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT:
           return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
         case VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT:
@@ -518,21 +520,17 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
       const uint32_t height_in_blocks =
           subRoundUpTo(nullptr, nullptr, height, texel_height);
       const uint32_t element_size = get_element_size(format, aspect_bit, false);
-      const uint32_t element_size_in_buf = get_element_size(format, aspect_bit, true);
+      const uint32_t element_size_in_buf =
+          get_element_size(format, aspect_bit, true);
       const size_t size =
           width_in_blocks * height_in_blocks * depth * element_size;
       const size_t size_in_buf =
           width_in_blocks * height_in_blocks * depth * element_size_in_buf;
 
-      return byte_size_and_extent{
-        size,
-        next_multiple_of_8(size),
-        size_in_buf,
-        next_multiple_of_8(size_in_buf),
-        width,
-        height,
-        depth
-      };
+      return byte_size_and_extent{size,        next_multiple_of_8(size),
+                                  size_in_buf, next_multiple_of_8(size_in_buf),
+                                  width,       height,
+                                  depth};
     };
 
     VkImageSubresourceRange img_whole_rng = VkImageSubresourceRange{
@@ -544,17 +542,17 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
     };
 
     std::unordered_map<ImageLevel *, byte_size_and_extent> level_sizes;
-    walkImageSubRng(
-        img, img_whole_rng,
-        [&serializer, &level_size, &img, &level_sizes](
-            uint32_t aspect, uint32_t layer, uint32_t level) {
-          auto img_level =
-              img->mAspects[aspect]->mLayers[layer]->mLevels[level];
-          level_sizes[img_level.get()] =
-              level_size(img->mInfo.mExtent, img->mInfo.mFormat, level, aspect);
-          img_level->mData = serializer->encodeBuffer<uint8_t>(
-              level_sizes[img_level.get()].level_size, nullptr);
-        });
+    walkImageSubRng(img, img_whole_rng,
+                    [&serializer, &level_size, &img, &level_sizes](
+                        uint32_t aspect, uint32_t layer, uint32_t level) {
+                      auto img_level =
+                          img->mAspects[aspect]->mLayers[layer]->mLevels[level];
+                      level_sizes[img_level.get()] =
+                          level_size(img->mInfo.mExtent, img->mInfo.mFormat,
+                                     level, aspect);
+                      img_level->mData = serializer->encodeBuffer<uint8_t>(
+                          level_sizes[img_level.get()].level_size, nullptr);
+                    });
 
     if (img->mIsSwapchainImage) {
       // Don't bind and fill swapchain images memory here
@@ -619,16 +617,16 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
       uint32_t level;
     };
     std::vector<opaque_piece> opaque_pieces;
-    auto append_image_level_to_opaque_pieces = [&img, &opaque_pieces](
-                                                   uint32_t aspect_bit,
-                                                   uint32_t layer,
-                                                   uint32_t level) {
-      auto& img_level = img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
-      if (img_level->mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
-        return;
-      }
-      opaque_pieces.push_back(opaque_piece{aspect_bit, layer, level});
-    };
+    auto append_image_level_to_opaque_pieces =
+        [&img, &opaque_pieces](uint32_t aspect_bit, uint32_t layer,
+                               uint32_t level) {
+          auto &img_level =
+              img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+          if (img_level->mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
+            return;
+          }
+          opaque_pieces.push_back(opaque_piece{aspect_bit, layer, level});
+        };
     if (denseBound || !sparseResidency) {
       walkImageSubRng(img, img_whole_rng, append_image_level_to_opaque_pieces);
     } else {
@@ -650,7 +648,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
                 0,                                     // baseArrayLayer
                 image_info.mArrayLayers,               // layerCount
             };
-            walkImageSubRng(img, bound_rng, append_image_level_to_opaque_pieces);
+            walkImageSubRng(img, bound_rng,
+                            append_image_level_to_opaque_pieces);
           } else {
             for (uint32_t i = 0; i < uint32_t(image_info.mArrayLayers); i++) {
               VkDeviceSize offset = req.second.mimageMipTailOffset +
@@ -666,7 +665,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
                   i,
                   1,
               };
-              walkImageSubRng(img, bound_rng, append_image_level_to_opaque_pieces);
+              walkImageSubRng(img, bound_rng,
+                              append_image_level_to_opaque_pieces);
             }
           }
         }
@@ -704,7 +704,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
       }
 
       if (sparseResidency) {
-        for (auto& aspect_i : subUnpackImageAspectFlags(nullptr, nullptr,img->mImageAspect)->mBits) {
+        for (auto &aspect_i :
+             subUnpackImageAspectFlags(nullptr, nullptr, img->mImageAspect)
+                 ->mBits) {
           uint32_t aspect_bit = aspect_i.second;
           if (img->mSparseImageMemoryBindings.find(aspect_bit) !=
               img->mSparseImageMemoryBindings.end()) {
@@ -745,25 +747,26 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
 
       std::vector<VkImageMemoryBarrier> img_barriers;
       std::vector<uint32_t> old_layouts;
-      walkImageSubRng(img, img_whole_rng,
+      walkImageSubRng(
+          img, img_whole_rng,
           [&img, &img_barriers, &old_layouts](uint32_t aspect_bit,
                                               uint32_t layer, uint32_t level) {
             auto &img_level =
                 img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
-        img_barriers.push_back(VkImageMemoryBarrier{
-            VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            nullptr,
-            (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
-            VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
-            img_level->mLayout,
-            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            0xFFFFFFFF,
-            0xFFFFFFFF,
-            img->mVulkanHandle,
-            {VkImageAspectFlags(aspect_bit), level, 1, layer, 1},
-        });
-        old_layouts.push_back(img_level->mLayout);
-      });
+            img_barriers.push_back(VkImageMemoryBarrier{
+                VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                nullptr,
+                (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
+                VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
+                img_level->mLayout,
+                VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                0xFFFFFFFF,
+                0xFFFFFFFF,
+                img->mVulkanHandle,
+                {VkImageAspectFlags(aspect_bit), level, 1, layer, 1},
+            });
+            old_layouts.push_back(img_level->mLayout);
+          });
 
       device_functions.vkCmdPipelineBarrier(
           commandBuffer.GetBuffer(),
@@ -816,11 +819,10 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
             (i == copies.size() - 1) ? offset : copies[i + 1].mbufferOffset;
         const uint32_t aspect_bit =
             (uint32_t)copy.mimageSubresource.maspectMask;
-        byte_size_and_extent e = level_size(
-            copy.mimageExtent, image_info.mFormat, 0, aspect_bit);
-        auto bp =
-            block_pitch(copy.mimageExtent, image_info.mFormat,
-                        copy.mimageSubresource.mmipLevel, aspect_bit);
+        byte_size_and_extent e =
+            level_size(copy.mimageExtent, image_info.mFormat, 0, aspect_bit);
+        auto bp = block_pitch(copy.mimageExtent, image_info.mFormat,
+                              copy.mimageSubresource.mmipLevel, aspect_bit);
 
         if ((copy.mimageOffset.mx % bp.texel_width != 0) ||
             (copy.mimageOffset.my % bp.texel_height != 0)) {
@@ -868,8 +870,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
                                  ->mLayers[array_layer]
                                  ->mLevels[mip_level]
                                  ->mData.pool_id());
-        serializer->sendData(
-            &observation, true, pData + new_offset, e.level_size);
+        serializer->sendData(&observation, true, pData + new_offset,
+                             e.level_size);
         new_offset = next_offset;
       }
     }

@@ -48,7 +48,9 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   EGLContext eglCreateContext(CallObserver* observer, EGLDisplay display,
                               EGLConfig config, EGLContext share_context,
                               EGLint* attrib_list);
-  EGLBoolean eglMakeCurrent(CallObserver* observer, EGLDisplay display, EGLSurface draw, EGLSurface read, EGLContext context);
+  EGLBoolean eglMakeCurrent(CallObserver* observer, EGLDisplay display,
+                            EGLSurface draw, EGLSurface read,
+                            EGLContext context);
 
   // Intercepted GLES methods to optionally fake no support for precompiled
   // shaders.
@@ -58,16 +60,18 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   void glProgramBinaryOES(CallObserver* observer, uint32_t program,
                           uint32_t binary_format, const void* binary,
                           int32_t binary_size);
-  void glShaderBinary(CallObserver* observer,
-                      int32_t count, const uint32_t* shaders,
-                      uint32_t binary_format, const void* binary,
-                      int32_t binary_size);
+  void glShaderBinary(CallObserver* observer, int32_t count,
+                      const uint32_t* shaders, uint32_t binary_format,
+                      const void* binary, int32_t binary_size);
   void glGetInteger64v(CallObserver* observer, uint32_t param, int64_t* values);
   void glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values);
   const GLubyte* glGetString(CallObserver* observer, uint32_t name);
-  const GLubyte* glGetStringi(CallObserver* observer, uint32_t name, GLuint index);
+  const GLubyte* glGetStringi(CallObserver* observer, uint32_t name,
+                              GLuint index);
 
-  void gvr_frame_submit(CallObserver* observer, gvr_frame** frame, const gvr_buffer_viewport_list* list, gvr_mat4_abi head_space_from_start_space);
+  void gvr_frame_submit(CallObserver* observer, gvr_frame** frame,
+                        const gvr_buffer_viewport_list* list,
+                        gvr_mat4_abi head_space_from_start_space);
 
   void onPostDrawCall(CallObserver* observer, uint8_t api) override;
   void onPreStartOfFrame(CallObserver* observer, uint8_t api) override;
@@ -98,12 +102,13 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   // getFramebufferAttachmentSize attempts to retrieve the currently bound
   // framebuffer's color buffer dimensions, returning true on success or
   // false if the dimensions could not be retrieved.
-  bool getFramebufferAttachmentSize(CallObserver* observer, uint32_t& width, uint32_t& height);
+  bool getFramebufferAttachmentSize(CallObserver* observer, uint32_t& width,
+                                    uint32_t& height);
 
   // saveInitialState serializes the current global state.
   void saveInitialState();
 
-  template<typename T>
+  template <typename T>
   void saveInitialStateForApi(const char* name);
 
   // onPostFrameBoundary is called from onPost{Start,End}OfFrame().

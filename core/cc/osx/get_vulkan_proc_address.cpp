@@ -19,26 +19,30 @@
 
 namespace {
 
-void* getVulkanInstanceProcAddress(size_t instance, const char *name, bool bypassLocal) {
-    GAPID_FATAL("No Vulkan support on macOS");
-    return nullptr;
+void* getVulkanInstanceProcAddress(size_t instance, const char* name,
+                                   bool bypassLocal) {
+  GAPID_FATAL("No Vulkan support on macOS");
+  return nullptr;
 }
 
-void* getVulkanDeviceProcAddress(size_t instance, size_t device, const char *name, bool bypassLocal) {
-    GAPID_FATAL("No Vulkan support on macOS");
-    return nullptr;
+void* getVulkanDeviceProcAddress(size_t instance, size_t device,
+                                 const char* name, bool bypassLocal) {
+  GAPID_FATAL("No Vulkan support on macOS");
+  return nullptr;
 }
 
 void* getVulkanProcAddress(const char* name, bool bypassLocal) {
-    return getVulkanInstanceProcAddress(0u, name, bypassLocal);
+  return getVulkanInstanceProcAddress(0u, name, bypassLocal);
 }
 
 }  // anonymous namespace
 
 namespace core {
 
-GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress = getVulkanInstanceProcAddress;
-GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress = getVulkanDeviceProcAddress;
+GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress =
+    getVulkanInstanceProcAddress;
+GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress =
+    getVulkanDeviceProcAddress;
 GetVulkanProcAddressFunc* GetVulkanProcAddress = getVulkanProcAddress;
 bool HasVulkanLoader() { return false; }
 }  // namespace core

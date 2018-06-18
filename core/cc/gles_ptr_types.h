@@ -17,7 +17,7 @@
 #ifndef CORE_GLES_PTR_TYPES_H_
 #define CORE_GLES_PTR_TYPES_H_
 
-#include "core/cc/target.h" // STDCALL
+#include "core/cc/target.h"  // STDCALL
 
 #define GLES_API_ATTR
 #define GLES_API_CALL

@@ -16,112 +16,113 @@
 
 #include "../query.h"
 
-#import <OpenGL/gl.h>
 #import <AppKit/AppKit.h>
+#import <OpenGL/gl.h>
 
 #include <cstring>
 
 #include <unistd.h>
 
-#include <sys/types.h>
 #include <sys/sysctl.h>
+#include <sys/types.h>
 
 #define STR_OR_EMPTY(x) ((x != nullptr) ? x : "")
 
 namespace query {
 
 struct Context {
-    char mError[512];
-    NSOpenGLPixelFormat* mGlFmt;
-    NSOpenGLContext* mGlCtx;
-    NSOperatingSystemVersion mOsVersion;
-    int mNumCores;
-    char* mHwModel;
-    char mHostName[512];
+  char mError[512];
+  NSOpenGLPixelFormat* mGlFmt;
+  NSOpenGLContext* mGlCtx;
+  NSOperatingSystemVersion mOsVersion;
+  int mNumCores;
+  char* mHwModel;
+  char mHostName[512];
 };
 
 static Context gContext;
 static int gContextRefCount = 0;
 
 void destroyContext() {
-    if (--gContextRefCount > 0) {
-        return;
-    }
+  if (--gContextRefCount > 0) {
+    return;
+  }
 
-    if (gContext.mHwModel) {
-        delete [] gContext.mHwModel;
-    }
-    if (gContext.mGlFmt) {
-        [gContext.mGlFmt release];
-        gContext.mGlFmt = nullptr;
-    }
-    if (gContext.mGlCtx) {
-        [gContext.mGlCtx release];
-        gContext.mGlCtx = nullptr;
-    }
+  if (gContext.mHwModel) {
+    delete[] gContext.mHwModel;
+  }
+  if (gContext.mGlFmt) {
+    [gContext.mGlFmt release];
+    gContext.mGlFmt = nullptr;
+  }
+  if (gContext.mGlCtx) {
+    [gContext.mGlCtx release];
+    gContext.mGlCtx = nullptr;
+  }
 }
 
 void createGlContext() {
-    NSOpenGLPixelFormatAttribute attributes[] = {
-        NSOpenGLPFANoRecovery,
-        NSOpenGLPFAColorSize, (NSOpenGLPixelFormatAttribute)32,
-        NSOpenGLPFADepthSize, (NSOpenGLPixelFormatAttribute)24,
-        NSOpenGLPFAStencilSize, (NSOpenGLPixelFormatAttribute)8,
-        NSOpenGLPFAAccelerated,
-        NSOpenGLPFABackingStore,
-        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
-        (NSOpenGLPixelFormatAttribute)0
-    };
+  NSOpenGLPixelFormatAttribute attributes[] = {
+      // clang-format off
+      NSOpenGLPFANoRecovery,
+      NSOpenGLPFAColorSize, (NSOpenGLPixelFormatAttribute)32,
+      NSOpenGLPFADepthSize, (NSOpenGLPixelFormatAttribute)24,
+      NSOpenGLPFAStencilSize, (NSOpenGLPixelFormatAttribute)8,
+      NSOpenGLPFAAccelerated,
+      NSOpenGLPFABackingStore,
+      NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
+      (NSOpenGLPixelFormatAttribute)0
+      // clang-format on
+  };
 
-    gContext.mGlFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
-    if (gContext.mGlFmt != nullptr) {
-        gContext.mGlCtx = [[NSOpenGLContext alloc] initWithFormat:gContext.mGlFmt shareContext:nil];
-        if (gContext.mGlCtx == nullptr) {
-            return;
-        }
-
-        [gContext.mGlCtx makeCurrentContext];
+  gContext.mGlFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
+  if (gContext.mGlFmt != nullptr) {
+    gContext.mGlCtx = [[NSOpenGLContext alloc] initWithFormat:gContext.mGlFmt shareContext:nil];
+    if (gContext.mGlCtx == nullptr) {
+      return;
     }
+
+    [gContext.mGlCtx makeCurrentContext];
+  }
 }
 
 bool createContext(void* platform_data) {
-    if (gContextRefCount++ > 0) {
-        return true;
-    }
-
-    memset(&gContext, 0, sizeof(gContext));
-
-    size_t len = 0;
-    int mib[2] = {CTL_HW, HW_MODEL};
-    sysctl(mib, 2, nullptr, &len, nullptr, 0);
-    gContext.mHwModel = new char[len];
-    if (sysctl(mib, 2, gContext.mHwModel, &len, nullptr, 0) != 0) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "sysctl {CTL_HW, HW_MODEL} returned error: %d", errno);
-        destroyContext();
-        return false;
-    }
-
-    len = sizeof(gContext.mNumCores);
-    if (sysctlbyname("hw.logicalcpu_max", &gContext.mNumCores, &len, nullptr, 0) != 0) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "sysctlbyname 'hw.logicalcpu_max' returned error: %d", errno);
-        destroyContext();
-        return false;
-    }
-
-    if (gethostname(gContext.mHostName, sizeof(gContext.mHostName)) != 0) {
-		snprintf(gContext.mError, sizeof(gContext.mError),
-				 "gethostname returned error: %d", errno);
-        destroyContext();
-        return false;
-    }
-
-    createGlContext();
-
-    gContext.mOsVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
-
+  if (gContextRefCount++ > 0) {
     return true;
+  }
+
+  memset(&gContext, 0, sizeof(gContext));
+
+  size_t len = 0;
+  int mib[2] = {CTL_HW, HW_MODEL};
+  sysctl(mib, 2, nullptr, &len, nullptr, 0);
+  gContext.mHwModel = new char[len];
+  if (sysctl(mib, 2, gContext.mHwModel, &len, nullptr, 0) != 0) {
+    snprintf(gContext.mError, sizeof(gContext.mError),
+             "sysctl {CTL_HW, HW_MODEL} returned error: %d", errno);
+    destroyContext();
+    return false;
+  }
+
+  len = sizeof(gContext.mNumCores);
+  if (sysctlbyname("hw.logicalcpu_max", &gContext.mNumCores, &len, nullptr, 0) != 0) {
+    snprintf(gContext.mError, sizeof(gContext.mError),
+             "sysctlbyname 'hw.logicalcpu_max' returned error: %d", errno);
+    destroyContext();
+    return false;
+  }
+
+  if (gethostname(gContext.mHostName, sizeof(gContext.mHostName)) != 0) {
+    snprintf(gContext.mError, sizeof(gContext.mError), "gethostname returned error: %d", errno);
+    destroyContext();
+    return false;
+  }
+
+  createGlContext();
+
+  gContext.mOsVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
+
+  return true;
 }
 
 const char* contextError() { return gContext.mError; }
@@ -131,16 +132,16 @@ bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
 int numABIs() { return 1; }
 
 void abi(int idx, device::ABI* abi) {
-    abi->set_name("x86_64");
-    abi->set_os(device::OSX);
-    abi->set_architecture(device::X86_64);
-    abi->set_allocated_memorylayout(currentMemoryLayout());
+  abi->set_name("x86_64");
+  abi->set_os(device::OSX);
+  abi->set_architecture(device::X86_64);
+  abi->set_allocated_memorylayout(currentMemoryLayout());
 }
 
 device::ABI* currentABI() {
-    auto out = new device::ABI();
-    abi(0, out);
-    return out;
+  auto out = new device::ABI();
+  abi(0, out);
+  return out;
 }
 
 int cpuNumCores() { return gContext.mNumCores; }

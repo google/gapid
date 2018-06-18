@@ -16,24 +16,24 @@
 
 #include "core/cc/thread.h"
 
+#include <pthread.h>
 #include <cstdint>
 #include <cstdlib>
-#include <pthread.h>
 
 namespace core {
 
-AsyncJob::AsyncJob(const std::function<void()>& function) : mFunction(function) {
-    _ = malloc(sizeof(pthread_t));
-    pthread_t* thread = reinterpret_cast<pthread_t*>(_);
+AsyncJob::AsyncJob(const std::function<void()>& function)
+    : mFunction(function) {
+  _ = malloc(sizeof(pthread_t));
+  pthread_t* thread = reinterpret_cast<pthread_t*>(_);
 
-    pthread_create(thread, nullptr, &AsyncJob::RunJob, this);
+  pthread_create(thread, nullptr, &AsyncJob::RunJob, this);
 }
 
 AsyncJob::~AsyncJob() {
-    pthread_t* thread = reinterpret_cast<pthread_t*>(_);
-    pthread_join(*thread, nullptr);
-    free(_);
+  pthread_t* thread = reinterpret_cast<pthread_t*>(_);
+  pthread_join(*thread, nullptr);
+  free(_);
 }
 
 }  // namespace core
-

@@ -19,10 +19,10 @@
 
 #include "core/cc/semaphore.h"
 
-#include <mutex>
 #include <functional>
-#include <thread>
+#include <mutex>
 #include <queue>
+#include <thread>
 #include <unordered_map>
 
 namespace gapir {
@@ -31,42 +31,43 @@ typedef uint64_t ThreadID;
 
 // ThreadPool holds a number of threads that can have work assigned to them.
 class ThreadPool {
-public:
-    typedef std::function<void()> F;
+ public:
+  typedef std::function<void()> F;
 
-    ThreadPool();
+  ThreadPool();
 
-    // Destructor. Waits for all threads to finish their work before returning.
-    ~ThreadPool();
+  // Destructor. Waits for all threads to finish their work before returning.
+  ~ThreadPool();
 
-    // Appends F to the queue of work for the thread with the given ID.
-    // If this is the first time enqueue has been called with the given thread
-    // ID then it is created.
-    void enqueue(ThreadID, const F&);
+  // Appends F to the queue of work for the thread with the given ID.
+  // If this is the first time enqueue has been called with the given thread
+  // ID then it is created.
+  void enqueue(ThreadID, const F&);
 
-private:
-    class Thread {
-    public:
-        Thread();
-        ~Thread();
-        void enqueue(const F&);
-    private:
-        Thread(const Thread&) = delete;
-        Thread& operator = (const Thread&) = delete;
+ private:
+  class Thread {
+   public:
+    Thread();
+    ~Thread();
+    void enqueue(const F&);
 
-        static void worker(Thread*);
+   private:
+    Thread(const Thread&) = delete;
+    Thread& operator=(const Thread&) = delete;
 
-        std::thread* mThread; // The thread.
-        std::queue<F> mWork;  // The queue of pending work.
-        std::mutex mMutex;    // Guards mWork.
-        core::Semaphore mSemaphore; // Number of work items.
-    };
+    static void worker(Thread*);
 
-    ThreadPool(const ThreadPool&) = delete;
-    ThreadPool& operator = (const ThreadPool&) = delete;
+    std::thread* mThread;        // The thread.
+    std::queue<F> mWork;         // The queue of pending work.
+    std::mutex mMutex;           // Guards mWork.
+    core::Semaphore mSemaphore;  // Number of work items.
+  };
 
-    std::mutex mMutex; // Guards mThreads
-    std::unordered_map<ThreadID, Thread*> mThreads;
+  ThreadPool(const ThreadPool&) = delete;
+  ThreadPool& operator=(const ThreadPool&) = delete;
+
+  std::mutex mMutex;  // Guards mThreads
+  std::unordered_map<ThreadID, Thread*> mThreads;
 };
 
 }  // namespace gapir

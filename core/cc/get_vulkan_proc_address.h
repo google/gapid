@@ -21,9 +21,13 @@
 
 namespace core {
 
-typedef void* (GetVulkanProcAddressFunc)(const char* name, bool bypassLocal);
-typedef void* (GetVulkanInstanceProcAddressFunc)(size_t instance, const char* name, bool bypassLocal);
-typedef void* (GetVulkanDeviceProcAddressFunc)(size_t instance, size_t device, const char* name, bool bypassLocal);
+typedef void*(GetVulkanProcAddressFunc)(const char* name, bool bypassLocal);
+typedef void*(GetVulkanInstanceProcAddressFunc)(size_t instance,
+                                                const char* name,
+                                                bool bypassLocal);
+typedef void*(GetVulkanDeviceProcAddressFunc)(size_t instance, size_t device,
+                                              const char* name,
+                                              bool bypassLocal);
 
 // GetVulkanProcAddress returns the Vulkan function pointer to the function with
 // the given name, or nullptr if the function was not found. If bypassLocal

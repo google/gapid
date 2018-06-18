@@ -19,7 +19,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
+#endif  // __cplusplus
 
 ////////////////////////////////////////////////////////////////////////////////
 // Serialization callbacks                                                    //
@@ -32,17 +32,21 @@ extern "C" {
 // gapil_encode_type returns a new positive unique reference identifer if
 // the type has not been encoded before in this scope, otherwise it returns the
 // negated ID of the previously encoded type identifier.
-DECL_GAPIL_ENCODER_CB(int64_t, gapil_encode_type, context* ctx, uint8_t* name, uint32_t desc_size, void* desc);
+DECL_GAPIL_ENCODER_CB(int64_t, gapil_encode_type, context* ctx, uint8_t* name,
+                      uint32_t desc_size, void* desc);
 
 // gapil_encode_object encodes the object.
 // If is_group is true, a new encoder will be returned for encoding sub-objects.
 // If is_group is false then gapil_encode_object will return null.
-DECL_GAPIL_ENCODER_CB(void*, gapil_encode_object, context* ctx, uint8_t is_group, uint32_t type, uint32_t data_size, void* data);
+DECL_GAPIL_ENCODER_CB(void*, gapil_encode_object, context* ctx,
+                      uint8_t is_group, uint32_t type, uint32_t data_size,
+                      void* data);
 
 // gapil_encode_backref returns a new positive unique reference identifer if
 // object has not been encoded before in this scope, otherwise it returns the
 // negated ID of the previously encoded object identifier.
-DECL_GAPIL_ENCODER_CB(int64_t, gapil_encode_backref, context* ctx, void* object);
+DECL_GAPIL_ENCODER_CB(int64_t, gapil_encode_backref, context* ctx,
+                      void* object);
 
 // gapil_slice_encoded is called whenever a slice is encoded. This callback
 // can be used to write the slice's data into the encoder's stream.
@@ -51,7 +55,7 @@ DECL_GAPIL_ENCODER_CB(void, gapil_slice_encoded, context* ctx, slice* slice);
 #undef DECL_GAPIL_ENCODER_CB
 
 #ifdef __cplusplus
-} // extern "C"
-#endif // __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
 
 #endif  // __GAPIL_RUNTIME_ENCODER_H__

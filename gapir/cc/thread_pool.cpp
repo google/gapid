@@ -21,59 +21,57 @@
 
 namespace gapir {
 
-ThreadPool::ThreadPool() {
-
-}
+ThreadPool::ThreadPool() {}
 
 ThreadPool::~ThreadPool() {
-    for (auto it : mThreads) {
-        delete it.second;
-    }
+  for (auto it : mThreads) {
+    delete it.second;
+  }
 }
 
 void ThreadPool::enqueue(ThreadID id, const F& work) {
-    std::lock_guard<std::mutex> lock(mMutex);
-    auto it = mThreads.find(id);
-    if (it == mThreads.end()) {
-        auto thread = new Thread();
-        thread->enqueue(work);
-        mThreads[id] = thread;
-    } else {
-        it->second->enqueue(work);
-    }
+  std::lock_guard<std::mutex> lock(mMutex);
+  auto it = mThreads.find(id);
+  if (it == mThreads.end()) {
+    auto thread = new Thread();
+    thread->enqueue(work);
+    mThreads[id] = thread;
+  } else {
+    it->second->enqueue(work);
+  }
 }
 
 void ThreadPool::Thread::worker(Thread* thread) {
-    while (true) {
-        thread->mSemaphore.acquire();
+  while (true) {
+    thread->mSemaphore.acquire();
 
-        std::unique_lock<std::mutex> lock(thread->mMutex);
-        if (thread->mWork.size() == 0) {
-            return; // Semaphore signal with no work means exit thread.
-        }
-        auto work = thread->mWork.front();
-        thread->mWork.pop();
-        lock.unlock();
+    std::unique_lock<std::mutex> lock(thread->mMutex);
+    if (thread->mWork.size() == 0) {
+      return;  // Semaphore signal with no work means exit thread.
+    }
+    auto work = thread->mWork.front();
+    thread->mWork.pop();
+    lock.unlock();
 
-        work();
-    };
+    work();
+  };
 }
 
 ThreadPool::Thread::Thread() {
-    mThread = new std::thread(Thread::worker, this);
+  mThread = new std::thread(Thread::worker, this);
 }
 
 ThreadPool::Thread::~Thread() {
-    mSemaphore.release();
-    mThread->join();
-    delete mThread;
+  mSemaphore.release();
+  mThread->join();
+  delete mThread;
 }
 
 void ThreadPool::Thread::enqueue(const F& work) {
-    mMutex.lock();
-    mWork.push(work);
-    mMutex.unlock();
-    mSemaphore.release();
+  mMutex.lock();
+  mWork.push(work);
+  mMutex.unlock();
+  mSemaphore.release();
 }
 
 }  // namespace gapir

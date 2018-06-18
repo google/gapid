@@ -20,32 +20,28 @@
 extern "C" {
 
 device_instance get_device_instance(void* platform_data) {
-    device_instance out = {};
+  device_instance out = {};
 
-    query::Option query_opt;
-    query_opt.vulkan.set_query_layers_and_extensions(true)
-        .set_query_physical_devices(true);
-    auto instance = query::getDeviceInstance(query_opt, platform_data);
-    if (!instance) {
-        return out;
-    }
-
-    // Reserialize the instance with the ID field.
-    out.size = instance->ByteSize();
-    out.data = new uint8_t[out.size];
-    instance->SerializeToArray(out.data, out.size);
-
-    delete instance;
-
+  query::Option query_opt;
+  query_opt.vulkan.set_query_layers_and_extensions(true)
+      .set_query_physical_devices(true);
+  auto instance = query::getDeviceInstance(query_opt, platform_data);
+  if (!instance) {
     return out;
+  }
+
+  // Reserialize the instance with the ID field.
+  out.size = instance->ByteSize();
+  out.data = new uint8_t[out.size];
+  instance->SerializeToArray(out.data, out.size);
+
+  delete instance;
+
+  return out;
 }
 
-const char* get_device_instance_error() {
-    return query::contextError();
-}
+const char* get_device_instance_error() { return query::contextError(); }
 
-void free_device_instance(device_instance di) {
-    delete[] di.data;
-}
+void free_device_instance(device_instance di) { delete[] di.data; }
 
-} // extern "C"
+}  // extern "C"

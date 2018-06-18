@@ -15,8 +15,8 @@
  */
 
 #include "resource_disk_cache.h"
-#include "resource_provider.h"
 #include "replay_connection.h"
+#include "resource_provider.h"
 
 #include "core/cc/log.h"
 
@@ -40,70 +40,69 @@ namespace gapir {
 namespace {
 
 int mkdirAll(const std::string& path) {
-    if (0 != mkdir(path.c_str(), MKDIR_MODE)) {
-        switch (errno) {
-            case ENOENT: {  // Non-existent parent(s).
-                size_t pos = path.find_last_of("/\\");
-                if (pos == std::string::npos) {
-                    return -1;
-                }
-                mkdirAll(path.substr(0, pos));
-                return mkdir(path.c_str(), MKDIR_MODE);  // Retry.
-            }
-            case EEXIST:  // Already exists, return success.
-                return 0;
-            default:  // Something went wrong, return failure.
-                return -1;
+  if (0 != mkdir(path.c_str(), MKDIR_MODE)) {
+    switch (errno) {
+      case ENOENT: {  // Non-existent parent(s).
+        size_t pos = path.find_last_of("/\\");
+        if (pos == std::string::npos) {
+          return -1;
         }
+        mkdirAll(path.substr(0, pos));
+        return mkdir(path.c_str(), MKDIR_MODE);  // Retry.
+      }
+      case EEXIST:  // Already exists, return success.
+        return 0;
+      default:  // Something went wrong, return failure.
+        return -1;
     }
-    return 0;
+  }
+  return 0;
 }
 
 }  // anonymous namespace
 
 std::unique_ptr<ResourceProvider> ResourceDiskCache::create(
-        std::unique_ptr<ResourceProvider> fallbackProvider, const std::string& path) {
-    if (0 != mkdirAll(path)) {
-        GAPID_WARNING("Couldn't access/create cache directory; disabling disk cache.");
-        return fallbackProvider;  // Disk path was inaccessible.
-    } else {
-        std::string diskPath = path;
-        if (diskPath.back() != PATH_DELIMITER) {
-            diskPath.push_back(PATH_DELIMITER);
-        }
-
-        return std::unique_ptr<ResourceProvider>(
-                new ResourceDiskCache(std::move(fallbackProvider), std::move(diskPath)));
+    std::unique_ptr<ResourceProvider> fallbackProvider,
+    const std::string& path) {
+  if (0 != mkdirAll(path)) {
+    GAPID_WARNING(
+        "Couldn't access/create cache directory; disabling disk cache.");
+    return fallbackProvider;  // Disk path was inaccessible.
+  } else {
+    std::string diskPath = path;
+    if (diskPath.back() != PATH_DELIMITER) {
+      diskPath.push_back(PATH_DELIMITER);
     }
+
+    return std::unique_ptr<ResourceProvider>(new ResourceDiskCache(
+        std::move(fallbackProvider), std::move(diskPath)));
+  }
 }
 
-ResourceDiskCache::ResourceDiskCache(std::unique_ptr<ResourceProvider> fallbackProvider,
-                                     const std::string& path)
-        : ResourceCache(std::move(fallbackProvider))
-        , mArchive(path + "resources") {
-}
+ResourceDiskCache::ResourceDiskCache(
+    std::unique_ptr<ResourceProvider> fallbackProvider, const std::string& path)
+    : ResourceCache(std::move(fallbackProvider)),
+      mArchive(path + "resources") {}
 
-void ResourceDiskCache::prefetch(const Resource*         resources,
-                                 size_t                  count,
-                                 ReplayConnection*       conn,
-                                 void*                   temp,
-                                 size_t                  tempSize) {
-    Batch batch(temp, tempSize);
-    for (size_t i = 0; i < count; i++) {
-        if (!batch.append(resources[i])) {
-            batch.flush(*this, conn);
-            batch = Batch(temp, tempSize);
-        }
+void ResourceDiskCache::prefetch(const Resource* resources, size_t count,
+                                 ReplayConnection* conn, void* temp,
+                                 size_t tempSize) {
+  Batch batch(temp, tempSize);
+  for (size_t i = 0; i < count; i++) {
+    if (!batch.append(resources[i])) {
+      batch.flush(*this, conn);
+      batch = Batch(temp, tempSize);
     }
-    batch.flush(*this, conn);
+  }
+  batch.flush(*this, conn);
 }
 
 void ResourceDiskCache::putCache(const Resource& resource, const void* data) {
-    mArchive.write(resource.id, data, resource.size);
+  mArchive.write(resource.id, data, resource.size);
 }
 
 bool ResourceDiskCache::getCache(const Resource& resource, void* data) {
-    return mArchive.read(resource.id, data, resource.size);
+  return mArchive.read(resource.id, data, resource.size);
 }
 
 }  // namespace gapir

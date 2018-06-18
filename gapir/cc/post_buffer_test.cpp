@@ -26,118 +26,120 @@ namespace gapir {
 namespace test {
 namespace {
 
-const std::vector<uint8_t> input = { 0, 1, 2, 3, 4, 5 };
+const std::vector<uint8_t> input = {0, 1, 2, 3, 4, 5};
 
 class PostBufferTest : public ::testing::Test {
-protected:
-    virtual void SetUp() {
-        mPostBuffer.reset();
-        mOutput.clear();
-        mPostsCounter = 0;
-    }
+ protected:
+  virtual void SetUp() {
+    mPostBuffer.reset();
+    mOutput.clear();
+    mPostsCounter = 0;
+  }
 
-    void setupPostBuffer(uint32_t bufferSize, bool callbackShouldSucceed) {
-        mPostBuffer.reset(new PostBuffer(bufferSize,
-                [&, callbackShouldSucceed](std::unique_ptr<ReplayConnection::Posts> posts) {
-                mPostsCounter++;
-                size_t piece_count = posts->piece_count();
-                for (uint32_t i = 0; i < piece_count; i++) {
-                    size_t piece_size = posts->piece_size(i);
-                    mOutput.resize(mOutput.size() + piece_size);
-                    memcpy(&mOutput[mOutput.size() - piece_size], posts->piece_data(i), piece_size);
-                }
-                return callbackShouldSucceed;
-            }));
-    }
+  void setupPostBuffer(uint32_t bufferSize, bool callbackShouldSucceed) {
+    mPostBuffer.reset(new PostBuffer(
+        bufferSize, [&, callbackShouldSucceed](
+                        std::unique_ptr<ReplayConnection::Posts> posts) {
+          mPostsCounter++;
+          size_t piece_count = posts->piece_count();
+          for (uint32_t i = 0; i < piece_count; i++) {
+            size_t piece_size = posts->piece_size(i);
+            mOutput.resize(mOutput.size() + piece_size);
+            memcpy(&mOutput[mOutput.size() - piece_size], posts->piece_data(i),
+                   piece_size);
+          }
+          return callbackShouldSucceed;
+        }));
+  }
 
-    std::unique_ptr<PostBuffer> mPostBuffer;
-    std::vector<uint8_t> mOutput;
-    uint32_t mPostsCounter;
+  std::unique_ptr<PostBuffer> mPostBuffer;
+  std::vector<uint8_t> mOutput;
+  uint32_t mPostsCounter;
 };
 
 }  // anonymous namespace
 
 TEST_F(PostBufferTest, ZeroSizedBuffer) {
-    // No buffering, callback always succeeds.
-    setupPostBuffer(0, true);
+  // No buffering, callback always succeeds.
+  setupPostBuffer(0, true);
 
-    // Push should immediately call the post callback as there's no buffering.
-    EXPECT_TRUE(mPostBuffer->push(&input.front(), input.size()));
-    EXPECT_EQ(input, mOutput);
-    const uint32_t postsCounterBeforeFlush = mPostsCounter;
+  // Push should immediately call the post callback as there's no buffering.
+  EXPECT_TRUE(mPostBuffer->push(&input.front(), input.size()));
+  EXPECT_EQ(input, mOutput);
+  const uint32_t postsCounterBeforeFlush = mPostsCounter;
 
-    // Flush should be a no-op if there's no buffering.
-    EXPECT_TRUE(mPostBuffer->flush());
-    EXPECT_EQ(postsCounterBeforeFlush, mPostsCounter);
+  // Flush should be a no-op if there's no buffering.
+  EXPECT_TRUE(mPostBuffer->flush());
+  EXPECT_EQ(postsCounterBeforeFlush, mPostsCounter);
 }
 
 TEST_F(PostBufferTest, PushSmallPacketsThenFlush) {
-    // Buffer much larger than the whole input, callback always succeeds.
-    setupPostBuffer(input.size()*4, true);
+  // Buffer much larger than the whole input, callback always succeeds.
+  setupPostBuffer(input.size() * 4, true);
 
-    for (size_t i = 0; i < input.size(); ++i) {
-        EXPECT_TRUE(mPostBuffer->push(&input[i], 1));
-    }
-    EXPECT_TRUE(mPostBuffer->flush());
-    EXPECT_EQ(input, mOutput);
+  for (size_t i = 0; i < input.size(); ++i) {
+    EXPECT_TRUE(mPostBuffer->push(&input[i], 1));
+  }
+  EXPECT_TRUE(mPostBuffer->flush());
+  EXPECT_EQ(input, mOutput);
 }
 
 TEST_F(PostBufferTest, PushLargePacketsThenFlush) {
-    // Buffer size smaller than each packet pushed.
-    setupPostBuffer(1, true);
+  // Buffer size smaller than each packet pushed.
+  setupPostBuffer(1, true);
 
-    ASSERT_EQ(0, input.size() % 2); // Make sure we're not being silly.
-    for (size_t i = 0; i < input.size(); i += 2) {
-        EXPECT_TRUE(mPostBuffer->push(&input[i], 2));
-    }
+  ASSERT_EQ(0, input.size() % 2);  // Make sure we're not being silly.
+  for (size_t i = 0; i < input.size(); i += 2) {
+    EXPECT_TRUE(mPostBuffer->push(&input[i], 2));
+  }
 
-    // Each packet larger than the buffer should trigger a separate post.
-    EXPECT_EQ(input.size()/2, mPostsCounter);
-    EXPECT_EQ(input, mOutput);
-    const uint32_t postsCounterBeforeFlush = mPostsCounter;
+  // Each packet larger than the buffer should trigger a separate post.
+  EXPECT_EQ(input.size() / 2, mPostsCounter);
+  EXPECT_EQ(input, mOutput);
+  const uint32_t postsCounterBeforeFlush = mPostsCounter;
 
-    // Flush should be a no-op as none of the packets did fit in the buffer.
-    EXPECT_TRUE(mPostBuffer->flush());
-    EXPECT_EQ(postsCounterBeforeFlush, mPostsCounter);
+  // Flush should be a no-op as none of the packets did fit in the buffer.
+  EXPECT_TRUE(mPostBuffer->flush());
+  EXPECT_EQ(postsCounterBeforeFlush, mPostsCounter);
 }
 
 TEST_F(PostBufferTest, PushMixSizedPacketsThenFlush) {
-    // Buffer size respectively smaller, equal and larger than pushed packets.
-    setupPostBuffer(2, true);
+  // Buffer size respectively smaller, equal and larger than pushed packets.
+  setupPostBuffer(2, true);
 
-    ASSERT_EQ(1+2+3, input.size()); // Make sure we're not being silly.
-    EXPECT_TRUE(mPostBuffer->push(&input[0], 1));
-    EXPECT_TRUE(mPostBuffer->push(&input[1], 2));
-    EXPECT_TRUE(mPostBuffer->push(&input[3], 3));
-    EXPECT_TRUE(mPostBuffer->flush());
+  ASSERT_EQ(1 + 2 + 3, input.size());  // Make sure we're not being silly.
+  EXPECT_TRUE(mPostBuffer->push(&input[0], 1));
+  EXPECT_TRUE(mPostBuffer->push(&input[1], 2));
+  EXPECT_TRUE(mPostBuffer->push(&input[3], 3));
+  EXPECT_TRUE(mPostBuffer->flush());
 
-    EXPECT_EQ(input, mOutput);
+  EXPECT_EQ(input, mOutput);
 }
 
 TEST_F(PostBufferTest, FlushOnDestruction) {
-    // Buffer much larger than the whole input, callback always succeeds.
-    setupPostBuffer(input.size()*4, true);
+  // Buffer much larger than the whole input, callback always succeeds.
+  setupPostBuffer(input.size() * 4, true);
 
-    EXPECT_TRUE(mPostBuffer->push(&input.front(), input.size()));
-    // Note: While the semantics are not explicit about it, we don't expect
-    // the PostBuffer to be flushed after only 1/4 of its capacity has been
-    // pushed to. If this happens to be wrong, remove the following check.
-    EXPECT_EQ(0, mPostsCounter);
+  EXPECT_TRUE(mPostBuffer->push(&input.front(), input.size()));
+  // Note: While the semantics are not explicit about it, we don't expect
+  // the PostBuffer to be flushed after only 1/4 of its capacity has been
+  // pushed to. If this happens to be wrong, remove the following check.
+  EXPECT_EQ(0, mPostsCounter);
 
-    // Check that the packets gets posted on PostBuffer destruction.
-    mPostBuffer.reset();
-    EXPECT_EQ(input, mOutput);
+  // Check that the packets gets posted on PostBuffer destruction.
+  mPostBuffer.reset();
+  EXPECT_EQ(input, mOutput);
 }
 
 TEST_F(PostBufferTest, ReportCallbackErrors) {
-    // No buffering, callback always failing.
-    setupPostBuffer(0, false);
+  // No buffering, callback always failing.
+  setupPostBuffer(0, false);
 
-    // At least one of these commands should call and report a callback error.
-    bool pushSuccess = mPostBuffer->push(&input.front(), input.size());
-    bool flushSuccess = mPostBuffer->flush();
-    EXPECT_LT(0, mPostsCounter);
-    EXPECT_FALSE(pushSuccess && flushSuccess);
+  // At least one of these commands should call and report a callback error.
+  bool pushSuccess = mPostBuffer->push(&input.front(), input.size());
+  bool flushSuccess = mPostBuffer->flush();
+  EXPECT_LT(0, mPostsCounter);
+  EXPECT_FALSE(pushSuccess && flushSuccess);
 }
 
 }  // namespace test

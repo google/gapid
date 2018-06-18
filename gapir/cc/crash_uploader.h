@@ -25,18 +25,18 @@
 
 namespace gapir {
 
-// CrashUploader uploads crash minidumps from a CrashHandler to GAPIS via a ServerConnection.
+// CrashUploader uploads crash minidumps from a CrashHandler to GAPIS via a
+// ServerConnection.
 class CrashUploader {
-public:
+ public:
   CrashUploader(core::CrashHandler& crash_handler, ReplayConnection* conn);
   ~CrashUploader();
 
-private:
-
+ private:
   core::CrashHandler::Unregister mUnregister;
   ReplayConnection* mConnection;
 };
 
-} // namespace gapir
+}  // namespace gapir
 
-#endif // GAPIR_CRASH_REPORTER_H
+#endif  // GAPIR_CRASH_REPORTER_H

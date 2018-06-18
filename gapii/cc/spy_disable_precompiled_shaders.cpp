@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-#include "gapii/cc/spy.h"
 #include "gapii/cc/call_observer.h"
+#include "gapii/cc/spy.h"
 
 #include "gapis/api/gfxtrace.pb.h"
 
 #include "core/cc/id.h"
 
-// This file contains a number of GLES method 'overrides' to optionally lie to the
-// application about the driver not supporting precompiled shaders or programs.
+// This file contains a number of GLES method 'overrides' to optionally lie to
+// the application about the driver not supporting precompiled shaders or
+// programs.
 
 namespace {
 
@@ -39,8 +40,9 @@ const char* kProgramBinaryReplacements[] = {
     "__GAPID_PCS_DISABLED__",
 };
 
-static_assert(NELEM(kProgramBinaryExtensions) == NELEM(kProgramBinaryReplacements),
-        "length of kProgramBinaryExtensions must match kProgramBinaryReplacements");
+static_assert(
+    NELEM(kProgramBinaryExtensions) == NELEM(kProgramBinaryReplacements),
+    "length of kProgramBinaryExtensions must match kProgramBinaryReplacements");
 
 // HACK: Workaround for devices that do not check the error status after calling
 // glProgramBinary() or glProgramBinaryOES(). As the error is not checked, this
@@ -69,14 +71,15 @@ const core::Id kProgramHashesForNoError[] = {
 };
 
 bool shouldErrorForProgram(const core::Id& id) {
-    for (size_t i = 0; i < NELEM(kProgramHashesForNoError); i++) {
-         if (id == kProgramHashesForNoError[i]) {
-            GAPID_WARNING("Not setting error for program with ID (blacklisted): %s", id.string().c_str());
-            return false;
-         }
+  for (size_t i = 0; i < NELEM(kProgramHashesForNoError); i++) {
+    if (id == kProgramHashesForNoError[i]) {
+      GAPID_WARNING("Not setting error for program with ID (blacklisted): %s",
+                    id.string().c_str());
+      return false;
     }
-    GAPID_INFO("Program ID: %s", id.string().c_str());
-    return true;
+  }
+  GAPID_INFO("Program ID: %s", id.string().c_str());
+  return true;
 }
 
 }  // anonymous namespace
@@ -85,158 +88,169 @@ using namespace gapii::GLenum;
 
 namespace gapii {
 
-void Spy::glProgramBinary(CallObserver* observer, uint32_t program, uint32_t binary_format,
-                          const void* binary, int32_t binary_size) {
-    if (mDisablePrecompiledShaders) {
-        GAPID_WARNING("glProgramBinary(%" PRIu32 ", 0x%X, %p, %" PRId32 ") "
-                "called when precompiled shaders are disabled",
-                program, binary_format, binary, binary_size);
+void Spy::glProgramBinary(CallObserver* observer, uint32_t program,
+                          uint32_t binary_format, const void* binary,
+                          int32_t binary_size) {
+  if (mDisablePrecompiledShaders) {
+    GAPID_WARNING("glProgramBinary(%" PRIu32 ", 0x%X, %p, %" PRId32
+                  ") "
+                  "called when precompiled shaders are disabled",
+                  program, binary_format, binary, binary_size);
 
-        // GL_INVALID_ENUM is generated if binaryformat is not a supported format returned in
-        // GL_SHADER_BINARY_FORMATS.
-        auto id = core::Id::Hash(binary, binary_size);
-        if (shouldErrorForProgram(id)) {
-            setFakeGlError(observer, GL_INVALID_ENUM);
-        }
-
-        observer->enter(cmd::glProgramBinary{
-            observer->getCurrentThread(), program, binary_format, binary, binary_size
-        });
-
-        observer->read(binary, binary_size);
-        observer->observePending();
-
-        observer->encodeAndDelete(new api::CmdCall);
-        observer->exit();
-    } else {
-        GlesSpy::glProgramBinary(observer, program, binary_format, binary, binary_size);
+    // GL_INVALID_ENUM is generated if binaryformat is not a supported format
+    // returned in GL_SHADER_BINARY_FORMATS.
+    auto id = core::Id::Hash(binary, binary_size);
+    if (shouldErrorForProgram(id)) {
+      setFakeGlError(observer, GL_INVALID_ENUM);
     }
+
+    observer->enter(cmd::glProgramBinary{observer->getCurrentThread(), program,
+                                         binary_format, binary, binary_size});
+
+    observer->read(binary, binary_size);
+    observer->observePending();
+
+    observer->encodeAndDelete(new api::CmdCall);
+    observer->exit();
+  } else {
+    GlesSpy::glProgramBinary(observer, program, binary_format, binary,
+                             binary_size);
+  }
 }
 
-void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program, uint32_t binary_format,
-                             const void* binary, int32_t binary_size) {
-    if (mDisablePrecompiledShaders) {
-        GAPID_WARNING("glProgramBinaryOES(%" PRIu32 ", 0x%X, %p, %" PRId32 ") "
-                "called when precompiled shaders are disabled",
-                program, binary_format, binary, binary_size);
+void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program,
+                             uint32_t binary_format, const void* binary,
+                             int32_t binary_size) {
+  if (mDisablePrecompiledShaders) {
+    GAPID_WARNING("glProgramBinaryOES(%" PRIu32 ", 0x%X, %p, %" PRId32
+                  ") "
+                  "called when precompiled shaders are disabled",
+                  program, binary_format, binary, binary_size);
 
-        // GL_INVALID_ENUM is generated if binaryformat is not a supported format returned in
-        // GL_SHADER_BINARY_FORMATS.
-        auto id = core::Id::Hash(binary, binary_size);
-        if (shouldErrorForProgram(id)) {
-            setFakeGlError(observer, GL_INVALID_ENUM);
-        }
-
-        observer->enter(cmd::glProgramBinaryOES{
-            observer->getCurrentThread(), program, binary_format, binary, binary_size
-        });
-
-        observer->read(binary, binary_size);
-        observer->observePending();
-
-        observer->encodeAndDelete(new api::CmdCall);
-        observer->exit();
-    } else {
-        GlesSpy::glProgramBinaryOES(observer, program, binary_format, binary, binary_size);
+    // GL_INVALID_ENUM is generated if binaryformat is not a supported format
+    // returned in GL_SHADER_BINARY_FORMATS.
+    auto id = core::Id::Hash(binary, binary_size);
+    if (shouldErrorForProgram(id)) {
+      setFakeGlError(observer, GL_INVALID_ENUM);
     }
+
+    observer->enter(cmd::glProgramBinaryOES{observer->getCurrentThread(),
+                                            program, binary_format, binary,
+                                            binary_size});
+
+    observer->read(binary, binary_size);
+    observer->observePending();
+
+    observer->encodeAndDelete(new api::CmdCall);
+    observer->exit();
+  } else {
+    GlesSpy::glProgramBinaryOES(observer, program, binary_format, binary,
+                                binary_size);
+  }
 }
 
 void Spy::glShaderBinary(CallObserver* observer, int32_t count,
                          const uint32_t* shaders, uint32_t binary_format,
                          const void* binary, int32_t binary_size) {
-    if (mDisablePrecompiledShaders) {
-        GAPID_WARNING("glShaderBinary(%" PRId32 ", %p, 0x%X, %p, %" PRId32 ") "
-                "called when precompiled shaders are disabled",
-                count, shaders, binary_format, binary,  binary_size);
+  if (mDisablePrecompiledShaders) {
+    GAPID_WARNING("glShaderBinary(%" PRId32 ", %p, 0x%X, %p, %" PRId32
+                  ") "
+                  "called when precompiled shaders are disabled",
+                  count, shaders, binary_format, binary, binary_size);
 
-        // GL_INVALID_ENUM is generated if binaryFormat is not a value recognized by the implementation.
-        setFakeGlError(observer, GL_INVALID_ENUM);
+    // GL_INVALID_ENUM is generated if binaryFormat is not a value recognized by
+    // the implementation.
+    setFakeGlError(observer, GL_INVALID_ENUM);
 
-        observer->enter(cmd::glShaderBinary{
-            observer->getCurrentThread(), count, shaders, binary_format, binary, binary_size
-        });
+    observer->enter(cmd::glShaderBinary{observer->getCurrentThread(), count,
+                                        shaders, binary_format, binary,
+                                        binary_size});
 
-        observer->read(slice(shaders, (uint64_t)((GLsizei)(0)), (uint64_t)(count)));
-        observer->read(slice(binary, (uint64_t)((GLsizei)(0)), (uint64_t)(binary_size)));
-        observer->observePending();
+    observer->read(slice(shaders, (uint64_t)((GLsizei)(0)), (uint64_t)(count)));
+    observer->read(
+        slice(binary, (uint64_t)((GLsizei)(0)), (uint64_t)(binary_size)));
+    observer->observePending();
 
-        observer->encodeAndDelete(new api::CmdCall);
-        observer->exit();
-    } else {
-        GlesSpy::glShaderBinary(observer, count, shaders, binary_format, binary, binary_size);
-    }
+    observer->encodeAndDelete(new api::CmdCall);
+    observer->exit();
+  } else {
+    GlesSpy::glShaderBinary(observer, count, shaders, binary_format, binary,
+                            binary_size);
+  }
 }
 
-void Spy::glGetInteger64v(CallObserver* observer, uint32_t param, int64_t* values) {
-    if (mDisablePrecompiledShaders &&
-        (param == GL_NUM_SHADER_BINARY_FORMATS || param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
-        values[0] = 0;
+void Spy::glGetInteger64v(CallObserver* observer, uint32_t param,
+                          int64_t* values) {
+  if (mDisablePrecompiledShaders && (param == GL_NUM_SHADER_BINARY_FORMATS ||
+                                     param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
+    values[0] = 0;
 
-        observer->enter(cmd::glGetInteger64v{
-            observer->getCurrentThread(), param, values
-        });
+    observer->enter(
+        cmd::glGetInteger64v{observer->getCurrentThread(), param, values});
 
-        observer->encodeAndDelete(new api::CmdCall);
+    observer->encodeAndDelete(new api::CmdCall);
 
-        observer->write(slice(values, 0, 1));
-        observer->observePending();
-        observer->exit();
-    } else {
-        GlesSpy::glGetInteger64v(observer, param, values);
-    }
+    observer->write(slice(values, 0, 1));
+    observer->observePending();
+    observer->exit();
+  } else {
+    GlesSpy::glGetInteger64v(observer, param, values);
+  }
 }
 
-void Spy::glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values) {
-    if (mDisablePrecompiledShaders &&
-        (param == GL_NUM_SHADER_BINARY_FORMATS || param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
-        values[0] = 0;
+void Spy::glGetIntegerv(CallObserver* observer, uint32_t param,
+                        int32_t* values) {
+  if (mDisablePrecompiledShaders && (param == GL_NUM_SHADER_BINARY_FORMATS ||
+                                     param == GL_NUM_PROGRAM_BINARY_FORMATS)) {
+    values[0] = 0;
 
-        observer->enter(cmd::glGetIntegerv{
-            observer->getCurrentThread(), param, values
-        });
+    observer->enter(
+        cmd::glGetIntegerv{observer->getCurrentThread(), param, values});
 
-        observer->encodeAndDelete(new api::CmdCall);
+    observer->encodeAndDelete(new api::CmdCall);
 
-        observer->write(slice(values, 0, 1));
-        observer->observePending();
-        observer->exit();
-    } else {
-        GlesSpy::glGetIntegerv(observer, param, values);
-    }
+    observer->write(slice(values, 0, 1));
+    observer->observePending();
+    observer->exit();
+  } else {
+    GlesSpy::glGetIntegerv(observer, param, values);
+  }
 }
 
 const GLubyte* Spy::glGetString(CallObserver* observer, uint32_t name) {
-    if (mDisablePrecompiledShaders && name == GL_EXTENSIONS) {
-        if (auto exts = reinterpret_cast<const char*>(GlesSpy::mImports.glGetString(name))) {
-            std::string list = reinterpret_cast<const char*>(exts);
-            for (size_t i = 0; i < NELEM(kProgramBinaryExtensions); i++) {
-                size_t start = list.find(kProgramBinaryExtensions[i]);
-                if (start != std::string::npos) {
-                    static std::string copy = list;
-                    copy.replace(start, strlen(kProgramBinaryExtensions[i]),
-                            kProgramBinaryReplacements[i]);
-                    // TODO: write command.
-                    return reinterpret_cast<GLubyte*>(const_cast<char*>(copy.c_str()));
-                }
-            }
+  if (mDisablePrecompiledShaders && name == GL_EXTENSIONS) {
+    if (auto exts = reinterpret_cast<const char*>(
+            GlesSpy::mImports.glGetString(name))) {
+      std::string list = reinterpret_cast<const char*>(exts);
+      for (size_t i = 0; i < NELEM(kProgramBinaryExtensions); i++) {
+        size_t start = list.find(kProgramBinaryExtensions[i]);
+        if (start != std::string::npos) {
+          static std::string copy = list;
+          copy.replace(start, strlen(kProgramBinaryExtensions[i]),
+                       kProgramBinaryReplacements[i]);
+          // TODO: write command.
+          return reinterpret_cast<GLubyte*>(const_cast<char*>(copy.c_str()));
         }
+      }
     }
-    return GlesSpy::glGetString(observer, name);
+  }
+  return GlesSpy::glGetString(observer, name);
 }
 
-const GLubyte* Spy::glGetStringi(CallObserver* observer, uint32_t name, GLuint index) {
-    if (mDisablePrecompiledShaders && (name == GL_EXTENSIONS)) {
-        const char* extension = reinterpret_cast<const char*>(GlesSpy::mImports.glGetStringi(name, index));
-            for (size_t i = 0; i < NELEM(kProgramBinaryExtensions); i++) {
-                if (strcmp(extension, kProgramBinaryExtensions[i]) == 0) {
-                    // TODO: write command.
-                    return reinterpret_cast<GLubyte*>(const_cast<char*>(
-                            kProgramBinaryReplacements[i]));
-                }
-            }
+const GLubyte* Spy::glGetStringi(CallObserver* observer, uint32_t name,
+                                 GLuint index) {
+  if (mDisablePrecompiledShaders && (name == GL_EXTENSIONS)) {
+    const char* extension = reinterpret_cast<const char*>(
+        GlesSpy::mImports.glGetStringi(name, index));
+    for (size_t i = 0; i < NELEM(kProgramBinaryExtensions); i++) {
+      if (strcmp(extension, kProgramBinaryExtensions[i]) == 0) {
+        // TODO: write command.
+        return reinterpret_cast<GLubyte*>(
+            const_cast<char*>(kProgramBinaryReplacements[i]));
+      }
     }
-    return GlesSpy::glGetStringi(observer, name, index);
+  }
+  return GlesSpy::glGetStringi(observer, name, index);
 }
 
-
-} // namespace gapii
+}  // namespace gapii

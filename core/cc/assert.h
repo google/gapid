@@ -19,7 +19,17 @@
 
 #include "log.h"
 
-#define GAPID_ASSERT(cond) do { if (!(cond)) { GAPID_FATAL("Assert: " GAPID_STR(cond)); } } while(false)
-#define GAPID_ASSERT_MSG(cond, msg, ...) do { if (!(cond)) { GAPID_FATAL("Assert: <" GAPID_STR(cond) ">: " msg, ##__VA_ARGS__); } } while(false)
+#define GAPID_ASSERT(cond)                     \
+  do {                                         \
+    if (!(cond)) {                             \
+      GAPID_FATAL("Assert: " GAPID_STR(cond)); \
+    }                                          \
+  } while (false)
+#define GAPID_ASSERT_MSG(cond, msg, ...)                                 \
+  do {                                                                   \
+    if (!(cond)) {                                                       \
+      GAPID_FATAL("Assert: <" GAPID_STR(cond) ">: " msg, ##__VA_ARGS__); \
+    }                                                                    \
+  } while (false)
 
 #endif  // CORE_ASSERT_H

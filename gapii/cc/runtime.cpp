@@ -16,8 +16,8 @@
 
 #include "core/memory/arena/cc/arena.h"
 
-#include "gapil/runtime/cc/runtime.h"
 #include "gapil/runtime/cc/encoder.h"
+#include "gapil/runtime/cc/runtime.h"
 
 #include "gapii/cc/call_observer.h"
 #include "gapii/cc/pack_encoder.h"
@@ -30,41 +30,44 @@
 
 extern "C" {
 
-int64_t gapil_encode_type(context* ctx, uint8_t* name, uint32_t desc_size, void* desc) {
-    DEBUG_PRINT("gapil_encode_type(%p, %s, %d, %p)", ctx, name, desc_size, desc);
-    auto cb = static_cast<gapii::CallObserver*>(ctx);
-    auto e = cb->encoder();
-    auto res = e->type(reinterpret_cast<const char*>(name), desc_size, desc);
-    auto id = static_cast<int64_t>(res.first);
-    auto isnew = res.second;
-    return isnew ? id : -id;
+int64_t gapil_encode_type(context* ctx, uint8_t* name, uint32_t desc_size,
+                          void* desc) {
+  DEBUG_PRINT("gapil_encode_type(%p, %s, %d, %p)", ctx, name, desc_size, desc);
+  auto cb = static_cast<gapii::CallObserver*>(ctx);
+  auto e = cb->encoder();
+  auto res = e->type(reinterpret_cast<const char*>(name), desc_size, desc);
+  auto id = static_cast<int64_t>(res.first);
+  auto isnew = res.second;
+  return isnew ? id : -id;
 }
 
-void* gapil_encode_object(context* ctx, uint8_t is_group, uint32_t type, uint32_t data_size, void* data) {
-    DEBUG_PRINT("gapil_encode_object(%p, %s, %d, %d, %p)", ctx, is_group ? "true" : "false", type, data_size, data);
-    auto cb = static_cast<gapii::CallObserver*>(ctx);
-    auto e = cb->encoder();
-    if (is_group) {
-        return e->group(type, data_size, data);
-    }
-    e->object(type, data_size, data);
-    return nullptr;
+void* gapil_encode_object(context* ctx, uint8_t is_group, uint32_t type,
+                          uint32_t data_size, void* data) {
+  DEBUG_PRINT("gapil_encode_object(%p, %s, %d, %d, %p)", ctx,
+              is_group ? "true" : "false", type, data_size, data);
+  auto cb = static_cast<gapii::CallObserver*>(ctx);
+  auto e = cb->encoder();
+  if (is_group) {
+    return e->group(type, data_size, data);
+  }
+  e->object(type, data_size, data);
+  return nullptr;
 }
 
 void gapil_slice_encoded(context* ctx, slice_t* slice) {
-    DEBUG_PRINT("gapil_on_encode_slice(%p, %p)", ctx, slice);
-    auto cb = static_cast<gapii::CallObserver*>(ctx);
-    cb->slice_encoded(slice);
+  DEBUG_PRINT("gapil_on_encode_slice(%p, %p)", ctx, slice);
+  auto cb = static_cast<gapii::CallObserver*>(ctx);
+  cb->slice_encoded(slice);
 }
 
 int64_t gapil_encode_backref(context* ctx, void* object) {
-    auto cb = static_cast<gapii::CallObserver*>(ctx);
-    auto res = cb->reference_id(object);
-    auto id = static_cast<int64_t>(res.first);
-    auto isnew = res.second;
-    DEBUG_PRINT("gapil_encode_backref(%p, %p) -> new: %s id: %d",
-            ctx, object, isnew ? "true" : "false", int(id));
-    return isnew ? id : -id;
+  auto cb = static_cast<gapii::CallObserver*>(ctx);
+  auto res = cb->reference_id(object);
+  auto id = static_cast<int64_t>(res.first);
+  auto isnew = res.second;
+  DEBUG_PRINT("gapil_encode_backref(%p, %p) -> new: %s id: %d", ctx, object,
+              isnew ? "true" : "false", int(id));
+  return isnew ? id : -id;
 }
 
-} // extern "C"
+}  // extern "C"
