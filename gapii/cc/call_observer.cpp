@@ -96,7 +96,7 @@ void CallObserver::observePending() {
     auto observation = new memory::Observation();
     observation->set_base(p.start());
     observation->set_size(size);
-    observation->set_resindex(resIndex);
+    observation->set_res_index(resIndex);
     encodeAndDelete(observation);
   }
   mPendingObservations.clear();

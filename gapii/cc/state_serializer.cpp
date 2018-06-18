@@ -63,7 +63,7 @@ pool_t* StateSerializer::createPool(
     }
 
     observation.set_size(0);
-    observation.set_resindex(mEmptyIndex);
+    observation.set_res_index(mEmptyIndex);
   }
   mObserver->encode(&observation);
   return pool;

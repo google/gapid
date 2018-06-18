@@ -86,7 +86,7 @@ inline void StateSerializer::sendData(memory::Observation* observation,
                                       size_t size) {
   auto index = mSpy->sendResource(mApi, data, size);
   observation->set_size(size);
-  observation->set_resindex(index);
+  observation->set_res_index(index);
 
   if (sendObservation) {
     mObserver->encode(observation);
