@@ -668,7 +668,7 @@ public class ShaderView extends Composite
     }
 
     public Path.Any getPath(CommandStream commands) {
-      return resourceAfter(commands.getSelectedCommands(), info.getId());
+      return resourceAfter(commands.getSelectedCommands(), info.getID());
     }
 
     @Override

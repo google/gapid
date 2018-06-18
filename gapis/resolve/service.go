@@ -35,7 +35,7 @@ func internalToService(v interface{}) (interface{}, error) {
 	case *api.ContextInfo:
 		return &service.Context{
 			Name:     v.Name,
-			Api:      path.NewAPI(id.ID(v.API)),
+			API:      path.NewAPI(id.ID(v.API)),
 			Priority: uint32(v.Priority),
 		}, nil
 	default:
