@@ -631,7 +631,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		}
 		crash.Go(func() {
 			for _, p := range pd.GetPostDataPieces() {
-				id := p.GetId()
+				id := p.GetID()
 				data := p.GetData()
 				if id >= uint64(len(b.decoders)) {
 					log.E(ctx, "No valid decoder found for %v'th post data", id)
