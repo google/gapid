@@ -265,7 +265,7 @@ message GetDevicesForReplayResponse {
 
 message ReplaySettings {
   path.Device device = 1;
-  bool disableReplayOptimization = 2;
+  bool disable_replay_optimization = 2;
 }
 
 message GetFramebufferAttachmentRequest {
@@ -571,11 +571,11 @@ message Capture {
   // Information about the device used to create the capture.
   device.Instance device = 2;
   // Information about the abi used by the traced process.
-  device.ABI abi = 3;
+  device.ABI ABI = 3;
   // Number of commands in this capture.
   uint64 num_commands = 4;
   // List of graphics APIs used by this capture.
-  repeated path.API apis = 5;
+  repeated path.API APIs = 5;
   // List of all the memory observations made by the application.
   repeated MemoryRange observations = 6;
 }
@@ -702,7 +702,7 @@ message ResourcesByType {
 // Resource describes a single resource.
 message Resource {
   // The resource's unique identifier.
-  path.ID id = 1;
+  path.ID ID = 1;
   // The resource identifier used for display.
   string handle = 2;
   // The resource label.
@@ -718,7 +718,7 @@ message Context {
   // The context name.
   string name = 1;
   // The API that this context belongs to.
-  path.API api = 2;
+  path.API API = 2;
   // The estimated importance for the context. 0 = lowest priority.
   uint32 priority = 3;
 }

@@ -101,7 +101,7 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 					matchedResource = v
 				}
 			}
-			resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(matchedResource.Id)
+			resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(matchedResource.ID)
 			newResourceBytes, err := ioutil.ReadFile(verb.ResourcePath)
 			if err != nil {
 				return log.Errf(ctx, err, "Could not read resource file %s", verb.ResourcePath)

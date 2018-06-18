@@ -283,7 +283,7 @@ func (r *Resources) Find(ty api.ResourceType, id id.ID) *Resource {
 	for _, t := range r.Types {
 		if t.Type == ty {
 			for _, r := range t.Resources {
-				if r.Id.ID() == id {
+				if r.ID.ID() == id {
 					return r
 				}
 			}

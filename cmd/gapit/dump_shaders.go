@@ -81,11 +81,11 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 	for _, types := range resources.GetTypes() {
 		if types.Type == api.ResourceType_ShaderResource {
 			for _, v := range types.GetResources() {
-				if !v.Id.IsValid() {
+				if !v.ID.IsValid() {
 					log.E(ctx, "Got resource with invalid ID!\n%+v", v)
 					continue
 				}
-				resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.Id)
+				resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.ID)
 				resourceData, err := client.Get(ctx, resourcePath.Path())
 				if err != nil {
 					log.E(ctx, "Could not get data for shader: %v %v", v, err)

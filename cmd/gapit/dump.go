@@ -81,7 +81,7 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	if verb.ShowABIInfo {
-		abi, err := json.MarshalIndent(c.Abi, "", "  ")
+		abi, err := json.MarshalIndent(c.ABI, "", "  ")
 		if err != nil {
 			return log.Err(ctx, err, "Failed to marshal capture abi to JSON")
 		}
