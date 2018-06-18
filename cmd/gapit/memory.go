@@ -87,7 +87,7 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	allocationFlags := []*service.Constant{}
 	if mem.AllocationFlagsIndex != -1 {
 		boxedConstants, err := client.Get(ctx, (&path.ConstantSet{
-			Api:   mem.API,
+			API:   mem.API,
 			Index: uint32(mem.AllocationFlagsIndex),
 		}).Path())
 		if err != nil {

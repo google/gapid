@@ -46,7 +46,7 @@ func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Se
 		if err != nil {
 			return nil, log.Err(ctx, err, "Failed to load the contexts")
 		}
-		filter.Context = contexts.(*service.Contexts).List[f.Context].Id
+		filter.Context = contexts.(*service.Contexts).List[f.Context].ID
 	}
 	return filter, nil
 }

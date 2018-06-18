@@ -57,7 +57,7 @@ func printIndices(index []uint64) string {
 	return strings.Join(parts, ".")
 }
 
-func (n *API) Path() *Any                       { return &Any{&Any_Api{n}} }
+func (n *API) Path() *Any                       { return &Any{&Any_API{n}} }
 func (n *ArrayIndex) Path() *Any                { return &Any{&Any_ArrayIndex{n}} }
 func (n *As) Path() *Any                        { return &Any{&Any_As{n}} }
 func (n *Blob) Path() *Any                      { return &Any{&Any_Blob{n}} }
@@ -72,7 +72,7 @@ func (n *Context) Path() *Any                   { return &Any{&Any_Context{n}} }
 func (n *Contexts) Path() *Any                  { return &Any{&Any_Contexts{n}} }
 func (n *Device) Path() *Any                    { return &Any{&Any_Device{n}} }
 func (n *Events) Path() *Any                    { return &Any{&Any_Events{n}} }
-func (n *FramebufferObservation) Path() *Any    { return &Any{&Any_Fbo{n}} }
+func (n *FramebufferObservation) Path() *Any    { return &Any{&Any_FBO{n}} }
 func (n *Field) Path() *Any                     { return &Any{&Any_Field{n}} }
 func (n *GlobalState) Path() *Any               { return &Any{&Any_GlobalState{n}} }
 func (n *ImageInfo) Path() *Any                 { return &Any{&Any_ImageInfo{n}} }
@@ -97,7 +97,7 @@ func (n ArrayIndex) Parent() Node                { return oneOfNode(n.Array) }
 func (n As) Parent() Node                        { return oneOfNode(n.From) }
 func (n Blob) Parent() Node                      { return nil }
 func (n Capture) Parent() Node                   { return nil }
-func (n ConstantSet) Parent() Node               { return n.Api }
+func (n ConstantSet) Parent() Node               { return n.API }
 func (n Command) Parent() Node                   { return n.Capture }
 func (n Commands) Parent() Node                  { return n.Capture }
 func (n CommandTree) Parent() Node               { return n.Capture }
@@ -130,7 +130,7 @@ func (n Thumbnail) Parent() Node                 { return oneOfNode(n.Object) }
 func (n *API) SetParent(p Node)                       {}
 func (n *Blob) SetParent(p Node)                      {}
 func (n *Capture) SetParent(p Node)                   {}
-func (n *ConstantSet) SetParent(p Node)               { n.Api, _ = p.(*API) }
+func (n *ConstantSet) SetParent(p Node)               { n.API, _ = p.(*API) }
 func (n *Command) SetParent(p Node)                   { n.Capture, _ = p.(*Capture) }
 func (n *Commands) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
 func (n *CommandTree) SetParent(p Node)               { n.Capture, _ = p.(*Capture) }
@@ -161,7 +161,7 @@ func (n ArrayIndex) Format(f fmt.State, c rune) {
 }
 
 // Format implements fmt.Formatter to print the version.
-func (n API) Format(f fmt.State, c rune) { fmt.Fprintf(f, "api<%v>", n.Id) }
+func (n API) Format(f fmt.State, c rune) { fmt.Fprintf(f, "api<%v>", n.ID) }
 
 // Format implements fmt.Formatter to print the version.
 func (n As) Format(f fmt.State, c rune) {
@@ -169,10 +169,10 @@ func (n As) Format(f fmt.State, c rune) {
 }
 
 // Format implements fmt.Formatter to print the version.
-func (n Blob) Format(f fmt.State, c rune) { fmt.Fprintf(f, "blob<%x>", n.Id) }
+func (n Blob) Format(f fmt.State, c rune) { fmt.Fprintf(f, "blob<%x>", n.ID) }
 
 // Format implements fmt.Formatter to print the version.
-func (n Capture) Format(f fmt.State, c rune) { fmt.Fprintf(f, "capture<%x>", n.Id) }
+func (n Capture) Format(f fmt.State, c rune) { fmt.Fprintf(f, "capture<%x>", n.ID) }
 
 // Format implements fmt.Formatter to print the version.
 func (n ConstantSet) Format(f fmt.State, c rune) {
@@ -203,13 +203,13 @@ func (n CommandTreeNodeForCommand) Format(f fmt.State, c rune) {
 }
 
 // Format implements fmt.Formatter to print the version.
-func (n Context) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.[%x]", n.Parent(), n.Id) }
+func (n Context) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.[%x]", n.Parent(), n.ID) }
 
 // Format implements fmt.Formatter to print the version.
 func (n Contexts) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.contexts", n.Parent()) }
 
 // Format implements fmt.Formatter to print the version.
-func (n Device) Format(f fmt.State, c rune) { fmt.Fprintf(f, "device<%x>", n.Id) }
+func (n Device) Format(f fmt.State, c rune) { fmt.Fprintf(f, "device<%x>", n.ID) }
 
 // Format implements fmt.Formatter to print the version.
 func (n Events) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.events", n.Parent()) }
@@ -221,7 +221,7 @@ func (n Field) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.%v", n.Parent(),
 func (n GlobalState) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.global-state", n.Parent()) }
 
 // Format implements fmt.Formatter to print the version.
-func (n ImageInfo) Format(f fmt.State, c rune) { fmt.Fprintf(f, "image-info<%x>", n.Id) }
+func (n ImageInfo) Format(f fmt.State, c rune) { fmt.Fprintf(f, "image-info<%x>", n.ID) }
 
 // Format implements fmt.Formatter to print the version.
 func (n MapIndex) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v[%x]", n.Parent(), n.Key) }
@@ -240,7 +240,7 @@ func (n Report) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.report", n.Pare
 
 // Format implements fmt.Formatter to print the version.
 func (n ResourceData) Format(f fmt.State, c rune) {
-	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.Id)
+	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.ID)
 }
 
 // Format implements fmt.Formatter to print the version.
@@ -446,29 +446,29 @@ func FindCapture(n Node) *Capture {
 	return nil
 }
 
-// NewAPI returns a new Api path node with the given ID.
+// NewAPI returns a new API path node with the given ID.
 func NewAPI(id id.ID) *API {
-	return &API{Id: NewID(id)}
+	return &API{ID: NewID(id)}
 }
 
 // NewCapture returns a new Capture path node with the given ID.
 func NewCapture(id id.ID) *Capture {
-	return &Capture{Id: NewID(id)}
+	return &Capture{ID: NewID(id)}
 }
 
 // NewDevice returns a new Device path node with the given ID.
 func NewDevice(id id.ID) *Device {
-	return &Device{Id: NewID(id)}
+	return &Device{ID: NewID(id)}
 }
 
 // NewBlob returns a new Blob path node with the given ID.
 func NewBlob(id id.ID) *Blob {
-	return &Blob{Id: NewID(id)}
+	return &Blob{ID: NewID(id)}
 }
 
 // NewImageInfo returns a new ImageInfo path node with the given ID.
 func NewImageInfo(id id.ID) *ImageInfo {
-	return &ImageInfo{Id: image.NewID(id)}
+	return &ImageInfo{ID: image.NewID(id)}
 }
 
 // NewField returns a new Field path.
@@ -505,7 +505,7 @@ func NewSlice(s, e uint64, n Node) *Slice {
 // ConstantSet returns a path to the API's i'th ConstantSet.
 func (n *API) ConstantSet(i int) *ConstantSet {
 	return &ConstantSet{
-		Api:   n,
+		API:   n,
 		Index: uint32(i),
 	}
 }
@@ -574,12 +574,12 @@ func (n *Capture) Command(i uint64, subidx ...uint64) *Command {
 
 // Context returns the path node to the a context with the given ID.
 func (n *Capture) Context(id id.ID) *Context {
-	return &Context{Capture: n, Id: NewID(id)}
+	return &Context{Capture: n, ID: NewID(id)}
 }
 
 // Thread returns the path node to the thread with the given ID.
 func (n *Capture) Thread(id uint64) *Thread {
-	return &Thread{Capture: n, Id: id}
+	return &Thread{Capture: n, ID: id}
 }
 
 // MemoryAfter returns the path node to the memory after this command.
@@ -591,7 +591,7 @@ func (n *Command) MemoryAfter(pool uint32, addr, size uint64) *Memory {
 // after this command.
 func (n *Command) ResourceAfter(id *ID) *ResourceData {
 	return &ResourceData{
-		Id:    id,
+		ID:    id,
 		After: n,
 	}
 }

@@ -281,7 +281,7 @@ public class ApiContext
     public final Service.Context context;
 
     public IdAndContext(Path.Context path, Service.Context context) {
-      this.id = path.getId();
+      this.id = path.getID();
       this.context = context;
     }
   }

@@ -54,7 +54,7 @@ func (c *IndexLimitsResolvable) Resolve(ctx context.Context) (interface{}, error
 		return &IndexRange{First: 0, Count: 0}, nil
 	}
 	min, max := ^uint32(0), uint32(0)
-	data, err := database.Resolve(ctx, c.Data.Id.ID())
+	data, err := database.Resolve(ctx, c.Data.ID.ID())
 	if err != nil {
 		return nil, err
 	}

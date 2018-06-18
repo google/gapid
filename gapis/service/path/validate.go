@@ -95,7 +95,7 @@ func (n *ArrayIndex) Validate() error {
 // Validate checks the path is valid.
 func (n *API) Validate() error {
 	return anyErr(
-		checkIsValid(n, n.Id, "api"),
+		checkIsValid(n, n.ID, "api"),
 	)
 }
 
@@ -109,12 +109,12 @@ func (n *As) Validate() error {
 
 // Validate checks the path is valid.
 func (n *Blob) Validate() error {
-	return checkIsValid(n, n.Id, "id")
+	return checkIsValid(n, n.ID, "id")
 }
 
 // Validate checks the path is valid.
 func (n *Capture) Validate() error {
-	return checkIsValid(n, n.Id, "id")
+	return checkIsValid(n, n.ID, "id")
 }
 
 // Validate checks the path is valid.
@@ -155,7 +155,7 @@ func (n *CommandTreeNodeForCommand) Validate() error {
 // Validate checks the path is valid.
 func (n *ConstantSet) Validate() error {
 	return anyErr(
-		checkNotNilAndValidate(n, n.Api, "api"),
+		checkNotNilAndValidate(n, n.API, "api"),
 	)
 }
 
@@ -163,7 +163,7 @@ func (n *ConstantSet) Validate() error {
 func (n *Context) Validate() error {
 	return anyErr(
 		checkNotNilAndValidate(n, n.Capture, "capture"),
-		checkIsValid(n, n.Id, "id"),
+		checkIsValid(n, n.ID, "id"),
 	)
 }
 
@@ -174,7 +174,7 @@ func (n *Contexts) Validate() error {
 
 // Validate checks the path is valid.
 func (n *Device) Validate() error {
-	return checkIsValid(n, n.Id, "id")
+	return checkIsValid(n, n.ID, "id")
 }
 
 // Validate checks the path is valid.
@@ -202,7 +202,7 @@ func (n *GlobalState) Validate() error {
 
 // Validate checks the path is valid.
 func (n *ImageInfo) Validate() error {
-	return checkNotNilAndValidate(n, n.Id, "id")
+	return checkNotNilAndValidate(n, n.ID, "id")
 }
 
 // Validate checks the path is valid.
@@ -245,7 +245,7 @@ func (n *Report) Validate() error {
 func (n *ResourceData) Validate() error {
 	return anyErr(
 		checkNotNilAndValidate(n, n.After, "after"),
-		checkIsValid(n, n.Id, "id"),
+		checkIsValid(n, n.ID, "id"),
 	)
 }
 

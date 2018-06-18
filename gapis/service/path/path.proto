@@ -26,7 +26,7 @@ option go_package = "github.com/google/gapid/gapis/service/path";
 // Any is a oneof union of all the path types.
 message Any {
   oneof path {
-    API api = 1;
+    API API = 1;
     ArrayIndex array_index = 2;
     As as = 3;
     Blob blob = 4;
@@ -41,7 +41,7 @@ message Any {
     Contexts contexts = 13;
     Device device = 14;
     Events events = 15;
-    FramebufferObservation fbo = 16;
+    FramebufferObservation FBO = 16;
     Field field = 17;
     GlobalState global_state = 18;
     ImageInfo image_info = 19;
@@ -83,7 +83,7 @@ message ArrayIndex {
 
 // API is a path to an API.
 message API {
-    ID id = 1;
+    ID ID = 1;
 }
 
 // As casts or transforms the object to the requested type.
@@ -106,13 +106,13 @@ message As {
 // Blob is a path to a blob of data.
 message Blob {
     // id is the identifier of the data.
-    ID id = 1;
+    ID ID = 1;
 }
 
 // Capture is a path to a capture.
 // Resolves to a service.Capture.
 message Capture {
-    ID id = 1;
+    ID ID = 1;
 }
 
 // Command is the path to a command in the capture.
@@ -139,7 +139,7 @@ message Commands {
 // ConstantSet is a path to an enumerator of constants.
 // Resolves to a service.ConstantSet.
 message ConstantSet {
-    API api = 1;
+    API API = 1;
     uint32 index = 2;
 }
 
@@ -179,7 +179,7 @@ message Threads {
 // Thread is a path to a single thread in a capture.
 message Thread {
     Capture capture = 1;
-    uint64 id = 2;
+    uint64 ID = 2;
 }
 
 // Contexts is path to a list of contexts in a capture.
@@ -190,12 +190,12 @@ message Contexts {
 // Context is a path to a single context in a capture.
 message Context {
     Capture capture = 1;
-    ID id = 2;
+    ID ID = 2;
 }
 
 // Device is a path to a device used for replay.
 message Device {
-    ID id = 1;
+    ID ID = 1;
 }
 
 // FramebufferObservation is a path to a framebuffer observation image at the
@@ -283,7 +283,7 @@ message CommandTreeNodeForCommand {
 
 // ImageInfo is a path that refers to a image.Info.
 message ImageInfo {
-    image.ID id = 1; // The ImageInfo's unique identifier.
+    image.ID ID = 1; // The ImageInfo's unique identifier.
 }
 
 // MapIndex is a path to a value held inside a map.
@@ -373,7 +373,7 @@ message Resources {
 // ResourceData is a path to a single resource snapshot at a given point in an
 // command stream.
 message ResourceData {
-    ID id = 1;
+    ID ID = 1;
     Command after = 2;
 }
 
@@ -453,5 +453,5 @@ message Thumbnail {
         CommandTreeNode command_tree_node = 6;
     }
 
-    bool disableOptimization = 7;
+    bool disable_optimization = 7;
 }

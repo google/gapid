@@ -104,7 +104,7 @@ func New(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*pat
 	captures = append(captures, id)
 	capturesLock.Unlock()
 
-	return &path.Capture{Id: path.NewID(id)}, nil
+	return &path.Capture{ID: path.NewID(id)}, nil
 }
 
 // NewState returns a new, default-initialized State object built for the
@@ -174,7 +174,7 @@ func (c *Capture) BuildInitialCommands(ctx context.Context) ([]api.Cmd, interval
 func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture {
 	apis := make([]*path.API, len(c.APIs))
 	for i, a := range c.APIs {
-		apis[i] = &path.API{Id: path.NewID(id.ID(a.ID()))}
+		apis[i] = &path.API{ID: path.NewID(id.ID(a.ID()))}
 	}
 	observations := make([]*service.MemoryRange, len(c.Observed))
 	for i, o := range c.Observed {
@@ -196,7 +196,7 @@ func Captures() []*path.Capture {
 	defer capturesLock.RUnlock()
 	out := make([]*path.Capture, len(captures))
 	for i, c := range captures {
-		out[i] = &path.Capture{Id: path.NewID(c)}
+		out[i] = &path.Capture{ID: path.NewID(c)}
 	}
 	return out
 }
@@ -212,7 +212,7 @@ func ResolveFromID(ctx context.Context, id id.ID) (*Capture, error) {
 
 // ResolveFromPath resolves a single capture with the path p.
 func ResolveFromPath(ctx context.Context, p *path.Capture) (*Capture, error) {
-	return ResolveFromID(ctx, p.Id.ID())
+	return ResolveFromID(ctx, p.ID.ID())
 }
 
 // Import imports the capture by name and data, and stores it in the database.
@@ -233,7 +233,7 @@ func Import(ctx context.Context, name string, data []byte) (*path.Capture, error
 	captures = append(captures, id)
 	capturesLock.Unlock()
 
-	return &path.Capture{Id: path.NewID(id)}, nil
+	return &path.Capture{ID: path.NewID(id)}, nil
 }
 
 // Export encodes the given capture and associated resources
