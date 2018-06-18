@@ -46,11 +46,11 @@ func OSXOS(major, minor, point int32) *OS {
 		name = "OSX"
 	}
 	return &OS{
-		Kind:  OSX,
-		Build: fmt.Sprintf("%s %d.%d.%d", name, major, minor, point),
-		Name:  name,
-		Major: major,
-		Minor: minor,
-		Point: point,
+		Kind:         OSX,
+		Build:        fmt.Sprintf("%s %d.%d.%d", name, major, minor, point),
+		Name:         name,
+		MajorVersion: major,
+		MinorVersion: minor,
+		PointVersion: point,
 	}
 }

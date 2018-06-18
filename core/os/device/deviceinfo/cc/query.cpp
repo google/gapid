@@ -85,9 +85,9 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
   os->set_kind(query::osKind());
   os->set_name(query::osName());
   os->set_build(query::osBuild());
-  os->set_major(query::osMajor());
-  os->set_minor(query::osMinor());
-  os->set_point(query::osPoint());
+  os->set_majorversion(query::osMajor());
+  os->set_minorversion(query::osMinor());
+  os->set_pointversion(query::osPoint());
 
   // Instance.Configuration.Drivers
   auto drivers = new Drivers();

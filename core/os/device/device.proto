@@ -110,11 +110,11 @@ message OS {
     // The OS build description.
     string Build = 3;
     // The major version of the OS.
-    int32 Major = 4;
+    int32 MajorVersion = 4;
     // The minor version of the OS.
-    int32 Minor = 5;
+    int32 MinorVersion = 5;
     // The point version of the OS.
-    int32 Point = 6;
+    int32 PointVersion = 6;
 }
 
 // CPU represents a specific central processing unit product.

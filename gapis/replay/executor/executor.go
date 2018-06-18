@@ -108,7 +108,7 @@ func (e executor) HandleCrashDump(ctx context.Context, dump *gapir.CrashDump, co
 		AppName:    "GAPIR",
 		AppVersion: app.Version.String(),
 		OSName:     e.OS.GetName(),
-		OSVersion:  fmt.Sprintf("%v %v.%v.%v", e.OS.GetBuild(), e.OS.GetMajor(), e.OS.GetMinor(), e.OS.GetPoint()),
+		OSVersion:  fmt.Sprintf("%v %v.%v.%v", e.OS.GetBuild(), e.OS.GetMajorVersion(), e.OS.GetMinorVersion(), e.OS.GetPointVersion()),
 	}, filepath, crashData); err != nil {
 		return log.Err(ctx, err, "Failed to report crash in GAPIR")
 	} else if res != "" {

@@ -92,7 +92,7 @@ func (b *binding) InstallAPK(ctx context.Context, path string, reinstall bool, g
 	if reinstall {
 		args = append(args, "-r")
 	}
-	if grantPermissions && b.Instance().GetConfiguration().GetOS().GetMajor() >= 6 {
+	if grantPermissions && b.Instance().GetConfiguration().GetOS().GetMajorVersion() >= 6 {
 		// Starting with Android 6.0, permissions are not granted by default
 		// during installation. Before Android 6.0, the flag did not exist.
 		args = append(args, "-g")

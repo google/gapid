@@ -17,11 +17,11 @@ package device
 // LinuxOS converts from a distribution name and version to a full OS structure.
 func LinuxOS(name string, major, minor int32) *OS {
 	return &OS{
-		Kind:  Linux,
-		Name:  name,
-		Build: "",
-		Major: major,
-		Minor: minor,
-		Point: 0,
+		Kind:         Linux,
+		Name:         name,
+		Build:        "",
+		MajorVersion: major,
+		MinorVersion: minor,
+		PointVersion: 0,
 	}
 }
