@@ -30,7 +30,7 @@ func CmdToService(c Cmd) (*Command, error) {
 	}
 
 	if api := c.API(); api != nil {
-		out.Api = &path.API{Id: path.NewID(id.ID(api.ID()))}
+		out.API = &path.API{Id: path.NewID(id.ID(api.ID()))}
 	}
 
 	for _, p := range c.CmdParams() {
@@ -39,7 +39,7 @@ func CmdToService(c Cmd) (*Command, error) {
 			Value: box.NewValue(p.Get()),
 		}
 		if p.Constants > 0 {
-			param.Constants = out.Api.ConstantSet(p.Constants)
+			param.Constants = out.API.ConstantSet(p.Constants)
 		}
 		out.Parameters = append(out.Parameters, param)
 	}
@@ -50,7 +50,7 @@ func CmdToService(c Cmd) (*Command, error) {
 			Value: box.NewValue(p.Get()),
 		}
 		if p.Constants >= 0 {
-			out.Result.Constants = out.Api.ConstantSet(p.Constants)
+			out.Result.Constants = out.API.ConstantSet(p.Constants)
 		}
 	}
 
@@ -59,9 +59,9 @@ func CmdToService(c Cmd) (*Command, error) {
 
 // ServiceToCmd returns the command built from c.
 func ServiceToCmd(c *Command) (Cmd, error) {
-	api := Find(ID(c.GetApi().GetId().ID()))
+	api := Find(ID(c.GetAPI().GetId().ID()))
 	if api == nil {
-		return nil, fmt.Errorf("Unknown api '%v'", c.GetApi())
+		return nil, fmt.Errorf("Unknown api '%v'", c.GetAPI())
 	}
 	a := api.CreateCmd(c.Name)
 	if a == nil {
