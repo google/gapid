@@ -34,9 +34,9 @@ message Header {
 	// The device used to take the capture.
 	device.Instance device = 1;
 	// The ABI used by the traced process.
-	device.ABI abi = 2;
+	device.ABI ABI = 2;
 	// Version is incremented on breaking changes to the capture or command format.
-	sint32 Version = 3;
+	sint32 version = 3;
 }
 
 // Resource is the storage type for some data keyed by an identifer.

@@ -63,7 +63,7 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 
 	for _, abi := range devAbis {
 		// Memory layout must match.
-		if !abi.GetMemoryLayout().SameAs(h.GetAbi().GetMemoryLayout()) {
+		if !abi.GetMemoryLayout().SameAs(h.GetABI().GetMemoryLayout()) {
 			continue
 		}
 		// If there is no physical devices, the trace must not contain

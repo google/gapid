@@ -121,7 +121,7 @@ func (m *Manager) execute(
 
 	intent := Intent{path.NewDevice(deviceID), capturePath}
 
-	cml := c.Header.Abi.MemoryLayout
+	cml := c.Header.ABI.MemoryLayout
 	ctx = log.V{"capture memory layout": cml}.Bind(ctx)
 
 	deviceABIs := d.Instance().GetConfiguration().GetABIs()

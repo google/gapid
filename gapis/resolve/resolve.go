@@ -236,7 +236,7 @@ func memoryLayout(ctx context.Context, p path.Node) (*device.MemoryLayout, error
 		return nil, err
 	}
 
-	return c.Header.Abi.MemoryLayout, nil
+	return c.Header.ABI.MemoryLayout, nil
 }
 
 // ResolveService resolves and returns the object, value or memory at the path p,
