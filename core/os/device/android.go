@@ -19,10 +19,10 @@ import "fmt"
 // AndroidOS returns the full OS structure for the supplied android os version.
 func AndroidOS(major, minor, point int32) *OS {
 	os := &OS{
-		Kind:  Android,
-		Major: major,
-		Minor: minor,
-		Point: point,
+		Kind:         Android,
+		MajorVersion: major,
+		MinorVersion: minor,
+		PointVersion: point,
 	}
 	switch {
 	case major == 6:
