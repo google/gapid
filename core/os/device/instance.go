@@ -24,7 +24,7 @@ import (
 // configuration.
 func (i *Instance) GenID() {
 	key := fmt.Sprintf("%v:%v:%v", i.Serial, i.Name, i.Configuration.String())
-	i.Id = NewID(id.OfString(key))
+	i.ID = NewID(id.OfString(key))
 }
 
 // SameAs returns true if the two instance objects refer to the same physical

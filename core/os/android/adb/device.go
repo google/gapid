@@ -158,7 +158,7 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
-	if i := d.Instance(); i.Id == nil || allZero(i.Id.Data) {
+	if i := d.Instance(); i.ID == nil || allZero(i.ID.Data) {
 		// Generate an identifier for the device based on it's details.
 		i.GenID()
 	}

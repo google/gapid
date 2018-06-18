@@ -67,7 +67,7 @@ void abiByName(const std::string name, device::ABI* abi) {
     memory_layout->set_allocated_f32(new_dt_layout(4, 4));
     memory_layout->set_allocated_f16(new_dt_layout(2, 2));
     memory_layout->set_endian(device::LittleEndian);
-    abi->set_allocated_memorylayout(memory_layout);
+    abi->set_allocated_memory_layout(memory_layout);
     abi->set_architecture(device::ARMv7a);
   } else if (name == "arm64-v8a") {
     // http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
@@ -85,7 +85,7 @@ void abiByName(const std::string name, device::ABI* abi) {
     memory_layout->set_allocated_f32(new_dt_layout(4, 4));
     memory_layout->set_allocated_f16(new_dt_layout(2, 2));
     memory_layout->set_endian(device::LittleEndian);
-    abi->set_allocated_memorylayout(memory_layout);
+    abi->set_allocated_memory_layout(memory_layout);
     abi->set_architecture(device::ARMv8a);
   } else if (name == "x86") {
     // https://en.wikipedia.org/wiki/Data_structure_alignment#Typical_alignment_of_C_structs_on_x86
@@ -102,7 +102,7 @@ void abiByName(const std::string name, device::ABI* abi) {
     memory_layout->set_allocated_f32(new_dt_layout(4, 4));
     memory_layout->set_allocated_f16(new_dt_layout(2, 2));
     memory_layout->set_endian(device::LittleEndian);
-    abi->set_allocated_memorylayout(memory_layout);
+    abi->set_allocated_memory_layout(memory_layout);
     abi->set_architecture(device::X86);
   } else if (name == "x86_64") {
     auto memory_layout = new device::MemoryLayout();
@@ -118,7 +118,7 @@ void abiByName(const std::string name, device::ABI* abi) {
     memory_layout->set_allocated_f32(new_dt_layout(4, 4));
     memory_layout->set_allocated_f16(new_dt_layout(2, 2));
     memory_layout->set_endian(device::LittleEndian);
-    abi->set_allocated_memorylayout(memory_layout);
+    abi->set_allocated_memory_layout(memory_layout);
     abi->set_architecture(device::X86_64);
   } else {
     LOG_WARN("Unrecognised ABI: %s", name.c_str());

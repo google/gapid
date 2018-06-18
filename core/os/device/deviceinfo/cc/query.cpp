@@ -85,9 +85,9 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
   os->set_kind(query::osKind());
   os->set_name(query::osName());
   os->set_build(query::osBuild());
-  os->set_majorversion(query::osMajor());
-  os->set_minorversion(query::osMinor());
-  os->set_pointversion(query::osPoint());
+  os->set_major_version(query::osMajor());
+  os->set_minor_version(query::osMinor());
+  os->set_point_version(query::osPoint());
 
   // Instance.Configuration.Drivers
   auto drivers = new Drivers();
@@ -113,8 +113,8 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
     if (opt.vulkan.query_physical_devices()) {
       query::vkPhysicalDevices(vulkan_driver);
       if (strlen(backupName) == 0 &&
-          vulkan_driver->physicaldevices_size() > 0) {
-        backupName = vulkan_driver->physicaldevices(0).devicename().c_str();
+          vulkan_driver->physical_devices_size() > 0) {
+        backupName = vulkan_driver->physical_devices(0).device_name().c_str();
       }
     }
     drivers->set_allocated_vulkan(vulkan_driver);

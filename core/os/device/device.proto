@@ -56,29 +56,29 @@ enum OSKind {
 // MemoryLayout holds information about how memory is fundamentally laid out for a device.
 message MemoryLayout {
     // Endian is the natural byte ordering of the memory layout.
-    Endian Endian = 1;
+    Endian endian = 1;
     // Layout for a pointer type (void*, T*).
-    DataTypeLayout Pointer = 2;
+    DataTypeLayout pointer = 2;
     // Layout for a int type (int, unsigned int).
-    DataTypeLayout Integer = 3;
+    DataTypeLayout integer = 3;
     // Layout for a size type (size_t).
-    DataTypeLayout Size = 4;
+    DataTypeLayout size = 4;
     // Layout for a char type.
-    DataTypeLayout Char = 5;
+    DataTypeLayout char = 5;
     // Layout for a 64 bit integer.
-    DataTypeLayout I64 = 6;
+    DataTypeLayout i64 = 6;
     // Layout for a 32 bit integer.
-    DataTypeLayout I32 = 7;
+    DataTypeLayout i32 = 7;
     // Layout for a 16-bit integer.
-    DataTypeLayout I16 = 8;
+    DataTypeLayout i16 = 8;
     // Layout for an 8-bit integer.
-    DataTypeLayout I8 = 9;
+    DataTypeLayout i8 = 9;
     // Layout for an 64-bit float.
-    DataTypeLayout F64 = 10;
+    DataTypeLayout f64 = 10;
     // Layout for an 32-bit float.
-    DataTypeLayout F32 = 11;
+    DataTypeLayout f32 = 11;
     // Layout for an 16-bit float.
-    DataTypeLayout F16 = 12;
+    DataTypeLayout f16 = 12;
 }
 
 // DataTypeLayout holds information about the size and alignment of a data type.
@@ -93,54 +93,54 @@ message DataTypeLayout {
 // A device supports a set of ABI's, and an application has an abi it is compiled for.
 message ABI {
     // Name is the human understandable name for the abi.
-    string Name = 1;
+    string name = 1;
     // OS is the type of OS this abi is targetted at, which normally controls things like calling convention.
     OSKind OS = 2;
     // Architecture is the processor type for the abi, controlling the instruction and feature set available.
-    Architecture Architecture = 3;
+    Architecture architecture = 3;
     // MemoryLayout specifies things like size and alignment of types used directly buy the ABI.
-    MemoryLayout MemoryLayout = 4;
+    MemoryLayout memory_layout = 4;
 }
 
 message OS {
      // The kind of the operating system.
-    OSKind Kind = 1;
+    OSKind kind = 1;
     // The name of the operating system.
-    string Name = 2;
+    string name = 2;
     // The OS build description.
-    string Build = 3;
+    string build = 3;
     // The major version of the OS.
-    int32 MajorVersion = 4;
+    int32 major_version = 4;
     // The minor version of the OS.
-    int32 MinorVersion = 5;
+    int32 minor_version = 5;
     // The point version of the OS.
-    int32 PointVersion = 6;
+    int32 point_version = 6;
 }
 
 // CPU represents a specific central processing unit product.
 message CPU {
     // Name is the product name of this CPU.
-    string Name = 1;
+    string name = 1;
     // Vendor is the vendor of this CPU.
-    string Vendor = 2;
+    string vendor = 2;
     // Architecture is the architecture that this CPU implements.
-    Architecture Architecture = 3;
+    Architecture architecture = 3;
     // Cores is the number of cores in this CPU.
-    uint32 Cores = 4;
+    uint32 cores = 4;
 }
 
 // GPU represents a specific graphics processing unit product.
 message GPU {
     // Name is the product name of the GPU.
-    string Name = 1;
+    string name = 1;
     // Vendor is the vendor of this GPU.
-    string Vendor = 2;
+    string vendor = 2;
 }
 
 // Hardware describes the physical configuration of a computing device.
 message Hardware {
     // The product name for this hardware.
-    string Name = 1;
+    string name = 1;
     // CPU is the primary central processing unit that is part of this hardware
     // configuration.
     CPU CPU = 2;
@@ -155,11 +155,11 @@ message Configuration {
     // The OS the device is running.
     OS OS = 1;
     // The hardware description of this device.
-    Hardware Hardware = 2;
+    Hardware hardware = 2;
     // The abi's the device supports.
     repeated ABI ABIs = 3;
     // The drivers supported by the system.
-    Drivers Drivers = 4;
+    Drivers drivers = 4;
 }
 
 // Instance represents a physical device.
@@ -167,72 +167,72 @@ message Configuration {
 // offline devices, and reconnect to them.
 message Instance {
     // The unique identifier of the instance.
-    ID id = 1;
+    ID ID = 1;
     // The serial code of the device, if present.
-    string Serial = 2;
+    string serial = 2;
     // The friendly name of this device, if present.
-    string Name = 3;
+    string name = 3;
     // The hardware and software configuration of the device.
-    Configuration Configuration = 4;
+    Configuration configuration = 4;
 }
 
 // Drivers describes the drivers available on a device.
 message Drivers {
     // The OpenGL or OpenGL ES driver support.
-    OpenGLDriver OpenGL = 1;
+    OpenGLDriver opengl = 1;
     // The Vulkan driver support.
-    VulkanDriver Vulkan = 2;
+    VulkanDriver vulkan = 2;
 }
 
 // OpenGLDriver describes the device driver support for the OpenGL or OpenGL ES
 // APIs.
 message OpenGLDriver {
     // Supported extensions. e.g. "GL_KHR_debug", "GL_EXT_sRGB [...]".
-    repeated string Extensions = 1;
+    repeated string extensions = 1;
     // Driver name. e.g. "Adreno (TM) 320".
-    string Renderer = 2;
+    string renderer = 2;
     // Driver vendor name. e.g. "Qualcomm".
-    string Vendor = 3;
+    string vendor = 3;
     // Renderer version. e.g. "OpenGL ES 3.0 V@53.0 AU@  (CL@)".
-    string Version = 4;
+    string version = 4;
     // Value returned by glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT)
-    uint32 UniformBufferAlignment = 5;
+    uint32 uniform_buffer_alignment = 5;
     // Value returned by glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS)
-    uint32 MaxTransformFeedbackSeparateAttribs = 6;
+    uint32 max_transform_feedback_separate_attribs = 6;
     // Value returned by glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS)
-    uint32 MaxTransformFeedbackInterleavedComponents = 7;
+    uint32 max_transform_feedback_interleaved_components = 7;
 }
 
 // VulkanDriver describes the device driver support for the Vulkan API.
 message VulkanDriver {
     // Enumerated instance layers.
-    repeated VulkanLayer Layers = 1;
+    repeated VulkanLayer layers = 1;
     // Instance extensions provided by Vulkan implementations and implicit
     // layers.
-    repeated string IcdAndImplicitLayerExtensions = 2;
+    repeated string icd_and_implicit_layer_extensions = 2;
     // Physical devices that have Vulkan support.
-    repeated VulkanPhysicalDevice PhysicalDevices = 3;
+    repeated VulkanPhysicalDevice physical_devices = 3;
 }
 
 // VulkanLayer describes the layers currently installed on the device,
 // including the layers' name and its supported extensions.
 message VulkanLayer {
-  string Name = 1;
-  repeated string Extensions = 2;
+  string name = 1;
+  repeated string extensions = 2;
 }
 
 // VulkanPhysicalDevice describes a Vulkan physical device
 message VulkanPhysicalDevice {
   //  ApiVerison is the version of Vulkan supported by the device, encoded as
   //  described in the Vulkan Spec: API Version Numbers and Semantics section.
-  uint32 ApiVersion = 1;
+  uint32 api_version = 1;
   // driverVersion is the vendor-specified version of the driver.
-  uint32 DriverVersion = 2;
+  uint32 driver_version = 2;
   // vendorID is the unique identifier for the vendor of the physical device.
-  uint32 VendorID = 3;
+  uint32 vendor_id = 3;
   // deviceID is a unique identifier for the physical device among devices
   // available from the vendor.
-  uint32 DeviceID = 4;
+  uint32 device_id = 4;
   // deviceName is a null-terminated string containing the name of the device.
-  string DeviceName = 5;
+  string device_name = 5;
 }

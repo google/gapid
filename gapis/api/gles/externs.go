@@ -188,7 +188,7 @@ func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ 
 	}
 	dataID, err := database.Store(e.ctx, &ReadGPUTextureDataResolveable{
 		Capture:    path.NewCapture(capture.Get(e.ctx).Id.ID()),
-		Device:     path.NewDevice(device.Instance().Id.ID()),
+		Device:     path.NewDevice(device.Instance().ID.ID()),
 		After:      uint64(e.cmdID),
 		Thread:     e.cmd.Thread(),
 		Texture:    uint32(texture.ID()),

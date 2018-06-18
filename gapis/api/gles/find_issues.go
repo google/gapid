@@ -278,7 +278,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		tmp.Free()
 
 	case *GlProgramBinary, *GlProgramBinaryOES, *GlShaderBinary:
-		glDev := t.device.Configuration.Drivers.OpenGL
+		glDev := t.device.Configuration.Drivers.Opengl
 		if !canUsePrecompiledShader(c, glDev) {
 			t.onIssue(cmd, id, service.Severity_WarningLevel, fmt.Errorf("Pre-compiled binaries cannot be used across on different devices. Capture: %s-%s, Replay: %s-%s",
 				c.Constants().Vendor(), c.Constants().Version(), glDev.Vendor, glDev.Version))

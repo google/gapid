@@ -78,7 +78,7 @@ func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 
 	paths := make([]*path.Device, len(filtered))
 	for i, d := range filtered {
-		paths[i] = path.NewDevice(d.device.Instance().Id.ID())
+		paths[i] = path.NewDevice(d.device.Instance().ID.ID())
 	}
 	return paths, nil
 }
