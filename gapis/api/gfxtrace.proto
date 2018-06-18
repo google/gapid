@@ -22,8 +22,8 @@ option go_package = "github.com/google/gapid/gapis/api";
 // execution. This can be expected (e.g. GL error), or unexpected (failed
 // assertion).
 message ErrCmdAborted {
-	bool IsAssert = 1;
-	string Reason = 2;
+	bool is_assert = 1;
+	string reason = 2;
 }
 
 // CmdCall is a .gfxtrace file marker that indicates the point in which a
