@@ -168,8 +168,8 @@ uint32_t VulkanSpy::SpyOverride_vkCreateInstance(
         // If VulkanDriver does present, but is empty, we should populate the
         // VulkanDriver and send the new header.
         (drivers.vulkan().layers_size() == 0 &&
-         drivers.vulkan().icdandimplicitlayerextensions_size() == 0 &&
-         drivers.vulkan().physicaldevices_size() == 0);
+         drivers.vulkan().icd_and_implicit_layer_extensions_size() == 0 &&
+         drivers.vulkan().physical_devices_size() == 0);
     if (should_send_header) {
       if (query::updateVulkanDriver(SpyBase::device_instance(), *pInstance,
                                     get_instance_proc_addr)) {

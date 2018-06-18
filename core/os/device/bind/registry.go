@@ -118,7 +118,7 @@ func (r *Registry) Device(id id.ID) Device {
 	r.Lock()
 	defer r.Unlock()
 	for _, d := range r.devices {
-		if d.Instance().Id.ID() == id {
+		if d.Instance().ID.ID() == id {
 			return d
 		}
 	}

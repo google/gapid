@@ -76,10 +76,10 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 		for _, devPhyInfo := range devVkDriver.GetPhysicalDevices() {
 			for _, tracePhyInfo := range traceVkDriver.GetPhysicalDevices() {
 				// TODO: More sophisticated rules
-				if devPhyInfo.GetVendorID() != tracePhyInfo.GetVendorID() {
+				if devPhyInfo.GetVendorId() != tracePhyInfo.GetVendorId() {
 					continue
 				}
-				if devPhyInfo.GetDeviceID() != tracePhyInfo.GetDeviceID() {
+				if devPhyInfo.GetDeviceId() != tracePhyInfo.GetDeviceId() {
 					continue
 				}
 				if devPhyInfo.GetApiVersion() != tracePhyInfo.GetApiVersion() {

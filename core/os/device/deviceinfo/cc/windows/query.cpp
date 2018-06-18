@@ -204,7 +204,7 @@ void abi(int idx, device::ABI* abi) {
   abi->set_name("x86_64");
   abi->set_os(device::Windows);
   abi->set_architecture(device::X86_64);
-  abi->set_allocated_memorylayout(currentMemoryLayout());
+  abi->set_allocated_memory_layout(currentMemoryLayout());
 }
 
 device::ABI* currentABI() {

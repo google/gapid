@@ -87,10 +87,10 @@ void glDriver(device::OpenGLDriver* driver) {
   driver->set_renderer(safe_string(glGetString(GL_RENDERER)));
   driver->set_vendor(safe_string(glGetString(GL_VENDOR)));
   driver->set_version(safe_string(glGetString(GL_VERSION)));
-  driver->set_uniformbufferalignment(uniformbufferalignment);
-  driver->set_maxtransformfeedbackseparateattribs(
+  driver->set_uniform_buffer_alignment(uniformbufferalignment);
+  driver->set_max_transform_feedback_separate_attribs(
       maxtransformfeedbackseparateattribs);
-  driver->set_maxtransformfeedbackinterleavedcomponents(
+  driver->set_max_transform_feedback_interleaved_components(
       maxtransformfeedbackinterleavedcomponents);
 }
 

@@ -97,7 +97,7 @@ bool vkLayersAndExtensions(
     }
   }
   // For implicit layers and ICD extensions
-  driver->clear_icdandimplicitlayerextensions();
+  driver->clear_icd_and_implicit_layer_extensions();
   uint32_t ext_count = 0;
   MUST_SUCCESS(
       vkEnumerateInstanceExtensionProperties(nullptr, &ext_count, nullptr));
@@ -106,7 +106,7 @@ bool vkLayersAndExtensions(
   MUST_SUCCESS(vkEnumerateInstanceExtensionProperties(nullptr, &ext_count,
                                                       ext_props.data()));
   for (size_t i = 0; i < ext_props.size(); i++) {
-    driver->add_icdandimplicitlayerextensions(ext_props[i].extensionName);
+    driver->add_icd_and_implicit_layer_extensions(ext_props[i].extensionName);
   }
   return true;
 }
@@ -117,7 +117,7 @@ bool vkPhysicalDevices(
   if (!driver) {
     return false;
   }
-  driver->clear_physicaldevices();
+  driver->clear_physical_devices();
 
 // Resolve functions, create vkInstance handle if the given handle is NULL.
 #define MUST_RESOLVE(FuncType, FuncName)                                  \
@@ -156,12 +156,12 @@ bool vkPhysicalDevices(
     auto phy_dev = phy_devs[i];
     VkPhysicalDeviceProperties prop;
     vkGetPhysicalDeviceProperties(phy_dev, &prop);
-    driver->add_physicaldevices();
-    driver->mutable_physicaldevices(i)->set_apiversion(prop.apiVersion);
-    driver->mutable_physicaldevices(i)->set_driverversion(prop.driverVersion);
-    driver->mutable_physicaldevices(i)->set_vendorid(prop.vendorID);
-    driver->mutable_physicaldevices(i)->set_deviceid(prop.deviceID);
-    driver->mutable_physicaldevices(i)->set_devicename(
+    driver->add_physical_devices();
+    driver->mutable_physical_devices(i)->set_api_version(prop.apiVersion);
+    driver->mutable_physical_devices(i)->set_driver_version(prop.driverVersion);
+    driver->mutable_physical_devices(i)->set_vendor_id(prop.vendorID);
+    driver->mutable_physical_devices(i)->set_device_id(prop.deviceID);
+    driver->mutable_physical_devices(i)->set_device_name(
         std::string(prop.deviceName));
   }
 

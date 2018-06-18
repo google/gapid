@@ -218,7 +218,7 @@ func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	devices := bind.GetRegistry(ctx).Devices()
 	paths := make([]*path.Device, len(devices))
 	for i, d := range devices {
-		paths[i] = path.NewDevice(d.Instance().Id.ID())
+		paths[i] = path.NewDevice(d.Instance().ID.ID())
 	}
 	return paths, nil
 }

@@ -139,11 +139,11 @@ type onCompatError func(context.Context, api.CmdID, api.Cmd, error)
 
 func compat(ctx context.Context, device *device.Instance, onError onCompatError) (transform.Transformer, error) {
 	ctx = log.Enter(ctx, "compat")
-	if device.Configuration.Drivers.OpenGL == nil {
+	if device.Configuration.Drivers.Opengl == nil {
 		return nil, fmt.Errorf("Could not find OpenGL device on host")
 	}
 
-	glDev := device.Configuration.Drivers.OpenGL
+	glDev := device.Configuration.Drivers.Opengl
 	target, version, err := getFeatures(ctx, glDev.Version, listToExtensions(glDev.Extensions))
 	if err != nil {
 		return nil, fmt.Errorf(
