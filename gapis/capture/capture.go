@@ -126,7 +126,7 @@ func (c *Capture) NewUninitializedState(ctx context.Context, rngs interval.U64Ra
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
 	s := api.NewStateWithAllocator(
 		memory.NewBasicAllocator(freeList),
-		c.Header.Abi.MemoryLayout,
+		c.Header.ABI.MemoryLayout,
 	)
 	return s
 }
@@ -183,7 +183,7 @@ func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture
 	return &service.Capture{
 		Name:         c.Name,
 		Device:       c.Header.Device,
-		ABI:          c.Header.Abi,
+		ABI:          c.Header.ABI,
 		NumCommands:  uint64(len(c.Commands)),
 		APIs:         apis,
 		Observations: observations,
