@@ -39,7 +39,7 @@ message FollowResolvable {
 }
 
 message FramebufferAttachmentResolvable {
-	service.ReplaySettings replaySettings = 1;
+	service.ReplaySettings replay_settings = 1;
 	path.Command after = 2;
 	api.FramebufferAttachment attachment = 3;
 	service.RenderSettings settings = 4;
@@ -51,7 +51,7 @@ message FramebufferChangesResolvable {
 }
 
 message FramebufferAttachmentBytesResolvable {
-	service.ReplaySettings replaySettings = 1;
+	service.ReplaySettings replay_settings = 1;
 	path.Command after = 2;
 	uint32 width = 3;
 	uint32 height = 4;
@@ -68,7 +68,7 @@ message GetResolvable {
 }
 
 message IndexLimitsResolvable {
-	uint64 indexSize = 1;
+	uint64 index_size = 1;
 	uint64 count = 2;
 	bool little_endian = 3;
 	path.Blob data = 4;
