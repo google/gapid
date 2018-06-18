@@ -20,16 +20,16 @@ option go_package = "github.com/google/gapid/gapis/api/gles/gles_pb";
 // ErrorState is a command extra used to describe the GLES error state after
 // the command has been executed. It is optional - we use it only for testing.
 message ErrorState {
-	uint32 TraceDriversGlError = 1;
-	uint32 InterceptorsGlError = 2;
+	uint32 trace_drivers_gl_error = 1;
+	uint32 interceptors_gl_error = 2;
 }
 
 message EGLImageData {
-  sint64 ResIndex = 1; // Resource index of the image data (used on disk)
-  sint32 Size     = 2;
-  sint32 Width    = 3;
-  sint32 Height   = 4;
-  sint32 Format   = 5; // GLenum
-  sint32 Type     = 6; // GLenum
+  sint64 res_index = 1; // Resource index of the image data (used on disk)
+  sint32 size     = 2;
+  sint32 width    = 3;
+  sint32 height   = 4;
+  sint32 format   = 5; // GLenum
+  sint32 type     = 6; // GLenum
 }
 
