@@ -32,4 +32,5 @@ message DoResponse {
   string id = 1;
 }
 
-message UpdateResponse {}
+message UpdateResponse {
+}

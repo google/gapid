@@ -23,101 +23,100 @@ import "gapis/service/path/path.proto";
 import "gapis/service/service.proto";
 
 message ContextListResolvable {
-	path.Capture capture = 1;
+  path.Capture capture = 1;
 }
 
 message CommandTreeResolvable {
-	path.CommandTree path = 1;
+  path.CommandTree path = 1;
 }
 
 message EventsResolvable {
-	path.Events path = 1;
+  path.Events path = 1;
 }
 
 message FollowResolvable {
-	path.Any path = 1;
+  path.Any path = 1;
 }
 
 message FramebufferAttachmentResolvable {
-	service.ReplaySettings replay_settings = 1;
-	path.Command after = 2;
-	api.FramebufferAttachment attachment = 3;
-	service.RenderSettings settings = 4;
-	service.UsageHints hints = 5;
+  service.ReplaySettings replay_settings = 1;
+  path.Command after = 2;
+  api.FramebufferAttachment attachment = 3;
+  service.RenderSettings settings = 4;
+  service.UsageHints hints = 5;
 }
 
 message FramebufferChangesResolvable {
-	path.Capture capture = 1;
+  path.Capture capture = 1;
 }
 
 message FramebufferAttachmentBytesResolvable {
-	service.ReplaySettings replay_settings = 1;
-	path.Command after = 2;
-	uint32 width = 3;
-	uint32 height = 4;
-	api.FramebufferAttachment attachment = 5;
-	service.WireframeMode wireframe_mode = 6;
-	service.UsageHints hints = 7;
-	image.Format image_format = 8;
-	uint32 framebuffer_index = 9;
+  service.ReplaySettings replay_settings = 1;
+  path.Command after = 2;
+  uint32 width = 3;
+  uint32 height = 4;
+  api.FramebufferAttachment attachment = 5;
+  service.WireframeMode wireframe_mode = 6;
+  service.UsageHints hints = 7;
+  image.Format image_format = 8;
+  uint32 framebuffer_index = 9;
 }
 
 // Get resolves the object, value or memory at Path.
 message GetResolvable {
-	path.Any path = 1;
+  path.Any path = 1;
 }
 
 message IndexLimitsResolvable {
-	uint64 index_size = 1;
-	uint64 count = 2;
-	bool little_endian = 3;
-	path.Blob data = 4;
+  uint64 index_size = 1;
+  uint64 count = 2;
+  bool little_endian = 3;
+  path.Blob data = 4;
 }
 
 message ReportResolvable {
-	path.Report path = 1;
+  path.Report path = 1;
 }
 
 message ResourcesResolvable {
-	path.Capture capture = 1;
+  path.Capture capture = 1;
 }
 
 message ResourceDataResolvable {
-	path.ResourceData path = 1;
+  path.ResourceData path = 1;
 }
 
 message AllResourceDataResolvable {
-	path.Command after = 1;
+  path.Command after = 1;
 }
 
 message ResourceMetaResolvable {
-	path.ID id = 1;
-	path.Command after = 2;
+  path.ID id = 1;
+  path.Command after = 2;
 }
 
 message GlobalStateResolvable {
-	path.GlobalState path = 1;
+  path.GlobalState path = 1;
 }
 
 message StateResolvable {
-	path.State path = 1;
+  path.State path = 1;
 }
 
 message SynchronizationResolvable {
-	path.Capture capture = 1;
+  path.Capture capture = 1;
 }
 
 message StateTreeResolvable {
-	path.State path = 1;
-	int32 array_group_size = 2;
+  path.State path = 1;
+  int32 array_group_size = 2;
 }
 
 message SetResolvable {
-	path.Any path = 1;
-	service.Value value = 2;
+  path.Any path = 1;
+  service.Value value = 2;
 }
 
 message FramebufferObservationResolvable {
-	path.FramebufferObservation path = 1;
+  path.FramebufferObservation path = 1;
 }
-

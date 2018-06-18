@@ -52,14 +52,30 @@ message Value {
   }
 }
 
-message Float32Array  { repeated float val = 1; }
-message Float64Array { repeated double val = 1; }
-message Uint32Array { repeated uint32 val = 1; }
-message Sint32Array { repeated sint32 val = 1; }
-message Uint64Array { repeated uint64 val = 1; }
-message Sint64Array { repeated sint64 val = 1; }
-message BoolArray   { repeated bool val = 1; }
-message StringArray { repeated string val = 1; }
+message Float32Array {
+  repeated float val = 1;
+}
+message Float64Array {
+  repeated double val = 1;
+}
+message Uint32Array {
+  repeated uint32 val = 1;
+}
+message Sint32Array {
+  repeated sint32 val = 1;
+}
+message Uint64Array {
+  repeated uint64 val = 1;
+}
+message Sint64Array {
+  repeated sint64 val = 1;
+}
+message BoolArray {
+  repeated bool val = 1;
+}
+message StringArray {
+  repeated string val = 1;
+}
 
 enum Type {
   any = 0;

@@ -22,11 +22,11 @@ import "google/protobuf/timestamp.proto";
 // Status represents the current known status of a stash entity.
 enum Status {
   // Unknown is the default (invalid) status.
-    Unknown = 0;
-    // Uploading means the entity is currently uploading.
-    Uploading = 1;
-    // Present means the entity is valid and present in the stash.
-    Present = 2;
+  Unknown = 0;
+  // Uploading means the entity is currently uploading.
+  Uploading = 1;
+  // Present means the entity is valid and present in the stash.
+  Present = 2;
 }
 
 // Upload is the meta data supplied when uploading a new entity.

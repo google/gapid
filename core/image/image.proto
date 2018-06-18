@@ -23,115 +23,130 @@ option go_package = "github.com/google/gapid/core/image";
 
 // ID is a 20-byte identifier.
 message ID {
-    bytes data = 1;
+  bytes data = 1;
 }
 
 // Data is a one, two or three dimensional image.
 message Data {
-	// The format of the image.
-    Format format = 1;
-	// The width of the image in pixels.
-    uint32 width = 2;
-	// The height of the image in pixels. Must be 1 for 1D images.
-    uint32 height = 3;
-	// The depth of the image in pixels. Must be 1 for 1D or 2D images.
-    uint32 depth = 4;
-	// The pixel data.
-    bytes bytes = 5;
+  // The format of the image.
+  Format format = 1;
+  // The width of the image in pixels.
+  uint32 width = 2;
+  // The height of the image in pixels. Must be 1 for 1D images.
+  uint32 height = 3;
+  // The depth of the image in pixels. Must be 1 for 1D or 2D images.
+  uint32 depth = 4;
+  // The pixel data.
+  bytes bytes = 5;
 }
 
 // Info describes a one, two or three dimensional image.
 message Info {
-	// The format of the image.
-    Format format = 1;
-	// The width of the image in pixels.
-    uint32 width = 2;
-	// The height of the image in pixels. Must be 1 for 1D images.
-    uint32 height = 3;
-	// The depth of the image in pixels. Must be 1 for 1D or 2D images.
-    uint32 depth = 4;
-	// The identifier of the image data as bytes.
-    ID bytes = 5;
+  // The format of the image.
+  Format format = 1;
+  // The width of the image in pixels.
+  uint32 width = 2;
+  // The height of the image in pixels. Must be 1 for 1D images.
+  uint32 height = 3;
+  // The depth of the image in pixels. Must be 1 for 1D or 2D images.
+  uint32 depth = 4;
+  // The identifier of the image data as bytes.
+  ID bytes = 5;
 }
 
 message Format {
-    string name = 1;
-    oneof format {
-        FmtPNG png = 2;
-        FmtUncompressed uncompressed = 3;
-        FmtATC_RGB_AMD atc_rgb_amd = 4;
-        FmtATC_RGBA_EXPLICIT_ALPHA_AMD atc_rgba_explicit_alpha_amd = 5;
-        FmtATC_RGBA_INTERPOLATED_ALPHA_AMD atc_rgba_interpolated_alpha_amd = 6;
-        FmtETC1_RGB_U8_NORM etc1_rgb_u8_norm = 7;
-        FmtETC2_RGB_U8_NORM etc2_rgb_u8_norm = 8;
-        FmtETC2_RGBA_U8_NORM etc2_rgba_u8_norm = 9;
-        FmtETC2_RGBA_U8U8U8U1_NORM etc2_rgba_u8u8u8u1_norm = 10;
-        FmtETC2_R_U11_NORM etc2_r_u11_norm = 11;
-        FmtETC2_RG_U11_NORM etc2_rg_u11_norm = 12;
-        FmtETC2_R_S11_NORM etc2_r_s11_norm = 13;
-        FmtETC2_RG_S11_NORM etc2_rg_s11_norm = 14;
-        FmtS3_DXT1_RGB s3_dxt1_rgb = 15;
-        FmtS3_DXT1_RGBA s3_dxt1_rgba = 16;
-        FmtS3_DXT3_RGBA s3_dxt3_rgba = 17;
-        FmtS3_DXT5_RGBA s3_dxt5_rgba = 18;
-        FmtASTC astc = 19;
-    }
+  string name = 1;
+  oneof format {
+    FmtPNG png = 2;
+    FmtUncompressed uncompressed = 3;
+    FmtATC_RGB_AMD atc_rgb_amd = 4;
+    FmtATC_RGBA_EXPLICIT_ALPHA_AMD atc_rgba_explicit_alpha_amd = 5;
+    FmtATC_RGBA_INTERPOLATED_ALPHA_AMD atc_rgba_interpolated_alpha_amd = 6;
+    FmtETC1_RGB_U8_NORM etc1_rgb_u8_norm = 7;
+    FmtETC2_RGB_U8_NORM etc2_rgb_u8_norm = 8;
+    FmtETC2_RGBA_U8_NORM etc2_rgba_u8_norm = 9;
+    FmtETC2_RGBA_U8U8U8U1_NORM etc2_rgba_u8u8u8u1_norm = 10;
+    FmtETC2_R_U11_NORM etc2_r_u11_norm = 11;
+    FmtETC2_RG_U11_NORM etc2_rg_u11_norm = 12;
+    FmtETC2_R_S11_NORM etc2_r_s11_norm = 13;
+    FmtETC2_RG_S11_NORM etc2_rg_s11_norm = 14;
+    FmtS3_DXT1_RGB s3_dxt1_rgb = 15;
+    FmtS3_DXT1_RGBA s3_dxt1_rgba = 16;
+    FmtS3_DXT3_RGBA s3_dxt3_rgba = 17;
+    FmtS3_DXT5_RGBA s3_dxt5_rgba = 18;
+    FmtASTC astc = 19;
+  }
 }
 
 message FmtUncompressed {
-    stream.Format format = 1;
+  stream.Format format = 1;
 }
-message FmtPNG {}
-message FmtATC_RGB_AMD {}
-message FmtATC_RGBA_EXPLICIT_ALPHA_AMD {}
-message FmtATC_RGBA_INTERPOLATED_ALPHA_AMD {}
-message FmtETC1_RGB_U8_NORM {}
+message FmtPNG {
+}
+message FmtATC_RGB_AMD {
+}
+message FmtATC_RGBA_EXPLICIT_ALPHA_AMD {
+}
+message FmtATC_RGBA_INTERPOLATED_ALPHA_AMD {
+}
+message FmtETC1_RGB_U8_NORM {
+}
 message FmtETC2_RGB_U8_NORM {
-    bool srgb = 1;
+  bool srgb = 1;
 }
 message FmtETC2_RGBA_U8_NORM {
-    bool srgb = 1;
+  bool srgb = 1;
 }
 message FmtETC2_RGBA_U8U8U8U1_NORM {
-    bool srgb = 1;
+  bool srgb = 1;
 }
-message FmtETC2_R_U11_NORM {}
-message FmtETC2_RG_U11_NORM {}
-message FmtETC2_R_S11_NORM {}
-message FmtETC2_RG_S11_NORM {}
-message FmtS3_DXT1_RGB {}
-message FmtS3_DXT1_RGBA {}
-message FmtS3_DXT3_RGBA {}
-message FmtS3_DXT5_RGBA {}
+message FmtETC2_R_U11_NORM {
+}
+message FmtETC2_RG_U11_NORM {
+}
+message FmtETC2_R_S11_NORM {
+}
+message FmtETC2_RG_S11_NORM {
+}
+message FmtS3_DXT1_RGB {
+}
+message FmtS3_DXT1_RGBA {
+}
+message FmtS3_DXT3_RGBA {
+}
+message FmtS3_DXT5_RGBA {
+}
 message FmtASTC {
-    uint32 block_width = 1;
-    uint32 block_height = 2;
-    bool srgb = 3;
+  uint32 block_width = 1;
+  uint32 block_height = 2;
+  bool srgb = 3;
 }
 
 // GAPIS internal structure.
 message ConvertResolvable {
-    ID bytes = 1;
-	uint32 width = 2;
-	uint32 height = 3;
-	uint32 depth = 4;
-	Format format_from = 5;
-	Format format_to = 6;
+  ID bytes = 1;
+  uint32 width = 2;
+  uint32 height = 3;
+  uint32 depth = 4;
+  Format format_from = 5;
+  Format format_to = 6;
 
-	// Number of bytes between rows in the source image. If 0 then rows are contiguous.
-	uint32 row_stride_from = 7;
-	// Number of bytes between each 2D slice in the source image. If 0 then slices are contiguous.
-	uint32 slice_stride_from = 8;
+  // Number of bytes between rows in the source image. If 0 then rows are
+  // contiguous.
+  uint32 row_stride_from = 7;
+  // Number of bytes between each 2D slice in the source image. If 0 then slices
+  // are contiguous.
+  uint32 slice_stride_from = 8;
 }
 
 // GAPIS internal structure.
 message ResizeResolvable {
-    ID bytes = 1;
-    Format format = 2;
-    uint32 src_width = 3;
-    uint32 src_height = 4;
-    uint32 src_depth = 5;
-    uint32 dst_width = 6;
-    uint32 dst_height = 7;
-    uint32 dst_depth = 8;
+  ID bytes = 1;
+  Format format = 2;
+  uint32 src_width = 3;
+  uint32 src_height = 4;
+  uint32 src_depth = 5;
+  uint32 dst_width = 6;
+  uint32 dst_height = 7;
+  uint32 dst_depth = 8;
 }

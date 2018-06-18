@@ -19,14 +19,14 @@ option go_package = "github.com/google/gapid/test/robot/record";
 
 // Kind represents a ledger storage type.
 enum Kind {
-    // Unknown is the default (invalid) status.
-    Unknown = 0;
-    // None is used when persistent storage is not desired.
-    None = 1;
-    // Proto is used for binary proto buffer storage, extension .pbb
-    Proto = 2;
-    // Text is used for text proto buffer storage, extension .pbt
-    Text = 3;
-    // JSON is used for json storage, extension .json
-    JSON = 4;
+  // Unknown is the default (invalid) status.
+  Unknown = 0;
+  // None is used when persistent storage is not desired.
+  None = 1;
+  // Proto is used for binary proto buffer storage, extension .pbb
+  Proto = 2;
+  // Text is used for text proto buffer storage, extension .pbt
+  Text = 3;
+  // JSON is used for json storage, extension .json
+  JSON = 4;
 }

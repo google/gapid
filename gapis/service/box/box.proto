@@ -40,7 +40,6 @@ message Value {
   }
 }
 
-
 message Pointer {
   // base address of the pointer.
   uint64 address = 1;

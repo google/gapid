@@ -21,42 +21,42 @@ option go_package = "github.com/google/gapid/gapidapk/pkginfo";
 
 // Package describes a single Android package.
 message Package {
-    // Name is the name of the Android package.
-    string name = 1;
-    // Debuggable is true for debug apks.
-    bool debuggable = 2;
-    // Icon is an index into the icon array in the list of packages.
-    int32 icon = 3;
-    // Activities represents the list of activities in this package.
-    repeated Activity activities = 4;
-    // Abi, if present, represents the ABI of this package.
-    string ABI = 5;
+  // Name is the name of the Android package.
+  string name = 1;
+  // Debuggable is true for debug apks.
+  bool debuggable = 2;
+  // Icon is an index into the icon array in the list of packages.
+  int32 icon = 3;
+  // Activities represents the list of activities in this package.
+  repeated Activity activities = 4;
+  // Abi, if present, represents the ABI of this package.
+  string ABI = 5;
 }
 
 // Activity describes an activity within an Android package.
 message Activity {
-    // Name is the Java class name of this activity.
-    string name = 1;
-    // Icon is the index into the icon array in the list of packages.
-    int32 icon = 2;
-    // Actions is the list of actions supported by the activity.
-    repeated Action actions = 3;
+  // Name is the Java class name of this activity.
+  string name = 1;
+  // Icon is the index into the icon array in the list of packages.
+  int32 icon = 2;
+  // Actions is the list of actions supported by the activity.
+  repeated Action actions = 3;
 }
 
 // Action describes an action for an activity.
 message Action {
-    // Name is the action name.
-    string name = 1;
-    // IsLaunch is true is this is a launcher action.
-    bool is_launch = 2;
+  // Name is the action name.
+  string name = 1;
+  // IsLaunch is true is this is a launcher action.
+  bool is_launch = 2;
 }
 
 // PackageList describes installed packages on a device.
 message PackageList {
-    // Packages represents the list of installed packages.
-    repeated Package packages = 1;
-    // Icons is an array of base64-encoded icons.
-    repeated bytes icons = 2;
-    // OnlyDebuggable is true if we only requested debuggable APKs.
-    bool only_debuggable = 3;
+  // Packages represents the list of installed packages.
+  repeated Package packages = 1;
+  // Icons is an array of base64-encoded icons.
+  repeated bytes icons = 2;
+  // OnlyDebuggable is true if we only requested debuggable APKs.
+  bool only_debuggable = 3;
 }

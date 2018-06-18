@@ -20,26 +20,26 @@ option go_package = "github.com/google/gapid/gapis/memory/memory_pb";
 
 // Observation is the structure for a single memory observation.
 message Observation {
-    // Base is the starting address for the observation range.
-    uint64 base = 1;
-    // Size is the byte count of the observation range.
-    uint64 size = 2;
-    // ResIndex is the index of the resource (used on disk).
-    sint64 res_index = 3;
-    // The pool identifier.
-    uint32 pool = 4;
+  // Base is the starting address for the observation range.
+  uint64 base = 1;
+  // Size is the byte count of the observation range.
+  uint64 size = 2;
+  // ResIndex is the index of the resource (used on disk).
+  sint64 res_index = 3;
+  // The pool identifier.
+  uint32 pool = 4;
 }
 
 // Slice is the common data between all slice types.
 message Slice {
-    // Original pointer this slice derives from.
-    uint64 root = 1;
-    // Address of first element.
-    uint64 base = 2;
-    // The size of the slice in bytes.
-    uint64 size = 3;
-    // The number of elements in the slice.
-    uint64 count = 4;
-    // The pool identifier.
-    uint32 pool = 5;
+  // Original pointer this slice derives from.
+  uint64 root = 1;
+  // Address of first element.
+  uint64 base = 2;
+  // The size of the slice in bytes.
+  uint64 size = 3;
+  // The number of elements in the slice.
+  uint64 count = 4;
+  // The pool identifier.
+  uint32 pool = 5;
 }

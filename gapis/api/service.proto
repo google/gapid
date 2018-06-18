@@ -27,201 +27,202 @@ option go_package = "github.com/google/gapid/gapis/api";
 // Command describes the service representation for a single intercepted command
 // or sub-command.
 message Command {
-	// The function name.
-	string name = 1;
-	// The function's API.
-	path.API API = 2;
-	// The list of function parameters.
-	repeated Parameter parameters = 3;
-	// The function return value 'parameter'.
-	Parameter result = 4;
-	// The identifier of the thread that issued this command.
-	uint64 thread = 5;
+  // The function name.
+  string name = 1;
+  // The function's API.
+  path.API API = 2;
+  // The list of function parameters.
+  repeated Parameter parameters = 3;
+  // The function return value 'parameter'.
+  Parameter result = 4;
+  // The identifier of the thread that issued this command.
+  uint64 thread = 5;
 }
 
 // Parameter is the service representation of a parameter of a command.
 message Parameter {
-	// The name of the parameter.
-	string name = 1;
-	// The value of the parameter.
-	box.Value value = 2;
-	// The possible alternative named values for the parameter.
-	path.ConstantSet constants = 3;
+  // The name of the parameter.
+  string name = 1;
+  // The value of the parameter.
+  box.Value value = 2;
+  // The possible alternative named values for the parameter.
+  path.ConstantSet constants = 3;
 }
 
 // DrawPrimitive is an enumerator of primitive draw modes
 enum DrawPrimitive {
-	Points = 0;
-	Lines = 1;
-	LineStrip = 2;
-	LineLoop = 3;
-	Triangles = 4;
-	TriangleStrip = 5;
-	TriangleFan = 6;
+  Points = 0;
+  Lines = 1;
+  LineStrip = 2;
+  LineLoop = 3;
+  Triangles = 4;
+  TriangleStrip = 5;
+  TriangleFan = 6;
 }
 
 // ResourceType is an enumerator of resource types.
 enum ResourceType {
-	// UnknownResource represents an unknown resource type
-	UnknownResource = 0;
-	// Texture represents the Texture resource type
-	TextureResource = 1;
-	// ShaderResource represents the Shader resource type
-	ShaderResource = 2;
-	// ProgramResource represents the Program resource type
-	ProgramResource = 3;
+  // UnknownResource represents an unknown resource type
+  UnknownResource = 0;
+  // Texture represents the Texture resource type
+  TextureResource = 1;
+  // ShaderResource represents the Shader resource type
+  ShaderResource = 2;
+  // ProgramResource represents the Program resource type
+  ProgramResource = 3;
 }
 
 // FramebufferAttachment values indicate the type of frame buffer attachment.
 enum FramebufferAttachment {
-	Depth = 0;
-	Stencil = 1;
-	Color0 = 2;
-	Color1 = 3;
-	Color2 = 4;
-	Color3 = 5;
+  Depth = 0;
+  Stencil = 1;
+  Color0 = 2;
+  Color1 = 3;
+  Color2 = 4;
+  Color3 = 5;
 }
 
 enum ShaderType {
-	Vertex = 0;
-	Geometry = 1;
-	TessControl = 2;
-	TessEvaluation = 3;
-	Fragment = 4;
-	Compute = 5;
-	Spirv = 6;
-	SpirvBinary = 7;
+  Vertex = 0;
+  Geometry = 1;
+  TessControl = 2;
+  TessEvaluation = 3;
+  Fragment = 4;
+  Compute = 5;
+  Spirv = 6;
+  SpirvBinary = 7;
 }
 
 enum UniformFormat {
-	Scalar = 0;
-	Vec2 = 1;
-	Vec3 = 2;
-	Vec4 = 3;
-	Mat2 = 4;
-	Mat3 = 5;
-	Mat4 = 6;
-	Mat2x3 = 7;
-	Mat2x4 = 8;
-	Mat3x2 = 9;
-	Mat3x4 = 10;
-	Mat4x2 = 11;
-	Mat4x3 = 12;
-	Sampler = 13;
+  Scalar = 0;
+  Vec2 = 1;
+  Vec3 = 2;
+  Vec4 = 3;
+  Mat2 = 4;
+  Mat3 = 5;
+  Mat4 = 6;
+  Mat2x3 = 7;
+  Mat2x4 = 8;
+  Mat3x2 = 9;
+  Mat3x4 = 10;
+  Mat4x2 = 11;
+  Mat4x3 = 12;
+  Sampler = 13;
 }
 
 enum UniformType {
-	Int32 = 0;
-	Uint32 = 1;
-	Bool = 2;
-	Float = 3;
-	Double = 4;
+  Int32 = 0;
+  Uint32 = 1;
+  Bool = 2;
+  Float = 3;
+  Double = 4;
 }
 
 // ResourceData represents the resource state at a single point in a capture
 message ResourceData {
-	oneof data {
-		Texture texture = 1;
-		Shader shader = 2;
-		Program program = 3;
-	}
+  oneof data {
+    Texture texture = 1;
+    Shader shader = 2;
+    Program program = 3;
+  }
 }
 
 // Texture represents a texture resource.
 message Texture {
-	oneof type {
-		Texture1D texture_1d = 1;
-		Texture1DArray texture_1d_array = 2;
-		Texture2D texture_2d = 3;
-		Texture2DArray texture_2d_array = 4;
-		Texture3D texture_3d = 5;
-		Cubemap cubemap = 6;
-		CubemapArray cubemap_array = 7;
-	}
+  oneof type {
+    Texture1D texture_1d = 1;
+    Texture1DArray texture_1d_array = 2;
+    Texture2D texture_2d = 3;
+    Texture2DArray texture_2d_array = 4;
+    Texture3D texture_3d = 5;
+    Cubemap cubemap = 6;
+    CubemapArray cubemap_array = 7;
+  }
 }
 
 // Shader represents a shader resource.
 message Shader {
-	ShaderType type = 1;
-	string source = 2;
+  ShaderType type = 1;
+  string source = 2;
 }
 
 // Program represents a shader resource.
 message Program {
-	repeated Shader shaders = 1;
-	repeated Uniform uniforms = 2;
+  repeated Shader shaders = 1;
+  repeated Uniform uniforms = 2;
 }
 
 // Uniform respresents a uniform/active uniform resource.
 message Uniform {
-	uint32 uniform_location = 1;
-	string name = 2;
-	UniformFormat format = 3;
-	UniformType type = 4;
-	box.Value value = 5;
+  uint32 uniform_location = 1;
+  string name = 2;
+  UniformFormat format = 3;
+  UniformType type = 4;
+  box.Value value = 5;
 }
 
 // IndexBuffer is a stream of vertex indices used to draw a model.
 message IndexBuffer {
-	repeated uint32 indices = 1;
+  repeated uint32 indices = 1;
 }
 
 // Mesh represents the geometry of a draw call.
 message Mesh {
-	DrawPrimitive draw_primitive = 1;
-	vertex.Buffer vertex_buffer = 2;
-	IndexBuffer index_buffer = 3;
+  DrawPrimitive draw_primitive = 1;
+  vertex.Buffer vertex_buffer = 2;
+  IndexBuffer index_buffer = 3;
 
-	message Stats {
-		uint32 vertices = 1;
-		uint32 indices = 2;
-		uint32 primitives = 3;
-	}
-	Stats stats = 4;
+  message Stats {
+    uint32 vertices = 1;
+    uint32 indices = 2;
+    uint32 primitives = 3;
+  }
+  Stats stats = 4;
 }
 
 // Texture1D represents a one-dimensional texture resource.
 message Texture1D {
-	// The mip-map levels.
-	repeated image.Info levels = 1;
+  // The mip-map levels.
+  repeated image.Info levels = 1;
 }
 
 // Texture1DArray represents a one-dimensional texture array resource.
 message Texture1DArray {
-	repeated Texture1D layers = 1;
+  repeated Texture1D layers = 1;
 }
 
 // Texture2D represents a two-dimensional texture resource.
 message Texture2D {
-	// The mip-map levels.
-	repeated image.Info levels = 1;
-	bool multisampled = 2;
+  // The mip-map levels.
+  repeated image.Info levels = 1;
+  bool multisampled = 2;
 }
 
 // Texture2DArray represents a two-dimensional texture array resource.
 message Texture2DArray {
-	repeated Texture2D layers = 1;
-	bool multisampled = 2;
+  repeated Texture2D layers = 1;
+  bool multisampled = 2;
 }
 
 // Texture3D represents a three-dimensional texture resource.
 message Texture3D {
-	// The mip-map levels.
-	repeated image.Info levels = 1;
+  // The mip-map levels.
+  repeated image.Info levels = 1;
 }
 
 // Cubemap represents a cube-map texture resource.
 message Cubemap {
-	// The mip-map levels.
-	repeated CubemapLevel levels = 1;
+  // The mip-map levels.
+  repeated CubemapLevel levels = 1;
 }
 
 // CubemapArray represents a cube-map texture array resource.
 message CubemapArray {
-	repeated Cubemap layers = 1;
+  repeated Cubemap layers = 1;
 }
 
-// CubemapLevel represents a single mip-map level of a cube-map texture resource.
+// CubemapLevel represents a single mip-map level of a cube-map texture
+// resource.
 //
 //         .........
 //       .  +y   . :
@@ -231,12 +232,12 @@ message CubemapArray {
 //     :.......:
 //
 message CubemapLevel {
-	image.Info negative_x = 1;
-	image.Info positive_x = 2;
-	image.Info negative_y = 3;
-	image.Info positive_y = 4;
-	image.Info negative_z = 5;
-	image.Info positive_z = 6;
+  image.Info negative_x = 1;
+  image.Info positive_x = 2;
+  image.Info negative_y = 3;
+  image.Info positive_y = 4;
+  image.Info negative_z = 5;
+  image.Info positive_z = 6;
 }
 
 // Metrics about the state at some point in a trace

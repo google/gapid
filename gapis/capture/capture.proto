@@ -22,46 +22,48 @@ import "core/os/device/device.proto";
 
 // Record holds all the data for an entire capture.
 message Record {
-	// Name of the capture.
-	string name = 1;
-	// Database identifier of the data.
-	bytes data = 2;
+  // Name of the capture.
+  string name = 1;
+  // Database identifier of the data.
+  bytes data = 2;
 }
 
 // Header holds information about the capture that is generated when the trace
 // begins. It is stored in the trace file as the first section.
 message Header {
-	// The device used to take the capture.
-	device.Instance device = 1;
-	// The ABI used by the traced process.
-	device.ABI ABI = 2;
-	// Version is incremented on breaking changes to the capture or command format.
-	sint32 version = 3;
+  // The device used to take the capture.
+  device.Instance device = 1;
+  // The ABI used by the traced process.
+  device.ABI ABI = 2;
+  // Version is incremented on breaking changes to the capture or command
+  // format.
+  sint32 version = 3;
 }
 
 // Resource is the storage type for some data keyed by an identifer.
 message Resource {
-	// Index is the index of this resource within the capture (starting with 1).
-	// This field is optional! It is used only to verify that we track the order correctly.
-	sint64 index = 1;
-	// Data is the actual data payload.
-	bytes data = 2;
+  // Index is the index of this resource within the capture (starting with 1).
+  // This field is optional! It is used only to verify that we track the order
+  // correctly.
+  sint64 index = 1;
+  // Data is the actual data payload.
+  bytes data = 2;
 }
 
 // FramebufferObservation is a message that holds a snapshot of the color-buffer
 // of the bound framebuffer at the time of capture. These observations can be
 // used to verify that replay gave the same results as what was traced.
 message FramebufferObservation {
-	// Framebuffer width in pixels.
-	uint32 original_width = 1;
-	// Framebuffer width in pixels.
-	uint32 original_height = 2;
-	// Width of downsampled data.
-	uint32 data_width = 3;
-	// height of downsampled data.
-	uint32 data_height = 4;
-	// The RGBA color-buffer data.
-	bytes data = 5;
+  // Framebuffer width in pixels.
+  uint32 original_width = 1;
+  // Framebuffer width in pixels.
+  uint32 original_height = 2;
+  // Width of downsampled data.
+  uint32 data_width = 3;
+  // height of downsampled data.
+  uint32 data_height = 4;
+  // The RGBA color-buffer data.
+  bytes data = 5;
 }
 
 // GlobalState is the object that denotes all of the API-specific initial states

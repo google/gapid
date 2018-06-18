@@ -22,8 +22,8 @@ import "test/robot/search/search.proto";
 
 // UploadChunk represents a chunk of data to upload a new entity to the stash.
 // The first entity in an upload chunk stream must be an Upload entry.
-// An Upload entry closes the previous Upload if there is one, and starts a new one.
-// Data entries are added to the currently active upload.
+// An Upload entry closes the previous Upload if there is one, and starts a new
+// one. Data entries are added to the currently active upload.
 message UploadChunk {
   oneof Of {
     // Upload adds a new entity to the store.
@@ -42,13 +42,18 @@ message DownloadChunk {
 // Service is the api to a byte buffer storage service.
 service Service {
   // Search is used to find entities that match the given patterns.
-  rpc Search(search.Query) returns(stream stash.Entity) {};
+  rpc Search(search.Query) returns (stream stash.Entity) {
+  };
   // Upload is used to add new entities to the store.
-  // The data may be broken into many chunks, which should not be bigger than 1M each.
-  rpc Upload(stream UploadChunk) returns(UploadResponse) {};
+  // The data may be broken into many chunks, which should not be bigger than 1M
+  // each.
+  rpc Upload(stream UploadChunk) returns (UploadResponse) {
+  };
   // Download is used to fetch the full entity for an id.
-  // The data may be broken into many chunks, which should not be bigger than 1M each.
-  rpc Download(DownloadRequest) returns(stream DownloadChunk) {};
+  // The data may be broken into many chunks, which should not be bigger than 1M
+  // each.
+  rpc Download(DownloadRequest) returns (stream DownloadChunk) {
+  };
 }
 
 message DownloadRequest {
@@ -60,4 +65,5 @@ message DownloadRequest {
   uint64 length = 3;
 }
 
-message UploadResponse {}
+message UploadResponse {
+}

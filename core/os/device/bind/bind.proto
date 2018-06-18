@@ -19,8 +19,8 @@ option go_package = "github.com/google/gapid/core/os/device/bind";
 
 // Status represents the last queried connection status of a device.
 enum Status {
-    Unknown = 0;
-    Offline = 1;
-    Online = 2;
-    Unauthorized = 3;
+  Unknown = 0;
+  Offline = 1;
+  Online = 2;
+  Unauthorized = 3;
 }

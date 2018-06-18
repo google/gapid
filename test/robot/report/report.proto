@@ -23,7 +23,7 @@ import "test/robot/search/search.proto";
 import "core/os/device/device.proto";
 
 // Input describes the inputs to a report action.
-message Input{
+message Input {
   // Trace is the stash id of the trace to generate a report for.
   string trace = 1;
   // Gapit is the stash id of the graphics analysis tool to use.
@@ -37,7 +37,7 @@ message Input{
   // Package is the stash id of the package used to generate the report.
   string package = 6;
   // Api is the API of the commands to report in the trace.
-  string  api = 7;
+  string api = 7;
   // GapirDevice is the device on which to run the trace for report.
   string gapir_device = 8;
 }
@@ -48,7 +48,7 @@ message ToolingLayout {
 }
 
 // Output describes the outputs of a report action.
-message Output{
+message Output {
   // Log is stash id of the generated log file.
   string log = 1;
   // Report is the stash id of the generated report file.
@@ -74,7 +74,7 @@ message Action {
 }
 
 // Task holds the information needed to run a report task in a device.
-message Task{
+message Task {
   // Action is the id of the action this task should post results to.
   string action = 1;
   // Input is the set of inputs to the task.
@@ -84,16 +84,20 @@ message Task{
 // Service is the api to the robot device storage.
 service Service {
   // Search is used to find actions that match the given query.
-  rpc Search(search.Query) returns(stream Action) {};
+  rpc Search(search.Query) returns (stream Action) {
+  };
   // Register registers a device for a stream of tasks.
-  rpc Register(worker.RegisterRequest) returns(stream Task) {};
+  rpc Register(worker.RegisterRequest) returns (stream Task) {
+  };
   // Do asks the manager to send a task to a device.
-  rpc Do(DoRequest) returns(worker.DoResponse) {};
+  rpc Do(DoRequest) returns (worker.DoResponse) {
+  };
   // Update sets the results of an action.
-  rpc Update(UpdateRequest) returns(worker.UpdateResponse) {};
+  rpc Update(UpdateRequest) returns (worker.UpdateResponse) {
+  };
 }
 
-message DoRequest{
+message DoRequest {
   // Device is the device id to perform the task on.
   string device = 1;
   // Input is the set of inputs to the task.

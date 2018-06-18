@@ -22,19 +22,19 @@ option go_package = "github.com/google/gapid/gapis/api/gles";
 
 // GAPIS internal structure.
 message GLSLParseResolvable {
-	string shader_source = 1;
-	uint32 language = 2;
+  string shader_source = 1;
+  uint32 language = 2;
 }
 
 // Resolves to []byte.
 message ReadGPUTextureDataResolveable {
-	path.Capture capture = 1;
-	path.Device device = 2;
-	uint64 after = 3;
-	uint64 thread = 4;
-	uint32 texture = 5;
-	uint32 level = 6;
-	uint32 layer = 7;
-	uint32 data_format = 8;
-	uint32 data_type = 9;
+  path.Capture capture = 1;
+  path.Device device = 2;
+  uint64 after = 3;
+  uint64 thread = 4;
+  uint32 texture = 5;
+  uint32 level = 6;
+  uint32 layer = 7;
+  uint32 data_format = 8;
+  uint32 data_type = 9;
 }

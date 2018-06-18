@@ -38,21 +38,27 @@ message Subject {
 message Hints {
   // traceTime is the preferred duration for tracing this subject.
   google.protobuf.Duration traceTime = 1;
-  // ObserveFrames is the preferred number of frames to observe for tracing this subject, 0 for all.
+  // ObserveFrames is the preferred number of frames to observe for tracing this
+  // subject, 0 for all.
   uint32 observeFrames = 2;
-  // API is the name of the api to capture on this subject, values can be gles and vulkan
+  // API is the name of the api to capture on this subject, values can be gles
+  // and vulkan
   string API = 4;
 }
 
 // Service is the api to the robot app storage.
 service Service {
   // Search is used to find subjects that match the given query.
-  rpc Search(search.Query) returns(stream Subject) {};
-  // Add pulls the subject from the stash, analyzes it and adds it to the service.
-  // If the subject already exists, it will be returned without modification.
-  rpc Add(AddRequest) returns(AddResponse) {};
+  rpc Search(search.Query) returns (stream Subject) {
+  };
+  // Add pulls the subject from the stash, analyzes it and adds it to the
+  // service. If the subject already exists, it will be returned without
+  // modification.
+  rpc Add(AddRequest) returns (AddResponse) {
+  };
   // Update modifies a subject entry
-  rpc Update(UpdateRequest) returns(UpdateResponse) {};
+  rpc Update(UpdateRequest) returns (UpdateResponse) {
+  };
 }
 
 message AddRequest {

@@ -19,7 +19,8 @@ option go_package = "github.com/google/gapid/test/robot/master";
 
 import "test/robot/search/search.proto";
 
-// Satellite is the set of information the master knows about a connected satellite.
+// Satellite is the set of information the master knows about a connected
+// satellite.
 message Satellite {
   // Name is the name of the satellite for command targeting.
   // The name 'master' is reserved to refer to the master rather
@@ -39,8 +40,10 @@ message Shutdown {
   bool restart = 2;
 }
 
-// Ping is a command used to verify from the send end that a streaming rpc is still open.
-message Ping {}
+// Ping is a command used to verify from the send end that a streaming rpc is
+// still open.
+message Ping {
+}
 
 // Identify is a command that is sent to satellites to tell them their identity.
 message Identify {
@@ -73,14 +76,18 @@ service Service {
   // Orbit adds a satellite to the set being managed by the master.
   // It will stay connected until the report stream is closed.
   // The master will use the returned command stream to control the satellite.
-  rpc Orbit(OrbitRequest) returns(stream Command) {};
-  // Shutdown is called to ask the master to send shutdown requests to satellites.
-  rpc Shutdown(ShutdownRequest) returns(ShutdownResponse) {};
+  rpc Orbit(OrbitRequest) returns (stream Command) {
+  };
+  // Shutdown is called to ask the master to send shutdown requests to
+  // satellites.
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {
+  };
   // Search is used to find satellite servers that match the given query.
-  rpc Search(search.Query) returns(stream Satellite) {};
+  rpc Search(search.Query) returns (stream Satellite) {
+  };
 }
 
-message ShutdownRequest{
+message ShutdownRequest {
   // Shutdown hold the shutdown options.
   Shutdown shutdown = 1;
   // To holds the set of satellite servers to issue the shutdown
@@ -90,9 +97,10 @@ message ShutdownRequest{
   repeated string to = 2;
 }
 
-message ShutdownResponse{}
+message ShutdownResponse {
+}
 
-message OrbitRequest{
+message OrbitRequest {
   // The list of services that the orbitting satellite supports.
   ServiceList Services = 1;
 }
