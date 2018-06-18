@@ -531,6 +531,17 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 			VkResult_VK_SUCCESS,
 		))
 	}
+	for phyDev, familyIndices := range s.PhysicalDeviceSupports().All() {
+		for index, supported := range familyIndices.QueueFamilySupports().All() {
+			sb.write(sb.cb.VkGetPhysicalDeviceSurfaceSupportKHR(
+				phyDev,
+				index,
+				s.VulkanHandle(),
+				sb.MustAllocWriteData(supported).Ptr(),
+				VkResult_VK_SUCCESS,
+			))
+		}
+	}
 }
 
 func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {

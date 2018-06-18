@@ -400,6 +400,14 @@ func (e externs) vkErrNullPointer(pointerType string) {
 	e.onVkError(issue)
 }
 
+func (e externs) vkErrNotNullPointer(pointerType string) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Not Null pointer of %s", pointerType)
+	e.onVkError(issue)
+}
+
 func (e externs) vkErrUnrecognizedExtension(name string) {
 	var issue replay.Issue
 	issue.Command = e.cmdID

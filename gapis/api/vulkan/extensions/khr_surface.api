@@ -141,8 +141,20 @@ cmd VkResult vkGetPhysicalDeviceSurfaceSupportKHR(
     VkSurfaceKHR     surface,
     VkBool32*        pSupported) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if !(surface in Surfaces) { vkErrorInvalidSurface(surface) }
   if pSupported == null { vkErrorNullPointer("VkBool32") }
-  pSupported[0] = ?
+
+  supported := ?
+
+  pSupported[0] = supported
+  surf := Surfaces[surface]
+  if surf != null {
+    if surf.PhysicalDeviceSupports[physicalDevice] == null {
+      surf.PhysicalDeviceSupports[physicalDevice] = new!queueFamilySupports()
+    }
+    surf.PhysicalDeviceSupports[physicalDevice].QueueFamilySupports[queueFamilyIndex] = supported
+  }
+
   return ?
 }
 
@@ -161,6 +173,7 @@ cmd VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 
 @extension("VK_KHR_surface")
 @indirect("VkPhysicalDevice", "VkInstance")
+@custom
 cmd VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
@@ -187,6 +200,7 @@ cmd VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
 
 @extension("VK_KHR_surface")
 @indirect("VkPhysicalDevice", "VkInstance")
+@custom
 cmd VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkPhysicalDevice  physicalDevice,
     VkSurfaceKHR      surface,
@@ -225,9 +239,14 @@ enum SurfaceType {
   SURFACE_TYPE_MIR     = 6
 }
 
+@internal class queueFamilySupports {
+  map!(u32, VkBool32) QueueFamilySupports
+}
+
 @internal class SurfaceObject {
   @unused VkInstance                Instance
   @unused VkSurfaceKHR              VulkanHandle
   @unused SurfaceType               Type
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  map!(VkPhysicalDevice, ref!queueFamilySupports) PhysicalDeviceSupports
 }

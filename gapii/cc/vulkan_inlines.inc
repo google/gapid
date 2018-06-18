@@ -27,6 +27,10 @@ inline void VulkanSpy::vkErrNullPointer(CallObserver*, std::string pointerType) 
     GAPID_WARNING("Error: Null pointer of %s", pointerType.c_str())
 }
 
+inline void VulkanSpy::vkErrNotNullPointer(CallObserver*, std::string pointerType) {
+    GAPID_WARNING("Error: Not Null Pointer: %s", pointerType.c_str());
+}
+
 inline void VulkanSpy::vkErrUnrecognizedExtension(CallObserver*, std::string name) {
     GAPID_WARNING("Error: Unrecognized extension: %s", name.c_str())
 }

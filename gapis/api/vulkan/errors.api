@@ -40,6 +40,7 @@
 // en-us.stb.md.
 extern void vkErrInvalidHandle(string handleType, u64 handle)
 extern void vkErrNullPointer(string pointerType)
+extern void vkErrNotNullPointer(string pointerType)
 extern void vkErrUnrecognizedExtension(string name)
 extern void vkErrExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle)
 extern void vkErrInvalidDescriptorArrayElement(u64 set, u32 binding, u32 arrayIndex)
@@ -193,6 +194,11 @@ sub void vkErrorInvalidHandle(string handleType, u64 handle) {
 sub void vkErrorNullPointer(string pointerType) {
   vkErrNullPointer(pointerType)
   abort
+}
+
+sub void vkErrorNotNullPointer(string pointerType) {
+  vkErrNotNullPointer(pointerType)
+  // Continue the mutation as this may not cause problem.
 }
 
 sub void vkErrorUnrecognizedExtension(const char* name) {

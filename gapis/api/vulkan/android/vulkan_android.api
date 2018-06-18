@@ -44,14 +44,21 @@ class VkAndroidSurfaceCreateInfoKHR {
 
 @extension("VK_KHR_android_surface")
 @indirect("VkInstance")
+@custom
 cmd VkResult vkCreateAndroidSurfaceKHR(
         VkInstance                              instance,
         const VkAndroidSurfaceCreateInfoKHR*    pCreateInfo,
         AllocationCallbacks                     pAllocator,
         VkSurfaceKHR*                           pSurface) {
-    surface := createAndroidSurfaceObject(pCreateInfo)
+
+    info := pCreateInfo[0]
+    surface := new!SurfaceObject()
     surface.Instance = instance
     surface.Type = SURFACE_TYPE_ANDROID
+
+    if info.pNext != null {
+      vkErrorNotNullPointer("const void* (pNext)")
+    }
 
     handle := ?
     pSurface[0] = handle
@@ -59,18 +66,4 @@ cmd VkResult vkCreateAndroidSurfaceKHR(
     Surfaces[handle] = surface
 
     return ?
-}
-
-// ----------------------------------------------------------------------------
-// Struct subroutines
-// ----------------------------------------------------------------------------
-
-sub ref!SurfaceObject createAndroidSurfaceObject(const VkAndroidSurfaceCreateInfoKHR* data) {
-    object := new!SurfaceObject()
-    _ = data[0]
-
-    // TODO: pNext
-    // TODO: window?
-
-    return object
 }
