@@ -204,7 +204,7 @@ class TestFixture : public ::testing::Test {
                                      // functions.
 };
 TestFixture* TestFixture::unique_test_ = nullptr;
-}
+}  // namespace
 
 // A helper function to ease void* pointer + offset calculation.
 void* VoidPointerAdd(void* addr, ssize_t offset) {
@@ -442,7 +442,7 @@ class DirtyPageTableForTest : public DirtyPageTable {
   const std::list<uintptr_t>::iterator& current() const { return current_; }
   size_t stored() const { return stored_; }
 };
-}
+}  // namespace
 
 TEST(DirtyPageTableTest, Init) {
   DirtyPageTableForTest t;
@@ -699,7 +699,7 @@ class AlignedMemory {
  private:
   void* mem_;
 };
-}
+}  // namespace
 
 // Allocates one page of memory, adds the memory range to the memory tracker,
 // touches the allocated memory, the tracker should record the touched page.
@@ -898,8 +898,7 @@ template <int SIG>
 class SilentSignal {
  public:
   SilentSignal() : succeeded_(false), old_sigaction_{0} {
-    succeeded_ =
-        RegisterSignalHandler(SIG, IgnoreSignal, &old_sigaction_);
+    succeeded_ = RegisterSignalHandler(SIG, IgnoreSignal, &old_sigaction_);
   }
   ~SilentSignal() {
     if (succeeded_) {
@@ -916,12 +915,12 @@ class SilentSignal {
 
 // To silently ignore a SIGSEGV signal, the permission of the fault page
 // will be set to read-write before return.
-template<>
+template <>
 void SilentSignal<SIGSEGV>::IgnoreSignal(int, siginfo_t* info, void*) {
   void* page_start = GetAlignedAddress(info->si_addr, getpagesize());
   mprotect(page_start, getpagesize(), PROT_READ | PROT_WRITE);
 }
-}
+}  // namespace
 
 TEST(MemoryTrackerTest, RegisterAndUnregister) {
   SilentSignal<SIGSEGV> ss;
@@ -936,8 +935,7 @@ TEST(MemoryTrackerTest, RegisterAndUnregister) {
   EXPECT_TRUE(t.EnableMemoryTracker());
   // Register segfault handler with the same tracker in another thread should
   // also return true.
-  std::thread another_thread(
-      [&t]() { EXPECT_TRUE(t.EnableMemoryTracker()); });
+  std::thread another_thread([&t]() { EXPECT_TRUE(t.EnableMemoryTracker()); });
   another_thread.join();
 
   EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));

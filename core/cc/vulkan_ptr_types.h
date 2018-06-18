@@ -37,26 +37,26 @@
 #include "core/cc/target.h"
 
 #if defined(TARGET_OS_WINDOWS)
-    // On Windows, Vulkan commands use the stdcall convention
-    #define VKAPI_ATTR
-    #define VKAPI_CALL __stdcall
-    #define VKAPI_PTR  VKAPI_CALL
+// On Windows, Vulkan commands use the stdcall convention
+#define VKAPI_ATTR
+#define VKAPI_CALL __stdcall
+#define VKAPI_PTR VKAPI_CALL
 #elif defined(TARGET_OS_ANDROID) && defined(__ARM_ARCH_7A__)
-    // On Android/ARMv7a, Vulkan functions use the armeabi-v7a-hard calling
-    // convention, even if the application's native code is compiled with the
-    // armeabi-v7a calling convention.
-    #define VKAPI_ATTR __attribute__((pcs("aapcs-vfp")))
-    #define VKAPI_CALL
-    #define VKAPI_PTR  VKAPI_ATTR
+// On Android/ARMv7a, Vulkan functions use the armeabi-v7a-hard calling
+// convention, even if the application's native code is compiled with the
+// armeabi-v7a calling convention.
+#define VKAPI_ATTR __attribute__((pcs("aapcs-vfp")))
+#define VKAPI_CALL
+#define VKAPI_PTR VKAPI_ATTR
 #else
-    // On other platforms, use the default calling convention
-    #define VKAPI_ATTR
-    #define VKAPI_CALL
-    #define VKAPI_PTR
+// On other platforms, use the default calling convention
+#define VKAPI_ATTR
+#define VKAPI_CALL
+#define VKAPI_PTR
 #endif
 
 #define VULKAN_API_ATTR VKAPI_ATTR
 #define VULKAN_API_CALL VKAPI_CALL
-#define VULKAN_API_PTR  VKAPI_PTR
+#define VULKAN_API_PTR VKAPI_PTR
 
 #endif

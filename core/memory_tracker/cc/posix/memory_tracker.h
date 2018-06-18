@@ -19,21 +19,24 @@
 
 #include "core/memory_tracker/cc/memory_protections.h"
 
-#include <cstdint>
 #include <pthread.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
+#include <cstdint>
 
 namespace gapii {
 namespace track_memory {
 
 inline bool set_protection(void* p, size_t size, PageProtections prot) {
-  uint32_t protections = (prot == PageProtections::kRead) ? PROT_READ :
-                    (prot == PageProtections::kWrite) ? PROT_WRITE :
-                (prot == PageProtections::kReadWrite) ? PROT_READ | PROT_WRITE: 0;
+  uint32_t protections = (prot == PageProtections::kRead)
+                             ? PROT_READ
+                             : (prot == PageProtections::kWrite)
+                                   ? PROT_WRITE
+                                   : (prot == PageProtections::kReadWrite)
+                                         ? PROT_READ | PROT_WRITE
+                                         : 0;
   return mprotect(p, size, protections);
 }
 
@@ -58,11 +61,9 @@ class SignalBlocker {
   sigset_t old_set_;
 };
 
-inline uint32_t GetPageSize() {
-  return getpagesize();
-}
+inline uint32_t GetPageSize() { return getpagesize(); }
 
-} // namespace track_memory
-} // namespace gapii
+}  // namespace track_memory
+}  // namespace gapii
 
-#endif // GAPII_MEMORY_TRACKER_POSIX_H
+#endif  // GAPII_MEMORY_TRACKER_POSIX_H

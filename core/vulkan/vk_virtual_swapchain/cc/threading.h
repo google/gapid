@@ -32,7 +32,7 @@ namespace swapchain {
 namespace threading {
 
 class mutex {
-public:
+ public:
   mutex(const mutex &) = delete;
   mutex &operator=(const mutex &) = delete;
   mutex() {
@@ -73,7 +73,7 @@ public:
   pthread_mutex_t &native_handle() { return mutex_; }
 #endif
 
-private:
+ private:
 #ifdef _WIN32
   CRITICAL_SECTION mutex_;
 #else
@@ -84,7 +84,7 @@ private:
 enum class cv_status { timeout, no_timeout };
 
 class condition_variable {
-public:
+ public:
   condition_variable(const condition_variable &) = delete;
   condition_variable &operator=(const condition_variable &) = delete;
   condition_variable() {
@@ -151,7 +151,7 @@ public:
 #endif
   }
 
-private:
+ private:
 #ifdef _WIN32
   CONDITION_VARIABLE condition_;
 #else
@@ -159,6 +159,6 @@ private:
 #endif
 };
 
-} // threading
-} // swapchain
-#endif // VK_VIRTUAL_SWAPCHAIN_THREADING_H_
+}  // namespace threading
+}  // namespace swapchain
+#endif  // VK_VIRTUAL_SWAPCHAIN_THREADING_H_

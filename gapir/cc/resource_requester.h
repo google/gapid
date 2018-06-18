@@ -17,28 +17,31 @@
 #ifndef GAPIR_RESOURCE_REQUESTER_H
 #define GAPIR_RESOURCE_REQUESTER_H
 
-#include "resource_provider.h"
 #include "replay_connection.h"
+#include "resource_provider.h"
 
-#include <memory> // std::unique_ptr
+#include <memory>  // std::unique_ptr
 
 namespace gapir {
 
-// Resource provider which use the ServerConnection to fetch the resources from the server
+// Resource provider which use the ServerConnection to fetch the resources from
+// the server
 class ResourceRequester : public ResourceProvider {
-public:
-    static std::unique_ptr<ResourceRequester> create();
+ public:
+  static std::unique_ptr<ResourceRequester> create();
 
-    // Request all of the requested resources from the ServerConnection with a single GET request.
-    bool get(const Resource* resources, size_t count, ReplayConnection* conn,
-             void* target, size_t size) override;
+  // Request all of the requested resources from the ServerConnection with a
+  // single GET request.
+  bool get(const Resource* resources, size_t count, ReplayConnection* conn,
+           void* target, size_t size) override;
 
-    // No prefetching is supported because there is no storage layer in this resource provider.
-    void prefetch(const Resource* resources, size_t count, ReplayConnection* conn,
-                  void* temp, size_t tempSize) override;
+  // No prefetching is supported because there is no storage layer in this
+  // resource provider.
+  void prefetch(const Resource* resources, size_t count, ReplayConnection* conn,
+                void* temp, size_t tempSize) override;
 
-private:
-    ResourceRequester() = default;
+ private:
+  ResourceRequester() = default;
 };
 
 }  // namespace gapir

@@ -31,81 +31,85 @@ namespace gapil {
 // underlying data.
 template <typename T>
 class Slice {
-public:
-    // Constructs a slice that points to nothing.
-    inline Slice();
+ public:
+  // Constructs a slice that points to nothing.
+  inline Slice();
 
-    // Constructs a slice which shares ownership over the data with other.
-    inline Slice(const Slice<T>& other);
+  // Constructs a slice which shares ownership over the data with other.
+  inline Slice(const Slice<T>& other);
 
-    // Constructs a new slice and pool sized to the given number of elements.
-    inline Slice(T* base, uint64_t count);
+  // Constructs a new slice and pool sized to the given number of elements.
+  inline Slice(T* base, uint64_t count);
 
-    // Constructs a new slice given the full explicit parameters.
-    inline Slice(pool_t* pool, void* root, void* base, uint64_t size, uint64_t count, bool add_ref = true);
+  // Constructs a new slice given the full explicit parameters.
+  inline Slice(pool_t* pool, void* root, void* base, uint64_t size,
+               uint64_t count, bool add_ref = true);
 
-    // Creates and returns a new slice wrapping the given pool.
-    // If add_ref is true then the pool's reference count will be incremented.
-    inline static Slice create(pool_t* pool, bool add_ref);
+  // Creates and returns a new slice wrapping the given pool.
+  // If add_ref is true then the pool's reference count will be incremented.
+  inline static Slice create(pool_t* pool, bool add_ref);
 
-    // Creates and returns a new slice and pool sized to the given number of
-    // elements.
-    inline static Slice create(context_t* ctx, uint64_t count);
+  // Creates and returns a new slice and pool sized to the given number of
+  // elements.
+  inline static Slice create(context_t* ctx, uint64_t count);
 
-    inline Slice(Slice<T>&&);
-    inline ~Slice();
+  inline Slice(Slice<T>&&);
+  inline ~Slice();
 
-    // Copy assignment
-    inline Slice<T>& operator = (const Slice<T>& other);
+  // Copy assignment
+  inline Slice<T>& operator=(const Slice<T>& other);
 
-    // Equality operator.
-    inline bool operator == (const Slice<T>& other) const;
+  // Equality operator.
+  inline bool operator==(const Slice<T>& other) const;
 
-    // Returns the number of elements in the slice.
-    inline uint64_t count() const;
+  // Returns the number of elements in the slice.
+  inline uint64_t count() const;
 
-    // Returns the size of the slice in bytes.
-    inline uint64_t size() const;
+  // Returns the size of the slice in bytes.
+  inline uint64_t size() const;
 
-    // Returns true if this is a slice on the application pool (external memory).
-    inline bool is_app_pool() const;
+  // Returns true if this is a slice on the application pool (external memory).
+  inline bool is_app_pool() const;
 
-    // Returns the underlying pool identifier.
-    inline uint32_t pool_id() const;
+  // Returns the underlying pool identifier.
+  inline uint32_t pool_id() const;
 
-    // Returns the underlying pool.
-    inline const pool_t* pool() const;
+  // Returns the underlying pool.
+  inline const pool_t* pool() const;
 
-    // Returns true if the slice contains the specified value.
-    inline bool contains(const T& value) const;
+  // Returns true if the slice contains the specified value.
+  inline bool contains(const T& value) const;
 
-    // Returns a new subset slice from this slice.
-    inline Slice<T> operator()(uint64_t start, uint64_t end) const;
+  // Returns a new subset slice from this slice.
+  inline Slice<T> operator()(uint64_t start, uint64_t end) const;
 
-    // Returns a reference to a single element in the slice.
-    // Care must be taken to not mutate data in the application pool.
-    inline T& operator[](uint64_t index) const;
+  // Returns a reference to a single element in the slice.
+  // Care must be taken to not mutate data in the application pool.
+  inline T& operator[](uint64_t index) const;
 
-    // Copies count elements starting at start into the dst Slice starting at
-    // dstStart.
-    inline void copy(const Slice<T>& dst, uint64_t start, uint64_t count, uint64_t dstStart) const;
+  // Copies count elements starting at start into the dst Slice starting at
+  // dstStart.
+  inline void copy(const Slice<T>& dst, uint64_t start, uint64_t count,
+                   uint64_t dstStart) const;
 
-    // Casts this slice to a slice of type U.
-    // The return slice length will be calculated so that the returned slice length is no longer
-    // (in bytes) than this slice.
-    template<typename U> inline Slice<U> as() const;
+  // Casts this slice to a slice of type U.
+  // The return slice length will be calculated so that the returned slice
+  // length is no longer (in bytes) than this slice.
+  template <typename U>
+  inline Slice<U> as() const;
 
-    // Support for range-based for looping
-    inline T* begin() const;
-    inline T* end() const;
+  // Support for range-based for looping
+  inline T* begin() const;
+  inline T* end() const;
 
-private:
-    void init(pool_t* pool, void* root, void* base, uint64_t size, uint64_t count, bool add_ref = true);
+ private:
+  void init(pool_t* pool, void* root, void* base, uint64_t size, uint64_t count,
+            bool add_ref = true);
 
-    void reference() const;
-    void release();
+  void reference() const;
+  void release();
 
-    slice_t data;
+  slice_t data;
 };
 
 }  // namespace gapil

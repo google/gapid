@@ -20,40 +20,36 @@
 
 namespace core {
 
-FileReader::FileReader(const char* path) {
-    mFile = fopen(path, "rb");
-}
-FileReader::~FileReader() {
-    fclose(mFile);
-}
+FileReader::FileReader(const char* path) { mFile = fopen(path, "rb"); }
+FileReader::~FileReader() { fclose(mFile); }
 
 const char* FileReader::error() const {
-    if (mFile == 0) {
-        return "File did not open";
-    }
-    return 0;
+  if (mFile == 0) {
+    return "File did not open";
+  }
+  return 0;
 }
 
 uint64_t FileReader::read(void* data, uint64_t max_size) {
-    return fread(data, 1, max_size, mFile);
+  return fread(data, 1, max_size, mFile);
 }
 
 uint64_t FileReader::size() {
-    // TODO: this is not portable, need to move to platform file.
-    if (fseek(mFile, 0, SEEK_END) != 0) {
-        GAPID_ERROR("Failed to seek to the end of file");
-        return 0u;
-    }
+  // TODO: this is not portable, need to move to platform file.
+  if (fseek(mFile, 0, SEEK_END) != 0) {
+    GAPID_ERROR("Failed to seek to the end of file");
+    return 0u;
+  }
 
-    long int sizeTemp = ftell(mFile);
-    if (sizeTemp == -1L) {
-        GAPID_ERROR("Failed to get size of file")
-        rewind(mFile);
-        return 0u;
-    }
-    uint64_t size = static_cast<uint64_t>(sizeTemp);
+  long int sizeTemp = ftell(mFile);
+  if (sizeTemp == -1L) {
+    GAPID_ERROR("Failed to get size of file")
     rewind(mFile);
-    return size;
+    return 0u;
+  }
+  uint64_t size = static_cast<uint64_t>(sizeTemp);
+  rewind(mFile);
+  return size;
 }
 
-} // namespace core
+}  // namespace core

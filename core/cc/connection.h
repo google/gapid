@@ -23,50 +23,54 @@
 
 namespace core {
 
-// Abstract base class for representing a connection to a remote with simple helper methods for
-// sending specific data types.
+// Abstract base class for representing a connection to a remote with simple
+// helper methods for sending specific data types.
 class Connection {
-public:
-    // Constant that can be passed to accept() to indicate that the call should
-    // block with no timeouts until a connection is made, or the socket closes.
-    static const int NO_TIMEOUT = -1;
+ public:
+  // Constant that can be passed to accept() to indicate that the call should
+  // block with no timeouts until a connection is made, or the socket closes.
+  static const int NO_TIMEOUT = -1;
 
-    virtual ~Connection() {}
+  virtual ~Connection() {}
 
-    // Try to send size bytes of data from the specified buffer using the underlying connection.
-    // Will block if the connection is not ready. Returns the number of bytes successfully sent
-    // (possibly less then size if an error occurred).
-    virtual size_t send(const void* data, size_t size) = 0;
+  // Try to send size bytes of data from the specified buffer using the
+  // underlying connection. Will block if the connection is not ready. Returns
+  // the number of bytes successfully sent (possibly less then size if an error
+  // occurred).
+  virtual size_t send(const void* data, size_t size) = 0;
 
-    // Tries to read size bytes to the buffer specified by data on the underlying connection and
-    // blocks until the data is available. Returns the number of bytes successfully retrieved
-    // (possibly less then size if an error occurred).
-    virtual size_t recv(void* data, size_t size) = 0;
+  // Tries to read size bytes to the buffer specified by data on the underlying
+  // connection and blocks until the data is available. Returns the number of
+  // bytes successfully retrieved (possibly less then size if an error
+  // occurred).
+  virtual size_t recv(void* data, size_t size) = 0;
 
-    // Returns the last error message raised by the connection.
-    virtual const char* error() = 0;
+  // Returns the last error message raised by the connection.
+  virtual const char* error() = 0;
 
-    // Accept an incoming connection request on the underlying connection and returns the new
-    // connection corresponding to it. The returned connection is ready to use.
-    // If timeoutMS is NO_TIMEOUT, then the connection will block forever.
-    virtual std::unique_ptr<Connection> accept(int timeoutMS = NO_TIMEOUT) = 0;
+  // Accept an incoming connection request on the underlying connection and
+  // returns the new connection corresponding to it. The returned connection is
+  // ready to use. If timeoutMS is NO_TIMEOUT, then the connection will block
+  // forever.
+  virtual std::unique_ptr<Connection> accept(int timeoutMS = NO_TIMEOUT) = 0;
 
-    // Helper methods for sending and receiving strings
-    bool sendString(const std::string& s);
-    bool sendString(const char* s);
-    bool readString(std::string* s);
+  // Helper methods for sending and receiving strings
+  bool sendString(const std::string& s);
+  bool sendString(const char* s);
+  bool readString(std::string* s);
 
-    // Helper method for sending plain-old-data values.
-    // Returns true if the send was successful, otherwise false.
-    template<typename T> inline bool send(const T& data);
+  // Helper method for sending plain-old-data values.
+  // Returns true if the send was successful, otherwise false.
+  template <typename T>
+  inline bool send(const T& data);
 
-    // Closes the connection for read/write but leaves the object around.
-    virtual void close() = 0;
+  // Closes the connection for read/write but leaves the object around.
+  virtual void close() = 0;
 };
 
-template<typename T>
+template <typename T>
 inline bool Connection::send(const T& data) {
-    return send(&data, sizeof(T)) == sizeof(T);
+  return send(&data, sizeof(T)) == sizeof(T);
 }
 
 }  // namespace core

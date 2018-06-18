@@ -19,7 +19,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
+#endif  // __cplusplus
 
 #ifndef DECL_GAPIL_CLONER_CB
 #define DECL_GAPIL_CLONER_CB(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
@@ -35,16 +35,18 @@ DECL_GAPIL_CLONER_CB(void, gapil_destroy_clone_tracker, void* tracker);
 
 // gapil_clone_tracker_lookup returns a pointer to the previously cloned object,
 // or nullptr if this object has not been cloned before.
-DECL_GAPIL_CLONER_CB(void*, gapil_clone_tracker_lookup, void* tracker, void* object);
+DECL_GAPIL_CLONER_CB(void*, gapil_clone_tracker_lookup, void* tracker,
+                     void* object);
 
 // gapil_clone_tracker_track associates the original object to its cloned
 // version.
-DECL_GAPIL_CLONER_CB(void, gapil_clone_tracker_track, void* tracker, void* original, void* cloned);
+DECL_GAPIL_CLONER_CB(void, gapil_clone_tracker_track, void* tracker,
+                     void* original, void* cloned);
 
 #undef DECL_GAPIL_CLONER_CB
 
 #ifdef __cplusplus
-} // extern "C"
-#endif // __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
 
 #endif  // __GAPIL_RUNTIME_CLONER_H__

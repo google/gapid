@@ -17,16 +17,16 @@
 #ifndef DEVICEINFO_INSTANCE_H
 #define DEVICEINFO_INSTANCE_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct {
-    uint8_t* data;
-    size_t size;
+  uint8_t* data;
+  size_t size;
 } device_instance;
 
 device_instance get_device_instance(void* platform_data);
@@ -34,7 +34,7 @@ const char* get_device_instance_error();
 void free_device_instance(device_instance);
 
 #ifdef __cplusplus
-} // extern "C"
+}  // extern "C"
 #endif
 
 #endif  // DEVICEINFO_INSTANCE_H

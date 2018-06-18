@@ -26,15 +26,15 @@ namespace core {
 // FileWriter is an implementation of the StreamWriter interface that writes to
 // a binary file.
 class FileWriter : public StreamWriter {
-public:
-    FileWriter(const char* path);
-    ~FileWriter();
+ public:
+  FileWriter(const char* path);
+  ~FileWriter();
 
-    // StreamWriter compliance
-    virtual uint64_t write(const void* data, uint64_t size) override;
+  // StreamWriter compliance
+  virtual uint64_t write(const void* data, uint64_t size) override;
 
-private:
-    FILE* mFile;
+ private:
+  FILE* mFile;
 };
 
 }  // namespace core

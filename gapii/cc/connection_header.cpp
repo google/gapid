@@ -22,55 +22,52 @@
 namespace gapii {
 
 ConnectionHeader::ConnectionHeader()
-    : mVersion(0)
-    , mObserveFrameFrequency(0)
-    , mObserveDrawFrequency(0)
-    , mStartFrame(0)
-    , mNumFrames(0)
-    , mAPIs(0xFFFFFFFF)
-    , mFlags(0)
-    , mGvrHandle(0) {}
+    : mVersion(0),
+      mObserveFrameFrequency(0),
+      mObserveDrawFrequency(0),
+      mStartFrame(0),
+      mNumFrames(0),
+      mAPIs(0xFFFFFFFF),
+      mFlags(0),
+      mGvrHandle(0) {}
 
 bool ConnectionHeader::read(core::StreamReader* reader) {
-    if (!reader->read(mMagic)) {
-        return false;
-    }
-    if (mMagic[0] != 's'
-     || mMagic[1] != 'p'
-     || mMagic[2] != 'y'
-     || mMagic[3] != '0') {
-        GAPID_WARNING("ConnectionHeader magic was not as expected. Got %c%c%c%c",
-            mMagic[0], mMagic[1], mMagic[2], mMagic[3]);
-        return false;
-     }
+  if (!reader->read(mMagic)) {
+    return false;
+  }
+  if (mMagic[0] != 's' || mMagic[1] != 'p' || mMagic[2] != 'y' ||
+      mMagic[3] != '0') {
+    GAPID_WARNING("ConnectionHeader magic was not as expected. Got %c%c%c%c",
+                  mMagic[0], mMagic[1], mMagic[2], mMagic[3]);
+    return false;
+  }
 
-    // TODO: Endian-swap data if GAPII is running on a big-endian architecture.
+  // TODO: Endian-swap data if GAPII is running on a big-endian architecture.
 
-    if (!reader->read(mVersion)) {
-        return false;
-    }
+  if (!reader->read(mVersion)) {
+    return false;
+  }
 
-    const int kMinSupportedVersion = 1;
-    const int kMaxSupportedVersion = 1;
+  const int kMinSupportedVersion = 1;
+  const int kMaxSupportedVersion = 1;
 
-    if (mVersion < kMinSupportedVersion || mVersion > kMaxSupportedVersion) {
-        GAPID_WARNING("Unsupported ConnectionHeader version %d. Only understand [%d to %d].",
-                mVersion, kMinSupportedVersion, kMaxSupportedVersion);
-        return false;
-    }
-    if (!reader->read(mObserveFrameFrequency) ||
-        !reader->read(mObserveDrawFrequency) ||
-        !reader->read(mStartFrame) ||
-        !reader->read(mNumFrames) ||
-        !reader->read(mAPIs) ||
-        !reader->read(mFlags) ||
-        !reader->read(mGvrHandle) ||
-        !reader->read(mLibInterceptorPath)) {
-        return false;
-    }
+  if (mVersion < kMinSupportedVersion || mVersion > kMaxSupportedVersion) {
+    GAPID_WARNING(
+        "Unsupported ConnectionHeader version %d. Only understand [%d to %d].",
+        mVersion, kMinSupportedVersion, kMaxSupportedVersion);
+    return false;
+  }
+  if (!reader->read(mObserveFrameFrequency) ||
+      !reader->read(mObserveDrawFrequency) || !reader->read(mStartFrame) ||
+      !reader->read(mNumFrames) || !reader->read(mAPIs) ||
+      !reader->read(mFlags) || !reader->read(mGvrHandle) ||
+      !reader->read(mLibInterceptorPath)) {
+    return false;
+  }
 
-    // Insert new version handling here. Don't forget to bump kMaxSupportedVersion!
-    return true;
+  // Insert new version handling here. Don't forget to bump
+  // kMaxSupportedVersion!
+  return true;
 }
 
-} // namespace gapii
+}  // namespace gapii

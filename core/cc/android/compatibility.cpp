@@ -15,14 +15,15 @@
  */
 
 /*
- * Between Android K and L, some platform functions were changed from inline to system library
- * functions. We build against the Android 21 (L) NDK so we can support 64-bit ARM devices.
- * gtest makes calls to sigemptyset and getpagesize which are part of these functions that were
- * un-inlined. To keep the tests working on older devices, stub these two functions here.
+ * Between Android K and L, some platform functions were changed from inline to
+ * system library functions. We build against the Android 21 (L) NDK so we can
+ * support 64-bit ARM devices. gtest makes calls to sigemptyset and getpagesize
+ * which are part of these functions that were un-inlined. To keep the tests
+ * working on older devices, stub these two functions here.
  */
 
-#include <cstring>
 #include <signal.h>
+#include <cstring>
 
 extern "C" {
 
@@ -38,4 +39,4 @@ int getpagesize(void) {
 }
 */
 
-} // extern "C"
+}  // extern "C"

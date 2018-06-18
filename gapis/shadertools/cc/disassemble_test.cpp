@@ -21,7 +21,6 @@
 #include <vector>
 
 int main(int argc, char* argv[]) {
-
   const char* filename = argv[1];
 
   std::vector<uint32_t> spirv_binary;
@@ -48,10 +47,11 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  const char* dis_text = getDisassembleText(spirv_binary.data(), spirv_binary.size());
+  const char* dis_text =
+      getDisassembleText(spirv_binary.data(), spirv_binary.size());
 
   if (dis_text) {
-  	printf("%s\n", dis_text);
+    printf("%s\n", dis_text);
   } else {
     printf("Disassemble error.\n");
     return 2;

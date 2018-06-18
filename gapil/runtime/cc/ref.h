@@ -20,79 +20,78 @@
 
 #include "core/memory/arena/cc/arena.h"
 
-#include <cstddef> // nullptr_t
+#include <cstddef>  // nullptr_t
 
 namespace gapil {
 
 // Ref is a smart pointer implementation that is compatible with the ref
 // shared pointers used by the gapil compiler. Several refs may share the same
 // object.
-template<typename T>
+template <typename T>
 class Ref {
-public:
-    using object_type = T;
+ public:
+  using object_type = T;
 
-    // Constructs a new ref that points to nothing.
-    Ref();
-    Ref(std::nullptr_t);
+  // Constructs a new ref that points to nothing.
+  Ref();
+  Ref(std::nullptr_t);
 
-    // Constructs a new ref that shares ownership other other's data.
-    Ref(const Ref& other);
+  // Constructs a new ref that shares ownership other other's data.
+  Ref(const Ref& other);
 
-    Ref(Ref&&);
-    ~Ref();
+  Ref(Ref&&);
+  ~Ref();
 
-    // Returns a ref that owns a new T constructed with the given arguments.
-    template <typename ...ARGS>
-    inline static Ref create(core::Arena* arena, ARGS&&...);
+  // Returns a ref that owns a new T constructed with the given arguments.
+  template <typename... ARGS>
+  inline static Ref create(core::Arena* arena, ARGS&&...);
 
-    // Replaces the object owned by ref with the one owned by other.
-    Ref& operator = (const Ref& other);
+  // Replaces the object owned by ref with the one owned by other.
+  Ref& operator=(const Ref& other);
 
-    // Returns true if the object owned by this is the same as the one owned by
-    // other.
-    bool operator == (const Ref& other) const;
+  // Returns true if the object owned by this is the same as the one owned by
+  // other.
+  bool operator==(const Ref& other) const;
 
-    // Returns true if the object owned by this is not the same as the one owned
-    // by other.
-    bool operator != (const Ref& other) const;
+  // Returns true if the object owned by this is not the same as the one owned
+  // by other.
+  bool operator!=(const Ref& other) const;
 
-    // Returns a raw-pointer to the owned object.
-    T* get() const;
+  // Returns a raw-pointer to the owned object.
+  T* get() const;
 
-    // Dereferences the stored pointer. The behavior is undefined if the stored
-    // pointer is null.
-    T* operator->() const;
-    T& operator*() const;
+  // Dereferences the stored pointer. The behavior is undefined if the stored
+  // pointer is null.
+  T* operator->() const;
+  T& operator*() const;
 
-    // Returns true if the ref points to an object (is non-null).
-    operator bool() const;
+  // Returns true if the ref points to an object (is non-null).
+  operator bool() const;
 
-private:
-    struct Allocation {
-        uint32_t ref_count;
-        arena_t* arena; // arena that owns this object allocation.
-        T        object;
+ private:
+  struct Allocation {
+    uint32_t ref_count;
+    arena_t* arena;  // arena that owns this object allocation.
+    T object;
 
-        void reference();
-        void release();
-    };
+    void reference();
+    void release();
+  };
 
-    Ref(Allocation*);
+  Ref(Allocation*);
 
-    Allocation* ptr;
+  Allocation* ptr;
 };
 
-
-template<typename T>
-template<typename ...ARGS>
+template <typename T>
+template <typename... ARGS>
 Ref<T> Ref<T>::create(core::Arena* arena, ARGS&&... args) {
-    auto buf = arena->allocate(sizeof(Allocation), alignof(Allocation));
-    auto ptr = reinterpret_cast<Allocation*>(buf);
-    ptr->ref_count = 1;
-    ptr->arena = reinterpret_cast<arena_t*>(arena);
-    inplace_new(&ptr->object, arena, std::forward<ARGS>(args)...);
-    return Ref(ptr);
+  auto buf = arena->allocate(sizeof(Allocation), alignof(Allocation));
+  auto ptr = reinterpret_cast<Allocation*>(buf);
+  ptr->ref_count = 1;
+  ptr->arena = reinterpret_cast<arena_t*>(arena);
+  inplace_new(&ptr->object, arena, std::forward<ARGS>(args)...);
+  return Ref(ptr);
 }
 
 }  // namespace gapil

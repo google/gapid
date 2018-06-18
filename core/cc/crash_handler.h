@@ -30,25 +30,26 @@ namespace core {
 
 // Utility class for attaching a crash handler.
 class CrashHandler {
-public:
-    typedef std::function<void(const std::string& minidumpPath, bool succeeded)> Handler;
-    typedef std::function<void()> Unregister;
+ public:
+  typedef std::function<void(const std::string& minidumpPath, bool succeeded)>
+      Handler;
+  typedef std::function<void()> Unregister;
 
-    CrashHandler();
-    ~CrashHandler();
+  CrashHandler();
+  ~CrashHandler();
 
-    Unregister registerHandler(Handler handler);
+  Unregister registerHandler(Handler handler);
 
-    bool handleMinidump(const std::string& minidumpPath, bool succeeded);
+  bool handleMinidump(const std::string& minidumpPath, bool succeeded);
 
-private:
-    unsigned int mNextHandlerID;
-    std::unordered_map<unsigned int, Handler> mHandlers;
-    std::unique_ptr<google_breakpad::ExceptionHandler> mExceptionHandler;
+ private:
+  unsigned int mNextHandlerID;
+  std::unordered_map<unsigned int, Handler> mHandlers;
+  std::unique_ptr<google_breakpad::ExceptionHandler> mExceptionHandler;
 
-    static Handler defaultHandler;
+  static Handler defaultHandler;
 };
 
-}
+}  // namespace core
 
 #endif

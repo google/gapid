@@ -28,36 +28,39 @@ class Connection;
 
 }  // namespace core
 
-
 namespace gapii {
 
 // ConnectionStream is an implementation of the StreamReader and StreamWriter
 // interfaces that reads and writes to an incoming TCP connection.
 class ConnectionStream : public core::StreamWriter, public core::StreamReader {
-public:
-    // listenSocket blocks and waits for a TCP connection to be made on the specified host and
-    // port, returning a ConnectionStream once a connection is established.
-    static std::shared_ptr<ConnectionStream> listenSocket(const char* hostname, const char* port);
+ public:
+  // listenSocket blocks and waits for a TCP connection to be made on the
+  // specified host and port, returning a ConnectionStream once a connection is
+  // established.
+  static std::shared_ptr<ConnectionStream> listenSocket(const char* hostname,
+                                                        const char* port);
 
-    // listenPipe blocks and waits for a UNIX connection to be made on the specified pipe name,
-    // optionally abstract, returning a ConnectionStream once a connection is established.
-    static std::shared_ptr<ConnectionStream> listenPipe(const char* pipename, bool abstract);
+  // listenPipe blocks and waits for a UNIX connection to be made on the
+  // specified pipe name, optionally abstract, returning a ConnectionStream once
+  // a connection is established.
+  static std::shared_ptr<ConnectionStream> listenPipe(const char* pipename,
+                                                      bool abstract);
 
-    // core::StreamReader compliance
-    virtual uint64_t read(void* data, uint64_t max_size) override;
+  // core::StreamReader compliance
+  virtual uint64_t read(void* data, uint64_t max_size) override;
 
-    // core::StreamWriter compliance
-    virtual uint64_t write(const void* data, uint64_t size) override;
+  // core::StreamWriter compliance
+  virtual uint64_t write(const void* data, uint64_t size) override;
 
-    // Closes the connection stream
-    virtual void close();
+  // Closes the connection stream
+  virtual void close();
 
-private:
-    ConnectionStream(std::unique_ptr<core::Connection>);
+ private:
+  ConnectionStream(std::unique_ptr<core::Connection>);
 
-    std::unique_ptr<core::Connection> mConnection;
+  std::unique_ptr<core::Connection> mConnection;
 };
 
-} // namespace gapii
+}  // namespace gapii
 
 #endif  // GAPII_CONNECTION_STREAM_H

@@ -21,9 +21,9 @@ namespace core {
 
 // Utility class for detecting debugger attachment.
 class Debugger {
-public:
-    static bool isAttached();
-    static void waitForAttach();
+ public:
+  static bool isAttached();
+  static void waitForAttach();
 };
 
 }  // namespace core

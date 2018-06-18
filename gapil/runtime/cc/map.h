@@ -29,154 +29,155 @@ namespace gapil {
 // share the same underlying data.
 // Search, insertion, and removal of elements are O(1).
 // Like std::unordered_map, elements are stored in no particular order.
-template<typename K, typename V>
+template <typename K, typename V>
 class Map {
-private:
-    struct Allocation;
-public:
-    struct element {
-        uint64_t used;
-        K first;
-        V second;
-    };
+ private:
+  struct Allocation;
 
-    using key_type = K;
-    using value_type = V;
+ public:
+  struct element {
+    uint64_t used;
+    K first;
+    V second;
+  };
 
-    class iterator {
-    public:
-        inline iterator(const iterator& it);
+  using key_type = K;
+  using value_type = V;
 
-        inline bool operator == (const iterator& other);
+  class iterator {
+   public:
+    inline iterator(const iterator& it);
 
-        inline bool operator != (const iterator& other);
+    inline bool operator==(const iterator& other);
 
-        inline element& operator*();
+    inline bool operator!=(const iterator& other);
 
-        inline element* operator->();
+    inline element& operator*();
 
-        inline const iterator& operator++();
+    inline element* operator->();
 
-        inline iterator operator++(int);
+    inline const iterator& operator++();
 
-    private:
-        friend class Map<K, V>;
-        element* elem;
-        Allocation* map;
+    inline iterator operator++(int);
 
-        inline iterator(element* elem, Allocation* map);
-    };
+   private:
+    friend class Map<K, V>;
+    element* elem;
+    Allocation* map;
 
-    class const_iterator {
-    public:
-        inline const_iterator(const iterator& it);
+    inline iterator(element* elem, Allocation* map);
+  };
 
-        inline bool operator == (const const_iterator& other);
+  class const_iterator {
+   public:
+    inline const_iterator(const iterator& it);
 
-        inline bool operator != (const const_iterator& other);
+    inline bool operator==(const const_iterator& other);
 
-        inline const element& operator*();
+    inline bool operator!=(const const_iterator& other);
 
-        inline const element* operator->();
+    inline const element& operator*();
 
-        inline const_iterator& operator++();
+    inline const element* operator->();
 
-        inline const_iterator operator++(int);
+    inline const_iterator& operator++();
 
-    private:
-        friend class Map<K, V>;
-        const element* elem;
-        const Allocation* map;
+    inline const_iterator operator++(int);
 
-        inline const_iterator(const element* elem, const Allocation* map);
-    };
+   private:
+    friend class Map<K, V>;
+    const element* elem;
+    const Allocation* map;
 
-    // Constructs a new empty map.
-    Map(core::Arena*);
+    inline const_iterator(const element* elem, const Allocation* map);
+  };
 
-    // Constructs a map which shares the data with other.
-    Map(const Map<K,V>& other);
+  // Constructs a new empty map.
+  Map(core::Arena*);
 
-    Map(Map<K, V>&&);
-    ~Map();
+  // Constructs a map which shares the data with other.
+  Map(const Map<K, V>& other);
 
-    // Returns a copy of this map with the same elements.
-    Map<K, V> clone() const;
+  Map(Map<K, V>&&);
+  ~Map();
 
-    // Makes this map refer to the RHS map.
-    Map<K,V>& operator = (const Map<K,V>&);
+  // Returns a copy of this map with the same elements.
+  Map<K, V> clone() const;
 
-    // Returns the arena this map belongs to.
-    inline core::Arena* arena() const;
+  // Makes this map refer to the RHS map.
+  Map<K, V>& operator=(const Map<K, V>&);
 
-    // Returns the number of elements that can be held in the map before
-    // Re-allocating the internal buffer.
-    inline uint64_t capacity() const;
+  // Returns the arena this map belongs to.
+  inline core::Arena* arena() const;
 
-    // Returns the number of elements currently held in the map.
-    inline uint64_t count() const;
+  // Returns the number of elements that can be held in the map before
+  // Re-allocating the internal buffer.
+  inline uint64_t capacity() const;
 
-    // Returns true if the map has no elements.
-    inline bool empty() const;
+  // Returns the number of elements currently held in the map.
+  inline uint64_t count() const;
 
-    // Returns true if the map contains the given key.
-    inline bool contains(const K&) const;
+  // Returns true if the map has no elements.
+  inline bool empty() const;
 
-    // Returns a constant iterator to the beginning.
-    inline const const_iterator begin() const;
+  // Returns true if the map contains the given key.
+  inline bool contains(const K&) const;
 
-    // Returns an iterator to the beginning.
-    inline iterator begin();
+  // Returns a constant iterator to the beginning.
+  inline const const_iterator begin() const;
 
-    // Returns a constant iterator to the end.
-    inline const_iterator end() const;
+  // Returns an iterator to the beginning.
+  inline iterator begin();
 
-    // Returns an iterator to the end.
-    inline iterator end();
+  // Returns a constant iterator to the end.
+  inline const_iterator end() const;
 
-    // Removes the element with the given key from the map.
-    inline void erase(const K& k);
+  // Returns an iterator to the end.
+  inline iterator end();
 
-    // Removes the element with the given key from the map.
-    inline void erase(const_iterator it);
+  // Removes the element with the given key from the map.
+  inline void erase(const K& k);
 
-    // Returns a reference to the element with the given key, creating and
-    // adding an element if one did not exist.
-    template<typename T>
-    inline V& operator[](const T& key);
+  // Removes the element with the given key from the map.
+  inline void erase(const_iterator it);
 
-    // Returns an iterator to an element with the given key.
-    // If no such element is found, the end iterator is returned.
-    inline iterator find(const K& key);
+  // Returns a reference to the element with the given key, creating and
+  // adding an element if one did not exist.
+  template <typename T>
+  inline V& operator[](const T& key);
 
-    // Returns an iterator to an element with the given key.
-    // If no such element is found, the end iterator is returned.
-    inline const_iterator find(const K& k) const;
+  // Returns an iterator to an element with the given key.
+  // If no such element is found, the end iterator is returned.
+  inline iterator find(const K& key);
 
-    // finds a key in the map and returns the value. If no value is present
-    // Returns the zero for that type.
-    inline V findOrZero(const K& key) const;
+  // Returns an iterator to an element with the given key.
+  // If no such element is found, the end iterator is returned.
+  inline const_iterator find(const K& k) const;
 
-    // instance_ptr returns an opaque pointer to the underlying map data.
-    // This can be used for map equality.
-    inline const void* instance_ptr() const;
+  // finds a key in the map and returns the value. If no value is present
+  // Returns the zero for that type.
+  inline V findOrZero(const K& key) const;
 
-private:
-    struct Allocation : public map_t {
-        // The following methods must match those generated by the gapil compiler.
-        bool contains(K);
-        V*   index(K, bool);
-        V    lookup(K);
-        void remove(K);
-        void clear();
-        void reference();
-        void release();
+  // instance_ptr returns an opaque pointer to the underlying map data.
+  // This can be used for map equality.
+  inline const void* instance_ptr() const;
 
-        inline const element* els() const;
-        inline element* els();
-    };
+ private:
+  struct Allocation : public map_t {
+    // The following methods must match those generated by the gapil compiler.
+    bool contains(K);
+    V* index(K, bool);
+    V lookup(K);
+    void remove(K);
+    void clear();
+    void reference();
+    void release();
 
-    Allocation* ptr;
+    inline const element* els() const;
+    inline element* els();
+  };
+
+  Allocation* ptr;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,53 +185,53 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename K, typename V>
-Map<K, V>::iterator::iterator(element* elem, Allocation* map) :
-        elem(elem), map(map) {}
+Map<K, V>::iterator::iterator(element* elem, Allocation* map)
+    : elem(elem), map(map) {}
 
 template <typename K, typename V>
-Map<K, V>::iterator::iterator(const iterator& it) :
-        elem(it.elem), map(it.map) {}
+Map<K, V>::iterator::iterator(const iterator& it)
+    : elem(it.elem), map(it.map) {}
 
 template <typename K, typename V>
 bool Map<K, V>::iterator::operator==(const iterator& other) {
-    return map == other.map && elem == other.elem;
+  return map == other.map && elem == other.elem;
 }
 
 template <typename K, typename V>
-bool Map<K, V>::iterator::operator!=(const iterator& other){
-    return !(*this == other);
+bool Map<K, V>::iterator::operator!=(const iterator& other) {
+  return !(*this == other);
 }
 
 template <typename K, typename V>
 typename Map<K, V>::element& Map<K, V>::iterator::operator*() {
-    return *elem;
+  return *elem;
 }
 
 template <typename K, typename V>
 typename Map<K, V>::element* Map<K, V>::iterator::operator->() {
-    return elem;
+  return elem;
 }
 
 template <typename K, typename V>
 const typename Map<K, V>::iterator& Map<K, V>::iterator::operator++() {
-    size_t offset = elem - reinterpret_cast<element*>(map->elements);
-    for (size_t i = offset; i < map->capacity; ++i) {
-        ++elem;
-        if (i == map->capacity - 1) {
-            break;
-        }
-        if (elem->used == GAPIL_MAP_ELEMENT_FULL) {
-            break;
-        }
+  size_t offset = elem - reinterpret_cast<element*>(map->elements);
+  for (size_t i = offset; i < map->capacity; ++i) {
+    ++elem;
+    if (i == map->capacity - 1) {
+      break;
     }
-    return *this;
+    if (elem->used == GAPIL_MAP_ELEMENT_FULL) {
+      break;
+    }
+  }
+  return *this;
 }
 
 template <typename K, typename V>
 typename Map<K, V>::iterator Map<K, V>::iterator::operator++(int) {
-    iterator ret = *this;
-    ++(*this);
-    return ret;
+  iterator ret = *this;
+  ++(*this);
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,54 +239,54 @@ typename Map<K, V>::iterator Map<K, V>::iterator::operator++(int) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename K, typename V>
-Map<K, V>::const_iterator::const_iterator(const element* elem, const Allocation* map):
-    elem(elem), map(map) {}
+Map<K, V>::const_iterator::const_iterator(const element* elem,
+                                          const Allocation* map)
+    : elem(elem), map(map) {}
 
 template <typename K, typename V>
-Map<K, V>::const_iterator::const_iterator(const iterator& it):
-    elem(it.elem), map(it.map) {
-}
+Map<K, V>::const_iterator::const_iterator(const iterator& it)
+    : elem(it.elem), map(it.map) {}
 
 template <typename K, typename V>
 bool Map<K, V>::const_iterator::operator==(const const_iterator& other) {
-    return map == other.map && elem == other.elem;
+  return map == other.map && elem == other.elem;
 }
 
 template <typename K, typename V>
-bool Map<K, V>::const_iterator::operator!=(const const_iterator& other){
-    return !(*this == other);
+bool Map<K, V>::const_iterator::operator!=(const const_iterator& other) {
+  return !(*this == other);
 }
 
 template <typename K, typename V>
 const typename Map<K, V>::element& Map<K, V>::const_iterator::operator*() {
-    return *elem;
+  return *elem;
 }
 
 template <typename K, typename V>
 const typename Map<K, V>::element* Map<K, V>::const_iterator::operator->() {
-    return elem;
+  return elem;
 }
 
 template <typename K, typename V>
 typename Map<K, V>::const_iterator& Map<K, V>::const_iterator::operator++() {
-    size_t offset = elem - reinterpret_cast<element*>(map->elements);
-    for (size_t i = offset; i < map->capacity; ++i) {
-        ++elem;
-        if (i == map->capacity - 1) {
-            break;
-        }
-        if (elem->used == GAPIL_MAP_ELEMENT_FULL) {
-            break;
-        }
+  size_t offset = elem - reinterpret_cast<element*>(map->elements);
+  for (size_t i = offset; i < map->capacity; ++i) {
+    ++elem;
+    if (i == map->capacity - 1) {
+      break;
     }
-    return *this;
+    if (elem->used == GAPIL_MAP_ELEMENT_FULL) {
+      break;
+    }
+  }
+  return *this;
 }
 
 template <typename K, typename V>
 typename Map<K, V>::const_iterator Map<K, V>::const_iterator::operator++(int) {
-    const_iterator ret = *this;
-    ++(*this);
-    return ret;
+  const_iterator ret = *this;
+  ++(*this);
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,115 +295,117 @@ typename Map<K, V>::const_iterator Map<K, V>::const_iterator::operator++(int) {
 
 template <typename K, typename V>
 core::Arena* Map<K, V>::arena() const {
-    return reinterpret_cast<core::Arena*>(ptr->arena);
+  return reinterpret_cast<core::Arena*>(ptr->arena);
 }
 
 template <typename K, typename V>
 uint64_t Map<K, V>::capacity() const {
-    return ptr->capacity;
+  return ptr->capacity;
 }
 
 template <typename K, typename V>
 uint64_t Map<K, V>::count() const {
-    return ptr->count;
+  return ptr->count;
 }
 
 template <typename K, typename V>
 bool Map<K, V>::empty() const {
-    return ptr->count == 0;
+  return ptr->count == 0;
 }
 
 template <typename K, typename V>
 bool Map<K, V>::contains(const K& key) const {
-    return ptr->contains(key);
+  return ptr->contains(key);
 }
 
 template <typename K, typename V>
 const typename Map<K, V>::const_iterator Map<K, V>::begin() const {
-    auto it = const_iterator{ptr->els(), ptr};
-    for (size_t i = 0; i < ptr->capacity; ++i) {
-        if (it.elem->used == GAPIL_MAP_ELEMENT_FULL) {
-            break;
-        }
-        it.elem++;
+  auto it = const_iterator{ptr->els(), ptr};
+  for (size_t i = 0; i < ptr->capacity; ++i) {
+    if (it.elem->used == GAPIL_MAP_ELEMENT_FULL) {
+      break;
     }
-    return it;
+    it.elem++;
+  }
+  return it;
 }
 
 template <typename K, typename V>
 typename Map<K, V>::iterator Map<K, V>::begin() {
-    auto it = iterator{ptr->els(), ptr};
-    for (size_t i = 0; i < ptr->capacity; ++i) {
-        if (it.elem->used == GAPIL_MAP_ELEMENT_FULL) {
-            break;
-        }
-        it.elem++;
+  auto it = iterator{ptr->els(), ptr};
+  for (size_t i = 0; i < ptr->capacity; ++i) {
+    if (it.elem->used == GAPIL_MAP_ELEMENT_FULL) {
+      break;
     }
-    return it;
+    it.elem++;
+  }
+  return it;
 }
 
 template <typename K, typename V>
 typename Map<K, V>::iterator Map<K, V>::end() {
-    return iterator{ptr->els() + capacity(), ptr};
+  return iterator{ptr->els() + capacity(), ptr};
 }
 
 template <typename K, typename V>
 typename Map<K, V>::const_iterator Map<K, V>::end() const {
-    return const_iterator{ptr->els() + capacity(), ptr};
+  return const_iterator{ptr->els() + capacity(), ptr};
 }
 
 template <typename K, typename V>
 void Map<K, V>::erase(const K& k) {
-    ptr->remove(k);
+  ptr->remove(k);
 }
 
 template <typename K, typename V>
 void Map<K, V>::erase(const_iterator it) {
-    ptr->remove(it->first);
+  ptr->remove(it->first);
 }
 
 template <typename K, typename V>
 template <typename T>
 V& Map<K, V>::operator[](const T& key) {
-    V* v = ptr->index(key, true);
-    return *v;
+  V* v = ptr->index(key, true);
+  return *v;
 }
 
 template <typename K, typename V>
 typename Map<K, V>::iterator Map<K, V>::find(const K& key) {
-    V* idx = ptr->index(key, false);
-    if (idx == nullptr) {
-        return end();
-    }
-    size_t offs =
-        (reinterpret_cast<uintptr_t>(idx) - reinterpret_cast<uintptr_t>(ptr->els())) / sizeof(element);
-    return iterator{ptr->els() + offs, ptr};
+  V* idx = ptr->index(key, false);
+  if (idx == nullptr) {
+    return end();
+  }
+  size_t offs = (reinterpret_cast<uintptr_t>(idx) -
+                 reinterpret_cast<uintptr_t>(ptr->els())) /
+                sizeof(element);
+  return iterator{ptr->els() + offs, ptr};
 }
 
 template <typename K, typename V>
 typename Map<K, V>::const_iterator Map<K, V>::find(const K& k) const {
-    const V* idx = ptr->index(k, false);
-    if (idx == nullptr) {
-        return end();
-    }
-    size_t offs =
-        (reinterpret_cast<uintptr_t>(idx) - reinterpret_cast<uintptr_t>(ptr->els())) / sizeof(element);
-    return const_iterator{ptr->els() + offs, ptr};
+  const V* idx = ptr->index(k, false);
+  if (idx == nullptr) {
+    return end();
+  }
+  size_t offs = (reinterpret_cast<uintptr_t>(idx) -
+                 reinterpret_cast<uintptr_t>(ptr->els())) /
+                sizeof(element);
+  return const_iterator{ptr->els() + offs, ptr};
 }
 
 template <typename K, typename V>
 V Map<K, V>::findOrZero(const K& key) const {
-    auto it = find(key);
-    if (it == end()) {
-        auto arena = reinterpret_cast<core::Arena*>(ptr->arena);
-        return make<V>(arena);
-    }
-    return it->second;
+  auto it = find(key);
+  if (it == end()) {
+    auto arena = reinterpret_cast<core::Arena*>(ptr->arena);
+    return make<V>(arena);
+  }
+  return it->second;
 }
 
 template <typename K, typename V>
 inline const void* Map<K, V>::instance_ptr() const {
-    return ptr;
+  return ptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -411,12 +414,12 @@ inline const void* Map<K, V>::instance_ptr() const {
 
 template <typename K, typename V>
 const typename Map<K, V>::element* Map<K, V>::Allocation::els() const {
-    return reinterpret_cast<const element*>(map_t::elements);
+  return reinterpret_cast<const element*>(map_t::elements);
 }
 
 template <typename K, typename V>
 typename Map<K, V>::element* Map<K, V>::Allocation::els() {
-    return reinterpret_cast<element*>(map_t::elements);
+  return reinterpret_cast<element*>(map_t::elements);
 }
 
 }  // namespace gapil

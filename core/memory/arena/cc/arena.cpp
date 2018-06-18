@@ -16,8 +16,8 @@
 
 #include "arena.h"
 
-#include "core/cc/target.h"
 #include "core/cc/assert.h"
+#include "core/cc/target.h"
 
 #include <algorithm>
 #include <cassert>
@@ -174,7 +174,8 @@ void* Arena::allocate(uint32_t size, uint32_t align) {
     } else {
       chunk_header* val = 0;
       // If we can't actually allocate memory that is a problem.
-      val = static_cast<chunk_header*>(allocate_aligned(kChunkSize, kChunkSize));
+      val =
+          static_cast<chunk_header*>(allocate_aligned(kChunkSize, kChunkSize));
       data.current_chunk = reinterpret_cast<uint8_t*>(val);
       chunks_.push_back(val);
       val->block_size = block_size;
@@ -286,13 +287,15 @@ void Arena::dump_allocator_stats() const {
 
   GAPID_ERROR("----------------- ARENA STATS -----------------");
   GAPID_ERROR("Num Chunks: %35zu", chunks_.size());
-  GAPID_ERROR("Num Dedicated Allocations: %20zu", dedicated_allocations_.size());
+  GAPID_ERROR("Num Dedicated Allocations: %20zu",
+              dedicated_allocations_.size());
   GAPID_ERROR("Total Memory Reserved: %24" PRIu32,
               total_chunk_memory + total_dedicated_memory);
   GAPID_ERROR("Total Memory Reserved [Chunks]: %15" PRIu32, total_chunk_memory);
   GAPID_ERROR("Total Memory Reserved [Dedicated]: %12" PRIu32,
               total_dedicated_memory);
-  GAPID_ERROR("Total Memory Used [Chunks]: %19" PRIu32, total_used_chunk_memory);
+  GAPID_ERROR("Total Memory Used [Chunks]: %19" PRIu32,
+              total_used_chunk_memory);
   GAPID_ERROR("Total Memory Used [Dedicated]: %16" PRIu32,
               total_used_dedicated_memory);
   GAPID_ERROR("Memory Overhead [Headers]: %20" PRIu32, total_header_memory);
@@ -315,8 +318,8 @@ void Arena::dump_allocator_stats() const {
          node = node->next) {
       freelist_count += 1;
     }
-    GAPID_ERROR("Freelist [%6" PRIu32 "]: %28" PRIu32, 1 << (kMinBlockSizePower + i),
-                freelist_count);
+    GAPID_ERROR("Freelist [%6" PRIu32 "]: %28" PRIu32,
+                1 << (kMinBlockSizePower + i), freelist_count);
     i++;
   }
   GAPID_ERROR("-----------------------------------------------");
@@ -346,32 +349,28 @@ void Arena::unprotect() {
 
 extern "C" {
 
-arena* arena_create() {
-    return reinterpret_cast<arena*>(new core::Arena());
-}
+arena* arena_create() { return reinterpret_cast<arena*>(new core::Arena()); }
 
-void arena_destroy(arena* a) {
-    delete reinterpret_cast<core::Arena*>(a);
-}
+void arena_destroy(arena* a) { delete reinterpret_cast<core::Arena*>(a); }
 
 void* arena_alloc(arena* a, uint32_t size, uint32_t align) {
-    return reinterpret_cast<core::Arena*>(a)->allocate(size, align);
+  return reinterpret_cast<core::Arena*>(a)->allocate(size, align);
 }
 
 void* arena_realloc(arena* a, void* ptr, uint32_t size, uint32_t align) {
-    return reinterpret_cast<core::Arena*>(a)->reallocate(ptr, size, align);
+  return reinterpret_cast<core::Arena*>(a)->reallocate(ptr, size, align);
 }
 
 void arena_free(arena* a, void* ptr) {
-    reinterpret_cast<core::Arena*>(a)->free(ptr);
+  reinterpret_cast<core::Arena*>(a)->free(ptr);
 }
 
 // arena_stats returns statistics of the current state of the arena.
-void arena_stats(arena* a, size_t* num_allocations, size_t* num_bytes_allocated) {
-    auto arena = reinterpret_cast<core::Arena*>(a);
-    *num_allocations = arena->num_allocations();
-    *num_bytes_allocated = arena->num_bytes_allocated();
+void arena_stats(arena* a, size_t* num_allocations,
+                 size_t* num_bytes_allocated) {
+  auto arena = reinterpret_cast<core::Arena*>(a);
+  *num_allocations = arena->num_allocations();
+  *num_bytes_allocated = arena->num_bytes_allocated();
 }
 
-} // extern "C"
-
+}  // extern "C"

@@ -28,29 +28,31 @@
 namespace core {
 
 class Archive {
-public:
-    // Opens or creates an archive at the specified location archiveName (full path).
-    Archive(const std::string& archiveName);
-    ~Archive();
+ public:
+  // Opens or creates an archive at the specified location archiveName (full
+  // path).
+  Archive(const std::string& archiveName);
+  ~Archive();
 
-    // Checks if the archive contains a record for the given id.
-    bool contains(const std::string& id) const;
+  // Checks if the archive contains a record for the given id.
+  bool contains(const std::string& id) const;
 
-    // Reads the resource keyed by id into buffer if it exists and if its size matches.
-    bool read(const std::string& id, void* buffer, uint32_t size);
+  // Reads the resource keyed by id into buffer if it exists and if its size
+  // matches.
+  bool read(const std::string& id, void* buffer, uint32_t size);
 
-    // Write a resource of size size keyed by id from buffer into the archive.
-    bool write(const std::string& id, const void* buffer, uint32_t size);
+  // Write a resource of size size keyed by id from buffer into the archive.
+  bool write(const std::string& id, const void* buffer, uint32_t size);
 
-protected:
-    struct ArchiveRecord {
-        uint64_t offset;
-        uint32_t size;
-    };
+ protected:
+  struct ArchiveRecord {
+    uint64_t offset;
+    uint32_t size;
+  };
 
-    FILE* mDataFile;
-    FILE* mIndexFile;
-    std::unordered_map<std::string, ArchiveRecord> mRecords;
+  FILE* mDataFile;
+  FILE* mIndexFile;
+  std::unordered_map<std::string, ArchiveRecord> mRecords;
 };
 
 }  // namespace core

@@ -25,6 +25,6 @@ struct Symbol {
 };
 
 extern Symbol kGLESExports[];
-}
+}  // namespace gapii
 
 #endif

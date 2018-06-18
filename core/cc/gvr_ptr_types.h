@@ -17,7 +17,7 @@
 #ifndef CORE_GVR_PTR_TYPES_H_
 #define CORE_GVR_PTR_TYPES_H_
 
-#include "core/cc/target.h" // STDCALL
+#include "core/cc/target.h"  // STDCALL
 
 #define GVR_API_ATTR
 #define GVR_API_CALL

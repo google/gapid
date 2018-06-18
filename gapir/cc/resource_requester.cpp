@@ -24,14 +24,11 @@
 namespace gapir {
 
 std::unique_ptr<ResourceRequester> ResourceRequester::create() {
-    return std::unique_ptr<ResourceRequester>(new ResourceRequester());
+  return std::unique_ptr<ResourceRequester>(new ResourceRequester());
 }
 
-bool ResourceRequester::get(const Resource*         resources,
-                            size_t                  count,
-                            ReplayConnection*       conn,
-                            void*                   target,
-                            size_t                  size) {
+bool ResourceRequester::get(const Resource* resources, size_t count,
+                            ReplayConnection* conn, void* target, size_t size) {
   if (count == 0) {
     return true;
   }
@@ -61,10 +58,8 @@ bool ResourceRequester::get(const Resource*         resources,
   return true;
 }
 
-void ResourceRequester::prefetch(const Resource*         resources,
-                                 size_t                  count,
-                                 ReplayConnection*       conn,
-                                 void*                   temp,
-                                 size_t                  tempSize) {}
+void ResourceRequester::prefetch(const Resource* resources, size_t count,
+                                 ReplayConnection* conn, void* temp,
+                                 size_t tempSize) {}
 
 }  // namespace gapir

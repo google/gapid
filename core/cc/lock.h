@@ -19,24 +19,26 @@
 
 namespace core {
 
-// Lock is a RAII helper that calls T::lock() on construction and T::unlock() on destruction.
+// Lock is a RAII helper that calls T::lock() on construction and T::unlock() on
+// destruction.
 template <typename T>
 struct Lock {
-public:
-    inline Lock(T* t);
-    inline ~Lock();
-private:
-    T* _;
+ public:
+  inline Lock(T* t);
+  inline ~Lock();
+
+ private:
+  T* _;
 };
 
 template <typename T>
 inline Lock<T>::Lock(T* t) : _(t) {
-    _->lock();
+  _->lock();
 };
 
 template <typename T>
 inline Lock<T>::~Lock() {
-    _->unlock();
+  _->unlock();
 };
 
 }  // namespace core

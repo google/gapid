@@ -25,7 +25,7 @@ void StateSerializer::prepareForState(
 
   serialize_buffers(this);
 
-  mObserver->on_slice_encoded([&] (slice_t* slice) {
+  mObserver->on_slice_encoded([&](slice_t* slice) {
     auto p = slice->pool;
     if (p != nullptr && mSeenPools.count(p->id) == 0) {
       mSeenPools.insert(p->id);
@@ -38,11 +38,12 @@ void StateSerializer::prepareForState(
   });
 }
 
-pool_t* StateSerializer::createPool(uint64_t pool_size,
+pool_t* StateSerializer::createPool(
+    uint64_t pool_size,
     std::function<void(memory::Observation*)> init_observation) {
   auto arena = mSpy->arena();
   auto pool = arena->create<pool_t>();
-  pool->arena = reinterpret_cast<arena_t *>(arena);
+  pool->arena = reinterpret_cast<arena_t*>(arena);
   pool->id = (*mObserver->next_pool_id)++;
   pool->size = pool_size;
   pool->ref_count = 1;

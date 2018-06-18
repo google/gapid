@@ -24,15 +24,15 @@ namespace gapir {
 // The Vulkan renderer implementation.
 // TODO(antiagainst): Right now this is just a skeleton. Flesh out it.
 class VulkanRenderer : public Renderer {
-public:
-    // Construct and return an offscreen renderer.
-    static VulkanRenderer* create();
+ public:
+  // Construct and return an offscreen renderer.
+  static VulkanRenderer* create();
 
-    // Returns the renderer's API.
-    virtual Api* api() = 0;
+  // Returns the renderer's API.
+  virtual Api* api() = 0;
 
-    // Return true if this is a valid api for this system.
-    virtual bool isValid() = 0;
+  // Return true if this is a valid api for this system.
+  virtual bool isValid() = 0;
 };
 
 }  // namespace gapir

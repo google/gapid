@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "gapir/cc/gles_gfx_api.h"
 #include "gapir/cc/gles_renderer.h"
+#include "gapir/cc/gles_gfx_api.h"
 
 #include "core/cc/gl/formats.h"
 #include "core/cc/log.h"
 
 #include <string>
 
-#import <OpenGL/OpenGL.h>
 #import <AppKit/AppKit.h>
+#import <OpenGL/OpenGL.h>
 
 // Some versions of AppKit include these GL defines.
 #undef GL_EXTENSIONS
@@ -32,141 +32,138 @@
 #undef GL_VERSION
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < 101200
-#define NSWindowStyleMaskBorderless  NSBorderlessWindowMask
+#define NSWindowStyleMaskBorderless NSBorderlessWindowMask
 #endif
 
 namespace gapir {
 namespace {
 
 class GlesRendererImpl : public GlesRenderer {
-public:
-    GlesRendererImpl(GlesRendererImpl* shared_context);
-    virtual ~GlesRendererImpl() override;
+ public:
+  GlesRendererImpl(GlesRendererImpl* shared_context);
+  virtual ~GlesRendererImpl() override;
 
-    virtual Api* api() override;
-    virtual void setBackbuffer(Backbuffer backbuffer) override;
-    virtual void bind() override;
-    virtual void unbind() override;
-    virtual const char* name() override;
-    virtual const char* extensions() override;
-    virtual const char* vendor() override;
-    virtual const char* version() override;
+  virtual Api* api() override;
+  virtual void setBackbuffer(Backbuffer backbuffer) override;
+  virtual void bind() override;
+  virtual void unbind() override;
+  virtual const char* name() override;
+  virtual const char* extensions() override;
+  virtual const char* vendor() override;
+  virtual const char* version() override;
 
-private:
-    void reset();
+ private:
+  void reset();
 
-    Backbuffer mBackbuffer;
-    std::string mExtensions;
-    bool mQueriedExtensions;
-    NSWindow* mWindow;
-    NSOpenGLContext* mContext;
-    NSOpenGLContext* mSharedContext;
-    bool mNeedsResolve;
-    Gles mApi;
+  Backbuffer mBackbuffer;
+  std::string mExtensions;
+  bool mQueriedExtensions;
+  NSWindow* mWindow;
+  NSOpenGLContext* mContext;
+  NSOpenGLContext* mSharedContext;
+  bool mNeedsResolve;
+  Gles mApi;
 
-    static thread_local GlesRendererImpl* tlsBound;
+  static thread_local GlesRendererImpl* tlsBound;
 };
 
 thread_local GlesRendererImpl* GlesRendererImpl::tlsBound = nullptr;
 
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
-        : mQueriedExtensions(false)
-        , mWindow(nullptr)
-        , mContext(nullptr)
-        , mSharedContext(shared_context != nullptr ? shared_context->mContext : 0)
-        , mNeedsResolve(true) {
-
-    // Initialize with a default target.
-    setBackbuffer(Backbuffer(
-          8, 8,
-          core::gl::GL_RGBA8,
-          core::gl::GL_DEPTH24_STENCIL8,
-          core::gl::GL_DEPTH24_STENCIL8));
+    : mQueriedExtensions(false),
+      mWindow(nullptr),
+      mContext(nullptr),
+      mSharedContext(shared_context != nullptr ? shared_context->mContext : 0),
+      mNeedsResolve(true) {
+  // Initialize with a default target.
+  setBackbuffer(Backbuffer(8, 8, core::gl::GL_RGBA8, core::gl::GL_DEPTH24_STENCIL8,
+                           core::gl::GL_DEPTH24_STENCIL8));
 }
 
-GlesRendererImpl::~GlesRendererImpl() {
-    reset();
-}
+GlesRendererImpl::~GlesRendererImpl() { reset(); }
 
-Api* GlesRendererImpl::api() {
-  return &mApi;
-}
+Api* GlesRendererImpl::api() { return &mApi; }
 
 void GlesRendererImpl::reset() {
-    unbind();
+  unbind();
 
-    if (mWindow != nullptr) {
-        [mWindow close];
-        [mWindow release];
-        mWindow = nullptr;
-    }
+  if (mWindow != nullptr) {
+    [mWindow close];
+    [mWindow release];
+    mWindow = nullptr;
+  }
 
-    if (mContext != nullptr) {
-        [mContext release];
-        mContext = nullptr;
-    }
+  if (mContext != nullptr) {
+    [mContext release];
+    mContext = nullptr;
+  }
 
-    mBackbuffer = Backbuffer();
+  mBackbuffer = Backbuffer();
 }
 
 void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
-    if (mBackbuffer == backbuffer) {
-        return; // No change
+  if (mBackbuffer == backbuffer) {
+    return;  // No change
+  }
+
+  // Some exotic extensions let you create contexts without a backbuffer.
+  // In these cases the backbuffer is zero size - just create a small one.
+  int safe_width = (backbuffer.width > 0) ? backbuffer.width : 8;
+  int safe_height = (backbuffer.height > 0) ? backbuffer.height : 8;
+
+  if (mContext != nullptr) {
+    if (mBackbuffer.format == backbuffer.format) {
+      // Only a resize is necessary
+      GAPID_INFO("Resizing renderer: %dx%d -> %dx%d", mBackbuffer.width, mBackbuffer.height,
+                 backbuffer.width, backbuffer.height);
+      [mWindow setContentSize:NSMakeSize(safe_width, safe_height)];
+      [mContext update];
+      mBackbuffer = backbuffer;
+      return;
     }
 
-    // Some exotic extensions let you create contexts without a backbuffer.
-    // In these cases the backbuffer is zero size - just create a small one.
-    int safe_width = (backbuffer.width > 0) ? backbuffer.width : 8;
-    int safe_height = (backbuffer.height > 0) ? backbuffer.height : 8;
+    GAPID_WARNING("Recreating renderer: [0x%x, 0x%x, 0x%x] -> [0x%x, 0x%x, 0x%x]",
+                  mBackbuffer.format.color, mBackbuffer.format.depth, mBackbuffer.format.stencil,
+                  backbuffer.format.color, backbuffer.format.depth, backbuffer.format.stencil);
+  }
 
-    if (mContext != nullptr) {
-        if (mBackbuffer.format == backbuffer.format) {
-            // Only a resize is necessary
-            GAPID_INFO("Resizing renderer: %dx%d -> %dx%d",
-                    mBackbuffer.width, mBackbuffer.height, backbuffer.width, backbuffer.height);
-            [mWindow setContentSize: NSMakeSize(safe_width, safe_height)];
-            [mContext update];
-            mBackbuffer = backbuffer;
-            return;
-        }
+  auto wasBound = tlsBound == this;
 
-        GAPID_WARNING("Recreating renderer: [0x%x, 0x%x, 0x%x] -> [0x%x, 0x%x, 0x%x]",
-                mBackbuffer.format.color, mBackbuffer.format.depth, mBackbuffer.format.stencil,
-                backbuffer.format.color, backbuffer.format.depth, backbuffer.format.stencil);
-    }
+  [NSApplication sharedApplication];
 
-    auto wasBound = tlsBound == this;
+  reset();
 
-    [NSApplication sharedApplication];
+  NSRect rect = NSMakeRect(0, 0, safe_width, safe_height);
+  mWindow = [[NSWindow alloc] initWithContentRect:rect
+                                        styleMask:NSWindowStyleMaskBorderless
+                                          backing:NSBackingStoreBuffered
+                                            defer:NO];
+  if (mWindow == nullptr) {
+    GAPID_FATAL("Unable to create NSWindow");
+  }
 
-    reset();
+  int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
+  core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
+  core::gl::getDepthBits(backbuffer.format.depth, d);
+  core::gl::getStencilBits(backbuffer.format.stencil, s);
 
-    NSRect rect = NSMakeRect(0, 0, safe_width, safe_height);
-    mWindow = [[NSWindow alloc]
-        initWithContentRect:rect
-        styleMask:NSWindowStyleMaskBorderless
-        backing:NSBackingStoreBuffered
-        defer:NO
-    ];
-    if (mWindow == nullptr) {
-        GAPID_FATAL("Unable to create NSWindow");
-    }
-
-    int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
-    core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
-    core::gl::getDepthBits(backbuffer.format.depth, d);
-    core::gl::getStencilBits(backbuffer.format.stencil, s);
-
-    NSOpenGLPixelFormatAttribute attributes[] = {
-        NSOpenGLPFANoRecovery,
-        NSOpenGLPFAColorSize, (NSOpenGLPixelFormatAttribute)(r+g+b),
-        NSOpenGLPFAAlphaSize, (NSOpenGLPixelFormatAttribute)(a),
-        NSOpenGLPFADepthSize, (NSOpenGLPixelFormatAttribute)d,
-        NSOpenGLPFAStencilSize, (NSOpenGLPixelFormatAttribute)s,
-        NSOpenGLPFAAccelerated,
-        NSOpenGLPFABackingStore,
-        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
-        (NSOpenGLPixelFormatAttribute)0
+  NSOpenGLPixelFormatAttribute attributes[] = {
+      // clang-format on
+      NSOpenGLPFANoRecovery,
+      NSOpenGLPFAColorSize,
+      (NSOpenGLPixelFormatAttribute)(r + g + b),
+      NSOpenGLPFAAlphaSize,
+      (NSOpenGLPixelFormatAttribute)(a),
+      NSOpenGLPFADepthSize,
+      (NSOpenGLPixelFormatAttribute)d,
+      NSOpenGLPFAStencilSize,
+      (NSOpenGLPixelFormatAttribute)s,
+      NSOpenGLPFAAccelerated,
+      NSOpenGLPFABackingStore,
+      NSOpenGLPFAOpenGLProfile,
+      NSOpenGLProfileVersion3_2Core,
+      (NSOpenGLPixelFormatAttribute)0
+      // clang-format off
     };
 
     NSOpenGLPixelFormat* format = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
@@ -174,9 +171,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
         GAPID_FATAL("Unable to create NSOpenGLPixelFormat");
     }
 
-    mContext = [[NSOpenGLContext alloc]
-            initWithFormat:format
-            shareContext:mSharedContext];
+  mContext = [[NSOpenGLContext alloc] initWithFormat:format shareContext:mSharedContext];
     if (mContext == nullptr) {
         GAPID_FATAL("Unable to create NSOpenGLContext");
     }
@@ -224,8 +219,7 @@ void GlesRendererImpl::unbind() {
 }
 
 const char* GlesRendererImpl::name() {
-    return reinterpret_cast<const char*>(
-        mApi.mFunctionStubs.glGetString(Gles::GLenum::GL_RENDERER));
+  return reinterpret_cast<const char*>(mApi.mFunctionStubs.glGetString(Gles::GLenum::GL_RENDERER));
 }
 
 const char* GlesRendererImpl::extensions() {
@@ -245,16 +239,14 @@ const char* GlesRendererImpl::extensions() {
 }
 
 const char* GlesRendererImpl::vendor() {
-    return reinterpret_cast<const char*>(
-        mApi.mFunctionStubs.glGetString(Gles::GLenum::GL_VENDOR));
+  return reinterpret_cast<const char*>(mApi.mFunctionStubs.glGetString(Gles::GLenum::GL_VENDOR));
 }
 
 const char* GlesRendererImpl::version() {
-    return reinterpret_cast<const char*>(
-        mApi.mFunctionStubs.glGetString(Gles::GLenum::GL_VERSION));
+  return reinterpret_cast<const char*>(mApi.mFunctionStubs.glGetString(Gles::GLenum::GL_VERSION));
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 GlesRenderer* GlesRenderer::create(GlesRenderer* shared_context) {
     return new GlesRendererImpl(reinterpret_cast<GlesRendererImpl*>(shared_context));

@@ -26,20 +26,22 @@
 namespace core {
 namespace test {
 
-#if TARGET_OS != GAPID_OS_OSX // Work around for https://github.com/google/gapid/issues/1788
+#if TARGET_OS != GAPID_OS_OSX  // Work around for
+                               // https://github.com/google/gapid/issues/1788
 TEST(CrashHandlerTest, HandleCrash) {
-    CrashHandler crashHandler;
-    crashHandler.registerHandler([] (const std::string& minidumpPath, bool succeeded) {
+  CrashHandler crashHandler;
+  crashHandler.registerHandler(
+      [](const std::string& minidumpPath, bool succeeded) {
         if (succeeded) {
-            std::cerr << "crash handled.";
+          std::cerr << "crash handled.";
         } else {
-            std::cerr << "crash not handled.";
+          std::cerr << "crash not handled.";
         }
-    });
+      });
 
-    EXPECT_DEATH({ (void)*((volatile int*)(0)); }, "crash handled.");
+  EXPECT_DEATH({ (void)*((volatile int*)(0)); }, "crash handled.");
 }
-#endif // TARGET_OS != GAPID_OS_OSX
+#endif  // TARGET_OS != GAPID_OS_OSX
 
-} // namespace test
-} // namespace core
+}  // namespace test
+}  // namespace core

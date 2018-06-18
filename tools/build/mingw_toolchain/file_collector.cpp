@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include <algorithm>
 #include <direct.h>
-#include <iostream>
-#include <fstream>
 #include <shlwapi.h>
+#include <windows.h>
+#include <algorithm>
+#include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <windows.h>
 
 #include "file_collector.h"
 
@@ -44,15 +44,17 @@ std::string GetCWD() {
 // Attempts to create a new folder in the temporary folder based off the PID.
 std::string GetTempDir(const std::string& baseName) {
   char buffer[(MAX_PATH + 1) + /* max return value of GetTempPathA */
-      baseName.length() + 6 /*_XXXX\ */ + 1 /* terminator */];
+              baseName.length() + 6 /*_XXXX\ */ + 1 /* terminator */];
   int len = GetTempPathA(sizeof(buffer), buffer);
 
   for (int i = 0, suffix = GetCurrentProcessId(); i < 10000; i++, suffix++) {
-    snprintf(buffer + len, sizeof(buffer) - len, "%s_%04x\\", baseName.c_str(), suffix % 0x10000);
+    snprintf(buffer + len, sizeof(buffer) - len, "%s_%04x\\", baseName.c_str(),
+             suffix % 0x10000);
     if (CreateDirectory(buffer, nullptr)) {
       return std::string(buffer);
     } else if (GetLastError() != ERROR_ALREADY_EXISTS) {
-      std::cerr << "Failed to create temporary directory " << buffer << std::endl;
+      std::cerr << "Failed to create temporary directory " << buffer
+                << std::endl;
       abort();
     }
   }
@@ -90,7 +92,8 @@ std::string Copy(const std::string& source, const std::string& target) {
   }
 
   if (!CopyFile(source.c_str(), result.c_str(), true)) {
-    std::cerr << "Failed to copy file " << source << " to " << result << std::endl;
+    std::cerr << "Failed to copy file " << source << " to " << result
+              << std::endl;
     abort();
   }
 
@@ -102,16 +105,13 @@ std::string Copy(const std::string& source, const std::string& target) {
   return result;
 }
 
-} // namespace
+}  // namespace
 
-FileCollector::FileCollector(const std::string& baseName) :
-  baseName_(baseName),
-  cwd_(GetCWD()),
-  tmpDir_(""),
-  counter_(0) {
-}
+FileCollector::FileCollector(const std::string& baseName)
+    : baseName_(baseName), cwd_(GetCWD()), tmpDir_(""), counter_(0) {}
 
-std::string FileCollector::ProcessParamsFile(const std::string& path, ParamsType type) {
+std::string FileCollector::ProcessParamsFile(const std::string& path,
+                                             ParamsType type) {
   std::ifstream input(path);
   if (!input.is_open()) {
     std::cerr << "Failed to open params file " << path << std::endl;
@@ -155,12 +155,13 @@ std::string FileCollector::Fixup(const std::string& path, bool escape) {
   }
 
   if (escape) {
-     for (auto p = result.find_last_of('\\'); p != std::string::npos; p = result.find_last_of('\\', p - 1)) {
-       result.insert(p, "\\");
-       if (p == 0) {
-         break;
-       }
-     }
+    for (auto p = result.find_last_of('\\'); p != std::string::npos;
+         p = result.find_last_of('\\', p - 1)) {
+      result.insert(p, "\\");
+      if (p == 0) {
+        break;
+      }
+    }
   }
   return result;
 }
@@ -168,7 +169,8 @@ std::string FileCollector::Fixup(const std::string& path, bool escape) {
 void FileCollector::CopyOutputs() {
   for (auto it = outputs_.begin(); it != outputs_.end(); it++) {
     if (!CopyFile(it->temp_.c_str(), it->final_.c_str(), false)) {
-      std::cerr << "Failed to copy file " << it->temp_ << " to " << it->final_ << std::endl;
+      std::cerr << "Failed to copy file " << it->temp_ << " to " << it->final_
+                << std::endl;
       abort();
     }
   }
@@ -197,7 +199,9 @@ const std::string FileCollector::NewParamsFile() {
   return tmpFiles_.back();
 }
 
-std::string FileCollector::HandleParam(const std::string& path, std::string::size_type p, bool isOutput) {
+std::string FileCollector::HandleParam(const std::string& path,
+                                       std::string::size_type p,
+                                       bool isOutput) {
   if (tmpDir_ == "") {
     tmpDir_ = GetTempDir(baseName_);
   }
@@ -225,15 +229,13 @@ std::string FileCollector::HandleParam(const std::string& path, std::string::siz
   return target;
 }
 
-
-ArgumentCollector::ArgumentCollector(const std::string& cmd) {
-    Push(cmd);
-}
+ArgumentCollector::ArgumentCollector(const std::string& cmd) { Push(cmd); }
 
 void ArgumentCollector::Push(const std::string& arg) {
   std::string el(arg);
   // When spawning the wrapped binary, Windows eats quotes. Escape them.
-  for (auto p = el.find_last_of('"'); p != std::string::npos; p = el.find_last_of('"', p - 1)) {
+  for (auto p = el.find_last_of('"'); p != std::string::npos;
+       p = el.find_last_of('"', p - 1)) {
     el.insert(p, "\\");
     if (p == 0) {
       break;
@@ -249,7 +251,7 @@ int ArgumentCollector::Execute(const std::string exe, FileCollector* fc) {
   }
   argv.push_back(nullptr);
 
-  int r = spawnv(_P_WAIT, exe.c_str(), const_cast<char **>(argv.data()));
+  int r = spawnv(_P_WAIT, exe.c_str(), const_cast<char**>(argv.data()));
   if (r == 0 && fc != nullptr) {
     fc->CopyOutputs();
     fc->Cleanup();

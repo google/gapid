@@ -20,25 +20,25 @@
 namespace core {
 
 CrashHandler::Handler CrashHandler::defaultHandler =
-        [] (const std::string& minidump_path, bool succeeded) {
-            if (!succeeded) {
-                GAPID_ERROR("Failed to write minidump out to %s", minidump_path.c_str());
-            }
-        };
+    [](const std::string& minidump_path, bool succeeded) {
+      if (!succeeded) {
+        GAPID_ERROR("Failed to write minidump out to %s",
+                    minidump_path.c_str());
+      }
+    };
 
 CrashHandler::Unregister CrashHandler::registerHandler(Handler handler) {
-    auto id = mNextHandlerID++;
-    mHandlers[id] = handler;
-    return [this, id] () {
-        mHandlers.erase(id);
-    };
+  auto id = mNextHandlerID++;
+  mHandlers[id] = handler;
+  return [this, id]() { mHandlers.erase(id); };
 }
 
-bool CrashHandler::handleMinidump(const std::string& minidumpPath, bool succeeded) {
-    for (const auto& it : mHandlers) {
-        it.second(minidumpPath, succeeded);
-    }
-    return succeeded;
+bool CrashHandler::handleMinidump(const std::string& minidumpPath,
+                                  bool succeeded) {
+  for (const auto& it : mHandlers) {
+    it.second(minidumpPath, succeeded);
+  }
+  return succeeded;
 }
 
-} // namespace core
+}  // namespace core

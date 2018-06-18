@@ -17,45 +17,42 @@
 #ifndef CORE_ID_H
 #define CORE_ID_H
 
+#include <stdint.h>
 #include <cstring>
 #include <functional>
-#include <stdint.h>
 
 namespace core {
 
 // Id is a 20-byte unique identifier.
 struct Id {
-    // Construct an Id with the hash of the given memory address.
-    static Id Hash(const void* ptr, uint64_t size);
+  // Construct an Id with the hash of the given memory address.
+  static Id Hash(const void* ptr, uint64_t size);
 
-    bool operator == (const Id& rhs) const;
+  bool operator==(const Id& rhs) const;
 
-    inline operator uint8_t*();
-    inline operator const uint8_t*() const;
+  inline operator uint8_t*();
+  inline operator const uint8_t*() const;
 
-    std::string string() const;
+  std::string string() const;
 
-    uint8_t data[20];
+  uint8_t data[20];
 };
 
-inline Id::operator uint8_t*() {
-  return data;
-}
+inline Id::operator uint8_t*() { return data; }
 
-inline Id::operator const uint8_t*() const {
-  return data;
-}
+inline Id::operator const uint8_t*() const { return data; }
 
 }  // namespace core
 
 namespace std {
 
-template <> struct hash<core::Id> {
-    inline size_t operator()(const core::Id& id) const {
-        size_t hash;
-        memcpy(&hash, id.data, sizeof(hash));
-        return hash;
-    }
+template <>
+struct hash<core::Id> {
+  inline size_t operator()(const core::Id& id) const {
+    size_t hash;
+    memcpy(&hash, id.data, sizeof(hash));
+    return hash;
+  }
 };
 
 }  // namespace std

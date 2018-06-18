@@ -23,9 +23,10 @@
 namespace core {
 
 Thread Thread::current() {
-    auto thread = pthread_self();
-    auto asUnsigned = static_cast<std::make_unsigned<decltype(thread)>::type>(thread);
-    return Thread(static_cast<uint64_t>(asUnsigned));
+  auto thread = pthread_self();
+  auto asUnsigned =
+      static_cast<std::make_unsigned<decltype(thread)>::type>(thread);
+  return Thread(static_cast<uint64_t>(asUnsigned));
 }
 
 }  // namespace core

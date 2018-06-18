@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "../dl_loader.h"
 #include "../get_vulkan_proc_address.h"
+#include "../dl_loader.h"
 #include "../log.h"
-#include "../target.h" // STDCALL
+#include "../target.h"  // STDCALL
 
-#include <string>
 #include <sstream>
+#include <string>
 
 #include <windows.h>
 #include <wingdi.h>
@@ -28,64 +28,79 @@
 namespace {
 
 std::string systemVulkanPath() {
-    char sysdir[MAX_PATH];
-    GetSystemDirectoryA(sysdir, MAX_PATH-1);
+  char sysdir[MAX_PATH];
+  GetSystemDirectoryA(sysdir, MAX_PATH - 1);
 
-    std::stringstream path;
-    path << sysdir << "\\vulkan-1.dll";
-    return path.str();
+  std::stringstream path;
+  path << sysdir << "\\vulkan-1.dll";
+  return path.str();
 }
 
 using namespace core;
 
-// Definitions from the Vulkan API. Should keep the same with those in vulkan_types.h.
+// Definitions from the Vulkan API. Should keep the same with those in
+// vulkan_types.h.
 typedef void* PFN_vkVoidFunction;
 typedef size_t VkDevice;
 typedef size_t VkInstance;
 
-void* getVulkanInstanceProcAddress(size_t instance, const char *name, bool bypassLocal) {
-    typedef PFN_vkVoidFunction (*VPAPROC)(VkInstance instance, const char *name);
+void* getVulkanInstanceProcAddress(size_t instance, const char* name,
+                                   bool bypassLocal) {
+  typedef PFN_vkVoidFunction (*VPAPROC)(VkInstance instance, const char* name);
 
-    static DlLoader dylib(bypassLocal ? systemVulkanPath().c_str() : "vulkan-1.dll");
+  static DlLoader dylib(bypassLocal ? systemVulkanPath().c_str()
+                                    : "vulkan-1.dll");
 
-    if (VPAPROC vpa = reinterpret_cast<VPAPROC>(dylib.lookup("vkGetInstanceProcAddr"))) {
-        if (void* proc = vpa(instance, name)) {
-            GAPID_DEBUG("GetVulkanInstanceProcAddress(0x%x, %s, %d) -> 0x%x (via %s Vulkan vkGetInstanceProcAddr)",
-                instance, name, bypassLocal, proc, (bypassLocal ? "system" : "local"));
-            return proc;
-        }
+  if (VPAPROC vpa =
+          reinterpret_cast<VPAPROC>(dylib.lookup("vkGetInstanceProcAddr"))) {
+    if (void* proc = vpa(instance, name)) {
+      GAPID_DEBUG(
+          "GetVulkanInstanceProcAddress(0x%x, %s, %d) -> 0x%x "
+          "(via %s Vulkan vkGetInstanceProcAddr)",
+          instance, name, bypassLocal, proc,
+          (bypassLocal ? "system" : "local"));
+      return proc;
     }
+  }
 
-    GAPID_DEBUG("GetVulkanInstanceProcAddress(0x%x, %s, %d) -> not found", instance, name, bypassLocal);
-    return nullptr;
+  GAPID_DEBUG("GetVulkanInstanceProcAddress(0x%x, %s, %d) -> not found",
+              instance, name, bypassLocal);
+  return nullptr;
 }
 
-void* getVulkanDeviceProcAddress(size_t instance, size_t device, const char *name, bool bypassLocal) {
-    typedef PFN_vkVoidFunction (*VPAPROC)(VkDevice device, const char *name);
+void* getVulkanDeviceProcAddress(size_t instance, size_t device,
+                                 const char* name, bool bypassLocal) {
+  typedef PFN_vkVoidFunction (*VPAPROC)(VkDevice device, const char* name);
 
-    if (auto vpa = reinterpret_cast<VPAPROC>(
-        getVulkanInstanceProcAddress(instance, "vkGetDeviceProcAddr", bypassLocal))) {
-        if (void* proc = vpa(device, name)) {
-            GAPID_DEBUG("GetVulkanDeviceProcAddress(0x%x, 0x%x, %s, %d) -> 0x%x (via %s Vulkan vkGetDeviceProcAddr)",
-                instance, device, name, bypassLocal, proc, (bypassLocal ? "system" : "local"));
-            return proc;
-        }
+  if (auto vpa = reinterpret_cast<VPAPROC>(getVulkanInstanceProcAddress(
+          instance, "vkGetDeviceProcAddr", bypassLocal))) {
+    if (void* proc = vpa(device, name)) {
+      GAPID_DEBUG(
+          "GetVulkanDeviceProcAddress(0x%x, 0x%x, %s, %d) -> 0x%x "
+          "(via %s Vulkan vkGetDeviceProcAddr)",
+          instance, device, name, bypassLocal, proc,
+          (bypassLocal ? "system" : "local"));
+      return proc;
     }
+  }
 
-    GAPID_DEBUG("GetVulkanDeviceProcAddress(0x%x, 0x%x, %s, %d) -> not found", instance, device, name, bypassLocal);
-    return nullptr;
+  GAPID_DEBUG("GetVulkanDeviceProcAddress(0x%x, 0x%x, %s, %d) -> not found",
+              instance, device, name, bypassLocal);
+  return nullptr;
 }
 
 void* getVulkanProcAddress(const char* name, bool bypassLocal) {
-    return getVulkanInstanceProcAddress(0u, name, bypassLocal);
+  return getVulkanInstanceProcAddress(0u, name, bypassLocal);
 }
 
 }  // anonymous namespace
 
 namespace core {
 
-GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress = getVulkanInstanceProcAddress;
-GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress = getVulkanDeviceProcAddress;
+GetVulkanInstanceProcAddressFunc* GetVulkanInstanceProcAddress =
+    getVulkanInstanceProcAddress;
+GetVulkanDeviceProcAddressFunc* GetVulkanDeviceProcAddress =
+    getVulkanDeviceProcAddress;
 GetVulkanProcAddressFunc* GetVulkanProcAddress = getVulkanProcAddress;
 bool HasVulkanLoader() {
   return DlLoader::can_load(systemVulkanPath().c_str()) ||

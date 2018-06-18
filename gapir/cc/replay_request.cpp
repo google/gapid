@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "memory_manager.h"
 #include "replay_request.h"
+#include "memory_manager.h"
 #include "resource_provider.h"
 
 #include "core/cc/log.h"
@@ -31,8 +31,8 @@
 
 namespace gapir {
 
-std::unique_ptr<ReplayRequest> ReplayRequest::create(ReplayConnection* conn,
-                                                     MemoryManager* memoryManager) {
+std::unique_ptr<ReplayRequest> ReplayRequest::create(
+    ReplayConnection* conn, MemoryManager* memoryManager) {
   // Request the replay data from the server.
   if (conn == nullptr) {
     GAPID_ERROR("Failed to create ReplayRequest: null ReplayConnection");
@@ -40,13 +40,15 @@ std::unique_ptr<ReplayRequest> ReplayRequest::create(ReplayConnection* conn,
   }
   std::unique_ptr<ReplayConnection::Payload> payload = conn->getPayload();
   if (payload == nullptr) {
-      GAPID_ERROR("Failed to create ReplayRequest: null Payload")
+    GAPID_ERROR("Failed to create ReplayRequest: null Payload")
     return nullptr;  // failed at getting payload.
   }
-    // Reserve Replay data segments and load data into the memory manager.
-    if (!memoryManager->setReplayDataSize(payload->constants_size(),
-                                       payload->opcodes_size())) {
-    GAPID_ERROR("Failed to create ReplayRequest: failed to set replay data size (constant memory size or opcode memory size)")
+  // Reserve Replay data segments and load data into the memory manager.
+  if (!memoryManager->setReplayDataSize(payload->constants_size(),
+                                        payload->opcodes_size())) {
+    GAPID_ERROR(
+        "Failed to create ReplayRequest: failed to set replay data size "
+        "(constant memory size or opcode memory size)")
     return nullptr;
   }
   memcpy(memoryManager->getConstantAddress(), payload->constants_data(),
@@ -76,24 +78,24 @@ std::unique_ptr<ReplayRequest> ReplayRequest::create(ReplayConnection* conn,
   return req;
 }
 
-uint32_t ReplayRequest::getStackSize() const {
-    return mStackSize;
-}
+uint32_t ReplayRequest::getStackSize() const { return mStackSize; }
 
 uint32_t ReplayRequest::getVolatileMemorySize() const {
-    return mVolatileMemorySize;
+  return mVolatileMemorySize;
 }
 
 const std::vector<Resource>& ReplayRequest::getResources() const {
-    return mResources;
+  return mResources;
 }
 
-const std::pair<const void*, uint32_t>& ReplayRequest::getConstantMemory() const {
-    return mConstantMemory;
+const std::pair<const void*, uint32_t>& ReplayRequest::getConstantMemory()
+    const {
+  return mConstantMemory;
 }
 
-const std::pair<const uint32_t*, uint32_t>& ReplayRequest::getInstructionList() const {
-    return mInstructionList;
+const std::pair<const uint32_t*, uint32_t>& ReplayRequest::getInstructionList()
+    const {
+  return mInstructionList;
 }
 
 }  // namespace gapir

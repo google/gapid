@@ -22,37 +22,39 @@
 
 namespace {
 
-static bool handleCrash(const google_breakpad::MinidumpDescriptor& descriptor, void* crashHandlerPtr, bool succeeded) {
-    core::CrashHandler* crashHandler = reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
-    std::string minidumpPath(descriptor.path());
-    return crashHandler->handleMinidump(minidumpPath, succeeded);
+static bool handleCrash(const google_breakpad::MinidumpDescriptor& descriptor,
+                        void* crashHandlerPtr, bool succeeded) {
+  core::CrashHandler* crashHandler =
+      reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
+  std::string minidumpPath(descriptor.path());
+  return crashHandler->handleMinidump(minidumpPath, succeeded);
 }
 
-}
+}  // namespace
 
 namespace core {
 
 namespace {
 const char* GetTempDir() {
-    const char* tmpdir = getenv("TMPDIR");
-    if (!tmpdir) {
-        tmpdir = "/tmp";
-    }
-    return tmpdir;
+  const char* tmpdir = getenv("TMPDIR");
+  if (!tmpdir) {
+    tmpdir = "/tmp";
+  }
+  return tmpdir;
 }
-} // namespace
+}  // namespace
 
-CrashHandler::CrashHandler() :
-    mNextHandlerID(0),
-    mExceptionHandler(new google_breakpad::ExceptionHandler(
-            google_breakpad::MinidumpDescriptor(GetTempDir()),
-            NULL, ::handleCrash, reinterpret_cast<void*>(this), true, -1)) {
-
-    registerHandler(defaultHandler);
+CrashHandler::CrashHandler()
+    : mNextHandlerID(0),
+      mExceptionHandler(new google_breakpad::ExceptionHandler(
+          google_breakpad::MinidumpDescriptor(GetTempDir()), NULL,
+          ::handleCrash, reinterpret_cast<void*>(this), true, -1)) {
+  registerHandler(defaultHandler);
 }
 
-// this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.
-// The incomplete type is the previously forward declared google_breakpad::ExceptionHandler.
+// this prevents unique_ptr<CrashHandler> from causing an incomplete type error
+// from inlining the destructor. The incomplete type is the previously forward
+// declared google_breakpad::ExceptionHandler.
 CrashHandler::~CrashHandler() = default;
 
-} // namespace core
+}  // namespace core

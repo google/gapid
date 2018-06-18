@@ -1,4 +1,5 @@
-/*===------- llvm/Config/abi-breaking.h - llvm configuration -------*- C -*-===*/
+/*===------- llvm/Config/abi-breaking.h - llvm configuration -------*- C
+ * -*-===*/
 /*                                                                            */
 /*                     The LLVM Compiler Infrastructure                       */
 /*                                                                            */
@@ -6,6 +7,8 @@
 /* License. See LICENSE.TXT for details.                                      */
 /*                                                                            */
 /*===----------------------------------------------------------------------===*/
+
+// clang-format off
 
 /* This file controls the C++ ABI break introduced in LLVM public header. */
 

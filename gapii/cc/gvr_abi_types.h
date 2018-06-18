@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef GAPII_GVR_ABI_TYPES_H
 #define GAPII_GVR_ABI_TYPES_H
 
@@ -26,11 +25,11 @@ struct gvr_mat4_abi : core::CStaticArray<float, 16> {};
 
 gvr_mat4f::gvr_mat4f(gvr_mat4_abi const& abi) : mm(abi) {}
 gvr_mat4f::operator gvr_mat4_abi() const {
-    gvr_mat4_abi out;
-    memcpy(&out, &this->mm, sizeof(out));
-    return out;
+  gvr_mat4_abi out;
+  memcpy(&out, &this->mm, sizeof(out));
+  return out;
 }
 
-} // namespace gapii
+}  // namespace gapii
 
-#endif // GAPII_GVR_ABI_TYPES_H
+#endif  // GAPII_GVR_ABI_TYPES_H

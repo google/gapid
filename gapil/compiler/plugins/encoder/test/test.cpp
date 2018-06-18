@@ -16,56 +16,56 @@
 
 #include "core/memory/arena/cc/arena.h"
 
-#include "gapil/runtime/cc/runtime.h"
-#include "gapil/runtime/cc/string.h"
 #include "gapil/runtime/cc/map.inc"
 #include "gapil/runtime/cc/ref.inc"
+#include "gapil/runtime/cc/runtime.h"
+#include "gapil/runtime/cc/string.h"
 
 namespace {
 
 template <typename T>
 void create_map(arena* arena, map** p) {
-    auto a = reinterpret_cast<core::Arena*>(arena);
-    auto m = reinterpret_cast<T*>(p);
-    new(m) T(a);
+  auto a = reinterpret_cast<core::Arena*>(arena);
+  auto m = reinterpret_cast<T*>(p);
+  new (m) T(a);
 }
 
 template <typename T>
 T* create_ref(arena* arena, ref** p) {
-    auto a = reinterpret_cast<core::Arena*>(arena);
-    auto ref = new(p) gapil::Ref<T>();
-    *ref = gapil::Ref<T>::create(a);
-    return ref->get();
+  auto a = reinterpret_cast<core::Arena*>(arena);
+  auto ref = new (p) gapil::Ref<T>();
+  *ref = gapil::Ref<T>::create(a);
+  return ref->get();
 }
 
-}  // namespace {
+}  // namespace
 
 extern "C" {
 
 void create_map_u32(arena* arena, map** p) {
-    create_map< gapil::Map<uint32_t, uint32_t> >(arena, p);
+  create_map<gapil::Map<uint32_t, uint32_t> >(arena, p);
 }
 
 void insert_map_u32(map* m, uint32_t k, uint32_t v) {
-    auto& map = *reinterpret_cast<gapil::Map<uint32_t, uint32_t>*>(&m);
-    map[k] = v;
+  auto& map = *reinterpret_cast<gapil::Map<uint32_t, uint32_t>*>(&m);
+  map[k] = v;
 }
 
 void create_map_string(arena* arena, map** p) {
-    create_map< gapil::Map<string_t, string_t> >(arena, p);
+  create_map<gapil::Map<string_t, string_t> >(arena, p);
 }
 
 void insert_map_string(map* m, const char* k, const char* v) {
-    auto& map = *reinterpret_cast<gapil::Map<gapil::String, gapil::String>*>(&m);
-    map[gapil::String(map.arena(), k)] = gapil::String(map.arena(), v);
+  auto& map = *reinterpret_cast<gapil::Map<gapil::String, gapil::String>*>(&m);
+  map[gapil::String(map.arena(), k)] = gapil::String(map.arena(), v);
 }
 
 basic_types* create_basic_types_ref(arena* a, ref** p) {
-    return create_ref<basic_types>(a, p);
+  return create_ref<basic_types>(a, p);
 }
 
 inner_class* create_inner_class_ref(arena* a, ref** p) {
-    return create_ref<inner_class>(a, p);
+  return create_ref<inner_class>(a, p);
 }
 
-} // extern "C"
+}  // extern "C"

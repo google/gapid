@@ -14,43 +14,37 @@
  * limitations under the License.
  */
 
-#include "gapir/cc/vulkan_gfx_api.h"
 #include "gapir/cc/vulkan_renderer.h"
+#include "gapir/cc/vulkan_gfx_api.h"
 
 namespace gapir {
 namespace {
 
 class VulkanRendererImpl : public VulkanRenderer {
-public:
-    VulkanRendererImpl();
-    virtual ~VulkanRendererImpl() override;
+ public:
+  VulkanRendererImpl();
+  virtual ~VulkanRendererImpl() override;
 
-    virtual Api* api() override;
+  virtual Api* api() override;
 
-    virtual bool isValid() override;
-private:
-    Vulkan mApi;
+  virtual bool isValid() override;
+
+ private:
+  Vulkan mApi;
 };
 
-VulkanRendererImpl::VulkanRendererImpl() {
-    mApi.resolve();
-}
+VulkanRendererImpl::VulkanRendererImpl() { mApi.resolve(); }
 
-VulkanRendererImpl::~VulkanRendererImpl() {
-}
+VulkanRendererImpl::~VulkanRendererImpl() {}
 
-Api* VulkanRendererImpl::api() {
-  return &mApi;
-}
+Api* VulkanRendererImpl::api() { return &mApi; }
 
 bool VulkanRendererImpl::isValid() {
- return mApi.mFunctionStubs.vkCreateInstance != nullptr;
+  return mApi.mFunctionStubs.vkCreateInstance != nullptr;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-VulkanRenderer* VulkanRenderer::create() {
-    return new VulkanRendererImpl();
-}
+VulkanRenderer* VulkanRenderer::create() { return new VulkanRendererImpl(); }
 
 }  // namespace gapir

@@ -23,36 +23,42 @@
 // General logging functions. All logging should be done through these macros.
 //
 // The system supports the following log levels with the specified meanings:
-// * LOG_LEVEL_FATAL:   Serious error. No recovery is possible and the system will die immediately.
-// * LOG_LEVEL_ERROR:   Serious error. We can continue, but it should not happen during normal use.
-// * LOG_LEVEL_WARNING: Possible issue. It is not technically an error, but it is suspicious.
-// * LOG_LEVEL_INFO:    Normal behaviour. Small amount of messages that indicate program progress.
-// * LOG_LEVEL_DEBUG    Used only for debugging. The amount of logging may slow down the program.
-// * LOG_LEVEL_VERBOSE: Very verbose debug logging. It may log excessive amount of information.
+// * LOG_LEVEL_FATAL:   Serious error. No recovery is possible and the system
+//                      will die immediately.
+// * LOG_LEVEL_ERROR:   Serious error. We can continue, but it should not happen
+//                      during normal use.
+// * LOG_LEVEL_WARNING: Possible issue. It is not technically an error, but it
+//                      is suspicious.
+// * LOG_LEVEL_INFO:    Normal behaviour. Small amount of messages that indicate
+//                      program progress.
+// * LOG_LEVEL_DEBUG    Used only for debugging. The amount of logging may slow
+//                      down the program.
+// * LOG_LEVEL_VERBOSE: Very verbose debug logging. It may log excessive amount
+//                      of information.
 
 #include "target.h"
 
 // Levels of logging from least verbose to most verbose.
 // These log levels correspond to Android log levels.
-#define LOG_LEVEL_FATAL   0
-#define LOG_LEVEL_ERROR   1
+#define LOG_LEVEL_FATAL 0
+#define LOG_LEVEL_ERROR 1
 #define LOG_LEVEL_WARNING 2
-#define LOG_LEVEL_INFO    3
-#define LOG_LEVEL_DEBUG   4
+#define LOG_LEVEL_INFO 3
+#define LOG_LEVEL_DEBUG 4
 #define LOG_LEVEL_VERBOSE 5
 
 // If no log level specified then use the default one.
 #ifndef LOG_LEVEL
-#   define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_LEVEL LOG_LEVEL_INFO
 #endif
 
 #define GAPID_STR(S) GAPID_STR2(S)
 #define GAPID_STR2(S) #S
 
 #if TARGET_OS == GAPID_OS_WINDOWS
-  #define PRIsize "Iu"
+#define PRIsize "Iu"
 #else
-  #define PRIsize "zu"
+#define PRIsize "zu"
 #endif
 
 #if TARGET_OS == GAPID_OS_ANDROID
@@ -61,22 +67,29 @@
 
 #define GAPID_LOGGER_INIT(...)
 #define GAPID_SHOULD_LOG(LEVEL) (LOG_LEVEL >= LEVEL)
-#define GAPID_LOG(LEVEL, ANDROID_LOG_LEVEL, FORMAT, ...)                                          \
-  if GAPID_SHOULD_LOG(LEVEL) {                                                                    \
-    if (LEVEL == LOG_LEVEL_FATAL) {                                                               \
-      __android_log_assert(nullptr, "GAPID", "[%s:%u] " FORMAT,                                   \
-                           __FILE__, __LINE__, ##__VA_ARGS__);                                    \
-    } else {                                                                                      \
-      __android_log_print(ANDROID_LOG_LEVEL, "GAPID", "[%s:%u] " FORMAT,                          \
-                          __FILE__, __LINE__, ##__VA_ARGS__);                                     \
-    }                                                                                             \
-  }
-#define GAPID_FATAL(FORMAT, ...) GAPID_LOG(LOG_LEVEL_FATAL, ANDROID_LOG_FATAL, FORMAT, ##__VA_ARGS__)
-#define GAPID_ERROR(FORMAT, ...) GAPID_LOG(LOG_LEVEL_ERROR, ANDROID_LOG_ERROR, FORMAT, ##__VA_ARGS__)
-#define GAPID_WARNING(FORMAT, ...) GAPID_LOG(LOG_LEVEL_WARNING, ANDROID_LOG_WARN, FORMAT, ##__VA_ARGS__)
-#define GAPID_INFO(FORMAT, ...) GAPID_LOG(LOG_LEVEL_INFO, ANDROID_LOG_INFO, FORMAT, ##__VA_ARGS__)
-#define GAPID_DEBUG(FORMAT, ...) GAPID_LOG(LOG_LEVEL_DEBUG, ANDROID_LOG_DEBUG, FORMAT, ##__VA_ARGS__)
-#define GAPID_VERBOSE(FORMAT, ...) GAPID_LOG(LOG_LEVEL_VERBOSE, ANDROID_LOG_VERBOSE, FORMAT, ##__VA_ARGS__)
+#define GAPID_LOG(LEVEL, ANDROID_LOG_LEVEL, FORMAT, ...)                    \
+  if                                                                        \
+    GAPID_SHOULD_LOG(LEVEL) {                                               \
+      if (LEVEL == LOG_LEVEL_FATAL) {                                       \
+        __android_log_assert(nullptr, "GAPID", "[%s:%u] " FORMAT, __FILE__, \
+                             __LINE__, ##__VA_ARGS__);                      \
+      } else {                                                              \
+        __android_log_print(ANDROID_LOG_LEVEL, "GAPID", "[%s:%u] " FORMAT,  \
+                            __FILE__, __LINE__, ##__VA_ARGS__);             \
+      }                                                                     \
+    }
+#define GAPID_FATAL(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_FATAL, ANDROID_LOG_FATAL, FORMAT, ##__VA_ARGS__)
+#define GAPID_ERROR(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_ERROR, ANDROID_LOG_ERROR, FORMAT, ##__VA_ARGS__)
+#define GAPID_WARNING(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_WARNING, ANDROID_LOG_WARN, FORMAT, ##__VA_ARGS__)
+#define GAPID_INFO(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_INFO, ANDROID_LOG_INFO, FORMAT, ##__VA_ARGS__)
+#define GAPID_DEBUG(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_DEBUG, ANDROID_LOG_DEBUG, FORMAT, ##__VA_ARGS__)
+#define GAPID_VERBOSE(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_VERBOSE, ANDROID_LOG_VERBOSE, FORMAT, ##__VA_ARGS__)
 
 #else  // TARGET_OS == GAPID_OS_ANDROID
 
@@ -86,49 +99,58 @@ namespace core {
 
 // Singleton logger implementation for PCs to write formatted log messages.
 class Logger {
-public:
-    // Initializes the logger to write to the log file at path.
-    static void init(unsigned level, const char* system, const char* path);
+ public:
+  // Initializes the logger to write to the log file at path.
+  static void init(unsigned level, const char* system, const char* path);
 
-    // Write a log message to the log output with the specific log level. The location should
-    // contain the place where the log is written from and the format is a standard C format string
-    // If a message is logged with level LOG_LEVEL_FATAL, the program will terminate after the
-    // message is printed.
-    // Log messages take the form: <time> <level> <system> <file:line> : <message>
-    void logf(unsigned level, const char* file, unsigned line, const char* format, ...) const;
+  // Write a log message to the log output with the specific log level. The
+  // location should contain the place where the log is written from and the
+  // format is a standard C format string If a message is logged with level
+  // LOG_LEVEL_FATAL, the program will terminate after the message is printed.
+  // Log messages take the form: <time> <level> <system> <file:line> : <message>
+  void logf(unsigned level, const char* file, unsigned line, const char* format,
+            ...) const;
 
-    void vlogf(unsigned level, const char* file, unsigned line, const char* format, va_list args) const;
+  void vlogf(unsigned level, const char* file, unsigned line,
+             const char* format, va_list args) const;
 
-    static const Logger& instance() { return mInstance; }
+  static const Logger& instance() { return mInstance; }
 
-    static unsigned level() { return mInstance.mLevel; }
+  static unsigned level() { return mInstance.mLevel; }
 
-private:
-    // mInstance is the single logger instance.
-    static Logger mInstance;
+ private:
+  // mInstance is the single logger instance.
+  static Logger mInstance;
 
-    Logger();
-    ~Logger();
+  Logger();
+  ~Logger();
 
-    unsigned mLevel;
-    const char* mSystem;
-    std::vector<FILE*> mFiles;
+  unsigned mLevel;
+  const char* mSystem;
+  std::vector<FILE*> mFiles;
 };
 
 }  // namespace core
 
 #define GAPID_LOGGER_INIT(...) ::core::Logger::init(__VA_ARGS__)
 #define GAPID_SHOULD_LOG(LEVEL) (::core::Logger::level() >= LEVEL)
-#define GAPID_LOG(LEVEL, FORMAT, ...)                                                             \
-  if GAPID_SHOULD_LOG(LEVEL) {                                                                    \
-    ::core::Logger::instance().logf(LEVEL, __FILE__, __LINE__, FORMAT, ##__VA_ARGS__);            \
-  }
-#define GAPID_FATAL(FORMAT, ...) GAPID_LOG(LOG_LEVEL_FATAL, FORMAT, ##__VA_ARGS__)
-#define GAPID_ERROR(FORMAT, ...) GAPID_LOG(LOG_LEVEL_ERROR, FORMAT, ##__VA_ARGS__)
-#define GAPID_WARNING(FORMAT, ...) GAPID_LOG(LOG_LEVEL_WARNING, FORMAT, ##__VA_ARGS__)
+#define GAPID_LOG(LEVEL, FORMAT, ...)                                    \
+  if                                                                     \
+    GAPID_SHOULD_LOG(LEVEL) {                                            \
+      ::core::Logger::instance().logf(LEVEL, __FILE__, __LINE__, FORMAT, \
+                                      ##__VA_ARGS__);                    \
+    }
+#define GAPID_FATAL(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_FATAL, FORMAT, ##__VA_ARGS__)
+#define GAPID_ERROR(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_ERROR, FORMAT, ##__VA_ARGS__)
+#define GAPID_WARNING(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_WARNING, FORMAT, ##__VA_ARGS__)
 #define GAPID_INFO(FORMAT, ...) GAPID_LOG(LOG_LEVEL_INFO, FORMAT, ##__VA_ARGS__)
-#define GAPID_DEBUG(FORMAT, ...) GAPID_LOG(LOG_LEVEL_DEBUG, FORMAT, ##__VA_ARGS__)
-#define GAPID_VERBOSE(FORMAT, ...) GAPID_LOG(LOG_LEVEL_VERBOSE, FORMAT, ##__VA_ARGS__)
+#define GAPID_DEBUG(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_DEBUG, FORMAT, ##__VA_ARGS__)
+#define GAPID_VERBOSE(FORMAT, ...) \
+  GAPID_LOG(LOG_LEVEL_VERBOSE, FORMAT, ##__VA_ARGS__)
 
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 

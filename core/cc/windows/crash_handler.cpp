@@ -26,41 +26,47 @@
 
 namespace {
 
-static bool handleCrash(const wchar_t* minidumpDir, const wchar_t* minidumpId, void* crashHandlerPtr,
-        EXCEPTION_POINTERS* exinfo, MDRawAssertionInfo* assertion, bool succeeded) {
-    core::CrashHandler* crashHandler = reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
-    // convert wchar_t to UTF-8
-    size_t dirLen = WideCharToMultiByte(CP_UTF8, 0, minidumpDir, -1, NULL, 0, NULL, NULL);
-    size_t IdLen = WideCharToMultiByte(CP_UTF8, 0, minidumpId, -1, NULL, 0, NULL, NULL);
-    std::unique_ptr<char[]> dirBuffer(new char[dirLen]);
-    std::unique_ptr<char[]> idBuffer(new char[IdLen]);
-    WideCharToMultiByte(CP_UTF8, 0, minidumpDir, -1, dirBuffer.get(), dirLen, NULL, NULL);
-    WideCharToMultiByte(CP_UTF8, 0, minidumpId, -1, idBuffer.get(), IdLen, NULL, NULL);
-    std::string minidumpPath(dirBuffer.get());
-    minidumpPath.append(idBuffer.get());
-    minidumpPath.append(".dmp");
-    return crashHandler->handleMinidump(minidumpPath, succeeded);
+static bool handleCrash(const wchar_t* minidumpDir, const wchar_t* minidumpId,
+                        void* crashHandlerPtr, EXCEPTION_POINTERS* exinfo,
+                        MDRawAssertionInfo* assertion, bool succeeded) {
+  core::CrashHandler* crashHandler =
+      reinterpret_cast<core::CrashHandler*>(crashHandlerPtr);
+  // convert wchar_t to UTF-8
+  size_t dirLen =
+      WideCharToMultiByte(CP_UTF8, 0, minidumpDir, -1, NULL, 0, NULL, NULL);
+  size_t IdLen =
+      WideCharToMultiByte(CP_UTF8, 0, minidumpId, -1, NULL, 0, NULL, NULL);
+  std::unique_ptr<char[]> dirBuffer(new char[dirLen]);
+  std::unique_ptr<char[]> idBuffer(new char[IdLen]);
+  WideCharToMultiByte(CP_UTF8, 0, minidumpDir, -1, dirBuffer.get(), dirLen,
+                      NULL, NULL);
+  WideCharToMultiByte(CP_UTF8, 0, minidumpId, -1, idBuffer.get(), IdLen, NULL,
+                      NULL);
+  std::string minidumpPath(dirBuffer.get());
+  minidumpPath.append(idBuffer.get());
+  minidumpPath.append(".dmp");
+  return crashHandler->handleMinidump(minidumpPath, succeeded);
 }
 
-}
+}  // namespace
 
 namespace core {
 
-CrashHandler::CrashHandler() :
-    mNextHandlerID(0) {
-    wchar_t tempPathBuf[MAX_PATH+1];
-    GetTempPathW(MAX_PATH+1, tempPathBuf);
-    std::wstring tempPath(tempPathBuf);
-    mExceptionHandler = std::unique_ptr<google_breakpad::ExceptionHandler>(
-        new google_breakpad::ExceptionHandler(
-            tempPath, NULL, ::handleCrash, reinterpret_cast<void*>(this),
-            google_breakpad::ExceptionHandler::HandlerType::HANDLER_ALL));
+CrashHandler::CrashHandler() : mNextHandlerID(0) {
+  wchar_t tempPathBuf[MAX_PATH + 1];
+  GetTempPathW(MAX_PATH + 1, tempPathBuf);
+  std::wstring tempPath(tempPathBuf);
+  mExceptionHandler = std::unique_ptr<google_breakpad::ExceptionHandler>(
+      new google_breakpad::ExceptionHandler(
+          tempPath, NULL, ::handleCrash, reinterpret_cast<void*>(this),
+          google_breakpad::ExceptionHandler::HandlerType::HANDLER_ALL));
 
-    registerHandler(defaultHandler);
+  registerHandler(defaultHandler);
 }
 
-// this prevents unique_ptr<CrashHandler> from causing an incomplete type error from inlining the destructor.
-// The incomplete type is the previously forward declared google_breakpad::ExceptionHandler.
+// this prevents unique_ptr<CrashHandler> from causing an incomplete type error
+// from inlining the destructor. The incomplete type is the previously forward
+// declared google_breakpad::ExceptionHandler.
 CrashHandler::~CrashHandler() = default;
 
-} // namespace core
+}  // namespace core

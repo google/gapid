@@ -19,42 +19,42 @@
 
 #include "third_party/SPIRV-Headers/include/spirv/unified1/spirv.hpp"
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.h"
+#include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.hpp"
 #include "third_party/SPIRV-Tools/source/assembly_grammar.h"
 #include "third_party/SPIRV-Tools/source/opcode.h"
 #include "third_party/SPIRV-Tools/source/operand.h"
-#include "third_party/SPIRV-Tools/source/opt/def_use_manager.h"
-#include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.hpp"
 #include "third_party/SPIRV-Tools/source/opt/build_module.h"
+#include "third_party/SPIRV-Tools/source/opt/def_use_manager.h"
 #include "third_party/SPIRV-Tools/source/opt/ir_context.h"
 #include "third_party/SPIRV-Tools/source/opt/make_unique.h"
 #include "third_party/SPIRV-Tools/source/opt/reflect.h"
 #include "third_party/SPIRV-Tools/source/opt/type_manager.h"
 #include "third_party/SPIRV-Tools/source/opt/types.h"
 
-#include "name_manager.h"
 #include "common.h"
+#include "name_manager.h"
 
 #include "libmanager.h"
 
+#include <stdint.h>
 #include <cstring>
 #include <iostream>
 #include <map>
 #include <set>
-#include <stdint.h>
 #include <string>
 #include <utility>  // std::pair, std::make_pair
 #include <vector>
 
 namespace spvmanager {
 
-using spvtools::ir::IRContext;
-using spvtools::ir::Module;
-using spvtools::ir::Instruction;
 using spvtools::ir::BasicBlock;
 using spvtools::ir::Function;
-using spvtools::opt::analysis::TypeManager;
-using spvtools::opt::analysis::Type;
+using spvtools::ir::IRContext;
+using spvtools::ir::Instruction;
+using spvtools::ir::Module;
 using spvtools::opt::analysis::DefUseManager;
+using spvtools::opt::analysis::Type;
+using spvtools::opt::analysis::TypeManager;
 
 #define MANAGER_SPV_ENV SPV_ENV_UNIVERSAL_1_1  // from spirv-tools
 
@@ -73,14 +73,17 @@ class SpvManager {
     globals.void_id = 0;
     globals.label_print_id = 0;
 
-    auto print_msg_to_stderr = [](spv_message_level_t, const char*, const spv_position_t&, const char* m) {
+    auto print_msg_to_stderr = [](spv_message_level_t, const char*,
+                                  const spv_position_t&, const char* m) {
       std::cerr << "error: " << m << std::endl;
     };
 
-    std::unique_ptr<spv_context_t> spvContext(spvContextCreate(MANAGER_SPV_ENV));
+    std::unique_ptr<spv_context_t> spvContext(
+        spvContextCreate(MANAGER_SPV_ENV));
     grammar.reset(new libspirv::AssemblyGrammar(spvContext.get()));
     // init module
-    context = spvtools::BuildModule(MANAGER_SPV_ENV, print_msg_to_stderr, spv_binary.data(), spv_binary.size());
+    context = spvtools::BuildModule(MANAGER_SPV_ENV, print_msg_to_stderr,
+                                    spv_binary.data(), spv_binary.size());
     type_mgr.reset(new TypeManager(print_msg_to_stderr, context.get()));
     def_use_mgr.reset(new DefUseManager(context->module()));
     name_mgr.reset(new namemanager::NameManager(context->module()));
@@ -127,25 +130,32 @@ class SpvManager {
   map_uint consts;
 
   std::vector<spvtools::ir::Operand> makeOperands(
-      spv_opcode_desc&, std::initializer_list<std::initializer_list<uint32_t>>&, const char* = nullptr);
-  std::unique_ptr<Instruction> makeInstruction(SpvOp_, uint32_t, uint32_t,
-                                               std::initializer_list<std::initializer_list<uint32_t>>,
-                                               const char* = nullptr);
-  std::unique_ptr<BasicBlock> makeBasicBlock(uint32_t, Function*,
-                                             std::vector<std::unique_ptr<Instruction>>&&);
+      spv_opcode_desc&, std::initializer_list<std::initializer_list<uint32_t>>&,
+      const char* = nullptr);
+  std::unique_ptr<Instruction> makeInstruction(
+      SpvOp_, uint32_t, uint32_t,
+      std::initializer_list<std::initializer_list<uint32_t>>,
+      const char* = nullptr);
+  std::unique_ptr<BasicBlock> makeBasicBlock(
+      uint32_t, Function*, std::vector<std::unique_ptr<Instruction>>&&);
 
   uint32_t addName(const char*);
   uint32_t addConstant(uint32_t, std::initializer_list<uint32_t>);
-  uint32_t addTypeInst(SpvOp_, std::initializer_list<std::initializer_list<uint32_t>>, uint32_t = 0);
+  uint32_t addTypeInst(SpvOp_,
+                       std::initializer_list<std::initializer_list<uint32_t>>,
+                       uint32_t = 0);
   void addVariable(uint32_t, uint32_t, spv::StorageClass);
   void addGlobalVariable(spv::StorageClass, Variable*);
   uint32_t addFunction(const char*, uint32_t, uint32_t);
 
-  uint32_t collectInstWithResult(SpvOp_, std::initializer_list<std::initializer_list<uint32_t>> = {{}},
-                                 uint32_t = 0);
-  void collectInstWithoutResult(SpvOp_, std::initializer_list<std::initializer_list<uint32_t>> = {{}},
-                                uint32_t = 0);
-  uint32_t collectCompositeConstruct(std::initializer_list<std::initializer_list<uint32_t>>, uint32_t);
+  uint32_t collectInstWithResult(
+      SpvOp_, std::initializer_list<std::initializer_list<uint32_t>> = {{}},
+      uint32_t = 0);
+  void collectInstWithoutResult(
+      SpvOp_, std::initializer_list<std::initializer_list<uint32_t>> = {{}},
+      uint32_t = 0);
+  uint32_t collectCompositeConstruct(
+      std::initializer_list<std::initializer_list<uint32_t>>, uint32_t);
   void collectCondition(uint32_t, uint32_t);
   uint32_t collectTypeConversion(name_type, uint32_t);
   void collectPrintCall(name_type, uint32_t = 0);

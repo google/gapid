@@ -26,7 +26,9 @@ namespace namemanager {
 /**
  * Returns string of the variable with a given id and without offset
  **/
-std::string NameManager::getStrName(uint32_t id) { return getStrName(id_offset(id, NONMEMBER_OFFSET)); }
+std::string NameManager::getStrName(uint32_t id) {
+  return getStrName(id_offset(id, NONMEMBER_OFFSET));
+}
 
 /**
  * Returns string of the variable with a given id and offset
@@ -35,9 +37,11 @@ std::string NameManager::getStrName(id_offset id) {
   name_map::iterator it = id_to_inst.find(id);
   std::string res;
 
-  assert(it != id_to_inst.end() && "getStrName: not recognized instruction id with given offset.");
+  assert(it != id_to_inst.end() &&
+         "getStrName: not recognized instruction id with given offset.");
   if (it != id_to_inst.end())
-    res = extractString(it->second->GetOperand(getStringPosition(it->second->opcode())).words);
+    res = extractString(
+        it->second->GetOperand(getStringPosition(it->second->opcode())).words);
   return res;
 }
 
@@ -46,7 +50,8 @@ void NameManager::addName(Instruction* inst) {
       (inst->opcode() == SpvOpMemberName && inst->NumOperands() >= 3)) {
     uint32_t id = inst->GetSingleWordOperand(0);
     uint32_t offset = getNameOffset(inst);
-    id_to_inst.insert(std::pair<id_offset, Instruction*>(id_offset(id, offset), inst));
+    id_to_inst.insert(
+        std::pair<id_offset, Instruction*>(id_offset(id, offset), inst));
     names_ids.insert(id);
   }
 }
@@ -108,4 +113,4 @@ uint32_t NameManager::getNameOffset(Instruction* inst) {
   }
   return res;
 }
-}
+}  // namespace namemanager

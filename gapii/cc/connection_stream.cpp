@@ -22,33 +22,31 @@
 namespace gapii {
 
 std::shared_ptr<ConnectionStream> ConnectionStream::listenSocket(
-        const char* hostname, const char* port) {
-    auto c = core::SocketConnection::createSocket(hostname, port);
-    GAPID_INFO("GAPII awaiting connection on socket %s:%s", hostname, port);
-    return std::shared_ptr<ConnectionStream>(new ConnectionStream(c->accept()));
+    const char* hostname, const char* port) {
+  auto c = core::SocketConnection::createSocket(hostname, port);
+  GAPID_INFO("GAPII awaiting connection on socket %s:%s", hostname, port);
+  return std::shared_ptr<ConnectionStream>(new ConnectionStream(c->accept()));
 }
 
 std::shared_ptr<ConnectionStream> ConnectionStream::listenPipe(
-        const char* pipename, bool abstract) {
-    auto c = core::SocketConnection::createPipe(pipename, abstract);
-    GAPID_INFO("GAPII awaiting connection on pipe %s%s",
-        pipename, (abstract ? " (abstract)" : ""));
-    return std::shared_ptr<ConnectionStream>(new ConnectionStream(c->accept()));
+    const char* pipename, bool abstract) {
+  auto c = core::SocketConnection::createPipe(pipename, abstract);
+  GAPID_INFO("GAPII awaiting connection on pipe %s%s", pipename,
+             (abstract ? " (abstract)" : ""));
+  return std::shared_ptr<ConnectionStream>(new ConnectionStream(c->accept()));
 }
 
 ConnectionStream::ConnectionStream(std::unique_ptr<core::Connection> connection)
     : mConnection(std::move(connection)) {}
 
 uint64_t ConnectionStream::read(void* data, uint64_t max_size) {
-    return mConnection->recv(data, max_size);
+  return mConnection->recv(data, max_size);
 }
 
 uint64_t ConnectionStream::write(const void* data, uint64_t size) {
-    return mConnection->send(data, size);
+  return mConnection->send(data, size);
 }
 
-void ConnectionStream::close() {
-    mConnection->close();
-}
+void ConnectionStream::close() { mConnection->close(); }
 
-} // namespace gapii
+}  // namespace gapii

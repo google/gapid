@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+#include "timer.h"
 #include "log.h"
 #include "target.h"
-#include "timer.h"
 
 #include <ctime>
 
@@ -31,60 +31,59 @@ namespace core {
 
 namespace {
 
-const uint64_t SEC_TO_NANO   = 1000000000;
+const uint64_t SEC_TO_NANO = 1000000000;
 const uint64_t MICRO_TO_NANO = 1000;
 
 // Returns a monotonic clock reading in a platform-specific unit.
-// Use platformDurationToNanosecods() to convert the difference in values returned from two calls to
-// platformGetTime() into nanoseconds.
+// Use platformDurationToNanosecods() to convert the difference in values
+// returned from two calls to platformGetTime() into nanoseconds.
 inline uint64_t platformGetTime() {
 #if TARGET_OS == GAPID_OS_OSX
-    timeval tv = {0, 0};
-    if (gettimeofday(&tv, NULL) != 0) {
-        GAPID_FATAL("Unable to start timer. Error: %d", errno);
-    }
-    return uint64_t(tv.tv_usec) * MICRO_TO_NANO +
-            uint64_t(tv.tv_sec) * SEC_TO_NANO;
+  timeval tv = {0, 0};
+  if (gettimeofday(&tv, NULL) != 0) {
+    GAPID_FATAL("Unable to start timer. Error: %d", errno);
+  }
+  return uint64_t(tv.tv_usec) * MICRO_TO_NANO +
+         uint64_t(tv.tv_sec) * SEC_TO_NANO;
 #elif TARGET_OS == GAPID_OS_WINDOWS
-    LARGE_INTEGER i;
-    if (!QueryPerformanceCounter(&i)) {
-        GAPID_FATAL("Unable to start timer. Error: %d", GetLastError());
-    }
-    return i.QuadPart;
+  LARGE_INTEGER i;
+  if (!QueryPerformanceCounter(&i)) {
+    GAPID_FATAL("Unable to start timer. Error: %d", GetLastError());
+  }
+  return i.QuadPart;
 #else
-    timespec ts = {0, 0};
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-        GAPID_FATAL("Unable to start timer. Error: %d", errno);
-    }
-    return uint64_t(ts.tv_nsec) + uint64_t(ts.tv_sec) * SEC_TO_NANO;
+  timespec ts = {0, 0};
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    GAPID_FATAL("Unable to start timer. Error: %d", errno);
+  }
+  return uint64_t(ts.tv_nsec) + uint64_t(ts.tv_sec) * SEC_TO_NANO;
 #endif
 }
 
 // See platformGetTime().
 inline uint64_t platformDurationToNanosecods(uint64_t duration) {
 #if TARGET_OS == GAPID_OS_WINDOWS
-    static LARGE_INTEGER sFreq;
+  static LARGE_INTEGER sFreq;
+  if (sFreq.QuadPart == 0) {
+    QueryPerformanceFrequency(&sFreq);
     if (sFreq.QuadPart == 0) {
-        QueryPerformanceFrequency(&sFreq);
-        if (sFreq.QuadPart == 0) {
-            GAPID_FATAL("Unable to query performance frequency. Error: %d", GetLastError());
-        }
+      GAPID_FATAL("Unable to query performance frequency. Error: %d",
+                  GetLastError());
     }
-    return (duration * SEC_TO_NANO) / sFreq.QuadPart;
+  }
+  return (duration * SEC_TO_NANO) / sFreq.QuadPart;
 #else
-    return duration;
+  return duration;
 #endif
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-void Timer::Start() {
-    mStartTime = platformGetTime();
-}
+void Timer::Start() { mStartTime = platformGetTime(); }
 
 uint64_t Timer::Stop() {
-    uint64_t endTime = platformGetTime();
-    return platformDurationToNanosecods(endTime - mStartTime);
+  uint64_t endTime = platformGetTime();
+  return platformDurationToNanosecods(endTime - mStartTime);
 }
 
 }  // namespace core

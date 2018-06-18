@@ -23,11 +23,9 @@ namespace core {
 
 // NullWriter implements StreamWriter, but outputs nothing.
 class NullWriter : public core::StreamWriter {
-  public:
-    uint64_t write(const void* data, uint64_t size) {
-        return size;
-    }
-    ~NullWriter() {}
+ public:
+  uint64_t write(const void* data, uint64_t size) { return size; }
+  ~NullWriter() {}
 };
 
 }  // namespace core

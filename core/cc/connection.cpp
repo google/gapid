@@ -16,31 +16,38 @@
 
 #include "connection.h"
 
-#include <string>
 #include <cstring>
+#include <string>
 
 namespace core {
 
 bool Connection::sendString(const std::string& s) {
-    const uint32_t length = static_cast<uint32_t>(s.size())+1;
-    return this->send(s.c_str(), length) == length;
+  const uint32_t length = static_cast<uint32_t>(s.size()) + 1;
+  return this->send(s.c_str(), length) == length;
 }
 
-// This handles nullptr, since the overload above would crash on the implicit conversion.
+// This handles nullptr, since the overload above would crash on the implicit
+// conversion.
 bool Connection::sendString(const char* s) {
-    if (s == nullptr) { s = ""; }
-    const uint32_t length = strlen(s)+1;
-    return this->send(s, length) == length;
+  if (s == nullptr) {
+    s = "";
+  }
+  const uint32_t length = strlen(s) + 1;
+  return this->send(s, length) == length;
 }
 
 bool Connection::readString(std::string* s) {
-    char c;
-    s->clear();
-    while(true) {
-        if (this->recv(&c, 1) != 1) { return false; }
-        if (c == 0) { return true; }
-        s->push_back(c);
+  char c;
+  s->clear();
+  while (true) {
+    if (this->recv(&c, 1) != 1) {
+      return false;
     }
+    if (c == 0) {
+      return true;
+    }
+    s->push_back(c);
+  }
 }
 
 }  // namespace core

@@ -27,14 +27,14 @@ class Stack;
 
 // Api is the abstract base class to all graphics APIs.
 class Api {
-public:
-    // Returns the unique identifier of the graphics API.
-    // The pointer is guaranteed to be constant for all instances of the API.
-    virtual const char* id() const = 0;
-    // Returns the index of the graphics API.
-    virtual uint8_t index() const = 0;
-    // The function table for the API.
-    FunctionTable mFunctions;
+ public:
+  // Returns the unique identifier of the graphics API.
+  // The pointer is guaranteed to be constant for all instances of the API.
+  virtual const char* id() const = 0;
+  // Returns the index of the graphics API.
+  virtual uint8_t index() const = 0;
+  // The function table for the API.
+  FunctionTable mFunctions;
 };
 
 }  // namespace gapir

@@ -1,3 +1,4 @@
+// clang-format off
 #define bswap_16(x) (((x&0xff00)>>8) \
                   | ((x&0x00ff)))
 
@@ -14,3 +15,4 @@
                   | ((x&0x0000000000ff0000)>>16) \
                   | ((x&0x000000000000ff00)>>8) \
                   | ((x&0x00000000000000ff)))
+// clang-format on

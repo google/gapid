@@ -21,13 +21,13 @@
 
 #include <string>
 
-using ::testing::_;
 using ::testing::DoAll;
+using ::testing::ElementsAre;
 using ::testing::Return;
 using ::testing::ReturnArg;
 using ::testing::StrictMock;
 using ::testing::WithArg;
-using ::testing::ElementsAre;
+using ::testing::_;
 
 namespace core {
 namespace test {
@@ -36,12 +36,10 @@ namespace {
 const std::string testString = "ABCDE";
 
 class ConnectionTest : public ::testing::Test {
-protected:
-    virtual void SetUp() {
-        mConnection.reset(new MockConnection());
-    }
+ protected:
+  virtual void SetUp() { mConnection.reset(new MockConnection()); }
 
-    std::unique_ptr<MockConnection> mConnection;
+  std::unique_ptr<MockConnection> mConnection;
 };
 
 void pushBytes(std::vector<uint8_t>* buf, const std::vector<uint8_t>& v) {
@@ -49,15 +47,15 @@ void pushBytes(std::vector<uint8_t>* buf, const std::vector<uint8_t>& v) {
 }
 
 void pushString(std::vector<uint8_t>* buf, const std::string& str) {
-  for(char c : str) {
-      buf->push_back(c);
+  for (char c : str) {
+    buf->push_back(c);
   }
   buf->push_back(0);
 }
 
 void pushString(std::vector<uint8_t>* buf, const char* str) {
-  for(char c = *str; c != 0; str++, c = *str) {
-      buf->push_back(c);
+  for (char c = *str; c != 0; str++, c = *str) {
+    buf->push_back(c);
   }
   buf->push_back(0);
 }
@@ -65,39 +63,38 @@ void pushString(std::vector<uint8_t>* buf, const char* str) {
 }  // anonymous namespace
 
 TEST_F(ConnectionTest, SendEmptyString) {
-    EXPECT_TRUE(mConnection->sendString(""));
-    EXPECT_THAT(mConnection->out, ElementsAre(0));
+  EXPECT_TRUE(mConnection->sendString(""));
+  EXPECT_THAT(mConnection->out, ElementsAre(0));
 }
 
 TEST_F(ConnectionTest, SendString) {
-    EXPECT_TRUE(mConnection->sendString(testString));
-    EXPECT_THAT(mConnection->out, ElementsAre(
-        'A', 'B', 'C', 'D', 'E', 0));
+  EXPECT_TRUE(mConnection->sendString(testString));
+  EXPECT_THAT(mConnection->out, ElementsAre('A', 'B', 'C', 'D', 'E', 0));
 }
 
 TEST_F(ConnectionTest, SendStringError) {
-    mConnection->out_limit = 3;
-    EXPECT_FALSE(mConnection->sendString(testString));
+  mConnection->out_limit = 3;
+  EXPECT_FALSE(mConnection->sendString(testString));
 }
 
 TEST_F(ConnectionTest, ReadEmptyString) {
-    pushString(&mConnection->in, "");
-    std::string s;
-    EXPECT_TRUE(mConnection->readString(&s));
-    EXPECT_EQ("", s);
+  pushString(&mConnection->in, "");
+  std::string s;
+  EXPECT_TRUE(mConnection->readString(&s));
+  EXPECT_EQ("", s);
 }
 
 TEST_F(ConnectionTest, ReadString) {
-    pushString(&mConnection->in, testString);
-    std::string s;
-    EXPECT_TRUE(mConnection->readString(&s));
-    EXPECT_EQ(testString, s);
+  pushString(&mConnection->in, testString);
+  std::string s;
+  EXPECT_TRUE(mConnection->readString(&s));
+  EXPECT_EQ(testString, s);
 }
 
 TEST_F(ConnectionTest, ReadStringError) {
-    pushBytes(&mConnection->in, {'A', 'B'});
-    std::string s;
-    EXPECT_FALSE(mConnection->readString(&s));
+  pushBytes(&mConnection->in, {'A', 'B'});
+  std::string s;
+  EXPECT_FALSE(mConnection->readString(&s));
 }
 
 }  // namespace test

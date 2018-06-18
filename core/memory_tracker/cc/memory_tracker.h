@@ -31,7 +31,7 @@
 #undef COHERENT_TRACKING_ENABLED
 #define COHERENT_TRACKING_ENABLED 0
 #endif
-#endif // COHERENT_TRACKING_ENABLED
+#endif  // COHERENT_TRACKING_ENABLED
 
 #if COHERENT_TRACKING_ENABLED
 
@@ -220,7 +220,8 @@ class SignalSafe : public SpinLockGuarded<OwnerTy, MemberFuncPtrTy> {
   auto operator()(Args&&... args) ->
       typename std::result_of<MemberFuncPtrTy(OwnerTy*, Args&&...)>::type {
     SignalBlocker g(sig_);
-    return this->SpinLockGuardedFunctor::template operator()<Args...>(std::forward<Args>(args)...);
+    return this->SpinLockGuardedFunctor::template operator()<Args...>(
+        std::forward<Args>(args)...);
   }
 
  protected:
@@ -300,7 +301,7 @@ class DirtyPageTable {
 
 // MemoryTrackerImpl utilizes Segfault signal on Linux to track accesses to
 // memories.
-template<typename SpecificMemoryTracker>
+template <typename SpecificMemoryTracker>
 class MemoryTrackerImpl : public SpecificMemoryTracker {
  public:
   using derived_tracker_type = SpecificMemoryTracker;
@@ -406,17 +407,16 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
     bool succeeded = true;
     std::for_each(pages.begin(), pages.end(), [this, &succeeded](void* p) {
       if (IsInRanges(reinterpret_cast<uintptr_t>(p), ranges_, true)) {
-        succeeded &=
-            set_protection(p, page_size_, track_read_ ? PageProtections::kNone : PageProtections::kRead) == 0;
+        succeeded &= set_protection(p, page_size_,
+                                    track_read_ ? PageProtections::kNone
+                                                : PageProtections::kRead) == 0;
       }
     });
     return succeeded;
   }
 
   // Dummy function that we can pass down to the specific memory tracker.
-  bool DoHandleSegfault(void* v) {
-    return HandleSegfault(v);
-  }
+  bool DoHandleSegfault(void* v) { return HandleSegfault(v); }
 
   // Returns a vector of dirty pages addresses that overlaps a memory range
   // specified with |start| and |size|. Then clears all the records of dirty
@@ -433,8 +433,8 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
   bool track_read_;  // A flag to indicate whether to track read operations on
                      // the tracking memory ranges.
 
-  const size_t page_size_;          // Size of a memory page in byte
-  SpinLock l_;  // Spin lock to guard the accesses of shared data
+  const size_t page_size_;  // Size of a memory page in byte
+  SpinLock l_;              // Spin lock to guard the accesses of shared data
   std::map<uintptr_t, size_t> ranges_;  // Memory ranges registered for tracking
   DirtyPageTable dirty_pages_;          // Storage of dirty pages
 
@@ -443,8 +443,9 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
 
 // SignalSafe wrapped methods that access shared data and cannot be
 // interrupted by SIGSEGV signal.
-#define SIGNAL_SAFE(function) \
-  SignalSafe<MemoryTrackerImpl, decltype(&MemoryTrackerImpl::function##Impl)> function;
+#define SIGNAL_SAFE(function)                                                 \
+  SignalSafe<MemoryTrackerImpl, decltype(&MemoryTrackerImpl::function##Impl)> \
+      function;
   SIGNAL_SAFE(AddTrackingRange);
   SIGNAL_SAFE(RemoveTrackingRange);
   SIGNAL_SAFE(GetDirtyPagesInRange);
@@ -457,8 +458,9 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
 #undef SIGNAL_SAFE
 
 // SpinLockGuarded wrapped methods that access critical region.
-#define LOCKED(function)                                                   \
-  SpinLockGuarded<MemoryTrackerImpl, decltype(&MemoryTrackerImpl::function##Impl)> \
+#define LOCKED(function)                                        \
+  SpinLockGuarded<MemoryTrackerImpl,                            \
+                  decltype(&MemoryTrackerImpl::function##Impl)> \
       function;
   LOCKED(HandleSegfault);
 #undef LOCKED
@@ -467,10 +469,10 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
 }  // namespace gapii
 
 #if IS_POSIX
-#include  "core/memory_tracker/cc/posix/memory_tracker.inc"
+#include "core/memory_tracker/cc/posix/memory_tracker.inc"
 #else
-#include  "core/memory_tracker/cc/windows/memory_tracker.inc"
+#include "core/memory_tracker/cc/windows/memory_tracker.inc"
 #endif
 
-#endif // COHERENT_TRACKING_ENABLED
+#endif  // COHERENT_TRACKING_ENABLED
 #endif  // GAPII_MEMORY_TRACKER_H

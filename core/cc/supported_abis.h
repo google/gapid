@@ -24,15 +24,15 @@ namespace core {
 // Must match the definitions in core/os/device/abi.go.
 inline const char* supportedABIs() {
 #ifdef __x86_64
-    return "x86-64";
+  return "x86-64";
 #elif defined __i386
-    return "x86";
+  return "x86";
 #elif defined __ARM_ARCH_7A__
-    return "armeabi-v7a";
+  return "armeabi-v7a";
 #elif defined __aarch64__
-    return "arm64-v8a armeabi-v7a";
+  return "arm64-v8a armeabi-v7a";
 #else
-#   error "Unrecognised target architecture"
+#error "Unrecognised target architecture"
 #endif
 }
 

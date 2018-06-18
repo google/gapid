@@ -20,17 +20,20 @@
 #include "core/memory_tracker/cc/memory_protections.h"
 
 #include <Windows.h>
-#include <cstdint>
 #include <atomic>
+#include <cstdint>
 
 namespace gapii {
 namespace track_memory {
 
 inline bool set_protection(void* p, size_t size, PageProtections prot) {
-  DWORD protections = (prot == PageProtections::kRead) ? PAGE_READONLY :
-                    (prot == PageProtections::kWrite) ? PAGE_READWRITE :
-                (prot == PageProtections::kReadWrite) ?PAGE_READWRITE: 0;
-  return VirtualProtect(p, size, protections, nullptr); 
+  DWORD protections =
+      (prot == PageProtections::kRead)
+          ? PAGE_READONLY
+          : (prot == PageProtections::kWrite)
+                ? PAGE_READWRITE
+                : (prot == PageProtections::kReadWrite) ? PAGE_READWRITE : 0;
+  return VirtualProtect(p, size, protections, nullptr);
 }
 
 #define IS_POSIX 0
@@ -38,7 +41,7 @@ inline bool set_protection(void* p, size_t size, PageProtections prot) {
 class SignalBlocker {
  public:
   SignalBlocker(int) {}
-  ~SignalBlocker() { }
+  ~SignalBlocker() {}
   // Not copyable, not movable.
   SignalBlocker(const SignalBlocker&) = delete;
   SignalBlocker(SignalBlocker&&) = delete;
@@ -58,7 +61,7 @@ inline uint32_t GetPageSize() {
   return si.dwPageSize;
 }
 
-} // namespace track_memory
-} // namespace gapii
+}  // namespace track_memory
+}  // namespace gapii
 
-#endif // GAPII_MEMORY_TRACKER_WINDOWS_H
+#endif  // GAPII_MEMORY_TRACKER_WINDOWS_H

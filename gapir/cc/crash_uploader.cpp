@@ -15,51 +15,54 @@
  */
 
 #include "gapir/cc/crash_uploader.h"
-#include "gapir/cc/replay_connection.h"
 #include "core/cc/crash_handler.h"
 #include "core/cc/file_reader.h"
 #include "core/cc/log.h"
+#include "gapir/cc/replay_connection.h"
 
 #include <stdio.h>
 
 namespace gapir {
 
-CrashUploader::CrashUploader(
-        core::CrashHandler& crash_handler,
-        ReplayConnection* conn) :
-    mConnection(conn) {
-    mUnregister = crash_handler.registerHandler([this] (const std::string& minidumpPath, bool succeeded) {
+CrashUploader::CrashUploader(core::CrashHandler& crash_handler,
+                             ReplayConnection* conn)
+    : mConnection(conn) {
+  mUnregister = crash_handler.registerHandler(
+      [this](const std::string& minidumpPath, bool succeeded) {
         if (!succeeded) {
-            GAPID_ERROR("Failed to write minidump out to %s", minidumpPath.c_str());
+          GAPID_ERROR("Failed to write minidump out to %s",
+                      minidumpPath.c_str());
         }
 
         core::FileReader minidumpFile(minidumpPath.c_str());
         if (const char* err = minidumpFile.error()) {
-            GAPID_ERROR("Failed to open minidump file %s: %s", minidumpPath.c_str(), err);
-            return;
+          GAPID_ERROR("Failed to open minidump file %s: %s",
+                      minidumpPath.c_str(), err);
+          return;
         }
 
         uint64_t minidumpSize = minidumpFile.size();
         if (minidumpSize == 0u) {
-            GAPID_ERROR("Failed to get minidump file size %s", minidumpPath.c_str());
-            return;
+          GAPID_ERROR("Failed to get minidump file size %s",
+                      minidumpPath.c_str());
+          return;
         }
-        std::unique_ptr<char[]> minidumpData = std::unique_ptr<char[]>(new char[minidumpSize]);
+        std::unique_ptr<char[]> minidumpData =
+            std::unique_ptr<char[]>(new char[minidumpSize]);
         uint64_t read = minidumpFile.read(minidumpData.get(), minidumpSize);
         if (read != minidumpSize) {
-            GAPID_ERROR("Failed to read in the minidump file");
-            return;
+          GAPID_ERROR("Failed to read in the minidump file");
+          return;
         }
 
-        if (!mConnection->sendCrashDump(minidumpPath, minidumpData.get(), minidumpSize)) {
-            GAPID_ERROR("Failed to send minidump to server");
-            return;
+        if (!mConnection->sendCrashDump(minidumpPath, minidumpData.get(),
+                                        minidumpSize)) {
+          GAPID_ERROR("Failed to send minidump to server");
+          return;
         }
-    });
+      });
 }
 
-CrashUploader::~CrashUploader() {
-    mUnregister();
-}
+CrashUploader::~CrashUploader() { mUnregister(); }
 
-} // namespace gapir
+}  // namespace gapir

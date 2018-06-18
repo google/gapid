@@ -31,9 +31,10 @@ namespace swapchain {
 // handle should share the same dispatch table key. E.g. VkCommandBuffer is a
 // child dispatchable handle of VkDevice, all the VkCommandBuffer dispatching
 // functions are actually device functions (resolved by VkGetDeviceProcAddress).
-// Ref: https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects,
-static inline void set_dispatch_from_parent(void* child, void* parent) {
-  *((const void**)child) = *((const void**)parent);
+// Ref:
+// https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects,
+static inline void set_dispatch_from_parent(void *child, void *parent) {
+  *((const void **)child) = *((const void **)parent);
 }
 
 // All of the instance data that is needed for book-keeping in a layer.
@@ -121,7 +122,8 @@ struct QueueData {
 // All context functions return a context token.
 // Any data within a ContextToken is only valid
 // for the lifetime of the ContextToken.
-template <typename T> struct ContextToken {
+template <typename T>
+struct ContextToken {
   ContextToken(T &object, threading::mutex &locker)
       : object_(object), context_lock_(locker) {}
 
@@ -140,7 +142,7 @@ template <typename T> struct ContextToken {
   T *operator->() { return &object_; }
   T &operator*() { return object_; }
 
-private:
+ private:
   T &object_;
   std::unique_lock<threading::mutex> context_lock_;
 };
@@ -201,8 +203,8 @@ struct Context {
                                    std::move(locker));
   }
 
-  ContextToken<PhysicalDeviceData>
-  GetPhysicalDeviceData(VkPhysicalDevice physical_device) {
+  ContextToken<PhysicalDeviceData> GetPhysicalDeviceData(
+      VkPhysicalDevice physical_device) {
     std::unique_lock<threading::mutex> locker(physical_device_lock_);
     return ContextToken<PhysicalDeviceData>(
         physical_device_data_map_.at(physical_device), std::move(locker));
@@ -214,7 +216,7 @@ struct Context {
                                     std::move(locker));
   }
 
-private:
+ private:
   // Map of instances to their data. Our other option would be
   // to wrap the instance object, but then we have to handle every possible
   // instance function.
@@ -250,6 +252,6 @@ private:
 
 Context &GetGlobalContext();
 
-} // swapchain
+}  // namespace swapchain
 
-#endif // VK_VIRTUAL_SWAPCHAIN_LAYER_H
+#endif  // VK_VIRTUAL_SWAPCHAIN_LAYER_H

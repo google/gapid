@@ -25,55 +25,48 @@
 namespace query {
 
 const char* cpuName() {
-    static union {
-        uint32_t reg[12];
-        char str[49];
-    };
-    if (__get_cpuid(0x80000002, &reg[0], &reg[1], &reg[2],  &reg[3]) &&
-        __get_cpuid(0x80000003, &reg[4], &reg[5], &reg[6],  &reg[7]) &&
-        __get_cpuid(0x80000004, &reg[8], &reg[9], &reg[10], &reg[11])) {
-
-        return str;
-    }
-    return "";
+  static union {
+    uint32_t reg[12];
+    char str[49];
+  };
+  if (__get_cpuid(0x80000002, &reg[0], &reg[1], &reg[2], &reg[3]) &&
+      __get_cpuid(0x80000003, &reg[4], &reg[5], &reg[6], &reg[7]) &&
+      __get_cpuid(0x80000004, &reg[8], &reg[9], &reg[10], &reg[11])) {
+    return str;
+  }
+  return "";
 }
 
 const char* cpuVendor() {
-    static union {
-        uint32_t reg[3];
-        char str[13];
-    };
-    uint32_t eax = 0;
-    if (__get_cpuid(0, &eax, &reg[0], &reg[2], &reg[1])) {
-        return str;
-    }
-    return "";
+  static union {
+    uint32_t reg[3];
+    char str[13];
+  };
+  uint32_t eax = 0;
+  if (__get_cpuid(0, &eax, &reg[0], &reg[2], &reg[1])) {
+    return str;
+  }
+  return "";
 }
 
-device::Architecture cpuArchitecture() {
-    return device::X86_64;
-}
+device::Architecture cpuArchitecture() { return device::X86_64; }
 
 }  // namespace query
-#else // !defined(_MSC_VER) || defined(__GNUC__)
+#else  // !defined(_MSC_VER) || defined(__GNUC__)
 // If we are using MSVC (rather than MSYS) we cannot use __get_cpuid
 namespace query {
 
-const char* cpuName() {
-    return "";
-}
+const char* cpuName() { return ""; }
 
-const char* cpuVendor() {
-    return "";
-}
+const char* cpuVendor() { return ""; }
 
 device::Architecture cpuArchitecture() {
 #ifdef _WIN64
-    return device::X86_64;
+  return device::X86_64;
 #elif defined _WIN32
-    return device::X86;
+  return device::X86;
 #endif
 }
-}
+}  // namespace query
 #endif
 #endif

@@ -23,49 +23,48 @@
 
 namespace gapir {
 
-PostBuffer::PostBuffer(uint32_t desiredCapacity, PostBufferCallback callback) :
-        mPosts(ReplayConnection::Posts::create()),
-        mTotalPostCount(0),
-        mCapacity(desiredCapacity), mCallback(callback), mOffset(0) {
-}
+PostBuffer::PostBuffer(uint32_t desiredCapacity, PostBufferCallback callback)
+    : mPosts(ReplayConnection::Posts::create()),
+      mTotalPostCount(0),
+      mCapacity(desiredCapacity),
+      mCallback(callback),
+      mOffset(0) {}
 
-PostBuffer::~PostBuffer() {
-    flush();
-}
+PostBuffer::~PostBuffer() { flush(); }
 
 bool PostBuffer::push(const void* address, uint32_t count) {
-    if (mOffset == 0 && (count > mCapacity / 2)) {
-        // Large push into an empty buffer.
-        // Write it out immediately instead of buffering to reduce time spent copying
-        // large buffers around. This also handles the case where the count is larger
-        // than the buffer capacity.
-        auto onePost = ReplayConnection::Posts::create();
-        onePost->append(mTotalPostCount, address, count);
-        mTotalPostCount++;
-        return mCallback(std::move(onePost));
-    }
+  if (mOffset == 0 && (count > mCapacity / 2)) {
+    // Large push into an empty buffer.
+    // Write it out immediately instead of buffering to reduce time spent
+    // copying large buffers around. This also handles the case where the count
+    // is larger than the buffer capacity.
+    auto onePost = ReplayConnection::Posts::create();
+    onePost->append(mTotalPostCount, address, count);
+    mTotalPostCount++;
+    return mCallback(std::move(onePost));
+  }
 
-    if (mOffset + count <= mCapacity) {
-        // Fits in the buffer. Copy.
-        mPosts->append(mTotalPostCount, address, count);
-        mTotalPostCount++;
-        mOffset += count;
-        return true;
-    } else {
-        // Not enough capacity to fit push data. Flush and try again.
-        return flush() && push(address, count);
-    }
+  if (mOffset + count <= mCapacity) {
+    // Fits in the buffer. Copy.
+    mPosts->append(mTotalPostCount, address, count);
+    mTotalPostCount++;
+    mOffset += count;
+    return true;
+  } else {
+    // Not enough capacity to fit push data. Flush and try again.
+    return flush() && push(address, count);
+  }
 }
 
 bool PostBuffer::flush() {
-    bool ok = true;
+  bool ok = true;
 
-    if (mOffset > 0) {
-        ok = mCallback(std::move(mPosts));
-        mPosts = ReplayConnection::Posts::create();
-        mOffset = 0;
-    }
-    return ok;
+  if (mOffset > 0) {
+    ok = mCallback(std::move(mPosts));
+    mPosts = ReplayConnection::Posts::create();
+    mOffset = 0;
+  }
+  return ok;
 }
 
 }  // namespace gapir

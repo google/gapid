@@ -112,7 +112,8 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
     }
     if (opt.vulkan.query_physical_devices()) {
       query::vkPhysicalDevices(vulkan_driver);
-      if (strlen(backupName) == 0 && vulkan_driver->physicaldevices_size() > 0) {
+      if (strlen(backupName) == 0 &&
+          vulkan_driver->physicaldevices_size() > 0) {
         backupName = vulkan_driver->physicaldevices(0).devicename().c_str();
       }
     }
@@ -166,11 +167,11 @@ void buildDeviceInstance(const query::Option& opt, void* platform_data,
   bool blacklist = false;
   if (std::string(gpuName).find("Vega") != std::string::npos &&
       std::string(query::osName()).find("Windows 10") != std::string::npos) {
-      blacklist = true;
+    blacklist = true;
   }
 
   if (!blacklist) {
-     query::destroyContext();
+    query::destroyContext();
   }
 
   *out = instance;

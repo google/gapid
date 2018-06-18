@@ -26,6 +26,6 @@ class GvrImports;
 // install_gvr installs interceptor hooks into all the GVR functions.
 bool install_gvr(Installer* installer, void* gvr_lib, GvrImports* imports);
 
-} // namespace gapii
+}  // namespace gapii
 
-#endif // GAPII_ANDROID_GVR_INSTALL_H
+#endif  // GAPII_ANDROID_GVR_INSTALL_H
