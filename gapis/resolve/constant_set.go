@@ -25,7 +25,7 @@ import (
 
 // ConstantSet resolves and returns the constant set from the path p.
 func ConstantSet(ctx context.Context, p *path.ConstantSet) (*service.ConstantSet, error) {
-	apiID := api.ID(p.Api.Id.ID())
+	apiID := api.ID(p.API.ID.ID())
 	api := api.Find(apiID)
 	if api == nil {
 		return nil, fmt.Errorf("Unknown API: %v", apiID)

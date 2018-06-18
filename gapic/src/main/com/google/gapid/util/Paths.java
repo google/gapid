@@ -131,7 +131,7 @@ public class Paths {
       return null;
     }
     return Path.Any.newBuilder()
-        .setResourceData(Path.ResourceData.newBuilder().setAfter(command.getCommand()).setId(id))
+        .setResourceData(Path.ResourceData.newBuilder().setAfter(command.getCommand()).setID(id))
         .build();
   }
 
@@ -214,7 +214,7 @@ public class Paths {
 
   public static Path.Any blob(Image.ID id) {
     return Path.Any.newBuilder()
-        .setBlob(Path.Blob.newBuilder().setId(Path.ID.newBuilder().setData(id.getData()))).build();
+        .setBlob(Path.Blob.newBuilder().setID(Path.ID.newBuilder().setData(id.getData()))).build();
   }
 
   /**
@@ -367,7 +367,7 @@ public class Paths {
   private static <T, A> T dispatchAny(Path.Any path, Visitor<T, A> visitor, A arg) {
     switch (path.getPathCase()) {
       case API:
-        return visitor.visit(path.getApi(), arg);
+        return visitor.visit(path.getAPI(), arg);
       case ARRAY_INDEX:
         return visitor.visit(path.getArrayIndex(), arg);
       case AS:
@@ -397,7 +397,7 @@ public class Paths {
       case EVENTS:
         return visitor.visit(path.getEvents(), arg);
       case FBO:
-        return visitor.visit(path.getFbo(), arg);
+        return visitor.visit(path.getFBO(), arg);
       case FIELD:
         return visitor.visit(path.getField(), arg);
       case GLOBAL_STATE:
@@ -574,7 +574,7 @@ public class Paths {
 
     @Override
     public Path.Any visit(Path.API path, Void ignored) {
-      return Path.Any.newBuilder().setApi(path).build();
+      return Path.Any.newBuilder().setAPI(path).build();
     }
 
     @Override
@@ -649,7 +649,7 @@ public class Paths {
 
     @Override
     public Path.Any visit(Path.FramebufferObservation path, Void ignored) {
-      return Path.Any.newBuilder().setFbo(path).build();
+      return Path.Any.newBuilder().setFBO(path).build();
     }
 
     @Override
@@ -808,7 +808,7 @@ public class Paths {
 
     @Override
     public Object visit(Path.ConstantSet path, Void ignored) {
-      return path.getApi();
+      return path.getAPI();
     }
 
     @Override
@@ -1072,7 +1072,7 @@ public class Paths {
     @Override
     public Object visit(Path.ConstantSet path, Object parent) {
       if (parent instanceof Path.API) {
-        return path.toBuilder().setApi((Path.API) parent).build();
+        return path.toBuilder().setAPI((Path.API) parent).build();
       } else {
         throw new RuntimeException("Path.ConstantSet cannot set parent to " + parent.getClass().getName());
       }
@@ -1351,7 +1351,7 @@ public class Paths {
     @Override
     public StringBuilder visit(Path.API path, StringBuilder sb) {
       sb.append("API{");
-      visit(path.getId(), sb);
+      visit(path.getID(), sb);
       sb.append("}");
       return sb;
     }
@@ -1385,7 +1385,7 @@ public class Paths {
     @Override
     public StringBuilder visit(Path.Blob path, StringBuilder sb) {
       sb.append("blob{");
-      visit(path.getId(), sb);
+      visit(path.getID(), sb);
       sb.append("}");
       return sb;
     }
@@ -1393,14 +1393,14 @@ public class Paths {
     @Override
     public StringBuilder visit(Path.Capture path, StringBuilder sb) {
       sb.append("capture{");
-      visit(path.getId(), sb);
+      visit(path.getID(), sb);
       sb.append("}");
       return sb;
     }
 
     @Override
     public StringBuilder visit(Path.ConstantSet path, StringBuilder sb) {
-      return visit(path.getApi(), sb)
+      return visit(path.getAPI(), sb)
           .append(".constants[")
           .append(path.getIndex())
           .append("]");
@@ -1468,7 +1468,7 @@ public class Paths {
     public StringBuilder visit(Path.Context path, StringBuilder sb) {
       visit(path.getCapture(), sb);
       sb.append(".context[");
-      visit(path.getId(), sb);
+      visit(path.getID(), sb);
       sb.append("]");
       return sb;
     }
@@ -1481,7 +1481,7 @@ public class Paths {
     @Override
     public StringBuilder visit(Path.Device path, StringBuilder sb) {
       sb.append("device{");
-      visit(path.getId(), sb);
+      visit(path.getID(), sb);
       sb.append("}");
       return sb;
     }
@@ -1526,7 +1526,7 @@ public class Paths {
     @Override
     public StringBuilder visit(Path.ImageInfo path, StringBuilder sb) {
       sb.append("image{");
-      visit(path.getId(), sb);
+      visit(path.getID(), sb);
       sb.append("}");
       return sb;
     }
@@ -1579,7 +1579,7 @@ public class Paths {
     @Override
     public StringBuilder visit(Path.ResourceData path, StringBuilder sb) {
       visit(path.getAfter(), sb).append(".resource{");
-      visit(path.getId(), sb).append("}");
+      visit(path.getID(), sb).append("}");
       return sb;
     }
 

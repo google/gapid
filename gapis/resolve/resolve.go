@@ -44,7 +44,7 @@ func Capture(ctx context.Context, p *path.Capture) (*service.Capture, error) {
 
 // Device resolves and returns the device from the path p.
 func Device(ctx context.Context, p *path.Device) (*device.Instance, error) {
-	device := bind.GetRegistry(ctx).Device(p.Id.ID())
+	device := bind.GetRegistry(ctx).Device(p.ID.ID())
 	if device == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrUnknownDevice()}
 	}
@@ -53,7 +53,7 @@ func Device(ctx context.Context, p *path.Device) (*device.Instance, error) {
 
 // ImageInfo resolves and returns the ImageInfo from the path p.
 func ImageInfo(ctx context.Context, p *path.ImageInfo) (*image.Info, error) {
-	obj, err := database.Resolve(ctx, p.Id.ID())
+	obj, err := database.Resolve(ctx, p.ID.ID())
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func ImageInfo(ctx context.Context, p *path.ImageInfo) (*image.Info, error) {
 
 // Blob resolves and returns the byte slice from the path p.
 func Blob(ctx context.Context, p *path.Blob) ([]byte, error) {
-	obj, err := database.Resolve(ctx, p.Id.ID())
+	obj, err := database.Resolve(ctx, p.ID.ID())
 	if err != nil {
 		return nil, err
 	}

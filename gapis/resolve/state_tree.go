@@ -377,7 +377,7 @@ func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil, err
 	}
 
-	apiPath := &path.API{Id: path.NewID(id.ID(apiID))}
+	apiPath := &path.API{ID: path.NewID(id.ID(apiID))}
 
 	root := &stn{
 		name:  "root",

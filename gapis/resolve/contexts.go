@@ -58,14 +58,14 @@ func Context(ctx context.Context, p *path.Context) (*api.ContextInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	id := api.ContextID(p.Id.ID())
+	id := api.ContextID(p.ID.ID())
 	for _, c := range contexts {
 		if c.ID == id {
 			return c, nil
 		}
 	}
 	return nil, &service.ErrInvalidPath{
-		Reason: messages.ErrContextDoesNotExist(p.Id),
+		Reason: messages.ErrContextDoesNotExist(p.ID),
 		Path:   p.Path(),
 	}
 }

@@ -136,7 +136,7 @@ func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, erro
 	if !ok {
 		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.Path.After)
 	}
-	id := r.Path.Id.ID()
+	id := r.Path.ID.ID()
 	if val, ok := res.resourceData[id]; ok {
 		if err, isErr := val.(error); isErr {
 			return nil, err

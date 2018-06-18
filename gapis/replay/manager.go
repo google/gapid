@@ -77,15 +77,15 @@ func (m *Manager) Replay(
 	hints *service.UsageHints) (val interface{}, err error) {
 
 	log.D(ctx, "Replay request")
-	s, err := m.scheduler(ctx, intent.Device.Id.ID())
+	s, err := m.scheduler(ctx, intent.Device.ID.ID())
 	if err != nil {
 		return nil, err
 	}
 
 	b := scheduler.Batch{
 		Key: batchKey{
-			capture:   intent.Capture.Id.ID(),
-			device:    intent.Device.Id.ID(),
+			capture:   intent.Capture.ID.ID(),
+			device:    intent.Device.ID.ID(),
 			config:    cfg,
 			generator: generator,
 		},

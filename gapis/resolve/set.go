@@ -64,7 +64,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		return nil, fmt.Errorf("Reports are immutable")
 
 	case *path.ResourceData:
-		meta, err := ResourceMeta(ctx, p.Id, p.After)
+		meta, err := ResourceMeta(ctx, p.ID, p.After)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +101,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}
 
 		return &path.ResourceData{
-			Id: p.Id, // TODO: Shouldn't this change?
+			ID: p.ID, // TODO: Shouldn't this change?
 			After: &path.Command{
 				Capture: c,
 				Indices: p.After.Indices,
