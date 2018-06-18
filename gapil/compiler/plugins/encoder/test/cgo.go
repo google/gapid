@@ -14,9 +14,6 @@
 
 package encodertest
 
-//#include "test.h"
-import "C"
-
 import (
 	"unsafe"
 

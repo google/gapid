@@ -21,6 +21,7 @@ go_library(
         "encode.go",
         "env.go",
         "executor.go",
+        "env_c.go",
     ],
     cdeps = [
         "//gapil/runtime/cc:arena",

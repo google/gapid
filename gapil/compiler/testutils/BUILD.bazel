@@ -21,6 +21,7 @@ go_library(
         "data.go",
         "doc.go",
         "externs.go",
+        "externs_c.go",
     ],
     cdeps = [
         "//gapil/runtime/cc:arena",

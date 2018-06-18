@@ -40,6 +40,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "cgo.go",
+        "cgo_c.go",
         "test.cpp",
         "test.h",
     ],

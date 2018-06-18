@@ -35,18 +35,15 @@ import (
 // typedef void     (TDestroyContext) (context*);
 // typedef uint32_t (TFunc) (void* ctx);
 //
-// static context* create_context(TCreateContext* func, arena* a) { return func(a); }
-// static void destroy_context(TDestroyContext* func, context* ctx) { func(ctx); }
-// static uint32_t call(context* ctx, TFunc* func) { return func(ctx); }
+// extern context* create_context(TCreateContext* func, arena* a);
+// extern void destroy_context(TDestroyContext* func, context* ctx);
+// extern uint32_t call(context* ctx, TFunc* func);
 //
 // // Implemented below.
 // extern void* remap_pointer(context* ctx, uintptr_t pointer, uint64_t length);
 // extern void  get_code_location(context* ctx, char** file, uint32_t* line);
 //
-// static void set_callbacks() {
-//   gapil_set_pointer_remapper(&remap_pointer);
-//   gapil_set_code_locator(&get_code_location);
-// }
+// extern void set_callbacks();
 import "C"
 
 func init() {
