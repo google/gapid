@@ -45,7 +45,7 @@ template <typename FuncPtr>
 class LazyResolved {
  public:
   LazyResolved() : resolve_(nullptr), ptr_(nullptr) {}
-  LazyResolved(nullptr_t) : LazyResolved() {}
+  LazyResolved(std::nullptr_t) : LazyResolved() {}
   explicit LazyResolved(std::function<void*()> resolver)
       : resolve_(resolver), ptr_(nullptr) {}
   // Pass forward the arguments to the command, if the function has never been
@@ -59,7 +59,7 @@ class LazyResolved {
   }
   // Overloaded not-equal nullptr comparison. Returns true if the underlying
   // function can be resolved and is not nullptr.
-  bool operator!=(nullptr_t) {
+  bool operator!=(std::nullptr_t) {
     if (!resolve_) {
       return true;
     }
