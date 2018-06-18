@@ -862,7 +862,7 @@ void GlesSpy::GetEGLImageData(CallObserver* observer, EGLImageKHR img,
   if (ReadExternalPixels(mImports, img, width, height, &data)) {
     auto resIndex = sendResource(kApiIndex, data.data(), data.size());
     auto extra = new gles_pb::EGLImageData();
-    extra->set_resindex(resIndex);
+    extra->set_res_index(resIndex);
     extra->set_size(data.size());
     extra->set_width(width);
     extra->set_height(height);

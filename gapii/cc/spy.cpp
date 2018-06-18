@@ -637,8 +637,8 @@ void Spy::onPostFence(CallObserver* observer) {
     }
 
     auto es = new gles_pb::ErrorState();
-    es->set_tracedriversglerror(traceErr);
-    es->set_interceptorsglerror(observer->getError());
+    es->set_trace_drivers_gl_error(traceErr);
+    es->set_interceptors_gl_error(observer->getError());
     observer->encodeAndDelete(es);
   }
 }
