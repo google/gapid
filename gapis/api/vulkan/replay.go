@@ -277,6 +277,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			propList = append(propList, allProps.PhyDevToProperties().Get(dev).Clone(s.Arena, api.CloneContext{}))
 		}
 		newEnumerate := buildReplayEnumeratePhysicalDevices(ctx, s, cb, e.Instance(), numDev, devs, propList)
+		for _, e := range cmd.Extras().All() {
+			newEnumerate.Extras().Add(e)
+		}
 		out.MutateAndWrite(ctx, id, newEnumerate)
 		return
 	}

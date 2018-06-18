@@ -133,6 +133,8 @@ cmd VkResult replayEnumeratePhysicalDevices(
     device := ?
     devices[i] = device
   }
+  props := fetchPhysicalDeviceProperties(instance, devices)
+  memProps := fetchPhysicalDeviceMemoryProperties(instance, devices)
   for i in (0 .. count) {
     object := switch (PhysicalDevices[devices[i]] == null) {
       case true:
@@ -143,6 +145,12 @@ cmd VkResult replayEnumeratePhysicalDevices(
     object.Instance = instance
     object.Index = i
     object.VulkanHandle = devices[i]
+    if memProps != null {
+      object.MemoryProperties = memProps.PhyDevToMemoryProperties[devices[i]]
+    }
+    if props != null {
+      object.PhysicalDeviceProperties = props.PhyDevToProperties[devices[i]]
+    }
     PhysicalDevices[devices[i]] = object
   }
   return ?
