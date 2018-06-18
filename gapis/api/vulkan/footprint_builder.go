@@ -1756,6 +1756,10 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		// representation of the cached data.
 		modify(ctx, bh, vkHandle(cmd.Image()))
 
+	case *ReplayAllocateImageMemory:
+		read(ctx, bh, vkHandle(cmd.Image()))
+		vkMem := cmd.PMemory().MustRead(ctx, cmd, s, nil)
+		write(ctx, bh, vkHandle(vkMem))
 	case *VkBindImageMemory:
 		read(ctx, bh, vkHandle(cmd.Image()))
 		read(ctx, bh, vkHandle(cmd.Memory()))
