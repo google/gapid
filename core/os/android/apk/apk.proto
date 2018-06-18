@@ -22,8 +22,8 @@ import "core/os/device/device.proto";
 // Information is the extracted information we know about a given APK
 message Information {
 	string name = 3;
-	int32 versionCode = 4;
-	string versionName = 5;
+	int32 version_code = 4;
+	string version_name = 5;
 	string package = 6;
 	string activity = 7;
 	string action = 8;
