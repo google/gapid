@@ -30,7 +30,7 @@ message Command {
 	// The function name.
 	string name = 1;
 	// The function's API.
-	path.API api = 2;
+	path.API API = 2;
 	// The list of function parameters.
 	repeated Parameter parameters = 3;
 	// The function return value 'parameter'.
@@ -163,7 +163,7 @@ message Uniform {
 
 // IndexBuffer is a stream of vertex indices used to draw a model.
 message IndexBuffer {
-	repeated uint32 Indices = 1;
+	repeated uint32 indices = 1;
 }
 
 // Mesh represents the geometry of a draw call.
@@ -248,7 +248,7 @@ message Metrics {
 // The description of the memory layout of the API state
 message MemoryBreakdown {
   // The API ID used for this call.
-  path.API api = 1;
+  path.API API = 1;
   // The memory allocations that are currently in use.
   repeated MemoryAllocation allocations = 2;
   // The index to get the constants names for `MemoryAllocation.flags`, to be

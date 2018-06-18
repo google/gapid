@@ -98,7 +98,7 @@ func (a API) MemoryBreakdown(st *api.GlobalState) (*api.MemoryBreakdown, error) 
 		allocations = append(allocations, &alloc)
 	}
 	return &api.MemoryBreakdown{
-		Api:                  path.NewAPI(id.ID(ID)),
+		API:                  path.NewAPI(id.ID(ID)),
 		Allocations:          allocations,
 		AllocationFlagsIndex: int32(VkMemoryPropertyFlagBitsConstants()),
 	}, nil
