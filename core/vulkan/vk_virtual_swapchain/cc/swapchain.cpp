@@ -48,9 +48,9 @@ struct VirtualSurface {
 };
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateVirtualSurface(
-    VkInstance instance, const CreateNext* pCreateInfo,
+    VkInstance instance, const CreateNext *pCreateInfo,
     const VkAllocationCallbacks *pAllocator, VkSurfaceKHR *pSurface) {
-  auto* surf = new VirtualSurface();
+  auto *surf = new VirtualSurface();
   surf->always_return_given_surface_formats_and_present_modes = false;
   if (pCreateInfo != nullptr) {
     for (const CreateNext *pNext =
@@ -137,7 +137,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
     uint32_t *pSurfaceFormatCount, VkSurfaceFormatKHR *pSurfaceFormats) {
-  VirtualSurface *suf = reinterpret_cast<VirtualSurface*>(surface);
+  VirtualSurface *suf = reinterpret_cast<VirtualSurface *>(surface);
   if (suf->always_return_given_surface_formats_and_present_modes) {
     return VK_SUCCESS;
   }
@@ -159,7 +159,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormatsKHR(
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
     uint32_t *pPresentModeCount, VkPresentModeKHR *pPresentModes) {
-  VirtualSurface *suf = reinterpret_cast<VirtualSurface*>(surface);
+  VirtualSurface *suf = reinterpret_cast<VirtualSurface *>(surface);
   if (suf->always_return_given_surface_formats_and_present_modes) {
     return VK_SUCCESS;
   }
@@ -227,7 +227,7 @@ vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain,
 VKAPI_ATTR void VKAPI_CALL
 vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface,
                     const VkAllocationCallbacks *pAllocator) {
-  VirtualSurface *suf = reinterpret_cast<VirtualSurface*>(surface);
+  VirtualSurface *suf = reinterpret_cast<VirtualSurface *>(surface);
   delete suf;
 }
 
