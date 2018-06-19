@@ -124,7 +124,7 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 
 	cb := CommandBuilder{Thread: submit.Thread(), Arena: gs.Arena}
 	image, err := s.rewriteQueueSubmit(ctx, cb, gs, st, arena, submit,
-		lastRenderPassIdx, id,
+		lastRenderPassArgs, lastRenderPassIdx, id,
 		mustAllocData, addCleanup, out)
 	if err != nil {
 
@@ -136,7 +136,6 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	}
 	postImageData(ctx, cb, gs,
 		st.Images().Get(image.handle),
-		// FIXME other formats
 		image.format,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT,
 		0,
@@ -203,7 +202,6 @@ func (s *stencilOverdraw) createNewRenderPassFramebuffer(ctx context.Context,
 	gs *api.GlobalState,
 	st *State,
 	a arena.Arena,
-	device VkDevice,
 	oldRenderPass VkRenderPass,
 	oldFramebuffer VkFramebuffer,
 	alloc func(v ...interface{}) api.AllocResult,
@@ -231,6 +229,7 @@ func (s *stencilOverdraw) createNewRenderPassFramebuffer(ctx context.Context,
 	}
 
 	width, height := oldFbInfo.Width(), oldFbInfo.Height()
+	device := oldFbInfo.Device()
 	image := s.createImage(ctx, cb, st, a, device, attachDesc.Fmt(),
 		width, height, alloc, addCleanup, out)
 	imageView := s.createImageView(ctx, cb, st, a, device,
@@ -691,18 +690,18 @@ func (*stencilOverdraw) createFramebuffer(ctx context.Context,
 	return newFramebuffer
 }
 
-func (s *stencilOverdraw) createGraphicsPipelines(ctx context.Context,
+func (s *stencilOverdraw) createGraphicsPipeline(ctx context.Context,
 	cb CommandBuilder,
 	gs *api.GlobalState,
 	st *State,
 	a arena.Arena,
 	device VkDevice,
-	pipelines []VkPipeline,
+	pipeline VkPipeline,
 	renderPass VkRenderPass,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
-) ([]VkPipeline, error) {
+) (VkPipeline, error) {
 	reads := []api.AllocResult{}
 	allocAndRead := func(v ...interface{}) api.AllocResult {
 		res := alloc(v)
@@ -710,42 +709,32 @@ func (s *stencilOverdraw) createGraphicsPipelines(ctx context.Context,
 		return res
 	}
 
-	createInfos := make([]VkGraphicsPipelineCreateInfo, len(pipelines))
-	for i, pipe := range pipelines {
-		ci, err := s.createGraphicsPipelineCreateInfo(ctx,
-			cb, gs, st, a, pipe, renderPass, alloc, allocAndRead,
-			addCleanup, out)
-		if err != nil {
-			return nil, err
-		}
-		createInfos[i] = ci
+	createInfo, err := s.createGraphicsPipelineCreateInfo(ctx,
+		cb, gs, st, a, pipeline, renderPass, alloc, allocAndRead,
+		addCleanup, out)
+	if err != nil {
+		return 0, err
 	}
 
-	createInfosData := allocAndRead(createInfos)
+	createInfoData := allocAndRead(createInfo)
 
-	newPipelines := make([]VkPipeline, len(pipelines))
-	createdPipelines := map[VkPipeline]struct{}{}
-	for i := range newPipelines {
-		newPipelines[i] = VkPipeline(newUnusedID(false, func(id uint64) bool {
-			_, ok := createdPipelines[VkPipeline(id)]
-			return st.GraphicsPipelines().Contains(VkPipeline(id)) || ok
-		}))
-		createdPipelines[newPipelines[i]] = struct{}{}
-	}
-	newPipelinesData := allocAndRead(newPipelines)
+	newPipeline := VkPipeline(newUnusedID(false, func(id uint64) bool {
+		return st.GraphicsPipelines().Contains(VkPipeline(id))
+	}))
+	newPipelineData := allocAndRead(newPipeline)
 
 	cmd := cb.VkCreateGraphicsPipelines(
-		device, // device
-		0,      // pipelineCache: VK_NULL_HANDLE
-		uint32(len(pipelines)), // createInfoCount
-		createInfosData.Ptr(),  // pCreateInfos
-		memory.Nullptr,         // pAllocator
-		newPipelinesData.Ptr(), // pPipelines
-		VkResult_VK_SUCCESS,    // result
+		device,                // device
+		0,                     // pipelineCache: VK_NULL_HANDLE
+		1,                     // createInfoCount
+		createInfoData.Ptr(),  // pCreateInfos
+		memory.Nullptr,        // pAllocator
+		newPipelineData.Ptr(), // pPipelines
+		VkResult_VK_SUCCESS,   // result
 	).AddRead(
-		createInfosData.Data(),
+		createInfoData.Data(),
 	).AddWrite(
-		newPipelinesData.Data(),
+		newPipelineData.Data(),
 	)
 
 	for _, read := range reads {
@@ -755,15 +744,13 @@ func (s *stencilOverdraw) createGraphicsPipelines(ctx context.Context,
 	writeEach(ctx, out, cmd)
 
 	addCleanup(func() {
-		for _, pipeline := range newPipelines {
-			writeEach(ctx, out,
-				cb.VkDestroyPipeline(
-					device, pipeline, memory.Nullptr,
-				))
-		}
+		writeEach(ctx, out,
+			cb.VkDestroyPipeline(
+				device, newPipeline, memory.Nullptr,
+			))
 	})
 
-	return newPipelines, nil
+	return newPipeline, nil
 }
 
 func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
@@ -1091,66 +1078,15 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 	st *State,
 	a arena.Arena,
 	cmdBuffer VkCommandBuffer,
+	renderInfo renderInfo,
 	rpStartIdx uint64,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
-) (VkCommandBuffer, stencilImage, error) {
+) (VkCommandBuffer, error) {
 	// TODO copy old depth data over if it's in keep mode
 	bInfo := st.CommandBuffers().Get(cmdBuffer)
 	device := bInfo.Device()
-
-	rpArgs := bInfo.BufferCommands().
-		VkCmdBeginRenderPass().
-		Get(bInfo.
-			CommandReferences().
-			Get(uint32(rpStartIdx)).MapIndex())
-
-	oldRenderPass, oldFramebuffer := rpArgs.RenderPass(), rpArgs.Framebuffer()
-	renderInfo, err :=
-		s.createNewRenderPassFramebuffer(ctx, cb, gs, st, a, device,
-			oldRenderPass, oldFramebuffer, alloc, addCleanup, out)
-	if err != nil {
-		return 0, stencilImage{}, err
-	}
-
-	pipelineMap := map[VkPipeline]VkPipeline{}
-
-crLoop0:
-	for i := uint32(rpStartIdx); i < uint32(bInfo.CommandReferences().Len()); i++ {
-		cr := bInfo.CommandReferences().Get(i)
-		switch cr.Type() {
-		case CommandType_cmd_vkCmdEndRenderPass:
-			break crLoop0
-		case CommandType_cmd_vkCmdBindPipeline:
-			// TODO: vkCmdBindPipeline can occur in secondary command
-			// buffers, so we need to check those as well
-			args := bInfo.
-				BufferCommands().
-				VkCmdBindPipeline().
-				Get(cr.MapIndex())
-
-			if args.PipelineBindPoint() ==
-				VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
-				// Record list of all pipelines used in renderpass
-				pipelineMap[args.Pipeline()] = 0
-			}
-		}
-	}
-
-	pipelineKeys := make([]VkPipeline, 0, len(pipelineMap))
-	for key := range pipelineMap {
-		pipelineKeys = append(pipelineKeys, key)
-	}
-
-	newPipelines, err := s.createGraphicsPipelines(ctx, cb, gs, st, a,
-		device, pipelineKeys, renderInfo.renderPass, alloc, addCleanup, out)
-	if err != nil {
-		return 0, stencilImage{}, err
-	}
-	for i, key := range pipelineKeys {
-		pipelineMap[key] = newPipelines[i]
-	}
 
 	newCmdBuffer, cmds, cleanup := allocateNewCmdBufFromExistingOneAndBegin(
 		ctx, cb, cmdBuffer, gs)
@@ -1158,6 +1094,9 @@ crLoop0:
 	for _, f := range cleanup {
 		f()
 	}
+
+	pipelines := map[VkPipeline]VkPipeline{}
+	secCmdBuffers := map[VkCommandBuffer]VkCommandBuffer{}
 
 	rpEnded := false
 	for i := 0; i < bInfo.CommandReferences().Len(); i++ {
@@ -1197,8 +1136,38 @@ crLoop0:
 				if ar.PipelineBindPoint() ==
 					VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
 					newArgs = ar.Clone(a, api.CloneContext{})
-					newArgs.SetPipeline(
-						pipelineMap[ar.Pipeline()])
+
+					pipe := ar.Pipeline()
+					newPipe, ok := pipelines[pipe]
+					if !ok {
+						var err error
+						newPipe, err = s.createGraphicsPipeline(ctx, cb, gs, st,
+							a, device, pipe, renderInfo.renderPass, alloc,
+							addCleanup, out)
+						if err != nil {
+							return 0, err
+						}
+						pipelines[pipe] = newPipe
+					}
+					newArgs.SetPipeline(newPipe)
+				}
+				args = newArgs
+			case VkCmdExecuteCommandsArgsʳ:
+				newArgs := ar
+				for i := uint32(0); i < uint32(ar.CommandBuffers().Len()); i++ {
+					cmdbuf := ar.CommandBuffers().Get(i)
+					newCmdbuf, ok := secCmdBuffers[cmdbuf]
+					if !ok {
+						var err error
+						newCmdbuf, err = s.createCommandBuffer(ctx,
+							cb, gs, st, a, cmdbuf, renderInfo,
+							0, alloc, addCleanup, out)
+						if err != nil {
+							return 0, err
+						}
+						secCmdBuffers[cmdbuf] = newCmdbuf
+					}
+					newArgs.CommandBuffers().Add(i, newCmdbuf)
 				}
 				args = newArgs
 			}
@@ -1212,7 +1181,7 @@ crLoop0:
 	writeEach(ctx, out,
 		cb.VkEndCommandBuffer(newCmdBuffer, VkResult_VK_SUCCESS))
 
-	return newCmdBuffer, renderInfo.image, nil
+	return newCmdBuffer, nil
 }
 
 func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
@@ -1221,6 +1190,7 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	st *State,
 	a arena.Arena,
 	submit *VkQueueSubmit,
+	rpBeginArgs VkCmdBeginRenderPassArgsʳ,
 	rpBeginIdx api.SubCmdIdx,
 	cmdId api.CmdID,
 	alloc func(v ...interface{}) api.AllocResult,
@@ -1237,13 +1207,19 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 		return res
 	}
 
-	var image stencilImage
+	renderInfo, err := s.createNewRenderPassFramebuffer(ctx, cb, gs, st,
+		a, rpBeginArgs.RenderPass(), rpBeginArgs.Framebuffer(),
+		alloc, addCleanup, out)
+	if err != nil {
+		return stencilImage{}, err
+	}
 
-	submit.Extras().Observations().ApplyReads(gs.Memory.ApplicationPool())
 	l := gs.MemoryLayout
+	submit.Extras().Observations().ApplyReads(gs.Memory.ApplicationPool())
 	submitCount := submit.SubmitCount()
 	submitInfos := submit.PSubmits().Slice(0, uint64(submitCount), l).MustRead(
 		ctx, submit, gs, nil)
+
 	newSubmitInfos := make([]VkSubmitInfo, submitCount)
 	for i := uint32(0); i < submitCount; i++ {
 		si := submitInfos[i]
@@ -1272,14 +1248,14 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 				Slice(0, count, l).
 				MustRead(ctx, submit, gs, nil)
 			if uint64(i) == rpBeginIdx[0] {
-				newCommandBuffer, img, err :=
+				newCommandBuffer, err :=
 					s.createCommandBuffer(ctx, cb, gs, st, a,
 						cmdBuffers[rpBeginIdx[1]],
+						renderInfo,
 						rpBeginIdx[2],
 						alloc, addCleanup, out)
-				image = img
 				if err != nil {
-					return image, err
+					return stencilImage{}, err
 				}
 				cmdBuffers[rpBeginIdx[1]] = newCommandBuffer
 			}
@@ -1313,7 +1289,7 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	}
 
 	out.MutateAndWrite(ctx, cmdId, cmd)
-	return image, nil
+	return renderInfo.image, nil
 }
 
 func (s *stencilOverdraw) Flush(ctx context.Context, output transform.Writer) {}
