@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
@@ -68,7 +69,9 @@ func (s *stencilOverdraw) add(ctx context.Context, after []uint64, capt *path.Ca
 		}
 	}
 	if lastSubmit == ^uint64(0) {
-		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("No last queue submission")})
+		res(nil, &service.ErrDataUnavailable{
+			Reason: messages.ErrMessage("No last queue submission"),
+		})
 		return
 	}
 
@@ -82,9 +85,9 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		return
 	}
 
-	st := out.State()
-	vkState := GetState(st)
-	arena := st.Arena
+	gs := out.State()
+	st := GetState(gs)
+	arena := gs.Arena
 
 	var allocated []*api.AllocResult
 	var cleanups []func()
@@ -97,7 +100,7 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		}
 	}()
 	mustAllocData := func(v ...interface{}) api.AllocResult {
-		res := st.AllocDataOrPanic(ctx, v...)
+		res := gs.AllocDataOrPanic(ctx, v...)
 		allocated = append(allocated, &res)
 		return res
 	}
@@ -112,55 +115,36 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		return
 	}
 
-	lastRenderPassArgs, lastRenderPassIdx := s.getLastRenderPass(ctx, st, vkState, submit)
+	lastRenderPassArgs, lastRenderPassIdx := s.getLastRenderPass(ctx, gs, st, submit)
 	if lastRenderPassArgs.IsNil() {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("No render pass in queue submit")})
 		out.MutateAndWrite(ctx, id, cmd)
 		return
 	}
 
-	renderPass := lastRenderPassArgs.RenderPass()
-	framebuffer := lastRenderPassArgs.Framebuffer()
-
-	submit.Extras().Observations().ApplyReads(st.Memory.ApplicationPool())
-	device := vkState.Queues().Get(submit.Queue()).Device()
-	cb := CommandBuilder{Thread: submit.Thread(), Arena: st.Arena}
-
-	// Create the image to write the results to
-	stencilImage, width, height := s.createImage(ctx, cb, vkState, arena,
-		device, framebuffer, mustAllocData, addCleanup, out)
-	stencilImageView := s.createImageView(ctx, cb, vkState, arena,
-		device, stencilImage, mustAllocData, addCleanup, out)
-	newRenderPass, err := s.createRenderPass(ctx, cb, vkState, arena,
-		device, renderPass, mustAllocData, addCleanup, out)
+	cb := CommandBuilder{Thread: submit.Thread(), Arena: gs.Arena}
+	image, err := s.rewriteQueueSubmit(ctx, cb, gs, st, arena, submit,
+		lastRenderPassIdx, id,
+		mustAllocData, addCleanup, out)
 	if err != nil {
-		res(nil, err)
+
+		res(nil, &service.ErrDataUnavailable{
+			Reason: messages.ErrMessage(fmt.Sprintf(
+				"Could not get overdraw: %v", err))})
 		out.MutateAndWrite(ctx, id, cmd)
 		return
 	}
-	newFramebuffer := s.createFramebuffer(ctx, cb, vkState, arena,
-		device, framebuffer, newRenderPass, stencilImageView, mustAllocData,
-		addCleanup, out)
-
-	if err := s.rewriteQueueSubmit(ctx, cb, st, vkState, arena, submit,
-		device, newRenderPass, newFramebuffer, lastRenderPassIdx, id,
-		mustAllocData, addCleanup, out); err != nil {
-
-		res(nil, err)
-		out.MutateAndWrite(ctx, id, cmd)
-		return
-	}
-	postImageData(ctx, cb, st,
-		vkState.Images().Get(stencilImage),
+	postImageData(ctx, cb, gs,
+		st.Images().Get(image.handle),
 		// FIXME other formats
-		VkFormat_VK_FORMAT_S8_UINT,
+		image.format,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT,
 		0,
 		0,
-		width,
-		height,
-		width,
-		height,
+		image.width,
+		image.height,
+		image.width,
+		image.height,
 		out,
 		res,
 	)
@@ -200,21 +184,181 @@ func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
 	return lastRenderPassArgs, lastRenderPassIdx
 }
 
+type stencilImage struct {
+	handle VkImage
+	format VkFormat
+	width  uint32
+	height uint32
+}
+
+type renderInfo struct {
+	renderPass  VkRenderPass
+	depthIdx    uint32
+	framebuffer VkFramebuffer
+	image       stencilImage
+}
+
+func (s *stencilOverdraw) createNewRenderPassFramebuffer(ctx context.Context,
+	cb CommandBuilder,
+	gs *api.GlobalState,
+	st *State,
+	a arena.Arena,
+	device VkDevice,
+	oldRenderPass VkRenderPass,
+	oldFramebuffer VkFramebuffer,
+	alloc func(v ...interface{}) api.AllocResult,
+	addCleanup func(func()),
+	out transform.Writer,
+) (renderInfo, error) {
+	oldRpInfo, ok := st.RenderPasses().Lookup(oldRenderPass)
+	if !ok {
+		return renderInfo{},
+			fmt.Errorf("Invalid renderpass %v",
+				oldRenderPass)
+	}
+
+	oldFbInfo, ok := st.Framebuffers().Lookup(oldFramebuffer)
+	if !ok {
+		return renderInfo{},
+			fmt.Errorf("Invalid framebuffer %v",
+				oldFramebuffer)
+	}
+
+	attachDesc, depthIdx, err :=
+		s.getStencilAttachmentDescription(st, a, oldRpInfo)
+	if err != nil {
+		return renderInfo{}, err
+	}
+
+	width, height := oldFbInfo.Width(), oldFbInfo.Height()
+	image := s.createImage(ctx, cb, st, a, device, attachDesc.Fmt(),
+		width, height, alloc, addCleanup, out)
+	imageView := s.createImageView(ctx, cb, st, a, device,
+		image.handle, alloc, addCleanup, out)
+
+	renderPass := s.createRenderPass(ctx, cb, st, a, device, oldRpInfo,
+		attachDesc, alloc, addCleanup, out)
+	framebuffer := s.createFramebuffer(ctx, cb, st, a, device, oldFbInfo,
+		renderPass, imageView, alloc, addCleanup, out)
+
+	return renderInfo{renderPass, depthIdx, framebuffer, image}, nil
+}
+
+func (s *stencilOverdraw) getStencilAttachmentDescription(st *State,
+	a arena.Arena,
+	rpInfo RenderPassObjectʳ,
+) (VkAttachmentDescription, uint32, error) {
+
+	depthDesc, idx, err := s.getDepthAttachment(a, rpInfo)
+	if err != nil {
+		return NilVkAttachmentDescription, idx, err
+	}
+
+	// Clone it, but with a stencil-friendly format
+	var stencilDesc VkAttachmentDescription
+	if idx != ^uint32(0) {
+		stencilDesc = depthDesc.Clone(a, api.CloneContext{})
+
+		format, err := s.depthToStencilFormat(depthDesc.Fmt())
+		if err != nil {
+			return NilVkAttachmentDescription, idx, err
+		}
+		stencilDesc.SetFmt(format)
+		if stencilDesc.FinalLayout() !=
+			VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL {
+			stencilDesc.SetFinalLayout(
+				VkImageLayout_VK_IMAGE_LAYOUT_GENERAL)
+		}
+	} else {
+		stencilDesc = MakeVkAttachmentDescription(a)
+		// Use this format because it is the most commonly supported.
+		// Ideally we would be able to do
+		// VkGetPhysicalDeviceImageFormatProperties to determine what
+		// we can use, but for now assume this is available.
+		stencilDesc.SetFmt(VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT)
+		stencilDesc.SetSamples(VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT)
+		stencilDesc.SetLoadOp(VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+		stencilDesc.SetStoreOp(VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE)
+		stencilDesc.SetInitialLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED)
+		stencilDesc.SetFinalLayout(
+			VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	}
+
+	return stencilDesc, idx, nil
+}
+
+// TODO: see if we can use the existing depth attachment in place
+func (s *stencilOverdraw) getDepthAttachment(a arena.Arena,
+	rpInfo RenderPassObjectʳ,
+) (VkAttachmentDescription, uint32, error) {
+
+	// depth attachment: don't support them not all using the same one for now
+	attachment0 := rpInfo.SubpassDescriptions().Get(0).DepthStencilAttachment()
+	for i := uint32(1); i < uint32(rpInfo.SubpassDescriptions().Len()); i++ {
+		attachment := rpInfo.SubpassDescriptions().Get(i).DepthStencilAttachment()
+		var match bool
+		if attachment0.IsNil() {
+			match = attachment.IsNil()
+		} else {
+			match = !attachment.IsNil() &&
+				attachment0.Attachment() == attachment.Attachment()
+		}
+		if !match {
+			return NilVkAttachmentDescription, ^uint32(0), fmt.Errorf(
+				"The subpasses don't have matching depth attachments")
+		}
+	}
+	if attachment0.IsNil() {
+		return NilVkAttachmentDescription, ^uint32(0), nil
+	}
+
+	attachmentDesc, ok := rpInfo.AttachmentDescriptions().Lookup(
+		attachment0.Attachment(),
+	)
+	if !ok {
+		return NilVkAttachmentDescription, ^uint32(0),
+			fmt.Errorf("Invalid depth attachment")
+	}
+
+	return attachmentDesc, attachment0.Attachment(), nil
+}
+
+func (*stencilOverdraw) depthToStencilFormat(
+	depthFormat VkFormat) (VkFormat, error) {
+
+	switch depthFormat {
+	case VkFormat_VK_FORMAT_D16_UNORM:
+		return VkFormat_VK_FORMAT_D16_UNORM_S8_UINT, nil
+	case VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32:
+		return VkFormat_VK_FORMAT_D24_UNORM_S8_UINT, nil
+	case VkFormat_VK_FORMAT_D32_SFLOAT:
+		return VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT, nil
+
+	case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
+		fallthrough
+	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
+		fallthrough
+	case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+		return depthFormat, nil
+	default:
+		return 0, fmt.Errorf("Unrecognized depth format %v",
+			depthFormat)
+	}
+
+}
+
 func (*stencilOverdraw) createImage(ctx context.Context,
 	cb CommandBuilder,
 	st *State,
 	a arena.Arena,
 	device VkDevice,
-	framebuffer VkFramebuffer,
+	format VkFormat,
+	width uint32,
+	height uint32,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
-) (VkImage, uint32, uint32) {
-	framebufferData := st.Framebuffers().Get(framebuffer)
-	// TODO: figure out how MSAA interacts here
-	width, height := framebufferData.Width(), framebufferData.Height()
-
-	format := VkFormat_VK_FORMAT_S8_UINT // FIXME handle depth combinations
+) stencilImage {
 	imageCreateInfo := NewVkImageCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
 		0, // pNext
@@ -287,7 +431,7 @@ func (*stencilOverdraw) createImage(ctx context.Context,
 		)
 	})
 
-	return image, width, height
+	return stencilImage{image, format, width, height}
 }
 
 func (*stencilOverdraw) createImageView(ctx context.Context,
@@ -360,45 +504,40 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 	st *State,
 	a arena.Arena,
 	device VkDevice,
-	renderPass VkRenderPass,
+	rpInfo RenderPassObjectʳ,
+	stencilAttachment VkAttachmentDescription,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
-) (VkRenderPass, error) {
-	rpInfo := st.RenderPasses().Get(renderPass)
+) VkRenderPass {
+	allReads := []api.AllocResult{}
+	allocAndRead := func(v ...interface{}) api.AllocResult {
+		res := alloc(v)
+		allReads = append(allReads, res)
+		return res
+	}
 
 	attachments := rpInfo.AttachmentDescriptions().All()
 	newAttachments := rpInfo.AttachmentDescriptions().Clone(a, api.CloneContext{})
-	// FIXME: handle merging with depth attachment
-	newAttachments.Add(uint32(newAttachments.Len()), NewVkAttachmentDescription(a,
-		0, // flags
-		VkFormat_VK_FORMAT_S8_UINT,                                     // format
-		VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT,                    // samples
-		VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE,             // loadOp
-		VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE,           // storeOp
-		VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR,                 // stencilLoadOp
-		VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE,               // stencilStoreOp
-		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                        // initialLayout
-		VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, // finalLayout
-	))
-	newAttachmentsData, newAttachmentsLen := unpackMapCustom(alloc, newAttachments)
+	newAttachments.Add(uint32(newAttachments.Len()), stencilAttachment)
+	newAttachmentsData, newAttachmentsLen := unpackMapCustom(allocAndRead,
+		newAttachments)
+
+	stencilAttachmentReference := NewVkAttachmentReference(a,
+		uint32(len(attachments)),
+		stencilAttachment.FinalLayout(),
+	)
+	stencilAttachmentReferencePtr := allocAndRead(stencilAttachmentReference).Ptr()
 
 	subpasses := make([]VkSubpassDescription,
 		rpInfo.SubpassDescriptions().Len())
-	allReads := []api.AllocResult{}
 	for idx, subpass := range rpInfo.SubpassDescriptions().All() {
-		if !subpass.DepthStencilAttachment().IsNil() {
-			return 0, &service.ErrDataUnavailable{Reason: messages.ErrMessage(
-				"Pre-existing depth/stencil attachments not supported")}
-		}
-		subpassDesc, reads := subpassToSubpassDescription(a, subpass,
-			uint32(len(attachments)), alloc)
-		subpasses[idx] = subpassDesc
-		allReads = append(allReads, reads...)
+		subpasses[idx] = subpassToSubpassDescription(a, subpass,
+			stencilAttachmentReferencePtr, allocAndRead)
 	}
-	subpassesData := alloc(subpasses)
+	subpassesData := allocAndRead(subpasses)
 
-	subpassDependenciesData, subpassDependenciesLen := unpackMapCustom(alloc,
+	subpassDependenciesData, subpassDependenciesLen := unpackMapCustom(allocAndRead,
 		rpInfo.SubpassDependencies())
 
 	renderPassCreateInfo := NewVkRenderPassCreateInfo(a,
@@ -412,15 +551,12 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 		subpassDependenciesLen,                                  // dependencyCount
 		NewVkSubpassDependencyᶜᵖ(subpassDependenciesData.Ptr()), // pDependencies
 	)
-	renderPassCreateInfoData := alloc(renderPassCreateInfo)
+	renderPassCreateInfoData := allocAndRead(renderPassCreateInfo)
 
 	newRenderPass := VkRenderPass(newUnusedID(false, func(id uint64) bool {
 		return st.RenderPasses().Contains(VkRenderPass(id))
 	}))
 	newRenderPassData := alloc(newRenderPass)
-
-	allReads = append(allReads, newAttachmentsData, subpassesData,
-		subpassDependenciesData, renderPassCreateInfoData)
 
 	createRenderPass := cb.VkCreateRenderPass(
 		device,
@@ -446,58 +582,47 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 			))
 	})
 
-	return newRenderPass, nil
+	return newRenderPass
 }
 
 func subpassToSubpassDescription(a arena.Arena,
 	subpass SubpassDescription,
-	stencilIdx uint32,
-	alloc func(v ...interface{}) api.AllocResult,
-) (VkSubpassDescription, []api.AllocResult) {
-	stencilAttachment := NewVkAttachmentReference(a,
-		stencilIdx,
-		VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-	)
-	stencilAttachmentData := alloc(stencilAttachment)
-	stencilAttachmentPtr := NewVkAttachmentReferenceᶜᵖ(stencilAttachmentData.Ptr())
-	allocs := []api.AllocResult{stencilAttachmentData}
-
-	getPtr := func(refs U32ːVkAttachmentReferenceᵐ) (VkAttachmentReferenceᶜᵖ, uint32) {
-		ptr := memory.Nullptr
-		num := uint32(0)
-		if refs.Len() > 0 {
-			allocation, count := unpackMapCustom(alloc, refs)
-			ptr = allocation.Ptr()
-			num = count
-			allocs = append(allocs, allocation)
+	attachRefPtr memory.Pointer,
+	allocAndRead func(v ...interface{}) api.AllocResult,
+) VkSubpassDescription {
+	unpackMapMaybeEmpty := func(m interface{}) (memory.Pointer, uint32) {
+		type HasLen interface {
+			Len() int
 		}
-		return NewVkAttachmentReferenceᶜᵖ(ptr), num
+		if m.(HasLen).Len() > 0 {
+			allocation, count := unpackMapCustom(allocAndRead, m)
+			return allocation.Ptr(), count
+		} else {
+			return memory.Nullptr, 0
+		}
 	}
-	inputAttachmentsPtr, inputAttachmentsCount := getPtr(subpass.InputAttachments())
-	colorAttachmentsPtr, colorAttachmentsCount := getPtr(subpass.ColorAttachments())
-	resolveAttachmentsPtr, _ := getPtr(subpass.ResolveAttachments())
 
-	preserveAttachmentsPtr := U32ᶜᵖ(0)
-	preserveAttachmentsCount := uint32(0)
-	if subpass.PreserveAttachments().Len() > 0 {
-		allocation, count := unpackMapCustom(alloc, subpass.PreserveAttachments().Len())
-		preserveAttachmentsPtr = NewU32ᶜᵖ(allocation.Ptr())
-		preserveAttachmentsCount = count
-		allocs = append(allocs, allocation)
-	}
+	inputAttachmentsPtr, inputAttachmentsCount :=
+		unpackMapMaybeEmpty(subpass.InputAttachments())
+	colorAttachmentsPtr, colorAttachmentsCount :=
+		unpackMapMaybeEmpty(subpass.ColorAttachments())
+	resolveAttachmentsPtr, _ := unpackMapMaybeEmpty(subpass.ResolveAttachments())
+
+	preserveAttachmentsPtr, preserveAttachmentsCount :=
+		unpackMapMaybeEmpty(subpass.PreserveAttachments())
 
 	return NewVkSubpassDescription(a,
-		subpass.Flags(),             // flags
-		subpass.PipelineBindPoint(), // pipelineBindPoint
-		inputAttachmentsCount,       // inputAttachmentCount
-		inputAttachmentsPtr,         // pInputAttachments
-		colorAttachmentsCount,       // colorAttachmentCount
-		colorAttachmentsPtr,         // pColorAttachments
-		resolveAttachmentsPtr,       // pResolveAttachments
-		stencilAttachmentPtr,        // pDepthStencilAttachment
-		preserveAttachmentsCount,    // preserveAttachmentCount
-		preserveAttachmentsPtr,      // pPreserveAttachments
-	), allocs
+		subpass.Flags(),                                   // flags
+		subpass.PipelineBindPoint(),                       // pipelineBindPoint
+		inputAttachmentsCount,                             // inputAttachmentCount
+		NewVkAttachmentReferenceᶜᵖ(inputAttachmentsPtr),   // pInputAttachments
+		colorAttachmentsCount,                             // colorAttachmentCount
+		NewVkAttachmentReferenceᶜᵖ(colorAttachmentsPtr),   // pColorAttachments
+		NewVkAttachmentReferenceᶜᵖ(resolveAttachmentsPtr), // pResolveAttachments
+		NewVkAttachmentReferenceᶜᵖ(attachRefPtr),          // pDepthStencilAttachment
+		preserveAttachmentsCount,                          // preserveAttachmentCount
+		NewU32ᶜᵖ(preserveAttachmentsPtr),                  // pPreserveAttachments
+	)
 }
 
 func (*stencilOverdraw) createFramebuffer(ctx context.Context,
@@ -505,15 +630,13 @@ func (*stencilOverdraw) createFramebuffer(ctx context.Context,
 	st *State,
 	a arena.Arena,
 	device VkDevice,
-	framebuffer VkFramebuffer,
+	fbInfo FramebufferObjectʳ,
 	renderPass VkRenderPass,
 	stencilImageView VkImageView,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
 ) VkFramebuffer {
-	fbInfo := st.Framebuffers().Get(framebuffer)
-
 	attachments := fbInfo.ImageAttachments().All()
 	newAttachments := make([]VkImageView, len(attachments)+1)
 	for idx, imageView := range attachments {
@@ -799,10 +922,39 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 			)).Ptr()
 	}
 
-	if !pInfo.DepthState().IsNil() {
-		return NilVkGraphicsPipelineCreateInfo,
-			&service.ErrDataUnavailable{Reason: messages.ErrMessage(
-				"Pre-existing depth/stencil attachments not supported")}
+	var depthStencilPtr memory.Pointer
+	{
+		// FIXME: work with existing depth buffer
+		stencilOp := NewVkStencilOpState(a,
+			0, // failOp
+			VkStencilOp_VK_STENCIL_OP_INCREMENT_AND_CLAMP, // passOp
+			0, // depthFailOp
+			VkCompareOp_VK_COMPARE_OP_ALWAYS, // compareOp
+			255, // compareMask
+			255, // writeMask
+			0,   // reference
+		)
+		state := MakeVkPipelineDepthStencilStateCreateInfo(a)
+		state.SetSType(
+			VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+		state.SetStencilTestEnable(1)
+		state.SetFront(stencilOp)
+		state.SetBack(stencilOp)
+		if !pInfo.DepthState().IsNil() {
+			info := pInfo.DepthState()
+			if info.StencilTestEnable() != 0 {
+				return NilVkGraphicsPipelineCreateInfo,
+					fmt.Errorf("The stencil buffer is already in use")
+			}
+
+			state.SetDepthTestEnable(info.DepthTestEnable())
+			state.SetDepthWriteEnable(info.DepthWriteEnable())
+			state.SetDepthCompareOp(info.DepthCompareOp())
+			state.SetDepthBoundsTestEnable(info.DepthBoundsTestEnable())
+			state.SetMinDepthBounds(info.MinDepthBounds())
+			state.SetMaxDepthBounds(info.MaxDepthBounds())
+		}
+		depthStencilPtr = allocAndRead(state).Ptr()
 	}
 
 	colorBlendPtr := memory.Nullptr
@@ -837,31 +989,6 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 			)).Ptr()
 	}
 
-	// FIXME: work with existing depth buffer
-	stencilOp := NewVkStencilOpState(a,
-		0, // failOp
-		VkStencilOp_VK_STENCIL_OP_INCREMENT_AND_CLAMP, // passOp
-		0, // depthFailOp
-		VkCompareOp_VK_COMPARE_OP_ALWAYS, // compareOp
-		255, // compareMask
-		255, // writeMask
-		0,   // reference
-	)
-	depthStencilPtr := allocAndRead(
-		NewVkPipelineDepthStencilStateCreateInfo(a,
-			VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO, // sType
-			0,         // pNext
-			0,         // flags
-			0,         // depthTestEnable
-			0,         // depthWriteEnable
-			0,         // depthCompareOp
-			0,         // depthBoundsTestEnable
-			1,         // stencilTestEnable
-			stencilOp, // front
-			stencilOp, // back
-			0,         // minDepthBounds
-			0,         // maxDepthBounds
-		)).Ptr()
 	// TODO: determine if basePipelineHandle is an issue
 
 	return NewVkGraphicsPipelineCreateInfo(a,
@@ -963,40 +1090,50 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 	gs *api.GlobalState,
 	st *State,
 	a arena.Arena,
-	device VkDevice,
 	cmdBuffer VkCommandBuffer,
-	newRenderPass VkRenderPass,
-	newFramebuffer VkFramebuffer,
 	rpStartIdx uint64,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
-) (VkCommandBuffer, error) {
+) (VkCommandBuffer, stencilImage, error) {
+	// TODO copy old depth data over if it's in keep mode
 	bInfo := st.CommandBuffers().Get(cmdBuffer)
+	device := bInfo.Device()
+
+	rpArgs := bInfo.BufferCommands().
+		VkCmdBeginRenderPass().
+		Get(bInfo.
+			CommandReferences().
+			Get(uint32(rpStartIdx)).MapIndex())
+
+	oldRenderPass, oldFramebuffer := rpArgs.RenderPass(), rpArgs.Framebuffer()
+	renderInfo, err :=
+		s.createNewRenderPassFramebuffer(ctx, cb, gs, st, a, device,
+			oldRenderPass, oldFramebuffer, alloc, addCleanup, out)
+	if err != nil {
+		return 0, stencilImage{}, err
+	}
 
 	pipelineMap := map[VkPipeline]VkPipeline{}
-	rpEnded := false
-	for i := 0; i < bInfo.CommandReferences().Len(); i++ {
-		cr := bInfo.CommandReferences().Get(uint32(i))
+
+crLoop0:
+	for i := uint32(rpStartIdx); i < uint32(bInfo.CommandReferences().Len()); i++ {
+		cr := bInfo.CommandReferences().Get(i)
 		switch cr.Type() {
 		case CommandType_cmd_vkCmdEndRenderPass:
-			if uint64(i) >= rpStartIdx {
-				rpEnded = true
-			}
+			break crLoop0
 		case CommandType_cmd_vkCmdBindPipeline:
-			// vkCmdBindPipeline can occur in secondary command
+			// TODO: vkCmdBindPipeline can occur in secondary command
 			// buffers, so we need to check those as well
-			if !rpEnded && uint64(i) >= rpStartIdx {
-				args := bInfo.
-					BufferCommands().
-					VkCmdBindPipeline().
-					Get(cr.MapIndex())
+			args := bInfo.
+				BufferCommands().
+				VkCmdBindPipeline().
+				Get(cr.MapIndex())
 
-				if args.PipelineBindPoint() ==
-					VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
-					// Record list of all pipelines used in renderpass
-					pipelineMap[args.Pipeline()] = 0
-				}
+			if args.PipelineBindPoint() ==
+				VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
+				// Record list of all pipelines used in renderpass
+				pipelineMap[args.Pipeline()] = 0
 			}
 		}
 	}
@@ -1007,9 +1144,9 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 	}
 
 	newPipelines, err := s.createGraphicsPipelines(ctx, cb, gs, st, a,
-		device, pipelineKeys, newRenderPass, alloc, addCleanup, out)
+		device, pipelineKeys, renderInfo.renderPass, alloc, addCleanup, out)
 	if err != nil {
-		return 0, err
+		return 0, stencilImage{}, err
 	}
 	for i, key := range pipelineKeys {
 		pipelineMap[key] = newPipelines[i]
@@ -1022,7 +1159,7 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 		f()
 	}
 
-	rpEnded = false
+	rpEnded := false
 	for i := 0; i < bInfo.CommandReferences().Len(); i++ {
 		cr := bInfo.CommandReferences().Get(uint32(i))
 		args := GetCommandArgs(ctx, cr, st)
@@ -1030,10 +1167,20 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 			switch ar := args.(type) {
 			case VkCmdBeginRenderPassArgsʳ:
 				newArgs := ar.Clone(a, api.CloneContext{})
-				newArgs.SetRenderPass(newRenderPass)
-				newArgs.SetFramebuffer(newFramebuffer)
+				newArgs.SetRenderPass(renderInfo.renderPass)
+				newArgs.SetFramebuffer(renderInfo.framebuffer)
 
 				clearCount := uint32(newArgs.ClearValues().Len())
+				newClear := NewU32ː4ᵃ(a)
+
+				if renderInfo.depthIdx != ^uint32(0) {
+					newClear.Set(0, newArgs.
+						ClearValues().
+						Get(renderInfo.depthIdx).
+						Color().
+						Uint32().
+						Get(0))
+				}
 				// 0 initialize the stencil buffer
 				newArgs.ClearValues().Add(clearCount,
 					// Use VkClearColorValue instead of
@@ -1041,7 +1188,7 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 					// seem like the union is set up in the
 					// API DSL
 					NewVkClearValue(a, NewVkClearColorValue(a,
-						NewU32ː4ᵃ(a))))
+						newClear)))
 				args = newArgs
 			case VkCmdEndRenderPassArgsʳ:
 				rpEnded = true
@@ -1065,7 +1212,7 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 	writeEach(ctx, out,
 		cb.VkEndCommandBuffer(newCmdBuffer, VkResult_VK_SUCCESS))
 
-	return newCmdBuffer, nil
+	return newCmdBuffer, renderInfo.image, nil
 }
 
 func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
@@ -1074,15 +1221,12 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	st *State,
 	a arena.Arena,
 	submit *VkQueueSubmit,
-	device VkDevice,
-	newRenderPass VkRenderPass,
-	newFramebuffer VkFramebuffer,
 	rpBeginIdx api.SubCmdIdx,
 	cmdId api.CmdID,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
-) error {
+) (stencilImage, error) {
 	// TODO: check if we're allowed to modify the command directly, since
 	// we won't be submitting the original one.  Need to deep clone all of
 	// the submit info so we can mark it as reads.
@@ -1092,6 +1236,8 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 		reads = append(reads, res)
 		return res
 	}
+
+	var image stencilImage
 
 	submit.Extras().Observations().ApplyReads(gs.Memory.ApplicationPool())
 	l := gs.MemoryLayout
@@ -1126,13 +1272,14 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 				Slice(0, count, l).
 				MustRead(ctx, submit, gs, nil)
 			if uint64(i) == rpBeginIdx[0] {
-				newCommandBuffer, err :=
+				newCommandBuffer, img, err :=
 					s.createCommandBuffer(ctx, cb, gs, st, a,
-						device, cmdBuffers[rpBeginIdx[1]],
-						newRenderPass, newFramebuffer, rpBeginIdx[2],
+						cmdBuffers[rpBeginIdx[1]],
+						rpBeginIdx[2],
 						alloc, addCleanup, out)
+				image = img
 				if err != nil {
-					return err
+					return image, err
 				}
 				cmdBuffers[rpBeginIdx[1]] = newCommandBuffer
 			}
@@ -1166,7 +1313,7 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	}
 
 	out.MutateAndWrite(ctx, cmdId, cmd)
-	return nil
+	return image, nil
 }
 
 func (s *stencilOverdraw) Flush(ctx context.Context, output transform.Writer) {}
