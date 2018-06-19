@@ -257,7 +257,7 @@ func rebuildCommandBuffer(ctx context.Context,
 			NewU32ːVkCommandBufferᵐ(a), // CommandBuffers
 		)
 		pcmd := commandBuffer.CommandReferences().Get(uint32(idx[0]))
-		execCmdData, ok := GetCommandArgs(ctx, pcmd, GetState(s)).(VkCmdExecuteCommandsArgs)
+		execCmdData, ok := GetCommandArgs(ctx, pcmd, GetState(s)).(VkCmdExecuteCommandsArgsʳ)
 		if !ok {
 			panic("Rebuild command buffer including secondary commands at a primary " +
 				"command other than VkCmdExecuteCommands")
