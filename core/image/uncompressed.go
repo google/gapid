@@ -32,6 +32,7 @@ var (
 	RG_U16_NORM   = newUncompressed(fmts.RG_U16_NORM)
 	R_S16_NORM    = newUncompressed(fmts.R_S16_NORM)
 	RG_S16_NORM   = newUncompressed(fmts.RG_S16_NORM)
+	Gray_U8_NORM  = newUncompressed(fmts.Gray_U8_NORM)
 	D_U16_NORM    = newUncompressed(fmts.D_U16_NORM)
 )
 

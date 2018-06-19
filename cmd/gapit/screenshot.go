@@ -90,7 +90,7 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 	}
 
-	if frame, err := getSingleFrame(ctx, command, device, client, verb.NoOpt); err == nil {
+	if frame, err := verb.getSingleFrame(ctx, command, device, client); err == nil {
 		return verb.writeSingleFrame(flipImg(frame), verb.Out)
 	} else {
 		return err
@@ -107,13 +107,16 @@ func (verb *screenshotVerb) writeSingleFrame(frame image.Image, fn string) error
 	return png.Encode(out, frame)
 }
 
-func getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device, client service.Service, noOpt bool) (*image.NRGBA, error) {
+func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(0xFFFFFFFF), MaxHeight: uint32(0xFFFFFFFF)}
+	if verb.Overdraw {
+		settings.DrawMode = service.DrawMode_OVERDRAW
+	}
 	iip, err := client.GetFramebufferAttachment(ctx,
 		&service.ReplaySettings{
 			Device: device,
-			DisableReplayOptimization: noOpt,
+			DisableReplayOptimization: verb.NoOpt,
 		},
 		cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
@@ -138,7 +141,12 @@ func getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device,
 	if ii.Width == 0 || ii.Height == 0 {
 		return nil, log.Err(ctx, nil, "Framebuffer has zero dimensions")
 	}
-	data, err = img.Convert(data, w, h, 1, ii.Format, img.RGBA_U8_NORM)
+	format := ii.Format
+	if verb.Overdraw {
+		format = img.Gray_U8_NORM
+		rescaleBytes(ctx, data, verb.Max.Overdraw)
+	}
+	data, err = img.Convert(data, w, h, 1, format, img.RGBA_U8_NORM)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to convert frame to RGBA")
 	}
@@ -173,4 +181,26 @@ func (verb *screenshotVerb) frameCommand(ctx context.Context, capture *path.Capt
 	}
 	fmt.Printf("Frame Command: %v\n", eofEvents[verb.Frame].Command.GetIndices())
 	return eofEvents[verb.Frame].Command, nil
+}
+
+func rescaleBytes(ctx context.Context, data []byte, max int) {
+	if max <= 0 {
+		for _, b := range data {
+			if int(b) > max {
+				max = int(b)
+			}
+		}
+	}
+	log.D(ctx, "Max overdraw: %v", max)
+	if max < 1 {
+		max = 1
+	}
+
+	for i, b := range data {
+		if int(b) >= max {
+			data[i] = 255
+		} else {
+			data[i] = byte(int(data[i]) * 255 / max)
+		}
+	}
 }
