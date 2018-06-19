@@ -160,36 +160,35 @@ func decodeAlphaDXT3(r binary.Reader, dst []pixel) {
 
 func decodeAlphaDXT5(r binary.Reader, dst []pixel) {
 	a0, a1, codes := int(r.Uint8()), int(r.Uint8()), uint64(r.Uint16())|(uint64(r.Uint32())<<16)
+	for i := 0; i < 16; i++ {
+		dst[i].a = mixAlphaDXT5(a0, a1, codes)
+		codes >>= 3
+	}
+}
 
+func mixAlphaDXT5(a0, a1 int, code uint64) int {
+	c := int(code & 0x7)
 	if a0 > a1 {
-		for i := 0; i < 16; i++ {
-			c := int(codes & 0x7)
-			switch c {
-			case 0:
-				dst[i].a = a0
-			case 1:
-				dst[i].a = a1
-			default:
-				dst[i].a = (a0*(8-c) + a1*(c-1)) / 7
-			}
-			codes >>= 3
+		switch c {
+		case 0:
+			return a0
+		case 1:
+			return a1
+		default:
+			return (a0*(8-c) + a1*(c-1)) / 7
 		}
 	} else {
-		for i := 0; i < 16; i++ {
-			c := int(codes & 0x7)
-			switch {
-			case c == 0:
-				dst[i].a = a0
-			case c == 1:
-				dst[i].a = a1
-			case c >= 2 && c <= 5:
-				dst[i].a = (a0*(6-c) + a1*(c-1)) / 5
-			case c == 6:
-				dst[i].a = 0
-			case c == 7:
-				dst[i].a = 255
-			}
-			codes >>= 3
+		switch c {
+		case 0:
+			return a0
+		case 1:
+			return a1
+		case 6:
+			return 0
+		case 7:
+			return 255
+		default:
+			return (a0*(6-c) + a1*(c-1)) / 5
 		}
 	}
 }

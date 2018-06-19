@@ -75,6 +75,10 @@ message Format {
     FmtS3_DXT3_RGBA s3_dxt3_rgba = 17;
     FmtS3_DXT5_RGBA s3_dxt5_rgba = 18;
     FmtASTC astc = 19;
+    FmtRGTC1_BC4_R_U8_NORM rgtc1_bc4_r_u8_norm = 20;
+    FmtRGTC1_BC4_R_S8_NORM rgtc1_bc4_r_s8_norm = 21;
+    FmtRGTC2_BC5_RG_U8_NORM rgtc2_bc5_rg_u8_norm = 22;
+    FmtRGTC2_BC5_RG_S8_NORM rgtc2_bc5_rg_s8_norm = 23;
   }
 }
 
@@ -120,6 +124,14 @@ message FmtASTC {
   uint32 block_width = 1;
   uint32 block_height = 2;
   bool srgb = 3;
+}
+message FmtRGTC1_BC4_R_U8_NORM {
+}
+message FmtRGTC1_BC4_R_S8_NORM {
+}
+message FmtRGTC2_BC5_RG_U8_NORM {
+}
+message FmtRGTC2_BC5_RG_S8_NORM {
 }
 
 // GAPIS internal structure.

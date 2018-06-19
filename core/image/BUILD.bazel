@@ -31,6 +31,7 @@ go_library(
         "png.go",
         "resizer.go",
         "rgba_f32.go",
+        "rgtc.go",
         "s3.go",
         "s3_dxt1_rgb.go",
         "s3_dxt1_rgba.go",
