@@ -68,7 +68,7 @@ void main(void) {
   vec3 normal = normalize(vNormal);
   vec3 toCamera = normalize(vViewPosition);
 
-  float r = 0.4 * pow(smoothstep(0.7, 1.0, 1.0 - max(0.0, dot(normal, toCamera))), 1.8);
+  float r = 0.2 * pow(smoothstep(0.7, 1.0, 1.0 - max(0.0, dot(normal, toCamera))), 1.8);
   vec3 color = vec3(0);
   for (int i = 0; i < kNumLights; i++) {
     float diffuse = max(dot(normal, uLightDir[i]), 0.0);
