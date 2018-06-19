@@ -79,6 +79,7 @@ class LazyResolved {
     }
     return ptr_ != nullptr;
   }
+
  private:
   // The function resolving callback.
   std::function<void*()> resolve_;

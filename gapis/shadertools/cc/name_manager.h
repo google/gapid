@@ -57,6 +57,6 @@ class NameManager {
   uint32_t getStringPosition(SpvOp_);
   uint32_t getNameOffset(Instruction*);
 };
-}
+}  // namespace namemanager
 
 #endif  // NAME_MANAGER_H_

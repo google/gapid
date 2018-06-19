@@ -103,8 +103,8 @@ class Slice {
   inline T* end() const;
 
  private:
-  void init(pool_t* pool, uint64_t root, uint64_t base, uint64_t size, uint64_t count,
-            bool add_ref = true);
+  void init(pool_t* pool, uint64_t root, uint64_t base, uint64_t size,
+            uint64_t count, bool add_ref = true);
 
   void reference() const;
   void release();

@@ -49,8 +49,8 @@ namespace spvmanager {
 
 using spvtools::ir::BasicBlock;
 using spvtools::ir::Function;
-using spvtools::ir::IRContext;
 using spvtools::ir::Instruction;
+using spvtools::ir::IRContext;
 using spvtools::ir::Module;
 using spvtools::opt::analysis::DefUseManager;
 using spvtools::opt::analysis::Type;

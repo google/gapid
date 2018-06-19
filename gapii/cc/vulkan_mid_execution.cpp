@@ -544,19 +544,17 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     };
 
     std::unordered_map<ImageLevel *, byte_size_and_extent> level_sizes;
-    walkImageSubRng(img, img_whole_rng,
-                    [&serializer, &level_size, &img, &level_sizes](
-                        uint32_t aspect, uint32_t layer, uint32_t level) {
-                      auto img_level =
-                          img->mAspects[aspect]->mLayers[layer]->mLevels[level];
-                      level_sizes[img_level.get()] =
-                          level_size(img->mInfo.mExtent, img->mInfo.mFormat,
-                                     level, aspect);
-                      serializer->encodeBuffer(
-                          level_sizes[img_level.get()].level_size, 
-                          &img_level->mData,
-                          nullptr);
-                    });
+    walkImageSubRng(
+        img, img_whole_rng,
+        [&serializer, &level_size, &img, &level_sizes](
+            uint32_t aspect, uint32_t layer, uint32_t level) {
+          auto img_level =
+              img->mAspects[aspect]->mLayers[layer]->mLevels[level];
+          level_sizes[img_level.get()] =
+              level_size(img->mInfo.mExtent, img->mInfo.mFormat, level, aspect);
+          serializer->encodeBuffer(level_sizes[img_level.get()].level_size,
+                                   &img_level->mData, nullptr);
+        });
 
     if (img->mIsSwapchainImage) {
       // Don't bind and fill swapchain images memory here
@@ -687,7 +685,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       VkDeviceSize offset = 0;
       std::vector<VkBufferImageCopy> copies_in_order;
       // queue families to corresponding buffer image copies
-      std::unordered_map<uint32_t, std::vector<VkBufferImageCopy> > copies;
+      std::unordered_map<uint32_t, std::vector<VkBufferImageCopy>> copies;
       // queue families to queues
       std::unordered_map<uint32_t, gapil::Ref<QueueObject>> queues;
       for (auto &piece : opaque_pieces) {
@@ -700,7 +698,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           copies[queue_family] = std::vector<VkBufferImageCopy>();
         }
         if (queues.find(queue_family) == queues.end()) {
-            queues[queue_family] = queue;
+          queues[queue_family] = queue;
         }
         auto copy = VkBufferImageCopy{
             offset,  // bufferOffset
@@ -731,14 +729,16 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
             for (const auto &layer_i :
                  img->mSparseImageMemoryBindings[aspect_bit]->mLayers) {
               for (const auto &level_i : layer_i.second->mLevels) {
-                auto img_level = img->mAspects[aspect_bit]->mLayers[layer_i.first]->mLevels[level_i.first];
+                auto img_level = img->mAspects[aspect_bit]
+                                     ->mLayers[layer_i.first]
+                                     ->mLevels[level_i.first];
                 auto queue = GetQueue(mState.Queues, img->mDevice, img_level);
                 uint32_t queue_family = queue->mFamily;
                 if (copies.find(queue_family) == copies.end()) {
-                    copies[queue_family] = std::vector<VkBufferImageCopy>();
+                  copies[queue_family] = std::vector<VkBufferImageCopy>();
                 }
                 if (queues.find(queue_family) == queues.end()) {
-                    queues[queue_family] = queue;
+                  queues[queue_family] = queue;
                 }
                 for (const auto &block_i : level_i.second->mBlocks) {
                   auto copy =
@@ -833,8 +833,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       size_t new_offset = 0;
       for (uint32_t i = 0; i < copies_in_order.size(); ++i) {
         auto &copy = copies_in_order[i];
-        size_t next_offset =
-            (i == copies_in_order.size() - 1) ? offset : copies_in_order[i + 1].mbufferOffset;
+        size_t next_offset = (i == copies_in_order.size() - 1)
+                                 ? offset
+                                 : copies_in_order[i + 1].mbufferOffset;
         const uint32_t aspect_bit =
             (uint32_t)copy.mimageSubresource.maspectMask;
         byte_size_and_extent e =
