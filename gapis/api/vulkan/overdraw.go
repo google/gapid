@@ -36,17 +36,11 @@ var (
 // TODO: add support for specific renderpass in a queue submit
 type stencilOverdraw struct {
 	rewrite map[api.CmdID]replay.Result
-	capture *capture.Capture
 }
 
-func newStencilOverdraw(ctx context.Context, capt *path.Capture) *stencilOverdraw {
-	cr, err := capture.ResolveFromPath(ctx, capt)
-	if err != nil {
-		return nil
-	}
+func newStencilOverdraw() *stencilOverdraw {
 	return &stencilOverdraw{
 		rewrite: map[api.CmdID]replay.Result{},
-		capture: cr,
 	}
 }
 
@@ -115,7 +109,16 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		return
 	}
 
-	lastRenderPassArgs, lastRenderPassIdx := s.getLastRenderPass(ctx, gs, st, submit)
+	lastRenderPassArgs, lastRenderPassIdx, err :=
+		s.getLastRenderPass(ctx, gs, st, submit)
+	if err != nil {
+		res(nil, &service.ErrDataUnavailable{
+			Reason: messages.ErrMessage(fmt.Sprintf(
+				"Could not get overdraw: %v", err))})
+		out.MutateAndWrite(ctx, id, cmd)
+		return
+	}
+
 	if lastRenderPassArgs.IsNil() {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("No render pass in queue submit")})
 		out.MutateAndWrite(ctx, id, cmd)
@@ -127,7 +130,6 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		lastRenderPassArgs, lastRenderPassIdx, id,
 		mustAllocData, addCleanup, out)
 	if err != nil {
-
 		res(nil, &service.ErrDataUnavailable{
 			Reason: messages.ErrMessage(fmt.Sprintf(
 				"Could not get overdraw: %v", err))})
@@ -153,7 +155,7 @@ func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
 	gs *api.GlobalState,
 	st *State,
 	submit *VkQueueSubmit,
-) (VkCmdBeginRenderPassArgsʳ, api.SubCmdIdx) {
+) (VkCmdBeginRenderPassArgsʳ, api.SubCmdIdx, error) {
 	lastRenderPassArgs := NilVkCmdBeginRenderPassArgsʳ
 	var lastRenderPassIdx api.SubCmdIdx
 	submit.Extras().Observations().ApplyReads(gs.Memory.ApplicationPool())
@@ -163,8 +165,11 @@ func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
 		cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()),
 			gs.MemoryLayout).MustRead(ctx, submit, gs, nil)
 		for j, buf := range cmdBuffers {
-			// FIXME: lookups without existence checks
-			cb := st.CommandBuffers().Get(buf)
+			cb, ok := st.CommandBuffers().Lookup(buf)
+			if !ok {
+				return lastRenderPassArgs, lastRenderPassIdx,
+					fmt.Errorf("Invalid command buffer %v", buf)
+			}
 			// vkCmdBeginRenderPass can only be in a primary command buffer,
 			// so we don't need to check secondary command buffers
 			for k := 0; k < cb.CommandReferences().Len(); k++ {
@@ -180,7 +185,7 @@ func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
 		}
 	}
 
-	return lastRenderPassArgs, lastRenderPassIdx
+	return lastRenderPassArgs, lastRenderPassIdx, nil
 }
 
 type stencilImage struct {
@@ -230,8 +235,12 @@ func (s *stencilOverdraw) createNewRenderPassFramebuffer(ctx context.Context,
 
 	width, height := oldFbInfo.Width(), oldFbInfo.Height()
 	device := oldFbInfo.Device()
-	image := s.createImage(ctx, cb, st, a, device, attachDesc.Fmt(),
+	image, err := s.createImage(ctx, cb, st, a, device, attachDesc.Fmt(),
 		width, height, alloc, addCleanup, out)
+	if err != nil {
+		return renderInfo{}, err
+	}
+
 	imageView := s.createImageView(ctx, cb, st, a, device,
 		image.handle, alloc, addCleanup, out)
 
@@ -290,7 +299,11 @@ func (s *stencilOverdraw) getStencilAttachmentDescription(st *State,
 func (s *stencilOverdraw) getDepthAttachment(a arena.Arena,
 	rpInfo RenderPassObjectʳ,
 ) (VkAttachmentDescription, uint32, error) {
-
+	if rpInfo.SubpassDescriptions().Len() == 0 {
+		return NilVkAttachmentDescription, 0,
+			fmt.Errorf("RenderPass %v has no subpasses",
+				rpInfo.VulkanHandle())
+	}
 	// depth attachment: don't support them not all using the same one for now
 	attachment0 := rpInfo.SubpassDescriptions().Get(0).DepthStencilAttachment()
 	for i := uint32(1); i < uint32(rpInfo.SubpassDescriptions().Len()); i++ {
@@ -303,7 +316,7 @@ func (s *stencilOverdraw) getDepthAttachment(a arena.Arena,
 				attachment0.Attachment() == attachment.Attachment()
 		}
 		if !match {
-			return NilVkAttachmentDescription, ^uint32(0), fmt.Errorf(
+			return NilVkAttachmentDescription, 0, fmt.Errorf(
 				"The subpasses don't have matching depth attachments")
 		}
 	}
@@ -315,16 +328,14 @@ func (s *stencilOverdraw) getDepthAttachment(a arena.Arena,
 		attachment0.Attachment(),
 	)
 	if !ok {
-		return NilVkAttachmentDescription, ^uint32(0),
+		return NilVkAttachmentDescription, 0,
 			fmt.Errorf("Invalid depth attachment")
 	}
 
 	return attachmentDesc, attachment0.Attachment(), nil
 }
 
-func (*stencilOverdraw) depthToStencilFormat(
-	depthFormat VkFormat) (VkFormat, error) {
-
+func (*stencilOverdraw) depthToStencilFormat(depthFormat VkFormat) (VkFormat, error) {
 	switch depthFormat {
 	case VkFormat_VK_FORMAT_D16_UNORM:
 		return VkFormat_VK_FORMAT_D16_UNORM_S8_UINT, nil
@@ -343,7 +354,6 @@ func (*stencilOverdraw) depthToStencilFormat(
 		return 0, fmt.Errorf("Unrecognized depth format %v",
 			depthFormat)
 	}
-
 }
 
 func (*stencilOverdraw) createImage(ctx context.Context,
@@ -357,7 +367,7 @@ func (*stencilOverdraw) createImage(ctx context.Context,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
-) stencilImage {
+) (stencilImage, error) {
 	imageCreateInfo := NewVkImageCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
 		0, // pNext
@@ -393,9 +403,18 @@ func (*stencilOverdraw) createImage(ctx context.Context,
 
 	// The physical device memory properties are used to find the correct
 	// memory type index and allocate proper memory for our stencil image.
-	physicalDevice := st.PhysicalDevices().Get(
-		st.Devices().Get(device).PhysicalDevice())
-	physicalDeviceMemoryPropertiesData := alloc(physicalDevice.MemoryProperties())
+	deviceInfo, ok := st.Devices().Lookup(device)
+	if !ok {
+		return stencilImage{}, fmt.Errorf("Invalid device %v",
+			device)
+	}
+	physicalDeviceInfo, ok := st.PhysicalDevices().Lookup(
+		deviceInfo.PhysicalDevice())
+	if !ok {
+		return stencilImage{}, fmt.Errorf("Invalid physical device %v",
+			deviceInfo.PhysicalDevice())
+	}
+	physicalDeviceMemoryPropertiesData := alloc(physicalDeviceInfo.MemoryProperties())
 
 	imageMemory := VkDeviceMemory(newUnusedID(false, func(id uint64) bool {
 		return st.DeviceMemories().Contains(VkDeviceMemory(id))
@@ -430,7 +449,7 @@ func (*stencilOverdraw) createImage(ctx context.Context,
 		)
 	})
 
-	return stencilImage{image, format, width, height}
+	return stencilImage{image, format, width, height}, nil
 }
 
 func (*stencilOverdraw) createImageView(ctx context.Context,
@@ -778,7 +797,11 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 	}
 
 	// TODO: Recreating a lot of work from state_rebuilder, look into merging with that
-	pInfo := st.GraphicsPipelines().Get(pipeline)
+	pInfo, ok := st.GraphicsPipelines().Lookup(pipeline)
+	if !ok {
+		return NilVkGraphicsPipelineCreateInfo,
+			fmt.Errorf("Invalid graphics pipeline %v", pipeline)
+	}
 
 	shaderStagesPtr := memory.Nullptr
 	shaderStagesCount := uint32(0)
@@ -1084,8 +1107,12 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 	addCleanup func(func()),
 	out transform.Writer,
 ) (VkCommandBuffer, error) {
-	// TODO copy old depth data over if it's in keep mode
-	bInfo := st.CommandBuffers().Get(cmdBuffer)
+	// TODO copy old depth data over if theres an original depth buffer in keep mode
+
+	bInfo, ok := st.CommandBuffers().Lookup(cmdBuffer)
+	if !ok {
+		return 0, fmt.Errorf("Invalid command buffer %v", cmdBuffer)
+	}
 	device := bInfo.Device()
 
 	newCmdBuffer, cmds, cleanup := allocateNewCmdBufFromExistingOneAndBegin(

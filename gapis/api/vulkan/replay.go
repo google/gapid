@@ -519,7 +519,7 @@ func (a API) Replay(
 	}
 
 	wire := false
-	overdraw := newStencilOverdraw(ctx, intent.Capture)
+	overdraw := newStencilOverdraw()
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
