@@ -34,7 +34,7 @@ class StateSerializer {
   ~StateSerializer();
 
   // Serializes the given state to the underlying CallObserver.
-  template <typename T, typename = CallObserver::enable_if_encodable<T> >
+  template <typename T, typename = CallObserver::enable_if_encodable<T>>
   inline void encodeState(
       const T& state, std::function<void(StateSerializer*)> serialize_buffers);
 
@@ -44,8 +44,7 @@ class StateSerializer {
   // otherwhise an empty observation is used.
   template <typename T>
   inline void encodeBuffer(
-      uint64_t pool_size,
-      gapil::Slice<T>* dest,
+      uint64_t pool_size, gapil::Slice<T>* dest,
       std::function<void(memory::Observation*)> init_observation);
 
   // Encodes the given data using the given observation. If sendObservation is
@@ -79,14 +78,12 @@ inline void StateSerializer::encodeState(
 
 template <typename T>
 inline void StateSerializer::encodeBuffer(
-    uint64_t pool_size,
-    gapil::Slice<T>* dest,
+    uint64_t pool_size, gapil::Slice<T>* dest,
     std::function<void(memory::Observation*)> init_observation) {
-  *dest = gapil::Slice<T>::create(createPool(pool_size, init_observation),
-                                 false);
-  mCleanup.push_back(std::function<void()>([dest]() {
-      *dest = gapil::Slice<T>();
-  }));
+  *dest =
+      gapil::Slice<T>::create(createPool(pool_size, init_observation), false);
+  mCleanup.push_back(
+      std::function<void()>([dest]() { *dest = gapil::Slice<T>(); }));
 }
 
 inline void StateSerializer::sendData(memory::Observation* observation,
@@ -102,9 +99,9 @@ inline void StateSerializer::sendData(memory::Observation* observation,
 }
 
 inline StateSerializer::~StateSerializer() {
-    for (auto& c: mCleanup) {
-        c();
-    }
+  for (auto& c : mCleanup) {
+    c();
+  }
 }
 
 }  // namespace gapii

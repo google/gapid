@@ -131,9 +131,8 @@ class VirtualSwapchain {
   std::deque<uint32_t>
       pending_images_;  // Indices into image_data_ for all images that
                         // have been submitted but not processed yet.
-  std::deque<uint32_t>
-      free_images_;  // Indices into image_data_ for all images that
-                     // are not currently in use.
+  std::deque<uint32_t> free_images_;  // Indices into image_data_ for all images
+                                      // that are not currently in use.
   VkDevice device_;  // The device that this swapchain belongs to.
   VkCommandPool
       command_pool_;  // The command_pool that we are allocating buffers from.

@@ -608,7 +608,8 @@ gapil::Ref<AndroidNativeBufferExtra> GlesSpy::GetAndroidNativeBufferExtra(
     return nullptr;
   }
 
-  auto android_version_major = device_instance()->configuration().os().major_version();
+  auto android_version_major =
+      device_instance()->configuration().os().major_version();
 
   bool use_layer_count = android_version_major >= 8;  // Android O
 

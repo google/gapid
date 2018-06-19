@@ -21,13 +21,13 @@
 
 #include <string>
 
+using ::testing::_;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::Return;
 using ::testing::ReturnArg;
 using ::testing::StrictMock;
 using ::testing::WithArg;
-using ::testing::_;
 
 namespace core {
 namespace test {
