@@ -14,14 +14,14 @@ exports_files(["LICENSE"])
 
 WIN_COPTS = [
     "/DHAVE_PTHREAD",
-    "/wd4018", # -Wno-sign-compare
-    "/wd4514", # -Wno-unused-function
-    "foooy"
+    "/wd4018",  # -Wno-sign-compare
+    "/wd4514",  # -Wno-unused-function
+    "foooy",
 ]
 
 COPTS = select({
-#    ":windows" : WIN_COPTS,
-#    ":windows_msvc" : WIN_COPTS,
+    #    ":windows" : WIN_COPTS,
+    #    ":windows_msvc" : WIN_COPTS,
     "//conditions:default": [
         "-DHAVE_PTHREAD",
         "-Wall",
@@ -36,12 +36,12 @@ COPTS = select({
 
 config_setting(
     name = "windows",
-    values = { "cpu": "x64_windows" },
+    values = {"cpu": "x64_windows"},
 )
 
 config_setting(
     name = "windows_msvc",
-    values = { "cpu": "x64_windows_msvc" },
+    values = {"cpu": "x64_windows_msvc"},
 )
 
 config_setting(
@@ -54,18 +54,18 @@ config_setting(
 # Android and Windows builds do not need to link in a separate pthread library.
 LINK_OPTS = select({
     ":android": [],
-#    ":windows": [],
-#    ":windows_msvc": [],
+    #    ":windows": [],
+    #    ":windows_msvc": [],
     "//conditions:default": ["-lpthread", "-lm"],
 })
 
 load(
     ":protobuf.bzl",
     "cc_proto_library",
-    "py_proto_library",
     "internal_copied_filegroup",
     "internal_gen_well_known_protos_java",
     "internal_protobuf_py_tests",
+    "py_proto_library",
 )
 
 cc_library(
@@ -195,18 +195,18 @@ objc_library(
 # Map of all well known protos.
 # name => (include path, imports)
 WELL_KNOWN_PROTO_MAP = {
-    "any" : ("google/protobuf/any.proto", []),
-    "api" : ("google/protobuf/api.proto", ["source_context", "type"]),
-    "compiler_plugin" : ("google/protobuf/compiler/plugin.proto", ["descriptor"]),
-    "descriptor" : ("google/protobuf/descriptor.proto", []),
-    "duration" : ("google/protobuf/duration.proto", []),
-    "empty" : ("google/protobuf/empty.proto", []),
-    "field_mask" : ("google/protobuf/field_mask.proto", []),
-    "source_context" : ("google/protobuf/source_context.proto", []),
-    "struct" : ("google/protobuf/struct.proto", []),
-    "timestamp" : ("google/protobuf/timestamp.proto", []),
-    "type" : ("google/protobuf/type.proto", ["any", "source_context"]),
-    "wrappers" : ("google/protobuf/wrappers.proto", []),
+    "any": ("google/protobuf/any.proto", []),
+    "api": ("google/protobuf/api.proto", ["source_context", "type"]),
+    "compiler_plugin": ("google/protobuf/compiler/plugin.proto", ["descriptor"]),
+    "descriptor": ("google/protobuf/descriptor.proto", []),
+    "duration": ("google/protobuf/duration.proto", []),
+    "empty": ("google/protobuf/empty.proto", []),
+    "field_mask": ("google/protobuf/field_mask.proto", []),
+    "source_context": ("google/protobuf/source_context.proto", []),
+    "struct": ("google/protobuf/struct.proto", []),
+    "timestamp": ("google/protobuf/timestamp.proto", []),
+    "type": ("google/protobuf/type.proto", ["any", "source_context"]),
+    "wrappers": ("google/protobuf/wrappers.proto", []),
 }
 
 RELATIVE_WELL_KNOWN_PROTOS = [proto[1][0] for proto in WELL_KNOWN_PROTO_MAP.items()]
@@ -254,7 +254,7 @@ internal_copied_filegroup(
     srcs = [proto[1][0]],
     deps = [dep + "_proto" for dep in proto[1][1]],
     visibility = ["//visibility:public"],
-    ) for proto in WELL_KNOWN_PROTO_MAP.items()]
+) for proto in WELL_KNOWN_PROTO_MAP.items()]
 
 ################################################################################
 # Protocol Buffers Compiler

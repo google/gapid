@@ -211,7 +211,7 @@ tablegen(
         [
             "lib/Target/ARM/ARMGenGlobalISel.inc",
             "-gen-global-isel",
-        ]
+        ],
     ],
     strip_include_prefix = "lib/Target/ARM",
     table = "lib/Target/ARM/ARM.td",
@@ -308,7 +308,7 @@ tablegen(
         [
             "lib/Target/X86/X86GenGlobalISel.inc",
             "-gen-global-isel",
-        ]
+        ],
     ],
     strip_include_prefix = "lib/Target/X86",
     table = "lib/Target/X86/X86.td",
@@ -330,7 +330,6 @@ cc_library(
         "@gapid//tools/build/third_party:llvm-config",
     ],
 )
-
 
 llvm_auto_libs(
     # The table below is the source files that should be excluded from the globs
@@ -451,7 +450,7 @@ go_library(
     srcs = glob([
         "bindings/go/llvm/*.go",
         "bindings/go/llvm/*.cpp",
-    ], exclude=["bindings/go/llvm/llvm_dep.go"]),
+    ], exclude = ["bindings/go/llvm/llvm_dep.go"]),
     cgo = True,
     importpath = "llvm/bindings/go/llvm",
     visibility = ["//visibility:public"],
