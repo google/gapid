@@ -62,7 +62,7 @@ func checkIssues(ctx context.Context, c *path.Capture, d *device.Instance, expec
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
 	intent := replay.Intent{
 		Capture: c,
-		Device:  path.NewDevice(d.Id.ID()),
+		Device:  path.NewDevice(d.ID.ID()),
 	}
 	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, nil)
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
@@ -75,7 +75,7 @@ func checkReport(ctx context.Context, c *path.Capture, d *device.Instance, cmds 
 		defer done.Done()
 	}
 
-	report, err := resolve.Report(ctx, c.Report(path.NewDevice(d.Id.ID()), nil))
+	report, err := resolve.Report(ctx, c.Report(path.NewDevice(d.ID.ID()), nil))
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	got := []string{}
@@ -99,7 +99,7 @@ func checkColorBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
 	intent := replay.Intent{
 		Capture: c,
-		Device:  path.NewDevice(d.Id.ID()),
+		Device:  path.NewDevice(d.ID.ID()),
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
 		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, replay.WireframeMode_None, false, nil)
@@ -168,7 +168,7 @@ func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 	ctx, _ = task.WithTimeout(ctx, replayTimeout)
 	intent := replay.Intent{
 		Capture: c,
-		Device:  path.NewDevice(d.Id.ID()),
+		Device:  path.NewDevice(d.ID.ID()),
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
 		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, replay.WireframeMode_None, false, nil)
@@ -181,7 +181,7 @@ func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 func checkReplay(ctx context.Context, c *path.Capture, d *device.Instance, expectedBatchCount int, doReplay func()) {
 	expectedIntent := replay.Intent{
 		Capture: c,
-		Device:  path.NewDevice(d.Id.ID()),
+		Device:  path.NewDevice(d.ID.ID()),
 	}
 
 	batchCount := 0

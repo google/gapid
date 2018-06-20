@@ -25,26 +25,26 @@ import (
 var (
 	win7 = &device.Configuration{
 		OS: &device.OS{
-			Kind:  device.Windows,
-			Major: 6, Minor: 1, Point: 5,
+			Kind:         device.Windows,
+			MajorVersion: 6, MinorVersion: 1, PointVersion: 5,
 		},
 	}
 	win10 = &device.Configuration{
 		OS: &device.OS{
-			Kind:  device.Windows,
-			Major: 10, Minor: 0, Point: 5,
+			Kind:         device.Windows,
+			MajorVersion: 10, MinorVersion: 0, PointVersion: 5,
 		},
 	}
 	macOS = &device.Configuration{
 		OS: &device.OS{
-			Kind:  device.OSX,
-			Major: 10, Minor: 12, Point: 6,
+			Kind:         device.OSX,
+			MajorVersion: 10, MinorVersion: 12, PointVersion: 6,
 		},
 	}
 	linux = &device.Configuration{
 		OS: &device.OS{
-			Kind:  device.Linux,
-			Major: 1, Minor: 2, Point: 3,
+			Kind:         device.Linux,
+			MajorVersion: 1, MinorVersion: 2, PointVersion: 3,
 		},
 	}
 )

@@ -195,7 +195,7 @@ func TestSubgroupRange(t *testing.T) {
 func TestStateTreeNode(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	header := capture.Header{Abi: device.AndroidARM64v8a}
+	header := capture.Header{ABI: device.AndroidARM64v8a}
 	c, err := capture.New(ctx, "test-capture", &header, []api.Cmd{})
 	if err != nil {
 		panic(err)
@@ -213,7 +213,7 @@ func TestStateTreeNode(t *testing.T) {
 			value: reflect.ValueOf(testState),
 			path:  rootPath,
 		},
-		api:        &path.API{Id: path.NewID(id.ID(testcmd.APIID))},
+		api:        &path.API{ID: path.NewID(id.ID(testcmd.APIID))},
 		groupLimit: 10,
 	}
 	root := &path.StateTreeNode{Indices: []uint64{}}

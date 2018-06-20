@@ -37,18 +37,18 @@ func UserAgent(d *device.Configuration, ai ApplicationInfo) string {
 	os := d.GetOS()
 	switch os.GetKind() {
 	case device.Windows:
-		info = append(info, fmt.Sprintf("Windows NT %v.%v", os.Major, os.Minor))
+		info = append(info, fmt.Sprintf("Windows NT %v.%v", os.MajorVersion, os.MinorVersion))
 		if d.GetHardware().GetCPU().GetArchitecture().Bitness() == 64 {
 			info = append(info, "x64")
 		}
 	case device.OSX:
-		info = append(info, "Macintosh", fmt.Sprintf("Intel Mac OS X %v_%v_%v", os.Major, os.Minor, os.Point))
+		info = append(info, "Macintosh", fmt.Sprintf("Intel Mac OS X %v_%v_%v", os.MajorVersion, os.MinorVersion, os.PointVersion))
 
 	case device.Linux:
 		info = append(info, "Linux")
 
 	case device.Android:
-		info = append(info, "Linux", "U", fmt.Sprintf("Android %v.%v.%v", os.Major, os.Minor, os.Point))
+		info = append(info, "Linux", "U", fmt.Sprintf("Android %v.%v.%v", os.MajorVersion, os.MinorVersion, os.PointVersion))
 		if os.Build != "" {
 			info = append(info, "Build/"+os.Build)
 		}

@@ -33,12 +33,12 @@ func TestParseDevices(t_ *testing.T) {
 		Name:   "",
 		Configuration: &device.Configuration{
 			OS: &device.OS{
-				Kind:  device.Android,
-				Name:  "Marshmallow",
-				Build: "hammerhead-user 6.0.1 MMB29Q 2480792 release-keys",
-				Major: 6,
-				Minor: 0,
-				Point: 1,
+				Kind:         device.Android,
+				Name:         "Marshmallow",
+				Build:        "hammerhead-user 6.0.1 MMB29Q 2480792 release-keys",
+				MajorVersion: 6,
+				MinorVersion: 0,
+				PointVersion: 1,
 			},
 			Hardware: &device.Hardware{
 				Name: "hammerhead",

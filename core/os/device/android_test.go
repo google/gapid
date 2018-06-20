@@ -51,8 +51,8 @@ func TestAndroidOS(t *testing.T) {
 		assert.For("OS Kind").That(os.Kind).Equals(device.Android)
 		assert.For("OS Name").That(os.Name).Equals(test.name)
 		assert.For("OS Build").That(os.Build).Equals("")
-		assert.For("OS Major").That(os.Major).Equals(test.major)
-		assert.For("OS Minor").That(os.Minor).Equals(test.minor)
-		assert.For("OS Point").That(os.Point).Equals(point)
+		assert.For("OS Major").That(os.MajorVersion).Equals(test.major)
+		assert.For("OS Minor").That(os.MinorVersion).Equals(test.minor)
+		assert.For("OS Point").That(os.PointVersion).Equals(point)
 	}
 }

@@ -71,7 +71,7 @@ func (b *Builder) Last() api.CmdID {
 func (b *Builder) Capture(ctx context.Context, name string) *path.Capture {
 	h := &capture.Header{
 		Device: b.device,
-		Abi:    b.abi,
+		ABI:    b.abi,
 	}
 	out, err := capture.New(ctx, name, h, b.Cmds)
 	if err != nil {
