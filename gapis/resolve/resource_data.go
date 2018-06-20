@@ -119,7 +119,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 // ResourceData resolves the data of the specified resource at the specified
 // point in the capture.
 func ResourceData(ctx context.Context, p *path.ResourceData) (interface{}, error) {
-	obj, err := database.Build(ctx, &ResourceDataResolvable{p})
+	obj, err := database.Build(ctx, &ResourceDataResolvable{Path: p})
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func ResourceData(ctx context.Context, p *path.ResourceData) (interface{}, error
 
 // Resolve implements the database.Resolver interface.
 func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	resources, err := database.Build(ctx, &AllResourceDataResolvable{r.Path.After})
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: r.Path.After})
 	if err != nil {
 		return nil, err
 	}

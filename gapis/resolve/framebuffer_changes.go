@@ -31,7 +31,7 @@ import (
 // FramebufferChanges returns the list of attachment changes over the span of
 // the entire capture.
 func FramebufferChanges(ctx context.Context, c *path.Capture) (*AttachmentFramebufferChanges, error) {
-	obj, err := database.Build(ctx, &FramebufferChangesResolvable{c})
+	obj, err := database.Build(ctx, &FramebufferChangesResolvable{Capture: c})
 	if err != nil {
 		return nil, err
 	}

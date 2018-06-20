@@ -26,33 +26,33 @@ func NewValue(val interface{}) *Value {
 	t := v.Type()
 	switch t.Kind() {
 	case reflect.Bool:
-		return &Value{&Value_Bool{v.Bool()}}
+		return &Value{Val: &Value_Bool{v.Bool()}}
 	case reflect.String:
-		return &Value{&Value_String_{v.String()}}
+		return &Value{Val: &Value_String_{v.String()}}
 	case reflect.Float32:
-		return &Value{&Value_Float32{float32(v.Float())}}
+		return &Value{Val: &Value_Float32{float32(v.Float())}}
 	case reflect.Float64:
-		return &Value{&Value_Float64{v.Float()}}
+		return &Value{Val: &Value_Float64{v.Float()}}
 	case reflect.Int:
-		return &Value{&Value_Sint{v.Int()}}
+		return &Value{Val: &Value_Sint{v.Int()}}
 	case reflect.Int8:
-		return &Value{&Value_Sint8{(int32)(v.Int())}}
+		return &Value{Val: &Value_Sint8{(int32)(v.Int())}}
 	case reflect.Int16:
-		return &Value{&Value_Sint16{(int32)(v.Int())}}
+		return &Value{Val: &Value_Sint16{(int32)(v.Int())}}
 	case reflect.Int32:
-		return &Value{&Value_Sint32{(int32)(v.Int())}}
+		return &Value{Val: &Value_Sint32{(int32)(v.Int())}}
 	case reflect.Int64:
-		return &Value{&Value_Sint64{v.Int()}}
+		return &Value{Val: &Value_Sint64{v.Int()}}
 	case reflect.Uint:
-		return &Value{&Value_Uint{v.Uint()}}
+		return &Value{Val: &Value_Uint{v.Uint()}}
 	case reflect.Uint8:
-		return &Value{&Value_Uint8{(uint32)(v.Uint())}}
+		return &Value{Val: &Value_Uint8{(uint32)(v.Uint())}}
 	case reflect.Uint16:
-		return &Value{&Value_Uint16{(uint32)(v.Uint())}}
+		return &Value{Val: &Value_Uint16{(uint32)(v.Uint())}}
 	case reflect.Uint32:
-		return &Value{&Value_Uint32{(uint32)(v.Uint())}}
+		return &Value{Val: &Value_Uint32{(uint32)(v.Uint())}}
 	case reflect.Uint64:
-		return &Value{&Value_Uint64{v.Uint()}}
+		return &Value{Val: &Value_Uint64{v.Uint()}}
 
 	case reflect.Slice, reflect.Array:
 		switch t.Elem().Kind() {
@@ -61,85 +61,85 @@ func NewValue(val interface{}) *Value {
 			for i := range arr {
 				arr[i] = v.Index(i).Bool()
 			}
-			return &Value{&Value_BoolArray{&BoolArray{arr}}}
+			return &Value{Val: &Value_BoolArray{&BoolArray{Val: arr}}}
 		case reflect.String:
 			arr := make([]string, v.Len())
 			for i := range arr {
 				arr[i] = v.Index(i).String()
 			}
-			return &Value{&Value_StringArray{&StringArray{arr}}}
+			return &Value{Val: &Value_StringArray{&StringArray{Val: arr}}}
 		case reflect.Float32:
 			arr := make([]float32, v.Len())
 			for i := range arr {
 				arr[i] = (float32)(v.Index(i).Float())
 			}
-			return &Value{&Value_Float32Array{&Float32Array{arr}}}
+			return &Value{Val: &Value_Float32Array{&Float32Array{Val: arr}}}
 		case reflect.Float64:
 			arr := make([]float64, v.Len())
 			for i := range arr {
 				arr[i] = v.Index(i).Float()
 			}
-			return &Value{&Value_Float64Array{&Float64Array{arr}}}
+			return &Value{Val: &Value_Float64Array{&Float64Array{Val: arr}}}
 		case reflect.Int:
 			arr := make([]int64, v.Len())
 			for i := range arr {
 				arr[i] = v.Index(i).Int()
 			}
-			return &Value{&Value_SintArray{&Sint64Array{arr}}}
+			return &Value{Val: &Value_SintArray{&Sint64Array{Val: arr}}}
 		case reflect.Int8:
 			arr := make([]int32, v.Len())
 			for i := range arr {
 				arr[i] = (int32)(v.Index(i).Int())
 			}
-			return &Value{&Value_Sint8Array{&Sint32Array{arr}}}
+			return &Value{Val: &Value_Sint8Array{&Sint32Array{Val: arr}}}
 		case reflect.Int16:
 			arr := make([]int32, v.Len())
 			for i := range arr {
 				arr[i] = (int32)(v.Index(i).Int())
 			}
-			return &Value{&Value_Sint16Array{&Sint32Array{arr}}}
+			return &Value{Val: &Value_Sint16Array{&Sint32Array{Val: arr}}}
 		case reflect.Int32:
 			arr := make([]int32, v.Len())
 			for i := range arr {
 				arr[i] = (int32)(v.Index(i).Int())
 			}
-			return &Value{&Value_Sint32Array{&Sint32Array{arr}}}
+			return &Value{Val: &Value_Sint32Array{&Sint32Array{Val: arr}}}
 		case reflect.Int64:
 			arr := make([]int64, v.Len())
 			for i := range arr {
 				arr[i] = v.Index(i).Int()
 			}
-			return &Value{&Value_Sint64Array{&Sint64Array{arr}}}
+			return &Value{Val: &Value_Sint64Array{&Sint64Array{Val: arr}}}
 		case reflect.Uint:
 			arr := make([]uint64, v.Len())
 			for i := range arr {
 				arr[i] = v.Index(i).Uint()
 			}
-			return &Value{&Value_UintArray{&Uint64Array{arr}}}
+			return &Value{Val: &Value_UintArray{&Uint64Array{Val: arr}}}
 		case reflect.Uint8:
 			arr := make([]byte, v.Len())
 			for i := range arr {
 				arr[i] = (byte)(v.Index(i).Uint())
 			}
-			return &Value{&Value_Uint8Array{arr}}
+			return &Value{Val: &Value_Uint8Array{Uint8Array: arr}}
 		case reflect.Uint16:
 			arr := make([]uint32, v.Len())
 			for i := range arr {
 				arr[i] = (uint32)(v.Index(i).Uint())
 			}
-			return &Value{&Value_Uint16Array{&Uint32Array{arr}}}
+			return &Value{Val: &Value_Uint16Array{&Uint32Array{Val: arr}}}
 		case reflect.Uint32:
 			arr := make([]uint32, v.Len())
 			for i := range arr {
 				arr[i] = (uint32)(v.Index(i).Uint())
 			}
-			return &Value{&Value_Uint32Array{&Uint32Array{arr}}}
+			return &Value{Val: &Value_Uint32Array{&Uint32Array{Val: arr}}}
 		case reflect.Uint64:
 			arr := make([]uint64, v.Len())
 			for i := range arr {
 				arr[i] = v.Index(i).Uint()
 			}
-			return &Value{&Value_Uint64Array{&Uint64Array{arr}}}
+			return &Value{Val: &Value_Uint64Array{&Uint64Array{Val: arr}}}
 		}
 	}
 	return nil

@@ -45,7 +45,7 @@ func newUncompressed(f *stream.Format) *Format {
 
 // NewUncompressed returns a new uncompressed format wrapping f.
 func NewUncompressed(name string, f *stream.Format) *Format {
-	return &Format{name, &Format_Uncompressed{&FmtUncompressed{f}}}
+	return &Format{Name: name, Format: &Format_Uncompressed{&FmtUncompressed{Format: f}}}
 }
 
 func (f *FmtUncompressed) key() interface{} {
@@ -66,7 +66,7 @@ func (f *FmtUncompressed) channels() stream.Channels {
 }
 
 func (f *FmtUncompressed) resize(data []byte, srcW, srcH, srcD, dstW, dstH, dstD int) ([]byte, error) {
-	format := &Format{"", &Format_Uncompressed{f}}
+	format := &Format{Name: "", Format: &Format_Uncompressed{f}}
 	data, err := Convert(data, srcW, srcH, srcD, format, RGBA_F32)
 	if err != nil {
 		return nil, err

@@ -30,7 +30,7 @@ import (
 // GlobalState resolves the global *api.GlobalState at a requested point in a
 // capture.
 func GlobalState(ctx context.Context, p *path.GlobalState) (*api.GlobalState, error) {
-	obj, err := database.Build(ctx, &GlobalStateResolvable{p})
+	obj, err := database.Build(ctx, &GlobalStateResolvable{Path: p})
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func GlobalState(ctx context.Context, p *path.GlobalState) (*api.GlobalState, er
 
 // State resolves the specific API state at a requested point in a capture.
 func State(ctx context.Context, p *path.State) (interface{}, error) {
-	return database.Build(ctx, &StateResolvable{p})
+	return database.Build(ctx, &StateResolvable{Path: p})
 }
 
 // Resolve implements the database.Resolver interface.

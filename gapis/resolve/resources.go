@@ -30,7 +30,7 @@ import (
 
 // Resources resolves all the resources used by the specified capture.
 func Resources(ctx context.Context, c *path.Capture) (*service.Resources, error) {
-	obj, err := database.Build(ctx, &ResourcesResolvable{c})
+	obj, err := database.Build(ctx, &ResourcesResolvable{Capture: c})
 	if err != nil {
 		return nil, err
 	}

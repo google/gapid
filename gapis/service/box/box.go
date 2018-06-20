@@ -99,7 +99,7 @@ func newBoxer() *boxer {
 
 func (b *boxer) val(v reflect.Value) *Value {
 	if b := pod.NewValue(v.Interface()); b != nil {
-		return &Value{0, &Value_Pod{b}}
+		return &Value{Val: &Value_Pod{b}}
 	}
 
 	t := v.Type()
@@ -107,17 +107,17 @@ func (b *boxer) val(v reflect.Value) *Value {
 	switch {
 	case IsMemoryPointer(t):
 		p := AsMemoryPointer(v)
-		return &Value{0, &Value_Pointer{&Pointer{p.Address()}}}
+		return &Value{Val: &Value_Pointer{&Pointer{Address: p.Address()}}}
 	case IsMemorySlice(t):
 		s := v.Interface().(memory.Slice)
 		elTy, ok := pod.TypeOf(s.ElementType())
 		if !ok {
 			panic(fmt.Errorf("Type %T is not a POD type", s.ElementType()))
 		}
-		return &Value{0, &Value_Slice{&Slice{
+		return &Value{Val: &Value_Slice{&Slice{
 			Type:  elTy,
 			Pool:  uint64(s.Pool()),
-			Base:  &Pointer{s.Base()},
+			Base:  &Pointer{Address: s.Base()},
 			Size:  s.Size(),
 			Count: s.Count(),
 			Root:  s.Root(),
@@ -127,14 +127,14 @@ func (b *boxer) val(v reflect.Value) *Value {
 	switch t.Kind() {
 	case reflect.Interface:
 		if v.IsNil() {
-			return &Value{0, &Value_Reference{&Reference{&Reference_Null{}}}}
+			return &Value{Val: &Value_Reference{&Reference{Val: &Reference_Null{}}}}
 		}
 		return b.val(v.Elem())
 	}
 
 	id, ok := b.values[v]
 	if ok {
-		return &Value{id, &Value_BackReference{true}}
+		return &Value{ValueId: id, Val: &Value_BackReference{true}}
 	}
 	id = uint32(len(b.values) + 1)
 	b.values[v] = id
@@ -151,17 +151,17 @@ func (b *boxer) val(v reflect.Value) *Value {
 		}
 		m := &Map{Type: mapTy, Entries: entries}
 		m.Sort()
-		return &Value{id, &Value_Map{m}}
+		return &Value{ValueId: id, Val: &Value_Map{m}}
 	}
 
 	switch t.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {
 			ptrTy := b.ty(v.Type().Elem())
-			return &Value{id, &Value_Reference{&Reference{&Reference_Null{ptrTy}}}}
+			return &Value{ValueId: id, Val: &Value_Reference{&Reference{Val: &Reference_Null{ptrTy}}}}
 		}
 		ptrVal := b.val(v.Elem())
-		return &Value{id, &Value_Reference{&Reference{&Reference_Value{ptrVal}}}}
+		return &Value{ValueId: id, Val: &Value_Reference{&Reference{Val: &Reference_Value{ptrVal}}}}
 
 	case reflect.Struct:
 		structTy := b.ty(t)
@@ -176,7 +176,7 @@ func (b *boxer) val(v reflect.Value) *Value {
 			}
 			fields = append(fields, b.val(v.FieldByName(f.Name)))
 		}
-		return &Value{id, &Value_Struct{&Struct{structTy, fields}}}
+		return &Value{ValueId: id, Val: &Value_Struct{&Struct{Type: structTy, Fields: fields}}}
 
 	case reflect.Slice, reflect.Array:
 		arrTy := b.ty(v.Type())
@@ -184,7 +184,7 @@ func (b *boxer) val(v reflect.Value) *Value {
 		for i, c := 0, v.Len(); i < c; i++ {
 			entries = append(entries, b.val(v.Index(i)))
 		}
-		return &Value{id, &Value_Array{&Array{arrTy, entries}}}
+		return &Value{ValueId: id, Val: &Value_Array{&Array{Type: arrTy, Entries: entries}}}
 	}
 
 	panic(fmt.Errorf("Unsupported Type %v", t))
@@ -192,25 +192,25 @@ func (b *boxer) val(v reflect.Value) *Value {
 
 func (b *boxer) ty(t reflect.Type) *Type {
 	if podTy, ok := pod.TypeOf(t); ok {
-		return &Type{0, &Type_Pod{podTy}}
+		return &Type{Ty: &Type_Pod{podTy}}
 	}
 
 	switch {
 	case IsMemoryPointer(t):
-		return &Type{0, &Type_Pointer{true}}
+		return &Type{Ty: &Type_Pointer{true}}
 	case IsMemorySlice(t):
-		return &Type{0, &Type_Slice{true}}
+		return &Type{Ty: &Type_Slice{true}}
 	}
 
 	switch t.Kind() {
 	case reflect.Interface:
-		return &Type{0, &Type_Any{true}}
+		return &Type{Ty: &Type_Any{true}}
 	}
 
 	// Types below this point can be back-referenced.
 	id, ok := b.types[t]
 	if ok {
-		return &Type{id, &Type_BackReference{true}}
+		return &Type{TypeId: id, Ty: &Type_BackReference{true}}
 	}
 	id = uint32(len(b.types) + 1)
 	b.types[t] = id
@@ -218,12 +218,12 @@ func (b *boxer) ty(t reflect.Type) *Type {
 	if d := dictionary.From(reflect.New(t).Interface()); d != nil {
 		keyTy := b.ty(d.KeyTy())
 		valTy := b.ty(d.ValTy())
-		return &Type{id, &Type_Map{&MapType{keyTy, valTy}}}
+		return &Type{TypeId: id, Ty: &Type_Map{&MapType{KeyType: keyTy, ValueType: valTy}}}
 	}
 
 	switch t.Kind() {
 	case reflect.Ptr:
-		return &Type{id, &Type_Reference{b.ty(t.Elem())}}
+		return &Type{TypeId: id, Ty: &Type_Reference{b.ty(t.Elem())}}
 
 	case reflect.Struct:
 		fields := make([]*StructField, 0, t.NumField())
@@ -237,16 +237,16 @@ func (b *boxer) ty(t reflect.Type) *Type {
 			}
 			fields = append(fields, &StructField{Type: b.ty(f.Type), Name: f.Name})
 		}
-		return &Type{id, &Type_Struct{&StructType{fields}}}
+		return &Type{TypeId: id, Ty: &Type_Struct{&StructType{Fields: fields}}}
 
 	case reflect.Map:
 		keyTy := b.ty(t.Key())
 		valTy := b.ty(t.Elem())
-		return &Type{id, &Type_Map{&MapType{keyTy, valTy}}}
+		return &Type{TypeId: id, Ty: &Type_Map{&MapType{KeyType: keyTy, ValueType: valTy}}}
 
 	case reflect.Array, reflect.Slice:
 		elTy := b.ty(t.Elem())
-		return &Type{id, &Type_Array{&ArrayType{elTy}}}
+		return &Type{TypeId: id, Ty: &Type_Array{&ArrayType{ElementType: elTy}}}
 	}
 
 	panic(fmt.Errorf("Unsupported Type %v", t))

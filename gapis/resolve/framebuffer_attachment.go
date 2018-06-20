@@ -58,11 +58,11 @@ func FramebufferAttachment(
 	}
 
 	id, err := database.Store(ctx, &FramebufferAttachmentResolvable{
-		replaySettings,
-		after,
-		attachment,
-		settings,
-		hints,
+		ReplaySettings: replaySettings,
+		After:          after,
+		Attachment:     attachment,
+		Settings:       settings,
+		Hints:          hints,
 	})
 
 	if err != nil {

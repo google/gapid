@@ -27,7 +27,7 @@ import (
 // FramebufferObservation returns the framebuffer observation for the given
 // command.
 func FramebufferObservation(ctx context.Context, p *path.FramebufferObservation) (*image.Info, error) {
-	obj, err := database.Build(ctx, &FramebufferObservationResolvable{p})
+	obj, err := database.Build(ctx, &FramebufferObservationResolvable{Path: p})
 	if err != nil {
 		return nil, err
 	}

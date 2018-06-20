@@ -24,57 +24,57 @@ import (
 
 var (
 	// U1 represents a 1-bit unsigned integer.
-	U1 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{1}}}
+	U1 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 1}}}
 	// U2 represents a 2-bit unsigned integer.
-	U2 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{2}}}
+	U2 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 2}}}
 	// U4 represents a 4-bit unsigned integer.
-	U4 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{4}}}
+	U4 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 4}}}
 	// U5 represents a 5-bit unsigned integer.
-	U5 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{5}}}
+	U5 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 5}}}
 	// U6 represents a 6-bit unsigned integer.
-	U6 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{6}}}
+	U6 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 6}}}
 	// U8 represents a 8-bit unsigned integer.
-	U8 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{8}}}
+	U8 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 8}}}
 	// U9 represents a 9-bit unsigned integer.
-	U9 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{9}}}
+	U9 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 9}}}
 	// U10 represents a 10-bit unsigned integer.
-	U10 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{10}}}
+	U10 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 10}}}
 	// U11 represents a 11-bit unsigned integer.
-	U11 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{11}}}
+	U11 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 11}}}
 	// U16 represents a 16-bit unsigned integer.
-	U16 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{16}}}
+	U16 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 16}}}
 	// U24 represents a 24-bit unsigned integer.
-	U24 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{24}}}
+	U24 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 24}}}
 	// U32 represents a 32-bit unsigned integer.
-	U32 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{32}}}
+	U32 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 32}}}
 	// U64 represents a 64-bit unsigned integer.
-	U64 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{64}}}
+	U64 = DataType{Signed: false, Kind: &DataType_Integer{&Integer{Bits: 64}}}
 	// S2 represents a 2-bit signed integer.
-	S2 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{1}}}
+	S2 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{Bits: 1}}}
 	// S8 represents a 8-bit signed integer.
-	S8 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{7}}}
+	S8 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{Bits: 7}}}
 	// S10 represents a 10-bit signed integer.
-	S10 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{9}}}
+	S10 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{Bits: 9}}}
 	// S11 represents a 11-bit signed integer.
-	S11 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{10}}}
+	S11 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{Bits: 10}}}
 	// S16 represents a 16-bit signed integer.
-	S16 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{15}}}
+	S16 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{Bits: 15}}}
 	// S32 represents a 32-bit signed integer.
-	S32 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{31}}}
+	S32 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{Bits: 31}}}
 	// S64 represents a 64-bit signed integer.
-	S64 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{63}}}
+	S64 = DataType{Signed: true, Kind: &DataType_Integer{&Integer{Bits: 63}}}
 	// F10 represents a 10-bit unsigned floating-point number.
-	F10 = DataType{Signed: false, Kind: &DataType_Float{&Float{5, 5}}}
+	F10 = DataType{Signed: false, Kind: &DataType_Float{&Float{ExponentBits: 5, MantissaBits: 5}}}
 	// F11 represents a 11-bit unsigned floating-point number.
-	F11 = DataType{Signed: false, Kind: &DataType_Float{&Float{5, 6}}}
+	F11 = DataType{Signed: false, Kind: &DataType_Float{&Float{ExponentBits: 5, MantissaBits: 6}}}
 	// F16 represents a 16-bit signed, floating-point number.
-	F16 = DataType{Signed: true, Kind: &DataType_Float{&Float{5, 10}}}
+	F16 = DataType{Signed: true, Kind: &DataType_Float{&Float{ExponentBits: 5, MantissaBits: 10}}}
 	// F32 represents a 32-bit signed, floating-point number.
-	F32 = DataType{Signed: true, Kind: &DataType_Float{&Float{7, 24}}}
+	F32 = DataType{Signed: true, Kind: &DataType_Float{&Float{ExponentBits: 7, MantissaBits: 24}}}
 	// F64 represents a 64-bit signed, floating-point number.
-	F64 = DataType{Signed: true, Kind: &DataType_Float{&Float{10, 53}}}
+	F64 = DataType{Signed: true, Kind: &DataType_Float{&Float{ExponentBits: 10, MantissaBits: 53}}}
 	// S16_16 represents a 16.16 bit signed, fixed-point number.
-	S16_16 = DataType{Signed: true, Kind: &DataType_Fixed{&Fixed{15, 16}}}
+	S16_16 = DataType{Signed: true, Kind: &DataType_Fixed{&Fixed{IntegerBits: 15, FractionalBits: 16}}}
 )
 
 // Format prints the DataType to f.

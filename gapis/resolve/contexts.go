@@ -32,7 +32,7 @@ import (
 
 // Contexts resolves the list of contexts belonging to a capture.
 func Contexts(ctx context.Context, p *path.Contexts) ([]*api.ContextInfo, error) {
-	obj, err := database.Build(ctx, &ContextListResolvable{p.Capture})
+	obj, err := database.Build(ctx, &ContextListResolvable{Capture: p.Capture})
 	if err != nil {
 		return nil, err
 	}

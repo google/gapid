@@ -40,7 +40,7 @@ type CmdGroupData struct {
 
 // CommandTree resolves the specified command tree path.
 func CommandTree(ctx context.Context, c *path.CommandTree) (*service.CommandTree, error) {
-	id, err := database.Store(ctx, &CommandTreeResolvable{c})
+	id, err := database.Store(ctx, &CommandTreeResolvable{Path: c})
 	if err != nil {
 		return nil, err
 	}

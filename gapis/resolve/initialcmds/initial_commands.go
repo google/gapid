@@ -34,7 +34,7 @@ type initialCommandData struct {
 
 // InitialCommands resolves and returns the Intial Commands for the capture C
 func InitialCommands(ctx context.Context, c *path.Capture) ([]api.Cmd, interval.U64RangeList, error) {
-	obj, err := database.Build(ctx, &InitialCmdsResolvable{c})
+	obj, err := database.Build(ctx, &InitialCmdsResolvable{Capture: c})
 	if err != nil {
 		return nil, nil, err
 	}

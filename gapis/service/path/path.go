@@ -57,40 +57,40 @@ func printIndices(index []uint64) string {
 	return strings.Join(parts, ".")
 }
 
-func (n *API) Path() *Any                       { return &Any{&Any_API{n}} }
-func (n *ArrayIndex) Path() *Any                { return &Any{&Any_ArrayIndex{n}} }
-func (n *As) Path() *Any                        { return &Any{&Any_As{n}} }
-func (n *Blob) Path() *Any                      { return &Any{&Any_Blob{n}} }
-func (n *Capture) Path() *Any                   { return &Any{&Any_Capture{n}} }
-func (n *ConstantSet) Path() *Any               { return &Any{&Any_ConstantSet{n}} }
-func (n *Command) Path() *Any                   { return &Any{&Any_Command{n}} }
-func (n *Commands) Path() *Any                  { return &Any{&Any_Commands{n}} }
-func (n *CommandTree) Path() *Any               { return &Any{&Any_CommandTree{n}} }
-func (n *CommandTreeNode) Path() *Any           { return &Any{&Any_CommandTreeNode{n}} }
-func (n *CommandTreeNodeForCommand) Path() *Any { return &Any{&Any_CommandTreeNodeForCommand{n}} }
-func (n *Context) Path() *Any                   { return &Any{&Any_Context{n}} }
-func (n *Contexts) Path() *Any                  { return &Any{&Any_Contexts{n}} }
-func (n *Device) Path() *Any                    { return &Any{&Any_Device{n}} }
-func (n *Events) Path() *Any                    { return &Any{&Any_Events{n}} }
-func (n *FramebufferObservation) Path() *Any    { return &Any{&Any_FBO{n}} }
-func (n *Field) Path() *Any                     { return &Any{&Any_Field{n}} }
-func (n *GlobalState) Path() *Any               { return &Any{&Any_GlobalState{n}} }
-func (n *ImageInfo) Path() *Any                 { return &Any{&Any_ImageInfo{n}} }
-func (n *MapIndex) Path() *Any                  { return &Any{&Any_MapIndex{n}} }
-func (n *Memory) Path() *Any                    { return &Any{&Any_Memory{n}} }
-func (n *Mesh) Path() *Any                      { return &Any{&Any_Mesh{n}} }
-func (n *Metrics) Path() *Any                   { return &Any{&Any_Metrics{n}} }
-func (n *Parameter) Path() *Any                 { return &Any{&Any_Parameter{n}} }
-func (n *Report) Path() *Any                    { return &Any{&Any_Report{n}} }
-func (n *ResourceData) Path() *Any              { return &Any{&Any_ResourceData{n}} }
-func (n *Resources) Path() *Any                 { return &Any{&Any_Resources{n}} }
-func (n *Result) Path() *Any                    { return &Any{&Any_Result{n}} }
-func (n *Slice) Path() *Any                     { return &Any{&Any_Slice{n}} }
-func (n *State) Path() *Any                     { return &Any{&Any_State{n}} }
-func (n *StateTree) Path() *Any                 { return &Any{&Any_StateTree{n}} }
-func (n *StateTreeNode) Path() *Any             { return &Any{&Any_StateTreeNode{n}} }
-func (n *StateTreeNodeForPath) Path() *Any      { return &Any{&Any_StateTreeNodeForPath{n}} }
-func (n *Thumbnail) Path() *Any                 { return &Any{&Any_Thumbnail{n}} }
+func (n *API) Path() *Any                       { return &Any{Path: &Any_API{n}} }
+func (n *ArrayIndex) Path() *Any                { return &Any{Path: &Any_ArrayIndex{n}} }
+func (n *As) Path() *Any                        { return &Any{Path: &Any_As{n}} }
+func (n *Blob) Path() *Any                      { return &Any{Path: &Any_Blob{n}} }
+func (n *Capture) Path() *Any                   { return &Any{Path: &Any_Capture{n}} }
+func (n *ConstantSet) Path() *Any               { return &Any{Path: &Any_ConstantSet{n}} }
+func (n *Command) Path() *Any                   { return &Any{Path: &Any_Command{n}} }
+func (n *Commands) Path() *Any                  { return &Any{Path: &Any_Commands{n}} }
+func (n *CommandTree) Path() *Any               { return &Any{Path: &Any_CommandTree{n}} }
+func (n *CommandTreeNode) Path() *Any           { return &Any{Path: &Any_CommandTreeNode{n}} }
+func (n *CommandTreeNodeForCommand) Path() *Any { return &Any{Path: &Any_CommandTreeNodeForCommand{n}} }
+func (n *Context) Path() *Any                   { return &Any{Path: &Any_Context{n}} }
+func (n *Contexts) Path() *Any                  { return &Any{Path: &Any_Contexts{n}} }
+func (n *Device) Path() *Any                    { return &Any{Path: &Any_Device{n}} }
+func (n *Events) Path() *Any                    { return &Any{Path: &Any_Events{n}} }
+func (n *FramebufferObservation) Path() *Any    { return &Any{Path: &Any_FBO{n}} }
+func (n *Field) Path() *Any                     { return &Any{Path: &Any_Field{n}} }
+func (n *GlobalState) Path() *Any               { return &Any{Path: &Any_GlobalState{n}} }
+func (n *ImageInfo) Path() *Any                 { return &Any{Path: &Any_ImageInfo{n}} }
+func (n *MapIndex) Path() *Any                  { return &Any{Path: &Any_MapIndex{n}} }
+func (n *Memory) Path() *Any                    { return &Any{Path: &Any_Memory{n}} }
+func (n *Mesh) Path() *Any                      { return &Any{Path: &Any_Mesh{n}} }
+func (n *Metrics) Path() *Any                   { return &Any{Path: &Any_Metrics{n}} }
+func (n *Parameter) Path() *Any                 { return &Any{Path: &Any_Parameter{n}} }
+func (n *Report) Path() *Any                    { return &Any{Path: &Any_Report{n}} }
+func (n *ResourceData) Path() *Any              { return &Any{Path: &Any_ResourceData{n}} }
+func (n *Resources) Path() *Any                 { return &Any{Path: &Any_Resources{n}} }
+func (n *Result) Path() *Any                    { return &Any{Path: &Any_Result{n}} }
+func (n *Slice) Path() *Any                     { return &Any{Path: &Any_Slice{n}} }
+func (n *State) Path() *Any                     { return &Any{Path: &Any_State{n}} }
+func (n *StateTree) Path() *Any                 { return &Any{Path: &Any_StateTree{n}} }
+func (n *StateTreeNode) Path() *Any             { return &Any{Path: &Any_StateTreeNode{n}} }
+func (n *StateTreeNodeForPath) Path() *Any      { return &Any{Path: &Any_StateTreeNodeForPath{n}} }
+func (n *Thumbnail) Path() *Any                 { return &Any{Path: &Any_Thumbnail{n}} }
 
 func (n API) Parent() Node                       { return nil }
 func (n ArrayIndex) Parent() Node                { return oneOfNode(n.Array) }
@@ -584,7 +584,7 @@ func (n *Capture) Thread(id uint64) *Thread {
 
 // MemoryAfter returns the path node to the memory after this command.
 func (n *Command) MemoryAfter(pool uint32, addr, size uint64) *Memory {
-	return &Memory{addr, size, pool, n, false, false}
+	return &Memory{Address: addr, Size: size, Pool: pool, After: n}
 }
 
 // ResourceAfter returns the path node to the resource with the given identifier

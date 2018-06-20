@@ -179,8 +179,8 @@ func TestNestedClasses(t *testing.T) {
 		K: 1,
 		N: "meow",
 	}
-	inner := pb.InnerClass{&basic}
-	nested := pb.NestedClasses{&inner}
+	inner := pb.InnerClass{A: &basic}
+	nested := pb.NestedClasses{A: &inner}
 	checkCallbacks(ctx, "nested_classes", encodeNestedClasses(&nested, false), callbacks{
 		expectedType(&pb.NestedClasses{}),
 		expectedType(&pb.InnerClass{}),

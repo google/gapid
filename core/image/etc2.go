@@ -40,13 +40,13 @@ var (
 // NewETC2_RGB_U8_NORM returns a format representing the COMPRESSED_RGB8_ETC2
 // block texture compression format.
 func NewETC2_RGB_U8_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RgbU8Norm{&FmtETC2_RGB_U8_NORM{}}}
+	return &Format{Name: name, Format: &Format_Etc2RgbU8Norm{&FmtETC2_RGB_U8_NORM{}}}
 }
 
 // NewETC2_SRGB_U8_NORM returns a format representing the COMPRESSED_SRGB8_ETC2
 // block texture compression format.
 func NewETC2_SRGB_U8_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RgbU8Norm{&FmtETC2_RGB_U8_NORM{Srgb: true}}}
+	return &Format{Name: name, Format: &Format_Etc2RgbU8Norm{&FmtETC2_RGB_U8_NORM{Srgb: true}}}
 }
 
 func (f *FmtETC2_RGB_U8_NORM) key() interface{} {
@@ -65,13 +65,13 @@ func (*FmtETC2_RGB_U8_NORM) channels() stream.Channels {
 // NewETC2_RGBA_U8_NORM returns a format representing the
 // COMPRESSED_RGBA8_ETC2_EAC block texture compression format.
 func NewETC2_RGBA_U8_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RgbaU8Norm{&FmtETC2_RGBA_U8_NORM{}}}
+	return &Format{Name: name, Format: &Format_Etc2RgbaU8Norm{&FmtETC2_RGBA_U8_NORM{}}}
 }
 
 // NewETC2_SRGBA_U8_NORM returns a format representing the
 // COMPRESSED_SRGBA8_ETC2_EAC block texture compression format.
 func NewETC2_SRGBA_U8_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RgbaU8Norm{&FmtETC2_RGBA_U8_NORM{Srgb: true}}}
+	return &Format{Name: name, Format: &Format_Etc2RgbaU8Norm{&FmtETC2_RGBA_U8_NORM{Srgb: true}}}
 }
 
 func (f *FmtETC2_RGBA_U8_NORM) key() interface{} {
@@ -90,13 +90,13 @@ func (*FmtETC2_RGBA_U8_NORM) channels() stream.Channels {
 // NewETC2_RGBA_U8U8U8U1_NORM returns a format representing the
 // COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 block texture compression format.
 func NewETC2_RGBA_U8U8U8U1_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RgbaU8U8U8U1Norm{&FmtETC2_RGBA_U8U8U8U1_NORM{}}}
+	return &Format{Name: name, Format: &Format_Etc2RgbaU8U8U8U1Norm{&FmtETC2_RGBA_U8U8U8U1_NORM{}}}
 }
 
 // NewETC2_SRGBA_U8U8U8U1_NORM returns a format representing the
 // COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 block texture compression format.
 func NewETC2_SRGBA_U8U8U8U1_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RgbaU8U8U8U1Norm{&FmtETC2_RGBA_U8U8U8U1_NORM{Srgb: true}}}
+	return &Format{Name: name, Format: &Format_Etc2RgbaU8U8U8U1Norm{&FmtETC2_RGBA_U8U8U8U1_NORM{Srgb: true}}}
 }
 
 func (f *FmtETC2_RGBA_U8U8U8U1_NORM) key() interface{} {
@@ -115,7 +115,7 @@ func (*FmtETC2_RGBA_U8U8U8U1_NORM) channels() stream.Channels {
 // NewETC2_R_U11_NORM returns a format representing the COMPRESSED_R11_EAC
 // block texture compression format.
 func NewETC2_R_U11_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RU11Norm{&FmtETC2_R_U11_NORM{}}}
+	return &Format{Name: name, Format: &Format_Etc2RU11Norm{&FmtETC2_R_U11_NORM{}}}
 }
 
 func (f *FmtETC2_R_U11_NORM) key() interface{} {
@@ -134,7 +134,7 @@ func (*FmtETC2_R_U11_NORM) channels() stream.Channels {
 // NewETC2_RG_U11_NORM returns a format representing the COMPRESSED_RG11_EAC
 // block texture compression format.
 func NewETC2_RG_U11_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RgU11Norm{&FmtETC2_RG_U11_NORM{}}}
+	return &Format{Name: name, Format: &Format_Etc2RgU11Norm{&FmtETC2_RG_U11_NORM{}}}
 }
 
 func (f *FmtETC2_RG_U11_NORM) key() interface{} {
@@ -153,7 +153,7 @@ func (*FmtETC2_RG_U11_NORM) channels() stream.Channels {
 // NewETC2_R_S11_NORM returns a format representing the
 // COMPRESSED_SIGNED_R11_EAC block texture compression format.
 func NewETC2_R_S11_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RS11Norm{&FmtETC2_R_S11_NORM{}}}
+	return &Format{Name: name, Format: &Format_Etc2RS11Norm{&FmtETC2_R_S11_NORM{}}}
 }
 
 func (f *FmtETC2_R_S11_NORM) key() interface{} {
@@ -172,7 +172,7 @@ func (*FmtETC2_R_S11_NORM) channels() stream.Channels {
 // NewETC2_RG_S11_NORM returns a format representing the COMPRESSED_RG11_EAC
 // block texture compression format.
 func NewETC2_RG_S11_NORM(name string) *Format {
-	return &Format{name, &Format_Etc2RgS11Norm{&FmtETC2_RG_S11_NORM{}}}
+	return &Format{Name: name, Format: &Format_Etc2RgS11Norm{&FmtETC2_RG_S11_NORM{}}}
 }
 
 func (f *FmtETC2_RG_S11_NORM) key() interface{} {

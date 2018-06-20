@@ -24,7 +24,7 @@ import (
 
 // Get resolves the object, value or memory at p.
 func Get(ctx context.Context, p *path.Any) (interface{}, error) {
-	return database.Build(ctx, &GetResolvable{p})
+	return database.Build(ctx, &GetResolvable{Path: p})
 }
 
 // Resolve implements the database.Resolver interface.
