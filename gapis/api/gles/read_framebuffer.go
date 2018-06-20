@@ -39,7 +39,7 @@ type readFramebuffer struct {
 }
 
 func newReadFramebuffer(ctx context.Context, device *device.Instance) *readFramebuffer {
-	targetVersion, _ := ParseVersion(device.Configuration.Drivers.OpenGL.Version)
+	targetVersion, _ := ParseVersion(device.Configuration.Drivers.Opengl.Version)
 	return &readFramebuffer{targetVersion: targetVersion}
 }
 

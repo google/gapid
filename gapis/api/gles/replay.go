@@ -75,7 +75,7 @@ type framebufferRequest struct {
 // A lower number represents a higher priority, and zero represents
 // an inability for the trace to be replayed on the given device.
 func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *capture.Header) uint32 {
-	v, err := ParseVersion(i.GetConfiguration().GetDrivers().GetOpenGL().GetVersion())
+	v, err := ParseVersion(i.GetConfiguration().GetDrivers().GetOpengl().GetVersion())
 	if err != nil {
 		return 0 // Can't figure out what we're dealing with.
 	}
