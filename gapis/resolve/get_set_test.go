@@ -41,7 +41,7 @@ import (
 var (
 	cmdA = &api.Command{
 		Name: "X",
-		Api:  &path.API{Id: path.NewID(id.ID(testcmd.APIID))},
+		API:  &path.API{ID: path.NewID(id.ID(testcmd.APIID))},
 		Parameters: []*api.Parameter{
 			{Name: "Str", Value: box.NewValue(testcmd.P.Str)},
 			{Name: "Sli", Value: box.NewValue(testcmd.P.Sli)},
@@ -56,7 +56,7 @@ var (
 
 	cmdB = &api.Command{
 		Name: "X",
-		Api:  &path.API{Id: path.NewID(id.ID(testcmd.APIID))},
+		API:  &path.API{ID: path.NewID(id.ID(testcmd.APIID))},
 		Parameters: []*api.Parameter{
 			{Name: "Str", Value: box.NewValue(testcmd.Q.Str)},
 			{Name: "Sli", Value: box.NewValue(testcmd.Q.Sli)},
@@ -71,7 +71,7 @@ var (
 )
 
 func newPathTest(ctx context.Context, cmds ...api.Cmd) *path.Capture {
-	h := &capture.Header{Abi: device.WindowsX86_64}
+	h := &capture.Header{ABI: device.WindowsX86_64}
 	p, err := capture.New(ctx, "test", h, cmds)
 	if err != nil {
 		log.F(ctx, true, "Couldn't create capture: %v", err)
@@ -232,9 +232,9 @@ func TestSet(t *testing.T) {
 
 		// Test invalid sets
 		{p.Command(1).Parameter("Sli").ArrayIndex(2), "blah", fmt.Errorf(
-			"Slice or array at capture<%v>.commands[1].Sli has element of type bool, got type string", p.Id.ID())},
+			"Slice or array at capture<%v>.commands[1].Sli has element of type bool, got type string", p.ID.ID())},
 		{p.Command(1).Parameter("Map").MapIndex("bird"), 10.0, fmt.Errorf(
-			"Map at capture<%v>.commands[1].Map has value of type string, got type float64", p.Id.ID())},
+			"Map at capture<%v>.commands[1].Map has value of type string, got type float64", p.ID.ID())},
 	} {
 		ctx := log.V{"path": test.path, "value": test.val}.Bind(ctx)
 

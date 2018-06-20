@@ -51,8 +51,8 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	a := arena.New()
 	defer a.Dispose()
 
-	h := &capture.Header{Abi: device.AndroidARMv7a}
-	ml := h.Abi.MemoryLayout
+	h := &capture.Header{ABI: device.AndroidARMv7a}
+	ml := h.ABI.MemoryLayout
 	capturePath, err := capture.New(ctx, "test", h, []api.Cmd{})
 	if err != nil {
 		panic(err)
@@ -63,7 +63,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	dev := &device.Instance{Configuration: &device.Configuration{
 		Drivers: &device.Drivers{
-			OpenGL: &device.OpenGLDriver{Version: OpenGL_3_0},
+			Opengl: &device.OpenGLDriver{Version: OpenGL_3_0},
 		},
 	}}
 

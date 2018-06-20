@@ -29,7 +29,7 @@ func TestHost(t *testing.T) {
 	ctx := log.Testing(t)
 	h := host.Instance(ctx)
 	assert.For(ctx, "Host.ID").
-		That(h.Id.ID()).NotEquals(id.ID{})
+		That(h.ID.ID()).NotEquals(id.ID{})
 	assert.For(ctx, "Host.Name").
 		That(h.Name).NotEquals("")
 	assert.For(ctx, "Host.Configuration.OS.Kind").

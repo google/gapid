@@ -49,8 +49,8 @@ func TestOSXOS(t *testing.T) {
 		assert.For(ctx, "Kind").That(os.Kind).Equals(device.OSX)
 		assert.For(ctx, "Name").That(os.Name).Equals(test.name)
 		assert.For(ctx, "Build").That(os.Build).Equals(test.build)
-		assert.For(ctx, "Major").That(os.Major).Equals(test.major)
-		assert.For(ctx, "Minor").That(os.Minor).Equals(test.minor)
-		assert.For(ctx, "Point").That(os.Point).Equals(test.point)
+		assert.For(ctx, "Major").That(os.MajorVersion).Equals(test.major)
+		assert.For(ctx, "Minor").That(os.MinorVersion).Equals(test.minor)
+		assert.For(ctx, "Point").That(os.PointVersion).Equals(test.point)
 	}
 }
