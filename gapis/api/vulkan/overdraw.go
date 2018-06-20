@@ -59,6 +59,7 @@ submitLoop:
 		case *VkQueueSubmit:
 			break submitLoop
 		}
+		lastSubmit -= 1
 	}
 	if lastSubmit == -1 {
 		res(nil, &service.ErrDataUnavailable{
