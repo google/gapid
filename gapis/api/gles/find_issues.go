@@ -48,7 +48,7 @@ type findIssues struct {
 }
 
 func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Instance) *findIssues {
-	targetVersion, _ := ParseVersion(device.Configuration.Drivers.OpenGL.Version)
+	targetVersion, _ := ParseVersion(device.Configuration.Drivers.Opengl.Version)
 	transform := &findIssues{
 		state:         c.NewState(ctx),
 		device:        device,
