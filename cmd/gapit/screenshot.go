@@ -183,6 +183,8 @@ func (verb *screenshotVerb) frameCommand(ctx context.Context, capture *path.Capt
 	return eofEvents[verb.Frame].Command, nil
 }
 
+// rescaleBytes scales the values in `data` from [0, `max`] to [0, 255].  If
+// `max <= 0`, then the maximum value found in data is used as `max` instead.
 func rescaleBytes(ctx context.Context, data []byte, max int) {
 	if max <= 0 {
 		for _, b := range data {
@@ -191,7 +193,7 @@ func rescaleBytes(ctx context.Context, data []byte, max int) {
 			}
 		}
 	}
-	log.D(ctx, "Max overdraw: %v", max)
+	log.I(ctx, "Max overdraw: %v", max)
 	if max < 1 {
 		max = 1
 	}
