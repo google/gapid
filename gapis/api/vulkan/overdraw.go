@@ -44,7 +44,7 @@ func newStencilOverdraw() *stencilOverdraw {
 	}
 }
 
-func (s *stencilOverdraw) add(ctx context.Context, after []uint64, capt *path.Capture, res replay.Result) {
+func (s *stencilOverdraw) add(ctx context.Context, extraCommands uint64, after uint64, capt *path.Capture, res replay.Result) {
 	c, err := capture.ResolveFromPath(ctx, capt)
 	if err != nil {
 		res(nil, err)
@@ -52,24 +52,22 @@ func (s *stencilOverdraw) add(ctx context.Context, after []uint64, capt *path.Ca
 	// TODO: Ideally this would be smarter, but without duplicating the
 	// state and mutating it, it's hard to tell what the right
 	// vkQueueSubmit to modify is.
-	lastSubmit := ^uint64(0)
-	for i, cmd := range c.Commands {
-		if uint64(i) > after[0] {
-			break
-		}
-		switch cmd.(type) {
+	lastSubmit := int64(after)
+submitLoop:
+	for lastSubmit >= 0 {
+		switch (c.Commands[lastSubmit]).(type) {
 		case *VkQueueSubmit:
-			lastSubmit = uint64(i)
+			break submitLoop
 		}
 	}
-	if lastSubmit == ^uint64(0) {
+	if lastSubmit == -1 {
 		res(nil, &service.ErrDataUnavailable{
 			Reason: messages.ErrMessage("No last queue submission"),
 		})
 		return
 	}
 
-	s.rewrite[api.CmdID(lastSubmit)] = res
+	s.rewrite[api.CmdID(uint64(lastSubmit)+extraCommands)] = res
 }
 
 func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
@@ -320,7 +318,9 @@ func (s *stencilOverdraw) getDepthAttachment(a arena.Arena,
 				"The subpasses don't have matching depth attachments")
 		}
 	}
-	if attachment0.IsNil() {
+	if attachment0.IsNil() ||
+		// VK_ATTACHMENT_UNUSED
+		attachment0.Attachment() == ^uint32(0) {
 		return NilVkAttachmentDescription, ^uint32(0), nil
 	}
 
