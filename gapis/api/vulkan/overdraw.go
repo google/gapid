@@ -538,7 +538,7 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 	attachments := rpInfo.AttachmentDescriptions().All()
 	newAttachments := rpInfo.AttachmentDescriptions().Clone(a, api.CloneContext{})
 	newAttachments.Add(uint32(newAttachments.Len()), stencilAttachment)
-	newAttachmentsData, newAttachmentsLen := unpackMapCustom(allocAndRead,
+	newAttachmentsData, newAttachmentsLen := unpackMapWithAllocator(allocAndRead,
 		newAttachments)
 
 	stencilAttachmentReference := NewVkAttachmentReference(a,
@@ -555,7 +555,7 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 	}
 	subpassesData := allocAndRead(subpasses)
 
-	subpassDependenciesData, subpassDependenciesLen := unpackMapCustom(allocAndRead,
+	subpassDependenciesData, subpassDependenciesLen := unpackMapWithAllocator(allocAndRead,
 		rpInfo.SubpassDependencies())
 
 	renderPassCreateInfo := NewVkRenderPassCreateInfo(a,
@@ -613,7 +613,7 @@ func subpassToSubpassDescription(a arena.Arena,
 			Len() int
 		}
 		if m.(HasLen).Len() > 0 {
-			allocation, count := unpackMapCustom(allocAndRead, m)
+			allocation, count := unpackMapWithAllocator(allocAndRead, m)
 			return allocation.Ptr(), count
 		} else {
 			return memory.Nullptr, 0
@@ -789,7 +789,7 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 			Len() int
 		}
 		if m.(HasLen).Len() > 0 {
-			allocation, count := unpackMapCustom(allocAndRead, m)
+			allocation, count := unpackMapWithAllocator(allocAndRead, m)
 			return allocation.Ptr(), count
 		} else {
 			return memory.Nullptr, 0
@@ -999,7 +999,15 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 			)).Ptr()
 	}
 
-	// TODO: determine if basePipelineHandle is an issue
+	flags := pInfo.Flags()
+	basePipelineHandle := VkPipeline(0)
+	if flags&VkPipelineCreateFlags(
+		VkPipelineCreateFlagBits_VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT) != 0 {
+
+		flags |= VkPipelineCreateFlags(
+			VkPipelineCreateFlagBits_VK_PIPELINE_CREATE_DERIVATIVE_BIT)
+		basePipelineHandle = pipeline
+	}
 
 	return NewVkGraphicsPipelineCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // sType
@@ -1019,8 +1027,8 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 		pInfo.Layout().VulkanHandle(),                                 // layout
 		renderPass,                                                    // renderPass
 		pInfo.Subpass(),                                               // subpass
-		pInfo.BasePipeline(),                                          // basePipelineHandle
-		pInfo.BasePipelineIndex(),                                     // basePipelineIndex
+		basePipelineHandle,                                            // basePipelineHandle
+		-1,                                                            // basePipelineIndex
 	), nil
 }
 
@@ -1083,7 +1091,7 @@ func (*stencilOverdraw) createSpecializationInfo(ctx context.Context,
 	if info.IsNil() {
 		return 0
 	}
-	mapEntries, mapEntryCount := unpackMapCustom(allocAndRead, info.Specializations().All())
+	mapEntries, mapEntryCount := unpackMapWithAllocator(allocAndRead, info.Specializations().All())
 	data := info.Data().MustRead(ctx, nil, gs, nil)
 	return NewVkSpecializationInfoᶜᵖ(allocAndRead(
 		NewVkSpecializationInfo(a,
@@ -1224,9 +1232,10 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	addCleanup func(func()),
 	out transform.Writer,
 ) (stencilImage, error) {
-	// TODO: check if we're allowed to modify the command directly, since
-	// we won't be submitting the original one.  Need to deep clone all of
-	// the submit info so we can mark it as reads.
+	// Need to deep clone all of the submit info so we can mark it as
+	// reads.  TODO: We could possibly optimize this by copying the
+	// pointers and using the fact that we know what size it should be to
+	// create the observations.
 	reads := []api.AllocResult{}
 	allocAndRead := func(v ...interface{}) api.AllocResult {
 		res := alloc(v)

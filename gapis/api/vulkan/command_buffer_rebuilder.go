@@ -24,10 +24,10 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-// unpackMapCustom takes a dense map of u32 -> structure, flattens the map into
-// a slice, allocates the appropriate data using a custom provided allocation
-// function and returns it as well as the length of the map.
-func unpackMapCustom(alloc func(v ...interface{}) api.AllocResult, m interface{}) (api.AllocResult, uint32) {
+// unpackMapWithAllocator takes a dense map of u32 -> structure, flattens the
+// map into a slice, allocates the appropriate data using a custom provided
+// allocation function and returns it as well as the length of the map.
+func unpackMapWithAllocator(alloc func(v ...interface{}) api.AllocResult, m interface{}) (api.AllocResult, uint32) {
 	u32Type := reflect.TypeOf(uint32(0))
 	d := dictionary.From(m)
 	if d == nil || d.KeyTy() != u32Type {
@@ -49,7 +49,7 @@ func unpackMapCustom(alloc func(v ...interface{}) api.AllocResult, m interface{}
 // a slice, allocates the appropriate data and returns it as well as the
 // length of the map.
 func unpackMap(ctx context.Context, s *api.GlobalState, m interface{}) (api.AllocResult, uint32) {
-	return unpackMapCustom(func(v ...interface{}) api.AllocResult {
+	return unpackMapWithAllocator(func(v ...interface{}) api.AllocResult {
 		return s.AllocDataOrPanic(ctx, v...)
 	}, m)
 }
