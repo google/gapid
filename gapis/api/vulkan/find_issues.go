@@ -72,8 +72,9 @@ type findIssues struct {
 
 func newFindIssues(ctx context.Context, c *capture.Capture, numInitialCmds int) *findIssues {
 	t := &findIssues{
-		state:          c.NewState(ctx),
-		numInitialCmds: numInitialCmds,
+		state:           c.NewState(ctx),
+		numInitialCmds:  numInitialCmds,
+		reportCallbacks: map[VkInstance]VkDebugReportCallbackEXT{},
 	}
 	t.state.OnError = func(err interface{}) {
 		if issue, ok := err.(replay.Issue); ok {
@@ -116,6 +117,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		inst := di.Instance()
 		if ch, ok := t.reportCallbacks[inst]; ok {
 			out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayDestroyVkDebugReportCallback(inst, ch))
+			delete(t.reportCallbacks, inst)
 		}
 	}
 
@@ -262,11 +264,17 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		).AddWrite(
 			callbackHandleData.Data(),
 		))
+		t.reportCallbacks[inst] = callbackHandle
 	}
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 	cb := CommandBuilder{Thread: 0, Arena: t.state.Arena}
+	for inst, ch := range t.reportCallbacks {
+		out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayDestroyVkDebugReportCallback(inst, ch))
+		// It is safe to delete keys in loop in Go
+		delete(t.reportCallbacks, inst)
+	}
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		b.RegisterNotificationReader(func(n gapir.Notification) {
 			vkApi := API{}

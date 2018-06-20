@@ -431,7 +431,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 
 	// Debug report callbacks
 	for handle, object := range so.DebugReportCallbacks().All() {
-		out.MutateAndWrite(ctx, id, cb.ReplayDestroyVkDebugReportCallback(object.Instance(), handle))
+		out.MutateAndWrite(ctx, id, cb.VkDestroyDebugReportCallbackEXT(object.Instance(), handle, p))
 	}
 
 	// Instances.

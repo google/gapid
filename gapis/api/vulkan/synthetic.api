@@ -209,16 +209,10 @@ cmd bool ReplayCreateVkDebugReportCallback(
   VkDebugReportCallbackEXT* pCallback) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
   if pCreateInfo == null { vkErrorNullPointer("VkDebugReportCallbackCreateInfoEXT") }
-  info := pCreateInfo[0]
+  read(pCreateInfo[0:1])
   handle := ?
   if pCallback == null { vkErrorNullPointer("VkDebugReportCallbackEXT") }
   pCallback[0] = handle
-  object := new!DebugReportCallbackObject(
-    Instance:     instance,
-    Flags:        info.flags,
-    VulkanHandle: handle,
-  )
-  DebugReportCallbacks[handle] = object
   return ?
 }
 
@@ -227,7 +221,4 @@ cmd void ReplayDestroyVkDebugReportCallback(
   VkInstance instance,
   VkDebugReportCallbackEXT callback) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
-  if (callback != as!VkDebugReportCallbackEXT(0)) {
-    delete(DebugReportCallbacks, callback)
-  }
 }
