@@ -568,7 +568,7 @@ func (a API) Replay(
 			case replay.DrawMode_WIREFRAME_OVERLAY:
 				return fmt.Errorf("Overlay wireframe view is not currently supported")
 			case replay.DrawMode_OVERDRAW:
-				overdraw.add(ctx, req.after, intent.Capture, rr.Result)
+				overdraw.add(ctx, uint64(extraCommands), req.after[0], intent.Capture, rr.Result)
 			}
 
 			if cfg.drawMode != replay.DrawMode_OVERDRAW {
