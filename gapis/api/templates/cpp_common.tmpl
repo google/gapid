@@ -1121,6 +1121,18 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits the C++ lazy resolved function variable extern for a given command.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.LazyResolvedFunctionDecl"}}
+  {{AssertType $ "Function"}}
+
+  LazyResolved<{{Template "C++.FunctionPtrType" $}}> {{Template "CmdName" $}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits the method name for the given command or subroutine.
 -------------------------------------------------------------------------------
 */}}

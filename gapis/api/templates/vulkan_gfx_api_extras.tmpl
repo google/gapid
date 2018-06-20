@@ -64,7 +64,7 @@
 
 ¶
   std::vector<Vulkan::VkPhysicalDevice> getVkPhysicalDevices(§
-      Vulkan::PFNVKENUMERATEPHYSICALDEVICES vkEnumeratePhysicalDevices, Vulkan::VkInstance instance) {
+      LazyResolved<Vulkan::PFNVKENUMERATEPHYSICALDEVICES> vkEnumeratePhysicalDevices, Vulkan::VkInstance instance) {
     uint32_t count = 0;
     vkEnumeratePhysicalDevices(instance, &count, nullptr);
     std::vector<Vulkan::VkPhysicalDevice> devices(count);
@@ -73,7 +73,7 @@
   }
 ¶
   std::vector<Vulkan::VkQueue> getVkQueues(§
-      Vulkan::PFNVKGETDEVICEQUEUE vkGetDeviceQueue, Vulkan::VkDevice device, §
+      LazyResolved<Vulkan::PFNVKGETDEVICEQUEUE> vkGetDeviceQueue, Vulkan::VkDevice device, §
       Vulkan::VkDeviceCreateInfo* createInfo) {
     std::vector<Vulkan::VkQueue> queues;
     for (uint32_t i = 0; i < createInfo->queueCreateInfoCount; ++i) {
@@ -204,8 +204,8 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
       {{range $c := AllCommands $}}
         {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance")}}
           {{$name := Macro "CmdName" $c}}
-          stubs.{{$name}} = reinterpret_cast<{{Template "C++.FunctionPtrType" $c}}>(§
-              core::GetVulkanInstanceProcAddress(instance, "{{$name}}", false));
+          stubs.{{$name}} = LazyResolved<{{Template "C++.FunctionPtrType" $c}}>(
+            [instance]() -> void* { return core::GetVulkanInstanceProcAddress(instance, "{{$name}}", false); });
         {{end}}
       {{end}}
       // Get all physical devices for this instance and bind them.
@@ -255,8 +255,8 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
       {{range $c := AllCommands $}}
         {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice")}}
           {{$name := Macro "CmdName" $c}}
-          stubs.{{$name}} = reinterpret_cast<{{Template "C++.FunctionPtrType" $c}}>(§
-              core::GetVulkanDeviceProcAddress(instance, device, "{{$name}}", false));
+          stubs.{{$name}} = LazyResolved<{{Template "C++.FunctionPtrType" $c}}>(
+            [instance, device]() -> void* { return core::GetVulkanDeviceProcAddress(instance, device, "{{$name}}", false); });
         {{end}}
       {{end}}
       // Get all queues for this device and bind them.
