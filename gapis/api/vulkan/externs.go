@@ -34,6 +34,7 @@ type externs struct {
 	cmdID api.CmdID
 	s     *api.GlobalState
 	b     *rb.Builder
+	w     api.StateWatcher
 }
 
 func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
@@ -42,8 +43,8 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 		return false
 	}
 	l := e.s.MemoryLayout
-	dynamicStateInfo := info.Slice(0, 1, l).MustRead(e.ctx, e.cmd, e.s, e.b)[0]
-	states := dynamicStateInfo.PDynamicStates().Slice(0, uint64(dynamicStateInfo.DynamicStateCount()), l).MustRead(e.ctx, e.cmd, e.s, e.b)
+	dynamicStateInfo := info.Slice(0, 1, l).MustRead(e.ctx, e.cmd, e.s, e.b, e.w)[0]
+	states := dynamicStateInfo.PDynamicStates().Slice(0, uint64(dynamicStateInfo.DynamicStateCount()), l).MustRead(e.ctx, e.cmd, e.s, e.b, e.w)
 	for _, s := range states {
 		if s == state {
 			return true
@@ -183,7 +184,7 @@ func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInM
 	writeRngList := e.s.Memory.ApplicationPool().Slice(absSrcMemRng).ValidRanges()
 	for _, r := range writeRngList {
 		mem.Data().Slice(dstStart+r.Base, dstStart+r.Base+r.Size).
-			Copy(e.ctx, U8ᵖ(mem.MappedLocation()).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b)
+			Copy(e.ctx, U8ᵖ(mem.MappedLocation()).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b, e.w)
 	}
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
@@ -193,7 +194,7 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 	counter := uint32(0)
 	for pNext != 0 {
 		counter++
-		pNext = Voidᶜᵖᵖ(pNext).Slice(1, 2, l).MustRead(e.ctx, e.cmd, e.s, e.b)[0]
+		pNext = Voidᶜᵖᵖ(pNext).Slice(1, 2, l).MustRead(e.ctx, e.cmd, e.s, e.b, e.w)[0]
 	}
 	return counter
 }
@@ -250,7 +251,7 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 	st := GetState(s)
 	for buffer, binds := range binds.BufferBinds().All() {
 		if !st.Buffers().Contains(buffer) {
-			subVkErrorInvalidBuffer(ctx, a, id, nil, s, nil, a.Thread(), nil, buffer)
+			subVkErrorInvalidBuffer(ctx, a, id, nil, s, nil, a.Thread(), nil, nil, buffer)
 		}
 		bufObj := st.Buffers().Get(buffer)
 		blockSize := bufObj.MemoryRequirements().Alignment()
@@ -277,7 +278,7 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 	}
 	for image, binds := range binds.OpaqueImageBinds().All() {
 		if !st.Images().Contains(image) {
-			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, image)
+			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, nil, image)
 		}
 		imgObj := st.Images().Get(image)
 		blockSize := imgObj.MemoryRequirements().Alignment()
@@ -304,12 +305,12 @@ func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState
 	}
 	for image, binds := range binds.ImageBinds().All() {
 		if !st.Images().Contains(image) {
-			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, image)
+			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, nil, image)
 		}
 		imgObj := st.Images().Get(image)
 		for _, bind := range binds.SparseImageMemoryBinds().All() {
 			if !imgObj.IsNil() {
-				err := subAddSparseImageMemoryBinding(ctx, a, id, nil, s, nil, a.Thread(), nil, image, bind)
+				err := subAddSparseImageMemoryBinding(ctx, a, id, nil, s, nil, a.Thread(), nil, nil, image, bind)
 				if err != nil {
 					return
 				}

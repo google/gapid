@@ -68,7 +68,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 	lastCmd := api.CmdID(0)
 	var pending []service.EventKind
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil)
+		cmd.Mutate(ctx, id, s, nil, nil)
 
 		// TODO: Add event generation to the API files.
 		if !filter(id, cmd, s) {

@@ -91,7 +91,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	ctx = log.Enter(ctx, "findIssues")
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: t.state.Arena}
 
-	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */)
+	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */, nil /* no watcher */)
 	if mutateErr != nil {
 		// Ignore since downstream transform layers can only consume valid commands
 		return
@@ -128,10 +128,10 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	// VK_EXT_debug_report extension.
 	case *VkCreateInstance:
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
+		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil, nil)
 		layerCount := info.EnabledLayerCount()
 		layers := []Charᶜᵖ{}
-		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil) {
+		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil, nil) {
 			if !isValidationLayer(l.String()) {
 				layers = append(layers, l)
 			}
@@ -146,7 +146,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		layersData := mustAlloc(ctx, layers)
 
 		extCount := info.EnabledExtensionCount()
-		exts := info.PpEnabledExtensionNames().Slice(0, uint64(extCount), l).MustRead(ctx, cmd, s, nil)
+		exts := info.PpEnabledExtensionNames().Slice(0, uint64(extCount), l).MustRead(ctx, cmd, s, nil, nil)
 		var debugReportExtNameData api.AllocResult
 		hasDebugReport := false
 		for _, e := range exts {
@@ -192,10 +192,10 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	// layers back later. Same reason as vkCreateInstance
 	case *VkCreateDevice:
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
+		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil, nil)
 		layerCount := info.EnabledLayerCount()
 		layers := []Charᶜᵖ{}
-		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil) {
+		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil, nil) {
 			if !isValidationLayer(l.String()) {
 				layers = append(layers, l)
 			}
@@ -235,7 +235,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	// for it. The create info is not completed, the device side code should complete
 	// the create info before calling the underlying Vulkan command.
 	if ci, ok := cmd.(*VkCreateInstance); ok {
-		inst := ci.PInstance().MustRead(ctx, cmd, s, nil)
+		inst := ci.PInstance().MustRead(ctx, cmd, s, nil, nil)
 		callbackHandle := VkDebugReportCallbackEXT(newUnusedID(true, func(x uint64) bool {
 			for _, cb := range t.reportCallbacks {
 				if uint64(cb) == x {

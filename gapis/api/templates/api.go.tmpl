@@ -166,6 +166,7 @@ import (
 
   type {{$name}} struct {
     data *[{{$ty.Size}}]{{$el}}
+    ϟrefID ϟapi.RefID
     uncompareable
   }
 
@@ -173,7 +174,10 @@ import (
   var Nil{{$name}} = New{{$name}}(constantArena)
 
   func New{{$name}}(ϟa arena.Arena, els... {{$el}}) {{$name}} {
-    out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
+    out := {{$name}}{
+      data: &[{{$ty.Size}}]{{$el}}{},
+      ϟrefID: ϟapi.NewRefID(),
+    }
     for i := 0; i < {{$ty.Size}}; i++ {
       if i < len(els) {
         out.Set(i, els[i])
@@ -186,12 +190,43 @@ import (
 
   func (a {{$name}}) Get(i int) {{$el}} { return a.data[i] }
 
+  func (a {{$name}}) Getʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, i int) {{$el}} {
+    v := a.data[i]
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, a, ϟapi.ArrayIndexFragment{i}, {{Template "Reference" "Type"  $ty.ValueType "Val" "v"}})
+    }
+    return v
+  }
+
   func (a {{$name}}) Set(i int, v {{$el}}) { a.data[i] = v }
+
+  func (a {{$name}}) Setʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, i int, v {{$el}}) {
+    if ϟw != nil {
+      ϟw.OnSet(ϟctx, a, ϟapi.ArrayIndexFragment{i},
+        {{Template "Reference" "Type" $ty.ValueType "Val" "a.data[i]"}},
+        {{Template "Reference" "Type" $ty.ValueType "Val" "v"}})
+    }
+    a.data[i] = v
+  }
 
   // Equals returns true if the array is equal to o.
   func (a {{$name}}) Equals(o {{$name}}) bool {
     for i, c := 0, {{$ty.Size}}; i < c; i++ {
       if !({{Template "Go.Equal" "Type" $ty.ValueType "LHS" "a.Get(i)" "RHS" "o.Get(i)"}}) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Equalsʷ returns true if the array is equal to o.
+  func (a {{$name}}) Equalsʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, o {{$name}}) bool {
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, a, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+      ϟw.OnGet(ϟctx, o, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+    }
+    for i, c := 0, {{$ty.Size}}; i < c; i++ {
+      if !({{Template "Go.Equal" "Type" $ty.ValueType "LHS" "a.Get(i)" "RHS" "o.Get(i)" "Watch" true}}) {
         return false
       }
     }
@@ -225,12 +260,33 @@ import (
 
   // Clone makes a deep copy of this static array, using ϟa for allocations.
   func (m {{$name}}) Clone(ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
-    out := {{$name}}{ data: &[{{$ty.Size}}]{{$el}}{} }
+    out := {{$name}}{
+      data: &[{{$ty.Size}}]{{$el}}{},
+      ϟrefID: ϟapi.NewRefID(),
+    }
     for i := 0; i < {{$ty.Size}}; i++ {
       out.Set(i, {{Template "Clone" "Type" $ty.ValueType "Src" "m.Get(i)"}})
     }
     return out
   }
+
+  // Cloneʷ makes a deep copy of this static array, and notifies a state watcher
+  func (m {{$name}}) Cloneʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
+    out := {{$name}}{
+      data: &[{{$ty.Size}}]{{$el}}{},
+      ϟrefID: ϟapi.NewRefID(),
+    }
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+      ϟw.OnSet(ϟctx, out, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟapi.NilReference{})
+    }
+    for i := 0; i < {{$ty.Size}}; i++ {
+      out.Set(i, {{Template "Clone" "Type" $ty.ValueType "Src" "m.Get(i)" "Watch" true}})
+    }
+    return out
+  }
+
+  func (a {{$name}}) RefID() ϟapi.RefID { return a.ϟrefID }
 {{end}}
 
 
@@ -249,10 +305,14 @@ import (
   type {{$name}} struct {
     Map *map[{{$key}}]{{$value}}
     a   arena.Arena
+    ϟrefID ϟapi.RefID
   }
 
   func New{{$name}}(ϟa arena.Arena) {{$name}} {
-    return {{$name}} { &map[{{$key}}]{{$value}}{}, ϟa }
+    return {{$name}} {
+      Map: &map[{{$key}}]{{$value}}{},
+      ϟrefID: ϟapi.NewRefID(),
+    }
   }
 
   // Arena returns the memory arena used to allocate this map.
@@ -263,6 +323,18 @@ import (
     v, ok := (*m.Map)[key]
     if !ok {
       v = {{Template "Go.Null" $.ValueType}}
+    }
+    return v
+  }
+
+  func (m {{$name}}) Getʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) {{$value}} {
+    ϟa := m.a; _ = ϟa
+    v, ok := (*m.Map)[key]
+    if !ok {
+      v = {{Template "Go.Null" $.ValueType}}
+    }
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, m, ϟapi.MapIndexFragment{key}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
     }
     return v
   }
@@ -280,7 +352,33 @@ import (
     return
   }
 
+  func (m {{$name}}) Lookupʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) (v {{$value}}, ok bool) {
+    ϟa := m.a; _ = ϟa
+    if m.Map != nil {
+      v, ok = (*m.Map)[key]
+    }
+    {{if $init := Macro "Go.Null" $.ValueType}}
+      if !ok {
+        v = {{$init}}
+      }
+    {{end}}
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, m, ϟapi.MapIndexFragment{key}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
+    }
+    return
+  }
+
   func (m {{$name}}) Add(key {{$key}}, val {{$value}}) {{$name}} {
+    (*m.Map)[key] = val
+    return m
+  }
+
+  func (m {{$name}}) Addʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}, val {{$value}}) {{$name}} {
+    if ϟw != nil {
+      ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
+        {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
+        {{Template "Reference" "Type" $.ValueType "Val" "val"}})
+    }
     (*m.Map)[key] = val
     return m
   }
@@ -292,8 +390,34 @@ import (
     return
   }
 
+  func (m {{$name}}) Containsʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) bool {
+    if m.Map != nil {
+      {{if or (IsMap $.ValueType) (IsReference $.ValueType) (IsClass $.ValueType)}}
+        v, ok := (*m.Map)[key]
+      {{else}}
+        _, ok := (*m.Map)[key]
+      {{end}}
+      if ϟw != nil {
+        ϟw.OnGet(ϟctx, m, ϟapi.MapIndexFragment{key}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
+      }
+      return ok
+    }
+    return false
+  }
+
   func (m {{$name}}) Remove(key {{$key}}) {
     if m.Map != nil {
+      delete(*m.Map, key)
+    }
+  }
+
+  func (m {{$name}}) Removeʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) {
+    if m.Map != nil {
+      if ϟw != nil {
+        ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
+          {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
+          ϟapi.NilReference{})
+      }
       delete(*m.Map, key)
     }
   }
@@ -305,9 +429,30 @@ import (
     return 0
   }
 
+  func (m {{$name}}) Lenʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) int {
+    if m.Map != nil {
+      if ϟw != nil {
+        ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+      }
+      return len(*m.Map)
+    }
+    return 0
+  }
+
   // All returns this {{$name}} as a Go map.
   func (m {{$name}}) All() map[{{$key}}]{{$value}} {
     if m.Map != nil {
+      return *m.Map
+    }
+    return nil
+  }
+
+  // Allʷ returns this {{$name}} as a Go map, and notifies the StateWatcher
+  func (m {{$name}}) Allʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) map[{{$key}}]{{$value}} {
+    if m.Map != nil {
+      if ϟw != nil {
+        ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+      }
       return *m.Map
     }
     return nil
@@ -340,18 +485,65 @@ import (
     return s
   }
 
+  func (m {{$name}}) Keysʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) []{{$key}} {
+    if m.Map == nil {
+      return nil
+    }
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+    }
+    s := make({{$sorted}}, len(*m.Map))
+    i := 0
+    for k, _ := range *m.Map {
+      s[i] = k
+      i++
+    }
+    sort.Sort(s)
+    return s
+  }
+
   // Clone makes a deep copy of this map.
   func (m {{$name}}) Clone(ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
-    if existing, ok := ϟseen[m.Map]; ok {
-      return {{$name}}{Map: existing.(*map[{{$key}}]{{$value}}), a: ϟa}
+    if existing, ok := ϟseen[m.ϟrefID]; ok {
+      return existing.({{$name}})
     }
     out := make(map[{{$key}}]{{$value}}, len(*m.Map))
-    ϟseen[m.Map] = &out
+    cloned := {{$name}}{
+      Map: &out,
+      ϟrefID: ϟapi.NewRefID(),
+    }
+    ϟseen[m.ϟrefID] = cloned
     for k, v := range *m.Map {
       out[{{Template "Clone" "Type" $.KeyType "Src" "k"}}] = {{Template "Clone" "Type" $.ValueType "Src" "v"}}
     }
-    return {{$name}}{Map: &out, a: ϟa}
+    return cloned
   }
+
+  // Cloneʷ makes a deep copy of this map.
+  func (m {{$name}}) Cloneʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
+    if existing, ok := ϟseen[m.ϟrefID]; ok {
+      return existing.({{$name}})
+    }
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+    }
+    out := make(map[{{$key}}]{{$value}}, len(*m.Map))
+    cloned := {{$name}}{
+      Map: &out,
+      ϟrefID: ϟapi.NewRefID(),
+    }
+    ϟseen[m.ϟrefID] = cloned
+    for k, v := range *m.Map {
+      out[{{Template "Clone" "Type" $.KeyType "Src" "k" "Watch" true}}] =§
+        {{Template "Clone" "Type" $.ValueType "Src" "v" "Watch" true}}
+    }
+    if ϟw != nil {
+      ϟw.OnSet(ϟctx, cloned, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟapi.NilReference{})
+    }
+    return cloned
+  }
+
+  func (m {{$name}}) RefID() ϟapi.RefID { return m.ϟrefID }
 {{end}}
 
 
@@ -369,6 +561,7 @@ import (
 
   type {{$name}} struct {
     data *{{$data}}
+    ϟrefID ϟapi.RefID
   }
 
   // Nil{{$name}} is a nil-pointer reference.
@@ -396,21 +589,51 @@ import (
   func (c {{$name}}) IsNil() bool { return c.data == nil }
 
   // SetNil nullifies this reference.
-  func (c {{$name}}) SetNil() { c.data = nil }
+  func (c {{$name}}) SetNil() {
+    c.data = nil
+    c.ϟrefID = ϟapi.NilRefID
+  }
 
   // Clone makes a deep copy of this reference.
   func (c {{$name}}) Clone(ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
     if c.IsNil() { return Nil{{$name}} }
-    if existing, ok := ϟseen[c.data]; ok {
-      return {{$name}}{data: existing.(*{{$data}})}
+    if existing, ok := ϟseen[c.ϟrefID]; ok {
+      return existing.({{$name}})
     }
-    d := &{{$data}}{}
-    ϟseen[c.data] = d
+    cloned := {{$name}}{
+      data: &{{$data}}{},
+      ϟrefID: ϟapi.NewRefID(),
+    }
+    ϟseen[c.ϟrefID] = cloned
     {{range $f := $.To.Fields}}
       {{$name := $f.Name | GoPrivateName}}
-      d.{{$name}} = c.data.{{Template "Clone" "Type" $f.Type "Src" $name}}
+      cloned.data.{{$name}} = c.data.{{Template "Clone" "Type" $f.Type "Src" $name}}
     {{end}}
-    return {{$name}}{data: d}
+    return cloned
+  }
+
+  // Cloneʷ makes a deep copy of this reference and notifies the state watcher
+  func (c {{$name}}) Cloneʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
+    if c.IsNil() { return Nil{{$name}} }
+    if existing, ok := ϟseen[c.ϟrefID]; ok {
+      return existing.({{$name}})
+    }
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, c, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+    }
+    cloned := {{$name}}{
+      data: &{{$data}}{},
+      ϟrefID: ϟapi.NewRefID(),
+    }
+    ϟseen[c.ϟrefID] = cloned
+    {{range $f := $.To.Fields}}
+      {{$name := $f.Name | GoPrivateName}}
+      cloned.data.{{$name}} = c.data.{{Template "Clone" "Type" $f.Type "Src" $name "Watch" true}}
+    {{end}}
+    if ϟw != nil {
+      ϟw.OnSet(ϟctx, cloned, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟapi.NilReference{})
+    }
+    return cloned
   }
 
   {{if GetAnnotation $.To "resource"}}
@@ -430,16 +653,20 @@ import (
   {{$to := Macro "Go.Type" $.To}}
   func (c {{$name}}) Get() {{$to}} {
     d := *c.data
-    return {{$to}}{data: &d}
+    return {{$to}}{
+      data: &d,
+      ϟrefID: ϟapi.NewRefID(),
+    }
   }
 
   func (c {{$name}}) Set(v {{$to}}) {{$name}} {
     *c.data = *v.data
+    c.ϟrefID = v.ϟrefID
     return c
   }
 
   {{range $f := $.To.Fields}}
-    {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type}}
+    {{Template "DeclareGetterSetter" "Struct" $name "Class" $to "Prefix" "data" "Name" $f.Name "Type" $f.Type "Watch" true}}
   {{end}}
 
   // New{{$name}} returns a new {{$name}} reference with the given fields.
@@ -448,12 +675,14 @@ import (
       , {{$f.Name | GoPrivateName}} {{Template "Go.Type" $f}}§
     {{end}}
   ) {{$name}} {
+    ϟdata := &{{$data}}{
+      {{range $f := $.To.Fields}}
+        {{$f.Name | GoPrivateName}}: {{$f.Name | GoPrivateName}},
+      {{end}}
+    }
     return {{$name}}{
-      data: &{{$data}}{
-        {{range $f := $.To.Fields}}
-          {{$f.Name | GoPrivateName}}: {{$f.Name | GoPrivateName}},
-        {{end}}
-      },
+      data: ϟdata,
+      ϟrefID: ϟapi.NewRefID(),
     }
   }
 
@@ -469,6 +698,8 @@ import (
       {{end}}
     )
   }
+
+  func (c {{$name}}) RefID() ϟapi.RefID { return c.ϟrefID }
 {{end}}
 
 
@@ -546,8 +777,8 @@ import (
   }
 
   // Clone returns a copy of the {{$slice_ty}} in a new memory pool.
-  func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
-    s.OnRead(ϟctx, ϟc, ϟg, ϟb)
+  func (s {{$slice_ty}}) Clone(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) {{$slice_ty}} {
+    s.OnRead(ϟctx, ϟc, ϟg, ϟb, ϟw)
     id, dst := ϟg.Memory.New()
     dst.Write(0, ϟg.Memory.MustGet(s.pool).Slice(s.Range()))
     return {{$slice_ty}}{
@@ -635,9 +866,9 @@ import (
     }
 
     // Read reads and returns all the {{$el_ty}} elements in this {{$slice_ty}}.
-    func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) ([]{{$el_ty}}, error) {
+    func (s {{$slice_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) ([]{{$el_ty}}, error) {
       ϟa := ϟg.Arena; _ = ϟa
-      s.OnRead(ϟctx, ϟc, ϟg, ϟb)
+      s.OnRead(ϟctx, ϟc, ϟg, ϟb, ϟw)
       out := make([]{{$el_ty}}, s.Count())
       ϟd := s.Decoder(ϟctx, ϟg)
       {{if IsU8 $s.To}}
@@ -654,20 +885,20 @@ import (
     }
 
     // MustRead calls and returns Read, panicing if there was an error.
-    func (s {{$slice_ty}}) MustRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) []{{$el_ty}} {
-      vals, err := s.Read(ϟctx, ϟc, ϟg, ϟb)
+    func (s {{$slice_ty}}) MustRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) []{{$el_ty}} {
+      vals, err := s.Read(ϟctx, ϟc, ϟg, ϟb, ϟw)
       panicOnError(err)
       return vals
     }
 
     // Write copies elements from src to this slice. The number of elements copied is returned
     // which is the minimum of s.count and len(src).
-    func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) (uint64, error) {
+    func (s {{$slice_ty}}) Write(ϟctx context.Context, src []{{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) (uint64, error) {
       ϟa := ϟg.Arena; _ = ϟa
       count := u64.Min(s.Count(), uint64(len(src)))
       e := s.Slice(0, count).Encoder(ϟg)
       ϟmem.Write(e, src[:count])
-      s.OnWrite(ϟctx, ϟc, ϟg, ϟb)
+      s.OnWrite(ϟctx, ϟc, ϟg, ϟb, ϟw)
       if err := e.Error(); err != nil {
         return 0, err
       }
@@ -675,8 +906,8 @@ import (
     }
 
     // MustWrite calls and returns Write, panicing if there was an error.
-    func (s {{$slice_ty}}) MustWrite(ϟctx context.Context, src []{{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) uint64 {
-      count, err := s.Write(ϟctx, src, ϟc, ϟg, ϟb)
+    func (s {{$slice_ty}}) MustWrite(ϟctx context.Context, src []{{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) uint64 {
+      count, err := s.Write(ϟctx, src, ϟc, ϟg, ϟb, ϟw)
       panicOnError(err)
       return count
     }
@@ -684,24 +915,24 @@ import (
     // Copy copies elements from src to this slice.
     // The number of elements copied is the minimum of dst.Count and src.Count.
     // The slices of this and dst to the copied elements is returned.
-    func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) (d, s {{$slice_ty}}) {
+    func (dst {{$slice_ty}}) Copy(ϟctx context.Context, src {{$slice_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) (d, s {{$slice_ty}}) {
       count := u64.Min(dst.Count(), src.Count())
       dst, src = dst.Slice(0, count), src.Slice(0, count)
     {{if $el_is_ptr}}
       if (dst.Pool() == ϟmem.ApplicationPool) != (src.Pool() == ϟmem.ApplicationPool) {
-        dst.MustWrite(ϟctx, src.MustRead(ϟctx, ϟc, ϟg, ϟb), ϟc, ϟg, ϟb) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
+        dst.MustWrite(ϟctx, src.MustRead(ϟctx, ϟc, ϟg, ϟb, ϟw), ϟc, ϟg, ϟb, ϟw) // Element-wise copy so we can convert u64 <-> {{$ptr_ty}}
       } else {
     {{end}}
-      src.OnRead(ϟctx, ϟc, ϟg, ϟb)
+      src.OnRead(ϟctx, ϟc, ϟg, ϟb, ϟw)
       ϟg.Memory.MustGet(dst.Pool()).Write(dst.Base(), ϟg.Memory.MustGet(src.Pool()).Slice(src.Range()))
-      dst.OnWrite(ϟctx, ϟc, ϟg, ϟb)
+      dst.OnWrite(ϟctx, ϟc, ϟg, ϟb, ϟw)
     {{if $el_is_ptr}} } {{end}}
       return dst, src
     }
 
     // Contains returns true if the slice contains the specified value.
-    func (s {{$slice_ty}}) Contains(ϟctx context.Context, val {{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) bool {
-      for _, e := range s.MustRead(ϟctx, ϟc, ϟg, ϟb) {
+    func (s {{$slice_ty}}) Contains(ϟctx context.Context, val {{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) bool {
+      for _, e := range s.MustRead(ϟctx, ϟc, ϟg, ϟb, ϟw) {
         if {{Template "Go.Equal" "Type" $s.To "LHS" "e" "RHS" "val"}} {
           return true
         }
@@ -712,8 +943,11 @@ import (
   {{end}}
 
   // OnRead calls the backing pool's OnRead callback. s is returned so calls can be chained.
-  func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) OnRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) {{$slice_ty}} {
     ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
+    if ϟw != nil {
+      ϟw.OnReadSlice(ϟctx, s)
+    }
     if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnRead; f != nil {
         f(s.Range())
@@ -761,8 +995,11 @@ import (
   }
 
   // OnWrite calls the backing pool's OnWrite callback. s is returned so calls can be chained.
-  func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$slice_ty}} {
+  func (s {{$slice_ty}}) OnWrite(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) {{$slice_ty}} {
     ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
+    if ϟw != nil {
+      ϟw.OnWriteSlice(ϟctx, s)
+    }
     if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnWrite; f != nil {
         f(s.Range())
@@ -921,9 +1158,9 @@ import (
 
   {{if not $el_is_void}}
     // Read reads and returns the {{$el_ty}} element at the pointer.
-    func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) ({{$el_ty}}, error) {
+    func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) ({{$el_ty}}, error) {
       ϟa := ϟg.Arena; _ = ϟa
-      vals, err := p.Slice(0, 1, ϟg.MemoryLayout).Read(ϟctx, ϟc, ϟg, ϟb)
+      vals, err := p.Slice(0, 1, ϟg.MemoryLayout).Read(ϟctx, ϟc, ϟg, ϟb, ϟw)
       if err != nil {
         return {{Template "Go.Null" (TypeOf $p.To)}}, err
       }
@@ -931,21 +1168,21 @@ import (
     }
 
     // MustRead calls and returns Read, panicing if there was an error.
-    func (p {{$ptr_ty}}) MustRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {{$el_ty}} {
-      val, err := p.Read(ϟctx, ϟc, ϟg, ϟb)
+    func (p {{$ptr_ty}}) MustRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) {{$el_ty}} {
+      val, err := p.Read(ϟctx, ϟc, ϟg, ϟb, ϟw)
       panicOnError(err)
       return val
     }
 
     // Write writes value to the {{$el_ty}} element at the pointer.
-    func (p {{$ptr_ty}}) Write(ϟctx context.Context, value {{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) error {
-      _, err := p.Slice(0, 1, ϟg.MemoryLayout).Write(ϟctx, []{{$el_ty}}{value}, ϟc, ϟg, ϟb)
+    func (p {{$ptr_ty}}) Write(ϟctx context.Context, value {{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) error {
+      _, err := p.Slice(0, 1, ϟg.MemoryLayout).Write(ϟctx, []{{$el_ty}}{value}, ϟc, ϟg, ϟb, ϟw)
       return err
     }
 
     // MustWrite calls Write, panicing if there was an error.
-    func (p {{$ptr_ty}}) MustWrite(ϟctx context.Context, value {{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) {
-      panicOnError(p.Write(ϟctx, value, ϟc, ϟg, ϟb))
+    func (p {{$ptr_ty}}) MustWrite(ϟctx context.Context, value {{$el_ty}}, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) {
+      panicOnError(p.Write(ϟctx, value, ϟc, ϟg, ϟb, ϟw))
     }
   {{end}}
 
@@ -1065,6 +1302,7 @@ import (
   type {{$name}} struct {
     data *{{$data}}
     a    arena.Arena
+    ϟrefID ϟapi.RefID
     uncompareable
   }
 
@@ -1085,7 +1323,8 @@ import (
   }
 
   {{range $f := $.Fields}}
-    {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type}}
+    {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type "Watch" true}}
+    {{Template "DeclareFieldID" "Class" $name "Name" $f.Name}}
   {{end}}
 
   // Arena returns the memory arena used to allocate this class.
@@ -1098,17 +1337,20 @@ import (
       , {{$f.Name | GoPrivateName}} {{Template "Go.Type" $f}}§
     {{end}}
   ) {{$name}} {
+    ϟdata := &{{$data}} {
+      {{range $f := $.Fields}}
+        {{$f.Name | GoPrivateName}}: {{$f.Name | GoPrivateName}}, §
+      {{end}}
+    }
     return {{$name}}{
-      data: &{{$data}} {
-        {{range $f := $.Fields}}
-          {{$f.Name | GoPrivateName}}: {{$f.Name | GoPrivateName}}, §
-        {{end}}
-      },
+      data: ϟdata,
       a: ϟa,
+      ϟrefID: ϟapi.NewRefID(),
     }
   }
 
   // Make{{$name}} returns a new {{$name}} class with the default field values.
+  {{Global "Watch" nil}}
   func Make{{$name}}(ϟa arena.Arena) {{$name}} {
     return New{{$name}}(ϟa, §
       {{range $i, $f := $.Fields}}
@@ -1141,6 +1383,16 @@ import (
       {{$lhs := print "c.data." ($f.Name | GoPrivateName)}}
       {{$rhs := print "o.data." ($f.Name | GoPrivateName)}}
       § && {{Template "Go.Equal" "Type" $f.Type "LHS" $lhs "RHS" $rhs}}
+    {{end}}
+  }
+
+  // Equalsʷ returns true if the class fields are equal to those of o.
+  func (c {{$name}}) Equalsʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, o {{$name}}) bool {
+    return true
+    {{range $f := $.Fields}}
+      {{$lhs := print "c.data." ($f.Name | GoPrivateName)}}
+      {{$rhs := print "o.data." ($f.Name | GoPrivateName)}}
+      § && {{Template "Go.Equal" "Type" $f.Type "LHS" $lhs "RHS" $rhs "Watch" true}}
     {{end}}
   }
 
@@ -1219,8 +1471,32 @@ import (
         {{end}}
       },
       a: ϟa,
+      ϟrefID: ϟapi.NewRefID(),
     }
   }
+
+  // Cloneʷ makes a deep copy of this class.
+  func (c {{$name}}) Cloneʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
+    if ϟw != nil {
+      ϟw.OnGet(ϟctx, c, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+    }
+    cloned := {{$name}}{
+      data: &{{$data}}{
+        {{range $f := $.Fields}}
+          {{$name := $f.Name | GoPrivateName}}
+          {{$name}}: c.data.{{Template "Clone" "Type" $f.Type "Src" $name "Watch" true}},
+        {{end}}
+      },
+      a: ϟa,
+      ϟrefID: ϟapi.NewRefID(),
+    }
+    if ϟw != nil {
+      ϟw.OnSet(ϟctx, cloned, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟapi.NilReference{})
+    }
+    return cloned
+  }
+
+  func (a {{$name}}) RefID() ϟapi.RefID { return a.ϟrefID }
 {{end}}
 
 
@@ -1422,10 +1698,12 @@ import (
     {{end}}
     a arena.Arena
     CustomState `hidden:"true" nobox:"true"`
+    ϟrefID ϟapi.RefID
   }
 
   {{range $g := $.Globals}}
-    {{Template "DeclareGetterSetter" "Struct" "State" "Name" $g.Name "Type" $g.Type "PtrMethod" "true"}}¶
+    {{Template "DeclareGetterSetter" "Struct" "State" "Name" $g.Name "Type" $g.Type "PtrMethod" "true" "Watch" true}}¶
+    {{Template "DeclareFieldID" "Class" "State" "Name" $g.Name}}
   {{end}}
 
   // Arena returns the memory arena used to allocate the state.
@@ -1449,10 +1727,11 @@ import (
           g.Set{{$g.Name | GoPublicName}}({{Template "Go.Null" $g.Type}})
         {{end}}
       {{else}}
-        g.Set{{$g.Name | GoPublicName}}({{Template "Go.Read" $g.Default}})
+        g.Set{{$g.Name | GoPublicName}}(nil, {{Template "Go.Read" $g.Default}})
       {{end}}
     {{end}}
     g.InitializeCustomState()
+    g.ϟrefID = ϟapi.NewRefID()
   }
 
   // Properties returns all the properties of the state.
@@ -1470,7 +1749,7 @@ import (
 
 	// Clone returns a deep copy of this state object.
   func (g *State) Clone(ϟa arena.Arena) ϟapi.State {
-    out := &State{CustomState: g.CustomState}
+    out := &State{CustomState: g.CustomState, ϟrefID: ϟapi.NewRefID()}
     {{if len $.Globals}}
       ϟseen := ϟapi.CloneContext{}
       _ = ϟseen
@@ -1481,6 +1760,8 @@ import (
     {{end}}
     return out
   }
+
+  func (g *State) RefID() ϟapi.RefID { return g.ϟrefID }
 {{end}}
 
 
@@ -1675,7 +1956,7 @@ import (
   {{if IsCall $.Expr}}
     {{$call := Unpack $.Expr}}
     {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
-    v, _ := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟc, ϟi, ϟc.Extras().Observations(), ϟg, GetState(ϟg), ϟc.Thread(), nil, {{$args}})
+    v, _ := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟc, ϟi, ϟc.Extras().Observations(), ϟg, GetState(ϟg), ϟc.Thread(), nil, nil, {{$args}})
   {{else}}
     {{Error "%T" $.Expr}}
   {{end}}
@@ -1691,15 +1972,49 @@ import (
   {{$g   := Macro "Go.Type" $.Type}}
   {{$get := GoPublicName $.Name}}
   {{$set := printf "Set%v" $get}}
+  {{$struct := print $.Class $.ClassMod}}
   {{$field  := print ((Strings "c" $.Prefix) | JoinWith ".") "." (GoPrivateName $.Name) }}
+  {{$fieldID := Macro "FieldID" "Class" $.Class "Name" $.Name}}
+  {{$newRef := Macro "Reference" "Type" $.Type "Val" "v"}}
+  {{$oldRef := Macro "Reference" "Type" $.Type "Val" $field}}
 
-  {{$ty := Underlying $.Type}}
-  {{if $.PtrMethod}}
-    func (c *{{$.Struct}}) {{$get}}() {{$g}} { return {{$field}} }
-    func (c *{{$.Struct}}) {{$set}}(v {{$g}}) { {{$field}} = v }
-  {{else}}
-    func (c {{$.Struct}}) {{$get}}() {{$g}} { return {{$field}} }
-    func (c {{$.Struct}}) {{$set}}(v {{$g}}) { {{$field}} = v }
+  func (c {{if $.PtrMethod}}*{{end}}{{$.Struct}}) {{$get}}() {{$g}} {
+    return {{$field}}
+  }
+
+  func (c {{if $.PtrMethod}}*{{end}}{{$.Struct}}) {{$set}}(v {{$g}}) {
+    {{$field}} = v
+  }
+
+  {{if $.Watch}}
+    func (c {{if $.PtrMethod}}*{{end}}{{$.Struct}}) {{$get}}ʷ(§
+      ϟctx context.Context, ϟw ϟapi.StateWatcher) {{$g}} {
+        v := {{$field}}
+        if ϟw != nil {
+          ϟw.OnGet(ϟctx, c, ϟapi.FieldFragment{§
+            {{if $.Class}}
+              {{Template "FieldID" "Class" $.Class "Name" $.Name}}§
+            {{else}}
+              {{Template "FieldID" "Class" $.Struct "Name" $.Name}}§
+            {{end}}}, §
+            {{$newRef}})
+        }
+        return v
+    }
+
+    func (c {{if $.PtrMethod}}*{{end}}{{$.Struct}}) {{$set}}ʷ(§
+      ϟctx context.Context, ϟw ϟapi.StateWatcher, v {{$g}}) {
+        if ϟw != nil {
+          ϟw.OnSet(ϟctx, c, ϟapi.FieldFragment{§
+            {{if $.Class}}
+              {{Template "FieldID" "Class" $.Class "Name" $.Name}}§
+            {{else}}
+              {{Template "FieldID" "Class" $.Struct "Name" $.Name}}§
+            {{end}}}, §
+            {{$oldRef}}, {{$newRef}})
+        }
+        {{$field}} = v
+    }
   {{end}}
 {{end}}
 
@@ -1727,13 +2042,13 @@ import (
   {{AssertType $.Type "Type"}}
 
   {{     if IsPseudonym     $.Type}}{{Template "Clone" "Type" $.Type.To "Src" $.Src}}
-  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
-  {{else if IsMap           $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
-  {{else if IsClass         $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
+  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone{{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}ϟa, ϟseen)
+  {{else if IsMap           $.Type}}{{$.Src}}.Clone{{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}ϟa, ϟseen)
+  {{else if IsClass         $.Type}}{{$.Src}}.Clone{{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}ϟa, ϟseen)
   {{else if IsEnum          $.Type}}{{$.Src}}
   {{else if IsPointer       $.Type}}{{$.Src}}
   {{else if IsSlice         $.Type}}{{$.Src}}
-  {{else if IsReference     $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
+  {{else if IsReference     $.Type}}{{$.Src}}.Clone{{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}ϟa, ϟseen)
   {{else if IsBool          $.Type}}{{$.Src}}
   {{else if IsInt           $.Type}}{{$.Src}}
   {{else if IsUint          $.Type}}{{$.Src}}
@@ -1752,4 +2067,41 @@ import (
   {{else if IsString        $.Type}}{{$.Src}}
   {{else}}{{Error "macro Clone called with unsupported type: %s" $.Name}}
   {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  RefID returns a unique identifier for a reference
+-------------------------------------------------------------------------------
+*/}}
+{{define "Reference"}}
+  {{AssertType $.Type "Type"}}
+
+  {{if or (IsMap $.Type) (IsReference $.Type) (IsClass $.Type) (IsStaticArray $.Type)}}§
+    (ϟapi.Reference)({{$.Val}})
+  {{else}}ϟapi.NilReference{}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  DeclareFieldID emits the Go declaration of the global variable identifying 
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareFieldID"}}
+  {{$fieldID := printf "FIELD_%v_%v" $.Class $.Name}}
+  type {{$fieldID}} struct{}
+  func ({{$fieldID}}) ClassName() string { return "{{$.Class}}" }
+  func ({{$fieldID}}) FieldName() string { return "{{$.Name}}" }
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  FieldID returns an identifier for a field in a struct
+-------------------------------------------------------------------------------
+*/}}
+{{define "FieldID"}}
+  FIELD_{{$.Class}}_{{$.Name}}{}
 {{end}}

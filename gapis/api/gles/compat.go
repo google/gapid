@@ -272,7 +272,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		switch cmd := cmd.(type) {
 		case *GlBindBuffer:
 			if cmd.Buffer() == 0 {
-				buf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target())
+				buf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, nil, cmd.Target())
 				if err != nil {
 					log.E(ctx, "Can not get bound buffer: %v ", err)
 				}
@@ -337,11 +337,11 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlBindBufferBase:
 			if cmd.Buffer() == 0 {
-				genBuf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target())
+				genBuf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, nil, cmd.Target())
 				if err != nil {
 					onError(ctx, id, cmd, fmt.Errorf("Can not get bound buffer: %v", err))
 				}
-				idxBuf, err := subGetBoundBufferAtIndex(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target(), cmd.Index())
+				idxBuf, err := subGetBoundBufferAtIndex(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, nil, cmd.Target(), cmd.Index())
 				if err != nil {
 					onError(ctx, id, cmd, fmt.Errorf("Can not get bound buffer: %v", err))
 				}
@@ -379,10 +379,10 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlVertexAttrib4fv:
 			if c.Vertex().Attributes().Contains(cmd.Location()) {
 				oldAttrib := c.Vertex().Attributes().Get(cmd.Location())
-				oldValue := oldAttrib.Value().MustRead(ctx, cmd, s, nil /* builder */)
-				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+				oldValue := oldAttrib.Value().MustRead(ctx, cmd, s, nil /* builder */, nil /* watcher */)
+				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */, nil /* wacher */)
 				newAttrib := c.Vertex().Attributes().Get(cmd.Location())
-				newValue := newAttrib.Value().MustRead(ctx, cmd, s, nil /* builder */)
+				newValue := newAttrib.Value().MustRead(ctx, cmd, s, nil /* builder */, nil /* watcher */)
 				if reflect.DeepEqual(oldValue, newValue) {
 					// Ignore the call if it is redundant.
 					// Some applications iterate over all arrays and explicitly initialize them.
@@ -412,7 +412,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// command.
 			// This is so we can grab the source string from the Shader object.
 			// We will actually provide the source to driver at compile time.
-			cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+			cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */, nil /* watcher */)
 			return
 
 		case *GlCompileShader:
@@ -479,7 +479,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// Currently the default framebuffer for replay is single-buffered
 			// and so we need to transform any usage of GL_BACK to GL_FRONT.
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			bufs := cmd.Bufs().Slice(0, uint64(cmd.N()), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
+			bufs := cmd.Bufs().Slice(0, uint64(cmd.N()), s.MemoryLayout).MustRead(ctx, cmd, s, nil, nil)
 			for i, buf := range bufs {
 				if buf == GLenum_GL_BACK {
 					bufs[i] = GLenum_GL_FRONT
@@ -893,7 +893,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				// framebuffer. The state is mutated so that when a non-default
 				// framebuffer is bound later on, FRAMEBUFFER_SRGB will be enabled.
 				// (see GlBindFramebuffer below)
-				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */, nil /* watcher */)
 				return
 			}
 
@@ -956,7 +956,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlDeleteBuffers:
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			ids, err := cmd.Buffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			ids, err := cmd.Buffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Buffers()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteBuffers(cnt, buf) })
@@ -970,7 +970,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// framebuffers that are being deleted, and forward them to a fake
 			// call to glBindFramebuffer(XXX, 0) if we find any.
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			fbs, err := cmd.Framebuffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			fbs, err := cmd.Framebuffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				for _, fb := range fbs {
 					if fb == c.Bound().DrawFramebuffer().ID() {
@@ -988,7 +988,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlDeleteProgramPipelines:
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			ids, err := cmd.Pipelines().Slice(0, uint64(cmd.N()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			ids, err := cmd.Pipelines().Slice(0, uint64(cmd.N()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Pipelines()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteProgramPipelines(cnt, buf) })
@@ -997,7 +997,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlDeleteQueries:
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			ids, err := cmd.Queries().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			ids, err := cmd.Queries().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Queries()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteQueries(cnt, buf) })
@@ -1006,7 +1006,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlDeleteRenderbuffers:
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			ids, err := cmd.Renderbuffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			ids, err := cmd.Renderbuffers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Renderbuffers()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteRenderbuffers(cnt, buf) })
@@ -1015,7 +1015,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlDeleteSamplers:
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			ids, err := cmd.Samplers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			ids, err := cmd.Samplers().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Samplers()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteSamplers(cnt, buf) })
@@ -1024,7 +1024,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlDeleteTextures:
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			ids, err := cmd.Textures().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			ids, err := cmd.Textures().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Textures()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteTextures(cnt, buf) })
@@ -1033,7 +1033,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlDeleteTransformFeedbacks:
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			ids, err := cmd.Ids().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			ids, err := cmd.Ids().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().TransformFeedbacks()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteTransformFeedbacks(cnt, buf) })
@@ -1042,7 +1042,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlDeleteVertexArrays:
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-			ids, err := cmd.Arrays().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			ids, err := cmd.Arrays().Slice(0, uint64(cmd.Count()), s.MemoryLayout).Read(ctx, cmd, s, nil, nil)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().VertexArrays()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteVertexArrays(cnt, buf) })
@@ -1150,7 +1150,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				cmd := cmd.Clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					return cmd.Mutate(ctx, id, s, nil) // do not call, just mutate
+					return cmd.Mutate(ctx, id, s, nil, nil) // do not call, just mutate
 				}))
 
 				// Rebind the currently bound 2D texture.  This might seem like a no-op, however,
@@ -1197,7 +1197,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlFramebufferTextureMultiviewOVR:
 			{
-				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */, nil /* watcher */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would lose the knowledge about view count.
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
@@ -1210,7 +1210,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlFramebufferTextureMultisampleMultiviewOVR:
 			{
 				// TODO: Support multi-sample rendering.
-				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */, nil /* watcher */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would lose the knowledge about view count.
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {

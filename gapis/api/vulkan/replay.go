@@ -153,7 +153,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 
 	if image, ok := cmd.(*VkCreateImage); ok {
 		pinfo := image.PCreateInfo()
-		info := pinfo.MustRead(ctx, image, s, nil)
+		info := pinfo.MustRead(ctx, image, s, nil, nil)
 
 		if newUsage, changed := patchImageUsage(info.Usage()); changed {
 			device := image.Device()
@@ -189,7 +189,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 	} else if swapchain, ok := cmd.(*VkCreateSwapchainKHR); ok {
 		pinfo := swapchain.PCreateInfo()
-		info := pinfo.MustRead(ctx, swapchain, s, nil)
+		info := pinfo.MustRead(ctx, swapchain, s, nil, nil)
 
 		if newUsage, changed := patchImageUsage(info.ImageUsage()); changed {
 			device := swapchain.Device()
@@ -220,9 +220,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok {
 		pInfo := createRenderPass.PCreateInfo()
-		info := pInfo.MustRead(ctx, createRenderPass, s, nil)
+		info := pInfo.MustRead(ctx, createRenderPass, s, nil, nil)
 		pAttachments := info.PAttachments()
-		attachments := pAttachments.Slice(0, uint64(info.AttachmentCount()), l).MustRead(ctx, createRenderPass, s, nil)
+		attachments := pAttachments.Slice(0, uint64(info.AttachmentCount()), l).MustRead(ctx, createRenderPass, s, nil, nil)
 		changed := false
 		for i := range attachments {
 			if attachments[i].StoreOp() == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
@@ -268,10 +268,10 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
-		numDev := e.PPhysicalDeviceCount().Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0]
+		numDev := e.PPhysicalDeviceCount().Slice(0, 1, l).MustRead(ctx, cmd, s, nil, nil)[0]
 		devSlice := e.PPhysicalDevices().Slice(0, uint64(numDev), l)
-		devs := devSlice.MustRead(ctx, cmd, s, nil)
-		allProps := externs{ctx, cmd, id, s, nil}.fetchPhysicalDeviceProperties(e.Instance(), devSlice)
+		devs := devSlice.MustRead(ctx, cmd, s, nil, nil)
+		allProps := externs{ctx, cmd, id, s, nil, nil}.fetchPhysicalDeviceProperties(e.Instance(), devSlice)
 		propList := []VkPhysicalDeviceProperties{}
 		for _, dev := range devs {
 			propList = append(propList, allProps.PhyDevToProperties().Get(dev).Clone(s.Arena, api.CloneContext{}))

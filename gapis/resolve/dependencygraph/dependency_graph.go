@@ -198,7 +198,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 					// dependency info, we still need to mutate it in the new state,
 					// because following commands in other APIs may depends on the
 					// side effect of the current command.
-					if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
+					if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 						log.W(ctx, "Command %v %v: %v", id, cmd, err)
 						g.Behaviours[index].Aborted = true
 					}

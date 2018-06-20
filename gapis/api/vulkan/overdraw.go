@@ -187,7 +187,7 @@ func (*stencilOverdraw) rewriteImageCreate(ctx context.Context,
 	}
 	cmd.Extras().Observations().ApplyReads(gs.Memory.ApplicationPool())
 
-	createInfo := cmd.PCreateInfo().MustRead(ctx, cmd, gs, nil)
+	createInfo := cmd.PCreateInfo().MustRead(ctx, cmd, gs, nil, nil)
 	mask := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 		VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	if !isDepthFormat(createInfo.Fmt()) || (createInfo.Usage()&mask == mask) {
@@ -201,7 +201,7 @@ func (*stencilOverdraw) rewriteImageCreate(ctx context.Context,
 	if !newCreateInfo.PQueueFamilyIndices().IsNullptr() {
 		indices := newCreateInfo.PQueueFamilyIndices().Slice(0,
 			uint64(newCreateInfo.QueueFamilyIndexCount()), gs.MemoryLayout).
-			MustRead(ctx, cmd, gs, nil)
+			MustRead(ctx, cmd, gs, nil, nil)
 		data := allocAndRead(indices)
 		newCreateInfo.SetPQueueFamilyIndices(NewU32ᶜᵖ(data.Ptr()))
 	}
@@ -214,11 +214,11 @@ func (*stencilOverdraw) rewriteImageCreate(ctx context.Context,
 	allocatorPtr := memory.Nullptr
 	if !cmd.PAllocator().IsNullptr() {
 		allocatorPtr = allocAndRead(
-			cmd.PAllocator().MustRead(ctx, cmd, gs, nil)).Ptr()
+			cmd.PAllocator().MustRead(ctx, cmd, gs, nil, nil)).Ptr()
 	}
 
 	cmd.Extras().Observations().ApplyWrites(gs.Memory.ApplicationPool())
-	idData := alloc(cmd.PImage().MustRead(ctx, cmd, gs, nil))
+	idData := alloc(cmd.PImage().MustRead(ctx, cmd, gs, nil, nil))
 
 	newCmd := cb.VkCreateImage(cmd.Device(), newCreateInfoPtr,
 		allocatorPtr, idData.Ptr(),
@@ -240,13 +240,13 @@ func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
 	var lastRenderPassIdx api.SubCmdIdx
 	submit.Extras().Observations().ApplyReads(gs.Memory.ApplicationPool())
 	submitInfos := submit.PSubmits().Slice(0, uint64(submit.SubmitCount()),
-		gs.MemoryLayout).MustRead(ctx, submit, gs, nil)
+		gs.MemoryLayout).MustRead(ctx, submit, gs, nil, nil)
 	for i, si := range submitInfos {
 		if len(lastIdx) >= 1 && lastIdx[0] < uint64(i) {
 			break
 		}
 		cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()),
-			gs.MemoryLayout).MustRead(ctx, submit, gs, nil)
+			gs.MemoryLayout).MustRead(ctx, submit, gs, nil, nil)
 		for j, buf := range cmdBuffers {
 			if len(lastIdx) >= 2 && lastIdx[0] == uint64(i) && lastIdx[1] < uint64(j) {
 				break
@@ -1155,7 +1155,7 @@ func (*stencilOverdraw) createShaderModule(ctx context.Context,
 	}))
 	moduleData := alloc(module)
 
-	words := info.Words().MustRead(ctx, nil, gs, nil)
+	words := info.Words().MustRead(ctx, nil, gs, nil, nil)
 	wordsData := alloc(words)
 	createInfoData := alloc(NewVkShaderModuleCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // sType
@@ -1200,7 +1200,7 @@ func (*stencilOverdraw) createSpecializationInfo(ctx context.Context,
 		return 0
 	}
 	mapEntries, mapEntryCount := unpackMapWithAllocator(allocAndRead, info.Specializations().All())
-	data := info.Data().MustRead(ctx, nil, gs, nil)
+	data := info.Data().MustRead(ctx, nil, gs, nil, nil)
 	return NewVkSpecializationInfoᶜᵖ(allocAndRead(
 		NewVkSpecializationInfo(a,
 			mapEntryCount,                                   // mapEntryCount
@@ -1781,7 +1781,7 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	submit.Extras().Observations().ApplyReads(gs.Memory.ApplicationPool())
 	submitCount := submit.SubmitCount()
 	submitInfos := submit.PSubmits().Slice(0, uint64(submitCount), l).MustRead(
-		ctx, submit, gs, nil)
+		ctx, submit, gs, nil, nil)
 
 	newSubmitInfos := make([]VkSubmitInfo, submitCount)
 	for i := uint32(0); i < submitCount; i++ {
@@ -1792,24 +1792,24 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 		if count := uint64(si.WaitSemaphoreCount()); count > 0 {
 			waitSemPtr = allocAndRead(si.PWaitSemaphores().
 				Slice(0, count, l).
-				MustRead(ctx, submit, gs, nil)).Ptr()
+				MustRead(ctx, submit, gs, nil, nil)).Ptr()
 			waitDstStagePtr = allocAndRead(si.PWaitDstStageMask().
 				Slice(0, count, l).
-				MustRead(ctx, submit, gs, nil)).Ptr()
+				MustRead(ctx, submit, gs, nil, nil)).Ptr()
 		}
 
 		signalSemPtr := memory.Nullptr
 		if count := uint64(si.SignalSemaphoreCount()); count > 0 {
 			signalSemPtr = allocAndRead(si.PSignalSemaphores().
 				Slice(0, count, l).
-				MustRead(ctx, submit, gs, nil)).Ptr()
+				MustRead(ctx, submit, gs, nil, nil)).Ptr()
 		}
 
 		cmdBufferPtr := memory.Nullptr
 		if count := uint64(si.CommandBufferCount()); count > 0 {
 			cmdBuffers := si.PCommandBuffers().
 				Slice(0, count, l).
-				MustRead(ctx, submit, gs, nil)
+				MustRead(ctx, submit, gs, nil, nil)
 			if uint64(i) == rpBeginIdx[0] {
 				newCommandBuffer, err :=
 					s.createCommandBuffer(ctx, cb, gs, st, a,

@@ -545,9 +545,9 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, format
 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT | VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		depthLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers().Get(layer).Levels().Get(level)
-		depthData := depthLevel.Data().MustRead(ctx, nil, s, nil)
+		depthData := depthLevel.Data().MustRead(ctx, nil, s, nil, nil)
 		stencilLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).Layers().Get(layer).Levels().Get(level)
-		stencilData := stencilLevel.Data().MustRead(ctx, nil, s, nil)
+		stencilData := stencilLevel.Data().MustRead(ctx, nil, s, nil, nil)
 		dsData := make([]uint8, len(depthData)+len(stencilData))
 
 		var dStep, sStep int
@@ -742,7 +742,7 @@ func (s ShaderModuleObjectʳ) ResourceType(ctx context.Context) api.ResourceType
 // ResourceData returns the resource data given the current state.
 func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceData()")
-	words := s.Words().MustRead(ctx, nil, t, nil)
+	words := s.Words().MustRead(ctx, nil, t, nil, nil)
 	source := shadertools.DisassembleSpirvBinary(words)
 	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source}), nil
 }
@@ -793,7 +793,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: c.Arena} // TODO: We probably should have a new arena passed in here!
 	state := c.NewState(ctx)
-	cmd.Mutate(ctx, api.CmdNoID, state, nil)
+	cmd.Mutate(ctx, api.CmdNoID, state, nil, nil)
 
 	shader := data.GetShader()
 	var codeSlice interface{}
@@ -820,7 +820,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	pAlloc := memory.Pointer(cmd.PAllocator())
 	pShaderModule := memory.Pointer(cmd.PShaderModule())
 	result := cmd.Result()
-	createInfo := cmd.PCreateInfo().MustRead(ctx, cmd, state, nil)
+	createInfo := cmd.PCreateInfo().MustRead(ctx, cmd, state, nil, nil)
 
 	createInfo.SetPCode(NewU32ᶜᵖ(code.Ptr()))
 	createInfo.SetCodeSize(memory.Size(codeSize))

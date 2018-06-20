@@ -131,7 +131,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForCommand(
 	ctx context.Context, s *api.GlobalState, id api.CmdID, cmd api.Cmd, g *dependencygraph.DependencyGraph) dependencygraph.CmdBehaviour {
 	b := dependencygraph.CmdBehaviour{}
 	c := GetContext(s, cmd.Thread())
-	if err := cmd.Mutate(ctx, id, s, nil /* builder */); err != nil {
+	if err := cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */); err != nil {
 		log.W(ctx, "Command %v %v: %v", id, cmd, err)
 		return dependencygraph.CmdBehaviour{Aborted: true}
 	}
@@ -232,7 +232,7 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForCommand(
 				texData, _ := getTextureDataAndSize(ctx, cmd, id, s, c.Bound().TextureUnit(), cmd.Target(), cmd.Level())
 				b.Modify(g, texData)
 			case *GlGenerateMipmap:
-				tex, err := subGetBoundTextureOrErrorInvalidEnum(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target())
+				tex, err := subGetBoundTextureOrErrorInvalidEnum(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, nil, cmd.Target())
 				if err != nil {
 					log.E(ctx, "Can not find bound texture %v", cmd.Target())
 				}
@@ -300,14 +300,14 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *ap
 		if uniform.Type() == GLenum_GL_FLOAT_VEC4 || uniform.Type() == GLenum_GL_FLOAT_MAT4 {
 			continue // Optimization - skip the two most common types which we know are not samplers.
 		}
-		target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, uniform.Type())
+		target, _ := subGetTextureTargetFromSamplerType(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, nil, uniform.Type())
 		if target == GLenum_GL_NONE {
 			continue // Not a sampler type
 		}
-		units := AsU32ˢ(s.Arena, uniform.Values(), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
+		units := AsU32ˢ(s.Arena, uniform.Values(), s.MemoryLayout).MustRead(ctx, cmd, s, nil, nil)
 		for _, unit := range units {
 			if tu := c.Objects().TextureUnits().Get(TextureUnitId(unit)); !tu.IsNil() {
-				tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, tu, target)
+				tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, nil, tu, target)
 				if !tex.IsNil() && err == nil {
 					if !tex.EGLImage().IsNil() {
 						stateKeys = append(stateKeys, eglImageDataKey{tex.EGLImage()})
@@ -330,7 +330,7 @@ func getTextureDataAndSize(
 	target GLenum,
 	level GLint) (dependencygraph.StateKey, dependencygraph.StateKey) {
 
-	tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, unit, target)
+	tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, nil, unit, target)
 	if tex.IsNil() || err != nil {
 		log.E(ctx, "Can not find texture %v in unit %v", target, unit)
 		return nil, nil

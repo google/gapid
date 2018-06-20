@@ -102,8 +102,8 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 						if old.ResourceID(ctx, sb.oldState) == new.ResourceID(ctx, sb.newState) {
 							return // The pool IDs are different, but the resource IDs match exactly.
 						}
-						oldData := old.MustRead(ctx, nil, sb.oldState, nil)
-						newData := new.MustRead(ctx, nil, sb.newState, nil)
+						oldData := old.MustRead(ctx, nil, sb.oldState, nil, nil)
+						newData := new.MustRead(ctx, nil, sb.newState, nil, nil)
 						if reflect.DeepEqual(oldData, newData) {
 							return // The pool IDs are different, but the actual data matches exactly.
 						}
@@ -160,7 +160,7 @@ func (sb *stateBuilder) write(cmd api.Cmd) {
 		fn(cmd)
 	}
 	sb.preCmd = sb.preCmd[:0]
-	if err := cmd.Mutate(sb.ctx, api.CmdNoID, sb.newState, nil); err != nil {
+	if err := cmd.Mutate(sb.ctx, api.CmdNoID, sb.newState, nil, nil); err != nil {
 		log.W(sb.ctx, "Initial cmd %v: %v - %v", len(sb.cmds), cmd, err)
 	} else {
 		log.D(sb.ctx, "Initial cmd %v: %v", len(sb.cmds), cmd)
@@ -366,7 +366,7 @@ func (sb *stateBuilder) eglImage(ctx context.Context, img EGLImageʳ) {
 	write, cb := sb.write, sb.cb
 
 	// TODO: This might not work if the target texture object has been deleted.
-	attribs := img.AttribList().MustRead(ctx, nil, sb.oldState, nil)
+	attribs := img.AttribList().MustRead(ctx, nil, sb.oldState, nil, nil)
 	cmd := cb.EglCreateImageKHR(img.Display(), img.Context(), img.Target(), img.Buffer(), sb.readsData(ctx, attribs), img.ID())
 	if extra := img.Extra(); !extra.IsNil() {
 		cmd.Extras().Add(extra)
