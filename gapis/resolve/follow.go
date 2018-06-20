@@ -26,7 +26,7 @@ import (
 // Follow resolves the path to the object that the value at Path links to.
 // If the value at Path does not link to anything then nil is returned.
 func Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
-	obj, err := database.Build(ctx, &FollowResolvable{p})
+	obj, err := database.Build(ctx, &FollowResolvable{Path: p})
 	if err != nil {
 		return nil, err
 	}

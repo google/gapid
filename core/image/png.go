@@ -45,7 +45,7 @@ func PNGFrom(data []byte) (*Data, error) {
 
 // NewPNG returns a format representing the the texture compression format with the
 // same name.
-func NewPNG(name string) *Format { return &Format{name, &Format_Png{&FmtPNG{}}} }
+func NewPNG(name string) *Format { return &Format{Name: name, Format: &Format_Png{&FmtPNG{}}} }
 
 func (f *FmtPNG) key() interface{}                   { return *f }
 func (*FmtPNG) size(w, h, d int) int                 { return -1 }

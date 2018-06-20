@@ -155,7 +155,11 @@ func getUncompressedStreamFormat(unsizedFormat, ty GLenum) (format *stream.Forma
 		if datatype.IsInteger() && sampleAsFloat {
 			sampling = stream.LinearNormalized // Convert int to float
 		}
-		format.Components = append(format.Components, &stream.Component{datatype, sampling, channel})
+		format.Components = append(format.Components, &stream.Component{
+			DataType: datatype,
+			Sampling: sampling,
+			Channel:  channel,
+		})
 	}
 
 	// Read the components in increasing memory order (assuming little-endian architecture).

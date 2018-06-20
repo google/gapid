@@ -33,7 +33,7 @@ import (
 // with the object, value or memory at p replaced with v. The path returned is
 // identical to p, but with the base changed to refer to the new capture.
 func Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
-	obj, err := database.Build(ctx, &SetResolvable{p, service.NewValue(v)})
+	obj, err := database.Build(ctx, &SetResolvable{Path: p, Value: service.NewValue(v)})
 	if err != nil {
 		return nil, err
 	}

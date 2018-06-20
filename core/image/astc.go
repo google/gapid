@@ -22,7 +22,7 @@ import (
 )
 
 func NewASTC(name string, blockWidth, blockHeight uint32, srgb bool) *Format {
-	return &Format{name, &Format_Astc{&FmtASTC{blockWidth, blockHeight, srgb}}}
+	return &Format{Name: name, Format: &Format_Astc{&FmtASTC{BlockWidth: blockWidth, BlockHeight: blockHeight, Srgb: srgb}}}
 }
 
 func (f *FmtASTC) key() interface{} {

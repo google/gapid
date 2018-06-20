@@ -33,7 +33,7 @@ import (
 
 // StateTree resolves the specified state tree path.
 func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, error) {
-	id, err := database.Store(ctx, &StateTreeResolvable{c.State, c.ArrayGroupSize})
+	id, err := database.Store(ctx, &StateTreeResolvable{Path: c.State, ArrayGroupSize: c.ArrayGroupSize})
 	if err != nil {
 		return nil, err
 	}

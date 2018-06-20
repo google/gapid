@@ -26,7 +26,7 @@ var (
 // NewETC1_RGB_U8_NORM returns a format representing the ETC1_RGB8 block texture
 // compression format.
 func NewETC1_RGB_U8_NORM(name string) *Format {
-	return &Format{name, &Format_Etc1RgbU8Norm{&FmtETC1_RGB_U8_NORM{}}}
+	return &Format{Name: name, Format: &Format_Etc1RgbU8Norm{&FmtETC1_RGB_U8_NORM{}}}
 }
 
 func (f *FmtETC1_RGB_U8_NORM) key() interface{} {

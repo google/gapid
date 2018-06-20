@@ -26,7 +26,7 @@ var (
 // NewS3_DXT1_RGBA returns a format representing the S3_DXT1_RGBA block texture
 // compression.
 func NewS3_DXT1_RGBA(name string) *Format {
-	return &Format{name, &Format_S3Dxt1Rgba{&FmtS3_DXT1_RGBA{}}}
+	return &Format{Name: name, Format: &Format_S3Dxt1Rgba{&FmtS3_DXT1_RGBA{}}}
 }
 
 func (f *FmtS3_DXT1_RGBA) key() interface{} {

@@ -43,10 +43,7 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info, error) {
 // CommandThumbnail resolves and returns the thumbnail for the framebuffer at p.
 func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt bool, p *path.Command) (*image.Info, error) {
 	imageInfoPath, err := FramebufferAttachment(ctx,
-		&service.ReplaySettings{
-			nil,
-			noOpt,
-		},
+		&service.ReplaySettings{DisableReplayOptimization: noOpt},
 		p,
 		api.FramebufferAttachment_Color0,
 		&service.RenderSettings{

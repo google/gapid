@@ -47,7 +47,7 @@ type frameBindings struct {
 }
 
 func getFrameBindings(ctx context.Context, c *path.Capture) (*frameBindings, error) {
-	obj, err := database.Build(ctx, &FrameBindingsResolvable{c})
+	obj, err := database.Build(ctx, &FrameBindingsResolvable{Capture: c})
 	if err != nil {
 		return nil, err
 	}

@@ -31,7 +31,7 @@ import (
 
 // Report resolves the report for the given path.
 func Report(ctx context.Context, p *path.Report) (*service.Report, error) {
-	obj, err := database.Build(ctx, &ReportResolvable{p})
+	obj, err := database.Build(ctx, &ReportResolvable{Path: p})
 	if err != nil {
 		return nil, err
 	}

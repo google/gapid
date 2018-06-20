@@ -29,19 +29,19 @@ var (
 // NewATC_RGB_AMD returns a format representing the ATC_RGB_AMD block texture
 // compression format.
 func NewATC_RGB_AMD(name string) *Format {
-	return &Format{name, &Format_AtcRgbAmd{&FmtATC_RGB_AMD{}}}
+	return &Format{Name: name, Format: &Format_AtcRgbAmd{&FmtATC_RGB_AMD{}}}
 }
 
 // NewATC_RGBA_EXPLICIT_ALPHA_AMD returns a format representing the
 // ATC_RGBA_EXPLICIT_ALPHA_AMD block texture compression format.
 func NewATC_RGBA_EXPLICIT_ALPHA_AMD(name string) *Format {
-	return &Format{name, &Format_AtcRgbaExplicitAlphaAmd{&FmtATC_RGBA_EXPLICIT_ALPHA_AMD{}}}
+	return &Format{Name: name, Format: &Format_AtcRgbaExplicitAlphaAmd{&FmtATC_RGBA_EXPLICIT_ALPHA_AMD{}}}
 }
 
 // NewATC_RGBA_INTERPOLATED_ALPHA_AMD returns a format representing the
 // ATC_RGBA_INTERPOLATED_ALPHA_AMD block compression format.
 func NewATC_RGBA_INTERPOLATED_ALPHA_AMD(name string) *Format {
-	return &Format{name, &Format_AtcRgbaInterpolatedAlphaAmd{&FmtATC_RGBA_INTERPOLATED_ALPHA_AMD{}}}
+	return &Format{Name: name, Format: &Format_AtcRgbaInterpolatedAlphaAmd{&FmtATC_RGBA_INTERPOLATED_ALPHA_AMD{}}}
 }
 
 func (f *FmtATC_RGB_AMD) key() interface{} {

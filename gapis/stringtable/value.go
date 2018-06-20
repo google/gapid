@@ -25,10 +25,10 @@ import (
 func ToValue(v interface{}) *Value {
 	switch v := v.(type) {
 	case *path.Any:
-		return &Value{&Value_Path{Path: v}}
+		return &Value{Value: &Value_Path{Path: v}}
 	default:
 		if val := box.NewValue(v); val != nil {
-			return &Value{&Value_Box{Box: val}}
+			return &Value{Value: &Value_Box{Box: val}}
 		}
 		panic(fmt.Errorf("Unsupported value type %T", v))
 	}

@@ -53,7 +53,7 @@ func init() {
 // NewRGTC1_BC4_R_U8_NORM returns a format representing the RGTC1_BC4_R_U8_NORM
 // block texture compression.
 func NewRGTC1_BC4_R_U8_NORM(name string) *Format {
-	return &Format{name, &Format_Rgtc1Bc4RU8Norm{&FmtRGTC1_BC4_R_U8_NORM{}}}
+	return &Format{Name: name, Format: &Format_Rgtc1Bc4RU8Norm{&FmtRGTC1_BC4_R_U8_NORM{}}}
 }
 
 func (f *FmtRGTC1_BC4_R_U8_NORM) key() interface{} {
@@ -72,7 +72,7 @@ func (*FmtRGTC1_BC4_R_U8_NORM) channels() stream.Channels {
 // NewRGTC1_BC4_R_S8_NORM returns a format representing the RGTC1_BC4_R_S8_NORM
 // block texture compression.
 func NewRGTC1_BC4_R_S8_NORM(name string) *Format {
-	return &Format{name, &Format_Rgtc1Bc4RS8Norm{&FmtRGTC1_BC4_R_S8_NORM{}}}
+	return &Format{Name: name, Format: &Format_Rgtc1Bc4RS8Norm{&FmtRGTC1_BC4_R_S8_NORM{}}}
 }
 
 func (f *FmtRGTC1_BC4_R_S8_NORM) key() interface{} {
@@ -91,7 +91,7 @@ func (*FmtRGTC1_BC4_R_S8_NORM) channels() stream.Channels {
 // NewRGTC2_BC5_RG_U8_NORM returns a format representing the RGTC2_BC5_RG_U8_NORM
 // block texture compression.
 func NewRGTC2_BC5_RG_U8_NORM(name string) *Format {
-	return &Format{name, &Format_Rgtc2Bc5RgU8Norm{&FmtRGTC2_BC5_RG_U8_NORM{}}}
+	return &Format{Name: name, Format: &Format_Rgtc2Bc5RgU8Norm{&FmtRGTC2_BC5_RG_U8_NORM{}}}
 }
 
 func (f *FmtRGTC2_BC5_RG_U8_NORM) key() interface{} {
@@ -110,7 +110,7 @@ func (*FmtRGTC2_BC5_RG_U8_NORM) channels() stream.Channels {
 // NewRGTC2_BC5_RG_S8_NORM returns a format representing the RGTC2_BC5_RG_S8_NORM
 // block texture compression.
 func NewRGTC2_BC5_RG_S8_NORM(name string) *Format {
-	return &Format{name, &Format_Rgtc2Bc5RgS8Norm{&FmtRGTC2_BC5_RG_S8_NORM{}}}
+	return &Format{Name: name, Format: &Format_Rgtc2Bc5RgS8Norm{&FmtRGTC2_BC5_RG_S8_NORM{}}}
 }
 
 func (f *FmtRGTC2_BC5_RG_S8_NORM) key() interface{} {

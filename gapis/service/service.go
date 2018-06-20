@@ -168,15 +168,15 @@ func NewError(err error) *Error {
 	for i := 0; i < 64 && cause != nil; i++ {
 		switch err := cause.(type) {
 		case *ErrDataUnavailable:
-			return &Error{&Error_ErrDataUnavailable{err}}
+			return &Error{Err: &Error_ErrDataUnavailable{err}}
 		case *ErrInvalidPath:
-			return &Error{&Error_ErrInvalidPath{err}}
+			return &Error{Err: &Error_ErrInvalidPath{err}}
 		case *ErrInvalidArgument:
-			return &Error{&Error_ErrInvalidArgument{err}}
+			return &Error{Err: &Error_ErrInvalidArgument{err}}
 		case *ErrPathNotFollowable:
-			return &Error{&Error_ErrPathNotFollowable{err}}
+			return &Error{Err: &Error_ErrPathNotFollowable{err}}
 		case *ErrUnsupportedVersion:
-			return &Error{&Error_ErrUnsupportedVersion{err}}
+			return &Error{Err: &Error_ErrUnsupportedVersion{err}}
 		}
 
 		causer, ok := cause.(causer)
@@ -185,7 +185,7 @@ func NewError(err error) *Error {
 		}
 		cause = causer.Cause()
 	}
-	return &Error{&Error_ErrInternal{&ErrInternal{err.Error()}}}
+	return &Error{Err: &Error_ErrInternal{&ErrInternal{Message: err.Error()}}}
 }
 
 // Get returns the boxed error.
@@ -198,53 +198,53 @@ func NewValue(v interface{}) *Value {
 	case nil:
 		return &Value{}
 	case *Capture:
-		return &Value{&Value_Capture{v}}
+		return &Value{Val: &Value_Capture{v}}
 	case *Context:
-		return &Value{&Value_Context{v}}
+		return &Value{Val: &Value_Context{v}}
 	case *Contexts:
-		return &Value{&Value_Contexts{v}}
+		return &Value{Val: &Value_Contexts{v}}
 	case *Commands:
-		return &Value{&Value_Commands{v}}
+		return &Value{Val: &Value_Commands{v}}
 	case *CommandTree:
-		return &Value{&Value_CommandTree{v}}
+		return &Value{Val: &Value_CommandTree{v}}
 	case *CommandTreeNode:
-		return &Value{&Value_CommandTreeNode{v}}
+		return &Value{Val: &Value_CommandTreeNode{v}}
 	case *ConstantSet:
-		return &Value{&Value_ConstantSet{v}}
+		return &Value{Val: &Value_ConstantSet{v}}
 	case *Event:
-		return &Value{&Value_Event{v}}
+		return &Value{Val: &Value_Event{v}}
 	case *Events:
-		return &Value{&Value_Events{v}}
+		return &Value{Val: &Value_Events{v}}
 	case *Memory:
-		return &Value{&Value_Memory{v}}
+		return &Value{Val: &Value_Memory{v}}
 	case *path.Any:
-		return &Value{&Value_Path{v}}
+		return &Value{Val: &Value_Path{v}}
 	case path.Node:
-		return &Value{&Value_Path{v.Path()}}
+		return &Value{Val: &Value_Path{v.Path()}}
 	case *Report:
-		return &Value{&Value_Report{v}}
+		return &Value{Val: &Value_Report{v}}
 	case *Resources:
-		return &Value{&Value_Resources{v}}
+		return &Value{Val: &Value_Resources{v}}
 	case *StateTree:
-		return &Value{&Value_StateTree{v}}
+		return &Value{Val: &Value_StateTree{v}}
 	case *StateTreeNode:
-		return &Value{&Value_StateTreeNode{v}}
+		return &Value{Val: &Value_StateTreeNode{v}}
 	case *api.Command:
-		return &Value{&Value_Command{v}}
+		return &Value{Val: &Value_Command{v}}
 	case *api.Mesh:
-		return &Value{&Value_Mesh{v}}
+		return &Value{Val: &Value_Mesh{v}}
 	case *api.Metrics:
-		return &Value{&Value_Metrics{v}}
+		return &Value{Val: &Value_Metrics{v}}
 	case *api.ResourceData:
-		return &Value{&Value_ResourceData{v}}
+		return &Value{Val: &Value_ResourceData{v}}
 	case *image.Info:
-		return &Value{&Value_ImageInfo{v}}
+		return &Value{Val: &Value_ImageInfo{v}}
 	case *device.Instance:
-		return &Value{&Value_Device{v}}
+		return &Value{Val: &Value_Device{v}}
 
 	default:
 		if v := box.NewValue(v); v != nil {
-			return &Value{&Value_Box{v}}
+			return &Value{Val: &Value_Box{v}}
 		}
 	}
 	panic(fmt.Errorf("Cannot box value type %T", v))
