@@ -19,8 +19,8 @@ load("@gapid//tools/build/rules:grpc_c++.bzl", "cc_grpc_library")
 proto_library(
     name = "replay_service_proto",
     srcs = ["service.proto"],
-    deps = ["//gapis/service/severity:severity_proto"],
     visibility = ["//visibility:public"],
+    deps = ["//gapis/service/severity:severity_proto"],
 )
 
 go_proto_library(
@@ -29,7 +29,7 @@ go_proto_library(
     importpath = "github.com/google/gapid/gapir/replay_service",
     proto = ":replay_service_proto",
     visibility = ["//visibility:public"],
-    deps = ["//gapis/service/severity:severity_go_proto"],
+    deps = ["//gapis/service/severity:go_default_library"],
 )
 
 go_library(
@@ -37,13 +37,11 @@ go_library(
     embed = [":replay_service_go_proto"],
     importpath = "github.com/google/gapid/gapir/replay_service",
     visibility = ["//visibility:public"],
-    deps = [],
 )
 
 cc_grpc_library(
-  name = "replay_service_cc",
-  proto = ["replay_service_proto"],
-  dep_cc_proto_libs = ["//gapis/service/severity:severity_cc_proto"],
-  visibility = ["//visibility:public"]
+    name = "replay_service_cc",
+    dep_cc_proto_libs = ["//gapis/service/severity:severity_cc_proto"],
+    proto = ["replay_service_proto"],
+    visibility = ["//visibility:public"],
 )
-

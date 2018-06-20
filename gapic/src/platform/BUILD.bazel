@@ -19,27 +19,30 @@ java_library(
         "//tools/build:darwin": glob(["osx/**/*.java"]),
         "//tools/build:windows": glob(["windows/**/*.java"]),
     }),
+    resource_strip_prefix = "gapic/src/platform/",
+    resources = select({
+        "//tools/build:linux": [":liblinux_glcanvas.so"],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
     deps = [
         "//gapic/third_party:lwjgl",
         "//gapic/third_party:swt",
     ],
-    resources = select({
-        "//tools/build:linux": [":liblinux_glcanvas.so"],
-        "//conditions:default": [],
-    }),
-    resource_strip_prefix = "gapic/src/platform/",
 )
 
 cc_binary(
     name = "liblinux_glcanvas.so",
     srcs = ["linux/glcanvas.cc"],
+    linkopts = [
+        "-lGL",
+        "-lX11",
+    ],
+    linkshared = 1,
     deps = [
         ":jni.h",
-        ":jni_md.h"
+        ":jni_md.h",
     ],
-    linkopts = ["-lGL", "-lX11"],
-    linkshared = 1,
 )
 
 cc_library(

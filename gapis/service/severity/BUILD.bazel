@@ -19,7 +19,6 @@ proto_library(
     name = "severity_proto",
     srcs = ["severity.proto"],
     visibility = ["//visibility:public"],
-    deps = [],
 )
 
 go_proto_library(
@@ -28,7 +27,6 @@ go_proto_library(
     importpath = "github.com/google/gapid/gapis/service/severity",
     proto = ":severity_proto",
     visibility = ["//visibility:public"],
-    deps = [],
 )
 
 go_library(
@@ -36,11 +34,10 @@ go_library(
     embed = [":severity_go_proto"],
     importpath = "github.com/google/gapid/gapis/service/severity",
     visibility = ["//visibility:public"],
-    deps = [],
 )
 
 cc_proto_library(
     name = "severity_cc_proto",
-    deps = [":severity_proto"],
     visibility = ["//visibility:public"],
+    deps = [":severity_proto"],
 )

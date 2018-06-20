@@ -63,7 +63,6 @@ go_library(
         "//core/os/device/remotessh:go_default_library",
         "//core/os/file:go_default_library",
         "//core/os/process:go_default_library",
-        "//core/os/shell:go_default_library",
         "//core/text/reflow:go_default_library",
         "//core/video:go_default_library",
         "//core/vulkan/loader:go_default_library",
