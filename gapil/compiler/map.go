@@ -133,11 +133,11 @@ func (c *C) defineMapTypes() {
 		}
 
 		// Delegate the methods of this map on to the common implmentation.
-		c.delegate(mi.Contains, impl.Contains)
-		c.delegate(mi.Index, impl.Index)
-		c.delegate(mi.Lookup, impl.Lookup)
-		c.delegate(mi.Remove, impl.Remove)
-		c.delegate(mi.Clear, impl.Clear)
+		c.Delegate(mi.Contains, impl.Contains)
+		c.Delegate(mi.Index, impl.Index)
+		c.Delegate(mi.Lookup, impl.Lookup)
+		c.Delegate(mi.Remove, impl.Remove)
+		c.Delegate(mi.Clear, impl.Clear)
 
 		c.T.Maps[t] = mi
 	}

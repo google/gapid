@@ -36,8 +36,8 @@ func (f *refRel) declare(c *C, name, ref, rel string, ty codegen.Type) {
 }
 
 func (f *refRel) delegate(c *C, to refRel) {
-	c.delegate(f.reference, to.reference)
-	c.delegate(f.release, to.release)
+	c.Delegate(f.reference, to.reference)
+	c.Delegate(f.release, to.release)
 }
 
 func (f *refRel) build(
