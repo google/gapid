@@ -37,7 +37,7 @@ type readTexture struct {
 }
 
 func newReadTexture(ctx context.Context, device *device.Instance) *readTexture {
-	targetVersion, _ := ParseVersion(device.Configuration.Drivers.OpenGL.Version)
+	targetVersion, _ := ParseVersion(device.Configuration.Drivers.Opengl.Version)
 	return &readTexture{targetVersion: targetVersion}
 }
 
