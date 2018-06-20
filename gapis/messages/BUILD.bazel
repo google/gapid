@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//tools/build:rules.bzl", "stringgen", "api_library")
+load("//tools/build:rules.bzl", "api_library", "stringgen")
 
 stringgen(
     name = "messages",

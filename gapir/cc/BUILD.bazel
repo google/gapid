@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "apic_template", "mm_library", "cc_copts")
+load("//tools/build:rules.bzl", "apic_template", "cc_copts", "mm_library")
 
 apic_template(
     name = "gles_cc",

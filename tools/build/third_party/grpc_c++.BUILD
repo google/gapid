@@ -43,11 +43,10 @@ package(
 # Load our own 'grpc_cc_library' rules, which respects Android NDK build.
 load(
     "//bazel:grpc_build_system.bzl",
+    "grpc_generate_one_off_targets",
     # "grpc_cc_library",
     "grpc_proto_plugin",
-    "grpc_generate_one_off_targets",
 )
-
 load(
     "@gapid//tools/build/rules:grpc_c++.bzl",
     "grpc_cc_library",
@@ -56,7 +55,7 @@ load(
 config_setting(
     name = "grpc_no_ares",
     values = {
-        "define": "grpc_no_ares=true"
+        "define": "grpc_no_ares=true",
     },
 )
 

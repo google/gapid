@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@gapid//tools/build:rules.bzl", "mm_library", "cc_copts")
+load("@gapid//tools/build:rules.bzl", "cc_copts", "mm_library")
 
 LIB_POSIX = [
     "src/client/minidump_file_writer.cc",
@@ -53,12 +53,12 @@ LIB_MACOS = LIB_POSIX + [
     "src/common/mac/string_utilities.cc",
     "src/client/mac/crash_generation/crash_generation_client.cc",
     "src/client/mac/crash_generation/crash_generation_server.cc",
-    "src/client/mac/handler/breakpad_nlist_64.h", # unqualified import
+    "src/client/mac/handler/breakpad_nlist_64.h",  # unqualified import
     "src/client/mac/handler/breakpad_nlist_64.cc",
     "src/client/mac/handler/dynamic_images.cc",
     "src/client/mac/handler/exception_handler.cc",
     "src/client/mac/handler/minidump_generator.cc",
-    "src/client/mac/handler/protected_memory_allocator.h", # unqualified import
+    "src/client/mac/handler/protected_memory_allocator.h",  # unqualified import
     "src/client/mac/handler/protected_memory_allocator.cc",
 ]
 
@@ -159,13 +159,12 @@ cc_library(
     strip_include_prefix = "src/common/android/include",
 )
 
-
 DUMP_SYMS_POSIX = [
     "src/common/dwarf/bytereader.cc",
     "src/common/dwarf/dwarf2diehandler.cc",
     "src/common/dwarf/dwarf2reader.cc",
     "src/common/dwarf/elf_reader.cc",
-    "src/common/dwarf/elf_reader.h", # unqualified import
+    "src/common/dwarf/elf_reader.h",  # unqualified import
     "src/common/dwarf_cfi_to_module.cc",
     "src/common/dwarf_cu_to_module.cc",
     "src/common/dwarf_line_to_module.cc",

@@ -34,6 +34,10 @@ java_library(
 cc_binary(
     name = "liblinux_glcanvas.so",
     srcs = ["linux/glcanvas.cc"],
+    copts = [
+        "-Iexternal/local_jdk/include",
+        "-Iexternal/local_jdk/include/linux",
+    ],
     linkopts = [
         "-lGL",
         "-lX11",
@@ -42,10 +46,6 @@ cc_binary(
     deps = [
         ":jni.h",
         ":jni_md.h",
-    ],
-    copts = [
-        "-Iexternal/local_jdk/include",
-        "-Iexternal/local_jdk/include/linux",
     ],
 )
 
