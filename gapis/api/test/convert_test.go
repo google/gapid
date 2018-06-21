@@ -15,9 +15,13 @@
 package test
 
 import (
+	"context"
+	"reflect"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/data/dictionary"
+	"github.com/google/gapid/core/data/generic"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
@@ -133,7 +137,6 @@ func TestReferences(t *testing.T) {
 
 func TestEquals(t *testing.T) {
 	ctx := log.Testing(t)
-	assert := assert.To(t)
 
 	a := arena.New()
 	defer a.Dispose()
@@ -141,7 +144,7 @@ func TestEquals(t *testing.T) {
 	ctx = arena.Put(ctx, a)
 	extra := CreateTestExtra(a)
 
-	assert.For("equals").That(extra.Equals(extra)).Equals(true)
+	compare(ctx, extra, extra, "equals")
 }
 
 func TestCloneReferences(t *testing.T) {
@@ -155,51 +158,51 @@ func TestCloneReferences(t *testing.T) {
 	extra := CreateTestExtra(a)
 
 	cloned := extra.Clone(a, api.CloneContext{})
-	assert.For("Data").That(cloned.Data()).Equals(extra.Data())
-	assert.For("Object").That(cloned.Object().Value()).Equals(extra.Object().Value())
-	assert.For("ObjectArray").That(cloned.ObjectArray().Equals(extra.ObjectArray())).Equals(true)
-	assert.For("RefObject").That(cloned.RefObject().Value()).Equals(extra.RefObject().Value())
-	assert.For("RefObjectAlias").That(cloned.RefObject().Value()).Equals(extra.RefObjectAlias().Value())
-	assert.For("NilRefObject").That(cloned.NilRefObject().IsNil()).Equals(true)
-	cloned.Entries().compare(assert.For("Entries"), extra.Entries())
-	cloned.EntriesAlias().compare(assert.For("EntriesAlias"), extra.EntriesAlias())
-	cloned.NilMap().compare(assert.For("NilMap"), extra.NilMap())
-	cloned.Strings().compare(assert.For("Strings"), extra.Strings())
-	cloned.BoolMap().compare(assert.For("BoolMap"), extra.BoolMap())
+	compare(ctx, cloned.Data(), extra.Data(), "Data")
+	compare(ctx, cloned.Object(), extra.Object(), "Object")
+	compare(ctx, cloned.ObjectArray(), extra.ObjectArray(), "ObjectArray")
+	compare(ctx, cloned.RefObject().Value(), extra.RefObject().Value(), "RefObject")
+	compare(ctx, cloned.RefObject().Value(), extra.RefObjectAlias().Value(), "RefObjectAlias")
+	compare(ctx, cloned.NilRefObject().IsNil(), true, "NilRefObject")
+	compare(ctx, cloned.Entries(), extra.Entries(), "Entries")
+	compare(ctx, cloned.EntriesAlias(), extra.EntriesAlias(), "EntriesAlias")
+	compare(ctx, cloned.NilMap(), extra.NilMap(), "NilMap")
+	compare(ctx, cloned.Strings(), extra.Strings(), "Strings")
+	compare(ctx, cloned.BoolMap(), extra.BoolMap(), "BoolMap")
 	// RefEntries
 	assert.For("RefEntries.Len").That(cloned.RefEntries().Len()).Equals(extra.RefEntries().Len())
 	for _, k := range extra.RefEntries().Keys() {
-		assert.For("RefEntries[%d]", k).That(cloned.RefEntries().Contains(k)).Equals(true)
+		compare(ctx, cloned.RefEntries().Contains(k), true, "RefEntries[%d]", k)
 		e, a := extra.RefEntries().Get(k), cloned.RefEntries().Get(k)
 		if e.IsNil() {
-			assert.For("RefEntries[%d]", k).That(a.IsNil()).Equals(true)
+			compare(ctx, a.IsNil(), true, "RefEntries[%d]", k)
 		} else {
-			assert.For("RefEntries[%d]", k).That(a.Value()).Equals(e.Value())
+			compare(ctx, a.Value(), e.Value(), "RefEntries[%d]", k)
 		}
 	}
 	// LinkedList
 	for i, e, a := 0, extra.LinkedList(), cloned.LinkedList(); !e.IsNil(); i++ {
-		assert.For("LinkedList[%d]", i).That(a.IsNil()).Equals(false)
-		assert.For("LinkedList[%d]", i).That(a.Value()).Equals(e.Value())
-		assert.For("LinkedList[%d]", i).That(a.Next().IsNil()).Equals(e.Next().IsNil())
+		compare(ctx, a.IsNil(), false, "LinkedList[%d]", i)
+		compare(ctx, a.Value(), e.Value(), "LinkedList[%d]", i)
+		compare(ctx, a.Next().IsNil(), e.Next().IsNil(), "LinkedList[%d]", i)
 		e, a = e.Next(), a.Next()
 	}
 	// Cycle
-	assert.For("Cycle[0]").That(cloned.Cycle().IsNil()).Equals(false)
-	assert.For("Cycle[0]").That(cloned.Cycle().Value()).Equals(uint32(1))
-	assert.For("Cycle[1]").That(cloned.Cycle().Next().IsNil()).Equals(false)
-	assert.For("Cycle[1]").That(cloned.Cycle().Next().Value()).Equals(uint32(2))
-	assert.For("Cycle").That(cloned.Cycle().Next().Next()).Equals(cloned.Cycle())
+	compare(ctx, cloned.Cycle().IsNil(), false, "Cycle[0]")
+	compare(ctx, cloned.Cycle().Value(), uint32(1), "Cycle[0]")
+	compare(ctx, cloned.Cycle().Next().IsNil(), false, "Cycle[1]")
+	compare(ctx, cloned.Cycle().Next().Value(), uint32(2), "Cycle[1]")
+	compare(ctx, cloned.Cycle().Next().Next(), cloned.Cycle(), "Cycle")
 	// NestedRefs
-	assert.For("NestedRefs.Len").That(cloned.NestedRefs().Len()).Equals(extra.NestedRefs().Len())
+	compare(ctx, cloned.NestedRefs().Len(), extra.NestedRefs().Len(), "NestedRefs.Len")
 	for _, k := range extra.NestedRefs().Keys() {
-		assert.For("NestedRefs[%d]", k).That(cloned.NestedRefs().Contains(k)).Equals(true)
+		compare(ctx, cloned.NestedRefs().Contains(k), true, "NestedRefs[%d]", k)
 		e, a := extra.NestedRefs().Get(k), cloned.NestedRefs().Get(k)
-		assert.For("NestedRefs[%d]", k).That(a.IsNil()).Equals(e.IsNil())
+		compare(ctx, a.IsNil(), e.IsNil(), "NestedRefs[%d]", k)
 		if !e.IsNil() {
-			assert.For("NestedRefs[%d].ref", k).That(a.Ref().IsNil()).Equals(e.Ref().IsNil())
+			compare(ctx, a.Ref().IsNil(), e.Ref().IsNil(), "NestedRefs[%d].ref", k)
 			if !e.Ref().IsNil() {
-				assert.For("NestedRefs[%d].ref", k).That(a.Ref().Value()).Equals(e.Ref().Value())
+				compare(ctx, a.Ref().Value(), e.Ref().Value(), "NestedRefs[%d].ref", k)
 			}
 		}
 	}
@@ -207,54 +210,53 @@ func TestCloneReferences(t *testing.T) {
 	// Test that all cloned references see changes to their referenced objects.
 	cloned.RefObject().SetValue(55)               // was 42
 	cloned.Entries().Add(4, NewTestObject(a, 33)) // was 50
-	assert.For("Object ref").That(cloned.RefObjectAlias()).Equals(cloned.RefObject())
-	assert.For("Map ref").That(cloned.EntriesAlias()).Equals(cloned.Entries())
-	assert.For("RefEntries").That(cloned.RefEntries().Get(0)).Equals(cloned.RefObject())
-	assert.For("NestedRefs[6]").That(cloned.NestedRefs().Get(6).Ref()).Equals(cloned.RefObject())
-	assert.For("NestedRefs[7]").That(cloned.NestedRefs().Get(7).Ref()).Equals(cloned.RefObject())
+	compare(ctx, cloned.RefObjectAlias(), cloned.RefObject(), "Object ref")
+	compare(ctx, cloned.EntriesAlias(), cloned.Entries(), "Map ref")
+	compare(ctx, cloned.RefEntries().Get(0), cloned.RefObject(), "RefEntries")
+	compare(ctx, cloned.NestedRefs().Get(6).Ref(), cloned.RefObject(), "NestedRefs[6]")
+	compare(ctx, cloned.NestedRefs().Get(7).Ref(), cloned.RefObject(), "NestedRefs[7]")
 }
 
-func (actual U32ːTestObjectᵐ) compare(a *assert.Assertion, expected U32ːTestObjectᵐ) bool {
-	a.Compare(*actual.Map, "==", *expected.Map)
-	if !a.Test(actual.Len() == expected.Len()) {
-		return false
-	}
+func compare(ctx context.Context, got, expected interface{}, name string, fmt ...interface{}) bool {
+	g, e := got, expected
 
-	for _, k := range expected.Keys() {
-		if !a.Test(actual.Contains(k) && actual.Get(k).Equals(expected.Get(k))) {
+	if g, e := dictionary.From(g), dictionary.From(e); g != nil && e != nil {
+		// Comparing dictionaries
+		if !assert.For(ctx, "%v.Len", name).That(g.Len()).Equals(e.Len()) {
 			return false
 		}
-	}
 
-	return true
-}
-
-func (actual Stringːu32ᵐ) compare(a *assert.Assertion, expected Stringːu32ᵐ) bool {
-	a.Compare(*actual.Map, "==", *expected.Map)
-	if !a.Test(actual.Len() == expected.Len()) {
-		return false
-	}
-
-	for _, k := range expected.Keys() {
-		if !a.Test(actual.Contains(k) && actual.Get(k) == expected.Get(k)) {
-			return false
+		for _, k := range e.Keys() {
+			e := e.Get(k)
+			g, ok := g.Lookup(k)
+			if !assert.For(ctx, "%v.Contains(%v)", name, k).That(ok).Equals(true) {
+				return false
+			}
+			if !compare(ctx, g, e, "%v got[%v] == expected[%v]", name, k, k) {
+				return false
+			}
 		}
-	}
 
-	return true
-}
-
-func (actual U32ːboolᵐ) compare(a *assert.Assertion, expected U32ːboolᵐ) bool {
-	a.Compare(*actual.Map, "==", *expected.Map)
-	if !a.Test(actual.Len() == expected.Len()) {
-		return false
-	}
-
-	for _, k := range expected.Keys() {
-		if !a.Test(actual.Contains(k) && actual.Get(k) == expected.Get(k)) {
-			return false
+		for _, k := range g.Keys() {
+			_, ok := e.Lookup(k)
+			if !assert.For(ctx, "%v.Missing(%v)", name, k).That(ok).Equals(true) {
+				return false
+			}
 		}
+
+		return true
 	}
 
-	return true
+	type ieq interface{ Equals(generic.TO) bool }
+	ieqTy := reflect.TypeOf((*ieq)(nil)).Elem()
+	gTy, eTy := reflect.TypeOf(g), reflect.TypeOf(e)
+	if m := generic.Implements(reflect.TypeOf(g), ieqTy); m.Ok() && gTy == eTy {
+		// Comparing using Equals() method
+		f := reflect.ValueOf(g).MethodByName("Equals")
+		ok := f.Call([]reflect.Value{reflect.ValueOf(e)})[0].Interface().(bool)
+		return assert.For(ctx, name, fmt...).Compare(g, "==", e).Test(ok)
+	}
+
+	// Comparing using regular assert comparison
+	return assert.For(ctx, name, fmt...).That(g).Equals(e)
 }

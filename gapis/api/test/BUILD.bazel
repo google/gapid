@@ -69,6 +69,7 @@ go_test(
     deps = [
         "//core/assert:go_default_library",
         "//core/data/dictionary:go_default_library",
+        "//core/data/generic:go_default_library",
         "//core/data/id:go_default_library",
         "//core/data/protoconv:go_default_library",
         "//core/event/task:go_default_library",  # keep
