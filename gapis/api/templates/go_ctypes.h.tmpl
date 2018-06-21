@@ -170,6 +170,7 @@
     void       {{$mangled}}__clear(void* map);
     void       {{$mangled}}__reference(void* map);
     void       {{$mangled}}__release(void* map);
+    void*      {{$mangled}}__clone(void* map, arena* arena, void* tracker);
   {{end}}
 ¶
 {{end}}
@@ -209,7 +210,7 @@
   } {{Template "C.TypeName" $}};
 ¶
   {{$mangled := Macro "C.Mangle" $}}
-  {{$name}}* {{$mangled}}__clone({{$name}}* object, arena* arena);
+  {{$name}}* {{$mangled}}__clone({{$name}}* object, arena* arena, void* tracker);
   void       {{$mangled}}__reference(void* object);
   void       {{$mangled}}__release(void* object);
 {{end}}
@@ -243,7 +244,7 @@
     {{end}}
   } {{$.Name}};
 
-  {{$.Name}}* {{$.Name}}__clone({{$.Name}}* object, arena* arena);
+  {{$.Name}}* {{$.Name}}__clone({{$.Name}}* object, arena* arena, void* tracker);
 {{end}}
 
 
