@@ -35,6 +35,14 @@ type (
 	// T4 is a placeholder type that can be used for generic subsitutions.
 	T4 struct{}
 
+	// TO is a placeholder type that represents the type that is being checked
+	// for interface compliance (ty parameter to Implements).
+	TO struct{}
+
+	// TP is a placeholder type that represents a pointer to the type that is
+	// being checked for interface compliance.
+	TP struct{}
+
 	// Any is the type used for open types.
 	Any struct{}
 )
@@ -51,6 +59,12 @@ var (
 
 	// T4Ty is the type of T4.
 	T4Ty = reflect.TypeOf(T4{})
+
+	// TOTy is the type of TO.
+	TOTy = reflect.TypeOf(TO{})
+
+	// TPTy is the type of TP.
+	TPTy = reflect.TypeOf(TP{})
 
 	anyTy = reflect.TypeOf(Any{})
 )
@@ -86,6 +100,8 @@ func newSubs(generics ...reflect.Type) map[reflect.Type]reflect.Type {
 func Implements(ty, iface reflect.Type, generics ...reflect.Type) Match {
 	var errs []error
 	subs := newSubs(generics...)
+	subs[TOTy] = ty
+	subs[TPTy] = reflect.PtrTo(ty)
 
 	for i, c := 0, iface.NumMethod(); i < c; i++ {
 		iM := iface.Method(i)
