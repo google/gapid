@@ -30,6 +30,8 @@ type (
 	T2  = generic.T2
 	T3  = generic.T3
 	T4  = generic.T4
+	TO  = generic.TO
+	TP  = generic.TP
 )
 
 type O struct{}
@@ -40,6 +42,8 @@ func (O) M3(int, string)                                      {}
 func (O) M4() (string, int)                                   { return "", 0 }
 func (O) M5() (float32, int)                                  { return 0, 0 }
 func (O) M7(int, float32, []int, [3]float32, map[int]float32) {}
+func (O) M8(O)                                                {}
+func (O) M9(*O)                                               {}
 
 func TestImplements(t *testing.T) {
 	ctx := log.Testing(t)
@@ -131,6 +135,21 @@ func TestImplements(t *testing.T) {
 			})(nil)).Elem(),
 			E("mixed use of generic type 'generic.T1'. First used as 'int', now used as 'float32'\nInterface:   func(generic.T1, generic.T1)\nImplementor: func(int, float32)",
 				"mixed use of generic type 'generic.T2'. First used as 'string', now used as 'int'\nInterface:   func() (generic.T2, generic.T2)\nImplementor: func() (string, int)"),
+		}, {
+			"TC-TP",
+			reflect.TypeOf((*interface { // TO = O, TP = *O
+				M8(TO)
+				M9(TP)
+			})(nil)).Elem(),
+			E(),
+		}, {
+			"TC-TP",
+			reflect.TypeOf((*interface { // TO = O, TP = *O
+				M8(TP)
+				M9(TO)
+			})(nil)).Elem(),
+			E("mixed use of generic type 'generic.TP'. First used as '*generic_test.O', now used as 'generic_test.O'\nInterface:   func(generic.TP)\nImplementor: func(generic_test.O)",
+				"mixed use of generic type 'generic.TO'. First used as 'generic_test.O', now used as '*generic_test.O'\nInterface:   func(generic.TO)\nImplementor: func(*generic_test.O)"),
 		},
 	} {
 		got := generic.Implements(reflect.TypeOf(O{}), test.iface)
