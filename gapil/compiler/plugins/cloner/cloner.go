@@ -27,16 +27,18 @@ import (
 // cloner is the compiler plugin that adds cloning functionality.
 type cloner struct {
 	*compiler.C
-	clonableTys  []semantic.Type
-	cloneTracker map[semantic.Type]*codegen.Function
-	callbacks    callbacks
+	clonableTys []semantic.Type
+	clone       map[semantic.Type]*codegen.Function
+	cloneImpls  map[semantic.Type]*codegen.Function
+	callbacks   callbacks
 }
 
 // Build implements the compiler.Plugin interfacc.
 func (c *cloner) Build(compiler *compiler.C) {
 	*c = cloner{
-		C:            compiler,
-		cloneTracker: map[semantic.Type]*codegen.Function{},
+		C:          compiler,
+		clone:      map[semantic.Type]*codegen.Function{},
+		cloneImpls: map[semantic.Type]*codegen.Function{},
 	}
 
 	for _, ty := range c.API.References {
@@ -51,118 +53,126 @@ func (c *cloner) Build(compiler *compiler.C) {
 	c.implementClones()
 }
 
-// declareClones declares all the private clone_t functions that take a tracker
-// for all the clonable types. These are not the public functions that do not
-// take a tracker as a parameter.
+// declareClones declares all the clone functions for all the clonable types.
 func (c *cloner) declareClones() {
+	// impls is a map of type mangled name to the public clone function.
+	// This is used to deduplicate clone functions that have the same underlying
+	// LLVM types when lowered.
+	impls := map[string]*codegen.Function{}
+
 	for _, ty := range c.clonableTys {
 		ptrTy := c.T.Target(ty).(codegen.Pointer)
 		elTy := ptrTy.Element
-		c.cloneTracker[ty] = c.Method(false, elTy, ptrTy, "clone_t", c.T.ArenaPtr, c.T.VoidPtr).
+
+		// Use the mangled name to determine whether the clone function has
+		// already been declared for this lowered type.
+		mangled := c.Mangler(c.Mangle(elTy))
+		impl, seen := impls[mangled]
+		if !seen {
+			impl = c.Method(false, elTy, ptrTy, "clone", c.T.ArenaPtr, c.T.VoidPtr).
+				LinkPrivate().
+				LinkOnceODR()
+			impls[mangled] = impl
+			c.cloneImpls[ty] = impl
+		}
+
+		// Delegate the clone method of this type on to the common implmentation.
+		f := c.M.Function(ptrTy, ty.Name()+"_clone", ptrTy, c.T.ArenaPtr, c.T.VoidPtr).
 			LinkPrivate().
-			LinkOnceODR()
+			LinkOnceODR().
+			Inline()
+		c.Delegate(f, impl)
+		c.clone[ty] = f
 	}
 }
 
-// implementClones implements all the private clone_t functions, and all the
+// implementClones implements all the private clone functions, and all the
 // public clone functions.
 func (c *cloner) implementClones() {
-	for _, ty := range c.API.References {
-		c.C.Build(c.cloneTracker[ty], func(s *compiler.S) {
-			this, arena, tracker := s.Parameter(0), s.Parameter(1), s.Parameter(2)
-			s.Arena = arena
+	for ty, f := range c.cloneImpls {
+		switch ty := ty.(type) {
+		case *semantic.Reference:
+			c.C.Build(f, func(s *compiler.S) {
+				this, arena, tracker := s.Parameter(0), s.Parameter(1), s.Parameter(2)
+				s.Arena = arena
 
-			refPtrTy := this.Type().(codegen.Pointer)
-			refTy := refPtrTy.Element
+				refPtrTy := this.Type().(codegen.Pointer)
+				refTy := refPtrTy.Element
 
-			s.IfElse(this.IsNull(), func(s *compiler.S) {
-				s.Return(s.Zero(refPtrTy))
-			}, func(s *compiler.S) {
-				existing := s.Call(c.callbacks.cloneTrackerLookup, tracker, this.Cast(c.T.VoidPtr)).Cast(refPtrTy)
-				s.IfElse(existing.IsNull(), func(s *compiler.S) {
-					clone := c.Alloc(s, s.Scalar(uint64(1)), refTy)
-					s.Call(c.callbacks.cloneTrackerTrack, tracker, this.Cast(c.T.VoidPtr), clone.Cast(c.T.VoidPtr))
-					clone.Index(0, compiler.RefRefCount).Store(s.Scalar(uint32(1)))
-					clone.Index(0, compiler.RefArena).Store(s.Arena)
-					c.cloneTo(s, ty.To, clone.Index(0, compiler.RefValue), this.Index(0, compiler.RefValue).Load(), tracker)
-					s.Return(clone)
+				s.IfElse(this.IsNull(), func(s *compiler.S) {
+					s.Return(s.Zero(refPtrTy))
 				}, func(s *compiler.S) {
-					s.Return(existing)
-				})
-			})
-		})
-	}
-
-	for _, ty := range c.API.Maps {
-		c.C.Build(c.cloneTracker[ty], func(s *compiler.S) {
-			this, arena, tracker := s.Parameter(0), s.Parameter(1), s.Parameter(2)
-			s.Arena = arena
-
-			mapPtrTy := this.Type().(codegen.Pointer)
-
-			s.IfElse(this.IsNull(), func(s *compiler.S) {
-				s.Return(s.Zero(mapPtrTy))
-			}, func(s *compiler.S) {
-				existing := s.Call(c.callbacks.cloneTrackerLookup, tracker, this.Cast(c.T.VoidPtr)).Cast(mapPtrTy)
-				s.IfElse(existing.IsNull(), func(s *compiler.S) {
-					mapInfo := c.T.Maps[ty]
-					clone := c.Alloc(s, s.Scalar(uint64(1)), mapInfo.Type)
-					s.Call(c.callbacks.cloneTrackerTrack, tracker, this.Cast(c.T.VoidPtr), clone.Cast(c.T.VoidPtr))
-					clone.Index(0, compiler.MapRefCount).Store(s.Scalar(uint32(1)))
-					clone.Index(0, compiler.MapArena).Store(s.Arena)
-					clone.Index(0, compiler.MapCount).Store(s.Scalar(uint64(0)))
-					clone.Index(0, compiler.MapCapacity).Store(s.Scalar(uint64(0)))
-					clone.Index(0, compiler.MapElements).Store(s.Zero(c.T.Pointer(mapInfo.Elements)))
-					c.IterateMap(s, this, semantic.Uint64Type, func(i, k, v *codegen.Value) {
-						dstK, srcK := s.Local("key", mapInfo.Key), k.Load()
-						c.cloneTo(s, ty.KeyType, dstK, srcK, tracker)
-						dstV, srcV := s.Call(mapInfo.Index, clone, dstK.Load(), s.Scalar(true)), v.Load()
-						c.cloneTo(s, ty.ValueType, dstV, srcV, tracker)
+					existing := s.Call(c.callbacks.cloneTrackerLookup, tracker, this.Cast(c.T.VoidPtr)).Cast(refPtrTy)
+					s.IfElse(existing.IsNull(), func(s *compiler.S) {
+						clone := c.Alloc(s, s.Scalar(uint64(1)), refTy)
+						s.Call(c.callbacks.cloneTrackerTrack, tracker, this.Cast(c.T.VoidPtr), clone.Cast(c.T.VoidPtr))
+						clone.Index(0, compiler.RefRefCount).Store(s.Scalar(uint32(1)))
+						clone.Index(0, compiler.RefArena).Store(s.Arena)
+						c.cloneTo(s, ty.To, clone.Index(0, compiler.RefValue), this.Index(0, compiler.RefValue).Load(), tracker)
+						s.Return(clone)
+					}, func(s *compiler.S) {
+						s.Return(existing)
 					})
-					s.Return(clone)
-				}, func(s *compiler.S) {
-					s.Return(existing)
 				})
 			})
-		})
+		case *semantic.Map:
+			c.C.Build(f, func(s *compiler.S) {
+				this, arena, tracker := s.Parameter(0), s.Parameter(1), s.Parameter(2)
+				s.Arena = arena
+
+				mapPtrTy := this.Type().(codegen.Pointer)
+
+				s.IfElse(this.IsNull(), func(s *compiler.S) {
+					s.Return(s.Zero(mapPtrTy))
+				}, func(s *compiler.S) {
+					existing := s.Call(c.callbacks.cloneTrackerLookup, tracker, this.Cast(c.T.VoidPtr)).Cast(mapPtrTy)
+					s.IfElse(existing.IsNull(), func(s *compiler.S) {
+						mapInfo := c.T.Maps[ty]
+						clone := c.Alloc(s, s.Scalar(uint64(1)), mapInfo.Type)
+						s.Call(c.callbacks.cloneTrackerTrack, tracker, this.Cast(c.T.VoidPtr), clone.Cast(c.T.VoidPtr))
+						clone.Index(0, compiler.MapRefCount).Store(s.Scalar(uint32(1)))
+						clone.Index(0, compiler.MapArena).Store(s.Arena)
+						clone.Index(0, compiler.MapCount).Store(s.Scalar(uint64(0)))
+						clone.Index(0, compiler.MapCapacity).Store(s.Scalar(uint64(0)))
+						clone.Index(0, compiler.MapElements).Store(s.Zero(c.T.Pointer(mapInfo.Elements)))
+						c.IterateMap(s, this, semantic.Uint64Type, func(i, k, v *codegen.Value) {
+							dstK, srcK := s.Local("key", mapInfo.Key), k.Load()
+							c.cloneTo(s, ty.KeyType, dstK, srcK, tracker)
+							dstV, srcV := s.Call(mapInfo.Index, clone, dstK.Load(), s.Scalar(true)), v.Load()
+							c.cloneTo(s, ty.ValueType, dstV, srcV, tracker)
+						})
+						s.Return(clone)
+					}, func(s *compiler.S) {
+						s.Return(existing)
+					})
+				})
+			})
+		default:
+			c.Fail("Unhandled type: %v", ty.Name())
+		}
 	}
 
 	for _, cmd := range c.API.Functions {
 		params := c.T.CmdParams[cmd]
 		paramsPtr := c.T.Pointer(params)
-		f := c.M.Function(paramsPtr, cmd.Name()+"__clone", paramsPtr, c.T.ArenaPtr).LinkOnceODR()
+		f := c.M.Function(paramsPtr, cmd.Name()+"__clone", paramsPtr, c.T.ArenaPtr, c.T.VoidPtr).LinkOnceODR()
 		c.C.Build(f, func(s *compiler.S) {
-			this, arena := s.Parameter(0), s.Parameter(1)
+			this, arena, tracker := s.Parameter(0), s.Parameter(1), s.Parameter(2)
 			s.Arena = arena
-			tracker := s.Call(c.callbacks.createCloneTracker, arena)
 			clone := c.Alloc(s, s.Scalar(1), params)
 			thread := semantic.BuiltinThreadGlobal.Name()
 			c.cloneTo(s, semantic.Uint64Type, clone.Index(0, thread), this.Index(0, thread).Load(), tracker)
 			for _, p := range cmd.FullParameters {
 				c.cloneTo(s, p.Type, clone.Index(0, p.Name()), this.Index(0, p.Name()).Load(), tracker)
 			}
-			s.Call(c.callbacks.destroyCloneTracker, tracker)
 			s.Return(clone)
-		})
-	}
-
-	for _, ty := range c.clonableTys {
-		ptrTy := c.T.Target(ty).(codegen.Pointer)
-		elTy := ptrTy.Element
-		clone := c.Method(false, elTy, ptrTy, "clone", c.T.ArenaPtr).LinkOnceODR()
-		c.C.Build(clone, func(s *compiler.S) {
-			this, arena := s.Parameter(0), s.Parameter(1)
-			tracker := s.Call(c.callbacks.createCloneTracker, arena)
-			out := s.Call(c.cloneTracker[ty], this, arena, tracker)
-			s.Call(c.callbacks.destroyCloneTracker, tracker)
-			s.Return(out)
 		})
 	}
 }
 
 // cloneTo emits the logic to clone the value src to the pointer dst.
 func (c *cloner) cloneTo(s *compiler.S, ty semantic.Type, dst, src, tracker *codegen.Value) {
-	if f, ok := c.cloneTracker[ty]; ok {
+	if f, ok := c.clone[ty]; ok {
 		dst.Store(s.Call(f, src, s.Arena, tracker))
 		return
 	}
