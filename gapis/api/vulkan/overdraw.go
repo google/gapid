@@ -33,26 +33,24 @@ var (
 	_ = transform.Transformer(&stencilOverdraw{})
 )
 
-// TODO: add support for specific renderpass in a queue submit
 type stencilOverdraw struct {
-	rewrite map[api.CmdID]replay.Result
+	rewrite    map[api.CmdID]replay.Result
+	lastSubIdx map[api.CmdID]api.SubCmdIdx
 }
 
 func newStencilOverdraw() *stencilOverdraw {
 	return &stencilOverdraw{
-		rewrite: map[api.CmdID]replay.Result{},
+		rewrite:    map[api.CmdID]replay.Result{},
+		lastSubIdx: map[api.CmdID]api.SubCmdIdx{},
 	}
 }
 
-func (s *stencilOverdraw) add(ctx context.Context, extraCommands uint64, after uint64, capt *path.Capture, res replay.Result) {
+func (s *stencilOverdraw) add(ctx context.Context, extraCommands uint64, after []uint64, capt *path.Capture, res replay.Result) {
 	c, err := capture.ResolveFromPath(ctx, capt)
 	if err != nil {
 		res(nil, err)
 	}
-	// TODO: Ideally this would be smarter, but without duplicating the
-	// state and mutating it, it's hard to tell what the right
-	// vkQueueSubmit to modify is.
-	lastSubmit := int64(after)
+	lastSubmit := int64(after[0])
 submitLoop:
 	for lastSubmit >= 0 {
 		switch (c.Commands[lastSubmit]).(type) {
@@ -68,7 +66,9 @@ submitLoop:
 		return
 	}
 
-	s.rewrite[api.CmdID(uint64(lastSubmit)+extraCommands)] = res
+	id := api.CmdID(uint64(lastSubmit) + extraCommands)
+	s.rewrite[id] = res
+	s.lastSubIdx[id] = api.SubCmdIdx(after[1:])
 }
 
 func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
@@ -118,7 +118,7 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	}
 
 	lastRenderPassArgs, lastRenderPassIdx, err :=
-		s.getLastRenderPass(ctx, gs, st, submit)
+		s.getLastRenderPass(ctx, gs, st, submit, s.lastSubIdx[id])
 	if err != nil {
 		res(nil, &service.ErrDataUnavailable{
 			Reason: messages.ErrMessage(fmt.Sprintf(
@@ -215,6 +215,7 @@ func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
 	gs *api.GlobalState,
 	st *State,
 	submit *VkQueueSubmit,
+	lastIdx api.SubCmdIdx,
 ) (VkCmdBeginRenderPassArgsʳ, api.SubCmdIdx, error) {
 	lastRenderPassArgs := NilVkCmdBeginRenderPassArgsʳ
 	var lastRenderPassIdx api.SubCmdIdx
@@ -222,9 +223,15 @@ func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
 	submitInfos := submit.PSubmits().Slice(0, uint64(submit.SubmitCount()),
 		gs.MemoryLayout).MustRead(ctx, submit, gs, nil)
 	for i, si := range submitInfos {
+		if len(lastIdx) >= 1 && lastIdx[0] < uint64(i) {
+			break
+		}
 		cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()),
 			gs.MemoryLayout).MustRead(ctx, submit, gs, nil)
 		for j, buf := range cmdBuffers {
+			if len(lastIdx) >= 2 && lastIdx[0] == uint64(i) && lastIdx[1] < uint64(j) {
+				break
+			}
 			cb, ok := st.CommandBuffers().Lookup(buf)
 			if !ok {
 				return lastRenderPassArgs, lastRenderPassIdx,
@@ -233,6 +240,10 @@ func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
 			// vkCmdBeginRenderPass can only be in a primary command buffer,
 			// so we don't need to check secondary command buffers
 			for k := 0; k < cb.CommandReferences().Len(); k++ {
+				if len(lastIdx) >= 3 && lastIdx[0] == uint64(i) &&
+					lastIdx[1] == uint64(j) && lastIdx[2] < uint64(k) {
+					break
+				}
 				cr := cb.CommandReferences().Get(uint32(k))
 				if cr.Type() == CommandType_cmd_vkCmdBeginRenderPass {
 					lastRenderPassArgs = cb.BufferCommands().
@@ -1402,8 +1413,6 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 	addCleanup func(func()),
 	out transform.Writer,
 ) (VkCommandBuffer, error) {
-	// TODO copy old depth data over if theres an original depth buffer in keep mode
-
 	bInfo, ok := st.CommandBuffers().Lookup(cmdBuffer)
 	if !ok {
 		return 0, fmt.Errorf("Invalid command buffer %v", cmdBuffer)
@@ -1609,7 +1618,6 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	}
 	submitInfoPtr := allocAndRead(newSubmitInfos).Ptr()
 
-	// TODO: check if we need to add synchronization here
 	cmd := cb.VkQueueSubmit(
 		submit.Queue(),
 		submit.SubmitCount(),
