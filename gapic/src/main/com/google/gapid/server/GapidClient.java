@@ -61,7 +61,38 @@ public interface GapidClient {
       Service.EnableAnalyticsRequest request);
   public ListenableFuture<Service.ClientEventResponse> postClientEvent(
       Service.ClientEventRequest request);
+  public ListenableFuture<Service.TraceTargetTreeResponse> getTraceTargetTreeNode(
+      Service.TraceTargetTreeRequest request);
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage);
   public ListenableFuture<Void> streamSearch(
       Service.FindRequest request, Consumer<Service.FindResponse> onResult);
+  public StreamSender<Service.TraceRequest> streamTrace(
+      StreamConsumer<Service.TraceResponse> onTraceResponse);
+
+  public static interface StreamSender<T> {
+    public ListenableFuture<Void> getFuture();
+    public void send(T value);
+    public void finish();
+  }
+
+  public static interface StreamConsumer<T> {
+    public Result consume(T value);
+  }
+
+  public static class Result {
+    public static final Result DONE = new Result(true, null);
+    public static final Result CONTINUE = new Result(false, null);
+
+    public final boolean close;
+    public final Throwable error;
+
+    private Result(boolean close, Throwable error) {
+      this.close = close;
+      this.error = error;
+    }
+
+    public static Result error(Throwable error) {
+      return new Result(true, error);
+    }
+  }
 }

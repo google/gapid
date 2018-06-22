@@ -45,7 +45,7 @@ var (
 	events = task.Events{}
 
 	interruptHandlers = make(map[int]func())
-	lastInterrupt = int(0)
+	lastInterrupt     = int(0)
 )
 
 // AddCleanup calls f when the context is cancelled.

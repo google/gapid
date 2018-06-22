@@ -71,6 +71,7 @@ func (n *CommandTreeNodeForCommand) Path() *Any { return &Any{Path: &Any_Command
 func (n *Context) Path() *Any                   { return &Any{Path: &Any_Context{n}} }
 func (n *Contexts) Path() *Any                  { return &Any{Path: &Any_Contexts{n}} }
 func (n *Device) Path() *Any                    { return &Any{Path: &Any_Device{n}} }
+func (n *DeviceTraceConfiguration) Path() *Any  { return &Any{Path: &Any_TraceConfig{n}} }
 func (n *Events) Path() *Any                    { return &Any{Path: &Any_Events{n}} }
 func (n *FramebufferObservation) Path() *Any    { return &Any{Path: &Any_FBO{n}} }
 func (n *Field) Path() *Any                     { return &Any{Path: &Any_Field{n}} }
@@ -108,6 +109,7 @@ func (n CommandTreeNodeForCommand) Parent() Node { return n.Command }
 func (n Context) Parent() Node                   { return n.Capture }
 func (n Contexts) Parent() Node                  { return n.Capture }
 func (n Device) Parent() Node                    { return nil }
+func (n DeviceTraceConfiguration) Parent() Node  { return n.Device }
 func (n Events) Parent() Node                    { return n.Capture }
 func (n FramebufferObservation) Parent() Node    { return n.Command }
 func (n Field) Parent() Node                     { return oneOfNode(n.Struct) }
@@ -143,6 +145,7 @@ func (n *CommandTreeNodeForCommand) SetParent(p Node) { n.Command, _ = p.(*Comma
 func (n *Context) SetParent(p Node)                   { n.Capture, _ = p.(*Capture) }
 func (n *Contexts) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
 func (n *Device) SetParent(p Node)                    {}
+func (n *DeviceTraceConfiguration) SetParent(p Node)  { n.Device, _ = p.(*Device) }
 func (n *Events) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *FramebufferObservation) SetParent(p Node)    { n.Command, _ = p.(*Command) }
 func (n *GlobalState) SetParent(p Node)               { n.After, _ = p.(*Command) }
@@ -764,4 +767,19 @@ func ShallowEqual(a, b Node) bool {
 	a.SetParent(nil)
 	b.SetParent(nil)
 	return reflect.DeepEqual(a, b)
+}
+
+func (i *ID) SameAs(o *ID) bool {
+	if i == nil || o == nil {
+		return false
+	}
+	if len(i.Data) != len(o.Data) {
+		return false
+	}
+	for ii := range i.Data {
+		if i.Data[ii] != o.Data[ii] {
+			return false
+		}
+	}
+	return true
 }

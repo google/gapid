@@ -32,7 +32,7 @@ type Configuration struct {
 	// User is the username to use for login
 	User string
 	// Which port should be used
-	Port int16
+	Port uint16
 	// The pem encoded public key file to use for the connection.
 	// If not specified uses ~/.ssh/id_rsa
 	Keyfile string

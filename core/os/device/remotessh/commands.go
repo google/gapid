@@ -21,6 +21,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path"
 	"strings"
 	"sync"
 
@@ -273,4 +274,67 @@ func (b binding) GetEnv(ctx context.Context) (*shell.Env, error) {
 		e.Add(scanner.Text())
 	}
 	return e, nil
+}
+
+// ListExecutables returns the executables in a particular directory as given by path
+func (b binding) ListExecutables(ctx context.Context, inPath string) ([]string, error) {
+	if inPath == "" {
+		inPath = "."
+	}
+	files, err := b.Shell("find", `"`+inPath+`"`, "-mindepth", "1", "-maxdepth", "1", "-type", "f", "-executable", "-printf", `%f\\n`).Call(ctx)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(strings.NewReader(files))
+	out := []string{}
+	for scanner.Scan() {
+		_, file := path.Split(scanner.Text())
+		out = append(out, file)
+	}
+	return out, nil
+}
+
+// ListDirectories returns a list of directories rooted at a particular path
+func (b binding) ListDirectories(ctx context.Context, inPath string) ([]string, error) {
+	if inPath == "" {
+		inPath = "."
+	}
+	dirs, err := b.Shell("find", `"`+inPath+`"`, "-mindepth", "1", "-maxdepth", "1", "-type", "d", "-printf", `%f\\n`).Call(ctx)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(strings.NewReader(dirs))
+	out := []string{}
+	for scanner.Scan() {
+		_, file := path.Split(scanner.Text())
+		out = append(out, file)
+	}
+	return out, nil
+}
+
+// IsFile returns true if the given path is a file
+func (b binding) IsFile(ctx context.Context, inPath string) (bool, error) {
+	dir, err := b.IsDirectory(ctx, inPath)
+	if err == nil && dir {
+		return false, nil
+	}
+	_, err = b.Shell("stat", `"`+inPath+`"`).Call(ctx)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+// IsDirectory returns true if the given path is a directory
+func (b binding) IsDirectory(ctx context.Context, inPath string) (bool, error) {
+	_, err := b.Shell("cd", `\`+inPath+`\`).Call(ctx)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+// GetWorkingDirectory returns the directory that this device considers CWD
+func (b binding) GetWorkingDirectory(ctx context.Context) (string, error) {
+	return b.Shell("pwd").Call(ctx)
 }

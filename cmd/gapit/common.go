@@ -362,3 +362,63 @@ func getAndPrintCommand(ctx context.Context, client service.Service, p *path.Com
 	}
 	return printCommand(ctx, client, p, cmd, of)
 }
+
+func filterDevices(ctx context.Context, flags *DeviceFlags, gapis client.Client) ([]*path.Device, error) {
+	if flags.Device != "" && flags.Serial != "" {
+		return nil, fmt.Errorf("You may only specify one of -device or -serial")
+	}
+
+	if flags.Device == "host" {
+		serverInfo, err := gapis.GetServerInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return []*path.Device{serverInfo.ServerLocalDevice}, nil
+	}
+
+	devices, err := gapis.GetDevices(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := []*path.Device{}
+	for _, dev := range devices {
+		dd, err := gapis.Get(ctx, dev.Path())
+		if err != nil {
+			return nil, err
+		}
+		d := dd.(*device.Instance)
+
+		if flags.Device != "" {
+			if d.Name != flags.Device {
+				continue
+			}
+		}
+
+		if flags.Serial != "" {
+			if d.Serial != flags.Serial {
+				continue
+			}
+		}
+		if flags.Os != "" {
+			expectedOS := device.OSKind_UnknownOS
+			switch strings.ToLower(flags.Os) {
+			case "android":
+				expectedOS = device.OSKind_Android
+			case "linux":
+				expectedOS = device.OSKind_Linux
+			case "windows", "win":
+				expectedOS = device.OSKind_Windows
+			case "osx", "macos":
+				expectedOS = device.OSKind_OSX
+			default:
+				return nil, fmt.Errorf("Unknown OS %+v", flags.Os)
+			}
+			if d.Configuration.OS.Kind != expectedOS {
+				continue
+			}
+		}
+		out = append(out, dev)
+	}
+	return out, nil
+}

@@ -46,3 +46,21 @@ type actionSorter []*Action
 func (l actionSorter) Len() int           { return len(l) }
 func (l actionSorter) Less(a, b int) bool { return l[a].Name < l[b].Name }
 func (l actionSorter) Swap(a, b int)      { l[a], l[b] = l[b], l[a] }
+
+// FindByName returns the package in this given the name
+func (l *PackageList) FindByName(name string) *Package {
+	for _, p := range l.Packages {
+		if p.Name == name {
+			return p
+		}
+	}
+	return nil
+}
+
+// GetIcon returns the package in this given the name
+func (l *PackageList) GetIcon(p *Package) []byte {
+	if p.Icon >= 0 && p.Icon < int32(len(l.Icons)) {
+		return l.Icons[p.Icon]
+	}
+	return []byte{}
+}

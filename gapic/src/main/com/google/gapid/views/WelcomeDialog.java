@@ -39,6 +39,7 @@ import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
+import com.google.gapid.server.Client;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
@@ -146,7 +147,7 @@ public class WelcomeDialog {
     }.open();
   }
 
-  public static void showWelcomeDialog(Shell shell, Models models, Widgets widgets) {
+  public static void showWelcomeDialog(Client client, Shell shell, Models models, Widgets widgets) {
     models.analytics.postInteraction(View.Welcome, ClientAction.Show);
     new WelcomeDialogBase(shell, widgets.theme) {
       private Button showWelcome;
@@ -181,7 +182,7 @@ public class WelcomeDialog {
           }
           createLink(c, "<a>Capture Trace...</a>", e -> {
             close(true);
-            showTracingDialog(shell, models, widgets);
+            showTracingDialog(client, shell, models, widgets);
           });
           createLink(c, "<a>Help...</a>", e -> showHelp(models.analytics));
 

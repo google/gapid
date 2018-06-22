@@ -15,6 +15,8 @@
  */
 package com.google.gapid.server;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -28,6 +30,8 @@ import com.google.gapid.proto.service.Service.EnableAnalyticsResponse;
 import com.google.gapid.proto.service.Service.EnableCrashReportingRequest;
 import com.google.gapid.proto.service.Service.EnableCrashReportingResponse;
 import com.google.gapid.proto.service.Service.PingRequest;
+import com.google.gapid.proto.service.Service.TraceTargetTreeRequest;
+import com.google.gapid.proto.service.Service.TraceTargetTreeResponse;
 
 import java.util.function.Consumer;
 
@@ -165,6 +169,12 @@ public class GapidClientGrpc implements GapidClient {
     return client.clientEvent(request);
   }
 
+  @Override
+  public ListenableFuture<TraceTargetTreeResponse> getTraceTargetTreeNode(
+      TraceTargetTreeRequest request) {
+    return client.traceTargetTreeNode(request);
+  }
+
 
   @Override
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
@@ -176,26 +186,45 @@ public class GapidClientGrpc implements GapidClient {
   @Override
   public ListenableFuture<Void> streamSearch(
       Service.FindRequest request, Consumer<Service.FindResponse> onResult) {
-    StreamHandler<Service.FindResponse> handler= StreamHandler.wrap(onResult);
+    StreamHandler<Service.FindResponse> handler = StreamHandler.wrap(onResult);
     stub.find(request, handler);
     return handler.future;
   }
 
+  @Override
+  public GapidClient.StreamSender<Service.TraceRequest> streamTrace(
+      StreamConsumer<Service.TraceResponse> onTraceResponse) {
+    StreamHandler<Service.TraceResponse> handler = StreamHandler.wrap(onTraceResponse);
+    return Sender.wrap(handler.future, stub.trace(handler));
+  }
+
   private static class StreamHandler<T> implements StreamObserver<T> {
     public final SettableFuture<Void> future = SettableFuture.create();
-    private final Consumer<T> consumer;
+    private final GapidClient.StreamConsumer<T> consumer;
 
-    private StreamHandler(Consumer<T> consumer) {
+    private StreamHandler(GapidClient.StreamConsumer<T> consumer) {
       this.consumer = consumer;
     }
 
     public static <T> StreamHandler<T> wrap(Consumer<T> consumer) {
+      return new StreamHandler<T>(r -> {
+        consumer.accept(r);
+        return GapidClient.Result.CONTINUE;
+      });
+    }
+
+    public static <T> StreamHandler<T> wrap(GapidClient.StreamConsumer<T> consumer) {
       return new StreamHandler<T>(consumer);
     }
 
     @Override
     public void onNext(T value) {
-      consumer.accept(value);
+      GapidClient.Result result = consumer.consume(value);
+      if (result.error != null) {
+        onError(result.error);
+      } else if (result.close) {
+        onCompleted();
+      }
     }
 
     @Override
@@ -206,6 +235,37 @@ public class GapidClientGrpc implements GapidClient {
     @Override
     public void onError(Throwable t) {
       future.setException(t);
+    }
+  }
+
+  private static class Sender<T> implements GapidClient.StreamSender<T> {
+    private final ListenableFuture<Void> future;
+    private final StreamObserver<T> observer;
+
+    public Sender(ListenableFuture<Void> future, StreamObserver<T> observer) {
+      this.future = future;
+      this.observer = observer;
+
+      future.addListener(this::finish, directExecutor());
+    }
+
+    public static <T> Sender<T> wrap(ListenableFuture<Void> future, StreamObserver<T> observer) {
+      return new Sender<T>(future, observer);
+    }
+
+    @Override
+    public void send(T value) {
+      observer.onNext(value);
+    }
+
+    @Override
+    public void finish() {
+      observer.onCompleted();
+    }
+
+    @Override
+    public ListenableFuture<Void> getFuture() {
+      return future;
     }
   }
 }

@@ -40,28 +40,29 @@ message Any {
     Context context = 12;
     Contexts contexts = 13;
     Device device = 14;
-    Events events = 15;
-    FramebufferObservation FBO = 16;
-    Field field = 17;
-    GlobalState global_state = 18;
-    ImageInfo image_info = 19;
-    MapIndex map_index = 20;
-    Memory memory = 21;
-    Mesh mesh = 22;
-    Metrics metrics = 23;
-    MultiResourceData multi_resource_data = 24;
-    Parameter parameter = 25;
-    Report report = 26;
-    ResourceData resource_data = 27;
-    Resources resources = 28;
-    Result result = 29;
-    Slice slice = 30;
-    State state = 31;
-    StateTree state_tree = 32;
-    StateTreeNode state_tree_node = 33;
-    StateTreeNodeForPath state_tree_node_for_path = 34;
-    Stats stats = 35;
-    Thumbnail thumbnail = 36;
+    DeviceTraceConfiguration traceConfig = 15;
+    Events events = 16;
+    FramebufferObservation FBO = 17;
+    Field field = 18;
+    GlobalState global_state = 19;
+    ImageInfo image_info = 20;
+    MapIndex map_index = 21;
+    Memory memory = 22;
+    Mesh mesh = 23;
+    Metrics metrics = 24;
+    MultiResourceData multi_resource_data = 25;
+    Parameter parameter = 26;
+    Report report = 27;
+    ResourceData resource_data = 28;
+    Resources resources = 29;
+    Result result = 30;
+    Slice slice = 31;
+    State state = 32;
+    StateTree state_tree = 33;
+    StateTreeNode state_tree_node = 34;
+    StateTreeNodeForPath state_tree_node_for_path = 35;
+    Stats stats = 36;
+    Thumbnail thumbnail = 37;
   }
 }
 
@@ -198,6 +199,11 @@ message Context {
 // Device is a path to a device used for replay.
 message Device {
   ID ID = 1;
+}
+
+// DeviceTraceConfiguration is a path to the tracing config for a device
+message DeviceTraceConfiguration {
+  Device device = 1;
 }
 
 // FramebufferObservation is a path to a framebuffer observation image at the

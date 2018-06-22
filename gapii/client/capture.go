@@ -21,6 +21,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/gapid/core/app/analytics"
@@ -28,7 +29,6 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/os/file"
 	"github.com/pkg/errors"
 )
 
@@ -74,8 +74,6 @@ type Options struct {
 	APIs uint32
 	// Combination of FlagXX bits.
 	Flags Flags
-	// APK is an apk to install before tracing
-	APK file.Path
 	// Additional flags to pass to am start
 	AdditionalFlags string
 }
@@ -143,7 +141,7 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 // It copies the capture into the supplied writer.
 // If the process was started with the DeferStart flag, then tracing will wait
 // until s is fired.
-func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer) (size int64, err error) {
+func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer, written *int64) (size int64, err error) {
 	stopTiming := analytics.SendTiming("trace", "duration")
 	defer func() {
 		stopTiming(analytics.Size(size))
@@ -166,9 +164,7 @@ func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer) (size
 	conn := p.conn
 	defer conn.Close()
 
-	var count, nextSize siSize
-	startTime := time.Now()
-	nextTime := startTime
+	var count siSize
 	started := false
 	for {
 		if task.Stopped(ctx) {
@@ -186,6 +182,7 @@ func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer) (size
 		conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
 		n, err := io.CopyN(w, conn, 1024*64)
 		count += siSize(n)
+		atomic.StoreInt64(written, int64(count))
 		switch {
 		case errors.Cause(err) == io.EOF:
 			// End of stream. End.
@@ -202,12 +199,6 @@ func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer) (size
 			// Got an error without receiving a byte of data.
 			// Treat failure-to-connect as target-not-ready instead of an error.
 			return 0, nil
-		}
-		if count > nextSize || now.After(nextTime) {
-			nextSize = count + sizeGap
-			nextTime = now.Add(timeGap)
-			delta := time.Duration(int64(now.Sub(startTime)/time.Millisecond)) * time.Millisecond
-			log.I(ctx, "Capturing: %v in %v", count, delta)
 		}
 	}
 	return int64(count), nil

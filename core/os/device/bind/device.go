@@ -41,4 +41,16 @@ type Device interface {
 	// SetupLocalPort makes sure that the given port can be accessed on localhost
 	// It returns a new port number to connect to on localhost
 	SetupLocalPort(ctx context.Context, port int) (int, error)
+	// ListExecutables returns the executables in a particular directory as given by path
+	ListExecutables(ctx context.Context, path string) ([]string, error)
+	// ListDirectories returns a list of directories rooted at a particular path
+	ListDirectories(ctx context.Context, path string) ([]string, error)
+	// GetURIRoot returns the root URI for the entire system
+	GetURIRoot() string
+	// IsFile returns true if the given path is a file
+	IsFile(ctx context.Context, path string) (bool, error)
+	// IsDirectory returns true if the given path is a directory
+	IsDirectory(ctx context.Context, path string) (bool, error)
+	// GetWorkingDirectory returns the directory that this device considers CWD
+	GetWorkingDirectory(ctx context.Context) (string, error)
 }

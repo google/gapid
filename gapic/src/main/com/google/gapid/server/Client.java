@@ -16,6 +16,7 @@
 package com.google.gapid.server;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static com.google.gapid.server.GapidClient.Result.error;
 import static com.google.gapid.util.ProtoDebugTextFormat.shortDebugString;
 import static java.util.logging.Level.FINE;
 
@@ -226,6 +227,19 @@ public class Client {
             in -> null));
   }
 
+  public ListenableFuture<Service.TraceTargetTreeNode> getTraceTargetTreeNode(
+      Path.Device device, String uri, float density) {
+    return call(() -> String.format(
+        "RPC->traceTargetTreeNode(%s, %s, %g)", shortDebugString(device), uri, density),
+        stack -> Futures.transformAsync(
+            client.getTraceTargetTreeNode(Service.TraceTargetTreeRequest.newBuilder()
+                .setDevice(device)
+                .setUri(uri)
+                .setDensity(density)
+                .build()),
+            in -> immediateFuture(throwIfError(in.getNode(), in.getError(), stack))));
+  }
+
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
     LOG.log(FINE, "RPC->getLogStream()");
     return client.streamLog(onLogMessage);
@@ -235,6 +249,19 @@ public class Client {
       Service.FindRequest request, Consumer<Service.FindResponse> onResult) {
     LOG.log(FINE, "RPC->find({0})", request);
     return client.streamSearch(request, onResult);
+  }
+
+   public GapidClient.StreamSender<Service.TraceRequest> streamTrace(
+       GapidClient.StreamConsumer<Service.StatusResponse> onTraceResponse) {
+    LOG.log(FINE, "RPC->streamTrace()");
+    Stack stack = new Stack(() -> "RPC->streamTrace()");
+    return client.streamTrace(r -> {
+      try {
+        return onTraceResponse.consume(throwIfError(r.getStatus(), r.getError(), stack));
+      } catch (RpcException e) {
+        return error(e);
+      }
+    });
   }
 
   private static <V> ListenableFuture<V> call(
