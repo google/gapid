@@ -131,6 +131,7 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 
 	// Check which abis the device says it supports
 	d.To.Configuration.ABIs = d.To.Configuration.ABIs[:0]
+
 	seen := map[string]bool{}
 	for _, prop := range []string{
 		"ro.product.cpu.abilist",
@@ -158,6 +159,7 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
+	d.Instance().Name = d.To.Configuration.Hardware.Name
 	if i := d.Instance(); i.ID == nil || allZero(i.ID.Data) {
 		// Generate an identifier for the device based on it's details.
 		i.GenID()

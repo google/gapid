@@ -217,6 +217,11 @@ public class Paths {
         .setBlob(Path.Blob.newBuilder().setID(Path.ID.newBuilder().setData(id.getData()))).build();
   }
 
+  public static Path.Any traceInfo(Path.Device node) {
+    return Path.Any.newBuilder()
+        .setTraceConfig(Path.DeviceTraceConfiguration.newBuilder().setDevice(node)).build();
+  }
+
   /**
    * Compares a and b, returning -1 if a comes before b, 1 if b comes before a and 0 if they
    * are equal.
@@ -338,6 +343,7 @@ public class Paths {
     R visit(Path.Context path, A arg);
     R visit(Path.Contexts path, A arg);
     R visit(Path.Device path, A arg);
+    R visit(Path.DeviceTraceConfiguration path, A arg);
     R visit(Path.Events path, A arg);
     R visit(Path.FramebufferObservation path, A arg);
     R visit(Path.Field path, A arg);
@@ -394,6 +400,8 @@ public class Paths {
         return visitor.visit(path.getContexts(), arg);
       case DEVICE:
         return visitor.visit(path.getDevice(), arg);
+      case TRACECONFIG:
+        return visitor.visit(path.getTraceConfig(), arg);
       case EVENTS:
         return visitor.visit(path.getEvents(), arg);
       case FBO:
@@ -474,6 +482,8 @@ public class Paths {
       return visitor.visit((Path.Contexts)path, arg);
     } else if (path instanceof Path.Device) {
       return visitor.visit((Path.Device)path, arg);
+    } else if (path instanceof Path.DeviceTraceConfiguration) {
+      return visitor.visit((Path.DeviceTraceConfiguration)path, arg);
     } else if (path instanceof Path.Events) {
       return visitor.visit((Path.Events)path, arg);
     } else if (path instanceof Path.FramebufferObservation) {
@@ -540,6 +550,7 @@ public class Paths {
     @Override public Object visit(Path.Context path, Void ignored) { return path; }
     @Override public Object visit(Path.Contexts path, Void ignored) { return path; }
     @Override public Object visit(Path.Device path, Void ignored) { return path; }
+    @Override public Object visit(Path.DeviceTraceConfiguration path, Void ignored) { return path; }
     @Override public Object visit(Path.Events path, Void ignored) { return path; }
     @Override public Object visit(Path.FramebufferObservation path, Void ignored) { return path; }
     @Override public Object visit(Path.Field path, Void ignored) { return path; }
@@ -640,6 +651,11 @@ public class Paths {
     @Override
     public Path.Any visit(Path.Device path, Void ignored) {
       return Path.Any.newBuilder().setDevice(path).build();
+    }
+
+    @Override
+    public Path.Any visit(Path.DeviceTraceConfiguration path, Void ignored) {
+      return Path.Any.newBuilder().setTraceConfig(path).build();
     }
 
     @Override
@@ -852,6 +868,11 @@ public class Paths {
     }
 
     @Override
+    public Object visit(Path.DeviceTraceConfiguration path, Void ignored) {
+      return path.getDevice();
+    }
+
+    @Override
     public Object visit(Path.Events path, Void ignored) {
       return path.getCapture();
     }
@@ -1057,6 +1078,14 @@ public class Paths {
       } else {
         throw new RuntimeException("Path.As cannot set parent to " + parent.getClass().getName());
       }
+    }
+
+    @Override
+    public Object visit(Path.DeviceTraceConfiguration path, Object parent) {
+      if (!(parent instanceof Path.Device)) {
+        throw new RuntimeException("Path.DeviceTraceConfiguration cannot set parent to " + parent.getClass().getName());
+      }
+      return path.toBuilder().setDevice((Path.Device) parent).build();
     }
 
     @Override
@@ -1482,6 +1511,14 @@ public class Paths {
     public StringBuilder visit(Path.Device path, StringBuilder sb) {
       sb.append("device{");
       visit(path.getID(), sb);
+      sb.append("}");
+      return sb;
+    }
+
+    @Override
+    public StringBuilder visit(Path.DeviceTraceConfiguration path, StringBuilder sb) {
+      sb.append("device_configuration{");
+      visit(path.getDevice(), sb);
       sb.append("}");
       return sb;
     }

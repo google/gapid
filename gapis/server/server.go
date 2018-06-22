@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/gapid/core/app/crash/reporting"
@@ -43,6 +44,8 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
+	"github.com/google/gapid/gapis/trace"
+	"github.com/google/gapid/gapis/trace/tracer"
 
 	"github.com/google/go-github/github"
 
@@ -370,4 +373,183 @@ func (s *server) ClientEvent(ctx context.Context, req *service.ClientEventReques
 		analytics.SendEvent("client", i.View, i.Action.String())
 	}
 	return nil
+}
+
+func (s *server) TraceTargetTreeNode(ctx context.Context, req *service.TraceTargetTreeRequest) (*service.TraceTargetTreeNode, error) {
+	tttn, err := trace.TraceTargetTreeNode(ctx, *req.Device, req.Uri, req.Density)
+	if err != nil {
+		return nil, err
+	}
+
+	return &service.TraceTargetTreeNode{
+		Name:                tttn.Name,
+		Icon:                tttn.Icon,
+		Uri:                 tttn.URI,
+		ParentUri:           tttn.Parent,
+		ChildrenUris:        tttn.Children,
+		TraceUri:            tttn.TraceURI,
+		FriendlyApplication: tttn.ApplicationName,
+		FriendlyExecutable:  tttn.ExecutableName,
+	}, nil
+}
+
+func (s *server) FindTraceTarget(ctx context.Context, req *service.FindTraceTargetRequest) (*service.TraceTargetTreeNode, error) {
+	tttn, err := trace.FindTraceTarget(ctx, *req.Device, req.Uri)
+	if err != nil {
+		return nil, err
+	}
+
+	return &service.TraceTargetTreeNode{
+		Name:                tttn.Name,
+		Icon:                tttn.Icon,
+		Uri:                 tttn.URI,
+		ParentUri:           tttn.Parent,
+		ChildrenUris:        tttn.Children,
+		TraceUri:            tttn.TraceURI,
+		FriendlyApplication: tttn.ApplicationName,
+		FriendlyExecutable:  tttn.ExecutableName,
+	}, nil
+}
+
+func optionsToTraceOptions(opts *service.TraceOptions) tracer.TraceOptions {
+	return tracer.TraceOptions{
+		URI:                   opts.GetUri(),
+		UploadApplication:     opts.GetUploadApplication(),
+		ClearCache:            opts.ClearCache,
+		APIs:                  opts.Apis,
+		WriteFile:             opts.ServerLocalSavePath,
+		AdditionalFlags:       opts.AdditionalCommandLineArgs,
+		CWD:                   opts.Cwd,
+		Environment:           opts.Environment,
+		Duration:              opts.Duration,
+		ObserveFrameFrequency: opts.ObserveFrameFrequency,
+		ObserveDrawFrequency:  opts.ObserveDrawFrequency,
+		StartFrame:            opts.StartFrame,
+		FramesToCapture:       opts.FramesToCapture,
+		DisablePCS:            opts.DisablePcs,
+		RecordErrorState:      opts.RecordErrorState,
+		DeferStart:            opts.DeferStart,
+		NoBuffer:              opts.NoBuffer,
+	}
+}
+
+// traceHandler implements the TraceHandler interface
+// It wraps all of the state for a trace operation
+type traceHandler struct {
+	ctx            context.Context
+	initialized    bool               // Has the trace been initialized yet
+	started        bool               // Has the trace been started yet
+	done           bool               // Has the trace been finished
+	err            error              // Was there an error to report at next request
+	bytesWritten   int64              // How many bytes have been written so far
+	startSignal    task.Signal        // If we are in MEC this signal will start the trace
+	startFunc      task.Task          // This is the function to go with the above signal.
+	stopFunc       context.CancelFunc // stopFunc can be used to stop/clean up the trace
+	doneSignal     task.Signal        // doneSignal can be waited on to make sure the trace is actually done
+	doneSignalFunc task.Task          // doneSignalFunc is called when tracing finished normally
+}
+
+func (r *traceHandler) Initialize(opts *service.TraceOptions) (*service.StatusResponse, error) {
+	if r.initialized {
+		return nil, log.Errf(r.ctx, nil, "Error initialize a running trace")
+	}
+	r.initialized = true
+	tracerOptions := optionsToTraceOptions(opts)
+	go func() {
+		r.err = trace.Trace(r.ctx, opts.Device, r.startSignal, &tracerOptions, &r.bytesWritten)
+		r.done = true
+		r.doneSignalFunc(r.ctx)
+	}()
+
+	stat := service.TraceStatus_Initializing
+	if opts.DeferStart {
+		stat = service.TraceStatus_WaitingToStart
+	} else {
+		r.started = true
+	}
+
+	resp := &service.StatusResponse{
+		BytesCaptured: 0,
+		Status:        stat,
+	}
+
+	return resp, nil
+}
+
+func (r *traceHandler) Event(req service.TraceEvent) (*service.StatusResponse, error) {
+	if !r.initialized {
+		return nil, log.Errf(r.ctx, nil, "Cannot get/change status of an uninitialized trace")
+	}
+	if r.err != nil {
+		return nil, log.Errf(r.ctx, r.err, "Tracing Failed")
+	}
+
+	switch req {
+	case service.TraceEvent_Begin:
+		if r.started {
+			return nil, log.Errf(r.ctx, nil, "Invalid to start an already running trace")
+		}
+		r.startFunc(r.ctx)
+		r.started = true
+	case service.TraceEvent_Stop:
+		if !r.started {
+			return nil, log.Errf(r.ctx, nil, "Cannot end a trace that was not started")
+		}
+		r.stopFunc()
+		r.doneSignal.Wait(r.ctx)
+	case service.TraceEvent_Status:
+		// intentionally empty
+	}
+
+	status := service.TraceStatus_Uninitialized
+	bytes := atomic.LoadInt64(&r.bytesWritten)
+
+	if r.initialized {
+		if bytes == 0 {
+			status = service.TraceStatus_Initializing
+		} else {
+			status = service.TraceStatus_WaitingToStart
+		}
+	}
+
+	if r.started {
+		if bytes == 0 {
+			status = service.TraceStatus_Initializing
+		} else {
+			status = service.TraceStatus_Capturing
+		}
+	}
+	if r.done {
+		status = service.TraceStatus_Done
+	}
+	resp := &service.StatusResponse{
+		BytesCaptured: atomic.LoadInt64(&r.bytesWritten),
+		Status:        status,
+	}
+	return resp, nil
+}
+
+func (r *traceHandler) Dispose() {
+	r.stopFunc()
+	return
+
+}
+
+func (s *server) Trace(ctx context.Context) (service.TraceHandler, error) {
+	startSignal, startFunc := task.NewSignal()
+	ctx, stop := context.WithCancel(ctx)
+	doneSignal, doneSigFunc := task.NewSignal()
+	return &traceHandler{
+		ctx,
+		false,
+		false,
+		false,
+		nil,
+		0,
+		startSignal,
+		startFunc,
+		stop,
+		doneSignal,
+		doneSigFunc,
+	}, nil
 }

@@ -329,3 +329,78 @@ func (c *client) ClientEvent(ctx context.Context, req *service.ClientEventReques
 	_, err := c.client.ClientEvent(ctx, req)
 	return err
 }
+
+// TraceTargetTreeNode returns a node in the trace target tree for the given device
+func (c *client) TraceTargetTreeNode(ctx context.Context, req *service.TraceTargetTreeRequest) (*service.TraceTargetTreeNode, error) {
+	res, err := c.client.TraceTargetTreeNode(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetNode(), nil
+}
+
+// FindTraceTarget returns a node in the trace target tree for the given device
+func (c *client) FindTraceTarget(ctx context.Context, req *service.FindTraceTargetRequest) (*service.TraceTargetTreeNode, error) {
+	res, err := c.client.FindTraceTarget(ctx, req)
+
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetNode(), nil
+}
+
+type traceHandler struct {
+	conn service.Gapid_TraceClient
+}
+
+func (c *client) Trace(ctx context.Context) (service.TraceHandler, error) {
+	res, err := c.client.Trace(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &traceHandler{res}, nil
+}
+
+func (t *traceHandler) Initialize(opts *service.TraceOptions) (*service.StatusResponse, error) {
+	err := t.conn.Send(
+		&service.TraceRequest{
+			Action: &service.TraceRequest_Initialize{
+				Initialize: opts,
+			}},
+	)
+	if err != nil {
+		return nil, err
+	}
+	res, err := t.conn.Recv()
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetStatus(), nil
+}
+
+func (t *traceHandler) Event(evt service.TraceEvent) (*service.StatusResponse, error) {
+	err := t.conn.Send(
+		&service.TraceRequest{
+			Action: &service.TraceRequest_QueryEvent{
+				QueryEvent: evt,
+			}},
+	)
+	if err != nil {
+		return nil, err
+	}
+	res, err := t.conn.Recv()
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetStatus(), nil
+}
+
+func (t *traceHandler) Dispose() {
+	t.conn.CloseSend()
+}

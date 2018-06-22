@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/flags"
-	"github.com/google/gapid/core/os/file"
 )
 
 const (
@@ -76,7 +75,9 @@ type (
 		Data   bool `help:"if true then display the bytes read and written by each command. Implies Ranges."`
 	}
 	DeviceFlags struct {
-		Device string            `help:"Device to spawn on. One of: 'none', 'host', 'android' or <device-serial>"`
+		Device string            `help:"Device to trace on. Either 'host' or the friendly name of the device"`
+		Serial string            `help:"Serial of the device to trace on."`
+		Os     string            `help:"Os of the device to trace on."`
 		Env    flags.StringSlice `help:"List of environment variables to set, X=Y"`
 		Ssh    struct {
 			Config string `help: "The ssh config to use for finding remote devices"`
@@ -175,26 +176,14 @@ type (
 		Gapir GapirFlags
 	}
 	TraceFlags struct {
-		Gapii   GapiiFlags
-		For     time.Duration `help:"duration to trace for"`
-		Out     string        `help:"the file to generate"`
-		Desktop struct {
-			Port       int    `help:"capture a desktop program instead of using ADB"`
-			App        string `help:"a desktop program to trace"`
-			Args       string `help:"arguments to pass to the traced program"`
-			WorkingDir string `help:"working directory for the process"`
-		}
-		Android struct {
-			Package        string `help:"the full package name"`
-			Activity       string `help:"the full activity name"`
-			Action         string `help:"the full action name"`
-			Attach         bool   `help:"attach to running instance of the specified package"`
-			Logcat         bool   `help:"print the output of logcat while tracing"`
-			AdditionalArgs string `help:"additional arguments to pass to am start"`
-		}
-		APK     file.Path `help:"the path to an apk to install"`
-		OBB     file.Path `help:"the path to an obb to install for APK"`
-		Observe struct {
+		DeviceFlags
+		Gapis          GapisFlags
+		For            time.Duration `help:"duration to trace for"`
+		Out            string        `help:"the file to generate"`
+		AdditionalArgs string        `help:"additional arguments to pass to the application"`
+		WorkingDir     string        `help:"working directory for the application"`
+		URI            string        `help:"uri of the application to trace"`
+		Observe        struct {
 			Frames uint `help:"capture the framebuffer every n frames (0 to disable)"`
 			Draws  uint `help:"capture the framebuffer every n draws (0 to disable)"`
 		}
@@ -203,16 +192,9 @@ type (
 		}
 		Record struct {
 			Errors bool `help:"_record device error state"`
-			Inputs bool `help:"_record the inputs to file"`
 		}
 		Clear struct {
 			Cache bool `help:"clear package data before running it"`
-		}
-		Input struct {
-			File string `help:"_the file to use for recorded inputs"`
-		}
-		Replay struct {
-			Inputs bool `help:"_replay the inputs from file"`
 		}
 		Start struct {
 			Defer bool `help:"defers the start of the trace until <enter> is pressed. Only valid for Vulkan."`
@@ -227,10 +209,10 @@ type (
 			Buffer bool `help:"Do not buffer the output, this helps if the application crashes"`
 		}
 		API string `help:"only capture the given API valid options are gles and vulkan"`
-		ADB string `help:"Path to the adb executable; leave empty to search the environment"`
 	}
 	PackagesFlags struct {
 		DeviceFlags
+		Gapis       GapisFlags
 		Icons       bool           `help:"if true then package icons are also dumped."`
 		IconDensity float64        `help:"_scale multiplier on icon density."`
 		Format      PackagesOutput `help:"output format"`

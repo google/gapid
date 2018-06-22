@@ -16,18 +16,17 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/android/adb"
-	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/core/os/file"
-	"github.com/google/gapid/gapidapk"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapis/client"
+	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type packagesVerb struct{ PackagesFlags }
@@ -46,62 +45,94 @@ func init() {
 }
 
 func (verb *packagesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	ctx = bind.PutRegistry(ctx, bind.NewRegistry())
-
-	if verb.ADB != "" {
-		adb.ADB = file.Abs(verb.ADB)
+	client, err := getGapis(ctx, verb.Gapis, GapirFlags{})
+	if err != nil {
+		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
+	defer client.Close()
 
-	d, err := getADBDevice(ctx, verb.Device)
+	devices, err := filterDevices(ctx, &verb.DeviceFlags, client)
 	if err != nil {
 		return err
 	}
 
-	pkgs, err := gapidapk.PackageList(ctx, d, verb.Icons, float32(verb.IconDensity))
+	if len(devices) == 0 {
+		fmt.Fprintf(os.Stderr, "Cannot find device to get packages")
+	}
+
+	for _, p := range devices {
+		o, err := client.Get(ctx, p.Path())
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "%v\n", log.Err(ctx, err, "Couldn't resolve device"))
+			continue
+		}
+		d := o.(*device.Instance)
+
+		cfg, err := client.Get(ctx, (&path.DeviceTraceConfiguration{Device: p}).Path())
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "%v\n", log.Err(ctx, err, "Couldn't get device config"))
+			return err
+		}
+		c := cfg.(*service.DeviceTraceConfiguration)
+
+		fmt.Fprintf(os.Stdout, "Device %v\n", d.Name)
+		if err := verb.traversePackageTree(ctx, client, p, 0, c.PreferredRootUri, "", false); err != nil {
+			fmt.Fprintf(os.Stdout, "%v\n", err)
+			return err
+		}
+	}
+	return err
+}
+
+func (verb *packagesVerb) traversePackageTree(
+	ctx context.Context,
+	c client.Client,
+	d *path.Device,
+	depth int,
+	uri string,
+	prefix string,
+	last bool) error {
+	if task.Stopped(ctx) {
+		return task.StopReason(ctx)
+	}
+
+	node, err := c.TraceTargetTreeNode(ctx, &service.TraceTargetTreeRequest{
+		Device:  d,
+		Uri:     uri,
+		Density: float32(verb.IconDensity),
+	})
 	if err != nil {
-		return log.Err(ctx, err, "getting package list")
+		return log.Errf(ctx, err, "Failed to load the node at: %v", uri)
 	}
 
-	w := os.Stdout
-	if verb.Out != "" {
-		f, err := os.OpenFile(verb.Out, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	curPrefix := prefix
+	if depth > 0 {
+		if last {
+			curPrefix += "└──"
+		} else {
+			curPrefix += "├──"
+		}
+	}
+
+	suffix := ""
+	if node.GetTraceUri() != "" {
+		suffix = " ( " + node.GetTraceUri() + " )"
+	}
+
+	fmt.Fprintln(os.Stdout, curPrefix, node.Name, suffix)
+
+	if depth > 0 {
+		if last {
+			prefix += "    "
+		} else {
+			prefix += "│   "
+		}
+	}
+
+	for i, u := range node.ChildrenUris {
+		err := verb.traversePackageTree(ctx, c, d, depth+1, u, prefix, i == (len(node.ChildrenUris)-1))
 		if err != nil {
-			return log.Err(ctx, err, "Failed to open package list output file")
-		}
-		w = f
-		defer w.Close()
-	}
-
-	header := []byte{}
-	if verb.DataHeader != "" {
-		header = []byte(verb.DataHeader)
-	}
-
-	switch verb.Format {
-	case ProtoString:
-		w.Write(header)
-		fmt.Fprint(w, pkgs.String())
-
-	case Proto:
-		data, err := proto.Marshal(pkgs)
-		if err != nil {
-			return log.Err(ctx, err, "marshal protobuf")
-		}
-		w.Write(header)
-		w.Write(data)
-
-	case Json:
-		w.Write(header)
-		e := json.NewEncoder(w)
-		e.SetIndent("", "  ")
-		if err := e.Encode(pkgs); err != nil {
-			return log.Err(ctx, err, "marshal json")
-		}
-
-	case SimpleList:
-		w.Write(header)
-		for _, a := range pkgs.GetPackages() {
-			fmt.Fprintf(w, "%s\n", a.Name)
+			return err
 		}
 	}
 

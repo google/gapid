@@ -80,6 +80,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -188,6 +189,19 @@ public class Widgets {
     if (!widget.isDisposed()) {
       widget.getDisplay().timerExec(milliseconds, () -> ifNotDisposed(widget, run));
     }
+  }
+
+  /**
+   * Calls the given suppliers {@link Supplier#get get} method periodically, until either the
+   * given widget is disposed, or the supplier returns {@code false}.
+   */
+  public static void scheduleUntilDisposed(
+      Widget widget, int milliseconds, Supplier<Boolean> run) {
+    scheduleIfNotDisposed(widget, milliseconds, () -> {
+      if (run.get()) {
+        scheduleUntilDisposed(widget, milliseconds, run);
+      }
+    });
   }
 
   public static CTabFolder createTabFolder(Composite parent) {

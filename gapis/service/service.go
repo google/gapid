@@ -150,6 +150,21 @@ type Service interface {
 	// ClientEvent records a client event action, used for analytics.
 	// If the user has not opted-in for analytics then this call does nothing.
 	ClientEvent(ctx context.Context, req *ClientEventRequest) error
+
+	// FindTraceTarget returns a node that can be used by searching the given string
+	FindTraceTarget(ctx context.Context, req *FindTraceTargetRequest) (*TraceTargetTreeNode, error)
+
+	// TraceTargetTreeNode returns a node in the trace target tree for the given device
+	TraceTargetTreeNode(ctx context.Context, req *TraceTargetTreeRequest) (*TraceTargetTreeNode, error)
+
+	// Trace controls setting up, starting and ending a trace
+	Trace(ctx context.Context) (TraceHandler, error)
+}
+
+type TraceHandler interface {
+	Initialize(*TraceOptions) (*StatusResponse, error)
+	Event(TraceEvent) (*StatusResponse, error)
+	Dispose()
 }
 
 // FindHandler is the handler of found items using Service.Find.
@@ -245,6 +260,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_Device{v}}
 	case *api.MultiResourceData:
 		return &Value{Val: &Value_MultiResourceData{v}}
+	case *DeviceTraceConfiguration:
+		return &Value{Val: &Value_TraceConfig{v}}
 
 	default:
 		if v := box.NewValue(v); v != nil {

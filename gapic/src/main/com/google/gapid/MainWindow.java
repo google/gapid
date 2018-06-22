@@ -315,7 +315,7 @@ public class MainWindow extends ApplicationWindow {
     manager.add(MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models())));
     manager.add(createOpenRecentMenu());
     manager.add(MenuItems.FileTrace.create(
-        () -> showTracingDialog(getShell(), models(), widgets())));
+        () -> showTracingDialog(client, getShell(), models(), widgets())));
     manager.add(MenuItems.FileExit.create(() -> close()));
 
     return manager;
@@ -438,7 +438,7 @@ public class MainWindow extends ApplicationWindow {
     manager.add(MenuItems.HelpLicenses.create(
         () -> showLicensesDialog(getShell(), models().analytics, widgets().theme)));
     manager.add(MenuItems.HelpWelcome.create(
-        () -> showWelcomeDialog(getShell(), models(), widgets())));
+        () -> showWelcomeDialog(client, getShell(), models(), widgets())));
     return manager;
   }
 

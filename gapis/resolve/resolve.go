@@ -31,6 +31,7 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/trace"
 )
 
 // Capture resolves and returns the capture from the path p.
@@ -49,6 +50,34 @@ func Device(ctx context.Context, p *path.Device) (*device.Instance, error) {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrUnknownDevice()}
 	}
 	return device.Instance(), nil
+}
+
+// DeviceTraceConfiguration resolves and returns the trace config for a device.
+func DeviceTraceConfiguration(ctx context.Context, p *path.DeviceTraceConfiguration) (*service.DeviceTraceConfiguration, error) {
+	c, err := trace.TraceConfiguration(ctx, p.Device)
+
+	if err != nil {
+		return nil, err
+	}
+
+	config := &service.DeviceTraceConfiguration{
+		ServerLocalPath:      c.ServerLocalPath,
+		CanSpecifyCwd:        c.CanSpecifyCwd,
+		CanUploadApplication: c.CanUploadApplication,
+		HasCache:             c.HasCache,
+		CanSpecifyEnv:        c.CanSpecifyEnv,
+		PreferredRootUri:     c.PreferredRootUri,
+		Apis:                 make([]*service.DeviceAPITraceConfiguration, len(c.Apis)),
+	}
+
+	for i, opt := range c.Apis {
+		config.Apis[i] = &service.DeviceAPITraceConfiguration{
+			Api:                        opt.APIName,
+			CanDisablePcs:              opt.CanDisablePCS,
+			MidExecutionCaptureSupport: opt.MidExecutionCaptureSupport,
+		}
+	}
+	return config, nil
 }
 
 // ImageInfo resolves and returns the ImageInfo from the path p.
@@ -280,6 +309,8 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 		return Contexts(ctx, p)
 	case *path.Device:
 		return Device(ctx, p)
+	case *path.DeviceTraceConfiguration:
+		return DeviceTraceConfiguration(ctx, p)
 	case *path.Events:
 		return Events(ctx, p)
 	case *path.FramebufferObservation:

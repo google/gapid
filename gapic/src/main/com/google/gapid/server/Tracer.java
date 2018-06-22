@@ -15,52 +15,91 @@
  */
 package com.google.gapid.server;
 
-import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.gapid.models.Settings;
-import com.google.gapid.proto.device.Device;
+import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.TraceOptions;
+import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.Rpc.Result;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiCallback;
+import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
-import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Logger;
 
 /**
  * Handles capturing an API trace.
  */
 public class Tracer {
-  public static Trace trace(
-      Display display, Settings settings, TraceRequest request, Listener listener) {
-    GapitTraceProcess process = new GapitTraceProcess(settings, request, message ->
-        display.asyncExec(() -> listener.onProgress(message)));
-    Futures.addCallback(process.start(), new FutureCallback<Boolean>() {
+  private static final Logger LOG = Logger.getLogger(Tracer.class.getName());
+
+  public static Trace trace(Client client, Shell shell, TraceRequest request, Listener listener) {
+    AtomicBoolean done = new AtomicBoolean();
+    GapidClient.StreamSender<Service.TraceRequest> sender = client.streamTrace(message -> {
+      Widgets.scheduleIfNotDisposed(shell, () -> listener.onProgress(message));
+      if (message.getStatus() == Service.TraceStatus.Done && done.compareAndSet(false, true)) {
+        return GapidClient.Result.DONE;
+      }
+      return GapidClient.Result.CONTINUE;
+    });
+
+    Rpc.listen(sender.getFuture(), new UiCallback<Void, Throwable>(shell, LOG) {
       @Override
-      public void onFailure(Throwable t) {
-        if (t instanceof ChildProcess.EarlyExitException &&
-            ((ChildProcess.EarlyExitException)t).exitCode == 0) {
-          // Early, but clean exit. Treat it as success.
-        } else {
-          // Give some time for all the output to pump through.
-          display.asyncExec(() -> display.timerExec(500, () -> listener.onFailure(t)));
+      protected Throwable onRpcThread(Result<Void> result) {
+        done.set(true);
+        try {
+          result.get();
+          return null;
+        } catch (RpcException | ExecutionException e) {
+          return e;
         }
       }
 
       @Override
-      public void onSuccess(Boolean result) {
-        // Ignore.
+      protected void onUiThread(Throwable result) {
+        // Give some time for all the output to pump through.
+        Widgets.scheduleIfNotDisposed(shell, 500, () -> {
+          if (result == null) {
+            listener.onFinished();
+          } else {
+            listener.onFailure(result);
+          }
+        });
       }
     });
 
+    sender.send(Service.TraceRequest.newBuilder()
+        .setInitialize(request.options)
+        .build());
+
     return new Trace() {
       @Override
-      public void start() {
-        process.startTracing();
+      public boolean start() {
+        return sendEvent(Service.TraceEvent.Begin);
       }
 
       @Override
-      public void stop() {
-        process.stopTracing();
+      public boolean getStatus() {
+        return sendEvent(Service.TraceEvent.Status);
+      }
+
+      @Override
+      public boolean stop() {
+        return sendEvent(Service.TraceEvent.Stop);
+      }
+
+      private boolean sendEvent(Service.TraceEvent event) {
+        if (done.get()) {
+          return false;
+        }
+
+        sender.send(Service.TraceRequest.newBuilder()
+            .setQueryEvent(event)
+            .build());
+        return true;
       }
     };
   }
@@ -70,12 +109,17 @@ public class Tracer {
     /**
      * Event indicating output from the tracing process.
      */
-    public default void onProgress(String message) { /* empty */ }
+    public default void onProgress(Service.StatusResponse status) { /* empty */ }
 
     /**
      * Event indicating that tracing has failed.
      */
     public default void onFailure(Throwable error) { /* empty */ }
+
+    /**
+     * Event indicating that tracing has completed successfully.
+     */
+    public default void onFinished() { /* empty */ }
   }
 
   /**
@@ -84,198 +128,42 @@ public class Tracer {
   public static interface Trace {
     /**
      * Requests the current trace to start capturing. Only valid for mid-execution traces.
+     * @returns whether the start request was sent.
      */
-    public void start();
+    public boolean start();
+
+    /**
+     * Queries for trace status. The status is communicated via
+     * {@link Listener#onProgress(com.google.gapid.proto.service.Service.StatusResponse)}.
+     * @returns whether the status request was sent.
+     */
+    public boolean getStatus();
 
     /**
      * Requests the current trace to be stopped.
+     * @returns whether the stop request was sent.
      */
-    public void stop();
+    public boolean stop();
   }
-
-  public static enum Api {
-    GLES("OpenGL ES"), Vulkan("Vulkan");
-
-    public final String displayName;
-
-    private Api(String displayName) {
-      this.displayName = displayName;
-    }
-
-    public static Api parse(String name) {
-      try {
-        return Api.valueOf(name);
-      } catch (IllegalArgumentException e) {
-        return null;
-      }
-    }
-  }
-
 
   /**
    * Contains information about how and what application to trace.
    */
-  public static abstract class TraceRequest {
-    public final Api api;
+  public static class TraceRequest {
     public final File output;
-    public final int frameCount;
-    public final boolean midExecution;
-    public final boolean disableBuffering;
+    public final Service.TraceOptions options;
 
-    public TraceRequest(
-        Api api, File output, int frameCount, boolean midExecution, boolean disableBuffering) {
-      this.api = api;
+    public TraceRequest(File output, TraceOptions options) {
       this.output = output;
-      this.frameCount = frameCount;
-      this.midExecution = midExecution;
-      this.disableBuffering = disableBuffering;
+      this.options = options;
     }
 
-    public List<String> appendCommandLine(List<String> cmd) {
-      if (api != null) {
-        cmd.add("-api");
-        cmd.add(api.name().toLowerCase());
-      }
-
-      cmd.add("-out");
-      cmd.add(output.getAbsolutePath());
-
-      if (frameCount > 0) {
-        cmd.add("-capture-frames");
-        cmd.add(Integer.toString(frameCount));
-      }
-
-      if (midExecution) {
-        cmd.add("-start-defer");
-      }
-
-      if (disableBuffering) {
-        cmd.add("-no-buffer");
-      }
-
-      return cmd;
+    public boolean isMec() {
+      return options.getDeferStart();
     }
 
-    @Override
-    public String toString() {
-      return appendCommandLine(Lists.newArrayList()).toString();
-    }
-
-    public abstract String getProgressDialogTitle();
-  }
-
-  /**
-   * Contains information about how and what android application to trace.
-   */
-  public static class AndroidTraceRequest extends TraceRequest {
-    public final Device.Instance device;
-    public final String pkg;
-    public final String activity;
-    public final String action;
-    public final String intentArgs;
-    public final boolean clearCache;
-    public final boolean disablePcs;
-
-    public AndroidTraceRequest(Api api, Device.Instance device, String action, String intentArgs,
-        File output, int frameCount, boolean midExecution, boolean disableBuffering,
-        boolean clearCache, boolean disablePcs) {
-      this(api, device, null, null, action, intentArgs, output, frameCount, midExecution,
-          disableBuffering, clearCache, disablePcs);
-    }
-
-    public AndroidTraceRequest(Api api, Device.Instance device, String pkg, String activity,
-        String action, String intentArgs, File output, int frameCount, boolean midExecution,
-        boolean disableBuffering, boolean clearCache, boolean disablePcs) {
-      super(api, output, frameCount, midExecution, disableBuffering);
-      this.device = device;
-      this.pkg = pkg;
-      this.activity = activity;
-      this.action = action;
-      this.intentArgs = intentArgs;
-      this.clearCache = clearCache;
-      this.disablePcs = disablePcs;
-    }
-
-    @Override
-    public List<String> appendCommandLine(List<String> cmd) {
-      super.appendCommandLine(cmd);
-      if (!device.getSerial().isEmpty()) {
-        cmd.add("-gapii-device");
-        cmd.add(device.getSerial());
-      }
-
-      cmd.add("-clear-cache=" + Boolean.toString(clearCache));
-
-      cmd.add("-disable-pcs=" + Boolean.toString(disablePcs));
-
-      if (!intentArgs.isEmpty()) {
-        cmd.add("-android-additionalargs");
-        cmd.add(intentArgs);
-      }
-
-      if (pkg != null) {
-        cmd.add("-android-package");
-        cmd.add(pkg);
-
-        cmd.add("-android-activity");
-        cmd.add(activity);
-
-        cmd.add("-android-action");
-        cmd.add(action);
-      } else {
-        cmd.add(action);
-      }
-
-      return cmd;
-    }
-
-    @Override
     public String getProgressDialogTitle() {
-      return "Capturing " + ((pkg != null) ? pkg : action) + " to " + output.getName();
-    }
-  }
-
-  public static class DesktopTraceRequest extends TraceRequest {
-    public final File executable;
-    public final String args;
-    public final File cwd;
-
-    public DesktopTraceRequest(File executable, String args, File cwd, File output,
-        int frameCount, boolean midExecution, boolean disableBuffering) {
-      super(Api.Vulkan, output, frameCount, midExecution, disableBuffering);
-      this.executable = executable;
-      this.args = args;
-      this.cwd = cwd;
-    }
-
-    @Override
-    public List<String> appendCommandLine(List<String> cmd) {
-      super.appendCommandLine(cmd);
-
-      cmd.add("-desktop-app");
-      cmd.add(executable.getAbsolutePath());
-
-      if (!args.isEmpty()) {
-        cmd.add("-desktop-args");
-        cmd.add(args);
-      }
-
-      if (cwd != null && cwd.exists() && cwd.isDirectory()) {
-        cmd.add("--desktop-workingdir");
-        cmd.add(cwd.getAbsolutePath());
-      }
-
-      return cmd;
-    }
-
-    @Override
-    public String getProgressDialogTitle() {
-      return "Capturing " + executable.getName() + " to " + output.getName();
-    }
-
-    @Override
-    public String toString() {
-      return appendCommandLine(Lists.newArrayList()).toString();
+      return "Capturing " + output.getName();
     }
   }
 }

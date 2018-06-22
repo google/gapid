@@ -95,6 +95,43 @@ func (b *Simple) SetupLocalPort(ctx context.Context, port int) (int, error) {
 	return port, nil
 }
 
+// IsFile returns true if the given path refers to a file
+func (b *Simple) IsFile(ctx context.Context, path string) (bool, error) {
+	if path == "" {
+		return false, nil
+	}
+
+	f, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+	if f.Mode().IsRegular() {
+		return true, nil
+	}
+	return false, nil
+}
+
+// IsDirectory returns true if the given path refers to a directory
+func (b *Simple) IsDirectory(ctx context.Context, path string) (bool, error) {
+	if path == "" {
+		return true, nil
+	}
+
+	f, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+	if f.Mode().IsDir() {
+		return true, nil
+	}
+	return false, nil
+}
+
+// GetWorkingDirectory returns the directory that this device considers CWD
+func (b *Simple) GetWorkingDirectory(ctx context.Context) (string, error) {
+	return os.Getwd()
+}
+
 // ABI implements the Device interface returning the first ABI from the Information, or UnknownABI if it has none.
 func (b *Simple) ABI() *device.ABI {
 	if len(b.To.Configuration.ABIs) <= 0 {

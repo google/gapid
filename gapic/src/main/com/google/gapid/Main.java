@@ -148,7 +148,7 @@ public class Main {
       if (args.length == 1) {
         models.capture.loadCapture(new File(args[0]));
       } else if (!models.settings.skipWelcomeScreen) {
-        showWelcomeDialog(window.getShell(), models, widgets);
+        showWelcomeDialog(client, window.getShell(), models, widgets);
       }
     }
 

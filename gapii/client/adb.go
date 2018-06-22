@@ -56,11 +56,10 @@ type Process struct {
 	conn net.Conn
 }
 
-// StartOrAttach launches an activity on an android device with the GAPII interceptor
+// Start launches an activity on an android device with the GAPII interceptor
 // enabled using the gapid.apk built for the ABI matching the specified action and device.
-// If there is no activity provided, it will try to attach to any already running one.
 // GAPII will attempt to connect back on the returned host port to write the trace.
-func StartOrAttach(ctx context.Context, p *android.InstalledPackage, a *android.ActivityAction, o Options) (*Process, error) {
+func Start(ctx context.Context, p *android.InstalledPackage, a *android.ActivityAction, o Options) (*Process, error) {
 	ctx = log.Enter(ctx, "start")
 	if a != nil {
 		ctx = log.V{"activity": a.Activity}.Bind(ctx)

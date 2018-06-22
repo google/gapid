@@ -178,6 +178,11 @@ func (n *Device) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *DeviceTraceConfiguration) Validate() error {
+	return checkNotNilAndValidate(n, n.Device, "device")
+}
+
+// Validate checks the path is valid.
 func (n *Events) Validate() error {
 	return checkNotNilAndValidate(n, protoutil.OneOf(n.Capture), "capture")
 }
