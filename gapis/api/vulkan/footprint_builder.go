@@ -1603,6 +1603,9 @@ func (vb *FootprintBuilder) recordBarriers(ctx context.Context,
 			modify(ctx, cbh, d)
 			ft.AddBehavior(ctx, cbh)
 		}
+		cbh := sc.cmd.newBehavior(ctx, sc, vb.machine, execInfo)
+		read(ctx, cbh, attachedReads...)
+		ft.AddBehavior(ctx, cbh)
 	}
 }
 
