@@ -57,26 +57,6 @@ go_library(
     ],
 )
 
-go_test(
-    name = "go_default_xtest",
-    size = "small",
-    srcs = [
-        "decompress_test.go",
-        "image_test.go",
-        "rgba_f32_test.go",
-    ],
-    data = glob(["test_data/*"]),
-    deps = [
-        ":go_default_library",
-        "//core/data/endian:go_default_library",
-        "//core/image/astc:go_default_library",
-        "//core/math/f32:go_default_library",
-        "//core/math/sint:go_default_library",
-        "//core/os/device:go_default_library",
-        "//gapis/database:go_default_library",
-    ],
-)
-
 proto_library(
     name = "image_proto",
     srcs = ["image.proto"],
@@ -96,4 +76,25 @@ java_proto_library(
     name = "image_java_proto",
     visibility = ["//visibility:public"],
     deps = [":image_proto"],
+)
+
+go_test(
+    name = "go_default_test",
+    size = "small",
+    srcs = [
+        "decompress_test.go",
+        "image_test.go",
+        "rgba_f32_test.go",
+    ],
+    data = glob(["test_data/*"]),
+    embed = [":go_default_library"],
+    deps = [
+        "//core/data/endian:go_default_library",
+        "//core/image:go_default_library",
+        "//core/image/astc:go_default_library",
+        "//core/math/f32:go_default_library",
+        "//core/math/sint:go_default_library",
+        "//core/os/device:go_default_library",
+        "//gapis/database:go_default_library",
+    ],
 )

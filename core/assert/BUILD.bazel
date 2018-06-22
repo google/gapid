@@ -38,7 +38,7 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
+    name = "go_default_test",
     size = "small",
     srcs = [
         "enum_test.go",
@@ -51,5 +51,6 @@ go_test(
         "time_test.go",
         "value_test.go",
     ],
-    deps = [":go_default_library"],
+    embed = [":go_default_library"],
+    deps = ["//core/assert:go_default_library"],
 )

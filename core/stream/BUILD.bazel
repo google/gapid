@@ -44,17 +44,6 @@ go_library(
     ],
 )
 
-go_test(
-    name = "go_default_xtest",
-    size = "small",
-    srcs = ["convert_test.go"],
-    deps = [
-        ":go_default_library",
-        "//core/assert:go_default_library",
-        "//core/stream/fmts:go_default_library",
-    ],
-)
-
 proto_library(
     name = "stream_proto",
     srcs = ["stream.proto"],
@@ -72,4 +61,16 @@ java_proto_library(
     name = "stream_java_proto",
     visibility = ["//visibility:public"],
     deps = [":stream_proto"],
+)
+
+go_test(
+    name = "go_default_test",
+    size = "small",
+    srcs = ["convert_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/stream:go_default_library",
+        "//core/stream/fmts:go_default_library",
+    ],
 )

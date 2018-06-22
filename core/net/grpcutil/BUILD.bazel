@@ -36,13 +36,14 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
+    name = "go_default_test",
     size = "small",
     srcs = ["pipe_test.go"],
+    embed = [":go_default_library"],
     deps = [
-        ":go_default_library",
         "//core/assert:go_default_library",
         "//core/event/task:go_default_library",
         "//core/log:go_default_library",
+        "//core/net/grpcutil:go_default_library",
     ],
 )

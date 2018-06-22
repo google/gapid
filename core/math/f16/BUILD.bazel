@@ -25,8 +25,9 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
+    name = "go_default_test",
     size = "small",
     srcs = ["float16_test.go"],
-    deps = [":go_default_library"],
+    embed = [":go_default_library"],
+    deps = ["//core/math/f16:go_default_library"],
 )

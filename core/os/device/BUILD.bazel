@@ -40,26 +40,6 @@ go_library(
     ],
 )
 
-go_test(
-    name = "go_default_xtest",
-    size = "small",
-    srcs = [
-        "abi_test.go",
-        "android_test.go",
-        "architecture_test.go",
-        "cpu_test.go",
-        "instance_test.go",
-        "linux_test.go",
-        "osx_test.go",
-    ],
-    deps = [
-        ":go_default_library",
-        "//core/assert:go_default_library",
-        "//core/log:go_default_library",
-        "//core/os/device/host:go_default_library",
-    ],
-)
-
 proto_library(
     name = "device_proto",
     srcs = ["device.proto"],
@@ -83,4 +63,25 @@ java_proto_library(
     name = "device_java_proto",
     visibility = ["//visibility:public"],
     deps = [":device_proto"],
+)
+
+go_test(
+    name = "go_default_test",
+    size = "small",
+    srcs = [
+        "abi_test.go",
+        "android_test.go",
+        "architecture_test.go",
+        "cpu_test.go",
+        "instance_test.go",
+        "linux_test.go",
+        "osx_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+        "//core/os/device:go_default_library",
+        "//core/os/device/host:go_default_library",
+    ],
 )

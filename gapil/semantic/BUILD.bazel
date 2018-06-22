@@ -38,8 +38,9 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
+    name = "go_default_test",
     size = "small",
     srcs = ["interface_test.go"],
-    deps = [":go_default_library"],
+    embed = [":go_default_library"],
+    deps = ["//gapil/semantic:go_default_library"],
 )

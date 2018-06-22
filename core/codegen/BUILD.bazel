@@ -39,24 +39,18 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
-    srcs = ["codegen_test.go"],
-    deps = [
-        ":go_default_library",
-        "//core/assert:go_default_library",
-        "//core/codegen/call:go_default_library",
-        "//core/log:go_default_library",
-        "//core/os/device/host:go_default_library",
-    ],
-)
-
-go_test(
     name = "go_default_test",
-    srcs = ["triple_test.go"],
+    srcs = [
+        "codegen_test.go",
+        "triple_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
+        "//core/codegen:go_default_library",
+        "//core/codegen/call:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
+        "//core/os/device/host:go_default_library",
     ],
 )

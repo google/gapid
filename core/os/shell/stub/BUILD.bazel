@@ -34,27 +34,28 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
+    name = "go_default_test",
     size = "small",
     srcs = ["stub_example_test.go"],
+    embed = [":go_default_library"],
     deps = select({
         "@io_bazel_rules_go//go/platform:darwin": [
-            ":go_default_library",
             "//core/event/task:go_default_library",
             "//core/log:go_default_library",
             "//core/os/shell:go_default_library",
+            "//core/os/shell/stub:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:linux": [
-            ":go_default_library",
             "//core/event/task:go_default_library",
             "//core/log:go_default_library",
             "//core/os/shell:go_default_library",
+            "//core/os/shell/stub:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:windows": [
-            ":go_default_library",
             "//core/event/task:go_default_library",
             "//core/log:go_default_library",
             "//core/os/shell:go_default_library",
+            "//core/os/shell/stub:go_default_library",
         ],
         "//conditions:default": [],
     }),
