@@ -17,6 +17,8 @@ package compare
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // Action is the optional return value type of functions passes to
@@ -39,9 +41,11 @@ type customKey struct {
 }
 
 var (
-	globalCustom   = &Custom{}
-	comparatorType = reflect.TypeOf(Comparator{})
-	actionType     = reflect.TypeOf(Done)
+	globalCustom    = &Custom{}
+	comparatorType  = reflect.TypeOf(Comparator{})
+	actionType      = reflect.TypeOf(Done)
+	protoType       = reflect.TypeOf((*proto.Message)(nil)).Elem()
+	protoComparator = reflect.ValueOf(compareProtos)
 )
 
 // Custom is a collection of custom comparators that will be used instead of
@@ -110,7 +114,10 @@ func (c *Custom) call(key customKey, args []reflect.Value) Action {
 
 	comparator, found := c.funcs[key]
 	if !found {
-		return c.fallback().call(key, args)
+		if !key.reference.Implements(protoType) {
+			return c.fallback().call(key, args)
+		}
+		comparator = protoComparator
 	}
 
 	action := Done
@@ -133,4 +140,10 @@ func (c *Custom) fallback() *Custom {
 		return nil
 	}
 	return globalCustom
+}
+
+func compareProtos(c Comparator, reference proto.Message, value interface{}) {
+	if v, ok := value.(proto.Message); !ok || !proto.Equal(reference, v) {
+		c.AddDiff(reference, value)
+	}
 }
