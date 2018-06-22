@@ -59,7 +59,7 @@ go_library(
         "//gapil/compiler/plugins/encoder/test/encoder_pb:go_default_library",
         "//gapis/memory/memory_pb:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
-        "@com_github_golang_protobuf//protoc-gen-go/descriptor:go_default_library",
+        "@io_bazel_rules_go//proto/wkt:descriptor_go_proto",
     ],
 )
 

@@ -18,7 +18,7 @@ load("//tools/build:rules.bzl", "copy_to")
 gazelle(
     name = "gazelle",
     mode = "fix",
-    prefix = "github.com/google/gapid"
+    prefix = "github.com/google/gapid",
 )
 
 # Alias meant to be used with 'bazel run <alias> -- <arguments>'.

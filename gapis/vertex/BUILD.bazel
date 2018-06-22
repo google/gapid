@@ -27,19 +27,6 @@ go_library(
     deps = ["//core/stream:go_default_library"],
 )
 
-go_test(
-    name = "go_default_xtest",
-    size = "small",
-    srcs = ["vertex_test.go"],
-    deps = [
-        ":go_default_library",
-        "//core/assert:go_default_library",
-        "//core/log:go_default_library",
-        "//core/stream:go_default_library",
-        "//core/stream/fmts:go_default_library",
-    ],
-)
-
 proto_library(
     name = "vertex_proto",
     srcs = ["vertex.proto"],
@@ -60,4 +47,18 @@ java_proto_library(
     name = "vertex_java_proto",
     visibility = ["//visibility:public"],
     deps = [":vertex_proto"],
+)
+
+go_test(
+    name = "go_default_test",
+    size = "small",
+    srcs = ["vertex_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+        "//core/stream:go_default_library",
+        "//core/stream/fmts:go_default_library",
+        "//gapis/vertex:go_default_library",
+    ],
 )

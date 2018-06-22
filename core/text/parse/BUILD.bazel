@@ -40,20 +40,16 @@ go_library(
 go_test(
     name = "go_default_test",
     size = "small",
-    srcs = ["reader_test.go"],
+    srcs = [
+        "parser_test.go",
+        "reader_test.go",
+    ],
     embed = [":go_default_library"],
-    deps = ["//core/assert:go_default_library"],
-)
-
-go_test(
-    name = "go_default_xtest",
-    size = "small",
-    srcs = ["parser_test.go"],
     deps = [
-        ":go_default_library",
         "//core/assert:go_default_library",
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
+        "//core/text/parse:go_default_library",
         "//core/text/parse/test:go_default_library",
     ],
 )

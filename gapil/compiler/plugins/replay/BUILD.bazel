@@ -15,7 +15,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go",
+    name = "go_default_library",
     srcs = [
         "plugin.go",
         "replay.go",
@@ -41,16 +41,17 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
+    name = "go_default_test",
     srcs = ["replay_test.go"],
+    embed = [":go_default_library"],
     deps = [
-        ":go",
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/text/parse:go_default_library",
         "//gapil:go_default_library",
         "//gapil/compiler:go_default_library",
+        "//gapil/compiler/plugins/replay:go_default_library",
         "//gapil/compiler/testutils:go_default_library",
         "//gapil/executor:go_default_library",
         "//gapis/api:go_default_library",

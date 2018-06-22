@@ -87,6 +87,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "cmd_id_group_test.go",
+        "cmd_service_test.go",
         "subcmd_idx_test.go",
         "subcmd_idx_trie_test.go",
     ],
@@ -96,16 +97,7 @@ go_test(
         "//core/data/slice:go_default_library",
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
-    ],
-)
-
-go_test(
-    name = "go_default_xtest",
-    srcs = ["cmd_service_test.go"],
-    deps = [
-        ":go_default_library",
-        "//core/assert:go_default_library",
-        "//core/log:go_default_library",
+        "//gapis/api:go_default_library",
         "//gapis/api/testcmd:go_default_library",
     ],
 )

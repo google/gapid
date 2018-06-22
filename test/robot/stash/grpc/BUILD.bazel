@@ -40,21 +40,6 @@ go_library(
     ],
 )
 
-go_test(
-    name = "go_default_xtest",
-    srcs = ["grpc_test.go"],
-    deps = [
-        ":go_default_library",
-        "//core/assert:go_default_library",
-        "//core/fault:go_default_library",
-        "//core/log:go_default_library",
-        "//core/net/grpcutil:go_default_library",
-        "//test/robot/stash:go_default_library",
-        "//test/robot/stash/local:go_default_library",
-        "@org_golang_google_grpc//:go_default_library",
-    ],
-)
-
 proto_library(
     name = "grpc_proto",
     srcs = ["stash.proto"],
@@ -74,5 +59,21 @@ go_proto_library(
     deps = [
         "//test/robot/search:go_default_library",
         "//test/robot/stash:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["grpc_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/fault:go_default_library",
+        "//core/log:go_default_library",
+        "//core/net/grpcutil:go_default_library",
+        "//test/robot/stash:go_default_library",
+        "//test/robot/stash/grpc:go_default_library",
+        "//test/robot/stash/local:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
     ],
 )
