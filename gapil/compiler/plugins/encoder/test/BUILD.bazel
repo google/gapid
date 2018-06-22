@@ -51,7 +51,7 @@ go_library(
         "//gapil/runtime/cc",
     ],
     cgo = True,
-    copts = cc_copts(),  # keep
+    cppopts = cc_copts(),
     importpath = "github.com/google/gapid/gapil/compiler/plugins/encoder/test",
     visibility = ["//visibility:public"],
     deps = [

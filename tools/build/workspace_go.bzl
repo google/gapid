@@ -16,19 +16,24 @@
 # go dependencies.
 
 load("@gapid//tools/build/rules:repository.bzl", "github_http_args")
-load("@io_bazel_rules_go//go:def.bzl", "go_repository")
+load("@bazel_gazelle//:deps.bzl", "go_repository")
 
 # Defines the repositories for GAPID's go dependencies.
 # After calling gapid_dependencies(), load @io_bazel_rules_go's
 # go_repository and call this macro.
 def gapid_go_dependencies():
-    _maybe(_github_go_repository,
-        name = "com_github_golang_protobuf",
-        organization = "golang",
-        project = "protobuf",
-        commit = "b4deda0973fb4c70b50d226b1af49f3da59f5265",
-        importpath = "github.com/golang/protobuf",
-    )
+
+    # TODO: Cannot override rules_go's golang protobuf. Would
+    # cause a cycle. This may be fixed with
+    # https://github.com/bazelbuild/rules_go/issues/1548
+    #
+    #_maybe(_github_go_repository,
+    #    name = "com_github_golang_protobuf",
+    #    organization = "golang",
+    #    project = "protobuf",
+    #    commit = "b4deda0973fb4c70b50d226b1af49f3da59f5265",
+    #    importpath = "github.com/golang/protobuf",
+    #)
 
     _maybe(_github_go_repository,
         name = "com_github_google_go_github",
