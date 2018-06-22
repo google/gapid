@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_prefix")
 load("@bazel_gazelle//:def.bzl", "gazelle")
 load("//tools/build:rules.bzl", "copy_to")
-
-go_prefix("github.com/google/gapid")
 
 gazelle(
     name = "gazelle",
     mode = "fix",
+    prefix = "github.com/google/gapid"
 )
 
 # Alias meant to be used with 'bazel run <alias> -- <arguments>'.
