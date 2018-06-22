@@ -14,7 +14,11 @@
 
 package assert
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/google/gapid/core/data/compare"
+)
 
 // OnSlice is the result of calling ThatSlice on an Assertion.
 // It provides assertion tests that are specific to slice types.
@@ -59,7 +63,7 @@ func (o OnSlice) EqualsWithComparator(expected interface{}, same func(a, b inter
 
 // DeepEquals asserts the array or slice matches expected using a deep-equal comparison.
 func (o OnSlice) DeepEquals(expected interface{}) bool {
-	return o.slicesEqual(expected, reflect.DeepEqual)
+	return o.slicesEqual(expected, compare.DeepEqual)
 }
 
 func (o OnSlice) slicesEqual(expected interface{}, same func(a, b interface{}) bool) bool {
