@@ -180,6 +180,10 @@ func TestDecompressors(t *testing.T) {
 		{image.S3_DXT3_RGBA, ".bin"},
 		{image.S3_DXT5_RGBA, ".bin"},
 		{astc.RGBA_4x4, ".astc"},
+		{image.RGTC1_BC4_R_U8_NORM, ".bin"},
+		{image.RGTC1_BC4_R_S8_NORM, ".bin"},
+		{image.RGTC2_BC5_RG_U8_NORM, ".bin"},
+		{image.RGTC2_BC5_RG_S8_NORM, ".bin"},
 	} {
 		name := test.fmt.Name
 		inPath := filepath.Join("test_data", name+test.ext)

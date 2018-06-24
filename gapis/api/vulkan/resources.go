@@ -343,13 +343,13 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_BC3_SRGB_BLOCK:
 		return image.NewS3_DXT5_RGBA("VK_FORMAT_BC3_SRGB_BLOCK"), nil
 	case VkFormat_VK_FORMAT_BC4_UNORM_BLOCK:
-		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+		return image.NewRGTC1_BC4_R_U8_NORM("VK_FORMAT_BC4_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_BC4_SNORM_BLOCK:
-		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+		return image.NewRGTC1_BC4_R_S8_NORM("VK_FORMAT_BC4_SNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_BC5_UNORM_BLOCK:
-		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+		return image.NewRGTC2_BC5_RG_U8_NORM("VK_FORMAT_BC5_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_BC5_SNORM_BLOCK:
-		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
+		return image.NewRGTC2_BC5_RG_S8_NORM("VK_FORMAT_BC5_SNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_BC6H_UFLOAT_BLOCK:
 		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
 	case VkFormat_VK_FORMAT_BC6H_SFLOAT_BLOCK:
