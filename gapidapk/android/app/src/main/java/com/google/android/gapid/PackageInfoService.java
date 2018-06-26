@@ -382,7 +382,7 @@ public class PackageInfoService extends IntentService {
         packageJson.put("debuggable", isDebuggable);
         packageJson.put("icon", iconIndex);
         if (primaryCpuAbi != null) {
-            packageJson.put("abi", primaryCpuAbi);
+            packageJson.put("ABI", primaryCpuAbi);
         }
         packageJson.put("activities", activitiesJson);
         return packageJson;
