@@ -20,9 +20,6 @@ import (
 	"github.com/google/gapid/gapil/executor"
 )
 
-//#include "gapil/runtime/cc/runtime.h"
-import "C"
-
 var (
 	// ExternA will be called whenever the test_extern_a extern function is
 	// called.
