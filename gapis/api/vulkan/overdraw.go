@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -49,26 +50,21 @@ func (s *stencilOverdraw) add(ctx context.Context, extraCommands uint64, after [
 	c, err := capture.ResolveFromPath(ctx, capt)
 	if err != nil {
 		res(nil, err)
-	}
-	lastSubmit := int64(after[0])
-submitLoop:
-	for lastSubmit >= 0 {
-		switch (c.Commands[lastSubmit]).(type) {
-		case *VkQueueSubmit:
-			break submitLoop
-		}
-		lastSubmit -= 1
-	}
-	if lastSubmit == -1 {
-		res(nil, &service.ErrDataUnavailable{
-			Reason: messages.ErrMessage("No last queue submission"),
-		})
 		return
 	}
-
-	id := api.CmdID(uint64(lastSubmit) + extraCommands)
-	s.rewrite[id] = res
-	s.lastSubIdx[id] = api.SubCmdIdx(after[1:])
+	for lastSubmit := int64(after[0]); lastSubmit >= 0; lastSubmit-- {
+		switch (c.Commands[lastSubmit]).(type) {
+		case *VkQueueSubmit:
+			id := api.CmdID(uint64(lastSubmit) + extraCommands)
+			s.rewrite[id] = res
+			s.lastSubIdx[id] = api.SubCmdIdx(after[1:])
+			log.D(ctx, "Overdraw marked for submit id %v", lastSubmit)
+			return
+		}
+	}
+	res(nil, &service.ErrDataUnavailable{
+		Reason: messages.ErrMessage("No last queue submission"),
+	})
 }
 
 func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
@@ -351,7 +347,7 @@ func (s *stencilOverdraw) getStencilAttachmentDescription(st *State,
 	} else {
 		stencilDesc = MakeVkAttachmentDescription(a)
 		// Use this format because it is the most commonly supported.
-		// Ideally we would be able to do
+		// TODO: Ideally we would be able to do
 		// VkGetPhysicalDeviceImageFormatProperties to determine what
 		// we can use, but for now assume this is available.
 		stencilDesc.SetFmt(VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT)
