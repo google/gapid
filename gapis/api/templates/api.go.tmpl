@@ -383,6 +383,33 @@ import (
     return m
   }
 
+  func (m {{$name}}) CreateHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}, val {{$value}}) {{$name}} {
+    if ϟw != nil {
+      ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
+        {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
+        {{Template "Reference" "Type" $.ValueType "Val" "val"}})
+      if _, ok := (*m.Map)[key]; !ok {
+        ϟw.OpenForwardDependency(ϟctx, key)
+      }
+    }
+    (*m.Map)[key] = val
+    return m
+  }
+
+  func (m {{$name}}) DestroyHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) {
+    if m.Map != nil {
+      if ϟw != nil {
+        ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
+          {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
+          ϟapi.NilReference{})
+        if _, ok := (*m.Map)[key]; ok {
+          ϟw.CloseForwardDependency(ϟctx, key)
+        }
+      }
+      delete(*m.Map, key)
+    }
+  }
+
   func (m {{$name}}) Contains(key {{$key}}) (ok bool) {
     if m.Map != nil {
       _, ok = (*m.Map)[key]

@@ -590,10 +590,14 @@
   {{AssertType $ "MapAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Map}}.Add§
-    {{if GetAnnotation $.To.Map "untrackedMap"}}(§
-    {{else}}ʷ(ϟctx, ϟw, §
-    {{end}}§
+    {{Template "Go.Read" $.To.Map}}.§
+    {{if GetAnnotation $.To.Map "handleMap"}}
+      CreateHandleʷ(ϟctx, ϟw, §
+    {{else if GetAnnotation $.To.Map "untrackedMap"}}
+      Add(§
+    {{else}}§
+      Addʷ(ϟctx, ϟw, §
+    {{end}}
     {{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported MapAssign operator %s" $.Operator}}
@@ -609,10 +613,14 @@
 {{define "MapRemove"}}
   {{AssertType $ "MapRemove"}}
 
-  {{Template "Go.Read" $.Map}}.Remove§
-  {{if GetAnnotation $.Map "untrackedMap"}}(§
-  {{else}}ʷ(ϟctx, ϟw, §
-  {{end}}§
+  {{Template "Go.Read" $.Map}}.§
+  {{if GetAnnotation $.Map "handleMap"}}
+    DestroyHandleʷ(ϟctx, ϟw, §
+  {{else if GetAnnotation $.Map "untrackedMap"}}
+    Remove(§
+  {{else}}
+    Removeʷ(ϟctx, ϟw, §
+  {{end}}
   {{Template "Go.Read" $.Key}})
 {{end}}
 
