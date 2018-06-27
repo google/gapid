@@ -481,6 +481,12 @@ func postImageData(ctx context.Context,
 	}
 	mappedPointer := MustAllocData(ctx, s, at)
 
+	barrierAspectMask := VkImageAspectFlags(aspect)
+	depthStencilMask := VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT |
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT
+	if VkImageAspectFlagBits(imageObject.ImageAspect())&depthStencilMask == depthStencilMask {
+		barrierAspectMask |= VkImageAspectFlags(depthStencilMask)
+	}
 	// Barrier data for layout transitions of staging image
 	stagingImageToDstBarrier := NewVkImageMemoryBarrier(a,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
@@ -496,11 +502,11 @@ func postImageData(ctx context.Context,
 		0xFFFFFFFF,     // dstQueueFamilyIndex
 		stagingImageID, // image
 		NewVkImageSubresourceRange(a, // subresourceRange
-			VkImageAspectFlags(aspect), // aspectMask
-			0, // baseMipLevel
-			1, // levelCount
-			0, // baseArrayLayer
-			1, // layerCount
+			barrierAspectMask, // aspectMask
+			0,                 // baseMipLevel
+			1,                 // levelCount
+			0,                 // baseArrayLayer
+			1,                 // layerCount
 		),
 	)
 	stagingImageToDstBarrierData := MustAllocData(ctx, s, stagingImageToDstBarrier)
@@ -516,11 +522,11 @@ func postImageData(ctx context.Context,
 		0xFFFFFFFF,     // dstQueueFamilyIndex
 		stagingImageID, // image
 		NewVkImageSubresourceRange(a, // subresourceRange
-			VkImageAspectFlags(aspect), // aspectMask
-			0, // baseMipLevel
-			1, // levelCount
-			0, // baseArrayLayer
-			1, // layerCount
+			barrierAspectMask, // aspectMask
+			0,                 // baseMipLevel
+			1,                 // levelCount
+			0,                 // baseArrayLayer
+			1,                 // layerCount
 		),
 	)
 	stagingImageToSrcBarrierData := MustAllocData(ctx, s, stagingImageToSrcBarrier)
@@ -541,11 +547,11 @@ func postImageData(ctx context.Context,
 		0xFFFFFFFF,     // dstQueueFamilyIndex
 		resolveImageID, // image
 		NewVkImageSubresourceRange(a, // subresourceRange
-			VkImageAspectFlags(aspect), // aspectMask
-			0, // baseMipLevel
-			1, // levelCount
-			0, // baseArrayLayer
-			1, // layerCount
+			barrierAspectMask, // aspectMask
+			0,                 // baseMipLevel
+			1,                 // levelCount
+			0,                 // baseArrayLayer
+			1,                 // layerCount
 		),
 	)
 	resolveImageToDstBarrierData := MustAllocData(ctx, s, resolveImageToDstBarrier)
@@ -561,11 +567,11 @@ func postImageData(ctx context.Context,
 		0xFFFFFFFF,     // dstQueueFamilyIndex
 		resolveImageID, // image
 		NewVkImageSubresourceRange(a, // subresourceRange
-			VkImageAspectFlags(aspect), // aspectMask
-			0, // baseMipLevel
-			1, // levelCount
-			0, // baseArrayLayer
-			1, // layerCount
+			barrierAspectMask, // aspectMask
+			0,                 // baseMipLevel
+			1,                 // levelCount
+			0,                 // baseArrayLayer
+			1,                 // layerCount
 		),
 	)
 	resolveImageToSrcBarrierData := MustAllocData(ctx, s, resolveImageToSrcBarrier)
@@ -588,11 +594,11 @@ func postImageData(ctx context.Context,
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
 		NewVkImageSubresourceRange(a, // subresourceRange
-			VkImageAspectFlags(aspect), // aspectMask
-			0, // baseMipLevel
-			1, // levelCount
-			0, // baseArrayLayer
-			1, // layerCount
+			barrierAspectMask, // aspectMask
+			0,                 // baseMipLevel
+			1,                 // levelCount
+			0,                 // baseArrayLayer
+			1,                 // layerCount
 		),
 	)
 	attachmentImageToSrcBarrierData := MustAllocData(ctx, s, attachmentImageToSrcBarrier)
@@ -613,11 +619,11 @@ func postImageData(ctx context.Context,
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
 		NewVkImageSubresourceRange(a, // subresourceRange
-			VkImageAspectFlags(aspect), // aspectMask
-			0, // baseMipLevel
-			1, // levelCount
-			0, // baseArrayLayer
-			1, // layerCount
+			barrierAspectMask, // aspectMask
+			0,                 // baseMipLevel
+			1,                 // levelCount
+			0,                 // baseArrayLayer
+			1,                 // layerCount
 		),
 	)
 	attachmentImageResetLayoutBarrierData := MustAllocData(ctx, s, attachmentImageResetLayoutBarrier)

@@ -519,7 +519,7 @@ func (a API) Replay(
 	}
 
 	wire := false
-	overdraw := newStencilOverdraw()
+	var overdraw *stencilOverdraw
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
@@ -568,6 +568,9 @@ func (a API) Replay(
 			case replay.DrawMode_WIREFRAME_OVERLAY:
 				return fmt.Errorf("Overlay wireframe view is not currently supported")
 			case replay.DrawMode_OVERDRAW:
+				if overdraw == nil {
+					overdraw = newStencilOverdraw()
+				}
 				overdraw.add(ctx, uint64(extraCommands), req.after, intent.Capture, rr.Result)
 			}
 
@@ -604,7 +607,9 @@ func (a API) Replay(
 		transforms.Add(earlyTerminator)
 	}
 
-	transforms.Add(overdraw)
+	if overdraw != nil {
+		transforms.Add(overdraw)
+	}
 
 	// Cleanup
 	transforms.Add(readFramebuffer, injector)
