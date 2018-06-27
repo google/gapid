@@ -102,8 +102,8 @@ sub map!(VkDeviceSize, OpaqueResourceMemoryBoundPiece) getBufferBoundMemoryPiece
         resEnd := min!VkDeviceSize(as!VkDeviceSize(blkOffset) + bind.size, end)
         if (resStart < resEnd) && (DeviceMemories[bind.memory] != null) {
           mem := DeviceMemories[bind.memory]
-          memStart := resStart - bind.resourceOffset + bind.memoryOffset
-          memEnd := min!VkDeviceSize(resEnd - bind.resourceOffset + bind.memoryOffset, mem.AllocationSize)
+          memStart := (resStart - bind.resourceOffset) + bind.memoryOffset
+          memEnd := min!VkDeviceSize(((resEnd - bind.resourceOffset) + bind.memoryOffset), mem.AllocationSize)
           if memStart < memEnd {
             ret_val.Map[resStart] = OpaqueResourceMemoryBoundPiece(
               ResourceOffset: resStart,
@@ -135,7 +135,7 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
       srcMemPieces := getBufferBoundMemoryPiecesInRange(srcBuf, srcOffset, size)
       for _ , _ , smp in srcMemPieces {
         srcMemOffset := as!u64(smp.MemoryOffset)
-        dstMemOffset := as!u64(smp.ResourceOffset - srcOffset + dstOffset)
+        dstMemOffset := as!u64((smp.ResourceOffset - srcOffset) + dstOffset)
         if dstMemOffset < as!u64(dstBuf.Memory.AllocationSize) {
           memSize := min!u64(as!u64(smp.Size), as!u64(dstBuf.Memory.AllocationSize) - dstMemOffset)
           copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
@@ -148,7 +148,7 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
         dstMemPieces := getBufferBoundMemoryPiecesInRange(dstBuf, dstOffset, size)
         for _ , _ , dmp in dstMemPieces {
           dstMemOffset := dmp.MemoryOffset
-          srcMemOffset := dmp.ResourceOffset - dstOffset + srcOffset
+          srcMemOffset := (dmp.ResourceOffset - dstOffset) + srcOffset
           if srcMemOffset < as!VkDeviceSize(srcBuf.Memory.AllocationSize) {
             memSize := min!VkDeviceSize(dmp.Size, as!VkDeviceSize(srcBuf.Memory.AllocationSize) - srcMemOffset)
             copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
@@ -160,12 +160,12 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
           // Sparse binding in src and dst
           dstMemPieces := getBufferBoundMemoryPiecesInRange(dstBuf, dstOffset, size)
           for _ , _ , dmp in dstMemPieces {
-            tmpSrcOffset := dmp.ResourceOffset - dstOffset + srcOffset
+            tmpSrcOffset := (dmp.ResourceOffset - dstOffset) + srcOffset
             tmpSize := dmp.Size
             srcMemPieces := getBufferBoundMemoryPiecesInRange(srcBuf, tmpSrcOffset, tmpSize)
             for _ , _ , smp in srcMemPieces {
               srcMemOffset := as!u64(smp.MemoryOffset)
-              dstMemOffset := as!u64(smp.ResourceOffset - tmpSrcOffset + dmp.ResourceOffset)
+              dstMemOffset := as!u64((smp.ResourceOffset - tmpSrcOffset) + dmp.ResourceOffset)
               memSize := as!u64(smp.Size)
               copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
                 srcBuf.Memory.Data[srcMemOffset:srcMemOffset + memSize])
@@ -456,7 +456,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
                 for _ , _ , piece in bufMemPieces {
                   srcStart := piece.MemoryOffset
                   srcEnd := srcStart + piece.Size
-                  dstPieceStart := piece.ResourceOffset - bufStart + dstStart
+                  dstPieceStart := (piece.ResourceOffset - bufStart) + dstStart
                   dstPieceEnd := dstPieceStart + piece.Size
                   copy(imageLevel.Data[dstPieceStart:dstPieceEnd], piece.DeviceMemory.Data[srcStart:srcEnd])
                 }
