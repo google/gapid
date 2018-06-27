@@ -24,6 +24,19 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
+// Options customize the final output of the resolve.
+type Options struct {
+	// ExtractCalls moves all call expressions to subroutines out to locals.
+	// This is done so that there is an oppotunity to test for abort() before
+	// executing the rest of the expression.
+	ExtractCalls bool
+
+	// RemoveDeadCode removes if statement blocks when the conditional is a
+	// literal false. The primary use of this code is to eliminate conditional
+	// blocks inside macros that are directly dependent on a boolean parameter.
+	RemoveDeadCode bool
+}
+
 type resolver struct {
 	errors             parse.ErrorList
 	api                *semantic.API
@@ -34,6 +47,7 @@ type resolver struct {
 	genericSubroutines map[string]genericSubroutine
 	aliasStack         stack // Currently resolving aliases.
 	defStack           stack // Currently resolving definitions.
+	options            Options
 }
 
 type scope struct {

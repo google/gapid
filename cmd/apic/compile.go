@@ -31,6 +31,7 @@ import (
 	"github.com/google/gapid/gapil/compiler/plugins/cloner"
 	"github.com/google/gapid/gapil/compiler/plugins/encoder"
 	"github.com/google/gapid/gapil/compiler/plugins/replay"
+	"github.com/google/gapid/gapil/resolver"
 )
 
 func init() {
@@ -81,7 +82,7 @@ type compileVerb struct {
 }
 
 func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	api, mappings, err := resolve(ctx, v.Search, flags)
+	api, mappings, err := resolve(ctx, v.Search, flags, resolver.Options{})
 	if err != nil {
 		return err
 	}

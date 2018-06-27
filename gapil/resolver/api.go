@@ -132,13 +132,21 @@ func resolve(rv *resolver) {
 		functionSignature(rv, f)
 		functionBody(rv, nil, f)
 	}
-	for _, f := range rv.api.Subroutines {
-		extractCalls(rv, f.Block)
-		removeDeadCode(rv, f.Block)
+	if rv.options.ExtractCalls {
+		for _, f := range rv.api.Subroutines {
+			extractCalls(rv, f.Block)
+		}
+		for _, f := range rv.api.Functions {
+			extractCalls(rv, f.Block)
+		}
 	}
-	for _, f := range rv.api.Functions {
-		extractCalls(rv, f.Block)
-		removeDeadCode(rv, f.Block)
+	if rv.options.RemoveDeadCode {
+		for _, f := range rv.api.Subroutines {
+			removeDeadCode(rv, f.Block)
+		}
+		for _, f := range rv.api.Functions {
+			removeDeadCode(rv, f.Block)
+		}
 	}
 	for _, f := range rv.api.Functions {
 		resolveFenceOrder(rv, f, visitedFuncs{})

@@ -25,7 +25,7 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
-func resolve(ctx context.Context, search file.PathList, flags flag.FlagSet) (*semantic.API, *resolver.Mappings, error) {
+func resolve(ctx context.Context, search file.PathList, flags flag.FlagSet, opts resolver.Options) (*semantic.API, *resolver.Mappings, error) {
 	args := flags.Args()
 	if len(args) < 1 {
 		return nil, nil, fmt.Errorf("Missing api file")
@@ -35,6 +35,7 @@ func resolve(ctx context.Context, search file.PathList, flags flag.FlagSet) (*se
 	if len(search) > 0 {
 		processor.Loader = gapil.NewSearchLoader(search)
 	}
+	processor.Options = opts
 	compiled, errs := processor.Resolve(path)
 	if err := gapil.CheckErrors(path, errs, maxErrors); err != nil {
 		return nil, nil, err
