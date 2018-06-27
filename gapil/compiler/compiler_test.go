@@ -457,7 +457,7 @@ cmd void LogicalAnd() {
 bool a  bool b
 sub bool True() { return true }
 sub bool SideEffect() { b = true  return true }
-cmd void LogicalOrShortCircuit() { a = true || SideEffect() }`,
+cmd void LogicalOrShortCircuit() { a = True() || SideEffect() }`,
 					cmds:     []cmd{{N: "LogicalOrShortCircuit"}},
 					expected: expected{data: D(true, false)},
 				}, { ///////////////////////////////////////////////////
@@ -466,7 +466,7 @@ cmd void LogicalOrShortCircuit() { a = true || SideEffect() }`,
 bool a  bool b
 sub bool False() { return false }
 sub bool SideEffect() { b = true  return true }
-cmd void LogicalAndShortCircuit() {	a = false && SideEffect() }`,
+cmd void LogicalAndShortCircuit() {	a = False() && SideEffect() }`,
 					cmds:     []cmd{{N: "LogicalAndShortCircuit"}},
 					expected: expected{data: D(false, false)},
 		}, { /////////////////////////////////////////////////////
