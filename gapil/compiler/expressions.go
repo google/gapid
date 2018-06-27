@@ -127,16 +127,30 @@ func (c *C) arrayInitializer(s *S, e *semantic.ArrayInitializer) *codegen.Value 
 }
 
 func (c *C) binaryOp(s *S, e *semantic.BinaryOp) *codegen.Value {
-	op, lhs, rhs := e.Operator, c.expression(s, e.LHS), c.expression(s, e.RHS)
+	op, lhs := e.Operator, c.expression(s, e.LHS)
 	switch op {
 	case ast.OpBitShiftLeft:
 		// RHS is always unsigned. JIT requires LHS and RHS type to be the same.
-		rhs = c.doCast(s, e.LHS.ExpressionType(), e.RHS.ExpressionType(), rhs)
+		rhs := c.doCast(s, e.LHS.ExpressionType(), e.RHS.ExpressionType(), c.expression(s, e.RHS))
+		return c.doBinaryOp(s, op, lhs, rhs)
 	case ast.OpBitShiftRight:
 		// RHS is always unsigned. JIT requires LHS and RHS type to be the same.
-		rhs = c.doCast(s, e.LHS.ExpressionType(), e.RHS.ExpressionType(), rhs)
+		rhs := c.doCast(s, e.LHS.ExpressionType(), e.RHS.ExpressionType(), c.expression(s, e.RHS))
+		return c.doBinaryOp(s, op, lhs, rhs)
+	case ast.OpAnd:
+		// Handle short-circuits.
+		res := s.LocalInit("and-sc", s.Scalar(false))
+		s.If(lhs, func(s *S) { res.Store(c.expression(s, e.RHS)) })
+		return res.Load()
+	case ast.OpOr:
+		// Handle short-circuits.
+		res := s.LocalInit("or-sc", s.Scalar(true))
+		s.If(s.Not(lhs), func(s *S) { res.Store(c.expression(s, e.RHS)) })
+		return res.Load()
+	default:
+		rhs := c.expression(s, e.RHS)
+		return c.doBinaryOp(s, op, lhs, rhs)
 	}
-	return c.doBinaryOp(s, op, lhs, rhs)
 }
 
 func (c *C) equal(s *S, lhs, rhs *codegen.Value) *codegen.Value {

@@ -427,6 +427,48 @@ u32 i = 7
 cmd void BitwiseAnd() { i = i & 6 }`,
 			cmds:     []cmd{{N: "BitwiseAnd"}},
 			expected: expected{data: D(uint32(6))},
+			}, { ///////////////////////////////////////////////////
+				name: "Expressions.BinaryOp.LogicalOr",
+				src: `
+bool a  bool b  bool c  bool d
+cmd void LogicalOr() {
+	a = false || false
+	b = true  || false
+	c = false || true
+	d = true  || true
+}`,
+				cmds:     []cmd{{N: "LogicalOr"}},
+				expected: expected{data: D(false, true, true, true)},
+			}, { ///////////////////////////////////////////////////
+				name: "Expressions.BinaryOp.LogicalAnd",
+				src: `
+bool a  bool b  bool c  bool d
+cmd void LogicalAnd() {
+	a = false && false
+	b = true  && false
+	c = false && true
+	d = true  && true
+}`,
+				cmds:     []cmd{{N: "LogicalAnd"}},
+				expected: expected{data: D(false, false, false, true)},
+				}, { ///////////////////////////////////////////////////
+					name: "Expressions.BinaryOp.LogicalOr.ShortCircuit",
+					src: `
+bool a  bool b
+sub bool True() { return true }
+sub bool SideEffect() { b = true  return true }
+cmd void LogicalOrShortCircuit() { a = true || SideEffect() }`,
+					cmds:     []cmd{{N: "LogicalOrShortCircuit"}},
+					expected: expected{data: D(true, false)},
+				}, { ///////////////////////////////////////////////////
+					name: "Expressions.BinaryOp.LogicalAnd.ShortCircuit",
+					src: `
+bool a  bool b
+sub bool False() { return false }
+sub bool SideEffect() { b = true  return true }
+cmd void LogicalAndShortCircuit() {	a = false && SideEffect() }`,
+					cmds:     []cmd{{N: "LogicalAndShortCircuit"}},
+					expected: expected{data: D(false, false)},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.BinaryOp.StringConcat",
 			src: `
