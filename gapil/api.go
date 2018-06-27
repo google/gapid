@@ -63,6 +63,7 @@ type Processor struct {
 	Parsed              map[string]ParseResult // guarded by parsedLock
 	Resolved            map[string]ResolveResult
 	ResolveOnParseError bool // If true, resolving will be attempted even if parsing failed.
+	Options             resolver.Options
 
 	parsedLock sync.Mutex
 }
@@ -193,7 +194,7 @@ func (p *Processor) resolve(base file.Path) (*semantic.API, parse.ErrorList) {
 		list[i] = includes[name]
 	}
 	// Now resolve the api set as a single unit
-	api, errs := resolver.Resolve(list, p.Mappings)
+	api, errs := resolver.Resolve(list, p.Mappings, p.Options)
 	if len(errs) > 0 {
 		allErrs = append(errs, allErrs...)
 	}

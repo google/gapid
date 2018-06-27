@@ -23,6 +23,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/gapid/gapil/resolver"
+
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/log"
@@ -49,7 +51,11 @@ type templateVerb struct {
 }
 
 func (v *templateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	api, mappings, err := resolve(ctx, v.Search, flags)
+	api, mappings, err := resolve(ctx, v.Search, flags, resolver.Options{
+		ExtractCalls:   true,
+		RemoveDeadCode: true,
+	})
+
 	if err != nil {
 		return err
 	}

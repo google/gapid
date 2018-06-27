@@ -87,7 +87,7 @@ func compile(ctx context.Context, source string) (*semantic.API, *resolver.Mappi
 	if err := gapil.CheckErrors(source, errs, maxErrors); err != nil {
 		return nil, nil, err
 	}
-	compiled, errs := resolver.Resolve([]*ast.API{parsed}, mappings)
+	compiled, errs := resolver.Resolve([]*ast.API{parsed}, mappings, resolver.Options{})
 	if err := gapil.CheckErrors(source, errs, maxErrors); err != nil {
 		return nil, nil, err
 	}

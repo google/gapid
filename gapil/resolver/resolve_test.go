@@ -38,6 +38,7 @@ type test struct {
 	source string
 	output string
 	errors parse.ErrorList
+	opts   resolver.Options
 }
 
 func (t test) check(ctx context.Context) *semantic.API {
@@ -45,7 +46,7 @@ func (t test) check(ctx context.Context) *semantic.API {
 	m := resolver.NewMappings()
 	astAPI, errs := parser.Parse("resolve_test.api", t.source, m)
 	assert.For(ctx, "parse errors").That(errs).IsNil()
-	api, errs := resolver.Resolve([]*ast.API{astAPI}, m)
+	api, errs := resolver.Resolve([]*ast.API{astAPI}, m, t.opts)
 	assert.For(ctx, "resolve errors").That(errs).DeepEquals(t.errors)
 	if len(t.output) > 0 && len(errs) == 0 {
 		output := printer.New().WriteFunction(api.Functions[0]).String()
@@ -297,7 +298,9 @@ cmd void C(u32 a) {
 		m := resolver.NewMappings()
 		astAPI, errs := parser.Parse("resolve_test.api", test.source, m)
 		assert.For(ctx, "parse errors").That(errs).IsNil()
-		api, errs := resolver.Resolve([]*ast.API{astAPI}, m)
+		api, errs := resolver.Resolve([]*ast.API{astAPI}, m, resolver.Options{
+			ExtractCalls: true,
+		})
 		assert.For(ctx, "resolve errors").That(errs).DeepEquals(test.errors)
 		if len(errs) == 0 {
 			output := printer.New().WriteFunction(api.Functions[0]).String()
@@ -375,6 +378,7 @@ cmd void C() {
   fence
 }`},
 	} {
+		test.opts.RemoveDeadCode = true
 		test.check(ctx)
 	}
 }
