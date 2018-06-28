@@ -37,7 +37,6 @@ type stateBuilder struct {
 	readMemories          []*api.AllocResult
 	writeMemories         []*api.AllocResult
 	extraReadIDsAndRanges []idAndRng
-	reservedMemories      []*api.AllocResult
 	memoryIntervals       interval.U64RangeList
 	ta                    arena.Arena // temporary arena
 }
@@ -292,6 +291,7 @@ type sliceWithID interface {
 
 func (sb *stateBuilder) mustReadSlice(v sliceWithID) api.AllocResult {
 	res := sb.MustReserve(v.Size())
+	sb.readMemories = append(sb.readMemories, &res)
 	sb.ReadDataAt(v.ResourceID(sb.ctx, sb.oldState), res.Address(), v.Size())
 	return res
 }
@@ -394,9 +394,6 @@ func (sb *stateBuilder) write(cmd api.Cmd) {
 	}
 	for _, write := range sb.writeMemories {
 		write.Free()
-	}
-	for _, reserved := range sb.reservedMemories {
-		reserved.Free()
 	}
 	sb.readMemories = []*api.AllocResult{}
 	sb.writeMemories = []*api.AllocResult{}
@@ -978,9 +975,8 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, subRngs
 	))
 
 	atData := sb.MustReserve(size)
-	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
-	defer ptrAtData.Free()
 
+	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
 	sb.write(sb.cb.VkMapMemory(
 		device.VulkanHandle(),
 		deviceMemory,
@@ -990,6 +986,7 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, subRngs
 		ptrAtData.Ptr(),
 		VkResult_VK_SUCCESS,
 	).AddRead(ptrAtData.Data()).AddWrite(ptrAtData.Data()))
+	ptrAtData.Free()
 
 	for _, r := range subRngs {
 		var hash id.ID
@@ -1016,6 +1013,7 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, subRngs
 		)).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	atData.Free()
 
 	sb.write(sb.cb.VkUnmapMemory(
 		device.VulkanHandle(),
@@ -1902,8 +1900,7 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 			for _, kk := range b.ImmutableSamplers().Keys() {
 				immutableSamplers = append(immutableSamplers, b.ImmutableSamplers().Get(kk).VulkanHandle())
 			}
-			allocateResult := sb.newState.AllocDataOrPanic(sb.ctx, immutableSamplers)
-			sb.readMemories = append(sb.readMemories, &allocateResult)
+			allocateResult := sb.MustAllocReadData(immutableSamplers)
 			smp = NewVkSamplerᶜᵖ(allocateResult.Ptr())
 		}
 

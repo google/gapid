@@ -197,9 +197,9 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 	boundOffset := img.BoundMemoryOffset()
 	boundSize := img.MemoryRequirements().Size()
 	dat := p.sb.MustReserve(uint64(boundSize))
+
 	at := NewVoidᵖ(dat.Ptr())
 	atdata := p.sb.newState.AllocDataOrPanic(p.sb.ctx, at)
-	defer atdata.Free()
 	p.sb.write(p.sb.cb.VkMapMemory(
 		newMem.Device(),
 		newMem.VulkanHandle(),
@@ -209,6 +209,7 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 		atdata.Ptr(),
 		VkResult_VK_SUCCESS,
 	).AddRead(atdata.Data()).AddWrite(atdata.Data()))
+	atdata.Free()
 
 	transitionInfo := []imgSubRngLayoutTransitionInfo{}
 	for _, rng := range opaqueBoundRanges {
@@ -244,6 +245,7 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 		)).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	dat.Free()
 
 	p.sb.write(p.sb.cb.VkUnmapMemory(
 		newMem.Device(),
