@@ -257,6 +257,7 @@ public class TracerDialog {
       private static final String DEFAULT_TRACE_FILE = "trace";
       private static final String TRACE_EXTENSION = ".gfxtrace";
       private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
+      protected static final String MEC_LABEL = "Trace From Beginning";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
       protected final ComboViewer api;
@@ -302,7 +303,7 @@ public class TracerDialog {
 
         createLabel(this, "");
         fromBeginning = withLayoutData(
-            createCheckbox(this, "Trace From Beginning", !models.settings.traceMidExecution),
+            createCheckbox(this, MEC_LABEL, !models.settings.traceMidExecution),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "");
@@ -377,6 +378,8 @@ public class TracerDialog {
     }
 
     private static class AndroidInput extends SharedTraceInput {
+      private static final String MEC_WARNING = "(mid-execution capture for GLES is experimental)";
+
       private final Runnable refreshDevices;
       private ComboViewer device;
       private LoadingIndicator.Widget deviceLoader;
@@ -439,6 +442,17 @@ public class TracerDialog {
         };
         traceTarget.addBoxListener(SWT.Modify, targetListener);
         targetListener.handleEvent(null);
+
+        Listener mecListener = e -> {
+          if (getSelectedApi() == Tracer.Api.Vulkan || fromBeginning.getSelection()) {
+            fromBeginning.setText(MEC_LABEL);
+          } else {
+            fromBeginning.setText(MEC_LABEL + " " + MEC_WARNING);
+          }
+        };
+        api.getCombo().addListener(SWT.Selection, mecListener);
+        fromBeginning.addListener(SWT.Selection, mecListener);
+        mecListener.handleEvent(null);
 
         disablePcs.addListener(
             SWT.Selection, e -> pcsWarning.setVisible(!disablePcs.getSelection()));
