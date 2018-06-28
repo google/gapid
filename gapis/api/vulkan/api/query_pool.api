@@ -54,6 +54,7 @@ enum QueryStatus {
   @unused VkQueryPipelineStatisticFlags PipelineStatistics
   @unused map!(u32, QueryStatus)        Status
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
+  @unused ref!QueueObject               LastBoundQueue
 }
 
 @threadSafety("system")
@@ -132,6 +133,7 @@ cmd VkResult vkGetQueryPoolResults(
 sub void dovkCmdBeginQuery(ref!vkCmdBeginQueryArgs args) {
   pool := QueryPools[args.QueryPool]
   pool.Status[args.Query] = QUERY_STATUS_ACTIVE
+  pool.LastBoundQueue = LastBoundQueue
 }
 
 @threadSafety("app")
@@ -163,6 +165,7 @@ vkCmdEndQueryArgs {
 sub void dovkCmdEndQuery(ref!vkCmdEndQueryArgs args) {
   pool := QueryPools[args.QueryPool]
   pool.Status[args.Query] = QUERY_STATUS_COMPLETE
+  pool.LastBoundQueue = LastBoundQueue
 }
 
 @threadSafety("app")
@@ -196,6 +199,7 @@ sub void dovkCmdResetQueryPool(ref!vkCmdResetQueryPoolArgs args) {
   for i in (0 .. args.QueryCount) {
     pool.Status[args.FirstQuery + i] = QUERY_STATUS_INACTIVE
   }
+  pool.LastBoundQueue = LastBoundQueue
 }
 
 @threadSafety("app")
@@ -225,6 +229,8 @@ cmd void vkCmdResetQueryPool(
 }
 
 sub void dovkCmdWriteTimestamp(ref!vkCmdWriteTimestampArgs args) {
+  pool := QueryPools[args.QueryPool]
+  pool.LastBoundQueue = LastBoundQueue
 }
 
 @threadSafety("app")
@@ -259,6 +265,8 @@ class vkCmdCopyQueryPoolResultsArgs {
 }
 
 sub void dovkCmdCopyQueryPoolResults(ref!vkCmdCopyQueryPoolResultsArgs args) {
+  pool := QueryPools[args.QueryPool]
+  pool.LastBoundQueue = LastBoundQueue
 }
 
 @threadSafety("app")
