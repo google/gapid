@@ -629,6 +629,9 @@ func (a API) Replay(
 	if config.LogTransformsToCapture {
 		transforms.Add(transform.NewCaptureLog(ctx, capture, "replay_log.gfxtrace"))
 	}
+	if config.LogMappingsToFile {
+		transforms.Add(replay.NewMappingPrinter(ctx, "mappings.txt"))
+	}
 
 	transforms.Transform(ctx, cmds, out)
 	return nil
