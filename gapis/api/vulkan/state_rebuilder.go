@@ -2609,7 +2609,7 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 	if !anyActive {
 		return
 	}
-	queue := sb.getQueueFor(NilQueueObjectʳ, qp.Device(), nil)
+	queue := sb.getQueueFor(qp.LastBoundQueue(), qp.Device(), nil)
 
 	commandBuffer, commandPool := sb.getCommandBuffer(queue)
 	for i := uint32(0); i < qp.QueryCount(); i++ {
