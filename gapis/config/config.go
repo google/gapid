@@ -22,6 +22,7 @@ const (
 	DebugDeadCodeElimination   = false
 	LogExtrasInTransforms      = false // Logs all commands' extras together with transforms
 	LogMemoryInExtras          = false // Logs all commands' read/write memory observation together with extras
+	LogMappingsToFile          = false
 	LogTransformsToFile        = false
 	LogTransformsToCapture     = false
 	SeparateMutateStates       = false
