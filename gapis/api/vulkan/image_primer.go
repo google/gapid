@@ -196,18 +196,31 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 	newMem := newImg.BoundMemory()
 	boundOffset := img.BoundMemoryOffset()
 	boundSize := img.MemoryRequirements().Size()
-	newData := make([]uint8, boundSize)
-	transitionInfo := []imgSubRngLayoutTransitionInfo{}
+	dat := p.sb.MustReserve(uint64(boundSize))
 
+	at := NewVoidᵖ(dat.Ptr())
+	atdata := p.sb.newState.AllocDataOrPanic(p.sb.ctx, at)
+	p.sb.write(p.sb.cb.VkMapMemory(
+		newMem.Device(),
+		newMem.VulkanHandle(),
+		boundOffset,
+		boundSize,
+		VkMemoryMapFlags(0),
+		atdata.Ptr(),
+		VkResult_VK_SUCCESS,
+	).AddRead(atdata.Data()).AddWrite(atdata.Data()))
+	atdata.Free()
+
+	transitionInfo := []imgSubRngLayoutTransitionInfo{}
 	for _, rng := range opaqueBoundRanges {
 		walkImageSubresourceRange(p.sb, img, rng,
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 				origLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
-				origData := origLevel.Data().MustRead(p.sb.ctx, nil, p.sb.oldState, nil)
+				origDataSlice := origLevel.Data()
 				linearLayout := origLevel.LinearLayout()
-				start := uint64(linearLayout.Offset())
-				end := start + uint64(linearLayout.Size())
-				copy(newData[start:end], origData[:])
+
+				p.sb.ReadDataAt(origDataSlice.ResourceID(p.sb.ctx, p.sb.oldState), uint64(linearLayout.Offset())+dat.Address(), origDataSlice.Size())
+
 				transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
 					aspectMask:     VkImageAspectFlags(aspect),
 					baseMipLevel:   level,
@@ -220,21 +233,6 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 			})
 	}
 
-	dat := p.sb.newState.AllocDataOrPanic(p.sb.ctx, newData)
-	defer dat.Free()
-	at := NewVoidᵖ(dat.Ptr())
-	atdata := p.sb.newState.AllocDataOrPanic(p.sb.ctx, at)
-	defer atdata.Free()
-	p.sb.write(p.sb.cb.VkMapMemory(
-		newMem.Device(),
-		newMem.VulkanHandle(),
-		boundOffset,
-		boundSize,
-		VkMemoryMapFlags(0),
-		atdata.Ptr(),
-		VkResult_VK_SUCCESS,
-	).AddRead(atdata.Data()).AddWrite(atdata.Data()))
-
 	p.sb.write(p.sb.cb.VkFlushMappedMemoryRanges(
 		newMem.Device(),
 		1,
@@ -246,7 +244,8 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 			boundSize, // size
 		)).Ptr(),
 		VkResult_VK_SUCCESS,
-	).AddRead(dat.Data()))
+	))
+	dat.Free()
 
 	p.sb.write(p.sb.cb.VkUnmapMemory(
 		newMem.Device(),
@@ -654,7 +653,7 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue Queue
 
 	// data buffer and buffer view
 	dataBuf, dataMem := h.sb.allocAndFillScratchBuffer(
-		h.sb.s.Devices().Get(info.dev), info.data,
+		h.sb.s.Devices().Get(info.dev), []bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(info.data, 0)},
 		VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
 	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(info.dev), dataBuf, dataMem)
 	dataBufView := VkBufferView(newUnusedID(true, func(x uint64) bool {
@@ -755,7 +754,7 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue Queue
 	var db bytes.Buffer
 	binary.Write(&db, binary.LittleEndian, metadata)
 	metadataBuf, metadataMem := h.sb.allocAndFillScratchBuffer(
-		h.sb.s.Devices().Get(info.dev), db.Bytes(),
+		h.sb.s.Devices().Get(info.dev), []bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(db.Bytes(), 0)},
 		VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
 	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(info.dev), metadataBuf, metadataMem)
 
@@ -956,6 +955,10 @@ type ipRenderHandler struct {
 	pipelines map[ipGfxPipelineInfo]GraphicsPipelineObjectʳ
 	// shader modules indexed by the shader info.
 	shaders map[ipRenderShaderInfo]ShaderModuleObjectʳ
+	// the fill info for the scratch buffers for vertex buffer and index buffer,
+	// the raw content of the those two buffers are supposed to be contants.
+	vertexBufferFillInfo *bufferSubRangeFillInfo
+	indexBufferFillInfo  *bufferSubRangeFillInfo
 }
 
 // Interfaces of render handler to interact with image primer
@@ -1089,7 +1092,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		stencilBitIndices := []uint32{0}
 		var sbic bytes.Buffer
 		binary.Write(&sbic, binary.LittleEndian, stencilBitIndices)
-		stencilIndexBuf, stencilIndexMem = h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), sbic.Bytes(), VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT|VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
+		stencilIndexBuf, stencilIndexMem = h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), []bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(sbic.Bytes(), 0)}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT|VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
 		defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(dev), stencilIndexBuf, stencilIndexMem)
 
 		bufInfoList := []VkDescriptorBufferInfo{
@@ -1155,19 +1158,29 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		return log.Errf(h.sb.ctx, err, "[Getting graphics pipeline]")
 	}
 
-	var vc bytes.Buffer
-	binary.Write(&vc, binary.LittleEndian, []float32{
-		// positions, offset: 0 bytes
-		1.0, 1.0, 0.0, -1.0, -1.0, 0.0, -1.0, 1.0, 0.0, 1.0, -1.0, 0.0,
-	})
-	vertexBuf, vertexBufMem := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), vc.Bytes(), VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+	if h.vertexBufferFillInfo == nil {
+		var vc bytes.Buffer
+		binary.Write(&vc, binary.LittleEndian, []float32{
+			// positions, offset: 0 bytes
+			1.0, 1.0, 0.0, -1.0, -1.0, 0.0, -1.0, 1.0, 0.0, 1.0, -1.0, 0.0,
+		})
+		i := newBufferSubRangeFillInfoFromNewData(vc.Bytes(), 0)
+		h.vertexBufferFillInfo = &i
+		h.vertexBufferFillInfo.storeNewData(h.sb)
+	}
+	vertexBuf, vertexBufMem := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), []bufferSubRangeFillInfo{*h.vertexBufferFillInfo}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
 	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(dev), vertexBuf, vertexBufMem)
 
-	var ic bytes.Buffer
-	binary.Write(&ic, binary.LittleEndian, []uint32{
-		0, 1, 2, 0, 3, 1,
-	})
-	indexBuf, indexBufMem := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), ic.Bytes(), VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+	if h.indexBufferFillInfo == nil {
+		var ic bytes.Buffer
+		binary.Write(&ic, binary.LittleEndian, []uint32{
+			0, 1, 2, 0, 3, 1,
+		})
+		i := newBufferSubRangeFillInfoFromNewData(ic.Bytes(), 0)
+		h.indexBufferFillInfo = &i
+		h.indexBufferFillInfo.storeNewData(h.sb)
+	}
+	indexBuf, indexBufMem := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), []bufferSubRangeFillInfo{*h.indexBufferFillInfo}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
 	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(dev), indexBuf, indexBufMem)
 
 	commandBuffer, commandPool := h.sb.getCommandBuffer(queue)
@@ -1223,7 +1236,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 			uint32(queue.Family()),                                                                                     // dstQueueFamilyIndex
 			vertexBuf,                                                                                                  // buffer
 			0,                                                                                                          // offset
-			VkDeviceSize(len(vc.Bytes())), // size
+			VkDeviceSize(h.vertexBufferFillInfo.size()), // size
 		),
 		NewVkBufferMemoryBarrier(h.sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
@@ -1234,7 +1247,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 			uint32(queue.Family()),                                                                                     // dstQueueFamilyIndex
 			indexBuf,                                                                                                   // buffer
 			0,                                                                                                          // offset
-			VkDeviceSize(len(ic.Bytes())), // size
+			VkDeviceSize(h.indexBufferFillInfo.size()), // size
 		),
 	}
 
@@ -2072,10 +2085,11 @@ func (s *ipBufCopyJob) addDst(ctx context.Context, srcAspect, dstAspect VkImageA
 }
 
 type ipBufferCopySession struct {
-	copies  map[ImageObjectʳ][]VkBufferImageCopy
-	content []uint8
-	job     *ipBufCopyJob
-	sb      *stateBuilder
+	copies    map[ImageObjectʳ][]VkBufferImageCopy
+	content   []bufferSubRangeFillInfo
+	totalSize uint64
+	job       *ipBufCopyJob
+	sb        *stateBuilder
 }
 
 // interfaces to interact with image primer
@@ -2083,7 +2097,7 @@ type ipBufferCopySession struct {
 func newImagePrimerBufferCopySession(sb *stateBuilder, job *ipBufCopyJob) *ipBufferCopySession {
 	h := &ipBufferCopySession{
 		copies:  map[ImageObjectʳ][]VkBufferImageCopy{},
-		content: []uint8{},
+		content: []bufferSubRangeFillInfo{},
 		job:     job,
 		sb:      sb,
 	}
@@ -2096,7 +2110,6 @@ func newImagePrimerBufferCopySession(sb *stateBuilder, job *ipBufCopyJob) *ipBuf
 }
 
 func (h *ipBufferCopySession) collectCopiesFromSubresourceRange(srcRng VkImageSubresourceRange) {
-	offset := uint64(len(h.content))
 	walkImageSubresourceRange(h.sb, h.job.srcImg, srcRng,
 		func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
 			extent := NewVkExtent3D(h.sb.ta,
@@ -2109,47 +2122,46 @@ func (h *ipBufferCopySession) collectCopiesFromSubresourceRange(srcRng VkImageSu
 				// like R64G64B64A64
 				// TODO: handle wide format
 				_ = dstIndex
-				data, bufImgCopy, err := h.getCopyAndData(
+				bufFillInfo, bufImgCopy, err := h.getCopyAndData(
 					dstImg, h.job.srcAspectsToDsts[aspect].dstAspect,
 					h.job.srcImg, aspect, layer, level, MakeVkOffset3D(h.sb.ta),
-					extent, offset)
+					extent, h.totalSize)
 				if err != nil {
 					log.E(h.sb.ctx, "[Getting VkBufferImageCopy and raw data for priming data at image: %v, aspect: %v, layer: %v, level: %v] %v", h.job.srcImg.VulkanHandle(), aspect, layer, level, err)
 					continue
 				}
 				h.copies[dstImg] = append(h.copies[dstImg], bufImgCopy)
-				h.content = append(h.content, data...)
-				offset += uint64(len(data))
+				h.content = append(h.content, bufFillInfo)
+				h.totalSize += bufFillInfo.size()
 			}
 		})
 }
 
 func (h *ipBufferCopySession) collectCopiesFromSparseImageBindings() {
-	offset := uint64(len(h.content))
 	walkSparseImageMemoryBindings(h.sb, h.job.srcImg,
 		func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
 			for dstIndex, dstImg := range h.job.srcAspectsToDsts[aspect].dstImgs {
 				// dstIndex is reserved for handling wide channel image format
 				// TODO: handle wide format
 				_ = dstIndex
-				data, bufImgCopy, err := h.getCopyAndData(
+				bufFillInfo, bufImgCopy, err := h.getCopyAndData(
 					dstImg, h.job.srcAspectsToDsts[aspect].dstAspect,
 					h.job.srcImg, aspect, layer, level, blockData.Offset(),
-					blockData.Extent(), offset)
+					blockData.Extent(), h.totalSize)
 				if err != nil {
 					log.E(h.sb.ctx, "[Getting VkBufferImageCopy and raw data from sparse image binding at image: %v, aspect: %v, layer: %v, level: %v, offset: %v, extent: %v] %v", h.job.srcImg.VulkanHandle(), aspect, layer, level, blockData.Offset(), blockData.Extent(), err)
 					continue
 				}
 				h.copies[dstImg] = append(h.copies[dstImg], bufImgCopy)
-				h.content = append(h.content, data...)
-				offset += uint64(len(data))
+				h.content = append(h.content, bufFillInfo)
+				h.totalSize += bufFillInfo.size()
 			}
 		})
 }
 
 func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, dstImgsOldQueue QueueObjectʳ) error {
 
-	if len(h.content) == 0 {
+	if h.totalSize == 0 {
 		return log.Errf(h.sb.ctx, nil, "[Submit buf -> img copy commands] no valid data to copy")
 	}
 
@@ -2206,7 +2218,7 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, ds
 				uint32(submissionQueue.Family()),                                                                           // dstQueueFamilyIndex
 				scratchBuffer,                                                                                              // buffer
 				0,                                                                                                          // offset
-				VkDeviceSize(len(h.content)), // size
+				VkDeviceSize(h.totalSize), // size
 			)).Ptr(),
 		uint32(len(dstImgBarriers)),
 		h.sb.MustAllocReadData(dstImgBarriers).Ptr(),
@@ -2270,7 +2282,7 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, ds
 
 // internal functions of ipBufferCopSessionr
 
-func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkImageAspectFlagBits, srcImg ImageObjectʳ, srcAspect VkImageAspectFlagBits, layer, level uint32, opaqueBlockOffset VkOffset3D, opaqueBlockExtent VkExtent3D, bufDataOffset uint64) ([]uint8, VkBufferImageCopy, error) {
+func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkImageAspectFlagBits, srcImg ImageObjectʳ, srcAspect VkImageAspectFlagBits, layer, level uint32, opaqueBlockOffset VkOffset3D, opaqueBlockExtent VkExtent3D, bufDataOffset uint64) (bufferSubRangeFillInfo, VkBufferImageCopy, error) {
 	var err error
 	bufImgCopy := NewVkBufferImageCopy(h.sb.ta,
 		VkDeviceSize(bufDataOffset), // bufferOffset
@@ -2294,47 +2306,72 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkI
 		opaqueBlockExtent,
 		srcImg.Info().Fmt(),
 		0, srcAspect).levelSize)
-	data := srcImg.
+	dataSlice := srcImg.
 		Aspects().Get(srcAspect).
 		Layers().Get(layer).
 		Levels().Get(level).
-		Data().Slice(srcImgDataOffset, srcImgDataOffset+srcImgDataSizeInBytes).MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+		Data().Slice(srcImgDataOffset, srcImgDataOffset+srcImgDataSizeInBytes)
 
-	unpacked := data
+	errorIfUnexpectedLength := func(dataLen uint64) error {
+		dstLevelSize := h.sb.levelSize(opaqueBlockExtent, dstImg.Info().Fmt(), 0, dstAspect)
+		if dataLen != dstLevelSize.alignedLevelSizeInBuf {
+			return log.Errf(h.sb.ctx, nil, "size of unpackedData data does not match expectation, actual: %v, expected: %v, srcFmt: %v, dstFmt: %v", dataLen, dstLevelSize.alignedLevelSizeInBuf, srcImg.Info().Fmt(), dstImg.Info().Fmt())
+		}
+		return nil
+	}
+
+	unpackedData := []uint8{}
+
 	if dstImg.Info().Fmt() != srcImg.Info().Fmt() {
 		// dstImg format is different with the srcImage format, the dst image
 		// should be a staging image.
 		srcVkFmt := srcImg.Info().Fmt()
+		data := dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
 		if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 			data, srcVkFmt, err = ebgrDataToRGB32SFloat(data, opaqueBlockExtent)
 			if err != nil {
-				return []uint8{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Converting data in VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 to VK_FORMAT_R32G32B32_SFLOAT]")
+				return bufferSubRangeFillInfo{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Converting data in VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 to VK_FORMAT_R32G32B32_SFLOAT]")
 			}
 		}
-		unpacked, _, err = unpackDataForPriming(h.sb.ctx, data, srcVkFmt, srcAspect)
+		unpackedData, _, err = unpackDataForPriming(h.sb.ctx, data, srcVkFmt, srcAspect)
 		if err != nil {
-			return []uint8{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcVkFmt, srcAspect)
+			return bufferSubRangeFillInfo{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcVkFmt, srcAspect)
 		}
+
 	} else if srcAspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
 		// srcImg format is the same to the dstImage format, the data is ready to
 		// be used directly, except when the src image is a dpeth 24 UNORM one.
 		if (srcImg.Info().Fmt() == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) ||
 			(srcImg.Info().Fmt() == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32) {
-			unpacked, _, err = unpackDataForPriming(h.sb.ctx, data, srcImg.Info().Fmt(), srcAspect)
+			data := dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+			unpackedData, _, err = unpackDataForPriming(h.sb.ctx, data, srcImg.Info().Fmt(), srcAspect)
 			if err != nil {
-				return []uint8{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcImg.Info().Fmt(), srcAspect)
+				return bufferSubRangeFillInfo{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcImg.Info().Fmt(), srcAspect)
 			}
 		}
 	}
 
-	extendToMultipleOf8(&unpacked)
-
-	dstLevelSize := h.sb.levelSize(opaqueBlockExtent, dstImg.Info().Fmt(), 0, dstAspect)
-	if uint64(len(unpacked)) != dstLevelSize.alignedLevelSizeInBuf {
-		return []uint8{}, bufImgCopy, log.Errf(h.sb.ctx, nil, "size of unpacked data does not match expectation, actual: %v, expected: %v, srcFmt: %v, dstFmt: %v", len(unpacked), dstLevelSize.alignedLevelSizeInBuf, srcImg.Info().Fmt(), dstImg.Info().Fmt())
+	if len(unpackedData) != 0 {
+		extendToMultipleOf8(&unpackedData)
+		if err := errorIfUnexpectedLength(uint64(len(unpackedData))); err != nil {
+			return bufferSubRangeFillInfo{}, bufImgCopy, err
+		}
+	} else if dataSlice.Size()%8 != 0 {
+		unpackedData = dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+		extendToMultipleOf8(&unpackedData)
+		if err := errorIfUnexpectedLength(uint64(len(unpackedData))); err != nil {
+			return bufferSubRangeFillInfo{}, bufImgCopy, err
+		}
+	} else {
+		if err := errorIfUnexpectedLength(dataSlice.Size()); err != nil {
+			return bufferSubRangeFillInfo{}, bufImgCopy, err
+		}
 	}
 
-	return unpacked, bufImgCopy, nil
+	if len(unpackedData) != 0 {
+		return newBufferSubRangeFillInfoFromNewData(unpackedData, bufDataOffset), bufImgCopy, nil
+	}
+	return newBufferSubRangeFillInfoFromSlice(h.sb, dataSlice, bufDataOffset), bufImgCopy, nil
 }
 
 // free functions

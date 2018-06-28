@@ -18,24 +18,32 @@ import (
 	"context"
 	"sort"
 
+	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
 
 type stateBuilder struct {
-	ctx             context.Context
-	s               *State
-	oldState        *api.GlobalState
-	newState        *api.GlobalState
-	cmds            []api.Cmd
-	cb              CommandBuilder
-	readMemories    []*api.AllocResult
-	writeMemories   []*api.AllocResult
-	memoryIntervals interval.U64RangeList
-	ta              arena.Arena // temporary arena
+	ctx                   context.Context
+	s                     *State
+	oldState              *api.GlobalState
+	newState              *api.GlobalState
+	cmds                  []api.Cmd
+	cb                    CommandBuilder
+	readMemories          []*api.AllocResult
+	writeMemories         []*api.AllocResult
+	extraReadIDsAndRanges []idAndRng
+	memoryIntervals       interval.U64RangeList
+	ta                    arena.Arena // temporary arena
+}
+
+type idAndRng struct {
+	id  id.ID
+	rng memory.Range
 }
 
 // TODO: wherever possible, use old resources instead of doing full reads on the old pools.
@@ -261,6 +269,33 @@ func (sb *stateBuilder) MustUnpackWriteMap(v interface{}) api.AllocResult {
 	return allocateResult
 }
 
+func (sb *stateBuilder) MustReserve(size uint64) api.AllocResult {
+	res := sb.newState.AllocOrPanic(sb.ctx, size)
+	interval.Merge(&sb.memoryIntervals, res.Range().Span(), true)
+	return res
+}
+
+func (sb *stateBuilder) ReadDataAt(dataID id.ID, base, size uint64) {
+	rng := memory.Range{base, size}
+	interval.Merge(&sb.memoryIntervals, rng.Span(), true)
+	sb.extraReadIDsAndRanges = append(sb.extraReadIDsAndRanges, idAndRng{
+		id:  dataID,
+		rng: rng,
+	})
+}
+
+type sliceWithID interface {
+	memory.Slice
+	ResourceID(ctx context.Context, state *api.GlobalState) id.ID
+}
+
+func (sb *stateBuilder) mustReadSlice(v sliceWithID) api.AllocResult {
+	res := sb.MustReserve(v.Size())
+	sb.readMemories = append(sb.readMemories, &res)
+	sb.ReadDataAt(v.ResourceID(sb.ctx, sb.oldState), res.Address(), v.Size())
+	return res
+}
+
 func (sb *stateBuilder) getCommandBuffer(queue QueueObjectʳ) (VkCommandBuffer, VkCommandPool) {
 	commandBufferID := VkCommandBuffer(newUnusedID(true, func(x uint64) bool { return sb.s.CommandBuffers().Contains(VkCommandBuffer(x)) }))
 	commandPoolID := VkCommandPool(newUnusedID(true, func(x uint64) bool { return sb.s.CommandPools().Contains(VkCommandPool(x)) }))
@@ -341,6 +376,9 @@ func (sb *stateBuilder) write(cmd api.Cmd) {
 	for _, read := range sb.readMemories {
 		cmd.Extras().GetOrAppendObservations().AddRead(read.Data())
 	}
+	for _, ir := range sb.extraReadIDsAndRanges {
+		cmd.Extras().GetOrAppendObservations().AddRead(ir.rng, ir.id)
+	}
 	for _, write := range sb.writeMemories {
 		cmd.Extras().GetOrAppendObservations().AddWrite(write.Data())
 	}
@@ -359,6 +397,7 @@ func (sb *stateBuilder) write(cmd api.Cmd) {
 	}
 	sb.readMemories = []*api.AllocResult{}
 	sb.writeMemories = []*api.AllocResult{}
+	sb.extraReadIDsAndRanges = []idAndRng{}
 }
 
 func (sb *stateBuilder) createInstance(vk VkInstance, inst InstanceObjectʳ) {
@@ -828,16 +867,63 @@ func memoryTypeIndexFor(memTypeBits uint32, props VkPhysicalDeviceMemoryProperti
 	return -1
 }
 
-func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, data []uint8, usages ...VkBufferUsageFlagBits) (VkBuffer, VkDeviceMemory) {
-	buffer := VkBuffer(newUnusedID(true, func(x uint64) bool { return sb.s.Buffers().Contains(VkBuffer(x)) }))
-	deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool { return sb.s.DeviceMemories().Contains(VkDeviceMemory(x)) }))
+type bufferSubRangeFillInfo struct {
+	rng        interval.U64Range // Do not use memory.Range because this is not a range in memory
+	data       []uint8
+	hash       id.ID
+	hasNewData bool
+}
 
-	size := VkDeviceSize(len(data))
+func newBufferSubRangeFillInfoFromNewData(data []uint8, offsetInBuf uint64) bufferSubRangeFillInfo {
+	return bufferSubRangeFillInfo{
+		rng:        interval.U64Range{offsetInBuf, uint64(len(data))},
+		data:       data,
+		hash:       id.ID{},
+		hasNewData: true,
+	}
+}
+
+func newBufferSubRangeFillInfoFromSlice(sb *stateBuilder, slice U8ˢ, offsetInBuf uint64) bufferSubRangeFillInfo {
+	return bufferSubRangeFillInfo{
+		rng:        interval.U64Range{offsetInBuf, slice.Size()},
+		data:       []uint8{},
+		hash:       slice.ResourceID(sb.ctx, sb.oldState),
+		hasNewData: false,
+	}
+}
+
+func (i bufferSubRangeFillInfo) size() uint64 {
+	return i.rng.Count
+}
+
+func (i *bufferSubRangeFillInfo) storeNewData(sb *stateBuilder) {
+	if i.hasNewData {
+		hash, err := database.Store(sb.ctx, i.data)
+		if err != nil {
+			panic(err)
+		}
+		i.hash = hash
+		i.hasNewData = false
+	}
+}
+
+func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, subRngs []bufferSubRangeFillInfo, usages ...VkBufferUsageFlagBits) (VkBuffer, VkDeviceMemory) {
+	buffer := VkBuffer(newUnusedID(true, func(x uint64) bool {
+		return sb.s.Buffers().Contains(VkBuffer(x)) || GetState(sb.newState).Buffers().Contains(VkBuffer(x))
+	}))
+	deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
+		return sb.s.DeviceMemories().Contains(VkDeviceMemory(x)) || GetState(sb.newState).DeviceMemories().Contains(VkDeviceMemory(x))
+	}))
 	usageFlags := VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
 	for _, u := range usages {
 		usageFlags |= VkBufferUsageFlags(u)
 	}
-
+	size := uint64(0)
+	for _, r := range subRngs {
+		if r.rng.Span().End > size {
+			size = r.rng.Span().End
+		}
+	}
 	sb.write(sb.cb.VkCreateBuffer(
 		device.VulkanHandle(),
 		sb.MustAllocReadData(
@@ -845,7 +931,7 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, data []
 				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
 				0,                                       // pNext
 				0,                                       // flags
-				size,                                    // size
+				VkDeviceSize(size),                      // size
 				usageFlags,                              // usage
 				VkSharingMode_VK_SHARING_MODE_EXCLUSIVE, // sharingMode
 				0, // queueFamilyIndexCount
@@ -888,40 +974,51 @@ func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, data []
 		VkResult_VK_SUCCESS,
 	))
 
-	dat := sb.newState.AllocDataOrPanic(sb.ctx, data)
-	at := NewVoidᵖ(dat.Ptr())
-	atdata := sb.newState.AllocDataOrPanic(sb.ctx, at)
+	atData := sb.MustReserve(size)
 
+	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
 	sb.write(sb.cb.VkMapMemory(
 		device.VulkanHandle(),
 		deviceMemory,
 		VkDeviceSize(0),
-		size,
+		VkDeviceSize(size),
 		VkMemoryMapFlags(0),
-		atdata.Ptr(),
+		ptrAtData.Ptr(),
 		VkResult_VK_SUCCESS,
-	).AddRead(atdata.Data()).AddWrite(atdata.Data()))
+	).AddRead(ptrAtData.Data()).AddWrite(ptrAtData.Data()))
+	ptrAtData.Free()
 
+	for _, r := range subRngs {
+		var hash id.ID
+		var err error
+		if r.hasNewData {
+			hash, err = database.Store(sb.ctx, r.data)
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			hash = r.hash
+		}
+		sb.ReadDataAt(hash, atData.Address()+r.rng.First, r.rng.Count)
+	}
 	sb.write(sb.cb.VkFlushMappedMemoryRanges(
 		device.VulkanHandle(),
 		1,
 		sb.MustAllocReadData(NewVkMappedMemoryRange(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
-			0,            // pNext
-			deviceMemory, // memory
-			0,            // offset
-			size,         // size
+			0,                  // pNext
+			deviceMemory,       // memory
+			0,                  // offset
+			VkDeviceSize(size), // size
 		)).Ptr(),
 		VkResult_VK_SUCCESS,
-	).AddRead(dat.Data()))
+	))
+	atData.Free()
 
 	sb.write(sb.cb.VkUnmapMemory(
 		device.VulkanHandle(),
 		deviceMemory,
 	))
-
-	dat.Free()
-	atdata.Free()
 
 	return buffer, deviceMemory
 }
@@ -1070,7 +1167,7 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		return
 	}
 
-	contents := []uint8{}
+	contents := []bufferSubRangeFillInfo{}
 
 	copies := []VkBufferCopy{}
 	offset := VkDeviceSize(0)
@@ -1133,11 +1230,10 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		if sparseResidency || IsFullyBound(0, buffer.Info().Size(), buffer.SparseMemoryBindings()) {
 			for _, bind := range buffer.SparseMemoryBindings().All() {
 				size := bind.Size()
-				data := sb.s.DeviceMemories().Get(bind.Memory()).Data().Slice(
+				dataSlice := sb.s.DeviceMemories().Get(bind.Memory()).Data().Slice(
 					uint64(bind.MemoryOffset()),
-					uint64(bind.MemoryOffset()+size),
-				).MustRead(sb.ctx, nil, sb.oldState, nil)
-				contents = append(contents, data...)
+					uint64(bind.MemoryOffset()+size))
+				contents = append(contents, newBufferSubRangeFillInfoFromSlice(sb, dataSlice, uint64(offset)))
 				copies = append(copies, NewVkBufferCopy(sb.ta,
 					offset,                // srcOffset
 					bind.ResourceOffset(), // dstOffset
@@ -1162,11 +1258,10 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		))
 
 		size := buffer.Info().Size()
-		data := buffer.Memory().Data().Slice(
+		dataSlice := buffer.Memory().Data().Slice(
 			uint64(buffer.MemoryOffset()),
-			uint64(buffer.MemoryOffset()+size),
-		).MustRead(sb.ctx, nil, sb.oldState, nil)
-		contents = append(contents, data...)
+			uint64(buffer.MemoryOffset()+size))
+		contents = append(contents, newBufferSubRangeFillInfoFromSlice(sb, dataSlice, uint64(offset)))
 		copies = append(copies, NewVkBufferCopy(sb.ta,
 			offset, // srcOffset
 			0,      // dstOffset
@@ -1805,8 +1900,7 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 			for _, kk := range b.ImmutableSamplers().Keys() {
 				immutableSamplers = append(immutableSamplers, b.ImmutableSamplers().Get(kk).VulkanHandle())
 			}
-			allocateResult := sb.newState.AllocDataOrPanic(sb.ctx, immutableSamplers)
-			sb.readMemories = append(sb.readMemories, &allocateResult)
+			allocateResult := sb.MustAllocReadData(immutableSamplers)
 			smp = NewVkSamplerᶜᵖ(allocateResult.Ptr())
 		}
 
@@ -1908,16 +2002,14 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 }
 
 func (sb *stateBuilder) createShaderModule(sm ShaderModuleObjectʳ) {
-	words := sm.Words().MustRead(sb.ctx, nil, sb.oldState, nil)
-
 	sb.write(sb.cb.VkCreateShaderModule(
 		sm.Device(),
 		sb.MustAllocReadData(NewVkShaderModuleCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // sType
 			0, // pNext
 			0, // flags
-			memory.Size(len(words))*4,                   // codeSize
-			NewU32ᶜᵖ(sb.MustAllocReadData(words).Ptr()), // pCode
+			memory.Size(sm.Words().Count()*4),            // codeSize
+			NewU32ᶜᵖ(sb.mustReadSlice(sm.Words()).Ptr()), // pCode
 		)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(sm.VulkanHandle()).Ptr(),
@@ -1948,12 +2040,12 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 
 	specializationInfo := NewVkSpecializationInfoᶜᵖ(memory.Nullptr)
 	if !cp.Stage().Specialization().IsNil() {
-		data := cp.Stage().Specialization().Data().MustRead(sb.ctx, nil, sb.oldState, nil)
+		data := cp.Stage().Specialization().Data()
 		specializationInfo = NewVkSpecializationInfoᶜᵖ(sb.MustAllocReadData(NewVkSpecializationInfo(sb.ta,
 			uint32(cp.Stage().Specialization().Specializations().Len()),                                                    // mapEntryCount
 			NewVkSpecializationMapEntryᶜᵖ(sb.MustUnpackReadMap(cp.Stage().Specialization().Specializations().All()).Ptr()), // pMapEntries
-			memory.Size(len(data)),                      // dataSize
-			NewVoidᶜᵖ(sb.MustAllocReadData(data).Ptr()), // pData
+			memory.Size(data.Size()),                // dataSize
+			NewVoidᶜᵖ(sb.mustReadSlice(data).Ptr()), // pData
 		)).Ptr())
 	}
 
@@ -2039,13 +2131,13 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		s := gp.Stages().Get(ss)
 		specializationInfo := NewVkSpecializationInfoᶜᵖ(memory.Nullptr)
 		if !s.Specialization().IsNil() {
-			data := s.Specialization().Data().MustRead(sb.ctx, nil, sb.oldState, nil)
+			data := s.Specialization().Data()
 			specializationInfo = NewVkSpecializationInfoᶜᵖ(sb.MustAllocReadData(
 				NewVkSpecializationInfo(sb.ta,
 					uint32(s.Specialization().Specializations().Len()),                                                    // mapEntryCount
 					NewVkSpecializationMapEntryᶜᵖ(sb.MustUnpackReadMap(s.Specialization().Specializations().All()).Ptr()), // pMapEntries
-					memory.Size(len(data)),                      // dataSize
-					NewVoidᶜᵖ(sb.MustAllocReadData(data).Ptr()), // pData
+					memory.Size(data.Size()),                // dataSize
+					NewVoidᶜᵖ(sb.mustReadSlice(data).Ptr()), // pData
 				)).Ptr())
 		}
 		stages = append(stages, NewVkPipelineShaderStageCreateInfo(sb.ta,

@@ -100,6 +100,7 @@ go_library(
         "//gapis/api/vulkan/vulkan_pb:go_default_library",  # keep
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",
+        "//gapis/database:go_default_library",
         "//gapis/memory:go_default_library",
         "//gapis/memory/memory_pb:go_default_library",  # keep
         "//gapis/messages:go_default_library",
