@@ -672,7 +672,9 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ, firstSha
 			firstShaderID++
 			write(cb.GlCreateShader(t, shaderID))
 			write(cb.GlShaderSource(shaderID, 1, sb.readsData(ctx, sb.readsData(ctx, s.Source())), memory.Nullptr))
-			write(api.WithExtras(cb.GlCompileShader(shaderID), s.Get().Clone(cb.Arena, sb.cloneCtx)))
+			extra := s.Get().Clone(cb.Arena, sb.cloneCtx)
+			extra.SetID(shaderID) // Fix the shader ID in the extra.
+			write(api.WithExtras(cb.GlCompileShader(shaderID), extra))
 			write(cb.GlAttachShader(id, shaderID))
 			attachedShaders = append(attachedShaders, shaderID)
 		}
