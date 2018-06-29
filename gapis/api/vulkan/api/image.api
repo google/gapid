@@ -93,6 +93,7 @@
   @hidden @nobox @internal u8[] Data
   VkImageLayout                 Layout
   ref!VkSubresourceLayout       LinearLayout
+  u32                           LastBoundQueueFamily
 }
 
 @internal class SparseBoundImageAspectInfo {
@@ -226,7 +227,12 @@ cmd VkResult vkCreateImage(
         width := getMipSize(info.extent.Width, i)
         height := getMipSize(info.extent.Height, i)
         depth := getMipSize(info.extent.Depth, i)
-        level := new!ImageLevel(Width: width,Height:  height,Depth:  depth,Layout:  info.initialLayout)
+        level := new!ImageLevel(
+          Width: width,
+          Height:  height,
+          Depth:  depth,
+          Layout:  info.initialLayout,
+          LastBoundQueueFamily: 0xFFFFFFFF)
         aspect.Layers[j].Levels[i] = level
       }
     }
@@ -638,6 +644,7 @@ sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng,
             if (level in img.Aspects[aspectBit].Layers[layer].Levels) {
               imgLevel := img.Aspects[aspectBit].Layers[layer].Levels[level]
               imgLevel.Layout = newLayout
+              imgLevel.LastBoundQueueFamily = LastBoundQueue.Family
             }
           }
         }
