@@ -28,4 +28,4 @@ build:symbols --copt="-g" --strip=never
 build:nodroid --define NO_ANDROID=1
 
 # Tests requiring a GPU fail in the sandbox.
-test --strategy TestRunner=standalone
+test --strategy TestRunner=standalone --test_env DISPLAY
