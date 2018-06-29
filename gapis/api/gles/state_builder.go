@@ -276,9 +276,16 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 		}
 	}
 	if objs := c.Objects().Programs(); sb.once(objs) {
+		// Get the largest used shader ID.
+		maxID := ShaderId(0)
+		for i := range c.Objects().Shaders().All() {
+			if i > maxID {
+				maxID = i
+			}
+		}
 		for _, id := range objs.Keys() {
 			if o := c.Objects().Programs().Get(id); !o.IsNil() {
-				sb.programObject(ctx, o)
+				sb.programObject(ctx, o, uint32(maxID)+1)
 			}
 		}
 	}
@@ -625,15 +632,10 @@ func (sb *stateBuilder) shaderObject(ctx context.Context, s Shaderʳ) {
 	write(cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, s.Source())), memory.Nullptr))
 }
 
-func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
+func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ, firstShaderID uint32) {
 	write, cb, id := sb.write, sb.cb, p.GetID()
 
 	write(cb.GlCreateProgram(id))
-	for _, s := range p.Shaders().All() {
-		if s := s.GetID(); s != 0 {
-			write(cb.GlAttachShader(id, s))
-		}
-	}
 	for name, location := range p.AttributeBindings().All() {
 		write(cb.GlBindAttribLocation(id, location, sb.readsData(ctx, name)))
 	}
@@ -658,6 +660,23 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 		if !p.LinkExtra().Binary().IsNil() {
 			sb.E(ctx, "Precompiled programs not suppored yet") // TODO
 		}
+
+		// Create the shaders from the extra.
+		attachedShaders := []ShaderId{}
+		for t, s := range p.LinkExtra().Shaders().All() {
+			if !s.Binary().IsNil() {
+				sb.E(ctx, "Precompiled programs not suppored yet") // TODO
+				continue
+			}
+			shaderID := ShaderId(firstShaderID)
+			firstShaderID++
+			write(cb.GlCreateShader(t, shaderID))
+			write(cb.GlShaderSource(shaderID, 1, sb.readsData(ctx, sb.readsData(ctx, s.Source())), memory.Nullptr))
+			write(api.WithExtras(cb.GlCompileShader(shaderID), s.Get().Clone(cb.Arena, sb.cloneCtx)))
+			write(cb.GlAttachShader(id, shaderID))
+			attachedShaders = append(attachedShaders, shaderID)
+		}
+
 		write(api.WithExtras(cb.GlLinkProgram(id), p.LinkExtra().Get().Clone(cb.Arena, sb.cloneCtx)))
 		write(cb.GlUseProgram(id))
 		for _, u := range p.ActiveResources().DefaultUniformBlock().All() {
@@ -666,9 +685,21 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 			}
 		}
 		write(cb.GlUseProgram(0))
+
+		// Detach and delete the linked shaders (we'll attach the shaders from the state below).
+		for _, shaderID := range attachedShaders {
+			write(cb.GlDetachShader(id, shaderID))
+			write(cb.GlDeleteShader(shaderID))
+		}
 	}
 	if !p.ValidateExtra().IsNil() {
 		write(api.WithExtras(cb.GlValidateProgram(id), p.ValidateExtra().Get().Clone(cb.Arena, sb.cloneCtx)))
+	}
+
+	for _, s := range p.Shaders().All() {
+		if s := s.GetID(); s != 0 {
+			write(cb.GlAttachShader(id, s))
+		}
 	}
 }
 
