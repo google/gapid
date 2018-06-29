@@ -390,27 +390,23 @@ func (p Programʳ) ResourceType(ctx context.Context) api.ResourceType {
 func (p Programʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Program.ResourceData()")
 
-	shaders := make([]*api.Shader, 0, p.Shaders().Len())
-	for shaderType, shader := range p.Shaders().All() {
-		var ty api.ShaderType
-		switch shaderType {
-		case GLenum_GL_VERTEX_SHADER:
-			ty = api.ShaderType_Vertex
-		case GLenum_GL_GEOMETRY_SHADER:
-			ty = api.ShaderType_Geometry
-		case GLenum_GL_TESS_CONTROL_SHADER:
-			ty = api.ShaderType_TessControl
-		case GLenum_GL_TESS_EVALUATION_SHADER:
-			ty = api.ShaderType_TessEvaluation
-		case GLenum_GL_FRAGMENT_SHADER:
-			ty = api.ShaderType_Fragment
-		case GLenum_GL_COMPUTE_SHADER:
-			ty = api.ShaderType_Compute
+	shaders := []*api.Shader{}
+	if e := p.LinkExtra(); !e.IsNil() {
+		// Use the source from the last link call.
+		for ty, shader := range e.Shaders().All() {
+			shaders = append(shaders, &api.Shader{
+				Type:   shaderType(ty),
+				Source: shader.Source(),
+			})
 		}
-		shaders = append(shaders, &api.Shader{
-			Type:   ty,
-			Source: shader.Source(),
-		})
+	} else {
+		// Fallback to showing the currently attached shaders.
+		for ty, shader := range p.Shaders().All() {
+			shaders = append(shaders, &api.Shader{
+				Type:   shaderType(ty),
+				Source: shader.Source(),
+			})
+		}
 	}
 
 	uniforms := []*api.Uniform{}
@@ -558,6 +554,24 @@ func (p Programʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 	sort.Slice(shaders, func(i, j int) bool { return shaders[i].Type < shaders[j].Type })
 	sort.Slice(uniforms, func(i, j int) bool { return uniforms[i].UniformLocation < uniforms[j].UniformLocation })
 	return api.NewResourceData(&api.Program{Shaders: shaders, Uniforms: uniforms}), nil
+}
+
+func shaderType(shaderType GLenum) (ty api.ShaderType) {
+	switch shaderType {
+	case GLenum_GL_VERTEX_SHADER:
+		ty = api.ShaderType_Vertex
+	case GLenum_GL_GEOMETRY_SHADER:
+		ty = api.ShaderType_Geometry
+	case GLenum_GL_TESS_CONTROL_SHADER:
+		ty = api.ShaderType_TessControl
+	case GLenum_GL_TESS_EVALUATION_SHADER:
+		ty = api.ShaderType_TessEvaluation
+	case GLenum_GL_FRAGMENT_SHADER:
+		ty = api.ShaderType_Fragment
+	case GLenum_GL_COMPUTE_SHADER:
+		ty = api.ShaderType_Compute
+	}
+	return ty
 }
 
 func uniformValue(ctx context.Context, s *api.GlobalState, kind api.UniformType, data U8ˢ) interface{} {
