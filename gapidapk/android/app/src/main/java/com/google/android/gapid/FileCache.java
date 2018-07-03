@@ -49,42 +49,47 @@ public abstract class FileCache {
 
             private V scopedBuild(K key) {
                 String name;
+                File path = null;
                 try (Counter.Scope t = Counter.time("filename")) {
                     try (Counter.Scope t2 = Counter.time("generate")) {
                         name = builder.filename(key);
                     }
-                    try (Counter.Scope t2 = Counter.time("sanitize")) {
-                        char[] src = name.toCharArray();
-                        char[] dst = new char[src.length];
-                        for (int i = 0; i < src.length; i++) {
-                            char c = src[i];
-                            if ((c != '.') && (c != '-') &&
-                                    !(c >= 'a' && c <= 'z') &&
-                                    !(c >= 'A' && c <= 'Z') &&
-                                    !(c >= '0' && c <= '9')) {
-                                c = '_';
+                    if (name != null) {
+                        try (Counter.Scope t2 = Counter.time("sanitize")) {
+                            char[] src = name.toCharArray();
+                            char[] dst = new char[src.length];
+                            for (int i = 0; i < src.length; i++) {
+                                char c = src[i];
+                                if ((c != '.') && (c != '-') &&
+                                        !(c >= 'a' && c <= 'z') &&
+                                        !(c >= 'A' && c <= 'Z') &&
+                                        !(c >= '0' && c <= '9')) {
+                                    c = '_';
+                                }
+                                dst[i] = c;
                             }
-                            dst[i] = c;
+                            name = new String(dst);
                         }
-                        name = new String(dst);
                     }
                 }
 
-                File path = new File(cacheDir, name);
-                if (path.exists()) {
-                    try (Counter.Scope t = Counter.time("load")) {
-                        try (FileInputStream file = new FileInputStream(path)) {
-                            byte[] bytes = IOUtils.readAll(file);
-                            if (bytes.length == 0) {
-                                return null;
+                if (name != null) {
+                    path = new File(cacheDir, name);
+                    if (path.exists()) {
+                        try (Counter.Scope t = Counter.time("load")) {
+                            try (FileInputStream file = new FileInputStream(path)) {
+                                byte[] bytes = IOUtils.readAll(file);
+                                if (bytes.length == 0) {
+                                    return null;
+                                }
+                                try (Counter.Scope t2 = Counter.time("decode")) {
+                                    return builder.decode(bytes);
+                                }
+                            } catch (FileNotFoundException e) {
+                                // Fallthrough
+                            } catch (IOException e) {
+                                // Fallthrough
                             }
-                            try (Counter.Scope t2 = Counter.time("decode")) {
-                                return builder.decode(bytes);
-                            }
-                        } catch (FileNotFoundException e) {
-                            // Fallthrough
-                        } catch (IOException e) {
-                            // Fallthrough
                         }
                     }
                 }
@@ -94,19 +99,21 @@ public abstract class FileCache {
                     value = builder.build(key);
                 }
 
-                try (Counter.Scope t = Counter.time("store")) {
-                    try (FileOutputStream file = new FileOutputStream(path)) {
-                        if (value != null) {
-                            byte[] data;
-                            try (Counter.Scope t2 = Counter.time("encode")) {
-                                data = builder.encode(value);
+                if (path != null) {
+                    try (Counter.Scope t = Counter.time("store")) {
+                        try (FileOutputStream file = new FileOutputStream(path)) {
+                            if (value != null) {
+                                byte[] data;
+                                try (Counter.Scope t2 = Counter.time("encode")) {
+                                    data = builder.encode(value);
+                                }
+                                IOUtils.writeAll(file, data);
                             }
-                            IOUtils.writeAll(file, data);
+                        } catch (FileNotFoundException e) {
+                            // Fallthrough
+                        } catch (IOException e) {
+                            // Fallthrough
                         }
-                    } catch (FileNotFoundException e) {
-                        // Fallthrough
-                    } catch (IOException e) {
-                        // Fallthrough
                     }
                 }
 
@@ -123,7 +130,8 @@ public abstract class FileCache {
      */
     public interface Builder<K, V> extends Cache.Builder<K, V> {
         /**
-         * @return the unique filename for the given data key.
+         * @return the unique filename for the given data key. If null is returned, then the cache
+         *         is skipped.
          */
         String filename(K key);
 
