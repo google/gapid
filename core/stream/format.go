@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var aliases = map[string]string{
@@ -25,50 +27,51 @@ var aliases = map[string]string{
 	"RGB_U8_NORM_sRGB":                 "SRGB_U8_NORM",
 }
 
+type unique struct {
+	value  proto.Message
+	unique bool
+}
+
+func (u *unique) check(val proto.Message) {
+	if val != nil {
+		if u.value == nil {
+			u.value = val
+			u.unique = true
+		} else if u.unique && !proto.Equal(u.value, val) {
+			u.unique = false
+		}
+	}
+}
+
 // Format prints the Format to w.
 func (f Format) Format(w fmt.State, r rune) {
 	buf := &bytes.Buffer{}
-	samplings := map[Sampling]struct{}{}
-	datatypes := map[DataType]struct{}{}
+	samplings, datatypes := unique{}, unique{}
 	for _, c := range f.Components {
 		fmt.Fprint(buf, c.Channel)
-		datatypes[*c.DataType] = struct{}{}
-		if s := c.Sampling; s != nil {
-			samplings[*s] = struct{}{}
-		}
+		datatypes.check(c.DataType)
+		samplings.check(c.Sampling)
 	}
 	fmt.Fprint(buf, "_")
 
-	datatypesCommon := len(datatypes) < 2
-	samplingsCommon := len(samplings) < 2
 	defaultSampling := Sampling{}
 
-	if !datatypesCommon || !samplingsCommon {
+	if !datatypes.unique || !samplings.unique {
 		for _, c := range f.Components {
-			if !samplingsCommon && *c.Sampling != defaultSampling {
+			if !samplings.unique && !c.Sampling.Is(defaultSampling) {
 				fmt.Fprintf(buf, "%c", c.Sampling)
 			}
 			fmt.Fprint(buf, c.DataType)
 		}
-		if samplingsCommon {
-			for sampling := range samplings {
-				if sampling != defaultSampling {
-					fmt.Fprint(buf, "_", sampling)
-				}
-			}
+		if samplings.unique && !proto.Equal(samplings.value, &defaultSampling) {
+			fmt.Fprint(buf, "_", *samplings.value.(*Sampling))
 		}
 	} else {
-		if datatypesCommon {
-			for datatype := range datatypes {
-				fmt.Fprint(buf, datatype)
-			}
+		if datatypes.unique {
+			fmt.Fprint(buf, *datatypes.value.(*DataType))
 		}
-		if samplingsCommon {
-			for sampling := range samplings {
-				if sampling != defaultSampling {
-					fmt.Fprint(buf, "_", sampling)
-				}
-			}
+		if samplings.unique && !proto.Equal(samplings.value, &defaultSampling) {
+			fmt.Fprint(buf, "_", *samplings.value.(*Sampling))
 		}
 	}
 	name := buf.String()

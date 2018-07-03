@@ -57,8 +57,23 @@ func main() {
 	app.Run(run)
 }
 
+type tableKey struct {
+	cultureCode string
+}
+
+func key(i *stringtable.Info) tableKey {
+	if i == nil {
+		return tableKey{}
+	}
+	return tableKey{i.CultureCode}
+}
+
+func (k tableKey) toProto() *stringtable.Info {
+	return &stringtable.Info{CultureCode: k.cultureCode}
+}
+
 func run(ctx context.Context) error {
-	tables := map[stringtable.Info]*tableAndTypeMap{}
+	tables := map[tableKey]*tableAndTypeMap{}
 
 	for _, path := range flag.Args() {
 		content, err := ioutil.ReadFile(path)
@@ -69,7 +84,7 @@ func run(ctx context.Context) error {
 		if len(errs) > 0 {
 			return fmt.Errorf("%s", errs)
 		}
-		if existing, exists := tables[*table.Info]; exists {
+		if existing, exists := tables[key(table.Info)]; exists {
 			// Merge parameter maps, check for duplicates
 			for k, v := range paramTypeMap {
 				if _, dup := existing.paramTypeMap[k]; !dup {
@@ -87,7 +102,7 @@ func run(ctx context.Context) error {
 				}
 			}
 		} else {
-			tables[*table.Info] = &tableAndTypeMap{stringTable: table, paramTypeMap: paramTypeMap}
+			tables[key(table.Info)] = &tableAndTypeMap{stringTable: table, paramTypeMap: paramTypeMap}
 		}
 	}
 
@@ -128,15 +143,15 @@ func run(ctx context.Context) error {
 }
 
 // entry is a map of Info -> parameter list
-type entry map[stringtable.Info][]string
+type entry map[tableKey][]string
 
-func writePackages(tables map[stringtable.Info]*tableAndTypeMap, path string) error {
+func writePackages(tables map[tableKey]*tableAndTypeMap, path string) error {
 	for info, table := range tables {
 		data, err := proto.Marshal(table.stringTable)
 		if err != nil {
 			return err
 		}
-		path := filepath.Join(path, info.CultureCode+".stb")
+		path := filepath.Join(path, info.cultureCode+".stb")
 		os.MkdirAll(filepath.Dir(path), os.ModePerm)
 		if err := ioutil.WriteFile(path, data, 0755); err != nil {
 			return err
@@ -182,7 +197,7 @@ func writeDefinitionsAbstract(table *tableAndTypeMap, path, templateRoutine, tem
 }
 
 // checks for consistency between the various localizations of strings.
-func validate(ctx context.Context, tables map[stringtable.Info]*tableAndTypeMap) error {
+func validate(ctx context.Context, tables map[tableKey]*tableAndTypeMap) error {
 	all := map[string]entry{}
 
 	for info, table := range tables {
@@ -212,8 +227,8 @@ func validate(ctx context.Context, tables map[stringtable.Info]*tableAndTypeMap)
 		var validInfo *stringtable.Info
 		var validParams []string
 		for info, params := range entry {
-			if info.CultureCode == defaultCultureCode {
-				validInfo, validParams = &info, params
+			if info.cultureCode == defaultCultureCode {
+				validInfo, validParams = info.toProto(), params
 				break
 			}
 		}
@@ -221,7 +236,7 @@ func validate(ctx context.Context, tables map[stringtable.Info]*tableAndTypeMap)
 			return log.Errf(ctx, ErrNoEntry, "code: %v", defaultCultureCode)
 		}
 		for info, params := range entry {
-			if info.CultureCode != defaultCultureCode &&
+			if info.cultureCode != defaultCultureCode &&
 				!reflect.DeepEqual(validParams, params) {
 				return log.Errf(ctx, ErrParameterList, "first: %v, second: %v", *validInfo, info)
 			}
