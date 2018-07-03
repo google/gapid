@@ -406,10 +406,14 @@ public class PackageInfoService extends IntentService {
                         public String filename(Pair<Resources, Integer> key) {
                             Resources resources = key.first;
                             int id = key.second;
-                            return resources.getResourcePackageName(id)
-                                    + "." + resources.getResourceTypeName(id)
-                                    + "." + resources.getResourceName(id)
-                                    + "." + iconDensity;
+                            try {
+                                return resources.getResourcePackageName(id)
+                                        + "." + resources.getResourceTypeName(id)
+                                        + "." + resources.getResourceName(id)
+                                        + "." + iconDensity;
+                            } catch (Resources.NotFoundException ex) {
+                                return null;
+                            }
                         }
 
                         @Override
