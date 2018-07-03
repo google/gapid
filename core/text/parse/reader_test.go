@@ -12,45 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parse
+package parse_test
 
 import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/text/parse"
 )
 
 var numericTests = []struct {
 	in       string
 	outToken string
-	outKind  NumberKind
+	outKind  parse.NumberKind
 }{
-	{"47", "47", Decimal},
-	{"47u", "47u", Decimal},
-	{"0x47u", "0x47u", Hexadecimal},
-	{".47", ".47", Floating},
-	{"42.47", "42.47", Floating},
-	{"47.", "47.", Floating},
-	{"47.f", "47.f", Floating},
-	{"47.F", "47.F", Floating},
-	{"0.47", "0.47", Floating},
-	{"0.47f", "0.47f", Floating},
-	{"0.47F", "0.47F", Floating},
-	{"0", "0", Octal},
-	{"047", "047", Octal},
-	{"047u", "047u", Octal},
-	{"47.e42", "47.e42", Scientific},
-	{"4.7e4", "4.7e4", Scientific},
-	{"4.7e-4", "4.7e-4", Scientific},
-	{".", "", NotNumeric},
-	{"47e", "", NotNumeric},
-	{"47e+", "", NotNumeric},
+	{"47", "47", parse.Decimal},
+	{"47u", "47u", parse.Decimal},
+	{"0x47u", "0x47u", parse.Hexadecimal},
+	{".47", ".47", parse.Floating},
+	{"42.47", "42.47", parse.Floating},
+	{"47.", "47.", parse.Floating},
+	{"47.f", "47.f", parse.Floating},
+	{"47.F", "47.F", parse.Floating},
+	{"0.47", "0.47", parse.Floating},
+	{"0.47f", "0.47f", parse.Floating},
+	{"0.47F", "0.47F", parse.Floating},
+	{"0", "0", parse.Octal},
+	{"047", "047", parse.Octal},
+	{"047u", "047u", parse.Octal},
+	{"47.e42", "47.e42", parse.Scientific},
+	{"4.7e4", "4.7e4", parse.Scientific},
+	{"4.7e-4", "4.7e-4", parse.Scientific},
+	{".", "", parse.NotNumeric},
+	{"47e", "", parse.NotNumeric},
+	{"47e+", "", parse.NotNumeric},
 }
 
 func TestNumeric(t *testing.T) {
 	assert := assert.To(t)
 	for _, test := range numericTests {
-		r := NewReader("reader_test.api", test.in)
+		r := parse.NewReader("reader_test.api", test.in)
 		assert.For("kind").Add("in", test.in).That(r.Numeric()).Equals(test.outKind)
 		assert.For("token").Add("in", test.in).That(r.Token().String()).Equals(test.outToken)
 	}

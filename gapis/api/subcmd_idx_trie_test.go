@@ -12,119 +12,120 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package api_test
 
 import (
 	"reflect"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/gapis/api"
 )
 
 func TestSubCmdIdxTrie(t *testing.T) {
 	assert := assert.To(t)
-	trie := &SubCmdIdxTrie{}
+	trie := &api.SubCmdIdxTrie{}
 
-	expectValue := func(indices SubCmdIdx, expectedValue int) {
+	expectValue := func(indices api.SubCmdIdx, expectedValue int) {
 		v := trie.Value(indices)
 		assert.For("Expect Value(%v) value: %v", indices, expectedValue).That(v).Equals(expectedValue)
 	}
-	expectNonValue := func(indices SubCmdIdx) {
+	expectNonValue := func(indices api.SubCmdIdx) {
 		v := trie.Value(indices)
 		assert.For("Expect Value(%v) value: %v", indices, v).That(v).Equals(nil)
 	}
-	expectRemoveValue := func(indices SubCmdIdx, expectedReturn bool) {
+	expectRemoveValue := func(indices api.SubCmdIdx, expectedReturn bool) {
 		assert.For("Expect RemoveValue(%v) returns: %v", indices, expectedReturn).That(trie.RemoveValue(indices)).Equals(expectedReturn)
 	}
 
-	expectNonValue(SubCmdIdx{})
-	expectNonValue(SubCmdIdx{0})
-	expectNonValue(SubCmdIdx{1})
-	expectNonValue(SubCmdIdx{1, 2, 3})
+	expectNonValue(api.SubCmdIdx{})
+	expectNonValue(api.SubCmdIdx{0})
+	expectNonValue(api.SubCmdIdx{1})
+	expectNonValue(api.SubCmdIdx{1, 2, 3})
 
-	trie.SetValue(SubCmdIdx{}, 100)
-	expectValue(SubCmdIdx{}, 100)
-	expectNonValue(SubCmdIdx{0})
-	expectNonValue(SubCmdIdx{1})
-	expectNonValue(SubCmdIdx{1, 2, 3})
+	trie.SetValue(api.SubCmdIdx{}, 100)
+	expectValue(api.SubCmdIdx{}, 100)
+	expectNonValue(api.SubCmdIdx{0})
+	expectNonValue(api.SubCmdIdx{1})
+	expectNonValue(api.SubCmdIdx{1, 2, 3})
 
-	trie.SetValue(SubCmdIdx{1}, 101)
-	expectValue(SubCmdIdx{}, 100)
-	expectValue(SubCmdIdx{1}, 101)
-	expectNonValue(SubCmdIdx{0})
-	expectNonValue(SubCmdIdx{1, 2, 3})
+	trie.SetValue(api.SubCmdIdx{1}, 101)
+	expectValue(api.SubCmdIdx{}, 100)
+	expectValue(api.SubCmdIdx{1}, 101)
+	expectNonValue(api.SubCmdIdx{0})
+	expectNonValue(api.SubCmdIdx{1, 2, 3})
 
-	trie.SetValue(SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
-	trie.SetValue(SubCmdIdx{100, 99, 98, 97}, 103)
-	expectValue(SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
-	expectValue(SubCmdIdx{100, 99, 98, 97}, 103)
-	expectValue(SubCmdIdx{}, 100)
-	expectValue(SubCmdIdx{1}, 101)
-	expectNonValue(SubCmdIdx{0})
-	expectNonValue(SubCmdIdx{1, 2, 3})
+	trie.SetValue(api.SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
+	trie.SetValue(api.SubCmdIdx{100, 99, 98, 97}, 103)
+	expectValue(api.SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
+	expectValue(api.SubCmdIdx{100, 99, 98, 97}, 103)
+	expectValue(api.SubCmdIdx{}, 100)
+	expectValue(api.SubCmdIdx{1}, 101)
+	expectNonValue(api.SubCmdIdx{0})
+	expectNonValue(api.SubCmdIdx{1, 2, 3})
 
-	expectRemoveValue(SubCmdIdx{1}, true)
-	expectNonValue(SubCmdIdx{1})
-	expectValue(SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
+	expectRemoveValue(api.SubCmdIdx{1}, true)
+	expectNonValue(api.SubCmdIdx{1})
+	expectValue(api.SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
 
-	expectRemoveValue(SubCmdIdx{}, true)
-	expectNonValue(SubCmdIdx{})
-	expectValue(SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
-	expectValue(SubCmdIdx{100, 99, 98, 97}, 103)
+	expectRemoveValue(api.SubCmdIdx{}, true)
+	expectNonValue(api.SubCmdIdx{})
+	expectValue(api.SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
+	expectValue(api.SubCmdIdx{100, 99, 98, 97}, 103)
 
-	expectRemoveValue(SubCmdIdx{100, 99}, false)
-	expectValue(SubCmdIdx{100, 99, 98, 97}, 103)
-	expectNonValue(SubCmdIdx{100, 99})
+	expectRemoveValue(api.SubCmdIdx{100, 99}, false)
+	expectValue(api.SubCmdIdx{100, 99, 98, 97}, 103)
+	expectNonValue(api.SubCmdIdx{100, 99})
 
-	expectRemoveValue(SubCmdIdx{100, 99, 98, 97}, true)
-	expectNonValue(SubCmdIdx{100, 99, 98, 97})
-	expectNonValue(SubCmdIdx{100, 99, 98})
-	expectNonValue(SubCmdIdx{100, 99})
-	expectNonValue(SubCmdIdx{100})
+	expectRemoveValue(api.SubCmdIdx{100, 99, 98, 97}, true)
+	expectNonValue(api.SubCmdIdx{100, 99, 98, 97})
+	expectNonValue(api.SubCmdIdx{100, 99, 98})
+	expectNonValue(api.SubCmdIdx{100, 99})
+	expectNonValue(api.SubCmdIdx{100})
 }
 
 func TestSubCmdIdxTriePostOrderSortedKeys(t *testing.T) {
 	assert := assert.To(t)
-	expectKeys := func(trie *SubCmdIdxTrie, expectedKeys []SubCmdIdx) {
+	expectKeys := func(trie *api.SubCmdIdxTrie, expectedKeys []api.SubCmdIdx) {
 		keys := trie.PostOrderSortedKeys()
 		assert.For("Expected returned keys: %v", expectedKeys).That(
 			reflect.DeepEqual(keys, expectedKeys)).Equals(true)
 	}
 
-	trie := &SubCmdIdxTrie{}
-	expectKeys(trie, []SubCmdIdx{})
+	trie := &api.SubCmdIdxTrie{}
+	expectKeys(trie, []api.SubCmdIdx{})
 
-	trie.SetValue(SubCmdIdx{}, 100)
-	expectKeys(trie, []SubCmdIdx{
-		SubCmdIdx{},
+	trie.SetValue(api.SubCmdIdx{}, 100)
+	expectKeys(trie, []api.SubCmdIdx{
+		api.SubCmdIdx{},
 	})
 
-	trie.SetValue(SubCmdIdx{1}, 101)
-	trie.SetValue(SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
-	trie.SetValue(SubCmdIdx{100, 99, 98, 97}, 103)
-	expectKeys(trie, []SubCmdIdx{
-		SubCmdIdx{1, 2, 3, 4, 5, 6},
-		SubCmdIdx{1},
-		SubCmdIdx{100, 99, 98, 97},
-		SubCmdIdx{},
+	trie.SetValue(api.SubCmdIdx{1}, 101)
+	trie.SetValue(api.SubCmdIdx{1, 2, 3, 4, 5, 6}, 102)
+	trie.SetValue(api.SubCmdIdx{100, 99, 98, 97}, 103)
+	expectKeys(trie, []api.SubCmdIdx{
+		api.SubCmdIdx{1, 2, 3, 4, 5, 6},
+		api.SubCmdIdx{1},
+		api.SubCmdIdx{100, 99, 98, 97},
+		api.SubCmdIdx{},
 	})
 
-	trie.RemoveValue(SubCmdIdx{})
-	trie.RemoveValue(SubCmdIdx{1})
-	trie.RemoveValue(SubCmdIdx{1, 2, 3, 4, 5, 6})
-	trie.RemoveValue(SubCmdIdx{100, 99, 98, 97})
-	expectKeys(trie, []SubCmdIdx{})
+	trie.RemoveValue(api.SubCmdIdx{})
+	trie.RemoveValue(api.SubCmdIdx{1})
+	trie.RemoveValue(api.SubCmdIdx{1, 2, 3, 4, 5, 6})
+	trie.RemoveValue(api.SubCmdIdx{100, 99, 98, 97})
+	expectKeys(trie, []api.SubCmdIdx{})
 
-	trie.SetValue(SubCmdIdx{0, 1, 2}, true)
-	trie.SetValue(SubCmdIdx{0, 2}, true)
-	trie.SetValue(SubCmdIdx{1}, true)
-	trie.SetValue(SubCmdIdx{1, 2, 3}, true)
-	trie.SetValue(SubCmdIdx{0, 1}, true)
-	expectKeys(trie, []SubCmdIdx{
-		SubCmdIdx{0, 1, 2},
-		SubCmdIdx{0, 1},
-		SubCmdIdx{0, 2},
-		SubCmdIdx{1, 2, 3},
-		SubCmdIdx{1},
+	trie.SetValue(api.SubCmdIdx{0, 1, 2}, true)
+	trie.SetValue(api.SubCmdIdx{0, 2}, true)
+	trie.SetValue(api.SubCmdIdx{1}, true)
+	trie.SetValue(api.SubCmdIdx{1, 2, 3}, true)
+	trie.SetValue(api.SubCmdIdx{0, 1}, true)
+	expectKeys(trie, []api.SubCmdIdx{
+		api.SubCmdIdx{0, 1, 2},
+		api.SubCmdIdx{0, 1},
+		api.SubCmdIdx{0, 2},
+		api.SubCmdIdx{1, 2, 3},
+		api.SubCmdIdx{1},
 	})
 }

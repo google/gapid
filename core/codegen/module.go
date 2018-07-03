@@ -32,7 +32,7 @@ type Module struct {
 	llvm    llvm.Module
 	ctx     llvm.Context
 	target  *device.ABI
-	triple  triple
+	triple  Triple
 	name    string
 	funcs   map[string]*Function
 	llvmDbg *llvm.DIBuilder
@@ -47,7 +47,7 @@ func NewModule(name string, target *device.ABI) *Module {
 	ptrSize := 8 * int(layout.Pointer.Size)
 	sizeSize := 8 * int(layout.Size.Size)
 
-	triple := targetTriple(target)
+	triple := TargetTriple(target)
 
 	ctx := llvm.NewContext()
 

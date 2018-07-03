@@ -20,14 +20,14 @@ import (
 	"github.com/google/gapid/core/os/device"
 )
 
-// targetTriple returns an LLVM target triple for the given ABI in the form:
+// TargetTriple returns an LLVM target triple for the given ABI in the form:
 //   <arch><sub>-<vendor>-<os>-<abi>
 //
 // References:
 // https://github.com/llvm-mirror/llvm/blob/master/lib/Support/Triple.cpp
 // https://clang.llvm.org/docs/CrossCompilation.html
-func targetTriple(dev *device.ABI) triple {
-	out := triple{"unknown", "unknown", "unknown", "unknown"}
+func TargetTriple(dev *device.ABI) Triple {
+	out := Triple{"unknown", "unknown", "unknown", "unknown"}
 	// Consult Triple.cpp for legal values for each of these.
 	// arch:   parseArch() + parseSubArch()
 	// vendor: parseVendor()
@@ -59,10 +59,16 @@ func targetTriple(dev *device.ABI) triple {
 	return out
 }
 
-type triple struct {
+// Triple represents an LLVM target triple.
+type Triple struct {
 	arch, vendor, os, abi string
 }
 
-func (t triple) String() string {
+// NewTriple returns a new Triple.
+func NewTriple(arch, vendor, os, abi string) Triple {
+	return Triple{arch, vendor, os, abi}
+}
+
+func (t Triple) String() string {
 	return strings.Join([]string{t.arch, t.vendor, t.os, t.abi}, "-")
 }
