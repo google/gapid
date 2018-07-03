@@ -26,7 +26,7 @@ def gapid_go_dependencies():
         name = "com_github_golang_protobuf",
         organization = "golang",
         project = "protobuf",
-        commit = "8ee79997227bf9b34611aee7946ae64735e6fd93",
+        commit = "b4deda0973fb4c70b50d226b1af49f3da59f5265",
         importpath = "github.com/golang/protobuf",
     )
 
