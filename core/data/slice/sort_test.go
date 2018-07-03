@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package slice
+package slice_test
 
 import (
 	"fmt"
@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/log"
 )
 
@@ -71,21 +72,21 @@ func TestSort(t *testing.T) {
 		{[]S{{11}, {10}, {2}, {1}}, []S{{1}, {10}, {11}, {2}}},
 	} {
 		{ // Sort()
-			slice := Clone(test.unsorted)
-			Sort(slice)
+			s := slice.Clone(test.unsorted)
+			slice.Sort(s)
 			assert.For(ctx, "Sort(%v)", test.unsorted).
-				That(slice).DeepEquals(test.expected)
+				That(s).DeepEquals(test.expected)
 		}
 		{ // SortValues()
 			unsorted := reflect.ValueOf(test.unsorted)
-			slice := make([]reflect.Value, unsorted.Len())
-			for i := range slice {
-				slice[i] = unsorted.Index(i)
+			s := make([]reflect.Value, unsorted.Len())
+			for i := range s {
+				s[i] = unsorted.Index(i)
 			}
-			SortValues(slice, unsorted.Type().Elem())
-			sorted := New(unsorted.Type(), len(slice), len(slice))
-			for i := range slice {
-				sorted.Index(i).Set(slice[i])
+			slice.SortValues(s, unsorted.Type().Elem())
+			sorted := slice.New(unsorted.Type(), len(s), len(s))
+			for i := range s {
+				sorted.Index(i).Set(s[i])
 			}
 			assert.For(ctx, "SortValues(%v, %v)", test.unsorted, unsorted.Type().Elem()).
 				That(sorted.Interface()).DeepEquals(test.expected)

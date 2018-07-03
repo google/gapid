@@ -565,7 +565,7 @@ func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 	}
 
 	if maxChildren > 0 && g.Count() > maxChildren {
-		g.Spans = g.Spans.split(maxChildren)
+		g.Spans = g.Spans.Split(maxChildren)
 	}
 
 	if maxNeighbours > 0 || maxChildren > 0 {
@@ -580,9 +580,9 @@ func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 	}
 }
 
-// split returns a new list of spans where each new span will represent no more
+// Split returns a new list of spans where each new span will represent no more
 // than the given number of items.
-func (l Spans) split(max uint64) Spans {
+func (l Spans) Split(max uint64) Spans {
 	out, current, idx, count := make([]Span, 0), make([]Span, 0), 1, uint64(0)
 outer:
 	for _, span := range l {

@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package codegen
+package codegen_test
 
 import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 )
@@ -27,16 +28,16 @@ func TestTargetTriple(t *testing.T) {
 	for _, t := range []struct {
 		name     string
 		abi      *device.ABI
-		expected triple
+		expected codegen.Triple
 	}{
-		{"win-x64", device.WindowsX86_64, triple{"x86_64", "w64", "windows", "gnu"}},
-		{"osx-x64", device.OSXX86_64, triple{"x86_64", "apple", "darwin", "unknown"}},
-		{"linux-x64", device.LinuxX86_64, triple{"x86_64", "unknown", "linux", "unknown"}},
-		{"android-arm64", device.AndroidARM64v8a, triple{"aarch64", "unknown", "linux", "androideabi"}},
-		{"android-armv7a", device.AndroidARMv7a, triple{"armv7", "unknown", "linux", "androideabi"}},
-		{"android-x86", device.AndroidX86, triple{"i386", "unknown", "linux", "androideabi"}},
-		{"android-x64", device.AndroidX86_64, triple{"x86_64", "unknown", "linux", "androideabi"}},
+		{"win-x64", device.WindowsX86_64, codegen.NewTriple("x86_64", "w64", "windows", "gnu")},
+		{"osx-x64", device.OSXX86_64, codegen.NewTriple("x86_64", "apple", "darwin", "unknown")},
+		{"linux-x64", device.LinuxX86_64, codegen.NewTriple("x86_64", "unknown", "linux", "unknown")},
+		{"android-arm64", device.AndroidARM64v8a, codegen.NewTriple("aarch64", "unknown", "linux", "androideabi")},
+		{"android-armv7a", device.AndroidARMv7a, codegen.NewTriple("armv7", "unknown", "linux", "androideabi")},
+		{"android-x86", device.AndroidX86, codegen.NewTriple("i386", "unknown", "linux", "androideabi")},
+		{"android-x64", device.AndroidX86_64, codegen.NewTriple("x86_64", "unknown", "linux", "androideabi")},
 	} {
-		assert.For(ctx, t.name).That(targetTriple(t.abi)).Equals(t.expected)
+		assert.For(ctx, t.name).That(codegen.TargetTriple(t.abi)).Equals(t.expected)
 	}
 }
