@@ -258,6 +258,7 @@ cmd VkResult vkQueuePresentKHR(
     delete(LastPresentInfo.PresentImages, i)
   }
   LastPresentInfo.PresentImageCount = 0
+  LastPresentInfo.Queue = queue
 
 
   info := pPresentInfo[0]
@@ -289,7 +290,13 @@ cmd VkResult vkQueuePresentKHR(
     LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
     image
     LastPresentInfo.PresentImageCount = LastPresentInfo.PresentImageCount + 1
-    image.LastBoundQueue = Queues[queue]
+    for _ , _ , aspect in image.Aspects {
+      for _ , _ , layer in aspect.Layers {
+        for _ , _ , level in layer.Levels {
+          level.LastBoundQueue = Queues[queue]
+        }
+      }
+    }
   }
   fence
   if (info.pResults != null) {

@@ -259,6 +259,8 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   u32 PresentImageCount
   // The images presented in the last present
   map!(u32, ref!ImageObject) PresentImages
+  // The queue on which images are presented
+  VkQueue Queue
 }
 
 enum LastSubmissionType {

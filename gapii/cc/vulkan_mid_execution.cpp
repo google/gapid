@@ -31,12 +31,12 @@ namespace gapii {
 
 template <typename T>
 gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R &queues,
-                                 const gapil::Ref<T> &obj) {
+                                 VkDevice device, const gapil::Ref<T> &obj) {
   if (obj->mLastBoundQueue) {
     return obj->mLastBoundQueue;
   }
   for (const auto &qi : queues) {
-    if (qi.second->mDevice == obj->mDevice) {
+    if (qi.second->mDevice == device) {
       return qi.second;
     }
   }
@@ -45,6 +45,8 @@ gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R &queues,
 
 // An invalid value of memory type index
 const uint32_t kInvalidMemoryTypeIndex = 0xFFFFFFFF;
+// The queue family value when it is ignored
+const uint32_t kQueueFamilyIgnore = 0xFFFFFFFF;
 
 // Try to find memory type within the types specified in
 // |requirement_type_bits| which is host-visible and non-host-coherent. If a
@@ -388,8 +390,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           mState.PhysicalDevices[mState.Devices[buf->mDevice]->mPhysicalDevice]
               ->mMemoryProperties,
           bind.msize);
-      StagingCommandBuffer commandBuffer(device_functions, buf->mDevice,
-                                         GetQueue(mState.Queues, buf)->mFamily);
+      StagingCommandBuffer commandBuffer(
+          device_functions, buf->mDevice,
+          GetQueue(mState.Queues, buf->mDevice, buf)->mFamily);
 
       VkBufferCopy region{bind.mresourceOffset, 0, bind.msize};
 
@@ -414,9 +417,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           &barrier, 0, nullptr);
 
       commandBuffer.FinishAndSubmit(
-          GetQueue(mState.Queues, buf)->mVulkanHandle);
+          GetQueue(mState.Queues, buf->mDevice, buf)->mVulkanHandle);
       device_functions.vkQueueWaitIdle(
-          GetQueue(mState.Queues, buf)->mVulkanHandle);
+          GetQueue(mState.Queues, buf->mDevice, buf)->mVulkanHandle);
 
       void *pData = stage.GetMappedMemory();
       memory::Observation observation;
@@ -681,12 +684,24 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
     {
       VkDeviceSize offset = 0;
-      std::vector<VkBufferImageCopy> copies;
+      std::vector<VkBufferImageCopy> copies_in_order;
+      // queue families to corresponding buffer image copies
+      std::unordered_map<uint32_t, std::vector<VkBufferImageCopy> > copies;
+      // queue families to queues
+      std::unordered_map<uint32_t, gapil::Ref<QueueObject>> queues;
       for (auto &piece : opaque_pieces) {
         auto img_level = img->mAspects[piece.aspect_bit]
                              ->mLayers[piece.layer]
                              ->mLevels[piece.level];
-        copies.push_back(VkBufferImageCopy{
+        auto queue = GetQueue(mState.Queues, img->mDevice, img_level);
+        uint32_t queue_family = queue->mFamily;
+        if (copies.find(queue_family) == copies.end()) {
+          copies[queue_family] = std::vector<VkBufferImageCopy>();
+        }
+        if (queues.find(queue_family) == queues.end()) {
+            queues[queue_family] = queue;
+        }
+        auto copy = VkBufferImageCopy{
             offset,  // bufferOffset
             0,       // bufferRowLength
             0,       // bufferImageHeight,
@@ -699,7 +714,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
             {0, 0, 0},
             {level_sizes[img_level.get()].width,
              level_sizes[img_level.get()].height,
-             level_sizes[img_level.get()].depth}});
+             level_sizes[img_level.get()].depth}};
+        copies[queue_family].push_back(copy);
+        copies_in_order.push_back(copy);
         offset += level_sizes[img_level.get()].aligned_level_size_in_buf;
       }
 
@@ -713,18 +730,31 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
             for (const auto &layer_i :
                  img->mSparseImageMemoryBindings[aspect_bit]->mLayers) {
               for (const auto &level_i : layer_i.second->mLevels) {
+                auto img_level = img->mAspects[aspect_bit]->mLayers[layer_i.first]->mLevels[level_i.first];
+                auto queue = GetQueue(mState.Queues, img->mDevice, img_level);
+                uint32_t queue_family = queue->mFamily;
+                if (copies.find(queue_family) == copies.end()) {
+                    copies[queue_family] = std::vector<VkBufferImageCopy>();
+                }
+                if (queues.find(queue_family) == queues.end()) {
+                    queues[queue_family] = queue;
+                }
                 for (const auto &block_i : level_i.second->mBlocks) {
-                  copies.push_back(VkBufferImageCopy{
-                      offset,  // bufferOffset,
-                      0,       // bufferRowLength,
-                      0,       // bufferImageHeight,
-                      VkImageSubresourceLayers{
-                          aspect_bit,  // aspectMask
-                          level_i.first,
-                          layer_i.first,  // baseArrayLayer
-                          1               // layerCount
-                      },
-                      block_i.second->mOffset, block_i.second->mExtent});
+                  auto copy =
+                      VkBufferImageCopy{offset,  // bufferOffset,
+                                        0,       // bufferRowLength,
+                                        0,       // bufferImageHeight,
+                                        VkImageSubresourceLayers{
+                                            aspect_bit,  // aspectMask
+                                            level_i.first,
+                                            layer_i.first,  // baseArrayLayer
+                                            1               // layerCount
+                                        },
+                                        block_i.second->mOffset,
+                                        block_i.second->mExtent};
+
+                  copies[queue_family].push_back(copy);
+                  copies_in_order.push_back(copy);
                   byte_size_and_extent e =
                       level_size(block_i.second->mExtent, image_info.mFormat, 0,
                                  aspect_bit);
@@ -742,81 +772,68 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
               ->mMemoryProperties,
           offset);
 
-      StagingCommandBuffer commandBuffer(device_functions, img->mDevice,
-                                         GetQueue(mState.Queues, img)->mFamily);
-
-      std::vector<VkImageMemoryBarrier> img_barriers;
-      std::vector<uint32_t> old_layouts;
-      walkImageSubRng(
-          img, img_whole_rng,
-          [&img, &img_barriers, &old_layouts](uint32_t aspect_bit,
-                                              uint32_t layer, uint32_t level) {
-            auto &img_level =
-                img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
-            img_barriers.push_back(VkImageMemoryBarrier{
-                VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                nullptr,
-                (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
-                VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
-                img_level->mLayout,
-                VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                0xFFFFFFFF,
-                0xFFFFFFFF,
-                img->mVulkanHandle,
-                {VkImageAspectFlags(aspect_bit), level, 1, layer, 1},
+      auto copyImageToBuffer = [&img, &img_whole_rng, &stage, &device_functions,
+                                this](
+                                   const std::vector<VkBufferImageCopy> &copies,
+                                   gapil::Ref<QueueObject> queue) {
+        StagingCommandBuffer commandBuffer(device_functions, img->mDevice,
+                                           queue->mFamily);
+        std::vector<VkImageMemoryBarrier> img_barriers;
+        std::vector<uint32_t> old_layouts;
+        walkImageSubRng(
+            img, img_whole_rng,
+            [&img, &img_barriers, &old_layouts](
+                uint32_t aspect_bit, uint32_t layer, uint32_t level) {
+              auto &img_level =
+                  img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+              img_barriers.push_back(VkImageMemoryBarrier{
+                  VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                  nullptr,
+                  (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
+                  VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
+                  img_level->mLayout,
+                  VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                  kQueueFamilyIgnore,
+                  kQueueFamilyIgnore,
+                  img->mVulkanHandle,
+                  {VkImageAspectFlags(aspect_bit), level, 1, layer, 1},
+              });
+              old_layouts.push_back(img_level->mLayout);
             });
-            old_layouts.push_back(img_level->mLayout);
-          });
+        device_functions.vkCmdPipelineBarrier(
+            commandBuffer.GetBuffer(),
+            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+            nullptr, 0, nullptr, img_barriers.size(), img_barriers.data());
 
-      device_functions.vkCmdPipelineBarrier(
-          commandBuffer.GetBuffer(),
-          VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-          VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
-          nullptr, 0, nullptr, img_barriers.size(), img_barriers.data());
+        device_functions.vkCmdCopyImageToBuffer(
+            commandBuffer.GetBuffer(), img->mVulkanHandle,
+            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            stage.GetBuffer(), copies.size(), copies.data());
 
-      device_functions.vkCmdCopyImageToBuffer(
-          commandBuffer.GetBuffer(), img->mVulkanHandle,
-          VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-          stage.GetBuffer(), copies.size(), copies.data());
+        for (size_t i = 0; i < img_barriers.size(); i++) {
+          img_barriers[i].msrcAccessMask =
+              VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
+          img_barriers[i].mdstAccessMask =
+              (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
+          img_barriers[i].moldLayout =
+              VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+          img_barriers[i].mnewLayout = old_layouts[i];
+        }
+        commandBuffer.FinishAndSubmit(queue->mVulkanHandle);
+        device_functions.vkQueueWaitIdle(queue->mVulkanHandle);
+      };
 
-      for (size_t i = 0; i < img_barriers.size(); i++) {
-        img_barriers[i].msrcAccessMask =
-            VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
-        img_barriers[i].mdstAccessMask =
-            (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
-        img_barriers[i].moldLayout =
-            VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        img_barriers[i].mnewLayout = old_layouts[i];
+      for (auto &family_copies : copies) {
+        copyImageToBuffer(family_copies.second, queues[family_copies.first]);
       }
-
-      VkBufferMemoryBarrier buf_barrier{
-          VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-          nullptr,
-          VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
-          VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
-          0xFFFFFFFF,
-          0xFFFFFFFF,
-          stage.GetBuffer(),
-          0,
-          offset};
-
-      device_functions.vkCmdPipelineBarrier(
-          commandBuffer.GetBuffer(),
-          VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-          VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0,
-          nullptr, 1, &buf_barrier, img_barriers.size(), img_barriers.data());
-
-      commandBuffer.FinishAndSubmit(
-          GetQueue(mState.Queues, img)->mVulkanHandle);
-      device_functions.vkQueueWaitIdle(
-          GetQueue(mState.Queues, img)->mVulkanHandle);
 
       uint8_t *pData = reinterpret_cast<uint8_t *>(stage.GetMappedMemory());
       size_t new_offset = 0;
-      for (uint32_t i = 0; i < copies.size(); ++i) {
-        auto &copy = copies[i];
+      for (uint32_t i = 0; i < copies_in_order.size(); ++i) {
+        auto &copy = copies_in_order[i];
         size_t next_offset =
-            (i == copies.size() - 1) ? offset : copies[i + 1].mbufferOffset;
+            (i == copies_in_order.size() - 1) ? offset : copies_in_order[i + 1].mbufferOffset;
         const uint32_t aspect_bit =
             (uint32_t)copy.mimageSubresource.maspectMask;
         byte_size_and_extent e =

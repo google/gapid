@@ -59,7 +59,6 @@
 @resource
 @internal class ImageObject {
   @unused VkDevice        Device
-  @unused ref!QueueObject LastBoundQueue
   ref!DeviceMemoryObject  BoundMemory
   VkDeviceSize            BoundMemoryOffset
   // mapping from the resource offsets to the sparse bindings in the unit of sparse blocks
@@ -93,7 +92,7 @@
   @hidden @nobox @internal u8[] Data
   VkImageLayout                 Layout
   ref!VkSubresourceLayout       LinearLayout
-  u32                           LastBoundQueueFamily
+  @unused ref!QueueObject       LastBoundQueue
 }
 
 @internal class SparseBoundImageAspectInfo {
@@ -231,8 +230,7 @@ cmd VkResult vkCreateImage(
           Width: width,
           Height:  height,
           Depth:  depth,
-          Layout:  info.initialLayout,
-          LastBoundQueueFamily: 0xFFFFFFFF)
+          Layout:  info.initialLayout)
         aspect.Layers[j].Levels[i] = level
       }
     }
@@ -583,6 +581,7 @@ sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng
       for mipLevel in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
         level := layer.Levels[mipLevel]
         read(level.Data)
+        level.LastBoundQueue = LastBoundQueue
       }
     }
   }
@@ -598,6 +597,7 @@ sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rn
       for mipLevel in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
         level := layer.Levels[mipLevel]
         write(level.Data)
+        level.LastBoundQueue = LastBoundQueue
       }
     }
   }
@@ -644,7 +644,7 @@ sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng,
             if (level in img.Aspects[aspectBit].Layers[layer].Levels) {
               imgLevel := img.Aspects[aspectBit].Layers[layer].Levels[level]
               imgLevel.Layout = newLayout
-              imgLevel.LastBoundQueueFamily = LastBoundQueue.Family
+              imgLevel.LastBoundQueue = LastBoundQueue
             }
           }
         }

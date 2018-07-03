@@ -64,6 +64,8 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 	for _, abi := range devAbis {
 		// Memory layout must match.
 		if !abi.GetMemoryLayout().SameAs(h.GetABI().GetMemoryLayout()) {
+			log.W(ctx, "device abi: %v", abi.GetMemoryLayout())
+			log.W(ctx, "trace abi: %v", h.GetABI().GetMemoryLayout())
 			continue
 		}
 		// If there is no physical devices, the trace must not contain
@@ -77,12 +79,18 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 			for _, tracePhyInfo := range traceVkDriver.GetPhysicalDevices() {
 				// TODO: More sophisticated rules
 				if devPhyInfo.GetVendorId() != tracePhyInfo.GetVendorId() {
+					log.W(ctx, "dev vendor: %v", devPhyInfo.GetVendorId())
+					log.W(ctx, "trace vendor: %v", tracePhyInfo.GetVendorId())
 					continue
 				}
 				if devPhyInfo.GetDeviceId() != tracePhyInfo.GetDeviceId() {
+					log.W(ctx, "dev device id: %v", devPhyInfo.GetDeviceId())
+					log.W(ctx, "trace device id: %v", tracePhyInfo.GetDeviceId())
 					continue
 				}
 				if devPhyInfo.GetApiVersion() != tracePhyInfo.GetApiVersion() {
+					log.W(ctx, "dev api version: %v", devPhyInfo.GetApiVersion())
+					log.W(ctx, "trace api version: %v", tracePhyInfo.GetApiVersion())
 					continue
 				}
 				return 1
