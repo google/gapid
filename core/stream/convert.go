@@ -19,6 +19,7 @@ import (
 	"math"
 	"reflect"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/math/f16"
 	"github.com/google/gapid/core/math/f32"
@@ -157,7 +158,7 @@ func (m *mapping) conv(count int) error {
 	dstIsInt, srcIsInt := d.DataType.IsInteger(), s.DataType.IsInteger()
 	dstIsFloat, srcIsFloat := d.DataType.IsFloat(), s.DataType.IsFloat()
 	switch {
-	case *d.DataType == *s.DataType:
+	case proto.Equal(d.DataType, s.DataType):
 		return clone(count, m.dst, m.src)
 	case dstIsFloat && srcIsFloat:
 		return ftof(count, m.dst, m.src)
