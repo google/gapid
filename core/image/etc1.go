@@ -30,7 +30,7 @@ func NewETC1_RGB_U8_NORM(name string) *Format {
 }
 
 func (f *FmtETC1_RGB_U8_NORM) key() interface{} {
-	return *f
+	return "ETC1_RGB_U8_NORM"
 }
 func (*FmtETC1_RGB_U8_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2

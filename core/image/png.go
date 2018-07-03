@@ -47,7 +47,7 @@ func PNGFrom(data []byte) (*Data, error) {
 // same name.
 func NewPNG(name string) *Format { return &Format{Name: name, Format: &Format_Png{&FmtPNG{}}} }
 
-func (f *FmtPNG) key() interface{}                   { return *f }
+func (f *FmtPNG) key() interface{}                   { return "PNG" }
 func (*FmtPNG) size(w, h, d int) int                 { return -1 }
 func (*FmtPNG) check(data []byte, w, h, d int) error { return nil }
 func (*FmtPNG) resize(data []byte, srcW, srcH, dstW, dstH int) ([]byte, error) {

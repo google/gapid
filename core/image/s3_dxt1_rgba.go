@@ -30,7 +30,7 @@ func NewS3_DXT1_RGBA(name string) *Format {
 }
 
 func (f *FmtS3_DXT1_RGBA) key() interface{} {
-	return *f
+	return "S3_DXT1_RGBA"
 }
 func (*FmtS3_DXT1_RGBA) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2

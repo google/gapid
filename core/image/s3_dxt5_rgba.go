@@ -29,7 +29,9 @@ func NewS3_DXT5_RGBA(name string) *Format {
 	return &Format{Name: name, Format: &Format_S3Dxt5Rgba{&FmtS3_DXT5_RGBA{}}}
 }
 
-func (f *FmtS3_DXT5_RGBA) key() interface{} { return *f }
+func (f *FmtS3_DXT5_RGBA) key() interface{} {
+	return "S3_DXT5_RGBA"
+}
 func (*FmtS3_DXT5_RGBA) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
 }

@@ -20,15 +20,27 @@ import (
 	"github.com/google/gapid/core/stream"
 )
 
+type semanticKey struct {
+	typ   Semantic_Type
+	index uint32
+}
+
+func (s *Semantic) key() semanticKey {
+	if s == nil {
+		return semanticKey{}
+	}
+	return semanticKey{s.Type, s.Index}
+}
+
 // ConvertTo converts the vertex buffer to the requested format.
 func (s *Buffer) ConvertTo(ctx context.Context, f *BufferFormat) (*Buffer, error) {
-	streams := make(map[Semantic]*Stream, len(s.Streams))
+	streams := make(map[semanticKey]*Stream, len(s.Streams))
 	for _, s := range s.Streams {
-		streams[*s.Semantic] = s
+		streams[s.Semantic.key()] = s
 	}
 	out := &Buffer{Streams: make([]*Stream, 0, len(f.Streams))}
 	for _, f := range f.Streams {
-		if s, ok := streams[*f.Semantic]; ok {
+		if s, ok := streams[f.Semantic.key()]; ok {
 			s, err := s.ConvertTo(ctx, f.Format)
 			if err != nil {
 				return nil, err

@@ -50,7 +50,7 @@ func NewETC2_SRGB_U8_NORM(name string) *Format {
 }
 
 func (f *FmtETC2_RGB_U8_NORM) key() interface{} {
-	return *f
+	return "ETC2_RGB_U8_NORM"
 }
 func (*FmtETC2_RGB_U8_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
@@ -75,7 +75,7 @@ func NewETC2_SRGBA_U8_NORM(name string) *Format {
 }
 
 func (f *FmtETC2_RGBA_U8_NORM) key() interface{} {
-	return *f
+	return "ETC2_RGBA_U8_NORM"
 }
 func (*FmtETC2_RGBA_U8_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
@@ -100,7 +100,7 @@ func NewETC2_SRGBA_U8U8U8U1_NORM(name string) *Format {
 }
 
 func (f *FmtETC2_RGBA_U8U8U8U1_NORM) key() interface{} {
-	return *f
+	return "ETC2_RGBA_U8U8U8U1_NORM"
 }
 func (*FmtETC2_RGBA_U8U8U8U1_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
@@ -119,7 +119,7 @@ func NewETC2_R_U11_NORM(name string) *Format {
 }
 
 func (f *FmtETC2_R_U11_NORM) key() interface{} {
-	return *f
+	return "ETC2_R_U11_NORM"
 }
 func (*FmtETC2_R_U11_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
@@ -138,7 +138,7 @@ func NewETC2_RG_U11_NORM(name string) *Format {
 }
 
 func (f *FmtETC2_RG_U11_NORM) key() interface{} {
-	return *f
+	return "ETC2_RG_U11_NORM"
 }
 func (*FmtETC2_RG_U11_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
@@ -157,7 +157,7 @@ func NewETC2_R_S11_NORM(name string) *Format {
 }
 
 func (f *FmtETC2_R_S11_NORM) key() interface{} {
-	return *f
+	return "ETC2_R_S11_NORM"
 }
 func (*FmtETC2_R_S11_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
@@ -176,7 +176,7 @@ func NewETC2_RG_S11_NORM(name string) *Format {
 }
 
 func (f *FmtETC2_RG_S11_NORM) key() interface{} {
-	return *f
+	return "ETC2_RG_S11_NORM"
 }
 func (*FmtETC2_RG_S11_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))

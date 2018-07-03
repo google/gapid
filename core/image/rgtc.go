@@ -57,7 +57,7 @@ func NewRGTC1_BC4_R_U8_NORM(name string) *Format {
 }
 
 func (f *FmtRGTC1_BC4_R_U8_NORM) key() interface{} {
-	return *f
+	return "RGTC1_BC4_U"
 }
 func (*FmtRGTC1_BC4_R_U8_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
@@ -76,7 +76,7 @@ func NewRGTC1_BC4_R_S8_NORM(name string) *Format {
 }
 
 func (f *FmtRGTC1_BC4_R_S8_NORM) key() interface{} {
-	return *f
+	return "RGTC1_BC4_S"
 }
 func (*FmtRGTC1_BC4_R_S8_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
@@ -95,7 +95,7 @@ func NewRGTC2_BC5_RG_U8_NORM(name string) *Format {
 }
 
 func (f *FmtRGTC2_BC5_RG_U8_NORM) key() interface{} {
-	return *f
+	return "RGTC2_BC5_U"
 }
 func (*FmtRGTC2_BC5_RG_U8_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
@@ -114,7 +114,7 @@ func NewRGTC2_BC5_RG_S8_NORM(name string) *Format {
 }
 
 func (f *FmtRGTC2_BC5_RG_S8_NORM) key() interface{} {
-	return *f
+	return "RGTC2_BC5_S"
 }
 func (*FmtRGTC2_BC5_RG_S8_NORM) size(w, h, d int) int {
 	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
