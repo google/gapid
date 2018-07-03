@@ -1944,7 +1944,7 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 			return s == "meow"
 		}
 		err = env.Execute(ctx, &cmd, api.CmdID(0x1000+i))
-		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.N).ThatError(err).Equals(t.expected.err) {
+		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.N).ThatError(err).DeepEquals(t.expected.err) {
 			return false
 		}
 	}

@@ -17,8 +17,7 @@ package stream
 import (
 	"fmt"
 
-	"reflect"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/protoutil"
 )
 
@@ -136,4 +135,4 @@ func (t *DataType) IsFloat() bool { return t.GetFloat() != nil }
 func (t *DataType) IsFixed() bool { return t.GetFixed() != nil }
 
 // Is returns true if t is equivalent to o.
-func (t DataType) Is(o DataType) bool { return reflect.DeepEqual(t, o) }
+func (t DataType) Is(o DataType) bool { return proto.Equal(&t, &o) }

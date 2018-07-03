@@ -161,8 +161,8 @@ func TestGet(t *testing.T) {
 		}},
 	} {
 		got, err := Get(ctx, test.path.Path())
-		assert.For(ctx, "Get(%v)", test.path).That(got).DeepEquals(test.val)
-		assert.For(ctx, "Get(%v)", test.path).ThatError(err).DeepEquals(test.err)
+		assert.For(ctx, "Get(%v) value", test.path).That(got).DeepEquals(test.val)
+		assert.For(ctx, "Get(%v) error", test.path).ThatError(err).DeepEquals(test.err)
 	}
 }
 

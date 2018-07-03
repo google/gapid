@@ -148,7 +148,7 @@ func TestGetAvailableStringTables(t *testing.T) {
 	defer shutdown()
 	got, err := server.GetAvailableStringTables(ctx)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
-	assert.For(ctx, "got").That(got).DeepEquals([]*stringtable.Info{stringtables[0].Info})
+	assert.For(ctx, "got").ThatSlice(got).DeepEquals([]*stringtable.Info{stringtables[0].Info})
 }
 
 func TestGetStringTable(t *testing.T) {

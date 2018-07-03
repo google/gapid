@@ -17,6 +17,8 @@ package stream
 import (
 	"fmt"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var (
@@ -55,4 +57,9 @@ func (s Sampling) Format(f fmt.State, r rune) {
 		parts = append(parts, fmt.Sprint(s.Curve))
 	}
 	fmt.Fprint(f, strings.Join(parts, "_"))
+}
+
+// Is returns true if s is equivalent to o.
+func (s Sampling) Is(o Sampling) bool {
+	return proto.Equal(&s, &o)
 }
