@@ -320,6 +320,8 @@ func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
 		return StateTreeNodeForPath(ctx, p)
 	case *path.Thumbnail:
 		return Thumbnail(ctx, p)
+	case *path.Stats:
+		return Stats(ctx, p)
 	default:
 		return nil, fmt.Errorf("Unknown path type %T", p)
 	}
