@@ -43,16 +43,18 @@ cc_binary(
         ":jni.h",
         ":jni_md.h",
     ],
+    copts = [
+        "-Iexternal/local_jdk/include",
+        "-Iexternal/local_jdk/include/linux",
+    ],
 )
 
 cc_library(
     name = "jni.h",
     hdrs = ["@local_jdk//:jni_header"],
-    strip_include_prefix = "/external/local_jdk/include",
 )
 
 cc_library(
     name = "jni_md.h",
     hdrs = ["@local_jdk//:jni_md_header-linux"],
-    strip_include_prefix = "/external/local_jdk/include/linux",
 )
