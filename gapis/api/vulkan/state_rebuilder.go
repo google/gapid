@@ -27,6 +27,8 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
+const queueFamilyIgnore = uint32(0xFFFFFFFF)
+
 type stateBuilder struct {
 	ctx                   context.Context
 	s                     *State
@@ -773,7 +775,11 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		VkResult_VK_SUCCESS,
 	))
 	for _, v := range swp.SwapchainImages().All() {
-		q := sb.getQueueFor(v.LastBoundQueue(), v.Device(), v.Info().QueueFamilyIndices().All())
+		q := sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
+			queueFamilyIndicesToU32Slice(v.Info().QueueFamilyIndices()),
+			v.Device(),
+			v.LastBoundQueue())
 		transitionInfo := []imgSubRngLayoutTransitionInfo{}
 		walkImageSubresourceRange(sb, v, sb.imageWholeSubresourceRange(v),
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
@@ -1066,31 +1072,50 @@ func (sb *stateBuilder) getSparseQueueFor(lastBoundQueue QueueObjectʳ, device V
 	return lastBoundQueue
 }
 
-func (sb *stateBuilder) getQueueFor(lastBoundQueue QueueObjectʳ, device VkDevice, queueFamilyIndices map[uint32]uint32) QueueObjectʳ {
-	if !lastBoundQueue.IsNil() {
-		return lastBoundQueue
-	}
-	hasQueueFamilyIndices := queueFamilyIndices != nil
-
-	if hasQueueFamilyIndices {
-		for _, v := range sb.s.Queues().All() {
-			if v.Device() != device {
-				continue
-			}
-			for _, i := range queueFamilyIndices {
-				if i == v.Family() {
-					return v
-				}
+// getQueueFor returns a queue object from the old state. The returned queue
+// must 1) has ANY of the bits in the given queue flags, 2) is created with one
+// of the given queue family indices, if the given queue family indices is not
+// empty, 3) is created from the given VkDevice in the old state.
+// The given candidates will be checked first in order, and if none of the
+// candidates meets the requirements, select an eligible one from all the
+// existing queues in the old state. Returns NilQueueObjectʳ if none of the
+// existing queues is eligible.
+func (sb *stateBuilder) getQueueFor(queueFlagBits VkQueueFlagBits, queueFamilyIndices []uint32, dev VkDevice, candidates ...QueueObjectʳ) QueueObjectʳ {
+	indicesPass := func(q QueueObjectʳ) bool {
+		if len(queueFamilyIndices) == 0 {
+			return true
+		}
+		for _, i := range queueFamilyIndices {
+			if q.Family() == i {
+				return true
 			}
 		}
+		return false
+	}
+	flagPass := func(q QueueObjectʳ) bool {
+		dev := sb.s.Devices().Get(q.Device())
+		phyDev := sb.s.PhysicalDevices().Get(dev.PhysicalDevice())
+		familyProp := phyDev.QueueFamilyProperties().Get(q.Family())
+		if uint32(familyProp.QueueFlags())&uint32(queueFlagBits) != 0 {
+			return true
+		}
+		return false
 	}
 
-	for _, v := range sb.s.Queues().All() {
-		if v.Device() == device {
-			return v
+	for _, c := range candidates {
+		if c.IsNil() {
+			continue
+		}
+		if flagPass(c) && indicesPass(c) && c.Device() == dev {
+			return c
 		}
 	}
-	return lastBoundQueue
+	for _, q := range sb.s.Queues().All() {
+		if flagPass(q) && indicesPass(q) && q.Device() == dev {
+			return q
+		}
+	}
+	return NilQueueObjectʳ
 }
 
 func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
@@ -1172,7 +1197,11 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 	copies := []VkBufferCopy{}
 	offset := VkDeviceSize(0)
 
-	queue := sb.getQueueFor(buffer.LastBoundQueue(), buffer.Device(), buffer.Info().QueueFamilyIndices().All())
+	queue := sb.getQueueFor(
+		VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
+		queueFamilyIndicesToU32Slice(buffer.Info().QueueFamilyIndices()),
+		buffer.Device(),
+		buffer.LastBoundQueue())
 
 	oldFamilyIndex := -1
 
@@ -1533,8 +1562,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		return
 	}
 
-	queue := sb.getQueueFor(img.LastBoundQueue(), img.Device(), img.Info().QueueFamilyIndices().All())
-	var sparseQueue QueueObjectʳ
+	var queue, sparseQueue QueueObjectʳ
 	opaqueRanges := []VkImageSubresourceRange{}
 	// appendImageLevelToOpaqueRanges is a helper function to collect image levels
 	// from the current processing source image that do not have an undefined
@@ -1557,10 +1585,11 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	if img.OpaqueSparseMemoryBindings().Len() > 0 || img.SparseImageMemoryBindings().Len() > 0 {
 		// If this img has sparse memory bindings, then we have to set them all
 		// now
-		if queue.IsNil() {
-			return
-		}
-		sparseQueue = sb.getSparseQueueFor(img.LastBoundQueue(), img.Device(), img.Info().QueueFamilyIndices().All())
+		sparseQueue = sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT,
+			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
+			img.Device(), img.LastBoundQueue())
+
 		memories := make(map[VkDeviceMemory]bool)
 
 		nonSparseInfos := []VkSparseImageMemoryBind{}
@@ -1718,6 +1747,13 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 					newLayout:      imgLevel.Layout(),
 				})
 			})
+		queue = sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
+			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
+			img.Device(), img.LastBoundQueue())
+		if queue.IsNil() {
+			return
+		}
 		sb.transitionImageLayout(img, transitionInfo, sparseQueue, queue)
 		log.E(sb.ctx, "[Priming the data of image: %v] priming data for MS images not implemented", img.VulkanHandle())
 		return
@@ -1728,12 +1764,28 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	// We have to handle the above cases at some point.
 	var err error
 	if primeByBufCopy {
+		queue = sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
+			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
+			img.Device(), img.LastBoundQueue())
 		err = imgPrimer.primeByBufferCopy(img, opaqueRanges, queue, sparseQueue)
 	} else if primeByRendering {
+		queue = sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT,
+			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
+			img.Device(), img.LastBoundQueue())
 		err = imgPrimer.primeByRendering(img, opaqueRanges, queue, sparseQueue)
 	} else if primeByImageStore {
+		queue = sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
+			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
+			img.Device(), img.LastBoundQueue())
 		err = imgPrimer.primeByImageStore(img, opaqueRanges, queue, sparseQueue)
 	} else if primeByPreinitialization {
+		queue = sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
+			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
+			img.Device(), img.LastBoundQueue())
 		err = imgPrimer.primeByPreinitialization(img, opaqueRanges, queue, sparseQueue)
 	} else {
 		err = log.Errf(sb.ctx, nil, "There is no valid way to prim data into image: %v", img.VulkanHandle())
@@ -2609,7 +2661,9 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 	if !anyActive {
 		return
 	}
-	queue := sb.getQueueFor(qp.LastBoundQueue(), qp.Device(), nil)
+	queue := sb.getQueueFor(
+		VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
+		[]uint32{}, qp.Device(), qp.LastBoundQueue())
 
 	commandBuffer, commandPool := sb.getCommandBuffer(queue)
 	for i := uint32(0); i < qp.QueryCount(); i++ {
@@ -2707,4 +2761,12 @@ func (sb *stateBuilder) createCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 			VkResult_VK_SUCCESS,
 		))
 	}
+}
+
+func queueFamilyIndicesToU32Slice(m U32ːu32ᵐ) []uint32 {
+	r := make([]uint32, 0, m.Len())
+	for _, k := range m.Keys() {
+		r = append(r, m.Get(k))
+	}
+	return r
 }

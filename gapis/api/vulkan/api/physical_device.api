@@ -47,12 +47,16 @@
   @unused VkPhysicalDeviceProperties         PhysicalDeviceProperties
 }
 
-@internal class PhysicalDevicesAndProperties{
+@internal class PhysicalDevicesAndProperties {
   map!(VkPhysicalDevice, VkPhysicalDeviceProperties) PhyDevToProperties
 }
 
-@internal class PhysicalDevicesMemoryProperties{
+@internal class PhysicalDevicesMemoryProperties {
   map!(VkPhysicalDevice, VkPhysicalDeviceMemoryProperties) PhyDevToMemoryProperties
+}
+
+@internal class PhysicalDevicesAndQueueFamilyProperties {
+  map!(VkPhysicalDevice, map!(u32, VkQueueFamilyProperties)) PhyDevToQueueFamilyProperties
 }
 
 @threadSafety("system")
@@ -78,6 +82,7 @@ cmd VkResult vkEnumeratePhysicalDevices(
     pPhysicalDeviceCount[0] = count
     props := fetchPhysicalDeviceProperties(instance, devices)
     memProps := fetchPhysicalDeviceMemoryProperties(instance, devices)
+    queueProps := fetchPhysicalDeviceQueueFamilyProperties(instance, devices)
     for i in (0 .. count) {
       if (PhysicalDevices[devices[i]] == null) {
         object := new!PhysicalDeviceObject()
@@ -90,6 +95,9 @@ cmd VkResult vkEnumeratePhysicalDevices(
         if props != null {
           // TODO: Failed to prefetch physical device properties, report issue.
           object.PhysicalDeviceProperties = props.PhyDevToProperties[devices[i]]
+        }
+        if queueProps != null {
+          object.QueueFamilyProperties = queueProps.PhyDevToQueueFamilyProperties[devices[i]]
         }
         PhysicalDevices[devices[i]] = object
       }
