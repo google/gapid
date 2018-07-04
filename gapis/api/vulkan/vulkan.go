@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
@@ -378,6 +379,237 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		}
 	}
 
+	return dependencySync(ctx, d, c)
+}
+
+func dependencySync(ctx context.Context, d *sync.Data, c *path.Capture) error {
+	st, err := capture.NewState(ctx)
+	if err != nil {
+		return err
+	}
+	cmds, err := resolve.Cmds(ctx, c)
+	if err != nil {
+		return err
+	}
+
+	l := st.MemoryLayout
+
+	addNode := func(pt sync.SyncNode) sync.SyncNodeIdx {
+		d.SyncNodes = append(d.SyncNodes, pt)
+		return sync.SyncNodeIdx(len(d.SyncNodes) - 1)
+	}
+	addDep := func(depender, dependee sync.SyncNodeIdx) {
+		v, _ := d.SyncDependencies[depender]
+		// append to nil is ok
+		d.SyncDependencies[depender] = append(v, dependee)
+	}
+	lastHostBarrier := addNode(sync.AbstractNode{})
+
+	getCmdNode := func(id api.CmdID) sync.SyncNodeIdx {
+		if pt, ok := d.CmdSyncNodes[id]; ok {
+			return pt
+		}
+		d.CmdSyncNodes[id] = addNode(sync.CmdNode{[]uint64{uint64(id)}})
+		return d.CmdSyncNodes[id]
+	}
+
+	semSignaler := map[VkSemaphore]sync.SyncNodeIdx{}
+	semDepend := func(idx sync.SyncNodeIdx, sem VkSemaphore) {
+		signaler, ok := semSignaler[sem]
+		if ok {
+			addDep(idx, signaler)
+			// Waiting on a semaphore clears the semaphore
+			delete(semSignaler, sem)
+		}
+	}
+
+	fenceSignaler := map[VkFence]sync.SyncNodeIdx{}
+	fenceDepend := func(idx sync.SyncNodeIdx, fence VkFence) {
+		signaler, ok := fenceSignaler[fence]
+		if ok {
+			addDep(idx, signaler)
+		}
+	}
+
+	queueSubmits := map[VkQueue][]sync.SyncNodeIdx{}
+	deviceQueues := map[VkDevice]map[VkQueue]struct{}{}
+	addSubmit := func(idx sync.SyncNodeIdx, queue VkQueue) {
+		qs, _ := queueSubmits[queue]
+		queueSubmits[queue] = append(qs, idx)
+	}
+	clearQueue := func(idx sync.SyncNodeIdx, queue VkQueue) {
+		qs, ok := queueSubmits[queue]
+		if ok {
+			delete(queueSubmits, queue)
+			val, _ := d.SyncDependencies[idx]
+			d.SyncDependencies[idx] = append(val, qs...)
+		}
+	}
+
+	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		// only track the commands that do anything
+		switch c := cmd.(type) {
+		case *VkQueueSubmit:
+		case *VkQueuePresentKHR:
+		case *VkCreateFence:
+		case *VkGetFenceStatus:
+		case *VkWaitForFences:
+		case *VkResetFences:
+		case *VkQueueWaitIdle:
+		case *VkDeviceWaitIdle:
+		case *VkGetDeviceQueue:
+			// Not part of the graph, just need to associate the queues with the device
+			c.Extras().Observations().ApplyReads(st.Memory.ApplicationPool())
+			queue := c.PQueue().MustRead(ctx, c, st, nil)
+			if _, ok := deviceQueues[c.Device()]; !ok {
+				deviceQueues[c.Device()] = map[VkQueue]struct{}{}
+			}
+			deviceQueues[c.Device()][queue] = struct{}{}
+			return nil
+		default:
+			return nil
+		}
+		cmd.Extras().Observations().ApplyReads(st.Memory.ApplicationPool())
+		cmdPt := getCmdNode(id)
+		addDep(cmdPt, lastHostBarrier)
+		switch c := cmd.(type) {
+		case *VkQueueSubmit:
+			submitCount := uint64(c.SubmitCount())
+			submits := c.PSubmits().Slice(uint64(0), submitCount, l).MustRead(ctx, cmd, st, nil)
+
+			submitSrcs := make([]sync.SyncNodeIdx, len(submits))
+			submitDsts := make([]sync.SyncNodeIdx, len(submits))
+			// For each submit, create an abstract node at each
+			// end.  The start will depend on the semaphore
+			// signalers, and the end will be the sources for the
+			// next semaphores.
+			for i, s := range submits {
+				src := addNode(sync.AbstractNode{})
+				dst := addNode(sync.AbstractNode{})
+
+				waitSems := s.PWaitSemaphores().Slice(
+					uint64(0),
+					uint64(s.WaitSemaphoreCount()), l).
+					MustRead(ctx, cmd, st, nil)
+				for _, s := range waitSems {
+					semDepend(src, s)
+				}
+
+				signalSems := s.PSignalSemaphores().Slice(
+					uint64(0),
+					uint64(s.SignalSemaphoreCount()), l).
+					MustRead(ctx, cmd, st, nil)
+				for _, s := range signalSems {
+					semSignaler[s] = dst
+				}
+
+				addDep(src, cmdPt)
+
+				submitSrcs[i] = src
+				submitDsts[i] = dst
+			}
+
+			type commandExecutor struct {
+				lastIdx  api.SubCmdIdx
+				executor api.CmdID
+			}
+			// CommandRanges doesn't have a defined iteration
+			// order, so we need to sort it.
+			executors := make([]commandExecutor, 0,
+				len(d.CommandRanges[id].Ranges))
+			for executor, lastIdx := range d.CommandRanges[id].Ranges {
+				executors = append(executors, commandExecutor{
+					lastIdx:  lastIdx,
+					executor: executor,
+				})
+			}
+			sort.Slice(executors, func(i, j int) bool {
+				return executors[i].lastIdx.LessThan(executors[j].lastIdx)
+			})
+
+			excIdx := 0
+			for _, subcmd := range d.SubcommandReferences[id] {
+				for excIdx < len(executors) && executors[excIdx].lastIdx.LessThan(subcmd.Index) {
+					excIdx++
+				}
+
+				sp := addNode(sync.CmdNode{
+					append(api.SubCmdIdx{uint64(id)}, subcmd.Index...),
+				})
+				sub := subcmd.Index[0]
+				// Make each subcommand depend on the source of
+				// the submit it came from, and be a dependency
+				// of the dst in the submit it came from.
+				addDep(sp, submitSrcs[sub])
+				addDep(submitDsts[sub], sp)
+				addDep(sp, getCmdNode(executors[excIdx].executor))
+			}
+
+			donePt := addNode(sync.AbstractNode{})
+			for _, dst := range submitDsts {
+				addDep(donePt, dst)
+			}
+
+			fence := c.Fence()
+			if fence != VkFence(0) {
+				fenceSignaler[fence] = donePt
+			}
+			queue := c.Queue()
+			// If we do vkWaitQueueIdle then we depend on all previous submits.
+			addSubmit(donePt, queue)
+		case *VkQueuePresentKHR:
+			info := c.PPresentInfo().Slice(uint64(0), uint64(1), l).MustRead(ctx, cmd, st, nil)[0]
+			waitSems := info.PWaitSemaphores().Slice(
+				uint64(0),
+				uint64(info.WaitSemaphoreCount()),
+				l).MustRead(ctx, cmd, st, nil)
+			for _, s := range waitSems {
+				semDepend(cmdPt, s)
+			}
+		case *VkCreateFence:
+			signaledBit := VkFenceCreateFlags(VkFenceCreateFlagBits_VK_FENCE_CREATE_SIGNALED_BIT)
+			signaled := ((c.PCreateInfo().
+				Slice(uint64(0), uint64(1), l).
+				MustRead(ctx, cmd, st, nil)[0].
+				Flags()) & signaledBit) == signaledBit
+			if signaled {
+				fence := c.PFence().Slice(uint64(0), uint64(1), l).MustRead(ctx, cmd, st, nil)[0]
+				fenceSignaler[fence] = cmdPt
+			}
+		case *VkGetFenceStatus:
+			if c.Result() == VkResult_VK_SUCCESS {
+				fenceDepend(cmdPt, c.Fence())
+				lastHostBarrier = cmdPt
+			}
+		case *VkWaitForFences:
+			fenceCount := uint64(c.FenceCount())
+			if fenceCount == 1 || c.WaitAll() != VkBool32(0) {
+				// We can be sure all the fences were signaled
+				fences := c.PFences().Slice(uint64(0), fenceCount, l).MustRead(ctx, cmd, st, nil)
+				for _, f := range fences {
+					fenceDepend(cmdPt, f)
+				}
+				lastHostBarrier = cmdPt
+			}
+		case *VkResetFences:
+			fences := c.PFences().Slice(uint64(0), uint64(c.FenceCount()), l).MustRead(ctx, cmd, st, nil)
+			for _, f := range fences {
+				delete(fenceSignaler, f)
+			}
+		case *VkQueueWaitIdle:
+			clearQueue(cmdPt, c.Queue())
+			lastHostBarrier = cmdPt
+		case *VkDeviceWaitIdle:
+			queues, ok := deviceQueues[c.Device()]
+			if ok {
+				for q := range queues {
+					clearQueue(cmdPt, q)
+				}
+			}
+			lastHostBarrier = cmdPt
+		}
+		return nil
+	})
 	return nil
 }
 

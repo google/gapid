@@ -59,7 +59,8 @@ message Any {
     StateTree state_tree = 31;
     StateTreeNode state_tree_node = 32;
     StateTreeNodeForPath state_tree_node_for_path = 33;
-    Thumbnail thumbnail = 34;
+    Stats stats = 34;
+    Thumbnail thumbnail = 35;
   }
 }
 
@@ -434,6 +435,15 @@ message StateTreeNodeForPath {
   ID tree = 1;
   // The path to the state member to look for.
   Any member = 2;
+}
+
+// Stats requests statistics for a given capture.  Resolves to service.Stats.
+message Stats {
+  // The capture to analyze
+  Capture capture = 1;
+
+  // Whether to compute draw calls per frame statistics
+  bool draw_call = 2;
 }
 
 // Thumbnail is a path to a thumbnail image representing the object.

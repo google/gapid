@@ -288,6 +288,11 @@ func (n *StateTreeNodeForPath) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *Stats) Validate() error {
+	return checkNotNilAndValidate(n, n.Capture, "capture")
+}
+
+// Validate checks the path is valid.
 func (n *Thumbnail) Validate() error {
 	return checkNotNilAndValidate(n, protoutil.OneOf(n.Object), "object")
 }

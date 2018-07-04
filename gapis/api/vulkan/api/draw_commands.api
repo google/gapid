@@ -147,6 +147,7 @@ sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
 cmd void vkCmdDraw(
     VkCommandBuffer commandBuffer,
     u32             vertexCount,
@@ -198,6 +199,7 @@ sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
 cmd void vkCmdDrawIndexed(
     VkCommandBuffer commandBuffer,
     u32             indexCount,
@@ -243,6 +245,7 @@ sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
 cmd void vkCmdDrawIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,
@@ -285,6 +288,7 @@ sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
 cmd void vkCmdDrawIndexedIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,
@@ -314,6 +318,7 @@ sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
 cmd void vkCmdDispatch(
     VkCommandBuffer commandBuffer,
     u32             groupCountX,
@@ -344,6 +349,7 @@ sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
 cmd void vkCmdDispatchIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,

@@ -26,6 +26,7 @@ const (
 	PushUserMarker
 	PopUserMarker
 	UserMarker
+	ExecutedDraw
 )
 
 // IsDrawCall returns true if the command is a draw call.
@@ -56,3 +57,7 @@ func (f CmdFlags) IsPopUserMarker() bool { return (f & PopUserMarker) != 0 }
 // marker.
 // The command may implement the Labeled interface to expose the marker name.
 func (f CmdFlags) IsUserMarker() bool { return (f & UserMarker) != 0 }
+
+// IsExecutedDraw returns true if the command is a draw call that gets executed
+// as a subcommand.
+func (f CmdFlags) IsExecutedDraw() bool { return (f & ExecutedDraw) != 0 }

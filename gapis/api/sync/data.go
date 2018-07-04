@@ -48,6 +48,29 @@ type SubcommandReference struct {
 	IsCallerGroup bool
 }
 
+// SyncNodeIdx is the identifier for a node in the sync dependency graph.
+type SyncNodeIdx uint64
+
+// SyncNode is the interface implemented by types that can be used as vertices
+// in the sync dependency graph.
+type SyncNode interface {
+	isSyncNode()
+}
+
+// CmdNode is a node in the sync dependency graph that is a command.
+type CmdNode struct {
+	Idx api.SubCmdIdx
+}
+
+// AbstractNode is a node in the sync dependency graph that doesn't correspond
+// to any point in the trace and is just used as a marker.
+type AbstractNode struct{}
+
+var (
+	_ = SyncNode(CmdNode{})
+	_ = SyncNode(AbstractNode{})
+)
+
 // Data contains a map of synchronization pairs.
 type Data struct {
 	// CommandRanges contains commands that will be blocked from completion,
@@ -65,6 +88,11 @@ type Data struct {
 	// indexed by the immediate parent of the subcommands in the group.
 	// e.g.: group: [73, 1, 4, 5~6] should be indexed by [73, 1, 4]
 	SubCommandMarkerGroups *subCommandMarkerGroupTrie
+	// SyncDependencies contains the commands that must complete
+	// (according to their fences or semaphores) before they can be executed.
+	SyncDependencies map[SyncNodeIdx][]SyncNodeIdx
+	SyncNodes        []SyncNode
+	CmdSyncNodes     map[api.CmdID]SyncNodeIdx
 }
 
 type subCommandMarkerGroupTrie struct {
@@ -95,6 +123,9 @@ func NewData() *Data {
 		SubcommandGroups:       map[api.CmdID][]api.SubCmdIdx{},
 		Hidden:                 api.CmdIDSet{},
 		SubCommandMarkerGroups: &subCommandMarkerGroupTrie{},
+		SyncDependencies:       map[SyncNodeIdx][]SyncNodeIdx{},
+		SyncNodes:              []SyncNode{},
+		CmdSyncNodes:           map[api.CmdID]SyncNodeIdx{},
 	}
 }
 
@@ -132,3 +163,7 @@ func (e ExecutionRanges) SortedKeys() SynchronizationIndices {
 	sort.Sort(v)
 	return v
 }
+
+func (CmdNode) isSyncNode() {}
+
+func (AbstractNode) isSyncNode() {}
