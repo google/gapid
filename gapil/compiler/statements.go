@@ -110,8 +110,10 @@ func (c *C) block(s *S, n *semantic.Block) {
 	})
 }
 
-func (c *C) statement(s *S, n semantic.Node) bool {
-	old := c.setCurrentStatement(s, n)
+func (c *C) statement(s *S, n semantic.Statement) bool {
+	c.pushStatement(s, n)
+	defer c.popStatement(s)
+
 	switch n := n.(type) {
 	case *semantic.Assert:
 		c.assert(s, n)
@@ -154,7 +156,6 @@ func (c *C) statement(s *S, n semantic.Node) bool {
 	default:
 		panic(fmt.Errorf("Unexpected semantic type %T", n))
 	}
-	c.setCurrentStatement(s, old)
 	return true
 }
 

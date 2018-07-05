@@ -72,15 +72,15 @@ type C struct {
 		term   *codegen.Function
 		append *codegen.Function
 	}
-	emptyString   codegen.Global
-	mappings      *resolver.Mappings
-	locationIndex map[Location]int
-	locations     []Location
-	refRels       refRels
-	currentFunc   *semantic.Function
-	currentStmt   semantic.Node
-	currentExpr   semantic.Expression
-	callbacks     struct {
+	emptyString     codegen.Global
+	mappings        *resolver.Mappings
+	locationIndex   map[Location]int
+	locations       []Location
+	refRels         refRels
+	currentFunc     *semantic.Function
+	statementStack  []semantic.Statement
+	expressionStack []semantic.Expression
+	callbacks       struct {
 		alloc          *codegen.Function
 		realloc        *codegen.Function
 		free           *codegen.Function
@@ -401,6 +401,32 @@ func (c *C) Delegate(from, to *codegen.Function) {
 	})
 }
 
+// StatementStack returns the current build stack of statements.
+func (c *C) StatementStack() []semantic.Statement {
+	return append([]semantic.Statement{}, c.statementStack...)
+}
+
+// ExpressionStack returns the current build stack of expressions.
+func (c *C) ExpressionStack() []semantic.Expression {
+	return append([]semantic.Expression{}, c.expressionStack...)
+}
+
+// CurrentStatement returns the statement that is currently being built.
+func (c *C) CurrentStatement() semantic.Statement {
+	if len(c.statementStack) == 0 {
+		return nil
+	}
+	return c.statementStack[len(c.statementStack)-1]
+}
+
+// CurrentExpression returns the expression that is currently being built.
+func (c *C) CurrentExpression() semantic.Expression {
+	if len(c.expressionStack) == 0 {
+		return nil
+	}
+	return c.expressionStack[len(c.expressionStack)-1]
+}
+
 func (c *C) setCodeLocation(s *S, t parse.Token) {
 	_, file := filepath.Split(t.Source.Filename)
 	line, col := t.Cursor()
@@ -428,22 +454,35 @@ func (c *C) setCurrentFunction(f *semantic.Function) *semantic.Function {
 	return old
 }
 
-func (c *C) setCurrentStatement(s *S, n semantic.Node) semantic.Node {
-	old := c.currentStmt
-	c.currentStmt = n
+func (c *C) pushStatement(s *S, n semantic.Statement) {
+	c.statementStack = append(c.statementStack, n)
+	c.onChangeStatement(s)
+}
+
+func (c *C) popStatement(s *S) {
+	c.statementStack = c.statementStack[:len(c.statementStack)-1]
+	c.onChangeStatement(s)
+}
+
+func (c *C) pushExpression(s *S, n semantic.Expression) {
+	c.expressionStack = append(c.expressionStack, n)
+}
+
+func (c *C) popExpression(s *S) {
+	c.expressionStack = c.expressionStack[:len(c.expressionStack)-1]
+}
+
+func (c *C) onChangeStatement(s *S) {
+	n := c.CurrentStatement()
+	if n == nil {
+		return
+	}
 	for _, ast := range c.mappings.SemanticToAST[n] {
 		if cst := c.mappings.CST(ast); cst != nil {
 			c.setCodeLocation(s, cst.Token())
-			break
+			return
 		}
 	}
-	return old
-}
-
-func (c *C) setCurrentExpression(s *S, e semantic.Expression) semantic.Expression {
-	old := c.currentExpr
-	c.currentExpr = e
-	return old
 }
 
 func (c *C) augmentPanics() {
@@ -467,16 +506,11 @@ func (c *C) augmentPanics() {
 	}
 
 	what, where := "<unknown>", "<unknown source location>"
-	switch {
-	case c.currentExpr != nil:
-		what = "expression"
-		where = loc(c.currentExpr)
-	case c.currentStmt != nil:
-		what = "statement"
-		where = loc(c.currentStmt)
-	}
-
-	if c.currentFunc != nil {
+	if e := c.CurrentExpression(); e != nil {
+		what, where = "expression", loc(e)
+	} else if s := c.CurrentStatement(); s != nil {
+		what, where = "statement", loc(s)
+	} else if c.currentFunc != nil {
 		where = fmt.Sprintf("%v()\n%v", c.currentFunc.Name(), where)
 	}
 
