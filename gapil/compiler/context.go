@@ -22,6 +22,10 @@ import "C"
 func (c *C) declareContextType() {
 	fields := c.T.FieldsOf(C.context{})
 
+	c.plugins.foreach(func(p ContextDataPlugin) {
+		p.OnPreBuildContext(c)
+	})
+
 	// Append all the plugin context fields.
 	c.plugins.foreach(func(p ContextDataPlugin) {
 		customFields := p.ContextData(c)

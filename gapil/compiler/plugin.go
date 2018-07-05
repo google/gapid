@@ -55,6 +55,13 @@ type ContextField struct {
 // ContextDataPlugin is the interface implemented by plugins that require
 // additional data to be stored in the runtime context.
 type ContextDataPlugin interface {
+	// OnPreBuildContext is called just before the context structure is built.
+	// This can be used to build any additional types that are returned by
+	// ContextData().
+	OnPreBuildContext(*C)
+
+	// ContextData returns a slice of additional ContextFields that will be
+	// augmented to the context structure.
 	ContextData(*C) []ContextField
 }
 
