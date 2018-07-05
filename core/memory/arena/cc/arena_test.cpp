@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <unordered_set>
+#include <vector>
 
 #include "core/memory/arena/cc/arena.h"
 
@@ -98,6 +99,26 @@ TEST(allocate_memory, random_alloc_free) {
   EXPECT_EQ(0, a.num_allocations());
   EXPECT_EQ(0, a.num_bytes_allocated());
 }
+
+using reallocate_memory_tests = ::testing::TestWithParam<uint32_t>;
+
+TEST_P(reallocate_memory_tests, reallocate) {
+  std::vector<uint8_t> pattern;
+  for (size_t i = 0; i < GetParam(); i++) {
+    pattern.push_back(static_cast<uint8_t>(i));
+  }
+
+  Arena a;
+  auto p = reinterpret_cast<uint8_t*>(a.allocate(pattern.size(), 16));
+  memcpy(p, &pattern[0], pattern.size());
+
+  p = reinterpret_cast<uint8_t*>(a.reallocate(p, pattern.size() * 2, 16));
+  auto got = std::vector<uint8_t>(p, p + pattern.size());
+  EXPECT_EQ(got, pattern);
+}
+
+INSTANTIATE_TEST_CASE_P(many_values, reallocate_memory_tests,
+                        ::testing::Values(1, 15, 16, 31, 32, 44, 1024, 4093));
 
 using memory_protection_tests = ::testing::TestWithParam<uint32_t>;
 
