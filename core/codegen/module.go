@@ -200,6 +200,8 @@ func (m *Module) parseTypeName(name string) Type {
 		return m.Types.Void
 	case "bool":
 		return m.Types.Bool
+	case "char":
+		return m.Types.Uint8
 	case "int_t":
 		return m.Types.Int
 	case "int8_t":
