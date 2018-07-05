@@ -71,6 +71,7 @@ type Types struct {
 	structs       map[string]*Struct
 	funcs         map[string]*FunctionType
 	enums         map[string]Enum
+	aliases       map[string]Alias
 	named         map[string]Type
 }
 
@@ -398,6 +399,36 @@ func (t *Struct) SetBody(packed bool, fields ...Field) *Struct {
 	t.fieldIndices = indices
 	t.llvm.StructSetBody(l, packed)
 	return t
+}
+
+// Alias is a named type that aliases another type.
+type Alias struct {
+	name string
+	to   Type
+}
+
+func (a Alias) String() string    { return fmt.Sprintf("%v (%v)", a.TypeName(), Underlying(a).TypeName()) }
+func (a Alias) TypeName() string  { return a.name }
+func (a Alias) sizeInBits() int   { return a.to.sizeInBits() }
+func (a Alias) llvmTy() llvm.Type { return a.to.llvmTy() }
+
+// Alias creates a new alias type.
+func (t *Types) Alias(name string, to Type) Alias {
+	ty := Alias{name: name, to: to}
+	t.aliases[name] = ty
+	t.registerNamed(ty)
+	return ty
+}
+
+// Underlying returns the underlying non-aliased type for ty.
+func Underlying(ty Type) Type {
+	for {
+		if a, ok := ty.(Alias); ok {
+			ty = a.to
+		} else {
+			return ty
+		}
+	}
 }
 
 // Enum is an enumerator.

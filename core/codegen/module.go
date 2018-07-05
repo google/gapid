@@ -78,6 +78,7 @@ func NewModule(name string, target *device.ABI) *Module {
 			structs:       map[string]*Struct{},
 			funcs:         map[string]*FunctionType{},
 			enums:         map[string]Enum{},
+			aliases:       map[string]Alias{},
 			named:         map[string]Type{},
 		},
 		llvm:   module,

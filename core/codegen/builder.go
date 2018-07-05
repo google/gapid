@@ -56,8 +56,8 @@ func (b *Builder) Call(f *Function, args ...*Value) *Value {
 // CallIndirect invokes the function pointer f with the specified arguments
 func (b *Builder) CallIndirect(f *Value, args ...*Value) *Value {
 	var fty *FunctionType
-	if ptrTy, ok := f.Type().(Pointer); ok {
-		fty, _ = ptrTy.Element.(*FunctionType)
+	if ptrTy, ok := Underlying(f.Type()).(Pointer); ok {
+		fty, _ = Underlying(ptrTy.Element).(*FunctionType)
 	}
 	if fty == nil {
 		fail("CallIndirect() can only be called with function pointers. Got %v", f.Type())
