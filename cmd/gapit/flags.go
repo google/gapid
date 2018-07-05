@@ -238,14 +238,15 @@ type (
 		ADB         string         `help:"Path to the adb executable; leave empty to search the environment"`
 	}
 	ScreenshotFlags struct {
-		Gapis    GapisFlags
-		Gapir    GapirFlags
-		At       flags.U64Slice `help:"command/subcommand index for the screenshot"`
-		Frame    int64          `help:"frame index for the screenshot. Empty for last"`
-		Out      string         `help:"output image file (default 'screenshot.png')"`
-		NoOpt    bool           `help:"disables optimization of the replay stream"`
-		Overdraw bool           `help:"renders the overdraw instead of the colour framebuffer"`
-		Max      struct {
+		Gapis      GapisFlags
+		Gapir      GapirFlags
+		At         flags.U64Slice `help:"command/subcommand index for the screenshot"`
+		Frame      int64          `help:"frame index for the screenshot. Empty for last"`
+		Out        string         `help:"output image file (default 'screenshot.png')"`
+		NoOpt      bool           `help:"disables optimization of the replay stream"`
+		Attachment int            `help:"the color attachment to show (0-3)"`
+		Overdraw   bool           `help:"renders the overdraw instead of the colour framebuffer"`
+		Max        struct {
 			Overdraw int `help:"the amount of overdraw to map to white in the output"`
 		}
 		CommandFilterFlags
