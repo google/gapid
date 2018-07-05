@@ -264,8 +264,8 @@ type FunctionType struct {
 	llvm      llvm.Type
 }
 
-func (t FunctionType) TypeName() string  { return t.llvm.String() }
-func (t FunctionType) String() string    { return t.llvm.String() }
+func (t FunctionType) TypeName() string  { return t.Signature.string("") }
+func (t FunctionType) String() string    { return t.Signature.string("") }
 func (t FunctionType) sizeInBits() int   { return 0 }
 func (t FunctionType) llvmTy() llvm.Type { return t.llvm }
 
