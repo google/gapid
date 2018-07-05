@@ -379,15 +379,15 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 
 	elTy := n.To.Type.To
 	targetTy := c.T.Target(elTy)
-	storageTy := c.T.Storage(elTy)
-	storageSize := s.Scalar(uint64(c.T.StorageSize(elTy)))
-	storageStride := s.Scalar(uint64(c.T.StorageAllocaSize(elTy)))
+	captureTy := c.T.Capture(elTy)
+	captureSize := s.Scalar(uint64(c.T.CaptureSize(elTy)))
+	captureStride := s.Scalar(uint64(c.T.CaptureAllocaSize(elTy)))
 
 	base := slice.Extract(SliceBase)
-	offset := s.Mul(index, storageStride)
+	offset := s.Mul(index, captureStride)
 	subslice := slice.
 		Insert(SliceBase, s.Add(base, offset)).
-		Insert(SliceSize, storageSize).
+		Insert(SliceSize, captureSize).
 		Insert(SliceCount, s.Scalar(uint64(1)))
 	subslicePtr := s.LocalInit("subslice", subslice)
 
@@ -413,10 +413,10 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 	}
 
 	el := c.expression(s, n.Value)
-	if targetTy == storageTy {
+	if targetTy == captureTy {
 		write(el)
 	} else {
-		write(c.castTargetToStorage(s, elTy, el))
+		write(c.castTargetToCapture(s, elTy, el))
 	}
 }
 
