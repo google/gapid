@@ -52,19 +52,19 @@ func (c *C) doCast(s *S, dstTy, srcTy semantic.Type, v *codegen.Value) *codegen.
 		base := v.Extract(SliceBase)
 		size := v.Extract(SliceSize)
 		pool := v.Extract(SlicePool)
-		count := s.Div(size, s.SizeOf(c.T.Storage(srcSliceTy.To)))
-		size = s.Mul(count, s.SizeOf(c.T.Storage(dstSliceTy.To)))
+		count := s.Div(size, s.SizeOf(c.T.Capture(srcSliceTy.To)))
+		size = s.Mul(count, s.SizeOf(c.T.Capture(dstSliceTy.To)))
 		return c.buildSlice(s, root, base, size, count, pool)
 	default:
-		return v.Cast(c.T.Target(dstTy)) // TODO: storage vs memory.
+		return v.Cast(c.T.Target(dstTy)) // TODO: capture vs memory.
 	}
 }
 
-func (c *C) castTargetToStorage(s *S, ty semantic.Type, v *codegen.Value) *codegen.Value {
+func (c *C) castTargetToCapture(s *S, ty semantic.Type, v *codegen.Value) *codegen.Value {
 	ty = semantic.Underlying(ty)
-	dstTy, srcTy := c.T.Storage(ty), c.T.Target(ty)
+	dstTy, srcTy := c.T.Capture(ty), c.T.Target(ty)
 	if srcTy != v.Type() {
-		fail("castTargetToStorage called with a value that is not of the target type")
+		fail("castTargetToCapture called with a value that is not of the target type")
 	}
 	if dstTy == srcTy {
 		return v
@@ -76,13 +76,13 @@ func (c *C) castTargetToStorage(s *S, ty semantic.Type, v *codegen.Value) *codeg
 	case isPtr: // pointer -> uint64
 		return v.Cast(dstTy)
 	case isClass:
-		if fn, ok := c.T.targetToStorage[ty]; ok {
+		if fn, ok := c.T.targetToCapture[ty]; ok {
 			tmpTarget := s.Local("cast_target_"+ty.Name(), dstTy)
 			tmpSource := s.LocalInit("cast_source_"+ty.Name(), v)
 			s.Call(fn, s.Ctx, tmpSource, tmpTarget)
 			return tmpTarget.Load()
 		} else {
-			fail("castStorageToTarget() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
+			fail("castTargetToCapture() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
 			return nil
 		}
 	case ty == semantic.IntType:
@@ -90,16 +90,16 @@ func (c *C) castTargetToStorage(s *S, ty semantic.Type, v *codegen.Value) *codeg
 	case ty == semantic.SizeType:
 		return v.Cast(dstTy)
 	default:
-		fail("castTargetToStorage() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
+		fail("castTargetToCapture() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
 		return nil
 	}
 }
 
-func (c *C) castStorageToTarget(s *S, ty semantic.Type, v *codegen.Value) *codegen.Value {
+func (c *C) castCaptureToTarget(s *S, ty semantic.Type, v *codegen.Value) *codegen.Value {
 	ty = semantic.Underlying(ty)
-	dstTy, srcTy := c.T.Target(ty), c.T.Storage(ty)
+	dstTy, srcTy := c.T.Target(ty), c.T.Capture(ty)
 	if srcTy != v.Type() {
-		fail("castStorageToTarget called with a value that is not of the memory type %+v, %+v", srcTy, v.Type())
+		fail("castCaptureToTarget called with a value that is not of the memory type %+v, %+v", srcTy, v.Type())
 	}
 	if dstTy == srcTy {
 		return v
@@ -111,20 +111,20 @@ func (c *C) castStorageToTarget(s *S, ty semantic.Type, v *codegen.Value) *codeg
 	case isPtr: // uint64 -> pointer
 		return v.Cast(dstTy)
 	case isClass:
-		if fn, ok := c.T.storageToTarget[ty]; ok {
+		if fn, ok := c.T.captureToTarget[ty]; ok {
 			tmpTarget := s.Local("cast_target_"+ty.Name(), dstTy)
 			tmpSource := s.LocalInit("cast_source_"+ty.Name(), v)
 			s.Call(fn, s.Ctx, tmpSource, tmpTarget)
 			return tmpTarget.Load()
 		}
-		fail("castStorageToTarget() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
+		fail("castCaptureToTarget() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
 		return nil
 	case ty == semantic.IntType:
 		return v.Cast(dstTy)
 	case ty == semantic.SizeType:
 		return v.Cast(dstTy)
 	default:
-		fail("castStorageToTarget() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
+		fail("castCaptureToTarget() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
 		return nil
 	}
 }

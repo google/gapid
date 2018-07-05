@@ -114,7 +114,7 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	settings := compiler.Settings{
 		TargetABI:   abi,
-		StorageABI:  abi,
+		CaptureABI:  abi,
 		Namespaces:  namespaces,
 		EmitExec:    v.Emit.Exec,
 		EmitContext: v.Emit.Context,

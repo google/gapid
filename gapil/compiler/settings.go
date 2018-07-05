@@ -24,9 +24,8 @@ type Settings struct {
 	// TargetABI is the ABI used by the device running the compiled code.
 	TargetABI *device.ABI
 
-	// StorageABI is the ABI of the device used to generate data in serialized
-	// buffers.
-	StorageABI *device.ABI
+	// CaptureABI is the ABI of the device used to generate the capture data.
+	CaptureABI *device.ABI
 
 	// The mangler used for global functions and types.
 	Mangler mangling.Mangler

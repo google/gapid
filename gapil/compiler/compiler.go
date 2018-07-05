@@ -109,8 +109,8 @@ func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Progr
 	if s.TargetABI == nil {
 		s.TargetABI = hostABI
 	}
-	if s.StorageABI == nil {
-		s.StorageABI = hostABI
+	if s.CaptureABI == nil {
+		s.CaptureABI = hostABI
 	}
 	if s.Mangler == nil {
 		s.Mangler = c.Mangle

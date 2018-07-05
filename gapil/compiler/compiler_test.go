@@ -1522,10 +1522,10 @@ C s = C(a: 1, b: 2, c: 3, d: 4)
 			},
 		},
 		////////////////////////////////////////////////////////
-		// Storage Memory Layout                              //
+		// Capture Memory Layout                              //
 		////////////////////////////////////////////////////////
 		{
-			name: "StorageMemoryLayout.Struct",
+			name: "CaptureMemoryLayout.Struct",
 			src: `
 class PodStruct {
 	u32 a
@@ -1556,11 +1556,11 @@ cmd void Read(PodStruct* input) {
 				),
 			},
 			settings: compiler.Settings{
-				StorageABI: device.AndroidARMv7a,
+				CaptureABI: device.AndroidARMv7a,
 			},
 		},
 		{
-			name: "StorageMemoryLayout.Slice.Struct",
+			name: "CaptureMemoryLayout.Slice.Struct",
 			src: `
 class PodStruct {
 	u32 a
@@ -1601,11 +1601,11 @@ cmd void Read(PodStruct* input) {
 				),
 			},
 			settings: compiler.Settings{
-				StorageABI: device.AndroidARMv7a,
+				CaptureABI: device.AndroidARMv7a,
 			},
 		},
 		{
-			name: "StorageMemoryLayout.StructWithStruct",
+			name: "CaptureMemoryLayout.StructWithStruct",
 			src: `
 class SizeStruct {
 	u64 a
@@ -1639,11 +1639,11 @@ cmd void Read(StructInStruct* input) {
 				),
 			},
 			settings: compiler.Settings{
-				StorageABI: device.AndroidARMv7a,
+				CaptureABI: device.AndroidARMv7a,
 			},
 		},
 		{
-			name: "StorageMemoryLayout.Slice.StructWithStruct",
+			name: "CaptureMemoryLayout.Slice.StructWithStruct",
 			src: `
 class SizeStruct {
 	u64 a
@@ -1688,11 +1688,11 @@ cmd void Read(StructInStruct* input) {
 				),
 			},
 			settings: compiler.Settings{
-				StorageABI: device.AndroidARMv7a,
+				CaptureABI: device.AndroidARMv7a,
 			},
 		},
 		{
-			name: "StorageMemoryLayout.Write.Struct",
+			name: "CaptureMemoryLayout.Write.Struct",
 			src: `
 class PodStruct {
 	u32 a
@@ -1718,12 +1718,12 @@ cmd void Write(PodStruct* input, void* ptr) {
 				},
 			},
 			settings: compiler.Settings{
-				StorageABI:             device.AndroidARMv7a,
+				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
 		},
 		{
-			name: "StorageMemoryLayout.WriteSlice.Struct",
+			name: "CaptureMemoryLayout.WriteSlice.Struct",
 			src: `
 class PodStruct {
 	u32 a
@@ -1752,12 +1752,12 @@ cmd void Write(PodStruct* input, void* ptr) {
 				},
 			},
 			settings: compiler.Settings{
-				StorageABI:             device.AndroidARMv7a,
+				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
 		},
 		{
-			name: "StorageMemoryLayout.Write.StructWithStruct",
+			name: "CaptureMemoryLayout.Write.StructWithStruct",
 			src: `
 class SizeStruct {
 	u64 a
@@ -1785,12 +1785,12 @@ cmd void Read(StructInStruct* input) {
 				},
 			},
 			settings: compiler.Settings{
-				StorageABI:             device.AndroidARMv7a,
+				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
 		},
 		{
-			name: "StorageMemoryLayout.Write.Slice.StructWithStruct",
+			name: "CaptureMemoryLayout.Write.Slice.StructWithStruct",
 			src: `
 class SizeStruct {
 	u64 a
@@ -1822,12 +1822,12 @@ cmd void Read(StructInStruct* input) {
 				},
 			},
 			settings: compiler.Settings{
-				StorageABI:             device.AndroidARMv7a,
+				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
 		},
 		{
-			name: "StorageMemoryLayout.StructWithPointer",
+			name: "CaptureMemoryLayout.StructWithPointer",
 			src: `
 class SizeStruct {
 	u64 a
@@ -1854,7 +1854,7 @@ cmd void Read(StructInStruct* input) {
 				),
 			},
 			settings: compiler.Settings{
-				StorageABI:             device.AndroidARMv7a,
+				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
 		},

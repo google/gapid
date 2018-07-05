@@ -298,7 +298,7 @@ func (c *C) create(s *S, e *semantic.Create) *codegen.Value {
 func (c *C) clone(s *S, e *semantic.Clone) *codegen.Value {
 	src := c.expression(s, e.Slice)
 	srcSize := src.Extract(SliceSize)
-	elSize := s.SizeOf(c.T.Storage(e.Type.To))
+	elSize := s.SizeOf(c.T.Capture(e.Type.To))
 	dstCount := s.Div(srcSize, elSize)
 	dstSize := s.Mul(dstCount, elSize)
 	dst := c.MakeSlice(s, dstSize, dstCount)
@@ -379,7 +379,7 @@ func (c *C) local(s *S, e *semantic.Local) *codegen.Value {
 }
 
 func (c *C) make(s *S, e *semantic.Make) *codegen.Value {
-	elTy := c.T.Storage(e.Type.To)
+	elTy := c.T.Capture(e.Type.To)
 	count := c.expression(s, e.Size).Cast(c.T.Uint64)
 	size := s.Mul(count, s.SizeOf(elTy))
 	slice := c.MakeSlice(s, size, count)
@@ -442,7 +442,7 @@ func (c *C) Parameter(s *S, e *semantic.Parameter) *codegen.Value {
 }
 
 func (c *C) pointerRange(s *S, e *semantic.PointerRange) *codegen.Value {
-	elTy := c.T.Storage(e.Type.To)
+	elTy := c.T.Capture(e.Type.To)
 	root := c.expression(s, e.Pointer).Cast(c.T.Uint64).SetName("root")
 	start := c.expression(s, e.Range.LHS).Cast(c.T.Uint64).SetName("start")
 	end := c.expression(s, e.Range.RHS).Cast(c.T.Uint64).SetName("end")
@@ -501,30 +501,30 @@ func (c *C) sliceIndex(s *S, e *semantic.SliceIndex) *codegen.Value {
 
 	elTy := e.Type.To
 	targetTy := c.T.Target(e.Type.To)
-	storageTy := c.T.Storage(e.Type.To)
-	storageSize := s.Scalar(uint64(c.T.StorageSize(elTy)))
-	storageStride := s.Scalar(uint64(c.T.StorageAllocaSize(elTy)))
+	captureTy := c.T.Capture(e.Type.To)
+	captureSize := s.Scalar(uint64(c.T.CaptureSize(elTy)))
+	captureStride := s.Scalar(uint64(c.T.CaptureAllocaSize(elTy)))
 
 	base := slice.Extract(SliceBase)
-	offset := s.Mul(index, storageStride)
+	offset := s.Mul(index, captureStride)
 	subslice := slice.
 		Insert(SliceBase, s.Add(base, offset)).
-		Insert(SliceSize, storageSize).
+		Insert(SliceSize, captureSize).
 		Insert(SliceCount, s.Scalar(uint64(1)))
 	subslicePtr := s.LocalInit("subslice", subslice)
 
 	read := func(elType codegen.Type) *codegen.Value {
 		return c.SliceDataForRead(s, subslicePtr, elType).Load()
 	}
-	if targetTy == storageTy {
+	if targetTy == captureTy {
 		return read(targetTy)
 	}
-	return c.castStorageToTarget(s, elTy, read(storageTy))
+	return c.castCaptureToTarget(s, elTy, read(captureTy))
 }
 
 func (c *C) sliceRange(s *S, e *semantic.SliceRange) *codegen.Value {
 	slice := c.expression(s, e.Slice)
-	elTy := c.T.Storage(e.Type.To)
+	elTy := c.T.Capture(e.Type.To)
 	elPtrTy := c.T.Pointer(elTy)
 	base := slice.Extract(SliceBase).Cast(elPtrTy) // T*
 	from := c.expression(s, e.Range.LHS).SetName("slice_from")
