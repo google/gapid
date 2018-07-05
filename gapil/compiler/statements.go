@@ -276,6 +276,9 @@ func (c *C) copy(s *S, n *semantic.Copy) {
 	src := c.expression(s, n.Src)
 	dst := c.expression(s, n.Dst)
 	c.CopySlice(s, dst, src)
+	if c.isFence {
+		c.applyFence(s)
+	}
 }
 
 func (c *C) declareLocal(s *S, n *semantic.DeclareLocal) {
@@ -292,11 +295,21 @@ func (c *C) declareLocal(s *S, n *semantic.DeclareLocal) {
 }
 
 func (c *C) fence(s *S, n *semantic.Fence) {
+	if n.Statement != nil {
+		c.isFence = true
+		c.statement(s, n.Statement)
+		if c.isFence {
+			c.Fail("%v did not consume the fence", n.Statement)
+		}
+	} else {
+		c.applyFence(s)
+	}
+}
+
+func (c *C) applyFence(s *S) {
 	c.plugins.foreach(func(p OnFenceListener) { p.OnFence(s) })
 	c.applyWrites(s)
-	if n.Statement != nil {
-		c.statement(s, n.Statement)
-	}
+	c.isFence = false
 }
 
 func (c *C) iteration(s *S, n *semantic.Iteration) {

@@ -80,6 +80,7 @@ type C struct {
 	currentFunc     *semantic.Function
 	statementStack  []semantic.Statement
 	expressionStack []semantic.Expression
+	isFence         bool // If true, a fence should be emitted for the given statement
 	callbacks       struct {
 		alloc          *codegen.Function
 		realloc        *codegen.Function
