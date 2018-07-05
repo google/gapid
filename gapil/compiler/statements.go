@@ -380,23 +380,36 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 	elTy := n.To.Type.To
 	targetTy := c.T.Target(elTy)
 	storageTy := c.T.Storage(elTy)
+	storageSize := s.Scalar(uint64(c.T.StorageSize(elTy)))
+	storageStride := s.Scalar(uint64(c.T.StorageAllocaSize(elTy)))
+
+	base := slice.Extract(SliceBase)
+	offset := s.Mul(index, storageStride)
+	subslice := slice.
+		Insert(SliceBase, s.Add(base, offset)).
+		Insert(SliceSize, storageSize).
+		Insert(SliceCount, s.Scalar(uint64(1)))
+	subslicePtr := s.LocalInit("subslice", subslice)
 
 	write := func(el *codegen.Value) {
-		base := slice.Extract(SliceBase).Cast(c.T.Pointer(el.Type()))
-		base.Index(index).Store(el)
+		c.SliceDataForWrite(s, subslicePtr, el.Type()).Store(el)
+	}
+
+	chainWrite := func(f func(el *codegen.Value, next func(el *codegen.Value))) {
+		next := write
+		write = func(el *codegen.Value) { f(el, next) }
 	}
 
 	if !c.Settings.WriteToApplicationPool {
 		// Writes to the application pool are disabled by default.
 		// This can be overridden with the WriteToApplicationPool setting.
-		actuallyWrite := write
-		write = func(el *codegen.Value) {
+		chainWrite(func(el *codegen.Value, next func(el *codegen.Value)) {
 			pool := slice.Extract(SlicePool)
 			appPool := s.Zero(c.T.PoolPtr)
 			s.If(s.NotEqual(pool, appPool), func(s *S) {
-				actuallyWrite(el)
+				next(el) // Actually perform the write.
 			})
-		}
+		})
 	}
 
 	el := c.expression(s, n.Value)

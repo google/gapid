@@ -63,8 +63,9 @@ typedef struct pool_t {
 // slice is the data of a gapil slice type (elty foo[]).
 typedef struct slice_t {
   pool* pool;  // the underlying pool. nullptr represents the application pool.
-  void* root;  // original pointer this slice derives from.
-  void* base;  // address of first element.
+  uint64_t root;   // original offset in bytes from pool base that this slice
+                   // derives from.
+  uint64_t base;   // offset in bytes from pool base of the first element.
   uint64_t size;   // size in bytes of the slice.
   uint64_t count;  // total number of elements in the slice.
 } slice;
@@ -113,13 +114,20 @@ typedef uint8_t GAPIL_BOOL;
 // Functions to be implemented by the user of the runtime                     //
 ////////////////////////////////////////////////////////////////////////////////
 
-// callback to map the serialized pointer to a pointer in an allocated buffer.
-typedef void* gapil_pointer_remapper(context* ctx, uintptr_t pointer,
-                                     uint64_t length);
+typedef enum gapil_data_access_t {
+  GAPIL_READ = 0x1,
+  GAPIL_WRITE = 0x2,
+} gapil_data_access;
+
+// callback to access a pool's data.
+// If len is non-nil, it will be assigned the maximum number of bytes from the
+// returned pointer that can be accessed.
+typedef void* gapil_pool_data_resolver(context*, pool*, uint64_t ptr,
+                                       gapil_data_access, uint64_t* len);
 
 // assigns to file and line the current source location within the .api file.
 // if there is no current source location then file and line are unassigned.
-typedef void gapil_get_code_location(context* ctx, char** file, uint32_t* line);
+typedef void gapil_get_code_location(context*, char** file, uint32_t* line);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented by the compiler                                    //
@@ -141,9 +149,8 @@ void gapil_slice_release(slice);
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
 
-// sets the pointer remapper callback used to remap serialized pointers to a
-// pointer in an allocated buffer.
-void gapil_set_pointer_remapper(gapil_pointer_remapper*);
+// sets the resolver callback used to return pointers to slice data.
+void gapil_set_pool_data_resolver(gapil_pool_data_resolver*);
 
 // sets the callback used to fetch the file and line location for the current
 // source location within the .api file.
@@ -153,28 +160,28 @@ void gapil_set_code_locator(gapil_get_code_location*);
 #define DECL_GAPIL_CB(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
 #endif
 
-// allocates a buffer using the arena with the given size and alignment.
+// allocates memory using the arena with the given size and alignment.
 DECL_GAPIL_CB(void*, gapil_alloc, arena*, uint64_t size, uint64_t align);
 
-// re-allocates a buffer previously allocated with the arena to a new size and
+// re-allocates memory previously allocated with the arena to a new size and
 // alignment.
 DECL_GAPIL_CB(void*, gapil_realloc, arena*, void* ptr, uint64_t size,
               uint64_t align);
 
-// frees a buffer previously allocated with gapil_alloc or gapil_realloc.
+// frees memory previously allocated with gapil_alloc or gapil_realloc.
 DECL_GAPIL_CB(void, gapil_free, arena*, void* ptr);
 
 // allocates a new slice and underlying pool with the given size.
-DECL_GAPIL_CB(pool*, gapil_make_pool, context* ctx, uint64_t size);
+DECL_GAPIL_CB(pool*, gapil_make_pool, context*, uint64_t size);
 
-// allocates a new slice and underlying pool filled with data from the given
-// base pointer, offset and size.
-DECL_GAPIL_CB(void, gapil_pointer_to_slice, context* ctx, uintptr_t ptr,
-              uint64_t offset, uint64_t size, uint64_t count, slice* out);
-
-// frees a pool previously allocated with gapil_make_pool, gapil_string_to_slice
-// or gapil_pointer_to_slice.
+// frees a pool previously allocated with gapil_make_pool or
+// gapil_string_to_slice.
 DECL_GAPIL_CB(void, gapil_free_pool, pool*);
+
+// returns a pointer to the underlying buffer data for the given slice,
+// using gapil_data_resolver if it has been set.
+DECL_GAPIL_CB(void*, gapil_slice_data, context* ctx, slice* sli,
+              gapil_data_access);
 
 // copies N bytes of data from src to dst, where N is min(dst.size, src.size).
 DECL_GAPIL_CB(void, gapil_copy_slice, context* ctx, slice* dst, slice* src);
@@ -187,12 +194,13 @@ DECL_GAPIL_CB(void, gapil_string_to_slice, context* ctx, string* string,
 // length excludes a null-pointer.
 DECL_GAPIL_CB(string*, gapil_make_string, arena*, uint64_t length, void* data);
 
-// allocates a new string a copy of the null-terminated string at the given
-// serialized pointer.
-DECL_GAPIL_CB(string*, gapil_pointer_to_string, context* ctx, uintptr_t ptr);
+// outputs a slice spanning the bytes of the null-terminated string starting at
+// ptr. The slice includes the null-terminator byte.
+DECL_GAPIL_CB(void, gapil_cstring_to_slice, context*, uintptr_t ptr,
+              slice* out);
 
-// frees a string allocated with gapil_make_string, gapil_pointer_to_string,
-// gapil_string_concat or gapil_slice_to_string.
+// frees a string allocated with gapil_make_string, gapil_string_concat or
+// gapil_slice_to_string.
 DECL_GAPIL_CB(void, gapil_free_string, string*);
 
 // allocates a new string filled with the data of slice.

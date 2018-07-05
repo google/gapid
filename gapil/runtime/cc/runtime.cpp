@@ -38,32 +38,49 @@
 #define DEBUG_PRINT(...)
 #endif
 
+#define SLICE_FMT \
+  "[pool: %p, root: %" PRIx64 ", base: %" PRIx64 ", size: 0x%" PRIx64 "]"
+#define SLICE_ARGS(sli) sli->pool, sli->root, sli->base, sli->size
+
 using core::Arena;
 
 namespace {
 
-void* default_pointer_remapper(context* ctx, uintptr_t pointer,
-                               uint64_t length) {
-  return reinterpret_cast<void*>(pointer);
+void* default_pool_data_resolver(context*, pool* pool, uint64_t ptr,
+                                 gapil_data_access, uint64_t* len) {
+  if (pool != nullptr) {
+    auto pool_base =
+        static_cast<uint64_t>(reinterpret_cast<uintptr_t>(pool->buffer));
+    if (ptr > pool->size) {
+      GAPID_FATAL("ptr (0x%" PRIx64
+                  ") is greater than the pool size (0x%" PRIx64 ")",
+                  ptr, pool->size);
+    }
+    if (len != nullptr) {
+      *len = pool->size - ptr;
+    }
+    return reinterpret_cast<void*>(pool_base + ptr);
+  }
+  if (len != nullptr) {
+    *len = (~uint64_t(0)) - ptr;
+  }
+  return reinterpret_cast<void*>(ptr);
 }
 
 void default_code_locator(context* ctx, char** file, uint32_t* line) {}
 
-static gapil_pointer_remapper* pointer_remapper = &default_pointer_remapper;
+static gapil_pool_data_resolver* pool_data_resolver =
+    &default_pool_data_resolver;
 static gapil_get_code_location* code_locator = &default_code_locator;
 
 }  // anonymous namespace
 
 extern "C" {
 
-// sets the pointer remapper callback used to remap serialized pointers to a
-// pointer in an allocated buffer.
-void gapil_set_pointer_remapper(gapil_pointer_remapper* cb) {
-  pointer_remapper = cb != nullptr ? cb : &default_pointer_remapper;
+void gapil_set_pool_data_resolver(gapil_pool_data_resolver* cb) {
+  pool_data_resolver = cb != nullptr ? cb : &default_pool_data_resolver;
 }
 
-// sets the callback used to fetch the file and line location for the current
-// source location within the .api file.
 void gapil_set_code_locator(gapil_get_code_location* cb) {
   code_locator = cb != nullptr ? cb : &default_code_locator;
 }
@@ -148,43 +165,67 @@ void gapil_free_pool(pool* pool) {
   arena->destroy(pool);
 }
 
+void* gapil_slice_data(context* ctx, slice* sli, gapil_data_access access) {
+  uint64_t bufSize = 0;
+  auto ptr = pool_data_resolver(ctx, sli->pool, sli->base, access, &bufSize);
+  GAPID_ASSERT_MSG(sli->size <= bufSize,
+                   "gapil_slice_data(" SLICE_FMT
+                   ", %d) overflows underlying buffer",
+                   SLICE_ARGS(sli), access);
+
+  DEBUG_PRINT("gapil_slice_data(" SLICE_FMT ", %d) -> %p", SLICE_ARGS(sli),
+              access, ptr);
+  return ptr;
+}
+
 void gapil_copy_slice(context* ctx, slice* dst, slice* src) {
   DEBUG_PRINT(
       "gapil_copy_slice(ctx: %p,\n"
-      "    dst: [pool: %p, root: %p, base: %p, size: 0x%" PRIx64
-      "],\n"
-      "    src: [pool: %p, root: %p, base: %p, size: 0x%" PRIx64 "])",
-      ctx, dst->pool, dst->root, dst->base, dst->size, src->pool, src->root,
-      src->base, src->size);
+      "    dst: " SLICE_FMT
+      ",\n"
+      "    src: " SLICE_FMT ")",
+      ctx, SLICE_ARGS(dst), SLICE_ARGS(src));
 
-  auto size = std::min(dst->size, src->size);
-  memcpy(dst->base, src->base, size);
+  uint64_t size = std::min(dst->size, src->size);
+
+  uint64_t dstBufLen = 0;
+  auto dstPtr =
+      pool_data_resolver(ctx, dst->pool, dst->base, GAPIL_WRITE, &dstBufLen);
+  GAPID_ASSERT_MSG(size <= dstBufLen, "gapil_copy_slice overflows dst buffer");
+
+  uint64_t srcBufLen = 0;
+  auto srcPtr =
+      pool_data_resolver(ctx, src->pool, src->base, GAPIL_READ, &srcBufLen);
+  GAPID_ASSERT_MSG(size <= srcBufLen, "gapil_copy_slice overflows src buffer");
+
+  memcpy(dstPtr, srcPtr, size);
 }
 
-void gapil_pointer_to_slice(context* ctx, uintptr_t ptr, uint64_t offset,
-                            uint64_t size, uint64_t count, slice* out) {
-  DEBUG_PRINT("gapil_pointer_to_slice(ptr: 0x%" PRIx64 ", offset: 0x%" PRIx64
-              ", size: 0x%" PRIx64 ", count: 0x%" PRIx64 ")",
-              ptr, offset, size, count);
+void gapil_cstring_to_slice(context* ctx, uintptr_t ptr, slice* out) {
+  DEBUG_PRINT("gapil_cstring_to_slice(ptr: 0x%" PRIx64 ")", ptr);
 
-  auto end = ptr + offset + size;
-  auto root = reinterpret_cast<uint8_t*>(pointer_remapper(ctx, ptr, end - ptr));
-  auto base = root + offset;
+  pool* pool = nullptr;  // application pool
 
-  out->pool = nullptr;  // application pool
-  out->root = root;
-  out->base = base;
-  out->size = size;
-  out->count = count;
-}
+  uint64_t bufSize = 0;
+  auto data = reinterpret_cast<char*>(
+      pool_data_resolver(ctx, pool, ptr, GAPIL_READ, &bufSize));
 
-string* gapil_pointer_to_string(context* ctx, uintptr_t ptr) {
-  DEBUG_PRINT("gapil_pointer_to_string(ptr: 0x%" PRIx64 ")", ptr);
+  uint64_t len = 0;
+  for (; len < bufSize; len++) {
+    if (data[len] == 0) {
+      len++;  // Include null-terminator in the slice.
+      break;
+    }
+  }
 
-  auto data = reinterpret_cast<char*>(pointer_remapper(ctx, ptr, 1));
-  auto len = strlen(data);
-
-  return gapil_make_string(ctx->arena, len, data);
+  slice s = {0};
+  s.pool = pool;  // application pool
+  s.root = ptr;
+  s.base = ptr;
+  s.size = len;
+  s.count = len;
+  *out = s;
+  return;
 }
 
 string* gapil_make_string(arena* a, uint64_t length, void* data) {
@@ -219,11 +260,14 @@ void gapil_free_string(string* str) {
   arena->free(str);
 }
 
-string* gapil_slice_to_string(context* ctx, slice* slice) {
-  DEBUG_PRINT("gapil_slice_to_string(base: %p, size: 0x%" PRIx64 ", pool: %p)",
-              slice->base, slice->size, slice->pool);
-
-  return gapil_make_string(ctx->arena, slice->size, slice->base);
+string* gapil_slice_to_string(context* ctx, slice* sli) {
+  DEBUG_PRINT("gapil_slice_to_string(" SLICE_FMT ")", SLICE_ARGS(sli));
+  auto ptr = gapil_slice_data(ctx, sli, GAPIL_READ);
+  // Trim null terminator from the string.
+  if (sli->size > 0 && ((uint8_t*)ptr)[sli->size - 1] == 0) {
+    sli->size--;
+  }
+  return gapil_make_string(ctx->arena, sli->size, ptr);
 }
 
 void gapil_string_to_slice(context* ctx, string* str, slice* out) {
@@ -234,8 +278,8 @@ void gapil_string_to_slice(context* ctx, string* str, slice* out) {
   memcpy(pool->buffer, str->data, str->length);
 
   out->pool = pool;
-  out->base = pool->buffer;
-  out->root = pool->buffer;
+  out->base = 0;
+  out->root = 0;
   out->size = str->length;
   out->count = str->length;
 }

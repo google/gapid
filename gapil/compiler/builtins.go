@@ -107,3 +107,9 @@ const (
 	BufCap  = "capacity"
 	BufSize = "size"
 )
+
+// gapil_data_access enumerator values.
+const (
+	Read  = C.GAPIL_READ
+	Write = C.GAPIL_WRITE
+)

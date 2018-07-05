@@ -46,6 +46,7 @@ type Types struct {
 	Buf             codegen.Type                        // buffer_t
 	BufPtr          codegen.Type                        // buffer_t*
 	CmdParams       map[*semantic.Function]codegen.Type // struct holding all command parameters and return value.
+	DataAccess      codegen.Type
 	Maps            map[*semantic.Map]*MapInfo
 	mapImpls        []mapImpl
 	customCtxFields []ContextField
@@ -124,6 +125,7 @@ func (c *C) declareTypes() {
 	c.T.BufPtr = c.T.Pointer(c.T.Buf)
 	c.T.Maps = map[*semantic.Map]*MapInfo{}
 	c.T.CmdParams = map[*semantic.Function]codegen.Type{}
+	c.T.DataAccess = c.T.Enum("gapil_data_access")
 	c.T.target = map[semantic.Type]codegen.Type{}
 	c.T.storage = map[semantic.Type]codegen.Type{}
 	c.T.targetToStorage = map[semantic.Type]*codegen.Function{}

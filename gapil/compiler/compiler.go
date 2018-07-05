@@ -81,24 +81,24 @@ type C struct {
 	currentStmt   semantic.Node
 	currentExpr   semantic.Expression
 	callbacks     struct {
-		alloc           *codegen.Function
-		realloc         *codegen.Function
-		free            *codegen.Function
-		applyReads      *codegen.Function
-		applyWrites     *codegen.Function
-		freePool        *codegen.Function
-		copySlice       *codegen.Function
-		makePool        *codegen.Function
-		pointerToSlice  *codegen.Function
-		pointerToString *codegen.Function
-		sliceToString   *codegen.Function
-		makeString      *codegen.Function
-		freeString      *codegen.Function
-		stringToSlice   *codegen.Function
-		stringConcat    *codegen.Function
-		stringCompare   *codegen.Function
-		callExtern      *codegen.Function
-		logf            *codegen.Function
+		alloc          *codegen.Function
+		realloc        *codegen.Function
+		free           *codegen.Function
+		applyReads     *codegen.Function
+		applyWrites    *codegen.Function
+		freePool       *codegen.Function
+		sliceData      *codegen.Function
+		copySlice      *codegen.Function
+		makePool       *codegen.Function
+		cstringToSlice *codegen.Function
+		sliceToString  *codegen.Function
+		makeString     *codegen.Function
+		freeString     *codegen.Function
+		stringToSlice  *codegen.Function
+		stringConcat   *codegen.Function
+		stringCompare  *codegen.Function
+		callExtern     *codegen.Function
+		logf           *codegen.Function
 	}
 }
 
@@ -215,10 +215,10 @@ func (c *C) compile() {
 	c.callbacks.applyReads = c.M.ParseFunctionSignature(C.GoString(C.gapil_apply_reads_sig))
 	c.callbacks.applyWrites = c.M.ParseFunctionSignature(C.GoString(C.gapil_apply_writes_sig))
 	c.callbacks.freePool = c.M.ParseFunctionSignature(C.GoString(C.gapil_free_pool_sig))
+	c.callbacks.sliceData = c.M.ParseFunctionSignature(C.GoString(C.gapil_slice_data_sig))
 	c.callbacks.copySlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_copy_slice_sig))
 	c.callbacks.makePool = c.M.ParseFunctionSignature(C.GoString(C.gapil_make_pool_sig))
-	c.callbacks.pointerToSlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_pointer_to_slice_sig))
-	c.callbacks.pointerToString = c.M.ParseFunctionSignature(C.GoString(C.gapil_pointer_to_string_sig))
+	c.callbacks.cstringToSlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_cstring_to_slice_sig))
 	c.callbacks.sliceToString = c.M.ParseFunctionSignature(C.GoString(C.gapil_slice_to_string_sig))
 	c.callbacks.makeString = c.M.ParseFunctionSignature(C.GoString(C.gapil_make_string_sig))
 	c.callbacks.freeString = c.M.ParseFunctionSignature(C.GoString(C.gapil_free_string_sig))
@@ -290,10 +290,9 @@ func (c *C) MakeSlice(s *S, size, count *codegen.Value) *codegen.Value {
 // slice pointer.
 func (c *C) MakeSliceAt(s *S, size, count, dstPtr *codegen.Value) {
 	pool := s.Call(c.callbacks.makePool, s.Ctx, size)
-	buf := pool.Index(0, PoolBuffer).Load()
 	dstPtr.Index(0, SlicePool).Store(pool)
-	dstPtr.Index(0, SliceRoot).Store(buf)
-	dstPtr.Index(0, SliceBase).Store(buf)
+	dstPtr.Index(0, SliceRoot).Store(s.Scalar(uint64(0)))
+	dstPtr.Index(0, SliceBase).Store(s.Scalar(uint64(0)))
 	dstPtr.Index(0, SliceSize).Store(size)
 	dstPtr.Index(0, SliceCount).Store(count)
 }
@@ -301,6 +300,22 @@ func (c *C) MakeSliceAt(s *S, size, count, dstPtr *codegen.Value) {
 // CopySlice copies the contents of slice src to dst.
 func (c *C) CopySlice(s *S, dst, src *codegen.Value) {
 	s.Call(c.callbacks.copySlice, s.Ctx, s.LocalInit("dstPtr", dst), s.LocalInit("srcPtr", src))
+}
+
+// SliceDataForRead returns a pointer to an array of slice elements.
+// This pointer should be used to read (not write) from the slice.
+// The pointer is only valid until the slice is touched again.
+func (c *C) SliceDataForRead(s *S, slicePtr *codegen.Value, elType codegen.Type) *codegen.Value {
+	access := s.Scalar(Read).Cast(c.T.DataAccess)
+	return s.Call(c.callbacks.sliceData, s.Ctx, slicePtr, access).Cast(c.T.Pointer(elType))
+}
+
+// SliceDataForWrite returns a pointer to an array of slice elements.
+// This pointer should be used to write (not read) to the slice.
+// The pointer is only valid until the slice is touched again.
+func (c *C) SliceDataForWrite(s *S, slicePtr *codegen.Value, elType codegen.Type) *codegen.Value {
+	access := s.Scalar(Write).Cast(c.T.DataAccess)
+	return s.Call(c.callbacks.sliceData, s.Ctx, slicePtr, access).Cast(c.T.Pointer(elType))
 }
 
 // MakeString creates a new string from the specified data and length in bytes.
