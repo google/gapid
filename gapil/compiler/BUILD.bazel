@@ -33,6 +33,7 @@ go_library(
         "scope.go",
         "settings.go",
         "statements.go",
+        "storagetypes.go",
         "types.go",
     ],
     cdeps = [

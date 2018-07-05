@@ -15,8 +15,6 @@
 package compiler
 
 import (
-	"fmt"
-
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/compiler/mangling"
@@ -51,60 +49,17 @@ type Types struct {
 	mapImpls        []mapImpl
 	customCtxFields []ContextField
 	target          map[semantic.Type]codegen.Type
-	capture         map[semantic.Type]codegen.Type
-	targetToCapture map[semantic.Type]*codegen.Function
-	captureToTarget map[semantic.Type]*codegen.Function
-	mangled         map[codegen.Type]mangling.Type
 	targetABI       *device.ABI
-	captureABI      *device.ABI
+	storage         map[memLayoutKey]*StorageTypes
+	CaptureTypes    *StorageTypes
+	captureToTarget map[semantic.Type]*codegen.Function
+	targetToCapture map[semantic.Type]*codegen.Function
+	mangled         map[codegen.Type]mangling.Type
 }
 
-func (c *C) declareCaptureTypes() {
-	for _, t := range c.API.Classes {
-		if semantic.IsStorageType(t) {
-			if c.T.captureABI == c.T.targetABI {
-				c.T.capture[t] = c.T.target[t]
-			} else {
-				c.T.capture[t] = c.T.DeclarePackedStruct("S_" + t.Name())
-			}
-		}
-	}
-}
-
-func (c *C) buildCaptureTypes() {
-	if c.T.captureABI == c.T.targetABI {
-		return
-	}
-	for _, t := range c.API.Classes {
-		if semantic.IsStorageType(t) {
-			offset := int32(0)
-			fields := make([]codegen.Field, 0, len(t.Fields))
-			dummyFields := 0
-			for _, f := range t.Fields {
-				size := c.T.CaptureAllocaSize(f.Type)
-				alignment := c.T.CaptureABIAlignment(f.Type)
-				newOffset := (offset + (alignment - 1)) & ^(alignment - 1)
-				if newOffset != offset {
-					nm := fmt.Sprintf("__dummy%d", dummyFields)
-					dummyFields++
-					fields = append(fields, codegen.Field{Name: nm, Type: c.T.Array(c.T.Capture(semantic.Uint8Type), int(newOffset-offset))})
-				}
-				offset = newOffset + size
-				fields = append(fields, codegen.Field{Name: f.Name(), Type: c.T.Capture(f.Type)})
-			}
-			totalSize := c.T.CaptureAllocaSize(t)
-			if totalSize != offset {
-				nm := fmt.Sprintf("__dummy%d", dummyFields)
-				fields = append(fields, codegen.Field{Name: nm, Type: c.T.Array(c.T.Capture(semantic.Uint8Type), int(totalSize-offset))})
-			}
-
-			c.T.capture[t].(*codegen.Struct).SetBody(true, fields...)
-		}
-	}
-}
+type memLayoutKey string
 
 func (c *C) declareTypes() {
-	c.T.captureABI = c.Settings.CaptureABI
 	c.T.targetABI = c.Settings.TargetABI
 
 	c.T.Types = c.M.Types
@@ -127,9 +82,9 @@ func (c *C) declareTypes() {
 	c.T.CmdParams = map[*semantic.Function]codegen.Type{}
 	c.T.DataAccess = c.T.Enum("gapil_data_access")
 	c.T.target = map[semantic.Type]codegen.Type{}
-	c.T.capture = map[semantic.Type]codegen.Type{}
-	c.T.targetToCapture = map[semantic.Type]*codegen.Function{}
+	c.T.storage = map[memLayoutKey]*StorageTypes{}
 	c.T.captureToTarget = map[semantic.Type]*codegen.Function{}
+	c.T.targetToCapture = map[semantic.Type]*codegen.Function{}
 	c.T.mangled = map[codegen.Type]mangling.Type{}
 
 	// Forward-declare all the class types.
@@ -167,13 +122,9 @@ func (c *C) declareTypes() {
 		c.T.CmdParams[f] = c.T.Struct(f.Name()+"Params", fields...)
 	}
 
-	c.declareCaptureTypes()
-
 	c.declareMangling()
 
 	c.declareRefRels()
-
-	c.declareContextType()
 }
 
 func (c *C) declareMangling() {
@@ -225,8 +176,6 @@ func (c *C) buildTypes() {
 		c.T.target[t].(*codegen.Struct).SetBody(false, fields...)
 	}
 
-	c.buildCaptureTypes()
-
 	// Build all the reference types.
 	for _, t := range c.API.References {
 		// struct ref!T {
@@ -253,40 +202,46 @@ func (c *C) buildTypes() {
 		globalsFields[i] = codegen.Field{Name: g.Name(), Type: c.T.Target(g.Type)}
 	}
 	c.T.Globals.SetBody(false, globalsFields...)
+
+	// Build storage types for the capture's memory layout.
+	c.T.CaptureTypes = c.StorageTypes(c.Settings.CaptureABI.MemoryLayout, "S_")
+
+	// Build conversion functions between target and capture types.
 	if c.Settings.CaptureABI != c.T.targetABI {
 		for _, t := range c.API.Classes {
-			if semantic.IsStorageType(t) {
-				captureTypePtr := c.T.Pointer(c.T.Capture(t))
-				targetTypePtr := c.T.Pointer(c.T.Target(t))
-
-				copyToTarget := c.M.Function(c.T.Void, "S_"+t.Name()+"_copy_to_target", c.T.CtxPtr, captureTypePtr, targetTypePtr).
-					LinkOnceODR().
-					Inline()
-
-				c.T.captureToTarget[t] = copyToTarget
-				c.Build(copyToTarget, func(s *S) {
-					src := s.Parameter(1).SetName("src")
-					dst := s.Parameter(2).SetName("dst")
-					for _, f := range t.Fields {
-						firstElem := src.Index(0, f.Name()).LoadUnaligned()
-						dst.Index(0, f.Name()).Store(c.castCaptureToTarget(s, f.Type, firstElem))
-					}
-				})
-
-				copyToCapture := c.M.Function(c.T.Void, "T_"+t.Name()+"_copy_to_capture", c.T.CtxPtr, targetTypePtr, captureTypePtr).
-					LinkOnceODR().
-					Inline()
-
-				c.T.targetToCapture[t] = copyToCapture
-				c.Build(copyToCapture, func(s *S) {
-					src := s.Parameter(1).SetName("src")
-					dst := s.Parameter(2).SetName("dst")
-					for _, f := range t.Fields {
-						firstElem := src.Index(0, f.Name()).Load()
-						dst.Index(0, f.Name()).StoreUnaligned(c.castTargetToCapture(s, f.Type, firstElem))
-					}
-				})
+			if !semantic.IsStorageType(t) {
+				continue
 			}
+			captureTypePtr := c.T.Pointer(c.T.Capture(t))
+			targetTypePtr := c.T.Pointer(c.T.Target(t))
+
+			copyToTarget := c.M.Function(c.T.Void, "S_"+t.Name()+"_copy_to_target", c.T.CtxPtr, captureTypePtr, targetTypePtr).
+				LinkOnceODR().
+				Inline()
+
+			c.T.captureToTarget[t] = copyToTarget
+			c.Build(copyToTarget, func(s *S) {
+				src := s.Parameter(1).SetName("src")
+				dst := s.Parameter(2).SetName("dst")
+				for _, f := range t.Fields {
+					firstElem := src.Index(0, f.Name()).LoadUnaligned()
+					dst.Index(0, f.Name()).Store(c.castCaptureToTarget(s, f.Type, firstElem))
+				}
+			})
+
+			copyToCapture := c.M.Function(c.T.Void, "T_"+t.Name()+"_copy_to_capture", c.T.CtxPtr, targetTypePtr, captureTypePtr).
+				LinkOnceODR().
+				Inline()
+
+			c.T.targetToCapture[t] = copyToCapture
+			c.Build(copyToCapture, func(s *S) {
+				src := s.Parameter(1).SetName("src")
+				dst := s.Parameter(2).SetName("dst")
+				for _, f := range t.Fields {
+					firstElem := src.Index(0, f.Name()).Load()
+					dst.Index(0, f.Name()).StoreUnaligned(c.castTargetToCapture(s, f.Type, firstElem))
+				}
+			})
 		}
 	}
 
@@ -321,31 +276,128 @@ func (t *Types) Target(ty semantic.Type) codegen.Type {
 	return t.basic(ty)
 }
 
-// Capture returns the codegen type used to store ty in a buffer.
+// Capture returns the codegen type used to represent ty when stored in a
+// capture's buffer.
 func (t *Types) Capture(ty semantic.Type) codegen.Type {
-	layout := t.captureABI.MemoryLayout
-	ty = semantic.Underlying(ty)
-	switch ty := ty.(type) {
+	return t.CaptureTypes.Get(ty)
+}
+
+// AlignOf returns the alignment of this type in bytes for the given memory
+// layout.
+func (t *Types) AlignOf(layout *device.MemoryLayout, ty semantic.Type) uint64 {
+	switch ty := semantic.Underlying(ty).(type) {
 	case *semantic.Builtin:
 		switch ty {
+		case semantic.BoolType:
+			return uint64(layout.I8.Alignment)
 		case semantic.IntType:
-			return t.basic(semantic.Integer(layout.Integer.Size))
+			return uint64(layout.Integer.Alignment)
+		case semantic.UintType:
+			return uint64(layout.Integer.Alignment)
 		case semantic.SizeType:
-			return t.basic(semantic.UnsignedInteger(layout.Size.Size))
+			return uint64(layout.Size.Alignment)
+		case semantic.CharType:
+			return uint64(layout.Char.Alignment)
+		case semantic.Int8Type:
+			return uint64(layout.I8.Alignment)
+		case semantic.Uint8Type:
+			return uint64(layout.I8.Alignment)
+		case semantic.Int16Type:
+			return uint64(layout.I16.Alignment)
+		case semantic.Uint16Type:
+			return uint64(layout.I16.Alignment)
+		case semantic.Int32Type:
+			return uint64(layout.I32.Alignment)
+		case semantic.Uint32Type:
+			return uint64(layout.I32.Alignment)
+		case semantic.Int64Type:
+			return uint64(layout.I64.Alignment)
+		case semantic.Uint64Type:
+			return uint64(layout.I64.Alignment)
+		case semantic.Float32Type:
+			return uint64(layout.F32.Alignment)
+		case semantic.Float64Type:
+			return uint64(layout.F64.Alignment)
 		}
 	case *semantic.StaticArray:
-		return t.Array(t.Capture(ty.ValueType), int(ty.Size))
+		return t.AlignOf(layout, ty.ValueType)
 	case *semantic.Pointer:
-		return t.basic(semantic.UnsignedInteger(layout.Pointer.Size))
+		return uint64(layout.Pointer.Alignment)
 	case *semantic.Class:
-		if out, ok := t.capture[ty]; ok {
-			return out
+		alignment := uint64(1)
+		for _, f := range ty.Fields {
+			a := t.AlignOf(layout, f.Type)
+			if alignment < a {
+				alignment = a
+			}
 		}
-		fail("Capture class not registered: '%v'", ty.Name())
-	case *semantic.Slice, *semantic.Reference, *semantic.Map:
-		fail("Cannot store type '%v' (%T) in buffers", ty.Name(), t)
+		return alignment
 	}
-	return t.basic(ty)
+	fail("Cannot determine the alignment for %T %v", ty, ty)
+	return 1
+}
+
+// SizeOf returns size of the type for the given memory layout.
+func (t *Types) SizeOf(layout *device.MemoryLayout, ty semantic.Type) uint64 {
+	switch ty := semantic.Underlying(ty).(type) {
+	case *semantic.Builtin:
+		switch ty {
+		case semantic.BoolType:
+			return uint64(layout.I8.Size)
+		case semantic.IntType:
+			return uint64(layout.Integer.Size)
+		case semantic.UintType:
+			return uint64(layout.Integer.Size)
+		case semantic.SizeType:
+			return uint64(layout.Size.Size)
+		case semantic.CharType:
+			return uint64(layout.Char.Size)
+		case semantic.Int8Type:
+			return uint64(layout.I8.Size)
+		case semantic.Uint8Type:
+			return uint64(layout.I8.Size)
+		case semantic.Int16Type:
+			return uint64(layout.I16.Size)
+		case semantic.Uint16Type:
+			return uint64(layout.I16.Size)
+		case semantic.Int32Type:
+			return uint64(layout.I32.Size)
+		case semantic.Uint32Type:
+			return uint64(layout.I32.Size)
+		case semantic.Int64Type:
+			return uint64(layout.I64.Size)
+		case semantic.Uint64Type:
+			return uint64(layout.I64.Size)
+		case semantic.Float32Type:
+			return uint64(layout.F32.Size)
+		case semantic.Float64Type:
+			return uint64(layout.F64.Size)
+		}
+	case *semantic.StaticArray:
+		return uint64(ty.Size) * t.StrideOf(layout, ty.ValueType)
+	case *semantic.Pointer:
+		return uint64(layout.Pointer.Size)
+	case *semantic.Class:
+		size := uint64(0)
+		for _, f := range ty.Fields {
+			fieldSize := t.StrideOf(layout, f.Type)
+			fieldAlignment := t.AlignOf(layout, f.Type)
+			size = (size + fieldAlignment - 1) & ^(fieldAlignment - 1)
+			size += fieldSize
+		}
+		return size
+	}
+
+	fail("Cannot determine the size for %T %v", ty, ty)
+	return 1
+}
+
+// StrideOf returns the number of bytes per element when held in an array
+// for the given memory layout.
+func (t *Types) StrideOf(layout *device.MemoryLayout, ty semantic.Type) uint64 {
+	alignment := t.AlignOf(layout, ty)
+	size := t.SizeOf(layout, ty)
+	return (size + alignment - 1) & ^(alignment - 1)
 }
 
 func (t *Types) basic(ty semantic.Type) codegen.Type {
@@ -396,125 +448,6 @@ func (t *Types) basic(ty semantic.Type) codegen.Type {
 		fail("Unsupported basic type %v (%T)", ty.Name(), ty)
 		return nil
 	}
-}
-
-// CaptureABIAlignment returns the alignment of this type in bytes when stored.
-func (t *Types) CaptureABIAlignment(ty semantic.Type) int32 {
-	layout := t.captureABI.MemoryLayout
-	switch ty := semantic.Underlying(ty).(type) {
-	case *semantic.Builtin:
-		switch ty {
-		case semantic.BoolType:
-			return int32(layout.I8.Alignment)
-		case semantic.IntType:
-			return int32(layout.Integer.Alignment)
-		case semantic.UintType:
-			return int32(layout.Integer.Alignment)
-		case semantic.SizeType:
-			return int32(layout.Size.Alignment)
-		case semantic.CharType:
-			return int32(layout.Char.Alignment)
-		case semantic.Int8Type:
-			return int32(layout.I8.Alignment)
-		case semantic.Uint8Type:
-			return int32(layout.I8.Alignment)
-		case semantic.Int16Type:
-			return int32(layout.I16.Alignment)
-		case semantic.Uint16Type:
-			return int32(layout.I16.Alignment)
-		case semantic.Int32Type:
-			return int32(layout.I32.Alignment)
-		case semantic.Uint32Type:
-			return int32(layout.I32.Alignment)
-		case semantic.Int64Type:
-			return int32(layout.I64.Alignment)
-		case semantic.Uint64Type:
-			return int32(layout.I64.Alignment)
-		case semantic.Float32Type:
-			return int32(layout.F32.Alignment)
-		case semantic.Float64Type:
-			return int32(layout.F64.Alignment)
-		}
-	case *semantic.StaticArray:
-		return t.CaptureABIAlignment(ty.ValueType)
-	case *semantic.Pointer:
-		return layout.Pointer.Alignment
-	case *semantic.Class:
-		alignment := int32(1)
-		for _, f := range ty.Fields {
-			a := t.CaptureABIAlignment(f.Type)
-			if alignment < a {
-				alignment = a
-			}
-		}
-		return alignment
-	}
-	fail("Cannot determine the capture alignemnt for %T %v", ty, ty)
-	return 1
-}
-
-// CaptureSize returns the number of bytes needed to store this type.
-func (t *Types) CaptureSize(ty semantic.Type) int32 {
-	layout := t.captureABI.MemoryLayout
-	switch ty := semantic.Underlying(ty).(type) {
-	case *semantic.Builtin:
-		switch ty {
-		case semantic.BoolType:
-			return int32(layout.I8.Size)
-		case semantic.IntType:
-			return int32(layout.Integer.Size)
-		case semantic.UintType:
-			return int32(layout.Integer.Size)
-		case semantic.SizeType:
-			return int32(layout.Size.Size)
-		case semantic.CharType:
-			return int32(layout.Char.Size)
-		case semantic.Int8Type:
-			return int32(layout.I8.Size)
-		case semantic.Uint8Type:
-			return int32(layout.I8.Size)
-		case semantic.Int16Type:
-			return int32(layout.I16.Size)
-		case semantic.Uint16Type:
-			return int32(layout.I16.Size)
-		case semantic.Int32Type:
-			return int32(layout.I32.Size)
-		case semantic.Uint32Type:
-			return int32(layout.I32.Size)
-		case semantic.Int64Type:
-			return int32(layout.I64.Size)
-		case semantic.Uint64Type:
-			return int32(layout.I64.Size)
-		case semantic.Float32Type:
-			return int32(layout.F32.Size)
-		case semantic.Float64Type:
-			return int32(layout.F64.Size)
-		}
-	case *semantic.StaticArray:
-		return int32(ty.Size) * t.CaptureAllocaSize(ty.ValueType)
-	case *semantic.Pointer:
-		return layout.Pointer.Size
-	case *semantic.Class:
-		size := int32(0)
-		for _, f := range ty.Fields {
-			fieldSize := t.CaptureAllocaSize(f.Type)
-			fieldAlignment := t.CaptureABIAlignment(f.Type)
-			size = (size + fieldAlignment - 1) & ^(fieldAlignment - 1)
-			size += fieldSize
-		}
-		return size
-	}
-
-	fail("Cannot determine the capture size for %T %v", ty, ty)
-	return 1
-}
-
-// CaptureAllocaSize returns the number of bytes per object if you were to
-// store two next to each other in memory.
-func (t *Types) CaptureAllocaSize(ty semantic.Type) int32 {
-	alignment := t.CaptureABIAlignment(ty)
-	size := t.CaptureSize(ty)
-	return (size + alignment - 1) & ^(alignment - 1)
 }
 
 func (c *C) initialValue(s *S, t semantic.Type) *codegen.Value {
