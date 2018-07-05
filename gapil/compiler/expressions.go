@@ -24,94 +24,93 @@ import (
 )
 
 func (c *C) expression(s *S, e semantic.Expression) *codegen.Value {
-	old := c.setCurrentExpression(s, e)
-	var out *codegen.Value
+	c.pushExpression(s, e)
+	defer c.popExpression(s)
+
 	switch e := e.(type) {
 	case *semantic.ArrayIndex:
-		out = c.arrayIndex(s, e)
+		return c.arrayIndex(s, e)
 	case *semantic.ArrayInitializer:
-		out = c.arrayInitializer(s, e)
+		return c.arrayInitializer(s, e)
 	case *semantic.BinaryOp:
-		out = c.binaryOp(s, e)
+		return c.binaryOp(s, e)
 	case *semantic.BitTest:
-		out = c.bitTest(s, e)
+		return c.bitTest(s, e)
 	case semantic.BoolValue:
-		out = c.boolValue(s, e)
+		return c.boolValue(s, e)
 	case *semantic.Call:
-		out = c.call(s, e)
+		return c.call(s, e)
 	case *semantic.Cast:
-		out = c.cast(s, e)
+		return c.cast(s, e)
 	case *semantic.ClassInitializer:
-		out = c.classInitializer(s, e)
+		return c.classInitializer(s, e)
 	case *semantic.Create:
-		out = c.create(s, e)
+		return c.create(s, e)
 	case *semantic.Clone:
-		out = c.clone(s, e)
+		return c.clone(s, e)
 	case *semantic.EnumEntry:
-		out = c.enumEntry(s, e)
+		return c.enumEntry(s, e)
 	case semantic.Float32Value:
-		out = c.float32Value(s, e)
+		return c.float32Value(s, e)
 	case semantic.Float64Value:
-		out = c.float64Value(s, e)
+		return c.float64Value(s, e)
 	case *semantic.Global:
-		out = c.global(s, e)
+		return c.global(s, e)
 	case *semantic.Ignore:
-		out = c.ignore(s, e)
+		return c.ignore(s, e)
 	case semantic.Int16Value:
-		out = c.int16Value(s, e)
+		return c.int16Value(s, e)
 	case semantic.Int32Value:
-		out = c.int32Value(s, e)
+		return c.int32Value(s, e)
 	case semantic.Int64Value:
-		out = c.int64Value(s, e)
+		return c.int64Value(s, e)
 	case semantic.Int8Value:
-		out = c.int8Value(s, e)
+		return c.int8Value(s, e)
 	case *semantic.Length:
-		out = c.length(s, e)
+		return c.length(s, e)
 	case *semantic.Local:
-		out = c.local(s, e)
+		return c.local(s, e)
 	case *semantic.Make:
-		out = c.make(s, e)
+		return c.make(s, e)
 	case *semantic.MapContains:
-		out = c.mapContains(s, e)
+		return c.mapContains(s, e)
 	case *semantic.MapIndex:
-		out = c.mapIndex(s, e)
+		return c.mapIndex(s, e)
 	case *semantic.Member:
-		out = c.member(s, e)
+		return c.member(s, e)
 	case *semantic.MessageValue:
-		out = c.message(s, e)
+		return c.message(s, e)
 	case semantic.Null:
-		out = c.null(s, e)
+		return c.null(s, e)
 	case *semantic.Observed:
-		out = c.observed(s, e)
+		return c.observed(s, e)
 	case *semantic.Parameter:
-		out = c.Parameter(s, e)
+		return c.Parameter(s, e)
 	case *semantic.PointerRange:
-		out = c.pointerRange(s, e)
+		return c.pointerRange(s, e)
 	case *semantic.Select:
-		out = c.select_(s, e)
+		return c.select_(s, e)
 	case *semantic.SliceIndex:
-		out = c.sliceIndex(s, e)
+		return c.sliceIndex(s, e)
 	case *semantic.SliceRange:
-		out = c.sliceRange(s, e)
+		return c.sliceRange(s, e)
 	case semantic.StringValue:
-		out = c.stringValue(s, e)
+		return c.stringValue(s, e)
 	case semantic.Uint16Value:
-		out = c.uint16Value(s, e)
+		return c.uint16Value(s, e)
 	case semantic.Uint32Value:
-		out = c.uint32Value(s, e)
+		return c.uint32Value(s, e)
 	case semantic.Uint64Value:
-		out = c.uint64Value(s, e)
+		return c.uint64Value(s, e)
 	case semantic.Uint8Value:
-		out = c.uint8Value(s, e)
+		return c.uint8Value(s, e)
 	case *semantic.UnaryOp:
-		out = c.unaryOp(s, e)
+		return c.unaryOp(s, e)
 	case *semantic.Unknown:
-		out = c.unknown(s, e)
+		return c.unknown(s, e)
 	default:
 		panic(fmt.Errorf("Unexpected expression type %T", e))
 	}
-	c.setCurrentExpression(s, old)
-	return out
 }
 
 func (c *C) arrayIndex(s *S, e *semantic.ArrayIndex) *codegen.Value {
