@@ -51,6 +51,8 @@ var (
 	_ compiler.OnEndCommandListener   = (*replayer)(nil)
 )
 
+func (r *replayer) OnPreBuildContext(c *compiler.C) {}
+
 func (r *replayer) ContextData(c *compiler.C) []compiler.ContextField {
 	r.callFPtrTy = c.T.Pointer(c.T.Function(nil, c.T.CtxPtr))
 	return []compiler.ContextField{
