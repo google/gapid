@@ -76,7 +76,7 @@ func (r *replayer) Functions() map[string]*codegen.Function {
 	}
 }
 
-func (r *replayer) OnBeginCommand(cmd *semantic.Function, s *compiler.S) {
+func (r *replayer) OnBeginCommand(s *compiler.S, cmd *semantic.Function) {
 	callFunc := r.buildCall(cmd)
 	s.Ctx.Index(0, data, call).Store(s.FuncAddr(callFunc))
 	r.emitLabel(s)
@@ -86,6 +86,6 @@ func (r *replayer) OnFence(s *compiler.S) {
 	r.emitCall(s)
 }
 
-func (r *replayer) OnEndCommand(cmd *semantic.Function, s *compiler.S) {
+func (r *replayer) OnEndCommand(s *compiler.S, cmd *semantic.Function) {
 
 }

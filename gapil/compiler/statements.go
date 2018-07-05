@@ -64,13 +64,13 @@ func (c *C) command(f *semantic.Function) {
 	c.Build(out, func(s *S) {
 		c.LoadParameters(s, f)
 
-		c.plugins.foreach(func(p OnBeginCommandListener) { p.OnBeginCommand(f, s) })
+		c.plugins.foreach(func(p OnBeginCommandListener) { p.OnBeginCommand(s, f) })
 
 		c.applyReads(s)
 
 		c.block(s, f.Block)
 
-		c.plugins.foreach(func(p OnEndCommandListener) { p.OnEndCommand(f, s) })
+		c.plugins.foreach(func(p OnEndCommandListener) { p.OnEndCommand(s, f) })
 	})
 	c.functions[f] = out
 	c.setCurrentFunction(old)

@@ -67,7 +67,7 @@ type FunctionExposerPlugin interface {
 // OnBeginCommandListener is the interface implemented by plugins that generate
 // custom logic at the start of the command.
 type OnBeginCommandListener interface {
-	OnBeginCommand(cmd *semantic.Function, s *S)
+	OnBeginCommand(s *S, cmd *semantic.Function)
 }
 
 // OnFenceListener is the interface implemented by plugins that generate
@@ -79,5 +79,5 @@ type OnFenceListener interface {
 // OnEndCommandListener is the interface implemented by plugins that generate
 // custom logic at the end of the command.
 type OnEndCommandListener interface {
-	OnEndCommand(cmd *semantic.Function, s *S)
+	OnEndCommand(s *S, cmd *semantic.Function)
 }
