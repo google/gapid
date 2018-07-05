@@ -209,6 +209,7 @@ func (c *C) compile() {
 	defer c.augmentPanics()
 
 	c.declareTypes()
+	c.declareBufferFuncs()
 
 	c.callbacks.alloc = c.M.ParseFunctionSignature(C.GoString(C.gapil_alloc_sig))
 	c.callbacks.realloc = c.M.ParseFunctionSignature(C.GoString(C.gapil_realloc_sig))
