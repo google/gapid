@@ -108,6 +108,24 @@ func Bytes(ptr unsafe.Pointer, size uint64) []byte {
 	return ((*[1 << 30]byte)(ptr))[:size]
 }
 
+// Cast performs an unsafe cast of the slice at sli to the given slice type.
+// Cast uses internal casting which may completely break in future releases of
+// the Golang language / compiler.
+func Cast(sli interface{}, to reflect.Type) interface{} {
+	s, t := reflect.ValueOf(sli), reflect.TypeOf(sli)
+	in := reflect.New(t)
+	in.Elem().Set(s)
+	out := reflect.New(to)
+	src := (*reflect.SliceHeader)((unsafe.Pointer)(in.Pointer()))
+	dst := (*reflect.SliceHeader)((unsafe.Pointer)(out.Pointer()))
+	lenBytes := uintptr(src.Len) * t.Elem().Size()
+	capBytes := uintptr(src.Cap) * t.Elem().Size()
+	dst.Data = src.Data
+	dst.Len = int(lenBytes / to.Elem().Size())
+	dst.Cap = int(capBytes / to.Elem().Size())
+	return out.Elem().Interface()
+}
+
 func replace(ptr, old reflect.Value, first, count int, with interface{}) {
 	d := toSlice(with, old.Type())
 	newLen, oldLen := old.Len()-count+d.Len(), old.Len()
