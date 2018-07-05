@@ -52,13 +52,13 @@ func (v *Value) Cast(ty Type) *Value {
 		return v.b.val(ty, v.b.llvm.CreateZExt(v.llvm, ty.llvmTy(), ""))
 	case IsInteger(srcElTy) && IsBool(dstElTy):
 		return v.b.NotEqual(v, v.b.Zero(srcElTy))
-	case IsInteger(srcElTy) && IsUnsignedInteger(srcElTy) && grow:
+	case IsIntegerOrEnum(srcElTy) && IsUnsignedInteger(srcElTy) && grow:
 		return v.b.val(ty, v.b.llvm.CreateZExt(v.llvm, ty.llvmTy(), ""))
-	case IsInteger(srcElTy) && IsSignedInteger(srcElTy) && grow:
+	case IsIntegerOrEnum(srcElTy) && IsSignedIntegerOrEnum(srcElTy) && grow:
 		return v.b.val(ty, v.b.llvm.CreateSExt(v.llvm, ty.llvmTy(), ""))
-	case IsInteger(srcElTy) && IsInteger(dstElTy) && shink:
+	case IsIntegerOrEnum(srcElTy) && IsIntegerOrEnum(dstElTy) && shink:
 		return v.b.val(ty, v.b.llvm.CreateTrunc(v.llvm, ty.llvmTy(), ""))
-	case IsInteger(srcElTy) && IsInteger(dstElTy):
+	case IsIntegerOrEnum(srcElTy) && IsIntegerOrEnum(dstElTy):
 		return v.b.val(ty, v.llvm) // signed conversion
 	case IsFloat(srcElTy) && IsFloat(dstElTy) && shink:
 		return v.b.val(ty, v.b.llvm.CreateFPTrunc(v.llvm, ty.llvmTy(), ""))
