@@ -410,8 +410,8 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 	elTy := n.To.Type.To
 	targetTy := c.T.Target(elTy)
 	captureTy := c.T.Capture(elTy)
-	captureSize := s.Scalar(uint64(c.T.CaptureSize(elTy)))
-	captureStride := s.Scalar(uint64(c.T.CaptureAllocaSize(elTy)))
+	captureSize := s.Scalar(uint64(c.T.CaptureTypes.SizeOf(elTy)))
+	captureStride := s.Scalar(uint64(c.T.CaptureTypes.StrideOf(elTy)))
 
 	base := slice.Extract(SliceBase)
 	offset := s.Mul(index, captureStride)

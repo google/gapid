@@ -503,8 +503,8 @@ func (c *C) sliceIndex(s *S, e *semantic.SliceIndex) *codegen.Value {
 	elTy := e.Type.To
 	targetTy := c.T.Target(e.Type.To)
 	captureTy := c.T.Capture(e.Type.To)
-	captureSize := s.Scalar(uint64(c.T.CaptureSize(elTy)))
-	captureStride := s.Scalar(uint64(c.T.CaptureAllocaSize(elTy)))
+	captureSize := s.Scalar(uint64(c.T.CaptureTypes.SizeOf(elTy)))
+	captureStride := s.Scalar(uint64(c.T.CaptureTypes.StrideOf(elTy)))
 
 	base := slice.Extract(SliceBase)
 	offset := s.Mul(index, captureStride)
