@@ -195,7 +195,7 @@ void* Arena::allocate(uint32_t size, uint32_t align) {
 }
 
 void* Arena::reallocate(void* ptr, uint32_t size, uint32_t align) {
-  bool reallocate = true;
+  bool reallocate = false;
   uint32_t old_size = 0;
   lock();
   auto it = dedicated_allocations_.find(static_cast<uint8_t*>(ptr));
