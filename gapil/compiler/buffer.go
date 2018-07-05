@@ -16,10 +16,24 @@ package compiler
 
 import "github.com/google/gapid/core/codegen"
 
-func (c *C) buildBufferFuncs() {
+func (c *C) declareBufferFuncs() {
+	// Note these function names are intentionally different from those declared
+	// in runtime.h. These are reimplemented by the compiler so they can be
+	// inlined.
 	c.buf.init = c.M.Function(c.T.Void, "gapil_init_buffer", c.T.CtxPtr, c.T.BufPtr, c.T.Uint32).
 		Inline().
-		LinkOnceODR()
+		LinkPrivate()
+
+	c.buf.term = c.M.Function(c.T.Void, "gapil_term_buffer", c.T.CtxPtr, c.T.BufPtr).
+		Inline().
+		LinkPrivate()
+
+	c.buf.append = c.M.Function(c.T.Void, "gapil_apnd_buffer", c.T.CtxPtr, c.T.BufPtr, c.T.Uint32, c.T.VoidPtr).
+		Inline().
+		LinkPrivate()
+}
+
+func (c *C) buildBufferFuncs() {
 	c.Build(c.buf.init, func(s *S) {
 		bufPtr, capacity := s.Parameter(1), s.Parameter(2)
 
@@ -29,9 +43,6 @@ func (c *C) buildBufferFuncs() {
 		bufPtr.Index(0, BufSize).Store(s.Scalar(uint32(0)))
 	})
 
-	c.buf.term = c.M.Function(c.T.Void, "gapil_term_buffer", c.T.CtxPtr, c.T.BufPtr).
-		Inline().
-		LinkOnceODR()
 	c.Build(c.buf.term, func(s *S) {
 		bufPtr := s.Parameter(1)
 
@@ -39,9 +50,6 @@ func (c *C) buildBufferFuncs() {
 		c.Free(s, bufData)
 	})
 
-	c.buf.append = c.M.Function(c.T.Void, "gapil_append_buffer", c.T.CtxPtr, c.T.BufPtr, c.T.Uint32, c.T.VoidPtr).
-		Inline().
-		LinkOnceODR()
 	c.Build(c.buf.append, func(s *S) {
 		bufPtr, size, data := s.Parameter(1), s.Parameter(2), s.Parameter(3)
 
