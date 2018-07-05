@@ -75,6 +75,9 @@ func (b *Builder) call(v llvm.Value, sig Signature, name string, args []*Value) 
 	}
 	l := make([]llvm.Value, len(args))
 	for i, a := range args {
+		if a == nil {
+			fail("Argument %d is nil when attempting to call %v", i, sig.string(name))
+		}
 		l[i] = a.llvm
 		if i < len(sig.Parameters) {
 			if g, e := a.ty, sig.Parameters[i]; g != e {
