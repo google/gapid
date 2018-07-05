@@ -318,10 +318,10 @@ func encodeRefTypes(refs *pb.RefTypes, isGroup bool) callbacks {
 }
 
 func convSlice(in *memory_pb.Slice, out *C.slice) {
-	out.root = (unsafe.Pointer)(uintptr(in.Root))
-	out.base = (unsafe.Pointer)(uintptr(in.Base))
-	out.size = (C.uint64_t)(in.Size)
-	out.count = (C.uint64_t)(in.Count)
+	out.root = C.uint64_t(in.Root)
+	out.base = C.uint64_t(in.Base)
+	out.size = C.uint64_t(in.Size)
+	out.count = C.uint64_t(in.Count)
 	out.pool = nil
 }
 

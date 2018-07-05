@@ -40,11 +40,11 @@ import (
 // static uint32_t call(context* ctx, TFunc* func) { return func(ctx); }
 //
 // // Implemented below.
-// extern void* remap_pointer(context* ctx, uintptr_t pointer, uint64_t length);
+// extern void* pool_data_resolver(context*, pool*, uint64_t ptr, gapil_data_access, uint64_t* len);
 // extern void  get_code_location(context* ctx, char** file, uint32_t* line);
 //
 // static void set_callbacks() {
-//   gapil_set_pointer_remapper(&remap_pointer);
+//   gapil_set_pool_data_resolver(&pool_data_resolver);
 //   gapil_set_code_locator(&get_code_location);
 // }
 import "C"
@@ -69,20 +69,36 @@ func (l *buffers) add(rng memory.Range, alloc unsafe.Pointer) {
 	*l = append(*l, buffer{rng, alloc})
 }
 
+// lookup returns the buffer that overlaps the storage memory pointer ptr, or
+// nil if there is no buffer for the given pointer.
+func (l buffers) lookup(ptr uint64) *buffer {
+	for i, b := range l {
+		if b.rng.Contains(ptr) {
+			return &l[i]
+		}
+	}
+	return nil
+}
+
+// find returns the buffer that overlaps the storage memory pointer ptr.
+// If there is no buffer for the given pointer, find panics.
+func (l buffers) find(ptr uint64) buffer {
+	if b := l.lookup(ptr); b != nil {
+		return *b
+	}
+	panic(fmt.Errorf("%v is not allocated", ptr))
+}
+
 // remap returns the base address allocated buffer for the storage memory range
 // rng. If there is no allocated memory range for rng (or the range overflows
 // the buffer) then remap panics.
 func (l buffers) remap(rng memory.Range) unsafe.Pointer {
-	for _, b := range l {
-		if b.rng.Contains(rng.Base) {
-			if rng.Base+rng.Size > b.rng.Base+b.rng.Size {
-				panic(fmt.Errorf("%v overflows allocation %v", rng, b.rng))
-			}
-			offset := (uintptr)(rng.Base - b.rng.Base)
-			return (unsafe.Pointer)((uintptr)(b.alloc) + offset)
-		}
+	b := l.find(rng.Base)
+	if rng.Base+rng.Size > b.rng.Base+b.rng.Size {
+		panic(fmt.Errorf("%v overflows allocation %v", rng, b.rng))
 	}
-	panic(fmt.Errorf("%v is not allocated", rng))
+	offset := (uintptr)(rng.Base - b.rng.Base)
+	return (unsafe.Pointer)((uintptr)(b.alloc) + offset)
 }
 
 // Env is the go execution environment.
@@ -245,10 +261,26 @@ func gapil_apply_writes(c *C.context) {
 	}
 }
 
-//export remap_pointer
-func remap_pointer(c *C.context, ptr C.uintptr_t, length C.uint64_t) unsafe.Pointer {
+//export pool_data_resolver
+func pool_data_resolver(c *C.context, pool *C.pool, ptr C.uint64_t, access C.gapil_data_access, len *C.uint64_t) unsafe.Pointer {
+	if pool != nil {
+		if ptr > pool.size {
+			panic(fmt.Errorf("%v overflows pool buffer %v", ptr, pool.size))
+		}
+		if len != nil {
+			*len = pool.size - ptr
+		}
+		return unsafe.Pointer(uintptr(pool.buffer) + uintptr(ptr))
+	}
+
+	// Application pool
 	e := env(c)
-	return e.buffers.remap(memory.Range{Base: uint64(ptr), Size: uint64(length)})
+	b := e.buffers.find(uint64(ptr))
+	offset := uint64(ptr) - b.rng.Base
+	if len != nil {
+		*len = (C.uint64_t)(b.rng.Size - offset)
+	}
+	return (unsafe.Pointer)(uintptr(b.alloc) + uintptr(offset))
 }
 
 //export get_code_location

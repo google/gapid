@@ -42,7 +42,7 @@ class Slice {
   inline Slice(T* base, uint64_t count);
 
   // Constructs a new slice given the full explicit parameters.
-  inline Slice(pool_t* pool, void* root, void* base, uint64_t size,
+  inline Slice(pool_t* pool, uint64_t root, uint64_t base, uint64_t size,
                uint64_t count, bool add_ref = true);
 
   // Creates and returns a new slice wrapping the given pool.
@@ -103,7 +103,7 @@ class Slice {
   inline T* end() const;
 
  private:
-  void init(pool_t* pool, void* root, void* base, uint64_t size, uint64_t count,
+  void init(pool_t* pool, uint64_t root, uint64_t base, uint64_t size, uint64_t count,
             bool add_ref = true);
 
   void reference() const;

@@ -442,18 +442,18 @@ func (c *C) Parameter(s *S, e *semantic.Parameter) *codegen.Value {
 }
 
 func (c *C) pointerRange(s *S, e *semantic.PointerRange) *codegen.Value {
-	p := c.expression(s, e.Pointer)
 	elTy := c.T.Storage(e.Type.To)
+	root := c.expression(s, e.Pointer).Cast(c.T.Uint64).SetName("root")
 	start := c.expression(s, e.Range.LHS).Cast(c.T.Uint64).SetName("start")
 	end := c.expression(s, e.Range.RHS).Cast(c.T.Uint64).SetName("end")
 	offset := s.Mul(start, s.SizeOf(elTy)).Cast(c.T.Uint64).SetName("offset")
 	count := s.Sub(end, start).SetName("count")
 	size := s.Mul(count, s.SizeOf(elTy)).Cast(c.T.Uint64).SetName("size")
-	slicePtr := s.Local("slicePtr", c.T.Sli)
-	s.Call(c.callbacks.pointerToSlice, s.Ctx, p, offset, size, count, slicePtr)
-	slice := slicePtr.Load()
-	c.deferRelease(s, slice, e.Type)
-	return slice
+	return s.Zero(c.T.Sli).
+		Insert(SliceRoot, root).
+		Insert(SliceBase, s.Add(root, offset)).
+		Insert(SliceSize, size).
+		Insert(SliceCount, count)
 }
 
 func (c *C) select_(s *S, e *semantic.Select) *codegen.Value {
@@ -499,14 +499,23 @@ func (c *C) sliceIndex(s *S, e *semantic.SliceIndex) *codegen.Value {
 	index := c.expression(s, e.Index).Cast(c.T.Uint64).SetName("index")
 	slice := c.expression(s, e.Slice)
 
-	read := func(elType codegen.Type) *codegen.Value {
-		base := slice.Extract(SliceBase).Cast(c.T.Pointer(elType))
-		return base.Index(index).Load()
-	}
-
 	elTy := e.Type.To
 	targetTy := c.T.Target(e.Type.To)
 	storageTy := c.T.Storage(e.Type.To)
+	storageSize := s.Scalar(uint64(c.T.StorageSize(elTy)))
+	storageStride := s.Scalar(uint64(c.T.StorageAllocaSize(elTy)))
+
+	base := slice.Extract(SliceBase)
+	offset := s.Mul(index, storageStride)
+	subslice := slice.
+		Insert(SliceBase, s.Add(base, offset)).
+		Insert(SliceSize, storageSize).
+		Insert(SliceCount, s.Scalar(uint64(1)))
+	subslicePtr := s.LocalInit("subslice", subslice)
+
+	read := func(elType codegen.Type) *codegen.Value {
+		return c.SliceDataForRead(s, subslicePtr, elType).Load()
+	}
 	if targetTy == storageTy {
 		return read(targetTy)
 	}
@@ -526,7 +535,7 @@ func (c *C) sliceRange(s *S, e *semantic.SliceRange) *codegen.Value {
 
 	slice = slice.Insert(SliceCount, s.Sub(to, from))
 	slice = slice.Insert(SliceSize, size)
-	slice = slice.Insert(SliceBase, start.Cast(c.T.Uint8Ptr))
+	slice = slice.Insert(SliceBase, start.Cast(c.T.Uint64))
 	// TODO: Check sub-slice is within original slice bounds.
 	return slice
 }

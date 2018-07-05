@@ -30,7 +30,11 @@ func (c *C) doCast(s *S, dstTy, srcTy semantic.Type, v *codegen.Value) *codegen.
 	switch {
 	case srcIsPtr && srcPtrTy.To == semantic.CharType && dstIsString:
 		// char* -> string
-		str := s.Call(c.callbacks.pointerToString, s.Ctx, v)
+		slicePtr := s.Local("slice", c.T.Sli)
+		s.Call(c.callbacks.cstringToSlice, s.Ctx, v, slicePtr)
+		slice := slicePtr.Load()
+		str := s.Call(c.callbacks.sliceToString, s.Ctx, slicePtr)
+		c.release(s, slice, slicePrototype)
 		c.deferRelease(s, str, semantic.StringType)
 		return str
 	case srcIsSlice && srcSliceTy.To == semantic.CharType && dstIsString:
