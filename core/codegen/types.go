@@ -70,6 +70,8 @@ type Types struct {
 	arrays        map[typeInt]*Array
 	structs       map[string]*Struct
 	funcs         map[string]*FunctionType
+	enums         map[string]Enum
+	named         map[string]Type
 }
 
 type typeInt struct {
@@ -77,7 +79,7 @@ type typeInt struct {
 	int
 }
 
-// Type represents a JIT type.
+// Type represents a codegen type.
 type Type interface {
 	String() string
 	TypeName() string
@@ -217,6 +219,12 @@ func IsInteger(ty Type) bool {
 	return ok
 }
 
+// IsEnum returns true if ty is an enum type.
+func IsEnum(ty Type) bool {
+	_, ok := ty.(Enum)
+	return ok
+}
+
 // IsSignedInteger returns true if ty is a signed integer type.
 func IsSignedInteger(ty Type) bool {
 	i, ok := ty.(Integer)
@@ -228,6 +236,12 @@ func IsUnsignedInteger(ty Type) bool {
 	i, ok := ty.(Integer)
 	return ok && !i.Signed
 }
+
+// IsIntegerOrEnum returns true if ty is an integer or enum type.
+func IsIntegerOrEnum(ty Type) bool { return IsInteger(ty) || IsEnum(ty) }
+
+// IsSignedIntegerOrEnum returns true if ty is a signed integer or enum type.
+func IsSignedIntegerOrEnum(ty Type) bool { return IsSignedInteger(ty) || IsEnum(ty) }
 
 // Float represents a floating-point type.
 type Float struct {
@@ -353,11 +367,20 @@ func (t *Types) struct_(name string, packed bool, fields []Field) *Struct {
 	}
 	ty := t.m.ctx.StructCreateNamed(name)
 	s := &Struct{Name: name, llvm: ty}
+	t.registerNamed(s)
 	if fields != nil {
 		s.SetBody(packed, fields...)
 	}
 	t.structs[name] = s
 	return s
+}
+
+func (t *Types) registerNamed(ty Type) {
+	name := ty.TypeName()
+	if _, dup := t.named[name]; dup {
+		fail("Duplicate types with the name %v", name)
+	}
+	t.named[name] = ty
 }
 
 // SetBody sets the fields of the declared struct.
@@ -375,6 +398,23 @@ func (t *Struct) SetBody(packed bool, fields ...Field) *Struct {
 	t.fieldIndices = indices
 	t.llvm.StructSetBody(l, packed)
 	return t
+}
+
+// Enum is an enumerator.
+type Enum struct{ basicType }
+
+// Enum creates a new enum type.
+func (t *Types) Enum(name string) Enum {
+	ty := Enum{
+		basicType{
+			name: name,
+			bits: t.Int.sizeInBits(),
+			llvm: t.Int.llvmTy(),
+		},
+	}
+	t.enums[name] = ty
+	t.registerNamed(ty)
+	return ty
 }
 
 // DeclareStruct creates a new, empty struct type.

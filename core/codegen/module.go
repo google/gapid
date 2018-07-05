@@ -77,6 +77,8 @@ func NewModule(name string, target *device.ABI) *Module {
 			arrays:        map[typeInt]*Array{},
 			structs:       map[string]*Struct{},
 			funcs:         map[string]*FunctionType{},
+			enums:         map[string]Enum{},
+			named:         map[string]Type{},
 		},
 		llvm:   module,
 		ctx:    ctx,
@@ -226,8 +228,8 @@ func (m *Module) parseTypeName(name string) Type {
 	case "...":
 		return Variadic
 	default:
-		if s, ok := m.Types.structs[name]; ok {
-			return s
+		if ty, ok := m.Types.named[name]; ok {
+			return ty
 		}
 		fail("'%v' is not a valid type name", name)
 		return nil
