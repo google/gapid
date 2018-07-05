@@ -301,7 +301,9 @@ func (c *C) clone(s *S, e *semantic.Clone) *codegen.Value {
 	dstCount := s.Div(srcSize, elSize)
 	dstSize := s.Mul(dstCount, elSize)
 	dst := c.MakeSlice(s, dstSize, dstCount)
+	c.plugins.foreach(func(p OnReadListener) { p.OnRead(s, src, e.Type) })
 	c.CopySlice(s, dst, src)
+	c.plugins.foreach(func(p OnWriteListener) { p.OnWrite(s, dst, e.Type) })
 	c.deferRelease(s, dst, e.Type)
 	return dst
 }
@@ -513,6 +515,7 @@ func (c *C) sliceIndex(s *S, e *semantic.SliceIndex) *codegen.Value {
 	subslicePtr := s.LocalInit("subslice", subslice)
 
 	read := func(elType codegen.Type) *codegen.Value {
+		c.plugins.foreach(func(p OnReadListener) { p.OnRead(s, subslice, e.Type) })
 		return c.SliceDataForRead(s, subslicePtr, elType).Load()
 	}
 	if targetTy == captureTy {

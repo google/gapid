@@ -81,3 +81,15 @@ type OnFenceListener interface {
 type OnEndCommandListener interface {
 	OnEndCommand(s *S, cmd *semantic.Function)
 }
+
+// OnReadListener is the interface implemented by plugins that generate custom
+// logic when slices are read.
+type OnReadListener interface {
+	OnRead(s *S, slice *codegen.Value, ty *semantic.Slice)
+}
+
+// OnWriteListener is the interface implemented by plugins that generate custom
+// logic when slices are written.
+type OnWriteListener interface {
+	OnWrite(s *S, slice *codegen.Value, ty *semantic.Slice)
+}

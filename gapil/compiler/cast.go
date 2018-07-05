@@ -33,6 +33,7 @@ func (c *C) doCast(s *S, dstTy, srcTy semantic.Type, v *codegen.Value) *codegen.
 		slicePtr := s.Local("slice", c.T.Sli)
 		s.Call(c.callbacks.cstringToSlice, s.Ctx, v, slicePtr)
 		slice := slicePtr.Load()
+		c.plugins.foreach(func(p OnReadListener) { p.OnRead(s, slice, srcPtrTy.Slice) })
 		str := s.Call(c.callbacks.sliceToString, s.Ctx, slicePtr)
 		c.release(s, slice, slicePrototype)
 		c.deferRelease(s, str, semantic.StringType)
@@ -40,6 +41,7 @@ func (c *C) doCast(s *S, dstTy, srcTy semantic.Type, v *codegen.Value) *codegen.
 	case srcIsSlice && srcSliceTy.To == semantic.CharType && dstIsString:
 		// char[] -> string
 		slicePtr := s.LocalInit("slice", v)
+		c.plugins.foreach(func(p OnReadListener) { p.OnRead(s, v, srcSliceTy) })
 		return s.Call(c.callbacks.sliceToString, s.Ctx, slicePtr)
 	case srcIsString && dstIsSlice && dstSliceTy.To == semantic.CharType:
 		// string -> char[]
@@ -82,8 +84,8 @@ func (c *C) castTargetToCapture(s *S, ty semantic.Type, v *codegen.Value) *codeg
 			s.Call(fn, s.Ctx, tmpSource, tmpTarget)
 			return tmpTarget.Load()
 		}
-			fail("castTargetToCapture() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
-			return nil
+		fail("castTargetToCapture() cannot handle type %v (%v -> %v)", ty.Name(), srcTy.TypeName(), dstTy.TypeName())
+		return nil
 	case ty == semantic.IntType, ty == semantic.SizeType:
 		return v.Cast(dstTy)
 	default:

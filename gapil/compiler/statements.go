@@ -275,10 +275,24 @@ func (c *C) branch(s *S, n *semantic.Branch) {
 func (c *C) copy(s *S, n *semantic.Copy) {
 	src := c.expression(s, n.Src)
 	dst := c.expression(s, n.Dst)
+	ty := n.Src.ExpressionType().(*semantic.Slice)
+
+	// Adjust slice lengths to the min of src and dst.
+	// This is handled automatically in CopySlice, but we need correct counts
+	// for the plugin callbacks.
+	srcCnt := src.Extract(SliceCount)
+	dstCnt := dst.Extract(SliceCount)
+	cnt := s.Select(s.LessThan(srcCnt, dstCnt), srcCnt, dstCnt)
+	size := s.Mul(cnt, s.SizeOf(c.T.Capture(ty.To)))
+	src = src.Insert(SliceCount, cnt).Insert(SliceSize, size)
+	dst = dst.Insert(SliceCount, cnt).Insert(SliceSize, size)
+
+	c.plugins.foreach(func(p OnReadListener) { p.OnRead(s, src, ty) })
 	c.CopySlice(s, dst, src)
 	if c.isFence {
 		c.applyFence(s)
 	}
+	c.plugins.foreach(func(p OnWriteListener) { p.OnWrite(s, dst, ty) })
 }
 
 func (c *C) declareLocal(s *S, n *semantic.DeclareLocal) {
@@ -361,7 +375,9 @@ func (c *C) mapRemove(s *S, n *semantic.MapRemove) {
 }
 
 func (c *C) read(s *S, n *semantic.Read) {
-	// TODO
+	slice := c.expression(s, n.Slice)
+	ty := n.Slice.ExpressionType().(*semantic.Slice)
+	c.plugins.foreach(func(p OnReadListener) { p.OnRead(s, slice, ty) })
 }
 
 func (c *C) return_(s *S, n *semantic.Return) {
@@ -426,6 +442,13 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 		})
 	}
 
+	// Regardless of whether we locally update the app pool or not, we always
+	// want to inform the plugins that there is a slice write.
+	chainWrite(func(el *codegen.Value, next func(el *codegen.Value)) {
+		next(el)
+		c.plugins.foreach(func(p OnWriteListener) { p.OnWrite(s, subslice, n.To.Type) })
+	})
+
 	el := c.expression(s, n.Value)
 	if targetTy == captureTy {
 		write(el)
@@ -459,5 +482,7 @@ func (c *C) switch_(s *S, n *semantic.Switch) {
 }
 
 func (c *C) write(s *S, n *semantic.Write) {
-	// TODO
+	slice := c.expression(s, n.Slice)
+	ty := n.Slice.ExpressionType().(*semantic.Slice)
+	c.plugins.foreach(func(p OnWriteListener) { p.OnWrite(s, slice, ty) })
 }
