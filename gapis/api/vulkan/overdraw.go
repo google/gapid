@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
@@ -127,7 +128,7 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		return
 	}
 
-	image, err := s.rewriteQueueSubmit(ctx, cb, gs, st, arena, submit,
+	img, err := s.rewriteQueueSubmit(ctx, cb, gs, st, arena, submit,
 		lastRenderPassArgs, lastRenderPassIdx, id,
 		mustAllocData, addCleanup, out)
 	if err != nil {
@@ -137,16 +138,28 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		out.MutateAndWrite(ctx, id, cmd)
 		return
 	}
+
+	checkImage := func(img *image.Data) error {
+		// Check if any bytes are 255, which indicates potential saturation
+		for _, byt := range img.Bytes {
+			if byt == 255 {
+				log.W(ctx, "Overdraw hit limit of 255, further overdraw cannot be measured")
+				break
+			}
+		}
+		return nil
+	}
 	postImageData(ctx, cb, gs,
-		st.Images().Get(image.handle),
-		image.format,
+		st.Images().Get(img.handle),
+		img.format,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT,
 		0,
 		0,
-		image.width,
-		image.height,
-		image.width,
-		image.height,
+		img.width,
+		img.height,
+		img.width,
+		img.height,
+		checkImage,
 		out,
 		res,
 	)

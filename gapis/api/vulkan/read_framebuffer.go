@@ -109,7 +109,7 @@ func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 		// first one.
 		// TODO: support multi-layer rendering.
 		layer := imageViewDepth.SubresourceRange().BaseArrayLayer()
-		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Fmt(), VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, layer, level, w, h, w, h, out, res)
+		postImageData(ctx, cb, s, depthImageObject, imageViewDepth.Fmt(), VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, layer, level, w, h, w, h, nil, out, res)
 	})
 }
 
@@ -160,7 +160,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 				return
 			}
 			w, h, form := lastDrawInfo.Framebuffer().Width(), lastDrawInfo.Framebuffer().Height(), imageView.Fmt()
-			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, layer, level, w, h, width, height, out, res)
+			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, layer, level, w, h, width, height, nil, out, res)
 		} else {
 			imageObject := GetState(s).LastPresentInfo().PresentImages().Get(bufferIdx)
 			if imageObject.IsNil() {
@@ -171,7 +171,7 @@ func (t *readFramebuffer) Color(id api.CmdID, width, height, bufferIdx uint32, r
 			// There might be multiple layers for an image created by swapchain
 			// but currently we only support layer 0.
 			// TODO: support multi-layer swapchain images.
-			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, w, h, width, height, out, res)
+			postImageData(ctx, cb, s, imageObject, form, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, w, h, width, height, nil, out, res)
 		}
 	})
 }
@@ -206,6 +206,7 @@ func postImageData(ctx context.Context,
 	imgHeight,
 	reqWidth,
 	reqHeight uint32,
+	checkImage func(*image.Data) error,
 	out transform.Writer,
 	res replay.Result) {
 
@@ -1078,6 +1079,10 @@ func postImageData(ctx context.Context,
 					Height: uint32(requestHeight),
 					Depth:  1,
 					Format: formatOfImgRes,
+				}
+
+				if err == nil && checkImage != nil {
+					err = checkImage(img)
 				}
 
 				res(img, err)
