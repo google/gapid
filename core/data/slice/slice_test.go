@@ -15,6 +15,7 @@
 package slice_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -184,5 +185,23 @@ func TestReverse(t *testing.T) {
 		data := slice.Clone(test.data)
 		slice.Reverse(data)
 		assert.For(ctx, "Reverse(%v)", test.data).That(data).DeepEquals(test.expected)
+	}
+}
+
+func TestCast(t *testing.T) {
+	ctx := log.Testing(t)
+
+	// Note: This test assumes the machine is little-endian.
+	for _, test := range []struct {
+		data     []uint32
+		expected []uint16
+	}{
+		{[]uint32{}, []uint16{}},
+		{[]uint32{1}, []uint16{1, 0}},
+		{[]uint32{1, 2}, []uint16{1, 0, 2, 0}},
+		{[]uint32{0x66778899, 0xaabbccdd}, []uint16{0x8899, 0x6677, 0xccdd, 0xaabb}},
+	} {
+		data := slice.Cast(test.data, reflect.TypeOf([]uint16{}))
+		assert.For(ctx, "Cast(%v)", test.data).That(data).DeepEquals(test.expected)
 	}
 }
