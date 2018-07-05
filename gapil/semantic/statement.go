@@ -228,7 +228,7 @@ func (*Abort) isStatement() {}
 // and require logic to be executed either side of the API function call.
 type Fence struct {
 	AST       *ast.Fence // the underlying syntax node this was built from
-	Statement Node
+	Statement Statement
 	Explicit  bool // If true, then the fence was explicitly declared in the API file.
 }
 

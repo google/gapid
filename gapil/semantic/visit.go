@@ -140,7 +140,7 @@ func Replace(node Node, visitor func(Node) Node) {
 		}
 	case *Fence:
 		if n.Statement != nil {
-			n.Statement = visitor(n.Statement).(Node)
+			n.Statement = visitor(n.Statement).(Statement)
 		}
 	case *Field:
 		n.Type = visitor(n.Type).(Type)
