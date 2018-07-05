@@ -33,7 +33,7 @@ go_library(
         "scope.go",
         "settings.go",
         "statements.go",
-        "type.go",
+        "types.go",
     ],
     cdeps = [
         "//gapil/runtime/cc:headers",
