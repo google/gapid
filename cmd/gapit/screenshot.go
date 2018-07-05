@@ -113,12 +113,17 @@ func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Comman
 	if verb.Overdraw {
 		settings.DrawMode = service.DrawMode_OVERDRAW
 	}
+
+	attachment, err := verb.getAttachment(ctx)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Get color attachment failed")
+	}
 	iip, err := client.GetFramebufferAttachment(ctx,
 		&service.ReplaySettings{
 			Device: device,
 			DisableReplayOptimization: verb.NoOpt,
 		},
-		cmd, api.FramebufferAttachment_Color0, settings, nil)
+		cmd, attachment, settings, nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed")
 	}
@@ -204,5 +209,20 @@ func rescaleBytes(ctx context.Context, data []byte, max int) {
 		} else {
 			data[i] = byte(int(data[i]) * 255 / max)
 		}
+	}
+}
+
+func (verb *screenshotVerb) getAttachment(ctx context.Context) (api.FramebufferAttachment, error) {
+	switch verb.Attachment {
+	case 0:
+		return api.FramebufferAttachment_Color0, nil
+	case 1:
+		return api.FramebufferAttachment_Color1, nil
+	case 2:
+		return api.FramebufferAttachment_Color2, nil
+	case 3:
+		return api.FramebufferAttachment_Color3, nil
+	default:
+		return 0, log.Errf(ctx, nil, "Invalid color attachment %v", verb.Attachment)
 	}
 }
