@@ -879,7 +879,7 @@ func rebuildVkCmdSetBlendConstants(
 	s *api.GlobalState,
 	d VkCmdSetBlendConstantsArgsʳ) (func(), api.Cmd, error) {
 
-	var constants F32ː4ᵃ
+	constants := NewF32ː4ᵃ(s.Arena)
 	constants.Set(0, d.R())
 	constants.Set(1, d.G())
 	constants.Set(2, d.B())
@@ -1130,7 +1130,7 @@ func rebuildVkCmdDebugMarkerInsertEXT(
 	a := s.Arena // TODO: Should this be a seperate temporary arena?
 
 	markerNameData := s.AllocDataOrPanic(ctx, d.MarkerName())
-	var color F32ː4ᵃ
+	color := NewF32ː4ᵃ(a)
 	color.Set(0, d.Color().Get(0))
 	color.Set(1, d.Color().Get(1))
 	color.Set(2, d.Color().Get(2))
