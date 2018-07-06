@@ -59,7 +59,7 @@ func (API) QueryFramebufferAttachment(
 	width, height uint32,
 	attachment api.FramebufferAttachment,
 	framebufferIndex uint32,
-	drawMode replay.DrawMode,
+	drawMode service.DrawMode,
 	disableReplayOptimization bool,
 	hints *service.UsageHints) (*image.Data, error) {
 

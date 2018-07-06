@@ -45,7 +45,7 @@ type issuesConfig struct{}
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
 type drawConfig struct {
-	drawMode                  replay.DrawMode
+	drawMode                  service.DrawMode
 	wireframeOverlayID        api.CmdID     // used when drawMode == DrawMode_WIREFRAME_OVERLAY
 	wireframeFramebufferID    FramebufferId // used when drawMode == DrawMode_WIREFRAME_ALL
 	disableReplayOptimization bool
@@ -174,11 +174,11 @@ func (a API) Replay(
 				deadCodeElimination.KeepAllAlive = true
 			}
 			switch cfg.drawMode {
-			case replay.DrawMode_WIREFRAME_ALL:
+			case service.DrawMode_WIREFRAME_ALL:
 				wire = wireframe(ctx, cfg.wireframeFramebufferID)
-			case replay.DrawMode_WIREFRAME_OVERLAY:
+			case service.DrawMode_WIREFRAME_OVERLAY:
 				wire = wireframeOverlay(ctx, req.after)
-			case replay.DrawMode_OVERDRAW:
+			case service.DrawMode_OVERDRAW:
 				return fmt.Errorf("Overdraw is not currently supported")
 			}
 		}
@@ -267,7 +267,7 @@ func (a API) QueryFramebufferAttachment(
 	width, height uint32,
 	attachment api.FramebufferAttachment,
 	framebufferIndex uint32,
-	drawMode replay.DrawMode,
+	drawMode service.DrawMode,
 	disableReplayOptimization bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
@@ -277,10 +277,10 @@ func (a API) QueryFramebufferAttachment(
 
 	c := drawConfig{drawMode: drawMode, disableReplayOptimization: disableReplayOptimization}
 	switch drawMode {
-	case replay.DrawMode_WIREFRAME_OVERLAY:
+	case service.DrawMode_WIREFRAME_OVERLAY:
 		c.wireframeOverlayID = api.CmdID(after[0])
 
-	case replay.DrawMode_WIREFRAME_ALL:
+	case service.DrawMode_WIREFRAME_ALL:
 		c.wireframeFramebufferID = FramebufferId(framebufferIndex)
 	}
 

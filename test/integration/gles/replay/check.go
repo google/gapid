@@ -30,6 +30,7 @@ import (
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -102,7 +103,7 @@ func checkColorBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 		Device:  path.NewDevice(d.ID.ID()),
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, replay.DrawMode_NORMAL, false, nil)
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, service.DrawMode_NORMAL, false, nil)
 	if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 		return
 	}
@@ -171,7 +172,7 @@ func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 		Device:  path.NewDevice(d.ID.ID()),
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, replay.DrawMode_NORMAL, false, nil)
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, service.DrawMode_NORMAL, false, nil)
 	if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 		return
 	}

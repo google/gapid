@@ -103,7 +103,7 @@ type drawConfig struct {
 	startScope                api.CmdID
 	endScope                  api.CmdID
 	subindices                string // drawConfig needs to be comparable, so we cannot use a slice
-	drawMode                  replay.DrawMode
+	drawMode                  service.DrawMode
 	disableReplayOptimization bool
 }
 
@@ -563,18 +563,18 @@ func (a API) Replay(
 			}
 
 			switch cfg.drawMode {
-			case replay.DrawMode_WIREFRAME_ALL:
+			case service.DrawMode_WIREFRAME_ALL:
 				wire = true
-			case replay.DrawMode_WIREFRAME_OVERLAY:
+			case service.DrawMode_WIREFRAME_OVERLAY:
 				return fmt.Errorf("Overlay wireframe view is not currently supported")
-			case replay.DrawMode_OVERDRAW:
+			case service.DrawMode_OVERDRAW:
 				if overdraw == nil {
 					overdraw = newStencilOverdraw()
 				}
 				overdraw.add(ctx, uint64(extraCommands), req.after, intent.Capture, rr.Result)
 			}
 
-			if cfg.drawMode != replay.DrawMode_OVERDRAW {
+			if cfg.drawMode != service.DrawMode_OVERDRAW {
 				switch req.attachment {
 				case api.FramebufferAttachment_Depth:
 					readFramebuffer.Depth(after, req.framebufferIndex, rr.Result)
@@ -657,7 +657,7 @@ func (a API) QueryFramebufferAttachment(
 	width, height uint32,
 	attachment api.FramebufferAttachment,
 	framebufferIndex uint32,
-	drawMode replay.DrawMode,
+	drawMode service.DrawMode,
 	disableReplayOptimization bool,
 	hints *service.UsageHints) (*image.Data, error) {
 

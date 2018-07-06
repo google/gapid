@@ -52,19 +52,6 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
 	}
 
-	drawMode := replay.DrawMode_NORMAL
-	switch r.DrawMode {
-	case service.DrawMode_NORMAL:
-	case service.DrawMode_WIREFRAME_ALL:
-		drawMode = replay.DrawMode_WIREFRAME_ALL
-	case service.DrawMode_WIREFRAME_OVERLAY:
-		drawMode = replay.DrawMode_WIREFRAME_OVERLAY
-	case service.DrawMode_OVERDRAW:
-		drawMode = replay.DrawMode_OVERDRAW
-	default:
-		return nil, &service.ErrInvalidArgument{Reason: messages.ErrInvalidEnum(drawMode)}
-	}
-
 	mgr := replay.GetManager(ctx)
 
 	res, err := query.QueryFramebufferAttachment(
@@ -76,7 +63,7 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		r.Height,
 		r.Attachment,
 		r.FramebufferIndex,
-		drawMode,
+		r.DrawMode,
 		r.ReplaySettings.DisableReplayOptimization,
 		r.Hints,
 	)
