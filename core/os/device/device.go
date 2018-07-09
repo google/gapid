@@ -15,8 +15,6 @@
 package device
 
 import (
-	"reflect"
-
 	"github.com/golang/protobuf/proto"
 )
 
@@ -181,5 +179,5 @@ func (m *MemoryLayout) Clone() *MemoryLayout {
 
 // SameAs returns true if the MemoryLayouts are equal.
 func (m *MemoryLayout) SameAs(o *MemoryLayout) bool {
-	return reflect.DeepEqual(m, o)
+	return proto.Equal(m, o)
 }
