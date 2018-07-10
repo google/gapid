@@ -22,7 +22,7 @@ build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer
 build --nolegacy_whole_archive
 
 # Config used by the build servers to dump symbols.
-build:symbols --copt="-g" --strip=never
+build:symbols --copt="-g"
 
 # Config that will exclude Android from the //:pkg target.
 build:nodroid --define NO_ANDROID=1
